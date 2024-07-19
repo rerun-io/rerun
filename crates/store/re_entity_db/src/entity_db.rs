@@ -367,7 +367,10 @@ impl EntityDb {
             self.times_per_timeline.on_events(&store_events);
             self.query_caches.on_events(&store_events);
             self.tree.on_store_additions(&store_events);
-            self.tree.on_store_deletions(&store_events);
+
+            // Tree deletions depend on data store, so data store must have been notified of deletions already.
+            self.tree
+                .on_store_deletions(&self.data_store, &store_events);
 
             // We inform the stats last, since it measures e2e latency.
             self.stats.on_events(&store_events);
@@ -425,24 +428,11 @@ impl EntityDb {
     fn on_store_deletions(&mut self, store_events: &[ChunkStoreEvent]) {
         re_tracing::profile_function!();
 
-        let Self {
-            data_source: _,
-            set_store_info: _,
-            last_modified_at: _,
-            latest_row_id: _,
-            entity_path_from_hash: _,
-            times_per_timeline,
-            tree,
-            data_store: _,
-            resolver: _,
-            query_caches,
-            stats: _,
-        } = self;
+        self.times_per_timeline.on_events(store_events);
+        self.query_caches.on_events(store_events);
 
-        times_per_timeline.on_events(store_events);
-        query_caches.on_events(store_events);
-
-        tree.on_store_deletions(store_events);
+        // Tree deletions depend on data store, so data store must have been notified of deletions already.
+        self.tree.on_store_deletions(&self.data_store, store_events);
     }
 
     /// Key used for sorting recordings in the UI.

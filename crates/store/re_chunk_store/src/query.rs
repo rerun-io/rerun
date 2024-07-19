@@ -168,6 +168,79 @@ impl ChunkStore {
         static_components.contains_key(component_name)
     }
 
+    pub fn entity_has_data_on_timeline(
+        &self,
+        timeline: &Timeline,
+        entity_path: &EntityPath,
+    ) -> bool {
+        re_tracing::profile_function!();
+
+        self.query_id.fetch_add(1, Ordering::Relaxed);
+
+        if self.static_chunk_ids_per_entity.get(entity_path).is_some() {
+            // Static data exists on all timelines
+            return true;
+        }
+
+        if let Some(temporal_chunk_ids_per_timeline) =
+            self.temporal_chunk_ids_per_entity.get(entity_path)
+        {
+            if temporal_chunk_ids_per_timeline.contains_key(timeline) {
+                return true;
+            }
+        }
+
+        false
+    }
+
+    pub fn entity_has_data_on_any_timeline(&self, entity_path: &EntityPath) -> bool {
+        re_tracing::profile_function!();
+
+        self.query_id.fetch_add(1, Ordering::Relaxed);
+
+        if self.static_chunk_ids_per_entity.get(entity_path).is_some() {
+            return true;
+        }
+
+        if let Some(temporal_chunk_ids_per_timeline) =
+            self.temporal_chunk_ids_per_entity.get(entity_path)
+        {
+            for chunk_id_set in temporal_chunk_ids_per_timeline.values() {
+                if !chunk_id_set.per_start_time.is_empty() {
+                    return true;
+                }
+            }
+        }
+
+        false
+    }
+
+    pub fn entity_has_any_component_on_any_timeline(&self, entity_path: &EntityPath) -> bool {
+        re_tracing::profile_function!();
+
+        self.query_id.fetch_add(1, Ordering::Relaxed);
+
+        if let Some(static_chunks_per_component) = self.static_chunk_ids_per_entity.get(entity_path)
+        {
+            if !static_chunks_per_component.is_empty() {
+                return true;
+            }
+        }
+
+        if let Some(temporal_chunks_per_timeline) = self
+            .temporal_chunk_ids_per_entity_per_component
+            .get(entity_path)
+        {
+            for temporal_chunks_per_component in temporal_chunks_per_timeline.values() {
+                if !temporal_chunks_per_component.is_empty() {
+                    return true;
+                }
+            }
+        }
+
+        false
+    }
+
     /// Find the earliest time at which something was logged for a given entity on the specified
     /// timeline.
     ///
@@ -585,53 +658,6 @@ impl ChunkStore {
         }
 
         total_events
-    }
-
-    pub fn entity_has_data_on_timeline(
-        &self,
-        timeline: &Timeline,
-        entity_path: &EntityPath,
-    ) -> bool {
-        re_tracing::profile_function!();
-
-        self.query_id.fetch_add(1, Ordering::Relaxed);
-
-        if self.static_chunk_ids_per_entity.get(entity_path).is_some() {
-            // Static data exists on all timelines
-            return true;
-        }
-
-        if let Some(temporal_chunk_ids_per_timeline) =
-            self.temporal_chunk_ids_per_entity.get(entity_path)
-        {
-            if temporal_chunk_ids_per_timeline.contains_key(timeline) {
-                return true;
-            }
-        }
-
-        false
-    }
-
-    pub fn entity_has_data_on_any_timeline(&self, entity_path: &EntityPath) -> bool {
-        re_tracing::profile_function!();
-
-        self.query_id.fetch_add(1, Ordering::Relaxed);
-
-        if self.static_chunk_ids_per_entity.get(entity_path).is_some() {
-            return true;
-        }
-
-        if let Some(temporal_chunk_ids_per_timeline) =
-            self.temporal_chunk_ids_per_entity.get(entity_path)
-        {
-            for chunk_id_set in temporal_chunk_ids_per_timeline.values() {
-                if !chunk_id_set.per_start_time.is_empty() {
-                    return true;
-                }
-            }
-        }
-
-        false
     }
 
     pub fn num_events_for_static_component(
