@@ -89,16 +89,16 @@ fn decode_image(
         resolution,
         pixel_format,
         color_model,
-        data_type,
+        datatype,
         ..
     } = image_arch;
 
     let format = if let Some(pixel_format) = pixel_format {
         ImageFormat::PixelFormat(pixel_format)
-    } else if let (Some(color_model), Some(data_type)) = (color_model, data_type) {
+    } else if let (Some(color_model), Some(datatype)) = (color_model, datatype) {
         ImageFormat::ColorModel {
             color_model,
-            data_type,
+            datatype,
         }
     } else {
         unreachable!()

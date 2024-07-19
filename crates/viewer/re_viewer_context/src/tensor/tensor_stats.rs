@@ -121,7 +121,7 @@ impl TensorStats {
 
         // ---------------------------
 
-        let data_type = match image.format {
+        let datatype = match image.format {
             ImageFormat::PixelFormat(pixel_format) => match pixel_format {
                 PixelFormat::NV12 | PixelFormat::YUY2 => {
                     // We do the lazy thing here:
@@ -131,10 +131,10 @@ impl TensorStats {
                     };
                 }
             },
-            ImageFormat::ColorModel { data_type, .. } => data_type,
+            ImageFormat::ColorModel { datatype, .. } => datatype,
         };
 
-        let range = match data_type {
+        let range = match datatype {
             ChannelDatatype::U8 => slice_range_u8(&image.to_slice()),
             ChannelDatatype::U16 => slice_range_u16(&image.to_slice()),
             ChannelDatatype::U32 => slice_range_u32(&image.to_slice()),
@@ -154,7 +154,7 @@ impl TensorStats {
             // Already finite
             Some(range)
         } else {
-            let finite_range = match data_type {
+            let finite_range = match datatype {
                 ChannelDatatype::U8
                 | ChannelDatatype::U16
                 | ChannelDatatype::U32
