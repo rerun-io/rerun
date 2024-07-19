@@ -27,6 +27,54 @@ pub enum ImageKind {
 
 // ----------------------------------------------------------------------------
 
+/// Errors when converting images from the [`image`] crate to an [`crate::Image`].
+#[cfg(feature = "image")]
+#[derive(thiserror::Error, Clone, Debug)]
+pub enum ImageConversionError {
+    /// Unknown color type from the image crate.
+    ///
+    /// This should only happen if you are using a newer `image` crate than the one Rerun was built for,
+    /// because `image` can add new color types without it being a breaking change,
+    /// so we cannot exhaustively match on all color types.
+    #[error("Unsupported color type: {0:?}. We support 8-bit, 16-bit, and f32 images, and RGB, RGBA, Luminance, and Luminance-Alpha.")]
+    UnsupportedImageColorType(image::ColorType),
+}
+
+/// Errors when loading image files.
+#[cfg(feature = "image")]
+#[derive(thiserror::Error, Clone, Debug)]
+pub enum ImageLoadError {
+    /// e.g. failed to decode a JPEG file.
+    #[error(transparent)]
+    Image(std::sync::Arc<image::ImageError>),
+
+    /// e.g. failed to find a file on disk.
+    #[error("Failed to load file: {0}")]
+    ReadError(std::sync::Arc<std::io::Error>),
+
+    /// Failure to convert the loaded image to a [`crate::Image`].
+    #[error(transparent)]
+    ImageConversionError(#[from] ImageConversionError),
+}
+
+#[cfg(feature = "image")]
+impl From<image::ImageError> for ImageLoadError {
+    #[inline]
+    fn from(err: image::ImageError) -> Self {
+        Self::Image(std::sync::Arc::new(err))
+    }
+}
+
+#[cfg(feature = "image")]
+impl From<std::io::Error> for ImageLoadError {
+    #[inline]
+    fn from(err: std::io::Error) -> Self {
+        Self::ReadError(std::sync::Arc::new(err))
+    }
+}
+
+// ----------------------------------------------------------------------------
+
 /// Error returned when trying to interpret a tensor as an image.
 #[derive(thiserror::Error, Clone, Debug)]
 pub enum ImageConstructionError<T: TryInto<TensorData>>

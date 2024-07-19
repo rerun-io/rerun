@@ -1,5 +1,8 @@
 use re_chunk::RowId;
-use re_types::{archetypes::Image, image::ImageKind, tensor_data::TensorImageLoadError};
+use re_types::{
+    archetypes::Image,
+    image::{ImageKind, ImageLoadError},
+};
 
 use egui::util::hash;
 
@@ -7,7 +10,7 @@ use crate::{Cache, ImageFormat, ImageInfo};
 
 struct DecodedImageResult {
     /// Cached `Result` from decoding the image
-    result: Result<ImageInfo, TensorImageLoadError>,
+    result: Result<ImageInfo, ImageLoadError>,
 
     /// Total memory used by this image.
     memory_used: u64,
@@ -36,7 +39,7 @@ impl ImageDecodeCache {
         row_id: RowId,
         image_bytes: &[u8],
         media_type: Option<&str>,
-    ) -> Result<ImageInfo, TensorImageLoadError> {
+    ) -> Result<ImageInfo, ImageLoadError> {
         re_tracing::profile_function!();
 
         let key = hash((row_id, media_type));
@@ -60,7 +63,7 @@ fn decode_image(
     row_id: RowId,
     image_bytes: &[u8],
     media_type: Option<&str>,
-) -> Result<ImageInfo, TensorImageLoadError> {
+) -> Result<ImageInfo, ImageLoadError> {
     re_tracing::profile_function!();
 
     let mut reader = image::io::Reader::new(std::io::Cursor::new(image_bytes));

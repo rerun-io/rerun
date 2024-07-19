@@ -5,8 +5,10 @@ use crate::{
         blob_and_datatype_from_tensor, find_non_empty_dim_indices, ImageChannelType,
         ImageConstructionError,
     },
-    tensor_data::TensorImageLoadError,
 };
+
+#[cfg(feature = "image")]
+use crate::image::{ImageConversionError, ImageLoadError};
 
 use super::ImageEncoded;
 
@@ -198,23 +200,23 @@ impl Image {
     pub fn from_image_bytes(
         format: image::ImageFormat,
         file_contents: &[u8],
-    ) -> Result<Self, TensorImageLoadError> {
+    ) -> Result<Self, ImageLoadError> {
         re_tracing::profile_function!(format!("{format:?}"));
         let image = image::load_from_memory_with_format(file_contents, format)?;
-        Self::from_image(image)
+        Ok(Self::from_image(image)?)
     }
 
     /// Construct a tensor from something that can be turned into a [`image::DynamicImage`].
     ///
     /// Requires the `image` feature.
-    pub fn from_image(image: impl Into<image::DynamicImage>) -> Result<Self, TensorImageLoadError> {
+    pub fn from_image(image: impl Into<image::DynamicImage>) -> Result<Self, ImageConversionError> {
         Self::from_dynamic_image(image.into())
     }
 
     /// Construct a tensor from [`image::DynamicImage`].
     ///
     /// Requires the `image` feature.
-    pub fn from_dynamic_image(image: image::DynamicImage) -> Result<Self, TensorImageLoadError> {
+    pub fn from_dynamic_image(image: image::DynamicImage) -> Result<Self, ImageConversionError> {
         re_tracing::profile_function!();
 
         let (w, h) = (image.width(), image.height());
@@ -263,7 +265,7 @@ impl Image {
 
             _ => {
                 // It is very annoying that DynamicImage is #[non_exhaustive]
-                Err(TensorImageLoadError::UnsupportedImageColorType(
+                Err(ImageConversionError::UnsupportedImageColorType(
                     image.color(),
                 ))
             }
