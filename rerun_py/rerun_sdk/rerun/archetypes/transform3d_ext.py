@@ -122,7 +122,8 @@ class Transform3DExt:
 
                 if relation is not None:
                     raise ValueError("`from_parent` and `relation` parameters are mutually exclusive.")
-                relation = TransformRelation.ParentFromChild
+                if from_parent:
+                    relation = TransformRelation.ChildFromParent
 
             self.__attrs_init__(
                 translation=translation,
