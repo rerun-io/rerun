@@ -612,6 +612,28 @@ impl ChunkStore {
         false
     }
 
+    pub fn entity_has_data_on_any_timeline(&self, entity_path: &EntityPath) -> bool {
+        re_tracing::profile_function!();
+
+        self.query_id.fetch_add(1, Ordering::Relaxed);
+
+        if self.static_chunk_ids_per_entity.get(entity_path).is_some() {
+            return true;
+        }
+
+        if let Some(temporal_chunk_ids_per_timeline) =
+            self.temporal_chunk_ids_per_entity.get(entity_path)
+        {
+            for chunk_id_set in temporal_chunk_ids_per_timeline.values() {
+                if !chunk_id_set.per_start_time.is_empty() {
+                    return true;
+                }
+            }
+        }
+
+        false
+    }
+
     pub fn num_events_for_static_component(
         &self,
         entity_path: &EntityPath,
