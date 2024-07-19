@@ -9,7 +9,7 @@ title: "Boxes3D"
 
 **Required**: [`HalfSize3D`](../components/half_size3d.md)
 
-**Recommended**: [`Position3D`](../components/position3d.md), [`Rotation3D`](../components/rotation3d.md), [`Color`](../components/color.md)
+**Recommended**: [`Position3D`](../components/position3d.md), [`Rotation3D`](../components/rotation3d.md), [`SolidColor`](../components/solid_color.md), [`Color`](../components/color.md)
 
 **Optional**: [`Radius`](../components/radius.md), [`Text`](../components/text.md), [`ClassId`](../components/class_id.md)
 

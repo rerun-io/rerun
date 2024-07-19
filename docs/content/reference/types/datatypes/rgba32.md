@@ -23,4 +23,4 @@ byte is `R` and the least significant byte is `A`.
 * [`AlbedoFactor`](../components/albedo_factor.md?speculative-link)
 * [`AnnotationInfo`](../datatypes/annotation_info.md)
 * [`Color`](../components/color.md)
-* [`SolidColor`](../components/solid_color.md)
+* [`SolidColor`](../components/solid_color.md?speculative-link)

@@ -26,8 +26,11 @@ table Boxes3D (
   /// Optional rotations of the boxes.
   rotations: [rerun.components.Rotation3D] ("attr.rerun.component_recommended", nullable, order: 2100);
 
-  /// Optional colors for the boxes.
-  colors: [rerun.components.Color] ("attr.rerun.component_recommended", nullable, order: 2200);
+  /// Optional colors for the boxes' surfaces.
+  solid_colors: [rerun.components.SolidColor] ("attr.rerun.component_recommended", nullable, order: 2200);
+
+  /// Optional colors for the lines that make up the boxes.
+  colors: [rerun.components.Color] ("attr.rerun.component_recommended", nullable, order: 2300);
 
   // --- Optional ---
 

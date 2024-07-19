@@ -70,7 +70,10 @@ pub struct Boxes3D {
     /// Optional rotations of the boxes.
     pub rotations: Option<Vec<crate::components::Rotation3D>>,
 
-    /// Optional colors for the boxes.
+    /// Optional colors for the boxes' surfaces.
+    pub solid_colors: Option<Vec<crate::components::SolidColor>>,
+
+    /// Optional colors for the lines that make up the boxes.
     pub colors: Option<Vec<crate::components::Color>>,
 
     /// Optional radii for the lines that make up the boxes.
@@ -94,6 +97,7 @@ impl ::re_types_core::SizeBytes for Boxes3D {
         self.half_sizes.heap_size_bytes()
             + self.centers.heap_size_bytes()
             + self.rotations.heap_size_bytes()
+            + self.solid_colors.heap_size_bytes()
             + self.colors.heap_size_bytes()
             + self.radii.heap_size_bytes()
             + self.labels.heap_size_bytes()
@@ -105,6 +109,7 @@ impl ::re_types_core::SizeBytes for Boxes3D {
         <Vec<crate::components::HalfSize3D>>::is_pod()
             && <Option<Vec<crate::components::Position3D>>>::is_pod()
             && <Option<Vec<crate::components::Rotation3D>>>::is_pod()
+            && <Option<Vec<crate::components::SolidColor>>>::is_pod()
             && <Option<Vec<crate::components::Color>>>::is_pod()
             && <Option<Vec<crate::components::Radius>>>::is_pod()
             && <Option<Vec<crate::components::Text>>>::is_pod()
@@ -115,11 +120,12 @@ impl ::re_types_core::SizeBytes for Boxes3D {
 static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 1usize]> =
     once_cell::sync::Lazy::new(|| ["rerun.components.HalfSize3D".into()]);
 
-static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 4usize]> =
+static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 5usize]> =
     once_cell::sync::Lazy::new(|| {
         [
             "rerun.components.Position3D".into(),
             "rerun.components.Rotation3D".into(),
+            "rerun.components.SolidColor".into(),
             "rerun.components.Color".into(),
             "rerun.components.Boxes3DIndicator".into(),
         ]
@@ -134,12 +140,13 @@ static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 3usize]> =
         ]
     });
 
-static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 8usize]> =
+static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 9usize]> =
     once_cell::sync::Lazy::new(|| {
         [
             "rerun.components.HalfSize3D".into(),
             "rerun.components.Position3D".into(),
             "rerun.components.Rotation3D".into(),
+            "rerun.components.SolidColor".into(),
             "rerun.components.Color".into(),
             "rerun.components.Boxes3DIndicator".into(),
             "rerun.components.Radius".into(),
@@ -149,8 +156,8 @@ static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 8usize]> =
     });
 
 impl Boxes3D {
-    /// The total number of components in the archetype: 1 required, 4 recommended, 3 optional
-    pub const NUM_COMPONENTS: usize = 8usize;
+    /// The total number of components in the archetype: 1 required, 5 recommended, 3 optional
+    pub const NUM_COMPONENTS: usize = 9usize;
 }
 
 /// Indicator component for the [`Boxes3D`] [`::re_types_core::Archetype`]
@@ -241,6 +248,18 @@ impl ::re_types_core::Archetype for Boxes3D {
         } else {
             None
         };
+        let solid_colors = if let Some(array) = arrays_by_name.get("rerun.components.SolidColor") {
+            Some({
+                <crate::components::SolidColor>::from_arrow_opt(&**array)
+                    .with_context("rerun.archetypes.Boxes3D#solid_colors")?
+                    .into_iter()
+                    .map(|v| v.ok_or_else(DeserializationError::missing_data))
+                    .collect::<DeserializationResult<Vec<_>>>()
+                    .with_context("rerun.archetypes.Boxes3D#solid_colors")?
+            })
+        } else {
+            None
+        };
         let colors = if let Some(array) = arrays_by_name.get("rerun.components.Color") {
             Some({
                 <crate::components::Color>::from_arrow_opt(&**array)
@@ -293,6 +312,7 @@ impl ::re_types_core::Archetype for Boxes3D {
             half_sizes,
             centers,
             rotations,
+            solid_colors,
             colors,
             radii,
             labels,
@@ -312,6 +332,9 @@ impl ::re_types_core::AsComponents for Boxes3D {
                 .as_ref()
                 .map(|comp_batch| (comp_batch as &dyn ComponentBatch).into()),
             self.rotations
+                .as_ref()
+                .map(|comp_batch| (comp_batch as &dyn ComponentBatch).into()),
+            self.solid_colors
                 .as_ref()
                 .map(|comp_batch| (comp_batch as &dyn ComponentBatch).into()),
             self.colors
@@ -343,6 +366,7 @@ impl Boxes3D {
             half_sizes: half_sizes.into_iter().map(Into::into).collect(),
             centers: None,
             rotations: None,
+            solid_colors: None,
             colors: None,
             radii: None,
             labels: None,
@@ -370,7 +394,17 @@ impl Boxes3D {
         self
     }
 
-    /// Optional colors for the boxes.
+    /// Optional colors for the boxes' surfaces.
+    #[inline]
+    pub fn with_solid_colors(
+        mut self,
+        solid_colors: impl IntoIterator<Item = impl Into<crate::components::SolidColor>>,
+    ) -> Self {
+        self.solid_colors = Some(solid_colors.into_iter().map(Into::into).collect());
+        self
+    }
+
+    /// Optional colors for the lines that make up the boxes.
     #[inline]
     pub fn with_colors(
         mut self,

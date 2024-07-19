@@ -11,6 +11,7 @@
 #include "../components/position3d.hpp"
 #include "../components/radius.hpp"
 #include "../components/rotation3d.hpp"
+#include "../components/solid_color.hpp"
 #include "../components/text.hpp"
 #include "../data_cell.hpp"
 #include "../indicator_component.hpp"
@@ -69,7 +70,10 @@ namespace rerun::archetypes {
         /// Optional rotations of the boxes.
         std::optional<Collection<rerun::components::Rotation3D>> rotations;
 
-        /// Optional colors for the boxes.
+        /// Optional colors for the boxes' surfaces.
+        std::optional<Collection<rerun::components::SolidColor>> solid_colors;
+
+        /// Optional colors for the lines that make up the boxes.
         std::optional<Collection<rerun::components::Color>> colors;
 
         /// Optional radii for the lines that make up the boxes.
@@ -162,7 +166,14 @@ namespace rerun::archetypes {
             RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
         }
 
-        /// Optional colors for the boxes.
+        /// Optional colors for the boxes' surfaces.
+        Boxes3D with_solid_colors(Collection<rerun::components::SolidColor> _solid_colors) && {
+            solid_colors = std::move(_solid_colors);
+            // See: https://github.com/rerun-io/rerun/issues/4027
+            RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
+        }
+
+        /// Optional colors for the lines that make up the boxes.
         Boxes3D with_colors(Collection<rerun::components::Color> _colors) && {
             colors = std::move(_colors);
             // See: https://github.com/rerun-io/rerun/issues/4027

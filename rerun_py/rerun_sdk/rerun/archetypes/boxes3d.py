@@ -66,6 +66,7 @@ class Boxes3D(Boxes3DExt, Archetype):
             half_sizes=None,  # type: ignore[arg-type]
             centers=None,  # type: ignore[arg-type]
             rotations=None,  # type: ignore[arg-type]
+            solid_colors=None,  # type: ignore[arg-type]
             colors=None,  # type: ignore[arg-type]
             radii=None,  # type: ignore[arg-type]
             labels=None,  # type: ignore[arg-type]
@@ -105,12 +106,21 @@ class Boxes3D(Boxes3DExt, Archetype):
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 
+    solid_colors: components.SolidColorBatch | None = field(
+        metadata={"component": "optional"},
+        default=None,
+        converter=components.SolidColorBatch._optional,  # type: ignore[misc]
+    )
+    # Optional colors for the boxes' surfaces.
+    #
+    # (Docstring intentionally commented out to hide this field from the docs)
+
     colors: components.ColorBatch | None = field(
         metadata={"component": "optional"},
         default=None,
         converter=components.ColorBatch._optional,  # type: ignore[misc]
     )
-    # Optional colors for the boxes.
+    # Optional colors for the lines that make up the boxes.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 

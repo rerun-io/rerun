@@ -14,11 +14,12 @@ applied to the entire surface of the object (as opposed to the lines of a wirefr
 * rgba: [`Rgba32`](../datatypes/rgba32.md)
 
 ## API reference links
- * 🌊 [C++ API docs for `SolidColor`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1components_1_1SolidColor.html)
- * 🐍 [Python API docs for `SolidColor`](https://ref.rerun.io/docs/python/stable/common/components#rerun.components.SolidColor)
- * 🦀 [Rust API docs for `SolidColor`](https://docs.rs/rerun/latest/rerun/components/struct.SolidColor.html)
+ * 🌊 [C++ API docs for `SolidColor`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1components_1_1SolidColor.html?speculative-link)
+ * 🐍 [Python API docs for `SolidColor`](https://ref.rerun.io/docs/python/stable/common/components?speculative-link#rerun.components.SolidColor)
+ * 🦀 [Rust API docs for `SolidColor`](https://docs.rs/rerun/latest/rerun/components/struct.SolidColor.html?speculative-link)
 
 
 ## Used by
 
+* [`Boxes3D`](../archetypes/boxes3d.md)
 * [`Ellipsoids`](../archetypes/ellipsoids.md?speculative-link)
