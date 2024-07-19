@@ -716,7 +716,7 @@ fn visit_relevant_chunks(
             visitor(Arc::clone(&chunk), chunk_timeline.time_range(), num_events);
         }
     } else if let Some(subtree) = db.tree().subtree(entity_path) {
-        subtree.visit_children_recursively(|entity_path, _| {
+        subtree.visit_children_recursively(|entity_path| {
             for chunk in db
                 .store()
                 .range_relevant_chunks_for_all_components(&query, entity_path)

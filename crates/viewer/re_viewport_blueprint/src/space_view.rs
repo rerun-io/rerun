@@ -251,7 +251,7 @@ impl SpaceViewBlueprint {
         // Create pending write operations to duplicate the entire subtree
         // TODO(jleibs): This should be a helper somewhere.
         if let Some(tree) = blueprint.tree().subtree(&current_path) {
-            tree.visit_children_recursively(|path, _| {
+            tree.visit_children_recursively(|path| {
                 let sub_path: EntityPath = new_path
                     .iter()
                     .chain(&path[current_path.len()..])

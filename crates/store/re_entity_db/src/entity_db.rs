@@ -587,7 +587,7 @@ impl EntityDb {
         };
 
         let mut size = 0;
-        subtree.visit_children_recursively(|path, _| {
+        subtree.visit_children_recursively(|path| {
             size += self.store().size_of_entity_on_timeline(timeline, path);
         });
 
@@ -606,9 +606,7 @@ impl EntityDb {
         };
 
         subtree
-            .find_child_recursive(|path, _| {
-                self.store().entity_has_data_on_timeline(timeline, path)
-            })
+            .find_child_recursive(|path| self.store().entity_has_data_on_timeline(timeline, path))
             .is_some()
     }
 }

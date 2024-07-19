@@ -367,9 +367,9 @@ impl EntityTree {
     }
 
     // Invokes visitor for `self` and all children recursively.
-    pub fn visit_children_recursively(&self, mut visitor: impl FnMut(&EntityPath, &EntityInfo)) {
-        fn visit(this: &EntityTree, visitor: &mut impl FnMut(&EntityPath, &EntityInfo)) {
-            visitor(&this.path, &this.entity);
+    pub fn visit_children_recursively(&self, mut visitor: impl FnMut(&EntityPath)) {
+        fn visit(this: &EntityTree, visitor: &mut impl FnMut(&EntityPath)) {
+            visitor(&this.path);
             for child in this.children.values() {
                 visit(child, visitor);
             }
@@ -380,15 +380,15 @@ impl EntityTree {
 
     pub fn find_child_recursive(
         &self,
-        mut predicate: impl FnMut(&EntityPath, &EntityInfo) -> bool,
+        mut predicate: impl FnMut(&EntityPath) -> bool,
     ) -> Option<&Self> {
         use std::ops::ControlFlow;
 
         fn visit<'a>(
             this: &'a EntityTree,
-            predicate: &mut impl FnMut(&EntityPath, &EntityInfo) -> bool,
+            predicate: &mut impl FnMut(&EntityPath) -> bool,
         ) -> ControlFlow<&'a EntityTree> {
-            if predicate(&this.path, &this.entity) {
+            if predicate(&this.path) {
                 return ControlFlow::Break(this);
             };
             for child in this.children.values() {
