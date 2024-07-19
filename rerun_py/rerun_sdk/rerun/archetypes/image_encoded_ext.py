@@ -155,7 +155,9 @@ class ImageEncodedExt:
                 mode = "RGB"
             else:
                 # TODO(#2340): BGR support!
-                raise ValueError(f"Cannot JPEG compress an image of type {color_model}")
+                raise ValueError(
+                    f"Cannot JPEG compress an image of type {color_model}. Only L (monochrome) and RGB are supported."
+                )
 
             image = _to_numpy(image)
             if image.dtype not in ["uint8", "sint32", "float32"]:
