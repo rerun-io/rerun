@@ -26,9 +26,6 @@ namespace rerun::datatypes {
     ///
     /// These dimensions are combined with an index to look up values from the `buffer` field,
     /// which stores a contiguous array of typed values.
-    ///
-    /// Note that the buffer may in a format with downsampled chroma, such as NV12 or YUY2.
-    /// For chroma downsampled formats the shape has to be the shape of the decoded image.
     struct TensorData {
         /// The shape of the tensor, including optional names for each dimension.
         rerun::Collection<rerun::datatypes::TensorDimension> shape;
