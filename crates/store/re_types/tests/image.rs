@@ -29,10 +29,13 @@ fn image_roundtrip() {
         opacity: None,
     }];
 
-    let all_arch_serialized = [Image::from_color_model_and_tensor(ndarray::array![[1u8, 2, 3], [4, 5, 6]])
-        .unwrap()
-        .to_arrow()
-        .unwrap()];
+    let all_arch_serialized = [Image::from_color_model_and_tensor(ndarray::array![
+        [1u8, 2, 3],
+        [4, 5, 6]
+    ])
+    .unwrap()
+    .to_arrow()
+    .unwrap()];
 
     let expected_extensions: HashMap<_, _> = [("data", vec!["rerun.components.TensorData"])].into();
 
@@ -100,7 +103,10 @@ fn dynamic_image_roundtrip() {
         }
     }
 
-    let all_arch_serialized = [Image::from_color_model_and_tensor(img).unwrap().to_arrow().unwrap()];
+    let all_arch_serialized = [Image::from_color_model_and_tensor(img)
+        .unwrap()
+        .to_arrow()
+        .unwrap()];
 
     let expected_extensions: HashMap<_, _> = [("data", vec!["rerun.components.TensorData"])].into();
 
