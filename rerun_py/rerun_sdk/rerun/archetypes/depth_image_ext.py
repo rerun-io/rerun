@@ -75,14 +75,14 @@ class DepthImageExt:
         height, width = shape
 
         try:
-            data_type = channel_dtype_from_np_dtype[image.dtype.type]
+            datatype = channel_dtype_from_np_dtype[image.dtype.type]
         except KeyError:
             raise ValueError(f"Unsupported dtype {image.dtype} for DepthImage")
 
         self.__attrs_init__(
             data=image.tobytes(),
             resolution=Resolution2D(width=width, height=height),
-            data_type=data_type,
+            datatype=datatype,
             meter=meter,
             colormap=colormap,
         )

@@ -178,7 +178,7 @@ class ImageExt:
                 _send_warning_or_raise(f"Unknown ColorModel: '{color_model}'")
 
         try:
-            data_type = channel_dtype_from_np_dtype[image.dtype.type]
+            datatype = channel_dtype_from_np_dtype[image.dtype.type]
         except KeyError:
             _send_warning_or_raise(f"Unsupported dtype {image.dtype} for Image")
 
@@ -186,7 +186,7 @@ class ImageExt:
             data=image.tobytes(),
             resolution=Resolution2D(width=width, height=height),
             color_model=color_model,
-            data_type=data_type,
+            datatype=datatype,
             opacity=opacity,
             draw_order=draw_order,
         )

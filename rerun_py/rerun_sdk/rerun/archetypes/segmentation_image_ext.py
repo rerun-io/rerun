@@ -74,13 +74,13 @@ class SegmentationImageExt:
         height, width = shape
 
         try:
-            data_type = channel_dtype_from_np_dtype[data.dtype.type]
+            datatype = channel_dtype_from_np_dtype[data.dtype.type]
         except KeyError:
             raise ValueError(f"Unsupported dtype {data.dtype} for SegmentationImage")
 
         self.__attrs_init__(
             data=data.tobytes(),
             resolution=Resolution2D(width=width, height=height),
-            data_type=data_type,
+            datatype=datatype,
             opacity=opacity,
         )
