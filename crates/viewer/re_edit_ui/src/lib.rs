@@ -25,7 +25,7 @@ use re_types::{
     components::{
         AggregationPolicy, AlbedoFactor, AxisLength, ChannelDataType, Color, ColorModel, Colormap,
         DepthMeter, DrawOrder, FillRatio, GammaCorrection, ImagePlaneDistance, MagnificationFilter,
-        MarkerSize, Name, Opacity, Scale3D, StrokeWidth, Text, Translation3D,
+        MarkerSize, Name, Opacity, Scale3D, SolidColor, StrokeWidth, Text, Translation3D,
     },
     Loggable as _,
 };
@@ -38,6 +38,7 @@ use re_viewer_context::gpu_bridge::colormap_edit_or_view_ui;
 /// This crate is meant to be a leaf crate in the viewer ecosystem and should only be used by the `re_viewer` crate itself.
 pub fn register_editors(registry: &mut re_viewer_context::ComponentUiRegistry) {
     registry.add_singleline_edit_or_view::<Color>(color::edit_rgba32);
+    registry.add_singleline_edit_or_view::<SolidColor>(color::edit_rgba32);
 
     registry.add_singleline_edit_or_view(radius::edit_radius_ui);
 

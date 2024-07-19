@@ -41,6 +41,7 @@ resolution2d.py linguist-generated=true
 rotation3d.py linguist-generated=true
 scalar.py linguist-generated=true
 scale3d.py linguist-generated=true
+solid_color.py linguist-generated=true
 stroke_width.py linguist-generated=true
 tensor_data.py linguist-generated=true
 tensor_dimension_index_selection.py linguist-generated=true

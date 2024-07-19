@@ -49,7 +49,8 @@ namespace rerun::archetypes {
     ///                 rerun::RotationAxisAngle({0.0f, 1.0f, 0.0f}, rerun::Angle::degrees(30.0f)),
     ///             })
     ///             .with_radii({0.025f})
-    ///             .with_colors({
+    ///             .with_colors({rerun::Rgba32(255, 255, 255)})
+    ///             .with_solid_colors({
     ///                 rerun::Rgba32(255, 0, 0),
     ///                 rerun::Rgba32(0, 255, 0),
     ///                 rerun::Rgba32(0, 0, 255),

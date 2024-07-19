@@ -511,6 +511,13 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             },
         ),
         (
+            <SolidColor as Loggable>::name(),
+            ComponentReflection {
+                docstring_md: "An RGBA color for the surface of an object.\n\nIn representation and color space, this is identical to [`components.Color`](https://rerun.io/docs/reference/types/components/color).\nUnlike that component, it is used specifically to request that this color should be\napplied to the entire surface of the object (as opposed to the lines of a wireframe).",
+                placeholder: Some(SolidColor::default().to_arrow()?),
+            },
+        ),
+        (
             <StrokeWidth as Loggable>::name(),
             ComponentReflection {
                 docstring_md: "The width of a stroke specified in UI points.",
