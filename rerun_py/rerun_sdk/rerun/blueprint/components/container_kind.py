@@ -37,7 +37,9 @@ class ContainerKind(Enum):
     """Organize children in a grid layout"""
 
 
-ContainerKindLike = Union[ContainerKind, Literal["tabs", "horizontal", "vertical", "grid"]]
+ContainerKindLike = Union[
+    ContainerKind, Literal["Grid", "Horizontal", "Tabs", "Vertical", "grid", "horizontal", "tabs", "vertical"]
+]
 ContainerKindArrayLike = Union[ContainerKindLike, Sequence[ContainerKindLike]]
 
 

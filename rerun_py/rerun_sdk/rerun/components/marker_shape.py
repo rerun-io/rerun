@@ -56,7 +56,29 @@ class MarkerShape(Enum):
 
 
 MarkerShapeLike = Union[
-    MarkerShape, Literal["circle", "diamond", "square", "cross", "plus", "up", "down", "left", "right", "asterisk"]
+    MarkerShape,
+    Literal[
+        "Asterisk",
+        "Circle",
+        "Cross",
+        "Diamond",
+        "Down",
+        "Left",
+        "Plus",
+        "Right",
+        "Square",
+        "Up",
+        "asterisk",
+        "circle",
+        "cross",
+        "diamond",
+        "down",
+        "left",
+        "plus",
+        "right",
+        "square",
+        "up",
+    ],
 ]
 MarkerShapeArrayLike = Union[MarkerShapeLike, Sequence[MarkerShapeLike]]
 

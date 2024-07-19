@@ -31,7 +31,7 @@ class SortOrder(Enum):
     """Descending"""
 
 
-SortOrderLike = Union[SortOrder, Literal["ascending", "descending"]]
+SortOrderLike = Union[SortOrder, Literal["Ascending", "Descending", "ascending", "descending"]]
 SortOrderArrayLike = Union[SortOrderLike, Sequence[SortOrderLike]]
 
 

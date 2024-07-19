@@ -37,7 +37,10 @@ class Corner2D(Enum):
     """Right bottom corner."""
 
 
-Corner2DLike = Union[Corner2D, Literal["lefttop", "righttop", "leftbottom", "rightbottom"]]
+Corner2DLike = Union[
+    Corner2D,
+    Literal["LeftBottom", "LeftTop", "RightBottom", "RightTop", "leftbottom", "lefttop", "rightbottom", "righttop"],
+]
 Corner2DArrayLike = Union[Corner2DLike, Sequence[Corner2DLike]]
 
 

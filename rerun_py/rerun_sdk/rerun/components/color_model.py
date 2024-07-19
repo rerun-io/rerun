@@ -38,7 +38,7 @@ class ColorModel(Enum):
     """Red, Green, Blue, Alpha"""
 
 
-ColorModelLike = Union[ColorModel, Literal["l", "rgb", "rgba"]]
+ColorModelLike = Union[ColorModel, Literal["L", "RGB", "RGBA", "l", "rgb", "rgba"]]
 ColorModelArrayLike = Union[ColorModelLike, Sequence[ColorModelLike]]
 
 

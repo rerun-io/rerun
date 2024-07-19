@@ -59,7 +59,23 @@ class AggregationPolicy(Enum):
     """Find both the minimum and maximum values in the range, then use the average of those."""
 
 
-AggregationPolicyLike = Union[AggregationPolicy, Literal["off", "average", "max", "min", "minmax", "minmaxaverage"]]
+AggregationPolicyLike = Union[
+    AggregationPolicy,
+    Literal[
+        "Average",
+        "Max",
+        "Min",
+        "MinMax",
+        "MinMaxAverage",
+        "Off",
+        "average",
+        "max",
+        "min",
+        "minmax",
+        "minmaxaverage",
+        "off",
+    ],
+]
 AggregationPolicyArrayLike = Union[AggregationPolicyLike, Sequence[AggregationPolicyLike]]
 
 

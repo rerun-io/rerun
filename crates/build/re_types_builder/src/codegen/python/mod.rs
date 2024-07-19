@@ -884,10 +884,17 @@ fn code_for_enum(
 
     let variants = format!(
         "Literal[{}]",
-        obj.fields
-            .iter()
-            .map(|v| format!("{:?}", v.name.to_lowercase()))
-            .join(", ")
+        itertools::chain!(
+            // We always accept the original casing
+            obj.fields.iter().map(|v| format!("{:?}", v.name)),
+            // We also accept the lowercase variant, for historical reasons (and maybe others?)
+            obj.fields
+                .iter()
+                .map(|v| format!("{:?}", v.name.to_lowercase()))
+        )
+        .sorted()
+        .dedup()
+        .join(", ")
     );
     code.push_unindented(format!("{name}Like = Union[{name}, {variants}]"), 1);
     code.push_unindented(

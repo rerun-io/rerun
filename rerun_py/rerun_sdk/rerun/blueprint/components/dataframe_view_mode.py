@@ -46,7 +46,7 @@ class DataframeViewMode(Enum):
     """
 
 
-DataframeViewModeLike = Union[DataframeViewMode, Literal["latestat", "timerange"]]
+DataframeViewModeLike = Union[DataframeViewMode, Literal["LatestAt", "TimeRange", "latestat", "timerange"]]
 DataframeViewModeArrayLike = Union[DataframeViewModeLike, Sequence[DataframeViewModeLike]]
 
 

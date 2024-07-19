@@ -31,7 +31,7 @@ class SortKey(Enum):
     """Group by instance."""
 
 
-SortKeyLike = Union[SortKey, Literal["entity", "time"]]
+SortKeyLike = Union[SortKey, Literal["Entity", "Time", "entity", "time"]]
 SortKeyArrayLike = Union[SortKeyLike, Sequence[SortKeyLike]]
 
 

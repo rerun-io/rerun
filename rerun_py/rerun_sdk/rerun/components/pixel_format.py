@@ -52,7 +52,7 @@ class PixelFormat(Enum):
     """
 
 
-PixelFormatLike = Union[PixelFormat, Literal["nv12", "yuy2"]]
+PixelFormatLike = Union[PixelFormat, Literal["NV12", "YUY2", "nv12", "yuy2"]]
 PixelFormatArrayLike = Union[PixelFormatLike, Sequence[PixelFormatLike]]
 
 
