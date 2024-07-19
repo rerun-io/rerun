@@ -71,10 +71,11 @@ impl Image {
     ///
     /// See also [`Self::from_color_model_and_tensor`].
     pub fn from_pixel_format(
-        resolution: Resolution2D,
+        resolution: impl Into<Resolution2D>,
         pixel_format: PixelFormat,
         bytes: impl Into<Blob>,
     ) -> Self {
+        let resolution = resolution.into();
         let data = bytes.into();
 
         let actual_bytes = data.len();
@@ -100,11 +101,12 @@ impl Image {
     ///
     /// See also [`Self::from_color_model_and_tensor`].
     pub fn from_color_model_and_bytes(
-        resolution: Resolution2D,
+        resolution: impl Into<Resolution2D>,
         color_model: ColorModel,
         datatype: ChannelDatatype,
         bytes: impl Into<Blob>,
     ) -> Self {
+        let resolution = resolution.into();
         let data = bytes.into();
 
         let actual_bytes = data.len();
@@ -130,7 +132,7 @@ impl Image {
     /// Construct an image from a byte buffer given its resolution, color model,
     /// and using the data type of the given vector.
     pub fn from_elements<T: ImageChannelType>(
-        resolution: Resolution2D,
+        resolution: impl Into<Resolution2D>,
         color_model: ColorModel,
         elements: &[T],
     ) -> Self {
@@ -144,8 +146,18 @@ impl Image {
         )
     }
 
+    /// From an 8-bit grayscale image.
+    pub fn from_l8(resolution: impl Into<Resolution2D>, bytes: impl Into<Blob>) -> Self {
+        Self::from_color_model_and_bytes(resolution, ColorModel::L, ChannelDatatype::U8, bytes)
+    }
+
+    /// Assumes RGB, 8-bit per channel, interleaved as `RGBRGBRGB`.
+    pub fn from_rgb24(resolution: impl Into<Resolution2D>, bytes: impl Into<Blob>) -> Self {
+        Self::from_color_model_and_bytes(resolution, ColorModel::RGB, ChannelDatatype::U8, bytes)
+    }
+
     /// Assumes RGBA, 8-bit per channel, with separate alpha.
-    pub fn from_rgba32(resolution: Resolution2D, bytes: impl Into<Blob>) -> Self {
+    pub fn from_rgba32(resolution: impl Into<Resolution2D>, bytes: impl Into<Blob>) -> Self {
         Self::from_color_model_and_bytes(resolution, ColorModel::RGBA, ChannelDatatype::U8, bytes)
     }
 
