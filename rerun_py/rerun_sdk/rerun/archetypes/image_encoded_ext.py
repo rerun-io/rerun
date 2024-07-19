@@ -7,7 +7,7 @@ from typing import IO, TYPE_CHECKING, Any, Union
 import numpy as np
 import numpy.typing as npt
 
-from rerun.components.color_model import ColorModelLike
+from rerun.components.color_model import ColorModel, ColorModelLike
 
 from .. import datatypes
 from ..error_utils import catch_and_log_exceptions
@@ -147,10 +147,10 @@ class ImageEncodedExt:
         from . import Image
 
         with catch_and_log_exceptions(context="Image compression"):
-            color_model = str(color_model).upper()
-            if color_model == "L":
+            color_model = ColorModel(color_model)
+            if color_model == ColorModel.L:
                 mode = "L"
-            elif color_model == "RGB":
+            elif color_model == ColorModel.RGB:
                 mode = "RGB"
             else:
                 # TODO(#2340): BGR support!
