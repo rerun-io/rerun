@@ -5,7 +5,7 @@
 use std::sync::Arc;
 
 use ahash::HashSet;
-use glam::Vec3;
+use glam::{uvec3, vec3, Vec3};
 use itertools::Itertools as _;
 use smallvec::smallvec;
 
@@ -21,6 +21,9 @@ use re_viewer_context::Cache;
 /// Obtain the actual mesh by passing this to [`WireframeCache`] or [`SolidCache`].
 #[derive(Debug, PartialEq, Eq, Hash, Clone, Copy)]
 pub enum ProcMeshKey {
+    /// A unit cube, centered; its bounds are ±0.5.
+    Cube,
+
     /// A sphere of unit radius.
     ///
     /// The resulting mesh may be scaled to represent spheres and ellipsoids
@@ -36,6 +39,9 @@ impl ProcMeshKey {
             Self::Sphere { subdivisions: _ } => {
                 // sphere’s radius is 1, so its size is 2
                 re_math::BoundingBox::from_center_size(Vec3::splat(0.0), Vec3::splat(2.0))
+            }
+            Self::Cube => {
+                re_math::BoundingBox::from_center_size(Vec3::splat(0.0), Vec3::splat(1.0))
             }
         }
     }
@@ -122,6 +128,44 @@ fn generate_wireframe(key: &ProcMeshKey, render_ctx: &RenderContext) -> Wirefram
     _ = render_ctx;
 
     match *key {
+        ProcMeshKey::Cube => {
+            let corners = [
+                vec3(-0.5, -0.5, -0.5),
+                vec3(-0.5, -0.5, 0.5),
+                vec3(-0.5, 0.5, -0.5),
+                vec3(-0.5, 0.5, 0.5),
+                vec3(0.5, -0.5, -0.5),
+                vec3(0.5, -0.5, 0.5),
+                vec3(0.5, 0.5, -0.5),
+                vec3(0.5, 0.5, 0.5),
+            ];
+            let line_strips: Vec<Vec<Vec3>> = vec![
+                // bottom:
+                vec![
+                    // bottom loop
+                    corners[0b000],
+                    corners[0b001],
+                    corners[0b011],
+                    corners[0b010],
+                    corners[0b000],
+                    // joined to top loop
+                    corners[0b100],
+                    corners[0b101],
+                    corners[0b111],
+                    corners[0b110],
+                    corners[0b100],
+                ],
+                // remaining side edges
+                vec![corners[0b001], corners[0b101]],
+                vec![corners[0b010], corners[0b110]],
+                vec![corners[0b011], corners[0b111]],
+            ];
+            WireframeMesh {
+                bbox: key.simple_bounding_box(),
+                vertex_count: line_strips.iter().map(|v| v.len()).sum(),
+                line_strips,
+            }
+        }
         ProcMeshKey::Sphere { subdivisions } => {
             let subdiv = hexasphere::shapes::IcoSphere::new(subdivisions, |_| ());
 
@@ -226,10 +270,58 @@ fn generate_solid(
     re_tracing::profile_function!();
 
     let mesh: mesh::Mesh = match *key {
+        ProcMeshKey::Cube => {
+            let (vertex_positions, vertex_normals): (Vec<Vec3>, Vec<Vec3>) = [
+                (Vec3::X, Vec3::Y),
+                (Vec3::Y, Vec3::Z),
+                (Vec3::Z, Vec3::X),
+                (Vec3::NEG_X, Vec3::NEG_Y),
+                (Vec3::NEG_Y, Vec3::NEG_Z),
+                (Vec3::NEG_Z, Vec3::NEG_X),
+            ]
+            .into_iter()
+            .flat_map(|(normal, tangent)| {
+                // pos2 is always 90° counterclockwise from pos1.
+                let pos1 = tangent * 0.5;
+                let pos2 = normal.cross(pos1);
+
+                // Generate vertices of the face.
+                // Must be in "S" (not "Z" or circular) order to match the index list.
+                [-pos1 - pos2, -pos1 + pos2, pos1 - pos2, pos1 + pos2]
+                    .into_iter()
+                    .map(move |pos| (pos + normal * 0.5, normal))
+            })
+            .unzip();
+
+            let num_vertices = 24;
+            debug_assert_eq!(num_vertices, vertex_positions.len());
+
+            let triangle_indices: Vec<glam::UVec3> = (0..6)
+                .flat_map(|i| {
+                    let face_first_ix = i * 4;
+                    [
+                        uvec3(face_first_ix, face_first_ix + 1, face_first_ix + 2),
+                        uvec3(face_first_ix + 1, face_first_ix + 2, face_first_ix + 3),
+                    ]
+                })
+                .collect();
+            let materials = materials_for_uncolored_mesh(render_ctx, triangle_indices.len());
+
+            mesh::Mesh {
+                label: format!("{key:?}").into(),
+                materials,
+                triangle_indices,
+                vertex_positions,
+                vertex_normals,
+                // Colors are black so that the instance `additive_tint` can set per-instance color.
+                vertex_colors: vec![re_renderer::Rgba32Unmul::BLACK; num_vertices],
+                vertex_texcoords: vec![glam::Vec2::ZERO; num_vertices],
+            }
+        }
         ProcMeshKey::Sphere { subdivisions } => {
             let subdiv = hexasphere::shapes::IcoSphere::new(subdivisions, |_| ());
 
-            let vertex_positions: Vec<glam::Vec3> =
+            let vertex_positions: Vec<Vec3> =
                 subdiv.raw_points().iter().map(|&p| p.into()).collect();
             // A unit sphere's normals are its positions.
             let vertex_normals = vertex_positions.clone();
@@ -242,15 +334,7 @@ fn generate_solid(
                 .map(|(i1, i2, i3)| glam::uvec3(i1, i2, i3))
                 .collect();
 
-            let materials = smallvec![mesh::Material {
-                label: "default material".into(),
-                index_range: 0..(triangle_indices.len() * 3) as u32,
-                albedo: render_ctx
-                    .texture_manager_2d
-                    .white_texture_unorm_handle()
-                    .clone(),
-                albedo_factor: re_renderer::Rgba::BLACK,
-            }];
+            let materials = materials_for_uncolored_mesh(render_ctx, triangle_indices.len());
 
             mesh::Mesh {
                 label: format!("{key:?}").into(),
@@ -281,4 +365,19 @@ fn generate_solid(
         bbox: key.simple_bounding_box(),
         gpu_mesh,
     })
+}
+
+fn materials_for_uncolored_mesh(
+    render_ctx: &RenderContext,
+    num_triangles: usize,
+) -> smallvec::SmallVec<[mesh::Material; 1]> {
+    smallvec![mesh::Material {
+        label: "default material".into(),
+        index_range: 0..(num_triangles * 3) as u32,
+        albedo: render_ctx
+            .texture_manager_2d
+            .white_texture_unorm_handle()
+            .clone(),
+        albedo_factor: re_renderer::Rgba::BLACK,
+    }]
 }
