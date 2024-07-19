@@ -32,8 +32,6 @@ class Image(ImageExt, Archetype):
 
     Rerun also supports compressed images (JPEG, PNG, …), using [`archetypes.ImageEncoded`][rerun.archetypes.ImageEncoded].
 
-    You can compress an `Image` using [`rerun.Image.compress`][].
-
     See also [`components.TensorData`][rerun.components.TensorData] and [`datatypes.TensorBuffer`][rerun.datatypes.TensorBuffer].
 
     Example

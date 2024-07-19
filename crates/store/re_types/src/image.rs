@@ -27,7 +27,7 @@ pub enum ImageKind {
 
 // ----------------------------------------------------------------------------
 
-/// Errors when converting images from the [`image`] crate to an [`crate::Image`].
+/// Errors when converting images from the [`image`] crate to an [`crate::archetypes::Image`].
 #[cfg(feature = "image")]
 #[derive(thiserror::Error, Clone, Debug)]
 pub enum ImageConversionError {
@@ -52,7 +52,7 @@ pub enum ImageLoadError {
     #[error("Failed to load file: {0}")]
     ReadError(std::sync::Arc<std::io::Error>),
 
-    /// Failure to convert the loaded image to a [`crate::Image`].
+    /// Failure to convert the loaded image to a [`crate::archetypes::Image`].
     #[error(transparent)]
     ImageConversionError(#[from] ImageConversionError),
 }
