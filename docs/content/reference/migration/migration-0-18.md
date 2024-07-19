@@ -12,6 +12,15 @@ The `DepthImage` and `SegmentationImage` archetypes used to be encoded as a tens
 The constructs have changed to now expect the shape in `[width, height]` order.
 
 
+### [`Image`](https://rerun.io/docs/reference/types/archetypes/image)
+* `Image.compress` has been replaced by `ImageEncoded.compress`
+* `Image` now support chroma-downsampled images
+
+`Image(…)` now require a _color_model_ argument, e.g. "RGB" or "L"
+* Before: `rr.Image(image_rgb)`
+* Now: `rr.Image(image_rgb, "RGB")`
+
+
 ### [`ImageEncoded`](https://rerun.io/docs/reference/types/archetypes/image_encoded?speculative-link)
 `ImageEncoded` is our new archetype for logging an image file, e.g. a PNG or JPEG.
 
