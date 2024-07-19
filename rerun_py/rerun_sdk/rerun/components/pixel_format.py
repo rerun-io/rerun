@@ -25,7 +25,7 @@ class PixelFormat(Enum):
     """
     **Component**: Specifieds a particular format of an [`archetypes.Image`][rerun.archetypes.Image].
 
-    Most images can be described by a [`components.ColorModel`][rerun.components.ColorModel] and a [`components.ChannelDataType`][rerun.components.ChannelDataType],
+    Most images can be described by a [`components.ColorModel`][rerun.components.ColorModel] and a [`components.ChannelDatatype`][rerun.components.ChannelDatatype],
     e.g. `RGB` and `U8` respectively.
 
     However, some image formats has chroma downsampling and/or

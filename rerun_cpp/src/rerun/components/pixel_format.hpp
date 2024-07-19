@@ -17,7 +17,7 @@ namespace arrow {
 namespace rerun::components {
     /// **Component**: Specifieds a particular format of an `archetypes::Image`.
     ///
-    /// Most images can be described by a `components::ColorModel` and a `components::ChannelDataType`,
+    /// Most images can be described by a `components::ColorModel` and a `components::ChannelDatatype`,
     /// e.g. `RGB` and `U8` respectively.
     ///
     /// However, some image formats has chroma downsampling and/or

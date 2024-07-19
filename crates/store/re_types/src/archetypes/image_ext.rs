@@ -1,8 +1,8 @@
 use crate::{
-    components::{Blob, ChannelDataType, ColorModel, PixelFormat, Resolution2D},
+    components::{Blob, ChannelDatatype, ColorModel, PixelFormat, Resolution2D},
     datatypes::TensorData,
     image::{
-        blob_and_data_type_from_tensor, find_non_empty_dim_indices, ImageChannelType,
+        blob_and_datatype_from_tensor, find_non_empty_dim_indices, ImageChannelType,
         ImageConstructionError,
     },
     tensor_data::TensorImageLoadError,
@@ -49,7 +49,7 @@ impl Image {
             return Err(ImageConstructionError::BadImageShape(shape));
         }
 
-        let (blob, data_type) = blob_and_data_type_from_tensor(tensor_data.buffer);
+        let (blob, datatype) = blob_and_datatype_from_tensor(tensor_data.buffer);
 
         let (height, width) = (&shape[non_empty_dim_inds[0]], &shape[non_empty_dim_inds[1]]);
         let height = height.size as u32;
@@ -61,7 +61,7 @@ impl Image {
             resolution,
             pixel_format: None,
             color_model: Some(color_model),
-            data_type: Some(data_type),
+            datatype: Some(datatype),
             opacity: None,
             draw_order: None,
         })
@@ -90,7 +90,7 @@ impl Image {
             resolution,
             pixel_format: Some(pixel_format),
             color_model: None,
-            data_type: None,
+            datatype: None,
             opacity: None,
             draw_order: None,
         }
@@ -102,17 +102,17 @@ impl Image {
     pub fn from_color_model_and_bytes(
         resolution: Resolution2D,
         color_model: ColorModel,
-        data_type: ChannelDataType,
+        datatype: ChannelDatatype,
         bytes: impl Into<Blob>,
     ) -> Self {
         let data = bytes.into();
 
         let actual_bytes = data.len();
         let num_expected_bytes =
-            (resolution.area() * color_model.num_channels() * data_type.bits() + 7) / 8; // rounding upwards
+            (resolution.area() * color_model.num_channels() * datatype.bits() + 7) / 8; // rounding upwards
         if data.len() != num_expected_bytes {
             re_log::warn_once!(
-                "Expected {resolution} {color_model:?} {data_type:?} image to be {num_expected_bytes} B, but got {actual_bytes} B",
+                "Expected {resolution} {color_model:?} {datatype:?} image to be {num_expected_bytes} B, but got {actual_bytes} B",
             );
         }
 
@@ -121,7 +121,7 @@ impl Image {
             resolution,
             pixel_format: None,
             color_model: Some(color_model),
-            data_type: Some(data_type),
+            datatype: Some(datatype),
             opacity: None,
             draw_order: None,
         }
@@ -134,19 +134,19 @@ impl Image {
         color_model: ColorModel,
         elements: &[T],
     ) -> Self {
-        let data_type = T::CHANNEL_TYPE;
+        let datatype = T::CHANNEL_TYPE;
         let bytes: &[u8] = bytemuck::cast_slice(elements);
         Self::from_color_model_and_bytes(
             resolution,
             color_model,
-            data_type,
+            datatype,
             re_types_core::ArrowBuffer::<u8>::from(bytes),
         )
     }
 
     /// Assumes RGBA, 8-bit per channel, with separate alpha.
     pub fn from_rgba32(resolution: Resolution2D, bytes: impl Into<Blob>) -> Self {
-        Self::from_color_model_and_bytes(resolution, ColorModel::RGBA, ChannelDataType::U8, bytes)
+        Self::from_color_model_and_bytes(resolution, ColorModel::RGBA, ChannelDatatype::U8, bytes)
     }
 
     /// Creates a new [`Image`] from a file.

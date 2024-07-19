@@ -3,7 +3,7 @@
 use smallvec::{smallvec, SmallVec};
 
 use crate::{
-    components::ChannelDataType,
+    components::ChannelDatatype,
     datatypes::{Blob, TensorBuffer, TensorData, TensorDimension},
 };
 
@@ -47,19 +47,19 @@ where
 }
 
 /// Converts it to what is useful for the image API.
-pub fn blob_and_data_type_from_tensor(tensor_buffer: TensorBuffer) -> (Blob, ChannelDataType) {
+pub fn blob_and_datatype_from_tensor(tensor_buffer: TensorBuffer) -> (Blob, ChannelDatatype) {
     match tensor_buffer {
-        TensorBuffer::U8(buffer) => (Blob(buffer), ChannelDataType::U8),
-        TensorBuffer::U16(buffer) => (Blob(buffer.cast_to_u8()), ChannelDataType::U16),
-        TensorBuffer::U32(buffer) => (Blob(buffer.cast_to_u8()), ChannelDataType::U32),
-        TensorBuffer::U64(buffer) => (Blob(buffer.cast_to_u8()), ChannelDataType::U64),
-        TensorBuffer::I8(buffer) => (Blob(buffer.cast_to_u8()), ChannelDataType::I8),
-        TensorBuffer::I16(buffer) => (Blob(buffer.cast_to_u8()), ChannelDataType::I16),
-        TensorBuffer::I32(buffer) => (Blob(buffer.cast_to_u8()), ChannelDataType::I32),
-        TensorBuffer::I64(buffer) => (Blob(buffer.cast_to_u8()), ChannelDataType::I64),
-        TensorBuffer::F16(buffer) => (Blob(buffer.cast_to_u8()), ChannelDataType::F16),
-        TensorBuffer::F32(buffer) => (Blob(buffer.cast_to_u8()), ChannelDataType::F32),
-        TensorBuffer::F64(buffer) => (Blob(buffer.cast_to_u8()), ChannelDataType::F64),
+        TensorBuffer::U8(buffer) => (Blob(buffer), ChannelDatatype::U8),
+        TensorBuffer::U16(buffer) => (Blob(buffer.cast_to_u8()), ChannelDatatype::U16),
+        TensorBuffer::U32(buffer) => (Blob(buffer.cast_to_u8()), ChannelDatatype::U32),
+        TensorBuffer::U64(buffer) => (Blob(buffer.cast_to_u8()), ChannelDatatype::U64),
+        TensorBuffer::I8(buffer) => (Blob(buffer.cast_to_u8()), ChannelDatatype::I8),
+        TensorBuffer::I16(buffer) => (Blob(buffer.cast_to_u8()), ChannelDatatype::I16),
+        TensorBuffer::I32(buffer) => (Blob(buffer.cast_to_u8()), ChannelDatatype::I32),
+        TensorBuffer::I64(buffer) => (Blob(buffer.cast_to_u8()), ChannelDatatype::I64),
+        TensorBuffer::F16(buffer) => (Blob(buffer.cast_to_u8()), ChannelDatatype::F16),
+        TensorBuffer::F32(buffer) => (Blob(buffer.cast_to_u8()), ChannelDatatype::F32),
+        TensorBuffer::F64(buffer) => (Blob(buffer.cast_to_u8()), ChannelDatatype::F64),
     }
 }
 
@@ -69,52 +69,52 @@ pub fn blob_and_data_type_from_tensor(tensor_buffer: TensorBuffer) -> (Blob, Cha
 ///
 /// Implemented for `u8, u16, u32, u64, i8, i16, i32, i64, f16, f32, f64`.
 pub trait ImageChannelType: bytemuck::Pod {
-    /// The [`ChannelDataType`] for this type.
-    const CHANNEL_TYPE: ChannelDataType;
+    /// The [`ChannelDatatype`] for this type.
+    const CHANNEL_TYPE: ChannelDatatype;
 }
 
 impl ImageChannelType for u8 {
-    const CHANNEL_TYPE: ChannelDataType = ChannelDataType::U8;
+    const CHANNEL_TYPE: ChannelDatatype = ChannelDatatype::U8;
 }
 
 impl ImageChannelType for u16 {
-    const CHANNEL_TYPE: ChannelDataType = ChannelDataType::U16;
+    const CHANNEL_TYPE: ChannelDatatype = ChannelDatatype::U16;
 }
 
 impl ImageChannelType for u32 {
-    const CHANNEL_TYPE: ChannelDataType = ChannelDataType::U32;
+    const CHANNEL_TYPE: ChannelDatatype = ChannelDatatype::U32;
 }
 
 impl ImageChannelType for u64 {
-    const CHANNEL_TYPE: ChannelDataType = ChannelDataType::U64;
+    const CHANNEL_TYPE: ChannelDatatype = ChannelDatatype::U64;
 }
 
 impl ImageChannelType for i8 {
-    const CHANNEL_TYPE: ChannelDataType = ChannelDataType::I8;
+    const CHANNEL_TYPE: ChannelDatatype = ChannelDatatype::I8;
 }
 
 impl ImageChannelType for i16 {
-    const CHANNEL_TYPE: ChannelDataType = ChannelDataType::I16;
+    const CHANNEL_TYPE: ChannelDatatype = ChannelDatatype::I16;
 }
 
 impl ImageChannelType for i32 {
-    const CHANNEL_TYPE: ChannelDataType = ChannelDataType::I32;
+    const CHANNEL_TYPE: ChannelDatatype = ChannelDatatype::I32;
 }
 
 impl ImageChannelType for i64 {
-    const CHANNEL_TYPE: ChannelDataType = ChannelDataType::I64;
+    const CHANNEL_TYPE: ChannelDatatype = ChannelDatatype::I64;
 }
 
 impl ImageChannelType for half::f16 {
-    const CHANNEL_TYPE: ChannelDataType = ChannelDataType::F16;
+    const CHANNEL_TYPE: ChannelDatatype = ChannelDatatype::F16;
 }
 
 impl ImageChannelType for f32 {
-    const CHANNEL_TYPE: ChannelDataType = ChannelDataType::F32;
+    const CHANNEL_TYPE: ChannelDatatype = ChannelDatatype::F32;
 }
 
 impl ImageChannelType for f64 {
-    const CHANNEL_TYPE: ChannelDataType = ChannelDataType::F64;
+    const CHANNEL_TYPE: ChannelDatatype = ChannelDatatype::F64;
 }
 
 // ----------------------------------------------------------------------------

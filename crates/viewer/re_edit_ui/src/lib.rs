@@ -23,7 +23,7 @@ use re_types::{
         ViewFit, Visible,
     },
     components::{
-        AggregationPolicy, AlbedoFactor, AxisLength, ChannelDataType, Color, ColorModel, Colormap,
+        AggregationPolicy, AlbedoFactor, AxisLength, ChannelDatatype, Color, ColorModel, Colormap,
         DepthMeter, DrawOrder, FillRatio, GammaCorrection, ImagePlaneDistance, MagnificationFilter,
         MarkerSize, Name, Opacity, PixelFormat, Scale3D, StrokeWidth, Text, Translation3D,
     },
@@ -78,7 +78,7 @@ pub fn register_editors(registry: &mut re_viewer_context::ComponentUiRegistry) {
         .add_singleline_edit_or_view(|_ctx, ui, value| edit_view_enum::<PixelFormat>(ui, value));
     registry.add_singleline_edit_or_view(|_ctx, ui, value| edit_view_enum::<Corner2D>(ui, value));
     registry.add_singleline_edit_or_view(|_ctx, ui, value| {
-        edit_view_enum::<ChannelDataType>(ui, value)
+        edit_view_enum::<ChannelDatatype>(ui, value)
     });
     registry.add_singleline_edit_or_view(|_ctx, ui, value| {
         edit_view_enum::<MagnificationFilter>(ui, value)

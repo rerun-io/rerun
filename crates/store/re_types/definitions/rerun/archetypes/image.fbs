@@ -43,18 +43,18 @@ table Image (
 
   /// Used mainly for chroma downsampled formats and differing number of bits per channel.
   ///
-  /// If specified, this takes precedence over both [components.ColorModel] and [components.ChannelDataType] (which are ignored).
+  /// If specified, this takes precedence over both [components.ColorModel] and [components.ChannelDatatype] (which are ignored).
   pixel_format: rerun.components.PixelFormat ("attr.rerun.component_optional", nullable, order: 2000);
 
   /// L, RGB, RGBA, …
   ///
-  /// Also requires a [components.ChannelDataType] to fully specify the pixel format.
+  /// Also requires a [components.ChannelDatatype] to fully specify the pixel format.
   color_model: rerun.components.ColorModel ("attr.rerun.component_optional", nullable, order: 2100);
 
   /// The data type of each channel (e.g. the red channel) of the image data (U8, F16, …).
   ///
   /// Also requires a [components.ColorModel] to fully specify the pixel format.
-  data_type: rerun.components.ChannelDataType ("attr.rerun.component_optional", nullable, order: 2200);
+  datatype: rerun.components.ChannelDatatype ("attr.rerun.component_optional", nullable, order: 2200);
 
   // --- Optional ---
 

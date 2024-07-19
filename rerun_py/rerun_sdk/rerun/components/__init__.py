@@ -19,12 +19,12 @@ from .annotation_context import (
 )
 from .axis_length import AxisLength, AxisLengthBatch, AxisLengthType
 from .blob import Blob, BlobBatch, BlobType
-from .channel_data_type import (
-    ChannelDataType,
-    ChannelDataTypeArrayLike,
-    ChannelDataTypeBatch,
-    ChannelDataTypeLike,
-    ChannelDataTypeType,
+from .channel_datatype import (
+    ChannelDatatype,
+    ChannelDatatypeArrayLike,
+    ChannelDatatypeBatch,
+    ChannelDatatypeLike,
+    ChannelDatatypeType,
 )
 from .class_id import ClassId, ClassIdBatch, ClassIdType
 from .clear_is_recursive import ClearIsRecursive, ClearIsRecursiveBatch, ClearIsRecursiveType
@@ -106,11 +106,11 @@ __all__ = [
     "Blob",
     "BlobBatch",
     "BlobType",
-    "ChannelDataType",
-    "ChannelDataTypeArrayLike",
-    "ChannelDataTypeBatch",
-    "ChannelDataTypeLike",
-    "ChannelDataTypeType",
+    "ChannelDatatype",
+    "ChannelDatatypeArrayLike",
+    "ChannelDatatypeBatch",
+    "ChannelDatatypeLike",
+    "ChannelDatatypeType",
     "ClassId",
     "ClassIdBatch",
     "ClassIdType",

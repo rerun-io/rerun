@@ -3,7 +3,7 @@ use itertools::Itertools as _;
 use re_space_view::HybridResults;
 use re_types::{
     archetypes::Image,
-    components::{self, ChannelDataType, ColorModel, DrawOrder, Opacity, PixelFormat},
+    components::{self, ChannelDatatype, ColorModel, DrawOrder, Opacity, PixelFormat},
     image::ImageKind,
 };
 use re_viewer_context::{
@@ -151,7 +151,7 @@ impl ImageVisualizer {
 
         let pixel_formats = results.get_or_empty_dense::<PixelFormat>(resolver)?;
         let color_models = results.get_or_empty_dense::<ColorModel>(resolver)?;
-        let data_types = results.get_or_empty_dense::<ChannelDataType>(resolver)?;
+        let datatypes = results.get_or_empty_dense::<ChannelDatatype>(resolver)?;
         let opacity = results.get_or_empty_dense(resolver)?;
 
         let data = re_query::range_zip_1x5(
@@ -159,21 +159,21 @@ impl ImageVisualizer {
             resolutions.range_indexed(),
             pixel_formats.range_indexed(),
             color_models.range_indexed(),
-            data_types.range_indexed(),
+            datatypes.range_indexed(),
             opacity.range_indexed(),
         )
         .filter_map(
-            |(&index, blobs, resolutions, pixel_formats, color_models, data_types, opacities)| {
+            |(&index, blobs, resolutions, pixel_formats, color_models, datatypes, opacities)| {
                 let blob = blobs.first()?.0.clone();
 
                 let format = if let Some(pixel_format) = first_copied(pixel_formats) {
                     ImageFormat::PixelFormat(pixel_format)
                 } else {
                     let color_model = first_copied(color_models)?;
-                    let data_type = first_copied(data_types)?;
+                    let datatype = first_copied(datatypes)?;
                     ImageFormat::ColorModel {
                         color_model,
-                        data_type,
+                        datatype,
                     }
                 };
 

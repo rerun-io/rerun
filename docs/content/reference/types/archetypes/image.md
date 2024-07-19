@@ -22,7 +22,7 @@ See also [`components.TensorData`](https://rerun.io/docs/reference/types/compone
 
 **Required**: [`Blob`](../components/blob.md), [`Resolution2D`](../components/resolution2d.md)
 
-**Optional**: [`PixelFormat`](../components/pixel_format.md), [`ColorModel`](../components/color_model.md), [`ChannelDataType`](../components/channel_data_type.md), [`Opacity`](../components/opacity.md), [`DrawOrder`](../components/draw_order.md)
+**Optional**: [`PixelFormat`](../components/pixel_format.md), [`ColorModel`](../components/color_model.md), [`ChannelDatatype`](../components/channel_datatype.md), [`Opacity`](../components/opacity.md), [`DrawOrder`](../components/draw_order.md)
 
 ## Shown in
 * [Spatial2DView](../views/spatial2d_view.md)

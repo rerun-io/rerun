@@ -20,7 +20,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Component**: Specifieds a particular format of an [`archetypes::Image`][crate::archetypes::Image].
 ///
-/// Most images can be described by a [`components::ColorModel`][crate::components::ColorModel] and a [`components::ChannelDataType`][crate::components::ChannelDataType],
+/// Most images can be described by a [`components::ColorModel`][crate::components::ColorModel] and a [`components::ChannelDatatype`][crate::components::ChannelDatatype],
 /// e.g. `RGB` and `U8` respectively.
 ///
 /// However, some image formats has chroma downsampling and/or

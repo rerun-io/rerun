@@ -26,7 +26,7 @@ table DepthImage (
   resolution: rerun.components.Resolution2D ("attr.rerun.component_required", order: 1500);
 
   /// The data type of the depth image data (U16, F32, …).
-  data_type: rerun.components.ChannelDataType ("attr.rerun.component_required", order: 2000);
+  datatype: rerun.components.ChannelDatatype ("attr.rerun.component_required", order: 2000);
 
   // --- Optional ---
 

@@ -3,7 +3,7 @@ namespace rerun.components;
 /// The innermost datatype of an image.
 ///
 /// How individual color channel components are encoded.
-enum ChannelDataType: byte {
+enum ChannelDatatype: byte {
     /// 8-bit unsigned integer.
     U8 (default),
 

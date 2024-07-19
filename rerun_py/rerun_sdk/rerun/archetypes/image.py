@@ -73,7 +73,7 @@ class Image(ImageExt, Archetype):
             resolution=None,  # type: ignore[arg-type]
             pixel_format=None,  # type: ignore[arg-type]
             color_model=None,  # type: ignore[arg-type]
-            data_type=None,  # type: ignore[arg-type]
+            datatype=None,  # type: ignore[arg-type]
             opacity=None,  # type: ignore[arg-type]
             draw_order=None,  # type: ignore[arg-type]
         )
@@ -110,7 +110,7 @@ class Image(ImageExt, Archetype):
     )
     # Used mainly for chroma downsampled formats and differing number of bits per channel.
     #
-    # If specified, this takes precedence over both [`components.ColorModel`][rerun.components.ColorModel] and [`components.ChannelDataType`][rerun.components.ChannelDataType] (which are ignored).
+    # If specified, this takes precedence over both [`components.ColorModel`][rerun.components.ColorModel] and [`components.ChannelDatatype`][rerun.components.ChannelDatatype] (which are ignored).
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 
@@ -121,14 +121,14 @@ class Image(ImageExt, Archetype):
     )
     # L, RGB, RGBA, …
     #
-    # Also requires a [`components.ChannelDataType`][rerun.components.ChannelDataType] to fully specify the pixel format.
+    # Also requires a [`components.ChannelDatatype`][rerun.components.ChannelDatatype] to fully specify the pixel format.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 
-    data_type: components.ChannelDataTypeBatch | None = field(
+    datatype: components.ChannelDatatypeBatch | None = field(
         metadata={"component": "optional"},
         default=None,
-        converter=components.ChannelDataTypeBatch._optional,  # type: ignore[misc]
+        converter=components.ChannelDatatypeBatch._optional,  # type: ignore[misc]
     )
     # The data type of each channel (e.g. the red channel) of the image data (U8, F16, …).
     #

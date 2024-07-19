@@ -76,18 +76,18 @@ pub struct Image {
 
     /// Used mainly for chroma downsampled formats and differing number of bits per channel.
     ///
-    /// If specified, this takes precedence over both [`components::ColorModel`][crate::components::ColorModel] and [`components::ChannelDataType`][crate::components::ChannelDataType] (which are ignored).
+    /// If specified, this takes precedence over both [`components::ColorModel`][crate::components::ColorModel] and [`components::ChannelDatatype`][crate::components::ChannelDatatype] (which are ignored).
     pub pixel_format: Option<crate::components::PixelFormat>,
 
     /// L, RGB, RGBA, …
     ///
-    /// Also requires a [`components::ChannelDataType`][crate::components::ChannelDataType] to fully specify the pixel format.
+    /// Also requires a [`components::ChannelDatatype`][crate::components::ChannelDatatype] to fully specify the pixel format.
     pub color_model: Option<crate::components::ColorModel>,
 
     /// The data type of each channel (e.g. the red channel) of the image data (U8, F16, …).
     ///
     /// Also requires a [`components::ColorModel`][crate::components::ColorModel] to fully specify the pixel format.
-    pub data_type: Option<crate::components::ChannelDataType>,
+    pub datatype: Option<crate::components::ChannelDatatype>,
 
     /// Opacity of the image, useful for layering several images.
     ///
@@ -107,7 +107,7 @@ impl ::re_types_core::SizeBytes for Image {
             + self.resolution.heap_size_bytes()
             + self.pixel_format.heap_size_bytes()
             + self.color_model.heap_size_bytes()
-            + self.data_type.heap_size_bytes()
+            + self.datatype.heap_size_bytes()
             + self.opacity.heap_size_bytes()
             + self.draw_order.heap_size_bytes()
     }
@@ -118,7 +118,7 @@ impl ::re_types_core::SizeBytes for Image {
             && <crate::components::Resolution2D>::is_pod()
             && <Option<crate::components::PixelFormat>>::is_pod()
             && <Option<crate::components::ColorModel>>::is_pod()
-            && <Option<crate::components::ChannelDataType>>::is_pod()
+            && <Option<crate::components::ChannelDatatype>>::is_pod()
             && <Option<crate::components::Opacity>>::is_pod()
             && <Option<crate::components::DrawOrder>>::is_pod()
     }
@@ -140,7 +140,7 @@ static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 5usize]> =
         [
             "rerun.components.PixelFormat".into(),
             "rerun.components.ColorModel".into(),
-            "rerun.components.ChannelDataType".into(),
+            "rerun.components.ChannelDatatype".into(),
             "rerun.components.Opacity".into(),
             "rerun.components.DrawOrder".into(),
         ]
@@ -154,7 +154,7 @@ static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 8usize]> =
             "rerun.components.ImageIndicator".into(),
             "rerun.components.PixelFormat".into(),
             "rerun.components.ColorModel".into(),
-            "rerun.components.ChannelDataType".into(),
+            "rerun.components.ChannelDatatype".into(),
             "rerun.components.Opacity".into(),
             "rerun.components.DrawOrder".into(),
         ]
@@ -261,10 +261,9 @@ impl ::re_types_core::Archetype for Image {
         } else {
             None
         };
-        let data_type = if let Some(array) = arrays_by_name.get("rerun.components.ChannelDataType")
-        {
-            <crate::components::ChannelDataType>::from_arrow_opt(&**array)
-                .with_context("rerun.archetypes.Image#data_type")?
+        let datatype = if let Some(array) = arrays_by_name.get("rerun.components.ChannelDatatype") {
+            <crate::components::ChannelDatatype>::from_arrow_opt(&**array)
+                .with_context("rerun.archetypes.Image#datatype")?
                 .into_iter()
                 .next()
                 .flatten()
@@ -294,7 +293,7 @@ impl ::re_types_core::Archetype for Image {
             resolution,
             pixel_format,
             color_model,
-            data_type,
+            datatype,
             opacity,
             draw_order,
         })
@@ -315,7 +314,7 @@ impl ::re_types_core::AsComponents for Image {
             self.color_model
                 .as_ref()
                 .map(|comp| (comp as &dyn ComponentBatch).into()),
-            self.data_type
+            self.datatype
                 .as_ref()
                 .map(|comp| (comp as &dyn ComponentBatch).into()),
             self.opacity
@@ -343,7 +342,7 @@ impl Image {
             resolution: resolution.into(),
             pixel_format: None,
             color_model: None,
-            data_type: None,
+            datatype: None,
             opacity: None,
             draw_order: None,
         }
@@ -351,7 +350,7 @@ impl Image {
 
     /// Used mainly for chroma downsampled formats and differing number of bits per channel.
     ///
-    /// If specified, this takes precedence over both [`components::ColorModel`][crate::components::ColorModel] and [`components::ChannelDataType`][crate::components::ChannelDataType] (which are ignored).
+    /// If specified, this takes precedence over both [`components::ColorModel`][crate::components::ColorModel] and [`components::ChannelDatatype`][crate::components::ChannelDatatype] (which are ignored).
     #[inline]
     pub fn with_pixel_format(
         mut self,
@@ -363,7 +362,7 @@ impl Image {
 
     /// L, RGB, RGBA, …
     ///
-    /// Also requires a [`components::ChannelDataType`][crate::components::ChannelDataType] to fully specify the pixel format.
+    /// Also requires a [`components::ChannelDatatype`][crate::components::ChannelDatatype] to fully specify the pixel format.
     #[inline]
     pub fn with_color_model(
         mut self,
@@ -377,11 +376,11 @@ impl Image {
     ///
     /// Also requires a [`components::ColorModel`][crate::components::ColorModel] to fully specify the pixel format.
     #[inline]
-    pub fn with_data_type(
+    pub fn with_datatype(
         mut self,
-        data_type: impl Into<crate::components::ChannelDataType>,
+        datatype: impl Into<crate::components::ChannelDatatype>,
     ) -> Self {
-        self.data_type = Some(data_type.into());
+        self.datatype = Some(datatype.into());
         self
     }
 

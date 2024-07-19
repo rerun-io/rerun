@@ -71,7 +71,7 @@ from .blueprint.api import (
 )
 from .components import (
     AlbedoFactor as AlbedoFactor,
-    ChannelDataType as ChannelDataType,
+    ChannelDatatype as ChannelDatatype,
     ColorModel as ColorModel,
     MediaType as MediaType,
     OutOfTreeTransform3D as OutOfTreeTransform3D,

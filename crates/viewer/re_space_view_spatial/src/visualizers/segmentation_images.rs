@@ -86,7 +86,7 @@ impl VisualizerSystem for SegmentationImageVisualizer {
                     _ => return Ok(()),
                 };
                 let data_types = match results
-                    .get_required_component_dense::<components::ChannelDataType>(resolver)
+                    .get_required_component_dense::<components::ChannelDatatype>(resolver)
                 {
                     Some(data_types) => data_types?,
                     _ => return Ok(()),

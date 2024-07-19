@@ -6,7 +6,7 @@
 #include "../collection.hpp"
 #include "../compiler_utils.hpp"
 #include "../components/blob.hpp"
-#include "../components/channel_data_type.hpp"
+#include "../components/channel_datatype.hpp"
 #include "../components/color_model.hpp"
 #include "../components/draw_order.hpp"
 #include "../components/opacity.hpp"
@@ -84,18 +84,18 @@ namespace rerun::archetypes {
 
         /// Used mainly for chroma downsampled formats and differing number of bits per channel.
         ///
-        /// If specified, this takes precedence over both `components::ColorModel` and `components::ChannelDataType` (which are ignored).
+        /// If specified, this takes precedence over both `components::ColorModel` and `components::ChannelDatatype` (which are ignored).
         std::optional<rerun::components::PixelFormat> pixel_format;
 
         /// L, RGB, RGBA, …
         ///
-        /// Also requires a `components::ChannelDataType` to fully specify the pixel format.
+        /// Also requires a `components::ChannelDatatype` to fully specify the pixel format.
         std::optional<rerun::components::ColorModel> color_model;
 
         /// The data type of each channel (e.g. the red channel) of the image data (U8, F16, …).
         ///
         /// Also requires a `components::ColorModel` to fully specify the pixel format.
-        std::optional<rerun::components::ChannelDataType> data_type;
+        std::optional<rerun::components::ChannelDatatype> datatype;
 
         /// Opacity of the image, useful for layering several images.
         ///
@@ -127,13 +127,13 @@ namespace rerun::archetypes {
 
         static Image from_color_model_and_bytes(
             components::Resolution2D resolution, components::ColorModel color_model,
-            components::ChannelDataType data_type, Collection<uint8_t> bytes
+            components::ChannelDatatype datatype, Collection<uint8_t> bytes
         ) {
             Image img;
             img.data = bytes;
             img.resolution = resolution;
             img.color_model = color_model;
-            img.data_type = data_type;
+            img.datatype = datatype;
             return img;
         }
 
@@ -142,9 +142,9 @@ namespace rerun::archetypes {
             components::Resolution2D resolution, components::ColorModel color_model,
             Collection<T> elements
         ) {
-            const auto data_type = get_data_type(elements.data());
+            const auto datatype = get_datatype(elements.data());
             const auto bytes = elements.to_uint8();
-            return from_color_model_and_bytes(resolution, color_model, data_type, bytes);
+            return from_color_model_and_bytes(resolution, color_model, datatype, bytes);
         }
 
         template <typename T>
@@ -152,9 +152,9 @@ namespace rerun::archetypes {
             components::Resolution2D resolution, components::ColorModel color_model,
             std::vector<T> elements
         ) {
-            const auto data_type = get_data_type(elements.data());
+            const auto datatype = get_datatype(elements.data());
             const auto bytes = Collection<T>::take_ownership(std::move(elements)).to_uint8();
-            return from_color_model_and_bytes(resolution, color_model, data_type, bytes);
+            return from_color_model_and_bytes(resolution, color_model, datatype, bytes);
         }
 
         /// Assumes RGB, 8-bit per channel, packed as `RGBRGBRGB…`.
@@ -162,7 +162,7 @@ namespace rerun::archetypes {
             return Image::from_color_model_and_bytes(
                 resolution,
                 components::ColorModel::RGB,
-                components::ChannelDataType::U8,
+                components::ChannelDatatype::U8,
                 bytes
             );
         }
@@ -172,7 +172,7 @@ namespace rerun::archetypes {
             return Image::from_color_model_and_bytes(
                 resolution,
                 components::ColorModel::RGBA,
-                components::ChannelDataType::U8,
+                components::ChannelDatatype::U8,
                 bytes
             );
         }
@@ -185,7 +185,7 @@ namespace rerun::archetypes {
 
         /// Used mainly for chroma downsampled formats and differing number of bits per channel.
         ///
-        /// If specified, this takes precedence over both `components::ColorModel` and `components::ChannelDataType` (which are ignored).
+        /// If specified, this takes precedence over both `components::ColorModel` and `components::ChannelDatatype` (which are ignored).
         Image with_pixel_format(rerun::components::PixelFormat _pixel_format) && {
             pixel_format = std::move(_pixel_format);
             // See: https://github.com/rerun-io/rerun/issues/4027
@@ -194,7 +194,7 @@ namespace rerun::archetypes {
 
         /// L, RGB, RGBA, …
         ///
-        /// Also requires a `components::ChannelDataType` to fully specify the pixel format.
+        /// Also requires a `components::ChannelDatatype` to fully specify the pixel format.
         Image with_color_model(rerun::components::ColorModel _color_model) && {
             color_model = std::move(_color_model);
             // See: https://github.com/rerun-io/rerun/issues/4027
@@ -204,8 +204,8 @@ namespace rerun::archetypes {
         /// The data type of each channel (e.g. the red channel) of the image data (U8, F16, …).
         ///
         /// Also requires a `components::ColorModel` to fully specify the pixel format.
-        Image with_data_type(rerun::components::ChannelDataType _data_type) && {
-            data_type = std::move(_data_type);
+        Image with_datatype(rerun::components::ChannelDatatype _datatype) && {
+            datatype = std::move(_datatype);
             // See: https://github.com/rerun-io/rerun/issues/4027
             RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
         }

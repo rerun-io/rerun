@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use re_types::{
     archetypes::SegmentationImage,
-    components::{ChannelDataType, Resolution2D},
+    components::{ChannelDatatype, Resolution2D},
     Archetype as _, AsComponents as _,
 };
 
@@ -13,7 +13,7 @@ fn segmentation_image_roundtrip() {
     let all_expected = [SegmentationImage {
         data: vec![1, 2, 3, 4, 5, 6].into(),
         resolution: Resolution2D::new(3, 2),
-        data_type: ChannelDataType::U8,
+        datatype: ChannelDatatype::U8,
         draw_order: None,
         opacity: None,
     }];

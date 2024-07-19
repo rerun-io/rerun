@@ -273,10 +273,10 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             },
         ),
         (
-            <ChannelDataType as Loggable>::name(),
+            <ChannelDatatype as Loggable>::name(),
             ComponentReflection {
                 docstring_md: "The innermost datatype of an image.\n\nHow individual color channel components are encoded.",
-                placeholder: Some(ChannelDataType::default().to_arrow()?),
+                placeholder: Some(ChannelDatatype::default().to_arrow()?),
             },
         ),
         (
@@ -303,7 +303,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
         (
             <ColorModel as Loggable>::name(),
             ComponentReflection {
-                docstring_md: "Specified what color components are present in an [`archetypes.Image`](https://rerun.io/docs/reference/types/archetypes/image).\n\nThis combined with [`components.ChannelDataType`](https://rerun.io/docs/reference/types/components/channel_data_type) determines the pixel format of an image.",
+                docstring_md: "Specified what color components are present in an [`archetypes.Image`](https://rerun.io/docs/reference/types/archetypes/image).\n\nThis combined with [`components.ChannelDatatype`](https://rerun.io/docs/reference/types/components/channel_datatype) determines the pixel format of an image.",
                 placeholder: Some(ColorModel::default().to_arrow()?),
             },
         ),
@@ -450,7 +450,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
         (
             <PixelFormat as Loggable>::name(),
             ComponentReflection {
-                docstring_md: "Specifieds a particular format of an [`archetypes.Image`](https://rerun.io/docs/reference/types/archetypes/image).\n\nMost images can be described by a [`components.ColorModel`](https://rerun.io/docs/reference/types/components/color_model?speculative-link) and a [`components.ChannelDataType`](https://rerun.io/docs/reference/types/components/channel_data_type),\ne.g. `RGB` and `U8` respectively.\n\nHowever, some image formats has chroma downsampling and/or\nuse differing number of bits per channel, and that is what this [`components.PixelFormat`](https://rerun.io/docs/reference/types/components/pixel_format?speculative-link) is for.\n\nAll these formats support random access.\n\nFor more compressed image formats, see [`archetypes.ImageEncoded`](https://rerun.io/docs/reference/types/archetypes/image_encoded?speculative-link).",
+                docstring_md: "Specifieds a particular format of an [`archetypes.Image`](https://rerun.io/docs/reference/types/archetypes/image).\n\nMost images can be described by a [`components.ColorModel`](https://rerun.io/docs/reference/types/components/color_model?speculative-link) and a [`components.ChannelDatatype`](https://rerun.io/docs/reference/types/components/channel_datatype),\ne.g. `RGB` and `U8` respectively.\n\nHowever, some image formats has chroma downsampling and/or\nuse differing number of bits per channel, and that is what this [`components.PixelFormat`](https://rerun.io/docs/reference/types/components/pixel_format?speculative-link) is for.\n\nAll these formats support random access.\n\nFor more compressed image formats, see [`archetypes.ImageEncoded`](https://rerun.io/docs/reference/types/archetypes/image_encoded?speculative-link).",
                 placeholder: Some(PixelFormat::default().to_arrow()?),
             },
         ),

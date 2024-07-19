@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING, Any, Union
 import numpy as np
 import numpy.typing as npt
 
-from ..components import ChannelDataType, Resolution2D
+from ..components import ChannelDatatype, Resolution2D
 from ..datatypes import Float32Like
 
 if TYPE_CHECKING:
@@ -46,17 +46,17 @@ class SegmentationImageExt:
         opacity: Float32Like | None = None,
     ):
         channel_dtype_from_np_dtype = {
-            np.uint8: ChannelDataType.U8,
-            np.uint16: ChannelDataType.U16,
-            np.uint32: ChannelDataType.U32,
-            np.uint64: ChannelDataType.U64,
-            np.int8: ChannelDataType.I8,
-            np.int16: ChannelDataType.I16,
-            np.int32: ChannelDataType.I32,
-            np.int64: ChannelDataType.I64,
-            np.float16: ChannelDataType.F16,
-            np.float32: ChannelDataType.F32,
-            np.float64: ChannelDataType.F64,
+            np.uint8: ChannelDatatype.U8,
+            np.uint16: ChannelDatatype.U16,
+            np.uint32: ChannelDatatype.U32,
+            np.uint64: ChannelDatatype.U64,
+            np.int8: ChannelDatatype.I8,
+            np.int16: ChannelDatatype.I16,
+            np.int32: ChannelDatatype.I32,
+            np.int64: ChannelDatatype.I64,
+            np.float16: ChannelDatatype.F16,
+            np.float32: ChannelDatatype.F32,
+            np.float64: ChannelDatatype.F64,
         }
 
         data = _to_numpy(data)

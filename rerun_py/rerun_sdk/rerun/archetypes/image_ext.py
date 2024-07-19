@@ -10,7 +10,7 @@ from rerun.components.color_model import ColorModel, ColorModelLike
 from rerun.components.pixel_format import PixelFormatLike
 
 from .._validators import find_non_empty_dim_indices
-from ..components import ChannelDataType, Resolution2D
+from ..components import ChannelDatatype, Resolution2D
 from ..datatypes import Float32Like
 from ..error_utils import _send_warning_or_raise, catch_and_log_exceptions
 
@@ -98,17 +98,17 @@ class ImageExt:
         """
 
         channel_dtype_from_np_dtype = {
-            np.uint8: ChannelDataType.U8,
-            np.uint16: ChannelDataType.U16,
-            np.uint32: ChannelDataType.U32,
-            np.uint64: ChannelDataType.U64,
-            np.int8: ChannelDataType.I8,
-            np.int16: ChannelDataType.I16,
-            np.int32: ChannelDataType.I32,
-            np.int64: ChannelDataType.I64,
-            np.float16: ChannelDataType.F16,
-            np.float32: ChannelDataType.F32,
-            np.float64: ChannelDataType.F64,
+            np.uint8: ChannelDatatype.U8,
+            np.uint16: ChannelDatatype.U16,
+            np.uint32: ChannelDatatype.U32,
+            np.uint64: ChannelDatatype.U64,
+            np.int8: ChannelDatatype.I8,
+            np.int16: ChannelDatatype.I16,
+            np.int32: ChannelDatatype.I32,
+            np.int64: ChannelDatatype.I64,
+            np.float16: ChannelDatatype.F16,
+            np.float32: ChannelDatatype.F32,
+            np.float64: ChannelDatatype.F64,
         }
 
         channel_count_from_color_model = {

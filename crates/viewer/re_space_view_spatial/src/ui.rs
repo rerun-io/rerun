@@ -16,7 +16,7 @@ use re_space_view::{latest_at_with_blueprint_resolved_data, ScreenshotMode};
 use re_types::{
     archetypes::Pinhole,
     blueprint::components::VisualBounds2D,
-    components::{Blob, ChannelDataType, Colormap, DepthMeter, Resolution2D, ViewCoordinates},
+    components::{Blob, ChannelDatatype, Colormap, DepthMeter, Resolution2D, ViewCoordinates},
     image::ImageKind,
     Loggable as _,
 };
@@ -594,7 +594,7 @@ fn picked_image_from_depth_image_query(
         [
             Blob::name(),
             Resolution2D::name(),
-            ChannelDataType::name(),
+            ChannelDatatype::name(),
             Colormap::name(),
             DepthMeter::name(),
         ],
@@ -607,7 +607,7 @@ fn picked_image_from_depth_image_query(
     let blob = blob_untyped.mono::<Blob>(&results.resolver)?.0;
 
     let resolution = results.get_mono::<Resolution2D>()?;
-    let data_type = results.get_mono::<ChannelDataType>()?;
+    let datatype = results.get_mono::<ChannelDatatype>()?;
     let colormap = results.get_mono_with_fallback::<Colormap>();
     let depth_meter = results.get_mono::<DepthMeter>();
 
@@ -621,7 +621,7 @@ fn picked_image_from_depth_image_query(
         blob_row_id,
         blob,
         resolution: resolution.0.into(),
-        format: re_viewer_context::ImageFormat::depth(data_type),
+        format: re_viewer_context::ImageFormat::depth(datatype),
         kind: ImageKind::Depth,
         colormap: Some(colormap),
     };

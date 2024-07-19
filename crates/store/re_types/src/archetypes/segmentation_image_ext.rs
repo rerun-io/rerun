@@ -1,7 +1,7 @@
 use crate::{
     components::Resolution2D,
     datatypes::TensorData,
-    image::{blob_and_data_type_from_tensor, find_non_empty_dim_indices, ImageConstructionError},
+    image::{blob_and_datatype_from_tensor, find_non_empty_dim_indices, ImageConstructionError},
 };
 
 use super::SegmentationImage;
@@ -28,7 +28,7 @@ impl SegmentationImage {
             return Err(ImageConstructionError::BadImageShape(shape));
         }
 
-        let (blob, data_type) = blob_and_data_type_from_tensor(tensor_data.buffer);
+        let (blob, datatype) = blob_and_datatype_from_tensor(tensor_data.buffer);
 
         let (height, width) = (&shape[non_empty_dim_inds[0]], &shape[non_empty_dim_inds[1]]);
         let height = height.size as u32;
@@ -38,7 +38,7 @@ impl SegmentationImage {
         Ok(Self {
             data: blob.into(),
             resolution,
-            data_type,
+            datatype,
             draw_order: None,
             opacity: None,
         })

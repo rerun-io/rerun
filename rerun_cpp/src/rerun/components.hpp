@@ -7,7 +7,7 @@
 #include "components/annotation_context.hpp"
 #include "components/axis_length.hpp"
 #include "components/blob.hpp"
-#include "components/channel_data_type.hpp"
+#include "components/channel_datatype.hpp"
 #include "components/class_id.hpp"
 #include "components/clear_is_recursive.hpp"
 #include "components/color.hpp"

@@ -26,13 +26,13 @@ namespace rerun::archetypes {
 
     static Image from_color_model_and_bytes(
         components::Resolution2D resolution, components::ColorModel color_model,
-        components::ChannelDataType data_type, Collection<uint8_t> bytes
+        components::ChannelDatatype datatype, Collection<uint8_t> bytes
     ) {
         Image img;
         img.data = bytes;
         img.resolution = resolution;
         img.color_model = color_model;
-        img.data_type = data_type;
+        img.datatype = datatype;
         return img;
     }
 
@@ -41,9 +41,9 @@ namespace rerun::archetypes {
         components::Resolution2D resolution, components::ColorModel color_model,
         Collection<T> elements
     ) {
-        const auto data_type = get_data_type(elements.data());
+        const auto datatype = get_datatype(elements.data());
         const auto bytes = elements.to_uint8();
-        return from_color_model_and_bytes(resolution, color_model, data_type, bytes);
+        return from_color_model_and_bytes(resolution, color_model, datatype, bytes);
     }
 
     template <typename T>
@@ -51,9 +51,9 @@ namespace rerun::archetypes {
         components::Resolution2D resolution, components::ColorModel color_model,
         std::vector<T> elements
     ) {
-        const auto data_type = get_data_type(elements.data());
+        const auto datatype = get_datatype(elements.data());
         const auto bytes = Collection<T>::take_ownership(std::move(elements)).to_uint8();
-        return from_color_model_and_bytes(resolution, color_model, data_type, bytes);
+        return from_color_model_and_bytes(resolution, color_model, datatype, bytes);
     }
 
     /// Assumes RGB, 8-bit per channel, packed as `RGBRGBRGB…`.
@@ -61,7 +61,7 @@ namespace rerun::archetypes {
         return Image::from_color_model_and_bytes(
             resolution,
             components::ColorModel::RGB,
-            components::ChannelDataType::U8,
+            components::ChannelDatatype::U8,
             bytes
         );
     }
@@ -71,7 +71,7 @@ namespace rerun::archetypes {
         return Image::from_color_model_and_bytes(
             resolution,
             components::ColorModel::RGBA,
-            components::ChannelDataType::U8,
+            components::ChannelDatatype::U8,
             bytes
         );
     }

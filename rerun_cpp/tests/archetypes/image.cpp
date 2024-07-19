@@ -18,7 +18,7 @@ SCENARIO("Image archetype can be created" TEST_TAG) {
                 return Image::from_color_model_and_bytes(
                     {10, 10},
                     ColorModel::L,
-                    ChannelDataType::U8,
+                    ChannelDatatype::U8,
                     data
                 );
             });
