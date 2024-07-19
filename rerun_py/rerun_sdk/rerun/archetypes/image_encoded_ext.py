@@ -147,10 +147,11 @@ class ImageEncodedExt:
         from . import Image
 
         with catch_and_log_exceptions(context="Image compression"):
-            color_model = ColorModel(color_model)
-            if color_model == ColorModel.L:
+            if isinstance(color_model, ColorModel):
+                color_model = str(color_model)
+            if color_model == "L":
                 mode = "L"
-            elif color_model == ColorModel.RGB:
+            elif color_model == "RGB":
                 mode = "RGB"
             else:
                 # TODO(#2340): BGR support!
