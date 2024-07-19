@@ -291,11 +291,16 @@ pub fn instance_path_parts_buttons(
     .response
 }
 
-fn entity_tree_stats_ui(ui: &mut egui::Ui, timeline: &Timeline, tree: &EntityTree) {
+fn entity_tree_stats_ui(
+    ui: &mut egui::Ui,
+    timeline: &Timeline,
+    db: &re_entity_db::EntityDb,
+    tree: &EntityTree,
+) {
     use re_format::format_bytes;
 
     // Show total bytes used in whole subtree
-    let total_bytes = tree.subtree.data_bytes();
+    let total_bytes = db.size_of_subtree_on_timeline(timeline, &tree.path);
 
     let subtree_caveat = if tree.children.is_empty() {
         ""
@@ -548,7 +553,7 @@ pub fn instance_hover_card_ui(
 
     if instance_path.instance.is_all() {
         if let Some(subtree) = ctx.recording().tree().subtree(&instance_path.entity_path) {
-            entity_tree_stats_ui(ui, &query.timeline(), subtree);
+            entity_tree_stats_ui(ui, &query.timeline(), db, subtree);
         }
     } else {
         // TODO(emilk): per-component stats
