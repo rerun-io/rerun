@@ -231,6 +231,7 @@ fn mesh_texture_from_tensor_data(
     })
     .map_err(|err| anyhow::format_err!("{err}"))
 }
+
 fn texture_height_width_channels(
     tensor: &re_types::datatypes::TensorData,
 ) -> anyhow::Result<[u32; 3]> {

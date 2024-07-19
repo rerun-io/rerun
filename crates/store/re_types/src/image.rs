@@ -56,12 +56,15 @@ pub trait ImageChannelType: bytemuck::Pod {
 impl ImageChannelType for u8 {
     const CHANNEL_TYPE: ChannelDataType = ChannelDataType::U8;
 }
+
 impl ImageChannelType for u16 {
     const CHANNEL_TYPE: ChannelDataType = ChannelDataType::U16;
 }
+
 impl ImageChannelType for u32 {
     const CHANNEL_TYPE: ChannelDataType = ChannelDataType::U32;
 }
+
 impl ImageChannelType for u64 {
     const CHANNEL_TYPE: ChannelDataType = ChannelDataType::U64;
 }
@@ -69,12 +72,15 @@ impl ImageChannelType for u64 {
 impl ImageChannelType for i8 {
     const CHANNEL_TYPE: ChannelDataType = ChannelDataType::I8;
 }
+
 impl ImageChannelType for i16 {
     const CHANNEL_TYPE: ChannelDataType = ChannelDataType::I16;
 }
+
 impl ImageChannelType for i32 {
     const CHANNEL_TYPE: ChannelDataType = ChannelDataType::I32;
 }
+
 impl ImageChannelType for i64 {
     const CHANNEL_TYPE: ChannelDataType = ChannelDataType::I64;
 }
@@ -82,9 +88,11 @@ impl ImageChannelType for i64 {
 impl ImageChannelType for half::f16 {
     const CHANNEL_TYPE: ChannelDataType = ChannelDataType::F16;
 }
+
 impl ImageChannelType for f32 {
     const CHANNEL_TYPE: ChannelDataType = ChannelDataType::F32;
 }
+
 impl ImageChannelType for f64 {
     const CHANNEL_TYPE: ChannelDataType = ChannelDataType::F64;
 }
