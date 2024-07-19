@@ -29,7 +29,7 @@ class PixelFormat(Enum):
     e.g. `RGB` and `U8` respectively.
 
     However, some image formats has chroma downsampling and/or
-    use differing number of bits per channel, and that is what this [`archetypes.PixelFormat`][rerun.archetypes.PixelFormat] is for.
+    use differing number of bits per channel, and that is what this [`components.PixelFormat`][rerun.components.PixelFormat] is for.
 
     All these formats support random access.
 

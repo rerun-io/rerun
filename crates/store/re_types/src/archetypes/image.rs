@@ -76,7 +76,7 @@ pub struct Image {
 
     /// Used mainly for chroma downsampled formats and differing number of bits per channel.
     ///
-    /// If specified, this takes precedence over [`both components::ColorModel`][crate::both components::ColorModel] and [`components::ChannelDataType`][crate::components::ChannelDataType] (which are ignored).
+    /// If specified, this takes precedence over both [`components::ColorModel`][crate::components::ColorModel] and [`components::ChannelDataType`][crate::components::ChannelDataType] (which are ignored).
     pub pixel_format: Option<crate::components::PixelFormat>,
 
     /// L, RGB, RGBA, …
@@ -351,7 +351,7 @@ impl Image {
 
     /// Used mainly for chroma downsampled formats and differing number of bits per channel.
     ///
-    /// If specified, this takes precedence over [`both components::ColorModel`][crate::both components::ColorModel] and [`components::ChannelDataType`][crate::components::ChannelDataType] (which are ignored).
+    /// If specified, this takes precedence over both [`components::ColorModel`][crate::components::ColorModel] and [`components::ChannelDataType`][crate::components::ChannelDataType] (which are ignored).
     #[inline]
     pub fn with_pixel_format(
         mut self,

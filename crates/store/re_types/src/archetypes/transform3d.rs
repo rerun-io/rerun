@@ -26,7 +26,6 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 ///
 /// Each transform component can be listed multiple times, but transform tree propagation is only possible
 /// if there's only one instance for each transform component.
-/// TODO(#6831): write more about the exact interaction with the to be written `OutOfTreeTransform` component.
 ///
 /// ## Examples
 ///

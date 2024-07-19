@@ -43,7 +43,7 @@ table Image (
 
   /// Used mainly for chroma downsampled formats and differing number of bits per channel.
   ///
-  /// If specified, this takes precedence over [both components.ColorModel] and [components.ChannelDataType] (which are ignored).
+  /// If specified, this takes precedence over both [components.ColorModel] and [components.ChannelDataType] (which are ignored).
   pixel_format: rerun.components.PixelFormat ("attr.rerun.component_optional", nullable, order: 2000);
 
   /// L, RGB, RGBA, …

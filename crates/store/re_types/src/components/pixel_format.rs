@@ -24,7 +24,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 /// e.g. `RGB` and `U8` respectively.
 ///
 /// However, some image formats has chroma downsampling and/or
-/// use differing number of bits per channel, and that is what this [`archetypes::PixelFormat`][crate::archetypes::PixelFormat] is for.
+/// use differing number of bits per channel, and that is what this [`components::PixelFormat`][crate::components::PixelFormat] is for.
 ///
 /// All these formats support random access.
 ///

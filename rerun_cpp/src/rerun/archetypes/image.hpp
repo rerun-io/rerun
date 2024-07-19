@@ -84,7 +84,7 @@ namespace rerun::archetypes {
 
         /// Used mainly for chroma downsampled formats and differing number of bits per channel.
         ///
-        /// If specified, this takes precedence over `both components::ColorModel` and `components::ChannelDataType` (which are ignored).
+        /// If specified, this takes precedence over both `components::ColorModel` and `components::ChannelDataType` (which are ignored).
         std::optional<rerun::components::PixelFormat> pixel_format;
 
         /// L, RGB, RGBA, …
@@ -185,7 +185,7 @@ namespace rerun::archetypes {
 
         /// Used mainly for chroma downsampled formats and differing number of bits per channel.
         ///
-        /// If specified, this takes precedence over `both components::ColorModel` and `components::ChannelDataType` (which are ignored).
+        /// If specified, this takes precedence over both `components::ColorModel` and `components::ChannelDataType` (which are ignored).
         Image with_pixel_format(rerun::components::PixelFormat _pixel_format) && {
             pixel_format = std::move(_pixel_format);
             // See: https://github.com/rerun-io/rerun/issues/4027

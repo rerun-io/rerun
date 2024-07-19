@@ -7,7 +7,7 @@ title: "Ellipsoids"
 
 This archetype is for ellipsoids or spheres whose size is a key part of the data
 (e.g. a bounding sphere).
-For points whose radii are for the sake of visualization, use `Points3D` instead.
+For points whose radii are for the sake of visualization, use [`archetypes.Points3D`](https://rerun.io/docs/reference/types/archetypes/points3d) instead.
 
 Currently, ellipsoids are always rendered as wireframes.
 Opaque and transparent rendering will be supported later.

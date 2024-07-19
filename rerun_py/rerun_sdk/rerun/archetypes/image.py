@@ -110,7 +110,7 @@ class Image(ImageExt, Archetype):
     )
     # Used mainly for chroma downsampled formats and differing number of bits per channel.
     #
-    # If specified, this takes precedence over [`both components.ColorModel`][rerun.both components.ColorModel] and [`components.ChannelDataType`][rerun.components.ChannelDataType] (which are ignored).
+    # If specified, this takes precedence over both [`components.ColorModel`][rerun.components.ColorModel] and [`components.ChannelDataType`][rerun.components.ChannelDataType] (which are ignored).
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 
