@@ -147,7 +147,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 ///                 r_moon.sin() * d_moon,
 ///                 0.0,
 ///             ])
-///             .from_parent(),
+///             .with_relation(rerun::TransformRelation::ChildFromParent),
 ///         )?;
 ///     }
 ///
