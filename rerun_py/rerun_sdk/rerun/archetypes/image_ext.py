@@ -9,7 +9,6 @@ import numpy.typing as npt
 from rerun.components.color_model import ColorModel, ColorModelLike
 from rerun.components.pixel_format import PixelFormatLike
 
-from .._validators import find_non_empty_dim_indices
 from ..components import ChannelDatatype, Resolution2D
 from ..datatypes import Float32Like
 from ..error_utils import _send_warning_or_raise, catch_and_log_exceptions
@@ -196,15 +195,15 @@ class ImageExt:
         """
         Converts an `Image` to an [`rerun.ImageEncoded`][] using JPEG compression.
 
-        JPEG compression works best for photographs. Only RGB or Mono images are
+        JPEG compression works best for photographs. Only RGB and graysacle images are
         supported, not RGBA. Note that compressing to JPEG costs a bit of CPU time,
         both when logging and later when viewing them.
 
         Parameters
         ----------
         jpeg_quality:
-            Higher quality = larger file size. A quality of 95 still saves a lot
-            of space, but is visually very similar.
+            Higher quality = larger file size.
+            A quality of 95 saves a lot of space, but is still visually very similar.
 
         """
 
@@ -216,19 +215,25 @@ class ImageExt:
         self = cast(Image, self)
 
         with catch_and_log_exceptions(context="Image compression"):
-            tensor_data_arrow = self.data.as_arrow_array()
+            if self.datatype is None:
+                raise ValueError("Image ChannelDatatype is required to compress")
+            if self.color_model is None:
+                raise ValueError("Image ColorModel is required to compress")
 
-            shape_dims = tensor_data_arrow[0].value["shape"].values.field(0).to_numpy()
-            non_empty_dims = find_non_empty_dim_indices(shape_dims)
-            filtered_shape = shape_dims[non_empty_dims]
-            if len(filtered_shape) == 2:
+            array_flat = np.frombuffer(self.data, dtype=self.datatype.np_dtype())
+            image_array = array_flat.reshape([
+                self.resolution.height(),
+                self.resolution.width(),
+                self.color_model.num_channels(),
+            ])
+
+            if self.color_model == "L":
                 mode = "L"
-            elif len(filtered_shape) == 3 and filtered_shape[-1] == 3:
+            elif self.color_model == "RGB":
                 mode = "RGB"
             else:
-                raise ValueError("Only RGB or Mono images are supported for JPEG compression")
-
-            image_array = tensor_data_arrow[0].value["buffer"].value.values.to_numpy().reshape(filtered_shape)
+                # TODO: BGR support!
+                raise ValueError(f"Cannot JPEG compress an image of type {self.color_model}")
 
             if image_array.dtype not in ["uint8", "sint32", "float32"]:
                 # Convert to a format supported by Image.fromarray
