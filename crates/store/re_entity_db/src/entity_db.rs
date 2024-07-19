@@ -9,8 +9,8 @@ use re_chunk_store::{
     GarbageCollectionTarget,
 };
 use re_log_types::{
-    ApplicationId, ComponentPath, EntityPath, EntityPathHash, LogMsg, ResolvedTimeRange,
-    ResolvedTimeRangeF, SetStoreInfo, StoreId, StoreInfo, StoreKind, Timeline,
+    ApplicationId, EntityPath, EntityPathHash, LogMsg, ResolvedTimeRange, ResolvedTimeRangeF,
+    SetStoreInfo, StoreId, StoreInfo, StoreKind, Timeline,
 };
 
 use crate::{Error, TimesPerTimeline};
@@ -268,24 +268,6 @@ impl EntityDb {
     /// Histogram of all events on the timeeline, of all entities.
     pub fn time_histogram(&self, timeline: &Timeline) -> Option<&crate::TimeHistogram> {
         self.tree().subtree.time_histogram.get(timeline)
-    }
-
-    /// Total number of static messages for any entity.
-    pub fn num_static_messages(&self) -> u64 {
-        self.tree.num_static_messages_recursive()
-    }
-
-    /// Returns whether a component is static.
-    pub fn is_component_static(&self, component_path: &ComponentPath) -> Option<bool> {
-        if let Some(entity_tree) = self.tree().subtree(component_path.entity_path()) {
-            entity_tree
-                .entity
-                .components
-                .get(&component_path.component_name)
-                .map(|component_histogram| component_histogram.is_static())
-        } else {
-            None
-        }
     }
 
     #[inline]

@@ -216,24 +216,8 @@ impl EntityTree {
         self.children.is_empty()
     }
 
-    pub fn num_children_and_fields(&self) -> usize {
-        self.children.len() + self.entity.components.len()
-    }
-
-    /// Number of timeless messages in this tree, or any child, recursively.
-    pub fn num_static_messages_recursive(&self) -> u64 {
-        self.subtree.time_histogram.num_static_messages()
-    }
-
-    pub fn time_histogram_for_component(
-        &self,
-        timeline: &Timeline,
-        component_name: impl Into<ComponentName>,
-    ) -> Option<&crate::TimeHistogram> {
-        self.entity
-            .components
-            .get(&component_name.into())
-            .and_then(|per_timeline| per_timeline.get(timeline))
+    pub fn num_children(&self) -> usize {
+        self.children.len()
     }
 
     /// Updates the [`EntityTree`] by applying a batch of [`ChunkStoreEvent`]s.
@@ -348,7 +332,7 @@ impl EntityTree {
 
         children.retain(|_, child| {
             child.on_store_deletions(&subtree_events);
-            child.num_children_and_fields() > 0
+            child.num_children() > 0
         });
     }
 
