@@ -3,7 +3,7 @@ title = "Human pose tracking"
 tags = ["MediaPipe", "Keypoint detection", "2D", "3D"]
 thumbnail = "https://static.rerun.io/human-pose-tracking/5d62a38b48bed1467698d4dc95c1f9fba786d254/480w.png"
 thumbnail_dimensions = [480, 480]
-# channel = "main" # TODO(#6901)
+channel = "main"
 -->
 
 Use the [MediaPipe Pose Landmark Detection](https://developers.google.com/mediapipe/solutions/vision/pose_landmarker) solution to detect and track a human pose in video.

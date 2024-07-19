@@ -145,7 +145,7 @@ jobs:
           workload_identity_provider: ${{ secrets.GOOGLE_WORKLOAD_IDENTITY_PROVIDER }}
           service_account: ${{ secrets.GOOGLE_SERVICE_ACCOUNT }}
 
-      - uses: prefix-dev/setup-pixi@v0.6.0
+      - uses: prefix-dev/setup-pixi@v0.8.1
         with:
           pixi-version: v0.25.0
           environments: wheel-test
@@ -161,15 +161,12 @@ jobs:
         run: pixi run -e wheel-test 'echo "wheel_version=$(python scripts/ci/crates.py get-version)"' >> "$GITHUB_OUTPUT"
 
       - name: Install built wheel
-        # Now install the wheel using a specific version and --no-index to guarantee we get the version from
-        # the pre-dist folder. Note we don't use --force-reinstall here because --no-index means it wouldn't
-        # find the dependencies to reinstall them.
         run: |
-          pixi run -e wheel-test pip uninstall rerun-sdk
-          pixi run -e wheel-test pip install rerun-sdk==${{ steps.get-version.outputs.wheel_version }} --no-index --find-links wheel
+          pixi run python scripts/ci/pixi_install_wheel.py --feature python-pypi --package rerun-sdk --dir wheel
 
       - name: Print wheel version
         run: |
+          pixi list -e wheel-test | grep rerun_sdk
           pixi run -e wheel-test python -m rerun --version
           pixi run -e wheel-test which rerun
           pixi run -e wheel-test rerun-from-path  --version

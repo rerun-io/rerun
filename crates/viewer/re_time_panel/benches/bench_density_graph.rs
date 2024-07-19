@@ -90,8 +90,8 @@ fn add_data(
         log_times.push(time);
 
         if !sorted {
-            let mut rng = rand::thread_rng();
-            use rand::seq::SliceRandom as _;
+            use rand::{seq::SliceRandom as _, SeedableRng as _};
+            let mut rng = rand::rngs::StdRng::seed_from_u64(0xbadf00d);
             log_times.shuffle(&mut rng);
         }
 
