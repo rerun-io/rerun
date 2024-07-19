@@ -1,15 +1,12 @@
 use std::collections::BTreeMap;
 
 use ahash::HashSet;
-use itertools::Itertools;
 use nohash_hasher::IntMap;
 
 use re_chunk::RowId;
 use re_chunk_store::{ChunkStore, ChunkStoreDiffKind, ChunkStoreEvent, ChunkStoreSubscriber};
 use re_log_types::{EntityPath, EntityPathHash, EntityPathPart, TimeInt, Timeline};
 use re_types_core::ComponentName;
-
-use crate::TimeHistogramPerTimeline;
 
 // ----------------------------------------------------------------------------
 
@@ -22,9 +19,6 @@ pub struct EntityTree {
 
     /// Direct descendants of this (sub)tree.
     pub children: BTreeMap<EntityPathPart, EntityTree>,
-
-    /// Info about this subtree, including all children, recursively.
-    pub subtree: SubtreeInfo,
 }
 
 // NOTE: This is only to let people know that this is in fact a [`ChunkStoreSubscriber`], so they A) don't try
@@ -47,86 +41,6 @@ impl ChunkStoreSubscriber for EntityTree {
         unimplemented!(
             r"EntityTree view is maintained manually, see `EntityTree::on_store_{{additions|deletions}}`"
         );
-    }
-}
-
-/// Information about this specific entity (excluding children).
-#[derive(Default)]
-pub struct EntityInfo {
-    /// Flat time histograms for each component of this [`EntityTree`].
-    ///
-    /// Keeps track of the _number of times a component is logged_ per time per timeline, only for
-    /// this specific [`EntityTree`].
-    /// A component logged twice at the same timestamp is counted twice.
-    ///
-    /// ⚠ Auto-generated instance keys are _not_ accounted for. ⚠
-    pub components: BTreeMap<ComponentName, TimeHistogramPerTimeline>,
-}
-
-/// Info about stuff at a given [`EntityPath`], including all of its children, recursively.
-#[derive(Default)]
-pub struct SubtreeInfo {
-    /// Recursive time histogram for this [`EntityTree`].
-    ///
-    /// Keeps track of the _number of components logged_ per time per timeline, recursively across
-    /// all of the [`EntityTree`]'s children.
-    /// A component logged twice at the same timestamp is counted twice.
-    ///
-    /// ⚠ Auto-generated instance keys are _not_ accounted for. ⚠
-    pub time_histogram: TimeHistogramPerTimeline,
-
-    /// Number of bytes used by all arrow data
-    data_bytes: u64,
-}
-
-impl SubtreeInfo {
-    /// Assumes the event has been filtered to be part of this subtree.
-    fn on_event(&mut self, event: &ChunkStoreEvent) {
-        use re_types_core::SizeBytes as _;
-
-        match event.kind {
-            ChunkStoreDiffKind::Addition => {
-                let times = event
-                    .chunk
-                    .timelines()
-                    .iter()
-                    .map(|(&timeline, time_chunk)| (timeline, time_chunk.times_raw()))
-                    .collect_vec();
-                self.time_histogram.add(&times, event.num_components() as _);
-
-                self.data_bytes += event.chunk.total_size_bytes();
-            }
-            ChunkStoreDiffKind::Deletion => {
-                let times = event
-                    .chunk
-                    .timelines()
-                    .iter()
-                    .map(|(&timeline, time_chunk)| (timeline, time_chunk.times_raw()))
-                    .collect_vec();
-                self.time_histogram
-                    .remove(&times, event.num_components() as _);
-
-                let removed_bytes = event.chunk.total_size_bytes();
-                self.data_bytes
-                    .checked_sub(removed_bytes)
-                    .unwrap_or_else(|| {
-                        re_log::debug!(
-                            store_id = %event.store_id,
-                            entity_path = %event.chunk.entity_path(),
-                            current = self.data_bytes,
-                            removed = removed_bytes,
-                            "book keeping underflowed"
-                        );
-                        u64::MIN
-                    });
-            }
-        }
-    }
-
-    /// Number of bytes used by all arrow data in this tree (including their schemas, but otherwise ignoring book-keeping overhead).
-    #[inline]
-    pub fn data_bytes(&self) -> u64 {
-        self.data_bytes
     }
 }
 
@@ -199,7 +113,6 @@ impl EntityTree {
         Self {
             path,
             children: Default::default(),
-            subtree: Default::default(),
         }
     }
 
@@ -234,45 +147,23 @@ impl EntityTree {
 
         // Book-keeping for each level in the hierarchy:
         let mut tree = self;
-        tree.subtree.on_event(event);
-
         for (i, part) in entity_path.iter().enumerate() {
             tree = tree
                 .children
                 .entry(part.clone())
                 .or_insert_with(|| Self::new(entity_path.as_slice()[..=i].into()));
-            tree.subtree.on_event(event);
         }
     }
 
     /// Updates the [`EntityTree`] by applying a batch of [`ChunkStoreEvent`]s.
     ///
     /// Only reacts to deletions (`event.kind == StoreDiffKind::Deletion`).
-    pub fn on_store_deletions(
-        &mut self,
-        data_store: &ChunkStore,
-        store_events: &[ChunkStoreEvent],
-    ) {
+    pub fn on_store_deletions(&mut self, data_store: &ChunkStore) {
         re_tracing::profile_function!();
-
-        // Only keep events relevant to this branch of the tree.
-        let subtree_events = store_events
-            .iter()
-            .filter(|e| e.kind == ChunkStoreDiffKind::Deletion)
-            .filter(|&e| e.diff.chunk.entity_path().starts_with(&self.path))
-            .cloned()
-            .collect_vec();
-
-        {
-            re_tracing::profile_scope!("subtree");
-            for event in &subtree_events {
-                self.subtree.on_event(event);
-            }
-        }
 
         self.children.retain(|_, entity| {
             // this is placed first, because we'll only know if the child entity is empty after telling it to clear itself.
-            entity.on_store_deletions(data_store, &subtree_events);
+            entity.on_store_deletions(data_store);
 
             !entity.is_empty(data_store)
         });

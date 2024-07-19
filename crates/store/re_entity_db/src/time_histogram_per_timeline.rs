@@ -1,5 +1,7 @@
 use std::collections::BTreeMap;
 
+use itertools::Itertools as _;
+use re_chunk_store::ChunkStoreDiffKind;
 use re_chunk_store::{ChunkStoreEvent, ChunkStoreSubscriber};
 use re_log_types::Timeline;
 
@@ -132,9 +134,22 @@ impl ChunkStoreSubscriber for TimeHistogramPerTimeline {
     }
 
     #[allow(clippy::unimplemented)]
-    fn on_events(&mut self, _events: &[ChunkStoreEvent]) {
-        unimplemented!(
-            r"TimeHistogramPerTimeline view is maintained as a sub-view of `EntityTree`",
-        );
+    fn on_events(&mut self, events: &[ChunkStoreEvent]) {
+        for event in events {
+            let times = event
+                .chunk
+                .timelines()
+                .iter()
+                .map(|(&timeline, time_chunk)| (timeline, time_chunk.times_raw()))
+                .collect_vec();
+            match event.kind {
+                ChunkStoreDiffKind::Addition => {
+                    self.add(&times, event.num_components() as _);
+                }
+                ChunkStoreDiffKind::Deletion => {
+                    self.remove(&times, event.num_components() as _);
+                }
+            }
+        }
     }
 }

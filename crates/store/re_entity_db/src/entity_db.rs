@@ -53,6 +53,9 @@ pub struct EntityDb {
     /// Used for time control.
     times_per_timeline: TimesPerTimeline,
 
+    /// A time histogram of all entities, for every timeline.
+    time_histogram_per_timeline: crate::TimeHistogramPerTimeline,
+
     /// A tree-view (split on path components) of the entities.
     tree: crate::EntityTree,
 
@@ -85,6 +88,7 @@ impl EntityDb {
             entity_path_from_hash: Default::default(),
             times_per_timeline: Default::default(),
             tree: crate::EntityTree::root(),
+            time_histogram_per_timeline: Default::default(),
             data_store,
             resolver: re_query::PromiseResolver::default(),
             query_caches,
@@ -267,7 +271,7 @@ impl EntityDb {
 
     /// Histogram of all events on the timeeline, of all entities.
     pub fn time_histogram(&self, timeline: &Timeline) -> Option<&crate::TimeHistogram> {
-        self.tree().subtree.time_histogram.get(timeline)
+        self.time_histogram_per_timeline.get(timeline)
     }
 
     #[inline]
@@ -365,12 +369,11 @@ impl EntityDb {
         {
             // Update our internal views by notifying them of resulting [`ChunkStoreEvent`]s.
             self.times_per_timeline.on_events(&store_events);
+            self.time_histogram_per_timeline.on_events(&store_events);
             self.query_caches.on_events(&store_events);
             self.tree.on_store_additions(&store_events);
-
             // Tree deletions depend on data store, so data store must have been notified of deletions already.
-            self.tree
-                .on_store_deletions(&self.data_store, &store_events);
+            self.tree.on_store_deletions(&self.data_store);
 
             // We inform the stats last, since it measures e2e latency.
             self.stats.on_events(&store_events);
@@ -430,9 +433,10 @@ impl EntityDb {
 
         self.times_per_timeline.on_events(store_events);
         self.query_caches.on_events(store_events);
+        self.time_histogram_per_timeline.on_events(store_events);
 
         // Tree deletions depend on data store, so data store must have been notified of deletions already.
-        self.tree.on_store_deletions(&self.data_store, store_events);
+        self.tree.on_store_deletions(&self.data_store);
     }
 
     /// Key used for sorting recordings in the UI.
