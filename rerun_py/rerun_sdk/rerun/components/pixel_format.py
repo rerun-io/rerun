@@ -51,6 +51,15 @@ class PixelFormat(Enum):
     The order of the channels is Y0, U0, Y1, V0, all in the same plane.
     """
 
+    def __str__(self) -> str:
+        """Returns the variant name."""
+        if self == PixelFormat.NV12:
+            return "NV12"
+        elif self == PixelFormat.YUY2:
+            return "YUY2"
+        else:
+            raise ValueError("Unknown enum variant")
+
 
 PixelFormatLike = Union[PixelFormat, Literal["NV12", "YUY2", "nv12", "yuy2"]]
 PixelFormatArrayLike = Union[PixelFormatLike, Sequence[PixelFormatLike]]

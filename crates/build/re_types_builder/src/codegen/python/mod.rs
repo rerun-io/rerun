@@ -827,7 +827,9 @@ fn code_for_enum(
         ObjectKind::Datatype | ObjectKind::Component
     ));
 
-    let Object { name, .. } = obj;
+    let Object {
+        name: enum_name, ..
+    } = obj;
 
     let mut code = String::new();
 
@@ -846,7 +848,7 @@ fn code_for_enum(
         superclasses.push("Enum".to_owned());
         superclasses.join(",")
     };
-    code.push_str(&format!("class {name}({superclasses}):\n"));
+    code.push_str(&format!("class {enum_name}({superclasses}):\n"));
     code.push_indented(1, quote_obj_docs(reporter, objects, obj), 0);
 
     for (i, variant) in obj.fields.iter().enumerate() {
@@ -882,6 +884,26 @@ fn code_for_enum(
         }
     }
 
+    // -------------------------------------------------------
+
+    // OVerload `__str__`:
+    code.push_indented(1, "def __str__(self) -> str:", 1);
+    code.push_indented(2, "'''Returns the variant name'''", 1);
+
+    for (i, variant) in obj.fields.iter().enumerate() {
+        let variant_name = &variant.name;
+        if i == 0 {
+            code.push_indented(2, format!("if self == {enum_name}.{variant_name}:"), 1);
+        } else {
+            code.push_indented(2, format!("elif self == {enum_name}.{variant_name}:"), 1);
+        }
+        code.push_indented(3, format!("return '{variant_name}'"), 1);
+    }
+    code.push_indented(2, "else:", 1);
+    code.push_indented(3, "raise ValueError('Unknown enum variant')", 3);
+
+    // -------------------------------------------------------
+
     let variants = format!(
         "Literal[{}]",
         itertools::chain!(
@@ -896,13 +918,16 @@ fn code_for_enum(
         .dedup()
         .join(", ")
     );
-    code.push_unindented(format!("{name}Like = Union[{name}, {variants}]"), 1);
+    code.push_unindented(
+        format!("{enum_name}Like = Union[{enum_name}, {variants}]"),
+        1,
+    );
     code.push_unindented(
         format!(
             r#"
-            {name}ArrayLike = Union[
-                {name}Like,
-                Sequence[{name}Like]
+            {enum_name}ArrayLike = Union[
+                {enum_name}Like,
+                Sequence[{enum_name}Like]
             ]
             "#,
         ),

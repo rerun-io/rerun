@@ -37,6 +37,17 @@ class ColorModel(Enum):
     RGBA = 3
     """Red, Green, Blue, Alpha"""
 
+    def __str__(self) -> str:
+        """Returns the variant name."""
+        if self == ColorModel.L:
+            return "L"
+        elif self == ColorModel.RGB:
+            return "RGB"
+        elif self == ColorModel.RGBA:
+            return "RGBA"
+        else:
+            raise ValueError("Unknown enum variant")
+
 
 ColorModelLike = Union[ColorModel, Literal["L", "RGB", "RGBA", "l", "rgb", "rgba"]]
 ColorModelArrayLike = Union[ColorModelLike, Sequence[ColorModelLike]]

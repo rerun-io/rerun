@@ -68,6 +68,33 @@ class ChannelDatatype(ChannelDatatypeExt, Enum):
     F64 = 11
     """64-bit IEEE-754 floating point, also known as `double`."""
 
+    def __str__(self) -> str:
+        """Returns the variant name."""
+        if self == ChannelDatatype.U8:
+            return "U8"
+        elif self == ChannelDatatype.U16:
+            return "U16"
+        elif self == ChannelDatatype.U32:
+            return "U32"
+        elif self == ChannelDatatype.U64:
+            return "U64"
+        elif self == ChannelDatatype.I8:
+            return "I8"
+        elif self == ChannelDatatype.I16:
+            return "I16"
+        elif self == ChannelDatatype.I32:
+            return "I32"
+        elif self == ChannelDatatype.I64:
+            return "I64"
+        elif self == ChannelDatatype.F16:
+            return "F16"
+        elif self == ChannelDatatype.F32:
+            return "F32"
+        elif self == ChannelDatatype.F64:
+            return "F64"
+        else:
+            raise ValueError("Unknown enum variant")
+
 
 ChannelDatatypeLike = Union[
     ChannelDatatype,

@@ -33,6 +33,17 @@ class PanelState(Enum):
     Expanded = 3
     """Fully expanded."""
 
+    def __str__(self) -> str:
+        """Returns the variant name."""
+        if self == PanelState.Hidden:
+            return "Hidden"
+        elif self == PanelState.Collapsed:
+            return "Collapsed"
+        elif self == PanelState.Expanded:
+            return "Expanded"
+        else:
+            raise ValueError("Unknown enum variant")
+
 
 PanelStateLike = Union[PanelState, Literal["Collapsed", "Expanded", "Hidden", "collapsed", "expanded", "hidden"]]
 PanelStateArrayLike = Union[PanelStateLike, Sequence[PanelStateLike]]

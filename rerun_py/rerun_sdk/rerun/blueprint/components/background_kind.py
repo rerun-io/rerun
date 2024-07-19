@@ -47,6 +47,17 @@ class BackgroundKind(Enum):
     SolidColor = 3
     """Simple uniform color."""
 
+    def __str__(self) -> str:
+        """Returns the variant name."""
+        if self == BackgroundKind.GradientDark:
+            return "GradientDark"
+        elif self == BackgroundKind.GradientBright:
+            return "GradientBright"
+        elif self == BackgroundKind.SolidColor:
+            return "SolidColor"
+        else:
+            raise ValueError("Unknown enum variant")
+
 
 BackgroundKindLike = Union[
     BackgroundKind,
