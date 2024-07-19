@@ -225,22 +225,15 @@ def _build_buffer_array(buffer: TensorBufferLike) -> pa.Array:
 
     data_type = TensorBufferType().storage_type
 
-    kind = None
     if isinstance(buffer, TensorBuffer):
-        kind = buffer.kind
         buffer = buffer.inner
 
     buffer = buffer.flatten()
 
     data_inner = pa.ListArray.from_arrays(pa.array([0, len(buffer)]), buffer)
 
-    if kind == "nv12":
-        discriminant = "NV12"
-    elif kind == "yuy2":
-        discriminant = "YUY2"
-    else:
-        assert buffer.dtype.type in DTYPE_MAP, f"Failed to find {buffer.dtype.type} in f{DTYPE_MAP}"
-        discriminant = DTYPE_MAP[buffer.dtype.type]
+    assert buffer.dtype.type in DTYPE_MAP, f"Failed to find {buffer.dtype.type} in f{DTYPE_MAP}"
+    discriminant = DTYPE_MAP[buffer.dtype.type]
 
     return build_dense_union(
         data_type,
