@@ -218,7 +218,7 @@ class ImageExt:
             elif self.color_model == "RGB":
                 mode = "RGB"
             else:
-                # TODO: BGR support!
+                # TODO(#2340): BGR support!
                 raise ValueError(f"Cannot JPEG compress an image of type {self.color_model}")
 
             if image_array.dtype not in ["uint8", "sint32", "float32"]:
