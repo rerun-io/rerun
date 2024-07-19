@@ -571,6 +571,28 @@ impl EntityDb {
 
         Ok(new_db)
     }
+
+    /// Returns the byte size of an entity and all its children on the given timeline, recursively.
+    ///
+    /// This includes static data.
+    pub fn size_of_subtree_on_timeline(
+        &self,
+        timeline: &Timeline,
+        entity_path: &EntityPath,
+    ) -> usize {
+        re_tracing::profile_function!();
+
+        let Some(subtree) = self.tree.subtree(entity_path) else {
+            return 0;
+        };
+
+        let mut size = 0;
+        subtree.visit_children_recursively(|path, _| {
+            size += self.store().size_of_entity_on_timeline(timeline, path);
+        });
+
+        size
+    }
 }
 
 impl re_types_core::SizeBytes for EntityDb {

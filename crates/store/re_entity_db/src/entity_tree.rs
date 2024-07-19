@@ -367,10 +367,14 @@ impl EntityTree {
     }
 
     // Invokes visitor for `self` and all children recursively.
-    pub fn visit_children_recursively(&self, visitor: &mut impl FnMut(&EntityPath, &EntityInfo)) {
-        visitor(&self.path, &self.entity);
-        for child in self.children.values() {
-            child.visit_children_recursively(visitor);
+    pub fn visit_children_recursively(&self, mut visitor: impl FnMut(&EntityPath, &EntityInfo)) {
+        fn visit(this: &EntityTree, visitor: &mut impl FnMut(&EntityPath, &EntityInfo)) {
+            visitor(&this.path, &this.entity);
+            for child in this.children.values() {
+                visit(child, visitor);
+            }
         }
+
+        visit(self, &mut visitor);
     }
 }

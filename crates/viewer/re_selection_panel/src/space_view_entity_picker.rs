@@ -326,7 +326,7 @@ fn create_entity_add_info(
         &space_view.space_origin,
     );
 
-    tree.visit_children_recursively(&mut |entity_path, _| {
+    tree.visit_children_recursively(|entity_path, _| {
         let can_add: CanAddToSpaceView =
             if visualizable_entities.iter().any(|(_, entities)| entities.contains(entity_path)) {
                 CanAddToSpaceView::Compatible {
