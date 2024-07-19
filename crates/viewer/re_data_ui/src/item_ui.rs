@@ -398,7 +398,10 @@ pub fn component_path_button_to(
     db: &re_entity_db::EntityDb,
 ) -> egui::Response {
     let item = Item::ComponentPath(component_path.clone());
-    let is_static = db.is_component_static(component_path).unwrap_or_default();
+    let is_static = db.store().entity_has_static_component(
+        component_path.entity_path(),
+        component_path.component_name(),
+    );
     let icon = if is_static {
         &icons::COMPONENT_STATIC
     } else {
