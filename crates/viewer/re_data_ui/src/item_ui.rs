@@ -315,14 +315,14 @@ fn entity_tree_stats_ui(
     let mut data_rate = None;
 
     // Try to estimate data-rate
-    if let Some(time_histogram) = tree.subtree.time_histogram.get(timeline) {
-        // `num_events` is approximate - we could be logging a Tensor image and a transform
-        // at _almost_ approximately the same time, but it should only count as one fence-post.
-        let num_events = time_histogram.total_count(); // TODO(emilk): we should ask the histogram to count the number of non-zero keys instead.
+    if db.store().entity_has_data_on_timeline(timeline, &tree.path) {
+        let num_events = db
+            .store()
+            .num_events_on_timeline_for_all_components(timeline, &tree.path);
 
-        if let (Some(min_time), Some(max_time)) =
-            (time_histogram.min_key(), time_histogram.max_key())
-        {
+        if let Some(time_range) = db.store().time_range_for_entity(timeline, &tree.path) {
+            let min_time = time_range.min();
+            let max_time = time_range.max();
             if min_time < max_time && 1 < num_events {
                 // Let's do our best to avoid fencepost errors.
                 // If we log 1 MiB once every second, then after three
@@ -333,9 +333,9 @@ fn entity_tree_stats_ui(
                 // t:       0s      1s      2s
                 // data:   1MiB    1MiB    1MiB
 
-                let duration = max_time - min_time;
+                let duration = max_time.as_f64() - min_time.as_f64();
 
-                let mut bytes_per_time = total_bytes as f64 / duration as f64;
+                let mut bytes_per_time = total_bytes as f64 / duration;
 
                 // Fencepost adjustment:
                 bytes_per_time *= (num_events - 1) as f64 / num_events as f64;
