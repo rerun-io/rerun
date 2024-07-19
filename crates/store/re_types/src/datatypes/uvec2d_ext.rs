@@ -24,6 +24,18 @@ impl UVec2D {
     pub fn y(&self) -> u32 {
         self.0[1]
     }
+
+    /// Assign a new x
+    #[inline]
+    pub fn set_x(&mut self, x: u32) {
+        self.0[0] = x;
+    }
+
+    /// Assign a new y
+    #[inline]
+    pub fn set_y(&mut self, y: u32) {
+        self.0[1] = y;
+    }
 }
 
 impl From<(u32, u32)> for UVec2D {

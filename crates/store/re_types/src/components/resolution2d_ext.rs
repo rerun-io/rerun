@@ -19,6 +19,18 @@ impl Resolution2D {
         self.0.y()
     }
 
+    /// Assign a new width
+    #[inline]
+    pub fn set_width(&mut self, width: u32) {
+        self.0.set_x(width);
+    }
+
+    /// Assign a new height
+    #[inline]
+    pub fn set_height(&mut self, height: u32) {
+        self.0.set_y(height);
+    }
+
     /// width * height
     #[inline]
     pub fn area(&self) -> usize {

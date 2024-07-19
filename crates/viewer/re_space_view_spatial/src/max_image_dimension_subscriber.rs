@@ -1,25 +1,19 @@
 use ahash::HashMap;
 use nohash_hasher::IntMap;
 use once_cell::sync::OnceCell;
+
 use re_chunk_store::{ChunkStore, ChunkStoreSubscriber, ChunkStoreSubscriberHandle};
 use re_log_types::{EntityPath, StoreId};
-use re_types::{components::TensorData, Loggable};
-
-#[derive(Default, Debug, Clone, PartialEq, Eq, Hash)]
-pub struct ImageDimensions {
-    pub height: u64,
-    pub width: u64,
-    pub channels: u64,
-}
+use re_types::{components::Resolution2D, Loggable};
 
 #[derive(Default, Debug, Clone)]
-pub struct MaxImageDimensions(IntMap<EntityPath, ImageDimensions>);
+pub struct MaxImageDimensions(IntMap<EntityPath, Resolution2D>);
 
 impl MaxImageDimensions {
     /// Accesses the image dimension information for a given store
     pub fn access<T>(
         store_id: &StoreId,
-        f: impl FnOnce(&IntMap<EntityPath, ImageDimensions>) -> T,
+        f: impl FnOnce(&IntMap<EntityPath, Resolution2D>) -> T,
     ) -> Option<T> {
         ChunkStore::with_subscriber_once(
             MaxImageDimensionSubscriber::subscription_handle(),
@@ -71,25 +65,22 @@ impl ChunkStoreSubscriber for MaxImageDimensionSubscriber {
                 continue;
             }
 
-            if let Some(all_tensor_data) = event.diff.chunk.components().get(&TensorData::name()) {
-                for tensor_data in all_tensor_data.iter().filter_map(|array| {
-                    array.and_then(|array| TensorData::from_arrow(&*array).ok()?.into_iter().next())
+            if let Some(all_dimensions) = event.diff.chunk.components().get(&Resolution2D::name()) {
+                for new_dim in all_dimensions.iter().filter_map(|array| {
+                    array.and_then(|array| {
+                        Resolution2D::from_arrow(&*array).ok()?.into_iter().next()
+                    })
                 }) {
-                    if let Some([height, width, channels]) =
-                        tensor_data.image_height_width_channels()
-                    {
-                        let dimensions = self
-                            .max_dimensions
-                            .entry(event.store_id.clone())
-                            .or_default()
-                            .0
-                            .entry(event.diff.chunk.entity_path().clone())
-                            .or_default();
+                    let max_dim = self
+                        .max_dimensions
+                        .entry(event.store_id.clone())
+                        .or_default()
+                        .0
+                        .entry(event.diff.chunk.entity_path().clone())
+                        .or_default();
 
-                        dimensions.height = dimensions.height.max(height);
-                        dimensions.width = dimensions.width.max(width);
-                        dimensions.channels = dimensions.channels.max(channels);
-                    }
+                    max_dim.set_height(max_dim.height().max(new_dim.height()));
+                    max_dim.set_width(max_dim.width().max(new_dim.width()));
                 }
             }
         }
