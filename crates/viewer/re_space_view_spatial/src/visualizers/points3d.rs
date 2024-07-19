@@ -149,6 +149,7 @@ impl Points3DVisualizer {
                     label_positions.iter().copied(),
                     data.labels,
                     &colors,
+                    &colors,
                     &annotation_infos,
                     ent_context.world_from_entity,
                 ));

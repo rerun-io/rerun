@@ -1,33 +1,32 @@
 use egui::Color32;
-use re_entity_db::{EntityPath, InstancePathHash};
+use re_entity_db::InstancePathHash;
 use re_log_types::Instance;
-use re_query::range_zip_1x7;
 use re_renderer::{
     renderer::MeshInstance, LineDrawableBuilder, PickingLayerInstanceId, RenderContext,
 };
 use re_types::{
     archetypes::Ellipsoids,
-    components::{ClassId, Color, HalfSize3D, KeypointId, Position3D, Radius, Rotation3D, Text},
+    components::{
+        ClassId, Color, HalfSize3D, KeypointId, Position3D, Radius, Rotation3D, SolidColor, Text,
+    },
 };
 use re_viewer_context::{
     auto_color_for_entity_path, ApplicableEntities, IdentifiedViewSystem, QueryContext,
-    ResolvedAnnotationInfos, SpaceViewSystemExecutionError, TypedComponentFallbackProvider,
-    ViewContext, ViewContextCollection, ViewQuery, VisualizableEntities, VisualizableFilterContext,
+    SpaceViewSystemExecutionError, TypedComponentFallbackProvider, ViewContext,
+    ViewContextCollection, ViewQuery, VisualizableEntities, VisualizableFilterContext,
     VisualizerQueryInfo, VisualizerSystem,
 };
 
 use crate::{
     contexts::SpatialSceneEntityContext,
-    instance_hash_conversions::picking_layer_id_from_instance_path_hash,
-    proc_mesh,
+    instance_hash_conversions::picking_layer_id_from_instance_path_hash, proc_mesh,
     view_kind::SpatialSpaceViewKind,
-    visualizers::{UiLabel, UiLabelTarget},
 };
 
 use super::{
     entity_iterator::clamped_or, filter_visualizable_3d_entities,
-    process_annotation_and_keypoint_slices, process_color_slice, process_radius_slice,
-    SpatialViewVisualizerData, SIZE_BOOST_IN_POINTS_FOR_LINE_OUTLINES,
+    process_annotation_and_keypoint_slices, process_color_slice, process_labels_3d,
+    process_radius_slice, SpatialViewVisualizerData, SIZE_BOOST_IN_POINTS_FOR_LINE_OUTLINES,
 };
 
 // ---
@@ -45,36 +44,6 @@ impl Default for EllipsoidsVisualizer {
 // NOTE: Do not put profile scopes in these methods. They are called for all entities and all
 // timestamps within a time range -- it's _a lot_.
 impl EllipsoidsVisualizer {
-    fn process_labels<'a>(
-        entity_path: &'a EntityPath,
-        centers: &'a [Position3D],
-        labels: &'a [Text],
-        colors: &'a [Color32],
-        annotation_infos: &'a ResolvedAnnotationInfos,
-        world_from_entity: glam::Affine3A,
-    ) -> impl Iterator<Item = UiLabel> + 'a {
-        let labels = annotation_infos
-            .iter()
-            .zip(labels.iter().map(Some).chain(std::iter::repeat(None)))
-            .map(|(annotation_info, label)| annotation_info.label(label.map(|l| l.as_str())));
-
-        itertools::izip!(centers, labels, colors)
-            .enumerate()
-            .filter_map(move |(i, (center, label, color))| {
-                label.map(|label| UiLabel {
-                    text: label,
-                    color: *color,
-                    target: UiLabelTarget::Position3D(
-                        world_from_entity.transform_point3(center.0.into()),
-                    ),
-                    labeled_instance: InstancePathHash::instance(
-                        entity_path,
-                        Instance::from(i as u64),
-                    ),
-                })
-            })
-    }
-
     #[allow(clippy::too_many_arguments)]
     fn process_data<'a>(
         &mut self,
@@ -116,7 +85,7 @@ impl EllipsoidsVisualizer {
                 self,
                 num_instances,
                 &annotation_infos,
-                data.surface_colors,
+                data.solid_colors,
             );
             let line_colors = process_color_slice(
                 ctx,
@@ -129,15 +98,6 @@ impl EllipsoidsVisualizer {
             let centers = clamped_or(data.centers, &Position3D::ZERO);
             let rotations = clamped_or(data.rotations, &Rotation3D::IDENTITY);
 
-            self.0.ui_labels.extend(Self::process_labels(
-                entity_path,
-                data.centers,
-                data.labels,
-                &line_colors, // TODO: fall back to surface color?
-                &annotation_infos,
-                ent_context.world_from_entity,
-            ));
-
             let mut line_batch = line_builder
                 .batch("ellipsoids")
                 .depth_offset(ent_context.depth_offset)
@@ -145,18 +105,18 @@ impl EllipsoidsVisualizer {
                 .outline_mask_ids(ent_context.highlight.overall)
                 .picking_object_id(re_renderer::PickingLayerObjectId(entity_path.hash64()));
 
-            let mut bounding_box = re_math::BoundingBox::NOTHING;
+            let mut obj_space_bounding_box = re_math::BoundingBox::NOTHING;
 
             for (
                 instance_index,
-                (half_size, &center, rotation, radius, surface_color, line_color),
+                (half_size, &center, rotation, radius, &surface_color, &line_color),
             ) in itertools::izip!(
                 data.half_sizes,
                 centers,
                 rotations,
                 radii,
-                surface_colors,
-                line_colors
+                &surface_colors,
+                &line_colors
             )
             .enumerate()
             {
@@ -185,8 +145,8 @@ impl EllipsoidsVisualizer {
                         ));
                     };
 
-                    bounding_box =
-                        bounding_box.union(wireframe_mesh.bbox.transform_affine3(&transform));
+                    obj_space_bounding_box = obj_space_bounding_box
+                        .union(wireframe_mesh.bbox.transform_affine3(&transform));
 
                     for strip in &wireframe_mesh.line_strips {
                         let strip_builder = line_batch
@@ -218,8 +178,8 @@ impl EllipsoidsVisualizer {
                         ));
                     };
 
-                    bounding_box =
-                        bounding_box.union(solid_mesh.bbox.transform_affine3(&transform));
+                    obj_space_bounding_box =
+                        obj_space_bounding_box.union(solid_mesh.bbox.transform_affine3(&transform));
 
                     mesh_instances.push(MeshInstance {
                         gpu_mesh: solid_mesh.gpu_mesh,
@@ -236,9 +196,32 @@ impl EllipsoidsVisualizer {
 
             self.0.add_bounding_box(
                 entity_path.hash(),
-                bounding_box,
+                obj_space_bounding_box,
                 ent_context.world_from_entity,
             );
+
+            if data.labels.len() == 1 || num_instances <= super::MAX_NUM_LABELS_PER_ENTITY {
+                // If there's many ellipsoids but only a single label, place the single label at the middle of the visualization.
+                let label_positions = if data.labels.len() == 1 && num_instances > 1 {
+                    // TODO(andreas): A smoothed over time (+ discontinuity detection) bounding box would be great.
+                    itertools::Either::Left(std::iter::once(obj_space_bounding_box.center()))
+                } else {
+                    // Take center point of every ellipsoid.
+                    itertools::Either::Right(
+                        clamped_or(data.centers, &Position3D::ZERO).map(|&c| c.into()),
+                    )
+                };
+
+                self.0.ui_labels.extend(process_labels_3d(
+                    entity_path,
+                    label_positions,
+                    data.labels,
+                    &line_colors,
+                    &surface_colors,
+                    &annotation_infos,
+                    ent_context.world_from_entity,
+                ));
+            }
         }
 
         Ok(())
@@ -254,8 +237,8 @@ struct EllipsoidsComponentData<'a> {
     // Clamped to edge
     centers: &'a [Position3D],
     rotations: &'a [Rotation3D],
+    solid_colors: &'a [SolidColor],
     line_colors: &'a [Color],
-    surface_colors: &'a [Color],
     line_radii: &'a [Radius],
     labels: &'a [Text],
     keypoint_ids: &'a [KeypointId],
@@ -330,17 +313,19 @@ impl VisualizerSystem for EllipsoidsVisualizer {
 
                 let centers = results.get_or_empty_dense(resolver)?;
                 let rotations = results.get_or_empty_dense(resolver)?;
-                let colors = results.get_or_empty_dense(resolver)?;
+                let solid_colors = results.get_or_empty_dense(resolver)?;
+                let line_colors = results.get_or_empty_dense(resolver)?;
                 let line_radii = results.get_or_empty_dense(resolver)?;
                 let labels = results.get_or_empty_dense(resolver)?;
                 let class_ids = results.get_or_empty_dense(resolver)?;
                 let keypoint_ids = results.get_or_empty_dense(resolver)?;
 
-                let data = range_zip_1x7(
+                let data = re_query::range_zip_1x8(
                     half_sizes.range_indexed(),
                     centers.range_indexed(),
                     rotations.range_indexed(),
-                    colors.range_indexed(),
+                    solid_colors.range_indexed(),
+                    line_colors.range_indexed(),
                     line_radii.range_indexed(),
                     labels.range_indexed(),
                     class_ids.range_indexed(),
@@ -352,7 +337,8 @@ impl VisualizerSystem for EllipsoidsVisualizer {
                         half_sizes,
                         centers,
                         rotations,
-                        colors,
+                        solid_colors,
+                        line_colors,
                         line_radii,
                         labels,
                         class_ids,
@@ -362,9 +348,8 @@ impl VisualizerSystem for EllipsoidsVisualizer {
                             half_sizes,
                             centers: centers.unwrap_or_default(),
                             rotations: rotations.unwrap_or_default(),
-                            // TODO(kpreid): separate these colors
-                            line_colors: colors.unwrap_or_default(),
-                            surface_colors: colors.unwrap_or_default(),
+                            solid_colors: solid_colors.unwrap_or_default(),
+                            line_colors: line_colors.unwrap_or_default(),
                             line_radii: line_radii.unwrap_or_default(),
                             labels: labels.unwrap_or_default(),
                             class_ids: class_ids.unwrap_or_default(),
@@ -423,6 +408,13 @@ impl VisualizerSystem for EllipsoidsVisualizer {
 impl TypedComponentFallbackProvider<Color> for EllipsoidsVisualizer {
     fn fallback_for(&self, ctx: &QueryContext<'_>) -> Color {
         auto_color_for_entity_path(ctx.target_entity_path)
+    }
+}
+
+impl TypedComponentFallbackProvider<SolidColor> for EllipsoidsVisualizer {
+    fn fallback_for(&self, _: &QueryContext<'_>) -> SolidColor {
+        // By default, use wireframe visualization only
+        SolidColor::TRANSPARENT
     }
 }
 

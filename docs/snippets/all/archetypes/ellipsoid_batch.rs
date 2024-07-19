@@ -24,12 +24,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 (0.15, 0.15, 0.15),
             ],
         )
-        .with_colors([
-            rerun::Color::from_rgb(255, 255, 255),
-            rerun::Color::from_rgb(255, 255, 255),
-            rerun::Color::from_rgb(255, 255, 255),
-            rerun::Color::from_rgb(0, 0, 0),
-            rerun::Color::from_rgb(0, 0, 0),
+        .with_solid_colors([
+            rerun::SolidColor::from_rgb(255, 255, 255),
+            rerun::SolidColor::from_rgb(255, 255, 255),
+            rerun::SolidColor::from_rgb(255, 255, 255),
+            rerun::SolidColor::from_rgb(0, 0, 0),
+            rerun::SolidColor::from_rgb(0, 0, 0),
         ]),
     )?;
 

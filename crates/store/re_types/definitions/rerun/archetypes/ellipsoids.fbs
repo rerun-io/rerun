@@ -39,8 +39,15 @@ table Ellipsoids (
   /// If not specified, the axes of the ellipsoid align with the axes of the coordinate system.
   rotations: [rerun.components.Rotation3D] ("attr.rerun.component_recommended", nullable, order: 2100);
 
-  /// Optional colors for the ellipsoids.
-  colors: [rerun.components.Color] ("attr.rerun.component_recommended", nullable, order: 2200);
+  /// Optional colors for the ellipsoids' surfaces.
+  ///
+  /// This color may be transparent to render the ellipsoid as a wireframe alone.
+  solid_colors: [rerun.components.SolidColor] ("attr.rerun.component_recommended", nullable, order: 2200);
+
+  /// Optional colors for the ellipsoids' wireframe lines.
+  ///
+  /// This color may be transparent to render the ellipsoid as a colored surface alone.
+  line_colors: [rerun.components.Color] ("attr.rerun.component_recommended", nullable, order: 2300);
 
   // --- Optional ---
 

@@ -141,6 +141,7 @@ impl Arrows3DVisualizer {
                     label_positions,
                     data.labels,
                     &colors,
+                    &colors,
                     &annotation_infos,
                     ent_context.world_from_entity,
                 ));

@@ -37,7 +37,8 @@ class Ellipsoids(EllipsoidsExt, Archetype):
             half_sizes=None,  # type: ignore[arg-type]
             centers=None,  # type: ignore[arg-type]
             rotations=None,  # type: ignore[arg-type]
-            colors=None,  # type: ignore[arg-type]
+            solid_colors=None,  # type: ignore[arg-type]
+            line_colors=None,  # type: ignore[arg-type]
             line_radii=None,  # type: ignore[arg-type]
             labels=None,  # type: ignore[arg-type]
             class_ids=None,  # type: ignore[arg-type]
@@ -82,12 +83,25 @@ class Ellipsoids(EllipsoidsExt, Archetype):
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 
-    colors: components.ColorBatch | None = field(
+    solid_colors: components.SolidColorBatch | None = field(
+        metadata={"component": "optional"},
+        default=None,
+        converter=components.SolidColorBatch._optional,  # type: ignore[misc]
+    )
+    # Optional colors for the ellipsoids' surfaces.
+    #
+    # This color may be transparent to render the ellipsoid as a wireframe alone.
+    #
+    # (Docstring intentionally commented out to hide this field from the docs)
+
+    line_colors: components.ColorBatch | None = field(
         metadata={"component": "optional"},
         default=None,
         converter=components.ColorBatch._optional,  # type: ignore[misc]
     )
-    # Optional colors for the ellipsoids.
+    # Optional colors for the ellipsoids' wireframe lines.
+    #
+    # This color may be transparent to render the ellipsoid as a colored surface alone.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 

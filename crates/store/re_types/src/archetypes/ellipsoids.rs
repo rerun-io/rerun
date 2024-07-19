@@ -43,8 +43,15 @@ pub struct Ellipsoids {
     /// If not specified, the axes of the ellipsoid align with the axes of the coordinate system.
     pub rotations: Option<Vec<crate::components::Rotation3D>>,
 
-    /// Optional colors for the ellipsoids.
-    pub colors: Option<Vec<crate::components::Color>>,
+    /// Optional colors for the ellipsoids' surfaces.
+    ///
+    /// This color may be transparent to render the ellipsoid as a wireframe alone.
+    pub solid_colors: Option<Vec<crate::components::SolidColor>>,
+
+    /// Optional colors for the ellipsoids' wireframe lines.
+    ///
+    /// This color may be transparent to render the ellipsoid as a colored surface alone.
+    pub line_colors: Option<Vec<crate::components::Color>>,
 
     /// Optional radii for the lines used when the ellipsoid is rendered as a wireframe.
     pub line_radii: Option<Vec<crate::components::Radius>>,
@@ -64,7 +71,8 @@ impl ::re_types_core::SizeBytes for Ellipsoids {
         self.half_sizes.heap_size_bytes()
             + self.centers.heap_size_bytes()
             + self.rotations.heap_size_bytes()
-            + self.colors.heap_size_bytes()
+            + self.solid_colors.heap_size_bytes()
+            + self.line_colors.heap_size_bytes()
             + self.line_radii.heap_size_bytes()
             + self.labels.heap_size_bytes()
             + self.class_ids.heap_size_bytes()
@@ -75,6 +83,7 @@ impl ::re_types_core::SizeBytes for Ellipsoids {
         <Vec<crate::components::HalfSize3D>>::is_pod()
             && <Option<Vec<crate::components::Position3D>>>::is_pod()
             && <Option<Vec<crate::components::Rotation3D>>>::is_pod()
+            && <Option<Vec<crate::components::SolidColor>>>::is_pod()
             && <Option<Vec<crate::components::Color>>>::is_pod()
             && <Option<Vec<crate::components::Radius>>>::is_pod()
             && <Option<Vec<crate::components::Text>>>::is_pod()
@@ -85,11 +94,12 @@ impl ::re_types_core::SizeBytes for Ellipsoids {
 static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 1usize]> =
     once_cell::sync::Lazy::new(|| ["rerun.components.HalfSize3D".into()]);
 
-static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 4usize]> =
+static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 5usize]> =
     once_cell::sync::Lazy::new(|| {
         [
             "rerun.components.Position3D".into(),
             "rerun.components.Rotation3D".into(),
+            "rerun.components.SolidColor".into(),
             "rerun.components.Color".into(),
             "rerun.components.EllipsoidsIndicator".into(),
         ]
@@ -104,12 +114,13 @@ static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 3usize]> =
         ]
     });
 
-static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 8usize]> =
+static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 9usize]> =
     once_cell::sync::Lazy::new(|| {
         [
             "rerun.components.HalfSize3D".into(),
             "rerun.components.Position3D".into(),
             "rerun.components.Rotation3D".into(),
+            "rerun.components.SolidColor".into(),
             "rerun.components.Color".into(),
             "rerun.components.EllipsoidsIndicator".into(),
             "rerun.components.Radius".into(),
@@ -119,8 +130,8 @@ static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 8usize]> =
     });
 
 impl Ellipsoids {
-    /// The total number of components in the archetype: 1 required, 4 recommended, 3 optional
-    pub const NUM_COMPONENTS: usize = 8usize;
+    /// The total number of components in the archetype: 1 required, 5 recommended, 3 optional
+    pub const NUM_COMPONENTS: usize = 9usize;
 }
 
 /// Indicator component for the [`Ellipsoids`] [`::re_types_core::Archetype`]
@@ -211,14 +222,26 @@ impl ::re_types_core::Archetype for Ellipsoids {
         } else {
             None
         };
-        let colors = if let Some(array) = arrays_by_name.get("rerun.components.Color") {
+        let solid_colors = if let Some(array) = arrays_by_name.get("rerun.components.SolidColor") {
             Some({
-                <crate::components::Color>::from_arrow_opt(&**array)
-                    .with_context("rerun.archetypes.Ellipsoids#colors")?
+                <crate::components::SolidColor>::from_arrow_opt(&**array)
+                    .with_context("rerun.archetypes.Ellipsoids#solid_colors")?
                     .into_iter()
                     .map(|v| v.ok_or_else(DeserializationError::missing_data))
                     .collect::<DeserializationResult<Vec<_>>>()
-                    .with_context("rerun.archetypes.Ellipsoids#colors")?
+                    .with_context("rerun.archetypes.Ellipsoids#solid_colors")?
+            })
+        } else {
+            None
+        };
+        let line_colors = if let Some(array) = arrays_by_name.get("rerun.components.Color") {
+            Some({
+                <crate::components::Color>::from_arrow_opt(&**array)
+                    .with_context("rerun.archetypes.Ellipsoids#line_colors")?
+                    .into_iter()
+                    .map(|v| v.ok_or_else(DeserializationError::missing_data))
+                    .collect::<DeserializationResult<Vec<_>>>()
+                    .with_context("rerun.archetypes.Ellipsoids#line_colors")?
             })
         } else {
             None
@@ -263,7 +286,8 @@ impl ::re_types_core::Archetype for Ellipsoids {
             half_sizes,
             centers,
             rotations,
-            colors,
+            solid_colors,
+            line_colors,
             line_radii,
             labels,
             class_ids,
@@ -284,7 +308,10 @@ impl ::re_types_core::AsComponents for Ellipsoids {
             self.rotations
                 .as_ref()
                 .map(|comp_batch| (comp_batch as &dyn ComponentBatch).into()),
-            self.colors
+            self.solid_colors
+                .as_ref()
+                .map(|comp_batch| (comp_batch as &dyn ComponentBatch).into()),
+            self.line_colors
                 .as_ref()
                 .map(|comp_batch| (comp_batch as &dyn ComponentBatch).into()),
             self.line_radii
@@ -313,7 +340,8 @@ impl Ellipsoids {
             half_sizes: half_sizes.into_iter().map(Into::into).collect(),
             centers: None,
             rotations: None,
-            colors: None,
+            solid_colors: None,
+            line_colors: None,
             line_radii: None,
             labels: None,
             class_ids: None,
@@ -344,13 +372,27 @@ impl Ellipsoids {
         self
     }
 
-    /// Optional colors for the ellipsoids.
+    /// Optional colors for the ellipsoids' surfaces.
+    ///
+    /// This color may be transparent to render the ellipsoid as a wireframe alone.
     #[inline]
-    pub fn with_colors(
+    pub fn with_solid_colors(
         mut self,
-        colors: impl IntoIterator<Item = impl Into<crate::components::Color>>,
+        solid_colors: impl IntoIterator<Item = impl Into<crate::components::SolidColor>>,
     ) -> Self {
-        self.colors = Some(colors.into_iter().map(Into::into).collect());
+        self.solid_colors = Some(solid_colors.into_iter().map(Into::into).collect());
+        self
+    }
+
+    /// Optional colors for the ellipsoids' wireframe lines.
+    ///
+    /// This color may be transparent to render the ellipsoid as a colored surface alone.
+    #[inline]
+    pub fn with_line_colors(
+        mut self,
+        line_colors: impl IntoIterator<Item = impl Into<crate::components::Color>>,
+    ) -> Self {
+        self.line_colors = Some(line_colors.into_iter().map(Into::into).collect());
         self
     }
 

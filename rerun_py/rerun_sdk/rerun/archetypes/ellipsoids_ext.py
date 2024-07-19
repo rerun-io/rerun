@@ -18,7 +18,8 @@ class EllipsoidsExt:
         radii: datatypes.Float32ArrayLike | None = None,
         centers: datatypes.Vec3DArrayLike | None = None,
         rotations: datatypes.Rotation3DArrayLike | None = None,
-        colors: datatypes.Rgba32ArrayLike | None = None,
+        solid_colors: datatypes.Rgba32ArrayLike | None = None,
+        line_colors: datatypes.Rgba32ArrayLike | None = None,
         line_radii: datatypes.Float32ArrayLike | None = None,
         labels: datatypes.Utf8ArrayLike | None = None,
         class_ids: datatypes.ClassIdArrayLike | None = None,
@@ -38,8 +39,10 @@ class EllipsoidsExt:
             Optional center positions of the ellipsoids.
         rotations:
             Optional rotations of the ellipsoids.
-        colors:
-            Optional colors for the ellipsoids.
+        solid_colors:
+            Optional colors for the ellipsoids' surface.
+        line_colors:
+            Optional colors for the ellipsoids' wireframes.
         line_radii:
             Optional radii for the lines that make up the ellipsoids.
         labels:
@@ -64,7 +67,8 @@ class EllipsoidsExt:
                 half_sizes=half_sizes,
                 centers=centers,
                 rotations=rotations,
-                colors=colors,
+                solid_colors=solid_colors,
+                line_colors=line_colors,
                 line_radii=line_radii,
                 labels=labels,
                 class_ids=class_ids,

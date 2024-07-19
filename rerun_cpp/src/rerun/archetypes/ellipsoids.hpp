@@ -11,6 +11,7 @@
 #include "../components/position3d.hpp"
 #include "../components/radius.hpp"
 #include "../components/rotation3d.hpp"
+#include "../components/solid_color.hpp"
 #include "../components/text.hpp"
 #include "../data_cell.hpp"
 #include "../indicator_component.hpp"
@@ -46,8 +47,15 @@ namespace rerun::archetypes {
         /// If not specified, the axes of the ellipsoid align with the axes of the coordinate system.
         std::optional<Collection<rerun::components::Rotation3D>> rotations;
 
-        /// Optional colors for the ellipsoids.
-        std::optional<Collection<rerun::components::Color>> colors;
+        /// Optional colors for the ellipsoids' surfaces.
+        ///
+        /// This color may be transparent to render the ellipsoid as a wireframe alone.
+        std::optional<Collection<rerun::components::SolidColor>> solid_colors;
+
+        /// Optional colors for the ellipsoids' wireframe lines.
+        ///
+        /// This color may be transparent to render the ellipsoid as a colored surface alone.
+        std::optional<Collection<rerun::components::Color>> line_colors;
 
         /// Optional radii for the lines used when the ellipsoid is rendered as a wireframe.
         std::optional<Collection<rerun::components::Radius>> line_radii;
@@ -123,9 +131,20 @@ namespace rerun::archetypes {
             RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
         }
 
-        /// Optional colors for the ellipsoids.
-        Ellipsoids with_colors(Collection<rerun::components::Color> _colors) && {
-            colors = std::move(_colors);
+        /// Optional colors for the ellipsoids' surfaces.
+        ///
+        /// This color may be transparent to render the ellipsoid as a wireframe alone.
+        Ellipsoids with_solid_colors(Collection<rerun::components::SolidColor> _solid_colors) && {
+            solid_colors = std::move(_solid_colors);
+            // See: https://github.com/rerun-io/rerun/issues/4027
+            RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
+        }
+
+        /// Optional colors for the ellipsoids' wireframe lines.
+        ///
+        /// This color may be transparent to render the ellipsoid as a colored surface alone.
+        Ellipsoids with_line_colors(Collection<rerun::components::Color> _line_colors) && {
+            line_colors = std::move(_line_colors);
             // See: https://github.com/rerun-io/rerun/issues/4027
             RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
         }

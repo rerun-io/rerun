@@ -19,3 +19,6 @@ applied to the entire surface of the object (as opposed to the lines of a wirefr
  * 🦀 [Rust API docs for `SolidColor`](https://docs.rs/rerun/latest/rerun/components/struct.SolidColor.html)
 
 
+## Used by
+
+* [`Ellipsoids`](../archetypes/ellipsoids.md?speculative-link)
