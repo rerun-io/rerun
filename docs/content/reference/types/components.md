@@ -42,6 +42,7 @@ on [Entities and Components](../../concepts/entity-component.md).
 * [`MediaType`](components/media_type.md): A standardized media type (RFC2046, formerly known as MIME types), encoded as a string.
 * [`Name`](components/name.md): A display name, typically for an entity or a item like a plot series.
 * [`Opacity`](components/opacity.md): Degree of transparency ranging from 0.0 (fully transparent) to 1.0 (fully opaque).
+* [`OutOfTreeTransform`](components/out_of_tree_transform.md): If out of tree transform is enabled, a transform does not participate in the transform hierarchy.
 * [`OutOfTreeTransform3D`](components/out_of_tree_transform3d.md): An out-of-tree affine transform between two 3D spaces, represented in a given direction.
 * [`PinholeProjection`](components/pinhole_projection.md): Camera projection, from image coordinates to view coordinates.
 * [`Position2D`](components/position2d.md): A position in 2D space.

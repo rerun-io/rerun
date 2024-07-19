@@ -21,6 +21,8 @@ table Transform3D (
   "attr.docs.category": "Spatial 3D",
   "attr.docs.view_types": "Spatial3DView, Spatial2DView: if logged above active projection"
 ) {
+  // --- transform components
+
   /// Translation vectors.
   translation: [rerun.components.Translation3D] ("attr.rerun.component_optional", nullable, order: 1100);
 

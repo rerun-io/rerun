@@ -31,6 +31,7 @@
 #include "components/media_type.hpp"
 #include "components/name.hpp"
 #include "components/opacity.hpp"
+#include "components/out_of_tree_transform.hpp"
 #include "components/out_of_tree_transform3d.hpp"
 #include "components/pinhole_projection.hpp"
 #include "components/position2d.hpp"

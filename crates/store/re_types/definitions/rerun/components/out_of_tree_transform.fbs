@@ -1,0 +1,17 @@
+namespace rerun.components;
+
+/// If out of tree transform is enabled, a transform does not participate in the transform hierarchy.
+///
+/// This means transforms on this entity do not affect children.
+/// It will however, still be affected by transforms on its parents.
+///
+/// This is automatically enabled if any of the the transform components are present multiple times.
+/// Setting this to false for a transform that has multiple instances of the same transform component,
+/// will result in an error.
+struct OutOfTreeTransform (
+  "attr.docs.unreleased",
+  "attr.rust.derive": "Default, PartialEq, Eq, Copy"
+) {
+  /// Whether the out of tree transform mode is enabled.
+  enabled: rerun.datatypes.Bool (order: 100);
+}

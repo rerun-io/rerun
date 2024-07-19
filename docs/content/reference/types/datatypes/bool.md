@@ -19,3 +19,4 @@ A single boolean.
 
 * [`ClearIsRecursive`](../components/clear_is_recursive.md)
 * [`DisconnectedSpace`](../components/disconnected_space.md)
+* [`OutOfTreeTransform`](../components/out_of_tree_transform.md?speculative-link)
