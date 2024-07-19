@@ -368,20 +368,20 @@ fn get_parent_from_child_transform(
     // Order is specified by order of components in the Transform3D archetype.
     // See `has_transform_expected_order`
     let mut transform = glam::Affine3A::IDENTITY;
-    if let Some(mat3x3) = result.get_instance::<TransformMat3x3>(resolver, 0) {
-        transform *= glam::Affine3A::from(mat3x3);
-    }
-    if let Some(scale) = result.get_instance::<Scale3D>(resolver, 0) {
-        transform *= glam::Affine3A::from(scale);
-    }
-    if let Some(rotation) = result.get_instance::<RotationQuat>(resolver, 0) {
-        transform *= glam::Affine3A::from(rotation);
+    if let Some(translation) = result.get_instance::<Translation3D>(resolver, 0) {
+        transform *= glam::Affine3A::from(translation);
     }
     if let Some(rotation) = result.get_instance::<RotationAxisAngle>(resolver, 0) {
         transform *= glam::Affine3A::from(rotation);
     }
-    if let Some(translation) = result.get_instance::<Translation3D>(resolver, 0) {
-        transform *= glam::Affine3A::from(translation);
+    if let Some(rotation) = result.get_instance::<RotationQuat>(resolver, 0) {
+        transform *= glam::Affine3A::from(rotation);
+    }
+    if let Some(scale) = result.get_instance::<Scale3D>(resolver, 0) {
+        transform *= glam::Affine3A::from(scale);
+    }
+    if let Some(mat3x3) = result.get_instance::<TransformMat3x3>(resolver, 0) {
+        transform *= glam::Affine3A::from(mat3x3);
     }
 
     let transform_relation = result

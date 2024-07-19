@@ -20,9 +20,10 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Archetype**: A transform between two 3D spaces, i.e. a pose.
 ///
-/// All components are applied in the inverse order they are listed here.
-/// E.g. if both a 4x4 matrix with a translation and a translation vector are present,
-/// the translation is applied first, followed by the matrix.
+/// From the point of view of the entity's coordinate system,
+/// all components are applied in the inverse order they are listed here.
+/// E.g. if both a translation and a max3x3 transform are present,
+/// the 3x3 matrix is applied first, followed by the translation.
 ///
 /// Each transform component can be listed multiple times, but transform tree propagation is only possible
 /// if there's only one instance for each transform component.
