@@ -384,8 +384,6 @@ fn get_parent_from_child_transform(
         transform *= glam::Affine3A::from(translation);
     }
 
-    // TODO(#6831): To be removed. Note that the ordering of the old component is a bit arbitrary.
-    // Picked such that the planets demo still works ;-)
     let transform_relation = result
         .get_instance::<TransformRelation>(resolver, 0)
         .unwrap_or_default();
