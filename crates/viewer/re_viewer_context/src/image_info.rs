@@ -58,6 +58,21 @@ impl ImageFormat {
             Self::ColorModel { data_type, .. } => data_type.is_float(),
         }
     }
+
+    /// Number of bits needed to represent a single pixel.
+    ///
+    /// Note that this is not necessarily divisible by 8!
+    #[inline]
+    pub fn bits_per_pixel(&self) -> usize {
+        match self {
+            Self::PixelFormat(pixel_format) => pixel_format.bits_per_pixel(),
+
+            Self::ColorModel {
+                color_model,
+                data_type,
+            } => color_model.num_channels() * data_type.bits(),
+        }
+    }
 }
 
 /// Represents an `Image`, `SegmentationImage` or `DepthImage`.
@@ -97,26 +112,6 @@ impl ImageInfo {
     pub fn height(&self) -> u32 {
         self.resolution[1]
     }
-
-    // /// Total number of elements in the image, e.g. `W x H x 3` for an RGB image.
-    // #[inline]
-    // pub fn num_elements(&self) -> usize {
-    //     self.blob.len() * 8 / self.bits_per_texel()
-    // }
-
-    // /// 1 for grayscale and depth images, 3 for RGB, etc.
-    // #[doc(alias = "components")]
-    // #[doc(alias = "depth")]
-    // #[inline]
-    // pub fn num_channels(&self) -> usize {
-    //     self.color_model.map_or(1, ColorModel::num_channels)
-    // }
-
-    // #[inline]
-    // pub fn bits_per_texel(&self) -> usize {
-    //     // TODO(#6386): use `PixelFormat`
-    //     self.data_type.bits() * self.num_channels()
-    // }
 
     /// Returns [`ColorModel::L`] for depth and segmentation images.
     ///

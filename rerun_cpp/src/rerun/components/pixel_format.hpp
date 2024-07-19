@@ -28,13 +28,15 @@ namespace rerun::components {
     /// For more compressed image formats, see `archetypes::ImageEncoded`.
     enum class PixelFormat : uint8_t {
 
-        /// NV12 (aka Y_UV12) is a YUV 4:2:0 chroma downsampled format with 8 bits per channel.
+        /// NV12 (aka Y_UV12) is a YUV 4:2:0 chroma downsampled format with
+        /// 12 bits per pixel and 8 bits per channel.
         ///
         /// First comes entire image in Y in one plane,
         /// followed by a plane with interleaved lines ordered as U0, V0, U1, V1, etc.
         NV12 = 1,
 
-        /// YUY2 (aka YUYV or YUYV16), is a YUV 4:2:2 chroma downsampled format with 8 bits per channel.
+        /// YUY2 (aka YUYV or YUYV16), is a YUV 4:2:2 chroma downsampled format with
+        /// 16 bits per pixel and 8 bits per channel.
         ///
         /// The order of the channels is Y0, U0, Y1, V0, all in the same plane.
         YUY2 = 2,

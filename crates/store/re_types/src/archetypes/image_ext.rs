@@ -75,9 +75,18 @@ impl Image {
         pixel_format: PixelFormat,
         bytes: impl Into<Blob>,
     ) -> Self {
-        // TODO: log warning if the number of bytes doesn't match the resolution and pixel format
+        let data = bytes.into();
+
+        let actual_bytes = data.len();
+        let num_expected_bytes = (resolution.area() * pixel_format.bits_per_pixel() + 7) / 8; // rounding upwards
+        if data.len() != num_expected_bytes {
+            re_log::warn_once!(
+                "Expected {resolution} {pixel_format:?} image to be {num_expected_bytes} B, but got {actual_bytes} B",
+            );
+        }
+
         Self {
-            data: bytes.into(),
+            data,
             resolution,
             pixel_format: Some(pixel_format),
             color_model: None,
@@ -96,9 +105,19 @@ impl Image {
         data_type: ChannelDataType,
         bytes: impl Into<Blob>,
     ) -> Self {
-        // TODO: log warning if the number of bytes doesn't match the resolution and pixel format
+        let data = bytes.into();
+
+        let actual_bytes = data.len();
+        let num_expected_bytes =
+            (resolution.area() * color_model.num_channels() * data_type.bits() + 7) / 8; // rounding upwards
+        if data.len() != num_expected_bytes {
+            re_log::warn_once!(
+                "Expected {resolution} {color_model:?} {data_type:?} image to be {num_expected_bytes} B, but got {actual_bytes} B",
+            );
+        }
+
         Self {
-            data: bytes.into(),
+            data,
             resolution,
             pixel_format: None,
             color_model: Some(color_model),
@@ -115,7 +134,6 @@ impl Image {
         color_model: ColorModel,
         elements: &[T],
     ) -> Self {
-        // TODO: log warning if the number of bytes doesn't match the resolution and pixel format
         let data_type = T::CHANNEL_TYPE;
         let bytes: &[u8] = bytemuck::cast_slice(elements);
         Self::from_color_model_and_bytes(

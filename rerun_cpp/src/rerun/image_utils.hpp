@@ -51,7 +51,7 @@ namespace rerun {
     ) {
         const size_t width = static_cast<size_t>(resolution.width());
         const size_t height = static_cast<size_t>(resolution.height());
-        return width * height * data_type_bits(data_type) / 8;
+        return (width * height * data_type_bits(data_type) + 7) / 8; // rounding upwards
     }
 
     template <typename TElement>

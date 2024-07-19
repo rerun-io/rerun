@@ -45,16 +45,6 @@ def _to_numpy(tensor: ImageLike) -> npt.NDArray[Any]:
         return np.array(tensor, copy=False)
 
 
-# TODO: add to constructor docs
-# As such, the shape of the [components.TensorData] must be mappable to:
-# - A `HxW` tensor, treated as a grayscale image.
-# - A `HxWx3` tensor, treated as an RGB image.
-# - A `HxWx4` tensor, treated as an RGBA image.
-#
-# Leading and trailing unit-dimensions are ignored, so that
-# `1x480x640x3x1` is treated as a `480x640x3` RGB image.
-
-
 class ImageExt:
     """Extension for [Image][rerun.archetypes.Image]."""
 
@@ -83,7 +73,9 @@ class ImageExt:
         Parameters
         ----------
         image:
-            A numpy array or tensor with the data.
+            A numpy array or tensor with the image data.
+            Leading and trailing unit-dimensions are ignored, so that
+            `1x480x640x3x1` is treated as a `480x640x3`.
             You also need to specify the `color_model` of it (e.g. "RGB").
         color_model:
             L, RGB, RGBA, etc, specifying how to interpret `image`.
