@@ -4,7 +4,7 @@ use re_space_view::HybridResults;
 use re_types::{
     archetypes::Image,
     components::{self, ChannelDataType, ColorModel, DrawOrder, Opacity, PixelFormat},
-    tensor_data::TensorDataMeaning,
+    image::ImageKind,
 };
 use re_viewer_context::{
     ApplicableEntities, IdentifiedViewSystem, ImageFormat, ImageInfo, QueryContext, SpaceViewClass,
@@ -183,7 +183,7 @@ impl ImageVisualizer {
                         blob,
                         resolution: first_copied(resolutions)?.0 .0,
                         format,
-                        meaning: TensorDataMeaning::Unknown,
+                        kind: ImageKind::Color,
                         colormap: None,
                     },
                     opacity: first_copied(opacities),

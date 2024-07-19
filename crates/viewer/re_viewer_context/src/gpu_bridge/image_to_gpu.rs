@@ -13,7 +13,7 @@ use re_renderer::{
     RenderContext,
 };
 use re_types::components::{ClassId, ColorModel, Colormap, PixelFormat};
-use re_types::{components::ChannelDataType, tensor_data::TensorDataMeaning};
+use re_types::{components::ChannelDataType, image::ImageKind};
 
 use crate::{
     gpu_bridge::colormap::colormap_to_re_renderer, image_info::ImageFormat, Annotations, ImageInfo,
@@ -35,7 +35,7 @@ fn generate_texture_key(image: &ImageInfo) -> u64 {
 
         resolution,
         format: image_format,
-        meaning,
+        kind: meaning,
 
         colormap: _, // No need to upload new texture when this changes
     } = image;
@@ -54,14 +54,14 @@ pub fn image_to_gpu(
 
     let texture_key = generate_texture_key(image);
 
-    match image.meaning {
-        TensorDataMeaning::Unknown => {
+    match image.kind {
+        ImageKind::Color => {
             color_image_to_gpu(render_ctx, debug_name, texture_key, image, tensor_stats)
         }
-        TensorDataMeaning::Depth => {
+        ImageKind::Depth => {
             depth_image_to_gpu(render_ctx, debug_name, texture_key, image, tensor_stats)
         }
-        TensorDataMeaning::ClassId => segmentation_image_to_gpu(
+        ImageKind::Segmentation => segmentation_image_to_gpu(
             render_ctx,
             debug_name,
             texture_key,

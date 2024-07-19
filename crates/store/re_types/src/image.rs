@@ -7,6 +7,26 @@ use crate::{
     datatypes::{Blob, TensorBuffer, TensorData, TensorDimension},
 };
 
+// ----------------------------------------------------------------------------
+
+/// The kind of image data, either color, segmentation, or depth image.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub enum ImageKind {
+    /// A normal grayscale or color image ([`crate::archetypes::Image`]).
+    Color,
+
+    /// A depth map ([`crate::archetypes::DepthImage`]).
+    Depth,
+
+    /// A segmentation image ([`crate::archetypes::SegmentationImage`]).
+    ///
+    /// The data is a [`crate::components::ClassId`] which should be
+    /// looked up using the appropriate [`crate::components::AnnotationContext`]
+    Segmentation,
+}
+
+// ----------------------------------------------------------------------------
+
 /// Error returned when trying to interpret a tensor as an image.
 #[derive(thiserror::Error, Clone, Debug)]
 pub enum ImageConstructionError<T: TryInto<TensorData>>

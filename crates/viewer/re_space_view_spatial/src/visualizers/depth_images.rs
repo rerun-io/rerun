@@ -7,7 +7,7 @@ use re_renderer::renderer::{DepthCloud, DepthClouds};
 use re_types::{
     archetypes::DepthImage,
     components::{self, Colormap, DepthMeter, DrawOrder, FillRatio, ViewCoordinates},
-    tensor_data::TensorDataMeaning,
+    image::ImageKind,
 };
 use re_viewer_context::{
     gpu_bridge::colormap_to_re_renderer, ApplicableEntities, IdentifiedViewSystem, ImageFormat,
@@ -299,7 +299,7 @@ impl VisualizerSystem for DepthImageVisualizer {
                                 blob: blob.0.clone(),
                                 resolution: first_copied(resolution)?.0 .0,
                                 format: ImageFormat::depth(first_copied(data_type)?),
-                                meaning: TensorDataMeaning::Depth,
+                                kind: ImageKind::Depth,
                                 colormap: first_copied(colormap),
                             },
                             depth_meter: first_copied(depth_meter),

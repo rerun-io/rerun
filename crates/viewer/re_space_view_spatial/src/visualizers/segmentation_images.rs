@@ -3,7 +3,7 @@ use itertools::Itertools as _;
 use re_types::{
     archetypes::SegmentationImage,
     components::{self, DrawOrder, Opacity},
-    tensor_data::TensorDataMeaning,
+    image::ImageKind,
 };
 use re_viewer_context::{
     ApplicableEntities, IdentifiedViewSystem, ImageFormat, ImageInfo, QueryContext, SpaceViewClass,
@@ -114,7 +114,7 @@ impl VisualizerSystem for SegmentationImageVisualizer {
                             blob: blob.0.clone(),
                             resolution: first_copied(resolution)?.0 .0,
                             format: ImageFormat::segmentation(first_copied(data_type)?),
-                            meaning: TensorDataMeaning::ClassId,
+                            kind: ImageKind::Segmentation,
                             colormap: None,
                         },
                         opacity: first_copied(opacity),

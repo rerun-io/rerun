@@ -4,7 +4,8 @@ use re_chunk::RowId;
 use re_types::{
     components::{ChannelDataType, ColorModel, Colormap, PixelFormat},
     datatypes::Blob,
-    tensor_data::{TensorDataMeaning, TensorElement},
+    image::ImageKind,
+    tensor_data::TensorElement,
 };
 
 /// Describes the contents of the byte buffer of an [`ImageInfo`].
@@ -95,7 +96,7 @@ pub struct ImageInfo {
     pub format: ImageFormat,
 
     /// Color, Depth, or Segmentation?
-    pub meaning: TensorDataMeaning, // TODO(emilk): rename `ImageKind` or similar
+    pub kind: ImageKind,
 
     /// Primarily for depth images atm
     pub colormap: Option<Colormap>,

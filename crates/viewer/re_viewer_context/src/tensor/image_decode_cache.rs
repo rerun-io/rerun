@@ -1,8 +1,5 @@
 use re_chunk::RowId;
-use re_types::{
-    archetypes::Image,
-    tensor_data::{TensorDataMeaning, TensorImageLoadError},
-};
+use re_types::{archetypes::Image, image::ImageKind, tensor_data::TensorImageLoadError};
 
 use egui::util::hash;
 
@@ -112,7 +109,7 @@ fn decode_image(
         blob: data.0,
         resolution: resolution.0.into(),
         format,
-        meaning: TensorDataMeaning::Unknown,
+        kind: ImageKind::Color,
         colormap: None,
     })
 }

@@ -4,9 +4,12 @@ use itertools::Itertools as _;
 use re_chunk_store::RowId;
 use re_log_types::EntityPath;
 use re_renderer::renderer::ColormappedTexture;
-use re_types::components::{ClassId, ColorModel};
-use re_types::datatypes::{TensorData, TensorDimension};
-use re_types::tensor_data::{TensorDataMeaning, TensorElement};
+use re_types::{
+    components::{ClassId, ColorModel},
+    datatypes::{TensorData, TensorDimension},
+    image::ImageKind,
+    tensor_data::TensorElement,
+};
 use re_ui::UiExt as _;
 use re_viewer_context::{
     gpu_bridge, Annotations, ImageInfo, TensorStats, TensorStatsCache, UiLayout, ViewerContext,
@@ -410,10 +413,10 @@ fn image_pixel_value_ui(
         ui.end_row();
 
         // Check for annotations on any single-channel image
-        if image.meaning == TensorDataMeaning::ClassId {
+        if image.kind == ImageKind::Segmentation {
             if let Some(raw_value) = image.get_xyc(x, y, 0) {
-                if let (TensorDataMeaning::ClassId, Some(u16_val)) =
-                    (image.meaning, raw_value.try_as_u16())
+                if let (ImageKind::Segmentation, Some(u16_val)) =
+                    (image.kind, raw_value.try_as_u16())
                 {
                     ui.label("Label:");
                     ui.label(
@@ -442,12 +445,12 @@ fn image_pixel_value_ui(
         }
     });
 
-    let text = match image.meaning {
-        TensorDataMeaning::ClassId | TensorDataMeaning::Depth => {
+    let text = match image.kind {
+        ImageKind::Segmentation | ImageKind::Depth => {
             image.get_xyc(x, y, 0).map(|v| format!("Val: {v}"))
         }
 
-        TensorDataMeaning::Unknown => match image.color_model() {
+        ImageKind::Color => match image.color_model() {
             ColorModel::L => image.get_xyc(x, y, 0).map(|v| format!("L: {v}")),
 
             ColorModel::RGB => {

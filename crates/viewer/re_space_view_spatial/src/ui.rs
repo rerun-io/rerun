@@ -17,7 +17,7 @@ use re_types::{
     archetypes::Pinhole,
     blueprint::components::VisualBounds2D,
     components::{Blob, ChannelDataType, Colormap, DepthMeter, Resolution2D, ViewCoordinates},
-    tensor_data::TensorDataMeaning,
+    image::ImageKind,
     Loggable as _,
 };
 use re_ui::{
@@ -485,7 +485,7 @@ pub fn picking(
         response = if let Some(picked_image) = picked_image {
             // TODO(jleibs): Querying this here feels weird. Would be nice to do this whole
             // thing as an up-front archetype query somewhere.
-            if picked_image.meaning() == TensorDataMeaning::Depth {
+            if picked_image.kind() == ImageKind::Depth {
                 if let Some(meter) = picked_image.depth_meter {
                     let [x, y] = picked_image.coordinates;
                     if let Some(raw_value) = picked_image.image.get_xyc(x, y, 0) {
@@ -622,7 +622,7 @@ fn picked_image_from_depth_image_query(
         blob,
         resolution: resolution.0.into(),
         format: re_viewer_context::ImageFormat::depth(data_type),
-        meaning: TensorDataMeaning::Depth,
+        kind: ImageKind::Depth,
         colormap: Some(colormap),
     };
 
@@ -640,8 +640,8 @@ struct PickedImageInfo {
 }
 
 impl PickedImageInfo {
-    pub fn meaning(&self) -> TensorDataMeaning {
-        self.image.meaning
+    pub fn kind(&self) -> ImageKind {
+        self.image.kind
     }
 }
 
