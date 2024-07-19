@@ -14,6 +14,7 @@ from .._baseclasses import (
     BaseExtensionType,
     ComponentBatchMixin,
 )
+from .channel_datatype_ext import ChannelDatatypeExt
 
 __all__ = [
     "ChannelDatatype",
@@ -27,7 +28,7 @@ __all__ = [
 from enum import Enum
 
 
-class ChannelDatatype(Enum):
+class ChannelDatatype(ChannelDatatypeExt, Enum):
     """
     **Component**: The innermost datatype of an image.
 

@@ -96,20 +96,6 @@ class ImageExt:
 
         """
 
-        channel_dtype_from_np_dtype = {
-            np.uint8: ChannelDatatype.U8,
-            np.uint16: ChannelDatatype.U16,
-            np.uint32: ChannelDatatype.U32,
-            np.uint64: ChannelDatatype.U64,
-            np.int8: ChannelDatatype.I8,
-            np.int16: ChannelDatatype.I16,
-            np.int32: ChannelDatatype.I32,
-            np.int64: ChannelDatatype.I64,
-            np.float16: ChannelDatatype.F16,
-            np.float32: ChannelDatatype.F32,
-            np.float64: ChannelDatatype.F64,
-        }
-
         channel_count_from_color_model = {
             "a": 1,
             "l": 1,
@@ -178,7 +164,7 @@ class ImageExt:
                 _send_warning_or_raise(f"Unknown ColorModel: '{color_model}'")
 
         try:
-            datatype = channel_dtype_from_np_dtype[image.dtype.type]
+            datatype = ChannelDatatype.from_np_dtype(image.dtype)
         except KeyError:
             _send_warning_or_raise(f"Unsupported dtype {image.dtype} for Image")
 

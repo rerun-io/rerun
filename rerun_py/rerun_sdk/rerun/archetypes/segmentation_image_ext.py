@@ -41,27 +41,13 @@ class SegmentationImageExt:
 
     def __init__(
         self: Any,
-        data: ImageLike,
+        image: ImageLike,
         *,
         opacity: Float32Like | None = None,
     ):
-        channel_dtype_from_np_dtype = {
-            np.uint8: ChannelDatatype.U8,
-            np.uint16: ChannelDatatype.U16,
-            np.uint32: ChannelDatatype.U32,
-            np.uint64: ChannelDatatype.U64,
-            np.int8: ChannelDatatype.I8,
-            np.int16: ChannelDatatype.I16,
-            np.int32: ChannelDatatype.I32,
-            np.int64: ChannelDatatype.I64,
-            np.float16: ChannelDatatype.F16,
-            np.float32: ChannelDatatype.F32,
-            np.float64: ChannelDatatype.F64,
-        }
+        image = _to_numpy(image)
 
-        data = _to_numpy(data)
-
-        shape = data.shape
+        shape = image.shape
 
         # Ignore leading and trailing dimensions of size 1:
         while 2 < len(shape) and shape[0] == 1:
@@ -70,16 +56,16 @@ class SegmentationImageExt:
             shape = shape[:-1]
 
         if len(shape) != 2:
-            raise ValueError(f"SegmentationImage must be 2D, got shape {data.shape}")
+            raise ValueError(f"SegmentationImage must be 2D, got shape {image.shape}")
         height, width = shape
 
         try:
-            datatype = channel_dtype_from_np_dtype[data.dtype.type]
+            datatype = ChannelDatatype.from_np_dtype(image.dtype)
         except KeyError:
-            raise ValueError(f"Unsupported dtype {data.dtype} for SegmentationImage")
+            raise ValueError(f"Unsupported dtype {image.dtype} for SegmentationImage")
 
         self.__attrs_init__(
-            data=data.tobytes(),
+            data=image.tobytes(),
             resolution=Resolution2D(width=width, height=height),
             datatype=datatype,
             opacity=opacity,
