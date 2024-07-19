@@ -97,7 +97,7 @@ class Detector:
         _, _, scaled_height, scaled_width = inputs["pixel_values"].shape
         scaled_size = (scaled_width, scaled_height)
         rgb_scaled = cv2.resize(rgb, scaled_size)
-        rr.log("segmentation/rgb_scaled", rr.Image(rgb_scaled).compress(jpeg_quality=85))
+        rr.log("segmentation/rgb_scaled", rr.ImageEncoded.compress(rgb_scaled, "RGB", jpeg_quality=85))
 
         logging.debug("Pass image to detection network")
         outputs = self.model(**inputs)
@@ -354,7 +354,7 @@ def track_objects(video_path: str, *, max_frame_count: int | None) -> None:
             break
 
         rgb = cv2.cvtColor(bgr, cv2.COLOR_BGR2RGB)
-        rr.log("image", rr.Image(rgb).compress(jpeg_quality=85))
+        rr.log("image", rr.ImageEncoded.compress(rgb, "RGB", jpeg_quality=85))
 
         if not trackers or frame_idx % 40 == 0:
             detections = detector.detect_objects_to_track(rgb=rgb, frame_idx=frame_idx)

@@ -46,7 +46,7 @@ The input video is logged as a sequence of
 ```python
 rr.log(
     "video/rgb",
-    rr.Image(rgb).compress(jpeg_quality=75)
+    rr.ImageEncoded.compress(rgb, "RGB", jpeg_quality=75)
 )
 ```
 

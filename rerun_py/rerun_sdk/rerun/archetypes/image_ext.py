@@ -1,7 +1,6 @@
 from __future__ import annotations
 
-from io import BytesIO
-from typing import TYPE_CHECKING, Any, Union, cast
+from typing import TYPE_CHECKING, Any, Union
 
 import numpy as np
 import numpy.typing as npt
@@ -11,12 +10,9 @@ from rerun.components.pixel_format import PixelFormatLike
 
 from ..components import ChannelDatatype, Resolution2D
 from ..datatypes import Float32Like
-from ..error_utils import _send_warning_or_raise, catch_and_log_exceptions
+from ..error_utils import _send_warning_or_raise
 
 if TYPE_CHECKING:
-    from ..archetypes import ImageEncoded
-    from . import Image
-
     ImageLike = Union[
         npt.NDArray[np.float16],
         npt.NDArray[np.float32],
@@ -176,61 +172,3 @@ class ImageExt:
             opacity=opacity,
             draw_order=draw_order,
         )
-
-    def compress(self, *, jpeg_quality: int = 95) -> ImageEncoded | Image:
-        """
-        Converts an `Image` to an [`rerun.ImageEncoded`][] using JPEG compression.
-
-        JPEG compression works best for photographs. Only RGB and graysacle images are
-        supported, not RGBA. Note that compressing to JPEG costs a bit of CPU time,
-        both when logging and later when viewing them.
-
-        Parameters
-        ----------
-        jpeg_quality:
-            Higher quality = larger file size.
-            A quality of 95 saves a lot of space, but is still visually very similar.
-
-        """
-
-        from PIL import Image as PILImage
-
-        from ..archetypes import ImageEncoded
-        from . import Image
-
-        self = cast(Image, self)
-
-        with catch_and_log_exceptions(context="Image compression"):
-            if self.datatype is None:
-                raise ValueError("Image ChannelDatatype is required to compress")
-            if self.color_model is None:
-                raise ValueError("Image ColorModel is required to compress")
-
-            array_flat = np.frombuffer(self.data, dtype=self.datatype.np_dtype())
-            image_array = array_flat.reshape([
-                self.resolution.height(),
-                self.resolution.width(),
-                self.color_model.num_channels(),
-            ])
-
-            if self.color_model == "L":
-                mode = "L"
-            elif self.color_model == "RGB":
-                mode = "RGB"
-            else:
-                # TODO(#2340): BGR support!
-                raise ValueError(f"Cannot JPEG compress an image of type {self.color_model}")
-
-            if image_array.dtype not in ["uint8", "sint32", "float32"]:
-                # Convert to a format supported by Image.fromarray
-                image_array = image_array.astype("float32")
-
-            pil_image = PILImage.fromarray(image_array, mode=mode)
-            output = BytesIO()
-            pil_image.save(output, format="JPEG", quality=jpeg_quality)
-            jpeg_bytes = output.getvalue()
-            output.close()
-            return ImageEncoded(contents=jpeg_bytes, media_type="image/jpeg")
-
-        # On failure to compress, still return the original image
-        return self
