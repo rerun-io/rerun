@@ -655,20 +655,7 @@ fn run_impl(
     };
 
     // Where do we get the data from?
-    let rx: Vec<Receiver<LogMsg>> = if args.url_or_paths.is_empty() {
-        #[cfg(feature = "server")]
-        {
-            let server_options = re_sdk_comms::ServerOptions {
-                max_latency_sec: parse_max_latency(args.drop_at_latency.as_ref()),
-                quiet: false,
-            };
-            let rx = re_sdk_comms::serve(&args.bind, args.port, server_options)?;
-            vec![rx]
-        }
-
-        #[cfg(not(feature = "server"))]
-        vec![]
-    } else {
+    let rx: Vec<Receiver<LogMsg>> = {
         let data_sources = args
             .url_or_paths
             .iter()
@@ -697,10 +684,23 @@ fn run_impl(
             }
         }
 
-        data_sources
+        let mut rxs = data_sources
             .into_iter()
             .map(|data_source| data_source.stream(None))
-            .collect::<Result<Vec<_>, _>>()?
+            .collect::<Result<Vec<_>, _>>()?;
+
+        #[cfg(feature = "server")]
+        {
+            let server_options = re_sdk_comms::ServerOptions {
+                max_latency_sec: parse_max_latency(args.drop_at_latency.as_ref()),
+                quiet: false,
+            };
+            let tcp_listener: Receiver<LogMsg> =
+                re_sdk_comms::serve(&args.bind, args.port, server_options)?;
+            rxs.push(tcp_listener);
+        }
+
+        rxs
     };
 
     // Now what do we do with the data?
