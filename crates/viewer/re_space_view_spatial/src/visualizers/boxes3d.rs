@@ -12,9 +12,9 @@ use re_types::{
 };
 use re_viewer_context::{
     auto_color_for_entity_path, ApplicableEntities, IdentifiedViewSystem, QueryContext,
-    SpaceViewSystemExecutionError, TypedComponentFallbackProvider, ViewContext,
-    ViewContextCollection, ViewQuery, VisualizableEntities, VisualizableFilterContext,
-    VisualizerQueryInfo, VisualizerSystem,
+    ResolvedAnnotationInfo, ResolvedAnnotationInfos, SpaceViewSystemExecutionError,
+    TypedComponentFallbackProvider, ViewContext, ViewContextCollection, ViewQuery,
+    VisualizableEntities, VisualizableFilterContext, VisualizerQueryInfo, VisualizerSystem,
 };
 
 use crate::{
@@ -80,7 +80,9 @@ impl Boxes3DVisualizer {
                 ctx,
                 self,
                 num_instances,
-                &annotation_infos,
+                // Don't use annotation-sourced colors for surface (only wireframe).
+                // TODO(kpreid): how *should* the annotation context interact with surface colors?
+                &ResolvedAnnotationInfos::Same(num_instances, ResolvedAnnotationInfo::default()),
                 data.solid_colors,
             );
             let line_colors = process_color_slice(
