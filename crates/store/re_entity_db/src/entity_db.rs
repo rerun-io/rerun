@@ -372,8 +372,6 @@ impl EntityDb {
             self.time_histogram_per_timeline.on_events(&store_events);
             self.query_caches.on_events(&store_events);
             self.tree.on_store_additions(&store_events);
-            // Tree deletions depend on data store, so data store must have been notified of deletions already.
-            self.tree.on_store_deletions(&self.data_store);
 
             // We inform the stats last, since it measures e2e latency.
             self.stats.on_events(&store_events);
