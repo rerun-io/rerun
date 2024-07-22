@@ -127,9 +127,10 @@ impl EntityTree {
             && !chunk_store.entity_has_any_component_on_any_timeline(&self.path)
     }
 
-    /// Updates the [`EntityTree`] by applying a batch of [`ChunkStoreEvent`]s.
+    /// Updates the [`EntityTree`] by applying a batch of [`ChunkStoreEvent`]s,
+    /// adding any new entities to the tree.
     ///
-    /// Only reacts to deletions (`event.kind == StoreDiffKind::Deletion`).
+    /// Only reacts to additions (`event.kind == StoreDiffKind::Addition`).
     pub fn on_store_additions(&mut self, events: &[ChunkStoreEvent]) {
         re_tracing::profile_function!();
         for event in events
@@ -155,9 +156,10 @@ impl EntityTree {
         }
     }
 
-    /// Updates the [`EntityTree`] by applying a batch of [`ChunkStoreEvent`]s.
+    /// Updates the [`EntityTree`] by removing any entities which have no data and no children.
     ///
-    /// Only reacts to deletions (`event.kind == StoreDiffKind::Deletion`).
+    /// ⚠ This depends on `data_store` having up-to-date records of which entities have no data,
+    /// so it must have already been notified of any chunk events prior to calling this method.
     pub fn on_store_deletions(&mut self, data_store: &ChunkStore) {
         re_tracing::profile_function!();
 
@@ -176,7 +178,10 @@ impl EntityTree {
         ) -> Option<&'tree EntityTree> {
             match path {
                 [] => Some(this),
-                [first, rest @ ..] => subtree_recursive(this.children.get(first)?, rest),
+                [first, rest @ ..] => {
+                    let child = this.children.get(first)?;
+                    subtree_recursive(child, rest)
+                }
             }
         }
 
