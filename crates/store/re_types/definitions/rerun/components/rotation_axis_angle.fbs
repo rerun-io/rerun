@@ -1,0 +1,10 @@
+namespace rerun.components;
+
+/// 3D rotation represented by a rotation around a given axis.
+table RotationAxisAngle (
+  "attr.docs.unreleased",
+  "attr.rust.derive": "Default, Copy, PartialEq",
+  "attr.rust.repr": "transparent"
+) {
+  rotation: rerun.datatypes.RotationAxisAngle (order: 100);
+}

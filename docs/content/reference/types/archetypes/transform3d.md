@@ -5,9 +5,10 @@ title: "Transform3D"
 
 A transform between two 3D spaces, i.e. a pose.
 
-All components are applied in the inverse order they are listed here.
-E.g. if both a 4x4 matrix with a translation and a translation vector are present,
-the translation is applied first, followed by the matrix.
+From the point of view of the entity's coordinate system,
+all components are applied in the inverse order they are listed here.
+E.g. if both a translation and a max3x3 transform are present,
+the 3x3 matrix is applied first, followed by the translation.
 
 Each transform component can be listed multiple times, but transform tree propagation is only possible
 if there's only one instance for each transform component.
@@ -15,7 +16,7 @@ TODO(#6831): write more about the exact interaction with the to be written `OutO
 
 ## Components
 
-**Optional**: [`Transform3D`](../components/transform3d.md), [`Translation3D`](../components/translation3d.md), [`Scale3D`](../components/scale3d.md), [`TransformMat3x3`](../components/transform_mat3x3.md), [`AxisLength`](../components/axis_length.md)
+**Optional**: [`Translation3D`](../components/translation3d.md), [`RotationAxisAngle`](../components/rotation_axis_angle.md), [`RotationQuat`](../components/rotation_quat.md), [`Scale3D`](../components/scale3d.md), [`TransformMat3x3`](../components/transform_mat3x3.md), [`TransformRelation`](../components/transform_relation.md), [`AxisLength`](../components/axis_length.md)
 
 ## Shown in
 * [Spatial3DView](../views/spatial3d_view.md)

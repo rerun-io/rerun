@@ -1,0 +1,13 @@
+namespace rerun.components;
+
+/// A 3D rotation expressed as a quaternion.
+///
+/// Note: although the x,y,z,w components of the quaternion will be passed through to the
+/// datastore as provided, when used in the Viewer Quaternions will always be normalized.
+struct RotationQuat (
+  "attr.docs.unreleased",
+  "attr.rust.derive": "Default, Copy, PartialEq, bytemuck::Pod, bytemuck::Zeroable",
+  "attr.rust.repr": "transparent"
+) {
+  quaternion: rerun.datatypes.Quaternion (order: 100);
+}

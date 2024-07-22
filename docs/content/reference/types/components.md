@@ -50,6 +50,8 @@ on [Entities and Components](../../concepts/entity-component.md).
 * [`Resolution`](components/resolution.md): Pixel resolution width & height, e.g. of a camera sensor.
 * [`Resolution2D`](components/resolution2d.md): The width and height of a 2D image.
 * [`Rotation3D`](components/rotation3d.md): A 3D rotation, represented either by a quaternion or a rotation around axis.
+* [`RotationAxisAngle`](components/rotation_axis_angle.md): 3D rotation represented by a rotation around a given axis.
+* [`RotationQuat`](components/rotation_quat.md): A 3D rotation expressed as a quaternion.
 * [`Scalar`](components/scalar.md): A scalar value, encoded as a 64-bit floating point.
 * [`Scale3D`](components/scale3d.md): A 3D scale factor.
 * [`StrokeWidth`](components/stroke_width.md): The width of a stroke specified in UI points.
@@ -62,6 +64,7 @@ on [Entities and Components](../../concepts/entity-component.md).
 * [`TextLogLevel`](components/text_log_level.md): The severity level of a text log message.
 * [`Transform3D`](components/transform3d.md): An affine transform between two 3D spaces, represented in a given direction.
 * [`TransformMat3x3`](components/transform_mat3x3.md): A 3x3 transformation matrix Matrix.
+* [`TransformRelation`](components/transform_relation.md): Specifies relation a spatial transform describes.
 * [`Translation3D`](components/translation3d.md): A translation vector in 3D space.
 * [`TriangleIndices`](components/triangle_indices.md): The three indices of a triangle in a triangle mesh.
 * [`Vector2D`](components/vector2d.md): A vector in 2D space.

@@ -1,9 +1,10 @@
 use re_ui::UiExt;
-use re_viewer_context::MaybeMutRef;
+use re_viewer_context::{MaybeMutRef, ViewerContext};
 
 use crate::response_utils::response_with_changes_of_inner;
 
 pub fn edit_view_enum<EnumT: re_types_core::reflection::Enum + re_types_core::Component>(
+    _ctx: &ViewerContext<'_>,
     ui: &mut egui::Ui,
     current_value: &mut MaybeMutRef<'_, EnumT>,
 ) -> egui::Response {

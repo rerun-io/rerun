@@ -6,11 +6,8 @@ int main() {
     const auto rec = rerun::RecordingStream("rerun_example_transform3d_axes");
     rec.spawn().exit_on_failure();
 
-    // TODO(#6675): Simpler identity
-    auto base_axes = rerun::Transform3D(rerun::datatypes::TranslationRotationScale3D::IDENTITY)
-                         .with_axis_length(1.0);
-    auto other_axes = rerun::Transform3D(rerun::datatypes::TranslationRotationScale3D::IDENTITY)
-                          .with_axis_length(0.5);
+    auto base_axes = rerun::Transform3D().with_axis_length(1.0);
+    auto other_axes = rerun::Transform3D().with_axis_length(0.5);
 
     rec.set_time_sequence("step", 0);
 

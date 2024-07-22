@@ -38,3 +38,13 @@ impl From<RotationAxisAngle> for mint::Quaternion<f32> {
         [val.axis.x() * s, val.axis.y() * s, val.axis.z() * s, c].into()
     }
 }
+
+impl Default for RotationAxisAngle {
+    #[inline]
+    fn default() -> Self {
+        Self {
+            axis: Vec3D::new(1.0, 0.0, 0.0),
+            angle: Angle::from_radians(0.0),
+        }
+    }
+}

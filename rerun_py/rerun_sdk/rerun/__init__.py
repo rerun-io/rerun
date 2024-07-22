@@ -82,8 +82,10 @@ from .components import (
     Scale3D as Scale3D,
     TensorDimensionIndexSelection as TensorDimensionIndexSelection,
     TextLogLevel as TextLogLevel,
+    TransformRelation as TransformRelation,
 )
 from .datatypes import (
+    Angle as Angle,
     AnnotationInfo as AnnotationInfo,
     ClassDescription as ClassDescription,
     Quaternion as Quaternion,

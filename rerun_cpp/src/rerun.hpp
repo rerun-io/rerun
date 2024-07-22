@@ -43,6 +43,7 @@ namespace rerun {
     using components::Radius;
     using components::Text;
     using components::TextLogLevel;
+    using components::TransformRelation;
     using components::TriangleIndices;
     using components::Vector2D;
     using components::Vector3D;
@@ -55,7 +56,6 @@ namespace rerun {
     using datatypes::Mat3x3;
     using datatypes::Quaternion;
     using datatypes::Rgba32;
-    using datatypes::Rotation3D;
     using datatypes::RotationAxisAngle;
     using datatypes::Scale3D;
     using datatypes::TensorBuffer;
