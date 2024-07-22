@@ -747,7 +747,7 @@ impl ChunkStore {
             })
     }
 
-    /// Returns the size of the entity on a specific timeline.
+    /// Returns number of bytes used for an entity's data on a specific timeline.
     ///
     /// This includes static data.
     ///
@@ -762,7 +762,7 @@ impl ChunkStore {
 
         self.query_id.fetch_add(1, Ordering::Relaxed);
 
-        let static_data_size = self.static_chunk_ids_per_entity.get(entity_path).map_or(
+        let static_data_size_bytes = self.static_chunk_ids_per_entity.get(entity_path).map_or(
             0,
             |static_chunks_per_component| {
                 static_chunks_per_component
@@ -773,7 +773,7 @@ impl ChunkStore {
             },
         );
 
-        let temporal_data_size = self
+        let temporal_data_size_bytes = self
             .temporal_chunk_ids_per_entity
             .get(entity_path)
             .and_then(|temporal_chunk_ids_per_timeline| {
@@ -789,6 +789,6 @@ impl ChunkStore {
                     .sum()
             });
 
-        static_data_size + temporal_data_size
+        static_data_size_bytes + temporal_data_size_bytes
     }
 }
