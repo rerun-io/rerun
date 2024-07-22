@@ -99,6 +99,10 @@ impl Chunk {
             return chunk;
         };
 
+        if time_chunk.is_sorted() {
+            return chunk;
+        }
+
         #[cfg(not(target_arch = "wasm32"))]
         let now = std::time::Instant::now();
 
