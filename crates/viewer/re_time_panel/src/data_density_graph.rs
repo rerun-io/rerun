@@ -446,7 +446,7 @@ pub fn build_density_graph<'a>(
         .time_range_from_x_range((row_rect.left() - MARGIN_X)..=(row_rect.right() + MARGIN_X));
 
     // NOTE: These chunks are guaranteed to have data on the current timeline
-    let mut chunk_ranges: Vec<(Arc<Chunk>, ResolvedTimeRange, usize)> = vec![];
+    let mut chunk_ranges: Vec<(Arc<Chunk>, ResolvedTimeRange, u64)> = vec![];
     let mut total_events = 0;
 
     {
@@ -502,13 +502,13 @@ pub fn build_density_graph<'a>(
 #[derive(Clone, Copy)]
 pub struct DensityGraphBuilderConfig {
     /// If there are more chunks than this then we NEVER show individual events of any chunk.
-    pub max_total_chunk_events: usize,
+    pub max_total_chunk_events: u64,
 
     /// If a sorted chunk has fewer events than this we show its individual events.
-    pub max_events_in_sorted_chunk: usize,
+    pub max_events_in_sorted_chunk: u64,
 
     /// If an unsorted chunk has fewer events than this we show its individual events.
-    pub max_events_in_unsorted_chunk: usize,
+    pub max_events_in_unsorted_chunk: u64,
 }
 
 impl DensityGraphBuilderConfig {
@@ -522,16 +522,16 @@ impl DensityGraphBuilderConfig {
     /// All sorted chunks will be rendered as individual events,
     /// and all unsorted chunks will be rendered whole.
     pub const ALWAYS_SPLIT_SORTED_CHUNKS: Self = Self {
-        max_total_chunk_events: usize::MAX,
+        max_total_chunk_events: u64::MAX,
         max_events_in_unsorted_chunk: 0,
-        max_events_in_sorted_chunk: usize::MAX,
+        max_events_in_sorted_chunk: u64::MAX,
     };
 
     /// All chunks will be rendered as individual events.
     pub const ALWAYS_SPLIT_ALL_CHUNKS: Self = Self {
-        max_total_chunk_events: usize::MAX,
-        max_events_in_unsorted_chunk: usize::MAX,
-        max_events_in_sorted_chunk: usize::MAX,
+        max_total_chunk_events: u64::MAX,
+        max_events_in_unsorted_chunk: u64::MAX,
+        max_events_in_sorted_chunk: u64::MAX,
     };
 }
 
@@ -638,7 +638,7 @@ impl<'a> DensityGraphBuilder<'a> {
         }
     }
 
-    fn add_chunk_range(&mut self, time_range: ResolvedTimeRange, num_events: usize) {
+    fn add_chunk_range(&mut self, time_range: ResolvedTimeRange, num_events: u64) {
         if num_events == 0 {
             return;
         }
@@ -693,7 +693,7 @@ fn visit_relevant_chunks(
     component_name: Option<ComponentName>,
     timeline: Timeline,
     time_range: ResolvedTimeRange,
-    mut visitor: impl FnMut(Arc<Chunk>, ResolvedTimeRange, usize),
+    mut visitor: impl FnMut(Arc<Chunk>, ResolvedTimeRange, u64),
 ) {
     re_tracing::profile_function!();
 

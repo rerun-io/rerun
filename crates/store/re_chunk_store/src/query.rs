@@ -671,7 +671,7 @@ impl ChunkStore {
         timeline: &Timeline,
         entity_path: &EntityPath,
         component_name: ComponentName,
-    ) -> usize {
+    ) -> u64 {
         re_tracing::profile_function!();
 
         self.num_events_for_static_component(entity_path, component_name)
@@ -687,12 +687,12 @@ impl ChunkStore {
         &self,
         timeline: &Timeline,
         entity_path: &EntityPath,
-    ) -> usize {
+    ) -> u64 {
         re_tracing::profile_function!();
 
         self.query_id.fetch_add(1, Ordering::Relaxed);
 
-        let mut total_events = 0;
+        let mut total_events = 0u64;
 
         if let Some(static_chunks_per_component) = self.static_chunk_ids_per_entity.get(entity_path)
         {
@@ -728,7 +728,7 @@ impl ChunkStore {
         &self,
         entity_path: &EntityPath,
         component_name: ComponentName,
-    ) -> usize {
+    ) -> u64 {
         re_tracing::profile_function!();
 
         self.query_id.fetch_add(1, Ordering::Relaxed);
@@ -757,7 +757,7 @@ impl ChunkStore {
         timeline: &Timeline,
         entity_path: &EntityPath,
         component_name: ComponentName,
-    ) -> usize {
+    ) -> u64 {
         re_tracing::profile_function!();
 
         self.query_id.fetch_add(1, Ordering::Relaxed);

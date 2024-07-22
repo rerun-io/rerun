@@ -227,14 +227,14 @@ impl Chunk {
     //
     // TODO(cmc): This needs to be stored in chunk metadata and transported across IPC.
     #[inline]
-    pub fn num_events_cumulative(&self) -> usize {
+    pub fn num_events_cumulative(&self) -> u64 {
         // Reminder: component columns are sparse, we must take a look at the validity bitmaps.
         self.components
             .values()
             .map(|list_array| {
                 list_array.validity().map_or_else(
-                    || list_array.len(),
-                    |validity| validity.len() - validity.unset_bits(),
+                    || list_array.len() as u64,
+                    |validity| validity.len() as u64 - validity.unset_bits() as u64,
                 )
             })
             .sum()
@@ -254,7 +254,7 @@ impl Chunk {
         re_tracing::profile_function!();
 
         if self.is_static() {
-            return vec![(TimeInt::STATIC, self.num_events_cumulative() as u64)];
+            return vec![(TimeInt::STATIC, self.num_events_cumulative())];
         }
 
         let Some(time_chunk) = self.timelines().get(timeline) else {
@@ -263,7 +263,7 @@ impl Chunk {
 
         let time_range = time_chunk.time_range();
         if time_range.min() == time_range.max() {
-            return vec![(time_range.min(), self.num_events_cumulative() as u64)];
+            return vec![(time_range.min(), self.num_events_cumulative())];
         }
 
         let counts = if time_chunk.is_sorted() {
@@ -363,12 +363,12 @@ impl Chunk {
     //
     // TODO(cmc): This needs to be stored in chunk metadata and transported across IPC.
     #[inline]
-    pub fn num_events_for_component(&self, component_name: ComponentName) -> Option<usize> {
+    pub fn num_events_for_component(&self, component_name: ComponentName) -> Option<u64> {
         // Reminder: component columns are sparse, we must check validity bitmap.
         self.components.get(&component_name).map(|list_array| {
             list_array.validity().map_or_else(
-                || list_array.len(),
-                |validity| validity.len() - validity.unset_bits(),
+                || list_array.len() as u64,
+                |validity| validity.len() as u64 - validity.unset_bits() as u64,
             )
         })
     }
