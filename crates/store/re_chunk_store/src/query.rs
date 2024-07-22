@@ -757,7 +757,7 @@ impl ChunkStore {
     /// what is accessible inside this chunk store.
     ///
     /// ⚠ This does not return the _total_ size of the entity and all its children!
-    /// For that, use `entity_db.size_of_subtree_on_timeline`.
+    /// For that, use `entity_db.approx_size_of_subtree_on_timeline`.
     pub fn approx_size_of_entity_on_timeline(
         &self,
         timeline: &Timeline,
