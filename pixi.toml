@@ -440,7 +440,7 @@ vs2022_win-64 = "19.37.32822"
 
 # PYTHON DEV ENVIRONMENT
 [feature.python-dev]
-platforms = ["linux-64", "osx-arm64", "osx-64", "win-64"]
+platforms = ["linux-64", "linux-aarch64", "osx-arm64", "osx-64", "win-64"]
 
 [feature.python-dev.dependencies]
 # We need opencv for `compare_snippet_output.py` (needed by both C++ and Python)
