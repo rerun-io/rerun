@@ -156,15 +156,17 @@ impl EntityTree {
     }
 
     /// Updates the [`EntityTree`] by removing any entities which have no data and no children.
-    ///
-    /// ⚠ This depends on `data_store` having up-to-date records of which entities have no data,
-    /// so it must have already been notified of any chunk events prior to calling this method.
-    pub fn on_store_deletions(&mut self, data_store: &ChunkStore) {
+    pub fn on_store_deletions(&mut self, data_store: &ChunkStore, events: &[ChunkStoreEvent]) {
         re_tracing::profile_function!();
+
+        // We don't actually use the events for anything, we just want to
+        // have a direct dependency on the chunk store which must have
+        // produced them by the time this function was called.
+        let _ = events;
 
         self.children.retain(|_, entity| {
             // this is placed first, because we'll only know if the child entity is empty after telling it to clear itself.
-            entity.on_store_deletions(data_store);
+            entity.on_store_deletions(data_store, events);
 
             !entity.is_empty(data_store)
         });
