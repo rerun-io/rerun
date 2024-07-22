@@ -597,8 +597,8 @@ impl ChunkStore {
             self.temporal_chunk_ids_per_entity.get(entity_path)?;
         let chunk_id_sets = temporal_chunk_ids_per_timeline.get(timeline)?;
 
-        let start = chunk_id_sets.per_start_time.keys().min()?;
-        let end = chunk_id_sets.per_end_time.keys().max()?;
+        let start = chunk_id_sets.per_start_time.first_key_value()?.0;
+        let end = chunk_id_sets.per_end_time.last_key_value()?.0;
 
         Some(ResolvedTimeRange::new(*start, *end))
     }
