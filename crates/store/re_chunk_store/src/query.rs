@@ -657,29 +657,14 @@ impl ChunkStore {
 
 // Counting
 impl ChunkStore {
-    /// Returns the number of events of a specific component logged for an entity on a specific timeline.
-    ///
-    /// This counts events for both static and temporal components.
-    pub fn num_events_on_timeline_for_component(
-        &self,
-        timeline: &Timeline,
-        entity_path: &EntityPath,
-        component_name: ComponentName,
-    ) -> u64 {
-        re_tracing::profile_function!();
-
-        self.num_events_for_static_component(entity_path, component_name)
-            + self.num_events_on_timeline_for_temporal_component(
-                timeline,
-                entity_path,
-                component_name,
-            )
-    }
-
     /// Returns the number of events logged for an entity on a specific timeline.
     ///
     /// This ignores static data.
-    pub fn num_events_on_timeline(&self, timeline: &Timeline, entity_path: &EntityPath) -> u64 {
+    pub fn num_temporal_events_on_timeline(
+        &self,
+        timeline: &Timeline,
+        entity_path: &EntityPath,
+    ) -> u64 {
         re_tracing::profile_function!();
 
         self.query_id.fetch_add(1, Ordering::Relaxed);
@@ -704,7 +689,7 @@ impl ChunkStore {
     }
 
     /// Returns the number of times a static component was logged to an entity.
-    pub fn num_events_for_static_component(
+    pub fn num_static_events_for_component(
         &self,
         entity_path: &EntityPath,
         component_name: ComponentName,
@@ -726,7 +711,7 @@ impl ChunkStore {
     /// Returns the number of times a temporal component was logged to an entity path on a specific timeline.
     ///
     /// This ignores static data.
-    pub fn num_events_on_timeline_for_temporal_component(
+    pub fn num_temporal_events_for_component_on_timeline(
         &self,
         timeline: &Timeline,
         entity_path: &EntityPath,

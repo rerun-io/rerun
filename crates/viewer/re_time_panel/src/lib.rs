@@ -762,11 +762,17 @@ impl TimePanel {
                         &component_name,
                     );
 
-                let total_num_messages = entity_db.store().num_events_on_timeline_for_component(
-                    time_ctrl.timeline(),
-                    &tree.path,
-                    component_name,
-                );
+                let num_static_messages = entity_db
+                    .store()
+                    .num_static_events_for_component(&tree.path, component_name);
+                let num_temporal_messages = entity_db
+                    .store()
+                    .num_temporal_events_for_component_on_timeline(
+                        time_ctrl.timeline(),
+                        &tree.path,
+                        component_name,
+                    );
+                let total_num_messages = num_static_messages + num_temporal_messages;
 
                 let response = ui
                     .list_item()
@@ -806,19 +812,24 @@ impl TimePanel {
                         )));
                     } else {
                         list_item::list_item_scope(ui, "hover tooltip", |ui| {
+                            let kind = if is_static { "Static" } else { "Temporal" };
+
+                            let num_messages = if is_static {
+                                num_static_messages
+                            } else {
+                                num_temporal_messages
+                            };
+
+                            let num_messages = if num_messages == 1 {
+                                "once".to_owned()
+                            } else {
+                                format!("{} times", re_format::format_uint(num_messages))
+                            };
+
                             ui.list_item().interactive(false).show_flat(
                                 ui,
                                 list_item::LabelContent::new(format!(
-                                    "{} component, logged {}",
-                                    if is_static { "Static" } else { "Temporal" },
-                                    if total_num_messages == 1 {
-                                        "once".to_owned()
-                                    } else {
-                                        format!(
-                                            "{} times",
-                                            re_format::format_uint(total_num_messages)
-                                        )
-                                    },
+                                    "{kind} component, logged {num_messages}"
                                 ))
                                 .truncate(false)
                                 .with_icon(if is_static {

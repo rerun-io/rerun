@@ -316,7 +316,9 @@ fn entity_tree_stats_ui(
 
     // Try to estimate data-rate
     if db.subtree_has_temporal_data_on_timeline(timeline, &tree.path) {
-        let num_events = db.store().num_events_on_timeline(timeline, &tree.path);
+        let num_events = db
+            .store()
+            .num_temporal_events_on_timeline(timeline, &tree.path);
 
         if let Some(time_range) = db.store().entity_time_range(timeline, &tree.path) {
             let min_time = time_range.min();

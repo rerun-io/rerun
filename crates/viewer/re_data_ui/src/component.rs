@@ -74,7 +74,7 @@ impl<'a> DataUi for EntityLatestAtResults<'a> {
             if self.results.is_static() {
                 let static_message_count = db
                     .store()
-                    .num_events_for_static_component(&self.entity_path, component_name);
+                    .num_static_events_for_component(&self.entity_path, component_name);
                 if static_message_count > 1 {
                     ui.label(ui.ctx().warning_text(format!(
                         "Static component value was overridden {} times",
@@ -88,7 +88,7 @@ impl<'a> DataUi for EntityLatestAtResults<'a> {
                 }
 
                 let temporal_message_count =
-                    db.store().num_events_on_timeline_for_temporal_component(
+                    db.store().num_temporal_events_for_component_on_timeline(
                         &query.timeline(),
                         &self.entity_path,
                         component_name,
