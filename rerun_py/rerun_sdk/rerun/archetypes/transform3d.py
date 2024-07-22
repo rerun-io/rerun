@@ -139,6 +139,8 @@ class Transform3D(Transform3DExt, Archetype):
         self.__attrs_init__(
             transform=None,  # type: ignore[arg-type]
             translation=None,  # type: ignore[arg-type]
+            rotation_axis_angle=None,  # type: ignore[arg-type]
+            quaternion=None,  # type: ignore[arg-type]
             scale=None,  # type: ignore[arg-type]
             mat3x3=None,  # type: ignore[arg-type]
             axis_length=None,  # type: ignore[arg-type]
@@ -165,6 +167,24 @@ class Transform3D(Transform3DExt, Archetype):
         converter=components.Translation3DBatch._optional,  # type: ignore[misc]
     )
     # Translation vectors.
+    #
+    # (Docstring intentionally commented out to hide this field from the docs)
+
+    rotation_axis_angle: components.RotationAxisAngleBatch | None = field(
+        metadata={"component": "optional"},
+        default=None,
+        converter=components.RotationAxisAngleBatch._optional,  # type: ignore[misc]
+    )
+    # Rotation via axis + angle.
+    #
+    # (Docstring intentionally commented out to hide this field from the docs)
+
+    quaternion: components.RotationQuatBatch | None = field(
+        metadata={"component": "optional"},
+        default=None,
+        converter=components.RotationQuatBatch._optional,  # type: ignore[misc]
+    )
+    # Rotation via quaternion.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 

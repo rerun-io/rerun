@@ -27,11 +27,17 @@ table Transform3D (
   /// Translation vectors.
   translation: [rerun.components.Translation3D] ("attr.rerun.component_optional", nullable, order: 1100);
 
+  /// Rotation via axis + angle.
+  rotation_axis_angle: [rerun.components.RotationAxisAngle] ("attr.rerun.component_optional", nullable, order: 1200);
+
+  /// Rotation via quaternion.
+  quaternion: [rerun.components.RotationQuat] ("attr.rerun.component_optional", nullable, order: 1300);
+
   /// Scaling factor.
-  scale: [rerun.components.Scale3D] ("attr.rerun.component_optional", nullable, order: 1200);
+  scale: [rerun.components.Scale3D] ("attr.rerun.component_optional", nullable, order: 1400);
 
   /// 3x3 transformation matrices.
-  mat3x3: [rerun.components.TransformMat3x3] ("attr.rerun.component_optional", nullable, order: 1300);
+  mat3x3: [rerun.components.TransformMat3x3] ("attr.rerun.component_optional", nullable, order: 1500);
 
   // --- visual representation
 

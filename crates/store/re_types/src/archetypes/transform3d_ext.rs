@@ -1,11 +1,26 @@
 use crate::{
     components::{Scale3D, TransformMat3x3, Translation3D},
-    datatypes::{Rotation3D, TranslationRotationScale3D},
+    Rotation3D,
 };
 
 use super::Transform3D;
 
 impl Transform3D {
+    /// Convenience method that takes any kind of (single) rotation representation and sets it on this transform.
+    #[inline]
+    pub fn with_rotation(self, rotation: impl Into<Rotation3D>) -> Self {
+        match rotation.into() {
+            Rotation3D::Quaternion(quaternion) => Self {
+                quaternion: Some(vec![quaternion]),
+                ..self
+            },
+            Rotation3D::AxisAngle(rotation_axis_angle) => Self {
+                rotation_axis_angle: Some(vec![rotation_axis_angle]),
+                ..self
+            },
+        }
+    }
+
     /// From a translation.
     #[inline]
     pub fn from_translation(translation: impl Into<Translation3D>) -> Self {
@@ -27,10 +42,7 @@ impl Transform3D {
     /// From a rotation
     #[inline]
     pub fn from_rotation(rotation: impl Into<Rotation3D>) -> Self {
-        Self {
-            transform: TranslationRotationScale3D::from_rotation(rotation).into(),
-            ..Self::default()
-        }
+        Self::default().with_rotation(rotation)
     }
 
     /// From a scale
@@ -49,10 +61,10 @@ impl Transform3D {
         rotation: impl Into<Rotation3D>,
     ) -> Self {
         Self {
-            transform: TranslationRotationScale3D::from_rotation(rotation).into(),
             translation: Some(vec![translation.into()]),
             ..Self::default()
         }
+        .with_rotation(rotation)
     }
 
     /// From a translation applied after a 3x3 matrix.
@@ -89,21 +101,21 @@ impl Transform3D {
         scale: impl Into<Scale3D>,
     ) -> Self {
         Self {
-            transform: TranslationRotationScale3D::from_rotation(rotation).into(),
             scale: Some(vec![scale.into()]),
             translation: Some(vec![translation.into()]),
             ..Self::default()
         }
+        .with_rotation(rotation)
     }
 
     /// From a rotation & scale
     #[inline]
     pub fn from_rotation_scale(rotation: impl Into<Rotation3D>, scale: impl Into<Scale3D>) -> Self {
         Self {
-            transform: TranslationRotationScale3D::from_rotation(rotation).into(),
             scale: Some(vec![scale.into()]),
             ..Self::default()
         }
+        .with_rotation(rotation)
     }
 
     /// Indicate that this transform is from parent to child.

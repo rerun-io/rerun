@@ -497,6 +497,20 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             },
         ),
         (
+            <RotationAxisAngle as Loggable>::name(),
+            ComponentReflection {
+                docstring_md: "3D rotation represented by a rotation around a given axis.",
+                placeholder: Some(RotationAxisAngle::default().to_arrow()?),
+            },
+        ),
+        (
+            <RotationQuat as Loggable>::name(),
+            ComponentReflection {
+                docstring_md: "A 3D rotation expressed as a quaternion.\n\nNote: although the x,y,z,w components of the quaternion will be passed through to the\ndatastore as provided, when used in the Viewer Quaternions will always be normalized.",
+                placeholder: Some(RotationQuat::default().to_arrow()?),
+            },
+        ),
+        (
             <Scalar as Loggable>::name(),
             ComponentReflection {
                 docstring_md: "A scalar value, encoded as a 64-bit floating point.\n\nUsed for time series plots.",
@@ -638,6 +652,12 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                     component_name : "rerun.components.Translation3D".into(),
                     display_name : "Translation", docstring_md : "Translation vectors.",
                     }, ArchetypeFieldReflection { component_name :
+                    "rerun.components.RotationAxisAngle".into(), display_name :
+                    "Rotation axis angle", docstring_md : "Rotation via axis + angle.",
+                    }, ArchetypeFieldReflection { component_name :
+                    "rerun.components.RotationQuat".into(), display_name : "Quaternion",
+                    docstring_md : "Rotation via quaternion.", },
+                    ArchetypeFieldReflection { component_name :
                     "rerun.components.Scale3D".into(), display_name : "Scale",
                     docstring_md : "Scaling factor.", }, ArchetypeFieldReflection {
                     component_name : "rerun.components.TransformMat3x3".into(),

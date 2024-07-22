@@ -14,7 +14,7 @@ namespace rerun {
     ) {
         using namespace archetypes;
         std::vector<DataCell> cells;
-        cells.reserve(6);
+        cells.reserve(8);
 
         {
             auto result = DataCell::from_loggable(archetype.transform);
@@ -23,6 +23,16 @@ namespace rerun {
         }
         if (archetype.translation.has_value()) {
             auto result = DataCell::from_loggable(archetype.translation.value());
+            RR_RETURN_NOT_OK(result.error);
+            cells.push_back(std::move(result.value));
+        }
+        if (archetype.rotation_axis_angle.has_value()) {
+            auto result = DataCell::from_loggable(archetype.rotation_axis_angle.value());
+            RR_RETURN_NOT_OK(result.error);
+            cells.push_back(std::move(result.value));
+        }
+        if (archetype.quaternion.has_value()) {
+            auto result = DataCell::from_loggable(archetype.quaternion.value());
             RR_RETURN_NOT_OK(result.error);
             cells.push_back(std::move(result.value));
         }

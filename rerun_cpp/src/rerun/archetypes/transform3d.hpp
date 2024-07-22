@@ -6,6 +6,8 @@
 #include "../collection.hpp"
 #include "../compiler_utils.hpp"
 #include "../components/axis_length.hpp"
+#include "../components/rotation_axis_angle.hpp"
+#include "../components/rotation_quat.hpp"
 #include "../components/scale3d.hpp"
 #include "../components/transform3d.hpp"
 #include "../components/transform_mat3x3.hpp"
@@ -14,6 +16,7 @@
 #include "../indicator_component.hpp"
 #include "../rerun_sdk_export.hpp"
 #include "../result.hpp"
+#include "../rotation3d.hpp"
 
 #include <cstdint>
 #include <optional>
@@ -151,6 +154,12 @@ namespace rerun::archetypes {
         /// Translation vectors.
         std::optional<Collection<rerun::components::Translation3D>> translation;
 
+        /// Rotation via axis + angle.
+        std::optional<Collection<rerun::components::RotationAxisAngle>> rotation_axis_angle;
+
+        /// Rotation via quaternion.
+        std::optional<Collection<rerun::components::RotationQuat>> quaternion;
+
         /// Scaling factor.
         std::optional<Collection<rerun::components::Scale3D>> scale;
 
@@ -282,28 +291,30 @@ namespace rerun::archetypes {
         /// Creates a new 3D transform from translation/rotation/scale.
         ///
         /// \param translation_ \copydoc Transform3D::translation
-        /// \param rotation \copydoc datatypes::TranslationRotationScale3D::rotation
+        /// \param rotation Rotation represented either as a quaternion or axis + angle rotation.
         /// \param scale_ \copydoc Transform3D::scale
         /// \param from_parent \copydoc datatypes::TranslationRotationScale3D::from_parent
         Transform3D(
-            const components::Translation3D& translation_, const datatypes::Rotation3D& rotation,
+            const components::Translation3D& translation_, const Rotation3D& rotation,
             const components::Scale3D& scale_, bool from_parent = false
         )
-            : transform(datatypes::TranslationRotationScale3D(rotation, from_parent)),
+            : transform(datatypes::TranslationRotationScale3D(from_parent)),
               translation(Collection<components::Translation3D>::take_ownership(translation_)),
-              scale(Collection<components::Scale3D>::take_ownership(scale_)) {}
+              scale(Collection<components::Scale3D>::take_ownership(scale_)) {
+            set_rotation(rotation);
+        }
 
         /// Creates a new 3D transform from translation/rotation/uniform-scale.
         ///
         /// \param translation_ \copydoc Transform3D::translation
-        /// \param rotation \copydoc datatypes::TranslationRotationScale3D::rotation
+        /// \param rotation Rotation represented either as a quaternion or axis + angle rotation.
         /// \param uniform_scale Uniform scale factor that is applied to all axis equally.
         /// \param from_parent \copydoc datatypes::TranslationRotationScale3D::from_parent
         ///
         /// _Implementation note:_ This explicit overload prevents interpretation of the float as
         /// bool, leading to a call to the wrong overload.
         Transform3D(
-            const components::Translation3D& translation_, const datatypes::Rotation3D& rotation,
+            const components::Translation3D& translation_, const Rotation3D& rotation,
             float uniform_scale, bool from_parent = false
         )
             : Transform3D(translation_, rotation, components::Scale3D(uniform_scale), from_parent) {
@@ -312,10 +323,10 @@ namespace rerun::archetypes {
         /// From a translation, applied after a rotation & scale, known as an affine transformation.
         ///
         /// \param translation \copydoc Transform3D::translation
-        /// \param rotation \copydoc datatypes::TranslationRotationScale3D::rotation
+        /// \param rotation Rotation represented either as a quaternion or axis + angle rotation.
         /// \param scale \copydoc Transform3D::scale
         static Transform3D from_translation_rotation_scale(
-            const components::Translation3D& translation, const datatypes::Rotation3D& rotation,
+            const components::Translation3D& translation, const Rotation3D& rotation,
             const components::Scale3D& scale
         ) {
             return Transform3D(translation, rotation, scale, false);
@@ -324,10 +335,10 @@ namespace rerun::archetypes {
         /// From a translation, applied after a rotation & scale, known as an affine transformation.
         ///
         /// \param translation \copydoc Transform3D::translation
-        /// \param rotation \copydoc datatypes::TranslationRotationScale3D::rotation
+        /// \param rotation Rotation represented either as a quaternion or axis + angle rotation.
         /// \param uniform_scale Uniform scale factor that is applied to all axis equally.
         static Transform3D from_translation_rotation_scale(
-            const components::Translation3D& translation, const datatypes::Rotation3D& rotation,
+            const components::Translation3D& translation, const Rotation3D& rotation,
             float uniform_scale
         ) {
             return Transform3D(translation, rotation, components::Scale3D(uniform_scale), false);
@@ -336,21 +347,23 @@ namespace rerun::archetypes {
         /// Creates a new rigid transform (translation & rotation only).
         ///
         /// \param translation_ \copydoc Transform3D::translation
-        /// \param rotation \copydoc datatypes::TranslationRotationScale3D::rotation
+        /// \param rotation Rotation represented either as a quaternion or axis + angle rotation.
         /// \param from_parent \copydoc datatypes::TranslationRotationScale3D::from_parent
         Transform3D(
-            const components::Translation3D& translation_, const datatypes::Rotation3D& rotation,
+            const components::Translation3D& translation_, const Rotation3D& rotation,
             bool from_parent = false
         )
-            : transform(datatypes::TranslationRotationScale3D(rotation, from_parent)),
-              translation(Collection<components::Translation3D>::take_ownership(translation_)) {}
+            : transform(datatypes::TranslationRotationScale3D(from_parent)),
+              translation(Collection<components::Translation3D>::take_ownership(translation_)) {
+            set_rotation(rotation);
+        }
 
         /// From a rotation & scale.
         ///
         /// \param translation \copydoc Transform3D::translation
-        /// \param rotation \copydoc datatypes::TranslationRotationScale3D::rotation
+        /// \param rotation Rotation represented either as a quaternion or axis + angle rotation.
         static Transform3D from_translation_rotation(
-            const components::Translation3D& translation, const datatypes::Rotation3D& rotation
+            const components::Translation3D& translation, const Rotation3D& rotation
         ) {
             return Transform3D(translation, rotation, false);
         }
@@ -394,60 +407,59 @@ namespace rerun::archetypes {
 
         /// From rotation & scale.
         ///
-        /// \param rotation \copydoc datatypes::TranslationRotationScale3D::rotation
+        /// \param rotation Rotation represented either as a quaternion or axis + angle rotation.
         /// \param scale_ Transform3D::scale
         /// \param from_parent \copydoc datatypes::TranslationRotationScale3D::from_parent
         Transform3D(
-            const datatypes::Rotation3D& rotation, const components::Scale3D& scale_,
-            bool from_parent = false
+            const Rotation3D& rotation, const components::Scale3D& scale_, bool from_parent = false
         )
-            : transform(datatypes::TranslationRotationScale3D(rotation, from_parent)),
-              scale(Collection<components::Scale3D>::take_ownership(scale_)) {}
+            : transform(datatypes::TranslationRotationScale3D(from_parent)),
+              scale(Collection<components::Scale3D>::take_ownership(scale_)) {
+            set_rotation(rotation);
+        }
 
         /// From rotation & uniform scale.
         ///
-        /// \param rotation \copydoc datatypes::TranslationRotationScale3D::rotation
+        /// \param rotation Rotation represented either as a quaternion or axis + angle rotation.
         /// \param uniform_scale Uniform scale factor that is applied to all axis equally.
         /// \param from_parent \copydoc datatypes::TranslationRotationScale3D::from_parent
         ///
         /// _Implementation note:_ This explicit overload prevents interpretation of the float as
         /// bool, leading to a call to the wrong overload.
-        Transform3D(
-            const datatypes::Rotation3D& rotation, float uniform_scale, bool from_parent = false
-        )
+        Transform3D(const Rotation3D& rotation, float uniform_scale, bool from_parent = false)
             : Transform3D(rotation, components::Scale3D(uniform_scale), from_parent) {}
 
         /// From a rotation & scale.
         ///
-        /// \param rotation \copydoc datatypes::TranslationRotationScale3D::rotation
+        /// \param rotation Rotation represented either as a quaternion or axis + angle rotation.
         /// \param scale Transform3D::scale
         static Transform3D from_rotation_scale(
-            const datatypes::Rotation3D& rotation, const components::Scale3D& scale
+            const Rotation3D& rotation, const components::Scale3D& scale
         ) {
             return Transform3D(rotation, scale, false);
         }
 
         /// From a rotation & uniform scale.
         ///
-        /// \param rotation \copydoc datatypes::TranslationRotationScale3D::rotation
+        /// \param rotation Rotation represented either as a quaternion or axis + angle rotation.
         /// \param uniform_scale Uniform scale factor that is applied to all axis equally.
-        static Transform3D from_rotation_scale(
-            const datatypes::Rotation3D& rotation, float uniform_scale
-        ) {
+        static Transform3D from_rotation_scale(const Rotation3D& rotation, float uniform_scale) {
             return Transform3D(rotation, components::Scale3D(uniform_scale), false);
         }
 
         /// From rotation only.
         ///
-        /// \param rotation \copydoc datatypes::TranslationRotationScale3D::rotation
+        /// \param rotation Rotation represented either as a quaternion or axis + angle rotation.
         /// \param from_parent \copydoc datatypes::TranslationRotationScale3D::from_parent
-        Transform3D(const datatypes::Rotation3D& rotation, bool from_parent = false)
-            : transform(datatypes::TranslationRotationScale3D(rotation, from_parent)) {}
+        Transform3D(const Rotation3D& rotation, bool from_parent = false)
+            : transform(datatypes::TranslationRotationScale3D(from_parent)) {
+            set_rotation(rotation);
+        }
 
         /// From rotation only.
         ///
-        /// \param rotation \copydoc datatypes::TranslationRotationScale3D::rotation
-        static Transform3D from_rotation(const datatypes::Rotation3D& rotation) {
+        /// \param rotation Rotation represented either as a quaternion or axis + angle rotation.
+        static Transform3D from_rotation(const Rotation3D& rotation) {
             return Transform3D(rotation, false);
         }
 
@@ -485,6 +497,21 @@ namespace rerun::archetypes {
             RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
         }
 
+      private:
+        /// Set the rotation component of the transform using the `rerun::Rotation3D` utility.
+        void set_rotation(const Rotation3D& rotation) {
+            if (rotation.axis_angle.has_value()) {
+                rotation_axis_angle = Collection<components::RotationAxisAngle>::take_ownership(
+                    rotation.axis_angle.value()
+                );
+            }
+            if (rotation.quaternion.has_value()) {
+                quaternion =
+                    Collection<components::RotationQuat>::take_ownership(rotation.quaternion.value()
+                    );
+            }
+        }
+
       public:
         Transform3D() = default;
         Transform3D(Transform3D&& other) = default;
@@ -495,6 +522,22 @@ namespace rerun::archetypes {
         /// Translation vectors.
         Transform3D with_translation(Collection<rerun::components::Translation3D> _translation) && {
             translation = std::move(_translation);
+            // See: https://github.com/rerun-io/rerun/issues/4027
+            RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
+        }
+
+        /// Rotation via axis + angle.
+        Transform3D with_rotation_axis_angle(
+            Collection<rerun::components::RotationAxisAngle> _rotation_axis_angle
+        ) && {
+            rotation_axis_angle = std::move(_rotation_axis_angle);
+            // See: https://github.com/rerun-io/rerun/issues/4027
+            RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
+        }
+
+        /// Rotation via quaternion.
+        Transform3D with_quaternion(Collection<rerun::components::RotationQuat> _quaternion) && {
+            quaternion = std::move(_quaternion);
             // See: https://github.com/rerun-io/rerun/issues/4027
             RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
         }

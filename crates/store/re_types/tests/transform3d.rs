@@ -3,9 +3,7 @@ use std::{collections::HashMap, f32::consts::TAU};
 use re_types::{
     archetypes::Transform3D,
     components::{self, Scale3D},
-    datatypes::{
-        self, Angle, Mat3x3, Rotation3D, RotationAxisAngle, TranslationRotationScale3D, Vec3D,
-    },
+    datatypes::{self, Angle, Mat3x3, RotationAxisAngle, TranslationRotationScale3D, Vec3D},
     Archetype as _, AsComponents as _,
 };
 
@@ -21,10 +19,7 @@ fn roundtrip() {
                     from_parent: false,
                 },
             )),
-            mat3x3: None,
-            scale: None,
-            translation: None,
-            axis_length: None,
+            ..Default::default()
         }, //
         Transform3D {
             transform: components::Transform3D(datatypes::Transform3D::TranslationRotationScale(
@@ -35,44 +30,26 @@ fn roundtrip() {
                     from_parent: true,
                 },
             )),
-            mat3x3: None,
-            scale: Some(vec![Scale3D::uniform(42.0)]),
             translation: Some(vec![Vec3D([1.0, 2.0, 3.0]).into()]),
-            axis_length: None,
+            scale: Some(vec![Scale3D::uniform(42.0)]),
+            ..Default::default()
         }, //
         Transform3D {
             transform: components::Transform3D(datatypes::Transform3D::TranslationRotationScale(
                 TranslationRotationScale3D {
                     translation: None,
-                    rotation: Some(Rotation3D::AxisAngle(RotationAxisAngle {
-                        axis: Vec3D([0.2, 0.2, 0.8]),
-                        angle: Angle::from_radians(0.5 * TAU),
-                    })),
+                    rotation: None,
                     scale: None,
                     from_parent: false,
                 },
             )),
-            mat3x3: None,
-            scale: None,
             translation: Some(vec![[1.0, 2.0, 3.0].into()]),
-            axis_length: None,
-        }, //
-        Transform3D {
-            transform: components::Transform3D(datatypes::Transform3D::TranslationRotationScale(
-                TranslationRotationScale3D {
-                    translation: None,
-                    rotation: Some(Rotation3D::AxisAngle(RotationAxisAngle {
-                        axis: Vec3D([0.2, 0.2, 0.8]),
-                        angle: Angle::from_radians(0.5 * TAU),
-                    })),
-                    scale: None,
-                    from_parent: true,
-                },
-            )),
-            mat3x3: None,
-            scale: Some(vec![Scale3D::uniform(42.0)]),
-            translation: Some(vec![Vec3D([1.0, 2.0, 3.0]).into()]),
-            axis_length: None,
+            rotation_axis_angle: Some(vec![RotationAxisAngle {
+                axis: Vec3D([0.2, 0.2, 0.8]),
+                angle: Angle::from_radians(0.5 * TAU),
+            }
+            .into()]),
+            ..Default::default()
         }, //
         Transform3D {
             transform: components::Transform3D(datatypes::Transform3D::TranslationRotationScale(
@@ -83,10 +60,26 @@ fn roundtrip() {
                     from_parent: true,
                 },
             )),
-            mat3x3: None,
-            scale: None,
             translation: Some(vec![Vec3D([1.0, 2.0, 3.0]).into()]),
-            axis_length: None,
+            rotation_axis_angle: Some(vec![RotationAxisAngle {
+                axis: Vec3D([0.2, 0.2, 0.8]),
+                angle: Angle::from_radians(0.5 * TAU),
+            }
+            .into()]),
+            scale: Some(vec![Scale3D::uniform(42.0)]),
+            ..Default::default()
+        }, //
+        Transform3D {
+            transform: components::Transform3D(datatypes::Transform3D::TranslationRotationScale(
+                TranslationRotationScale3D {
+                    translation: None,
+                    rotation: None,
+                    scale: None,
+                    from_parent: true,
+                },
+            )),
+            translation: Some(vec![Vec3D([1.0, 2.0, 3.0]).into()]),
+            ..Default::default()
         }, //
         Transform3D {
             transform: components::Transform3D(datatypes::Transform3D::TranslationRotationScale(
@@ -100,9 +93,7 @@ fn roundtrip() {
             mat3x3: Some(vec![
                 Mat3x3([1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0]).into()
             ]),
-            scale: None,
-            translation: None,
-            axis_length: None,
+            ..Default::default()
         }, //
     ];
 
