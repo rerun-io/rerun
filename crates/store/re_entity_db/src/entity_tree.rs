@@ -121,7 +121,7 @@ impl EntityTree {
         self.children.is_empty()
     }
 
-    /// Returns `false` if this entity has no children and no data.
+    /// Returns `true` if this entity has no children and no data.
     pub fn is_empty(&self, chunk_store: &ChunkStore) -> bool {
         self.children.is_empty() && !chunk_store.entity_has_data(&self.path)
     }
