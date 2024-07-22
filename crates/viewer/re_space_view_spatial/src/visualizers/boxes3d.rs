@@ -387,6 +387,7 @@ impl TypedComponentFallbackProvider<Color> for Boxes3DVisualizer {
         auto_color_for_entity_path(ctx.target_entity_path)
     }
 }
+
 impl TypedComponentFallbackProvider<SolidColor> for Boxes3DVisualizer {
     fn fallback_for(&self, _: &QueryContext<'_>) -> SolidColor {
         // By default, use wireframe visualization only
