@@ -320,7 +320,10 @@ fn entity_tree_stats_ui(
             .store()
             .num_events_on_timeline_for_all_components(timeline, &tree.path);
 
-        if let Some(time_range) = db.store().time_range_for_entity(timeline, &tree.path) {
+        if let Some(time_range) = db
+            .store()
+            .time_range_for_entity_on_timeline(timeline, &tree.path)
+        {
             let min_time = time_range.min();
             let max_time = time_range.max();
             if min_time < max_time && 1 < num_events {
