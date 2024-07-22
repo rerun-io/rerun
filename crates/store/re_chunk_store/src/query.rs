@@ -259,15 +259,12 @@ impl ChunkStore {
             .is_some_and(|temporal_chunks_per_timeline| {
                 temporal_chunks_per_timeline
                     .values()
-                    .any(|temporal_chunks_per_component| {
-                        temporal_chunks_per_component.values().any(|chunk_id_sets| {
-                            chunk_id_sets.per_start_time.values().any(|chunk_id_set| {
-                                chunk_id_set
-                                    .iter()
-                                    .any(|chunk_id| self.chunks_per_chunk_id.contains_key(chunk_id))
-                            })
-                        })
+                    .flat_map(|temporal_chunks_per_component| {
+                        temporal_chunks_per_component.values()
                     })
+                    .flat_map(|chunk_id_sets| chunk_id_sets.per_start_time.values())
+                    .flat_map(|chunk_id_set| chunk_id_set.iter())
+                    .any(|chunk_id| self.chunks_per_chunk_id.contains_key(chunk_id))
             })
     }
 
@@ -287,18 +284,13 @@ impl ChunkStore {
 
         self.temporal_chunk_ids_per_entity_per_component
             .get(entity_path)
-            .is_some_and(|temporal_chunks_per_timeline| {
-                temporal_chunks_per_timeline.get(timeline).is_some_and(
-                    |temporal_chunks_per_component| {
-                        temporal_chunks_per_component.values().any(|chunk_id_sets| {
-                            chunk_id_sets.per_start_time.values().any(|chunk_id_set| {
-                                chunk_id_set
-                                    .iter()
-                                    .any(|chunk_id| self.chunks_per_chunk_id.contains_key(chunk_id))
-                            })
-                        })
-                    },
-                )
+            .and_then(|temporal_chunks_per_timeline| temporal_chunks_per_timeline.get(timeline))
+            .is_some_and(|temporal_chunks_per_component| {
+                temporal_chunks_per_component
+                    .values()
+                    .flat_map(|chunk_id_sets| chunk_id_sets.per_start_time.values())
+                    .flat_map(|chunk_id_set| chunk_id_set.iter())
+                    .any(|chunk_id| self.chunks_per_chunk_id.contains_key(chunk_id))
             })
     }
 
@@ -663,11 +655,11 @@ impl ChunkStore {
     }
 }
 
-// Queries returning `usize` and `bool`
+// Counting
 impl ChunkStore {
     /// Returns the number of events of a specific component logged for an entity on a specific timeline.
     ///
-    /// This counts both static and temporal components.
+    /// This counts events for both static and temporal components.
     pub fn num_events_on_timeline_for_component(
         &self,
         timeline: &Timeline,
@@ -692,25 +684,23 @@ impl ChunkStore {
 
         self.query_id.fetch_add(1, Ordering::Relaxed);
 
-        let mut total_events = 0u64;
-
-        if let Some(chunk_ids) = self
-            .temporal_chunk_ids_per_entity
+        self.temporal_chunk_ids_per_entity
             .get(entity_path)
             .and_then(|temporal_chunks_events_per_timeline| {
                 temporal_chunks_events_per_timeline.get(timeline)
             })
-        {
-            for chunk in chunk_ids
-                .per_start_time
-                .values()
-                .flat_map(|ids| ids.iter().filter_map(|id| self.chunks_per_chunk_id.get(id)))
-            {
-                total_events += chunk.num_events_cumulative();
-            }
-        }
-
-        total_events
+            .map_or(0, |chunk_id_sets| {
+                chunk_id_sets
+                    .per_start_time
+                    .values()
+                    .flat_map(|chunk_ids| {
+                        chunk_ids
+                            .iter()
+                            .filter_map(|chunk_id| self.chunks_per_chunk_id.get(chunk_id))
+                            .map(|chunk| chunk.num_events_cumulative())
+                    })
+                    .sum()
+            })
     }
 
     /// Returns the number of times a static component was logged to an entity.
@@ -723,20 +713,14 @@ impl ChunkStore {
 
         self.query_id.fetch_add(1, Ordering::Relaxed);
 
-        if let Some(static_chunk) = self
-            .static_chunk_ids_per_entity
+        self.static_chunk_ids_per_entity
             .get(entity_path)
             .and_then(|static_chunks_per_component| {
                 static_chunks_per_component.get(&component_name)
             })
             .and_then(|chunk_id| self.chunks_per_chunk_id.get(chunk_id))
-        {
-            static_chunk
-                .num_events_for_component(component_name)
-                .unwrap_or(0)
-        } else {
-            0
-        }
+            .and_then(|chunk| chunk.num_events_for_component(component_name))
+            .unwrap_or(0)
     }
 
     /// Returns the number of times a temporal component was logged to an entity path on a specific timeline.
@@ -764,12 +748,9 @@ impl ChunkStore {
                 chunk_id_sets
                     .per_start_time
                     .values()
-                    .flat_map(|chunk_ids| {
-                        chunk_ids
-                            .iter()
-                            .filter_map(|chunk_id| self.chunks_per_chunk_id.get(chunk_id))
-                            .filter_map(|chunk| chunk.num_events_for_component(component_name))
-                    })
+                    .flat_map(|chunk_ids| chunk_ids.iter())
+                    .filter_map(|chunk_id| self.chunks_per_chunk_id.get(chunk_id))
+                    .filter_map(|chunk| chunk.num_events_for_component(component_name))
                     .sum()
             })
     }
@@ -789,35 +770,33 @@ impl ChunkStore {
 
         self.query_id.fetch_add(1, Ordering::Relaxed);
 
-        let mut total_size = 0;
+        let static_data_size = self.static_chunk_ids_per_entity.get(entity_path).map_or(
+            0,
+            |static_chunks_per_component| {
+                static_chunks_per_component
+                    .values()
+                    .filter_map(|id| self.chunks_per_chunk_id.get(id))
+                    .map(|chunk| Chunk::total_size_bytes(chunk) as usize)
+                    .sum()
+            },
+        );
 
-        if let Some(static_chunks_per_component) = self.static_chunk_ids_per_entity.get(entity_path)
-        {
-            for chunk in static_chunks_per_component
-                .values()
-                .filter_map(|id| self.chunks_per_chunk_id.get(id))
-            {
-                total_size += Chunk::total_size_bytes(chunk) as usize;
-            }
-        }
-
-        if let Some(chunk_id_sets) = self
+        let temporal_data_size = self
             .temporal_chunk_ids_per_entity
             .get(entity_path)
             .and_then(|temporal_chunk_ids_per_timeline| {
                 temporal_chunk_ids_per_timeline.get(timeline)
             })
-        {
-            for chunk in chunk_id_sets
-                .per_start_time
-                .values()
-                .flat_map(|v| v.iter())
-                .filter_map(|id| self.chunks_per_chunk_id.get(id))
-            {
-                total_size += Chunk::total_size_bytes(chunk) as usize;
-            }
-        }
+            .map_or(0, |chunk_id_sets| {
+                chunk_id_sets
+                    .per_start_time
+                    .values()
+                    .flat_map(|chunk_ids| chunk_ids.iter())
+                    .filter_map(|id| self.chunks_per_chunk_id.get(id))
+                    .map(|chunk| Chunk::total_size_bytes(chunk) as usize)
+                    .sum()
+            });
 
-        total_size
+        static_data_size + temporal_data_size
     }
 }
