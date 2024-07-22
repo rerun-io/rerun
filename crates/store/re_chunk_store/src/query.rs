@@ -333,6 +333,8 @@ impl ChunkStore {
     }
 
     /// Returns the min and max times at which data was logged for an entity on a specific timeline.
+    ///
+    /// This ignores static data.
     pub fn entity_time_range(
         &self,
         timeline: &Timeline,
@@ -683,26 +685,14 @@ impl ChunkStore {
     }
 
     /// Returns the number of events logged for an entity on a specific timeline.
-    pub fn num_events_on_timeline_for_all_components(
-        &self,
-        timeline: &Timeline,
-        entity_path: &EntityPath,
-    ) -> u64 {
+    ///
+    /// This ignores static data.
+    pub fn num_events_on_timeline(&self, timeline: &Timeline, entity_path: &EntityPath) -> u64 {
         re_tracing::profile_function!();
 
         self.query_id.fetch_add(1, Ordering::Relaxed);
 
         let mut total_events = 0u64;
-
-        if let Some(static_chunks_per_component) = self.static_chunk_ids_per_entity.get(entity_path)
-        {
-            for chunk in static_chunks_per_component
-                .values()
-                .filter_map(|id| self.chunks_per_chunk_id.get(id))
-            {
-                total_events += chunk.num_events_cumulative();
-            }
-        }
 
         if let Some(chunk_ids) = self
             .temporal_chunk_ids_per_entity
@@ -762,32 +752,26 @@ impl ChunkStore {
 
         self.query_id.fetch_add(1, Ordering::Relaxed);
 
-        let Some(temporal_chunk_ids_per_timeline) = self
-            .temporal_chunk_ids_per_entity_per_component
+        self.temporal_chunk_ids_per_entity_per_component
             .get(entity_path)
-        else {
-            return 0; // no events logged for the entity path
-        };
-
-        let Some(temporal_chunk_ids_per_component) = temporal_chunk_ids_per_timeline.get(timeline)
-        else {
-            return 0; // no events logged on this timeline
-        };
-
-        let Some(chunk_ids) = temporal_chunk_ids_per_component.get(&component_name) else {
-            return 0; // no events logged for the component on this timeline
-        };
-
-        let mut num_events = 0;
-        for chunk in chunk_ids
-            .per_start_time
-            .values()
-            .flat_map(|ids| ids.iter().filter_map(|id| self.chunks_per_chunk_id.get(id)))
-        {
-            num_events += chunk.num_events_for_component(component_name).unwrap_or(0);
-        }
-
-        num_events
+            .and_then(|temporal_chunk_ids_per_timeline| {
+                temporal_chunk_ids_per_timeline.get(timeline)
+            })
+            .and_then(|temporal_chunk_ids_per_component| {
+                temporal_chunk_ids_per_component.get(&component_name)
+            })
+            .map_or(0, |chunk_id_sets| {
+                chunk_id_sets
+                    .per_start_time
+                    .values()
+                    .flat_map(|chunk_ids| {
+                        chunk_ids
+                            .iter()
+                            .filter_map(|chunk_id| self.chunks_per_chunk_id.get(chunk_id))
+                            .filter_map(|chunk| chunk.num_events_for_component(component_name))
+                    })
+                    .sum()
+            })
     }
 
     /// Returns the size of the entity on a specific timeline.

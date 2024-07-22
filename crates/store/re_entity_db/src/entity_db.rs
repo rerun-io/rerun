@@ -569,6 +569,8 @@ impl EntityDb {
     }
 
     /// Returns true if an entity or any of its children have any data on the given timeline.
+    ///
+    /// This includes static data.
     pub fn subtree_has_data_on_timeline(
         &self,
         timeline: &Timeline,
@@ -583,6 +585,28 @@ impl EntityDb {
         subtree
             .find_first_child_recursive(|path| {
                 self.store().entity_has_data_on_timeline(timeline, path)
+            })
+            .is_some()
+    }
+
+    /// Returns true if an entity or any of its children have any temporal data on the given timeline.
+    ///
+    /// This ignores static data.
+    pub fn subtree_has_temporal_data_on_timeline(
+        &self,
+        timeline: &Timeline,
+        entity_path: &EntityPath,
+    ) -> bool {
+        re_tracing::profile_function!();
+
+        let Some(subtree) = self.tree.subtree(entity_path) else {
+            return false;
+        };
+
+        subtree
+            .find_first_child_recursive(|path| {
+                self.store()
+                    .entity_has_temporal_data_on_timeline(timeline, path)
             })
             .is_some()
     }
