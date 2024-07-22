@@ -31,10 +31,16 @@ def run_pixi_install(feature: str, dir: str, pkg: str) -> None:
     elif plat == "Windows":
         plat = "win"
 
-    arch = os.uname().machine
+    if hasattr(os, "uname"):
+        arch = os.uname().machine
+    else:
+        arch = platform.machine().lower()
+
+    print(f"Platform: {plat}, Architecture: {arch}")
 
     # Find the wheels
     wheels = [whl.name for whl in Path(dir).glob("*.whl")]
+    print(f"Found {len(wheels)} wheels: {wheels}")
 
     # Filter the wheels based on package
     wheels = [whl for whl in wheels if whl.startswith(pkg.replace("-", "_"))]
