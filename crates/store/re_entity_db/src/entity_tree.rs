@@ -200,6 +200,8 @@ impl EntityTree {
         visit(self, &mut visitor);
     }
 
+    /// Invokes the `predicate` for `self` and all children recursively,
+    /// returning the subtree for which the `predicate` returns `true`.
     pub fn find_child_recursive(
         &self,
         mut predicate: impl FnMut(&EntityPath) -> bool,
