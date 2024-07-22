@@ -18,6 +18,11 @@ use crate::RowId;
 
 // ---
 
+// These APIs often have `temporal` and `static` variants.
+// It is sometimes useful to be able to separately query either,
+// such as when we want to tell the user that they logged a component
+// as both static and temporal, which is probably wrong.
+
 impl ChunkStore {
     /// Retrieve all the [`ComponentName`]s that have been written to for a given [`EntityPath`] on
     /// the specified [`Timeline`].
@@ -711,6 +716,8 @@ impl ChunkStore {
     /// Returns the number of times a temporal component was logged to an entity path on a specific timeline.
     ///
     /// This ignores static data.
+    ///
+    /// An example use case of this is detecting when static data is logged more than once.
     pub fn num_temporal_events_for_component_on_timeline(
         &self,
         timeline: &Timeline,
