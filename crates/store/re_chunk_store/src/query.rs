@@ -762,7 +762,7 @@ impl ChunkStore {
         &self,
         timeline: &Timeline,
         entity_path: &EntityPath,
-    ) -> usize {
+    ) -> u64 {
         re_tracing::profile_function!();
 
         self.query_id.fetch_add(1, Ordering::Relaxed);
@@ -773,7 +773,7 @@ impl ChunkStore {
                 static_chunks_per_component
                     .values()
                     .filter_map(|id| self.chunks_per_chunk_id.get(id))
-                    .map(|chunk| Chunk::total_size_bytes(chunk) as usize)
+                    .map(|chunk| Chunk::total_size_bytes(chunk))
                     .sum()
             },
         );
@@ -790,7 +790,7 @@ impl ChunkStore {
                     .values()
                     .flat_map(|chunk_ids| chunk_ids.iter())
                     .filter_map(|id| self.chunks_per_chunk_id.get(id))
-                    .map(|chunk| Chunk::total_size_bytes(chunk) as usize)
+                    .map(|chunk| Chunk::total_size_bytes(chunk))
                     .sum()
             });
 

@@ -553,7 +553,7 @@ impl EntityDb {
         &self,
         timeline: &Timeline,
         entity_path: &EntityPath,
-    ) -> usize {
+    ) -> u64 {
         re_tracing::profile_function!();
 
         let Some(subtree) = self.tree.subtree(entity_path) else {
