@@ -25,7 +25,7 @@ use re_types::{
     components::{
         AggregationPolicy, AlbedoFactor, AxisLength, ChannelDataType, Color, ColorModel, Colormap,
         DepthMeter, DrawOrder, FillRatio, GammaCorrection, ImagePlaneDistance, MagnificationFilter,
-        MarkerSize, Name, Opacity, Scale3D, StrokeWidth, Text, Translation3D,
+        MarkerSize, Name, Opacity, Scale3D, StrokeWidth, Text, TransformRelation, Translation3D,
     },
     Loggable as _,
 };
@@ -67,29 +67,22 @@ pub fn register_editors(registry: &mut re_viewer_context::ComponentUiRegistry) {
     registry.add_singleline_edit_or_view::<Name>(edit_singleline_string);
     registry.add_multiline_edit_or_view::<Name>(edit_multiline_string);
 
-    registry
-        .add_singleline_edit_or_view(|_ctx, ui, value| edit_view_enum::<BackgroundKind>(ui, value));
     registry.add_singleline_edit_or_view(|ctx, ui, value| {
         colormap_edit_or_view_ui(ctx.render_ctx, ui, value)
     });
-    registry.add_singleline_edit_or_view(|_ctx, ui, value| edit_view_enum::<Colormap>(ui, value));
-    registry.add_singleline_edit_or_view(|_ctx, ui, value| edit_view_enum::<ColorModel>(ui, value));
-    registry.add_singleline_edit_or_view(|_ctx, ui, value| edit_view_enum::<Corner2D>(ui, value));
-    registry.add_singleline_edit_or_view(|_ctx, ui, value| {
-        edit_view_enum::<ChannelDataType>(ui, value)
-    });
-    registry.add_singleline_edit_or_view(|_ctx, ui, value| {
-        edit_view_enum::<MagnificationFilter>(ui, value)
-    });
-    registry.add_singleline_edit_or_view(|_ctx, ui, value| {
-        edit_view_enum::<AggregationPolicy>(ui, value)
-    });
-    registry.add_singleline_edit_or_view(|_ctx, ui, value| edit_view_enum::<ViewFit>(ui, value));
-    registry.add_singleline_edit_or_view(|_ctx, ui, value| {
-        edit_view_enum::<DataframeViewMode>(ui, value)
-    });
-    registry.add_singleline_edit_or_view(|_ctx, ui, value| edit_view_enum::<SortKey>(ui, value));
-    registry.add_singleline_edit_or_view(|_ctx, ui, value| edit_view_enum::<SortOrder>(ui, value));
+
+    registry.add_singleline_edit_or_view::<AggregationPolicy>(edit_view_enum);
+    registry.add_singleline_edit_or_view::<BackgroundKind>(edit_view_enum);
+    registry.add_singleline_edit_or_view::<ChannelDataType>(edit_view_enum);
+    registry.add_singleline_edit_or_view::<Colormap>(edit_view_enum);
+    registry.add_singleline_edit_or_view::<ColorModel>(edit_view_enum);
+    registry.add_singleline_edit_or_view::<Corner2D>(edit_view_enum);
+    registry.add_singleline_edit_or_view::<DataframeViewMode>(edit_view_enum);
+    registry.add_singleline_edit_or_view::<MagnificationFilter>(edit_view_enum);
+    registry.add_singleline_edit_or_view::<SortKey>(edit_view_enum);
+    registry.add_singleline_edit_or_view::<SortOrder>(edit_view_enum);
+    registry.add_singleline_edit_or_view::<TransformRelation>(edit_view_enum);
+    registry.add_singleline_edit_or_view::<ViewFit>(edit_view_enum);
 
     registry.add_multiline_edit_or_view(visual_bounds2d::multiline_edit_visual_bounds2d);
     registry.add_singleline_edit_or_view(visual_bounds2d::singleline_edit_visual_bounds2d);

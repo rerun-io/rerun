@@ -43,6 +43,7 @@ namespace rerun {
     using components::Radius;
     using components::Text;
     using components::TextLogLevel;
+    using components::TransformRelation;
     using components::TriangleIndices;
     using components::Vector2D;
     using components::Vector3D;

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from rerun.components import Scale3D
+from rerun.components import Scale3D, TransformRelation, TransformRelationLike
 from rerun.datatypes import (
     Float32Like,
     Mat3x3ArrayLike,
@@ -10,7 +10,6 @@ from rerun.datatypes import (
     QuaternionArrayLike,
     RotationAxisAngle,
     RotationAxisAngleArrayLike,
-    TranslationRotationScale3D,
     Vec3DArrayLike,
 )
 
@@ -31,6 +30,7 @@ class Transform3DExt:
         scale: Vec3DArrayLike | Float32Like | None = None,
         mat3x3: Mat3x3ArrayLike | None = None,
         from_parent: bool | None = None,
+        relation: TransformRelationLike | None = None,
         axis_length: Float32Like | None = None,
     ):
         """
@@ -45,9 +45,11 @@ class Transform3DExt:
             Mutually exclusive with `quaternion` and `rotation_axis_angle`.
         rotation_axis_angle:
             Axis-angle representing rotation.
+
             Mutually exclusive with `rotation` parameter.
         quaternion:
             Quaternion representing rotation.
+
             Mutually exclusive with `rotation` parameter.
         scale:
             3D scale.
@@ -56,8 +58,16 @@ class Transform3DExt:
             Not compatible with `rotation` and `scale` parameters.
             TODO(#3559): Support 4x4 and 4x3 matrices.
         from_parent:
-             If true, the transform maps from the parent space to the space where the transform was logged.
-             Otherwise, the transform maps from the space to its parent.
+            If true, the transform maps from the parent space to the space where the transform was logged.
+            Otherwise, the transform maps from the space to its parent.
+            Deprecated in favor of `relation=rerun.TransformRelation.ChildFromParent`.
+
+            Mutually exclusive with `relation`.
+        relation:
+            Allows to explicitly specify the transform's relationship with the parent entity.
+            Otherwise, the transform maps from the space to its parent.
+
+            Mutually exclusive with `from_parent`.
         axis_length:
             Visual length of the 3 axes.
 
@@ -67,9 +77,6 @@ class Transform3DExt:
         """
 
         with catch_and_log_exceptions(context=self.__class__.__name__):
-            if from_parent is None:
-                from_parent = False
-
             if rotation is not None:
                 if quaternion is not None or rotation_axis_angle is not None:
                     raise ValueError(
@@ -103,14 +110,28 @@ class Transform3DExt:
             if scale is not None and (not hasattr(scale, "__len__") or len(scale) == 1):  # type: ignore[arg-type]
                 scale = Scale3D(scale)  # type: ignore[arg-type]
 
+            if from_parent is not None:
+                import warnings
+
+                warnings.warn(
+                    message=(
+                        "`from_parent` is deprecated as an argument to `Transform3D`; prefer `relation=rerun.TransformRelation.ChildFromParent` instead"
+                    ),
+                    category=DeprecationWarning,
+                )
+
+                if relation is not None:
+                    raise ValueError("`from_parent` and `relation` parameters are mutually exclusive.")
+                if from_parent:
+                    relation = TransformRelation.ChildFromParent
+
             self.__attrs_init__(
-                # TODO(#6831): Remove.
-                transform=TranslationRotationScale3D(from_parent=from_parent),
                 translation=translation,
                 rotation_axis_angle=rotation_axis_angle,
                 quaternion=quaternion,
                 scale=scale,
                 mat3x3=mat3x3,
+                relation=relation,
                 axis_length=axis_length,
             )
             return

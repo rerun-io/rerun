@@ -1,5 +1,5 @@
 use crate::{
-    components::{Scale3D, TransformMat3x3, Translation3D},
+    components::{Scale3D, TransformMat3x3, TransformRelation, Translation3D},
     Rotation3D,
 };
 
@@ -119,11 +119,15 @@ impl Transform3D {
     }
 
     /// Indicate that this transform is from parent to child.
-    /// This is the oppositve of the default, which is from child to parent.
+    ///
+    /// This is the opposite of the default, which is from child to parent.
     #[allow(clippy::wrong_self_convention)]
     #[inline]
-    pub fn from_parent(mut self) -> Self {
-        self.transform = self.transform.from_parent();
-        self
+    #[deprecated(
+        since = "0.18.0",
+        note = "Use `.with_relation(rerun::TransformRelation::ChildFromParent)` instead."
+    )]
+    pub fn from_parent(self) -> Self {
+        self.with_relation(TransformRelation::ChildFromParent)
     }
 }

@@ -81,6 +81,13 @@ from .text import Text, TextBatch, TextType
 from .text_log_level import TextLogLevel, TextLogLevelBatch, TextLogLevelType
 from .transform3d import Transform3D, Transform3DBatch, Transform3DType
 from .transform_mat3x3 import TransformMat3x3, TransformMat3x3Batch, TransformMat3x3Type
+from .transform_relation import (
+    TransformRelation,
+    TransformRelationArrayLike,
+    TransformRelationBatch,
+    TransformRelationLike,
+    TransformRelationType,
+)
 from .translation3d import Translation3D, Translation3DBatch, Translation3DType
 from .triangle_indices import TriangleIndices, TriangleIndicesBatch, TriangleIndicesType
 from .vector2d import Vector2D, Vector2DBatch, Vector2DType
@@ -259,6 +266,11 @@ __all__ = [
     "TransformMat3x3",
     "TransformMat3x3Batch",
     "TransformMat3x3Type",
+    "TransformRelation",
+    "TransformRelationArrayLike",
+    "TransformRelationBatch",
+    "TransformRelationLike",
+    "TransformRelationType",
     "Translation3D",
     "Translation3DBatch",
     "Translation3DType",

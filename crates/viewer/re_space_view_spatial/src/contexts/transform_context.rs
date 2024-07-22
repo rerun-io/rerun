@@ -7,7 +7,7 @@ use re_types::{
     archetypes::Pinhole,
     components::{
         DisconnectedSpace, ImagePlaneDistance, PinholeProjection, RotationAxisAngle, RotationQuat,
-        Scale3D, Transform3D, TransformMat3x3, Translation3D, ViewCoordinates,
+        Scale3D, Transform3D, TransformMat3x3, TransformRelation, Translation3D, ViewCoordinates,
     },
     ComponentNameSet, Loggable as _,
 };
@@ -305,7 +305,6 @@ impl TransformContext {
 #[cfg(debug_assertions)]
 fn debug_assert_transform_field_order(reflection: &re_types::reflection::Reflection) {
     let expected_order = vec![
-        Transform3D::name(),
         Translation3D::name(),
         RotationAxisAngle::name(),
         RotationQuat::name(),
@@ -359,6 +358,7 @@ fn get_parent_from_child_transform(
             RotationQuat::name(),
             Scale3D::name(),
             TransformMat3x3::name(),
+            TransformRelation::name(),
         ],
     );
     if result.components.is_empty() {
@@ -368,40 +368,33 @@ fn get_parent_from_child_transform(
     // Order is specified by order of components in the Transform3D archetype.
     // See `has_transform_expected_order`
     let mut transform = glam::Affine3A::IDENTITY;
-    if let Some(mat3x3) = result.get_instance::<TransformMat3x3>(resolver, 0) {
-        transform *= glam::Affine3A::from(mat3x3);
-    }
-    if let Some(scale) = result.get_instance::<Scale3D>(resolver, 0) {
-        transform *= glam::Affine3A::from(scale);
-    }
-    if let Some(rotation) = result.get_instance::<RotationQuat>(resolver, 0) {
-        transform *= glam::Affine3A::from(rotation);
+    if let Some(translation) = result.get_instance::<Translation3D>(resolver, 0) {
+        transform *= glam::Affine3A::from(translation);
     }
     if let Some(rotation) = result.get_instance::<RotationAxisAngle>(resolver, 0) {
         transform *= glam::Affine3A::from(rotation);
     }
-    if let Some(translation) = result.get_instance::<Translation3D>(resolver, 0) {
-        transform *= glam::Affine3A::from(translation);
+    if let Some(rotation) = result.get_instance::<RotationQuat>(resolver, 0) {
+        transform *= glam::Affine3A::from(rotation);
+    }
+    if let Some(scale) = result.get_instance::<Scale3D>(resolver, 0) {
+        transform *= glam::Affine3A::from(scale);
+    }
+    if let Some(mat3x3) = result.get_instance::<TransformMat3x3>(resolver, 0) {
+        transform *= glam::Affine3A::from(mat3x3);
     }
 
-    // TODO(#6831): To be removed. Note that the ordering of the old component is a bit arbitrary.
-    // Picked such that the planets demo still works ;-)
-    let legacy_transform = result.get_instance::<Transform3D>(resolver, 0);
-    let is_from_parent = legacy_transform
-        .as_ref()
-        .map_or(false, |t| t.is_from_parent());
-    if let Some(legacy_transform) = legacy_transform {
-        transform *= glam::Affine3A::from(legacy_transform.0);
-    }
-
-    // TODO(#6831): Should add a unit test to this method once all variants are in.
-    // (Should test correct order being applied etc.. Might require splitting)
-
-    if is_from_parent {
+    let transform_relation = result
+        .get_instance::<TransformRelation>(resolver, 0)
+        .unwrap_or_default();
+    if transform_relation == TransformRelation::ChildFromParent {
         Some(transform.inverse())
     } else {
         Some(transform)
     }
+
+    // TODO(#6831): Should add a unit test to this method once all variants are in.
+    // (Should test correct order being applied etc.. Might require splitting)
 }
 
 fn get_cached_pinhole(
