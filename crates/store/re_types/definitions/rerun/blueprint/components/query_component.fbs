@@ -1,0 +1,14 @@
+
+namespace rerun.blueprint.components;
+
+// ---
+//TODO: sane default
+/// Component(s) included in the query.
+table QueryComponents (
+  "attr.arrow.transparent",
+  "attr.rust.derive": "Default, PartialEq, Eq, PartialOrd, Ord",
+  "attr.rust.repr": "transparent",
+  "attr.rerun.scope": "blueprint"
+) {
+    value: rerun.blueprint.datatypes.ComponentNames (order: 100);
+}

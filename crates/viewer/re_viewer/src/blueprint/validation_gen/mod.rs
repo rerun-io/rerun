@@ -8,8 +8,11 @@ pub use re_types::blueprint::components::Corner2D;
 pub use re_types::blueprint::components::DataframeViewMode;
 pub use re_types::blueprint::components::IncludedContent;
 pub use re_types::blueprint::components::Interactive;
+pub use re_types::blueprint::components::LatestAtQueries;
 pub use re_types::blueprint::components::LockRangeDuringZoom;
 pub use re_types::blueprint::components::PanelState;
+pub use re_types::blueprint::components::PointOfViewComponents;
+pub use re_types::blueprint::components::QueryComponents;
 pub use re_types::blueprint::components::QueryExpression;
 pub use re_types::blueprint::components::RowShare;
 pub use re_types::blueprint::components::SortKey;
@@ -17,6 +20,8 @@ pub use re_types::blueprint::components::SortOrder;
 pub use re_types::blueprint::components::SpaceViewClass;
 pub use re_types::blueprint::components::SpaceViewOrigin;
 pub use re_types::blueprint::components::TensorDimensionIndexSlider;
+pub use re_types::blueprint::components::TimeRangeQueries;
+pub use re_types::blueprint::components::Timeline;
 pub use re_types::blueprint::components::ViewFit;
 pub use re_types::blueprint::components::ViewerRecommendationHash;
 pub use re_types::blueprint::components::Visible;
@@ -47,8 +52,11 @@ pub fn is_valid_blueprint(blueprint: &EntityDb) -> bool {
         && validate_component::<IncludedContent>(blueprint)
         && validate_component::<IncludedSpaceView>(blueprint)
         && validate_component::<Interactive>(blueprint)
+        && validate_component::<LatestAtQueries>(blueprint)
         && validate_component::<LockRangeDuringZoom>(blueprint)
         && validate_component::<PanelState>(blueprint)
+        && validate_component::<PointOfViewComponents>(blueprint)
+        && validate_component::<QueryComponents>(blueprint)
         && validate_component::<QueryExpression>(blueprint)
         && validate_component::<RootContainer>(blueprint)
         && validate_component::<RowShare>(blueprint)
@@ -58,6 +66,8 @@ pub fn is_valid_blueprint(blueprint: &EntityDb) -> bool {
         && validate_component::<SpaceViewMaximized>(blueprint)
         && validate_component::<SpaceViewOrigin>(blueprint)
         && validate_component::<TensorDimensionIndexSlider>(blueprint)
+        && validate_component::<TimeRangeQueries>(blueprint)
+        && validate_component::<Timeline>(blueprint)
         && validate_component::<ViewFit>(blueprint)
         && validate_component::<ViewerRecommendationHash>(blueprint)
         && validate_component::<Visible>(blueprint)

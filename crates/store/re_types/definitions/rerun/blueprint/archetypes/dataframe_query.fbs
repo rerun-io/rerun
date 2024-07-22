@@ -1,0 +1,107 @@
+namespace rerun.blueprint.archetypes;
+
+
+/// Configuration for the dataframe view
+// Rationale behind the present data modelling:
+// - Avoid using `union` at all cost.
+// - An explicit "mode" enum maps well with a UI toggle and API parameter, and enabled a hard disambiguation when
+//   settings are present for both the latest at and range modes.
+// - Timestamps are hard-invalidated by a change of timeline. So we keep them on a per-timeline basis.
+// - On the contrary, chances are high that the user prefers to have their pov components _not_ invalidated by a change
+//   of timeline.
+// - That is even though a component might _technically_ be soft-invalidated by a change of timeline (e.g. if it was
+//   not logged on that particular timeline). But we have to deal regardless with potentially invalid component, so this
+//   doesn't change the story much.
+table DataframeQuery (
+    "attr.rerun.scope": "blueprint",
+    "attr.rust.generate_field_info"
+) {
+    // --- Optional ---
+
+        /// Name of the timeline this applies to.
+        timeline: rerun.blueprint.components.Timeline ("attr.rerun.component_optional", nullable, order: 100);
+
+        /// Type of query
+        //TODO(ab): rename component
+        mode: rerun.blueprint.components.DataframeViewMode ("attr.rerun.component_optional", nullable,order: 200);
+
+        /// Times (1 for latest at, 2 for range)
+        latest_at_queries: rerun.blueprint.components.LatestAtQueries ("attr.rerun.component_optional", nullable,order: 400);
+
+        /// Times (1 for latest at, 2 for range)
+        time_range_queries: rerun.blueprint.components.TimeRangeQueries ("attr.rerun.component_optional", nullable,order: 500);
+
+        /// PoV components to use for the querey (time range only).
+        ///
+        /// Empty means no PoV.
+        pov_components: rerun.blueprint.components.PointOfViewComponents ("attr.rerun.component_optional", nullable,order: 600);
+
+        /// Components to return.
+        ///
+        /// Empty means all components.
+        components: rerun.blueprint.components.QueryComponents ("attr.rerun.component_optional", nullable,order: 700);
+}
+
+
+//
+// V2 {
+//     timeline
+//     latest_at_fat_comp
+//     time_range_fat_comp
+//     query_components
+// }
+//
+//
+// V25 {
+//     timeline -> generic
+//     mode (enum) -> generic
+//     latest_at_fat_comp -> on/off generic, deleted on_timeline_change
+//     time_range_fat_comp -> on/off generic, deleted on_timeline_change
+//     query_components -> generic
+// }
+//
+//
+// V28 {
+//     timeline
+//     mode (enum)
+//     {timeline: latest_at_fat_comp}
+//     {timeline: time_range_fat_comp}
+//     query_components
+// }
+//
+// V28 {
+//     timeline
+//     mode (enum)
+//     {timeline: latest_at_fat_comp}
+//     {timeline: time_range_fat_comp}
+//     query_components
+// }
+//
+// V29 {
+//     timeline // debatable, could be the global one
+//     mode (enum)
+//     {timeline: (time)} // only latest at
+//     {timeline: (time_range)} // only range
+//     pov_components // only range
+//     query_components
+// }
+//
+// // some_api(t=3, t=(3, 4),  pov_comp=/* only for range */)
+//
+//
+//
+// // UI: very interesting.
+// // blueprint API: ok
+// V3_latest_at {
+//     timeline
+//     time
+//     query_components
+// }
+// V3_time_range {
+//     timeline
+//     timerange
+//     pov_components
+//     query_components
+// }
+//
+// // ---- timeline
