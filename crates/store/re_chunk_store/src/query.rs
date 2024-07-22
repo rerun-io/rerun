@@ -25,7 +25,7 @@ impl ChunkStore {
     /// Static components are always included in the results.
     ///
     /// Returns `None` if the entity doesn't exist at all on this `timeline`.
-    pub fn all_components(
+    pub fn all_components_on_timeline(
         &self,
         timeline: &Timeline,
         entity_path: &EntityPath,
@@ -68,10 +68,7 @@ impl ChunkStore {
     /// Static components are always included in the results.
     ///
     /// Returns `None` if the entity has never had any data logged to it.
-    pub fn all_components_on_all_timelines(
-        &self,
-        entity_path: &EntityPath,
-    ) -> Option<ComponentNameSet> {
+    pub fn all_components(&self, entity_path: &EntityPath) -> Option<ComponentNameSet> {
         re_tracing::profile_function!();
 
         self.query_id.fetch_add(1, Ordering::Relaxed);
@@ -114,7 +111,7 @@ impl ChunkStore {
         component_name: &ComponentName,
     ) -> bool {
         re_tracing::profile_function!();
-        self.all_components(timeline, entity_path)
+        self.all_components_on_timeline(timeline, entity_path)
             .map_or(false, |components| components.contains(component_name))
     }
 

@@ -21,7 +21,7 @@ impl DataUi for InstancePath {
 
         let Some(components) = ctx
             .recording_store()
-            .all_components(&query.timeline(), entity_path)
+            .all_components_on_timeline(&query.timeline(), entity_path)
         else {
             if ctx.recording().is_known_entity(entity_path) {
                 // This is fine - e.g. we're looking at `/world` and the user has only logged to `/world/car`.

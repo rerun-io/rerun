@@ -144,7 +144,7 @@ pub fn instance_path_icon(
         // It is an entity path
         if db
             .store()
-            .all_components(timeline, &instance_path.entity_path)
+            .all_components_on_timeline(timeline, &instance_path.entity_path)
             .is_some()
         {
             &icons::ENTITY

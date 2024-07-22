@@ -430,7 +430,7 @@ impl DataQueryPropertyResolver<'_> {
                 {
                     for component_name in blueprint
                         .store()
-                        .all_components_on_all_timelines(&recursive_override_subtree.path)
+                        .all_components(&recursive_override_subtree.path)
                         .unwrap_or_default()
                     {
                         let results = blueprint.query_caches().latest_at(
@@ -465,7 +465,7 @@ impl DataQueryPropertyResolver<'_> {
                 {
                     for component_name in blueprint
                         .store()
-                        .all_components_on_all_timelines(&individual_override_subtree.path)
+                        .all_components(&individual_override_subtree.path)
                         .unwrap_or_default()
                     {
                         let results = blueprint.query_caches().latest_at(

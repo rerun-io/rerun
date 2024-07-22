@@ -264,7 +264,7 @@ impl SpaceViewBlueprint {
                         store_context.blueprint_timepoint_for_writes(),
                         blueprint
                             .store()
-                            .all_components(&query.timeline(), path)
+                            .all_components_on_timeline(&query.timeline(), path)
                             .into_iter()
                             .flat_map(|v| v.into_iter())
                             // It's important that we don't include the SpaceViewBlueprint's components

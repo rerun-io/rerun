@@ -746,7 +746,7 @@ impl TimePanel {
         // If this is an entity:
         if let Some(components) = entity_db
             .store()
-            .all_components_on_all_timelines(&tree.path)
+            .all_components(&tree.path)
         {
             for component_name in sorted_component_list_for_ui(components.iter()) {
                 let is_static = entity_db
