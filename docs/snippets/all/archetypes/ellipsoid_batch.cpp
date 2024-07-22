@@ -27,7 +27,7 @@ int main() {
                 {0.15f, 0.15f, 0.15f},
             }
         )
-            .with_colors({
+            .with_solid_colors({
                 rerun::Rgba32(255, 255, 255),
                 rerun::Rgba32(255, 255, 255),
                 rerun::Rgba32(255, 255, 255),

@@ -24,6 +24,10 @@ fn roundtrip() {
             components::Color::from_unmultiplied_rgba(0xAA, 0x00, 0x00, 0xCC), //
             components::Color::from_unmultiplied_rgba(0x00, 0xBB, 0x00, 0xDD),
         ]),
+        solid_colors: Some(vec![
+            components::SolidColor::from_unmultiplied_rgba(0x11, 0x00, 0x00, 0x33), //
+            components::SolidColor::from_unmultiplied_rgba(0x00, 0x22, 0x00, 0x44),
+        ]),
         radii: Some(vec![
             components::Radius::from(42.0), //
             components::Radius::from(43.0),
@@ -48,6 +52,7 @@ fn roundtrip() {
             )),
         ])
         .with_colors([0xAA0000CC, 0x00BB00DD])
+        .with_solid_colors([0x11000033, 0x00220044])
         .with_radii([42.0, 43.0])
         .with_labels(["hello", "friend"])
         .with_class_ids([126, 127]);
@@ -57,6 +62,7 @@ fn roundtrip() {
         ("half_sizes", vec!["rerun.components.HalfSize2D"]),
         ("centers", vec!["rerun.components.Position2D"]),
         ("colors", vec!["rerun.components.Color"]),
+        ("solid_colors", vec!["rerun.components.SolidColor"]),
         ("radii", vec!["rerun.components.Radius"]),
         ("labels", vec!["rerun.components.Label"]),
         ("draw_order", vec!["rerun.components.DrawOrder"]),
