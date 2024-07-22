@@ -281,7 +281,7 @@ impl SpaceViewClass for SpatialSpaceView3D {
             if ctx
                 .recording()
                 .store()
-                .entity_has_component_on_any_timeline(path, &ViewCoordinates::name())
+                .entity_has_component(path, &ViewCoordinates::name())
             {
                 indicated_entities.insert(path.clone());
             }

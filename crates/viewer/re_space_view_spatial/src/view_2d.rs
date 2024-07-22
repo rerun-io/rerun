@@ -282,7 +282,7 @@ fn count_non_nested_images_with_component(
         // bool true -> 1
         entity_db
             .store()
-            .entity_has_component_on_any_timeline(&subtree.path, component_name) as usize
+            .entity_has_component(&subtree.path, component_name) as usize
     } else if !entity_bucket
         .iter()
         .any(|e| e.is_descendant_of(&subtree.path))

@@ -760,7 +760,7 @@ impl TimePanel {
 
                 let component_has_data_in_current_timeline = entity_db
                     .store()
-                    .entity_has_component(time_ctrl.timeline(), &tree.path, &component_name);
+                    .entity_has_component_on_timeline(time_ctrl.timeline(), &tree.path, &component_name);
 
                 let total_num_messages = entity_db.store().num_events_on_timeline_for_component(
                     time_ctrl.timeline(),

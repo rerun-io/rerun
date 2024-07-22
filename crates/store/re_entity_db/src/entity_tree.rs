@@ -123,8 +123,7 @@ impl EntityTree {
 
     /// Returns `false` if this entity has no children and no data.
     pub fn is_empty(&self, chunk_store: &ChunkStore) -> bool {
-        self.children.is_empty()
-            && !chunk_store.entity_has_any_component_on_any_timeline(&self.path)
+        self.children.is_empty() && !chunk_store.entity_has_data(&self.path)
     }
 
     /// Updates the [`EntityTree`] by applying a batch of [`ChunkStoreEvent`]s,

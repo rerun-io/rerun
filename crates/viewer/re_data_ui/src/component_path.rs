@@ -33,10 +33,11 @@ impl DataUi for ComponentPath {
                 }
                 .data_ui(ctx, ui, ui_layout, query, db);
             } else if ctx.recording().tree().subtree(entity_path).is_some() {
-                if db
-                    .store()
-                    .entity_has_component(&query.timeline(), entity_path, component_name)
-                {
+                if db.store().entity_has_component_on_timeline(
+                    &query.timeline(),
+                    entity_path,
+                    component_name,
+                ) {
                     ui.label("<unset>");
                 } else {
                     ui.label(format!(

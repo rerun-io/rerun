@@ -104,7 +104,7 @@ impl ChunkStore {
     /// Check whether an entity has a specific component either on the specified
     /// timeline, or in its static data.
     #[inline]
-    pub fn entity_has_component(
+    pub fn entity_has_component_on_timeline(
         &self,
         timeline: &Timeline,
         entity_path: &EntityPath,
@@ -116,7 +116,7 @@ impl ChunkStore {
     }
 
     /// Check whether an entity has a specific component on any timeline, or in its static data.
-    pub fn entity_has_component_on_any_timeline(
+    pub fn entity_has_component(
         &self,
         entity_path: &EntityPath,
         component_name: &ComponentName,
@@ -193,7 +193,7 @@ impl ChunkStore {
     }
 
     /// Check whether an entity has any data on any timeline, or any static data.
-    pub fn entity_has_any_component_on_any_timeline(&self, entity_path: &EntityPath) -> bool {
+    pub fn entity_has_data(&self, entity_path: &EntityPath) -> bool {
         re_tracing::profile_function!();
 
         self.query_id.fetch_add(1, Ordering::Relaxed);
