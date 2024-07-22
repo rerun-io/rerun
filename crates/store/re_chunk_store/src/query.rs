@@ -101,8 +101,9 @@ impl ChunkStore {
         }
     }
 
-    /// Check whether an entity has a specific component either on the specified
-    /// timeline, or in its static data.
+    /// Check whether an entity has a static component or a temporal component on the specified timeline.
+    ///
+    /// This does _not_ check if the entity actually currently holds any data for that component.
     #[inline]
     pub fn entity_has_component_on_timeline(
         &self,
@@ -111,11 +112,14 @@ impl ChunkStore {
         component_name: &ComponentName,
     ) -> bool {
         re_tracing::profile_function!();
-        self.all_components_on_timeline(timeline, entity_path)
-            .map_or(false, |components| components.contains(component_name))
+
+        self.entity_has_static_component(entity_path, component_name)
+            || self.entity_has_temporal_component_on_timeline(timeline, entity_path, component_name)
     }
 
-    /// Check whether an entity has a specific component on any timeline, or in its static data.
+    /// Check whether an entity has a static component or a temporal component on any timeline.
+    ///
+    /// This does _not_ check if the entity actually currently holds any data for that component.
     pub fn entity_has_component(
         &self,
         entity_path: &EntityPath,
@@ -123,34 +127,13 @@ impl ChunkStore {
     ) -> bool {
         re_tracing::profile_function!();
 
-        if self
-            .static_chunk_ids_per_entity
-            .get(entity_path)
-            .and_then(|static_chunks_per_component| static_chunks_per_component.get(component_name))
-            .and_then(|id| self.chunks_per_chunk_id.get(id))
-            .is_some()
-        {
-            return true;
-        }
-
-        for temporal_chunk_ids_per_component in self
-            .temporal_chunk_ids_per_entity_per_component
-            .get(entity_path)
-            .iter()
-            .flat_map(|temporal_chunk_ids_per_timeline| temporal_chunk_ids_per_timeline.values())
-        {
-            if temporal_chunk_ids_per_component
-                .get(component_name)
-                .is_some()
-            {
-                return true;
-            }
-        }
-
-        false
+        self.entity_has_static_component(entity_path, component_name)
+            || self.entity_has_temporal_component(entity_path, component_name)
     }
 
-    /// Check whether an entity has a specific component in its static data.
+    /// Check whether an entity has a specific static component.
+    ///
+    /// This does _not_ check if the entity actually currently holds any data for that component.
     #[inline]
     pub fn entity_has_static_component(
         &self,
@@ -159,15 +142,141 @@ impl ChunkStore {
     ) -> bool {
         re_tracing::profile_function!();
 
-        let Some(static_components) = self.static_chunk_ids_per_entity.get(entity_path) else {
-            return false;
-        };
+        self.query_id.fetch_add(1, Ordering::Relaxed);
 
-        static_components.contains_key(component_name)
+        self.static_chunk_ids_per_entity
+            .get(entity_path)
+            .is_some_and(|static_chunk_ids_per_component| {
+                static_chunk_ids_per_component.contains_key(component_name)
+            })
+    }
+
+    /// Check whether an entity has a temporal component on any timeline.
+    ///
+    /// This does _not_ check if the entity actually currently holds any data for that component.
+    #[inline]
+    pub fn entity_has_temporal_component(
+        &self,
+        entity_path: &EntityPath,
+        component_name: &ComponentName,
+    ) -> bool {
+        re_tracing::profile_function!();
+
+        self.query_id.fetch_add(1, Ordering::Relaxed);
+
+        self.temporal_chunk_ids_per_entity_per_component
+            .get(entity_path)
+            .iter()
+            .flat_map(|temporal_chunk_ids_per_timeline| temporal_chunk_ids_per_timeline.values())
+            .any(|temporal_chunk_ids_per_component| {
+                temporal_chunk_ids_per_component.contains_key(component_name)
+            })
+    }
+
+    /// Check whether an entity has a temporal component on a specific timeline.
+    ///
+    /// This does _not_ check if the entity actually currently holds any data for that component.
+    #[inline]
+    pub fn entity_has_temporal_component_on_timeline(
+        &self,
+        timeline: &Timeline,
+        entity_path: &EntityPath,
+        component_name: &ComponentName,
+    ) -> bool {
+        re_tracing::profile_function!();
+
+        self.query_id.fetch_add(1, Ordering::Relaxed);
+
+        self.temporal_chunk_ids_per_entity_per_component
+            .get(entity_path)
+            .iter()
+            .filter_map(|temporal_chunk_ids_per_timeline| {
+                temporal_chunk_ids_per_timeline.get(timeline)
+            })
+            .any(|temporal_chunk_ids_per_component| {
+                temporal_chunk_ids_per_component.contains_key(component_name)
+            })
     }
 
     /// Check whether an entity has any data on a specific timeline, or any static data.
+    ///
+    /// This is different from checking if the entity has any component, it also ensures
+    /// that some _data_ currently exists in the store for this entity.
+    #[inline]
     pub fn entity_has_data_on_timeline(
+        &self,
+        timeline: &Timeline,
+        entity_path: &EntityPath,
+    ) -> bool {
+        re_tracing::profile_function!();
+
+        self.entity_has_static_data(entity_path)
+            || self.entity_has_temporal_data_on_timeline(timeline, entity_path)
+    }
+
+    /// Check whether an entity has any static data or any temporal data on any timeline.
+    ///
+    /// This is different from checking if the entity has any component, it also ensures
+    /// that some _data_ currently exists in the store for this entity.
+    #[inline]
+    pub fn entity_has_data(&self, entity_path: &EntityPath) -> bool {
+        re_tracing::profile_function!();
+
+        self.entity_has_static_data(entity_path) || self.entity_has_temporal_data(entity_path)
+    }
+
+    /// Check whether an entity has any static data.
+    ///
+    /// This is different from checking if the entity has any component, it also ensures
+    /// that some _data_ currently exists in the store for this entity.
+    #[inline]
+    pub fn entity_has_static_data(&self, entity_path: &EntityPath) -> bool {
+        re_tracing::profile_function!();
+
+        self.query_id.fetch_add(1, Ordering::Relaxed);
+
+        self.static_chunk_ids_per_entity
+            .get(entity_path)
+            .is_some_and(|static_chunk_ids_per_component| {
+                static_chunk_ids_per_component
+                    .values()
+                    .any(|chunk_id| self.chunks_per_chunk_id.contains_key(chunk_id))
+            })
+    }
+
+    /// Check whether an entity has any temporal data.
+    ///
+    /// This is different from checking if the entity has any component, it also ensures
+    /// that some _data_ currently exists in the store for this entity.
+    #[inline]
+    pub fn entity_has_temporal_data(&self, entity_path: &EntityPath) -> bool {
+        re_tracing::profile_function!();
+
+        self.query_id.fetch_add(1, Ordering::Relaxed);
+
+        self.temporal_chunk_ids_per_entity_per_component
+            .get(entity_path)
+            .is_some_and(|temporal_chunks_per_timeline| {
+                temporal_chunks_per_timeline
+                    .values()
+                    .any(|temporal_chunks_per_component| {
+                        temporal_chunks_per_component.values().any(|chunk_id_sets| {
+                            chunk_id_sets.per_start_time.values().any(|chunk_id_set| {
+                                chunk_id_set
+                                    .iter()
+                                    .any(|chunk_id| self.chunks_per_chunk_id.contains_key(chunk_id))
+                            })
+                        })
+                    })
+            })
+    }
+
+    /// Check whether an entity has any temporal data.
+    ///
+    /// This is different from checking if the entity has any component, it also ensures
+    /// that some _data_ currently exists in the store for this entity.
+    #[inline]
+    pub fn entity_has_temporal_data_on_timeline(
         &self,
         timeline: &Timeline,
         entity_path: &EntityPath,
@@ -176,47 +285,21 @@ impl ChunkStore {
 
         self.query_id.fetch_add(1, Ordering::Relaxed);
 
-        if self.static_chunk_ids_per_entity.get(entity_path).is_some() {
-            // Static data exists on all timelines
-            return true;
-        }
-
-        if let Some(temporal_chunk_ids_per_timeline) =
-            self.temporal_chunk_ids_per_entity.get(entity_path)
-        {
-            if temporal_chunk_ids_per_timeline.contains_key(timeline) {
-                return true;
-            }
-        }
-
-        false
-    }
-
-    /// Check whether an entity has any data on any timeline, or any static data.
-    pub fn entity_has_data(&self, entity_path: &EntityPath) -> bool {
-        re_tracing::profile_function!();
-
-        self.query_id.fetch_add(1, Ordering::Relaxed);
-
-        if let Some(static_chunks_per_component) = self.static_chunk_ids_per_entity.get(entity_path)
-        {
-            if !static_chunks_per_component.is_empty() {
-                return true;
-            }
-        }
-
-        if let Some(temporal_chunks_per_timeline) = self
-            .temporal_chunk_ids_per_entity_per_component
+        self.temporal_chunk_ids_per_entity_per_component
             .get(entity_path)
-        {
-            for temporal_chunks_per_component in temporal_chunks_per_timeline.values() {
-                if !temporal_chunks_per_component.is_empty() {
-                    return true;
-                }
-            }
-        }
-
-        false
+            .is_some_and(|temporal_chunks_per_timeline| {
+                temporal_chunks_per_timeline.get(timeline).is_some_and(
+                    |temporal_chunks_per_component| {
+                        temporal_chunks_per_component.values().any(|chunk_id_sets| {
+                            chunk_id_sets.per_start_time.values().any(|chunk_id_set| {
+                                chunk_id_set
+                                    .iter()
+                                    .any(|chunk_id| self.chunks_per_chunk_id.contains_key(chunk_id))
+                            })
+                        })
+                    },
+                )
+            })
     }
 
     /// Find the earliest time at which something was logged for a given entity on the specified
@@ -247,6 +330,26 @@ impl ChunkStore {
         }
 
         (time_min != TimeInt::MAX).then_some(time_min)
+    }
+
+    /// Returns the min and max times at which data was logged for an entity on a specific timeline.
+    pub fn entity_time_range(
+        &self,
+        timeline: &Timeline,
+        entity_path: &EntityPath,
+    ) -> Option<ResolvedTimeRange> {
+        re_tracing::profile_function!();
+
+        self.query_id.fetch_add(1, Ordering::Relaxed);
+
+        let temporal_chunk_ids_per_timeline =
+            self.temporal_chunk_ids_per_entity.get(entity_path)?;
+        let chunk_id_sets = temporal_chunk_ids_per_timeline.get(timeline)?;
+
+        let start = chunk_id_sets.per_start_time.first_key_value()?.0;
+        let end = chunk_id_sets.per_end_time.last_key_value()?.0;
+
+        Some(ResolvedTimeRange::new(*start, *end))
     }
 }
 
@@ -560,7 +663,9 @@ impl ChunkStore {
 
 // Queries returning `usize` and `bool`
 impl ChunkStore {
-    /// Returns the number of events logged for a given component on the given entity path across all timelines.
+    /// Returns the number of events of a specific component logged for an entity on a specific timeline.
+    ///
+    /// This counts both static and temporal components.
     pub fn num_events_on_timeline_for_component(
         &self,
         timeline: &Timeline,
@@ -569,35 +674,12 @@ impl ChunkStore {
     ) -> usize {
         re_tracing::profile_function!();
 
-        self.query_id.fetch_add(1, Ordering::Relaxed);
-
         self.num_events_for_static_component(entity_path, component_name)
             + self.num_events_on_timeline_for_temporal_component(
                 timeline,
                 entity_path,
                 component_name,
             )
-    }
-
-    /// Returns the min and max times at which data was logged for an entity
-    /// on a specific timeline.
-    pub fn time_range_for_entity_on_timeline(
-        &self,
-        timeline: &Timeline,
-        entity_path: &EntityPath,
-    ) -> Option<ResolvedTimeRange> {
-        re_tracing::profile_function!();
-
-        self.query_id.fetch_add(1, Ordering::Relaxed);
-
-        let temporal_chunk_ids_per_timeline =
-            self.temporal_chunk_ids_per_entity.get(entity_path)?;
-        let chunk_id_sets = temporal_chunk_ids_per_timeline.get(timeline)?;
-
-        let start = chunk_id_sets.per_start_time.first_key_value()?.0;
-        let end = chunk_id_sets.per_end_time.last_key_value()?.0;
-
-        Some(ResolvedTimeRange::new(*start, *end))
     }
 
     /// Returns the number of events logged for an entity on a specific timeline.

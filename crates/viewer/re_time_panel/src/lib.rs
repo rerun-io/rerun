@@ -744,10 +744,7 @@ impl TimePanel {
         }
 
         // If this is an entity:
-        if let Some(components) = entity_db
-            .store()
-            .all_components(&tree.path)
-        {
+        if let Some(components) = entity_db.store().all_components(&tree.path) {
             for component_name in sorted_component_list_for_ui(components.iter()) {
                 let is_static = entity_db
                     .store()
@@ -758,9 +755,12 @@ impl TimePanel {
                 let item = TimePanelItem::component_path(component_path.clone());
                 let timeline = time_ctrl.timeline();
 
-                let component_has_data_in_current_timeline = entity_db
-                    .store()
-                    .entity_has_component_on_timeline(time_ctrl.timeline(), &tree.path, &component_name);
+                let component_has_data_in_current_timeline =
+                    entity_db.store().entity_has_component_on_timeline(
+                        time_ctrl.timeline(),
+                        &tree.path,
+                        &component_name,
+                    );
 
                 let total_num_messages = entity_db.store().num_events_on_timeline_for_component(
                     time_ctrl.timeline(),
