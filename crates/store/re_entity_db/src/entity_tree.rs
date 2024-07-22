@@ -201,30 +201,33 @@ impl EntityTree {
     }
 
     /// Invokes the `predicate` for `self` and all children recursively,
-    /// returning the subtree for which the `predicate` returns `true`.
-    pub fn find_child_recursive(
+    /// returning the _first_ entity for which the `predicate` returns `true`.
+    ///
+    /// Note that this function has early return semantics, meaning if multiple
+    /// entities would return `true`, only the first is returned.
+    /// The entities are yielded in order of their entity paths.
+    pub fn find_first_child_recursive(
         &self,
         mut predicate: impl FnMut(&EntityPath) -> bool,
     ) -> Option<&Self> {
-        use std::ops::ControlFlow;
-
         fn visit<'a>(
             this: &'a EntityTree,
             predicate: &mut impl FnMut(&EntityPath) -> bool,
-        ) -> ControlFlow<&'a EntityTree> {
+        ) -> Option<&'a EntityTree> {
             if predicate(&this.path) {
-                return ControlFlow::Break(this);
+                return Some(this);
             };
+
             for child in this.children.values() {
-                visit(child, predicate)?;
+                if let Some(subtree) = visit(child, predicate) {
+                    // Early return
+                    return Some(subtree);
+                };
             }
-            ControlFlow::Continue(())
+
+            None
         }
 
-        let result = visit(self, &mut predicate);
-        match result {
-            ControlFlow::Continue(()) => None,
-            ControlFlow::Break(v) => Some(v),
-        }
+        visit(self, &mut predicate)
     }
 }

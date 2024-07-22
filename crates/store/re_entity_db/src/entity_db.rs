@@ -570,6 +570,7 @@ impl EntityDb {
         size
     }
 
+    /// Returns true if an entity or any of its children have any data on the given timeline.
     pub fn subtree_has_data_on_timeline(
         &self,
         timeline: &Timeline,
@@ -582,7 +583,9 @@ impl EntityDb {
         };
 
         subtree
-            .find_child_recursive(|path| self.store().entity_has_data_on_timeline(timeline, path))
+            .find_first_child_recursive(|path| {
+                self.store().entity_has_data_on_timeline(timeline, path)
+            })
             .is_some()
     }
 }
