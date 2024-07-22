@@ -747,13 +747,18 @@ impl ChunkStore {
             })
     }
 
-    /// Returns number of bytes used for an entity's data on a specific timeline.
+    /// Returns number of bytes used for an entity on a specific timeline.
     ///
-    /// This includes static data.
+    /// This is an approximation of the actual storage cost of the entity,
+    /// as the measurement includes the overhead of various data structures
+    /// we use in the database.
+    /// It is imprecise, because it does not account for every possible place
+    /// someone may be storing something related to the entity, only most of
+    /// what is accessible inside this chunk store.
     ///
     /// ⚠ This does not return the _total_ size of the entity and all its children!
     /// For that, use `entity_db.size_of_subtree_on_timeline`.
-    pub fn size_of_entity_on_timeline(
+    pub fn approx_size_of_entity_on_timeline(
         &self,
         timeline: &Timeline,
         entity_path: &EntityPath,

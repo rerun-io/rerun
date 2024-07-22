@@ -549,7 +549,7 @@ impl EntityDb {
     /// Returns the byte size of an entity and all its children on the given timeline, recursively.
     ///
     /// This includes static data.
-    pub fn size_of_subtree_on_timeline(
+    pub fn approx_size_of_subtree_on_timeline(
         &self,
         timeline: &Timeline,
         entity_path: &EntityPath,
@@ -562,7 +562,9 @@ impl EntityDb {
 
         let mut size = 0;
         subtree.visit_children_recursively(|path| {
-            size += self.store().size_of_entity_on_timeline(timeline, path);
+            size += self
+                .store()
+                .approx_size_of_entity_on_timeline(timeline, path);
         });
 
         size

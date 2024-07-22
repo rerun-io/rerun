@@ -299,16 +299,14 @@ fn entity_tree_stats_ui(
 ) {
     use re_format::format_bytes;
 
-    // Show total bytes used in whole subtree
-    let total_bytes = db.size_of_subtree_on_timeline(timeline, &tree.path);
-
     let subtree_caveat = if tree.children.is_empty() {
         ""
     } else {
         " (including subtree)"
     };
 
-    if total_bytes == 0 {
+    let approx_num_bytes = db.approx_size_of_subtree_on_timeline(timeline, &tree.path);
+    if approx_num_bytes == 0 {
         return;
     }
 
@@ -335,7 +333,7 @@ fn entity_tree_stats_ui(
 
                 let duration = max_time.as_f64() - min_time.as_f64();
 
-                let mut bytes_per_time = total_bytes as f64 / duration;
+                let mut bytes_per_time = approx_num_bytes as f64 / duration;
 
                 // Fencepost adjustment:
                 bytes_per_time *= (num_events - 1) as f64 / num_events as f64;
@@ -361,14 +359,14 @@ fn entity_tree_stats_ui(
 
     if let Some(data_rate) = data_rate {
         ui.label(format!(
-            "Using {}{subtree_caveat} ≈ {}",
-            format_bytes(total_bytes as f64),
+            "Using ~{}{subtree_caveat} ≈ {}",
+            format_bytes(approx_num_bytes as f64),
             data_rate
         ));
     } else {
         ui.label(format!(
-            "Using {}{subtree_caveat}",
-            format_bytes(total_bytes as f64)
+            "Using ~{}{subtree_caveat}",
+            format_bytes(approx_num_bytes as f64)
         ));
     }
 }
