@@ -713,7 +713,7 @@ impl ChunkStore {
             .unwrap_or(0)
     }
 
-    /// Returns the number of times a temporal component was logged to an entity path on a specific timeline.
+    /// Returns the number of temporal events logged for an entity for a specific component on a given timeline.
     ///
     /// This ignores static data.
     ///
