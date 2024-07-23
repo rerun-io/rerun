@@ -19,7 +19,7 @@ use egui::{pos2, Color32, CursorIcon, NumExt, Painter, PointerButton, Rect, Shap
 use re_context_menu::{context_menu_ui_for_item, SelectionUpdateBehavior};
 use re_data_ui::DataUi as _;
 use re_data_ui::{item_ui::guess_instance_path_icon, sorted_component_list_for_ui};
-use re_entity_db::{EntityTree, InstancePath, TimeHistogram};
+use re_entity_db::{EntityTree, InstancePath};
 use re_log_types::{
     external::re_types_core::ComponentName, ComponentPath, EntityPath, EntityPathPart,
     ResolvedTimeRange, TimeInt, TimeReal,
@@ -488,7 +488,6 @@ impl TimePanel {
 
         // Put time-marker on top and last, so that you can always drag it
         time_marker_ui(
-            ctx,
             &self.time_ranges_ui,
             time_ctrl,
             ui,
@@ -575,8 +574,6 @@ impl TimePanel {
         ui: &mut egui::Ui,
         show_root_as: &str,
     ) {
-        let tree_has_data_in_current_timeline = time_ctrl.tree_has_data_in_current_timeline(tree);
-
         let db = match self.source {
             TimePanelSource::Recording => ctx.recording(),
             TimePanelSource::Blueprint => ctx.store_context.blueprint,
@@ -694,6 +691,8 @@ impl TimePanel {
         // ----------------------------------------------
 
         // show the data in the time area:
+        let tree_has_data_in_current_timeline =
+            entity_db.subtree_has_data_on_timeline(time_ctrl.timeline(), &tree.path);
         if is_visible && tree_has_data_in_current_timeline {
             let row_rect =
                 Rect::from_x_y_ranges(time_area_response.rect.x_range(), response_rect.y_range());
@@ -702,40 +701,17 @@ impl TimePanel {
 
             // show the density graph only if that item is closed
             if is_closed {
-                let empty = re_entity_db::TimeHistogram::default();
-                let num_messages_at_time = tree
-                    .subtree
-                    .time_histogram
-                    .get(time_ctrl.timeline())
-                    .unwrap_or(&empty);
-
-                if ctx.app_options.experimental_chunk_based_data_density_graph {
-                    data_density_graph::data_density_graph_ui2(
-                        &mut self.data_density_graph_painter,
-                        ctx,
-                        time_ctrl,
-                        db,
-                        time_area_painter,
-                        ui,
-                        &self.time_ranges_ui,
-                        row_rect,
-                        &item,
-                    );
-                } else {
-                    data_density_graph::data_density_graph_ui(
-                        &mut self.data_density_graph_painter,
-                        ctx,
-                        time_ctrl,
-                        db,
-                        time_area_response,
-                        time_area_painter,
-                        ui,
-                        num_messages_at_time,
-                        row_rect,
-                        &self.time_ranges_ui,
-                        &item,
-                    );
-                }
+                data_density_graph::data_density_graph_ui(
+                    &mut self.data_density_graph_painter,
+                    ctx,
+                    time_ctrl,
+                    db,
+                    time_area_painter,
+                    ui,
+                    &self.time_ranges_ui,
+                    row_rect,
+                    &item,
+                );
             }
         }
     }
@@ -768,17 +744,35 @@ impl TimePanel {
         }
 
         // If this is an entity:
-        if !tree.entity.components.is_empty() {
-            for component_name in sorted_component_list_for_ui(tree.entity.components.keys()) {
-                let data = &tree.entity.components[&component_name];
-
-                let is_static = data.is_static();
-                let component_has_data_in_current_timeline =
-                    time_ctrl.component_has_data_in_current_timeline(data);
+        if let Some(components) = entity_db.store().all_components(&tree.path) {
+            for component_name in sorted_component_list_for_ui(components.iter()) {
+                let is_static = entity_db
+                    .store()
+                    .entity_has_static_component(&tree.path, &component_name);
 
                 let component_path = ComponentPath::new(tree.path.clone(), component_name);
                 let short_component_name = component_path.component_name.short_name();
                 let item = TimePanelItem::component_path(component_path.clone());
+                let timeline = time_ctrl.timeline();
+
+                let component_has_data_in_current_timeline =
+                    entity_db.store().entity_has_component_on_timeline(
+                        time_ctrl.timeline(),
+                        &tree.path,
+                        &component_name,
+                    );
+
+                let num_static_messages = entity_db
+                    .store()
+                    .num_static_events_for_component(&tree.path, component_name);
+                let num_temporal_messages = entity_db
+                    .store()
+                    .num_temporal_events_for_component_on_timeline(
+                        time_ctrl.timeline(),
+                        &tree.path,
+                        component_name,
+                    );
+                let total_num_messages = num_static_messages + num_temporal_messages;
 
                 let response = ui
                     .list_item()
@@ -810,14 +804,6 @@ impl TimePanel {
 
                 let response_rect = response.rect;
 
-                let timeline = time_ctrl.timeline();
-
-                let empty_messages_over_time = TimeHistogram::default();
-                let messages_over_time = data.get(timeline).unwrap_or(&empty_messages_over_time);
-
-                // `data.times` does not contain static. Need to add those manually:
-                let total_num_messages =
-                    messages_over_time.total_count() + data.num_static_messages();
                 response.on_hover_ui(|ui| {
                     if total_num_messages == 0 {
                         ui.label(ui.ctx().warning_text(format!(
@@ -826,19 +812,24 @@ impl TimePanel {
                         )));
                     } else {
                         list_item::list_item_scope(ui, "hover tooltip", |ui| {
+                            let kind = if is_static { "Static" } else { "Temporal" };
+
+                            let num_messages = if is_static {
+                                num_static_messages
+                            } else {
+                                num_temporal_messages
+                            };
+
+                            let num_messages = if num_messages == 1 {
+                                "once".to_owned()
+                            } else {
+                                format!("{} times", re_format::format_uint(num_messages))
+                            };
+
                             ui.list_item().interactive(false).show_flat(
                                 ui,
                                 list_item::LabelContent::new(format!(
-                                    "{} component, logged {}",
-                                    if is_static { "Static" } else { "Temporal" },
-                                    if total_num_messages == 1 {
-                                        "once".to_owned()
-                                    } else {
-                                        format!(
-                                            "{} times",
-                                            re_format::format_uint(total_num_messages)
-                                        )
-                                    },
+                                    "{kind} component, logged {num_messages}"
                                 ))
                                 .truncate(false)
                                 .with_icon(if is_static {
@@ -871,6 +862,7 @@ impl TimePanel {
                     response_rect.left()..=ui.max_rect().right(),
                     response_rect.y_range(),
                 );
+
                 let is_visible = ui.is_rect_visible(full_width_rect);
                 if is_visible && component_has_data_in_current_timeline {
                     // show the data in the time area:
@@ -886,33 +878,17 @@ impl TimePanel {
                         TimePanelSource::Blueprint => ctx.store_context.blueprint,
                     };
 
-                    if ctx.app_options.experimental_chunk_based_data_density_graph {
-                        data_density_graph::data_density_graph_ui2(
-                            &mut self.data_density_graph_painter,
-                            ctx,
-                            time_ctrl,
-                            db,
-                            time_area_painter,
-                            ui,
-                            &self.time_ranges_ui,
-                            row_rect,
-                            &item,
-                        );
-                    } else {
-                        data_density_graph::data_density_graph_ui(
-                            &mut self.data_density_graph_painter,
-                            ctx,
-                            time_ctrl,
-                            db,
-                            time_area_response,
-                            time_area_painter,
-                            ui,
-                            messages_over_time,
-                            row_rect,
-                            &self.time_ranges_ui,
-                            &item,
-                        );
-                    }
+                    data_density_graph::data_density_graph_ui(
+                        &mut self.data_density_graph_painter,
+                        ctx,
+                        time_ctrl,
+                        db,
+                        time_area_painter,
+                        ui,
+                        &self.time_ranges_ui,
+                        row_rect,
+                        &item,
+                    );
                 }
             }
         }
@@ -1050,7 +1026,6 @@ fn collapsed_time_marker_and_time(
                 ui.visuals().widgets.noninteractive.fg_stroke,
             );
             time_marker_ui(
-                ctx,
                 &time_ranges_ui,
                 time_ctrl,
                 ui,
@@ -1365,7 +1340,6 @@ fn interact_with_streams_rect(
 
 /// A vertical line that shows the current time.
 fn time_marker_ui(
-    ctx: &ViewerContext<'_>,
     time_ranges_ui: &TimeRangesUi,
     time_ctrl: &mut TimeControl,
     ui: &egui::Ui,
@@ -1428,88 +1402,56 @@ fn time_marker_ui(
     }
 
     // "click here to view time here"
-    if ctx.app_options.experimental_chunk_based_data_density_graph {
-        if let Some(pointer_pos) = pointer_pos {
-            let is_pointer_in_time_area_rect = time_area_painter.clip_rect().contains(pointer_pos);
-            let is_pointer_in_timeline_rect = timeline_rect.contains(pointer_pos);
-
-            // Show preview?
-            if !is_hovering_time_cursor
-                && !time_area_double_clicked
-                && is_pointer_in_time_area_rect
-                && !is_anything_being_dragged
-                && !is_hovering_the_loop_selection
-            {
-                time_area_painter.vline(
-                    pointer_pos.x,
-                    timeline_rect.top()..=ui.max_rect().bottom(),
-                    ui.visuals().widgets.noninteractive.fg_stroke,
-                );
-                ui.ctx().set_cursor_icon(timeline_cursor_icon); // preview!
-            }
-
-            // Click to move time here:
-            let time_area_response = ui.interact(
-                time_area_painter.clip_rect(),
-                ui.id().with("time_area_painter_id"),
-                egui::Sense::click(),
-            );
-
-            if !is_hovering_the_loop_selection {
-                let mut set_time_to_pointer = || {
-                    if let Some(time) = time_ranges_ui.time_from_x_f32(pointer_pos.x) {
-                        let time = time_ranges_ui.clamp_time(time);
-                        time_ctrl.set_time(time);
-                        time_ctrl.pause();
-                    }
-                };
-
-                // click on timeline = set time + start drag
-                // click on time area = set time
-                // double click on time area = reset time
-                if !is_anything_being_dragged
-                    && is_pointer_in_timeline_rect
-                    && ui.input(|i| i.pointer.primary_down())
-                {
-                    set_time_to_pointer();
-                    ui.ctx().set_dragged_id(time_drag_id);
-                } else if is_pointer_in_time_area_rect {
-                    if time_area_response.double_clicked() {
-                        time_ctrl.reset_time_view();
-                    } else if time_area_response.clicked() && !is_anything_being_dragged {
-                        set_time_to_pointer();
-                    }
-                }
-            }
-        }
-    } else if let Some(pointer_pos) = pointer_pos {
+    if let Some(pointer_pos) = pointer_pos {
+        let is_pointer_in_time_area_rect = time_area_painter.clip_rect().contains(pointer_pos);
         let is_pointer_in_timeline_rect = timeline_rect.contains(pointer_pos);
 
         // Show preview?
         if !is_hovering_time_cursor
-            && is_pointer_in_timeline_rect
+            && !time_area_double_clicked
+            && is_pointer_in_time_area_rect
             && !is_anything_being_dragged
             && !is_hovering_the_loop_selection
         {
             time_area_painter.vline(
                 pointer_pos.x,
                 timeline_rect.top()..=ui.max_rect().bottom(),
-                ui.visuals().widgets.noninteractive.bg_stroke,
+                ui.visuals().widgets.noninteractive.fg_stroke,
             );
             ui.ctx().set_cursor_icon(timeline_cursor_icon); // preview!
         }
 
         // Click to move time here:
-        if ui.input(|i| i.pointer.primary_down())
-            && is_pointer_in_timeline_rect
-            && !is_anything_being_dragged
-            && !is_hovering_the_loop_selection
-        {
-            if let Some(time) = time_ranges_ui.time_from_x_f32(pointer_pos.x) {
-                let time = time_ranges_ui.clamp_time(time);
-                time_ctrl.set_time(time);
-                time_ctrl.pause();
-                ui.ctx().set_dragged_id(time_drag_id); // act as if the user grabbed the time marker cursor
+        let time_area_response = ui.interact(
+            time_area_painter.clip_rect(),
+            ui.id().with("time_area_painter_id"),
+            egui::Sense::click(),
+        );
+
+        if !is_hovering_the_loop_selection {
+            let mut set_time_to_pointer = || {
+                if let Some(time) = time_ranges_ui.time_from_x_f32(pointer_pos.x) {
+                    let time = time_ranges_ui.clamp_time(time);
+                    time_ctrl.set_time(time);
+                    time_ctrl.pause();
+                }
+            };
+
+            // click on timeline = set time + start drag
+            // click on time area = set time
+            // double click on time area = reset time
+            if !is_anything_being_dragged
+                && is_pointer_in_timeline_rect
+                && ui.input(|i| i.pointer.primary_down())
+            {
+                set_time_to_pointer();
+                ui.ctx().set_dragged_id(time_drag_id);
+            } else if is_pointer_in_time_area_rect {
+                if time_area_response.double_clicked() {
+                    time_ctrl.reset_time_view();
+                } else if time_area_response.clicked() && !is_anything_being_dragged {
+                    set_time_to_pointer();
+                }
             }
         }
     }

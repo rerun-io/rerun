@@ -51,7 +51,7 @@ pub(crate) fn time_range_table_ui(
             .filter(|data_result| data_result.is_visible(ctx))
             .flat_map(|data_result| {
                 ctx.recording_store()
-                    .all_components(&query.timeline, &data_result.entity_path)
+                    .all_components_on_timeline(&query.timeline, &data_result.entity_path)
                     .unwrap_or_default()
             })
             // TODO(#4466): make showing/hiding indicators components an explicit optional

@@ -63,7 +63,7 @@ pub(crate) fn latest_at_table_ui(
             .iter()
             .flat_map(|entity_path| {
                 ctx.recording_store()
-                    .all_components(&query.timeline, entity_path)
+                    .all_components_on_timeline(&query.timeline, entity_path)
                     .unwrap_or_default()
             })
             // TODO(#4466): make showing/hiding indicators components an explicit optional

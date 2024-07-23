@@ -85,8 +85,6 @@ pub enum UICommand {
     RestartWithWebGl,
     #[cfg(target_arch = "wasm32")]
     RestartWithWebGpu,
-
-    ToggleChunkBasedDataDensityGraph,
 }
 
 impl UICommand {
@@ -249,11 +247,6 @@ impl UICommand {
                 "Restart with WebGPU",
                 "Reloads the webpage and force WebGPU for rendering. All data will be lost."
             ),
-
-            Self::ToggleChunkBasedDataDensityGraph => (
-                "Toggle chunk-based data density graph",
-                "Toggle between the old and new data density graph",
-            ),
         }
     }
 
@@ -273,10 +266,6 @@ impl UICommand {
 
         fn ctrl_shift(key: Key) -> KeyboardShortcut {
             KeyboardShortcut::new(Modifiers::CTRL.plus(Modifiers::SHIFT), key)
-        }
-
-        fn cmd_shift(key: Key) -> KeyboardShortcut {
-            KeyboardShortcut::new(Modifiers::COMMAND.plus(Modifiers::SHIFT), key)
         }
 
         match self {
@@ -357,8 +346,6 @@ impl UICommand {
 
             #[cfg(target_arch = "wasm32 ")]
             Self::ViewportMode(_) => None,
-
-            Self::ToggleChunkBasedDataDensityGraph => Some(cmd_shift(Key::D)),
         }
     }
 
