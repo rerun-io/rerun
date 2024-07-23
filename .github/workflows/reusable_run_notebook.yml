@@ -59,7 +59,7 @@ jobs:
       - name: Install built wheel
         run: |
           pixi run python scripts/ci/pixi_install_wheel.py --feature python-pypi --package rerun-sdk --dir wheel
-          pixi run python scripts/ci/pixi_install_wheel.py --feature python-pypi --package rerun-notebook --dir wheel
+          pixi run python scripts/ci/pixi_install_wheel.py --feature python-pypi --package rerun-notebook --dir wheel --platform-independent
 
       - name: Install Deps
         run: pixi run -e wheel-test pip install -r examples/python/notebook/requirements.txt

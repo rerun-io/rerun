@@ -21,7 +21,7 @@ import sys
 from pathlib import Path
 
 
-def run_pixi_install(feature: str, dir: str, pkg: str) -> None:
+def run_pixi_install(feature: str, dir: str, pkg: str, platform_independent: bool = False) -> None:
     # Find our current platform: linux, macosx, or win
     plat = platform.system()
     if plat == "Linux":
@@ -46,17 +46,27 @@ def run_pixi_install(feature: str, dir: str, pkg: str) -> None:
     wheels = [whl for whl in wheels if whl.startswith(pkg.replace("-", "_"))]
 
     # Filter the wheels based on platform
-    wheels = [whl for whl in wheels if plat in whl]
+    if not platform_independent:
+        wheels = [whl for whl in wheels if plat in whl]
 
     # Filter the wheels based on architecture
-    wheels = [whl for whl in wheels if arch in whl]
+    if not platform_independent:
+        wheels = [whl for whl in wheels if arch in whl]
 
     if len(wheels) == 0:
-        print(f"No wheels found for package {pkg} on platform {plat} and architecture {arch}")
+        if platform_independent:
+            print(f"No wheels found for package {pkg} (the package was expected to be platform independent)")
+        else:
+            print(f"No wheels found for package {pkg} on platform {plat} and architecture {arch}")
         sys.exit(1)
 
     if len(wheels) > 1:
-        print(f"Multiple wheels found for package {pkg} on platform {plat} and architecture {arch}: {wheels}")
+        if platform_independent:
+            print(
+                f"Multiple wheels found for package {pkg} (the package was expected to be platform independent): {wheels}"
+            )
+        else:
+            print(f"Multiple wheels found for package {pkg} on platform {plat} and architecture {arch}: {wheels}")
         sys.exit(1)
 
     wheel = Path(dir) / wheels[0]
@@ -77,9 +87,14 @@ def main() -> None:
     parser.add_argument("--feature", required=True, help="The pixi feature to update")
     parser.add_argument("--dir", required=True, help="Directory to search")
     parser.add_argument("--package", required=True, help="The package to install")
+    parser.add_argument(
+        "--platform-independent",
+        action="store_true",
+        help="Specify if the wheel is platform independent and there should be no filtering for architecture & platform",
+    )
     args = parser.parse_args()
 
-    run_pixi_install(args.feature, args.dir, args.package)
+    run_pixi_install(args.feature, args.dir, args.package, args.platform_independent)
 
 
 if __name__ == "__main__":
