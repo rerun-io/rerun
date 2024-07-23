@@ -693,7 +693,7 @@ impl ChunkStore {
             })
     }
 
-    /// Returns the number of times a static component was logged to an entity.
+    /// Returns the number of static events logged for an entity for a specific component.
     pub fn num_static_events_for_component(
         &self,
         entity_path: &EntityPath,
