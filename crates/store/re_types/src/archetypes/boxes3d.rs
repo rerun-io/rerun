@@ -44,6 +44,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 ///             rerun::Color::from_rgb(0, 255, 0),
 ///             rerun::Color::from_rgb(0, 0, 255),
 ///         ])
+///         .with_fill_mode(rerun::FillMode::Solid)
 ///         .with_labels(["red", "green", "blue"]),
 ///     )?;
 ///
