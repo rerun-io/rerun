@@ -26,7 +26,7 @@ permissions:
 jobs:
   run-notebook:
     name: Run notebook
-    runs-on: ubuntu-latest
+    runs-on: buildjet-8vcpu-ubuntu-2204 # This image runs occasionally out of memory, BuildJet runners have more disk available.
     container:
       image: rerunio/ci_docker:0.14.0 # Required to run the wheel or we get "No matching distribution found for attrs>=23.1.0" during `pip install rerun-sdk`
     steps:
