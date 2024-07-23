@@ -30,7 +30,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             rerun::Color::from_rgb(255, 255, 255),
             rerun::Color::from_rgb(0, 0, 0),
             rerun::Color::from_rgb(0, 0, 0),
-        ]),
+        ])
+        .with_fill_mode(rerun::FillMode::Solid),
     )?;
 
     Ok(())
