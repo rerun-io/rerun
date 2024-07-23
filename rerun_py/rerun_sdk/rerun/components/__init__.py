@@ -34,6 +34,7 @@ from .colormap import Colormap, ColormapArrayLike, ColormapBatch, ColormapLike, 
 from .depth_meter import DepthMeter, DepthMeterBatch, DepthMeterType
 from .disconnected_space import DisconnectedSpace, DisconnectedSpaceBatch, DisconnectedSpaceType
 from .draw_order import DrawOrder, DrawOrderBatch, DrawOrderType
+from .fill_mode import FillMode, FillModeArrayLike, FillModeBatch, FillModeLike, FillModeType
 from .fill_ratio import FillRatio, FillRatioBatch, FillRatioType
 from .gamma_correction import GammaCorrection, GammaCorrectionBatch, GammaCorrectionType
 from .half_size2d import HalfSize2D, HalfSize2DBatch, HalfSize2DType
@@ -147,6 +148,11 @@ __all__ = [
     "DrawOrder",
     "DrawOrderBatch",
     "DrawOrderType",
+    "FillMode",
+    "FillModeArrayLike",
+    "FillModeBatch",
+    "FillModeLike",
+    "FillModeType",
     "FillRatio",
     "FillRatioBatch",
     "FillRatioType",

@@ -39,6 +39,7 @@ class Ellipsoids(EllipsoidsExt, Archetype):
             rotations=None,  # type: ignore[arg-type]
             colors=None,  # type: ignore[arg-type]
             line_radii=None,  # type: ignore[arg-type]
+            fill_mode=None,  # type: ignore[arg-type]
             labels=None,  # type: ignore[arg-type]
             class_ids=None,  # type: ignore[arg-type]
         )
@@ -97,6 +98,15 @@ class Ellipsoids(EllipsoidsExt, Archetype):
         converter=components.RadiusBatch._optional,  # type: ignore[misc]
     )
     # Optional radii for the lines used when the ellipsoid is rendered as a wireframe.
+    #
+    # (Docstring intentionally commented out to hide this field from the docs)
+
+    fill_mode: components.FillModeBatch | None = field(
+        metadata={"component": "optional"},
+        default=None,
+        converter=components.FillModeBatch._optional,  # type: ignore[misc]
+    )
+    # Optionally choose whether the ellipsoids are drawn with lines or solid.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 

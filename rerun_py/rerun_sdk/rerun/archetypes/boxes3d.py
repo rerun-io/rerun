@@ -68,6 +68,7 @@ class Boxes3D(Boxes3DExt, Archetype):
             rotations=None,  # type: ignore[arg-type]
             colors=None,  # type: ignore[arg-type]
             radii=None,  # type: ignore[arg-type]
+            fill_mode=None,  # type: ignore[arg-type]
             labels=None,  # type: ignore[arg-type]
             class_ids=None,  # type: ignore[arg-type]
         )
@@ -120,6 +121,15 @@ class Boxes3D(Boxes3DExt, Archetype):
         converter=components.RadiusBatch._optional,  # type: ignore[misc]
     )
     # Optional radii for the lines that make up the boxes.
+    #
+    # (Docstring intentionally commented out to hide this field from the docs)
+
+    fill_mode: components.FillModeBatch | None = field(
+        metadata={"component": "optional"},
+        default=None,
+        converter=components.FillModeBatch._optional,  # type: ignore[misc]
+    )
+    # Optionally choose whether the boxes are drawn with lines or solid.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 

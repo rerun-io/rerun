@@ -76,6 +76,9 @@ pub struct Boxes3D {
     /// Optional radii for the lines that make up the boxes.
     pub radii: Option<Vec<crate::components::Radius>>,
 
+    /// Optionally choose whether the boxes are drawn with lines or solid.
+    pub fill_mode: Option<crate::components::FillMode>,
+
     /// Optional text labels for the boxes.
     ///
     /// If there's a single label present, it will be placed at the center of the entity.
@@ -96,6 +99,7 @@ impl ::re_types_core::SizeBytes for Boxes3D {
             + self.rotations.heap_size_bytes()
             + self.colors.heap_size_bytes()
             + self.radii.heap_size_bytes()
+            + self.fill_mode.heap_size_bytes()
             + self.labels.heap_size_bytes()
             + self.class_ids.heap_size_bytes()
     }
@@ -107,6 +111,7 @@ impl ::re_types_core::SizeBytes for Boxes3D {
             && <Option<Vec<crate::components::Rotation3D>>>::is_pod()
             && <Option<Vec<crate::components::Color>>>::is_pod()
             && <Option<Vec<crate::components::Radius>>>::is_pod()
+            && <Option<crate::components::FillMode>>::is_pod()
             && <Option<Vec<crate::components::Text>>>::is_pod()
             && <Option<Vec<crate::components::ClassId>>>::is_pod()
     }
@@ -125,16 +130,17 @@ static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 4usize]> =
         ]
     });
 
-static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 3usize]> =
+static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 4usize]> =
     once_cell::sync::Lazy::new(|| {
         [
             "rerun.components.Radius".into(),
+            "rerun.components.FillMode".into(),
             "rerun.components.Text".into(),
             "rerun.components.ClassId".into(),
         ]
     });
 
-static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 8usize]> =
+static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 9usize]> =
     once_cell::sync::Lazy::new(|| {
         [
             "rerun.components.HalfSize3D".into(),
@@ -143,14 +149,15 @@ static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 8usize]> =
             "rerun.components.Color".into(),
             "rerun.components.Boxes3DIndicator".into(),
             "rerun.components.Radius".into(),
+            "rerun.components.FillMode".into(),
             "rerun.components.Text".into(),
             "rerun.components.ClassId".into(),
         ]
     });
 
 impl Boxes3D {
-    /// The total number of components in the archetype: 1 required, 4 recommended, 3 optional
-    pub const NUM_COMPONENTS: usize = 8usize;
+    /// The total number of components in the archetype: 1 required, 4 recommended, 4 optional
+    pub const NUM_COMPONENTS: usize = 9usize;
 }
 
 /// Indicator component for the [`Boxes3D`] [`::re_types_core::Archetype`]
@@ -265,6 +272,15 @@ impl ::re_types_core::Archetype for Boxes3D {
         } else {
             None
         };
+        let fill_mode = if let Some(array) = arrays_by_name.get("rerun.components.FillMode") {
+            <crate::components::FillMode>::from_arrow_opt(&**array)
+                .with_context("rerun.archetypes.Boxes3D#fill_mode")?
+                .into_iter()
+                .next()
+                .flatten()
+        } else {
+            None
+        };
         let labels = if let Some(array) = arrays_by_name.get("rerun.components.Text") {
             Some({
                 <crate::components::Text>::from_arrow_opt(&**array)
@@ -295,6 +311,7 @@ impl ::re_types_core::Archetype for Boxes3D {
             rotations,
             colors,
             radii,
+            fill_mode,
             labels,
             class_ids,
         })
@@ -320,6 +337,9 @@ impl ::re_types_core::AsComponents for Boxes3D {
             self.radii
                 .as_ref()
                 .map(|comp_batch| (comp_batch as &dyn ComponentBatch).into()),
+            self.fill_mode
+                .as_ref()
+                .map(|comp| (comp as &dyn ComponentBatch).into()),
             self.labels
                 .as_ref()
                 .map(|comp_batch| (comp_batch as &dyn ComponentBatch).into()),
@@ -345,6 +365,7 @@ impl Boxes3D {
             rotations: None,
             colors: None,
             radii: None,
+            fill_mode: None,
             labels: None,
             class_ids: None,
         }
@@ -387,6 +408,13 @@ impl Boxes3D {
         radii: impl IntoIterator<Item = impl Into<crate::components::Radius>>,
     ) -> Self {
         self.radii = Some(radii.into_iter().map(Into::into).collect());
+        self
+    }
+
+    /// Optionally choose whether the boxes are drawn with lines or solid.
+    #[inline]
+    pub fn with_fill_mode(mut self, fill_mode: impl Into<crate::components::FillMode>) -> Self {
+        self.fill_mode = Some(fill_mode.into());
         self
     }
 
