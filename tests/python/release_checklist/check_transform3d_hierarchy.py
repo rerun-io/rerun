@@ -16,7 +16,7 @@ This test adds more and more transforms in a hierarchy on each step on the `step
 Enable the origin axis on the view to get a better impression of what happens in the scene.
 
 What you should see on each step on the `steps` timeline:
-* 0: There's a Rerun logo is at the origin, the `e` sits roughtly above the origin.
+* 0: There's a Rerun logo is at the origin, the `e` sits roughly above the origin.
 * 1: The logo is translated a few units diagonally positively on x/y/z.
 * 2: The logo is back to normal (frame 0) again.
 * 3: The logo is squished along its height
