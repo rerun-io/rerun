@@ -749,6 +749,7 @@ impl ChunkStore {
 
     /// Returns number of bytes used for an entity on a specific timeline.
     ///
+    /// This always includes static data.
     /// This is an approximation of the actual storage cost of the entity,
     /// as the measurement includes the overhead of various data structures
     /// we use in the database.
