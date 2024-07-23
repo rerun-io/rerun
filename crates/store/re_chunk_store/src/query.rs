@@ -694,6 +694,8 @@ impl ChunkStore {
     }
 
     /// Returns the number of static events logged for an entity for a specific component.
+    ///
+    /// This ignores temporal events.
     pub fn num_static_events_for_component(
         &self,
         entity_path: &EntityPath,
@@ -715,9 +717,7 @@ impl ChunkStore {
 
     /// Returns the number of temporal events logged for an entity for a specific component on a given timeline.
     ///
-    /// This ignores static data.
-    ///
-    /// An example use case of this is detecting when static data is logged more than once.
+    /// This ignores static events.
     pub fn num_temporal_events_for_component_on_timeline(
         &self,
         timeline: &Timeline,
