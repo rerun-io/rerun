@@ -52,6 +52,7 @@ mod opacity;
 mod opacity_ext;
 mod out_of_tree_transform;
 mod out_of_tree_transform3d;
+mod out_of_tree_transform_ext;
 mod pinhole_projection;
 mod pinhole_projection_ext;
 mod position2d;
