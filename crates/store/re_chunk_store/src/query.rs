@@ -662,7 +662,7 @@ impl ChunkStore {
 
 // Counting
 impl ChunkStore {
-    /// Returns the number of events logged for an entity on a specific timeline.
+    /// Returns the number of temporal events logged for an entity on a specific timeline.
     ///
     /// This ignores static data.
     pub fn num_temporal_events_on_timeline(
