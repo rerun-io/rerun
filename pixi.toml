@@ -499,7 +499,7 @@ rerun-notebook = "==0.17.0"
 
 # EXAMPLES ENVIRONMENT
 [feature.examples-common]
-# Note that we don't support linux-aarch64 on arm because not all the example deps are available there.
+# Note that we don't support linux-aarch64 because not all the example deps are available there.
 # Namely: mediapipe
 platforms = ["linux-64", "osx-arm64", "osx-64", "win-64"]
 
