@@ -41,7 +41,7 @@ impl From<Scale3D> for glam::Affine3A {
     fn from(v: Scale3D) -> Self {
         Self {
             matrix3: glam::Mat3A::from_diagonal(v.0.into()),
-            translation: v.0.into(),
+            translation: glam::Vec3A::ZERO,
         }
     }
 }
