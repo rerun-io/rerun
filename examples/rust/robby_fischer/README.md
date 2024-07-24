@@ -139,8 +139,31 @@ for file in 0..14 { // The holder board has 6 files
     }
 }
 ```
-Every time we make a move we log the changes to rerun with this function:
+To log the pieces we convert them from `.stl` files to [`rerun::Mesh3D`](https://www.rerun.io/docs/reference/types/archetypes/mesh3d) by first reading the `.stl` files using [stl_io](`https://docs.rs/stl_io/latest/stl_io/`) and then convert them to [`rerun::Mesh3D`](https://www.rerun.io/docs/reference/types/archetypes/mesh3d) using the function below.
 ```rust
+fn stl_to_mesh3d(mesh: &IndexedMesh, color: impl Into<rerun::Color> + Clone) -> Mesh3D {
+    // The normals are not included in the stl files so we have to compute them
+    // ourselves here. It's not strictly necessary to pass the normals 
+    // to Mesh3D but makes it the models look so much better.
+
+    // calculate normals …
+
+    rerun::Mesh3D::new(vertices)
+        .with_triangle_indices(mesh.faces.iter().map(|face| {
+            rerun::TriangleIndices(UVec3D::new(
+                face.vertices[0] as u32,
+                face.vertices[1] as u32,
+                face.vertices[2] as u32,
+            ))
+        }))
+        .with_vertex_colors(std::iter::repeat(color).take(mesh.vertices.len()))
+        .with_vertex_normals(normals)
+}
+```
+
+Every time we make a move we log the changes to like this:
+```rust
+
 pub fn log_piece_positions(&self, board: &Board) {
     let rec = rerun::RecordingStream::thread_local(rerun::StoreKind::Recording).unwrap();
     for file in 0..14 {
