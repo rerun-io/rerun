@@ -10,16 +10,17 @@ https://vimeo.com/989548054?autoplay=1&loop=1&autopause=0&background=1&muted=1&r
 
 ## Used Rerun types
 
+[`Transform3D`](https://www.rerun.io/docs/reference/types/archetypes/transform3d), [`Points2D`](https://www.rerun.io/docs/reference/types/archetypes/points2d), [`Boxes3D`](https://www.rerun.io/docs/reference/types/archetypes/boxes3d), [`Pinhole`](https://www.rerun.io/docs/reference/types/archetypes/pinhole), [`Image`](https://www.rerun.io/docs/reference/types/archetypes/image), [`Mesh3D`](https://www.rerun.io/docs/reference/types/archetypes/mesh3d), [`LineStrips3D`](https://www.rerun.io/docs/reference/types/archetypes/line_strips3d),
 
 ## Background
 Robby Fischer is an autonomous robot arm that you can play chess against, created by Alexander Berntsson and Herman Lauenstein. It detects the human's move by using a camera that watches which squares has a piece on it and what color that piece is. It doesn't need to see recognize different roles (pawn, rook, etc..) visually because it knows the start position so it can always figure out what piece stand on what square, although it's a bit problematic if the human promotes a pawn because robot must figure out which piece the pawn promoted to. This is why it also looks at the adjecent white board, it has a specific location associated with each piece, so if the human promotes to a queen the queen square will be empty and Robby can figure out that the human promoted to a queen.
 
-To find out if a piece stands on a square we must determine what part of the image that may only contain the piece that stands on that square. This is necessary to deal with the fact that some pieces are tall and blocks part of adjecent squares, e.g if a king stands on e2, it's head will block part of the e1 square in the image. The mask that determines it is logged is logged to images/mask and is shown in the bottom left corner along with the detected pieces.
+To find out if a piece stands on a square we must determine what part of the image that may only contain the piece that stands on that square. This is necessary to deal with the fact that some pieces are tall and blocks part of adjecent squares, e.g if a king stands on e2, it's head will block part of the e1 square in the image. The mask that determines it is logged to "images/mask" and is shown in the bottom left corner along with the detected pieces.
 
 ## Logging and visualizing with Rerun
 
 ### Create recording
-First we create the recording and store it as the thread local recording
+First we create the recording and store it as the thread local recording in each thread.
 ```rust
 
 let app_id = "RobbyFischer";
@@ -40,11 +41,7 @@ RecordingStream::set_thread_local(rerun::StoreKind::Recording, Some(rec.clone())
 let to_be_moved_rec = rec.clone();
 let _vision_handle = std::thread::spawn(move || {
     RecordingStream::set_thread_local(rerun::StoreKind::Recording, Some(to_be_moved_rec));
-
-    let mut vision = Vision::new();
-    loop {
-        let _ = vision_sender.try_send(vision.pieces());
-    }
+    // …
 });
 ```
 
@@ -86,6 +83,21 @@ for link_name in chain.iter_links().map(|link| link.name.clone()) {
         ),
     ).unwrap();
 }
+```
+It's planned trajectory is visualized using [LineStrips3D](https://rerun.io/docs/reference/types/archetypes/line_strips3d).
+```rust
+let strip: Vec<Vec3> = // …
+rec.log(
+    "a8origin/trajectory",
+    &rerun::LineStrips3D::new([strip])
+        .with_radii([rerun::Radius::new_scene_units(0.002)]),
+).unwrap();
+
+// Move arm along trajectory …
+
+// Remove trajectory after we've moved along it.
+rec.log("a8origin/trajectory", &rerun::Clear::flat())
+    .unwrap();
 
 ```
 
@@ -210,7 +222,7 @@ rec.log(
 
 ### Blueprint
 There isn't a Rust API for blueprints so instead we have to create and log the blueprint from python.
-This was done using by creating a file called "blueprint.py"
+This was done by creating a script called "blueprint.py"
 ```py
 #!/usr/bin/env python3
 
@@ -242,7 +254,7 @@ blueprint = rrb.Blueprint(
             ),
             # View that follows the claw
             rrb.Spatial3DView(
-                origin="/arm.urdf/base_link/glid_platta_1/bas_1/gemensam_vagg_1/botten_snurr_1/kortarm_kopia_1/led_1/led_axel_1/lang_arm_1/mount_1/ram_1", #
+                origin="/arm.urdf/base_link/glid_platta_1/bas_1/gemensam_vagg_1/botten_snurr_1/kortarm_kopia_1/led_1/led_axel_1/lang_arm_1/mount_1/ram_1",
                 contents="/**",
                 defaults=space_view_defaults
             )
@@ -265,10 +277,10 @@ rr.init(args.application_id, recording_id=args.recording_id)
 rr.connect()
 rr.send_blueprint(blueprint)
 ```
-and then run it from rust like this:
+and then running it from rust like this:
 ```rust
 // Creates and logs blueprint.
-std::process::Command::new(format!("../../blueprint.py"))
+std::process::Command::new("../../blueprint.py")
     .arg("--recording-id")
     .arg(&rec_id)
     .arg("--application-id")
