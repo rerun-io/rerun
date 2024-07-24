@@ -17,7 +17,7 @@ use re_viewer_context::{
 };
 
 use crate::{
-    contexts::{SpatialSceneEntityContext, TransformContext},
+    contexts::SpatialSceneEntityContext,
     query_pinhole_legacy,
     view_kind::SpatialSpaceViewKind,
     visualizers::{filter_visualizable_2d_entities, SIZE_BOOST_IN_POINTS_FOR_POINT_OUTLINES},
@@ -53,7 +53,6 @@ impl DepthImageVisualizer {
         &mut self,
         ctx: &QueryContext<'_>,
         depth_clouds: &mut Vec<DepthCloud>,
-        transforms: &TransformContext,
         ent_context: &SpatialSceneEntityContext<'_>,
         images: impl Iterator<Item = DepthImageComponentData>,
     ) {
@@ -76,7 +75,7 @@ impl DepthImageVisualizer {
             image.colormap = Some(image.colormap.unwrap_or_else(|| self.fallback_for(ctx)));
 
             if is_3d_view {
-                if let Some(parent_pinhole_path) = transforms.parent_pinhole(entity_path) {
+                if let Some(parent_pinhole_path) = &ent_context.transform_info.parent_pinhole {
                     let fill_ratio = fill_ratio.unwrap_or_default();
 
                     // NOTE: we don't pass in `world_from_obj` because this corresponds to the
@@ -84,7 +83,6 @@ impl DepthImageVisualizer {
                     // What we want are the extrinsics of the depth camera!
                     match Self::process_entity_view_as_depth_cloud(
                         ctx,
-                        transforms,
                         ent_context,
                         &image,
                         entity_path,
@@ -142,10 +140,8 @@ impl DepthImageVisualizer {
         }
     }
 
-    #[allow(clippy::too_many_arguments)]
     fn process_entity_view_as_depth_cloud(
         ctx: &QueryContext<'_>,
-        transforms: &TransformContext,
         ent_context: &SpatialSceneEntityContext<'_>,
         image: &ImageInfo,
         ent_path: &EntityPath,
@@ -162,14 +158,9 @@ impl DepthImageVisualizer {
         };
 
         // Place the cloud at the pinhole's location. Note that this means we ignore any 2D transforms that might be there.
-        let world_from_view = transforms.reference_from_entity_ignoring_pinhole(
-            parent_pinhole_path,
-            ctx.recording(),
-            ctx.query,
-        );
-        let Some(world_from_view) = world_from_view else {
-            anyhow::bail!("Couldn't fetch pinhole extrinsics at {parent_pinhole_path:?}");
-        };
+        let world_from_view = ent_context
+            .transform_info
+            .reference_from_entity_ignoring_3d_from_2d_pinhole;
         let world_from_rdf = world_from_view
             * glam::Affine3A::from_mat3(
                 intrinsics
@@ -255,7 +246,6 @@ impl VisualizerSystem for DepthImageVisualizer {
         };
 
         let mut depth_clouds = Vec::new();
-        let transforms = context_systems.get::<TransformContext>()?;
 
         super::entity_iterator::process_archetype::<Self, DepthImage, _>(
             ctx,
@@ -314,13 +304,7 @@ impl VisualizerSystem for DepthImageVisualizer {
                     },
                 );
 
-                self.process_depth_image_data(
-                    ctx,
-                    &mut depth_clouds,
-                    transforms,
-                    spatial_ctx,
-                    &mut data,
-                );
+                self.process_depth_image_data(ctx, &mut depth_clouds, spatial_ctx, &mut data);
 
                 Ok(())
             },

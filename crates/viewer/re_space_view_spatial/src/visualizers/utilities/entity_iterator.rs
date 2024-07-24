@@ -160,24 +160,23 @@ where
     let system_identifier = System::identifier();
 
     for data_result in query.iter_visible_data_results(ctx, system_identifier) {
-        // The transform that considers pinholes only makes sense if this is a 3D space-view
-        let world_from_entity =
-            if view_ctx.space_view_class_identifier() == SpatialSpaceView3D::identifier() {
-                transforms.reference_from_entity(&data_result.entity_path)
-            } else {
-                transforms.reference_from_entity_ignoring_pinhole(
-                    &data_result.entity_path,
-                    ctx.recording(),
-                    &latest_at,
-                )
-            };
-
-        let Some(world_from_entity) = world_from_entity else {
+        let Some(transform_info) = transforms.transform_info_for_entity(&data_result.entity_path)
+        else {
             continue;
         };
+
+        // The transform that considers pinholes only makes sense if this is a 3D space-view
+        let world_from_entity = transform_info.reference_from_entity;
+        if view_ctx.space_view_class_identifier() == SpatialSpaceView3D::identifier() {
+            transform_info.reference_from_entity
+        } else {
+            transform_info.reference_from_entity_ignoring_3d_from_2d_pinhole
+        };
+
         let depth_offset_key = (system_identifier, data_result.entity_path.hash());
         let entity_context = SpatialSceneEntityContext {
             world_from_entity,
+            transform_info,
             depth_offset: depth_offsets
                 .per_entity_and_visualizer
                 .get(&depth_offset_key)

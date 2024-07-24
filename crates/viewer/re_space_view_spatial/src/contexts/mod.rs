@@ -11,10 +11,12 @@ pub use transform_context::TransformContext;
 
 use re_renderer::DepthOffset;
 use re_viewer_context::{Annotations, SpaceViewClassRegistryError};
+use transform_context::TransformInfo;
 
 /// Context objects for a single entity in a spatial scene.
 pub struct SpatialSceneEntityContext<'a> {
     pub world_from_entity: glam::Affine3A,
+    pub transform_info: &'a TransformInfo,
     pub depth_offset: DepthOffset,
     pub annotations: std::sync::Arc<Annotations>,
 
