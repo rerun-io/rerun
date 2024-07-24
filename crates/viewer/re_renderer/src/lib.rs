@@ -17,6 +17,7 @@ pub mod renderer;
 pub mod resource_managers;
 pub mod texture_info;
 pub mod view_builder;
+pub mod wgpu_resources;
 
 mod allocator;
 mod color;
@@ -37,7 +38,6 @@ mod rect;
 mod size;
 mod transform;
 mod wgpu_buffer_types;
-mod wgpu_resources;
 
 #[cfg(not(load_shaders_from_disk))]
 #[rustfmt::skip] // it's auto-generated

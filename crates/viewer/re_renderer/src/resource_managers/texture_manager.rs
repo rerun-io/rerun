@@ -23,6 +23,15 @@ impl std::fmt::Debug for GpuTexture2D {
 }
 
 impl GpuTexture2D {
+    /// Returns `None` if the `texture` is not 2D.
+    pub fn new(texture: GpuTexture) -> Option<Self> {
+        if texture.texture.dimension() != wgpu::TextureDimension::D2 {
+            return None;
+        }
+
+        Some(Self(texture))
+    }
+
     #[inline]
     pub fn handle(&self) -> crate::wgpu_resources::GpuTextureHandle {
         self.0.handle
