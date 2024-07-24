@@ -143,7 +143,7 @@ To log the pieces we convert them from `.stl` files to [`rerun::Mesh3D`](https:/
 ```rust
 fn stl_to_mesh3d(mesh: &IndexedMesh, color: impl Into<rerun::Color> + Clone) -> Mesh3D {
     // The normals are not included in the stl files so we have to compute them
-    // ourselves here. It's not strictly necessary to pass the normals 
+    // ourselves here. It's not strictly necessary to pass the normals
     // to Mesh3D but makes it the models look so much better.
 
     // calculate normals …
