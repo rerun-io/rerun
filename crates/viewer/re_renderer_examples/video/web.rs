@@ -48,6 +48,7 @@ impl Video {
         video.set_src(url);
         video.set_cross_origin(Some("anonymous"));
         video.set_loop(true);
+        video.set_preload("auto");
 
         Self {
             device: render_context.device.clone(),
