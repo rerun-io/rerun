@@ -104,7 +104,7 @@ rec.log("a8origin/trajectory", &rerun::Clear::flat())
 ### Board and pieces
 First it logs the position and meshes of the boards.
 ```rust
-// The board is stored as a GLTF file so we use the code from [this example](https://github.com/rerun-io/rerun/tree/main/examples/rust/raw_mesh) to log it.
+// The board is stored as a GLTF file so we use the `log_node` function from this example: https://github.com/rerun-io/rerun/tree/main/examples/rust/raw_mesh to log it.
 log_node(rec, "a8origin/board", self.board_scene.clone()).unwrap();
 
 // Align the board mesh so that the origin of `a8origin` appears on the a8 square.
@@ -133,13 +133,16 @@ for file in 0..14 { // The holder board has 6 files
             &rerun::Transform3D::from_translation_rotation_scale(
                 cord,
                 rerun::Rotation3D::IDENTITY,
-                Scale3D::Uniform(0.001), // The models for the pieces are stored in millimeters but the rest in meters, so we must scale the models down.
+
+                // The models for the pieces are stored in millimeters but
+                // the rest in meters, so we must scale the models down.
+                Scale3D::Uniform(0.001), 
             ),
         ).unwrap();
     }
 }
 ```
-To log the pieces we convert them from `.stl` files to [`rerun::Mesh3D`](https://www.rerun.io/docs/reference/types/archetypes/mesh3d) by first reading the `.stl` files using [stl_io](`https://docs.rs/stl_io/latest/stl_io/`) and then convert them to [`rerun::Mesh3D`](https://www.rerun.io/docs/reference/types/archetypes/mesh3d) using the function below.
+To log the piece models we convert them from `.stl` files to [`rerun::Mesh3D`](https://www.rerun.io/docs/reference/types/archetypes/mesh3d) by first reading the `.stl` files using [stl_io](`https://docs.rs/stl_io/latest/stl_io/`) and then convert them to [`rerun::Mesh3D`](https://www.rerun.io/docs/reference/types/archetypes/mesh3d) using the function below.
 ```rust
 fn stl_to_mesh3d(mesh: &IndexedMesh, color: impl Into<rerun::Color> + Clone) -> Mesh3D {
     // The normals are not included in the stl files so we have to compute them
@@ -177,7 +180,9 @@ pub fn log_piece_positions(&self, board: &Board) {
                 }
             } else {
                 // To remove the bounding box/mesh from the square we moved the piece from.
-                // You could clear both in one call using rerun::Clear::recursive but that would clear the transformation logged to "a8origin/pieces/{file}/{rank}" which is why it isn't done here.
+                // You could clear both in one call using rerun::Clear::recursive but that
+                // would clear the transformation logged to "a8origin/pieces/{file}/{rank}"
+                // which is why it isn't done here.
                 rec.log(
                     format!("a8origin/pieces/{file}/{rank}/mesh"),
                     &rerun::Clear::flat(),
