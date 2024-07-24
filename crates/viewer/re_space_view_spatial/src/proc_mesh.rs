@@ -34,7 +34,7 @@ pub enum ProcMeshKey {
 impl ProcMeshKey {
     /// Returns the bounding box which can be computed from the mathematical shape,
     /// without regard for its exact approximation as a mesh.
-    fn simple_bounding_box(&self) -> re_math::BoundingBox {
+    pub fn simple_bounding_box(&self) -> re_math::BoundingBox {
         match self {
             Self::Sphere { subdivisions: _ } => {
                 // sphere’s radius is 1, so its size is 2

@@ -1,10 +1,13 @@
 use re_entity_db::{EntityPath, InstancePathHash};
 use re_log_types::Instance;
-use re_query::range_zip_1x7;
-use re_renderer::{LineDrawableBuilder, PickingLayerInstanceId, RenderContext};
+use re_renderer::{
+    renderer::MeshInstance, LineDrawableBuilder, PickingLayerInstanceId, RenderContext,
+};
 use re_types::{
     archetypes::Ellipsoids,
-    components::{ClassId, Color, HalfSize3D, KeypointId, Position3D, Radius, Rotation3D, Text},
+    components::{
+        ClassId, Color, FillMode, HalfSize3D, KeypointId, Position3D, Radius, Rotation3D, Text,
+    },
 };
 use re_viewer_context::{
     auto_color_for_entity_path, ApplicableEntities, IdentifiedViewSystem, QueryContext,
@@ -15,7 +18,8 @@ use re_viewer_context::{
 
 use crate::{
     contexts::SpatialSceneEntityContext,
-    proc_mesh::{ProcMeshKey, WireframeCache},
+    instance_hash_conversions::picking_layer_id_from_instance_path_hash,
+    proc_mesh,
     view_kind::SpatialSpaceViewKind,
     visualizers::{UiLabel, UiLabelTarget},
 };
@@ -71,10 +75,12 @@ impl EllipsoidsVisualizer {
             })
     }
 
+    #[allow(clippy::too_many_arguments)]
     fn process_data<'a>(
         &mut self,
         ctx: &QueryContext<'_>,
         line_builder: &mut LineDrawableBuilder<'_>,
+        mesh_instances: &mut Vec<MeshInstance>,
         query: &ViewQuery<'_>,
         ent_context: &SpatialSceneEntityContext<'_>,
         data: impl Iterator<Item = EllipsoidsComponentData<'a>>,
@@ -127,12 +133,15 @@ impl EllipsoidsVisualizer {
                 .outline_mask_ids(ent_context.highlight.overall)
                 .picking_object_id(re_renderer::PickingLayerObjectId(entity_path.hash64()));
 
-            let mut bounding_box = re_math::BoundingBox::NOTHING;
+            let mut obj_space_bounding_box = re_math::BoundingBox::NOTHING;
 
-            for (i, (half_size, &center, rotation, radius, color)) in
+            for (instance_index, (half_size, &center, rotation, radius, color)) in
                 itertools::izip!(data.half_sizes, centers, rotations, radii, colors).enumerate()
             {
-                let transform = glam::Affine3A::from_scale_rotation_translation(
+                let instance = Instance::from(instance_index as u64);
+                // Transform from a centered unit sphere to this ellipsoid in the entity's
+                // coordinate system.
+                let entity_from_mesh = glam::Affine3A::from_scale_rotation_translation(
                     glam::Vec3::from(*half_size),
                     rotation.0.into(),
                     center.into(),
@@ -141,40 +150,78 @@ impl EllipsoidsVisualizer {
                 // TODO(kpreid): subdivisions should be configurable, and possibly dynamic based on
                 // either world size or screen size (depending on application).
                 let subdivisions = 2;
+                let proc_mesh_key = proc_mesh::ProcMeshKey::Sphere { subdivisions };
 
-                let Some(sphere_mesh) = ctx.viewer_ctx.cache.entry(|c: &mut WireframeCache| {
-                    c.entry(ProcMeshKey::Sphere { subdivisions }, render_ctx)
-                }) else {
-                    // TODO(kpreid): Should this be just returning nothing instead?
-                    // If we do, there won't be any error report, just missing data.
+                match data.fill_mode {
+                    FillMode::Wireframe => {
+                        let Some(wireframe_mesh) =
+                            ctx.viewer_ctx
+                                .cache
+                                .entry(|c: &mut proc_mesh::WireframeCache| {
+                                    c.entry(proc_mesh_key, render_ctx)
+                                })
+                        else {
+                            return Err(SpaceViewSystemExecutionError::DrawDataCreationError(
+                                "Failed to allocate wireframe mesh".into(),
+                            ));
+                        };
 
-                    return Err(SpaceViewSystemExecutionError::DrawDataCreationError(
-                        "Failed to allocate wireframe mesh".into(),
-                    ));
-                };
+                        obj_space_bounding_box = obj_space_bounding_box
+                            .union(wireframe_mesh.bbox.transform_affine3(&entity_from_mesh));
 
-                bounding_box = bounding_box.union(sphere_mesh.bbox.transform_affine3(&transform));
+                        for strip in &wireframe_mesh.line_strips {
+                            let strip_builder = line_batch
+                                .add_strip(
+                                    strip
+                                        .iter()
+                                        .map(|&point| entity_from_mesh.transform_point3(point)),
+                                )
+                                .color(color)
+                                .radius(radius)
+                                .picking_instance_id(PickingLayerInstanceId(instance_index as _));
 
-                for strip in &sphere_mesh.line_strips {
-                    let box3d = line_batch
-                        .add_strip(strip.iter().map(|&point| transform.transform_point3(point)))
-                        .color(color)
-                        .radius(radius)
-                        .picking_instance_id(PickingLayerInstanceId(i as _));
+                            if let Some(outline_mask_ids) = ent_context
+                                .highlight
+                                .instances
+                                .get(&Instance::from(instance_index as u64))
+                            {
+                                // Not using ent_context.highlight.index_outline_mask() because
+                                // that's already handled when the builder was created.
+                                strip_builder.outline_mask_ids(*outline_mask_ids);
+                            }
+                        }
+                    }
+                    FillMode::Solid => {
+                        let Some(solid_mesh) =
+                            ctx.viewer_ctx.cache.entry(|c: &mut proc_mesh::SolidCache| {
+                                c.entry(proc_mesh_key, render_ctx)
+                            })
+                        else {
+                            return Err(SpaceViewSystemExecutionError::DrawDataCreationError(
+                                "Failed to allocate solid mesh".into(),
+                            ));
+                        };
 
-                    if let Some(outline_mask_ids) = ent_context
-                        .highlight
-                        .instances
-                        .get(&Instance::from(i as u64))
-                    {
-                        box3d.outline_mask_ids(*outline_mask_ids);
+                        obj_space_bounding_box = obj_space_bounding_box
+                            .union(solid_mesh.bbox.transform_affine3(&entity_from_mesh));
+
+                        mesh_instances.push(MeshInstance {
+                            gpu_mesh: solid_mesh.gpu_mesh,
+                            mesh: None,
+                            world_from_mesh: entity_from_mesh,
+                            outline_mask_ids: ent_context.highlight.index_outline_mask(instance),
+                            picking_layer_id: picking_layer_id_from_instance_path_hash(
+                                InstancePathHash::instance(entity_path, instance),
+                            ),
+                            additive_tint: color,
+                        });
                     }
                 }
             }
 
             self.0.add_bounding_box(
                 entity_path.hash(),
-                bounding_box,
+                obj_space_bounding_box,
                 ent_context.world_from_entity,
             );
         }
@@ -197,6 +244,8 @@ struct EllipsoidsComponentData<'a> {
     labels: &'a [Text],
     keypoint_ids: &'a [KeypointId],
     class_ids: &'a [ClassId],
+
+    fill_mode: FillMode,
 }
 
 impl IdentifiedViewSystem for EllipsoidsVisualizer {
@@ -234,6 +283,9 @@ impl VisualizerSystem for EllipsoidsVisualizer {
         let mut line_builder = LineDrawableBuilder::new(render_ctx);
         line_builder.radius_boost_in_ui_points_for_outlines(SIZE_BOOST_IN_POINTS_FOR_LINE_OUTLINES);
 
+        // Collects solid (that is, triangles rather than wireframe) instances to be drawn.
+        let mut solid_instances: Vec<MeshInstance> = Vec::new();
+
         super::entity_iterator::process_archetype::<Self, Ellipsoids, _>(
             ctx,
             view_query,
@@ -266,16 +318,18 @@ impl VisualizerSystem for EllipsoidsVisualizer {
                 let rotations = results.get_or_empty_dense(resolver)?;
                 let colors = results.get_or_empty_dense(resolver)?;
                 let line_radii = results.get_or_empty_dense(resolver)?;
+                let fill_mode = results.get_or_empty_dense(resolver)?;
                 let labels = results.get_or_empty_dense(resolver)?;
                 let class_ids = results.get_or_empty_dense(resolver)?;
                 let keypoint_ids = results.get_or_empty_dense(resolver)?;
 
-                let data = range_zip_1x7(
+                let data = re_query::range_zip_1x8(
                     half_sizes.range_indexed(),
                     centers.range_indexed(),
                     rotations.range_indexed(),
                     colors.range_indexed(),
                     line_radii.range_indexed(),
+                    fill_mode.range_indexed(),
                     labels.range_indexed(),
                     class_ids.range_indexed(),
                     keypoint_ids.range_indexed(),
@@ -288,6 +342,7 @@ impl VisualizerSystem for EllipsoidsVisualizer {
                         rotations,
                         colors,
                         line_radii,
+                        fill_mode,
                         labels,
                         class_ids,
                         keypoint_ids,
@@ -298,6 +353,12 @@ impl VisualizerSystem for EllipsoidsVisualizer {
                             rotations: rotations.unwrap_or_default(),
                             colors: colors.unwrap_or_default(),
                             line_radii: line_radii.unwrap_or_default(),
+                            // fill mode is currently a non-repeated component
+                            fill_mode: fill_mode
+                                .unwrap_or_default()
+                                .first()
+                                .copied()
+                                .unwrap_or_default(),
                             labels: labels.unwrap_or_default(),
                             class_ids: class_ids.unwrap_or_default(),
                             keypoint_ids: keypoint_ids.unwrap_or_default(),
@@ -308,6 +369,7 @@ impl VisualizerSystem for EllipsoidsVisualizer {
                 self.process_data(
                     ctx,
                     &mut line_builder,
+                    &mut solid_instances,
                     view_query,
                     spatial_ctx,
                     data,
@@ -318,7 +380,24 @@ impl VisualizerSystem for EllipsoidsVisualizer {
             },
         )?;
 
-        Ok(vec![(line_builder.into_draw_data()?.into())])
+        let wireframe_draw_data: re_renderer::QueueableDrawData =
+            line_builder.into_draw_data()?.into();
+
+        let solid_draw_data: Option<re_renderer::QueueableDrawData> =
+            match re_renderer::renderer::MeshDrawData::new(render_ctx, &solid_instances) {
+                Ok(draw_data) => Some(draw_data.into()),
+                Err(err) => {
+                    re_log::error_once!(
+                        "Failed to create mesh draw data from mesh instances: {err}"
+                    );
+                    None
+                }
+            };
+
+        Ok([solid_draw_data, Some(wireframe_draw_data)]
+            .into_iter()
+            .flatten()
+            .collect())
     }
 
     fn data(&self) -> Option<&dyn std::any::Any> {
