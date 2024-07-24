@@ -19,6 +19,8 @@ use web_sys::window;
 use web_sys::HtmlVideoElement;
 use wgpu::Device;
 use wgpu::Queue;
+use winit::event::ElementState;
+use winit::keyboard;
 
 use crate::framework;
 
@@ -44,6 +46,8 @@ impl Video {
             .unwrap();
 
         video.set_src(url);
+        video.set_cross_origin(Some("anonymous"));
+        video.set_loop(true);
 
         Self {
             device: render_context.device.clone(),
@@ -55,27 +59,51 @@ impl Video {
         }
     }
 
-    fn seek(&self, v: f64) {
+    fn duration(&self) -> f64 {
+        self.video.duration()
+    }
+
+    fn current_time(&self) -> f64 {
+        self.video.current_time()
+    }
+
+    fn set_current_time(&self, v: f64) {
         self.video.set_current_time(v);
+    }
+
+    fn playing(&self) -> bool {
+        !self.video.paused()
+    }
+
+    fn play(&self) {
+        self.video.play().unwrap();
+    }
+
+    fn pause(&self) {
+        self.video.pause().unwrap();
     }
 
     fn get_texture(&self, texture_pool: &GpuTexturePool) -> Poll<GpuTexture2D> {
         let current_time = self.video.current_time();
 
         // We already have the video loaded into the texture at this timestamp
-        if let Some((time, texture)) = &*self.cache.lock().unwrap() {
+        /* if let Some((time, texture)) = &*self.cache.lock().unwrap() {
             if current_time == *time {
                 return Poll::Ready(texture.clone());
             }
-        }
+        } */
 
         /// https://developer.mozilla.org/en-US/docs/Web/API/HTMLMediaElement/readyState#htmlmediaelement.have_current_data
         /// Data is available for the current playback position, but not enough to actually play more than one frame.
         const HAVE_CURRENT_DATA: u16 = 2;
 
-        re_log::debug!("{}", self.video.ready_state());
         if self.video.ready_state() < HAVE_CURRENT_DATA {
-            return Poll::Pending;
+            /* if let Some((time, texture)) = &*self.cache.lock().unwrap() {
+                return Poll::Ready(texture.clone());
+            } else  */
+            {
+                return Poll::Pending;
+            }
         }
 
         let width = self.video.video_width();
@@ -86,8 +114,6 @@ impl Video {
             depth_or_array_layers: 1,
         };
 
-        re_log::debug!("{video_extent:#?}");
-
         let texture_handle = texture_pool.alloc(
             &self.device,
             &TextureDesc {
@@ -96,8 +122,10 @@ impl Video {
                 mip_level_count: 1,
                 sample_count: 1,
                 dimension: wgpu::TextureDimension::D2,
-                format: wgpu::TextureFormat::Rgba8UnormSrgb,
-                usage: wgpu::TextureUsages::COPY_DST | wgpu::TextureUsages::TEXTURE_BINDING,
+                format: wgpu::TextureFormat::Rgba8Unorm,
+                usage: wgpu::TextureUsages::COPY_DST
+                    | wgpu::TextureUsages::TEXTURE_BINDING
+                    | wgpu::TextureUsages::RENDER_ATTACHMENT,
             },
         );
         let external_source = wgpu_types::ImageCopyExternalImage {
@@ -122,10 +150,10 @@ impl Video {
 
         let texture_handle = GpuTexture2D::new(texture_handle).unwrap();
 
-        self.cache
-            .lock()
-            .unwrap()
-            .replace((current_time, texture_handle.clone()));
+        /* self.cache
+        .lock()
+        .unwrap()
+        .replace((current_time, texture_handle.clone())); */
 
         Poll::Ready(texture_handle)
     }
@@ -174,13 +202,15 @@ impl framework::Example for RenderVideo {
         );
 
         if let Poll::Ready(texture) = self.video.get_texture(&re_ctx.gpu_resources.textures) {
+            let aspect_ratio = texture.texture.width() as f32 / texture.texture.height() as f32;
+
             view_builder.queue_draw(
                 RectangleDrawData::new(
                     re_ctx,
                     &[TexturedRect {
                         top_left_corner_position: [0.0; 3].into(),
-                        extent_u: texture.width() as f32 * glam::Vec3::X,
-                        extent_v: texture.height() as f32 * glam::Vec3::Y,
+                        extent_u: resolution[1] as f32 * aspect_ratio * glam::Vec3::X,
+                        extent_v: resolution[1] as f32 * glam::Vec3::Y,
                         colormapped_texture: ColormappedTexture::from_unorm_rgba(texture),
                         options: RectangleOptions {
                             texture_filter_magnification: TextureFilterMag::Nearest,
@@ -206,5 +236,53 @@ impl framework::Example for RenderVideo {
         }]
     }
 
-    fn on_key_event(&mut self, _input: winit::event::KeyEvent) {}
+    fn on_key_event(&mut self, input: winit::event::KeyEvent) {
+        const ONE_FRAME: f64 = 1.0 / 24.0;
+
+        if input.state.is_pressed() {
+            return;
+        }
+
+        match input.logical_key {
+            keyboard::Key::Named(keyboard::NamedKey::Space) => {
+                re_log::debug!("playing state: {}", self.video.playing());
+                if self.video.playing() {
+                    self.video.pause();
+                } else {
+                    self.video.play();
+                }
+            }
+            keyboard::Key::Named(keyboard::NamedKey::ArrowRight) => {
+                let duration = self.video.duration();
+                let new_time = clamp(
+                    self.video.current_time() + ONE_FRAME,
+                    0.0,
+                    self.video.duration(),
+                );
+                re_log::debug!("seek right {new_time:?} / {duration:?}");
+                self.video.set_current_time(new_time);
+            }
+            keyboard::Key::Named(keyboard::NamedKey::ArrowLeft) => {
+                let duration = self.video.duration();
+                let new_time = clamp(
+                    self.video.current_time() - ONE_FRAME,
+                    0.0,
+                    self.video.duration(),
+                );
+                re_log::debug!("seek left {new_time:?} / {duration:?}");
+                self.video.set_current_time(new_time);
+            }
+            _ => {}
+        }
+    }
+}
+
+fn clamp(v: f64, min: f64, max: f64) -> f64 {
+    if v < min {
+        min
+    } else if v > max {
+        max
+    } else {
+        v
+    }
 }
