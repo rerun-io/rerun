@@ -336,6 +336,13 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             },
         ),
         (
+            <FillMode as Loggable>::name(),
+            ComponentReflection {
+                docstring_md: "How a geometric shape is drawn and colored.",
+                placeholder: Some(FillMode::default().to_arrow()?),
+            },
+        ),
+        (
             <FillRatio as Loggable>::name(),
             ComponentReflection {
                 docstring_md: "How much a primitive fills out the available space.\n\nUsed for instance to scale the points of the point cloud created from [`archetypes.DepthImage`](https://rerun.io/docs/reference/types/archetypes/depth_image) projection in 3D views.\nValid range is from 0 to max float although typically values above 1.0 are not useful.\n\nDefaults to 1.0.",

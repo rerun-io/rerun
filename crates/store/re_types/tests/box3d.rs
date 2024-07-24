@@ -28,6 +28,7 @@ fn roundtrip() {
             components::Radius::from(42.0), //
             components::Radius::from(43.0),
         ]),
+        fill_mode: Some(components::FillMode::Solid),
         labels: Some(vec![
             "hello".into(),  //
             "friend".into(), //
@@ -49,6 +50,7 @@ fn roundtrip() {
         ])
         .with_colors([0xAA0000CC, 0x00BB00DD])
         .with_radii([42.0, 43.0])
+        .with_fill_mode(components::FillMode::Solid)
         .with_labels(["hello", "friend"])
         .with_class_ids([126, 127]);
     similar_asserts::assert_eq!(expected, arch);
@@ -58,6 +60,7 @@ fn roundtrip() {
         ("centers", vec!["rerun.components.Position2D"]),
         ("colors", vec!["rerun.components.Color"]),
         ("radii", vec!["rerun.components.Radius"]),
+        ("fill_mode", vec!["rerun.components.FillMode"]),
         ("labels", vec!["rerun.components.Label"]),
         ("draw_order", vec!["rerun.components.DrawOrder"]),
         ("class_ids", vec!["rerun.components.ClassId"]),

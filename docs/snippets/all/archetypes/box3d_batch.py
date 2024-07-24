@@ -17,6 +17,7 @@ rr.log(
         ],
         radii=0.025,
         colors=[(255, 0, 0), (0, 255, 0), (0, 0, 255)],
+        fill_mode="solid",
         labels=["red", "green", "blue"],
     ),
 )

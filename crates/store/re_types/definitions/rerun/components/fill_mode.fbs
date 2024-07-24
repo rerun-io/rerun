@@ -1,0 +1,16 @@
+namespace rerun.components;
+
+/// How a geometric shape is drawn and colored.
+enum FillMode: byte(
+    "attr.docs.unreleased"
+) {
+    /// Lines are drawn around the edges of the shape.
+    ///
+    /// The interior (2D) or surface (3D) are not drawn.
+    Wireframe (default),
+
+    /// The interior (2D) or surface (3D) is filled with a single color.
+    ///
+    /// Lines are not drawn.
+    Solid,
+}

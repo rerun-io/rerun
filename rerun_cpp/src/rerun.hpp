@@ -32,6 +32,7 @@ namespace rerun {
     // Also import any component or datatype that has a unique name:
     using components::AlbedoFactor;
     using components::Color;
+    using components::FillMode;
     using components::HalfSize2D;
     using components::HalfSize3D;
     using components::LineStrip2D;

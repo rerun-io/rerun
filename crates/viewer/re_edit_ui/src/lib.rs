@@ -24,8 +24,9 @@ use re_types::{
     },
     components::{
         AggregationPolicy, AlbedoFactor, AxisLength, ChannelDataType, Color, ColorModel, Colormap,
-        DepthMeter, DrawOrder, FillRatio, GammaCorrection, ImagePlaneDistance, MagnificationFilter,
-        MarkerSize, Name, Opacity, Scale3D, StrokeWidth, Text, TransformRelation, Translation3D,
+        DepthMeter, DrawOrder, FillMode, FillRatio, GammaCorrection, ImagePlaneDistance,
+        MagnificationFilter, MarkerSize, Name, Opacity, Scale3D, StrokeWidth, Text,
+        TransformRelation, Translation3D,
     },
     Loggable as _,
 };
@@ -71,6 +72,7 @@ pub fn register_editors(registry: &mut re_viewer_context::ComponentUiRegistry) {
         colormap_edit_or_view_ui(ctx.render_ctx, ui, value)
     });
 
+    // TODO(#6974): Enums editors trivial and always the same, provide them automatically!
     registry.add_singleline_edit_or_view::<AggregationPolicy>(edit_view_enum);
     registry.add_singleline_edit_or_view::<BackgroundKind>(edit_view_enum);
     registry.add_singleline_edit_or_view::<ChannelDataType>(edit_view_enum);
@@ -78,6 +80,7 @@ pub fn register_editors(registry: &mut re_viewer_context::ComponentUiRegistry) {
     registry.add_singleline_edit_or_view::<ColorModel>(edit_view_enum);
     registry.add_singleline_edit_or_view::<Corner2D>(edit_view_enum);
     registry.add_singleline_edit_or_view::<DataframeViewMode>(edit_view_enum);
+    registry.add_singleline_edit_or_view::<FillMode>(edit_view_enum);
     registry.add_singleline_edit_or_view::<MagnificationFilter>(edit_view_enum);
     registry.add_singleline_edit_or_view::<SortKey>(edit_view_enum);
     registry.add_singleline_edit_or_view::<SortOrder>(edit_view_enum);

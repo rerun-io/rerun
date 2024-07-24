@@ -47,11 +47,14 @@ table Ellipsoids (
   /// Optional radii for the lines used when the ellipsoid is rendered as a wireframe.
   line_radii: [rerun.components.Radius] ("attr.rerun.component_optional", nullable, order: 3000);
 
+  /// Optionally choose whether the ellipsoids are drawn with lines or solid.
+  fill_mode: rerun.components.FillMode ("attr.rerun.component_optional", nullable, order: 3100);
+
   /// Optional text labels for the ellipsoids.
-  labels: [rerun.components.Text] ("attr.rerun.component_optional", nullable, order: 3100);
+  labels: [rerun.components.Text] ("attr.rerun.component_optional", nullable, order: 3200);
 
   /// Optional `ClassId`s for the ellipsoids.
   ///
   /// The class ID provides colors and labels if not specified explicitly.
-  class_ids: [rerun.components.ClassId] ("attr.rerun.component_optional", nullable, order: 3200);
+  class_ids: [rerun.components.ClassId] ("attr.rerun.component_optional", nullable, order: 3300);
 }
