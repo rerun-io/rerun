@@ -70,6 +70,10 @@ cpp = ["base", "cpp"]
 # pixi run python scripts/ci/pixi_install_wheel.py --feature python-pypi --package rerun-sdk --dir wheel
 # ```
 
+#  Just the deps for running roundtrips
+wheel-test-min = ["base", "cpp", "wheel-test", "py-test-deps", "python-pypi"]
+
+# The full deps for running all examples
 wheel-test = [
   "base",
   "cpp",
@@ -481,7 +485,7 @@ pip = ">=23"
 
 # PYTHON PYPI ENVIRONMENT
 [feature.python-pypi]
-platforms = ["linux-64", "osx-arm64", "osx-64", "win-64"]
+platforms = ["linux-64", "linux-aarch64", "osx-arm64", "osx-64", "win-64"]
 
 [feature.python-pypi.dependencies]
 # Note these are the same as in `python-dev` but we need to repeat them here because the two are mutually exclusive.
@@ -495,6 +499,8 @@ rerun-notebook = "==0.17.0"
 
 # EXAMPLES ENVIRONMENT
 [feature.examples-common]
+# Note that we don't support linux-aarch64 because not all the example deps are available there.
+# Namely: mediapipe
 platforms = ["linux-64", "osx-arm64", "osx-64", "win-64"]
 
 
