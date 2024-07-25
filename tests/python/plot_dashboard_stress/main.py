@@ -29,10 +29,35 @@ parser = argparse.ArgumentParser(description="Plot dashboard stress test")
 rr.script_add_args(parser)
 
 parser.add_argument("--num-plots", type=int, default=1, help="How many different plots?")
-parser.add_argument("--num-series-per-plot", type=int, default=1, help="How many series in each single plot?")
-parser.add_argument("--num-points-per-series", type=int, default=100000, help="How many points in each single series?")
-parser.add_argument("--freq", type=float, default=1000, help="Frequency of logging (applies to all series)")
-parser.add_argument("--temporal-batch-size", type=int, default=None, help="Number of rows to include in each log call")
+parser.add_argument(
+    "--num-series-per-plot",
+    type=int,
+    default=1,
+    help="How many series in each single plot?",
+)
+parser.add_argument(
+    "--num-points-per-series",
+    type=int,
+    default=100000,
+    help="How many points in each single series?",
+)
+parser.add_argument(
+    "--freq",
+    type=float,
+    default=1000,
+    help="Frequency of logging (applies to all series)",
+)
+parser.add_argument(
+    "--temporal-batch-size",
+    type=int,
+    default=None,
+    help="Number of rows to include in each log call",
+)
+parser.add_argument(
+    "--blueprint",
+    action="store_true",
+    help="Setup a blueprint for a 5s window",
+)
 
 order = [
     "forwards",
@@ -40,7 +65,11 @@ order = [
     "random",
 ]
 parser.add_argument(
-    "--order", type=str, default=order[0], help="What order to log the data in (applies to all series)", choices=order
+    "--order",
+    type=str,
+    default=order[0],
+    help="What order to log the data in (applies to all series)",
+    choices=order,
 )
 
 series_type = [
@@ -67,6 +96,37 @@ def main() -> None:
 
     plot_paths = [f"plot_{i}" for i in range(0, args.num_plots)]
     series_paths = [f"series_{i}" for i in range(0, args.num_series_per_plot)]
+
+    if args.blueprint:
+        from rerun.blueprint import (
+            Blueprint,
+            BlueprintPanel,
+            Grid,
+            SelectionPanel,
+            TimeRangeBoundary,
+            TimeSeriesView,
+            VisibleTimeRange,
+        )
+
+        print("logging blueprint!")
+        rr.send_blueprint(
+            Blueprint(
+                Grid(*[
+                    TimeSeriesView(
+                        name=p,
+                        origin=f"/{p}",
+                        time_ranges=VisibleTimeRange(
+                            "sim_time",
+                            start=TimeRangeBoundary.cursor_relative(offset=rr.TimeInt(seconds=-2.5)),
+                            end=TimeRangeBoundary.cursor_relative(offset=rr.TimeInt(seconds=2.5)),
+                        ),
+                    )
+                    for p in plot_paths
+                ]),
+                BlueprintPanel(state="collapsed"),
+                SelectionPanel(state="collapsed"),
+            )
+        )
 
     time_per_sim_step = 1.0 / args.freq
     stop_time = args.num_points_per_series * time_per_sim_step
@@ -110,7 +170,10 @@ def main() -> None:
         ticks = enumerate(sim_times)
     else:
         offsets = range(0, len(sim_times), args.temporal_batch_size)
-        ticks = zip(offsets, (sim_times[offset : offset + args.temporal_batch_size] for offset in offsets))
+        ticks = zip(
+            offsets,
+            (sim_times[offset : offset + args.temporal_batch_size] for offset in offsets),
+        )
 
     time_batch = None
 
@@ -129,7 +192,11 @@ def main() -> None:
                 else:
                     value_index = slice(index, index + args.temporal_batch_size)
                     value_batch = rr.components.ScalarBatch(values[value_index, plot_idx, series_idx])
-                    rr.log_temporal_batch(f"{plot_path}/{series_path}", times=[time_batch], components=[value_batch])
+                    rr.log_temporal_batch(
+                        f"{plot_path}/{series_path}",
+                        times=[time_batch],
+                        components=[value_batch],
+                    )
 
         # Progress report
 
