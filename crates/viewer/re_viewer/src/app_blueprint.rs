@@ -241,5 +241,5 @@ fn load_panel_state(
     // TODO(#5607): what should happen if the promise is still pending?
     blueprint_db
         .latest_at_component_quiet::<PanelState>(path, query)
-        .map(|p| p.value)
+        .map(|(_index, p)| p)
 }
