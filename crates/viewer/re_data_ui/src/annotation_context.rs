@@ -98,12 +98,12 @@ fn annotation_info(
 
     // TODO(#6358): this needs to use the index of the keypoint to look up the correct
     // class_id. For now we use `latest_at_component_quiet` to avoid the warning spam.
-    let class_id = ctx
+    let (_, class_id) = ctx
         .recording()
         .latest_at_component_quiet::<re_types::components::ClassId>(entity_path, query)?;
 
     let annotations = crate::annotations(ctx, query, entity_path);
-    let class = annotations.resolved_class_description(Some(class_id.value));
+    let class = annotations.resolved_class_description(Some(class_id));
     class.keypoint_map?.get(&keypoint_id).cloned()
 }
 

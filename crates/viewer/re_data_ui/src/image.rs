@@ -63,7 +63,7 @@ impl EntityDataUi for re_types::components::TensorData {
         let tensor_data_row_id = ctx
             .recording()
             .latest_at_component::<Self>(entity_path, query)
-            .map_or(RowId::ZERO, |tensor| tensor.index.1);
+            .map_or(RowId::ZERO, |((_time, row_id), _tensor)| row_id);
 
         let annotations = crate::annotations(ctx, query, entity_path);
         tensor_ui(
@@ -106,10 +106,10 @@ pub fn tensor_ui(
         (
             ctx.recording()
                 .latest_at_component::<DepthMeter>(entity_path, query)
-                .map(|meter| *meter.value.0),
+                .map(|(_index, meter)| *meter.0),
             ctx.recording()
                 .latest_at_component::<Colormap>(entity_path, query)
-                .map(|colormap| colormap.value),
+                .map(|(_index, colormap)| colormap),
         )
     } else {
         (None, None)
