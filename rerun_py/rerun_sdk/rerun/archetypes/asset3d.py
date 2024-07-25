@@ -100,7 +100,7 @@ class Asset3D(Asset3DExt, Archetype):
         default=None,
         converter=components.OutOfTreeTransformBatch._optional,  # type: ignore[misc]
     )
-    # If enabled, any transform (components part of the [`archetypes.Transform3D`] archetype) on this entity will not affect its children.
+    # If enabled, any transform (components part of the [`archetypes.Transform3D`][rerun.archetypes.Transform3D] archetype) on this entity will not affect its children.
     #
     # It will however, still be affected by transforms on its parents.
     #

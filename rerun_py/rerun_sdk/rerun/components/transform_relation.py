@@ -34,7 +34,7 @@ class TransformRelation(Enum):
     """
     The transform describes how to transform into the parent entity's space.
 
-    E.g. a translation of (0, 1, 0) with this [`components.TransformRelation`] logged at `parent/child` means
+    E.g. a translation of (0, 1, 0) with this [`components.TransformRelation`][rerun.components.TransformRelation] logged at `parent/child` means
     that from the point of view of `parent`, `parent/child` is translated 1 unit along `parent`'s Y axis.
     From perspective of `parent/child`, the `parent` entity is translated -1 unit along `parent/child`'s Y axis.
     """
@@ -43,7 +43,7 @@ class TransformRelation(Enum):
     """
     The transform describes how to transform into the child entity's space.
 
-    E.g. a translation of (0, 1, 0) with this [`components.TransformRelation`] logged at `parent/child` means
+    E.g. a translation of (0, 1, 0) with this [`components.TransformRelation`][rerun.components.TransformRelation] logged at `parent/child` means
     that from the point of view of `parent`, `parent/child` is translated -1 unit along `parent`'s Y axis.
     From perspective of `parent/child`, the `parent` entity is translated 1 unit along `parent/child`'s Y axis.
     """

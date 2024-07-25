@@ -12,7 +12,9 @@ the 3x3 matrix is applied first, followed by the translation.
 
 Each transform component can be listed multiple times, but transform tree propagation is only possible
 if there's only one instance for each transform component.
-TODO(#6831): write more about the exact interaction with the to be written `OutOfTreeTransform` component.
+However, support for arrays of transform components depends on the visualizer/archetype
+and many only support a single instance of each transform component.
+To force disabling transform propagation ("out of tree transformation"), use the [`components.OutOfTreeTransform`](https://rerun.io/docs/reference/types/components/out_of_tree_transform?speculative-link) component.
 
 ## Components
 

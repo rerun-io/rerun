@@ -68,7 +68,7 @@ pub struct Asset3D {
     /// If it cannot guess, it won't be able to render the asset.
     pub media_type: Option<crate::components::MediaType>,
 
-    /// If enabled, any transform (components part of the [`archetypes.Transform3D`] archetype) on this entity will not affect its children.
+    /// If enabled, any transform (components part of the [`archetypes::Transform3D`][crate::archetypes::Transform3D] archetype) on this entity will not affect its children.
     ///
     /// It will however, still be affected by transforms on its parents.
     pub out_of_tree_transform: Option<crate::components::OutOfTreeTransform>,
@@ -258,7 +258,7 @@ impl Asset3D {
         self
     }
 
-    /// If enabled, any transform (components part of the [`archetypes.Transform3D`] archetype) on this entity will not affect its children.
+    /// If enabled, any transform (components part of the [`archetypes::Transform3D`][crate::archetypes::Transform3D] archetype) on this entity will not affect its children.
     ///
     /// It will however, still be affected by transforms on its parents.
     #[inline]

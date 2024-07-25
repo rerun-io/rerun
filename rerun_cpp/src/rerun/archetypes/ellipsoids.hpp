@@ -27,7 +27,7 @@ namespace rerun::archetypes {
     ///
     /// This archetype is for ellipsoids or spheres whose size is a key part of the data
     /// (e.g. a bounding sphere).
-    /// For points whose radii are for the sake of visualization, use `Points3D` instead.
+    /// For points whose radii are for the sake of visualization, use `archetypes::Points3D` instead.
     ///
     /// Currently, ellipsoids are always rendered as wireframes.
     /// Opaque and transparent rendering will be supported later.
@@ -59,7 +59,7 @@ namespace rerun::archetypes {
         /// Optional text labels for the ellipsoids.
         std::optional<Collection<rerun::components::Text>> labels;
 
-        /// Optional `ClassId`s for the ellipsoids.
+        /// Optional `components::ClassId`s for the ellipsoids.
         ///
         /// The class ID provides colors and labels if not specified explicitly.
         std::optional<Collection<rerun::components::ClassId>> class_ids;
@@ -155,7 +155,7 @@ namespace rerun::archetypes {
             RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
         }
 
-        /// Optional `ClassId`s for the ellipsoids.
+        /// Optional `components::ClassId`s for the ellipsoids.
         ///
         /// The class ID provides colors and labels if not specified explicitly.
         Ellipsoids with_class_ids(Collection<rerun::components::ClassId> _class_ids) && {

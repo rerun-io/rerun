@@ -34,7 +34,7 @@ table Asset3D (
 
   // --- Optional ---
 
-  /// If enabled, any transform (components part of the [`archetypes.Transform3D`] archetype) on this entity will not affect its children.
+  /// If enabled, any transform (components part of the [archetypes.Transform3D] archetype) on this entity will not affect its children.
   ///
   /// It will however, still be affected by transforms on its parents.
   out_of_tree_transform: rerun.components.OutOfTreeTransform ("attr.rerun.component_optional", nullable, order: 3000);
