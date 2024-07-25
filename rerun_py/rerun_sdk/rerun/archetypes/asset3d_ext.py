@@ -35,7 +35,7 @@ class Asset3DExt:
         path: str | pathlib.Path | None = None,
         contents: datatypes.BlobLike | None = None,
         media_type: datatypes.Utf8Like | None = None,
-        transform: datatypes.Transform3DLike | None = None,
+        out_of_tree_transform: datatypes.BoolLike | None = None,
     ):
         """
         Create a new instance of the Asset3D archetype.
@@ -63,10 +63,11 @@ class Asset3DExt:
             or the viewer will try to guess from the contents (magic header).
             If the media type cannot be guessed, the viewer won't be able to render the asset.
 
-        transform:
-            An out-of-tree transform.
+        out_of_tree_transform:
+            If enabled, any transform (components part of the [`archetypes.Transform3D`][rerun.archetypes.Transform3D]
+            on this entity will not affect its children.
 
-            Applies a transformation to the asset itself without impacting its children.
+            It will however, still be affected by transforms on its parents.
 
         """
 
@@ -81,7 +82,7 @@ class Asset3DExt:
                 if media_type is None:
                     media_type = guess_media_type(str(path))
 
-            self.__attrs_init__(blob=blob, media_type=media_type, transform=transform)
+            self.__attrs_init__(blob=blob, media_type=media_type, out_of_tree_transform=out_of_tree_transform)
             return
 
         self.__attrs_clear__()
