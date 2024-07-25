@@ -69,11 +69,13 @@ bench = false
 name = "clamped_zip"
 required-features = ["codegen"]
 bench = false
+doc = false                     # we're already documenting the one is `re_query2`
 
 [[bin]]
 name = "range_zip"
 required-features = ["codegen"]
 bench = false
+doc = false                     # we're already documenting the one is `re_query2`
 
 
 [[bench]]

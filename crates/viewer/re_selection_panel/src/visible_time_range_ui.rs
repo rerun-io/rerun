@@ -87,18 +87,16 @@ fn visible_time_range_ui(
 ) {
     use re_types::Loggable as _;
 
-    let results = ctx.blueprint_db().latest_at(
-        ctx.blueprint_query,
-        time_range_override_path,
-        std::iter::once(VisibleTimeRange::name()),
-    );
-    let ranges: &[VisibleTimeRange] = results
-        .get(VisibleTimeRange::name())
-        .and_then(|results| results.dense(ctx.blueprint_db().resolver()))
+    let ranges = ctx
+        .blueprint_db()
+        .latest_at(
+            ctx.blueprint_query,
+            time_range_override_path,
+            std::iter::once(VisibleTimeRange::name()),
+        )
+        .component_batch::<VisibleTimeRange>()
         .unwrap_or_default();
-    let visible_time_ranges = re_types::blueprint::archetypes::VisibleTimeRanges {
-        ranges: ranges.to_vec(),
-    };
+    let visible_time_ranges = re_types::blueprint::archetypes::VisibleTimeRanges { ranges };
 
     let timeline_name = *ctx.rec_cfg.time_ctrl.read().timeline().name();
     let mut has_individual_range = visible_time_ranges

@@ -30,6 +30,13 @@ impl Caches {
 
         let mut results = RangeResults::new(query.clone());
 
+        // NOTE: This pre-filtering is extremely important: going through all these query layers
+        // has non-negligible overhead even if the final result ends up being nothing, and our
+        // number of queries for a frame grows linearly with the number of entity paths.
+        let component_names = component_names.into_iter().filter(|component_name| {
+            store.entity_has_component_on_timeline(&query.timeline(), entity_path, component_name)
+        });
+
         for component_name in component_names {
             let key = CacheKey::new(entity_path.clone(), query.timeline(), component_name);
 
@@ -209,19 +216,19 @@ pub fn range<'a>(
     query: &'a RangeQuery,
     entity_path: &EntityPath,
     component_name: ComponentName,
-) -> impl Iterator<Item = (TimeInt, RowId, Box<dyn Array>)> + 'a {
+) -> impl Iterator<Item = ((TimeInt, RowId), Box<dyn Array>)> + 'a {
     store
         .range_relevant_chunks(query, entity_path, component_name)
         .into_iter()
         .map(move |chunk| chunk.range(query, component_name))
         .filter(|chunk| !chunk.is_empty())
         .flat_map(move |chunk| {
-            chunk
-                .iter_rows(&query.timeline(), &component_name)
-                .filter_map(|(data_time, row_id, array)| {
-                    array.map(|array| (data_time, row_id, array))
-                })
-                .collect_vec()
+            itertools::izip!(
+                chunk
+                    .iter_component_indices(&query.timeline(), &component_name)
+                    .collect_vec(),
+                chunk.iter_component_arrays(&component_name).collect_vec(),
+            )
         })
 }
 
@@ -248,7 +255,8 @@ impl RangeCache {
         if let Some(query_front) = query_front.as_ref() {
             re_tracing::profile_scope!("front");
 
-            for (data_time, row_id, array) in range(store, query_front, entity_path, component_name)
+            for ((data_time, row_id), array) in
+                range(store, query_front, entity_path, component_name)
             {
                 per_data_time
                     .promises_front
@@ -265,9 +273,10 @@ impl RangeCache {
         if let Some(query_back) = per_data_time.compute_back_query(query, query_front.as_ref()) {
             re_tracing::profile_scope!("back");
 
-            for (data_time, row_id, array) in range(store, &query_back, entity_path, component_name)
-                // If there's static data to be found, the front query will take care of it already.
-                .filter(|(data_time, _, _)| !data_time.is_static())
+            for ((data_time, row_id), array) in
+                range(store, &query_back, entity_path, component_name)
+                    // If there's static data to be found, the front query will take care of it already.
+                    .filter(|((data_time, _), _)| !data_time.is_static())
             {
                 per_data_time
                     .promises_back

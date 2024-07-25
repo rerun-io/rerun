@@ -4,11 +4,12 @@ use std::{
 };
 
 use ahash::{HashMap, HashSet};
+use nohash_hasher::IntSet;
 use parking_lot::RwLock;
 
 use re_chunk_store::{ChunkStore, ChunkStoreDiff, ChunkStoreEvent, ChunkStoreSubscriber};
 use re_log_types::{EntityPath, ResolvedTimeRange, StoreId, TimeInt, Timeline};
-use re_types_core::ComponentName;
+use re_types_core::{components::ClearIsRecursive, ComponentName, Loggable as _};
 
 use crate::{LatestAtCache, RangeCache};
 
@@ -70,6 +71,14 @@ pub struct Caches {
     /// The [`StoreId`] of the associated [`ChunkStore`].
     pub(crate) store_id: StoreId,
 
+    /// Keeps track of which entities have had any `Clear`-related data on any timeline at any
+    /// point in time.
+    ///
+    /// This is used to optimized read-time clears, so that we don't unnecessarily pay for the fixed
+    /// overhead of all the query layers when we know for a fact that there won't be any data there.
+    /// This is a huge performance improvement in practice, especially in recordings with many entities.
+    pub(crate) might_require_clearing: RwLock<IntSet<EntityPath>>,
+
     // NOTE: `Arc` so we can cheaply free the top-level lock early when needed.
     pub(crate) latest_at_per_cache_key: RwLock<HashMap<CacheKey, Arc<RwLock<LatestAtCache>>>>,
 
@@ -81,11 +90,24 @@ impl std::fmt::Debug for Caches {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let Self {
             store_id,
+            might_require_clearing,
             latest_at_per_cache_key,
             range_per_cache_key,
         } = self;
 
         let mut strings = Vec::new();
+
+        strings.push(format!(
+            "[Entities that must be checked for clears @ {store_id}]\n"
+        ));
+        {
+            let sorted: BTreeSet<EntityPath> =
+                might_require_clearing.read().iter().cloned().collect();
+            for entity_path in sorted {
+                strings.push(format!("  * {entity_path}\n"));
+            }
+            strings.push("\n".to_owned());
+        }
 
         strings.push(format!("[LatestAt @ {store_id}]"));
         {
@@ -130,6 +152,7 @@ impl Caches {
     pub fn new(store: &ChunkStore) -> Self {
         Self {
             store_id: store.id().clone(),
+            might_require_clearing: Default::default(),
             latest_at_per_cache_key: Default::default(),
             range_per_cache_key: Default::default(),
         }
@@ -139,10 +162,12 @@ impl Caches {
     pub fn clear(&self) {
         let Self {
             store_id: _,
+            might_require_clearing,
             latest_at_per_cache_key,
             range_per_cache_key,
         } = self;
 
+        might_require_clearing.write().clear();
         latest_at_per_cache_key.write().clear();
         range_per_cache_key.write().clear();
     }
@@ -223,6 +248,7 @@ impl ChunkStoreSubscriber for Caches {
             }
         }
 
+        let mut might_require_clearing = self.might_require_clearing.write();
         let caches_latest_at = self.latest_at_per_cache_key.write();
         let caches_range = self.range_per_cache_key.write();
         // NOTE: Don't release the top-level locks -- even though this cannot happen yet with
@@ -237,6 +263,10 @@ impl ChunkStoreSubscriber for Caches {
             // But since this pretty much never happens in practice, let's not go there until we
             // have metrics showing that show we need to.
             for (entity_path, component_name) in compacted.static_ {
+                if component_name == ClearIsRecursive::name() {
+                    might_require_clearing.insert(entity_path.clone());
+                }
+
                 for (key, cache) in caches_latest_at.iter() {
                     if key.entity_path == entity_path && key.component_name == component_name {
                         cache.write().pending_invalidations.insert(TimeInt::STATIC);
@@ -255,6 +285,10 @@ impl ChunkStoreSubscriber for Caches {
             re_tracing::profile_scope!("temporal");
 
             for (key, times) in compacted.temporal {
+                if key.component_name == ClearIsRecursive::name() {
+                    might_require_clearing.insert(key.entity_path.clone());
+                }
+
                 if let Some(cache) = caches_latest_at.get(&key) {
                     cache
                         .write()

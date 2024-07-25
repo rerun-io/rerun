@@ -37,6 +37,7 @@ serde = [
 
 # Rerun
 re_build_info.workspace = true
+re_error.workspace = true
 re_format.workspace = true
 re_format_arrow.workspace = true
 re_log.workspace = true

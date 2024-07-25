@@ -3,7 +3,7 @@ use std::sync::Arc;
 use nohash_hasher::IntMap;
 use parking_lot::Mutex;
 
-use re_chunk::{Chunk, ChunkResult, RowId};
+use re_chunk::{Chunk, ChunkResult, RowId, TimeInt};
 use re_chunk_store::{
     ChunkStore, ChunkStoreConfig, ChunkStoreEvent, ChunkStoreSubscriber, GarbageCollectionOptions,
     GarbageCollectionTarget,
@@ -68,6 +68,9 @@ pub struct EntityDb {
     /// Query caches for the data in [`Self::data_store`].
     query_caches: re_query::Caches,
 
+    /// Query caches for the data in [`Self::data_store`].
+    query_caches2: re_query2::Caches,
+
     stats: IngestionStatistics,
 }
 
@@ -79,6 +82,7 @@ impl EntityDb {
     pub fn with_store_config(store_id: StoreId, store_config: ChunkStoreConfig) -> Self {
         let data_store = ChunkStore::new(store_id.clone(), store_config);
         let query_caches = re_query::Caches::new(&data_store);
+        let query_caches2 = re_query2::Caches::new(&data_store);
 
         Self {
             data_source: None,
@@ -92,6 +96,7 @@ impl EntityDb {
             data_store,
             resolver: re_query::PromiseResolver::default(),
             query_caches,
+            query_caches2,
             stats: IngestionStatistics::new(store_id),
         }
     }
@@ -124,13 +129,18 @@ impl EntityDb {
     }
 
     #[inline]
+    pub fn query_caches2(&self) -> &re_query2::Caches {
+        &self.query_caches2
+    }
+
+    #[inline]
     pub fn resolver(&self) -> &re_query::PromiseResolver {
         &self.resolver
     }
 
     /// Queries for the given `component_names` using latest-at semantics.
     ///
-    /// See [`re_query::LatestAtResults`] for more information about how to handle the results.
+    /// See [`re_query2::LatestAtResults`] for more information about how to handle the results.
     ///
     /// This is a cached API -- data will be lazily cached upon access.
     #[inline]
@@ -139,8 +149,8 @@ impl EntityDb {
         query: &re_chunk_store::LatestAtQuery,
         entity_path: &EntityPath,
         component_names: impl IntoIterator<Item = re_types_core::ComponentName>,
-    ) -> re_query::LatestAtResults {
-        self.query_caches()
+    ) -> re_query2::LatestAtResults {
+        self.query_caches2()
             .latest_at(self.store(), query, entity_path, component_names)
     }
 
@@ -157,13 +167,13 @@ impl EntityDb {
         &self,
         entity_path: &EntityPath,
         query: &re_chunk_store::LatestAtQuery,
-    ) -> Option<re_query::LatestAtMonoResult<C>> {
-        self.query_caches().latest_at_component::<C>(
-            self.store(),
-            self.resolver(),
-            entity_path,
-            query,
-        )
+    ) -> Option<((TimeInt, RowId), C)> {
+        let results = self
+            .query_caches2()
+            .latest_at(self.store(), query, entity_path, [C::name()]);
+        results
+            .component_mono()
+            .map(|value| (results.index(), value))
     }
 
     /// Get the latest index and value for a given dense [`re_types_core::Component`].
@@ -179,13 +189,13 @@ impl EntityDb {
         &self,
         entity_path: &EntityPath,
         query: &re_chunk_store::LatestAtQuery,
-    ) -> Option<re_query::LatestAtMonoResult<C>> {
-        self.query_caches().latest_at_component_quiet::<C>(
-            self.store(),
-            self.resolver(),
-            entity_path,
-            query,
-        )
+    ) -> Option<((TimeInt, RowId), C)> {
+        let results = self
+            .query_caches2()
+            .latest_at(self.store(), query, entity_path, [C::name()]);
+        results
+            .component_mono_quiet()
+            .map(|value| (results.index(), value))
     }
 
     #[inline]
@@ -193,14 +203,18 @@ impl EntityDb {
         &self,
         entity_path: &EntityPath,
         query: &re_chunk_store::LatestAtQuery,
-    ) -> Option<(EntityPath, re_query::LatestAtMonoResult<C>)> {
-        self.query_caches()
-            .latest_at_component_at_closest_ancestor::<C>(
-                self.store(),
-                self.resolver(),
-                entity_path,
-                query,
-            )
+    ) -> Option<(EntityPath, (TimeInt, RowId), C)> {
+        re_tracing::profile_function!();
+
+        let mut cur_entity_path = Some(entity_path.clone());
+        while let Some(entity_path) = cur_entity_path {
+            if let Some((index, value)) = self.latest_at_component(&entity_path, query) {
+                return Some((entity_path, index, value));
+            }
+            cur_entity_path = entity_path.parent();
+        }
+
+        None
     }
 
     #[inline]
@@ -371,6 +385,7 @@ impl EntityDb {
             self.times_per_timeline.on_events(&store_events);
             self.time_histogram_per_timeline.on_events(&store_events);
             self.query_caches.on_events(&store_events);
+            self.query_caches2.on_events(&store_events);
             self.tree.on_store_additions(&store_events);
 
             // We inform the stats last, since it measures e2e latency.
@@ -431,6 +446,7 @@ impl EntityDb {
 
         self.times_per_timeline.on_events(store_events);
         self.query_caches.on_events(store_events);
+        self.query_caches2.on_events(store_events);
         self.time_histogram_per_timeline.on_events(store_events);
         self.tree.on_store_deletions(&self.data_store, store_events);
     }

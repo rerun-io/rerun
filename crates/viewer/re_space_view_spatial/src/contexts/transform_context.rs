@@ -346,7 +346,6 @@ fn get_parent_from_child_transform(
     entity_db: &EntityDb,
     query: &LatestAtQuery,
 ) -> Option<glam::Affine3A> {
-    let resolver = entity_db.resolver();
     // TODO(#6743): Doesn't take into account overrides.
     let result = entity_db.latest_at(
         query,
@@ -368,24 +367,24 @@ fn get_parent_from_child_transform(
     // Order is specified by order of components in the Transform3D archetype.
     // See `has_transform_expected_order`
     let mut transform = glam::Affine3A::IDENTITY;
-    if let Some(translation) = result.get_instance::<Translation3D>(resolver, 0) {
+    if let Some(translation) = result.component_instance::<Translation3D>(0) {
         transform *= glam::Affine3A::from(translation);
     }
-    if let Some(rotation) = result.get_instance::<RotationAxisAngle>(resolver, 0) {
+    if let Some(rotation) = result.component_instance::<RotationAxisAngle>(0) {
         transform *= glam::Affine3A::from(rotation);
     }
-    if let Some(rotation) = result.get_instance::<RotationQuat>(resolver, 0) {
+    if let Some(rotation) = result.component_instance::<RotationQuat>(0) {
         transform *= glam::Affine3A::from(rotation);
     }
-    if let Some(scale) = result.get_instance::<Scale3D>(resolver, 0) {
+    if let Some(scale) = result.component_instance::<Scale3D>(0) {
         transform *= glam::Affine3A::from(scale);
     }
-    if let Some(mat3x3) = result.get_instance::<TransformMat3x3>(resolver, 0) {
+    if let Some(mat3x3) = result.component_instance::<TransformMat3x3>(0) {
         transform *= glam::Affine3A::from(mat3x3);
     }
 
     let transform_relation = result
-        .get_instance::<TransformRelation>(resolver, 0)
+        .component_instance::<TransformRelation>(0)
         .unwrap_or_default();
     if transform_relation == TransformRelation::ChildFromParent {
         Some(transform.inverse())
@@ -404,12 +403,12 @@ fn get_cached_pinhole(
 ) -> Option<(PinholeProjection, ViewCoordinates)> {
     entity_db
         .latest_at_component::<PinholeProjection>(entity_path, query)
-        .map(|image_from_camera| {
+        .map(|(_index, image_from_camera)| {
             (
-                image_from_camera.value,
+                image_from_camera,
                 entity_db
                     .latest_at_component::<ViewCoordinates>(entity_path, query)
-                    .map_or(ViewCoordinates::RDF, |res| res.value),
+                    .map_or(ViewCoordinates::RDF, |(_index, res)| res),
             )
         })
 }
@@ -434,7 +433,18 @@ fn transform_at(
         }
     }
 
-    let transform3d = get_parent_from_child_transform(entity_path, entity_db, query);
+    // If this entity does not contain any `Transform3D`-related data at all, there's no
+    // point in running actual queries.
+    let is_potentially_transformed =
+        crate::transformables::Transformables::access(entity_db.store_id(), |transformables| {
+            transformables.is_potentially_transformed(entity_path)
+        })
+        .unwrap_or(false);
+    let transform3d = is_potentially_transformed
+        .then(|| get_parent_from_child_transform(entity_path, entity_db, query))
+        .flatten();
+
+    // let transform3d = get_parent_from_child_transform(entity_path, entity_db, query);
 
     let pinhole = pinhole.map(|(image_from_camera, camera_xyz)| {
         // Everything under a pinhole camera is a 2D projection, thus doesn't actually have a proper 3D representation.
@@ -476,7 +486,7 @@ fn transform_at(
     let is_disconnect_space = || {
         entity_db
             .latest_at_component::<DisconnectedSpace>(entity_path, query)
-            .map_or(false, |res| **res.value)
+            .map_or(false, |(_index, res)| **res)
     };
 
     // If there is any other transform, we ignore `DisconnectedSpace`.

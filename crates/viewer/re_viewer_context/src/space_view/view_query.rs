@@ -160,7 +160,7 @@ impl DataResult {
                     .recording()
                     .latest_at_component::<C>(path, &ctx.current_query()),
             })
-            .map(|c| c.value)
+            .map(|(_index, value)| value)
     }
 
     /// Returns from which entity path an override originates from.

@@ -33,11 +33,11 @@ impl VisualizerSystem for TensorSystem {
             let timeline_query = LatestAtQuery::new(query.timeline, query.latest_at);
 
             // TODO(#5607): what should happen if the promise is still pending?
-            if let Some(tensor) = ctx
+            if let Some(((_time, row_id), tensor)) = ctx
                 .recording()
                 .latest_at_component::<TensorData>(&data_result.entity_path, &timeline_query)
             {
-                self.tensors.push((tensor.row_id(), tensor.value));
+                self.tensors.push((row_id, tensor));
             }
         }
 

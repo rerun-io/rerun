@@ -1,8 +1,9 @@
 use itertools::Itertools as _;
-use re_query::{PromiseResult, QueryError};
-use re_space_view::range_with_blueprint_resolved_data;
+
+use re_space_view::range_with_blueprint_resolved_data2;
 use re_types::archetypes;
 use re_types::components::AggregationPolicy;
+use re_types::external::arrow2::datatypes::DataType as ArrowDatatype;
 use re_types::{
     archetypes::SeriesLine,
     components::{Color, Name, Scalar, StrokeWidth},
@@ -50,10 +51,8 @@ impl VisualizerSystem for SeriesLineSystem {
     ) -> Result<Vec<re_renderer::QueueableDrawData>, SpaceViewSystemExecutionError> {
         re_tracing::profile_function!();
 
-        match self.load_scalars(ctx, query) {
-            Ok(_) | Err(QueryError::PrimaryNotFound(_)) => Ok(Vec::new()),
-            Err(err) => Err(err.into()),
-        }
+        self.load_scalars(ctx, query);
+        Ok(Vec::new())
     }
 
     fn as_any(&self) -> &dyn std::any::Any {
@@ -89,11 +88,7 @@ impl TypedComponentFallbackProvider<Name> for SeriesLineSystem {
 re_viewer_context::impl_component_fallback_provider!(SeriesLineSystem => [Color, StrokeWidth, Name]);
 
 impl SeriesLineSystem {
-    fn load_scalars(
-        &mut self,
-        ctx: &ViewContext<'_>,
-        query: &ViewQuery<'_>,
-    ) -> Result<(), QueryError> {
+    fn load_scalars(&mut self, ctx: &ViewContext<'_>, query: &ViewQuery<'_>) {
         re_tracing::profile_function!();
 
         let (plot_bounds, time_per_pixel) =
@@ -105,10 +100,10 @@ impl SeriesLineSystem {
         if parallel_loading {
             use rayon::prelude::*;
             re_tracing::profile_wait!("load_series");
-            for one_series in data_results
+            for mut one_series in data_results
                 .collect_vec()
                 .par_iter()
-                .map(|data_result| -> Result<Vec<PlotSeries>, QueryError> {
+                .map(|data_result| -> Vec<PlotSeries> {
                     let mut series = vec![];
                     self.load_series(
                         ctx,
@@ -117,12 +112,12 @@ impl SeriesLineSystem {
                         time_per_pixel,
                         data_result,
                         &mut series,
-                    )?;
-                    Ok(series)
+                    );
+                    series
                 })
-                .collect::<Vec<Result<_, _>>>()
+                .collect::<Vec<_>>()
             {
-                self.all_series.append(&mut one_series?);
+                self.all_series.append(&mut one_series);
             }
         } else {
             let mut series = vec![];
@@ -134,12 +129,10 @@ impl SeriesLineSystem {
                     time_per_pixel,
                     data_result,
                     &mut series,
-                )?;
+                );
             }
             self.all_series = series;
         }
-
-        Ok(())
     }
 
     #[allow(clippy::too_many_arguments)]
@@ -151,10 +144,8 @@ impl SeriesLineSystem {
         time_per_pixel: f64,
         data_result: &re_viewer_context::DataResult,
         all_series: &mut Vec<PlotSeries>,
-    ) -> Result<(), QueryError> {
+    ) {
         re_tracing::profile_function!();
-
-        let resolver = ctx.recording().resolver();
 
         let current_query = ctx.current_query();
         let query_ctx = ctx.query_context(data_result, &current_query);
@@ -183,14 +174,14 @@ impl SeriesLineSystem {
             ctx.viewer_ctx.app_options.experimental_plot_query_clamping,
         );
         {
-            use re_space_view::RangeResultsExt as _;
+            use re_space_view::RangeResultsExt2 as _;
 
             re_tracing::profile_scope!("primary", &data_result.entity_path.to_string());
 
             let entity_path = &data_result.entity_path;
             let query = re_chunk_store::RangeQuery::new(view_query.timeline, time_range);
 
-            let results = range_with_blueprint_resolved_data(
+            let results = range_with_blueprint_resolved_data2(
                 ctx,
                 None,
                 &query,
@@ -205,144 +196,193 @@ impl SeriesLineSystem {
             );
 
             // If we have no scalars, we can't do anything.
-            let Some(all_scalars) = results.get_required_component_dense::<Scalar>(resolver) else {
-                return Ok(());
+            let Some(all_scalar_chunks) = results.get_required_chunks(&Scalar::name()) else {
+                return;
             };
 
-            let all_scalars = all_scalars?;
-
-            let all_scalars_entry_range = all_scalars.entry_range();
-
-            if !matches!(
-                all_scalars.status(),
-                (PromiseResult::Ready(()), PromiseResult::Ready(()))
-            ) {
-                // TODO(#5607): what should happen if the promise is still pending?
-            }
+            let all_scalars_indices = || {
+                all_scalar_chunks
+                    .iter()
+                    .flat_map(|chunk| {
+                        chunk.iter_component_indices(&query.timeline(), &Scalar::name())
+                    })
+                    .map(|index| (index, ()))
+            };
 
             // Allocate all points.
-            points = all_scalars
-                .range_indices(all_scalars_entry_range.clone())
-                .map(|(data_time, _)| PlotPoint {
-                    time: data_time.as_i64(),
-                    ..default_point.clone()
-                })
-                .collect_vec();
+            {
+                re_tracing::profile_scope!("alloc");
 
-            if cfg!(debug_assertions) {
-                for ps in points.windows(2) {
-                    assert!(
-                    ps[0].time <= ps[1].time,
-                    "scalars should be sorted already when extracted from the cache, got p0 at {} and p1 at {}\n{:?}",
-                    ps[0].time, ps[1].time,
-                    points.iter().map(|p| p.time).collect_vec(),
-                );
-                }
+                points = all_scalar_chunks
+                    .iter()
+                    .flat_map(|chunk| {
+                        chunk.iter_component_indices(&query.timeline(), &Scalar::name())
+                    })
+                    .map(|(data_time, _)| {
+                        debug_assert_eq!(Scalar::arrow_datatype(), ArrowDatatype::Float64);
+
+                        PlotPoint {
+                            time: data_time.as_i64(),
+                            ..default_point.clone()
+                        }
+                    })
+                    .collect_vec();
             }
 
             // Fill in values.
-            for (i, scalars) in all_scalars
-                .range_data(all_scalars_entry_range.clone())
-                .enumerate()
             {
-                if scalars.len() > 1 {
-                    re_log::warn_once!(
-                        "found a scalar batch in {entity_path:?} -- those have no effect"
-                    );
-                } else if scalars.is_empty() {
-                    points[i].attrs.kind = PlotSeriesKind::Clear;
-                } else {
-                    points[i].value = scalars.first().map_or(0.0, |s| *s.0);
-                }
+                re_tracing::profile_scope!("fill values");
+
+                debug_assert_eq!(Scalar::arrow_datatype(), ArrowDatatype::Float64);
+                let mut i = 0;
+                all_scalar_chunks
+                    .iter()
+                    .flat_map(|chunk| chunk.iter_primitive::<f64>(&Scalar::name()))
+                    .for_each(|values| {
+                        if !values.is_empty() {
+                            if values.len() > 1 {
+                                re_log::warn_once!(
+                                    "found a scalar batch in {entity_path:?} -- those have no effect"
+                                );
+                            }
+
+                            points[i].value = values[0];
+                        } else {
+                            points[i].attrs.kind = PlotSeriesKind::Clear;
+                        }
+
+                        i += 1;
+                    });
             }
 
             // Fill in colors.
-            // TODO(jleibs): Handle Err values.
-            if let Ok(all_colors) = results.get_or_empty_dense::<Color>(resolver) {
-                if !matches!(
-                    all_colors.status(),
-                    (PromiseResult::Ready(()), PromiseResult::Ready(()))
-                ) {
-                    // TODO(#5607): what should happen if the promise is still pending?
+            {
+                re_tracing::profile_scope!("fill colors");
+
+                debug_assert_eq!(Color::arrow_datatype(), ArrowDatatype::UInt32);
+
+                fn map_raw_color(raw: &[u32]) -> Option<re_renderer::Color32> {
+                    raw.first().map(|c| {
+                        let [a, b, g, r] = c.to_le_bytes();
+                        if a == 255 {
+                            // Common-case optimization
+                            re_renderer::Color32::from_rgb(r, g, b)
+                        } else {
+                            re_renderer::Color32::from_rgba_unmultiplied(r, g, b, a)
+                        }
+                    })
                 }
 
-                let all_scalars_indexed = all_scalars
-                    .range_indices(all_scalars_entry_range.clone())
-                    .map(|index| (index, ()));
+                if let Some(all_color_chunks) = results.get_required_chunks(&Color::name()) {
+                    if all_color_chunks.len() == 1 && all_color_chunks[0].is_static() {
+                        re_tracing::profile_scope!("override fast path");
 
-                let all_frames =
-                    re_query::range_zip_1x1(all_scalars_indexed, all_colors.range_indexed())
-                        .enumerate();
+                        let color = all_color_chunks[0]
+                            .iter_primitive::<u32>(&Color::name())
+                            .next()
+                            .and_then(map_raw_color);
 
-                for (i, (_index, _scalars, colors)) in all_frames {
-                    if let Some(color) = colors.and_then(|colors| {
-                        colors.first().map(|c| {
-                            let [r, g, b, a] = c.to_array();
-                            if a == 255 {
-                                // Common-case optimization
-                                re_renderer::Color32::from_rgb(r, g, b)
-                            } else {
-                                re_renderer::Color32::from_rgba_unmultiplied(r, g, b, a)
+                        if let Some(color) = color {
+                            points.iter_mut().for_each(|p| p.attrs.color = color);
+                        }
+                    } else {
+                        re_tracing::profile_scope!("standard path");
+
+                        let all_colors = all_color_chunks.iter().flat_map(|chunk| {
+                            itertools::izip!(
+                                chunk.iter_component_indices(&query.timeline(), &Color::name()),
+                                chunk.iter_primitive::<u32>(&Color::name())
+                            )
+                        });
+
+                        let all_frames =
+                            re_query2::range_zip_1x1(all_scalars_indices(), all_colors).enumerate();
+
+                        all_frames.for_each(|(i, (_index, _scalars, colors))| {
+                            if let Some(color) = colors.and_then(map_raw_color) {
+                                points[i].attrs.color = color;
                             }
-                        })
-                    }) {
-                        points[i].attrs.color = color;
+                        });
                     }
                 }
             }
 
             // Fill in stroke widths
-            // TODO(jleibs): Handle Err values.
-            if let Ok(all_stroke_widths) = results.get_or_empty_dense::<StrokeWidth>(resolver) {
-                if !matches!(
-                    all_stroke_widths.status(),
-                    (PromiseResult::Ready(()), PromiseResult::Ready(()))
-                ) {
-                    // TODO(#5607): what should happen if the promise is still pending?
-                }
+            {
+                re_tracing::profile_scope!("fill stroke widths");
 
-                let all_scalars_indexed = all_scalars
-                    .range_indices(all_scalars_entry_range.clone())
-                    .map(|index| (index, ()));
+                debug_assert_eq!(StrokeWidth::arrow_datatype(), ArrowDatatype::Float32);
 
-                let all_frames =
-                    re_query::range_zip_1x1(all_scalars_indexed, all_stroke_widths.range_indexed())
-                        .enumerate();
-
-                for (i, (_index, _scalars, stroke_widths)) in all_frames {
-                    if let Some(stroke_width) =
-                        stroke_widths.and_then(|stroke_widths| stroke_widths.first().map(|r| *r.0))
+                if let Some(all_stroke_width_chunks) =
+                    results.get_required_chunks(&StrokeWidth::name())
+                {
+                    if all_stroke_width_chunks.len() == 1 && all_stroke_width_chunks[0].is_static()
                     {
-                        points[i].attrs.radius_ui = 0.5 * stroke_width;
+                        re_tracing::profile_scope!("override fast path");
+
+                        let stroke_width = all_stroke_width_chunks[0]
+                            .iter_primitive::<f32>(&StrokeWidth::name())
+                            .next()
+                            .and_then(|stroke_widths| stroke_widths.first().copied());
+
+                        if let Some(stroke_width) = stroke_width {
+                            points
+                                .iter_mut()
+                                .for_each(|p| p.attrs.radius_ui = stroke_width * 0.5);
+                        }
+                    } else {
+                        re_tracing::profile_scope!("standard path");
+
+                        let all_stroke_widths = all_stroke_width_chunks.iter().flat_map(|chunk| {
+                            itertools::izip!(
+                                chunk.iter_component_indices(
+                                    &query.timeline(),
+                                    &StrokeWidth::name()
+                                ),
+                                chunk.iter_primitive::<f32>(&StrokeWidth::name())
+                            )
+                        });
+
+                        let all_frames =
+                            re_query2::range_zip_1x1(all_scalars_indices(), all_stroke_widths)
+                                .enumerate();
+
+                        all_frames.for_each(|(i, (_index, _scalars, stroke_widths))| {
+                            if let Some(stroke_width) = stroke_widths
+                                .and_then(|stroke_widths| stroke_widths.first().copied())
+                            {
+                                points[i].attrs.radius_ui = stroke_width * 0.5;
+                            }
+                        });
                     }
                 }
             }
 
             // Extract the series name
             let series_name = results
-                .get_or_empty_dense::<Name>(resolver)
-                .ok()
-                .and_then(|all_series_name| {
-                    all_series_name
-                        .range_data(all_scalars_entry_range.clone())
-                        .next()
-                        .and_then(|name| name.first().cloned())
-                })
+                .get_optional_chunks(&Name::name())
+                .iter()
+                .find(|chunk| !chunk.is_empty())
+                .and_then(|chunk| chunk.component_mono::<Name>(0)?.ok())
                 .unwrap_or_else(|| self.fallback_for(&query_ctx));
 
             // Now convert the `PlotPoints` into `Vec<PlotSeries>`
             let aggregator = results
-                .get_or_empty_dense::<AggregationPolicy>(resolver)
-                .ok()
-                .and_then(|result| {
-                    result
-                        .range_data(all_scalars_entry_range.clone())
-                        .next()
-                        .and_then(|aggregator| aggregator.first().copied())
-                })
+                .get_optional_chunks(&AggregationPolicy::name())
+                .iter()
+                .find(|chunk| !chunk.is_empty())
+                .and_then(|chunk| chunk.component_mono::<AggregationPolicy>(0)?.ok())
                 // TODO(andreas): Relying on the default==placeholder here instead of going through a fallback provider.
                 //                This is fine, because we know there's no `TypedFallbackProvider`, but wrong if one were to be added.
                 .unwrap_or_default();
+
+            // This is _almost_ sorted already: all the individual chunks are sorted, but we still
+            // have to deal with overlap chunks.
+            {
+                re_tracing::profile_scope!("sort");
+                points.sort_by_key(|p| p.time);
+            }
+
             points_to_series(
                 &data_result.entity_path,
                 time_per_pixel,
@@ -354,7 +394,5 @@ impl SeriesLineSystem {
                 all_series,
             );
         }
-
-        Ok(())
     }
 }
