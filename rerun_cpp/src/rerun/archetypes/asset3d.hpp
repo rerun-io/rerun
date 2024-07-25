@@ -66,7 +66,7 @@ namespace rerun::archetypes {
         /// If it cannot guess, it won't be able to render the asset.
         std::optional<rerun::components::MediaType> media_type;
 
-        /// If enabled, any transform (components part of the [`Transform3D`] archetype) on this entity will not affect its children.
+        /// If enabled, any transform (components part of the [`archetypes.Transform3D`] archetype) on this entity will not affect its children.
         ///
         /// It will however, still be affected by transforms on its parents.
         std::optional<rerun::components::OutOfTreeTransform> out_of_tree_transform;
@@ -128,7 +128,7 @@ namespace rerun::archetypes {
             RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
         }
 
-        /// If enabled, any transform (components part of the [`Transform3D`] archetype) on this entity will not affect its children.
+        /// If enabled, any transform (components part of the [`archetypes.Transform3D`] archetype) on this entity will not affect its children.
         ///
         /// It will however, still be affected by transforms on its parents.
         Asset3D with_out_of_tree_transform(
