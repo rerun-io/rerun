@@ -341,7 +341,7 @@ impl<E: Example + 'static> Application<E> {
                             time_passed.as_secs_f32() * 1000.0,
                             1.0 / time_passed.as_secs_f32()
                         );
-                        re_log::info!("{time_info_str}");
+                        // re_log::info!("{time_info_str}");
                     }
 
                     self.window.request_redraw(); // Busy-painting

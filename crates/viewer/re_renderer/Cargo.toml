@@ -78,6 +78,7 @@ thiserror.workspace = true
 type-map.workspace = true
 wgpu.workspace = true
 wgpu-core.workspace = true                                           # Needed for error handling when wgpu-core implemented backend is used.
+wgpu-types.workspace = true
 
 # optional
 arrow2 = { workspace = true, optional = true }
@@ -97,6 +98,9 @@ getrandom = { workspace = true, features = [
   "js",
 ] } # getrandom needs the `js` feature to be enabled. It is dragged in indirectly.
 wasm-bindgen-futures.workspace = true
+web-sys = { workspace = true }
+js-sys = { workspace = true }
+wasm-bindgen = { workspace = true }
 
 
 [dev-dependencies]
