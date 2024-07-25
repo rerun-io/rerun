@@ -1,11 +1,11 @@
 use re_chunk_store::RowId;
 use re_log_types::{hash::Hash64, Instance, TimeInt};
-use re_query::range_zip_1x2;
+use re_query::range_zip_1x1;
 use re_renderer::renderer::MeshInstance;
 use re_renderer::RenderContext;
 use re_types::{
     archetypes::Asset3D,
-    components::{Blob, MediaType, OutOfTreeTransform3D},
+    components::{Blob, MediaType},
 };
 use re_viewer_context::{
     ApplicableEntities, IdentifiedViewSystem, QueryContext, SpaceViewSystemExecutionError,
@@ -37,7 +37,6 @@ struct Asset3DComponentData<'a> {
 
     blob: &'a Blob,
     media_type: Option<&'a MediaType>,
-    transform: Option<&'a OutOfTreeTransform3D>,
 }
 
 // NOTE: Do not put profile scopes in these methods. They are called for all entities and all
@@ -54,14 +53,6 @@ impl Asset3DVisualizer {
         let entity_path = ctx.target_entity_path;
 
         for data in data {
-            let mesh = Asset3D {
-                blob: data.blob.clone(),
-                media_type: data.media_type.cloned(),
-
-                // NOTE: Don't even try to cache the transform!
-                transform: None,
-            };
-
             let primary_row_id = data.index.1;
             let picking_instance_hash = re_entity_db::InstancePathHash::entity_all(entity_path);
             let outline_mask_ids = ent_context.highlight.index_outline_mask(Instance::ALL);
@@ -77,7 +68,10 @@ impl Asset3DVisualizer {
                         query_result_hash: Hash64::ZERO,
                         media_type: data.media_type.cloned(),
                     },
-                    AnyMesh::Asset(&mesh),
+                    AnyMesh::Asset {
+                        blob: data.blob,
+                        media_type: data.media_type,
+                    },
                     render_ctx,
                 )
             });
@@ -85,10 +79,13 @@ impl Asset3DVisualizer {
             if let Some(mesh) = mesh {
                 re_tracing::profile_scope!("mesh instances");
 
-                let world_from_pose = ent_context.world_from_entity
-                    * data
-                        .transform
-                        .map_or(glam::Affine3A::IDENTITY, |t| t.0.into());
+                let world_from_pose = if let Some(entity_from_out_of_tree) =
+                    ent_context.transform_info.out_of_tree_transforms.first()
+                {
+                    ent_context.world_from_entity * (*entity_from_out_of_tree)
+                } else {
+                    ent_context.world_from_entity
+                };
 
                 instances.extend(mesh.mesh_instances.iter().map(move |mesh_instance| {
                     let pose_from_mesh = mesh_instance.world_from_mesh;
@@ -159,21 +156,15 @@ impl VisualizerSystem for Asset3DVisualizer {
                 };
 
                 let media_types = results.get_or_empty_dense(resolver)?;
-                let transforms = results.get_or_empty_dense(resolver)?;
 
-                let data = range_zip_1x2(
-                    blobs.range_indexed(),
-                    media_types.range_indexed(),
-                    transforms.range_indexed(),
-                )
-                .filter_map(|(&index, blobs, media_types, transforms)| {
-                    blobs.first().map(|blob| Asset3DComponentData {
-                        index,
-                        blob,
-                        media_type: media_types.and_then(|media_types| media_types.first()),
-                        transform: transforms.and_then(|transforms| transforms.first()),
-                    })
-                });
+                let data = range_zip_1x1(blobs.range_indexed(), media_types.range_indexed())
+                    .filter_map(|(&index, blobs, media_types)| {
+                        blobs.first().map(|blob| Asset3DComponentData {
+                            index,
+                            blob,
+                            media_type: media_types.and_then(|media_types| media_types.first()),
+                        })
+                    });
 
                 self.process_data(ctx, render_ctx, &mut instances, spatial_ctx, data);
                 Ok(())

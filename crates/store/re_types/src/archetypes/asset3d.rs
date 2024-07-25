@@ -51,7 +51,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 ///   <img src="https://static.rerun.io/asset3d_simple/af238578188d3fd0de3e330212120e2842a8ddb2/full.png" width="640">
 /// </picture>
 /// </center>
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Asset3D {
     /// The asset's bytes.
     pub blob: crate::components::Blob,
@@ -68,10 +68,10 @@ pub struct Asset3D {
     /// If it cannot guess, it won't be able to render the asset.
     pub media_type: Option<crate::components::MediaType>,
 
-    /// An out-of-tree transform.
+    /// If enabled, any transform (components part of the [`Transform3D`] archetype) on this entity will not affect its children.
     ///
-    /// Applies a transformation to the asset itself without impacting its children.
-    pub transform: Option<crate::components::OutOfTreeTransform3D>,
+    /// It will however, still be affected by transforms on its parents.
+    pub out_of_tree_transform: Option<crate::components::OutOfTreeTransform>,
 }
 
 impl ::re_types_core::SizeBytes for Asset3D {
@@ -79,14 +79,14 @@ impl ::re_types_core::SizeBytes for Asset3D {
     fn heap_size_bytes(&self) -> u64 {
         self.blob.heap_size_bytes()
             + self.media_type.heap_size_bytes()
-            + self.transform.heap_size_bytes()
+            + self.out_of_tree_transform.heap_size_bytes()
     }
 
     #[inline]
     fn is_pod() -> bool {
         <crate::components::Blob>::is_pod()
             && <Option<crate::components::MediaType>>::is_pod()
-            && <Option<crate::components::OutOfTreeTransform3D>>::is_pod()
+            && <Option<crate::components::OutOfTreeTransform>>::is_pod()
     }
 }
 
@@ -102,7 +102,7 @@ static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 2usize]> =
     });
 
 static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 1usize]> =
-    once_cell::sync::Lazy::new(|| ["rerun.components.OutOfTreeTransform3D".into()]);
+    once_cell::sync::Lazy::new(|| ["rerun.components.OutOfTreeTransform".into()]);
 
 static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 4usize]> =
     once_cell::sync::Lazy::new(|| {
@@ -110,7 +110,7 @@ static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 4usize]> =
             "rerun.components.Blob".into(),
             "rerun.components.MediaType".into(),
             "rerun.components.Asset3DIndicator".into(),
-            "rerun.components.OutOfTreeTransform3D".into(),
+            "rerun.components.OutOfTreeTransform".into(),
         ]
     });
 
@@ -193,10 +193,10 @@ impl ::re_types_core::Archetype for Asset3D {
         } else {
             None
         };
-        let transform =
-            if let Some(array) = arrays_by_name.get("rerun.components.OutOfTreeTransform3D") {
-                <crate::components::OutOfTreeTransform3D>::from_arrow_opt(&**array)
-                    .with_context("rerun.archetypes.Asset3D#transform")?
+        let out_of_tree_transform =
+            if let Some(array) = arrays_by_name.get("rerun.components.OutOfTreeTransform") {
+                <crate::components::OutOfTreeTransform>::from_arrow_opt(&**array)
+                    .with_context("rerun.archetypes.Asset3D#out_of_tree_transform")?
                     .into_iter()
                     .next()
                     .flatten()
@@ -206,7 +206,7 @@ impl ::re_types_core::Archetype for Asset3D {
         Ok(Self {
             blob,
             media_type,
-            transform,
+            out_of_tree_transform,
         })
     }
 }
@@ -221,7 +221,7 @@ impl ::re_types_core::AsComponents for Asset3D {
             self.media_type
                 .as_ref()
                 .map(|comp| (comp as &dyn ComponentBatch).into()),
-            self.transform
+            self.out_of_tree_transform
                 .as_ref()
                 .map(|comp| (comp as &dyn ComponentBatch).into()),
         ]
@@ -238,7 +238,7 @@ impl Asset3D {
         Self {
             blob: blob.into(),
             media_type: None,
-            transform: None,
+            out_of_tree_transform: None,
         }
     }
 
@@ -258,15 +258,15 @@ impl Asset3D {
         self
     }
 
-    /// An out-of-tree transform.
+    /// If enabled, any transform (components part of the [`Transform3D`] archetype) on this entity will not affect its children.
     ///
-    /// Applies a transformation to the asset itself without impacting its children.
+    /// It will however, still be affected by transforms on its parents.
     #[inline]
-    pub fn with_transform(
+    pub fn with_out_of_tree_transform(
         mut self,
-        transform: impl Into<crate::components::OutOfTreeTransform3D>,
+        out_of_tree_transform: impl Into<crate::components::OutOfTreeTransform>,
     ) -> Self {
-        self.transform = Some(transform.into());
+        self.out_of_tree_transform = Some(out_of_tree_transform.into());
         self
     }
 }

@@ -1,11 +1,7 @@
-use std::f32::consts::TAU;
-
 use re_types::{
     archetypes::Asset3D,
-    components::{Blob, MediaType, OutOfTreeTransform3D},
-    datatypes::{
-        Angle, Rotation3D, RotationAxisAngle, Scale3D, TranslationRotationScale3D, Utf8, Vec3D,
-    },
+    components::{Blob, MediaType},
+    datatypes::Utf8,
     Archetype as _, AsComponents as _,
 };
 
@@ -16,29 +12,11 @@ fn roundtrip() {
     let expected = Asset3D {
         blob: Blob(BYTES.to_vec().into()),
         media_type: Some(MediaType(Utf8(MediaType::GLTF.into()))),
-        transform: Some(OutOfTreeTransform3D(
-            re_types::datatypes::Transform3D::TranslationRotationScale(
-                TranslationRotationScale3D {
-                    translation: Some(Vec3D([1.0, 2.0, 3.0])),
-                    rotation: Some(Rotation3D::AxisAngle(RotationAxisAngle {
-                        axis: Vec3D([0.2, 0.2, 0.8]),
-                        angle: Angle::from_radians(0.5 * TAU),
-                    })),
-                    scale: Some(Scale3D::Uniform(42.0)),
-                    from_parent: true,
-                },
-            ),
-        )), //
+        out_of_tree_transform: Some(re_types::components::OutOfTreeTransform::ENABLED),
     };
 
-    let arch = Asset3D::from_file_contents(BYTES.to_vec(), Some(MediaType::gltf())).with_transform(
-        re_types::datatypes::Transform3D::from_translation_rotation_scale(
-            [1.0, 2.0, 3.0],
-            RotationAxisAngle::new([0.2, 0.2, 0.8], Angle::from_radians(0.5 * TAU)),
-            42.0,
-        )
-        .from_parent(),
-    );
+    let arch = Asset3D::from_file_contents(BYTES.to_vec(), Some(MediaType::gltf()))
+        .with_out_of_tree_transform(true);
     similar_asserts::assert_eq!(expected, arch);
 
     // let expected_extensions: HashMap<_, _> = [

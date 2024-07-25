@@ -16,7 +16,10 @@ fn main() -> anyhow::Result<()> {
     rec.log_static("world", &rerun::ViewCoordinates::RIGHT_HAND_Z_UP)?; // Set an up-axis
 
     rec.set_time_sequence("frame", 0);
-    rec.log("world/asset", &rerun::Asset3D::from_file(path)?)?;
+    rec.log(
+        "world/asset",
+        &rerun::Asset3D::from_file(path)?.with_out_of_tree_transform(true),
+    )?;
     // Those points will not be affected by their parent's out-of-tree transform!
     rec.log(
         "world/asset/points",
@@ -27,12 +30,9 @@ fn main() -> anyhow::Result<()> {
         rec.set_time_sequence("frame", i);
 
         // Modify the asset's out-of-tree transform: this will not affect its children (i.e. the points)!
-        let translation =
-            rerun::TranslationRotationScale3D::from_translation([0.0, 0.0, i as f32 - 10.0]);
-        rec.log_component_batches(
+        rec.log(
             "world/asset",
-            false,
-            [&rerun::OutOfTreeTransform3D::from(translation) as _],
+            &rerun::Transform3D::from_translation([0.0, 0.0, i as f32 - 10.0]),
         )?;
     }
 

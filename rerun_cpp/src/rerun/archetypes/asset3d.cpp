@@ -26,8 +26,8 @@ namespace rerun {
             RR_RETURN_NOT_OK(result.error);
             cells.push_back(std::move(result.value));
         }
-        if (archetype.transform.has_value()) {
-            auto result = DataCell::from_loggable(archetype.transform.value());
+        if (archetype.out_of_tree_transform.has_value()) {
+            auto result = DataCell::from_loggable(archetype.out_of_tree_transform.value());
             RR_RETURN_NOT_OK(result.error);
             cells.push_back(std::move(result.value));
         }

@@ -13,7 +13,7 @@ See also [`archetypes.Mesh3D`](https://rerun.io/docs/reference/types/archetypes/
 
 **Recommended**: [`MediaType`](../components/media_type.md)
 
-**Optional**: [`OutOfTreeTransform3D`](../components/out_of_tree_transform3d.md)
+**Optional**: [`OutOfTreeTransform`](../components/out_of_tree_transform.md)
 
 ## Shown in
 * [Spatial3DView](../views/spatial3d_view.md)

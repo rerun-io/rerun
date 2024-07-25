@@ -32,7 +32,6 @@ media_type.py linguist-generated=true
 name.py linguist-generated=true
 opacity.py linguist-generated=true
 out_of_tree_transform.py linguist-generated=true
-out_of_tree_transform3d.py linguist-generated=true
 pinhole_projection.py linguist-generated=true
 position2d.py linguist-generated=true
 position3d.py linguist-generated=true

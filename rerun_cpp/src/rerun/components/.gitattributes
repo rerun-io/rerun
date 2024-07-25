@@ -41,7 +41,6 @@ media_type.hpp linguist-generated=true
 name.hpp linguist-generated=true
 opacity.hpp linguist-generated=true
 out_of_tree_transform.hpp linguist-generated=true
-out_of_tree_transform3d.hpp linguist-generated=true
 pinhole_projection.hpp linguist-generated=true
 position2d.hpp linguist-generated=true
 position3d.hpp linguist-generated=true

@@ -24,7 +24,10 @@ pub struct MeshCache(ahash::HashMap<MeshCacheKey, Option<Arc<LoadedMesh>>>);
 /// Either a [`re_types::archetypes::Asset3D`] or [`re_types::archetypes::Mesh3D`] to be cached.
 #[derive(Debug, Clone, Copy)]
 pub enum AnyMesh<'a> {
-    Asset(&'a re_types::archetypes::Asset3D),
+    Asset {
+        blob: &'a re_types::components::Blob,
+        media_type: Option<&'a re_types::components::MediaType>,
+    },
     Mesh {
         mesh: &'a re_types::archetypes::Mesh3D,
 

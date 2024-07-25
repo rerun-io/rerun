@@ -22,3 +22,6 @@ will result in an error.
  * 🦀 [Rust API docs for `OutOfTreeTransform`](https://docs.rs/rerun/latest/rerun/components/struct.OutOfTreeTransform.html?speculative-link)
 
 
+## Used by
+
+* [`Asset3D`](../archetypes/asset3d.md)

@@ -59,7 +59,7 @@ class Asset3D(Asset3DExt, Archetype):
         self.__attrs_init__(
             blob=None,  # type: ignore[arg-type]
             media_type=None,  # type: ignore[arg-type]
-            transform=None,  # type: ignore[arg-type]
+            out_of_tree_transform=None,  # type: ignore[arg-type]
         )
 
     @classmethod
@@ -95,14 +95,14 @@ class Asset3D(Asset3DExt, Archetype):
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 
-    transform: components.OutOfTreeTransform3DBatch | None = field(
+    out_of_tree_transform: components.OutOfTreeTransformBatch | None = field(
         metadata={"component": "optional"},
         default=None,
-        converter=components.OutOfTreeTransform3DBatch._optional,  # type: ignore[misc]
+        converter=components.OutOfTreeTransformBatch._optional,  # type: ignore[misc]
     )
-    # An out-of-tree transform.
+    # If enabled, any transform (components part of the [`Transform3D`] archetype) on this entity will not affect its children.
     #
-    # Applies a transformation to the asset itself without impacting its children.
+    # It will however, still be affected by transforms on its parents.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 

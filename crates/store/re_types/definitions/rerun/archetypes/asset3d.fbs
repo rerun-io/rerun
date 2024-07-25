@@ -9,7 +9,7 @@ namespace rerun.archetypes;
 /// \example archetypes/asset3d_simple title="Simple 3D asset" image="https://static.rerun.io/asset3d_simple/af238578188d3fd0de3e330212120e2842a8ddb2/1200w.png"
 /// \example archetypes/asset3d_out_of_tree !api title="3D asset with out-of-tree transform"
 table Asset3D (
-  "attr.rust.derive": "PartialEq",
+  "attr.rust.derive": "PartialEq, Eq",
   "attr.docs.category": "Spatial 3D",
   "attr.docs.view_types": "Spatial3DView, Spatial2DView: if logged above active projection"
 ) {
@@ -34,8 +34,8 @@ table Asset3D (
 
   // --- Optional ---
 
-  /// An out-of-tree transform.
+  /// If enabled, any transform (components part of the [`Transform3D`] archetype) on this entity will not affect its children.
   ///
-  /// Applies a transformation to the asset itself without impacting its children.
-  transform: rerun.components.OutOfTreeTransform3D ("attr.rerun.component_optional", nullable, order: 3000);
+  /// It will however, still be affected by transforms on its parents.
+  out_of_tree_transform: rerun.components.OutOfTreeTransform ("attr.rerun.component_optional", nullable, order: 3000);
 }

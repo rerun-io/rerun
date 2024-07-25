@@ -7,7 +7,7 @@
 #include "../compiler_utils.hpp"
 #include "../components/blob.hpp"
 #include "../components/media_type.hpp"
-#include "../components/out_of_tree_transform3d.hpp"
+#include "../components/out_of_tree_transform.hpp"
 #include "../data_cell.hpp"
 #include "../indicator_component.hpp"
 #include "../result.hpp"
@@ -66,10 +66,10 @@ namespace rerun::archetypes {
         /// If it cannot guess, it won't be able to render the asset.
         std::optional<rerun::components::MediaType> media_type;
 
-        /// An out-of-tree transform.
+        /// If enabled, any transform (components part of the [`Transform3D`] archetype) on this entity will not affect its children.
         ///
-        /// Applies a transformation to the asset itself without impacting its children.
-        std::optional<rerun::components::OutOfTreeTransform3D> transform;
+        /// It will however, still be affected by transforms on its parents.
+        std::optional<rerun::components::OutOfTreeTransform> out_of_tree_transform;
 
       public:
         static constexpr const char IndicatorComponentName[] = "rerun.components.Asset3DIndicator";
@@ -128,11 +128,13 @@ namespace rerun::archetypes {
             RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
         }
 
-        /// An out-of-tree transform.
+        /// If enabled, any transform (components part of the [`Transform3D`] archetype) on this entity will not affect its children.
         ///
-        /// Applies a transformation to the asset itself without impacting its children.
-        Asset3D with_transform(rerun::components::OutOfTreeTransform3D _transform) && {
-            transform = std::move(_transform);
+        /// It will however, still be affected by transforms on its parents.
+        Asset3D with_out_of_tree_transform(
+            rerun::components::OutOfTreeTransform _out_of_tree_transform
+        ) && {
+            out_of_tree_transform = std::move(_out_of_tree_transform);
             // See: https://github.com/rerun-io/rerun/issues/4027
             RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
         }

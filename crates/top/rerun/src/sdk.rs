@@ -27,7 +27,7 @@ mod prelude {
     pub use re_chunk::ChunkTimeline;
     pub use re_types::components::{
         AlbedoFactor, Color, FillMode, HalfSize2D, HalfSize3D, LineStrip2D, LineStrip3D, MediaType,
-        OutOfTreeTransform3D, Position2D, Position3D, Radius, Scale3D, Text, TextLogLevel,
+        OutOfTreeTransform, Position2D, Position3D, Radius, Scale3D, Text, TextLogLevel,
         TransformRelation, TriangleIndices, Vector2D, Vector3D,
     };
     pub use re_types::datatypes::{

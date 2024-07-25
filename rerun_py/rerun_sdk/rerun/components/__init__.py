@@ -56,7 +56,6 @@ from .media_type import MediaType, MediaTypeBatch, MediaTypeType
 from .name import Name, NameBatch, NameType
 from .opacity import Opacity, OpacityBatch, OpacityType
 from .out_of_tree_transform import OutOfTreeTransform, OutOfTreeTransformBatch, OutOfTreeTransformType
-from .out_of_tree_transform3d import OutOfTreeTransform3D, OutOfTreeTransform3DBatch, OutOfTreeTransform3DType
 from .pinhole_projection import PinholeProjection, PinholeProjectionBatch, PinholeProjectionType
 from .position2d import Position2D, Position2DBatch, Position2DType
 from .position3d import Position3D, Position3DBatch, Position3DType
@@ -205,9 +204,6 @@ __all__ = [
     "OpacityBatch",
     "OpacityType",
     "OutOfTreeTransform",
-    "OutOfTreeTransform3D",
-    "OutOfTreeTransform3DBatch",
-    "OutOfTreeTransform3DType",
     "OutOfTreeTransformBatch",
     "OutOfTreeTransformType",
     "PinholeProjection",

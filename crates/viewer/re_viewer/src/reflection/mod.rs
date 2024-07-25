@@ -448,13 +448,6 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             },
         ),
         (
-            <OutOfTreeTransform3D as Loggable>::name(),
-            ComponentReflection {
-                docstring_md: "An out-of-tree affine transform between two 3D spaces, represented in a given direction.\n\n\"Out-of-tree\" means that the transform only affects its own entity: children don't inherit from it.",
-                placeholder: Some(OutOfTreeTransform3D::default().to_arrow()?),
-            },
-        ),
-        (
             <PinholeProjection as Loggable>::name(),
             ComponentReflection {
                 docstring_md: "Camera projection, from image coordinates to view coordinates.\n\nChild from parent.\nImage coordinates from camera view coordinates.\n\nExample:\n```text\n1496.1     0.0  980.5\n   0.0  1496.1  744.5\n   0.0     0.0    1.0\n```",
