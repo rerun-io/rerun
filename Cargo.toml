@@ -15,7 +15,7 @@ members = [
   "tests/rust/roundtrips/*",
   "tests/rust/test_*",
 ]
-exclude = ["examples/rust/revy"]
+exclude = ["examples/rust/revy", "examples/rust/chess_robby_fischer"]
 
 [workspace.package]
 authors = ["rerun.io <opensource@rerun.io>"]
