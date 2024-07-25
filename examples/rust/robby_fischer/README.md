@@ -166,7 +166,6 @@ fn stl_to_mesh3d(mesh: &IndexedMesh, color: impl Into<rerun::Color> + Clone) -> 
 
 Every time we make a move we log the changes to like this:
 ```rust
-
 pub fn log_piece_positions(&self, board: &Board) {
     let rec = rerun::RecordingStream::thread_local(rerun::StoreKind::Recording).unwrap();
     for file in 0..14 {
