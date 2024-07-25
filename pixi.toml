@@ -88,7 +88,13 @@ wheel-test = [
 # These environments use the dev version of the python package.
 # The package will be installed in editable mode, so changes to the python code will be reflected immediately.
 # However, any changes to do the rust bindings will require running `pixi run -e examples py-build`.
-examples = ["examples-common", "python-dev", "wheel-build", "examples-tasks"]
+examples = [
+  "examples-common",
+  "python-dev",
+  "wheel-build",
+  "python-tasks",
+  "examples-tasks",
+]
 examples-ocr = ["examples-ocr", "wheel-build"]
 
 # This environment uses the pypi-published version of the python package. This avoids the need to
