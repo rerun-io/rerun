@@ -54,7 +54,7 @@ Now, any Pixi tasks added to your project will have access to the `arrow-cpp` li
 Even without tasks, you can run `pixi shell` to create a shell environment where all your project dependencies
 (including `arrow-cpp`) will be available. You can use this `pixi shell` to run you project's build commands.
 
-Check out the [Pixi docs](https://prefix.dev/docs/pixi/basic_usage) for more information on what you can do with Pixi.
+Check out the [Pixi docs](https://pixi.sh/latest/#getting-started) for more information on what you can do with Pixi.
 
 ### Pixi in action
 
