@@ -66,7 +66,7 @@ Other changes in data representation:
 * Angles (as used in `RotationAxisAngle`) are now always stored in radians, conversion functions for degrees are provided.
 Scaling no longer distinguishes uniform and 3D scaling in its data representation. Uniform scaling is now always expressed as 3 floats with the same value.
 
-Out of tree transform (previously only availble for [`Asset3D`](https://rerun.io/docs/reference/types/archetypes/asset3d)) is no longer
+Out of tree transform (previously only available for [`Asset3D`](https://rerun.io/docs/reference/types/archetypes/asset3d)) is no longer
 represented by a component wrapping `Transform3D`, but as a separate [`OutOfTreeTransform`](https://rerun.io/docs/reference/types/components/out_of_tree_transform#speculative-link)
 component which merely stores whether transforms logged at this entity path should affect their children.
 If `OutOfTreeTransform` is enabled, any transform component will only affect the entity itself, not its children.

@@ -233,7 +233,7 @@ impl TransformContext {
                     }
 
                     // If we're going up the tree and encounter a pinhole, we need to apply it, it means that our reference is 2D.
-                    // So it's not acutally a "3d_from_2d" but rather a "2d_from_3d", consequently
+                    // So it's not actually a "3d_from_2d" but rather a "2d_from_3d", consequently
                     // `reference_from_entity_ignoring_3d_from_2d_pinhole`is always the same as `reference_from_entity`.
                     new_transform.reference_from_entity_ignoring_3d_from_2d_pinhole =
                         new_transform.reference_from_entity;
@@ -358,7 +358,7 @@ impl TransformContext {
         &self.space_origin
     }
 
-    /// Retrives transform information for a given entity.
+    /// Retrieves transform information for a given entity.
     ///
     /// Returns `None` if it's not reachable from the view's origin.
     pub fn transform_info_for_entity(&self, ent_path: &EntityPath) -> Option<&TransformInfo> {
@@ -454,7 +454,7 @@ impl TransformsAtEntity {
     }
 }
 
-/// Utility method to implement fallback provider fo `OutOfTreeTransform`.
+/// Utility method to implement fallback provider of `OutOfTreeTransform`.
 pub fn fallback_for_out_of_tree_transform(ctx: &re_viewer_context::QueryContext<'_>) -> bool {
     let result = ctx.recording().latest_at(
         ctx.query,
