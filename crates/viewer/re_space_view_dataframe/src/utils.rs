@@ -27,6 +27,8 @@ pub(crate) fn sorted_instance_paths_for<'a>(
 ) -> impl Iterator<Item = InstancePath> + 'a {
     re_tracing::profile_function!();
 
+    // TODO(cmc): This should be using re_query.
+
     store
         .all_components_on_timeline(timeline, entity_path)
         .unwrap_or_default()
@@ -37,14 +39,17 @@ pub(crate) fn sorted_instance_paths_for<'a>(
                 .latest_at_relevant_chunks(latest_at_query, entity_path, component_name)
                 .into_iter()
                 .filter_map(|chunk| {
-                    let (data_time, row_id, batch) = chunk
+                    let (index, unit) = chunk
                         .latest_at(latest_at_query, component_name)
-                        .iter_rows(timeline, &component_name)
-                        .next()?;
-                    batch.map(|batch| (data_time, row_id, batch))
+                        .into_unit()
+                        .and_then(|unit| unit.index(timeline).map(|index| (index, unit)))?;
+
+                    unit.component_batch_raw(&component_name)
+                        .map(|array| (index, array))
                 })
-                .max_by_key(|(data_time, row_id, _)| (*data_time, *row_id))
-                .map_or(0, |(_, _, batch)| batch.len());
+                .max_by_key(|(index, _array)| *index)
+                .map_or(0, |(_index, array)| array.len());
+
             (0..num_instances).map(|i| Instance::from(i as u64))
         })
         .collect::<BTreeSet<_>>() // dedup and sort

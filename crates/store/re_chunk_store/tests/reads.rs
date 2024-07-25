@@ -26,19 +26,19 @@ fn query_latest_array(
 ) -> Option<(TimeInt, RowId, Box<dyn ArrowArray>)> {
     re_tracing::profile_function!();
 
-    let (data_time, row_id, array) = store
+    let ((data_time, row_id), unit) = store
         .latest_at_relevant_chunks(query, entity_path, component_name)
         .into_iter()
-        .flat_map(|chunk| {
+        .filter_map(|chunk| {
             chunk
                 .latest_at(query, component_name)
-                .iter_rows(&query.timeline(), &component_name)
-                .collect_vec()
+                .into_unit()
+                .and_then(|chunk| chunk.index(&query.timeline()).map(|index| (index, chunk)))
         })
-        .max_by_key(|(data_time, row_id, _)| (*data_time, *row_id))
-        .and_then(|(data_time, row_id, array)| array.map(|array| (data_time, row_id, array)))?;
+        .max_by_key(|(index, _chunk)| *index)?;
 
-    Some((data_time, row_id, array))
+    unit.component_batch_raw(&component_name)
+        .map(|array| (data_time, row_id, array))
 }
 
 // ---
@@ -723,9 +723,7 @@ fn range() -> anyhow::Result<()> {
             for chunk in results {
                 let chunk = chunk.range(&query, component_name);
                 eprintln!("{chunk}");
-                for (data_time, row_id, _array) in
-                    chunk.iter_rows(&timeline_frame_nr, &component_name)
-                {
+                for (data_time, row_id) in chunk.iter_indices(&timeline_frame_nr) {
                     let (expected_data_time, expected_row_id) = row_ids_at_times[results_processed];
                     assert_eq!(expected_data_time, data_time);
                     assert_eq!(expected_row_id, row_id);

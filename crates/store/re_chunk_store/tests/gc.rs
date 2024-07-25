@@ -1,7 +1,6 @@
 use std::sync::Arc;
 
 use arrow2::array::Array as ArrowArray;
-use itertools::Itertools as _;
 use rand::Rng as _;
 
 use re_chunk::{Chunk, ChunkId, ComponentName, LatestAtQuery, RowId, TimeInt, TimePoint};
@@ -27,19 +26,19 @@ fn query_latest_array(
 ) -> Option<(TimeInt, RowId, Box<dyn ArrowArray>)> {
     re_tracing::profile_function!();
 
-    let (data_time, row_id, array) = store
+    let ((data_time, row_id), unit) = store
         .latest_at_relevant_chunks(query, entity_path, component_name)
         .into_iter()
-        .flat_map(|chunk| {
+        .filter_map(|chunk| {
             chunk
                 .latest_at(query, component_name)
-                .iter_rows(&query.timeline(), &component_name)
-                .collect_vec()
+                .into_unit()
+                .and_then(|chunk| chunk.index(&query.timeline()).map(|index| (index, chunk)))
         })
-        .max_by_key(|(data_time, row_id, _)| (*data_time, *row_id))
-        .and_then(|(data_time, row_id, array)| array.map(|array| (data_time, row_id, array)))?;
+        .max_by_key(|(index, _chunk)| *index)?;
 
-    Some((data_time, row_id, array))
+    unit.component_batch_raw(&component_name)
+        .map(|array| (data_time, row_id, array))
 }
 
 // ---
