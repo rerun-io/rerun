@@ -249,7 +249,7 @@ rec.log(
 ```
 
 ### Blueprint
-There isn't a Rust API for blueprints so instead we have to create and log the blueprint from python.
+As of writing, there isn't a Rust API for blueprints so instead we have to create and log the blueprint from python (see [#5521](https://github.com/rerun-io/rerun/issues/5521)).
 This was done by creating a script called "blueprint.py"
 ```py
 #!/usr/bin/env python3
