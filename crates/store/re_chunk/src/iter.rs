@@ -180,7 +180,7 @@ impl Chunk {
 impl Chunk {
     /// Returns an iterator over the rows of the [`Chunk`].
     ///
-    /// Each yielded item is a component batch with its associated index ([`RowId`] + data time).
+    /// If the chunk is static, `timeline` will be ignored.
     ///
     /// Iterating a [`Chunk`] on a row basis is very wasteful, performance-wise.
     /// Prefer columnar access when possible.
@@ -188,18 +188,13 @@ impl Chunk {
         &self,
         timeline: &Timeline,
         component_name: &ComponentName,
-    ) -> impl Iterator<Item = (TimeInt, RowId, Option<Box<dyn ArrowArray>>)> + '_ {
-        let Self {
-            id: _,
-            entity_path: _,
-            heap_size_bytes: _,
-            is_sorted: _,
-            row_ids: _,
-            timelines,
-            components,
-        } = self;
+    ) -> impl Iterator<Item = (TimeInt, RowId)> + '_ {
+        let Some(list_array) = self.components.get(component_name) else {
+            return Either::Left(std::iter::empty());
+        };
 
-        let row_ids = self.row_ids();
+        if self.is_static() {
+            let indices = izip!(std::iter::repeat(TimeInt::STATIC), self.row_ids());
 
         let data_times = timelines
             .get(timeline)
