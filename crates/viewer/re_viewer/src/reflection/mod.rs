@@ -443,7 +443,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
         (
             <OutOfTreeTransform as Loggable>::name(),
             ComponentReflection {
-                docstring_md: "If out of tree transform is enabled, a transform does not participate in the transform hierarchy.\n\nThis means transforms on this entity do not affect children.\nIt will however, still be affected by transforms on its parents.\n\nThis is automatically enabled if any of the the transform components are present multiple times.\nSetting this to false for a transform that has multiple instances of the same transform component,\nwill result in an error.",
+                docstring_md: "If out of tree transform is enabled, a transform does not participate in the transform hierarchy.\n\nThis means transforms on this entity do not affect children.\nIt will however, still be affected by transforms on its parents.\n\nThis is automatically enabled if any of the transform components are present multiple times.\nSetting this to false for a transform that has multiple instances of the same transform component,\nwill result in an error.",
                 placeholder: Some(OutOfTreeTransform::default().to_arrow()?),
             },
         ),

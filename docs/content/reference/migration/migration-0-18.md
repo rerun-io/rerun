@@ -134,7 +134,7 @@ auto scale_y = rerun::Scale3D::ThreeD([1.0, 2.0, 1.0]);
 After:
 ```cpp
 auto scale_uniform = rerun::Scale3D::uniform(2.0f);
-auto scale_y = rerun::Scale3D(1.0f, 2.0f, 1.0f); 
+auto scale_y = rerun::Scale3D(1.0f, 2.0f, 1.0f);
 ```
 
 Out of tree transforms are now regular transforms plus an `OutOfTreeTransform` component:

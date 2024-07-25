@@ -23,7 +23,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 /// This means transforms on this entity do not affect children.
 /// It will however, still be affected by transforms on its parents.
 ///
-/// This is automatically enabled if any of the the transform components are present multiple times.
+/// This is automatically enabled if any of the transform components are present multiple times.
 /// Setting this to false for a transform that has multiple instances of the same transform component,
 /// will result in an error.
 #[derive(Clone, Debug, Default, PartialEq, Eq, Copy)]
