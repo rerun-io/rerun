@@ -13,7 +13,7 @@ https://vimeo.com/989548054?autoplay=1&loop=1&autopause=0&background=1&muted=1&r
 [`Transform3D`](https://www.rerun.io/docs/reference/types/archetypes/transform3d), [`Points2D`](https://www.rerun.io/docs/reference/types/archetypes/points2d), [`Boxes3D`](https://www.rerun.io/docs/reference/types/archetypes/boxes3d), [`Pinhole`](https://www.rerun.io/docs/reference/types/archetypes/pinhole), [`Image`](https://www.rerun.io/docs/reference/types/archetypes/image), [`Mesh3D`](https://www.rerun.io/docs/reference/types/archetypes/mesh3d), [`LineStrips3D`](https://www.rerun.io/docs/reference/types/archetypes/line_strips3d),
 
 ## Background
-Robby Fischer is an autonomous robot arm that you can play chess against, created by Alexander Berntsson and Herman Lauenstein. It detects the human's move by using a camera that watches which squares has a piece on it and what color that piece is. It doesn't need to see recognize different roles (pawn, rook, etc..) visually because it knows the start position so it can always figure out what piece stand on what square, although it's a bit problematic if the human promotes a pawn because robot must figure out which piece the pawn promoted to. This is why it also looks at the adjacent white board, it has a specific location associated with each piece, so if the human promotes to a queen the queen square will be empty and Robby can figure out that the human promoted to a queen.
+Robby Fischer is an autonomous robot arm that you can play chess against, created by Alexander Berntsson and Herman Lauenstein. It detects the human's move by using a camera that watches which squares has a piece on it and what color that piece is. It doesn't need to see recognize different roles (pawn, rook, etc..) visually because it knows the start position so it can always figure out what piece stand on what square. However, this is a bit problematic if the human promotes a pawn because robot must figure out which piece the pawn was promoted to. This is why it also looks at the adjacent white board, where it has a specific location associated with each piece, so if the human promotes to a queen the queen square will be empty and Robby can figure out that the human promoted to a queen.
 
 To find out if a piece stands on a square we must determine what part of the image may only contain the piece that stands on that square. This is necessary to deal with the fact that some pieces are tall and block part of adjacent squares, e.g. if a king stands on `e2`, its head will block part of the `e1` square in the image. The mask that determines this is logged to `images/mask` and is shown in the bottom left corner along with the detected pieces.
 
@@ -46,7 +46,7 @@ let _vision_handle = std::thread::spawn(move || {
 ```
 
 ### Robot arm
-First we will log the URDF using the official [URDF dataloader](https://github.com/rerun-io/rerun-loader-python-example-urdf).
+Then, we will log the URDF using the official [URDF dataloader](https://github.com/rerun-io/rerun-loader-python-example-urdf).
 ```rust
 // Rerun will find the dataloader in the `PATH` and use it to log `arm.urdf`.
 rec.log_file_from_path("arm.urdf", None, false).unwrap();
@@ -114,7 +114,7 @@ rec.log(
     &rerun::Transform3D::from_translation(Into::<[f32; 3]>::into(board_center)),
 ).unwrap();
 
-// Holder refers to the adjacent white board that holds captured pieces.
+// `holder` refers to the adjacent white board that holds captured pieces.
 rec.log(
     "a8origin/holder",
     &rerun::Transform3D::from_translation(Into::<[f32; 3]>::into(
