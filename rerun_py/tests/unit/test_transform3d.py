@@ -13,7 +13,6 @@ from rerun.datatypes import (
     Quaternion,
     Rotation3D,
     RotationAxisAngle,
-    Scale3D,
     Vec3D,
 )
 
@@ -29,17 +28,6 @@ SCALE_3D_INPUT = [
     # ThreeD
     *VEC_3D_INPUT,
 ]
-
-
-def assert_correct_scale3d(scale: Scale3D | None) -> None:
-    assert scale is not None
-    if isinstance(scale.inner, float):
-        assert scale.inner == 4.0
-    elif isinstance(scale.inner, Vec3D):
-        assert_correct_vec3d(scale.inner)
-    else:
-        assert False, "Unexpected inner type"
-
 
 ROTATION_3D_INPUT = [
     # Quaternion

@@ -5,14 +5,13 @@ use re_chunk_store::LatestAtQuery;
 use re_entity_db::{EntityDb, EntityPath, EntityTree};
 use re_space_view::DataResultQuery as _;
 use re_types::{
-    archetypes::Pinhole,
+    archetypes::{LeafTransforms3D, Pinhole, Transform3D},
     components::{
         DisconnectedSpace, ImagePlaneDistance, LeafRotationAxisAngle, LeafRotationQuat,
         LeafScale3D, LeafTransformMat3x3, LeafTranslation3D, PinholeProjection, RotationAxisAngle,
-        RotationQuat, Scale3D, Transform3D, TransformMat3x3, TransformRelation, Translation3D,
-        ViewCoordinates,
+        RotationQuat, Scale3D, TransformMat3x3, TransformRelation, Translation3D, ViewCoordinates,
     },
-    ComponentNameSet, Loggable as _,
+    Archetype, ComponentNameSet, Loggable as _,
 };
 use re_viewer_context::{IdentifiedViewSystem, ViewContext, ViewContextSystem};
 use vec1::smallvec_v1::SmallVec1;
@@ -151,7 +150,8 @@ impl Default for TransformContext {
 impl ViewContextSystem for TransformContext {
     fn compatible_component_sets(&self) -> Vec<ComponentNameSet> {
         vec![
-            std::iter::once(Transform3D::name()).collect(),
+            Transform3D::all_components().iter().copied().collect(),
+            LeafTransforms3D::all_components().iter().copied().collect(),
             std::iter::once(PinholeProjection::name()).collect(),
             std::iter::once(DisconnectedSpace::name()).collect(),
         ]

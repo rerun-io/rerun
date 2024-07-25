@@ -21,7 +21,6 @@ pub fn create_component_ui_registry() -> ComponentUiRegistry {
     add_to_registry::<re_types::components::Resolution>(&mut registry);
     add_to_registry::<re_types::components::Rotation3D>(&mut registry);
     add_to_registry::<re_types::components::TensorData>(&mut registry);
-    add_to_registry::<re_types::components::Transform3D>(&mut registry);
     add_to_registry::<re_types::components::ViewCoordinates>(&mut registry);
 
     add_to_registry::<re_types_blueprint::blueprint::components::IncludedSpaceView>(&mut registry);

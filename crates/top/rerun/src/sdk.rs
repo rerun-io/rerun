@@ -3,9 +3,7 @@ pub use re_sdk::*;
 
 /// Transform helpers, for use with [`components::Transform3D`].
 pub mod transform {
-    pub use re_types::datatypes::{
-        Angle, Rotation3D, RotationAxisAngle, Scale3D, Transform3D, TranslationRotationScale3D,
-    };
+    pub use re_types::datatypes::{Angle, Quaternion, Rotation3D, RotationAxisAngle};
 }
 
 /// Coordinate system helpers, for use with [`components::ViewCoordinates`].
@@ -32,8 +30,7 @@ mod prelude {
     };
     pub use re_types::datatypes::{
         Angle, AnnotationInfo, ClassDescription, Float32, KeypointPair, Mat3x3, Quaternion, Rgba32,
-        RotationAxisAngle, TensorBuffer, TensorData, TensorDimension, TranslationRotationScale3D,
-        Vec2D, Vec3D, Vec4D,
+        RotationAxisAngle, TensorBuffer, TensorData, TensorDimension, Vec2D, Vec3D, Vec4D,
     };
 }
 pub use prelude::*;
