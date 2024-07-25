@@ -156,7 +156,7 @@ for file in 0..14 { // The holder board has 6 files
 }
 ```
 
-To log the piece models we convert them from `.stl` files to [`rerun::Mesh3D`](https://www.rerun.io/docs/reference/types/archetypes/mesh3d) by first reading the `.stl` files using [stl_io](`https://docs.rs/stl_io/latest/stl_io/`) and then convert them to [`rerun::Mesh3D`](https://www.rerun.io/docs/reference/types/archetypes/mesh3d) using the function below.
+To log the piece models we convert them from `.stl` files to [`rerun::Mesh3D`](https://www.rerun.io/docs/reference/types/archetypes/mesh3d) by first reading the `.stl` files using [stl_io](https://docs.rs/stl_io/latest/stl_io/) and then convert them to [`rerun::Mesh3D`](https://www.rerun.io/docs/reference/types/archetypes/mesh3d) using the function below.
 
 ```rust
 fn stl_to_mesh3d(mesh: &IndexedMesh, color: impl Into<rerun::Color> + Clone) -> Mesh3D {
