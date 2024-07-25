@@ -55,8 +55,13 @@ impl SpaceViewClass for TextSpaceView {
         &re_ui::icons::SPACE_VIEW_LOG
     }
 
-    fn help_text(&self, _egui_ctx: &egui::Context) -> egui::WidgetText {
-        "Shows TextLog entries over time.\nSelect the Space View for filtering options.".into()
+    fn help_markdown(&self, _egui_ctx: &egui::Context) -> String {
+        "# Text log view
+
+Shows `TextLog` entries over time.
+
+Note: select the Space View for filtering options."
+            .to_owned()
     }
 
     fn on_register(

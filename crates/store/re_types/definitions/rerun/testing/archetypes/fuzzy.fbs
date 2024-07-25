@@ -1,6 +1,3 @@
-include "fbs/attributes.fbs";
-
-include "rerun/testing/components/fuzzy.fbs";
 
 namespace rerun.testing.archetypes;
 

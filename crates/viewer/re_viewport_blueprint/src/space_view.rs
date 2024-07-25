@@ -251,7 +251,7 @@ impl SpaceViewBlueprint {
         // Create pending write operations to duplicate the entire subtree
         // TODO(jleibs): This should be a helper somewhere.
         if let Some(tree) = blueprint.tree().subtree(&current_path) {
-            tree.visit_children_recursively(&mut |path, info| {
+            tree.visit_children_recursively(|path| {
                 let sub_path: EntityPath = new_path
                     .iter()
                     .chain(&path[current_path.len()..])
@@ -262,8 +262,11 @@ impl SpaceViewBlueprint {
                     .with_row(
                         RowId::new(),
                         store_context.blueprint_timepoint_for_writes(),
-                        info.components
-                            .keys()
+                        blueprint
+                            .store()
+                            .all_components_on_timeline(&query.timeline(), path)
+                            .into_iter()
+                            .flat_map(|v| v.into_iter())
                             // It's important that we don't include the SpaceViewBlueprint's components
                             // since those will be updated separately and may contain different data.
                             .filter(|component| {
@@ -271,7 +274,7 @@ impl SpaceViewBlueprint {
                                     || !blueprint_archetypes::SpaceViewBlueprint::all_components()
                                         .contains(component)
                             })
-                            .filter_map(|&component_name| {
+                            .filter_map(|component_name| {
                                 let results = blueprint.query_caches().latest_at(
                                     blueprint.store(),
                                     query,
@@ -392,6 +395,7 @@ impl SpaceViewBlueprint {
         blueprint_query: &LatestAtQuery,
         active_timeline: &Timeline,
         space_view_class_registry: &SpaceViewClassRegistry,
+        view_state: &dyn SpaceViewState,
     ) -> QueryRange {
         // Visual time range works with regular overrides for the most part but it's a bit special:
         // * we need it for all entities unconditionally
@@ -415,7 +419,7 @@ impl SpaceViewBlueprint {
             || {
                 let space_view_class =
                     space_view_class_registry.get_class_or_log_error(self.class_identifier);
-                space_view_class.default_query_range()
+                space_view_class.default_query_range(view_state)
             },
             |time_range| QueryRange::TimeRange(time_range.clone()),
         )
@@ -797,6 +801,7 @@ mod tests {
         };
 
         let mut query_result = contents.execute_query(&store_ctx, visualizable_entities);
+        let mut view_states = ViewStates::default();
 
         test_ctx.run(|ctx, _ui| {
             resolver.update_overrides(
@@ -805,6 +810,7 @@ mod tests {
                 &test_ctx.active_timeline,
                 ctx.space_view_class_registry,
                 &mut query_result,
+                &mut view_states,
             );
         });
 

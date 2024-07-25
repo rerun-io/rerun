@@ -32,6 +32,24 @@ namespace rerun {
                 return "text/markdown";
             }
 
+            // ------------------------------------------------
+            // Images:
+
+            /// [JPEG image](https://en.wikipedia.org/wiki/JPEG): `image/jpeg`.
+            static MediaType jpeg() {
+                return "image/jpeg";
+            }
+
+            /// [PNG image](https://en.wikipedia.org/wiki/PNG): `image/png`.
+            ///
+            /// <https://www.iana.org/assignments/media-types/image/png>
+            static MediaType png() {
+                return "image/png";
+            }
+
+            // ------------------------------------------------
+            // Meshes:
+
             /// [`glTF`](https://en.wikipedia.org/wiki/GlTF): `model/gltf+json`.
             ///
             /// <https://www.iana.org/assignments/media-types/model/gltf+json>

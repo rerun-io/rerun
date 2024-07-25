@@ -1,13 +1,11 @@
 from __future__ import annotations
 
-import io
 from typing import Any
 
 import numpy as np
 import pytest
 import rerun as rr
 import torch
-from PIL import Image as PILImage
 from rerun.datatypes import TensorBuffer, TensorData, TensorDataLike, TensorDimension
 from rerun.datatypes.tensor_data import TensorDataBatch
 from rerun.error_utils import RerunWarning
@@ -121,16 +119,3 @@ def test_image_compress() -> None:
 
         # Should still be an Image
         assert type(compressed) == rr.Image
-
-    bin = io.BytesIO()
-    image = PILImage.new("RGB", (300, 200), color=(0, 0, 0))
-    image.save(bin, format="jpeg")
-
-    # Jump through some hoops to make a pre-compressed image
-    img_encoded = rr.ImageEncoded(contents=bin)
-    img = rr.Image(img_encoded.data)
-
-    with pytest.warns(RerunWarning) as warnings:
-        img.compress()
-        assert len(warnings) == 1
-        assert "Image is already compressed as JPEG" in str(warnings[0])

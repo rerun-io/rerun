@@ -1,11 +1,15 @@
 use egui::ahash::HashMap;
 use re_log_types::EntityPath;
+use re_space_view::controls::{
+    ASPECT_SCROLL_MODIFIER, HORIZONTAL_SCROLL_MODIFIER, SELECTION_RECT_ZOOM_BUTTON,
+    ZOOM_SCROLL_MODIFIER,
+};
 use re_space_view::{controls, suggest_space_view_for_each_entity, view_property_ui};
 use re_types::blueprint::archetypes::PlotLegend;
 use re_types::blueprint::components::{Corner2D, Visible};
 use re_types::View;
 use re_types::{datatypes::TensorBuffer, SpaceViewClassIdentifier};
-use re_ui::list_item;
+use re_ui::{list_item, ModifiersMarkdown, MouseButtonMarkdown};
 use re_viewer_context::{
     ApplicableEntities, IdentifiedViewSystem as _, IndicatedEntities, PerVisualizer,
     SpaceViewClass, SpaceViewClassRegistryError, SpaceViewId, SpaceViewState, SpaceViewStateExt,
@@ -38,29 +42,24 @@ impl SpaceViewClass for BarChartSpaceView {
         Box::<()>::default()
     }
 
-    fn help_text(&self, egui_ctx: &egui::Context) -> egui::WidgetText {
-        let mut layout = re_ui::LayoutJobBuilder::new(egui_ctx);
+    fn help_markdown(&self, egui_ctx: &egui::Context) -> String {
+        format!(
+            "# Bar chart view
 
-        layout.add("Pan by dragging, or scroll (+ ");
-        layout.add(controls::HORIZONTAL_SCROLL_MODIFIER);
-        layout.add(" for horizontal).\n");
+Display a 1D tensor as a bar chart.
 
-        layout.add("Zoom with pinch gesture or scroll + ");
-        layout.add(controls::ZOOM_SCROLL_MODIFIER);
-        layout.add(".\n");
+## Navigation controls
 
-        layout.add("Scroll + ");
-        layout.add(controls::ASPECT_SCROLL_MODIFIER);
-        layout.add(" to change the aspect ratio.\n");
-
-        layout.add("Drag ");
-        layout.add(controls::SELECTION_RECT_ZOOM_BUTTON);
-        layout.add(" to zoom in/out using a selection.\n\n");
-
-        layout.add_button_text("double-click");
-        layout.add(" to reset the view.");
-
-        layout.layout_job.into()
+- Pan by dragging, or scroll (+{horizontal_scroll_modifier} for horizontal).
+- Zoom with pinch gesture or scroll + {zoom_scroll_modifier}.
+- Scroll + {aspect_scroll_modifier} to zoom only the temporal axis while holding the y-range fixed.
+- Drag with the {selection_rect_zoom_button} to zoom in/out using a selection.
+- Double-click to reset the view.",
+            horizontal_scroll_modifier = ModifiersMarkdown(HORIZONTAL_SCROLL_MODIFIER, egui_ctx),
+            zoom_scroll_modifier = ModifiersMarkdown(ZOOM_SCROLL_MODIFIER, egui_ctx),
+            aspect_scroll_modifier = ModifiersMarkdown(ASPECT_SCROLL_MODIFIER, egui_ctx),
+            selection_rect_zoom_button = MouseButtonMarkdown(SELECTION_RECT_ZOOM_BUTTON),
+        )
     }
 
     fn on_register(
@@ -228,13 +227,6 @@ impl SpaceViewClass for BarChartSpaceView {
                         }
                         TensorBuffer::F64(data) => {
                             create_bar_chart(ent_path, data.iter().copied(), color)
-                        }
-                        TensorBuffer::Jpeg(_) => {
-                            re_log::warn_once!(
-                                "trying to display JPEG data as a bar chart ({:?})",
-                                ent_path
-                            );
-                            continue;
                         }
                         TensorBuffer::Nv12(_) => {
                             re_log::warn_once!(

@@ -9,18 +9,24 @@ mod marker_shape;
 mod radius;
 mod range1d;
 mod response_utils;
+mod transforms;
 mod visual_bounds2d;
 
 use datatype_editors::{
     display_name_ui, display_text_ui, edit_bool, edit_f32_min_to_max_float, edit_f32_zero_to_max,
-    edit_f32_zero_to_one, edit_multiline_string, edit_singleline_string, edit_view_enum,
+    edit_f32_zero_to_one, edit_multiline_string, edit_or_view_vec3d, edit_singleline_string,
+    edit_view_enum,
 };
 use re_types::{
-    blueprint::components::{BackgroundKind, Corner2D, LockRangeDuringZoom, ViewFit, Visible},
+    blueprint::components::{
+        BackgroundKind, Corner2D, DataframeViewMode, LockRangeDuringZoom, SortKey, SortOrder,
+        ViewFit, Visible,
+    },
     components::{
-        AggregationPolicy, AlbedoFactor, AxisLength, Color, Colormap, DepthMeter, DrawOrder,
-        FillRatio, GammaCorrection, ImagePlaneDistance, MagnificationFilter, MarkerSize, Name,
-        Opacity, StrokeWidth, Text,
+        AggregationPolicy, AlbedoFactor, AxisLength, ChannelDataType, Color, ColorModel, Colormap,
+        DepthMeter, DrawOrder, FillMode, FillRatio, GammaCorrection, ImagePlaneDistance,
+        MagnificationFilter, MarkerSize, Name, Opacity, Scale3D, StrokeWidth, Text,
+        TransformRelation, Translation3D,
     },
     Loggable as _,
 };
@@ -62,24 +68,31 @@ pub fn register_editors(registry: &mut re_viewer_context::ComponentUiRegistry) {
     registry.add_singleline_edit_or_view::<Name>(edit_singleline_string);
     registry.add_multiline_edit_or_view::<Name>(edit_multiline_string);
 
-    registry
-        .add_singleline_edit_or_view(|_ctx, ui, value| edit_view_enum::<BackgroundKind>(ui, value));
     registry.add_singleline_edit_or_view(|ctx, ui, value| {
         colormap_edit_or_view_ui(ctx.render_ctx, ui, value)
     });
-    registry.add_singleline_edit_or_view(|_ctx, ui, value| edit_view_enum::<Corner2D>(ui, value));
-    registry
-        .add_singleline_edit_or_view(|_ctx, ui, value| edit_view_enum::<BackgroundKind>(ui, value));
-    registry.add_singleline_edit_or_view(|_ctx, ui, value| edit_view_enum::<Colormap>(ui, value));
-    registry.add_singleline_edit_or_view(|_ctx, ui, value| edit_view_enum::<Corner2D>(ui, value));
-    registry.add_singleline_edit_or_view(|_ctx, ui, value| {
-        edit_view_enum::<MagnificationFilter>(ui, value)
-    });
-    registry.add_singleline_edit_or_view(|_ctx, ui, value| {
-        edit_view_enum::<AggregationPolicy>(ui, value)
-    });
-    registry.add_singleline_edit_or_view(|_ctx, ui, value| edit_view_enum::<ViewFit>(ui, value));
+
+    // TODO(#6974): Enums editors trivial and always the same, provide them automatically!
+    registry.add_singleline_edit_or_view::<AggregationPolicy>(edit_view_enum);
+    registry.add_singleline_edit_or_view::<BackgroundKind>(edit_view_enum);
+    registry.add_singleline_edit_or_view::<ChannelDataType>(edit_view_enum);
+    registry.add_singleline_edit_or_view::<Colormap>(edit_view_enum);
+    registry.add_singleline_edit_or_view::<ColorModel>(edit_view_enum);
+    registry.add_singleline_edit_or_view::<Corner2D>(edit_view_enum);
+    registry.add_singleline_edit_or_view::<DataframeViewMode>(edit_view_enum);
+    registry.add_singleline_edit_or_view::<FillMode>(edit_view_enum);
+    registry.add_singleline_edit_or_view::<MagnificationFilter>(edit_view_enum);
+    registry.add_singleline_edit_or_view::<SortKey>(edit_view_enum);
+    registry.add_singleline_edit_or_view::<SortOrder>(edit_view_enum);
+    registry.add_singleline_edit_or_view::<TransformRelation>(edit_view_enum);
+    registry.add_singleline_edit_or_view::<ViewFit>(edit_view_enum);
 
     registry.add_multiline_edit_or_view(visual_bounds2d::multiline_edit_visual_bounds2d);
     registry.add_singleline_edit_or_view(visual_bounds2d::singleline_edit_visual_bounds2d);
+
+    registry.add_multiline_edit_or_view(transforms::multiline_view_transform_mat3x3);
+    registry.add_singleline_edit_or_view(transforms::singleline_view_transform_mat3x3);
+
+    registry.add_singleline_edit_or_view::<Translation3D>(edit_or_view_vec3d);
+    registry.add_singleline_edit_or_view::<Scale3D>(edit_or_view_vec3d);
 }

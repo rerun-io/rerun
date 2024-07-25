@@ -1,0 +1,13 @@
+namespace rerun.blueprint.components;
+
+
+/// Sort order for data table.
+enum SortOrder: byte (
+    "attr.rerun.scope": "blueprint"
+) {
+    /// Ascending
+    Ascending (default),
+
+    /// Descending
+    Descending,
+}

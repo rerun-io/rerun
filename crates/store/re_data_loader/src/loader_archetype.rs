@@ -1,5 +1,6 @@
 use re_chunk::{Chunk, RowId};
 use re_log_types::{EntityPath, TimeInt, TimePoint};
+use re_types::components::MediaType;
 
 use crate::{DataLoader, DataLoaderError, LoadedData};
 
@@ -138,10 +139,12 @@ fn load_image(
 
     let rows = [
         {
-            let arch = re_types::archetypes::Image::from_file_contents(
-                contents,
-                image::ImageFormat::from_path(filepath).ok(),
-            )?;
+            let mut arch = re_types::archetypes::ImageEncoded::from_file_contents(contents);
+
+            if let Ok(format) = image::ImageFormat::from_path(filepath) {
+                arch.media_type = Some(MediaType::from(format.to_mime_type()));
+            }
+
             Chunk::builder(entity_path)
                 .with_archetype(RowId::new(), timepoint, &arch)
                 .build()?

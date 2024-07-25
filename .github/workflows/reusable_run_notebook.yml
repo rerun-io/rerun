@@ -26,7 +26,7 @@ permissions:
 jobs:
   run-notebook:
     name: Run notebook
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-latest-16-cores # Note that as of writing we need the additional storage page (14 gb of the ubunut-latest runner is not enough).
     container:
       image: rerunio/ci_docker:0.14.0 # Required to run the wheel or we get "No matching distribution found for attrs>=23.1.0" during `pip install rerun-sdk`
     steps:
@@ -34,7 +34,7 @@ jobs:
         with:
           ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.ref || '' }}
 
-      - uses: prefix-dev/setup-pixi@v0.6.0
+      - uses: prefix-dev/setup-pixi@v0.8.1
         with:
           pixi-version: v0.25.0
           environments: wheel-test
@@ -57,32 +57,9 @@ jobs:
           pixi run -e wheel-test 'echo "wheel_version=$(python scripts/ci/crates.py get-version)"' >> "$GITHUB_OUTPUT"
 
       - name: Install built wheel
-        # `pip` considers local and remote package with the same version interchangeable.
-        # That means we need to set `--no-index` to force it to install the local package,
-        # but then it can't find any of the wheel's remote dependencies!
-        #
-        # The error would look like:
-        #   Could not find a version that satisfies the requirement attrs>=23.1.0 (from rerun-sdk) (from versions: none)
-        #
-        # So instead we do this complicated dance:
-        # 1. Install `rerun-sdk` and `rerun-notebook` with `--no-deps --no-index`.
-        #      It is guaranteed to install the local wheel because of `--no-index`,
-        #      and won't error due to not being able to find dependencies because
-        #      of `--no-deps`.
-        # 2. Install `rerun-sdk[notebook]` from the wheel again.
-        #      This will not reinstall `rerun-sdk` or `rerun-notebook`, but it will
-        #      properly install all dependencies.
-        # It's a mystery whether or not this installs the dependencies of the local wheel, or of the pypi-published package…
         run: |
-          pixi run -e wheel-test pip install \
-              'rerun-sdk==${{ steps.get-version.outputs.wheel_version }}' \
-              'rerun-notebook==${{ steps.get-version.outputs.wheel_version }}' \
-              --find-links wheel \
-              --no-index \
-              --no-deps
-          pixi run -e wheel-test pip install \
-              'rerun-sdk[notebook]==${{ steps.get-version.outputs.wheel_version }}' \
-              --find-links wheel
+          pixi run python scripts/ci/pixi_install_wheel.py --feature python-pypi --package rerun-sdk --dir wheel
+          pixi run python scripts/ci/pixi_install_wheel.py --feature python-pypi --package rerun-notebook --dir wheel --platform-independent
 
       - name: Install Deps
         run: pixi run -e wheel-test pip install -r examples/python/notebook/requirements.txt

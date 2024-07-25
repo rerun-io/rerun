@@ -12,10 +12,8 @@ a 2D RGB Image, the shape would be `[height, width, channel]`.
 These dimensions are combined with an index to look up values from the `buffer` field,
 which stores a contiguous array of typed values.
 
-Note that the buffer may be encoded in a compressed format such as `jpeg` or
-in a format with downsampled chroma, such as NV12 or YUY2.
-For file formats, the shape is used as a hint, for chroma downsampled format
-the shape has to be the shape of the decoded image.
+Note that the buffer may in a format with downsampled chroma, such as NV12 or YUY2.
+For chroma downsampled formats the shape has to be the shape of the decoded image.
 
 ## Fields
 
@@ -30,8 +28,6 @@ the shape has to be the shape of the decoded image.
 ## Used by
 
 * [`BarChart`](../archetypes/bar_chart.md)
-* [`DepthImage`](../archetypes/depth_image.md)
 * [`Image`](../archetypes/image.md)
 * [`Mesh3D`](../archetypes/mesh3d.md)
-* [`SegmentationImage`](../archetypes/segmentation_image.md)
 * [`Tensor`](../archetypes/tensor.md)

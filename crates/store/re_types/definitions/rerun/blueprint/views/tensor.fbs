@@ -1,5 +1,3 @@
-include "rerun/attributes.fbs";
-
 namespace rerun.blueprint.views;
 
 /// A view on a tensor of any dimensionality.

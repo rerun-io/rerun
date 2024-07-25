@@ -147,7 +147,7 @@ def main() -> None:
         active_languages.append("py")
 
     # Running CMake in parallel causes failures during rerun_sdk & arrow build.
-    if not args.no_cpp_build:
+    if not args.no_cpp:
         print(f"Running {len(examples)} C++ examples…")
         for example in examples:
             if "cpp" not in example.opt_out_entirely() and "cpp" in active_languages:
@@ -198,19 +198,19 @@ def main() -> None:
 
 def run_example(example: Example, language: str, args: argparse.Namespace) -> None:
     if language == "cpp":
-        cpp_output_path = run_roundtrip_cpp(example)
+        cpp_output_path = run_cpp(example)
         check_non_empty_rrd(cpp_output_path)
     elif language == "py":
-        python_output_path = run_roundtrip_python(example)
+        python_output_path = run_python(example)
         check_non_empty_rrd(python_output_path)
     elif language == "rust":
-        rust_output_path = run_roundtrip_rust(example, args.release, args.target, args.target_dir)
+        rust_output_path = run_rust(example, args.release, args.target, args.target_dir)
         check_non_empty_rrd(rust_output_path)
     else:
         assert False, f"Unknown language: {language}"
 
 
-def run_roundtrip_python(example: Example) -> str:
+def run_python(example: Example) -> str:
     main_path = f"docs/snippets/all/{example.subdir}/{example.name}.py"
     output_path = example.output_path("python")
 
@@ -227,7 +227,7 @@ def run_roundtrip_python(example: Example) -> str:
     return output_path
 
 
-def run_roundtrip_rust(example: Example, release: bool, target: str | None, target_dir: str | None) -> str:
+def run_rust(example: Example, release: bool, target: str | None, target_dir: str | None) -> str:
     output_path = example.output_path("rust")
 
     cmd = ["cargo", "run", "--quiet", "-p", "snippets"]
@@ -250,7 +250,7 @@ def run_roundtrip_rust(example: Example, release: bool, target: str | None, targ
     return output_path
 
 
-def run_roundtrip_cpp(example: Example) -> str:
+def run_cpp(example: Example) -> str:
     output_path = example.output_path("cpp")
 
     extension = ".exe" if os.name == "nt" else ""
@@ -265,6 +265,7 @@ def check_non_empty_rrd(path: str) -> None:
     from pathlib import Path
 
     assert Path(path).stat().st_size > 0
+    print(f"Confirmed output written to {Path(path).absolute()}")
 
 
 if __name__ == "__main__":

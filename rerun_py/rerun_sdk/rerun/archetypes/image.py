@@ -36,10 +36,13 @@ class Image(ImageExt, Archetype):
     Leading and trailing unit-dimensions are ignored, so that
     `1x480x640x3x1` is treated as a `480x640x3` RGB image.
 
-    Rerun also supports compressed image encoded as JPEG, N12, and YUY2.
-    Using these formats can save a lot of bandwidth and memory.
-    To compress an image, use [`rerun.Image.compress`][].
-    To pass in an already encoded image, use  [`rerun.ImageEncoded`][].
+    Rerun also supports compressed images (JPEG, PNG, …), using [`archetypes.ImageEncoded`][rerun.archetypes.ImageEncoded].
+    Compressing images can save a lot of bandwidth and memory.
+
+    You can compress an image using [`rerun.Image.compress`][].
+    To pass in a chroma-encoded image (NV12, YUY2), use [`rerun.ImageChromaDownsampled`][].
+
+    See also [`components.TensorData`][rerun.components.TensorData] and [`datatypes.TensorBuffer`][rerun.datatypes.TensorBuffer].
 
     Example
     -------

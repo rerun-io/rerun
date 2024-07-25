@@ -84,6 +84,13 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             },
         ),
         (
+            <DataframeViewMode as Loggable>::name(),
+            ComponentReflection {
+                docstring_md: "The kind of table displayed by the dataframe view",
+                placeholder: Some(DataframeViewMode::default().to_arrow()?),
+            },
+        ),
+        (
             <GridColumns as Loggable>::name(),
             ComponentReflection {
                 docstring_md: "How many columns a grid container should have.",
@@ -144,6 +151,20 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             ComponentReflection {
                 docstring_md: "The layout share of a row in the container.",
                 placeholder: Some(RowShare::default().to_arrow()?),
+            },
+        ),
+        (
+            <SortKey as Loggable>::name(),
+            ComponentReflection {
+                docstring_md: "Primary element by which to group by in a temporal data table.",
+                placeholder: Some(SortKey::default().to_arrow()?),
+            },
+        ),
+        (
+            <SortOrder as Loggable>::name(),
+            ComponentReflection {
+                docstring_md: "Sort order for data table.",
+                placeholder: Some(SortOrder::default().to_arrow()?),
             },
         ),
         (
@@ -252,6 +273,13 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             },
         ),
         (
+            <ChannelDataType as Loggable>::name(),
+            ComponentReflection {
+                docstring_md: "The innermost datatype of an image.\n\nHow individual color channel components are encoded.",
+                placeholder: Some(ChannelDataType::default().to_arrow()?),
+            },
+        ),
+        (
             <ClassId as Loggable>::name(),
             ComponentReflection {
                 docstring_md: "A 16-bit ID representing a type of semantic class.",
@@ -270,6 +298,13 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             ComponentReflection {
                 docstring_md: "An RGBA color with unmultiplied/separate alpha, in sRGB gamma space with linear alpha.\n\nThe color is stored as a 32-bit integer, where the most significant\nbyte is `R` and the least significant byte is `A`.",
                 placeholder: Some(Color::default().to_arrow()?),
+            },
+        ),
+        (
+            <ColorModel as Loggable>::name(),
+            ComponentReflection {
+                docstring_md: "Specified what color components are present in an [`archetypes.Image`](https://rerun.io/docs/reference/types/archetypes/image).\n\nThis combined with [`components.ChannelDataType`](https://rerun.io/docs/reference/types/components/channel_data_type?speculative-link) determines the pixel format of an image.",
+                placeholder: Some(ColorModel::default().to_arrow()?),
             },
         ),
         (
@@ -298,6 +333,13 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             ComponentReflection {
                 docstring_md: "Draw order of 2D elements. Higher values are drawn on top of lower values.\n\nAn entity can have only a single draw order component.\nWithin an entity draw order is governed by the order of the components.\n\nDraw order for entities with the same draw order is generally undefined.",
                 placeholder: Some(DrawOrder::default().to_arrow()?),
+            },
+        ),
+        (
+            <FillMode as Loggable>::name(),
+            ComponentReflection {
+                docstring_md: "How a geometric shape is drawn and colored.",
+                placeholder: Some(FillMode::default().to_arrow()?),
             },
         ),
         (
@@ -448,6 +490,13 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             },
         ),
         (
+            <Resolution2D as Loggable>::name(),
+            ComponentReflection {
+                docstring_md: "The width and height of a 2D image.",
+                placeholder: Some(Resolution2D::default().to_arrow()?),
+            },
+        ),
+        (
             <Rotation3D as Loggable>::name(),
             ComponentReflection {
                 docstring_md: "A 3D rotation, represented either by a quaternion or a rotation around axis.",
@@ -455,10 +504,31 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             },
         ),
         (
+            <RotationAxisAngle as Loggable>::name(),
+            ComponentReflection {
+                docstring_md: "3D rotation represented by a rotation around a given axis.",
+                placeholder: Some(RotationAxisAngle::default().to_arrow()?),
+            },
+        ),
+        (
+            <RotationQuat as Loggable>::name(),
+            ComponentReflection {
+                docstring_md: "A 3D rotation expressed as a quaternion.\n\nNote: although the x,y,z,w components of the quaternion will be passed through to the\ndatastore as provided, when used in the Viewer Quaternions will always be normalized.",
+                placeholder: Some(RotationQuat::default().to_arrow()?),
+            },
+        ),
+        (
             <Scalar as Loggable>::name(),
             ComponentReflection {
                 docstring_md: "A scalar value, encoded as a 64-bit floating point.\n\nUsed for time series plots.",
                 placeholder: Some(Scalar::default().to_arrow()?),
+            },
+        ),
+        (
+            <Scale3D as Loggable>::name(),
+            ComponentReflection {
+                docstring_md: "A 3D scale factor.\n\nA scale of 1.0 means no scaling.\nA scale of 2.0 means doubling the size.\nEach component scales along the corresponding axis.",
+                placeholder: Some(Scale3D::default().to_arrow()?),
             },
         ),
         (
@@ -471,7 +541,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
         (
             <TensorData as Loggable>::name(),
             ComponentReflection {
-                docstring_md: "An N-dimensional array of numbers.\n\nThe number of dimensions and their respective lengths is specified by the `shape` field.\nThe dimensions are ordered from outermost to innermost. For example, in the common case of\na 2D RGB Image, the shape would be `[height, width, channel]`.\n\nThese dimensions are combined with an index to look up values from the `buffer` field,\nwhich stores a contiguous array of typed values.\n\nNote that the buffer may be encoded in a compressed format such as `jpeg` or\nin a format with downsampled chroma, such as NV12 or YUY2.\nFor file formats, the shape is used as a hint, for chroma downsampled format\nthe shape has to be the shape of the decoded image.",
+                docstring_md: "An N-dimensional array of numbers.\n\nThe number of dimensions and their respective lengths is specified by the `shape` field.\nThe dimensions are ordered from outermost to innermost. For example, in the common case of\na 2D RGB Image, the shape would be `[height, width, channel]`.\n\nThese dimensions are combined with an index to look up values from the `buffer` field,\nwhich stores a contiguous array of typed values.\n\nNote that the buffer may in a format with downsampled chroma, such as NV12 or YUY2.\nFor chroma downsampled formats the shape has to be the shape of the decoded image.",
                 placeholder: Some(TensorData::default().to_arrow()?),
             },
         ),
@@ -525,6 +595,27 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             },
         ),
         (
+            <TransformMat3x3 as Loggable>::name(),
+            ComponentReflection {
+                docstring_md: "A 3x3 transformation matrix Matrix.\n\n3x3 matrixes are able to represent any affine transformation in 3D space,\ni.e. rotation, scaling, shearing, reflection etc.\n\nMatrices in Rerun are stored as flat list of coefficients in column-major order:\n```text\n            column 0       column 1       column 2\n       -------------------------------------------------\nrow 0 | flat_columns[0] flat_columns[3] flat_columns[6]\nrow 1 | flat_columns[1] flat_columns[4] flat_columns[7]\nrow 2 | flat_columns[2] flat_columns[5] flat_columns[8]\n```",
+                placeholder: Some(TransformMat3x3::default().to_arrow()?),
+            },
+        ),
+        (
+            <TransformRelation as Loggable>::name(),
+            ComponentReflection {
+                docstring_md: "Specifies relation a spatial transform describes.",
+                placeholder: Some(TransformRelation::default().to_arrow()?),
+            },
+        ),
+        (
+            <Translation3D as Loggable>::name(),
+            ComponentReflection {
+                docstring_md: "A translation vector in 3D space.",
+                placeholder: Some(Translation3D::default().to_arrow()?),
+            },
+        ),
+        (
             <TriangleIndices as Loggable>::name(),
             ComponentReflection {
                 docstring_md: "The three indices of a triangle in a triangle mesh.",
@@ -564,6 +655,38 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
     re_tracing::profile_function!();
     let array = [
         (
+            ArchetypeName::new("rerun.archetypes.Transform3D"),
+            ArchetypeReflection {
+                display_name: "Transform 3D",
+                docstring_md: "A transform between two 3D spaces, i.e. a pose.\n\nFrom the point of view of the entity's coordinate system,\nall components are applied in the inverse order they are listed here.\nE.g. if both a translation and a max3x3 transform are present,\nthe 3x3 matrix is applied first, followed by the translation.\n\nEach transform component can be listed multiple times, but transform tree propagation is only possible\nif there's only one instance for each transform component.\nTODO(#6831): write more about the exact interaction with the to be written `OutOfTreeTransform` component.\n\n## Examples\n\n### Variety of 3D transforms\n```ignore\nuse std::f32::consts::TAU;\n\nfn main() -> Result<(), Box<dyn std::error::Error>> {\n    let rec = rerun::RecordingStreamBuilder::new(\"rerun_example_transform3d\").spawn()?;\n\n    let arrow = rerun::Arrows3D::from_vectors([(0.0, 1.0, 0.0)]).with_origins([(0.0, 0.0, 0.0)]);\n\n    rec.log(\"base\", &arrow)?;\n\n    rec.log(\n        \"base/translated\",\n        &rerun::Transform3D::from_translation([1.0, 0.0, 0.0]),\n    )?;\n\n    rec.log(\"base/translated\", &arrow)?;\n\n    rec.log(\n        \"base/rotated_scaled\",\n        &rerun::Transform3D::from_rotation_scale(\n            rerun::RotationAxisAngle::new([0.0, 0.0, 1.0], rerun::Angle::from_radians(TAU / 8.0)),\n            rerun::Scale3D::from(2.0),\n        ),\n    )?;\n\n    rec.log(\"base/rotated_scaled\", &arrow)?;\n\n    Ok(())\n}\n```\n<center>\n<picture>\n  <source media=\"(max-width: 480px)\" srcset=\"https://static.rerun.io/transform3d_simple/141368b07360ce3fcb1553079258ae3f42bdb9ac/480w.png\">\n  <source media=\"(max-width: 768px)\" srcset=\"https://static.rerun.io/transform3d_simple/141368b07360ce3fcb1553079258ae3f42bdb9ac/768w.png\">\n  <source media=\"(max-width: 1024px)\" srcset=\"https://static.rerun.io/transform3d_simple/141368b07360ce3fcb1553079258ae3f42bdb9ac/1024w.png\">\n  <source media=\"(max-width: 1200px)\" srcset=\"https://static.rerun.io/transform3d_simple/141368b07360ce3fcb1553079258ae3f42bdb9ac/1200w.png\">\n  <img src=\"https://static.rerun.io/transform3d_simple/141368b07360ce3fcb1553079258ae3f42bdb9ac/full.png\" width=\"640\">\n</picture>\n</center>\n\n### Transform hierarchy\n```ignore\nfn main() -> Result<(), Box<dyn std::error::Error>> {\n    let rec = rerun::RecordingStreamBuilder::new(\"rerun_example_transform3d_hierarchy\").spawn()?;\n\n    // TODO(#5521): log two space views as in the python example\n\n    rec.set_time_seconds(\"sim_time\", 0.0);\n\n    // Planetary motion is typically in the XY plane.\n    rec.log_static(\"/\", &rerun::ViewCoordinates::RIGHT_HAND_Z_UP)?;\n\n    // Setup points, all are in the center of their own space:\n    rec.log(\n        \"sun\",\n        &rerun::Points3D::new([[0.0, 0.0, 0.0]])\n            .with_radii([1.0])\n            .with_colors([rerun::Color::from_rgb(255, 200, 10)]),\n    )?;\n    rec.log(\n        \"sun/planet\",\n        &rerun::Points3D::new([[0.0, 0.0, 0.0]])\n            .with_radii([0.4])\n            .with_colors([rerun::Color::from_rgb(40, 80, 200)]),\n    )?;\n    rec.log(\n        \"sun/planet/moon\",\n        &rerun::Points3D::new([[0.0, 0.0, 0.0]])\n            .with_radii([0.15])\n            .with_colors([rerun::Color::from_rgb(180, 180, 180)]),\n    )?;\n\n    // Draw fixed paths where the planet & moon move.\n    let d_planet = 6.0;\n    let d_moon = 3.0;\n    let angles = (0..=100).map(|i| i as f32 * 0.01 * std::f32::consts::TAU);\n    let circle: Vec<_> = angles.map(|angle| [angle.sin(), angle.cos()]).collect();\n    rec.log(\n        \"sun/planet_path\",\n        &rerun::LineStrips3D::new([rerun::LineStrip3D::from_iter(\n            circle\n                .iter()\n                .map(|p| [p[0] * d_planet, p[1] * d_planet, 0.0]),\n        )]),\n    )?;\n    rec.log(\n        \"sun/planet/moon_path\",\n        &rerun::LineStrips3D::new([rerun::LineStrip3D::from_iter(\n            circle.iter().map(|p| [p[0] * d_moon, p[1] * d_moon, 0.0]),\n        )]),\n    )?;\n\n    // Movement via transforms.\n    for i in 0..(6 * 120) {\n        let time = i as f32 / 120.0;\n        rec.set_time_seconds(\"sim_time\", time);\n        let r_moon = time * 5.0;\n        let r_planet = time * 2.0;\n\n        rec.log(\n            \"sun/planet\",\n            &rerun::Transform3D::from_translation_rotation(\n                [r_planet.sin() * d_planet, r_planet.cos() * d_planet, 0.0],\n                rerun::RotationAxisAngle {\n                    axis: [1.0, 0.0, 0.0].into(),\n                    angle: rerun::Angle::from_degrees(20.0),\n                },\n            ),\n        )?;\n        rec.log(\n            \"sun/planet/moon\",\n            &rerun::Transform3D::from_translation([\n                r_moon.cos() * d_moon,\n                r_moon.sin() * d_moon,\n                0.0,\n            ])\n            .with_relation(rerun::TransformRelation::ChildFromParent),\n        )?;\n    }\n\n    Ok(())\n}\n```\n<center>\n<picture>\n  <source media=\"(max-width: 480px)\" srcset=\"https://static.rerun.io/transform_hierarchy/cb7be7a5a31fcb2efc02ba38e434849248f87554/480w.png\">\n  <source media=\"(max-width: 768px)\" srcset=\"https://static.rerun.io/transform_hierarchy/cb7be7a5a31fcb2efc02ba38e434849248f87554/768w.png\">\n  <source media=\"(max-width: 1024px)\" srcset=\"https://static.rerun.io/transform_hierarchy/cb7be7a5a31fcb2efc02ba38e434849248f87554/1024w.png\">\n  <source media=\"(max-width: 1200px)\" srcset=\"https://static.rerun.io/transform_hierarchy/cb7be7a5a31fcb2efc02ba38e434849248f87554/1200w.png\">\n  <img src=\"https://static.rerun.io/transform_hierarchy/cb7be7a5a31fcb2efc02ba38e434849248f87554/full.png\" width=\"640\">\n</picture>\n</center>",
+                fields: vec![
+                    ArchetypeFieldReflection { component_name :
+                    "rerun.components.Translation3D".into(), display_name :
+                    "Translation", docstring_md : "Translation vectors.", },
+                    ArchetypeFieldReflection { component_name :
+                    "rerun.components.RotationAxisAngle".into(), display_name :
+                    "Rotation axis angle", docstring_md : "Rotation via axis + angle.",
+                    }, ArchetypeFieldReflection { component_name :
+                    "rerun.components.RotationQuat".into(), display_name : "Quaternion",
+                    docstring_md : "Rotation via quaternion.", },
+                    ArchetypeFieldReflection { component_name :
+                    "rerun.components.Scale3D".into(), display_name : "Scale",
+                    docstring_md : "Scaling factor.", }, ArchetypeFieldReflection {
+                    component_name : "rerun.components.TransformMat3x3".into(),
+                    display_name : "Mat 3x 3", docstring_md :
+                    "3x3 transformation matrices.", }, ArchetypeFieldReflection {
+                    component_name : "rerun.components.TransformRelation".into(),
+                    display_name : "Relation", docstring_md :
+                    "Specifies the relation this transform establishes between this entity and its parent.",
+                    }, ArchetypeFieldReflection { component_name :
+                    "rerun.components.AxisLength".into(), display_name : "Axis length",
+                    docstring_md :
+                    "Visual length of the 3 axes.\n\nThe length is interpreted in the local coordinate system of the transform.\nIf the transform is scaled, the axes will be scaled accordingly.",
+                    },
+                ],
+            },
+        ),
+        (
             ArchetypeName::new("rerun.blueprint.archetypes.Background"),
             ArchetypeReflection {
                 display_name: "Background",
@@ -575,6 +698,18 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                     ArchetypeFieldReflection { component_name : "rerun.components.Color"
                     .into(), display_name : "Color", docstring_md :
                     "Color used for the `SolidColor` background type.", },
+                ],
+            },
+        ),
+        (
+            ArchetypeName::new("rerun.blueprint.archetypes.DataframeViewMode"),
+            ArchetypeReflection {
+                display_name: "Dataframe view mode",
+                docstring_md: "Configuration for the dataframe view",
+                fields: vec![
+                    ArchetypeFieldReflection { component_name :
+                    "rerun.blueprint.components.DataframeViewMode".into(), display_name :
+                    "Mode", docstring_md : "The kind of table to display", },
                 ],
             },
         ),
@@ -670,6 +805,21 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                     "rerun.blueprint.components.ViewFit".into(), display_name :
                     "Scaling", docstring_md : "How the image is scaled to fit the view.",
                     },
+                ],
+            },
+        ),
+        (
+            ArchetypeName::new("rerun.blueprint.archetypes.TimeRangeTableOrder"),
+            ArchetypeReflection {
+                display_name: "Time range table order",
+                docstring_md: "Ordering of the time range table of the dataframe view",
+                fields: vec![
+                    ArchetypeFieldReflection { component_name :
+                    "rerun.blueprint.components.SortKey".into(), display_name :
+                    "Sort key", docstring_md : "The primary sort key", },
+                    ArchetypeFieldReflection { component_name :
+                    "rerun.blueprint.components.SortOrder".into(), display_name :
+                    "Sort order", docstring_md : "The sort order", },
                 ],
             },
         ),

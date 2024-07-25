@@ -480,6 +480,8 @@ fn run_rrd_commands(cmd: &RrdCommands) -> anyhow::Result<()> {
             let path_to_rrd1 = PathBuf::from(path_to_rrd1);
             let path_to_rrd2 = PathBuf::from(path_to_rrd2);
             run_compare(&path_to_rrd1, &path_to_rrd2, *full_dump)
+                // Print current directory, this can be useful for debugging issues with relative paths.
+                .with_context(|| format!("current directory {:?}", std::env::current_dir()))
         }
 
         RrdCommands::Print(print_command) => print_command.run(),
@@ -616,7 +618,7 @@ fn run_compact(path_to_input_rrd: &Path, path_to_output_rrd: &Path) -> anyhow::R
         )
     };
 
-    use re_viewer::external::re_chunk_store::ChunkStoreConfig;
+    use re_chunk_store::ChunkStoreConfig;
     let mut store_config = ChunkStoreConfig::from_env().unwrap_or_default();
     // NOTE: We're doing headless processing, there's no point in running subscribers, it will just
     // (massively) slow us down.
@@ -719,7 +721,7 @@ fn run_merge(path_to_input_rrds: &[PathBuf], path_to_output_rrd: &Path) -> anyho
         )
     };
 
-    use re_viewer::external::re_chunk_store::ChunkStoreConfig;
+    use re_chunk_store::ChunkStoreConfig;
     let mut store_config = ChunkStoreConfig::from_env().unwrap_or_default();
     // NOTE: We're doing headless processing, there's no point in running subscribers, it will just
     // (massively) slow us down.

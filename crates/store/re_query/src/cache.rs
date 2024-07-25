@@ -193,6 +193,7 @@ impl ChunkStoreSubscriber for Caches {
             let ChunkStoreDiff {
                 kind: _, // Don't care: both additions and deletions invalidate query results.
                 chunk,
+                compacted: _,
             } = diff;
 
             {

@@ -24,9 +24,6 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 /// directly to `Transform3D::child_from_parent` or `Transform3D::parent_from_child`.
 #[derive(Clone, Debug, Copy, PartialEq)]
 pub enum Transform3D {
-    /// Translation plus a 3x3 matrix for scale, rotation, skew, etc.
-    TranslationAndMat3x3(crate::datatypes::TranslationAndMat3x3),
-
     /// Translation, rotation and scale, decomposed.
     TranslationRotationScale(crate::datatypes::TranslationRotationScale3D),
 }
@@ -36,15 +33,13 @@ impl ::re_types_core::SizeBytes for Transform3D {
     fn heap_size_bytes(&self) -> u64 {
         #![allow(clippy::match_same_arms)]
         match self {
-            Self::TranslationAndMat3x3(v) => v.heap_size_bytes(),
             Self::TranslationRotationScale(v) => v.heap_size_bytes(),
         }
     }
 
     #[inline]
     fn is_pod() -> bool {
-        <crate::datatypes::TranslationAndMat3x3>::is_pod()
-            && <crate::datatypes::TranslationRotationScale3D>::is_pod()
+        <crate::datatypes::TranslationRotationScale3D>::is_pod()
     }
 }
 
@@ -66,17 +61,12 @@ impl ::re_types_core::Loggable for Transform3D {
             std::sync::Arc::new(vec![
                 Field::new("_null_markers", DataType::Null, true),
                 Field::new(
-                    "TranslationAndMat3x3",
-                    <crate::datatypes::TranslationAndMat3x3>::arrow_datatype(),
-                    false,
-                ),
-                Field::new(
                     "TranslationRotationScale",
                     <crate::datatypes::TranslationRotationScale3D>::arrow_datatype(),
                     false,
                 ),
             ]),
-            Some(std::sync::Arc::new(vec![0i32, 1i32, 2i32])),
+            Some(std::sync::Arc::new(vec![0i32, 1i32])),
             UnionMode::Dense,
         )
     }
@@ -103,28 +93,11 @@ impl ::re_types_core::Loggable for Transform3D {
                 .iter()
                 .map(|a| match a.as_deref() {
                     None => 0,
-                    Some(Self::TranslationAndMat3x3(_)) => 1i8,
-                    Some(Self::TranslationRotationScale(_)) => 2i8,
+                    Some(Self::TranslationRotationScale(_)) => 1i8,
                 })
                 .collect();
             let fields = vec![
                 NullArray::new(DataType::Null, data.iter().filter(|v| v.is_none()).count()).boxed(),
-                {
-                    let translation_and_mat3x3: Vec<_> = data
-                        .iter()
-                        .filter_map(|datum| match datum.as_deref() {
-                            Some(Self::TranslationAndMat3x3(v)) => Some(v.clone()),
-                            _ => None,
-                        })
-                        .collect();
-                    let translation_and_mat3x3_bitmap: Option<arrow2::bitmap::Bitmap> = None;
-                    {
-                        _ = translation_and_mat3x3_bitmap;
-                        crate::datatypes::TranslationAndMat3x3::to_arrow_opt(
-                            translation_and_mat3x3.into_iter().map(Some),
-                        )?
-                    }
-                },
                 {
                     let translation_rotation_scale: Vec<_> = data
                         .iter()
@@ -143,7 +116,6 @@ impl ::re_types_core::Loggable for Transform3D {
                 },
             ];
             let offsets = Some({
-                let mut translation_and_mat3x3_offset = 0;
                 let mut translation_rotation_scale_offset = 0;
                 let mut nulls_offset = 0;
                 data.iter()
@@ -151,11 +123,6 @@ impl ::re_types_core::Loggable for Transform3D {
                         None => {
                             let offset = nulls_offset;
                             nulls_offset += 1;
-                            offset
-                        }
-                        Some(Self::TranslationAndMat3x3(_)) => {
-                            let offset = translation_and_mat3x3_offset;
-                            translation_and_mat3x3_offset += 1;
                             offset
                         }
                         Some(Self::TranslationRotationScale(_)) => {
@@ -209,21 +176,11 @@ impl ::re_types_core::Loggable for Transform3D {
                     ))
                     .with_context("rerun.datatypes.Transform3D");
                 }
-                let translation_and_mat3x3 = {
+                let translation_rotation_scale = {
                     if 1usize >= arrow_data_arrays.len() {
                         return Ok(Vec::new());
                     }
                     let arrow_data = &*arrow_data_arrays[1usize];
-                    crate::datatypes::TranslationAndMat3x3::from_arrow_opt(arrow_data)
-                        .with_context("rerun.datatypes.Transform3D#TranslationAndMat3x3")?
-                        .into_iter()
-                        .collect::<Vec<_>>()
-                };
-                let translation_rotation_scale = {
-                    if 2usize >= arrow_data_arrays.len() {
-                        return Ok(Vec::new());
-                    }
-                    let arrow_data = &*arrow_data_arrays[2usize];
                     crate::datatypes::TranslationRotationScale3D::from_arrow_opt(arrow_data)
                         .with_context("rerun.datatypes.Transform3D#TranslationRotationScale")?
                         .into_iter()
@@ -238,26 +195,7 @@ impl ::re_types_core::Loggable for Transform3D {
                             Ok(None)
                         } else {
                             Ok(Some(match typ {
-                                1i8 => Self::TranslationAndMat3x3({
-                                    if offset as usize >= translation_and_mat3x3.len() {
-                                        return Err(DeserializationError::offset_oob(
-                                            offset as _,
-                                            translation_and_mat3x3.len(),
-                                        ))
-                                        .with_context(
-                                            "rerun.datatypes.Transform3D#TranslationAndMat3x3",
-                                        );
-                                    }
-
-                                    #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
-                                    unsafe { translation_and_mat3x3.get_unchecked(offset as usize) }
-                                        .clone()
-                                        .ok_or_else(DeserializationError::missing_data)
-                                        .with_context(
-                                            "rerun.datatypes.Transform3D#TranslationAndMat3x3",
-                                        )?
-                                }),
-                                2i8 => Self::TranslationRotationScale({
+                                1i8 => Self::TranslationRotationScale({
                                     if offset as usize >= translation_rotation_scale.len() {
                                         return Err(DeserializationError::offset_oob(
                                             offset as _,

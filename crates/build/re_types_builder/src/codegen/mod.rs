@@ -52,10 +52,12 @@ use self::common::StringExt;
 
 mod cpp;
 mod docs;
+mod fbs;
 mod python;
 mod rust;
 
 pub use self::cpp::CppCodeGenerator;
 pub use self::docs::DocsCodeGenerator;
+pub use self::fbs::FbsCodeGenerator;
 pub use self::python::PythonCodeGenerator;
 pub use self::rust::RustCodeGenerator;

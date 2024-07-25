@@ -1,5 +1,3 @@
-include "rerun/attributes.fbs";
-
 namespace rerun.components;
 
 /// Policy for aggregation of multiple scalar plot values.

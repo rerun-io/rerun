@@ -1178,6 +1178,21 @@ dependencies = [
 ]
 
 [[package]]
+name = "const_soft_float"
+version = "0.1.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "87ca1caa64ef4ed453e68bb3db612e51cf1b2f5b871337f0fcab1c8f87cc3dff"
+
+[[package]]
+name = "constgebra"
+version = "0.1.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e1aaf9b65849a68662ac6c0810c8893a765c960b907dd7cfab9c4a50bf764fbc"
+dependencies = [
+ "const_soft_float",
+]
+
+[[package]]
 name = "convert_case"
 version = "0.6.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2487,6 +2502,16 @@ name = "hex"
 version = "0.4.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7f24254aa9a54b5c858eaee2f5bccdb46aaf0e486a595ed5fd8f86ba55232a70"
+
+[[package]]
+name = "hexasphere"
+version = "14.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "6c64d70ed6295005e2bc5a6f624300cfd6d49908da76b3654c4cbdb1d4222705"
+dependencies = [
+ "constgebra",
+ "glam",
+]
 
 [[package]]
 name = "hexf-parse"
@@ -4829,6 +4854,7 @@ dependencies = [
  "re_log_types",
  "re_query",
  "re_space_view",
+ "re_space_view_dataframe",
  "re_space_view_spatial",
  "re_space_view_time_series",
  "re_tracing",
@@ -4900,12 +4926,16 @@ dependencies = [
  "re_chunk_store",
  "re_data_ui",
  "re_entity_db",
+ "re_log",
  "re_log_types",
  "re_renderer",
+ "re_space_view",
  "re_tracing",
+ "re_types",
  "re_types_core",
  "re_ui",
  "re_viewer_context",
+ "re_viewport_blueprint",
 ]
 
 [[package]]
@@ -4919,6 +4949,7 @@ dependencies = [
  "criterion",
  "egui",
  "glam",
+ "hexasphere",
  "itertools 0.13.0",
  "mimalloc",
  "nohash-hasher",
@@ -5044,8 +5075,11 @@ dependencies = [
 name = "re_time_panel"
 version = "0.18.0-alpha.1+dev"
 dependencies = [
+ "anyhow",
+ "criterion",
  "egui",
  "itertools 0.13.0",
+ "rand",
  "re_chunk_store",
  "re_context_menu",
  "re_data_ui",
@@ -5297,6 +5331,7 @@ dependencies = [
  "egui_tiles",
  "glam",
  "half 2.3.1",
+ "image",
  "indexmap 2.1.0",
  "itertools 0.13.0",
  "linked-hash-map",
@@ -5496,6 +5531,7 @@ dependencies = [
  "re_build_info",
  "re_build_tools",
  "re_chunk",
+ "re_chunk_store",
  "re_crash_handler",
  "re_data_source",
  "re_entity_db",
@@ -6411,9 +6447,9 @@ dependencies = [
 
 [[package]]
 name = "target-lexicon"
-version = "0.12.15"
+version = "0.12.14"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4873307b7c257eddcb50c9bedf158eb669578359fb28428bef438fec8e6ba7c2"
+checksum = "e1fc403891a21bcfb7c37834ba66a547a8f402146eba7265b5a6d88059c9ff2f"
 
 [[package]]
 name = "tempfile"
@@ -6454,6 +6490,17 @@ dependencies = [
  "itertools 0.13.0",
  "ndarray",
  "ndarray-rand",
+ "rand",
+ "re_log",
+ "rerun",
+]
+
+[[package]]
+name = "test_data_density_graph"
+version = "0.18.0-alpha.1+dev"
+dependencies = [
+ "anyhow",
+ "clap",
  "rand",
  "re_log",
  "rerun",

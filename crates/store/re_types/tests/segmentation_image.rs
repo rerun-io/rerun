@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use re_types::{
     archetypes::SegmentationImage,
-    datatypes::{TensorBuffer, TensorData, TensorDimension},
+    components::{ChannelDataType, Resolution2D},
     Archetype as _, AsComponents as _,
 };
 
@@ -11,20 +11,9 @@ mod util;
 #[test]
 fn segmentation_image_roundtrip() {
     let all_expected = [SegmentationImage {
-        data: TensorData {
-            shape: vec![
-                TensorDimension {
-                    size: 2,
-                    name: Some("height".into()),
-                },
-                TensorDimension {
-                    size: 3,
-                    name: Some("width".into()),
-                },
-            ],
-            buffer: TensorBuffer::U8(vec![1, 2, 3, 4, 5, 6].into()),
-        }
-        .into(),
+        data: vec![1, 2, 3, 4, 5, 6].into(),
+        resolution: Resolution2D::new(3, 2),
+        data_type: ChannelDataType::U8,
         draw_order: None,
         opacity: None,
     }];
@@ -37,7 +26,7 @@ fn segmentation_image_roundtrip() {
     .to_arrow()
     .unwrap()];
 
-    let expected_extensions: HashMap<_, _> = [("data", vec!["rerun.components.TensorData"])].into();
+    let expected_extensions: HashMap<_, _> = [("data", vec!["rerun.components.Blob"])].into();
 
     for (expected, serialized) in all_expected.into_iter().zip(all_arch_serialized) {
         for (field, array) in &serialized {

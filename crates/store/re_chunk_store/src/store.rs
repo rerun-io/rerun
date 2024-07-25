@@ -95,9 +95,24 @@ impl ChunkStoreConfig {
     /// Default configuration, applicable to most use cases, according to empirical testing.
     pub const DEFAULT: Self = Self {
         enable_changelog: true,
-        chunk_max_bytes: 8 * 1024 * 1024,
+
+        // Empirical testing shows that 4MiB is good middle-ground, big tensors and buffers can
+        // become a bit too costly to concatenate beyond that.
+        chunk_max_bytes: 4 * 1024 * 1024,
+
+        // Empirical testing shows that 1024 is the threshold after which we really start to get
+        // dimishing returns space-wise.
         chunk_max_rows: 1024,
+
         chunk_max_rows_if_unsorted: 256,
+    };
+
+    /// [`Self::DEFAULT`], but with compaction entirely disabled.
+    pub const COMPACTION_DISABLED: Self = Self {
+        chunk_max_bytes: 0,
+        chunk_max_rows: 0,
+        chunk_max_rows_if_unsorted: 0,
+        ..Self::DEFAULT
     };
 
     /// Environment variable to configure [`Self::enable_changelog`].
@@ -199,10 +214,29 @@ pub struct ChunkIdSetPerTime {
     /// This is used to bound the backwards linear walk when looking for overlapping chunks in
     /// latest-at queries.
     ///
-    /// See [`ChunkStore::latest_at_relevant_chunks`] implementation comments for more details.
+    /// See [`ChunkStore::latest_at`] implementation comments for more details.
     pub(crate) max_interval_length: u64,
 
+    /// [`ChunkId`]s organized by their _most specific_ start time.
+    ///
+    /// What "most specific" means depends on the context in which the [`ChunkIdSetPerTime`]
+    /// was instantiated, e.g.:
+    /// * For an `(entity, timeline, component)` index, that would be the first timestamp at which this
+    ///   [`Chunk`] contains data for this particular component on this particular timeline (see
+    ///   [`Chunk::time_range_per_component`]).
+    /// * For an `(entity, timeline)` index, that would be the first timestamp at which this [`Chunk`]
+    ///   contains data for any component on this particular timeline (see [`re_chunk::ChunkTimeline::time_range`]).
     pub(crate) per_start_time: BTreeMap<TimeInt, ChunkIdSet>,
+
+    /// [`ChunkId`]s organized by their _most specific_ end time.
+    ///
+    /// What "most specific" means depends on the context in which the [`ChunkIdSetPerTime`]
+    /// was instantiated, e.g.:
+    /// * For an `(entity, timeline, component)` index, that would be the last timestamp at which this
+    ///   [`Chunk`] contains data for this particular component on this particular timeline (see
+    ///   [`Chunk::time_range_per_component`]).
+    /// * For an `(entity, timeline)` index, that would be the last timestamp at which this [`Chunk`]
+    ///   contains data for any component on this particular timeline (see [`re_chunk::ChunkTimeline::time_range`]).
     pub(crate) per_end_time: BTreeMap<TimeInt, ChunkIdSet>,
 }
 
@@ -217,6 +251,10 @@ pub type ChunkIdSetPerTimePerComponentPerTimelinePerEntity =
 pub type ChunkIdPerComponent = BTreeMap<ComponentName, ChunkId>;
 
 pub type ChunkIdPerComponentPerEntity = BTreeMap<EntityPath, ChunkIdPerComponent>;
+
+pub type ChunkIdSetPerTimePerTimeline = BTreeMap<Timeline, ChunkIdSetPerTime>;
+
+pub type ChunkIdSetPerTimePerTimelinePerEntity = BTreeMap<EntityPath, ChunkIdSetPerTimePerTimeline>;
 
 // ---
 
@@ -260,10 +298,20 @@ pub struct ChunkStore {
     /// duplicated [`RowId`]s.
     pub(crate) chunk_ids_per_min_row_id: BTreeMap<RowId, Vec<ChunkId>>,
 
-    /// All temporal [`ChunkId`]s for all entities on all timelines.
+    /// All temporal [`ChunkId`]s for all entities on all timelines, further indexed by [`ComponentName`].
     ///
-    /// See also [`Self::static_chunk_ids_per_entity`].
-    pub(crate) temporal_chunk_ids_per_entity: ChunkIdSetPerTimePerComponentPerTimelinePerEntity,
+    /// See also:
+    /// * [`Self::temporal_chunk_ids_per_entity`].
+    /// * [`Self::static_chunk_ids_per_entity`].
+    pub(crate) temporal_chunk_ids_per_entity_per_component:
+        ChunkIdSetPerTimePerComponentPerTimelinePerEntity,
+
+    /// All temporal [`ChunkId`]s for all entities on all timelines, without the [`ComponentName`] index.
+    ///
+    /// See also:
+    /// * [`Self::temporal_chunk_ids_per_entity_per_component`].
+    /// * [`Self::static_chunk_ids_per_entity`].
+    pub(crate) temporal_chunk_ids_per_entity: ChunkIdSetPerTimePerTimelinePerEntity,
 
     /// Accumulated size statitistics for all temporal [`Chunk`]s currently present in the store.
     ///
@@ -305,6 +353,9 @@ impl Clone for ChunkStore {
             type_registry: self.type_registry.clone(),
             chunks_per_chunk_id: self.chunks_per_chunk_id.clone(),
             chunk_ids_per_min_row_id: self.chunk_ids_per_min_row_id.clone(),
+            temporal_chunk_ids_per_entity_per_component: self
+                .temporal_chunk_ids_per_entity_per_component
+                .clone(),
             temporal_chunk_ids_per_entity: self.temporal_chunk_ids_per_entity.clone(),
             temporal_chunks_stats: self.temporal_chunks_stats,
             static_chunk_ids_per_entity: self.static_chunk_ids_per_entity.clone(),
@@ -325,6 +376,7 @@ impl std::fmt::Display for ChunkStore {
             type_registry: _,
             chunks_per_chunk_id,
             chunk_ids_per_min_row_id: chunk_id_per_min_row_id,
+            temporal_chunk_ids_per_entity_per_component: _,
             temporal_chunk_ids_per_entity: _,
             temporal_chunks_stats,
             static_chunk_ids_per_entity: _,
@@ -374,6 +426,7 @@ impl ChunkStore {
             type_registry: Default::default(),
             chunk_ids_per_min_row_id: Default::default(),
             chunks_per_chunk_id: Default::default(),
+            temporal_chunk_ids_per_entity_per_component: Default::default(),
             temporal_chunk_ids_per_entity: Default::default(),
             temporal_chunks_stats: Default::default(),
             static_chunk_ids_per_entity: Default::default(),

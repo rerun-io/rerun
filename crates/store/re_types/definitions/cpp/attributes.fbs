@@ -1,4 +1,0 @@
-namespace cpp.attributes;
-
-/// Don't emit parameterized constructors for fields, only copy, move and default constructors.
-attribute "attr.cpp.no_field_ctors";

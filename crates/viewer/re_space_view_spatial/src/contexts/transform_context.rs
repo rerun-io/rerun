@@ -6,7 +6,8 @@ use re_space_view::DataResultQuery as _;
 use re_types::{
     archetypes::Pinhole,
     components::{
-        DisconnectedSpace, ImagePlaneDistance, PinholeProjection, Transform3D, ViewCoordinates,
+        DisconnectedSpace, ImagePlaneDistance, PinholeProjection, RotationAxisAngle, RotationQuat,
+        Scale3D, Transform3D, TransformMat3x3, TransformRelation, Translation3D, ViewCoordinates,
     },
     ComponentNameSet, Loggable as _,
 };
@@ -94,6 +95,8 @@ impl ViewContextSystem for TransformContext {
         query: &re_viewer_context::ViewQuery<'_>,
     ) {
         re_tracing::profile_function!();
+
+        debug_assert_transform_field_order(ctx.viewer_ctx.reflection);
 
         let entity_tree = ctx.recording().tree();
 
@@ -281,10 +284,7 @@ impl TransformContext {
             ent_path.parent(),
         ) {
             self.reference_from_entity(&parent).map(|t| {
-                t * get_cached_transform(ent_path, entity_db, query)
-                    .map_or(glam::Affine3A::IDENTITY, |transform| {
-                        transform.into_parent_from_child_transform()
-                    })
+                t * get_parent_from_child_transform(ent_path, entity_db, query).unwrap_or_default()
             })
         } else {
             Some(transform_info.reference_from_entity)
@@ -302,14 +302,99 @@ impl TransformContext {
     }
 }
 
-fn get_cached_transform(
+#[cfg(debug_assertions)]
+fn debug_assert_transform_field_order(reflection: &re_types::reflection::Reflection) {
+    let expected_order = vec![
+        Translation3D::name(),
+        RotationAxisAngle::name(),
+        RotationQuat::name(),
+        Scale3D::name(),
+        TransformMat3x3::name(),
+    ];
+
+    use re_types::Archetype as _;
+    let transform3d_reflection = reflection
+        .archetypes
+        .get(&re_types::archetypes::Transform3D::name())
+        .expect("Transform3D archetype not found in reflection");
+
+    let mut remaining_fields = expected_order.clone();
+    for field in transform3d_reflection.fields.iter().rev() {
+        if Some(&field.component_name) == remaining_fields.last() {
+            remaining_fields.pop();
+        }
+    }
+
+    if !remaining_fields.is_empty() {
+        let actual_order = transform3d_reflection
+            .fields
+            .iter()
+            .map(|f| f.component_name)
+            .collect::<Vec<_>>();
+        panic!(
+            "Expected transform fields in the following order:\n{expected_order:?}\n
+But they are instead ordered like this:\n{actual_order:?}"
+        );
+    }
+}
+
+#[cfg(not(debug_assertions))]
+fn debug_assert_transform_field_order(_: &re_types::reflection::Reflection) {}
+
+fn get_parent_from_child_transform(
     entity_path: &EntityPath,
     entity_db: &EntityDb,
     query: &LatestAtQuery,
-) -> Option<Transform3D> {
-    entity_db
-        .latest_at_component::<Transform3D>(entity_path, query)
-        .map(|res| res.value)
+) -> Option<glam::Affine3A> {
+    let resolver = entity_db.resolver();
+    // TODO(#6743): Doesn't take into account overrides.
+    let result = entity_db.latest_at(
+        query,
+        entity_path,
+        [
+            Transform3D::name(),
+            Translation3D::name(),
+            RotationAxisAngle::name(),
+            RotationQuat::name(),
+            Scale3D::name(),
+            TransformMat3x3::name(),
+            TransformRelation::name(),
+        ],
+    );
+    if result.components.is_empty() {
+        return None;
+    }
+
+    // Order is specified by order of components in the Transform3D archetype.
+    // See `has_transform_expected_order`
+    let mut transform = glam::Affine3A::IDENTITY;
+    if let Some(translation) = result.get_instance::<Translation3D>(resolver, 0) {
+        transform *= glam::Affine3A::from(translation);
+    }
+    if let Some(rotation) = result.get_instance::<RotationAxisAngle>(resolver, 0) {
+        transform *= glam::Affine3A::from(rotation);
+    }
+    if let Some(rotation) = result.get_instance::<RotationQuat>(resolver, 0) {
+        transform *= glam::Affine3A::from(rotation);
+    }
+    if let Some(scale) = result.get_instance::<Scale3D>(resolver, 0) {
+        transform *= glam::Affine3A::from(scale);
+    }
+    if let Some(mat3x3) = result.get_instance::<TransformMat3x3>(resolver, 0) {
+        transform *= glam::Affine3A::from(mat3x3);
+    }
+
+    let transform_relation = result
+        .get_instance::<TransformRelation>(resolver, 0)
+        .unwrap_or_default();
+    if transform_relation == TransformRelation::ChildFromParent {
+        Some(transform.inverse())
+    } else {
+        Some(transform)
+    }
+
+    // TODO(#6831): Should add a unit test to this method once all variants are in.
+    // (Should test correct order being applied etc.. Might require splitting)
 }
 
 fn get_cached_pinhole(
@@ -349,8 +434,7 @@ fn transform_at(
         }
     }
 
-    let transform3d = get_cached_transform(entity_path, entity_db, query)
-        .map(|transform| transform.clone().into_parent_from_child_transform());
+    let transform3d = get_parent_from_child_transform(entity_path, entity_db, query);
 
     let pinhole = pinhole.map(|(image_from_camera, camera_xyz)| {
         // Everything under a pinhole camera is a 2D projection, thus doesn't actually have a proper 3D representation.

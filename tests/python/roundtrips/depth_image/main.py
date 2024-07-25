@@ -22,7 +22,7 @@ def main() -> None:
     image[0, :] = [0, 1, 2]
     image[1, :] = [3, 4, 5]
 
-    rr.log("depth_image", rr.DepthImage(data=image, meter=1000))
+    rr.log("depth_image", rr.DepthImage(image, meter=1000))
 
     rr.script_teardown(args)
 

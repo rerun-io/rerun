@@ -21,6 +21,13 @@ from .container_kind import (
     ContainerKindType,
 )
 from .corner2d import Corner2D, Corner2DArrayLike, Corner2DBatch, Corner2DLike, Corner2DType
+from .dataframe_view_mode import (
+    DataframeViewMode,
+    DataframeViewModeArrayLike,
+    DataframeViewModeBatch,
+    DataframeViewModeLike,
+    DataframeViewModeType,
+)
 from .grid_columns import GridColumns, GridColumnsBatch, GridColumnsType
 from .included_content import IncludedContent, IncludedContentBatch, IncludedContentType
 from .included_space_view import IncludedSpaceView, IncludedSpaceViewBatch, IncludedSpaceViewType
@@ -30,6 +37,8 @@ from .panel_state import PanelState, PanelStateArrayLike, PanelStateBatch, Panel
 from .query_expression import QueryExpression, QueryExpressionBatch, QueryExpressionType
 from .root_container import RootContainer, RootContainerBatch, RootContainerType
 from .row_share import RowShare, RowShareBatch, RowShareType
+from .sort_key import SortKey, SortKeyArrayLike, SortKeyBatch, SortKeyLike, SortKeyType
+from .sort_order import SortOrder, SortOrderArrayLike, SortOrderBatch, SortOrderLike, SortOrderType
 from .space_view_class import SpaceViewClass, SpaceViewClassBatch, SpaceViewClassType
 from .space_view_maximized import SpaceViewMaximized, SpaceViewMaximizedBatch, SpaceViewMaximizedType
 from .space_view_origin import SpaceViewOrigin, SpaceViewOriginBatch, SpaceViewOriginType
@@ -77,6 +86,11 @@ __all__ = [
     "Corner2DBatch",
     "Corner2DLike",
     "Corner2DType",
+    "DataframeViewMode",
+    "DataframeViewModeArrayLike",
+    "DataframeViewModeBatch",
+    "DataframeViewModeLike",
+    "DataframeViewModeType",
     "GridColumns",
     "GridColumnsBatch",
     "GridColumnsType",
@@ -106,6 +120,16 @@ __all__ = [
     "RowShare",
     "RowShareBatch",
     "RowShareType",
+    "SortKey",
+    "SortKeyArrayLike",
+    "SortKeyBatch",
+    "SortKeyLike",
+    "SortKeyType",
+    "SortOrder",
+    "SortOrderArrayLike",
+    "SortOrderBatch",
+    "SortOrderLike",
+    "SortOrderType",
     "SpaceViewClass",
     "SpaceViewClassBatch",
     "SpaceViewClassType",

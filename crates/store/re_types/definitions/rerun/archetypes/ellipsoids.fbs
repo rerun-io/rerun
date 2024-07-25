@@ -1,0 +1,60 @@
+namespace rerun.archetypes;
+
+// ---
+
+/// 3D ellipsoids or spheres.
+///
+/// This archetype is for ellipsoids or spheres whose size is a key part of the data
+/// (e.g. a bounding sphere).
+/// For points whose radii are for the sake of visualization, use `Points3D` instead.
+///
+/// Currently, ellipsoids are always rendered as wireframes.
+/// Opaque and transparent rendering will be supported later.
+///
+/// \example archetypes/ellipsoid_batch !api title="Batch of ellipsoids"
+table Ellipsoids (
+  "attr.rust.derive": "PartialEq",
+  "attr.rust.new_pub_crate",
+  "attr.cpp.no_field_ctors",
+  "attr.docs.category": "Spatial 3D",
+  "attr.docs.view_types": "Spatial3DView, Spatial2DView: if logged above active projection",
+  "attr.docs.unreleased"
+) {
+  // --- Required ---
+
+  /// For each ellipsoid, half of its size on its three axes.
+  ///
+  /// If all components are equal, then it is a sphere with that radius.
+  half_sizes: [rerun.components.HalfSize3D] ("attr.rerun.component_required", order: 1000);
+
+  // --- Recommended ---
+
+  /// Optional center positions of the ellipsoids.
+  ///
+  /// If not specified, the centers will be at (0, 0, 0).
+  centers: [rerun.components.Position3D] ("attr.rerun.component_recommended", nullable, order: 2000);
+
+  /// Optional rotations of the ellipsoids.
+  ///
+  /// If not specified, the axes of the ellipsoid align with the axes of the coordinate system.
+  rotations: [rerun.components.Rotation3D] ("attr.rerun.component_recommended", nullable, order: 2100);
+
+  /// Optional colors for the ellipsoids.
+  colors: [rerun.components.Color] ("attr.rerun.component_recommended", nullable, order: 2200);
+
+  // --- Optional ---
+
+  /// Optional radii for the lines used when the ellipsoid is rendered as a wireframe.
+  line_radii: [rerun.components.Radius] ("attr.rerun.component_optional", nullable, order: 3000);
+
+  /// Optionally choose whether the ellipsoids are drawn with lines or solid.
+  fill_mode: rerun.components.FillMode ("attr.rerun.component_optional", nullable, order: 3100);
+
+  /// Optional text labels for the ellipsoids.
+  labels: [rerun.components.Text] ("attr.rerun.component_optional", nullable, order: 3200);
+
+  /// Optional `ClassId`s for the ellipsoids.
+  ///
+  /// The class ID provides colors and labels if not specified explicitly.
+  class_ids: [rerun.components.ClassId] ("attr.rerun.component_optional", nullable, order: 3300);
+}

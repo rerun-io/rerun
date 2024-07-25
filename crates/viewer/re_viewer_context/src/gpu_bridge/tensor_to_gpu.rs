@@ -14,12 +14,12 @@ use re_renderer::{
     resource_managers::Texture2DCreationDesc,
     RenderContext,
 };
+use re_types::components::Colormap;
 use re_types::{
     components::ClassId,
     datatypes::{TensorBuffer, TensorData},
     tensor_data::TensorDataMeaning,
 };
-use re_types::{components::Colormap, tensor_data::DecodedTensor};
 
 use crate::{gpu_bridge::colormap::colormap_to_re_renderer, Annotations, TensorStats};
 
@@ -52,7 +52,7 @@ pub fn tensor_to_gpu(
     render_ctx: &RenderContext,
     debug_name: &str,
     tensor_data_row_id: RowId,
-    tensor: &DecodedTensor,
+    tensor: &TensorData,
     meaning: TensorDataMeaning,
     tensor_stats: &TensorStats,
     annotations: &Annotations,
@@ -98,7 +98,7 @@ fn color_tensor_to_gpu(
     render_ctx: &RenderContext,
     debug_name: &str,
     texture_key: u64,
-    tensor: &DecodedTensor,
+    tensor: &TensorData,
     tensor_stats: &TensorStats,
 ) -> anyhow::Result<ColormappedTexture> {
     let [height, width, depth] = texture_height_width_channels(tensor)?;
@@ -217,7 +217,7 @@ fn class_id_tensor_to_gpu(
     render_ctx: &RenderContext,
     debug_name: &str,
     texture_key: u64,
-    tensor: &DecodedTensor,
+    tensor: &TensorData,
     tensor_stats: &TensorStats,
     annotations: &Annotations,
 ) -> anyhow::Result<ColormappedTexture> {
@@ -294,7 +294,7 @@ fn depth_tensor_to_gpu(
     render_ctx: &RenderContext,
     debug_name: &str,
     texture_key: u64,
-    tensor: &DecodedTensor,
+    tensor: &TensorData,
     tensor_stats: &TensorStats,
     colormap: Option<Colormap>,
 ) -> anyhow::Result<ColormappedTexture> {
@@ -327,17 +327,17 @@ fn depth_tensor_to_gpu(
 }
 
 fn depth_tensor_range(
-    tensor: &DecodedTensor,
+    tensor: &TensorData,
     tensor_stats: &TensorStats,
 ) -> anyhow::Result<(f64, f64)> {
     let range = tensor_stats.range.ok_or(anyhow::anyhow!(
-        "Tensor has no range!? Was this compressed?"
+        "TensorData has no range!? Was this compressed?"
     ))?;
     let (mut min, mut max) = range;
 
     anyhow::ensure!(
         min.is_finite() && max.is_finite(),
-        "Tensor has non-finite values"
+        "TensorData has non-finite values"
     );
 
     min = min.min(0.0); // Depth usually start at zero.
@@ -361,7 +361,7 @@ fn depth_tensor_range(
 /// Uses no `Unorm/Snorm` formats.
 fn general_texture_creation_desc_from_tensor<'a>(
     debug_name: &str,
-    tensor: &'a DecodedTensor,
+    tensor: &'a TensorData,
 ) -> anyhow::Result<Texture2DCreationDesc<'a>> {
     let [height, width, depth] = texture_height_width_channels(tensor)?;
 
@@ -381,10 +381,6 @@ fn general_texture_creation_desc_from_tensor<'a>(
                 TensorBuffer::F16(buf) => (cast_slice_to_cow(buf), TextureFormat::R16Float),
                 TensorBuffer::F32(buf) => (cast_slice_to_cow(buf), TextureFormat::R32Float),
                 TensorBuffer::F64(buf) => (narrow_f64_to_f32s(buf), TextureFormat::R32Float), // narrowing to f32!
-
-                TensorBuffer::Jpeg(_) => {
-                    unreachable!("DecodedTensor cannot contain a JPEG")
-                }
 
                 TensorBuffer::Nv12(_) => {
                     unreachable!("An NV12 tensor can only contain a 3 channel image.")
@@ -411,9 +407,6 @@ fn general_texture_creation_desc_from_tensor<'a>(
                 TensorBuffer::F32(buf) => (cast_slice_to_cow(buf), TextureFormat::Rg32Float),
                 TensorBuffer::F64(buf) => (narrow_f64_to_f32s(buf), TextureFormat::Rg32Float), // narrowing to f32!
 
-                TensorBuffer::Jpeg(_) => {
-                    unreachable!("DecodedTensor cannot contain a JPEG")
-                }
                 TensorBuffer::Nv12(_) => {
                     unreachable!("An NV12 tensor can only contain a 3 channel image.")
                 }
@@ -460,9 +453,6 @@ fn general_texture_creation_desc_from_tensor<'a>(
                     TextureFormat::Rgba32Float,
                 ),
 
-                TensorBuffer::Jpeg(_) => {
-                    unreachable!("DecodedTensor cannot contain a JPEG")
-                }
                 TensorBuffer::Nv12(buf) | TensorBuffer::Yuy2(buf) => {
                     (cast_slice_to_cow(buf.as_slice()), TextureFormat::R8Unorm)
                 }
@@ -485,9 +475,6 @@ fn general_texture_creation_desc_from_tensor<'a>(
                 TensorBuffer::F32(buf) => (cast_slice_to_cow(buf), TextureFormat::Rgba32Float),
                 TensorBuffer::F64(buf) => (narrow_f64_to_f32s(buf), TextureFormat::Rgba32Float), // narrowing to f32!
 
-                TensorBuffer::Jpeg(_) => {
-                    unreachable!("DecodedTensor cannot contain a JPEG")
-                }
                 TensorBuffer::Nv12(_) => {
                     unreachable!("An NV12 tensor can only contain a 3 channel image.")
                 }
@@ -572,7 +559,7 @@ pub fn texture_height_width_channels(tensor: &TensorData) -> anyhow::Result<[u32
     use anyhow::Context as _;
 
     let Some([mut height, mut width, channel]) = tensor.image_height_width_channels() else {
-        anyhow::bail!("Tensor with shape {:?} is not an image", tensor.shape);
+        anyhow::bail!("TensorData with shape {:?} is not an image", tensor.shape);
     };
     height = match tensor.buffer {
         // Correct the texture height for NV12, tensor.image_height_width_channels returns the RGB size for NV12 images.

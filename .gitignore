@@ -1,4 +1,5 @@
 .DS_Store
+__MACOSX
 
 # C++ and CMake stuff:
 *.a
@@ -34,6 +35,9 @@ __pycache__
 
 # Pixi environment
 .pixi
+
+# Unpacked test assets:
+/tests/assets/rerun.obj
 
 .gdb_history
 perf.data*

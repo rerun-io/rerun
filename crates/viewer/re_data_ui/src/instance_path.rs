@@ -21,7 +21,7 @@ impl DataUi for InstancePath {
 
         let Some(components) = ctx
             .recording_store()
-            .all_components(&query.timeline(), entity_path)
+            .all_components_on_timeline(&query.timeline(), entity_path)
         else {
             if ctx.recording().is_known_entity(entity_path) {
                 // This is fine - e.g. we're looking at `/world` and the user has only logged to `/world/car`.
@@ -81,7 +81,9 @@ impl DataUi for InstancePath {
                 }
 
                 let component_path = ComponentPath::new(entity_path.clone(), component_name);
-                let is_static = db.is_component_static(&component_path).unwrap_or_default();
+                let is_static = db
+                    .store()
+                    .entity_has_static_component(entity_path, &component_name);
                 let icon = if is_static {
                     &re_ui::icons::COMPONENT_STATIC
                 } else {

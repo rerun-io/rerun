@@ -298,6 +298,7 @@ impl AppState {
                         rec_cfg.time_ctrl.read().timeline(),
                         space_view_class_registry,
                         query_result,
+                        view_states,
                     );
                 }
             }

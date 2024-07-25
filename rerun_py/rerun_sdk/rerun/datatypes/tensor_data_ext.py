@@ -137,7 +137,7 @@ class TensorDataExt:
         elif array is not None:
             self.buffer = TensorBuffer(array.flatten())
 
-        if self.buffer.kind != "jpeg" and self.buffer.kind != "nv12" and self.buffer.kind != "yuy2":
+        if self.buffer.kind != "nv12" and self.buffer.kind != "yuy2":
             expected_buffer_size = prod(d.size for d in self.shape)
 
             if len(self.buffer.inner) != expected_buffer_size:
@@ -233,9 +233,8 @@ def _build_buffer_array(buffer: TensorBufferLike) -> pa.Array:
     buffer = buffer.flatten()
 
     data_inner = pa.ListArray.from_arrays(pa.array([0, len(buffer)]), buffer)
-    if kind == "jpeg":
-        discriminant = "JPEG"
-    elif kind == "nv12":
+
+    if kind == "nv12":
         discriminant = "NV12"
     elif kind == "yuy2":
         discriminant = "YUY2"

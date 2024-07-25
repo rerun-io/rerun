@@ -11,7 +11,7 @@ title: "Boxes3D"
 
 **Recommended**: [`Position3D`](../components/position3d.md), [`Rotation3D`](../components/rotation3d.md), [`Color`](../components/color.md)
 
-**Optional**: [`Radius`](../components/radius.md), [`Text`](../components/text.md), [`ClassId`](../components/class_id.md)
+**Optional**: [`Radius`](../components/radius.md), [`FillMode`](../components/fill_mode.md), [`Text`](../components/text.md), [`ClassId`](../components/class_id.md)
 
 ## Shown in
 * [Spatial3DView](../views/spatial3d_view.md)

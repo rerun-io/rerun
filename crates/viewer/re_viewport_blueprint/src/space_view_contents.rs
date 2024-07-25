@@ -18,7 +18,7 @@ use re_types_core::ComponentName;
 use re_viewer_context::{
     ApplicableEntities, DataQueryResult, DataResult, DataResultHandle, DataResultNode,
     DataResultTree, IndicatedEntities, OverridePath, PerVisualizer, PropertyOverrides, QueryRange,
-    SpaceViewClassRegistry, SpaceViewId, ViewerContext, VisualizableEntities,
+    SpaceViewClassRegistry, SpaceViewId, ViewStates, ViewerContext, VisualizableEntities,
 };
 
 use crate::{SpaceViewBlueprint, ViewProperty};
@@ -428,7 +428,11 @@ impl DataQueryPropertyResolver<'_> {
                 if let Some(recursive_override_subtree) =
                     blueprint.tree().subtree(&recursive_override_path)
                 {
-                    for &component_name in recursive_override_subtree.entity.components.keys() {
+                    for component_name in blueprint
+                        .store()
+                        .all_components(&recursive_override_subtree.path)
+                        .unwrap_or_default()
+                    {
                         let results = blueprint.query_caches().latest_at(
                             blueprint.store(),
                             blueprint_query,
@@ -459,7 +463,11 @@ impl DataQueryPropertyResolver<'_> {
                 if let Some(individual_override_subtree) =
                     blueprint.tree().subtree(&individual_override_path)
                 {
-                    for &component_name in individual_override_subtree.entity.components.keys() {
+                    for component_name in blueprint
+                        .store()
+                        .all_components(&individual_override_subtree.path)
+                        .unwrap_or_default()
+                    {
                         let results = blueprint.query_caches().latest_at(
                             blueprint.store(),
                             blueprint_query,
@@ -524,17 +532,22 @@ impl DataQueryPropertyResolver<'_> {
         active_timeline: &Timeline,
         space_view_class_registry: &SpaceViewClassRegistry,
         query_result: &mut DataQueryResult,
+        view_states: &mut ViewStates,
     ) {
         re_tracing::profile_function!();
 
         if let Some(root) = query_result.tree.root_handle() {
             let recursive_property_overrides = Default::default();
 
+            let class = self.space_view.class(space_view_class_registry);
+            let view_state = view_states.get_mut_or_create(self.space_view.id, class);
+
             let default_query_range = self.space_view.query_range(
                 blueprint,
                 blueprint_query,
                 active_timeline,
                 space_view_class_registry,
+                view_state,
             );
 
             self.update_overrides_recursive(

@@ -83,3 +83,9 @@ Refer to [BUILD.md](../BUILD.md) for details on the various different build opti
 Prebuilt dev wheels from head of main are available at <https://github.com/rerun-io/rerun/releases/tag/prerelease>.
 
 While we try to keep the main branch usable at all times, it may be unstable occasionally. Use at your own risk.
+
+
+# Running Python unit tests
+```sh
+pixi run -e py py-build && pixi run -e py py-test
+```

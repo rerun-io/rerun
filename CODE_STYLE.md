@@ -215,6 +215,8 @@ Preprocessor directives/macros are usually prefixed with `RR_`
 
 Include what you use: if you use `std::vector`, then include `<vector>` - don't depend on a transitive include.
 
+We prefer the "data, length" parameter order, e.g. `void foo(const void* data, size_t len)` or `void image(const f32* data, Resolution resolution)`.
+
 
 ## Naming
 We prefer `snake_case` to `kebab-case` for most things (e.g. crate names, crate features, …). `snake_case` is a valid identifier in almost any programming language, while `kebab-case` is not. This means one can use the same `snake_case` identifier everywhere, and not think about whether it needs to be written as `snake_case` in some circumstances.

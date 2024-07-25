@@ -7,6 +7,8 @@ mod boxes2d;
 mod boxes3d;
 mod cameras;
 mod depth_images;
+mod ellipsoids;
+mod image_encoded;
 mod images;
 mod lines2d;
 mod lines3d;
@@ -19,13 +21,14 @@ mod utilities;
 
 pub use cameras::CamerasVisualizer;
 pub use depth_images::DepthImageVisualizer;
+pub use image_encoded::ImageEncodedVisualizer;
 pub use images::ImageVisualizer;
 pub use segmentation_images::SegmentationImageVisualizer;
 pub use transform3d_arrows::{add_axis_arrows, AxisLengthDetector, Transform3DArrowsVisualizer};
 pub use utilities::{
     bounding_box_for_textured_rect, entity_iterator, process_labels_2d, process_labels_3d,
-    tensor_to_textured_rect, SpatialViewVisualizerData, UiLabel, UiLabelTarget,
-    MAX_NUM_LABELS_PER_ENTITY,
+    textured_rect_from_image, textured_rect_from_tensor, SpatialViewVisualizerData, UiLabel,
+    UiLabelTarget, MAX_NUM_LABELS_PER_ENTITY,
 };
 
 // ---
@@ -73,6 +76,7 @@ pub fn register_2d_spatial_visualizers(
     system_registry.register_visualizer::<boxes2d::Boxes2DVisualizer>()?;
     system_registry.register_visualizer::<boxes3d::Boxes3DVisualizer>()?;
     system_registry.register_visualizer::<depth_images::DepthImageVisualizer>()?;
+    system_registry.register_visualizer::<image_encoded::ImageEncodedVisualizer>()?;
     system_registry.register_visualizer::<images::ImageVisualizer>()?;
     system_registry.register_visualizer::<lines2d::Lines2DVisualizer>()?;
     system_registry.register_visualizer::<lines3d::Lines3DVisualizer>()?;
@@ -95,6 +99,7 @@ pub fn register_3d_spatial_visualizers(
     system_registry.register_visualizer::<boxes3d::Boxes3DVisualizer>()?;
     system_registry.register_visualizer::<cameras::CamerasVisualizer>()?;
     system_registry.register_visualizer::<depth_images::DepthImageVisualizer>()?;
+    system_registry.register_visualizer::<image_encoded::ImageEncodedVisualizer>()?;
     system_registry.register_visualizer::<images::ImageVisualizer>()?;
     system_registry.register_visualizer::<lines2d::Lines2DVisualizer>()?;
     system_registry.register_visualizer::<lines3d::Lines3DVisualizer>()?;
@@ -102,6 +107,7 @@ pub fn register_3d_spatial_visualizers(
     system_registry.register_visualizer::<points2d::Points2DVisualizer>()?;
     system_registry.register_visualizer::<points3d::Points3DVisualizer>()?;
     system_registry.register_visualizer::<segmentation_images::SegmentationImageVisualizer>()?;
+    system_registry.register_visualizer::<ellipsoids::EllipsoidsVisualizer>()?;
     system_registry.register_visualizer::<transform3d_arrows::AxisLengthDetector>()?;
     system_registry.register_visualizer::<transform3d_arrows::Transform3DArrowsVisualizer>()?;
     Ok(())
@@ -113,6 +119,7 @@ pub fn visualizers_processing_draw_order() -> impl Iterator<Item = ViewSystemIde
         arrows2d::Arrows2DVisualizer::identifier(),
         boxes2d::Boxes2DVisualizer::identifier(),
         depth_images::DepthImageVisualizer::identifier(),
+        image_encoded::ImageEncodedVisualizer::identifier(),
         images::ImageVisualizer::identifier(),
         lines2d::Lines2DVisualizer::identifier(),
         points2d::Points2DVisualizer::identifier(),

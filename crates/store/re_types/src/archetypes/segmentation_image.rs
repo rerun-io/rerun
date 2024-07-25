@@ -20,14 +20,10 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Archetype**: An image made up of integer [`components::ClassId`][crate::components::ClassId]s.
 ///
-/// The shape of the [`components::TensorData`][crate::components::TensorData] must be mappable to an `HxW` tensor.
 /// Each pixel corresponds to a [`components::ClassId`][crate::components::ClassId] that will be mapped to a color based on annotation context.
 ///
 /// In the case of floating point images, the label will be looked up based on rounding to the nearest
 /// integer value.
-///
-/// Leading and trailing unit-dimensions are ignored, so that
-/// `1x640x480x1` is treated as a `640x480` image.
 ///
 /// See also [`archetypes::AnnotationContext`][crate::archetypes::AnnotationContext] to associate each class with a color and a label.
 ///
@@ -70,8 +66,14 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 /// </center>
 #[derive(Clone, Debug, PartialEq)]
 pub struct SegmentationImage {
-    /// The image data. Should always be a 2-dimensional tensor.
-    pub data: crate::components::TensorData,
+    /// The raw image data.
+    pub data: crate::components::Blob,
+
+    /// The size of the image.
+    pub resolution: crate::components::Resolution2D,
+
+    /// The data type of the segmentation image data (U16, U32, …).
+    pub data_type: crate::components::ChannelDataType,
 
     /// Opacity of the image, useful for layering the segmentation image on top of another image.
     ///
@@ -88,20 +90,30 @@ impl ::re_types_core::SizeBytes for SegmentationImage {
     #[inline]
     fn heap_size_bytes(&self) -> u64 {
         self.data.heap_size_bytes()
+            + self.resolution.heap_size_bytes()
+            + self.data_type.heap_size_bytes()
             + self.opacity.heap_size_bytes()
             + self.draw_order.heap_size_bytes()
     }
 
     #[inline]
     fn is_pod() -> bool {
-        <crate::components::TensorData>::is_pod()
+        <crate::components::Blob>::is_pod()
+            && <crate::components::Resolution2D>::is_pod()
+            && <crate::components::ChannelDataType>::is_pod()
             && <Option<crate::components::Opacity>>::is_pod()
             && <Option<crate::components::DrawOrder>>::is_pod()
     }
 }
 
-static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 1usize]> =
-    once_cell::sync::Lazy::new(|| ["rerun.components.TensorData".into()]);
+static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 3usize]> =
+    once_cell::sync::Lazy::new(|| {
+        [
+            "rerun.components.Blob".into(),
+            "rerun.components.Resolution2D".into(),
+            "rerun.components.ChannelDataType".into(),
+        ]
+    });
 
 static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 1usize]> =
     once_cell::sync::Lazy::new(|| ["rerun.components.SegmentationImageIndicator".into()]);
@@ -114,10 +126,12 @@ static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 2usize]> =
         ]
     });
 
-static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 4usize]> =
+static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 6usize]> =
     once_cell::sync::Lazy::new(|| {
         [
-            "rerun.components.TensorData".into(),
+            "rerun.components.Blob".into(),
+            "rerun.components.Resolution2D".into(),
+            "rerun.components.ChannelDataType".into(),
             "rerun.components.SegmentationImageIndicator".into(),
             "rerun.components.Opacity".into(),
             "rerun.components.DrawOrder".into(),
@@ -125,8 +139,8 @@ static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 4usize]> =
     });
 
 impl SegmentationImage {
-    /// The total number of components in the archetype: 1 required, 1 recommended, 2 optional
-    pub const NUM_COMPONENTS: usize = 4usize;
+    /// The total number of components in the archetype: 3 required, 1 recommended, 2 optional
+    pub const NUM_COMPONENTS: usize = 6usize;
 }
 
 /// Indicator component for the [`SegmentationImage`] [`::re_types_core::Archetype`]
@@ -183,16 +197,42 @@ impl ::re_types_core::Archetype for SegmentationImage {
             .collect();
         let data = {
             let array = arrays_by_name
-                .get("rerun.components.TensorData")
+                .get("rerun.components.Blob")
                 .ok_or_else(DeserializationError::missing_data)
                 .with_context("rerun.archetypes.SegmentationImage#data")?;
-            <crate::components::TensorData>::from_arrow_opt(&**array)
+            <crate::components::Blob>::from_arrow_opt(&**array)
                 .with_context("rerun.archetypes.SegmentationImage#data")?
                 .into_iter()
                 .next()
                 .flatten()
                 .ok_or_else(DeserializationError::missing_data)
                 .with_context("rerun.archetypes.SegmentationImage#data")?
+        };
+        let resolution = {
+            let array = arrays_by_name
+                .get("rerun.components.Resolution2D")
+                .ok_or_else(DeserializationError::missing_data)
+                .with_context("rerun.archetypes.SegmentationImage#resolution")?;
+            <crate::components::Resolution2D>::from_arrow_opt(&**array)
+                .with_context("rerun.archetypes.SegmentationImage#resolution")?
+                .into_iter()
+                .next()
+                .flatten()
+                .ok_or_else(DeserializationError::missing_data)
+                .with_context("rerun.archetypes.SegmentationImage#resolution")?
+        };
+        let data_type = {
+            let array = arrays_by_name
+                .get("rerun.components.ChannelDataType")
+                .ok_or_else(DeserializationError::missing_data)
+                .with_context("rerun.archetypes.SegmentationImage#data_type")?;
+            <crate::components::ChannelDataType>::from_arrow_opt(&**array)
+                .with_context("rerun.archetypes.SegmentationImage#data_type")?
+                .into_iter()
+                .next()
+                .flatten()
+                .ok_or_else(DeserializationError::missing_data)
+                .with_context("rerun.archetypes.SegmentationImage#data_type")?
         };
         let opacity = if let Some(array) = arrays_by_name.get("rerun.components.Opacity") {
             <crate::components::Opacity>::from_arrow_opt(&**array)
@@ -214,6 +254,8 @@ impl ::re_types_core::Archetype for SegmentationImage {
         };
         Ok(Self {
             data,
+            resolution,
+            data_type,
             opacity,
             draw_order,
         })
@@ -227,6 +269,8 @@ impl ::re_types_core::AsComponents for SegmentationImage {
         [
             Some(Self::indicator()),
             Some((&self.data as &dyn ComponentBatch).into()),
+            Some((&self.resolution as &dyn ComponentBatch).into()),
+            Some((&self.data_type as &dyn ComponentBatch).into()),
             self.opacity
                 .as_ref()
                 .map(|comp| (comp as &dyn ComponentBatch).into()),
@@ -243,9 +287,15 @@ impl ::re_types_core::AsComponents for SegmentationImage {
 impl SegmentationImage {
     /// Create a new `SegmentationImage`.
     #[inline]
-    pub fn new(data: impl Into<crate::components::TensorData>) -> Self {
+    pub fn new(
+        data: impl Into<crate::components::Blob>,
+        resolution: impl Into<crate::components::Resolution2D>,
+        data_type: impl Into<crate::components::ChannelDataType>,
+    ) -> Self {
         Self {
             data: data.into(),
+            resolution: resolution.into(),
+            data_type: data_type.into(),
             opacity: None,
             draw_order: None,
         }

@@ -19,7 +19,7 @@ use rerun::{
     archetypes::{Clear, SegmentationImage, TextLog},
     datatypes::Quaternion,
     external::{re_log, re_types::components::TextLogLevel},
-    EntityPath, RecordingStream,
+    EntityPath, RecordingStream, TransformRelation,
 };
 
 // --- Rerun logging ---
@@ -429,7 +429,7 @@ fn test_transforms_3d(rec: &RecordingStream) -> anyhow::Result<()> {
                     (time * rotation_speed_planet).cos() * sun_to_planet_distance,
                     0.0,
                 ],
-                RotationAxisAngle::new(glam::Vec3::X, Angle::Degrees(20.0)),
+                RotationAxisAngle::new(glam::Vec3::X, Angle::from_degrees(20.0)),
             ),
         )?;
 
@@ -440,7 +440,7 @@ fn test_transforms_3d(rec: &RecordingStream) -> anyhow::Result<()> {
                 (time * rotation_speed_moon).sin() * planet_to_moon_distance,
                 0.0,
             ])
-            .from_parent(),
+            .with_relation(TransformRelation::ChildFromParent),
         )?;
     }
 

@@ -10,20 +10,14 @@ int main(int, char** argv) {
     rec.save(argv[1]).exit_on_failure();
 
     rec.log(
-        "translation_and_mat3x3/identity",
-        rerun::archetypes::Transform3D(rerun::datatypes::TranslationAndMat3x3::IDENTITY)
+        "transform/translation",
+        rerun::archetypes::Transform3D::from_translation({1.0f, 2.0f, 3.0f})
+            .with_relation(rerun::components::TransformRelation::ChildFromParent)
     );
 
     rec.log(
-        "translation_and_mat3x3/translation",
-        rerun::archetypes::Transform3D(
-            rerun::datatypes::TranslationAndMat3x3({1.0f, 2.0f, 3.0f}, true)
-        )
-    );
-
-    rec.log(
-        "translation_and_mat3x3/rotation",
-        rerun::archetypes::Transform3D({
+        "transform/rotation",
+        rerun::archetypes::Transform3D::from_mat3x3({
             {1.0f, 4.0f, 7.0f},
             {2.0f, 5.0f, 8.0f},
             {3.0f, 6.0f, 9.0f},
@@ -31,22 +25,17 @@ int main(int, char** argv) {
     );
 
     rec.log(
-        "translation_rotation_scale/identity",
-        rerun::archetypes::Transform3D(rerun::datatypes::TranslationRotationScale3D::IDENTITY)
-    );
-
-    rec.log(
-        "translation_rotation_scale/translation_scale",
-        rerun::archetypes::Transform3D(
+        "transform/translation_scale",
+        rerun::archetypes::Transform3D::from_translation_scale(
             {1.0f, 2.0f, 3.0f},
-            rerun::datatypes::Scale3D::uniform(42.0f),
-            true
+            rerun::components::Scale3D::uniform(42.0f)
         )
+            .with_relation(rerun::components::TransformRelation::ChildFromParent)
     );
 
     rec.log(
-        "translation_rotation_scale/rigid",
-        rerun::archetypes::Transform3D(
+        "transform/rigid",
+        rerun::archetypes::Transform3D::from_translation_rotation(
             {1.0f, 2.0f, 3.0f},
             rerun::datatypes::RotationAxisAngle(
                 {0.2f, 0.2f, 0.8f},
@@ -56,15 +45,15 @@ int main(int, char** argv) {
     );
 
     rec.log(
-        "translation_rotation_scale/affine",
-        rerun::archetypes::Transform3D(
+        "transform/affine",
+        rerun::archetypes::Transform3D::from_translation_rotation_scale(
             {1.0f, 2.0f, 3.0f},
             rerun::datatypes::RotationAxisAngle(
                 {0.2f, 0.2f, 0.8f},
                 rerun::datatypes::Angle::radians(PI)
             ),
-            42.0f,
-            true
+            rerun::components::Scale3D::uniform(42.0)
         )
+            .with_relation(rerun::components::TransformRelation::ChildFromParent)
     );
 }

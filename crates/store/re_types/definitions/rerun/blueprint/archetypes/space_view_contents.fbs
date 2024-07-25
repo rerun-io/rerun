@@ -1,6 +1,3 @@
-include "fbs/attributes.fbs";
-include "rust/attributes.fbs";
-
 namespace rerun.blueprint.archetypes;
 
 // ---

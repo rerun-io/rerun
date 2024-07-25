@@ -18,13 +18,16 @@ on [Entities and Components](../../concepts/entity-component.md).
 * [`AnnotationContext`](components/annotation_context.md): The annotation context provides additional information on how to display entities.
 * [`AxisLength`](components/axis_length.md): The length of an axis in local units of the space.
 * [`Blob`](components/blob.md): A binary blob of data.
+* [`ChannelDataType`](components/channel_data_type.md): The innermost datatype of an image.
 * [`ClassId`](components/class_id.md): A 16-bit ID representing a type of semantic class.
 * [`ClearIsRecursive`](components/clear_is_recursive.md): Configures how a clear operation should behave - recursive or not.
 * [`Color`](components/color.md): An RGBA color with unmultiplied/separate alpha, in sRGB gamma space with linear alpha.
+* [`ColorModel`](components/color_model.md): Specified what color components are present in an [`archetypes.Image`](https://rerun.io/docs/reference/types/archetypes/image).
 * [`Colormap`](components/colormap.md): Colormap for mapping scalar values within a given range to a color.
 * [`DepthMeter`](components/depth_meter.md): The world->depth map scaling factor.
 * [`DisconnectedSpace`](components/disconnected_space.md): Spatially disconnect this entity from its parent.
 * [`DrawOrder`](components/draw_order.md): Draw order of 2D elements. Higher values are drawn on top of lower values.
+* [`FillMode`](components/fill_mode.md): How a geometric shape is drawn and colored.
 * [`FillRatio`](components/fill_ratio.md): How much a primitive fills out the available space.
 * [`GammaCorrection`](components/gamma_correction.md): A gamma correction value to be used with a scalar value or color.
 * [`HalfSize2D`](components/half_size2d.md): Half-size (radius) of a 2D box.
@@ -46,8 +49,12 @@ on [Entities and Components](../../concepts/entity-component.md).
 * [`Radius`](components/radius.md): The radius of something, e.g. a point.
 * [`Range1D`](components/range1d.md): A 1D range, specifying a lower and upper bound.
 * [`Resolution`](components/resolution.md): Pixel resolution width & height, e.g. of a camera sensor.
+* [`Resolution2D`](components/resolution2d.md): The width and height of a 2D image.
 * [`Rotation3D`](components/rotation3d.md): A 3D rotation, represented either by a quaternion or a rotation around axis.
+* [`RotationAxisAngle`](components/rotation_axis_angle.md): 3D rotation represented by a rotation around a given axis.
+* [`RotationQuat`](components/rotation_quat.md): A 3D rotation expressed as a quaternion.
 * [`Scalar`](components/scalar.md): A scalar value, encoded as a 64-bit floating point.
+* [`Scale3D`](components/scale3d.md): A 3D scale factor.
 * [`StrokeWidth`](components/stroke_width.md): The width of a stroke specified in UI points.
 * [`TensorData`](components/tensor_data.md): An N-dimensional array of numbers.
 * [`TensorDimensionIndexSelection`](components/tensor_dimension_index_selection.md): Specifies a concrete index on a tensor dimension.
@@ -57,6 +64,9 @@ on [Entities and Components](../../concepts/entity-component.md).
 * [`Text`](components/text.md): A string of text, e.g. for labels and text documents.
 * [`TextLogLevel`](components/text_log_level.md): The severity level of a text log message.
 * [`Transform3D`](components/transform3d.md): An affine transform between two 3D spaces, represented in a given direction.
+* [`TransformMat3x3`](components/transform_mat3x3.md): A 3x3 transformation matrix Matrix.
+* [`TransformRelation`](components/transform_relation.md): Specifies relation a spatial transform describes.
+* [`Translation3D`](components/translation3d.md): A translation vector in 3D space.
 * [`TriangleIndices`](components/triangle_indices.md): The three indices of a triangle in a triangle mesh.
 * [`Vector2D`](components/vector2d.md): A vector in 2D space.
 * [`Vector3D`](components/vector3d.md): A vector in 3D space.

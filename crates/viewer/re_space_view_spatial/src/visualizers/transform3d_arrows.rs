@@ -78,16 +78,21 @@ impl VisualizerSystem for Transform3DArrowsVisualizer {
                 continue;
             };
 
+            let results = data_result
+                .latest_at_with_blueprint_resolved_data::<Transform3D>(ctx, &latest_at_query);
+            let axis_length: f32 = results.get_mono_with_fallback::<AxisLength>().into();
+
+            if axis_length == 0.0 {
+                // Don't draw axis and don't add to the bounding box!
+                continue;
+            }
+
             // Only add the center to the bounding box - the lines may be dependent on the bounding box, causing a feedback loop otherwise.
             self.0.add_bounding_box(
                 data_result.entity_path.hash(),
                 re_math::BoundingBox::ZERO,
                 world_from_obj,
             );
-
-            let results = data_result
-                .latest_at_with_blueprint_resolved_data::<Transform3D>(ctx, &latest_at_query);
-            let axis_length = results.get_mono_with_fallback::<AxisLength>().into();
 
             add_axis_arrows(
                 &mut line_builder,

@@ -40,6 +40,7 @@ namespace rerun {
         InvalidSocketAddress,
         InvalidComponentTypeHandle,
         InvalidTensorDimension,
+        FileRead,
 
         // Recording stream errors
         _CategoryRecordingStream = 0x0000'0100,

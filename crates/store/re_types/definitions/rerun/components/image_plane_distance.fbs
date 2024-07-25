@@ -1,7 +1,3 @@
-include "rust/attributes.fbs";
-include "docs/attributes.fbs";
-
-include "../datatypes/float32.fbs";
 
 namespace rerun.components;
 

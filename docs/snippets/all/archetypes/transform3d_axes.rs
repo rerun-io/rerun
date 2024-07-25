@@ -3,8 +3,8 @@
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let rec = rerun::RecordingStreamBuilder::new("rerun_example_transform3d_axes").spawn()?;
 
-    let base_axes = rerun::Transform3D::IDENTITY.with_axis_length(1.0);
-    let other_axes = rerun::Transform3D::IDENTITY.with_axis_length(0.5);
+    let base_axes = rerun::Transform3D::default().with_axis_length(1.0);
+    let other_axes = rerun::Transform3D::default().with_axis_length(0.5);
 
     rec.set_time_sequence("step", 0);
 
@@ -18,7 +18,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             "base/rotated",
             &rerun::Transform3D::from_rotation(rerun::RotationAxisAngle::new(
                 [1.0, 1.0, 1.0],
-                rerun::Angle::Degrees(deg as f32),
+                rerun::Angle::from_degrees(deg as f32),
             )),
         )?;
         rec.log(

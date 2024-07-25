@@ -16,7 +16,7 @@ use crate::{
     format_path,
     objects::ObjectClass,
     ArrowRegistry, Docs, ElementType, GeneratedFiles, Object, ObjectField, ObjectKind, Objects,
-    Reporter, Type, ATTR_CPP_NO_FIELD_CTORS,
+    Reporter, Type, ATTR_CPP_NO_FIELD_CTORS, ATTR_CPP_RENAME_FIELD,
 };
 
 use self::array_builder::{arrow_array_builder_type, arrow_array_builder_type_object};
@@ -181,6 +181,7 @@ impl CppCodeGenerator {
 
         for &obj in &objects_of_kind {
             if let Err(err) = generate_object_files(
+                reporter,
                 objects,
                 &folder_path_sdk,
                 &folder_path_testing,
@@ -225,6 +226,7 @@ impl CppCodeGenerator {
 }
 
 fn generate_object_files(
+    reporter: &Reporter,
     objects: &Objects,
     folder_path_sdk: &Utf8PathBuf,
     folder_path_testing: &Utf8PathBuf,
@@ -242,7 +244,7 @@ fn generate_object_files(
     let (hpp_type_extensions, hpp_extension_string) =
         hpp_type_extensions(folder_path_sdk, &filename_stem, &mut hpp_includes);
 
-    let (hpp, cpp) = generate_hpp_cpp(objects, obj, hpp_includes, &hpp_type_extensions)?;
+    let (hpp, cpp) = generate_hpp_cpp(reporter, objects, obj, hpp_includes, &hpp_type_extensions)?;
 
     for (extension, tokens) in [("hpp", Some(hpp)), ("cpp", cpp)] {
         let Some(tokens) = tokens else {
@@ -351,13 +353,14 @@ fn hpp_type_extensions(
 }
 
 fn generate_hpp_cpp(
+    reporter: &Reporter,
     objects: &Objects,
     obj: &Object,
     hpp_includes: Includes,
     hpp_type_extensions: &TokenStream,
 ) -> Result<(TokenStream, Option<TokenStream>)> {
     let QuotedObject { hpp, cpp } =
-        QuotedObject::new(objects, obj, hpp_includes, hpp_type_extensions)?;
+        QuotedObject::new(reporter, objects, obj, hpp_includes, hpp_type_extensions)?;
     let snake_case_name = obj.snake_case_name();
     let hash = quote! { # };
     let pragma_once = pragma_once();
@@ -392,6 +395,7 @@ struct QuotedObject {
 impl QuotedObject {
     #[allow(clippy::unnecessary_wraps)] // TODO(emilk): implement proper error handling instead of panicking
     pub fn new(
+        reporter: &Reporter,
         objects: &Objects,
         obj: &Object,
         hpp_includes: Includes,
@@ -412,11 +416,16 @@ impl QuotedObject {
                     hpp_type_extensions,
                 )),
                 ObjectKind::View => {
-                    // TODO(#5521): Implement view codegen for Rust.
+                    // TODO(#5521): Implement view codegen for C++.
                     unimplemented!();
                 }
             },
-            ObjectClass::Enum => Ok(Self::from_enum(objects, obj, hpp_includes)),
+            ObjectClass::Enum => {
+                if !hpp_type_extensions.is_empty() {
+                    reporter.error(&obj.virtpath, &obj.fqname, "C++ enums cannot have type extensions, because C++ enums doesn't support member functions");
+                }
+                Ok(Self::from_enum(objects, obj, hpp_includes))
+            }
             ObjectClass::Union => Ok(Self::from_union(
                 objects,
                 obj,
@@ -445,7 +454,7 @@ impl QuotedObject {
             .iter()
             .map(|obj_field| {
                 let docstring = quote_field_docs(objects, obj_field);
-                let field_name = format_ident!("{}", obj_field.name);
+                let field_name = field_name_identifier(obj_field);
                 let field_type = quote_archetype_field_type(&mut hpp_includes, obj_field);
                 let field_type = if obj_field.is_nullable {
                     hpp_includes.insert_system("optional");
@@ -476,7 +485,7 @@ impl QuotedObject {
                 .iter()
                 .map(|obj_field| {
                     let field_type = quote_archetype_field_type(&mut hpp_includes, obj_field);
-                    let field_ident = format_ident!("{}", obj_field.name);
+                    let field_ident = field_name_identifier(obj_field);
                     // C++ compilers give warnings for re-using the same name as the member variable.
                     let parameter_ident = format_ident!("_{}", obj_field.name);
                     (
@@ -498,7 +507,7 @@ impl QuotedObject {
 
         // Builder methods for all optional components.
         for obj_field in obj.fields.iter().filter(|field| field.is_nullable) {
-            let field_ident = format_ident!("{}", obj_field.name);
+            let field_ident = field_name_identifier(obj_field);
             // C++ compilers give warnings for re-using the same name as the member variable.
             let parameter_ident = format_ident!("_{}", obj_field.name);
             let method_ident = format_ident!("with_{}", obj_field.name);
@@ -663,7 +672,7 @@ impl QuotedObject {
                     objects,
                     &mut hpp_includes,
                     obj_field,
-                    &format_ident!("{}", obj_field.name),
+                    &field_name_identifier(obj_field),
                 );
                 quote! {
                     #NEWLINE_TOKEN
@@ -819,7 +828,7 @@ impl QuotedObject {
             }
         })
         .chain(obj.fields.iter().map(|obj_field| {
-            let ident = format_ident!("{}", obj_field.name);
+            let ident = field_name_identifier(obj_field);
             quote! {
                 #ident,
             }
@@ -896,7 +905,7 @@ impl QuotedObject {
         for obj_field in &obj.fields {
             let snake_case_name = obj_field.snake_case_name();
             let field_name = format_ident!("{}", snake_case_name);
-            let tag_name = format_ident!("{}", obj_field.name);
+            let tag_name = field_name_identifier(obj_field);
 
             let method = if obj_field.typ == Type::Unit {
                 let method_name = format_ident!("is_{}", snake_case_name);
@@ -950,7 +959,7 @@ impl QuotedObject {
                 }
             })
             .chain(obj.fields.iter().map(|obj_field| {
-                let tag_ident = format_ident!("{}", obj_field.name);
+                let tag_ident = field_name_identifier(obj_field);
                 let field_ident = format_ident!("{}", obj_field.snake_case_name());
 
                 if obj_field.typ.has_default_destructor(objects) {
@@ -988,7 +997,7 @@ impl QuotedObject {
             let mut placement_new_arms = Vec::new();
             let mut trivial_memcpy_cases = Vec::new();
             for obj_field in &obj.fields {
-                let tag_ident = format_ident!("{}", obj_field.name);
+                let tag_ident = field_name_identifier(obj_field);
                 let case = quote!(case detail::#tag_typename::#tag_ident:);
 
                 // Inferring from trivial destructability that we don't need to call the copy constructor is a little bit wonky,
@@ -1215,7 +1224,7 @@ impl QuotedObject {
             .enumerate()
             .map(|(i, obj_field)| {
                 let docstring = quote_field_docs(objects, obj_field);
-                let field_name = format_ident!("{}", obj_field.name);
+                let field_name = field_name_identifier(obj_field);
 
                 // We assign the arrow type index to the enum fields to make encoding simpler and faster:
                 let arrow_type_index = proc_macro2::Literal::usize_unsuffixed(1 + i); // 0 is reserved for `_null_markers`
@@ -1263,6 +1272,14 @@ impl QuotedObject {
     }
 }
 
+fn field_name_identifier(obj_field: &ObjectField) -> Ident {
+    if let Some(name) = obj_field.try_get_attr::<String>(ATTR_CPP_RENAME_FIELD) {
+        format_ident!("{}", name)
+    } else {
+        format_ident!("{}", obj_field.name)
+    }
+}
+
 fn single_field_constructor_methods(
     obj: &Object,
     hpp_includes: &mut Includes,
@@ -1281,7 +1298,8 @@ fn single_field_constructor_methods(
     // but ran into some issues when init archetypes with initializer lists.
     if let Type::Object(field_type_fqname) = &field.typ {
         let field_type_obj = &objects[field_type_fqname];
-        if field_type_obj.fields.len() == 1 {
+        if field_type_obj.fields.len() == 1 && !field_type_obj.is_attr_set(ATTR_CPP_NO_FIELD_CTORS)
+        {
             methods.extend(add_copy_assignment_and_constructor(
                 hpp_includes,
                 &field_type_obj.fields[0],
@@ -1303,7 +1321,7 @@ fn add_copy_assignment_and_constructor(
     objects: &Objects,
 ) -> Vec<Method> {
     let mut methods = Vec::new();
-    let field_ident = format_ident!("{}", target_field.name);
+    let field_ident = field_name_identifier(target_field);
     let param_ident = format_ident!("{}_", obj_field.name);
 
     // We keep parameter passing for assignment & ctors simple by _always_ passing by value.
@@ -1551,7 +1569,7 @@ fn archetype_serialize(type_ident: &Ident, obj: &Object, hpp_includes: &mut Incl
 
     let num_fields = quote_integer(obj.fields.len() + 1); // Plus one for the indicator.
     let push_batches = obj.fields.iter().map(|field| {
-        let field_name = format_ident!("{}", field.name);
+        let field_name = field_name_identifier(field);
         let field_accessor = quote!(archetype.#field_name);
 
         let push_back = quote! {
@@ -1829,7 +1847,7 @@ fn quote_append_field_to_builder(
     includes: &mut Includes,
     objects: &Objects,
 ) -> TokenStream {
-    let field_name = format_ident!("{}", field.name);
+    let field_name = field_name_identifier(field);
 
     if let Some(elem_type) = field.typ.plural_inner() {
         let value_builder = format_ident!("value_builder");

@@ -187,7 +187,7 @@ fn active_defaults(
     // even if they are listed in `all_components`.
     ctx.blueprint_db()
         .store()
-        .all_components(&blueprint_timeline(), &view.defaults_path)
+        .all_components_on_timeline(&blueprint_timeline(), &view.defaults_path)
         .unwrap_or_default()
         .into_iter()
         .filter(|c| {

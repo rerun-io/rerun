@@ -1,0 +1,13 @@
+namespace rerun.blueprint.components;
+
+
+/// Primary element by which to group by in a temporal data table.
+enum SortKey: byte (
+    "attr.rerun.scope": "blueprint"
+) {
+    /// Group by entity.
+    Entity (default),
+
+    /// Group by instance.
+    Time,
+}

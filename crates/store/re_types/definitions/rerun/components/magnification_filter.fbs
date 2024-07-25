@@ -1,5 +1,3 @@
-include "rerun/attributes.fbs";
-
 namespace rerun.components;
 
 /// Filter used when magnifying an image/texture such that a single pixel/texel is displayed as multiple pixels on screen.

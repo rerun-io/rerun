@@ -5,6 +5,7 @@ use egui::{NumExt as _, Response, Ui};
 
 use re_entity_db::TimeHistogram;
 use re_log_types::{EntityPath, ResolvedTimeRange, TimeType, TimeZone, TimelineName};
+use re_space_view_dataframe::DataframeSpaceView;
 use re_space_view_spatial::{SpatialSpaceView2D, SpatialSpaceView3D};
 use re_space_view_time_series::TimeSeriesSpaceView;
 use re_types::{
@@ -13,7 +14,7 @@ use re_types::{
     Archetype, SpaceViewClassIdentifier,
 };
 use re_ui::UiExt as _;
-use re_viewer_context::{QueryRange, SpaceViewClass, ViewerContext};
+use re_viewer_context::{QueryRange, SpaceViewClass, SpaceViewState, ViewerContext};
 use re_viewport_blueprint::{entity_path_for_view_property, SpaceViewBlueprint};
 
 /// These space views support the Visible History feature.
@@ -24,6 +25,7 @@ static VISIBLE_HISTORY_SUPPORTED_SPACE_VIEWS: once_cell::sync::Lazy<
         SpatialSpaceView3D::identifier(),
         SpatialSpaceView2D::identifier(),
         TimeSeriesSpaceView::identifier(),
+        DataframeSpaceView::identifier(),
     ]
     .map(Into::into)
     .into()
@@ -39,6 +41,7 @@ pub fn visible_time_range_ui_for_view(
     ctx: &ViewerContext<'_>,
     ui: &mut Ui,
     view: &SpaceViewBlueprint,
+    view_state: &dyn SpaceViewState,
 ) {
     if !space_view_with_visible_history(view.class_identifier()) {
         return;
@@ -55,6 +58,7 @@ pub fn visible_time_range_ui_for_view(
         ctx.blueprint_query,
         ctx.rec_cfg.time_ctrl.read().timeline(),
         ctx.space_view_class_registry,
+        view_state,
     );
 
     let is_space_view = true;
