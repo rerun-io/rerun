@@ -4311,6 +4311,7 @@ dependencies = [
  "rand",
  "re_arrow2",
  "re_build_info",
+ "re_error",
  "re_format",
  "re_format_arrow",
  "re_log",
