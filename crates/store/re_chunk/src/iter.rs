@@ -176,42 +176,6 @@ impl Chunk {
     }
 }
 
-// TODO(cmc): get rid of this
-impl Chunk {
-    /// Returns an iterator over the rows of the [`Chunk`].
-    ///
-    /// If the chunk is static, `timeline` will be ignored.
-    ///
-    /// Iterating a [`Chunk`] on a row basis is very wasteful, performance-wise.
-    /// Prefer columnar access when possible.
-    pub fn iter_rows(
-        &self,
-        timeline: &Timeline,
-        component_name: &ComponentName,
-    ) -> impl Iterator<Item = (TimeInt, RowId)> + '_ {
-        let Some(list_array) = self.components.get(component_name) else {
-            return Either::Left(std::iter::empty());
-        };
-
-        if self.is_static() {
-            let indices = izip!(std::iter::repeat(TimeInt::STATIC), self.row_ids());
-
-        let data_times = timelines
-            .get(timeline)
-            .into_iter()
-            .flat_map(|time_chunk| time_chunk.times().collect::<Vec<_>>())
-            // If there's no time data, then the associate data time must be `TimeInt::STATIC`.
-            .chain(std::iter::repeat(TimeInt::STATIC));
-
-        let arrays = components
-            .get(component_name)
-            .into_iter()
-            .flat_map(|list_array| list_array.into_iter());
-
-        itertools::izip!(data_times, row_ids, arrays)
-    }
-}
-
 // ---
 
 pub struct ChunkIndicesIter {
