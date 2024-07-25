@@ -3,7 +3,7 @@ use re_log_types::Instance;
 use re_renderer::renderer::LineStripFlags;
 use re_types::{
     archetypes::Pinhole,
-    components::{ImagePlaneDistance, Transform3D, ViewCoordinates},
+    components::{ImagePlaneDistance, ViewCoordinates},
 };
 use re_viewer_context::{
     ApplicableEntities, DataResult, IdentifiedViewSystem, QueryContext, SpaceViewOutlineMasks,
@@ -52,7 +52,6 @@ impl CamerasVisualizer {
         transforms: &TransformContext,
         data_result: &DataResult,
         pinhole: &Pinhole,
-        transform_at_entity: Option<Transform3D>,
         pinhole_view_coordinates: ViewCoordinates,
         entity_highlight: &SpaceViewOutlineMasks,
     ) {
@@ -74,42 +73,26 @@ impl CamerasVisualizer {
             return;
         }
 
-        // We need special handling to find the 3D transform for drawing the
-        // frustum itself. The transform that would otherwise be in the
-        // transform context might include both a rigid transform and a pinhole. This
-        // makes sense, since if there's an image logged here one would expect
-        // both the rigid and the pinhole to apply, but here we're only interested
-        // in the rigid transform at this entity path, excluding the pinhole
-        // portion (we handle the pinhole separately later).
-        let world_from_camera_rigid = {
-            // Start with the transform to the entity parent, if it exists
-            let world_from_parent = ent_path
-                .parent()
-                .and_then(|parent_path| transforms.reference_from_entity(&parent_path))
-                .unwrap_or(glam::Affine3A::IDENTITY);
-
-            // Then combine it with the transform at the entity itself, if there is one.
-            if let Some(transform_at_entity) = transform_at_entity {
-                world_from_parent * transform_at_entity.into_parent_from_child_transform()
-            } else {
-                world_from_parent
-            }
+        // The camera transform does not include the pinhole transform.
+        let Some(transform_info) = transforms.transform_info_for_entity(ent_path) else {
+            return;
         };
+        let world_from_camera = transform_info.reference_from_entity_ignoring_3d_from_2d_pinhole;
 
         // If this transform is not representable as an `IsoTransform` we can't display it yet.
         // This would happen if the camera is under another camera or under a transform with non-uniform scale.
-        let Some(world_from_camera_rigid_iso) =
-            re_math::IsoTransform::from_mat4(&world_from_camera_rigid.into())
+        let Some(world_from_camera_iso) =
+            re_math::IsoTransform::from_mat4(&world_from_camera.into())
         else {
             return;
         };
 
-        debug_assert!(world_from_camera_rigid_iso.is_finite());
+        debug_assert!(world_from_camera_iso.is_finite());
 
         self.space_cameras.push(SpaceCamera3D {
             ent_path: ent_path.clone(),
             pinhole_view_coordinates,
-            world_from_camera: world_from_camera_rigid_iso,
+            world_from_camera: world_from_camera_iso,
             pinhole: Some(pinhole.clone()),
             picture_plane_distance: frustum_length,
         });
@@ -163,8 +146,7 @@ impl CamerasVisualizer {
             // The frustum is setup as a RDF frustum, but if the view coordinates are not RDF,
             // we need to reorient the displayed frustum so that we indicate the correct orientation in the 3D world space.
             .world_from_obj(
-                world_from_camera_rigid
-                    * glam::Affine3A::from_mat3(pinhole_view_coordinates.from_rdf()),
+                world_from_camera * glam::Affine3A::from_mat3(pinhole_view_coordinates.from_rdf()),
             )
             .outline_mask_ids(entity_highlight.overall)
             .picking_object_id(instance_layer_id.object);
@@ -183,7 +165,7 @@ impl CamerasVisualizer {
         self.data.add_bounding_box_from_points(
             ent_path.hash(),
             std::iter::once(glam::Vec3::ZERO),
-            world_from_camera_rigid,
+            world_from_camera,
         );
     }
 }
@@ -232,10 +214,6 @@ impl VisualizerSystem for CamerasVisualizer {
                     transforms,
                     data_result,
                     &pinhole,
-                    // TODO(#5607): what should happen if the promise is still pending?
-                    ctx.recording()
-                        .latest_at_component::<Transform3D>(&data_result.entity_path, &time_query)
-                        .map(|c| c.value),
                     pinhole.camera_xyz.unwrap_or(ViewCoordinates::RDF), // TODO(#2641): This should come from archetype
                     entity_highlight,
                 );
