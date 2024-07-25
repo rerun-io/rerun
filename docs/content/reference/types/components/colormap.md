@@ -17,6 +17,7 @@ but currently the Viewer is limited to the types defined here.
 * Plasma
 * Turbo
 * Viridis
+* CyanToYellow
 
 ## API reference links
  * 🌊 [C++ API docs for `Colormap`](https://ref.rerun.io/docs/cpp/stable/namespacererun_1_1components.html)
