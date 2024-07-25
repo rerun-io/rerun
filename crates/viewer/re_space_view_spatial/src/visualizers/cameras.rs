@@ -235,7 +235,7 @@ impl VisualizerSystem for CamerasVisualizer {
                     // TODO(#5607): what should happen if the promise is still pending?
                     ctx.recording()
                         .latest_at_component::<Transform3D>(&data_result.entity_path, &time_query)
-                        .map(|c| c.value),
+                        .map(|(_index, c)| c),
                     pinhole.camera_xyz.unwrap_or(ViewCoordinates::RDF), // TODO(#2641): This should come from archetype
                     entity_highlight,
                 );
