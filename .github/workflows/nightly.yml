@@ -434,7 +434,7 @@ jobs:
           # It seems to otherwise use the latest commit for the tag. From the actions's docs:
           # > If the tag of the release you are creating does not yet exist, you should set both the tag and commit action inputs.
           # We just deleted the previous tag, so this is the case!
-          commit: ${{ env.SHORT_SHA }}
+          commit: ${{github.sha}}
           name: "Development Build"
           tag: "prerelease"
           token: ${{ secrets.GITHUB_TOKEN }}
