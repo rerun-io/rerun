@@ -18,6 +18,7 @@ mod proc_mesh;
 mod scene_bounding_boxes;
 mod space_camera_3d;
 mod spatial_topology;
+mod transformables;
 mod ui;
 mod ui_2d;
 mod ui_3d;
