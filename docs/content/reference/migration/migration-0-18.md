@@ -66,13 +66,16 @@ Other changes in data representation:
 * Angles (as used in `RotationAxisAngle`) are now always stored in radians, conversion functions for degrees are provided.
 Scaling no longer distinguishes uniform and 3D scaling in its data representation. Uniform scaling is now always expressed as 3 floats with the same value.
 
-TODO(andreas): Write about OutOfTreeTransform changes and how `Transform3D` has now arrays of components.
-
+Out of tree transform (previously only availble for [`Asset3D`](https://rerun.io/docs/reference/types/archetypes/asset3d)) is no longer
+represented by a component wrapping `Transform3D`, but as a separate [`OutOfTreeTransform`](https://rerun.io/docs/reference/types/components/out_of_tree_transform#speculative-link)
+component which merely stores whether transforms logged at this entity path should affect their children.
+If `OutOfTreeTransform` is enabled, any transform component will only affect the entity itself, not its children.
+If arrays of transform components are logged on a single entity, `OutOfTreeTransform` will be enabled by default, otherwise it is disabled by default.
+⚠️ This means it is no longer possible to have different transforms in-tree and out-of-tree on the same entity. If you want to do this, you need to log the transforms on separate entities.
 
 #### Python
 
 The `Transform3D` archetype no longer has a `transform` argument. Use one of the other arguments instead.
-TODO(andreas): Not true as of writing. but should be true at the time or release!
 
 Before:
 ```python
@@ -84,11 +87,16 @@ rr.log("myentity", rr.Transform3D(translation=Vec3D([1, 2, 3]), relation=rr.Tran
 ```
 
 
-TODO(andreas): code example
-
-
-TODO(andreas): Talk about OutOfTreeTransform
-TODO(andreas): … and Asset3D specifically
+Out of tree transforms are now regular transforms plus an `OutOfTreeTransform` component:
+Before:
+```python
+rr.log("world/asset", rr.Asset3D(path=asset_path, transform=translation))
+```
+After:
+```python
+rr.log("world/asset", rr.Asset3D(path=asset_path, out_of_tree_transform=True))
+rr.log("world/asset", rr.Transform3D(translation=translation))
+```
 
 
 #### C++
@@ -119,18 +127,27 @@ an empty archetype instead that you can populate (e.g. `rerun::Transform3D().wit
 
 Scale is no longer an enum datatype but a component with a 3D vec:
 Before:
-```rust
-let scale_uniform = rerun::Scale3D::Uniform(2.0);
-let scale_y = rerun::Scale3D::ThreeD([1.0, 2.0, 1.0]);
+```cpp
+auto scale_uniform = rerun::Scale3D::Uniform(2.0);
+auto scale_y = rerun::Scale3D::ThreeD([1.0, 2.0, 1.0]);
 ```
 After:
-```rust
-let scale_uniform = rerun::Scale3D::uniform(2.0);
-let scale_y = rerun::Scale3D::from([1.0, 2.0, 1.0]);
+```cpp
+auto scale_uniform = rerun::Scale3D::uniform(2.0f);
+auto scale_y = rerun::Scale3D(1.0f, 2.0f, 1.0f); 
 ```
 
-TODO(andreas): Talk about OutOfTreeTransform
-TODO(andreas): … and Asset3D specifically
+Out of tree transforms are now regular transforms plus an `OutOfTreeTransform` component:
+Before:
+```cpp
+rec.log("world/asset", rerun::Asset3D::from_file(path).value_or_throw().with_transform(translation));
+```
+After:
+```cpp
+rec.log("world/asset", rerun::Asset3D::from_file(path).value_or_throw().with_out_of_tree_transform(true));
+rec.log("world/asset", rerun::Transform3D::from_translation(translation));
+```
+
 
 #### Rust
 `rerun::archetypes::Transform3D` no longer has a `new`, use other factory methods instead, e.g. `from_translation_rotation_scale` or `from_mat3x3`
@@ -152,7 +169,7 @@ impl From<GltfTransform> for rerun::components::Transform3D {
     fn from(transform: GltfTransform) -> Self {
         rerun::components::Transform3D::from_translation_rotation_scale(
             transform.t,
-            rerun::datatypes::Quaternion::from_xyzw(transform.r),
+            rerun::Quaternion::from_xyzw(transform.r),
             transform.s,
         )
     }
@@ -164,13 +181,12 @@ impl From<GltfTransform> for rerun::Transform3D {
     fn from(transform: GltfTransform) -> Self {
         rerun::Transform3D::from_translation_rotation_scale(
             transform.t,
-            rerun::datatypes::Quaternion::from_xyzw(transform.r),
+            rerun::Quaternion::from_xyzw(transform.r),
             transform.s,
         )
     }
 }
 ```
-TODO(andreas): Quaternion in above snippet is likely to change as well.
 
 Since all aspects of the transform archetypes are now granular, they can be chained with `with_` functions:
 ```rust
@@ -181,5 +197,16 @@ Note that the order of the method calls does _not_ affect the order in which tra
 `rerun::Transform3D::IDENTITY` has been removed, sue `rerun::Transform3D::default()` to start out with
 an empty archetype instead that you can populate (e.g. `rerun::Transform3D::default().with_mat3x3(rerun::datatypes::Mat3x3::IDENTITY)`).
 
-TODO(andreas): Talk about OutOfTreeTransform
-TODO(andreas): … and Asset3D specifically
+
+Out of tree transforms are now regular transforms plus an `OutOfTreeTransform` component:
+Before:
+```rust
+rec.log("world/asset", &rerun::Asset3D::from_file(path)?
+    .with_transform(rerun::OutOfTreeTransform3D::from_translation(translation))
+)?;
+```
+After:
+```rust
+rec.log("world/asset", &rerun::Asset3D::from_file(path)?.with_out_of_tree_transform(true))?;
+rec.log("world/asset", &rerun::Transform3D::from_translation(translation))?;
+```
