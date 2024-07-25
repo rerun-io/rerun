@@ -454,6 +454,33 @@ impl TransformsAtEntity {
     }
 }
 
+/// Utility method to implement fallback provider fo `OutOfTreeTransform`.
+pub fn fallback_for_out_of_tree_transform(ctx: &re_viewer_context::QueryContext<'_>) -> bool {
+    let result = ctx.recording().latest_at(
+        ctx.query,
+        ctx.target_entity_path,
+        [
+            Transform3D::name(),
+            Translation3D::name(),
+            RotationAxisAngle::name(),
+            RotationQuat::name(),
+            Scale3D::name(),
+            TransformMat3x3::name(),
+        ],
+    );
+    if result.components.is_empty() {
+        return false;
+    }
+
+    result
+        .components
+        .values()
+        .map(|result| result.num_instances())
+        .max()
+        .unwrap_or(0)
+        > 1
+}
+
 fn query_and_resolve_transforms_at_entity(
     entity_path: &EntityPath,
     entity_db: &EntityDb,

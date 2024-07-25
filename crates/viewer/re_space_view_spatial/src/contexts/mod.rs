@@ -5,13 +5,12 @@ mod transform_context;
 pub use annotation_context::AnnotationSceneContext;
 pub use depth_offsets::EntityDepthOffsets;
 use re_types::SpaceViewClassIdentifier;
-pub use transform_context::TransformContext;
+pub use transform_context::{fallback_for_out_of_tree_transform, TransformContext, TransformInfo};
 
 // -----------------------------------------------------------------------------
 
 use re_renderer::DepthOffset;
 use re_viewer_context::{Annotations, SpaceViewClassRegistryError};
-use transform_context::TransformInfo;
 
 /// Context objects for a single entity in a spatial scene.
 pub struct SpatialSceneEntityContext<'a> {

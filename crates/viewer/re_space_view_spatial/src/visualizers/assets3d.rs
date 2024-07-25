@@ -5,18 +5,18 @@ use re_renderer::renderer::MeshInstance;
 use re_renderer::RenderContext;
 use re_types::{
     archetypes::Asset3D,
-    components::{Blob, MediaType},
+    components::{Blob, MediaType, OutOfTreeTransform},
 };
 use re_viewer_context::{
     ApplicableEntities, IdentifiedViewSystem, QueryContext, SpaceViewSystemExecutionError,
-    ViewContext, ViewContextCollection, ViewQuery, VisualizableEntities, VisualizableFilterContext,
-    VisualizerQueryInfo, VisualizerSystem,
+    TypedComponentFallbackProvider, ViewContext, ViewContextCollection, ViewQuery,
+    VisualizableEntities, VisualizableFilterContext, VisualizerQueryInfo, VisualizerSystem,
 };
 
 use super::{filter_visualizable_3d_entities, SpatialViewVisualizerData};
 
 use crate::{
-    contexts::SpatialSceneEntityContext,
+    contexts::{fallback_for_out_of_tree_transform, SpatialSceneEntityContext},
     instance_hash_conversions::picking_layer_id_from_instance_path_hash,
     mesh_cache::{AnyMesh, MeshCache, MeshCacheKey},
     view_kind::SpatialSpaceViewKind,
@@ -193,4 +193,10 @@ impl VisualizerSystem for Asset3DVisualizer {
     }
 }
 
-re_viewer_context::impl_component_fallback_provider!(Asset3DVisualizer => []);
+impl TypedComponentFallbackProvider<OutOfTreeTransform> for Asset3DVisualizer {
+    fn fallback_for(&self, ctx: &QueryContext<'_>) -> OutOfTreeTransform {
+        fallback_for_out_of_tree_transform(ctx).into()
+    }
+}
+
+re_viewer_context::impl_component_fallback_provider!(Asset3DVisualizer => [OutOfTreeTransform]);
