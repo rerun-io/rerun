@@ -12,6 +12,7 @@ use crate::{CacheKey, Caches};
 #[derive(Default, Debug, Clone)]
 pub struct CachesStats {
     pub latest_at: BTreeMap<CacheKey, CacheStats>,
+    pub range: BTreeMap<CacheKey, CacheStats>,
 }
 
 impl CachesStats {
@@ -19,14 +20,18 @@ impl CachesStats {
     pub fn total_size_bytes(&self) -> u64 {
         re_tracing::profile_function!();
 
-        let Self { latest_at } = self;
+        let Self { latest_at, range } = self;
 
         let latest_at_size_bytes: u64 = latest_at
             .values()
             .map(|stats| stats.total_actual_size_bytes)
             .sum();
+        let range_size_bytes: u64 = range
+            .values()
+            .map(|stats| stats.total_actual_size_bytes)
+            .sum();
 
-        latest_at_size_bytes
+        latest_at_size_bytes + range_size_bytes
     }
 }
 
@@ -73,6 +78,31 @@ impl Caches {
                 .collect()
         };
 
-        CachesStats { latest_at }
+        let range = {
+            let range = self.range_per_cache_key.read().clone();
+            // Implicitly releasing top-level cache mappings -- concurrent queries can run once again.
+
+            range
+                .iter()
+                .map(|(key, cache)| {
+                    let cache = cache.read();
+
+                    (
+                        key.clone(),
+                        CacheStats {
+                            total_chunks: cache.chunks.len() as _,
+                            total_effective_size_bytes: cache
+                                .chunks
+                                .values()
+                                .map(|cached| cached.chunk.total_size_bytes())
+                                .sum(),
+                            total_actual_size_bytes: cache.chunks.total_size_bytes(),
+                        },
+                    )
+                })
+                .collect()
+        };
+
+        CachesStats { latest_at, range }
     }
 }
