@@ -363,15 +363,6 @@ impl TransformContext {
     pub fn transform_info_for_entity(&self, ent_path: &EntityPath) -> Option<&TransformInfo> {
         self.transform_per_entity.get(ent_path)
     }
-
-    /// Retrieves the transform of on entity from its local system to the space of the reference.
-    ///
-    /// Returns None if the path is not reachable.
-    pub fn reference_from_entity(&self, ent_path: &EntityPath) -> Option<glam::Affine3A> {
-        self.transform_per_entity
-            .get(ent_path)
-            .map(|i| i.reference_from_entity)
-    }
 }
 
 #[cfg(debug_assertions)]
