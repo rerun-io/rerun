@@ -3,14 +3,19 @@ use std::{
     sync::atomic::{AtomicU64, Ordering},
 };
 
-use arrow2::array::{
-    Array as ArrowArray, ListArray as ArrowListArray, PrimitiveArray as ArrowPrimitiveArray,
-    StructArray as ArrowStructArray,
+use arrow2::{
+    array::{
+        Array as ArrowArray, ListArray as ArrowListArray, PrimitiveArray as ArrowPrimitiveArray,
+        StructArray as ArrowStructArray,
+    },
+    Either,
 };
 
 use itertools::{izip, Itertools};
 use re_log_types::{EntityPath, ResolvedTimeRange, Time, TimeInt, TimePoint, Timeline};
-use re_types_core::{ComponentName, Loggable, LoggableBatch, SerializationError, SizeBytes};
+use re_types_core::{
+    ComponentName, DeserializationError, Loggable, LoggableBatch, SerializationError, SizeBytes,
+};
 
 use crate::{ChunkId, RowId};
 
@@ -26,8 +31,18 @@ pub enum ChunkError {
     #[error(transparent)]
     Arrow(#[from] arrow2::error::Error),
 
+    #[error("{kind} index out of bounds: {index} (len={len})")]
+    IndexOutOfBounds {
+        kind: String,
+        len: usize,
+        index: usize,
+    },
+
     #[error(transparent)]
     Serialization(#[from] SerializationError),
+
+    #[error(transparent)]
+    Deserialization(#[from] DeserializationError),
 }
 
 pub type ChunkResult<T> = Result<T, ChunkError>;
@@ -820,6 +835,32 @@ impl Chunk {
         let (times, counters) = self.row_ids_raw();
         izip!(times.values().as_slice(), counters.values().as_slice())
             .map(|(&time, &counter)| RowId::from_u128((time as u128) << 64 | (counter as u128)))
+    }
+
+    /// Returns an iterator over the [`RowId`]s of a [`Chunk`], for a given component.
+    ///
+    /// This is different than [`Self::row_ids`]: it will only yield `RowId`s for rows at which
+    /// there is data for the specified `component_name`.
+    #[inline]
+    pub fn component_row_ids(
+        &self,
+        component_name: &ComponentName,
+    ) -> impl Iterator<Item = RowId> + '_ {
+        let Some(list_array) = self.components.get(component_name) else {
+            return Either::Left(std::iter::empty());
+        };
+
+        let row_ids = self.row_ids();
+
+        if let Some(validity) = list_array.validity() {
+            Either::Right(Either::Left(
+                row_ids
+                    .enumerate()
+                    .filter_map(|(i, o)| validity.get_bit(i).then_some(o)),
+            ))
+        } else {
+            Either::Right(Either::Right(row_ids))
+        }
     }
 
     /// Returns the [`RowId`]-range covered by this [`Chunk`].

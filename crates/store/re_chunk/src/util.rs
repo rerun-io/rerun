@@ -199,6 +199,8 @@ pub fn pad_list_array_front(
 ///
 /// Takes care of up- and down-casting the data back and forth on behalf of the caller.
 pub fn filter_array<A: ArrowArray + Clone>(array: &A, filter: &ArrowBooleanArray) -> A {
+    debug_assert!(filter.validity().is_none()); // just for good measure
+
     #[allow(clippy::unwrap_used)]
     arrow2::compute::filter::filter(array, filter)
         // Unwrap: this literally cannot fail.
