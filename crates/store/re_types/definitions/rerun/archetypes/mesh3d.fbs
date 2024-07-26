@@ -2,53 +2,15 @@ namespace rerun.archetypes;
 
 // ---
 
-/// A 3D triangle mesh as specified by its per-mesh and per-vertex properties.
-///
-/// See also [archetypes.Asset3D].
-///
-/// \example archetypes/mesh3d_indexed title="Simple indexed 3D mesh" image="https://static.rerun.io/mesh3d_simple/e1e5fd97265daf0d0bc7b782d862f19086fd6975/1200w.png"
-/// \example archetypes/mesh3d_partial_updates !api title="3D mesh with partial updates" image="https://static.rerun.io/mesh3d_partial_updates/a11e4accb0257dcd9531867b7e1d6fd5e3bee5c3/1200w.png"
-table Mesh3D (
-  "attr.rust.derive": "PartialEq",
-  "attr.docs.category": "Spatial 3D",
-  "attr.docs.view_types": "Spatial3DView, Spatial2DView: if logged above active projection"
-) {
-  // --- Required ---
-
-  /// The positions of each vertex.
-  ///
-  /// If no `triangle_indices` are specified, then each triplet of positions is interpreted as a triangle.
+table Mesh3D {
   vertex_positions: [rerun.components.Position3D] ("attr.rerun.component_required", order: 1000);
 
-  // --- Recommended ---
-
-  /// Optional indices for the triangles that make up the mesh.
   triangle_indices: [rerun.components.TriangleIndices] ("attr.rerun.component_recommended", nullable, order: 2000);
-
-  /// An optional normal for each vertex.
   vertex_normals: [rerun.components.Vector3D] ("attr.rerun.component_recommended", nullable, order: 2100);
 
-  // --- Optional ---
-
-  /// An optional color for each vertex.
   vertex_colors: [rerun.components.Color] ("attr.rerun.component_optional", nullable, order: 3100);
-
-  /// An optional uv texture coordinate for each vertex.
   vertex_texcoords: [rerun.components.Texcoord2D] ("attr.rerun.component_optional", nullable, order: 3200);
-
-  /// A color multiplier applied to the whole mesh.
   albedo_factor: rerun.components.AlbedoFactor ("attr.rerun.component_optional", nullable, order: 3300);
-
-  /// Optional albedo texture.
-  ///
-  /// Used with the [components.Texcoord2D] of the mesh.
-  ///
-  /// Currently supports only sRGB(A) textures, ignoring alpha.
-  /// (meaning that the tensor must have 3 or 4 channels and use the `u8` format)
   albedo_texture: rerun.components.TensorData ("attr.rerun.component_optional", nullable, order: 3400);
-
-  /// Optional class Ids for the vertices.
-  ///
-  /// The [components.ClassId] provides colors and labels if not specified explicitly.
   class_ids: [rerun.components.ClassId] ("attr.rerun.component_optional", nullable, order: 3500);
 }
