@@ -28,7 +28,7 @@ table Transform3D (
   /// Scaling factor.
   scale: rerun.components.Scale3D ("attr.rerun.component_optional", nullable, order: 1400);
 
-  /// 3x3 transformation matrices.
+  /// 3x3 transformation matrix.
   mat3x3: rerun.components.TransformMat3x3 ("attr.rerun.component_optional", nullable, order: 1500);
 
   /// Specifies the relation this transform establishes between this entity and its parent.

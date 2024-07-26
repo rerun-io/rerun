@@ -157,7 +157,7 @@ namespace rerun::archetypes {
         /// Scaling factor.
         std::optional<rerun::components::Scale3D> scale;
 
-        /// 3x3 transformation matrices.
+        /// 3x3 transformation matrix.
         std::optional<rerun::components::TransformMat3x3> mat3x3;
 
         /// Specifies the relation this transform establishes between this entity and its parent.
@@ -539,7 +539,7 @@ namespace rerun::archetypes {
             RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
         }
 
-        /// 3x3 transformation matrices.
+        /// 3x3 transformation matrix.
         Transform3D with_mat3x3(rerun::components::TransformMat3x3 _mat3x3) && {
             mat3x3 = std::move(_mat3x3);
             // See: https://github.com/rerun-io/rerun/issues/4027

@@ -174,7 +174,7 @@ pub struct Transform3D {
     /// Scaling factor.
     pub scale: Option<crate::components::Scale3D>,
 
-    /// 3x3 transformation matrices.
+    /// 3x3 transformation matrix.
     pub mat3x3: Option<crate::components::TransformMat3x3>,
 
     /// Specifies the relation this transform establishes between this entity and its parent.
@@ -467,7 +467,7 @@ impl Transform3D {
         self
     }
 
-    /// 3x3 transformation matrices.
+    /// 3x3 transformation matrix.
     #[inline]
     pub fn with_mat3x3(mut self, mat3x3: impl Into<crate::components::TransformMat3x3>) -> Self {
         self.mat3x3 = Some(mat3x3.into());

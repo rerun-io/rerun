@@ -191,7 +191,7 @@ class Transform3D(Transform3DExt, Archetype):
         default=None,
         converter=components.TransformMat3x3Batch._optional,  # type: ignore[misc]
     )
-    # 3x3 transformation matrices.
+    # 3x3 transformation matrix.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 

@@ -674,7 +674,7 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                     docstring_md : "Scaling factor.", }, ArchetypeFieldReflection {
                     component_name : "rerun.components.TransformMat3x3".into(),
                     display_name : "Mat 3x 3", docstring_md :
-                    "3x3 transformation matrices.", }, ArchetypeFieldReflection {
+                    "3x3 transformation matrix.", }, ArchetypeFieldReflection {
                     component_name : "rerun.components.TransformRelation".into(),
                     display_name : "Relation", docstring_md :
                     "Specifies the relation this transform establishes between this entity and its parent.",
