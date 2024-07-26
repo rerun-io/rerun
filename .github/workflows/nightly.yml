@@ -429,6 +429,12 @@ jobs:
             ```
 
           prerelease: true
+          # Be explicit about the commit we're releasing/tagging.
+          # Otherwise it can happen that there's a discrepancy between the tag and the commit for which we uploaded & linked artifacts.
+          # It seems to otherwise use the latest commit for the tag. From the actions's docs:
+          # > If the tag of the release you are creating does not yet exist, you should set both the tag and commit action inputs.
+          # We just deleted the previous tag, so this is the case!
+          commit: ${{github.sha}}
           name: "Development Build"
           tag: "prerelease"
           token: ${{ secrets.GITHUB_TOKEN }}

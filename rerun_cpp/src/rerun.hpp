@@ -34,6 +34,7 @@ namespace rerun {
     using components::ChannelDatatype;
     using components::Color;
     using components::ColorModel;
+    using components::FillMode;
     using components::HalfSize2D;
     using components::HalfSize3D;
     using components::LineStrip2D;
@@ -47,6 +48,7 @@ namespace rerun {
     using components::Resolution2D;
     using components::Text;
     using components::TextLogLevel;
+    using components::TransformRelation;
     using components::TriangleIndices;
     using components::Vector2D;
     using components::Vector3D;
@@ -59,7 +61,6 @@ namespace rerun {
     using datatypes::Mat3x3;
     using datatypes::Quaternion;
     using datatypes::Rgba32;
-    using datatypes::Rotation3D;
     using datatypes::RotationAxisAngle;
     using datatypes::Scale3D;
     using datatypes::TensorBuffer;

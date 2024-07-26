@@ -73,6 +73,13 @@ For this purpose `TranslationRotationScale3D` and `TranslationAndMat3x3` datatyp
 * [`Translation3D`](https://rerun.io/docs/reference/types/components/translation3d#speculative-link)
 * [`TransformMat3x3`](https://rerun.io/docs/reference/types/components/transform_mat3x3#speculative-link)
 * [`Scale3D`](https://rerun.io/docs/reference/types/components/scale3d#speculative-link)
+* [`RotationAxisAngle`](https://rerun.io/docs/reference/types/components/rotation_axis_angle#speculative-link)
+   * uses existing datatype with the same name
+* [`RotationQuat`](https://rerun.io/docs/reference/types/components/rotation_quat#speculative-link)
+   * uses existing `Quaternion` datatype
+* [`TransformRelation`](https://rerun.io/docs/reference/types/components/transform_relation#speculative-link)
+   * this replaces the previous `from_parent` bool
+   * `from_parent` is still available in all SDK languages, but deprecated
 
 All components are applied to the final transform in the opposite order they're listed in. E.g. if both a 4x4 matrix and a translation is set, the entity is first translated and then transformed with the matrix.
 If translation, rotation & scale are applied, then (just as in prior versions), from the point of view of the parent space the object is first scaled, then rotated and then translated.
@@ -96,7 +103,7 @@ rr.log("myentity", rr.Transform3D(rr.TranslationRotationScale3D(translation=Vec3
 ```
 After:
 ```python
-rr.log("myentity", rr.Transform3D(translation=Vec3D([1, 2, 3]), from_parent=True))
+rr.log("myentity", rr.Transform3D(translation=Vec3D([1, 2, 3]), relation=rr.TransformRelation.ChildFromParent))
 ```
 
 

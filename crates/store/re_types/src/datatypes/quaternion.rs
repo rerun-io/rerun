@@ -22,7 +22,8 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 ///
 /// Note: although the x,y,z,w components of the quaternion will be passed through to the
 /// datastore as provided, when used in the Viewer Quaternions will always be normalized.
-#[derive(Clone, Debug, Copy, PartialEq, PartialOrd)]
+#[derive(Clone, Debug, Copy, PartialEq, PartialOrd, bytemuck::Pod, bytemuck::Zeroable)]
+#[repr(C)]
 pub struct Quaternion(pub [f32; 4usize]);
 
 impl ::re_types_core::SizeBytes for Quaternion {

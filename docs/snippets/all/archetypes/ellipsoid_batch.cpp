@@ -34,5 +34,6 @@ int main() {
                 rerun::Rgba32(0, 0, 0),
                 rerun::Rgba32(0, 0, 0),
             })
+            .with_fill_mode(rerun::FillMode::Solid)
     );
 }

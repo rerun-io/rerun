@@ -20,6 +20,12 @@ impl Chunk {
     ///
     /// [concatenable]: [`Chunk::concatenable`]
     pub fn concatenated(&self, rhs: &Self) -> ChunkResult<Self> {
+        re_tracing::profile_function!(format!(
+            "lhs={} rhs={}",
+            re_format::format_uint(self.num_rows()),
+            re_format::format_uint(rhs.num_rows())
+        ));
+
         let cl = self;
         let cr = rhs;
 
@@ -38,65 +44,48 @@ impl Chunk {
 
         let is_sorted = cl.is_sorted && cr.is_sorted && cl1 <= cr0;
 
-        let row_ids = arrow2::compute::concatenate::concatenate(&[&cl.row_ids, &cr.row_ids])?;
-        #[allow(clippy::unwrap_used)] // concatenating 2 RowId arrays must yield another RowId array
-        let row_ids = row_ids
-            .as_any()
-            .downcast_ref::<ArrowStructArray>()
-            .unwrap()
-            .clone();
+        let row_ids = {
+            re_tracing::profile_scope!("row_ids");
+
+            let row_ids = arrow2::compute::concatenate::concatenate(&[&cl.row_ids, &cr.row_ids])?;
+            #[allow(clippy::unwrap_used)]
+            // concatenating 2 RowId arrays must yield another RowId array
+            row_ids
+                .as_any()
+                .downcast_ref::<ArrowStructArray>()
+                .unwrap()
+                .clone()
+        };
 
         // NOTE: We know they are the same set, and they are in a btree => we can zip them.
-        let timelines = izip!(self.timelines.iter(), rhs.timelines.iter())
-            .filter_map(
-                |((lhs_timeline, lhs_time_chunk), (rhs_timeline, rhs_time_chunk))| {
-                    debug_assert_eq!(lhs_timeline, rhs_timeline);
-                    lhs_time_chunk
-                        .concatenated(rhs_time_chunk)
-                        .map(|time_chunk| (*lhs_timeline, time_chunk))
-                },
-            )
-            .collect();
+        let timelines = {
+            re_tracing::profile_scope!("timelines");
+            izip!(self.timelines.iter(), rhs.timelines.iter())
+                .filter_map(
+                    |((lhs_timeline, lhs_time_chunk), (rhs_timeline, rhs_time_chunk))| {
+                        debug_assert_eq!(lhs_timeline, rhs_timeline);
+                        lhs_time_chunk
+                            .concatenated(rhs_time_chunk)
+                            .map(|time_chunk| (*lhs_timeline, time_chunk))
+                    },
+                )
+                .collect()
+        };
 
         // First pass: concat right onto left.
-        let mut components: BTreeMap<_, _> = self
-            .components
-            .iter()
-            .filter_map(|(component_name, lhs_list_array)| {
-                if let Some(rhs_list_array) = rhs.components.get(component_name) {
-                    let list_array = arrow2::compute::concatenate::concatenate(&[
-                        lhs_list_array,
-                        rhs_list_array,
-                    ])
-                    .ok()?;
-                    let list_array = list_array
-                        .as_any()
-                        .downcast_ref::<ArrowListArray<i32>>()?
-                        .clone();
-                    Some((*component_name, list_array))
-                } else {
-                    Some((
-                        *component_name,
-                        crate::util::pad_list_array_back(
-                            lhs_list_array,
-                            self.num_rows() + rhs.num_rows(),
-                        ),
-                    ))
-                }
-            })
-            .collect();
-
-        // Second pass: concat left onto right, where necessary.
-        components.extend(
-            rhs.components
+        let mut components: BTreeMap<_, _> = {
+            re_tracing::profile_scope!("components (r2l)");
+            self.components
                 .iter()
-                .filter_map(|(component_name, rhs_list_array)| {
-                    if components.contains_key(component_name) {
-                        // Already did that one during the first pass.
-                        return None;
-                    }
+                .filter_map(|(component_name, lhs_list_array)| {
+                    re_tracing::profile_scope!(format!("{}", component_name.as_str()));
+                    if let Some(rhs_list_array) = rhs.components.get(component_name) {
+                        re_tracing::profile_scope!(format!(
+                            "concat (lhs={} rhs={})",
+                            re_format::format_uint(lhs_list_array.values().len()),
+                            re_format::format_uint(rhs_list_array.values().len()),
+                        ));
 
-                    if let Some(lhs_list_array) = self.components.get(component_name) {
                         let list_array = arrow2::compute::concatenate::concatenate(&[
                             lhs_list_array,
                             rhs_list_array,
@@ -106,8 +95,55 @@ impl Chunk {
                             .as_any()
                             .downcast_ref::<ArrowListArray<i32>>()?
                             .clone();
+
                         Some((*component_name, list_array))
                     } else {
+                        re_tracing::profile_scope!("pad");
+                        Some((
+                            *component_name,
+                            crate::util::pad_list_array_back(
+                                lhs_list_array,
+                                self.num_rows() + rhs.num_rows(),
+                            ),
+                        ))
+                    }
+                })
+                .collect()
+        };
+
+        // Second pass: concat left onto right, where necessary.
+        components.extend({
+            re_tracing::profile_scope!("components (l2r)");
+            rhs.components
+                .iter()
+                .filter_map(|(component_name, rhs_list_array)| {
+                    if components.contains_key(component_name) {
+                        // Already did that one during the first pass.
+                        return None;
+                    }
+
+                    re_tracing::profile_scope!(component_name.as_str());
+
+                    if let Some(lhs_list_array) = self.components.get(component_name) {
+                        re_tracing::profile_scope!(format!(
+                            "concat (lhs={} rhs={})",
+                            re_format::format_uint(lhs_list_array.values().len()),
+                            re_format::format_uint(rhs_list_array.values().len()),
+                        ));
+
+                        let list_array = arrow2::compute::concatenate::concatenate(&[
+                            lhs_list_array,
+                            rhs_list_array,
+                        ])
+                        .ok()?;
+                        let list_array = list_array
+                            .as_any()
+                            .downcast_ref::<ArrowListArray<i32>>()?
+                            .clone();
+
+                        Some((*component_name, list_array))
+                    } else {
+                        re_tracing::profile_scope!("pad");
                         Some((
                             *component_name,
                             crate::util::pad_list_array_front(
@@ -117,8 +153,8 @@ impl Chunk {
                         ))
                     }
                 })
-                .collect_vec(),
-        );
+                .collect_vec()
+        });
 
         let chunk = Self {
             id: ChunkId::new(),

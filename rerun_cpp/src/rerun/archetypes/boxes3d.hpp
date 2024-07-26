@@ -7,6 +7,7 @@
 #include "../compiler_utils.hpp"
 #include "../components/class_id.hpp"
 #include "../components/color.hpp"
+#include "../components/fill_mode.hpp"
 #include "../components/half_size3d.hpp"
 #include "../components/position3d.hpp"
 #include "../components/radius.hpp"
@@ -54,6 +55,7 @@ namespace rerun::archetypes {
     ///                 rerun::Rgba32(0, 255, 0),
     ///                 rerun::Rgba32(0, 0, 255),
     ///             })
+    ///             .with_fill_mode(rerun::FillMode::Solid)
     ///             .with_labels({"red", "green", "blue"})
     ///     );
     /// }
@@ -73,6 +75,9 @@ namespace rerun::archetypes {
 
         /// Optional radii for the lines that make up the boxes.
         std::optional<Collection<rerun::components::Radius>> radii;
+
+        /// Optionally choose whether the boxes are drawn with lines or solid.
+        std::optional<rerun::components::FillMode> fill_mode;
 
         /// Optional text labels for the boxes.
         ///
@@ -171,6 +176,13 @@ namespace rerun::archetypes {
         /// Optional radii for the lines that make up the boxes.
         Boxes3D with_radii(Collection<rerun::components::Radius> _radii) && {
             radii = std::move(_radii);
+            // See: https://github.com/rerun-io/rerun/issues/4027
+            RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
+        }
+
+        /// Optionally choose whether the boxes are drawn with lines or solid.
+        Boxes3D with_fill_mode(rerun::components::FillMode _fill_mode) && {
+            fill_mode = std::move(_fill_mode);
             // See: https://github.com/rerun-io/rerun/issues/4027
             RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
         }

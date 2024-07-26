@@ -5,7 +5,7 @@ title: "PixelFormat"
 
 Specifieds a particular format of an [`archetypes.Image`](https://rerun.io/docs/reference/types/archetypes/image).
 
-Most images can be described by a [`components.ColorModel`](https://rerun.io/docs/reference/types/components/color_model?speculative-link) and a [`components.ChannelDatatype`](https://rerun.io/docs/reference/types/components/channel_datatype),
+Most images can be described by a [`components.ColorModel`](https://rerun.io/docs/reference/types/components/color_model?speculative-link) and a [`components.ChannelDatatype`](https://rerun.io/docs/reference/types/components/channel_datatype?speculative-link),
 e.g. `RGB` and `U8` respectively.
 
 However, some image formats has chroma downsampling and/or

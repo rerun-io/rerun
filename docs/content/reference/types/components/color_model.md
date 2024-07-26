@@ -5,7 +5,7 @@ title: "ColorModel"
 
 Specified what color components are present in an [`archetypes.Image`](https://rerun.io/docs/reference/types/archetypes/image).
 
-This combined with [`components.ChannelDatatype`](https://rerun.io/docs/reference/types/components/channel_datatype) determines the pixel format of an image.
+This combined with [`components.ChannelDatatype`](https://rerun.io/docs/reference/types/components/channel_datatype?speculative-link) determines the pixel format of an image.
 
 ## Variants
 

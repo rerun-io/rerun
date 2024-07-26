@@ -22,9 +22,9 @@ How individual color channel components are encoded.
 * F64
 
 ## API reference links
- * 🌊 [C++ API docs for `ChannelDatatype`](https://ref.rerun.io/docs/cpp/stable/namespacererun_1_1components.html)
- * 🐍 [Python API docs for `ChannelDatatype`](https://ref.rerun.io/docs/python/stable/common/components#rerun.components.ChannelDatatype)
- * 🦀 [Rust API docs for `ChannelDatatype`](https://docs.rs/rerun/latest/rerun/components/enum.ChannelDatatype.html)
+ * 🌊 [C++ API docs for `ChannelDatatype`](https://ref.rerun.io/docs/cpp/stable/namespacererun_1_1components.html?speculative-link)
+ * 🐍 [Python API docs for `ChannelDatatype`](https://ref.rerun.io/docs/python/stable/common/components?speculative-link#rerun.components.ChannelDatatype)
+ * 🦀 [Rust API docs for `ChannelDatatype`](https://docs.rs/rerun/latest/rerun/components/enum.ChannelDatatype.html?speculative-link)
 
 
 ## Used by

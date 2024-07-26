@@ -1302,7 +1302,8 @@ fn single_field_constructor_methods(
     // but ran into some issues when init archetypes with initializer lists.
     if let Type::Object(field_type_fqname) = &field.typ {
         let field_type_obj = &objects[field_type_fqname];
-        if field_type_obj.fields.len() == 1 {
+        if field_type_obj.fields.len() == 1 && !field_type_obj.is_attr_set(ATTR_CPP_NO_FIELD_CTORS)
+        {
             methods.extend(add_copy_assignment_and_constructor(
                 hpp_includes,
                 &field_type_obj.fields[0],

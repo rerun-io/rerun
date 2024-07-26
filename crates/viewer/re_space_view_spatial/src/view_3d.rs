@@ -277,13 +277,15 @@ impl SpaceViewClass for SpatialSpaceView3D {
         // It's tempting to add a visualizer for view coordinates so that it's already picked up via `entities_with_indicator_for_visualizer_kind`.
         // Is there a nicer way for this or do we want a visualizer for view coordinates anyways?
         // There's also a strong argument to be made that ViewCoordinates implies a 3D space, thus changing the SpacialTopology accordingly!
-        ctx.recording()
-            .tree()
-            .visit_children_recursively(&mut |path, info| {
-                if info.components.contains_key(&ViewCoordinates::name()) {
-                    indicated_entities.insert(path.clone());
-                }
-            });
+        ctx.recording().tree().visit_children_recursively(|path| {
+            if ctx
+                .recording()
+                .store()
+                .entity_has_component(path, &ViewCoordinates::name())
+            {
+                indicated_entities.insert(path.clone());
+            }
+        });
 
         // Spawn a space view at each subspace that has any potential 3D content.
         // Note that visualizability filtering is all about being in the right subspace,

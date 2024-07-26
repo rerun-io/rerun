@@ -1,9 +1,13 @@
+use re_entity_db::InstancePathHash;
 use re_log_types::Instance;
-use re_query::range_zip_1x7;
-use re_renderer::{LineDrawableBuilder, PickingLayerInstanceId};
+use re_renderer::{
+    renderer::MeshInstance, LineDrawableBuilder, PickingLayerInstanceId, RenderContext,
+};
 use re_types::{
     archetypes::Boxes3D,
-    components::{ClassId, Color, HalfSize3D, KeypointId, Position3D, Radius, Rotation3D, Text},
+    components::{
+        ClassId, Color, FillMode, HalfSize3D, KeypointId, Position3D, Radius, Rotation3D, Text,
+    },
 };
 use re_viewer_context::{
     auto_color_for_entity_path, ApplicableEntities, IdentifiedViewSystem, QueryContext,
@@ -12,7 +16,11 @@ use re_viewer_context::{
     VisualizerQueryInfo, VisualizerSystem,
 };
 
-use crate::{contexts::SpatialSceneEntityContext, view_kind::SpatialSpaceViewKind};
+use crate::{
+    contexts::SpatialSceneEntityContext,
+    instance_hash_conversions::picking_layer_id_from_instance_path_hash, proc_mesh,
+    view_kind::SpatialSpaceViewKind,
+};
 
 use super::{
     entity_iterator::clamped_or, filter_visualizable_3d_entities,
@@ -35,14 +43,17 @@ impl Default for Boxes3DVisualizer {
 // NOTE: Do not put profile scopes in these methods. They are called for all entities and all
 // timestamps within a time range -- it's _a lot_.
 impl Boxes3DVisualizer {
+    #[allow(clippy::too_many_arguments)]
     fn process_data<'a>(
         &mut self,
         ctx: &QueryContext<'_>,
         line_builder: &mut LineDrawableBuilder<'_>,
+        mesh_instances: &mut Vec<MeshInstance>,
         query: &ViewQuery<'_>,
         ent_context: &SpatialSceneEntityContext<'_>,
         data: impl Iterator<Item = Boxes3DComponentData<'a>>,
-    ) {
+        render_ctx: &RenderContext,
+    ) -> Result<(), SpaceViewSystemExecutionError> {
         let entity_path = ctx.target_entity_path;
 
         for data in data {
@@ -78,32 +89,64 @@ impl Boxes3DVisualizer {
 
             let centers = clamped_or(data.centers, &Position3D::ZERO);
             let rotations = clamped_or(data.rotations, &Rotation3D::IDENTITY);
-            for (i, (half_size, &center, rotation, radius, &color)) in
+            for (instance_index, (half_size, &center, rotation, radius, &color)) in
                 itertools::izip!(data.half_sizes, centers, rotations, radii, &colors).enumerate()
             {
-                obj_space_bounding_box.extend(half_size.box_min(center));
-                obj_space_bounding_box.extend(half_size.box_max(center));
+                let instance = Instance::from(instance_index as u64);
+                // Transform from a centered unit cube to this box in the entity's
+                // coordinate system.
+                let entity_from_mesh = glam::Affine3A::from_scale_rotation_translation(
+                    glam::Vec3::from(*half_size) * 2.0,
+                    rotation.0.into(),
+                    center.into(),
+                );
 
-                let center = center.into();
+                let proc_mesh_key = proc_mesh::ProcMeshKey::Cube;
 
-                let box3d = line_batch
-                    .add_box_outline_from_transform(
-                        glam::Affine3A::from_scale_rotation_translation(
-                            glam::Vec3::from(*half_size) * 2.0,
-                            rotation.0.into(),
-                            center,
-                        ),
-                    )
-                    .color(color)
-                    .radius(radius)
-                    .picking_instance_id(PickingLayerInstanceId(i as _));
+                obj_space_bounding_box = obj_space_bounding_box.union(
+                    // We must perform this transform to fully account for the per-instance
+                    // transform, which is separate from the entity's transform.
+                    proc_mesh_key
+                        .simple_bounding_box()
+                        .transform_affine3(&entity_from_mesh),
+                );
 
-                if let Some(outline_mask_ids) = ent_context
-                    .highlight
-                    .instances
-                    .get(&Instance::from(i as u64))
-                {
-                    box3d.outline_mask_ids(*outline_mask_ids);
+                match data.fill_mode {
+                    FillMode::Wireframe => {
+                        let box3d = line_batch
+                            .add_box_outline_from_transform(entity_from_mesh)
+                            .color(color)
+                            .radius(radius)
+                            .picking_instance_id(PickingLayerInstanceId(instance_index as _));
+
+                        if let Some(outline_mask_ids) =
+                            ent_context.highlight.instances.get(&instance)
+                        {
+                            box3d.outline_mask_ids(*outline_mask_ids);
+                        }
+                    }
+                    FillMode::Solid => {
+                        let Some(solid_mesh) =
+                            ctx.viewer_ctx.cache.entry(|c: &mut proc_mesh::SolidCache| {
+                                c.entry(proc_mesh_key, render_ctx)
+                            })
+                        else {
+                            return Err(SpaceViewSystemExecutionError::DrawDataCreationError(
+                                "Failed to allocate solid mesh".into(),
+                            ));
+                        };
+
+                        mesh_instances.push(MeshInstance {
+                            gpu_mesh: solid_mesh.gpu_mesh,
+                            mesh: None,
+                            world_from_mesh: entity_from_mesh,
+                            outline_mask_ids: ent_context.highlight.index_outline_mask(instance),
+                            picking_layer_id: picking_layer_id_from_instance_path_hash(
+                                InstancePathHash::instance(entity_path, instance),
+                            ),
+                            additive_tint: color,
+                        });
+                    }
                 }
             }
 
@@ -135,6 +178,8 @@ impl Boxes3DVisualizer {
                 ));
             }
         }
+
+        Ok(())
     }
 }
 
@@ -152,6 +197,8 @@ struct Boxes3DComponentData<'a> {
     labels: &'a [Text],
     keypoint_ids: &'a [KeypointId],
     class_ids: &'a [ClassId],
+
+    fill_mode: FillMode,
 }
 
 impl IdentifiedViewSystem for Boxes3DVisualizer {
@@ -187,6 +234,13 @@ impl VisualizerSystem for Boxes3DVisualizer {
         let mut line_builder = LineDrawableBuilder::new(render_ctx);
         line_builder.radius_boost_in_ui_points_for_outlines(SIZE_BOOST_IN_POINTS_FOR_LINE_OUTLINES);
 
+        // Collects solid (that is, triangles rather than wireframe) instances to be drawn.
+        //
+        // Why do we draw solid surfaces using instanced meshes and wireframes using instances?
+        // No good reason; only, those are the types of renderers that have been implemented so far.
+        // This code should be revisited with an eye on performance.
+        let mut solid_instances: Vec<MeshInstance> = Vec::new();
+
         super::entity_iterator::process_archetype::<Self, Boxes3D, _>(
             ctx,
             view_query,
@@ -210,19 +264,34 @@ impl VisualizerSystem for Boxes3DVisualizer {
                     return Ok(());
                 }
 
-                // Each box consists of 12 independent lines with 2 vertices each.
-                line_builder.reserve_strips(num_boxes * 12)?;
-                line_builder.reserve_vertices(num_boxes * 12 * 2)?;
-
                 let centers = results.get_or_empty_dense(resolver)?;
                 let rotations = results.get_or_empty_dense(resolver)?;
                 let colors = results.get_or_empty_dense(resolver)?;
+                let fill_mode = results.get_or_empty_dense(resolver)?;
                 let radii = results.get_or_empty_dense(resolver)?;
                 let labels = results.get_or_empty_dense(resolver)?;
                 let class_ids = results.get_or_empty_dense(resolver)?;
                 let keypoint_ids = results.get_or_empty_dense(resolver)?;
 
-                let data = range_zip_1x7(
+                // fill mode is currently a non-repeated component
+                let fill_mode: FillMode = fill_mode
+                    .range_indexed()
+                    .next()
+                    .and_then(|(_, fill_modes)| fill_modes.first().copied())
+                    .unwrap_or_default();
+
+                match fill_mode {
+                    FillMode::Wireframe => {
+                        // Each box consists of 12 independent lines with 2 vertices each.
+                        line_builder.reserve_strips(num_boxes * 12)?;
+                        line_builder.reserve_vertices(num_boxes * 12 * 2)?;
+                    }
+                    FillMode::Solid => {
+                        // No lines.
+                    }
+                }
+
+                let data = re_query::range_zip_1x7(
                     half_sizes.range_indexed(),
                     centers.range_indexed(),
                     rotations.range_indexed(),
@@ -250,6 +319,8 @@ impl VisualizerSystem for Boxes3DVisualizer {
                             rotations: rotations.unwrap_or_default(),
                             colors: colors.unwrap_or_default(),
                             radii: radii.unwrap_or_default(),
+                            // fill mode is currently a non-repeated component
+                            fill_mode,
                             labels: labels.unwrap_or_default(),
                             class_ids: class_ids.unwrap_or_default(),
                             keypoint_ids: keypoint_ids.unwrap_or_default(),
@@ -257,13 +328,38 @@ impl VisualizerSystem for Boxes3DVisualizer {
                     },
                 );
 
-                self.process_data(ctx, &mut line_builder, view_query, spatial_ctx, data);
+                self.process_data(
+                    ctx,
+                    &mut line_builder,
+                    &mut solid_instances,
+                    view_query,
+                    spatial_ctx,
+                    data,
+                    render_ctx,
+                )?;
 
                 Ok(())
             },
         )?;
 
-        Ok(vec![(line_builder.into_draw_data()?.into())])
+        let wireframe_draw_data: re_renderer::QueueableDrawData =
+            line_builder.into_draw_data()?.into();
+
+        let solid_draw_data: Option<re_renderer::QueueableDrawData> =
+            match re_renderer::renderer::MeshDrawData::new(render_ctx, &solid_instances) {
+                Ok(draw_data) => Some(draw_data.into()),
+                Err(err) => {
+                    re_log::error_once!(
+                        "Failed to create mesh draw data from mesh instances: {err}"
+                    );
+                    None
+                }
+            };
+
+        Ok([solid_draw_data, Some(wireframe_draw_data)]
+            .into_iter()
+            .flatten()
+            .collect())
     }
 
     fn data(&self) -> Option<&dyn std::any::Any> {

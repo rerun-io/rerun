@@ -34,6 +34,7 @@ examples = [
   # display order, most interesting first
   "droid_dataset",
   "ros_node",
+  "chess_robby_fischer",
   "nuscenes_dataset",
   "ros2_bridge",
   "ros_bridge",
@@ -59,6 +60,7 @@ examples = [
   "vista",
   "mcc",
   "lerobot",
+  "depth_compare",
   "shape_pointe",
   "llm_embedding_ner",
   "tfrecord_loader",

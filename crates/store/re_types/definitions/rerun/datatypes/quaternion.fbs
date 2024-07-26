@@ -6,12 +6,11 @@ namespace rerun.datatypes;
 ///
 /// Note: although the x,y,z,w components of the quaternion will be passed through to the
 /// datastore as provided, when used in the Viewer Quaternions will always be normalized.
-//
-// Expectations:
 struct Quaternion (
   "attr.arrow.transparent",
-  "attr.rust.derive": "Copy, PartialEq, PartialOrd",
+  "attr.rust.derive": "Copy, PartialEq, PartialOrd, bytemuck::Pod, bytemuck::Zeroable",
   "attr.rust.tuple_struct",
+  "attr.rust.repr": "C",
   "attr.cpp.no_field_ctors" // Always be explicit about the values of the fields.
 ) {
   xyzw: [float: 4] (order: 100);

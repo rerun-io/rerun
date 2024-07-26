@@ -11,7 +11,8 @@ int main(int, char** argv) {
 
     rec.log(
         "transform/translation",
-        rerun::archetypes::Transform3D::from_translation({1.0f, 2.0f, 3.0f}).with_from_parent(true)
+        rerun::archetypes::Transform3D::from_translation({1.0f, 2.0f, 3.0f})
+            .with_relation(rerun::components::TransformRelation::ChildFromParent)
     );
 
     rec.log(
@@ -29,7 +30,7 @@ int main(int, char** argv) {
             {1.0f, 2.0f, 3.0f},
             rerun::components::Scale3D::uniform(42.0f)
         )
-            .with_from_parent(true)
+            .with_relation(rerun::components::TransformRelation::ChildFromParent)
     );
 
     rec.log(
@@ -53,6 +54,6 @@ int main(int, char** argv) {
             ),
             rerun::components::Scale3D::uniform(42.0)
         )
-            .with_from_parent(true)
+            .with_relation(rerun::components::TransformRelation::ChildFromParent)
     );
 }

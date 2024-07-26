@@ -23,9 +23,6 @@ pub struct AppOptions {
     /// Toggle query clamping for the plot visualizers.
     pub experimental_plot_query_clamping: bool,
 
-    /// Toggle new data density graph.
-    pub experimental_chunk_based_data_density_graph: bool,
-
     /// Displays an overlay for debugging picking.
     pub show_picking_debug_overlay: bool,
 
@@ -56,8 +53,6 @@ impl Default for AppOptions {
             experimental_dataframe_space_view: false,
 
             experimental_plot_query_clamping: false,
-
-            experimental_chunk_based_data_density_graph: false,
 
             show_picking_debug_overlay: false,
 

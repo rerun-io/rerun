@@ -34,6 +34,7 @@ from .colormap import Colormap, ColormapArrayLike, ColormapBatch, ColormapLike, 
 from .depth_meter import DepthMeter, DepthMeterBatch, DepthMeterType
 from .disconnected_space import DisconnectedSpace, DisconnectedSpaceBatch, DisconnectedSpaceType
 from .draw_order import DrawOrder, DrawOrderBatch, DrawOrderType
+from .fill_mode import FillMode, FillModeArrayLike, FillModeBatch, FillModeLike, FillModeType
 from .fill_ratio import FillRatio, FillRatioBatch, FillRatioType
 from .gamma_correction import GammaCorrection, GammaCorrectionBatch, GammaCorrectionType
 from .half_size2d import HalfSize2D, HalfSize2DBatch, HalfSize2DType
@@ -64,6 +65,8 @@ from .range1d import Range1D, Range1DBatch, Range1DType
 from .resolution import Resolution, ResolutionBatch, ResolutionType
 from .resolution2d import Resolution2D, Resolution2DBatch, Resolution2DType
 from .rotation3d import Rotation3D, Rotation3DBatch, Rotation3DType
+from .rotation_axis_angle import RotationAxisAngle, RotationAxisAngleBatch, RotationAxisAngleType
+from .rotation_quat import RotationQuat, RotationQuatBatch, RotationQuatType
 from .scalar import Scalar, ScalarBatch, ScalarType
 from .scale3d import Scale3D, Scale3DBatch, Scale3DType
 from .stroke_width import StrokeWidth, StrokeWidthBatch, StrokeWidthType
@@ -80,6 +83,13 @@ from .text import Text, TextBatch, TextType
 from .text_log_level import TextLogLevel, TextLogLevelBatch, TextLogLevelType
 from .transform3d import Transform3D, Transform3DBatch, Transform3DType
 from .transform_mat3x3 import TransformMat3x3, TransformMat3x3Batch, TransformMat3x3Type
+from .transform_relation import (
+    TransformRelation,
+    TransformRelationArrayLike,
+    TransformRelationBatch,
+    TransformRelationLike,
+    TransformRelationType,
+)
 from .translation3d import Translation3D, Translation3DBatch, Translation3DType
 from .triangle_indices import TriangleIndices, TriangleIndicesBatch, TriangleIndicesType
 from .vector2d import Vector2D, Vector2DBatch, Vector2DType
@@ -139,6 +149,11 @@ __all__ = [
     "DrawOrder",
     "DrawOrderBatch",
     "DrawOrderType",
+    "FillMode",
+    "FillModeArrayLike",
+    "FillModeBatch",
+    "FillModeLike",
+    "FillModeType",
     "FillRatio",
     "FillRatioBatch",
     "FillRatioType",
@@ -221,6 +236,12 @@ __all__ = [
     "Rotation3D",
     "Rotation3DBatch",
     "Rotation3DType",
+    "RotationAxisAngle",
+    "RotationAxisAngleBatch",
+    "RotationAxisAngleType",
+    "RotationQuat",
+    "RotationQuatBatch",
+    "RotationQuatType",
     "Scalar",
     "ScalarBatch",
     "ScalarType",
@@ -257,6 +278,11 @@ __all__ = [
     "TransformMat3x3",
     "TransformMat3x3Batch",
     "TransformMat3x3Type",
+    "TransformRelation",
+    "TransformRelationArrayLike",
+    "TransformRelationBatch",
+    "TransformRelationLike",
+    "TransformRelationType",
     "Translation3D",
     "Translation3DBatch",
     "Translation3DType",

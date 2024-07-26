@@ -7,6 +7,7 @@
 #include "../compiler_utils.hpp"
 #include "../components/class_id.hpp"
 #include "../components/color.hpp"
+#include "../components/fill_mode.hpp"
 #include "../components/half_size3d.hpp"
 #include "../components/position3d.hpp"
 #include "../components/radius.hpp"
@@ -51,6 +52,9 @@ namespace rerun::archetypes {
 
         /// Optional radii for the lines used when the ellipsoid is rendered as a wireframe.
         std::optional<Collection<rerun::components::Radius>> line_radii;
+
+        /// Optionally choose whether the ellipsoids are drawn with lines or solid.
+        std::optional<rerun::components::FillMode> fill_mode;
 
         /// Optional text labels for the ellipsoids.
         std::optional<Collection<rerun::components::Text>> labels;
@@ -133,6 +137,13 @@ namespace rerun::archetypes {
         /// Optional radii for the lines used when the ellipsoid is rendered as a wireframe.
         Ellipsoids with_line_radii(Collection<rerun::components::Radius> _line_radii) && {
             line_radii = std::move(_line_radii);
+            // See: https://github.com/rerun-io/rerun/issues/4027
+            RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
+        }
+
+        /// Optionally choose whether the ellipsoids are drawn with lines or solid.
+        Ellipsoids with_fill_mode(rerun::components::FillMode _fill_mode) && {
+            fill_mode = std::move(_fill_mode);
             // See: https://github.com/rerun-io/rerun/issues/4027
             RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
         }

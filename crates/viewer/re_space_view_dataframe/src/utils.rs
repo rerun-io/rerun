@@ -28,7 +28,7 @@ pub(crate) fn sorted_instance_paths_for<'a>(
     re_tracing::profile_function!();
 
     store
-        .all_components(timeline, entity_path)
+        .all_components_on_timeline(timeline, entity_path)
         .unwrap_or_default()
         .into_iter()
         .filter(|component_name| !component_name.is_indicator_component())

@@ -4,7 +4,7 @@ from typing import Any
 
 import numpy as np
 
-from .. import datatypes
+from .. import components, datatypes
 from ..error_utils import _send_warning_or_raise, catch_and_log_exceptions
 
 
@@ -20,6 +20,7 @@ class EllipsoidsExt:
         rotations: datatypes.Rotation3DArrayLike | None = None,
         colors: datatypes.Rgba32ArrayLike | None = None,
         line_radii: datatypes.Float32ArrayLike | None = None,
+        fill_mode: components.FillMode | None = None,
         labels: datatypes.Utf8ArrayLike | None = None,
         class_ids: datatypes.ClassIdArrayLike | None = None,
     ) -> None:
@@ -42,6 +43,8 @@ class EllipsoidsExt:
             Optional colors for the ellipsoids.
         line_radii:
             Optional radii for the lines that make up the ellipsoids.
+        fill_mode:
+            Optionally choose whether the ellipsoids are drawn with lines or solid.
         labels:
             Optional text labels for the ellipsoids.
         class_ids:
@@ -66,6 +69,7 @@ class EllipsoidsExt:
                 rotations=rotations,
                 colors=colors,
                 line_radii=line_radii,
+                fill_mode=fill_mode,
                 labels=labels,
                 class_ids=class_ids,
             )
