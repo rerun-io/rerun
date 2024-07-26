@@ -93,8 +93,6 @@ def test_angle() -> None:
 
 
 def test_transform3d() -> None:
-    # TODO(#6831): Test with arrays of all fields.
-
     rotation_axis_angle = [None, RotationAxisAngle([1, 2, 3], rr.Angle(deg=10))]
     quaternion_arrays = [None, Quaternion(xyzw=[1, 2, 3, 4])]
     scale_arrays = [None, 1.0, 1, [1.0, 2.0, 3.0]]
