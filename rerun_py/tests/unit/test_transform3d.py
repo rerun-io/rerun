@@ -18,7 +18,7 @@ from rerun.datatypes import (
 
 from .common_arrays import none_empty_or_value
 from .test_matnxn import MAT_3X3_INPUT
-from .test_vecnd import VEC_3D_INPUT, assert_correct_vec3d
+from .test_vecnd import VEC_3D_INPUT
 
 SCALE_3D_INPUT = [
     # Uniform
