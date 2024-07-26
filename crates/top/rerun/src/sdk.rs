@@ -1,7 +1,7 @@
 // NOTE: Have a look at `re_sdk/src/lib.rs` for an accurate listing of all these symbols.
 pub use re_sdk::*;
 
-/// Transform helpers, for use with [`components::Transform3D`].
+/// Transform helpers, for use with [`archetypes::Transform3D`].
 pub mod transform {
     pub use re_types::datatypes::{Angle, Quaternion, Rotation3D, RotationAxisAngle};
 }
