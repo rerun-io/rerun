@@ -5,17 +5,16 @@ mod transform_context;
 pub use annotation_context::AnnotationSceneContext;
 pub use depth_offsets::EntityDepthOffsets;
 use re_types::SpaceViewClassIdentifier;
-pub use transform_context::TransformContext;
+pub use transform_context::{TransformContext, TransformInfo, TwoDInThreeDTransformInfo};
 
 // -----------------------------------------------------------------------------
 
 use re_renderer::DepthOffset;
 use re_viewer_context::{Annotations, SpaceViewClassRegistryError};
-use transform_context::TransformInfo;
 
 /// Context objects for a single entity in a spatial scene.
 pub struct SpatialSceneEntityContext<'a> {
-    pub world_from_entity: glam::Affine3A,
+    pub world_from_entity: glam::Affine3A, // TODO(andreas): replace usage with `transform_info` accessors.
     pub transform_info: &'a TransformInfo,
     pub depth_offset: DepthOffset,
     pub annotations: std::sync::Arc<Annotations>,

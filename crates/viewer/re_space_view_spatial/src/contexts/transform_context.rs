@@ -23,39 +23,38 @@ pub struct TransformInfo {
     /// The transform from the entity to the reference space.
     ///
     /// Does not include per instance leaf transforms!
-    /// *Does* include 3D from 2D pinhole transform if present.
+    /// Include 3D-from-2D / 2D-from-3D pinhole transform if present.
     pub reference_from_entity: glam::Affine3A,
-
-    /// Like [`TransformInfo::reference_from_entity`], but if this entity has a pinhole camera, it won't affect the transform.
-    ///
-    /// Normally, the transform we compute for an entity with a pinhole transform places all objects
-    /// in front (defined by view coordinates) of the camera with a given image plane distance.
-    /// In some cases like drawing the lines for a frustum or arrows for the 3D transform, this is not the desired transformation.
-    ///
-    /// TODO(andreas): This a lot of overhead for something used very rarely.
-    ///
-    /// TODO(#2663, #1025): Going forward we should have separate transform hierarchies for 2D (i.e. projected) and 3D,
-    /// which would remove the need for this.
-    pub reference_from_entity_ignoring_3d_from_2d_pinhole: glam::Affine3A,
 
     /// Optional list of out of leaf transforms that are applied to the instances of this entity.
     // TODO(andreas): not very widely supported yet. We may likely want to make `reference_from_instance` a thing and encapsulate stuff further.
     pub entity_from_instance_leaf_transforms: Vec<glam::Affine3A>,
 
-    /// The pinhole camera ancestor of this entity if any.
+    /// If this entity is under (!) a pinhole camera, this contains additional information.
+    ///
+    /// TODO(#2663, #1025): Going forward we should have separate transform hierarchies for 2D (i.e. projected) and 3D,
+    /// which would remove the need for this.
+    pub twod_in_threed_info: Option<TwoDInThreeDTransformInfo>,
+}
+
+#[derive(Clone, Debug)]
+pub struct TwoDInThreeDTransformInfo {
+    /// Pinhole camera ancestor (may be this entity itself).
     ///
     /// None indicates that this entity is under the eye camera with no Pinhole camera in-between.
     /// Some indicates that the entity is under a pinhole camera at the given entity path that is not at the root of the space view.
-    pub parent_pinhole: Option<EntityPath>,
+    pub parent_pinhole: EntityPath,
+
+    /// The last 3D from 3D transform at the pinhole camera, before the pinhole transformation itself.
+    pub reference_from_pinhole_entity: glam::Affine3A,
 }
 
 impl Default for TransformInfo {
     fn default() -> Self {
         Self {
             reference_from_entity: glam::Affine3A::IDENTITY,
-            reference_from_entity_ignoring_3d_from_2d_pinhole: glam::Affine3A::IDENTITY,
             entity_from_instance_leaf_transforms: Vec::new(),
-            parent_pinhole: None,
+            twod_in_threed_info: None,
         }
     }
 }
@@ -210,19 +209,23 @@ impl TransformContext {
                 Ok(transforms_at_entity) => {
                     let mut new_transform = TransformInfo {
                         reference_from_entity: reference_from_ancestor,
-                        reference_from_entity_ignoring_3d_from_2d_pinhole: reference_from_ancestor,
                         entity_from_instance_leaf_transforms: transforms_at_entity
                             .parent_from_entity_leaf_transforms
                             .iter()
                             .map(|&t| t.inverse())
                             .collect(),
-                        parent_pinhole: encountered_pinhole.clone(),
+
+                        // Going up the tree, we can only encounter 2d->3d transforms.
+                        // 3d->2d transforms can't happen because `Pinhole` represents 3d->2d (and we're walking backwards!)
+                        twod_in_threed_info: None,
                     };
 
                     // Need to take care of the fact that we're walking the other direction of the tree here compared to `gather_descendants_transforms`!
                     if let Some(entity_from_2d_pinhole_content) =
                         transforms_at_entity.instance_from_pinhole_image_plane
                     {
+                        // If we're going up the tree and encounter a pinhole, we still to apply it.
+                        // This is what handles "3D in 2D".
                         debug_assert!(encountered_pinhole.as_ref() == Some(&current_tree.path));
                         new_transform.reference_from_entity *=
                             entity_from_2d_pinhole_content.inverse();
@@ -233,12 +236,6 @@ impl TransformContext {
                         new_transform.reference_from_entity *=
                             parent_from_entity_tree_transform.inverse();
                     }
-
-                    // If we're going up the tree and encounter a pinhole, we need to apply it, it means that our reference is 2D.
-                    // So it's not acutally a "3d_from_2d" but rather a "2d_from_3d", consequently
-                    // `reference_from_entity_ignoring_3d_from_2d_pinhole`is always the same as `reference_from_entity`.
-                    new_transform.reference_from_entity_ignoring_3d_from_2d_pinhole =
-                        new_transform.reference_from_entity;
 
                     new_transform
                 }
@@ -270,10 +267,8 @@ impl TransformContext {
         query: &LatestAtQuery,
         transform: TransformInfo,
     ) {
-        let encountered_pinhole = transform.parent_pinhole.clone();
+        let twod_in_threed_info = transform.twod_in_threed_info.clone();
         let reference_from_parent = transform.reference_from_entity;
-        let reference_from_parent_ignoring_3d_from_2d_pinhole =
-            transform.reference_from_entity_ignoring_3d_from_2d_pinhole;
         match self.transform_per_entity.entry(subtree.path.clone()) {
             std::collections::hash_map::Entry::Occupied(_) => {
                 return;
@@ -301,7 +296,9 @@ impl TransformContext {
                     .into()
             };
 
-            let mut encountered_pinhole = encountered_pinhole.clone();
+            let mut encountered_pinhole = twod_in_threed_info
+                .as_ref()
+                .map(|info| info.parent_pinhole.clone());
             let new_transform = match transforms_at(
                 child_tree,
                 entity_db,
@@ -318,23 +315,28 @@ impl TransformContext {
                 Ok(transforms_at_entity) => {
                     let mut new_transform = TransformInfo {
                         reference_from_entity: reference_from_parent,
-                        reference_from_entity_ignoring_3d_from_2d_pinhole:
-                            reference_from_parent_ignoring_3d_from_2d_pinhole,
                         entity_from_instance_leaf_transforms: transforms_at_entity
                             .parent_from_entity_leaf_transforms,
-                        parent_pinhole: encountered_pinhole.clone(),
+                        twod_in_threed_info: twod_in_threed_info.clone(),
                     };
 
                     if let Some(parent_from_entity_tree_transform) =
                         transforms_at_entity.parent_from_entity_tree_transform
                     {
                         new_transform.reference_from_entity *= parent_from_entity_tree_transform;
-                        new_transform.reference_from_entity_ignoring_3d_from_2d_pinhole *=
-                            parent_from_entity_tree_transform;
                     }
                     if let Some(entity_from_2d_pinhole_content) =
                         transforms_at_entity.instance_from_pinhole_image_plane
                     {
+                        // This should be an unreachable transform.
+                        debug_assert!(twod_in_threed_info.is_none());
+                        // There has to be a pinhole to get here.
+                        debug_assert!(encountered_pinhole.is_some());
+
+                        new_transform.twod_in_threed_info = Some(TwoDInThreeDTransformInfo {
+                            parent_pinhole: child_tree.path.clone(),
+                            reference_from_pinhole_entity: new_transform.reference_from_entity,
+                        });
                         new_transform.reference_from_entity *= entity_from_2d_pinhole_content;
                     }
 

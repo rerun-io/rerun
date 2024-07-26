@@ -18,6 +18,7 @@ use re_viewer_context::{
 
 use crate::{
     contexts::SpatialSceneEntityContext,
+    contexts::TwoDInThreeDTransformInfo,
     query_pinhole_legacy,
     view_kind::SpatialSpaceViewKind,
     visualizers::{filter_visualizable_2d_entities, SIZE_BOOST_IN_POINTS_FOR_POINT_OUTLINES},
@@ -75,7 +76,7 @@ impl DepthImageVisualizer {
             image.colormap = Some(image.colormap.unwrap_or_else(|| self.fallback_for(ctx)));
 
             if is_3d_view {
-                if let Some(parent_pinhole_path) = &ent_context.transform_info.parent_pinhole {
+                if let Some(twod_in_threed_info) = &ent_context.transform_info.twod_in_threed_info {
                     let fill_ratio = fill_ratio.unwrap_or_default();
 
                     // NOTE: we don't pass in `world_from_obj` because this corresponds to the
@@ -86,7 +87,7 @@ impl DepthImageVisualizer {
                         ent_context,
                         &image,
                         entity_path,
-                        parent_pinhole_path,
+                        twod_in_threed_info,
                         depth_meter,
                         fill_ratio,
                     ) {
@@ -145,22 +146,25 @@ impl DepthImageVisualizer {
         ent_context: &SpatialSceneEntityContext<'_>,
         image: &ImageInfo,
         ent_path: &EntityPath,
-        parent_pinhole_path: &EntityPath,
+        twod_in_threed_info: &TwoDInThreeDTransformInfo,
         depth_meter: DepthMeter,
         radius_scale: FillRatio,
     ) -> anyhow::Result<DepthCloud> {
         re_tracing::profile_function!();
 
-        let Some(intrinsics) =
-            query_pinhole_legacy(ctx.recording(), ctx.query, parent_pinhole_path)
-        else {
-            anyhow::bail!("Couldn't fetch pinhole intrinsics at {parent_pinhole_path:?}");
+        let Some(intrinsics) = query_pinhole_legacy(
+            ctx.recording(),
+            ctx.query,
+            &twod_in_threed_info.parent_pinhole,
+        ) else {
+            anyhow::bail!(
+                "Couldn't fetch pinhole intrinsics at {:?}",
+                twod_in_threed_info.parent_pinhole
+            );
         };
 
         // Place the cloud at the pinhole's location. Note that this means we ignore any 2D transforms that might be there.
-        let world_from_view = ent_context
-            .transform_info
-            .reference_from_entity_ignoring_3d_from_2d_pinhole;
+        let world_from_view = twod_in_threed_info.reference_from_pinhole_entity;
         let world_from_rdf = world_from_view
             * glam::Affine3A::from_mat3(
                 intrinsics
