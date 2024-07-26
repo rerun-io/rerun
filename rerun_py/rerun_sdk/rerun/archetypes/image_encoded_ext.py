@@ -125,7 +125,7 @@ class ImageEncodedExt:
         Compress the given image as a JPEG.
 
         JPEG compression works best for photographs.
-        Only RGB and graysacle images are supported, not RGBA.
+        Only RGB and grayscale images are supported, not RGBA.
         Note that compressing to JPEG costs a bit of CPU time,
         both when logging and later when viewing them.
 
@@ -147,17 +147,20 @@ class ImageEncodedExt:
         from . import Image
 
         with catch_and_log_exceptions(context="Image compression"):
-            if isinstance(color_model, ColorModel):
-                color_model = str(color_model)
-            if color_model == "L":
-                mode = "L"
-            elif color_model == "RGB":
-                mode = "RGB"
-            else:
+            if isinstance(color_model, str):
+                color_model = ColorModel[color_model]
+            if isinstance(color_model, int):
+                color_model = ColorModel(color_model)
+            elif not isinstance(color_model, ColorModel):
+                raise ValueError(f"Invalid color_model: {color_model}")
+
+            if color_model not in (ColorModel.L, ColorModel.RGB):
                 # TODO(#2340): BGR support!
                 raise ValueError(
                     f"Cannot JPEG compress an image of type {color_model}. Only L (monochrome) and RGB are supported."
                 )
+
+            mode = str(color_model)
 
             image = _to_numpy(image)
             if image.dtype not in ["uint8", "sint32", "float32"]:
