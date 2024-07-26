@@ -34,6 +34,11 @@ on [Entities and Components](../../concepts/entity-component.md).
 * [`HalfSize3D`](components/half_size3d.md): Half-size (radius) of a 3D box.
 * [`ImagePlaneDistance`](components/image_plane_distance.md): The distance from the camera origin to the image plane when the projection is shown in a 3D viewer.
 * [`KeypointId`](components/keypoint_id.md): A 16-bit ID representing a type of semantic keypoint within a class.
+* [`LeafRotationAxisAngle`](components/leaf_rotation_axis_angle.md): 3D rotation represented by a rotation around a given axis that doesn't propagate in the transform hierarchy.
+* [`LeafRotationQuat`](components/leaf_rotation_quat.md): A 3D rotation expressed as a quaternion that doesn't propagate in the transform hierarchy.
+* [`LeafScale3D`](components/leaf_scale3d.md): A 3D scale factor that doesn't propagate in the transform hierarchy.
+* [`LeafTransformMat3x3`](components/leaf_transform_mat3x3.md): A 3x3 transformation matrix Matrix that doesn't propagate in the transform hierarchy.
+* [`LeafTranslation3D`](components/leaf_translation3d.md): A translation vector in 3D space that doesn't propagate in the transform hierarchy.
 * [`LineStrip2D`](components/line_strip2d.md): A line strip in 2D space.
 * [`LineStrip3D`](components/line_strip3d.md): A line strip in 3D space.
 * [`MagnificationFilter`](components/magnification_filter.md): Filter used when magnifying an image/texture such that a single pixel/texel is displayed as multiple pixels on screen.

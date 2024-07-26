@@ -18,15 +18,15 @@ use ::re_types_core::SerializationResult;
 use ::re_types_core::{ComponentBatch, MaybeOwnedComponentBatch};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
-/// **Component**: A 3D rotation expressed as a quaternion.
+/// **Component**: A 3D rotation expressed as a quaternion that doesn't propagate in the transform hierarchy.
 ///
 /// Note: although the x,y,z,w components of the quaternion will be passed through to the
 /// datastore as provided, when used in the Viewer, quaternions will always be normalized.
 #[derive(Clone, Debug, Default, Copy, PartialEq, bytemuck::Pod, bytemuck::Zeroable)]
 #[repr(transparent)]
-pub struct RotationQuat(pub crate::datatypes::Quaternion);
+pub struct LeafRotationQuat(pub crate::datatypes::Quaternion);
 
-impl ::re_types_core::SizeBytes for RotationQuat {
+impl ::re_types_core::SizeBytes for LeafRotationQuat {
     #[inline]
     fn heap_size_bytes(&self) -> u64 {
         self.0.heap_size_bytes()
@@ -38,20 +38,20 @@ impl ::re_types_core::SizeBytes for RotationQuat {
     }
 }
 
-impl<T: Into<crate::datatypes::Quaternion>> From<T> for RotationQuat {
+impl<T: Into<crate::datatypes::Quaternion>> From<T> for LeafRotationQuat {
     fn from(v: T) -> Self {
         Self(v.into())
     }
 }
 
-impl std::borrow::Borrow<crate::datatypes::Quaternion> for RotationQuat {
+impl std::borrow::Borrow<crate::datatypes::Quaternion> for LeafRotationQuat {
     #[inline]
     fn borrow(&self) -> &crate::datatypes::Quaternion {
         &self.0
     }
 }
 
-impl std::ops::Deref for RotationQuat {
+impl std::ops::Deref for LeafRotationQuat {
     type Target = crate::datatypes::Quaternion;
 
     #[inline]
@@ -60,21 +60,21 @@ impl std::ops::Deref for RotationQuat {
     }
 }
 
-impl std::ops::DerefMut for RotationQuat {
+impl std::ops::DerefMut for LeafRotationQuat {
     #[inline]
     fn deref_mut(&mut self) -> &mut crate::datatypes::Quaternion {
         &mut self.0
     }
 }
 
-::re_types_core::macros::impl_into_cow!(RotationQuat);
+::re_types_core::macros::impl_into_cow!(LeafRotationQuat);
 
-impl ::re_types_core::Loggable for RotationQuat {
+impl ::re_types_core::Loggable for LeafRotationQuat {
     type Name = ::re_types_core::ComponentName;
 
     #[inline]
     fn name() -> Self::Name {
-        "rerun.components.RotationQuat".into()
+        "rerun.components.LeafRotationQuat".into()
     }
 
     #[inline]

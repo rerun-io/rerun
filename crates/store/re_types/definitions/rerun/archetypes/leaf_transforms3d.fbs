@@ -1,0 +1,36 @@
+namespace rerun.archetypes;
+
+
+/// One or more transforms between the parent and the current entity which are *not* propagated in the transform hierarchy.
+///
+/// For transforms that are propagated in the transform hierarchy, see [`archetypes.Transform3D`].
+///
+/// From the point of view of the entity's coordinate system,
+/// all components are applied in the inverse order they are listed here.
+/// E.g. if both a translation and a max3x3 transform are present,
+/// the 3x3 matrix is applied first, followed by the translation.
+// TODO(andreas): Add example.
+table LeafTransforms3D (
+  "attr.rust.derive": "Default, PartialEq",
+  "attr.rust.generate_field_info",
+  "attr.docs.category": "Spatial 3D",
+  "attr.docs.view_types": "Spatial3DView, Spatial2DView: if logged above active projection"
+) {
+  /// Translation vectors.
+  translation: [rerun.components.LeafTranslation3D] ("attr.rerun.component_optional", nullable, order: 1100);
+
+  /// Rotations via axis + angle.
+  rotation_axis_angle: [rerun.components.LeafRotationAxisAngle] ("attr.rerun.component_optional", nullable, order: 1200);
+
+  /// Rotations via quaternion.
+  quaternion: [rerun.components.LeafRotationQuat] ("attr.rerun.component_optional", nullable, order: 1300);
+
+  /// Scaling factor.
+  scale: [rerun.components.LeafScale3D] ("attr.rerun.component_optional", nullable, order: 1400);
+
+  /// 3x3 transformation matrix.
+  mat3x3: [rerun.components.LeafTransformMat3x3] ("attr.rerun.component_optional", nullable, order: 1500);
+
+  // TODO(andreas): Support TransformRelation?
+  // TODO(andreas): Support axis_length?
+}

@@ -6,7 +6,7 @@ title: "RotationQuat"
 A 3D rotation expressed as a quaternion.
 
 Note: although the x,y,z,w components of the quaternion will be passed through to the
-datastore as provided, when used in the Viewer Quaternions will always be normalized.
+datastore as provided, when used in the Viewer, quaternions will always be normalized.
 
 ## Fields
 

@@ -15,6 +15,7 @@ from .disconnected_space import DisconnectedSpace
 from .ellipsoids import Ellipsoids
 from .image import Image
 from .image_encoded import ImageEncoded
+from .leaf_transforms3d import LeafTransforms3D
 from .line_strips2d import LineStrips2D
 from .line_strips3d import LineStrips3D
 from .mesh3d import Mesh3D
@@ -45,6 +46,7 @@ __all__ = [
     "Ellipsoids",
     "Image",
     "ImageEncoded",
+    "LeafTransforms3D",
     "LineStrips2D",
     "LineStrips3D",
     "Mesh3D",

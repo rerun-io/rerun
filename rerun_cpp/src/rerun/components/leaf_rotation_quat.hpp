@@ -10,19 +10,19 @@
 #include <memory>
 
 namespace rerun::components {
-    /// **Component**: A 3D rotation expressed as a quaternion.
+    /// **Component**: A 3D rotation expressed as a quaternion that doesn't propagate in the transform hierarchy.
     ///
     /// Note: although the x,y,z,w components of the quaternion will be passed through to the
     /// datastore as provided, when used in the Viewer, quaternions will always be normalized.
-    struct RotationQuat {
+    struct LeafRotationQuat {
         rerun::datatypes::Quaternion quaternion;
 
       public:
-        RotationQuat() = default;
+        LeafRotationQuat() = default;
 
-        RotationQuat(rerun::datatypes::Quaternion quaternion_) : quaternion(quaternion_) {}
+        LeafRotationQuat(rerun::datatypes::Quaternion quaternion_) : quaternion(quaternion_) {}
 
-        RotationQuat& operator=(rerun::datatypes::Quaternion quaternion_) {
+        LeafRotationQuat& operator=(rerun::datatypes::Quaternion quaternion_) {
             quaternion = quaternion_;
             return *this;
         }
@@ -35,21 +35,21 @@ namespace rerun::components {
 } // namespace rerun::components
 
 namespace rerun {
-    static_assert(sizeof(rerun::datatypes::Quaternion) == sizeof(components::RotationQuat));
+    static_assert(sizeof(rerun::datatypes::Quaternion) == sizeof(components::LeafRotationQuat));
 
     /// \private
     template <>
-    struct Loggable<components::RotationQuat> {
-        static constexpr const char Name[] = "rerun.components.RotationQuat";
+    struct Loggable<components::LeafRotationQuat> {
+        static constexpr const char Name[] = "rerun.components.LeafRotationQuat";
 
         /// Returns the arrow data type this type corresponds to.
         static const std::shared_ptr<arrow::DataType>& arrow_datatype() {
             return Loggable<rerun::datatypes::Quaternion>::arrow_datatype();
         }
 
-        /// Serializes an array of `rerun::components::RotationQuat` into an arrow array.
+        /// Serializes an array of `rerun::components::LeafRotationQuat` into an arrow array.
         static Result<std::shared_ptr<arrow::Array>> to_arrow(
-            const components::RotationQuat* instances, size_t num_instances
+            const components::LeafRotationQuat* instances, size_t num_instances
         ) {
             return Loggable<rerun::datatypes::Quaternion>::to_arrow(
                 &instances->quaternion,
