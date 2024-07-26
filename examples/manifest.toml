@@ -60,6 +60,7 @@ examples = [
   "vista",
   "mcc",
   "lerobot",
+  "depth_compare",
   "shape_pointe",
   "llm_embedding_ner",
   "tfrecord_loader",
