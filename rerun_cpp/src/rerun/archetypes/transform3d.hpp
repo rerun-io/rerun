@@ -31,10 +31,6 @@ namespace rerun::archetypes {
     /// E.g. if both a translation and a max3x3 transform are present,
     /// the 3x3 matrix is applied first, followed by the translation.
     ///
-    /// Each transform component can be listed multiple times, but transform tree propagation is only possible
-    /// if there's only one instance for each transform component.
-    /// TODO(#6831): write more about the exact interaction with the to be written `OutOfTreeTransform` component.
-    ///
     /// ## Examples
     ///
     /// ### Variety of 3D transforms
@@ -149,20 +145,20 @@ namespace rerun::archetypes {
     /// }
     /// ```
     struct Transform3D {
-        /// Translation vectors.
-        std::optional<Collection<rerun::components::Translation3D>> translation;
+        /// Translation vector.
+        std::optional<rerun::components::Translation3D> translation;
 
         /// Rotation via axis + angle.
-        std::optional<Collection<rerun::components::RotationAxisAngle>> rotation_axis_angle;
+        std::optional<rerun::components::RotationAxisAngle> rotation_axis_angle;
 
         /// Rotation via quaternion.
-        std::optional<Collection<rerun::components::RotationQuat>> quaternion;
+        std::optional<rerun::components::RotationQuat> quaternion;
 
         /// Scaling factor.
-        std::optional<Collection<rerun::components::Scale3D>> scale;
+        std::optional<rerun::components::Scale3D> scale;
 
         /// 3x3 transformation matrices.
-        std::optional<Collection<rerun::components::TransformMat3x3>> mat3x3;
+        std::optional<rerun::components::TransformMat3x3> mat3x3;
 
         /// Specifies the relation this transform establishes between this entity and its parent.
         std::optional<rerun::components::TransformRelation> relation;
@@ -521,8 +517,8 @@ namespace rerun::archetypes {
         Transform3D() = default;
         Transform3D(Transform3D&& other) = default;
 
-        /// Translation vectors.
-        Transform3D with_translation(Collection<rerun::components::Translation3D> _translation) && {
+        /// Translation vector.
+        Transform3D with_translation(rerun::components::Translation3D _translation) && {
             translation = std::move(_translation);
             // See: https://github.com/rerun-io/rerun/issues/4027
             RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
@@ -530,7 +526,7 @@ namespace rerun::archetypes {
 
         /// Rotation via axis + angle.
         Transform3D with_rotation_axis_angle(
-            Collection<rerun::components::RotationAxisAngle> _rotation_axis_angle
+            rerun::components::RotationAxisAngle _rotation_axis_angle
         ) && {
             rotation_axis_angle = std::move(_rotation_axis_angle);
             // See: https://github.com/rerun-io/rerun/issues/4027
@@ -538,21 +534,21 @@ namespace rerun::archetypes {
         }
 
         /// Rotation via quaternion.
-        Transform3D with_quaternion(Collection<rerun::components::RotationQuat> _quaternion) && {
+        Transform3D with_quaternion(rerun::components::RotationQuat _quaternion) && {
             quaternion = std::move(_quaternion);
             // See: https://github.com/rerun-io/rerun/issues/4027
             RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
         }
 
         /// Scaling factor.
-        Transform3D with_scale(Collection<rerun::components::Scale3D> _scale) && {
+        Transform3D with_scale(rerun::components::Scale3D _scale) && {
             scale = std::move(_scale);
             // See: https://github.com/rerun-io/rerun/issues/4027
             RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
         }
 
         /// 3x3 transformation matrices.
-        Transform3D with_mat3x3(Collection<rerun::components::TransformMat3x3> _mat3x3) && {
+        Transform3D with_mat3x3(rerun::components::TransformMat3x3 _mat3x3) && {
             mat3x3 = std::move(_mat3x3);
             // See: https://github.com/rerun-io/rerun/issues/4027
             RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)

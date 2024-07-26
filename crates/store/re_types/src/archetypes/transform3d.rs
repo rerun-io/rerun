@@ -25,10 +25,6 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 /// E.g. if both a translation and a max3x3 transform are present,
 /// the 3x3 matrix is applied first, followed by the translation.
 ///
-/// Each transform component can be listed multiple times, but transform tree propagation is only possible
-/// if there's only one instance for each transform component.
-/// TODO(#6831): write more about the exact interaction with the to be written `OutOfTreeTransform` component.
-///
 /// ## Examples
 ///
 /// ### Variety of 3D transforms
@@ -166,20 +162,20 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 /// </center>
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct Transform3D {
-    /// Translation vectors.
-    pub translation: Option<Vec<crate::components::Translation3D>>,
+    /// Translation vector.
+    pub translation: Option<crate::components::Translation3D>,
 
     /// Rotation via axis + angle.
-    pub rotation_axis_angle: Option<Vec<crate::components::RotationAxisAngle>>,
+    pub rotation_axis_angle: Option<crate::components::RotationAxisAngle>,
 
     /// Rotation via quaternion.
-    pub quaternion: Option<Vec<crate::components::RotationQuat>>,
+    pub quaternion: Option<crate::components::RotationQuat>,
 
     /// Scaling factor.
-    pub scale: Option<Vec<crate::components::Scale3D>>,
+    pub scale: Option<crate::components::Scale3D>,
 
     /// 3x3 transformation matrices.
-    pub mat3x3: Option<Vec<crate::components::TransformMat3x3>>,
+    pub mat3x3: Option<crate::components::TransformMat3x3>,
 
     /// Specifies the relation this transform establishes between this entity and its parent.
     pub relation: Option<crate::components::TransformRelation>,
@@ -205,11 +201,11 @@ impl ::re_types_core::SizeBytes for Transform3D {
 
     #[inline]
     fn is_pod() -> bool {
-        <Option<Vec<crate::components::Translation3D>>>::is_pod()
-            && <Option<Vec<crate::components::RotationAxisAngle>>>::is_pod()
-            && <Option<Vec<crate::components::RotationQuat>>>::is_pod()
-            && <Option<Vec<crate::components::Scale3D>>>::is_pod()
-            && <Option<Vec<crate::components::TransformMat3x3>>>::is_pod()
+        <Option<crate::components::Translation3D>>::is_pod()
+            && <Option<crate::components::RotationAxisAngle>>::is_pod()
+            && <Option<crate::components::RotationQuat>>::is_pod()
+            && <Option<crate::components::Scale3D>>::is_pod()
+            && <Option<crate::components::TransformMat3x3>>::is_pod()
             && <Option<crate::components::TransformRelation>>::is_pod()
             && <Option<crate::components::AxisLength>>::is_pod()
     }
@@ -307,63 +303,48 @@ impl ::re_types_core::Archetype for Transform3D {
             .collect();
         let translation = if let Some(array) = arrays_by_name.get("rerun.components.Translation3D")
         {
-            Some({
-                <crate::components::Translation3D>::from_arrow_opt(&**array)
-                    .with_context("rerun.archetypes.Transform3D#translation")?
-                    .into_iter()
-                    .map(|v| v.ok_or_else(DeserializationError::missing_data))
-                    .collect::<DeserializationResult<Vec<_>>>()
-                    .with_context("rerun.archetypes.Transform3D#translation")?
-            })
+            <crate::components::Translation3D>::from_arrow_opt(&**array)
+                .with_context("rerun.archetypes.Transform3D#translation")?
+                .into_iter()
+                .next()
+                .flatten()
         } else {
             None
         };
         let rotation_axis_angle =
             if let Some(array) = arrays_by_name.get("rerun.components.RotationAxisAngle") {
-                Some({
-                    <crate::components::RotationAxisAngle>::from_arrow_opt(&**array)
-                        .with_context("rerun.archetypes.Transform3D#rotation_axis_angle")?
-                        .into_iter()
-                        .map(|v| v.ok_or_else(DeserializationError::missing_data))
-                        .collect::<DeserializationResult<Vec<_>>>()
-                        .with_context("rerun.archetypes.Transform3D#rotation_axis_angle")?
-                })
+                <crate::components::RotationAxisAngle>::from_arrow_opt(&**array)
+                    .with_context("rerun.archetypes.Transform3D#rotation_axis_angle")?
+                    .into_iter()
+                    .next()
+                    .flatten()
             } else {
                 None
             };
         let quaternion = if let Some(array) = arrays_by_name.get("rerun.components.RotationQuat") {
-            Some({
-                <crate::components::RotationQuat>::from_arrow_opt(&**array)
-                    .with_context("rerun.archetypes.Transform3D#quaternion")?
-                    .into_iter()
-                    .map(|v| v.ok_or_else(DeserializationError::missing_data))
-                    .collect::<DeserializationResult<Vec<_>>>()
-                    .with_context("rerun.archetypes.Transform3D#quaternion")?
-            })
+            <crate::components::RotationQuat>::from_arrow_opt(&**array)
+                .with_context("rerun.archetypes.Transform3D#quaternion")?
+                .into_iter()
+                .next()
+                .flatten()
         } else {
             None
         };
         let scale = if let Some(array) = arrays_by_name.get("rerun.components.Scale3D") {
-            Some({
-                <crate::components::Scale3D>::from_arrow_opt(&**array)
-                    .with_context("rerun.archetypes.Transform3D#scale")?
-                    .into_iter()
-                    .map(|v| v.ok_or_else(DeserializationError::missing_data))
-                    .collect::<DeserializationResult<Vec<_>>>()
-                    .with_context("rerun.archetypes.Transform3D#scale")?
-            })
+            <crate::components::Scale3D>::from_arrow_opt(&**array)
+                .with_context("rerun.archetypes.Transform3D#scale")?
+                .into_iter()
+                .next()
+                .flatten()
         } else {
             None
         };
         let mat3x3 = if let Some(array) = arrays_by_name.get("rerun.components.TransformMat3x3") {
-            Some({
-                <crate::components::TransformMat3x3>::from_arrow_opt(&**array)
-                    .with_context("rerun.archetypes.Transform3D#mat3x3")?
-                    .into_iter()
-                    .map(|v| v.ok_or_else(DeserializationError::missing_data))
-                    .collect::<DeserializationResult<Vec<_>>>()
-                    .with_context("rerun.archetypes.Transform3D#mat3x3")?
-            })
+            <crate::components::TransformMat3x3>::from_arrow_opt(&**array)
+                .with_context("rerun.archetypes.Transform3D#mat3x3")?
+                .into_iter()
+                .next()
+                .flatten()
         } else {
             None
         };
@@ -406,19 +387,19 @@ impl ::re_types_core::AsComponents for Transform3D {
             Some(Self::indicator()),
             self.translation
                 .as_ref()
-                .map(|comp_batch| (comp_batch as &dyn ComponentBatch).into()),
+                .map(|comp| (comp as &dyn ComponentBatch).into()),
             self.rotation_axis_angle
                 .as_ref()
-                .map(|comp_batch| (comp_batch as &dyn ComponentBatch).into()),
+                .map(|comp| (comp as &dyn ComponentBatch).into()),
             self.quaternion
                 .as_ref()
-                .map(|comp_batch| (comp_batch as &dyn ComponentBatch).into()),
+                .map(|comp| (comp as &dyn ComponentBatch).into()),
             self.scale
                 .as_ref()
-                .map(|comp_batch| (comp_batch as &dyn ComponentBatch).into()),
+                .map(|comp| (comp as &dyn ComponentBatch).into()),
             self.mat3x3
                 .as_ref()
-                .map(|comp_batch| (comp_batch as &dyn ComponentBatch).into()),
+                .map(|comp| (comp as &dyn ComponentBatch).into()),
             self.relation
                 .as_ref()
                 .map(|comp| (comp as &dyn ComponentBatch).into()),
@@ -449,13 +430,13 @@ impl Transform3D {
         }
     }
 
-    /// Translation vectors.
+    /// Translation vector.
     #[inline]
     pub fn with_translation(
         mut self,
-        translation: impl IntoIterator<Item = impl Into<crate::components::Translation3D>>,
+        translation: impl Into<crate::components::Translation3D>,
     ) -> Self {
-        self.translation = Some(translation.into_iter().map(Into::into).collect());
+        self.translation = Some(translation.into());
         self
     }
 
@@ -463,9 +444,9 @@ impl Transform3D {
     #[inline]
     pub fn with_rotation_axis_angle(
         mut self,
-        rotation_axis_angle: impl IntoIterator<Item = impl Into<crate::components::RotationAxisAngle>>,
+        rotation_axis_angle: impl Into<crate::components::RotationAxisAngle>,
     ) -> Self {
-        self.rotation_axis_angle = Some(rotation_axis_angle.into_iter().map(Into::into).collect());
+        self.rotation_axis_angle = Some(rotation_axis_angle.into());
         self
     }
 
@@ -473,29 +454,23 @@ impl Transform3D {
     #[inline]
     pub fn with_quaternion(
         mut self,
-        quaternion: impl IntoIterator<Item = impl Into<crate::components::RotationQuat>>,
+        quaternion: impl Into<crate::components::RotationQuat>,
     ) -> Self {
-        self.quaternion = Some(quaternion.into_iter().map(Into::into).collect());
+        self.quaternion = Some(quaternion.into());
         self
     }
 
     /// Scaling factor.
     #[inline]
-    pub fn with_scale(
-        mut self,
-        scale: impl IntoIterator<Item = impl Into<crate::components::Scale3D>>,
-    ) -> Self {
-        self.scale = Some(scale.into_iter().map(Into::into).collect());
+    pub fn with_scale(mut self, scale: impl Into<crate::components::Scale3D>) -> Self {
+        self.scale = Some(scale.into());
         self
     }
 
     /// 3x3 transformation matrices.
     #[inline]
-    pub fn with_mat3x3(
-        mut self,
-        mat3x3: impl IntoIterator<Item = impl Into<crate::components::TransformMat3x3>>,
-    ) -> Self {
-        self.mat3x3 = Some(mat3x3.into_iter().map(Into::into).collect());
+    pub fn with_mat3x3(mut self, mat3x3: impl Into<crate::components::TransformMat3x3>) -> Self {
+        self.mat3x3 = Some(mat3x3.into());
         self
     }
 
