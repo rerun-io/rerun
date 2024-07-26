@@ -31,7 +31,7 @@ class Utf8ListExt:
             if len(data) == 0:
                 array = []
             elif isinstance(data[0], Utf8List):
-                array = [[datum.value for datum in data]]  # type: ignore[union-attr]
+                array = [[str(datum.value) for datum in data]]  # type: ignore[union-attr]
             else:
                 array = [[str(datum) for datum in data]]
         else:
