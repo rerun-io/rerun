@@ -1,6 +1,7 @@
 #include "transform3d.hpp"
 
 // <CODEGEN_COPY_TO_HEADER>
+#include "../compiler_utils.hpp"
 #include "../rerun_sdk_export.hpp"
 #include "../rotation3d.hpp"
 
@@ -327,10 +328,10 @@ namespace rerun::archetypes {
     /// Set the rotation component of the transform using the `rerun::Rotation3D` utility.
     void set_rotation(const Rotation3D& rotation) {
         if (rotation.axis_angle.has_value()) {
-            rotation_axis_angle = rotation.axis_angle.value();
+            RR_WITH_MAYBE_UNINITIALIZED_DISABLED(rotation_axis_angle = rotation.axis_angle.value());
         }
         if (rotation.quaternion.has_value()) {
-            quaternion = rotation.quaternion.value();
+            RR_WITH_MAYBE_UNINITIALIZED_DISABLED(quaternion = rotation.quaternion.value());
         }
     }
 
