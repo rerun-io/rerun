@@ -68,8 +68,7 @@ impl ViewportBlueprint {
     ) -> Self {
         re_tracing::profile_function!();
 
-        let resolver = blueprint_db.resolver();
-        let results = blueprint_db.query_caches().latest_at(
+        let results = blueprint_db.query_caches2().latest_at(
             blueprint_db.store(),
             query,
             &VIEWPORT_PATH.into(),
@@ -85,11 +84,11 @@ impl ViewportBlueprint {
             auto_space_views,
             past_viewer_recommendations,
         } = blueprint_archetypes::ViewportBlueprint {
-            root_container: results.get_instance(resolver, 0),
-            maximized: results.get_instance(resolver, 0),
-            auto_layout: results.get_instance(resolver, 0),
-            auto_space_views: results.get_instance(resolver, 0),
-            past_viewer_recommendations: results.get_vec(resolver),
+            root_container: results.component_instance(0),
+            maximized: results.component_instance(0),
+            auto_layout: results.component_instance(0),
+            auto_space_views: results.component_instance(0),
+            past_viewer_recommendations: results.component_batch(),
         };
 
         let all_space_view_ids: Vec<SpaceViewId> = blueprint_db

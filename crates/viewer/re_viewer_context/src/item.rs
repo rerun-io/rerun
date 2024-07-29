@@ -190,19 +190,18 @@ pub fn resolve_mono_instance_path(
         };
 
         for component_name in component_names {
-            let results = entity_db.query_caches().latest_at(
-                entity_db.store(),
-                query,
-                &instance.entity_path,
-                [component_name],
-            );
-            if let Some(results) = results.get(component_name) {
-                if let re_query::PromiseResult::Ready(array) =
-                    results.resolved(entity_db.resolver())
-                {
-                    if array.len() > 1 {
-                        return instance.clone();
-                    }
+            if let Some(array) = entity_db
+                .query_caches2()
+                .latest_at(
+                    entity_db.store(),
+                    query,
+                    &instance.entity_path,
+                    [component_name],
+                )
+                .component_batch_raw(&component_name)
+            {
+                if array.len() > 1 {
+                    return instance.clone();
                 }
             }
         }

@@ -129,10 +129,8 @@ impl ViewerContext<'_> {
             .and_then(|default_blueprint| {
                 default_blueprint
                     .latest_at(self.blueprint_query, entity_path, [component_name])
-                    .get(component_name)
-                    .and_then(|default_value| {
-                        default_value.raw(default_blueprint.resolver(), component_name)
-                    })
+                    .get(&component_name)
+                    .and_then(|default_value| default_value.component_batch_raw(&component_name))
             })
     }
 
@@ -161,12 +159,10 @@ impl ViewerContext<'_> {
 
         let Some(datatype) = blueprint
             .latest_at(self.blueprint_query, entity_path, [component_name])
-            .get(component_name)
-            .and_then(|result| {
-                result
-                    .resolved(blueprint.resolver())
+            .get(&component_name)
+            .and_then(|unit| {
+                unit.component_batch_raw(&component_name)
                     .map(|array| array.data_type().clone())
-                    .ok()
             })
         else {
             re_log::error!(

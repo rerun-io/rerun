@@ -367,7 +367,7 @@ impl SpaceViewClass for SpatialSpaceView3D {
         let scene_view_coordinates = ctx
             .recording()
             .latest_at_component::<ViewCoordinates>(space_origin, &ctx.current_query())
-            .map(|c| c.value);
+            .map(|(_index, c)| c);
 
         // TODO(andreas): list_item'ify the rest
         ui.selection_grid("spatial_settings_ui").show(ui, |ui| {
