@@ -206,6 +206,7 @@ impl SeriesLineSystem {
                     .flat_map(|chunk| {
                         chunk.iter_component_indices(&query.timeline(), &Scalar::name())
                     })
+                    // That is just so we can satisfy the `range_zip` contract later on.
                     .map(|index| (index, ()))
             };
 
