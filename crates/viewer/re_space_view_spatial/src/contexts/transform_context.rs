@@ -436,15 +436,16 @@ fn transform_at(
     // If this entity does not contain any `Transform3D`-related data at all, there's no
     // point in running actual queries.
     let is_potentially_transformed =
-        crate::transformables::Transformables::access(entity_db.store_id(), |transformables| {
-            transformables.is_potentially_transformed(entity_path)
-        })
+        crate::transform_component_tracker::TransformComponentTracker::access(
+            entity_db.store_id(),
+            |transform_component_tracker| {
+                transform_component_tracker.is_potentially_transformed(entity_path)
+            },
+        )
         .unwrap_or(false);
     let transform3d = is_potentially_transformed
         .then(|| get_parent_from_child_transform(entity_path, entity_db, query))
         .flatten();
-
-    // let transform3d = get_parent_from_child_transform(entity_path, entity_db, query);
 
     let pinhole = pinhole.map(|(image_from_camera, camera_xyz)| {
         // Everything under a pinhole camera is a 2D projection, thus doesn't actually have a proper 3D representation.

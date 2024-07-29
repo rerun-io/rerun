@@ -19,18 +19,18 @@ use re_types::ComponentName;
 /// data there.
 /// This is a huge performance improvement in practice, especially in recordings with many entities.
 #[derive(Default)]
-pub struct Transformables {
+pub struct TransformComponentTracker {
     /// Which entities have had any of these components at any point in time.
     entities: IntSet<EntityPath>,
 }
 
-impl Transformables {
+impl TransformComponentTracker {
     /// Accesses the spatial topology for a given store.
     #[inline]
     pub fn access<T>(store_id: &StoreId, f: impl FnOnce(&Self) -> T) -> Option<T> {
         ChunkStore::with_subscriber_once(
-            TransformablesStoreSubscriber::subscription_handle(),
-            move |susbcriber: &TransformablesStoreSubscriber| {
+            TransformComponentTrackerStoreSubscriber::subscription_handle(),
+            move |susbcriber: &TransformComponentTrackerStoreSubscriber| {
                 susbcriber.per_store.get(store_id).map(f)
             },
         )
@@ -45,14 +45,14 @@ impl Transformables {
 
 // ---
 
-pub struct TransformablesStoreSubscriber {
+pub struct TransformComponentTrackerStoreSubscriber {
     /// The components of interest.
     components: IntSet<ComponentName>,
 
-    per_store: HashMap<StoreId, Transformables>,
+    per_store: HashMap<StoreId, TransformComponentTracker>,
 }
 
-impl Default for TransformablesStoreSubscriber {
+impl Default for TransformComponentTrackerStoreSubscriber {
     #[inline]
     fn default() -> Self {
         use re_types::Archetype as _;
@@ -68,7 +68,7 @@ impl Default for TransformablesStoreSubscriber {
     }
 }
 
-impl TransformablesStoreSubscriber {
+impl TransformComponentTrackerStoreSubscriber {
     /// Accesses the global store subscriber.
     ///
     /// Lazily registers the subscriber if it hasn't been registered yet.
@@ -78,10 +78,10 @@ impl TransformablesStoreSubscriber {
     }
 }
 
-impl ChunkStoreSubscriber for TransformablesStoreSubscriber {
+impl ChunkStoreSubscriber for TransformComponentTrackerStoreSubscriber {
     #[inline]
     fn name(&self) -> String {
-        "rerun.store_subscriber.Transformables".into()
+        "rerun.store_subscriber.TransformComponentTracker".into()
     }
 
     #[inline]
@@ -102,11 +102,12 @@ impl ChunkStoreSubscriber for TransformablesStoreSubscriber {
             // This is only additive, don't care about removals.
             .filter(|e| e.kind == ChunkStoreDiffKind::Addition)
         {
-            let transformables = self.per_store.entry(event.store_id.clone()).or_default();
+            let transform_component_tracker =
+                self.per_store.entry(event.store_id.clone()).or_default();
 
             for component_name in event.chunk.component_names() {
                 if self.components.contains(&component_name) {
-                    transformables
+                    transform_component_tracker
                         .entities
                         .insert(event.chunk.entity_path().clone());
                 }
