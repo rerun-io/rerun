@@ -272,12 +272,13 @@ impl RangeCache {
             self.chunks
                 .entry(raw_chunk.id())
                 .or_insert_with(|| RangeCachedChunk {
+                    // TODO(#7008): avoid unnecessary sorting on the unhappy path
                     chunk: raw_chunk
-                        // Pre-sort the cached chunk according to the cache key's timeline.
-                        .sorted_by_timeline_if_unsorted(&self.cache_key.timeline)
                         // Densify the cached chunk according to the cache key's component, which
                         // will speed future arrow operations on this chunk.
-                        .densified(component_name),
+                        .densified(component_name)
+                        // Pre-sort the cached chunk according to the cache key's timeline.
+                        .sorted_by_timeline_if_unsorted(&self.cache_key.timeline),
                     resorted: !raw_chunk.is_timeline_sorted(&self.cache_key.timeline),
                 });
         }
