@@ -160,5 +160,6 @@ pub fn colormap_to_re_renderer(colormap: re_types::components::Colormap) -> re_r
         re_types::components::Colormap::Plasma => re_renderer::Colormap::Plasma,
         re_types::components::Colormap::Turbo => re_renderer::Colormap::Turbo,
         re_types::components::Colormap::Viridis => re_renderer::Colormap::Viridis,
+        re_types::components::Colormap::CyanToYellow => re_renderer::Colormap::CyanToYellow,
     }
 }

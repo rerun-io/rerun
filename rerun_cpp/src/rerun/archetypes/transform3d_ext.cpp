@@ -1,6 +1,7 @@
 #include "transform3d.hpp"
 
 // <CODEGEN_COPY_TO_HEADER>
+#include "../compiler_utils.hpp"
 #include "../rerun_sdk_export.hpp"
 #include "../rotation3d.hpp"
 
@@ -38,8 +39,7 @@ namespace rerun::archetypes {
         const components::Translation3D& translation_, const components::TransformMat3x3& mat3x3_,
         bool from_parent = false
     )
-        : translation(Collection<components::Translation3D>::take_ownership(translation_)),
-          mat3x3(Collection<components::TransformMat3x3>::take_ownership(mat3x3_)) {
+        : translation(translation_), mat3x3(mat3x3_) {
         if (from_parent) {
             relation = components::TransformRelation::ChildFromParent;
         }
@@ -73,7 +73,7 @@ namespace rerun::archetypes {
     /// \param translation_ \çopydoc Transform3D::translation
     /// \param from_parent If true, the transform relation to `TransformRelation::ChildFromParent`.
     Transform3D(const components::Translation3D& translation_, bool from_parent = false)
-        : translation(Collection<components::Translation3D>::take_ownership(translation_)) {
+        : translation(translation_) {
         if (from_parent) {
             relation = components::TransformRelation::ChildFromParent;
         }
@@ -91,7 +91,7 @@ namespace rerun::archetypes {
     /// \param mat3x3_ \copydoc Transform3D::mat3x3
     /// \param from_parent If true, the transform relation to `TransformRelation::ChildFromParent`.
     Transform3D(const components::TransformMat3x3& mat3x3_, bool from_parent = false)
-        : mat3x3(Collection<components::TransformMat3x3>::take_ownership(mat3x3_)) {
+        : mat3x3(mat3x3_) {
         if (from_parent) {
             relation = components::TransformRelation::ChildFromParent;
         }
@@ -128,8 +128,7 @@ namespace rerun::archetypes {
         const components::Translation3D& translation_, const Rotation3D& rotation,
         const components::Scale3D& scale_, bool from_parent = false
     )
-        : translation(Collection<components::Translation3D>::take_ownership(translation_)),
-          scale(Collection<components::Scale3D>::take_ownership(scale_)) {
+        : translation(translation_), scale(scale_) {
         if (from_parent) {
             relation = components::TransformRelation::ChildFromParent;
         }
@@ -184,7 +183,7 @@ namespace rerun::archetypes {
         const components::Translation3D& translation_, const Rotation3D& rotation,
         bool from_parent = false
     )
-        : translation(Collection<components::Translation3D>::take_ownership(translation_)) {
+        : translation(translation_) {
         if (from_parent) {
             relation = components::TransformRelation::ChildFromParent;
         }
@@ -210,8 +209,7 @@ namespace rerun::archetypes {
         const components::Translation3D& translation_, const components::Scale3D& scale_,
         bool from_parent = false
     )
-        : translation(Collection<components::Translation3D>::take_ownership(translation_)),
-          scale(Collection<components::Scale3D>::take_ownership(scale_)) {
+        : translation(translation_), scale(scale_) {
         if (from_parent) {
             relation = components::TransformRelation::ChildFromParent;
         }
@@ -248,7 +246,7 @@ namespace rerun::archetypes {
     Transform3D(
         const Rotation3D& rotation, const components::Scale3D& scale_, bool from_parent = false
     )
-        : scale(Collection<components::Scale3D>::take_ownership(scale_)) {
+        : scale(scale_) {
         if (from_parent) {
             relation = components::TransformRelation::ChildFromParent;
         }
@@ -306,8 +304,7 @@ namespace rerun::archetypes {
     ///
     /// \param scale_ If true, the transform relation to `TransformRelation::ChildFromParent`.
     /// \param from_parent \copydoc Transform3D::scale
-    Transform3D(const components::Scale3D& scale_, bool from_parent = false)
-        : scale(Collection<components::Scale3D>::take_ownership(scale_)) {
+    Transform3D(const components::Scale3D& scale_, bool from_parent = false) : scale(scale_) {
         if (from_parent) {
             relation = components::TransformRelation::ChildFromParent;
         }
@@ -331,13 +328,10 @@ namespace rerun::archetypes {
     /// Set the rotation component of the transform using the `rerun::Rotation3D` utility.
     void set_rotation(const Rotation3D& rotation) {
         if (rotation.axis_angle.has_value()) {
-            rotation_axis_angle = Collection<components::RotationAxisAngle>::take_ownership(
-                rotation.axis_angle.value()
-            );
+            RR_WITH_MAYBE_UNINITIALIZED_DISABLED(rotation_axis_angle = rotation.axis_angle.value();)
         }
         if (rotation.quaternion.has_value()) {
-            quaternion =
-                Collection<components::RotationQuat>::take_ownership(rotation.quaternion.value());
+            RR_WITH_MAYBE_UNINITIALIZED_DISABLED(quaternion = rotation.quaternion.value();)
         }
     }
 

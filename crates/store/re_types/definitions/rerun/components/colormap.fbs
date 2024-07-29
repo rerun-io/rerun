@@ -42,4 +42,11 @@ enum Colormap: byte {
     /// This is a perceptually uniform colormap which is robust to color blindness.
     /// It interpolates from dark purple to green to yellow.
     Viridis,
+
+    /// Rasmusgo's Cyan to Yellow colormap
+    ///
+    /// This is a perceptually uniform colormap which is robust to color blindness.
+    /// It is especially suited for visualizing signed values.
+    /// It interpolates from cyan to blue to dark gray to brass to yellow.
+    CyanToYellow,
 }

@@ -12,40 +12,42 @@ fn roundtrip() {
     let all_expected = [
         Transform3D::default(),
         Transform3D {
-            translation: Some(vec![Vec3D([1.0, 2.0, 3.0]).into()]),
-            scale: Some(vec![Scale3D::uniform(42.0)]),
+            translation: Some(Vec3D([1.0, 2.0, 3.0]).into()),
+            scale: Some(Scale3D::uniform(42.0)),
             relation: Some(TransformRelation::ChildFromParent),
             ..Default::default()
         }, //
         Transform3D {
-            translation: Some(vec![[1.0, 2.0, 3.0].into()]),
-            rotation_axis_angle: Some(vec![RotationAxisAngle {
-                axis: Vec3D([0.2, 0.2, 0.8]),
-                angle: Angle::from_radians(0.5 * TAU),
-            }
-            .into()]),
+            translation: Some([1.0, 2.0, 3.0].into()),
+            rotation_axis_angle: Some(
+                RotationAxisAngle {
+                    axis: Vec3D([0.2, 0.2, 0.8]),
+                    angle: Angle::from_radians(0.5 * TAU),
+                }
+                .into(),
+            ),
             ..Default::default()
         }, //
         Transform3D {
-            translation: Some(vec![Vec3D([1.0, 2.0, 3.0]).into()]),
-            rotation_axis_angle: Some(vec![RotationAxisAngle {
-                axis: Vec3D([0.2, 0.2, 0.8]),
-                angle: Angle::from_radians(0.5 * TAU),
-            }
-            .into()]),
-            scale: Some(vec![Scale3D::uniform(42.0)]),
+            translation: Some(Vec3D([1.0, 2.0, 3.0]).into()),
+            rotation_axis_angle: Some(
+                RotationAxisAngle {
+                    axis: Vec3D([0.2, 0.2, 0.8]),
+                    angle: Angle::from_radians(0.5 * TAU),
+                }
+                .into(),
+            ),
+            scale: Some(Scale3D::uniform(42.0)),
             relation: Some(TransformRelation::ChildFromParent),
             ..Default::default()
         }, //
         Transform3D {
-            translation: Some(vec![Vec3D([1.0, 2.0, 3.0]).into()]),
+            translation: Some(Vec3D([1.0, 2.0, 3.0]).into()),
             relation: Some(TransformRelation::ChildFromParent),
             ..Default::default()
         }, //
         Transform3D {
-            mat3x3: Some(vec![
-                Mat3x3([1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0]).into()
-            ]),
+            mat3x3: Some(Mat3x3([1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0]).into()),
             relation: Some(TransformRelation::ParentFromChild),
             ..Default::default()
         }, //

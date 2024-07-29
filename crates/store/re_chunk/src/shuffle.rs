@@ -23,6 +23,17 @@ impl Chunk {
         self.is_sorted
     }
 
+    /// For debugging purposes.
+    #[doc(hidden)]
+    #[inline]
+    pub fn is_sorted_uncached(&self) -> bool {
+        re_tracing::profile_function!();
+
+        self.row_ids()
+            .tuple_windows::<(_, _)>()
+            .all(|row_ids| row_ids.0 <= row_ids.1)
+    }
+
     /// Is the chunk ascendingly sorted by time, for all of its timelines?
     ///
     /// This is O(1) (cached).
@@ -33,19 +44,29 @@ impl Chunk {
             .all(|time_chunk| time_chunk.is_sorted())
     }
 
-    /// Like [`Self::is_sorted`], but actually checks the entire dataset rather than relying on the
-    /// cached value.
+    /// Is the chunk ascendingly sorted by time, for a specific timeline?
     ///
-    /// O(n). Useful for tests/debugging, or when you just don't know.
+    /// This is O(1) (cached).
     ///
-    /// See also [`Self::is_sorted`].
+    /// See also [`Self::is_timeline_sorted_uncached`].
     #[inline]
-    pub fn is_sorted_uncached(&self) -> bool {
-        re_tracing::profile_function!();
+    pub fn is_timeline_sorted(&self, timeline: &Timeline) -> bool {
+        self.is_static()
+            || self
+                .timelines
+                .get(timeline)
+                .map_or(false, |time_chunk| time_chunk.is_sorted())
+    }
 
-        self.row_ids()
-            .tuple_windows::<(_, _)>()
-            .all(|row_ids| row_ids.0 <= row_ids.1)
+    /// For debugging purposes.
+    #[doc(hidden)]
+    #[inline]
+    pub fn is_timeline_sorted_uncached(&self, timeline: &Timeline) -> bool {
+        self.is_static()
+            || self
+                .timelines
+                .get(timeline)
+                .map_or(false, |time_chunk| time_chunk.is_sorted_uncached())
     }
 
     /// Sort the chunk, if needed.

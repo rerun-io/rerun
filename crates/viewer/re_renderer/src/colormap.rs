@@ -18,16 +18,18 @@ pub enum Colormap {
     Plasma = 4,
     Turbo = 5,
     Viridis = 6,
+    CyanToYellow = 7,
 }
 
 impl Colormap {
-    pub const ALL: [Self; 6] = [
+    pub const ALL: [Self; 7] = [
         Self::Grayscale,
         Self::Inferno,
         Self::Magma,
         Self::Plasma,
         Self::Turbo,
         Self::Viridis,
+        Self::CyanToYellow,
     ];
 }
 
@@ -40,6 +42,7 @@ impl std::fmt::Display for Colormap {
             Self::Plasma => write!(f, "Plasma"),
             Self::Turbo => write!(f, "Turbo"),
             Self::Viridis => write!(f, "Viridis"),
+            Self::CyanToYellow => write!(f, "CyanToYellow"),
         }
     }
 }
@@ -52,6 +55,7 @@ pub fn colormap_srgb(which: Colormap, t: f32) -> [u8; 4] {
         Colormap::Plasma => colormap_plasma_srgb(t),
         Colormap::Magma => colormap_magma_srgb(t),
         Colormap::Inferno => colormap_inferno_srgb(t),
+        Colormap::CyanToYellow => colormap_cyan_to_yellow_srgb(t),
     }
 }
 
@@ -184,4 +188,25 @@ pub fn colormap_inferno_srgb(t: f32) -> [u8; 4] {
 
     let c = c * 255.0;
     [c.x as u8, c.y as u8, c.z as u8, 255]
+}
+
+// --- rasmusgo's color maps ---
+
+// Designed by Rasmus Brönnegård (rasmusgo) adapted from https://www.shadertoy.com/view/lfByRh.
+//
+// License CC0 (public domain)
+//   https://creativecommons.org/share-your-work/public-domain/cc0/
+
+/// Returns a gamma-space sRGB in 0-255 range.
+/// This is a perceptually uniform colormap which is robust to color blindness.
+/// It is especially suited for visualizing signed values.
+/// It interpolates from cyan to blue to dark gray to brass to yellow.
+pub fn colormap_cyan_to_yellow_srgb(t: f32) -> [u8; 4] {
+    let t = t * 2. - 1.;
+    [
+        ((1. + 3. * t) * (255. / 4.)).max(0.) as u8,
+        ((1. + 3. * t * t) * (255. / 4.)) as u8,
+        ((1. - 3. * t) * (255. / 4.)).max(0.) as u8,
+        255,
+    ]
 }

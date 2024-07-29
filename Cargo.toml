@@ -15,7 +15,7 @@ members = [
   "tests/rust/roundtrips/*",
   "tests/rust/test_*",
 ]
-exclude = ["examples/rust/revy"]
+exclude = ["examples/rust/revy", "examples/rust/chess_robby_fischer"]
 
 [workspace.package]
 authors = ["rerun.io <opensource@rerun.io>"]
@@ -44,12 +44,12 @@ re_chunk = { path = "crates/store/re_chunk", version = "=0.18.0-alpha.1", defaul
 re_chunk_store = { path = "crates/store/re_chunk_store", version = "=0.18.0-alpha.1", default-features = false }
 re_data_loader = { path = "crates/store/re_data_loader", version = "=0.18.0-alpha.1", default-features = false }
 re_data_source = { path = "crates/store/re_data_source", version = "=0.18.0-alpha.1", default-features = false }
-re_data_store = { path = "crates/store/re_data_store", version = "=0.18.0-alpha.1", default-features = false }
 re_entity_db = { path = "crates/store/re_entity_db", version = "=0.18.0-alpha.1", default-features = false }
 re_format_arrow = { path = "crates/store/re_format_arrow", version = "=0.18.0-alpha.1", default-features = false }
 re_log_encoding = { path = "crates/store/re_log_encoding", version = "=0.18.0-alpha.1", default-features = false }
 re_log_types = { path = "crates/store/re_log_types", version = "=0.18.0-alpha.1", default-features = false }
 re_query = { path = "crates/store/re_query", version = "=0.18.0-alpha.1", default-features = false }
+re_query2 = { path = "crates/store/re_query2", version = "=0.18.0-alpha.1", default-features = false }
 re_sdk_comms = { path = "crates/store/re_sdk_comms", version = "=0.18.0-alpha.1", default-features = false }
 re_types = { path = "crates/store/re_types", version = "=0.18.0-alpha.1", default-features = false }
 re_types_blueprint = { path = "crates/store/re_types_blueprint", version = "=0.18.0-alpha.1", default-features = false }

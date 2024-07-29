@@ -199,10 +199,40 @@ class BlankLinesError(Error):
         )
 
 
+class BacktickLinkError(Error):
+    CODE = "E004"
+
+    def __init__(self, span: Span):
+        super().__init__(type(self).CODE, "link contains backtick", span)
+
+    @staticmethod
+    def explain():
+        return textwrap.dedent(
+            """
+            URLs in links wrapping text should not contain backticks (`).
+
+            Example:
+            ```
+            [Some link](`https://github.com/rerun-io/rerun`)
+            ```
+
+            Our markdown renderer will treat the above link as a _relative path_
+            instead of a URL. If the above markdown is in `examples/robotics/README.md`,
+            it will link to \"https://rerun.io/examples/robotics/`https://github.com/rerun-io/rerun`\".
+
+            Solution: Remove the backticks.
+            ```
+            [Some link](https://github.com/rerun-io/rerun)
+            ```
+            """
+        )
+
+
 EXPLAIN = {
     NoClosingTagError.CODE: NoClosingTagError.explain,
     NoPrecedingBlankLineError.CODE: NoPrecedingBlankLineError.explain,
     BlankLinesError.CODE: BlankLinesError.explain,
+    BacktickLinkError.CODE: BacktickLinkError.explain,
 }
 
 
@@ -314,12 +344,37 @@ def check_video_elements(content: str, errors: list[Error]) -> None:
         search_start = spans.element.end + 1
 
 
+def check_invalid_links(content: str, errors: list[Error]) -> None:
+    search_start = 0
+    while True:
+        mid_point = content.find("](`", search_start)
+        if mid_point == -1:
+            return
+
+        link_start = content.rfind("[", 0, mid_point)
+        if link_start == -1:
+            # TODO(jprochazk): invalid link
+            search_start = mid_point
+            continue
+
+        link_end = content.find(")", mid_point)
+        if link_end == -1:
+            # TODO(jprochazk): invalid link
+            search_start = mid_point
+            continue
+
+        search_start = link_end + 1
+
+        errors.append(BacktickLinkError(span=Span(link_start, link_end)))
+
+
 def check_file(path: str) -> str | None:
     errors: list[Error] = []
     content = Path(path).read_text()
 
     check_picture_elements(content, errors)
     check_video_elements(content, errors)
+    check_invalid_links(content, errors)
 
     if len(errors) != 0:
         return "\n".join([error.render(path, content) for error in errors])

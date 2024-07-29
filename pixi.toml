@@ -88,7 +88,13 @@ wheel-test = [
 # These environments use the dev version of the python package.
 # The package will be installed in editable mode, so changes to the python code will be reflected immediately.
 # However, any changes to do the rust bindings will require running `pixi run -e examples py-build`.
-examples = ["examples-common", "python-dev", "wheel-build", "examples-tasks"]
+examples = [
+  "examples-common",
+  "python-dev",
+  "wheel-build",
+  "python-tasks",
+  "examples-tasks",
+]
 examples-ocr = ["examples-ocr", "wheel-build"]
 
 # This environment uses the pypi-published version of the python package. This avoids the need to
@@ -499,9 +505,9 @@ rerun-notebook = "==0.17.0"
 
 # EXAMPLES ENVIRONMENT
 [feature.examples-common]
-# Note that we don't support linux-aarch64 because not all the example deps are available there.
-# Namely: mediapipe
-platforms = ["linux-64", "osx-arm64", "osx-64", "win-64"]
+# Ideally we would could remove`linux-aarch64` from here, but it breaks other things.
+# See: https://github.com/prefix-dev/pixi/issues/1051
+platforms = ["linux-64", "linux-aarch64", "osx-arm64", "osx-64", "win-64"]
 
 
 [feature.examples-common.system-requirements]
@@ -524,9 +530,6 @@ controlnet = { path = "examples/python/controlnet", editable = true }
 detect_and_track_objects = { path = "examples/python/detect_and_track_objects", editable = true }
 dicom_mri = { path = "examples/python/dicom_mri", editable = true }
 dna = { path = "examples/python/dna", editable = true }
-face_tracking = { path = "examples/python/face_tracking", editable = true }
-gesture_detection = { path = "examples/python/gesture_detection", editable = true }
-human_pose_tracking = { path = "examples/python/human_pose_tracking", editable = true }
 incremental_logging = { path = "examples/python/incremental_logging", editable = true }
 lidar = { path = "examples/python/lidar", editable = true }
 live_camera_edge_detection = { path = "examples/python/live_camera_edge_detection", editable = true }
@@ -551,6 +554,26 @@ signed_distance_fields = { path = "examples/python/signed_distance_fields", edit
 stdio = { path = "examples/python/stdio", editable = true }
 structure_from_motion = { path = "examples/python/structure_from_motion", editable = true }
 
+# TODO(jleibs): Do this with less duplication
+[feature.examples-common.target.linux-64.pypi-dependencies]
+face_tracking = { path = "examples/python/face_tracking", editable = true }
+gesture_detection = { path = "examples/python/gesture_detection", editable = true }
+human_pose_tracking = { path = "examples/python/human_pose_tracking", editable = true }
+
+[feature.examples-common.target.osx-arm64.pypi-dependencies]
+face_tracking = { path = "examples/python/face_tracking", editable = true }
+gesture_detection = { path = "examples/python/gesture_detection", editable = true }
+human_pose_tracking = { path = "examples/python/human_pose_tracking", editable = true }
+
+[feature.examples-common.target.osx-64.pypi-dependencies]
+face_tracking = { path = "examples/python/face_tracking", editable = true }
+gesture_detection = { path = "examples/python/gesture_detection", editable = true }
+human_pose_tracking = { path = "examples/python/human_pose_tracking", editable = true }
+
+[feature.examples-common.target.win-64.pypi-dependencies]
+face_tracking = { path = "examples/python/face_tracking", editable = true }
+gesture_detection = { path = "examples/python/gesture_detection", editable = true }
+human_pose_tracking = { path = "examples/python/human_pose_tracking", editable = true }
 
 # OCR Needs an isolated environment because it depends on opencv-4.6 by way of the `paddleclas` package
 [feature.examples-ocr]

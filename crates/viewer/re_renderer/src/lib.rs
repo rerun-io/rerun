@@ -51,8 +51,8 @@ use allocator::GpuReadbackBuffer;
 pub use allocator::{CpuWriteGpuReadError, GpuReadbackIdentifier};
 pub use color::Rgba32Unmul;
 pub use colormap::{
-    colormap_inferno_srgb, colormap_magma_srgb, colormap_plasma_srgb, colormap_srgb,
-    colormap_turbo_srgb, colormap_viridis_srgb, grayscale_srgb, Colormap,
+    colormap_cyan_to_yellow_srgb, colormap_inferno_srgb, colormap_magma_srgb, colormap_plasma_srgb,
+    colormap_srgb, colormap_turbo_srgb, colormap_viridis_srgb, grayscale_srgb, Colormap,
 };
 pub use context::{adapter_info_summary, RenderContext, RenderContextError};
 pub use debug_label::DebugLabel;

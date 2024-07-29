@@ -146,6 +146,7 @@ pub(crate) fn latest_at_table_ui(
         for component_name in &sorted_components {
             row.col(|ui| {
                 // TODO(ab, cmc): use the suitable API from re_query when it becomes available.
+
                 let result = ctx
                     .recording_store()
                     .latest_at_relevant_chunks(
@@ -154,20 +155,22 @@ pub(crate) fn latest_at_table_ui(
                         *component_name,
                     )
                     .into_iter()
-                    .flat_map(|chunk| {
-                        chunk
+                    .filter_map(|chunk| {
+                        let (index, unit) = chunk
                             .latest_at(&latest_at_query, *component_name)
-                            .iter_rows(&query.timeline, component_name)
-                            .collect::<Vec<_>>()
+                            .into_unit()
+                            .and_then(|unit| {
+                                unit.index(&query.timeline).map(|index| (index, unit))
+                            })?;
+
+                        unit.component_batch_raw(component_name)
+                            .map(|array| (index, array))
                     })
-                    .max_by_key(|(data_time, row_id, _)| (*data_time, *row_id))
-                    .and_then(|(data_time, row_id, array)| {
-                        array.map(|array| (data_time, row_id, array))
-                    });
+                    .max_by_key(|(index, _array)| *index);
 
                 // TODO(#4466): it would be nice to display the time and row id somewhere, since we
                 //              have them.
-                if let Some((_time, _row_id, array)) = result {
+                if let Some(((_time, _row_id), array)) = result {
                     let instance_index = instance_path.instance.get() as usize;
 
                     let (data, clamped) = if instance_index >= array.len() {

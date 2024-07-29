@@ -16,6 +16,7 @@ namespace rerun {
             arrow::field("Plasma", arrow::null(), true),
             arrow::field("Turbo", arrow::null(), true),
             arrow::field("Viridis", arrow::null(), true),
+            arrow::field("CyanToYellow", arrow::null(), true),
         });
         return datatype;
     }
