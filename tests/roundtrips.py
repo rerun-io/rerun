@@ -203,10 +203,10 @@ def run_roundtrip_rust(arch: str, release: bool, target: str | None, target_dir:
 
 def run_roundtrip_cpp(arch: str, release: bool) -> str:
     target_name = f"roundtrip_{arch}"
-    output_path = f"build/debug/tests/cpp/roundtrips/{arch}/out.rrd"
+    output_path = f"tests/cpp/roundtrips/{arch}/out.rrd"
 
     extension = ".exe" if os.name == "nt" else ""
-    cmd = [f"./build/debug/tests/cpp/roundtrips/{target_name}{extension}"]
+    cmd = [f"./build/debug/tests/cpp/roundtrips/{target_name}{extension}", output_path]
     run(cmd, env=roundtrip_env(), timeout=12000)
 
     return output_path
