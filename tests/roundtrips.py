@@ -90,56 +90,44 @@ def main() -> None:
         print("----------------------------------------------------------")
         print("Building rerun-sdk for Python…")
         start_time = time.time()
-        run(["pixi", "run", "py-build", "--quiet"], env=build_env)
+        run(["pixi", "run", "-e", "py", "py-build", "--quiet"], env=build_env)
         elapsed = time.time() - start_time
         print(f"rerun-sdk for Python built in {elapsed:.1f} seconds")
         print("")
 
     if args.no_cpp_build:
-        print("Skipping cmake configure & build for rerun_c & rerun_cpp - assuming it is already built and up-to-date!")
+        print("Skipping cmake configure & build - assuming all tests are already built and up-to-date!")
     else:
         print("----------------------------------------------------------")
-        print("Build rerun_c & rerun_cpp…")
+        print("Build roundtrips for C++…")
         start_time = time.time()
         cmake_configure(args.release, build_env)
-        cmake_build("rerun_sdk", args.release)
+        cmake_build("roundtrips", args.release)
         elapsed = time.time() - start_time
-        print(f"rerun-sdk for C++ built in {elapsed:.1f} seconds")
+        print(f"C++ roundtrips built in {elapsed:.1f} seconds")
         print("")
 
     print("----------------------------------------------------------")
     print(f"Building {len(archetypes)} archetypes…")
-
-    # Running CMake in parallel causes failures during rerun_sdk & arrow build.
-    # TODO(andreas): Tell cmake in a single command to build everything at once.
-    if not args.no_cpp_build:
-        start_time = time.time()
-        for arch in archetypes:
-            arch_opt_out = opt_out.get(arch, [])
-            if "cpp" in arch_opt_out:
-                continue
-            build(arch, "cpp", args)
-        elapsed = time.time() - start_time
-        print(f"C++ examples compiled and ran in {elapsed:.1f} seconds")
 
     with multiprocessing.Pool() as pool:
         start_time = time.time()
         jobs = []
         for arch in archetypes:
             arch_opt_out = opt_out.get(arch, [])
-            for language in ["python", "rust"]:
+            for language in ["python", "rust", "cpp"]:
                 if language in arch_opt_out:
                     continue
-                job = pool.apply_async(build, (arch, language, args))
+                job = pool.apply_async(run_roundtrips, (arch, language, args))
                 jobs.append(job)
         print(f"Waiting for {len(jobs)} build jobs to finish…")
         for job in jobs:
             job.get()
         elapsed = time.time() - start_time
-        print(f"Python and Rust examples ran in {elapsed:.1f} seconds")
+        print(f"C++, Python and Rust examples ran in {elapsed:.1f} seconds")
 
     print("----------------------------------------------------------")
-    print(f"Comparing recordings for{len(archetypes)} archetypes…")
+    print(f"Comparing recordings for {len(archetypes)} archetypes…")
     start_time = time.time()
 
     for arch in archetypes:
@@ -168,7 +156,7 @@ def main() -> None:
     print("All tests passed!")
 
 
-def build(arch: str, language: str, args: argparse.Namespace) -> None:
+def run_roundtrips(arch: str, language: str, args: argparse.Namespace) -> None:
     if language == "cpp":
         run_roundtrip_cpp(arch, args.release)
     elif language == "python":
@@ -220,8 +208,6 @@ def run_roundtrip_rust(arch: str, release: bool, target: str | None, target_dir:
 def run_roundtrip_cpp(arch: str, release: bool) -> str:
     target_name = f"roundtrip_{arch}"
     output_path = f"tests/cpp/roundtrips/{arch}/out.rrd"
-
-    cmake_build(target_name, release)
 
     config_dir = "Release" if release else "Debug"
 
