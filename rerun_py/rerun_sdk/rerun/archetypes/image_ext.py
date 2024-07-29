@@ -62,8 +62,8 @@ class ImageExt:
         Create a new image with a given format.
 
         There are two ways to create an image:
-        * By specifying an `image` and a `color_model`.
-        * By specifying a `pixel_format`, together with `width`, `height`, and `bytes`.
+        * By specifying an `image` as an appropriately shaped ndarray with an appropriate `color_model`.
+        * By specifying an `image` is `pixel_format`, together with `width`, `height`, and `bytes`.
 
         Parameters
         ----------

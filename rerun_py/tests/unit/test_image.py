@@ -6,7 +6,7 @@ import numpy as np
 import pytest
 import rerun as rr
 import torch
-from rerun.datatypes.tensor_data import TensorDataBatch
+from rerun.archetypes.image import Image
 from rerun.error_utils import RerunWarning
 
 rng = np.random.default_rng(12345)
@@ -14,34 +14,24 @@ RANDOM_IMAGE_SOURCE = rng.uniform(0.0, 1.0, (10, 20, 3))
 
 
 IMAGE_INPUTS: list[Any] = [
-    RANDOM_IMAGE_SOURCE,
-    RANDOM_IMAGE_SOURCE,
-]
-
-# 0 = shape
-# 1 = buffer
-CHECK_FIELDS: list[list[int]] = [
-    [0, 1],
-    [1],
+    {"image": RANDOM_IMAGE_SOURCE},
 ]
 
 
-def tensor_data_expected() -> Any:
-    return TensorDataBatch(IMAGE_INPUTS[0])
-
-
-def compare_images(left: Any, right: Any, check_fields: list[int]) -> None:
-    for field in check_fields:
-        assert left.as_arrow_array().storage.field(field) == right.as_arrow_array().storage.field(field)
+def image_data_expected() -> Any:
+    return Image(RANDOM_IMAGE_SOURCE, color_model="RGB", width=21, height=10)
 
 
 def test_image() -> None:
-    expected = tensor_data_expected()
+    expected = image_data_expected()
 
-    for input, check_fields in zip(IMAGE_INPUTS, CHECK_FIELDS):
-        arch = rr.Image(input)
+    for input in IMAGE_INPUTS:
+        arch = rr.Image(**input)
 
-        compare_images(arch.data, expected, check_fields)
+        assert arch.data == expected.data
+        assert arch.resolution == expected.resolution
+        assert arch.color_model == expected.color_model
+        assert arch.pixel_format == expected.pixel_format
 
 
 GOOD_IMAGE_INPUTS: list[Any] = [
@@ -91,13 +81,13 @@ def test_image_compress() -> None:
     image_data = np.asarray(rng.uniform(0, 255, (10, 20, 3)), dtype=np.uint8)
 
     compressed = rr.ImageEncoded.compress(image_data, "RGB", jpeg_quality=80)
-    assert type(compressed) == rr.ImageEncoded
+    assert type(compressed) is rr.ImageEncoded
 
     # Mono Supported
     image_data = np.asarray(rng.uniform(0, 255, (10, 20)), dtype=np.uint8)
 
     compressed = rr.ImageEncoded.compress(image_data, "L", jpeg_quality=80)
-    assert type(compressed) == rr.ImageEncoded
+    assert type(compressed) is rr.ImageEncoded
 
     # RGBA Not supported
     with pytest.warns(RerunWarning) as warnings:
@@ -107,5 +97,4 @@ def test_image_compress() -> None:
         assert len(warnings) == 1
         assert "Cannot JPEG compress an image of type" in str(warnings[0])
 
-        # Should still be an Image
-        assert type(compressed) == rr.Image
+        assert type(compressed) is rr.Image
