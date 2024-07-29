@@ -7,7 +7,6 @@
 #include "../compiler_utils.hpp"
 #include "../components/blob.hpp"
 #include "../components/media_type.hpp"
-#include "../components/out_of_tree_transform3d.hpp"
 #include "../data_cell.hpp"
 #include "../indicator_component.hpp"
 #include "../result.hpp"
@@ -66,11 +65,6 @@ namespace rerun::archetypes {
         /// If it cannot guess, it won't be able to render the asset.
         std::optional<rerun::components::MediaType> media_type;
 
-        /// An out-of-tree transform.
-        ///
-        /// Applies a transformation to the asset itself without impacting its children.
-        std::optional<rerun::components::OutOfTreeTransform3D> transform;
-
       public:
         static constexpr const char IndicatorComponentName[] = "rerun.components.Asset3DIndicator";
 
@@ -124,15 +118,6 @@ namespace rerun::archetypes {
         /// If it cannot guess, it won't be able to render the asset.
         Asset3D with_media_type(rerun::components::MediaType _media_type) && {
             media_type = std::move(_media_type);
-            // See: https://github.com/rerun-io/rerun/issues/4027
-            RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
-        }
-
-        /// An out-of-tree transform.
-        ///
-        /// Applies a transformation to the asset itself without impacting its children.
-        Asset3D with_transform(rerun::components::OutOfTreeTransform3D _transform) && {
-            transform = std::move(_transform);
             // See: https://github.com/rerun-io/rerun/issues/4027
             RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
         }

@@ -76,8 +76,6 @@ from .blueprint.api import (
 from .components import (
     AlbedoFactor as AlbedoFactor,
     MediaType as MediaType,
-    OutOfTreeTransform3D as OutOfTreeTransform3D,
-    OutOfTreeTransform3DBatch as OutOfTreeTransform3DBatch,
     Radius as Radius,
     Scale3D as Scale3D,
     TensorDimensionIndexSelection as TensorDimensionIndexSelection,

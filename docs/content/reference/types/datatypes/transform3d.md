@@ -17,5 +17,4 @@ Representation of a 3D affine transform.
 
 ## Used by
 
-* [`OutOfTreeTransform3D`](../components/out_of_tree_transform3d.md)
 * [`Transform3D`](../components/transform3d.md)

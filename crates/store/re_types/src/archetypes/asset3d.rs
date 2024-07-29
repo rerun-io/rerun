@@ -51,7 +51,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 ///   <img src="https://static.rerun.io/asset3d_simple/af238578188d3fd0de3e330212120e2842a8ddb2/full.png" width="640">
 /// </picture>
 /// </center>
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Asset3D {
     /// The asset's bytes.
     pub blob: crate::components::Blob,
@@ -67,26 +67,17 @@ pub struct Asset3D {
     /// If omitted, the viewer will try to guess from the data blob.
     /// If it cannot guess, it won't be able to render the asset.
     pub media_type: Option<crate::components::MediaType>,
-
-    /// An out-of-tree transform.
-    ///
-    /// Applies a transformation to the asset itself without impacting its children.
-    pub transform: Option<crate::components::OutOfTreeTransform3D>,
 }
 
 impl ::re_types_core::SizeBytes for Asset3D {
     #[inline]
     fn heap_size_bytes(&self) -> u64 {
-        self.blob.heap_size_bytes()
-            + self.media_type.heap_size_bytes()
-            + self.transform.heap_size_bytes()
+        self.blob.heap_size_bytes() + self.media_type.heap_size_bytes()
     }
 
     #[inline]
     fn is_pod() -> bool {
-        <crate::components::Blob>::is_pod()
-            && <Option<crate::components::MediaType>>::is_pod()
-            && <Option<crate::components::OutOfTreeTransform3D>>::is_pod()
+        <crate::components::Blob>::is_pod() && <Option<crate::components::MediaType>>::is_pod()
     }
 }
 
@@ -101,22 +92,21 @@ static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 2usize]> =
         ]
     });
 
-static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 1usize]> =
-    once_cell::sync::Lazy::new(|| ["rerun.components.OutOfTreeTransform3D".into()]);
+static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 0usize]> =
+    once_cell::sync::Lazy::new(|| []);
 
-static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 4usize]> =
+static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 3usize]> =
     once_cell::sync::Lazy::new(|| {
         [
             "rerun.components.Blob".into(),
             "rerun.components.MediaType".into(),
             "rerun.components.Asset3DIndicator".into(),
-            "rerun.components.OutOfTreeTransform3D".into(),
         ]
     });
 
 impl Asset3D {
-    /// The total number of components in the archetype: 1 required, 2 recommended, 1 optional
-    pub const NUM_COMPONENTS: usize = 4usize;
+    /// The total number of components in the archetype: 1 required, 2 recommended, 0 optional
+    pub const NUM_COMPONENTS: usize = 3usize;
 }
 
 /// Indicator component for the [`Asset3D`] [`::re_types_core::Archetype`]
@@ -193,21 +183,7 @@ impl ::re_types_core::Archetype for Asset3D {
         } else {
             None
         };
-        let transform =
-            if let Some(array) = arrays_by_name.get("rerun.components.OutOfTreeTransform3D") {
-                <crate::components::OutOfTreeTransform3D>::from_arrow_opt(&**array)
-                    .with_context("rerun.archetypes.Asset3D#transform")?
-                    .into_iter()
-                    .next()
-                    .flatten()
-            } else {
-                None
-            };
-        Ok(Self {
-            blob,
-            media_type,
-            transform,
-        })
+        Ok(Self { blob, media_type })
     }
 }
 
@@ -219,9 +195,6 @@ impl ::re_types_core::AsComponents for Asset3D {
             Some(Self::indicator()),
             Some((&self.blob as &dyn ComponentBatch).into()),
             self.media_type
-                .as_ref()
-                .map(|comp| (comp as &dyn ComponentBatch).into()),
-            self.transform
                 .as_ref()
                 .map(|comp| (comp as &dyn ComponentBatch).into()),
         ]
@@ -238,7 +211,6 @@ impl Asset3D {
         Self {
             blob: blob.into(),
             media_type: None,
-            transform: None,
         }
     }
 
@@ -255,18 +227,6 @@ impl Asset3D {
     #[inline]
     pub fn with_media_type(mut self, media_type: impl Into<crate::components::MediaType>) -> Self {
         self.media_type = Some(media_type.into());
-        self
-    }
-
-    /// An out-of-tree transform.
-    ///
-    /// Applies a transformation to the asset itself without impacting its children.
-    #[inline]
-    pub fn with_transform(
-        mut self,
-        transform: impl Into<crate::components::OutOfTreeTransform3D>,
-    ) -> Self {
-        self.transform = Some(transform.into());
         self
     }
 }

@@ -1,11 +1,11 @@
 use re_chunk_store::RowId;
 use re_log_types::{hash::Hash64, Instance, TimeInt};
-use re_query::range_zip_1x2;
+use re_query::range_zip_1x1;
 use re_renderer::renderer::MeshInstance;
 use re_renderer::RenderContext;
 use re_types::{
     archetypes::Asset3D,
-    components::{Blob, MediaType, OutOfTreeTransform3D},
+    components::{Blob, MediaType},
 };
 use re_viewer_context::{
     ApplicableEntities, IdentifiedViewSystem, QueryContext, SpaceViewSystemExecutionError,
@@ -37,7 +37,6 @@ struct Asset3DComponentData<'a> {
 
     blob: &'a Blob,
     media_type: Option<&'a MediaType>,
-    transform: Option<&'a OutOfTreeTransform3D>,
 }
 
 // NOTE: Do not put profile scopes in these methods. They are called for all entities and all
@@ -57,9 +56,6 @@ impl Asset3DVisualizer {
             let mesh = Asset3D {
                 blob: data.blob.clone(),
                 media_type: data.media_type.cloned(),
-
-                // NOTE: Don't even try to cache the transform!
-                transform: None,
             };
 
             let primary_row_id = data.index.1;
@@ -86,9 +82,11 @@ impl Asset3DVisualizer {
                 re_tracing::profile_scope!("mesh instances");
 
                 let world_from_pose = ent_context.world_from_entity
-                    * data
-                        .transform
-                        .map_or(glam::Affine3A::IDENTITY, |t| t.0.into());
+                    * *ent_context
+                        .transform_info
+                        .entity_from_instance_leaf_transforms
+                        .first()
+                        .unwrap_or(&glam::Affine3A::IDENTITY);
 
                 instances.extend(mesh.mesh_instances.iter().map(move |mesh_instance| {
                     let pose_from_mesh = mesh_instance.world_from_mesh;
@@ -159,21 +157,15 @@ impl VisualizerSystem for Asset3DVisualizer {
                 };
 
                 let media_types = results.get_or_empty_dense(resolver)?;
-                let transforms = results.get_or_empty_dense(resolver)?;
 
-                let data = range_zip_1x2(
-                    blobs.range_indexed(),
-                    media_types.range_indexed(),
-                    transforms.range_indexed(),
-                )
-                .filter_map(|(&index, blobs, media_types, transforms)| {
-                    blobs.first().map(|blob| Asset3DComponentData {
-                        index,
-                        blob,
-                        media_type: media_types.and_then(|media_types| media_types.first()),
-                        transform: transforms.and_then(|transforms| transforms.first()),
-                    })
-                });
+                let data = range_zip_1x1(blobs.range_indexed(), media_types.range_indexed())
+                    .filter_map(|(&index, blobs, media_types)| {
+                        blobs.first().map(|blob| Asset3DComponentData {
+                            index,
+                            blob,
+                            media_type: media_types.and_then(|media_types| media_types.first()),
+                        })
+                    });
 
                 self.process_data(ctx, render_ctx, &mut instances, spatial_ctx, data);
                 Ok(())
