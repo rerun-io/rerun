@@ -599,13 +599,13 @@ fn query_and_resolve_leaf_transform_at_entity(
 
     let mut iter_translation = clamped_or_nothing(
         result
-            .component_batch::<LeafRotationAxisAngle>()
+            .component_batch::<LeafTranslation3D>()
             .unwrap_or_default(),
         max_count,
     );
     let mut iter_rotation_quat = clamped_or_nothing(
         result
-            .component_batch::<LeafRotationAxisAngle>()
+            .component_batch::<LeafRotationQuat>()
             .unwrap_or_default(),
         max_count,
     );
@@ -616,14 +616,12 @@ fn query_and_resolve_leaf_transform_at_entity(
         max_count,
     );
     let mut iter_scale = clamped_or_nothing(
-        result
-            .component_batch::<LeafRotationAxisAngle>()
-            .unwrap_or_default(),
+        result.component_batch::<LeafScale3D>().unwrap_or_default(),
         max_count,
     );
     let mut iter_mat3x3 = clamped_or_nothing(
         result
-            .component_batch::<LeafRotationAxisAngle>()
+            .component_batch::<LeafTransformMat3x3>()
             .unwrap_or_default(),
         max_count,
     );
