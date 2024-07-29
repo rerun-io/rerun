@@ -10,11 +10,12 @@ from .._baseclasses import (
     ComponentBatchMixin,
     ComponentMixin,
 )
+from .leaf_scale3d_ext import LeafScale3DExt
 
 __all__ = ["LeafScale3D", "LeafScale3DBatch", "LeafScale3DType"]
 
 
-class LeafScale3D(datatypes.Vec3D, ComponentMixin):
+class LeafScale3D(LeafScale3DExt, datatypes.Vec3D, ComponentMixin):
     """
     **Component**: A 3D scale factor that doesn't propagate in the transform hierarchy.
 
@@ -24,7 +25,7 @@ class LeafScale3D(datatypes.Vec3D, ComponentMixin):
     """
 
     _BATCH_TYPE = None
-    # You can define your own __init__ function as a member of LeafScale3DExt in leaf_scale3d_ext.py
+    # __init__ can be found in leaf_scale3d_ext.py
 
     # Note: there are no fields here because LeafScale3D delegates to datatypes.Vec3D
     pass
