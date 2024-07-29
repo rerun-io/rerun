@@ -192,6 +192,8 @@ pub struct LatestAtResults {
     pub compound_index: (TimeInt, RowId),
 
     /// Results for each individual component.
+    ///
+    /// Each [`UnitChunkShared`] MUST always contain the corresponding component.
     pub components: IntMap<ComponentName, UnitChunkShared>,
 }
 
