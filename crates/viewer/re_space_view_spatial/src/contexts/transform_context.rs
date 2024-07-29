@@ -215,8 +215,8 @@ impl TransformContext {
                             .map(|&t| t.inverse())
                             .collect(),
 
-                        // Going up the tree, we can only encounter 2d->3d transforms.
-                        // 3d->2d transforms can't happen because `Pinhole` represents 3d->2d (and we're walking backwards!)
+                        // Going up the tree, we can only encounter 2D->3D transforms.
+                        // 3D->2D transforms can't happen because `Pinhole` represents 3D->2D (and we're walking backwards!)
                         twod_in_threed_info: None,
                     };
 
