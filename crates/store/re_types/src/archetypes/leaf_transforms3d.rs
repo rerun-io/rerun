@@ -32,6 +32,64 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 /// all components are applied in the inverse order they are listed here.
 /// E.g. if both a translation and a max3x3 transform are present,
 /// the 3x3 matrix is applied first, followed by the translation.
+///
+/// ## Example
+///
+/// ### Regular & leaf transform in tandom
+/// ```ignore
+/// use rerun::{
+///     demo_util::grid,
+///     external::{anyhow, glam},
+/// };
+///
+/// fn main() -> anyhow::Result<()> {
+///     let rec =
+///         rerun::RecordingStreamBuilder::new("rerun_example_leaf_transform3d_combined").spawn()?;
+///
+///     rec.set_time_sequence("frame", 0);
+///
+///     // Log a box and points further down in the hierarchy.
+///     rec.log(
+///         "world/box",
+///         &rerun::Boxes3D::from_half_sizes([[1.0, 1.0, 1.0]]),
+///     )?;
+///     rec.log(
+///         "world/box/points",
+///         &rerun::Points3D::new(grid(glam::Vec3::splat(-10.0), glam::Vec3::splat(10.0), 10)),
+///     )?;
+///
+///     for i in 1..100 {
+///         rec.set_time_sequence("frame", i);
+///
+///         // Log a regular transform which affects both the box and the points.
+///         rec.log(
+///             "world/box",
+///             &rerun::Transform3D::from_rotation(rerun::RotationAxisAngle {
+///                 axis: [0.0, 0.0, 1.0].into(),
+///                 angle: rerun::Angle::from_degrees(i as f32 * 2.0),
+///             }),
+///         )?;
+///
+///         // Log an leaf transform which affects only the box.
+///         let translation = [0.0, 0.0, (i as f32 * 0.1 - 5.0).abs() - 5.0];
+///         rec.log(
+///             "world/box",
+///             &rerun::LeafTransforms3D::new().with_translations([translation]),
+///         )?;
+///     }
+///
+///     Ok(())
+/// }
+/// ```
+/// <center>
+/// <picture>
+///   <source media="(max-width: 480px)" srcset="https://static.rerun.io/leaf_transform3d/41674f0082d6de489f8a1cd1583f60f6b5820ddf/480w.png">
+///   <source media="(max-width: 768px)" srcset="https://static.rerun.io/leaf_transform3d/41674f0082d6de489f8a1cd1583f60f6b5820ddf/768w.png">
+///   <source media="(max-width: 1024px)" srcset="https://static.rerun.io/leaf_transform3d/41674f0082d6de489f8a1cd1583f60f6b5820ddf/1024w.png">
+///   <source media="(max-width: 1200px)" srcset="https://static.rerun.io/leaf_transform3d/41674f0082d6de489f8a1cd1583f60f6b5820ddf/1200w.png">
+///   <img src="https://static.rerun.io/leaf_transform3d/41674f0082d6de489f8a1cd1583f60f6b5820ddf/full.png" width="640">
+/// </picture>
+/// </center>
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct LeafTransforms3D {
     /// Translation vectors.

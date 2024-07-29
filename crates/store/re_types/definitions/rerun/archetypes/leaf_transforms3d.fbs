@@ -15,7 +15,8 @@ namespace rerun.archetypes;
 /// all components are applied in the inverse order they are listed here.
 /// E.g. if both a translation and a max3x3 transform are present,
 /// the 3x3 matrix is applied first, followed by the translation.
-// TODO(andreas): Add example.
+///
+/// \example archetypes/leaf_transforms3d_combined title="Regular & leaf transform in tandom" image="https://static.rerun.io/leaf_transform3d/41674f0082d6de489f8a1cd1583f60f6b5820ddf/1200w.png"
 table LeafTransforms3D (
   "attr.rust.derive": "Default, PartialEq",
   "attr.rust.generate_field_info",

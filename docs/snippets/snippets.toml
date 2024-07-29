@@ -163,6 +163,11 @@ quick_start = [ # These examples don't have exactly the same implementation.
 "archetypes/transform3d_hierarchy" = [ # Uses a lot of trigonometry which is surprisingly easy to get the same on Rust & C++, but not on Python/Numpy
   "py",
 ]
+"archetypes/leaf_transforms3d_combined" = [ # TODO(#3235): Slight floating point differences in point grid.
+  "cpp",
+  "py",
+  "rust",
+]
 
 # `$config_dir` will be replaced with the absolute path of `docs/snippets`.
 [extra_args]

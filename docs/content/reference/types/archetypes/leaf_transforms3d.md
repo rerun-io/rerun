@@ -31,3 +31,17 @@ the 3x3 matrix is applied first, followed by the translation.
  * 🐍 [Python API docs for `LeafTransforms3D`](https://ref.rerun.io/docs/python/stable/common/archetypes#rerun.archetypes.LeafTransforms3D)
  * 🦀 [Rust API docs for `LeafTransforms3D`](https://docs.rs/rerun/latest/rerun/archetypes/struct.LeafTransforms3D.html)
 
+## Example
+
+### Regular & leaf transform in tandom
+
+snippet: archetypes/leaf_transforms3d_combined
+
+<picture data-inline-viewer="snippets/leaf_transforms3d_combined">
+  <source media="(max-width: 480px)" srcset="https://static.rerun.io/leaf_transform3d/41674f0082d6de489f8a1cd1583f60f6b5820ddf/480w.png">
+  <source media="(max-width: 768px)" srcset="https://static.rerun.io/leaf_transform3d/41674f0082d6de489f8a1cd1583f60f6b5820ddf/768w.png">
+  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/leaf_transform3d/41674f0082d6de489f8a1cd1583f60f6b5820ddf/1024w.png">
+  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/leaf_transform3d/41674f0082d6de489f8a1cd1583f60f6b5820ddf/1200w.png">
+  <img src="https://static.rerun.io/leaf_transform3d/41674f0082d6de489f8a1cd1583f60f6b5820ddf/full.png">
+</picture>
+

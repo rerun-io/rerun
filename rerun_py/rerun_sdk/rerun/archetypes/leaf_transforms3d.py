@@ -35,6 +35,41 @@ class LeafTransforms3D(Archetype):
     all components are applied in the inverse order they are listed here.
     E.g. if both a translation and a max3x3 transform are present,
     the 3x3 matrix is applied first, followed by the translation.
+
+    Example
+    -------
+    ### Regular & leaf transform in tandom:
+    ```python
+    import numpy as np
+    import rerun as rr
+
+    rr.init("rerun_example_leaf_transform3d_combined", spawn=True)
+
+    rr.set_time_sequence("frame", 0)
+
+    # Log a box and points further down in the hierarchy.
+    rr.log("world/box", rr.Boxes3D(half_sizes=[[1.0, 1.0, 1.0]]))
+    rr.log("world/box/points", rr.Points3D(np.vstack([xyz.ravel() for xyz in np.mgrid[3 * [slice(-10, 10, 10j)]]]).T))
+
+    for i in range(1, 100):
+        rr.set_time_sequence("frame", i)
+
+        # Log a regular transform which affects both the box and the points.
+        rr.log("world/box", rr.Transform3D(rotation_axis_angle=rr.RotationAxisAngle([0, 0, 1], angle=rr.Angle(deg=i * 2))))
+
+        # Log an leaf transform which affects only the box.
+        rr.log("world/box", rr.LeafTransforms3D(translations=[0, 0, abs(i * 0.1 - 5.0) - 5.0]))
+    ```
+    <center>
+    <picture>
+      <source media="(max-width: 480px)" srcset="https://static.rerun.io/leaf_transform3d/41674f0082d6de489f8a1cd1583f60f6b5820ddf/480w.png">
+      <source media="(max-width: 768px)" srcset="https://static.rerun.io/leaf_transform3d/41674f0082d6de489f8a1cd1583f60f6b5820ddf/768w.png">
+      <source media="(max-width: 1024px)" srcset="https://static.rerun.io/leaf_transform3d/41674f0082d6de489f8a1cd1583f60f6b5820ddf/1024w.png">
+      <source media="(max-width: 1200px)" srcset="https://static.rerun.io/leaf_transform3d/41674f0082d6de489f8a1cd1583f60f6b5820ddf/1200w.png">
+      <img src="https://static.rerun.io/leaf_transform3d/41674f0082d6de489f8a1cd1583f60f6b5820ddf/full.png" width="640">
+    </picture>
+    </center>
+
     """
 
     def __init__(

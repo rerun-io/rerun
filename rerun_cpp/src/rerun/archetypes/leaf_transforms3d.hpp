@@ -34,6 +34,45 @@ namespace rerun::archetypes {
     /// all components are applied in the inverse order they are listed here.
     /// E.g. if both a translation and a max3x3 transform are present,
     /// the 3x3 matrix is applied first, followed by the translation.
+    ///
+    /// ## Example
+    ///
+    /// ### Regular & leaf transform in tandom
+    /// ![image](https://static.rerun.io/leaf_transform3d/41674f0082d6de489f8a1cd1583f60f6b5820ddf/full.png)
+    ///
+    /// ```cpp
+    /// #include <rerun.hpp>
+    /// #include <rerun/demo_utils.hpp>
+    ///
+    /// int main() {
+    ///     const auto rec = rerun::RecordingStream("rerun_example_asset3d_out_of_tree");
+    ///     rec.set_time_sequence("frame", 0);
+    ///
+    ///     // Log a box and points further down in the hierarchy.
+    ///     rec.log("world/box", rerun::Boxes3D::from_half_sizes({{1.0, 1.0, 1.0}}));
+    ///     rec.log(
+    ///         "world/box/points",
+    ///         rerun::Points3D(rerun::demo::grid3d<rerun::Position3D, float>(-10.0f, 10.0f, 10))
+    ///     );
+    ///
+    ///     for (int i = 1; i <20; ++i) {
+    ///         rec.set_time_sequence("frame", i);
+    ///
+    ///         // Log a regular transform which affects both the box and the points.
+    ///         rec.log(
+    ///             "world/box",
+    ///             rerun::Transform3D::from_rotation(rerun::RotationAxisAngle{
+    ///                 {0.0f, 0.0f, 1.0f},
+    ///                 {rerun::Angle::degrees(static_cast<float>(i) * 2.0f)}
+    ///             })
+    ///         );
+    ///
+    ///         // Log an leaf transform which affects only the box.
+    ///         float translation[] = {0, 0, fabs(static_cast<float>(i) * 0.1f - 5.0f) - 5.0f};
+    ///         rec.log("world/box", rerun::LeafTransforms3D().with_translations({translation}));
+    ///     }
+    /// }
+    /// ```
     struct LeafTransforms3D {
         /// Translation vectors.
         std::optional<Collection<rerun::components::LeafTranslation3D>> translations;
