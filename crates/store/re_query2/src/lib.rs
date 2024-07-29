@@ -3,6 +3,7 @@
 mod cache;
 mod cache_stats;
 mod latest_at;
+mod range;
 
 pub mod clamped_zip;
 pub mod range_zip;
@@ -11,9 +12,11 @@ pub use self::cache::{CacheKey, Caches};
 pub use self::cache_stats::{CacheStats, CachesStats};
 pub use self::clamped_zip::*;
 pub use self::latest_at::LatestAtResults;
+pub use self::range::RangeResults;
 pub use self::range_zip::*;
 
 pub(crate) use self::latest_at::LatestAtCache;
+pub(crate) use self::range::RangeCache;
 
 pub mod external {
     pub use paste;
