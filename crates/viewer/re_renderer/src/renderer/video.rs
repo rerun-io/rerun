@@ -1,34 +1,98 @@
 use crate::resource_managers::GpuTexture2D;
 use crate::wgpu_resources::{GpuTexturePool, TextureDesc};
 use crate::RenderContext;
+use std::io::BufReader;
+use std::io::Cursor;
 use std::sync::atomic::AtomicU64;
 use std::sync::atomic::Ordering;
 use std::sync::Arc;
 use std::task::Poll;
 
+use js_sys::ArrayBuffer;
+use js_sys::Function;
+use js_sys::Object;
+use js_sys::Promise;
+use js_sys::Reflect;
+use js_sys::Uint8Array;
 use parking_lot::Mutex;
+use parking_lot::RwLock;
 use wasm_bindgen::closure::Closure;
 use wasm_bindgen::JsCast as _;
-use web_sys::window;
+use wasm_bindgen::JsValue;
+use web_sys::Document;
 use web_sys::Event;
 use web_sys::HtmlVideoElement;
+use web_sys::VideoDecoder;
+use web_sys::VideoDecoderInit;
+use web_sys::VideoFrame;
+use web_sys::Window;
 use wgpu::Device;
 use wgpu::Queue;
 
-struct AtomicF64(AtomicU64);
+fn js_get(receiver: &JsValue, key: &str) -> Result<JsValue, JsValue> {
+    Reflect::get(receiver, &JsValue::from_str(key))
+}
 
-impl AtomicF64 {
-    fn new(v: f64) -> Self {
-        Self(AtomicU64::new(v.to_bits()))
+fn js_set(obj: &JsValue, key: &str, value: impl Into<JsValue>) {
+    Reflect::set(obj, &JsValue::from_str(key), &value.into()).unwrap();
+}
+
+fn window() -> Window {
+    web_sys::window().expect("failed to get window")
+}
+
+struct DecodedVideoConfig {
+    codec: String,
+    width: u16,
+    height: u16,
+    duration: f64,
+    format: String,
+}
+
+struct DecodedVideo {
+    config: DecodedVideoConfig,
+    frames: Vec<VideoFrame>,
+}
+
+fn decode_video(video_url: &str, on_done: impl FnOnce(DecodedVideo) + 'static) {
+    // Awful, terrible hack to embed mp4box + a wrapper library for decoding video frames.
+    // We embed JS modules as strings, then construct `Function` objects out of them,
+    // run those functions to initialize the modules, and then run the `__rerun_decode_video`
+    // function which is appended to the global scope.
+
+    fn init_module_from_str(module: &str) {
+        // This is equivalent to calling `eval`, but with stricter scoping:
+        let f = Function::new_no_args(module);
+        f.call0(&window()).expect("failed to initialize module");
     }
 
-    fn set(&self, v: f64) {
-        self.0.store(v.to_bits(), Ordering::SeqCst);
+    fn init_modules() {
+        // The order in which the modules are initialized matters, `mp4box` must come first.
+        const MP4BOX_MIN_JS: &str = include_str!("./video/mp4box.all.min.js");
+        const DECODE_VIDEO_JS: &str = include_str!("./video/decode_video.js");
+
+        init_module_from_str(MP4BOX_MIN_JS);
+        init_module_from_str(DECODE_VIDEO_JS);
     }
 
-    fn get(&self) -> f64 {
-        f64::from_bits(self.0.load(Ordering::SeqCst))
+    let mut f = js_get(&window(), "__rerun_decode_video").unwrap();
+    if f.is_null() || f.is_undefined() {
+        // not initialized yet
+        init_modules();
+
+        f = js_get(&window(), "__rerun_decode_video").unwrap();
+        if f.is_null() || f.is_undefined() {
+            panic!("failed to initialize __rerun_decode_video");
+        }
     }
+
+    let f: Function = f.dyn_into().expect("__rerun_decode_video is not a Function");
+    f.call1(&window(), &JsValue::from_str(video_url)).expect("__rerun_decode_video failed").dyn_into::<Promise>().then(&Closure::once(|result: JsValue| -> Result<JsValue, JsValue> {
+        let config = js_get(&result, "config")?;
+        let frames = js_get(&result, "frames")?;
+
+        todo!();
+    }));
 }
 
 pub struct Video {
@@ -37,30 +101,20 @@ pub struct Video {
     device: Arc<Device>,
     queue: Arc<Queue>,
 
-    video: HtmlVideoElement,
-
-    /// Cached texture for a specific time in the video.
-    texture: Mutex<Option<GpuTexture2D>>,
-    current_time: AtomicF64,
+    /// Cached video frames, sorted by timestamp.
+    decoded: Arc<RwLock<Option<DecodedVideo>>>,
 }
 
 impl Video {
     pub fn load(render_context: &RenderContext, url: String) -> Self {
-        let window = window().expect("failed to get window");
-        let document = window.document().expect("failed to get document");
-        let video = document
-            .create_element("video")
-            .expect("failed to create video element");
-        let video: HtmlVideoElement = video.dyn_into().expect("failed to create video element");
+        let video = Arc::new(RwLock::new(None));
 
-        // Without this, the bytes of the video can't be read directly
-        // in case the video comes from a different domain.
-        video.set_cross_origin(Some("anonymous"));
-        // Without this, the video is not a valid media source for `copyExternalImageToTexture`.
-        video.set_preload("auto");
-
-        video.set_src(&url);
-        video.load();
+        decode_video(&url, {
+            let video = video.clone();
+            move |v| {
+                *video.write() = v;
+            }
+        })
 
         Self {
             url,
@@ -68,10 +122,7 @@ impl Video {
             device: render_context.device.clone(),
             queue: render_context.queue.clone(),
 
-            video,
-
-            texture: Mutex::new(None),
-            current_time: AtomicF64::new(f64::MAX),
+            frames,
         }
     }
 

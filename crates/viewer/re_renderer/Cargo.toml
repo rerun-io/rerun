@@ -66,6 +66,7 @@ glam = { workspace = true, features = ["bytemuck"] }
 half = { workspace = true, features = ["bytemuck"] }
 itertools = { workspace = true }
 never.workspace = true
+once_cell.workspace = true
 ordered-float.workspace = true
 parking_lot.workspace = true
 # wgpu uses the `profiling` crate for its profiling scopes.
