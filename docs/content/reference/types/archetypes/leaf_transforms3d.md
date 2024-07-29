@@ -5,7 +5,13 @@ title: "LeafTransforms3D"
 
 One or more transforms between the parent and the current entity which are *not* propagated in the transform hierarchy.
 
-For transforms that are propagated in the transform hierarchy, see [`archetypes.Transform3D`].
+For transforms that are propagated in the transform hierarchy, see [`archetypes.Transform3D`](https://rerun.io/docs/reference/types/archetypes/transform3d).
+
+If both [`archetypes.LeafTransforms3D`](https://rerun.io/docs/reference/types/archetypes/leaf_transforms3d) and [`archetypes.Transform3D`](https://rerun.io/docs/reference/types/archetypes/transform3d) are present,
+first the tree propagating [`archetypes.Transform3D`](https://rerun.io/docs/reference/types/archetypes/transform3d) is applied, then [`archetypes.LeafTransforms3D`](https://rerun.io/docs/reference/types/archetypes/leaf_transforms3d).
+
+Currently, most visualizers support only a single leaf transform per entity.
+Check archetype documentations for details - if not otherwise specified, onlyt the first leaf transform is applied.
 
 From the point of view of the entity's coordinate system,
 all components are applied in the inverse order they are listed here.

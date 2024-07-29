@@ -16,23 +16,23 @@ namespace rerun {
         std::vector<DataCell> cells;
         cells.reserve(6);
 
-        if (archetype.translation.has_value()) {
-            auto result = DataCell::from_loggable(archetype.translation.value());
+        if (archetype.translations.has_value()) {
+            auto result = DataCell::from_loggable(archetype.translations.value());
             RR_RETURN_NOT_OK(result.error);
             cells.push_back(std::move(result.value));
         }
-        if (archetype.rotation_axis_angle.has_value()) {
-            auto result = DataCell::from_loggable(archetype.rotation_axis_angle.value());
+        if (archetype.rotation_axis_angles.has_value()) {
+            auto result = DataCell::from_loggable(archetype.rotation_axis_angles.value());
             RR_RETURN_NOT_OK(result.error);
             cells.push_back(std::move(result.value));
         }
-        if (archetype.quaternion.has_value()) {
-            auto result = DataCell::from_loggable(archetype.quaternion.value());
+        if (archetype.quaternions.has_value()) {
+            auto result = DataCell::from_loggable(archetype.quaternions.value());
             RR_RETURN_NOT_OK(result.error);
             cells.push_back(std::move(result.value));
         }
-        if (archetype.scale.has_value()) {
-            auto result = DataCell::from_loggable(archetype.scale.value());
+        if (archetype.scales.has_value()) {
+            auto result = DataCell::from_loggable(archetype.scales.value());
             RR_RETURN_NOT_OK(result.error);
             cells.push_back(std::move(result.value));
         }

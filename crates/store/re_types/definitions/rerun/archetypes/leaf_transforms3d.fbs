@@ -3,7 +3,13 @@ namespace rerun.archetypes;
 
 /// One or more transforms between the parent and the current entity which are *not* propagated in the transform hierarchy.
 ///
-/// For transforms that are propagated in the transform hierarchy, see [`archetypes.Transform3D`].
+/// For transforms that are propagated in the transform hierarchy, see [archetypes.Transform3D].
+///
+/// If both [archetypes.LeafTransforms3D] and [archetypes.Transform3D] are present,
+/// first the tree propagating [archetypes.Transform3D] is applied, then [archetypes.LeafTransforms3D].
+///
+/// Currently, most visualizers support only a single leaf transform per entity.
+/// Check archetype documentations for details - if not otherwise specified, onlyt the first leaf transform is applied.
 ///
 /// From the point of view of the entity's coordinate system,
 /// all components are applied in the inverse order they are listed here.
@@ -17,18 +23,18 @@ table LeafTransforms3D (
   "attr.docs.view_types": "Spatial3DView, Spatial2DView: if logged above active projection"
 ) {
   /// Translation vectors.
-  translation: [rerun.components.LeafTranslation3D] ("attr.rerun.component_optional", nullable, order: 1100);
+  translations: [rerun.components.LeafTranslation3D] ("attr.rerun.component_optional", nullable, order: 1100);
 
   /// Rotations via axis + angle.
-  rotation_axis_angle: [rerun.components.LeafRotationAxisAngle] ("attr.rerun.component_optional", nullable, order: 1200);
+  rotation_axis_angles: [rerun.components.LeafRotationAxisAngle] ("attr.rerun.component_optional", nullable, order: 1200);
 
   /// Rotations via quaternion.
-  quaternion: [rerun.components.LeafRotationQuat] ("attr.rerun.component_optional", nullable, order: 1300);
+  quaternions: [rerun.components.LeafRotationQuat] ("attr.rerun.component_optional", nullable, order: 1300);
 
-  /// Scaling factor.
-  scale: [rerun.components.LeafScale3D] ("attr.rerun.component_optional", nullable, order: 1400);
+  /// Scaling factors.
+  scales: [rerun.components.LeafScale3D] ("attr.rerun.component_optional", nullable, order: 1400);
 
-  /// 3x3 transformation matrix.
+  /// 3x3 transformation matrices.
   mat3x3: [rerun.components.LeafTransformMat3x3] ("attr.rerun.component_optional", nullable, order: 1500);
 
   // TODO(andreas): Support TransformRelation?

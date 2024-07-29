@@ -20,7 +20,13 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Archetype**: One or more transforms between the parent and the current entity which are *not* propagated in the transform hierarchy.
 ///
-/// For transforms that are propagated in the transform hierarchy, see [`archetypes.Transform3D`].
+/// For transforms that are propagated in the transform hierarchy, see [`archetypes::Transform3D`][crate::archetypes::Transform3D].
+///
+/// If both [`archetypes::LeafTransforms3D`][crate::archetypes::LeafTransforms3D] and [`archetypes::Transform3D`][crate::archetypes::Transform3D] are present,
+/// first the tree propagating [`archetypes::Transform3D`][crate::archetypes::Transform3D] is applied, then [`archetypes::LeafTransforms3D`][crate::archetypes::LeafTransforms3D].
+///
+/// Currently, most visualizers support only a single leaf transform per entity.
+/// Check archetype documentations for details - if not otherwise specified, onlyt the first leaf transform is applied.
 ///
 /// From the point of view of the entity's coordinate system,
 /// all components are applied in the inverse order they are listed here.
@@ -29,28 +35,28 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct LeafTransforms3D {
     /// Translation vectors.
-    pub translation: Option<Vec<crate::components::LeafTranslation3D>>,
+    pub translations: Option<Vec<crate::components::LeafTranslation3D>>,
 
     /// Rotations via axis + angle.
-    pub rotation_axis_angle: Option<Vec<crate::components::LeafRotationAxisAngle>>,
+    pub rotation_axis_angles: Option<Vec<crate::components::LeafRotationAxisAngle>>,
 
     /// Rotations via quaternion.
-    pub quaternion: Option<Vec<crate::components::LeafRotationQuat>>,
+    pub quaternions: Option<Vec<crate::components::LeafRotationQuat>>,
 
-    /// Scaling factor.
-    pub scale: Option<Vec<crate::components::LeafScale3D>>,
+    /// Scaling factors.
+    pub scales: Option<Vec<crate::components::LeafScale3D>>,
 
-    /// 3x3 transformation matrix.
+    /// 3x3 transformation matrices.
     pub mat3x3: Option<Vec<crate::components::LeafTransformMat3x3>>,
 }
 
 impl ::re_types_core::SizeBytes for LeafTransforms3D {
     #[inline]
     fn heap_size_bytes(&self) -> u64 {
-        self.translation.heap_size_bytes()
-            + self.rotation_axis_angle.heap_size_bytes()
-            + self.quaternion.heap_size_bytes()
-            + self.scale.heap_size_bytes()
+        self.translations.heap_size_bytes()
+            + self.rotation_axis_angles.heap_size_bytes()
+            + self.quaternions.heap_size_bytes()
+            + self.scales.heap_size_bytes()
             + self.mat3x3.heap_size_bytes()
     }
 
@@ -150,53 +156,53 @@ impl ::re_types_core::Archetype for LeafTransforms3D {
             .into_iter()
             .map(|(name, array)| (name.full_name(), array))
             .collect();
-        let translation =
+        let translations =
             if let Some(array) = arrays_by_name.get("rerun.components.LeafTranslation3D") {
                 Some({
                     <crate::components::LeafTranslation3D>::from_arrow_opt(&**array)
-                        .with_context("rerun.archetypes.LeafTransforms3D#translation")?
+                        .with_context("rerun.archetypes.LeafTransforms3D#translations")?
                         .into_iter()
                         .map(|v| v.ok_or_else(DeserializationError::missing_data))
                         .collect::<DeserializationResult<Vec<_>>>()
-                        .with_context("rerun.archetypes.LeafTransforms3D#translation")?
+                        .with_context("rerun.archetypes.LeafTransforms3D#translations")?
                 })
             } else {
                 None
             };
-        let rotation_axis_angle =
+        let rotation_axis_angles =
             if let Some(array) = arrays_by_name.get("rerun.components.LeafRotationAxisAngle") {
                 Some({
                     <crate::components::LeafRotationAxisAngle>::from_arrow_opt(&**array)
-                        .with_context("rerun.archetypes.LeafTransforms3D#rotation_axis_angle")?
+                        .with_context("rerun.archetypes.LeafTransforms3D#rotation_axis_angles")?
                         .into_iter()
                         .map(|v| v.ok_or_else(DeserializationError::missing_data))
                         .collect::<DeserializationResult<Vec<_>>>()
-                        .with_context("rerun.archetypes.LeafTransforms3D#rotation_axis_angle")?
+                        .with_context("rerun.archetypes.LeafTransforms3D#rotation_axis_angles")?
                 })
             } else {
                 None
             };
-        let quaternion =
+        let quaternions =
             if let Some(array) = arrays_by_name.get("rerun.components.LeafRotationQuat") {
                 Some({
                     <crate::components::LeafRotationQuat>::from_arrow_opt(&**array)
-                        .with_context("rerun.archetypes.LeafTransforms3D#quaternion")?
+                        .with_context("rerun.archetypes.LeafTransforms3D#quaternions")?
                         .into_iter()
                         .map(|v| v.ok_or_else(DeserializationError::missing_data))
                         .collect::<DeserializationResult<Vec<_>>>()
-                        .with_context("rerun.archetypes.LeafTransforms3D#quaternion")?
+                        .with_context("rerun.archetypes.LeafTransforms3D#quaternions")?
                 })
             } else {
                 None
             };
-        let scale = if let Some(array) = arrays_by_name.get("rerun.components.LeafScale3D") {
+        let scales = if let Some(array) = arrays_by_name.get("rerun.components.LeafScale3D") {
             Some({
                 <crate::components::LeafScale3D>::from_arrow_opt(&**array)
-                    .with_context("rerun.archetypes.LeafTransforms3D#scale")?
+                    .with_context("rerun.archetypes.LeafTransforms3D#scales")?
                     .into_iter()
                     .map(|v| v.ok_or_else(DeserializationError::missing_data))
                     .collect::<DeserializationResult<Vec<_>>>()
-                    .with_context("rerun.archetypes.LeafTransforms3D#scale")?
+                    .with_context("rerun.archetypes.LeafTransforms3D#scales")?
             })
         } else {
             None
@@ -215,10 +221,10 @@ impl ::re_types_core::Archetype for LeafTransforms3D {
             None
         };
         Ok(Self {
-            translation,
-            rotation_axis_angle,
-            quaternion,
-            scale,
+            translations,
+            rotation_axis_angles,
+            quaternions,
+            scales,
             mat3x3,
         })
     }
@@ -230,16 +236,16 @@ impl ::re_types_core::AsComponents for LeafTransforms3D {
         use ::re_types_core::Archetype as _;
         [
             Some(Self::indicator()),
-            self.translation
+            self.translations
                 .as_ref()
                 .map(|comp_batch| (comp_batch as &dyn ComponentBatch).into()),
-            self.rotation_axis_angle
+            self.rotation_axis_angles
                 .as_ref()
                 .map(|comp_batch| (comp_batch as &dyn ComponentBatch).into()),
-            self.quaternion
+            self.quaternions
                 .as_ref()
                 .map(|comp_batch| (comp_batch as &dyn ComponentBatch).into()),
-            self.scale
+            self.scales
                 .as_ref()
                 .map(|comp_batch| (comp_batch as &dyn ComponentBatch).into()),
             self.mat3x3
@@ -259,57 +265,58 @@ impl LeafTransforms3D {
     #[inline]
     pub fn new() -> Self {
         Self {
-            translation: None,
-            rotation_axis_angle: None,
-            quaternion: None,
-            scale: None,
+            translations: None,
+            rotation_axis_angles: None,
+            quaternions: None,
+            scales: None,
             mat3x3: None,
         }
     }
 
     /// Translation vectors.
     #[inline]
-    pub fn with_translation(
+    pub fn with_translations(
         mut self,
-        translation: impl IntoIterator<Item = impl Into<crate::components::LeafTranslation3D>>,
+        translations: impl IntoIterator<Item = impl Into<crate::components::LeafTranslation3D>>,
     ) -> Self {
-        self.translation = Some(translation.into_iter().map(Into::into).collect());
+        self.translations = Some(translations.into_iter().map(Into::into).collect());
         self
     }
 
     /// Rotations via axis + angle.
     #[inline]
-    pub fn with_rotation_axis_angle(
+    pub fn with_rotation_axis_angles(
         mut self,
-        rotation_axis_angle: impl IntoIterator<
+        rotation_axis_angles: impl IntoIterator<
             Item = impl Into<crate::components::LeafRotationAxisAngle>,
         >,
     ) -> Self {
-        self.rotation_axis_angle = Some(rotation_axis_angle.into_iter().map(Into::into).collect());
+        self.rotation_axis_angles =
+            Some(rotation_axis_angles.into_iter().map(Into::into).collect());
         self
     }
 
     /// Rotations via quaternion.
     #[inline]
-    pub fn with_quaternion(
+    pub fn with_quaternions(
         mut self,
-        quaternion: impl IntoIterator<Item = impl Into<crate::components::LeafRotationQuat>>,
+        quaternions: impl IntoIterator<Item = impl Into<crate::components::LeafRotationQuat>>,
     ) -> Self {
-        self.quaternion = Some(quaternion.into_iter().map(Into::into).collect());
+        self.quaternions = Some(quaternions.into_iter().map(Into::into).collect());
         self
     }
 
-    /// Scaling factor.
+    /// Scaling factors.
     #[inline]
-    pub fn with_scale(
+    pub fn with_scales(
         mut self,
-        scale: impl IntoIterator<Item = impl Into<crate::components::LeafScale3D>>,
+        scales: impl IntoIterator<Item = impl Into<crate::components::LeafScale3D>>,
     ) -> Self {
-        self.scale = Some(scale.into_iter().map(Into::into).collect());
+        self.scales = Some(scales.into_iter().map(Into::into).collect());
         self
     }
 
-    /// 3x3 transformation matrix.
+    /// 3x3 transformation matrices.
     #[inline]
     pub fn with_mat3x3(
         mut self,

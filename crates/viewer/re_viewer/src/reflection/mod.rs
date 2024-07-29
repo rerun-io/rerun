@@ -686,23 +686,23 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
             ArchetypeName::new("rerun.archetypes.LeafTransforms3D"),
             ArchetypeReflection {
                 display_name: "Leaf transforms 3D",
-                docstring_md: "One or more transforms between the parent and the current entity which are *not* propagated in the transform hierarchy.\n\nFor transforms that are propagated in the transform hierarchy, see [`archetypes.Transform3D`].\n\nFrom the point of view of the entity's coordinate system,\nall components are applied in the inverse order they are listed here.\nE.g. if both a translation and a max3x3 transform are present,\nthe 3x3 matrix is applied first, followed by the translation.",
+                docstring_md: "One or more transforms between the parent and the current entity which are *not* propagated in the transform hierarchy.\n\nFor transforms that are propagated in the transform hierarchy, see [`archetypes.Transform3D`](https://rerun.io/docs/reference/types/archetypes/transform3d).\n\nIf both [`archetypes.LeafTransforms3D`](https://rerun.io/docs/reference/types/archetypes/leaf_transforms3d) and [`archetypes.Transform3D`](https://rerun.io/docs/reference/types/archetypes/transform3d) are present,\nfirst the tree propagating [`archetypes.Transform3D`](https://rerun.io/docs/reference/types/archetypes/transform3d) is applied, then [`archetypes.LeafTransforms3D`](https://rerun.io/docs/reference/types/archetypes/leaf_transforms3d).\n\nCurrently, most visualizers support only a single leaf transform per entity.\nCheck archetype documentations for details - if not otherwise specified, onlyt the first leaf transform is applied.\n\nFrom the point of view of the entity's coordinate system,\nall components are applied in the inverse order they are listed here.\nE.g. if both a translation and a max3x3 transform are present,\nthe 3x3 matrix is applied first, followed by the translation.",
                 fields: vec![
                     ArchetypeFieldReflection { component_name :
                     "rerun.components.LeafTranslation3D".into(), display_name :
-                    "Translation", docstring_md : "Translation vectors.", },
+                    "Translations", docstring_md : "Translation vectors.", },
                     ArchetypeFieldReflection { component_name :
                     "rerun.components.LeafRotationAxisAngle".into(), display_name :
-                    "Rotation axis angle", docstring_md : "Rotations via axis + angle.",
+                    "Rotation axis angles", docstring_md : "Rotations via axis + angle.",
                     }, ArchetypeFieldReflection { component_name :
                     "rerun.components.LeafRotationQuat".into(), display_name :
-                    "Quaternion", docstring_md : "Rotations via quaternion.", },
+                    "Quaternions", docstring_md : "Rotations via quaternion.", },
                     ArchetypeFieldReflection { component_name :
-                    "rerun.components.LeafScale3D".into(), display_name : "Scale",
-                    docstring_md : "Scaling factor.", }, ArchetypeFieldReflection {
+                    "rerun.components.LeafScale3D".into(), display_name : "Scales",
+                    docstring_md : "Scaling factors.", }, ArchetypeFieldReflection {
                     component_name : "rerun.components.LeafTransformMat3x3".into(),
                     display_name : "Mat 3x 3", docstring_md :
-                    "3x3 transformation matrix.", },
+                    "3x3 transformation matrices.", },
                 ],
             },
         ),

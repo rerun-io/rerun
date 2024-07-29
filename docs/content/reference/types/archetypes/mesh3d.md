@@ -7,7 +7,7 @@ A 3D triangle mesh as specified by its per-mesh and per-vertex properties.
 
 See also [`archetypes.Asset3D`](https://rerun.io/docs/reference/types/archetypes/asset3d).
 
-If there are multiple `LeafTransforms3D`, the mesh will be drawn for each transform.
+If there are multiple [`archetypes.LeafTransforms3D`](https://rerun.io/docs/reference/types/archetypes/leaf_transforms3d), the mesh will be drawn for each transform.
 
 ## Components
 

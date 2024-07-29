@@ -23,7 +23,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 pub enum TransformRelation {
     /// The transform describes how to transform into the parent entity's space.
     ///
-    /// E.g. a translation of (0, 1, 0) with this `TransformRelation` logged at `parent/child` means
+    /// E.g. a translation of (0, 1, 0) with this [`components::TransformRelation`][crate::components::TransformRelation] logged at `parent/child` means
     /// that from the point of view of `parent`, `parent/child` is translated 1 unit along `parent`'s Y axis.
     /// From perspective of `parent/child`, the `parent` entity is translated -1 unit along `parent/child`'s Y axis.
     #[default]
@@ -31,7 +31,7 @@ pub enum TransformRelation {
 
     /// The transform describes how to transform into the child entity's space.
     ///
-    /// E.g. a translation of (0, 1, 0) with this `TransformRelation` logged at `parent/child` means
+    /// E.g. a translation of (0, 1, 0) with this [`components::TransformRelation`][crate::components::TransformRelation] logged at `parent/child` means
     /// that from the point of view of `parent`, `parent/child` is translated -1 unit along `parent`'s Y axis.
     /// From perspective of `parent/child`, the `parent` entity is translated 1 unit along `parent/child`'s Y axis.
     ChildFromParent = 2,
@@ -47,10 +47,10 @@ impl ::re_types_core::reflection::Enum for TransformRelation {
     fn docstring_md(self) -> &'static str {
         match self {
             Self::ParentFromChild => {
-                "The transform describes how to transform into the parent entity's space.\n\nE.g. a translation of (0, 1, 0) with this `TransformRelation` logged at `parent/child` means\nthat from the point of view of `parent`, `parent/child` is translated 1 unit along `parent`'s Y axis.\nFrom perspective of `parent/child`, the `parent` entity is translated -1 unit along `parent/child`'s Y axis."
+                "The transform describes how to transform into the parent entity's space.\n\nE.g. a translation of (0, 1, 0) with this [`components::TransformRelation`][crate::components::TransformRelation] logged at `parent/child` means\nthat from the point of view of `parent`, `parent/child` is translated 1 unit along `parent`'s Y axis.\nFrom perspective of `parent/child`, the `parent` entity is translated -1 unit along `parent/child`'s Y axis."
             }
             Self::ChildFromParent => {
-                "The transform describes how to transform into the child entity's space.\n\nE.g. a translation of (0, 1, 0) with this `TransformRelation` logged at `parent/child` means\nthat from the point of view of `parent`, `parent/child` is translated -1 unit along `parent`'s Y axis.\nFrom perspective of `parent/child`, the `parent` entity is translated 1 unit along `parent/child`'s Y axis."
+                "The transform describes how to transform into the child entity's space.\n\nE.g. a translation of (0, 1, 0) with this [`components::TransformRelation`][crate::components::TransformRelation] logged at `parent/child` means\nthat from the point of view of `parent`, `parent/child` is translated -1 unit along `parent`'s Y axis.\nFrom perspective of `parent/child`, the `parent` entity is translated 1 unit along `parent/child`'s Y axis."
             }
         }
     }

@@ -22,7 +22,13 @@
 namespace rerun::archetypes {
     /// **Archetype**: One or more transforms between the parent and the current entity which are *not* propagated in the transform hierarchy.
     ///
-    /// For transforms that are propagated in the transform hierarchy, see [`archetypes.Transform3D`].
+    /// For transforms that are propagated in the transform hierarchy, see `archetypes::Transform3D`.
+    ///
+    /// If both `archetypes::LeafTransforms3D` and `archetypes::Transform3D` are present,
+    /// first the tree propagating `archetypes::Transform3D` is applied, then `archetypes::LeafTransforms3D`.
+    ///
+    /// Currently, most visualizers support only a single leaf transform per entity.
+    /// Check archetype documentations for details - if not otherwise specified, onlyt the first leaf transform is applied.
     ///
     /// From the point of view of the entity's coordinate system,
     /// all components are applied in the inverse order they are listed here.
@@ -30,18 +36,18 @@ namespace rerun::archetypes {
     /// the 3x3 matrix is applied first, followed by the translation.
     struct LeafTransforms3D {
         /// Translation vectors.
-        std::optional<Collection<rerun::components::LeafTranslation3D>> translation;
+        std::optional<Collection<rerun::components::LeafTranslation3D>> translations;
 
         /// Rotations via axis + angle.
-        std::optional<Collection<rerun::components::LeafRotationAxisAngle>> rotation_axis_angle;
+        std::optional<Collection<rerun::components::LeafRotationAxisAngle>> rotation_axis_angles;
 
         /// Rotations via quaternion.
-        std::optional<Collection<rerun::components::LeafRotationQuat>> quaternion;
+        std::optional<Collection<rerun::components::LeafRotationQuat>> quaternions;
 
-        /// Scaling factor.
-        std::optional<Collection<rerun::components::LeafScale3D>> scale;
+        /// Scaling factors.
+        std::optional<Collection<rerun::components::LeafScale3D>> scales;
 
-        /// 3x3 transformation matrix.
+        /// 3x3 transformation matrices.
         std::optional<Collection<rerun::components::LeafTransformMat3x3>> mat3x3;
 
       public:
@@ -56,39 +62,40 @@ namespace rerun::archetypes {
         LeafTransforms3D(LeafTransforms3D&& other) = default;
 
         /// Translation vectors.
-        LeafTransforms3D with_translation(
-            Collection<rerun::components::LeafTranslation3D> _translation
+        LeafTransforms3D with_translations(
+            Collection<rerun::components::LeafTranslation3D> _translations
         ) && {
-            translation = std::move(_translation);
+            translations = std::move(_translations);
             // See: https://github.com/rerun-io/rerun/issues/4027
             RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
         }
 
         /// Rotations via axis + angle.
-        LeafTransforms3D with_rotation_axis_angle(
-            Collection<rerun::components::LeafRotationAxisAngle> _rotation_axis_angle
+        LeafTransforms3D with_rotation_axis_angles(
+            Collection<rerun::components::LeafRotationAxisAngle> _rotation_axis_angles
         ) && {
-            rotation_axis_angle = std::move(_rotation_axis_angle);
+            rotation_axis_angles = std::move(_rotation_axis_angles);
             // See: https://github.com/rerun-io/rerun/issues/4027
             RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
         }
 
         /// Rotations via quaternion.
-        LeafTransforms3D with_quaternion(Collection<rerun::components::LeafRotationQuat> _quaternion
+        LeafTransforms3D with_quaternions(
+            Collection<rerun::components::LeafRotationQuat> _quaternions
         ) && {
-            quaternion = std::move(_quaternion);
+            quaternions = std::move(_quaternions);
             // See: https://github.com/rerun-io/rerun/issues/4027
             RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
         }
 
-        /// Scaling factor.
-        LeafTransforms3D with_scale(Collection<rerun::components::LeafScale3D> _scale) && {
-            scale = std::move(_scale);
+        /// Scaling factors.
+        LeafTransforms3D with_scales(Collection<rerun::components::LeafScale3D> _scales) && {
+            scales = std::move(_scales);
             // See: https://github.com/rerun-io/rerun/issues/4027
             RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
         }
 
-        /// 3x3 transformation matrix.
+        /// 3x3 transformation matrices.
         LeafTransforms3D with_mat3x3(Collection<rerun::components::LeafTransformMat3x3> _mat3x3
         ) && {
             mat3x3 = std::move(_mat3x3);

@@ -22,7 +22,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 ///
 /// See also [`archetypes::Asset3D`][crate::archetypes::Asset3D].
 ///
-/// If there are multiple `LeafTransforms3D`, the mesh will be drawn for each transform.
+/// If there are multiple [`archetypes::LeafTransforms3D`][crate::archetypes::LeafTransforms3D], the mesh will be drawn for each transform.
 ///
 /// ## Example
 ///

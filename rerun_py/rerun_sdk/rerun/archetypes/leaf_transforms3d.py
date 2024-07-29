@@ -23,7 +23,13 @@ class LeafTransforms3D(Archetype):
     """
     **Archetype**: One or more transforms between the parent and the current entity which are *not* propagated in the transform hierarchy.
 
-    For transforms that are propagated in the transform hierarchy, see [`archetypes.Transform3D`].
+    For transforms that are propagated in the transform hierarchy, see [`archetypes.Transform3D`][rerun.archetypes.Transform3D].
+
+    If both [`archetypes.LeafTransforms3D`][rerun.archetypes.LeafTransforms3D] and [`archetypes.Transform3D`][rerun.archetypes.Transform3D] are present,
+    first the tree propagating [`archetypes.Transform3D`][rerun.archetypes.Transform3D] is applied, then [`archetypes.LeafTransforms3D`][rerun.archetypes.LeafTransforms3D].
+
+    Currently, most visualizers support only a single leaf transform per entity.
+    Check archetype documentations for details - if not otherwise specified, onlyt the first leaf transform is applied.
 
     From the point of view of the entity's coordinate system,
     all components are applied in the inverse order they are listed here.
@@ -34,10 +40,10 @@ class LeafTransforms3D(Archetype):
     def __init__(
         self: Any,
         *,
-        translation: datatypes.Vec3DArrayLike | None = None,
-        rotation_axis_angle: datatypes.RotationAxisAngleArrayLike | None = None,
-        quaternion: datatypes.QuaternionArrayLike | None = None,
-        scale: datatypes.Vec3DArrayLike | None = None,
+        translations: datatypes.Vec3DArrayLike | None = None,
+        rotation_axis_angles: datatypes.RotationAxisAngleArrayLike | None = None,
+        quaternions: datatypes.QuaternionArrayLike | None = None,
+        scales: datatypes.Vec3DArrayLike | None = None,
         mat3x3: datatypes.Mat3x3ArrayLike | None = None,
     ):
         """
@@ -45,26 +51,26 @@ class LeafTransforms3D(Archetype):
 
         Parameters
         ----------
-        translation:
+        translations:
             Translation vectors.
-        rotation_axis_angle:
+        rotation_axis_angles:
             Rotations via axis + angle.
-        quaternion:
+        quaternions:
             Rotations via quaternion.
-        scale:
-            Scaling factor.
+        scales:
+            Scaling factors.
         mat3x3:
-            3x3 transformation matrix.
+            3x3 transformation matrices.
 
         """
 
         # You can define your own __init__ function as a member of LeafTransforms3DExt in leaf_transforms3d_ext.py
         with catch_and_log_exceptions(context=self.__class__.__name__):
             self.__attrs_init__(
-                translation=translation,
-                rotation_axis_angle=rotation_axis_angle,
-                quaternion=quaternion,
-                scale=scale,
+                translations=translations,
+                rotation_axis_angles=rotation_axis_angles,
+                quaternions=quaternions,
+                scales=scales,
                 mat3x3=mat3x3,
             )
             return
@@ -73,10 +79,10 @@ class LeafTransforms3D(Archetype):
     def __attrs_clear__(self) -> None:
         """Convenience method for calling `__attrs_init__` with all `None`s."""
         self.__attrs_init__(
-            translation=None,  # type: ignore[arg-type]
-            rotation_axis_angle=None,  # type: ignore[arg-type]
-            quaternion=None,  # type: ignore[arg-type]
-            scale=None,  # type: ignore[arg-type]
+            translations=None,  # type: ignore[arg-type]
+            rotation_axis_angles=None,  # type: ignore[arg-type]
+            quaternions=None,  # type: ignore[arg-type]
+            scales=None,  # type: ignore[arg-type]
             mat3x3=None,  # type: ignore[arg-type]
         )
 
@@ -87,7 +93,7 @@ class LeafTransforms3D(Archetype):
         inst.__attrs_clear__()
         return inst
 
-    translation: components.LeafTranslation3DBatch | None = field(
+    translations: components.LeafTranslation3DBatch | None = field(
         metadata={"component": "optional"},
         default=None,
         converter=components.LeafTranslation3DBatch._optional,  # type: ignore[misc]
@@ -96,7 +102,7 @@ class LeafTransforms3D(Archetype):
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 
-    rotation_axis_angle: components.LeafRotationAxisAngleBatch | None = field(
+    rotation_axis_angles: components.LeafRotationAxisAngleBatch | None = field(
         metadata={"component": "optional"},
         default=None,
         converter=components.LeafRotationAxisAngleBatch._optional,  # type: ignore[misc]
@@ -105,7 +111,7 @@ class LeafTransforms3D(Archetype):
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 
-    quaternion: components.LeafRotationQuatBatch | None = field(
+    quaternions: components.LeafRotationQuatBatch | None = field(
         metadata={"component": "optional"},
         default=None,
         converter=components.LeafRotationQuatBatch._optional,  # type: ignore[misc]
@@ -114,12 +120,12 @@ class LeafTransforms3D(Archetype):
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 
-    scale: components.LeafScale3DBatch | None = field(
+    scales: components.LeafScale3DBatch | None = field(
         metadata={"component": "optional"},
         default=None,
         converter=components.LeafScale3DBatch._optional,  # type: ignore[misc]
     )
-    # Scaling factor.
+    # Scaling factors.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 
@@ -128,7 +134,7 @@ class LeafTransforms3D(Archetype):
         default=None,
         converter=components.LeafTransformMat3x3Batch._optional,  # type: ignore[misc]
     )
-    # 3x3 transformation matrix.
+    # 3x3 transformation matrices.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 
