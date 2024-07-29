@@ -5,12 +5,12 @@ from typing import Any
 from rerun.components import Scale3D, TransformRelation, TransformRelationLike
 from rerun.datatypes import (
     Float32Like,
-    Mat3x3ArrayLike,
+    Mat3x3Like,
     Quaternion,
-    QuaternionArrayLike,
+    QuaternionLike,
     RotationAxisAngle,
-    RotationAxisAngleArrayLike,
-    Vec3DArrayLike,
+    RotationAxisAngleLike,
+    Vec3DLike,
 )
 
 from ..error_utils import catch_and_log_exceptions
@@ -19,16 +19,15 @@ from ..error_utils import catch_and_log_exceptions
 class Transform3DExt:
     """Extension for [Transform3D][rerun.archetypes.Transform3D]."""
 
-    # TODO(#6831): Most parameters should become `ArrayLike`.
     def __init__(
         self: Any,
         *,
-        translation: Vec3DArrayLike | None = None,
-        rotation: QuaternionArrayLike | RotationAxisAngleArrayLike | None = None,
-        rotation_axis_angle: RotationAxisAngleArrayLike | None = None,
-        quaternion: QuaternionArrayLike | None = None,
-        scale: Vec3DArrayLike | Float32Like | None = None,
-        mat3x3: Mat3x3ArrayLike | None = None,
+        translation: Vec3DLike | None = None,
+        rotation: QuaternionLike | RotationAxisAngleLike | None = None,
+        rotation_axis_angle: RotationAxisAngleLike | None = None,
+        quaternion: QuaternionLike | None = None,
+        scale: Vec3DLike | Float32Like | None = None,
+        mat3x3: Mat3x3Like | None = None,
         from_parent: bool | None = None,
         relation: TransformRelationLike | None = None,
         axis_length: Float32Like | None = None,

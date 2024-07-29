@@ -66,7 +66,7 @@ Other changes in data representation:
 * Angles (as used in `RotationAxisAngle`) are now always stored in radians, conversion functions for degrees are provided.
 Scaling no longer distinguishes uniform and 3D scaling in its data representation. Uniform scaling is now always expressed as 3 floats with the same value.
 
-TODO(andreas): Write about OutOfTreeTransform changes and how `Transform3D` has now arrays of components.
+TODO(andreas): Write about LeafTransforms3D
 
 
 #### Python
@@ -87,7 +87,7 @@ rr.log("myentity", rr.Transform3D(translation=Vec3D([1, 2, 3]), relation=rr.Tran
 TODO(andreas): code example
 
 
-TODO(andreas): Talk about OutOfTreeTransform
+TODO(andreas): Talk about LeafTransforms3D
 TODO(andreas): … and Asset3D specifically
 
 
@@ -129,7 +129,7 @@ let scale_uniform = rerun::Scale3D::uniform(2.0);
 let scale_y = rerun::Scale3D::from([1.0, 2.0, 1.0]);
 ```
 
-TODO(andreas): Talk about OutOfTreeTransform
+TODO(andreas): Talk about LeafTransforms3D
 TODO(andreas): … and Asset3D specifically
 
 #### Rust
@@ -181,5 +181,5 @@ Note that the order of the method calls does _not_ affect the order in which tra
 `rerun::Transform3D::IDENTITY` has been removed, sue `rerun::Transform3D::default()` to start out with
 an empty archetype instead that you can populate (e.g. `rerun::Transform3D::default().with_mat3x3(rerun::datatypes::Mat3x3::IDENTITY)`).
 
-TODO(andreas): Talk about OutOfTreeTransform
+TODO(andreas): Talk about LeafTransforms3D
 TODO(andreas): … and Asset3D specifically
