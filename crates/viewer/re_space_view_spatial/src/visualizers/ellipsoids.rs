@@ -117,19 +117,23 @@ impl EllipsoidsVisualizer {
             let centers = clamped_or(data.centers, &Position3D::ZERO);
             let rotations = clamped_or(data.rotations, &Rotation3D::IDENTITY);
 
+            let world_from_obj = ent_context
+                .transform_info
+                .single_entity_transform_required(entity_path, "Ellipsoids");
+
             self.0.ui_labels.extend(Self::process_labels(
                 entity_path,
                 data.centers,
                 data.labels,
                 &colors,
                 &annotation_infos,
-                ent_context.world_from_entity,
+                world_from_obj,
             ));
 
             let mut line_batch = line_builder
                 .batch("ellipsoids")
                 .depth_offset(ent_context.depth_offset)
-                .world_from_obj(ent_context.world_from_entity)
+                .world_from_obj(world_from_obj)
                 .outline_mask_ids(ent_context.highlight.overall)
                 .picking_object_id(re_renderer::PickingLayerObjectId(entity_path.hash64()));
 
@@ -219,11 +223,8 @@ impl EllipsoidsVisualizer {
                 }
             }
 
-            self.0.add_bounding_box(
-                entity_path.hash(),
-                obj_space_bounding_box,
-                ent_context.world_from_entity,
-            );
+            self.0
+                .add_bounding_box(entity_path.hash(), obj_space_bounding_box, world_from_obj);
         }
 
         Ok(())

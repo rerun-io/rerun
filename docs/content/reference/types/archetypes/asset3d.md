@@ -7,6 +7,8 @@ A prepacked 3D asset (`.gltf`, `.glb`, `.obj`, `.stl`, etc.).
 
 See also [`archetypes.Mesh3D`](https://rerun.io/docs/reference/types/archetypes/mesh3d).
 
+If there are multiple `LeafTransforms3D`, the mesh will be drawn for each transform.
+
 ## Components
 
 **Required**: [`Blob`](../components/blob.md)
@@ -22,7 +24,7 @@ See also [`archetypes.Mesh3D`](https://rerun.io/docs/reference/types/archetypes/
  * 🐍 [Python API docs for `Asset3D`](https://ref.rerun.io/docs/python/stable/common/archetypes#rerun.archetypes.Asset3D)
  * 🦀 [Rust API docs for `Asset3D`](https://docs.rs/rerun/latest/rerun/archetypes/struct.Asset3D.html)
 
-## Examples
+## Example
 
 ### Simple 3D asset
 
@@ -35,8 +37,4 @@ snippet: archetypes/asset3d_simple
   <source media="(max-width: 1200px)" srcset="https://static.rerun.io/asset3d_simple/af238578188d3fd0de3e330212120e2842a8ddb2/1200w.png">
   <img src="https://static.rerun.io/asset3d_simple/af238578188d3fd0de3e330212120e2842a8ddb2/full.png">
 </picture>
-
-### 3D asset with out-of-tree transform
-
-snippet: archetypes/asset3d_out_of_tree
 

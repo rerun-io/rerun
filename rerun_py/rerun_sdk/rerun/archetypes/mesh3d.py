@@ -23,6 +23,8 @@ class Mesh3D(Mesh3DExt, Archetype):
 
     See also [`archetypes.Asset3D`][rerun.archetypes.Asset3D].
 
+    If there are multiple `LeafTransforms3D`, the mesh will be drawn for each transform.
+
     Example
     -------
     ### Simple indexed 3D mesh:

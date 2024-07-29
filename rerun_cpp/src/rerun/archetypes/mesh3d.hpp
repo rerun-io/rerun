@@ -27,6 +27,8 @@ namespace rerun::archetypes {
     ///
     /// See also `archetypes::Asset3D`.
     ///
+    /// If there are multiple `LeafTransforms3D`, the mesh will be drawn for each transform.
+    ///
     /// ## Example
     ///
     /// ### Simple indexed 3D mesh

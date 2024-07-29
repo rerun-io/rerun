@@ -15,6 +15,7 @@ use re_types::{
     ComponentNameSet, Loggable as _,
 };
 use re_viewer_context::{IdentifiedViewSystem, ViewContext, ViewContextSystem};
+use vec1::smallvec_v1::SmallVec1;
 
 use crate::visualizers::image_view_coordinates;
 
@@ -22,13 +23,16 @@ use crate::visualizers::image_view_coordinates;
 pub struct TransformInfo {
     /// The transform from the entity to the reference space.
     ///
-    /// Does not include per instance leaf transforms!
+    /// ⚠️ Does not include per instance leaf transforms! ⚠️
     /// Include 3D-from-2D / 2D-from-3D pinhole transform if present.
-    pub reference_from_entity: glam::Affine3A,
+    reference_from_entity: glam::Affine3A,
 
-    /// Optional list of out of leaf transforms that are applied to the instances of this entity.
-    // TODO(andreas): not very widely supported yet. We may likely want to make `reference_from_instance` a thing and encapsulate stuff further.
-    pub entity_from_instance_leaf_transforms: Vec<glam::Affine3A>,
+    /// List of transforms per instance including leaf transforms.
+    ///
+    /// If no leaf transforms are present, this is always the same as `reference_from_entity`.
+    /// (also implying that in this case there is only a single element).
+    /// If there are leaf transforms there may be more than one element.
+    pub reference_from_instances: SmallVec1<[glam::Affine3A; 1]>,
 
     /// If this entity is under (!) a pinhole camera, this contains additional information.
     ///
@@ -53,9 +57,42 @@ impl Default for TransformInfo {
     fn default() -> Self {
         Self {
             reference_from_entity: glam::Affine3A::IDENTITY,
-            entity_from_instance_leaf_transforms: Vec::new(),
+            reference_from_instances: SmallVec1::new(glam::Affine3A::IDENTITY),
             twod_in_threed_info: None,
         }
+    }
+}
+
+impl TransformInfo {
+    /// Warns that multiple transforms within the the entity are not supported.
+    #[inline]
+    pub fn warn_on_per_instance_transform(
+        &self,
+        entity_name: &EntityPath,
+        visualizer_name: &'static str,
+    ) {
+        if self.reference_from_instances.len() > 1 {
+            re_log::warn_once!(
+                "There are multiple leaf transforms for entity {entity_name:?}. Visualizer {visualizer_name:?} supports only one transform per entity. Using the first one."
+            );
+        }
+    }
+
+    /// Returns the first instance transform and warns if there are multiple (via [`Self::warn_on_per_instance_transform`]).
+    #[inline]
+    pub fn single_entity_transform_required(
+        &self,
+        entity_name: &EntityPath,
+        visualizer_name: &'static str,
+    ) -> glam::Affine3A {
+        self.warn_on_per_instance_transform(entity_name, visualizer_name);
+        *self.reference_from_instances.first()
+    }
+
+    /// Returns the first instance transform and does not warn if there are multiple.
+    #[inline]
+    pub fn single_entity_transform_silent(&self) -> glam::Affine3A {
+        *self.reference_from_instances.first()
     }
 }
 
@@ -193,7 +230,7 @@ impl TransformContext {
             // Note that the transform at the reference is the first that needs to be inverted to "break out" of its hierarchy.
             // Generally, the transform _at_ a node isn't relevant to it's children, but only to get to its parent in turn!
             let new_transform = match transforms_at(
-                current_tree,
+                &current_tree.path,
                 ctx.recording(),
                 time_query,
                 // TODO(#1025): See comment in transform_at. This is a workaround for precision issues
@@ -206,39 +243,10 @@ impl TransformContext {
                         Some((parent_tree.path.clone(), unreachable_reason));
                     break;
                 }
-                Ok(transforms_at_entity) => {
-                    let mut new_transform = TransformInfo {
-                        reference_from_entity: reference_from_ancestor,
-                        entity_from_instance_leaf_transforms: transforms_at_entity
-                            .parent_from_entity_leaf_transforms
-                            .iter()
-                            .map(|&t| t.inverse())
-                            .collect(),
-
-                        // Going up the tree, we can only encounter 2D->3D transforms.
-                        // 3D->2D transforms can't happen because `Pinhole` represents 3D->2D (and we're walking backwards!)
-                        twod_in_threed_info: None,
-                    };
-
-                    // Need to take care of the fact that we're walking the other direction of the tree here compared to `gather_descendants_transforms`!
-                    if let Some(entity_from_2d_pinhole_content) =
-                        transforms_at_entity.instance_from_pinhole_image_plane
-                    {
-                        // If we're going up the tree and encounter a pinhole, we still to apply it.
-                        // This is what handles "3D in 2D".
-                        debug_assert!(encountered_pinhole.as_ref() == Some(&current_tree.path));
-                        new_transform.reference_from_entity *=
-                            entity_from_2d_pinhole_content.inverse();
-                    }
-                    if let Some(parent_from_entity_tree_transform) =
-                        transforms_at_entity.parent_from_entity_tree_transform
-                    {
-                        new_transform.reference_from_entity *=
-                            parent_from_entity_tree_transform.inverse();
-                    }
-
-                    new_transform
-                }
+                Ok(transforms_at_entity) => transform_info_for_upward_propagation(
+                    reference_from_ancestor,
+                    transforms_at_entity,
+                ),
             };
 
             reference_from_ancestor = new_transform.reference_from_entity;
@@ -279,6 +287,8 @@ impl TransformContext {
         }
 
         for child_tree in subtree.children.values() {
+            let child_path = &child_tree.path;
+
             let lookup_image_plane = |p: &_| {
                 let query_result = ctx.viewer_ctx.lookup_query_result(view_query.space_view_id);
 
@@ -300,7 +310,7 @@ impl TransformContext {
                 .as_ref()
                 .map(|info| info.parent_pinhole.clone());
             let new_transform = match transforms_at(
-                child_tree,
+                child_path,
                 entity_db,
                 query,
                 lookup_image_plane,
@@ -308,40 +318,16 @@ impl TransformContext {
             ) {
                 Err(unreachable_reason) => {
                     self.unreachable_descendants
-                        .push((child_tree.path.clone(), unreachable_reason));
+                        .push((child_path.clone(), unreachable_reason));
                     continue;
                 }
 
-                Ok(transforms_at_entity) => {
-                    let mut new_transform = TransformInfo {
-                        reference_from_entity: reference_from_parent,
-                        entity_from_instance_leaf_transforms: transforms_at_entity
-                            .parent_from_entity_leaf_transforms,
-                        twod_in_threed_info: twod_in_threed_info.clone(),
-                    };
-
-                    if let Some(parent_from_entity_tree_transform) =
-                        transforms_at_entity.parent_from_entity_tree_transform
-                    {
-                        new_transform.reference_from_entity *= parent_from_entity_tree_transform;
-                    }
-                    if let Some(entity_from_2d_pinhole_content) =
-                        transforms_at_entity.instance_from_pinhole_image_plane
-                    {
-                        // This should be an unreachable transform.
-                        debug_assert!(twod_in_threed_info.is_none());
-                        // There has to be a pinhole to get here.
-                        debug_assert!(encountered_pinhole.is_some());
-
-                        new_transform.twod_in_threed_info = Some(TwoDInThreeDTransformInfo {
-                            parent_pinhole: child_tree.path.clone(),
-                            reference_from_pinhole_entity: new_transform.reference_from_entity,
-                        });
-                        new_transform.reference_from_entity *= entity_from_2d_pinhole_content;
-                    }
-
-                    new_transform
-                }
+                Ok(transforms_at_entity) => transform_info_for_downward_propagation(
+                    child_path,
+                    reference_from_parent,
+                    twod_in_threed_info.clone(),
+                    transforms_at_entity,
+                ),
             };
 
             self.gather_descendants_transforms(
@@ -364,6 +350,118 @@ impl TransformContext {
     /// Returns `None` if it's not reachable from the view's origin.
     pub fn transform_info_for_entity(&self, ent_path: &EntityPath) -> Option<&TransformInfo> {
         self.transform_per_entity.get(ent_path)
+    }
+}
+
+/// Compute transform info for when we walk up the tree from the reference.
+fn transform_info_for_upward_propagation(
+    reference_from_ancestor: glam::Affine3A,
+    transforms_at_entity: TransformsAtEntity,
+) -> TransformInfo {
+    let mut reference_from_entity = reference_from_ancestor;
+
+    // Need to take care of the fact that we're walking the other direction of the tree here compared to `transform_info_for_downward_propagation`!
+    // Apply inverse transforms in flipped order!
+
+    // Apply 2D->3D transform if present.
+    if let Some(entity_from_2d_pinhole_content) =
+        transforms_at_entity.instance_from_pinhole_image_plane
+    {
+        // If we're going up the tree and encounter a pinhole, we still to apply it.
+        // This is what handles "3D in 2D".
+        reference_from_entity *= entity_from_2d_pinhole_content.inverse();
+    }
+
+    // Collect & compute leaf transforms.
+    let reference_from_instances = if let Ok(mut entity_from_instances) =
+        SmallVec1::<[glam::Affine3A; 1]>::try_from_vec(
+            transforms_at_entity.entity_from_instance_leaf_transforms,
+        ) {
+        for entity_from_instance in &mut entity_from_instances {
+            *entity_from_instance = reference_from_entity * entity_from_instance.inverse();
+            // Now this is actually `reference_from_instance`.
+        }
+        entity_from_instances
+    } else {
+        SmallVec1::new(reference_from_entity)
+    };
+
+    // Apply tree transform if any.
+    if let Some(parent_from_entity_tree_transform) =
+        transforms_at_entity.parent_from_entity_tree_transform
+    {
+        reference_from_entity *= parent_from_entity_tree_transform.inverse();
+    }
+
+    TransformInfo {
+        reference_from_entity,
+        reference_from_instances,
+
+        // Going up the tree, we can only encounter 2D->3D transforms.
+        // 3D->2D transforms can't happen because `Pinhole` represents 3D->2D (and we're walking backwards!)
+        twod_in_threed_info: None,
+    }
+}
+
+/// Compute transform info for when we walk down the tree from the reference.
+fn transform_info_for_downward_propagation(
+    current_path: &EntityPath,
+    reference_from_parent: glam::Affine3A,
+    mut twod_in_threed_info: Option<TwoDInThreeDTransformInfo>,
+    transforms_at_entity: TransformsAtEntity,
+) -> TransformInfo {
+    let mut reference_from_entity = reference_from_parent;
+
+    // Apply tree transform.
+    if let Some(parent_from_entity_tree_transform) =
+        transforms_at_entity.parent_from_entity_tree_transform
+    {
+        reference_from_entity *= parent_from_entity_tree_transform;
+    }
+
+    // Collect & compute leaf transforms.
+    let (mut reference_from_instances, has_leaf_transforms) = if let Ok(mut entity_from_instances) =
+        SmallVec1::try_from_vec(transforms_at_entity.entity_from_instance_leaf_transforms)
+    {
+        for entity_from_instance in &mut entity_from_instances {
+            *entity_from_instance = reference_from_entity * (*entity_from_instance);
+            // Now this is actually `reference_from_instance`.
+        }
+        (entity_from_instances, true)
+    } else {
+        (SmallVec1::new(reference_from_entity), false)
+    };
+
+    // Apply 2D->3D transform if present.
+    if let Some(entity_from_2d_pinhole_content) =
+        transforms_at_entity.instance_from_pinhole_image_plane
+    {
+        // Should have bailed out already earlier.
+        debug_assert!(
+            twod_in_threed_info.is_none(),
+            "2D->3D transform already set, this should be unreachable."
+        );
+
+        twod_in_threed_info = Some(TwoDInThreeDTransformInfo {
+            parent_pinhole: current_path.clone(),
+            reference_from_pinhole_entity: reference_from_entity,
+        });
+        reference_from_entity *= entity_from_2d_pinhole_content;
+
+        // Need to update per instance transforms as well if there are leaf transforms!
+        if has_leaf_transforms {
+            *reference_from_instances.first_mut() = reference_from_entity;
+        } else {
+            for reference_from_instance in &mut reference_from_instances {
+                *reference_from_instance *= entity_from_2d_pinhole_content;
+            }
+        }
+    }
+
+    TransformInfo {
+        reference_from_entity,
+        reference_from_instances,
+        twod_in_threed_info,
     }
 }
 
@@ -613,12 +711,12 @@ fn query_and_resolve_obj_from_pinhole_image_plane(
 /// Resolved transforms at an entity.
 struct TransformsAtEntity {
     parent_from_entity_tree_transform: Option<glam::Affine3A>,
-    parent_from_entity_leaf_transforms: Vec<glam::Affine3A>,
+    entity_from_instance_leaf_transforms: Vec<glam::Affine3A>,
     instance_from_pinhole_image_plane: Option<glam::Affine3A>,
 }
 
 fn transforms_at(
-    subtree: &EntityTree,
+    entity_path: &EntityPath,
     entity_db: &EntityDb,
     query: &LatestAtQuery,
     pinhole_image_plane_distance: impl Fn(&EntityPath) -> f32,
@@ -626,14 +724,13 @@ fn transforms_at(
 ) -> Result<TransformsAtEntity, UnreachableTransformReason> {
     re_tracing::profile_function!();
 
-    let entity_path = &subtree.path;
     let transforms_at_entity = TransformsAtEntity {
         parent_from_entity_tree_transform: query_and_resolve_tree_transform_at_entity(
             entity_path,
             entity_db,
             query,
         ),
-        parent_from_entity_leaf_transforms: query_and_resolve_leaf_transform_at_entity(
+        entity_from_instance_leaf_transforms: query_and_resolve_leaf_transform_at_entity(
             entity_path,
             entity_db,
             query,
@@ -663,7 +760,7 @@ fn transforms_at(
         .parent_from_entity_tree_transform
         .is_none()
         && transforms_at_entity
-            .parent_from_entity_leaf_transforms
+            .entity_from_instance_leaf_transforms
             .is_empty()
         && transforms_at_entity
             .instance_from_pinhole_image_plane

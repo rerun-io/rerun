@@ -162,11 +162,8 @@ where
             continue;
         };
 
-        let world_from_entity = transform_info.reference_from_entity;
-
         let depth_offset_key = (system_identifier, data_result.entity_path.hash());
         let entity_context = SpatialSceneEntityContext {
-            world_from_entity,
             transform_info,
             depth_offset: depth_offsets
                 .per_entity_and_visualizer

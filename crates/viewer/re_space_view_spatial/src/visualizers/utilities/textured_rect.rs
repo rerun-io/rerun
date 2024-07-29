@@ -3,9 +3,13 @@ use re_chunk_store::RowId;
 use re_log_types::EntityPath;
 use re_renderer::renderer;
 use re_types::{components::Colormap, datatypes::TensorData, tensor_data::TensorDataMeaning};
-use re_viewer_context::{gpu_bridge, ImageInfo, ImageStatsCache, TensorStatsCache, ViewerContext};
+use re_viewer_context::{
+    gpu_bridge, ImageInfo, ImageStatsCache, SpaceViewClass as _, TensorStatsCache, ViewerContext,
+};
 
-use crate::contexts::SpatialSceneEntityContext;
+use crate::{contexts::SpatialSceneEntityContext, SpatialSpaceView2D};
+
+use super::SpatialViewVisualizerData;
 
 #[allow(clippy::too_many_arguments)]
 pub fn textured_rect_from_image(
@@ -15,6 +19,8 @@ pub fn textured_rect_from_image(
     image: &ImageInfo,
     meaning: TensorDataMeaning,
     multiplicative_tint: egui::Rgba,
+    visualizer_name: &'static str,
+    visualizer_data: &mut SpatialViewVisualizerData,
 ) -> Option<renderer::TexturedRect> {
     let render_ctx = ctx.render_ctx?;
 
@@ -47,9 +53,11 @@ pub fn textured_rect_from_image(
                 renderer::TextureFilterMin::Linear
             };
 
-            let world_from_entity = ent_context.world_from_entity;
+            let world_from_entity = ent_context
+                .transform_info
+                .single_entity_transform_required(ent_path, visualizer_name);
 
-            Some(renderer::TexturedRect {
+            let textured_rect = renderer::TexturedRect {
                 top_left_corner_position: world_from_entity.transform_point3(Vec3::ZERO),
                 extent_u: world_from_entity.transform_vector3(Vec3::X * image.width() as f32),
                 extent_v: world_from_entity.transform_vector3(Vec3::Y * image.height() as f32),
@@ -63,7 +71,21 @@ pub fn textured_rect_from_image(
                     depth_offset: ent_context.depth_offset,
                     outline_mask: ent_context.highlight.overall,
                 },
-            })
+            };
+
+            // Only update the bounding box if this is a 2D space view.
+            // This is avoids a cyclic relationship where the image plane grows
+            // the bounds which in turn influence the size of the image plane.
+            // See: https://github.com/rerun-io/rerun/issues/3728
+            if ent_context.space_view_class_identifier == SpatialSpaceView2D::identifier() {
+                visualizer_data.add_bounding_box(
+                    ent_path.hash(),
+                    bounding_box_for_textured_rect(&textured_rect),
+                    world_from_entity,
+                );
+            }
+
+            Some(textured_rect)
         }
 
         Err(err) => {
@@ -83,6 +105,8 @@ pub fn textured_rect_from_tensor(
     meaning: TensorDataMeaning,
     multiplicative_tint: egui::Rgba,
     colormap: Option<Colormap>,
+    visualizer_name: &'static str,
+    visualizer_data: &mut SpatialViewVisualizerData,
 ) -> Option<renderer::TexturedRect> {
     let render_ctx = ctx.render_ctx?;
 
@@ -121,9 +145,11 @@ pub fn textured_rect_from_tensor(
                 renderer::TextureFilterMin::Linear
             };
 
-            let world_from_entity = ent_context.world_from_entity;
+            let world_from_entity = ent_context
+                .transform_info
+                .single_entity_transform_required(ent_path, visualizer_name);
 
-            Some(renderer::TexturedRect {
+            let textured_rect = renderer::TexturedRect {
                 top_left_corner_position: world_from_entity.transform_point3(Vec3::ZERO),
                 extent_u: world_from_entity.transform_vector3(Vec3::X * width as f32),
                 extent_v: world_from_entity.transform_vector3(Vec3::Y * height as f32),
@@ -135,7 +161,21 @@ pub fn textured_rect_from_tensor(
                     depth_offset: ent_context.depth_offset,
                     outline_mask: ent_context.highlight.overall,
                 },
-            })
+            };
+
+            // Only update the bounding box if this is a 2D space view.
+            // This is avoids a cyclic relationship where the image plane grows
+            // the bounds which in turn influence the size of the image plane.
+            // See: https://github.com/rerun-io/rerun/issues/3728
+            if ent_context.space_view_class_identifier == SpatialSpaceView2D::identifier() {
+                visualizer_data.add_bounding_box(
+                    ent_path.hash(),
+                    bounding_box_for_textured_rect(&textured_rect),
+                    world_from_entity,
+                );
+            }
+
+            Some(textured_rect)
         }
         Err(err) => {
             re_log::error_once!("Failed to create texture for {debug_name:?}: {err}");
@@ -144,9 +184,7 @@ pub fn textured_rect_from_tensor(
     }
 }
 
-pub fn bounding_box_for_textured_rect(
-    textured_rect: &renderer::TexturedRect,
-) -> re_math::BoundingBox {
+fn bounding_box_for_textured_rect(textured_rect: &renderer::TexturedRect) -> re_math::BoundingBox {
     let left_top = textured_rect.top_left_corner_position;
     let extent_u = textured_rect.extent_u;
     let extent_v = textured_rect.extent_v;

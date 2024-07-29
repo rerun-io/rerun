@@ -52,6 +52,7 @@ nohash-hasher.workspace = true
 once_cell.workspace = true
 serde.workspace = true
 smallvec = { workspace = true, features = ["serde"] }
+vec1 = { workspace = true, features = ["smallvec-v1"] }
 web-time.workspace = true
 
 

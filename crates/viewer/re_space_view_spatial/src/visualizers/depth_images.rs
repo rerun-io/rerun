@@ -22,10 +22,10 @@ use crate::{
     query_pinhole_legacy,
     view_kind::SpatialSpaceViewKind,
     visualizers::{filter_visualizable_2d_entities, SIZE_BOOST_IN_POINTS_FOR_POINT_OUTLINES},
-    PickableImageRect, SpatialSpaceView2D, SpatialSpaceView3D,
+    PickableImageRect, SpatialSpaceView3D,
 };
 
-use super::{bounding_box_for_textured_rect, textured_rect_from_image, SpatialViewVisualizerData};
+use super::{textured_rect_from_image, SpatialViewVisualizerData};
 
 pub struct DepthImageVisualizer {
     pub data: SpatialViewVisualizerData,
@@ -59,6 +59,9 @@ impl DepthImageVisualizer {
     ) {
         let is_3d_view =
             ent_context.space_view_class_identifier == SpatialSpaceView3D::identifier();
+        ent_context
+            .transform_info
+            .warn_on_per_instance_transform(ctx.target_entity_path, "DepthImage");
 
         let entity_path = ctx.target_entity_path;
         let meaning = TensorDataMeaning::Depth;
@@ -115,19 +118,9 @@ impl DepthImageVisualizer {
                 &image,
                 meaning,
                 re_renderer::Rgba::WHITE,
+                "DepthImage",
+                &mut self.data,
             ) {
-                // Only update the bounding box if this is a 2D space view.
-                // This is avoids a cyclic relationship where the image plane grows
-                // the bounds which in turn influence the size of the image plane.
-                // See: https://github.com/rerun-io/rerun/issues/3728
-                if ent_context.space_view_class_identifier == SpatialSpaceView2D::identifier() {
-                    self.data.add_bounding_box(
-                        entity_path.hash(),
-                        bounding_box_for_textured_rect(&textured_rect),
-                        ent_context.world_from_entity,
-                    );
-                }
-
                 self.images.push(PickableImageRect {
                     ent_path: entity_path.clone(),
                     row_id: image.blob_row_id,

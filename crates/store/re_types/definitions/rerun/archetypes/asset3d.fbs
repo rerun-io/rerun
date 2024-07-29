@@ -6,6 +6,8 @@ namespace rerun.archetypes;
 ///
 /// See also [archetypes.Mesh3D].
 ///
+/// If there are multiple `LeafTransforms3D`, the mesh will be drawn for each transform.
+///
 /// \example archetypes/asset3d_simple title="Simple 3D asset" image="https://static.rerun.io/asset3d_simple/af238578188d3fd0de3e330212120e2842a8ddb2/1200w.png"
 table Asset3D (
   "attr.rust.derive": "PartialEq, Eq",

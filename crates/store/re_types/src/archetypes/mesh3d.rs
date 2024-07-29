@@ -22,6 +22,8 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 ///
 /// See also [`archetypes::Asset3D`][crate::archetypes::Asset3D].
 ///
+/// If there are multiple `LeafTransforms3D`, the mesh will be drawn for each transform.
+///
 /// ## Example
 ///
 /// ### Simple indexed 3D mesh

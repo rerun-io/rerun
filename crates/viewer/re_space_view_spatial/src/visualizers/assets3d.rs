@@ -81,30 +81,26 @@ impl Asset3DVisualizer {
             if let Some(mesh) = mesh {
                 re_tracing::profile_scope!("mesh instances");
 
-                let world_from_pose = ent_context.world_from_entity
-                    * *ent_context
-                        .transform_info
-                        .entity_from_instance_leaf_transforms
-                        .first()
-                        .unwrap_or(&glam::Affine3A::IDENTITY);
+                // Let's draw the mesh once for every instance transform. Because why not!
+                for &world_from_pose in &ent_context.transform_info.reference_from_instances {
+                    instances.extend(mesh.mesh_instances.iter().map(move |mesh_instance| {
+                        let pose_from_mesh = mesh_instance.world_from_mesh;
+                        let world_from_mesh = world_from_pose * pose_from_mesh;
 
-                instances.extend(mesh.mesh_instances.iter().map(move |mesh_instance| {
-                    let pose_from_mesh = mesh_instance.world_from_mesh;
-                    let world_from_mesh = world_from_pose * pose_from_mesh;
+                        MeshInstance {
+                            gpu_mesh: mesh_instance.gpu_mesh.clone(),
+                            world_from_mesh,
+                            outline_mask_ids,
+                            picking_layer_id: picking_layer_id_from_instance_path_hash(
+                                picking_instance_hash,
+                            ),
+                            ..Default::default()
+                        }
+                    }));
 
-                    MeshInstance {
-                        gpu_mesh: mesh_instance.gpu_mesh.clone(),
-                        world_from_mesh,
-                        outline_mask_ids,
-                        picking_layer_id: picking_layer_id_from_instance_path_hash(
-                            picking_instance_hash,
-                        ),
-                        ..Default::default()
-                    }
-                }));
-
-                self.0
-                    .add_bounding_box(entity_path.hash(), mesh.bbox(), world_from_pose);
+                    self.0
+                        .add_bounding_box(entity_path.hash(), mesh.bbox(), world_from_pose);
+                }
             };
         }
     }
