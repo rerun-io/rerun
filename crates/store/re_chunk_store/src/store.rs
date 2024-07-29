@@ -115,6 +115,20 @@ impl ChunkStoreConfig {
         ..Self::DEFAULT
     };
 
+    /// [`Self::DEFAULT`], but with changelog disabled.
+    pub const CHANGELOG_DISABLED: Self = Self {
+        enable_changelog: false,
+        ..Self::DEFAULT
+    };
+
+    /// All features disabled.
+    pub const ALL_DISABLED: Self = Self {
+        enable_changelog: false,
+        chunk_max_bytes: 0,
+        chunk_max_rows: 0,
+        chunk_max_rows_if_unsorted: 0,
+    };
+
     /// Environment variable to configure [`Self::enable_changelog`].
     pub const ENV_STORE_ENABLE_CHANGELOG: &'static str = "RERUN_STORE_ENABLE_CHANGELOG";
 
