@@ -2,12 +2,13 @@
 #import <./utils/srgb.wgsl>
 
 // NOTE: Keep in sync with `colormap.rs`!
-const COLORMAP_GRAYSCALE: u32 = 1u; // sRGB gradient = perceptually even
-const COLORMAP_INFERNO:   u32 = 2u;
-const COLORMAP_MAGMA:     u32 = 3u;
-const COLORMAP_PLASMA:    u32 = 4u;
-const COLORMAP_TURBO:     u32 = 5u;
-const COLORMAP_VIRIDIS:   u32 = 6u;
+const COLORMAP_GRAYSCALE:      u32 = 1u; // sRGB gradient = perceptually even
+const COLORMAP_INFERNO:        u32 = 2u;
+const COLORMAP_MAGMA:          u32 = 3u;
+const COLORMAP_PLASMA:         u32 = 4u;
+const COLORMAP_TURBO:          u32 = 5u;
+const COLORMAP_VIRIDIS:        u32 = 6u;
+const COLORMAP_CYAN_TO_YELLOW: u32 = 7u;
 
 /// Returns a gamma-space sRGB in 0-1 range.
 ///
@@ -28,6 +29,8 @@ fn colormap_srgb(which: u32, t_unsaturated: f32) -> vec3f {
         return colormap_turbo_srgb(t);
     } else if which == COLORMAP_VIRIDIS {
         return colormap_viridis_srgb(t);
+    } else if which == COLORMAP_CYAN_TO_YELLOW {
+        return colormap_cyan_to_yellow_srgb(t);
     } else {
         return ERROR_RGBA.rgb;
     }
@@ -142,4 +145,20 @@ fn colormap_inferno_srgb(t: f32) -> vec3f {
     let c5 = vec3f(-71.31942824499214, 32.62606426397723, 73.20951985803202);
     let c6 = vec3f(25.13112622477341, -12.24266895238567, -23.07032500287172);
     return c0 + t * (c1 + t * (c2 + t * (c3 + t * (c4 + t * (c5 + t * c6)))));
+}
+
+// --- rasmusgo's color maps ---
+
+// Designed by Rasmus Brönnegård (rasmusgo) adapted from https://www.shadertoy.com/view/lfByRh.
+//
+// License CC0 (public domain)
+//   https://creativecommons.org/share-your-work/public-domain/cc0/
+
+/// Returns a gamma-space sRGB in 0-1 range.
+/// This is a perceptually uniform colormap which is robust to color blindness.
+/// It is especially suited for visualizing signed values.
+/// It interpolates from cyan to blue to dark gray to brass to yellow.
+fn colormap_cyan_to_yellow_srgb(t: f32) -> vec3f {
+    let u = t * 2. - 1.;
+    return saturate(vec3f(1. + 3. * u, (1. + 3. * u * u) , 1. - 3. * u) / 4.);
 }
