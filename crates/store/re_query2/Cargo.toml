@@ -1,5 +1,5 @@
 [package]
-name = "re_query"
+name = "re_query2"
 authors.workspace = true
 description = "High-level query APIs"
 edition.workspace = true
@@ -69,18 +69,12 @@ bench = false
 name = "clamped_zip"
 required-features = ["codegen"]
 bench = false
-doc = false                     # we're already documenting the one is `re_query2`
 
 [[bin]]
 name = "range_zip"
 required-features = ["codegen"]
 bench = false
-doc = false                     # we're already documenting the one is `re_query2`
 
-
-[[bench]]
-name = "flat_vec_deque"
-harness = false
 
 [[bench]]
 name = "latest_at"

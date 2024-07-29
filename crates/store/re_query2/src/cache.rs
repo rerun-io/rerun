@@ -3,15 +3,16 @@ use std::{
     sync::Arc,
 };
 
-use ahash::{HashMap, HashSet};
+use ahash::HashMap;
 use nohash_hasher::IntSet;
 use parking_lot::RwLock;
 
+use re_chunk::ChunkId;
 use re_chunk_store::{ChunkStore, ChunkStoreDiff, ChunkStoreEvent, ChunkStoreSubscriber};
 use re_log_types::{EntityPath, ResolvedTimeRange, StoreId, TimeInt, Timeline};
 use re_types_core::{components::ClearIsRecursive, ComponentName, Loggable as _};
 
-use crate::{LatestAtCache, RangeCache};
+use crate::LatestAtCache;
 
 // ---
 
@@ -81,9 +82,6 @@ pub struct Caches {
 
     // NOTE: `Arc` so we can cheaply free the top-level lock early when needed.
     pub(crate) latest_at_per_cache_key: RwLock<HashMap<CacheKey, Arc<RwLock<LatestAtCache>>>>,
-
-    // NOTE: `Arc` so we can cheaply free the top-level lock early when needed.
-    pub(crate) range_per_cache_key: RwLock<HashMap<CacheKey, Arc<RwLock<RangeCache>>>>,
 }
 
 impl std::fmt::Debug for Caches {
@@ -92,7 +90,6 @@ impl std::fmt::Debug for Caches {
             store_id,
             might_require_clearing,
             latest_at_per_cache_key,
-            range_per_cache_key,
         } = self;
 
         let mut strings = Vec::new();
@@ -118,23 +115,6 @@ impl std::fmt::Debug for Caches {
                 let cache = cache.read();
                 strings.push(format!(
                     "  [{cache_key:?} (pending_invalidation_min={:?})]",
-                    cache.pending_invalidations.first().map(|&t| cache_key
-                        .timeline
-                        .format_time_range_utc(&ResolvedTimeRange::new(t, TimeInt::MAX))),
-                ));
-                strings.push(indent::indent_all_by(4, format!("{cache:?}")));
-            }
-        }
-
-        strings.push(format!("[Range @ {store_id}]"));
-        {
-            let range_per_cache_key = range_per_cache_key.read();
-            let range_per_cache_key: BTreeMap<_, _> = range_per_cache_key.iter().collect();
-
-            for (cache_key, cache) in &range_per_cache_key {
-                let cache = cache.read();
-                strings.push(format!(
-                    "  [{cache_key:?} (pending_invalidation_min={:?})]",
                     cache.pending_invalidation.map(|t| cache_key
                         .timeline
                         .format_time_range_utc(&ResolvedTimeRange::new(t, TimeInt::MAX))),
@@ -154,7 +134,6 @@ impl Caches {
             store_id: store.id().clone(),
             might_require_clearing: Default::default(),
             latest_at_per_cache_key: Default::default(),
-            range_per_cache_key: Default::default(),
         }
     }
 
@@ -164,12 +143,10 @@ impl Caches {
             store_id: _,
             might_require_clearing,
             latest_at_per_cache_key,
-            range_per_cache_key,
         } = self;
 
         might_require_clearing.write().clear();
         latest_at_per_cache_key.write().clear();
-        range_per_cache_key.write().clear();
     }
 }
 
@@ -194,8 +171,8 @@ impl ChunkStoreSubscriber for Caches {
 
         #[derive(Default, Debug)]
         struct CompactedEvents {
-            static_: HashSet<(EntityPath, ComponentName)>,
-            temporal: HashMap<CacheKey, BTreeSet<TimeInt>>,
+            static_: HashMap<(EntityPath, ComponentName), BTreeSet<ChunkId>>,
+            temporal_latest_at: HashMap<CacheKey, TimeInt>,
         }
 
         let mut compacted = CompactedEvents::default();
@@ -228,7 +205,9 @@ impl ChunkStoreSubscriber for Caches {
                     for component_name in chunk.component_names() {
                         compacted
                             .static_
-                            .insert((chunk.entity_path().clone(), component_name));
+                            .entry((chunk.entity_path().clone(), component_name))
+                            .or_default()
+                            .insert(chunk.id());
                     }
                 }
 
@@ -240,8 +219,12 @@ impl ChunkStoreSubscriber for Caches {
                                 timeline,
                                 component_name,
                             );
-                            let data_times = compacted.temporal.entry(key).or_default();
-                            data_times.insert(data_time);
+
+                            compacted
+                                .temporal_latest_at
+                                .entry(key.clone())
+                                .and_modify(|time| *time = TimeInt::min(*time, data_time))
+                                .or_insert(data_time);
                         }
                     }
                 }
@@ -250,7 +233,6 @@ impl ChunkStoreSubscriber for Caches {
 
         let mut might_require_clearing = self.might_require_clearing.write();
         let caches_latest_at = self.latest_at_per_cache_key.write();
-        let caches_range = self.range_per_cache_key.write();
         // NOTE: Don't release the top-level locks -- even though this cannot happen yet with
         // our current macro-architecture, we want to prevent queries from concurrently
         // running while we're updating the invalidation flags.
@@ -262,18 +244,12 @@ impl ChunkStoreSubscriber for Caches {
             // yet another layer of caching indirection.
             // But since this pretty much never happens in practice, let's not go there until we
             // have metrics showing that show we need to.
-            for (entity_path, component_name) in compacted.static_ {
+            for ((entity_path, component_name), _chunk_ids) in compacted.static_ {
                 if component_name == ClearIsRecursive::name() {
                     might_require_clearing.insert(entity_path.clone());
                 }
 
                 for (key, cache) in caches_latest_at.iter() {
-                    if key.entity_path == entity_path && key.component_name == component_name {
-                        cache.write().pending_invalidations.insert(TimeInt::STATIC);
-                    }
-                }
-
-                for (key, cache) in caches_range.iter() {
                     if key.entity_path == entity_path && key.component_name == component_name {
                         cache.write().pending_invalidation = Some(TimeInt::STATIC);
                     }
@@ -284,23 +260,14 @@ impl ChunkStoreSubscriber for Caches {
         {
             re_tracing::profile_scope!("temporal");
 
-            for (key, times) in compacted.temporal {
+            for (key, time) in compacted.temporal_latest_at {
                 if key.component_name == ClearIsRecursive::name() {
                     might_require_clearing.insert(key.entity_path.clone());
                 }
 
                 if let Some(cache) = caches_latest_at.get(&key) {
-                    cache
-                        .write()
-                        .pending_invalidations
-                        .extend(times.iter().copied());
-                }
-
-                if let Some(cache) = caches_range.get(&key) {
-                    let pending_invalidation = &mut cache.write().pending_invalidation;
-                    let min_time = times.first().copied();
-                    *pending_invalidation =
-                        Option::min(*pending_invalidation, min_time).or(min_time);
+                    let mut cache = cache.write();
+                    cache.pending_invalidation = Some(time);
                 }
             }
         }

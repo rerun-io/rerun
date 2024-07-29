@@ -49,6 +49,13 @@ impl Caches {
 
         let mut results = LatestAtResults::default();
 
+        // NOTE: This pre-filtering is extremely important: going through all these query layers
+        // has non-negligible overhead even if the final result ends up being nothing, and our
+        // number of queries for a frame grows linearly with the number of entity paths.
+        let component_names = component_names.into_iter().filter(|component_name| {
+            store.entity_has_component_on_timeline(&query.timeline(), entity_path, component_name)
+        });
+
         // Query-time clears
         // -----------------
         //
@@ -70,8 +77,22 @@ impl Caches {
         {
             re_tracing::profile_scope!("clears");
 
+            let potential_clears = self.might_require_clearing.read();
+
             let mut clear_entity_path = entity_path.clone();
             loop {
+                if !potential_clears.contains(&clear_entity_path) {
+                    // This entity does not contain any `Clear`-related data at all, there's no
+                    // point in running actual queries.
+
+                    let Some(parent_entity_path) = clear_entity_path.parent() else {
+                        break;
+                    };
+                    clear_entity_path = parent_entity_path;
+
+                    continue;
+                }
+
                 let key = CacheKey::new(
                     clear_entity_path.clone(),
                     query.timeline(),

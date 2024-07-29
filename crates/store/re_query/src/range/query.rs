@@ -30,6 +30,13 @@ impl Caches {
 
         let mut results = RangeResults::new(query.clone());
 
+        // NOTE: This pre-filtering is extremely important: going through all these query layers
+        // has non-negligible overhead even if the final result ends up being nothing, and our
+        // number of queries for a frame grows linearly with the number of entity paths.
+        let component_names = component_names.into_iter().filter(|component_name| {
+            store.entity_has_component_on_timeline(&query.timeline(), entity_path, component_name)
+        });
+
         for component_name in component_names {
             let key = CacheKey::new(entity_path.clone(), query.timeline(), component_name);
 
