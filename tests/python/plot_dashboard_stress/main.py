@@ -24,6 +24,7 @@ import time
 
 import numpy as np
 import rerun as rr  # pip install rerun-sdk
+import rerun.blueprint as rrb
 
 parser = argparse.ArgumentParser(description="Plot dashboard stress test")
 rr.script_add_args(parser)
@@ -98,33 +99,23 @@ def main() -> None:
     series_paths = [f"series_{i}" for i in range(0, args.num_series_per_plot)]
 
     if args.blueprint:
-        from rerun.blueprint import (
-            Blueprint,
-            BlueprintPanel,
-            Grid,
-            SelectionPanel,
-            TimeRangeBoundary,
-            TimeSeriesView,
-            VisibleTimeRange,
-        )
-
         print("logging blueprint!")
         rr.send_blueprint(
-            Blueprint(
-                Grid(*[
-                    TimeSeriesView(
+            rrb.Blueprint(
+                rrb.Grid(*[
+                    rrb.TimeSeriesView(
                         name=p,
                         origin=f"/{p}",
-                        time_ranges=VisibleTimeRange(
+                        time_ranges=rrb.VisibleTimeRange(
                             "sim_time",
-                            start=TimeRangeBoundary.cursor_relative(offset=rr.TimeInt(seconds=-2.5)),
-                            end=TimeRangeBoundary.cursor_relative(offset=rr.TimeInt(seconds=2.5)),
+                            start=rrb.TimeRangeBoundary.cursor_relative(offset=rr.TimeInt(seconds=-2.5)),
+                            end=rrb.TimeRangeBoundary.cursor_relative(offset=rr.TimeInt(seconds=2.5)),
                         ),
                     )
                     for p in plot_paths
                 ]),
-                BlueprintPanel(state="collapsed"),
-                SelectionPanel(state="collapsed"),
+                rrb.BlueprintPanel(state="collapsed"),
+                rrb.SelectionPanel(state="collapsed"),
             )
         )
 
