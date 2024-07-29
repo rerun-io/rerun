@@ -33,7 +33,7 @@ namespace rerun::archetypes {
     /// Creates a new 3D transform from translation/matrix.
     ///
     /// \param translation_ \çopydoc Transform3D::translation
-/// \param mat3x3_ \copydoc Transform3D::mat3x3
+    /// \param mat3x3_ \copydoc Transform3D::mat3x3
     /// \param from_parent If true, the transform relation to `TransformRelation::ChildFromParent`.
     Transform3D(
         const components::Translation3D& translation_, const components::TransformMat3x3& mat3x3_,
@@ -328,10 +328,10 @@ namespace rerun::archetypes {
     /// Set the rotation component of the transform using the `rerun::Rotation3D` utility.
     void set_rotation(const Rotation3D& rotation) {
         if (rotation.axis_angle.has_value()) {
-            RR_WITH_MAYBE_UNINITIALIZED_DISABLED(rotation_axis_angle = rotation.axis_angle.value());
+            RR_WITH_MAYBE_UNINITIALIZED_DISABLED(rotation_axis_angle = rotation.axis_angle.value();)
         }
         if (rotation.quaternion.has_value()) {
-            RR_WITH_MAYBE_UNINITIALIZED_DISABLED(quaternion = rotation.quaternion.value());
+            RR_WITH_MAYBE_UNINITIALIZED_DISABLED(quaternion = rotation.quaternion.value();)
         }
     }
 

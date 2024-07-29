@@ -498,12 +498,11 @@ namespace rerun::archetypes {
         /// Set the rotation component of the transform using the `rerun::Rotation3D` utility.
         void set_rotation(const Rotation3D& rotation) {
             if (rotation.axis_angle.has_value()) {
-                RR_WITH_MAYBE_UNINITIALIZED_DISABLED(
-                    rotation_axis_angle = rotation.axis_angle.value()
-                );
+                RR_WITH_MAYBE_UNINITIALIZED_DISABLED(rotation_axis_angle =
+                                                         rotation.axis_angle.value();)
             }
             if (rotation.quaternion.has_value()) {
-                RR_WITH_MAYBE_UNINITIALIZED_DISABLED(quaternion = rotation.quaternion.value());
+                RR_WITH_MAYBE_UNINITIALIZED_DISABLED(quaternion = rotation.quaternion.value();)
             }
         }
 
