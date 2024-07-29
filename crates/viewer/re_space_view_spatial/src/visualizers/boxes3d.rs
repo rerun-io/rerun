@@ -104,7 +104,7 @@ impl Boxes3DVisualizer {
                 );
 
                 match data.fill_mode {
-                    FillMode::Wireframe => {
+                    FillMode::DenseWireframe | FillMode::MajorWireframe => {
                         let box3d = line_batch
                             .add_box_outline_from_transform(world_from_instance)
                             .color(color)
@@ -276,7 +276,7 @@ impl VisualizerSystem for Boxes3DVisualizer {
                     .unwrap_or_default();
 
                 match fill_mode {
-                    FillMode::Wireframe => {
+                    FillMode::DenseWireframe | FillMode::MajorWireframe => {
                         // Each box consists of 12 independent lines with 2 vertices each.
                         line_builder.reserve_strips(num_boxes * 12)?;
                         line_builder.reserve_vertices(num_boxes * 12 * 2)?;

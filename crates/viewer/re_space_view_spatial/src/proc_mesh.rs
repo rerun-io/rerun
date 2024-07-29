@@ -4,8 +4,8 @@
 
 use std::sync::Arc;
 
-use ahash::HashSet;
 use glam::{uvec3, vec3, Vec3, Vec3A};
+use hexasphere::BaseShape;
 use itertools::Itertools as _;
 use smallvec::smallvec;
 
@@ -28,7 +28,14 @@ pub enum ProcMeshKey {
     ///
     /// The resulting mesh may be scaled to represent spheres and ellipsoids
     /// of other sizes.
-    Sphere { subdivisions: usize },
+    Sphere {
+        /// Number of triangle subdivisions to perform to create a finer, rounder mesh.
+        subdivisions: usize,
+
+        /// If true, then when a wireframe mesh is generated, it includes only
+        /// the 3 axis-aligned “equatorial” circles, and not the full triangle mesh.
+        axes_only: bool,
+    },
 }
 
 impl ProcMeshKey {
@@ -36,7 +43,10 @@ impl ProcMeshKey {
     /// without regard for its exact approximation as a mesh.
     pub fn simple_bounding_box(&self) -> re_math::BoundingBox {
         match self {
-            Self::Sphere { subdivisions: _ } => {
+            Self::Sphere {
+                subdivisions: _,
+                axes_only: _,
+            } => {
                 // sphere’s radius is 1, so its size is 2
                 re_math::BoundingBox::from_center_size(Vec3::splat(0.0), Vec3::splat(2.0))
             }
@@ -166,21 +176,19 @@ fn generate_wireframe(key: &ProcMeshKey, render_ctx: &RenderContext) -> Wirefram
                 line_strips,
             }
         }
-        ProcMeshKey::Sphere { subdivisions } => {
+        ProcMeshKey::Sphere {
+            subdivisions,
+            axes_only,
+        } => {
             let subdiv: hexasphere::Subdivided<(), OctahedronBase> =
                 hexasphere::Subdivided::new(subdivisions, |_| ());
 
             let sphere_points = subdiv.raw_points();
 
-            // TODO(kpreid): There is a bug in `hexasphere` where it fails to return lines which
-            // reach the original corners of the shape. This will be fixed as part of
-            // <https://github.com/OptimisticPeach/hexasphere/issues/19>,
-            // which is merged but not yet published on crates.io.
-            // When hexasphere 15.0 or 14.0.1 is available, update, then keep the first branch
-            // of this `if` only.
-            let line_strips: Vec<Vec<Vec3>> = if false {
-                subdiv
-                    .get_all_line_indices(1, |v| v.push(0))
+            let line_strips: Vec<Vec<Vec3>> = if axes_only {
+                let mut buffer: Vec<u32> = Vec::new();
+                subdiv.get_major_edges_line_indices(&mut buffer, 1, |v| v.push(0));
+                buffer
                     .split(|&i| i == 0)
                     .map(|strip| -> Vec<Vec3> {
                         strip
@@ -190,24 +198,14 @@ fn generate_wireframe(key: &ProcMeshKey, render_ctx: &RenderContext) -> Wirefram
                     })
                     .collect()
             } else {
-                // Gather edges from the triangles, deduplicating.
-                let lines: HashSet<(u32, u32)> = subdiv
-                    .get_all_indices()
-                    .chunks(3)
-                    .flat_map(|triangle| {
-                        let [i1, i2, i3] = <[u32; 3]>::try_from(triangle).unwrap();
-                        [(i1, i2), (i2, i3), (i3, i1)]
-                    })
-                    .map(|(i1, i2)| if i1 > i2 { (i2, i1) } else { (i1, i2) })
-                    .collect();
-
-                lines
-                    .into_iter()
-                    .map(|(i1, i2)| {
-                        vec![
-                            sphere_points[i1 as usize].into(),
-                            sphere_points[i2 as usize].into(),
-                        ]
+                subdiv
+                    .get_all_line_indices(1, |v| v.push(0))
+                    .split(|&i| i == 0)
+                    .map(|strip| -> Vec<Vec3> {
+                        strip
+                            .iter()
+                            .map(|&i| sphere_points[i as usize - 1].into())
+                            .collect()
                     })
                     .collect()
             };
@@ -296,7 +294,10 @@ fn generate_solid(
                 vertex_texcoords: vec![glam::Vec2::ZERO; num_vertices],
             }
         }
-        ProcMeshKey::Sphere { subdivisions } => {
+        ProcMeshKey::Sphere {
+            subdivisions,
+            axes_only: _, // no effect on solid mesh
+        } => {
             let subdiv: hexasphere::Subdivided<(), OctahedronBase> =
                 hexasphere::Subdivided::new(subdivisions, |_| ());
 
@@ -374,7 +375,7 @@ fn materials_for_uncolored_mesh(
 #[derive(Clone, Copy, Debug, Default)]
 struct OctahedronBase;
 
-impl hexasphere::BaseShape for OctahedronBase {
+impl BaseShape for OctahedronBase {
     fn initial_points(&self) -> Vec<Vec3A> {
         vec![
             Vec3A::NEG_X,

@@ -4,13 +4,18 @@ namespace rerun.components;
 enum FillMode: byte(
     "attr.docs.unreleased"
 ) {
-    /// Lines are drawn around the edges of the shape.
+    /// Lines are drawn around the edges of the shape that represent the logged data.
     ///
-    /// The interior (2D) or surface (3D) are not drawn.
-    Wireframe (default),
+    /// The interior (2D) or surface (3D) are not filled in.
+    MajorWireframe (default),
+
+    /// Many lines are drawn to represent the surface of the shape.
+    ///
+    /// The interior (2D) or surface (3D) are not filled in.
+    DenseWireframe,
 
     /// The interior (2D) or surface (3D) is filled with a single color.
     ///
-    /// Lines are not drawn.
+    /// No lines are drawn.
     Solid,
 }

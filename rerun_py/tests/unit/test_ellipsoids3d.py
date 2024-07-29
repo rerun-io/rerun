@@ -36,7 +36,12 @@ from .common_arrays import (
 
 
 def test_ellipsoids() -> None:
-    fill_mode_arrays = [None, rr.components.FillMode.Solid, rr.components.FillMode.Wireframe]
+    fill_mode_arrays = [
+        None,
+        rr.components.FillMode.Solid,
+        rr.components.FillMode.MajorWireframe,
+        rr.components.FillMode.DenseWireframe,
+    ]
 
     all_arrays = itertools.zip_longest(
         half_sizes_arrays,

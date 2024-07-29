@@ -10,7 +10,8 @@ namespace rerun {
     const std::shared_ptr<arrow::DataType>& Loggable<components::FillMode>::arrow_datatype() {
         static const auto datatype = arrow::sparse_union({
             arrow::field("_null_markers", arrow::null(), true, nullptr),
-            arrow::field("Wireframe", arrow::null(), true),
+            arrow::field("MajorWireframe", arrow::null(), true),
+            arrow::field("DenseWireframe", arrow::null(), true),
             arrow::field("Solid", arrow::null(), true),
         });
         return datatype;

@@ -24,31 +24,42 @@ from enum import Enum
 class FillMode(Enum):
     """**Component**: How a geometric shape is drawn and colored."""
 
-    Wireframe = 1
+    MajorWireframe = 1
     """
-    Lines are drawn around the edges of the shape.
+    Lines are drawn around the edges of the shape that represent the logged data.
 
-    The interior (2D) or surface (3D) are not drawn.
+    The interior (2D) or surface (3D) are not filled in.
     """
 
-    Solid = 2
+    DenseWireframe = 2
+    """
+    Many lines are drawn to represent the surface of the shape.
+
+    The interior (2D) or surface (3D) are not filled in.
+    """
+
+    Solid = 3
     """
     The interior (2D) or surface (3D) is filled with a single color.
 
-    Lines are not drawn.
+    No lines are drawn.
     """
 
     def __str__(self) -> str:
         """Returns the variant name."""
-        if self == FillMode.Wireframe:
-            return "Wireframe"
+        if self == FillMode.MajorWireframe:
+            return "MajorWireframe"
+        elif self == FillMode.DenseWireframe:
+            return "DenseWireframe"
         elif self == FillMode.Solid:
             return "Solid"
         else:
             raise ValueError("Unknown enum variant")
 
 
-FillModeLike = Union[FillMode, Literal["Solid", "Wireframe", "solid", "wireframe"]]
+FillModeLike = Union[
+    FillMode, Literal["DenseWireframe", "MajorWireframe", "Solid", "densewireframe", "majorwireframe", "solid"]
+]
 FillModeArrayLike = Union[FillModeLike, Sequence[FillModeLike]]
 
 
@@ -60,7 +71,8 @@ class FillModeType(BaseExtensionType):
             self,
             pa.sparse_union([
                 pa.field("_null_markers", pa.null(), nullable=True, metadata={}),
-                pa.field("Wireframe", pa.null(), nullable=True, metadata={}),
+                pa.field("MajorWireframe", pa.null(), nullable=True, metadata={}),
+                pa.field("DenseWireframe", pa.null(), nullable=True, metadata={}),
                 pa.field("Solid", pa.null(), nullable=True, metadata={}),
             ]),
             self._TYPE_NAME,
@@ -87,8 +99,10 @@ class FillModeBatch(BaseBatch[FillModeArrayLike], ComponentBatchMixin):
             elif isinstance(value, str):
                 if hasattr(FillMode, value):
                     types.append(FillMode[value].value)  # fast path
-                elif value.lower() == "wireframe":
-                    types.append(FillMode.Wireframe.value)
+                elif value.lower() == "majorwireframe":
+                    types.append(FillMode.MajorWireframe.value)
+                elif value.lower() == "densewireframe":
+                    types.append(FillMode.DenseWireframe.value)
                 elif value.lower() == "solid":
                     types.append(FillMode.Solid.value)
                 else:
@@ -100,7 +114,7 @@ class FillModeBatch(BaseBatch[FillModeArrayLike], ComponentBatchMixin):
             None,
             pa.array(types, type=pa.int8()).buffers()[1],
         ]
-        children = (1 + 2) * [pa.nulls(len(data))]
+        children = (1 + 3) * [pa.nulls(len(data))]
 
         return pa.UnionArray.from_buffers(
             type=data_type,

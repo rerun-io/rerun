@@ -18,15 +18,20 @@ namespace rerun::components {
     /// **Component**: How a geometric shape is drawn and colored.
     enum class FillMode : uint8_t {
 
-        /// Lines are drawn around the edges of the shape.
+        /// Lines are drawn around the edges of the shape that represent the logged data.
         ///
-        /// The interior (2D) or surface (3D) are not drawn.
-        Wireframe = 1,
+        /// The interior (2D) or surface (3D) are not filled in.
+        MajorWireframe = 1,
+
+        /// Many lines are drawn to represent the surface of the shape.
+        ///
+        /// The interior (2D) or surface (3D) are not filled in.
+        DenseWireframe = 2,
 
         /// The interior (2D) or surface (3D) is filled with a single color.
         ///
-        /// Lines are not drawn.
-        Solid = 2,
+        /// No lines are drawn.
+        Solid = 3,
     };
 } // namespace rerun::components
 
