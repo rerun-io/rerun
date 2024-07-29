@@ -13,6 +13,13 @@ use crate::{Chunk, ChunkTimeline, RowId};
 
 // ---
 
+// NOTE: Regarding the use of (recursive) `Either` in this file: it is _not_ arbitrary.
+//
+// They _should_ all follow this model:
+// * The first layer is always the emptiness layer: `Left` is empty, `Right` is non-empty.
+// * The second layer is the temporarily layer: `Left` is static, `Right` is temporal.
+// * Any layers beyond that follow the same pattern: `Left` doesn't have something, while `Right` does.
+
 impl Chunk {
     /// Returns an iterator over the indices (`(TimeInt, RowId)`) of a [`Chunk`], for a given timeline.
     ///
@@ -86,8 +93,11 @@ impl Chunk {
         }
     }
 
-    /// Returns an iterator over the offsets (`(offset, len)`) of a [`Chunk`], for a given timeline
-    /// and component.
+    /// Returns an iterator over the offsets (`(offset, len)`) of a [`Chunk`], for a given
+    /// component.
+    ///
+    /// I.e. each `(offset, len)` pair describes the position of a component batch in the
+    /// underlying arrow array of values.
     pub fn iter_component_offsets(
         &self,
         component_name: &ComponentName,
