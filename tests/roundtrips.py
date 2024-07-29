@@ -42,11 +42,7 @@ def main() -> None:
         help="Skip cmake configure and ahead of time build for rerun_c & rerun_cpp",
     )
     parser.add_argument("--full-dump", action="store_true", help="Dump both rrd files as tables")
-    parser.add_argument(
-        "--release",
-        action="store_true",
-        help="Run cargo invocations with --release and CMake with `-DCMAKE_BUILD_TYPE=Release` & `--config Release`",
-    )
+    parser.add_argument("--release", action="store_true", help="Run cargo invocations with --release")
     parser.add_argument("--target", type=str, default=None, help="Target used for cargo invocations")
     parser.add_argument("--target-dir", type=str, default=None, help="Target directory used for cargo invocations")
     parser.add_argument("archetype", nargs="*", type=str, default=None, help="Run only the specified archetypes")
@@ -207,12 +203,10 @@ def run_roundtrip_rust(arch: str, release: bool, target: str | None, target_dir:
 
 def run_roundtrip_cpp(arch: str, release: bool) -> str:
     target_name = f"roundtrip_{arch}"
-    output_path = f"tests/cpp/roundtrips/{arch}/out.rrd"
+    output_path = f"build/debug/tests/cpp/roundtrips/{arch}/out.rrd"
 
-    config_dir = "Release" if release else "Debug"
-
-    target_path = f"{config_dir}/{target_name}.exe" if os.name == "nt" else target_name
-    cmd = [f"{cpp_build_dir}/tests/cpp/roundtrips/{target_path}", output_path]
+    extension = ".exe" if os.name == "nt" else ""
+    cmd = [f"./build/debug/docs/roundtrips/{target_name}{extension}"]
     run(cmd, env=roundtrip_env(), timeout=12000)
 
     return output_path
