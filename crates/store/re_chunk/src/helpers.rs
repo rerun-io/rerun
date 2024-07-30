@@ -235,11 +235,13 @@ impl UnitChunkShared {
     /// The maximum value amongst all components is what's returned.
     #[inline]
     pub fn num_instances(&self) -> u64 {
+        debug_assert!(self.num_rows() == 1);
         self.components
             .values()
             .map(|list_array| {
-                list_array.validity().map_or_else(
-                    || list_array.len(),
+                let array = list_array.value(0);
+                array.validity().map_or_else(
+                    || array.len(),
                     |validity| validity.len() - validity.unset_bits(),
                 )
             })
