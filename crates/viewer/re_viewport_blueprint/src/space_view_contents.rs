@@ -397,13 +397,12 @@ impl DataQueryPropertyResolver<'_> {
                     re_tracing::profile_scope!("Update visualizers from overrides");
 
                     // If the user has overridden the visualizers, update which visualizers are used.
-                    // TODO(#5607): what should happen if the promise is still pending?
                     if let Some(viz_override) = blueprint
                         .latest_at_component::<VisualizerOverrides>(
                             &individual_override_path,
                             blueprint_query,
                         )
-                        .map(|c| c.value)
+                        .map(|(_index, value)| value)
                     {
                         node.data_result.visualizers =
                             viz_override.0.iter().map(Into::into).collect();
@@ -433,15 +432,15 @@ impl DataQueryPropertyResolver<'_> {
                         .all_components(&recursive_override_subtree.path)
                         .unwrap_or_default()
                     {
-                        let results = blueprint.query_caches().latest_at(
-                            blueprint.store(),
-                            blueprint_query,
-                            &recursive_override_path,
-                            [component_name],
-                        );
-                        if let Some(component_data) = results
-                            .get(component_name)
-                            .and_then(|results| results.raw(blueprint.resolver(), component_name))
+                        if let Some(component_data) = blueprint
+                            .query_caches2()
+                            .latest_at(
+                                blueprint.store(),
+                                blueprint_query,
+                                &recursive_override_path,
+                                [component_name],
+                            )
+                            .component_batch_raw(&component_name)
                         {
                             if !component_data.is_empty() {
                                 recursive_property_overrides.to_mut().insert(
@@ -468,15 +467,15 @@ impl DataQueryPropertyResolver<'_> {
                         .all_components(&individual_override_subtree.path)
                         .unwrap_or_default()
                     {
-                        let results = blueprint.query_caches().latest_at(
-                            blueprint.store(),
-                            blueprint_query,
-                            &individual_override_path,
-                            [component_name],
-                        );
-                        if let Some(component_data) = results
-                            .get(component_name)
-                            .and_then(|results| results.raw(blueprint.resolver(), component_name))
+                        if let Some(component_data) = blueprint
+                            .query_caches2()
+                            .latest_at(
+                                blueprint.store(),
+                                blueprint_query,
+                                &individual_override_path,
+                                [component_name],
+                            )
+                            .component_batch_raw(&component_name)
                         {
                             if !component_data.is_empty() {
                                 resolved_component_overrides.insert(
@@ -490,14 +489,14 @@ impl DataQueryPropertyResolver<'_> {
 
                 // Figure out relevant visual time range.
                 use re_types::Loggable as _;
-                let range_query_results = blueprint.latest_at(
+                let latest_at_results = blueprint.latest_at(
                     blueprint_query,
                     &recursive_override_path,
                     std::iter::once(blueprint_components::VisibleTimeRange::name()),
                 );
-                let visible_time_ranges: Option<&[blueprint_components::VisibleTimeRange]> =
-                    range_query_results.get_slice(blueprint.resolver());
-                let time_range = visible_time_ranges.and_then(|ranges| {
+                let visible_time_ranges =
+                    latest_at_results.component_batch::<blueprint_components::VisibleTimeRange>();
+                let time_range = visible_time_ranges.as_ref().and_then(|ranges| {
                     ranges
                         .iter()
                         .find(|range| range.timeline.as_str() == active_timeline.name().as_str())

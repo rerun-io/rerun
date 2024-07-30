@@ -114,14 +114,12 @@ fn active_default_ui(
 
             // TODO(jleibs): We're already doing this query above as part of the filter. This is kind of silly to do it again.
             // Change the structure to avoid this.
-            let component_data = db
-                .query_caches()
-                .latest_at(db.store(), query, &view.defaults_path, [component_name])
-                .components
-                .get(&component_name)
-                .cloned(); /* arc */
+            let component_array = {
+                let results = db.latest_at(query, &view.defaults_path, [component_name]);
+                results.component_batch_raw(&component_name)
+            };
 
-            if let Some(component_data) = component_data {
+            if let Some(component_array) = component_array {
                 let value_fn = |ui: &mut egui::Ui| {
                     ctx.viewer_ctx.component_ui_registry.singleline_edit_ui(
                         &query_context,
@@ -129,7 +127,7 @@ fn active_default_ui(
                         db,
                         &view.defaults_path,
                         component_name,
-                        &component_data,
+                        Some(&*component_array),
                         visualizer.as_fallback_provider(),
                     );
                 };
@@ -181,8 +179,6 @@ fn active_defaults(
     db: &re_entity_db::EntityDb,
     query: &LatestAtQuery,
 ) -> BTreeSet<ComponentName> {
-    let resolver = Default::default();
-
     // Cleared components should act as unset, so we filter out everything that's empty,
     // even if they are listed in `all_components`.
     ctx.blueprint_db()
@@ -191,11 +187,9 @@ fn active_defaults(
         .unwrap_or_default()
         .into_iter()
         .filter(|c| {
-            db.query_caches()
+            db.query_caches2()
                 .latest_at(db.store(), query, &view.defaults_path, [*c])
-                .components
-                .get(c)
-                .and_then(|data| data.resolved(&resolver).ok())
+                .component_batch_raw(c)
                 .map_or(false, |data| !data.is_empty())
         })
         .collect::<BTreeSet<_>>()
@@ -316,7 +310,7 @@ fn add_popup_ui(
                         ));
                 }
                 Err(err) => {
-                    re_log::warn!("Failed to create DataRow for blueprint component: {}", err);
+                    re_log::warn!("Failed to create Chunk for blueprint component: {}", err);
                 }
             }
 

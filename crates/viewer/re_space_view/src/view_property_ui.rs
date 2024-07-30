@@ -1,3 +1,4 @@
+use re_chunk_store::external::re_chunk::ArrowArray;
 use re_types_core::{
     reflection::{ArchetypeFieldReflection, ArchetypeReflection},
     Archetype, ArchetypeName, ArchetypeReflectionMarker, ComponentName,
@@ -65,6 +66,7 @@ fn view_property_ui_impl(
     if reflection.fields.len() == 1 {
         let field = &reflection.fields[0];
 
+        let component_array = component_results.component_batch_raw(&field.component_name);
         view_property_component_ui(
             &query_ctx,
             ui,
@@ -73,7 +75,7 @@ fn view_property_ui_impl(
             name,
             field,
             &blueprint_path,
-            component_results.get_or_empty(field.component_name),
+            component_array.as_deref(),
             fallback_provider,
         );
     } else {
@@ -81,6 +83,7 @@ fn view_property_ui_impl(
             for field in &reflection.fields {
                 let display_name = &field.display_name;
 
+                let component_array = component_results.component_batch_raw(&field.component_name);
                 view_property_component_ui(
                     &query_ctx,
                     ui,
@@ -89,7 +92,7 @@ fn view_property_ui_impl(
                     name,
                     field,
                     &blueprint_path,
-                    component_results.get_or_empty(field.component_name),
+                    component_array.as_deref(),
                     fallback_provider,
                 );
             }
@@ -117,7 +120,7 @@ fn view_property_component_ui(
     archetype_name: ArchetypeName,
     field: &ArchetypeFieldReflection,
     blueprint_path: &re_log_types::EntityPath,
-    component_results: &re_query::LatestAtComponentResults,
+    component_array: Option<&dyn ArrowArray>,
     fallback_provider: &dyn ComponentFallbackProvider,
 ) {
     let singleline_list_item_content = singleline_list_item_content(
@@ -125,7 +128,7 @@ fn view_property_component_ui(
         root_item_display_name,
         blueprint_path,
         component_name,
-        component_results,
+        component_array,
         fallback_provider,
     );
 
@@ -151,7 +154,7 @@ fn view_property_component_ui(
                         ctx.viewer_ctx.blueprint_db(),
                         blueprint_path,
                         component_name,
-                        component_results,
+                        component_array,
                         fallback_provider,
                     );
                 },
@@ -175,12 +178,12 @@ fn menu_more(
     ui: &mut egui::Ui,
     blueprint_path: &re_log_types::EntityPath,
     component_name: ComponentName,
-    component_results: &re_query::LatestAtComponentResults,
+    component_array: Option<&dyn ArrowArray>,
 ) {
-    let resolver = ctx.blueprint_db().resolver();
-
-    let property_differs_from_default = component_results.raw(resolver, component_name)
-        != ctx.raw_latest_at_in_default_blueprint(blueprint_path, component_name);
+    let property_differs_from_default = component_array
+        != ctx
+            .raw_latest_at_in_default_blueprint(blueprint_path, component_name)
+            .as_deref();
 
     let response = ui
         .add_enabled(
@@ -201,7 +204,7 @@ If no default blueprint was set or it didn't set any value for this field, this 
 
     let response = ui
         .add_enabled(
-            !component_results.is_empty(resolver),
+            component_array.is_none(),
             egui::Button::new("Unset"),
         )
         .on_hover_text(
@@ -223,7 +226,7 @@ fn singleline_list_item_content<'a>(
     display_name: &str,
     blueprint_path: &'a re_log_types::EntityPath,
     component_name: ComponentName,
-    component_results: &'a re_query::LatestAtComponentResults,
+    component_array: Option<&'a dyn ArrowArray>,
     fallback_provider: &'a dyn ComponentFallbackProvider,
 ) -> list_item::PropertyContent<'a> {
     list_item::PropertyContent::new(display_name)
@@ -233,7 +236,7 @@ fn singleline_list_item_content<'a>(
                 ui,
                 blueprint_path,
                 component_name,
-                component_results,
+                component_array,
             );
         })
         .value_fn(move |ui, _| {
@@ -243,7 +246,7 @@ fn singleline_list_item_content<'a>(
                 ctx.viewer_ctx.blueprint_db(),
                 blueprint_path,
                 component_name,
-                component_results,
+                component_array,
                 fallback_provider,
             );
         })

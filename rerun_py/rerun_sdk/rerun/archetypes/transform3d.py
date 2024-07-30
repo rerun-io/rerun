@@ -26,9 +26,6 @@ class Transform3D(Transform3DExt, Archetype):
     E.g. if both a translation and a max3x3 transform are present,
     the 3x3 matrix is applied first, followed by the translation.
 
-    Each transform component can be listed multiple times, but transform tree propagation is only possible
-    if there's only one instance for each transform component.
-
     Examples
     --------
     ### Variety of 3D transforms:
@@ -158,7 +155,7 @@ class Transform3D(Transform3DExt, Archetype):
         default=None,
         converter=components.Translation3DBatch._optional,  # type: ignore[misc]
     )
-    # Translation vectors.
+    # Translation vector.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 
@@ -194,7 +191,7 @@ class Transform3D(Transform3DExt, Archetype):
         default=None,
         converter=components.TransformMat3x3Batch._optional,  # type: ignore[misc]
     )
-    # 3x3 transformation matrices.
+    # 3x3 transformation matrix.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 

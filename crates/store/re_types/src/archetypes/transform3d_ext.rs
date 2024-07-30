@@ -11,11 +11,11 @@ impl Transform3D {
     pub fn with_rotation(self, rotation: impl Into<Rotation3D>) -> Self {
         match rotation.into() {
             Rotation3D::Quaternion(quaternion) => Self {
-                quaternion: Some(vec![quaternion]),
+                quaternion: Some(quaternion),
                 ..self
             },
             Rotation3D::AxisAngle(rotation_axis_angle) => Self {
-                rotation_axis_angle: Some(vec![rotation_axis_angle]),
+                rotation_axis_angle: Some(rotation_axis_angle),
                 ..self
             },
         }
@@ -25,7 +25,7 @@ impl Transform3D {
     #[inline]
     pub fn from_translation(translation: impl Into<Translation3D>) -> Self {
         Self {
-            translation: Some(vec![translation.into()]),
+            translation: Some(translation.into()),
             ..Self::default()
         }
     }
@@ -34,7 +34,7 @@ impl Transform3D {
     #[inline]
     pub fn from_mat3x3(mat3x3: impl Into<TransformMat3x3>) -> Self {
         Self {
-            mat3x3: Some(vec![mat3x3.into()]),
+            mat3x3: Some(mat3x3.into()),
             ..Self::default()
         }
     }
@@ -49,7 +49,7 @@ impl Transform3D {
     #[inline]
     pub fn from_scale(scale: impl Into<Scale3D>) -> Self {
         Self {
-            scale: Some(vec![scale.into()]),
+            scale: Some(scale.into()),
             ..Self::default()
         }
     }
@@ -61,7 +61,7 @@ impl Transform3D {
         rotation: impl Into<Rotation3D>,
     ) -> Self {
         Self {
-            translation: Some(vec![translation.into()]),
+            translation: Some(translation.into()),
             ..Self::default()
         }
         .with_rotation(rotation)
@@ -74,8 +74,8 @@ impl Transform3D {
         mat3x3: impl Into<TransformMat3x3>,
     ) -> Self {
         Self {
-            mat3x3: Some(vec![mat3x3.into()]),
-            translation: Some(vec![translation.into()]),
+            mat3x3: Some(mat3x3.into()),
+            translation: Some(translation.into()),
             ..Self::default()
         }
     }
@@ -87,8 +87,8 @@ impl Transform3D {
         scale: impl Into<Scale3D>,
     ) -> Self {
         Self {
-            scale: Some(vec![scale.into()]),
-            translation: Some(vec![translation.into()]),
+            scale: Some(scale.into()),
+            translation: Some(translation.into()),
             ..Self::default()
         }
     }
@@ -101,8 +101,8 @@ impl Transform3D {
         scale: impl Into<Scale3D>,
     ) -> Self {
         Self {
-            scale: Some(vec![scale.into()]),
-            translation: Some(vec![translation.into()]),
+            scale: Some(scale.into()),
+            translation: Some(translation.into()),
             ..Self::default()
         }
         .with_rotation(rotation)
@@ -112,7 +112,7 @@ impl Transform3D {
     #[inline]
     pub fn from_rotation_scale(rotation: impl Into<Rotation3D>, scale: impl Into<Scale3D>) -> Self {
         Self {
-            scale: Some(vec![scale.into()]),
+            scale: Some(scale.into()),
             ..Self::default()
         }
         .with_rotation(rotation)

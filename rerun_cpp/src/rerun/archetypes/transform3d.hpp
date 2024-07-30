@@ -31,9 +31,6 @@ namespace rerun::archetypes {
     /// E.g. if both a translation and a max3x3 transform are present,
     /// the 3x3 matrix is applied first, followed by the translation.
     ///
-    /// Each transform component can be listed multiple times, but transform tree propagation is only possible
-    /// if there's only one instance for each transform component.
-    ///
     /// ## Examples
     ///
     /// ### Variety of 3D transforms
@@ -148,20 +145,20 @@ namespace rerun::archetypes {
     /// }
     /// ```
     struct Transform3D {
-        /// Translation vectors.
-        std::optional<Collection<rerun::components::Translation3D>> translation;
+        /// Translation vector.
+        std::optional<rerun::components::Translation3D> translation;
 
         /// Rotation via axis + angle.
-        std::optional<Collection<rerun::components::RotationAxisAngle>> rotation_axis_angle;
+        std::optional<rerun::components::RotationAxisAngle> rotation_axis_angle;
 
         /// Rotation via quaternion.
-        std::optional<Collection<rerun::components::RotationQuat>> quaternion;
+        std::optional<rerun::components::RotationQuat> quaternion;
 
         /// Scaling factor.
-        std::optional<Collection<rerun::components::Scale3D>> scale;
+        std::optional<rerun::components::Scale3D> scale;
 
-        /// 3x3 transformation matrices.
-        std::optional<Collection<rerun::components::TransformMat3x3>> mat3x3;
+        /// 3x3 transformation matrix.
+        std::optional<rerun::components::TransformMat3x3> mat3x3;
 
         /// Specifies the relation this transform establishes between this entity and its parent.
         std::optional<rerun::components::TransformRelation> relation;
@@ -208,8 +205,7 @@ namespace rerun::archetypes {
             const components::Translation3D& translation_,
             const components::TransformMat3x3& mat3x3_, bool from_parent = false
         )
-            : translation(Collection<components::Translation3D>::take_ownership(translation_)),
-              mat3x3(Collection<components::TransformMat3x3>::take_ownership(mat3x3_)) {
+            : translation(translation_), mat3x3(mat3x3_) {
             if (from_parent) {
                 relation = components::TransformRelation::ChildFromParent;
             }
@@ -243,7 +239,7 @@ namespace rerun::archetypes {
         /// \param translation_ \çopydoc Transform3D::translation
         /// \param from_parent If true, the transform relation to `TransformRelation::ChildFromParent`.
         Transform3D(const components::Translation3D& translation_, bool from_parent = false)
-            : translation(Collection<components::Translation3D>::take_ownership(translation_)) {
+            : translation(translation_) {
             if (from_parent) {
                 relation = components::TransformRelation::ChildFromParent;
             }
@@ -261,7 +257,7 @@ namespace rerun::archetypes {
         /// \param mat3x3_ \copydoc Transform3D::mat3x3
         /// \param from_parent If true, the transform relation to `TransformRelation::ChildFromParent`.
         Transform3D(const components::TransformMat3x3& mat3x3_, bool from_parent = false)
-            : mat3x3(Collection<components::TransformMat3x3>::take_ownership(mat3x3_)) {
+            : mat3x3(mat3x3_) {
             if (from_parent) {
                 relation = components::TransformRelation::ChildFromParent;
             }
@@ -298,8 +294,7 @@ namespace rerun::archetypes {
             const components::Translation3D& translation_, const Rotation3D& rotation,
             const components::Scale3D& scale_, bool from_parent = false
         )
-            : translation(Collection<components::Translation3D>::take_ownership(translation_)),
-              scale(Collection<components::Scale3D>::take_ownership(scale_)) {
+            : translation(translation_), scale(scale_) {
             if (from_parent) {
                 relation = components::TransformRelation::ChildFromParent;
             }
@@ -355,7 +350,7 @@ namespace rerun::archetypes {
             const components::Translation3D& translation_, const Rotation3D& rotation,
             bool from_parent = false
         )
-            : translation(Collection<components::Translation3D>::take_ownership(translation_)) {
+            : translation(translation_) {
             if (from_parent) {
                 relation = components::TransformRelation::ChildFromParent;
             }
@@ -381,8 +376,7 @@ namespace rerun::archetypes {
             const components::Translation3D& translation_, const components::Scale3D& scale_,
             bool from_parent = false
         )
-            : translation(Collection<components::Translation3D>::take_ownership(translation_)),
-              scale(Collection<components::Scale3D>::take_ownership(scale_)) {
+            : translation(translation_), scale(scale_) {
             if (from_parent) {
                 relation = components::TransformRelation::ChildFromParent;
             }
@@ -420,7 +414,7 @@ namespace rerun::archetypes {
         Transform3D(
             const Rotation3D& rotation, const components::Scale3D& scale_, bool from_parent = false
         )
-            : scale(Collection<components::Scale3D>::take_ownership(scale_)) {
+            : scale(scale_) {
             if (from_parent) {
                 relation = components::TransformRelation::ChildFromParent;
             }
@@ -478,8 +472,7 @@ namespace rerun::archetypes {
         ///
         /// \param scale_ If true, the transform relation to `TransformRelation::ChildFromParent`.
         /// \param from_parent \copydoc Transform3D::scale
-        Transform3D(const components::Scale3D& scale_, bool from_parent = false)
-            : scale(Collection<components::Scale3D>::take_ownership(scale_)) {
+        Transform3D(const components::Scale3D& scale_, bool from_parent = false) : scale(scale_) {
             if (from_parent) {
                 relation = components::TransformRelation::ChildFromParent;
             }
@@ -503,14 +496,11 @@ namespace rerun::archetypes {
         /// Set the rotation component of the transform using the `rerun::Rotation3D` utility.
         void set_rotation(const Rotation3D& rotation) {
             if (rotation.axis_angle.has_value()) {
-                rotation_axis_angle = Collection<components::RotationAxisAngle>::take_ownership(
-                    rotation.axis_angle.value()
-                );
+                RR_WITH_MAYBE_UNINITIALIZED_DISABLED(rotation_axis_angle =
+                                                         rotation.axis_angle.value();)
             }
             if (rotation.quaternion.has_value()) {
-                quaternion =
-                    Collection<components::RotationQuat>::take_ownership(rotation.quaternion.value()
-                    );
+                RR_WITH_MAYBE_UNINITIALIZED_DISABLED(quaternion = rotation.quaternion.value();)
             }
         }
 
@@ -520,8 +510,8 @@ namespace rerun::archetypes {
         Transform3D() = default;
         Transform3D(Transform3D&& other) = default;
 
-        /// Translation vectors.
-        Transform3D with_translation(Collection<rerun::components::Translation3D> _translation) && {
+        /// Translation vector.
+        Transform3D with_translation(rerun::components::Translation3D _translation) && {
             translation = std::move(_translation);
             // See: https://github.com/rerun-io/rerun/issues/4027
             RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
@@ -529,7 +519,7 @@ namespace rerun::archetypes {
 
         /// Rotation via axis + angle.
         Transform3D with_rotation_axis_angle(
-            Collection<rerun::components::RotationAxisAngle> _rotation_axis_angle
+            rerun::components::RotationAxisAngle _rotation_axis_angle
         ) && {
             rotation_axis_angle = std::move(_rotation_axis_angle);
             // See: https://github.com/rerun-io/rerun/issues/4027
@@ -537,21 +527,21 @@ namespace rerun::archetypes {
         }
 
         /// Rotation via quaternion.
-        Transform3D with_quaternion(Collection<rerun::components::RotationQuat> _quaternion) && {
+        Transform3D with_quaternion(rerun::components::RotationQuat _quaternion) && {
             quaternion = std::move(_quaternion);
             // See: https://github.com/rerun-io/rerun/issues/4027
             RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
         }
 
         /// Scaling factor.
-        Transform3D with_scale(Collection<rerun::components::Scale3D> _scale) && {
+        Transform3D with_scale(rerun::components::Scale3D _scale) && {
             scale = std::move(_scale);
             // See: https://github.com/rerun-io/rerun/issues/4027
             RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
         }
 
-        /// 3x3 transformation matrices.
-        Transform3D with_mat3x3(Collection<rerun::components::TransformMat3x3> _mat3x3) && {
+        /// 3x3 transformation matrix.
+        Transform3D with_mat3x3(rerun::components::TransformMat3x3 _mat3x3) && {
             mat3x3 = std::move(_mat3x3);
             // See: https://github.com/rerun-io/rerun/issues/4027
             RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)

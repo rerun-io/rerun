@@ -49,6 +49,13 @@ impl Caches {
 
         let mut results = LatestAtResults::default();
 
+        // NOTE: This pre-filtering is extremely important: going through all these query layers
+        // has non-negligible overhead even if the final result ends up being nothing, and our
+        // number of queries for a frame grows linearly with the number of entity paths.
+        let component_names = component_names.into_iter().filter(|component_name| {
+            store.entity_has_component_on_timeline(&query.timeline(), entity_path, component_name)
+        });
+
         // Query-time clears
         // -----------------
         //
@@ -70,8 +77,22 @@ impl Caches {
         {
             re_tracing::profile_scope!("clears");
 
+            let potential_clears = self.might_require_clearing.read();
+
             let mut clear_entity_path = entity_path.clone();
             loop {
+                if !potential_clears.contains(&clear_entity_path) {
+                    // This entity does not contain any `Clear`-related data at all, there's no
+                    // point in running actual queries.
+
+                    let Some(parent_entity_path) = clear_entity_path.parent() else {
+                        break;
+                    };
+                    clear_entity_path = parent_entity_path;
+
+                    continue;
+                }
+
                 let key = CacheKey::new(
                     clear_entity_path.clone(),
                     query.timeline(),
@@ -297,17 +318,19 @@ pub fn latest_at(
     entity_path: &EntityPath,
     component_name: ComponentName,
 ) -> Option<(TimeInt, RowId, Box<dyn ArrowArray>)> {
-    store
+    let ((data_time, row_id), unit) = store
         .latest_at_relevant_chunks(query, entity_path, component_name)
         .into_iter()
-        .flat_map(|chunk| {
+        .filter_map(|chunk| {
             chunk
                 .latest_at(query, component_name)
-                .iter_rows(&query.timeline(), &component_name)
-                .collect_vec()
+                .into_unit()
+                .and_then(|chunk| chunk.index(&query.timeline()).map(|index| (index, chunk)))
         })
-        .max_by_key(|(data_time, row_id, _)| (*data_time, *row_id))
-        .and_then(|(data_time, row_id, array)| array.map(|array| (data_time, row_id, array)))
+        .max_by_key(|(index, _chunk)| *index)?;
+
+    unit.component_batch_raw(&component_name)
+        .map(|array| (data_time, row_id, array))
 }
 
 impl LatestAtCache {

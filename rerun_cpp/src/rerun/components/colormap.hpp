@@ -58,6 +58,13 @@ namespace rerun::components {
         /// This is a perceptually uniform colormap which is robust to color blindness.
         /// It interpolates from dark purple to green to yellow.
         Viridis = 6,
+
+        /// Rasmusgo's Cyan to Yellow colormap
+        ///
+        /// This is a perceptually uniform colormap which is robust to color blindness.
+        /// It is especially suited for visualizing signed values.
+        /// It interpolates from cyan to blue to dark gray to brass to yellow.
+        CyanToYellow = 7,
     };
 } // namespace rerun::components
 

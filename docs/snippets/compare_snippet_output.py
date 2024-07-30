@@ -79,11 +79,7 @@ def main() -> None:
         help="Skip cmake configure and ahead of time build for rerun_c & rerun_cpp",
     )
     parser.add_argument("--full-dump", action="store_true", help="Dump both rrd files as tables")
-    parser.add_argument(
-        "--release",
-        action="store_true",
-        help="Run cargo invocations with --release and CMake with `-DCMAKE_BUILD_TYPE=Release` & `--config Release`",
-    )
+    parser.add_argument("--release", action="store_true", help="Run cargo invocations with --release")
     parser.add_argument("--target", type=str, default=None, help="Target used for cargo invocations")
     parser.add_argument("--target-dir", type=str, default=None, help="Target directory used for cargo invocations")
     parser.add_argument("example", nargs="*", type=str, default=None, help="Run only the specified examples")

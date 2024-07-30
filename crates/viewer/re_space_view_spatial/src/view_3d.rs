@@ -74,6 +74,7 @@ impl SpaceViewClass for SpatialSpaceView3D {
     ) -> Result<(), SpaceViewClassRegistryError> {
         // Ensure spatial topology is registered.
         crate::spatial_topology::SpatialTopologyStoreSubscriber::subscription_handle();
+        crate::transform_component_tracker::TransformComponentTrackerStoreSubscriber::subscription_handle();
 
         register_spatial_contexts(system_registry)?;
         register_3d_spatial_visualizers(system_registry)?;
@@ -367,7 +368,7 @@ impl SpaceViewClass for SpatialSpaceView3D {
         let scene_view_coordinates = ctx
             .recording()
             .latest_at_component::<ViewCoordinates>(space_origin, &ctx.current_query())
-            .map(|c| c.value);
+            .map(|(_index, c)| c);
 
         // TODO(andreas): list_item'ify the rest
         ui.selection_grid("spatial_settings_ui").show(ui, |ui| {

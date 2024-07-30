@@ -1,5 +1,6 @@
 use std::collections::BTreeMap;
 
+use re_chunk::ArrowArray;
 use re_chunk_store::LatestAtQuery;
 use re_entity_db::{external::re_query::LatestAtComponentResults, EntityDb, EntityPath};
 use re_log::ResultExt;
@@ -469,7 +470,7 @@ impl ComponentUiRegistry {
         origin_db: &EntityDb,
         blueprint_write_path: &EntityPath,
         component_name: ComponentName,
-        component_query_result: &LatestAtComponentResults,
+        component_array: Option<&dyn ArrowArray>,
         fallback_provider: &dyn ComponentFallbackProvider,
     ) {
         let multiline = true;
@@ -479,7 +480,7 @@ impl ComponentUiRegistry {
             origin_db,
             blueprint_write_path,
             component_name,
-            component_query_result,
+            component_array,
             fallback_provider,
             multiline,
         );
@@ -498,7 +499,7 @@ impl ComponentUiRegistry {
         origin_db: &EntityDb,
         blueprint_write_path: &EntityPath,
         component_name: ComponentName,
-        component_query_result: &LatestAtComponentResults,
+        component_query_result: Option<&dyn ArrowArray>,
         fallback_provider: &dyn ComponentFallbackProvider,
     ) {
         let multiline = false;
@@ -522,7 +523,7 @@ impl ComponentUiRegistry {
         origin_db: &EntityDb,
         blueprint_write_path: &EntityPath,
         component_name: ComponentName,
-        component_query_result: &LatestAtComponentResults,
+        component_array: Option<&dyn ArrowArray>,
         fallback_provider: &dyn ComponentFallbackProvider,
         multiline: bool,
     ) {
@@ -534,34 +535,16 @@ impl ComponentUiRegistry {
                 .map_err(|_err| format!("No fallback value available for {component_name}."))
         };
 
-        let component_raw_or_error = match component_query_result.resolved(origin_db.resolver()) {
-            re_query::PromiseResult::Pending => {
-                if component_query_result.num_instances() == 0 {
-                    // This can currently also happen when there's no data at all.
-                    create_fallback()
-                } else {
-                    // In the future, we might want to show a loading indicator here,
-                    // but right now this is always an error.
-                    Err(format!("Promise for {component_name} is still pending."))
+        let component_raw = if let Some(array) = component_array {
+            array.to_boxed()
+        } else {
+            match create_fallback() {
+                Ok(value) => value,
+                Err(error_text) => {
+                    re_log::error_once!("{error_text}");
+                    ui.error_label(&error_text);
+                    return;
                 }
-            }
-            re_query::PromiseResult::Ready(array) => {
-                if !array.is_empty() {
-                    Ok(array)
-                } else {
-                    create_fallback()
-                }
-            }
-            re_query::PromiseResult::Error(err) => {
-                Err(format!("Couldn't get {component_name}: {err}"))
-            }
-        };
-        let component_raw = match component_raw_or_error {
-            Ok(value) => value,
-            Err(error_text) => {
-                re_log::error_once!("{error_text}");
-                ui.error_label(&error_text);
-                return;
             }
         };
 

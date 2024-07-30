@@ -64,7 +64,7 @@ impl EntityDataUi for re_types::components::TensorData {
         let tensor_data_row_id = ctx
             .recording()
             .latest_at_component::<Self>(entity_path, query)
-            .map_or(RowId::ZERO, |tensor| tensor.index.1);
+            .map_or(RowId::ZERO, |((_time, row_id), _tensor)| row_id);
 
         tensor_ui(ctx, ui, ui_layout, tensor_data_row_id, &self.0);
     }

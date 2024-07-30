@@ -6,7 +6,6 @@ use nohash_hasher::IntSet;
 use re_chunk::RowId;
 use re_chunk_store::LatestAtQuery;
 use re_entity_db::EntityPath;
-use re_query::LatestAtMonoResult;
 use re_types::components::AnnotationContext;
 use re_types::datatypes::{AnnotationInfo, ClassDescription, ClassId, KeypointId, Utf8};
 
@@ -249,10 +248,7 @@ impl AnnotationMap {
                     // Otherwise check the obj_store for the field.
                     // If we find one, insert it and then we can break.
                     std::collections::btree_map::Entry::Vacant(entry) => {
-                        if let Some(LatestAtMonoResult {
-                            index: (_, row_id),
-                            value: ann_ctx,
-                        }) = ctx
+                        if let Some(((_time, row_id), ann_ctx)) = ctx
                             .recording()
                             .latest_at_component::<AnnotationContext>(&parent, time_query)
                         {

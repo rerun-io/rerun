@@ -132,8 +132,7 @@ impl SpaceViewBlueprint {
     ) -> Option<Self> {
         re_tracing::profile_function!();
 
-        let resolver = blueprint_db.resolver();
-        let results = blueprint_db.query_caches().latest_at(
+        let results = blueprint_db.query_caches2().latest_at(
             blueprint_db.store(),
             query,
             &id.as_entity_path(),
@@ -146,7 +145,7 @@ impl SpaceViewBlueprint {
         // cleared empty space-views paths may exist transiently. The fact that they have an empty class_identifier
         // is the marker that the have been cleared and not an error.
         let class_identifier =
-            results.get_instance::<blueprint_components::SpaceViewClass>(resolver, 0)?;
+            results.component_instance::<blueprint_components::SpaceViewClass>(0)?;
 
         let blueprint_archetypes::SpaceViewBlueprint {
             class_identifier,
@@ -155,9 +154,9 @@ impl SpaceViewBlueprint {
             visible,
         } = blueprint_archetypes::SpaceViewBlueprint {
             class_identifier,
-            display_name: results.get_instance::<Name>(resolver, 0),
-            space_origin: results.get_instance::<SpaceViewOrigin>(resolver, 0),
-            visible: results.get_instance::<Visible>(resolver, 0),
+            display_name: results.component_instance::<Name>(0),
+            space_origin: results.component_instance::<SpaceViewOrigin>(0),
+            visible: results.component_instance::<Visible>(0),
         };
 
         let space_origin = space_origin.map_or_else(EntityPath::root, |origin| origin.0.into());
@@ -275,14 +274,10 @@ impl SpaceViewBlueprint {
                                         .contains(component)
                             })
                             .filter_map(|component_name| {
-                                let results = blueprint.query_caches().latest_at(
-                                    blueprint.store(),
-                                    query,
-                                    path,
-                                    [component_name],
-                                );
-                                let results = results.get(component_name)?;
-                                let array = results.raw(blueprint.resolver(), component_name);
+                                let array = blueprint
+                                    .query_caches2()
+                                    .latest_at(blueprint.store(), query, path, [component_name])
+                                    .component_batch_raw(&component_name);
                                 array.map(|array| (component_name, array))
                             }),
                     )

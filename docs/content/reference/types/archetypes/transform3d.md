@@ -10,9 +10,6 @@ all components are applied in the inverse order they are listed here.
 E.g. if both a translation and a max3x3 transform are present,
 the 3x3 matrix is applied first, followed by the translation.
 
-Each transform component can be listed multiple times, but transform tree propagation is only possible
-if there's only one instance for each transform component.
-
 ## Components
 
 **Optional**: [`Translation3D`](../components/translation3d.md), [`RotationAxisAngle`](../components/rotation_axis_angle.md), [`RotationQuat`](../components/rotation_quat.md), [`Scale3D`](../components/scale3d.md), [`TransformMat3x3`](../components/transform_mat3x3.md), [`TransformRelation`](../components/transform_relation.md), [`AxisLength`](../components/axis_length.md)

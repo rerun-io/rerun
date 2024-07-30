@@ -9,7 +9,7 @@ use arrow2::buffer::Buffer;
 /// arise from returning a `&[T]` directly, but is significantly more
 /// performant than doing the full allocation necessary to return a `Vec<T>`.
 #[derive(Clone, Debug, Default, PartialEq)]
-pub struct ArrowBuffer<T>(Buffer<T>);
+pub struct ArrowBuffer<T>(pub Buffer<T>);
 
 impl<T: crate::SizeBytes> crate::SizeBytes for ArrowBuffer<T> {
     #[inline]
