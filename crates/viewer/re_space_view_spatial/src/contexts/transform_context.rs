@@ -375,7 +375,7 @@ fn transform_info_for_upward_propagation(
     }
 
     // Collect & compute leaf transforms.
-    let reference_from_instances = if let Ok(mut entity_from_instances) =
+    let (mut reference_from_instances, has_leaf_transforms) = if let Ok(mut entity_from_instances) =
         SmallVec1::<[glam::Affine3A; 1]>::try_from_vec(
             transforms_at_entity.entity_from_instance_leaf_transforms,
         ) {
@@ -383,9 +383,9 @@ fn transform_info_for_upward_propagation(
             *entity_from_instance = reference_from_entity * entity_from_instance.inverse();
             // Now this is actually `reference_from_instance`.
         }
-        entity_from_instances
+        (entity_from_instances, true)
     } else {
-        SmallVec1::new(reference_from_entity)
+        (SmallVec1::new(reference_from_entity), false)
     };
 
     // Apply tree transform if any.
@@ -393,6 +393,13 @@ fn transform_info_for_upward_propagation(
         transforms_at_entity.parent_from_entity_tree_transform
     {
         reference_from_entity *= parent_from_entity_tree_transform.inverse();
+        if has_leaf_transforms {
+            for reference_from_instance in &mut reference_from_instances {
+                *reference_from_instance = reference_from_entity * (*reference_from_instance);
+            }
+        } else {
+            *reference_from_instances.first_mut() = reference_from_entity;
+        }
     }
 
     TransformInfo {
