@@ -176,7 +176,8 @@ impl VisualizerSystem for Mesh3DVisualizer {
 
         let mut instances = Vec::new();
 
-        super::entity_iterator::process_archetype2::<Self, Mesh3D, _>(
+        use super::entity_iterator::{iter_primitive_array, process_archetype2};
+        process_archetype2::<Self, Mesh3D, _>(
             ctx,
             view_query,
             context_systems,
@@ -190,13 +191,11 @@ impl VisualizerSystem for Mesh3DVisualizer {
                 };
 
                 let timeline = ctx.query.timeline();
-                let all_vertex_positions_indexed =
-                    all_vertex_position_chunks.iter().flat_map(|chunk| {
-                        itertools::izip!(
-                            chunk.iter_component_indices(&timeline, &Position3D::name()),
-                            chunk.iter_primitive_array::<3, f32>(&Position3D::name())
-                        )
-                    });
+                let all_vertex_positions_indexed = iter_primitive_array::<3, f32>(
+                    &all_vertex_position_chunks,
+                    timeline,
+                    Position3D::name(),
+                );
                 let all_vertex_normals = results.iter_as(timeline, Vector3D::name());
                 let all_vertex_colors = results.iter_as(timeline, Color::name());
                 let all_vertex_texcoords = results.iter_as(timeline, Texcoord2D::name());

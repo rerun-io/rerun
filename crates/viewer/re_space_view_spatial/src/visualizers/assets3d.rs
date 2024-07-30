@@ -146,7 +146,8 @@ impl VisualizerSystem for Asset3DVisualizer {
 
         let mut instances = Vec::new();
 
-        super::entity_iterator::process_archetype2::<Self, Asset3D, _>(
+        use super::entity_iterator::{iter_buffer, process_archetype2};
+        process_archetype2::<Self, Asset3D, _>(
             ctx,
             view_query,
             context_systems,
@@ -158,12 +159,7 @@ impl VisualizerSystem for Asset3DVisualizer {
                 };
 
                 let timeline = ctx.query.timeline();
-                let all_blobs_indexed = all_blob_chunks.iter().flat_map(|chunk| {
-                    itertools::izip!(
-                        chunk.iter_component_indices(&timeline, &Blob::name()),
-                        chunk.iter_buffer::<u8>(&Blob::name())
-                    )
-                });
+                let all_blobs_indexed = iter_buffer::<u8>(&all_blob_chunks, timeline, Blob::name());
                 let all_media_types = results.iter_as(timeline, MediaType::name());
 
                 // TODO(#6831): we have to deserialize here because `OutOfTreeTransform3D` is

@@ -378,7 +378,7 @@ where
 ///
 /// See [`Chunk::iter_primitive_array_list`] for more information.
 #[allow(unused)]
-pub fn primitive_array_list<'a, const N: usize, T: arrow2::types::NativeType>(
+pub fn iter_primitive_array_list<'a, const N: usize, T: arrow2::types::NativeType>(
     chunks: &'a std::borrow::Cow<'a, [Chunk]>,
     timeline: Timeline,
     component_name: ComponentName,
@@ -399,14 +399,14 @@ where
 /// See [`Chunk::iter_string`] for more information.
 #[allow(unused)]
 pub fn iter_string<'a>(
-    chunks: impl Iterator<Item = &'a Chunk> + 'a,
-    timeline: &'a Timeline,
-    component_name: &'a ComponentName,
+    chunks: &'a std::borrow::Cow<'a, [Chunk]>,
+    timeline: Timeline,
+    component_name: ComponentName,
 ) -> impl Iterator<Item = ((TimeInt, RowId), Vec<re_types::ArrowString>)> + 'a {
-    chunks.into_iter().flat_map(|chunk| {
+    chunks.iter().flat_map(move |chunk| {
         itertools::izip!(
-            chunk.iter_component_indices(timeline, component_name),
-            chunk.iter_string(component_name)
+            chunk.iter_component_indices(&timeline, &component_name),
+            chunk.iter_string(&component_name)
         )
     })
 }
@@ -416,14 +416,14 @@ pub fn iter_string<'a>(
 /// See [`Chunk::iter_buffer`] for more information.
 #[allow(unused)]
 pub fn iter_buffer<'a, T: arrow2::types::NativeType>(
-    chunks: impl Iterator<Item = &'a Chunk> + 'a,
-    timeline: &'a Timeline,
-    component_name: &'a ComponentName,
+    chunks: &'a std::borrow::Cow<'a, [Chunk]>,
+    timeline: Timeline,
+    component_name: ComponentName,
 ) -> impl Iterator<Item = ((TimeInt, RowId), Vec<re_types::ArrowBuffer<T>>)> + 'a {
-    chunks.into_iter().flat_map(|chunk| {
+    chunks.iter().flat_map(move |chunk| {
         itertools::izip!(
-            chunk.iter_component_indices(timeline, component_name),
-            chunk.iter_buffer(component_name)
+            chunk.iter_component_indices(&timeline, &component_name),
+            chunk.iter_buffer(&component_name)
         )
     })
 }

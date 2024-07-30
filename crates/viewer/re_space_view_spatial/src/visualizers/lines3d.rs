@@ -189,7 +189,8 @@ impl VisualizerSystem for Lines3DVisualizer {
         let mut line_builder = re_renderer::LineDrawableBuilder::new(render_ctx);
         line_builder.radius_boost_in_ui_points_for_outlines(SIZE_BOOST_IN_POINTS_FOR_LINE_OUTLINES);
 
-        super::entity_iterator::process_archetype2::<Self, LineStrips3D, _>(
+        use super::entity_iterator::{iter_primitive_array_list, process_archetype2};
+        process_archetype2::<Self, LineStrips3D, _>(
             ctx,
             view_query,
             context_systems,
@@ -223,12 +224,8 @@ impl VisualizerSystem for Lines3DVisualizer {
                 line_builder.reserve_vertices(num_vertices)?;
 
                 let timeline = ctx.query.timeline();
-                let all_strips_indexed = all_strip_chunks.iter().flat_map(|chunk| {
-                    itertools::izip!(
-                        chunk.iter_component_indices(&timeline, &LineStrip3D::name()),
-                        chunk.iter_primitive_array_list::<3, f32>(&LineStrip3D::name())
-                    )
-                });
+                let all_strips_indexed =
+                    iter_primitive_array_list(&all_strip_chunks, timeline, LineStrip3D::name());
                 let all_colors = results.iter_as(timeline, Color::name());
                 let all_radii = results.iter_as(timeline, Radius::name());
                 let all_labels = results.iter_as(timeline, Text::name());
