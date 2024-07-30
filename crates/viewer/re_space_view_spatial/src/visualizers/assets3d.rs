@@ -175,13 +175,12 @@ impl VisualizerSystem for Asset3DVisualizer {
                     .map(|chunk| chunk.iter_component::<OutOfTreeTransform3D>())
                     .collect_vec();
                 let all_transforms_indexed = {
-                    let all_albedo_textures =
+                    let all_transforms =
                         all_transform_iters.iter_mut().flat_map(|it| it.into_iter());
-                    let all_albedo_textures_indices =
-                        all_transform_chunks.iter().flat_map(|chunk| {
-                            chunk.iter_component_indices(&timeline, &OutOfTreeTransform3D::name())
-                        });
-                    itertools::izip!(all_albedo_textures_indices, all_albedo_textures)
+                    let all_transforms_indices = all_transform_chunks.iter().flat_map(|chunk| {
+                        chunk.iter_component_indices(&timeline, &OutOfTreeTransform3D::name())
+                    });
+                    itertools::izip!(all_transforms_indices, all_transforms)
                 };
 
                 let data = re_query2::range_zip_1x2(

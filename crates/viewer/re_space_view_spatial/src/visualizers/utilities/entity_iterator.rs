@@ -334,17 +334,18 @@ where
 
 // ---
 
+use re_chunk::{Chunk, ComponentName, RowId};
 use re_chunk_store::external::{re_chunk, re_chunk::external::arrow2};
 
 /// Iterate `chunks` as indexed primitives.
 ///
-/// See [`re_chunk::Chunk::iter_primitive`] for more information.
+/// See [`Chunk::iter_primitive`] for more information.
 #[allow(unused)]
 pub fn iter_primitive<'a, T: arrow2::types::NativeType>(
-    chunks: impl IntoIterator<Item = &'a re_chunk::Chunk> + 'a,
-    timeline: re_chunk::Timeline,
-    component_name: re_chunk::ComponentName,
-) -> impl Iterator<Item = ((TimeInt, re_chunk::RowId), &'a [T])> + 'a {
+    chunks: impl IntoIterator<Item = &'a Chunk> + 'a,
+    timeline: Timeline,
+    component_name: ComponentName,
+) -> impl Iterator<Item = ((TimeInt, RowId), &'a [T])> + 'a {
     chunks.into_iter().flat_map(move |chunk| {
         itertools::izip!(
             chunk.iter_component_indices(&timeline, &component_name),
@@ -355,13 +356,13 @@ pub fn iter_primitive<'a, T: arrow2::types::NativeType>(
 
 /// Iterate `chunks` as indexed primitive arrays.
 ///
-/// See [`re_chunk::Chunk::iter_primitive_array`] for more information.
+/// See [`Chunk::iter_primitive_array`] for more information.
 #[allow(unused)]
 pub fn iter_primitive_array<'a, const N: usize, T: arrow2::types::NativeType>(
-    chunks: &'a std::borrow::Cow<'a, [re_chunk::Chunk]>,
-    timeline: re_chunk::Timeline,
-    component_name: re_chunk::ComponentName,
-) -> impl Iterator<Item = ((TimeInt, re_chunk::RowId), &'a [[T; N]])> + 'a
+    chunks: &'a std::borrow::Cow<'a, [Chunk]>,
+    timeline: Timeline,
+    component_name: ComponentName,
+) -> impl Iterator<Item = ((TimeInt, RowId), &'a [[T; N]])> + 'a
 where
     [T; N]: bytemuck::Pod,
 {
@@ -375,17 +376,34 @@ where
 
 /// Iterate `chunks` as indexed UTF-8 strings.
 ///
-/// See [`re_chunk::Chunk::iter_string`] for more information.
+/// See [`Chunk::iter_string`] for more information.
 #[allow(unused)]
 pub fn iter_string<'a>(
-    chunks: impl Iterator<Item = &'a re_chunk::Chunk> + 'a,
-    timeline: &'a re_chunk::Timeline,
-    component_name: &'a re_chunk::ComponentName,
-) -> impl Iterator<Item = ((TimeInt, re_chunk::RowId), Vec<re_types::ArrowString>)> + 'a {
+    chunks: impl Iterator<Item = &'a Chunk> + 'a,
+    timeline: &'a Timeline,
+    component_name: &'a ComponentName,
+) -> impl Iterator<Item = ((TimeInt, RowId), Vec<re_types::ArrowString>)> + 'a {
     chunks.into_iter().flat_map(|chunk| {
         itertools::izip!(
             chunk.iter_component_indices(timeline, component_name),
             chunk.iter_string(component_name)
+        )
+    })
+}
+
+/// Iterate `chunks` as indexed buffers.
+///
+/// See [`Chunk::iter_buffer`] for more information.
+#[allow(unused)]
+pub fn iter_buffer<'a, T: arrow2::types::NativeType>(
+    chunks: impl Iterator<Item = &'a Chunk> + 'a,
+    timeline: &'a Timeline,
+    component_name: &'a ComponentName,
+) -> impl Iterator<Item = ((TimeInt, RowId), Vec<re_types::ArrowBuffer<T>>)> + 'a {
+    chunks.into_iter().flat_map(|chunk| {
+        itertools::izip!(
+            chunk.iter_component_indices(timeline, component_name),
+            chunk.iter_buffer(component_name)
         )
     })
 }

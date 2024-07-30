@@ -356,6 +356,7 @@ impl Chunk {
                     let offsets = &offsets.as_slice()[idx..idx + len];
                     let lengths = &lengths.as_slice()[idx..idx + len];
                     izip!(offsets, lengths)
+                        // NOTE: Not an actual clone, just a refbump of the underlying buffer.
                         .map(|(&idx, &len)| values.clone().sliced(idx as _, len).into())
                         .collect_vec()
                 }),
