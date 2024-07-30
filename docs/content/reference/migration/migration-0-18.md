@@ -66,13 +66,12 @@ Other changes in data representation:
 * Angles (as used in `RotationAxisAngle`) are now always stored in radians, conversion functions for degrees are provided.
 Scaling no longer distinguishes uniform and 3D scaling in its data representation. Uniform scaling is now always expressed as 3 floats with the same value.
 
-TODO(andreas): Write about LeafTransforms3D
+`OutOfTreeTransform3D` got removed. Instead, there is now a new [`LeafTransforms3D`](https://rerun.io/docs/reference/types/archetypes/leaf_transform3d#speculative-link). archetype which fulfills the same role, but works more similar to the `Transform3D` archetype and is supported by all 3D spatial primitives.
 
 
 #### Python
 
 The `Transform3D` archetype no longer has a `transform` argument. Use one of the other arguments instead.
-TODO(andreas): Not true as of writing. but should be true at the time or release!
 
 Before:
 ```python
@@ -83,13 +82,21 @@ After:
 rr.log("myentity", rr.Transform3D(translation=Vec3D([1, 2, 3]), relation=rr.TransformRelation.ChildFromParent))
 ```
 
-
-TODO(andreas): code example
-
-
-TODO(andreas): Talk about LeafTransforms3D
-TODO(andreas): … and Asset3D specifically
-
+Asset3D previously had a `transform` argument, now you have to log either a `LeafTransform3D` or a `Transform3D` on the same entity:
+Before:
+```python
+rr.log("world/mesh", rr.Asset3D(
+        path=path,
+        transform=rr.OutOfTreeTransform3DBatch(
+            rr.TranslationRotationScale3D(translation=center, scale=scale)
+        )
+    ))
+```
+After:
+```python
+rr.log("world/mesh", rr.Asset3D(path=path))
+rr.log("world/mesh", rr.LeafTransform3D(translation=center, scale=scale))
+```
 
 #### C++
 
@@ -119,18 +126,28 @@ an empty archetype instead that you can populate (e.g. `rerun::Transform3D().wit
 
 Scale is no longer an enum datatype but a component with a 3D vec:
 Before:
-```rust
-let scale_uniform = rerun::Scale3D::Uniform(2.0);
-let scale_y = rerun::Scale3D::ThreeD([1.0, 2.0, 1.0]);
+```cpp
+auto scale_uniform = rerun::Scale3D::Uniform(2.0);
+auto scale_y = rerun::Scale3D::ThreeD([1.0, 2.0, 1.0]);
 ```
 After:
-```rust
-let scale_uniform = rerun::Scale3D::uniform(2.0);
-let scale_y = rerun::Scale3D::from([1.0, 2.0, 1.0]);
+```cpp
+auto scale_uniform = rerun::Scale3D::uniform(2.0);
+auto scale_y = rerun::Scale3D::from([1.0, 2.0, 1.0]);
 ```
 
-TODO(andreas): Talk about LeafTransforms3D
-TODO(andreas): … and Asset3D specifically
+Asset3D previously had a `transform` field, now you have to log either a `LeafTransform3D` or a `Transform3D` on the same entity:
+Before:
+```cpp
+rec.log("world/asset", rerun::Asset3D::from_file(path).value_or_throw()
+                    .with_transform(rerun::OutOfTreeTransform3D(translation))
+);
+```
+After:
+```cpp
+rec.log("world/asset", rerun::Asset3D::from_file(path).value_or_throw());
+rec.log("world/mesh", &rerun::archetypes::LeafTransform3D().with_translations(translation));
+```
 
 #### Rust
 `rerun::archetypes::Transform3D` no longer has a `new`, use other factory methods instead, e.g. `from_translation_rotation_scale` or `from_mat3x3`
@@ -164,13 +181,12 @@ impl From<GltfTransform> for rerun::Transform3D {
     fn from(transform: GltfTransform) -> Self {
         rerun::Transform3D::from_translation_rotation_scale(
             transform.t,
-            rerun::datatypes::Quaternion::from_xyzw(transform.r),
+            rerun::Quaternion::from_xyzw(transform.r),
             transform.s,
         )
     }
 }
 ```
-TODO(andreas): Quaternion in above snippet is likely to change as well.
 
 Since all aspects of the transform archetypes are now granular, they can be chained with `with_` functions:
 ```rust
@@ -181,5 +197,16 @@ Note that the order of the method calls does _not_ affect the order in which tra
 `rerun::Transform3D::IDENTITY` has been removed, sue `rerun::Transform3D::default()` to start out with
 an empty archetype instead that you can populate (e.g. `rerun::Transform3D::default().with_mat3x3(rerun::datatypes::Mat3x3::IDENTITY)`).
 
-TODO(andreas): Talk about LeafTransforms3D
-TODO(andreas): … and Asset3D specifically
+
+Asset3D previously had a `transform` field, now you have to log either a `LeafTransform3D` or a `Transform3D` on the same entity:
+Before:
+```rust
+rec.log("world/mesh", &rerun::Asset3D::from_file(path)?
+        .with_transform(rerun::OutOfTreeTransform3D::from(rerun::TranslationRotationScale3D(translation)))
+)?;
+```
+After:
+```rust
+rec.log("world/mesh", &rerun::Asset3D::from_file(path)?)?;
+rec.log("world/mesh", &rerun::LeafTransform3D::default().with_translations([translation]))?;
+```
