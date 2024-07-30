@@ -419,6 +419,20 @@ impl<'a> HybridResultsChunkIter<'a> {
             )
         })
     }
+
+    /// Iterate as indexed buffers.
+    ///
+    /// See [`Chunk::iter_buffer`] for more information.
+    pub fn buffer<T: arrow2::types::NativeType>(
+        &'a self,
+    ) -> impl Iterator<Item = ((TimeInt, RowId), Vec<re_types_core::ArrowBuffer<T>>)> + 'a {
+        self.chunks.iter().flat_map(|chunk| {
+            itertools::izip!(
+                chunk.iter_component_indices(&self.timeline, &self.component_name),
+                chunk.iter_buffer(&self.component_name)
+            )
+        })
+    }
 }
 
 impl<'a> HybridResults<'a> {
