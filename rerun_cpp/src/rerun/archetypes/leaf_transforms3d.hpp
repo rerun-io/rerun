@@ -45,7 +45,7 @@ namespace rerun::archetypes {
     /// #include <rerun/demo_utils.hpp>
     ///
     /// int main() {
-    ///     const auto rec = rerun::RecordingStream("rerun_example_asset3d_out_of_tree");
+    ///     const auto rec = rerun::RecordingStream("rerun_example_leaf_transform3d_combined");
     ///     rec.set_time_sequence("frame", 0);
     ///
     ///     // Log a box and points further down in the hierarchy.
@@ -63,13 +63,17 @@ namespace rerun::archetypes {
     ///             "world/box",
     ///             rerun::Transform3D::from_rotation(rerun::RotationAxisAngle{
     ///                 {0.0f, 0.0f, 1.0f},
-    ///                 {rerun::Angle::degrees(static_cast<float>(i) * 2.0f)}
+    ///                 rerun::Angle::degrees(static_cast<float>(i) * 2.0f)
     ///             })
     ///         );
     ///
     ///         // Log an leaf transform which affects only the box.
-    ///         float translation[] = {0, 0, fabs(static_cast<float>(i) * 0.1f - 5.0f) - 5.0f};
-    ///         rec.log("world/box", rerun::LeafTransforms3D().with_translations({translation}));
+    ///         rec.log(
+    ///             "world/box",
+    ///             rerun::LeafTransforms3D().with_translations(
+    ///                 {{0, 0, fabs(static_cast<float>(i) * 0.1f - 5.0f) - 5.0f}}
+    ///             )
+    ///         );
     ///     }
     /// }
     /// ```
