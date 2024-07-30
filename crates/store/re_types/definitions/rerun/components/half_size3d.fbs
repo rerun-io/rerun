@@ -10,7 +10,8 @@ namespace rerun.components;
 /// The box extends both in negative and positive direction along each axis.
 /// Negative sizes indicate that the box is flipped along the respective axis, but this has no effect on how it is displayed.
 struct HalfSize3D (
-  "attr.rust.derive": "Copy, PartialEq"
+  "attr.rust.derive": "Copy, PartialEq, bytemuck::Pod, bytemuck::Zeroable",
+  "attr.rust.repr": "transparent"
 ) {
   xyz: rerun.datatypes.Vec3D (order: 100);
 }
