@@ -4302,6 +4302,7 @@ dependencies = [
  "ahash",
  "anyhow",
  "backtrace",
+ "bytemuck",
  "criterion",
  "crossbeam",
  "document-features",
@@ -4919,7 +4920,9 @@ name = "re_space_view"
 version = "0.18.0-alpha.1+dev"
 dependencies = [
  "ahash",
+ "bytemuck",
  "egui",
+ "itertools 0.13.0",
  "nohash-hasher",
  "re_chunk_store",
  "re_entity_db",
@@ -4999,6 +5002,7 @@ dependencies = [
  "re_log_types",
  "re_math",
  "re_query",
+ "re_query2",
  "re_renderer",
  "re_space_view",
  "re_tracing",

@@ -1,13 +1,16 @@
 use std::sync::Arc;
 
 use arrow2::{
-    array::{Array as ArrowArray, PrimitiveArray},
+    array::{
+        Array as ArrowArray, FixedSizeListArray as ArrowFixedSizeListArray,
+        PrimitiveArray as ArrowPrimitiveArray, Utf8Array as ArrowUtf8Array,
+    },
     Either,
 };
-use itertools::izip;
+use itertools::{izip, Itertools};
 
 use re_log_types::{TimeInt, Timeline};
-use re_types_core::{Component, ComponentName};
+use re_types_core::{ArrowString, Component, ComponentName};
 
 use crate::{Chunk, ChunkTimeline, RowId};
 
@@ -125,6 +128,7 @@ impl Chunk {
     /// See also:
     /// * [`Self::iter_component`].
     /// * [`Self::iter_primitive`].
+    #[inline]
     pub fn iter_component_arrays(
         &self,
         component_name: &ComponentName,
@@ -143,6 +147,9 @@ impl Chunk {
     /// Use this when working with simple arrow datatypes and performance matters (e.g. scalars,
     /// points, etc).
     ///
+    /// See also:
+    /// * [`Self::iter_primitive_array`]
+    /// * [`Self::iter_string`]
     /// * [`Self::iter_component_arrays`].
     /// * [`Self::iter_component`].
     #[inline]
@@ -157,7 +164,7 @@ impl Chunk {
         let Some(values) = list_array
             .values()
             .as_any()
-            .downcast_ref::<PrimitiveArray<T>>()
+            .downcast_ref::<ArrowPrimitiveArray<T>>()
         else {
             if cfg!(debug_assertions) {
                 panic!("downcast failed for {component_name}, data discarded");
@@ -172,6 +179,116 @@ impl Chunk {
         Either::Right(
             self.iter_component_offsets(component_name)
                 .map(move |(idx, len)| &values[idx..idx + len]),
+        )
+    }
+
+    /// Returns an iterator over the raw primitive arrays of a [`Chunk`], for a given component.
+    ///
+    /// This is a very fast path: the entire column will be downcasted at once, and then every
+    /// component batch will be a slice reference into that global slice.
+    /// Use this when working with simple arrow datatypes and performance matters (e.g. scalars,
+    /// points, etc).
+    ///
+    /// See also:
+    /// * [`Self::iter_primitive`]
+    /// * [`Self::iter_string`]
+    /// * [`Self::iter_component_arrays`].
+    /// * [`Self::iter_component`].
+    pub fn iter_primitive_array<const N: usize, T: arrow2::types::NativeType>(
+        &self,
+        component_name: &ComponentName,
+    ) -> impl Iterator<Item = &[[T; N]]> + '_
+    where
+        [T; N]: bytemuck::Pod,
+    {
+        let Some(list_array) = self.components.get(component_name) else {
+            return Either::Left(std::iter::empty());
+        };
+
+        let Some(fixed_size_list_array) = list_array
+            .values()
+            .as_any()
+            .downcast_ref::<ArrowFixedSizeListArray>()
+        else {
+            if cfg!(debug_assertions) {
+                panic!("downcast failed for {component_name}, data discarded");
+            } else {
+                re_log::error_once!("downcast failed for {component_name}, data discarded");
+            }
+            return Either::Left(std::iter::empty());
+        };
+
+        let Some(values) = fixed_size_list_array
+            .values()
+            .as_any()
+            .downcast_ref::<ArrowPrimitiveArray<T>>()
+        else {
+            if cfg!(debug_assertions) {
+                panic!("downcast failed for {component_name}, data discarded");
+            } else {
+                re_log::error_once!("downcast failed for {component_name}, data discarded");
+            }
+            return Either::Left(std::iter::empty());
+        };
+
+        let size = fixed_size_list_array.size();
+        let values = values.values().as_slice();
+
+        // NOTE: No need for validity checks here, `iter_offsets` already takes care of that.
+        Either::Right(
+            self.iter_component_offsets(component_name)
+                .map(move |(idx, len)| {
+                    bytemuck::cast_slice(&values[idx * size..idx * size + len * size])
+                }),
+        )
+    }
+
+    /// Returns an iterator over the raw primitive strings of a [`Chunk`], for a given component.
+    ///
+    /// This is a very fast path: the entire column will be downcasted at once, and then every
+    /// component batch will be a slice reference into that global slice.
+    /// Use this when working with simple arrow datatypes and performance matters (e.g. labels, etc).
+    ///
+    /// See also:
+    /// * [`Self::iter_primitive`]
+    /// * [`Self::iter_primitive_array`]
+    /// * [`Self::iter_component_arrays`].
+    /// * [`Self::iter_component`].
+    pub fn iter_string(
+        &self,
+        component_name: &ComponentName,
+    ) -> impl Iterator<Item = Vec<ArrowString>> + '_ {
+        let Some(list_array) = self.components.get(component_name) else {
+            return Either::Left(std::iter::empty());
+        };
+
+        let Some(utf8_array) = list_array
+            .values()
+            .as_any()
+            .downcast_ref::<ArrowUtf8Array<i32>>()
+        else {
+            if cfg!(debug_assertions) {
+                panic!("downcast failed for {component_name}, data discarded");
+            } else {
+                re_log::error_once!("downcast failed for {component_name}, data discarded");
+            }
+            return Either::Left(std::iter::empty());
+        };
+
+        let values = utf8_array.values();
+        let offsets = utf8_array.offsets();
+        let lengths = utf8_array.offsets().lengths().collect_vec();
+
+        // NOTE: No need for validity checks here, `iter_offsets` already takes care of that.
+        Either::Right(
+            self.iter_component_offsets(component_name)
+                .map(move |(idx, len)| {
+                    let offsets = &offsets.as_slice()[idx..idx + len];
+                    let lengths = &lengths.as_slice()[idx..idx + len];
+                    izip!(offsets, lengths)
+                        .map(|(&idx, &len)| ArrowString(values.clone().sliced(idx as _, len)))
+                        .collect_vec()
+                }),
         )
     }
 }
