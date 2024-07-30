@@ -5086,7 +5086,7 @@ dependencies = [
  "re_format",
  "re_log",
  "re_log_types",
- "re_query",
+ "re_query2",
  "re_renderer",
  "re_space_view",
  "re_tracing",

@@ -17,7 +17,9 @@ use re_types::{
 use re_viewer_context::{IdentifiedViewSystem, ViewContext, ViewContextSystem};
 use vec1::smallvec_v1::SmallVec1;
 
-use crate::visualizers::image_view_coordinates;
+use crate::{
+    transform_component_tracker::TransformComponentTracker, visualizers::image_view_coordinates,
+};
 
 #[derive(Clone, Debug)]
 pub struct TransformInfo {
@@ -509,6 +511,14 @@ fn query_and_resolve_tree_transform_at_entity(
     entity_db: &EntityDb,
     query: &LatestAtQuery,
 ) -> Option<glam::Affine3A> {
+    if !TransformComponentTracker::access(entity_db.store_id(), |tracker| {
+        tracker.is_potentially_transformed_transform3d(entity_path)
+    })
+    .unwrap_or(false)
+    {
+        return None;
+    }
+
     // TODO(#6743): Doesn't take into account overrides.
     let result = entity_db.latest_at(
         query,
@@ -557,6 +567,14 @@ fn query_and_resolve_leaf_transform_at_entity(
     entity_db: &EntityDb,
     query: &LatestAtQuery,
 ) -> Vec<glam::Affine3A> {
+    if !TransformComponentTracker::access(entity_db.store_id(), |tracker| {
+        tracker.is_potentially_transformed_leaf_transform3d(entity_path)
+    })
+    .unwrap_or(false)
+    {
+        return Vec::new();
+    }
+
     // TODO(#6743): Doesn't take into account overrides.
     let result = entity_db.latest_at(
         query,
