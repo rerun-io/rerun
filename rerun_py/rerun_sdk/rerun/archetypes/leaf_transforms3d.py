@@ -51,7 +51,7 @@ class LeafTransforms3D(Archetype):
     rr.log("world/box", rr.Boxes3D(half_sizes=[[1.0, 1.0, 1.0]]))
     rr.log("world/box/points", rr.Points3D(np.vstack([xyz.ravel() for xyz in np.mgrid[3 * [slice(-10, 10, 10j)]]]).T))
 
-    for i in range(1, 100):
+    for i in range(0, 180):
         rr.set_time_sequence("frame", i)
 
         # Log a regular transform which affects both the box and the points.

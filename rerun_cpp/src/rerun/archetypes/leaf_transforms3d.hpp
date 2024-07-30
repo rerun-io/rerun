@@ -55,7 +55,7 @@ namespace rerun::archetypes {
     ///         rerun::Points3D(rerun::demo::grid3d<rerun::Position3D, float>(-10.0f, 10.0f, 10))
     ///     );
     ///
-    ///     for (int i = 1; i <20; ++i) {
+    ///     for (int i = 0; i <180; ++i) {
     ///         rec.set_time_sequence("frame", i);
     ///
     ///         // Log a regular transform which affects both the box and the points.

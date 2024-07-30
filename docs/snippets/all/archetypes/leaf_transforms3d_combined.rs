@@ -21,7 +21,7 @@ fn main() -> anyhow::Result<()> {
         &rerun::Points3D::new(grid(glam::Vec3::splat(-10.0), glam::Vec3::splat(10.0), 10)),
     )?;
 
-    for i in 1..100 {
+    for i in 0..180 {
         rec.set_time_sequence("frame", i);
 
         // Log a regular transform which affects both the box and the points.

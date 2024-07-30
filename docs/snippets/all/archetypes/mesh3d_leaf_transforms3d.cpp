@@ -32,7 +32,7 @@ int main() {
                 .with_rotation_axis_angles({rerun::RotationAxisAngle(
                     {0.0f, 0.0f, 1.0f},
                     rerun::Angle::degrees(static_cast<float>(i) * 2.0f)
-                )}),
+                )})
         );
     }
 }
