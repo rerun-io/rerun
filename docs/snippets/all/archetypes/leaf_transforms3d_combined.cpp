@@ -22,15 +22,14 @@ int main() {
             "world/box",
             rerun::Transform3D::from_rotation(rerun::RotationAxisAngle{
                 {0.0f, 0.0f, 1.0f},
-                rerun::Angle::degrees(static_cast<float>(i) * 2.0f)
-            })
+                rerun::Angle::degrees(static_cast<float>(i) * 2.0f)})
         );
 
         // Log an leaf transform which affects only the box.
         rec.log(
             "world/box",
             rerun::LeafTransforms3D().with_translations(
-                {{0, 0, fabs(static_cast<float>(i) * 0.1f - 5.0f) - 5.0f}}
+                {{0.0f, 0.0f, std::abs(static_cast<float>(i) * 0.1f - 5.0f) - 5.0f}}
             )
         );
     }
