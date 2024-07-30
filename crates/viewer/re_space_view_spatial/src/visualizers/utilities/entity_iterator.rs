@@ -331,3 +331,61 @@ where
 
     Ok(())
 }
+
+// ---
+
+use re_chunk_store::external::{re_chunk, re_chunk::external::arrow2};
+
+/// Iterate `chunks` as indexed primitives.
+///
+/// See [`re_chunk::Chunk::iter_primitive`] for more information.
+#[allow(unused)]
+pub fn iter_primitive<'a, T: arrow2::types::NativeType>(
+    chunks: impl IntoIterator<Item = &'a re_chunk::Chunk> + 'a,
+    timeline: re_chunk::Timeline,
+    component_name: re_chunk::ComponentName,
+) -> impl Iterator<Item = ((TimeInt, re_chunk::RowId), &'a [T])> + 'a {
+    chunks.into_iter().flat_map(move |chunk| {
+        itertools::izip!(
+            chunk.iter_component_indices(&timeline, &component_name),
+            chunk.iter_primitive::<T>(&component_name)
+        )
+    })
+}
+
+/// Iterate `chunks` as indexed primitive arrays.
+///
+/// See [`re_chunk::Chunk::iter_primitive_array`] for more information.
+#[allow(unused)]
+pub fn iter_primitive_array<'a, const N: usize, T: arrow2::types::NativeType>(
+    chunks: &'a std::borrow::Cow<'a, [re_chunk::Chunk]>,
+    timeline: re_chunk::Timeline,
+    component_name: re_chunk::ComponentName,
+) -> impl Iterator<Item = ((TimeInt, re_chunk::RowId), &'a [[T; N]])> + 'a
+where
+    [T; N]: bytemuck::Pod,
+{
+    chunks.iter().flat_map(move |chunk| {
+        itertools::izip!(
+            chunk.iter_component_indices(&timeline, &component_name),
+            chunk.iter_primitive_array::<N, T>(&component_name)
+        )
+    })
+}
+
+/// Iterate `chunks` as indexed UTF-8 strings.
+///
+/// See [`re_chunk::Chunk::iter_string`] for more information.
+#[allow(unused)]
+pub fn iter_string<'a>(
+    chunks: impl Iterator<Item = &'a re_chunk::Chunk> + 'a,
+    timeline: &'a re_chunk::Timeline,
+    component_name: &'a re_chunk::ComponentName,
+) -> impl Iterator<Item = ((TimeInt, re_chunk::RowId), Vec<re_types::ArrowString>)> + 'a {
+    chunks.into_iter().flat_map(|chunk| {
+        itertools::izip!(
+            chunk.iter_component_indices(timeline, component_name),
+            chunk.iter_string(component_name)
+        )
+    })
+}

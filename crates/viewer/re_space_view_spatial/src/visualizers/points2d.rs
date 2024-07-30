@@ -211,7 +211,8 @@ impl VisualizerSystem for Points2DVisualizer {
         line_builder
             .radius_boost_in_ui_points_for_outlines(SIZE_BOOST_IN_POINTS_FOR_POINT_OUTLINES);
 
-        super::entity_iterator::process_archetype2::<Self, Points2D, _>(
+        use super::entity_iterator::{iter_primitive_array, process_archetype2};
+        process_archetype2::<Self, Points2D, _>(
             ctx,
             view_query,
             context_systems,
@@ -236,12 +237,11 @@ impl VisualizerSystem for Points2DVisualizer {
                 point_builder.reserve(num_positions)?;
 
                 let timeline = ctx.query.timeline();
-                let all_positions_indexed = all_position_chunks.iter().flat_map(|chunk| {
-                    itertools::izip!(
-                        chunk.iter_component_indices(&timeline, &Position2D::name()),
-                        chunk.iter_primitive_array::<2, f32>(&Position2D::name())
-                    )
-                });
+                let all_positions_indexed = iter_primitive_array::<2, f32>(
+                    &all_position_chunks,
+                    timeline,
+                    Position2D::name(),
+                );
                 let all_colors = results.iter_as(timeline, Color::name());
                 let all_radii = results.iter_as(timeline, Radius::name());
                 let all_labels = results.iter_as(timeline, Text::name());
