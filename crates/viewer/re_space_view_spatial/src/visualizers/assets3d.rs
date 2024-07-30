@@ -1,11 +1,13 @@
+use itertools::Itertools as _;
+
 use re_chunk_store::RowId;
 use re_log_types::{hash::Hash64, Instance, TimeInt};
-use re_query::range_zip_1x2;
 use re_renderer::renderer::MeshInstance;
 use re_renderer::RenderContext;
 use re_types::{
     archetypes::Asset3D,
     components::{Blob, MediaType, OutOfTreeTransform3D},
+    ArrowBuffer, ArrowString, Loggable as _,
 };
 use re_viewer_context::{
     ApplicableEntities, IdentifiedViewSystem, QueryContext, SpaceViewSystemExecutionError,
@@ -35,8 +37,8 @@ impl Default for Asset3DVisualizer {
 struct Asset3DComponentData<'a> {
     index: (TimeInt, RowId),
 
-    blob: &'a Blob,
-    media_type: Option<&'a MediaType>,
+    blob: ArrowBuffer<u8>,
+    media_type: Option<ArrowString>,
     transform: Option<&'a OutOfTreeTransform3D>,
 }
 
@@ -55,8 +57,8 @@ impl Asset3DVisualizer {
 
         for data in data {
             let mesh = Asset3D {
-                blob: data.blob.clone(),
-                media_type: data.media_type.cloned(),
+                blob: data.blob.clone().into(),
+                media_type: data.media_type.clone().map(Into::into),
 
                 // NOTE: Don't even try to cache the transform!
                 transform: None,
@@ -75,7 +77,7 @@ impl Asset3DVisualizer {
                         versioned_instance_path_hash: picking_instance_hash
                             .versioned(primary_row_id),
                         query_result_hash: Hash64::ZERO,
-                        media_type: data.media_type.cloned(),
+                        media_type: data.media_type.clone().map(Into::into),
                     },
                     AnyMesh::Asset(&mesh),
                     render_ctx,
@@ -144,38 +146,61 @@ impl VisualizerSystem for Asset3DVisualizer {
 
         let mut instances = Vec::new();
 
-        super::entity_iterator::process_archetype::<Self, Asset3D, _>(
+        super::entity_iterator::process_archetype2::<Self, Asset3D, _>(
             ctx,
             view_query,
             context_systems,
             |ctx, spatial_ctx, results| {
-                use re_space_view::RangeResultsExt as _;
+                use re_space_view::RangeResultsExt2 as _;
 
-                let resolver = ctx.recording().resolver();
-
-                let blobs = match results.get_required_component_dense::<Blob>(resolver) {
-                    Some(blobs) => blobs?,
-                    _ => return Ok(()),
+                let Some(all_blob_chunks) = results.get_required_chunks(&Blob::name()) else {
+                    return Ok(());
                 };
 
-                let media_types = results.get_or_empty_dense(resolver)?;
-                let transforms = results.get_or_empty_dense(resolver)?;
+                let timeline = ctx.query.timeline();
+                let all_blobs_indexed = all_blob_chunks.iter().flat_map(|chunk| {
+                    itertools::izip!(
+                        chunk.iter_component_indices(&timeline, &Blob::name()),
+                        chunk.iter_buffer::<u8>(&Blob::name())
+                    )
+                });
+                let all_media_types = results.iter_as(timeline, MediaType::name());
 
-                let data = range_zip_1x2(
-                    blobs.range_indexed(),
-                    media_types.range_indexed(),
-                    transforms.range_indexed(),
+                // TODO(#6831): we have to deserialize here because `OutOfTreeTransform3D` is
+                // still a complex type at this point.
+                let all_transform_chunks =
+                    results.get_optional_chunks(&OutOfTreeTransform3D::name());
+                let mut all_transform_iters = all_transform_chunks
+                    .iter()
+                    .map(|chunk| chunk.iter_component::<OutOfTreeTransform3D>())
+                    .collect_vec();
+                let all_transforms_indexed = {
+                    let all_albedo_textures =
+                        all_transform_iters.iter_mut().flat_map(|it| it.into_iter());
+                    let all_albedo_textures_indices =
+                        all_transform_chunks.iter().flat_map(|chunk| {
+                            chunk.iter_component_indices(&timeline, &OutOfTreeTransform3D::name())
+                        });
+                    itertools::izip!(all_albedo_textures_indices, all_albedo_textures)
+                };
+
+                let data = re_query2::range_zip_1x2(
+                    all_blobs_indexed,
+                    all_media_types.string(),
+                    all_transforms_indexed,
                 )
-                .filter_map(|(&index, blobs, media_types, transforms)| {
+                .filter_map(|(index, blobs, media_types, transforms)| {
                     blobs.first().map(|blob| Asset3DComponentData {
                         index,
-                        blob,
-                        media_type: media_types.and_then(|media_types| media_types.first()),
+                        blob: blob.clone(),
+                        media_type: media_types
+                            .and_then(|media_types| media_types.first().cloned()),
                         transform: transforms.and_then(|transforms| transforms.first()),
                     })
                 });
 
                 self.process_data(ctx, render_ctx, &mut instances, spatial_ctx, data);
+
                 Ok(())
             },
         )?;
