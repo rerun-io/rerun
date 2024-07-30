@@ -21,7 +21,10 @@ table Boxes3D (
   // --- Recommended ---
 
   /// Optional center positions of the boxes.
-  centers: [rerun.components.Position3D] ("attr.rerun.component_recommended", nullable, order: 2000);
+  ///
+  /// If not specified, the centers will be at (0, 0, 0).
+  /// Note that this uses a [components.LeafTranslation3D] which is also used by [archetypes.LeafTransforms3D].
+  centers: [rerun.components.LeafTranslation3D] ("attr.rerun.component_recommended", nullable, order: 2000);
 
   /// Optional rotations of the boxes.
   rotations: [rerun.components.Rotation3D] ("attr.rerun.component_recommended", nullable, order: 2100);

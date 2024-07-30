@@ -9,7 +9,7 @@
 #include "../components/color.hpp"
 #include "../components/fill_mode.hpp"
 #include "../components/half_size3d.hpp"
-#include "../components/position3d.hpp"
+#include "../components/leaf_translation3d.hpp"
 #include "../components/radius.hpp"
 #include "../components/rotation3d.hpp"
 #include "../components/text.hpp"
@@ -65,7 +65,10 @@ namespace rerun::archetypes {
         Collection<rerun::components::HalfSize3D> half_sizes;
 
         /// Optional center positions of the boxes.
-        std::optional<Collection<rerun::components::Position3D>> centers;
+        ///
+        /// If not specified, the centers will be at (0, 0, 0).
+        /// Note that this uses a `components::LeafTranslation3D` which is also used by `archetypes::LeafTransforms3D`.
+        std::optional<Collection<rerun::components::LeafTranslation3D>> centers;
 
         /// Optional rotations of the boxes.
         std::optional<Collection<rerun::components::Rotation3D>> rotations;
@@ -108,7 +111,7 @@ namespace rerun::archetypes {
 
         /// Creates new `Boxes3D` with `centers` and `half_sizes`.
         static Boxes3D from_centers_and_half_sizes(
-            Collection<components::Position3D> centers,
+            Collection<components::LeafTranslation3D> centers,
             Collection<components::HalfSize3D> half_sizes
         ) {
             Boxes3D boxes;
@@ -131,7 +134,8 @@ namespace rerun::archetypes {
         /// from the input data.
         /// TODO(andreas): This should not take an std::vector.
         static Boxes3D from_centers_and_sizes(
-            Collection<components::Position3D> centers, const std::vector<datatypes::Vec3D>& sizes
+            Collection<components::LeafTranslation3D> centers,
+            const std::vector<datatypes::Vec3D>& sizes
         ) {
             Boxes3D boxes = from_sizes(std::move(sizes));
             boxes.centers = std::move(centers);
@@ -153,7 +157,10 @@ namespace rerun::archetypes {
         Boxes3D(Boxes3D&& other) = default;
 
         /// Optional center positions of the boxes.
-        Boxes3D with_centers(Collection<rerun::components::Position3D> _centers) && {
+        ///
+        /// If not specified, the centers will be at (0, 0, 0).
+        /// Note that this uses a `components::LeafTranslation3D` which is also used by `archetypes::LeafTransforms3D`.
+        Boxes3D with_centers(Collection<rerun::components::LeafTranslation3D> _centers) && {
             centers = std::move(_centers);
             // See: https://github.com/rerun-io/rerun/issues/4027
             RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)

@@ -1,4 +1,4 @@
-use crate::components::{HalfSize3D, Position3D};
+use crate::components::{HalfSize3D, LeafTranslation3D};
 
 use super::Ellipsoids;
 
@@ -19,7 +19,7 @@ impl Ellipsoids {
     #[doc(alias = "sphere")]
     #[inline]
     pub fn from_centers_and_radii(
-        centers: impl IntoIterator<Item = impl Into<Position3D>>,
+        centers: impl IntoIterator<Item = impl Into<LeafTranslation3D>>,
         radii: impl IntoIterator<Item = f32>,
     ) -> Self {
         Self::new(radii.into_iter().map(HalfSize3D::splat)).with_centers(centers)
@@ -34,7 +34,7 @@ impl Ellipsoids {
     /// Creates a new [`Ellipsoids`] with [`Self::centers`] and [`Self::half_sizes`].
     #[inline]
     pub fn from_centers_and_half_sizes(
-        centers: impl IntoIterator<Item = impl Into<Position3D>>,
+        centers: impl IntoIterator<Item = impl Into<LeafTranslation3D>>,
         half_sizes: impl IntoIterator<Item = impl Into<HalfSize3D>>,
     ) -> Self {
         Self::new(half_sizes).with_centers(centers)

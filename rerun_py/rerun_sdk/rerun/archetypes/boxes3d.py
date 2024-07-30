@@ -89,12 +89,15 @@ class Boxes3D(Boxes3DExt, Archetype):
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 
-    centers: components.Position3DBatch | None = field(
+    centers: components.LeafTranslation3DBatch | None = field(
         metadata={"component": "optional"},
         default=None,
-        converter=components.Position3DBatch._optional,  # type: ignore[misc]
+        converter=components.LeafTranslation3DBatch._optional,  # type: ignore[misc]
     )
     # Optional center positions of the boxes.
+    #
+    # If not specified, the centers will be at (0, 0, 0).
+    # Note that this uses a [`components.LeafTranslation3D`][rerun.components.LeafTranslation3D] which is also used by [`archetypes.LeafTransforms3D`][rerun.archetypes.LeafTransforms3D].
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 

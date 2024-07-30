@@ -36,7 +36,8 @@ pub struct Ellipsoids {
     /// Optional center positions of the ellipsoids.
     ///
     /// If not specified, the centers will be at (0, 0, 0).
-    pub centers: Option<Vec<crate::components::Position3D>>,
+    /// Note that this uses a [`components::LeafTranslation3D`][crate::components::LeafTranslation3D] which is also used by [`archetypes::LeafTransforms3D`][crate::archetypes::LeafTransforms3D].
+    pub centers: Option<Vec<crate::components::LeafTranslation3D>>,
 
     /// Optional rotations of the ellipsoids.
     ///
@@ -77,7 +78,7 @@ impl ::re_types_core::SizeBytes for Ellipsoids {
     #[inline]
     fn is_pod() -> bool {
         <Vec<crate::components::HalfSize3D>>::is_pod()
-            && <Option<Vec<crate::components::Position3D>>>::is_pod()
+            && <Option<Vec<crate::components::LeafTranslation3D>>>::is_pod()
             && <Option<Vec<crate::components::Rotation3D>>>::is_pod()
             && <Option<Vec<crate::components::Color>>>::is_pod()
             && <Option<Vec<crate::components::Radius>>>::is_pod()
@@ -93,7 +94,7 @@ static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 1usize]> =
 static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 4usize]> =
     once_cell::sync::Lazy::new(|| {
         [
-            "rerun.components.Position3D".into(),
+            "rerun.components.LeafTranslation3D".into(),
             "rerun.components.Rotation3D".into(),
             "rerun.components.Color".into(),
             "rerun.components.EllipsoidsIndicator".into(),
@@ -114,7 +115,7 @@ static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 9usize]> =
     once_cell::sync::Lazy::new(|| {
         [
             "rerun.components.HalfSize3D".into(),
-            "rerun.components.Position3D".into(),
+            "rerun.components.LeafTranslation3D".into(),
             "rerun.components.Rotation3D".into(),
             "rerun.components.Color".into(),
             "rerun.components.EllipsoidsIndicator".into(),
@@ -194,9 +195,10 @@ impl ::re_types_core::Archetype for Ellipsoids {
                 .collect::<DeserializationResult<Vec<_>>>()
                 .with_context("rerun.archetypes.Ellipsoids#half_sizes")?
         };
-        let centers = if let Some(array) = arrays_by_name.get("rerun.components.Position3D") {
+        let centers = if let Some(array) = arrays_by_name.get("rerun.components.LeafTranslation3D")
+        {
             Some({
-                <crate::components::Position3D>::from_arrow_opt(&**array)
+                <crate::components::LeafTranslation3D>::from_arrow_opt(&**array)
                     .with_context("rerun.archetypes.Ellipsoids#centers")?
                     .into_iter()
                     .map(|v| v.ok_or_else(DeserializationError::missing_data))
@@ -344,10 +346,11 @@ impl Ellipsoids {
     /// Optional center positions of the ellipsoids.
     ///
     /// If not specified, the centers will be at (0, 0, 0).
+    /// Note that this uses a [`components::LeafTranslation3D`][crate::components::LeafTranslation3D] which is also used by [`archetypes::LeafTransforms3D`][crate::archetypes::LeafTransforms3D].
     #[inline]
     pub fn with_centers(
         mut self,
-        centers: impl IntoIterator<Item = impl Into<crate::components::Position3D>>,
+        centers: impl IntoIterator<Item = impl Into<crate::components::LeafTranslation3D>>,
     ) -> Self {
         self.centers = Some(centers.into_iter().map(Into::into).collect());
         self
