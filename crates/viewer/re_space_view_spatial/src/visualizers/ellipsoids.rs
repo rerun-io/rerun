@@ -1,3 +1,4 @@
+use itertools::Itertools as _;
 use re_entity_db::{EntityPath, InstancePathHash};
 use re_log_types::Instance;
 use re_renderer::{
@@ -8,6 +9,7 @@ use re_types::{
     components::{
         ClassId, Color, FillMode, HalfSize3D, KeypointId, Position3D, Radius, Rotation3D, Text,
     },
+    ArrowString, Loggable as _,
 };
 use re_viewer_context::{
     auto_color_for_entity_path, ApplicableEntities, IdentifiedViewSystem, QueryContext,
@@ -48,7 +50,7 @@ impl Ellipsoids3DVisualizer {
     fn process_labels<'a>(
         entity_path: &'a EntityPath,
         centers: &'a [Position3D],
-        labels: &'a [Text],
+        labels: &'a [ArrowString],
         colors: &'a [egui::Color32],
         annotation_infos: &'a ResolvedAnnotationInfos,
         world_from_entity: glam::Affine3A,
@@ -120,7 +122,7 @@ impl Ellipsoids3DVisualizer {
             self.0.ui_labels.extend(Self::process_labels(
                 entity_path,
                 data.centers,
-                data.labels,
+                &data.labels,
                 &colors,
                 &annotation_infos,
                 ent_context.world_from_entity,
@@ -241,7 +243,7 @@ struct Ellipsoids3DComponentData<'a> {
     rotations: &'a [Rotation3D],
     colors: &'a [Color],
     line_radii: &'a [Radius],
-    labels: &'a [Text],
+    labels: Vec<ArrowString>,
     keypoint_ids: &'a [KeypointId],
     class_ids: &'a [ClassId],
 
@@ -286,25 +288,24 @@ impl VisualizerSystem for Ellipsoids3DVisualizer {
         // Collects solid (that is, triangles rather than wireframe) instances to be drawn.
         let mut solid_instances: Vec<MeshInstance> = Vec::new();
 
-        super::entity_iterator::process_archetype::<Self, Ellipsoids3D, _>(
+        use super::entity_iterator::{iter_primitive_array, process_archetype2};
+        process_archetype2::<Self, Ellipsoids3D, _>(
             ctx,
             view_query,
             context_systems,
             |ctx, spatial_ctx, results| {
-                use re_space_view::RangeResultsExt as _;
+                use re_space_view::RangeResultsExt2 as _;
 
-                let resolver = ctx.recording().resolver();
-
-                let half_sizes = match results.get_required_component_dense::<HalfSize3D>(resolver)
-                {
-                    Some(vectors) => vectors?,
-                    _ => return Ok(()),
+                let Some(all_half_size_chunks) = results.get_required_chunks(&HalfSize3D::name())
+                else {
+                    return Ok(());
                 };
 
-                let num_ellipsoids = half_sizes
-                    .range_indexed()
-                    .map(|(_, vectors)| vectors.len())
-                    .sum::<usize>();
+                let num_ellipsoids: usize = all_half_size_chunks
+                    .iter()
+                    .flat_map(|chunk| chunk.iter_primitive_array::<3, f32>(&HalfSize3D::name()))
+                    .map(|vectors| vectors.len())
+                    .sum();
                 if num_ellipsoids == 0 {
                     return Ok(());
                 }
@@ -314,25 +315,59 @@ impl VisualizerSystem for Ellipsoids3DVisualizer {
                 // line_builder.reserve_strips(num_ellipsoids * sphere_mesh.line_strips.len())?;
                 // line_builder.reserve_vertices(num_ellipsoids * sphere_mesh.vertex_count)?;
 
-                let centers = results.get_or_empty_dense(resolver)?;
-                let rotations = results.get_or_empty_dense(resolver)?;
-                let colors = results.get_or_empty_dense(resolver)?;
-                let line_radii = results.get_or_empty_dense(resolver)?;
-                let fill_mode = results.get_or_empty_dense(resolver)?;
-                let labels = results.get_or_empty_dense(resolver)?;
-                let class_ids = results.get_or_empty_dense(resolver)?;
-                let keypoint_ids = results.get_or_empty_dense(resolver)?;
+                let timeline = ctx.query.timeline();
+                let all_half_sizes_indexed = iter_primitive_array::<3, f32>(
+                    &all_half_size_chunks,
+                    timeline,
+                    HalfSize3D::name(),
+                );
+                let all_centers = results.iter_as(timeline, Position3D::name());
+                let all_colors = results.iter_as(timeline, Color::name());
+                let all_line_radii = results.iter_as(timeline, Radius::name());
+                let all_labels = results.iter_as(timeline, Text::name());
+                let all_class_ids = results.iter_as(timeline, ClassId::name());
+                let all_keypoint_ids = results.iter_as(timeline, KeypointId::name());
 
-                let data = re_query::range_zip_1x8(
-                    half_sizes.range_indexed(),
-                    centers.range_indexed(),
-                    rotations.range_indexed(),
-                    colors.range_indexed(),
-                    line_radii.range_indexed(),
-                    fill_mode.range_indexed(),
-                    labels.range_indexed(),
-                    class_ids.range_indexed(),
-                    keypoint_ids.range_indexed(),
+                // TODO(#6831): we have to deserialize here because `Rotation3D` is still a complex
+                // type at this point.
+                let all_rotation_chunks = results.get_optional_chunks(&Rotation3D::name());
+                let mut all_rotation_iters = all_rotation_chunks
+                    .iter()
+                    .map(|chunk| chunk.iter_component::<Rotation3D>())
+                    .collect_vec();
+                let all_rotations_indexed = {
+                    let all_rotations = all_rotation_iters.iter_mut().flat_map(|it| it.into_iter());
+                    let all_rotations_indices = all_rotation_chunks.iter().flat_map(|chunk| {
+                        chunk.iter_component_indices(&timeline, &Rotation3D::name())
+                    });
+                    itertools::izip!(all_rotations_indices, all_rotations)
+                };
+
+                // Deserialized because it's a union.
+                let all_fill_mode_chunks = results.get_optional_chunks(&FillMode::name());
+                let mut all_fill_mode_iters = all_fill_mode_chunks
+                    .iter()
+                    .map(|chunk| chunk.iter_component::<FillMode>())
+                    .collect_vec();
+                let all_fill_modes_indexed = {
+                    let all_fill_modes =
+                        all_fill_mode_iters.iter_mut().flat_map(|it| it.into_iter());
+                    let all_fill_modes_indices = all_fill_mode_chunks.iter().flat_map(|chunk| {
+                        chunk.iter_component_indices(&timeline, &FillMode::name())
+                    });
+                    itertools::izip!(all_fill_modes_indices, all_fill_modes)
+                };
+
+                let data = re_query2::range_zip_1x8(
+                    all_half_sizes_indexed,
+                    all_centers.primitive_array::<3, f32>(),
+                    all_rotations_indexed,
+                    all_colors.primitive::<u32>(),
+                    all_line_radii.primitive::<f32>(),
+                    all_fill_modes_indexed,
+                    all_labels.string(),
+                    all_class_ids.primitive::<u16>(),
+                    all_keypoint_ids.primitive::<u16>(),
                 )
                 .map(
                     |(
@@ -348,11 +383,12 @@ impl VisualizerSystem for Ellipsoids3DVisualizer {
                         keypoint_ids,
                     )| {
                         Ellipsoids3DComponentData {
-                            half_sizes,
-                            centers: centers.unwrap_or_default(),
+                            half_sizes: bytemuck::cast_slice(half_sizes),
+                            centers: centers.map_or(&[], |centers| bytemuck::cast_slice(centers)),
                             rotations: rotations.unwrap_or_default(),
-                            colors: colors.unwrap_or_default(),
-                            line_radii: line_radii.unwrap_or_default(),
+                            colors: colors.map_or(&[], |colors| bytemuck::cast_slice(colors)),
+                            line_radii: line_radii
+                                .map_or(&[], |line_radii| bytemuck::cast_slice(line_radii)),
                             // fill mode is currently a non-repeated component
                             fill_mode: fill_mode
                                 .unwrap_or_default()
@@ -360,8 +396,10 @@ impl VisualizerSystem for Ellipsoids3DVisualizer {
                                 .copied()
                                 .unwrap_or_default(),
                             labels: labels.unwrap_or_default(),
-                            class_ids: class_ids.unwrap_or_default(),
-                            keypoint_ids: keypoint_ids.unwrap_or_default(),
+                            class_ids: class_ids
+                                .map_or(&[], |class_ids| bytemuck::cast_slice(class_ids)),
+                            keypoint_ids: keypoint_ids
+                                .map_or(&[], |keypoint_ids| bytemuck::cast_slice(keypoint_ids)),
                         }
                     },
                 );
