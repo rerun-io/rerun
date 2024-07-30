@@ -19,4 +19,4 @@ How a geometric shape is drawn and colored.
 ## Used by
 
 * [`Boxes3D`](../archetypes/boxes3d.md)
-* [`Ellipsoids`](../archetypes/ellipsoids.md?speculative-link)
+* [`Ellipsoids3D`](../archetypes/ellipsoids3d.md?speculative-link)

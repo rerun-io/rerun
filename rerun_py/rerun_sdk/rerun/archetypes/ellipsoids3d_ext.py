@@ -8,8 +8,8 @@ from .. import components, datatypes
 from ..error_utils import _send_warning_or_raise, catch_and_log_exceptions
 
 
-class EllipsoidsExt:
-    """Extension for [Ellipsoids][rerun.archetypes.Ellipsoids]."""
+class Ellipsoids3DExt:
+    """Extension for [Ellipsoids3D][rerun.archetypes.Ellipsoids3D]."""
 
     def __init__(
         self: Any,
@@ -25,7 +25,7 @@ class EllipsoidsExt:
         class_ids: datatypes.ClassIdArrayLike | None = None,
     ) -> None:
         """
-        Create a new instance of the Ellipsoids archetype.
+        Create a new instance of the Ellipsoids3D archetype.
 
         Parameters
         ----------

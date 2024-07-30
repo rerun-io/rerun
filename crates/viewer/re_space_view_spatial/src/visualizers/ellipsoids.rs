@@ -4,7 +4,7 @@ use re_renderer::{
     renderer::MeshInstance, LineDrawableBuilder, PickingLayerInstanceId, RenderContext,
 };
 use re_types::{
-    archetypes::Ellipsoids,
+    archetypes::Ellipsoids3D,
     components::{
         ClassId, Color, FillMode, HalfSize3D, KeypointId, Position3D, Radius, Rotation3D, Text,
     },
@@ -32,9 +32,9 @@ use super::{
 
 // ---
 
-pub struct EllipsoidsVisualizer(SpatialViewVisualizerData);
+pub struct Ellipsoids3DVisualizer(SpatialViewVisualizerData);
 
-impl Default for EllipsoidsVisualizer {
+impl Default for Ellipsoids3DVisualizer {
     fn default() -> Self {
         Self(SpatialViewVisualizerData::new(Some(
             SpatialSpaceViewKind::ThreeD,
@@ -44,7 +44,7 @@ impl Default for EllipsoidsVisualizer {
 
 // NOTE: Do not put profile scopes in these methods. They are called for all entities and all
 // timestamps within a time range -- it's _a lot_.
-impl EllipsoidsVisualizer {
+impl Ellipsoids3DVisualizer {
     fn process_labels<'a>(
         entity_path: &'a EntityPath,
         centers: &'a [Position3D],
@@ -83,7 +83,7 @@ impl EllipsoidsVisualizer {
         mesh_instances: &mut Vec<MeshInstance>,
         query: &ViewQuery<'_>,
         ent_context: &SpatialSceneEntityContext<'_>,
-        data: impl Iterator<Item = EllipsoidsComponentData<'a>>,
+        data: impl Iterator<Item = Ellipsoids3DComponentData<'a>>,
         render_ctx: &RenderContext,
     ) -> Result<(), SpaceViewSystemExecutionError> {
         let entity_path = ctx.target_entity_path;
@@ -232,7 +232,7 @@ impl EllipsoidsVisualizer {
 
 // ---
 
-struct EllipsoidsComponentData<'a> {
+struct Ellipsoids3DComponentData<'a> {
     // Point of views
     half_sizes: &'a [HalfSize3D],
 
@@ -248,15 +248,15 @@ struct EllipsoidsComponentData<'a> {
     fill_mode: FillMode,
 }
 
-impl IdentifiedViewSystem for EllipsoidsVisualizer {
+impl IdentifiedViewSystem for Ellipsoids3DVisualizer {
     fn identifier() -> re_viewer_context::ViewSystemIdentifier {
-        "Ellipsoids".into()
+        "Ellipsoids3D".into()
     }
 }
 
-impl VisualizerSystem for EllipsoidsVisualizer {
+impl VisualizerSystem for Ellipsoids3DVisualizer {
     fn visualizer_query_info(&self) -> VisualizerQueryInfo {
-        VisualizerQueryInfo::from_archetype::<Ellipsoids>()
+        VisualizerQueryInfo::from_archetype::<Ellipsoids3D>()
     }
 
     fn filter_visualizable_entities(
@@ -286,7 +286,7 @@ impl VisualizerSystem for EllipsoidsVisualizer {
         // Collects solid (that is, triangles rather than wireframe) instances to be drawn.
         let mut solid_instances: Vec<MeshInstance> = Vec::new();
 
-        super::entity_iterator::process_archetype::<Self, Ellipsoids, _>(
+        super::entity_iterator::process_archetype::<Self, Ellipsoids3D, _>(
             ctx,
             view_query,
             context_systems,
@@ -347,7 +347,7 @@ impl VisualizerSystem for EllipsoidsVisualizer {
                         class_ids,
                         keypoint_ids,
                     )| {
-                        EllipsoidsComponentData {
+                        Ellipsoids3DComponentData {
                             half_sizes,
                             centers: centers.unwrap_or_default(),
                             rotations: rotations.unwrap_or_default(),
@@ -413,10 +413,10 @@ impl VisualizerSystem for EllipsoidsVisualizer {
     }
 }
 
-impl TypedComponentFallbackProvider<Color> for EllipsoidsVisualizer {
+impl TypedComponentFallbackProvider<Color> for Ellipsoids3DVisualizer {
     fn fallback_for(&self, ctx: &QueryContext<'_>) -> Color {
         auto_color_for_entity_path(ctx.target_entity_path)
     }
 }
 
-re_viewer_context::impl_component_fallback_provider!(EllipsoidsVisualizer => [Color]);
+re_viewer_context::impl_component_fallback_provider!(Ellipsoids3DVisualizer => [Color]);
