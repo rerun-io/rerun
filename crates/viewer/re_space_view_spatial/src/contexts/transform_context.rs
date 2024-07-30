@@ -66,7 +66,7 @@ impl Default for TransformInfo {
 }
 
 impl TransformInfo {
-    /// Warns that multiple transforms within the the entity are not supported.
+    /// Warns that multiple transforms within the entity are not supported.
     #[inline]
     pub fn warn_on_per_instance_transform(
         &self,
