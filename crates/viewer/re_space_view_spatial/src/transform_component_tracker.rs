@@ -47,7 +47,7 @@ impl TransformComponentTracker {
 
     #[inline]
     pub fn is_potentially_transformed_leaf_transform3d(&self, entity_path: &EntityPath) -> bool {
-        self.transform3d_entities.contains(&entity_path.hash())
+        self.leaf_transforms3d_entities.contains(&entity_path.hash())
     }
 }
 
