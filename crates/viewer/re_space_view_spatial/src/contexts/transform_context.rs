@@ -347,7 +347,7 @@ impl TransformContext {
         &self.space_origin
     }
 
-    /// Retrives transform information for a given entity.
+    /// Retrieves transform information for a given entity.
     ///
     /// Returns `None` if it's not reachable from the view's origin.
     pub fn transform_info_for_entity(&self, ent_path: &EntityPath) -> Option<&TransformInfo> {
