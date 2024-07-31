@@ -22,7 +22,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 ///
 /// The final opacity value may be a result of multiplication with alpha values as specified by other color sources.
 /// Unless otherwise specified, the default value is 1.
-#[derive(Clone, Debug, Copy, PartialEq, PartialOrd)]
+#[derive(Clone, Debug, Copy, PartialEq, PartialOrd, bytemuck::Pod, bytemuck::Zeroable)]
 #[repr(transparent)]
 pub struct Opacity(pub crate::datatypes::Float32);
 
@@ -111,6 +111,6 @@ impl ::re_types_core::Loggable for Opacity {
     where
         Self: Sized,
     {
-        crate::datatypes::Float32::from_arrow(arrow_data).map(|v| v.into_iter().map(Self).collect())
+        crate::datatypes::Float32::from_arrow(arrow_data).map(bytemuck::cast_vec)
     }
 }
