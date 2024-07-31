@@ -114,6 +114,8 @@ enum UnreachableTransformReason {
 /// making world and reference space equivalent for a given space view.
 ///
 /// Should be recomputed every frame.
+///
+/// TODO(#7025): Alternative proposal to not have to deal with tree upwards walking & per-origin tree walking.
 #[derive(Clone)]
 pub struct TransformContext {
     /// All transforms provided are relative to this reference path.
