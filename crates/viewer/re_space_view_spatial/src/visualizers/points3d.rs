@@ -95,10 +95,14 @@ impl Points3DVisualizer {
             let colors =
                 process_color_slice(ctx, self, num_instances, &annotation_infos, data.colors);
 
+            let world_from_obj = ent_context
+                .transform_info
+                .single_entity_transform_required(entity_path, "Points3D");
+
             {
                 let point_batch = point_builder
                     .batch(entity_path.to_string())
-                    .world_from_obj(ent_context.world_from_entity)
+                    .world_from_obj(world_from_obj)
                     .outline_mask_ids(ent_context.highlight.overall)
                     .picking_object_id(re_renderer::PickingLayerObjectId(entity_path.hash64()));
 
@@ -125,11 +129,8 @@ impl Points3DVisualizer {
 
             let obj_space_bounding_box =
                 re_math::BoundingBox::from_points(positions.iter().copied());
-            self.data.add_bounding_box(
-                entity_path.hash(),
-                obj_space_bounding_box,
-                ent_context.world_from_entity,
-            );
+            self.data
+                .add_bounding_box(entity_path.hash(), obj_space_bounding_box, world_from_obj);
 
             load_keypoint_connections(line_builder, ent_context, entity_path, &keypoints)?;
 
@@ -150,7 +151,7 @@ impl Points3DVisualizer {
                     &data.labels,
                     &colors,
                     &annotation_infos,
-                    ent_context.world_from_entity,
+                    world_from_obj,
                 ));
             }
         }

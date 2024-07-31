@@ -119,26 +119,27 @@ impl Mesh3DVisualizer {
             });
 
             if let Some(mesh) = mesh {
-                instances.extend(mesh.mesh_instances.iter().map(move |mesh_instance| {
-                    let entity_from_mesh = mesh_instance.world_from_mesh;
-                    let world_from_mesh = ent_context.world_from_entity * entity_from_mesh;
+                // Let's draw the mesh once for every instance transform.
+                // TODO(#7026): This a rare form of hybrid joining.
+                for &world_from_instance in &ent_context.transform_info.reference_from_instances {
+                    instances.extend(mesh.mesh_instances.iter().map(move |mesh_instance| {
+                        let entity_from_mesh = mesh_instance.world_from_mesh;
+                        let world_from_mesh = world_from_instance * entity_from_mesh;
 
-                    MeshInstance {
-                        gpu_mesh: mesh_instance.gpu_mesh.clone(),
-                        world_from_mesh,
-                        outline_mask_ids,
-                        picking_layer_id: picking_layer_id_from_instance_path_hash(
-                            picking_instance_hash,
-                        ),
-                        ..Default::default()
-                    }
-                }));
+                        MeshInstance {
+                            gpu_mesh: mesh_instance.gpu_mesh.clone(),
+                            world_from_mesh,
+                            outline_mask_ids,
+                            picking_layer_id: picking_layer_id_from_instance_path_hash(
+                                picking_instance_hash,
+                            ),
+                            ..Default::default()
+                        }
+                    }));
 
-                self.0.add_bounding_box(
-                    entity_path.hash(),
-                    mesh.bbox(),
-                    ent_context.world_from_entity,
-                );
+                    self.0
+                        .add_bounding_box(entity_path.hash(), mesh.bbox(), world_from_instance);
+                }
             };
         }
     }

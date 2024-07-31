@@ -24,7 +24,6 @@ mod log_msg;
 mod pinhole;
 mod rotation3d;
 mod store_id;
-mod transform3d;
 
 pub mod item_ui;
 

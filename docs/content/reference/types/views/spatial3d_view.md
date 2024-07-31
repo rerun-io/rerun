@@ -45,6 +45,7 @@ snippet: views/spatial3d
 * [`Clear`](../archetypes/clear.md)
 * [`DisconnectedSpace`](../archetypes/disconnected_space.md)
 * [`Ellipsoids`](../archetypes/ellipsoids.md)
+* [`LeafTransforms3D`](../archetypes/leaf_transforms3d.md)
 * [`LineStrips3D`](../archetypes/line_strips3d.md)
 * [`Mesh3D`](../archetypes/mesh3d.md)
 * [`Points3D`](../archetypes/points3d.md)

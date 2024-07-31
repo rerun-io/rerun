@@ -7,7 +7,7 @@ use re_types::{
     image::ImageKind,
 };
 use re_viewer_context::{
-    ApplicableEntities, IdentifiedViewSystem, ImageFormat, ImageInfo, QueryContext, SpaceViewClass,
+    ApplicableEntities, IdentifiedViewSystem, ImageFormat, ImageInfo, QueryContext,
     SpaceViewSystemExecutionError, TypedComponentFallbackProvider, ViewContext,
     ViewContextCollection, ViewQuery, VisualizableEntities, VisualizableFilterContext,
     VisualizerQueryInfo, VisualizerSystem,
@@ -17,12 +17,10 @@ use crate::{
     contexts::SpatialSceneEntityContext,
     view_kind::SpatialSpaceViewKind,
     visualizers::{filter_visualizable_2d_entities, textured_rect_from_image},
-    PickableImageRect, SpatialSpaceView2D,
+    PickableImageRect,
 };
 
-use super::{
-    bounding_box_for_textured_rect, entity_iterator::process_archetype, SpatialViewVisualizerData,
-};
+use super::{entity_iterator::process_archetype, SpatialViewVisualizerData};
 
 pub struct ImageVisualizer {
     pub data: SpatialViewVisualizerData,
@@ -202,19 +200,9 @@ impl ImageVisualizer {
                 spatial_ctx,
                 &image,
                 multiplicative_tint,
+                "Image",
+                &mut self.data,
             ) {
-                // Only update the bounding box if this is a 2D space view.
-                // This is avoids a cyclic relationship where the image plane grows
-                // the bounds which in turn influence the size of the image plane.
-                // See: https://github.com/rerun-io/rerun/issues/3728
-                if spatial_ctx.space_view_class_identifier == SpatialSpaceView2D::identifier() {
-                    self.data.add_bounding_box(
-                        entity_path.hash(),
-                        bounding_box_for_textured_rect(&textured_rect),
-                        spatial_ctx.world_from_entity,
-                    );
-                }
-
                 self.images.push(PickableImageRect {
                     ent_path: entity_path.clone(),
                     image,

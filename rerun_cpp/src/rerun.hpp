@@ -40,8 +40,11 @@ namespace rerun {
     using components::LineStrip2D;
     using components::LineStrip3D;
     using components::MediaType;
+<<<<<<< HEAD
     using components::OutOfTreeTransform3D;
     using components::PixelFormat;
+=======
+>>>>>>> main
     using components::Position2D;
     using components::Position3D;
     using components::Radius;
@@ -62,11 +65,9 @@ namespace rerun {
     using datatypes::Quaternion;
     using datatypes::Rgba32;
     using datatypes::RotationAxisAngle;
-    using datatypes::Scale3D;
     using datatypes::TensorBuffer;
     using datatypes::TensorData;
     using datatypes::TensorDimension;
-    using datatypes::TranslationRotationScale3D;
     using datatypes::Vec2D;
     using datatypes::Vec3D;
     using datatypes::Vec4D;

@@ -6,7 +6,7 @@ use re_chunk_store::{
     ChunkStore, ChunkStoreDiffKind, ChunkStoreEvent, ChunkStoreSubscriber,
     ChunkStoreSubscriberHandle,
 };
-use re_log_types::{EntityPath, StoreId};
+use re_log_types::{EntityPath, EntityPathHash, StoreId};
 use re_types::ComponentName;
 
 // ---
@@ -20,8 +20,11 @@ use re_types::ComponentName;
 /// This is a huge performance improvement in practice, especially in recordings with many entities.
 #[derive(Default)]
 pub struct TransformComponentTracker {
-    /// Which entities have had any of these components at any point in time.
-    entities: IntSet<EntityPath>,
+    /// Which entities have had any `Transform3D` component at any point in time.
+    transform3d_entities: IntSet<EntityPathHash>,
+
+    /// Which entities have had any `LeafTransforms3D` components at any point in time.
+    leaf_transforms3d_entities: IntSet<EntityPathHash>,
 }
 
 impl TransformComponentTracker {
@@ -38,8 +41,14 @@ impl TransformComponentTracker {
     }
 
     #[inline]
-    pub fn is_potentially_transformed(&self, entity_path: &EntityPath) -> bool {
-        self.entities.contains(entity_path)
+    pub fn is_potentially_transformed_transform3d(&self, entity_path: &EntityPath) -> bool {
+        self.transform3d_entities.contains(&entity_path.hash())
+    }
+
+    #[inline]
+    pub fn is_potentially_transformed_leaf_transform3d(&self, entity_path: &EntityPath) -> bool {
+        self.leaf_transforms3d_entities
+            .contains(&entity_path.hash())
     }
 }
 
@@ -47,7 +56,8 @@ impl TransformComponentTracker {
 
 pub struct TransformComponentTrackerStoreSubscriber {
     /// The components of interest.
-    components: IntSet<ComponentName>,
+    transform_components: IntSet<ComponentName>,
+    leaf_transform_components: IntSet<ComponentName>,
 
     per_store: HashMap<StoreId, TransformComponentTracker>,
 }
@@ -56,13 +66,15 @@ impl Default for TransformComponentTrackerStoreSubscriber {
     #[inline]
     fn default() -> Self {
         use re_types::Archetype as _;
-        let components = re_types::archetypes::Transform3D::all_components()
-            .iter()
-            .copied()
-            .collect();
-
         Self {
-            components,
+            transform_components: re_types::archetypes::Transform3D::all_components()
+                .iter()
+                .copied()
+                .collect(),
+            leaf_transform_components: re_types::archetypes::LeafTransforms3D::all_components()
+                .iter()
+                .copied()
+                .collect(),
             per_store: Default::default(),
         }
     }
@@ -105,11 +117,18 @@ impl ChunkStoreSubscriber for TransformComponentTrackerStoreSubscriber {
             let transform_component_tracker =
                 self.per_store.entry(event.store_id.clone()).or_default();
 
+            let entity_path_hash = event.chunk.entity_path().hash();
+
             for component_name in event.chunk.component_names() {
-                if self.components.contains(&component_name) {
+                if self.transform_components.contains(&component_name) {
                     transform_component_tracker
-                        .entities
-                        .insert(event.chunk.entity_path().clone());
+                        .transform3d_entities
+                        .insert(entity_path_hash);
+                }
+                if self.leaf_transform_components.contains(&component_name) {
+                    transform_component_tracker
+                        .leaf_transforms3d_entities
+                        .insert(entity_path_hash);
                 }
             }
         }

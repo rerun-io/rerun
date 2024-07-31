@@ -19,4 +19,3 @@ A 3D rotation.
 ## Used by
 
 * [`Rotation3D`](../components/rotation3d.md)
-* [`TranslationRotationScale3D`](../datatypes/translation_rotation_scale3d.md)

@@ -14,7 +14,7 @@ namespace rerun {
     ) {
         using namespace archetypes;
         std::vector<DataCell> cells;
-        cells.reserve(4);
+        cells.reserve(3);
 
         {
             auto result = DataCell::from_loggable(archetype.blob);
@@ -23,11 +23,6 @@ namespace rerun {
         }
         if (archetype.media_type.has_value()) {
             auto result = DataCell::from_loggable(archetype.media_type.value());
-            RR_RETURN_NOT_OK(result.error);
-            cells.push_back(std::move(result.value));
-        }
-        if (archetype.transform.has_value()) {
-            auto result = DataCell::from_loggable(archetype.transform.value());
             RR_RETURN_NOT_OK(result.error);
             cells.push_back(std::move(result.value));
         }

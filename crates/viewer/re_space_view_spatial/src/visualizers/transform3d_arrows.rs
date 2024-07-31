@@ -70,12 +70,26 @@ impl VisualizerSystem for Transform3DArrowsVisualizer {
 
         for data_result in query.iter_visible_data_results(ctx, Self::identifier()) {
             // Use transform without potential pinhole, since we don't want to visualize image-space coordinates.
-            let Some(world_from_obj) = transforms.reference_from_entity_ignoring_pinhole(
-                &data_result.entity_path,
-                ctx.recording(),
-                &latest_at_query,
-            ) else {
+            let Some(transform_info) =
+                transforms.transform_info_for_entity(&data_result.entity_path)
+            else {
                 continue;
+            };
+            let world_from_obj = if let Some(twod_in_threed_info) =
+                &transform_info.twod_in_threed_info
+            {
+                if twod_in_threed_info.parent_pinhole != data_result.entity_path {
+                    // We're inside a 2D space. But this is a 3D transform.
+                    // Something is wrong here and this is not the right place to report it.
+                    // Better just don't draw the axis!
+                    continue;
+                } else {
+                    // Don't apply the from-2D transform, stick with the last known 3D.
+                    twod_in_threed_info.reference_from_pinhole_entity
+                }
+            } else {
+                transform_info
+                    .single_entity_transform_required(&data_result.entity_path, "Transform3DArrows")
             };
 
             let results = data_result

@@ -41,6 +41,11 @@ from .half_size2d import HalfSize2D, HalfSize2DBatch, HalfSize2DType
 from .half_size3d import HalfSize3D, HalfSize3DBatch, HalfSize3DType
 from .image_plane_distance import ImagePlaneDistance, ImagePlaneDistanceBatch, ImagePlaneDistanceType
 from .keypoint_id import KeypointId, KeypointIdBatch, KeypointIdType
+from .leaf_rotation_axis_angle import LeafRotationAxisAngle, LeafRotationAxisAngleBatch, LeafRotationAxisAngleType
+from .leaf_rotation_quat import LeafRotationQuat, LeafRotationQuatBatch, LeafRotationQuatType
+from .leaf_scale3d import LeafScale3D, LeafScale3DBatch, LeafScale3DType
+from .leaf_transform_mat3x3 import LeafTransformMat3x3, LeafTransformMat3x3Batch, LeafTransformMat3x3Type
+from .leaf_translation3d import LeafTranslation3D, LeafTranslation3DBatch, LeafTranslation3DType
 from .line_strip2d import LineStrip2D, LineStrip2DArrayLike, LineStrip2DBatch, LineStrip2DLike, LineStrip2DType
 from .line_strip3d import LineStrip3D, LineStrip3DArrayLike, LineStrip3DBatch, LineStrip3DLike, LineStrip3DType
 from .magnification_filter import (
@@ -55,7 +60,6 @@ from .marker_size import MarkerSize, MarkerSizeBatch, MarkerSizeType
 from .media_type import MediaType, MediaTypeBatch, MediaTypeType
 from .name import Name, NameBatch, NameType
 from .opacity import Opacity, OpacityBatch, OpacityType
-from .out_of_tree_transform3d import OutOfTreeTransform3D, OutOfTreeTransform3DBatch, OutOfTreeTransform3DType
 from .pinhole_projection import PinholeProjection, PinholeProjectionBatch, PinholeProjectionType
 from .pixel_format import PixelFormat, PixelFormatArrayLike, PixelFormatBatch, PixelFormatLike, PixelFormatType
 from .position2d import Position2D, Position2DBatch, Position2DType
@@ -81,7 +85,6 @@ from .tensor_width_dimension import TensorWidthDimension, TensorWidthDimensionBa
 from .texcoord2d import Texcoord2D, Texcoord2DBatch, Texcoord2DType
 from .text import Text, TextBatch, TextType
 from .text_log_level import TextLogLevel, TextLogLevelBatch, TextLogLevelType
-from .transform3d import Transform3D, Transform3DBatch, Transform3DType
 from .transform_mat3x3 import TransformMat3x3, TransformMat3x3Batch, TransformMat3x3Type
 from .transform_relation import (
     TransformRelation,
@@ -172,6 +175,21 @@ __all__ = [
     "KeypointId",
     "KeypointIdBatch",
     "KeypointIdType",
+    "LeafRotationAxisAngle",
+    "LeafRotationAxisAngleBatch",
+    "LeafRotationAxisAngleType",
+    "LeafRotationQuat",
+    "LeafRotationQuatBatch",
+    "LeafRotationQuatType",
+    "LeafScale3D",
+    "LeafScale3DBatch",
+    "LeafScale3DType",
+    "LeafTransformMat3x3",
+    "LeafTransformMat3x3Batch",
+    "LeafTransformMat3x3Type",
+    "LeafTranslation3D",
+    "LeafTranslation3DBatch",
+    "LeafTranslation3DType",
     "LineStrip2D",
     "LineStrip2DArrayLike",
     "LineStrip2DBatch",
@@ -204,9 +222,6 @@ __all__ = [
     "Opacity",
     "OpacityBatch",
     "OpacityType",
-    "OutOfTreeTransform3D",
-    "OutOfTreeTransform3DBatch",
-    "OutOfTreeTransform3DType",
     "PinholeProjection",
     "PinholeProjectionBatch",
     "PinholeProjectionType",
@@ -272,9 +287,6 @@ __all__ = [
     "TextLogLevelBatch",
     "TextLogLevelType",
     "TextType",
-    "Transform3D",
-    "Transform3DBatch",
-    "Transform3DType",
     "TransformMat3x3",
     "TransformMat3x3Batch",
     "TransformMat3x3Type",

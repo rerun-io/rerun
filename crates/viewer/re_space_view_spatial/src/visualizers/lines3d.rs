@@ -71,10 +71,14 @@ impl Lines3DVisualizer {
             let colors =
                 process_color_slice(ctx, self, num_instances, &annotation_infos, data.colors);
 
+            let world_from_obj = ent_context
+                .transform_info
+                .single_entity_transform_required(entity_path, "Lines2D");
+
             let mut line_batch = line_builder
                 .batch(entity_path.to_string())
                 .depth_offset(ent_context.depth_offset)
-                .world_from_obj(ent_context.world_from_entity)
+                .world_from_obj(world_from_obj)
                 .outline_mask_ids(ent_context.highlight.overall)
                 .picking_object_id(re_renderer::PickingLayerObjectId(entity_path.hash64()));
 
@@ -106,11 +110,8 @@ impl Lines3DVisualizer {
             }
             debug_assert_eq!(data.strips.len(), num_rendered_strips, "the number of renderer strips after all post-processing is done should be equal to {} (got {num_rendered_strips} instead)", data.strips.len());
 
-            self.data.add_bounding_box(
-                entity_path.hash(),
-                obj_space_bounding_box,
-                ent_context.world_from_entity,
-            );
+            self.data
+                .add_bounding_box(entity_path.hash(), obj_space_bounding_box, world_from_obj);
 
             if data.labels.len() == 1 || num_instances <= super::MAX_NUM_LABELS_PER_ENTITY {
                 // If there's many strips but only a single label, place the single label at the middle of the visualization.
@@ -136,7 +137,7 @@ impl Lines3DVisualizer {
                     data.labels,
                     &colors,
                     &annotation_infos,
-                    ent_context.world_from_entity,
+                    world_from_obj,
                 ));
             }
         }

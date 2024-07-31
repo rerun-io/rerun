@@ -26,9 +26,9 @@ pub use images::ImageVisualizer;
 pub use segmentation_images::SegmentationImageVisualizer;
 pub use transform3d_arrows::{add_axis_arrows, AxisLengthDetector, Transform3DArrowsVisualizer};
 pub use utilities::{
-    bounding_box_for_textured_rect, entity_iterator, process_labels_2d, process_labels_3d,
-    process_labels_3d_2, textured_rect_from_image, SpatialViewVisualizerData, UiLabel,
-    UiLabelTarget, MAX_NUM_LABELS_PER_ENTITY,
+    entity_iterator, process_labels_2d, process_labels_3d, process_labels_3d_2,
+    textured_rect_from_image, SpatialViewVisualizerData, UiLabel, UiLabelTarget,
+    MAX_NUM_LABELS_PER_ENTITY,
 };
 
 // ---
@@ -320,9 +320,12 @@ pub fn load_keypoint_connections(
     line_builder.reserve_strips(max_num_connections)?;
     line_builder.reserve_vertices(max_num_connections * 2)?;
 
+    // The calling visualizer has the same issue of not knowing what do with per instance transforms
+    // and should have warned already if there are multiple transforms.
+    let world_from_obj = ent_context.transform_info.single_entity_transform_silent();
     let mut line_batch = line_builder
         .batch("keypoint connections")
-        .world_from_obj(ent_context.world_from_entity)
+        .world_from_obj(world_from_obj)
         .picking_object_id(re_renderer::PickingLayerObjectId(ent_path.hash64()));
 
     // TODO(andreas): Make configurable. Should we pick up the point's radius and make this proportional?
