@@ -1,10 +1,11 @@
 use itertools::Itertools as _;
 
 use re_query::range_zip_1x2;
-use re_space_view::HybridResults;
+use re_space_view::HybridResults2;
 use re_types::{
     archetypes::ImageEncoded,
     components::{Blob, DrawOrder, MediaType, Opacity},
+    Loggable as _,
 };
 use re_viewer_context::{
     ApplicableEntities, IdentifiedViewSystem, ImageDecodeCache, QueryContext,
@@ -20,7 +21,7 @@ use crate::{
     PickableImageRect,
 };
 
-use super::{entity_iterator::process_archetype, SpatialViewVisualizerData};
+use super::{entity_iterator::process_archetype2, SpatialViewVisualizerData};
 
 pub struct ImageEncodedVisualizer {
     pub data: SpatialViewVisualizerData,
@@ -66,11 +67,14 @@ impl VisualizerSystem for ImageEncodedVisualizer {
             return Err(SpaceViewSystemExecutionError::NoRenderContextError);
         };
 
-        process_archetype::<Self, ImageEncoded, _>(
+        process_archetype2::<Self, ImageEncoded, _>(
             ctx,
             view_query,
             context_systems,
-            |ctx, spatial_ctx, results| self.process_image_encoded(ctx, results, spatial_ctx),
+            |ctx, spatial_ctx, results| {
+                self.process_image_encoded(ctx, results, spatial_ctx);
+                Ok(())
+            },
         )?;
 
         // TODO(#702): draw order is translated to depth offset, which works fine for opaque images,
@@ -124,34 +128,39 @@ impl ImageEncodedVisualizer {
     fn process_image_encoded(
         &mut self,
         ctx: &QueryContext<'_>,
-        results: &HybridResults<'_>,
+        results: &HybridResults2<'_>,
         spatial_ctx: &SpatialSceneEntityContext<'_>,
-    ) -> Result<(), SpaceViewSystemExecutionError> {
-        use re_space_view::RangeResultsExt as _;
+    ) {
+        use super::entity_iterator::iter_buffer;
+        use re_space_view::RangeResultsExt2 as _;
 
-        let resolver = ctx.recording().resolver();
         let entity_path = ctx.target_entity_path;
 
-        let blobs = match results.get_required_component_dense::<Blob>(resolver) {
-            Some(blobs) => blobs?,
-            _ => return Ok(()),
+        let Some(all_blob_chunks) = results.get_required_chunks(&Blob::name()) else {
+            return;
         };
 
-        let media_types = results.get_or_empty_dense::<MediaType>(resolver)?;
-        let opacities = results.get_or_empty_dense::<Opacity>(resolver)?;
+        let timeline = ctx.query.timeline();
+        let all_blobs_indexed = iter_buffer::<u8>(&all_blob_chunks, timeline, Blob::name());
+        let all_media_types = results.iter_as(timeline, MediaType::name());
+        let all_opacities = results.iter_as(timeline, Opacity::name());
 
-        for (&(_time, tensor_data_row_id), blobs, media_types, opacities) in range_zip_1x2(
-            blobs.range_indexed(),
-            media_types.range_indexed(),
-            opacities.range_indexed(),
+        for ((_time, tensor_data_row_id), blobs, media_types, opacities) in range_zip_1x2(
+            all_blobs_indexed,
+            all_media_types.string(),
+            all_opacities.primitive::<f32>(),
         ) {
             let Some(blob) = blobs.first() else {
                 continue;
             };
-            let media_type = media_types.and_then(|media_types| media_types.first());
+            let media_type = media_types.and_then(|media_types| media_types.first().cloned());
 
             let image = ctx.viewer_ctx.cache.entry(|c: &mut ImageDecodeCache| {
-                c.entry(tensor_data_row_id, blob, media_type.map(|mt| mt.as_str()))
+                c.entry(
+                    tensor_data_row_id,
+                    blob,
+                    media_type.as_ref().map(|mt| mt.as_str()),
+                )
             });
 
             let image = match image {
@@ -164,8 +173,8 @@ impl ImageEncodedVisualizer {
                 }
             };
 
-            let opacity = opacities.and_then(|opacity| opacity.first());
-
+            let opacity: Option<&Opacity> =
+                opacities.and_then(|opacity| opacity.first().map(bytemuck::cast_ref));
             let opacity = opacity.copied().unwrap_or_else(|| self.fallback_for(ctx));
             let multiplicative_tint =
                 re_renderer::Rgba::from_white_alpha(opacity.0.clamp(0.0, 1.0));
@@ -187,8 +196,6 @@ impl ImageEncodedVisualizer {
                 });
             }
         }
-
-        Ok(())
     }
 }
 
