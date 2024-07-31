@@ -168,6 +168,12 @@ quick_start = [ # These examples don't have exactly the same implementation.
   "py",
   "rust",
 ]
+"archetypes/mesh3d_leaf_transforms3d" = [ # TODO(#3235): Slight floating point differences in deg to rad conversion.
+  "cpp",
+  "py",
+  "rust",
+]
+
 
 # `$config_dir` will be replaced with the absolute path of `docs/snippets`.
 [extra_args]
