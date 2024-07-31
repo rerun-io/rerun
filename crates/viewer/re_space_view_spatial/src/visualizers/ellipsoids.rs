@@ -1,5 +1,3 @@
-use itertools::Itertools as _;
-
 use re_entity_db::InstancePathHash;
 use re_log_types::Instance;
 use re_renderer::{
@@ -298,30 +296,17 @@ impl VisualizerSystem for Ellipsoids3DVisualizer {
                 );
                 let all_colors = results.iter_as(timeline, Color::name());
                 let all_line_radii = results.iter_as(timeline, Radius::name());
+                // Deserialized because it's a union.
+                let all_fill_modes = results.iter_as(timeline, FillMode::name());
                 let all_labels = results.iter_as(timeline, Text::name());
                 let all_class_ids = results.iter_as(timeline, ClassId::name());
                 let all_keypoint_ids = results.iter_as(timeline, KeypointId::name());
-
-                // Deserialized because it's a union.
-                let all_fill_mode_chunks = results.get_optional_chunks(&FillMode::name());
-                let mut all_fill_mode_iters = all_fill_mode_chunks
-                    .iter()
-                    .map(|chunk| chunk.iter_component::<FillMode>())
-                    .collect_vec();
-                let all_fill_modes_indexed = {
-                    let all_fill_modes =
-                        all_fill_mode_iters.iter_mut().flat_map(|it| it.into_iter());
-                    let all_fill_modes_indices = all_fill_mode_chunks.iter().flat_map(|chunk| {
-                        chunk.iter_component_indices(&timeline, &FillMode::name())
-                    });
-                    itertools::izip!(all_fill_modes_indices, all_fill_modes)
-                };
 
                 let data = re_query2::range_zip_1x6(
                     all_half_sizes_indexed,
                     all_colors.primitive::<u32>(),
                     all_line_radii.primitive::<f32>(),
-                    all_fill_modes_indexed,
+                    all_fill_modes.component::<FillMode>(),
                     all_labels.string(),
                     all_class_ids.primitive::<u16>(),
                     all_keypoint_ids.primitive::<u16>(),
@@ -332,7 +317,7 @@ impl VisualizerSystem for Ellipsoids3DVisualizer {
                         half_sizes,
                         colors,
                         line_radii,
-                        fill_mode,
+                        fill_modes,
                         labels,
                         class_ids,
                         keypoint_ids,
@@ -343,7 +328,7 @@ impl VisualizerSystem for Ellipsoids3DVisualizer {
                             line_radii: line_radii
                                 .map_or(&[], |line_radii| bytemuck::cast_slice(line_radii)),
                             // fill mode is currently a non-repeated component
-                            fill_mode: fill_mode
+                            fill_mode: fill_modes
                                 .unwrap_or_default()
                                 .first()
                                 .copied()

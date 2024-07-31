@@ -1,5 +1,3 @@
-use itertools::Itertools as _;
-
 use re_entity_db::InstancePathHash;
 use re_log_types::Instance;
 use re_renderer::{
@@ -269,24 +267,12 @@ impl VisualizerSystem for Boxes3DVisualizer {
                 let all_keypoint_ids = results.iter_as(timeline, KeypointId::name());
 
                 // Deserialized because it's a union.
-                let all_fill_mode_chunks = results.get_optional_chunks(&FillMode::name());
-                let mut all_fill_mode_iters = all_fill_mode_chunks
-                    .iter()
-                    .map(|chunk| chunk.iter_component::<FillMode>())
-                    .collect_vec();
-                let mut all_fill_modes_indexed = {
-                    let all_fill_modes =
-                        all_fill_mode_iters.iter_mut().flat_map(|it| it.into_iter());
-                    let all_fill_modes_indices = all_fill_mode_chunks.iter().flat_map(|chunk| {
-                        chunk.iter_component_indices(&timeline, &FillMode::name())
-                    });
-                    itertools::izip!(all_fill_modes_indices, all_fill_modes)
-                };
-
+                let all_fill_modes = results.iter_as(timeline, FillMode::name());
                 // fill mode is currently a non-repeated component
-                let fill_mode: FillMode = all_fill_modes_indexed
+                let fill_mode: FillMode = all_fill_modes
+                    .component::<FillMode>()
                     .next()
-                    .and_then(|(_, fill_modes)| fill_modes.first().copied())
+                    .and_then(|(_, fill_modes)| fill_modes.as_slice().first().copied())
                     .unwrap_or_default();
 
                 match fill_mode {
