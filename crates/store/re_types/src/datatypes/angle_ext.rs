@@ -2,6 +2,9 @@ use super::Angle;
 use std::fmt::Formatter;
 
 impl Angle {
+    /// Zero angle, often used for representing no rotation.
+    pub const ZERO: Self = Self { radians: 0.0 };
+
     /// Angle in radians.
     #[inline]
     pub fn radians(&self) -> f32 {

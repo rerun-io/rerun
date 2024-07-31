@@ -110,7 +110,7 @@ rr.log(
     rr.Boxes3D(
         sizes=sizes,
         centers=centers,
-        rotations=rotations,
+        quaternions=quaternions,
         class_ids=class_ids,
         fill_mode=rr.components.FillMode.Solid,
     ),

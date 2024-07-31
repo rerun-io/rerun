@@ -36,7 +36,8 @@ class Ellipsoids(EllipsoidsExt, Archetype):
         self.__attrs_init__(
             half_sizes=None,  # type: ignore[arg-type]
             centers=None,  # type: ignore[arg-type]
-            rotations=None,  # type: ignore[arg-type]
+            rotation_axis_angles=None,  # type: ignore[arg-type]
+            quaternions=None,  # type: ignore[arg-type]
             colors=None,  # type: ignore[arg-type]
             line_radii=None,  # type: ignore[arg-type]
             fill_mode=None,  # type: ignore[arg-type]
@@ -73,14 +74,27 @@ class Ellipsoids(EllipsoidsExt, Archetype):
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 
-    rotations: components.Rotation3DBatch | None = field(
+    rotation_axis_angles: components.LeafRotationAxisAngleBatch | None = field(
         metadata={"component": "optional"},
         default=None,
-        converter=components.Rotation3DBatch._optional,  # type: ignore[misc]
+        converter=components.LeafRotationAxisAngleBatch._optional,  # type: ignore[misc]
     )
-    # Optional rotations of the ellipsoids.
+    # Rotations via axis + angle.
     #
-    # If not specified, the axes of the ellipsoid align with the axes of the coordinate system.
+    # If no rotation is specified, the axes of the ellipsoid align with the axes of the local coordinate system.
+    # Note that this uses a [`components.LeafRotationAxisAngle`][rerun.components.LeafRotationAxisAngle] which is also used by [`archetypes.LeafTransforms3D`][rerun.archetypes.LeafTransforms3D].
+    #
+    # (Docstring intentionally commented out to hide this field from the docs)
+
+    quaternions: components.LeafRotationQuatBatch | None = field(
+        metadata={"component": "optional"},
+        default=None,
+        converter=components.LeafRotationQuatBatch._optional,  # type: ignore[misc]
+    )
+    # Rotations via quaternion.
+    #
+    # If no rotation is specified, the axes of the ellipsoid align with the axes of the local coordinate system.
+    # Note that this uses a [`components.LeafRotationQuat`][rerun.components.LeafRotationQuat] which is also used by [`archetypes.LeafTransforms3D`][rerun.archetypes.LeafTransforms3D].
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 

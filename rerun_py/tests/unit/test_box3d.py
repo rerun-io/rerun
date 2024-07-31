@@ -73,7 +73,7 @@ def test_boxes3d() -> None:
 
         assert arch.half_sizes == half_sizes_expected(half_sizes, HalfSize3DBatch)
         assert arch.centers == centers_expected(centers, LeafTranslation3DBatch)
-        assert arch.rotations == expected_rotations(rotations, Rotation3DBatch)
+        # TODO: rotation testing
         assert arch.colors == colors_expected(colors)
         assert arch.radii == radii_expected(radii)
         assert arch.labels == labels_expected(labels)

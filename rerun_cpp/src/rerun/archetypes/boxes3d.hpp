@@ -9,9 +9,10 @@
 #include "../components/color.hpp"
 #include "../components/fill_mode.hpp"
 #include "../components/half_size3d.hpp"
+#include "../components/leaf_rotation_axis_angle.hpp"
+#include "../components/leaf_rotation_quat.hpp"
 #include "../components/leaf_translation3d.hpp"
 #include "../components/radius.hpp"
-#include "../components/rotation3d.hpp"
 #include "../components/text.hpp"
 #include "../data_cell.hpp"
 #include "../indicator_component.hpp"
@@ -46,11 +47,10 @@ namespace rerun::archetypes {
     ///             {{2.0f, 0.0f, 0.0f}, {-2.0f, 0.0f, 0.0f}, {0.0f, 0.0f, 2.0f}},
     ///             {{2.0f, 2.0f, 1.0f}, {1.0f, 1.0f, 0.5f}, {2.0f, 0.5f, 1.0f}}
     ///         )
-    ///             .with_rotations({
+    ///             .with_quaternions({
     ///                 rerun::Quaternion::IDENTITY,
     ///                 // 45 degrees around Z
     ///                 rerun::Quaternion::from_xyzw(0.0f, 0.0f, 0.382683f, 0.923880f),
-    ///                 rerun::RotationAxisAngle({0.0f, 1.0f, 0.0f}, rerun::Angle::degrees(30.0f)),
     ///             })
     ///             .with_radii({0.025f})
     ///             .with_colors({
@@ -73,8 +73,17 @@ namespace rerun::archetypes {
         /// Note that this uses a `components::LeafTranslation3D` which is also used by `archetypes::LeafTransforms3D`.
         std::optional<Collection<rerun::components::LeafTranslation3D>> centers;
 
-        /// Optional rotations of the boxes.
-        std::optional<Collection<rerun::components::Rotation3D>> rotations;
+        /// Rotations via axis + angle.
+        ///
+        /// If no rotation is specified, the axes of the boxes align with the axes of the local coordinate system.
+        /// Note that this uses a `components::LeafRotationAxisAngle` which is also used by `archetypes::LeafTransforms3D`.
+        std::optional<Collection<rerun::components::LeafRotationAxisAngle>> rotation_axis_angles;
+
+        /// Rotations via quaternion.
+        ///
+        /// If no rotation is specified, the axes of the boxes align with the axes of the local coordinate system.
+        /// Note that this uses a `components::LeafRotationQuat` which is also used by `archetypes::LeafTransforms3D`.
+        std::optional<Collection<rerun::components::LeafRotationQuat>> quaternions;
 
         /// Optional colors for the boxes.
         std::optional<Collection<rerun::components::Color>> colors;
@@ -169,9 +178,24 @@ namespace rerun::archetypes {
             RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
         }
 
-        /// Optional rotations of the boxes.
-        Boxes3D with_rotations(Collection<rerun::components::Rotation3D> _rotations) && {
-            rotations = std::move(_rotations);
+        /// Rotations via axis + angle.
+        ///
+        /// If no rotation is specified, the axes of the boxes align with the axes of the local coordinate system.
+        /// Note that this uses a `components::LeafRotationAxisAngle` which is also used by `archetypes::LeafTransforms3D`.
+        Boxes3D with_rotation_axis_angles(
+            Collection<rerun::components::LeafRotationAxisAngle> _rotation_axis_angles
+        ) && {
+            rotation_axis_angles = std::move(_rotation_axis_angles);
+            // See: https://github.com/rerun-io/rerun/issues/4027
+            RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
+        }
+
+        /// Rotations via quaternion.
+        ///
+        /// If no rotation is specified, the axes of the boxes align with the axes of the local coordinate system.
+        /// Note that this uses a `components::LeafRotationQuat` which is also used by `archetypes::LeafTransforms3D`.
+        Boxes3D with_quaternions(Collection<rerun::components::LeafRotationQuat> _quaternions) && {
+            quaternions = std::move(_quaternions);
             // See: https://github.com/rerun-io/rerun/issues/4027
             RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
         }

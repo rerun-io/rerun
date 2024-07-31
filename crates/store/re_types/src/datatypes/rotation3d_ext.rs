@@ -65,14 +65,3 @@ impl Default for Rotation3D {
         Self::IDENTITY
     }
 }
-
-// TODO(#6831): Transitional, to be removed with the rest of this file.
-impl From<crate::Rotation3D> for Rotation3D {
-    #[inline]
-    fn from(r: crate::Rotation3D) -> Self {
-        match r {
-            crate::Rotation3D::Quaternion(q) => Self::Quaternion(q.0),
-            crate::Rotation3D::AxisAngle(a) => Self::AxisAngle(a.0),
-        }
-    }
-}

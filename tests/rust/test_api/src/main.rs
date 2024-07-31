@@ -32,7 +32,7 @@ fn test_bbox(rec: &RecordingStream) -> anyhow::Result<()> {
         "bbox_test/bbox",
         &Boxes3D::from_half_sizes([(1.0, 0.5, 0.25)])
             .with_colors([0x00FF00FF])
-            .with_rotations([Quaternion::from_xyzw([
+            .with_quaternions([Quaternion::from_xyzw([
                 0.0,
                 0.0,
                 (TAU / 8.0).sin(),
@@ -47,7 +47,7 @@ fn test_bbox(rec: &RecordingStream) -> anyhow::Result<()> {
         "bbox_test/bbox",
         &Boxes3D::from_centers_and_half_sizes([(1.0, 0.0, 0.0)], [(1.0, 0.5, 0.25)])
             .with_colors([Color::from_rgb(255, 255, 0)])
-            .with_rotations([Quaternion::from_xyzw([
+            .with_quaternions([Quaternion::from_xyzw([
                 0.0,
                 0.0,
                 (TAU / 8.0).sin(),

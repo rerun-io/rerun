@@ -12,9 +12,9 @@ Some of its component are repeated here for convenience.
 
 **Required**: [`HalfSize3D`](../components/half_size3d.md)
 
-**Recommended**: [`LeafTranslation3D`](../components/leaf_translation3d.md), [`Rotation3D`](../components/rotation3d.md), [`Color`](../components/color.md)
+**Recommended**: [`LeafTranslation3D`](../components/leaf_translation3d.md), [`Color`](../components/color.md)
 
-**Optional**: [`Radius`](../components/radius.md), [`FillMode`](../components/fill_mode.md), [`Text`](../components/text.md), [`ClassId`](../components/class_id.md)
+**Optional**: [`LeafRotationAxisAngle`](../components/leaf_rotation_axis_angle.md), [`LeafRotationQuat`](../components/leaf_rotation_quat.md), [`Radius`](../components/radius.md), [`FillMode`](../components/fill_mode.md), [`Text`](../components/text.md), [`ClassId`](../components/class_id.md)
 
 ## Shown in
 * [Spatial3DView](../views/spatial3d_view.md)

@@ -39,10 +39,17 @@ pub struct Ellipsoids {
     /// Note that this uses a [`components::LeafTranslation3D`][crate::components::LeafTranslation3D] which is also used by [`archetypes::LeafTransforms3D`][crate::archetypes::LeafTransforms3D].
     pub centers: Option<Vec<crate::components::LeafTranslation3D>>,
 
-    /// Optional rotations of the ellipsoids.
+    /// Rotations via axis + angle.
     ///
-    /// If not specified, the axes of the ellipsoid align with the axes of the coordinate system.
-    pub rotations: Option<Vec<crate::components::Rotation3D>>,
+    /// If no rotation is specified, the axes of the ellipsoid align with the axes of the local coordinate system.
+    /// Note that this uses a [`components::LeafRotationAxisAngle`][crate::components::LeafRotationAxisAngle] which is also used by [`archetypes::LeafTransforms3D`][crate::archetypes::LeafTransforms3D].
+    pub rotation_axis_angles: Option<Vec<crate::components::LeafRotationAxisAngle>>,
+
+    /// Rotations via quaternion.
+    ///
+    /// If no rotation is specified, the axes of the ellipsoid align with the axes of the local coordinate system.
+    /// Note that this uses a [`components::LeafRotationQuat`][crate::components::LeafRotationQuat] which is also used by [`archetypes::LeafTransforms3D`][crate::archetypes::LeafTransforms3D].
+    pub quaternions: Option<Vec<crate::components::LeafRotationQuat>>,
 
     /// Optional colors for the ellipsoids.
     pub colors: Option<Vec<crate::components::Color>>,
@@ -67,7 +74,8 @@ impl ::re_types_core::SizeBytes for Ellipsoids {
     fn heap_size_bytes(&self) -> u64 {
         self.half_sizes.heap_size_bytes()
             + self.centers.heap_size_bytes()
-            + self.rotations.heap_size_bytes()
+            + self.rotation_axis_angles.heap_size_bytes()
+            + self.quaternions.heap_size_bytes()
             + self.colors.heap_size_bytes()
             + self.line_radii.heap_size_bytes()
             + self.fill_mode.heap_size_bytes()
@@ -79,7 +87,8 @@ impl ::re_types_core::SizeBytes for Ellipsoids {
     fn is_pod() -> bool {
         <Vec<crate::components::HalfSize3D>>::is_pod()
             && <Option<Vec<crate::components::LeafTranslation3D>>>::is_pod()
-            && <Option<Vec<crate::components::Rotation3D>>>::is_pod()
+            && <Option<Vec<crate::components::LeafRotationAxisAngle>>>::is_pod()
+            && <Option<Vec<crate::components::LeafRotationQuat>>>::is_pod()
             && <Option<Vec<crate::components::Color>>>::is_pod()
             && <Option<Vec<crate::components::Radius>>>::is_pod()
             && <Option<crate::components::FillMode>>::is_pod()
@@ -91,19 +100,20 @@ impl ::re_types_core::SizeBytes for Ellipsoids {
 static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 1usize]> =
     once_cell::sync::Lazy::new(|| ["rerun.components.HalfSize3D".into()]);
 
-static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 4usize]> =
+static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 3usize]> =
     once_cell::sync::Lazy::new(|| {
         [
             "rerun.components.LeafTranslation3D".into(),
-            "rerun.components.Rotation3D".into(),
             "rerun.components.Color".into(),
             "rerun.components.EllipsoidsIndicator".into(),
         ]
     });
 
-static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 4usize]> =
+static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 6usize]> =
     once_cell::sync::Lazy::new(|| {
         [
+            "rerun.components.LeafRotationAxisAngle".into(),
+            "rerun.components.LeafRotationQuat".into(),
             "rerun.components.Radius".into(),
             "rerun.components.FillMode".into(),
             "rerun.components.Text".into(),
@@ -111,14 +121,15 @@ static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 4usize]> =
         ]
     });
 
-static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 9usize]> =
+static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 10usize]> =
     once_cell::sync::Lazy::new(|| {
         [
             "rerun.components.HalfSize3D".into(),
             "rerun.components.LeafTranslation3D".into(),
-            "rerun.components.Rotation3D".into(),
             "rerun.components.Color".into(),
             "rerun.components.EllipsoidsIndicator".into(),
+            "rerun.components.LeafRotationAxisAngle".into(),
+            "rerun.components.LeafRotationQuat".into(),
             "rerun.components.Radius".into(),
             "rerun.components.FillMode".into(),
             "rerun.components.Text".into(),
@@ -127,8 +138,8 @@ static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 9usize]> =
     });
 
 impl Ellipsoids {
-    /// The total number of components in the archetype: 1 required, 4 recommended, 4 optional
-    pub const NUM_COMPONENTS: usize = 9usize;
+    /// The total number of components in the archetype: 1 required, 3 recommended, 6 optional
+    pub const NUM_COMPONENTS: usize = 10usize;
 }
 
 /// Indicator component for the [`Ellipsoids`] [`::re_types_core::Archetype`]
@@ -208,18 +219,32 @@ impl ::re_types_core::Archetype for Ellipsoids {
         } else {
             None
         };
-        let rotations = if let Some(array) = arrays_by_name.get("rerun.components.Rotation3D") {
-            Some({
-                <crate::components::Rotation3D>::from_arrow_opt(&**array)
-                    .with_context("rerun.archetypes.Ellipsoids#rotations")?
-                    .into_iter()
-                    .map(|v| v.ok_or_else(DeserializationError::missing_data))
-                    .collect::<DeserializationResult<Vec<_>>>()
-                    .with_context("rerun.archetypes.Ellipsoids#rotations")?
-            })
-        } else {
-            None
-        };
+        let rotation_axis_angles =
+            if let Some(array) = arrays_by_name.get("rerun.components.LeafRotationAxisAngle") {
+                Some({
+                    <crate::components::LeafRotationAxisAngle>::from_arrow_opt(&**array)
+                        .with_context("rerun.archetypes.Ellipsoids#rotation_axis_angles")?
+                        .into_iter()
+                        .map(|v| v.ok_or_else(DeserializationError::missing_data))
+                        .collect::<DeserializationResult<Vec<_>>>()
+                        .with_context("rerun.archetypes.Ellipsoids#rotation_axis_angles")?
+                })
+            } else {
+                None
+            };
+        let quaternions =
+            if let Some(array) = arrays_by_name.get("rerun.components.LeafRotationQuat") {
+                Some({
+                    <crate::components::LeafRotationQuat>::from_arrow_opt(&**array)
+                        .with_context("rerun.archetypes.Ellipsoids#quaternions")?
+                        .into_iter()
+                        .map(|v| v.ok_or_else(DeserializationError::missing_data))
+                        .collect::<DeserializationResult<Vec<_>>>()
+                        .with_context("rerun.archetypes.Ellipsoids#quaternions")?
+                })
+            } else {
+                None
+            };
         let colors = if let Some(array) = arrays_by_name.get("rerun.components.Color") {
             Some({
                 <crate::components::Color>::from_arrow_opt(&**array)
@@ -280,7 +305,8 @@ impl ::re_types_core::Archetype for Ellipsoids {
         Ok(Self {
             half_sizes,
             centers,
-            rotations,
+            rotation_axis_angles,
+            quaternions,
             colors,
             line_radii,
             fill_mode,
@@ -300,7 +326,10 @@ impl ::re_types_core::AsComponents for Ellipsoids {
             self.centers
                 .as_ref()
                 .map(|comp_batch| (comp_batch as &dyn ComponentBatch).into()),
-            self.rotations
+            self.rotation_axis_angles
+                .as_ref()
+                .map(|comp_batch| (comp_batch as &dyn ComponentBatch).into()),
+            self.quaternions
                 .as_ref()
                 .map(|comp_batch| (comp_batch as &dyn ComponentBatch).into()),
             self.colors
@@ -334,7 +363,8 @@ impl Ellipsoids {
         Self {
             half_sizes: half_sizes.into_iter().map(Into::into).collect(),
             centers: None,
-            rotations: None,
+            rotation_axis_angles: None,
+            quaternions: None,
             colors: None,
             line_radii: None,
             fill_mode: None,
@@ -356,15 +386,32 @@ impl Ellipsoids {
         self
     }
 
-    /// Optional rotations of the ellipsoids.
+    /// Rotations via axis + angle.
     ///
-    /// If not specified, the axes of the ellipsoid align with the axes of the coordinate system.
+    /// If no rotation is specified, the axes of the ellipsoid align with the axes of the local coordinate system.
+    /// Note that this uses a [`components::LeafRotationAxisAngle`][crate::components::LeafRotationAxisAngle] which is also used by [`archetypes::LeafTransforms3D`][crate::archetypes::LeafTransforms3D].
     #[inline]
-    pub fn with_rotations(
+    pub fn with_rotation_axis_angles(
         mut self,
-        rotations: impl IntoIterator<Item = impl Into<crate::components::Rotation3D>>,
+        rotation_axis_angles: impl IntoIterator<
+            Item = impl Into<crate::components::LeafRotationAxisAngle>,
+        >,
     ) -> Self {
-        self.rotations = Some(rotations.into_iter().map(Into::into).collect());
+        self.rotation_axis_angles =
+            Some(rotation_axis_angles.into_iter().map(Into::into).collect());
+        self
+    }
+
+    /// Rotations via quaternion.
+    ///
+    /// If no rotation is specified, the axes of the ellipsoid align with the axes of the local coordinate system.
+    /// Note that this uses a [`components::LeafRotationQuat`][crate::components::LeafRotationQuat] which is also used by [`archetypes::LeafTransforms3D`][crate::archetypes::LeafTransforms3D].
+    #[inline]
+    pub fn with_quaternions(
+        mut self,
+        quaternions: impl IntoIterator<Item = impl Into<crate::components::LeafRotationQuat>>,
+    ) -> Self {
+        self.quaternions = Some(quaternions.into_iter().map(Into::into).collect());
         self
     }
 

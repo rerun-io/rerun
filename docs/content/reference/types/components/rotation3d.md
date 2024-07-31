@@ -15,7 +15,3 @@ A 3D rotation, represented either by a quaternion or a rotation around axis.
  * 🦀 [Rust API docs for `Rotation3D`](https://docs.rs/rerun/latest/rerun/components/struct.Rotation3D.html)
 
 
-## Used by
-
-* [`Boxes3D`](../archetypes/boxes3d.md)
-* [`Ellipsoids`](../archetypes/ellipsoids.md?speculative-link)

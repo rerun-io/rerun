@@ -10,7 +10,7 @@ For transforms that are propagated in the transform hierarchy, see [`archetypes.
 If both [`archetypes.LeafTransforms3D`](https://rerun.io/docs/reference/types/archetypes/leaf_transforms3d) and [`archetypes.Transform3D`](https://rerun.io/docs/reference/types/archetypes/transform3d) are present,
 first the tree propagating [`archetypes.Transform3D`](https://rerun.io/docs/reference/types/archetypes/transform3d) is applied, then [`archetypes.LeafTransforms3D`](https://rerun.io/docs/reference/types/archetypes/leaf_transforms3d).
 
-Currently, most visualizers support only a single leaf transform per entity.
+Currently, many visualizers support only a single leaf transform per entity.
 Check archetype documentations for details - if not otherwise specified, only the first leaf transform is applied.
 
 From the point of view of the entity's coordinate system,
