@@ -3,7 +3,7 @@
 
 use std::sync::Arc;
 
-use itertools::Itertools as _;
+use itertools::Itertools;
 
 use re_chunk::{RowId, Timeline};
 use re_chunk_store::{
@@ -1039,42 +1039,41 @@ fn query_and_compare(
         );
 
         let all_points_chunks = cached.get_required(&MyPoint::name()).unwrap();
-        let mut all_points_iters = all_points_chunks
+        let all_points_indexed = all_points_chunks
             .iter()
-            .map(|chunk| chunk.iter_component::<MyPoint>())
+            .flat_map(|chunk| {
+                itertools::izip!(
+                    chunk.iter_component_indices(&query.timeline(), &MyPoint::name()),
+                    chunk.iter_component::<MyPoint>()
+                )
+            })
             .collect_vec();
-        let all_points_indexed = {
-            let all_points = all_points_iters.iter_mut().flat_map(|it| it.into_iter());
-            let all_points_indices = all_points_chunks.iter().flat_map(|chunk| {
-                chunk.iter_component_indices(&query.timeline(), &MyPoint::name())
-            });
-            itertools::izip!(all_points_indices, all_points)
-        };
+        // Only way I've managed to make `rustc` realize there's a `PartialEq` available.
+        let all_points_indexed = all_points_indexed
+            .iter()
+            .map(|(index, points)| (*index, points.as_slice()))
+            .collect_vec();
 
         let all_colors_chunks = cached.get(&MyColor::name()).unwrap_or_default();
-        let mut all_colors_iters = all_colors_chunks
+        let all_colors_indexed = all_colors_chunks
             .iter()
-            .map(|chunk| chunk.iter_component::<MyColor>())
+            .flat_map(|chunk| {
+                itertools::izip!(
+                    chunk.iter_component_indices(&query.timeline(), &MyColor::name()),
+                    chunk.iter_primitive::<u32>(&MyColor::name()),
+                )
+            })
             .collect_vec();
-        let all_colors_indexed = {
-            let all_colors = all_colors_iters.iter_mut().flat_map(|it| it.into_iter());
-            let all_colors_indices = all_colors_chunks.iter().flat_map(|chunk| {
-                chunk.iter_component_indices(&query.timeline(), &MyColor::name())
-            });
-            itertools::izip!(all_colors_indices, all_colors)
-        };
+        // Only way I've managed to make `rustc` realize there's a `PartialEq` available.
+        let all_colors_indexed = all_colors_indexed
+            .iter()
+            .map(|(index, colors)| (*index, bytemuck::cast_slice(colors)))
+            .collect_vec();
 
         eprintln!("{query:?}");
         eprintln!("{store}");
 
-        similar_asserts::assert_eq!(
-            expected_all_points_indexed,
-            all_points_indexed.collect_vec(),
-        );
-
-        similar_asserts::assert_eq!(
-            expected_all_colors_indexed,
-            all_colors_indexed.collect_vec(),
-        );
+        similar_asserts::assert_eq!(expected_all_points_indexed, all_points_indexed);
+        similar_asserts::assert_eq!(expected_all_colors_indexed, all_colors_indexed);
     }
 }
