@@ -105,7 +105,16 @@ rr.log(f"world/ego_vehicle/{sensor_name}", rr.Points3D(points, colors=point_colo
 
 Annotations are logged as [`Boxes3D`](https://www.rerun.io/docs/reference/types/archetypes/boxes3d), containing details such as object positions, sizes, and rotation.
 ```python
-rr.log("world/anns", rr.Boxes3D(sizes=sizes, centers=centers, rotations=rotations, class_ids=class_ids))
+rr.log(
+    "world/anns",
+    rr.Boxes3D(
+        sizes=sizes,
+        centers=centers,
+        rotations=rotations,
+        class_ids=class_ids,
+        fill_mode=rr.components.FillMode.Solid,
+    ),
+)
 ```
 
 ### Setting up the default blueprint
