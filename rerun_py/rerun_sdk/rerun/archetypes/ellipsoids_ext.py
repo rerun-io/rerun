@@ -17,7 +17,8 @@ class EllipsoidsExt:
         half_sizes: datatypes.Vec3DArrayLike | None = None,
         radii: datatypes.Float32ArrayLike | None = None,
         centers: datatypes.Vec3DArrayLike | None = None,
-        rotations: datatypes.Rotation3DArrayLike | None = None,
+        rotation_axis_angles: datatypes.RotationAxisAngleArrayLike | None = None,
+        quaternions: datatypes.QuaternionArrayLike | None = None,
         colors: datatypes.Rgba32ArrayLike | None = None,
         line_radii: datatypes.Float32ArrayLike | None = None,
         fill_mode: components.FillMode | None = None,
@@ -37,8 +38,16 @@ class EllipsoidsExt:
             Specify this instead of `half_sizes`
         centers:
             Optional center positions of the ellipsoids.
-        rotations:
-            Optional rotations of the ellipsoids.
+        rotation_axis_angles:
+            Rotations via axis + angle.
+
+            If no rotation is specified, the axes of the boxes align with the axes of the local coordinate system.
+            Note that this uses a [`components.LeafRotationAxisAngle`][rerun.components.LeafRotationAxisAngle] which is also used by [`archetypes.LeafTransforms3D`][rerun.archetypes.LeafTransforms3D].
+        quaternions:
+            Rotations via quaternion.
+
+            If no rotation is specified, the axes of the boxes align with the axes of the local coordinate system.
+            Note that this uses a [`components.LeafRotationQuat`][rerun.components.LeafRotationQuat] which is also used by [`archetypes.LeafTransforms3D`][rerun.archetypes.LeafTransforms3D].
         colors:
             Optional colors for the ellipsoids.
         line_radii:
@@ -66,7 +75,8 @@ class EllipsoidsExt:
             self.__attrs_init__(
                 half_sizes=half_sizes,
                 centers=centers,
-                rotations=rotations,
+                rotation_axis_angles=rotation_axis_angles,
+                quaternions=quaternions,
                 colors=colors,
                 line_radii=line_radii,
                 fill_mode=fill_mode,
