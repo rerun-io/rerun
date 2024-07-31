@@ -3,11 +3,12 @@ use itertools::Itertools as _;
 use re_chunk_store::{ChunkStoreEvent, RowId};
 use re_log_types::TimeInt;
 use re_query::range_zip_1x1;
-use re_space_view::{diff_component_filter, HybridResults};
+use re_space_view::{diff_component_filter, HybridResults2};
 use re_types::{
     archetypes::Image,
     components::{DrawOrder, Opacity, TensorData},
     tensor_data::TensorDataMeaning,
+    Loggable as _,
 };
 use re_viewer_context::{
     ApplicableEntities, IdentifiedViewSystem, QueryContext, SpaceViewClass,
@@ -22,7 +23,7 @@ use crate::{
 };
 
 use super::{
-    bounding_box_for_textured_rect, entity_iterator::process_archetype, textured_rect_from_tensor,
+    bounding_box_for_textured_rect, entity_iterator::process_archetype2, textured_rect_from_tensor,
     SpatialViewVisualizerData,
 };
 
@@ -43,7 +44,7 @@ impl Default for ImageVisualizer {
 struct ImageComponentData<'a> {
     index: (TimeInt, RowId),
 
-    tensor: &'a TensorData,
+    tensor: TensorData,
     opacity: Option<&'a Opacity>,
 }
 
@@ -91,11 +92,14 @@ impl VisualizerSystem for ImageVisualizer {
             return Err(SpaceViewSystemExecutionError::NoRenderContextError);
         };
 
-        process_archetype::<Self, Image, _>(
+        process_archetype2::<Self, Image, _>(
             ctx,
             view_query,
             context_systems,
-            |ctx, spatial_ctx, results| self.process_image(ctx, results, spatial_ctx),
+            |ctx, spatial_ctx, results| {
+                self.process_image(ctx, results, spatial_ctx);
+                Ok(())
+            },
         )?;
 
         // TODO(#702): draw order is translated to depth offset, which works fine for opaque images,
@@ -149,27 +153,30 @@ impl ImageVisualizer {
     fn process_image(
         &mut self,
         ctx: &QueryContext<'_>,
-        results: &HybridResults<'_>,
+        results: &HybridResults2<'_>,
         spatial_ctx: &SpatialSceneEntityContext<'_>,
-    ) -> Result<(), SpaceViewSystemExecutionError> {
-        use re_space_view::RangeResultsExt as _;
+    ) {
+        use super::entity_iterator::iter_component;
+        use re_space_view::RangeResultsExt2 as _;
 
-        let resolver = ctx.recording().resolver();
         let entity_path = ctx.target_entity_path;
 
-        let tensors = match results.get_required_component_dense::<TensorData>(resolver) {
-            Some(tensors) => tensors?,
-            _ => return Ok(()),
+        let Some(all_tensor_chunks) = results.get_required_chunks(&TensorData::name()) else {
+            return;
         };
 
-        let opacity = results.get_or_empty_dense(resolver)?;
+        let timeline = ctx.query.timeline();
+        // TODO(#6386): we have to deserialize here because `TensorData` is still a complex
+        // type at this point.
+        let all_tensors_indexed = iter_component(&all_tensor_chunks, timeline, TensorData::name());
+        let all_opacities = results.iter_as(timeline, Opacity::name());
 
-        let data = range_zip_1x1(tensors.range_indexed(), opacity.range_indexed()).filter_map(
-            |(&index, tensors, opacity)| {
-                tensors.first().map(|tensor| ImageComponentData {
+        let data = range_zip_1x1(all_tensors_indexed, all_opacities.primitive::<f32>()).filter_map(
+            |(index, tensors, opacity)| {
+                tensors.first().cloned().map(|tensor| ImageComponentData {
                     index,
                     tensor,
-                    opacity: opacity.and_then(|opacity| opacity.first()),
+                    opacity: opacity.and_then(|opacity| opacity.first().map(bytemuck::cast_ref)),
                 })
             },
         );
@@ -229,8 +236,6 @@ impl ImageVisualizer {
                 });
             }
         }
-
-        Ok(())
     }
 }
 
