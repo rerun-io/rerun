@@ -529,44 +529,77 @@ impl Chunk {
 
 /// The actual iterator implementation for [`Chunk::iter_component`].
 pub struct ChunkComponentIter<C, IO> {
-    values: Vec<C>,
+    values: Arc<Vec<C>>,
     offsets: IO,
 }
 
-/// The intermediate state for [`ChunkComponentIter`].
+/// The underlying item type for [`ChunkComponentIter`].
 ///
-/// Required so that we can return references to the inner data.
-pub struct ChunkComponentIterRef<'a, C, IO> {
-    values: &'a [C],
-    offsets: &'a mut IO,
+/// This allows us to cheaply carry slices of deserialized data, while working around the
+/// limitations of Rust's Iterator trait and ecosystem.
+///
+/// See [`ChunkComponentIterItem::as_slice`].
+#[derive(Clone, PartialEq)]
+pub struct ChunkComponentIterItem<C> {
+    values: Arc<Vec<C>>,
+    index: usize,
+    len: usize,
 }
 
-impl<'a, C: Component, IO: Iterator<Item = (usize, usize)>> IntoIterator
-    for &'a mut ChunkComponentIter<C, IO>
-{
-    type Item = &'a [C];
+impl<C: PartialEq> PartialEq<[C]> for ChunkComponentIterItem<C> {
+    fn eq(&self, rhs: &[C]) -> bool {
+        self.as_slice().eq(rhs)
+    }
+}
 
-    type IntoIter = ChunkComponentIterRef<'a, C, IO>;
+impl<C: PartialEq> PartialEq<Vec<C>> for ChunkComponentIterItem<C> {
+    fn eq(&self, rhs: &Vec<C>) -> bool {
+        self.as_slice().eq(rhs)
+    }
+}
 
+impl<C: Eq> Eq for ChunkComponentIterItem<C> {}
+
+// NOTE: No `C: Default`!
+impl<C> Default for ChunkComponentIterItem<C> {
     #[inline]
-    fn into_iter(self) -> Self::IntoIter {
-        ChunkComponentIterRef {
-            values: &self.values,
-            offsets: &mut self.offsets,
+    fn default() -> Self {
+        Self {
+            values: Arc::new(Vec::new()),
+            index: 0,
+            len: 0,
         }
     }
 }
 
-impl<'a, C: Component, IO: Iterator<Item = (usize, usize)>> Iterator
-    for ChunkComponentIterRef<'a, C, IO>
-{
-    type Item = &'a [C];
+impl<C> ChunkComponentIterItem<C> {
+    #[inline]
+    pub fn as_slice(&self) -> &[C] {
+        &self.values[self.index..self.index + self.len]
+    }
+}
+
+impl<C> std::ops::Deref for ChunkComponentIterItem<C> {
+    type Target = [C];
+
+    #[inline]
+    fn deref(&self) -> &Self::Target {
+        self.as_slice()
+    }
+}
+
+impl<C: Component, IO: Iterator<Item = (usize, usize)>> Iterator for ChunkComponentIter<C, IO> {
+    type Item = ChunkComponentIterItem<C>;
 
     #[inline]
     fn next(&mut self) -> Option<Self::Item> {
         self.offsets
             .next()
-            .map(move |(idx, len)| &self.values[idx..idx + len])
+            .map(move |(index, len)| ChunkComponentIterItem {
+                values: Arc::clone(&self.values),
+                index,
+                len,
+            })
     }
 }
 
@@ -591,7 +624,7 @@ impl Chunk {
     ) -> ChunkComponentIter<C, impl Iterator<Item = (usize, usize)> + '_> {
         let Some(list_array) = self.components.get(&C::name()) else {
             return ChunkComponentIter {
-                values: vec![],
+                values: Arc::new(vec![]),
                 offsets: Either::Left(std::iter::empty()),
             };
         };
@@ -614,7 +647,7 @@ impl Chunk {
                     );
                 }
                 return ChunkComponentIter {
-                    values: vec![],
+                    values: Arc::new(vec![]),
                     offsets: Either::Left(std::iter::empty()),
                 };
             }
@@ -622,7 +655,7 @@ impl Chunk {
 
         // NOTE: No need for validity checks here, `iter_offsets` already takes care of that.
         ChunkComponentIter {
-            values,
+            values: Arc::new(values),
             offsets: Either::Right(self.iter_component_offsets(&C::name())),
         }
     }

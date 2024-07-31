@@ -60,6 +60,7 @@ arrow2 = { workspace = true, features = [
   "compute_concatenate",
 ] }
 backtrace.workspace = true
+bytemuck.workspace = true
 clean-path.workspace = true
 document-features.workspace = true
 fixed = { workspace = true, default-features = false }
