@@ -8,6 +8,7 @@ use re_types::{
     archetypes::DepthImage,
     components::{self, Colormap, DepthMeter, DrawOrder, FillRatio, ViewCoordinates},
     tensor_data::TensorDataMeaning,
+    Loggable as _,
 };
 use re_viewer_context::{
     gpu_bridge::colormap_to_re_renderer, ApplicableEntities, IdentifiedViewSystem, ImageInfo,
@@ -257,59 +258,50 @@ impl VisualizerSystem for DepthImageVisualizer {
         let mut depth_clouds = Vec::new();
         let transforms = context_systems.get::<TransformContext>()?;
 
-        super::entity_iterator::process_archetype::<Self, DepthImage, _>(
+        use super::entity_iterator::{iter_buffer, process_archetype2};
+        process_archetype2::<Self, DepthImage, _>(
             ctx,
             view_query,
             context_systems,
             |ctx, spatial_ctx, results| {
-                use re_space_view::RangeResultsExt as _;
+                use re_space_view::RangeResultsExt2 as _;
 
-                let resolver = ctx.recording().resolver();
-
-                let blobs = match results.get_required_component_dense::<components::Blob>(resolver)
-                {
-                    Some(blobs) => blobs?,
-                    _ => return Ok(()),
-                };
-                let data_types = match results
-                    .get_required_component_dense::<components::ChannelDataType>(resolver)
-                {
-                    Some(data_types) => data_types?,
-                    _ => return Ok(()),
-                };
-                let resolutions = match results
-                    .get_required_component_dense::<components::Resolution2D>(resolver)
-                {
-                    Some(resolutions) => resolutions?,
-                    _ => return Ok(()),
+                let Some(all_blob_chunks) = results.get_required_chunks(&components::Blob::name())
+                else {
+                    return Ok(());
                 };
 
-                let colormap = results.get_or_empty_dense(resolver)?;
-                let depth_meter = results.get_or_empty_dense(resolver)?;
-                let fill_ratio = results.get_or_empty_dense(resolver)?;
+                let timeline = ctx.query.timeline();
+                let all_blobs_indexed =
+                    iter_buffer::<u8>(&all_blob_chunks, timeline, components::Blob::name());
+                let all_datatypes = results.iter_as(timeline, components::ChannelDataType::name());
+                let all_resolutions = results.iter_as(timeline, components::Resolution2D::name());
+                let all_colormaps = results.iter_as(timeline, components::Colormap::name());
+                let all_depth_meters = results.iter_as(timeline, components::DepthMeter::name());
+                let all_fill_ratios = results.iter_as(timeline, components::FillRatio::name());
 
-                let mut data = re_query::range_zip_1x5(
-                    blobs.range_indexed(),
-                    data_types.range_indexed(),
-                    resolutions.range_indexed(),
-                    colormap.range_indexed(),
-                    depth_meter.range_indexed(),
-                    fill_ratio.range_indexed(),
+                let mut data = re_query2::range_zip_1x5(
+                    all_blobs_indexed,
+                    all_datatypes.component::<components::ChannelDataType>(),
+                    all_resolutions.primitive_array::<2, u32>(),
+                    all_colormaps.component::<components::Colormap>(),
+                    all_depth_meters.primitive::<f32>(),
+                    all_fill_ratios.primitive::<f32>(),
                 )
                 .filter_map(
-                    |(&index, blobs, data_type, resolution, colormap, depth_meter, fill_ratio)| {
+                    |(index, blobs, data_type, resolution, colormap, depth_meter, fill_ratio)| {
                         let blob = blobs.first()?;
                         Some(DepthImageComponentData {
                             image: ImageInfo {
                                 blob_row_id: index.1,
-                                blob: blob.0.clone(),
-                                resolution: first_copied(resolution)?.0 .0,
+                                blob: blob.clone().into(),
+                                resolution: first_copied(resolution)?,
                                 color_model: None,
-                                data_type: first_copied(data_type)?,
-                                colormap: first_copied(colormap),
+                                data_type: first_copied(data_type.as_deref())?,
+                                colormap: first_copied(colormap.as_deref()),
                             },
-                            depth_meter: first_copied(depth_meter),
-                            fill_ratio: first_copied(fill_ratio),
+                            depth_meter: first_copied(depth_meter).map(Into::into),
+                            fill_ratio: first_copied(fill_ratio).map(Into::into),
                         })
                     },
                 );
