@@ -16,7 +16,6 @@ quaternion.rs linguist-generated=true
 range1d.rs linguist-generated=true
 range2d.rs linguist-generated=true
 rgba32.rs linguist-generated=true
-rotation3d.rs linguist-generated=true
 rotation_axis_angle.rs linguist-generated=true
 tensor_buffer.rs linguist-generated=true
 tensor_data.rs linguist-generated=true

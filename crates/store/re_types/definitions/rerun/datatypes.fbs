@@ -18,7 +18,6 @@ include "./datatypes/quaternion.fbs";
 include "./datatypes/range1d.fbs";
 include "./datatypes/range2d.fbs";
 include "./datatypes/rgba32.fbs";
-include "./datatypes/rotation3d.fbs";
 include "./datatypes/rotation_axis_angle.fbs";
 include "./datatypes/tensor_buffer.fbs";
 include "./datatypes/tensor_data.fbs";

@@ -3,7 +3,7 @@ pub use re_sdk::*;
 
 /// Transform helpers, for use with [`archetypes::Transform3D`].
 pub mod transform {
-    pub use re_types::datatypes::{Angle, Quaternion, Rotation3D, RotationAxisAngle};
+    pub use re_types::datatypes::{Angle, Quaternion, RotationAxisAngle};
 }
 
 /// Coordinate system helpers, for use with [`components::ViewCoordinates`].

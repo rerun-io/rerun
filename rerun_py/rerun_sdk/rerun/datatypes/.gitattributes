@@ -20,7 +20,6 @@ quaternion.py linguist-generated=true
 range1d.py linguist-generated=true
 range2d.py linguist-generated=true
 rgba32.py linguist-generated=true
-rotation3d.py linguist-generated=true
 rotation_axis_angle.py linguist-generated=true
 tensor_buffer.py linguist-generated=true
 tensor_data.py linguist-generated=true
