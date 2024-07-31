@@ -113,7 +113,7 @@ impl VisualizerSystem for SegmentationImageVisualizer {
                 );
                 let all_opacities = results.iter_as(timeline, Opacity::name());
 
-                let data = re_query::range_zip_1x3(
+                let data = re_query2::range_zip_1x3(
                     all_blobs_indexed,
                     all_data_types_indexed,
                     all_resolutions_indexed,

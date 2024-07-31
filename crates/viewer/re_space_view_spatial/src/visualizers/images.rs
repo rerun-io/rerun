@@ -2,7 +2,6 @@ use itertools::Itertools as _;
 
 use re_chunk_store::{ChunkStoreEvent, RowId};
 use re_log_types::TimeInt;
-use re_query::range_zip_1x1;
 use re_space_view::{diff_component_filter, HybridResults2};
 use re_types::{
     archetypes::Image,
@@ -171,15 +170,14 @@ impl ImageVisualizer {
         let all_tensors_indexed = iter_component(&all_tensor_chunks, timeline, TensorData::name());
         let all_opacities = results.iter_as(timeline, Opacity::name());
 
-        let data = range_zip_1x1(all_tensors_indexed, all_opacities.primitive::<f32>()).filter_map(
-            |(index, tensors, opacity)| {
+        let data = re_query2::range_zip_1x1(all_tensors_indexed, all_opacities.primitive::<f32>())
+            .filter_map(|(index, tensors, opacity)| {
                 tensors.first().cloned().map(|tensor| ImageComponentData {
                     index,
                     tensor,
                     opacity: opacity.and_then(|opacity| opacity.first().map(bytemuck::cast_ref)),
                 })
-            },
-        );
+            });
 
         // Unknown is currently interpreted as "Some Color" in most cases.
         // TODO(jleibs): Make this more explicit

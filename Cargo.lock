@@ -5003,7 +5003,6 @@ dependencies = [
  "re_log",
  "re_log_types",
  "re_math",
- "re_query",
  "re_query2",
  "re_renderer",
  "re_space_view",
