@@ -95,6 +95,15 @@ impl TransformInfo {
     pub fn single_entity_transform_silent(&self) -> glam::Affine3A {
         *self.reference_from_instances.first()
     }
+
+    /// Returns reference from instance transforms, repeating the last value indefinitely.
+    #[inline]
+    pub fn clamped_reference_from_instances(&self) -> impl Iterator<Item = glam::Affine3A> + '_ {
+        self.reference_from_instances
+            .iter()
+            .chain(std::iter::repeat(self.reference_from_instances.last()))
+            .copied()
+    }
 }
 
 #[derive(Clone, Copy)]

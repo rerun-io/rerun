@@ -5,6 +5,9 @@ title: "Boxes3D"
 
 3D boxes with half-extents and optional center, rotations, colors etc.
 
+Note that orienting and placing the box is handled via `[archetypes.LeafTransforms3D]`.
+Some of its component are repeated here for convenience.
+
 ## Components
 
 **Required**: [`HalfSize3D`](../components/half_size3d.md)

@@ -24,8 +24,8 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 /// (e.g. a bounding sphere).
 /// For points whose radii are for the sake of visualization, use `Points3D` instead.
 ///
-/// Currently, ellipsoids are always rendered as wireframes.
-/// Opaque and transparent rendering will be supported later.
+/// Note that orienting and placing the ellipsoids/spheres is handled via `[archetypes.LeafTransforms3D]`.
+/// Some of its component are repeated here for convenience.
 #[derive(Clone, Debug, PartialEq)]
 pub struct Ellipsoids {
     /// For each ellipsoid, half of its size on its three axes.

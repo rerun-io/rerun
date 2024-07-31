@@ -21,6 +21,9 @@ class Boxes3D(Boxes3DExt, Archetype):
     """
     **Archetype**: 3D boxes with half-extents and optional center, rotations, colors etc.
 
+    Note that orienting and placing the box is handled via `[archetypes.LeafTransforms3D]`.
+    Some of its component are repeated here for convenience.
+
     Example
     -------
     ### Batch of 3D boxes:

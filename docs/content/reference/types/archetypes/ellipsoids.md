@@ -9,8 +9,8 @@ This archetype is for ellipsoids or spheres whose size is a key part of the data
 (e.g. a bounding sphere).
 For points whose radii are for the sake of visualization, use `Points3D` instead.
 
-Currently, ellipsoids are always rendered as wireframes.
-Opaque and transparent rendering will be supported later.
+Note that orienting and placing the ellipsoids/spheres is handled via `[archetypes.LeafTransforms3D]`.
+Some of its component are repeated here for convenience.
 
 ## Components
 

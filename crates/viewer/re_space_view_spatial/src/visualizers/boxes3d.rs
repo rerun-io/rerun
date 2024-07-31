@@ -5,9 +5,7 @@ use re_renderer::{
 };
 use re_types::{
     archetypes::Boxes3D,
-    components::{
-        ClassId, Color, FillMode, HalfSize3D, KeypointId, Position3D, Radius, Rotation3D, Text,
-    },
+    components::{ClassId, Color, FillMode, HalfSize3D, KeypointId, Radius, Text},
 };
 use re_viewer_context::{
     auto_color_for_entity_path, ApplicableEntities, IdentifiedViewSystem, QueryContext,
@@ -23,9 +21,9 @@ use crate::{
 };
 
 use super::{
-    entity_iterator::clamped_or, filter_visualizable_3d_entities,
-    process_annotation_and_keypoint_slices, process_color_slice, process_labels_3d,
-    process_radius_slice, SpatialViewVisualizerData, SIZE_BOOST_IN_POINTS_FOR_LINE_OUTLINES,
+    filter_visualizable_3d_entities, process_annotation_and_keypoint_slices, process_color_slice,
+    process_labels_3d, process_radius_slice, SpatialViewVisualizerData,
+    SIZE_BOOST_IN_POINTS_FOR_LINE_OUTLINES,
 };
 
 // ---
@@ -78,47 +76,36 @@ impl Boxes3DVisualizer {
             let colors =
                 process_color_slice(ctx, self, num_instances, &annotation_infos, data.colors);
 
-            let world_from_obj = ent_context
-                .transform_info
-                .single_entity_transform_required(entity_path, "Boxes3D");
-
             let mut line_batch = line_builder
                 .batch("boxes3d")
                 .depth_offset(ent_context.depth_offset)
-                .world_from_obj(world_from_obj)
                 .outline_mask_ids(ent_context.highlight.overall)
                 .picking_object_id(re_renderer::PickingLayerObjectId(entity_path.hash64()));
 
-            let mut obj_space_bounding_box = re_math::BoundingBox::NOTHING;
+            let mut world_space_bounding_box = re_math::BoundingBox::NOTHING;
 
-            let centers = clamped_or(data.centers, &Position3D::ZERO);
-            let rotations = clamped_or(data.rotations, &Rotation3D::IDENTITY);
-            for (instance_index, (half_size, &center, rotation, radius, &color)) in
-                itertools::izip!(data.half_sizes, centers, rotations, radii, &colors).enumerate()
+            let world_from_instances = ent_context
+                .transform_info
+                .clamped_reference_from_instances();
+
+            for (instance_index, (half_size, world_from_instance, radius, &color)) in
+                itertools::izip!(data.half_sizes, world_from_instances, radii, &colors).enumerate()
             {
                 let instance = Instance::from(instance_index as u64);
-                // Transform from a centered unit cube to this box in the entity's
-                // coordinate system.
-                let entity_from_mesh = glam::Affine3A::from_scale_rotation_translation(
-                    glam::Vec3::from(*half_size) * 2.0,
-                    rotation.0.into(),
-                    center.into(),
-                );
-
                 let proc_mesh_key = proc_mesh::ProcMeshKey::Cube;
 
-                obj_space_bounding_box = obj_space_bounding_box.union(
-                    // We must perform this transform to fully account for the per-instance
-                    // transform, which is separate from the entity's transform.
+                let world_from_instance = world_from_instance
+                    * glam::Affine3A::from_scale(glam::Vec3::from(*half_size) * 2.0);
+                world_space_bounding_box = world_space_bounding_box.union(
                     proc_mesh_key
                         .simple_bounding_box()
-                        .transform_affine3(&entity_from_mesh),
+                        .transform_affine3(&world_from_instance),
                 );
 
                 match data.fill_mode {
                     FillMode::Wireframe => {
                         let box3d = line_batch
-                            .add_box_outline_from_transform(entity_from_mesh)
+                            .add_box_outline_from_transform(world_from_instance)
                             .color(color)
                             .radius(radius)
                             .picking_instance_id(PickingLayerInstanceId(instance_index as _));
@@ -143,7 +130,7 @@ impl Boxes3DVisualizer {
                         mesh_instances.push(MeshInstance {
                             gpu_mesh: solid_mesh.gpu_mesh,
                             mesh: None,
-                            world_from_mesh: entity_from_mesh,
+                            world_from_mesh: world_from_instance,
                             outline_mask_ids: ent_context.highlight.index_outline_mask(instance),
                             picking_layer_id: picking_layer_id_from_instance_path_hash(
                                 InstancePathHash::instance(entity_path, instance),
@@ -155,17 +142,21 @@ impl Boxes3DVisualizer {
             }
 
             self.0
-                .add_bounding_box(entity_path.hash(), obj_space_bounding_box, world_from_obj);
+                .bounding_boxes
+                .push((entity_path.hash(), world_space_bounding_box));
 
             if data.labels.len() == 1 || num_instances <= super::MAX_NUM_LABELS_PER_ENTITY {
                 // If there's many boxes but only a single label, place the single label at the middle of the visualization.
                 let label_positions = if data.labels.len() == 1 && num_instances > 1 {
                     // TODO(andreas): A smoothed over time (+ discontinuity detection) bounding box would be great.
-                    itertools::Either::Left(std::iter::once(obj_space_bounding_box.center()))
+                    itertools::Either::Left(std::iter::once(world_space_bounding_box.center()))
                 } else {
                     // Take center point of every box.
                     itertools::Either::Right(
-                        clamped_or(data.centers, &Position3D::ZERO).map(|&c| c.into()),
+                        ent_context
+                            .transform_info
+                            .clamped_reference_from_instances()
+                            .map(|t| t.translation.into()),
                     )
                 };
 
@@ -175,7 +166,7 @@ impl Boxes3DVisualizer {
                     data.labels,
                     &colors,
                     &annotation_infos,
-                    world_from_obj,
+                    glam::Affine3A::IDENTITY,
                 ));
             }
         }
@@ -191,8 +182,6 @@ struct Boxes3DComponentData<'a> {
     half_sizes: &'a [HalfSize3D],
 
     // Clamped to edge
-    centers: &'a [Position3D],
-    rotations: &'a [Rotation3D],
     colors: &'a [Color],
     radii: &'a [Radius],
     labels: &'a [Text],
@@ -265,8 +254,6 @@ impl VisualizerSystem for Boxes3DVisualizer {
                     return Ok(());
                 }
 
-                let centers = results.get_or_empty_dense(resolver)?;
-                let rotations = results.get_or_empty_dense(resolver)?;
                 let colors = results.get_or_empty_dense(resolver)?;
                 let fill_mode = results.get_or_empty_dense(resolver)?;
                 let radii = results.get_or_empty_dense(resolver)?;
@@ -292,10 +279,8 @@ impl VisualizerSystem for Boxes3DVisualizer {
                     }
                 }
 
-                let data = re_query::range_zip_1x7(
+                let data = re_query::range_zip_1x5(
                     half_sizes.range_indexed(),
-                    centers.range_indexed(),
-                    rotations.range_indexed(),
                     colors.range_indexed(),
                     radii.range_indexed(),
                     labels.range_indexed(),
@@ -303,21 +288,9 @@ impl VisualizerSystem for Boxes3DVisualizer {
                     keypoint_ids.range_indexed(),
                 )
                 .map(
-                    |(
-                        _index,
-                        half_sizes,
-                        centers,
-                        rotations,
-                        colors,
-                        radii,
-                        labels,
-                        class_ids,
-                        keypoint_ids,
-                    )| {
+                    |(_index, half_sizes, colors, radii, labels, class_ids, keypoint_ids)| {
                         Boxes3DComponentData {
                             half_sizes,
-                            centers: centers.unwrap_or_default(),
-                            rotations: rotations.unwrap_or_default(),
                             colors: colors.unwrap_or_default(),
                             radii: radii.unwrap_or_default(),
                             // fill mode is currently a non-repeated component
