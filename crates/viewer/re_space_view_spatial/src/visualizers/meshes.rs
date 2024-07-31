@@ -176,8 +176,8 @@ impl VisualizerSystem for Mesh3DVisualizer {
 
         let mut instances = Vec::new();
 
-        use super::entity_iterator::{iter_primitive_array, process_archetype2};
-        process_archetype2::<Self, Mesh3D, _>(
+        use super::entity_iterator::{iter_primitive_array, process_archetype};
+        process_archetype::<Self, Mesh3D, _>(
             ctx,
             view_query,
             context_systems,

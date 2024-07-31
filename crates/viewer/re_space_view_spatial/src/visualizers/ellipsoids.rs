@@ -261,8 +261,8 @@ impl VisualizerSystem for Ellipsoids3DVisualizer {
         // Collects solid (that is, triangles rather than wireframe) instances to be drawn.
         let mut solid_instances: Vec<MeshInstance> = Vec::new();
 
-        use super::entity_iterator::{iter_primitive_array, process_archetype2};
-        process_archetype2::<Self, Ellipsoids3D, _>(
+        use super::entity_iterator::{iter_primitive_array, process_archetype};
+        process_archetype::<Self, Ellipsoids3D, _>(
             ctx,
             view_query,
             context_systems,

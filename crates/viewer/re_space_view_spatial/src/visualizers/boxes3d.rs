@@ -232,8 +232,8 @@ impl VisualizerSystem for Boxes3DVisualizer {
         // This code should be revisited with an eye on performance.
         let mut solid_instances: Vec<MeshInstance> = Vec::new();
 
-        use super::entity_iterator::{iter_primitive_array, process_archetype2};
-        process_archetype2::<Self, Boxes3D, _>(
+        use super::entity_iterator::{iter_primitive_array, process_archetype};
+        process_archetype::<Self, Boxes3D, _>(
             ctx,
             view_query,
             context_systems,

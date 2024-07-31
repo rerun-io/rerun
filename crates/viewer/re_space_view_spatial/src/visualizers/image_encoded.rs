@@ -21,7 +21,7 @@ use crate::{
     PickableImageRect,
 };
 
-use super::{entity_iterator::process_archetype2, SpatialViewVisualizerData};
+use super::{entity_iterator::process_archetype, SpatialViewVisualizerData};
 
 pub struct ImageEncodedVisualizer {
     pub data: SpatialViewVisualizerData,
@@ -67,7 +67,7 @@ impl VisualizerSystem for ImageEncodedVisualizer {
             return Err(SpaceViewSystemExecutionError::NoRenderContextError);
         };
 
-        process_archetype2::<Self, ImageEncoded, _>(
+        process_archetype::<Self, ImageEncoded, _>(
             ctx,
             view_query,
             context_systems,

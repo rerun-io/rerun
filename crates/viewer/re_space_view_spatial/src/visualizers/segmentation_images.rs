@@ -72,9 +72,9 @@ impl VisualizerSystem for SegmentationImageVisualizer {
         };
 
         use super::entity_iterator::{
-            iter_buffer, iter_component, iter_primitive_array, process_archetype2,
+            iter_buffer, iter_component, iter_primitive_array, process_archetype,
         };
-        process_archetype2::<Self, SegmentationImage, _>(
+        process_archetype::<Self, SegmentationImage, _>(
             ctx,
             view_query,
             context_systems,

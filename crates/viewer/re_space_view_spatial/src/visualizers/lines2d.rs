@@ -185,8 +185,8 @@ impl VisualizerSystem for Lines2DVisualizer {
         let mut line_builder = re_renderer::LineDrawableBuilder::new(render_ctx);
         line_builder.radius_boost_in_ui_points_for_outlines(SIZE_BOOST_IN_POINTS_FOR_LINE_OUTLINES);
 
-        use super::entity_iterator::{iter_primitive_array_list, process_archetype2};
-        process_archetype2::<Self, LineStrips2D, _>(
+        use super::entity_iterator::{iter_primitive_array_list, process_archetype};
+        process_archetype::<Self, LineStrips2D, _>(
             ctx,
             view_query,
             context_systems,
