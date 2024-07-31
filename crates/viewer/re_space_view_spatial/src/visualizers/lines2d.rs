@@ -16,7 +16,7 @@ use crate::{contexts::SpatialSceneEntityContext, view_kind::SpatialSpaceViewKind
 
 use super::{
     filter_visualizable_2d_entities, process_annotation_and_keypoint_slices, process_color_slice,
-    process_radius_slice, utilities::process_labels_2d_2, SpatialViewVisualizerData,
+    process_radius_slice, utilities::process_labels_2d, SpatialViewVisualizerData,
     SIZE_BOOST_IN_POINTS_FOR_LINE_OUTLINES,
 };
 
@@ -124,7 +124,7 @@ impl Lines2DVisualizer {
                     }))
                 };
 
-                self.data.ui_labels.extend(process_labels_2d_2(
+                self.data.ui_labels.extend(process_labels_2d(
                     entity_path,
                     label_positions,
                     &data.labels,

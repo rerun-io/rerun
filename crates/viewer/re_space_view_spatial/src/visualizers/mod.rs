@@ -26,9 +26,9 @@ pub use images::ImageVisualizer;
 pub use segmentation_images::SegmentationImageVisualizer;
 pub use transform3d_arrows::{add_axis_arrows, AxisLengthDetector, Transform3DArrowsVisualizer};
 pub use utilities::{
-    bounding_box_for_textured_rect, entity_iterator, process_labels_2d, process_labels_3d,
-    process_labels_3d_2, textured_rect_from_image, textured_rect_from_tensor,
-    SpatialViewVisualizerData, UiLabel, UiLabelTarget, MAX_NUM_LABELS_PER_ENTITY,
+    bounding_box_for_textured_rect, entity_iterator, process_labels_3d, process_labels_3d_2,
+    textured_rect_from_image, textured_rect_from_tensor, SpatialViewVisualizerData, UiLabel,
+    UiLabelTarget, MAX_NUM_LABELS_PER_ENTITY,
 };
 
 // ---

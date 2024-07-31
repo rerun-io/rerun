@@ -23,7 +23,7 @@ use crate::{
 };
 
 use super::{
-    filter_visualizable_2d_entities, utilities::process_labels_2d_2, SpatialViewVisualizerData,
+    filter_visualizable_2d_entities, utilities::process_labels_2d, SpatialViewVisualizerData,
     SIZE_BOOST_IN_POINTS_FOR_POINT_OUTLINES,
 };
 
@@ -141,7 +141,7 @@ impl Points2DVisualizer {
                     )
                 };
 
-                self.data.ui_labels.extend(process_labels_2d_2(
+                self.data.ui_labels.extend(process_labels_2d(
                     entity_path,
                     label_positions,
                     &data.labels,

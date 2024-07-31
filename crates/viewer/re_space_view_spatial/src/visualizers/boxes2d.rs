@@ -21,7 +21,7 @@ use crate::{
 
 use super::{
     filter_visualizable_2d_entities, process_annotation_and_keypoint_slices, process_color_slice,
-    process_radius_slice, utilities::process_labels_2d_2, SpatialViewVisualizerData,
+    process_radius_slice, utilities::process_labels_2d, SpatialViewVisualizerData,
     SIZE_BOOST_IN_POINTS_FOR_LINE_OUTLINES,
 };
 
@@ -168,7 +168,7 @@ impl Boxes2DVisualizer {
                 if data.labels.len() == 1 && num_instances > 1 {
                     // If there's many boxes but only a single label, place the single label at the middle of the visualization.
                     // TODO(andreas): A smoothed over time (+ discontinuity detection) bounding box would be great.
-                    self.data.ui_labels.extend(process_labels_2d_2(
+                    self.data.ui_labels.extend(process_labels_2d(
                         entity_path,
                         std::iter::once(obj_space_bounding_box.center().truncate()),
                         &data.labels,
