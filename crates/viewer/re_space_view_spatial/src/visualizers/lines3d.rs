@@ -14,7 +14,7 @@ use re_viewer_context::{
 
 use crate::{
     contexts::SpatialSceneEntityContext, view_kind::SpatialSpaceViewKind,
-    visualizers::process_labels_3d_2,
+    visualizers::process_labels_3d,
 };
 
 use super::{
@@ -130,7 +130,7 @@ impl Lines3DVisualizer {
                     }))
                 };
 
-                self.data.ui_labels.extend(process_labels_3d_2(
+                self.data.ui_labels.extend(process_labels_3d(
                     entity_path,
                     label_positions,
                     &data.labels,
