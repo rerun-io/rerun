@@ -10,8 +10,8 @@ fn roundtrip() {
             components::HalfSize3D::new(4.0, 5.0, 6.0),
         ],
         centers: Some(vec![
-            components::Position3D::new(1.0, 2.0, 3.0), //
-            components::Position3D::new(4.0, 5.0, 6.0),
+            components::LeafTranslation3D::new(1.0, 2.0, 3.0), //
+            components::LeafTranslation3D::new(4.0, 5.0, 6.0),
         ]),
         rotations: Some(vec![
             components::Rotation3D::from(datatypes::Quaternion::from_xyzw([1.0, 2.0, 3.0, 4.0])),
