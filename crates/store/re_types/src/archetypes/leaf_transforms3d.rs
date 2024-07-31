@@ -26,7 +26,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 /// first the tree propagating [`archetypes::Transform3D`][crate::archetypes::Transform3D] is applied, then [`archetypes::LeafTransforms3D`][crate::archetypes::LeafTransforms3D].
 ///
 /// Currently, most visualizers support only a single leaf transform per entity.
-/// Check archetype documentations for details - if not otherwise specified, onlyt the first leaf transform is applied.
+/// Check archetype documentations for details - if not otherwise specified, only the first leaf transform is applied.
 ///
 /// From the point of view of the entity's coordinate system,
 /// all components are applied in the inverse order they are listed here.

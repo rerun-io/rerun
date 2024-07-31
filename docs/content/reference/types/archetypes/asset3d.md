@@ -7,7 +7,8 @@ A prepacked 3D asset (`.gltf`, `.glb`, `.obj`, `.stl`, etc.).
 
 See also [`archetypes.Mesh3D`](https://rerun.io/docs/reference/types/archetypes/mesh3d).
 
-If there are multiple [`archetypes.LeafTransforms3D`](https://rerun.io/docs/reference/types/archetypes/leaf_transforms3d), the mesh will be drawn for each transform.
+If there are multiple [`archetypes.LeafTransforms3D`](https://rerun.io/docs/reference/types/archetypes/leaf_transforms3d) instances logged to the same entity as a mesh,
+an instance of the mesh will be drawn for each transform.
 
 ## Components
 

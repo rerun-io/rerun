@@ -23,7 +23,8 @@ class Mesh3D(Mesh3DExt, Archetype):
 
     See also [`archetypes.Asset3D`][rerun.archetypes.Asset3D].
 
-    If there are multiple [`archetypes.LeafTransforms3D`][rerun.archetypes.LeafTransforms3D], the mesh will be drawn for each transform.
+    If there are multiple [`archetypes.LeafTransforms3D`][rerun.archetypes.LeafTransforms3D] instances logged to the same entity as a mesh,
+    an instance of the mesh will be drawn for each transform.
 
     Examples
     --------
