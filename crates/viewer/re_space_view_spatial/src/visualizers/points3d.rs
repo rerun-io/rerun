@@ -199,8 +199,8 @@ impl VisualizerSystem for Points3DVisualizer {
         line_builder
             .radius_boost_in_ui_points_for_outlines(SIZE_BOOST_IN_POINTS_FOR_POINT_OUTLINES);
 
-        use super::entity_iterator::{iter_primitive_array, process_archetype2};
-        process_archetype2::<Self, Points3D, _>(
+        use super::entity_iterator::{iter_primitive_array, process_archetype};
+        process_archetype::<Self, Points3D, _>(
             ctx,
             view_query,
             context_systems,

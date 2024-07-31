@@ -21,7 +21,7 @@ use crate::{
 };
 
 use super::{
-    bounding_box_for_textured_rect, entity_iterator::process_archetype2, textured_rect_from_tensor,
+    bounding_box_for_textured_rect, entity_iterator::process_archetype, textured_rect_from_tensor,
     SpatialViewVisualizerData,
 };
 
@@ -69,7 +69,7 @@ impl VisualizerSystem for ImageEncodedVisualizer {
             return Err(SpaceViewSystemExecutionError::NoRenderContextError);
         };
 
-        process_archetype2::<Self, ImageEncoded, _>(
+        process_archetype::<Self, ImageEncoded, _>(
             ctx,
             view_query,
             context_systems,

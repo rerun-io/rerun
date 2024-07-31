@@ -258,8 +258,8 @@ impl VisualizerSystem for DepthImageVisualizer {
         let mut depth_clouds = Vec::new();
         let transforms = context_systems.get::<TransformContext>()?;
 
-        use super::entity_iterator::{iter_buffer, process_archetype2};
-        process_archetype2::<Self, DepthImage, _>(
+        use super::entity_iterator::{iter_buffer, process_archetype};
+        process_archetype::<Self, DepthImage, _>(
             ctx,
             view_query,
             context_systems,
