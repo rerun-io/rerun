@@ -81,7 +81,8 @@ impl Asset3DVisualizer {
             if let Some(mesh) = mesh {
                 re_tracing::profile_scope!("mesh instances");
 
-                // Let's draw the mesh once for every instance transform. Because why not!
+                // Let's draw the mesh once for every instance transform.
+                // TODO(#7026): This a rare form of hybrid joining.
                 for &world_from_pose in &ent_context.transform_info.reference_from_instances {
                     instances.extend(mesh.mesh_instances.iter().map(move |mesh_instance| {
                         let pose_from_mesh = mesh_instance.world_from_mesh;
