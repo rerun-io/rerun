@@ -334,8 +334,25 @@ where
 
 // ---
 
-use re_chunk::{Chunk, ComponentName, RowId};
+use re_chunk::{Chunk, ChunkComponentIterItem, ComponentName, RowId};
 use re_chunk_store::external::{re_chunk, re_chunk::external::arrow2};
+
+/// Iterate `chunks` as indexed deserialized batches.
+///
+/// See [`Chunk::iter_component`] for more information.
+#[allow(unused)]
+pub fn iter_component<'a, C: re_types::Component>(
+    chunks: impl IntoIterator<Item = &'a Chunk> + 'a,
+    timeline: Timeline,
+    component_name: ComponentName,
+) -> impl Iterator<Item = ((TimeInt, RowId), ChunkComponentIterItem<C>)> + 'a {
+    chunks.into_iter().flat_map(move |chunk| {
+        itertools::izip!(
+            chunk.iter_component_indices(&timeline, &component_name),
+            chunk.iter_component::<C>()
+        )
+    })
+}
 
 /// Iterate `chunks` as indexed primitives.
 ///
