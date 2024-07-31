@@ -24,7 +24,5 @@ A vector in 3D space.
 * [`Position3D`](../components/position3d.md)
 * [`RotationAxisAngle`](../datatypes/rotation_axis_angle.md)
 * [`Scale3D`](../components/scale3d.md?speculative-link)
-* [`Scale3D`](../datatypes/scale3d.md)
 * [`Translation3D`](../components/translation3d.md?speculative-link)
-* [`TranslationRotationScale3D`](../datatypes/translation_rotation_scale3d.md)
 * [`Vector3D`](../components/vector3d.md)

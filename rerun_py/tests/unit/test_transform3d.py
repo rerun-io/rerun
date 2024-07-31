@@ -13,13 +13,12 @@ from rerun.datatypes import (
     Quaternion,
     Rotation3D,
     RotationAxisAngle,
-    Scale3D,
     Vec3D,
 )
 
 from .common_arrays import none_empty_or_value
 from .test_matnxn import MAT_3X3_INPUT
-from .test_vecnd import VEC_3D_INPUT, assert_correct_vec3d
+from .test_vecnd import VEC_3D_INPUT
 
 SCALE_3D_INPUT = [
     # Uniform
@@ -29,17 +28,6 @@ SCALE_3D_INPUT = [
     # ThreeD
     *VEC_3D_INPUT,
 ]
-
-
-def assert_correct_scale3d(scale: Scale3D | None) -> None:
-    assert scale is not None
-    if isinstance(scale.inner, float):
-        assert scale.inner == 4.0
-    elif isinstance(scale.inner, Vec3D):
-        assert_correct_vec3d(scale.inner)
-    else:
-        assert False, "Unexpected inner type"
-
 
 ROTATION_3D_INPUT = [
     # Quaternion

@@ -84,7 +84,6 @@ from .tensor_width_dimension import TensorWidthDimension, TensorWidthDimensionBa
 from .texcoord2d import Texcoord2D, Texcoord2DBatch, Texcoord2DType
 from .text import Text, TextBatch, TextType
 from .text_log_level import TextLogLevel, TextLogLevelBatch, TextLogLevelType
-from .transform3d import Transform3D, Transform3DBatch, Transform3DType
 from .transform_mat3x3 import TransformMat3x3, TransformMat3x3Batch, TransformMat3x3Type
 from .transform_relation import (
     TransformRelation,
@@ -282,9 +281,6 @@ __all__ = [
     "TextLogLevelBatch",
     "TextLogLevelType",
     "TextType",
-    "Transform3D",
-    "Transform3DBatch",
-    "Transform3DType",
     "TransformMat3x3",
     "TransformMat3x3Batch",
     "TransformMat3x3Type",

@@ -57,11 +57,9 @@ namespace rerun {
     using datatypes::Quaternion;
     using datatypes::Rgba32;
     using datatypes::RotationAxisAngle;
-    using datatypes::Scale3D;
     using datatypes::TensorBuffer;
     using datatypes::TensorData;
     using datatypes::TensorDimension;
-    using datatypes::TranslationRotationScale3D;
     using datatypes::Vec2D;
     using datatypes::Vec3D;
     using datatypes::Vec4D;

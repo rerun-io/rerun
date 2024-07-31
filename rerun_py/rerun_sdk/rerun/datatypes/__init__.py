@@ -46,7 +46,6 @@ from .rotation_axis_angle import (
     RotationAxisAngleLike,
     RotationAxisAngleType,
 )
-from .scale3d import Scale3D, Scale3DArrayLike, Scale3DBatch, Scale3DLike, Scale3DType
 from .tensor_buffer import TensorBuffer, TensorBufferArrayLike, TensorBufferBatch, TensorBufferLike, TensorBufferType
 from .tensor_data import TensorData, TensorDataArrayLike, TensorDataBatch, TensorDataLike, TensorDataType
 from .tensor_dimension import (
@@ -78,14 +77,6 @@ from .time_range_boundary import (
     TimeRangeBoundaryBatch,
     TimeRangeBoundaryLike,
     TimeRangeBoundaryType,
-)
-from .transform3d import Transform3D, Transform3DArrayLike, Transform3DBatch, Transform3DLike, Transform3DType
-from .translation_rotation_scale3d import (
-    TranslationRotationScale3D,
-    TranslationRotationScale3DArrayLike,
-    TranslationRotationScale3DBatch,
-    TranslationRotationScale3DLike,
-    TranslationRotationScale3DType,
 )
 from .uint32 import UInt32, UInt32ArrayLike, UInt32Batch, UInt32Like, UInt32Type
 from .uint64 import UInt64, UInt64ArrayLike, UInt64Batch, UInt64Like, UInt64Type
@@ -213,11 +204,6 @@ __all__ = [
     "RotationAxisAngleBatch",
     "RotationAxisAngleLike",
     "RotationAxisAngleType",
-    "Scale3D",
-    "Scale3DArrayLike",
-    "Scale3DBatch",
-    "Scale3DLike",
-    "Scale3DType",
     "TensorBuffer",
     "TensorBufferArrayLike",
     "TensorBufferBatch",
@@ -258,16 +244,6 @@ __all__ = [
     "TimeRangeBoundaryType",
     "TimeRangeLike",
     "TimeRangeType",
-    "Transform3D",
-    "Transform3DArrayLike",
-    "Transform3DBatch",
-    "Transform3DLike",
-    "Transform3DType",
-    "TranslationRotationScale3D",
-    "TranslationRotationScale3DArrayLike",
-    "TranslationRotationScale3DBatch",
-    "TranslationRotationScale3DLike",
-    "TranslationRotationScale3DType",
     "UInt32",
     "UInt32ArrayLike",
     "UInt32Batch",
