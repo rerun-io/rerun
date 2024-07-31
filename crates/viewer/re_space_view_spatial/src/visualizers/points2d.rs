@@ -1,10 +1,10 @@
 use itertools::Itertools as _;
 
-use re_query::range_zip_1x5;
 use re_renderer::{LineDrawableBuilder, PickingLayerInstanceId, PointCloudBuilder};
 use re_types::{
     archetypes::Points2D,
     components::{ClassId, Color, DrawOrder, KeypointId, Position2D, Radius, Text},
+    ArrowString, Loggable as _,
 };
 use re_viewer_context::{
     auto_color_for_entity_path, ApplicableEntities, IdentifiedViewSystem, QueryContext,
@@ -23,7 +23,7 @@ use crate::{
 };
 
 use super::{
-    filter_visualizable_2d_entities, process_labels_2d, SpatialViewVisualizerData,
+    filter_visualizable_2d_entities, utilities::process_labels_2d_2, SpatialViewVisualizerData,
     SIZE_BOOST_IN_POINTS_FOR_POINT_OUTLINES,
 };
 
@@ -141,10 +141,10 @@ impl Points2DVisualizer {
                     )
                 };
 
-                self.data.ui_labels.extend(process_labels_2d(
+                self.data.ui_labels.extend(process_labels_2d_2(
                     entity_path,
                     label_positions,
-                    data.labels,
+                    &data.labels,
                     &colors,
                     &annotation_infos,
                     world_from_obj,
@@ -166,7 +166,7 @@ pub struct Points2DComponentData<'a> {
     // Clamped to edge
     pub colors: &'a [Color],
     pub radii: &'a [Radius],
-    pub labels: &'a [Text],
+    pub labels: Vec<ArrowString>,
     pub keypoint_ids: &'a [KeypointId],
     pub class_ids: &'a [ClassId],
 }
@@ -211,53 +211,62 @@ impl VisualizerSystem for Points2DVisualizer {
         line_builder
             .radius_boost_in_ui_points_for_outlines(SIZE_BOOST_IN_POINTS_FOR_POINT_OUTLINES);
 
-        super::entity_iterator::process_archetype::<Self, Points2D, _>(
+        use super::entity_iterator::{iter_primitive_array, process_archetype2};
+        process_archetype2::<Self, Points2D, _>(
             ctx,
             view_query,
             context_systems,
             |ctx, spatial_ctx, results| {
-                use re_space_view::RangeResultsExt as _;
+                use re_space_view::RangeResultsExt2 as _;
 
-                let resolver = ctx.recording().resolver();
-
-                let positions = match results.get_required_component_dense::<Position2D>(resolver) {
-                    Some(positions) => positions?,
-                    _ => return Ok(()),
+                let Some(all_position_chunks) = results.get_required_chunks(&Position2D::name())
+                else {
+                    return Ok(());
                 };
 
-                let num_positions = positions
-                    .range_indexed()
-                    .map(|(_, positions)| positions.len())
-                    .sum::<usize>();
+                let num_positions = all_position_chunks
+                    .iter()
+                    .flat_map(|chunk| chunk.iter_primitive_array::<2, f32>(&Position2D::name()))
+                    .map(|points| points.len())
+                    .sum();
+
                 if num_positions == 0 {
                     return Ok(());
                 }
 
                 point_builder.reserve(num_positions)?;
 
-                let colors = results.get_or_empty_dense(resolver)?;
-                let radii = results.get_or_empty_dense(resolver)?;
-                let labels = results.get_or_empty_dense(resolver)?;
-                let class_ids = results.get_or_empty_dense(resolver)?;
-                let keypoint_ids = results.get_or_empty_dense(resolver)?;
+                let timeline = ctx.query.timeline();
+                let all_positions_indexed = iter_primitive_array::<2, f32>(
+                    &all_position_chunks,
+                    timeline,
+                    Position2D::name(),
+                );
+                let all_colors = results.iter_as(timeline, Color::name());
+                let all_radii = results.iter_as(timeline, Radius::name());
+                let all_labels = results.iter_as(timeline, Text::name());
+                let all_class_ids = results.iter_as(timeline, ClassId::name());
+                let all_keypoint_ids = results.iter_as(timeline, KeypointId::name());
 
-                let data = range_zip_1x5(
-                    positions.range_indexed(),
-                    colors.range_indexed(),
-                    radii.range_indexed(),
-                    labels.range_indexed(),
-                    class_ids.range_indexed(),
-                    keypoint_ids.range_indexed(),
+                let data = re_query2::range_zip_1x5(
+                    all_positions_indexed,
+                    all_colors.primitive::<u32>(),
+                    all_radii.primitive::<f32>(),
+                    all_labels.string(),
+                    all_class_ids.primitive::<u16>(),
+                    all_keypoint_ids.primitive::<u16>(),
                 )
                 .map(
                     |(_index, positions, colors, radii, labels, class_ids, keypoint_ids)| {
                         Points2DComponentData {
-                            positions,
-                            colors: colors.unwrap_or_default(),
-                            radii: radii.unwrap_or_default(),
+                            positions: bytemuck::cast_slice(positions),
+                            colors: colors.map_or(&[], |colors| bytemuck::cast_slice(colors)),
+                            radii: radii.map_or(&[], |radii| bytemuck::cast_slice(radii)),
                             labels: labels.unwrap_or_default(),
-                            class_ids: class_ids.unwrap_or_default(),
-                            keypoint_ids: keypoint_ids.unwrap_or_default(),
+                            class_ids: class_ids
+                                .map_or(&[], |class_ids| bytemuck::cast_slice(class_ids)),
+                            keypoint_ids: keypoint_ids
+                                .map_or(&[], |keypoint_ids| bytemuck::cast_slice(keypoint_ids)),
                         }
                     },
                 );

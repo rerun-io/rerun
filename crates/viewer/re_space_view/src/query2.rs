@@ -137,6 +137,12 @@ fn query_overrides<'a>(
             .resolved_component_overrides
             .get(component_name)
         {
+            let current_query = match override_value.store_kind {
+                re_log_types::StoreKind::Recording => ctx.current_query(),
+                re_log_types::StoreKind::Blueprint => ctx.blueprint_query.clone(),
+            };
+
+            #[allow(clippy::match_same_arms)] // see @jleibs comment below
             let component_override_result = match override_value.store_kind {
                 re_log_types::StoreKind::Recording => {
                     // TODO(jleibs): This probably is not right, but this code path is not used
@@ -144,7 +150,7 @@ fn query_overrides<'a>(
                     // component override data-references are resolved.
                     ctx.store_context.blueprint.query_caches2().latest_at(
                         ctx.store_context.blueprint.store(),
-                        &ctx.current_query(),
+                        &current_query,
                         &override_value.path,
                         [*component_name],
                     )
@@ -152,7 +158,7 @@ fn query_overrides<'a>(
                 re_log_types::StoreKind::Blueprint => {
                     ctx.store_context.blueprint.query_caches2().latest_at(
                         ctx.store_context.blueprint.store(),
-                        ctx.blueprint_query,
+                        &current_query,
                         &override_value.path,
                         [*component_name],
                     )
@@ -168,10 +174,10 @@ fn query_overrides<'a>(
             // This is extra tricky since the promise hasn't been resolved yet so we can't
             // actually look at the data.
             if let Some(value) = component_override_result.components.get(component_name) {
-                let index = value.index(&ctx.current_query().timeline());
+                let index = value.index(&current_query.timeline());
 
                 // NOTE: This can never happen, but I'd rather it happens than an unwrap.
-                debug_assert!(index.is_some());
+                debug_assert!(index.is_some(), "{value:#?}");
                 let index = index.unwrap_or((TimeInt::STATIC, RowId::ZERO));
 
                 overrides.add(*component_name, index, value.clone());

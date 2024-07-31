@@ -5,7 +5,7 @@
 use std::sync::Arc;
 
 use ahash::HashSet;
-use glam::{uvec3, vec3, Vec3};
+use glam::{uvec3, vec3, Vec3, Vec3A};
 use itertools::Itertools as _;
 use smallvec::smallvec;
 
@@ -167,7 +167,8 @@ fn generate_wireframe(key: &ProcMeshKey, render_ctx: &RenderContext) -> Wirefram
             }
         }
         ProcMeshKey::Sphere { subdivisions } => {
-            let subdiv = hexasphere::shapes::IcoSphere::new(subdivisions, |_| ());
+            let subdiv: hexasphere::Subdivided<(), OctahedronBase> =
+                hexasphere::Subdivided::new(subdivisions, |_| ());
 
             let sphere_points = subdiv.raw_points();
 
@@ -296,7 +297,8 @@ fn generate_solid(
             }
         }
         ProcMeshKey::Sphere { subdivisions } => {
-            let subdiv = hexasphere::shapes::IcoSphere::new(subdivisions, |_| ());
+            let subdiv: hexasphere::Subdivided<(), OctahedronBase> =
+                hexasphere::Subdivided::new(subdivisions, |_| ());
 
             let vertex_positions: Vec<Vec3> =
                 subdiv.raw_points().iter().map(|&p| p.into()).collect();
@@ -357,4 +359,65 @@ fn materials_for_uncolored_mesh(
             .clone(),
         albedo_factor: re_renderer::Rgba::BLACK,
     }]
+}
+
+// ----------------------------------------------------------------------------
+
+/// Base shape for [`hexasphere`]'s subdivision algorithm which is an octahedron
+/// that is subdivided into a sphere mesh.
+/// The value of this shape for us is that it has “equatorial” edges which are
+/// perpendicular to the axes of the ellipsoid, which thus align with the quantities
+/// the user actually specified (length on each axis), and can be usefully visualized
+/// by themselves separately from the subdivision mesh.
+///
+/// TODO(kpreid): This would also make sense to contribute back to `hexasphere` itself.
+#[derive(Clone, Copy, Debug, Default)]
+struct OctahedronBase;
+
+impl hexasphere::BaseShape for OctahedronBase {
+    fn initial_points(&self) -> Vec<Vec3A> {
+        vec![
+            Vec3A::NEG_X,
+            Vec3A::NEG_Y,
+            Vec3A::NEG_Z,
+            Vec3A::X,
+            Vec3A::Y,
+            Vec3A::Z,
+        ]
+    }
+
+    fn triangles(&self) -> Box<[hexasphere::Triangle]> {
+        use hexasphere::Triangle;
+        const TRIANGLES: [Triangle; 8] = [
+            Triangle::new(0, 2, 1, 1, 4, 0),   // -X-Y-Z face
+            Triangle::new(0, 1, 5, 0, 6, 3),   // -X-Y+Z face
+            Triangle::new(0, 4, 2, 2, 5, 1),   // -X+Y-Z face
+            Triangle::new(0, 5, 4, 3, 7, 2),   // -X+Y+Z face
+            Triangle::new(3, 1, 2, 8, 4, 9),   // +X-Y-Z face
+            Triangle::new(3, 5, 1, 11, 6, 8),  // +X-Y+Z face
+            Triangle::new(3, 2, 4, 9, 5, 10),  // +X+Y-Z face
+            Triangle::new(3, 4, 5, 10, 7, 11), // +X+Y+Z face
+        ];
+        Box::new(TRIANGLES)
+    }
+
+    /// The octahedron has 12 edges, which we are arbitrarily numbering as follows:
+    ///
+    /// 0. -X to -Y
+    /// 1. -X to -Z
+    /// 2. -X to +Y
+    /// 3. -X to +Z
+    /// 4. -Z to -Y
+    /// 5. -Z to +Y
+    /// 6. +Z to -Y
+    /// 7. +Z to +Y
+    /// 8. +X to -Y
+    /// 9. +X to -Z
+    /// 10. +X to +Y
+    /// 11. +X to +Z
+    const EDGES: usize = 12;
+
+    fn interpolate(&self, a: Vec3A, b: Vec3A, p: f32) -> Vec3A {
+        hexasphere::interpolation::geometric_slerp(a, b, p)
+    }
 }

@@ -1,11 +1,11 @@
 use re_chunk_store::RowId;
 use re_log_types::{hash::Hash64, Instance, TimeInt};
-use re_query::range_zip_1x1;
 use re_renderer::renderer::MeshInstance;
 use re_renderer::RenderContext;
 use re_types::{
     archetypes::Asset3D,
     components::{Blob, MediaType},
+    ArrowBuffer, ArrowString, Loggable as _,
 };
 use re_viewer_context::{
     ApplicableEntities, IdentifiedViewSystem, QueryContext, SpaceViewSystemExecutionError,
@@ -32,30 +32,30 @@ impl Default for Asset3DVisualizer {
     }
 }
 
-struct Asset3DComponentData<'a> {
+struct Asset3DComponentData {
     index: (TimeInt, RowId),
 
-    blob: &'a Blob,
-    media_type: Option<&'a MediaType>,
+    blob: ArrowBuffer<u8>,
+    media_type: Option<ArrowString>,
 }
 
 // NOTE: Do not put profile scopes in these methods. They are called for all entities and all
 // timestamps within a time range -- it's _a lot_.
 impl Asset3DVisualizer {
-    fn process_data<'a>(
+    fn process_data(
         &mut self,
         ctx: &QueryContext<'_>,
         render_ctx: &RenderContext,
         instances: &mut Vec<MeshInstance>,
         ent_context: &SpatialSceneEntityContext<'_>,
-        data: impl Iterator<Item = Asset3DComponentData<'a>>,
+        data: impl Iterator<Item = Asset3DComponentData>,
     ) {
         let entity_path = ctx.target_entity_path;
 
         for data in data {
             let mesh = Asset3D {
-                blob: data.blob.clone(),
-                media_type: data.media_type.cloned(),
+                blob: data.blob.clone().into(),
+                media_type: data.media_type.clone().map(Into::into),
             };
 
             let primary_row_id = data.index.1;
@@ -71,7 +71,7 @@ impl Asset3DVisualizer {
                         versioned_instance_path_hash: picking_instance_hash
                             .versioned(primary_row_id),
                         query_result_hash: Hash64::ZERO,
-                        media_type: data.media_type.cloned(),
+                        media_type: data.media_type.clone().map(Into::into),
                     },
                     AnyMesh::Asset(&mesh),
                     render_ctx,
@@ -138,32 +138,38 @@ impl VisualizerSystem for Asset3DVisualizer {
 
         let mut instances = Vec::new();
 
-        super::entity_iterator::process_archetype::<Self, Asset3D, _>(
+        super::entity_iterator::process_archetype2::<Self, Asset3D, _>(
             ctx,
             view_query,
             context_systems,
             |ctx, spatial_ctx, results| {
-                use re_space_view::RangeResultsExt as _;
+                use re_space_view::RangeResultsExt2 as _;
 
-                let resolver = ctx.recording().resolver();
-
-                let blobs = match results.get_required_component_dense::<Blob>(resolver) {
-                    Some(blobs) => blobs?,
-                    _ => return Ok(()),
+                let Some(all_blob_chunks) = results.get_required_chunks(&Blob::name()) else {
+                    return Ok(());
                 };
 
-                let media_types = results.get_or_empty_dense(resolver)?;
+                let timeline = ctx.query.timeline();
+                let all_blobs_indexed = all_blob_chunks.iter().flat_map(|chunk| {
+                    itertools::izip!(
+                        chunk.iter_component_indices(&timeline, &Blob::name()),
+                        chunk.iter_buffer::<u8>(&Blob::name())
+                    )
+                });
+                let all_media_types = results.iter_as(timeline, MediaType::name());
 
-                let data = range_zip_1x1(blobs.range_indexed(), media_types.range_indexed())
-                    .filter_map(|(&index, blobs, media_types)| {
+                let data = re_query2::range_zip_1x1(all_blobs_indexed, all_media_types.string())
+                    .filter_map(|(index, blobs, media_types)| {
                         blobs.first().map(|blob| Asset3DComponentData {
                             index,
-                            blob,
-                            media_type: media_types.and_then(|media_types| media_types.first()),
+                            blob: blob.clone(),
+                            media_type: media_types
+                                .and_then(|media_types| media_types.first().cloned()),
                         })
                     });
 
                 self.process_data(ctx, render_ctx, &mut instances, spatial_ctx, data);
+
                 Ok(())
             },
         )?;
