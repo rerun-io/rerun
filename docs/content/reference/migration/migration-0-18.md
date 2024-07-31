@@ -211,7 +211,7 @@ rec.log("world/mesh", &rerun::Asset3D::from_file(path)?)?;
 rec.log("world/mesh", &rerun::LeafTransform3D::default().with_translations([translation]))?;
 ```
 
-### [`Boxes3D`](https://rerun.io/docs/reference/types/archetypes/boxes3d) changes 
+### [`Boxes3D`](https://rerun.io/docs/reference/types/archetypes/boxes3d) changes
 
 `centers` is now a [`LeafTranslation3D`](https://rerun.io/docs/reference/types/components/leaf_translation3d#speculative-link) instead of a [`Position3D`](https://rerun.io/docs/reference/types/components/position3d) component.
 The main difference in behavior is that this means it overlaps with the newly introduced [`LeafTransforms3D`](https://rerun.io/docs/reference/types/archetypes/leaf_transform3d#speculative-link) archetype.
