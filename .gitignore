@@ -16,6 +16,7 @@ _deps
 **/.cache/
 **/rerun_cpp/docs/html
 **/rerun_cpp/docs/xml
+*.tgz
 
 # Rust compile target directory:
 **/target
