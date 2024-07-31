@@ -8,7 +8,7 @@ use re_types::{
     tensor_data::TensorDataMeaning,
 };
 use re_viewer_context::{
-    ApplicableEntities, IdentifiedViewSystem, ImageDecodeCache, QueryContext, SpaceViewClass,
+    ApplicableEntities, IdentifiedViewSystem, ImageDecodeCache, QueryContext,
     SpaceViewSystemExecutionError, TypedComponentFallbackProvider, ViewContext,
     ViewContextCollection, ViewQuery, VisualizableEntities, VisualizableFilterContext,
     VisualizerQueryInfo, VisualizerSystem,
@@ -16,12 +16,11 @@ use re_viewer_context::{
 
 use crate::{
     contexts::SpatialSceneEntityContext, view_kind::SpatialSpaceViewKind,
-    visualizers::filter_visualizable_2d_entities, PickableImageRect, SpatialSpaceView2D,
+    visualizers::filter_visualizable_2d_entities, PickableImageRect,
 };
 
 use super::{
-    bounding_box_for_textured_rect, entity_iterator::process_archetype, textured_rect_from_tensor,
-    SpatialViewVisualizerData,
+    entity_iterator::process_archetype, textured_rect_from_tensor, SpatialViewVisualizerData,
 };
 
 pub struct ImageEncodedVisualizer {
@@ -188,19 +187,9 @@ impl ImageEncodedVisualizer {
                 meaning,
                 multiplicative_tint,
                 colormap,
+                "ImageEncoded",
+                &mut self.data,
             ) {
-                // Only update the bounding box if this is a 2D space view.
-                // This is avoids a cyclic relationship where the image plane grows
-                // the bounds which in turn influence the size of the image plane.
-                // See: https://github.com/rerun-io/rerun/issues/3728
-                if spatial_ctx.space_view_class_identifier == SpatialSpaceView2D::identifier() {
-                    self.data.add_bounding_box(
-                        entity_path.hash(),
-                        bounding_box_for_textured_rect(&textured_rect),
-                        spatial_ctx.world_from_entity,
-                    );
-                }
-
                 self.images.push(PickableImageRect {
                     ent_path: entity_path.clone(),
                     row_id: tensor_data_row_id,

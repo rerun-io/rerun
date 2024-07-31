@@ -6,10 +6,12 @@ namespace rerun.archetypes;
 ///
 /// See also [archetypes.Mesh3D].
 ///
+/// If there are multiple [archetypes.LeafTransforms3D] instances logged to the same entity as a mesh,
+/// an instance of the mesh will be drawn for each transform.
+///
 /// \example archetypes/asset3d_simple title="Simple 3D asset" image="https://static.rerun.io/asset3d_simple/af238578188d3fd0de3e330212120e2842a8ddb2/1200w.png"
-/// \example archetypes/asset3d_out_of_tree !api title="3D asset with out-of-tree transform"
 table Asset3D (
-  "attr.rust.derive": "PartialEq",
+  "attr.rust.derive": "PartialEq, Eq",
   "attr.docs.category": "Spatial 3D",
   "attr.docs.view_types": "Spatial3DView, Spatial2DView: if logged above active projection"
 ) {
@@ -31,11 +33,4 @@ table Asset3D (
   /// If omitted, the viewer will try to guess from the data blob.
   /// If it cannot guess, it won't be able to render the asset.
   media_type: rerun.components.MediaType  ("attr.rerun.component_recommended", nullable, order: 2000);
-
-  // --- Optional ---
-
-  /// An out-of-tree transform.
-  ///
-  /// Applies a transformation to the asset itself without impacting its children.
-  transform: rerun.components.OutOfTreeTransform3D ("attr.rerun.component_optional", nullable, order: 3000);
 }

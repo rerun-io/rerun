@@ -72,9 +72,13 @@ impl Arrows2DVisualizer {
             let colors =
                 process_color_slice(ctx, self, num_instances, &annotation_infos, data.colors);
 
+            let world_from_obj = ent_context
+                .transform_info
+                .single_entity_transform_required(entity_path, "Arrows2D");
+
             let mut line_batch = line_builder
                 .batch(entity_path.to_string())
-                .world_from_obj(ent_context.world_from_entity)
+                .world_from_obj(world_from_obj)
                 .outline_mask_ids(ent_context.highlight.overall)
                 .picking_object_id(re_renderer::PickingLayerObjectId(entity_path.hash64()));
 
@@ -112,11 +116,8 @@ impl Arrows2DVisualizer {
                 obj_space_bounding_box.extend(end.extend(0.0));
             }
 
-            self.data.add_bounding_box(
-                entity_path.hash(),
-                obj_space_bounding_box,
-                ent_context.world_from_entity,
-            );
+            self.data
+                .add_bounding_box(entity_path.hash(), obj_space_bounding_box, world_from_obj);
 
             if data.labels.len() == 1 || num_instances <= super::MAX_NUM_LABELS_PER_ENTITY {
                 // If there's many arrows but only a single label, place the single label at the middle of the visualization.
@@ -142,7 +143,7 @@ impl Arrows2DVisualizer {
                     data.labels,
                     &colors,
                     &annotation_infos,
-                    ent_context.world_from_entity,
+                    world_from_obj,
                 ));
             }
         }

@@ -73,11 +73,7 @@ impl LoadedMesh {
     ) -> anyhow::Result<Self> {
         re_tracing::profile_function!();
 
-        let Asset3D {
-            blob,
-            media_type,
-            transform: _,
-        } = asset3d;
+        let Asset3D { blob, media_type } = asset3d;
 
         let media_type = MediaType::or_guess_from_data(media_type.clone(), blob.as_slice())
             .ok_or_else(|| anyhow::anyhow!("couldn't guess media type"))?;

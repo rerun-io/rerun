@@ -45,20 +45,6 @@ impl DataUi for re_types::components::Transform3D {
     }
 }
 
-impl DataUi for re_types::components::OutOfTreeTransform3D {
-    #[inline]
-    fn data_ui(
-        &self,
-        ctx: &ViewerContext<'_>,
-        ui: &mut egui::Ui,
-        ui_layout: UiLayout,
-        query: &re_chunk_store::LatestAtQuery,
-        db: &re_entity_db::EntityDb,
-    ) {
-        re_types::components::Transform3D(self.0).data_ui(ctx, ui, ui_layout, query, db);
-    }
-}
-
 impl DataUi for Transform3D {
     #[allow(clippy::only_used_in_recursion)]
     fn data_ui(

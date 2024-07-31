@@ -15,6 +15,7 @@ disconnected_space.py linguist-generated=true
 ellipsoids.py linguist-generated=true
 image.py linguist-generated=true
 image_encoded.py linguist-generated=true
+leaf_transforms3d.py linguist-generated=true
 line_strips2d.py linguist-generated=true
 line_strips3d.py linguist-generated=true
 mesh3d.py linguist-generated=true

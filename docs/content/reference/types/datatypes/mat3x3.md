@@ -26,5 +26,6 @@ row 2 | flat_columns[2] flat_columns[5] flat_columns[8]
 
 ## Used by
 
+* [`LeafTransformMat3x3`](../components/leaf_transform_mat3x3.md?speculative-link)
 * [`PinholeProjection`](../components/pinhole_projection.md)
 * [`TransformMat3x3`](../components/transform_mat3x3.md?speculative-link)

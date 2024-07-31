@@ -1,12 +1,10 @@
-use itertools::Itertools as _;
-
 use re_chunk_store::RowId;
 use re_log_types::{hash::Hash64, Instance, TimeInt};
 use re_renderer::renderer::MeshInstance;
 use re_renderer::RenderContext;
 use re_types::{
     archetypes::Asset3D,
-    components::{Blob, MediaType, OutOfTreeTransform3D},
+    components::{Blob, MediaType},
     ArrowBuffer, ArrowString, Loggable as _,
 };
 use re_viewer_context::{
@@ -34,24 +32,23 @@ impl Default for Asset3DVisualizer {
     }
 }
 
-struct Asset3DComponentData<'a> {
+struct Asset3DComponentData {
     index: (TimeInt, RowId),
 
     blob: ArrowBuffer<u8>,
     media_type: Option<ArrowString>,
-    transform: Option<&'a OutOfTreeTransform3D>,
 }
 
 // NOTE: Do not put profile scopes in these methods. They are called for all entities and all
 // timestamps within a time range -- it's _a lot_.
 impl Asset3DVisualizer {
-    fn process_data<'a>(
+    fn process_data(
         &mut self,
         ctx: &QueryContext<'_>,
         render_ctx: &RenderContext,
         instances: &mut Vec<MeshInstance>,
         ent_context: &SpatialSceneEntityContext<'_>,
-        data: impl Iterator<Item = Asset3DComponentData<'a>>,
+        data: impl Iterator<Item = Asset3DComponentData>,
     ) {
         let entity_path = ctx.target_entity_path;
 
@@ -59,9 +56,6 @@ impl Asset3DVisualizer {
             let mesh = Asset3D {
                 blob: data.blob.clone().into(),
                 media_type: data.media_type.clone().map(Into::into),
-
-                // NOTE: Don't even try to cache the transform!
-                transform: None,
             };
 
             let primary_row_id = data.index.1;
@@ -87,28 +81,27 @@ impl Asset3DVisualizer {
             if let Some(mesh) = mesh {
                 re_tracing::profile_scope!("mesh instances");
 
-                let world_from_pose = ent_context.world_from_entity
-                    * data
-                        .transform
-                        .map_or(glam::Affine3A::IDENTITY, |t| t.0.into());
+                // Let's draw the mesh once for every instance transform.
+                // TODO(#7026): This a rare form of hybrid joining.
+                for &world_from_pose in &ent_context.transform_info.reference_from_instances {
+                    instances.extend(mesh.mesh_instances.iter().map(move |mesh_instance| {
+                        let pose_from_mesh = mesh_instance.world_from_mesh;
+                        let world_from_mesh = world_from_pose * pose_from_mesh;
 
-                instances.extend(mesh.mesh_instances.iter().map(move |mesh_instance| {
-                    let pose_from_mesh = mesh_instance.world_from_mesh;
-                    let world_from_mesh = world_from_pose * pose_from_mesh;
+                        MeshInstance {
+                            gpu_mesh: mesh_instance.gpu_mesh.clone(),
+                            world_from_mesh,
+                            outline_mask_ids,
+                            picking_layer_id: picking_layer_id_from_instance_path_hash(
+                                picking_instance_hash,
+                            ),
+                            ..Default::default()
+                        }
+                    }));
 
-                    MeshInstance {
-                        gpu_mesh: mesh_instance.gpu_mesh.clone(),
-                        world_from_mesh,
-                        outline_mask_ids,
-                        picking_layer_id: picking_layer_id_from_instance_path_hash(
-                            picking_instance_hash,
-                        ),
-                        ..Default::default()
-                    }
-                }));
-
-                self.0
-                    .add_bounding_box(entity_path.hash(), mesh.bbox(), world_from_pose);
+                    self.0
+                        .add_bounding_box(entity_path.hash(), mesh.bbox(), world_from_pose);
+                }
             };
         }
     }
@@ -166,37 +159,15 @@ impl VisualizerSystem for Asset3DVisualizer {
                 });
                 let all_media_types = results.iter_as(timeline, MediaType::name());
 
-                // TODO(#6831): we have to deserialize here because `OutOfTreeTransform3D` is
-                // still a complex type at this point.
-                let all_transform_chunks =
-                    results.get_optional_chunks(&OutOfTreeTransform3D::name());
-                let mut all_transform_iters = all_transform_chunks
-                    .iter()
-                    .map(|chunk| chunk.iter_component::<OutOfTreeTransform3D>())
-                    .collect_vec();
-                let all_transforms_indexed = {
-                    let all_transforms =
-                        all_transform_iters.iter_mut().flat_map(|it| it.into_iter());
-                    let all_transforms_indices = all_transform_chunks.iter().flat_map(|chunk| {
-                        chunk.iter_component_indices(&timeline, &OutOfTreeTransform3D::name())
+                let data = re_query2::range_zip_1x1(all_blobs_indexed, all_media_types.string())
+                    .filter_map(|(index, blobs, media_types)| {
+                        blobs.first().map(|blob| Asset3DComponentData {
+                            index,
+                            blob: blob.clone(),
+                            media_type: media_types
+                                .and_then(|media_types| media_types.first().cloned()),
+                        })
                     });
-                    itertools::izip!(all_transforms_indices, all_transforms)
-                };
-
-                let data = re_query2::range_zip_1x2(
-                    all_blobs_indexed,
-                    all_media_types.string(),
-                    all_transforms_indexed,
-                )
-                .filter_map(|(index, blobs, media_types, transforms)| {
-                    blobs.first().map(|blob| Asset3DComponentData {
-                        index,
-                        blob: blob.clone(),
-                        media_type: media_types
-                            .and_then(|media_types| media_types.first().cloned()),
-                        transform: transforms.and_then(|transforms| transforms.first()),
-                    })
-                });
 
                 self.process_data(ctx, render_ctx, &mut instances, spatial_ctx, data);
 

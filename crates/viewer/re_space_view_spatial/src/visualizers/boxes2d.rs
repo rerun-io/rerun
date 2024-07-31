@@ -121,10 +121,14 @@ impl Boxes2DVisualizer {
             let colors =
                 process_color_slice(ctx, self, num_instances, &annotation_infos, data.colors);
 
+            let world_from_obj = ent_context
+                .transform_info
+                .single_entity_transform_required(entity_path, "Boxes2D");
+
             let mut line_batch = line_builder
                 .batch("boxes2d")
                 .depth_offset(ent_context.depth_offset)
-                .world_from_obj(ent_context.world_from_entity)
+                .world_from_obj(world_from_obj)
                 .outline_mask_ids(ent_context.highlight.overall)
                 .picking_object_id(re_renderer::PickingLayerObjectId(entity_path.hash64()));
 
@@ -158,11 +162,8 @@ impl Boxes2DVisualizer {
                 }
             }
 
-            self.data.add_bounding_box(
-                entity_path.hash(),
-                obj_space_bounding_box,
-                ent_context.world_from_entity,
-            );
+            self.data
+                .add_bounding_box(entity_path.hash(), obj_space_bounding_box, world_from_obj);
 
             if data.labels.len() == 1 || num_instances <= super::MAX_NUM_LABELS_PER_ENTITY {
                 if data.labels.len() == 1 && num_instances > 1 {
@@ -174,7 +175,7 @@ impl Boxes2DVisualizer {
                         data.labels,
                         &colors,
                         &annotation_infos,
-                        ent_context.world_from_entity,
+                        world_from_obj,
                     ));
                 } else {
                     let centers = clamped_or(data.centers, &Position2D::ZERO);

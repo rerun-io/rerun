@@ -23,6 +23,9 @@ class Asset3D(Asset3DExt, Archetype):
 
     See also [`archetypes.Mesh3D`][rerun.archetypes.Mesh3D].
 
+    If there are multiple [`archetypes.LeafTransforms3D`][rerun.archetypes.LeafTransforms3D] instances logged to the same entity as a mesh,
+    an instance of the mesh will be drawn for each transform.
+
     Example
     -------
     ### Simple 3D asset:
@@ -59,7 +62,6 @@ class Asset3D(Asset3DExt, Archetype):
         self.__attrs_init__(
             blob=None,  # type: ignore[arg-type]
             media_type=None,  # type: ignore[arg-type]
-            transform=None,  # type: ignore[arg-type]
         )
 
     @classmethod
@@ -92,17 +94,6 @@ class Asset3D(Asset3DExt, Archetype):
     #
     # If omitted, the viewer will try to guess from the data blob.
     # If it cannot guess, it won't be able to render the asset.
-    #
-    # (Docstring intentionally commented out to hide this field from the docs)
-
-    transform: components.OutOfTreeTransform3DBatch | None = field(
-        metadata={"component": "optional"},
-        default=None,
-        converter=components.OutOfTreeTransform3DBatch._optional,  # type: ignore[misc]
-    )
-    # An out-of-tree transform.
-    #
-    # Applies a transformation to the asset itself without impacting its children.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 

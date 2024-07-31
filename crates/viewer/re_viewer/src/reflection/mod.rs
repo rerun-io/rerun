@@ -385,6 +385,41 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             },
         ),
         (
+            <LeafRotationAxisAngle as Loggable>::name(),
+            ComponentReflection {
+                docstring_md: "3D rotation represented by a rotation around a given axis that doesn't propagate in the transform hierarchy.",
+                placeholder: Some(LeafRotationAxisAngle::default().to_arrow()?),
+            },
+        ),
+        (
+            <LeafRotationQuat as Loggable>::name(),
+            ComponentReflection {
+                docstring_md: "A 3D rotation expressed as a quaternion that doesn't propagate in the transform hierarchy.\n\nNote: although the x,y,z,w components of the quaternion will be passed through to the\ndatastore as provided, when used in the Viewer, quaternions will always be normalized.",
+                placeholder: Some(LeafRotationQuat::default().to_arrow()?),
+            },
+        ),
+        (
+            <LeafScale3D as Loggable>::name(),
+            ComponentReflection {
+                docstring_md: "A 3D scale factor that doesn't propagate in the transform hierarchy.\n\nA scale of 1.0 means no scaling.\nA scale of 2.0 means doubling the size.\nEach component scales along the corresponding axis.",
+                placeholder: Some(LeafScale3D::default().to_arrow()?),
+            },
+        ),
+        (
+            <LeafTransformMat3x3 as Loggable>::name(),
+            ComponentReflection {
+                docstring_md: "A 3x3 transformation matrix Matrix that doesn't propagate in the transform hierarchy.\n\n3x3 matrixes are able to represent any affine transformation in 3D space,\ni.e. rotation, scaling, shearing, reflection etc.\n\nMatrices in Rerun are stored as flat list of coefficients in column-major order:\n```text\n            column 0       column 1       column 2\n       -------------------------------------------------\nrow 0 | flat_columns[0] flat_columns[3] flat_columns[6]\nrow 1 | flat_columns[1] flat_columns[4] flat_columns[7]\nrow 2 | flat_columns[2] flat_columns[5] flat_columns[8]\n```",
+                placeholder: Some(LeafTransformMat3x3::default().to_arrow()?),
+            },
+        ),
+        (
+            <LeafTranslation3D as Loggable>::name(),
+            ComponentReflection {
+                docstring_md: "A translation vector in 3D space that doesn't propagate in the transform hierarchy.",
+                placeholder: Some(LeafTranslation3D::default().to_arrow()?),
+            },
+        ),
+        (
             <LineStrip2D as Loggable>::name(),
             ComponentReflection {
                 docstring_md: "A line strip in 2D space.\n\nA line strip is a list of points connected by line segments. It can be used to draw\napproximations of smooth curves.\n\nThe points will be connected in order, like so:\n```text\n       2------3     5\n      /        \\   /\n0----1          \\ /\n                 4\n```",
@@ -438,13 +473,6 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             ComponentReflection {
                 docstring_md: "Degree of transparency ranging from 0.0 (fully transparent) to 1.0 (fully opaque).\n\nThe final opacity value may be a result of multiplication with alpha values as specified by other color sources.\nUnless otherwise specified, the default value is 1.",
                 placeholder: Some(Opacity::default().to_arrow()?),
-            },
-        ),
-        (
-            <OutOfTreeTransform3D as Loggable>::name(),
-            ComponentReflection {
-                docstring_md: "An out-of-tree affine transform between two 3D spaces, represented in a given direction.\n\n\"Out-of-tree\" means that the transform only affects its own entity: children don't inherit from it.",
-                placeholder: Some(OutOfTreeTransform3D::default().to_arrow()?),
             },
         ),
         (
@@ -513,7 +541,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
         (
             <RotationQuat as Loggable>::name(),
             ComponentReflection {
-                docstring_md: "A 3D rotation expressed as a quaternion.\n\nNote: although the x,y,z,w components of the quaternion will be passed through to the\ndatastore as provided, when used in the Viewer Quaternions will always be normalized.",
+                docstring_md: "A 3D rotation expressed as a quaternion.\n\nNote: although the x,y,z,w components of the quaternion will be passed through to the\ndatastore as provided, when used in the Viewer, quaternions will always be normalized.",
                 placeholder: Some(RotationQuat::default().to_arrow()?),
             },
         ),
@@ -654,6 +682,30 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
 fn generate_archetype_reflection() -> ArchetypeReflectionMap {
     re_tracing::profile_function!();
     let array = [
+        (
+            ArchetypeName::new("rerun.archetypes.LeafTransforms3D"),
+            ArchetypeReflection {
+                display_name: "Leaf transforms 3D",
+                docstring_md: "One or more transforms between the parent and the current entity which are *not* propagated in the transform hierarchy.\n\nFor transforms that are propagated in the transform hierarchy, see [`archetypes.Transform3D`](https://rerun.io/docs/reference/types/archetypes/transform3d).\n\nIf both [`archetypes.LeafTransforms3D`](https://rerun.io/docs/reference/types/archetypes/leaf_transforms3d) and [`archetypes.Transform3D`](https://rerun.io/docs/reference/types/archetypes/transform3d) are present,\nfirst the tree propagating [`archetypes.Transform3D`](https://rerun.io/docs/reference/types/archetypes/transform3d) is applied, then [`archetypes.LeafTransforms3D`](https://rerun.io/docs/reference/types/archetypes/leaf_transforms3d).\n\nCurrently, most visualizers support only a single leaf transform per entity.\nCheck archetype documentations for details - if not otherwise specified, only the first leaf transform is applied.\n\nFrom the point of view of the entity's coordinate system,\nall components are applied in the inverse order they are listed here.\nE.g. if both a translation and a max3x3 transform are present,\nthe 3x3 matrix is applied first, followed by the translation.\n\n## Example\n\n### Regular & leaf transform in tandom\n```ignore\nuse rerun::{\n    demo_util::grid,\n    external::{anyhow, glam},\n};\n\nfn main() -> anyhow::Result<()> {\n    let rec =\n        rerun::RecordingStreamBuilder::new(\"rerun_example_leaf_transform3d_combined\").spawn()?;\n\n    rec.set_time_sequence(\"frame\", 0);\n\n    // Log a box and points further down in the hierarchy.\n    rec.log(\n        \"world/box\",\n        &rerun::Boxes3D::from_half_sizes([[1.0, 1.0, 1.0]]),\n    )?;\n    rec.log(\n        \"world/box/points\",\n        &rerun::Points3D::new(grid(glam::Vec3::splat(-10.0), glam::Vec3::splat(10.0), 10)),\n    )?;\n\n    for i in 0..180 {\n        rec.set_time_sequence(\"frame\", i);\n\n        // Log a regular transform which affects both the box and the points.\n        rec.log(\n            \"world/box\",\n            &rerun::Transform3D::from_rotation(rerun::RotationAxisAngle {\n                axis: [0.0, 0.0, 1.0].into(),\n                angle: rerun::Angle::from_degrees(i as f32 * 2.0),\n            }),\n        )?;\n\n        // Log an leaf transform which affects only the box.\n        let translation = [0.0, 0.0, (i as f32 * 0.1 - 5.0).abs() - 5.0];\n        rec.log(\n            \"world/box\",\n            &rerun::LeafTransforms3D::new().with_translations([translation]),\n        )?;\n    }\n\n    Ok(())\n}\n```\n<center>\n<picture>\n  <source media=\"(max-width: 480px)\" srcset=\"https://static.rerun.io/leaf_transform3d/41674f0082d6de489f8a1cd1583f60f6b5820ddf/480w.png\">\n  <source media=\"(max-width: 768px)\" srcset=\"https://static.rerun.io/leaf_transform3d/41674f0082d6de489f8a1cd1583f60f6b5820ddf/768w.png\">\n  <source media=\"(max-width: 1024px)\" srcset=\"https://static.rerun.io/leaf_transform3d/41674f0082d6de489f8a1cd1583f60f6b5820ddf/1024w.png\">\n  <source media=\"(max-width: 1200px)\" srcset=\"https://static.rerun.io/leaf_transform3d/41674f0082d6de489f8a1cd1583f60f6b5820ddf/1200w.png\">\n  <img src=\"https://static.rerun.io/leaf_transform3d/41674f0082d6de489f8a1cd1583f60f6b5820ddf/full.png\" width=\"640\">\n</picture>\n</center>",
+                fields: vec![
+                    ArchetypeFieldReflection { component_name :
+                    "rerun.components.LeafTranslation3D".into(), display_name :
+                    "Translations", docstring_md : "Translation vectors.", },
+                    ArchetypeFieldReflection { component_name :
+                    "rerun.components.LeafRotationAxisAngle".into(), display_name :
+                    "Rotation axis angles", docstring_md : "Rotations via axis + angle.",
+                    }, ArchetypeFieldReflection { component_name :
+                    "rerun.components.LeafRotationQuat".into(), display_name :
+                    "Quaternions", docstring_md : "Rotations via quaternion.", },
+                    ArchetypeFieldReflection { component_name :
+                    "rerun.components.LeafScale3D".into(), display_name : "Scales",
+                    docstring_md : "Scaling factors.", }, ArchetypeFieldReflection {
+                    component_name : "rerun.components.LeafTransformMat3x3".into(),
+                    display_name : "Mat 3x 3", docstring_md :
+                    "3x3 transformation matrices.", },
+                ],
+            },
+        ),
         (
             ArchetypeName::new("rerun.archetypes.Transform3D"),
             ArchetypeReflection {

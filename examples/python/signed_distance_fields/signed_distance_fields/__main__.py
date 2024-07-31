@@ -89,11 +89,8 @@ def log_mesh(path: Path, mesh: Trimesh) -> None:
     scale = bs2.scale / bs1.scale
     center = bs2.center - bs1.center * scale
 
-    mesh3d = rr.Asset3D(path=path)
-    mesh3d.transform = rr.OutOfTreeTransform3DBatch(
-        rr.datatypes.TranslationRotationScale3D(translation=center, scale=scale)
-    )
-    rr.log("world/mesh", mesh3d)
+    rr.log("world/mesh", rr.Asset3D(path=path))
+    rr.log("world/mesh", rr.Transform3D(translation=center, scale=scale))
 
 
 def log_sampled_sdf(points: npt.NDArray[np.float32], sdf: npt.NDArray[np.float32]) -> None:

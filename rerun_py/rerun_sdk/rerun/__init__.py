@@ -51,6 +51,7 @@ from .archetypes import (
     Ellipsoids as Ellipsoids,
     Image as Image,
     ImageEncoded as ImageEncoded,
+    LeafTransforms3D as LeafTransforms3D,
     LineStrips2D as LineStrips2D,
     LineStrips3D as LineStrips3D,
     Mesh3D as Mesh3D,
@@ -76,8 +77,6 @@ from .blueprint.api import (
 from .components import (
     AlbedoFactor as AlbedoFactor,
     MediaType as MediaType,
-    OutOfTreeTransform3D as OutOfTreeTransform3D,
-    OutOfTreeTransform3DBatch as OutOfTreeTransform3DBatch,
     Radius as Radius,
     Scale3D as Scale3D,
     TensorDimensionIndexSelection as TensorDimensionIndexSelection,

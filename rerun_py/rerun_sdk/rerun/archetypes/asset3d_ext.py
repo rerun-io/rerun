@@ -35,7 +35,6 @@ class Asset3DExt:
         path: str | pathlib.Path | None = None,
         contents: datatypes.BlobLike | None = None,
         media_type: datatypes.Utf8Like | None = None,
-        transform: datatypes.Transform3DLike | None = None,
     ):
         """
         Create a new instance of the Asset3D archetype.
@@ -63,11 +62,6 @@ class Asset3DExt:
             or the viewer will try to guess from the contents (magic header).
             If the media type cannot be guessed, the viewer won't be able to render the asset.
 
-        transform:
-            An out-of-tree transform.
-
-            Applies a transformation to the asset itself without impacting its children.
-
         """
 
         with catch_and_log_exceptions(context=self.__class__.__name__):
@@ -81,7 +75,7 @@ class Asset3DExt:
                 if media_type is None:
                     media_type = guess_media_type(str(path))
 
-            self.__attrs_init__(blob=blob, media_type=media_type, transform=transform)
+            self.__attrs_init__(blob=blob, media_type=media_type)
             return
 
         self.__attrs_clear__()
