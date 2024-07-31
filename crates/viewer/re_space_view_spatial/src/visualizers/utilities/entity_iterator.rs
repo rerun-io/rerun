@@ -342,11 +342,11 @@ use re_chunk_store::external::{re_chunk, re_chunk::external::arrow2};
 /// See [`Chunk::iter_component`] for more information.
 #[allow(unused)]
 pub fn iter_component<'a, C: re_types::Component>(
-    chunks: impl IntoIterator<Item = &'a Chunk> + 'a,
+    chunks: &'a std::borrow::Cow<'a, [Chunk]>,
     timeline: Timeline,
     component_name: ComponentName,
 ) -> impl Iterator<Item = ((TimeInt, RowId), ChunkComponentIterItem<C>)> + 'a {
-    chunks.into_iter().flat_map(move |chunk| {
+    chunks.iter().flat_map(move |chunk| {
         itertools::izip!(
             chunk.iter_component_indices(&timeline, &component_name),
             chunk.iter_component::<C>()
@@ -359,11 +359,11 @@ pub fn iter_component<'a, C: re_types::Component>(
 /// See [`Chunk::iter_primitive`] for more information.
 #[allow(unused)]
 pub fn iter_primitive<'a, T: arrow2::types::NativeType>(
-    chunks: impl IntoIterator<Item = &'a Chunk> + 'a,
+    chunks: &'a std::borrow::Cow<'a, [Chunk]>,
     timeline: Timeline,
     component_name: ComponentName,
 ) -> impl Iterator<Item = ((TimeInt, RowId), &'a [T])> + 'a {
-    chunks.into_iter().flat_map(move |chunk| {
+    chunks.iter().flat_map(move |chunk| {
         itertools::izip!(
             chunk.iter_component_indices(&timeline, &component_name),
             chunk.iter_primitive::<T>(&component_name)
