@@ -19,7 +19,7 @@ use crate::{
 
 use super::{
     entity_iterator::clamped_or, process_annotation_and_keypoint_slices, process_color_slice,
-    process_labels_3d_2, process_radius_slice, SpatialViewVisualizerData,
+    process_labels_3d, process_radius_slice, SpatialViewVisualizerData,
     SIZE_BOOST_IN_POINTS_FOR_LINE_OUTLINES,
 };
 
@@ -136,7 +136,7 @@ impl Arrows3DVisualizer {
                     ))
                 };
 
-                self.data.ui_labels.extend(process_labels_3d_2(
+                self.data.ui_labels.extend(process_labels_3d(
                     entity_path,
                     label_positions,
                     &data.labels,

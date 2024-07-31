@@ -27,7 +27,7 @@ use crate::{
 
 use super::{
     entity_iterator::clamped_or, filter_visualizable_3d_entities,
-    process_annotation_and_keypoint_slices, process_color_slice, process_labels_3d_2,
+    process_annotation_and_keypoint_slices, process_color_slice, process_labels_3d,
     process_radius_slice, SpatialViewVisualizerData, SIZE_BOOST_IN_POINTS_FOR_LINE_OUTLINES,
 };
 
@@ -171,7 +171,7 @@ impl Boxes3DVisualizer {
                     )
                 };
 
-                self.0.ui_labels.extend(process_labels_3d_2(
+                self.0.ui_labels.extend(process_labels_3d(
                     entity_path,
                     label_positions,
                     &data.labels,

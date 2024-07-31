@@ -23,7 +23,7 @@ use crate::{
 };
 
 use super::{
-    filter_visualizable_3d_entities, process_labels_3d_2, SpatialViewVisualizerData,
+    filter_visualizable_3d_entities, process_labels_3d, SpatialViewVisualizerData,
     SIZE_BOOST_IN_POINTS_FOR_POINT_OUTLINES,
 };
 
@@ -144,7 +144,7 @@ impl Points3DVisualizer {
                     positions
                 };
 
-                self.data.ui_labels.extend(process_labels_3d_2(
+                self.data.ui_labels.extend(process_labels_3d(
                     entity_path,
                     label_positions.iter().copied(),
                     &data.labels,
