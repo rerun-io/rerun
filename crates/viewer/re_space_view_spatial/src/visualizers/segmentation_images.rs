@@ -2,8 +2,9 @@ use itertools::Itertools as _;
 
 use re_types::{
     archetypes::SegmentationImage,
-    components::{self, DrawOrder, Opacity},
+    components::{Blob, ChannelDatatype, DrawOrder, Opacity, Resolution2D},
     image::ImageKind,
+    Loggable as _,
 };
 use re_viewer_context::{
     ApplicableEntities, IdentifiedViewSystem, ImageFormat, ImageInfo, QueryContext,
@@ -70,54 +71,58 @@ impl VisualizerSystem for SegmentationImageVisualizer {
             return Err(SpaceViewSystemExecutionError::NoRenderContextError);
         };
 
-        super::entity_iterator::process_archetype::<Self, SegmentationImage, _>(
+        use super::entity_iterator::{
+            iter_buffer, iter_component, iter_primitive_array, process_archetype2,
+        };
+        process_archetype2::<Self, SegmentationImage, _>(
             ctx,
             view_query,
             context_systems,
             |ctx, spatial_ctx, results| {
-                use re_space_view::RangeResultsExt as _;
+                use re_space_view::RangeResultsExt2 as _;
 
                 let entity_path = ctx.target_entity_path;
-                let resolver = ctx.recording().resolver();
 
-                let blobs = match results.get_required_component_dense::<components::Blob>(resolver)
-                {
-                    Some(blobs) => blobs?,
-                    _ => return Ok(()),
+                let Some(all_blob_chunks) = results.get_required_chunks(&Blob::name()) else {
+                    return Ok(());
                 };
-                let data_types = match results
-                    .get_required_component_dense::<components::ChannelDatatype>(resolver)
-                {
-                    Some(data_types) => data_types?,
-                    _ => return Ok(()),
+                let Some(all_datatype_chunks) =
+                    results.get_required_chunks(&ChannelDatatype::name())
+                else {
+                    return Ok(());
                 };
-                let resolutions = match results
-                    .get_required_component_dense::<components::Resolution2D>(resolver)
-                {
-                    Some(resolutions) => resolutions?,
-                    _ => return Ok(()),
+                let Some(all_resolution_chunks) =
+                    results.get_required_chunks(&Resolution2D::name())
+                else {
+                    return Ok(());
                 };
 
-                let opacity = results.get_or_empty_dense(resolver)?;
+                let timeline = ctx.query.timeline();
+                let all_blobs_indexed = iter_buffer::<u8>(&all_blob_chunks, timeline, Blob::name());
+                let all_resolutions_indexed =
+                    iter_primitive_array(&all_resolution_chunks, timeline, Resolution2D::name());
+                let all_datatypes_indexed =
+                    iter_component(&all_datatype_chunks, timeline, ChannelDatatype::name());
+                let all_opacities = results.iter_as(timeline, Opacity::name());
 
                 let data = re_query::range_zip_1x3(
-                    blobs.range_indexed(),
-                    data_types.range_indexed(),
-                    resolutions.range_indexed(),
-                    opacity.range_indexed(),
+                    all_blobs_indexed,
+                    all_datatypes_indexed,
+                    all_resolutions_indexed,
+                    all_opacities.primitive::<f32>(),
                 )
-                .filter_map(|(&index, blobs, data_type, resolution, opacity)| {
+                .filter_map(|(index, blobs, data_type, resolution, opacity)| {
                     let blob = blobs.first()?;
                     Some(SegmentationImageComponentData {
                         image: ImageInfo {
                             blob_row_id: index.1,
-                            blob: blob.0.clone(),
-                            resolution: first_copied(resolution)?.0 .0,
-                            format: ImageFormat::segmentation(first_copied(data_type)?),
+                            blob: blob.clone().into(),
+                            resolution: first_copied(resolution)?,
+                            format: ImageFormat::segmentation(first_copied(data_type.as_deref())?),
                             kind: ImageKind::Segmentation,
                             colormap: None,
                         },
-                        opacity: first_copied(opacity),
+                        opacity: first_copied(opacity).map(Into::into),
                     })
                 });
 
