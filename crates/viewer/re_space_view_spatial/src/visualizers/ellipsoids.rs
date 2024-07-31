@@ -1,4 +1,4 @@
-use itertools::Itertools as _;
+use re_chunk_store::external::re_chunk::ChunkComponentIterItem;
 use re_entity_db::{EntityPath, InstancePathHash};
 use re_log_types::Instance;
 use re_renderer::{
@@ -117,7 +117,7 @@ impl Ellipsoids3DVisualizer {
                 process_color_slice(ctx, self, num_instances, &annotation_infos, data.colors);
 
             let centers = clamped_or(data.centers, &Position3D::ZERO);
-            let rotations = clamped_or(data.rotations, &Rotation3D::IDENTITY);
+            let rotations = clamped_or(data.rotations.as_slice(), &Rotation3D::IDENTITY);
 
             self.0.ui_labels.extend(Self::process_labels(
                 entity_path,
@@ -240,7 +240,7 @@ struct Ellipsoids3DComponentData<'a> {
 
     // Clamped to edge
     centers: &'a [Position3D],
-    rotations: &'a [Rotation3D],
+    rotations: ChunkComponentIterItem<Rotation3D>,
     colors: &'a [Color],
     line_radii: &'a [Radius],
     labels: Vec<ArrowString>,
@@ -322,49 +322,24 @@ impl VisualizerSystem for Ellipsoids3DVisualizer {
                     HalfSize3D::name(),
                 );
                 let all_centers = results.iter_as(timeline, Position3D::name());
+                // TODO(#6831): we have to deserialize here because `Rotation3D` is still a complex
+                // type at this point.
+                let all_rotations = results.iter_as(timeline, Rotation3D::name());
                 let all_colors = results.iter_as(timeline, Color::name());
                 let all_line_radii = results.iter_as(timeline, Radius::name());
+                // Deserialized because it's a union.
+                let all_fill_modes = results.iter_as(timeline, FillMode::name());
                 let all_labels = results.iter_as(timeline, Text::name());
                 let all_class_ids = results.iter_as(timeline, ClassId::name());
                 let all_keypoint_ids = results.iter_as(timeline, KeypointId::name());
 
-                // TODO(#6831): we have to deserialize here because `Rotation3D` is still a complex
-                // type at this point.
-                let all_rotation_chunks = results.get_optional_chunks(&Rotation3D::name());
-                let mut all_rotation_iters = all_rotation_chunks
-                    .iter()
-                    .map(|chunk| chunk.iter_component::<Rotation3D>())
-                    .collect_vec();
-                let all_rotations_indexed = {
-                    let all_rotations = all_rotation_iters.iter_mut().flat_map(|it| it.into_iter());
-                    let all_rotations_indices = all_rotation_chunks.iter().flat_map(|chunk| {
-                        chunk.iter_component_indices(&timeline, &Rotation3D::name())
-                    });
-                    itertools::izip!(all_rotations_indices, all_rotations)
-                };
-
-                // Deserialized because it's a union.
-                let all_fill_mode_chunks = results.get_optional_chunks(&FillMode::name());
-                let mut all_fill_mode_iters = all_fill_mode_chunks
-                    .iter()
-                    .map(|chunk| chunk.iter_component::<FillMode>())
-                    .collect_vec();
-                let all_fill_modes_indexed = {
-                    let all_fill_modes =
-                        all_fill_mode_iters.iter_mut().flat_map(|it| it.into_iter());
-                    let all_fill_modes_indices = all_fill_mode_chunks.iter().flat_map(|chunk| {
-                        chunk.iter_component_indices(&timeline, &FillMode::name())
-                    });
-                    itertools::izip!(all_fill_modes_indices, all_fill_modes)
-                };
-
                 let data = re_query2::range_zip_1x8(
                     all_half_sizes_indexed,
                     all_centers.primitive_array::<3, f32>(),
-                    all_rotations_indexed,
+                    all_rotations.component::<Rotation3D>(),
                     all_colors.primitive::<u32>(),
                     all_line_radii.primitive::<f32>(),
-                    all_fill_modes_indexed,
+                    all_fill_modes.component::<FillMode>(),
                     all_labels.string(),
                     all_class_ids.primitive::<u16>(),
                     all_keypoint_ids.primitive::<u16>(),
@@ -377,7 +352,7 @@ impl VisualizerSystem for Ellipsoids3DVisualizer {
                         rotations,
                         colors,
                         line_radii,
-                        fill_mode,
+                        fill_modes,
                         labels,
                         class_ids,
                         keypoint_ids,
@@ -390,7 +365,7 @@ impl VisualizerSystem for Ellipsoids3DVisualizer {
                             line_radii: line_radii
                                 .map_or(&[], |line_radii| bytemuck::cast_slice(line_radii)),
                             // fill mode is currently a non-repeated component
-                            fill_mode: fill_mode
+                            fill_mode: fill_modes
                                 .unwrap_or_default()
                                 .first()
                                 .copied()

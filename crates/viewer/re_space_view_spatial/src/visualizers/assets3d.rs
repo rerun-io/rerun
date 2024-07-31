@@ -1,5 +1,3 @@
-use itertools::Itertools as _;
-
 use re_chunk_store::RowId;
 use re_log_types::{hash::Hash64, Instance, TimeInt};
 use re_renderer::renderer::MeshInstance;
@@ -34,24 +32,24 @@ impl Default for Asset3DVisualizer {
     }
 }
 
-struct Asset3DComponentData<'a> {
+struct Asset3DComponentData {
     index: (TimeInt, RowId),
 
     blob: ArrowBuffer<u8>,
     media_type: Option<ArrowString>,
-    transform: Option<&'a OutOfTreeTransform3D>,
+    transform: Option<OutOfTreeTransform3D>,
 }
 
 // NOTE: Do not put profile scopes in these methods. They are called for all entities and all
 // timestamps within a time range -- it's _a lot_.
 impl Asset3DVisualizer {
-    fn process_data<'a>(
+    fn process_data(
         &mut self,
         ctx: &QueryContext<'_>,
         render_ctx: &RenderContext,
         instances: &mut Vec<MeshInstance>,
         ent_context: &SpatialSceneEntityContext<'_>,
-        data: impl Iterator<Item = Asset3DComponentData<'a>>,
+        data: impl Iterator<Item = Asset3DComponentData>,
     ) {
         let entity_path = ctx.target_entity_path;
 
@@ -161,28 +159,14 @@ impl VisualizerSystem for Asset3DVisualizer {
                 let timeline = ctx.query.timeline();
                 let all_blobs_indexed = iter_buffer::<u8>(&all_blob_chunks, timeline, Blob::name());
                 let all_media_types = results.iter_as(timeline, MediaType::name());
-
                 // TODO(#6831): we have to deserialize here because `OutOfTreeTransform3D` is
                 // still a complex type at this point.
-                let all_transform_chunks =
-                    results.get_optional_chunks(&OutOfTreeTransform3D::name());
-                let mut all_transform_iters = all_transform_chunks
-                    .iter()
-                    .map(|chunk| chunk.iter_component::<OutOfTreeTransform3D>())
-                    .collect_vec();
-                let all_transforms_indexed = {
-                    let all_transforms =
-                        all_transform_iters.iter_mut().flat_map(|it| it.into_iter());
-                    let all_transforms_indices = all_transform_chunks.iter().flat_map(|chunk| {
-                        chunk.iter_component_indices(&timeline, &OutOfTreeTransform3D::name())
-                    });
-                    itertools::izip!(all_transforms_indices, all_transforms)
-                };
+                let all_transforms = results.iter_as(timeline, OutOfTreeTransform3D::name());
 
                 let data = re_query2::range_zip_1x2(
                     all_blobs_indexed,
                     all_media_types.string(),
-                    all_transforms_indexed,
+                    all_transforms.component::<OutOfTreeTransform3D>(),
                 )
                 .filter_map(|(index, blobs, media_types, transforms)| {
                     blobs.first().map(|blob| Asset3DComponentData {
@@ -190,7 +174,7 @@ impl VisualizerSystem for Asset3DVisualizer {
                         blob: blob.clone(),
                         media_type: media_types
                             .and_then(|media_types| media_types.first().cloned()),
-                        transform: transforms.and_then(|transforms| transforms.first()),
+                        transform: transforms.unwrap_or_default().first().cloned(),
                     })
                 });
 

@@ -1,5 +1,4 @@
-use itertools::Itertools as _;
-
+use re_chunk_store::external::re_chunk::ChunkComponentIterItem;
 use re_entity_db::InstancePathHash;
 use re_log_types::Instance;
 use re_renderer::{
@@ -91,7 +90,7 @@ impl Boxes3DVisualizer {
             let mut obj_space_bounding_box = re_math::BoundingBox::NOTHING;
 
             let centers = clamped_or(data.centers, &Position3D::ZERO);
-            let rotations = clamped_or(data.rotations, &Rotation3D::IDENTITY);
+            let rotations = clamped_or(data.rotations.as_slice(), &Rotation3D::IDENTITY);
             for (instance_index, (half_size, &center, rotation, radius, &color)) in
                 itertools::izip!(data.half_sizes, centers, rotations, radii, &colors).enumerate()
             {
@@ -194,7 +193,7 @@ struct Boxes3DComponentData<'a> {
 
     // Clamped to edge
     centers: &'a [Position3D],
-    rotations: &'a [Rotation3D],
+    rotations: ChunkComponentIterItem<Rotation3D>,
     colors: &'a [Color],
     radii: &'a [Radius],
     labels: Vec<ArrowString>,
@@ -272,6 +271,9 @@ impl VisualizerSystem for Boxes3DVisualizer {
                     timeline,
                     HalfSize3D::name(),
                 );
+                // TODO(#6831): we have to deserialize here because `Rotation3D` is still a complex
+                // type at this point.
+                let all_rotations = results.iter_as(timeline, Rotation3D::name());
                 let all_centers = results.iter_as(timeline, Position3D::name());
                 let all_colors = results.iter_as(timeline, Color::name());
                 let all_radii = results.iter_as(timeline, Radius::name());
@@ -279,40 +281,13 @@ impl VisualizerSystem for Boxes3DVisualizer {
                 let all_class_ids = results.iter_as(timeline, ClassId::name());
                 let all_keypoint_ids = results.iter_as(timeline, KeypointId::name());
 
-                // TODO(#6831): we have to deserialize here because `Rotation3D` is still a complex
-                // type at this point.
-                let all_rotation_chunks = results.get_optional_chunks(&Rotation3D::name());
-                let mut all_rotation_iters = all_rotation_chunks
-                    .iter()
-                    .map(|chunk| chunk.iter_component::<Rotation3D>())
-                    .collect_vec();
-                let all_rotations_indexed = {
-                    let all_rotations = all_rotation_iters.iter_mut().flat_map(|it| it.into_iter());
-                    let all_rotations_indices = all_rotation_chunks.iter().flat_map(|chunk| {
-                        chunk.iter_component_indices(&timeline, &Rotation3D::name())
-                    });
-                    itertools::izip!(all_rotations_indices, all_rotations)
-                };
-
                 // Deserialized because it's a union.
-                let all_fill_mode_chunks = results.get_optional_chunks(&FillMode::name());
-                let mut all_fill_mode_iters = all_fill_mode_chunks
-                    .iter()
-                    .map(|chunk| chunk.iter_component::<FillMode>())
-                    .collect_vec();
-                let mut all_fill_modes_indexed = {
-                    let all_fill_modes =
-                        all_fill_mode_iters.iter_mut().flat_map(|it| it.into_iter());
-                    let all_fill_modes_indices = all_fill_mode_chunks.iter().flat_map(|chunk| {
-                        chunk.iter_component_indices(&timeline, &FillMode::name())
-                    });
-                    itertools::izip!(all_fill_modes_indices, all_fill_modes)
-                };
-
+                let all_fill_modes = results.iter_as(timeline, FillMode::name());
                 // fill mode is currently a non-repeated component
-                let fill_mode: FillMode = all_fill_modes_indexed
+                let fill_mode: FillMode = all_fill_modes
+                    .component::<FillMode>()
                     .next()
-                    .and_then(|(_, fill_modes)| fill_modes.first().copied())
+                    .and_then(|(_, fill_modes)| fill_modes.as_slice().first().copied())
                     .unwrap_or_default();
 
                 match fill_mode {
@@ -329,7 +304,7 @@ impl VisualizerSystem for Boxes3DVisualizer {
                 let data = re_query2::range_zip_1x7(
                     all_half_sizes_indexed,
                     all_centers.primitive_array::<3, f32>(),
-                    all_rotations_indexed,
+                    all_rotations.component::<Rotation3D>(),
                     all_colors.primitive::<u32>(),
                     all_radii.primitive::<f32>(),
                     all_labels.string(),

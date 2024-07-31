@@ -336,7 +336,6 @@ impl SeriesPointSystem {
 
                             let marker_shape = all_marker_shapes_chunks[0]
                                 .iter_component::<MarkerShape>()
-                                .into_iter()
                                 .next()
                                 .and_then(|marker_shapes| marker_shapes.first().copied());
 
