@@ -15,11 +15,35 @@ RANDOM_IMAGE_SOURCE = rng.uniform(0.0, 1.0, (10, 20, 3))
 
 IMAGE_INPUTS: list[Any] = [
     {"image": RANDOM_IMAGE_SOURCE},
+    {"image": RANDOM_IMAGE_SOURCE, "width": 20, "height": 10},
+    {"image": RANDOM_IMAGE_SOURCE, "color_model": "RGB", "width": 20, "height": 10},
+    {"image": RANDOM_IMAGE_SOURCE, "color_model": rr.components.ColorModel.RGB, "width": 20, "height": 10},
+    {
+        "bytes": RANDOM_IMAGE_SOURCE.tobytes(),
+        "color_model": "RGB",
+        "datatype": "f64",
+        "width": 20,
+        "height": 10,
+    },
+    {
+        "bytes": RANDOM_IMAGE_SOURCE.tobytes(),
+        "color_model": "RGB",
+        "datatype": rr.components.ChannelDatatype.F64,
+        "width": 20,
+        "height": 10,
+    },
+    {
+        "bytes": RANDOM_IMAGE_SOURCE.tobytes(),
+        "color_model": "RGB",
+        "datatype": np.float64,
+        "width": 20,
+        "height": 10,
+    },
 ]
 
 
 def image_data_expected() -> Any:
-    return Image(RANDOM_IMAGE_SOURCE, color_model="RGB", width=21, height=10)
+    return Image(RANDOM_IMAGE_SOURCE, color_model="RGB", width=20, height=10)
 
 
 def test_image() -> None:
@@ -32,6 +56,7 @@ def test_image() -> None:
         assert arch.resolution == expected.resolution
         assert arch.color_model == expected.color_model
         assert arch.pixel_format == expected.pixel_format
+        assert arch.datatype == expected.datatype
 
 
 GOOD_IMAGE_INPUTS: list[Any] = [

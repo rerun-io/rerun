@@ -5,10 +5,11 @@ from typing import TYPE_CHECKING, Any, Union
 import numpy as np
 import numpy.typing as npt
 
+from rerun.components.channel_datatype import ChannelDatatype, ChannelDatatypeLike
 from rerun.components.color_model import ColorModel, ColorModelLike
 from rerun.components.pixel_format import PixelFormatLike
 
-from ..components import ChannelDatatype, Resolution2D
+from ..components import Resolution2D
 from ..datatypes import Float32Like
 from ..error_utils import _send_warning_or_raise
 
@@ -51,6 +52,7 @@ class ImageExt:
         *,
         # Or these:
         pixel_format: PixelFormatLike | None = None,
+        datatype: ChannelDatatypeLike | type | None = None,
         bytes: bytes | None = None,
         width: int | None = None,
         height: int | None = None,
@@ -61,9 +63,10 @@ class ImageExt:
         """
         Create a new image with a given format.
 
-        There are two ways to create an image:
+        There are three ways to create an image:
         * By specifying an `image` as an appropriately shaped ndarray with an appropriate `color_model`.
-        * By specifying an `image` is `pixel_format`, together with `width`, `height`, and `bytes`.
+        * By specifying `bytes` of an image with a `pixel_format`, together with `width`, `height`.
+        * By specifying `bytes` of an image with a `datatype` and `color_model`, together with `width`, `height`.
 
         Parameters
         ----------
@@ -77,6 +80,8 @@ class ImageExt:
         pixel_format:
             NV12, YUV420, etc. For chroma-downsampling.
             Requires `width`, `height`, and `bytes`.
+        datatype:
+            The datatype of the image data. If not specified, it is inferred from the `image`.
         bytes:
             The raw bytes of an image specified by `pixel_format`.
         width:
@@ -103,24 +108,65 @@ class ImageExt:
             "rgba": 4,
         }
 
-        if pixel_format is not None:
-            if width is None or height is None or bytes is None:
-                raise ValueError("Must provide 'width', 'height', and 'bytes' with 'pixel_format'")
-
+        # If the user specified 'bytes', we can use direct construction
+        if bytes is not None:
             if isinstance(bytes, np.ndarray):
                 bytes = bytes.tobytes()
 
-            self.__attrs_init__(
-                data=bytes,
-                resolution=Resolution2D(width=width, height=height),
-                pixel_format=pixel_format,
-                opacity=opacity,
-                draw_order=draw_order,
-            )
-            return
+            if width is None or height is None or bytes is None:
+                raise ValueError("Specifying 'bytes' requires 'width' and 'height'")
 
+            if pixel_format is not None:
+                if datatype is not None:
+                    raise ValueError("Specifying 'datatype' is mutually exclusive with 'pixel_format'")
+                if color_model is not None:
+                    raise ValueError("Specifying 'color_model' is mutually exclusive with 'pixel_format'")
+
+                # TODO(jleibs): Validate that bytes is the expected size.
+
+                self.__attrs_init__(
+                    data=bytes,
+                    resolution=Resolution2D(width=width, height=height),
+                    pixel_format=pixel_format,
+                    opacity=opacity,
+                    draw_order=draw_order,
+                )
+                return
+            else:
+                if datatype is None or color_model is None:
+                    raise ValueError("Specifying 'bytes' requires 'pixel_format' or both 'color_model' and 'datatype'")
+
+                # TODO(jleibs): Would be nice to do this with a field-converter
+                if datatype in (
+                    np.uint8,
+                    np.uint16,
+                    np.uint32,
+                    np.uint64,
+                    np.int8,
+                    np.int16,
+                    np.int32,
+                    np.int64,
+                    np.float16,
+                    np.float32,
+                    np.float64,
+                ):
+                    datatype = ChannelDatatype.from_np_dtype(np.dtype(datatype))  # type: ignore[arg-type]
+
+                # TODO(jleibs): Validate that bytes is the expected size.
+
+                self.__attrs_init__(
+                    data=bytes,
+                    resolution=Resolution2D(width=width, height=height),
+                    color_model=color_model,
+                    datatype=datatype,
+                    opacity=opacity,
+                    draw_order=draw_order,
+                )
+                return
+
+        # Alternatively, we extract the values from the image-like
         if image is None:
-            raise ValueError("Missing `image` argument")
+            raise ValueError("Must specify either 'image' or 'bytes'")
 
         image = _to_numpy(image)
 
@@ -133,12 +179,22 @@ class ImageExt:
             shape = shape[:-1]
 
         if len(shape) == 2:
-            height, width = shape
+            _height, _width = shape
             channels = 1
         elif len(shape) == 3:
-            height, width, channels = shape
+            _height, _width, channels = shape
         else:
             raise ValueError(f"Expected a 2D or 3D tensor, got {shape}")
+
+        if width is not None and width != _width:
+            raise ValueError(f"Provided width {width} does not match image width {_width}")
+        else:
+            width = _width
+
+        if height is not None and height != _height:
+            raise ValueError(f"Provided height {height} does not match image height {_height}")
+        else:
+            height = _height
 
         if color_model is None:
             if channels == 1:
