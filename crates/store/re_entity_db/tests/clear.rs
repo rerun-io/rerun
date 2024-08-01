@@ -10,7 +10,6 @@ use re_log_types::{
     example_components::{MyColor, MyIndex, MyPoint},
     EntityPath, StoreId, TimeInt, TimePoint, Timeline,
 };
-use re_query::PromiseResolver;
 use re_types_core::{archetypes::Clear, components::ClearIsRecursive, AsComponents};
 
 // ---
@@ -22,15 +21,12 @@ fn query_latest_component<C: re_types_core::Component>(
 ) -> Option<(TimeInt, RowId, C)> {
     re_tracing::profile_function!();
 
-    let resolver = PromiseResolver::default();
-
     let results = db
-        .query_caches()
+        .query_caches2()
         .latest_at(db.store(), query, entity_path, [C::name()]);
-    let results = results.get_required(C::name()).ok()?;
 
-    let &(data_time, row_id) = results.index();
-    let data = results.dense::<C>(&resolver)?.first().cloned()?;
+    let (data_time, row_id) = results.index();
+    let data = results.component_mono::<C>()?;
 
     Some((data_time, row_id, data))
 }
