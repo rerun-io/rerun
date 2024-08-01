@@ -13,7 +13,7 @@ use re_data_ui::{
 use re_format::format_f32;
 use re_log_types::Instance;
 use re_renderer::OutlineConfig;
-use re_space_view::{latest_at_with_blueprint_resolved_data, ScreenshotMode};
+use re_space_view::{latest_at_with_blueprint_resolved_data2, ScreenshotMode};
 use re_types::{
     archetypes::Pinhole,
     blueprint::components::VisualBounds2D,
@@ -636,10 +636,11 @@ fn picked_image_from_tensor_query(
     meaning: TensorDataMeaning,
 ) -> Option<PickedImageInfo> {
     let query_shadowed_defaults = false;
-    let results = latest_at_with_blueprint_resolved_data(
+    let query = view_ctx.viewer_ctx.current_query();
+    let results = latest_at_with_blueprint_resolved_data2(
         view_ctx,
         None,
-        &view_ctx.viewer_ctx.current_query(),
+        &query,
         data_result,
         [TensorData::name(), Colormap::name(), DepthMeter::name()],
         query_shadowed_defaults,
@@ -648,10 +649,10 @@ fn picked_image_from_tensor_query(
     // TODO(andreas): Just calling `results.get_mono::<TensorData>` would be a lot more elegant.
     // However, we're in the rare case where we really want a RowId to be able to identify the tensor for caching purposes.
     let tensor_untyped = results.get(TensorData::name())?;
-    let tensor = tensor_untyped.mono::<TensorData>(&results.resolver)?;
+    let tensor = tensor_untyped.component_mono::<TensorData>()?.ok()?;
 
+    let (_, row_id) = tensor_untyped.index(&query.timeline())?;
     tensor.image_height_width_channels().map(|[_, w, _]| {
-        let (_, row_id) = *tensor_untyped.index();
         let coordinates = hit.instance_path_hash.instance.to_2d_image_coordinate(w);
 
         PickedImageInfo {
@@ -673,10 +674,11 @@ fn picked_image_from_image_query(
     meaning: TensorDataMeaning,
 ) -> Option<PickedImageInfo> {
     let query_shadowed_defaults = false;
-    let results = latest_at_with_blueprint_resolved_data(
+    let query = view_ctx.viewer_ctx.current_query();
+    let results = latest_at_with_blueprint_resolved_data2(
         view_ctx,
         None,
-        &view_ctx.viewer_ctx.current_query(),
+        &query,
         data_result,
         [
             Blob::name(),
@@ -691,14 +693,14 @@ fn picked_image_from_image_query(
     // TODO(andreas): Just calling `results.get_mono::<Blob>` would be a lot more elegant.
     // However, we're in the rare case where we really want a RowId to be able to identify the tensor for caching purposes.
     let blob_untyped = results.get(Blob::name())?;
-    let blob = blob_untyped.mono::<Blob>(&results.resolver)?.0;
+    let blob = blob_untyped.component_mono::<Blob>()?.ok()?.0;
 
     let resolution = results.get_mono::<Resolution2D>()?;
     let data_type = results.get_mono::<ChannelDataType>()?;
     let colormap = results.get_mono_with_fallback::<Colormap>();
     let depth_meter = results.get_mono::<DepthMeter>();
 
-    let (_, blob_row_id) = *blob_untyped.index();
+    let (_, blob_row_id) = blob_untyped.index(&query.timeline())?;
     let coordinates = hit
         .instance_path_hash
         .instance

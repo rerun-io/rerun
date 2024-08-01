@@ -1,6 +1,6 @@
 use egui::Color32;
 use re_log_types::{EntityPath, Instance};
-use re_space_view::DataResultQuery;
+use re_space_view::DataResultQuery2;
 use re_types::{
     archetypes::{Pinhole, Transform3D},
     components::{AxisLength, ImagePlaneDistance},

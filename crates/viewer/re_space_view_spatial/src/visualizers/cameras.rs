@@ -232,7 +232,6 @@ impl VisualizerSystem for CamerasVisualizer {
                     transforms,
                     data_result,
                     &pinhole,
-                    // TODO(#5607): what should happen if the promise is still pending?
                     ctx.recording()
                         .latest_at_component::<Transform3D>(&data_result.entity_path, &time_query)
                         .map(|(_index, c)| c),
