@@ -105,31 +105,19 @@ def test_image_compress() -> None:
     # RGB Supported
     image_data = np.asarray(rng.uniform(0, 255, (10, 20, 3)), dtype=np.uint8)
 
-    compressed = rr.ImageEncoded.compress(image_data, "RGB", jpeg_quality=80)
-    assert type(compressed) is rr.ImageEncoded
-
-    compressed = rr.ImageEncoded.compress(image_data, jpeg_quality=80)
+    compressed = rr.Image(image_data).compress(jpeg_quality=80)
     assert type(compressed) is rr.ImageEncoded
 
     # Mono Supported
     image_data = np.asarray(rng.uniform(0, 255, (10, 20)), dtype=np.uint8)
 
-    compressed = rr.ImageEncoded.compress(image_data, "L", jpeg_quality=80)
+    compressed = rr.Image(image_data).compress(jpeg_quality=80)
     assert type(compressed) is rr.ImageEncoded
 
     # RGBA Not supported
     with pytest.warns(RerunWarning) as warnings:
         image_data = np.asarray(rng.uniform(0, 255, (10, 20, 4)), dtype=np.uint8)
-        compressed = rr.ImageEncoded.compress(image_data, "RGBA", jpeg_quality=80)
-
-        assert len(warnings) == 1
-        assert "Cannot JPEG compress an image of type" in str(warnings[0])
-
-        assert type(compressed) is rr.Image
-
-    with pytest.warns(RerunWarning) as warnings:
-        image_data = np.asarray(rng.uniform(0, 255, (10, 20, 4)), dtype=np.uint8)
-        compressed = rr.ImageEncoded.compress(image_data, jpeg_quality=80)
+        compressed = rr.Image(image_data, "RGBA").compress(jpeg_quality=80)
 
         assert len(warnings) == 1
         assert "Cannot JPEG compress an image of type" in str(warnings[0])

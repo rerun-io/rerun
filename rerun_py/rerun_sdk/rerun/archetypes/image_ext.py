@@ -1,17 +1,16 @@
 from __future__ import annotations
 
+from io import BytesIO
 from typing import TYPE_CHECKING, Any, Union
 
 import numpy as np
 import numpy.typing as npt
 
-from rerun.components.channel_datatype import ChannelDatatype, ChannelDatatypeLike
-from rerun.components.color_model import ColorModel, ColorModelLike
-from rerun.components.pixel_format import PixelFormatLike
-
-from ..components import Resolution2D
+from ..components import ChannelDatatype, ChannelDatatypeLike, Resolution2D
+from ..components.color_model import ColorModel, ColorModelLike
+from ..components.pixel_format import PixelFormat, PixelFormatLike
 from ..datatypes import Float32Like
-from ..error_utils import _send_warning_or_raise
+from ..error_utils import _send_warning_or_raise, catch_and_log_exceptions
 
 if TYPE_CHECKING:
     ImageLike = Union[
@@ -27,6 +26,7 @@ if TYPE_CHECKING:
         npt.NDArray[np.uint64],
         npt.NDArray[np.uint8],
     ]
+    from . import Image, ImageEncoded
 
 
 def _to_numpy(tensor: ImageLike) -> npt.NDArray[Any]:
@@ -228,3 +228,91 @@ class ImageExt:
             opacity=opacity,
             draw_order=draw_order,
         )
+
+    def compress(self: Any, jpeg_quality: int = 95) -> ImageEncoded | Image:
+        """
+        Compress the given image as a JPEG.
+
+        JPEG compression works best for photographs.
+        Only RGB and grayscale images are supported, not RGBA.
+        Note that compressing to JPEG costs a bit of CPU time,
+        both when logging and later when viewing them.
+
+        Parameters
+        ----------
+        jpeg_quality:
+            Higher quality = larger file size.
+            A quality of 95 saves a lot of space, but is still visually very similar.
+
+        """
+
+        from PIL import Image as PILImage
+
+        from ..archetypes import ImageEncoded
+
+        with catch_and_log_exceptions(context="Image compression"):
+            pixel_format = None
+            if self.pixel_format is not None:
+                pixel_format = PixelFormat(self.pixel_format.as_arrow_array().storage.type_codes[0].as_py())
+
+            # TODO(jleibs): Support conversions here
+            if pixel_format is not None:
+                raise ValueError(f"Cannot JPEG compress an image with pixel_format {pixel_format}")
+
+            color_model = None
+            if self.color_model is not None:
+                color_model = ColorModel(self.color_model.as_arrow_array().storage.type_codes[0].as_py())
+
+            if color_model not in (ColorModel.L, ColorModel.RGB):
+                # TODO(#2340): BGR support!
+                raise ValueError(
+                    f"Cannot JPEG compress an image of type {color_model}. Only L (monochrome) and RGB are supported."
+                )
+
+            datatype = None
+            if self.datatype is not None:
+                datatype = ChannelDatatype(self.datatype.as_arrow_array().storage.type_codes[0].as_py())
+
+            if datatype is None:
+                raise ValueError("Cannot JPEG compress an image without a datatype")
+
+            width = None
+            height = None
+            if self.resolution is not None:
+                resolution = self.resolution.as_arrow_array()[0].as_py()
+                width = resolution[0]
+                height = resolution[1]
+
+            if width is None or height is None:
+                raise ValueError("Cannot JPEG compress an image without a resolution")
+
+            buf = None
+            if self.data is not None:
+                buf = bytes(self.data.as_arrow_array().storage[0].as_py())
+
+            if buf is None:
+                raise ValueError("Cannot JPEG compress an image without data")
+
+            # Convert from bytes back to a numpy array
+            image: npt.NDArray[Any] = np.frombuffer(buf, dtype=datatype.to_np_dtype(), count=-1, offset=0)
+
+            if color_model == ColorModel.L:
+                image = image.reshape(height, width)
+            else:
+                image = image.reshape(height, width, 3)
+
+            if image.dtype not in ["uint8", "sint32", "float32"]:
+                # Convert to a format supported by Image.fromarray
+                image = image.astype("float32")
+
+            mode = str(color_model)
+
+            pil_image = PILImage.fromarray(image, mode=mode)
+            output = BytesIO()
+            pil_image.save(output, format="JPEG", quality=jpeg_quality)
+            jpeg_bytes = output.getvalue()
+            output.close()
+            return ImageEncoded(contents=jpeg_bytes, media_type="image/jpeg")
+
+        # On failure to compress, return a raw image
+        return self  # type: ignore[no-any-return]
