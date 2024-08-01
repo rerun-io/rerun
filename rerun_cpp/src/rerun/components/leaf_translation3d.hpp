@@ -15,9 +15,7 @@ namespace rerun::components {
     struct LeafTranslation3D {
         rerun::datatypes::Vec3D vector;
 
-      public:
-        // Extensions to generated type defined in 'leaf_translation3d_ext.cpp'
-
+      public: // START of extensions from leaf_translation3d_ext.cpp:
         /// Construct `LeafTranslation3D` from x/y/z values.
         LeafTranslation3D(float x, float y, float z) : vector{x, y, z} {}
 
@@ -35,6 +33,8 @@ namespace rerun::components {
         float z() const {
             return vector.z();
         }
+
+        // END of extensions from leaf_translation3d_ext.cpp, start of generated code:
 
       public:
         LeafTranslation3D() = default;

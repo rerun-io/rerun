@@ -27,9 +27,7 @@ namespace rerun::datatypes {
     struct Rgba32 {
         uint32_t rgba;
 
-      public:
-        // Extensions to generated type defined in 'rgba32_ext.cpp'
-
+      public: // START of extensions from rgba32_ext.cpp:
         /// Construct Rgba32 from unmultiplied RGBA values.
         Rgba32(uint8_t r, uint8_t g, uint8_t b, uint8_t a = 255)
             : Rgba32(static_cast<uint32_t>((r << 24) | (g << 16) | (b << 8) | a)) {}
@@ -55,6 +53,8 @@ namespace rerun::datatypes {
         uint8_t a() const {
             return static_cast<uint8_t>(rgba & 0xFF);
         }
+
+        // END of extensions from rgba32_ext.cpp, start of generated code:
 
       public:
         Rgba32() = default;

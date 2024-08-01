@@ -29,10 +29,10 @@ namespace rerun::datatypes {
         /// How much to rotate around the axis.
         rerun::datatypes::Angle angle;
 
-      public:
-        // Extensions to generated type defined in 'rotation_axis_angle_ext.cpp'
-
+      public: // START of extensions from rotation_axis_angle_ext.cpp:
         RotationAxisAngle(const Vec3D& _axis, const Angle& _angle) : axis(_axis), angle(_angle) {}
+
+        // END of extensions from rotation_axis_angle_ext.cpp, start of generated code:
 
       public:
         RotationAxisAngle() = default;

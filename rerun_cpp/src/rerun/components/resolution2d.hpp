@@ -16,9 +16,7 @@ namespace rerun::components {
     struct Resolution2D {
         rerun::datatypes::UVec2D wh;
 
-      public:
-        // Extensions to generated type defined in 'resolution2d_ext.cpp'
-
+      public: // START of extensions from resolution2d_ext.cpp:
         /// Construct resolution from width and height.
         Resolution2D(uint32_t width, uint32_t height) : wh{width, height} {}
 
@@ -29,6 +27,8 @@ namespace rerun::components {
         uint32_t height() const {
             return wh.y();
         }
+
+        // END of extensions from resolution2d_ext.cpp, start of generated code:
 
       public:
         Resolution2D() = default;

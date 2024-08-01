@@ -54,9 +54,56 @@ class MarkerShape(Enum):
     Asterisk = 10
     """`*`"""
 
+    def __str__(self) -> str:
+        """Returns the variant name."""
+        if self == MarkerShape.Circle:
+            return "Circle"
+        elif self == MarkerShape.Diamond:
+            return "Diamond"
+        elif self == MarkerShape.Square:
+            return "Square"
+        elif self == MarkerShape.Cross:
+            return "Cross"
+        elif self == MarkerShape.Plus:
+            return "Plus"
+        elif self == MarkerShape.Up:
+            return "Up"
+        elif self == MarkerShape.Down:
+            return "Down"
+        elif self == MarkerShape.Left:
+            return "Left"
+        elif self == MarkerShape.Right:
+            return "Right"
+        elif self == MarkerShape.Asterisk:
+            return "Asterisk"
+        else:
+            raise ValueError("Unknown enum variant")
+
 
 MarkerShapeLike = Union[
-    MarkerShape, Literal["circle", "diamond", "square", "cross", "plus", "up", "down", "left", "right", "asterisk"]
+    MarkerShape,
+    Literal[
+        "Asterisk",
+        "Circle",
+        "Cross",
+        "Diamond",
+        "Down",
+        "Left",
+        "Plus",
+        "Right",
+        "Square",
+        "Up",
+        "asterisk",
+        "circle",
+        "cross",
+        "diamond",
+        "down",
+        "left",
+        "plus",
+        "right",
+        "square",
+        "up",
+    ],
 ]
 MarkerShapeArrayLike = Union[MarkerShapeLike, Sequence[MarkerShapeLike]]
 

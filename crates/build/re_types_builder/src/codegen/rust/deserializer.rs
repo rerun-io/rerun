@@ -224,7 +224,7 @@ pub fn quote_arrow_deserializer(
                 let quoted_branches = obj.fields.iter().enumerate().map(|(typ, obj_field)| {
                     let arrow_type_index = Literal::i8_unsuffixed(typ as i8 + 1); // 0 is reserved for `_null_markers`
 
-                    let quoted_obj_field_type = format_ident!("{}", obj_field.pascal_case_name());
+                    let quoted_obj_field_type = format_ident!("{}", obj_field.name);
                     quote! {
                         #arrow_type_index => Ok(Some(Self::#quoted_obj_field_type))
                     }

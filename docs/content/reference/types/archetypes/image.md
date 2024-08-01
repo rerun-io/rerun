@@ -5,28 +5,23 @@ title: "Image"
 
 A monochrome or color image.
 
-The order of dimensions in the underlying [`components.TensorData`](https://rerun.io/docs/reference/types/components/tensor_data) follows the typical
-row-major, interleaved-pixel image format. Additionally, Rerun orders the
-[`datatypes.TensorDimension`](https://rerun.io/docs/reference/types/datatypes/tensor_dimension)s within the shape description from outer-most to inner-most.
+See also [`archetypes.DepthImage`](https://rerun.io/docs/reference/types/archetypes/depth_image) and [`archetypes.SegmentationImage`](https://rerun.io/docs/reference/types/archetypes/segmentation_image).
 
-As such, the shape of the [`components.TensorData`](https://rerun.io/docs/reference/types/components/tensor_data) must be mappable to:
-- A `HxW` tensor, treated as a grayscale image.
-- A `HxWx3` tensor, treated as an RGB image.
-- A `HxWx4` tensor, treated as an RGBA image.
+The raw image data is stored as a single buffer of bytes in a [rerun.components.Blob].
+The meaning of these bytes is determined by the `ImageFormat` which specifies the resolution
+and the pixel format (e.g. RGB, RGBA, …).
 
-Leading and trailing unit-dimensions are ignored, so that
-`1x480x640x3x1` is treated as a `480x640x3` RGB image.
+The order of dimensions in the underlying [`components.Blob`](https://rerun.io/docs/reference/types/components/blob) follows the typical
+row-major, interleaved-pixel image format.
 
 Rerun also supports compressed images (JPEG, PNG, …), using [`archetypes.ImageEncoded`](https://rerun.io/docs/reference/types/archetypes/image_encoded?speculative-link).
 Compressing images can save a lot of bandwidth and memory.
 
-See also [`components.TensorData`](https://rerun.io/docs/reference/types/components/tensor_data) and [`datatypes.TensorBuffer`](https://rerun.io/docs/reference/types/datatypes/tensor_buffer).
-
 ## Components
 
-**Required**: [`TensorData`](../components/tensor_data.md)
+**Required**: [`Blob`](../components/blob.md), [`Resolution2D`](../components/resolution2d.md)
 
-**Optional**: [`Opacity`](../components/opacity.md), [`DrawOrder`](../components/draw_order.md)
+**Optional**: [`PixelFormat`](../components/pixel_format.md), [`ColorModel`](../components/color_model.md), [`ChannelDatatype`](../components/channel_datatype.md), [`Opacity`](../components/opacity.md), [`DrawOrder`](../components/draw_order.md)
 
 ## Shown in
 * [Spatial2DView](../views/spatial2d_view.md)

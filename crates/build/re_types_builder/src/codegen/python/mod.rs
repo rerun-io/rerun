@@ -445,7 +445,7 @@ impl PythonCodeGenerator {
             let obj_code = match obj.class {
                 crate::objects::ObjectClass::Struct => {
                     if obj.kind == ObjectKind::View {
-                        code_for_view(reporter, objects, obj)
+                        code_for_view(reporter, objects, &ext_class, obj)
                     } else {
                         code_for_struct(reporter, arrow_registry, &ext_class, objects, obj)
                     }
@@ -827,7 +827,9 @@ fn code_for_enum(
         ObjectKind::Datatype | ObjectKind::Component
     ));
 
-    let Object { name, .. } = obj;
+    let Object {
+        name: enum_name, ..
+    } = obj;
 
     let mut code = String::new();
 
@@ -837,17 +839,28 @@ fn code_for_enum(
         code.push_unindented(format!(r#"@deprecated("""{deprecation_notice}""")"#), 1);
     }
 
-    code.push_str(&format!("class {name}(Enum):\n"));
+    let superclasses = {
+        let mut superclasses = vec![];
+        if ext_class.found {
+            // Extension class needs to come first, so its __init__ method is called if there is one.
+            superclasses.push(ext_class.name.clone());
+        }
+        superclasses.push("Enum".to_owned());
+        superclasses.join(",")
+    };
+    code.push_str(&format!("class {enum_name}({superclasses}):\n"));
     code.push_indented(1, quote_obj_docs(reporter, objects, obj), 0);
 
     for (i, variant) in obj.fields.iter().enumerate() {
         let arrow_type_index = 1 + i; // plus-one to leave room for zero == `_null_markers`
 
-        // NOTE: we use PascalCase for the enum variants for consistency across:
+        // NOTE: we keep the casing of the enum variants exactly as specified in the .fbs file,
+        // or else `RGBA` would become `Rgba` and so on.
+        // Note that we want consistency across:
         // * all languages (C++, Python, Rust)
         // * the arrow datatype
         // * the GUI
-        let variant_name = variant.pascal_case_name();
+        let variant_name = &variant.name;
         code.push_indented(1, format!("{variant_name} = {arrow_type_index}"), 1);
 
         // Generating docs for all the fields creates A LOT of visual noise in the API docs.
@@ -871,20 +884,50 @@ fn code_for_enum(
         }
     }
 
+    // -------------------------------------------------------
+
+    // OVerload `__str__`:
+    code.push_indented(1, "def __str__(self) -> str:", 1);
+    code.push_indented(2, "'''Returns the variant name'''", 1);
+
+    for (i, variant) in obj.fields.iter().enumerate() {
+        let variant_name = &variant.name;
+        if i == 0 {
+            code.push_indented(2, format!("if self == {enum_name}.{variant_name}:"), 1);
+        } else {
+            code.push_indented(2, format!("elif self == {enum_name}.{variant_name}:"), 1);
+        }
+        code.push_indented(3, format!("return '{variant_name}'"), 1);
+    }
+    code.push_indented(2, "else:", 1);
+    code.push_indented(3, "raise ValueError('Unknown enum variant')", 3);
+
+    // -------------------------------------------------------
+
     let variants = format!(
         "Literal[{}]",
-        obj.fields
-            .iter()
-            .map(|v| format!("{:?}", v.pascal_case_name().to_lowercase()))
-            .join(", ")
+        itertools::chain!(
+            // We always accept the original casing
+            obj.fields.iter().map(|v| format!("{:?}", v.name)),
+            // We also accept the lowercase variant, for historical reasons (and maybe others?)
+            obj.fields
+                .iter()
+                .map(|v| format!("{:?}", v.name.to_lowercase()))
+        )
+        .sorted()
+        .dedup()
+        .join(", ")
     );
-    code.push_unindented(format!("{name}Like = Union[{name}, {variants}]"), 1);
+    code.push_unindented(
+        format!("{enum_name}Like = Union[{enum_name}, {variants}]"),
+        1,
+    );
     code.push_unindented(
         format!(
             r#"
-            {name}ArrayLike = Union[
-                {name}Like,
-                Sequence[{name}Like]
+            {enum_name}ArrayLike = Union[
+                {enum_name}Like,
+                Sequence[{enum_name}Like]
             ]
             "#,
         ),
@@ -933,21 +976,23 @@ fn code_for_union(
         String::new()
     };
 
-    let mut superclasses = vec![];
+    let superclass_decl = {
+        let mut superclasses = vec![];
 
-    // Extension class needs to come first, so its __init__ method is called if there is one.
-    if ext_class.found {
-        superclasses.push(ext_class.name.as_str());
-    }
+        // Extension class needs to come first, so its __init__ method is called if there is one.
+        if ext_class.found {
+            superclasses.push(ext_class.name.as_str());
+        }
 
-    if *kind == ObjectKind::Archetype {
-        superclasses.push("Archetype");
-    }
+        if *kind == ObjectKind::Archetype {
+            superclasses.push("Archetype");
+        }
 
-    let superclass_decl = if superclasses.is_empty() {
-        String::new()
-    } else {
-        format!("({})", superclasses.join(","))
+        if superclasses.is_empty() {
+            String::new()
+        } else {
+            format!("({})", superclasses.join(","))
+        }
     };
 
     if let Some(deprecation_notice) = obj.deprecation_notice() {
@@ -1999,7 +2044,7 @@ fn quote_arrow_serialization(
                 .iter()
                 .map(|f| {
                     let newline = '\n';
-                    let variant = f.pascal_case_name();
+                    let variant = &f.name;
                     let lowercase_variant = variant.to_lowercase();
                     format!(
                         r#"elif value.lower() == "{lowercase_variant}":{newline}    types.append({name}.{variant}.value)"#

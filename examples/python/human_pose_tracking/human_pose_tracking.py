@@ -85,7 +85,7 @@ def track_pose(video_path: str, model_path: str, *, segment: bool, max_frame_cou
             h, w, _ = rgb.shape
             landmark_positions_2d = read_landmark_positions_2d(results, w, h)
 
-            rr.log("video/rgb", rr.Image(rgb).compress(jpeg_quality=75))
+            rr.log("video/rgb", rr.ImageEncoded.compress(rgb, "RGB", jpeg_quality=75))
             if landmark_positions_2d is not None:
                 rr.log(
                     "video/pose/points",

@@ -23,14 +23,14 @@ use re_types::{
         ViewFit, Visible,
     },
     components::{
-        AggregationPolicy, AlbedoFactor, AxisLength, ChannelDataType, Color, ColorModel, Colormap,
+        AggregationPolicy, AlbedoFactor, AxisLength, ChannelDatatype, Color, ColorModel, Colormap,
         DepthMeter, DrawOrder, FillMode, FillRatio, GammaCorrection, ImagePlaneDistance,
-        MagnificationFilter, MarkerSize, Name, Opacity, Scale3D, StrokeWidth, Text,
+        MagnificationFilter, MarkerSize, Name, Opacity, PixelFormat, Scale3D, StrokeWidth, Text,
         TransformRelation, Translation3D,
     },
     Loggable as _,
 };
-use re_viewer_context::gpu_bridge::colormap_edit_or_view_ui;
+
 // ----
 
 /// Registers all editors of this crate in the component UI registry.
@@ -68,20 +68,17 @@ pub fn register_editors(registry: &mut re_viewer_context::ComponentUiRegistry) {
     registry.add_singleline_edit_or_view::<Name>(edit_singleline_string);
     registry.add_multiline_edit_or_view::<Name>(edit_multiline_string);
 
-    registry.add_singleline_edit_or_view(|ctx, ui, value| {
-        colormap_edit_or_view_ui(ctx.render_ctx, ui, value)
-    });
-
     // TODO(#6974): Enums editors trivial and always the same, provide them automatically!
     registry.add_singleline_edit_or_view::<AggregationPolicy>(edit_view_enum);
     registry.add_singleline_edit_or_view::<BackgroundKind>(edit_view_enum);
-    registry.add_singleline_edit_or_view::<ChannelDataType>(edit_view_enum);
+    registry.add_singleline_edit_or_view::<ChannelDatatype>(edit_view_enum);
     registry.add_singleline_edit_or_view::<Colormap>(edit_view_enum);
     registry.add_singleline_edit_or_view::<ColorModel>(edit_view_enum);
     registry.add_singleline_edit_or_view::<Corner2D>(edit_view_enum);
     registry.add_singleline_edit_or_view::<DataframeViewMode>(edit_view_enum);
     registry.add_singleline_edit_or_view::<FillMode>(edit_view_enum);
     registry.add_singleline_edit_or_view::<MagnificationFilter>(edit_view_enum);
+    registry.add_singleline_edit_or_view::<PixelFormat>(edit_view_enum);
     registry.add_singleline_edit_or_view::<SortKey>(edit_view_enum);
     registry.add_singleline_edit_or_view::<SortOrder>(edit_view_enum);
     registry.add_singleline_edit_or_view::<TransformRelation>(edit_view_enum);

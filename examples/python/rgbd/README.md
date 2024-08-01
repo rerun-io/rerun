@@ -40,7 +40,7 @@ rr.set_time_seconds("time", time.timestamp())
 ### Image
 The example image is logged as [`Image`](https://www.rerun.io/docs/reference/types/archetypes/image) to the `world/camera/image/rgb` entity.
 ```python
-rr.log("world/camera/image/rgb", rr.Image(img_rgb).compress(jpeg_quality=95))
+rr.log("world/camera/image/rgb", rr.ImageEncoded.compress(img_rgb, "RGB", jpeg_quality=95))
 ```
 
 ### Depth image
@@ -57,7 +57,7 @@ rr.log(
 )
 ```
 
-Then, the depth image is logged as an [`DepthImage`](https://www.rerun.io/docs/reference/types/archetypes/depth_image) to the `world/camera/image/depth` entity.
+Then, the depth image is logged as a [`DepthImage`](https://www.rerun.io/docs/reference/types/archetypes/depth_image) to the `world/camera/image/depth` entity.
 
 ```python
 rr.log("world/camera/image/depth", rr.DepthImage(img_depth, meter=DEPTH_IMAGE_SCALING))

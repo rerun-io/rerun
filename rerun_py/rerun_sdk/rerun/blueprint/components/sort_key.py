@@ -30,8 +30,17 @@ class SortKey(Enum):
     Time = 2
     """Group by instance."""
 
+    def __str__(self) -> str:
+        """Returns the variant name."""
+        if self == SortKey.Entity:
+            return "Entity"
+        elif self == SortKey.Time:
+            return "Time"
+        else:
+            raise ValueError("Unknown enum variant")
 
-SortKeyLike = Union[SortKey, Literal["entity", "time"]]
+
+SortKeyLike = Union[SortKey, Literal["Entity", "Time", "entity", "time"]]
 SortKeyArrayLike = Union[SortKeyLike, Sequence[SortKeyLike]]
 
 

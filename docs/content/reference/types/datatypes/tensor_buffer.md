@@ -20,8 +20,6 @@ Tensor elements are stored in a contiguous buffer of a single type.
 * F16: list of `f16`
 * F32: list of `f32`
 * F64: list of `f64`
-* NV12: list of `u8`
-* YUY2: list of `u8`
 
 ## API reference links
  * 🌊 [C++ API docs for `TensorBuffer`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1datatypes_1_1TensorBuffer.html)

@@ -7,11 +7,11 @@ use re_renderer::renderer::{DepthCloud, DepthClouds};
 use re_types::{
     archetypes::DepthImage,
     components::{self, Colormap, DepthMeter, DrawOrder, FillRatio, ViewCoordinates},
-    tensor_data::TensorDataMeaning,
+    image::ImageKind,
 };
 use re_viewer_context::{
-    gpu_bridge::colormap_to_re_renderer, ApplicableEntities, IdentifiedViewSystem, ImageInfo,
-    ImageStatsCache, QueryContext, SpaceViewClass, SpaceViewSystemExecutionError,
+    gpu_bridge::colormap_to_re_renderer, ApplicableEntities, IdentifiedViewSystem, ImageFormat,
+    ImageInfo, ImageStatsCache, QueryContext, SpaceViewClass, SpaceViewSystemExecutionError,
     TypedComponentFallbackProvider, ViewContext, ViewContextCollection, ViewQuery,
     VisualizableEntities, VisualizableFilterContext, VisualizerQueryInfo, VisualizerSystem,
 };
@@ -64,7 +64,6 @@ impl DepthImageVisualizer {
             .warn_on_per_instance_transform(ctx.target_entity_path, "DepthImage");
 
         let entity_path = ctx.target_entity_path;
-        let meaning = TensorDataMeaning::Depth;
 
         for data in images {
             let DepthImageComponentData {
@@ -116,19 +115,15 @@ impl DepthImageVisualizer {
                 entity_path,
                 ent_context,
                 &image,
-                meaning,
                 re_renderer::Rgba::WHITE,
                 "DepthImage",
                 &mut self.data,
             ) {
                 self.images.push(PickableImageRect {
                     ent_path: entity_path.clone(),
-                    row_id: image.blob_row_id,
+                    image,
                     textured_rect,
-                    meaning: TensorDataMeaning::Depth,
                     depth_meter: Some(depth_meter),
-                    tensor: None,
-                    image: Some(image),
                 });
             }
         }
@@ -182,7 +177,6 @@ impl DepthImageVisualizer {
             render_ctx,
             &debug_name,
             image,
-            TensorDataMeaning::Depth,
             &tensor_stats,
             &ent_context.annotations,
         )?;
@@ -258,16 +252,16 @@ impl VisualizerSystem for DepthImageVisualizer {
                     Some(blobs) => blobs?,
                     _ => return Ok(()),
                 };
-                let data_types = match results
-                    .get_required_component_dense::<components::ChannelDataType>(resolver)
-                {
-                    Some(data_types) => data_types?,
-                    _ => return Ok(()),
-                };
                 let resolutions = match results
                     .get_required_component_dense::<components::Resolution2D>(resolver)
                 {
                     Some(resolutions) => resolutions?,
+                    _ => return Ok(()),
+                };
+                let data_types = match results
+                    .get_required_component_dense::<components::ChannelDatatype>(resolver)
+                {
+                    Some(data_types) => data_types?,
                     _ => return Ok(()),
                 };
 
@@ -277,22 +271,22 @@ impl VisualizerSystem for DepthImageVisualizer {
 
                 let mut data = re_query::range_zip_1x5(
                     blobs.range_indexed(),
-                    data_types.range_indexed(),
                     resolutions.range_indexed(),
+                    data_types.range_indexed(),
                     colormap.range_indexed(),
                     depth_meter.range_indexed(),
                     fill_ratio.range_indexed(),
                 )
                 .filter_map(
-                    |(&index, blobs, data_type, resolution, colormap, depth_meter, fill_ratio)| {
+                    |(&index, blobs, resolution, data_type, colormap, depth_meter, fill_ratio)| {
                         let blob = blobs.first()?;
                         Some(DepthImageComponentData {
                             image: ImageInfo {
                                 blob_row_id: index.1,
                                 blob: blob.0.clone(),
                                 resolution: first_copied(resolution)?.0 .0,
-                                color_model: None,
-                                data_type: first_copied(data_type)?,
+                                format: ImageFormat::depth(first_copied(data_type)?),
+                                kind: ImageKind::Depth,
                                 colormap: first_copied(colormap),
                             },
                             depth_meter: first_copied(depth_meter),

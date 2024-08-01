@@ -1,45 +1,45 @@
 #pragma once
 
-#include "components/channel_data_type.hpp"
+#include "components/channel_datatype.hpp"
 #include "half.hpp"
 
 #include <cstdint>
 
 namespace rerun {
     /// Number of bits used by this element type
-    inline size_t data_type_bits(components::ChannelDataType value) {
+    inline size_t datatype_bits(components::ChannelDatatype value) {
         switch (value) {
-            case components::ChannelDataType::U8: {
+            case components::ChannelDatatype::U8: {
                 return 8;
             }
-            case components::ChannelDataType::U16: {
+            case components::ChannelDatatype::U16: {
                 return 16;
             }
-            case components::ChannelDataType::U32: {
+            case components::ChannelDatatype::U32: {
                 return 32;
             }
-            case components::ChannelDataType::U64: {
+            case components::ChannelDatatype::U64: {
                 return 64;
             }
-            case components::ChannelDataType::I8: {
+            case components::ChannelDatatype::I8: {
                 return 8;
             }
-            case components::ChannelDataType::I16: {
+            case components::ChannelDatatype::I16: {
                 return 16;
             }
-            case components::ChannelDataType::I32: {
+            case components::ChannelDatatype::I32: {
                 return 32;
             }
-            case components::ChannelDataType::I64: {
+            case components::ChannelDatatype::I64: {
                 return 64;
             }
-            case components::ChannelDataType::F16: {
+            case components::ChannelDatatype::F16: {
                 return 16;
             }
-            case components::ChannelDataType::F32: {
+            case components::ChannelDatatype::F32: {
                 return 32;
             }
-            case components::ChannelDataType::F64: {
+            case components::ChannelDatatype::F64: {
                 return 64;
             }
         }
@@ -47,79 +47,79 @@ namespace rerun {
     }
 
     inline size_t num_bytes(
-        components::Resolution2D resolution, components::ChannelDataType data_type
+        components::Resolution2D resolution, components::ChannelDatatype datatype
     ) {
         const size_t width = static_cast<size_t>(resolution.width());
         const size_t height = static_cast<size_t>(resolution.height());
-        return width * height * data_type_bits(data_type) / 8;
+        return (width * height * datatype_bits(datatype) + 7) / 8; // rounding upwards
     }
 
     template <typename TElement>
-    inline components::ChannelDataType get_data_type(const TElement* _unused);
+    inline components::ChannelDatatype get_datatype(const TElement* _unused);
 
     template <>
-    inline components::ChannelDataType get_data_type(const uint8_t* _unused) {
+    inline components::ChannelDatatype get_datatype(const uint8_t* _unused) {
         (void)(_unused); // Suppress unused warning.
-        return components::ChannelDataType::U8;
+        return components::ChannelDatatype::U8;
     }
 
     template <>
-    inline components::ChannelDataType get_data_type(const uint16_t* _unused) {
+    inline components::ChannelDatatype get_datatype(const uint16_t* _unused) {
         (void)(_unused); // Suppress unused warning.
-        return components::ChannelDataType::U16;
+        return components::ChannelDatatype::U16;
     }
 
     template <>
-    inline components::ChannelDataType get_data_type(const uint32_t* _unused) {
+    inline components::ChannelDatatype get_datatype(const uint32_t* _unused) {
         (void)(_unused); // Suppress unused warning.
-        return components::ChannelDataType::U32;
+        return components::ChannelDatatype::U32;
     }
 
     template <>
-    inline components::ChannelDataType get_data_type(const uint64_t* _unused) {
+    inline components::ChannelDatatype get_datatype(const uint64_t* _unused) {
         (void)(_unused); // Suppress unused warning.
-        return components::ChannelDataType::U64;
+        return components::ChannelDatatype::U64;
     }
 
     template <>
-    inline components::ChannelDataType get_data_type(const int8_t* _unused) {
+    inline components::ChannelDatatype get_datatype(const int8_t* _unused) {
         (void)(_unused); // Suppress unused warning.
-        return components::ChannelDataType::I8;
+        return components::ChannelDatatype::I8;
     }
 
     template <>
-    inline components::ChannelDataType get_data_type(const int16_t* _unused) {
+    inline components::ChannelDatatype get_datatype(const int16_t* _unused) {
         (void)(_unused); // Suppress unused warning.
-        return components::ChannelDataType::I16;
+        return components::ChannelDatatype::I16;
     }
 
     template <>
-    inline components::ChannelDataType get_data_type(const int32_t* _unused) {
+    inline components::ChannelDatatype get_datatype(const int32_t* _unused) {
         (void)(_unused); // Suppress unused warning.
-        return components::ChannelDataType::I32;
+        return components::ChannelDatatype::I32;
     }
 
     template <>
-    inline components::ChannelDataType get_data_type(const int64_t* _unused) {
+    inline components::ChannelDatatype get_datatype(const int64_t* _unused) {
         (void)(_unused); // Suppress unused warning.
-        return components::ChannelDataType::I64;
+        return components::ChannelDatatype::I64;
     }
 
     template <>
-    inline components::ChannelDataType get_data_type(const rerun::half* _unused) {
+    inline components::ChannelDatatype get_datatype(const rerun::half* _unused) {
         (void)(_unused); // Suppress unused warning.
-        return components::ChannelDataType::F16;
+        return components::ChannelDatatype::F16;
     }
 
     template <>
-    inline components::ChannelDataType get_data_type(const float* _unused) {
+    inline components::ChannelDatatype get_datatype(const float* _unused) {
         (void)(_unused); // Suppress unused warning.
-        return components::ChannelDataType::F32;
+        return components::ChannelDatatype::F32;
     }
 
     template <>
-    inline components::ChannelDataType get_data_type(const double* _unused) {
+    inline components::ChannelDatatype get_datatype(const double* _unused) {
         (void)(_unused); // Suppress unused warning.
-        return components::ChannelDataType::F64;
+        return components::ChannelDatatype::F64;
     }
 } // namespace rerun

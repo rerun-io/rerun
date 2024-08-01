@@ -500,8 +500,15 @@ fn quote_enum(
         quote!(#derive)
     });
 
+    // NOTE: we keep the casing of the enum variants exactly as specified in the .fbs file,
+    // or else `RGBA` would become `Rgba` and so on.
+    // Note that we want consistency across:
+    // * all languages (C++, Python, Rust)
+    // * the arrow datatype
+    // * the GUI
+
     let quoted_fields = fields.iter().enumerate().map(|(i, field)| {
-        let name = format_ident!("{}", field.pascal_case_name());
+        let name = format_ident!("{}", field.name);
 
         let quoted_doc = quote_field_docs(reporter, objects, field);
 
@@ -514,9 +521,16 @@ fn quote_enum(
             quote!()
         };
 
+        let clippy_attrs = if field.name == field.pascal_case_name() {
+            quote!()
+        } else {
+            quote!(#[allow(clippy::upper_case_acronyms)]) // e.g. for `ColorModel::RGBA`
+        };
+
         quote! {
             #quoted_doc
             #default_attr
+            #clippy_attrs
             #name = #arrow_type_index
         }
     });
@@ -524,17 +538,17 @@ fn quote_enum(
     let quoted_trait_impls = quote_trait_impls_from_obj(reporter, arrow_registry, objects, obj);
 
     let all = fields.iter().map(|field| {
-        let name = format_ident!("{}", field.pascal_case_name());
+        let name = format_ident!("{}", field.name);
         quote!(Self::#name)
     });
 
     let display_match_arms = fields.iter().map(|field| {
-        let name = field.pascal_case_name();
-        let quoted_name = format_ident!("{name}");
+        let name = &field.name;
+        let quoted_name = format_ident!("{}", name);
         quote!(Self::#quoted_name => write!(f, #name))
     });
     let docstring_md_match_arms = fields.iter().map(|field| {
-        let quoted_name = format_ident!("{}", field.pascal_case_name());
+        let quoted_name = format_ident!("{}", field.name);
         let docstring_md = doc_as_lines(
             reporter,
             objects,

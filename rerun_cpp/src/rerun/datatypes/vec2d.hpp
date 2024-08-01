@@ -20,9 +20,7 @@ namespace rerun::datatypes {
     struct Vec2D {
         std::array<float, 2> xy;
 
-      public:
-        // Extensions to generated type defined in 'vec2d_ext.cpp'
-
+      public: // START of extensions from vec2d_ext.cpp:
         /// Construct Vec2D from x/y values.
         Vec2D(float x, float y) : xy{x, y} {}
 
@@ -36,6 +34,8 @@ namespace rerun::datatypes {
         float y() const {
             return xy[1];
         }
+
+        // END of extensions from vec2d_ext.cpp, start of generated code:
 
       public:
         Vec2D() = default;

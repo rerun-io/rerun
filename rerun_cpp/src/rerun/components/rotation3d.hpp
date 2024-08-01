@@ -16,9 +16,7 @@ namespace rerun::components {
         /// Representation of the rotation.
         rerun::datatypes::Rotation3D repr;
 
-      public:
-        // Extensions to generated type defined in 'rotation3d_ext.cpp'
-
+      public: // START of extensions from rotation3d_ext.cpp:
         RERUN_SDK_EXPORT static const Rotation3D IDENTITY;
 
         /// Construct Rotation3d from Quaternion.
@@ -26,6 +24,8 @@ namespace rerun::components {
 
         /// Construct Rotation3d from axis-angle
         Rotation3D(datatypes::RotationAxisAngle axis_angle) : repr{axis_angle} {}
+
+        // END of extensions from rotation3d_ext.cpp, start of generated code:
 
       public:
         Rotation3D() = default;

@@ -77,9 +77,7 @@ namespace rerun::archetypes {
         /// Indicator component, used to identify the archetype when converting to a list of components.
         using IndicatorComponent = rerun::components::IndicatorComponent<IndicatorComponentName>;
 
-      public:
-        // Extensions to generated type defined in 'image_encoded_ext.cpp'
-
+      public: // START of extensions from image_encoded_ext.cpp:
         /// Create a new `ImageEncoded` from the contents of a file on disk, e.g. a PNG or JPEG.
         static Result<ImageEncoded> from_file(const std::filesystem::path& filepath);
 
@@ -100,6 +98,8 @@ namespace rerun::archetypes {
         static std::optional<rerun::components::MediaType> guess_media_type(
             const std::filesystem::path& path
         );
+
+        // END of extensions from image_encoded_ext.cpp, start of generated code:
 
       public:
         ImageEncoded() = default;

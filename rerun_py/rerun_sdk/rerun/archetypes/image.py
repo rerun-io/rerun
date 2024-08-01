@@ -5,15 +5,12 @@
 
 from __future__ import annotations
 
-from typing import Any
-
 from attrs import define, field
 
-from .. import components, datatypes
+from .. import components
 from .._baseclasses import (
     Archetype,
 )
-from ..error_utils import catch_and_log_exceptions
 from .image_ext import ImageExt
 
 __all__ = ["Image"]
@@ -24,25 +21,17 @@ class Image(ImageExt, Archetype):
     """
     **Archetype**: A monochrome or color image.
 
-    The order of dimensions in the underlying [`components.TensorData`][rerun.components.TensorData] follows the typical
-    row-major, interleaved-pixel image format. Additionally, Rerun orders the
-    [`datatypes.TensorDimension`][rerun.datatypes.TensorDimension]s within the shape description from outer-most to inner-most.
+    See also [`archetypes.DepthImage`][rerun.archetypes.DepthImage] and [`archetypes.SegmentationImage`][rerun.archetypes.SegmentationImage].
 
-    As such, the shape of the [`components.TensorData`][rerun.components.TensorData] must be mappable to:
-    - A `HxW` tensor, treated as a grayscale image.
-    - A `HxWx3` tensor, treated as an RGB image.
-    - A `HxWx4` tensor, treated as an RGBA image.
+    The raw image data is stored as a single buffer of bytes in a [rerun.components.Blob].
+    The meaning of these bytes is determined by the `ImageFormat` which specifies the resolution
+    and the pixel format (e.g. RGB, RGBA, …).
 
-    Leading and trailing unit-dimensions are ignored, so that
-    `1x480x640x3x1` is treated as a `480x640x3` RGB image.
+    The order of dimensions in the underlying [`components.Blob`][rerun.components.Blob] follows the typical
+    row-major, interleaved-pixel image format.
 
     Rerun also supports compressed images (JPEG, PNG, …), using [`archetypes.ImageEncoded`][rerun.archetypes.ImageEncoded].
     Compressing images can save a lot of bandwidth and memory.
-
-    You can compress an image using [`rerun.Image.compress`][].
-    To pass in a chroma-encoded image (NV12, YUY2), use [`rerun.ImageChromaDownsampled`][].
-
-    See also [`components.TensorData`][rerun.components.TensorData] and [`datatypes.TensorBuffer`][rerun.datatypes.TensorBuffer].
 
     Example
     -------
@@ -72,41 +61,16 @@ class Image(ImageExt, Archetype):
 
     """
 
-    def __init__(
-        self: Any,
-        data: datatypes.TensorDataLike,
-        *,
-        opacity: datatypes.Float32Like | None = None,
-        draw_order: datatypes.Float32Like | None = None,
-    ):
-        """
-        Create a new instance of the Image archetype.
-
-        Parameters
-        ----------
-        data:
-            The image data. Should always be a 2- or 3-dimensional tensor.
-        opacity:
-            Opacity of the image, useful for layering several images.
-
-            Defaults to 1.0 (fully opaque).
-        draw_order:
-            An optional floating point value that specifies the 2D drawing order.
-
-            Objects with higher values are drawn on top of those with lower values.
-
-        """
-
-        # You can define your own __init__ function as a member of ImageExt in image_ext.py
-        with catch_and_log_exceptions(context=self.__class__.__name__):
-            self.__attrs_init__(data=data, opacity=opacity, draw_order=draw_order)
-            return
-        self.__attrs_clear__()
+    # __init__ can be found in image_ext.py
 
     def __attrs_clear__(self) -> None:
         """Convenience method for calling `__attrs_init__` with all `None`s."""
         self.__attrs_init__(
             data=None,  # type: ignore[arg-type]
+            resolution=None,  # type: ignore[arg-type]
+            pixel_format=None,  # type: ignore[arg-type]
+            color_model=None,  # type: ignore[arg-type]
+            datatype=None,  # type: ignore[arg-type]
             opacity=None,  # type: ignore[arg-type]
             draw_order=None,  # type: ignore[arg-type]
         )
@@ -118,11 +82,54 @@ class Image(ImageExt, Archetype):
         inst.__attrs_clear__()
         return inst
 
-    data: components.TensorDataBatch = field(
+    data: components.BlobBatch = field(
         metadata={"component": "required"},
-        converter=ImageExt.data__field_converter_override,  # type: ignore[misc]
+        converter=components.BlobBatch._required,  # type: ignore[misc]
     )
-    # The image data. Should always be a 2- or 3-dimensional tensor.
+    # The raw image data.
+    #
+    # (Docstring intentionally commented out to hide this field from the docs)
+
+    resolution: components.Resolution2DBatch = field(
+        metadata={"component": "required"},
+        converter=components.Resolution2DBatch._required,  # type: ignore[misc]
+    )
+    # The size of the image.
+    #
+    # For chroma downsampled formats, this is the size of the full image (the luminance channel).
+    #
+    # (Docstring intentionally commented out to hide this field from the docs)
+
+    pixel_format: components.PixelFormatBatch | None = field(
+        metadata={"component": "optional"},
+        default=None,
+        converter=components.PixelFormatBatch._optional,  # type: ignore[misc]
+    )
+    # Used mainly for chroma downsampled formats and differing number of bits per channel.
+    #
+    # If specified, this takes precedence over both [`components.ColorModel`][rerun.components.ColorModel] and [`components.ChannelDatatype`][rerun.components.ChannelDatatype] (which are ignored).
+    #
+    # (Docstring intentionally commented out to hide this field from the docs)
+
+    color_model: components.ColorModelBatch | None = field(
+        metadata={"component": "optional"},
+        default=None,
+        converter=components.ColorModelBatch._optional,  # type: ignore[misc]
+    )
+    # L, RGB, RGBA, …
+    #
+    # Also requires a [`components.ChannelDatatype`][rerun.components.ChannelDatatype] to fully specify the pixel format.
+    #
+    # (Docstring intentionally commented out to hide this field from the docs)
+
+    datatype: components.ChannelDatatypeBatch | None = field(
+        metadata={"component": "optional"},
+        default=None,
+        converter=components.ChannelDatatypeBatch._optional,  # type: ignore[misc]
+    )
+    # The data type of each channel (e.g. the red channel) of the image data (U8, F16, …).
+    #
+    # Also requires a [`components.ColorModel`][rerun.components.ColorModel] to fully specify the pixel format.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 

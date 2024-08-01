@@ -2,10 +2,79 @@ use std::borrow::Cow;
 
 use re_chunk::RowId;
 use re_types::{
-    components::{ChannelDataType, ColorModel, Colormap},
+    components::{ChannelDatatype, ColorModel, Colormap, PixelFormat},
     datatypes::Blob,
+    image::ImageKind,
     tensor_data::TensorElement,
 };
+
+/// Describes the contents of the byte buffer of an [`ImageInfo`].
+#[derive(Clone, Copy, Debug, Hash, PartialEq, Eq)]
+pub enum ImageFormat {
+    /// Only used for color images.
+    PixelFormat(PixelFormat),
+
+    ColorModel {
+        /// L, RGB, RGBA, …. Only used for color images.
+        ///
+        /// Depth and segmentation images uses [`ColorModel::L`].
+        color_model: ColorModel,
+
+        /// The innermost data type (e.g. `U8`).
+        datatype: ChannelDatatype,
+    },
+}
+
+impl ImageFormat {
+    #[inline]
+    pub fn depth(datatype: ChannelDatatype) -> Self {
+        Self::ColorModel {
+            color_model: ColorModel::L,
+            datatype,
+        }
+    }
+
+    #[inline]
+    pub fn segmentation(datatype: ChannelDatatype) -> Self {
+        Self::ColorModel {
+            color_model: ColorModel::L,
+            datatype,
+        }
+    }
+
+    #[inline]
+    pub fn has_alpha(&self) -> bool {
+        match self {
+            Self::PixelFormat(pixel_format) => pixel_format.has_alpha(),
+            Self::ColorModel { color_model, .. } => color_model.has_alpha(),
+        }
+    }
+
+    #[inline]
+    pub fn is_float(&self) -> bool {
+        match self {
+            Self::PixelFormat(pixel_format) => match pixel_format {
+                PixelFormat::NV12 | PixelFormat::YUY2 => false,
+            },
+            Self::ColorModel { datatype, .. } => datatype.is_float(),
+        }
+    }
+
+    /// Number of bits needed to represent a single pixel.
+    ///
+    /// Note that this is not necessarily divisible by 8!
+    #[inline]
+    pub fn bits_per_pixel(&self) -> usize {
+        match self {
+            Self::PixelFormat(pixel_format) => pixel_format.bits_per_pixel(),
+
+            Self::ColorModel {
+                color_model,
+                datatype,
+            } => color_model.num_channels() * datatype.bits(),
+        }
+    }
+}
 
 /// Represents an `Image`, `SegmentationImage` or `DepthImage`.
 ///
@@ -23,12 +92,11 @@ pub struct ImageInfo {
     /// Width and height
     pub resolution: [u32; 2],
 
-    /// The innermost data type (e.g. `U8`).
-    pub data_type: ChannelDataType,
+    /// Describes the format of [`Self::blob`].
+    pub format: ImageFormat,
 
-    /// `None` for depth images and segmentation images,
-    /// `Some` for color images.
-    pub color_model: Option<ColorModel>,
+    /// Color, Depth, or Segmentation?
+    pub kind: ImageKind,
 
     /// Primarily for depth images atm
     pub colormap: Option<Colormap>,
@@ -46,18 +114,17 @@ impl ImageInfo {
         self.resolution[1]
     }
 
-    /// 1 for grayscale and depth images, 3 for RGB, etc.
-    #[doc(alias = "components")]
-    #[doc(alias = "depth")]
-    #[inline]
-    pub fn num_channels(&self) -> usize {
-        self.color_model.map_or(1, ColorModel::num_channels)
-    }
-
-    #[inline]
-    pub fn bits_per_texel(&self) -> usize {
-        // TODO(#6386): use `PixelFormat`
-        self.data_type.bits() * self.num_channels()
+    /// Returns [`ColorModel::L`] for depth and segmentation images.
+    ///
+    /// Currently return [`ColorModel::RGB`] for chroma-subsampled images,
+    /// but this may change in the future when we add YUV support to [`ColorModel`].
+    pub fn color_model(&self) -> ColorModel {
+        match self.format {
+            ImageFormat::PixelFormat(pixel_format) => match pixel_format {
+                PixelFormat::NV12 | PixelFormat::YUY2 => ColorModel::RGB,
+            },
+            ImageFormat::ColorModel { color_model, .. } => color_model,
+        }
     }
 
     /// Get the value of the element at the given index.
@@ -65,42 +132,85 @@ impl ImageInfo {
     /// Return `None` if out-of-bounds.
     #[inline]
     pub fn get_xyc(&self, x: u32, y: u32, channel: u32) -> Option<TensorElement> {
-        let width = self.width();
-        let height = self.height();
-        let num_channels = self.num_channels();
+        let w = self.width();
+        let h = self.height();
 
-        if width <= x || height <= y {
-            return None;
-        }
-        debug_assert!(channel < num_channels as u32);
-        if num_channels as u32 <= channel {
+        if w <= x || h <= y {
             return None;
         }
 
-        let stride = width; // TODO(#6008): support stride
-        let offset = (y as usize * stride as usize + x as usize) * num_channels + channel as usize;
+        match self.format {
+            ImageFormat::PixelFormat(pixel_format) => {
+                let buf: &[u8] = &self.blob;
 
-        match self.data_type {
-            ChannelDataType::U8 => self.blob.get(offset).copied().map(TensorElement::U8),
-            ChannelDataType::U16 => get(&self.blob, offset).map(TensorElement::U16),
-            ChannelDataType::U32 => get(&self.blob, offset).map(TensorElement::U32),
-            ChannelDataType::U64 => get(&self.blob, offset).map(TensorElement::U64),
+                // NOTE: the name `y` is already taken for the coordinate, so we use `luma` here.
+                let [luma, u, v] = match pixel_format {
+                    PixelFormat::NV12 => {
+                        let uv_offset = w * h;
+                        let luma = buf[(y * w + x) as usize];
+                        let u = buf[(uv_offset + (y / 2) * w + x) as usize];
+                        let v = buf[(uv_offset + (y / 2) * w + x) as usize + 1];
+                        [luma, u, v]
+                    }
 
-            ChannelDataType::I8 => get(&self.blob, offset).map(TensorElement::I8),
-            ChannelDataType::I16 => get(&self.blob, offset).map(TensorElement::I16),
-            ChannelDataType::I32 => get(&self.blob, offset).map(TensorElement::I32),
-            ChannelDataType::I64 => get(&self.blob, offset).map(TensorElement::I64),
+                    PixelFormat::YUY2 => {
+                        let index = ((y * w + x) * 2) as usize;
+                        if x % 2 == 0 {
+                            [buf[index], buf[index + 1], buf[index + 3]]
+                        } else {
+                            [buf[index], buf[index - 1], buf[index + 1]]
+                        }
+                    }
+                };
 
-            ChannelDataType::F16 => get(&self.blob, offset).map(TensorElement::F16),
-            ChannelDataType::F32 => get(&self.blob, offset).map(TensorElement::F32),
-            ChannelDataType::F64 => get(&self.blob, offset).map(TensorElement::F64),
+                match self.color_model() {
+                    ColorModel::L => (channel == 0).then_some(TensorElement::U8(luma)),
+
+                    ColorModel::RGB | ColorModel::RGBA => {
+                        if channel < 3 {
+                            let rgb = rgb_from_yuv(luma, u, v);
+                            Some(TensorElement::U8(rgb[channel as usize]))
+                        } else if channel == 4 {
+                            Some(TensorElement::U8(255))
+                        } else {
+                            None
+                        }
+                    }
+                }
+            }
+
+            ImageFormat::ColorModel {
+                color_model,
+                datatype,
+            } => {
+                let num_channels = color_model.num_channels();
+
+                debug_assert!(channel < num_channels as u32);
+                if num_channels as u32 <= channel {
+                    return None;
+                }
+
+                let stride = w; // TODO(#6008): support stride
+                let offset =
+                    (y as usize * stride as usize + x as usize) * num_channels + channel as usize;
+
+                match datatype {
+                    ChannelDatatype::U8 => self.blob.get(offset).copied().map(TensorElement::U8),
+                    ChannelDatatype::U16 => get(&self.blob, offset).map(TensorElement::U16),
+                    ChannelDatatype::U32 => get(&self.blob, offset).map(TensorElement::U32),
+                    ChannelDatatype::U64 => get(&self.blob, offset).map(TensorElement::U64),
+
+                    ChannelDatatype::I8 => get(&self.blob, offset).map(TensorElement::I8),
+                    ChannelDatatype::I16 => get(&self.blob, offset).map(TensorElement::I16),
+                    ChannelDatatype::I32 => get(&self.blob, offset).map(TensorElement::I32),
+                    ChannelDatatype::I64 => get(&self.blob, offset).map(TensorElement::I64),
+
+                    ChannelDatatype::F16 => get(&self.blob, offset).map(TensorElement::F16),
+                    ChannelDatatype::F32 => get(&self.blob, offset).map(TensorElement::F32),
+                    ChannelDatatype::F64 => get(&self.blob, offset).map(TensorElement::F64),
+                }
+            }
         }
-    }
-
-    /// Total number of elements in the image, e.g. `W x H x 3` for an RGB image.
-    #[inline]
-    pub fn num_elements(&self) -> usize {
-        self.blob.len() * 8 / self.bits_per_texel()
     }
 
     /// Cast the buffer to the given type.
@@ -154,4 +264,30 @@ fn get<T: bytemuck::Pod>(blob: &[u8], element_offset: usize) -> Option<T> {
     let mut dest = T::zeroed();
     bytemuck::bytes_of_mut(&mut dest).copy_from_slice(slice);
     Some(dest)
+}
+
+/// Sets the color standard for the given YUV color.
+///
+/// This conversion mirrors the function of the same name in `crates/viewer/re_renderer/shader/decodings.wgsl`
+///
+/// Specifying the color standard should be exposed in the future [#3541](https://github.com/rerun-io/rerun/pull/3541)
+fn rgb_from_yuv(y: u8, u: u8, v: u8) -> [u8; 3] {
+    let (y, u, v) = (y as f32, u as f32, v as f32);
+
+    // rescale YUV values
+    let y = (y - 16.0) / 219.0;
+    let u = (u - 128.0) / 224.0;
+    let v = (v - 128.0) / 224.0;
+
+    // BT.601 (aka. SDTV, aka. Rec.601). wiki: https://en.wikipedia.org/wiki/YCbCr#ITU-R_BT.601_conversion
+    let r = y + 1.402 * v;
+    let g = y - 0.344 * u - 0.714 * v;
+    let b = y + 1.772 * u;
+
+    // BT.709 (aka. HDTV, aka. Rec.709). wiki: https://en.wikipedia.org/wiki/YCbCr#ITU-R_BT.709_conversion
+    // let r = y + 1.575 * v;
+    // let g = y - 0.187 * u - 0.468 * v;
+    // let b = y + 1.856 * u;
+
+    [(255.0 * r) as u8, (255.0 * g) as u8, (255.0 * b) as u8]
 }

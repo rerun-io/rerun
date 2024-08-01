@@ -390,22 +390,3 @@ impl std::fmt::Display for TensorElement {
         }
     }
 }
-
-// ----------------------------------------------------------------------------
-
-// Backwards comparabillity shim
-// TODO(jleibs): fully express this in terms of indicator components
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-pub enum TensorDataMeaning {
-    /// Default behavior: guess based on shape
-    Unknown,
-
-    /// A segmentation image.
-    ///
-    /// The data is an annotated [`crate::components::ClassId`] which should be
-    /// looked up using the appropriate [`crate::components::AnnotationContext`]
-    ClassId,
-
-    /// Image data interpreted as depth map.
-    Depth,
-}

@@ -14,7 +14,7 @@ See also [`archetypes.AnnotationContext`](https://rerun.io/docs/reference/types/
 
 ## Components
 
-**Required**: [`Blob`](../components/blob.md), [`Resolution2D`](../components/resolution2d.md), [`ChannelDataType`](../components/channel_data_type.md)
+**Required**: [`Blob`](../components/blob.md), [`Resolution2D`](../components/resolution2d.md), [`ChannelDatatype`](../components/channel_datatype.md)
 
 **Optional**: [`Opacity`](../components/opacity.md), [`DrawOrder`](../components/draw_order.md)
 

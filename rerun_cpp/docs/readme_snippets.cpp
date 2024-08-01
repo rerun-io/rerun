@@ -31,7 +31,7 @@ static std::vector<uint8_t> create_image() {
     rec.log("path/to/points", rerun::Points3D(points).with_colors(colors));
 
     // Log an image.
-    rec.log("path/to/image", rerun::Image({786, 1024, 3}, image_data));
+    rec.log("path/to/image", rerun::Image::from_rgba32({786, 1024}, image_data));
     /// [Logging]
 }
 

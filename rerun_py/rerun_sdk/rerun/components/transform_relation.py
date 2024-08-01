@@ -48,8 +48,19 @@ class TransformRelation(Enum):
     From perspective of `parent/child`, the `parent` entity is translated 1 unit along `parent/child`'s Y axis.
     """
 
+    def __str__(self) -> str:
+        """Returns the variant name."""
+        if self == TransformRelation.ParentFromChild:
+            return "ParentFromChild"
+        elif self == TransformRelation.ChildFromParent:
+            return "ChildFromParent"
+        else:
+            raise ValueError("Unknown enum variant")
 
-TransformRelationLike = Union[TransformRelation, Literal["parentfromchild", "childfromparent"]]
+
+TransformRelationLike = Union[
+    TransformRelation, Literal["ChildFromParent", "ParentFromChild", "childfromparent", "parentfromchild"]
+]
 TransformRelationArrayLike = Union[TransformRelationLike, Sequence[TransformRelationLike]]
 
 

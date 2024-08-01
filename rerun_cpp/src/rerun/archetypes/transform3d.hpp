@@ -176,9 +176,7 @@ namespace rerun::archetypes {
         /// Indicator component, used to identify the archetype when converting to a list of components.
         using IndicatorComponent = rerun::components::IndicatorComponent<IndicatorComponentName>;
 
-      public:
-        // Extensions to generated type defined in 'transform3d_ext.cpp'
-
+      public: // START of extensions from transform3d_ext.cpp:
         /// Identity transformation.
         ///
         /// Applying this transform does not alter an entity's transformation.
@@ -505,6 +503,8 @@ namespace rerun::archetypes {
                 RR_WITH_MAYBE_UNINITIALIZED_DISABLED(quaternion = rotation.quaternion.value();)
             }
         }
+
+        // END of extensions from transform3d_ext.cpp, start of generated code:
 
       public:
         Transform3D() = default;

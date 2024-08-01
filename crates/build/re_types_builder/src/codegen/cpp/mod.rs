@@ -336,16 +336,20 @@ fn hpp_type_extensions(
         remaining_content = &remaining_content[end + COPY_TO_HEADER_END_MARKER.len()..];
     }
 
-    let comment = quote_comment(&format!(
-        "Extensions to generated type defined in '{}'",
+    let start_comment = quote_comment(&format!(
+        "START of extensions from {}:",
+        extension_file.file_name().unwrap()
+    ));
+    let end_comment = quote_comment(&format!(
+        "END of extensions from {}, start of generated code:",
         extension_file.file_name().unwrap()
     ));
     let hpp_type_extensions = quote! {
-        public:
-        #NEWLINE_TOKEN
-        #comment
+        public:  #start_comment
         #NEWLINE_TOKEN
         #HEADER_EXTENSION_TOKEN
+        #NEWLINE_TOKEN
+        #end_comment
         #NEWLINE_TOKEN
     };
 

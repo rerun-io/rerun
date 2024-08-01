@@ -86,15 +86,15 @@ namespace rerun::archetypes {
         /// Indicator component, used to identify the archetype when converting to a list of components.
         using IndicatorComponent = rerun::components::IndicatorComponent<IndicatorComponentName>;
 
-      public:
-        // Extensions to generated type defined in 'arrows2d_ext.cpp'
-
+      public: // START of extensions from arrows2d_ext.cpp:
         /// Creates new 2D arrows pointing in the given directions, with a base at the origin (0, 0).
         static Arrows2D from_vectors(Collection<components::Vector2D> vectors_) {
             Arrows2D arrows;
             arrows.vectors = std::move(vectors_);
             return arrows;
         }
+
+        // END of extensions from arrows2d_ext.cpp, start of generated code:
 
       public:
         Arrows2D() = default;

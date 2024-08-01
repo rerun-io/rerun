@@ -58,8 +58,41 @@ class AggregationPolicy(Enum):
     MinMaxAverage = 6
     """Find both the minimum and maximum values in the range, then use the average of those."""
 
+    def __str__(self) -> str:
+        """Returns the variant name."""
+        if self == AggregationPolicy.Off:
+            return "Off"
+        elif self == AggregationPolicy.Average:
+            return "Average"
+        elif self == AggregationPolicy.Max:
+            return "Max"
+        elif self == AggregationPolicy.Min:
+            return "Min"
+        elif self == AggregationPolicy.MinMax:
+            return "MinMax"
+        elif self == AggregationPolicy.MinMaxAverage:
+            return "MinMaxAverage"
+        else:
+            raise ValueError("Unknown enum variant")
 
-AggregationPolicyLike = Union[AggregationPolicy, Literal["off", "average", "max", "min", "minmax", "minmaxaverage"]]
+
+AggregationPolicyLike = Union[
+    AggregationPolicy,
+    Literal[
+        "Average",
+        "Max",
+        "Min",
+        "MinMax",
+        "MinMaxAverage",
+        "Off",
+        "average",
+        "max",
+        "min",
+        "minmax",
+        "minmaxaverage",
+        "off",
+    ],
+]
 AggregationPolicyArrayLike = Union[AggregationPolicyLike, Sequence[AggregationPolicyLike]]
 
 

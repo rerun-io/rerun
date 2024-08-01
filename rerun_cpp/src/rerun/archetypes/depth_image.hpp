@@ -6,7 +6,7 @@
 #include "../collection.hpp"
 #include "../compiler_utils.hpp"
 #include "../components/blob.hpp"
-#include "../components/channel_data_type.hpp"
+#include "../components/channel_datatype.hpp"
 #include "../components/colormap.hpp"
 #include "../components/depth_meter.hpp"
 #include "../components/draw_order.hpp"
@@ -82,7 +82,7 @@ namespace rerun::archetypes {
         rerun::components::Resolution2D resolution;
 
         /// The data type of the depth image data (U16, F32, …).
-        rerun::components::ChannelDataType data_type;
+        rerun::components::ChannelDatatype datatype;
 
         /// An optional floating point value that specifies how long a meter is in the native depth units.
         ///
@@ -119,16 +119,14 @@ namespace rerun::archetypes {
         /// Indicator component, used to identify the archetype when converting to a list of components.
         using IndicatorComponent = rerun::components::IndicatorComponent<IndicatorComponentName>;
 
-      public:
-        // Extensions to generated type defined in 'depth_image_ext.cpp'
-
+      public: // START of extensions from depth_image_ext.cpp:
         /// Row-major. Borrows.
         ///
         /// The length of the data should be `W * H`.
         template <typename TElement>
         DepthImage(const TElement* pixels, components::Resolution2D resolution_)
             : DepthImage{
-                  reinterpret_cast<const uint8_t*>(pixels), resolution_, get_data_type(pixels)} {}
+                  reinterpret_cast<const uint8_t*>(pixels), resolution_, get_datatype(pixels)} {}
 
         /// Row-major.
         ///
@@ -142,25 +140,27 @@ namespace rerun::archetypes {
         /// The length of the data should be `W * H`.
         template <typename TElement>
         DepthImage(Collection<TElement> pixels, components::Resolution2D resolution_)
-            : DepthImage{pixels.to_uint8(), resolution_, get_data_type(pixels.data())} {}
+            : DepthImage{pixels.to_uint8(), resolution_, get_datatype(pixels.data())} {}
 
         /// Row-major. Borrows.
         ///
-        /// The length of the data should be `W * H * data_type.size`
+        /// The length of the data should be `W * H * datatype.size`
         DepthImage(
             const void* data_, components::Resolution2D resolution_,
-            components::ChannelDataType data_type_
+            components::ChannelDatatype datatype_
         )
-            : data{Collection<uint8_t>::borrow(data_, num_bytes(resolution_, data_type_))},
+            : data{Collection<uint8_t>::borrow(data_, num_bytes(resolution_, datatype_))},
               resolution{resolution_},
-              data_type{data_type_} {}
+              datatype{datatype_} {}
 
-        /// The length of the data should be `W * H * data_type.size`
+        /// The length of the data should be `W * H * datatype.size`
         DepthImage(
             Collection<uint8_t> data_, components::Resolution2D resolution_,
-            components::ChannelDataType data_type_
+            components::ChannelDatatype datatype_
         )
-            : data{data_}, resolution{resolution_}, data_type{data_type_} {}
+            : data{data_}, resolution{resolution_}, datatype{datatype_} {}
+
+        // END of extensions from depth_image_ext.cpp, start of generated code:
 
       public:
         DepthImage() = default;

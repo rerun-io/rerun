@@ -38,8 +38,17 @@ class FillMode(Enum):
     Lines are not drawn.
     """
 
+    def __str__(self) -> str:
+        """Returns the variant name."""
+        if self == FillMode.Wireframe:
+            return "Wireframe"
+        elif self == FillMode.Solid:
+            return "Solid"
+        else:
+            raise ValueError("Unknown enum variant")
 
-FillModeLike = Union[FillMode, Literal["wireframe", "solid"]]
+
+FillModeLike = Union[FillMode, Literal["Solid", "Wireframe", "solid", "wireframe"]]
 FillModeArrayLike = Union[FillModeLike, Sequence[FillModeLike]]
 
 

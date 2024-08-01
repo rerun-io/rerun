@@ -203,8 +203,7 @@ fn mesh_texture_from_tensor_data(
     render_ctx: &RenderContext,
     texture_key: u64,
 ) -> anyhow::Result<re_renderer::resource_managers::GpuTexture2D> {
-    let [height, width, depth] =
-        re_viewer_context::gpu_bridge::texture_height_width_channels(albedo_texture)?;
+    let [height, width, depth] = texture_height_width_channels(albedo_texture)?;
 
     re_viewer_context::gpu_bridge::try_get_or_create_texture(render_ctx, texture_key, || {
         let data = match (depth, &albedo_texture.buffer) {
@@ -227,4 +226,21 @@ fn mesh_texture_from_tensor_data(
         })
     })
     .map_err(|err| anyhow::format_err!("{err}"))
+}
+
+fn texture_height_width_channels(
+    tensor: &re_types::datatypes::TensorData,
+) -> anyhow::Result<[u32; 3]> {
+    use anyhow::Context as _;
+
+    let Some([height, width, channel]) = tensor.image_height_width_channels() else {
+        anyhow::bail!("TensorData with shape {:?} is not an image", tensor.shape);
+    };
+
+    let [height, width] = [
+        u32::try_from(height).context("Image height is too large")?,
+        u32::try_from(width).context("Image width is too large")?,
+    ];
+
+    Ok([height, width, channel as u32])
 }

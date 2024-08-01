@@ -23,7 +23,7 @@ class ImageEncoded(ImageEncodedExt, Archetype):
 
     Rerun also supports uncompressed images with the [`archetypes.Image`][rerun.archetypes.Image].
 
-    To compress an image, use [`rerun.Image.compress`][].
+    To compress an image, use [`rerun.ImageEncoded.compress`][].
 
     Example
     -------

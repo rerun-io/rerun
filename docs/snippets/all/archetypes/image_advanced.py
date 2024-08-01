@@ -5,11 +5,11 @@ import tempfile
 import cv2
 import numpy as np
 import rerun as rr
-from PIL import Image, ImageDraw
+from PIL import Image as PILImage, ImageDraw
 
 # Save a transparent PNG to a temporary file.
 _, file_path = tempfile.mkstemp(suffix=".png")
-image = Image.new("RGBA", (300, 200), color=(0, 0, 0, 0))
+image = PILImage.new("RGBA", (300, 200), color=(0, 0, 0, 0))
 draw = ImageDraw.Draw(image)
 draw.rectangle((0, 0, 300, 200), outline=(255, 0, 0), width=6)
 draw.rounded_rectangle((50, 50, 150, 150), fill=(0, 255, 0), radius=20)
@@ -22,7 +22,7 @@ rr.init("rerun_example_image_advanced", spawn=True)
 rr.log("from_file", rr.ImageEncoded(path=file_path))
 
 # Read with Pillow and NumPy, and log the image.
-image = np.array(Image.open(file_path))
+image = np.array(PILImage.open(file_path))
 rr.log("from_pillow_rgba", rr.Image(image))
 
 # Convert to RGB, fill transparent pixels with a color, and log the image.

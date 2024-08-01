@@ -3,10 +3,10 @@ use itertools::Itertools as _;
 use re_types::{
     archetypes::SegmentationImage,
     components::{self, DrawOrder, Opacity},
-    tensor_data::TensorDataMeaning,
+    image::ImageKind,
 };
 use re_viewer_context::{
-    ApplicableEntities, IdentifiedViewSystem, ImageInfo, QueryContext,
+    ApplicableEntities, IdentifiedViewSystem, ImageFormat, ImageInfo, QueryContext,
     SpaceViewSystemExecutionError, TypedComponentFallbackProvider, ViewContext,
     ViewContextCollection, ViewQuery, VisualizableEntities, VisualizableFilterContext,
     VisualizerQueryInfo, VisualizerSystem,
@@ -86,7 +86,7 @@ impl VisualizerSystem for SegmentationImageVisualizer {
                     _ => return Ok(()),
                 };
                 let data_types = match results
-                    .get_required_component_dense::<components::ChannelDataType>(resolver)
+                    .get_required_component_dense::<components::ChannelDatatype>(resolver)
                 {
                     Some(data_types) => data_types?,
                     _ => return Ok(()),
@@ -113,15 +113,13 @@ impl VisualizerSystem for SegmentationImageVisualizer {
                             blob_row_id: index.1,
                             blob: blob.0.clone(),
                             resolution: first_copied(resolution)?.0 .0,
-                            color_model: None,
-                            data_type: first_copied(data_type)?,
+                            format: ImageFormat::segmentation(first_copied(data_type)?),
+                            kind: ImageKind::Segmentation,
                             colormap: None,
                         },
                         opacity: first_copied(opacity),
                     })
                 });
-
-                let meaning = TensorDataMeaning::ClassId;
 
                 for data in data {
                     let SegmentationImageComponentData { image, opacity } = data;
@@ -135,19 +133,15 @@ impl VisualizerSystem for SegmentationImageVisualizer {
                         entity_path,
                         spatial_ctx,
                         &image,
-                        meaning,
                         multiplicative_tint,
                         "SegmentationImage",
                         &mut self.data,
                     ) {
                         self.images.push(PickableImageRect {
                             ent_path: entity_path.clone(),
-                            row_id: image.blob_row_id,
+                            image,
                             textured_rect,
-                            meaning,
                             depth_meter: None,
-                            tensor: None,
-                            image: Some(image),
                         });
                     }
                 }

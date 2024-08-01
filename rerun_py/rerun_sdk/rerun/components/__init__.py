@@ -19,12 +19,12 @@ from .annotation_context import (
 )
 from .axis_length import AxisLength, AxisLengthBatch, AxisLengthType
 from .blob import Blob, BlobBatch, BlobType
-from .channel_data_type import (
-    ChannelDataType,
-    ChannelDataTypeArrayLike,
-    ChannelDataTypeBatch,
-    ChannelDataTypeLike,
-    ChannelDataTypeType,
+from .channel_datatype import (
+    ChannelDatatype,
+    ChannelDatatypeArrayLike,
+    ChannelDatatypeBatch,
+    ChannelDatatypeLike,
+    ChannelDatatypeType,
 )
 from .class_id import ClassId, ClassIdBatch, ClassIdType
 from .clear_is_recursive import ClearIsRecursive, ClearIsRecursiveBatch, ClearIsRecursiveType
@@ -61,6 +61,7 @@ from .media_type import MediaType, MediaTypeBatch, MediaTypeType
 from .name import Name, NameBatch, NameType
 from .opacity import Opacity, OpacityBatch, OpacityType
 from .pinhole_projection import PinholeProjection, PinholeProjectionBatch, PinholeProjectionType
+from .pixel_format import PixelFormat, PixelFormatArrayLike, PixelFormatBatch, PixelFormatLike, PixelFormatType
 from .position2d import Position2D, Position2DBatch, Position2DType
 from .position3d import Position3D, Position3DBatch, Position3DType
 from .radius import Radius, RadiusBatch, RadiusType
@@ -118,11 +119,11 @@ __all__ = [
     "Blob",
     "BlobBatch",
     "BlobType",
-    "ChannelDataType",
-    "ChannelDataTypeArrayLike",
-    "ChannelDataTypeBatch",
-    "ChannelDataTypeLike",
-    "ChannelDataTypeType",
+    "ChannelDatatype",
+    "ChannelDatatypeArrayLike",
+    "ChannelDatatypeBatch",
+    "ChannelDatatypeLike",
+    "ChannelDatatypeType",
     "ClassId",
     "ClassIdBatch",
     "ClassIdType",
@@ -224,6 +225,11 @@ __all__ = [
     "PinholeProjection",
     "PinholeProjectionBatch",
     "PinholeProjectionType",
+    "PixelFormat",
+    "PixelFormatArrayLike",
+    "PixelFormatBatch",
+    "PixelFormatLike",
+    "PixelFormatType",
     "Position2D",
     "Position2DBatch",
     "Position2DType",

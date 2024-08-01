@@ -25,20 +25,31 @@ class ColorModel(Enum):
     """
     **Component**: Specified what color components are present in an [`archetypes.Image`][rerun.archetypes.Image].
 
-    This combined with [`components.ChannelDataType`][rerun.components.ChannelDataType] determines the pixel format of an image.
+    This combined with [`components.ChannelDatatype`][rerun.components.ChannelDatatype] determines the pixel format of an image.
     """
 
     L = 1
     """Grayscale luminance intencity/brightness/value, sometimes called `Y`"""
 
-    Rgb = 2
+    RGB = 2
     """Red, Green, Blue"""
 
-    Rgba = 3
+    RGBA = 3
     """Red, Green, Blue, Alpha"""
 
+    def __str__(self) -> str:
+        """Returns the variant name."""
+        if self == ColorModel.L:
+            return "L"
+        elif self == ColorModel.RGB:
+            return "RGB"
+        elif self == ColorModel.RGBA:
+            return "RGBA"
+        else:
+            raise ValueError("Unknown enum variant")
 
-ColorModelLike = Union[ColorModel, Literal["l", "rgb", "rgba"]]
+
+ColorModelLike = Union[ColorModel, Literal["L", "RGB", "RGBA", "l", "rgb", "rgba"]]
 ColorModelArrayLike = Union[ColorModelLike, Sequence[ColorModelLike]]
 
 
@@ -81,9 +92,9 @@ class ColorModelBatch(BaseBatch[ColorModelArrayLike], ComponentBatchMixin):
                 elif value.lower() == "l":
                     types.append(ColorModel.L.value)
                 elif value.lower() == "rgb":
-                    types.append(ColorModel.Rgb.value)
+                    types.append(ColorModel.RGB.value)
                 elif value.lower() == "rgba":
-                    types.append(ColorModel.Rgba.value)
+                    types.append(ColorModel.RGBA.value)
                 else:
                     raise ValueError(f"Unknown ColorModel kind: {value}")
             else:

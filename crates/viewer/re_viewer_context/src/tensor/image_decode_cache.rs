@@ -1,13 +1,16 @@
 use re_chunk::RowId;
-use re_types::{archetypes::Tensor, tensor_data::TensorImageLoadError};
+use re_types::{
+    archetypes::Image,
+    image::{ImageKind, ImageLoadError},
+};
 
 use egui::util::hash;
 
-use crate::Cache;
+use crate::{Cache, ImageFormat, ImageInfo};
 
 struct DecodedImageResult {
     /// Cached `Result` from decoding the image
-    tensor_result: Result<Tensor, TensorImageLoadError>,
+    result: Result<ImageInfo, ImageLoadError>,
 
     /// Total memory used by this image.
     memory_used: u64,
@@ -16,7 +19,7 @@ struct DecodedImageResult {
     last_use_generation: u64,
 }
 
-/// Caches the results of decoding `ImageEncoded`.
+/// Caches the results of decoding [`re_types::archetypes::ImageEncoded`].
 #[derive(Default)]
 pub struct ImageDecodeCache {
     cache: ahash::HashMap<u64, DecodedImageResult>,
@@ -36,35 +39,31 @@ impl ImageDecodeCache {
         row_id: RowId,
         image_bytes: &[u8],
         media_type: Option<&str>,
-    ) -> Result<Tensor, TensorImageLoadError> {
+    ) -> Result<ImageInfo, ImageLoadError> {
         re_tracing::profile_function!();
 
         let key = hash((row_id, media_type));
 
         let lookup = self.cache.entry(key).or_insert_with(|| {
-            let tensor_result = decode_image(image_bytes, media_type);
-            let memory_used = match &tensor_result {
-                Ok(tensor) => tensor.size_in_bytes() as u64,
-                Err(_) => 0,
-            };
-
+            let result = decode_image(row_id, image_bytes, media_type);
+            let memory_used = result.as_ref().map_or(0, |image| image.blob.len() as u64);
             self.memory_used += memory_used;
-
             DecodedImageResult {
-                tensor_result,
+                result,
                 memory_used,
                 last_use_generation: 0,
             }
         });
         lookup.last_use_generation = self.generation;
-        lookup.tensor_result.clone()
+        lookup.result.clone()
     }
 }
 
 fn decode_image(
+    row_id: RowId,
     image_bytes: &[u8],
     media_type: Option<&str>,
-) -> Result<Tensor, TensorImageLoadError> {
+) -> Result<ImageInfo, ImageLoadError> {
     re_tracing::profile_function!();
 
     let mut reader = image::io::Reader::new(std::io::Cursor::new(image_bytes));
@@ -84,9 +83,38 @@ fn decode_image(
         }
     }
 
-    let img = reader.decode()?;
+    let dynamic_image = reader.decode()?;
 
-    Tensor::from_image(img)
+    let image_arch = Image::from_dynamic_image(dynamic_image)?;
+
+    let Image {
+        data,
+        resolution,
+        pixel_format,
+        color_model,
+        datatype,
+        ..
+    } = image_arch;
+
+    let format = if let Some(pixel_format) = pixel_format {
+        ImageFormat::PixelFormat(pixel_format)
+    } else if let (Some(color_model), Some(datatype)) = (color_model, datatype) {
+        ImageFormat::ColorModel {
+            color_model,
+            datatype,
+        }
+    } else {
+        unreachable!()
+    };
+
+    Ok(ImageInfo {
+        blob_row_id: row_id,
+        blob: data.0,
+        resolution: resolution.0.into(),
+        format,
+        kind: ImageKind::Color,
+        colormap: None,
+    })
 }
 
 impl Cache for ImageDecodeCache {

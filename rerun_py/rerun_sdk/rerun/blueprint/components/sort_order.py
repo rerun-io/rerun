@@ -30,8 +30,17 @@ class SortOrder(Enum):
     Descending = 2
     """Descending"""
 
+    def __str__(self) -> str:
+        """Returns the variant name."""
+        if self == SortOrder.Ascending:
+            return "Ascending"
+        elif self == SortOrder.Descending:
+            return "Descending"
+        else:
+            raise ValueError("Unknown enum variant")
 
-SortOrderLike = Union[SortOrder, Literal["ascending", "descending"]]
+
+SortOrderLike = Union[SortOrder, Literal["Ascending", "Descending", "ascending", "descending"]]
 SortOrderArrayLike = Union[SortOrderLike, Sequence[SortOrderLike]]
 
 

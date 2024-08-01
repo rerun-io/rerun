@@ -19,9 +19,7 @@ namespace rerun::components {
     struct Scale3D {
         rerun::datatypes::Vec3D scale;
 
-      public:
-        // Extensions to generated type defined in 'scale3d_ext.cpp'
-
+      public: // START of extensions from scale3d_ext.cpp:
         /// Construct `Scale3D` from x/y/z values.
         Scale3D(float x, float y, float z) : scale{x, y, z} {}
 
@@ -41,6 +39,8 @@ namespace rerun::components {
         static Scale3D three_d(datatypes::Vec3D scale) {
             return Scale3D(scale);
         }
+
+        // END of extensions from scale3d_ext.cpp, start of generated code:
 
       public:
         Scale3D() = default;

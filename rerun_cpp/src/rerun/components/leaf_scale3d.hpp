@@ -19,9 +19,7 @@ namespace rerun::components {
     struct LeafScale3D {
         rerun::datatypes::Vec3D scale;
 
-      public:
-        // Extensions to generated type defined in 'leaf_scale3d_ext.cpp'
-
+      public: // START of extensions from leaf_scale3d_ext.cpp:
         /// Construct `LeafScale3D` from x/y/z values.
         LeafScale3D(float x, float y, float z) : scale{x, y, z} {}
 
@@ -41,6 +39,8 @@ namespace rerun::components {
         static LeafScale3D three_d(datatypes::Vec3D scale) {
             return LeafScale3D(scale);
         }
+
+        // END of extensions from leaf_scale3d_ext.cpp, start of generated code:
 
       public:
         LeafScale3D() = default;

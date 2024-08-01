@@ -4,12 +4,12 @@ use nohash_hasher::{IntMap, IntSet};
 use re_entity_db::{EntityDb, EntityTree};
 use re_log_types::EntityPath;
 use re_space_view::view_property_ui;
-use re_types::View;
 use re_types::{
     archetypes::{DepthImage, Image},
     blueprint::archetypes::{Background, VisualBounds2D},
     Archetype, ComponentName, SpaceViewClassIdentifier,
 };
+use re_types::{components::Resolution2D, View};
 use re_ui::UiExt as _;
 use re_viewer_context::{
     RecommendedSpaceView, SpaceViewClass, SpaceViewClassRegistryError, SpaceViewId,
@@ -20,7 +20,7 @@ use re_viewer_context::{
 use crate::{
     contexts::register_spatial_contexts,
     heuristics::default_visualized_entities_for_visualizer_kind,
-    max_image_dimension_subscriber::{ImageDimensions, MaxImageDimensions},
+    max_image_dimension_subscriber::MaxImageDimensions,
     spatial_topology::{SpatialTopology, SubSpaceConnectionFlags},
     ui::SpatialSpaceViewState,
     view_kind::SpatialSpaceViewKind,
@@ -273,7 +273,7 @@ impl SpaceViewClass for SpatialSpaceView2D {
 // Count the number of image entities with the given component exist that aren't
 // children of other entities in the bucket.
 fn count_non_nested_images_with_component(
-    image_dimensions: &IntMap<EntityPath, ImageDimensions>,
+    image_dimensions: &IntMap<EntityPath, Resolution2D>,
     entity_bucket: &IntSet<EntityPath>,
     entity_db: &re_entity_db::EntityDb,
     subtree: &EntityTree,
@@ -312,14 +312,14 @@ fn count_non_nested_images_with_component(
 // We track a set of just height/width as different channels could be allowed to
 // stack.
 fn find_non_nested_image_dimensions(
-    image_dimensions: &IntMap<EntityPath, ImageDimensions>,
+    image_dimensions: &IntMap<EntityPath, Resolution2D>,
     entity_bucket: &IntSet<EntityPath>,
     subtree: &EntityTree,
     found_image_dimensions: &mut HashSet<[u64; 2]>,
 ) {
     if let Some(dimensions) = image_dimensions.get(&subtree.path) {
         // If we found an image entity, add its dimensions to the set.
-        found_image_dimensions.insert([dimensions.height, dimensions.width]);
+        found_image_dimensions.insert([dimensions.height() as _, dimensions.width() as _]);
     } else if entity_bucket
         .iter()
         .any(|e| e.is_descendant_of(&subtree.path))
@@ -338,7 +338,7 @@ fn find_non_nested_image_dimensions(
 
 fn recommended_space_views_with_image_splits(
     ctx: &ViewerContext<'_>,
-    image_dimensions: &IntMap<EntityPath, ImageDimensions>,
+    image_dimensions: &IntMap<EntityPath, Resolution2D>,
     recommended_root: &EntityPath,
     entities: &IntSet<EntityPath>,
     recommended: &mut Vec<RecommendedSpaceView>,

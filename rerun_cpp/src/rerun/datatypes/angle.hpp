@@ -25,9 +25,7 @@ namespace rerun::datatypes {
         /// Angle in radians. One turn is equal to 2π (or τ) radians.
         float angle_radians;
 
-      public:
-        // Extensions to generated type defined in 'angle_ext.cpp'
-
+      public: // START of extensions from angle_ext.cpp:
         /// New angle in radians.
         static Angle radians(float radians_) {
             Angle angle;
@@ -44,6 +42,8 @@ namespace rerun::datatypes {
             angle.angle_radians = degrees_ * (3.14159265358979323846264338327950288f / 180.f);
             return angle;
         }
+
+        // END of extensions from angle_ext.cpp, start of generated code:
 
       public:
         Angle() = default;

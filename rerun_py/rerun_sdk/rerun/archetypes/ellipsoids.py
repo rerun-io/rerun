@@ -23,7 +23,7 @@ class Ellipsoids(EllipsoidsExt, Archetype):
 
     This archetype is for ellipsoids or spheres whose size is a key part of the data
     (e.g. a bounding sphere).
-    For points whose radii are for the sake of visualization, use `Points3D` instead.
+    For points whose radii are for the sake of visualization, use [`archetypes.Points3D`][rerun.archetypes.Points3D] instead.
 
     Currently, ellipsoids are always rendered as wireframes.
     Opaque and transparent rendering will be supported later.
@@ -124,7 +124,7 @@ class Ellipsoids(EllipsoidsExt, Archetype):
         default=None,
         converter=components.ClassIdBatch._optional,  # type: ignore[misc]
     )
-    # Optional `ClassId`s for the ellipsoids.
+    # Optional class ID for the ellipsoids.
     #
     # The class ID provides colors and labels if not specified explicitly.
     #

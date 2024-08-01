@@ -5,7 +5,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Literal, Sequence, Union
+from typing import TYPE_CHECKING, Any, Sequence, Union
 
 import numpy as np
 import numpy.typing as npt
@@ -81,66 +81,6 @@ class TensorBuffer(TensorBufferExt):
 
     * F64 (npt.NDArray[np.float64]):
         64bit IEEE-754 floating point, also known as `double`.
-
-    * NV12 (npt.NDArray[np.uint8]):
-        NV12 is a YUV 4:2:0 chroma downsamples format with 8 bits per channel.
-
-        First comes entire image in Y, followed by interleaved lines ordered as U0, V0, U1, V1, etc.
-
-    * YUY2 (npt.NDArray[np.uint8]):
-        YUY2, also known as YUYV is a YUV 4:2:2 chroma downsampled format with 8 bits per channel.
-
-        The order of the channels is Y0, U0, Y1, V0.
-    """
-
-    kind: Literal["u8", "u16", "u32", "u64", "i8", "i16", "i32", "i64", "f16", "f32", "f64", "nv12", "yuy2"] = field(
-        default="u8"
-    )
-    """
-    Possible values:
-
-    * "u8":
-        8bit unsigned integer.
-
-    * "u16":
-        16bit unsigned integer.
-
-    * "u32":
-        32bit unsigned integer.
-
-    * "u64":
-        64bit unsigned integer.
-
-    * "i8":
-        8bit signed integer.
-
-    * "i16":
-        16bit signed integer.
-
-    * "i32":
-        32bit signed integer.
-
-    * "i64":
-        64bit signed integer.
-
-    * "f16":
-        16bit IEEE-754 floating point, also known as `half`.
-
-    * "f32":
-        32bit IEEE-754 floating point, also known as `float` or `single`.
-
-    * "f64":
-        64bit IEEE-754 floating point, also known as `double`.
-
-    * "nv12":
-        NV12 is a YUV 4:2:0 chroma downsamples format with 8 bits per channel.
-
-        First comes entire image in Y, followed by interleaved lines ordered as U0, V0, U1, V1, etc.
-
-    * "yuy2":
-        YUY2, also known as YUYV is a YUV 4:2:2 chroma downsampled format with 8 bits per channel.
-
-        The order of the channels is Y0, U0, Y1, V0.
     """
 
 
@@ -250,18 +190,6 @@ class TensorBufferType(BaseExtensionType):
                 pa.field(
                     "F64",
                     pa.list_(pa.field("item", pa.float64(), nullable=False, metadata={})),
-                    nullable=False,
-                    metadata={},
-                ),
-                pa.field(
-                    "NV12",
-                    pa.list_(pa.field("item", pa.uint8(), nullable=False, metadata={})),
-                    nullable=False,
-                    metadata={},
-                ),
-                pa.field(
-                    "YUY2",
-                    pa.list_(pa.field("item", pa.uint8(), nullable=False, metadata={})),
                     nullable=False,
                     metadata={},
                 ),

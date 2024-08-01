@@ -20,9 +20,7 @@ namespace rerun::components {
     struct HalfSize2D {
         rerun::datatypes::Vec2D xy;
 
-      public:
-        // Extensions to generated type defined in 'half_size2d_ext.cpp'
-
+      public: // START of extensions from half_size2d_ext.cpp:
         /// Construct HalfSize2D from x/y values.
         HalfSize2D(float x, float y) : xy{x, y} {}
 
@@ -33,6 +31,8 @@ namespace rerun::components {
         float y() const {
             return xy.y();
         }
+
+        // END of extensions from half_size2d_ext.cpp, start of generated code:
 
       public:
         HalfSize2D() = default;

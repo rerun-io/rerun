@@ -18,9 +18,7 @@ namespace rerun::components {
     struct Resolution {
         rerun::datatypes::Vec2D resolution;
 
-      public:
-        // Extensions to generated type defined in 'resolution_ext.cpp'
-
+      public: // START of extensions from resolution_ext.cpp:
         RERUN_SDK_EXPORT static const Resolution IDENTITY;
 
         /// Construct resolution from width and height floats.
@@ -29,6 +27,8 @@ namespace rerun::components {
         /// Construct resolution from width and height integers.
         Resolution(int width, int height)
             : resolution{static_cast<float>(width), static_cast<float>(height)} {}
+
+        // END of extensions from resolution_ext.cpp, start of generated code:
 
       public:
         Resolution() = default;

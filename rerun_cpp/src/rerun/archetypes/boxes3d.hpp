@@ -96,9 +96,7 @@ namespace rerun::archetypes {
         /// Indicator component, used to identify the archetype when converting to a list of components.
         using IndicatorComponent = rerun::components::IndicatorComponent<IndicatorComponentName>;
 
-      public:
-        // Extensions to generated type defined in 'boxes3d_ext.cpp'
-
+      public: // START of extensions from boxes3d_ext.cpp:
         /// Creates new `Boxes3D` with `half_sizes` centered around the local origin.
         static Boxes3D from_half_sizes(Collection<components::HalfSize3D> half_sizes) {
             Boxes3D boxes;
@@ -147,6 +145,8 @@ namespace rerun::archetypes {
         static Boxes3D from_mins_and_sizes(
             const std::vector<datatypes::Vec3D>& mins, const std::vector<datatypes::Vec3D>& sizes
         );
+
+        // END of extensions from boxes3d_ext.cpp, start of generated code:
 
       public:
         Boxes3D() = default;

@@ -5,7 +5,7 @@ title: "ColorModel"
 
 Specified what color components are present in an [`archetypes.Image`](https://rerun.io/docs/reference/types/archetypes/image).
 
-This combined with [`components.ChannelDataType`](https://rerun.io/docs/reference/types/components/channel_data_type?speculative-link) determines the pixel format of an image.
+This combined with [`components.ChannelDatatype`](https://rerun.io/docs/reference/types/components/channel_datatype?speculative-link) determines the pixel format of an image.
 
 ## Variants
 
@@ -19,3 +19,6 @@ This combined with [`components.ChannelDataType`](https://rerun.io/docs/referenc
  * 🦀 [Rust API docs for `ColorModel`](https://docs.rs/rerun/latest/rerun/components/enum.ColorModel.html?speculative-link)
 
 
+## Used by
+
+* [`Image`](../archetypes/image.md)

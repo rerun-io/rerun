@@ -1,145 +1,230 @@
 from __future__ import annotations
 
-from io import BytesIO
-from typing import TYPE_CHECKING, cast
+from typing import TYPE_CHECKING, Any, Union
 
 import numpy as np
-import pyarrow as pa
+import numpy.typing as npt
 
-from .._validators import find_non_empty_dim_indices
-from ..error_utils import _send_warning_or_raise, catch_and_log_exceptions
+from rerun.components.channel_datatype import ChannelDatatype, ChannelDatatypeLike
+from rerun.components.color_model import ColorModel, ColorModelLike
+from rerun.components.pixel_format import PixelFormatLike
+
+from ..components import Resolution2D
+from ..datatypes import Float32Like
+from ..error_utils import _send_warning_or_raise
 
 if TYPE_CHECKING:
-    from ..archetypes import ImageEncoded
-    from ..components import TensorDataBatch
-    from ..datatypes import TensorDataArrayLike
-    from . import Image
+    ImageLike = Union[
+        npt.NDArray[np.float16],
+        npt.NDArray[np.float32],
+        npt.NDArray[np.float64],
+        npt.NDArray[np.int16],
+        npt.NDArray[np.int32],
+        npt.NDArray[np.int64],
+        npt.NDArray[np.int8],
+        npt.NDArray[np.uint16],
+        npt.NDArray[np.uint32],
+        npt.NDArray[np.uint64],
+        npt.NDArray[np.uint8],
+    ]
+
+
+def _to_numpy(tensor: ImageLike) -> npt.NDArray[Any]:
+    # isinstance is 4x faster than catching AttributeError
+    if isinstance(tensor, np.ndarray):
+        return tensor
+
+    try:
+        # Make available to the cpu
+        return tensor.numpy(force=True)  # type: ignore[union-attr]
+    except AttributeError:
+        return np.array(tensor, copy=False)
 
 
 class ImageExt:
     """Extension for [Image][rerun.archetypes.Image]."""
 
-    def compress(self, *, jpeg_quality: int = 95) -> ImageEncoded | Image:
+    def __init__(
+        self: Any,
+        # These:
+        image: ImageLike | None = None,
+        color_model: ColorModelLike | None = None,
+        *,
+        # Or these:
+        pixel_format: PixelFormatLike | None = None,
+        datatype: ChannelDatatypeLike | type | None = None,
+        bytes: bytes | None = None,
+        width: int | None = None,
+        height: int | None = None,
+        # Any any of these:
+        opacity: Float32Like | None = None,
+        draw_order: Float32Like | None = None,
+    ):
         """
-        Converts an `Image` to an [`rerun.ImageEncoded`][] using JPEG compression.
+        Create a new image with a given format.
 
-        JPEG compression works best for photographs. Only RGB or Mono images are
-        supported, not RGBA. Note that compressing to JPEG costs a bit of CPU time,
-        both when logging and later when viewing them.
+        There are three ways to create an image:
+        * By specifying an `image` as an appropriately shaped ndarray with an appropriate `color_model`.
+        * By specifying `bytes` of an image with a `pixel_format`, together with `width`, `height`.
+        * By specifying `bytes` of an image with a `datatype` and `color_model`, together with `width`, `height`.
 
         Parameters
         ----------
-        jpeg_quality:
-            Higher quality = larger file size. A quality of 95 still saves a lot
-            of space, but is visually very similar.
+        image:
+            A numpy array or tensor with the image data.
+            Leading and trailing unit-dimensions are ignored, so that
+            `1x480x640x3x1` is treated as a `480x640x3`.
+            You also need to specify the `color_model` of it (e.g. "RGB").
+        color_model:
+            L, RGB, RGBA, etc, specifying how to interpret `image`.
+        pixel_format:
+            NV12, YUV420, etc. For chroma-downsampling.
+            Requires `width`, `height`, and `bytes`.
+        datatype:
+            The datatype of the image data. If not specified, it is inferred from the `image`.
+        bytes:
+            The raw bytes of an image specified by `pixel_format`.
+        width:
+            The width of the image. Only requires for `pixel_format`.
+        height:
+            The height of the image. Only requires for `pixel_format`.
+        opacity:
+            Optional opacity of the image, in 0-1. Set to 0.5 for a translucent image.
+        draw_order:
+            An optional floating point value that specifies the 2D drawing
+            order. Objects with higher values are drawn on top of those with
+            lower values.
 
         """
 
-        from PIL import Image as PILImage
+        channel_count_from_color_model = {
+            "a": 1,
+            "l": 1,
+            "la": 1,
+            "bgr": 3,
+            "rgb": 3,
+            "yuv": 3,
+            "bgra": 4,
+            "rgba": 4,
+        }
 
-        from ..archetypes import ImageEncoded
-        from . import Image
+        # If the user specified 'bytes', we can use direct construction
+        if bytes is not None:
+            if isinstance(bytes, np.ndarray):
+                bytes = bytes.tobytes()
 
-        self = cast(Image, self)
+            if width is None or height is None or bytes is None:
+                raise ValueError("Specifying 'bytes' requires 'width' and 'height'")
 
-        with catch_and_log_exceptions(context="Image compression"):
-            tensor_data_arrow = self.data.as_arrow_array()
+            if pixel_format is not None:
+                if datatype is not None:
+                    raise ValueError("Specifying 'datatype' is mutually exclusive with 'pixel_format'")
+                if color_model is not None:
+                    raise ValueError("Specifying 'color_model' is mutually exclusive with 'pixel_format'")
 
-            shape_dims = tensor_data_arrow[0].value["shape"].values.field(0).to_numpy()
-            non_empty_dims = find_non_empty_dim_indices(shape_dims)
-            filtered_shape = shape_dims[non_empty_dims]
-            if len(filtered_shape) == 2:
-                mode = "L"
-            elif len(filtered_shape) == 3 and filtered_shape[-1] == 3:
-                mode = "RGB"
-            else:
-                raise ValueError("Only RGB or Mono images are supported for JPEG compression")
+                # TODO(jleibs): Validate that bytes is the expected size.
 
-            image_array = tensor_data_arrow[0].value["buffer"].value.values.to_numpy().reshape(filtered_shape)
-
-            if image_array.dtype not in ["uint8", "sint32", "float32"]:
-                # Convert to a format supported by Image.fromarray
-                image_array = image_array.astype("float32")
-
-            pil_image = PILImage.fromarray(image_array, mode=mode)
-            output = BytesIO()
-            pil_image.save(output, format="JPEG", quality=jpeg_quality)
-            jpeg_bytes = output.getvalue()
-            output.close()
-            return ImageEncoded(contents=jpeg_bytes, media_type="image/jpeg")
-
-        # On failure to compress, still return the original image
-        return self
-
-    @staticmethod
-    @catch_and_log_exceptions("Image converter")
-    def data__field_converter_override(data: TensorDataArrayLike) -> TensorDataBatch:
-        from ..components import TensorDataBatch
-        from ..datatypes import TensorDataType, TensorDimensionType
-
-        tensor_data = TensorDataBatch(data)
-        tensor_data_arrow = tensor_data.as_arrow_array()
-
-        tensor_data_type = TensorDataType().storage_type
-        shape_data_type = TensorDimensionType().storage_type
-
-        # TODO(jleibs): Doing this on raw arrow data is not great. Clean this up
-        # once we coerce to a canonical non-arrow type.
-        shape_dims = tensor_data_arrow[0].value["shape"].values.field(0).to_numpy()
-        shape_names = tensor_data_arrow[0].value["shape"].values.field(1).to_numpy(zero_copy_only=False)
-
-        non_empty_dims = find_non_empty_dim_indices(shape_dims)
-
-        num_non_empty_dims = len(non_empty_dims)
-
-        # TODO(#3239): What `recording` should we be passing here? How should we be getting it?
-        if num_non_empty_dims < 2 or 3 < num_non_empty_dims:
-            _send_warning_or_raise(f"Expected image, got array of shape {shape_dims}", 1, recording=None)
-
-        if num_non_empty_dims == 3:
-            depth = shape_dims[non_empty_dims[-1]]
-            if depth not in (3, 4):
-                _send_warning_or_raise(
-                    f"Expected image 3 (RGB) or 4 (RGBA). Instead got array of shape {shape_dims}",
-                    1,
-                    recording=None,
+                self.__attrs_init__(
+                    data=bytes,
+                    resolution=Resolution2D(width=width, height=height),
+                    pixel_format=pixel_format,
+                    opacity=opacity,
+                    draw_order=draw_order,
                 )
+                return
+            else:
+                if datatype is None or color_model is None:
+                    raise ValueError("Specifying 'bytes' requires 'pixel_format' or both 'color_model' and 'datatype'")
 
-        # IF no labels are set, add them
-        # TODO(jleibs): Again, needing to do this at the arrow level is awful
-        if all(label is None for label in shape_names):
-            for ind, label in zip(non_empty_dims, ["height", "width", "depth"]):
-                shape_names[ind] = label
+                # TODO(jleibs): Would be nice to do this with a field-converter
+                if datatype in (
+                    np.uint8,
+                    np.uint16,
+                    np.uint32,
+                    np.uint64,
+                    np.int8,
+                    np.int16,
+                    np.int32,
+                    np.int64,
+                    np.float16,
+                    np.float32,
+                    np.float64,
+                ):
+                    datatype = ChannelDatatype.from_np_dtype(np.dtype(datatype))  # type: ignore[arg-type]
 
-            tensor_data_type = TensorDataType().storage_type
-            shape_data_type = TensorDimensionType().storage_type
+                # TODO(jleibs): Validate that bytes is the expected size.
 
-            shape_names = pa.array(
-                shape_names, mask=np.array([n is None for n in shape_names]), type=shape_data_type.field("name").type
-            )
+                self.__attrs_init__(
+                    data=bytes,
+                    resolution=Resolution2D(width=width, height=height),
+                    color_model=color_model,
+                    datatype=datatype,
+                    opacity=opacity,
+                    draw_order=draw_order,
+                )
+                return
 
-            new_shape = pa.ListArray.from_arrays(
-                offsets=[0, len(shape_dims)],
-                values=pa.StructArray.from_arrays(
-                    [
-                        tensor_data_arrow[0].value["shape"].values.field(0),
-                        shape_names,
-                    ],
-                    fields=[shape_data_type.field("size"), shape_data_type.field("name")],
-                ),
-            ).cast(tensor_data_type.field("shape").type)
+        # Alternatively, we extract the values from the image-like
+        if image is None:
+            raise ValueError("Must specify either 'image' or 'bytes'")
 
-            return TensorDataBatch(
-                pa.StructArray.from_arrays(
-                    [
-                        new_shape,
-                        tensor_data_arrow.storage.field(1),
-                    ],
-                    fields=[
-                        tensor_data_type.field("shape"),
-                        tensor_data_type.field("buffer"),
-                    ],
-                ).cast(tensor_data_arrow.storage.type)
-            )
-        # TODO(jleibs): Should we enforce specific names on images? Specifically, what if the existing names are wrong.
-        return tensor_data
+        image = _to_numpy(image)
+
+        shape = image.shape
+
+        # Ignore leading and trailing dimensions of size 1:
+        while 2 < len(shape) and shape[0] == 1:
+            shape = shape[1:]
+        while 2 < len(shape) and shape[-1] == 1:
+            shape = shape[:-1]
+
+        if len(shape) == 2:
+            _height, _width = shape
+            channels = 1
+        elif len(shape) == 3:
+            _height, _width, channels = shape
+        else:
+            raise ValueError(f"Expected a 2D or 3D tensor, got {shape}")
+
+        if width is not None and width != _width:
+            raise ValueError(f"Provided width {width} does not match image width {_width}")
+        else:
+            width = _width
+
+        if height is not None and height != _height:
+            raise ValueError(f"Provided height {height} does not match image height {_height}")
+        else:
+            height = _height
+
+        if color_model is None:
+            if channels == 1:
+                color_model = ColorModel.L
+            elif channels == 3:
+                color_model = ColorModel.RGB  # TODO(#2340): change default to BGR
+            elif channels == 4:
+                color_model = ColorModel.RGBA  # TODO(#2340): change default to BGRA
+            else:
+                _send_warning_or_raise(f"Expected 1, 3, or 4 channels; got {channels}")
+        else:
+            try:
+                num_expected_channels = channel_count_from_color_model[str(color_model).lower()]
+                if channels != num_expected_channels:
+                    _send_warning_or_raise(
+                        f"Expected {num_expected_channels} channels for {color_model}; got {channels} channels"
+                    )
+            except KeyError:
+                _send_warning_or_raise(f"Unknown ColorModel: '{color_model}'")
+
+        try:
+            datatype = ChannelDatatype.from_np_dtype(image.dtype)
+        except KeyError:
+            _send_warning_or_raise(f"Unsupported dtype {image.dtype} for Image")
+
+        self.__attrs_init__(
+            data=image.tobytes(),
+            resolution=Resolution2D(width=width, height=height),
+            color_model=color_model,
+            datatype=datatype,
+            opacity=opacity,
+            draw_order=draw_order,
+        )

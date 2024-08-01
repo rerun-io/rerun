@@ -228,20 +228,6 @@ Display a 1D tensor as a bar chart.
                         TensorBuffer::F64(data) => {
                             create_bar_chart(ent_path, data.iter().copied(), color)
                         }
-                        TensorBuffer::Nv12(_) => {
-                            re_log::warn_once!(
-                                "trying to display NV12 data as a bar chart ({:?})",
-                                ent_path
-                            );
-                            continue;
-                        }
-                        TensorBuffer::Yuy2(_) => {
-                            re_log::warn_once!(
-                                "trying to display YUY2 data as a bar chart ({:?})",
-                                ent_path
-                            );
-                            continue;
-                        }
                     };
 
                     let id = egui::Id::new(ent_path.hash());

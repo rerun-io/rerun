@@ -90,14 +90,14 @@ namespace rerun::archetypes {
         /// Indicator component, used to identify the archetype when converting to a list of components.
         using IndicatorComponent = rerun::components::IndicatorComponent<IndicatorComponentName>;
 
-      public:
-        // Extensions to generated type defined in 'clear_ext.cpp'
-
+      public: // START of extensions from clear_ext.cpp:
         RERUN_SDK_EXPORT static const Clear FLAT;
 
         RERUN_SDK_EXPORT static const Clear RECURSIVE;
 
         Clear(bool _is_recursive = false) : Clear(components::ClearIsRecursive(_is_recursive)) {}
+
+        // END of extensions from clear_ext.cpp, start of generated code:
 
       public:
         Clear() = default;

@@ -33,9 +33,7 @@ namespace rerun::datatypes {
         /// Flat list of matrix coefficients in column-major order.
         std::array<float, 16> flat_columns;
 
-      public:
-        // Extensions to generated type defined in 'mat4x4_ext.cpp'
-
+      public: // START of extensions from mat4x4_ext.cpp:
         RERUN_SDK_EXPORT static const Mat4x4 IDENTITY;
 
         /// Creates a new 4x4 matrix from 3 *columns* of 4 elements each.
@@ -79,6 +77,8 @@ namespace rerun::datatypes {
                   elements[14],
                   elements[15],
               } {}
+
+        // END of extensions from mat4x4_ext.cpp, start of generated code:
 
       public:
         Mat4x4() = default;

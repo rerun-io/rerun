@@ -1,9 +1,12 @@
 use half::f16;
 use ndarray::ArrayViewD;
 
-use re_types::{components::ChannelDataType, tensor_data::TensorDataType};
+use re_types::{
+    components::{ChannelDatatype, PixelFormat},
+    tensor_data::TensorDataType,
+};
 
-use crate::ImageInfo;
+use crate::{image_info::ImageFormat, ImageInfo};
 
 /// Stats about a tensor or image.
 #[derive(Clone, Copy, Debug)]
@@ -118,41 +121,52 @@ impl TensorStats {
 
         // ---------------------------
 
-        let data_type = image.data_type;
+        let datatype = match image.format {
+            ImageFormat::PixelFormat(pixel_format) => match pixel_format {
+                PixelFormat::NV12 | PixelFormat::YUY2 => {
+                    // We do the lazy thing here:
+                    return Self {
+                        range: Some((0.0, 255.0)),
+                        finite_range: Some((0.0, 255.0)),
+                    };
+                }
+            },
+            ImageFormat::ColorModel { datatype, .. } => datatype,
+        };
 
-        let range = match data_type {
-            ChannelDataType::U8 => slice_range_u8(&image.to_slice()),
-            ChannelDataType::U16 => slice_range_u16(&image.to_slice()),
-            ChannelDataType::U32 => slice_range_u32(&image.to_slice()),
-            ChannelDataType::U64 => slice_range_u64(&image.to_slice()),
+        let range = match datatype {
+            ChannelDatatype::U8 => slice_range_u8(&image.to_slice()),
+            ChannelDatatype::U16 => slice_range_u16(&image.to_slice()),
+            ChannelDatatype::U32 => slice_range_u32(&image.to_slice()),
+            ChannelDatatype::U64 => slice_range_u64(&image.to_slice()),
 
-            ChannelDataType::I8 => slice_range_i8(&image.to_slice()),
-            ChannelDataType::I16 => slice_range_i16(&image.to_slice()),
-            ChannelDataType::I32 => slice_range_i32(&image.to_slice()),
-            ChannelDataType::I64 => slice_range_i64(&image.to_slice()),
+            ChannelDatatype::I8 => slice_range_i8(&image.to_slice()),
+            ChannelDatatype::I16 => slice_range_i16(&image.to_slice()),
+            ChannelDatatype::I32 => slice_range_i32(&image.to_slice()),
+            ChannelDatatype::I64 => slice_range_i64(&image.to_slice()),
 
-            ChannelDataType::F16 => slice_range_f16(&image.to_slice()),
-            ChannelDataType::F32 => slice_range_f32(&image.to_slice()),
-            ChannelDataType::F64 => slice_range_f64(&image.to_slice()),
+            ChannelDatatype::F16 => slice_range_f16(&image.to_slice()),
+            ChannelDatatype::F32 => slice_range_f32(&image.to_slice()),
+            ChannelDatatype::F64 => slice_range_f64(&image.to_slice()),
         };
 
         let finite_range = if range.0.is_finite() && range.1.is_finite() {
             // Already finite
             Some(range)
         } else {
-            let finite_range = match data_type {
-                ChannelDataType::U8
-                | ChannelDataType::U16
-                | ChannelDataType::U32
-                | ChannelDataType::U64
-                | ChannelDataType::I8
-                | ChannelDataType::I16
-                | ChannelDataType::I32
-                | ChannelDataType::I64 => range,
+            let finite_range = match datatype {
+                ChannelDatatype::U8
+                | ChannelDatatype::U16
+                | ChannelDatatype::U32
+                | ChannelDatatype::U64
+                | ChannelDatatype::I8
+                | ChannelDatatype::I16
+                | ChannelDatatype::I32
+                | ChannelDatatype::I64 => range,
 
-                ChannelDataType::F16 => slice_finite_range_f16(&image.to_slice()),
-                ChannelDataType::F32 => slice_finite_range_f32(&image.to_slice()),
-                ChannelDataType::F64 => slice_finite_range_f64(&image.to_slice()),
+                ChannelDatatype::F16 => slice_finite_range_f16(&image.to_slice()),
+                ChannelDatatype::F32 => slice_finite_range_f32(&image.to_slice()),
+                ChannelDatatype::F64 => slice_finite_range_f64(&image.to_slice()),
             };
 
             // Ensure it actually is finite:

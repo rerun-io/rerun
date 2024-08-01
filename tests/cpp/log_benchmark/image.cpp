@@ -33,11 +33,10 @@ static void execute(std::vector<uint8_t> raw_image_data) {
         raw_image_data[i] += 1;
         rec.log(
             "test_image",
-            rerun::Image(
+            rerun::Image::from_rgba32(
                 {
                     IMAGE_DIMENSION,
                     IMAGE_DIMENSION,
-                    IMAGE_CHANNELS,
                 },
                 raw_image_data
             )

@@ -19,10 +19,6 @@ from . import (
     experimental as experimental,
     notebook as notebook,
 )
-from ._image_chroma_downsampled import (
-    ImageChromaDownsampled as ImageChromaDownsampled,
-    ImageFormat as ImageFormat,
-)
 from ._log import (
     AsComponents as AsComponents,
     ComponentBatchLike as ComponentBatchLike,
@@ -76,7 +72,10 @@ from .blueprint.api import (
 )
 from .components import (
     AlbedoFactor as AlbedoFactor,
+    ChannelDatatype as ChannelDatatype,
+    ColorModel as ColorModel,
     MediaType as MediaType,
+    PixelFormat as PixelFormat,
     Radius as Radius,
     Scale3D as Scale3D,
     TensorDimensionIndexSelection as TensorDimensionIndexSelection,

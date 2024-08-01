@@ -5,9 +5,13 @@
 
 #include "../collection.hpp"
 #include "../compiler_utils.hpp"
+#include "../components/blob.hpp"
+#include "../components/channel_datatype.hpp"
+#include "../components/color_model.hpp"
 #include "../components/draw_order.hpp"
 #include "../components/opacity.hpp"
-#include "../components/tensor_data.hpp"
+#include "../components/pixel_format.hpp"
+#include "../components/resolution2d.hpp"
 #include "../data_cell.hpp"
 #include "../indicator_component.hpp"
 #include "../result.hpp"
@@ -20,24 +24,19 @@
 namespace rerun::archetypes {
     /// **Archetype**: A monochrome or color image.
     ///
-    /// The order of dimensions in the underlying `components::TensorData` follows the typical
-    /// row-major, interleaved-pixel image format. Additionally, Rerun orders the
-    /// `datatypes::TensorDimension`s within the shape description from outer-most to inner-most.
+    /// See also `archetypes::DepthImage` and `archetypes::SegmentationImage`.
     ///
-    /// As such, the shape of the `components::TensorData` must be mappable to:
-    /// - A `HxW` tensor, treated as a grayscale image.
-    /// - A `HxWx3` tensor, treated as an RGB image.
-    /// - A `HxWx4` tensor, treated as an RGBA image.
+    /// The raw image data is stored as a single buffer of bytes in a [rerun.components.Blob].
+    /// The meaning of these bytes is determined by the `ImageFormat` which specifies the resolution
+    /// and the pixel format (e.g. RGB, RGBA, …).
     ///
-    /// Leading and trailing unit-dimensions are ignored, so that
-    /// `1x480x640x3x1` is treated as a `480x640x3` RGB image.
+    /// The order of dimensions in the underlying `components::Blob` follows the typical
+    /// row-major, interleaved-pixel image format.
     ///
     /// Rerun also supports compressed images (JPEG, PNG, …), using `archetypes::ImageEncoded`.
     /// Compressing images can save a lot of bandwidth and memory.
     ///
-    /// See also `components::TensorData` and `datatypes::TensorBuffer`.
-    ///
-    /// Since the underlying `rerun::datatypes::TensorData` uses `rerun::Collection` internally,
+    /// Since the underlying [rerun::components::Blob] uses `rerun::Collection` internally,
     /// data can be passed in without a copy from raw pointers or by reference from `std::vector`/`std::array`/c-arrays.
     /// If needed, this "borrow-behavior" can be extended by defining your own `rerun::CollectionAdapter`.
     ///
@@ -70,12 +69,32 @@ namespace rerun::archetypes {
     ///         }
     ///     }
     ///
-    ///     rec.log("image", rerun::Image({HEIGHT, WIDTH, 3}, data));
+    ///     rec.log("image", rerun::Image::from_rgb24({WIDTH, HEIGHT}, data));
     /// }
     /// ```
     struct Image {
-        /// The image data. Should always be a 2- or 3-dimensional tensor.
-        rerun::components::TensorData data;
+        /// The raw image data.
+        rerun::components::Blob data;
+
+        /// The size of the image.
+        ///
+        /// For chroma downsampled formats, this is the size of the full image (the luminance channel).
+        rerun::components::Resolution2D resolution;
+
+        /// Used mainly for chroma downsampled formats and differing number of bits per channel.
+        ///
+        /// If specified, this takes precedence over both `components::ColorModel` and `components::ChannelDatatype` (which are ignored).
+        std::optional<rerun::components::PixelFormat> pixel_format;
+
+        /// L, RGB, RGBA, …
+        ///
+        /// Also requires a `components::ChannelDatatype` to fully specify the pixel format.
+        std::optional<rerun::components::ColorModel> color_model;
+
+        /// The data type of each channel (e.g. the red channel) of the image data (U8, F16, …).
+        ///
+        /// Also requires a `components::ColorModel` to fully specify the pixel format.
+        std::optional<rerun::components::ChannelDatatype> datatype;
 
         /// Opacity of the image, useful for layering several images.
         ///
@@ -93,43 +112,102 @@ namespace rerun::archetypes {
         /// Indicator component, used to identify the archetype when converting to a list of components.
         using IndicatorComponent = rerun::components::IndicatorComponent<IndicatorComponentName>;
 
-      public:
-        // Extensions to generated type defined in 'image_ext.cpp'
+      public: // START of extensions from image_ext.cpp:
+        static Image from_pixel_format(
+            components::Resolution2D resolution, components::PixelFormat pixel_format,
+            Collection<uint8_t> bytes
+        ) {
+            Image img;
+            img.data = bytes;
+            img.resolution = resolution;
+            img.pixel_format = pixel_format;
+            return img;
+        }
 
-        /// New Image from height/width/channel and tensor buffer.
-        ///
-        /// \param shape
-        /// Shape of the image. Calls `Error::handle()` if the tensor is not 2- or 3-dimensional.
-        /// Sets the dimension names to "height", "width" and "channel" if they are not specified.
-        /// \param buffer
-        /// The tensor buffer containing the image data.
-        explicit Image(Collection<datatypes::TensorDimension> shape, datatypes::TensorBuffer buffer)
-            : Image(datatypes::TensorData(std::move(shape), std::move(buffer))) {}
+        static Image from_color_model_and_bytes(
+            components::Resolution2D resolution, components::ColorModel color_model,
+            components::ChannelDatatype datatype, Collection<uint8_t> bytes
+        ) {
+            Image img;
+            img.data = bytes;
+            img.resolution = resolution;
+            img.color_model = color_model;
+            img.datatype = datatype;
+            return img;
+        }
 
-        /// New depth image from tensor data.
-        ///
-        /// \param data_
-        /// The tensor buffer containing the image data.
-        /// Sets the dimension names to "height",  "width" and "channel" if they are not specified.
-        /// Calls `Error::handle()` if the tensor is not 2- or 3-dimensional.
-        explicit Image(rerun::components::TensorData data_);
+        template <typename T>
+        static Image from_elements(
+            components::Resolution2D resolution, components::ColorModel color_model,
+            Collection<T> elements
+        ) {
+            const auto datatype = get_datatype(elements.data());
+            const auto bytes = elements.to_uint8();
+            return from_color_model_and_bytes(resolution, color_model, datatype, bytes);
+        }
 
-        /// New image from dimensions and pointer to image data.
-        ///
-        /// Type must be one of the types supported by `rerun::datatypes::TensorData`.
-        /// \param shape
-        /// Shape of the image. Calls `Error::handle()` if the tensor is not 2- or 3-dimensional.
-        /// Sets the dimension names to "height", "width" and "channel" if they are not specified.
-        /// Determines the number of elements expected to be in `data`.
-        /// \param data_
-        /// Target of the pointer must outlive the archetype.
-        template <typename TElement>
-        explicit Image(Collection<datatypes::TensorDimension> shape, const TElement* data_)
-            : Image(datatypes::TensorData(std::move(shape), data_)) {}
+        template <typename T>
+        static Image from_elements(
+            components::Resolution2D resolution, components::ColorModel color_model,
+            std::vector<T> elements
+        ) {
+            const auto datatype = get_datatype(elements.data());
+            const auto bytes = Collection<T>::take_ownership(std::move(elements)).to_uint8();
+            return from_color_model_and_bytes(resolution, color_model, datatype, bytes);
+        }
+
+        /// Assumes RGB, 8-bit per channel, packed as `RGBRGBRGB…`.
+        static Image from_rgb24(components::Resolution2D resolution, Collection<uint8_t> bytes) {
+            return Image::from_color_model_and_bytes(
+                resolution,
+                components::ColorModel::RGB,
+                components::ChannelDatatype::U8,
+                bytes
+            );
+        }
+
+        /// Assumes RGBA, 8-bit per channel, with separate alpha.
+        static Image from_rgba32(components::Resolution2D resolution, Collection<uint8_t> bytes) {
+            return Image::from_color_model_and_bytes(
+                resolution,
+                components::ColorModel::RGBA,
+                components::ChannelDatatype::U8,
+                bytes
+            );
+        }
+
+        // END of extensions from image_ext.cpp, start of generated code:
 
       public:
         Image() = default;
         Image(Image&& other) = default;
+
+        /// Used mainly for chroma downsampled formats and differing number of bits per channel.
+        ///
+        /// If specified, this takes precedence over both `components::ColorModel` and `components::ChannelDatatype` (which are ignored).
+        Image with_pixel_format(rerun::components::PixelFormat _pixel_format) && {
+            pixel_format = std::move(_pixel_format);
+            // See: https://github.com/rerun-io/rerun/issues/4027
+            RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
+        }
+
+        /// L, RGB, RGBA, …
+        ///
+        /// Also requires a `components::ChannelDatatype` to fully specify the pixel format.
+        Image with_color_model(rerun::components::ColorModel _color_model) && {
+            color_model = std::move(_color_model);
+            // See: https://github.com/rerun-io/rerun/issues/4027
+            RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
+        }
+
+        /// The data type of each channel (e.g. the red channel) of the image data (U8, F16, …).
+        ///
+        /// Also requires a `components::ColorModel` to fully specify the pixel format.
+        Image with_datatype(rerun::components::ChannelDatatype _datatype) && {
+            datatype = std::move(_datatype);
+            // See: https://github.com/rerun-io/rerun/issues/4027
+            RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
+        }
 
         /// Opacity of the image, useful for layering several images.
         ///

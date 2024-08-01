@@ -45,8 +45,17 @@ class DataframeViewMode(Enum):
     timestamp shown are determined by each view entity's visible time range setting.
     """
 
+    def __str__(self) -> str:
+        """Returns the variant name."""
+        if self == DataframeViewMode.LatestAt:
+            return "LatestAt"
+        elif self == DataframeViewMode.TimeRange:
+            return "TimeRange"
+        else:
+            raise ValueError("Unknown enum variant")
 
-DataframeViewModeLike = Union[DataframeViewMode, Literal["latestat", "timerange"]]
+
+DataframeViewModeLike = Union[DataframeViewMode, Literal["LatestAt", "TimeRange", "latestat", "timerange"]]
 DataframeViewModeArrayLike = Union[DataframeViewModeLike, Sequence[DataframeViewModeLike]]
 
 

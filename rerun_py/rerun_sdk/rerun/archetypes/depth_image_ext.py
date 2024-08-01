@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING, Any, Union
 import numpy as np
 import numpy.typing as npt
 
-from ..components import ChannelDataType, Colormap, Resolution2D
+from ..components import ChannelDatatype, Colormap, Resolution2D
 from ..datatypes import Float32Like
 
 if TYPE_CHECKING:
@@ -41,28 +41,14 @@ class DepthImageExt:
 
     def __init__(
         self: Any,
-        data: ImageLike,
+        image: ImageLike,
         *,
         meter: Float32Like | None = None,
         colormap: Colormap | None = None,
     ):
-        channel_dtype_from_np_dtype = {
-            np.uint8: ChannelDataType.U8,
-            np.uint16: ChannelDataType.U16,
-            np.uint32: ChannelDataType.U32,
-            np.uint64: ChannelDataType.U64,
-            np.int8: ChannelDataType.I8,
-            np.int16: ChannelDataType.I16,
-            np.int32: ChannelDataType.I32,
-            np.int64: ChannelDataType.I64,
-            np.float16: ChannelDataType.F16,
-            np.float32: ChannelDataType.F32,
-            np.float64: ChannelDataType.F64,
-        }
+        image = _to_numpy(image)
 
-        data = _to_numpy(data)
-
-        shape = data.shape
+        shape = image.shape
 
         # Ignore leading and trailing dimensions of size 1:
         while 2 < len(shape) and shape[0] == 1:
@@ -71,18 +57,18 @@ class DepthImageExt:
             shape = shape[:-1]
 
         if len(shape) != 2:
-            raise ValueError(f"DepthImage must be 2D, got shape {data.shape}")
+            raise ValueError(f"DepthImage must be 2D, got shape {image.shape}")
         height, width = shape
 
         try:
-            data_type = channel_dtype_from_np_dtype[data.dtype.type]
+            datatype = ChannelDatatype.from_np_dtype(image.dtype)
         except KeyError:
-            raise ValueError(f"Unsupported dtype {data.dtype} for DepthImage")
+            raise ValueError(f"Unsupported dtype {image.dtype} for DepthImage")
 
         self.__attrs_init__(
-            data=data.tobytes(),
+            data=image.tobytes(),
             resolution=Resolution2D(width=width, height=height),
-            data_type=data_type,
+            datatype=datatype,
             meter=meter,
             colormap=colormap,
         )

@@ -31,9 +31,7 @@ namespace rerun::components {
         /// The directions of the [x, y, z] axes.
         rerun::datatypes::ViewCoordinates coordinates;
 
-      public:
-        // Extensions to generated type defined in 'view_coordinates_ext.cpp'
-
+      public: // START of extensions from view_coordinates_ext.cpp:
         enum ViewDir : uint8_t {
             Up = 1,
             Down = 2,
@@ -234,6 +232,8 @@ namespace rerun::components {
         RERUN_SDK_EXPORT static const rerun::components::ViewCoordinates LEFT_HAND_Z_DOWN;
 
         // <END_GENERATED:declarations>
+
+        // END of extensions from view_coordinates_ext.cpp, start of generated code:
 
       public:
         ViewCoordinates() = default;

@@ -22,7 +22,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 ///
 /// This archetype is for ellipsoids or spheres whose size is a key part of the data
 /// (e.g. a bounding sphere).
-/// For points whose radii are for the sake of visualization, use `Points3D` instead.
+/// For points whose radii are for the sake of visualization, use [`archetypes::Points3D`][crate::archetypes::Points3D] instead.
 ///
 /// Currently, ellipsoids are always rendered as wireframes.
 /// Opaque and transparent rendering will be supported later.
@@ -55,7 +55,7 @@ pub struct Ellipsoids {
     /// Optional text labels for the ellipsoids.
     pub labels: Option<Vec<crate::components::Text>>,
 
-    /// Optional `ClassId`s for the ellipsoids.
+    /// Optional class ID for the ellipsoids.
     ///
     /// The class ID provides colors and labels if not specified explicitly.
     pub class_ids: Option<Vec<crate::components::ClassId>>,
@@ -402,7 +402,7 @@ impl Ellipsoids {
         self
     }
 
-    /// Optional `ClassId`s for the ellipsoids.
+    /// Optional class ID for the ellipsoids.
     ///
     /// The class ID provides colors and labels if not specified explicitly.
     #[inline]

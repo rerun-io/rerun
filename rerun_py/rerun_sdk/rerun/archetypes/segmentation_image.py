@@ -66,7 +66,7 @@ class SegmentationImage(SegmentationImageExt, Archetype):
         self.__attrs_init__(
             data=None,  # type: ignore[arg-type]
             resolution=None,  # type: ignore[arg-type]
-            data_type=None,  # type: ignore[arg-type]
+            datatype=None,  # type: ignore[arg-type]
             opacity=None,  # type: ignore[arg-type]
             draw_order=None,  # type: ignore[arg-type]
         )
@@ -94,9 +94,9 @@ class SegmentationImage(SegmentationImageExt, Archetype):
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 
-    data_type: components.ChannelDataTypeBatch = field(
+    datatype: components.ChannelDatatypeBatch = field(
         metadata={"component": "required"},
-        converter=components.ChannelDataTypeBatch._required,  # type: ignore[misc]
+        converter=components.ChannelDatatypeBatch._required,  # type: ignore[misc]
     )
     # The data type of the segmentation image data (U16, U32, …).
     #

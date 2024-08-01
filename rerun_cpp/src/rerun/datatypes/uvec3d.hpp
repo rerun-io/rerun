@@ -20,9 +20,7 @@ namespace rerun::datatypes {
     struct UVec3D {
         std::array<uint32_t, 3> xyz;
 
-      public:
-        // Extensions to generated type defined in 'uvec3d_ext.cpp'
-
+      public: // START of extensions from uvec3d_ext.cpp:
         /// Construct UVec3D from x/y/z values.
         UVec3D(uint32_t x, uint32_t y, uint32_t z) : xyz{x, y, z} {}
 
@@ -40,6 +38,8 @@ namespace rerun::datatypes {
         uint32_t z() const {
             return xyz[2];
         }
+
+        // END of extensions from uvec3d_ext.cpp, start of generated code:
 
       public:
         UVec3D() = default;

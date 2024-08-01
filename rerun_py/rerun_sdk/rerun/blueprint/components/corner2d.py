@@ -36,8 +36,24 @@ class Corner2D(Enum):
     RightBottom = 4
     """Right bottom corner."""
 
+    def __str__(self) -> str:
+        """Returns the variant name."""
+        if self == Corner2D.LeftTop:
+            return "LeftTop"
+        elif self == Corner2D.RightTop:
+            return "RightTop"
+        elif self == Corner2D.LeftBottom:
+            return "LeftBottom"
+        elif self == Corner2D.RightBottom:
+            return "RightBottom"
+        else:
+            raise ValueError("Unknown enum variant")
 
-Corner2DLike = Union[Corner2D, Literal["lefttop", "righttop", "leftbottom", "rightbottom"]]
+
+Corner2DLike = Union[
+    Corner2D,
+    Literal["LeftBottom", "LeftTop", "RightBottom", "RightTop", "leftbottom", "lefttop", "rightbottom", "righttop"],
+]
 Corner2DArrayLike = Union[Corner2DLike, Sequence[Corner2DLike]]
 
 
