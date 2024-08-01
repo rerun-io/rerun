@@ -6,7 +6,7 @@ use re_query::LatestAtResults;
 use re_types_core::ComponentName;
 use re_viewer_context::{DataResult, ViewContext, ViewerContext};
 
-use crate::results_ext2::{HybridLatestAtResults, HybridRangeResults};
+use crate::results_ext::{HybridLatestAtResults, HybridRangeResults};
 
 // ---
 
@@ -19,8 +19,8 @@ use crate::results_ext2::{HybridLatestAtResults, HybridRangeResults};
 /// - Fallback from the visualizer
 /// - Placeholder from the component.
 ///
-/// Data should be accessed via the [`crate::RangeResultsExt2`] trait which is implemented for
-/// [`crate::HybridResults2`].
+/// Data should be accessed via the [`crate::RangeResultsExt`] trait which is implemented for
+/// [`crate::HybridResults`].
 pub fn range_with_blueprint_resolved_data(
     ctx: &ViewContext<'_>,
     _annotations: Option<&re_viewer_context::Annotations>,
@@ -71,8 +71,8 @@ pub fn range_with_blueprint_resolved_data(
 /// - Fallback from the visualizer
 /// - Placeholder from the component.
 ///
-/// Data should be accessed via the [`crate::RangeResultsExt2`] trait which is implemented for
-/// [`crate::HybridResults2`].
+/// Data should be accessed via the [`crate::RangeResultsExt`] trait which is implemented for
+/// [`crate::HybridResults`].
 ///
 /// If `query_shadowed_defaults` is true, all defaults will be queried, even if they are not used.
 pub fn latest_at_with_blueprint_resolved_data<'a>(

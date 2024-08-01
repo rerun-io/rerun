@@ -217,7 +217,7 @@ impl VisualizerSystem for Points2DVisualizer {
             view_query,
             context_systems,
             |ctx, spatial_ctx, results| {
-                use re_space_view::RangeResultsExt2 as _;
+                use re_space_view::RangeResultsExt as _;
 
                 let Some(all_position_chunks) = results.get_required_chunks(&Position2D::name())
                 else {

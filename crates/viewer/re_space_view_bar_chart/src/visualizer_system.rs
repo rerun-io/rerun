@@ -3,7 +3,7 @@ use std::collections::BTreeMap;
 use re_chunk_store::ChunkStoreEvent;
 use re_chunk_store::LatestAtQuery;
 use re_entity_db::EntityPath;
-use re_space_view::{diff_component_filter, DataResultQuery2 as _};
+use re_space_view::{diff_component_filter, DataResultQuery as _};
 use re_types::{
     archetypes::BarChart,
     components::{self},

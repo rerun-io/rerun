@@ -5,20 +5,17 @@
 pub mod controls;
 
 mod heuristics;
-mod query2;
-mod results_ext2;
+mod query;
+mod results_ext;
 mod screenshot;
 mod view_property_ui;
 
 pub use heuristics::suggest_space_view_for_each_entity;
-pub use query2::{
-    latest_at_with_blueprint_resolved_data as latest_at_with_blueprint_resolved_data2,
-    range_with_blueprint_resolved_data as range_with_blueprint_resolved_data2,
-    DataResultQuery as DataResultQuery2,
+pub use query::{
+    latest_at_with_blueprint_resolved_data, range_with_blueprint_resolved_data, DataResultQuery,
 };
-pub use results_ext2::{
-    HybridLatestAtResults as HybridLatestAtResults2, HybridResults as HybridResults2,
-    HybridResultsChunkIter, RangeResultsExt as RangeResultsExt2,
+pub use results_ext::{
+    HybridLatestAtResults, HybridResults, HybridResultsChunkIter, RangeResultsExt,
 };
 pub use screenshot::ScreenshotMode;
 pub use view_property_ui::view_property_ui;

@@ -1,5 +1,5 @@
 use re_chunk_store::LatestAtQuery;
-use re_space_view::DataResultQuery2 as _;
+use re_space_view::DataResultQuery as _;
 use re_types::{
     archetypes::TextDocument,
     components::{self},

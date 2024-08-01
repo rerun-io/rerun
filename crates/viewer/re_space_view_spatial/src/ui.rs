@@ -12,7 +12,7 @@ use re_data_ui::{
 use re_format::format_f32;
 use re_log_types::Instance;
 use re_renderer::OutlineConfig;
-use re_space_view::{latest_at_with_blueprint_resolved_data2, ScreenshotMode};
+use re_space_view::{latest_at_with_blueprint_resolved_data, ScreenshotMode};
 use re_types::{
     archetypes::Pinhole,
     blueprint::components::VisualBounds2D,
@@ -587,7 +587,7 @@ fn picked_image_from_depth_image_query(
 ) -> Option<PickedImageInfo> {
     let query_shadowed_defaults = false;
     let query = view_ctx.viewer_ctx.current_query();
-    let results = latest_at_with_blueprint_resolved_data2(
+    let results = latest_at_with_blueprint_resolved_data(
         view_ctx,
         None,
         &query,

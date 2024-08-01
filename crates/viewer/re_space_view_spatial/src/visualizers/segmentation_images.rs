@@ -79,7 +79,7 @@ impl VisualizerSystem for SegmentationImageVisualizer {
             view_query,
             context_systems,
             |ctx, spatial_ctx, results| {
-                use re_space_view::RangeResultsExt2 as _;
+                use re_space_view::RangeResultsExt as _;
 
                 let entity_path = ctx.target_entity_path;
 
