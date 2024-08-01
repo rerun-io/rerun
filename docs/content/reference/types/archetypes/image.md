@@ -8,7 +8,7 @@ A monochrome or color image.
 See also [`archetypes.DepthImage`](https://rerun.io/docs/reference/types/archetypes/depth_image) and [`archetypes.SegmentationImage`](https://rerun.io/docs/reference/types/archetypes/segmentation_image).
 
 The raw image data is stored as a single buffer of bytes in a [rerun.components.Blob].
-The meaning of these bytes is determined by the ImageFormat which specifies the resolution
+The meaning of these bytes is determined by the `ImageFormat` which specifies the resolution
 and the pixel format (e.g. RGB, RGBA, …).
 
 The order of dimensions in the underlying [`components.Blob`](https://rerun.io/docs/reference/types/components/blob) follows the typical

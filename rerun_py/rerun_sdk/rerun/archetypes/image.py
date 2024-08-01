@@ -24,7 +24,7 @@ class Image(ImageExt, Archetype):
     See also [`archetypes.DepthImage`][rerun.archetypes.DepthImage] and [`archetypes.SegmentationImage`][rerun.archetypes.SegmentationImage].
 
     The raw image data is stored as a single buffer of bytes in a [rerun.components.Blob].
-    The meaning of these bytes is determined by the ImageFormat which specifies the resolution
+    The meaning of these bytes is determined by the `ImageFormat` which specifies the resolution
     and the pixel format (e.g. RGB, RGBA, …).
 
     The order of dimensions in the underlying [`components.Blob`][rerun.components.Blob] follows the typical
