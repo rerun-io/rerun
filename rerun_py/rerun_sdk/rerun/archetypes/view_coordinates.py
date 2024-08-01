@@ -31,6 +31,8 @@ class ViewCoordinates(ViewCoordinatesExt, Archetype):
     For example [Right, Down, Forward] means that the X axis points to the right, the Y axis points
     down, and the Z axis points forward.
 
+    Make sure that this archetype is logged at or above the origin entity path of your 3D views.
+
     Example
     -------
     ### View coordinates for adjusting the eye camera:
