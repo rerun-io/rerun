@@ -8,7 +8,7 @@ use re_query::{LatestAtResults, RangeResults};
 use re_types_core::ComponentName;
 use re_viewer_context::{DataResult, QueryContext, ViewContext};
 
-use crate::DataResultQuery2 as _;
+use crate::DataResultQuery as _;
 
 // ---
 

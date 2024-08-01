@@ -195,7 +195,7 @@ impl VisualizerSystem for Lines3DVisualizer {
             view_query,
             context_systems,
             |ctx, spatial_ctx, results| {
-                use re_space_view::RangeResultsExt2 as _;
+                use re_space_view::RangeResultsExt as _;
 
                 let Some(all_strip_chunks) = results.get_required_chunks(&LineStrip3D::name())
                 else {

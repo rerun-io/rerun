@@ -6,7 +6,7 @@ use re_query::LatestAtResults;
 use re_types_core::ComponentName;
 use re_viewer_context::{DataResult, ViewContext, ViewerContext};
 
-use crate::results_ext2::{HybridLatestAtResults, HybridRangeResults};
+use crate::results_ext::{HybridLatestAtResults, HybridRangeResults};
 
 // ---
 

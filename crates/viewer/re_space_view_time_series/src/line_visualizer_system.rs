@@ -1,6 +1,6 @@
 use itertools::Itertools as _;
 
-use re_space_view::range_with_blueprint_resolved_data2;
+use re_space_view::range_with_blueprint_resolved_data;
 use re_types::archetypes;
 use re_types::components::AggregationPolicy;
 use re_types::external::arrow2::datatypes::DataType as ArrowDatatype;
@@ -174,14 +174,14 @@ impl SeriesLineSystem {
             ctx.viewer_ctx.app_options.experimental_plot_query_clamping,
         );
         {
-            use re_space_view::RangeResultsExt2 as _;
+            use re_space_view::RangeResultsExt as _;
 
             re_tracing::profile_scope!("primary", &data_result.entity_path.to_string());
 
             let entity_path = &data_result.entity_path;
             let query = re_chunk_store::RangeQuery::new(view_query.timeline, time_range);
 
-            let results = range_with_blueprint_resolved_data2(
+            let results = range_with_blueprint_resolved_data(
                 ctx,
                 None,
                 &query,

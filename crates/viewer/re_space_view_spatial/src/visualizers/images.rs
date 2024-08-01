@@ -2,7 +2,7 @@ use itertools::Itertools as _;
 
 use re_chunk_store::{ChunkStoreEvent, RowId};
 use re_log_types::TimeInt;
-use re_space_view::{diff_component_filter, HybridResults2};
+use re_space_view::{diff_component_filter, HybridResults};
 use re_types::{
     archetypes::Image,
     components::{DrawOrder, Opacity, TensorData},
@@ -152,11 +152,11 @@ impl ImageVisualizer {
     fn process_image(
         &mut self,
         ctx: &QueryContext<'_>,
-        results: &HybridResults2<'_>,
+        results: &HybridResults<'_>,
         spatial_ctx: &SpatialSceneEntityContext<'_>,
     ) {
         use super::entity_iterator::iter_component;
-        use re_space_view::RangeResultsExt2 as _;
+        use re_space_view::RangeResultsExt as _;
 
         let entity_path = ctx.target_entity_path;
 

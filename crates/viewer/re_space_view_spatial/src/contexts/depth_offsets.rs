@@ -3,7 +3,7 @@ use std::collections::{BTreeMap, BTreeSet};
 use ahash::HashMap;
 
 use re_log_types::EntityPathHash;
-use re_space_view::latest_at_with_blueprint_resolved_data2;
+use re_space_view::latest_at_with_blueprint_resolved_data;
 use re_types::{components::DrawOrder, ComponentNameSet, Loggable as _};
 use re_viewer_context::{IdentifiedViewSystem, ViewContextSystem, ViewSystemIdentifier};
 
@@ -79,7 +79,7 @@ fn collect_draw_order_per_visualizer(
     let latest_at_query = ctx.current_query();
     for data_result in query.iter_visible_data_results(ctx, visualizer_identifier) {
         let query_shadowed_components = false;
-        let draw_order = latest_at_with_blueprint_resolved_data2(
+        let draw_order = latest_at_with_blueprint_resolved_data(
             ctx,
             None,
             &latest_at_query,

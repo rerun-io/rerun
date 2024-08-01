@@ -203,7 +203,7 @@ impl VisualizerSystem for Arrows2DVisualizer {
             view_query,
             context_systems,
             |ctx, spatial_ctx, results| {
-                use re_space_view::RangeResultsExt2 as _;
+                use re_space_view::RangeResultsExt as _;
 
                 let Some(all_vector_chunks) = results.get_required_chunks(&Vector2D::name()) else {
                     return Ok(());
