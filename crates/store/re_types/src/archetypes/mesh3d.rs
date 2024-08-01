@@ -127,7 +127,7 @@ pub struct Mesh3D {
     pub vertex_texcoords: Option<Vec<crate::components::Texcoord2D>>,
 
     /// A color multiplier applied to the whole mesh.
-    pub albedo_factor: Option<crate::components::AlbedoFactor>,
+    pub albedo_factor: Option<crate::components::Color>,
 
     /// Optional albedo texture.
     ///
@@ -163,7 +163,7 @@ impl ::re_types_core::SizeBytes for Mesh3D {
             && <Option<Vec<crate::components::Vector3D>>>::is_pod()
             && <Option<Vec<crate::components::Color>>>::is_pod()
             && <Option<Vec<crate::components::Texcoord2D>>>::is_pod()
-            && <Option<crate::components::AlbedoFactor>>::is_pod()
+            && <Option<crate::components::Color>>::is_pod()
             && <Option<crate::components::TensorData>>::is_pod()
             && <Option<Vec<crate::components::ClassId>>>::is_pod()
     }
@@ -186,7 +186,7 @@ static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 5usize]> =
         [
             "rerun.components.Color".into(),
             "rerun.components.Texcoord2D".into(),
-            "rerun.components.AlbedoFactor".into(),
+            "rerun.components.Color".into(),
             "rerun.components.TensorData".into(),
             "rerun.components.ClassId".into(),
         ]
@@ -201,7 +201,7 @@ static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 9usize]> =
             "rerun.components.Mesh3DIndicator".into(),
             "rerun.components.Color".into(),
             "rerun.components.Texcoord2D".into(),
-            "rerun.components.AlbedoFactor".into(),
+            "rerun.components.Color".into(),
             "rerun.components.TensorData".into(),
             "rerun.components.ClassId".into(),
         ]
@@ -247,7 +247,7 @@ static OPTIONAL_COMPONENT_DESCRIPTORS: once_cell::sync::Lazy<[ComponentDescripto
             },
             ComponentDescriptor {
                 archetype_name: Some("Mesh3D".into()),
-                component_name: "rerun.components.AlbedoFactor".into(),
+                component_name: "rerun.components.Color".into(),
                 tag: Some("albedo_factor".into()),
             },
             ComponentDescriptor {
@@ -293,7 +293,7 @@ static ALL_COMPONENT_DESCRIPTORS: once_cell::sync::Lazy<[ComponentDescriptor; 8u
             },
             ComponentDescriptor {
                 archetype_name: Some("Mesh3D".into()),
-                component_name: "rerun.components.AlbedoFactor".into(),
+                component_name: "rerun.components.Color".into(),
                 tag: Some("albedo_factor".into()),
             },
             ComponentDescriptor {
@@ -448,9 +448,8 @@ impl ::re_types_core::Archetype for Mesh3D {
             } else {
                 None
             };
-        let albedo_factor = if let Some(array) = arrays_by_name.get("rerun.components.AlbedoFactor")
-        {
-            <crate::components::AlbedoFactor>::from_arrow_opt(&**array)
+        let albedo_factor = if let Some(array) = arrays_by_name.get("rerun.components.Color") {
+            <crate::components::Color>::from_arrow_opt(&**array)
                 .with_context("rerun.archetypes.Mesh3D#albedo_factor")?
                 .into_iter()
                 .next()
@@ -526,6 +525,117 @@ impl ::re_types_core::AsComponents for Mesh3D {
         .flatten()
         .collect()
     }
+
+    fn as_described_component_batches(
+        &self,
+    ) -> Vec<re_types_core::MaybeOwnedComponentBatchWithDescriptor<'_>> {
+        re_tracing::profile_function!();
+        use ::re_types_core::{Archetype as _, MaybeOwnedComponentBatchWithDescriptor};
+        [
+            // Some(Self::indicator()),
+            // Some((&self.vertex_positions as &dyn ComponentBatch).into()),
+            Some({
+                let batch =
+                    MaybeOwnedComponentBatch::Ref(&self.vertex_positions as &dyn ComponentBatch);
+                let component_name = batch.name();
+                MaybeOwnedComponentBatchWithDescriptor {
+                    batch,
+                    descriptor: ComponentDescriptor {
+                        archetype_name: Some(Self::name()),
+                        component_name,
+                        tag: Some("triangle_indices".to_owned()),
+                    },
+                }
+            }),
+            self.triangle_indices.as_ref().map(|comp_batch| {
+                let batch = MaybeOwnedComponentBatch::Ref(comp_batch as &dyn ComponentBatch);
+                let component_name = batch.name();
+                MaybeOwnedComponentBatchWithDescriptor {
+                    batch,
+                    descriptor: ComponentDescriptor {
+                        archetype_name: Some(Self::name()),
+                        component_name,
+                        tag: Some("triangle_indices".to_owned()),
+                    },
+                }
+            }),
+            self.vertex_normals.as_ref().map(|comp_batch| {
+                let batch = MaybeOwnedComponentBatch::Ref(comp_batch as &dyn ComponentBatch);
+                let component_name = batch.name();
+                MaybeOwnedComponentBatchWithDescriptor {
+                    batch,
+                    descriptor: ComponentDescriptor {
+                        archetype_name: Some(Self::name()),
+                        component_name,
+                        tag: Some("vertex_normals".to_owned()),
+                    },
+                }
+            }),
+            self.vertex_colors.as_ref().map(|comp_batch| {
+                let batch = MaybeOwnedComponentBatch::Ref(comp_batch as &dyn ComponentBatch);
+                let component_name = batch.name();
+                MaybeOwnedComponentBatchWithDescriptor {
+                    batch,
+                    descriptor: ComponentDescriptor {
+                        archetype_name: Some(Self::name()),
+                        component_name,
+                        tag: Some("vertex_colors".to_owned()),
+                    },
+                }
+            }),
+            self.vertex_texcoords.as_ref().map(|comp_batch| {
+                let batch = MaybeOwnedComponentBatch::Ref(comp_batch as &dyn ComponentBatch);
+                let component_name = batch.name();
+                MaybeOwnedComponentBatchWithDescriptor {
+                    batch,
+                    descriptor: ComponentDescriptor {
+                        archetype_name: Some(Self::name()),
+                        component_name,
+                        tag: Some("vertex_texcoords".to_owned()),
+                    },
+                }
+            }),
+            self.albedo_factor.as_ref().map(|comp_batch| {
+                let batch = MaybeOwnedComponentBatch::Ref(comp_batch as &dyn ComponentBatch);
+                let component_name = batch.name();
+                MaybeOwnedComponentBatchWithDescriptor {
+                    batch,
+                    descriptor: ComponentDescriptor {
+                        archetype_name: Some(Self::name()),
+                        component_name,
+                        tag: Some("albedo_factor".to_owned()),
+                    },
+                }
+            }),
+            self.albedo_texture.as_ref().map(|comp_batch| {
+                let batch = MaybeOwnedComponentBatch::Ref(comp_batch as &dyn ComponentBatch);
+                let component_name = batch.name();
+                MaybeOwnedComponentBatchWithDescriptor {
+                    batch,
+                    descriptor: ComponentDescriptor {
+                        archetype_name: Some(Self::name()),
+                        component_name,
+                        tag: Some("albedo_texture".to_owned()),
+                    },
+                }
+            }),
+            self.class_ids.as_ref().map(|comp_batch| {
+                let batch = MaybeOwnedComponentBatch::Ref(comp_batch as &dyn ComponentBatch);
+                let component_name = batch.name();
+                MaybeOwnedComponentBatchWithDescriptor {
+                    batch,
+                    descriptor: ComponentDescriptor {
+                        archetype_name: Some(Self::name()),
+                        component_name,
+                        tag: Some("class_ids".to_owned()),
+                    },
+                }
+            }),
+        ]
+        .into_iter()
+        .flatten()
+        .collect()
+    }
 }
 
 impl Mesh3D {
@@ -590,7 +700,7 @@ impl Mesh3D {
     #[inline]
     pub fn with_albedo_factor(
         mut self,
-        albedo_factor: impl Into<crate::components::AlbedoFactor>,
+        albedo_factor: impl Into<crate::components::Color>,
     ) -> Self {
         self.albedo_factor = Some(albedo_factor.into());
         self

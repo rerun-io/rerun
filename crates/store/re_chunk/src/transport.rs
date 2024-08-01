@@ -607,7 +607,6 @@ impl Chunk {
             let mut components = Components::default();
 
             for (field, column) in transport.components() {
-                dbg!(&column);
                 let column = column
                     .as_any()
                     .downcast_ref::<ListArray<i32>>()
@@ -637,8 +636,6 @@ impl Chunk {
 
             components
         };
-
-        dbg!(&components);
 
         let mut res = Self::new(
             id,

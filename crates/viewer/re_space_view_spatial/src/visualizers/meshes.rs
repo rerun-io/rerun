@@ -51,7 +51,7 @@ struct Mesh3DComponentData<'a> {
     vertex_texcoords: &'a [Texcoord2D],
 
     triangle_indices: Option<&'a [TriangleIndices]>,
-    albedo_factor: Option<&'a AlbedoFactor>,
+    albedo_factor: Option<&'a Color>,
     albedo_texture: Option<&'a TensorData>,
 
     class_ids: &'a [ClassId],
@@ -260,7 +260,7 @@ impl VisualizerSystem for Mesh3DVisualizer {
                             }),
                             triangle_indices: triangle_indices.map(bytemuck::cast_slice),
                             albedo_factor: albedo_factors
-                                .map_or(&[] as &[AlbedoFactor], |albedo_factors| {
+                                .map_or(&[] as &[Color], |albedo_factors| {
                                     bytemuck::cast_slice(albedo_factors)
                                 })
                                 .first(),
