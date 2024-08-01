@@ -32,7 +32,6 @@ impl VisualizerSystem for TensorSystem {
         for data_result in query.iter_visible_data_results(ctx, Self::identifier()) {
             let timeline_query = LatestAtQuery::new(query.timeline, query.latest_at);
 
-            // TODO(#5607): what should happen if the promise is still pending?
             if let Some(((_time, row_id), tensor)) = ctx
                 .recording()
                 .latest_at_component::<TensorData>(&data_result.entity_path, &timeline_query)
