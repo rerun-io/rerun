@@ -1,8 +1,8 @@
 use std::collections::BTreeMap;
 
-use re_chunk::ArrowArray;
+use re_chunk::{ArrowArray, UnitChunkShared};
 use re_chunk_store::LatestAtQuery;
-use re_entity_db::{external::re_query::LatestAtComponentResults, EntityDb, EntityPath};
+use re_entity_db::{EntityDb, EntityPath};
 use re_log::ResultExt;
 use re_log_types::Instance;
 use re_types::{
@@ -358,32 +358,17 @@ impl ComponentUiRegistry {
         query: &LatestAtQuery,
         db: &EntityDb,
         entity_path: &EntityPath,
-        component: &LatestAtComponentResults,
+        component_name: ComponentName,
+        unit: &UnitChunkShared,
         instance: &Instance,
     ) {
-        let Some(component_name) = component.component_name(db.resolver()) else {
-            // TODO(#5607): what should happen if the promise is still pending?
-            return;
-        };
-
         // Don't use component.raw_instance here since we want to handle the case where there's several
         // elements differently.
         // Also, it allows us to slice the array without cloning any elements.
-        let array = match component.resolved(db.resolver()) {
-            re_query::PromiseResult::Pending => {
-                re_log::error_once!("Couldn't get {component_name}: promise still pending");
-                ui.error_label("pending…");
-                return;
-            }
-            re_query::PromiseResult::Ready(cell) => cell,
-            re_query::PromiseResult::Error(err) => {
-                re_log::error_once!(
-                    "Couldn't get {component_name}: {}",
-                    re_error::format_ref(&*err)
-                );
-                ui.error_label(&re_error::format_ref(&*err));
-                return;
-            }
+        let Some(array) = unit.component_batch_raw(&component_name) else {
+            re_log::error_once!("Couldn't get {component_name}: missing");
+            ui.error_label(&format!("Couldn't get {component_name}: missing"));
+            return;
         };
 
         // Component UI can only show a single instance.
