@@ -1067,9 +1067,9 @@ impl RecordingStream {
             row_id,
             ent_path,
             static_,
-            arch.as_component_batches()
+            arch.as_described_component_batches()
                 .iter()
-                .map(|any_comp_batch| any_comp_batch.as_ref()),
+                .map(|batch| batch as &dyn ComponentBatch),
         )
     }
 

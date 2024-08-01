@@ -15,6 +15,3 @@ A color multiplier, usually applied to a whole entity, e.g. a mesh.
  * 🦀 [Rust API docs for `AlbedoFactor`](https://docs.rs/rerun/latest/rerun/components/struct.AlbedoFactor.html?speculative-link)
 
 
-## Used by
-
-* [`Mesh3D`](../archetypes/mesh3d.md)

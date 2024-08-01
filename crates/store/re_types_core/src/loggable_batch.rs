@@ -58,6 +58,50 @@ pub trait ComponentBatch: LoggableBatch<Name = ComponentName> {
     }
 }
 
+// TODO
+pub struct MaybeOwnedComponentBatchWithDescriptor<'a> {
+    pub batch: MaybeOwnedComponentBatch<'a>,
+    pub descriptor: ComponentDescriptor,
+}
+
+impl<'a> LoggableBatch for MaybeOwnedComponentBatchWithDescriptor<'a> {
+    type Name = ComponentName;
+
+    #[inline]
+    fn name(&self) -> Self::Name {
+        self.batch.as_ref().name()
+    }
+
+    #[inline]
+    fn num_instances(&self) -> usize {
+        self.batch.as_ref().num_instances()
+    }
+
+    #[inline]
+    fn arrow_field(&self) -> arrow2::datatypes::Field {
+        self.batch.as_ref().arrow_field()
+    }
+
+    #[inline]
+    fn to_arrow(&self) -> SerializationResult<Box<dyn ::arrow2::array::Array>> {
+        self.batch.as_ref().to_arrow()
+    }
+}
+
+impl<'a> ComponentBatch for MaybeOwnedComponentBatchWithDescriptor<'a> {
+    fn descriptor(&self) -> ComponentDescriptor {
+        self.descriptor.clone()
+    }
+}
+
+// TODO: NO!
+// impl<'a> AsRef<dyn ComponentBatch + 'a> for MaybeOwnedComponentBatchWithDescriptor<'a> {
+//     #[inline]
+//     fn as_ref(&self) -> &(dyn ComponentBatch + 'a) {
+//         self.batch.as_ref()
+//     }
+// }
+
 /// Holds either an owned [`ComponentBatch`] that lives on heap, or a reference to one.
 ///
 /// This doesn't use [`std::borrow::Cow`] on purpose: `Cow` requires `Clone`, which would break

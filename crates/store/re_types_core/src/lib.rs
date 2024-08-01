@@ -51,6 +51,16 @@ pub trait AsComponents {
     // depending on their presence (or lack thereof) at runtime anyway.
     fn as_component_batches(&self) -> Vec<MaybeOwnedComponentBatch<'_>>;
 
+    fn as_described_component_batches(&self) -> Vec<MaybeOwnedComponentBatchWithDescriptor<'_>> {
+        self.as_component_batches()
+            .into_iter()
+            .map(|batch| {
+                let descriptor = batch.descriptor();
+                MaybeOwnedComponentBatchWithDescriptor { batch, descriptor }
+            })
+            .collect()
+    }
+
     // ---
 
     // TODO: it's what you want, until you want to specify your arch name into it!
@@ -102,7 +112,10 @@ pub use self::{
     arrow_string::ArrowString,
     component_descriptor::ComponentDescriptor,
     loggable::{Component, ComponentName, ComponentNameSet, Datatype, DatatypeName, Loggable},
-    loggable_batch::{ComponentBatch, DatatypeBatch, LoggableBatch, MaybeOwnedComponentBatch},
+    loggable_batch::{
+        ComponentBatch, DatatypeBatch, LoggableBatch, MaybeOwnedComponentBatch,
+        MaybeOwnedComponentBatchWithDescriptor,
+    },
     result::{
         DeserializationError, DeserializationResult, ResultExt, SerializationError,
         SerializationResult, _Backtrace,
