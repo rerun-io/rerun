@@ -19,20 +19,19 @@ __all__ = ["Image"]
 @define(str=False, repr=False, init=False)
 class Image(ImageExt, Archetype):
     """
-    **Archetype**: A monochrome or color image with optional alpha (opacity).
-
-    For compressed images and image files (JPEG, PNG, …), use [`archetypes.ImageEncoded`][rerun.archetypes.ImageEncoded].
-    Compressing images can save a lot of bandwidth and memory.
+    **Archetype**: A monochrome or color image.
 
     See also [`archetypes.DepthImage`][rerun.archetypes.DepthImage] and [`archetypes.SegmentationImage`][rerun.archetypes.SegmentationImage].
 
-    The image type
-    The order of dimensions in the underlying [`components.TensorData`][rerun.components.TensorData] follows the typical
+    The raw image data is stored as a single buffer of bytes in a [rerun.components.Blob].
+    The meaning of these bytes is determined by the ImageFormat which specifies the resolution
+    and the pixel format (e.g. RGB, RGBA, …).
+
+    The order of dimensions in the underlying [`components.Blob`][rerun.components.Blob] follows the typical
     row-major, interleaved-pixel image format.
 
     Rerun also supports compressed images (JPEG, PNG, …), using [`archetypes.ImageEncoded`][rerun.archetypes.ImageEncoded].
-
-    See also [`components.TensorData`][rerun.components.TensorData] and [`datatypes.TensorBuffer`][rerun.datatypes.TensorBuffer].
+    Compressing images can save a lot of bandwidth and memory.
 
     Example
     -------

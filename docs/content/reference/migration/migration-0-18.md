@@ -34,9 +34,9 @@ In Python we already had a `ImageEncoded` class, but this has now been replaced 
 rr.log(
     "my_image",
     rr.Image(
-        bytes=.…,
-        width=.…,
-        height=.…,
+        bytes=…,
+        width=…,
+        height=…,
         pixel_format=rr.PixelFormat.Nv12,
     ),
 )

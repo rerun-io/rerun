@@ -15,7 +15,7 @@ This page lists all built-in archetypes.
 ## Image & tensor
 
 * [`DepthImage`](archetypes/depth_image.md): A depth image, i.e. as captured by a depth camera.
-* [`Image`](archetypes/image.md): A monochrome or color image with optional alpha (opacity).
+* [`Image`](archetypes/image.md): A monochrome or color image.
 * [`ImageEncoded`](archetypes/image_encoded.md): An image encoded as e.g. a JPEG or PNG.
 * [`SegmentationImage`](archetypes/segmentation_image.md): An image made up of integer [`components.ClassId`](https://rerun.io/docs/reference/types/components/class_id)s.
 * [`Tensor`](archetypes/tensor.md): An N-dimensional array of numbers.
