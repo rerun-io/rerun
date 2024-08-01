@@ -736,7 +736,7 @@ impl StoreHub {
             .unwrap_or_default();
 
         let blueprint_cached_stats = blueprint
-            .map(|entity_db| entity_db.query_caches2().stats())
+            .map(|entity_db| entity_db.query_caches().stats())
             .unwrap_or_default();
 
         let blueprint_config = blueprint
@@ -753,7 +753,7 @@ impl StoreHub {
             .unwrap_or_default();
 
         let recording_cached_stats = recording
-            .map(|entity_db| entity_db.query_caches2().stats())
+            .map(|entity_db| entity_db.query_caches().stats())
             .unwrap_or_default();
 
         let recording_config2 = recording

@@ -433,7 +433,7 @@ impl DataQueryPropertyResolver<'_> {
                         .unwrap_or_default()
                     {
                         if let Some(component_data) = blueprint
-                            .query_caches2()
+                            .query_caches()
                             .latest_at(
                                 blueprint.store(),
                                 blueprint_query,
@@ -468,7 +468,7 @@ impl DataQueryPropertyResolver<'_> {
                         .unwrap_or_default()
                     {
                         if let Some(component_data) = blueprint
-                            .query_caches2()
+                            .query_caches()
                             .latest_at(
                                 blueprint.store(),
                                 blueprint_query,

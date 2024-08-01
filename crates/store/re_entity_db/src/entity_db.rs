@@ -63,7 +63,7 @@ pub struct EntityDb {
     data_store: ChunkStore,
 
     /// Query caches for the data in [`Self::data_store`].
-    query_caches2: re_query::Caches,
+    query_caches: re_query::Caches,
 
     stats: IngestionStatistics,
 }
@@ -75,7 +75,7 @@ impl EntityDb {
 
     pub fn with_store_config(store_id: StoreId, store_config: ChunkStoreConfig) -> Self {
         let data_store = ChunkStore::new(store_id.clone(), store_config);
-        let query_caches2 = re_query::Caches::new(&data_store);
+        let query_caches = re_query::Caches::new(&data_store);
 
         Self {
             data_source: None,
@@ -87,7 +87,7 @@ impl EntityDb {
             tree: crate::EntityTree::root(),
             time_histogram_per_timeline: Default::default(),
             data_store,
-            query_caches2,
+            query_caches,
             stats: IngestionStatistics::new(store_id),
         }
     }
@@ -115,8 +115,8 @@ impl EntityDb {
     }
 
     #[inline]
-    pub fn query_caches2(&self) -> &re_query::Caches {
-        &self.query_caches2
+    pub fn query_caches(&self) -> &re_query::Caches {
+        &self.query_caches
     }
 
     /// Queries for the given `component_names` using latest-at semantics.
@@ -131,7 +131,7 @@ impl EntityDb {
         entity_path: &EntityPath,
         component_names: impl IntoIterator<Item = re_types_core::ComponentName>,
     ) -> re_query::LatestAtResults {
-        self.query_caches2()
+        self.query_caches()
             .latest_at(self.store(), query, entity_path, component_names)
     }
 
@@ -150,7 +150,7 @@ impl EntityDb {
         query: &re_chunk_store::LatestAtQuery,
     ) -> Option<((TimeInt, RowId), C)> {
         let results = self
-            .query_caches2()
+            .query_caches()
             .latest_at(self.store(), query, entity_path, [C::name()]);
         results
             .component_mono()
@@ -172,7 +172,7 @@ impl EntityDb {
         query: &re_chunk_store::LatestAtQuery,
     ) -> Option<((TimeInt, RowId), C)> {
         let results = self
-            .query_caches2()
+            .query_caches()
             .latest_at(self.store(), query, entity_path, [C::name()]);
         results
             .component_mono_quiet()
@@ -365,7 +365,7 @@ impl EntityDb {
             // Update our internal views by notifying them of resulting [`ChunkStoreEvent`]s.
             self.times_per_timeline.on_events(&store_events);
             self.time_histogram_per_timeline.on_events(&store_events);
-            self.query_caches2.on_events(&store_events);
+            self.query_caches.on_events(&store_events);
             self.tree.on_store_additions(&store_events);
 
             // We inform the stats last, since it measures e2e latency.
@@ -425,7 +425,7 @@ impl EntityDb {
         re_tracing::profile_function!();
 
         self.times_per_timeline.on_events(store_events);
-        self.query_caches2.on_events(store_events);
+        self.query_caches.on_events(store_events);
         self.time_histogram_per_timeline.on_events(store_events);
         self.tree.on_store_deletions(&self.data_store, store_events);
     }

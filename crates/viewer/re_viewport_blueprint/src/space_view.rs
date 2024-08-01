@@ -132,7 +132,7 @@ impl SpaceViewBlueprint {
     ) -> Option<Self> {
         re_tracing::profile_function!();
 
-        let results = blueprint_db.query_caches2().latest_at(
+        let results = blueprint_db.query_caches().latest_at(
             blueprint_db.store(),
             query,
             &id.as_entity_path(),
@@ -275,7 +275,7 @@ impl SpaceViewBlueprint {
                             })
                             .filter_map(|component_name| {
                                 let array = blueprint
-                                    .query_caches2()
+                                    .query_caches()
                                     .latest_at(blueprint.store(), query, path, [component_name])
                                     .component_batch_raw(&component_name);
                                 array.map(|array| (component_name, array))
