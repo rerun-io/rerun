@@ -40,11 +40,6 @@ namespace rerun {
     using components::LineStrip2D;
     using components::LineStrip3D;
     using components::MediaType;
-<<<<<<< HEAD
-    using components::OutOfTreeTransform3D;
-    using components::PixelFormat;
-=======
->>>>>>> main
     using components::Position2D;
     using components::Position3D;
     using components::Radius;
