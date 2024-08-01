@@ -120,7 +120,9 @@ class ImageEncodedExt:
         self.__attrs_clear__()
 
     @staticmethod
-    def compress(image: ImageLike, color_model: ColorModelLike, jpeg_quality: int = 95) -> ImageEncoded | Image:
+    def compress(
+        image: ImageLike, color_model: ColorModelLike | None = None, jpeg_quality: int = 95
+    ) -> ImageEncoded | Image:
         """
         Compress the given image as a JPEG.
 
@@ -135,6 +137,7 @@ class ImageEncodedExt:
             The image to compress, as a numpy array or tensor.
         color_model:
             The color model of the image, e.g. "RGB" or "L".
+            If not provided, it will be inferred from the dimensions of the image.
         jpeg_quality:
             Higher quality = larger file size.
             A quality of 95 saves a lot of space, but is still visually very similar.
@@ -147,6 +150,27 @@ class ImageEncodedExt:
         from . import Image
 
         with catch_and_log_exceptions(context="Image compression"):
+            image = _to_numpy(image)
+            if image.dtype not in ["uint8", "sint32", "float32"]:
+                # Convert to a format supported by Image.fromarray
+                image = image.astype("float32")
+
+            if color_model is None:
+                shape = image.shape
+                if len(shape) == 2:
+                    channels = 1
+                elif len(shape) == 3:
+                    _height, _width, channels = shape
+                else:
+                    raise ValueError(f"Expected a 2D or 3D tensor, got {shape}")
+
+                if channels == 1:
+                    color_model = ColorModel.L
+                elif channels == 3:
+                    color_model = ColorModel.RGB
+                elif channels == 4:
+                    color_model = ColorModel.RGBA
+
             if isinstance(color_model, str):
                 color_model = ColorModel[color_model]
             if isinstance(color_model, int):
@@ -161,11 +185,6 @@ class ImageEncodedExt:
                 )
 
             mode = str(color_model)
-
-            image = _to_numpy(image)
-            if image.dtype not in ["uint8", "sint32", "float32"]:
-                # Convert to a format supported by Image.fromarray
-                image = image.astype("float32")
 
             pil_image = PILImage.fromarray(image, mode=mode)
             output = BytesIO()
