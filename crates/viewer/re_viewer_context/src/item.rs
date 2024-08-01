@@ -191,7 +191,7 @@ pub fn resolve_mono_instance_path(
 
         for component_name in component_names {
             if let Some(array) = entity_db
-                .query_caches2()
+                .query_caches()
                 .latest_at(
                     entity_db.store(),
                     query,

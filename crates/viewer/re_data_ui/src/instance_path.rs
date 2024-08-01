@@ -106,7 +106,7 @@ impl DataUi for InstancePath {
                             .with_icon(icon),
                     )
                 } else {
-                    let results = db.query_caches2().latest_at(
+                    let results = db.query_caches().latest_at(
                         db.store(),
                         query,
                         entity_path,

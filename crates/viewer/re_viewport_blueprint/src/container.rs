@@ -47,7 +47,7 @@ impl ContainerBlueprint {
 
         // ----
 
-        let results = blueprint_db.query_caches2().latest_at(
+        let results = blueprint_db.query_caches().latest_at(
             blueprint_db.store(),
             query,
             &id.as_entity_path(),

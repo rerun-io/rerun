@@ -21,7 +21,7 @@ pub(crate) fn validate_component<C: Component>(blueprint: &EntityDb) -> bool {
             let query = LatestAtQuery::latest(Timeline::default());
             for path in blueprint.entity_paths() {
                 if let Some(array) = blueprint
-                    .query_caches2()
+                    .query_caches()
                     .latest_at(blueprint.store(), &query, path, [C::name()])
                     .component_batch_raw(&C::name())
                 {
