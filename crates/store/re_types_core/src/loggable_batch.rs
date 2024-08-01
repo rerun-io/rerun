@@ -1,4 +1,7 @@
-use crate::{Component, ComponentName, Datatype, DatatypeName, Loggable, SerializationResult};
+use crate::{
+    Component, ComponentDescriptor, ComponentName, Datatype, DatatypeName, Loggable,
+    SerializationResult,
+};
 
 #[allow(unused_imports)] // used in docstrings
 use crate::Archetype;
@@ -27,6 +30,9 @@ pub trait LoggableBatch {
     /// The number of component instances stored into this batch.
     fn num_instances(&self) -> usize;
 
+    // TODO: this probably needs to go away too? fields are about metadata, this guy should only
+    // have a word regarding the datatype, not the semantics.
+    //
     /// The underlying [`arrow2::datatypes::Field`], including datatype extensions.
     fn arrow_field(&self) -> arrow2::datatypes::Field;
 
@@ -44,7 +50,13 @@ pub trait DatatypeBatch: LoggableBatch<Name = DatatypeName> {}
 ///
 /// Any [`LoggableBatch`] with a [`Loggable::Name`] set to [`ComponentName`] automatically
 /// implements [`ComponentBatch`].
-pub trait ComponentBatch: LoggableBatch<Name = ComponentName> {}
+pub trait ComponentBatch: LoggableBatch<Name = ComponentName> {
+    // TODO
+    #[inline]
+    fn descriptor(&self) -> ComponentDescriptor {
+        ComponentDescriptor::new(self.name())
+    }
+}
 
 /// Holds either an owned [`ComponentBatch`] that lives on heap, or a reference to one.
 ///

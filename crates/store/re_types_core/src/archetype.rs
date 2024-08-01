@@ -1,8 +1,8 @@
 use std::sync::Arc;
 
 use crate::{
-    ComponentBatch, ComponentName, DeserializationResult, MaybeOwnedComponentBatch,
-    SerializationResult, _Backtrace,
+    ComponentBatch, ComponentDescriptor, ComponentName, DeserializationResult,
+    MaybeOwnedComponentBatch, SerializationResult, _Backtrace,
 };
 
 #[allow(unused_imports)] // used in docstrings
@@ -96,6 +96,48 @@ pub trait Archetype {
         .into()
     }
 
+    // --- TODO ---
+
+    /// Returns the names of all component descriptors that _must_ be provided by the user when
+    /// constructing this archetype.
+    fn required_component_descriptors() -> std::borrow::Cow<'static, [ComponentDescriptor]> {
+        std::borrow::Cow::Borrowed(&[])
+    }
+
+    /// Returns the names of all component descriptors that _should_ be provided by the user when
+    /// constructing this archetype.
+    #[inline]
+    fn recommended_component_descriptors() -> std::borrow::Cow<'static, [ComponentDescriptor]> {
+        std::borrow::Cow::Borrowed(&[])
+    }
+
+    /// Returns the names of all component descriptors that _may_ be provided by the user when
+    /// constructing this archetype.
+    #[inline]
+    fn optional_component_descriptors() -> std::borrow::Cow<'static, [ComponentDescriptor]> {
+        std::borrow::Cow::Borrowed(&[])
+    }
+
+    /// Returns the names of all component descriptors that must, should and may be provided by the user when
+    /// constructing this archetype.
+    ///
+    /// The default implementation always does the right thing, at the cost of some runtime
+    /// allocations.
+    /// If you know all your component descriptors statically, you can override this method to get rid of the
+    /// extra allocations.
+    #[inline]
+    fn all_component_descriptors() -> std::borrow::Cow<'static, [ComponentDescriptor]> {
+        [
+            Self::required_component_descriptors().into_owned(),
+            Self::recommended_component_descriptors().into_owned(),
+            Self::optional_component_descriptors().into_owned(),
+        ]
+        .into_iter()
+        .flatten()
+        .collect::<Vec<_>>()
+        .into()
+    }
+
     // ---
 
     /// Given an iterator of Arrow arrays and their respective field metadata, deserializes them
@@ -176,6 +218,13 @@ impl ArchetypeName {
         } else {
             full_name
         }
+    }
+}
+
+impl crate::SizeBytes for ArchetypeName {
+    #[inline]
+    fn heap_size_bytes(&self) -> u64 {
+        0
     }
 }
 

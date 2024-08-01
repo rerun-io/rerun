@@ -293,11 +293,14 @@ fn add_popup_ui(
                 return;
             };
 
+            // TODO
+            let desc = re_types::ComponentDescriptor::new(component_name);
+
             match Chunk::builder(defaults_path.clone())
                 .with_row(
                     RowId::new(),
                     ctx.blueprint_timepoint_for_writes(),
-                    [(component_name, initial_data)],
+                    [(desc, initial_data)],
                 )
                 .build()
             {

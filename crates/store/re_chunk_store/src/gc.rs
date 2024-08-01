@@ -9,7 +9,7 @@ use web_time::Instant;
 
 use re_chunk::{Chunk, ChunkId};
 use re_log_types::{EntityPath, TimeInt, Timeline};
-use re_types_core::{ComponentName, SizeBytes};
+use re_types_core::{ComponentDescriptor, ComponentName, SizeBytes};
 
 use crate::{
     store::ChunkIdSetPerTime, ChunkStore, ChunkStoreChunkStats, ChunkStoreDiff, ChunkStoreDiffKind,
@@ -74,8 +74,10 @@ impl std::fmt::Display for GarbageCollectionTarget {
     }
 }
 
-pub type RemovableChunkIdPerTimePerComponentPerTimelinePerEntity =
-    IntMap<EntityPath, IntMap<Timeline, IntMap<ComponentName, HashMap<TimeInt, Vec<ChunkId>>>>>;
+pub type RemovableChunkIdPerTimePerComponentPerTimelinePerEntity = IntMap<
+    EntityPath,
+    IntMap<Timeline, HashMap<ComponentDescriptor, HashMap<TimeInt, Vec<ChunkId>>>>,
+>;
 
 impl ChunkStore {
     /// Triggers a garbage collection according to the desired `target`.
@@ -215,28 +217,32 @@ impl ChunkStore {
         self.temporal_chunk_ids_per_entity_per_component
             .values()
             .flat_map(|temporal_chunk_ids_per_timeline| {
-                temporal_chunk_ids_per_timeline.iter().flat_map(
-                    |(_timeline, temporal_chunk_ids_per_component)| {
-                        temporal_chunk_ids_per_component.iter().flat_map(
-                            |(_, temporal_chunk_ids_per_time)| {
-                                temporal_chunk_ids_per_time
-                                    .per_start_time
-                                    .last_key_value()
-                                    .map(|(_, chunk_ids)| chunk_ids.iter().copied())
-                                    .into_iter()
-                                    .flatten()
-                                    .chain(
+                temporal_chunk_ids_per_timeline.values().flat_map(
+                    |temporal_chunk_ids_per_component| {
+                        temporal_chunk_ids_per_component.values().flat_map(
+                            |temporal_chunk_ids_per_desc| {
+                                temporal_chunk_ids_per_desc.values().flat_map(
+                                    |temporal_chunk_ids_per_time| {
                                         temporal_chunk_ids_per_time
-                                            .per_end_time
+                                            .per_start_time
                                             .last_key_value()
                                             .map(|(_, chunk_ids)| chunk_ids.iter().copied())
                                             .into_iter()
-                                            .flatten(),
-                                    )
-                                    .collect::<BTreeSet<_>>()
-                                    .into_iter()
-                                    .rev()
-                                    .take(target_count)
+                                            .flatten()
+                                            .chain(
+                                                temporal_chunk_ids_per_time
+                                                    .per_end_time
+                                                    .last_key_value()
+                                                    .map(|(_, chunk_ids)| chunk_ids.iter().copied())
+                                                    .into_iter()
+                                                    .flatten(),
+                                            )
+                                            .collect::<BTreeSet<_>>()
+                                            .into_iter()
+                                            .rev()
+                                            .take(target_count)
+                                    },
+                                )
                             },
                         )
                     },
@@ -280,9 +286,9 @@ impl ChunkStore {
                         .entry(entity_path.clone())
                         .or_default();
                     for (&timeline, time_chunk) in chunk.timelines() {
-                        let per_component = per_timeline.entry(timeline).or_default();
-                        for component_name in chunk.component_names() {
-                            let per_time = per_component.entry(component_name).or_default();
+                        let per_desc = per_timeline.entry(timeline).or_default();
+                        for component_desc in chunk.component_descriptors() {
+                            let per_time = per_desc.entry(component_desc).or_default();
 
                             // NOTE: As usual, these are vectors of `ChunkId`s, as it is legal to
                             // have perfectly overlapping chunks.
@@ -382,29 +388,34 @@ impl ChunkStore {
                 for temporal_chunk_ids_per_component in
                     temporal_chunk_ids_per_entity_per_component.values_mut()
                 {
-                    for temporal_chunk_ids_per_timeline in
-                        temporal_chunk_ids_per_component.values_mut()
+                    for temporal_chunk_ids_per_desc in temporal_chunk_ids_per_component.values_mut()
                     {
-                        for temporal_chunk_ids_per_time in
-                            temporal_chunk_ids_per_timeline.values_mut()
+                        for temporal_chunk_ids_per_timeline in
+                            temporal_chunk_ids_per_desc.values_mut()
                         {
-                            let ChunkIdSetPerTime {
-                                max_interval_length: _,
-                                per_start_time,
-                                per_end_time,
-                            } = temporal_chunk_ids_per_time;
+                            for temporal_chunk_ids_per_time in
+                                temporal_chunk_ids_per_timeline.values_mut()
+                            {
+                                let ChunkIdSetPerTime {
+                                    max_interval_length: _,
+                                    per_start_time,
+                                    per_end_time,
+                                } = temporal_chunk_ids_per_time;
 
-                            // TODO(cmc): Technically, the optimal thing to do would be to
-                            // recompute `max_interval_length` per time here.
-                            // In practice, this adds a lot of complexity for likely very little
-                            // performance benefit, since we expect the chunks to have similar
-                            // interval lengths on the happy path.
+                                // TODO(cmc): Technically, the optimal thing to do would be to
+                                // recompute `max_interval_length` per time here.
+                                // In practice, this adds a lot of complexity for likely very little
+                                // performance benefit, since we expect the chunks to have similar
+                                // interval lengths on the happy path.
 
-                            for chunk_ids in per_start_time.values_mut() {
-                                chunk_ids.retain(|chunk_id| !chunk_ids_dangling.contains(chunk_id));
-                            }
-                            for chunk_ids in per_end_time.values_mut() {
-                                chunk_ids.retain(|chunk_id| !chunk_ids_dangling.contains(chunk_id));
+                                for chunk_ids in per_start_time.values_mut() {
+                                    chunk_ids
+                                        .retain(|chunk_id| !chunk_ids_dangling.contains(chunk_id));
+                                }
+                                for chunk_ids in per_end_time.values_mut() {
+                                    chunk_ids
+                                        .retain(|chunk_id| !chunk_ids_dangling.contains(chunk_id));
+                                }
                             }
                         }
                     }
@@ -450,18 +461,20 @@ impl ChunkStore {
             for (timeline, time_range_per_component) in chunk.time_range_per_component() {
                 let chunk_ids_to_be_removed = chunk_ids_to_be_removed.entry(timeline).or_default();
 
-                for (component_name, time_range) in time_range_per_component {
-                    let chunk_ids_to_be_removed =
-                        chunk_ids_to_be_removed.entry(component_name).or_default();
+                for (component_name, per_desc) in time_range_per_component {
+                    for (component_desc, time_range) in per_desc {
+                        let chunk_ids_to_be_removed =
+                            chunk_ids_to_be_removed.entry(component_desc).or_default();
 
-                    chunk_ids_to_be_removed
-                        .entry(time_range.min())
-                        .or_default()
-                        .push(chunk.id());
-                    chunk_ids_to_be_removed
-                        .entry(time_range.max())
-                        .or_default()
-                        .push(chunk.id());
+                        chunk_ids_to_be_removed
+                            .entry(time_range.min())
+                            .or_default()
+                            .push(chunk.id());
+                        chunk_ids_to_be_removed
+                            .entry(time_range.max())
+                            .or_default()
+                            .push(chunk.id());
+                    }
                 }
             }
         }
@@ -579,11 +592,13 @@ impl ChunkStore {
                     continue;
                 };
 
-                for (component_name, chunk_ids_to_be_removed) in chunk_ids_to_be_removed {
+                for (component_desc, chunk_ids_to_be_removed) in chunk_ids_to_be_removed {
                     let BTreeMapEntry::Occupied(mut temporal_chunk_ids_per_time) =
                         temporal_chunk_ids_per_component
                             .get_mut()
-                            .entry(component_name)
+                            .entry(component_desc.component_name)
+                            .or_default()
+                            .entry(component_desc.clone())
                     else {
                         continue;
                     };

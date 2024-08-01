@@ -1,7 +1,8 @@
 //! Log some very simple points.
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let rec = rerun::RecordingStreamBuilder::new("rerun_example_points3d").spawn()?;
+    let rec = rerun::RecordingStreamBuilder::new("rerun_example_points3d")
+        .save("/tmp/points3d_simple.rrd")?;
 
     rec.log(
         "points",

@@ -5,14 +5,15 @@ use std::{
     time::{Duration, Instant},
 };
 
+use ahash::HashMap;
 use arrow2::array::{Array as ArrowArray, PrimitiveArray as ArrowPrimitiveArray};
 use crossbeam::channel::{Receiver, Sender};
 use nohash_hasher::IntMap;
 
 use re_log_types::{EntityPath, ResolvedTimeRange, TimeInt, TimePoint, Timeline};
-use re_types_core::{ComponentName, SizeBytes as _};
+use re_types_core::{ComponentDescriptor, SizeBytes as _};
 
-use crate::{Chunk, ChunkId, ChunkResult, ChunkTimeline, RowId};
+use crate::{chunk::Components, Chunk, ChunkId, ChunkResult, ChunkTimeline, RowId};
 
 // ---
 
@@ -679,14 +680,14 @@ pub struct PendingRow {
     /// The component data.
     ///
     /// Each array is a single component, i.e. _not_ a list array.
-    pub components: BTreeMap<ComponentName, Box<dyn ArrowArray>>,
+    pub components: BTreeMap<ComponentDescriptor, Box<dyn ArrowArray>>,
 }
 
 impl PendingRow {
     #[inline]
     pub fn new(
         timepoint: TimePoint,
-        components: BTreeMap<ComponentName, Box<dyn ArrowArray>>,
+        components: BTreeMap<ComponentDescriptor, Box<dyn ArrowArray>>,
     ) -> Self {
         Self {
             row_id: RowId::new(),
@@ -732,13 +733,16 @@ impl PendingRow {
             })
             .collect();
 
-        let components = components
-            .into_iter()
-            .filter_map(|(component_name, array)| {
-                crate::util::arrays_to_list_array_opt(&[Some(&*array as _)])
-                    .map(|array| (component_name, array))
-            })
-            .collect();
+        let mut per_name = Components::new();
+        for (component_desc, array) in components {
+            let list_array = crate::util::arrays_to_list_array_opt(&[Some(&*array as _)]);
+            if let Some(list_array) = list_array {
+                per_name
+                    .entry(component_desc.component_name)
+                    .or_default()
+                    .insert(component_desc, list_array);
+            }
+        }
 
         Chunk::from_native_row_ids(
             ChunkId::new(),
@@ -746,7 +750,7 @@ impl PendingRow {
             Some(true),
             &[row_id],
             timelines,
-            components,
+            per_name,
         )
     }
 
@@ -826,11 +830,11 @@ impl PendingRow {
 
                 // Create all the logical list arrays that we're going to need, accounting for the
                 // possibility of sparse components in the data.
-                let mut all_components: IntMap<ComponentName, Vec<Option<&dyn ArrowArray>>> =
-                    IntMap::default();
+                let mut all_components: HashMap<ComponentDescriptor, Vec<Option<&dyn ArrowArray>>> =
+                    HashMap::default();
                 for row in &rows {
-                    for component_name in row.components.keys() {
-                        all_components.entry(*component_name).or_default();
+                    for component_desc in row.components.keys() {
+                        all_components.entry(component_desc.clone()).or_default();
                     }
                 }
 
@@ -865,13 +869,21 @@ impl PendingRow {
                                     .into_iter()
                                     .map(|(timeline, time_chunk)| (timeline, time_chunk.finish()))
                                     .collect(),
-                                std::mem::take(&mut components)
-                                    .into_iter()
-                                    .filter_map(|(component_name, arrays)| {
-                                        crate::util::arrays_to_list_array_opt(&arrays)
-                                            .map(|list_array| (component_name, list_array))
-                                    })
-                                    .collect(),
+                                {
+                                    let mut per_name = Components::new();
+                                    for (component_desc, arrays) in std::mem::take(&mut components)
+                                    {
+                                        let list_array =
+                                            crate::util::arrays_to_list_array_opt(&arrays);
+                                        if let Some(list_array) = list_array {
+                                            per_name
+                                                .entry(component_desc.component_name)
+                                                .or_default()
+                                                .insert(component_desc, list_array);
+                                        }
+                                    }
+                                    per_name
+                                },
                             ));
 
                             components = all_components.clone();
@@ -887,12 +899,12 @@ impl PendingRow {
                         time_chunk.push(time);
                     }
 
-                    for (component_name, arrays) in &mut components {
+                    for (component_desc, arrays) in &mut components {
                         // NOTE: This will push `None` if the row doesn't actually hold a value for this
                         // component -- these are sparse list arrays!
                         arrays.push(
                             row_components
-                                .get(component_name)
+                                .get(component_desc)
                                 .map(|array| &**array as &dyn ArrowArray),
                         );
                     }
@@ -907,13 +919,19 @@ impl PendingRow {
                         .into_iter()
                         .map(|(timeline, time_chunk)| (timeline, time_chunk.finish()))
                         .collect(),
-                    components
-                        .into_iter()
-                        .filter_map(|(component_name, arrays)| {
-                            crate::util::arrays_to_list_array_opt(&arrays)
-                                .map(|list_array| (component_name, list_array))
-                        })
-                        .collect(),
+                    {
+                        let mut per_name = Components::new();
+                        for (component_desc, arrays) in components {
+                            let list_array = crate::util::arrays_to_list_array_opt(&arrays);
+                            if let Some(list_array) = list_array {
+                                per_name
+                                    .entry(component_desc.component_name)
+                                    .or_default()
+                                    .insert(component_desc, list_array);
+                            }
+                        }
+                        per_name
+                    },
                 ));
 
                 chunks

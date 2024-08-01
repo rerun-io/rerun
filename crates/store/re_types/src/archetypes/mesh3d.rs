@@ -13,9 +13,9 @@
 #![allow(clippy::too_many_lines)]
 
 use ::re_types_core::external::arrow2;
-use ::re_types_core::ComponentName;
 use ::re_types_core::SerializationResult;
 use ::re_types_core::{ComponentBatch, MaybeOwnedComponentBatch};
+use ::re_types_core::{ComponentDescriptor, ComponentName};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Archetype**: A 3D triangle mesh as specified by its per-mesh and per-vertex properties.
@@ -207,6 +207,108 @@ static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 9usize]> =
         ]
     });
 
+static REQUIRED_COMPONENT_DESCRIPTORS: once_cell::sync::Lazy<[ComponentDescriptor; 1usize]> =
+    once_cell::sync::Lazy::new(|| {
+        [ComponentDescriptor {
+            archetype_name: Some("Mesh3D".into()),
+            component_name: "rerun.components.Position3D".into(),
+            tag: Some("vertex_positions".into()),
+        }]
+    });
+
+static RECOMMENDED_COMPONENT_DESCRIPTORS: once_cell::sync::Lazy<[ComponentDescriptor; 2usize]> =
+    once_cell::sync::Lazy::new(|| {
+        [
+            ComponentDescriptor {
+                archetype_name: Some("Mesh3D".into()),
+                component_name: "rerun.components.TriangleIndices".into(),
+                tag: Some("triangle_indices".into()),
+            },
+            ComponentDescriptor {
+                archetype_name: Some("Mesh3D".into()),
+                component_name: "rerun.components.Vector3D".into(),
+                tag: Some("vertex_normals".into()),
+            },
+        ]
+    });
+
+static OPTIONAL_COMPONENT_DESCRIPTORS: once_cell::sync::Lazy<[ComponentDescriptor; 5usize]> =
+    once_cell::sync::Lazy::new(|| {
+        [
+            ComponentDescriptor {
+                archetype_name: Some("Mesh3D".into()),
+                component_name: "rerun.components.Color".into(),
+                tag: Some("vertex_colors".into()),
+            },
+            ComponentDescriptor {
+                archetype_name: Some("Mesh3D".into()),
+                component_name: "rerun.components.Texcoord2D".into(),
+                tag: Some("vertex_texcoords".into()),
+            },
+            ComponentDescriptor {
+                archetype_name: Some("Mesh3D".into()),
+                component_name: "rerun.components.AlbedoFactor".into(),
+                tag: Some("albedo_factor".into()),
+            },
+            ComponentDescriptor {
+                archetype_name: Some("Mesh3D".into()),
+                component_name: "rerun.components.TensorData".into(),
+                tag: Some("albedo_texture".into()),
+            },
+            ComponentDescriptor {
+                archetype_name: Some("Mesh3D".into()),
+                component_name: "rerun.components.ClassId".into(),
+                tag: Some("class_ids".into()),
+            },
+        ]
+    });
+
+static ALL_COMPONENT_DESCRIPTORS: once_cell::sync::Lazy<[ComponentDescriptor; 8usize]> =
+    once_cell::sync::Lazy::new(|| {
+        [
+            ComponentDescriptor {
+                archetype_name: Some("Mesh3D".into()),
+                component_name: "rerun.components.Position3D".into(),
+                tag: Some("vertex_positions".into()),
+            },
+            ComponentDescriptor {
+                archetype_name: Some("Mesh3D".into()),
+                component_name: "rerun.components.TriangleIndices".into(),
+                tag: Some("triangle_indices".into()),
+            },
+            ComponentDescriptor {
+                archetype_name: Some("Mesh3D".into()),
+                component_name: "rerun.components.Vector3D".into(),
+                tag: Some("vertex_normals".into()),
+            },
+            ComponentDescriptor {
+                archetype_name: Some("Mesh3D".into()),
+                component_name: "rerun.components.Color".into(),
+                tag: Some("vertex_colors".into()),
+            },
+            ComponentDescriptor {
+                archetype_name: Some("Mesh3D".into()),
+                component_name: "rerun.components.Texcoord2D".into(),
+                tag: Some("vertex_texcoords".into()),
+            },
+            ComponentDescriptor {
+                archetype_name: Some("Mesh3D".into()),
+                component_name: "rerun.components.AlbedoFactor".into(),
+                tag: Some("albedo_factor".into()),
+            },
+            ComponentDescriptor {
+                archetype_name: Some("Mesh3D".into()),
+                component_name: "rerun.components.TensorData".into(),
+                tag: Some("albedo_texture".into()),
+            },
+            ComponentDescriptor {
+                archetype_name: Some("Mesh3D".into()),
+                component_name: "rerun.components.ClassId".into(),
+                tag: Some("class_ids".into()),
+            },
+        ]
+    });
+
 impl Mesh3D {
     /// The total number of components in the archetype: 1 required, 3 recommended, 5 optional
     pub const NUM_COMPONENTS: usize = 9usize;
@@ -252,6 +354,26 @@ impl ::re_types_core::Archetype for Mesh3D {
     #[inline]
     fn all_components() -> ::std::borrow::Cow<'static, [ComponentName]> {
         ALL_COMPONENTS.as_slice().into()
+    }
+
+    #[inline]
+    fn required_component_descriptors() -> ::std::borrow::Cow<'static, [ComponentDescriptor]> {
+        REQUIRED_COMPONENT_DESCRIPTORS.as_slice().into()
+    }
+
+    #[inline]
+    fn recommended_component_descriptors() -> ::std::borrow::Cow<'static, [ComponentDescriptor]> {
+        RECOMMENDED_COMPONENT_DESCRIPTORS.as_slice().into()
+    }
+
+    #[inline]
+    fn optional_component_descriptors() -> ::std::borrow::Cow<'static, [ComponentDescriptor]> {
+        OPTIONAL_COMPONENT_DESCRIPTORS.as_slice().into()
+    }
+
+    #[inline]
+    fn all_component_descriptors() -> ::std::borrow::Cow<'static, [ComponentDescriptor]> {
+        ALL_COMPONENT_DESCRIPTORS.as_slice().into()
     }
 
     #[inline]

@@ -21,7 +21,7 @@ impl Chunk {
         component_name: &ComponentName,
         row_index: usize,
     ) -> Option<ChunkResult<Box<dyn ArrowArray>>> {
-        self.components.get(component_name).map(|list_array| {
+        self.get_first_component(component_name).map(|list_array| {
             if list_array.len() > row_index {
                 Ok(list_array.value(row_index))
             } else {
@@ -238,6 +238,7 @@ impl UnitChunkShared {
         debug_assert!(self.num_rows() == 1);
         self.components
             .values()
+            .flat_map(|per_desc| per_desc.values())
             .map(|list_array| {
                 let array = list_array.value(0);
                 array.validity().map_or_else(
@@ -262,8 +263,7 @@ impl UnitChunkShared {
         component_name: &ComponentName,
     ) -> Option<Box<dyn ArrowArray>> {
         debug_assert!(self.num_rows() == 1);
-        self.components
-            .get(component_name)
+        self.get_first_component(component_name)
             .map(|list_array| list_array.value(0))
     }
 

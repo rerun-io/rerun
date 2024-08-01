@@ -71,7 +71,14 @@ impl ChunkStoreSubscriber for MaxImageDimensionSubscriber {
                 continue;
             }
 
-            if let Some(all_tensor_data) = event.diff.chunk.components().get(&TensorData::name()) {
+            if let Some(all_tensor_data) = event
+                .diff
+                .chunk
+                .components()
+                .get(&TensorData::name())
+                // TODO
+                .and_then(|per_desc| per_desc.values().next())
+            {
                 for tensor_data in all_tensor_data.iter().filter_map(|array| {
                     array.and_then(|array| TensorData::from_arrow(&*array).ok()?.into_iter().next())
                 }) {

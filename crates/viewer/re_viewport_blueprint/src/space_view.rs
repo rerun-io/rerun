@@ -278,7 +278,11 @@ impl SpaceViewBlueprint {
                                     .query_caches2()
                                     .latest_at(blueprint.store(), query, path, [component_name])
                                     .component_batch_raw(&component_name);
-                                array.map(|array| (component_name, array))
+
+                                // TODO
+                                let desc = re_types::ComponentDescriptor::new(component_name);
+
+                                array.map(|array| (desc, array))
                             }),
                     )
                     .build();

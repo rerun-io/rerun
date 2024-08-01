@@ -62,7 +62,7 @@ impl Chunk {
         timeline: &Timeline,
         component_name: &ComponentName,
     ) -> impl Iterator<Item = (TimeInt, RowId)> + '_ {
-        let Some(list_array) = self.components.get(component_name) else {
+        let Some(list_array) = self.get_first_component(component_name) else {
             return Either::Left(std::iter::empty());
         };
 
@@ -106,7 +106,7 @@ impl Chunk {
         &self,
         component_name: &ComponentName,
     ) -> impl Iterator<Item = (usize, usize)> + '_ {
-        let Some(list_array) = self.components.get(component_name) else {
+        let Some(list_array) = self.get_first_component(component_name) else {
             return Either::Left(std::iter::empty());
         };
 
@@ -137,7 +137,7 @@ impl Chunk {
         &self,
         component_name: &ComponentName,
     ) -> impl Iterator<Item = Box<dyn ArrowArray>> + '_ {
-        let Some(list_array) = self.components.get(component_name) else {
+        let Some(list_array) = self.get_first_component(component_name) else {
             return Either::Left(std::iter::empty());
         };
 
@@ -162,7 +162,7 @@ impl Chunk {
         &self,
         component_name: &ComponentName,
     ) -> impl Iterator<Item = &[T]> + '_ {
-        let Some(list_array) = self.components.get(component_name) else {
+        let Some(list_array) = self.get_first_component(component_name) else {
             return Either::Left(std::iter::empty());
         };
 
@@ -207,7 +207,7 @@ impl Chunk {
     where
         [T; N]: bytemuck::Pod,
     {
-        let Some(list_array) = self.components.get(component_name) else {
+        let Some(list_array) = self.get_first_component(component_name) else {
             return Either::Left(std::iter::empty());
         };
 
@@ -265,7 +265,7 @@ impl Chunk {
         &self,
         component_name: &ComponentName,
     ) -> impl Iterator<Item = Vec<ArrowString>> + '_ {
-        let Some(list_array) = self.components.get(component_name) else {
+        let Some(list_array) = self.get_first_component(component_name) else {
             return Either::Left(std::iter::empty());
         };
 
@@ -315,7 +315,7 @@ impl Chunk {
         &self,
         component_name: &ComponentName,
     ) -> impl Iterator<Item = Vec<ArrowBuffer<T>>> + '_ {
-        let Some(list_array) = self.components.get(component_name) else {
+        let Some(list_array) = self.get_first_component(component_name) else {
             return Either::Left(std::iter::empty());
         };
 
@@ -499,7 +499,7 @@ impl Chunk {
     pub fn iter_component<C: Component>(
         &self,
     ) -> ChunkComponentIter<C, impl Iterator<Item = (usize, usize)> + '_> {
-        let Some(list_array) = self.components.get(&C::name()) else {
+        let Some(list_array) = self.get_first_component(&C::name()) else {
             return ChunkComponentIter {
                 values: vec![],
                 offsets: Either::Left(std::iter::empty()),

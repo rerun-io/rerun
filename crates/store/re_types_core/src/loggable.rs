@@ -1,7 +1,8 @@
 use std::sync::Arc;
 
 use crate::{
-    result::_Backtrace, DeserializationResult, ResultExt as _, SerializationResult, SizeBytes,
+    result::_Backtrace, ComponentDescriptor, DeserializationResult, ResultExt as _,
+    SerializationResult, SizeBytes,
 };
 
 #[allow(unused_imports)] // used in docstrings
@@ -147,7 +148,13 @@ impl<L: Loggable<Name = DatatypeName>> Datatype for L {}
 ///
 /// This is not enforced via a trait bound, since it's only necessary for components known to the Rerun Viewer.
 /// It is not a hard requirement for custom components that are only used on the SDK side.
-pub trait Component: Loggable<Name = ComponentName> {}
+pub trait Component: Loggable<Name = ComponentName> {
+    // TODO
+    #[inline]
+    fn descriptor() -> ComponentDescriptor {
+        ComponentDescriptor::new(Self::name())
+    }
+}
 
 impl<L: Loggable<Name = ComponentName>> Component for L {}
 

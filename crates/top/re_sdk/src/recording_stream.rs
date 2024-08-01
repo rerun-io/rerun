@@ -938,12 +938,20 @@ impl RecordingStream {
                     })?
                 };
 
-                Ok((batch.name(), array))
+                Ok((batch.descriptor(), array))
             })
             .collect();
 
-        let components: BTreeMap<ComponentName, ArrowListArray<i32>> =
-            components?.into_iter().collect();
+        let components = {
+            let mut per_name = re_chunk::Components::new();
+            for (component_desc, list_array) in components? {
+                per_name
+                    .entry(component_desc.component_name)
+                    .or_default()
+                    .insert(component_desc, list_array);
+            }
+            per_name
+        };
 
         let mut all_lengths = timelines
             .values()
@@ -1116,10 +1124,12 @@ impl RecordingStream {
             .map(|comp_batch| {
                 comp_batch
                     .to_arrow()
-                    .map(|array| (comp_batch.name(), array))
+                    .map(|array| (comp_batch.descriptor(), array))
             })
             .collect();
         let components: BTreeMap<_, _> = comp_batches?.into_iter().collect();
+
+        dbg!(&components);
 
         // NOTE: The timepoint is irrelevant, the `RecordingStream` will overwrite it using its
         // internal clock.

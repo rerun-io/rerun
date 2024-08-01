@@ -1,7 +1,7 @@
 use re_chunk::{ArrowArray, RowId};
 use re_chunk_store::external::re_chunk::Chunk;
 use re_log_types::{EntityPath, TimeInt, TimePoint, Timeline};
-use re_types::{AsComponents, ComponentBatch, ComponentName};
+use re_types::{AsComponents, ComponentBatch, ComponentDescriptor, ComponentName};
 
 use crate::{StoreContext, SystemCommand, SystemCommandSender as _, ViewerContext};
 
@@ -91,8 +91,11 @@ impl ViewerContext<'_> {
     ) {
         let timepoint = self.store_context.blueprint_timepoint_for_writes();
 
+        // TODO
+        let desc = ComponentDescriptor::new(component_name);
+
         let chunk = match Chunk::builder(entity_path.clone())
-            .with_row(RowId::new(), timepoint.clone(), [(component_name, array)])
+            .with_row(RowId::new(), timepoint.clone(), [(desc, array)])
             .build()
         {
             Ok(chunk) => chunk,
@@ -172,13 +175,16 @@ impl ViewerContext<'_> {
             return;
         };
 
+        // TODO
+        let desc = ComponentDescriptor::new(component_name);
+
         let timepoint = self.store_context.blueprint_timepoint_for_writes();
         let chunk = Chunk::builder(entity_path.clone())
             .with_row(
                 RowId::new(),
                 timepoint,
                 [(
-                    component_name,
+                    desc,
                     re_chunk::external::arrow2::array::new_empty_array(datatype),
                 )],
             )

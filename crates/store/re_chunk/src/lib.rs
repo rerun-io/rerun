@@ -21,7 +21,7 @@ pub mod util;
 mod batcher;
 
 pub use self::builder::{ChunkBuilder, ChunkTimelineBuilder};
-pub use self::chunk::{Chunk, ChunkError, ChunkResult, ChunkTimeline};
+pub use self::chunk::{Chunk, ChunkError, ChunkResult, ChunkTimeline, Components};
 pub use self::helpers::{ChunkShared, UnitChunkShared};
 pub use self::id::{ChunkId, RowId};
 pub use self::latest_at::LatestAtQuery;

@@ -13,9 +13,9 @@
 #![allow(clippy::too_many_lines)]
 
 use ::re_types_core::external::arrow2;
-use ::re_types_core::ComponentName;
 use ::re_types_core::SerializationResult;
 use ::re_types_core::{ComponentBatch, MaybeOwnedComponentBatch};
+use ::re_types_core::{ComponentDescriptor, ComponentName};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Archetype**: One or more transforms between the parent and the current entity which are *not* propagated in the transform hierarchy.
@@ -157,6 +157,74 @@ static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 6usize]> =
         ]
     });
 
+static REQUIRED_COMPONENT_DESCRIPTORS: once_cell::sync::Lazy<[ComponentDescriptor; 0usize]> =
+    once_cell::sync::Lazy::new(|| []);
+
+static RECOMMENDED_COMPONENT_DESCRIPTORS: once_cell::sync::Lazy<[ComponentDescriptor; 0usize]> =
+    once_cell::sync::Lazy::new(|| []);
+
+static OPTIONAL_COMPONENT_DESCRIPTORS: once_cell::sync::Lazy<[ComponentDescriptor; 5usize]> =
+    once_cell::sync::Lazy::new(|| {
+        [
+            ComponentDescriptor {
+                archetype_name: Some("LeafTransforms3D".into()),
+                component_name: "rerun.components.LeafTranslation3D".into(),
+                tag: Some("translations".into()),
+            },
+            ComponentDescriptor {
+                archetype_name: Some("LeafTransforms3D".into()),
+                component_name: "rerun.components.LeafRotationAxisAngle".into(),
+                tag: Some("rotation_axis_angles".into()),
+            },
+            ComponentDescriptor {
+                archetype_name: Some("LeafTransforms3D".into()),
+                component_name: "rerun.components.LeafRotationQuat".into(),
+                tag: Some("quaternions".into()),
+            },
+            ComponentDescriptor {
+                archetype_name: Some("LeafTransforms3D".into()),
+                component_name: "rerun.components.LeafScale3D".into(),
+                tag: Some("scales".into()),
+            },
+            ComponentDescriptor {
+                archetype_name: Some("LeafTransforms3D".into()),
+                component_name: "rerun.components.LeafTransformMat3x3".into(),
+                tag: Some("mat3x3".into()),
+            },
+        ]
+    });
+
+static ALL_COMPONENT_DESCRIPTORS: once_cell::sync::Lazy<[ComponentDescriptor; 5usize]> =
+    once_cell::sync::Lazy::new(|| {
+        [
+            ComponentDescriptor {
+                archetype_name: Some("LeafTransforms3D".into()),
+                component_name: "rerun.components.LeafTranslation3D".into(),
+                tag: Some("translations".into()),
+            },
+            ComponentDescriptor {
+                archetype_name: Some("LeafTransforms3D".into()),
+                component_name: "rerun.components.LeafRotationAxisAngle".into(),
+                tag: Some("rotation_axis_angles".into()),
+            },
+            ComponentDescriptor {
+                archetype_name: Some("LeafTransforms3D".into()),
+                component_name: "rerun.components.LeafRotationQuat".into(),
+                tag: Some("quaternions".into()),
+            },
+            ComponentDescriptor {
+                archetype_name: Some("LeafTransforms3D".into()),
+                component_name: "rerun.components.LeafScale3D".into(),
+                tag: Some("scales".into()),
+            },
+            ComponentDescriptor {
+                archetype_name: Some("LeafTransforms3D".into()),
+                component_name: "rerun.components.LeafTransformMat3x3".into(),
+                tag: Some("mat3x3".into()),
+            },
+        ]
+    });
+
 impl LeafTransforms3D {
     /// The total number of components in the archetype: 0 required, 1 recommended, 5 optional
     pub const NUM_COMPONENTS: usize = 6usize;
@@ -202,6 +270,26 @@ impl ::re_types_core::Archetype for LeafTransforms3D {
     #[inline]
     fn all_components() -> ::std::borrow::Cow<'static, [ComponentName]> {
         ALL_COMPONENTS.as_slice().into()
+    }
+
+    #[inline]
+    fn required_component_descriptors() -> ::std::borrow::Cow<'static, [ComponentDescriptor]> {
+        REQUIRED_COMPONENT_DESCRIPTORS.as_slice().into()
+    }
+
+    #[inline]
+    fn recommended_component_descriptors() -> ::std::borrow::Cow<'static, [ComponentDescriptor]> {
+        RECOMMENDED_COMPONENT_DESCRIPTORS.as_slice().into()
+    }
+
+    #[inline]
+    fn optional_component_descriptors() -> ::std::borrow::Cow<'static, [ComponentDescriptor]> {
+        OPTIONAL_COMPONENT_DESCRIPTORS.as_slice().into()
+    }
+
+    #[inline]
+    fn all_component_descriptors() -> ::std::borrow::Cow<'static, [ComponentDescriptor]> {
+        ALL_COMPONENT_DESCRIPTORS.as_slice().into()
     }
 
     #[inline]

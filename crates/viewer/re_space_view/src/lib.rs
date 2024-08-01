@@ -47,6 +47,8 @@ pub fn diff_component_filter<T: re_types_core::Component>(
         .chunk
         .components()
         .get(&T::name())
+        // TODO
+        .and_then(|per_desc| per_desc.values().next())
         .map_or(false, |list_array| {
             list_array
                 .iter()

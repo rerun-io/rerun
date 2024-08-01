@@ -267,6 +267,7 @@ impl ChunkStore {
                     .flat_map(|temporal_chunks_per_component| {
                         temporal_chunks_per_component.values()
                     })
+                    .flat_map(|temporal_chunks_per_desc| temporal_chunks_per_desc.values())
                     .flat_map(|chunk_id_sets| chunk_id_sets.per_start_time.values())
                     .flat_map(|chunk_id_set| chunk_id_set.iter())
                     .any(|chunk_id| self.chunks_per_chunk_id.contains_key(chunk_id))
@@ -293,6 +294,7 @@ impl ChunkStore {
             .is_some_and(|temporal_chunks_per_component| {
                 temporal_chunks_per_component
                     .values()
+                    .flat_map(|temporal_chunks_per_desc| temporal_chunks_per_desc.values())
                     .flat_map(|chunk_id_sets| chunk_id_sets.per_start_time.values())
                     .flat_map(|chunk_id_set| chunk_id_set.iter())
                     .any(|chunk_id| self.chunks_per_chunk_id.contains_key(chunk_id))
@@ -315,7 +317,10 @@ impl ChunkStore {
         let temporal_chunk_ids_per_component = temporal_chunk_ids_per_timeline.get(timeline)?;
 
         let mut time_min = TimeInt::MAX;
-        for temporal_chunk_ids_per_time in temporal_chunk_ids_per_component.values() {
+        for temporal_chunk_ids_per_time in temporal_chunk_ids_per_component
+            .values()
+            .flat_map(|temporal_chunks_per_desc| temporal_chunks_per_desc.values())
+        {
             let Some(time) = temporal_chunk_ids_per_time
                 .per_start_time
                 .first_key_value()
@@ -399,7 +404,10 @@ impl ChunkStore {
                 temporal_chunk_ids_per_timeline.get(&query.timeline())
             })
             .and_then(|temporal_chunk_ids_per_component| {
-                temporal_chunk_ids_per_component.get(&component_name)
+                temporal_chunk_ids_per_component
+                    .get(&component_name)
+                    // TODO: pattern matched APIs
+                    .and_then(|per_desc| per_desc.first_key_value().map(|(_, v)| v))
             })
             .and_then(|temporal_chunk_ids_per_time| {
                 self.latest_at(query, temporal_chunk_ids_per_time)
@@ -543,7 +551,10 @@ impl ChunkStore {
                         temporal_chunk_ids_per_timeline.get(&query.timeline())
                     })
                     .and_then(|temporal_chunk_ids_per_component| {
-                        temporal_chunk_ids_per_component.get(&component_name)
+                        temporal_chunk_ids_per_component
+                            .get(&component_name)
+                            // TODO: pattern matched APIs
+                            .and_then(|per_desc| per_desc.first_key_value().map(|(_, v)| v))
                     })
                     .into_iter(),
             )
@@ -559,6 +570,8 @@ impl ChunkStore {
                         time_chunk
                             .time_range_per_component(chunk.components())
                             .get(&component_name)
+                            // TODO: pattern matched APIs
+                            .and_then(|per_desc| per_desc.values().next())
                             .map_or(false, |time_range| time_range.intersects(query.range()))
                     })
             })
@@ -736,15 +749,19 @@ impl ChunkStore {
             .and_then(|temporal_chunk_ids_per_component| {
                 temporal_chunk_ids_per_component.get(&component_name)
             })
-            .map_or(0, |chunk_id_sets| {
-                chunk_id_sets
+            // TODO: pattern matched API
+            .iter()
+            .flat_map(|per_desc| per_desc.values())
+            .map(|chunk_id_set| {
+                chunk_id_set
                     .per_start_time
                     .values()
                     .flat_map(|chunk_ids| chunk_ids.iter())
                     .filter_map(|chunk_id| self.chunks_per_chunk_id.get(chunk_id))
                     .filter_map(|chunk| chunk.num_events_for_component(component_name))
-                    .sum()
+                    .sum::<u64>()
             })
+            .sum()
     }
 
     /// Returns number of bytes used for an entity on a specific timeline.

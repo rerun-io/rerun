@@ -7,7 +7,7 @@ use nohash_hasher::IntMap;
 
 use re_chunk::{Chunk, ChunkId, RowId};
 use re_log_types::{EntityPath, StoreId, TimeInt, Timeline};
-use re_types_core::ComponentName;
+use re_types_core::{ComponentDescriptor, ComponentName};
 
 use crate::{ChunkStoreChunkStats, ChunkStoreError, ChunkStoreResult};
 
@@ -254,7 +254,11 @@ pub struct ChunkIdSetPerTime {
     pub(crate) per_end_time: BTreeMap<TimeInt, ChunkIdSet>,
 }
 
-pub type ChunkIdSetPerTimePerComponent = BTreeMap<ComponentName, ChunkIdSetPerTime>;
+pub type ChunkIdSetPerTimePerDescriptor = BTreeMap<ComponentDescriptor, ChunkIdSetPerTime>;
+
+// TODO: all of these are missing a PerDescriptor, technically
+
+pub type ChunkIdSetPerTimePerComponent = BTreeMap<ComponentName, ChunkIdSetPerTimePerDescriptor>;
 
 pub type ChunkIdSetPerTimePerComponentPerTimeline =
     BTreeMap<Timeline, ChunkIdSetPerTimePerComponent>;

@@ -1,12 +1,13 @@
 use std::collections::BTreeMap;
 
+use ahash::HashMap;
 use arrow2::array::{
     Array as ArrowArray, ListArray as ArrowListArray, PrimitiveArray as ArrowPrimitiveArray,
     StructArray as ArrowStructArray,
 };
 use itertools::{izip, Itertools};
 
-use crate::{Chunk, ChunkError, ChunkId, ChunkResult, ChunkTimeline};
+use crate::{chunk::Components, Chunk, ChunkError, ChunkId, ChunkResult, ChunkTimeline};
 
 // ---
 
@@ -72,14 +73,25 @@ impl Chunk {
                 .collect()
         };
 
+        let lhs_per_desc: HashMap<_, _> = cl
+            .components
+            .values()
+            .flat_map(|per_desc| per_desc.iter())
+            .collect();
+        let rhs_per_desc: HashMap<_, _> = cr
+            .components
+            .values()
+            .flat_map(|per_desc| per_desc.iter())
+            .collect();
+
         // First pass: concat right onto left.
-        let mut components: BTreeMap<_, _> = {
+        let mut components: HashMap<_, _> = {
             re_tracing::profile_scope!("components (r2l)");
-            self.components
+            lhs_per_desc
                 .iter()
-                .filter_map(|(component_name, lhs_list_array)| {
-                    re_tracing::profile_scope!(format!("{}", component_name.as_str()));
-                    if let Some(rhs_list_array) = rhs.components.get(component_name) {
+                .filter_map(|(component_desc, &lhs_list_array)| {
+                    re_tracing::profile_scope!(component_desc.to_string());
+                    if let Some(&rhs_list_array) = rhs_per_desc.get(component_desc) {
                         re_tracing::profile_scope!(format!(
                             "concat (lhs={} rhs={})",
                             re_format::format_uint(lhs_list_array.values().len()),
@@ -96,11 +108,11 @@ impl Chunk {
                             .downcast_ref::<ArrowListArray<i32>>()?
                             .clone();
 
-                        Some((*component_name, list_array))
+                        Some((component_desc.clone(), list_array))
                     } else {
                         re_tracing::profile_scope!("pad");
                         Some((
-                            *component_name,
+                            component_desc.clone(),
                             crate::util::pad_list_array_back(
                                 lhs_list_array,
                                 self.num_rows() + rhs.num_rows(),
@@ -114,17 +126,17 @@ impl Chunk {
         // Second pass: concat left onto right, where necessary.
         components.extend({
             re_tracing::profile_scope!("components (l2r)");
-            rhs.components
+            rhs_per_desc
                 .iter()
-                .filter_map(|(component_name, rhs_list_array)| {
-                    if components.contains_key(component_name) {
+                .filter_map(|(component_desc, &rhs_list_array)| {
+                    if components.contains_key(component_desc) {
                         // Already did that one during the first pass.
                         return None;
                     }
 
-                    re_tracing::profile_scope!(component_name.as_str());
+                    re_tracing::profile_scope!(component_desc.to_string());
 
-                    if let Some(lhs_list_array) = self.components.get(component_name) {
+                    if let Some(&lhs_list_array) = lhs_per_desc.get(component_desc) {
                         re_tracing::profile_scope!(format!(
                             "concat (lhs={} rhs={})",
                             re_format::format_uint(lhs_list_array.values().len()),
@@ -141,11 +153,11 @@ impl Chunk {
                             .downcast_ref::<ArrowListArray<i32>>()?
                             .clone();
 
-                        Some((*component_name, list_array))
+                        Some((component_desc.clone(), list_array))
                     } else {
                         re_tracing::profile_scope!("pad");
                         Some((
-                            *component_name,
+                            component_desc.clone(),
                             crate::util::pad_list_array_front(
                                 rhs_list_array,
                                 self.num_rows() + rhs.num_rows(),
@@ -155,6 +167,17 @@ impl Chunk {
                 })
                 .collect_vec()
         });
+
+        let components = {
+            let mut per_name = Components::new();
+            for (component_desc, list_array) in components {
+                per_name
+                    .entry(component_desc.component_name)
+                    .or_default()
+                    .insert(component_desc.clone(), list_array);
+            }
+            per_name
+        };
 
         let chunk = Self {
             id: ChunkId::new(),
@@ -221,9 +244,14 @@ impl Chunk {
     #[inline]
     pub fn same_datatypes(&self, rhs: &Self) -> bool {
         self.components
-            .iter()
-            .all(|(component_name, lhs_list_array)| {
-                if let Some(rhs_list_array) = rhs.components.get(component_name) {
+            .values()
+            .flat_map(|per_desc| per_desc.iter())
+            .all(|(component_desc, lhs_list_array)| {
+                if let Some(rhs_list_array) = rhs
+                    .components
+                    .get(&component_desc.component_name)
+                    .and_then(|per_desc| per_desc.get(component_desc))
+                {
                     lhs_list_array.data_type() == rhs_list_array.data_type()
                 } else {
                     true

@@ -53,6 +53,10 @@ pub trait AsComponents {
 
     // ---
 
+    // TODO: it's what you want, until you want to specify your arch name into it!
+    //
+    // TODO: that thing is a mess and is effectively only used for tes ting. it needs to go.
+    //
     /// Serializes all non-null [`Component`]s of this bundle into Arrow arrays.
     ///
     /// The default implementation will simply serialize the result of [`Self::as_component_batches`]
@@ -80,6 +84,7 @@ pub trait AsComponents {
 mod archetype;
 mod arrow_buffer;
 mod arrow_string;
+mod component_descriptor;
 mod loggable;
 mod loggable_batch;
 pub mod reflection;
@@ -95,6 +100,7 @@ pub use self::{
     },
     arrow_buffer::ArrowBuffer,
     arrow_string::ArrowString,
+    component_descriptor::ComponentDescriptor,
     loggable::{Component, ComponentName, ComponentNameSet, Datatype, DatatypeName, Loggable},
     loggable_batch::{ComponentBatch, DatatypeBatch, LoggableBatch, MaybeOwnedComponentBatch},
     result::{

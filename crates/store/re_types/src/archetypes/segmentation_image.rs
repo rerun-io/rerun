@@ -13,9 +13,9 @@
 #![allow(clippy::too_many_lines)]
 
 use ::re_types_core::external::arrow2;
-use ::re_types_core::ComponentName;
 use ::re_types_core::SerializationResult;
 use ::re_types_core::{ComponentBatch, MaybeOwnedComponentBatch};
+use ::re_types_core::{ComponentDescriptor, ComponentName};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Archetype**: An image made up of integer [`components::ClassId`][crate::components::ClassId]s.
@@ -138,6 +138,77 @@ static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 6usize]> =
         ]
     });
 
+static REQUIRED_COMPONENT_DESCRIPTORS: once_cell::sync::Lazy<[ComponentDescriptor; 3usize]> =
+    once_cell::sync::Lazy::new(|| {
+        [
+            ComponentDescriptor {
+                archetype_name: Some("SegmentationImage".into()),
+                component_name: "rerun.components.Blob".into(),
+                tag: Some("data".into()),
+            },
+            ComponentDescriptor {
+                archetype_name: Some("SegmentationImage".into()),
+                component_name: "rerun.components.Resolution2D".into(),
+                tag: Some("resolution".into()),
+            },
+            ComponentDescriptor {
+                archetype_name: Some("SegmentationImage".into()),
+                component_name: "rerun.components.ChannelDataType".into(),
+                tag: Some("data_type".into()),
+            },
+        ]
+    });
+
+static RECOMMENDED_COMPONENT_DESCRIPTORS: once_cell::sync::Lazy<[ComponentDescriptor; 0usize]> =
+    once_cell::sync::Lazy::new(|| []);
+
+static OPTIONAL_COMPONENT_DESCRIPTORS: once_cell::sync::Lazy<[ComponentDescriptor; 2usize]> =
+    once_cell::sync::Lazy::new(|| {
+        [
+            ComponentDescriptor {
+                archetype_name: Some("SegmentationImage".into()),
+                component_name: "rerun.components.Opacity".into(),
+                tag: Some("opacity".into()),
+            },
+            ComponentDescriptor {
+                archetype_name: Some("SegmentationImage".into()),
+                component_name: "rerun.components.DrawOrder".into(),
+                tag: Some("draw_order".into()),
+            },
+        ]
+    });
+
+static ALL_COMPONENT_DESCRIPTORS: once_cell::sync::Lazy<[ComponentDescriptor; 5usize]> =
+    once_cell::sync::Lazy::new(|| {
+        [
+            ComponentDescriptor {
+                archetype_name: Some("SegmentationImage".into()),
+                component_name: "rerun.components.Blob".into(),
+                tag: Some("data".into()),
+            },
+            ComponentDescriptor {
+                archetype_name: Some("SegmentationImage".into()),
+                component_name: "rerun.components.Resolution2D".into(),
+                tag: Some("resolution".into()),
+            },
+            ComponentDescriptor {
+                archetype_name: Some("SegmentationImage".into()),
+                component_name: "rerun.components.ChannelDataType".into(),
+                tag: Some("data_type".into()),
+            },
+            ComponentDescriptor {
+                archetype_name: Some("SegmentationImage".into()),
+                component_name: "rerun.components.Opacity".into(),
+                tag: Some("opacity".into()),
+            },
+            ComponentDescriptor {
+                archetype_name: Some("SegmentationImage".into()),
+                component_name: "rerun.components.DrawOrder".into(),
+                tag: Some("draw_order".into()),
+            },
+        ]
+    });
+
 impl SegmentationImage {
     /// The total number of components in the archetype: 3 required, 1 recommended, 2 optional
     pub const NUM_COMPONENTS: usize = 6usize;
@@ -183,6 +254,26 @@ impl ::re_types_core::Archetype for SegmentationImage {
     #[inline]
     fn all_components() -> ::std::borrow::Cow<'static, [ComponentName]> {
         ALL_COMPONENTS.as_slice().into()
+    }
+
+    #[inline]
+    fn required_component_descriptors() -> ::std::borrow::Cow<'static, [ComponentDescriptor]> {
+        REQUIRED_COMPONENT_DESCRIPTORS.as_slice().into()
+    }
+
+    #[inline]
+    fn recommended_component_descriptors() -> ::std::borrow::Cow<'static, [ComponentDescriptor]> {
+        RECOMMENDED_COMPONENT_DESCRIPTORS.as_slice().into()
+    }
+
+    #[inline]
+    fn optional_component_descriptors() -> ::std::borrow::Cow<'static, [ComponentDescriptor]> {
+        OPTIONAL_COMPONENT_DESCRIPTORS.as_slice().into()
+    }
+
+    #[inline]
+    fn all_component_descriptors() -> ::std::borrow::Cow<'static, [ComponentDescriptor]> {
+        ALL_COMPONENT_DESCRIPTORS.as_slice().into()
     }
 
     #[inline]

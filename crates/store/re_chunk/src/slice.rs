@@ -27,7 +27,7 @@ impl Chunk {
         row_id: RowId,
         component_name: &ComponentName,
     ) -> Option<Box<dyn ArrowArray>> {
-        let list_array = self.components.get(component_name)?;
+        let list_array = self.get_first_component(component_name)?;
 
         if self.is_sorted() {
             let row_id_128 = row_id.as_u128();
@@ -101,8 +101,19 @@ impl Chunk {
                 .collect(),
             components: components
                 .iter()
-                .map(|(component_name, list_array)| {
-                    (*component_name, list_array.clone().sliced(index, len))
+                .map(|(component_name, per_desc)| {
+                    (
+                        *component_name,
+                        per_desc
+                            .iter()
+                            .map(|(component_desc, list_array)| {
+                                (
+                                    component_desc.clone(),
+                                    list_array.clone().sliced(index, len),
+                                )
+                            })
+                            .collect(),
+                    )
                 })
                 .collect(),
         };
@@ -320,7 +331,8 @@ impl Chunk {
             return self.clone();
         }
 
-        let Some(component_list_array) = components.get(&component_name_pov) else {
+        // TODO: this one _especially_ makes no sense :)
+        let Some(component_list_array) = self.get_first_component(&component_name_pov) else {
             return self.clone();
         };
 
@@ -344,27 +356,37 @@ impl Chunk {
                 .collect(),
             components: components
                 .iter()
-                .map(|(&component_name, list_array)| {
-                    let filtered = crate::util::filter_array(list_array, &validity_filter);
-                    let filtered = if component_name == component_name_pov {
-                        // Make sure we fully remove the validity bitmap for the densified
-                        // component.
-                        // This will allow further operations on this densified chunk to take some
-                        // very optimized paths.
+                // TODO: deeply broken now!
+                .map(|(&component_name, per_desc)| {
+                    (
+                        component_name,
+                        per_desc
+                            .iter()
+                            .map(|(component_desc, list_array)| {
+                                let filtered =
+                                    crate::util::filter_array(list_array, &validity_filter);
+                                let filtered = if component_name == component_name_pov {
+                                    // Make sure we fully remove the validity bitmap for the densified
+                                    // component.
+                                    // This will allow further operations on this densified chunk to take some
+                                    // very optimized paths.
 
-                        #[allow(clippy::unwrap_used)]
-                        filtered
-                            .with_validity(None)
-                            .as_any()
-                            .downcast_ref::<ListArray<i32>>()
-                            // Unwrap: cannot possibly fail -- going from a ListArray back to a ListArray.
-                            .unwrap()
-                            .clone()
-                    } else {
-                        filtered
-                    };
+                                    #[allow(clippy::unwrap_used)]
+                                    filtered
+                                        .with_validity(None)
+                                        .as_any()
+                                        .downcast_ref::<ListArray<i32>>()
+                                        // Unwrap: cannot possibly fail -- going from a ListArray back to a ListArray.
+                                        .unwrap()
+                                        .clone()
+                                } else {
+                                    filtered
+                                };
 
-                    (component_name, filtered)
+                                (component_desc.clone(), filtered)
+                            })
+                            .collect(),
+                    )
                 })
                 .collect(),
         };
@@ -420,10 +442,18 @@ impl Chunk {
                 .collect(),
             components: components
                 .iter()
-                .map(|(&component_name, list_array)| {
+                .map(|(&component_name, per_desc)| {
                     (
                         component_name,
-                        ListArray::new_empty(list_array.data_type().clone()),
+                        per_desc
+                            .iter()
+                            .map(|(component_desc, list_array)| {
+                                (
+                                    component_desc.clone(),
+                                    ListArray::new_empty(list_array.data_type().clone()),
+                                )
+                            })
+                            .collect(),
                     )
                 })
                 .collect(),

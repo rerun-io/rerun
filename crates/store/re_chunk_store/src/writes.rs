@@ -57,42 +57,51 @@ impl ChunkStore {
 
             let row_id_range_per_component = chunk.row_id_range_per_component();
 
-            for (&component_name, list_array) in chunk.components() {
-                let is_empty = list_array
-                    .validity()
-                    .map_or(false, |validity| validity.is_empty());
-                if is_empty {
-                    continue;
-                }
-
-                let Some((_row_id_min, row_id_max)) =
+            for (&component_name, per_desc) in chunk.components() {
+                let Some(row_id_range_per_component) =
                     row_id_range_per_component.get(&component_name)
                 else {
                     continue;
                 };
 
-                self.static_chunk_ids_per_entity
-                    .entry(chunk.entity_path().clone())
-                    .or_default()
-                    .entry(component_name)
-                    .and_modify(|cur_chunk_id| {
-                        // NOTE: When attempting to overwrite static data, the chunk with the most
-                        // recent data within -- according to RowId -- wins.
+                for (component_desc, list_array) in per_desc {
+                    let is_empty = list_array
+                        .validity()
+                        .map_or(false, |validity| validity.is_empty());
+                    if is_empty {
+                        continue;
+                    }
 
-                        let cur_row_id_max = self.chunks_per_chunk_id.get(cur_chunk_id).map_or(
-                            RowId::ZERO,
-                            |chunk| {
-                                chunk
-                                    .row_id_range_per_component()
-                                    .get(&component_name)
-                                    .map_or(RowId::ZERO, |(_, row_id_max)| *row_id_max)
-                            },
-                        );
-                        if *row_id_max > cur_row_id_max {
-                            *cur_chunk_id = chunk.id();
-                        }
-                    })
-                    .or_insert_with(|| chunk.id());
+                    let Some((_row_id_min, row_id_max)) =
+                        row_id_range_per_component.get(component_desc)
+                    else {
+                        continue;
+                    };
+
+                    self.static_chunk_ids_per_entity
+                        .entry(chunk.entity_path().clone())
+                        .or_default()
+                        .entry(component_name)
+                        .and_modify(|cur_chunk_id| {
+                            // NOTE: When attempting to overwrite static data, the chunk with the most
+                            // recent data within -- according to RowId -- wins.
+
+                            let cur_row_id_max = self.chunks_per_chunk_id.get(cur_chunk_id).map_or(
+                                RowId::ZERO,
+                                |chunk| {
+                                    chunk
+                                        .row_id_range_per_component()
+                                        .get(&component_name)
+                                        .and_then(|per_desc| per_desc.get(component_desc))
+                                        .map_or(RowId::ZERO, |(_, row_id_max)| *row_id_max)
+                                },
+                            );
+                            if *row_id_max > cur_row_id_max {
+                                *cur_chunk_id = chunk.id();
+                            }
+                        })
+                        .or_insert_with(|| chunk.id());
+                }
             }
 
             self.static_chunks_stats += ChunkStoreChunkStats::from_chunk(chunk);
@@ -166,27 +175,31 @@ impl ChunkStore {
                     let temporal_chunk_ids_per_component =
                         temporal_chunk_ids_per_timeline.entry(timeline).or_default();
 
-                    for (component_name, time_range) in time_range_per_component {
-                        let temporal_chunk_ids_per_time = temporal_chunk_ids_per_component
-                            .entry(component_name)
-                            .or_default();
+                    for (component_name, time_range_per_desc) in time_range_per_component {
+                        for (component_desc, time_range) in time_range_per_desc {
+                            let temporal_chunk_ids_per_time = temporal_chunk_ids_per_component
+                                .entry(component_name)
+                                .or_default()
+                                .entry(component_desc.clone())
+                                .or_default();
 
-                        // See `ChunkIdSetPerTime::max_interval_length`'s documentation.
-                        temporal_chunk_ids_per_time.max_interval_length = u64::max(
-                            temporal_chunk_ids_per_time.max_interval_length,
-                            time_range.abs_length(),
-                        );
+                            // See `ChunkIdSetPerTime::max_interval_length`'s documentation.
+                            temporal_chunk_ids_per_time.max_interval_length = u64::max(
+                                temporal_chunk_ids_per_time.max_interval_length,
+                                time_range.abs_length(),
+                            );
 
-                        temporal_chunk_ids_per_time
-                            .per_start_time
-                            .entry(time_range.min())
-                            .or_default()
-                            .insert(chunk_or_compacted.id());
-                        temporal_chunk_ids_per_time
-                            .per_end_time
-                            .entry(time_range.max())
-                            .or_default()
-                            .insert(chunk_or_compacted.id());
+                            temporal_chunk_ids_per_time
+                                .per_start_time
+                                .entry(time_range.min())
+                                .or_default()
+                                .insert(chunk_or_compacted.id());
+                            temporal_chunk_ids_per_time
+                                .per_end_time
+                                .entry(time_range.max())
+                                .or_default()
+                                .insert(chunk_or_compacted.id());
+                        }
                     }
                 }
             }
@@ -263,11 +276,14 @@ impl ChunkStore {
             .or_default()
             .push(chunk.id());
 
-        for (&component_name, list_array) in chunk.components() {
-            self.type_registry.insert(
-                component_name,
-                ArrowListArray::<i32>::get_child_type(list_array.data_type()).clone(),
-            );
+        for (&component_name, per_desc) in chunk.components() {
+            for (component_desc, list_array) in per_desc.first_key_value().iter() {
+                // TODO: should we assert that all components with the same name have the same datatype?
+                self.type_registry.insert(
+                    component_name,
+                    ArrowListArray::<i32>::get_child_type(list_array.data_type()).clone(),
+                );
+            }
         }
 
         let events = if self.config.enable_changelog {
@@ -356,48 +372,56 @@ impl ChunkStore {
                 continue;
             };
 
-            for (component_name, time_range) in time_range_per_component {
-                let Some(temporal_chunk_ids_per_time) =
+            for (component_name, time_range_per_desc) in time_range_per_component {
+                let Some(temporal_chunk_ids_per_desc) =
                     temporal_chunk_ids_per_component.get(&component_name)
                 else {
                     continue;
                 };
 
-                {
-                    // Direct neighbors (before): 1 point each.
-                    if let Some((_data_time, chunk_id_set)) = temporal_chunk_ids_per_time
-                        .per_start_time
-                        .range(..time_range.min())
-                        .next_back()
+                for (component_desc, time_range) in time_range_per_desc {
+                    let Some(temporal_chunk_ids_per_time) =
+                        temporal_chunk_ids_per_desc.get(&component_desc)
+                    else {
+                        continue;
+                    };
+
                     {
-                        for &chunk_id in chunk_id_set {
-                            if check_if_chunk_below_threshold(self, chunk_id) {
-                                *candidates.entry(chunk_id).or_default() += 1;
+                        // Direct neighbors (before): 1 point each.
+                        if let Some((_data_time, chunk_id_set)) = temporal_chunk_ids_per_time
+                            .per_start_time
+                            .range(..time_range.min())
+                            .next_back()
+                        {
+                            for &chunk_id in chunk_id_set {
+                                if check_if_chunk_below_threshold(self, chunk_id) {
+                                    *candidates.entry(chunk_id).or_default() += 1;
+                                }
                             }
                         }
-                    }
 
-                    // Direct neighbors (after): 1 point each.
-                    if let Some((_data_time, chunk_id_set)) = temporal_chunk_ids_per_time
-                        .per_start_time
-                        .range(time_range.max().inc()..)
-                        .next()
-                    {
-                        for &chunk_id in chunk_id_set {
-                            if check_if_chunk_below_threshold(self, chunk_id) {
-                                *candidates.entry(chunk_id).or_default() += 1;
+                        // Direct neighbors (after): 1 point each.
+                        if let Some((_data_time, chunk_id_set)) = temporal_chunk_ids_per_time
+                            .per_start_time
+                            .range(time_range.max().inc()..)
+                            .next()
+                        {
+                            for &chunk_id in chunk_id_set {
+                                if check_if_chunk_below_threshold(self, chunk_id) {
+                                    *candidates.entry(chunk_id).or_default() += 1;
+                                }
                             }
                         }
-                    }
 
-                    let chunk_id_set = temporal_chunk_ids_per_time
-                        .per_start_time
-                        .get(&time_range.min());
+                        let chunk_id_set = temporal_chunk_ids_per_time
+                            .per_start_time
+                            .get(&time_range.min());
 
-                    // Shared start times: 2 points each.
-                    for chunk_id in chunk_id_set.iter().flat_map(|set| set.iter().copied()) {
-                        if check_if_chunk_below_threshold(self, chunk_id) {
-                            *candidates.entry(chunk_id).or_default() += 2;
+                        // Shared start times: 2 points each.
+                        for chunk_id in chunk_id_set.iter().flat_map(|set| set.iter().copied()) {
+                            if check_if_chunk_below_threshold(self, chunk_id) {
+                                *candidates.entry(chunk_id).or_default() += 2;
+                            }
                         }
                     }
                 }

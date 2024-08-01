@@ -13,9 +13,9 @@
 #![allow(clippy::too_many_lines)]
 
 use ::re_types_core::external::arrow2;
-use ::re_types_core::ComponentName;
 use ::re_types_core::SerializationResult;
 use ::re_types_core::{ComponentBatch, MaybeOwnedComponentBatch};
+use ::re_types_core::{ComponentDescriptor, ComponentName};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Archetype**: A transform between two 3D spaces, i.e. a pose.
@@ -244,6 +244,94 @@ static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 8usize]> =
         ]
     });
 
+static REQUIRED_COMPONENT_DESCRIPTORS: once_cell::sync::Lazy<[ComponentDescriptor; 0usize]> =
+    once_cell::sync::Lazy::new(|| []);
+
+static RECOMMENDED_COMPONENT_DESCRIPTORS: once_cell::sync::Lazy<[ComponentDescriptor; 0usize]> =
+    once_cell::sync::Lazy::new(|| []);
+
+static OPTIONAL_COMPONENT_DESCRIPTORS: once_cell::sync::Lazy<[ComponentDescriptor; 7usize]> =
+    once_cell::sync::Lazy::new(|| {
+        [
+            ComponentDescriptor {
+                archetype_name: Some("Transform3D".into()),
+                component_name: "rerun.components.Translation3D".into(),
+                tag: Some("translation".into()),
+            },
+            ComponentDescriptor {
+                archetype_name: Some("Transform3D".into()),
+                component_name: "rerun.components.RotationAxisAngle".into(),
+                tag: Some("rotation_axis_angle".into()),
+            },
+            ComponentDescriptor {
+                archetype_name: Some("Transform3D".into()),
+                component_name: "rerun.components.RotationQuat".into(),
+                tag: Some("quaternion".into()),
+            },
+            ComponentDescriptor {
+                archetype_name: Some("Transform3D".into()),
+                component_name: "rerun.components.Scale3D".into(),
+                tag: Some("scale".into()),
+            },
+            ComponentDescriptor {
+                archetype_name: Some("Transform3D".into()),
+                component_name: "rerun.components.TransformMat3x3".into(),
+                tag: Some("mat3x3".into()),
+            },
+            ComponentDescriptor {
+                archetype_name: Some("Transform3D".into()),
+                component_name: "rerun.components.TransformRelation".into(),
+                tag: Some("relation".into()),
+            },
+            ComponentDescriptor {
+                archetype_name: Some("Transform3D".into()),
+                component_name: "rerun.components.AxisLength".into(),
+                tag: Some("axis_length".into()),
+            },
+        ]
+    });
+
+static ALL_COMPONENT_DESCRIPTORS: once_cell::sync::Lazy<[ComponentDescriptor; 7usize]> =
+    once_cell::sync::Lazy::new(|| {
+        [
+            ComponentDescriptor {
+                archetype_name: Some("Transform3D".into()),
+                component_name: "rerun.components.Translation3D".into(),
+                tag: Some("translation".into()),
+            },
+            ComponentDescriptor {
+                archetype_name: Some("Transform3D".into()),
+                component_name: "rerun.components.RotationAxisAngle".into(),
+                tag: Some("rotation_axis_angle".into()),
+            },
+            ComponentDescriptor {
+                archetype_name: Some("Transform3D".into()),
+                component_name: "rerun.components.RotationQuat".into(),
+                tag: Some("quaternion".into()),
+            },
+            ComponentDescriptor {
+                archetype_name: Some("Transform3D".into()),
+                component_name: "rerun.components.Scale3D".into(),
+                tag: Some("scale".into()),
+            },
+            ComponentDescriptor {
+                archetype_name: Some("Transform3D".into()),
+                component_name: "rerun.components.TransformMat3x3".into(),
+                tag: Some("mat3x3".into()),
+            },
+            ComponentDescriptor {
+                archetype_name: Some("Transform3D".into()),
+                component_name: "rerun.components.TransformRelation".into(),
+                tag: Some("relation".into()),
+            },
+            ComponentDescriptor {
+                archetype_name: Some("Transform3D".into()),
+                component_name: "rerun.components.AxisLength".into(),
+                tag: Some("axis_length".into()),
+            },
+        ]
+    });
+
 impl Transform3D {
     /// The total number of components in the archetype: 0 required, 1 recommended, 7 optional
     pub const NUM_COMPONENTS: usize = 8usize;
@@ -289,6 +377,26 @@ impl ::re_types_core::Archetype for Transform3D {
     #[inline]
     fn all_components() -> ::std::borrow::Cow<'static, [ComponentName]> {
         ALL_COMPONENTS.as_slice().into()
+    }
+
+    #[inline]
+    fn required_component_descriptors() -> ::std::borrow::Cow<'static, [ComponentDescriptor]> {
+        REQUIRED_COMPONENT_DESCRIPTORS.as_slice().into()
+    }
+
+    #[inline]
+    fn recommended_component_descriptors() -> ::std::borrow::Cow<'static, [ComponentDescriptor]> {
+        RECOMMENDED_COMPONENT_DESCRIPTORS.as_slice().into()
+    }
+
+    #[inline]
+    fn optional_component_descriptors() -> ::std::borrow::Cow<'static, [ComponentDescriptor]> {
+        OPTIONAL_COMPONENT_DESCRIPTORS.as_slice().into()
+    }
+
+    #[inline]
+    fn all_component_descriptors() -> ::std::borrow::Cow<'static, [ComponentDescriptor]> {
+        ALL_COMPONENT_DESCRIPTORS.as_slice().into()
     }
 
     #[inline]

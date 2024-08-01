@@ -13,9 +13,9 @@ use arrow2::{
 };
 
 use re_log_types::{EntityPath, Timeline};
-use re_types_core::{Loggable as _, SizeBytes};
+use re_types_core::{ComponentDescriptor, Loggable as _, SizeBytes};
 
-use crate::{Chunk, ChunkError, ChunkId, ChunkResult, ChunkTimeline, RowId};
+use crate::{chunk::Components, Chunk, ChunkError, ChunkId, ChunkResult, ChunkTimeline, RowId};
 
 // ---
 
@@ -87,6 +87,12 @@ impl TransportChunk {
 
     /// The value used to identify a Rerun data column in field-level [`ArrowSchema`] metadata.
     pub const FIELD_METADATA_VALUE_KIND_DATA: &'static str = "data";
+
+    // TODO
+    pub const FIELD_METADATA_KEY_DESC_ARCHETYPE: &'static str = "rerun.archetype_name";
+
+    // TODO
+    pub const FIELD_METADATA_KEY_DESC_TAG: &'static str = "rerun.tag";
 
     /// The marker used to identify whether a column is sorted in field-level [`ArrowSchema`] metadata.
     ///
@@ -192,6 +198,47 @@ impl TransportChunk {
             ), //
         ]
         .into()
+    }
+
+    // TODO
+    #[inline]
+    pub fn field_metadata_component_descriptor(
+        component_desc: &ComponentDescriptor,
+    ) -> ArrowMetadata {
+        component_desc
+            .archetype_name
+            .iter()
+            .copied()
+            .map(|archetype_name| {
+                (
+                    Self::FIELD_METADATA_KEY_DESC_ARCHETYPE.to_owned(),
+                    archetype_name.to_string(),
+                )
+            })
+            .chain(
+                component_desc
+                    .tag
+                    .iter()
+                    .cloned()
+                    .map(|tag| (Self::FIELD_METADATA_KEY_DESC_TAG.to_owned(), tag)),
+            )
+            .collect()
+    }
+
+    #[inline]
+    pub fn component_descriptor_from_field(field: &ArrowField) -> ComponentDescriptor {
+        ComponentDescriptor {
+            archetype_name: field
+                .metadata
+                .get(Self::FIELD_METADATA_KEY_DESC_ARCHETYPE)
+                .cloned()
+                .map(Into::into),
+            component_name: field.name.clone().into(),
+            tag: field
+                .metadata
+                .get(Self::FIELD_METADATA_KEY_DESC_TAG)
+                .cloned(),
+        }
     }
 }
 
@@ -418,12 +465,24 @@ impl Chunk {
         {
             re_tracing::profile_scope!("components");
 
-            for (component_name, data) in components {
-                schema.fields.push(
-                    ArrowField::new(component_name.to_string(), data.data_type().clone(), true)
-                        .with_metadata(TransportChunk::field_metadata_data_column()),
-                );
-                columns.push(data.clone().boxed());
+            for (component_name, per_desc) in components {
+                for (component_desc, list_array) in per_desc {
+                    schema.fields.push(
+                        ArrowField::new(
+                            component_desc.component_name.to_string(),
+                            list_array.data_type().clone(),
+                            true,
+                        )
+                        .with_metadata({
+                            let mut metadata = TransportChunk::field_metadata_data_column();
+                            metadata.extend(TransportChunk::field_metadata_component_descriptor(
+                                component_desc,
+                            ));
+                            metadata
+                        }),
+                    );
+                    columns.push(list_array.clone().boxed());
+                }
             }
         }
 
@@ -545,9 +604,10 @@ impl Chunk {
 
         // Components
         let components = {
-            let mut components = BTreeMap::default();
+            let mut components = Components::default();
 
             for (field, column) in transport.components() {
+                dbg!(&column);
                 let column = column
                     .as_any()
                     .downcast_ref::<ListArray<i32>>()
@@ -558,11 +618,12 @@ impl Chunk {
                         ),
                     })?;
 
+                let component_desc = TransportChunk::component_descriptor_from_field(field);
+
                 if components
-                    .insert(
-                        field.name.clone().into(),
-                        column.clone(), /* refcount */
-                    )
+                    .entry(component_desc.component_name)
+                    .or_default()
+                    .insert(component_desc, column.clone() /* refcount */)
                     .is_some()
                 {
                     return Err(ChunkError::Malformed {
@@ -576,6 +637,8 @@ impl Chunk {
 
             components
         };
+
+        dbg!(&components);
 
         let mut res = Self::new(
             id,

@@ -13,9 +13,9 @@
 #![allow(clippy::too_many_lines)]
 
 use ::re_types_core::external::arrow2;
-use ::re_types_core::ComponentName;
 use ::re_types_core::SerializationResult;
 use ::re_types_core::{ComponentBatch, MaybeOwnedComponentBatch};
+use ::re_types_core::{ComponentDescriptor, ComponentName};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Archetype**: 2D arrows with optional colors, radii, labels, etc.
@@ -144,6 +144,96 @@ static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 8usize]> =
         ]
     });
 
+static REQUIRED_COMPONENT_DESCRIPTORS: once_cell::sync::Lazy<[ComponentDescriptor; 1usize]> =
+    once_cell::sync::Lazy::new(|| {
+        [ComponentDescriptor {
+            archetype_name: Some("Arrows2D".into()),
+            component_name: "rerun.components.Vector2D".into(),
+            tag: Some("vectors".into()),
+        }]
+    });
+
+static RECOMMENDED_COMPONENT_DESCRIPTORS: once_cell::sync::Lazy<[ComponentDescriptor; 1usize]> =
+    once_cell::sync::Lazy::new(|| {
+        [ComponentDescriptor {
+            archetype_name: Some("Arrows2D".into()),
+            component_name: "rerun.components.Position2D".into(),
+            tag: Some("origins".into()),
+        }]
+    });
+
+static OPTIONAL_COMPONENT_DESCRIPTORS: once_cell::sync::Lazy<[ComponentDescriptor; 5usize]> =
+    once_cell::sync::Lazy::new(|| {
+        [
+            ComponentDescriptor {
+                archetype_name: Some("Arrows2D".into()),
+                component_name: "rerun.components.Radius".into(),
+                tag: Some("radii".into()),
+            },
+            ComponentDescriptor {
+                archetype_name: Some("Arrows2D".into()),
+                component_name: "rerun.components.Color".into(),
+                tag: Some("colors".into()),
+            },
+            ComponentDescriptor {
+                archetype_name: Some("Arrows2D".into()),
+                component_name: "rerun.components.Text".into(),
+                tag: Some("labels".into()),
+            },
+            ComponentDescriptor {
+                archetype_name: Some("Arrows2D".into()),
+                component_name: "rerun.components.DrawOrder".into(),
+                tag: Some("draw_order".into()),
+            },
+            ComponentDescriptor {
+                archetype_name: Some("Arrows2D".into()),
+                component_name: "rerun.components.ClassId".into(),
+                tag: Some("class_ids".into()),
+            },
+        ]
+    });
+
+static ALL_COMPONENT_DESCRIPTORS: once_cell::sync::Lazy<[ComponentDescriptor; 7usize]> =
+    once_cell::sync::Lazy::new(|| {
+        [
+            ComponentDescriptor {
+                archetype_name: Some("Arrows2D".into()),
+                component_name: "rerun.components.Vector2D".into(),
+                tag: Some("vectors".into()),
+            },
+            ComponentDescriptor {
+                archetype_name: Some("Arrows2D".into()),
+                component_name: "rerun.components.Position2D".into(),
+                tag: Some("origins".into()),
+            },
+            ComponentDescriptor {
+                archetype_name: Some("Arrows2D".into()),
+                component_name: "rerun.components.Radius".into(),
+                tag: Some("radii".into()),
+            },
+            ComponentDescriptor {
+                archetype_name: Some("Arrows2D".into()),
+                component_name: "rerun.components.Color".into(),
+                tag: Some("colors".into()),
+            },
+            ComponentDescriptor {
+                archetype_name: Some("Arrows2D".into()),
+                component_name: "rerun.components.Text".into(),
+                tag: Some("labels".into()),
+            },
+            ComponentDescriptor {
+                archetype_name: Some("Arrows2D".into()),
+                component_name: "rerun.components.DrawOrder".into(),
+                tag: Some("draw_order".into()),
+            },
+            ComponentDescriptor {
+                archetype_name: Some("Arrows2D".into()),
+                component_name: "rerun.components.ClassId".into(),
+                tag: Some("class_ids".into()),
+            },
+        ]
+    });
+
 impl Arrows2D {
     /// The total number of components in the archetype: 1 required, 2 recommended, 5 optional
     pub const NUM_COMPONENTS: usize = 8usize;
@@ -189,6 +279,26 @@ impl ::re_types_core::Archetype for Arrows2D {
     #[inline]
     fn all_components() -> ::std::borrow::Cow<'static, [ComponentName]> {
         ALL_COMPONENTS.as_slice().into()
+    }
+
+    #[inline]
+    fn required_component_descriptors() -> ::std::borrow::Cow<'static, [ComponentDescriptor]> {
+        REQUIRED_COMPONENT_DESCRIPTORS.as_slice().into()
+    }
+
+    #[inline]
+    fn recommended_component_descriptors() -> ::std::borrow::Cow<'static, [ComponentDescriptor]> {
+        RECOMMENDED_COMPONENT_DESCRIPTORS.as_slice().into()
+    }
+
+    #[inline]
+    fn optional_component_descriptors() -> ::std::borrow::Cow<'static, [ComponentDescriptor]> {
+        OPTIONAL_COMPONENT_DESCRIPTORS.as_slice().into()
+    }
+
+    #[inline]
+    fn all_component_descriptors() -> ::std::borrow::Cow<'static, [ComponentDescriptor]> {
+        ALL_COMPONENT_DESCRIPTORS.as_slice().into()
     }
 
     #[inline]

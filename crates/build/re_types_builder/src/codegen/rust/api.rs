@@ -2,7 +2,7 @@ use std::collections::{BTreeMap, HashSet};
 
 use anyhow::Context as _;
 use camino::{Utf8Path, Utf8PathBuf};
-use itertools::Itertools as _;
+use itertools::Itertools;
 use proc_macro2::TokenStream;
 use quote::{format_ident, quote};
 
@@ -166,7 +166,7 @@ fn generate_object_file(
     code.push_str("use ::re_types_core::external::arrow2;\n");
     code.push_str("use ::re_types_core::SerializationResult;\n");
     code.push_str("use ::re_types_core::{DeserializationResult, DeserializationError};\n");
-    code.push_str("use ::re_types_core::ComponentName;\n");
+    code.push_str("use ::re_types_core::{ComponentDescriptor, ComponentName};\n");
     code.push_str("use ::re_types_core::{ComponentBatch, MaybeOwnedComponentBatch};\n");
 
     // NOTE: `TokenStream`s discard whitespacing information by definition, so we need to
@@ -977,10 +977,10 @@ fn quote_trait_impls_from_obj(
         ObjectKind::Archetype => {
             fn compute_components(
                 obj: &Object,
-                attr: &'static str,
+                requirement_attr_value: &'static str,
                 extras: impl IntoIterator<Item = String>,
             ) -> (usize, TokenStream) {
-                let components = iter_archetype_components(obj, attr)
+                let components = iter_archetype_components(obj, requirement_attr_value)
                     .chain(extras)
                     // Do *not* sort again, we want to preserve the order given by the datatype definition
                     .collect::<Vec<_>>();
@@ -989,6 +989,40 @@ fn quote_trait_impls_from_obj(
                 let quoted_components = quote!(#(#components.into(),)*);
 
                 (num_components, quoted_components)
+            }
+
+            fn compute_component_descriptors(
+                obj: &Object,
+                requirement_attr_value: &'static str,
+            ) -> (usize, TokenStream) {
+                let descriptors = obj
+                    .fields
+                    .iter()
+                    .filter_map(move |field| {
+                        field
+                            .try_get_attr::<String>(requirement_attr_value)
+                            .map(|_| {
+                                let Some(fqname) = field.typ.fqname() else {
+                                    panic!("Archetype field must be an object/union or an array/vector of such")
+                                };
+
+                                let archetype_name = &obj.name;
+                                let component_name = fqname;
+                                let tag = field.snake_case_name();
+
+                                quote!(ComponentDescriptor {
+                                    archetype_name: Some(#archetype_name.into()),
+                                    component_name: #component_name.into(),
+                                    tag: Some(#tag.into()),
+                                })
+                            })
+                    })
+                    .collect_vec();
+
+                let num_descriptors = descriptors.len();
+                let quoted_descriptors = quote!(#(#descriptors,)*);
+
+                (num_descriptors, quoted_descriptors)
             }
 
             let indicator_name = format!("{}Indicator", obj.name);
@@ -1010,6 +1044,15 @@ fn quote_trait_impls_from_obj(
                 "The total number of components in the archetype: {num_required} required, {num_recommended} recommended, {num_optional} optional"
             ));
             let num_all = num_required + num_recommended + num_optional;
+
+            let (num_required_descriptors, required_descriptors) =
+                compute_component_descriptors(obj, ATTR_RERUN_COMPONENT_REQUIRED);
+            let (num_recommended_descriptors, recommended_descriptors) =
+                compute_component_descriptors(obj, ATTR_RERUN_COMPONENT_RECOMMENDED);
+            let (num_optional_descriptors, optional_descriptors) =
+                compute_component_descriptors(obj, ATTR_RERUN_COMPONENT_OPTIONAL);
+            let num_all_descriptors =
+                num_required_descriptors + num_recommended_descriptors + num_optional_descriptors;
 
             let quoted_field_names = obj
                 .fields
@@ -1142,6 +1185,18 @@ fn quote_trait_impls_from_obj(
                 static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; #num_all]> =
                     once_cell::sync::Lazy::new(|| {[#required #recommended #optional]});
 
+                static REQUIRED_COMPONENT_DESCRIPTORS: once_cell::sync::Lazy<[ComponentDescriptor; #num_required_descriptors]> =
+                    once_cell::sync::Lazy::new(|| {[#required_descriptors]});
+
+                static RECOMMENDED_COMPONENT_DESCRIPTORS: once_cell::sync::Lazy<[ComponentDescriptor; #num_recommended_descriptors]> =
+                    once_cell::sync::Lazy::new(|| {[#recommended_descriptors]});
+
+                static OPTIONAL_COMPONENT_DESCRIPTORS: once_cell::sync::Lazy<[ComponentDescriptor; #num_optional_descriptors]> =
+                    once_cell::sync::Lazy::new(|| {[#optional_descriptors]});
+
+                static ALL_COMPONENT_DESCRIPTORS: once_cell::sync::Lazy<[ComponentDescriptor; #num_all_descriptors]> =
+                    once_cell::sync::Lazy::new(|| {[#required_descriptors #recommended_descriptors #optional_descriptors]});
+
                 impl #name {
                     #num_components_docstring
                     pub const NUM_COMPONENTS: usize = #num_all;
@@ -1188,6 +1243,29 @@ fn quote_trait_impls_from_obj(
                     #[inline]
                     fn all_components() -> ::std::borrow::Cow<'static, [ComponentName]>  {
                         ALL_COMPONENTS.as_slice().into()
+                    }
+
+                    // --- TODO ---
+
+                    #[inline]
+                    fn required_component_descriptors() -> ::std::borrow::Cow<'static, [ComponentDescriptor]> {
+                        REQUIRED_COMPONENT_DESCRIPTORS.as_slice().into()
+                    }
+
+                    #[inline]
+                    fn recommended_component_descriptors() -> ::std::borrow::Cow<'static, [ComponentDescriptor]>  {
+                        RECOMMENDED_COMPONENT_DESCRIPTORS.as_slice().into()
+                    }
+
+                    #[inline]
+                    fn optional_component_descriptors() -> ::std::borrow::Cow<'static, [ComponentDescriptor]>  {
+                        OPTIONAL_COMPONENT_DESCRIPTORS.as_slice().into()
+                    }
+
+                    // NOTE: Don't rely on default implementation so that we can keep everything static.
+                    #[inline]
+                    fn all_component_descriptors() -> ::std::borrow::Cow<'static, [ComponentDescriptor]>  {
+                        ALL_COMPONENT_DESCRIPTORS.as_slice().into()
                     }
 
                     #[inline]
