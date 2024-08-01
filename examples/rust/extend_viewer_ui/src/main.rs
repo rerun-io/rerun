@@ -153,18 +153,14 @@ fn component_ui(
     // just show the last value logged for each component:
     let query = re_chunk_store::LatestAtQuery::latest(timeline);
 
-    let results = entity_db.query_caches().latest_at(
+    let results = entity_db.query_caches2().latest_at(
         entity_db.store(),
         &query,
         entity_path,
         [component_name],
     );
-    let component = results
-        .components
-        .get(&component_name)
-        .and_then(|result| result.raw(entity_db.resolver(), component_name));
 
-    if let Some(data) = component {
+    if let Some(data) = results.component_batch_raw(&component_name) {
         egui::ScrollArea::vertical()
             .auto_shrink([false, true])
             .show(ui, |ui| {
