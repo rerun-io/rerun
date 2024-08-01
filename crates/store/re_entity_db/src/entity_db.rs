@@ -63,7 +63,7 @@ pub struct EntityDb {
     data_store: ChunkStore,
 
     /// Query caches for the data in [`Self::data_store`].
-    query_caches2: re_query2::Caches,
+    query_caches2: re_query::Caches,
 
     stats: IngestionStatistics,
 }
@@ -75,7 +75,7 @@ impl EntityDb {
 
     pub fn with_store_config(store_id: StoreId, store_config: ChunkStoreConfig) -> Self {
         let data_store = ChunkStore::new(store_id.clone(), store_config);
-        let query_caches2 = re_query2::Caches::new(&data_store);
+        let query_caches2 = re_query::Caches::new(&data_store);
 
         Self {
             data_source: None,
@@ -115,13 +115,13 @@ impl EntityDb {
     }
 
     #[inline]
-    pub fn query_caches2(&self) -> &re_query2::Caches {
+    pub fn query_caches2(&self) -> &re_query::Caches {
         &self.query_caches2
     }
 
     /// Queries for the given `component_names` using latest-at semantics.
     ///
-    /// See [`re_query2::LatestAtResults`] for more information about how to handle the results.
+    /// See [`re_query::LatestAtResults`] for more information about how to handle the results.
     ///
     /// This is a cached API -- data will be lazily cached upon access.
     #[inline]
@@ -130,7 +130,7 @@ impl EntityDb {
         query: &re_chunk_store::LatestAtQuery,
         entity_path: &EntityPath,
         component_names: impl IntoIterator<Item = re_types_core::ComponentName>,
-    ) -> re_query2::LatestAtResults {
+    ) -> re_query::LatestAtResults {
         self.query_caches2()
             .latest_at(self.store(), query, entity_path, component_names)
     }

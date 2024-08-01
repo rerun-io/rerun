@@ -4,7 +4,7 @@ use std::sync::Arc;
 use re_chunk_store::{Chunk, LatestAtQuery, RangeQuery, UnitChunkShared};
 use re_log_types::external::arrow2::array::Array as ArrowArray;
 use re_log_types::hash::Hash64;
-use re_query2::{LatestAtResults, RangeResults};
+use re_query::{LatestAtResults, RangeResults};
 use re_types_core::ComponentName;
 use re_viewer_context::{DataResult, QueryContext, ViewContext};
 

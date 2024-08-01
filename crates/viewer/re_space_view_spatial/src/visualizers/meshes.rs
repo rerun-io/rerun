@@ -207,7 +207,7 @@ impl VisualizerSystem for Mesh3DVisualizer {
 
                 let query_result_hash = results.query_result_hash();
 
-                let data = re_query2::range_zip_1x7(
+                let data = re_query::range_zip_1x7(
                     all_vertex_positions_indexed,
                     all_vertex_normals.primitive_array::<3, f32>(),
                     all_vertex_colors.primitive::<u32>(),

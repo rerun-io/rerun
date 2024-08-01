@@ -15,7 +15,7 @@ use re_log_types::{
     example_components::{MyColor, MyPoint, MyPoints},
     EntityPath, TimePoint,
 };
-use re_query2::Caches;
+use re_query::Caches;
 use re_types::Archetype;
 use re_types_core::Loggable as _;
 

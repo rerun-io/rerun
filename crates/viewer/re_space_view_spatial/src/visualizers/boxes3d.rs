@@ -301,7 +301,7 @@ impl VisualizerSystem for Boxes3DVisualizer {
                     }
                 }
 
-                let data = re_query2::range_zip_1x7(
+                let data = re_query::range_zip_1x7(
                     all_half_sizes_indexed,
                     all_centers.primitive_array::<3, f32>(),
                     all_rotations.component::<Rotation3D>(),

@@ -257,7 +257,7 @@ impl SeriesPointSystem {
                             });
 
                             let all_frames =
-                                re_query2::range_zip_1x1(all_scalars_indices(), all_colors)
+                                re_query::range_zip_1x1(all_scalars_indices(), all_colors)
                                     .enumerate();
 
                             all_frames.for_each(|(i, (_index, _scalars, colors))| {
@@ -308,7 +308,7 @@ impl SeriesPointSystem {
                                 });
 
                             let all_frames =
-                                re_query2::range_zip_1x1(all_scalars_indices(), all_marker_sizes)
+                                re_query::range_zip_1x1(all_scalars_indices(), all_marker_sizes)
                                     .enumerate();
 
                             all_frames.for_each(|(i, (_index, _scalars, marker_sizes))| {
@@ -367,7 +367,7 @@ impl SeriesPointSystem {
                                 itertools::izip!(all_marker_shapes_indices, all_marker_shapes)
                             };
 
-                            let all_frames = re_query2::range_zip_1x1(
+                            let all_frames = re_query::range_zip_1x1(
                                 all_scalars_indices(),
                                 all_marker_shapes_indexed,
                             )

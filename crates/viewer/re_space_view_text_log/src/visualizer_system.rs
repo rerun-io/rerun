@@ -4,7 +4,7 @@ use re_chunk_store::RowId;
 use re_entity_db::EntityPath;
 use re_log_types::TimeInt;
 use re_log_types::TimePoint;
-use re_query2::{clamped_zip_1x2, range_zip_1x2};
+use re_query::{clamped_zip_1x2, range_zip_1x2};
 use re_space_view::{range_with_blueprint_resolved_data2, RangeResultsExt2};
 use re_types::{
     archetypes::TextLog,

@@ -340,7 +340,7 @@ fn main() {
 
     println!(
         "
-        // This file was generated using `cargo r -p re_query2 --all-features --bin clamped_zip`.
+        // This file was generated using `cargo r -p re_query --all-features --bin clamped_zip`.
         // DO NOT EDIT.
 
         // ---

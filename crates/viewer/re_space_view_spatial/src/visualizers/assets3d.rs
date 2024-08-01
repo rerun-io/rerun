@@ -163,7 +163,7 @@ impl VisualizerSystem for Asset3DVisualizer {
                 // still a complex type at this point.
                 let all_transforms = results.iter_as(timeline, OutOfTreeTransform3D::name());
 
-                let data = re_query2::range_zip_1x2(
+                let data = re_query::range_zip_1x2(
                     all_blobs_indexed,
                     all_media_types.string(),
                     all_transforms.component::<OutOfTreeTransform3D>(),

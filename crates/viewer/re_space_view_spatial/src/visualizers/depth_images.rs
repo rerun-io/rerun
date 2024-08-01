@@ -280,7 +280,7 @@ impl VisualizerSystem for DepthImageVisualizer {
                 let all_depth_meters = results.iter_as(timeline, components::DepthMeter::name());
                 let all_fill_ratios = results.iter_as(timeline, components::FillRatio::name());
 
-                let mut data = re_query2::range_zip_1x5(
+                let mut data = re_query::range_zip_1x5(
                     all_blobs_indexed,
                     all_datatypes.component::<components::ChannelDataType>(),
                     all_resolutions.primitive_array::<2, u32>(),

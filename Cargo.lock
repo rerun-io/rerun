@@ -4527,7 +4527,7 @@ dependencies = [
  "re_log",
  "re_log_encoding",
  "re_log_types",
- "re_query2",
+ "re_query",
  "re_smart_channel",
  "re_tracing",
  "re_types",
@@ -4685,7 +4685,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "re_query2"
+name = "re_query"
 version = "0.18.0-alpha.1+dev"
 dependencies = [
  "ahash",
@@ -4895,7 +4895,7 @@ dependencies = [
  "re_entity_db",
  "re_log",
  "re_log_types",
- "re_query2",
+ "re_query",
  "re_tracing",
  "re_types_core",
  "re_ui",
@@ -4967,7 +4967,7 @@ dependencies = [
  "re_log",
  "re_log_types",
  "re_math",
- "re_query2",
+ "re_query",
  "re_renderer",
  "re_space_view",
  "re_tracing",
@@ -5034,7 +5034,7 @@ dependencies = [
  "re_entity_db",
  "re_log",
  "re_log_types",
- "re_query2",
+ "re_query",
  "re_renderer",
  "re_space_view",
  "re_tracing",
@@ -5055,7 +5055,7 @@ dependencies = [
  "re_format",
  "re_log",
  "re_log_types",
- "re_query2",
+ "re_query",
  "re_renderer",
  "re_space_view",
  "re_tracing",
@@ -5283,7 +5283,7 @@ dependencies = [
  "re_log_encoding",
  "re_log_types",
  "re_memory",
- "re_query2",
+ "re_query",
  "re_renderer",
  "re_sdk_comms",
  "re_selection_panel",
@@ -5354,7 +5354,7 @@ dependencies = [
  "re_log",
  "re_log_types",
  "re_math",
- "re_query2",
+ "re_query",
  "re_renderer",
  "re_smart_channel",
  "re_string_interner",
