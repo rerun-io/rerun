@@ -14,7 +14,7 @@ use crate::DataResultQuery2 as _;
 
 /// Wrapper that contains the results of a latest-at query with possible overrides.
 ///
-/// Although overrides are never temporal, when accessed via the [`crate::RangeResultsExt`] trait
+/// Although overrides are never temporal, when accessed via the [`crate::RangeResultsExt2`] trait
 /// they will be merged into the results appropriately.
 pub struct HybridLatestAtResults<'a> {
     pub overrides: LatestAtResults,
@@ -28,7 +28,7 @@ pub struct HybridLatestAtResults<'a> {
 
 /// Wrapper that contains the results of a range query with possible overrides.
 ///
-/// Although overrides are never temporal, when accessed via the [`crate::RangeResultsExt`] trait
+/// Although overrides are never temporal, when accessed via the [`crate::RangeResultsExt2`] trait
 /// they will be merged into the results appropriately.
 #[derive(Debug)]
 pub struct HybridRangeResults {
@@ -38,7 +38,7 @@ pub struct HybridRangeResults {
 }
 
 impl<'a> HybridLatestAtResults<'a> {
-    /// Returns the [`LatestAtComponentResults`] for the specified [`Component`].
+    /// Returns the [`UnitChunkShared`] for the specified [`re_types_core::Component`].
     #[inline]
     pub fn get(&self, component_name: impl Into<ComponentName>) -> Option<&UnitChunkShared> {
         let component_name = component_name.into();
