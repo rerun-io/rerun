@@ -234,7 +234,7 @@ class ImageExt:
         Compress the given image as a JPEG.
 
         JPEG compression works best for photographs.
-        Only RGB and grayscale images are supported, not RGBA.
+        Only U8 RGB and grayscale images are supported, not RGBA.
         Note that compressing to JPEG costs a bit of CPU time,
         both when logging and later when viewing them.
 
@@ -273,8 +273,10 @@ class ImageExt:
             if self.datatype is not None:
                 datatype = ChannelDatatype(self.datatype.as_arrow_array().storage.type_codes[0].as_py())
 
-            if datatype is None:
-                raise ValueError("Cannot JPEG compress an image without a datatype")
+            if datatype != ChannelDatatype.U8:
+                # See: https://pillow.readthedocs.io/en/stable/handbook/concepts.html#concept-modes
+                # Note that modes F and I do not support jpeg compression
+                raise ValueError(f"Cannot JPEG compress an image of datatype {datatype}. Only U8 is supported.")
 
             width = None
             height = None
@@ -288,22 +290,15 @@ class ImageExt:
 
             buf = None
             if self.data is not None:
-                buf = bytes(self.data.as_arrow_array().storage[0].as_py())
+                buf = self.data.as_arrow_array().storage.values.to_numpy().view(datatype.to_np_dtype())
 
             if buf is None:
                 raise ValueError("Cannot JPEG compress an image without data")
 
-            # Convert from bytes back to a numpy array
-            image: npt.NDArray[Any] = np.frombuffer(buf, dtype=datatype.to_np_dtype(), count=-1, offset=0)
-
             if color_model == ColorModel.L:
-                image = image.reshape(height, width)
+                image = buf.reshape(height, width)
             else:
-                image = image.reshape(height, width, 3)
-
-            if image.dtype not in ["uint8", "sint32", "float32"]:
-                # Convert to a format supported by Image.fromarray
-                image = image.astype("float32")
+                image = buf.reshape(height, width, 3)
 
             mode = str(color_model)
 

@@ -123,3 +123,23 @@ def test_image_compress() -> None:
         assert "Cannot JPEG compress an image of type" in str(warnings[0])
 
         assert type(compressed) is rr.Image
+
+    # 16-bit Not supported
+    with pytest.warns(RerunWarning) as warnings:
+        image_data = np.asarray(rng.uniform(0, 255, (10, 20, 3)), dtype=np.uint16)
+        compressed = rr.Image(image_data).compress(jpeg_quality=80)
+
+        assert len(warnings) == 1
+        assert "Cannot JPEG compress an image of datatype" in str(warnings[0])
+
+        assert type(compressed) is rr.Image
+
+    # Floating point not supported
+    with pytest.warns(RerunWarning) as warnings:
+        image_data = np.asarray(rng.uniform(0, 255, (10, 20)), dtype=np.float32)
+        compressed = rr.Image(image_data).compress(jpeg_quality=80)
+
+        assert len(warnings) == 1
+        assert "Cannot JPEG compress an image of datatype" in str(warnings[0])
+
+        assert type(compressed) is rr.Image
