@@ -233,7 +233,7 @@ impl VisualizerSystem for Arrows3DVisualizer {
                 let all_class_ids = results.iter_as(timeline, ClassId::name());
                 let all_keypoint_ids = results.iter_as(timeline, KeypointId::name());
 
-                let data = re_query2::range_zip_1x6(
+                let data = re_query::range_zip_1x6(
                     all_vectors_indexed,
                     all_origins.primitive_array::<3, f32>(),
                     all_colors.primitive::<u32>(),

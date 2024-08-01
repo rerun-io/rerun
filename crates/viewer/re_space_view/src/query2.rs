@@ -2,7 +2,7 @@ use nohash_hasher::IntSet;
 
 use re_chunk_store::{LatestAtQuery, RangeQuery, RowId};
 use re_log_types::TimeInt;
-use re_query2::LatestAtResults;
+use re_query::LatestAtResults;
 use re_types_core::ComponentName;
 use re_viewer_context::{DataResult, ViewContext, ViewerContext};
 

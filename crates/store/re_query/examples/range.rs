@@ -8,7 +8,7 @@ use re_log_types::{build_frame_nr, ResolvedTimeRange, TimeType, Timeline};
 use re_types::ComponentBatch;
 use re_types_core::{Archetype as _, Loggable as _};
 
-use re_query2::{clamped_zip_1x2, range_zip_1x2, RangeResults};
+use re_query::{clamped_zip_1x2, range_zip_1x2, RangeResults};
 
 // ---
 
@@ -21,7 +21,7 @@ fn main() -> anyhow::Result<()> {
     let query = RangeQuery::new(timeline, ResolvedTimeRange::EVERYTHING);
     eprintln!("query:{query:?}");
 
-    let caches = re_query2::Caches::new(&store);
+    let caches = re_query::Caches::new(&store);
 
     // First, get the (potentially cached) results for this query.
     let results: RangeResults = caches.range(

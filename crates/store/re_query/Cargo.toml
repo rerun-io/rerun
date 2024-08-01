@@ -1,12 +1,12 @@
 [package]
-name = "re_query2"
+name = "re_query"
 authors.workspace = true
 description = "High-level query APIs"
 edition.workspace = true
 homepage.workspace = true
 include.workspace = true
 license.workspace = true
-publish = false
+publish = true
 readme = "README.md"
 repository.workspace = true
 rust-version.workspace = true

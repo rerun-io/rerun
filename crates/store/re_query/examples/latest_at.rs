@@ -11,7 +11,7 @@ use re_log_types::{build_frame_nr, Timeline};
 use re_types::{ComponentBatch, Loggable as _};
 use re_types_core::Archetype as _;
 
-use re_query2::{clamped_zip_1x2, LatestAtResults};
+use re_query::{clamped_zip_1x2, LatestAtResults};
 
 // ---
 
@@ -24,7 +24,7 @@ fn main() -> anyhow::Result<()> {
     let query = LatestAtQuery::latest(timeline);
     eprintln!("query:{query:?}");
 
-    let caches = re_query2::Caches::new(&store);
+    let caches = re_query::Caches::new(&store);
 
     // First, get the (potentially cached) results for this query.
     let results: LatestAtResults = caches.latest_at(

@@ -1,4 +1,4 @@
-//! Caching datastructures for `re_query2`.
+//! Caching datastructures for `re_query`.
 
 mod cache;
 mod cache_stats;

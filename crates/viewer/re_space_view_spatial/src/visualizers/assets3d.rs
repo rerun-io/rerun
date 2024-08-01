@@ -155,7 +155,7 @@ impl VisualizerSystem for Asset3DVisualizer {
                 let all_blobs_indexed = iter_buffer::<u8>(&all_blob_chunks, timeline, Blob::name());
                 let all_media_types = results.iter_as(timeline, MediaType::name());
 
-                let data = re_query2::range_zip_1x1(all_blobs_indexed, all_media_types.string())
+                let data = re_query::range_zip_1x1(all_blobs_indexed, all_media_types.string())
                     .filter_map(|(index, blobs, media_types)| {
                         blobs.first().map(|blob| Asset3DComponentData {
                             index,

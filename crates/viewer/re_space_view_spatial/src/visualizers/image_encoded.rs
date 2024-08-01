@@ -144,7 +144,7 @@ impl ImageEncodedVisualizer {
         let all_media_types = results.iter_as(timeline, MediaType::name());
         let all_opacities = results.iter_as(timeline, Opacity::name());
 
-        for ((_time, tensor_data_row_id), blobs, media_types, opacities) in re_query2::range_zip_1x2(
+        for ((_time, tensor_data_row_id), blobs, media_types, opacities) in re_query::range_zip_1x2(
             all_blobs_indexed,
             all_media_types.string(),
             all_opacities.primitive::<f32>(),

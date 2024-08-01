@@ -6,7 +6,7 @@ use itertools::Itertools as _;
 use re_chunk_store::{ChunkStoreConfig, ChunkStoreGeneration, ChunkStoreStats};
 use re_entity_db::{EntityDb, StoreBundle};
 use re_log_types::{ApplicationId, StoreId, StoreKind};
-use re_query2::CachesStats;
+use re_query::CachesStats;
 
 use crate::StoreContext;
 

@@ -50,7 +50,7 @@ pub enum SpaceViewSystemExecutionError {
     VisualizerSystemNotFound(&'static str),
 
     #[error(transparent)]
-    QueryError2(#[from] re_query2::QueryError),
+    QueryError2(#[from] re_query::QueryError),
 
     #[error(transparent)]
     DeserializationError(#[from] re_types::DeserializationError),

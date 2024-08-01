@@ -9,8 +9,8 @@ use itertools::Itertools;
 use re_chunk::{Chunk, RowId};
 use re_chunk_store::{ChunkStore, ChunkStoreSubscriber, LatestAtQuery};
 use re_log_types::{entity_path, EntityPath, TimeInt, TimeType, Timeline};
-use re_query2::clamped_zip_1x1;
-use re_query2::{Caches, LatestAtResults};
+use re_query::clamped_zip_1x1;
+use re_query::{Caches, LatestAtResults};
 use re_types::{
     archetypes::Points2D,
     components::{Color, Position2D, Text},

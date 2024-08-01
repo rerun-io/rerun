@@ -159,7 +159,7 @@ impl ImageVisualizer {
         let all_channel_datatypes = results.iter_as(timeline, ChannelDatatype::name());
         let all_opacities = results.iter_as(timeline, Opacity::name());
 
-        let data = re_query2::range_zip_1x5(
+        let data = re_query::range_zip_1x5(
             all_blobs_indexed,
             all_resolutions_indexed,
             all_pixel_formats.component::<PixelFormat>(),

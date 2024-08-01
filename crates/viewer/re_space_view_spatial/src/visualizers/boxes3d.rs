@@ -286,7 +286,7 @@ impl VisualizerSystem for Boxes3DVisualizer {
                     }
                 }
 
-                let data = re_query2::range_zip_1x5(
+                let data = re_query::range_zip_1x5(
                     all_half_sizes_indexed,
                     all_colors.primitive::<u32>(),
                     all_radii.primitive::<f32>(),

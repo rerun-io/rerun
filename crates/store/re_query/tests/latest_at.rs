@@ -12,7 +12,7 @@ use re_log_types::{
     example_components::{MyColor, MyPoint, MyPoints},
     EntityPath, TimeInt, TimePoint,
 };
-use re_query2::Caches;
+use re_query::Caches;
 use re_types::{Archetype as _, ComponentBatch};
 
 // ---

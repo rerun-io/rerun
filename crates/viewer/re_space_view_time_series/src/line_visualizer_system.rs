@@ -297,7 +297,7 @@ impl SeriesLineSystem {
                         });
 
                         let all_frames =
-                            re_query2::range_zip_1x1(all_scalars_indices(), all_colors).enumerate();
+                            re_query::range_zip_1x1(all_scalars_indices(), all_colors).enumerate();
 
                         all_frames.for_each(|(i, (_index, _scalars, colors))| {
                             if let Some(color) = colors.and_then(map_raw_color) {
@@ -345,7 +345,7 @@ impl SeriesLineSystem {
                         });
 
                         let all_frames =
-                            re_query2::range_zip_1x1(all_scalars_indices(), all_stroke_widths)
+                            re_query::range_zip_1x1(all_scalars_indices(), all_stroke_widths)
                                 .enumerate();
 
                         all_frames.for_each(|(i, (_index, _scalars, stroke_widths))| {
