@@ -1,7 +1,9 @@
 use egui::NumExt;
 
-use re_entity_db::{external::re_query::LatestAtComponentResults, EntityPath, InstancePath};
-use re_log_types::Instance;
+use re_chunk_store::UnitChunkShared;
+use re_entity_db::{EntityPath, InstancePath};
+use re_log_types::{Instance, TimeInt};
+use re_types::ComponentName;
 use re_ui::{ContextExt as _, SyntaxHighlighting as _};
 use re_viewer_context::{UiLayout, ViewerContext};
 
@@ -11,7 +13,8 @@ use crate::item_ui;
 /// All the values of a specific [`re_log_types::ComponentPath`].
 pub struct EntityLatestAtResults<'a> {
     pub entity_path: EntityPath,
-    pub results: &'a LatestAtComponentResults,
+    pub component_name: ComponentName,
+    pub unit: &'a UnitChunkShared,
 }
 
 impl<'a> DataUi for EntityLatestAtResults<'a> {
@@ -23,17 +26,11 @@ impl<'a> DataUi for EntityLatestAtResults<'a> {
         query: &re_chunk_store::LatestAtQuery,
         db: &re_entity_db::EntityDb,
     ) {
-        let Some(component_name) = self.results.component_name(db.resolver()) else {
-            // TODO(#5607): what should happen if the promise is still pending?
-            return;
-        };
+        re_tracing::profile_function!(self.component_name);
 
-        re_tracing::profile_function!(component_name);
-
-        // TODO(#5607): what should happen if the promise is still pending?
         let Some(num_instances) = self
-            .results
-            .raw(db.resolver(), component_name)
+            .unit
+            .component_batch_raw(&self.component_name)
             .map(|data| data.len())
         else {
             ui.weak("<pending>");
@@ -56,7 +53,10 @@ impl<'a> DataUi for EntityLatestAtResults<'a> {
 
         // Display data time and additional diagnostic information for static components.
         if ui_layout != UiLayout::List {
-            let time = self.results.index().0;
+            let time = self
+                .unit
+                .index(&query.timeline())
+                .map_or(TimeInt::STATIC, |(time, _)| time);
             if time.is_static() {
                 // No need to show anything here. We already tell the user this is a static component elsewhere.
             } else {
@@ -71,10 +71,10 @@ impl<'a> DataUi for EntityLatestAtResults<'a> {
             }
 
             // if the component is static, we display extra diagnostic information
-            if self.results.is_static() {
+            if self.unit.is_static() {
                 let static_message_count = db
                     .store()
-                    .num_static_events_for_component(&self.entity_path, component_name);
+                    .num_static_events_for_component(&self.entity_path, self.component_name);
                 if static_message_count > 1 {
                     ui.label(ui.ctx().warning_text(format!(
                         "Static component value was overridden {} times",
@@ -91,7 +91,7 @@ impl<'a> DataUi for EntityLatestAtResults<'a> {
                     db.store().num_temporal_events_for_component_on_timeline(
                         &query.timeline(),
                         &self.entity_path,
-                        component_name,
+                        self.component_name,
                     );
                 if temporal_message_count > 0 {
                     ui.label(ui.ctx().error_text(format!(
@@ -142,7 +142,8 @@ impl<'a> DataUi for EntityLatestAtResults<'a> {
                 query,
                 db,
                 &self.entity_path,
-                self.results,
+                self.component_name,
+                self.unit,
                 &Instance::from(0),
             );
         } else if one_line {
@@ -160,7 +161,7 @@ impl<'a> DataUi for EntityLatestAtResults<'a> {
                         ui.label("Index");
                     });
                     header.col(|ui| {
-                        ui.label(component_name.short_name());
+                        ui.label(self.component_name.short_name());
                     });
                 })
                 .body(|mut body| {
@@ -189,7 +190,8 @@ impl<'a> DataUi for EntityLatestAtResults<'a> {
                                 query,
                                 db,
                                 &self.entity_path,
-                                self.results,
+                                self.component_name,
+                                self.unit,
                                 &instance,
                             );
                         });

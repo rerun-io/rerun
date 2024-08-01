@@ -60,7 +60,6 @@ impl EntityDataUi for re_types::components::TensorData {
     ) {
         re_tracing::profile_function!();
 
-        // TODO(#5607): what should happen if the promise is still pending?
         let tensor_data_row_id = ctx
             .recording()
             .latest_at_component::<Self>(entity_path, query)

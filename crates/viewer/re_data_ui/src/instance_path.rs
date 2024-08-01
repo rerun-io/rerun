@@ -106,13 +106,13 @@ impl DataUi for InstancePath {
                             .with_icon(icon),
                     )
                 } else {
-                    let results = db.query_caches().latest_at(
+                    let results = db.query_caches2().latest_at(
                         db.store(),
                         query,
                         entity_path,
                         [component_name],
                     );
-                    let Some(results) = results.components.get(&component_name) else {
+                    let Some(unit) = results.components.get(&component_name) else {
                         continue; // no need to show components that are unset at this point in time
                     };
 
@@ -123,7 +123,8 @@ impl DataUi for InstancePath {
                                 if instance.is_all() {
                                     crate::EntityLatestAtResults {
                                         entity_path: entity_path.clone(),
-                                        results: results.as_ref(),
+                                        component_name,
+                                        unit,
                                     }
                                     .data_ui(
                                         ctx,
@@ -140,7 +141,8 @@ impl DataUi for InstancePath {
                                         query,
                                         db,
                                         entity_path,
-                                        results,
+                                        component_name,
+                                        unit,
                                         instance,
                                     );
                                 }

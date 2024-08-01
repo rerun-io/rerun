@@ -24,12 +24,13 @@ impl DataUi for ComponentPath {
             ));
         } else {
             let results =
-                db.query_caches()
+                db.query_caches2()
                     .latest_at(db.store(), query, entity_path, [*component_name]);
-            if let Some(results) = results.components.get(component_name) {
+            if let Some(unit) = results.components.get(component_name) {
                 crate::EntityLatestAtResults {
                     entity_path: entity_path.clone(),
-                    results: results.as_ref(),
+                    component_name: *component_name,
+                    unit,
                 }
                 .data_ui(ctx, ui, ui_layout, query, db);
             } else if ctx.recording().tree().subtree(entity_path).is_some() {
