@@ -243,7 +243,7 @@ def run_from_video_capture(vid: int | str, max_frame_count: int | None) -> None:
             rr.set_time_sequence("frame_nr", frame_idx)
             rr.set_time_nanos("frame_time", frame_time_nano)
             detector.detect_and_log(frame, frame_time_nano)
-            rr.log("media/video", rr.ImageEncoded.compress(frame, "RGB", jpeg_quality=75))
+            rr.log("media/video", rr.Image(frame).compress(jpeg_quality=75))
 
     except KeyboardInterrupt:
         pass

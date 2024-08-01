@@ -5,7 +5,7 @@ namespace rerun.archetypes;
 ///
 /// Rerun also supports uncompressed images with the [archetypes.Image].
 ///
-/// \py To compress an image, use [`rerun.ImageEncoded.compress`][].
+/// \py To compress an image, use [`rerun.Image.compress`][].
 ///
 /// \example archetypes/image_encoded
 table ImageEncoded (

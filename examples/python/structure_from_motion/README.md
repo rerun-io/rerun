@@ -45,7 +45,7 @@ rr.set_time_sequence("frame", frame_idx)
 The images are logged through the [`Image`](https://www.rerun.io/docs/reference/types/archetypes/image) to the `camera/image` entity.
 
 ```python
-rr.log("camera/image", rr.ImageEncoded.compress(rgb, "RGB", jpeg_quality=75))
+rr.log("camera/image", rr.Image(rgb).compress(jpeg_quality=75))
 ```
 
 ### Cameras

@@ -45,7 +45,7 @@ The input video is logged as a sequence of [`Image`](https://www.rerun.io/docs/r
 ```python
 rr.log(
     "Media/Video",
-    rr.ImageEncoded.compress(frame, "RGB", jpeg_quality=75)
+    rr.Image(frame).compress(jpeg_quality=75)
 )
 ```
 
