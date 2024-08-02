@@ -62,12 +62,6 @@ pub struct EntityDb {
     /// Stores all components for all entities for all timelines.
     data_store: ChunkStore,
 
-    /// The active promise resolver for this DB.
-    resolver: re_query::PromiseResolver,
-
-    /// Query caches for the data in [`Self::data_store`].
-    query_caches: re_query::Caches,
-
     /// Query caches for the data in [`Self::data_store`].
     query_caches2: re_query2::Caches,
 
@@ -81,7 +75,6 @@ impl EntityDb {
 
     pub fn with_store_config(store_id: StoreId, store_config: ChunkStoreConfig) -> Self {
         let data_store = ChunkStore::new(store_id.clone(), store_config);
-        let query_caches = re_query::Caches::new(&data_store);
         let query_caches2 = re_query2::Caches::new(&data_store);
 
         Self {
@@ -94,8 +87,6 @@ impl EntityDb {
             tree: crate::EntityTree::root(),
             time_histogram_per_timeline: Default::default(),
             data_store,
-            resolver: re_query::PromiseResolver::default(),
-            query_caches,
             query_caches2,
             stats: IngestionStatistics::new(store_id),
         }
@@ -124,18 +115,8 @@ impl EntityDb {
     }
 
     #[inline]
-    pub fn query_caches(&self) -> &re_query::Caches {
-        &self.query_caches
-    }
-
-    #[inline]
     pub fn query_caches2(&self) -> &re_query2::Caches {
         &self.query_caches2
-    }
-
-    #[inline]
-    pub fn resolver(&self) -> &re_query::PromiseResolver {
-        &self.resolver
     }
 
     /// Queries for the given `component_names` using latest-at semantics.
@@ -384,7 +365,6 @@ impl EntityDb {
             // Update our internal views by notifying them of resulting [`ChunkStoreEvent`]s.
             self.times_per_timeline.on_events(&store_events);
             self.time_histogram_per_timeline.on_events(&store_events);
-            self.query_caches.on_events(&store_events);
             self.query_caches2.on_events(&store_events);
             self.tree.on_store_additions(&store_events);
 
@@ -445,7 +425,6 @@ impl EntityDb {
         re_tracing::profile_function!();
 
         self.times_per_timeline.on_events(store_events);
-        self.query_caches.on_events(store_events);
         self.query_caches2.on_events(store_events);
         self.time_histogram_per_timeline.on_events(store_events);
         self.tree.on_store_deletions(&self.data_store, store_events);

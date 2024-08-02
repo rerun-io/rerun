@@ -1,20 +1,20 @@
 use std::borrow::Cow;
 use std::sync::Arc;
 
-use re_chunk_store::{Chunk, LatestAtQuery, RangeQuery};
+use re_chunk_store::{Chunk, LatestAtQuery, RangeQuery, UnitChunkShared};
 use re_log_types::external::arrow2::array::Array as ArrowArray;
 use re_log_types::hash::Hash64;
 use re_query2::{LatestAtResults, RangeResults};
 use re_types_core::ComponentName;
 use re_viewer_context::{DataResult, QueryContext, ViewContext};
 
-use crate::DataResultQuery as _;
+use crate::DataResultQuery2 as _;
 
 // ---
 
 /// Wrapper that contains the results of a latest-at query with possible overrides.
 ///
-/// Although overrides are never temporal, when accessed via the [`crate::RangeResultsExt`] trait
+/// Although overrides are never temporal, when accessed via the [`crate::RangeResultsExt2`] trait
 /// they will be merged into the results appropriately.
 pub struct HybridLatestAtResults<'a> {
     pub overrides: LatestAtResults,
@@ -28,7 +28,7 @@ pub struct HybridLatestAtResults<'a> {
 
 /// Wrapper that contains the results of a range query with possible overrides.
 ///
-/// Although overrides are never temporal, when accessed via the [`crate::RangeResultsExt`] trait
+/// Although overrides are never temporal, when accessed via the [`crate::RangeResultsExt2`] trait
 /// they will be merged into the results appropriately.
 #[derive(Debug)]
 pub struct HybridRangeResults {
@@ -38,6 +38,16 @@ pub struct HybridRangeResults {
 }
 
 impl<'a> HybridLatestAtResults<'a> {
+    /// Returns the [`UnitChunkShared`] for the specified [`re_types_core::Component`].
+    #[inline]
+    pub fn get(&self, component_name: impl Into<ComponentName>) -> Option<&UnitChunkShared> {
+        let component_name = component_name.into();
+        self.overrides
+            .get(&component_name)
+            .or_else(|| self.results.get(&component_name))
+            .or_else(|| self.defaults.get(&component_name))
+    }
+
     pub fn try_fallback_raw(&self, component_name: ComponentName) -> Option<Box<dyn ArrowArray>> {
         let fallback_provider = self
             .data_result

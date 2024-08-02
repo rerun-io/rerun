@@ -3,7 +3,7 @@ use nohash_hasher::IntMap;
 
 use re_chunk_store::LatestAtQuery;
 use re_entity_db::{EntityDb, EntityPath, EntityTree};
-use re_space_view::DataResultQuery as _;
+use re_space_view::DataResultQuery2 as _;
 use re_types::{
     archetypes::{LeafTransforms3D, Pinhole, Transform3D},
     components::{

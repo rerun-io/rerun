@@ -91,7 +91,7 @@ pub use clipboard::Clipboard;
 
 pub mod external {
     pub use nohash_hasher;
-    pub use {re_chunk_store, re_entity_db, re_log_types, re_query, re_ui};
+    pub use {re_chunk_store, re_entity_db, re_log_types, re_query2, re_ui};
 }
 
 // ---------------------------------------------------------------------------
