@@ -53,6 +53,7 @@ impl ArrowRegistry {
 
     fn arrow_datatype_from_object(&mut self, obj: &mut Object) -> LazyDatatype {
         let is_struct = obj.is_struct();
+        let is_enum = obj.is_enum();
         let is_arrow_transparent = obj.is_arrow_transparent();
         let num_fields = obj.fields.len();
 
@@ -94,8 +95,11 @@ impl ArrowRegistry {
                 )),
                 None,
             )
+        } else if is_enum {
+            // TODO(jleibs): this is encoded in the fbs
+            LazyDatatype::Extension(obj.fqname.clone(), Box::new(LazyDatatype::UInt8), None)
         } else {
-            let is_sparse = obj.is_enum() || obj.is_attr_set(ATTR_ARROW_SPARSE_UNION);
+            let is_sparse = obj.is_attr_set(ATTR_ARROW_SPARSE_UNION);
             let union_mode = if is_sparse {
                 arrow2::datatypes::UnionMode::Sparse
             } else {

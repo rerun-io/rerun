@@ -21,6 +21,7 @@ pub fn quote_arrow_serializer(
 
     let quoted_datatype = quote! { Self::arrow_datatype() };
 
+    let is_enum = obj.is_enum();
     let is_arrow_transparent = obj.datatype.is_none();
     let is_tuple_struct = is_tuple_struct_from_obj(obj);
 
@@ -44,7 +45,46 @@ pub fn quote_arrow_serializer(
         }
     };
 
-    if is_arrow_transparent {
+    if is_enum {
+        let quoted_data_src = data_src.clone();
+        let quoted_data_dst = format_ident!("data0");
+        let bitmap_dst = format_ident!("{quoted_data_dst}_bitmap");
+
+        let elements_are_nullable = true;
+
+        let quoted_serializer = quote_arrow_field_serializer(
+            objects,
+            datatype,
+            &quoted_datatype,
+            &bitmap_dst,
+            elements_are_nullable,
+            &quoted_data_dst,
+            InnerRepr::NativeIterable,
+        );
+
+        let quoted_bitmap = quoted_bitmap(bitmap_dst);
+
+        quote! {{
+            let (somes, #quoted_data_dst): (Vec<_>, Vec<_>) = #quoted_data_src
+                .into_iter()
+                .map(|datum| {
+                    let datum: Option<::std::borrow::Cow<'a, Self>> = datum.map(Into::into);
+
+                    let datum = datum
+                    .map(|datum| {
+                        *datum as u8
+                    });
+
+                    (datum.is_some(), datum)
+                })
+                .unzip();
+
+
+            #quoted_bitmap;
+
+            #quoted_serializer
+        }}
+    } else if is_arrow_transparent {
         // NOTE: Arrow transparent objects must have a single field, no more no less.
         // The semantic pass would have failed already if this wasn't the case.
         let obj_field = &obj.fields[0];

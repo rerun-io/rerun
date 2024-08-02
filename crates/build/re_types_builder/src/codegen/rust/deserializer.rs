@@ -63,10 +63,58 @@ pub fn quote_arrow_deserializer(
     let quoted_self_datatype = quote! { Self::arrow_datatype() };
 
     let obj_fqname = obj.fqname.as_str();
+    let is_enum = obj.is_enum();
     let is_arrow_transparent = obj.datatype.is_none();
     let is_tuple_struct = is_tuple_struct_from_obj(obj);
 
-    if is_arrow_transparent {
+    if is_enum {
+        // An enum is very similar to a transparent type.
+
+        // A non-null enum itself must have a value.
+        let is_nullable = false;
+
+        let quoted_deserializer = quote_arrow_field_deserializer(
+            objects,
+            datatype,
+            &quoted_self_datatype, // we are transparent, so the datatype of `Self` is the datatype of our contents
+            is_nullable,
+            obj_fqname,
+            &data_src,
+            InnerRepr::NativeIterable,
+        );
+
+        let quoted_branches = obj.fields.iter().enumerate().map(|(typ, obj_field)| {
+            let arrow_type_index = Literal::i8_unsuffixed(typ as i8 + 1); // 0 is reserved for `_null_markers`
+
+            let quoted_obj_field_type = format_ident!("{}", obj_field.name);
+            quote! {
+                Some(#arrow_type_index) => Ok(Some(Self::#quoted_obj_field_type))
+            }
+        });
+
+        let quoted_remapping = quote! {
+            .map(|typ| {
+                match typ {
+                    // The actual enum variants
+                    #(#quoted_branches,)*
+                    None => Ok(None),
+                    Some(invalid) => Err(DeserializationError::missing_union_arm(
+                        #quoted_self_datatype, "<invalid>", invalid as _,
+                    )),
+                }
+            })
+        };
+
+        quote! {
+            #quoted_deserializer
+            #quoted_remapping
+            // NOTE: implicit Vec<Result> to Result<Vec>
+            .collect::<DeserializationResult<Vec<Option<_>>>>()
+            // NOTE: double context so the user can see the transparent shenanigans going on in the
+            // error.
+            .with_context(#obj_fqname)?
+        }
+    } else if is_arrow_transparent {
         // NOTE: Arrow transparent objects must have a single field, no more no less.
         // The semantic pass would have failed already if this wasn't the case.
         let obj_field = &obj.fields[0];
