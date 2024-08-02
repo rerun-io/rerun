@@ -7,6 +7,7 @@ import pytest
 import rerun as rr
 import torch
 from rerun.archetypes.image import Image
+from rerun.datatypes.tensor_data import TensorData
 from rerun.error_utils import RerunWarning
 
 rng = np.random.default_rng(12345)
@@ -39,6 +40,8 @@ IMAGE_INPUTS: list[Any] = [
         "width": 20,
         "height": 10,
     },
+    # This was allowed in 0.17
+    {"image": TensorData(array=RANDOM_IMAGE_SOURCE)},
 ]
 
 
