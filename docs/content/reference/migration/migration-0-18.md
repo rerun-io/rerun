@@ -13,13 +13,14 @@ The constructs have changed to now expect the shape in `[width, height]` order.
 
 
 ### [`Image`](https://rerun.io/docs/reference/types/archetypes/image)
-* `Image.compress` has been replaced by `ImageEncoded.compress`
-* `Image` now support chroma-downsampled images
-
-`Image(…)` now require a _color_model_ argument, e.g. "RGB" or "L"
-* Before: `rr.Image(image_rgb)`
-* Now: `rr.Image(image_rgb, "RGB")`
-
+* The `Image` data no longer uses `TensorData` internally.
+* `Image` now stores a raw buffer which is decoded with an image format including resolution and pixel format.
+  * This allows for more explicit support of chroma-downsampled formats such as NV12.
+* The `data` argument of the `Image()` constructor has been removed.
+  * The first default parameter is now `image`, which can be a `numpy.ArrayLike`, which will also be used to extract
+    the relevant metadata.
+  * Alternatively images can also be constructed using a `bytes` argument, but the resolution and pixel format must
+    be provided explicitly.
 
 ### [`ImageEncoded`](https://rerun.io/docs/reference/types/archetypes/image_encoded?speculative-link)
 `ImageEncoded` is our new archetype for logging an image file, e.g. a PNG or JPEG.

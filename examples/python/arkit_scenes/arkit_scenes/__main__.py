@@ -240,7 +240,7 @@ def log_arkit(recording_path: Path, include_highres: bool) -> None:
                 LOWRES_POSED_ENTITY_PATH,
             )
 
-            rr.log(f"{LOWRES_POSED_ENTITY_PATH}/rgb", rr.ImageEncoded.compress(rgb, "RGB", jpeg_quality=95))
+            rr.log(f"{LOWRES_POSED_ENTITY_PATH}/rgb", rr.Image(rgb).compress(jpeg_quality=95))
             rr.log(f"{LOWRES_POSED_ENTITY_PATH}/depth", rr.DepthImage(depth, meter=1000))
 
         # log the high res camera
@@ -262,7 +262,7 @@ def log_arkit(recording_path: Path, include_highres: bool) -> None:
 
             highres_rgb = cv2.cvtColor(highres_bgr, cv2.COLOR_BGR2RGB)
 
-            rr.log(f"{HIGHRES_ENTITY_PATH}/rgb", rr.ImageEncoded.compress(highres_rgb, "RGB", jpeg_quality=75))
+            rr.log(f"{HIGHRES_ENTITY_PATH}/rgb", rr.Image(highres_rgb).compress(jpeg_quality=75))
             rr.log(f"{HIGHRES_ENTITY_PATH}/depth", rr.DepthImage(highres_depth, meter=1000))
 
 

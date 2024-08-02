@@ -1,19 +1,15 @@
 from __future__ import annotations
 
 import pathlib
-from io import BytesIO
 from typing import IO, TYPE_CHECKING, Any, Union
 
 import numpy as np
 import numpy.typing as npt
 
-from rerun.components.color_model import ColorModel, ColorModelLike
-
 from .. import datatypes
 from ..error_utils import catch_and_log_exceptions
 
 if TYPE_CHECKING:
-    from ..archetypes import Image, ImageEncoded
     from ..components import MediaType
     from ..datatypes import Float32Like
 
@@ -30,18 +26,6 @@ if TYPE_CHECKING:
         npt.NDArray[np.uint64],
         npt.NDArray[np.uint8],
     ]
-
-
-def _to_numpy(tensor: ImageLike) -> npt.NDArray[Any]:
-    # isinstance is 4x faster than catching AttributeError
-    if isinstance(tensor, np.ndarray):
-        return tensor
-
-    try:
-        # Make available to the cpu
-        return tensor.numpy(force=True)  # type: ignore[union-attr]
-    except AttributeError:
-        return np.array(tensor, copy=False)
 
 
 def guess_media_type(path: str | pathlib.Path) -> MediaType | None:
@@ -118,80 +102,3 @@ class ImageEncodedExt:
             return
 
         self.__attrs_clear__()
-
-    @staticmethod
-    def compress(
-        image: ImageLike, color_model: ColorModelLike | None = None, jpeg_quality: int = 95
-    ) -> ImageEncoded | Image:
-        """
-        Compress the given image as a JPEG.
-
-        JPEG compression works best for photographs.
-        Only RGB and grayscale images are supported, not RGBA.
-        Note that compressing to JPEG costs a bit of CPU time,
-        both when logging and later when viewing them.
-
-        Parameters
-        ----------
-        image:
-            The image to compress, as a numpy array or tensor.
-        color_model:
-            The color model of the image, e.g. "RGB" or "L".
-            If not provided, it will be inferred from the dimensions of the image.
-        jpeg_quality:
-            Higher quality = larger file size.
-            A quality of 95 saves a lot of space, but is still visually very similar.
-
-        """
-
-        from PIL import Image as PILImage
-
-        from ..archetypes import ImageEncoded
-        from . import Image
-
-        with catch_and_log_exceptions(context="Image compression"):
-            image = _to_numpy(image)
-            if image.dtype not in ["uint8", "sint32", "float32"]:
-                # Convert to a format supported by Image.fromarray
-                image = image.astype("float32")
-
-            if color_model is None:
-                shape = image.shape
-                if len(shape) == 2:
-                    channels = 1
-                elif len(shape) == 3:
-                    _height, _width, channels = shape
-                else:
-                    raise ValueError(f"Expected a 2D or 3D tensor, got {shape}")
-
-                if channels == 1:
-                    color_model = ColorModel.L
-                elif channels == 3:
-                    color_model = ColorModel.RGB
-                elif channels == 4:
-                    color_model = ColorModel.RGBA
-
-            if isinstance(color_model, str):
-                color_model = ColorModel[color_model]
-            if isinstance(color_model, int):
-                color_model = ColorModel(color_model)
-            elif not isinstance(color_model, ColorModel):
-                raise ValueError(f"Invalid color_model: {color_model}")
-
-            if color_model not in (ColorModel.L, ColorModel.RGB):
-                # TODO(#2340): BGR support!
-                raise ValueError(
-                    f"Cannot JPEG compress an image of type {color_model}. Only L (monochrome) and RGB are supported."
-                )
-
-            mode = str(color_model)
-
-            pil_image = PILImage.fromarray(image, mode=mode)
-            output = BytesIO()
-            pil_image.save(output, format="JPEG", quality=jpeg_quality)
-            jpeg_bytes = output.getvalue()
-            output.close()
-            return ImageEncoded(contents=jpeg_bytes, media_type="image/jpeg")
-
-        # On failure to compress, return a raw image
-        return Image(image=image, color_model=color_model)

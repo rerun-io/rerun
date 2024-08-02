@@ -29,3 +29,21 @@ class ChannelDatatypeExt:
             np.float64: ChannelDatatype.F64,
         }
         return channel_datatype_from_np_dtype[dtype.type]
+
+    def to_np_dtype(self: Any) -> type:
+        from . import ChannelDatatype
+
+        channel_datatype_to_np_dtype = {
+            ChannelDatatype.U8: np.uint8,
+            ChannelDatatype.U16: np.uint16,
+            ChannelDatatype.U32: np.uint32,
+            ChannelDatatype.U64: np.uint64,
+            ChannelDatatype.I8: np.int8,
+            ChannelDatatype.I16: np.int16,
+            ChannelDatatype.I32: np.int32,
+            ChannelDatatype.I64: np.int64,
+            ChannelDatatype.F16: np.float16,
+            ChannelDatatype.F32: np.float32,
+            ChannelDatatype.F64: np.float64,
+        }
+        return channel_datatype_to_np_dtype[self]

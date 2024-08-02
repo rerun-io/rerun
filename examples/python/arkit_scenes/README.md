@@ -36,7 +36,7 @@ To log a moving RGB-D camera, we log four key components: the camera's intrinsic
 ```python
 rr.log("world/camera_lowres", rr.Transform3D(transform=camera_from_world))
 rr.log("world/camera_lowres", rr.Pinhole(image_from_camera=intrinsic, resolution=[w, h]))
-rr.log(f"{entity_id}/rgb", rr.ImageEncoded.compress(rgb, "RGB", jpeg_quality=95))
+rr.log(f"{entity_id}/rgb", rr.Image(rgb).compress(jpeg_quality=95))
 rr.log(f"{entity_id}/depth", rr.DepthImage(depth, meter=1000))
 ```
 

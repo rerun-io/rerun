@@ -41,7 +41,7 @@ The input video is logged as a sequence of [`Image`](https://www.rerun.io/docs/r
 ```python
 rr.log(
     "image",
-    rr.ImageEncoded.compress(rgb, "RGB", jpeg_quality=85)
+    rr.Image(rgb).compress(jpeg_quality=85)
 )
 ```
 
@@ -51,7 +51,7 @@ This allows us to subsequently visualize the segmentation mask on top of the vid
 ```python
 rr.log(
     "segmentation/rgb_scaled",
-    rr.ImageEncoded.compress(rgb_scaled, "RGB", jpeg_quality=85)
+    rr.Image(rgb_scaled).compress(jpeg_quality=85)
 )
 ```
 
