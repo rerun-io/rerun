@@ -83,15 +83,19 @@ pub fn quote_arrow_deserializer(
             InnerRepr::NativeIterable,
         );
 
-        let quoted_branches = obj.fields.iter().enumerate().map(|(typ, obj_field)| {
-            let arrow_type_index = Literal::i8_unsuffixed(typ as i8 + 1); // 0 is reserved for `_null_markers`
-
+        let quoted_branches = obj.fields.iter().map(|obj_field| {
             let quoted_obj_field_type = format_ident!("{}", obj_field.name);
+
+            // We should never hit this unwrap or it means the enum-processing at
+            // the fbs layer is totally broken.
+            let enum_value = obj_field.enum_value.unwrap();
+
             quote! {
-                Some(#arrow_type_index) => Ok(Some(Self::#quoted_obj_field_type))
+                Some(#enum_value) => Ok(Some(Self::#quoted_obj_field_type))
             }
         });
 
+        // TODO(jleibs): We should be able to do this with try_from instead.
         let quoted_remapping = quote! {
             .map(|typ| {
                 match typ {
