@@ -27,7 +27,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 /// Note that orienting and placing the ellipsoids/spheres is handled via `[archetypes.LeafTransforms3D]`.
 /// Some of its component are repeated here for convenience.
 #[derive(Clone, Debug, PartialEq)]
-pub struct Ellipsoids {
+pub struct Ellipsoids3D {
     /// For each ellipsoid, half of its size on its three axes.
     ///
     /// If all components are equal, then it is a sphere with that radius.
@@ -69,7 +69,7 @@ pub struct Ellipsoids {
     pub class_ids: Option<Vec<crate::components::ClassId>>,
 }
 
-impl ::re_types_core::SizeBytes for Ellipsoids {
+impl ::re_types_core::SizeBytes for Ellipsoids3D {
     #[inline]
     fn heap_size_bytes(&self) -> u64 {
         self.half_sizes.heap_size_bytes()
@@ -105,7 +105,7 @@ static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 3usize]> =
         [
             "rerun.components.LeafTranslation3D".into(),
             "rerun.components.Color".into(),
-            "rerun.components.EllipsoidsIndicator".into(),
+            "rerun.components.Ellipsoids3DIndicator".into(),
         ]
     });
 
@@ -127,7 +127,7 @@ static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 10usize]> =
             "rerun.components.HalfSize3D".into(),
             "rerun.components.LeafTranslation3D".into(),
             "rerun.components.Color".into(),
-            "rerun.components.EllipsoidsIndicator".into(),
+            "rerun.components.Ellipsoids3DIndicator".into(),
             "rerun.components.LeafRotationAxisAngle".into(),
             "rerun.components.LeafRotationQuat".into(),
             "rerun.components.Radius".into(),
@@ -137,30 +137,30 @@ static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 10usize]> =
         ]
     });
 
-impl Ellipsoids {
+impl Ellipsoids3D {
     /// The total number of components in the archetype: 1 required, 3 recommended, 6 optional
     pub const NUM_COMPONENTS: usize = 10usize;
 }
 
-/// Indicator component for the [`Ellipsoids`] [`::re_types_core::Archetype`]
-pub type EllipsoidsIndicator = ::re_types_core::GenericIndicatorComponent<Ellipsoids>;
+/// Indicator component for the [`Ellipsoids3D`] [`::re_types_core::Archetype`]
+pub type Ellipsoids3DIndicator = ::re_types_core::GenericIndicatorComponent<Ellipsoids3D>;
 
-impl ::re_types_core::Archetype for Ellipsoids {
-    type Indicator = EllipsoidsIndicator;
+impl ::re_types_core::Archetype for Ellipsoids3D {
+    type Indicator = Ellipsoids3DIndicator;
 
     #[inline]
     fn name() -> ::re_types_core::ArchetypeName {
-        "rerun.archetypes.Ellipsoids".into()
+        "rerun.archetypes.Ellipsoids3D".into()
     }
 
     #[inline]
     fn display_name() -> &'static str {
-        "Ellipsoids"
+        "Ellipsoids 3D"
     }
 
     #[inline]
     fn indicator() -> MaybeOwnedComponentBatch<'static> {
-        static INDICATOR: EllipsoidsIndicator = EllipsoidsIndicator::DEFAULT;
+        static INDICATOR: Ellipsoids3DIndicator = Ellipsoids3DIndicator::DEFAULT;
         MaybeOwnedComponentBatch::Ref(&INDICATOR)
     }
 
@@ -198,23 +198,23 @@ impl ::re_types_core::Archetype for Ellipsoids {
             let array = arrays_by_name
                 .get("rerun.components.HalfSize3D")
                 .ok_or_else(DeserializationError::missing_data)
-                .with_context("rerun.archetypes.Ellipsoids#half_sizes")?;
+                .with_context("rerun.archetypes.Ellipsoids3D#half_sizes")?;
             <crate::components::HalfSize3D>::from_arrow_opt(&**array)
-                .with_context("rerun.archetypes.Ellipsoids#half_sizes")?
+                .with_context("rerun.archetypes.Ellipsoids3D#half_sizes")?
                 .into_iter()
                 .map(|v| v.ok_or_else(DeserializationError::missing_data))
                 .collect::<DeserializationResult<Vec<_>>>()
-                .with_context("rerun.archetypes.Ellipsoids#half_sizes")?
+                .with_context("rerun.archetypes.Ellipsoids3D#half_sizes")?
         };
         let centers = if let Some(array) = arrays_by_name.get("rerun.components.LeafTranslation3D")
         {
             Some({
                 <crate::components::LeafTranslation3D>::from_arrow_opt(&**array)
-                    .with_context("rerun.archetypes.Ellipsoids#centers")?
+                    .with_context("rerun.archetypes.Ellipsoids3D#centers")?
                     .into_iter()
                     .map(|v| v.ok_or_else(DeserializationError::missing_data))
                     .collect::<DeserializationResult<Vec<_>>>()
-                    .with_context("rerun.archetypes.Ellipsoids#centers")?
+                    .with_context("rerun.archetypes.Ellipsoids3D#centers")?
             })
         } else {
             None
@@ -223,11 +223,11 @@ impl ::re_types_core::Archetype for Ellipsoids {
             if let Some(array) = arrays_by_name.get("rerun.components.LeafRotationAxisAngle") {
                 Some({
                     <crate::components::LeafRotationAxisAngle>::from_arrow_opt(&**array)
-                        .with_context("rerun.archetypes.Ellipsoids#rotation_axis_angles")?
+                        .with_context("rerun.archetypes.Ellipsoids3D#rotation_axis_angles")?
                         .into_iter()
                         .map(|v| v.ok_or_else(DeserializationError::missing_data))
                         .collect::<DeserializationResult<Vec<_>>>()
-                        .with_context("rerun.archetypes.Ellipsoids#rotation_axis_angles")?
+                        .with_context("rerun.archetypes.Ellipsoids3D#rotation_axis_angles")?
                 })
             } else {
                 None
@@ -236,11 +236,11 @@ impl ::re_types_core::Archetype for Ellipsoids {
             if let Some(array) = arrays_by_name.get("rerun.components.LeafRotationQuat") {
                 Some({
                     <crate::components::LeafRotationQuat>::from_arrow_opt(&**array)
-                        .with_context("rerun.archetypes.Ellipsoids#quaternions")?
+                        .with_context("rerun.archetypes.Ellipsoids3D#quaternions")?
                         .into_iter()
                         .map(|v| v.ok_or_else(DeserializationError::missing_data))
                         .collect::<DeserializationResult<Vec<_>>>()
-                        .with_context("rerun.archetypes.Ellipsoids#quaternions")?
+                        .with_context("rerun.archetypes.Ellipsoids3D#quaternions")?
                 })
             } else {
                 None
@@ -248,11 +248,11 @@ impl ::re_types_core::Archetype for Ellipsoids {
         let colors = if let Some(array) = arrays_by_name.get("rerun.components.Color") {
             Some({
                 <crate::components::Color>::from_arrow_opt(&**array)
-                    .with_context("rerun.archetypes.Ellipsoids#colors")?
+                    .with_context("rerun.archetypes.Ellipsoids3D#colors")?
                     .into_iter()
                     .map(|v| v.ok_or_else(DeserializationError::missing_data))
                     .collect::<DeserializationResult<Vec<_>>>()
-                    .with_context("rerun.archetypes.Ellipsoids#colors")?
+                    .with_context("rerun.archetypes.Ellipsoids3D#colors")?
             })
         } else {
             None
@@ -260,18 +260,18 @@ impl ::re_types_core::Archetype for Ellipsoids {
         let line_radii = if let Some(array) = arrays_by_name.get("rerun.components.Radius") {
             Some({
                 <crate::components::Radius>::from_arrow_opt(&**array)
-                    .with_context("rerun.archetypes.Ellipsoids#line_radii")?
+                    .with_context("rerun.archetypes.Ellipsoids3D#line_radii")?
                     .into_iter()
                     .map(|v| v.ok_or_else(DeserializationError::missing_data))
                     .collect::<DeserializationResult<Vec<_>>>()
-                    .with_context("rerun.archetypes.Ellipsoids#line_radii")?
+                    .with_context("rerun.archetypes.Ellipsoids3D#line_radii")?
             })
         } else {
             None
         };
         let fill_mode = if let Some(array) = arrays_by_name.get("rerun.components.FillMode") {
             <crate::components::FillMode>::from_arrow_opt(&**array)
-                .with_context("rerun.archetypes.Ellipsoids#fill_mode")?
+                .with_context("rerun.archetypes.Ellipsoids3D#fill_mode")?
                 .into_iter()
                 .next()
                 .flatten()
@@ -281,11 +281,11 @@ impl ::re_types_core::Archetype for Ellipsoids {
         let labels = if let Some(array) = arrays_by_name.get("rerun.components.Text") {
             Some({
                 <crate::components::Text>::from_arrow_opt(&**array)
-                    .with_context("rerun.archetypes.Ellipsoids#labels")?
+                    .with_context("rerun.archetypes.Ellipsoids3D#labels")?
                     .into_iter()
                     .map(|v| v.ok_or_else(DeserializationError::missing_data))
                     .collect::<DeserializationResult<Vec<_>>>()
-                    .with_context("rerun.archetypes.Ellipsoids#labels")?
+                    .with_context("rerun.archetypes.Ellipsoids3D#labels")?
             })
         } else {
             None
@@ -293,11 +293,11 @@ impl ::re_types_core::Archetype for Ellipsoids {
         let class_ids = if let Some(array) = arrays_by_name.get("rerun.components.ClassId") {
             Some({
                 <crate::components::ClassId>::from_arrow_opt(&**array)
-                    .with_context("rerun.archetypes.Ellipsoids#class_ids")?
+                    .with_context("rerun.archetypes.Ellipsoids3D#class_ids")?
                     .into_iter()
                     .map(|v| v.ok_or_else(DeserializationError::missing_data))
                     .collect::<DeserializationResult<Vec<_>>>()
-                    .with_context("rerun.archetypes.Ellipsoids#class_ids")?
+                    .with_context("rerun.archetypes.Ellipsoids3D#class_ids")?
             })
         } else {
             None
@@ -316,7 +316,7 @@ impl ::re_types_core::Archetype for Ellipsoids {
     }
 }
 
-impl ::re_types_core::AsComponents for Ellipsoids {
+impl ::re_types_core::AsComponents for Ellipsoids3D {
     fn as_component_batches(&self) -> Vec<MaybeOwnedComponentBatch<'_>> {
         re_tracing::profile_function!();
         use ::re_types_core::Archetype as _;
@@ -354,8 +354,8 @@ impl ::re_types_core::AsComponents for Ellipsoids {
     }
 }
 
-impl Ellipsoids {
-    /// Create a new `Ellipsoids`.
+impl Ellipsoids3D {
+    /// Create a new `Ellipsoids3D`.
     #[inline]
     pub(crate) fn new(
         half_sizes: impl IntoIterator<Item = impl Into<crate::components::HalfSize3D>>,

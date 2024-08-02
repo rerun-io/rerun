@@ -1,4 +1,4 @@
-//! Log a batch of `Ellipsoids`.
+//! Log a batch of `Ellipsoids3D`.
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let rec = rerun::RecordingStreamBuilder::new("rerun_example_ellipsoid_batch").spawn()?;
@@ -8,7 +8,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let head_z = 4.5;
     rec.log(
         "batch",
-        &rerun::Ellipsoids::from_centers_and_half_sizes(
+        &rerun::Ellipsoids3D::from_centers_and_half_sizes(
             [
                 (0.0, 0.0, 0.0),
                 (0.0, 0.0, belly_z),

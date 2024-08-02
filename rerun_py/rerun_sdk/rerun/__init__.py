@@ -44,7 +44,7 @@ from .archetypes import (
     Clear as Clear,
     DepthImage as DepthImage,
     DisconnectedSpace as DisconnectedSpace,
-    Ellipsoids as Ellipsoids,
+    Ellipsoids3D as Ellipsoids3D,
     Image as Image,
     ImageEncoded as ImageEncoded,
     LeafTransforms3D as LeafTransforms3D,

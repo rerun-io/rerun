@@ -11,7 +11,7 @@ int main() {
     float head_z = 4.5;
     rec.log(
         "batch",
-        rerun::Ellipsoids::from_centers_and_half_sizes(
+        rerun::Ellipsoids3D::from_centers_and_half_sizes(
             {
                 {0.0f, 0.0f, 0.0f},
                 {0.0f, 0.0f, belly_z},

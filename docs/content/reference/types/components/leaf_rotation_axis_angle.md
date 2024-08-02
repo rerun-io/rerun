@@ -18,5 +18,5 @@ title: "LeafRotationAxisAngle"
 ## Used by
 
 * [`Boxes3D`](../archetypes/boxes3d.md)
-* [`Ellipsoids`](../archetypes/ellipsoids.md?speculative-link)
+* [`Ellipsoids3D`](../archetypes/ellipsoids3d.md?speculative-link)
 * [`LeafTransforms3D`](../archetypes/leaf_transforms3d.md)
