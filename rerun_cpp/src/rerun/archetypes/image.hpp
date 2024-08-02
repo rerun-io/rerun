@@ -13,6 +13,7 @@
 #include "../components/pixel_format.hpp"
 #include "../components/resolution2d.hpp"
 #include "../data_cell.hpp"
+#include "../image_utils.hpp"
 #include "../indicator_component.hpp"
 #include "../result.hpp"
 
@@ -69,7 +70,7 @@ namespace rerun::archetypes {
     ///         }
     ///     }
     ///
-    ///     rec.log("image", rerun::Image::from_rgb24({WIDTH, HEIGHT}, data));
+    ///     rec.log("image", rerun::Image::from_rgb24(data, {WIDTH, HEIGHT}));
     /// }
     /// ```
     struct Image {

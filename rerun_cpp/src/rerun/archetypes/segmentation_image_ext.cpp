@@ -6,7 +6,6 @@
 #include "../image_utils.hpp"
 
 // </CODEGEN_COPY_TO_HEADER>
-
 namespace rerun::archetypes {
     // <CODEGEN_COPY_TO_HEADER>
 

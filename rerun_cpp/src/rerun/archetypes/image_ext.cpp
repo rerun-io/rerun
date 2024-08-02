@@ -1,16 +1,14 @@
-#include "../error.hpp"
+#if 0
+
 #include "image.hpp"
 
-#include "../collection_adapter_builtins.hpp"
+// <CODEGEN_COPY_TO_HEADER>
+#include "../image_utils.hpp"
 
-#include <sstream>
-
-// Uncomment for better auto-complete while editing the extension.
-// #define EDIT_EXTENSION
+// </CODEGEN_COPY_TO_HEADER>
 
 namespace rerun::archetypes {
 
-#ifdef EDIT_EXTENSION
     // <CODEGEN_COPY_TO_HEADER>
 
     /// Construct an image from resolution, pixel format and bytes.
@@ -111,9 +109,10 @@ namespace rerun::archetypes {
     }
 
     // </CODEGEN_COPY_TO_HEADER>
-#endif
 
 } // namespace rerun::archetypes
+
+#endif
 
 // TODO: bring back ctors!
 // TODO: decide what to do with from_ methods - either add them to Image/Segmentation as well or remove them in favor of ctors!
