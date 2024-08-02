@@ -177,6 +177,11 @@ class TensorDataExt:
             fields=[data_type.field("shape"), data_type.field("buffer")],
         ).cast(data_type)
 
+    def numpy(self: Any, force: bool) -> npt.NDArray[Any]:
+        """Convert the TensorData back to a numpy array."""
+        dims = [d.size for d in self.shape]
+        return self.buffer.inner.reshape(dims)  # type: ignore[no-any-return]
+
 
 ################################################################################
 # Internal construction helpers
