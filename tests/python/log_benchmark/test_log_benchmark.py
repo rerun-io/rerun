@@ -5,6 +5,7 @@ from __future__ import annotations
 from typing import Any
 
 import numpy as np
+import numpy.typing as npt
 import pytest
 import rerun as rr
 
@@ -63,3 +64,68 @@ def test_bench_image(benchmark: Any, image_dimension: int, image_channels: int, 
 
     image = np.zeros((image_dimension, image_dimension, image_channels), dtype=np.uint8)
     benchmark(log_image, image, num_log_calls)
+
+
+def test_bench_transforms_over_time_individual(
+    rand_trans: npt.NDArray, rand_quats: npt.NDArray, rand_scales: npt.NDArray
+) -> None:
+    # create a new, empty memory sink for the current recording
+    rr.memory_recording()
+
+    num_transforms = rand_trans.shape[0]
+    for i in range(num_transforms):
+        rr.set_time_sequence("frame", i)
+        rr.log(
+            "test_transform",
+            rr.Transform3D(translation=rand_trans[i], rotation=rr.Quaternion(xyzw=rand_quats[i]), scale=rand_scales[i]),
+        )
+
+
+def test_bench_transforms_over_time_batched(
+    rand_trans: npt.NDArray, rand_quats: npt.NDArray, rand_scales: npt.NDArray, num_transforms_per_batch: int
+) -> None:
+    # create a new, empty memory sink for the current recording
+    rr.memory_recording()
+
+    num_transforms = rand_trans.shape[0]
+    num_log_calls = num_transforms // num_transforms_per_batch
+    for i in range(num_log_calls):
+        start = i * num_transforms_per_batch
+        end = (i + 1) * num_transforms_per_batch
+        times = np.arange(start, end)
+
+        rr.log_temporal_batch(
+            "test_transform",
+            times=[rr.TimeSequenceBatch("frame", times)],
+            components=[
+                rr.Transform3D.indicator(),
+                rr.components.Translation3DBatch(rand_trans[start:end]),
+                rr.components.RotationQuatBatch(rand_quats[start:end]),
+                rr.components.Scale3DBatch(rand_scales[start:end]),
+            ],
+        )
+
+
+@pytest.mark.parametrize(
+    ["num_transforms", "num_transforms_per_batch"],
+    [
+        pytest.param(10_000, 1),
+        pytest.param(10_000, 100),
+        pytest.param(10_000, 1_000),
+    ],
+)
+def test_bench_transforms_over_time(benchmark: Any, num_transforms: int, num_transforms_per_batch: int) -> None:
+    rr.init("rerun_example_benchmark_transforms_individual")
+
+    rand_trans = np.array(np.random.rand(num_transforms, 3), dtype=np.float32)
+    rand_quats = np.array(np.random.rand(num_transforms, 4), dtype=np.float32)
+    rand_scales = np.array(np.random.rand(num_transforms, 3), dtype=np.float32)
+
+    print(rand_trans.shape)
+
+    if num_transforms_per_batch > 1:
+        benchmark(
+            test_bench_transforms_over_time_batched, rand_trans, rand_quats, rand_scales, num_transforms_per_batch
+        )
+    else:
+        benchmark(test_bench_transforms_over_time_individual, rand_trans, rand_quats, rand_scales)
