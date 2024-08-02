@@ -8,6 +8,7 @@ namespace rerun.datatypes;
 /// datastore as provided, when used in the Viewer Quaternions will always be normalized.
 struct Quaternion (
   "attr.arrow.transparent",
+  "attr.python.array_aliases": "npt.NDArray[Any], npt.ArrayLike, Sequence[Sequence[float]]",
   "attr.rust.derive": "Copy, PartialEq, PartialOrd, bytemuck::Pod, bytemuck::Zeroable",
   "attr.rust.tuple_struct",
   "attr.rust.repr": "C",
