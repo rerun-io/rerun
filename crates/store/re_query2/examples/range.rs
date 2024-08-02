@@ -43,30 +43,21 @@ fn main() -> anyhow::Result<()> {
     // once for the whole column, and will then return references into that data.
     // This is why you have to process the data in two-steps: the iterator needs to have somewhere
     // to reference to.
-    let mut all_points_iters = all_points_chunks
-        .iter()
-        .map(|chunk| chunk.iter_component::<MyPoint>())
-        .collect_vec();
-    let all_points_indexed = {
-        let all_points = all_points_iters.iter_mut().flat_map(|it| it.into_iter());
-        let all_points_indices = all_points_chunks
-            .iter()
-            .flat_map(|chunk| chunk.iter_component_indices(&query.timeline(), &MyPoint::name()));
-        izip!(all_points_indices, all_points)
-    };
-    let mut all_labels_iters = all_labels_chunks
+    let all_points_indexed = all_points_chunks.iter().flat_map(|chunk| {
+        izip!(
+            chunk.iter_component_indices(&query.timeline(), &MyPoint::name()),
+            chunk.iter_component::<MyPoint>()
+        )
+    });
+    let all_labels_indexed = all_labels_chunks
         .unwrap_or_default()
         .iter()
-        .map(|chunk| chunk.iter_component::<MyLabel>())
-        .collect_vec();
-    let all_labels_indexed = {
-        let all_labels = all_labels_iters.iter_mut().flat_map(|it| it.into_iter());
-        let all_labels_indices = all_labels_chunks
-            .unwrap_or_default()
-            .iter()
-            .flat_map(|chunk| chunk.iter_component_indices(&query.timeline(), &MyLabel::name()));
-        izip!(all_labels_indices, all_labels)
-    };
+        .flat_map(|chunk| {
+            izip!(
+                chunk.iter_component_indices(&query.timeline(), &MyLabel::name()),
+                chunk.iter_component::<MyLabel>()
+            )
+        });
 
     // Or, if you want every last bit of performance you can get, you can manipulate the raw
     // data directly:
@@ -74,7 +65,7 @@ fn main() -> anyhow::Result<()> {
         .unwrap_or_default()
         .iter()
         .flat_map(|chunk| {
-            itertools::izip!(
+            izip!(
                 chunk.iter_component_indices(&query.timeline(), &MyColor::name()),
                 chunk.iter_primitive::<u32>(&MyColor::name()),
             )
@@ -90,8 +81,10 @@ fn main() -> anyhow::Result<()> {
 
         eprintln!("results:");
         for ((data_time, row_id), points, colors, labels) in all_frames {
-            let colors = colors.unwrap_or(&[]).iter().map(|c| Some(MyColor(*c)));
-            let labels = labels.unwrap_or(&[]).iter().cloned().map(Some);
+            let points = points.as_slice();
+            let colors = colors.unwrap_or_default().iter().map(|c| Some(MyColor(*c)));
+            let labels = labels.unwrap_or_default();
+            let labels = labels.as_slice().iter().cloned().map(Some);
 
             // Apply your instance-level joining logic, if any:
             let results =

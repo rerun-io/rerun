@@ -364,7 +364,7 @@ impl<'a> RangeResultsExt for HybridResults<'a> {
 
 // ---
 
-use re_chunk::{RowId, TimeInt, Timeline};
+use re_chunk::{ChunkComponentIterItem, RowId, TimeInt, Timeline};
 use re_chunk_store::external::{re_chunk, re_chunk::external::arrow2};
 
 /// The iterator type backing [`HybridResults::iter_as`].
@@ -375,6 +375,20 @@ pub struct HybridResultsChunkIter<'a> {
 }
 
 impl<'a> HybridResultsChunkIter<'a> {
+    /// Iterate as indexed deserialized batches.
+    ///
+    /// See [`Chunk::iter_component`] for more information.
+    pub fn component<C: re_types_core::Component>(
+        &'a self,
+    ) -> impl Iterator<Item = ((TimeInt, RowId), ChunkComponentIterItem<C>)> + 'a {
+        self.chunks.iter().flat_map(move |chunk| {
+            itertools::izip!(
+                chunk.iter_component_indices(&self.timeline, &self.component_name),
+                chunk.iter_component::<C>(),
+            )
+        })
+    }
+
     /// Iterate as indexed primitives.
     ///
     /// See [`Chunk::iter_primitive`] for more information.

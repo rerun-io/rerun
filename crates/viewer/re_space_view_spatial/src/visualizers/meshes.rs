@@ -1,5 +1,3 @@
-use itertools::Itertools as _;
-
 use re_chunk_store::RowId;
 use re_log_types::{hash::Hash64, Instance, TimeInt};
 use re_renderer::renderer::MeshInstance;
@@ -52,7 +50,7 @@ struct Mesh3DComponentData<'a> {
 
     triangle_indices: Option<&'a [TriangleIndices]>,
     albedo_factor: Option<&'a AlbedoFactor>,
-    albedo_texture: Option<&'a TensorData>,
+    albedo_texture: Option<TensorData>,
 
     class_ids: &'a [ClassId],
 }
@@ -108,7 +106,8 @@ impl Mesh3DVisualizer {
                             vertex_texcoords: (!vertex_texcoords.is_empty())
                                 .then_some(vertex_texcoords),
                             albedo_factor: data.albedo_factor.copied(),
-                            albedo_texture: data.albedo_texture.cloned(),
+                            // NOTE: not actually cloning anything.
+                            albedo_texture: data.albedo_texture.clone(),
                             class_ids: (!data.class_ids.is_empty())
                                 .then(|| data.class_ids.to_owned()),
                         },
@@ -202,25 +201,10 @@ impl VisualizerSystem for Mesh3DVisualizer {
                 let all_vertex_texcoords = results.iter_as(timeline, Texcoord2D::name());
                 let all_triangle_indices = results.iter_as(timeline, TriangleIndices::name());
                 let all_albedo_factors = results.iter_as(timeline, AlbedoFactor::name());
-                let all_class_ids = results.iter_as(timeline, ClassId::name());
-
                 // TODO(#6386): we have to deserialize here because `TensorData` is still a complex
                 // type at this point.
-                let all_albedo_textures_chunks = results.get_optional_chunks(&TensorData::name());
-                let mut all_albedo_textures_iters = all_albedo_textures_chunks
-                    .iter()
-                    .map(|chunk| chunk.iter_component::<TensorData>())
-                    .collect_vec();
-                let all_albedo_textures_indexed = {
-                    let all_albedo_textures = all_albedo_textures_iters
-                        .iter_mut()
-                        .flat_map(|it| it.into_iter());
-                    let all_albedo_textures_indices =
-                        all_albedo_textures_chunks.iter().flat_map(|chunk| {
-                            chunk.iter_component_indices(&timeline, &TensorData::name())
-                        });
-                    itertools::izip!(all_albedo_textures_indices, all_albedo_textures)
-                };
+                let all_albedo_textures = results.iter_as(timeline, TensorData::name());
+                let all_class_ids = results.iter_as(timeline, ClassId::name());
 
                 let query_result_hash = results.query_result_hash();
 
@@ -231,7 +215,7 @@ impl VisualizerSystem for Mesh3DVisualizer {
                     all_vertex_texcoords.primitive_array::<2, f32>(),
                     all_triangle_indices.primitive_array::<3, u32>(),
                     all_albedo_factors.primitive::<u32>(),
-                    all_albedo_textures_indexed,
+                    all_albedo_textures.component::<TensorData>(),
                     all_class_ids.primitive::<u16>(),
                 )
                 .map(
@@ -263,7 +247,8 @@ impl VisualizerSystem for Mesh3DVisualizer {
                                     bytemuck::cast_slice(albedo_factors)
                                 })
                                 .first(),
-                            albedo_texture: albedo_textures.and_then(|v| v.first()),
+                            // NOTE: not actually cloning anything.
+                            albedo_texture: albedo_textures.unwrap_or_default().first().cloned(),
                             class_ids: class_ids
                                 .map_or(&[], |class_ids| bytemuck::cast_slice(class_ids)),
                         }

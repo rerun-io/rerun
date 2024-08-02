@@ -310,19 +310,36 @@ where
 
 // ---
 
-use re_chunk::{Chunk, ComponentName, RowId};
+use re_chunk::{Chunk, ChunkComponentIterItem, ComponentName, RowId};
 use re_chunk_store::external::{re_chunk, re_chunk::external::arrow2};
+
+/// Iterate `chunks` as indexed deserialized batches.
+///
+/// See [`Chunk::iter_component`] for more information.
+#[allow(unused)]
+pub fn iter_component<'a, C: re_types::Component>(
+    chunks: &'a std::borrow::Cow<'a, [Chunk]>,
+    timeline: Timeline,
+    component_name: ComponentName,
+) -> impl Iterator<Item = ((TimeInt, RowId), ChunkComponentIterItem<C>)> + 'a {
+    chunks.iter().flat_map(move |chunk| {
+        itertools::izip!(
+            chunk.iter_component_indices(&timeline, &component_name),
+            chunk.iter_component::<C>()
+        )
+    })
+}
 
 /// Iterate `chunks` as indexed primitives.
 ///
 /// See [`Chunk::iter_primitive`] for more information.
 #[allow(unused)]
 pub fn iter_primitive<'a, T: arrow2::types::NativeType>(
-    chunks: impl IntoIterator<Item = &'a Chunk> + 'a,
+    chunks: &'a std::borrow::Cow<'a, [Chunk]>,
     timeline: Timeline,
     component_name: ComponentName,
 ) -> impl Iterator<Item = ((TimeInt, RowId), &'a [T])> + 'a {
-    chunks.into_iter().flat_map(move |chunk| {
+    chunks.iter().flat_map(move |chunk| {
         itertools::izip!(
             chunk.iter_component_indices(&timeline, &component_name),
             chunk.iter_primitive::<T>(&component_name)
