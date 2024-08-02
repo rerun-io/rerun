@@ -1,10 +1,13 @@
 use itertools::Itertools as _;
 
-use re_space_view::HybridResults;
+use re_space_view::HybridResults2;
 use re_types::{
     archetypes::Image,
-    components::{self, ChannelDatatype, ColorModel, DrawOrder, Opacity, PixelFormat},
+    components::{
+        Blob, ChannelDatatype, ColorModel, DrawOrder, Opacity, PixelFormat, Resolution2D,
+    },
     image::ImageKind,
+    Loggable as _,
 };
 use re_viewer_context::{
     ApplicableEntities, IdentifiedViewSystem, ImageFormat, ImageInfo, QueryContext,
@@ -75,7 +78,10 @@ impl VisualizerSystem for ImageVisualizer {
             ctx,
             view_query,
             context_systems,
-            |ctx, spatial_ctx, results| self.process_image(ctx, results, spatial_ctx),
+            |ctx, spatial_ctx, results| {
+                self.process_image(ctx, results, spatial_ctx);
+                Ok(())
+            },
         )?;
 
         // TODO(#702): draw order is translated to depth offset, which works fine for opaque images,
@@ -129,46 +135,47 @@ impl ImageVisualizer {
     fn process_image(
         &mut self,
         ctx: &QueryContext<'_>,
-        results: &HybridResults<'_>,
+        results: &HybridResults2<'_>,
         spatial_ctx: &SpatialSceneEntityContext<'_>,
-    ) -> Result<(), SpaceViewSystemExecutionError> {
-        use re_space_view::RangeResultsExt as _;
+    ) {
+        use super::entity_iterator::{iter_buffer, iter_primitive_array};
+        use re_space_view::RangeResultsExt2 as _;
 
-        let resolver = ctx.recording().resolver();
         let entity_path = ctx.target_entity_path;
 
-        let blobs = match results.get_required_component_dense::<components::Blob>(resolver) {
-            Some(blobs) => blobs?,
-            _ => return Ok(()),
+        let Some(all_blob_chunks) = results.get_required_chunks(&Blob::name()) else {
+            return;
         };
-        let resolutions =
-            match results.get_required_component_dense::<components::Resolution2D>(resolver) {
-                Some(resolutions) => resolutions?,
-                _ => return Ok(()),
-            };
+        let Some(all_resolution_chunks) = results.get_required_chunks(&Resolution2D::name()) else {
+            return;
+        };
 
-        let pixel_formats = results.get_or_empty_dense::<PixelFormat>(resolver)?;
-        let color_models = results.get_or_empty_dense::<ColorModel>(resolver)?;
-        let datatypes = results.get_or_empty_dense::<ChannelDatatype>(resolver)?;
-        let opacity = results.get_or_empty_dense(resolver)?;
+        let timeline = ctx.query.timeline();
+        let all_blobs_indexed = iter_buffer::<u8>(&all_blob_chunks, timeline, Blob::name());
+        let all_resolutions_indexed =
+            iter_primitive_array(&all_resolution_chunks, timeline, Resolution2D::name());
+        let all_pixel_formats = results.iter_as(timeline, PixelFormat::name());
+        let all_color_models = results.iter_as(timeline, ColorModel::name());
+        let all_channel_datatypes = results.iter_as(timeline, ChannelDatatype::name());
+        let all_opacities = results.iter_as(timeline, Opacity::name());
 
-        let data = re_query::range_zip_1x5(
-            blobs.range_indexed(),
-            resolutions.range_indexed(),
-            pixel_formats.range_indexed(),
-            color_models.range_indexed(),
-            datatypes.range_indexed(),
-            opacity.range_indexed(),
+        let data = re_query2::range_zip_1x5(
+            all_blobs_indexed,
+            all_resolutions_indexed,
+            all_pixel_formats.component::<PixelFormat>(),
+            all_color_models.component::<ColorModel>(),
+            all_channel_datatypes.component::<ChannelDatatype>(),
+            all_opacities.primitive::<f32>(),
         )
         .filter_map(
-            |(&index, blobs, resolutions, pixel_formats, color_models, datatypes, opacities)| {
+            |(index, blobs, resolutions, pixel_formats, color_models, datatypes, opacities)| {
                 let blob = blobs.first()?.0.clone();
 
-                let format = if let Some(pixel_format) = first_copied(pixel_formats) {
+                let format = if let Some(pixel_format) = first_copied(pixel_formats.as_deref()) {
                     ImageFormat::PixelFormat(pixel_format)
                 } else {
-                    let color_model = first_copied(color_models)?;
-                    let datatype = first_copied(datatypes)?;
+                    let color_model = first_copied(color_models.as_deref())?;
+                    let datatype = first_copied(datatypes.as_deref())?;
                     ImageFormat::ColorModel {
                         color_model,
                         datatype,
@@ -178,13 +185,13 @@ impl ImageVisualizer {
                 Some(ImageComponentData {
                     image: ImageInfo {
                         blob_row_id: index.1,
-                        blob,
-                        resolution: first_copied(resolutions)?.0 .0,
+                        blob: re_types::datatypes::Blob(blob.into()),
+                        resolution: first_copied(resolutions)?,
                         format,
                         kind: ImageKind::Color,
                         colormap: None,
                     },
-                    opacity: first_copied(opacities),
+                    opacity: first_copied(opacities).map(Into::into),
                 })
             },
         );
@@ -211,8 +218,6 @@ impl ImageVisualizer {
                 });
             }
         }
-
-        Ok(())
     }
 }
 

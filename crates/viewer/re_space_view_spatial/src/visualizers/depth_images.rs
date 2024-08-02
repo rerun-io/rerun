@@ -6,8 +6,12 @@ use re_log_types::EntityPathHash;
 use re_renderer::renderer::{DepthCloud, DepthClouds};
 use re_types::{
     archetypes::DepthImage,
-    components::{self, Colormap, DepthMeter, DrawOrder, FillRatio, ViewCoordinates},
+    components::{
+        self, Blob, ChannelDatatype, Colormap, DepthMeter, DrawOrder, FillRatio, Resolution2D,
+        ViewCoordinates,
+    },
     image::ImageKind,
+    Loggable as _,
 };
 use re_viewer_context::{
     gpu_bridge::colormap_to_re_renderer, ApplicableEntities, IdentifiedViewSystem, ImageFormat,
@@ -17,8 +21,7 @@ use re_viewer_context::{
 };
 
 use crate::{
-    contexts::SpatialSceneEntityContext,
-    contexts::TwoDInThreeDTransformInfo,
+    contexts::{SpatialSceneEntityContext, TwoDInThreeDTransformInfo},
     query_pinhole_legacy,
     view_kind::SpatialSpaceViewKind,
     visualizers::{filter_visualizable_2d_entities, SIZE_BOOST_IN_POINTS_FOR_POINT_OUTLINES},
@@ -238,59 +241,62 @@ impl VisualizerSystem for DepthImageVisualizer {
 
         let mut depth_clouds = Vec::new();
 
-        super::entity_iterator::process_archetype::<Self, DepthImage, _>(
+        use super::entity_iterator::{
+            iter_buffer, iter_component, iter_primitive_array, process_archetype,
+        };
+        process_archetype::<Self, DepthImage, _>(
             ctx,
             view_query,
             context_systems,
             |ctx, spatial_ctx, results| {
-                use re_space_view::RangeResultsExt as _;
+                use re_space_view::RangeResultsExt2 as _;
 
-                let resolver = ctx.recording().resolver();
-
-                let blobs = match results.get_required_component_dense::<components::Blob>(resolver)
-                {
-                    Some(blobs) => blobs?,
-                    _ => return Ok(()),
+                let Some(all_blob_chunks) = results.get_required_chunks(&Blob::name()) else {
+                    return Ok(());
                 };
-                let resolutions = match results
-                    .get_required_component_dense::<components::Resolution2D>(resolver)
-                {
-                    Some(resolutions) => resolutions?,
-                    _ => return Ok(()),
+                let Some(all_resolution_chunks) =
+                    results.get_required_chunks(&Resolution2D::name())
+                else {
+                    return Ok(());
                 };
-                let data_types = match results
-                    .get_required_component_dense::<components::ChannelDatatype>(resolver)
-                {
-                    Some(data_types) => data_types?,
-                    _ => return Ok(()),
+                let Some(all_datatype_chunks) =
+                    results.get_required_chunks(&ChannelDatatype::name())
+                else {
+                    return Ok(());
                 };
 
-                let colormap = results.get_or_empty_dense(resolver)?;
-                let depth_meter = results.get_or_empty_dense(resolver)?;
-                let fill_ratio = results.get_or_empty_dense(resolver)?;
+                let timeline = ctx.query.timeline();
+                let all_blobs_indexed = iter_buffer::<u8>(&all_blob_chunks, timeline, Blob::name());
+                let all_resolutions_indexed =
+                    iter_primitive_array(&all_resolution_chunks, timeline, Resolution2D::name());
+                let all_datatypes_indexed =
+                    iter_component(&all_datatype_chunks, timeline, ChannelDatatype::name());
+                let all_colormaps = results.iter_as(timeline, Colormap::name());
+                let all_depth_meters = results.iter_as(timeline, DepthMeter::name());
+                let all_fill_ratios = results.iter_as(timeline, FillRatio::name());
 
-                let mut data = re_query::range_zip_1x5(
-                    blobs.range_indexed(),
-                    resolutions.range_indexed(),
-                    data_types.range_indexed(),
-                    colormap.range_indexed(),
-                    depth_meter.range_indexed(),
-                    fill_ratio.range_indexed(),
+                let mut data = re_query2::range_zip_1x5(
+                    all_blobs_indexed,
+                    all_datatypes_indexed,
+                    all_resolutions_indexed,
+                    all_colormaps.component::<components::Colormap>(),
+                    all_depth_meters.primitive::<f32>(),
+                    all_fill_ratios.primitive::<f32>(),
                 )
                 .filter_map(
-                    |(&index, blobs, resolution, data_type, colormap, depth_meter, fill_ratio)| {
+                    |(index, blobs, data_type, resolution, colormap, depth_meter, fill_ratio)| {
                         let blob = blobs.first()?;
                         Some(DepthImageComponentData {
                             image: ImageInfo {
                                 blob_row_id: index.1,
-                                blob: blob.0.clone(),
-                                resolution: first_copied(resolution)?.0 .0,
-                                format: ImageFormat::depth(first_copied(data_type)?),
+                                blob: blob.clone().into(),
+                                resolution: first_copied(resolution)?,
+                                format: ImageFormat::depth(first_copied(data_type.as_deref())?),
                                 kind: ImageKind::Depth,
-                                colormap: first_copied(colormap),
+                                colormap: first_copied(colormap.as_deref()),
                             },
-                            depth_meter: first_copied(depth_meter),
-                            fill_ratio: first_copied(fill_ratio),
+                            depth_meter: first_copied(depth_meter).map(Into::into),
+                            fill_ratio: first_copied(fill_ratio).map(Into::into),
                         })
                     },
                 );

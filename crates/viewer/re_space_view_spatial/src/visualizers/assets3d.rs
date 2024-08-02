@@ -139,8 +139,8 @@ impl VisualizerSystem for Asset3DVisualizer {
 
         let mut instances = Vec::new();
 
-        use super::entity_iterator::{iter_buffer, process_archetype2};
-        process_archetype2::<Self, Asset3D, _>(
+        use super::entity_iterator::{iter_buffer, process_archetype};
+        process_archetype::<Self, Asset3D, _>(
             ctx,
             view_query,
             context_systems,
