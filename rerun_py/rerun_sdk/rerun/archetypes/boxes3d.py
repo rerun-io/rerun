@@ -21,12 +21,14 @@ class Boxes3D(Boxes3DExt, Archetype):
     """
     **Archetype**: 3D boxes with half-extents and optional center, rotations, colors etc.
 
+    Note that orienting and placing the box is handled via `[archetypes.LeafTransforms3D]`.
+    Some of its component are repeated here for convenience.
+
     Example
     -------
     ### Batch of 3D boxes:
     ```python
     import rerun as rr
-    from rerun.datatypes import Angle, Quaternion, Rotation3D, RotationAxisAngle
 
     rr.init("rerun_example_box3d_batch", spawn=True)
 
@@ -35,10 +37,9 @@ class Boxes3D(Boxes3DExt, Archetype):
         rr.Boxes3D(
             centers=[[2, 0, 0], [-2, 0, 0], [0, 0, 2]],
             half_sizes=[[2.0, 2.0, 1.0], [1.0, 1.0, 0.5], [2.0, 0.5, 1.0]],
-            rotations=[
-                Rotation3D.identity(),
-                Quaternion(xyzw=[0.0, 0.0, 0.382683, 0.923880]),  # 45 degrees around Z
-                RotationAxisAngle(axis=[0, 1, 0], angle=Angle(deg=30)),
+            quaternions=[
+                rr.Quaternion.identity(),
+                rr.Quaternion(xyzw=[0.0, 0.0, 0.382683, 0.923880]),  # 45 degrees around Z
             ],
             radii=0.025,
             colors=[(255, 0, 0), (0, 255, 0), (0, 0, 255)],
@@ -66,7 +67,8 @@ class Boxes3D(Boxes3DExt, Archetype):
         self.__attrs_init__(
             half_sizes=None,  # type: ignore[arg-type]
             centers=None,  # type: ignore[arg-type]
-            rotations=None,  # type: ignore[arg-type]
+            rotation_axis_angles=None,  # type: ignore[arg-type]
+            quaternions=None,  # type: ignore[arg-type]
             colors=None,  # type: ignore[arg-type]
             radii=None,  # type: ignore[arg-type]
             fill_mode=None,  # type: ignore[arg-type]
@@ -89,21 +91,39 @@ class Boxes3D(Boxes3DExt, Archetype):
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 
-    centers: components.Position3DBatch | None = field(
+    centers: components.LeafTranslation3DBatch | None = field(
         metadata={"component": "optional"},
         default=None,
-        converter=components.Position3DBatch._optional,  # type: ignore[misc]
+        converter=components.LeafTranslation3DBatch._optional,  # type: ignore[misc]
     )
     # Optional center positions of the boxes.
     #
+    # If not specified, the centers will be at (0, 0, 0).
+    # Note that this uses a [`components.LeafTranslation3D`][rerun.components.LeafTranslation3D] which is also used by [`archetypes.LeafTransforms3D`][rerun.archetypes.LeafTransforms3D].
+    #
     # (Docstring intentionally commented out to hide this field from the docs)
 
-    rotations: components.Rotation3DBatch | None = field(
+    rotation_axis_angles: components.LeafRotationAxisAngleBatch | None = field(
         metadata={"component": "optional"},
         default=None,
-        converter=components.Rotation3DBatch._optional,  # type: ignore[misc]
+        converter=components.LeafRotationAxisAngleBatch._optional,  # type: ignore[misc]
     )
-    # Optional rotations of the boxes.
+    # Rotations via axis + angle.
+    #
+    # If no rotation is specified, the axes of the boxes align with the axes of the local coordinate system.
+    # Note that this uses a [`components.LeafRotationAxisAngle`][rerun.components.LeafRotationAxisAngle] which is also used by [`archetypes.LeafTransforms3D`][rerun.archetypes.LeafTransforms3D].
+    #
+    # (Docstring intentionally commented out to hide this field from the docs)
+
+    quaternions: components.LeafRotationQuatBatch | None = field(
+        metadata={"component": "optional"},
+        default=None,
+        converter=components.LeafRotationQuatBatch._optional,  # type: ignore[misc]
+    )
+    # Rotations via quaternion.
+    #
+    # If no rotation is specified, the axes of the boxes align with the axes of the local coordinate system.
+    # Note that this uses a [`components.LeafRotationQuat`][rerun.components.LeafRotationQuat] which is also used by [`archetypes.LeafTransforms3D`][rerun.archetypes.LeafTransforms3D].
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 

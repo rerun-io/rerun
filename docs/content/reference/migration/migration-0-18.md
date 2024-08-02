@@ -233,3 +233,12 @@ After:
 rec.log("world/mesh", &rerun::Asset3D::from_file(path)?)?;
 rec.log("world/mesh", &rerun::LeafTransform3D::default().with_translations([translation]))?;
 ```
+
+### [`Boxes3D`](https://rerun.io/docs/reference/types/archetypes/boxes3d) changes
+
+`centers` is now a [`LeafTranslation3D`](https://rerun.io/docs/reference/types/components/leaf_translation3d#speculative-link) instead of a [`Position3D`](https://rerun.io/docs/reference/types/components/position3d) component.
+The main difference in behavior is that this means it overlaps with the newly introduced [`LeafTransforms3D`](https://rerun.io/docs/reference/types/archetypes/leaf_transform3d#speculative-link) archetype.
+
+`rotation` was removed in favor of `rotation_axis_angles` and `quaternions` which are
+[`LeafRotationAxisAngle`](https://rerun.io/docs/reference/types/components/leaf_rotation_axis_angle#speculative-link) and `LeafRotationQuat`(https://rerun.io/docs/reference/types/components/leaf_rotation_quat#speculative-link) components.
+Consequently, instead of using `with_rotations` (C++/Rust) or `rotation=` (Python) you'll need to use `with_quaternions`/`quaternions=`  or `with_rotation_axis_angles`/`rotation_axis_angles=` respectively.

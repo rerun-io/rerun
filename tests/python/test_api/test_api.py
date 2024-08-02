@@ -251,7 +251,7 @@ def run_bounding_box() -> None:
         "bbox_test/bbox",
         rr.Boxes3D(
             half_sizes=[1.0, 0.5, 0.25],
-            rotations=rr.Quaternion(xyzw=[0, 0, np.sin(np.pi / 4), np.cos(np.pi / 4)]),
+            quaternions=rr.Quaternion(xyzw=[0, 0, np.sin(np.pi / 4), np.cos(np.pi / 4)]),
             colors=[0, 255, 0],
             radii=0.01,
             labels="box/t0",
@@ -264,7 +264,7 @@ def run_bounding_box() -> None:
         rr.Boxes3D(
             centers=np.array([1.0, 0.0, 0.0]),
             half_sizes=[1.0, 0.5, 0.25],
-            rotations=rr.Quaternion(xyzw=[0, 0, np.sin(np.pi / 4), np.cos(np.pi / 4)]),
+            quaternions=rr.Quaternion(xyzw=[0, 0, np.sin(np.pi / 4), np.cos(np.pi / 4)]),
             colors=[255, 255, 0],
             radii=0.02,
             labels="box/t1",

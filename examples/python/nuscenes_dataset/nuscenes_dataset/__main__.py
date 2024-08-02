@@ -193,7 +193,7 @@ def log_annotations(first_sample_token: str, nusc: nuscenes.NuScenes, max_timest
         ann_tokens = sample_data["anns"]
         sizes = []
         centers = []
-        rotations = []
+        quaternions = []
         class_ids = []
         for ann_token in ann_tokens:
             ann = nusc.get("sample_annotation", ann_token)
@@ -202,7 +202,7 @@ def log_annotations(first_sample_token: str, nusc: nuscenes.NuScenes, max_timest
             width, length, height = ann["size"]
             sizes.append((length, width, height))  # x, y, z sizes
             centers.append(ann["translation"])
-            rotations.append(rr.Quaternion(xyzw=rotation_xyzw))
+            quaternions.append(rr.Quaternion(xyzw=rotation_xyzw))
             if ann["category_name"] not in label2id:
                 label2id[ann["category_name"]] = len(label2id)
             class_ids.append(label2id[ann["category_name"]])
@@ -212,7 +212,7 @@ def log_annotations(first_sample_token: str, nusc: nuscenes.NuScenes, max_timest
             rr.Boxes3D(
                 sizes=sizes,
                 centers=centers,
-                rotations=rotations,
+                quaternions=quaternions,
                 class_ids=class_ids,
                 fill_mode=rr.components.FillMode.Solid,
             ),

@@ -9,16 +9,16 @@ This archetype is for ellipsoids or spheres whose size is a key part of the data
 (e.g. a bounding sphere).
 For points whose radii are for the sake of visualization, use [`archetypes.Points3D`](https://rerun.io/docs/reference/types/archetypes/points3d) instead.
 
-Currently, ellipsoids are always rendered as wireframes.
-Opaque and transparent rendering will be supported later.
+Note that orienting and placing the ellipsoids/spheres is handled via `[archetypes.LeafTransforms3D]`.
+Some of its component are repeated here for convenience.
 
 ## Components
 
 **Required**: [`HalfSize3D`](../components/half_size3d.md)
 
-**Recommended**: [`Position3D`](../components/position3d.md), [`Rotation3D`](../components/rotation3d.md), [`Color`](../components/color.md)
+**Recommended**: [`LeafTranslation3D`](../components/leaf_translation3d.md), [`Color`](../components/color.md)
 
-**Optional**: [`Radius`](../components/radius.md), [`FillMode`](../components/fill_mode.md), [`Text`](../components/text.md), [`ClassId`](../components/class_id.md)
+**Optional**: [`LeafRotationAxisAngle`](../components/leaf_rotation_axis_angle.md), [`LeafRotationQuat`](../components/leaf_rotation_quat.md), [`Radius`](../components/radius.md), [`FillMode`](../components/fill_mode.md), [`Text`](../components/text.md), [`ClassId`](../components/class_id.md)
 
 ## Shown in
 * [Spatial3DView](../views/spatial3d_view.md)

@@ -35,7 +35,7 @@ from .common_arrays import (
 )
 
 
-def test_boxes3d() -> None:
+def test_ellipsoids() -> None:
     fill_mode_arrays = [None, rr.components.FillMode.Solid, rr.components.FillMode.Wireframe]
 
     all_arrays = itertools.zip_longest(
@@ -56,7 +56,7 @@ def test_boxes3d() -> None:
         rotation_axis_angles,
         quaternions,
         colors,
-        radii,
+        line_radii,
         fill_mode,
         labels,
         class_ids,
@@ -68,31 +68,31 @@ def test_boxes3d() -> None:
         centers = cast(Vec3DArrayLike, centers)
         rotation_axis_angles = cast(RotationAxisAngleArrayLike, rotation_axis_angles)
         quaternions = cast(QuaternionArrayLike, quaternions)
-        radii = cast(Optional[Float32ArrayLike], radii)
+        line_radii = cast(Optional[Float32ArrayLike], line_radii)
         colors = cast(Optional[Rgba32ArrayLike], colors)
         labels = cast(Optional[Utf8ArrayLike], labels)
         class_ids = cast(Optional[ClassIdArrayLike], class_ids)
         fill_mode = cast(Optional[rr.components.FillMode], fill_mode)
 
         print(
-            f"rr.Boxes3D(\n"
+            f"rr.Ellipsoids(\n"
             f"    half_sizes={half_sizes}\n"
             f"    rotation_axis_angles={rotation_axis_angles}\n"
             f"    quaternions={quaternions}\n"
             f"    centers={centers}\n"
-            f"    radii={radii!r}\n"
+            f"    line_radii={line_radii!r}\n"
             f"    colors={colors!r}\n"
             f"    labels={labels!r}\n"
             f"    fill_mode={fill_mode!r}\n"
             f"    class_ids={class_ids!r}\n"
             f")"
         )
-        arch = rr.Boxes3D(
+        arch = rr.Ellipsoids(
             half_sizes=half_sizes,
             centers=centers,
             rotation_axis_angles=rotation_axis_angles,
             quaternions=quaternions,
-            radii=radii,
+            line_radii=line_radii,
             colors=colors,
             labels=labels,
             fill_mode=fill_mode,
@@ -107,19 +107,7 @@ def test_boxes3d() -> None:
         )
         assert arch.quaternions == expected_quaternions(quaternions, LeafRotationQuatBatch)
         assert arch.colors == colors_expected(colors)
-        assert arch.radii == radii_expected(radii)
+        assert arch.line_radii == radii_expected(line_radii)
         assert arch.fill_mode == rr.components.FillModeBatch._optional(fill_mode)
         assert arch.labels == labels_expected(labels)
         assert arch.class_ids == class_ids_expected(class_ids)
-
-
-def test_with_sizes() -> None:
-    assert rr.Boxes3D(sizes=[1, 2, 3]) == rr.Boxes3D(half_sizes=[0.5, 1, 1.5])
-
-
-def test_with_centers_and_sizes() -> None:
-    assert rr.Boxes3D(centers=[1, 2, 3], sizes=[4, 6, 8]) == rr.Boxes3D(centers=[1, 2, 3], half_sizes=[2, 3, 4])
-
-
-def test_with_mins_and_sizes() -> None:
-    assert rr.Boxes3D(mins=[-1, -1, -1], sizes=[2, 4, 2]) == rr.Boxes3D(centers=[0, 1, 0], half_sizes=[1, 2, 1])

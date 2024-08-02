@@ -25,8 +25,8 @@ class Ellipsoids(EllipsoidsExt, Archetype):
     (e.g. a bounding sphere).
     For points whose radii are for the sake of visualization, use [`archetypes.Points3D`][rerun.archetypes.Points3D] instead.
 
-    Currently, ellipsoids are always rendered as wireframes.
-    Opaque and transparent rendering will be supported later.
+    Note that orienting and placing the ellipsoids/spheres is handled via `[archetypes.LeafTransforms3D]`.
+    Some of its component are repeated here for convenience.
     """
 
     # __init__ can be found in ellipsoids_ext.py
@@ -36,7 +36,8 @@ class Ellipsoids(EllipsoidsExt, Archetype):
         self.__attrs_init__(
             half_sizes=None,  # type: ignore[arg-type]
             centers=None,  # type: ignore[arg-type]
-            rotations=None,  # type: ignore[arg-type]
+            rotation_axis_angles=None,  # type: ignore[arg-type]
+            quaternions=None,  # type: ignore[arg-type]
             colors=None,  # type: ignore[arg-type]
             line_radii=None,  # type: ignore[arg-type]
             fill_mode=None,  # type: ignore[arg-type]
@@ -61,25 +62,39 @@ class Ellipsoids(EllipsoidsExt, Archetype):
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 
-    centers: components.Position3DBatch | None = field(
+    centers: components.LeafTranslation3DBatch | None = field(
         metadata={"component": "optional"},
         default=None,
-        converter=components.Position3DBatch._optional,  # type: ignore[misc]
+        converter=components.LeafTranslation3DBatch._optional,  # type: ignore[misc]
     )
     # Optional center positions of the ellipsoids.
     #
     # If not specified, the centers will be at (0, 0, 0).
+    # Note that this uses a [`components.LeafTranslation3D`][rerun.components.LeafTranslation3D] which is also used by [`archetypes.LeafTransforms3D`][rerun.archetypes.LeafTransforms3D].
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 
-    rotations: components.Rotation3DBatch | None = field(
+    rotation_axis_angles: components.LeafRotationAxisAngleBatch | None = field(
         metadata={"component": "optional"},
         default=None,
-        converter=components.Rotation3DBatch._optional,  # type: ignore[misc]
+        converter=components.LeafRotationAxisAngleBatch._optional,  # type: ignore[misc]
     )
-    # Optional rotations of the ellipsoids.
+    # Rotations via axis + angle.
     #
-    # If not specified, the axes of the ellipsoid align with the axes of the coordinate system.
+    # If no rotation is specified, the axes of the ellipsoid align with the axes of the local coordinate system.
+    # Note that this uses a [`components.LeafRotationAxisAngle`][rerun.components.LeafRotationAxisAngle] which is also used by [`archetypes.LeafTransforms3D`][rerun.archetypes.LeafTransforms3D].
+    #
+    # (Docstring intentionally commented out to hide this field from the docs)
+
+    quaternions: components.LeafRotationQuatBatch | None = field(
+        metadata={"component": "optional"},
+        default=None,
+        converter=components.LeafRotationQuatBatch._optional,  # type: ignore[misc]
+    )
+    # Rotations via quaternion.
+    #
+    # If no rotation is specified, the axes of the ellipsoid align with the axes of the local coordinate system.
+    # Note that this uses a [`components.LeafRotationQuat`][rerun.components.LeafRotationQuat] which is also used by [`archetypes.LeafTransforms3D`][rerun.archetypes.LeafTransforms3D].
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 

@@ -18,7 +18,8 @@ class Boxes3DExt:
         mins: datatypes.Vec3DArrayLike | None = None,
         half_sizes: datatypes.Vec3DArrayLike | None = None,
         centers: datatypes.Vec3DArrayLike | None = None,
-        rotations: datatypes.Rotation3DArrayLike | None = None,
+        rotation_axis_angles: datatypes.RotationAxisAngleArrayLike | None = None,
+        quaternions: datatypes.QuaternionArrayLike | None = None,
         colors: datatypes.Rgba32ArrayLike | None = None,
         radii: datatypes.Float32ArrayLike | None = None,
         fill_mode: components.FillMode | None = None,
@@ -40,8 +41,19 @@ class Boxes3DExt:
             Only valid when used together with either `sizes` or `half_sizes`.
         centers:
             Optional center positions of the boxes.
-        rotations:
-            Optional rotations of the boxes.
+
+            If not specified, the centers will be at (0, 0, 0).
+            Note that this uses a [`components.LeafTranslation3D`][rerun.components.LeafTranslation3D] which is also used by [`archetypes.LeafTransforms3D`][rerun.archetypes.LeafTransforms3D].
+        rotation_axis_angles:
+            Rotations via axis + angle.
+
+            If no rotation is specified, the axes of the boxes align with the axes of the local coordinate system.
+            Note that this uses a [`components.LeafRotationAxisAngle`][rerun.components.LeafRotationAxisAngle] which is also used by [`archetypes.LeafTransforms3D`][rerun.archetypes.LeafTransforms3D].
+        quaternions:
+            Rotations via quaternion.
+
+            If no rotation is specified, the axes of the boxes align with the axes of the local coordinate system.
+            Note that this uses a [`components.LeafRotationQuat`][rerun.components.LeafRotationQuat] which is also used by [`archetypes.LeafTransforms3D`][rerun.archetypes.LeafTransforms3D].
         colors:
             Optional colors for the boxes.
         radii:
@@ -81,7 +93,8 @@ class Boxes3DExt:
             self.__attrs_init__(
                 half_sizes=half_sizes,
                 centers=centers,
-                rotations=rotations,
+                rotation_axis_angles=rotation_axis_angles,
+                quaternions=quaternions,
                 colors=colors,
                 radii=radii,
                 fill_mode=fill_mode,

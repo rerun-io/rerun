@@ -3,6 +3,12 @@ use super::RotationAxisAngle;
 use crate::datatypes::{Angle, Vec3D};
 
 impl RotationAxisAngle {
+    /// The identity rotation, representing no rotation.
+    pub const IDENTITY: Self = Self {
+        axis: Vec3D([1.0, 0.0, 0.0]), // Might as well use a zero vector here, but putting in the X axis is less error prone.
+        angle: Angle::ZERO,
+    };
+
     /// Create a new rotation from an axis and an angle.
     #[inline]
     pub fn new(axis: impl Into<Vec3D>, angle: impl Into<Angle>) -> Self {
@@ -42,9 +48,6 @@ impl From<RotationAxisAngle> for mint::Quaternion<f32> {
 impl Default for RotationAxisAngle {
     #[inline]
     fn default() -> Self {
-        Self {
-            axis: Vec3D::new(1.0, 0.0, 0.0),
-            angle: Angle::from_radians(0.0),
-        }
+        Self::IDENTITY
     }
 }
