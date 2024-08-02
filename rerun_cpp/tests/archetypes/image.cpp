@@ -12,14 +12,14 @@ SCENARIO("Image archetype can be created" TEST_TAG) {
         std::vector<uint8_t> data(10 * 10, 0);
         THEN("no error occurs on image construction with either the vector or a data pointer") {
             auto image_from_vector = check_logged_error([&] {
-                return Image::from_elements<uint8_t>({10, 10}, ColorModel::L, data);
+                return Image::from_elements<uint8_t>(data, {10, 10}, ColorModel::L);
             });
             auto image_from_ptr = check_logged_error([&] {
                 return Image::from_color_model_and_bytes(
+                    data,
                     {10, 10},
                     ColorModel::L,
-                    ChannelDatatype::U8,
-                    data
+                    ChannelDatatype::U8
                 );
             });
 
@@ -30,45 +30,4 @@ SCENARIO("Image archetype can be created" TEST_TAG) {
     }
 }
 
-/*
-
-
-
-// #include <rerun.hpp>
-// #include <vector>
-
-// rerun::Image gen_black_image() {
-//     uint32_t width = 100;
-//     uint32_t height = 100;
-//     std::vector<uint8_t> buffer(width * height, 0);
-//     return rerun::Image::from_greyscale8({width, height}, buffer);
-// }
-
-// // TODO: consider bringing this back with deprecation.
-// // rerun::Image gen_black_image() {
-// //     size_t width = 100;
-// //     size_t height = 100;
-// //     std::vector<size_t> shape = {width, height};
-// //     std::vector<uint8_t> buffer(width * height, 0);
-// //     return rerun::Image(shape, buffer);
-// // }
-
-// int main() {
-//     auto rec = rerun::RecordingStream("issue");
-//     rec.connect().exit_on_failure();
-
-//     uint32_t width = 100;
-//     uint32_t height = 100;
-//     std::vector<uint8_t> buffer(width * height, 0);
-//     auto image =
-//         rerun::Image::from_elements<uint8_t>({width, height}, rerun::ColorModel::L, buffer);
-
-//     rec.log("image", image);
-// }
-
-
-
-
-
-
-*/
+// TODO: more tests

@@ -33,9 +33,9 @@ int main(int, char** argv) {
         rec.log(
             "image",
             rerun::Image::from_rgb24(
-                {3, 2},
                 std::vector<
-                    uint8_t>{0, 0, 128, 1, 0, 128, 2, 0, 128, 0, 1, 128, 1, 1, 128, 2, 1, 128}
+                    uint8_t>{0, 0, 128, 1, 0, 128, 2, 0, 128, 0, 1, 128, 1, 1, 128, 2, 1, 128},
+                {3, 2}
             )
         );
     }
@@ -50,7 +50,7 @@ int main(int, char** argv) {
         }
         rec.log(
             "image_f16",
-            rerun::Image::from_elements<rerun::half>({5, 4}, rerun::ColorModel::L, data)
+            rerun::Image::from_elements<rerun::half>(data, {5, 4}, rerun::ColorModel::L)
         );
     }
 }

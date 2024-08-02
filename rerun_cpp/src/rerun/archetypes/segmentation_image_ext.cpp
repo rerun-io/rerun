@@ -1,12 +1,14 @@
-#include "../error.hpp"
+#if 0
+
 #include "segmentation_image.hpp"
 
-namespace rerun::archetypes {
-
-#ifdef EDIT_EXTENSION
-    // <CODEGEN_COPY_TO_HEADER>
-
+// <CODEGEN_COPY_TO_HEADER>
 #include "../image_utils.hpp"
+
+// </CODEGEN_COPY_TO_HEADER>
+
+namespace rerun::archetypes {
+    // <CODEGEN_COPY_TO_HEADER>
 
     /// Constructs image from pointer + resolution, inferring the datatype from the pointer type.
     ///
@@ -55,6 +57,7 @@ namespace rerun::archetypes {
         : data{data_}, resolution{resolution_}, datatype{datatype_} {}
 
     // </CODEGEN_COPY_TO_HEADER>
-#endif
 
 } // namespace rerun::archetypes
+
+#endif

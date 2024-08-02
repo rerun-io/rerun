@@ -103,10 +103,10 @@ impl Image {
     ///
     /// See also [`Self::from_color_model_and_tensor`].
     pub fn from_color_model_and_bytes(
+        bytes: impl Into<Blob>,
         resolution: impl Into<Resolution2D>,
         color_model: ColorModel,
         datatype: ChannelDatatype,
-        bytes: impl Into<Blob>,
     ) -> Self {
         let resolution = resolution.into();
         let data = bytes.into();
@@ -134,33 +134,33 @@ impl Image {
     /// Construct an image from a byte buffer given its resolution, color model,
     /// and using the data type of the given vector.
     pub fn from_elements<T: ImageChannelType>(
+        elements: &[T],
         resolution: impl Into<Resolution2D>,
         color_model: ColorModel,
-        elements: &[T],
     ) -> Self {
         let datatype = T::CHANNEL_TYPE;
         let bytes: &[u8] = bytemuck::cast_slice(elements);
         Self::from_color_model_and_bytes(
+            re_types_core::ArrowBuffer::<u8>::from(bytes),
             resolution,
             color_model,
             datatype,
-            re_types_core::ArrowBuffer::<u8>::from(bytes),
         )
     }
 
     /// From an 8-bit grayscale image.
-    pub fn from_l8(resolution: impl Into<Resolution2D>, bytes: impl Into<Blob>) -> Self {
-        Self::from_color_model_and_bytes(resolution, ColorModel::L, ChannelDatatype::U8, bytes)
+    pub fn from_l8(bytes: impl Into<Blob>, resolution: impl Into<Resolution2D>) -> Self {
+        Self::from_color_model_and_bytes(bytes, resolution, ColorModel::L, ChannelDatatype::U8)
     }
 
     /// Assumes RGB, 8-bit per channel, interleaved as `RGBRGBRGB`.
-    pub fn from_rgb24(resolution: impl Into<Resolution2D>, bytes: impl Into<Blob>) -> Self {
-        Self::from_color_model_and_bytes(resolution, ColorModel::RGB, ChannelDatatype::U8, bytes)
+    pub fn from_rgb24(bytes: impl Into<Blob>, resolution: impl Into<Resolution2D>) -> Self {
+        Self::from_color_model_and_bytes(bytes, resolution, ColorModel::RGB, ChannelDatatype::U8)
     }
 
     /// Assumes RGBA, 8-bit per channel, with separate alpha.
-    pub fn from_rgba32(resolution: impl Into<Resolution2D>, bytes: impl Into<Blob>) -> Self {
-        Self::from_color_model_and_bytes(resolution, ColorModel::RGBA, ChannelDatatype::U8, bytes)
+    pub fn from_rgba32(bytes: impl Into<Blob>, resolution: impl Into<Resolution2D>) -> Self {
+        Self::from_color_model_and_bytes(bytes, resolution, ColorModel::RGBA, ChannelDatatype::U8)
     }
 
     /// Creates a new [`Image`] from a file.
@@ -224,10 +224,10 @@ impl Image {
 
         match image {
             image::DynamicImage::ImageLuma8(image) => {
-                Ok(Self::from_elements(res, ColorModel::L, image.as_raw()))
+                Ok(Self::from_elements(image.as_raw(), res, ColorModel::L))
             }
             image::DynamicImage::ImageLuma16(image) => {
-                Ok(Self::from_elements(res, ColorModel::L, image.as_raw()))
+                Ok(Self::from_elements(image.as_raw(), res, ColorModel::L))
             }
 
             image::DynamicImage::ImageLumaA8(image) => {
@@ -244,23 +244,23 @@ impl Image {
             }
 
             image::DynamicImage::ImageRgb8(image) => {
-                Ok(Self::from_elements(res, ColorModel::RGB, image.as_raw()))
+                Ok(Self::from_elements(image.as_raw(), res, ColorModel::RGB))
             }
             image::DynamicImage::ImageRgb16(image) => {
-                Ok(Self::from_elements(res, ColorModel::RGB, image.as_raw()))
+                Ok(Self::from_elements(image.as_raw(), res, ColorModel::RGB))
             }
             image::DynamicImage::ImageRgb32F(image) => {
-                Ok(Self::from_elements(res, ColorModel::RGB, image.as_raw()))
+                Ok(Self::from_elements(image.as_raw(), res, ColorModel::RGB))
             }
 
             image::DynamicImage::ImageRgba8(image) => {
-                Ok(Self::from_elements(res, ColorModel::RGBA, image.as_raw()))
+                Ok(Self::from_elements(image.as_raw(), res, ColorModel::RGBA))
             }
             image::DynamicImage::ImageRgba16(image) => {
-                Ok(Self::from_elements(res, ColorModel::RGBA, image.as_raw()))
+                Ok(Self::from_elements(image.as_raw(), res, ColorModel::RGBA))
             }
             image::DynamicImage::ImageRgba32F(image) => {
-                Ok(Self::from_elements(res, ColorModel::RGBA, image.as_raw()))
+                Ok(Self::from_elements(image.as_raw(), res, ColorModel::RGBA))
             }
 
             _ => {
