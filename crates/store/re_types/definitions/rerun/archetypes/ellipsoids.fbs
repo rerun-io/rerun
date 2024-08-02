@@ -12,7 +12,7 @@ namespace rerun.archetypes;
 /// Some of its component are repeated here for convenience.
 ///
 /// \example archetypes/ellipsoid_batch !api title="Batch of ellipsoids"
-table Ellipsoids (
+table Ellipsoids3D (
   "attr.rust.derive": "PartialEq",
   "attr.rust.new_pub_crate",
   "attr.cpp.no_field_ctors",

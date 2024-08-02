@@ -12,7 +12,7 @@ from .boxes3d import Boxes3D
 from .clear import Clear
 from .depth_image import DepthImage
 from .disconnected_space import DisconnectedSpace
-from .ellipsoids import Ellipsoids
+from .ellipsoids3d import Ellipsoids3D
 from .image import Image
 from .image_encoded import ImageEncoded
 from .leaf_transforms3d import LeafTransforms3D
@@ -43,7 +43,7 @@ __all__ = [
     "Clear",
     "DepthImage",
     "DisconnectedSpace",
-    "Ellipsoids",
+    "Ellipsoids3D",
     "Image",
     "ImageEncoded",
     "LeafTransforms3D",

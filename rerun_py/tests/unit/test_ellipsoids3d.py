@@ -75,7 +75,7 @@ def test_ellipsoids() -> None:
         fill_mode = cast(Optional[rr.components.FillMode], fill_mode)
 
         print(
-            f"rr.Ellipsoids(\n"
+            f"rr.Ellipsoids3D(\n"
             f"    half_sizes={half_sizes}\n"
             f"    rotation_axis_angles={rotation_axis_angles}\n"
             f"    quaternions={quaternions}\n"
@@ -87,7 +87,7 @@ def test_ellipsoids() -> None:
             f"    class_ids={class_ids!r}\n"
             f")"
         )
-        arch = rr.Ellipsoids(
+        arch = rr.Ellipsoids3D(
             half_sizes=half_sizes,
             centers=centers,
             rotation_axis_angles=rotation_axis_angles,

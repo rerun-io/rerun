@@ -9,7 +9,7 @@ belly_z = 2.5
 head_z = 4.5
 rr.log(
     "batch",
-    rr.Ellipsoids(
+    rr.Ellipsoids3D(
         centers=[
             [0.0, 0.0, 0.0],
             [0.0, 0.0, belly_z],

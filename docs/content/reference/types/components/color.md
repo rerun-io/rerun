@@ -25,7 +25,7 @@ byte is `R` and the least significant byte is `A`.
 * [`BarChart`](../archetypes/bar_chart.md)
 * [`Boxes2D`](../archetypes/boxes2d.md)
 * [`Boxes3D`](../archetypes/boxes3d.md)
-* [`Ellipsoids`](../archetypes/ellipsoids.md?speculative-link)
+* [`Ellipsoids3D`](../archetypes/ellipsoids3d.md?speculative-link)
 * [`LineStrips2D`](../archetypes/line_strips2d.md)
 * [`LineStrips3D`](../archetypes/line_strips3d.md)
 * [`Mesh3D`](../archetypes/mesh3d.md)
