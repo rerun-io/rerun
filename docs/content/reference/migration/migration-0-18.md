@@ -22,6 +22,9 @@ The constructs have changed to now expect the shape in `[width, height]` order.
   * Alternatively images can also be constructed using a `bytes` argument, but the resolution and pixel format must
     be provided explicitly.
 
+TODO(andreas): more before/after image on different languages
+
+
 ### [`ImageEncoded`](https://rerun.io/docs/reference/types/archetypes/image_encoded?speculative-link)
 `ImageEncoded` is our new archetype for logging an image file, e.g. a PNG or JPEG.
 
@@ -46,7 +49,7 @@ rr.log(
 * `ImageEncoded`:s `format` parameter has been replaced with `media_type` (MIME)
     * `ImageFormat` is now only for `NV12/YUY2`
 
-### Rust
+#### Rust
 * Removed `TensorBuffer::JPEG`
 * Removed `TensorData::from_jpeg_bytes`
 * Deprecated `Image::from_file_path` and `from_file_contents`
