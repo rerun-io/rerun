@@ -406,6 +406,23 @@ impl<'a> HybridResultsChunkIter<'a> {
         })
     }
 
+    /// Iterate as indexed list of primitive arrays.
+    ///
+    /// See [`Chunk::iter_primitive_array_list`] for more information.
+    pub fn primitive_array_list<const N: usize, T: arrow2::types::NativeType>(
+        &'a self,
+    ) -> impl Iterator<Item = ((TimeInt, RowId), Vec<&'a [[T; N]]>)> + 'a
+    where
+        [T; N]: bytemuck::Pod,
+    {
+        self.chunks.iter().flat_map(move |chunk| {
+            itertools::izip!(
+                chunk.iter_component_indices(&self.timeline, &self.component_name),
+                chunk.iter_primitive_array_list::<N, T>(&self.component_name)
+            )
+        })
+    }
+
     /// Iterate as indexed UTF-8 strings.
     ///
     /// See [`Chunk::iter_string`] for more information.
