@@ -24,7 +24,8 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 ///
 /// The box extends both in negative and positive direction along each axis.
 /// Negative sizes indicate that the box is flipped along the respective axis, but this has no effect on how it is displayed.
-#[derive(Clone, Debug, Copy, PartialEq)]
+#[derive(Clone, Debug, Copy, PartialEq, bytemuck::Pod, bytemuck::Zeroable)]
+#[repr(transparent)]
 pub struct HalfSize3D(pub crate::datatypes::Vec3D);
 
 impl ::re_types_core::SizeBytes for HalfSize3D {
@@ -112,6 +113,6 @@ impl ::re_types_core::Loggable for HalfSize3D {
     where
         Self: Sized,
     {
-        crate::datatypes::Vec3D::from_arrow(arrow_data).map(|v| v.into_iter().map(Self).collect())
+        crate::datatypes::Vec3D::from_arrow(arrow_data).map(bytemuck::cast_vec)
     }
 }

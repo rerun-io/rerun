@@ -1,9 +1,9 @@
 use re_log_types::Instance;
-use re_query::range_zip_1x6;
 use re_renderer::{renderer::LineStripFlags, LineDrawableBuilder, PickingLayerInstanceId};
 use re_types::{
     archetypes::Arrows3D,
     components::{ClassId, Color, KeypointId, Position3D, Radius, Text, Vector3D},
+    ArrowString, Loggable as _,
 };
 use re_viewer_context::{
     auto_color_for_entity_path, ApplicableEntities, IdentifiedViewSystem, QueryContext,
@@ -140,7 +140,7 @@ impl Arrows3DVisualizer {
                 self.data.ui_labels.extend(process_labels_3d(
                     entity_path,
                     label_positions,
-                    data.labels,
+                    &data.labels,
                     &colors,
                     &annotation_infos,
                     world_from_obj,
@@ -160,7 +160,7 @@ struct Arrows3DComponentData<'a> {
     origins: &'a [Position3D],
     colors: &'a [Color],
     radii: &'a [Radius],
-    labels: &'a [Text],
+    labels: Vec<ArrowString>,
     keypoint_ids: &'a [KeypointId],
     class_ids: &'a [ClassId],
 }
@@ -198,24 +198,24 @@ impl VisualizerSystem for Arrows3DVisualizer {
         let mut line_builder = LineDrawableBuilder::new(render_ctx);
         line_builder.radius_boost_in_ui_points_for_outlines(SIZE_BOOST_IN_POINTS_FOR_LINE_OUTLINES);
 
-        super::entity_iterator::process_archetype::<Self, Arrows3D, _>(
+        use super::entity_iterator::{iter_primitive_array, process_archetype2};
+        process_archetype2::<Self, Arrows3D, _>(
             ctx,
             view_query,
             context_systems,
             |ctx, spatial_ctx, results| {
-                use re_space_view::RangeResultsExt as _;
+                use re_space_view::RangeResultsExt2 as _;
 
-                let resolver = ctx.recording().resolver();
-
-                let vectors = match results.get_required_component_dense::<Vector3D>(resolver) {
-                    Some(vectors) => vectors?,
-                    _ => return Ok(()),
+                let Some(all_vector_chunks) = results.get_required_chunks(&Vector3D::name()) else {
+                    return Ok(());
                 };
 
-                let num_vectors = vectors
-                    .range_indexed()
-                    .map(|(_, vectors)| vectors.len())
-                    .sum::<usize>();
+                let num_vectors = all_vector_chunks
+                    .iter()
+                    .flat_map(|chunk| chunk.iter_primitive_array::<3, f32>(&Vector3D::name()))
+                    .map(|vectors| vectors.len())
+                    .sum();
+
                 if num_vectors == 0 {
                     return Ok(());
                 }
@@ -223,32 +223,37 @@ impl VisualizerSystem for Arrows3DVisualizer {
                 line_builder.reserve_strips(num_vectors)?;
                 line_builder.reserve_vertices(num_vectors * 2)?;
 
-                let origins = results.get_or_empty_dense(resolver)?;
-                let colors = results.get_or_empty_dense(resolver)?;
-                let radii = results.get_or_empty_dense(resolver)?;
-                let labels = results.get_or_empty_dense(resolver)?;
-                let class_ids = results.get_or_empty_dense(resolver)?;
-                let keypoint_ids = results.get_or_empty_dense(resolver)?;
+                let timeline = ctx.query.timeline();
+                let all_vectors_indexed =
+                    iter_primitive_array::<3, f32>(&all_vector_chunks, timeline, Vector3D::name());
+                let all_origins = results.iter_as(timeline, Position3D::name());
+                let all_colors = results.iter_as(timeline, Color::name());
+                let all_radii = results.iter_as(timeline, Radius::name());
+                let all_labels = results.iter_as(timeline, Text::name());
+                let all_class_ids = results.iter_as(timeline, ClassId::name());
+                let all_keypoint_ids = results.iter_as(timeline, KeypointId::name());
 
-                let data = range_zip_1x6(
-                    vectors.range_indexed(),
-                    origins.range_indexed(),
-                    colors.range_indexed(),
-                    radii.range_indexed(),
-                    labels.range_indexed(),
-                    class_ids.range_indexed(),
-                    keypoint_ids.range_indexed(),
+                let data = re_query2::range_zip_1x6(
+                    all_vectors_indexed,
+                    all_origins.primitive_array::<3, f32>(),
+                    all_colors.primitive::<u32>(),
+                    all_radii.primitive::<f32>(),
+                    all_labels.string(),
+                    all_class_ids.primitive::<u16>(),
+                    all_keypoint_ids.primitive::<u16>(),
                 )
                 .map(
                     |(_index, vectors, origins, colors, radii, labels, class_ids, keypoint_ids)| {
                         Arrows3DComponentData {
-                            vectors,
-                            origins: origins.unwrap_or_default(),
-                            colors: colors.unwrap_or_default(),
-                            radii: radii.unwrap_or_default(),
+                            vectors: bytemuck::cast_slice(vectors),
+                            origins: origins.map_or(&[], |origins| bytemuck::cast_slice(origins)),
+                            colors: colors.map_or(&[], |colors| bytemuck::cast_slice(colors)),
+                            radii: radii.map_or(&[], |radii| bytemuck::cast_slice(radii)),
                             labels: labels.unwrap_or_default(),
-                            class_ids: class_ids.unwrap_or_default(),
-                            keypoint_ids: keypoint_ids.unwrap_or_default(),
+                            class_ids: class_ids
+                                .map_or(&[], |class_ids| bytemuck::cast_slice(class_ids)),
+                            keypoint_ids: keypoint_ids
+                                .map_or(&[], |keypoint_ids| bytemuck::cast_slice(keypoint_ids)),
                         }
                     },
                 );
