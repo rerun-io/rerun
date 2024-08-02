@@ -27,7 +27,7 @@ fn run(rec: &RecordingStream, _args: &Args) -> anyhow::Result<()> {
 
     rec.log(
         "image",
-        &Image::from_color_model_and_tensor(rerun::ColorModel::L, img)?,
+        &Image::from_color_model_and_tensor(rerun::ColorModel::RGB, img)?,
     )?;
 
     let mut array_image = Array::<f16, _>::default((4, 5).f());
