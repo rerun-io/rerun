@@ -68,7 +68,7 @@ impl ViewportBlueprint {
     ) -> Self {
         re_tracing::profile_function!();
 
-        let results = blueprint_db.query_caches2().latest_at(
+        let results = blueprint_db.query_caches().latest_at(
             blueprint_db.store(),
             query,
             &VIEWPORT_PATH.into(),

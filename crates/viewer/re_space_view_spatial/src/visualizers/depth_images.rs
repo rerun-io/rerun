@@ -249,7 +249,7 @@ impl VisualizerSystem for DepthImageVisualizer {
             view_query,
             context_systems,
             |ctx, spatial_ctx, results| {
-                use re_space_view::RangeResultsExt2 as _;
+                use re_space_view::RangeResultsExt as _;
 
                 let Some(all_blob_chunks) = results.get_required_chunks(&Blob::name()) else {
                     return Ok(());
@@ -275,7 +275,7 @@ impl VisualizerSystem for DepthImageVisualizer {
                 let all_depth_meters = results.iter_as(timeline, DepthMeter::name());
                 let all_fill_ratios = results.iter_as(timeline, FillRatio::name());
 
-                let mut data = re_query2::range_zip_1x5(
+                let mut data = re_query::range_zip_1x5(
                     all_blobs_indexed,
                     all_datatypes_indexed,
                     all_resolutions_indexed,

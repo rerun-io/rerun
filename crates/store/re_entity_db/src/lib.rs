@@ -26,7 +26,7 @@ pub use re_log_types::{EntityPath, EntityPathPart, TimeInt, Timeline};
 
 pub mod external {
     pub use re_chunk_store;
-    pub use re_query2;
+    pub use re_query;
 }
 
 // ----------------------------------------------------------------------------

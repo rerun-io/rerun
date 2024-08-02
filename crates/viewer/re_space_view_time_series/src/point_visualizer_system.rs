@@ -1,6 +1,6 @@
 use itertools::Itertools as _;
 
-use re_space_view::range_with_blueprint_resolved_data2;
+use re_space_view::range_with_blueprint_resolved_data;
 use re_types::{
     archetypes::{self, SeriesPoint},
     components::{Color, MarkerShape, MarkerSize, Name, Scalar},
@@ -135,14 +135,14 @@ impl SeriesPointSystem {
             );
 
             {
-                use re_space_view::RangeResultsExt2 as _;
+                use re_space_view::RangeResultsExt as _;
 
                 re_tracing::profile_scope!("primary", &data_result.entity_path.to_string());
 
                 let entity_path = &data_result.entity_path;
                 let query = re_chunk_store::RangeQuery::new(view_query.timeline, time_range);
 
-                let results = range_with_blueprint_resolved_data2(
+                let results = range_with_blueprint_resolved_data(
                     ctx,
                     None,
                     &query,
@@ -257,7 +257,7 @@ impl SeriesPointSystem {
                             });
 
                             let all_frames =
-                                re_query2::range_zip_1x1(all_scalars_indices(), all_colors)
+                                re_query::range_zip_1x1(all_scalars_indices(), all_colors)
                                     .enumerate();
 
                             all_frames.for_each(|(i, (_index, _scalars, colors))| {
@@ -308,7 +308,7 @@ impl SeriesPointSystem {
                                 });
 
                             let all_frames =
-                                re_query2::range_zip_1x1(all_scalars_indices(), all_marker_sizes)
+                                re_query::range_zip_1x1(all_scalars_indices(), all_marker_sizes)
                                     .enumerate();
 
                             all_frames.for_each(|(i, (_index, _scalars, marker_sizes))| {
@@ -367,7 +367,7 @@ impl SeriesPointSystem {
                                 itertools::izip!(all_marker_shapes_indices, all_marker_shapes)
                             };
 
-                            let all_frames = re_query2::range_zip_1x1(
+                            let all_frames = re_query::range_zip_1x1(
                                 all_scalars_indices(),
                                 all_marker_shapes_indexed,
                             )

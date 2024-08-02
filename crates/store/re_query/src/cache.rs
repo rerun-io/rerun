@@ -3,10 +3,11 @@ use std::{
     sync::Arc,
 };
 
-use ahash::{HashMap, HashSet};
+use ahash::HashMap;
 use nohash_hasher::IntSet;
 use parking_lot::RwLock;
 
+use re_chunk::ChunkId;
 use re_chunk_store::{ChunkStore, ChunkStoreDiff, ChunkStoreEvent, ChunkStoreSubscriber};
 use re_log_types::{EntityPath, ResolvedTimeRange, StoreId, TimeInt, Timeline};
 use re_types_core::{components::ClearIsRecursive, ComponentName, Loggable as _};
@@ -118,7 +119,7 @@ impl std::fmt::Debug for Caches {
                 let cache = cache.read();
                 strings.push(format!(
                     "  [{cache_key:?} (pending_invalidation_min={:?})]",
-                    cache.pending_invalidations.first().map(|&t| cache_key
+                    cache.pending_invalidation.map(|t| cache_key
                         .timeline
                         .format_time_range_utc(&ResolvedTimeRange::new(t, TimeInt::MAX))),
                 ));
@@ -134,10 +135,8 @@ impl std::fmt::Debug for Caches {
             for (cache_key, cache) in &range_per_cache_key {
                 let cache = cache.read();
                 strings.push(format!(
-                    "  [{cache_key:?} (pending_invalidation_min={:?})]",
-                    cache.pending_invalidation.map(|t| cache_key
-                        .timeline
-                        .format_time_range_utc(&ResolvedTimeRange::new(t, TimeInt::MAX))),
+                    "  [{cache_key:?} (pending_invalidations={:?})]",
+                    cache.pending_invalidations,
                 ));
                 strings.push(indent::indent_all_by(4, format!("{cache:?}")));
             }
@@ -194,8 +193,9 @@ impl ChunkStoreSubscriber for Caches {
 
         #[derive(Default, Debug)]
         struct CompactedEvents {
-            static_: HashSet<(EntityPath, ComponentName)>,
-            temporal: HashMap<CacheKey, BTreeSet<TimeInt>>,
+            static_: HashMap<(EntityPath, ComponentName), BTreeSet<ChunkId>>,
+            temporal_latest_at: HashMap<CacheKey, TimeInt>,
+            temporal_range: HashMap<CacheKey, BTreeSet<ChunkId>>,
         }
 
         let mut compacted = CompactedEvents::default();
@@ -228,7 +228,9 @@ impl ChunkStoreSubscriber for Caches {
                     for component_name in chunk.component_names() {
                         compacted
                             .static_
-                            .insert((chunk.entity_path().clone(), component_name));
+                            .entry((chunk.entity_path().clone(), component_name))
+                            .or_default()
+                            .insert(chunk.id());
                     }
                 }
 
@@ -240,8 +242,18 @@ impl ChunkStoreSubscriber for Caches {
                                 timeline,
                                 component_name,
                             );
-                            let data_times = compacted.temporal.entry(key).or_default();
-                            data_times.insert(data_time);
+
+                            compacted
+                                .temporal_latest_at
+                                .entry(key.clone())
+                                .and_modify(|time| *time = TimeInt::min(*time, data_time))
+                                .or_insert(data_time);
+
+                            compacted
+                                .temporal_range
+                                .entry(key)
+                                .or_default()
+                                .insert(chunk.id());
                         }
                     }
                 }
@@ -262,20 +274,23 @@ impl ChunkStoreSubscriber for Caches {
             // yet another layer of caching indirection.
             // But since this pretty much never happens in practice, let's not go there until we
             // have metrics showing that show we need to.
-            for (entity_path, component_name) in compacted.static_ {
+            for ((entity_path, component_name), chunk_ids) in compacted.static_ {
                 if component_name == ClearIsRecursive::name() {
                     might_require_clearing.insert(entity_path.clone());
                 }
 
                 for (key, cache) in caches_latest_at.iter() {
                     if key.entity_path == entity_path && key.component_name == component_name {
-                        cache.write().pending_invalidations.insert(TimeInt::STATIC);
+                        cache.write().pending_invalidation = Some(TimeInt::STATIC);
                     }
                 }
 
                 for (key, cache) in caches_range.iter() {
                     if key.entity_path == entity_path && key.component_name == component_name {
-                        cache.write().pending_invalidation = Some(TimeInt::STATIC);
+                        cache
+                            .write()
+                            .pending_invalidations
+                            .extend(chunk_ids.iter().copied());
                     }
                 }
             }
@@ -284,23 +299,23 @@ impl ChunkStoreSubscriber for Caches {
         {
             re_tracing::profile_scope!("temporal");
 
-            for (key, times) in compacted.temporal {
+            for (key, time) in compacted.temporal_latest_at {
                 if key.component_name == ClearIsRecursive::name() {
                     might_require_clearing.insert(key.entity_path.clone());
                 }
 
                 if let Some(cache) = caches_latest_at.get(&key) {
+                    let mut cache = cache.write();
+                    cache.pending_invalidation = Some(time);
+                }
+            }
+
+            for (key, chunk_ids) in compacted.temporal_range {
+                if let Some(cache) = caches_range.get(&key) {
                     cache
                         .write()
                         .pending_invalidations
-                        .extend(times.iter().copied());
-                }
-
-                if let Some(cache) = caches_range.get(&key) {
-                    let pending_invalidation = &mut cache.write().pending_invalidation;
-                    let min_time = times.first().copied();
-                    *pending_invalidation =
-                        Option::min(*pending_invalidation, min_time).or(min_time);
+                        .extend(chunk_ids.iter().copied());
                 }
             }
         }

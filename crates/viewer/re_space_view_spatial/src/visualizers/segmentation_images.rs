@@ -79,7 +79,7 @@ impl VisualizerSystem for SegmentationImageVisualizer {
             view_query,
             context_systems,
             |ctx, spatial_ctx, results| {
-                use re_space_view::RangeResultsExt2 as _;
+                use re_space_view::RangeResultsExt as _;
 
                 let entity_path = ctx.target_entity_path;
 
@@ -105,7 +105,7 @@ impl VisualizerSystem for SegmentationImageVisualizer {
                     iter_component(&all_datatype_chunks, timeline, ChannelDatatype::name());
                 let all_opacities = results.iter_as(timeline, Opacity::name());
 
-                let data = re_query2::range_zip_1x3(
+                let data = re_query::range_zip_1x3(
                     all_blobs_indexed,
                     all_datatypes_indexed,
                     all_resolutions_indexed,

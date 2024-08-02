@@ -1,6 +1,6 @@
 use itertools::Itertools as _;
 
-use re_space_view::range_with_blueprint_resolved_data2;
+use re_space_view::range_with_blueprint_resolved_data;
 use re_types::archetypes;
 use re_types::components::AggregationPolicy;
 use re_types::external::arrow2::datatypes::DataType as ArrowDatatype;
@@ -174,14 +174,14 @@ impl SeriesLineSystem {
             ctx.viewer_ctx.app_options.experimental_plot_query_clamping,
         );
         {
-            use re_space_view::RangeResultsExt2 as _;
+            use re_space_view::RangeResultsExt as _;
 
             re_tracing::profile_scope!("primary", &data_result.entity_path.to_string());
 
             let entity_path = &data_result.entity_path;
             let query = re_chunk_store::RangeQuery::new(view_query.timeline, time_range);
 
-            let results = range_with_blueprint_resolved_data2(
+            let results = range_with_blueprint_resolved_data(
                 ctx,
                 None,
                 &query,
@@ -297,7 +297,7 @@ impl SeriesLineSystem {
                         });
 
                         let all_frames =
-                            re_query2::range_zip_1x1(all_scalars_indices(), all_colors).enumerate();
+                            re_query::range_zip_1x1(all_scalars_indices(), all_colors).enumerate();
 
                         all_frames.for_each(|(i, (_index, _scalars, colors))| {
                             if let Some(color) = colors.and_then(map_raw_color) {
@@ -345,7 +345,7 @@ impl SeriesLineSystem {
                         });
 
                         let all_frames =
-                            re_query2::range_zip_1x1(all_scalars_indices(), all_stroke_widths)
+                            re_query::range_zip_1x1(all_scalars_indices(), all_stroke_widths)
                                 .enumerate();
 
                         all_frames.for_each(|(i, (_index, _scalars, stroke_widths))| {

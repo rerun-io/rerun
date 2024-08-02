@@ -1,6 +1,6 @@
 use itertools::Itertools as _;
 
-use re_space_view::HybridResults2;
+use re_space_view::HybridResults;
 use re_types::{
     archetypes::ImageEncoded,
     components::{Blob, DrawOrder, MediaType, Opacity},
@@ -127,11 +127,11 @@ impl ImageEncodedVisualizer {
     fn process_image_encoded(
         &mut self,
         ctx: &QueryContext<'_>,
-        results: &HybridResults2<'_>,
+        results: &HybridResults<'_>,
         spatial_ctx: &SpatialSceneEntityContext<'_>,
     ) {
         use super::entity_iterator::iter_buffer;
-        use re_space_view::RangeResultsExt2 as _;
+        use re_space_view::RangeResultsExt as _;
 
         let entity_path = ctx.target_entity_path;
 
@@ -144,7 +144,7 @@ impl ImageEncodedVisualizer {
         let all_media_types = results.iter_as(timeline, MediaType::name());
         let all_opacities = results.iter_as(timeline, Opacity::name());
 
-        for ((_time, tensor_data_row_id), blobs, media_types, opacities) in re_query2::range_zip_1x2(
+        for ((_time, tensor_data_row_id), blobs, media_types, opacities) in re_query::range_zip_1x2(
             all_blobs_indexed,
             all_media_types.string(),
             all_opacities.primitive::<f32>(),

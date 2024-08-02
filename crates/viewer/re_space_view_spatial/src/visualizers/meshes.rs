@@ -182,7 +182,7 @@ impl VisualizerSystem for Mesh3DVisualizer {
             view_query,
             context_systems,
             |ctx, spatial_ctx, results| {
-                use re_space_view::RangeResultsExt2 as _;
+                use re_space_view::RangeResultsExt as _;
 
                 let Some(all_vertex_position_chunks) =
                     results.get_required_chunks(&Position3D::name())
@@ -208,7 +208,7 @@ impl VisualizerSystem for Mesh3DVisualizer {
 
                 let query_result_hash = results.query_result_hash();
 
-                let data = re_query2::range_zip_1x7(
+                let data = re_query::range_zip_1x7(
                     all_vertex_positions_indexed,
                     all_vertex_normals.primitive_array::<3, f32>(),
                     all_vertex_colors.primitive::<u32>(),

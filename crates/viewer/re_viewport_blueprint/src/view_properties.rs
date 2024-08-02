@@ -1,5 +1,5 @@
 use re_chunk_store::LatestAtQuery;
-use re_entity_db::{external::re_query2::LatestAtResults, EntityDb};
+use re_entity_db::{external::re_query::LatestAtResults, EntityDb};
 use re_log_types::EntityPath;
 use re_types::{
     external::arrow2, Archetype, ArchetypeName, ComponentBatch, ComponentName, DeserializationError,

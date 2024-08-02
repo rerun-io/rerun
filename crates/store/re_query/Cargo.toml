@@ -55,6 +55,7 @@ thiserror.workspace = true
 
 
 [dev-dependencies]
+bytemuck.workspace = true
 criterion.workspace = true
 mimalloc.workspace = true
 rand = { workspace = true, features = ["std", "std_rng"] }
@@ -69,18 +70,12 @@ bench = false
 name = "clamped_zip"
 required-features = ["codegen"]
 bench = false
-doc = false                     # we're already documenting the one is `re_query2`
 
 [[bin]]
 name = "range_zip"
 required-features = ["codegen"]
 bench = false
-doc = false                     # we're already documenting the one is `re_query2`
 
-
-[[bench]]
-name = "flat_vec_deque"
-harness = false
 
 [[bench]]
 name = "latest_at"

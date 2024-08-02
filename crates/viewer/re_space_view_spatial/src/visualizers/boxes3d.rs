@@ -238,7 +238,7 @@ impl VisualizerSystem for Boxes3DVisualizer {
             view_query,
             context_systems,
             |ctx, spatial_ctx, results| {
-                use re_space_view::RangeResultsExt2 as _;
+                use re_space_view::RangeResultsExt as _;
 
                 let Some(all_half_size_chunks) = results.get_required_chunks(&HalfSize3D::name())
                 else {
@@ -286,7 +286,7 @@ impl VisualizerSystem for Boxes3DVisualizer {
                     }
                 }
 
-                let data = re_query2::range_zip_1x5(
+                let data = re_query::range_zip_1x5(
                     all_half_sizes_indexed,
                     all_colors.primitive::<u32>(),
                     all_radii.primitive::<f32>(),

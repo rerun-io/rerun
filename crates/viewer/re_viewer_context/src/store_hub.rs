@@ -6,7 +6,7 @@ use itertools::Itertools as _;
 use re_chunk_store::{ChunkStoreConfig, ChunkStoreGeneration, ChunkStoreStats};
 use re_entity_db::{EntityDb, StoreBundle};
 use re_log_types::{ApplicationId, StoreId, StoreKind};
-use re_query2::CachesStats;
+use re_query::CachesStats;
 
 use crate::StoreContext;
 
@@ -736,7 +736,7 @@ impl StoreHub {
             .unwrap_or_default();
 
         let blueprint_cached_stats = blueprint
-            .map(|entity_db| entity_db.query_caches2().stats())
+            .map(|entity_db| entity_db.query_caches().stats())
             .unwrap_or_default();
 
         let blueprint_config = blueprint
@@ -753,7 +753,7 @@ impl StoreHub {
             .unwrap_or_default();
 
         let recording_cached_stats = recording
-            .map(|entity_db| entity_db.query_caches2().stats())
+            .map(|entity_db| entity_db.query_caches().stats())
             .unwrap_or_default();
 
         let recording_config2 = recording

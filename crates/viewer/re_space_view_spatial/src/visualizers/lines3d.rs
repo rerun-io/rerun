@@ -196,7 +196,7 @@ impl VisualizerSystem for Lines3DVisualizer {
             view_query,
             context_systems,
             |ctx, spatial_ctx, results| {
-                use re_space_view::RangeResultsExt2 as _;
+                use re_space_view::RangeResultsExt as _;
 
                 let Some(all_strip_chunks) = results.get_required_chunks(&LineStrip3D::name())
                 else {
@@ -233,7 +233,7 @@ impl VisualizerSystem for Lines3DVisualizer {
                 let all_class_ids = results.iter_as(timeline, ClassId::name());
                 let all_keypoint_ids = results.iter_as(timeline, KeypointId::name());
 
-                let data = re_query2::range_zip_1x5(
+                let data = re_query::range_zip_1x5(
                     all_strips_indexed,
                     all_colors.primitive::<u32>(),
                     all_radii.primitive::<f32>(),

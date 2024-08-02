@@ -35,7 +35,7 @@ pub(crate) use pickable_image::PickableImageRect;
 
 // ---
 
-use re_space_view::DataResultQuery2 as _;
+use re_space_view::DataResultQuery as _;
 use re_viewer_context::{ViewContext, ViewerContext};
 
 use re_renderer::RenderContext;

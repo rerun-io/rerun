@@ -3,7 +3,7 @@ use itertools::Either;
 use re_chunk_store::{LatestAtQuery, RangeQuery};
 use re_log_types::{TimeInt, Timeline};
 use re_space_view::{
-    latest_at_with_blueprint_resolved_data2, range_with_blueprint_resolved_data2, HybridResults2,
+    latest_at_with_blueprint_resolved_data, range_with_blueprint_resolved_data, HybridResults,
 };
 use re_types::Archetype;
 use re_viewer_context::{
@@ -96,7 +96,7 @@ pub fn query_archetype_with_history<'a, A: Archetype>(
     timeline_cursor: TimeInt,
     query_range: &QueryRange,
     data_result: &'a re_viewer_context::DataResult,
-) -> HybridResults2<'a> {
+) -> HybridResults<'a> {
     match query_range {
         QueryRange::TimeRange(time_range) => {
             let range_query = RangeQuery::new(
@@ -106,7 +106,7 @@ pub fn query_archetype_with_history<'a, A: Archetype>(
                     timeline_cursor,
                 ),
             );
-            let results = range_with_blueprint_resolved_data2(
+            let results = range_with_blueprint_resolved_data(
                 ctx,
                 None,
                 &range_query,
@@ -118,7 +118,7 @@ pub fn query_archetype_with_history<'a, A: Archetype>(
         QueryRange::LatestAt => {
             let latest_query = LatestAtQuery::new(*timeline, timeline_cursor);
             let query_shadowed_defaults = false;
-            let results = latest_at_with_blueprint_resolved_data2(
+            let results = latest_at_with_blueprint_resolved_data(
                 ctx,
                 None,
                 &latest_query,
@@ -146,7 +146,7 @@ where
     F: FnMut(
         &QueryContext<'_>,
         &SpatialSceneEntityContext<'_>,
-        &HybridResults2<'_>,
+        &HybridResults<'_>,
     ) -> Result<(), SpaceViewSystemExecutionError>,
 {
     let transforms = view_ctx.get::<TransformContext>()?;

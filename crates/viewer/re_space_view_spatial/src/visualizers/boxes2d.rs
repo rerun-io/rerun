@@ -247,7 +247,7 @@ impl VisualizerSystem for Boxes2DVisualizer {
             view_query,
             context_systems,
             |ctx, spatial_ctx, results| {
-                use re_space_view::RangeResultsExt2 as _;
+                use re_space_view::RangeResultsExt as _;
 
                 let Some(all_half_size_chunks) = results.get_required_chunks(&HalfSize2D::name())
                 else {
@@ -280,7 +280,7 @@ impl VisualizerSystem for Boxes2DVisualizer {
                 let all_class_ids = results.iter_as(timeline, ClassId::name());
                 let all_keypoint_ids = results.iter_as(timeline, KeypointId::name());
 
-                let data = re_query2::range_zip_1x6(
+                let data = re_query::range_zip_1x6(
                     all_half_sizes_indexed,
                     all_centers.primitive_array::<2, f32>(),
                     all_colors.primitive::<u32>(),

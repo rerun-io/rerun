@@ -1,12 +1,11 @@
-use re_chunk_store::RowId;
-use re_chunk_store::{LatestAtQuery, RangeQuery};
+use std::borrow::Cow;
+use std::sync::Arc;
+
+use re_chunk_store::{Chunk, LatestAtQuery, RangeQuery, UnitChunkShared};
+use re_log_types::external::arrow2::array::Array as ArrowArray;
 use re_log_types::hash::Hash64;
-use re_log_types::{external::arrow2, TimeInt};
-use re_query::{
-    LatestAtComponentResults, LatestAtResults, PromiseResolver, PromiseResult, RangeData,
-    RangeResults, Results,
-};
-use re_types_core::{Component, ComponentName};
+use re_query::{LatestAtResults, RangeResults};
+use re_types_core::ComponentName;
 use re_viewer_context::{DataResult, QueryContext, ViewContext};
 
 use crate::DataResultQuery as _;
@@ -15,21 +14,21 @@ use crate::DataResultQuery as _;
 
 /// Wrapper that contains the results of a latest-at query with possible overrides.
 ///
-/// Although overrides are never temporal, when accessed via the [`crate::RangeResultsExt2`] trait
+/// Although overrides are never temporal, when accessed via the [`crate::RangeResultsExt`] trait
 /// they will be merged into the results appropriately.
 pub struct HybridLatestAtResults<'a> {
     pub overrides: LatestAtResults,
     pub results: LatestAtResults,
     pub defaults: LatestAtResults,
+
     pub ctx: &'a ViewContext<'a>,
     pub query: LatestAtQuery,
     pub data_result: &'a DataResult,
-    pub resolver: PromiseResolver,
 }
 
 /// Wrapper that contains the results of a range query with possible overrides.
 ///
-/// Although overrides are never temporal, when accessed via the [`crate::RangeResultsExt2`] trait
+/// Although overrides are never temporal, when accessed via the [`crate::RangeResultsExt`] trait
 /// they will be merged into the results appropriately.
 #[derive(Debug)]
 pub struct HybridRangeResults {
@@ -39,23 +38,17 @@ pub struct HybridRangeResults {
 }
 
 impl<'a> HybridLatestAtResults<'a> {
-    /// Returns the [`LatestAtComponentResults`] for the specified [`Component`].
+    /// Returns the [`UnitChunkShared`] for the specified [`re_types_core::Component`].
     #[inline]
-    pub fn get(
-        &self,
-        component_name: impl Into<ComponentName>,
-    ) -> Option<&LatestAtComponentResults> {
+    pub fn get(&self, component_name: impl Into<ComponentName>) -> Option<&UnitChunkShared> {
         let component_name = component_name.into();
         self.overrides
-            .get(component_name)
-            .or_else(|| self.results.get(component_name))
-            .or_else(|| self.defaults.get(component_name))
+            .get(&component_name)
+            .or_else(|| self.results.get(&component_name))
+            .or_else(|| self.defaults.get(&component_name))
     }
 
-    pub fn try_fallback_raw(
-        &self,
-        component_name: ComponentName,
-    ) -> Option<Box<dyn arrow2::array::Array>> {
+    pub fn try_fallback_raw(&self, component_name: ComponentName) -> Option<Box<dyn ArrowArray>> {
         let fallback_provider = self
             .data_result
             .best_fallback_for(self.ctx, component_name)?;
@@ -76,19 +69,19 @@ impl<'a> HybridLatestAtResults<'a> {
 
     /// Utility for retrieving the first instance of a component, ignoring defaults.
     #[inline]
-    pub fn get_required_mono<T: re_types_core::Component>(&self) -> Option<T> {
+    pub fn get_required_mono<C: re_types_core::Component>(&self) -> Option<C> {
         self.get_required_instance(0)
     }
 
     /// Utility for retrieving the first instance of a component.
     #[inline]
-    pub fn get_mono<T: re_types_core::Component>(&self) -> Option<T> {
+    pub fn get_mono<C: re_types_core::Component>(&self) -> Option<C> {
         self.get_instance(0)
     }
 
     /// Utility for retrieving the first instance of a component.
     #[inline]
-    pub fn get_mono_with_fallback<T: re_types_core::Component + Default>(&self) -> T {
+    pub fn get_mono_with_fallback<C: re_types_core::Component + Default>(&self) -> C {
         self.get_instance_with_fallback(0)
     }
 
@@ -96,29 +89,20 @@ impl<'a> HybridLatestAtResults<'a> {
     ///
     /// If overrides or defaults are present, they will only be used respectively if they have a component at the specified index.
     #[inline]
-    pub fn get_required_instance<T: re_types_core::Component>(&self, index: usize) -> Option<T> {
-        let component_name = T::name();
-
-        self.overrides
-            .get(component_name)
-            .and_then(|r| r.try_instance::<T>(&self.resolver, index))
-            .or_else(||
+    pub fn get_required_instance<C: re_types_core::Component>(&self, index: usize) -> Option<C> {
+        self.overrides.component_instance::<C>(index).or_else(||
                 // No override -> try recording store instead
-                self.results
-                    .get(component_name)
-                    .and_then(|r| r.try_instance::<T>(&self.resolver, index)))
+                self.results.component_instance::<C>(index))
     }
 
     /// Utility for retrieving a single instance of a component.
     ///
     /// If overrides or defaults are present, they will only be used respectively if they have a component at the specified index.
     #[inline]
-    pub fn get_instance<T: re_types_core::Component>(&self, index: usize) -> Option<T> {
+    pub fn get_instance<C: re_types_core::Component>(&self, index: usize) -> Option<C> {
         self.get_required_instance(index).or_else(|| {
             // No override & no store -> try default instead
-            self.defaults
-                .get(T::name())
-                .and_then(|r| r.try_instance::<T>(&self.resolver, index))
+            self.defaults.component_instance::<C>(index)
         })
     }
 
@@ -126,15 +110,15 @@ impl<'a> HybridLatestAtResults<'a> {
     ///
     /// If overrides or defaults are present, they will only be used respectively if they have a component at the specified index.
     #[inline]
-    pub fn get_instance_with_fallback<T: re_types_core::Component + Default>(
+    pub fn get_instance_with_fallback<C: re_types_core::Component + Default>(
         &self,
         index: usize,
-    ) -> T {
+    ) -> C {
         self.get_instance(index)
             .or_else(|| {
                 // No override, no store, no default -> try fallback instead
-                self.try_fallback_raw(T::name())
-                    .and_then(|raw| T::from_arrow(raw.as_ref()).ok())
+                self.try_fallback_raw(C::name())
+                    .and_then(|raw| C::from_arrow(raw.as_ref()).ok())
                     .and_then(|r| r.first().cloned())
             })
             .unwrap_or_default()
@@ -143,7 +127,9 @@ impl<'a> HybridLatestAtResults<'a> {
 
 pub enum HybridResults<'a> {
     LatestAt(LatestAtQuery, HybridLatestAtResults<'a>),
-    Range(RangeQuery, HybridRangeResults),
+
+    // Boxed because of size difference between variants
+    Range(RangeQuery, Box<HybridRangeResults>),
 }
 
 impl<'a> HybridResults<'a> {
@@ -158,30 +144,66 @@ impl<'a> HybridResults<'a> {
                         + r.overrides.components.len()
                         + r.results.components.len(),
                 );
-                indices.extend(r.defaults.components.values().map(|r| *r.index()));
-                indices.extend(r.overrides.components.values().map(|r| *r.index()));
-                indices.extend(r.results.components.values().map(|r| *r.index()));
+
+                indices.extend(
+                    r.defaults
+                        .components
+                        .values()
+                        .filter_map(|chunk| chunk.row_id()),
+                );
+                indices.extend(
+                    r.overrides
+                        .components
+                        .values()
+                        .filter_map(|chunk| chunk.row_id()),
+                );
+                indices.extend(
+                    r.results
+                        .components
+                        .values()
+                        .filter_map(|chunk| chunk.row_id()),
+                );
 
                 Hash64::hash(&indices)
             }
+
             Self::Range(_, r) => {
                 let mut indices = Vec::with_capacity(
                     r.defaults.components.len()
                         + r.overrides.components.len()
                         + r.results.components.len(), // Don't know how many results per component.
                 );
-                indices.extend(r.defaults.components.values().map(|r| *r.index()));
-                indices.extend(r.overrides.components.values().map(|r| *r.index()));
-                indices.extend(r.results.components.values().flat_map(|r| {
-                    // Have top collect in order to release the lock.
-                    r.read().indices().copied().collect::<Vec<_>>()
-                }));
+
+                indices.extend(
+                    r.defaults
+                        .components
+                        .values()
+                        .filter_map(|chunk| chunk.row_id()),
+                );
+                indices.extend(
+                    r.overrides
+                        .components
+                        .values()
+                        .filter_map(|chunk| chunk.row_id()),
+                );
+                indices.extend(
+                    r.results
+                        .components
+                        .iter()
+                        .flat_map(|(component_name, chunks)| {
+                            chunks
+                                .iter()
+                                .flat_map(|chunk| chunk.component_row_ids(component_name))
+                        }),
+                );
 
                 Hash64::hash(&indices)
             }
         }
     }
 }
+
+// ---
 
 impl<'a> From<(LatestAtQuery, HybridLatestAtResults<'a>)> for HybridResults<'a> {
     #[inline]
@@ -193,7 +215,7 @@ impl<'a> From<(LatestAtQuery, HybridLatestAtResults<'a>)> for HybridResults<'a> 
 impl<'a> From<(RangeQuery, HybridRangeResults)> for HybridResults<'a> {
     #[inline]
     fn from((query, results): (RangeQuery, HybridRangeResults)) -> Self {
-        Self::Range(query, results)
+        Self::Range(query, Box::new(results))
     }
 }
 
@@ -202,347 +224,273 @@ impl<'a> From<(RangeQuery, HybridRangeResults)> for HybridResults<'a> {
 /// Also turns all results into range results, so that views only have to worry about the ranged
 /// case.
 pub trait RangeResultsExt {
-    /// Returns dense component data for the given component, ignores default data if the result distinguishes them.
+    /// Returns component data for the given component, ignores default data if the result
+    /// distinguishes them.
     ///
-    /// For results that are aware of the blueprint, only overrides & store results will be considered.
+    /// For results that are aware of the blueprint, only overrides & store results will
+    /// be considered.
     /// Defaults have no effect.
-    fn get_required_component_dense<'a, C: Component>(
-        &'a self,
-        resolver: &PromiseResolver,
-    ) -> Option<re_query::Result<RangeData<'a, C>>>;
+    fn get_required_chunks(&self, component_name: &ComponentName) -> Option<Cow<'_, [Chunk]>>;
 
-    /// Returns dense component data for the given component or an empty array.
+    /// Returns component data for the given component or an empty array.
     ///
-    /// For results that are aware of the blueprint, overrides, store results, and defaults will be considered.
-    fn get_or_empty_dense<'a, C: Component>(
-        &'a self,
-        resolver: &PromiseResolver,
-    ) -> re_query::Result<RangeData<'a, C>>;
-}
+    /// For results that are aware of the blueprint, overrides, store results, and defaults will be
+    /// considered.
+    fn get_optional_chunks(&self, component_name: &ComponentName) -> Cow<'_, [Chunk]>;
 
-impl RangeResultsExt for Results {
-    fn get_required_component_dense<'a, C: Component>(
-        &'a self,
-        resolver: &PromiseResolver,
-    ) -> Option<re_query::Result<RangeData<'a, C>>> {
-        match self {
-            Self::LatestAt(_, results) => results.get_required_component_dense(resolver),
-            Self::Range(_, results) => results.get_required_component_dense(resolver),
+    /// Returns a zero-copy iterator over all the results for the given `(timeline, component)` pair.
+    ///
+    /// Call one of the following methods on the returned [`HybridResultsChunkIter`]:
+    /// * [`HybridResultsChunkIter::primitive`]
+    /// * [`HybridResultsChunkIter::primitive_array`]
+    /// * [`HybridResultsChunkIter::string`]
+    fn iter_as(
+        &self,
+        timeline: Timeline,
+        component_name: ComponentName,
+    ) -> HybridResultsChunkIter<'_> {
+        let chunks = self.get_optional_chunks(&component_name);
+        HybridResultsChunkIter {
+            chunks,
+            timeline,
+            component_name,
         }
-    }
-
-    fn get_or_empty_dense<'a, C: Component>(
-        &'a self,
-        resolver: &PromiseResolver,
-    ) -> re_query::Result<RangeData<'a, C>> {
-        match self {
-            Self::LatestAt(_, results) => results.get_or_empty_dense(resolver),
-            Self::Range(_, results) => results.get_or_empty_dense(resolver),
-        }
-    }
-}
-
-impl RangeResultsExt for RangeResults {
-    #[inline]
-    fn get_required_component_dense<'a, C: Component>(
-        &'a self,
-        resolver: &PromiseResolver,
-    ) -> Option<re_query::Result<RangeData<'a, C>>> {
-        let results = self.get(C::name())?.to_dense(resolver);
-
-        // TODO(#5607): what should happen if the promise is still pending?
-        let (front_status, back_status) = results.status();
-        match front_status {
-            PromiseResult::Error(err) => return Some(Err(re_query::QueryError::Other(err.into()))),
-            PromiseResult::Pending | PromiseResult::Ready(_) => {}
-        }
-        match back_status {
-            PromiseResult::Error(err) => return Some(Err(re_query::QueryError::Other(err.into()))),
-            PromiseResult::Pending | PromiseResult::Ready(_) => {}
-        }
-
-        Some(Ok(results))
-    }
-
-    #[inline]
-    fn get_or_empty_dense<'a, C: Component>(
-        &'a self,
-        resolver: &PromiseResolver,
-    ) -> re_query::Result<RangeData<'a, C>> {
-        let results = self.get_or_empty(C::name()).to_dense(resolver);
-
-        // TODO(#5607): what should happen if the promise is still pending?
-        let (front_status, back_status) = results.status();
-        match front_status {
-            PromiseResult::Error(err) => return Err(re_query::QueryError::Other(err.into())),
-            PromiseResult::Pending | PromiseResult::Ready(_) => {}
-        }
-        match back_status {
-            PromiseResult::Error(err) => return Err(re_query::QueryError::Other(err.into())),
-            PromiseResult::Pending | PromiseResult::Ready(_) => {}
-        }
-
-        Ok(results)
     }
 }
 
 impl RangeResultsExt for LatestAtResults {
     #[inline]
-    fn get_required_component_dense<'a, C: Component>(
-        &'a self,
-        resolver: &PromiseResolver,
-    ) -> Option<re_query::Result<RangeData<'a, C>>> {
-        let results = self.get(C::name())?;
-        let data = RangeData::from_latest_at(resolver, results, None);
-
-        // TODO(#5607): what should happen if the promise is still pending?
-        let (front_status, back_status) = data.status();
-        match front_status {
-            PromiseResult::Error(err) => return Some(Err(re_query::QueryError::Other(err.into()))),
-            PromiseResult::Pending | PromiseResult::Ready(_) => {}
-        }
-        match back_status {
-            PromiseResult::Error(err) => return Some(Err(re_query::QueryError::Other(err.into()))),
-            PromiseResult::Pending | PromiseResult::Ready(_) => {}
-        }
-
-        Some(Ok(data))
+    fn get_required_chunks(&self, component_name: &ComponentName) -> Option<Cow<'_, [Chunk]>> {
+        self.get(component_name)
+            .cloned()
+            .map(|chunk| Cow::Owned(vec![Arc::unwrap_or_clone(chunk.into_chunk())]))
     }
 
     #[inline]
-    fn get_or_empty_dense<'a, C: Component>(
-        &'a self,
-        resolver: &PromiseResolver,
-    ) -> re_query::Result<RangeData<'a, C>> {
-        let results = self.get_or_empty(C::name());
-        // With latest-at semantics, we just want to join the secondary components onto the primary
-        // ones, irrelevant of their indices.
-        // In particular, it is pretty common to have a secondary component be more recent than the
-        // associated primary component in latest-at contexts, e.g. colors in an otherwise fixed
-        // point cloud being changed each frame.
-        let data =
-            RangeData::from_latest_at(resolver, results, Some((TimeInt::STATIC, RowId::ZERO)));
+    fn get_optional_chunks(&self, component_name: &ComponentName) -> Cow<'_, [Chunk]> {
+        self.get(component_name).cloned().map_or_else(
+            || Cow::Owned(vec![]),
+            |chunk| Cow::Owned(vec![Arc::unwrap_or_clone(chunk.into_chunk())]),
+        )
+    }
+}
 
-        // TODO(#5607): what should happen if the promise is still pending?
-        let (front_status, back_status) = data.status();
-        match front_status {
-            PromiseResult::Error(err) => return Err(re_query::QueryError::Other(err.into())),
-            PromiseResult::Pending | PromiseResult::Ready(_) => {}
-        }
-        match back_status {
-            PromiseResult::Error(err) => return Err(re_query::QueryError::Other(err.into())),
-            PromiseResult::Pending | PromiseResult::Ready(_) => {}
-        }
+impl RangeResultsExt for RangeResults {
+    #[inline]
+    fn get_required_chunks(&self, component_name: &ComponentName) -> Option<Cow<'_, [Chunk]>> {
+        self.get_required(component_name).ok().map(Cow::Borrowed)
+    }
 
-        Ok(data)
+    #[inline]
+    fn get_optional_chunks(&self, component_name: &ComponentName) -> Cow<'_, [Chunk]> {
+        Cow::Borrowed(self.get(component_name).unwrap_or_default())
     }
 }
 
 impl RangeResultsExt for HybridRangeResults {
     #[inline]
-    fn get_required_component_dense<'a, C: Component>(
-        &'a self,
-        resolver: &PromiseResolver,
-    ) -> Option<re_query::Result<RangeData<'a, C>>> {
-        let component_name = C::name();
-
+    fn get_required_chunks(&self, component_name: &ComponentName) -> Option<Cow<'_, [Chunk]>> {
         if self.overrides.contains(component_name) {
-            let results = self.overrides.get(C::name())?;
+            let unit = self.overrides.get(component_name)?;
             // Because this is an override we always re-index the data as static
-            let data =
-                RangeData::from_latest_at(resolver, results, Some((TimeInt::STATIC, RowId::ZERO)));
-
-            // TODO(#5607): what should happen if the promise is still pending?
-            let (front_status, back_status) = data.status();
-            match front_status {
-                PromiseResult::Error(err) => {
-                    return Some(Err(re_query::QueryError::Other(err.into())))
-                }
-                PromiseResult::Pending | PromiseResult::Ready(_) => {}
-            }
-            match back_status {
-                PromiseResult::Error(err) => {
-                    return Some(Err(re_query::QueryError::Other(err.into())))
-                }
-                PromiseResult::Pending | PromiseResult::Ready(_) => {}
-            }
-
-            Some(Ok(data))
+            let chunk = Arc::unwrap_or_clone(unit.clone().into_chunk()).into_static();
+            Some(Cow::Owned(vec![chunk]))
         } else {
-            self.results.get_required_component_dense(resolver)
+            self.results.get_required_chunks(component_name)
         }
     }
 
     #[inline]
-    fn get_or_empty_dense<'a, C: Component>(
-        &'a self,
-        resolver: &PromiseResolver,
-    ) -> re_query::Result<RangeData<'a, C>> {
-        let component_name = C::name();
-
+    fn get_optional_chunks(&self, component_name: &ComponentName) -> Cow<'_, [Chunk]> {
         if self.overrides.contains(component_name) {
-            let results = self.overrides.get_or_empty(C::name());
+            let Some(unit) = self.overrides.get(component_name) else {
+                return Cow::Owned(Vec::new());
+            };
             // Because this is an override we always re-index the data as static
-            let data =
-                RangeData::from_latest_at(resolver, results, Some((TimeInt::STATIC, RowId::ZERO)));
-
-            // TODO(#5607): what should happen if the promise is still pending?
-            let (front_status, back_status) = data.status();
-            match front_status {
-                PromiseResult::Error(err) => return Err(re_query::QueryError::Other(err.into())),
-                PromiseResult::Pending | PromiseResult::Ready(_) => {}
-            }
-            match back_status {
-                PromiseResult::Error(err) => return Err(re_query::QueryError::Other(err.into())),
-                PromiseResult::Pending | PromiseResult::Ready(_) => {}
-            }
-
-            Ok(data)
+            let chunk = Arc::unwrap_or_clone(unit.clone().into_chunk()).into_static();
+            Cow::Owned(vec![chunk])
         } else {
-            let data = self.results.get_or_empty_dense(resolver);
+            let chunks = self.results.get_optional_chunks(component_name);
 
             // If the data is not empty, return it.
-            if let Ok(data) = data {
-                if !data.is_empty() {
-                    return Ok(data);
-                }
-            };
+
+            if !chunks.is_empty() {
+                return chunks;
+            }
 
             // Otherwise try to use the default data.
 
-            let results = self.defaults.get_or_empty(C::name());
+            let Some(unit) = self.defaults.get(component_name) else {
+                return Cow::Owned(Vec::new());
+            };
             // Because this is an default from the blueprint we always re-index the data as static
-            let data =
-                RangeData::from_latest_at(resolver, results, Some((TimeInt::STATIC, RowId::ZERO)));
-
-            // TODO(#5607): what should happen if the promise is still pending?
-            let (front_status, back_status) = data.status();
-            match front_status {
-                PromiseResult::Error(err) => return Err(re_query::QueryError::Other(err.into())),
-                PromiseResult::Pending | PromiseResult::Ready(_) => {}
-            }
-            match back_status {
-                PromiseResult::Error(err) => return Err(re_query::QueryError::Other(err.into())),
-                PromiseResult::Pending | PromiseResult::Ready(_) => {}
-            }
-
-            Ok(data)
+            let chunk = Arc::unwrap_or_clone(unit.clone().into_chunk()).into_static();
+            Cow::Owned(vec![chunk])
         }
     }
 }
 
 impl<'a> RangeResultsExt for HybridLatestAtResults<'a> {
     #[inline]
-    fn get_required_component_dense<'b, C: Component>(
-        &'b self,
-        resolver: &PromiseResolver,
-    ) -> Option<re_query::Result<RangeData<'b, C>>> {
-        let component_name = C::name();
-
+    fn get_required_chunks(&self, component_name: &ComponentName) -> Option<Cow<'_, [Chunk]>> {
         if self.overrides.contains(component_name) {
-            let results = self.overrides.get(C::name())?;
+            let unit = self.overrides.get(component_name)?;
             // Because this is an override we always re-index the data as static
-            let data =
-                RangeData::from_latest_at(resolver, results, Some((TimeInt::STATIC, RowId::ZERO)));
-
-            // TODO(#5607): what should happen if the promise is still pending?
-            let (front_status, back_status) = data.status();
-            match front_status {
-                PromiseResult::Error(err) => {
-                    return Some(Err(re_query::QueryError::Other(err.into())))
-                }
-                PromiseResult::Pending | PromiseResult::Ready(_) => {}
-            }
-            match back_status {
-                PromiseResult::Error(err) => {
-                    return Some(Err(re_query::QueryError::Other(err.into())))
-                }
-                PromiseResult::Pending | PromiseResult::Ready(_) => {}
-            }
-
-            Some(Ok(data))
+            let chunk = Arc::unwrap_or_clone(unit.clone().into_chunk()).into_static();
+            Some(Cow::Owned(vec![chunk]))
         } else {
-            self.results.get_required_component_dense(resolver)
+            self.results.get_required_chunks(component_name)
         }
     }
 
     #[inline]
-    fn get_or_empty_dense<'b, C: Component>(
-        &'b self,
-        resolver: &PromiseResolver,
-    ) -> re_query::Result<RangeData<'b, C>> {
-        let component_name = C::name();
-
+    fn get_optional_chunks(&self, component_name: &ComponentName) -> Cow<'_, [Chunk]> {
         if self.overrides.contains(component_name) {
-            let results = self.overrides.get_or_empty(C::name());
-
+            let Some(unit) = self.overrides.get(component_name) else {
+                return Cow::Owned(Vec::new());
+            };
             // Because this is an override we always re-index the data as static
-            let data =
-                RangeData::from_latest_at(resolver, results, Some((TimeInt::STATIC, RowId::ZERO)));
-
-            // TODO(#5607): what should happen if the promise is still pending?
-            let (front_status, back_status) = data.status();
-            match front_status {
-                PromiseResult::Error(err) => return Err(re_query::QueryError::Other(err.into())),
-                PromiseResult::Pending | PromiseResult::Ready(_) => {}
-            }
-            match back_status {
-                PromiseResult::Error(err) => return Err(re_query::QueryError::Other(err.into())),
-                PromiseResult::Pending | PromiseResult::Ready(_) => {}
-            }
-
-            Ok(data)
+            let chunk = Arc::unwrap_or_clone(unit.clone().into_chunk()).into_static();
+            Cow::Owned(vec![chunk])
         } else {
-            let data = self.results.get_or_empty_dense(resolver);
+            let chunks = self.results.get_optional_chunks(component_name);
 
             // If the data is not empty, return it.
-            if let Ok(data) = data {
-                if !data.is_empty() {
-                    return Ok(data);
-                }
-            };
+
+            if !chunks.is_empty() {
+                return chunks;
+            }
 
             // Otherwise try to use the default data.
 
-            let results = self.defaults.get_or_empty(C::name());
+            let Some(unit) = self.defaults.get(component_name) else {
+                return Cow::Owned(Vec::new());
+            };
             // Because this is an default from the blueprint we always re-index the data as static
-            let data =
-                RangeData::from_latest_at(resolver, results, Some((TimeInt::STATIC, RowId::ZERO)));
-
-            // TODO(#5607): what should happen if the promise is still pending?
-            let (front_status, back_status) = data.status();
-            match front_status {
-                PromiseResult::Error(err) => return Err(re_query::QueryError::Other(err.into())),
-                PromiseResult::Pending | PromiseResult::Ready(_) => {}
-            }
-            match back_status {
-                PromiseResult::Error(err) => return Err(re_query::QueryError::Other(err.into())),
-                PromiseResult::Pending | PromiseResult::Ready(_) => {}
-            }
-
-            Ok(data)
+            let chunk = Arc::unwrap_or_clone(unit.clone().into_chunk()).into_static();
+            Cow::Owned(vec![chunk])
         }
     }
 }
 
 impl<'a> RangeResultsExt for HybridResults<'a> {
-    fn get_required_component_dense<'b, C: Component>(
-        &'b self,
-        resolver: &PromiseResolver,
-    ) -> Option<re_query::Result<RangeData<'b, C>>> {
+    #[inline]
+    fn get_required_chunks(&self, component_name: &ComponentName) -> Option<Cow<'_, [Chunk]>> {
         match self {
-            Self::LatestAt(_, results) => results.get_required_component_dense(resolver),
-            Self::Range(_, results) => results.get_required_component_dense(resolver),
+            Self::LatestAt(_, results) => results.get_required_chunks(component_name),
+            Self::Range(_, results) => results.get_required_chunks(component_name),
         }
     }
 
-    fn get_or_empty_dense<'b, C: Component>(
-        &'b self,
-        resolver: &PromiseResolver,
-    ) -> re_query::Result<RangeData<'b, C>> {
+    #[inline]
+    fn get_optional_chunks(&self, component_name: &ComponentName) -> Cow<'_, [Chunk]> {
         match self {
-            Self::LatestAt(_, results) => results.get_or_empty_dense(resolver),
-            Self::Range(_, results) => results.get_or_empty_dense(resolver),
+            Self::LatestAt(_, results) => results.get_optional_chunks(component_name),
+            Self::Range(_, results) => results.get_optional_chunks(component_name),
         }
+    }
+}
+
+// ---
+
+use re_chunk::{ChunkComponentIterItem, RowId, TimeInt, Timeline};
+use re_chunk_store::external::{re_chunk, re_chunk::external::arrow2};
+
+/// The iterator type backing [`HybridResults::iter_as`].
+pub struct HybridResultsChunkIter<'a> {
+    chunks: Cow<'a, [Chunk]>,
+    timeline: Timeline,
+    component_name: ComponentName,
+}
+
+impl<'a> HybridResultsChunkIter<'a> {
+    /// Iterate as indexed deserialized batches.
+    ///
+    /// See [`Chunk::iter_component`] for more information.
+    pub fn component<C: re_types_core::Component>(
+        &'a self,
+    ) -> impl Iterator<Item = ((TimeInt, RowId), ChunkComponentIterItem<C>)> + 'a {
+        self.chunks.iter().flat_map(move |chunk| {
+            itertools::izip!(
+                chunk.iter_component_indices(&self.timeline, &self.component_name),
+                chunk.iter_component::<C>(),
+            )
+        })
+    }
+
+    /// Iterate as indexed primitives.
+    ///
+    /// See [`Chunk::iter_primitive`] for more information.
+    pub fn primitive<T: arrow2::types::NativeType>(
+        &'a self,
+    ) -> impl Iterator<Item = ((TimeInt, RowId), &'a [T])> + 'a {
+        self.chunks.iter().flat_map(move |chunk| {
+            itertools::izip!(
+                chunk.iter_component_indices(&self.timeline, &self.component_name),
+                chunk.iter_primitive::<T>(&self.component_name)
+            )
+        })
+    }
+
+    /// Iterate as indexed primitive arrays.
+    ///
+    /// See [`Chunk::iter_primitive_array`] for more information.
+    pub fn primitive_array<const N: usize, T: arrow2::types::NativeType>(
+        &'a self,
+    ) -> impl Iterator<Item = ((TimeInt, RowId), &'a [[T; N]])> + 'a
+    where
+        [T; N]: bytemuck::Pod,
+    {
+        self.chunks.iter().flat_map(move |chunk| {
+            itertools::izip!(
+                chunk.iter_component_indices(&self.timeline, &self.component_name),
+                chunk.iter_primitive_array::<N, T>(&self.component_name)
+            )
+        })
+    }
+
+    /// Iterate as indexed list of primitive arrays.
+    ///
+    /// See [`Chunk::iter_primitive_array_list`] for more information.
+    pub fn primitive_array_list<const N: usize, T: arrow2::types::NativeType>(
+        &'a self,
+    ) -> impl Iterator<Item = ((TimeInt, RowId), Vec<&'a [[T; N]]>)> + 'a
+    where
+        [T; N]: bytemuck::Pod,
+    {
+        self.chunks.iter().flat_map(move |chunk| {
+            itertools::izip!(
+                chunk.iter_component_indices(&self.timeline, &self.component_name),
+                chunk.iter_primitive_array_list::<N, T>(&self.component_name)
+            )
+        })
+    }
+
+    /// Iterate as indexed UTF-8 strings.
+    ///
+    /// See [`Chunk::iter_string`] for more information.
+    pub fn string(
+        &'a self,
+    ) -> impl Iterator<Item = ((TimeInt, RowId), Vec<re_types_core::ArrowString>)> + 'a {
+        self.chunks.iter().flat_map(|chunk| {
+            itertools::izip!(
+                chunk.iter_component_indices(&self.timeline, &self.component_name),
+                chunk.iter_string(&self.component_name)
+            )
+        })
+    }
+
+    /// Iterate as indexed buffers.
+    ///
+    /// See [`Chunk::iter_buffer`] for more information.
+    pub fn buffer<T: arrow2::types::NativeType>(
+        &'a self,
+    ) -> impl Iterator<Item = ((TimeInt, RowId), Vec<re_types_core::ArrowBuffer<T>>)> + 'a {
+        self.chunks.iter().flat_map(|chunk| {
+            itertools::izip!(
+                chunk.iter_component_indices(&self.timeline, &self.component_name),
+                chunk.iter_buffer(&self.component_name)
+            )
+        })
     }
 }

@@ -1,6 +1,6 @@
 use itertools::Itertools as _;
 
-use re_space_view::HybridResults2;
+use re_space_view::HybridResults;
 use re_types::{
     archetypes::Image,
     components::{
@@ -135,11 +135,11 @@ impl ImageVisualizer {
     fn process_image(
         &mut self,
         ctx: &QueryContext<'_>,
-        results: &HybridResults2<'_>,
+        results: &HybridResults<'_>,
         spatial_ctx: &SpatialSceneEntityContext<'_>,
     ) {
         use super::entity_iterator::{iter_buffer, iter_primitive_array};
-        use re_space_view::RangeResultsExt2 as _;
+        use re_space_view::RangeResultsExt as _;
 
         let entity_path = ctx.target_entity_path;
 
@@ -159,7 +159,7 @@ impl ImageVisualizer {
         let all_channel_datatypes = results.iter_as(timeline, ChannelDatatype::name());
         let all_opacities = results.iter_as(timeline, Opacity::name());
 
-        let data = re_query2::range_zip_1x5(
+        let data = re_query::range_zip_1x5(
             all_blobs_indexed,
             all_resolutions_indexed,
             all_pixel_formats.component::<PixelFormat>(),

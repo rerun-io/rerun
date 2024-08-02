@@ -22,7 +22,7 @@ fn query_latest_component<C: re_types_core::Component>(
     re_tracing::profile_function!();
 
     let results = db
-        .query_caches2()
+        .query_caches()
         .latest_at(db.store(), query, entity_path, [C::name()]);
 
     let (data_time, row_id) = results.index();
