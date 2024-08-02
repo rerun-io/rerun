@@ -1,7 +1,7 @@
 use std::collections::BTreeMap;
 
 use re_data_ui::item_ui;
-use re_log_types::{EntityPath, TimePoint, Timeline};
+use re_log_types::{EntityPath, Timeline};
 use re_types::View;
 use re_types::{components::TextLogLevel, SpaceViewClassIdentifier};
 use re_ui::UiExt as _;
@@ -279,20 +279,12 @@ fn table_ui(
     entries: &[&Entry],
     scroll_to_row: Option<usize>,
 ) {
-    let timelines = vec![*ctx.rec_cfg.time_ctrl.read().timeline()];
-
-    // TODO(#6611): This regressed because adding a metadata registry in the store is an antipattern.
-    //
-    // We'll bring back the multi-timeline display once we get rid of the native cache and start
-    // exposing chunks directly instead.
-    // Since chunks embed the data for all associated timelines, there'll be no extra work needed
-    // to get that information out.
-    // let timelines = state
-    //     .filters
-    //     .col_timelines
-    //     .iter()
-    //     .filter_map(|(timeline, visible)| visible.then_some(timeline))
-    //     .collect::<Vec<_>>();
+    let timelines = state
+        .filters
+        .col_timelines
+        .iter()
+        .filter_map(|(timeline, visible)| visible.then_some(timeline))
+        .collect::<Vec<_>>();
 
     use egui_extras::Column;
 
@@ -366,17 +358,17 @@ fn table_ui(
                 let entry = &entries[row.index()];
 
                 // timeline(s)
-                let timepoint: TimePoint = [(global_timeline, entry.time)].into();
                 for timeline in &timelines {
                     row.col(|ui| {
-                        let row_time = timepoint
+                        let row_time = entry
+                            .timepoint
                             .get(timeline)
                             .copied()
                             .unwrap_or(re_log_types::TimeInt::STATIC);
                         item_ui::time_button(ctx, ui, timeline, row_time);
 
                         if let Some(global_time) = global_time {
-                            if timeline == &global_timeline {
+                            if *timeline == &global_timeline {
                                 #[allow(clippy::comparison_chain)]
                                 if global_time < row_time {
                                     // We've past the global time - it is thus above this row.

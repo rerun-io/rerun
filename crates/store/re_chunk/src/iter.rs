@@ -10,7 +10,7 @@ use arrow2::{
 };
 use itertools::{izip, Itertools};
 
-use re_log_types::{TimeInt, Timeline};
+use re_log_types::{TimeInt, TimePoint, Timeline};
 use re_types_core::{ArrowBuffer, ArrowString, Component, ComponentName};
 
 use crate::{Chunk, ChunkTimeline, RowId};
@@ -94,6 +94,81 @@ impl Chunk {
             } else {
                 Either::Right(Either::Right(Either::Right(indices)))
             }
+        }
+    }
+
+    /// Returns an iterator over the [`TimePoint`]s of a [`Chunk`].
+    ///
+    /// See also:
+    /// * [`Self::iter_component_timepoints`].
+    #[inline]
+    pub fn iter_timepoints(&self) -> impl Iterator<Item = TimePoint> + '_ {
+        let mut timelines = self
+            .timelines
+            .values()
+            .map(|time_chunk| (time_chunk.timeline, time_chunk.times()))
+            .collect_vec();
+
+        std::iter::from_fn(move || {
+            let mut timepoint = TimePoint::default();
+            for (timeline, times) in &mut timelines {
+                timepoint.insert(*timeline, times.next()?);
+            }
+            Some(timepoint)
+        })
+    }
+
+    /// Returns an iterator over the [`TimePoint`]s of a [`Chunk`], for a given component.
+    ///
+    /// This is different than [`Self::iter_timepoints`] in that it will only yield timepoints for rows
+    /// at which there is data for the specified `component_name`.
+    ///
+    /// See also [`Self::iter_timepoints`].
+    pub fn iter_component_timepoints(
+        &self,
+        component_name: &ComponentName,
+    ) -> impl Iterator<Item = TimePoint> + '_ {
+        let Some(list_array) = self.components.get(component_name) else {
+            return Either::Left(std::iter::empty());
+        };
+
+        if let Some(validity) = list_array.validity() {
+            let mut timelines = self
+                .timelines
+                .values()
+                .map(|time_chunk| {
+                    (
+                        time_chunk.timeline,
+                        time_chunk
+                            .times()
+                            .enumerate()
+                            .filter(|(i, _)| validity.get_bit(*i))
+                            .map(|(_, time)| time),
+                    )
+                })
+                .collect_vec();
+
+            Either::Right(Either::Left(std::iter::from_fn(move || {
+                let mut timepoint = TimePoint::default();
+                for (timeline, times) in &mut timelines {
+                    timepoint.insert(*timeline, times.next()?);
+                }
+                Some(timepoint)
+            })))
+        } else {
+            let mut timelines = self
+                .timelines
+                .values()
+                .map(|time_chunk| (time_chunk.timeline, time_chunk.times()))
+                .collect_vec();
+
+            Either::Right(Either::Right(std::iter::from_fn(move || {
+                let mut timepoint = TimePoint::default();
+                for (timeline, times) in &mut timelines {
+                    timepoint.insert(*timeline, times.next()?);
+                }
+                Some(timepoint)
+            })))
         }
     }
 

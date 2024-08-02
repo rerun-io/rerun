@@ -227,6 +227,25 @@ pub trait RangeResultsExt {
     /// For results that are aware of the blueprint, overrides, store results, and defaults will be
     /// considered.
     fn get_optional_chunks(&self, component_name: &ComponentName) -> Cow<'_, [Chunk]>;
+
+    /// Returns a zero-copy iterator over all the results for the given `(timeline, component)` pair.
+    ///
+    /// Call one of the following methods on the returned [`HybridResultsChunkIter`]:
+    /// * [`HybridResultsChunkIter::primitive`]
+    /// * [`HybridResultsChunkIter::primitive_array`]
+    /// * [`HybridResultsChunkIter::string`]
+    fn iter_as(
+        &self,
+        timeline: Timeline,
+        component_name: ComponentName,
+    ) -> HybridResultsChunkIter<'_> {
+        let chunks = self.get_optional_chunks(&component_name);
+        HybridResultsChunkIter {
+            chunks,
+            timeline,
+            component_name,
+        }
+    }
 }
 
 impl RangeResultsExt for LatestAtResults {
@@ -463,26 +482,5 @@ impl<'a> HybridResultsChunkIter<'a> {
                 chunk.iter_buffer(&self.component_name)
             )
         })
-    }
-}
-
-impl<'a> HybridResults<'a> {
-    /// Returns a zero-copy iterator over all the results for the given `(timeline, component)` pair.
-    ///
-    /// Call one of the following methods on the returned [`HybridResultsChunkIter`]:
-    /// * [`HybridResultsChunkIter::primitive`]
-    /// * [`HybridResultsChunkIter::primitive_array`]
-    /// * [`HybridResultsChunkIter::string`]
-    pub fn iter_as(
-        &'a self,
-        timeline: Timeline,
-        component_name: ComponentName,
-    ) -> HybridResultsChunkIter<'a> {
-        let chunks = self.get_optional_chunks(&component_name);
-        HybridResultsChunkIter {
-            chunks,
-            timeline,
-            component_name,
-        }
     }
 }
