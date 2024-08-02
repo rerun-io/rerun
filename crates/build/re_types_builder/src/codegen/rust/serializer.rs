@@ -54,7 +54,7 @@ pub fn quote_arrow_serializer(
 
         let quoted_serializer = quote_arrow_field_serializer(
             objects,
-            datatype,
+            datatype.to_logical_type(),
             &quoted_datatype,
             &bitmap_dst,
             elements_are_nullable,
@@ -468,6 +468,24 @@ fn quote_arrow_field_serializer(
     } else {
         None
     };
+
+    // If the inner object is an enum, then dispatch to its serializer.
+    if let Some(obj) = inner_obj {
+        if obj.is_enum() {
+            let fqname_use = quote_fqname_as_type_path(&obj.fqname);
+            let option_wrapper = if elements_are_nullable {
+                quote! {}
+            } else {
+                quote! { .into_iter().map(Some) }
+            };
+
+            return quote! {{
+                _ = #bitmap_src;
+                #fqname_use::to_arrow_opt(#data_src #option_wrapper)?
+            }};
+        }
+    }
+
     let inner_is_arrow_transparent = inner_obj.map_or(false, |obj| obj.datatype.is_none());
 
     match datatype.to_logical_type() {

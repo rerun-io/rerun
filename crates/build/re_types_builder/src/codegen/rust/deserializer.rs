@@ -73,12 +73,14 @@ pub fn quote_arrow_deserializer(
         // A non-null enum itself must have a value.
         let is_nullable = false;
 
+        let obj_field_fqname = format!("{obj_fqname}#enum");
+
         let quoted_deserializer = quote_arrow_field_deserializer(
             objects,
-            datatype,
+            datatype.to_logical_type(),
             &quoted_self_datatype, // we are transparent, so the datatype of `Self` is the datatype of our contents
             is_nullable,
-            obj_fqname,
+            &obj_field_fqname,
             &data_src,
             InnerRepr::NativeIterable,
         );
@@ -508,6 +510,14 @@ fn quote_arrow_field_deserializer(
     inner_repr: InnerRepr,
 ) -> TokenStream {
     _ = is_nullable; // not yet used, will be needed very soon
+
+    // If the inner object is an enum, then dispatch to its deserializer.
+    if let DataType::Extension(fqname, _, _) = datatype {
+        if objects.get(fqname).map_or(false, |obj| obj.is_enum()) {
+            let fqname_use = quote_fqname_as_type_path(fqname);
+            return quote!(#fqname_use::from_arrow_opt(#data_src).with_context(#obj_field_fqname)?.into_iter());
+        }
+    }
 
     match datatype.to_logical_type() {
         DataType::Int8

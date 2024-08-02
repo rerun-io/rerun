@@ -96,7 +96,8 @@ impl ArrowRegistry {
                 None,
             )
         } else if is_enum {
-            // TODO(jleibs): this is encoded in the fbs
+            // TODO(jleibs): The underlying type is encoded in the FBS and could be used
+            // here instead if we want non-u8 enums.
             LazyDatatype::Extension(obj.fqname.clone(), Box::new(LazyDatatype::UInt8), None)
         } else {
             let is_sparse = obj.is_attr_set(ATTR_ARROW_SPARSE_UNION);
