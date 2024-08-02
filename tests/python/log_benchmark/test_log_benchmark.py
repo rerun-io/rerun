@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import Any
+
 import numpy as np
 import pytest
 import rerun as rr
@@ -9,7 +11,7 @@ import rerun as rr
 from . import Point3DInput
 
 
-def log_points3d_large_batch(data: Point3DInput):
+def log_points3d_large_batch(data: Point3DInput) -> None:
     # create a new, empty memory sink for the current recording
     rr.memory_recording()
 
@@ -20,13 +22,13 @@ def log_points3d_large_batch(data: Point3DInput):
 
 
 @pytest.mark.parametrize("num_points", [50_000_000])
-def test_bench_points3d_large_batch(benchmark, num_points):
+def test_bench_points3d_large_batch(benchmark: Any, num_points: int) -> None:
     rr.init("rerun_example_benchmark_points3d_large_batch")
     data = Point3DInput.prepare(42, num_points)
     benchmark(log_points3d_large_batch, data)
 
 
-def log_points3d_many_individual(data: Point3DInput):
+def log_points3d_many_individual(data: Point3DInput) -> None:
     # create a new, empty memory sink for the current recording
     rr.memory_recording()
 
@@ -38,13 +40,13 @@ def log_points3d_many_individual(data: Point3DInput):
 
 
 @pytest.mark.parametrize("num_points", [100_000])
-def test_bench_points3d_many_individual(benchmark, num_points):
+def test_bench_points3d_many_individual(benchmark: Any, num_points: int) -> None:
     rr.init("rerun_example_benchmark_points3d_many_individual")
     data = Point3DInput.prepare(1337, num_points)
     benchmark(log_points3d_many_individual, data)
 
 
-def log_image(image: np.ndarray, num_log_calls):
+def log_image(image: np.ndarray, num_log_calls: int) -> None:
     # create a new, empty memory sink for the current recording
     rr.memory_recording()
 
@@ -56,7 +58,7 @@ def log_image(image: np.ndarray, num_log_calls):
     ["image_dimension", "image_channels", "num_log_calls"],
     [pytest.param(16_384, 4, 4, id="16384^2px-4channels-4calls")],
 )
-def test_bench_image(benchmark, image_dimension, image_channels, num_log_calls):
+def test_bench_image(benchmark: Any, image_dimension: int, image_channels: int, num_log_calls: int) -> None:
     rr.init("rerun_example_benchmark_image")
 
     image = np.zeros((image_dimension, image_dimension, image_channels), dtype=np.uint8)
