@@ -11,7 +11,6 @@ import torch
 from rerun.datatypes import (
     Angle,
     Quaternion,
-    Rotation3D,
     RotationAxisAngle,
     Vec3D,
 )
@@ -44,21 +43,6 @@ ROTATION_3D_INPUT = [
     RotationAxisAngle(Vec3D([1, 2, 3]), Angle(4)),
     RotationAxisAngle(np.array([1, 2, 3], dtype=np.uint8), Angle(rad=4)),
 ]
-
-
-def assert_correct_rotation3d(rot: Rotation3D | None) -> None:
-    assert rot is not None
-    if isinstance(rot.inner, Quaternion):
-        assert np.all(rot.inner.xyzw == np.array([1.0, 2.0, 3.0, 4.0]))
-        assert rot.inner.xyzw.dtype == np.float32
-    elif isinstance(rot.inner, RotationAxisAngle):
-        # TODO(#2650): np.array-typed fields should be provided with a `eq` method that uses `np.all`
-        assert np.all(rot.inner.axis.xyz == np.array([1.0, 2.0, 3.0]))
-        assert rot.inner.axis.xyz.dtype == np.float32
-        assert rot.inner.angle == Angle(4.0)
-
-    else:
-        assert False, f"Unexpected inner type: {type(rot.inner)}"
 
 
 def test_angle() -> None:

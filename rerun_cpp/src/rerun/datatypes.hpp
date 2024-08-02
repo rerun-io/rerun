@@ -20,7 +20,6 @@
 #include "datatypes/range1d.hpp"
 #include "datatypes/range2d.hpp"
 #include "datatypes/rgba32.hpp"
-#include "datatypes/rotation3d.hpp"
 #include "datatypes/rotation_axis_angle.hpp"
 #include "datatypes/tensor_buffer.hpp"
 #include "datatypes/tensor_data.hpp"

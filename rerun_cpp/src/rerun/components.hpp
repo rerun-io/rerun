@@ -44,7 +44,6 @@
 #include "components/range1d.hpp"
 #include "components/resolution.hpp"
 #include "components/resolution2d.hpp"
-#include "components/rotation3d.hpp"
 #include "components/rotation_axis_angle.hpp"
 #include "components/rotation_quat.hpp"
 #include "components/scalar.hpp"

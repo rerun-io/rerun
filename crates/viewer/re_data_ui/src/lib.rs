@@ -22,7 +22,6 @@ mod image;
 mod instance_path;
 mod log_msg;
 mod pinhole;
-mod rotation3d;
 mod store_id;
 
 pub mod item_ui;

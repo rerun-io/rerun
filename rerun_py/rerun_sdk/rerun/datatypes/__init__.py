@@ -38,7 +38,6 @@ from .quaternion import Quaternion, QuaternionArrayLike, QuaternionBatch, Quater
 from .range1d import Range1D, Range1DArrayLike, Range1DBatch, Range1DLike, Range1DType
 from .range2d import Range2D, Range2DArrayLike, Range2DBatch, Range2DLike, Range2DType
 from .rgba32 import Rgba32, Rgba32ArrayLike, Rgba32Batch, Rgba32Like, Rgba32Type
-from .rotation3d import Rotation3D, Rotation3DArrayLike, Rotation3DBatch, Rotation3DLike, Rotation3DType
 from .rotation_axis_angle import (
     RotationAxisAngle,
     RotationAxisAngleArrayLike,
@@ -194,11 +193,6 @@ __all__ = [
     "Rgba32Batch",
     "Rgba32Like",
     "Rgba32Type",
-    "Rotation3D",
-    "Rotation3DArrayLike",
-    "Rotation3DBatch",
-    "Rotation3DLike",
-    "Rotation3DType",
     "RotationAxisAngle",
     "RotationAxisAngleArrayLike",
     "RotationAxisAngleBatch",

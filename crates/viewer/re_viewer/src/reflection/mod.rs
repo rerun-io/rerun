@@ -532,13 +532,6 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             },
         ),
         (
-            <Rotation3D as Loggable>::name(),
-            ComponentReflection {
-                docstring_md: "A 3D rotation, represented either by a quaternion or a rotation around axis.",
-                placeholder: Some(Rotation3D::default().to_arrow()?),
-            },
-        ),
-        (
             <RotationAxisAngle as Loggable>::name(),
             ComponentReflection {
                 docstring_md: "3D rotation represented by a rotation around a given axis.",
