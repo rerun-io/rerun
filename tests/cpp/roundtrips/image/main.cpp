@@ -48,6 +48,9 @@ int main(int, char** argv) {
                 data.push_back(half_from_float(static_cast<float>(x * y) * 123.4f));
             }
         }
-        rec.log("image_f16", rerun::Image::from_elements({5, 4}, rerun::ColorModel::L, data));
+        rec.log(
+            "image_f16",
+            rerun::Image::from_elements<rerun::half>({5, 4}, rerun::ColorModel::L, data)
+        );
     }
 }
