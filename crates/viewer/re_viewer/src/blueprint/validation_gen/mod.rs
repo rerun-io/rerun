@@ -11,6 +11,8 @@ pub use re_types::blueprint::components::Interactive;
 pub use re_types::blueprint::components::LatestAtQueries;
 pub use re_types::blueprint::components::LockRangeDuringZoom;
 pub use re_types::blueprint::components::PanelState;
+pub use re_types::blueprint::components::PointOfViewComponents;
+pub use re_types::blueprint::components::QueryComponents;
 pub use re_types::blueprint::components::QueryExpression;
 pub use re_types::blueprint::components::RowShare;
 pub use re_types::blueprint::components::SortKey;
@@ -53,6 +55,8 @@ pub fn is_valid_blueprint(blueprint: &EntityDb) -> bool {
         && validate_component::<LatestAtQueries>(blueprint)
         && validate_component::<LockRangeDuringZoom>(blueprint)
         && validate_component::<PanelState>(blueprint)
+        && validate_component::<PointOfViewComponents>(blueprint)
+        && validate_component::<QueryComponents>(blueprint)
         && validate_component::<QueryExpression>(blueprint)
         && validate_component::<RootContainer>(blueprint)
         && validate_component::<RowShare>(blueprint)

@@ -2,6 +2,13 @@
 
 from __future__ import annotations
 
+from .component_names import (
+    ComponentNames,
+    ComponentNamesArrayLike,
+    ComponentNamesBatch,
+    ComponentNamesLike,
+    ComponentNamesType,
+)
 from .latest_at_query import (
     LatestAtQuery,
     LatestAtQueryArrayLike,
@@ -26,6 +33,11 @@ from .time_range_query import (
 from .utf8list import Utf8List, Utf8ListArrayLike, Utf8ListBatch, Utf8ListLike, Utf8ListType
 
 __all__ = [
+    "ComponentNames",
+    "ComponentNamesArrayLike",
+    "ComponentNamesBatch",
+    "ComponentNamesLike",
+    "ComponentNamesType",
     "LatestAtQuery",
     "LatestAtQueryArrayLike",
     "LatestAtQueryBatch",

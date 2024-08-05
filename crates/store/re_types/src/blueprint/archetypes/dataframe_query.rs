@@ -32,6 +32,16 @@ pub struct DataframeQuery {
 
     /// Times (1 for latest at, 2 for range)
     pub time_range_queries: Option<crate::blueprint::components::TimeRangeQueries>,
+
+    /// PoV components to use for the querey (time range only).
+    ///
+    /// Empty means no PoV.
+    pub pov_components: Option<crate::blueprint::components::PointOfViewComponents>,
+
+    /// Components to return.
+    ///
+    /// Empty means all components.
+    pub components: Option<crate::blueprint::components::QueryComponents>,
 }
 
 impl ::re_types_core::SizeBytes for DataframeQuery {
@@ -41,6 +51,8 @@ impl ::re_types_core::SizeBytes for DataframeQuery {
             + self.mode.heap_size_bytes()
             + self.latest_at_queries.heap_size_bytes()
             + self.time_range_queries.heap_size_bytes()
+            + self.pov_components.heap_size_bytes()
+            + self.components.heap_size_bytes()
     }
 
     #[inline]
@@ -49,6 +61,8 @@ impl ::re_types_core::SizeBytes for DataframeQuery {
             && <Option<crate::blueprint::components::DataframeViewMode>>::is_pod()
             && <Option<crate::blueprint::components::LatestAtQueries>>::is_pod()
             && <Option<crate::blueprint::components::TimeRangeQueries>>::is_pod()
+            && <Option<crate::blueprint::components::PointOfViewComponents>>::is_pod()
+            && <Option<crate::blueprint::components::QueryComponents>>::is_pod()
     }
 }
 
@@ -58,17 +72,19 @@ static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 0usize]> =
 static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 1usize]> =
     once_cell::sync::Lazy::new(|| ["rerun.blueprint.components.DataframeQueryIndicator".into()]);
 
-static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 4usize]> =
+static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 6usize]> =
     once_cell::sync::Lazy::new(|| {
         [
             "rerun.blueprint.components.Timeline".into(),
             "rerun.blueprint.components.DataframeViewMode".into(),
             "rerun.blueprint.components.LatestAtQueries".into(),
             "rerun.blueprint.components.TimeRangeQueries".into(),
+            "rerun.blueprint.components.PointOfViewComponents".into(),
+            "rerun.blueprint.components.QueryComponents".into(),
         ]
     });
 
-static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 5usize]> =
+static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 7usize]> =
     once_cell::sync::Lazy::new(|| {
         [
             "rerun.blueprint.components.DataframeQueryIndicator".into(),
@@ -76,12 +92,14 @@ static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 5usize]> =
             "rerun.blueprint.components.DataframeViewMode".into(),
             "rerun.blueprint.components.LatestAtQueries".into(),
             "rerun.blueprint.components.TimeRangeQueries".into(),
+            "rerun.blueprint.components.PointOfViewComponents".into(),
+            "rerun.blueprint.components.QueryComponents".into(),
         ]
     });
 
 impl DataframeQuery {
-    /// The total number of components in the archetype: 0 required, 1 recommended, 4 optional
-    pub const NUM_COMPONENTS: usize = 5usize;
+    /// The total number of components in the archetype: 0 required, 1 recommended, 6 optional
+    pub const NUM_COMPONENTS: usize = 7usize;
 }
 
 /// Indicator component for the [`DataframeQuery`] [`::re_types_core::Archetype`]
@@ -178,11 +196,34 @@ impl ::re_types_core::Archetype for DataframeQuery {
         } else {
             None
         };
+        let pov_components = if let Some(array) =
+            arrays_by_name.get("rerun.blueprint.components.PointOfViewComponents")
+        {
+            <crate::blueprint::components::PointOfViewComponents>::from_arrow_opt(&**array)
+                .with_context("rerun.blueprint.archetypes.DataframeQuery#pov_components")?
+                .into_iter()
+                .next()
+                .flatten()
+        } else {
+            None
+        };
+        let components =
+            if let Some(array) = arrays_by_name.get("rerun.blueprint.components.QueryComponents") {
+                <crate::blueprint::components::QueryComponents>::from_arrow_opt(&**array)
+                    .with_context("rerun.blueprint.archetypes.DataframeQuery#components")?
+                    .into_iter()
+                    .next()
+                    .flatten()
+            } else {
+                None
+            };
         Ok(Self {
             timeline,
             mode,
             latest_at_queries,
             time_range_queries,
+            pov_components,
+            components,
         })
     }
 }
@@ -205,6 +246,12 @@ impl ::re_types_core::AsComponents for DataframeQuery {
             self.time_range_queries
                 .as_ref()
                 .map(|comp| (comp as &dyn ComponentBatch).into()),
+            self.pov_components
+                .as_ref()
+                .map(|comp| (comp as &dyn ComponentBatch).into()),
+            self.components
+                .as_ref()
+                .map(|comp| (comp as &dyn ComponentBatch).into()),
         ]
         .into_iter()
         .flatten()
@@ -223,6 +270,8 @@ impl DataframeQuery {
             mode: None,
             latest_at_queries: None,
             time_range_queries: None,
+            pov_components: None,
+            components: None,
         }
     }
 
@@ -263,6 +312,30 @@ impl DataframeQuery {
         time_range_queries: impl Into<crate::blueprint::components::TimeRangeQueries>,
     ) -> Self {
         self.time_range_queries = Some(time_range_queries.into());
+        self
+    }
+
+    /// PoV components to use for the querey (time range only).
+    ///
+    /// Empty means no PoV.
+    #[inline]
+    pub fn with_pov_components(
+        mut self,
+        pov_components: impl Into<crate::blueprint::components::PointOfViewComponents>,
+    ) -> Self {
+        self.pov_components = Some(pov_components.into());
+        self
+    }
+
+    /// Components to return.
+    ///
+    /// Empty means all components.
+    #[inline]
+    pub fn with_components(
+        mut self,
+        components: impl Into<crate::blueprint::components::QueryComponents>,
+    ) -> Self {
+        self.components = Some(components.into());
         self
     }
 }

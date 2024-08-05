@@ -15,6 +15,8 @@ include "./components/interactive.fbs";
 include "./components/latest_at_queries.fbs";
 include "./components/lock_range_during_zoom.fbs";
 include "./components/panel_state.fbs";
+include "./components/point_of_view_components.fbs";
+include "./components/query_component.fbs";
 include "./components/query_expression.fbs";
 include "./components/root_container.fbs";
 include "./components/row_share.fbs";

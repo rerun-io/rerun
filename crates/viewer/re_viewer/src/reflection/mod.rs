@@ -140,6 +140,20 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             },
         ),
         (
+            <PointOfViewComponents as Loggable>::name(),
+            ComponentReflection {
+                docstring_md: "Component(s) used as point-of-view for a query.",
+                placeholder: Some(PointOfViewComponents::default().to_arrow()?),
+            },
+        ),
+        (
+            <QueryComponents as Loggable>::name(),
+            ComponentReflection {
+                docstring_md: "Component(s) included in the query.",
+                placeholder: Some(QueryComponents::default().to_arrow()?),
+            },
+        ),
+        (
             <QueryExpression as Loggable>::name(),
             ComponentReflection {
                 docstring_md: "An individual query expression used to filter a set of [`datatypes.EntityPath`](https://rerun.io/docs/reference/types/datatypes/entity_path)s.\n\nEach expression is either an inclusion or an exclusion expression.\nInclusions start with an optional `+` and exclusions must start with a `-`.\n\nMultiple expressions are combined together as part of `SpaceViewContents`.\n\nThe `/**` suffix matches the whole subtree, i.e. self and any child, recursively\n(`/world/**` matches both `/world` and `/world/car/driver`).\nOther uses of `*` are not (yet) supported.",
@@ -785,7 +799,14 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                     "Times (1 for latest at, 2 for range)", }, ArchetypeFieldReflection {
                     component_name : "rerun.blueprint.components.TimeRangeQueries"
                     .into(), display_name : "Time range queries", docstring_md :
-                    "Times (1 for latest at, 2 for range)", },
+                    "Times (1 for latest at, 2 for range)", }, ArchetypeFieldReflection {
+                    component_name : "rerun.blueprint.components.PointOfViewComponents"
+                    .into(), display_name : "Pov components", docstring_md :
+                    "PoV components to use for the querey (time range only).\n\nEmpty means no PoV.",
+                    }, ArchetypeFieldReflection { component_name :
+                    "rerun.blueprint.components.QueryComponents".into(), display_name :
+                    "Components", docstring_md :
+                    "Components to return.\n\nEmpty means all components.", },
                 ],
             },
         ),

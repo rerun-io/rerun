@@ -13,7 +13,7 @@ from ... import datatypes
 from ..._baseclasses import (
     Archetype,
 )
-from ...blueprint import components as blueprint_components
+from ...blueprint import components as blueprint_components, datatypes as blueprint_datatypes
 from ...error_utils import catch_and_log_exceptions
 
 __all__ = ["DataframeQuery"]
@@ -30,6 +30,8 @@ class DataframeQuery(Archetype):
         mode: blueprint_components.DataframeViewModeLike | None = None,
         latest_at_queries: blueprint_components.LatestAtQueriesLike | None = None,
         time_range_queries: blueprint_components.TimeRangeQueriesLike | None = None,
+        pov_components: blueprint_datatypes.ComponentNamesLike | None = None,
+        components: blueprint_datatypes.ComponentNamesLike | None = None,
     ):
         """
         Create a new instance of the DataframeQuery archetype.
@@ -44,13 +46,26 @@ class DataframeQuery(Archetype):
             Times (1 for latest at, 2 for range)
         time_range_queries:
             Times (1 for latest at, 2 for range)
+        pov_components:
+            PoV components to use for the querey (time range only).
+
+            Empty means no PoV.
+        components:
+            Components to return.
+
+            Empty means all components.
 
         """
 
         # You can define your own __init__ function as a member of DataframeQueryExt in dataframe_query_ext.py
         with catch_and_log_exceptions(context=self.__class__.__name__):
             self.__attrs_init__(
-                timeline=timeline, mode=mode, latest_at_queries=latest_at_queries, time_range_queries=time_range_queries
+                timeline=timeline,
+                mode=mode,
+                latest_at_queries=latest_at_queries,
+                time_range_queries=time_range_queries,
+                pov_components=pov_components,
+                components=components,
             )
             return
         self.__attrs_clear__()
@@ -62,6 +77,8 @@ class DataframeQuery(Archetype):
             mode=None,  # type: ignore[arg-type]
             latest_at_queries=None,  # type: ignore[arg-type]
             time_range_queries=None,  # type: ignore[arg-type]
+            pov_components=None,  # type: ignore[arg-type]
+            components=None,  # type: ignore[arg-type]
         )
 
     @classmethod
@@ -104,6 +121,28 @@ class DataframeQuery(Archetype):
         converter=blueprint_components.TimeRangeQueriesBatch._optional,  # type: ignore[misc]
     )
     # Times (1 for latest at, 2 for range)
+    #
+    # (Docstring intentionally commented out to hide this field from the docs)
+
+    pov_components: blueprint_components.PointOfViewComponentsBatch | None = field(
+        metadata={"component": "optional"},
+        default=None,
+        converter=blueprint_components.PointOfViewComponentsBatch._optional,  # type: ignore[misc]
+    )
+    # PoV components to use for the querey (time range only).
+    #
+    # Empty means no PoV.
+    #
+    # (Docstring intentionally commented out to hide this field from the docs)
+
+    components: blueprint_components.QueryComponentsBatch | None = field(
+        metadata={"component": "optional"},
+        default=None,
+        converter=blueprint_components.QueryComponentsBatch._optional,  # type: ignore[misc]
+    )
+    # Components to return.
+    #
+    # Empty means all components.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 

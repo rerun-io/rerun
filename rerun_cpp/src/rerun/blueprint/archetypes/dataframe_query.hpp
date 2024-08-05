@@ -5,6 +5,8 @@
 
 #include "../../blueprint/components/dataframe_view_mode.hpp"
 #include "../../blueprint/components/latest_at_queries.hpp"
+#include "../../blueprint/components/point_of_view_components.hpp"
+#include "../../blueprint/components/query_components.hpp"
 #include "../../blueprint/components/time_range_queries.hpp"
 #include "../../blueprint/components/timeline.hpp"
 #include "../../collection.hpp"
@@ -32,6 +34,16 @@ namespace rerun::blueprint::archetypes {
 
         /// Times (1 for latest at, 2 for range)
         std::optional<rerun::blueprint::components::TimeRangeQueries> time_range_queries;
+
+        /// PoV components to use for the querey (time range only).
+        ///
+        /// Empty means no PoV.
+        std::optional<rerun::blueprint::components::PointOfViewComponents> pov_components;
+
+        /// Components to return.
+        ///
+        /// Empty means all components.
+        std::optional<rerun::blueprint::components::QueryComponents> components;
 
       public:
         static constexpr const char IndicatorComponentName[] =
@@ -72,6 +84,27 @@ namespace rerun::blueprint::archetypes {
             rerun::blueprint::components::TimeRangeQueries _time_range_queries
         ) && {
             time_range_queries = std::move(_time_range_queries);
+            // See: https://github.com/rerun-io/rerun/issues/4027
+            RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
+        }
+
+        /// PoV components to use for the querey (time range only).
+        ///
+        /// Empty means no PoV.
+        DataframeQuery with_pov_components(
+            rerun::blueprint::components::PointOfViewComponents _pov_components
+        ) && {
+            pov_components = std::move(_pov_components);
+            // See: https://github.com/rerun-io/rerun/issues/4027
+            RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
+        }
+
+        /// Components to return.
+        ///
+        /// Empty means all components.
+        DataframeQuery with_components(rerun::blueprint::components::QueryComponents _components
+        ) && {
+            components = std::move(_components);
             // See: https://github.com/rerun-io/rerun/issues/4027
             RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
         }

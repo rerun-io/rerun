@@ -20,7 +20,7 @@ pub(crate) enum QueryMode {
     Range {
         from: TimeInt,
         to: TimeInt,
-        //TODO(ab): add PoV components
+        pov_components: Vec<ComponentName>,
     },
 }
 
@@ -30,6 +30,8 @@ pub(crate) enum QueryMode {
 pub(crate) struct Query {
     pub(crate) timeline: TimelineName,
     pub(crate) mode: QueryMode,
+    // None == all
+    pub(crate) components: Option<Vec<ComponentName>>,
 }
 
 impl Query {
@@ -93,11 +95,43 @@ impl Query {
                     .map(|q| (q.start.into(), q.end.into()))
                     .unwrap_or((TimeInt::MIN, TimeInt::MAX));
 
-                QueryMode::Range { from, to }
+                let pov_components = property
+                    .component_or_fallback::<components::PointOfViewComponents>(
+                        ctx,
+                        fallback_provider,
+                        state,
+                    )?
+                    .0
+                     .0
+                    .into_iter()
+                    .map(|c| ComponentName::from(c.as_str()))
+                    .collect();
+
+                QueryMode::Range {
+                    from,
+                    to,
+                    pov_components,
+                }
             }
         };
 
-        Ok(Self { timeline, mode })
+        let components: Vec<_> = property
+            .component_or_fallback::<components::QueryComponents>(ctx, fallback_provider, state)?
+            .0
+             .0
+            .into_iter()
+            .map(|c| ComponentName::from(c.as_str()))
+            .collect();
+
+        Ok(Self {
+            timeline,
+            mode,
+            components: if components.is_empty() {
+                None
+            } else {
+                Some(components)
+            },
+        })
     }
 
     pub(crate) fn ui(
@@ -342,8 +376,51 @@ impl Query {
                             .set_query_for_timeline(timeline_name.as_str(), Some(time_range_query));
                         ctx.save_blueprint_component(&blueprint_path, &time_range_queries);
                     }
+
+                    //
+                    // Pov components
+                    //
+                    let component_name = components::PointOfViewComponents::name();
+                    ui.list_item_flat_noninteractive(
+                        list_item::PropertyContent::new("Point of view components").value_fn(
+                            |ui, _| {
+                                ctx.component_ui_registry.singleline_edit_ui(
+                                    &query_context,
+                                    ui,
+                                    ctx.blueprint_db(),
+                                    &blueprint_path,
+                                    component_name,
+                                    component_results
+                                        .component_batch_raw(&component_name)
+                                        .as_deref(),
+                                    fallback_provider,
+                                );
+                            },
+                        ),
+                    );
                 }
             }
+
+            //
+            // Query components
+            //
+
+            let component_name = components::QueryComponents::name();
+            ui.list_item_flat_noninteractive(
+                list_item::PropertyContent::new("Query components").value_fn(|ui, _| {
+                    ctx.component_ui_registry.singleline_edit_ui(
+                        &query_context,
+                        ui,
+                        ctx.blueprint_db(),
+                        &blueprint_path,
+                        component_name,
+                        component_results
+                            .component_batch_raw(&component_name)
+                            .as_deref(),
+                        fallback_provider,
+                    );
+                }),
+            );
 
             Ok(())
         };

@@ -32,6 +32,14 @@ table DataframeQuery (
         /// Times (1 for latest at, 2 for range)
         time_range_queries: rerun.blueprint.components.TimeRangeQueries ("attr.rerun.component_optional", nullable,order: 500);
 
-        //TODO(ab): add (optional) PoV components, which range query supports
+        /// PoV components to use for the querey (time range only).
+        ///
+        /// Empty means no PoV.
+        pov_components: rerun.blueprint.components.PointOfViewComponents ("attr.rerun.component_optional", nullable,order: 600);
+
+        /// Components to return.
+        ///
+        /// Empty means all components.
+        components: rerun.blueprint.components.QueryComponents ("attr.rerun.component_optional", nullable,order: 700);
 }
 

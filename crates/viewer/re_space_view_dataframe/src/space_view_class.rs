@@ -227,7 +227,11 @@ mode sets the default time range to _everything_. You can override this in the s
             QueryMode::LatestAt { time } => {
                 latest_at_table_ui(ctx, ui, query, LatestAtQuery::new(*timeline, time))
             }
-            QueryMode::Range { from, to } => {
+            QueryMode::Range {
+                from,
+                to,
+                pov_components,
+            } => {
                 let time_range_table_order =
                     ViewProperty::from_archetype::<archetypes::TimeRangeTableOrder>(
                         ctx.blueprint_db(),

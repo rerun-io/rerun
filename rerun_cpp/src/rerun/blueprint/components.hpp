@@ -17,6 +17,8 @@
 #include "blueprint/components/latest_at_queries.hpp"
 #include "blueprint/components/lock_range_during_zoom.hpp"
 #include "blueprint/components/panel_state.hpp"
+#include "blueprint/components/point_of_view_components.hpp"
+#include "blueprint/components/query_components.hpp"
 #include "blueprint/components/query_expression.hpp"
 #include "blueprint/components/root_container.hpp"
 #include "blueprint/components/row_share.hpp"

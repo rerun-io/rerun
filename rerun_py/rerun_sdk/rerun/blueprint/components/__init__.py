@@ -41,6 +41,8 @@ from .latest_at_queries import (
 )
 from .lock_range_during_zoom import LockRangeDuringZoom, LockRangeDuringZoomBatch, LockRangeDuringZoomType
 from .panel_state import PanelState, PanelStateArrayLike, PanelStateBatch, PanelStateLike, PanelStateType
+from .point_of_view_components import PointOfViewComponents, PointOfViewComponentsBatch, PointOfViewComponentsType
+from .query_components import QueryComponents, QueryComponentsBatch, QueryComponentsType
 from .query_expression import QueryExpression, QueryExpressionBatch, QueryExpressionType
 from .root_container import RootContainer, RootContainerBatch, RootContainerType
 from .row_share import RowShare, RowShareBatch, RowShareType
@@ -131,6 +133,12 @@ __all__ = [
     "PanelStateBatch",
     "PanelStateLike",
     "PanelStateType",
+    "PointOfViewComponents",
+    "PointOfViewComponentsBatch",
+    "PointOfViewComponentsType",
+    "QueryComponents",
+    "QueryComponentsBatch",
+    "QueryComponentsType",
     "QueryExpression",
     "QueryExpressionBatch",
     "QueryExpressionType",

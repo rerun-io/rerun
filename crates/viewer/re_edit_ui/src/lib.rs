@@ -4,6 +4,7 @@
 //! This should be called by `re_viewer` on startup.
 
 mod color;
+mod component_names;
 mod datatype_editors;
 mod marker_shape;
 mod radius;
@@ -20,8 +21,8 @@ use datatype_editors::{
 };
 use re_types::{
     blueprint::components::{
-        BackgroundKind, Corner2D, DataframeViewMode, LockRangeDuringZoom, SortKey, SortOrder,
-        Timeline, ViewFit, Visible,
+        BackgroundKind, Corner2D, DataframeViewMode, LockRangeDuringZoom, PointOfViewComponents,
+        QueryComponents, SortKey, SortOrder, Timeline, ViewFit, Visible,
     },
     components::{
         AggregationPolicy, AlbedoFactor, AxisLength, ChannelDatatype, Color, ColorModel, Colormap,
@@ -61,6 +62,16 @@ pub fn register_editors(registry: &mut re_viewer_context::ComponentUiRegistry) {
 
     registry.add_singleline_edit_or_view::<Visible>(edit_bool);
     registry.add_singleline_edit_or_view::<LockRangeDuringZoom>(edit_bool);
+
+    // Note: we have two different edit UIs for these two components, because their respective
+    // semantics for "empty" is different. For `QueryComponents`, an empty list means "all
+    // components", while for `PointOfViewComponents`, an empty list means "no components".
+    registry.add_singleline_edit_or_view::<QueryComponents>(
+        component_names::edit_query_component_name_list,
+    );
+    registry.add_singleline_edit_or_view::<PointOfViewComponents>(
+        component_names::edit_point_of_view_component_name_list,
+    );
 
     registry.add_singleline_edit_or_view::<Timeline>(timeline::edit_timeline);
 

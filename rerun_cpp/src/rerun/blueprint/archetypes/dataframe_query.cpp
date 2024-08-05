@@ -14,7 +14,7 @@ namespace rerun {
     ) {
         using namespace blueprint::archetypes;
         std::vector<DataCell> cells;
-        cells.reserve(5);
+        cells.reserve(7);
 
         if (archetype.timeline.has_value()) {
             auto result = DataCell::from_loggable(archetype.timeline.value());
@@ -33,6 +33,16 @@ namespace rerun {
         }
         if (archetype.time_range_queries.has_value()) {
             auto result = DataCell::from_loggable(archetype.time_range_queries.value());
+            RR_RETURN_NOT_OK(result.error);
+            cells.push_back(std::move(result.value));
+        }
+        if (archetype.pov_components.has_value()) {
+            auto result = DataCell::from_loggable(archetype.pov_components.value());
+            RR_RETURN_NOT_OK(result.error);
+            cells.push_back(std::move(result.value));
+        }
+        if (archetype.components.has_value()) {
+            auto result = DataCell::from_loggable(archetype.components.value());
             RR_RETURN_NOT_OK(result.error);
             cells.push_back(std::move(result.value));
         }

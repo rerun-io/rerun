@@ -1,0 +1,16 @@
+namespace rerun.blueprint.datatypes;
+
+/// A list of component names, encoded as UTF-8.
+//
+// NOTE: Apache Arrow uses UTF-8 encoding of its String type, as does Rust.
+table ComponentNames (
+  "attr.docs.unreleased",
+  "attr.arrow.transparent",
+  "attr.python.aliases": "Sequence[str]",
+  "attr.rerun.scope": "blueprint",
+  "attr.rust.derive": "PartialEq, Eq, PartialOrd, Ord, Default",
+  "attr.rust.repr": "transparent",
+  "attr.rust.tuple_struct"
+) {
+  value: [string] (order: 100);
+}
