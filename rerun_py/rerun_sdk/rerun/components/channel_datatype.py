@@ -135,6 +135,6 @@ class ChannelDatatypeBatch(BaseBatch[ChannelDatatypeArrayLike], ComponentBatchMi
         if isinstance(data, (ChannelDatatype, int, str)):
             data = [data]
 
-        pa_data = [ChannelDatatype.auto(v).value for v in data]
+        pa_data = [ChannelDatatype.auto(v).value if v else None for v in data]
 
         return pa.array(pa_data, type=data_type)

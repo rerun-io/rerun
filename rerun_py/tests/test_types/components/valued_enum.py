@@ -82,6 +82,6 @@ class ValuedEnumBatch(BaseBatch[ValuedEnumArrayLike], ComponentBatchMixin):
         if isinstance(data, (ValuedEnum, int, str)):
             data = [data]
 
-        pa_data = [ValuedEnum.auto(v).value for v in data]
+        pa_data = [ValuedEnum.auto(v).value if v else None for v in data]
 
         return pa.array(pa_data, type=data_type)

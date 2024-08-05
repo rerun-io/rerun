@@ -75,6 +75,6 @@ class ViewFitBatch(BaseBatch[ViewFitArrayLike], ComponentBatchMixin):
         if isinstance(data, (ViewFit, int, str)):
             data = [data]
 
-        pa_data = [ViewFit.auto(v).value for v in data]
+        pa_data = [ViewFit.auto(v).value if v else None for v in data]
 
         return pa.array(pa_data, type=data_type)

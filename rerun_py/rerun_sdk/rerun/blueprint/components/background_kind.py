@@ -91,6 +91,6 @@ class BackgroundKindBatch(BaseBatch[BackgroundKindArrayLike], ComponentBatchMixi
         if isinstance(data, (BackgroundKind, int, str)):
             data = [data]
 
-        pa_data = [BackgroundKind.auto(v).value for v in data]
+        pa_data = [BackgroundKind.auto(v).value if v else None for v in data]
 
         return pa.array(pa_data, type=data_type)

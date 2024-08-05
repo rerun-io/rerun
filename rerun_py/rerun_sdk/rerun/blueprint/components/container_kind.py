@@ -78,6 +78,6 @@ class ContainerKindBatch(BaseBatch[ContainerKindArrayLike], ComponentBatchMixin)
         if isinstance(data, (ContainerKind, int, str)):
             data = [data]
 
-        pa_data = [ContainerKind.auto(v).value for v in data]
+        pa_data = [ContainerKind.auto(v).value if v else None for v in data]
 
         return pa.array(pa_data, type=data_type)

@@ -91,6 +91,6 @@ class PixelFormatBatch(BaseBatch[PixelFormatArrayLike], ComponentBatchMixin):
         if isinstance(data, (PixelFormat, int, str)):
             data = [data]
 
-        pa_data = [PixelFormat.auto(v).value for v in data]
+        pa_data = [PixelFormat.auto(v).value if v else None for v in data]
 
         return pa.array(pa_data, type=data_type)

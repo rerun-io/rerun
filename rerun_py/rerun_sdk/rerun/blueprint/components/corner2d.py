@@ -80,6 +80,6 @@ class Corner2DBatch(BaseBatch[Corner2DArrayLike], ComponentBatchMixin):
         if isinstance(data, (Corner2D, int, str)):
             data = [data]
 
-        pa_data = [Corner2D.auto(v).value for v in data]
+        pa_data = [Corner2D.auto(v).value if v else None for v in data]
 
         return pa.array(pa_data, type=data_type)

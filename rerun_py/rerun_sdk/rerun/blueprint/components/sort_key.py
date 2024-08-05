@@ -70,6 +70,6 @@ class SortKeyBatch(BaseBatch[SortKeyArrayLike], ComponentBatchMixin):
         if isinstance(data, (SortKey, int, str)):
             data = [data]
 
-        pa_data = [SortKey.auto(v).value for v in data]
+        pa_data = [SortKey.auto(v).value if v else None for v in data]
 
         return pa.array(pa_data, type=data_type)

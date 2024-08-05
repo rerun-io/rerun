@@ -90,6 +90,6 @@ class TransformRelationBatch(BaseBatch[TransformRelationArrayLike], ComponentBat
         if isinstance(data, (TransformRelation, int, str)):
             data = [data]
 
-        pa_data = [TransformRelation.auto(v).value for v in data]
+        pa_data = [TransformRelation.auto(v).value if v else None for v in data]
 
         return pa.array(pa_data, type=data_type)

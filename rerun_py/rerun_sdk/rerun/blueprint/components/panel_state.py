@@ -73,6 +73,6 @@ class PanelStateBatch(BaseBatch[PanelStateArrayLike], ComponentBatchMixin):
         if isinstance(data, (PanelState, int, str)):
             data = [data]
 
-        pa_data = [PanelState.auto(v).value for v in data]
+        pa_data = [PanelState.auto(v).value if v else None for v in data]
 
         return pa.array(pa_data, type=data_type)

@@ -85,6 +85,6 @@ class MagnificationFilterBatch(BaseBatch[MagnificationFilterArrayLike], Componen
         if isinstance(data, (MagnificationFilter, int, str)):
             data = [data]
 
-        pa_data = [MagnificationFilter.auto(v).value for v in data]
+        pa_data = [MagnificationFilter.auto(v).value if v else None for v in data]
 
         return pa.array(pa_data, type=data_type)

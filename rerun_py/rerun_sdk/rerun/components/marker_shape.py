@@ -119,6 +119,6 @@ class MarkerShapeBatch(BaseBatch[MarkerShapeArrayLike], ComponentBatchMixin):
         if isinstance(data, (MarkerShape, int, str)):
             data = [data]
 
-        pa_data = [MarkerShape.auto(v).value for v in data]
+        pa_data = [MarkerShape.auto(v).value if v else None for v in data]
 
         return pa.array(pa_data, type=data_type)

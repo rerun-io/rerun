@@ -85,6 +85,6 @@ class EnumTestBatch(BaseBatch[EnumTestArrayLike], ComponentBatchMixin):
         if isinstance(data, (EnumTest, int, str)):
             data = [data]
 
-        pa_data = [EnumTest.auto(v).value for v in data]
+        pa_data = [EnumTest.auto(v).value if v else None for v in data]
 
         return pa.array(pa_data, type=data_type)

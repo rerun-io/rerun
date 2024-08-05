@@ -115,6 +115,6 @@ class AggregationPolicyBatch(BaseBatch[AggregationPolicyArrayLike], ComponentBat
         if isinstance(data, (AggregationPolicy, int, str)):
             data = [data]
 
-        pa_data = [AggregationPolicy.auto(v).value for v in data]
+        pa_data = [AggregationPolicy.auto(v).value if v else None for v in data]
 
         return pa.array(pa_data, type=data_type)
