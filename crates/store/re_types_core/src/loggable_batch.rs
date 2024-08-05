@@ -40,6 +40,7 @@ pub trait LoggableBatch {
     fn to_arrow(&self) -> SerializationResult<Box<dyn ::arrow2::array::Array>>;
 }
 
+// TODO: can we just get rid of this guy though?
 /// A [`DatatypeBatch`] represents an array's worth of [`Datatype`] instances.
 ///
 /// Any [`LoggableBatch`] with a [`Loggable::Name`] set to [`DatatypeName`] automatically

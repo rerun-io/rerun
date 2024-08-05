@@ -113,3 +113,16 @@ impl ::re_types_core::Loggable for AlbedoFactor {
         crate::datatypes::Rgba32::from_arrow(arrow_data).map(bytemuck::cast_vec)
     }
 }
+
+impl ::re_types_core::Component for AlbedoFactor {
+    fn descriptor() -> ComponentDescriptor {
+        ComponentDescriptor::new(Self::name())
+    }
+}
+
+// impl ::re_types_core::ComponentBatch for AlbedoFactor {
+//     #[inline]
+//     fn descriptor(&self) -> ComponentDescriptor {
+//         ComponentDescriptor::new(self.name())
+//     }
+// }

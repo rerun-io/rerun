@@ -41,7 +41,7 @@ table Mesh3D (
   vertex_texcoords: [rerun.components.Texcoord2D] ("attr.rerun.component_optional", nullable, order: 3200);
 
   /// A color multiplier applied to the whole mesh.
-  albedo_factor: rerun.components.Color ("attr.rerun.component_optional", nullable, order: 3300);
+  albedo_factor: rerun.components.AlbedoFactor ("attr.rerun.component_optional", nullable, order: 3300);
 
   /// Optional albedo texture.
   ///

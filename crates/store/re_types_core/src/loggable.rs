@@ -59,6 +59,7 @@ pub trait Loggable: 'static + Send + Sync + Clone + Sized + SizeBytes {
         )
     }
 
+    // TODO: this gotta go, this makes no sense.
     /// The underlying [`arrow2::datatypes::Field`], including datatype extensions.
     ///
     /// The default implementation will simply wrap [`Self::extended_arrow_datatype`] in a
@@ -128,6 +129,7 @@ pub trait Loggable: 'static + Send + Sync + Clone + Sized + SizeBytes {
     }
 }
 
+// TODO: can this go away?
 /// A [`Datatype`] describes plain old data that can be used by any number of [`Component`]s.
 ///
 /// Any [`Loggable`] with a [`Loggable::Name`] set to [`DatatypeName`] automatically implements
