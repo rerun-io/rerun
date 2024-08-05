@@ -9,6 +9,7 @@ mod marker_shape;
 mod radius;
 mod range1d;
 mod response_utils;
+mod timeline;
 mod transforms;
 mod visual_bounds2d;
 
@@ -20,7 +21,7 @@ use datatype_editors::{
 use re_types::{
     blueprint::components::{
         BackgroundKind, Corner2D, DataframeViewMode, LockRangeDuringZoom, SortKey, SortOrder,
-        ViewFit, Visible,
+        Timeline, ViewFit, Visible,
     },
     components::{
         AggregationPolicy, AlbedoFactor, AxisLength, ChannelDatatype, Color, ColorModel, Colormap,
@@ -60,6 +61,8 @@ pub fn register_editors(registry: &mut re_viewer_context::ComponentUiRegistry) {
 
     registry.add_singleline_edit_or_view::<Visible>(edit_bool);
     registry.add_singleline_edit_or_view::<LockRangeDuringZoom>(edit_bool);
+
+    registry.add_singleline_edit_or_view::<Timeline>(timeline::edit_timeline);
 
     registry.add_display_ui(Text::name(), Box::new(display_text_ui));
     registry.add_singleline_edit_or_view::<Text>(edit_singleline_string);

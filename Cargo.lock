@@ -5153,6 +5153,7 @@ dependencies = [
  "re_build_tools",
  "re_format",
  "re_log",
+ "re_log_types",
  "re_tracing",
  "re_types_builder",
  "re_types_core",

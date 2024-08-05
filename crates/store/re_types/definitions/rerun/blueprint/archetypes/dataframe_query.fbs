@@ -1,0 +1,37 @@
+namespace rerun.blueprint.archetypes;
+
+
+/// Configuration for the dataframe view
+// Rationale behind the present data modelling:
+// - Avoid using `union` at all cost.
+// - An explicit "mode" enum maps well with a UI toggle and API parameter, and enabled a hard disambiguation when
+//   settings are present for both the latest at and range modes.
+// - Timestamps are hard-invalidated by a change of timeline. So we keep them on a per-timeline basis.
+// - On the contrary, chances are high that the user prefers to have their pov components _not_ invalidated by a change
+//   of timeline.
+// - That is even though a component might _technically_ be soft-invalidated by a change of timeline (e.g. if it was
+//   not logged on that particular timeline). But we have to deal regardless with potentially invalid component, so this
+//   doesn't change the story much.
+//TODO: docs
+table DataframeQuery (
+    "attr.rerun.scope": "blueprint",
+    "attr.rust.generate_field_info"
+) {
+    // --- Optional ---
+
+        /// Name of the timeline this applies to.
+        timeline: rerun.blueprint.components.Timeline ("attr.rerun.component_optional", nullable, order: 100);
+
+        /// Type of query: latest at or range
+        //TODO(ab): rename component
+        mode: rerun.blueprint.components.DataframeViewMode ("attr.rerun.component_optional", nullable,order: 200);
+
+        /// Times (1 for latest at, 2 for range)
+        latest_at_queries: rerun.blueprint.components.LatestAtQueries ("attr.rerun.component_optional", nullable,order: 400);
+
+        /// Times (1 for latest at, 2 for range)
+        time_range_queries: rerun.blueprint.components.TimeRangeQueries ("attr.rerun.component_optional", nullable,order: 500);
+
+        //TODO(ab): add (optional) PoV components, which range query supports
+}
+

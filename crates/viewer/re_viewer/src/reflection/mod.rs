@@ -119,6 +119,13 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             },
         ),
         (
+            <LatestAtQueries as Loggable>::name(),
+            ComponentReflection {
+                docstring_md: "Component(s) used as point-of-view for a query.",
+                placeholder: Some(LatestAtQueries::default().to_arrow()?),
+            },
+        ),
+        (
             <LockRangeDuringZoom as Loggable>::name(),
             ComponentReflection {
                 docstring_md: "Indicate whether the range should be locked when zooming in on the data.\n\nDefault is `false`, i.e. zoom will change the visualized range.",
@@ -193,6 +200,20 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             ComponentReflection {
                 docstring_md: "Show a slider for the index of some dimension of a slider.",
                 placeholder: Some(TensorDimensionIndexSlider::default().to_arrow()?),
+            },
+        ),
+        (
+            <TimeRangeQueries as Loggable>::name(),
+            ComponentReflection {
+                docstring_md: "Component(s) used as point-of-view for a query.",
+                placeholder: Some(TimeRangeQueries::default().to_arrow()?),
+            },
+        ),
+        (
+            <Timeline as Loggable>::name(),
+            ComponentReflection {
+                docstring_md: "A timeline",
+                placeholder: Some(Timeline::default().to_arrow()?),
             },
         ),
         (
@@ -743,6 +764,28 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                     ArchetypeFieldReflection { component_name : "rerun.components.Color"
                     .into(), display_name : "Color", docstring_md :
                     "Color used for the `SolidColor` background type.", },
+                ],
+            },
+        ),
+        (
+            ArchetypeName::new("rerun.blueprint.archetypes.DataframeQuery"),
+            ArchetypeReflection {
+                display_name: "Dataframe query",
+                docstring_md: "Configuration for the dataframe view",
+                fields: vec![
+                    ArchetypeFieldReflection { component_name :
+                    "rerun.blueprint.components.Timeline".into(), display_name :
+                    "Timeline", docstring_md : "Name of the timeline this applies to.",
+                    }, ArchetypeFieldReflection { component_name :
+                    "rerun.blueprint.components.DataframeViewMode".into(), display_name :
+                    "Mode", docstring_md : "Type of query: latest at or range", },
+                    ArchetypeFieldReflection { component_name :
+                    "rerun.blueprint.components.LatestAtQueries".into(), display_name :
+                    "Latest at queries", docstring_md :
+                    "Times (1 for latest at, 2 for range)", }, ArchetypeFieldReflection {
+                    component_name : "rerun.blueprint.components.TimeRangeQueries"
+                    .into(), display_name : "Time range queries", docstring_md :
+                    "Times (1 for latest at, 2 for range)", },
                 ],
             },
         ),

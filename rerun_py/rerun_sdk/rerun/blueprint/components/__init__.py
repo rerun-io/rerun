@@ -32,6 +32,13 @@ from .grid_columns import GridColumns, GridColumnsBatch, GridColumnsType
 from .included_content import IncludedContent, IncludedContentBatch, IncludedContentType
 from .included_space_view import IncludedSpaceView, IncludedSpaceViewBatch, IncludedSpaceViewType
 from .interactive import Interactive, InteractiveBatch, InteractiveType
+from .latest_at_queries import (
+    LatestAtQueries,
+    LatestAtQueriesArrayLike,
+    LatestAtQueriesBatch,
+    LatestAtQueriesLike,
+    LatestAtQueriesType,
+)
 from .lock_range_during_zoom import LockRangeDuringZoom, LockRangeDuringZoomBatch, LockRangeDuringZoomType
 from .panel_state import PanelState, PanelStateArrayLike, PanelStateBatch, PanelStateLike, PanelStateType
 from .query_expression import QueryExpression, QueryExpressionBatch, QueryExpressionType
@@ -47,6 +54,14 @@ from .tensor_dimension_index_slider import (
     TensorDimensionIndexSliderBatch,
     TensorDimensionIndexSliderType,
 )
+from .time_range_queries import (
+    TimeRangeQueries,
+    TimeRangeQueriesArrayLike,
+    TimeRangeQueriesBatch,
+    TimeRangeQueriesLike,
+    TimeRangeQueriesType,
+)
+from .timeline import Timeline, TimelineBatch, TimelineType
 from .view_fit import ViewFit, ViewFitArrayLike, ViewFitBatch, ViewFitLike, ViewFitType
 from .viewer_recommendation_hash import (
     ViewerRecommendationHash,
@@ -103,6 +118,11 @@ __all__ = [
     "Interactive",
     "InteractiveBatch",
     "InteractiveType",
+    "LatestAtQueries",
+    "LatestAtQueriesArrayLike",
+    "LatestAtQueriesBatch",
+    "LatestAtQueriesLike",
+    "LatestAtQueriesType",
     "LockRangeDuringZoom",
     "LockRangeDuringZoomBatch",
     "LockRangeDuringZoomType",
@@ -142,6 +162,14 @@ __all__ = [
     "TensorDimensionIndexSlider",
     "TensorDimensionIndexSliderBatch",
     "TensorDimensionIndexSliderType",
+    "TimeRangeQueries",
+    "TimeRangeQueriesArrayLike",
+    "TimeRangeQueriesBatch",
+    "TimeRangeQueriesLike",
+    "TimeRangeQueriesType",
+    "Timeline",
+    "TimelineBatch",
+    "TimelineType",
     "ViewFit",
     "ViewFitArrayLike",
     "ViewFitBatch",
