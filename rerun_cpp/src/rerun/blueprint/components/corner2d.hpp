@@ -9,9 +9,14 @@
 #include <memory>
 
 namespace arrow {
+    /// \private
+    template <typename T>
+    class NumericBuilder;
+
     class Array;
     class DataType;
-    class SparseUnionBuilder;
+    class UInt8Type;
+    using UInt8Builder = NumericBuilder<UInt8Type>;
 } // namespace arrow
 
 namespace rerun::blueprint::components {
@@ -19,16 +24,16 @@ namespace rerun::blueprint::components {
     enum class Corner2D : uint8_t {
 
         /// Left top corner.
-        LeftTop = 1,
+        LeftTop = 0,
 
         /// Right top corner.
-        RightTop = 2,
+        RightTop = 1,
 
         /// Left bottom corner.
-        LeftBottom = 3,
+        LeftBottom = 2,
 
         /// Right bottom corner.
-        RightBottom = 4,
+        RightBottom = 3,
     };
 } // namespace rerun::blueprint::components
 
@@ -51,7 +56,7 @@ namespace rerun {
 
         /// Fills an arrow array builder with an array of this type.
         static rerun::Error fill_arrow_array_builder(
-            arrow::SparseUnionBuilder* builder, const blueprint::components::Corner2D* elements,
+            arrow::UInt8Builder* builder, const blueprint::components::Corner2D* elements,
             size_t num_elements
         );
     };

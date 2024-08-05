@@ -9,9 +9,14 @@
 #include <memory>
 
 namespace arrow {
+    /// \private
+    template <typename T>
+    class NumericBuilder;
+
     class Array;
     class DataType;
-    class SparseUnionBuilder;
+    class UInt8Type;
+    using UInt8Builder = NumericBuilder<UInt8Type>;
 } // namespace arrow
 
 namespace rerun::blueprint::components {
@@ -19,10 +24,10 @@ namespace rerun::blueprint::components {
     enum class SortOrder : uint8_t {
 
         /// Ascending
-        Ascending = 1,
+        Ascending = 0,
 
         /// Descending
-        Descending = 2,
+        Descending = 1,
     };
 } // namespace rerun::blueprint::components
 
@@ -45,7 +50,7 @@ namespace rerun {
 
         /// Fills an arrow array builder with an array of this type.
         static rerun::Error fill_arrow_array_builder(
-            arrow::SparseUnionBuilder* builder, const blueprint::components::SortOrder* elements,
+            arrow::UInt8Builder* builder, const blueprint::components::SortOrder* elements,
             size_t num_elements
         );
     };

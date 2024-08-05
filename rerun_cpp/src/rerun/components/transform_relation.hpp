@@ -9,9 +9,14 @@
 #include <memory>
 
 namespace arrow {
+    /// \private
+    template <typename T>
+    class NumericBuilder;
+
     class Array;
     class DataType;
-    class SparseUnionBuilder;
+    class UInt8Type;
+    using UInt8Builder = NumericBuilder<UInt8Type>;
 } // namespace arrow
 
 namespace rerun::components {
@@ -23,14 +28,14 @@ namespace rerun::components {
         /// E.g. a translation of (0, 1, 0) with this `components::TransformRelation` logged at `parent/child` means
         /// that from the point of view of `parent`, `parent/child` is translated 1 unit along `parent`'s Y axis.
         /// From perspective of `parent/child`, the `parent` entity is translated -1 unit along `parent/child`'s Y axis.
-        ParentFromChild = 1,
+        ParentFromChild = 0,
 
         /// The transform describes how to transform into the child entity's space.
         ///
         /// E.g. a translation of (0, 1, 0) with this `components::TransformRelation` logged at `parent/child` means
         /// that from the point of view of `parent`, `parent/child` is translated -1 unit along `parent`'s Y axis.
         /// From perspective of `parent/child`, the `parent` entity is translated 1 unit along `parent/child`'s Y axis.
-        ChildFromParent = 2,
+        ChildFromParent = 1,
     };
 } // namespace rerun::components
 
@@ -53,7 +58,7 @@ namespace rerun {
 
         /// Fills an arrow array builder with an array of this type.
         static rerun::Error fill_arrow_array_builder(
-            arrow::SparseUnionBuilder* builder, const components::TransformRelation* elements,
+            arrow::UInt8Builder* builder, const components::TransformRelation* elements,
             size_t num_elements
         );
     };

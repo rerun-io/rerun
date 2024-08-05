@@ -9,9 +9,14 @@
 #include <memory>
 
 namespace arrow {
+    /// \private
+    template <typename T>
+    class NumericBuilder;
+
     class Array;
     class DataType;
-    class SparseUnionBuilder;
+    class UInt8Type;
+    using UInt8Builder = NumericBuilder<UInt8Type>;
 } // namespace arrow
 
 namespace rerun::components {
@@ -21,13 +26,13 @@ namespace rerun::components {
     enum class ColorModel : uint8_t {
 
         /// Grayscale luminance intencity/brightness/value, sometimes called `Y`
-        L = 1,
+        L = 0,
 
         /// Red, Green, Blue
-        RGB = 2,
+        RGB = 1,
 
         /// Red, Green, Blue, Alpha
-        RGBA = 3,
+        RGBA = 2,
     };
 } // namespace rerun::components
 
@@ -50,7 +55,7 @@ namespace rerun {
 
         /// Fills an arrow array builder with an array of this type.
         static rerun::Error fill_arrow_array_builder(
-            arrow::SparseUnionBuilder* builder, const components::ColorModel* elements,
+            arrow::UInt8Builder* builder, const components::ColorModel* elements,
             size_t num_elements
         );
     };
