@@ -116,10 +116,12 @@ namespace rerun::archetypes {
       public: // START of extensions from image_ext.cpp:
         /// Construct an image from resolution, pixel format and bytes.
         ///
-        /// @param bytes The raw image data.
+        /// @param bytes The raw image data as bytes.
         /// If the data does not outlive the image, use `std::move` or create the `rerun::Collection`
         /// explicitly ahead of time with `rerun::Collection::take_ownership`.
         /// The length of the data should be `W * H * pixel_format.bytes_per_pixel`.
+        /// @param resolution_ The resolution of the image.
+        /// @param pixel_format_ How the data should be interpreted.
         Image(
             Collection<uint8_t> bytes, components::Resolution2D resolution_,
             components::PixelFormat pixel_format_
@@ -132,6 +134,9 @@ namespace rerun::archetypes {
         /// If the data does not outlive the image, use `std::move` or create the `rerun::Collection`
         /// explicitly ahead of time with `rerun::Collection::take_ownership`.
         /// The length of the data should be `W * H * datatype.bytes * color_model.num_channels`.
+        /// @param resolution_ The resolution of the image.
+        /// @param color_model_ The color model of the pixel data.
+        /// @param datatype_ Datatype of the individual channels of the color model.
         Image(
             Collection<uint8_t> bytes, components::Resolution2D resolution_,
             components::ColorModel color_model_, components::ChannelDatatype datatype_
@@ -148,6 +153,9 @@ namespace rerun::archetypes {
         /// If the data does not outlive the image, use `std::move` or create the `rerun::Collection`
         /// explicitly ahead of time with `rerun::Collection::take_ownership`.
         /// The length of the data should be `W * H * color_model.num_channels`.
+        /// @param resolution_ The resolution of the image.
+        /// @param color_model_ The color model of the pixel data.
+        /// Each element in elements is interpreted as a single channel of the color model.
         template <typename T>
         Image(
             Collection<T> elements, components::Resolution2D resolution_,
@@ -162,6 +170,9 @@ namespace rerun::archetypes {
         /// @param elements The raw image data.
         /// ⚠️ Does not take ownership of the data, the caller must ensure the data outlives the image.
         /// The number of elements is assumed to be `W * H * color_model.num_channels`.
+        /// @param resolution_ The resolution of the image.
+        /// @param color_model_ The color model of the pixel data.
+        /// Each element in elements is interpreted as a single channel of the color model.
         template <typename T>
         Image(
             const T* elements, components::Resolution2D resolution_,
@@ -182,6 +193,7 @@ namespace rerun::archetypes {
         /// If the data does not outlive the image, use `std::move` or create the `rerun::Collection`
         /// explicitly ahead of time with `rerun::Collection::take_ownership`.
         /// The length of the data should be `W * H`.
+        /// @param resolution The resolution of the image.
         static Image from_greyscale8(
             Collection<uint8_t> bytes, components::Resolution2D resolution
         ) {
@@ -199,6 +211,7 @@ namespace rerun::archetypes {
         /// If the data does not outlive the image, use `std::move` or create the `rerun::Collection`
         /// explicitly ahead of time with `rerun::Collection::take_ownership`.
         /// The length of the data should be `W * H * 3`.
+        /// @param resolution The resolution of the image.
         static Image from_rgb24(Collection<uint8_t> bytes, components::Resolution2D resolution) {
             return Image(
                 bytes,
@@ -214,6 +227,7 @@ namespace rerun::archetypes {
         /// If the data does not outlive the image, use `std::move` or create the `rerun::Collection`
         /// explicitly ahead of time with `rerun::Collection::take_ownership`.
         /// The length of the data should be `W * H * 4`.
+        /// @param resolution The resolution of the image.
         static Image from_rgba32(Collection<uint8_t> bytes, components::Resolution2D resolution) {
             return Image(
                 bytes,

@@ -16,6 +16,7 @@ namespace rerun::archetypes {
     /// @param pixels The raw image data.
     /// ⚠️ Does not take ownership of the data, the caller must ensure the data outlives the image.
     /// The number of elements is assumed to be `W * H`.
+    /// @param resolution_ The resolution of the image.
     template <typename TElement>
     DepthImage(const TElement* pixels, components::Resolution2D resolution_)
         : DepthImage{reinterpret_cast<const uint8_t*>(pixels), resolution_, get_datatype(pixels)} {}
@@ -26,6 +27,7 @@ namespace rerun::archetypes {
     /// If the data does not outlive the image, use `std::move` or create the `rerun::Collection`
     /// explicitly ahead of time with `rerun::Collection::take_ownership`.
     /// The length of the data should be `W * H`.
+    /// @param resolution_ The resolution of the image.
     template <typename TElement>
     DepthImage(Collection<TElement> pixels, components::Resolution2D resolution_)
         : DepthImage{pixels.to_uint8(), resolution_, get_datatype(pixels.data())} {}
@@ -35,6 +37,8 @@ namespace rerun::archetypes {
     /// @param data_ The raw image data.
     /// ⚠️ Does not take ownership of the data, the caller must ensure the data outlives the image.
     /// The byte size of the data is assumed to be `W * H * datatype.size`
+    /// @param resolution_ The resolution of the image.
+    /// @param datatype_ How the data should be interpreted.
     DepthImage(
         const void* data_, components::Resolution2D resolution_,
         components::ChannelDatatype datatype_
@@ -45,10 +49,12 @@ namespace rerun::archetypes {
 
     /// Constructs image from pixel data + resolution + datatype.
     ///
-    /// @param pixels The raw image data.
+    /// @param data_ The raw image data as bytes.
     /// If the data does not outlive the image, use `std::move` or create the `rerun::Collection`
     /// explicitly ahead of time with `rerun::Collection::take_ownership`.
     /// The length of the data should be `W * H`.
+    /// @param resolution_ The resolution of the image.
+    /// @param datatype_ How the data should be interpreted.
     DepthImage(
         Collection<uint8_t> data_, components::Resolution2D resolution_,
         components::ChannelDatatype datatype_
