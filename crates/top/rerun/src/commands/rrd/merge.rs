@@ -9,12 +9,6 @@ use re_log_types::LogMsg;
 
 #[derive(Debug, Clone, clap::Parser)]
 pub struct MergeCommand {
-    #[arg(
-        short = 'i',
-        long = "input",
-        value_name = "src.(rrd|rbl)",
-        required = true
-    )]
     path_to_input_rrds: Vec<String>,
 
     #[arg(short = 'o', long = "output", value_name = "dst.(rrd|rbl)")]
