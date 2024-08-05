@@ -99,11 +99,13 @@ pub fn arrow_array_builder_type_object(
 ) -> Ident {
     if obj.is_arrow_transparent() {
         arrow_array_builder_type_and_declaration(&obj.fields[0].typ, objects, declarations)
+    } else if obj.class == ObjectClass::Enum {
+        arrow_array_builder_type_and_declaration(&Type::UInt8, objects, declarations)
     } else {
         let class_ident = match obj.class {
             ObjectClass::Struct => format_ident!("StructBuilder"),
-            ObjectClass::Enum => format_ident!("SparseUnionBuilder"),
             ObjectClass::Union => format_ident!("DenseUnionBuilder"),
+            ObjectClass::Enum => unreachable!(),
         };
 
         declarations.insert("arrow", ForwardDecl::Class(class_ident.clone()));
