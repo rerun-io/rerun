@@ -289,7 +289,7 @@ py-build-notebook = { cmd = "pip install -e rerun_notebook", depends_on = [
 # Dedicated alias for building the python bindings for the `py` environment.
 py-build = "pixi run -e py py-build-common"
 
-# Dedicated alias for building the python bindings in release modefor the `py` environment.
+# Dedicated alias for building the python bindings in release mode for the `py` environment.
 py-build-release = "pixi run -e py py-build-common-release"
 
 # Helper alias to run the python interpreter in the context of the python environment
