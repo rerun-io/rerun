@@ -43,6 +43,26 @@ pub struct CompactCommand {
 
     #[arg(short = 'o', long = "output", value_name = "dst.(rrd|rbl)")]
     path_to_output_rrd: String,
+
+    /// What is the threshold, in bytes, after which a Chunk cannot be compacted any further?
+    ///
+    /// Overrides RERUN_CHUNK_MAX_BYTES if set.
+    #[arg(long = "max-bytes")]
+    max_bytes: Option<u64>,
+
+    /// What is the threshold, in rows, after which a Chunk cannot be compacted any further?
+    ///
+    /// Overrides RERUN_CHUNK_MAX_ROWS if set.
+    #[arg(long = "max-rows")]
+    max_rows: Option<u64>,
+
+    /// What is the threshold, in rows, after which a Chunk cannot be compacted any further?
+    ///
+    /// This specifically applies to _non_ time-sorted chunks.
+    ///
+    /// Overrides RERUN_CHUNK_MAX_ROWS_IF_UNSORTED if set.
+    #[arg(long = "max-rows-if-unsorted")]
+    max_rows_if_unsorted: Option<u64>,
 }
 
 impl CompactCommand {
@@ -50,12 +70,25 @@ impl CompactCommand {
         let Self {
             path_to_input_rrds,
             path_to_output_rrd,
+            max_bytes,
+            max_rows,
+            max_rows_if_unsorted,
         } = self;
 
         let mut store_config = ChunkStoreConfig::from_env().unwrap_or_default();
         // NOTE: We're doing headless processing, there's no point in running subscribers, it will just
         // (massively) slow us down.
         store_config.enable_changelog = false;
+
+        if let Some(max_bytes) = max_bytes {
+            store_config.chunk_max_bytes = *max_bytes;
+        }
+        if let Some(max_rows) = max_rows {
+            store_config.chunk_max_rows = *max_rows;
+        }
+        if let Some(max_rows_if_unsorted) = max_rows_if_unsorted {
+            store_config.chunk_max_rows_if_unsorted = *max_rows_if_unsorted;
+        }
 
         merge_and_compact(&store_config, path_to_input_rrds, path_to_output_rrd)
     }
