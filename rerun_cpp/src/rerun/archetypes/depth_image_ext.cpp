@@ -15,7 +15,7 @@ namespace rerun::archetypes {
     ///
     /// @param pixels The raw image data.
     /// ⚠️ Does not take ownership of the data, the caller must ensure the data outlives the image.
-    /// The length of the data should be `W * H`.
+    /// The number of elements is assumed to be `W * H`.
     template <typename TElement>
     DepthImage(const TElement* pixels, components::Resolution2D resolution_)
         : DepthImage{reinterpret_cast<const uint8_t*>(pixels), resolution_, get_datatype(pixels)} {}
@@ -34,7 +34,7 @@ namespace rerun::archetypes {
     ///
     /// @param data_ The raw image data.
     /// ⚠️ Does not take ownership of the data, the caller must ensure the data outlives the image.
-    /// The length of the data should be `W * H * datatype.size`
+    /// The byte size of the data is assumed to be `W * H * datatype.size`
     DepthImage(
         const void* data_, components::Resolution2D resolution_,
         components::ChannelDatatype datatype_
