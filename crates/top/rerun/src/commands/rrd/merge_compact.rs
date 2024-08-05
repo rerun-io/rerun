@@ -28,7 +28,7 @@ impl MergeCommand {
         // NOTE #1: We're doing headless processing, there's no point in running subscribers, it will just
         // (massively) slow us down.
         // NOTE #2: We do not want to modify the configuration of the original data in any way
-        // (e.g. by recompacting it differenly), so make sure to disable all these features.
+        // (e.g. by recompacting it differently), so make sure to disable all these features.
         let store_config = ChunkStoreConfig::ALL_DISABLED;
 
         merge_and_compact(&store_config, path_to_input_rrds, path_to_output_rrd)
