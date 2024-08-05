@@ -48,18 +48,29 @@ class TransformRelation(Enum):
     From perspective of `parent/child`, the `parent` entity is translated 1 unit along `parent/child`'s Y axis.
     """
 
+    @classmethod
+    def auto(cls, val: str | int | TransformRelation) -> TransformRelation:
+        """Best-effort converter."""
+        if isinstance(val, TransformRelation):
+            return val
+        if isinstance(val, int):
+            return cls(val)
+        try:
+            return cls[val]
+        except KeyError:
+            val_lower = val.lower()
+            for variant in cls:
+                if variant.name.lower() == val_lower:
+                    return variant
+        raise ValueError(f"Cannot convert {val} to {cls.__name__}")
+
     def __str__(self) -> str:
         """Returns the variant name."""
-        if self == TransformRelation.ParentFromChild:
-            return "ParentFromChild"
-        elif self == TransformRelation.ChildFromParent:
-            return "ChildFromParent"
-        else:
-            raise ValueError("Unknown enum variant")
+        return self.name
 
 
 TransformRelationLike = Union[
-    TransformRelation, Literal["ChildFromParent", "ParentFromChild", "childfromparent", "parentfromchild"]
+    TransformRelation, Literal["ChildFromParent", "ParentFromChild", "childfromparent", "parentfromchild"], int
 ]
 TransformRelationArrayLike = Union[TransformRelationLike, Sequence[TransformRelationLike]]
 
@@ -79,8 +90,6 @@ class TransformRelationBatch(BaseBatch[TransformRelationArrayLike], ComponentBat
         if isinstance(data, (TransformRelation, int, str)):
             data = [data]
 
-        data = [TransformRelation(v) if isinstance(v, int) else v for v in data]
-        data = [TransformRelation[v.upper()] if isinstance(v, str) else v for v in data]
-        pa_data = [v.value for v in data]
+        pa_data = [TransformRelation.auto(v).value for v in data]
 
         return pa.array(pa_data, type=data_type)

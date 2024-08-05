@@ -54,30 +54,25 @@ class MarkerShape(Enum):
     Asterisk = 9
     """`*`"""
 
+    @classmethod
+    def auto(cls, val: str | int | MarkerShape) -> MarkerShape:
+        """Best-effort converter."""
+        if isinstance(val, MarkerShape):
+            return val
+        if isinstance(val, int):
+            return cls(val)
+        try:
+            return cls[val]
+        except KeyError:
+            val_lower = val.lower()
+            for variant in cls:
+                if variant.name.lower() == val_lower:
+                    return variant
+        raise ValueError(f"Cannot convert {val} to {cls.__name__}")
+
     def __str__(self) -> str:
         """Returns the variant name."""
-        if self == MarkerShape.Circle:
-            return "Circle"
-        elif self == MarkerShape.Diamond:
-            return "Diamond"
-        elif self == MarkerShape.Square:
-            return "Square"
-        elif self == MarkerShape.Cross:
-            return "Cross"
-        elif self == MarkerShape.Plus:
-            return "Plus"
-        elif self == MarkerShape.Up:
-            return "Up"
-        elif self == MarkerShape.Down:
-            return "Down"
-        elif self == MarkerShape.Left:
-            return "Left"
-        elif self == MarkerShape.Right:
-            return "Right"
-        elif self == MarkerShape.Asterisk:
-            return "Asterisk"
-        else:
-            raise ValueError("Unknown enum variant")
+        return self.name
 
 
 MarkerShapeLike = Union[
@@ -104,6 +99,7 @@ MarkerShapeLike = Union[
         "square",
         "up",
     ],
+    int,
 ]
 MarkerShapeArrayLike = Union[MarkerShapeLike, Sequence[MarkerShapeLike]]
 
@@ -123,8 +119,6 @@ class MarkerShapeBatch(BaseBatch[MarkerShapeArrayLike], ComponentBatchMixin):
         if isinstance(data, (MarkerShape, int, str)):
             data = [data]
 
-        data = [MarkerShape(v) if isinstance(v, int) else v for v in data]
-        data = [MarkerShape[v.upper()] if isinstance(v, str) else v for v in data]
-        pa_data = [v.value for v in data]
+        pa_data = [MarkerShape.auto(v).value for v in data]
 
         return pa.array(pa_data, type=data_type)

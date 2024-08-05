@@ -38,17 +38,28 @@ class FillMode(Enum):
     Lines are not drawn.
     """
 
+    @classmethod
+    def auto(cls, val: str | int | FillMode) -> FillMode:
+        """Best-effort converter."""
+        if isinstance(val, FillMode):
+            return val
+        if isinstance(val, int):
+            return cls(val)
+        try:
+            return cls[val]
+        except KeyError:
+            val_lower = val.lower()
+            for variant in cls:
+                if variant.name.lower() == val_lower:
+                    return variant
+        raise ValueError(f"Cannot convert {val} to {cls.__name__}")
+
     def __str__(self) -> str:
         """Returns the variant name."""
-        if self == FillMode.Wireframe:
-            return "Wireframe"
-        elif self == FillMode.Solid:
-            return "Solid"
-        else:
-            raise ValueError("Unknown enum variant")
+        return self.name
 
 
-FillModeLike = Union[FillMode, Literal["Solid", "Wireframe", "solid", "wireframe"]]
+FillModeLike = Union[FillMode, Literal["Solid", "Wireframe", "solid", "wireframe"], int]
 FillModeArrayLike = Union[FillModeLike, Sequence[FillModeLike]]
 
 
@@ -67,8 +78,6 @@ class FillModeBatch(BaseBatch[FillModeArrayLike], ComponentBatchMixin):
         if isinstance(data, (FillMode, int, str)):
             data = [data]
 
-        data = [FillMode(v) if isinstance(v, int) else v for v in data]
-        data = [FillMode[v.upper()] if isinstance(v, str) else v for v in data]
-        pa_data = [v.value for v in data]
+        pa_data = [FillMode.auto(v).value for v in data]
 
         return pa.array(pa_data, type=data_type)

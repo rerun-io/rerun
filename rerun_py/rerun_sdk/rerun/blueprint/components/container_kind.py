@@ -36,22 +36,29 @@ class ContainerKind(Enum):
     Grid = 3
     """Organize children in a grid layout"""
 
+    @classmethod
+    def auto(cls, val: str | int | ContainerKind) -> ContainerKind:
+        """Best-effort converter."""
+        if isinstance(val, ContainerKind):
+            return val
+        if isinstance(val, int):
+            return cls(val)
+        try:
+            return cls[val]
+        except KeyError:
+            val_lower = val.lower()
+            for variant in cls:
+                if variant.name.lower() == val_lower:
+                    return variant
+        raise ValueError(f"Cannot convert {val} to {cls.__name__}")
+
     def __str__(self) -> str:
         """Returns the variant name."""
-        if self == ContainerKind.Tabs:
-            return "Tabs"
-        elif self == ContainerKind.Horizontal:
-            return "Horizontal"
-        elif self == ContainerKind.Vertical:
-            return "Vertical"
-        elif self == ContainerKind.Grid:
-            return "Grid"
-        else:
-            raise ValueError("Unknown enum variant")
+        return self.name
 
 
 ContainerKindLike = Union[
-    ContainerKind, Literal["Grid", "Horizontal", "Tabs", "Vertical", "grid", "horizontal", "tabs", "vertical"]
+    ContainerKind, Literal["Grid", "Horizontal", "Tabs", "Vertical", "grid", "horizontal", "tabs", "vertical"], int
 ]
 ContainerKindArrayLike = Union[ContainerKindLike, Sequence[ContainerKindLike]]
 
@@ -71,8 +78,6 @@ class ContainerKindBatch(BaseBatch[ContainerKindArrayLike], ComponentBatchMixin)
         if isinstance(data, (ContainerKind, int, str)):
             data = [data]
 
-        data = [ContainerKind(v) if isinstance(v, int) else v for v in data]
-        data = [ContainerKind[v.upper()] if isinstance(v, str) else v for v in data]
-        pa_data = [v.value for v in data]
+        pa_data = [ContainerKind.auto(v).value for v in data]
 
         return pa.array(pa_data, type=data_type)

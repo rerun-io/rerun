@@ -88,24 +88,25 @@ class Colormap(Enum):
     It interpolates from cyan to blue to dark gray to brass to yellow.
     """
 
+    @classmethod
+    def auto(cls, val: str | int | Colormap) -> Colormap:
+        """Best-effort converter."""
+        if isinstance(val, Colormap):
+            return val
+        if isinstance(val, int):
+            return cls(val)
+        try:
+            return cls[val]
+        except KeyError:
+            val_lower = val.lower()
+            for variant in cls:
+                if variant.name.lower() == val_lower:
+                    return variant
+        raise ValueError(f"Cannot convert {val} to {cls.__name__}")
+
     def __str__(self) -> str:
         """Returns the variant name."""
-        if self == Colormap.Grayscale:
-            return "Grayscale"
-        elif self == Colormap.Inferno:
-            return "Inferno"
-        elif self == Colormap.Magma:
-            return "Magma"
-        elif self == Colormap.Plasma:
-            return "Plasma"
-        elif self == Colormap.Turbo:
-            return "Turbo"
-        elif self == Colormap.Viridis:
-            return "Viridis"
-        elif self == Colormap.CyanToYellow:
-            return "CyanToYellow"
-        else:
-            raise ValueError("Unknown enum variant")
+        return self.name
 
 
 ColormapLike = Union[
@@ -126,6 +127,7 @@ ColormapLike = Union[
         "turbo",
         "viridis",
     ],
+    int,
 ]
 ColormapArrayLike = Union[ColormapLike, Sequence[ColormapLike]]
 
@@ -145,8 +147,6 @@ class ColormapBatch(BaseBatch[ColormapArrayLike], ComponentBatchMixin):
         if isinstance(data, (Colormap, int, str)):
             data = [data]
 
-        data = [Colormap(v) if isinstance(v, int) else v for v in data]
-        data = [Colormap[v.upper()] if isinstance(v, str) else v for v in data]
-        pa_data = [v.value for v in data]
+        pa_data = [Colormap.auto(v).value for v in data]
 
         return pa.array(pa_data, type=data_type)

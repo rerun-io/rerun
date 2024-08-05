@@ -36,23 +36,31 @@ class Corner2D(Enum):
     RightBottom = 3
     """Right bottom corner."""
 
+    @classmethod
+    def auto(cls, val: str | int | Corner2D) -> Corner2D:
+        """Best-effort converter."""
+        if isinstance(val, Corner2D):
+            return val
+        if isinstance(val, int):
+            return cls(val)
+        try:
+            return cls[val]
+        except KeyError:
+            val_lower = val.lower()
+            for variant in cls:
+                if variant.name.lower() == val_lower:
+                    return variant
+        raise ValueError(f"Cannot convert {val} to {cls.__name__}")
+
     def __str__(self) -> str:
         """Returns the variant name."""
-        if self == Corner2D.LeftTop:
-            return "LeftTop"
-        elif self == Corner2D.RightTop:
-            return "RightTop"
-        elif self == Corner2D.LeftBottom:
-            return "LeftBottom"
-        elif self == Corner2D.RightBottom:
-            return "RightBottom"
-        else:
-            raise ValueError("Unknown enum variant")
+        return self.name
 
 
 Corner2DLike = Union[
     Corner2D,
     Literal["LeftBottom", "LeftTop", "RightBottom", "RightTop", "leftbottom", "lefttop", "rightbottom", "righttop"],
+    int,
 ]
 Corner2DArrayLike = Union[Corner2DLike, Sequence[Corner2DLike]]
 
@@ -72,8 +80,6 @@ class Corner2DBatch(BaseBatch[Corner2DArrayLike], ComponentBatchMixin):
         if isinstance(data, (Corner2D, int, str)):
             data = [data]
 
-        data = [Corner2D(v) if isinstance(v, int) else v for v in data]
-        data = [Corner2D[v.upper()] if isinstance(v, str) else v for v in data]
-        pa_data = [v.value for v in data]
+        pa_data = [Corner2D.auto(v).value for v in data]
 
         return pa.array(pa_data, type=data_type)

@@ -45,17 +45,28 @@ class MagnificationFilter(Enum):
     Used as default for mesh rendering.
     """
 
+    @classmethod
+    def auto(cls, val: str | int | MagnificationFilter) -> MagnificationFilter:
+        """Best-effort converter."""
+        if isinstance(val, MagnificationFilter):
+            return val
+        if isinstance(val, int):
+            return cls(val)
+        try:
+            return cls[val]
+        except KeyError:
+            val_lower = val.lower()
+            for variant in cls:
+                if variant.name.lower() == val_lower:
+                    return variant
+        raise ValueError(f"Cannot convert {val} to {cls.__name__}")
+
     def __str__(self) -> str:
         """Returns the variant name."""
-        if self == MagnificationFilter.Nearest:
-            return "Nearest"
-        elif self == MagnificationFilter.Linear:
-            return "Linear"
-        else:
-            raise ValueError("Unknown enum variant")
+        return self.name
 
 
-MagnificationFilterLike = Union[MagnificationFilter, Literal["Linear", "Nearest", "linear", "nearest"]]
+MagnificationFilterLike = Union[MagnificationFilter, Literal["Linear", "Nearest", "linear", "nearest"], int]
 MagnificationFilterArrayLike = Union[MagnificationFilterLike, Sequence[MagnificationFilterLike]]
 
 
@@ -74,8 +85,6 @@ class MagnificationFilterBatch(BaseBatch[MagnificationFilterArrayLike], Componen
         if isinstance(data, (MagnificationFilter, int, str)):
             data = [data]
 
-        data = [MagnificationFilter(v) if isinstance(v, int) else v for v in data]
-        data = [MagnificationFilter[v.upper()] if isinstance(v, str) else v for v in data]
-        pa_data = [v.value for v in data]
+        pa_data = [MagnificationFilter.auto(v).value for v in data]
 
         return pa.array(pa_data, type=data_type)

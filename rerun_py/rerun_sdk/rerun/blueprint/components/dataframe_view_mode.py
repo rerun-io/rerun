@@ -45,17 +45,28 @@ class DataframeViewMode(Enum):
     timestamp shown are determined by each view entity's visible time range setting.
     """
 
+    @classmethod
+    def auto(cls, val: str | int | DataframeViewMode) -> DataframeViewMode:
+        """Best-effort converter."""
+        if isinstance(val, DataframeViewMode):
+            return val
+        if isinstance(val, int):
+            return cls(val)
+        try:
+            return cls[val]
+        except KeyError:
+            val_lower = val.lower()
+            for variant in cls:
+                if variant.name.lower() == val_lower:
+                    return variant
+        raise ValueError(f"Cannot convert {val} to {cls.__name__}")
+
     def __str__(self) -> str:
         """Returns the variant name."""
-        if self == DataframeViewMode.LatestAt:
-            return "LatestAt"
-        elif self == DataframeViewMode.TimeRange:
-            return "TimeRange"
-        else:
-            raise ValueError("Unknown enum variant")
+        return self.name
 
 
-DataframeViewModeLike = Union[DataframeViewMode, Literal["LatestAt", "TimeRange", "latestat", "timerange"]]
+DataframeViewModeLike = Union[DataframeViewMode, Literal["LatestAt", "TimeRange", "latestat", "timerange"], int]
 DataframeViewModeArrayLike = Union[DataframeViewModeLike, Sequence[DataframeViewModeLike]]
 
 
@@ -74,8 +85,6 @@ class DataframeViewModeBatch(BaseBatch[DataframeViewModeArrayLike], ComponentBat
         if isinstance(data, (DataframeViewMode, int, str)):
             data = [data]
 
-        data = [DataframeViewMode(v) if isinstance(v, int) else v for v in data]
-        data = [DataframeViewMode[v.upper()] if isinstance(v, str) else v for v in data]
-        pa_data = [v.value for v in data]
+        pa_data = [DataframeViewMode.auto(v).value for v in data]
 
         return pa.array(pa_data, type=data_type)

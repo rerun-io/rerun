@@ -30,17 +30,28 @@ class SortKey(Enum):
     Time = 1
     """Group by instance."""
 
+    @classmethod
+    def auto(cls, val: str | int | SortKey) -> SortKey:
+        """Best-effort converter."""
+        if isinstance(val, SortKey):
+            return val
+        if isinstance(val, int):
+            return cls(val)
+        try:
+            return cls[val]
+        except KeyError:
+            val_lower = val.lower()
+            for variant in cls:
+                if variant.name.lower() == val_lower:
+                    return variant
+        raise ValueError(f"Cannot convert {val} to {cls.__name__}")
+
     def __str__(self) -> str:
         """Returns the variant name."""
-        if self == SortKey.Entity:
-            return "Entity"
-        elif self == SortKey.Time:
-            return "Time"
-        else:
-            raise ValueError("Unknown enum variant")
+        return self.name
 
 
-SortKeyLike = Union[SortKey, Literal["Entity", "Time", "entity", "time"]]
+SortKeyLike = Union[SortKey, Literal["Entity", "Time", "entity", "time"], int]
 SortKeyArrayLike = Union[SortKeyLike, Sequence[SortKeyLike]]
 
 
@@ -59,8 +70,6 @@ class SortKeyBatch(BaseBatch[SortKeyArrayLike], ComponentBatchMixin):
         if isinstance(data, (SortKey, int, str)):
             data = [data]
 
-        data = [SortKey(v) if isinstance(v, int) else v for v in data]
-        data = [SortKey[v.upper()] if isinstance(v, str) else v for v in data]
-        pa_data = [v.value for v in data]
+        pa_data = [SortKey.auto(v).value for v in data]
 
         return pa.array(pa_data, type=data_type)

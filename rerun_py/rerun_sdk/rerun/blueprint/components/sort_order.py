@@ -30,17 +30,28 @@ class SortOrder(Enum):
     Descending = 1
     """Descending"""
 
+    @classmethod
+    def auto(cls, val: str | int | SortOrder) -> SortOrder:
+        """Best-effort converter."""
+        if isinstance(val, SortOrder):
+            return val
+        if isinstance(val, int):
+            return cls(val)
+        try:
+            return cls[val]
+        except KeyError:
+            val_lower = val.lower()
+            for variant in cls:
+                if variant.name.lower() == val_lower:
+                    return variant
+        raise ValueError(f"Cannot convert {val} to {cls.__name__}")
+
     def __str__(self) -> str:
         """Returns the variant name."""
-        if self == SortOrder.Ascending:
-            return "Ascending"
-        elif self == SortOrder.Descending:
-            return "Descending"
-        else:
-            raise ValueError("Unknown enum variant")
+        return self.name
 
 
-SortOrderLike = Union[SortOrder, Literal["Ascending", "Descending", "ascending", "descending"]]
+SortOrderLike = Union[SortOrder, Literal["Ascending", "Descending", "ascending", "descending"], int]
 SortOrderArrayLike = Union[SortOrderLike, Sequence[SortOrderLike]]
 
 
@@ -59,8 +70,6 @@ class SortOrderBatch(BaseBatch[SortOrderArrayLike], ComponentBatchMixin):
         if isinstance(data, (SortOrder, int, str)):
             data = [data]
 
-        data = [SortOrder(v) if isinstance(v, int) else v for v in data]
-        data = [SortOrder[v.upper()] if isinstance(v, str) else v for v in data]
-        pa_data = [v.value for v in data]
+        pa_data = [SortOrder.auto(v).value for v in data]
 
         return pa.array(pa_data, type=data_type)

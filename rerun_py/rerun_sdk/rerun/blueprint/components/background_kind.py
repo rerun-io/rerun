@@ -47,21 +47,31 @@ class BackgroundKind(Enum):
     SolidColor = 2
     """Simple uniform color."""
 
+    @classmethod
+    def auto(cls, val: str | int | BackgroundKind) -> BackgroundKind:
+        """Best-effort converter."""
+        if isinstance(val, BackgroundKind):
+            return val
+        if isinstance(val, int):
+            return cls(val)
+        try:
+            return cls[val]
+        except KeyError:
+            val_lower = val.lower()
+            for variant in cls:
+                if variant.name.lower() == val_lower:
+                    return variant
+        raise ValueError(f"Cannot convert {val} to {cls.__name__}")
+
     def __str__(self) -> str:
         """Returns the variant name."""
-        if self == BackgroundKind.GradientDark:
-            return "GradientDark"
-        elif self == BackgroundKind.GradientBright:
-            return "GradientBright"
-        elif self == BackgroundKind.SolidColor:
-            return "SolidColor"
-        else:
-            raise ValueError("Unknown enum variant")
+        return self.name
 
 
 BackgroundKindLike = Union[
     BackgroundKind,
     Literal["GradientBright", "GradientDark", "SolidColor", "gradientbright", "gradientdark", "solidcolor"],
+    int,
 ]
 BackgroundKindArrayLike = Union[BackgroundKindLike, Sequence[BackgroundKindLike]]
 
@@ -81,8 +91,6 @@ class BackgroundKindBatch(BaseBatch[BackgroundKindArrayLike], ComponentBatchMixi
         if isinstance(data, (BackgroundKind, int, str)):
             data = [data]
 
-        data = [BackgroundKind(v) if isinstance(v, int) else v for v in data]
-        data = [BackgroundKind[v.upper()] if isinstance(v, str) else v for v in data]
-        pa_data = [v.value for v in data]
+        pa_data = [BackgroundKind.auto(v).value for v in data]
 
         return pa.array(pa_data, type=data_type)

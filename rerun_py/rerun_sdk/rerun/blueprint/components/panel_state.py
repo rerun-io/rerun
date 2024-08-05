@@ -33,19 +33,28 @@ class PanelState(Enum):
     Expanded = 2
     """Fully expanded."""
 
+    @classmethod
+    def auto(cls, val: str | int | PanelState) -> PanelState:
+        """Best-effort converter."""
+        if isinstance(val, PanelState):
+            return val
+        if isinstance(val, int):
+            return cls(val)
+        try:
+            return cls[val]
+        except KeyError:
+            val_lower = val.lower()
+            for variant in cls:
+                if variant.name.lower() == val_lower:
+                    return variant
+        raise ValueError(f"Cannot convert {val} to {cls.__name__}")
+
     def __str__(self) -> str:
         """Returns the variant name."""
-        if self == PanelState.Hidden:
-            return "Hidden"
-        elif self == PanelState.Collapsed:
-            return "Collapsed"
-        elif self == PanelState.Expanded:
-            return "Expanded"
-        else:
-            raise ValueError("Unknown enum variant")
+        return self.name
 
 
-PanelStateLike = Union[PanelState, Literal["Collapsed", "Expanded", "Hidden", "collapsed", "expanded", "hidden"]]
+PanelStateLike = Union[PanelState, Literal["Collapsed", "Expanded", "Hidden", "collapsed", "expanded", "hidden"], int]
 PanelStateArrayLike = Union[PanelStateLike, Sequence[PanelStateLike]]
 
 
@@ -64,8 +73,6 @@ class PanelStateBatch(BaseBatch[PanelStateArrayLike], ComponentBatchMixin):
         if isinstance(data, (PanelState, int, str)):
             data = [data]
 
-        data = [PanelState(v) if isinstance(v, int) else v for v in data]
-        data = [PanelState[v.upper()] if isinstance(v, str) else v for v in data]
-        pa_data = [v.value for v in data]
+        pa_data = [PanelState.auto(v).value for v in data]
 
         return pa.array(pa_data, type=data_type)

@@ -68,32 +68,25 @@ class ChannelDatatype(ChannelDatatypeExt, Enum):
     F64 = 10
     """64-bit IEEE-754 floating point, also known as `double`."""
 
+    @classmethod
+    def auto(cls, val: str | int | ChannelDatatype) -> ChannelDatatype:
+        """Best-effort converter."""
+        if isinstance(val, ChannelDatatype):
+            return val
+        if isinstance(val, int):
+            return cls(val)
+        try:
+            return cls[val]
+        except KeyError:
+            val_lower = val.lower()
+            for variant in cls:
+                if variant.name.lower() == val_lower:
+                    return variant
+        raise ValueError(f"Cannot convert {val} to {cls.__name__}")
+
     def __str__(self) -> str:
         """Returns the variant name."""
-        if self == ChannelDatatype.U8:
-            return "U8"
-        elif self == ChannelDatatype.U16:
-            return "U16"
-        elif self == ChannelDatatype.U32:
-            return "U32"
-        elif self == ChannelDatatype.U64:
-            return "U64"
-        elif self == ChannelDatatype.I8:
-            return "I8"
-        elif self == ChannelDatatype.I16:
-            return "I16"
-        elif self == ChannelDatatype.I32:
-            return "I32"
-        elif self == ChannelDatatype.I64:
-            return "I64"
-        elif self == ChannelDatatype.F16:
-            return "F16"
-        elif self == ChannelDatatype.F32:
-            return "F32"
-        elif self == ChannelDatatype.F64:
-            return "F64"
-        else:
-            raise ValueError("Unknown enum variant")
+        return self.name
 
 
 ChannelDatatypeLike = Union[
@@ -122,6 +115,7 @@ ChannelDatatypeLike = Union[
         "u64",
         "u8",
     ],
+    int,
 ]
 ChannelDatatypeArrayLike = Union[ChannelDatatypeLike, Sequence[ChannelDatatypeLike]]
 
@@ -141,8 +135,6 @@ class ChannelDatatypeBatch(BaseBatch[ChannelDatatypeArrayLike], ComponentBatchMi
         if isinstance(data, (ChannelDatatype, int, str)):
             data = [data]
 
-        data = [ChannelDatatype(v) if isinstance(v, int) else v for v in data]
-        data = [ChannelDatatype[v.upper()] if isinstance(v, str) else v for v in data]
-        pa_data = [v.value for v in data]
+        pa_data = [ChannelDatatype.auto(v).value for v in data]
 
         return pa.array(pa_data, type=data_type)

@@ -37,19 +37,28 @@ class ColorModel(Enum):
     RGBA = 2
     """Red, Green, Blue, Alpha"""
 
+    @classmethod
+    def auto(cls, val: str | int | ColorModel) -> ColorModel:
+        """Best-effort converter."""
+        if isinstance(val, ColorModel):
+            return val
+        if isinstance(val, int):
+            return cls(val)
+        try:
+            return cls[val]
+        except KeyError:
+            val_lower = val.lower()
+            for variant in cls:
+                if variant.name.lower() == val_lower:
+                    return variant
+        raise ValueError(f"Cannot convert {val} to {cls.__name__}")
+
     def __str__(self) -> str:
         """Returns the variant name."""
-        if self == ColorModel.L:
-            return "L"
-        elif self == ColorModel.RGB:
-            return "RGB"
-        elif self == ColorModel.RGBA:
-            return "RGBA"
-        else:
-            raise ValueError("Unknown enum variant")
+        return self.name
 
 
-ColorModelLike = Union[ColorModel, Literal["L", "RGB", "RGBA", "l", "rgb", "rgba"]]
+ColorModelLike = Union[ColorModel, Literal["L", "RGB", "RGBA", "l", "rgb", "rgba"], int]
 ColorModelArrayLike = Union[ColorModelLike, Sequence[ColorModelLike]]
 
 
@@ -68,8 +77,6 @@ class ColorModelBatch(BaseBatch[ColorModelArrayLike], ComponentBatchMixin):
         if isinstance(data, (ColorModel, int, str)):
             data = [data]
 
-        data = [ColorModel(v) if isinstance(v, int) else v for v in data]
-        data = [ColorModel[v.upper()] if isinstance(v, str) else v for v in data]
-        pa_data = [v.value for v in data]
+        pa_data = [ColorModel.auto(v).value for v in data]
 
         return pa.array(pa_data, type=data_type)

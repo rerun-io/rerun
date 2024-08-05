@@ -33,20 +33,29 @@ class ViewFit(Enum):
     FillKeepAspectRatio = 2
     """Scale the image for the largest possible fit in the view's container, but keep the original aspect ratio."""
 
+    @classmethod
+    def auto(cls, val: str | int | ViewFit) -> ViewFit:
+        """Best-effort converter."""
+        if isinstance(val, ViewFit):
+            return val
+        if isinstance(val, int):
+            return cls(val)
+        try:
+            return cls[val]
+        except KeyError:
+            val_lower = val.lower()
+            for variant in cls:
+                if variant.name.lower() == val_lower:
+                    return variant
+        raise ValueError(f"Cannot convert {val} to {cls.__name__}")
+
     def __str__(self) -> str:
         """Returns the variant name."""
-        if self == ViewFit.Original:
-            return "Original"
-        elif self == ViewFit.Fill:
-            return "Fill"
-        elif self == ViewFit.FillKeepAspectRatio:
-            return "FillKeepAspectRatio"
-        else:
-            raise ValueError("Unknown enum variant")
+        return self.name
 
 
 ViewFitLike = Union[
-    ViewFit, Literal["Fill", "FillKeepAspectRatio", "Original", "fill", "fillkeepaspectratio", "original"]
+    ViewFit, Literal["Fill", "FillKeepAspectRatio", "Original", "fill", "fillkeepaspectratio", "original"], int
 ]
 ViewFitArrayLike = Union[ViewFitLike, Sequence[ViewFitLike]]
 
@@ -66,8 +75,6 @@ class ViewFitBatch(BaseBatch[ViewFitArrayLike], ComponentBatchMixin):
         if isinstance(data, (ViewFit, int, str)):
             data = [data]
 
-        data = [ViewFit(v) if isinstance(v, int) else v for v in data]
-        data = [ViewFit[v.upper()] if isinstance(v, str) else v for v in data]
-        pa_data = [v.value for v in data]
+        pa_data = [ViewFit.auto(v).value for v in data]
 
         return pa.array(pa_data, type=data_type)

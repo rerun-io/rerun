@@ -58,22 +58,25 @@ class AggregationPolicy(Enum):
     MinMaxAverage = 5
     """Find both the minimum and maximum values in the range, then use the average of those."""
 
+    @classmethod
+    def auto(cls, val: str | int | AggregationPolicy) -> AggregationPolicy:
+        """Best-effort converter."""
+        if isinstance(val, AggregationPolicy):
+            return val
+        if isinstance(val, int):
+            return cls(val)
+        try:
+            return cls[val]
+        except KeyError:
+            val_lower = val.lower()
+            for variant in cls:
+                if variant.name.lower() == val_lower:
+                    return variant
+        raise ValueError(f"Cannot convert {val} to {cls.__name__}")
+
     def __str__(self) -> str:
         """Returns the variant name."""
-        if self == AggregationPolicy.Off:
-            return "Off"
-        elif self == AggregationPolicy.Average:
-            return "Average"
-        elif self == AggregationPolicy.Max:
-            return "Max"
-        elif self == AggregationPolicy.Min:
-            return "Min"
-        elif self == AggregationPolicy.MinMax:
-            return "MinMax"
-        elif self == AggregationPolicy.MinMaxAverage:
-            return "MinMaxAverage"
-        else:
-            raise ValueError("Unknown enum variant")
+        return self.name
 
 
 AggregationPolicyLike = Union[
@@ -92,6 +95,7 @@ AggregationPolicyLike = Union[
         "minmaxaverage",
         "off",
     ],
+    int,
 ]
 AggregationPolicyArrayLike = Union[AggregationPolicyLike, Sequence[AggregationPolicyLike]]
 
@@ -111,8 +115,6 @@ class AggregationPolicyBatch(BaseBatch[AggregationPolicyArrayLike], ComponentBat
         if isinstance(data, (AggregationPolicy, int, str)):
             data = [data]
 
-        data = [AggregationPolicy(v) if isinstance(v, int) else v for v in data]
-        data = [AggregationPolicy[v.upper()] if isinstance(v, str) else v for v in data]
-        pa_data = [v.value for v in data]
+        pa_data = [AggregationPolicy.auto(v).value for v in data]
 
         return pa.array(pa_data, type=data_type)

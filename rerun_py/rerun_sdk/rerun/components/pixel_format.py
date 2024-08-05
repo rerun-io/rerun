@@ -51,17 +51,28 @@ class PixelFormat(Enum):
     The order of the channels is Y0, U0, Y1, V0, all in the same plane.
     """
 
+    @classmethod
+    def auto(cls, val: str | int | PixelFormat) -> PixelFormat:
+        """Best-effort converter."""
+        if isinstance(val, PixelFormat):
+            return val
+        if isinstance(val, int):
+            return cls(val)
+        try:
+            return cls[val]
+        except KeyError:
+            val_lower = val.lower()
+            for variant in cls:
+                if variant.name.lower() == val_lower:
+                    return variant
+        raise ValueError(f"Cannot convert {val} to {cls.__name__}")
+
     def __str__(self) -> str:
         """Returns the variant name."""
-        if self == PixelFormat.NV12:
-            return "NV12"
-        elif self == PixelFormat.YUY2:
-            return "YUY2"
-        else:
-            raise ValueError("Unknown enum variant")
+        return self.name
 
 
-PixelFormatLike = Union[PixelFormat, Literal["NV12", "YUY2", "nv12", "yuy2"]]
+PixelFormatLike = Union[PixelFormat, Literal["NV12", "YUY2", "nv12", "yuy2"], int]
 PixelFormatArrayLike = Union[PixelFormatLike, Sequence[PixelFormatLike]]
 
 
@@ -80,8 +91,6 @@ class PixelFormatBatch(BaseBatch[PixelFormatArrayLike], ComponentBatchMixin):
         if isinstance(data, (PixelFormat, int, str)):
             data = [data]
 
-        data = [PixelFormat(v) if isinstance(v, int) else v for v in data]
-        data = [PixelFormat[v.upper()] if isinstance(v, str) else v for v in data]
-        pa_data = [v.value for v in data]
+        pa_data = [PixelFormat.auto(v).value for v in data]
 
         return pa.array(pa_data, type=data_type)
