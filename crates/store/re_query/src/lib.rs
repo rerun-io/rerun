@@ -2,25 +2,21 @@
 
 mod cache;
 mod cache_stats;
-mod flat_vec_deque;
 mod latest_at;
-mod promise;
 mod range;
 
 pub mod clamped_zip;
 pub mod range_zip;
 
 pub use self::cache::{CacheKey, Caches};
-pub use self::cache_stats::{CachedComponentStats, CachesStats};
+pub use self::cache_stats::{CacheStats, CachesStats};
 pub use self::clamped_zip::*;
-pub use self::flat_vec_deque::{ErasedFlatVecDeque, FlatVecDeque};
-pub use self::latest_at::{LatestAtComponentResults, LatestAtMonoResult, LatestAtResults};
-pub use self::promise::{Promise, PromiseId, PromiseResolver, PromiseResult};
-pub use self::range::{RangeComponentResults, RangeData, RangeResults};
+pub use self::latest_at::LatestAtResults;
+pub use self::range::RangeResults;
 pub use self::range_zip::*;
 
-pub(crate) use self::latest_at::{latest_at, LatestAtCache};
-pub(crate) use self::range::{RangeCache, RangeComponentResultsInner};
+pub(crate) use self::latest_at::LatestAtCache;
+pub(crate) use self::range::RangeCache;
 
 pub mod external {
     pub use paste;
@@ -74,65 +70,3 @@ pub enum QueryError {
 }
 
 pub type Result<T> = std::result::Result<T, QueryError>;
-
-// ---
-
-use re_chunk_store::{LatestAtQuery, RangeQuery};
-
-#[derive(Debug)]
-pub enum Results {
-    LatestAt(LatestAtQuery, LatestAtResults),
-    Range(RangeQuery, RangeResults),
-}
-
-impl From<(LatestAtQuery, LatestAtResults)> for Results {
-    #[inline]
-    fn from((query, results): (LatestAtQuery, LatestAtResults)) -> Self {
-        Self::LatestAt(query, results)
-    }
-}
-
-impl From<(RangeQuery, RangeResults)> for Results {
-    #[inline]
-    fn from((query, results): (RangeQuery, RangeResults)) -> Self {
-        Self::Range(query, results)
-    }
-}
-
-// ---
-
-/// Returns `true` if the specified `component_name` can be cached.
-///
-/// Used internally to avoid unnecessarily caching components that are already cached in other
-/// places, for historical reasons.
-pub fn cacheable(component_name: re_types_core::ComponentName) -> bool {
-    use std::sync::OnceLock;
-    static NOT_CACHEABLE: OnceLock<re_types_core::ComponentNameSet> = OnceLock::new();
-
-    // Horrible hack so we can make this work without depending on re_types.
-    // We have a dev dependency on re_types only, so we test this in the tests below against the "symbolic" names.
-    let component_names = [
-        "rerun.components.TensorData".into(),
-        "rerun.components.Blob".into(),
-    ];
-
-    let not_cacheable = NOT_CACHEABLE.get_or_init(|| component_names.into());
-
-    !component_name.is_indicator_component() && !not_cacheable.contains(&component_name)
-}
-
-#[cfg(test)]
-mod tests {
-    use re_types::{
-        components::{Blob, TensorData},
-        Loggable as _,
-    };
-
-    use super::*;
-
-    #[test]
-    fn test_cacheable() {
-        assert!(!cacheable(TensorData::name()));
-        assert!(!cacheable(Blob::name()));
-    }
-}

@@ -26,11 +26,6 @@ namespace rerun::datatypes {
     ///
     /// These dimensions are combined with an index to look up values from the `buffer` field,
     /// which stores a contiguous array of typed values.
-    ///
-    /// Note that the buffer may be encoded in a compressed format such as `jpeg` or
-    /// in a format with downsampled chroma, such as NV12 or YUY2.
-    /// For file formats, the shape is used as a hint, for chroma downsampled format
-    /// the shape has to be the shape of the decoded image.
     struct TensorData {
         /// The shape of the tensor, including optional names for each dimension.
         rerun::Collection<rerun::datatypes::TensorDimension> shape;
@@ -38,9 +33,7 @@ namespace rerun::datatypes {
         /// The content/data.
         rerun::datatypes::TensorBuffer buffer;
 
-      public:
-        // Extensions to generated type defined in 'tensor_data_ext.cpp'
-
+      public: // START of extensions from tensor_data_ext.cpp:
         /// New tensor data from shape and tensor buffer.
         ///
         /// \param shape_ Shape of the tensor.
@@ -64,6 +57,8 @@ namespace rerun::datatypes {
             }
             buffer = rerun::Collection<TElement>::borrow(data, num_elements);
         }
+
+        // END of extensions from tensor_data_ext.cpp, start of generated code:
 
       public:
         TensorData() = default;

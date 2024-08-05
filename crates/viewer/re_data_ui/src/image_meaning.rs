@@ -11,9 +11,13 @@ pub fn image_meaning_for_entity(
     store: &re_chunk_store::ChunkStore,
 ) -> TensorDataMeaning {
     let timeline = &query.timeline();
-    if store.entity_has_component(timeline, entity_path, &DepthImage::indicator().name()) {
+    if store.entity_has_component_on_timeline(
+        timeline,
+        entity_path,
+        &DepthImage::indicator().name(),
+    ) {
         TensorDataMeaning::Depth
-    } else if store.entity_has_component(
+    } else if store.entity_has_component_on_timeline(
         timeline,
         entity_path,
         &SegmentationImage::indicator().name(),

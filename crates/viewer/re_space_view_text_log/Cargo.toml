@@ -34,3 +34,4 @@ re_viewer_context.workspace = true
 
 egui_extras.workspace = true
 egui.workspace = true
+itertools.workspace = true

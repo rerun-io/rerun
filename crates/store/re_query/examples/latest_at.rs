@@ -1,17 +1,17 @@
 use std::sync::Arc;
 
+use anyhow::Context;
+use arrow2::array::PrimitiveArray as ArrowPrimitiveArray;
 use itertools::Itertools;
 
 use re_chunk::{Chunk, RowId};
 use re_chunk_store::{ChunkStore, LatestAtQuery};
 use re_log_types::example_components::{MyColor, MyLabel, MyPoint, MyPoints};
-use re_log_types::{build_frame_nr, TimeType, Timeline};
-use re_types::ComponentBatch;
-use re_types_core::{Archetype as _, Loggable as _};
+use re_log_types::{build_frame_nr, Timeline};
+use re_types::{ComponentBatch, Loggable as _};
+use re_types_core::Archetype as _;
 
-use re_query::{
-    clamped_zip_1x2, LatestAtComponentResults, LatestAtResults, PromiseResolver, PromiseResult,
-};
+use re_query::{clamped_zip_1x2, LatestAtResults};
 
 // ---
 
@@ -19,19 +19,14 @@ fn main() -> anyhow::Result<()> {
     let store = store()?;
     eprintln!("store:\n{store}");
 
-    let resolver = PromiseResolver::default();
-
     let entity_path = "points";
-    let timeline = Timeline::new("frame_nr", TimeType::Sequence);
+    let timeline = Timeline::new_sequence("frame_nr");
     let query = LatestAtQuery::latest(timeline);
     eprintln!("query:{query:?}");
 
     let caches = re_query::Caches::new(&store);
 
-    // First, get the results for this query.
-    //
-    // They might or might not already be cached. We won't know for sure until we try to access
-    // each individual component's data below.
+    // First, get the (potentially cached) results for this query.
     let results: LatestAtResults = caches.latest_at(
         &store,
         &query,
@@ -39,69 +34,67 @@ fn main() -> anyhow::Result<()> {
         MyPoints::all_components().iter().copied(), // no generics!
     );
 
-    // Then, grab the results for each individual components.
-    // * `get_required` returns an error if the component batch is missing
-    // * `get_or_empty` returns an empty set of results if the component if missing
-    // * `get` returns an option
+    // The results can be accessed either through the low-level Chunk APIs, or the higher-level helpers.
+
+    // Example of accessing the data using the higher-level APIs.
     //
-    // At this point we still don't know whether they are cached or not. That's the next step.
-    let points: &LatestAtComponentResults = results.get_required(MyPoint::name())?;
-    let colors: &LatestAtComponentResults = results.get_or_empty(MyColor::name());
-    let labels: &LatestAtComponentResults = results.get_or_empty(MyLabel::name());
+    // These APIs will log errors instead of returning them.
+    {
+        let points = results.component_batch::<MyPoint>().context("missing")?;
+        let colors = results.component_batch::<MyColor>().unwrap_or_default();
+        let labels = results.component_batch::<MyLabel>().unwrap_or_default();
 
-    // Then comes the time to resolve/convert and deserialize the data.
-    // These steps have to be done together for efficiency reasons.
+        // Then apply your instance-level joining logic, if any:
+        let color_default_fn = || MyColor(0xFF00FFFF);
+        let label_default_fn = || MyLabel("N/A".to_owned());
+        let results = clamped_zip_1x2(points, colors, color_default_fn, labels, label_default_fn)
+            .collect_vec();
+
+        eprintln!("results 1:\n{results:#?}");
+    }
+
+    // Example of accessing the data using the Chunk APIs.
     //
-    // Both the resolution and deserialization steps might fail, which is why this returns a `Result<Result<T>>`.
-    // Use `PromiseResult::flatten` to simplify it down to a single result.
-    //
-    // This is the step at which caching comes into play.
-    // If the data has already been accessed in the past, then this will just grab the pre-deserialized,
-    // pre-resolved/pre-converted result from the cache.
-    // Otherwise, this will trigger a deserialization and cache the result for next time.
+    // Because a latest-at query can only ever return a single row's worth of data for each
+    // individual component, the chunks returned here will be so-called unit chunks, which are
+    // guaranteed to only contain a single row.
+    {
+        // * `get_required` returns an error if the chunk is missing.
+        // * `get` returns an option.
+        let points = results.get_required(&MyPoint::name())?;
+        let colors = results.get(&MyColor::name());
+        let labels = results.get(&MyLabel::name());
 
-    let points = match points.iter_dense::<MyPoint>(&resolver).flatten() {
-        PromiseResult::Pending => {
-            // Handle the fact that the data isn't ready appropriately.
-            return Ok(());
-        }
-        PromiseResult::Ready(data) => data,
-        PromiseResult::Error(err) => return Err(err.into()),
-    };
+        // You can always use the standard deserialization path:
+        let points = points.component_batch::<MyPoint>().context("missing")??;
+        let labels = labels
+            .and_then(|unit| unit.component_batch::<MyLabel>()?.ok())
+            .unwrap_or_default();
 
-    let colors = match colors.iter_dense::<MyColor>(&resolver).flatten() {
-        PromiseResult::Pending => {
-            // Handle the fact that the data isn't ready appropriately.
-            return Ok(());
-        }
-        PromiseResult::Ready(data) => data,
-        PromiseResult::Error(err) => return Err(err.into()),
-    };
+        // Or, if you want every last bit of performance you can get, you can manipulate the raw
+        // data directly:
+        let colors = colors
+            .context("missing")?
+            .component_batch_raw(&MyColor::name())
+            .context("invalid")?;
+        let colors = colors
+            .as_any()
+            .downcast_ref::<ArrowPrimitiveArray<u32>>()
+            .context("invalid")?;
+        let colors = colors
+            .values()
+            .as_slice()
+            .iter()
+            .map(|&color| MyColor(color));
 
-    let labels = match labels.iter_dense::<MyLabel>(&resolver).flatten() {
-        PromiseResult::Pending => {
-            // Handle the fact that the data isn't ready appropriately.
-            return Ok(());
-        }
-        PromiseResult::Ready(data) => data.map(Some),
-        PromiseResult::Error(err) => return Err(err.into()),
-    };
+        // And finally apply your instance-level joining logic, if any:
+        let color_default_fn = || MyColor(0xFF00FFFF);
+        let label_default_fn = || MyLabel("N/A".to_owned());
+        let results = clamped_zip_1x2(points, colors, color_default_fn, labels, label_default_fn)
+            .collect_vec();
 
-    // With the data now fully resolved/converted and deserialized, the joining logic can be
-    // applied.
-    //
-    // In most cases this will be either a clamped zip, or no joining at all.
-
-    let color_default_fn = || {
-        static DEFAULT: MyColor = MyColor(0xFF00FFFF);
-        &DEFAULT
-    };
-    let label_default_fn = || None;
-
-    let results =
-        clamped_zip_1x2(points, colors, color_default_fn, labels, label_default_fn).collect_vec();
-
-    eprintln!("results:\n{results:#?}");
+        eprintln!("results 2:\n{results:#?}");
+    }
 
     Ok(())
 }

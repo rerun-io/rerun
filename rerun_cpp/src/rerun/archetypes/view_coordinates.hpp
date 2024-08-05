@@ -24,6 +24,8 @@ namespace rerun::archetypes {
     /// For example [Right, Down, Forward] means that the X axis points to the right, the Y axis points
     /// down, and the Z axis points forward.
     ///
+    /// Make sure that this archetype is logged at or above the origin entity path of your 3D views.
+    ///
     /// ## Example
     ///
     /// ### View coordinates for adjusting the eye camera
@@ -55,9 +57,7 @@ namespace rerun::archetypes {
         /// Indicator component, used to identify the archetype when converting to a list of components.
         using IndicatorComponent = rerun::components::IndicatorComponent<IndicatorComponentName>;
 
-      public:
-        // Extensions to generated type defined in 'view_coordinates_ext.cpp'
-
+      public: // START of extensions from view_coordinates_ext.cpp:
         /// Construct Vec3D from x/y/z values.
         constexpr ViewCoordinates(uint8_t axis0, uint8_t axis1, uint8_t axis2)
             : xyz(rerun::components::ViewCoordinates(axis0, axis1, axis2)) {}
@@ -245,6 +245,8 @@ namespace rerun::archetypes {
         RERUN_SDK_EXPORT static const rerun::archetypes::ViewCoordinates LEFT_HAND_Z_DOWN;
 
         // <END_GENERATED:declarations>
+
+        // END of extensions from view_coordinates_ext.cpp, start of generated code:
 
       public:
         ViewCoordinates() = default;

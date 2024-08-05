@@ -246,7 +246,7 @@ impl UICommand {
             Self::RestartWithWebGpu => (
                 "Restart with WebGPU",
                 "Reloads the webpage and force WebGPU for rendering. All data will be lost."
-            )
+            ),
         }
     }
 

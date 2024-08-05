@@ -21,10 +21,10 @@ from rerun.datatypes import (
     Angle,
     Float32ArrayLike,
     Quaternion,
+    QuaternionArrayLike,
     Rgba32ArrayLike,
-    Rotation3D,
-    Rotation3DArrayLike,
     RotationAxisAngle,
+    RotationAxisAngleArrayLike,
     Utf8,
     Utf8ArrayLike,
     Uuid,
@@ -215,46 +215,57 @@ def uvec3ds_expected(obj: Any, type_: Any | None = None) -> Any:
     return type_._optional(expected)
 
 
-rotations_arrays: list[Rotation3DArrayLike] = [
+quaternions_arrays: list[QuaternionArrayLike] = [
     [],
-    # Rotation3D
-    Rotation3D(Quaternion(xyzw=[1, 2, 3, 4])),
-    Rotation3D(Quaternion(xyzw=torch.tensor([1, 2, 3, 4]))),
-    Rotation3D(RotationAxisAngle([1.0, 2.0, 3.0], Angle(4))),
-    # Quaternion
     Quaternion(xyzw=[1, 2, 3, 4]),
     Quaternion(xyzw=[1.0, 2.0, 3.0, 4.0]),
     Quaternion(xyzw=np.array([1, 2, 3, 4])),
     Quaternion(xyzw=torch.tensor([1, 2, 3, 4])),
-    # RotationAxisAngle
+    [
+        Quaternion(xyzw=np.array([1, 2, 3, 4])),
+        Quaternion(xyzw=[1, 2, 3, 4]),
+    ],
+    # QuaternionArrayLike: npt.NDArray[np.float32]
+    np.array([[1, 2, 3, 4], [1, 2, 3, 4]], dtype=np.float32),
+]
+
+
+def quaternions_expected(rotations: QuaternionArrayLike, type_: Any) -> Any:
+    if rotations is None:
+        return type_._optional(None)
+    elif hasattr(rotations, "__len__") and len(rotations) == 0:  # type: ignore[arg-type]
+        return type_._optional(rotations)
+    elif isinstance(rotations, Quaternion):
+        return type_._optional(Quaternion(xyzw=[1, 2, 3, 4]))
+    else:  # sequence of Rotation3DLike
+        return type_._optional([Quaternion(xyzw=[1, 2, 3, 4])] * 2)
+
+
+rotation_axis_angle_arrays: list[RotationAxisAngleArrayLike] = [
+    [],
     RotationAxisAngle([1, 2, 3], 4),
     RotationAxisAngle([1.0, 2.0, 3.0], Angle(4)),
     RotationAxisAngle(Vec3D([1, 2, 3]), Angle(4)),
     RotationAxisAngle(np.array([1, 2, 3], dtype=np.uint8), Angle(rad=4)),
     RotationAxisAngle(torch.tensor([1, 2, 3]), Angle(rad=4)),
-    # Sequence[Rotation3DBatch]
     [
-        Rotation3D(Quaternion(xyzw=[1, 2, 3, 4])),
-        [1, 2, 3, 4],
-        Quaternion(xyzw=[1, 2, 3, 4]),
+        RotationAxisAngle([1, 2, 3], 4),
         RotationAxisAngle([1, 2, 3], 4),
     ],
 ]
 
 
-def expected_rotations(rotations: Rotation3DArrayLike, type_: Any) -> Any:
+def expected_rotation_axis_angles(rotations: RotationAxisAngleArrayLike, type_: Any) -> Any:
     if rotations is None:
         return type_._optional(None)
     elif hasattr(rotations, "__len__") and len(rotations) == 0:
-        return type_._optional(rotations)
-    elif isinstance(rotations, Rotation3D):
         return type_._optional(rotations)
     elif isinstance(rotations, RotationAxisAngle):
         return type_._optional(RotationAxisAngle([1, 2, 3], 4))
     elif isinstance(rotations, Quaternion):
         return type_._optional(Quaternion(xyzw=[1, 2, 3, 4]))
     else:  # sequence of Rotation3DLike
-        return type_._optional([Quaternion(xyzw=[1, 2, 3, 4])] * 3 + [RotationAxisAngle([1, 2, 3], 4)])
+        return type_._optional([RotationAxisAngle([1, 2, 3], 4)] * 2)
 
 
 radii_arrays: list[Float32ArrayLike | None] = [

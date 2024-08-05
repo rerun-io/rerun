@@ -33,8 +33,21 @@ class ViewFit(Enum):
     FillKeepAspectRatio = 3
     """Scale the image for the largest possible fit in the view's container, but keep the original aspect ratio."""
 
+    def __str__(self) -> str:
+        """Returns the variant name."""
+        if self == ViewFit.Original:
+            return "Original"
+        elif self == ViewFit.Fill:
+            return "Fill"
+        elif self == ViewFit.FillKeepAspectRatio:
+            return "FillKeepAspectRatio"
+        else:
+            raise ValueError("Unknown enum variant")
 
-ViewFitLike = Union[ViewFit, Literal["original", "fill", "fillkeepaspectratio"]]
+
+ViewFitLike = Union[
+    ViewFit, Literal["Fill", "FillKeepAspectRatio", "Original", "fill", "fillkeepaspectratio", "original"]
+]
 ViewFitArrayLike = Union[ViewFitLike, Sequence[ViewFitLike]]
 
 

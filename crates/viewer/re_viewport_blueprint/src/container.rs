@@ -47,7 +47,6 @@ impl ContainerBlueprint {
 
         // ----
 
-        let resolver = blueprint_db.resolver();
         let results = blueprint_db.query_caches().latest_at(
             blueprint_db.store(),
             query,
@@ -60,7 +59,7 @@ impl ContainerBlueprint {
         // This is a required component. Note that when loading containers we crawl the subtree and so
         // cleared empty container paths may exist transiently. The fact that they have an empty container_kind
         // is the marker that the have been cleared and not an error.
-        let container_kind = results.get_instance::<ContainerKind>(resolver, 0)?;
+        let container_kind = results.component_instance::<ContainerKind>(0)?;
 
         let blueprint_archetypes::ContainerBlueprint {
             container_kind,
@@ -73,13 +72,13 @@ impl ContainerBlueprint {
             grid_columns,
         } = blueprint_archetypes::ContainerBlueprint {
             container_kind,
-            display_name: results.get_instance(resolver, 0),
-            contents: results.get_vec(resolver),
-            col_shares: results.get_vec(resolver),
-            row_shares: results.get_vec(resolver),
-            active_tab: results.get_instance(resolver, 0),
-            visible: results.get_instance(resolver, 0),
-            grid_columns: results.get_instance(resolver, 0),
+            display_name: results.component_instance(0),
+            contents: results.component_batch(),
+            col_shares: results.component_batch(),
+            row_shares: results.component_batch(),
+            active_tab: results.component_instance(0),
+            visible: results.component_instance(0),
+            grid_columns: results.component_instance(0),
         };
 
         // ----

@@ -14,8 +14,9 @@ This page lists all built-in archetypes.
 
 ## Image & tensor
 
-* [`DepthImage`](archetypes/depth_image.md): A depth image.
+* [`DepthImage`](archetypes/depth_image.md): A depth image, i.e. as captured by a depth camera.
 * [`Image`](archetypes/image.md): A monochrome or color image.
+* [`ImageEncoded`](archetypes/image_encoded.md): An image encoded as e.g. a JPEG or PNG.
 * [`SegmentationImage`](archetypes/segmentation_image.md): An image made up of integer [`components.ClassId`](https://rerun.io/docs/reference/types/components/class_id)s.
 * [`Tensor`](archetypes/tensor.md): An N-dimensional array of numbers.
 
@@ -38,6 +39,8 @@ This page lists all built-in archetypes.
 * [`Arrows3D`](archetypes/arrows3d.md): 3D arrows with optional colors, radii, labels, etc.
 * [`Asset3D`](archetypes/asset3d.md): A prepacked 3D asset (`.gltf`, `.glb`, `.obj`, `.stl`, etc.).
 * [`Boxes3D`](archetypes/boxes3d.md): 3D boxes with half-extents and optional center, rotations, colors etc.
+* [`Ellipsoids3D`](archetypes/ellipsoids3d.md): 3D ellipsoids or spheres.
+* [`LeafTransforms3D`](archetypes/leaf_transforms3d.md): One or more transforms between the parent and the current entity which are *not* propagated in the transform hierarchy.
 * [`LineStrips3D`](archetypes/line_strips3d.md): 3D line strips with positions and optional colors, radii, labels, etc.
 * [`Mesh3D`](archetypes/mesh3d.md): A 3D triangle mesh as specified by its per-mesh and per-vertex properties.
 * [`Pinhole`](archetypes/pinhole.md): Camera perspective projection (a.k.a. intrinsics).

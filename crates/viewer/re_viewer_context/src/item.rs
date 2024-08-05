@@ -183,26 +183,25 @@ pub fn resolve_mono_instance_path(
         // NOTE: While we normally frown upon direct queries to the datastore, `all_components` is fine.
         let Some(component_names) = entity_db
             .store()
-            .all_components(&query.timeline(), &instance.entity_path)
+            .all_components_on_timeline(&query.timeline(), &instance.entity_path)
         else {
             // No components at all, return unindexed entity.
             return re_entity_db::InstancePath::entity_all(instance.entity_path.clone());
         };
 
         for component_name in component_names {
-            let results = entity_db.query_caches().latest_at(
-                entity_db.store(),
-                query,
-                &instance.entity_path,
-                [component_name],
-            );
-            if let Some(results) = results.get(component_name) {
-                if let re_query::PromiseResult::Ready(array) =
-                    results.resolved(entity_db.resolver())
-                {
-                    if array.len() > 1 {
-                        return instance.clone();
-                    }
+            if let Some(array) = entity_db
+                .query_caches()
+                .latest_at(
+                    entity_db.store(),
+                    query,
+                    &instance.entity_path,
+                    [component_name],
+                )
+                .component_batch_raw(&component_name)
+            {
+                if array.len() > 1 {
+                    return instance.clone();
                 }
             }
         }

@@ -60,15 +60,36 @@ cpp = ["base", "cpp"]
 # The wheel-test environment is for testing the python package when built from a wheel.
 # Thistenvironment is specifically used for validation of the wheel artifact in CI.
 # It does not include the features necessary for a source-build of the wheel.
-wheel-test = ["base", "cpp", "wheel-test", "py-test-deps"]
+#
+# WARNING: wheel-test default depends on a published `rerun-sdk` version which will
+# be installed from pypi and not from the local source code.
+#
+# To update the wheel artifact that is registered with pixi, you can use `pixi_install_wheel.py`.
+# For example:
+# ```
+# pixi run python scripts/ci/pixi_install_wheel.py --feature python-pypi --package rerun-sdk --dir wheel
+# ```
+
+#  Just the deps for running roundtrips
+wheel-test-min = ["base", "cpp", "wheel-test", "py-test-deps", "python-pypi"]
+
+# The full deps for running all examples
+wheel-test = [
+  "base",
+  "cpp",
+  "wheel-test",
+  "py-test-deps",
+  "examples-common",
+  "python-pypi",
+]
 
 # Example environments
 
 # These environments use the dev version of the python package.
 # The package will be installed in editable mode, so changes to the python code will be reflected immediately.
-# However, any changes to do the rust bindings will require running `pixi run -e examples py-build`.
+# However, any changes to do the rust bindings will require running `pixi run py-build-examples`.
 examples = ["examples-common", "python-dev", "wheel-build", "examples-tasks"]
-examples-ocr = ["examples-ocr", "python-dev", "wheel-build"]
+examples-ocr = ["examples-ocr", "wheel-build"]
 
 # This environment uses the pypi-published version of the python package. This avoids the need to
 # build the package from source if you just want to try running the examples locally.
@@ -92,6 +113,9 @@ rerun = "cargo run --package rerun-cli --no-default-features --features native_v
 
 # Compile `rerun-cli` without the web-viewer.
 rerun-build = "cargo build --package rerun-cli --no-default-features --features native_viewer"
+
+# Compile `rerun-cli` without the web-viewer.
+rerun-build-release = "cargo build --package rerun-cli --release --no-default-features --features native_viewer"
 
 # Compile and run the rerun viewer with --release.
 #
@@ -249,26 +273,36 @@ js-build-all = { cmd = "yarn --cwd rerun_js workspaces run build", depends_on = 
 py-build-common = { cmd = "PIP_REQUIRE_VIRTUALENV=0 RERUN_ALLOW_MISSING_BIN=1 maturin develop --manifest-path rerun_py/Cargo.toml --extras=tests", depends_on = [
   "rerun-build", # We need to build rerun-cli since it is bundled in the python package.
 ] }
+py-build-common-release = { cmd = "PIP_REQUIRE_VIRTUALENV=0 RERUN_ALLOW_MISSING_BIN=1 maturin develop --release --manifest-path rerun_py/Cargo.toml --extras=tests", depends_on = [
+  "rerun-build-release", # We need to build rerun-cli since it is bundled in the python package.
+] }
+
+
+# Build the `rerun-notebook` package.
+py-build-notebook = { cmd = "pip install -e rerun_notebook", depends_on = [
+  "js-build-base",
+] }
+
 
 [feature.python-tasks.tasks]
 
+# Dedicated alias for building the python bindings for the `py` environment.
 py-build = "pixi run -e py py-build-common"
+
+# Dedicated alias for building the python bindings in release mode for the `py` environment.
+py-build-release = "pixi run -e py py-build-common-release"
 
 # Helper alias to run the python interpreter in the context of the python environment
 rrpy = "python"
 
 py-bench = { cmd = "python -m pytest -c rerun_py/pyproject.toml --benchmark-only", depends_on = [
-  "py-build",
+  "py-build-release",
 ] }
 
 py-plot-dashboard = { cmd = "python tests/python/plot_dashboard_stress/main.py", depends_on = [
   "py-build",
 ] }
 
-# Build the `rerun-notebook` package.
-py-build-notebook = { cmd = "pip install -e rerun_notebook", depends_on = [
-  "js-build-base",
-] }
 
 # Run the Python tests.
 # Don't call this on CI - use `nox` to run tests on all supported Python versions instead.
@@ -283,6 +317,8 @@ py-test = { cmd = "python -m pytest -vv rerun_py/tests/unit", depends_on = [
 rerun-from-path = "rerun"
 
 [feature.examples-tasks.tasks]
+
+# Dedicated alias for building the python bindings for the `examples` environment.
 py-build-examples = "pixi run -e examples py-build-common"
 
 # Python example utilities
@@ -386,7 +422,7 @@ tomlkit = "0.12.3.*"
 tqdm = ">=4.66.2,<4.67"           # For displaying progress in various utility scripts.
 typing_extensions = ">4.5"
 typos = ">=1.16.20"
-opencv = ">4.6"                   # For `compare_snippet_output.py` (needed by both C++ and Python)
+
 
 [feature.base.pypi-dependencies]
 cryptography = "==38.0.4"        # For `upload_image.py`
@@ -423,7 +459,19 @@ vs2022_win-64 = "19.37.32822"
 
 # PYTHON DEV ENVIRONMENT
 [feature.python-dev]
-platforms = ["linux-64", "osx-arm64", "osx-64", "win-64"]
+platforms = ["linux-64", "linux-aarch64", "osx-arm64", "osx-64", "win-64"]
+
+[feature.python-dev.dependencies]
+# We need opencv for `compare_snippet_output.py` (needed by both C++ and Python)
+# and other common examples/snippets.
+#
+# We specifically don't use the pypi version because the conda version is generally
+# more portable. However, this is all a total mess. See: https://github.com/rerun-io/rerun/pull/6946
+#
+# This is also redundantly defined in `python-pypi`
+opencv = ">4.6"
+numpy = "<2"    # Rerun still needs numpy <2. Enforce this outside of the pypi dep tree so we pick up the conda version.
+
 
 [feature.python-dev.activation]
 # Set up environment variables so maturin will do the right thing when
@@ -452,16 +500,23 @@ pip = ">=23"
 
 # PYTHON PYPI ENVIRONMENT
 [feature.python-pypi]
-platforms = ["linux-64", "osx-arm64", "osx-64", "win-64"]
+platforms = ["linux-64", "linux-aarch64", "osx-arm64", "osx-64", "win-64"]
+
+[feature.python-pypi.dependencies]
+# Note these are the same as in `python-dev` but we need to repeat them here because the two are mutually exclusive.
+opencv = ">4.6"
+numpy = "<2"    # Rerun still needs numpy <2. Enforce this outside of the pypi dep tree so we pick up the conda version.
+
 
 [feature.python-pypi.pypi-dependencies]
-rerun-sdk = "==0.16.1"
-# TODO(jprochazk): Uncomment this once we have published the notebook package to pypi
-#rerun-notebook = "==0.16.1"
+rerun-sdk = "==0.17.0"
+rerun-notebook = "==0.17.0"
 
 # EXAMPLES ENVIRONMENT
 [feature.examples-common]
-platforms = ["linux-64", "osx-arm64", "osx-64", "win-64"]
+# Ideally we would could remove`linux-aarch64` from here, but it breaks other things.
+# See: https://github.com/prefix-dev/pixi/issues/1051
+platforms = ["linux-64", "linux-aarch64", "osx-arm64", "osx-64", "win-64"]
 
 
 [feature.examples-common.system-requirements]
@@ -484,9 +539,6 @@ controlnet = { path = "examples/python/controlnet", editable = true }
 detect_and_track_objects = { path = "examples/python/detect_and_track_objects", editable = true }
 dicom_mri = { path = "examples/python/dicom_mri", editable = true }
 dna = { path = "examples/python/dna", editable = true }
-face_tracking = { path = "examples/python/face_tracking", editable = true }
-gesture_detection = { path = "examples/python/gesture_detection", editable = true }
-human_pose_tracking = { path = "examples/python/human_pose_tracking", editable = true }
 incremental_logging = { path = "examples/python/incremental_logging", editable = true }
 lidar = { path = "examples/python/lidar", editable = true }
 live_camera_edge_detection = { path = "examples/python/live_camera_edge_detection", editable = true }
@@ -511,6 +563,26 @@ signed_distance_fields = { path = "examples/python/signed_distance_fields", edit
 stdio = { path = "examples/python/stdio", editable = true }
 structure_from_motion = { path = "examples/python/structure_from_motion", editable = true }
 
+# TODO(jleibs): Do this with less duplication
+[feature.examples-common.target.linux-64.pypi-dependencies]
+face_tracking = { path = "examples/python/face_tracking", editable = true }
+gesture_detection = { path = "examples/python/gesture_detection", editable = true }
+human_pose_tracking = { path = "examples/python/human_pose_tracking", editable = true }
+
+[feature.examples-common.target.osx-arm64.pypi-dependencies]
+face_tracking = { path = "examples/python/face_tracking", editable = true }
+gesture_detection = { path = "examples/python/gesture_detection", editable = true }
+human_pose_tracking = { path = "examples/python/human_pose_tracking", editable = true }
+
+[feature.examples-common.target.osx-64.pypi-dependencies]
+face_tracking = { path = "examples/python/face_tracking", editable = true }
+gesture_detection = { path = "examples/python/gesture_detection", editable = true }
+human_pose_tracking = { path = "examples/python/human_pose_tracking", editable = true }
+
+[feature.examples-common.target.win-64.pypi-dependencies]
+face_tracking = { path = "examples/python/face_tracking", editable = true }
+gesture_detection = { path = "examples/python/gesture_detection", editable = true }
+human_pose_tracking = { path = "examples/python/human_pose_tracking", editable = true }
 
 # OCR Needs an isolated environment because it depends on opencv-4.6 by way of the `paddleclas` package
 [feature.examples-ocr]
@@ -523,6 +595,12 @@ macos = "12.0" # needed for scipy
 poppler = "24.04"     # Needed to read pdf files.
 faiss-cpu = "==1.7.2" # Dep comes from paddleclas but we want the conda version to avoid source-wheel build
 
+# Note these are the same as in `python-dev` but we need to repeat them here because the two are mutually exclusive.
+numpy = "<2" # Rerun still needs numpy <2. Enforce this outside of the pypi dep tree so we pick up the conda version.
+
 [feature.examples-ocr.pypi-dependencies]
+rerun-sdk = { path = "rerun_py", editable = true }
+rerun-notebook = { path = "rerun_notebook", editable = true }
+
 paddleclas = { version = "==2.5.2" }
 ocr = { path = "examples/python/ocr", editable = true }

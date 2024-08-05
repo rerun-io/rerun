@@ -36,8 +36,23 @@ class ContainerKind(Enum):
     Grid = 4
     """Organize children in a grid layout"""
 
+    def __str__(self) -> str:
+        """Returns the variant name."""
+        if self == ContainerKind.Tabs:
+            return "Tabs"
+        elif self == ContainerKind.Horizontal:
+            return "Horizontal"
+        elif self == ContainerKind.Vertical:
+            return "Vertical"
+        elif self == ContainerKind.Grid:
+            return "Grid"
+        else:
+            raise ValueError("Unknown enum variant")
 
-ContainerKindLike = Union[ContainerKind, Literal["tabs", "horizontal", "vertical", "grid"]]
+
+ContainerKindLike = Union[
+    ContainerKind, Literal["Grid", "Horizontal", "Tabs", "Vertical", "grid", "horizontal", "tabs", "vertical"]
+]
 ContainerKindArrayLike = Union[ContainerKindLike, Sequence[ContainerKindLike]]
 
 

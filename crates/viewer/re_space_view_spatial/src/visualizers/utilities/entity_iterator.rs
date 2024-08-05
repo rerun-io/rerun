@@ -1,4 +1,5 @@
 use itertools::Either;
+
 use re_chunk_store::{LatestAtQuery, RangeQuery};
 use re_log_types::{TimeInt, Timeline};
 use re_space_view::{
@@ -6,15 +7,12 @@ use re_space_view::{
 };
 use re_types::Archetype;
 use re_viewer_context::{
-    IdentifiedViewSystem, QueryContext, QueryRange, SpaceViewClass, SpaceViewSystemExecutionError,
-    ViewContext, ViewContextCollection, ViewQuery,
+    IdentifiedViewSystem, QueryContext, QueryRange, SpaceViewSystemExecutionError, ViewContext,
+    ViewContextCollection, ViewQuery,
 };
 
-use crate::{
-    contexts::{
-        AnnotationSceneContext, EntityDepthOffsets, SpatialSceneEntityContext, TransformContext,
-    },
-    SpatialSpaceView3D,
+use crate::contexts::{
+    AnnotationSceneContext, EntityDepthOffsets, SpatialSceneEntityContext, TransformContext,
 };
 
 // ---
@@ -90,7 +88,7 @@ fn test_clamped_vec() {
     );
 }
 
-// --- Cached APIs ---
+// --- Chunk-based APIs ---
 
 pub fn query_archetype_with_history<'a, A: Archetype>(
     ctx: &'a ViewContext<'a>,
@@ -135,7 +133,7 @@ pub fn query_archetype_with_history<'a, A: Archetype>(
 
 /// Iterates through all entity views for a given archetype.
 ///
-/// The callback passed in gets passed along an [`SpatialSceneEntityContext`] which contains
+/// The callback passed in gets passed along a [`SpatialSceneEntityContext`] which contains
 /// various useful information about an entity in the context of the current scene.
 pub fn process_archetype<System: IdentifiedViewSystem, A, F>(
     ctx: &ViewContext<'_>,
@@ -160,24 +158,14 @@ where
     let system_identifier = System::identifier();
 
     for data_result in query.iter_visible_data_results(ctx, system_identifier) {
-        // The transform that considers pinholes only makes sense if this is a 3D space-view
-        let world_from_entity =
-            if view_ctx.space_view_class_identifier() == SpatialSpaceView3D::identifier() {
-                transforms.reference_from_entity(&data_result.entity_path)
-            } else {
-                transforms.reference_from_entity_ignoring_pinhole(
-                    &data_result.entity_path,
-                    ctx.recording(),
-                    &latest_at,
-                )
-            };
-
-        let Some(world_from_entity) = world_from_entity else {
+        let Some(transform_info) = transforms.transform_info_for_entity(&data_result.entity_path)
+        else {
             continue;
         };
+
         let depth_offset_key = (system_identifier, data_result.entity_path.hash());
         let entity_context = SpatialSceneEntityContext {
-            world_from_entity,
+            transform_info,
             depth_offset: depth_offsets
                 .per_entity_and_visualizer
                 .get(&depth_offset_key)
@@ -208,4 +196,117 @@ where
     }
 
     Ok(())
+}
+
+// ---
+
+use re_chunk::{Chunk, ChunkComponentIterItem, ComponentName, RowId};
+use re_chunk_store::external::{re_chunk, re_chunk::external::arrow2};
+
+/// Iterate `chunks` as indexed deserialized batches.
+///
+/// See [`Chunk::iter_component`] for more information.
+#[allow(unused)]
+pub fn iter_component<'a, C: re_types::Component>(
+    chunks: &'a std::borrow::Cow<'a, [Chunk]>,
+    timeline: Timeline,
+    component_name: ComponentName,
+) -> impl Iterator<Item = ((TimeInt, RowId), ChunkComponentIterItem<C>)> + 'a {
+    chunks.iter().flat_map(move |chunk| {
+        itertools::izip!(
+            chunk.iter_component_indices(&timeline, &component_name),
+            chunk.iter_component::<C>()
+        )
+    })
+}
+
+/// Iterate `chunks` as indexed primitives.
+///
+/// See [`Chunk::iter_primitive`] for more information.
+#[allow(unused)]
+pub fn iter_primitive<'a, T: arrow2::types::NativeType>(
+    chunks: &'a std::borrow::Cow<'a, [Chunk]>,
+    timeline: Timeline,
+    component_name: ComponentName,
+) -> impl Iterator<Item = ((TimeInt, RowId), &'a [T])> + 'a {
+    chunks.iter().flat_map(move |chunk| {
+        itertools::izip!(
+            chunk.iter_component_indices(&timeline, &component_name),
+            chunk.iter_primitive::<T>(&component_name)
+        )
+    })
+}
+
+/// Iterate `chunks` as indexed primitive arrays.
+///
+/// See [`Chunk::iter_primitive_array`] for more information.
+#[allow(unused)]
+pub fn iter_primitive_array<'a, const N: usize, T: arrow2::types::NativeType>(
+    chunks: &'a std::borrow::Cow<'a, [Chunk]>,
+    timeline: Timeline,
+    component_name: ComponentName,
+) -> impl Iterator<Item = ((TimeInt, RowId), &'a [[T; N]])> + 'a
+where
+    [T; N]: bytemuck::Pod,
+{
+    chunks.iter().flat_map(move |chunk| {
+        itertools::izip!(
+            chunk.iter_component_indices(&timeline, &component_name),
+            chunk.iter_primitive_array::<N, T>(&component_name)
+        )
+    })
+}
+
+/// Iterate `chunks` as indexed list of primitive arrays.
+///
+/// See [`Chunk::iter_primitive_array_list`] for more information.
+#[allow(unused)]
+pub fn iter_primitive_array_list<'a, const N: usize, T: arrow2::types::NativeType>(
+    chunks: &'a std::borrow::Cow<'a, [Chunk]>,
+    timeline: Timeline,
+    component_name: ComponentName,
+) -> impl Iterator<Item = ((TimeInt, RowId), Vec<&'a [[T; N]]>)> + 'a
+where
+    [T; N]: bytemuck::Pod,
+{
+    chunks.iter().flat_map(move |chunk| {
+        itertools::izip!(
+            chunk.iter_component_indices(&timeline, &component_name),
+            chunk.iter_primitive_array_list::<N, T>(&component_name)
+        )
+    })
+}
+
+/// Iterate `chunks` as indexed UTF-8 strings.
+///
+/// See [`Chunk::iter_string`] for more information.
+#[allow(unused)]
+pub fn iter_string<'a>(
+    chunks: &'a std::borrow::Cow<'a, [Chunk]>,
+    timeline: Timeline,
+    component_name: ComponentName,
+) -> impl Iterator<Item = ((TimeInt, RowId), Vec<re_types::ArrowString>)> + 'a {
+    chunks.iter().flat_map(move |chunk| {
+        itertools::izip!(
+            chunk.iter_component_indices(&timeline, &component_name),
+            chunk.iter_string(&component_name)
+        )
+    })
+}
+
+/// Iterate `chunks` as indexed buffers.
+///
+/// See [`Chunk::iter_buffer`] for more information.
+#[allow(unused)]
+pub fn iter_buffer<'a, T: arrow2::types::NativeType>(
+    chunks: &'a std::borrow::Cow<'a, [Chunk]>,
+    timeline: Timeline,
+    component_name: ComponentName,
+) -> impl Iterator<Item = ((TimeInt, RowId), Vec<re_types::ArrowBuffer<T>>)> + 'a {
+    chunks.iter().flat_map(move |chunk| {
+        itertools::izip!(
+            chunk.iter_component_indices(&timeline, &component_name),
+            chunk.iter_buffer(&component_name)
+        )
+    })
 }

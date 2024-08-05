@@ -19,10 +19,6 @@ from . import (
     experimental as experimental,
     notebook as notebook,
 )
-from ._image import (
-    ImageEncoded as ImageEncoded,
-    ImageFormat as ImageFormat,
-)
 from ._log import (
     AsComponents as AsComponents,
     ComponentBatchLike as ComponentBatchLike,
@@ -48,7 +44,10 @@ from .archetypes import (
     Clear as Clear,
     DepthImage as DepthImage,
     DisconnectedSpace as DisconnectedSpace,
+    Ellipsoids3D as Ellipsoids3D,
     Image as Image,
+    ImageEncoded as ImageEncoded,
+    LeafTransforms3D as LeafTransforms3D,
     LineStrips2D as LineStrips2D,
     LineStrips3D as LineStrips3D,
     Mesh3D as Mesh3D,
@@ -73,26 +72,27 @@ from .blueprint.api import (
 )
 from .components import (
     AlbedoFactor as AlbedoFactor,
+    ChannelDatatype as ChannelDatatype,
+    ColorModel as ColorModel,
     MediaType as MediaType,
-    OutOfTreeTransform3D as OutOfTreeTransform3D,
-    OutOfTreeTransform3DBatch as OutOfTreeTransform3DBatch,
+    PixelFormat as PixelFormat,
     Radius as Radius,
+    Scale3D as Scale3D,
     TensorDimensionIndexSelection as TensorDimensionIndexSelection,
     TextLogLevel as TextLogLevel,
+    TransformRelation as TransformRelation,
 )
 from .datatypes import (
+    Angle as Angle,
     AnnotationInfo as AnnotationInfo,
     ClassDescription as ClassDescription,
     Quaternion as Quaternion,
     RotationAxisAngle as RotationAxisAngle,
-    Scale3D as Scale3D,
     TensorData as TensorData,
     TensorDimensionSelection as TensorDimensionSelection,
     TimeInt as TimeInt,
     TimeRange as TimeRange,
     TimeRangeBoundary as TimeRangeBoundary,
-    TranslationAndMat3x3 as TranslationAndMat3x3,
-    TranslationRotationScale3D as TranslationRotationScale3D,
     VisibleTimeRange as VisibleTimeRange,
 )
 from .error_utils import (

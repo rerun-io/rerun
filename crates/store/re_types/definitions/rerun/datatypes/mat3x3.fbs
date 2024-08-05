@@ -1,9 +1,3 @@
-include "arrow/attributes.fbs";
-include "cpp/attributes.fbs";
-include "fbs/attributes.fbs";
-include "python/attributes.fbs";
-include "rust/attributes.fbs";
-
 namespace rerun.datatypes;
 
 // ---
@@ -43,7 +37,9 @@ namespace rerun.datatypes;
 struct Mat3x3 (
   "attr.arrow.transparent",
   "attr.python.aliases": "npt.ArrayLike",
-  "attr.rust.derive": "Copy, PartialEq, PartialOrd",
+  "attr.python.array_aliases": "npt.ArrayLike",
+  "attr.rust.derive": "Copy, PartialEq, PartialOrd, bytemuck::Pod, bytemuck::Zeroable",
+  "attr.rust.repr": "transparent",
   "attr.rust.tuple_struct"
 ) {
   /// Flat list of matrix coefficients in column-major order.

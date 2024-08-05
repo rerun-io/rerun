@@ -174,7 +174,10 @@ def log_radars(first_radar_tokens: list[str], nusc: nuscenes.NuScenes, max_times
             points = pointcloud.points[:3].T  # shape after transposing: (num_points, 3)
             point_distances = np.linalg.norm(points, axis=1)
             point_colors = cmap(norm(point_distances))
-            rr.log(f"world/ego_vehicle/{sensor_name}", rr.Points3D(points, colors=point_colors))
+            rr.log(
+                f"world/ego_vehicle/{sensor_name}",
+                rr.Points3D(points, colors=point_colors),
+            )
             current_camera_token = sample_data["next"]
 
 
@@ -190,7 +193,7 @@ def log_annotations(first_sample_token: str, nusc: nuscenes.NuScenes, max_timest
         ann_tokens = sample_data["anns"]
         sizes = []
         centers = []
-        rotations = []
+        quaternions = []
         class_ids = []
         for ann_token in ann_tokens:
             ann = nusc.get("sample_annotation", ann_token)
@@ -199,12 +202,21 @@ def log_annotations(first_sample_token: str, nusc: nuscenes.NuScenes, max_timest
             width, length, height = ann["size"]
             sizes.append((length, width, height))  # x, y, z sizes
             centers.append(ann["translation"])
-            rotations.append(rr.Quaternion(xyzw=rotation_xyzw))
+            quaternions.append(rr.Quaternion(xyzw=rotation_xyzw))
             if ann["category_name"] not in label2id:
                 label2id[ann["category_name"]] = len(label2id)
             class_ids.append(label2id[ann["category_name"]])
 
-        rr.log("world/anns", rr.Boxes3D(sizes=sizes, centers=centers, rotations=rotations, class_ids=class_ids))
+        rr.log(
+            "world/anns",
+            rr.Boxes3D(
+                sizes=sizes,
+                centers=centers,
+                quaternions=quaternions,
+                class_ids=class_ids,
+                fill_mode=rr.components.FillMode.Solid,
+            ),
+        )
         current_sample_token = sample_data["next"]
 
     # skipping for now since labels take too much space in 3D view (see https://github.com/rerun-io/rerun/issues/4451)
@@ -255,7 +267,10 @@ def main() -> None:
     )
     parser.add_argument("--dataset-version", type=str, default="v1.0-mini", help="Scene id to visualize")
     parser.add_argument(
-        "--seconds", type=float, default=float("inf"), help="If specified, limits the number of seconds logged"
+        "--seconds",
+        type=float,
+        default=float("inf"),
+        help="If specified, limits the number of seconds logged",
     )
     rr.script_add_args(parser)
     args = parser.parse_args()
@@ -291,7 +306,11 @@ def main() -> None:
 
     rr.script_setup(args, "rerun_example_nuscenes", default_blueprint=blueprint)
 
-    rr.log("description", rr.TextDocument(DESCRIPTION, media_type=rr.MediaType.MARKDOWN), timeless=True)
+    rr.log(
+        "description",
+        rr.TextDocument(DESCRIPTION, media_type=rr.MediaType.MARKDOWN),
+        timeless=True,
+    )
 
     log_nuscenes(nusc, args.scene_name, max_time_sec=args.seconds)
 

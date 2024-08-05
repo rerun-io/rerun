@@ -7,6 +7,9 @@ A 3D triangle mesh as specified by its per-mesh and per-vertex properties.
 
 See also [`archetypes.Asset3D`](https://rerun.io/docs/reference/types/archetypes/asset3d).
 
+If there are multiple [`archetypes.LeafTransforms3D`](https://rerun.io/docs/reference/types/archetypes/leaf_transforms3d) instances logged to the same entity as a mesh,
+an instance of the mesh will be drawn for each transform.
+
 ## Components
 
 **Required**: [`Position3D`](../components/position3d.md)
@@ -48,5 +51,17 @@ snippet: archetypes/mesh3d_partial_updates
   <source media="(max-width: 1024px)" srcset="https://static.rerun.io/mesh3d_partial_updates/a11e4accb0257dcd9531867b7e1d6fd5e3bee5c3/1024w.png">
   <source media="(max-width: 1200px)" srcset="https://static.rerun.io/mesh3d_partial_updates/a11e4accb0257dcd9531867b7e1d6fd5e3bee5c3/1200w.png">
   <img src="https://static.rerun.io/mesh3d_partial_updates/a11e4accb0257dcd9531867b7e1d6fd5e3bee5c3/full.png">
+</picture>
+
+### 3D mesh with leaf transforms
+
+snippet: archetypes/mesh3d_leaf_transforms3d
+
+<picture data-inline-viewer="snippets/mesh3d_leaf_transforms3d">
+  <source media="(max-width: 480px)" srcset="https://static.rerun.io/mesh3d_leaf_transforms3d/c2d0ee033129da53168f5705625a9b033f3a3d61/480w.png">
+  <source media="(max-width: 768px)" srcset="https://static.rerun.io/mesh3d_leaf_transforms3d/c2d0ee033129da53168f5705625a9b033f3a3d61/768w.png">
+  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/mesh3d_leaf_transforms3d/c2d0ee033129da53168f5705625a9b033f3a3d61/1024w.png">
+  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/mesh3d_leaf_transforms3d/c2d0ee033129da53168f5705625a9b033f3a3d61/1200w.png">
+  <img src="https://static.rerun.io/mesh3d_leaf_transforms3d/c2d0ee033129da53168f5705625a9b033f3a3d61/full.png">
 </picture>
 

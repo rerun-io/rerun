@@ -1,6 +1,5 @@
 use re_chunk_store::RowId;
 use re_log_types::{hash::Hash64, Instance, TimeInt};
-use re_query::range_zip_1x7;
 use re_renderer::renderer::MeshInstance;
 use re_renderer::RenderContext;
 use re_types::{
@@ -8,6 +7,7 @@ use re_types::{
     components::{
         AlbedoFactor, ClassId, Color, Position3D, TensorData, Texcoord2D, TriangleIndices, Vector3D,
     },
+    Loggable as _,
 };
 use re_viewer_context::{
     ApplicableEntities, IdentifiedViewSystem, QueryContext, SpaceViewSystemExecutionError,
@@ -50,7 +50,7 @@ struct Mesh3DComponentData<'a> {
 
     triangle_indices: Option<&'a [TriangleIndices]>,
     albedo_factor: Option<&'a AlbedoFactor>,
-    albedo_texture: Option<&'a TensorData>,
+    albedo_texture: Option<TensorData>,
 
     class_ids: &'a [ClassId],
 }
@@ -106,7 +106,8 @@ impl Mesh3DVisualizer {
                             vertex_texcoords: (!vertex_texcoords.is_empty())
                                 .then_some(vertex_texcoords),
                             albedo_factor: data.albedo_factor.copied(),
-                            albedo_texture: data.albedo_texture.cloned(),
+                            // NOTE: not actually cloning anything.
+                            albedo_texture: data.albedo_texture.clone(),
                             class_ids: (!data.class_ids.is_empty())
                                 .then(|| data.class_ids.to_owned()),
                         },
@@ -117,26 +118,27 @@ impl Mesh3DVisualizer {
             });
 
             if let Some(mesh) = mesh {
-                instances.extend(mesh.mesh_instances.iter().map(move |mesh_instance| {
-                    let entity_from_mesh = mesh_instance.world_from_mesh;
-                    let world_from_mesh = ent_context.world_from_entity * entity_from_mesh;
+                // Let's draw the mesh once for every instance transform.
+                // TODO(#7026): This a rare form of hybrid joining.
+                for &world_from_instance in &ent_context.transform_info.reference_from_instances {
+                    instances.extend(mesh.mesh_instances.iter().map(move |mesh_instance| {
+                        let entity_from_mesh = mesh_instance.world_from_mesh;
+                        let world_from_mesh = world_from_instance * entity_from_mesh;
 
-                    MeshInstance {
-                        gpu_mesh: mesh_instance.gpu_mesh.clone(),
-                        world_from_mesh,
-                        outline_mask_ids,
-                        picking_layer_id: picking_layer_id_from_instance_path_hash(
-                            picking_instance_hash,
-                        ),
-                        ..Default::default()
-                    }
-                }));
+                        MeshInstance {
+                            gpu_mesh: mesh_instance.gpu_mesh.clone(),
+                            world_from_mesh,
+                            outline_mask_ids,
+                            picking_layer_id: picking_layer_id_from_instance_path_hash(
+                                picking_instance_hash,
+                            ),
+                            ..Default::default()
+                        }
+                    }));
 
-                self.0.add_bounding_box(
-                    entity_path.hash(),
-                    mesh.bbox(),
-                    ent_context.world_from_entity,
-                );
+                    self.0
+                        .add_bounding_box(entity_path.hash(), mesh.bbox(), world_from_instance);
+                }
             };
         }
     }
@@ -174,69 +176,87 @@ impl VisualizerSystem for Mesh3DVisualizer {
 
         let mut instances = Vec::new();
 
-        super::entity_iterator::process_archetype::<Self, Mesh3D, _>(
+        use super::entity_iterator::{iter_primitive_array, process_archetype};
+        process_archetype::<Self, Mesh3D, _>(
             ctx,
             view_query,
             context_systems,
             |ctx, spatial_ctx, results| {
                 use re_space_view::RangeResultsExt as _;
 
-                let resolver = ctx.recording().resolver();
+                let Some(all_vertex_position_chunks) =
+                    results.get_required_chunks(&Position3D::name())
+                else {
+                    return Ok(());
+                };
 
-                let vertex_positions =
-                    match results.get_required_component_dense::<Position3D>(resolver) {
-                        Some(positions) => positions?,
-                        _ => return Ok(()),
-                    };
-
-                let vertex_normals = results.get_or_empty_dense(resolver)?;
-                let vertex_colors = results.get_or_empty_dense(resolver)?;
-                let vertex_texcoords = results.get_or_empty_dense(resolver)?;
-                let triangle_indices = results.get_or_empty_dense(resolver)?;
-                let albedo_factors = results.get_or_empty_dense(resolver)?;
-                let albedo_textures = results.get_or_empty_dense(resolver)?;
-                let class_ids = results.get_or_empty_dense(resolver)?;
+                let timeline = ctx.query.timeline();
+                let all_vertex_positions_indexed = iter_primitive_array::<3, f32>(
+                    &all_vertex_position_chunks,
+                    timeline,
+                    Position3D::name(),
+                );
+                let all_vertex_normals = results.iter_as(timeline, Vector3D::name());
+                let all_vertex_colors = results.iter_as(timeline, Color::name());
+                let all_vertex_texcoords = results.iter_as(timeline, Texcoord2D::name());
+                let all_triangle_indices = results.iter_as(timeline, TriangleIndices::name());
+                let all_albedo_factors = results.iter_as(timeline, AlbedoFactor::name());
+                // TODO(#6386): we have to deserialize here because `TensorData` is still a complex
+                // type at this point.
+                let all_albedo_textures = results.iter_as(timeline, TensorData::name());
+                let all_class_ids = results.iter_as(timeline, ClassId::name());
 
                 let query_result_hash = results.query_result_hash();
 
-                let data = range_zip_1x7(
-                    vertex_positions.range_indexed(),
-                    vertex_normals.range_indexed(),
-                    vertex_colors.range_indexed(),
-                    vertex_texcoords.range_indexed(),
-                    triangle_indices.range_indexed(),
-                    albedo_factors.range_indexed(),
-                    albedo_textures.range_indexed(),
-                    class_ids.range_indexed(),
+                let data = re_query::range_zip_1x7(
+                    all_vertex_positions_indexed,
+                    all_vertex_normals.primitive_array::<3, f32>(),
+                    all_vertex_colors.primitive::<u32>(),
+                    all_vertex_texcoords.primitive_array::<2, f32>(),
+                    all_triangle_indices.primitive_array::<3, u32>(),
+                    all_albedo_factors.primitive::<u32>(),
+                    all_albedo_textures.component::<TensorData>(),
+                    all_class_ids.primitive::<u16>(),
                 )
                 .map(
                     |(
-                        &index,
+                        index,
                         vertex_positions,
                         vertex_normals,
                         vertex_colors,
                         vertex_texcoords,
                         triangle_indices,
-                        albedo_factor,
-                        albedo_texture,
+                        albedo_factors,
+                        albedo_textures,
                         class_ids,
                     )| {
                         Mesh3DComponentData {
                             index,
                             query_result_hash,
-                            vertex_positions,
-                            vertex_normals: vertex_normals.unwrap_or_default(),
-                            vertex_colors: vertex_colors.unwrap_or_default(),
-                            vertex_texcoords: vertex_texcoords.unwrap_or_default(),
-                            triangle_indices,
-                            albedo_factor: albedo_factor.and_then(|v| v.first()),
-                            albedo_texture: albedo_texture.and_then(|v| v.first()),
-                            class_ids: class_ids.unwrap_or_default(),
+                            vertex_positions: bytemuck::cast_slice(vertex_positions),
+                            vertex_normals: vertex_normals
+                                .map_or(&[], |vertex_normals| bytemuck::cast_slice(vertex_normals)),
+                            vertex_colors: vertex_colors
+                                .map_or(&[], |vertex_colors| bytemuck::cast_slice(vertex_colors)),
+                            vertex_texcoords: vertex_texcoords.map_or(&[], |vertex_texcoords| {
+                                bytemuck::cast_slice(vertex_texcoords)
+                            }),
+                            triangle_indices: triangle_indices.map(bytemuck::cast_slice),
+                            albedo_factor: albedo_factors
+                                .map_or(&[] as &[AlbedoFactor], |albedo_factors| {
+                                    bytemuck::cast_slice(albedo_factors)
+                                })
+                                .first(),
+                            // NOTE: not actually cloning anything.
+                            albedo_texture: albedo_textures.unwrap_or_default().first().cloned(),
+                            class_ids: class_ids
+                                .map_or(&[], |class_ids| bytemuck::cast_slice(class_ids)),
                         }
                     },
                 );
 
                 self.process_data(ctx, render_ctx, &mut instances, spatial_ctx, data);
+
                 Ok(())
             },
         )?;

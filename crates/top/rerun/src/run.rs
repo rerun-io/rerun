@@ -9,7 +9,7 @@ use itertools::{izip, Itertools};
 
 use re_data_source::DataSource;
 use re_log_types::{LogMsg, SetStoreInfo};
-use re_sdk::log::Chunk;
+use re_sdk::{log::Chunk, StoreKind};
 use re_smart_channel::{ReceiveSet, Receiver, SmartMessagePayload};
 
 #[cfg(feature = "web_viewer")]
@@ -480,6 +480,8 @@ fn run_rrd_commands(cmd: &RrdCommands) -> anyhow::Result<()> {
             let path_to_rrd1 = PathBuf::from(path_to_rrd1);
             let path_to_rrd2 = PathBuf::from(path_to_rrd2);
             run_compare(&path_to_rrd1, &path_to_rrd2, *full_dump)
+                // Print current directory, this can be useful for debugging issues with relative paths.
+                .with_context(|| format!("current directory {:?}", std::env::current_dir()))
         }
 
         RrdCommands::Print(print_command) => print_command.run(),
@@ -616,7 +618,7 @@ fn run_compact(path_to_input_rrd: &Path, path_to_output_rrd: &Path) -> anyhow::R
         )
     };
 
-    use re_viewer::external::re_chunk_store::ChunkStoreConfig;
+    use re_chunk_store::ChunkStoreConfig;
     let mut store_config = ChunkStoreConfig::from_env().unwrap_or_default();
     // NOTE: We're doing headless processing, there's no point in running subscribers, it will just
     // (massively) slow us down.
@@ -659,16 +661,32 @@ fn run_compact(path_to_input_rrd: &Path, path_to_output_rrd: &Path) -> anyhow::R
     let mut rrd_out = std::fs::File::create(path_to_output_rrd)
         .with_context(|| format!("{path_to_output_rrd:?}"))?;
 
-    let messages: Result<Vec<Vec<LogMsg>>, _> = entity_dbs
-        .into_values()
+    let messages_rbl: Result<Vec<Vec<LogMsg>>, _> = entity_dbs
+        .values()
+        .filter(|entity_db| entity_db.store_kind() == StoreKind::Blueprint)
         .map(|entity_db| entity_db.to_messages(None /* time selection */))
         .collect();
-    let messages = messages?;
-    let messages = messages.iter().flatten();
+    let messages_rbl = messages_rbl?;
+    let messages_rbl = messages_rbl.iter().flatten();
+
+    let messages_rrd: Result<Vec<Vec<LogMsg>>, _> = entity_dbs
+        .values()
+        .filter(|entity_db| entity_db.store_kind() == StoreKind::Recording)
+        .map(|entity_db| entity_db.to_messages(None /* time selection */))
+        .collect();
+    let messages_rrd = messages_rrd?;
+    let messages_rrd = messages_rrd.iter().flatten();
 
     let encoding_options = re_log_encoding::EncodingOptions::COMPRESSED;
-    re_log_encoding::encoder::encode(version, encoding_options, messages, &mut rrd_out)
-        .context("Message encode")?;
+    re_log_encoding::encoder::encode(
+        version,
+        encoding_options,
+        // NOTE: We want to make sure all blueprints come first, so that the viewer can immediately
+        // set up the viewport correctly.
+        messages_rbl.chain(messages_rrd),
+        &mut rrd_out,
+    )
+    .context("Message encode")?;
 
     let rrd_out_size = rrd_out.metadata().ok().map(|md| md.len());
 
@@ -719,7 +737,7 @@ fn run_merge(path_to_input_rrds: &[PathBuf], path_to_output_rrd: &Path) -> anyho
         )
     };
 
-    use re_viewer::external::re_chunk_store::ChunkStoreConfig;
+    use re_chunk_store::ChunkStoreConfig;
     let mut store_config = ChunkStoreConfig::from_env().unwrap_or_default();
     // NOTE: We're doing headless processing, there's no point in running subscribers, it will just
     // (massively) slow us down.

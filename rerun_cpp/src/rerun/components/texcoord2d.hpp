@@ -30,9 +30,7 @@ namespace rerun::components {
     struct Texcoord2D {
         rerun::datatypes::Vec2D uv;
 
-      public:
-        // Extensions to generated type defined in 'texcoord2d_ext.cpp'
-
+      public: // START of extensions from texcoord2d_ext.cpp:
         /// Construct Texcoord2D from u/v values.
         Texcoord2D(float u, float v) : uv{u, v} {}
 
@@ -43,6 +41,8 @@ namespace rerun::components {
         float v() const {
             return uv.y();
         }
+
+        // END of extensions from texcoord2d_ext.cpp, start of generated code:
 
       public:
         Texcoord2D() = default;

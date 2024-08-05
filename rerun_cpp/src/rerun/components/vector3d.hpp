@@ -15,9 +15,7 @@ namespace rerun::components {
     struct Vector3D {
         rerun::datatypes::Vec3D vector;
 
-      public:
-        // Extensions to generated type defined in 'vector3d_ext.cpp'
-
+      public: // START of extensions from vector3d_ext.cpp:
         /// Construct Vector3D from x/y/z values.
         Vector3D(float x, float y, float z) : vector{x, y, z} {}
 
@@ -35,6 +33,8 @@ namespace rerun::components {
         float z() const {
             return vector.z();
         }
+
+        // END of extensions from vector3d_ext.cpp, start of generated code:
 
       public:
         Vector3D() = default;

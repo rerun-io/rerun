@@ -22,7 +22,7 @@ def main() -> None:
     image[0, :] = [0, 1, 2]
     image[1, :] = [3, 4, 5]
 
-    rr.log("segmentation_image", rr.SegmentationImage(data=image))
+    rr.log("segmentation_image", rr.SegmentationImage(image))
 
     rr.script_teardown(args)
 

@@ -15,9 +15,7 @@ namespace rerun::components {
     struct Vector2D {
         rerun::datatypes::Vec2D vector;
 
-      public:
-        // Extensions to generated type defined in 'vector2d_ext.cpp'
-
+      public: // START of extensions from vector2d_ext.cpp:
         /// Construct Vector2D from x/y values.
         Vector2D(float x, float y) : vector{x, y} {}
 
@@ -31,6 +29,8 @@ namespace rerun::components {
         float y() const {
             return vector.y();
         }
+
+        // END of extensions from vector2d_ext.cpp, start of generated code:
 
       public:
         Vector2D() = default;

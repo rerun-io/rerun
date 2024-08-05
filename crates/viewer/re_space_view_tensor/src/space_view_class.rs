@@ -11,8 +11,7 @@ use re_types::{
         components::ViewFit,
     },
     components::{Colormap, GammaCorrection, MagnificationFilter, TensorDimensionIndexSelection},
-    datatypes::TensorDimension,
-    tensor_data::{DecodedTensor, TensorDataMeaning},
+    datatypes::{TensorData, TensorDimension},
     SpaceViewClassIdentifier, View,
 };
 use re_ui::{list_item, ContextExt as _, UiExt as _};
@@ -38,7 +37,7 @@ type ViewType = re_types::blueprint::views::TensorView;
 pub struct ViewTensorState {
     /// Last viewed tensor, copied each frame.
     /// Used for the selection view.
-    tensor: Option<(RowId, DecodedTensor)>,
+    tensor: Option<(RowId, TensorData)>,
 }
 
 impl SpaceViewState for ViewTensorState {
@@ -64,8 +63,13 @@ impl SpaceViewClass for TensorSpaceView {
         &re_ui::icons::SPACE_VIEW_TENSOR
     }
 
-    fn help_text(&self, _egui_ctx: &egui::Context) -> egui::WidgetText {
-        "Select the space view to configure which dimensions are shown.".into()
+    fn help_markdown(&self, _egui_ctx: &egui::Context) -> String {
+        "# Tensor view
+
+Display an N-dimensional tensor as an arbitrary 2D slice with custom colormap.
+
+Note: select the space view to configure which dimensions are shown."
+            .to_owned()
     }
 
     fn on_register(
@@ -126,10 +130,7 @@ impl SpaceViewClass for TensorSpaceView {
                     .cache
                     .entry(|c: &mut TensorStatsCache| c.entry(*tensor_data_row_id, tensor));
 
-                // We are in a bare Tensor view -- meaning / meter is unknown.
-                let meaning = TensorDataMeaning::Unknown;
-                let meter = None;
-                tensor_summary_ui_grid_contents(ui, tensor, tensor, meaning, meter, &tensor_stats);
+                tensor_summary_ui_grid_contents(ui, tensor, &tensor_stats);
             }
         });
 
@@ -213,7 +214,7 @@ impl SpaceViewClass for TensorSpaceView {
                 ));
             });
         } else if let Some((tensor_data_row_id, tensor)) = tensors.first() {
-            state.tensor = Some((*tensor_data_row_id, tensor.clone()));
+            state.tensor = Some((*tensor_data_row_id, tensor.0.clone()));
             self.view_tensor(ctx, ui, state, query.space_view_id, tensor)?;
         } else {
             ui.centered_and_justified(|ui| ui.label("(empty)"));
@@ -230,7 +231,7 @@ impl TensorSpaceView {
         ui: &mut egui::Ui,
         state: &ViewTensorState,
         view_id: SpaceViewId,
-        tensor: &DecodedTensor,
+        tensor: &TensorData,
     ) -> Result<(), SpaceViewSystemExecutionError> {
         re_tracing::profile_function!();
 

@@ -10,6 +10,7 @@ from typing import Any
 import cv2
 import numpy as np
 import rerun as rr
+import rerun.blueprint as rrb
 
 
 def bgra2nv12(bgra: Any) -> np.ndarray:
@@ -37,7 +38,16 @@ def main() -> None:
     rr.script_add_args(parser)
     args = parser.parse_args()
 
-    rr.script_setup(args, "rerun_example_chroma_downsampled")
+    rr.script_setup(
+        args,
+        "rerun_example_chroma_downsampled",
+        default_blueprint=rrb.Grid(
+            rrb.Spatial2DView(origin="img_reference", name="Reference RGB"),
+            rrb.Spatial2DView(origin="img_nv12", name="NV12"),
+            rrb.Spatial2DView(origin="img_yuy2", name="YUY2"),
+            rrb.TextDocumentView(origin="expectation", name="expectation"),
+        ),
+    )
 
     # Make sure you use a colorful image!
     dir_path = os.path.dirname(os.path.realpath(__file__))
@@ -45,20 +55,24 @@ def main() -> None:
     img_bgra = cv2.imread(img_path, cv2.IMREAD_UNCHANGED)
 
     img_rgb = cv2.cvtColor(img_bgra, cv2.COLOR_BGRA2RGB)
-    rr.log("img_reference", rr.Image(img_rgb))
+    rr.log("img_reference", rr.Image(img_rgb, "rgb"))
 
     rr.log(
         "img_nv12",
-        rr.ImageEncoded(
-            contents=bytes(bgra2nv12(img_bgra)),
-            format=rr.ImageFormat.NV12((img_bgra.shape[0], img_bgra.shape[1])),
+        rr.Image(
+            width=img_bgra.shape[1],
+            height=img_bgra.shape[0],
+            pixel_format=rr.PixelFormat.Nv12,
+            bytes=bgra2nv12(img_bgra).tobytes(),
         ),
     )
     rr.log(
         "img_yuy2",
-        rr.ImageEncoded(
-            contents=bytes(bgra2yuy2(img_bgra)),
-            format=rr.ImageFormat.YUY2((img_bgra.shape[0], img_bgra.shape[1])),
+        rr.Image(
+            width=img_bgra.shape[1],
+            height=img_bgra.shape[0],
+            pixel_format=rr.PixelFormat.Yuy2,
+            bytes=bgra2yuy2(img_bgra).tobytes(),
         ),
     )
 

@@ -7,7 +7,6 @@
 #include "../compiler_utils.hpp"
 #include "../components/blob.hpp"
 #include "../components/media_type.hpp"
-#include "../components/out_of_tree_transform3d.hpp"
 #include "../data_cell.hpp"
 #include "../indicator_component.hpp"
 #include "../result.hpp"
@@ -22,6 +21,9 @@ namespace rerun::archetypes {
     /// **Archetype**: A prepacked 3D asset (`.gltf`, `.glb`, `.obj`, `.stl`, etc.).
     ///
     /// See also `archetypes::Mesh3D`.
+    ///
+    /// If there are multiple `archetypes::LeafTransforms3D` instances logged to the same entity as a mesh,
+    /// an instance of the mesh will be drawn for each transform.
     ///
     /// ## Example
     ///
@@ -66,24 +68,13 @@ namespace rerun::archetypes {
         /// If it cannot guess, it won't be able to render the asset.
         std::optional<rerun::components::MediaType> media_type;
 
-        /// An out-of-tree transform.
-        ///
-        /// Applies a transformation to the asset itself without impacting its children.
-        std::optional<rerun::components::OutOfTreeTransform3D> transform;
-
       public:
         static constexpr const char IndicatorComponentName[] = "rerun.components.Asset3DIndicator";
 
         /// Indicator component, used to identify the archetype when converting to a list of components.
         using IndicatorComponent = rerun::components::IndicatorComponent<IndicatorComponentName>;
 
-      public:
-        // Extensions to generated type defined in 'asset3d_ext.cpp'
-
-        static std::optional<rerun::components::MediaType> guess_media_type(
-            const std::filesystem::path& path
-        );
-
+      public: // START of extensions from asset3d_ext.cpp:
         /// Creates a new `Asset3D` from the file contents at `path`.
         ///
         /// The `MediaType` will be guessed from the file extension.
@@ -97,13 +88,20 @@ namespace rerun::archetypes {
         /// If no `MediaType` is specified, the Rerun Viewer will try to guess one from the data
         /// at render-time. If it can't, rendering will fail with an error.
         static Asset3D from_bytes(
-            rerun::Collection<uint8_t> bytes, std::optional<rerun::components::MediaType> media_type
+            rerun::Collection<uint8_t> bytes,
+            std::optional<rerun::components::MediaType> media_type = {}
         ) {
             // TODO(cmc): we could try and guess using magic bytes here, like rust does.
             Asset3D asset = Asset3D(std::move(bytes));
             asset.media_type = media_type;
             return asset;
         }
+
+        static std::optional<rerun::components::MediaType> guess_media_type(
+            const std::filesystem::path& path
+        );
+
+        // END of extensions from asset3d_ext.cpp, start of generated code:
 
       public:
         Asset3D() = default;
@@ -123,15 +121,6 @@ namespace rerun::archetypes {
         /// If it cannot guess, it won't be able to render the asset.
         Asset3D with_media_type(rerun::components::MediaType _media_type) && {
             media_type = std::move(_media_type);
-            // See: https://github.com/rerun-io/rerun/issues/4027
-            RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
-        }
-
-        /// An out-of-tree transform.
-        ///
-        /// Applies a transformation to the asset itself without impacting its children.
-        Asset3D with_transform(rerun::components::OutOfTreeTransform3D _transform) && {
-            transform = std::move(_transform);
             // See: https://github.com/rerun-io/rerun/issues/4027
             RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
         }

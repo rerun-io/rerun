@@ -10,13 +10,6 @@ int main(int, char** argv) {
         "boxes3d",
         rerun::archetypes::Boxes3D::from_half_sizes({{10.f, 9.f, 8.f}, {5.f, -5.f, 5.f}})
             .with_centers({{0.f, 0.f, 0.f}, {-1.f, 1.f, -2.f}})
-            .with_rotations({
-                rerun::datatypes::Quaternion::from_xyzw(0.f, 1.f, 2.f, 3.f),
-                rerun::datatypes::RotationAxisAngle(
-                    {0.f, 1.f, 2.f},
-                    rerun::datatypes::Angle::degrees(45.f)
-                ),
-            })
             .with_colors({0xAA0000CC, 0x00BB00DD})
             .with_labels({"hello", "friend"})
             .with_radii({0.1f, 0.01f})

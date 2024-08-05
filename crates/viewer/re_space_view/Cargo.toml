@@ -34,5 +34,7 @@ re_viewer_context.workspace = true
 re_viewport_blueprint.workspace = true
 
 ahash.workspace = true
+bytemuck.workspace = true
 egui.workspace = true
+itertools.workspace = true
 nohash-hasher.workspace = true

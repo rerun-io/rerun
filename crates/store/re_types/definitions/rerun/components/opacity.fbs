@@ -1,9 +1,3 @@
-include "arrow/attributes.fbs";
-include "python/attributes.fbs";
-include "rust/attributes.fbs";
-
-include "rerun/datatypes.fbs";
-include "rerun/attributes.fbs";
 
 namespace rerun.components;
 
@@ -16,7 +10,7 @@ namespace rerun.components;
 struct Opacity (
   "attr.python.aliases": "float",
   "attr.python.array_aliases": "float, npt.ArrayLike",
-  "attr.rust.derive": "Copy, PartialEq, PartialOrd",
+  "attr.rust.derive": "Copy, PartialEq, PartialOrd, bytemuck::Pod, bytemuck::Zeroable",
   "attr.rust.repr": "transparent"
 ) {
   opacity: rerun.datatypes.Float32 (order: 100);

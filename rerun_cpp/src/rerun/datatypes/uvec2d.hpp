@@ -20,6 +20,23 @@ namespace rerun::datatypes {
     struct UVec2D {
         std::array<uint32_t, 2> xy;
 
+      public: // START of extensions from uvec2d_ext.cpp:
+        /// Construct UVec2D from x/y values.
+        UVec2D(uint32_t x, uint32_t y) : xy{x, y} {}
+
+        /// Construct UVec2D from x/y uint32_t pointer.
+        explicit UVec2D(const uint32_t* xy_) : xy{xy_[0], xy_[1]} {}
+
+        uint32_t x() const {
+            return xy[0];
+        }
+
+        uint32_t y() const {
+            return xy[1];
+        }
+
+        // END of extensions from uvec2d_ext.cpp, start of generated code:
+
       public:
         UVec2D() = default;
 

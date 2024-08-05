@@ -12,6 +12,7 @@
 #include "rerun/config.hpp"
 #include "rerun/entity_path.hpp"
 #include "rerun/error.hpp"
+#include "rerun/image_utils.hpp"
 #include "rerun/recording_stream.hpp"
 #include "rerun/result.hpp"
 #include "rerun/sdk_info.hpp"
@@ -30,18 +31,22 @@ namespace rerun {
 
     // Also import any component or datatype that has a unique name:
     using components::AlbedoFactor;
+    using components::ChannelDatatype;
     using components::Color;
+    using components::ColorModel;
+    using components::FillMode;
     using components::HalfSize2D;
     using components::HalfSize3D;
     using components::LineStrip2D;
     using components::LineStrip3D;
     using components::MediaType;
-    using components::OutOfTreeTransform3D;
     using components::Position2D;
     using components::Position3D;
     using components::Radius;
+    using components::Resolution2D;
     using components::Text;
     using components::TextLogLevel;
+    using components::TransformRelation;
     using components::TriangleIndices;
     using components::Vector2D;
     using components::Vector3D;
@@ -54,14 +59,10 @@ namespace rerun {
     using datatypes::Mat3x3;
     using datatypes::Quaternion;
     using datatypes::Rgba32;
-    using datatypes::Rotation3D;
     using datatypes::RotationAxisAngle;
-    using datatypes::Scale3D;
     using datatypes::TensorBuffer;
     using datatypes::TensorData;
     using datatypes::TensorDimension;
-    using datatypes::TranslationAndMat3x3;
-    using datatypes::TranslationRotationScale3D;
     using datatypes::Vec2D;
     using datatypes::Vec3D;
     using datatypes::Vec4D;

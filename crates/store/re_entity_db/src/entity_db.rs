@@ -3,14 +3,14 @@ use std::sync::Arc;
 use nohash_hasher::IntMap;
 use parking_lot::Mutex;
 
-use re_chunk::{Chunk, ChunkResult, RowId};
+use re_chunk::{Chunk, ChunkResult, RowId, TimeInt};
 use re_chunk_store::{
     ChunkStore, ChunkStoreConfig, ChunkStoreEvent, ChunkStoreSubscriber, GarbageCollectionOptions,
     GarbageCollectionTarget,
 };
 use re_log_types::{
-    ApplicationId, ComponentPath, EntityPath, EntityPathHash, LogMsg, ResolvedTimeRange,
-    ResolvedTimeRangeF, SetStoreInfo, StoreId, StoreInfo, StoreKind, Timeline,
+    ApplicationId, EntityPath, EntityPathHash, LogMsg, ResolvedTimeRange, ResolvedTimeRangeF,
+    SetStoreInfo, StoreId, StoreInfo, StoreKind, Timeline,
 };
 
 use crate::{Error, TimesPerTimeline};
@@ -53,14 +53,14 @@ pub struct EntityDb {
     /// Used for time control.
     times_per_timeline: TimesPerTimeline,
 
+    /// A time histogram of all entities, for every timeline.
+    time_histogram_per_timeline: crate::TimeHistogramPerTimeline,
+
     /// A tree-view (split on path components) of the entities.
     tree: crate::EntityTree,
 
     /// Stores all components for all entities for all timelines.
     data_store: ChunkStore,
-
-    /// The active promise resolver for this DB.
-    resolver: re_query::PromiseResolver,
 
     /// Query caches for the data in [`Self::data_store`].
     query_caches: re_query::Caches,
@@ -85,8 +85,8 @@ impl EntityDb {
             entity_path_from_hash: Default::default(),
             times_per_timeline: Default::default(),
             tree: crate::EntityTree::root(),
+            time_histogram_per_timeline: Default::default(),
             data_store,
-            resolver: re_query::PromiseResolver::default(),
             query_caches,
             stats: IngestionStatistics::new(store_id),
         }
@@ -119,11 +119,6 @@ impl EntityDb {
         &self.query_caches
     }
 
-    #[inline]
-    pub fn resolver(&self) -> &re_query::PromiseResolver {
-        &self.resolver
-    }
-
     /// Queries for the given `component_names` using latest-at semantics.
     ///
     /// See [`re_query::LatestAtResults`] for more information about how to handle the results.
@@ -153,13 +148,13 @@ impl EntityDb {
         &self,
         entity_path: &EntityPath,
         query: &re_chunk_store::LatestAtQuery,
-    ) -> Option<re_query::LatestAtMonoResult<C>> {
-        self.query_caches().latest_at_component::<C>(
-            self.store(),
-            self.resolver(),
-            entity_path,
-            query,
-        )
+    ) -> Option<((TimeInt, RowId), C)> {
+        let results = self
+            .query_caches()
+            .latest_at(self.store(), query, entity_path, [C::name()]);
+        results
+            .component_mono()
+            .map(|value| (results.index(), value))
     }
 
     /// Get the latest index and value for a given dense [`re_types_core::Component`].
@@ -175,13 +170,13 @@ impl EntityDb {
         &self,
         entity_path: &EntityPath,
         query: &re_chunk_store::LatestAtQuery,
-    ) -> Option<re_query::LatestAtMonoResult<C>> {
-        self.query_caches().latest_at_component_quiet::<C>(
-            self.store(),
-            self.resolver(),
-            entity_path,
-            query,
-        )
+    ) -> Option<((TimeInt, RowId), C)> {
+        let results = self
+            .query_caches()
+            .latest_at(self.store(), query, entity_path, [C::name()]);
+        results
+            .component_mono_quiet()
+            .map(|value| (results.index(), value))
     }
 
     #[inline]
@@ -189,14 +184,18 @@ impl EntityDb {
         &self,
         entity_path: &EntityPath,
         query: &re_chunk_store::LatestAtQuery,
-    ) -> Option<(EntityPath, re_query::LatestAtMonoResult<C>)> {
-        self.query_caches()
-            .latest_at_component_at_closest_ancestor::<C>(
-                self.store(),
-                self.resolver(),
-                entity_path,
-                query,
-            )
+    ) -> Option<(EntityPath, (TimeInt, RowId), C)> {
+        re_tracing::profile_function!();
+
+        let mut cur_entity_path = Some(entity_path.clone());
+        while let Some(entity_path) = cur_entity_path {
+            if let Some((index, value)) = self.latest_at_component(&entity_path, query) {
+                return Some((entity_path, index, value));
+            }
+            cur_entity_path = entity_path.parent();
+        }
+
+        None
     }
 
     #[inline]
@@ -243,27 +242,31 @@ impl EntityDb {
         }
     }
 
+    /// Returns the time range of data on the given timeline, ignoring any static times.
+    ///
+    /// This is O(N) in the number of times on the timeline.
+    pub fn time_range_for(&self, timeline: &Timeline) -> Option<ResolvedTimeRange> {
+        let (mut start, mut end) = (None, None);
+        for time in self
+            .times_per_timeline()
+            .get(timeline)?
+            .keys()
+            .filter(|v| !v.is_static())
+            .copied()
+        {
+            if start.is_none() || Some(time) < start {
+                start = Some(time);
+            }
+            if end.is_none() || Some(time) > end {
+                end = Some(time);
+            }
+        }
+        Some(ResolvedTimeRange::new(start?, end?))
+    }
+
     /// Histogram of all events on the timeeline, of all entities.
     pub fn time_histogram(&self, timeline: &Timeline) -> Option<&crate::TimeHistogram> {
-        self.tree().subtree.time_histogram.get(timeline)
-    }
-
-    /// Total number of static messages for any entity.
-    pub fn num_static_messages(&self) -> u64 {
-        self.tree.num_static_messages_recursive()
-    }
-
-    /// Returns whether a component is static.
-    pub fn is_component_static(&self, component_path: &ComponentPath) -> Option<bool> {
-        if let Some(entity_tree) = self.tree().subtree(component_path.entity_path()) {
-            entity_tree
-                .entity
-                .components
-                .get(&component_path.component_name)
-                .map(|component_histogram| component_histogram.is_static())
-        } else {
-            None
-        }
+        self.time_histogram_per_timeline.get(timeline)
     }
 
     #[inline]
@@ -361,9 +364,9 @@ impl EntityDb {
         {
             // Update our internal views by notifying them of resulting [`ChunkStoreEvent`]s.
             self.times_per_timeline.on_events(&store_events);
+            self.time_histogram_per_timeline.on_events(&store_events);
             self.query_caches.on_events(&store_events);
             self.tree.on_store_additions(&store_events);
-            self.tree.on_store_deletions(&store_events);
 
             // We inform the stats last, since it measures e2e latency.
             self.stats.on_events(&store_events);
@@ -421,24 +424,10 @@ impl EntityDb {
     fn on_store_deletions(&mut self, store_events: &[ChunkStoreEvent]) {
         re_tracing::profile_function!();
 
-        let Self {
-            data_source: _,
-            set_store_info: _,
-            last_modified_at: _,
-            latest_row_id: _,
-            entity_path_from_hash: _,
-            times_per_timeline,
-            tree,
-            data_store: _,
-            resolver: _,
-            query_caches,
-            stats: _,
-        } = self;
-
-        times_per_timeline.on_events(store_events);
-        query_caches.on_events(store_events);
-
-        tree.on_store_deletions(store_events);
+        self.times_per_timeline.on_events(store_events);
+        self.query_caches.on_events(store_events);
+        self.time_histogram_per_timeline.on_events(store_events);
+        self.tree.on_store_deletions(&self.data_store, store_events);
     }
 
     /// Key used for sorting recordings in the UI.
@@ -548,6 +537,73 @@ impl EntityDb {
         }
 
         Ok(new_db)
+    }
+
+    /// Returns the byte size of an entity and all its children on the given timeline, recursively.
+    ///
+    /// This includes static data.
+    pub fn approx_size_of_subtree_on_timeline(
+        &self,
+        timeline: &Timeline,
+        entity_path: &EntityPath,
+    ) -> u64 {
+        re_tracing::profile_function!();
+
+        let Some(subtree) = self.tree.subtree(entity_path) else {
+            return 0;
+        };
+
+        let mut size = 0;
+        subtree.visit_children_recursively(|path| {
+            size += self
+                .store()
+                .approx_size_of_entity_on_timeline(timeline, path);
+        });
+
+        size
+    }
+
+    /// Returns true if an entity or any of its children have any data on the given timeline.
+    ///
+    /// This includes static data.
+    pub fn subtree_has_data_on_timeline(
+        &self,
+        timeline: &Timeline,
+        entity_path: &EntityPath,
+    ) -> bool {
+        re_tracing::profile_function!();
+
+        let Some(subtree) = self.tree.subtree(entity_path) else {
+            return false;
+        };
+
+        subtree
+            .find_first_child_recursive(|path| {
+                self.store().entity_has_data_on_timeline(timeline, path)
+            })
+            .is_some()
+    }
+
+    /// Returns true if an entity or any of its children have any temporal data on the given timeline.
+    ///
+    /// This ignores static data.
+    pub fn subtree_has_temporal_data_on_timeline(
+        &self,
+        timeline: &Timeline,
+        entity_path: &EntityPath,
+    ) -> bool {
+        re_tracing::profile_function!();
+
+        let Some(subtree) = self.tree.subtree(entity_path) else {
+            return false;
+        };
+
+        subtree
+            .find_first_child_recursive(|path| {
+                self.store()
+                    .entity_has_temporal_data_on_timeline(timeline, path)
+            })
+            .is_some()
     }
 }
 

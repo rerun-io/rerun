@@ -19,13 +19,10 @@ mod data_source;
 mod entity_db;
 mod entity_path;
 mod image;
-mod image_meaning;
 mod instance_path;
 mod log_msg;
 mod pinhole;
-mod rotation3d;
 mod store_id;
-mod transform3d;
 
 pub mod item_ui;
 

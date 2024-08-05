@@ -15,9 +15,7 @@ namespace rerun::components {
     struct Position3D {
         rerun::datatypes::Vec3D xyz;
 
-      public:
-        // Extensions to generated type defined in 'position3d_ext.cpp'
-
+      public: // START of extensions from position3d_ext.cpp:
         /// Construct Position3D from x/y/z values.
         Position3D(float x, float y, float z) : xyz{x, y, z} {}
 
@@ -32,6 +30,8 @@ namespace rerun::components {
         float z() const {
             return xyz.z();
         }
+
+        // END of extensions from position3d_ext.cpp, start of generated code:
 
       public:
         Position3D() = default;

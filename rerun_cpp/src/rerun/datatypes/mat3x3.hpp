@@ -32,9 +32,7 @@ namespace rerun::datatypes {
         /// Flat list of matrix coefficients in column-major order.
         std::array<float, 9> flat_columns;
 
-      public:
-        // Extensions to generated type defined in 'mat3x3_ext.cpp'
-
+      public: // START of extensions from mat3x3_ext.cpp:
         static const Mat3x3 IDENTITY;
 
         /// Creates a new 3x3 matrix from 3 *columns* of 3 elements each.
@@ -64,6 +62,8 @@ namespace rerun::datatypes {
                   elements[7],
                   elements[8],
               } {}
+
+        // END of extensions from mat3x3_ext.cpp, start of generated code:
 
       public:
         Mat3x3() = default;

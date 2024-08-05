@@ -18,10 +18,11 @@ A vector in 3D space.
 ## Used by
 
 * [`HalfSize3D`](../components/half_size3d.md)
+* [`LeafScale3D`](../components/leaf_scale3d.md?speculative-link)
+* [`LeafTranslation3D`](../components/leaf_translation3d.md?speculative-link)
 * [`LineStrip3D`](../components/line_strip3d.md)
 * [`Position3D`](../components/position3d.md)
 * [`RotationAxisAngle`](../datatypes/rotation_axis_angle.md)
-* [`Scale3D`](../datatypes/scale3d.md)
-* [`TranslationAndMat3x3`](../datatypes/translation_and_mat3x3.md)
-* [`TranslationRotationScale3D`](../datatypes/translation_rotation_scale3d.md)
+* [`Scale3D`](../components/scale3d.md?speculative-link)
+* [`Translation3D`](../components/translation3d.md?speculative-link)
 * [`Vector3D`](../components/vector3d.md)

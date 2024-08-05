@@ -4,7 +4,7 @@ use re_math::IsoTransform;
 use re_entity_db::EntityPath;
 use re_log::ResultExt as _;
 use re_renderer::view_builder::{TargetConfiguration, ViewBuilder};
-use re_space_view::controls::{DRAG_PAN2D_BUTTON, RESET_VIEW_BUTTON_TEXT, ZOOM_SCROLL_MODIFIER};
+use re_space_view::controls::{DRAG_PAN2D_BUTTON, ZOOM_SCROLL_MODIFIER};
 use re_types::{
     archetypes::Pinhole,
     blueprint::{
@@ -13,7 +13,7 @@ use re_types::{
     },
     components::ViewCoordinates,
 };
-use re_ui::ContextExt as _;
+use re_ui::{ContextExt as _, ModifiersMarkdown, MouseButtonMarkdown};
 use re_viewer_context::{
     gpu_bridge, ItemSpaceContext, SpaceViewId, SpaceViewSystemExecutionError,
     SystemExecutionOutput, ViewQuery, ViewerContext,
@@ -127,20 +127,20 @@ fn scale_rect(rect: Rect, factor: Vec2) -> Rect {
     )
 }
 
-pub fn help_text(egui_ctx: &egui::Context) -> egui::WidgetText {
-    let mut layout = re_ui::LayoutJobBuilder::new(egui_ctx);
+pub fn help_markdown(egui_ctx: &egui::Context) -> String {
+    format!(
+        "# 2D View
 
-    layout.add(ZOOM_SCROLL_MODIFIER);
-    layout.add(" + scroll to zoom.\n");
+Display 2D content in the reference frame defined by the space origin.
 
-    layout.add("Click and drag with ");
-    layout.add(DRAG_PAN2D_BUTTON);
-    layout.add(" to pan.\n");
-
-    layout.add_button_text(RESET_VIEW_BUTTON_TEXT);
-    layout.add(" to reset the view.");
-
-    layout.layout_job.into()
+## Navigation controls
+- Pinch gesture or {zoom_scroll_modifier} + scroll to zoom.
+- Click and drag with the {drag_pan2d_button} to pan.
+- Double-click to reset the view.",
+        zoom_scroll_modifier = ModifiersMarkdown(ZOOM_SCROLL_MODIFIER, egui_ctx),
+        drag_pan2d_button = MouseButtonMarkdown(DRAG_PAN2D_BUTTON),
+    )
+    .to_owned()
 }
 
 /// Create the outer 2D view, which consists of a scrollable region

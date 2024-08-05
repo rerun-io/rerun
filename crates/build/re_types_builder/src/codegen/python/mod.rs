@@ -445,7 +445,7 @@ impl PythonCodeGenerator {
             let obj_code = match obj.class {
                 crate::objects::ObjectClass::Struct => {
                     if obj.kind == ObjectKind::View {
-                        code_for_view(reporter, objects, obj)
+                        code_for_view(reporter, objects, &ext_class, obj)
                     } else {
                         code_for_struct(reporter, arrow_registry, &ext_class, objects, obj)
                     }
@@ -636,7 +636,7 @@ fn code_for_struct(
     };
     code.push_unindented(format!("class {name}{superclass_decl}:"), 1);
 
-    code.push_indented(1, quote_obj_docs(objects, obj), 0);
+    code.push_indented(1, quote_obj_docs(reporter, objects, obj), 0);
 
     if *kind == ObjectKind::Component {
         code.push_indented(1, "_BATCH_TYPE = None", 1);
@@ -749,7 +749,7 @@ fn code_for_struct(
 
             // Generating docs for all the fields creates A LOT of visual noise in the API docs.
             let show_fields_in_docs = false;
-            let doc_lines = lines_from_docs(objects, &field.docs);
+            let doc_lines = lines_from_docs(reporter, objects, &field.docs);
             if !doc_lines.is_empty() {
                 if show_fields_in_docs {
                     code.push_indented(1, quote_doc_lines(doc_lines), 0);
@@ -827,7 +827,9 @@ fn code_for_enum(
         ObjectKind::Datatype | ObjectKind::Component
     ));
 
-    let Object { name, .. } = obj;
+    let Object {
+        name: enum_name, ..
+    } = obj;
 
     let mut code = String::new();
 
@@ -837,22 +839,33 @@ fn code_for_enum(
         code.push_unindented(format!(r#"@deprecated("""{deprecation_notice}""")"#), 1);
     }
 
-    code.push_str(&format!("class {name}(Enum):\n"));
-    code.push_indented(1, quote_obj_docs(objects, obj), 0);
+    let superclasses = {
+        let mut superclasses = vec![];
+        if ext_class.found {
+            // Extension class needs to come first, so its __init__ method is called if there is one.
+            superclasses.push(ext_class.name.clone());
+        }
+        superclasses.push("Enum".to_owned());
+        superclasses.join(",")
+    };
+    code.push_str(&format!("class {enum_name}({superclasses}):\n"));
+    code.push_indented(1, quote_obj_docs(reporter, objects, obj), 0);
 
     for (i, variant) in obj.fields.iter().enumerate() {
         let arrow_type_index = 1 + i; // plus-one to leave room for zero == `_null_markers`
 
-        // NOTE: we use PascalCase for the enum variants for consistency across:
+        // NOTE: we keep the casing of the enum variants exactly as specified in the .fbs file,
+        // or else `RGBA` would become `Rgba` and so on.
+        // Note that we want consistency across:
         // * all languages (C++, Python, Rust)
         // * the arrow datatype
         // * the GUI
-        let variant_name = variant.pascal_case_name();
+        let variant_name = &variant.name;
         code.push_indented(1, format!("{variant_name} = {arrow_type_index}"), 1);
 
         // Generating docs for all the fields creates A LOT of visual noise in the API docs.
         let show_fields_in_docs = true;
-        let doc_lines = lines_from_docs(objects, &variant.docs);
+        let doc_lines = lines_from_docs(reporter, objects, &variant.docs);
         if !doc_lines.is_empty() {
             if show_fields_in_docs {
                 code.push_indented(1, quote_doc_lines(doc_lines), 0);
@@ -871,20 +884,50 @@ fn code_for_enum(
         }
     }
 
+    // -------------------------------------------------------
+
+    // OVerload `__str__`:
+    code.push_indented(1, "def __str__(self) -> str:", 1);
+    code.push_indented(2, "'''Returns the variant name'''", 1);
+
+    for (i, variant) in obj.fields.iter().enumerate() {
+        let variant_name = &variant.name;
+        if i == 0 {
+            code.push_indented(2, format!("if self == {enum_name}.{variant_name}:"), 1);
+        } else {
+            code.push_indented(2, format!("elif self == {enum_name}.{variant_name}:"), 1);
+        }
+        code.push_indented(3, format!("return '{variant_name}'"), 1);
+    }
+    code.push_indented(2, "else:", 1);
+    code.push_indented(3, "raise ValueError('Unknown enum variant')", 3);
+
+    // -------------------------------------------------------
+
     let variants = format!(
         "Literal[{}]",
-        obj.fields
-            .iter()
-            .map(|v| format!("{:?}", v.pascal_case_name().to_lowercase()))
-            .join(", ")
+        itertools::chain!(
+            // We always accept the original casing
+            obj.fields.iter().map(|v| format!("{:?}", v.name)),
+            // We also accept the lowercase variant, for historical reasons (and maybe others?)
+            obj.fields
+                .iter()
+                .map(|v| format!("{:?}", v.name.to_lowercase()))
+        )
+        .sorted()
+        .dedup()
+        .join(", ")
     );
-    code.push_unindented(format!("{name}Like = Union[{name}, {variants}]"), 1);
+    code.push_unindented(
+        format!("{enum_name}Like = Union[{enum_name}, {variants}]"),
+        1,
+    );
     code.push_unindented(
         format!(
             r#"
-            {name}ArrayLike = Union[
-                {name}Like,
-                Sequence[{name}Like]
+            {enum_name}ArrayLike = Union[
+                {enum_name}Like,
+                Sequence[{enum_name}Like]
             ]
             "#,
         ),
@@ -933,21 +976,23 @@ fn code_for_union(
         String::new()
     };
 
-    let mut superclasses = vec![];
+    let superclass_decl = {
+        let mut superclasses = vec![];
 
-    // Extension class needs to come first, so its __init__ method is called if there is one.
-    if ext_class.found {
-        superclasses.push(ext_class.name.as_str());
-    }
+        // Extension class needs to come first, so its __init__ method is called if there is one.
+        if ext_class.found {
+            superclasses.push(ext_class.name.as_str());
+        }
 
-    if *kind == ObjectKind::Archetype {
-        superclasses.push("Archetype");
-    }
+        if *kind == ObjectKind::Archetype {
+            superclasses.push("Archetype");
+        }
 
-    let superclass_decl = if superclasses.is_empty() {
-        String::new()
-    } else {
-        format!("({})", superclasses.join(","))
+        if superclasses.is_empty() {
+            String::new()
+        } else {
+            format!("({})", superclasses.join(","))
+        }
     };
 
     if let Some(deprecation_notice) = obj.deprecation_notice() {
@@ -965,7 +1010,7 @@ fn code_for_union(
         0,
     );
 
-    code.push_indented(1, quote_obj_docs(objects, obj), 0);
+    code.push_indented(1, quote_obj_docs(reporter, objects, obj), 0);
 
     if ext_class.has_init {
         code.push_indented(
@@ -1143,8 +1188,8 @@ fn quote_examples(examples: Vec<Example<'_>>, lines: &mut Vec<String>) {
 }
 
 /// Ends with double newlines, unless empty.
-fn quote_obj_docs(objects: &Objects, obj: &Object) -> String {
-    let mut lines = lines_from_docs(objects, &obj.docs);
+fn quote_obj_docs(reporter: &Reporter, objects: &Objects, obj: &Object) -> String {
+    let mut lines = lines_from_docs(reporter, objects, &obj.docs);
 
     if let Some(first_line) = lines.first_mut() {
         // Prefix with object kind:
@@ -1154,10 +1199,14 @@ fn quote_obj_docs(objects: &Objects, obj: &Object) -> String {
     quote_doc_lines(lines)
 }
 
-fn lines_from_docs(objects: &Objects, docs: &Docs) -> Vec<String> {
+fn lines_from_docs(reporter: &Reporter, objects: &Objects, docs: &Docs) -> Vec<String> {
     let mut lines = docs.lines_for(objects, Target::Python);
 
-    let examples = collect_snippets_for_api_docs(docs, "py", true).unwrap();
+    let examples = collect_snippets_for_api_docs(docs, "py", true).unwrap_or_else(|err| {
+        reporter.error_any(err);
+        vec![]
+    });
+
     if !examples.is_empty() {
         lines.push(String::new());
         let (section_title, divider) = if examples.len() == 1 {
@@ -1995,7 +2044,7 @@ fn quote_arrow_serialization(
                 .iter()
                 .map(|f| {
                     let newline = '\n';
-                    let variant = f.pascal_case_name();
+                    let variant = &f.name;
                     let lowercase_variant = variant.to_lowercase();
                     format!(
                         r#"elif value.lower() == "{lowercase_variant}":{newline}    types.append({name}.{variant}.value)"#

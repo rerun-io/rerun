@@ -26,14 +26,19 @@ impl DataUi for ComponentPath {
             let results =
                 db.query_caches()
                     .latest_at(db.store(), query, entity_path, [*component_name]);
-            if let Some(results) = results.components.get(component_name) {
+            if let Some(unit) = results.components.get(component_name) {
                 crate::EntityLatestAtResults {
                     entity_path: entity_path.clone(),
-                    results: results.as_ref(),
+                    component_name: *component_name,
+                    unit,
                 }
                 .data_ui(ctx, ui, ui_layout, query, db);
-            } else if let Some(entity_tree) = ctx.recording().tree().subtree(entity_path) {
-                if entity_tree.entity.components.contains_key(component_name) {
+            } else if ctx.recording().tree().subtree(entity_path).is_some() {
+                if db.store().entity_has_component_on_timeline(
+                    &query.timeline(),
+                    entity_path,
+                    component_name,
+                ) {
                     ui.label("<unset>");
                 } else {
                     ui.label(format!(

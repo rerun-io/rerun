@@ -1,7 +1,10 @@
 use crate::tensor_data::{TensorCastError, TensorDataType, TensorElement};
 
 #[cfg(feature = "image")]
-use crate::tensor_data::{DecodedTensor, TensorImageLoadError, TensorImageSaveError};
+use crate::tensor_data::{TensorImageLoadError, TensorImageSaveError};
+
+#[allow(unused_imports)] // Used for docstring links
+use crate::archetypes::ImageEncoded;
 
 use super::{TensorBuffer, TensorData, TensorDimension};
 
@@ -72,24 +75,7 @@ impl TensorData {
         // TODO(emilk): check dimension names against our standard dimension names ("height", "width", "depth")
 
         match &self.buffer {
-            // In the case of NV12, return the shape of the RGB image, not the tensor size.
-            TensorBuffer::Nv12(_) => {
-                // NV12 encodes a color image in 1.5 "channels" -> 1 luma (per pixel) + (1U+1V) / 4 pixels.
-                match shape_short {
-                    [h, w] => Some([h.size * 2 / 3, w.size, 3]),
-                    _ => None,
-                }
-            }
-            // In the case of YUY2, return the shape of the RGB image, not the tensor size.
-            TensorBuffer::Yuy2(_) => {
-                // YUY2 encodes a color image in 2 "channels" -> 1 luma (per pixel) + (1U + 1V) (per 2 pixels).
-                match shape_short {
-                    [h, w] => Some([h.size, w.size / 2, 3]),
-                    _ => None,
-                }
-            }
-            TensorBuffer::Jpeg(_)
-            | TensorBuffer::U8(_)
+            TensorBuffer::U8(_)
             | TensorBuffer::U16(_)
             | TensorBuffer::U32(_)
             | TensorBuffer::U64(_)
@@ -187,7 +173,7 @@ impl TensorData {
 
     /// Get the value of the element at the given index.
     ///
-    /// Return `None` if out-of-bounds, or if the tensor is encoded (e.g. [`TensorBuffer::Jpeg`]).
+    /// Return `None` if out-of-bounds.
     pub fn get(&self, index: &[u64]) -> Option<TensorElement> {
         let mut stride: usize = 1;
         let mut offset: usize = 0;
@@ -211,123 +197,7 @@ impl TensorData {
             TensorBuffer::F16(buf) => Some(TensorElement::F16(buf[offset])),
             TensorBuffer::F32(buf) => Some(TensorElement::F32(buf[offset])),
             TensorBuffer::F64(buf) => Some(TensorElement::F64(buf[offset])),
-            TensorBuffer::Jpeg(_) => None, // Too expensive to unpack here.
-            TensorBuffer::Nv12(_) => {
-                {
-                    // Returns the U32 packed RGBA value of the pixel at index [y, x] if it is valid.
-                    let [y, x] = index else {
-                        return None;
-                    };
-                    if let Some([r, g, b]) = self.get_nv12_pixel(*x, *y) {
-                        let mut rgba = 0;
-                        rgba |= (r as u32) << 24;
-                        rgba |= (g as u32) << 16;
-                        rgba |= (b as u32) << 8;
-                        rgba |= 0xff;
-                        Some(TensorElement::U32(rgba))
-                    } else {
-                        None
-                    }
-                }
-            }
-            TensorBuffer::Yuy2(_) => {
-                {
-                    // Returns the U32 packed RGBA value of the pixel at index [y, x] if it is valid.
-                    let [y, x] = index else {
-                        return None;
-                    };
-
-                    if let Some([r, g, b]) = self.get_yuy2_pixel(*x, *y) {
-                        let mut rgba = 0;
-                        rgba |= (r as u32) << 24;
-                        rgba |= (g as u32) << 16;
-                        rgba |= (b as u32) << 8;
-                        rgba |= 0xff;
-                        Some(TensorElement::U32(rgba))
-                    } else {
-                        None
-                    }
-                }
-            }
         }
-    }
-
-    /// Returns decoded RGB8 value at the given image coordinates if this tensor is a NV12 image.
-    ///
-    /// If the tensor is not [`TensorBuffer::Nv12`], `None` is returned.
-    ///
-    /// It is undefined what happens if the coordinate is out-of-bounds.
-    pub fn get_nv12_pixel(&self, x: u64, y: u64) -> Option<[u8; 3]> {
-        let TensorBuffer::Nv12(buf) = &self.buffer else {
-            return None;
-        };
-        match self.image_height_width_channels() {
-            Some([h, w, _]) => {
-                let uv_offset = w * h;
-                let luma = buf[(y * w + x) as usize];
-                let u = buf[(uv_offset + (y / 2) * w + x) as usize];
-                let v = buf[(uv_offset + (y / 2) * w + x) as usize + 1];
-
-                Some(Self::set_color_standard(luma, u, v))
-            }
-            _ => None,
-        }
-    }
-
-    /// Returns decoded RGB8 value at the given image coordinates if this tensor is a YUY2 image.
-    ///
-    /// If the tensor is not [`TensorBuffer::Yuy2`], `None` is returned.
-    ///
-    /// It is undefined what happens if the coordinate is out-of-bounds.
-    pub fn get_yuy2_pixel(&self, x: u64, y: u64) -> Option<[u8; 3]> {
-        let TensorBuffer::Yuy2(buf) = &self.buffer else {
-            return None;
-        };
-
-        match self.image_height_width_channels() {
-            Some([_, w, _]) => {
-                // given an x and y coordinate, get the offset into the YUY2 buffer
-                let index = ((y * w + x) * 2) as usize;
-                let (luma, u, v) = if x % 2 == 0 {
-                    (buf[index], buf[index + 1], buf[index + 3])
-                } else {
-                    (buf[index], buf[index - 1], buf[index + 1])
-                };
-
-                Some(Self::set_color_standard(luma, u, v))
-            }
-            _ => None,
-        }
-    }
-
-    /// Sets the color standard for the given YUV color.
-    ///
-    /// This conversion mirrors the function of the same name in `crates/viewer/re_renderer/shader/decodings.wgsl`
-    ///
-    /// Specifying the color standard should be exposed in the future [#3541](https://github.com/rerun-io/rerun/pull/3541)
-    fn set_color_standard(y: u8, u: u8, v: u8) -> [u8; 3] {
-        let (y, u, v) = (y as f32, u as f32, v as f32);
-
-        // rescale YUV values
-        let y = (y - 16.0) / 219.0;
-        let u = (u - 128.0) / 224.0;
-        let v = (v - 128.0) / 224.0;
-
-        // BT.601 (aka. SDTV, aka. Rec.601). wiki: https://en.wikipedia.org/wiki/YCbCr#ITU-R_BT.601_conversion
-        let r = y + 1.402 * v;
-        let g = y - 0.344 * u - 0.714 * v;
-        let b = y + 1.772 * u;
-
-        // BT.709 (aka. HDTV, aka. Rec.709). wiki: https://en.wikipedia.org/wiki/YCbCr#ITU-R_BT.709_conversion
-        // let r = y + 1.575 * v;
-        // let g = y - 0.187 * u - 0.468 * v;
-        // let b = y + 1.856 * u;
-
-        [
-            (255.0 * r).clamp(0.0, 255.0) as u8,
-            (255.0 * g).clamp(0.0, 255.0) as u8,
-            (255.0 * b).clamp(0.0, 255.0) as u8,
-        ]
     }
 
     /// The datatype of the tensor.
@@ -478,7 +348,7 @@ impl<'a> TryFrom<&'a TensorData> for ::ndarray::ArrayViewD<'a, u8> {
 
     fn try_from(value: &'a TensorData) -> Result<Self, Self::Error> {
         match &value.buffer {
-            TensorBuffer::U8(data) | TensorBuffer::Nv12(data) => {
+            TensorBuffer::U8(data) => {
                 let shape: Vec<_> = value.shape.iter().map(|d| d.size as usize).collect();
                 ndarray::ArrayViewD::from_shape(shape, bytemuck::cast_slice(data.as_slice()))
                     .map_err(|err| TensorCastError::BadTensorShape { source: err })
@@ -581,8 +451,9 @@ impl<D: ::ndarray::Dimension> TryFrom<::ndarray::Array<half::f16, D>> for Tensor
 impl TensorData {
     /// Construct a tensor from the contents of an image file on disk.
     ///
-    /// JPEGs will be kept encoded, left to the viewer to decode on-the-fly.
-    /// Other images types will be decoded directly.
+    /// This will spend CPU cycles reading the file and decoding the image.
+    /// To save CPU time and storage, we recommend you instead use
+    /// [`ImageEncoded::from_file`].
     ///
     /// Requires the `image` feature.
     #[cfg(not(target_arch = "wasm32"))]
@@ -604,89 +475,29 @@ impl TensorData {
             image::guess_format(&img_bytes)?
         };
 
-        Self::from_image_bytes(img_bytes, img_format)
-    }
-
-    /// Construct a tensor from the contents of a JPEG file on disk.
-    ///
-    /// Requires the `image` feature.
-    #[cfg(not(target_arch = "wasm32"))]
-    #[inline]
-    pub fn from_jpeg_file(path: &std::path::Path) -> Result<Self, TensorImageLoadError> {
-        re_tracing::profile_function!(path.to_string_lossy());
-        let jpeg_bytes = {
-            re_tracing::profile_scope!("fs::read");
-            std::fs::read(path)?
-        };
-        Self::from_jpeg_bytes(jpeg_bytes)
-    }
-
-    /// Construct a new tensor from the contents of a `.jpeg` file at the given path.
-    #[deprecated = "Renamed 'from_jpeg_file'"]
-    #[cfg(not(target_arch = "wasm32"))]
-    #[inline]
-    pub fn tensor_from_jpeg_file(
-        image_path: impl AsRef<std::path::Path>,
-    ) -> Result<Self, TensorImageLoadError> {
-        Self::from_jpeg_file(image_path.as_ref())
+        Self::from_image_bytes(&img_bytes, img_format)
     }
 
     /// Construct a tensor from the contents of an image file.
     ///
-    /// JPEGs will be kept encoded, left to the viewer to decode on-the-fly.
-    /// Other images types will be decoded directly.
+    /// This will spend CPU cycles decoding the image.
+    /// To save CPU time and storage, we recommend you instead use
+    /// [`ImageEncoded::from_file_contents`].
     ///
     /// Requires the `image` feature.
     #[inline]
     pub fn from_image_bytes(
-        bytes: Vec<u8>,
+        bytes: &[u8],
         format: image::ImageFormat,
     ) -> Result<Self, TensorImageLoadError> {
         re_tracing::profile_function!(format!("{format:?}"));
-        if format == image::ImageFormat::Jpeg {
-            Self::from_jpeg_bytes(bytes)
-        } else {
-            let image = image::load_from_memory_with_format(&bytes, format)?;
-            Self::from_image(image)
-        }
-    }
-
-    /// Construct a tensor from the contents of a JPEG file, without decoding it now.
-    ///
-    /// Requires the `image` feature.
-    pub fn from_jpeg_bytes(jpeg_bytes: Vec<u8>) -> Result<Self, TensorImageLoadError> {
-        re_tracing::profile_function!();
-
-        // Parse JPEG header:
-        use image::ImageDecoder as _;
-        let jpeg = image::codecs::jpeg::JpegDecoder::new(std::io::Cursor::new(&jpeg_bytes))?;
-        let (w, h) = jpeg.dimensions();
-        let depth = jpeg.color_type().channel_count();
-
-        Ok(Self {
-            shape: vec![
-                TensorDimension::height(h as _),
-                TensorDimension::width(w as _),
-                TensorDimension::depth(depth as _),
-            ],
-            buffer: TensorBuffer::Jpeg(jpeg_bytes.into()),
-        })
-    }
-
-    /// Construct a new tensor from the contents of a `.jpeg` file.
-    #[deprecated = "Renamed 'from_jpeg_bytes'"]
-    #[cfg(not(target_arch = "wasm32"))]
-    #[inline]
-    pub fn tensor_from_jpeg_bytes(jpeg_bytes: Vec<u8>) -> Result<Self, TensorImageLoadError> {
-        Self::from_jpeg_bytes(jpeg_bytes)
+        let image = image::load_from_memory_with_format(bytes, format)?;
+        Self::from_image(image)
     }
 
     /// Construct a tensor from something that can be turned into a [`image::DynamicImage`].
     ///
     /// Requires the `image` feature.
-    ///
-    /// This is a convenience function that calls [`DecodedTensor::from_image`].
-    #[inline]
     pub fn from_image(image: impl Into<image::DynamicImage>) -> Result<Self, TensorImageLoadError> {
         Self::from_dynamic_image(image.into())
     }
@@ -694,11 +505,66 @@ impl TensorData {
     /// Construct a tensor from [`image::DynamicImage`].
     ///
     /// Requires the `image` feature.
-    ///
-    /// This is a convenience function that calls [`DecodedTensor::from_dynamic_image`].
-    #[inline]
     pub fn from_dynamic_image(image: image::DynamicImage) -> Result<Self, TensorImageLoadError> {
-        DecodedTensor::from_dynamic_image(image).map(DecodedTensor::into_inner)
+        re_tracing::profile_function!();
+
+        let (w, h) = (image.width(), image.height());
+
+        let (depth, buffer) = match image {
+            image::DynamicImage::ImageLuma8(image) => {
+                (1, TensorBuffer::U8(image.into_raw().into()))
+            }
+            image::DynamicImage::ImageRgb8(image) => (3, TensorBuffer::U8(image.into_raw().into())),
+            image::DynamicImage::ImageRgba8(image) => {
+                (4, TensorBuffer::U8(image.into_raw().into()))
+            }
+            image::DynamicImage::ImageLuma16(image) => {
+                (1, TensorBuffer::U16(image.into_raw().into()))
+            }
+            image::DynamicImage::ImageRgb16(image) => {
+                (3, TensorBuffer::U16(image.into_raw().into()))
+            }
+            image::DynamicImage::ImageRgba16(image) => {
+                (4, TensorBuffer::U16(image.into_raw().into()))
+            }
+            image::DynamicImage::ImageRgb32F(image) => {
+                (3, TensorBuffer::F32(image.into_raw().into()))
+            }
+            image::DynamicImage::ImageRgba32F(image) => {
+                (4, TensorBuffer::F32(image.into_raw().into()))
+            }
+            image::DynamicImage::ImageLumaA8(image) => {
+                re_log::warn!(
+                    "Rerun doesn't have native support for 8-bit Luma + Alpha. The image will be convert to RGBA."
+                );
+                return Self::from_image(image::DynamicImage::ImageLumaA8(image).to_rgba8());
+            }
+            image::DynamicImage::ImageLumaA16(image) => {
+                re_log::warn!(
+                    "Rerun doesn't have native support for 16-bit Luma + Alpha. The image will be convert to RGBA."
+                );
+                return Self::from_image(image::DynamicImage::ImageLumaA16(image).to_rgba16());
+            }
+            _ => {
+                // It is very annoying that DynamicImage is #[non_exhaustive]
+                return Err(TensorImageLoadError::UnsupportedImageColorType(
+                    image.color(),
+                ));
+            }
+        };
+        let shape = if depth == 1 {
+            vec![
+                TensorDimension::height(h as _),
+                TensorDimension::width(w as _),
+            ]
+        } else {
+            vec![
+                TensorDimension::height(h as _),
+                TensorDimension::width(w as _),
+                TensorDimension::depth(depth),
+            ]
+        };
+        Ok(Self { shape, buffer })
     }
 
     /// Predicts if [`Self::to_dynamic_image`] is likely to succeed, without doing anything expensive

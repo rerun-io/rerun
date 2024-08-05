@@ -1,7 +1,9 @@
 use egui::NumExt;
 
-use re_entity_db::{external::re_query::LatestAtComponentResults, EntityPath, InstancePath};
-use re_log_types::Instance;
+use re_chunk_store::UnitChunkShared;
+use re_entity_db::{EntityPath, InstancePath};
+use re_log_types::{Instance, TimeInt};
+use re_types::ComponentName;
 use re_ui::{ContextExt as _, SyntaxHighlighting as _};
 use re_viewer_context::{UiLayout, ViewerContext};
 
@@ -11,7 +13,8 @@ use crate::item_ui;
 /// All the values of a specific [`re_log_types::ComponentPath`].
 pub struct EntityLatestAtResults<'a> {
     pub entity_path: EntityPath,
-    pub results: &'a LatestAtComponentResults,
+    pub component_name: ComponentName,
+    pub unit: &'a UnitChunkShared,
 }
 
 impl<'a> DataUi for EntityLatestAtResults<'a> {
@@ -23,17 +26,11 @@ impl<'a> DataUi for EntityLatestAtResults<'a> {
         query: &re_chunk_store::LatestAtQuery,
         db: &re_entity_db::EntityDb,
     ) {
-        let Some(component_name) = self.results.component_name(db.resolver()) else {
-            // TODO(#5607): what should happen if the promise is still pending?
-            return;
-        };
+        re_tracing::profile_function!(self.component_name);
 
-        re_tracing::profile_function!(component_name);
-
-        // TODO(#5607): what should happen if the promise is still pending?
         let Some(num_instances) = self
-            .results
-            .raw(db.resolver(), component_name)
+            .unit
+            .component_batch_raw(&self.component_name)
             .map(|data| data.len())
         else {
             ui.weak("<pending>");
@@ -56,7 +53,10 @@ impl<'a> DataUi for EntityLatestAtResults<'a> {
 
         // Display data time and additional diagnostic information for static components.
         if ui_layout != UiLayout::List {
-            let time = self.results.index().0;
+            let time = self
+                .unit
+                .index(&query.timeline())
+                .map_or(TimeInt::STATIC, |(time, _)| time);
             if time.is_static() {
                 // No need to show anything here. We already tell the user this is a static component elsewhere.
             } else {
@@ -71,37 +71,39 @@ impl<'a> DataUi for EntityLatestAtResults<'a> {
             }
 
             // if the component is static, we display extra diagnostic information
-            if self.results.is_static() {
-                if let Some(histogram) = db
-                    .tree()
-                    .subtree(&self.entity_path)
-                    .and_then(|tree| tree.entity.components.get(&component_name))
-                {
-                    if histogram.num_static_messages() > 1 {
-                        ui.label(ui.ctx().warning_text(format!(
-                            "Static component value was overridden {} times",
-                            histogram.num_static_messages().saturating_sub(1),
-                        )))
-                        .on_hover_text(
-                            "When a static component is logged multiple times, only the last value \
-                            is stored. Previously logged values are overwritten and not \
-                            recoverable.",
-                        );
-                    }
+            if self.unit.is_static() {
+                let static_message_count = db
+                    .store()
+                    .num_static_events_for_component(&self.entity_path, self.component_name);
+                if static_message_count > 1 {
+                    ui.label(ui.ctx().warning_text(format!(
+                        "Static component value was overridden {} times",
+                        static_message_count.saturating_sub(1),
+                    )))
+                    .on_hover_text(
+                        "When a static component is logged multiple times, only the last value \
+                        is stored. Previously logged values are overwritten and not \
+                        recoverable.",
+                    );
+                }
 
-                    let timeline_message_count = histogram.num_temporal_messages();
-                    if timeline_message_count > 0 {
-                        ui.label(ui.ctx().error_text(format!(
-                            "Static component has {} event{} logged on timelines",
-                            timeline_message_count,
-                            if timeline_message_count > 1 { "s" } else { "" }
-                        )))
-                        .on_hover_text(
-                            "Components should be logged either as static or on timelines, but \
-                            never both. Values for static components logged to timelines cannot be \
-                            displayed.",
-                        );
-                    }
+                let temporal_message_count =
+                    db.store().num_temporal_events_for_component_on_timeline(
+                        &query.timeline(),
+                        &self.entity_path,
+                        self.component_name,
+                    );
+                if temporal_message_count > 0 {
+                    ui.label(ui.ctx().error_text(format!(
+                        "Static component has {} event{} logged on timelines",
+                        temporal_message_count,
+                        if temporal_message_count > 1 { "s" } else { "" }
+                    )))
+                    .on_hover_text(
+                        "Components should be logged either as static or on timelines, but \
+                        never both. Values for static components logged to timelines cannot be \
+                        displayed.",
+                    );
                 }
             }
         }
@@ -140,7 +142,8 @@ impl<'a> DataUi for EntityLatestAtResults<'a> {
                 query,
                 db,
                 &self.entity_path,
-                self.results,
+                self.component_name,
+                self.unit,
                 &Instance::from(0),
             );
         } else if one_line {
@@ -158,7 +161,7 @@ impl<'a> DataUi for EntityLatestAtResults<'a> {
                         ui.label("Index");
                     });
                     header.col(|ui| {
-                        ui.label(component_name.short_name());
+                        ui.label(self.component_name.short_name());
                     });
                 })
                 .body(|mut body| {
@@ -187,7 +190,8 @@ impl<'a> DataUi for EntityLatestAtResults<'a> {
                                 query,
                                 db,
                                 &self.entity_path,
-                                self.results,
+                                self.component_name,
+                                self.unit,
                                 &instance,
                             );
                         });

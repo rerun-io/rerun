@@ -10,16 +10,17 @@ fn roundtrip() {
             components::HalfSize3D::new(4.0, 5.0, 6.0),
         ],
         centers: Some(vec![
-            components::Position3D::new(1.0, 2.0, 3.0), //
-            components::Position3D::new(4.0, 5.0, 6.0),
+            components::LeafTranslation3D::new(1.0, 2.0, 3.0), //
+            components::LeafTranslation3D::new(4.0, 5.0, 6.0),
         ]),
-        rotations: Some(vec![
-            components::Rotation3D::from(datatypes::Quaternion::from_xyzw([1.0, 2.0, 3.0, 4.0])),
-            components::Rotation3D::from(datatypes::RotationAxisAngle::new(
-                [1.0, 2.0, 3.0],
-                datatypes::Angle::Radians(4.0),
-            )),
+        quaternions: Some(vec![
+            datatypes::Quaternion::from_xyzw([1.0, 2.0, 3.0, 4.0]).into()
         ]),
+        rotation_axis_angles: Some(vec![datatypes::RotationAxisAngle::new(
+            [1.0, 2.0, 3.0],
+            datatypes::Angle::from_radians(4.0),
+        )
+        .into()]),
         colors: Some(vec![
             components::Color::from_unmultiplied_rgba(0xAA, 0x00, 0x00, 0xCC), //
             components::Color::from_unmultiplied_rgba(0x00, 0xBB, 0x00, 0xDD),
@@ -28,6 +29,7 @@ fn roundtrip() {
             components::Radius::from(42.0), //
             components::Radius::from(43.0),
         ]),
+        fill_mode: Some(components::FillMode::Solid),
         labels: Some(vec![
             "hello".into(),  //
             "friend".into(), //
@@ -40,15 +42,14 @@ fn roundtrip() {
 
     let arch = Boxes3D::from_half_sizes([(1.0, 2.0, 3.0), (4.0, 5.0, 6.0)])
         .with_centers([(1.0, 2.0, 3.0), (4.0, 5.0, 6.0)])
-        .with_rotations([
-            components::Rotation3D::from(datatypes::Quaternion::from_xyzw([1.0, 2.0, 3.0, 4.0])),
-            components::Rotation3D::from(datatypes::RotationAxisAngle::new(
-                [1.0, 2.0, 3.0],
-                datatypes::Angle::Radians(4.0),
-            )),
-        ])
+        .with_quaternions([datatypes::Quaternion::from_xyzw([1.0, 2.0, 3.0, 4.0])])
+        .with_rotation_axis_angles([datatypes::RotationAxisAngle::new(
+            [1.0, 2.0, 3.0],
+            datatypes::Angle::from_radians(4.0),
+        )])
         .with_colors([0xAA0000CC, 0x00BB00DD])
         .with_radii([42.0, 43.0])
+        .with_fill_mode(components::FillMode::Solid)
         .with_labels(["hello", "friend"])
         .with_class_ids([126, 127]);
     similar_asserts::assert_eq!(expected, arch);
@@ -58,6 +59,7 @@ fn roundtrip() {
         ("centers", vec!["rerun.components.Position2D"]),
         ("colors", vec!["rerun.components.Color"]),
         ("radii", vec!["rerun.components.Radius"]),
+        ("fill_mode", vec!["rerun.components.FillMode"]),
         ("labels", vec!["rerun.components.Label"]),
         ("draw_order", vec!["rerun.components.DrawOrder"]),
         ("class_ids", vec!["rerun.components.ClassId"]),

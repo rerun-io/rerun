@@ -2,7 +2,78 @@
 
 use smallvec::{smallvec, SmallVec};
 
-use crate::datatypes::{TensorData, TensorDimension};
+use crate::{
+    components::ChannelDatatype,
+    datatypes::{Blob, TensorBuffer, TensorData, TensorDimension},
+};
+
+// ----------------------------------------------------------------------------
+
+/// The kind of image data, either color, segmentation, or depth image.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub enum ImageKind {
+    /// A normal grayscale or color image ([`crate::archetypes::Image`]).
+    Color,
+
+    /// A depth map ([`crate::archetypes::DepthImage`]).
+    Depth,
+
+    /// A segmentation image ([`crate::archetypes::SegmentationImage`]).
+    ///
+    /// The data is a [`crate::components::ClassId`] which should be
+    /// looked up using the appropriate [`crate::components::AnnotationContext`]
+    Segmentation,
+}
+
+// ----------------------------------------------------------------------------
+
+/// Errors when converting images from the [`image`] crate to an [`crate::archetypes::Image`].
+#[cfg(feature = "image")]
+#[derive(thiserror::Error, Clone, Debug)]
+pub enum ImageConversionError {
+    /// Unknown color type from the image crate.
+    ///
+    /// This should only happen if you are using a newer `image` crate than the one Rerun was built for,
+    /// because `image` can add new color types without it being a breaking change,
+    /// so we cannot exhaustively match on all color types.
+    #[error("Unsupported color type: {0:?}. We support 8-bit, 16-bit, and f32 images, and RGB, RGBA, Luminance, and Luminance-Alpha.")]
+    UnsupportedImageColorType(image::ColorType),
+}
+
+/// Errors when loading image files.
+#[cfg(feature = "image")]
+#[derive(thiserror::Error, Clone, Debug)]
+pub enum ImageLoadError {
+    /// e.g. failed to decode a JPEG file.
+    #[error(transparent)]
+    Image(std::sync::Arc<image::ImageError>),
+
+    /// e.g. failed to find a file on disk.
+    #[error("Failed to load file: {0}")]
+    ReadError(std::sync::Arc<std::io::Error>),
+
+    /// Failure to convert the loaded image to a [`crate::archetypes::Image`].
+    #[error(transparent)]
+    ImageConversionError(#[from] ImageConversionError),
+}
+
+#[cfg(feature = "image")]
+impl From<image::ImageError> for ImageLoadError {
+    #[inline]
+    fn from(err: image::ImageError) -> Self {
+        Self::Image(std::sync::Arc::new(err))
+    }
+}
+
+#[cfg(feature = "image")]
+impl From<std::io::Error> for ImageLoadError {
+    #[inline]
+    fn from(err: std::io::Error) -> Self {
+        Self::ReadError(std::sync::Arc::new(err))
+    }
+}
+
+// ----------------------------------------------------------------------------
 
 /// Error returned when trying to interpret a tensor as an image.
 #[derive(thiserror::Error, Clone, Debug)]
@@ -17,14 +88,91 @@ where
     /// The tensor did not have the right shape for an image (e.g. had too many dimensions).
     #[error("Could not create Image from TensorData with shape {0:?}")]
     BadImageShape(Vec<TensorDimension>),
+
+    /// Happens if you try to cast `NV12` or `YUY2` to a depth image or segmentation image.
+    #[error("Chroma downsampling is not supported for this image type (e.g. DepthImage or SegmentationImage)")]
+    ChromaDownsamplingNotSupported,
 }
+
+/// Converts it to what is useful for the image API.
+pub fn blob_and_datatype_from_tensor(tensor_buffer: TensorBuffer) -> (Blob, ChannelDatatype) {
+    match tensor_buffer {
+        TensorBuffer::U8(buffer) => (Blob(buffer), ChannelDatatype::U8),
+        TensorBuffer::U16(buffer) => (Blob(buffer.cast_to_u8()), ChannelDatatype::U16),
+        TensorBuffer::U32(buffer) => (Blob(buffer.cast_to_u8()), ChannelDatatype::U32),
+        TensorBuffer::U64(buffer) => (Blob(buffer.cast_to_u8()), ChannelDatatype::U64),
+        TensorBuffer::I8(buffer) => (Blob(buffer.cast_to_u8()), ChannelDatatype::I8),
+        TensorBuffer::I16(buffer) => (Blob(buffer.cast_to_u8()), ChannelDatatype::I16),
+        TensorBuffer::I32(buffer) => (Blob(buffer.cast_to_u8()), ChannelDatatype::I32),
+        TensorBuffer::I64(buffer) => (Blob(buffer.cast_to_u8()), ChannelDatatype::I64),
+        TensorBuffer::F16(buffer) => (Blob(buffer.cast_to_u8()), ChannelDatatype::F16),
+        TensorBuffer::F32(buffer) => (Blob(buffer.cast_to_u8()), ChannelDatatype::F32),
+        TensorBuffer::F64(buffer) => (Blob(buffer.cast_to_u8()), ChannelDatatype::F64),
+    }
+}
+
+// ----------------------------------------------------------------------------
+
+/// Types that implement this can be used as image channel types.
+///
+/// Implemented for `u8, u16, u32, u64, i8, i16, i32, i64, f16, f32, f64`.
+pub trait ImageChannelType: bytemuck::Pod {
+    /// The [`ChannelDatatype`] for this type.
+    const CHANNEL_TYPE: ChannelDatatype;
+}
+
+impl ImageChannelType for u8 {
+    const CHANNEL_TYPE: ChannelDatatype = ChannelDatatype::U8;
+}
+
+impl ImageChannelType for u16 {
+    const CHANNEL_TYPE: ChannelDatatype = ChannelDatatype::U16;
+}
+
+impl ImageChannelType for u32 {
+    const CHANNEL_TYPE: ChannelDatatype = ChannelDatatype::U32;
+}
+
+impl ImageChannelType for u64 {
+    const CHANNEL_TYPE: ChannelDatatype = ChannelDatatype::U64;
+}
+
+impl ImageChannelType for i8 {
+    const CHANNEL_TYPE: ChannelDatatype = ChannelDatatype::I8;
+}
+
+impl ImageChannelType for i16 {
+    const CHANNEL_TYPE: ChannelDatatype = ChannelDatatype::I16;
+}
+
+impl ImageChannelType for i32 {
+    const CHANNEL_TYPE: ChannelDatatype = ChannelDatatype::I32;
+}
+
+impl ImageChannelType for i64 {
+    const CHANNEL_TYPE: ChannelDatatype = ChannelDatatype::I64;
+}
+
+impl ImageChannelType for half::f16 {
+    const CHANNEL_TYPE: ChannelDatatype = ChannelDatatype::F16;
+}
+
+impl ImageChannelType for f32 {
+    const CHANNEL_TYPE: ChannelDatatype = ChannelDatatype::F32;
+}
+
+impl ImageChannelType for f64 {
+    const CHANNEL_TYPE: ChannelDatatype = ChannelDatatype::F64;
+}
+
+// ----------------------------------------------------------------------------
 
 /// Returns the indices of an appropriate set of dimensions.
 ///
 /// Ignores leading and trailing 1-sized dimensions.
 ///
-/// For instance: `[1, 640, 480, 3, 1]` would return `[1, 2, 3]`,
-/// the indices of the `[640, 480, 3]` dimensions.
+/// For instance: `[1, 480, 640, 3, 1]` would return `[1, 2, 3]`,
+/// the indices of the `[480, 640, 3]` dimensions.
 pub fn find_non_empty_dim_indices(shape: &[TensorDimension]) -> SmallVec<[usize; 4]> {
     match shape.len() {
         0 => return smallvec![],
@@ -34,7 +182,7 @@ pub fn find_non_empty_dim_indices(shape: &[TensorDimension]) -> SmallVec<[usize;
     }
 
     // Find a range of non-unit dimensions.
-    // [1, 1, 1, 640, 480, 3, 1, 1, 1]
+    // [1, 1, 1, 480, 640, 3, 1, 1, 1]
     //           ^---------^   goal range
 
     let mut non_unit_indices =
@@ -94,15 +242,15 @@ fn test_find_non_empty_dim_indices() {
     expect(&[1], &[0]);
     expect(&[100], &[0]);
 
-    expect(&[640, 480], &[0, 1]);
-    expect(&[640, 480, 1], &[0, 1]);
-    expect(&[640, 480, 1, 1], &[0, 1]);
-    expect(&[640, 480, 3], &[0, 1, 2]);
-    expect(&[1, 640, 480], &[1, 2]);
-    expect(&[1, 640, 480, 3, 1], &[1, 2, 3]);
-    expect(&[1, 3, 640, 480, 1], &[1, 2, 3]);
-    expect(&[1, 1, 640, 480], &[2, 3]);
-    expect(&[1, 1, 640, 480, 1, 1], &[2, 3]);
+    expect(&[480, 640], &[0, 1]);
+    expect(&[480, 640, 1], &[0, 1]);
+    expect(&[480, 640, 1, 1], &[0, 1]);
+    expect(&[480, 640, 3], &[0, 1, 2]);
+    expect(&[1, 480, 640], &[1, 2]);
+    expect(&[1, 480, 640, 3, 1], &[1, 2, 3]);
+    expect(&[1, 3, 480, 640, 1], &[1, 2, 3]);
+    expect(&[1, 1, 480, 640], &[2, 3]);
+    expect(&[1, 1, 480, 640, 1, 1], &[2, 3]);
 
     expect(&[1, 1, 3], &[0, 1, 2]);
     expect(&[1, 1, 3, 1], &[2, 3]);

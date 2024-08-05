@@ -20,9 +20,7 @@ namespace rerun::components {
     struct HalfSize3D {
         rerun::datatypes::Vec3D xyz;
 
-      public:
-        // Extensions to generated type defined in 'half_size3d_ext.cpp'
-
+      public: // START of extensions from half_size3d_ext.cpp:
         /// Construct HalfSize3D from x/y/z values.
         HalfSize3D(float x, float y, float z) : xyz{x, y, z} {}
 
@@ -37,6 +35,8 @@ namespace rerun::components {
         float z() const {
             return xyz.z();
         }
+
+        // END of extensions from half_size3d_ext.cpp, start of generated code:
 
       public:
         HalfSize3D() = default;

@@ -10,7 +10,6 @@ use re_log_types::{
     example_components::{MyColor, MyIndex, MyPoint},
     EntityPath, StoreId, TimeInt, TimePoint, Timeline,
 };
-use re_query::PromiseResolver;
 use re_types_core::{archetypes::Clear, components::ClearIsRecursive, AsComponents};
 
 // ---
@@ -22,15 +21,12 @@ fn query_latest_component<C: re_types_core::Component>(
 ) -> Option<(TimeInt, RowId, C)> {
     re_tracing::profile_function!();
 
-    let resolver = PromiseResolver::default();
-
     let results = db
         .query_caches()
         .latest_at(db.store(), query, entity_path, [C::name()]);
-    let results = results.get_required(C::name()).ok()?;
 
-    let &(data_time, row_id) = results.index();
-    let data = results.dense::<C>(&resolver)?.first().cloned()?;
+    let (data_time, row_id) = results.index();
+    let data = results.component_mono::<C>()?;
 
     Some((data_time, row_id, data))
 }
@@ -414,7 +410,7 @@ fn clear_and_gc() -> anyhow::Result<()> {
     // Insert a component, then clear it, then GC.
     {
         // EntityTree is Empty when we start
-        assert_eq!(db.tree().num_children_and_fields(), 0);
+        assert!(db.tree().is_empty(db.store()));
 
         let point = MyPoint::new(1.0, 2.0);
 
@@ -450,7 +446,7 @@ fn clear_and_gc() -> anyhow::Result<()> {
         assert_eq!(stats.temporal_chunks.total_num_rows, 0);
 
         // EntityTree should be empty again when we end since everything was GC'd
-        assert_eq!(db.tree().num_children_and_fields(), 0);
+        assert!(db.tree().is_empty(db.store()));
     }
 
     Ok(())

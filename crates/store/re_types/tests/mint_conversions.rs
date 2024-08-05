@@ -142,57 +142,6 @@ fn quaternion() {
 
 #[test]
 #[cfg(feature = "mint")]
-fn rotation3d() {
-    {
-        let datatype: datatypes::Rotation3D =
-            datatypes::Quaternion::from_xyzw([1.0, 2.0, 3.0, 4.0]).into();
-        let mint: mint::Quaternion<f32> = datatype.into();
-        assert_eq!(mint, [1.0, 2.0, 3.0, 4.0].into());
-    }
-    {
-        let datatype: datatypes::Rotation3D = datatypes::RotationAxisAngle {
-            axis: [1.0, 0.0, 0.0].into(),
-            angle: datatypes::Angle::Degrees(90.0),
-        }
-        .into();
-        let mint: mint::Quaternion<f32> = datatype.into();
-        assert_eq!(mint, [0.70710677, 0.0, 0.0, 0.70710677].into());
-    }
-    {
-        let mint: mint::Quaternion<f32> = [1.0, 2.0, 3.0, 4.0].into();
-        let datatype: datatypes::Rotation3D = mint.into();
-        assert_eq!(
-            datatype,
-            datatypes::Quaternion::from_xyzw([1.0, 2.0, 3.0, 4.0]).into()
-        );
-    }
-    {
-        let component: components::Rotation3D =
-            datatypes::Quaternion::from_xyzw([1.0, 2.0, 3.0, 4.0]).into();
-        let mint: mint::Quaternion<f32> = component.into();
-        assert_eq!(mint, [1.0, 2.0, 3.0, 4.0].into());
-    }
-    {
-        let component: components::Rotation3D = datatypes::RotationAxisAngle {
-            axis: [1.0, 0.0, 0.0].into(),
-            angle: datatypes::Angle::Degrees(90.0),
-        }
-        .into();
-        let mint: mint::Quaternion<f32> = component.into();
-        assert_eq!(mint, [0.70710677, 0.0, 0.0, 0.70710677].into());
-    }
-    {
-        let mint: mint::Quaternion<f32> = [1.0, 2.0, 3.0, 4.0].into();
-        let component: components::Rotation3D = mint.into();
-        assert_eq!(
-            component,
-            datatypes::Quaternion::from_xyzw([1.0, 2.0, 3.0, 4.0]).into()
-        );
-    }
-}
-
-#[test]
-#[cfg(feature = "mint")]
 fn mat3() {
     let m = [
         [1.0, 2.0, 3.0], //

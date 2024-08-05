@@ -1,27 +1,26 @@
 use itertools::Itertools as _;
 
-use re_chunk_store::RowId;
-use re_log_types::TimeInt;
-use re_query::range_zip_1x1;
-use re_space_view::diff_component_filter;
 use re_types::{
     archetypes::SegmentationImage,
-    components::{DrawOrder, Opacity, TensorData},
-    tensor_data::TensorDataMeaning,
+    components::{Blob, ChannelDatatype, DrawOrder, Opacity, Resolution2D},
+    image::ImageKind,
+    Loggable as _,
 };
 use re_viewer_context::{
-    ApplicableEntities, IdentifiedViewSystem, QueryContext, SpaceViewClass,
-    SpaceViewSystemExecutionError, TensorDecodeCache, TypedComponentFallbackProvider, ViewContext,
+    ApplicableEntities, IdentifiedViewSystem, ImageFormat, ImageInfo, QueryContext,
+    SpaceViewSystemExecutionError, TypedComponentFallbackProvider, ViewContext,
     ViewContextCollection, ViewQuery, VisualizableEntities, VisualizableFilterContext,
-    VisualizerAdditionalApplicabilityFilter, VisualizerQueryInfo, VisualizerSystem,
+    VisualizerQueryInfo, VisualizerSystem,
 };
 
 use crate::{
-    ui::SpatialSpaceViewState, view_kind::SpatialSpaceViewKind,
-    visualizers::filter_visualizable_2d_entities, PickableImageRect, SpatialSpaceView2D,
+    ui::SpatialSpaceViewState,
+    view_kind::SpatialSpaceViewKind,
+    visualizers::{filter_visualizable_2d_entities, textured_rect_from_image},
+    PickableImageRect,
 };
 
-use super::{bounding_box_for_textured_rect, tensor_to_textured_rect, SpatialViewVisualizerData};
+use super::SpatialViewVisualizerData;
 
 pub struct SegmentationImageVisualizer {
     pub data: SpatialViewVisualizerData,
@@ -37,11 +36,9 @@ impl Default for SegmentationImageVisualizer {
     }
 }
 
-struct SegmentationImageComponentData<'a> {
-    index: (TimeInt, RowId),
-
-    tensor: &'a TensorData,
-    opacity: Option<&'a Opacity>,
+struct SegmentationImageComponentData {
+    image: ImageInfo,
+    opacity: Option<Opacity>,
 }
 
 impl IdentifiedViewSystem for SegmentationImageVisualizer {
@@ -50,23 +47,9 @@ impl IdentifiedViewSystem for SegmentationImageVisualizer {
     }
 }
 
-struct SegmentationImageVisualizerEntityFilter;
-
-impl VisualizerAdditionalApplicabilityFilter for SegmentationImageVisualizerEntityFilter {
-    fn update_applicability(&mut self, event: &re_chunk_store::ChunkStoreEvent) -> bool {
-        diff_component_filter(event, |tensor: &re_types::components::TensorData| {
-            tensor.is_shaped_like_an_image()
-        })
-    }
-}
-
 impl VisualizerSystem for SegmentationImageVisualizer {
     fn visualizer_query_info(&self) -> VisualizerQueryInfo {
         VisualizerQueryInfo::from_archetype::<SegmentationImage>()
-    }
-
-    fn applicability_filter(&self) -> Option<Box<dyn VisualizerAdditionalApplicabilityFilter>> {
-        Some(Box::new(SegmentationImageVisualizerEntityFilter))
     }
 
     fn filter_visualizable_entities(
@@ -88,7 +71,10 @@ impl VisualizerSystem for SegmentationImageVisualizer {
             return Err(SpaceViewSystemExecutionError::NoRenderContextError);
         };
 
-        super::entity_iterator::process_archetype::<Self, SegmentationImage, _>(
+        use super::entity_iterator::{
+            iter_buffer, iter_component, iter_primitive_array, process_archetype,
+        };
+        process_archetype::<Self, SegmentationImage, _>(
             ctx,
             view_query,
             context_systems,
@@ -96,83 +82,71 @@ impl VisualizerSystem for SegmentationImageVisualizer {
                 use re_space_view::RangeResultsExt as _;
 
                 let entity_path = ctx.target_entity_path;
-                let resolver = ctx.recording().resolver();
 
-                let tensors = match results.get_required_component_dense::<TensorData>(resolver) {
-                    Some(tensors) => tensors?,
-                    _ => return Ok(()),
+                let Some(all_blob_chunks) = results.get_required_chunks(&Blob::name()) else {
+                    return Ok(());
+                };
+                let Some(all_datatype_chunks) =
+                    results.get_required_chunks(&ChannelDatatype::name())
+                else {
+                    return Ok(());
+                };
+                let Some(all_resolution_chunks) =
+                    results.get_required_chunks(&Resolution2D::name())
+                else {
+                    return Ok(());
                 };
 
-                let opacity = results.get_or_empty_dense(resolver)?;
+                let timeline = ctx.query.timeline();
+                let all_blobs_indexed = iter_buffer::<u8>(&all_blob_chunks, timeline, Blob::name());
+                let all_resolutions_indexed =
+                    iter_primitive_array(&all_resolution_chunks, timeline, Resolution2D::name());
+                let all_datatypes_indexed =
+                    iter_component(&all_datatype_chunks, timeline, ChannelDatatype::name());
+                let all_opacities = results.iter_as(timeline, Opacity::name());
 
-                let data = range_zip_1x1(tensors.range_indexed(), opacity.range_indexed())
-                    .filter_map(|(&index, tensors, opacity)| {
-                        tensors
-                            .first()
-                            .map(|tensor| SegmentationImageComponentData {
-                                index,
-                                tensor,
-                                opacity: opacity.and_then(|opacity| opacity.first()),
-                            })
-                    });
-
-                let meaning = TensorDataMeaning::ClassId;
+                let data = re_query::range_zip_1x3(
+                    all_blobs_indexed,
+                    all_datatypes_indexed,
+                    all_resolutions_indexed,
+                    all_opacities.primitive::<f32>(),
+                )
+                .filter_map(|(index, blobs, data_type, resolution, opacity)| {
+                    let blob = blobs.first()?;
+                    Some(SegmentationImageComponentData {
+                        image: ImageInfo {
+                            blob_row_id: index.1,
+                            blob: blob.clone().into(),
+                            resolution: first_copied(resolution)?,
+                            format: ImageFormat::segmentation(first_copied(data_type.as_deref())?),
+                            kind: ImageKind::Segmentation,
+                            colormap: None,
+                        },
+                        opacity: first_copied(opacity).map(Into::into),
+                    })
+                });
 
                 for data in data {
-                    if !data.tensor.is_shaped_like_an_image() {
-                        continue;
-                    }
+                    let SegmentationImageComponentData { image, opacity } = data;
 
-                    let tensor_data_row_id = data.index.1;
-                    let tensor = match ctx.viewer_ctx.cache.entry(|c: &mut TensorDecodeCache| {
-                        c.entry(tensor_data_row_id, data.tensor.0.clone())
-                    }) {
-                        Ok(tensor) => tensor,
-                        Err(err) => {
-                            re_log::warn_once!(
-                                "Encountered problem decoding tensor at path {entity_path}: {err}"
-                            );
-                            continue;
-                        }
-                    };
-
-                    // TODO(andreas): colormap is only available for depth images right now.
-                    let colormap = None;
-
-                    let opacity = data
-                        .opacity
-                        .copied()
-                        .unwrap_or_else(|| self.fallback_for(ctx));
+                    let opacity = opacity.unwrap_or_else(|| self.fallback_for(ctx));
                     let multiplicative_tint =
                         re_renderer::Rgba::from_white_alpha(opacity.0.clamp(0.0, 1.0));
 
-                    if let Some(textured_rect) = tensor_to_textured_rect(
+                    if let Some(textured_rect) = textured_rect_from_image(
                         ctx.viewer_ctx,
                         entity_path,
                         spatial_ctx,
-                        tensor_data_row_id,
-                        &tensor,
-                        meaning,
+                        &image,
                         multiplicative_tint,
-                        colormap,
+                        "SegmentationImage",
+                        &mut self.data,
                     ) {
-                        // Only update the bounding box if this is a 2D space view.
-                        // This is avoids a cyclic relationship where the image plane grows
-                        // the bounds which in turn influence the size of the image plane.
-                        // See: https://github.com/rerun-io/rerun/issues/3728
-                        if spatial_ctx.space_view_class_identifier
-                            == SpatialSpaceView2D::identifier()
-                        {
-                            self.data.add_bounding_box(
-                                entity_path.hash(),
-                                bounding_box_for_textured_rect(&textured_rect),
-                                spatial_ctx.world_from_entity,
-                            );
-                        }
-
                         self.images.push(PickableImageRect {
                             ent_path: entity_path.clone(),
+                            image,
                             textured_rect,
+                            depth_meter: None,
                         });
                     }
                 }
@@ -261,3 +235,7 @@ impl TypedComponentFallbackProvider<DrawOrder> for SegmentationImageVisualizer {
 }
 
 re_viewer_context::impl_component_fallback_provider!(SegmentationImageVisualizer => [DrawOrder, Opacity]);
+
+fn first_copied<T: Copy>(slice: Option<&[T]>) -> Option<T> {
+    slice.and_then(|element| element.first()).copied()
+}

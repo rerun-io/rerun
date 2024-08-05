@@ -20,15 +20,10 @@ pub(crate) fn validate_component<C: Component>(blueprint: &EntityDb) -> bool {
             // Walk the blueprint and see if any cells fail to deserialize for this component type.
             let query = LatestAtQuery::latest(Timeline::default());
             for path in blueprint.entity_paths() {
-                let results = blueprint.query_caches().latest_at(
-                    blueprint.store(),
-                    &query,
-                    path,
-                    [C::name()],
-                );
-                if let Some(array) = results
-                    .get(C::name())
-                    .and_then(|results| results.raw(blueprint.resolver(), C::name()))
+                if let Some(array) = blueprint
+                    .query_caches()
+                    .latest_at(blueprint.store(), &query, path, [C::name()])
+                    .component_batch_raw(&C::name())
                 {
                     if let Err(err) = C::from_arrow_opt(&*array) {
                         re_log::debug!(

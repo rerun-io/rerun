@@ -3,7 +3,7 @@
 
 use std::sync::Arc;
 
-use itertools::Itertools as _;
+use itertools::Itertools;
 
 use re_chunk::{RowId, Timeline};
 use re_chunk_store::{
@@ -15,7 +15,7 @@ use re_log_types::{
     example_components::{MyColor, MyPoint, MyPoints},
     EntityPath, TimePoint,
 };
-use re_query::{Caches, PromiseResolver, PromiseResult};
+use re_query::Caches;
 use re_types::Archetype;
 use re_types_core::Loggable as _;
 
@@ -877,7 +877,7 @@ fn concurrent_multitenant_edge_case() {
             MyPoints::all_components().iter().copied(),
         );
 
-        let _cached_all_points = cached.get_required(MyPoint::name()).unwrap();
+        let _cached_all_points = cached.get_required(&MyPoint::name()).unwrap();
     }
 
     // --- Meanwhile, tenant #2 queries and deserializes the data ---
@@ -949,7 +949,7 @@ fn concurrent_multitenant_edge_case2() {
             MyPoints::all_components().iter().copied(),
         );
 
-        let _cached_all_points = cached.get_required(MyPoint::name()).unwrap();
+        let _cached_all_points = cached.get_required(&MyPoint::name()).unwrap();
     }
 
     // --- Tenant #2 queries the data at (423, 523), but doesn't cache the result in the deserialization cache ---
@@ -963,7 +963,7 @@ fn concurrent_multitenant_edge_case2() {
             MyPoints::all_components().iter().copied(),
         );
 
-        let _cached_all_points = cached.get_required(MyPoint::name()).unwrap();
+        let _cached_all_points = cached.get_required(&MyPoint::name()).unwrap();
     }
 
     // --- Tenant #2 queries the data at (223, 423) and deserializes it ---
@@ -1030,8 +1030,6 @@ fn query_and_compare(
 ) {
     re_log::setup_logging();
 
-    let resolver = PromiseResolver::default();
-
     for _ in 0..3 {
         let cached = caches.range(
             store,
@@ -1040,40 +1038,42 @@ fn query_and_compare(
             MyPoints::all_components().iter().copied(),
         );
 
-        let cached_all_points = cached
-            .get_required(MyPoint::name())
-            .unwrap()
-            .to_dense::<MyPoint>(&resolver);
-        assert!(matches!(
-            cached_all_points.status(),
-            (PromiseResult::Ready(()), PromiseResult::Ready(())),
-        ));
-        let cached_all_points_indexed = cached_all_points.range_indexed();
+        let all_points_chunks = cached.get_required(&MyPoint::name()).unwrap();
+        let all_points_indexed = all_points_chunks
+            .iter()
+            .flat_map(|chunk| {
+                itertools::izip!(
+                    chunk.iter_component_indices(&query.timeline(), &MyPoint::name()),
+                    chunk.iter_component::<MyPoint>()
+                )
+            })
+            .collect_vec();
+        // Only way I've managed to make `rustc` realize there's a `PartialEq` available.
+        let all_points_indexed = all_points_indexed
+            .iter()
+            .map(|(index, points)| (*index, points.as_slice()))
+            .collect_vec();
 
-        let cached_all_colors = cached
-            .get_or_empty(MyColor::name())
-            .to_dense::<MyColor>(&resolver);
-        assert!(matches!(
-            cached_all_colors.status(),
-            (PromiseResult::Ready(()), PromiseResult::Ready(())),
-        ));
-        let cached_all_colors_indexed = cached_all_colors.range_indexed();
+        let all_colors_chunks = cached.get(&MyColor::name()).unwrap_or_default();
+        let all_colors_indexed = all_colors_chunks
+            .iter()
+            .flat_map(|chunk| {
+                itertools::izip!(
+                    chunk.iter_component_indices(&query.timeline(), &MyColor::name()),
+                    chunk.iter_primitive::<u32>(&MyColor::name()),
+                )
+            })
+            .collect_vec();
+        // Only way I've managed to make `rustc` realize there's a `PartialEq` available.
+        let all_colors_indexed = all_colors_indexed
+            .iter()
+            .map(|(index, colors)| (*index, bytemuck::cast_slice(colors)))
+            .collect_vec();
 
         eprintln!("{query:?}");
         eprintln!("{store}");
 
-        similar_asserts::assert_eq!(
-            expected_all_points_indexed,
-            cached_all_points_indexed
-                .map(|(index, data)| (*index, data))
-                .collect_vec(),
-        );
-
-        similar_asserts::assert_eq!(
-            expected_all_colors_indexed,
-            cached_all_colors_indexed
-                .map(|(index, data)| (*index, data))
-                .collect_vec(),
-        );
+        similar_asserts::assert_eq!(expected_all_points_indexed, all_points_indexed);
+        similar_asserts::assert_eq!(expected_all_colors_indexed, all_colors_indexed);
     }
 }

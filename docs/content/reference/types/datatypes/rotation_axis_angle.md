@@ -18,4 +18,5 @@ title: "RotationAxisAngle"
 
 ## Used by
 
-* [`Rotation3D`](../datatypes/rotation3d.md)
+* [`LeafRotationAxisAngle`](../components/leaf_rotation_axis_angle.md?speculative-link)
+* [`RotationAxisAngle`](../components/rotation_axis_angle.md?speculative-link)

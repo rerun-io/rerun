@@ -5,15 +5,12 @@
 
 from __future__ import annotations
 
-from typing import Any
-
 from attrs import define, field
 
-from .. import components, datatypes
+from .. import components
 from .._baseclasses import (
     Archetype,
 )
-from ..error_utils import catch_and_log_exceptions
 from .depth_image_ext import DepthImageExt
 
 __all__ = ["DepthImage"]
@@ -22,10 +19,9 @@ __all__ = ["DepthImage"]
 @define(str=False, repr=False, init=False)
 class DepthImage(DepthImageExt, Archetype):
     """
-    **Archetype**: A depth image.
+    **Archetype**: A depth image, i.e. as captured by a depth camera.
 
-    The shape of the [`components.TensorData`][rerun.components.TensorData] must be mappable to an `HxW` tensor.
-    Each pixel corresponds to a depth value in units specified by `meter`.
+    Each pixel corresponds to a depth value in units specified by [`components.DepthMeter`][rerun.components.DepthMeter].
 
     Example
     -------
@@ -65,61 +61,14 @@ class DepthImage(DepthImageExt, Archetype):
 
     """
 
-    def __init__(
-        self: Any,
-        data: datatypes.TensorDataLike,
-        *,
-        meter: datatypes.Float32Like | None = None,
-        colormap: components.ColormapLike | None = None,
-        point_fill_ratio: datatypes.Float32Like | None = None,
-        draw_order: datatypes.Float32Like | None = None,
-    ):
-        """
-        Create a new instance of the DepthImage archetype.
-
-        Parameters
-        ----------
-        data:
-            The depth-image data. Should always be a 2-dimensional tensor.
-        meter:
-            An optional floating point value that specifies how long a meter is in the native depth units.
-
-            For instance: with uint16, perhaps meter=1000 which would mean you have millimeter precision
-            and a range of up to ~65 meters (2^16 / 1000).
-
-            Note that the only effect on 2D views is the physical depth values shown when hovering the image.
-            In 3D views on the other hand, this affects where the points of the point cloud are placed.
-        colormap:
-            Colormap to use for rendering the depth image.
-
-            If not set, the depth image will be rendered using the Turbo colormap.
-        point_fill_ratio:
-            Scale the radii of the points in the point cloud generated from this image.
-
-            A fill ratio of 1.0 (the default) means that each point is as big as to touch the center of its neighbor
-            if it is at the same depth, leaving no gaps.
-            A fill ratio of 0.5 means that each point touches the edge of its neighbor if it has the same depth.
-
-            TODO(#6744): This applies only to 3D views!
-        draw_order:
-            An optional floating point value that specifies the 2D drawing order, used only if the depth image is shown as a 2D image.
-
-            Objects with higher values are drawn on top of those with lower values.
-
-        """
-
-        # You can define your own __init__ function as a member of DepthImageExt in depth_image_ext.py
-        with catch_and_log_exceptions(context=self.__class__.__name__):
-            self.__attrs_init__(
-                data=data, meter=meter, colormap=colormap, point_fill_ratio=point_fill_ratio, draw_order=draw_order
-            )
-            return
-        self.__attrs_clear__()
+    # __init__ can be found in depth_image_ext.py
 
     def __attrs_clear__(self) -> None:
         """Convenience method for calling `__attrs_init__` with all `None`s."""
         self.__attrs_init__(
             data=None,  # type: ignore[arg-type]
+            resolution=None,  # type: ignore[arg-type]
+            datatype=None,  # type: ignore[arg-type]
             meter=None,  # type: ignore[arg-type]
             colormap=None,  # type: ignore[arg-type]
             point_fill_ratio=None,  # type: ignore[arg-type]
@@ -133,11 +82,27 @@ class DepthImage(DepthImageExt, Archetype):
         inst.__attrs_clear__()
         return inst
 
-    data: components.TensorDataBatch = field(
+    data: components.BlobBatch = field(
         metadata={"component": "required"},
-        converter=DepthImageExt.data__field_converter_override,  # type: ignore[misc]
+        converter=components.BlobBatch._required,  # type: ignore[misc]
     )
-    # The depth-image data. Should always be a 2-dimensional tensor.
+    # The raw depth image data.
+    #
+    # (Docstring intentionally commented out to hide this field from the docs)
+
+    resolution: components.Resolution2DBatch = field(
+        metadata={"component": "required"},
+        converter=components.Resolution2DBatch._required,  # type: ignore[misc]
+    )
+    # The size of the image
+    #
+    # (Docstring intentionally commented out to hide this field from the docs)
+
+    datatype: components.ChannelDatatypeBatch = field(
+        metadata={"component": "required"},
+        converter=components.ChannelDatatypeBatch._required,  # type: ignore[misc]
+    )
+    # The data type of the depth image data (U16, F32, …).
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 

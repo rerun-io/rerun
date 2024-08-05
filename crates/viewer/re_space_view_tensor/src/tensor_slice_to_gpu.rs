@@ -1,13 +1,13 @@
 use re_chunk_store::RowId;
 use re_renderer::{
-    renderer::{ColormappedTexture, ShaderDecoding},
+    renderer::ColormappedTexture,
     resource_managers::{GpuTexture2D, Texture2DCreationDesc, TextureManager2DError},
 };
 use re_types::{
     blueprint::archetypes::TensorSliceSelection,
     components::{Colormap, GammaCorrection},
-    datatypes::TensorBuffer,
-    tensor_data::{DecodedTensor, TensorCastError, TensorDataType},
+    datatypes::TensorData,
+    tensor_data::{TensorCastError, TensorDataType},
 };
 use re_viewer_context::{
     gpu_bridge::{self, colormap_to_re_renderer, tensor_data_range_heuristic, RangeError},
@@ -31,7 +31,7 @@ pub enum TensorUploadError {
 pub fn colormapped_texture(
     render_ctx: &re_renderer::RenderContext,
     tensor_data_row_id: RowId,
-    tensor: &DecodedTensor,
+    tensor: &TensorData,
     tensor_stats: &TensorStats,
     slice_selection: &TensorSliceSelection,
     colormap: Colormap,
@@ -53,18 +53,14 @@ pub fn colormapped_texture(
         color_mapper: re_renderer::renderer::ColorMapper::Function(colormap_to_re_renderer(
             colormap,
         )),
-        shader_decoding: match tensor.buffer {
-            TensorBuffer::Nv12(_) => Some(ShaderDecoding::Nv12),
-            TensorBuffer::Yuy2(_) => Some(ShaderDecoding::Yuy2),
-            _ => None,
-        },
+        shader_decoding: None,
     })
 }
 
 fn upload_texture_slice_to_gpu(
     render_ctx: &re_renderer::RenderContext,
     tensor_data_row_id: RowId,
-    tensor: &DecodedTensor,
+    tensor: &TensorData,
     slice_selection: &TensorSliceSelection,
 ) -> Result<GpuTexture2D, TextureManager2DError<TensorUploadError>> {
     let id = egui::util::hash((tensor_data_row_id, slice_selection));
@@ -75,13 +71,11 @@ fn upload_texture_slice_to_gpu(
 }
 
 fn texture_desc_from_tensor(
-    tensor: &DecodedTensor,
+    tensor: &TensorData,
     slice_selection: &TensorSliceSelection,
 ) -> Result<Texture2DCreationDesc<'static>, TensorUploadError> {
     use wgpu::TextureFormat;
     re_tracing::profile_function!();
-
-    let tensor = tensor.inner();
 
     match tensor.dtype() {
         TensorDataType::U8 => {

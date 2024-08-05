@@ -38,7 +38,6 @@ from .quaternion import Quaternion, QuaternionArrayLike, QuaternionBatch, Quater
 from .range1d import Range1D, Range1DArrayLike, Range1DBatch, Range1DLike, Range1DType
 from .range2d import Range2D, Range2DArrayLike, Range2DBatch, Range2DLike, Range2DType
 from .rgba32 import Rgba32, Rgba32ArrayLike, Rgba32Batch, Rgba32Like, Rgba32Type
-from .rotation3d import Rotation3D, Rotation3DArrayLike, Rotation3DBatch, Rotation3DLike, Rotation3DType
 from .rotation_axis_angle import (
     RotationAxisAngle,
     RotationAxisAngleArrayLike,
@@ -46,7 +45,6 @@ from .rotation_axis_angle import (
     RotationAxisAngleLike,
     RotationAxisAngleType,
 )
-from .scale3d import Scale3D, Scale3DArrayLike, Scale3DBatch, Scale3DLike, Scale3DType
 from .tensor_buffer import TensorBuffer, TensorBufferArrayLike, TensorBufferBatch, TensorBufferLike, TensorBufferType
 from .tensor_data import TensorData, TensorDataArrayLike, TensorDataBatch, TensorDataLike, TensorDataType
 from .tensor_dimension import (
@@ -78,21 +76,6 @@ from .time_range_boundary import (
     TimeRangeBoundaryBatch,
     TimeRangeBoundaryLike,
     TimeRangeBoundaryType,
-)
-from .transform3d import Transform3D, Transform3DArrayLike, Transform3DBatch, Transform3DLike, Transform3DType
-from .translation_and_mat3x3 import (
-    TranslationAndMat3x3,
-    TranslationAndMat3x3ArrayLike,
-    TranslationAndMat3x3Batch,
-    TranslationAndMat3x3Like,
-    TranslationAndMat3x3Type,
-)
-from .translation_rotation_scale3d import (
-    TranslationRotationScale3D,
-    TranslationRotationScale3DArrayLike,
-    TranslationRotationScale3DBatch,
-    TranslationRotationScale3DLike,
-    TranslationRotationScale3DType,
 )
 from .uint32 import UInt32, UInt32ArrayLike, UInt32Batch, UInt32Like, UInt32Type
 from .uint64 import UInt64, UInt64ArrayLike, UInt64Batch, UInt64Like, UInt64Type
@@ -210,21 +193,11 @@ __all__ = [
     "Rgba32Batch",
     "Rgba32Like",
     "Rgba32Type",
-    "Rotation3D",
-    "Rotation3DArrayLike",
-    "Rotation3DBatch",
-    "Rotation3DLike",
-    "Rotation3DType",
     "RotationAxisAngle",
     "RotationAxisAngleArrayLike",
     "RotationAxisAngleBatch",
     "RotationAxisAngleLike",
     "RotationAxisAngleType",
-    "Scale3D",
-    "Scale3DArrayLike",
-    "Scale3DBatch",
-    "Scale3DLike",
-    "Scale3DType",
     "TensorBuffer",
     "TensorBufferArrayLike",
     "TensorBufferBatch",
@@ -265,21 +238,6 @@ __all__ = [
     "TimeRangeBoundaryType",
     "TimeRangeLike",
     "TimeRangeType",
-    "Transform3D",
-    "Transform3DArrayLike",
-    "Transform3DBatch",
-    "Transform3DLike",
-    "Transform3DType",
-    "TranslationAndMat3x3",
-    "TranslationAndMat3x3ArrayLike",
-    "TranslationAndMat3x3Batch",
-    "TranslationAndMat3x3Like",
-    "TranslationAndMat3x3Type",
-    "TranslationRotationScale3D",
-    "TranslationRotationScale3DArrayLike",
-    "TranslationRotationScale3DBatch",
-    "TranslationRotationScale3DLike",
-    "TranslationRotationScale3DType",
     "UInt32",
     "UInt32ArrayLike",
     "UInt32Batch",

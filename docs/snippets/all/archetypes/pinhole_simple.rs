@@ -12,7 +12,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         "world/image",
         &rerun::Pinhole::from_focal_length_and_resolution([3., 3.], [3., 3.]),
     )?;
-    rec.log("world/image", &rerun::Image::try_from(image)?)?;
+    rec.log(
+        "world/image",
+        &rerun::Image::from_color_model_and_tensor(rerun::ColorModel::RGB, image)?,
+    )?;
 
     Ok(())
 }

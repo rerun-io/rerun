@@ -16,15 +16,15 @@ namespace rerun::components {
     struct Text {
         rerun::datatypes::Utf8 value;
 
-      public:
-        // Extensions to generated type defined in 'text_ext.cpp'
-
+      public: // START of extensions from text_ext.cpp:
         /// Construct `Text` from a null-terminated UTF8 string.
         Text(const char* str) : value(str) {}
 
         const char* c_str() const {
             return value.c_str();
         }
+
+        // END of extensions from text_ext.cpp, start of generated code:
 
       public:
         Text() = default;

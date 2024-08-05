@@ -18,7 +18,7 @@ Visualize the [nuScenes dataset](https://www.nuscenes.org/) including lidar, rad
 </picture>
 
 ## Used Rerun types
-[`Transform3D`](https://www.rerun.io/docs/reference/types/archetypes/transform3d), [`Points3D`](https://www.rerun.io/docs/reference/types/archetypes/points3d), [`Boxes3D`](https://www.rerun.io/docs/reference/types/archetypes/boxes3d), [`Pinhole`](https://www.rerun.io/docs/reference/types/archetypes/pinhole), [`Image`](https://ref.rerun.io/docs/python/0.14.1/common/image_helpers/#rerun.ImageEncoded)<sup>*</sup>
+[`Transform3D`](https://www.rerun.io/docs/reference/types/archetypes/transform3d), [`Points3D`](https://www.rerun.io/docs/reference/types/archetypes/points3d), [`Boxes3D`](https://www.rerun.io/docs/reference/types/archetypes/boxes3d), [`Pinhole`](https://www.rerun.io/docs/reference/types/archetypes/pinhole), [`ImageEncoded`](https://www.rerun.io/docs/reference/types/archetypes/image_encoded?speculative-link)
 
 ## Background
 This example demonstrates the ability to read and visualize scenes from the nuScenes dataset, which is a public large-scale dataset specifically designed for autonomous driving.
@@ -90,7 +90,7 @@ rr.log(f"world/ego_vehicle/{sensor_name}", rr.Points3D(points, colors=point_colo
 ```
 
 ### Camera data
-Camera data is logged as encoded images using [`ImageEncoded`](https://ref.rerun.io/docs/python/0.14.1/common/image_helpers/#rerun.ImageEncoded).
+Camera data is logged as encoded images using [`ImageEncoded`](https://www.rerun.io/docs/reference/types/archetypes/image_encoded?speculative-link).
 ```python
 rr.log(f"world/ego_vehicle/{sensor_name}", rr.ImageEncoded(path=data_file_path))
 ```
@@ -105,7 +105,16 @@ rr.log(f"world/ego_vehicle/{sensor_name}", rr.Points3D(points, colors=point_colo
 
 Annotations are logged as [`Boxes3D`](https://www.rerun.io/docs/reference/types/archetypes/boxes3d), containing details such as object positions, sizes, and rotation.
 ```python
-rr.log("world/anns", rr.Boxes3D(sizes=sizes, centers=centers, rotations=rotations, class_ids=class_ids))
+rr.log(
+    "world/anns",
+    rr.Boxes3D(
+        sizes=sizes,
+        centers=centers,
+        quaternions=quaternions,
+        class_ids=class_ids,
+        fill_mode=rr.components.FillMode.Solid,
+    ),
+)
 ```
 
 ### Setting up the default blueprint

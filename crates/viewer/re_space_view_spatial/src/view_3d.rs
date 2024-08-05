@@ -60,8 +60,8 @@ impl SpaceViewClass for SpatialSpaceView3D {
         &re_ui::icons::SPACE_VIEW_3D
     }
 
-    fn help_text(&self, egui_ctx: &egui::Context) -> egui::WidgetText {
-        super::ui_3d::help_text(egui_ctx)
+    fn help_markdown(&self, egui_ctx: &egui::Context) -> String {
+        super::ui_3d::help_markdown(egui_ctx)
     }
 
     fn new_state(&self) -> Box<dyn SpaceViewState> {
@@ -74,6 +74,7 @@ impl SpaceViewClass for SpatialSpaceView3D {
     ) -> Result<(), SpaceViewClassRegistryError> {
         // Ensure spatial topology is registered.
         crate::spatial_topology::SpatialTopologyStoreSubscriber::subscription_handle();
+        crate::transform_component_tracker::TransformComponentTrackerStoreSubscriber::subscription_handle();
 
         register_spatial_contexts(system_registry)?;
         register_3d_spatial_visualizers(system_registry)?;
@@ -277,13 +278,15 @@ impl SpaceViewClass for SpatialSpaceView3D {
         // It's tempting to add a visualizer for view coordinates so that it's already picked up via `entities_with_indicator_for_visualizer_kind`.
         // Is there a nicer way for this or do we want a visualizer for view coordinates anyways?
         // There's also a strong argument to be made that ViewCoordinates implies a 3D space, thus changing the SpacialTopology accordingly!
-        ctx.recording()
-            .tree()
-            .visit_children_recursively(&mut |path, info| {
-                if info.components.contains_key(&ViewCoordinates::name()) {
-                    indicated_entities.insert(path.clone());
-                }
-            });
+        ctx.recording().tree().visit_children_recursively(|path| {
+            if ctx
+                .recording()
+                .store()
+                .entity_has_component(path, &ViewCoordinates::name())
+            {
+                indicated_entities.insert(path.clone());
+            }
+        });
 
         // Spawn a space view at each subspace that has any potential 3D content.
         // Note that visualizability filtering is all about being in the right subspace,
@@ -361,11 +364,10 @@ impl SpaceViewClass for SpatialSpaceView3D {
     ) -> Result<(), SpaceViewSystemExecutionError> {
         let state = state.downcast_mut::<SpatialSpaceViewState>()?;
 
-        // TODO(#5607): what should happen if the promise is still pending?
         let scene_view_coordinates = ctx
             .recording()
             .latest_at_component::<ViewCoordinates>(space_origin, &ctx.current_query())
-            .map(|c| c.value);
+            .map(|(_index, c)| c);
 
         // TODO(andreas): list_item'ify the rest
         ui.selection_grid("spatial_settings_ui").show(ui, |ui| {

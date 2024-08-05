@@ -27,12 +27,12 @@ namespace rerun::datatypes {
         /// The value: class name, color, etc.
         rerun::datatypes::ClassDescription class_description;
 
-      public:
-        // Extensions to generated type defined in 'class_description_map_elem_ext.cpp'
-
+      public: // START of extensions from class_description_map_elem_ext.cpp:
         ClassDescriptionMapElem(ClassDescription _class_description)
             : class_id(_class_description.info.id),
               class_description(std::move(_class_description)) {}
+
+        // END of extensions from class_description_map_elem_ext.cpp, start of generated code:
 
       public:
         ClassDescriptionMapElem() = default;

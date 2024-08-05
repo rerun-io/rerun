@@ -1,7 +1,3 @@
-include "fbs/attributes.fbs";
-
-include "rerun/datatypes.fbs";
-include "rerun/components.fbs";
 
 namespace rerun.archetypes;
 
@@ -14,6 +10,8 @@ namespace rerun.archetypes;
 ///
 /// For example [Right, Down, Forward] means that the X axis points to the right, the Y axis points
 /// down, and the Z axis points forward.
+///
+/// Make sure that this archetype is logged at or above the origin entity path of your 3D views.
 ///
 /// \example archetypes/view_coordinates_simple title="View coordinates for adjusting the eye camera" image="https://static.rerun.io/viewcoordinates/0833f0dc8616a676b7b2c566f2a6f613363680c5/1200w.png"
 table ViewCoordinates (

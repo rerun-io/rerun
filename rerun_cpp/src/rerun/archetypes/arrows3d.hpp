@@ -96,9 +96,7 @@ namespace rerun::archetypes {
         /// Indicator component, used to identify the archetype when converting to a list of components.
         using IndicatorComponent = rerun::components::IndicatorComponent<IndicatorComponentName>;
 
-      public:
-        // Extensions to generated type defined in 'arrows3d_ext.cpp'
-
+      public: // START of extensions from arrows3d_ext.cpp:
         /// Creates new 3D arrows pointing in the given directions, with a base at the origin (0, 0,
         /// 0).
         static Arrows3D from_vectors(Collection<components::Vector3D> vectors_) {
@@ -106,6 +104,8 @@ namespace rerun::archetypes {
             arrows.vectors = std::move(vectors_);
             return arrows;
         }
+
+        // END of extensions from arrows3d_ext.cpp, start of generated code:
 
       public:
         Arrows3D() = default;

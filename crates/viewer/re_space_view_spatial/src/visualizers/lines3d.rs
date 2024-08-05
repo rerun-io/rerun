@@ -1,9 +1,9 @@
 use re_log_types::Instance;
-use re_query::range_zip_1x5;
 use re_renderer::PickingLayerInstanceId;
 use re_types::{
     archetypes::LineStrips3D,
     components::{ClassId, Color, KeypointId, LineStrip3D, Radius, Text},
+    ArrowString, Loggable as _,
 };
 use re_viewer_context::{
     auto_color_for_entity_path, ApplicableEntities, IdentifiedViewSystem, QueryContext,
@@ -71,10 +71,14 @@ impl Lines3DVisualizer {
             let colors =
                 process_color_slice(ctx, self, num_instances, &annotation_infos, data.colors);
 
+            let world_from_obj = ent_context
+                .transform_info
+                .single_entity_transform_required(entity_path, "Lines2D");
+
             let mut line_batch = line_builder
                 .batch(entity_path.to_string())
                 .depth_offset(ent_context.depth_offset)
-                .world_from_obj(ent_context.world_from_entity)
+                .world_from_obj(world_from_obj)
                 .outline_mask_ids(ent_context.highlight.overall)
                 .picking_object_id(re_renderer::PickingLayerObjectId(entity_path.hash64()));
 
@@ -82,10 +86,10 @@ impl Lines3DVisualizer {
 
             let mut num_rendered_strips = 0usize;
             for (i, (strip, radius, &color)) in
-                itertools::izip!(data.strips, radii, &colors).enumerate()
+                itertools::izip!(data.strips.iter(), radii, &colors).enumerate()
             {
                 let lines = line_batch
-                    .add_strip(strip.0.iter().copied().map(Into::into))
+                    .add_strip(strip.iter().copied().map(Into::into))
                     .color(color)
                     .radius(radius)
                     .picking_instance_id(PickingLayerInstanceId(i as _));
@@ -98,7 +102,7 @@ impl Lines3DVisualizer {
                     lines.outline_mask_ids(*outline_mask_ids);
                 }
 
-                for p in &strip.0 {
+                for p in *strip {
                     obj_space_bounding_box.extend((*p).into());
                 }
 
@@ -106,11 +110,8 @@ impl Lines3DVisualizer {
             }
             debug_assert_eq!(data.strips.len(), num_rendered_strips, "the number of renderer strips after all post-processing is done should be equal to {} (got {num_rendered_strips} instead)", data.strips.len());
 
-            self.data.add_bounding_box(
-                entity_path.hash(),
-                obj_space_bounding_box,
-                ent_context.world_from_entity,
-            );
+            self.data
+                .add_bounding_box(entity_path.hash(), obj_space_bounding_box, world_from_obj);
 
             if data.labels.len() == 1 || num_instances <= super::MAX_NUM_LABELS_PER_ENTITY {
                 // If there's many strips but only a single label, place the single label at the middle of the visualization.
@@ -121,22 +122,21 @@ impl Lines3DVisualizer {
                     // Take middle point of every strip.
                     itertools::Either::Right(data.strips.iter().map(|strip| {
                         strip
-                            .0
                             .iter()
                             .copied()
                             .map(glam::Vec3::from)
                             .sum::<glam::Vec3>()
-                            / (strip.0.len() as f32)
+                            / (strip.len() as f32)
                     }))
                 };
 
                 self.data.ui_labels.extend(process_labels_3d(
                     entity_path,
                     label_positions,
-                    data.labels,
+                    &data.labels,
                     &colors,
                     &annotation_infos,
-                    ent_context.world_from_entity,
+                    world_from_obj,
                 ));
             }
         }
@@ -147,12 +147,12 @@ impl Lines3DVisualizer {
 
 struct Lines3DComponentData<'a> {
     // Point of views
-    strips: &'a [LineStrip3D],
+    strips: Vec<&'a [[f32; 3]]>,
 
     // Clamped to edge
     colors: &'a [Color],
     radii: &'a [Radius],
-    labels: &'a [Text],
+    labels: Vec<ArrowString>,
     keypoint_ids: &'a [KeypointId],
     class_ids: &'a [ClassId],
 }
@@ -190,58 +190,68 @@ impl VisualizerSystem for Lines3DVisualizer {
         let mut line_builder = re_renderer::LineDrawableBuilder::new(render_ctx);
         line_builder.radius_boost_in_ui_points_for_outlines(SIZE_BOOST_IN_POINTS_FOR_LINE_OUTLINES);
 
-        super::entity_iterator::process_archetype::<Self, LineStrips3D, _>(
+        use super::entity_iterator::{iter_primitive_array_list, process_archetype};
+        process_archetype::<Self, LineStrips3D, _>(
             ctx,
             view_query,
             context_systems,
             |ctx, spatial_ctx, results| {
                 use re_space_view::RangeResultsExt as _;
 
-                let resolver = ctx.recording().resolver();
-
-                let strips = match results.get_required_component_dense::<LineStrip3D>(resolver) {
-                    Some(strips) => strips?,
-                    _ => return Ok(()),
+                let Some(all_strip_chunks) = results.get_required_chunks(&LineStrip3D::name())
+                else {
+                    return Ok(());
                 };
 
-                let num_strips = strips
-                    .range_indexed()
-                    .map(|(_, strips)| strips.len())
-                    .sum::<usize>();
+                let num_strips = all_strip_chunks
+                    .iter()
+                    .flat_map(|chunk| {
+                        chunk.iter_primitive_array_list::<3, f32>(&LineStrip3D::name())
+                    })
+                    .map(|strips| strips.len())
+                    .sum();
                 if num_strips == 0 {
                     return Ok(());
                 }
                 line_builder.reserve_strips(num_strips)?;
 
-                let num_vertices = strips
-                    .range_indexed()
-                    .map(|(_, strips)| strips.iter().map(|strip| strip.0.len()).sum::<usize>())
+                let num_vertices = all_strip_chunks
+                    .iter()
+                    .flat_map(|chunk| {
+                        chunk.iter_primitive_array_list::<3, f32>(&LineStrip3D::name())
+                    })
+                    .map(|strips| strips.iter().map(|strip| strip.len()).sum::<usize>())
                     .sum::<usize>();
                 line_builder.reserve_vertices(num_vertices)?;
 
-                let colors = results.get_or_empty_dense(resolver)?;
-                let radii = results.get_or_empty_dense(resolver)?;
-                let labels = results.get_or_empty_dense(resolver)?;
-                let class_ids = results.get_or_empty_dense(resolver)?;
-                let keypoint_ids = results.get_or_empty_dense(resolver)?;
+                let timeline = ctx.query.timeline();
+                let all_strips_indexed =
+                    iter_primitive_array_list(&all_strip_chunks, timeline, LineStrip3D::name());
+                let all_colors = results.iter_as(timeline, Color::name());
+                let all_radii = results.iter_as(timeline, Radius::name());
+                let all_labels = results.iter_as(timeline, Text::name());
+                let all_class_ids = results.iter_as(timeline, ClassId::name());
+                let all_keypoint_ids = results.iter_as(timeline, KeypointId::name());
 
-                let data = range_zip_1x5(
-                    strips.range_indexed(),
-                    colors.range_indexed(),
-                    radii.range_indexed(),
-                    labels.range_indexed(),
-                    class_ids.range_indexed(),
-                    keypoint_ids.range_indexed(),
+                let data = re_query::range_zip_1x5(
+                    all_strips_indexed,
+                    all_colors.primitive::<u32>(),
+                    all_radii.primitive::<f32>(),
+                    all_labels.string(),
+                    all_class_ids.primitive::<u16>(),
+                    all_keypoint_ids.primitive::<u16>(),
                 )
                 .map(
                     |(_index, strips, colors, radii, labels, class_ids, keypoint_ids)| {
                         Lines3DComponentData {
                             strips,
-                            colors: colors.unwrap_or_default(),
-                            radii: radii.unwrap_or_default(),
+                            colors: colors.map_or(&[], |colors| bytemuck::cast_slice(colors)),
+                            radii: radii.map_or(&[], |radii| bytemuck::cast_slice(radii)),
                             labels: labels.unwrap_or_default(),
-                            class_ids: class_ids.unwrap_or_default(),
-                            keypoint_ids: keypoint_ids.unwrap_or_default(),
+                            class_ids: class_ids
+                                .map_or(&[], |class_ids| bytemuck::cast_slice(class_ids)),
+                            keypoint_ids: keypoint_ids
+                                .map_or(&[], |keypoint_ids| bytemuck::cast_slice(keypoint_ids)),
                         }
                     },
                 );

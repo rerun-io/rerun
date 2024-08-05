@@ -1,9 +1,7 @@
-use itertools::Itertools;
-
 use re_chunk_store::{ChunkStoreChunkStats, ChunkStoreConfig, ChunkStoreStats};
 use re_format::{format_bytes, format_uint};
 use re_memory::{util::sec_since_start, MemoryHistory, MemoryLimit, MemoryUse};
-use re_query::{CachedComponentStats, CachesStats};
+use re_query::{CacheStats, CachesStats};
 use re_renderer::WgpuResourcePoolStatistics;
 use re_ui::UiExt as _;
 use re_viewer_context::store_hub::StoreHubStats;
@@ -264,11 +262,6 @@ impl MemoryPanel {
     fn caches_stats(ui: &mut egui::Ui, caches_stats: &CachesStats) {
         let CachesStats { latest_at, range } = caches_stats;
 
-        let latest_at = latest_at
-            .iter()
-            .filter(|(_, stats)| stats.total_indices > 0)
-            .collect_vec();
-
         if !latest_at.is_empty() {
             ui.separator();
             ui.strong("LatestAt");
@@ -281,33 +274,31 @@ impl MemoryPanel {
                         .show(ui, |ui| {
                             ui.label(egui::RichText::new("Entity").underline());
                             ui.label(egui::RichText::new("Component").underline());
-                            ui.label(egui::RichText::new("Indices").underline());
-                            ui.label(egui::RichText::new("Instances").underline());
-                            ui.label(egui::RichText::new("Size").underline());
+                            ui.label(egui::RichText::new("Chunks").underline())
+                                .on_hover_text("How many chunks in the cache?");
+                            ui.label(egui::RichText::new("Effective size").underline())
+                                .on_hover_text("What would be the size of this cache in the worst case, i.e. if all chunks had been fully copied?");
+                            ui.label(egui::RichText::new("Actual size").underline())
+                                .on_hover_text("What is the actual size of this cache after deduplication?");
                             ui.end_row();
 
                             for (cache_key, stats) in latest_at {
-                                let &CachedComponentStats {
-                                    total_indices,
-                                    total_instances,
-                                    total_size_bytes,
+                                let &CacheStats {
+                                    total_chunks,
+                                    total_effective_size_bytes,
+                                    total_actual_size_bytes,
                                 } = stats;
 
                                 ui.label(cache_key.entity_path.to_string());
                                 ui.label(cache_key.component_name.to_string());
-                                ui.label(re_format::format_uint(total_indices));
-                                ui.label(re_format::format_uint(total_instances));
-                                ui.label(re_format::format_bytes(total_size_bytes as _));
+                                ui.label(re_format::format_uint(total_chunks));
+                                ui.label(re_format::format_bytes(total_effective_size_bytes as _));
+                                ui.label(re_format::format_bytes(total_actual_size_bytes as _));
                                 ui.end_row();
                             }
                         });
                 });
         }
-
-        let range = range
-            .iter()
-            .filter(|(_, (_, stats))| stats.total_indices > 0)
-            .collect_vec();
 
         if !range.is_empty() {
             ui.separator();
@@ -321,31 +312,26 @@ impl MemoryPanel {
                         .show(ui, |ui| {
                             ui.label(egui::RichText::new("Entity").underline());
                             ui.label(egui::RichText::new("Component").underline());
-                            ui.label(egui::RichText::new("Indices").underline());
-                            ui.label(egui::RichText::new("Instances").underline());
-                            ui.label(egui::RichText::new("Size").underline());
-                            ui.label(egui::RichText::new("Time range").underline());
+                            ui.label(egui::RichText::new("Chunks").underline())
+                                .on_hover_text("How many chunks in the cache?");
+                            ui.label(egui::RichText::new("Effective size").underline())
+                                .on_hover_text("What would be the size of this cache in the worst case, i.e. if all chunks had been fully copied?");
+                            ui.label(egui::RichText::new("Actual size").underline())
+                                .on_hover_text("What is the actual size of this cache after deduplication?");
                             ui.end_row();
 
-                            for (cache_key, (time_range, stats)) in range {
-                                let &CachedComponentStats {
-                                    total_indices,
-                                    total_instances,
-                                    total_size_bytes,
+                            for (cache_key, stats) in range {
+                                let &CacheStats {
+                                    total_chunks,
+                                    total_effective_size_bytes,
+                                    total_actual_size_bytes,
                                 } = stats;
 
                                 ui.label(cache_key.entity_path.to_string());
                                 ui.label(cache_key.component_name.to_string());
-                                ui.label(re_format::format_uint(total_indices));
-                                ui.label(re_format::format_uint(total_instances));
-                                ui.label(re_format::format_bytes(total_size_bytes as _));
-                                ui.label(format!(
-                                    "{}({})",
-                                    cache_key.timeline.name(),
-                                    time_range.map_or("<static>".to_owned(), |time_range| {
-                                        cache_key.timeline.format_time_range_utc(&time_range)
-                                    })
-                                ));
+                                ui.label(re_format::format_uint(total_chunks));
+                                ui.label(re_format::format_bytes(total_effective_size_bytes as _));
+                                ui.label(re_format::format_bytes(total_actual_size_bytes as _));
                                 ui.end_row();
                             }
                         });

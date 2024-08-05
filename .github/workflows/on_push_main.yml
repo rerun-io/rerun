@@ -21,6 +21,7 @@ jobs:
     uses: ./.github/workflows/reusable_checks.yml
     with:
       CONCURRENCY: push-${{ github.ref_name }}-${{ inputs.CONCURRENCY }}
+      CHANNEL: main
     secrets: inherit
 
   cpp_checks:

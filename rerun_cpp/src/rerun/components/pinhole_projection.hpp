@@ -25,13 +25,13 @@ namespace rerun::components {
     struct PinholeProjection {
         rerun::datatypes::Mat3x3 image_from_camera;
 
-      public:
-        // Extensions to generated type defined in 'pinhole_projection_ext.cpp'
-
+      public: // START of extensions from pinhole_projection_ext.cpp:
         /// Construct a new 3x3 pinhole matrix from a pointer to 9 floats (in column major order).
         static PinholeProjection from_mat3x3(const float* elements) {
             return PinholeProjection(rerun::datatypes::Mat3x3(elements));
         }
+
+        // END of extensions from pinhole_projection_ext.cpp, start of generated code:
 
       public:
         PinholeProjection() = default;

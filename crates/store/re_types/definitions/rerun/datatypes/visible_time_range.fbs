@@ -1,13 +1,3 @@
-
-include "arrow/attributes.fbs";
-include "python/attributes.fbs";
-include "rust/attributes.fbs";
-
-include "rerun/attributes.fbs";
-include "rerun/unit_type.fbs";
-
-include "time_int.fbs";
-
 namespace rerun.datatypes;
 
 /// Left or right boundary of a time range.

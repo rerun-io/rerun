@@ -33,7 +33,6 @@ pub struct ViewProperty<'a> {
     archetype_name: ArchetypeName,
     component_names: Vec<ComponentName>,
     query_results: LatestAtResults,
-    blueprint_db: &'a EntityDb,
     blueprint_query: &'a LatestAtQuery,
 }
 
@@ -74,7 +73,6 @@ impl<'a> ViewProperty<'a> {
             archetype_name,
             query_results,
             component_names: component_names.to_vec(),
-            blueprint_db,
             blueprint_query,
         }
     }
@@ -140,8 +138,8 @@ impl<'a> ViewProperty<'a> {
         component_name: ComponentName,
     ) -> Option<Box<dyn arrow2::array::Array>> {
         self.query_results
-            .get(component_name)
-            .and_then(|result| result.raw(self.blueprint_db.resolver(), component_name))
+            .get(&component_name)
+            .and_then(|unit| unit.component_batch_raw(&component_name))
     }
 
     fn component_or_fallback_raw(

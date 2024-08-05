@@ -30,9 +30,7 @@ namespace rerun::components {
         /// List of class descriptions, mapping class indices to class names, colors etc.
         rerun::Collection<rerun::datatypes::ClassDescriptionMapElem> class_map;
 
-      public:
-        // Extensions to generated type defined in 'annotation_context_ext.cpp'
-
+      public: // START of extensions from annotation_context_ext.cpp:
         /// Construct from an initializer list of elements from which `rerun::datatypes::ClassDescriptionMapElem`s can be constructed.
         ///
         /// This will then create a new collection of `rerun::datatypes::ClassDescriptionMapElem`.
@@ -56,6 +54,8 @@ namespace rerun::components {
                 std::move(class_map_new)
             );
         }
+
+        // END of extensions from annotation_context_ext.cpp, start of generated code:
 
       public:
         AnnotationContext() = default;

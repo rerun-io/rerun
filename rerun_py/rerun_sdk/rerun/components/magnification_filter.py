@@ -45,8 +45,17 @@ class MagnificationFilter(Enum):
     Used as default for mesh rendering.
     """
 
+    def __str__(self) -> str:
+        """Returns the variant name."""
+        if self == MagnificationFilter.Nearest:
+            return "Nearest"
+        elif self == MagnificationFilter.Linear:
+            return "Linear"
+        else:
+            raise ValueError("Unknown enum variant")
 
-MagnificationFilterLike = Union[MagnificationFilter, Literal["nearest", "linear"]]
+
+MagnificationFilterLike = Union[MagnificationFilter, Literal["Linear", "Nearest", "linear", "nearest"]]
 MagnificationFilterArrayLike = Union[MagnificationFilterLike, Sequence[MagnificationFilterLike]]
 
 

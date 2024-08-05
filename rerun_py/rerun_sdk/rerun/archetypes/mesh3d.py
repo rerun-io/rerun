@@ -23,8 +23,11 @@ class Mesh3D(Mesh3DExt, Archetype):
 
     See also [`archetypes.Asset3D`][rerun.archetypes.Asset3D].
 
-    Example
-    -------
+    If there are multiple [`archetypes.LeafTransforms3D`][rerun.archetypes.LeafTransforms3D] instances logged to the same entity as a mesh,
+    an instance of the mesh will be drawn for each transform.
+
+    Examples
+    --------
     ### Simple indexed 3D mesh:
     ```python
     import rerun as rr
@@ -48,6 +51,47 @@ class Mesh3D(Mesh3DExt, Archetype):
       <source media="(max-width: 1024px)" srcset="https://static.rerun.io/mesh3d_simple/e1e5fd97265daf0d0bc7b782d862f19086fd6975/1024w.png">
       <source media="(max-width: 1200px)" srcset="https://static.rerun.io/mesh3d_simple/e1e5fd97265daf0d0bc7b782d862f19086fd6975/1200w.png">
       <img src="https://static.rerun.io/mesh3d_simple/e1e5fd97265daf0d0bc7b782d862f19086fd6975/full.png" width="640">
+    </picture>
+    </center>
+
+    ### 3D mesh with leaf transforms:
+    ```python
+    import rerun as rr
+
+    rr.init("rerun_example_mesh3d_leaf_transforms3d", spawn=True)
+    rr.set_time_sequence("frame", 0)
+
+    rr.log(
+        "shape",
+        rr.Mesh3D(
+            vertex_positions=[[1, 1, 1], [-1, -1, 1], [-1, 1, -1], [1, -1, -1]],
+            triangle_indices=[[0, 1, 2], [0, 1, 3], [0, 2, 3], [1, 2, 3]],
+            vertex_colors=[[255, 0, 0], [0, 255, 0], [0, 0, 255], [255, 255, 0]],
+        ),
+    )
+    # This box will not be affected by its parent's leaf transforms!
+    rr.log(
+        "shape/box",
+        rr.Boxes3D(half_sizes=[[5.0, 5.0, 5.0]]),
+    )
+
+    for i in range(0, 100):
+        rr.set_time_sequence("frame", i)
+        rr.log(
+            "shape",
+            rr.LeafTransforms3D(
+                translations=[[2, 0, 0], [0, 2, 0], [0, -2, 0], [-2, 0, 0]],
+                rotation_axis_angles=rr.RotationAxisAngle([0, 0, 1], rr.Angle(deg=i * 2)),
+            ),
+        )
+    ```
+    <center>
+    <picture>
+      <source media="(max-width: 480px)" srcset="https://static.rerun.io/mesh3d_leaf_transforms3d/c2d0ee033129da53168f5705625a9b033f3a3d61/480w.png">
+      <source media="(max-width: 768px)" srcset="https://static.rerun.io/mesh3d_leaf_transforms3d/c2d0ee033129da53168f5705625a9b033f3a3d61/768w.png">
+      <source media="(max-width: 1024px)" srcset="https://static.rerun.io/mesh3d_leaf_transforms3d/c2d0ee033129da53168f5705625a9b033f3a3d61/1024w.png">
+      <source media="(max-width: 1200px)" srcset="https://static.rerun.io/mesh3d_leaf_transforms3d/c2d0ee033129da53168f5705625a9b033f3a3d61/1200w.png">
+      <img src="https://static.rerun.io/mesh3d_leaf_transforms3d/c2d0ee033129da53168f5705625a9b033f3a3d61/full.png" width="640">
     </picture>
     </center>
 

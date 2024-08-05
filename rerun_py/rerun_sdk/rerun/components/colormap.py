@@ -79,8 +79,54 @@ class Colormap(Enum):
     It interpolates from dark purple to green to yellow.
     """
 
+    CyanToYellow = 7
+    """
+    Rasmusgo's Cyan to Yellow colormap
 
-ColormapLike = Union[Colormap, Literal["grayscale", "inferno", "magma", "plasma", "turbo", "viridis"]]
+    This is a perceptually uniform colormap which is robust to color blindness.
+    It is especially suited for visualizing signed values.
+    It interpolates from cyan to blue to dark gray to brass to yellow.
+    """
+
+    def __str__(self) -> str:
+        """Returns the variant name."""
+        if self == Colormap.Grayscale:
+            return "Grayscale"
+        elif self == Colormap.Inferno:
+            return "Inferno"
+        elif self == Colormap.Magma:
+            return "Magma"
+        elif self == Colormap.Plasma:
+            return "Plasma"
+        elif self == Colormap.Turbo:
+            return "Turbo"
+        elif self == Colormap.Viridis:
+            return "Viridis"
+        elif self == Colormap.CyanToYellow:
+            return "CyanToYellow"
+        else:
+            raise ValueError("Unknown enum variant")
+
+
+ColormapLike = Union[
+    Colormap,
+    Literal[
+        "CyanToYellow",
+        "Grayscale",
+        "Inferno",
+        "Magma",
+        "Plasma",
+        "Turbo",
+        "Viridis",
+        "cyantoyellow",
+        "grayscale",
+        "inferno",
+        "magma",
+        "plasma",
+        "turbo",
+        "viridis",
+    ],
+]
 ColormapArrayLike = Union[ColormapLike, Sequence[ColormapLike]]
 
 
@@ -98,6 +144,7 @@ class ColormapType(BaseExtensionType):
                 pa.field("Plasma", pa.null(), nullable=True, metadata={}),
                 pa.field("Turbo", pa.null(), nullable=True, metadata={}),
                 pa.field("Viridis", pa.null(), nullable=True, metadata={}),
+                pa.field("CyanToYellow", pa.null(), nullable=True, metadata={}),
             ]),
             self._TYPE_NAME,
         )
@@ -135,6 +182,8 @@ class ColormapBatch(BaseBatch[ColormapArrayLike], ComponentBatchMixin):
                     types.append(Colormap.Turbo.value)
                 elif value.lower() == "viridis":
                     types.append(Colormap.Viridis.value)
+                elif value.lower() == "cyantoyellow":
+                    types.append(Colormap.CyanToYellow.value)
                 else:
                     raise ValueError(f"Unknown Colormap kind: {value}")
             else:
@@ -144,7 +193,7 @@ class ColormapBatch(BaseBatch[ColormapArrayLike], ComponentBatchMixin):
             None,
             pa.array(types, type=pa.int8()).buffers()[1],
         ]
-        children = (1 + 6) * [pa.nulls(len(data))]
+        children = (1 + 7) * [pa.nulls(len(data))]
 
         return pa.UnionArray.from_buffers(
             type=data_type,

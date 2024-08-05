@@ -42,7 +42,7 @@ pub const MAX_NUM_LABELS_PER_ENTITY: usize = 30;
 pub fn process_labels_3d<'a>(
     entity_path: &'a EntityPath,
     positions: impl Iterator<Item = glam::Vec3> + 'a,
-    labels: &'a [re_types::components::Text],
+    labels: &'a [re_types::ArrowString],
     colors: &'a [egui::Color32],
     annotation_infos: &'a ResolvedAnnotationInfos,
     world_from_obj: glam::Affine3A,
@@ -74,7 +74,7 @@ pub fn process_labels_3d<'a>(
 pub fn process_labels_2d<'a>(
     entity_path: &'a EntityPath,
     positions: impl Iterator<Item = glam::Vec2> + 'a,
-    labels: &'a [re_types::components::Text],
+    labels: &'a [re_types::ArrowString],
     colors: &'a [egui::Color32],
     annotation_infos: &'a ResolvedAnnotationInfos,
     world_from_obj: glam::Affine3A,

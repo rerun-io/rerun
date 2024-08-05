@@ -67,18 +67,16 @@ def log_annotated_bboxes(annotation: dict[str, Any]) -> None:
 
         half_size = 0.5 * np.array(label_info["segments"]["obbAligned"]["axesLengths"]).reshape(-1, 3)[0]
         centroid = np.array(label_info["segments"]["obbAligned"]["centroid"]).reshape(-1, 3)[0]
-        rotation = np.array(label_info["segments"]["obbAligned"]["normalizedAxes"]).reshape(3, 3)
-
-        rot = R.from_matrix(rotation).inv()
+        mat3x3 = np.array(label_info["segments"]["obbAligned"]["normalizedAxes"]).reshape(3, 3)
 
         rr.log(
             f"world/annotations/box-{uid}-{label}",
             rr.Boxes3D(
                 half_sizes=half_size,
                 centers=centroid,
-                rotations=rr.Quaternion(xyzw=rot.as_quat()),
                 labels=label,
             ),
+            rr.LeafTransforms3D(mat3x3=mat3x3),
             static=True,
         )
 
@@ -86,7 +84,7 @@ def log_annotated_bboxes(annotation: dict[str, Any]) -> None:
 def log_camera(
     intri_path: Path,
     frame_id: str,
-    poses_from_traj: dict[str, rr.TranslationRotationScale3D],
+    poses_from_traj: dict[str, rr.Transform3D],
     entity_id: str,
 ) -> None:
     """Logs camera transform and 3D bounding boxes in the image frame."""
@@ -98,11 +96,11 @@ def log_camera(
     rr.log(f"{entity_id}/bbox-2D-segments", rr.Clear(recursive=True))
 
     # pathlib makes it easy to get the parent, but log methods requires a string
-    rr.log(entity_id, rr.Transform3D(transform=camera_from_world))
+    rr.log(entity_id, camera_from_world)
     rr.log(entity_id, rr.Pinhole(image_from_camera=intrinsic, resolution=[w, h]))
 
 
-def read_camera_from_world(traj_string: str) -> tuple[str, rr.TranslationRotationScale3D]:
+def read_camera_from_world(traj_string: str) -> tuple[str, rr.Transform3D]:
     """
     Reads out camera_from_world transform from trajectory string.
 
@@ -140,8 +138,8 @@ def read_camera_from_world(traj_string: str) -> tuple[str, rr.TranslationRotatio
     translation = np.asarray([float(tokens[4]), float(tokens[5]), float(tokens[6])])
 
     # Create tuple in format log_transform3d expects
-    camera_from_world = rr.TranslationRotationScale3D(
-        translation, rr.Quaternion(xyzw=rotation.as_quat()), from_parent=True
+    camera_from_world = rr.Transform3D(
+        translation=translation, rotation=rr.Quaternion(xyzw=rotation.as_quat()), from_parent=True
     )
 
     return (ts, camera_from_world)

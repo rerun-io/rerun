@@ -1,18 +1,44 @@
-use std::collections::BTreeSet;
+use egui::Ui;
+use std::any::Any;
 
-use egui_extras::Column;
-
-use re_chunk_store::{ChunkStore, LatestAtQuery};
-use re_data_ui::item_ui::instance_path_button;
-use re_entity_db::InstancePath;
-use re_log_types::{EntityPath, Instance, Timeline};
+use re_log_types::EntityPath;
+use re_space_view::view_property_ui;
+use re_types::blueprint::{archetypes, components};
+use re_types_core::datatypes::TimeRange;
 use re_types_core::SpaceViewClassIdentifier;
+use re_ui::list_item;
 use re_viewer_context::{
-    SpaceViewClass, SpaceViewClassRegistryError, SpaceViewState, SpaceViewSystemExecutionError,
-    SystemExecutionOutput, UiLayout, ViewQuery, ViewerContext,
+    QueryRange, SpaceViewClass, SpaceViewClassRegistryError, SpaceViewId, SpaceViewState,
+    SpaceViewStateExt, SpaceViewSystemExecutionError, SystemExecutionOutput, ViewQuery,
+    ViewerContext,
+};
+use re_viewport_blueprint::ViewProperty;
+
+use crate::{
+    latest_at_table::latest_at_table_ui, time_range_table::time_range_table_ui,
+    visualizer_system::EmptySystem,
 };
 
-use crate::visualizer_system::EmptySystem;
+/// State for the Dataframe view.
+///
+/// We use this to carry information from `ui()` to `default_query_range()` as a workaround for
+/// `https://github.com/rerun-io/rerun/issues/6918`.
+#[derive(Debug, Default)]
+struct DataframeViewState {
+    mode: components::DataframeViewMode,
+}
+
+impl SpaceViewState for DataframeViewState {
+    #[inline]
+    fn as_any(&self) -> &dyn Any {
+        self
+    }
+
+    #[inline]
+    fn as_any_mut(&mut self) -> &mut dyn Any {
+        self
+    }
+}
 
 #[derive(Default)]
 pub struct DataframeSpaceView;
@@ -27,14 +53,29 @@ impl SpaceViewClass for DataframeSpaceView {
     }
 
     fn icon(&self) -> &'static re_ui::Icon {
-        //TODO(ab): fix that icon
         &re_ui::icons::SPACE_VIEW_DATAFRAME
     }
 
-    fn help_text(&self, _egui_ctx: &egui::Context) -> egui::WidgetText {
-        "Show the data contained in entities in a table.\n\n\
-        Each entity is represented by as many rows as it has instances."
-            .into()
+    fn help_markdown(&self, _egui_ctx: &egui::Context) -> String {
+        "# Dataframe view
+
+This view displays the content of the entities it contains in tabular form.
+
+## View types
+
+The Dataframe view operates in two modes: the _latest at_ mode and the _time range_ mode. You can
+select the mode in the selection panel.
+
+In the _latest at_ mode, the view displays the latest data for the timeline and time set in the time
+panel. A row is shown for each entity instance.
+
+In the _time range_ mode, the view displays all the data logged within the time range set for each
+view entity. In this mode, each row corresponds to an entity and time pair. Rows are further split
+if multiple `rr.log()` calls were made for the same entity/time. Static data is also displayed.
+
+Note that the default visible time range depends on the selected mode. In particular, the time range
+mode sets the default time range to _everything_. You can override this in the selection panel."
+            .to_owned()
     }
 
     fn on_register(
@@ -45,7 +86,7 @@ impl SpaceViewClass for DataframeSpaceView {
     }
 
     fn new_state(&self) -> Box<dyn SpaceViewState> {
-        Box::<()>::default()
+        Box::<DataframeViewState>::default()
     }
 
     fn preferred_tile_aspect_ratio(&self, _state: &dyn SpaceViewState) -> Option<f32> {
@@ -56,6 +97,23 @@ impl SpaceViewClass for DataframeSpaceView {
         re_viewer_context::SpaceViewClassLayoutPriority::Low
     }
 
+    fn default_query_range(&self, state: &dyn SpaceViewState) -> QueryRange {
+        // TODO(#6918): passing the mode via view state is a hacky work-around, until we're able to
+        // pass more context to this function.
+        let mode = state
+            .downcast_ref::<DataframeViewState>()
+            .map(|state| state.mode)
+            .inspect_err(|err| re_log::warn_once!("Unexpected view type: {err}"))
+            .unwrap_or_default();
+
+        match mode {
+            components::DataframeViewMode::LatestAt => QueryRange::LatestAt,
+            components::DataframeViewMode::TimeRange => {
+                QueryRange::TimeRange(TimeRange::EVERYTHING)
+            }
+        }
+    }
+
     fn spawn_heuristics(
         &self,
         _ctx: &ViewerContext<'_>,
@@ -64,188 +122,85 @@ impl SpaceViewClass for DataframeSpaceView {
         Default::default()
     }
 
+    fn selection_ui(
+        &self,
+        ctx: &ViewerContext<'_>,
+        ui: &mut Ui,
+        state: &mut dyn SpaceViewState,
+        _space_origin: &EntityPath,
+        space_view_id: SpaceViewId,
+    ) -> Result<(), SpaceViewSystemExecutionError> {
+        let settings = ViewProperty::from_archetype::<archetypes::DataframeViewMode>(
+            ctx.blueprint_db(),
+            ctx.blueprint_query,
+            space_view_id,
+        );
+
+        let mode =
+            settings.component_or_fallback::<components::DataframeViewMode>(ctx, self, state)?;
+
+        list_item::list_item_scope(ui, "dataframe_view_selection_ui", |ui| {
+            //TODO(ab): ideally we'd drop the "Dataframe" part in the UI label
+            view_property_ui::<archetypes::DataframeViewMode>(ctx, ui, space_view_id, self, state);
+
+            ui.add_enabled_ui(mode == components::DataframeViewMode::TimeRange, |ui| {
+                view_property_ui::<archetypes::TimeRangeTableOrder>(
+                    ctx,
+                    ui,
+                    space_view_id,
+                    self,
+                    state,
+                );
+            });
+        });
+
+        Ok(())
+    }
+
     fn ui(
         &self,
         ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
-        _state: &mut dyn SpaceViewState,
-
+        state: &mut dyn SpaceViewState,
         query: &ViewQuery<'_>,
         _system_output: SystemExecutionOutput,
     ) -> Result<(), SpaceViewSystemExecutionError> {
         re_tracing::profile_function!();
 
-        // These are the entity paths whose content we must display.
-        let sorted_entity_paths: BTreeSet<_> = query
-            .iter_all_data_results()
-            .filter(|data_result| data_result.is_visible(ctx))
-            .map(|data_result| &data_result.entity_path)
-            .cloned()
-            .collect();
+        let settings = ViewProperty::from_archetype::<archetypes::DataframeViewMode>(
+            ctx.blueprint_db(),
+            ctx.blueprint_query,
+            query.space_view_id,
+        );
 
-        let latest_at_query = query.latest_at_query();
+        let mode =
+            settings.component_or_fallback::<components::DataframeViewMode>(ctx, self, state)?;
 
-        let sorted_instance_paths: Vec<_>;
-        let sorted_components: BTreeSet<_>;
-        {
-            re_tracing::profile_scope!("query");
+        // update state
+        let state = state.downcast_mut::<DataframeViewState>()?;
+        state.mode = mode;
 
-            // Produce a sorted list of each entity with all their instance keys. This will be the rows
-            // of the table.
-            //
-            // Important: our semantics here differs from other built-in space views. "Out-of-bound"
-            // instance keys (aka instance keys from a secondary component that cannot be joined with a
-            // primary component) are not filtered out. Reasons:
-            // - Primary/secondary component distinction only makes sense with archetypes, which we
-            //   ignore. TODO(#4466): make archetypes more explicit?
-            // - This space view is about showing all user data anyways.
-            //
-            // Note: this must be a `Vec<_>` because we need random access for `body.rows()`.
-            sorted_instance_paths = sorted_entity_paths
-                .iter()
-                .flat_map(|entity_path| {
-                    sorted_instance_paths_for(
-                        entity_path,
-                        ctx.recording_store(),
-                        &query.timeline,
-                        &latest_at_query,
-                    )
-                })
-                .collect();
+        match mode {
+            components::DataframeViewMode::LatestAt => latest_at_table_ui(ctx, ui, query),
 
-            // Produce a sorted list of all components that are present in one or more entities. This
-            // will be the columns of the table.
-            sorted_components = sorted_entity_paths
-                .iter()
-                .flat_map(|entity_path| {
-                    ctx.recording_store()
-                        .all_components(&query.timeline, entity_path)
-                        .unwrap_or_default()
-                })
-                // TODO(#4466): make showing/hiding indicators components an explicit optional
-                .filter(|comp| !comp.is_indicator_component())
-                .collect();
-        }
-
-        // Draw the header row.
-        let header_ui = |mut row: egui_extras::TableRow<'_, '_>| {
-            row.col(|ui| {
-                ui.strong("Entity");
-            });
-
-            for comp in &sorted_components {
-                row.col(|ui| {
-                    ui.strong(comp.short_name());
-                });
-            }
-        };
-
-        // Draw a single line of the table. This is called for each _visible_ row, so it's ok to
-        // duplicate some of the querying.
-        let row_ui = |mut row: egui_extras::TableRow<'_, '_>| {
-            let instance = &sorted_instance_paths[row.index()];
-
-            row.col(|ui| {
-                instance_path_button(ctx, &latest_at_query, ctx.recording(), ui, None, instance);
-            });
-
-            for component_name in &sorted_components {
-                row.col(|ui| {
-                    let results = ctx.recording().query_caches().latest_at(
-                        ctx.recording_store(),
-                        &latest_at_query,
-                        &instance.entity_path,
-                        [*component_name],
+            components::DataframeViewMode::TimeRange => {
+                let time_range_table_order =
+                    ViewProperty::from_archetype::<archetypes::TimeRangeTableOrder>(
+                        ctx.blueprint_db(),
+                        ctx.blueprint_query,
+                        query.space_view_id,
                     );
+                let sort_key = time_range_table_order
+                    .component_or_fallback::<components::SortKey>(ctx, self, state)?;
+                let sort_order = time_range_table_order
+                    .component_or_fallback::<components::SortOrder>(ctx, self, state)?;
 
-                    if let Some(results) =
-                        // This is a duplicate of the one above, but this ok since this codes runs
-                        // *only* for visible rows.
-                        results.components.get(component_name)
-                    {
-                        ctx.component_ui_registry.ui(
-                            ctx,
-                            ui,
-                            UiLayout::List,
-                            &latest_at_query,
-                            ctx.recording(),
-                            &instance.entity_path,
-                            results,
-                            &instance.instance,
-                        );
-                    } else {
-                        ui.weak("-");
-                    }
-                });
+                time_range_table_ui(ctx, ui, query, sort_key, sort_order);
             }
         };
-
-        {
-            re_tracing::profile_scope!("table UI");
-
-            egui::ScrollArea::both()
-                .auto_shrink([false, false])
-                .show(ui, |ui| {
-                    ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Extend);
-
-                    egui::Frame {
-                        inner_margin: egui::Margin::same(5.0),
-                        ..Default::default()
-                    }
-                    .show(ui, |ui| {
-                        egui_extras::TableBuilder::new(ui)
-                            .columns(
-                                Column::auto_with_initial_suggestion(200.0).clip(true),
-                                1 + sorted_components.len(),
-                            )
-                            .resizable(true)
-                            .vscroll(false)
-                            .auto_shrink([false, true])
-                            .striped(true)
-                            .header(re_ui::DesignTokens::table_line_height(), header_ui)
-                            .body(|body| {
-                                body.rows(
-                                    re_ui::DesignTokens::table_line_height(),
-                                    sorted_instance_paths.len(),
-                                    row_ui,
-                                );
-                            });
-                    });
-                });
-        }
 
         Ok(())
     }
 }
 
-/// Returns a sorted, deduplicated iterator of all instance paths for a given entity.
-fn sorted_instance_paths_for<'a>(
-    entity_path: &'a EntityPath,
-    store: &'a ChunkStore,
-    timeline: &'a Timeline,
-    latest_at_query: &'a LatestAtQuery,
-) -> impl Iterator<Item = InstancePath> + 'a {
-    store
-        .all_components(timeline, entity_path)
-        .unwrap_or_default()
-        .into_iter()
-        .filter(|component_name| !component_name.is_indicator_component())
-        .flat_map(|component_name| {
-            let num_instances = store
-                .latest_at_relevant_chunks(latest_at_query, entity_path, component_name)
-                .into_iter()
-                .filter_map(|chunk| {
-                    let (data_time, row_id, batch) = chunk
-                        .latest_at(latest_at_query, component_name)
-                        .iter_rows(timeline, &component_name)
-                        .next()?;
-                    batch.map(|batch| (data_time, row_id, batch))
-                })
-                .max_by_key(|(data_time, row_id, _)| (*data_time, *row_id))
-                .map_or(0, |(_, _, batch)| batch.len());
-            (0..num_instances).map(|i| Instance::from(i as u64))
-        })
-        .collect::<BTreeSet<_>>() // dedup and sort
-        .into_iter()
-        .map(|instance| InstancePath::instance(entity_path.clone(), instance))
-}
+re_viewer_context::impl_component_fallback_provider!(DataframeSpaceView => []);

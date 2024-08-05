@@ -44,8 +44,7 @@ class Quaternion(QuaternionExt):
 
 QuaternionLike = Quaternion
 QuaternionArrayLike = Union[
-    Quaternion,
-    Sequence[QuaternionLike],
+    Quaternion, Sequence[QuaternionLike], npt.NDArray[Any], npt.ArrayLike, Sequence[Sequence[float]]
 ]
 
 

@@ -5,15 +5,12 @@
 
 from __future__ import annotations
 
-from typing import Any
-
 from attrs import define, field
 
-from .. import components, datatypes
+from .. import components
 from .._baseclasses import (
     Archetype,
 )
-from ..error_utils import catch_and_log_exceptions
 from .segmentation_image_ext import SegmentationImageExt
 
 __all__ = ["SegmentationImage"]
@@ -24,14 +21,10 @@ class SegmentationImage(SegmentationImageExt, Archetype):
     """
     **Archetype**: An image made up of integer [`components.ClassId`][rerun.components.ClassId]s.
 
-    The shape of the [`components.TensorData`][rerun.components.TensorData] must be mappable to an `HxW` tensor.
     Each pixel corresponds to a [`components.ClassId`][rerun.components.ClassId] that will be mapped to a color based on annotation context.
 
     In the case of floating point images, the label will be looked up based on rounding to the nearest
     integer value.
-
-    Leading and trailing unit-dimensions are ignored, so that
-    `1x640x480x1` is treated as a `640x480` image.
 
     See also [`archetypes.AnnotationContext`][rerun.archetypes.AnnotationContext] to associate each class with a color and a label.
 
@@ -66,41 +59,14 @@ class SegmentationImage(SegmentationImageExt, Archetype):
 
     """
 
-    def __init__(
-        self: Any,
-        data: datatypes.TensorDataLike,
-        *,
-        opacity: datatypes.Float32Like | None = None,
-        draw_order: datatypes.Float32Like | None = None,
-    ):
-        """
-        Create a new instance of the SegmentationImage archetype.
-
-        Parameters
-        ----------
-        data:
-            The image data. Should always be a 2-dimensional tensor.
-        opacity:
-            Opacity of the image, useful for layering the segmentation image on top of another image.
-
-            Defaults to 0.5 if there's any other images in the scene, otherwise 1.0.
-        draw_order:
-            An optional floating point value that specifies the 2D drawing order.
-
-            Objects with higher values are drawn on top of those with lower values.
-
-        """
-
-        # You can define your own __init__ function as a member of SegmentationImageExt in segmentation_image_ext.py
-        with catch_and_log_exceptions(context=self.__class__.__name__):
-            self.__attrs_init__(data=data, opacity=opacity, draw_order=draw_order)
-            return
-        self.__attrs_clear__()
+    # __init__ can be found in segmentation_image_ext.py
 
     def __attrs_clear__(self) -> None:
         """Convenience method for calling `__attrs_init__` with all `None`s."""
         self.__attrs_init__(
             data=None,  # type: ignore[arg-type]
+            resolution=None,  # type: ignore[arg-type]
+            datatype=None,  # type: ignore[arg-type]
             opacity=None,  # type: ignore[arg-type]
             draw_order=None,  # type: ignore[arg-type]
         )
@@ -112,11 +78,27 @@ class SegmentationImage(SegmentationImageExt, Archetype):
         inst.__attrs_clear__()
         return inst
 
-    data: components.TensorDataBatch = field(
+    data: components.BlobBatch = field(
         metadata={"component": "required"},
-        converter=SegmentationImageExt.data__field_converter_override,  # type: ignore[misc]
+        converter=components.BlobBatch._required,  # type: ignore[misc]
     )
-    # The image data. Should always be a 2-dimensional tensor.
+    # The raw image data.
+    #
+    # (Docstring intentionally commented out to hide this field from the docs)
+
+    resolution: components.Resolution2DBatch = field(
+        metadata={"component": "required"},
+        converter=components.Resolution2DBatch._required,  # type: ignore[misc]
+    )
+    # The size of the image.
+    #
+    # (Docstring intentionally commented out to hide this field from the docs)
+
+    datatype: components.ChannelDatatypeBatch = field(
+        metadata={"component": "required"},
+        converter=components.ChannelDatatypeBatch._required,  # type: ignore[misc]
+    )
+    # The data type of the segmentation image data (U16, U32, …).
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 

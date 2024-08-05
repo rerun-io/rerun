@@ -76,9 +76,7 @@ namespace rerun::archetypes {
         /// Indicator component, used to identify the archetype when converting to a list of components.
         using IndicatorComponent = rerun::components::IndicatorComponent<IndicatorComponentName>;
 
-      public:
-        // Extensions to generated type defined in 'boxes2d_ext.cpp'
-
+      public: // START of extensions from boxes2d_ext.cpp:
         /// Creates new `Boxes2D` with `half_sizes` centered around the local origin.
         static Boxes2D from_half_sizes(Collection<components::HalfSize2D> half_sizes) {
             Boxes2D boxes;
@@ -124,6 +122,8 @@ namespace rerun::archetypes {
         static Boxes2D from_mins_and_sizes(
             const std::vector<datatypes::Vec2D>& mins, const std::vector<datatypes::Vec2D>& sizes
         );
+
+        // END of extensions from boxes2d_ext.cpp, start of generated code:
 
       public:
         Boxes2D() = default;

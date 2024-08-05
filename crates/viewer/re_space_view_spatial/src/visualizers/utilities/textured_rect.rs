@@ -1,45 +1,35 @@
-use re_chunk_store::RowId;
+use glam::Vec3;
+
 use re_log_types::EntityPath;
 use re_renderer::renderer;
-use re_types::{
-    components::Colormap,
-    tensor_data::{DecodedTensor, TensorDataMeaning},
+use re_viewer_context::{
+    gpu_bridge, ImageInfo, ImageStatsCache, SpaceViewClass as _, ViewerContext,
 };
-use re_viewer_context::{gpu_bridge, TensorStatsCache, ViewerContext};
 
-use crate::contexts::SpatialSceneEntityContext;
+use crate::{contexts::SpatialSceneEntityContext, SpatialSpaceView2D};
 
-#[allow(clippy::too_many_arguments)]
-pub fn tensor_to_textured_rect(
+use super::SpatialViewVisualizerData;
+
+pub fn textured_rect_from_image(
     ctx: &ViewerContext<'_>,
     ent_path: &EntityPath,
     ent_context: &SpatialSceneEntityContext<'_>,
-    tensor_data_row_id: RowId,
-    tensor: &DecodedTensor,
-    meaning: TensorDataMeaning,
+    image: &ImageInfo,
     multiplicative_tint: egui::Rgba,
-    colormap: Option<Colormap>,
+    visualizer_name: &'static str,
+    visualizer_data: &mut SpatialViewVisualizerData,
 ) -> Option<renderer::TexturedRect> {
-    let Some(render_ctx) = ctx.render_ctx else {
-        return None;
-    };
-
-    let [height, width, _] = tensor.image_height_width_channels()?;
+    let render_ctx = ctx.render_ctx?;
 
     let debug_name = ent_path.to_string();
-    let tensor_stats = ctx
-        .cache
-        .entry(|c: &mut TensorStatsCache| c.entry(tensor_data_row_id, tensor));
+    let tensor_stats = ctx.cache.entry(|c: &mut ImageStatsCache| c.entry(image));
 
-    match gpu_bridge::tensor_to_gpu(
+    match gpu_bridge::image_to_gpu(
         render_ctx,
         &debug_name,
-        tensor_data_row_id,
-        tensor,
-        meaning,
+        image,
         &tensor_stats,
         &ent_context.annotations,
-        colormap,
     ) {
         Ok(colormapped_texture) => {
             // TODO(emilk): let users pick texture filtering.
@@ -59,17 +49,17 @@ pub fn tensor_to_textured_rect(
                 renderer::TextureFilterMin::Linear
             };
 
-            Some(renderer::TexturedRect {
-                top_left_corner_position: ent_context
-                    .world_from_entity
-                    .transform_point3(glam::Vec3::ZERO),
-                extent_u: ent_context
-                    .world_from_entity
-                    .transform_vector3(glam::Vec3::X * width as f32),
-                extent_v: ent_context
-                    .world_from_entity
-                    .transform_vector3(glam::Vec3::Y * height as f32),
+            let world_from_entity = ent_context
+                .transform_info
+                .single_entity_transform_required(ent_path, visualizer_name);
+
+            let textured_rect = renderer::TexturedRect {
+                top_left_corner_position: world_from_entity.transform_point3(Vec3::ZERO),
+                extent_u: world_from_entity.transform_vector3(Vec3::X * image.width() as f32),
+                extent_v: world_from_entity.transform_vector3(Vec3::Y * image.height() as f32),
+
                 colormapped_texture,
+
                 options: renderer::RectangleOptions {
                     texture_filter_magnification,
                     texture_filter_minification,
@@ -77,8 +67,23 @@ pub fn tensor_to_textured_rect(
                     depth_offset: ent_context.depth_offset,
                     outline_mask: ent_context.highlight.overall,
                 },
-            })
+            };
+
+            // Only update the bounding box if this is a 2D space view.
+            // This is avoids a cyclic relationship where the image plane grows
+            // the bounds which in turn influence the size of the image plane.
+            // See: https://github.com/rerun-io/rerun/issues/3728
+            if ent_context.space_view_class_identifier == SpatialSpaceView2D::identifier() {
+                visualizer_data.add_bounding_box(
+                    ent_path.hash(),
+                    bounding_box_for_textured_rect(&textured_rect),
+                    world_from_entity,
+                );
+            }
+
+            Some(textured_rect)
         }
+
         Err(err) => {
             re_log::error_once!("Failed to create texture for {debug_name:?}: {err}");
             None

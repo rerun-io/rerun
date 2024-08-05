@@ -11,7 +11,7 @@
 use std::path::PathBuf;
 
 use bytes::Bytes;
-use rerun::{components::Transform3D, external::re_log, Color, Mesh3D, RecordingStream, Rgba32};
+use rerun::{external::re_log, Color, Mesh3D, RecordingStream, Rgba32};
 
 // TODO(cmc): This example needs to support animations to showcase Rerun's time capabilities.
 
@@ -57,9 +57,9 @@ impl From<GltfPrimitive> for Mesh3D {
 }
 
 // Declare how to turn a glTF transform into a Rerun component (`Transform`).
-impl From<GltfTransform> for Transform3D {
+impl From<GltfTransform> for rerun::Transform3D {
     fn from(transform: GltfTransform) -> Self {
-        Transform3D::from_translation_rotation_scale(
+        rerun::Transform3D::from_translation_rotation_scale(
             transform.t,
             rerun::datatypes::Quaternion::from_xyzw(transform.r),
             transform.s,
@@ -71,11 +71,8 @@ impl From<GltfTransform> for Transform3D {
 fn log_node(rec: &RecordingStream, node: GltfNode) -> anyhow::Result<()> {
     rec.set_time_sequence("keyframe", 0);
 
-    if let Some(transform) = node.transform.map(Transform3D::from) {
-        rec.log(
-            node.name.as_str(),
-            &rerun::archetypes::Transform3D::new(transform),
-        )?;
+    if let Some(transform) = node.transform.map(rerun::Transform3D::from) {
+        rec.log(node.name.as_str(), &transform)?;
     }
 
     // Convert glTF objects into Rerun components.

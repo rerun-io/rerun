@@ -1,9 +1,12 @@
+use re_entity_db::InstancePathHash;
 use re_log_types::Instance;
-use re_query::range_zip_1x7;
-use re_renderer::{LineDrawableBuilder, PickingLayerInstanceId};
+use re_renderer::{
+    renderer::MeshInstance, LineDrawableBuilder, PickingLayerInstanceId, RenderContext,
+};
 use re_types::{
     archetypes::Boxes3D,
-    components::{ClassId, Color, HalfSize3D, KeypointId, Position3D, Radius, Rotation3D, Text},
+    components::{ClassId, Color, FillMode, HalfSize3D, KeypointId, Radius, Text},
+    ArrowString, Loggable as _,
 };
 use re_viewer_context::{
     auto_color_for_entity_path, ApplicableEntities, IdentifiedViewSystem, QueryContext,
@@ -12,12 +15,16 @@ use re_viewer_context::{
     VisualizerQueryInfo, VisualizerSystem,
 };
 
-use crate::{contexts::SpatialSceneEntityContext, view_kind::SpatialSpaceViewKind};
+use crate::{
+    contexts::SpatialSceneEntityContext,
+    instance_hash_conversions::picking_layer_id_from_instance_path_hash, proc_mesh,
+    view_kind::SpatialSpaceViewKind,
+};
 
 use super::{
-    entity_iterator::clamped_or, filter_visualizable_3d_entities,
-    process_annotation_and_keypoint_slices, process_color_slice, process_labels_3d,
-    process_radius_slice, SpatialViewVisualizerData, SIZE_BOOST_IN_POINTS_FOR_LINE_OUTLINES,
+    filter_visualizable_3d_entities, process_annotation_and_keypoint_slices, process_color_slice,
+    process_labels_3d, process_radius_slice, SpatialViewVisualizerData,
+    SIZE_BOOST_IN_POINTS_FOR_LINE_OUTLINES,
 };
 
 // ---
@@ -35,14 +42,17 @@ impl Default for Boxes3DVisualizer {
 // NOTE: Do not put profile scopes in these methods. They are called for all entities and all
 // timestamps within a time range -- it's _a lot_.
 impl Boxes3DVisualizer {
+    #[allow(clippy::too_many_arguments)]
     fn process_data<'a>(
         &mut self,
         ctx: &QueryContext<'_>,
         line_builder: &mut LineDrawableBuilder<'_>,
+        mesh_instances: &mut Vec<MeshInstance>,
         query: &ViewQuery<'_>,
         ent_context: &SpatialSceneEntityContext<'_>,
         data: impl Iterator<Item = Boxes3DComponentData<'a>>,
-    ) {
+        render_ctx: &RenderContext,
+    ) -> Result<(), SpaceViewSystemExecutionError> {
         let entity_path = ctx.target_entity_path;
 
         for data in data {
@@ -70,71 +80,99 @@ impl Boxes3DVisualizer {
             let mut line_batch = line_builder
                 .batch("boxes3d")
                 .depth_offset(ent_context.depth_offset)
-                .world_from_obj(ent_context.world_from_entity)
                 .outline_mask_ids(ent_context.highlight.overall)
                 .picking_object_id(re_renderer::PickingLayerObjectId(entity_path.hash64()));
 
-            let mut obj_space_bounding_box = re_math::BoundingBox::NOTHING;
+            let mut world_space_bounding_box = re_math::BoundingBox::NOTHING;
 
-            let centers = clamped_or(data.centers, &Position3D::ZERO);
-            let rotations = clamped_or(data.rotations, &Rotation3D::IDENTITY);
-            for (i, (half_size, &center, rotation, radius, &color)) in
-                itertools::izip!(data.half_sizes, centers, rotations, radii, &colors).enumerate()
+            let world_from_instances = ent_context
+                .transform_info
+                .clamped_reference_from_instances();
+
+            for (instance_index, (half_size, world_from_instance, radius, &color)) in
+                itertools::izip!(data.half_sizes, world_from_instances, radii, &colors).enumerate()
             {
-                obj_space_bounding_box.extend(half_size.box_min(center));
-                obj_space_bounding_box.extend(half_size.box_max(center));
+                let instance = Instance::from(instance_index as u64);
+                let proc_mesh_key = proc_mesh::ProcMeshKey::Cube;
 
-                let center = center.into();
+                let world_from_instance = world_from_instance
+                    * glam::Affine3A::from_scale(glam::Vec3::from(*half_size) * 2.0);
+                world_space_bounding_box = world_space_bounding_box.union(
+                    proc_mesh_key
+                        .simple_bounding_box()
+                        .transform_affine3(&world_from_instance),
+                );
 
-                let box3d = line_batch
-                    .add_box_outline_from_transform(
-                        glam::Affine3A::from_scale_rotation_translation(
-                            glam::Vec3::from(*half_size) * 2.0,
-                            rotation.0.into(),
-                            center,
-                        ),
-                    )
-                    .color(color)
-                    .radius(radius)
-                    .picking_instance_id(PickingLayerInstanceId(i as _));
+                match data.fill_mode {
+                    FillMode::Wireframe => {
+                        let box3d = line_batch
+                            .add_box_outline_from_transform(world_from_instance)
+                            .color(color)
+                            .radius(radius)
+                            .picking_instance_id(PickingLayerInstanceId(instance_index as _));
 
-                if let Some(outline_mask_ids) = ent_context
-                    .highlight
-                    .instances
-                    .get(&Instance::from(i as u64))
-                {
-                    box3d.outline_mask_ids(*outline_mask_ids);
+                        if let Some(outline_mask_ids) =
+                            ent_context.highlight.instances.get(&instance)
+                        {
+                            box3d.outline_mask_ids(*outline_mask_ids);
+                        }
+                    }
+                    FillMode::Solid => {
+                        let Some(solid_mesh) =
+                            ctx.viewer_ctx.cache.entry(|c: &mut proc_mesh::SolidCache| {
+                                c.entry(proc_mesh_key, render_ctx)
+                            })
+                        else {
+                            return Err(SpaceViewSystemExecutionError::DrawDataCreationError(
+                                "Failed to allocate solid mesh".into(),
+                            ));
+                        };
+
+                        mesh_instances.push(MeshInstance {
+                            gpu_mesh: solid_mesh.gpu_mesh,
+                            mesh: None,
+                            world_from_mesh: world_from_instance,
+                            outline_mask_ids: ent_context.highlight.index_outline_mask(instance),
+                            picking_layer_id: picking_layer_id_from_instance_path_hash(
+                                InstancePathHash::instance(entity_path, instance),
+                            ),
+                            additive_tint: color,
+                        });
+                    }
                 }
             }
 
-            self.0.add_bounding_box(
-                entity_path.hash(),
-                obj_space_bounding_box,
-                ent_context.world_from_entity,
-            );
+            self.0
+                .bounding_boxes
+                .push((entity_path.hash(), world_space_bounding_box));
 
             if data.labels.len() == 1 || num_instances <= super::MAX_NUM_LABELS_PER_ENTITY {
                 // If there's many boxes but only a single label, place the single label at the middle of the visualization.
                 let label_positions = if data.labels.len() == 1 && num_instances > 1 {
                     // TODO(andreas): A smoothed over time (+ discontinuity detection) bounding box would be great.
-                    itertools::Either::Left(std::iter::once(obj_space_bounding_box.center()))
+                    itertools::Either::Left(std::iter::once(world_space_bounding_box.center()))
                 } else {
                     // Take center point of every box.
                     itertools::Either::Right(
-                        clamped_or(data.centers, &Position3D::ZERO).map(|&c| c.into()),
+                        ent_context
+                            .transform_info
+                            .clamped_reference_from_instances()
+                            .map(|t| t.translation.into()),
                     )
                 };
 
                 self.0.ui_labels.extend(process_labels_3d(
                     entity_path,
                     label_positions,
-                    data.labels,
+                    &data.labels,
                     &colors,
                     &annotation_infos,
-                    ent_context.world_from_entity,
+                    glam::Affine3A::IDENTITY,
                 ));
             }
         }
+
+        Ok(())
     }
 }
 
@@ -145,13 +183,13 @@ struct Boxes3DComponentData<'a> {
     half_sizes: &'a [HalfSize3D],
 
     // Clamped to edge
-    centers: &'a [Position3D],
-    rotations: &'a [Rotation3D],
     colors: &'a [Color],
     radii: &'a [Radius],
-    labels: &'a [Text],
+    labels: Vec<ArrowString>,
     keypoint_ids: &'a [KeypointId],
     class_ids: &'a [ClassId],
+
+    fill_mode: FillMode,
 }
 
 impl IdentifiedViewSystem for Boxes3DVisualizer {
@@ -187,83 +225,124 @@ impl VisualizerSystem for Boxes3DVisualizer {
         let mut line_builder = LineDrawableBuilder::new(render_ctx);
         line_builder.radius_boost_in_ui_points_for_outlines(SIZE_BOOST_IN_POINTS_FOR_LINE_OUTLINES);
 
-        super::entity_iterator::process_archetype::<Self, Boxes3D, _>(
+        // Collects solid (that is, triangles rather than wireframe) instances to be drawn.
+        //
+        // Why do we draw solid surfaces using instanced meshes and wireframes using instances?
+        // No good reason; only, those are the types of renderers that have been implemented so far.
+        // This code should be revisited with an eye on performance.
+        let mut solid_instances: Vec<MeshInstance> = Vec::new();
+
+        use super::entity_iterator::{iter_primitive_array, process_archetype};
+        process_archetype::<Self, Boxes3D, _>(
             ctx,
             view_query,
             context_systems,
             |ctx, spatial_ctx, results| {
                 use re_space_view::RangeResultsExt as _;
 
-                let resolver = ctx.recording().resolver();
-
-                let half_sizes = match results.get_required_component_dense::<HalfSize3D>(resolver)
-                {
-                    Some(vectors) => vectors?,
-                    _ => return Ok(()),
+                let Some(all_half_size_chunks) = results.get_required_chunks(&HalfSize3D::name())
+                else {
+                    return Ok(());
                 };
 
-                let num_boxes = half_sizes
-                    .range_indexed()
-                    .map(|(_, vectors)| vectors.len())
-                    .sum::<usize>();
+                let num_boxes: usize = all_half_size_chunks
+                    .iter()
+                    .flat_map(|chunk| chunk.iter_primitive_array::<3, f32>(&HalfSize3D::name()))
+                    .map(|vectors| vectors.len())
+                    .sum();
                 if num_boxes == 0 {
                     return Ok(());
                 }
 
-                // Each box consists of 12 independent lines with 2 vertices each.
-                line_builder.reserve_strips(num_boxes * 12)?;
-                line_builder.reserve_vertices(num_boxes * 12 * 2)?;
+                let timeline = ctx.query.timeline();
+                let all_half_sizes_indexed = iter_primitive_array::<3, f32>(
+                    &all_half_size_chunks,
+                    timeline,
+                    HalfSize3D::name(),
+                );
+                let all_colors = results.iter_as(timeline, Color::name());
+                let all_radii = results.iter_as(timeline, Radius::name());
+                let all_labels = results.iter_as(timeline, Text::name());
+                let all_class_ids = results.iter_as(timeline, ClassId::name());
+                let all_keypoint_ids = results.iter_as(timeline, KeypointId::name());
 
-                let centers = results.get_or_empty_dense(resolver)?;
-                let rotations = results.get_or_empty_dense(resolver)?;
-                let colors = results.get_or_empty_dense(resolver)?;
-                let radii = results.get_or_empty_dense(resolver)?;
-                let labels = results.get_or_empty_dense(resolver)?;
-                let class_ids = results.get_or_empty_dense(resolver)?;
-                let keypoint_ids = results.get_or_empty_dense(resolver)?;
+                // Deserialized because it's a union.
+                let all_fill_modes = results.iter_as(timeline, FillMode::name());
+                // fill mode is currently a non-repeated component
+                let fill_mode: FillMode = all_fill_modes
+                    .component::<FillMode>()
+                    .next()
+                    .and_then(|(_, fill_modes)| fill_modes.as_slice().first().copied())
+                    .unwrap_or_default();
 
-                let data = range_zip_1x7(
-                    half_sizes.range_indexed(),
-                    centers.range_indexed(),
-                    rotations.range_indexed(),
-                    colors.range_indexed(),
-                    radii.range_indexed(),
-                    labels.range_indexed(),
-                    class_ids.range_indexed(),
-                    keypoint_ids.range_indexed(),
+                match fill_mode {
+                    FillMode::Wireframe => {
+                        // Each box consists of 12 independent lines with 2 vertices each.
+                        line_builder.reserve_strips(num_boxes * 12)?;
+                        line_builder.reserve_vertices(num_boxes * 12 * 2)?;
+                    }
+                    FillMode::Solid => {
+                        // No lines.
+                    }
+                }
+
+                let data = re_query::range_zip_1x5(
+                    all_half_sizes_indexed,
+                    all_colors.primitive::<u32>(),
+                    all_radii.primitive::<f32>(),
+                    all_labels.string(),
+                    all_class_ids.primitive::<u16>(),
+                    all_keypoint_ids.primitive::<u16>(),
                 )
                 .map(
-                    |(
-                        _index,
-                        half_sizes,
-                        centers,
-                        rotations,
-                        colors,
-                        radii,
-                        labels,
-                        class_ids,
-                        keypoint_ids,
-                    )| {
+                    |(_index, half_sizes, colors, radii, labels, class_ids, keypoint_ids)| {
                         Boxes3DComponentData {
-                            half_sizes,
-                            centers: centers.unwrap_or_default(),
-                            rotations: rotations.unwrap_or_default(),
-                            colors: colors.unwrap_or_default(),
-                            radii: radii.unwrap_or_default(),
+                            half_sizes: bytemuck::cast_slice(half_sizes),
+                            colors: colors.map_or(&[], |colors| bytemuck::cast_slice(colors)),
+                            radii: radii.map_or(&[], |radii| bytemuck::cast_slice(radii)),
+                            // fill mode is currently a non-repeated component
+                            fill_mode,
                             labels: labels.unwrap_or_default(),
-                            class_ids: class_ids.unwrap_or_default(),
-                            keypoint_ids: keypoint_ids.unwrap_or_default(),
+                            class_ids: class_ids
+                                .map_or(&[], |class_ids| bytemuck::cast_slice(class_ids)),
+                            keypoint_ids: keypoint_ids
+                                .map_or(&[], |keypoint_ids| bytemuck::cast_slice(keypoint_ids)),
                         }
                     },
                 );
 
-                self.process_data(ctx, &mut line_builder, view_query, spatial_ctx, data);
+                self.process_data(
+                    ctx,
+                    &mut line_builder,
+                    &mut solid_instances,
+                    view_query,
+                    spatial_ctx,
+                    data,
+                    render_ctx,
+                )?;
 
                 Ok(())
             },
         )?;
 
-        Ok(vec![(line_builder.into_draw_data()?.into())])
+        let wireframe_draw_data: re_renderer::QueueableDrawData =
+            line_builder.into_draw_data()?.into();
+
+        let solid_draw_data: Option<re_renderer::QueueableDrawData> =
+            match re_renderer::renderer::MeshDrawData::new(render_ctx, &solid_instances) {
+                Ok(draw_data) => Some(draw_data.into()),
+                Err(err) => {
+                    re_log::error_once!(
+                        "Failed to create mesh draw data from mesh instances: {err}"
+                    );
+                    None
+                }
+            };
+
+        Ok([solid_draw_data, Some(wireframe_draw_data)]
+            .into_iter()
+            .flatten()
+            .collect())
     }
 
     fn data(&self) -> Option<&dyn std::any::Any> {

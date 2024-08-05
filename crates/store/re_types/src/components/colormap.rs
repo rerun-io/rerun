@@ -62,6 +62,13 @@ pub enum Colormap {
     /// This is a perceptually uniform colormap which is robust to color blindness.
     /// It interpolates from dark purple to green to yellow.
     Viridis = 6,
+
+    /// Rasmusgo's Cyan to Yellow colormap
+    ///
+    /// This is a perceptually uniform colormap which is robust to color blindness.
+    /// It is especially suited for visualizing signed values.
+    /// It interpolates from cyan to blue to dark gray to brass to yellow.
+    CyanToYellow = 7,
 }
 
 impl ::re_types_core::reflection::Enum for Colormap {
@@ -74,6 +81,7 @@ impl ::re_types_core::reflection::Enum for Colormap {
             Self::Plasma,
             Self::Turbo,
             Self::Viridis,
+            Self::CyanToYellow,
         ]
     }
 
@@ -97,6 +105,9 @@ impl ::re_types_core::reflection::Enum for Colormap {
             }
             Self::Viridis => {
                 "The Viridis colormap from Matplotlib\n\nThis is a perceptually uniform colormap which is robust to color blindness.\nIt interpolates from dark purple to green to yellow."
+            }
+            Self::CyanToYellow => {
+                "Rasmusgo's Cyan to Yellow colormap\n\nThis is a perceptually uniform colormap which is robust to color blindness.\nIt is especially suited for visualizing signed values.\nIt interpolates from cyan to blue to dark gray to brass to yellow."
             }
         }
     }
@@ -123,6 +134,7 @@ impl std::fmt::Display for Colormap {
             Self::Plasma => write!(f, "Plasma"),
             Self::Turbo => write!(f, "Turbo"),
             Self::Viridis => write!(f, "Viridis"),
+            Self::CyanToYellow => write!(f, "CyanToYellow"),
         }
     }
 }
@@ -150,9 +162,10 @@ impl ::re_types_core::Loggable for Colormap {
                 Field::new("Plasma", DataType::Null, true),
                 Field::new("Turbo", DataType::Null, true),
                 Field::new("Viridis", DataType::Null, true),
+                Field::new("CyanToYellow", DataType::Null, true),
             ]),
             Some(std::sync::Arc::new(vec![
-                0i32, 1i32, 2i32, 3i32, 4i32, 5i32, 6i32,
+                0i32, 1i32, 2i32, 3i32, 4i32, 5i32, 6i32, 7i32,
             ])),
             UnionMode::Sparse,
         )
@@ -176,7 +189,7 @@ impl ::re_types_core::Loggable for Colormap {
                     datum
                 })
                 .collect();
-            let num_variants = 6usize;
+            let num_variants = 7usize;
             let types = data
                 .iter()
                 .map(|a| match a.as_deref() {
@@ -222,6 +235,7 @@ impl ::re_types_core::Loggable for Colormap {
                     4 => Ok(Some(Self::Plasma)),
                     5 => Ok(Some(Self::Turbo)),
                     6 => Ok(Some(Self::Viridis)),
+                    7 => Ok(Some(Self::CyanToYellow)),
                     _ => Err(DeserializationError::missing_union_arm(
                         Self::arrow_datatype(),
                         "<invalid>",

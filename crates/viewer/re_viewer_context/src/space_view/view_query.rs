@@ -151,7 +151,6 @@ impl DataResult {
             .resolved_component_overrides
             .get(&C::name())
             .and_then(|OverridePath { store_kind, path }| match store_kind {
-                // TODO(#5607): what should happen if the promise is still pending?
                 StoreKind::Blueprint => ctx
                     .store_context
                     .blueprint
@@ -160,7 +159,7 @@ impl DataResult {
                     .recording()
                     .latest_at_component::<C>(path, &ctx.current_query()),
             })
-            .map(|c| c.value)
+            .map(|(_index, value)| value)
     }
 
     /// Returns from which entity path an override originates from.

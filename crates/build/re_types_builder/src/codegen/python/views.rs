@@ -7,7 +7,14 @@ use crate::{
     Object, Objects, Reporter, ATTR_PYTHON_ALIASES, ATTR_RERUN_VIEW_IDENTIFIER,
 };
 
-pub fn code_for_view(reporter: &Reporter, objects: &Objects, obj: &Object) -> String {
+use super::ExtensionClass;
+
+pub fn code_for_view(
+    reporter: &Reporter,
+    objects: &Objects,
+    ext_class: &ExtensionClass,
+    obj: &Object,
+) -> String {
     assert!(obj.is_struct());
 
     let mut code = String::new();
@@ -27,8 +34,17 @@ from ..api import SpaceView, SpaceViewContentsLike
     );
     code.push('\n');
 
-    code.push_indented(0, format!("class {}(SpaceView):", obj.name), 1);
-    code.push_indented(1, quote_obj_docs(objects, obj), 1);
+    let superclasses = {
+        let mut superclasses = vec![];
+        if ext_class.found {
+            // Extension class needs to come first, so its __init__ method is called if there is one.
+            superclasses.push(ext_class.name.clone());
+        }
+        superclasses.push("SpaceView".to_owned());
+        superclasses.join(",")
+    };
+    code.push_indented(0, format!("class {}({superclasses}):", obj.name), 1);
+    code.push_indented(1, quote_obj_docs(reporter, objects, obj), 1);
 
     code.push_indented(1, init_method(reporter, objects, obj), 1);
 

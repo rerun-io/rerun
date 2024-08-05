@@ -19,9 +19,7 @@ namespace rerun::components {
     struct MediaType {
         rerun::datatypes::Utf8 value;
 
-      public:
-        // Extensions to generated type defined in 'media_type_ext.cpp'
-
+      public: // START of extensions from media_type_ext.cpp:
         /// Construct media type from a null-terminated UTF8 string.
         MediaType(const char* media_type) : value(media_type) {}
 
@@ -39,6 +37,24 @@ namespace rerun::components {
         static MediaType markdown() {
             return "text/markdown";
         }
+
+        // ------------------------------------------------
+        // Images:
+
+        /// [JPEG image](https://en.wikipedia.org/wiki/JPEG): `image/jpeg`.
+        static MediaType jpeg() {
+            return "image/jpeg";
+        }
+
+        /// [PNG image](https://en.wikipedia.org/wiki/PNG): `image/png`.
+        ///
+        /// <https://www.iana.org/assignments/media-types/image/png>
+        static MediaType png() {
+            return "image/png";
+        }
+
+        // ------------------------------------------------
+        // Meshes:
 
         /// [`glTF`](https://en.wikipedia.org/wiki/GlTF): `model/gltf+json`.
         ///
@@ -68,6 +84,8 @@ namespace rerun::components {
         static MediaType stl() {
             return "model/stl";
         }
+
+        // END of extensions from media_type_ext.cpp, start of generated code:
 
       public:
         MediaType() = default;

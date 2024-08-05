@@ -91,7 +91,7 @@ impl ContextMenuAction for CollapseExpandAllAction {
             return;
         };
 
-        subtree.visit_children_recursively(&mut |entity_path, _| {
+        subtree.visit_children_recursively(|entity_path| {
             CollapseScope::BlueprintTree
                 .data_result(*space_view_id, entity_path.clone())
                 .set_open(&ctx.egui_context, self.open());
@@ -108,7 +108,7 @@ impl ContextMenuAction for CollapseExpandAllAction {
             return;
         };
 
-        subtree.visit_children_recursively(&mut |entity_path, _| {
+        subtree.visit_children_recursively(|entity_path| {
             CollapseScope::StreamsTree
                 .entity(entity_path.clone())
                 .set_open(&ctx.egui_context, self.open());

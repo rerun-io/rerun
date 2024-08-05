@@ -42,9 +42,7 @@ namespace rerun::datatypes {
         /// The connections between keypoints.
         rerun::Collection<rerun::datatypes::KeypointPair> keypoint_connections;
 
-      public:
-        // Extensions to generated type defined in 'class_description_ext.cpp'
-
+      public: // START of extensions from class_description_ext.cpp:
         /// Create a new `ClassDescription` from a single annotation info.
         ClassDescription(
             uint16_t id, std::optional<std::string> label = std::nullopt,
@@ -59,6 +57,8 @@ namespace rerun::datatypes {
             : info(std::move(info_)),
               keypoint_annotations(std::move(keypoint_annotations_)),
               keypoint_connections(std::move(keypoint_connections_)) {}
+
+        // END of extensions from class_description_ext.cpp, start of generated code:
 
       public:
         ClassDescription() = default;
