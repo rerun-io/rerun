@@ -2058,7 +2058,7 @@ fn quote_arrow_serialization(
 if isinstance(data, ({name}, int, str)):
     data = [data]
 
-pa_data = [{name}.auto(v).value for v in data]
+pa_data = [{name}.auto(v).value if v else None for v in data]
 
 return pa.array(pa_data, type=data_type)
         "##
