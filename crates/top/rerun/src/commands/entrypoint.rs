@@ -1,24 +1,23 @@
-use std::{
-    path::{Path, PathBuf},
-    sync::Arc,
-};
-
-use anyhow::Context as _;
 use clap::Subcommand;
-use itertools::{izip, Itertools};
+use itertools::Itertools;
 
 use re_data_source::DataSource;
-use re_log_types::{LogMsg, SetStoreInfo};
-use re_sdk::{log::Chunk, StoreKind};
+use re_log_types::LogMsg;
 use re_smart_channel::{ReceiveSet, Receiver, SmartMessagePayload};
+
+use crate::{commands::RrdCommands, CallSource};
 
 #[cfg(feature = "web_viewer")]
 use re_sdk::web_viewer::host_web_viewer;
-use re_types::SizeBytes;
 #[cfg(feature = "web_viewer")]
 use re_web_viewer_server::WebViewerServerPort;
 #[cfg(feature = "server")]
 use re_ws_comms::RerunServerPort;
+
+#[cfg(feature = "analytics")]
+use crate::commands::AnalyticsCommands;
+
+// ---
 
 const SHORT_ABOUT: &str = "The Rerun Viewer and Server";
 
@@ -256,111 +255,6 @@ enum Command {
     Reset,
 }
 
-#[derive(Debug, Clone, clap::Parser)]
-struct PrintCommand {
-    rrd_path: String,
-
-    /// If specified, print out table contents.
-    #[clap(long, short, default_value_t = false)]
-    verbose: bool,
-}
-
-#[derive(Debug, Clone, Subcommand)]
-enum AnalyticsCommands {
-    /// Prints extra information about analytics.
-    Details,
-
-    /// Deletes everything related to analytics.
-    ///
-    /// This will remove all pending data that hasn't yet been sent to our servers, as well as
-    /// reset your analytics ID.
-    Clear,
-
-    /// Associate an email address with the current user.
-    Email { email: String },
-
-    /// Enable analytics.
-    Enable,
-
-    /// Disable analytics.
-    Disable,
-
-    /// Prints the current configuration.
-    Config,
-}
-
-#[derive(Debug, Clone, Subcommand)]
-enum RrdCommands {
-    /// Compares the data between 2 .rrd files, returning a successful shell exit code if they
-    /// match.
-    ///
-    /// This ignores the `log_time` timeline.
-    Compare {
-        path_to_rrd1: String,
-        path_to_rrd2: String,
-
-        /// If specified, dumps both .rrd files as tables.
-        #[clap(long, default_value_t = false)]
-        full_dump: bool,
-    },
-
-    /// Print the contents of an .rrd or .rbl file.
-    Print(PrintCommand),
-
-    /// Compacts the contents of an .rrd or .rbl file and writes the result to a new file.
-    ///
-    /// Use the usual environment variables to control the compaction thresholds:
-    /// `RERUN_CHUNK_MAX_ROWS`,
-    /// `RERUN_CHUNK_MAX_ROWS_IF_UNSORTED`,
-    /// `RERUN_CHUNK_MAX_BYTES`.
-    ///
-    /// Example: `RERUN_CHUNK_MAX_ROWS=4096 RERUN_CHUNK_MAX_BYTES=1048576 rerun compact -i input.rrd -o output.rrd`
-    Compact {
-        #[arg(short = 'i', long = "input", value_name = "src.(rrd|rbl)")]
-        path_to_input_rrd: String,
-
-        #[arg(short = 'o', long = "output", value_name = "dst.(rrd|rbl)")]
-        path_to_output_rrd: String,
-    },
-
-    /// Merges the contents of multiple .rrd and/or .rbl files, and writes the result to a new file.
-    ///
-    /// Example: `rerun merge -i input1.rrd -i input2.rbl -i input3.rrd -o output.rrd`
-    Merge {
-        #[arg(
-            short = 'i',
-            long = "input",
-            value_name = "src.(rrd|rbl)",
-            required = true
-        )]
-        path_to_input_rrds: Vec<String>,
-
-        #[arg(short = 'o', long = "output", value_name = "dst.(rrd|rbl)")]
-        path_to_output_rrd: String,
-    },
-}
-
-/// Where are we calling [`run`] from?
-// TODO(jleibs): Maybe remove call-source all together.
-// However, this context of spawn vs direct CLI-invocation still seems
-// useful for analytics. We just need to capture the data some other way.
-pub enum CallSource {
-    /// Called from a command-line-input (the terminal).
-    Cli,
-}
-
-impl CallSource {
-    #[cfg(feature = "native_viewer")]
-    fn app_env(&self) -> re_viewer::AppEnvironment {
-        match self {
-            Self::Cli => re_viewer::AppEnvironment::RerunCli {
-                rustc_version: env!("RE_BUILD_RUSTC_VERSION").into(),
-                llvm_version: env!("RE_BUILD_LLVM_VERSION").into(),
-            },
-        }
-    }
-}
-
 /// Run the Rerun application and return an exit code.
 ///
 /// This is used by the `rerun` binary and the Rerun Python SDK via `python -m rerun [args…]`.
@@ -410,9 +304,9 @@ where
     let res = if let Some(command) = &args.command {
         match command {
             #[cfg(feature = "analytics")]
-            Command::Analytics(analytics) => run_analytics_commands(analytics).map_err(Into::into),
+            Command::Analytics(analytics) => analytics.run().map_err(Into::into),
 
-            Command::Rrd(rrd) => run_rrd_commands(rrd),
+            Command::Rrd(rrd) => rrd.run(),
 
             #[cfg(feature = "native_viewer")]
             Command::Reset => re_viewer::reset_viewer_persistence(),
@@ -442,467 +336,13 @@ where
     }
 }
 
-fn initialize_thread_pool(threads_args: i32) {
-    // Name the rayon threads for the benefit of debuggers and profilers:
-    let mut builder = rayon::ThreadPoolBuilder::new().thread_name(|i| format!("rayon-{i}"));
-
-    if threads_args < 0 {
-        match std::thread::available_parallelism() {
-            Ok(cores) => {
-                let threads = cores.get().saturating_sub((-threads_args) as _).max(1);
-                re_log::debug!("Detected {cores} cores. Using {threads} compute threads.");
-                builder = builder.num_threads(threads);
-            }
-            Err(err) => {
-                re_log::warn!("Failed to query system of the number of cores: {err}.");
-                // Let rayon decide for itself how many threads to use.
-                // Its default is to use as many threads as we have cores,
-                // (if rayon manages to figure out how many cores we have).
-            }
-        }
-    } else {
-        // 0 means "use all cores", and rayon understands that
-        builder = builder.num_threads(threads_args as usize);
-    }
-
-    if let Err(err) = builder.build_global() {
-        re_log::warn!("Failed to initialize rayon thread pool: {err}");
-    }
-}
-
-fn run_rrd_commands(cmd: &RrdCommands) -> anyhow::Result<()> {
-    match cmd {
-        RrdCommands::Compare {
-            path_to_rrd1,
-            path_to_rrd2,
-            full_dump,
-        } => {
-            let path_to_rrd1 = PathBuf::from(path_to_rrd1);
-            let path_to_rrd2 = PathBuf::from(path_to_rrd2);
-            run_compare(&path_to_rrd1, &path_to_rrd2, *full_dump)
-                // Print current directory, this can be useful for debugging issues with relative paths.
-                .with_context(|| format!("current directory {:?}", std::env::current_dir()))
-        }
-
-        RrdCommands::Print(print_command) => print_command.run(),
-
-        RrdCommands::Compact {
-            path_to_input_rrd,
-            path_to_output_rrd,
-        } => {
-            let path_to_input_rrd = PathBuf::from(path_to_input_rrd);
-            let path_to_output_rrd = PathBuf::from(path_to_output_rrd);
-            run_compact(&path_to_input_rrd, &path_to_output_rrd)
-        }
-
-        RrdCommands::Merge {
-            path_to_input_rrds,
-            path_to_output_rrd,
-        } => {
-            let path_to_input_rrds = path_to_input_rrds.iter().map(PathBuf::from).collect_vec();
-            let path_to_output_rrd = PathBuf::from(path_to_output_rrd);
-            run_merge(&path_to_input_rrds, &path_to_output_rrd)
-        }
-    }
-}
-
-/// Checks whether two .rrd files are _similar_, i.e. not equal on a byte-level but
-/// functionally equivalent.
-///
-/// Returns `Ok(())` if they match, or an error containing a detailed diff otherwise.
-fn run_compare(path_to_rrd1: &Path, path_to_rrd2: &Path, full_dump: bool) -> anyhow::Result<()> {
-    /// Given a path to an rrd file, builds up a `ChunkStore` and returns its contents a stream of
-    /// `Chunk`s.
-    ///
-    /// Fails if there are more than one data recordings present in the rrd file.
-    fn compute_uber_table(
-        path_to_rrd: &Path,
-    ) -> anyhow::Result<(re_log_types::ApplicationId, Vec<Arc<re_chunk::Chunk>>)> {
-        use re_entity_db::EntityDb;
-        use re_log_types::StoreId;
-
-        let rrd_file =
-            std::fs::File::open(path_to_rrd).context("couldn't open rrd file contents")?;
-
-        let mut stores: std::collections::HashMap<StoreId, EntityDb> = Default::default();
-        let version_policy = re_log_encoding::decoder::VersionPolicy::Error;
-        let decoder = re_log_encoding::decoder::Decoder::new(version_policy, rrd_file)?;
-        for msg in decoder {
-            let msg = msg.context("decode rrd message")?;
-            stores
-                .entry(msg.store_id().clone())
-                .or_insert_with(|| re_entity_db::EntityDb::new(msg.store_id().clone()))
-                .add(&msg)
-                .context("decode rrd file contents")?;
-        }
-
-        let mut stores = stores
-            .values()
-            .filter(|store| store.store_kind() == re_log_types::StoreKind::Recording)
-            .collect_vec();
-
-        anyhow::ensure!(!stores.is_empty(), "no data recording found in rrd file");
-        anyhow::ensure!(
-            stores.len() == 1,
-            "more than one data recording found in rrd file"
-        );
-
-        let store = stores.pop().unwrap(); // safe, ensured above
-
-        Ok((
-            store
-                .app_id()
-                .cloned()
-                .unwrap_or_else(re_log_types::ApplicationId::unknown),
-            store.store().iter_chunks().map(Arc::clone).collect_vec(),
-        ))
-    }
-
-    let (app_id1, chunks1) =
-        compute_uber_table(path_to_rrd1).with_context(|| format!("path: {path_to_rrd1:?}"))?;
-    let (app_id2, chunks2) =
-        compute_uber_table(path_to_rrd2).with_context(|| format!("path: {path_to_rrd2:?}"))?;
-
-    if full_dump {
-        println!("{app_id1}");
-        for chunk in &chunks1 {
-            println!("{chunk}");
-        }
-
-        println!("{app_id2}");
-        for chunk in &chunks2 {
-            println!("{chunk}");
-        }
-    }
-
-    anyhow::ensure!(
-        app_id1 == app_id2,
-        "Application IDs do not match: '{app_id1}' vs. '{app_id2}'"
-    );
-
-    anyhow::ensure!(
-        chunks1.len() == chunks2.len(),
-        "Number of Chunks does not match: '{}' vs. '{}'",
-        re_format::format_uint(chunks1.len()),
-        re_format::format_uint(chunks2.len()),
-    );
-
-    for (chunk1, chunk2) in izip!(chunks1, chunks2) {
-        anyhow::ensure!(
-            re_chunk::Chunk::are_similar(&chunk1, &chunk2),
-            "Chunks do not match:\n{}",
-            similar_asserts::SimpleDiff::from_str(
-                &format!("{chunk1}"),
-                &format!("{chunk2}"),
-                "got",
-                "expected",
-            ),
-        );
-    }
-
-    Ok(())
-}
-
-fn run_compact(path_to_input_rrd: &Path, path_to_output_rrd: &Path) -> anyhow::Result<()> {
-    use re_entity_db::EntityDb;
-    use re_log_types::StoreId;
-
-    let rrd_in =
-        std::fs::File::open(path_to_input_rrd).with_context(|| format!("{path_to_input_rrd:?}"))?;
-    let rrd_in_size = rrd_in.metadata().ok().map(|md| md.len());
-
-    let file_size_to_string = |size: Option<u64>| {
-        size.map_or_else(
-            || "<unknown>".to_owned(),
-            |size| re_format::format_bytes(size as _),
-        )
-    };
-
-    use re_chunk_store::ChunkStoreConfig;
-    let mut store_config = ChunkStoreConfig::from_env().unwrap_or_default();
-    // NOTE: We're doing headless processing, there's no point in running subscribers, it will just
-    // (massively) slow us down.
-    store_config.enable_changelog = false;
-
-    re_log::info!(
-        src = ?path_to_input_rrd,
-        src_size_bytes = %file_size_to_string(rrd_in_size),
-        dst = ?path_to_output_rrd,
-        max_num_rows = %re_format::format_uint(store_config.chunk_max_rows),
-        max_num_bytes = %re_format::format_bytes(store_config.chunk_max_bytes as _),
-        "compaction started"
-    );
-
-    let now = std::time::Instant::now();
-
-    let mut entity_dbs: std::collections::HashMap<StoreId, EntityDb> = Default::default();
-    let version_policy = re_log_encoding::decoder::VersionPolicy::Warn;
-    let decoder = re_log_encoding::decoder::Decoder::new(version_policy, rrd_in)?;
-    let version = decoder.version();
-    for msg in decoder {
-        let msg = msg.context("decode rrd message")?;
-        entity_dbs
-            .entry(msg.store_id().clone())
-            .or_insert_with(|| {
-                re_entity_db::EntityDb::with_store_config(
-                    msg.store_id().clone(),
-                    store_config.clone(),
-                )
-            })
-            .add(&msg)
-            .context("decode rrd file contents")?;
-    }
-
-    anyhow::ensure!(
-        !entity_dbs.is_empty(),
-        "no recordings found in rrd/rbl file"
-    );
-
-    let mut rrd_out = std::fs::File::create(path_to_output_rrd)
-        .with_context(|| format!("{path_to_output_rrd:?}"))?;
-
-    let messages_rbl: Result<Vec<Vec<LogMsg>>, _> = entity_dbs
-        .values()
-        .filter(|entity_db| entity_db.store_kind() == StoreKind::Blueprint)
-        .map(|entity_db| entity_db.to_messages(None /* time selection */))
-        .collect();
-    let messages_rbl = messages_rbl?;
-    let messages_rbl = messages_rbl.iter().flatten();
-
-    let messages_rrd: Result<Vec<Vec<LogMsg>>, _> = entity_dbs
-        .values()
-        .filter(|entity_db| entity_db.store_kind() == StoreKind::Recording)
-        .map(|entity_db| entity_db.to_messages(None /* time selection */))
-        .collect();
-    let messages_rrd = messages_rrd?;
-    let messages_rrd = messages_rrd.iter().flatten();
-
-    let encoding_options = re_log_encoding::EncodingOptions::COMPRESSED;
-    re_log_encoding::encoder::encode(
-        version,
-        encoding_options,
-        // NOTE: We want to make sure all blueprints come first, so that the viewer can immediately
-        // set up the viewport correctly.
-        messages_rbl.chain(messages_rrd),
-        &mut rrd_out,
-    )
-    .context("Message encode")?;
-
-    let rrd_out_size = rrd_out.metadata().ok().map(|md| md.len());
-
-    let compaction_ratio =
-        if let (Some(rrd_in_size), Some(rrd_out_size)) = (rrd_in_size, rrd_out_size) {
-            format!(
-                "{:3.3}%",
-                100.0 - rrd_out_size as f64 / (rrd_in_size as f64 + f64::EPSILON) * 100.0
-            )
-        } else {
-            "N/A".to_owned()
-        };
-
-    re_log::info!(
-        src = ?path_to_input_rrd,
-        src_size_bytes = %file_size_to_string(rrd_in_size),
-        dst = ?path_to_output_rrd,
-        dst_size_bytes = %file_size_to_string(rrd_out_size),
-        time = ?now.elapsed(),
-        compaction_ratio,
-        "compaction finished"
-    );
-
-    Ok(())
-}
-
-fn run_merge(path_to_input_rrds: &[PathBuf], path_to_output_rrd: &Path) -> anyhow::Result<()> {
-    use re_entity_db::EntityDb;
-    use re_log_types::StoreId;
-
-    let rrds_in: Result<Vec<_>, _> = path_to_input_rrds
-        .iter()
-        .map(|path_to_input_rrd| {
-            std::fs::File::open(path_to_input_rrd).with_context(|| format!("{path_to_input_rrd:?}"))
-        })
-        .collect();
-    let rrds_in = rrds_in?;
-
-    let rrds_in_size = rrds_in
-        .iter()
-        .map(|rrd_in| rrd_in.metadata().ok().map(|md| md.len()))
-        .sum::<Option<u64>>();
-
-    let file_size_to_string = |size: Option<u64>| {
-        size.map_or_else(
-            || "<unknown>".to_owned(),
-            |size| re_format::format_bytes(size as _),
-        )
-    };
-
-    use re_chunk_store::ChunkStoreConfig;
-    let mut store_config = ChunkStoreConfig::from_env().unwrap_or_default();
-    // NOTE: We're doing headless processing, there's no point in running subscribers, it will just
-    // (massively) slow us down.
-    store_config.enable_changelog = false;
-
-    re_log::info!(
-        srcs = ?path_to_input_rrds,
-        dst = ?path_to_output_rrd,
-        max_num_rows = %re_format::format_uint(store_config.chunk_max_rows),
-        max_num_bytes = %re_format::format_bytes(store_config.chunk_max_bytes as _),
-        "merge started"
-    );
-
-    let now = std::time::Instant::now();
-
-    let mut entity_dbs: std::collections::HashMap<StoreId, EntityDb> = Default::default();
-    let mut version = None;
-    for rrd_in in rrds_in {
-        let version_policy = re_log_encoding::decoder::VersionPolicy::Warn;
-        let decoder = re_log_encoding::decoder::Decoder::new(version_policy, rrd_in)?;
-        version = version.max(Some(decoder.version()));
-        for msg in decoder {
-            let msg = msg.context("decode rrd message")?;
-            entity_dbs
-                .entry(msg.store_id().clone())
-                .or_insert_with(|| {
-                    re_entity_db::EntityDb::with_store_config(
-                        msg.store_id().clone(),
-                        store_config.clone(),
-                    )
-                })
-                .add(&msg)
-                .context("decode rrd file contents")?;
-        }
-    }
-
-    anyhow::ensure!(
-        !entity_dbs.is_empty(),
-        "no recordings found in rrd/rbl files"
-    );
-
-    let mut rrd_out = std::fs::File::create(path_to_output_rrd)
-        .with_context(|| format!("{path_to_output_rrd:?}"))?;
-
-    let messages: Result<Vec<Vec<LogMsg>>, _> = entity_dbs
-        .into_values()
-        .map(|entity_db| entity_db.to_messages(None /* time selection */))
-        .collect();
-    let messages = messages?;
-    let messages = messages.iter().flatten();
-
-    let encoding_options = re_log_encoding::EncodingOptions::COMPRESSED;
-    let version = version.unwrap_or(re_build_info::CrateVersion::LOCAL);
-    re_log_encoding::encoder::encode(version, encoding_options, messages, &mut rrd_out)
-        .context("Message encode")?;
-
-    let rrd_out_size = rrd_out.metadata().ok().map(|md| md.len());
-
-    re_log::info!(
-        srcs = ?path_to_input_rrds,
-        srcs_size_bytes = %file_size_to_string(rrds_in_size),
-        dst = ?path_to_output_rrd,
-        dst_size_bytes = %file_size_to_string(rrd_out_size),
-        time = ?now.elapsed(),
-        "merge finished"
-    );
-
-    Ok(())
-}
-
-impl PrintCommand {
-    fn run(&self) -> anyhow::Result<()> {
-        let rrd_path = PathBuf::from(&self.rrd_path);
-        self.print_rrd(&rrd_path)
-            .with_context(|| format!("path: {rrd_path:?}"))
-    }
-
-    fn print_rrd(&self, rrd_path: &Path) -> anyhow::Result<()> {
-        let Self {
-            rrd_path: _,
-            verbose,
-        } = self;
-
-        let rrd_file = std::fs::File::open(rrd_path)?;
-        let version_policy = re_log_encoding::decoder::VersionPolicy::Warn;
-        let decoder = re_log_encoding::decoder::Decoder::new(version_policy, rrd_file)?;
-        println!("Decoded RRD stream v{}\n---", decoder.version());
-        for msg in decoder {
-            let msg = msg.context("decode rrd message")?;
-            match msg {
-                LogMsg::SetStoreInfo(msg) => {
-                    let SetStoreInfo { row_id: _, info } = msg;
-                    println!("{info:#?}");
-                }
-
-                LogMsg::ArrowMsg(_row_id, arrow_msg) => {
-                    let chunk = match Chunk::from_arrow_msg(&arrow_msg) {
-                        Ok(chunk) => chunk,
-                        Err(err) => {
-                            eprintln!("discarding broken chunk: {err}");
-                            continue;
-                        }
-                    };
-
-                    if *verbose {
-                        println!("{chunk}");
-                    } else {
-                        let column_names = chunk
-                            .component_names()
-                            .map(|name| name.short_name())
-                            .join(" ");
-
-                        println!(
-                            "Chunk with {} rows ({}) - {:?} - columns: [{column_names}]",
-                            chunk.num_rows(),
-                            re_format::format_bytes(chunk.total_size_bytes() as _),
-                            chunk.entity_path(),
-                        );
-                    }
-                }
-
-                LogMsg::BlueprintActivationCommand(re_log_types::BlueprintActivationCommand {
-                    blueprint_id,
-                    make_active,
-                    make_default,
-                }) => {
-                    println!("BlueprintActivationCommand({blueprint_id}, make_active: {make_active}, make_default: {make_default})");
-                }
-            }
-        }
-        Ok(())
-    }
-}
-
-#[cfg(feature = "analytics")]
-fn run_analytics_commands(cmd: &AnalyticsCommands) -> Result<(), re_analytics::cli::CliError> {
-    match cmd {
-        #[allow(clippy::unit_arg)]
-        AnalyticsCommands::Details => Ok(re_analytics::cli::print_details()),
-        AnalyticsCommands::Clear => re_analytics::cli::clear(),
-        AnalyticsCommands::Email { email } => {
-            re_analytics::cli::set([("email".to_owned(), email.clone().into())])
-        }
-        AnalyticsCommands::Enable => re_analytics::cli::opt(true),
-        AnalyticsCommands::Disable => re_analytics::cli::opt(false),
-        AnalyticsCommands::Config => re_analytics::cli::print_config(),
-    }
-}
-
-#[cfg(feature = "native_viewer")]
-fn profiler(args: &Args) -> re_tracing::Profiler {
-    let mut profiler = re_tracing::Profiler::default();
-    if args.profile {
-        profiler.start();
-    }
-    profiler
-}
-
 fn run_impl(
     _build_info: re_build_info::BuildInfo,
     call_source: CallSource,
     args: Args,
 ) -> anyhow::Result<()> {
     #[cfg(feature = "native_viewer")]
-    let profiler = profiler(&args);
+    let profiler = run_profiler(&args);
 
     #[cfg(feature = "native_viewer")]
     let startup_options = {
@@ -1080,19 +520,6 @@ fn run_impl(
     }
 }
 
-#[cfg(feature = "native_viewer")]
-fn parse_size(size: &str) -> anyhow::Result<[f32; 2]> {
-    fn parse_size_inner(size: &str) -> Option<[f32; 2]> {
-        let (w, h) = size.split_once('x')?;
-        let w = w.parse().ok()?;
-        let h = h.parse().ok()?;
-        Some([w, h])
-    }
-
-    parse_size_inner(size)
-        .ok_or_else(|| anyhow::anyhow!("Invalid size {:?}, expected e.g. 800x600", size))
-}
-
 // NOTE: This is only used as part of end-to-end tests.
 fn assert_receive_into_entity_db(
     rx: &ReceiveSet<LogMsg>,
@@ -1157,6 +584,70 @@ fn assert_receive_into_entity_db(
     }
 }
 
+// --- util ---
+
+fn initialize_thread_pool(threads_args: i32) {
+    // Name the rayon threads for the benefit of debuggers and profilers:
+    let mut builder = rayon::ThreadPoolBuilder::new().thread_name(|i| format!("rayon-{i}"));
+
+    if threads_args < 0 {
+        match std::thread::available_parallelism() {
+            Ok(cores) => {
+                let threads = cores.get().saturating_sub((-threads_args) as _).max(1);
+                re_log::debug!("Detected {cores} cores. Using {threads} compute threads.");
+                builder = builder.num_threads(threads);
+            }
+            Err(err) => {
+                re_log::warn!("Failed to query system of the number of cores: {err}.");
+                // Let rayon decide for itself how many threads to use.
+                // Its default is to use as many threads as we have cores,
+                // (if rayon manages to figure out how many cores we have).
+            }
+        }
+    } else {
+        // 0 means "use all cores", and rayon understands that
+        builder = builder.num_threads(threads_args as usize);
+    }
+
+    if let Err(err) = builder.build_global() {
+        re_log::warn!("Failed to initialize rayon thread pool: {err}");
+    }
+}
+
+#[cfg(feature = "native_viewer")]
+fn run_profiler(args: &Args) -> re_tracing::Profiler {
+    let mut profiler = re_tracing::Profiler::default();
+    if args.profile {
+        profiler.start();
+    }
+    profiler
+}
+
+#[cfg(feature = "native_viewer")]
+fn parse_size(size: &str) -> anyhow::Result<[f32; 2]> {
+    fn parse_size_inner(size: &str) -> Option<[f32; 2]> {
+        let (w, h) = size.split_once('x')?;
+        let w = w.parse().ok()?;
+        let h = h.parse().ok()?;
+        Some([w, h])
+    }
+
+    parse_size_inner(size)
+        .ok_or_else(|| anyhow::anyhow!("Invalid size {:?}, expected e.g. 800x600", size))
+}
+
+#[cfg(feature = "server")]
+fn parse_max_latency(max_latency: Option<&String>) -> f32 {
+    max_latency.as_ref().map_or(f32::INFINITY, |time| {
+        re_format::parse_duration(time)
+            .unwrap_or_else(|err| panic!("Failed to parse max_latency ({max_latency:?}): {err}"))
+    })
+}
+
+// --- io ---
+
+// TODO(cmc): dedicated module for io utils, especially stdio streaming in and out.
+
 fn stream_to_rrd_on_disk(
     rx: &re_smart_channel::ReceiveSet<LogMsg>,
     path: &std::path::PathBuf,
@@ -1196,12 +687,4 @@ fn stream_to_rrd_on_disk(
     re_log::info!("File saved to {path:?}");
 
     Ok(())
-}
-
-#[cfg(feature = "server")]
-fn parse_max_latency(max_latency: Option<&String>) -> f32 {
-    max_latency.as_ref().map_or(f32::INFINITY, |time| {
-        re_format::parse_duration(time)
-            .unwrap_or_else(|err| panic!("Failed to parse max_latency ({max_latency:?}): {err}"))
-    })
 }
