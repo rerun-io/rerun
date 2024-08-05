@@ -2,7 +2,7 @@
 title = "Mini NVS Solver"
 tags = ["2D", "3D", "HuggingFace", "Depth", "Pinhole camera", "Diffusion"]
 source = "https://github.com/pablovela5620/mini-nvs-solver"
-thumbnail = "TODO"
+thumbnail = "https://static.rerun.io/mini-nvs-solver-thumbnail/9a9cadb7a5a3beeabbdc2f4490532c1b24765dd2/480w.png"
 thumbnail_dimensions = [480, 480]
 -->
 
@@ -18,7 +18,7 @@ This is an external example. Check the [repository](https://github.com/pablovela
 
 You can try the example on Rerun's HuggingFace space [here](https://huggingface.co/spaces/pablovela5620/mini-nvs-solver)].
 
-Its highly recommended to run this example locally by cloning the above repo and running:
+It is highly recommended to run this example locally by cloning the above repo and running:
 ```
 pixi run app
 ```
