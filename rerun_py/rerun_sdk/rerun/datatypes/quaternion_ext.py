@@ -38,5 +38,5 @@ class QuaternionExt:
             if isinstance(data, Sequence):
                 data = [np.array(p.xyzw) if isinstance(p, Quaternion) else p for p in data]  # type: ignore[assignment]
 
-        points = flat_np_float32_array_from_array_like(data, 4)
-        return pa.FixedSizeListArray.from_arrays(points, type=data_type)
+        quaternions = flat_np_float32_array_from_array_like(data, 4)
+        return pa.FixedSizeListArray.from_arrays(quaternions, type=data_type)
