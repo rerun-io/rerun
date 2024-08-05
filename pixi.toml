@@ -114,6 +114,9 @@ rerun = "cargo run --package rerun-cli --no-default-features --features native_v
 # Compile `rerun-cli` without the web-viewer.
 rerun-build = "cargo build --package rerun-cli --no-default-features --features native_viewer"
 
+# Compile `rerun-cli` without the web-viewer.
+rerun-build-release = "cargo build --package rerun-cli --release --no-default-features --features native_viewer"
+
 # Compile and run the rerun viewer with --release.
 #
 # You can also give an argument for what to view (e.g. an .rrd file).
@@ -270,6 +273,10 @@ js-build-all = { cmd = "yarn --cwd rerun_js workspaces run build", depends_on = 
 py-build-common = { cmd = "PIP_REQUIRE_VIRTUALENV=0 RERUN_ALLOW_MISSING_BIN=1 maturin develop --manifest-path rerun_py/Cargo.toml --extras=tests", depends_on = [
   "rerun-build", # We need to build rerun-cli since it is bundled in the python package.
 ] }
+py-build-common-release = { cmd = "PIP_REQUIRE_VIRTUALENV=0 RERUN_ALLOW_MISSING_BIN=1 maturin develop --release --manifest-path rerun_py/Cargo.toml --extras=tests", depends_on = [
+  "rerun-build-release", # We need to build rerun-cli since it is bundled in the python package.
+] }
+
 
 # Build the `rerun-notebook` package.
 py-build-notebook = { cmd = "pip install -e rerun_notebook", depends_on = [
@@ -282,11 +289,14 @@ py-build-notebook = { cmd = "pip install -e rerun_notebook", depends_on = [
 # Dedicated alias for building the python bindings for the `py` environment.
 py-build = "pixi run -e py py-build-common"
 
+# Dedicated alias for building the python bindings in release mode for the `py` environment.
+py-build-release = "pixi run -e py py-build-common-release"
+
 # Helper alias to run the python interpreter in the context of the python environment
 rrpy = "python"
 
 py-bench = { cmd = "python -m pytest -c rerun_py/pyproject.toml --benchmark-only", depends_on = [
-  "py-build",
+  "py-build-release",
 ] }
 
 py-plot-dashboard = { cmd = "python tests/python/plot_dashboard_stress/main.py", depends_on = [
