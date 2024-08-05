@@ -886,21 +886,37 @@ fn code_for_enum(
 
     // -------------------------------------------------------
 
-    // OVerload `__str__`:
-    code.push_indented(1, "def __str__(self) -> str:", 1);
-    code.push_indented(2, "'''Returns the variant name'''", 1);
+    // Flexible constructor:
+    code.push_indented(
+        1,
+        format!(
+            r#"@classmethod
+def auto(cls, val: str | int | {enum_name}) -> {enum_name}:
+    '''Best-effort converter.'''
+    if isinstance(val, {enum_name}):
+        return val
+    if isinstance(val, int):
+        return cls(val)
+    try:
+        return cls[val]
+    except KeyError:
+        val_lower = val.lower()
+        for variant in cls:
+            if variant.name.lower() == val_lower:
+                return variant
+    raise ValueError(f"Cannot convert {{val}} to {{cls.__name__}}")
+        "#
+        ),
+        1,
+    );
 
-    for (i, variant) in obj.fields.iter().enumerate() {
-        let variant_name = &variant.name;
-        if i == 0 {
-            code.push_indented(2, format!("if self == {enum_name}.{variant_name}:"), 1);
-        } else {
-            code.push_indented(2, format!("elif self == {enum_name}.{variant_name}:"), 1);
-        }
-        code.push_indented(3, format!("return '{variant_name}'"), 1);
-    }
-    code.push_indented(2, "else:", 1);
-    code.push_indented(3, "raise ValueError('Unknown enum variant')", 3);
+    // Overload `__str__`:
+    code.push_indented(1, "def __str__(self) -> str:", 1);
+    code.push_indented(2, "'''Returns the variant name.'''", 1);
+
+    code.push_indented(2, "return self.name", 1);
+
+    // -------------------------------------------------------
 
     // -------------------------------------------------------
 
@@ -919,7 +935,7 @@ fn code_for_enum(
         .join(", ")
     );
     code.push_unindented(
-        format!("{enum_name}Like = Union[{enum_name}, {variants}]"),
+        format!("{enum_name}Like = Union[{enum_name}, {variants}, int]"),
         1,
     );
     code.push_unindented(
@@ -2042,9 +2058,7 @@ fn quote_arrow_serialization(
 if isinstance(data, ({name}, int, str)):
     data = [data]
 
-data = [{name}(v) if isinstance(v, int) else v for v in data]
-data = [{name}[v.upper()] if isinstance(v, str) else v for v in data]
-pa_data = [v.value for v in data]
+pa_data = [{name}.auto(v).value for v in data]
 
 return pa.array(pa_data, type=data_type)
         "##
