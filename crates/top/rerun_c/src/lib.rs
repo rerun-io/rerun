@@ -340,11 +340,52 @@ pub extern "C" fn rr_recording_stream_new(
     }
 }
 
+/// See `THREAD_LIFE_TRACKER` for more information.
+struct TrivialTypeWithDrop;
+
+impl Drop for TrivialTypeWithDrop {
+    fn drop(&mut self) {
+        // Try to ensure that drop doesn't get optimized away.
+        std::hint::black_box(self);
+    }
+}
+
+thread_local! {
+    /// It can happen that we end up inside of [`rr_recording_stream_free`] during a thread shutdown.
+    /// This happens either when:
+    /// * the application shuts down, causing the destructor of globally defined recordings to be invoked
+    ///   -> Not an issue, we likely already destroyed the recording list.
+    /// * the user stored their C++ recording in a thread local variable, and then shut down the thread.
+    ///   -> More problematic, since we can't access `RECORDING_STREAMS` now, meaning we leak the recording.
+    ///      (we can't access it because we use channels internally which in turn use thread-local storage)
+    /// In either case we have a problem, since destroying a recording bottoms out to some thread-local storage
+    /// access inside of channels, causing a crash!
+    ///
+    /// So how do we figure out that our thread is shutting down?
+    /// As of writing `std::thread::current()` panics if there's nothing on `std::sys_common::thread_info::current_thread()`.
+    /// Unfortunately, `std::sys_common` is a private implementation detail!
+    /// So instead, we try accessing a thread local variable and see if that's still possible.
+    /// If not, then we assume that the thread is shutting down.
+    ///
+    /// Just any thread local variable will not do though!
+    /// We need something that is guaranteed to be dropped with the thread shutting down.
+    /// A simple integer value won't do that, `Box` works but seems wasteful, so we use a trivial type with a drop implementation.
+    #[allow(clippy::unnecessary_box_returns)]
+    pub static THREAD_LIFE_TRACKER: TrivialTypeWithDrop = TrivialTypeWithDrop;
+}
+
 #[allow(unsafe_code)]
 #[no_mangle]
 pub extern "C" fn rr_recording_stream_free(id: CRecordingStream) {
-    if let Some(stream) = RECORDING_STREAMS.lock().remove(id) {
-        stream.disconnect();
+    if THREAD_LIFE_TRACKER.try_with(|_v| {}).is_ok() {
+        if let Some(stream) = RECORDING_STREAMS.lock().remove(id) {
+            stream.disconnect();
+        }
+    } else {
+        // Yes, at least as of writing we can still log things in this state!
+        re_log::debug!(
+            "rr_recording_stream_free called on a thread that is shutting down and can no longer access thread locals. We can't handle this and have to ignore this call."
+        );
     }
 }
 
