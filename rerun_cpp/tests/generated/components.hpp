@@ -25,3 +25,4 @@
 #include "components/affix_fuzzer8.hpp"
 #include "components/affix_fuzzer9.hpp"
 #include "components/enum_test.hpp"
+#include "components/valued_enum.hpp"

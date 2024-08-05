@@ -67,6 +67,7 @@ from .affix_fuzzer20 import AffixFuzzer20, AffixFuzzer20Batch, AffixFuzzer20Type
 from .affix_fuzzer21 import AffixFuzzer21, AffixFuzzer21Batch, AffixFuzzer21Type
 from .affix_fuzzer22 import AffixFuzzer22, AffixFuzzer22Batch, AffixFuzzer22Type
 from .enum_test import EnumTest, EnumTestArrayLike, EnumTestBatch, EnumTestLike, EnumTestType
+from .valued_enum import ValuedEnum, ValuedEnumArrayLike, ValuedEnumBatch, ValuedEnumLike, ValuedEnumType
 
 __all__ = [
     "AffixFuzzer1",
@@ -160,4 +161,9 @@ __all__ = [
     "EnumTestBatch",
     "EnumTestLike",
     "EnumTestType",
+    "ValuedEnum",
+    "ValuedEnumArrayLike",
+    "ValuedEnumBatch",
+    "ValuedEnumLike",
+    "ValuedEnumType",
 ]
