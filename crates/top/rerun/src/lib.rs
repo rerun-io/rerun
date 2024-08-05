@@ -63,7 +63,7 @@
 //!
 //! rec.set_time_sequence("frame", 42);
 //! rec.log("path/to/points", &rerun::Points3D::new(points).with_colors(colors))?;
-//! rec.log("path/to/image", &rerun::Image::from_color_model_and_tensor(image)?)?;
+//! rec.log("path/to/image", &rerun::Image::from_color_model_and_tensor(rerun::ColorModel::RGB, image)?)?;
 //!
 //! # Ok::<(), Box<dyn std::error::Error>>(())
 //! ```
