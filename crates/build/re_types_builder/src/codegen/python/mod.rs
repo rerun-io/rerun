@@ -851,8 +851,8 @@ fn code_for_enum(
     code.push_str(&format!("class {enum_name}({superclasses}):\n"));
     code.push_indented(1, quote_obj_docs(reporter, objects, obj), 0);
 
-    for (i, variant) in obj.fields.iter().enumerate() {
-        let arrow_type_index = 1 + i; // plus-one to leave room for zero == `_null_markers`
+    for variant in &obj.fields {
+        let enum_value = variant.enum_value.unwrap();
 
         // NOTE: we keep the casing of the enum variants exactly as specified in the .fbs file,
         // or else `RGBA` would become `Rgba` and so on.
@@ -861,7 +861,7 @@ fn code_for_enum(
         // * the arrow datatype
         // * the GUI
         let variant_name = &variant.name;
-        code.push_indented(1, format!("{variant_name} = {arrow_type_index}"), 1);
+        code.push_indented(1, format!("{variant_name} = {enum_value}"), 1);
 
         // Generating docs for all the fields creates A LOT of visual noise in the API docs.
         let show_fields_in_docs = true;
@@ -2037,63 +2037,18 @@ fn quote_arrow_serialization(
             Ok(code)
         }
 
-        ObjectClass::Enum => {
-            // Generate case-insensitive string-to-enum conversion:
-            let match_names = obj
-                .fields
-                .iter()
-                .map(|f| {
-                    let newline = '\n';
-                    let variant = &f.name;
-                    let lowercase_variant = variant.to_lowercase();
-                    format!(
-                        r#"elif value.lower() == "{lowercase_variant}":{newline}    types.append({name}.{variant}.value)"#
-                    )
-                })
-                .format("\n")
-                .to_string();
-
-            let match_names = indent::indent_all_by(8, match_names);
-            let num_variants = obj.fields.len();
-
-            Ok(unindent(&format!(
-                r##"
+        ObjectClass::Enum => Ok(unindent(&format!(
+            r##"
 if isinstance(data, ({name}, int, str)):
     data = [data]
 
-types: list[int] = []
+data = [{name}(v) if isinstance(v, int) else v for v in data]
+data = [{name}[v.upper()] if isinstance(v, str) else v for v in data]
+pa_data = [v.value for v in data]
 
-for value in data:
-    if value is None:
-        types.append(0)
-    elif isinstance(value, {name}):
-        types.append(value.value) # Actual enum value
-    elif isinstance(value, int):
-        types.append(value) # By number
-    elif isinstance(value, str):
-        if hasattr({name}, value):
-            types.append({name}[value].value) # fast path
-{match_names}
-        else:
-            raise ValueError(f"Unknown {name} kind: {{value}}")
-    else:
-        raise ValueError(f"Unknown {name} kind: {{value}}")
-
-buffers = [
-    None,
-    pa.array(types, type=pa.int8()).buffers()[1],
-]
-children = (1 + {num_variants}) * [pa.nulls(len(data))]
-
-return pa.UnionArray.from_buffers(
-    type=data_type,
-    length=len(data),
-    buffers=buffers,
-    children=children,
-)
+return pa.array(pa_data, type=data_type)
         "##
-            )))
-        }
+        ))),
 
         ObjectClass::Union => {
             let mut variant_list_decls = String::new();
