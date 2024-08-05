@@ -89,11 +89,11 @@ fn merge_and_compact(
     };
 
     re_log::info!(
-        srcs = ?path_to_input_rrds,
-        src_size_bytes = %file_size_to_string(rrds_in_size),
-        dst = ?path_to_output_rrd,
         max_num_rows = %re_format::format_uint(store_config.chunk_max_rows),
         max_num_bytes = %re_format::format_bytes(store_config.chunk_max_bytes as _),
+        dst = ?path_to_output_rrd,
+        srcs = ?path_to_input_rrds,
+        src_size_bytes = %file_size_to_string(rrds_in_size),
         "merge started"
     );
 
@@ -169,12 +169,12 @@ fn merge_and_compact(
         };
 
     re_log::info!(
-        srcs = ?path_to_input_rrds,
-        srcs_size_bytes = %file_size_to_string(rrds_in_size),
         dst = ?path_to_output_rrd,
         dst_size_bytes = %file_size_to_string(rrd_out_size),
         time = ?now.elapsed(),
         compaction_ratio,
+        srcs = ?path_to_input_rrds,
+        srcs_size_bytes = %file_size_to_string(rrds_in_size),
         "compaction finished"
     );
 
