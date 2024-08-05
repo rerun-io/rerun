@@ -1,11 +1,9 @@
-mod compact;
 mod compare;
-mod merge;
+mod merge_compact;
 mod print;
 
-use self::compact::CompactCommand;
 use self::compare::CompareCommand;
-use self::merge::MergeCommand;
+use self::merge_compact::{CompactCommand, MergeCommand};
 use self::print::PrintCommand;
 
 // ---
