@@ -30,14 +30,14 @@ class Colormap(Enum):
     but currently the Viewer is limited to the types defined here.
     """
 
-    Grayscale = 1
+    Grayscale = 0
     """
     A simple black to white gradient.
 
     This is a sRGB gray gradient which is perceptually uniform.
     """
 
-    Inferno = 2
+    Inferno = 1
     """
     The Inferno colormap from Matplotlib.
 
@@ -45,7 +45,7 @@ class Colormap(Enum):
     It interpolates from black to red to bright yellow.
     """
 
-    Magma = 3
+    Magma = 2
     """
     The Magma colormap from Matplotlib.
 
@@ -53,7 +53,7 @@ class Colormap(Enum):
     It interpolates from black to purple to white.
     """
 
-    Plasma = 4
+    Plasma = 3
     """
     The Plasma colormap from Matplotlib.
 
@@ -61,7 +61,7 @@ class Colormap(Enum):
     It interpolates from dark blue to purple to yellow.
     """
 
-    Turbo = 5
+    Turbo = 4
     """
     Google's Turbo colormap map.
 
@@ -71,7 +71,7 @@ class Colormap(Enum):
     Details: <https://research.google/blog/turbo-an-improved-rainbow-colormap-for-visualization/>
     """
 
-    Viridis = 6
+    Viridis = 5
     """
     The Viridis colormap from Matplotlib
 
@@ -79,7 +79,7 @@ class Colormap(Enum):
     It interpolates from dark purple to green to yellow.
     """
 
-    CyanToYellow = 7
+    CyanToYellow = 6
     """
     Rasmusgo's Cyan to Yellow colormap
 
@@ -134,20 +134,7 @@ class ColormapType(BaseExtensionType):
     _TYPE_NAME: str = "rerun.components.Colormap"
 
     def __init__(self) -> None:
-        pa.ExtensionType.__init__(
-            self,
-            pa.sparse_union([
-                pa.field("_null_markers", pa.null(), nullable=True, metadata={}),
-                pa.field("Grayscale", pa.null(), nullable=True, metadata={}),
-                pa.field("Inferno", pa.null(), nullable=True, metadata={}),
-                pa.field("Magma", pa.null(), nullable=True, metadata={}),
-                pa.field("Plasma", pa.null(), nullable=True, metadata={}),
-                pa.field("Turbo", pa.null(), nullable=True, metadata={}),
-                pa.field("Viridis", pa.null(), nullable=True, metadata={}),
-                pa.field("CyanToYellow", pa.null(), nullable=True, metadata={}),
-            ]),
-            self._TYPE_NAME,
-        )
+        pa.ExtensionType.__init__(self, pa.uint8(), self._TYPE_NAME)
 
 
 class ColormapBatch(BaseBatch[ColormapArrayLike], ComponentBatchMixin):
@@ -158,46 +145,8 @@ class ColormapBatch(BaseBatch[ColormapArrayLike], ComponentBatchMixin):
         if isinstance(data, (Colormap, int, str)):
             data = [data]
 
-        types: list[int] = []
+        data = [Colormap(v) if isinstance(v, int) else v for v in data]
+        data = [Colormap[v.upper()] if isinstance(v, str) else v for v in data]
+        pa_data = [v.value for v in data]
 
-        for value in data:
-            if value is None:
-                types.append(0)
-            elif isinstance(value, Colormap):
-                types.append(value.value)  # Actual enum value
-            elif isinstance(value, int):
-                types.append(value)  # By number
-            elif isinstance(value, str):
-                if hasattr(Colormap, value):
-                    types.append(Colormap[value].value)  # fast path
-                elif value.lower() == "grayscale":
-                    types.append(Colormap.Grayscale.value)
-                elif value.lower() == "inferno":
-                    types.append(Colormap.Inferno.value)
-                elif value.lower() == "magma":
-                    types.append(Colormap.Magma.value)
-                elif value.lower() == "plasma":
-                    types.append(Colormap.Plasma.value)
-                elif value.lower() == "turbo":
-                    types.append(Colormap.Turbo.value)
-                elif value.lower() == "viridis":
-                    types.append(Colormap.Viridis.value)
-                elif value.lower() == "cyantoyellow":
-                    types.append(Colormap.CyanToYellow.value)
-                else:
-                    raise ValueError(f"Unknown Colormap kind: {value}")
-            else:
-                raise ValueError(f"Unknown Colormap kind: {value}")
-
-        buffers = [
-            None,
-            pa.array(types, type=pa.int8()).buffers()[1],
-        ]
-        children = (1 + 7) * [pa.nulls(len(data))]
-
-        return pa.UnionArray.from_buffers(
-            type=data_type,
-            length=len(data),
-            buffers=buffers,
-            children=children,
-        )
+        return pa.array(pa_data, type=data_type)

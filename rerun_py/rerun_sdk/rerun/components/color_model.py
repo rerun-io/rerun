@@ -28,13 +28,13 @@ class ColorModel(Enum):
     This combined with [`components.ChannelDatatype`][rerun.components.ChannelDatatype] determines the pixel format of an image.
     """
 
-    L = 1
+    L = 0
     """Grayscale luminance intencity/brightness/value, sometimes called `Y`"""
 
-    RGB = 2
+    RGB = 1
     """Red, Green, Blue"""
 
-    RGBA = 3
+    RGBA = 2
     """Red, Green, Blue, Alpha"""
 
     def __str__(self) -> str:
@@ -57,16 +57,7 @@ class ColorModelType(BaseExtensionType):
     _TYPE_NAME: str = "rerun.components.ColorModel"
 
     def __init__(self) -> None:
-        pa.ExtensionType.__init__(
-            self,
-            pa.sparse_union([
-                pa.field("_null_markers", pa.null(), nullable=True, metadata={}),
-                pa.field("L", pa.null(), nullable=True, metadata={}),
-                pa.field("RGB", pa.null(), nullable=True, metadata={}),
-                pa.field("RGBA", pa.null(), nullable=True, metadata={}),
-            ]),
-            self._TYPE_NAME,
-        )
+        pa.ExtensionType.__init__(self, pa.uint8(), self._TYPE_NAME)
 
 
 class ColorModelBatch(BaseBatch[ColorModelArrayLike], ComponentBatchMixin):
@@ -77,38 +68,8 @@ class ColorModelBatch(BaseBatch[ColorModelArrayLike], ComponentBatchMixin):
         if isinstance(data, (ColorModel, int, str)):
             data = [data]
 
-        types: list[int] = []
+        data = [ColorModel(v) if isinstance(v, int) else v for v in data]
+        data = [ColorModel[v.upper()] if isinstance(v, str) else v for v in data]
+        pa_data = [v.value for v in data]
 
-        for value in data:
-            if value is None:
-                types.append(0)
-            elif isinstance(value, ColorModel):
-                types.append(value.value)  # Actual enum value
-            elif isinstance(value, int):
-                types.append(value)  # By number
-            elif isinstance(value, str):
-                if hasattr(ColorModel, value):
-                    types.append(ColorModel[value].value)  # fast path
-                elif value.lower() == "l":
-                    types.append(ColorModel.L.value)
-                elif value.lower() == "rgb":
-                    types.append(ColorModel.RGB.value)
-                elif value.lower() == "rgba":
-                    types.append(ColorModel.RGBA.value)
-                else:
-                    raise ValueError(f"Unknown ColorModel kind: {value}")
-            else:
-                raise ValueError(f"Unknown ColorModel kind: {value}")
-
-        buffers = [
-            None,
-            pa.array(types, type=pa.int8()).buffers()[1],
-        ]
-        children = (1 + 3) * [pa.nulls(len(data))]
-
-        return pa.UnionArray.from_buffers(
-            type=data_type,
-            length=len(data),
-            buffers=buffers,
-            children=children,
-        )
+        return pa.array(pa_data, type=data_type)

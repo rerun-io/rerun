@@ -30,21 +30,21 @@ from enum import Enum
 class BackgroundKind(Enum):
     """**Component**: The type of the background in a view."""
 
-    GradientDark = 1
+    GradientDark = 0
     """
     A dark gradient.
 
     In 3D views it changes depending on the direction of the view.
     """
 
-    GradientBright = 2
+    GradientBright = 1
     """
     A bright gradient.
 
     In 3D views it changes depending on the direction of the view.
     """
 
-    SolidColor = 3
+    SolidColor = 2
     """Simple uniform color."""
 
     def __str__(self) -> str:
@@ -70,16 +70,7 @@ class BackgroundKindType(BaseExtensionType):
     _TYPE_NAME: str = "rerun.blueprint.components.BackgroundKind"
 
     def __init__(self) -> None:
-        pa.ExtensionType.__init__(
-            self,
-            pa.sparse_union([
-                pa.field("_null_markers", pa.null(), nullable=True, metadata={}),
-                pa.field("GradientDark", pa.null(), nullable=True, metadata={}),
-                pa.field("GradientBright", pa.null(), nullable=True, metadata={}),
-                pa.field("SolidColor", pa.null(), nullable=True, metadata={}),
-            ]),
-            self._TYPE_NAME,
-        )
+        pa.ExtensionType.__init__(self, pa.uint8(), self._TYPE_NAME)
 
 
 class BackgroundKindBatch(BaseBatch[BackgroundKindArrayLike], ComponentBatchMixin):
@@ -90,38 +81,8 @@ class BackgroundKindBatch(BaseBatch[BackgroundKindArrayLike], ComponentBatchMixi
         if isinstance(data, (BackgroundKind, int, str)):
             data = [data]
 
-        types: list[int] = []
+        data = [BackgroundKind(v) if isinstance(v, int) else v for v in data]
+        data = [BackgroundKind[v.upper()] if isinstance(v, str) else v for v in data]
+        pa_data = [v.value for v in data]
 
-        for value in data:
-            if value is None:
-                types.append(0)
-            elif isinstance(value, BackgroundKind):
-                types.append(value.value)  # Actual enum value
-            elif isinstance(value, int):
-                types.append(value)  # By number
-            elif isinstance(value, str):
-                if hasattr(BackgroundKind, value):
-                    types.append(BackgroundKind[value].value)  # fast path
-                elif value.lower() == "gradientdark":
-                    types.append(BackgroundKind.GradientDark.value)
-                elif value.lower() == "gradientbright":
-                    types.append(BackgroundKind.GradientBright.value)
-                elif value.lower() == "solidcolor":
-                    types.append(BackgroundKind.SolidColor.value)
-                else:
-                    raise ValueError(f"Unknown BackgroundKind kind: {value}")
-            else:
-                raise ValueError(f"Unknown BackgroundKind kind: {value}")
-
-        buffers = [
-            None,
-            pa.array(types, type=pa.int8()).buffers()[1],
-        ]
-        children = (1 + 3) * [pa.nulls(len(data))]
-
-        return pa.UnionArray.from_buffers(
-            type=data_type,
-            length=len(data),
-            buffers=buffers,
-            children=children,
-        )
+        return pa.array(pa_data, type=data_type)

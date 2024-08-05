@@ -24,16 +24,16 @@ from enum import Enum
 class ContainerKind(Enum):
     """**Component**: The kind of a blueprint container (tabs, grid, …)."""
 
-    Tabs = 1
+    Tabs = 0
     """Put children in separate tabs"""
 
-    Horizontal = 2
+    Horizontal = 1
     """Order the children left to right"""
 
-    Vertical = 3
+    Vertical = 2
     """Order the children top to bottom"""
 
-    Grid = 4
+    Grid = 3
     """Organize children in a grid layout"""
 
     def __str__(self) -> str:
@@ -60,17 +60,7 @@ class ContainerKindType(BaseExtensionType):
     _TYPE_NAME: str = "rerun.blueprint.components.ContainerKind"
 
     def __init__(self) -> None:
-        pa.ExtensionType.__init__(
-            self,
-            pa.sparse_union([
-                pa.field("_null_markers", pa.null(), nullable=True, metadata={}),
-                pa.field("Tabs", pa.null(), nullable=True, metadata={}),
-                pa.field("Horizontal", pa.null(), nullable=True, metadata={}),
-                pa.field("Vertical", pa.null(), nullable=True, metadata={}),
-                pa.field("Grid", pa.null(), nullable=True, metadata={}),
-            ]),
-            self._TYPE_NAME,
-        )
+        pa.ExtensionType.__init__(self, pa.uint8(), self._TYPE_NAME)
 
 
 class ContainerKindBatch(BaseBatch[ContainerKindArrayLike], ComponentBatchMixin):
@@ -81,40 +71,8 @@ class ContainerKindBatch(BaseBatch[ContainerKindArrayLike], ComponentBatchMixin)
         if isinstance(data, (ContainerKind, int, str)):
             data = [data]
 
-        types: list[int] = []
+        data = [ContainerKind(v) if isinstance(v, int) else v for v in data]
+        data = [ContainerKind[v.upper()] if isinstance(v, str) else v for v in data]
+        pa_data = [v.value for v in data]
 
-        for value in data:
-            if value is None:
-                types.append(0)
-            elif isinstance(value, ContainerKind):
-                types.append(value.value)  # Actual enum value
-            elif isinstance(value, int):
-                types.append(value)  # By number
-            elif isinstance(value, str):
-                if hasattr(ContainerKind, value):
-                    types.append(ContainerKind[value].value)  # fast path
-                elif value.lower() == "tabs":
-                    types.append(ContainerKind.Tabs.value)
-                elif value.lower() == "horizontal":
-                    types.append(ContainerKind.Horizontal.value)
-                elif value.lower() == "vertical":
-                    types.append(ContainerKind.Vertical.value)
-                elif value.lower() == "grid":
-                    types.append(ContainerKind.Grid.value)
-                else:
-                    raise ValueError(f"Unknown ContainerKind kind: {value}")
-            else:
-                raise ValueError(f"Unknown ContainerKind kind: {value}")
-
-        buffers = [
-            None,
-            pa.array(types, type=pa.int8()).buffers()[1],
-        ]
-        children = (1 + 4) * [pa.nulls(len(data))]
-
-        return pa.UnionArray.from_buffers(
-            type=data_type,
-            length=len(data),
-            buffers=buffers,
-            children=children,
-        )
+        return pa.array(pa_data, type=data_type)

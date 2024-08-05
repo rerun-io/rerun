@@ -30,7 +30,7 @@ from enum import Enum
 class TransformRelation(Enum):
     """**Component**: Specifies relation a spatial transform describes."""
 
-    ParentFromChild = 1
+    ParentFromChild = 0
     """
     The transform describes how to transform into the parent entity's space.
 
@@ -39,7 +39,7 @@ class TransformRelation(Enum):
     From perspective of `parent/child`, the `parent` entity is translated -1 unit along `parent/child`'s Y axis.
     """
 
-    ChildFromParent = 2
+    ChildFromParent = 1
     """
     The transform describes how to transform into the child entity's space.
 
@@ -68,15 +68,7 @@ class TransformRelationType(BaseExtensionType):
     _TYPE_NAME: str = "rerun.components.TransformRelation"
 
     def __init__(self) -> None:
-        pa.ExtensionType.__init__(
-            self,
-            pa.sparse_union([
-                pa.field("_null_markers", pa.null(), nullable=True, metadata={}),
-                pa.field("ParentFromChild", pa.null(), nullable=True, metadata={}),
-                pa.field("ChildFromParent", pa.null(), nullable=True, metadata={}),
-            ]),
-            self._TYPE_NAME,
-        )
+        pa.ExtensionType.__init__(self, pa.uint8(), self._TYPE_NAME)
 
 
 class TransformRelationBatch(BaseBatch[TransformRelationArrayLike], ComponentBatchMixin):
@@ -87,36 +79,8 @@ class TransformRelationBatch(BaseBatch[TransformRelationArrayLike], ComponentBat
         if isinstance(data, (TransformRelation, int, str)):
             data = [data]
 
-        types: list[int] = []
+        data = [TransformRelation(v) if isinstance(v, int) else v for v in data]
+        data = [TransformRelation[v.upper()] if isinstance(v, str) else v for v in data]
+        pa_data = [v.value for v in data]
 
-        for value in data:
-            if value is None:
-                types.append(0)
-            elif isinstance(value, TransformRelation):
-                types.append(value.value)  # Actual enum value
-            elif isinstance(value, int):
-                types.append(value)  # By number
-            elif isinstance(value, str):
-                if hasattr(TransformRelation, value):
-                    types.append(TransformRelation[value].value)  # fast path
-                elif value.lower() == "parentfromchild":
-                    types.append(TransformRelation.ParentFromChild.value)
-                elif value.lower() == "childfromparent":
-                    types.append(TransformRelation.ChildFromParent.value)
-                else:
-                    raise ValueError(f"Unknown TransformRelation kind: {value}")
-            else:
-                raise ValueError(f"Unknown TransformRelation kind: {value}")
-
-        buffers = [
-            None,
-            pa.array(types, type=pa.int8()).buffers()[1],
-        ]
-        children = (1 + 2) * [pa.nulls(len(data))]
-
-        return pa.UnionArray.from_buffers(
-            type=data_type,
-            length=len(data),
-            buffers=buffers,
-            children=children,
-        )
+        return pa.array(pa_data, type=data_type)

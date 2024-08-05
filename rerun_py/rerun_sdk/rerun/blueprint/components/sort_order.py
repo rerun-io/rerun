@@ -24,10 +24,10 @@ from enum import Enum
 class SortOrder(Enum):
     """**Component**: Sort order for data table."""
 
-    Ascending = 1
+    Ascending = 0
     """Ascending"""
 
-    Descending = 2
+    Descending = 1
     """Descending"""
 
     def __str__(self) -> str:
@@ -48,15 +48,7 @@ class SortOrderType(BaseExtensionType):
     _TYPE_NAME: str = "rerun.blueprint.components.SortOrder"
 
     def __init__(self) -> None:
-        pa.ExtensionType.__init__(
-            self,
-            pa.sparse_union([
-                pa.field("_null_markers", pa.null(), nullable=True, metadata={}),
-                pa.field("Ascending", pa.null(), nullable=True, metadata={}),
-                pa.field("Descending", pa.null(), nullable=True, metadata={}),
-            ]),
-            self._TYPE_NAME,
-        )
+        pa.ExtensionType.__init__(self, pa.uint8(), self._TYPE_NAME)
 
 
 class SortOrderBatch(BaseBatch[SortOrderArrayLike], ComponentBatchMixin):
@@ -67,36 +59,8 @@ class SortOrderBatch(BaseBatch[SortOrderArrayLike], ComponentBatchMixin):
         if isinstance(data, (SortOrder, int, str)):
             data = [data]
 
-        types: list[int] = []
+        data = [SortOrder(v) if isinstance(v, int) else v for v in data]
+        data = [SortOrder[v.upper()] if isinstance(v, str) else v for v in data]
+        pa_data = [v.value for v in data]
 
-        for value in data:
-            if value is None:
-                types.append(0)
-            elif isinstance(value, SortOrder):
-                types.append(value.value)  # Actual enum value
-            elif isinstance(value, int):
-                types.append(value)  # By number
-            elif isinstance(value, str):
-                if hasattr(SortOrder, value):
-                    types.append(SortOrder[value].value)  # fast path
-                elif value.lower() == "ascending":
-                    types.append(SortOrder.Ascending.value)
-                elif value.lower() == "descending":
-                    types.append(SortOrder.Descending.value)
-                else:
-                    raise ValueError(f"Unknown SortOrder kind: {value}")
-            else:
-                raise ValueError(f"Unknown SortOrder kind: {value}")
-
-        buffers = [
-            None,
-            pa.array(types, type=pa.int8()).buffers()[1],
-        ]
-        children = (1 + 2) * [pa.nulls(len(data))]
-
-        return pa.UnionArray.from_buffers(
-            type=data_type,
-            length=len(data),
-            buffers=buffers,
-            children=children,
-        )
+        return pa.array(pa_data, type=data_type)

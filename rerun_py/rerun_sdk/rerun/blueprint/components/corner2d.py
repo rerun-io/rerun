@@ -24,16 +24,16 @@ from enum import Enum
 class Corner2D(Enum):
     """**Component**: One of four 2D corners, typically used to align objects."""
 
-    LeftTop = 1
+    LeftTop = 0
     """Left top corner."""
 
-    RightTop = 2
+    RightTop = 1
     """Right top corner."""
 
-    LeftBottom = 3
+    LeftBottom = 2
     """Left bottom corner."""
 
-    RightBottom = 4
+    RightBottom = 3
     """Right bottom corner."""
 
     def __str__(self) -> str:
@@ -61,17 +61,7 @@ class Corner2DType(BaseExtensionType):
     _TYPE_NAME: str = "rerun.blueprint.components.Corner2D"
 
     def __init__(self) -> None:
-        pa.ExtensionType.__init__(
-            self,
-            pa.sparse_union([
-                pa.field("_null_markers", pa.null(), nullable=True, metadata={}),
-                pa.field("LeftTop", pa.null(), nullable=True, metadata={}),
-                pa.field("RightTop", pa.null(), nullable=True, metadata={}),
-                pa.field("LeftBottom", pa.null(), nullable=True, metadata={}),
-                pa.field("RightBottom", pa.null(), nullable=True, metadata={}),
-            ]),
-            self._TYPE_NAME,
-        )
+        pa.ExtensionType.__init__(self, pa.uint8(), self._TYPE_NAME)
 
 
 class Corner2DBatch(BaseBatch[Corner2DArrayLike], ComponentBatchMixin):
@@ -82,40 +72,8 @@ class Corner2DBatch(BaseBatch[Corner2DArrayLike], ComponentBatchMixin):
         if isinstance(data, (Corner2D, int, str)):
             data = [data]
 
-        types: list[int] = []
+        data = [Corner2D(v) if isinstance(v, int) else v for v in data]
+        data = [Corner2D[v.upper()] if isinstance(v, str) else v for v in data]
+        pa_data = [v.value for v in data]
 
-        for value in data:
-            if value is None:
-                types.append(0)
-            elif isinstance(value, Corner2D):
-                types.append(value.value)  # Actual enum value
-            elif isinstance(value, int):
-                types.append(value)  # By number
-            elif isinstance(value, str):
-                if hasattr(Corner2D, value):
-                    types.append(Corner2D[value].value)  # fast path
-                elif value.lower() == "lefttop":
-                    types.append(Corner2D.LeftTop.value)
-                elif value.lower() == "righttop":
-                    types.append(Corner2D.RightTop.value)
-                elif value.lower() == "leftbottom":
-                    types.append(Corner2D.LeftBottom.value)
-                elif value.lower() == "rightbottom":
-                    types.append(Corner2D.RightBottom.value)
-                else:
-                    raise ValueError(f"Unknown Corner2D kind: {value}")
-            else:
-                raise ValueError(f"Unknown Corner2D kind: {value}")
-
-        buffers = [
-            None,
-            pa.array(types, type=pa.int8()).buffers()[1],
-        ]
-        children = (1 + 4) * [pa.nulls(len(data))]
-
-        return pa.UnionArray.from_buffers(
-            type=data_type,
-            length=len(data),
-            buffers=buffers,
-            children=children,
-        )
+        return pa.array(pa_data, type=data_type)

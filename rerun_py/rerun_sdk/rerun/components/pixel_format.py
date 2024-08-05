@@ -36,7 +36,7 @@ class PixelFormat(Enum):
     For more compressed image formats, see [`archetypes.ImageEncoded`][rerun.archetypes.ImageEncoded].
     """
 
-    NV12 = 1
+    NV12 = 0
     """
     NV12 (aka Y_UV12) is a YUV 4:2:0 chroma downsampled format with 12 bits per pixel and 8 bits per channel.
 
@@ -44,7 +44,7 @@ class PixelFormat(Enum):
     followed by a plane with interleaved lines ordered as U0, V0, U1, V1, etc.
     """
 
-    YUY2 = 2
+    YUY2 = 1
     """
     YUY2 (aka YUYV or YUYV16), is a YUV 4:2:2 chroma downsampled format with 16 bits per pixel and 8 bits per channel.
 
@@ -69,15 +69,7 @@ class PixelFormatType(BaseExtensionType):
     _TYPE_NAME: str = "rerun.components.PixelFormat"
 
     def __init__(self) -> None:
-        pa.ExtensionType.__init__(
-            self,
-            pa.sparse_union([
-                pa.field("_null_markers", pa.null(), nullable=True, metadata={}),
-                pa.field("NV12", pa.null(), nullable=True, metadata={}),
-                pa.field("YUY2", pa.null(), nullable=True, metadata={}),
-            ]),
-            self._TYPE_NAME,
-        )
+        pa.ExtensionType.__init__(self, pa.uint8(), self._TYPE_NAME)
 
 
 class PixelFormatBatch(BaseBatch[PixelFormatArrayLike], ComponentBatchMixin):
@@ -88,36 +80,8 @@ class PixelFormatBatch(BaseBatch[PixelFormatArrayLike], ComponentBatchMixin):
         if isinstance(data, (PixelFormat, int, str)):
             data = [data]
 
-        types: list[int] = []
+        data = [PixelFormat(v) if isinstance(v, int) else v for v in data]
+        data = [PixelFormat[v.upper()] if isinstance(v, str) else v for v in data]
+        pa_data = [v.value for v in data]
 
-        for value in data:
-            if value is None:
-                types.append(0)
-            elif isinstance(value, PixelFormat):
-                types.append(value.value)  # Actual enum value
-            elif isinstance(value, int):
-                types.append(value)  # By number
-            elif isinstance(value, str):
-                if hasattr(PixelFormat, value):
-                    types.append(PixelFormat[value].value)  # fast path
-                elif value.lower() == "nv12":
-                    types.append(PixelFormat.NV12.value)
-                elif value.lower() == "yuy2":
-                    types.append(PixelFormat.YUY2.value)
-                else:
-                    raise ValueError(f"Unknown PixelFormat kind: {value}")
-            else:
-                raise ValueError(f"Unknown PixelFormat kind: {value}")
-
-        buffers = [
-            None,
-            pa.array(types, type=pa.int8()).buffers()[1],
-        ]
-        children = (1 + 2) * [pa.nulls(len(data))]
-
-        return pa.UnionArray.from_buffers(
-            type=data_type,
-            length=len(data),
-            buffers=buffers,
-            children=children,
-        )
+        return pa.array(pa_data, type=data_type)
