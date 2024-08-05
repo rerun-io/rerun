@@ -50,16 +50,16 @@ impl MergeCommand {
         };
 
         use re_chunk_store::ChunkStoreConfig;
-        let mut store_config = ChunkStoreConfig::from_env().unwrap_or_default();
-        // NOTE: We're doing headless processing, there's no point in running subscribers, it will just
+        // NOTE #1: We're doing headless processing, there's no point in running subscribers, it will just
         // (massively) slow us down.
-        store_config.enable_changelog = false;
+        // NOTE #2: We do not want to modify the configuration of the original data in any way
+        // (e.g. by recompacting it differenly), so make sure to disable all these features.
+        let store_config = ChunkStoreConfig::ALL_DISABLED;
 
         re_log::info!(
             srcs = ?path_to_input_rrds,
+            srcs_size_bytes = %file_size_to_string(rrds_in_size),
             dst = ?path_to_output_rrd,
-            max_num_rows = %re_format::format_uint(store_config.chunk_max_rows),
-            max_num_bytes = %re_format::format_bytes(store_config.chunk_max_bytes as _),
             "merge started"
         );
 
