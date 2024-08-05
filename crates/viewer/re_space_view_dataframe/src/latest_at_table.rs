@@ -161,7 +161,8 @@ pub(crate) fn latest_at_table_ui(
                             .latest_at(&latest_at_query, *component_name)
                             .into_unit()
                             .and_then(|unit| {
-                                unit.index(&latest_at_query.timeline).map(|index| (index, unit))
+                                unit.index(&latest_at_query.timeline())
+                                    .map(|index| (index, unit))
                             })?;
 
                         unit.component_batch_raw(component_name)

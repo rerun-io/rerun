@@ -6,7 +6,6 @@ use re_types::blueprint::datatypes::LatestAtQuery;
 use re_types::blueprint::{archetypes, components, datatypes};
 use re_types_core::{Archetype as _, ComponentName, Loggable as _};
 use re_ui::{list_item, UiExt as _};
-use re_viewer_context::external::re_query::PromiseResolver;
 use re_viewer_context::{
     ComponentFallbackProvider, QueryContext, SpaceViewId, SpaceViewState,
     SpaceViewSystemExecutionError, ViewQuery, ViewerContext,
@@ -207,7 +206,9 @@ impl Query {
                         ctx.blueprint_db(),
                         &blueprint_path,
                         component_name,
-                        component_results.get_or_empty(component_name),
+                        component_results
+                            .component_batch_raw(&component_name)
+                            .as_deref(),
                         fallback_provider,
                     );
                 },
@@ -226,7 +227,9 @@ impl Query {
                         ctx.blueprint_db(),
                         &blueprint_path,
                         component_name,
-                        component_results.get_or_empty(component_name),
+                        component_results
+                            .component_batch_raw(&component_name)
+                            .as_deref(),
                         fallback_provider,
                     );
                 },
@@ -387,7 +390,9 @@ impl Query {
                                     ctx.blueprint_db(),
                                     &blueprint_path,
                                     component_name,
-                                    component_results.get_or_empty(component_name),
+                                    component_results
+                                        .component_batch_raw(&component_name)
+                                        .as_deref(),
                                     fallback_provider,
                                 );
                             },
@@ -409,7 +414,9 @@ impl Query {
                         ctx.blueprint_db(),
                         &blueprint_path,
                         component_name,
-                        component_results.get_or_empty(component_name),
+                        component_results
+                            .component_batch_raw(&component_name)
+                            .as_deref(),
                         fallback_provider,
                     );
                 }),
