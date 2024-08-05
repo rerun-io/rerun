@@ -8,9 +8,14 @@
 #include <rerun/result.hpp>
 
 namespace arrow {
+    /// \private
+    template <typename T>
+    class NumericBuilder;
+
     class Array;
     class DataType;
-    class SparseUnionBuilder;
+    class UInt8Type;
+    using UInt8Builder = NumericBuilder<UInt8Type>;
 } // namespace arrow
 
 namespace rerun::components {
@@ -18,22 +23,22 @@ namespace rerun::components {
     enum class EnumTest : uint8_t {
 
         /// Great film.
-        Up = 1,
+        Up = 0,
 
         /// Feeling blue.
-        Down = 2,
+        Down = 1,
 
         /// Correct.
-        Right = 3,
+        Right = 2,
 
         /// It's what's remaining.
-        Left = 4,
+        Left = 3,
 
         /// It's the only way to go.
-        Forward = 5,
+        Forward = 4,
 
         /// Baby's got it.
-        Back = 6,
+        Back = 5,
     };
 } // namespace rerun::components
 
@@ -56,8 +61,7 @@ namespace rerun {
 
         /// Fills an arrow array builder with an array of this type.
         static rerun::Error fill_arrow_array_builder(
-            arrow::SparseUnionBuilder* builder, const components::EnumTest* elements,
-            size_t num_elements
+            arrow::UInt8Builder* builder, const components::EnumTest* elements, size_t num_elements
         );
     };
 } // namespace rerun
