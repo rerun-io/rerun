@@ -21,22 +21,26 @@ pub enum RrdCommands {
     /// This ignores the `log_time` timeline.
     Compare(CompareCommand),
 
-    /// Print the contents of an .rrd or .rbl file.
+    /// Print the contents of one or more .rrd/.rbl files.
+    ///
+    /// Example: `rerun rrd print /my/recordings/*.rrd`
     Print(PrintCommand),
 
-    /// Compacts the contents of an .rrd or .rbl file and writes the result to a new file.
+    /// Compacts the contents of one or more .rrd/.rbl files and writes the result to a new file.
     ///
     /// Use the usual environment variables to control the compaction thresholds:
     /// `RERUN_CHUNK_MAX_ROWS`,
     /// `RERUN_CHUNK_MAX_ROWS_IF_UNSORTED`,
     /// `RERUN_CHUNK_MAX_BYTES`.
     ///
-    /// Example: `RERUN_CHUNK_MAX_ROWS=4096 RERUN_CHUNK_MAX_BYTES=1048576 rerun compact -i input.rrd -o output.rrd`
+    /// Example: `RERUN_CHUNK_MAX_ROWS=4096 RERUN_CHUNK_MAX_BYTES=1048576 rerun rrd compact /my/recordings/*.rrd -o output.rrd`
     Compact(CompactCommand),
 
-    /// Merges the contents of multiple .rrd and/or .rbl files, and writes the result to a new file.
+    /// Merges the contents of multiple .rrd/.rbl files, and writes the result to a new file.
     ///
-    /// Example: `rerun merge -i input1.rrd -i input2.rbl -i input3.rrd -o output.rrd`
+    /// This will not affect the chunking of the data in any way.
+    ///
+    /// Example: `rerun merge /my/recordings/*.rrd -o output.rrd`
     Merge(MergeCommand),
 }
 
