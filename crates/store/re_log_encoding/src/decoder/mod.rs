@@ -2,6 +2,9 @@
 
 pub mod stream;
 
+use std::io::BufRead as _;
+use std::io::Read;
+
 use re_build_info::CrateVersion;
 use re_log_types::LogMsg;
 
@@ -132,15 +135,39 @@ pub fn read_options(
     Ok((CrateVersion::from_bytes(version), options))
 }
 
+enum Reader<R: std::io::Read> {
+    Raw(R),
+    Buffered(std::io::BufReader<R>),
+}
+
+impl<R: std::io::Read> std::io::Read for Reader<R> {
+    #[inline]
+    fn read(&mut self, buf: &mut [u8]) -> std::io::Result<usize> {
+        match self {
+            Self::Raw(read) => read.read(buf),
+            Self::Buffered(read) => read.read(buf),
+        }
+    }
+}
+
 pub struct Decoder<R: std::io::Read> {
     version: CrateVersion,
     compression: Compression,
-    read: R,
+    read: Reader<R>,
     uncompressed: Vec<u8>, // scratch space
     compressed: Vec<u8>,   // scratch space
 }
 
 impl<R: std::io::Read> Decoder<R> {
+    /// Instantiates a new decoder.
+    ///
+    /// This does not support multiplexed streams.
+    ///
+    /// If you're not familiar with multiplexed RRD streams, then this is probably the function
+    /// that you want to be using.
+    ///
+    /// See also:
+    /// * [`Decoder::new_multiplexed`]
     pub fn new(version_policy: VersionPolicy, mut read: R) -> Result<Self, DecodeError> {
         re_tracing::profile_function!();
 
@@ -153,7 +180,43 @@ impl<R: std::io::Read> Decoder<R> {
         Ok(Self {
             version,
             compression,
-            read,
+            read: Reader::Raw(read),
+            uncompressed: vec![],
+            compressed: vec![],
+        })
+    }
+
+    /// Instantiates a new multiplexed decoder.
+    ///
+    /// This will gracefully handle multiplexed RRD streams, at the cost of extra performance
+    /// overhead, by looking ahead for potential `FileHeader`s in the stream.
+    ///
+    /// The [`CrateVersion`] of the final, demultiplexed stream will correspond to the most recent
+    /// version among all the versions found in the stream.
+    ///
+    /// This is particularly useful when working with stdio streams.
+    ///
+    /// If you're not familiar with multiplexed RRD streams, then you probably want to use
+    /// [`Decoder::new`] instead.
+    ///
+    /// See also:
+    /// * [`Decoder::new`]
+    pub fn new_multiplexed(
+        version_policy: VersionPolicy,
+        mut read: std::io::BufReader<R>,
+    ) -> Result<Self, DecodeError> {
+        re_tracing::profile_function!();
+
+        let mut data = [0_u8; FileHeader::SIZE];
+        read.read_exact(&mut data).map_err(DecodeError::Read)?;
+
+        let (version, options) = read_options(version_policy, &data)?;
+        let compression = options.compression;
+
+        Ok(Self {
+            version,
+            compression,
+            read: Reader::Buffered(read),
             uncompressed: vec![],
             compressed: vec![],
         })
@@ -164,6 +227,29 @@ impl<R: std::io::Read> Decoder<R> {
     pub fn version(&self) -> CrateVersion {
         self.version
     }
+
+    /// Peeks ahead in search of additional `FileHeader`s in the stream.
+    ///
+    /// Returns true if a valid header was found.
+    ///
+    /// No-op if the decoder wasn't initialized with [`Decoder::new_multiplexed`].
+    fn peek_file_header(&mut self) -> bool {
+        match &mut self.read {
+            Reader::Raw(_) => false,
+            Reader::Buffered(read) => {
+                if read.fill_buf().map_err(DecodeError::Read).is_err() {
+                    return false;
+                }
+
+                let mut read = std::io::Cursor::new(read.buffer());
+                if FileHeader::decode(&mut read).is_err() {
+                    return false;
+                }
+
+                true
+            }
+        }
+    }
 }
 
 impl<R: std::io::Read> Iterator for Decoder<R> {
@@ -172,11 +258,30 @@ impl<R: std::io::Read> Iterator for Decoder<R> {
     fn next(&mut self) -> Option<Self::Item> {
         re_tracing::profile_function!();
 
+        if self.peek_file_header() {
+            // We've found another file header in the middle of the stream, it's time to switch
+            // gears and start over on this new file.
+
+            let mut data = [0_u8; FileHeader::SIZE];
+            if let Err(err) = self.read.read_exact(&mut data).map_err(DecodeError::Read) {
+                return Some(Err(err));
+            }
+
+            let (version, options) = match read_options(VersionPolicy::Warn, &data) {
+                Ok(opts) => opts,
+                Err(err) => return Some(Err(err)),
+            };
+            let compression = options.compression;
+
+            self.version = CrateVersion::max(self.version, version);
+            self.compression = compression;
+        }
+
         let header = match MessageHeader::decode(&mut self.read) {
             Ok(header) => header,
             Err(err) => match err {
                 DecodeError::Read(e) if e.kind() == std::io::ErrorKind::UnexpectedEof => {
-                    return None
+                    return None;
                 }
                 other => return Some(Err(other)),
             },
