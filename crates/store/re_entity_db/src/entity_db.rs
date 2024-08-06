@@ -51,6 +51,8 @@ pub struct EntityDb {
     /// entities/components.
     ///
     /// Used for time control.
+    ///
+    /// TODO(#7084): Get rid of [`TimesPerTimeline`] and implement time-stepping with [`crate::TimeHistogram`] instead.
     times_per_timeline: TimesPerTimeline,
 
     /// A time histogram of all entities, for every timeline.
