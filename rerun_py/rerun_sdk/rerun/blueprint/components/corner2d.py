@@ -38,7 +38,7 @@ class Corner2D(Enum):
 
     @classmethod
     def auto(cls, val: str | int | Corner2D) -> Corner2D:
-        """Best-effort converter."""
+        """Best-effort converter, including a case-insensitive string matcher."""
         if isinstance(val, Corner2D):
             return val
         if isinstance(val, int):
@@ -80,6 +80,6 @@ class Corner2DBatch(BaseBatch[Corner2DArrayLike], ComponentBatchMixin):
         if isinstance(data, (Corner2D, int, str)):
             data = [data]
 
-        pa_data = [Corner2D.auto(v).value if v else None for v in data]
+        pa_data = [Corner2D.auto(v).value if v is not None else None for v in data]
 
         return pa.array(pa_data, type=data_type)

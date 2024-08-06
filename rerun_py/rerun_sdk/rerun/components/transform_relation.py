@@ -50,7 +50,7 @@ class TransformRelation(Enum):
 
     @classmethod
     def auto(cls, val: str | int | TransformRelation) -> TransformRelation:
-        """Best-effort converter."""
+        """Best-effort converter, including a case-insensitive string matcher."""
         if isinstance(val, TransformRelation):
             return val
         if isinstance(val, int):
@@ -90,6 +90,6 @@ class TransformRelationBatch(BaseBatch[TransformRelationArrayLike], ComponentBat
         if isinstance(data, (TransformRelation, int, str)):
             data = [data]
 
-        pa_data = [TransformRelation.auto(v).value if v else None for v in data]
+        pa_data = [TransformRelation.auto(v).value if v is not None else None for v in data]
 
         return pa.array(pa_data, type=data_type)

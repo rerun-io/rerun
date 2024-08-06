@@ -18,52 +18,57 @@ use ::re_types_core::SerializationResult;
 use ::re_types_core::{ComponentBatch, MaybeOwnedComponentBatch};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
-/// **Component**: A test of an enumate with specified values.
+/// **Datatype**: A test of the enum type.
 #[derive(Clone, Copy, Debug, Hash, PartialEq, Eq, Default)]
 #[repr(u8)]
-pub enum ValuedEnum {
-    /// Default value.
+pub enum EnumTest {
+    /// Great film.
+    Up = 0u8,
+
+    /// Feeling blue.
+    Down = 1u8,
+
+    /// Correct.
     #[default]
-    Default = 0u8,
+    Right = 2u8,
 
-    /// One.
-    One = 1u8,
+    /// It's what's remaining.
+    Left = 3u8,
 
-    /// Two.
-    Two = 2u8,
+    /// It's the only way to go.
+    Forward = 4u8,
 
-    /// Three.
-    Three = 3u8,
-
-    /// The answer to life, the universe, and everything.
-    TheAnswer = 42u8,
+    /// Baby's got it.
+    Back = 5u8,
 }
 
-impl ::re_types_core::reflection::Enum for ValuedEnum {
+impl ::re_types_core::reflection::Enum for EnumTest {
     #[inline]
     fn variants() -> &'static [Self] {
         &[
-            Self::Default,
-            Self::One,
-            Self::Two,
-            Self::Three,
-            Self::TheAnswer,
+            Self::Up,
+            Self::Down,
+            Self::Right,
+            Self::Left,
+            Self::Forward,
+            Self::Back,
         ]
     }
 
     #[inline]
     fn docstring_md(self) -> &'static str {
         match self {
-            Self::Default => "Default value.",
-            Self::One => "One.",
-            Self::Two => "Two.",
-            Self::Three => "Three.",
-            Self::TheAnswer => "The answer to life, the universe, and everything.",
+            Self::Up => "Great film.",
+            Self::Down => "Feeling blue.",
+            Self::Right => "Correct.",
+            Self::Left => "It's what's remaining.",
+            Self::Forward => "It's the only way to go.",
+            Self::Back => "Baby's got it.",
         }
     }
 }
 
-impl ::re_types_core::SizeBytes for ValuedEnum {
+impl ::re_types_core::SizeBytes for EnumTest {
     #[inline]
     fn heap_size_bytes(&self) -> u64 {
         0
@@ -75,26 +80,27 @@ impl ::re_types_core::SizeBytes for ValuedEnum {
     }
 }
 
-impl std::fmt::Display for ValuedEnum {
+impl std::fmt::Display for EnumTest {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Self::Default => write!(f, "Default"),
-            Self::One => write!(f, "One"),
-            Self::Two => write!(f, "Two"),
-            Self::Three => write!(f, "Three"),
-            Self::TheAnswer => write!(f, "TheAnswer"),
+            Self::Up => write!(f, "Up"),
+            Self::Down => write!(f, "Down"),
+            Self::Right => write!(f, "Right"),
+            Self::Left => write!(f, "Left"),
+            Self::Forward => write!(f, "Forward"),
+            Self::Back => write!(f, "Back"),
         }
     }
 }
 
-::re_types_core::macros::impl_into_cow!(ValuedEnum);
+::re_types_core::macros::impl_into_cow!(EnumTest);
 
-impl ::re_types_core::Loggable for ValuedEnum {
-    type Name = ::re_types_core::ComponentName;
+impl ::re_types_core::Loggable for EnumTest {
+    type Name = ::re_types_core::DatatypeName;
 
     #[inline]
     fn name() -> Self::Name {
-        "rerun.testing.components.ValuedEnum".into()
+        "rerun.testing.datatypes.EnumTest".into()
     }
 
     #[inline]
@@ -152,15 +158,16 @@ impl ::re_types_core::Loggable for ValuedEnum {
                 let actual = arrow_data.data_type().clone();
                 DeserializationError::datatype_mismatch(expected, actual)
             })
-            .with_context("rerun.testing.components.ValuedEnum#enum")?
+            .with_context("rerun.testing.datatypes.EnumTest#enum")?
             .into_iter()
             .map(|opt| opt.copied())
             .map(|typ| match typ {
-                Some(0u8) => Ok(Some(Self::Default)),
-                Some(1u8) => Ok(Some(Self::One)),
-                Some(2u8) => Ok(Some(Self::Two)),
-                Some(3u8) => Ok(Some(Self::Three)),
-                Some(42u8) => Ok(Some(Self::TheAnswer)),
+                Some(0u8) => Ok(Some(Self::Up)),
+                Some(1u8) => Ok(Some(Self::Down)),
+                Some(2u8) => Ok(Some(Self::Right)),
+                Some(3u8) => Ok(Some(Self::Left)),
+                Some(4u8) => Ok(Some(Self::Forward)),
+                Some(5u8) => Ok(Some(Self::Back)),
                 None => Ok(None),
                 Some(invalid) => Err(DeserializationError::missing_union_arm(
                     Self::arrow_datatype(),
@@ -169,6 +176,6 @@ impl ::re_types_core::Loggable for ValuedEnum {
                 )),
             })
             .collect::<DeserializationResult<Vec<Option<_>>>>()
-            .with_context("rerun.testing.components.ValuedEnum")?)
+            .with_context("rerun.testing.datatypes.EnumTest")?)
     }
 }

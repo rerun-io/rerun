@@ -70,7 +70,7 @@ class ChannelDatatype(ChannelDatatypeExt, Enum):
 
     @classmethod
     def auto(cls, val: str | int | ChannelDatatype) -> ChannelDatatype:
-        """Best-effort converter."""
+        """Best-effort converter, including a case-insensitive string matcher."""
         if isinstance(val, ChannelDatatype):
             return val
         if isinstance(val, int):
@@ -135,6 +135,6 @@ class ChannelDatatypeBatch(BaseBatch[ChannelDatatypeArrayLike], ComponentBatchMi
         if isinstance(data, (ChannelDatatype, int, str)):
             data = [data]
 
-        pa_data = [ChannelDatatype.auto(v).value if v else None for v in data]
+        pa_data = [ChannelDatatype.auto(v).value if v is not None else None for v in data]
 
         return pa.array(pa_data, type=data_type)

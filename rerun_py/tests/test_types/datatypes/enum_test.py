@@ -11,7 +11,6 @@ import pyarrow as pa
 from rerun._baseclasses import (
     BaseBatch,
     BaseExtensionType,
-    ComponentBatchMixin,
 )
 
 __all__ = ["EnumTest", "EnumTestArrayLike", "EnumTestBatch", "EnumTestLike", "EnumTestType"]
@@ -21,7 +20,7 @@ from enum import Enum
 
 
 class EnumTest(Enum):
-    """**Component**: A test of the enum type."""
+    """**Datatype**: A test of the enum type."""
 
     Up = 0
     """Great film."""
@@ -43,7 +42,7 @@ class EnumTest(Enum):
 
     @classmethod
     def auto(cls, val: str | int | EnumTest) -> EnumTest:
-        """Best-effort converter."""
+        """Best-effort converter, including a case-insensitive string matcher."""
         if isinstance(val, EnumTest):
             return val
         if isinstance(val, int):
@@ -71,13 +70,13 @@ EnumTestArrayLike = Union[EnumTestLike, Sequence[EnumTestLike]]
 
 
 class EnumTestType(BaseExtensionType):
-    _TYPE_NAME: str = "rerun.testing.components.EnumTest"
+    _TYPE_NAME: str = "rerun.testing.datatypes.EnumTest"
 
     def __init__(self) -> None:
         pa.ExtensionType.__init__(self, pa.uint8(), self._TYPE_NAME)
 
 
-class EnumTestBatch(BaseBatch[EnumTestArrayLike], ComponentBatchMixin):
+class EnumTestBatch(BaseBatch[EnumTestArrayLike]):
     _ARROW_TYPE = EnumTestType()
 
     @staticmethod
@@ -85,6 +84,6 @@ class EnumTestBatch(BaseBatch[EnumTestArrayLike], ComponentBatchMixin):
         if isinstance(data, (EnumTest, int, str)):
             data = [data]
 
-        pa_data = [EnumTest.auto(v).value if v else None for v in data]
+        pa_data = [EnumTest.auto(v).value if v is not None else None for v in data]
 
         return pa.array(pa_data, type=data_type)

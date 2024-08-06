@@ -47,7 +47,7 @@ class MagnificationFilter(Enum):
 
     @classmethod
     def auto(cls, val: str | int | MagnificationFilter) -> MagnificationFilter:
-        """Best-effort converter."""
+        """Best-effort converter, including a case-insensitive string matcher."""
         if isinstance(val, MagnificationFilter):
             return val
         if isinstance(val, int):
@@ -85,6 +85,6 @@ class MagnificationFilterBatch(BaseBatch[MagnificationFilterArrayLike], Componen
         if isinstance(data, (MagnificationFilter, int, str)):
             data = [data]
 
-        pa_data = [MagnificationFilter.auto(v).value if v else None for v in data]
+        pa_data = [MagnificationFilter.auto(v).value if v is not None else None for v in data]
 
         return pa.array(pa_data, type=data_type)
