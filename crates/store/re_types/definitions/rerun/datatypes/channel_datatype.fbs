@@ -49,7 +49,7 @@ enum ChannelDatatype: ubyte (
 
     // Reserve 14-31 for wider or non-power-of-2 integer types.
 
-    // Reserve 32 for the possibillity of F8.
+    // Reserve 32 for the possibility of F8.
 
     /// 16-bit IEEE-754 floating point, also known as `half`.
     F16 = 33,

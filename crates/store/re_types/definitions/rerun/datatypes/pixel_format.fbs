@@ -19,7 +19,7 @@ enum PixelFormat: ubyte (
 
     // Given lack of a universal standard, the values of the enums are arbitrarily chosen to match
     // those from the `predefined pixel format` portion of the `Frame` class in the Ocean library:
-    // https://github.com/facebookresearch/ocean/blob/main/impl/ocean/base/Frame.h#L182
+    // https://github.com/facebookresearch/ocean/blob/1112f6101077c97a72a1d750e62dbff3ff01bd72/impl/ocean/base/Frame.h#L182
     //
     // However, this is not a strict requirement and implementations should not depend on this
     // this fact. It merely exists to minimizes to take advantage of the thought that went into
