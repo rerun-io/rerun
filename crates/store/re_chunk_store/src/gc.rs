@@ -113,7 +113,7 @@ impl ChunkStore {
 
         let total_size_bytes_before = stats_before.total().total_size_bytes as f64;
         let total_num_chunks_before = stats_before.total().num_chunks;
-        let total_num_rows_before = stats_before.total().total_num_rows;
+        let total_num_rows_before = stats_before.total().num_rows;
 
         let protected_chunk_ids = self.find_all_protected_chunk_ids(options.protect_latest);
 
@@ -155,7 +155,7 @@ impl ChunkStore {
         let stats_after = self.stats();
         let total_size_bytes_after = stats_after.total().total_size_bytes as f64;
         let total_num_chunks_after = stats_after.total().num_chunks;
-        let total_num_rows_after = stats_after.total().total_num_rows;
+        let total_num_rows_after = stats_after.total().num_rows;
 
         re_log::trace!(
             kind = "gc",

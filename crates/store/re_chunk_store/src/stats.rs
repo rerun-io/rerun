@@ -76,8 +76,17 @@ impl ChunkStore {
 
 // ---
 
+/// Stats about a collection of chunks.
+///
+/// Each chunk contains data for only one entity.
+///
+/// Each chunk has data for either zero timelines (static chunk) or multiple timelines (temporal chunk).
+/// A temporal chunk has dense timelines.
+///
+/// Each chunk can contain multiple components (columns).
 #[derive(Default, Debug, Clone, Copy)]
 pub struct ChunkStoreChunkStats {
+    /// The number of chunks this is the stats for.
     pub num_chunks: u64,
 
     /// Includes everything: arrow payloads, timelines, rowids, and chunk overhead.
@@ -90,7 +99,11 @@ pub struct ChunkStoreChunkStats {
     /// what is accessible inside this chunk store.
     pub total_size_bytes: u64,
 
-    pub total_num_rows: u64,
+    /// Number of rows.
+    ///
+    /// This is usually the same as the number of log calls the user made.
+    /// Each row can contain multiple events (see [`num_events`]).
+    pub num_rows: u64,
 
     /// How many _component batches_ ("cells").
     pub num_events: u64,
@@ -102,7 +115,7 @@ impl std::fmt::Display for ChunkStoreChunkStats {
         let Self {
             num_chunks,
             total_size_bytes,
-            total_num_rows,
+            num_rows,
             num_events,
         } = *self;
 
@@ -115,8 +128,8 @@ impl std::fmt::Display for ChunkStoreChunkStats {
             re_format::format_bytes(total_size_bytes as _)
         ))?;
         f.write_fmt(format_args!(
-            "total_num_rows: {}\n",
-            re_format::format_uint(total_num_rows)
+            "num_rows: {}\n",
+            re_format::format_uint(num_rows)
         ))?;
         f.write_fmt(format_args!(
             "num_events: {}\n",
@@ -135,7 +148,7 @@ impl std::ops::Add for ChunkStoreChunkStats {
         Self {
             num_chunks: self.num_chunks + rhs.num_chunks,
             total_size_bytes: self.total_size_bytes + rhs.total_size_bytes,
-            total_num_rows: self.total_num_rows + rhs.total_num_rows,
+            num_rows: self.num_rows + rhs.num_rows,
             num_events: self.num_events + rhs.num_events,
         }
     }
@@ -156,7 +169,7 @@ impl std::ops::Sub for ChunkStoreChunkStats {
         Self {
             num_chunks: self.num_chunks - rhs.num_chunks,
             total_size_bytes: self.total_size_bytes - rhs.total_size_bytes,
-            total_num_rows: self.total_num_rows - rhs.total_num_rows,
+            num_rows: self.num_rows - rhs.num_rows,
             num_events: self.num_events - rhs.num_events,
         }
     }
@@ -189,7 +202,7 @@ impl ChunkStoreChunkStats {
         Self {
             num_chunks: 1,
             total_size_bytes: size_bytes,
-            total_num_rows: chunk.num_rows() as u64,
+            num_rows: chunk.num_rows() as u64,
             num_events: chunk.num_events_cumulative(),
         }
     }

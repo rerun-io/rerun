@@ -239,12 +239,12 @@ impl MemoryPanel {
                     let ChunkStoreChunkStats {
                         num_chunks,
                         total_size_bytes,
-                        total_num_rows,
+                        num_rows,
                         num_events,
                     } = stats;
 
                     ui.label(re_format::format_uint(num_chunks));
-                    ui.label(re_format::format_uint(total_num_rows));
+                    ui.label(re_format::format_uint(num_rows));
                     ui.label(re_format::format_uint(num_events));
                     ui.label(re_format::format_bytes(total_size_bytes as _));
                 }
