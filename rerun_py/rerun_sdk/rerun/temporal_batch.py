@@ -98,6 +98,7 @@ def log_temporal_batch(
     equivalent to a single call to `rr.log()`.
 
     Note that this API ignores any stateful time set on the log stream via the `rerun.set_time_*` APIs.
+    Furthermore, this will _not_ inject the default timelines `log_tick` and `log_time` timeline columns.
 
     When using a regular `ComponentBatch` input, the batch data will map to single-valued component
     instance at each timepoint.
@@ -197,7 +198,7 @@ def log_temporal_batch(
 
         components_args[i.component_name()] = pa.nulls(expected_length, type=pa.null())
 
-    bindings.log_arrow_chunk(
+    bindings.send_arrow_chunk(
         entity_path,
         timelines={t.timeline_name(): t.as_arrow_array() for t in times},
         components=components_args,

@@ -79,7 +79,7 @@ fn log(
     let entity_path = rerun::EntityPath::parse_strict(entity_path)?;
 
     // log points
-    rec.record_chunk_raw(
+    rec.send_chunk(
         rerun::log::Chunk::builder(entity_path.clone())
             .with_archetype(
                 rerun::log::RowId::new(),
@@ -132,7 +132,7 @@ fn log(
                 &component,
             );
         }
-        rec.record_chunk_raw(chunk.build()?);
+        rec.send_chunk(chunk.build()?);
     }
 
     Ok(())
