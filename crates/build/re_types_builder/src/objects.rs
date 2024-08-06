@@ -448,7 +448,7 @@ impl Object {
 
         let is_enum = enm.underlying_type().base_type() != FbsBaseType::UType;
 
-        let fields: Vec<_> = enm
+        let mut fields: Vec<_> = enm
             .values()
             .iter()
             .filter(|val| {
@@ -463,6 +463,22 @@ impl Object {
                 ObjectField::from_raw_enum_value(reporter, include_dir_path, enums, objs, enm, &val)
             })
             .collect();
+
+        if is_enum {
+            assert!(
+                !fields.is_empty(),
+                "enums must have at least one variant, but {fqname} has none",
+            );
+
+            assert!(
+            fields[0].name == "Invalid" && fields[0].enum_value == Some(0),
+            "enums must start with 'Invalid' variant with value 0, but {fqname} starts with {} = {:?}",
+            fields[0].name,
+            fields[0].enum_value,
+        );
+
+            fields.remove(0); // Remove the 'Invalid' variant.
+        }
 
         Self {
             virtpath,
