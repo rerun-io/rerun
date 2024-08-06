@@ -26,7 +26,7 @@ pub enum RrdCommands {
     /// Example: `rerun rrd print /my/recordings/*.rrd`
     Print(PrintCommand),
 
-    /// Compacts the contents of one or more .rrd/.rbl files/streams and writes the result to a new file.
+    /// Compacts the contents of one or more .rrd/.rbl files/streams and writes the result standard output.
     ///
     /// Reads from standard input if no paths are specified.
     ///
@@ -41,16 +41,16 @@ pub enum RrdCommands {
     ///
     /// * `RERUN_CHUNK_MAX_ROWS=4096 RERUN_CHUNK_MAX_BYTES=1048576 rerun rrd compact /my/recordings/*.rrd -o output.rrd`
     ///
-    /// * `rerun rrd compact --max-rows 4096 --max-bytes=1048576 /my/recordings/*.rrd -o output.rrd`
+    /// * `rerun rrd compact --max-rows 4096 --max-bytes=1048576 /my/recordings/*.rrd > output.rrd`
     Compact(CompactCommand),
 
-    /// Merges the contents of multiple .rrd/.rbl files/streams, and writes the result to a new file.
+    /// Merges the contents of multiple .rrd/.rbl files/streams, and writes the result to standard output.
     ///
     /// Reads from standard input if no paths are specified.
     ///
     /// This will not affect the chunking of the data in any way.
     ///
-    /// Example: `rerun merge /my/recordings/*.rrd -o output.rrd`
+    /// Example: `rerun merge /my/recordings/*.rrd > output.rrd`
     Merge(MergeCommand),
 }
 
