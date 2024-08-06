@@ -9,9 +9,14 @@
 #include <memory>
 
 namespace arrow {
+    /// \private
+    template <typename T>
+    class NumericBuilder;
+
     class Array;
     class DataType;
-    class SparseUnionBuilder;
+    class UInt8Type;
+    using UInt8Builder = NumericBuilder<UInt8Type>;
 } // namespace arrow
 
 namespace rerun::components {
@@ -25,25 +30,25 @@ namespace rerun::components {
         /// A simple black to white gradient.
         ///
         /// This is a sRGB gray gradient which is perceptually uniform.
-        Grayscale = 1,
+        Grayscale = 0,
 
         /// The Inferno colormap from Matplotlib.
         ///
         /// This is a perceptually uniform colormap.
         /// It interpolates from black to red to bright yellow.
-        Inferno = 2,
+        Inferno = 1,
 
         /// The Magma colormap from Matplotlib.
         ///
         /// This is a perceptually uniform colormap.
         /// It interpolates from black to purple to white.
-        Magma = 3,
+        Magma = 2,
 
         /// The Plasma colormap from Matplotlib.
         ///
         /// This is a perceptually uniform colormap.
         /// It interpolates from dark blue to purple to yellow.
-        Plasma = 4,
+        Plasma = 3,
 
         /// Google's Turbo colormap map.
         ///
@@ -51,20 +56,20 @@ namespace rerun::components {
         /// more traditional rainbow colormaps like Jet.
         /// It is more perceptually uniform without sharp transitions and is more colorblind-friendly.
         /// Details: <https://research.google/blog/turbo-an-improved-rainbow-colormap-for-visualization/>
-        Turbo = 5,
+        Turbo = 4,
 
         /// The Viridis colormap from Matplotlib
         ///
         /// This is a perceptually uniform colormap which is robust to color blindness.
         /// It interpolates from dark purple to green to yellow.
-        Viridis = 6,
+        Viridis = 5,
 
         /// Rasmusgo's Cyan to Yellow colormap
         ///
         /// This is a perceptually uniform colormap which is robust to color blindness.
         /// It is especially suited for visualizing signed values.
         /// It interpolates from cyan to blue to dark gray to brass to yellow.
-        CyanToYellow = 7,
+        CyanToYellow = 6,
     };
 } // namespace rerun::components
 
@@ -87,8 +92,7 @@ namespace rerun {
 
         /// Fills an arrow array builder with an array of this type.
         static rerun::Error fill_arrow_array_builder(
-            arrow::SparseUnionBuilder* builder, const components::Colormap* elements,
-            size_t num_elements
+            arrow::UInt8Builder* builder, const components::Colormap* elements, size_t num_elements
         );
     };
 } // namespace rerun

@@ -22,40 +22,41 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 ///
 /// How individual color channel components are encoded.
 #[derive(Clone, Copy, Debug, Hash, PartialEq, Eq, Default)]
+#[repr(u8)]
 pub enum ChannelDatatype {
     /// 8-bit unsigned integer.
     #[default]
-    U8 = 1,
+    U8 = 0u8,
 
     /// 16-bit unsigned integer.
-    U16 = 2,
+    U16 = 1u8,
 
     /// 32-bit unsigned integer.
-    U32 = 3,
+    U32 = 2u8,
 
     /// 64-bit unsigned integer.
-    U64 = 4,
+    U64 = 3u8,
 
     /// 8-bit signed integer.
-    I8 = 5,
+    I8 = 4u8,
 
     /// 16-bit signed integer.
-    I16 = 6,
+    I16 = 5u8,
 
     /// 32-bit signed integer.
-    I32 = 7,
+    I32 = 6u8,
 
     /// 64-bit signed integer.
-    I64 = 8,
+    I64 = 7u8,
 
     /// 16-bit IEEE-754 floating point, also known as `half`.
-    F16 = 9,
+    F16 = 8u8,
 
     /// 32-bit IEEE-754 floating point, also known as `float` or `single`.
-    F32 = 10,
+    F32 = 9u8,
 
     /// 64-bit IEEE-754 floating point, also known as `double`.
-    F64 = 11,
+    F64 = 10u8,
 }
 
 impl ::re_types_core::reflection::Enum for ChannelDatatype {
@@ -138,26 +139,7 @@ impl ::re_types_core::Loggable for ChannelDatatype {
     fn arrow_datatype() -> arrow2::datatypes::DataType {
         #![allow(clippy::wildcard_imports)]
         use arrow2::datatypes::*;
-        DataType::Union(
-            std::sync::Arc::new(vec![
-                Field::new("_null_markers", DataType::Null, true),
-                Field::new("U8", DataType::Null, true),
-                Field::new("U16", DataType::Null, true),
-                Field::new("U32", DataType::Null, true),
-                Field::new("U64", DataType::Null, true),
-                Field::new("I8", DataType::Null, true),
-                Field::new("I16", DataType::Null, true),
-                Field::new("I32", DataType::Null, true),
-                Field::new("I64", DataType::Null, true),
-                Field::new("F16", DataType::Null, true),
-                Field::new("F32", DataType::Null, true),
-                Field::new("F64", DataType::Null, true),
-            ]),
-            Some(std::sync::Arc::new(vec![
-                0i32, 1i32, 2i32, 3i32, 4i32, 5i32, 6i32, 7i32, 8i32, 9i32, 10i32, 11i32,
-            ])),
-            UnionMode::Sparse,
-        )
+        DataType::UInt8
     }
 
     fn to_arrow_opt<'a>(
@@ -170,27 +152,24 @@ impl ::re_types_core::Loggable for ChannelDatatype {
         use ::re_types_core::{Loggable as _, ResultExt as _};
         use arrow2::{array::*, datatypes::*};
         Ok({
-            // Sparse Arrow union
-            let data: Vec<_> = data
+            let (somes, data0): (Vec<_>, Vec<_>) = data
                 .into_iter()
                 .map(|datum| {
                     let datum: Option<::std::borrow::Cow<'a, Self>> = datum.map(Into::into);
-                    datum
+                    let datum = datum.map(|datum| *datum as u8);
+                    (datum.is_some(), datum)
                 })
-                .collect();
-            let num_variants = 11usize;
-            let types = data
-                .iter()
-                .map(|a| match a.as_deref() {
-                    None => 0,
-                    Some(value) => *value as i8,
-                })
-                .collect();
-            let fields: Vec<_> =
-                std::iter::repeat(NullArray::new(DataType::Null, data.len()).boxed())
-                    .take(1 + num_variants)
-                    .collect();
-            UnionArray::new(Self::arrow_datatype(), types, fields, None).boxed()
+                .unzip();
+            let data0_bitmap: Option<arrow2::bitmap::Bitmap> = {
+                let any_nones = somes.iter().any(|some| !*some);
+                any_nones.then(|| somes.into())
+            };
+            PrimitiveArray::new(
+                Self::arrow_datatype(),
+                data0.into_iter().map(|v| v.unwrap_or_default()).collect(),
+                data0_bitmap,
+            )
+            .boxed()
         })
     }
 
@@ -203,40 +182,37 @@ impl ::re_types_core::Loggable for ChannelDatatype {
         #![allow(clippy::wildcard_imports)]
         use ::re_types_core::{Loggable as _, ResultExt as _};
         use arrow2::{array::*, buffer::*, datatypes::*};
-        Ok({
-            let arrow_data = arrow_data
-                .as_any()
-                .downcast_ref::<arrow2::array::UnionArray>()
-                .ok_or_else(|| {
-                    let expected = Self::arrow_datatype();
-                    let actual = arrow_data.data_type().clone();
-                    DeserializationError::datatype_mismatch(expected, actual)
-                })
-                .with_context("rerun.components.ChannelDatatype")?;
-            let arrow_data_types = arrow_data.types();
-            arrow_data_types
-                .iter()
-                .map(|typ| match typ {
-                    0 => Ok(None),
-                    1 => Ok(Some(Self::U8)),
-                    2 => Ok(Some(Self::U16)),
-                    3 => Ok(Some(Self::U32)),
-                    4 => Ok(Some(Self::U64)),
-                    5 => Ok(Some(Self::I8)),
-                    6 => Ok(Some(Self::I16)),
-                    7 => Ok(Some(Self::I32)),
-                    8 => Ok(Some(Self::I64)),
-                    9 => Ok(Some(Self::F16)),
-                    10 => Ok(Some(Self::F32)),
-                    11 => Ok(Some(Self::F64)),
-                    _ => Err(DeserializationError::missing_union_arm(
-                        Self::arrow_datatype(),
-                        "<invalid>",
-                        *typ as _,
-                    )),
-                })
-                .collect::<DeserializationResult<Vec<_>>>()
-                .with_context("rerun.components.ChannelDatatype")?
-        })
+        Ok(arrow_data
+            .as_any()
+            .downcast_ref::<UInt8Array>()
+            .ok_or_else(|| {
+                let expected = Self::arrow_datatype();
+                let actual = arrow_data.data_type().clone();
+                DeserializationError::datatype_mismatch(expected, actual)
+            })
+            .with_context("rerun.components.ChannelDatatype#enum")?
+            .into_iter()
+            .map(|opt| opt.copied())
+            .map(|typ| match typ {
+                Some(0u8) => Ok(Some(Self::U8)),
+                Some(1u8) => Ok(Some(Self::U16)),
+                Some(2u8) => Ok(Some(Self::U32)),
+                Some(3u8) => Ok(Some(Self::U64)),
+                Some(4u8) => Ok(Some(Self::I8)),
+                Some(5u8) => Ok(Some(Self::I16)),
+                Some(6u8) => Ok(Some(Self::I32)),
+                Some(7u8) => Ok(Some(Self::I64)),
+                Some(8u8) => Ok(Some(Self::F16)),
+                Some(9u8) => Ok(Some(Self::F32)),
+                Some(10u8) => Ok(Some(Self::F64)),
+                None => Ok(None),
+                Some(invalid) => Err(DeserializationError::missing_union_arm(
+                    Self::arrow_datatype(),
+                    "<invalid>",
+                    invalid as _,
+                )),
+            })
+            .collect::<DeserializationResult<Vec<Option<_>>>>()
+            .with_context("rerun.components.ChannelDatatype")?)
     }
 }

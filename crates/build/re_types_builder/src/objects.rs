@@ -636,6 +636,9 @@ pub struct ObjectField {
     /// but for enums it is usually `PascalCase`.
     pub name: String,
 
+    /// The value of an enum type
+    pub enum_value: Option<u8>,
+
     /// The field's multiple layers of documentation.
     pub docs: Docs,
 
@@ -702,12 +705,15 @@ impl ObjectField {
             );
         }
 
+        let enum_value = None;
+
         Self {
             virtpath,
             filepath,
             fqname,
             pkg_name,
             name,
+            enum_value,
             docs,
             typ,
             attrs,
@@ -762,12 +768,15 @@ impl ObjectField {
             );
         }
 
+        let enum_value = Some(val.value() as u8);
+
         Self {
             virtpath,
             filepath,
             fqname,
             pkg_name,
             name,
+            enum_value,
             docs,
             typ,
             attrs,

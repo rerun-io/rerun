@@ -23,26 +23,50 @@ from enum import Enum
 class EnumTest(Enum):
     """**Component**: A test of the enum type."""
 
-    Up = 1
+    Up = 0
     """Great film."""
 
-    Down = 2
+    Down = 1
     """Feeling blue."""
 
-    Right = 3
+    Right = 2
     """Correct."""
 
-    Left = 4
+    Left = 3
     """It's what's remaining."""
 
-    Forward = 5
+    Forward = 4
     """It's the only way to go."""
 
-    Back = 6
+    Back = 5
     """Baby's got it."""
 
+    @classmethod
+    def auto(cls, val: str | int | EnumTest) -> EnumTest:
+        """Best-effort converter."""
+        if isinstance(val, EnumTest):
+            return val
+        if isinstance(val, int):
+            return cls(val)
+        try:
+            return cls[val]
+        except KeyError:
+            val_lower = val.lower()
+            for variant in cls:
+                if variant.name.lower() == val_lower:
+                    return variant
+        raise ValueError(f"Cannot convert {val} to {cls.__name__}")
 
-EnumTestLike = Union[EnumTest, Literal["up", "down", "right", "left", "forward", "back"]]
+    def __str__(self) -> str:
+        """Returns the variant name."""
+        return self.name
+
+
+EnumTestLike = Union[
+    EnumTest,
+    Literal["Back", "Down", "Forward", "Left", "Right", "Up", "back", "down", "forward", "left", "right", "up"],
+    int,
+]
 EnumTestArrayLike = Union[EnumTestLike, Sequence[EnumTestLike]]
 
 
@@ -50,19 +74,7 @@ class EnumTestType(BaseExtensionType):
     _TYPE_NAME: str = "rerun.testing.components.EnumTest"
 
     def __init__(self) -> None:
-        pa.ExtensionType.__init__(
-            self,
-            pa.sparse_union([
-                pa.field("_null_markers", pa.null(), nullable=True, metadata={}),
-                pa.field("Up", pa.null(), nullable=True, metadata={}),
-                pa.field("Down", pa.null(), nullable=True, metadata={}),
-                pa.field("Right", pa.null(), nullable=True, metadata={}),
-                pa.field("Left", pa.null(), nullable=True, metadata={}),
-                pa.field("Forward", pa.null(), nullable=True, metadata={}),
-                pa.field("Back", pa.null(), nullable=True, metadata={}),
-            ]),
-            self._TYPE_NAME,
-        )
+        pa.ExtensionType.__init__(self, pa.uint8(), self._TYPE_NAME)
 
 
 class EnumTestBatch(BaseBatch[EnumTestArrayLike], ComponentBatchMixin):
@@ -73,44 +85,6 @@ class EnumTestBatch(BaseBatch[EnumTestArrayLike], ComponentBatchMixin):
         if isinstance(data, (EnumTest, int, str)):
             data = [data]
 
-        types: list[int] = []
+        pa_data = [EnumTest.auto(v).value if v else None for v in data]
 
-        for value in data:
-            if value is None:
-                types.append(0)
-            elif isinstance(value, EnumTest):
-                types.append(value.value)  # Actual enum value
-            elif isinstance(value, int):
-                types.append(value)  # By number
-            elif isinstance(value, str):
-                if hasattr(EnumTest, value):
-                    types.append(EnumTest[value].value)  # fast path
-                elif value.lower() == "up":
-                    types.append(EnumTest.Up.value)
-                elif value.lower() == "down":
-                    types.append(EnumTest.Down.value)
-                elif value.lower() == "right":
-                    types.append(EnumTest.Right.value)
-                elif value.lower() == "left":
-                    types.append(EnumTest.Left.value)
-                elif value.lower() == "forward":
-                    types.append(EnumTest.Forward.value)
-                elif value.lower() == "back":
-                    types.append(EnumTest.Back.value)
-                else:
-                    raise ValueError(f"Unknown EnumTest kind: {value}")
-            else:
-                raise ValueError(f"Unknown EnumTest kind: {value}")
-
-        buffers = [
-            None,
-            pa.array(types, type=pa.int8()).buffers()[1],
-        ]
-        children = (1 + 6) * [pa.nulls(len(data))]
-
-        return pa.UnionArray.from_buffers(
-            type=data_type,
-            length=len(data),
-            buffers=buffers,
-            children=children,
-        )
+        return pa.array(pa_data, type=data_type)

@@ -24,23 +24,34 @@ from enum import Enum
 class SortKey(Enum):
     """**Component**: Primary element by which to group by in a temporal data table."""
 
-    Entity = 1
+    Entity = 0
     """Group by entity."""
 
-    Time = 2
+    Time = 1
     """Group by instance."""
+
+    @classmethod
+    def auto(cls, val: str | int | SortKey) -> SortKey:
+        """Best-effort converter."""
+        if isinstance(val, SortKey):
+            return val
+        if isinstance(val, int):
+            return cls(val)
+        try:
+            return cls[val]
+        except KeyError:
+            val_lower = val.lower()
+            for variant in cls:
+                if variant.name.lower() == val_lower:
+                    return variant
+        raise ValueError(f"Cannot convert {val} to {cls.__name__}")
 
     def __str__(self) -> str:
         """Returns the variant name."""
-        if self == SortKey.Entity:
-            return "Entity"
-        elif self == SortKey.Time:
-            return "Time"
-        else:
-            raise ValueError("Unknown enum variant")
+        return self.name
 
 
-SortKeyLike = Union[SortKey, Literal["Entity", "Time", "entity", "time"]]
+SortKeyLike = Union[SortKey, Literal["Entity", "Time", "entity", "time"], int]
 SortKeyArrayLike = Union[SortKeyLike, Sequence[SortKeyLike]]
 
 
@@ -48,15 +59,7 @@ class SortKeyType(BaseExtensionType):
     _TYPE_NAME: str = "rerun.blueprint.components.SortKey"
 
     def __init__(self) -> None:
-        pa.ExtensionType.__init__(
-            self,
-            pa.sparse_union([
-                pa.field("_null_markers", pa.null(), nullable=True, metadata={}),
-                pa.field("Entity", pa.null(), nullable=True, metadata={}),
-                pa.field("Time", pa.null(), nullable=True, metadata={}),
-            ]),
-            self._TYPE_NAME,
-        )
+        pa.ExtensionType.__init__(self, pa.uint8(), self._TYPE_NAME)
 
 
 class SortKeyBatch(BaseBatch[SortKeyArrayLike], ComponentBatchMixin):
@@ -67,36 +70,6 @@ class SortKeyBatch(BaseBatch[SortKeyArrayLike], ComponentBatchMixin):
         if isinstance(data, (SortKey, int, str)):
             data = [data]
 
-        types: list[int] = []
+        pa_data = [SortKey.auto(v).value if v else None for v in data]
 
-        for value in data:
-            if value is None:
-                types.append(0)
-            elif isinstance(value, SortKey):
-                types.append(value.value)  # Actual enum value
-            elif isinstance(value, int):
-                types.append(value)  # By number
-            elif isinstance(value, str):
-                if hasattr(SortKey, value):
-                    types.append(SortKey[value].value)  # fast path
-                elif value.lower() == "entity":
-                    types.append(SortKey.Entity.value)
-                elif value.lower() == "time":
-                    types.append(SortKey.Time.value)
-                else:
-                    raise ValueError(f"Unknown SortKey kind: {value}")
-            else:
-                raise ValueError(f"Unknown SortKey kind: {value}")
-
-        buffers = [
-            None,
-            pa.array(types, type=pa.int8()).buffers()[1],
-        ]
-        children = (1 + 2) * [pa.nulls(len(data))]
-
-        return pa.UnionArray.from_buffers(
-            type=data_type,
-            length=len(data),
-            buffers=buffers,
-            children=children,
-        )
+        return pa.array(pa_data, type=data_type)

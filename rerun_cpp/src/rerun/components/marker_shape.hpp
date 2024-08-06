@@ -9,9 +9,14 @@
 #include <memory>
 
 namespace arrow {
+    /// \private
+    template <typename T>
+    class NumericBuilder;
+
     class Array;
     class DataType;
-    class SparseUnionBuilder;
+    class UInt8Type;
+    using UInt8Builder = NumericBuilder<UInt8Type>;
 } // namespace arrow
 
 namespace rerun::components {
@@ -19,34 +24,34 @@ namespace rerun::components {
     enum class MarkerShape : uint8_t {
 
         /// `⏺`
-        Circle = 1,
+        Circle = 0,
 
         /// `◆`
-        Diamond = 2,
+        Diamond = 1,
 
         /// `◼\u{fe0f}`
-        Square = 3,
+        Square = 2,
 
         /// `x`
-        Cross = 4,
+        Cross = 3,
 
         /// `+`
-        Plus = 5,
+        Plus = 4,
 
         /// `▲`
-        Up = 6,
+        Up = 5,
 
         /// `▼`
-        Down = 7,
+        Down = 6,
 
         /// `◀`
-        Left = 8,
+        Left = 7,
 
         /// `▶`
-        Right = 9,
+        Right = 8,
 
         /// `*`
-        Asterisk = 10,
+        Asterisk = 9,
     };
 } // namespace rerun::components
 
@@ -69,7 +74,7 @@ namespace rerun {
 
         /// Fills an arrow array builder with an array of this type.
         static rerun::Error fill_arrow_array_builder(
-            arrow::SparseUnionBuilder* builder, const components::MarkerShape* elements,
+            arrow::UInt8Builder* builder, const components::MarkerShape* elements,
             size_t num_elements
         );
     };

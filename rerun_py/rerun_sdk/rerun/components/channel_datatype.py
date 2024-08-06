@@ -35,65 +35,58 @@ class ChannelDatatype(ChannelDatatypeExt, Enum):
     How individual color channel components are encoded.
     """
 
-    U8 = 1
+    U8 = 0
     """8-bit unsigned integer."""
 
-    U16 = 2
+    U16 = 1
     """16-bit unsigned integer."""
 
-    U32 = 3
+    U32 = 2
     """32-bit unsigned integer."""
 
-    U64 = 4
+    U64 = 3
     """64-bit unsigned integer."""
 
-    I8 = 5
+    I8 = 4
     """8-bit signed integer."""
 
-    I16 = 6
+    I16 = 5
     """16-bit signed integer."""
 
-    I32 = 7
+    I32 = 6
     """32-bit signed integer."""
 
-    I64 = 8
+    I64 = 7
     """64-bit signed integer."""
 
-    F16 = 9
+    F16 = 8
     """16-bit IEEE-754 floating point, also known as `half`."""
 
-    F32 = 10
+    F32 = 9
     """32-bit IEEE-754 floating point, also known as `float` or `single`."""
 
-    F64 = 11
+    F64 = 10
     """64-bit IEEE-754 floating point, also known as `double`."""
+
+    @classmethod
+    def auto(cls, val: str | int | ChannelDatatype) -> ChannelDatatype:
+        """Best-effort converter."""
+        if isinstance(val, ChannelDatatype):
+            return val
+        if isinstance(val, int):
+            return cls(val)
+        try:
+            return cls[val]
+        except KeyError:
+            val_lower = val.lower()
+            for variant in cls:
+                if variant.name.lower() == val_lower:
+                    return variant
+        raise ValueError(f"Cannot convert {val} to {cls.__name__}")
 
     def __str__(self) -> str:
         """Returns the variant name."""
-        if self == ChannelDatatype.U8:
-            return "U8"
-        elif self == ChannelDatatype.U16:
-            return "U16"
-        elif self == ChannelDatatype.U32:
-            return "U32"
-        elif self == ChannelDatatype.U64:
-            return "U64"
-        elif self == ChannelDatatype.I8:
-            return "I8"
-        elif self == ChannelDatatype.I16:
-            return "I16"
-        elif self == ChannelDatatype.I32:
-            return "I32"
-        elif self == ChannelDatatype.I64:
-            return "I64"
-        elif self == ChannelDatatype.F16:
-            return "F16"
-        elif self == ChannelDatatype.F32:
-            return "F32"
-        elif self == ChannelDatatype.F64:
-            return "F64"
-        else:
-            raise ValueError("Unknown enum variant")
+        return self.name
 
 
 ChannelDatatypeLike = Union[
@@ -122,6 +115,7 @@ ChannelDatatypeLike = Union[
         "u64",
         "u8",
     ],
+    int,
 ]
 ChannelDatatypeArrayLike = Union[ChannelDatatypeLike, Sequence[ChannelDatatypeLike]]
 
@@ -130,24 +124,7 @@ class ChannelDatatypeType(BaseExtensionType):
     _TYPE_NAME: str = "rerun.components.ChannelDatatype"
 
     def __init__(self) -> None:
-        pa.ExtensionType.__init__(
-            self,
-            pa.sparse_union([
-                pa.field("_null_markers", pa.null(), nullable=True, metadata={}),
-                pa.field("U8", pa.null(), nullable=True, metadata={}),
-                pa.field("U16", pa.null(), nullable=True, metadata={}),
-                pa.field("U32", pa.null(), nullable=True, metadata={}),
-                pa.field("U64", pa.null(), nullable=True, metadata={}),
-                pa.field("I8", pa.null(), nullable=True, metadata={}),
-                pa.field("I16", pa.null(), nullable=True, metadata={}),
-                pa.field("I32", pa.null(), nullable=True, metadata={}),
-                pa.field("I64", pa.null(), nullable=True, metadata={}),
-                pa.field("F16", pa.null(), nullable=True, metadata={}),
-                pa.field("F32", pa.null(), nullable=True, metadata={}),
-                pa.field("F64", pa.null(), nullable=True, metadata={}),
-            ]),
-            self._TYPE_NAME,
-        )
+        pa.ExtensionType.__init__(self, pa.uint8(), self._TYPE_NAME)
 
 
 class ChannelDatatypeBatch(BaseBatch[ChannelDatatypeArrayLike], ComponentBatchMixin):
@@ -158,54 +135,6 @@ class ChannelDatatypeBatch(BaseBatch[ChannelDatatypeArrayLike], ComponentBatchMi
         if isinstance(data, (ChannelDatatype, int, str)):
             data = [data]
 
-        types: list[int] = []
+        pa_data = [ChannelDatatype.auto(v).value if v else None for v in data]
 
-        for value in data:
-            if value is None:
-                types.append(0)
-            elif isinstance(value, ChannelDatatype):
-                types.append(value.value)  # Actual enum value
-            elif isinstance(value, int):
-                types.append(value)  # By number
-            elif isinstance(value, str):
-                if hasattr(ChannelDatatype, value):
-                    types.append(ChannelDatatype[value].value)  # fast path
-                elif value.lower() == "u8":
-                    types.append(ChannelDatatype.U8.value)
-                elif value.lower() == "u16":
-                    types.append(ChannelDatatype.U16.value)
-                elif value.lower() == "u32":
-                    types.append(ChannelDatatype.U32.value)
-                elif value.lower() == "u64":
-                    types.append(ChannelDatatype.U64.value)
-                elif value.lower() == "i8":
-                    types.append(ChannelDatatype.I8.value)
-                elif value.lower() == "i16":
-                    types.append(ChannelDatatype.I16.value)
-                elif value.lower() == "i32":
-                    types.append(ChannelDatatype.I32.value)
-                elif value.lower() == "i64":
-                    types.append(ChannelDatatype.I64.value)
-                elif value.lower() == "f16":
-                    types.append(ChannelDatatype.F16.value)
-                elif value.lower() == "f32":
-                    types.append(ChannelDatatype.F32.value)
-                elif value.lower() == "f64":
-                    types.append(ChannelDatatype.F64.value)
-                else:
-                    raise ValueError(f"Unknown ChannelDatatype kind: {value}")
-            else:
-                raise ValueError(f"Unknown ChannelDatatype kind: {value}")
-
-        buffers = [
-            None,
-            pa.array(types, type=pa.int8()).buffers()[1],
-        ]
-        children = (1 + 11) * [pa.nulls(len(data))]
-
-        return pa.UnionArray.from_buffers(
-            type=data_type,
-            length=len(data),
-            buffers=buffers,
-            children=children,
-        )
+        return pa.array(pa_data, type=data_type)

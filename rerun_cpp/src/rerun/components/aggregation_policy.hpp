@@ -9,9 +9,14 @@
 #include <memory>
 
 namespace arrow {
+    /// \private
+    template <typename T>
+    class NumericBuilder;
+
     class Array;
     class DataType;
-    class SparseUnionBuilder;
+    class UInt8Type;
+    using UInt8Builder = NumericBuilder<UInt8Type>;
 } // namespace arrow
 
 namespace rerun::components {
@@ -23,24 +28,24 @@ namespace rerun::components {
     enum class AggregationPolicy : uint8_t {
 
         /// No aggregation.
-        Off = 1,
+        Off = 0,
 
         /// Average all points in the range together.
-        Average = 2,
+        Average = 1,
 
         /// Keep only the maximum values in the range.
-        Max = 3,
+        Max = 2,
 
         /// Keep only the minimum values in the range.
-        Min = 4,
+        Min = 3,
 
         /// Keep both the minimum and maximum values in the range.
         ///
         /// This will yield two aggregated points instead of one, effectively creating a vertical line.
-        MinMax = 5,
+        MinMax = 4,
 
         /// Find both the minimum and maximum values in the range, then use the average of those.
-        MinMaxAverage = 6,
+        MinMaxAverage = 5,
     };
 } // namespace rerun::components
 
@@ -63,7 +68,7 @@ namespace rerun {
 
         /// Fills an arrow array builder with an array of this type.
         static rerun::Error fill_arrow_array_builder(
-            arrow::SparseUnionBuilder* builder, const components::AggregationPolicy* elements,
+            arrow::UInt8Builder* builder, const components::AggregationPolicy* elements,
             size_t num_elements
         );
     };

@@ -24,28 +24,37 @@ from enum import Enum
 class PanelState(Enum):
     """**Component**: Tri-state for panel controls."""
 
-    Hidden = 1
+    Hidden = 0
     """Completely hidden."""
 
-    Collapsed = 2
+    Collapsed = 1
     """Visible, but as small as possible on its shorter axis."""
 
-    Expanded = 3
+    Expanded = 2
     """Fully expanded."""
+
+    @classmethod
+    def auto(cls, val: str | int | PanelState) -> PanelState:
+        """Best-effort converter."""
+        if isinstance(val, PanelState):
+            return val
+        if isinstance(val, int):
+            return cls(val)
+        try:
+            return cls[val]
+        except KeyError:
+            val_lower = val.lower()
+            for variant in cls:
+                if variant.name.lower() == val_lower:
+                    return variant
+        raise ValueError(f"Cannot convert {val} to {cls.__name__}")
 
     def __str__(self) -> str:
         """Returns the variant name."""
-        if self == PanelState.Hidden:
-            return "Hidden"
-        elif self == PanelState.Collapsed:
-            return "Collapsed"
-        elif self == PanelState.Expanded:
-            return "Expanded"
-        else:
-            raise ValueError("Unknown enum variant")
+        return self.name
 
 
-PanelStateLike = Union[PanelState, Literal["Collapsed", "Expanded", "Hidden", "collapsed", "expanded", "hidden"]]
+PanelStateLike = Union[PanelState, Literal["Collapsed", "Expanded", "Hidden", "collapsed", "expanded", "hidden"], int]
 PanelStateArrayLike = Union[PanelStateLike, Sequence[PanelStateLike]]
 
 
@@ -53,16 +62,7 @@ class PanelStateType(BaseExtensionType):
     _TYPE_NAME: str = "rerun.blueprint.components.PanelState"
 
     def __init__(self) -> None:
-        pa.ExtensionType.__init__(
-            self,
-            pa.sparse_union([
-                pa.field("_null_markers", pa.null(), nullable=True, metadata={}),
-                pa.field("Hidden", pa.null(), nullable=True, metadata={}),
-                pa.field("Collapsed", pa.null(), nullable=True, metadata={}),
-                pa.field("Expanded", pa.null(), nullable=True, metadata={}),
-            ]),
-            self._TYPE_NAME,
-        )
+        pa.ExtensionType.__init__(self, pa.uint8(), self._TYPE_NAME)
 
 
 class PanelStateBatch(BaseBatch[PanelStateArrayLike], ComponentBatchMixin):
@@ -73,38 +73,6 @@ class PanelStateBatch(BaseBatch[PanelStateArrayLike], ComponentBatchMixin):
         if isinstance(data, (PanelState, int, str)):
             data = [data]
 
-        types: list[int] = []
+        pa_data = [PanelState.auto(v).value if v else None for v in data]
 
-        for value in data:
-            if value is None:
-                types.append(0)
-            elif isinstance(value, PanelState):
-                types.append(value.value)  # Actual enum value
-            elif isinstance(value, int):
-                types.append(value)  # By number
-            elif isinstance(value, str):
-                if hasattr(PanelState, value):
-                    types.append(PanelState[value].value)  # fast path
-                elif value.lower() == "hidden":
-                    types.append(PanelState.Hidden.value)
-                elif value.lower() == "collapsed":
-                    types.append(PanelState.Collapsed.value)
-                elif value.lower() == "expanded":
-                    types.append(PanelState.Expanded.value)
-                else:
-                    raise ValueError(f"Unknown PanelState kind: {value}")
-            else:
-                raise ValueError(f"Unknown PanelState kind: {value}")
-
-        buffers = [
-            None,
-            pa.array(types, type=pa.int8()).buffers()[1],
-        ]
-        children = (1 + 3) * [pa.nulls(len(data))]
-
-        return pa.UnionArray.from_buffers(
-            type=data_type,
-            length=len(data),
-            buffers=buffers,
-            children=children,
-        )
+        return pa.array(pa_data, type=data_type)

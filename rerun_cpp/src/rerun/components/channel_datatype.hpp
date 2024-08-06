@@ -9,9 +9,14 @@
 #include <memory>
 
 namespace arrow {
+    /// \private
+    template <typename T>
+    class NumericBuilder;
+
     class Array;
     class DataType;
-    class SparseUnionBuilder;
+    class UInt8Type;
+    using UInt8Builder = NumericBuilder<UInt8Type>;
 } // namespace arrow
 
 namespace rerun::components {
@@ -21,37 +26,37 @@ namespace rerun::components {
     enum class ChannelDatatype : uint8_t {
 
         /// 8-bit unsigned integer.
-        U8 = 1,
+        U8 = 0,
 
         /// 16-bit unsigned integer.
-        U16 = 2,
+        U16 = 1,
 
         /// 32-bit unsigned integer.
-        U32 = 3,
+        U32 = 2,
 
         /// 64-bit unsigned integer.
-        U64 = 4,
+        U64 = 3,
 
         /// 8-bit signed integer.
-        I8 = 5,
+        I8 = 4,
 
         /// 16-bit signed integer.
-        I16 = 6,
+        I16 = 5,
 
         /// 32-bit signed integer.
-        I32 = 7,
+        I32 = 6,
 
         /// 64-bit signed integer.
-        I64 = 8,
+        I64 = 7,
 
         /// 16-bit IEEE-754 floating point, also known as `half`.
-        F16 = 9,
+        F16 = 8,
 
         /// 32-bit IEEE-754 floating point, also known as `float` or `single`.
-        F32 = 10,
+        F32 = 9,
 
         /// 64-bit IEEE-754 floating point, also known as `double`.
-        F64 = 11,
+        F64 = 10,
     };
 } // namespace rerun::components
 
@@ -74,7 +79,7 @@ namespace rerun {
 
         /// Fills an arrow array builder with an array of this type.
         static rerun::Error fill_arrow_array_builder(
-            arrow::SparseUnionBuilder* builder, const components::ChannelDatatype* elements,
+            arrow::UInt8Builder* builder, const components::ChannelDatatype* elements,
             size_t num_elements
         );
     };

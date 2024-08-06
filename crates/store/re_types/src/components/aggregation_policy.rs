@@ -24,27 +24,28 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 /// i.e. a single pixel covers more than one tick worth of data. It can greatly improve performance
 /// (and readability) in such situations as it prevents overdraw.
 #[derive(Clone, Copy, Debug, Hash, PartialEq, Eq, Default)]
+#[repr(u8)]
 pub enum AggregationPolicy {
     /// No aggregation.
-    Off = 1,
+    Off = 0u8,
 
     /// Average all points in the range together.
-    Average = 2,
+    Average = 1u8,
 
     /// Keep only the maximum values in the range.
-    Max = 3,
+    Max = 2u8,
 
     /// Keep only the minimum values in the range.
-    Min = 4,
+    Min = 3u8,
 
     /// Keep both the minimum and maximum values in the range.
     ///
     /// This will yield two aggregated points instead of one, effectively creating a vertical line.
     #[default]
-    MinMax = 5,
+    MinMax = 4u8,
 
     /// Find both the minimum and maximum values in the range, then use the average of those.
-    MinMaxAverage = 6,
+    MinMaxAverage = 5u8,
 }
 
 impl ::re_types_core::reflection::Enum for AggregationPolicy {
@@ -116,21 +117,7 @@ impl ::re_types_core::Loggable for AggregationPolicy {
     fn arrow_datatype() -> arrow2::datatypes::DataType {
         #![allow(clippy::wildcard_imports)]
         use arrow2::datatypes::*;
-        DataType::Union(
-            std::sync::Arc::new(vec![
-                Field::new("_null_markers", DataType::Null, true),
-                Field::new("Off", DataType::Null, true),
-                Field::new("Average", DataType::Null, true),
-                Field::new("Max", DataType::Null, true),
-                Field::new("Min", DataType::Null, true),
-                Field::new("MinMax", DataType::Null, true),
-                Field::new("MinMaxAverage", DataType::Null, true),
-            ]),
-            Some(std::sync::Arc::new(vec![
-                0i32, 1i32, 2i32, 3i32, 4i32, 5i32, 6i32,
-            ])),
-            UnionMode::Sparse,
-        )
+        DataType::UInt8
     }
 
     fn to_arrow_opt<'a>(
@@ -143,27 +130,24 @@ impl ::re_types_core::Loggable for AggregationPolicy {
         use ::re_types_core::{Loggable as _, ResultExt as _};
         use arrow2::{array::*, datatypes::*};
         Ok({
-            // Sparse Arrow union
-            let data: Vec<_> = data
+            let (somes, data0): (Vec<_>, Vec<_>) = data
                 .into_iter()
                 .map(|datum| {
                     let datum: Option<::std::borrow::Cow<'a, Self>> = datum.map(Into::into);
-                    datum
+                    let datum = datum.map(|datum| *datum as u8);
+                    (datum.is_some(), datum)
                 })
-                .collect();
-            let num_variants = 6usize;
-            let types = data
-                .iter()
-                .map(|a| match a.as_deref() {
-                    None => 0,
-                    Some(value) => *value as i8,
-                })
-                .collect();
-            let fields: Vec<_> =
-                std::iter::repeat(NullArray::new(DataType::Null, data.len()).boxed())
-                    .take(1 + num_variants)
-                    .collect();
-            UnionArray::new(Self::arrow_datatype(), types, fields, None).boxed()
+                .unzip();
+            let data0_bitmap: Option<arrow2::bitmap::Bitmap> = {
+                let any_nones = somes.iter().any(|some| !*some);
+                any_nones.then(|| somes.into())
+            };
+            PrimitiveArray::new(
+                Self::arrow_datatype(),
+                data0.into_iter().map(|v| v.unwrap_or_default()).collect(),
+                data0_bitmap,
+            )
+            .boxed()
         })
     }
 
@@ -176,35 +160,32 @@ impl ::re_types_core::Loggable for AggregationPolicy {
         #![allow(clippy::wildcard_imports)]
         use ::re_types_core::{Loggable as _, ResultExt as _};
         use arrow2::{array::*, buffer::*, datatypes::*};
-        Ok({
-            let arrow_data = arrow_data
-                .as_any()
-                .downcast_ref::<arrow2::array::UnionArray>()
-                .ok_or_else(|| {
-                    let expected = Self::arrow_datatype();
-                    let actual = arrow_data.data_type().clone();
-                    DeserializationError::datatype_mismatch(expected, actual)
-                })
-                .with_context("rerun.components.AggregationPolicy")?;
-            let arrow_data_types = arrow_data.types();
-            arrow_data_types
-                .iter()
-                .map(|typ| match typ {
-                    0 => Ok(None),
-                    1 => Ok(Some(Self::Off)),
-                    2 => Ok(Some(Self::Average)),
-                    3 => Ok(Some(Self::Max)),
-                    4 => Ok(Some(Self::Min)),
-                    5 => Ok(Some(Self::MinMax)),
-                    6 => Ok(Some(Self::MinMaxAverage)),
-                    _ => Err(DeserializationError::missing_union_arm(
-                        Self::arrow_datatype(),
-                        "<invalid>",
-                        *typ as _,
-                    )),
-                })
-                .collect::<DeserializationResult<Vec<_>>>()
-                .with_context("rerun.components.AggregationPolicy")?
-        })
+        Ok(arrow_data
+            .as_any()
+            .downcast_ref::<UInt8Array>()
+            .ok_or_else(|| {
+                let expected = Self::arrow_datatype();
+                let actual = arrow_data.data_type().clone();
+                DeserializationError::datatype_mismatch(expected, actual)
+            })
+            .with_context("rerun.components.AggregationPolicy#enum")?
+            .into_iter()
+            .map(|opt| opt.copied())
+            .map(|typ| match typ {
+                Some(0u8) => Ok(Some(Self::Off)),
+                Some(1u8) => Ok(Some(Self::Average)),
+                Some(2u8) => Ok(Some(Self::Max)),
+                Some(3u8) => Ok(Some(Self::Min)),
+                Some(4u8) => Ok(Some(Self::MinMax)),
+                Some(5u8) => Ok(Some(Self::MinMaxAverage)),
+                None => Ok(None),
+                Some(invalid) => Err(DeserializationError::missing_union_arm(
+                    Self::arrow_datatype(),
+                    "<invalid>",
+                    invalid as _,
+                )),
+            })
+            .collect::<DeserializationResult<Vec<Option<_>>>>()
+            .with_context("rerun.components.AggregationPolicy")?)
     }
 }

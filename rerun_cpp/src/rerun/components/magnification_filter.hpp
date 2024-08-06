@@ -9,9 +9,14 @@
 #include <memory>
 
 namespace arrow {
+    /// \private
+    template <typename T>
+    class NumericBuilder;
+
     class Array;
     class DataType;
-    class SparseUnionBuilder;
+    class UInt8Type;
+    using UInt8Builder = NumericBuilder<UInt8Type>;
 } // namespace arrow
 
 namespace rerun::components {
@@ -22,12 +27,12 @@ namespace rerun::components {
         ///
         /// This will give a blocky appearance when zooming in.
         /// Used as default when rendering 2D images.
-        Nearest = 1,
+        Nearest = 0,
 
         /// Linearly interpolate the nearest neighbors, creating a smoother look when zooming in.
         ///
         /// Used as default for mesh rendering.
-        Linear = 2,
+        Linear = 1,
     };
 } // namespace rerun::components
 
@@ -50,7 +55,7 @@ namespace rerun {
 
         /// Fills an arrow array builder with an array of this type.
         static rerun::Error fill_arrow_array_builder(
-            arrow::SparseUnionBuilder* builder, const components::MagnificationFilter* elements,
+            arrow::UInt8Builder* builder, const components::MagnificationFilter* elements,
             size_t num_elements
         );
     };

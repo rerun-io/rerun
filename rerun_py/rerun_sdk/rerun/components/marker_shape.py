@@ -24,60 +24,55 @@ from enum import Enum
 class MarkerShape(Enum):
     """**Component**: The visual appearance of a point in e.g. a 2D plot."""
 
-    Circle = 1
+    Circle = 0
     """`⏺`"""
 
-    Diamond = 2
+    Diamond = 1
     """`◆`"""
 
-    Square = 3
+    Square = 2
     """`◼️`"""
 
-    Cross = 4
+    Cross = 3
     """`x`"""
 
-    Plus = 5
+    Plus = 4
     """`+`"""
 
-    Up = 6
+    Up = 5
     """`▲`"""
 
-    Down = 7
+    Down = 6
     """`▼`"""
 
-    Left = 8
+    Left = 7
     """`◀`"""
 
-    Right = 9
+    Right = 8
     """`▶`"""
 
-    Asterisk = 10
+    Asterisk = 9
     """`*`"""
+
+    @classmethod
+    def auto(cls, val: str | int | MarkerShape) -> MarkerShape:
+        """Best-effort converter."""
+        if isinstance(val, MarkerShape):
+            return val
+        if isinstance(val, int):
+            return cls(val)
+        try:
+            return cls[val]
+        except KeyError:
+            val_lower = val.lower()
+            for variant in cls:
+                if variant.name.lower() == val_lower:
+                    return variant
+        raise ValueError(f"Cannot convert {val} to {cls.__name__}")
 
     def __str__(self) -> str:
         """Returns the variant name."""
-        if self == MarkerShape.Circle:
-            return "Circle"
-        elif self == MarkerShape.Diamond:
-            return "Diamond"
-        elif self == MarkerShape.Square:
-            return "Square"
-        elif self == MarkerShape.Cross:
-            return "Cross"
-        elif self == MarkerShape.Plus:
-            return "Plus"
-        elif self == MarkerShape.Up:
-            return "Up"
-        elif self == MarkerShape.Down:
-            return "Down"
-        elif self == MarkerShape.Left:
-            return "Left"
-        elif self == MarkerShape.Right:
-            return "Right"
-        elif self == MarkerShape.Asterisk:
-            return "Asterisk"
-        else:
-            raise ValueError("Unknown enum variant")
+        return self.name
 
 
 MarkerShapeLike = Union[
@@ -104,6 +99,7 @@ MarkerShapeLike = Union[
         "square",
         "up",
     ],
+    int,
 ]
 MarkerShapeArrayLike = Union[MarkerShapeLike, Sequence[MarkerShapeLike]]
 
@@ -112,23 +108,7 @@ class MarkerShapeType(BaseExtensionType):
     _TYPE_NAME: str = "rerun.components.MarkerShape"
 
     def __init__(self) -> None:
-        pa.ExtensionType.__init__(
-            self,
-            pa.sparse_union([
-                pa.field("_null_markers", pa.null(), nullable=True, metadata={}),
-                pa.field("Circle", pa.null(), nullable=True, metadata={}),
-                pa.field("Diamond", pa.null(), nullable=True, metadata={}),
-                pa.field("Square", pa.null(), nullable=True, metadata={}),
-                pa.field("Cross", pa.null(), nullable=True, metadata={}),
-                pa.field("Plus", pa.null(), nullable=True, metadata={}),
-                pa.field("Up", pa.null(), nullable=True, metadata={}),
-                pa.field("Down", pa.null(), nullable=True, metadata={}),
-                pa.field("Left", pa.null(), nullable=True, metadata={}),
-                pa.field("Right", pa.null(), nullable=True, metadata={}),
-                pa.field("Asterisk", pa.null(), nullable=True, metadata={}),
-            ]),
-            self._TYPE_NAME,
-        )
+        pa.ExtensionType.__init__(self, pa.uint8(), self._TYPE_NAME)
 
 
 class MarkerShapeBatch(BaseBatch[MarkerShapeArrayLike], ComponentBatchMixin):
@@ -139,52 +119,6 @@ class MarkerShapeBatch(BaseBatch[MarkerShapeArrayLike], ComponentBatchMixin):
         if isinstance(data, (MarkerShape, int, str)):
             data = [data]
 
-        types: list[int] = []
+        pa_data = [MarkerShape.auto(v).value if v else None for v in data]
 
-        for value in data:
-            if value is None:
-                types.append(0)
-            elif isinstance(value, MarkerShape):
-                types.append(value.value)  # Actual enum value
-            elif isinstance(value, int):
-                types.append(value)  # By number
-            elif isinstance(value, str):
-                if hasattr(MarkerShape, value):
-                    types.append(MarkerShape[value].value)  # fast path
-                elif value.lower() == "circle":
-                    types.append(MarkerShape.Circle.value)
-                elif value.lower() == "diamond":
-                    types.append(MarkerShape.Diamond.value)
-                elif value.lower() == "square":
-                    types.append(MarkerShape.Square.value)
-                elif value.lower() == "cross":
-                    types.append(MarkerShape.Cross.value)
-                elif value.lower() == "plus":
-                    types.append(MarkerShape.Plus.value)
-                elif value.lower() == "up":
-                    types.append(MarkerShape.Up.value)
-                elif value.lower() == "down":
-                    types.append(MarkerShape.Down.value)
-                elif value.lower() == "left":
-                    types.append(MarkerShape.Left.value)
-                elif value.lower() == "right":
-                    types.append(MarkerShape.Right.value)
-                elif value.lower() == "asterisk":
-                    types.append(MarkerShape.Asterisk.value)
-                else:
-                    raise ValueError(f"Unknown MarkerShape kind: {value}")
-            else:
-                raise ValueError(f"Unknown MarkerShape kind: {value}")
-
-        buffers = [
-            None,
-            pa.array(types, type=pa.int8()).buffers()[1],
-        ]
-        children = (1 + 10) * [pa.nulls(len(data))]
-
-        return pa.UnionArray.from_buffers(
-            type=data_type,
-            length=len(data),
-            buffers=buffers,
-            children=children,
-        )
+        return pa.array(pa_data, type=data_type)

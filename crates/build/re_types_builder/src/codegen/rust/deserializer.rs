@@ -63,10 +63,64 @@ pub fn quote_arrow_deserializer(
     let quoted_self_datatype = quote! { Self::arrow_datatype() };
 
     let obj_fqname = obj.fqname.as_str();
+    let is_enum = obj.is_enum();
     let is_arrow_transparent = obj.datatype.is_none();
     let is_tuple_struct = is_tuple_struct_from_obj(obj);
 
-    if is_arrow_transparent {
+    if is_enum {
+        // An enum is very similar to a transparent type.
+
+        // A non-null enum itself must have a value.
+        let is_nullable = false;
+
+        let obj_field_fqname = format!("{obj_fqname}#enum");
+
+        let quoted_deserializer = quote_arrow_field_deserializer(
+            objects,
+            datatype.to_logical_type(),
+            &quoted_self_datatype, // we are transparent, so the datatype of `Self` is the datatype of our contents
+            is_nullable,
+            &obj_field_fqname,
+            &data_src,
+            InnerRepr::NativeIterable,
+        );
+
+        let quoted_branches = obj.fields.iter().map(|obj_field| {
+            let quoted_obj_field_type = format_ident!("{}", obj_field.name);
+
+            // We should never hit this unwrap or it means the enum-processing at
+            // the fbs layer is totally broken.
+            let enum_value = obj_field.enum_value.unwrap();
+
+            quote! {
+                Some(#enum_value) => Ok(Some(Self::#quoted_obj_field_type))
+            }
+        });
+
+        // TODO(jleibs): We should be able to do this with try_from instead.
+        let quoted_remapping = quote! {
+            .map(|typ| {
+                match typ {
+                    // The actual enum variants
+                    #(#quoted_branches,)*
+                    None => Ok(None),
+                    Some(invalid) => Err(DeserializationError::missing_union_arm(
+                        #quoted_self_datatype, "<invalid>", invalid as _,
+                    )),
+                }
+            })
+        };
+
+        quote! {
+            #quoted_deserializer
+            #quoted_remapping
+            // NOTE: implicit Vec<Result> to Result<Vec>
+            .collect::<DeserializationResult<Vec<Option<_>>>>()
+            // NOTE: double context so the user can see the transparent shenanigans going on in the
+            // error.
+            .with_context(#obj_fqname)?
+        }
+    } else if is_arrow_transparent {
         // NOTE: Arrow transparent objects must have a single field, no more no less.
         // The semantic pass would have failed already if this wasn't the case.
         let obj_field = &obj.fields[0];
@@ -456,6 +510,14 @@ fn quote_arrow_field_deserializer(
     inner_repr: InnerRepr,
 ) -> TokenStream {
     _ = is_nullable; // not yet used, will be needed very soon
+
+    // If the inner object is an enum, then dispatch to its deserializer.
+    if let DataType::Extension(fqname, _, _) = datatype {
+        if objects.get(fqname).map_or(false, |obj| obj.is_enum()) {
+            let fqname_use = quote_fqname_as_type_path(fqname);
+            return quote!(#fqname_use::from_arrow_opt(#data_src).with_context(#obj_field_fqname)?.into_iter());
+        }
+    }
 
     match datatype.to_logical_type() {
         DataType::Int8

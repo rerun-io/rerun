@@ -253,7 +253,7 @@ class ImageExt:
         with catch_and_log_exceptions(context="Image compression"):
             pixel_format = None
             if self.pixel_format is not None:
-                pixel_format = PixelFormat(self.pixel_format.as_arrow_array().storage.type_codes[0].as_py())
+                pixel_format = PixelFormat(self.pixel_format.as_arrow_array().storage[0].as_py())
 
             # TODO(jleibs): Support conversions here
             if pixel_format is not None:
@@ -261,7 +261,7 @@ class ImageExt:
 
             color_model = None
             if self.color_model is not None:
-                color_model = ColorModel(self.color_model.as_arrow_array().storage.type_codes[0].as_py())
+                color_model = ColorModel(self.color_model.as_arrow_array().storage[0].as_py())
 
             if color_model not in (ColorModel.L, ColorModel.RGB):
                 # TODO(#2340): BGR support!
@@ -271,7 +271,7 @@ class ImageExt:
 
             datatype = None
             if self.datatype is not None:
-                datatype = ChannelDatatype(self.datatype.as_arrow_array().storage.type_codes[0].as_py())
+                datatype = ChannelDatatype(self.datatype.as_arrow_array().storage[0].as_py())
 
             if datatype != ChannelDatatype.U8:
                 # See: https://pillow.readthedocs.io/en/stable/handbook/concepts.html#concept-modes

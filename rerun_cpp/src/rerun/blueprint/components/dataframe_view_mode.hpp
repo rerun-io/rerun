@@ -9,9 +9,14 @@
 #include <memory>
 
 namespace arrow {
+    /// \private
+    template <typename T>
+    class NumericBuilder;
+
     class Array;
     class DataType;
-    class SparseUnionBuilder;
+    class UInt8Type;
+    using UInt8Builder = NumericBuilder<UInt8Type>;
 } // namespace arrow
 
 namespace rerun::blueprint::components {
@@ -21,13 +26,13 @@ namespace rerun::blueprint::components {
         /// Display the entity values at the current time.
         ///
         /// In this mode, rows are entity instances, and columns are components. The visible time range setting is ignored.
-        LatestAt = 1,
+        LatestAt = 0,
 
         /// Display a temporal table of entity values.
         ///
         /// In this mode, rows are combination of entity path, timestamp, and row id, and columns are components. The
         /// timestamp shown are determined by each view entity's visible time range setting.
-        TimeRange = 2,
+        TimeRange = 1,
     };
 } // namespace rerun::blueprint::components
 
@@ -50,8 +55,8 @@ namespace rerun {
 
         /// Fills an arrow array builder with an array of this type.
         static rerun::Error fill_arrow_array_builder(
-            arrow::SparseUnionBuilder* builder,
-            const blueprint::components::DataframeViewMode* elements, size_t num_elements
+            arrow::UInt8Builder* builder, const blueprint::components::DataframeViewMode* elements,
+            size_t num_elements
         );
     };
 } // namespace rerun

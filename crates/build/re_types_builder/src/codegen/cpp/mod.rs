@@ -1225,13 +1225,13 @@ impl QuotedObject {
         let field_declarations = obj
             .fields
             .iter()
-            .enumerate()
-            .map(|(i, obj_field)| {
+            .map(|obj_field| {
+                let enum_value = obj_field.enum_value.unwrap();
                 let docstring = quote_field_docs(objects, obj_field);
                 let field_name = field_name_identifier(obj_field);
 
                 // We assign the arrow type index to the enum fields to make encoding simpler and faster:
-                let arrow_type_index = proc_macro2::Literal::usize_unsuffixed(1 + i); // 0 is reserved for `_null_markers`
+                let arrow_type_index = proc_macro2::Literal::usize_unsuffixed(enum_value as _);
 
                 quote! {
                     #NEWLINE_TOKEN
@@ -1714,12 +1714,12 @@ fn quote_fill_arrow_array_builder(
             // C-style enum, encoded as a sparse arrow union
             ObjectClass::Enum => {
                 quote! {
-                    #parameter_check
-                    ARROW_RETURN_NOT_OK(#builder->Reserve(static_cast<int64_t>(num_elements)));
-                    for (size_t elem_idx = 0; elem_idx < num_elements; elem_idx += 1) {
-                        const auto variant = elements[elem_idx];
-                        ARROW_RETURN_NOT_OK(#builder->Append(static_cast<int8_t>(variant)));
-                    }
+                #parameter_check
+                ARROW_RETURN_NOT_OK(#builder->Reserve(static_cast<int64_t>(num_elements)));
+                for (size_t elem_idx = 0; elem_idx < num_elements; elem_idx += 1) {
+                    const auto variant = elements[elem_idx];
+                    ARROW_RETURN_NOT_OK(#builder->Append(static_cast<uint8_t>(variant)));
+                }
                 }
             }
 
@@ -2431,10 +2431,7 @@ fn quote_arrow_data_type(
                     }
                     ObjectClass::Enum => {
                         quote! {
-                            arrow::sparse_union({
-                                arrow::field("_null_markers", arrow::null(), true, nullptr),
-                                #(#quoted_fields,)*
-                            })
+                            arrow::uint8()
                         }
                     }
                     ObjectClass::Union => {

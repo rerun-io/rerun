@@ -20,25 +20,26 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Component**: A test of the enum type.
 #[derive(Clone, Copy, Debug, Hash, PartialEq, Eq, Default)]
+#[repr(u8)]
 pub enum EnumTest {
     /// Great film.
-    Up = 1,
+    Up = 0u8,
 
     /// Feeling blue.
-    Down = 2,
+    Down = 1u8,
 
     /// Correct.
     #[default]
-    Right = 3,
+    Right = 2u8,
 
     /// It's what's remaining.
-    Left = 4,
+    Left = 3u8,
 
     /// It's the only way to go.
-    Forward = 5,
+    Forward = 4u8,
 
     /// Baby's got it.
-    Back = 6,
+    Back = 5u8,
 }
 
 impl ::re_types_core::reflection::Enum for EnumTest {
@@ -106,21 +107,7 @@ impl ::re_types_core::Loggable for EnumTest {
     fn arrow_datatype() -> arrow2::datatypes::DataType {
         #![allow(clippy::wildcard_imports)]
         use arrow2::datatypes::*;
-        DataType::Union(
-            std::sync::Arc::new(vec![
-                Field::new("_null_markers", DataType::Null, true),
-                Field::new("Up", DataType::Null, true),
-                Field::new("Down", DataType::Null, true),
-                Field::new("Right", DataType::Null, true),
-                Field::new("Left", DataType::Null, true),
-                Field::new("Forward", DataType::Null, true),
-                Field::new("Back", DataType::Null, true),
-            ]),
-            Some(std::sync::Arc::new(vec![
-                0i32, 1i32, 2i32, 3i32, 4i32, 5i32, 6i32,
-            ])),
-            UnionMode::Sparse,
-        )
+        DataType::UInt8
     }
 
     fn to_arrow_opt<'a>(
@@ -133,27 +120,24 @@ impl ::re_types_core::Loggable for EnumTest {
         use ::re_types_core::{Loggable as _, ResultExt as _};
         use arrow2::{array::*, datatypes::*};
         Ok({
-            // Sparse Arrow union
-            let data: Vec<_> = data
+            let (somes, data0): (Vec<_>, Vec<_>) = data
                 .into_iter()
                 .map(|datum| {
                     let datum: Option<::std::borrow::Cow<'a, Self>> = datum.map(Into::into);
-                    datum
+                    let datum = datum.map(|datum| *datum as u8);
+                    (datum.is_some(), datum)
                 })
-                .collect();
-            let num_variants = 6usize;
-            let types = data
-                .iter()
-                .map(|a| match a.as_deref() {
-                    None => 0,
-                    Some(value) => *value as i8,
-                })
-                .collect();
-            let fields: Vec<_> =
-                std::iter::repeat(NullArray::new(DataType::Null, data.len()).boxed())
-                    .take(1 + num_variants)
-                    .collect();
-            UnionArray::new(Self::arrow_datatype(), types, fields, None).boxed()
+                .unzip();
+            let data0_bitmap: Option<arrow2::bitmap::Bitmap> = {
+                let any_nones = somes.iter().any(|some| !*some);
+                any_nones.then(|| somes.into())
+            };
+            PrimitiveArray::new(
+                Self::arrow_datatype(),
+                data0.into_iter().map(|v| v.unwrap_or_default()).collect(),
+                data0_bitmap,
+            )
+            .boxed()
         })
     }
 
@@ -166,35 +150,32 @@ impl ::re_types_core::Loggable for EnumTest {
         #![allow(clippy::wildcard_imports)]
         use ::re_types_core::{Loggable as _, ResultExt as _};
         use arrow2::{array::*, buffer::*, datatypes::*};
-        Ok({
-            let arrow_data = arrow_data
-                .as_any()
-                .downcast_ref::<arrow2::array::UnionArray>()
-                .ok_or_else(|| {
-                    let expected = Self::arrow_datatype();
-                    let actual = arrow_data.data_type().clone();
-                    DeserializationError::datatype_mismatch(expected, actual)
-                })
-                .with_context("rerun.testing.components.EnumTest")?;
-            let arrow_data_types = arrow_data.types();
-            arrow_data_types
-                .iter()
-                .map(|typ| match typ {
-                    0 => Ok(None),
-                    1 => Ok(Some(Self::Up)),
-                    2 => Ok(Some(Self::Down)),
-                    3 => Ok(Some(Self::Right)),
-                    4 => Ok(Some(Self::Left)),
-                    5 => Ok(Some(Self::Forward)),
-                    6 => Ok(Some(Self::Back)),
-                    _ => Err(DeserializationError::missing_union_arm(
-                        Self::arrow_datatype(),
-                        "<invalid>",
-                        *typ as _,
-                    )),
-                })
-                .collect::<DeserializationResult<Vec<_>>>()
-                .with_context("rerun.testing.components.EnumTest")?
-        })
+        Ok(arrow_data
+            .as_any()
+            .downcast_ref::<UInt8Array>()
+            .ok_or_else(|| {
+                let expected = Self::arrow_datatype();
+                let actual = arrow_data.data_type().clone();
+                DeserializationError::datatype_mismatch(expected, actual)
+            })
+            .with_context("rerun.testing.components.EnumTest#enum")?
+            .into_iter()
+            .map(|opt| opt.copied())
+            .map(|typ| match typ {
+                Some(0u8) => Ok(Some(Self::Up)),
+                Some(1u8) => Ok(Some(Self::Down)),
+                Some(2u8) => Ok(Some(Self::Right)),
+                Some(3u8) => Ok(Some(Self::Left)),
+                Some(4u8) => Ok(Some(Self::Forward)),
+                Some(5u8) => Ok(Some(Self::Back)),
+                None => Ok(None),
+                Some(invalid) => Err(DeserializationError::missing_union_arm(
+                    Self::arrow_datatype(),
+                    "<invalid>",
+                    invalid as _,
+                )),
+            })
+            .collect::<DeserializationResult<Vec<Option<_>>>>()
+            .with_context("rerun.testing.components.EnumTest")?)
     }
 }

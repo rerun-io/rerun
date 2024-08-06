@@ -20,3 +20,21 @@ enum EnumTest: byte {
     /// Baby's got it.
     Back,
 }
+
+/// A test of an enumate with specified values.
+enum ValuedEnum: byte {
+    /// Default value.
+    Default = 0 (default),
+
+    /// One.
+    One = 1,
+
+    /// Two.
+    Two = 2,
+
+    /// Three.
+    Three = 3,
+
+    /// The answer to life, the universe, and everything.
+    TheAnswer = 42,
+}

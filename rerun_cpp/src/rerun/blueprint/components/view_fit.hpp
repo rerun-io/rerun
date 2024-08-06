@@ -9,9 +9,14 @@
 #include <memory>
 
 namespace arrow {
+    /// \private
+    template <typename T>
+    class NumericBuilder;
+
     class Array;
     class DataType;
-    class SparseUnionBuilder;
+    class UInt8Type;
+    using UInt8Builder = NumericBuilder<UInt8Type>;
 } // namespace arrow
 
 namespace rerun::blueprint::components {
@@ -19,13 +24,13 @@ namespace rerun::blueprint::components {
     enum class ViewFit : uint8_t {
 
         /// No scaling, pixel size will match the image's width/height dimensions in pixels.
-        Original = 1,
+        Original = 0,
 
         /// Scale the image for the largest possible fit in the view's container.
-        Fill = 2,
+        Fill = 1,
 
         /// Scale the image for the largest possible fit in the view's container, but keep the original aspect ratio.
-        FillKeepAspectRatio = 3,
+        FillKeepAspectRatio = 2,
     };
 } // namespace rerun::blueprint::components
 
@@ -48,7 +53,7 @@ namespace rerun {
 
         /// Fills an arrow array builder with an array of this type.
         static rerun::Error fill_arrow_array_builder(
-            arrow::SparseUnionBuilder* builder, const blueprint::components::ViewFit* elements,
+            arrow::UInt8Builder* builder, const blueprint::components::ViewFit* elements,
             size_t num_elements
         );
     };

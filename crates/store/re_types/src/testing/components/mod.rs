@@ -23,6 +23,7 @@ mod affix_fuzzer7;
 mod affix_fuzzer8;
 mod affix_fuzzer9;
 mod enum_test;
+mod valued_enum;
 
 pub use self::affix_fuzzer1::AffixFuzzer1;
 pub use self::affix_fuzzer10::AffixFuzzer10;
@@ -47,3 +48,4 @@ pub use self::affix_fuzzer7::AffixFuzzer7;
 pub use self::affix_fuzzer8::AffixFuzzer8;
 pub use self::affix_fuzzer9::AffixFuzzer9;
 pub use self::enum_test::EnumTest;
+pub use self::valued_enum::ValuedEnum;

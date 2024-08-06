@@ -9,9 +9,14 @@
 #include <memory>
 
 namespace arrow {
+    /// \private
+    template <typename T>
+    class NumericBuilder;
+
     class Array;
     class DataType;
-    class SparseUnionBuilder;
+    class UInt8Type;
+    using UInt8Builder = NumericBuilder<UInt8Type>;
 } // namespace arrow
 
 namespace rerun::components {
@@ -32,12 +37,12 @@ namespace rerun::components {
         ///
         /// First comes entire image in Y in one plane,
         /// followed by a plane with interleaved lines ordered as U0, V0, U1, V1, etc.
-        NV12 = 1,
+        NV12 = 0,
 
         /// YUY2 (aka YUYV or YUYV16), is a YUV 4:2:2 chroma downsampled format with 16 bits per pixel and 8 bits per channel.
         ///
         /// The order of the channels is Y0, U0, Y1, V0, all in the same plane.
-        YUY2 = 2,
+        YUY2 = 1,
     };
 } // namespace rerun::components
 
@@ -60,7 +65,7 @@ namespace rerun {
 
         /// Fills an arrow array builder with an array of this type.
         static rerun::Error fill_arrow_array_builder(
-            arrow::SparseUnionBuilder* builder, const components::PixelFormat* elements,
+            arrow::UInt8Builder* builder, const components::PixelFormat* elements,
             size_t num_elements
         );
     };
