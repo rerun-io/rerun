@@ -29,17 +29,21 @@ __all__ = [
 
 @define(init=False)
 class LatestAtQueries(ComponentMixin):
-    """**Component**: Component(s) used as point-of-view for a query."""
+    """
+    **Component**: Configuration for latest at queries.
+
+    Note: configuration as saved on a per-timeline basis.
+    """
 
     _BATCH_TYPE = None
 
-    def __init__(self: Any, value: LatestAtQueriesLike):
+    def __init__(self: Any, queries: LatestAtQueriesLike):
         """Create a new instance of the LatestAtQueries component."""
 
         # You can define your own __init__ function as a member of LatestAtQueriesExt in latest_at_queries_ext.py
-        self.__attrs_init__(value=value)
+        self.__attrs_init__(queries=queries)
 
-    value: list[blueprint_datatypes.LatestAtQuery] = field()
+    queries: list[blueprint_datatypes.LatestAtQuery] = field()
 
 
 LatestAtQueriesLike = LatestAtQueries

@@ -18,7 +18,9 @@ use ::re_types_core::SerializationResult;
 use ::re_types_core::{ComponentBatch, MaybeOwnedComponentBatch};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
-/// **Component**: Component(s) used as point-of-view for a query.
+/// **Component**: Configuration for time range queries.
+///
+/// Note: configuration as saved on a per-timeline basis.
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 #[repr(transparent)]
 pub struct TimeRangeQueries(pub Vec<crate::blueprint::datatypes::TimeRangeQuery>);
@@ -130,14 +132,14 @@ impl ::re_types_core::Loggable for TimeRangeQueries {
                     let actual = arrow_data.data_type().clone();
                     DeserializationError::datatype_mismatch(expected, actual)
                 })
-                .with_context("rerun.blueprint.components.TimeRangeQueries#value")?;
+                .with_context("rerun.blueprint.components.TimeRangeQueries#queries")?;
             if arrow_data.is_empty() {
                 Vec::new()
             } else {
                 let arrow_data_inner = {
                     let arrow_data_inner = &**arrow_data.values();
                     crate::blueprint::datatypes::TimeRangeQuery::from_arrow_opt(arrow_data_inner)
-                        .with_context("rerun.blueprint.components.TimeRangeQueries#value")?
+                        .with_context("rerun.blueprint.components.TimeRangeQueries#queries")?
                         .into_iter()
                         .collect::<Vec<_>>()
                 };
@@ -175,7 +177,7 @@ impl ::re_types_core::Loggable for TimeRangeQueries {
         .map(|v| v.ok_or_else(DeserializationError::missing_data))
         .map(|res| res.map(|v| Some(Self(v))))
         .collect::<DeserializationResult<Vec<Option<_>>>>()
-        .with_context("rerun.blueprint.components.TimeRangeQueries#value")
+        .with_context("rerun.blueprint.components.TimeRangeQueries#queries")
         .with_context("rerun.blueprint.components.TimeRangeQueries")?)
     }
 }

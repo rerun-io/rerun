@@ -48,7 +48,7 @@ def _time_range_query__end__special_field_converter_override(x: datatypes.TimeIn
 
 @define(init=False)
 class TimeRangeQuery:
-    """**Datatype**: Visible time range bounds for a specific timeline."""
+    """**Datatype**: Time range query configuration for a specific timeline."""
 
     def __init__(self: Any, timeline: datatypes.Utf8Like, start: datatypes.TimeIntLike, end: datatypes.TimeIntLike):
         """
@@ -59,9 +59,9 @@ class TimeRangeQuery:
         timeline:
             Name of the timeline this applies to.
         start:
-            Start
+            Begining of the time range.
         end:
-            End
+            End of the time range.
 
         """
 
@@ -74,12 +74,12 @@ class TimeRangeQuery:
     # (Docstring intentionally commented out to hide this field from the docs)
 
     start: datatypes.TimeInt = field(converter=_time_range_query__start__special_field_converter_override)
-    # Start
+    # Begining of the time range.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 
     end: datatypes.TimeInt = field(converter=_time_range_query__end__special_field_converter_override)
-    # End
+    # End of the time range.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 

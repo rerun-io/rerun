@@ -21,13 +21,6 @@ from .container_kind import (
     ContainerKindType,
 )
 from .corner2d import Corner2D, Corner2DArrayLike, Corner2DBatch, Corner2DLike, Corner2DType
-from .dataframe_view_mode import (
-    DataframeViewMode,
-    DataframeViewModeArrayLike,
-    DataframeViewModeBatch,
-    DataframeViewModeLike,
-    DataframeViewModeType,
-)
 from .grid_columns import GridColumns, GridColumnsBatch, GridColumnsType
 from .included_content import IncludedContent, IncludedContentBatch, IncludedContentType
 from .included_space_view import IncludedSpaceView, IncludedSpaceViewBatch, IncludedSpaceViewType
@@ -42,6 +35,7 @@ from .latest_at_queries import (
 from .lock_range_during_zoom import LockRangeDuringZoom, LockRangeDuringZoomBatch, LockRangeDuringZoomType
 from .panel_state import PanelState, PanelStateArrayLike, PanelStateBatch, PanelStateLike, PanelStateType
 from .query_expression import QueryExpression, QueryExpressionBatch, QueryExpressionType
+from .query_kind import QueryKind, QueryKindArrayLike, QueryKindBatch, QueryKindLike, QueryKindType
 from .root_container import RootContainer, RootContainerBatch, RootContainerType
 from .row_share import RowShare, RowShareBatch, RowShareType
 from .sort_key import SortKey, SortKeyArrayLike, SortKeyBatch, SortKeyLike, SortKeyType
@@ -101,11 +95,6 @@ __all__ = [
     "Corner2DBatch",
     "Corner2DLike",
     "Corner2DType",
-    "DataframeViewMode",
-    "DataframeViewModeArrayLike",
-    "DataframeViewModeBatch",
-    "DataframeViewModeLike",
-    "DataframeViewModeType",
     "GridColumns",
     "GridColumnsBatch",
     "GridColumnsType",
@@ -134,6 +123,11 @@ __all__ = [
     "QueryExpression",
     "QueryExpressionBatch",
     "QueryExpressionType",
+    "QueryKind",
+    "QueryKindArrayLike",
+    "QueryKindBatch",
+    "QueryKindLike",
+    "QueryKindType",
     "RootContainer",
     "RootContainerBatch",
     "RootContainerType",

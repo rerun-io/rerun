@@ -65,12 +65,12 @@ namespace rerun {
         for (size_t elem_idx = 0; elem_idx < num_elements; elem_idx += 1) {
             const auto& element = elements[elem_idx];
             ARROW_RETURN_NOT_OK(builder->Append());
-            if (element.value.data()) {
+            if (element.queries.data()) {
                 RR_RETURN_NOT_OK(
                     Loggable<rerun::blueprint::datatypes::TimeRangeQuery>::fill_arrow_array_builder(
                         value_builder,
-                        element.value.data(),
-                        element.value.size()
+                        element.queries.data(),
+                        element.queries.size()
                     )
                 );
             }

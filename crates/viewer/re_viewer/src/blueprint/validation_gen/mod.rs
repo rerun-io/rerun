@@ -5,13 +5,13 @@ pub use re_types::blueprint::components::ActiveTab;
 pub use re_types::blueprint::components::BackgroundKind;
 pub use re_types::blueprint::components::ColumnShare;
 pub use re_types::blueprint::components::Corner2D;
-pub use re_types::blueprint::components::DataframeViewMode;
 pub use re_types::blueprint::components::IncludedContent;
 pub use re_types::blueprint::components::Interactive;
 pub use re_types::blueprint::components::LatestAtQueries;
 pub use re_types::blueprint::components::LockRangeDuringZoom;
 pub use re_types::blueprint::components::PanelState;
 pub use re_types::blueprint::components::QueryExpression;
+pub use re_types::blueprint::components::QueryKind;
 pub use re_types::blueprint::components::RowShare;
 pub use re_types::blueprint::components::SortKey;
 pub use re_types::blueprint::components::SortOrder;
@@ -45,7 +45,6 @@ pub fn is_valid_blueprint(blueprint: &EntityDb) -> bool {
         && validate_component::<ColumnShare>(blueprint)
         && validate_component::<ContainerKind>(blueprint)
         && validate_component::<Corner2D>(blueprint)
-        && validate_component::<DataframeViewMode>(blueprint)
         && validate_component::<GridColumns>(blueprint)
         && validate_component::<IncludedContent>(blueprint)
         && validate_component::<IncludedSpaceView>(blueprint)
@@ -54,6 +53,7 @@ pub fn is_valid_blueprint(blueprint: &EntityDb) -> bool {
         && validate_component::<LockRangeDuringZoom>(blueprint)
         && validate_component::<PanelState>(blueprint)
         && validate_component::<QueryExpression>(blueprint)
+        && validate_component::<QueryKind>(blueprint)
         && validate_component::<RootContainer>(blueprint)
         && validate_component::<RowShare>(blueprint)
         && validate_component::<SortKey>(blueprint)

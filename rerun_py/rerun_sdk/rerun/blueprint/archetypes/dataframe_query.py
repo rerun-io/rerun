@@ -21,13 +21,13 @@ __all__ = ["DataframeQuery"]
 
 @define(str=False, repr=False, init=False)
 class DataframeQuery(Archetype):
-    """**Archetype**: Configuration for the dataframe view."""
+    """**Archetype**: The query for the dataframe view."""
 
     def __init__(
         self: Any,
         *,
         timeline: datatypes.Utf8Like | None = None,
-        mode: blueprint_components.DataframeViewModeLike | None = None,
+        mode: blueprint_components.QueryKindLike | None = None,
         latest_at_queries: blueprint_components.LatestAtQueriesLike | None = None,
         time_range_queries: blueprint_components.TimeRangeQueriesLike | None = None,
     ):
@@ -37,13 +37,19 @@ class DataframeQuery(Archetype):
         Parameters
         ----------
         timeline:
-            Name of the timeline this applies to.
+            The timeline for this query.
+
+            If unset, use the time panel's timeline and a latest at query, ignoring all other components of this archetype.
         mode:
             Type of query: latest at or range
         latest_at_queries:
-            Times (1 for latest at, 2 for range)
+            Configuration for latest at queries.attribute
+
+            Note: configuration as saved on a per-timeline basis.
         time_range_queries:
-            Times (1 for latest at, 2 for range)
+            Configuration for the time range queries.
+
+            Note: configuration as saved on a per-timeline basis.
 
         """
 
@@ -76,14 +82,16 @@ class DataframeQuery(Archetype):
         default=None,
         converter=blueprint_components.TimelineBatch._optional,  # type: ignore[misc]
     )
-    # Name of the timeline this applies to.
+    # The timeline for this query.
+    #
+    # If unset, use the time panel's timeline and a latest at query, ignoring all other components of this archetype.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 
-    mode: blueprint_components.DataframeViewModeBatch | None = field(
+    mode: blueprint_components.QueryKindBatch | None = field(
         metadata={"component": "optional"},
         default=None,
-        converter=blueprint_components.DataframeViewModeBatch._optional,  # type: ignore[misc]
+        converter=blueprint_components.QueryKindBatch._optional,  # type: ignore[misc]
     )
     # Type of query: latest at or range
     #
@@ -94,7 +102,9 @@ class DataframeQuery(Archetype):
         default=None,
         converter=blueprint_components.LatestAtQueriesBatch._optional,  # type: ignore[misc]
     )
-    # Times (1 for latest at, 2 for range)
+    # Configuration for latest at queries.attribute
+    #
+    # Note: configuration as saved on a per-timeline basis.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 
@@ -103,7 +113,9 @@ class DataframeQuery(Archetype):
         default=None,
         converter=blueprint_components.TimeRangeQueriesBatch._optional,  # type: ignore[misc]
     )
-    # Times (1 for latest at, 2 for range)
+    # Configuration for the time range queries.
+    #
+    # Note: configuration as saved on a per-timeline basis.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 

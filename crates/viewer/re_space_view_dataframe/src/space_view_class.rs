@@ -27,7 +27,7 @@ use crate::{
 /// `https://github.com/rerun-io/rerun/issues/6918`.
 #[derive(Debug, Default)]
 struct DataframeViewState {
-    mode: components::DataframeViewMode,
+    mode: components::QueryKind,
 }
 
 impl SpaceViewState for DataframeViewState {
@@ -109,10 +109,8 @@ mode sets the default time range to _everything_. You can override this in the s
             .unwrap_or_default();
 
         match mode {
-            components::DataframeViewMode::LatestAt => QueryRange::LatestAt,
-            components::DataframeViewMode::TimeRange => {
-                QueryRange::TimeRange(TimeRange::EVERYTHING)
-            }
+            components::QueryKind::LatestAt => QueryRange::LatestAt,
+            components::QueryKind::TimeRange => QueryRange::TimeRange(TimeRange::EVERYTHING),
         }
     }
 

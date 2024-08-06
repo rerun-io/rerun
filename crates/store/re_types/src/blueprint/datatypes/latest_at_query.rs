@@ -18,13 +18,13 @@ use ::re_types_core::SerializationResult;
 use ::re_types_core::{ComponentBatch, MaybeOwnedComponentBatch};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
-/// **Datatype**: Visible time range bounds for a specific timeline.
+/// **Datatype**: Latest at query configuration for a specific timeline.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct LatestAtQuery {
     /// Name of the timeline this applies to.
     pub timeline: crate::datatypes::Utf8,
 
-    /// Time range to use for this timeline.
+    /// Time value to use for this query.
     pub time: crate::datatypes::TimeInt,
 }
 

@@ -18,19 +18,25 @@ use ::re_types_core::SerializationResult;
 use ::re_types_core::{ComponentBatch, MaybeOwnedComponentBatch};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
-/// **Archetype**: Configuration for the dataframe view
+/// **Archetype**: The query for the dataframe view.
 #[derive(Clone, Debug)]
 pub struct DataframeQuery {
-    /// Name of the timeline this applies to.
+    /// The timeline for this query.
+    ///
+    /// If unset, use the time panel's timeline and a latest at query, ignoring all other components of this archetype.
     pub timeline: Option<crate::blueprint::components::Timeline>,
 
     /// Type of query: latest at or range
-    pub mode: Option<crate::blueprint::components::DataframeViewMode>,
+    pub mode: Option<crate::blueprint::components::QueryKind>,
 
-    /// Times (1 for latest at, 2 for range)
+    /// Configuration for latest at queries.attribute
+    ///
+    /// Note: configuration as saved on a per-timeline basis.
     pub latest_at_queries: Option<crate::blueprint::components::LatestAtQueries>,
 
-    /// Times (1 for latest at, 2 for range)
+    /// Configuration for the time range queries.
+    ///
+    /// Note: configuration as saved on a per-timeline basis.
     pub time_range_queries: Option<crate::blueprint::components::TimeRangeQueries>,
 }
 
@@ -46,7 +52,7 @@ impl ::re_types_core::SizeBytes for DataframeQuery {
     #[inline]
     fn is_pod() -> bool {
         <Option<crate::blueprint::components::Timeline>>::is_pod()
-            && <Option<crate::blueprint::components::DataframeViewMode>>::is_pod()
+            && <Option<crate::blueprint::components::QueryKind>>::is_pod()
             && <Option<crate::blueprint::components::LatestAtQueries>>::is_pod()
             && <Option<crate::blueprint::components::TimeRangeQueries>>::is_pod()
     }
@@ -62,7 +68,7 @@ static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 4usize]> =
     once_cell::sync::Lazy::new(|| {
         [
             "rerun.blueprint.components.Timeline".into(),
-            "rerun.blueprint.components.DataframeViewMode".into(),
+            "rerun.blueprint.components.QueryKind".into(),
             "rerun.blueprint.components.LatestAtQueries".into(),
             "rerun.blueprint.components.TimeRangeQueries".into(),
         ]
@@ -73,7 +79,7 @@ static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 5usize]> =
         [
             "rerun.blueprint.components.DataframeQueryIndicator".into(),
             "rerun.blueprint.components.Timeline".into(),
-            "rerun.blueprint.components.DataframeViewMode".into(),
+            "rerun.blueprint.components.QueryKind".into(),
             "rerun.blueprint.components.LatestAtQueries".into(),
             "rerun.blueprint.components.TimeRangeQueries".into(),
         ]
@@ -146,10 +152,8 @@ impl ::re_types_core::Archetype for DataframeQuery {
             } else {
                 None
             };
-        let mode = if let Some(array) =
-            arrays_by_name.get("rerun.blueprint.components.DataframeViewMode")
-        {
-            <crate::blueprint::components::DataframeViewMode>::from_arrow_opt(&**array)
+        let mode = if let Some(array) = arrays_by_name.get("rerun.blueprint.components.QueryKind") {
+            <crate::blueprint::components::QueryKind>::from_arrow_opt(&**array)
                 .with_context("rerun.blueprint.archetypes.DataframeQuery#mode")?
                 .into_iter()
                 .next()
@@ -226,7 +230,9 @@ impl DataframeQuery {
         }
     }
 
-    /// Name of the timeline this applies to.
+    /// The timeline for this query.
+    ///
+    /// If unset, use the time panel's timeline and a latest at query, ignoring all other components of this archetype.
     #[inline]
     pub fn with_timeline(
         mut self,
@@ -238,15 +244,14 @@ impl DataframeQuery {
 
     /// Type of query: latest at or range
     #[inline]
-    pub fn with_mode(
-        mut self,
-        mode: impl Into<crate::blueprint::components::DataframeViewMode>,
-    ) -> Self {
+    pub fn with_mode(mut self, mode: impl Into<crate::blueprint::components::QueryKind>) -> Self {
         self.mode = Some(mode.into());
         self
     }
 
-    /// Times (1 for latest at, 2 for range)
+    /// Configuration for latest at queries.attribute
+    ///
+    /// Note: configuration as saved on a per-timeline basis.
     #[inline]
     pub fn with_latest_at_queries(
         mut self,
@@ -256,7 +261,9 @@ impl DataframeQuery {
         self
     }
 
-    /// Times (1 for latest at, 2 for range)
+    /// Configuration for the time range queries.
+    ///
+    /// Note: configuration as saved on a per-timeline basis.
     #[inline]
     pub fn with_time_range_queries(
         mut self,

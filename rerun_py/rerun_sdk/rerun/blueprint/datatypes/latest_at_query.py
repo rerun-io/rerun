@@ -35,7 +35,7 @@ def _latest_at_query__time__special_field_converter_override(x: datatypes.TimeIn
 
 @define(init=False)
 class LatestAtQuery:
-    """**Datatype**: Visible time range bounds for a specific timeline."""
+    """**Datatype**: Latest at query configuration for a specific timeline."""
 
     def __init__(self: Any, timeline: datatypes.Utf8Like, time: datatypes.TimeIntLike):
         """
@@ -46,7 +46,7 @@ class LatestAtQuery:
         timeline:
             Name of the timeline this applies to.
         time:
-            Time range to use for this timeline.
+            Time value to use for this query.
 
         """
 
@@ -59,7 +59,7 @@ class LatestAtQuery:
     # (Docstring intentionally commented out to hide this field from the docs)
 
     time: datatypes.TimeInt = field(converter=_latest_at_query__time__special_field_converter_override)
-    # Time range to use for this timeline.
+    # Time value to use for this query.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 

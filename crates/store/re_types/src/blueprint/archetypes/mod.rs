@@ -2,7 +2,6 @@
 
 mod background;
 mod dataframe_query;
-mod dataframe_view_mode;
 mod plot_legend;
 mod scalar_axis;
 mod space_view_blueprint;
@@ -17,7 +16,6 @@ mod visual_bounds2d;
 
 pub use self::background::Background;
 pub use self::dataframe_query::DataframeQuery;
-pub use self::dataframe_view_mode::DataframeViewMode;
 pub use self::plot_legend::PlotLegend;
 pub use self::scalar_axis::ScalarAxis;
 pub use self::space_view_blueprint::SpaceViewBlueprint;

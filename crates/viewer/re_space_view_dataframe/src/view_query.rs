@@ -1,7 +1,7 @@
 use egui::{NumExt, Response};
 use re_entity_db::TimeHistogram;
 use re_log_types::{TimeInt, TimeType, TimeZone, TimelineName};
-use re_types::blueprint::components::DataframeViewMode;
+use re_types::blueprint::components::QueryKind;
 use re_types::blueprint::datatypes::LatestAtQuery;
 use re_types::blueprint::{archetypes, components, datatypes};
 use re_types_core::{Archetype as _, ComponentName, Loggable as _};
@@ -52,14 +52,14 @@ impl Query {
                 .as_str(),
         );
 
-        let mode = property.component_or_fallback::<components::DataframeViewMode>(
+        let mode = property.component_or_fallback::<components::QueryKind>(
             ctx,
             fallback_provider,
             state,
         )?;
 
         let mode = match mode {
-            DataframeViewMode::LatestAt => {
+            QueryKind::LatestAt => {
                 let time = property
                     .component_or_fallback::<components::LatestAtQueries>(
                         ctx,
@@ -80,7 +80,7 @@ impl Query {
 
                 QueryMode::LatestAt { time }
             }
-            DataframeViewMode::TimeRange => {
+            QueryKind::TimeRange => {
                 let (from, to) = property
                     .component_or_fallback::<components::TimeRangeQueries>(
                         ctx,
@@ -132,7 +132,7 @@ impl Query {
             space_view_id,
         );
 
-        let current_mode = property.component_or_fallback::<components::DataframeViewMode>(
+        let current_mode = property.component_or_fallback::<components::QueryKind>(
             ctx,
             fallback_provider,
             state,
@@ -184,7 +184,7 @@ impl Query {
             // Mode
             //
 
-            let component_name = components::DataframeViewMode::name();
+            let component_name = components::QueryKind::name();
             ui.list_item_flat_noninteractive(list_item::PropertyContent::new("Mode").value_fn(
                 |ui, _| {
                     ctx.component_ui_registry.singleline_edit_ui(
@@ -210,7 +210,7 @@ impl Query {
             };
 
             match current_mode {
-                DataframeViewMode::LatestAt => {
+                QueryKind::LatestAt => {
                     //
                     // Latest At time
                     // TODO(ab): we can't use edit ui because we dont have the required context
@@ -264,7 +264,7 @@ impl Query {
                         }),
                     );
                 }
-                DataframeViewMode::TimeRange => {
+                QueryKind::TimeRange => {
                     //
                     // Range times
 

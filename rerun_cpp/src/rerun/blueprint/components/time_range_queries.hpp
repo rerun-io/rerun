@@ -18,20 +18,22 @@ namespace arrow {
 } // namespace arrow
 
 namespace rerun::blueprint::components {
-    /// **Component**: Component(s) used as point-of-view for a query.
+    /// **Component**: Configuration for time range queries.
+    ///
+    /// Note: configuration as saved on a per-timeline basis.
     struct TimeRangeQueries {
-        rerun::Collection<rerun::blueprint::datatypes::TimeRangeQuery> value;
+        rerun::Collection<rerun::blueprint::datatypes::TimeRangeQuery> queries;
 
       public:
         TimeRangeQueries() = default;
 
-        TimeRangeQueries(rerun::Collection<rerun::blueprint::datatypes::TimeRangeQuery> value_)
-            : value(std::move(value_)) {}
+        TimeRangeQueries(rerun::Collection<rerun::blueprint::datatypes::TimeRangeQuery> queries_)
+            : queries(std::move(queries_)) {}
 
         TimeRangeQueries& operator=(
-            rerun::Collection<rerun::blueprint::datatypes::TimeRangeQuery> value_
+            rerun::Collection<rerun::blueprint::datatypes::TimeRangeQuery> queries_
         ) {
-            value = std::move(value_);
+            queries = std::move(queries_);
             return *this;
         }
     };

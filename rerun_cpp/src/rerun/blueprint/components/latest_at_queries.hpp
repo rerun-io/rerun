@@ -18,20 +18,22 @@ namespace arrow {
 } // namespace arrow
 
 namespace rerun::blueprint::components {
-    /// **Component**: Component(s) used as point-of-view for a query.
+    /// **Component**: Configuration for latest at queries.
+    ///
+    /// Note: configuration as saved on a per-timeline basis.
     struct LatestAtQueries {
-        rerun::Collection<rerun::blueprint::datatypes::LatestAtQuery> value;
+        rerun::Collection<rerun::blueprint::datatypes::LatestAtQuery> queries;
 
       public:
         LatestAtQueries() = default;
 
-        LatestAtQueries(rerun::Collection<rerun::blueprint::datatypes::LatestAtQuery> value_)
-            : value(std::move(value_)) {}
+        LatestAtQueries(rerun::Collection<rerun::blueprint::datatypes::LatestAtQuery> queries_)
+            : queries(std::move(queries_)) {}
 
         LatestAtQueries& operator=(
-            rerun::Collection<rerun::blueprint::datatypes::LatestAtQuery> value_
+            rerun::Collection<rerun::blueprint::datatypes::LatestAtQuery> queries_
         ) {
-            value = std::move(value_);
+            queries = std::move(queries_);
             return *this;
         }
     };

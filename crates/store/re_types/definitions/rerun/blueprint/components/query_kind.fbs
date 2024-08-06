@@ -1,0 +1,13 @@
+namespace rerun.blueprint.components;
+
+
+/// The kind of query displayed by the dataframe view
+enum QueryKind: byte (
+    "attr.rerun.scope": "blueprint"
+) {
+    /// Query
+    LatestAt (default),
+
+    /// Time range query.
+    TimeRange,
+}

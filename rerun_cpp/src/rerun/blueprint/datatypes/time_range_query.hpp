@@ -17,15 +17,15 @@ namespace arrow {
 } // namespace arrow
 
 namespace rerun::blueprint::datatypes {
-    /// **Datatype**: Visible time range bounds for a specific timeline.
+    /// **Datatype**: Time range query configuration for a specific timeline.
     struct TimeRangeQuery {
         /// Name of the timeline this applies to.
         rerun::datatypes::Utf8 timeline;
 
-        /// Start
+        /// Begining of the time range.
         rerun::datatypes::TimeInt start;
 
-        /// End
+        /// End of the time range.
         rerun::datatypes::TimeInt end;
 
       public:

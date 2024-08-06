@@ -18,16 +18,16 @@ use ::re_types_core::SerializationResult;
 use ::re_types_core::{ComponentBatch, MaybeOwnedComponentBatch};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
-/// **Datatype**: Visible time range bounds for a specific timeline.
+/// **Datatype**: Time range query configuration for a specific timeline.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct TimeRangeQuery {
     /// Name of the timeline this applies to.
     pub timeline: crate::datatypes::Utf8,
 
-    /// Start
+    /// Begining of the time range.
     pub start: crate::datatypes::TimeInt,
 
-    /// End
+    /// End of the time range.
     pub end: crate::datatypes::TimeInt,
 }
 

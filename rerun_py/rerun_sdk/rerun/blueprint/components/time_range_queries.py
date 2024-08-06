@@ -29,17 +29,21 @@ __all__ = [
 
 @define(init=False)
 class TimeRangeQueries(ComponentMixin):
-    """**Component**: Component(s) used as point-of-view for a query."""
+    """
+    **Component**: Configuration for time range queries.
+
+    Note: configuration as saved on a per-timeline basis.
+    """
 
     _BATCH_TYPE = None
 
-    def __init__(self: Any, value: TimeRangeQueriesLike):
+    def __init__(self: Any, queries: TimeRangeQueriesLike):
         """Create a new instance of the TimeRangeQueries component."""
 
         # You can define your own __init__ function as a member of TimeRangeQueriesExt in time_range_queries_ext.py
-        self.__attrs_init__(value=value)
+        self.__attrs_init__(queries=queries)
 
-    value: list[blueprint_datatypes.TimeRangeQuery] = field()
+    queries: list[blueprint_datatypes.TimeRangeQuery] = field()
 
 
 TimeRangeQueriesLike = TimeRangeQueries

@@ -3,8 +3,8 @@
 
 #pragma once
 
-#include "../../blueprint/components/dataframe_view_mode.hpp"
 #include "../../blueprint/components/latest_at_queries.hpp"
+#include "../../blueprint/components/query_kind.hpp"
 #include "../../blueprint/components/time_range_queries.hpp"
 #include "../../blueprint/components/timeline.hpp"
 #include "../../collection.hpp"
@@ -19,18 +19,24 @@
 #include <vector>
 
 namespace rerun::blueprint::archetypes {
-    /// **Archetype**: Configuration for the dataframe view
+    /// **Archetype**: The query for the dataframe view.
     struct DataframeQuery {
-        /// Name of the timeline this applies to.
+        /// The timeline for this query.
+        ///
+        /// If unset, use the time panel's timeline and a latest at query, ignoring all other components of this archetype.
         std::optional<rerun::blueprint::components::Timeline> timeline;
 
         /// Type of query: latest at or range
-        std::optional<rerun::blueprint::components::DataframeViewMode> mode;
+        std::optional<rerun::blueprint::components::QueryKind> mode;
 
-        /// Times (1 for latest at, 2 for range)
+        /// Configuration for latest at queries.attribute
+        ///
+        /// Note: configuration as saved on a per-timeline basis.
         std::optional<rerun::blueprint::components::LatestAtQueries> latest_at_queries;
 
-        /// Times (1 for latest at, 2 for range)
+        /// Configuration for the time range queries.
+        ///
+        /// Note: configuration as saved on a per-timeline basis.
         std::optional<rerun::blueprint::components::TimeRangeQueries> time_range_queries;
 
       public:
@@ -44,7 +50,9 @@ namespace rerun::blueprint::archetypes {
         DataframeQuery() = default;
         DataframeQuery(DataframeQuery&& other) = default;
 
-        /// Name of the timeline this applies to.
+        /// The timeline for this query.
+        ///
+        /// If unset, use the time panel's timeline and a latest at query, ignoring all other components of this archetype.
         DataframeQuery with_timeline(rerun::blueprint::components::Timeline _timeline) && {
             timeline = std::move(_timeline);
             // See: https://github.com/rerun-io/rerun/issues/4027
@@ -52,13 +60,15 @@ namespace rerun::blueprint::archetypes {
         }
 
         /// Type of query: latest at or range
-        DataframeQuery with_mode(rerun::blueprint::components::DataframeViewMode _mode) && {
+        DataframeQuery with_mode(rerun::blueprint::components::QueryKind _mode) && {
             mode = std::move(_mode);
             // See: https://github.com/rerun-io/rerun/issues/4027
             RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
         }
 
-        /// Times (1 for latest at, 2 for range)
+        /// Configuration for latest at queries.attribute
+        ///
+        /// Note: configuration as saved on a per-timeline basis.
         DataframeQuery with_latest_at_queries(
             rerun::blueprint::components::LatestAtQueries _latest_at_queries
         ) && {
@@ -67,7 +77,9 @@ namespace rerun::blueprint::archetypes {
             RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
         }
 
-        /// Times (1 for latest at, 2 for range)
+        /// Configuration for the time range queries.
+        ///
+        /// Note: configuration as saved on a per-timeline basis.
         DataframeQuery with_time_range_queries(
             rerun::blueprint::components::TimeRangeQueries _time_range_queries
         ) && {

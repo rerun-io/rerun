@@ -1,14 +1,14 @@
 
 namespace rerun.blueprint.components;
 
-// ---
-//TODO: sane default
-/// Component(s) used as point-of-view for a query.
+/// Configuration for time range queries.
+///
+/// Note: configuration as saved on a per-timeline basis.
 table TimeRangeQueries (
   "attr.arrow.transparent",
   "attr.rust.derive": "Default, PartialEq, Eq",
   "attr.rust.repr": "transparent",
   "attr.rerun.scope": "blueprint"
 ) {
-    value: [rerun.blueprint.datatypes.TimeRangeQuery] (order: 100);
+    queries: [rerun.blueprint.datatypes.TimeRangeQuery] (order: 100);
 }
