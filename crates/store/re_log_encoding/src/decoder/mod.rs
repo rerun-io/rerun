@@ -378,7 +378,8 @@ fn test_encode_decode() {
 
     for options in options {
         let mut file = vec![];
-        crate::encoder::encode(rrd_version, options, messages.iter(), &mut file).unwrap();
+        crate::encoder::encode_ref(rrd_version, options, messages.iter().map(Ok), &mut file)
+            .unwrap();
 
         let decoded_messages = Decoder::new(VersionPolicy::Error, &mut file.as_slice())
             .unwrap()
