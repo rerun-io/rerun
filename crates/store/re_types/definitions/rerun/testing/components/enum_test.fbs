@@ -1,4 +1,4 @@
-namespace rerun.testing.components;
+namespace rerun.testing.datatypes;
 
 /// A test of the enum type.
 enum EnumTest: byte {
@@ -37,4 +37,12 @@ enum ValuedEnum: byte {
 
     /// The answer to life, the universe, and everything.
     TheAnswer = 42,
+}
+
+table MultiEnum {
+    /// The first value.
+    value1: EnumTest (order: 100);
+
+    /// The second value.
+    value2: ValuedEnum (order: 200, nullable);
 }
