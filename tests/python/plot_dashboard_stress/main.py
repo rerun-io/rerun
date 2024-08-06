@@ -183,7 +183,7 @@ def main() -> None:
                 else:
                     value_index = slice(index, index + args.temporal_batch_size)
                     value_batch = rr.components.ScalarBatch(values[value_index, plot_idx, series_idx])
-                    rr.log_temporal_batch(
+                    rr.send_columns(
                         f"{plot_path}/{series_path}",
                         times=[time_batch],
                         components=[value_batch],

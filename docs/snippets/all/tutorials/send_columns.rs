@@ -1,10 +1,10 @@
-//! Very minimal test of using the temporal batch APIs.
+//! Very minimal test of using the send columns APIs.
 
 use rerun::components::Scalar;
 use rerun::TimeColumn;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let rec = rerun::RecordingStreamBuilder::new("rerun_example_temporal_batch").spawn()?;
+    let rec = rerun::RecordingStreamBuilder::new("rerun_example_send_columns").spawn()?;
 
     // Native time / scalars
     let timeline_values = (0..64).collect::<Vec<_>>();
@@ -18,7 +18,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let timeline_values = TimeColumn::new_sequence("step", timeline_values);
     let scalar_data: Vec<Scalar> = scalar_data.into_iter().map(Into::into).collect();
 
-    rec.log_temporal_batch("scalars", [timeline_values], [&scalar_data as _])?;
+    rec.send_columns("scalars", [timeline_values], [&scalar_data as _])?;
 
     Ok(())
 }

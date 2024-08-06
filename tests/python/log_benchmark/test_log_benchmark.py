@@ -94,7 +94,7 @@ def test_bench_transforms_over_time_batched(
         end = (i + 1) * num_transforms_per_batch
         times = np.arange(start, end)
 
-        rr.log_temporal_batch(
+        rr.send_columns(
             "test_transform",
             times=[rr.TimeSequenceBatch("frame", times)],
             components=[

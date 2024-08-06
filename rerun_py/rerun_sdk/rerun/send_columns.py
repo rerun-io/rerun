@@ -81,7 +81,7 @@ TArchetype = TypeVar("TArchetype", bound=Archetype)
 
 
 @catch_and_log_exceptions()
-def log_temporal_batch(
+def send_columns(
     entity_path: str,
     times: Iterable[TimeBatchLike],
     components: Iterable[ComponentBatchLike],
@@ -89,7 +89,7 @@ def log_temporal_batch(
     strict: bool | None = None,
 ) -> None:
     r"""
-    Directly log a temporal batch of data to Rerun.
+    Directly log a columns of data to Rerun.
 
     Unlike the regular `log` API, which is row-oriented, this API lets you submit the data
     in a columnar form. Each `TimeBatchLike` and `ComponentBatchLike` object represents a column
@@ -108,7 +108,7 @@ def log_temporal_batch(
     times = np.arange(0, 64)
     scalars = np.sin(times / 10.0)
 
-    rr.log_temporal_batch(
+    rr.send_columns(
         "scalars",
         times=[rr.TimeSequenceBatch("step", times)],
         components=[rr.components.ScalarBatch(scalars)],
@@ -116,7 +116,7 @@ def log_temporal_batch(
     ```
     In the viewer this will show up as 64 individual scalar values, one for each timepoint.
 
-    However, it is still possible to log temporal batches of batch data. To do this the source data first must
+    However, it is still possible to send temporal batches of batch data. To do this the source data first must
     be created as a single contiguous batch, and can then be partitioned using the `.partition()` helper on the
     `ComponentBatch` objects.
 
@@ -126,7 +126,7 @@ def log_temporal_batch(
     times = np.arange(0, 5)
     positions = rng.uniform(-5, 5, size=[100, 3])
 
-    rr.log_temporal_batch(
+    rr.send_columns(
         "points",
         times=[rr.TimeSequenceBatch("step", times)],
         components=[
@@ -164,15 +164,15 @@ def log_temporal_batch(
     timelines_args = {}
     for t in times:
         timeline_name = t.timeline_name()
-        temporal_batch = t.as_arrow_array()
+        time_column = t.as_arrow_array()
         if expected_length is None:
-            expected_length = len(temporal_batch)
-        elif len(temporal_batch) != expected_length:
+            expected_length = len(time_column)
+        elif len(time_column) != expected_length:
             raise ValueError(
-                f"All times and components in a batch must have the same length. Expected length: {expected_length} but got: {len(temporal_batch)} for timeline: {timeline_name}"
+                f"All times and components in a batch must have the same length. Expected length: {expected_length} but got: {len(time_column)} for timeline: {timeline_name}"
             )
 
-        timelines_args[timeline_name] = temporal_batch
+        timelines_args[timeline_name] = time_column
 
     indicators = []
 
@@ -182,15 +182,15 @@ def log_temporal_batch(
             indicators.append(c)
             continue
         component_name = c.component_name()
-        temporal_batch = c.as_arrow_array()  # type: ignore[union-attr]
+        component_column = c.as_arrow_array()  # type: ignore[union-attr]
         if expected_length is None:
-            expected_length = len(temporal_batch)
-        elif len(temporal_batch) != expected_length:
+            expected_length = len(component_column)
+        elif len(component_column) != expected_length:
             raise ValueError(
-                f"All times and components in a batch must have the same length. Expected length: {expected_length} but got: {len(temporal_batch)} for component: {component_name}"
+                f"All times and components in a batch must have the same length. Expected length: {expected_length} but got: {len(component_column)} for component: {component_name}"
             )
 
-        components_args[component_name] = temporal_batch
+        components_args[component_name] = component_column
 
     for i in indicators:
         if expected_length is None:

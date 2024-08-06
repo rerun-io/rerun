@@ -902,7 +902,7 @@ impl RecordingStream {
     /// [`Self::set_timepoint`]/[`Self::set_time_nanos`]/etc. APIs.
     /// Furthermore, this will _not_ inject the default timelines `log_tick` and `log_time` timeline columns.
     #[inline]
-    pub fn log_temporal_batch<'a>(
+    pub fn send_columns<'a>(
         &self,
         ent_path: impl Into<EntityPath>,
         timelines: impl IntoIterator<Item = TimeColumn>,
