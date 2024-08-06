@@ -13,7 +13,7 @@ use itertools::{izip, Itertools};
 use re_log_types::{TimeInt, TimePoint, Timeline};
 use re_types_core::{ArrowBuffer, ArrowString, Component, ComponentName};
 
-use crate::{Chunk, ChunkTimeline, RowId};
+use crate::{Chunk, TimeColumn, RowId};
 
 // ---
 
@@ -40,11 +40,11 @@ impl Chunk {
                 self.row_ids()
             )))
         } else {
-            let Some(time_chunk) = self.timelines.get(timeline) else {
+            let Some(time_column) = self.timelines.get(timeline) else {
                 return Either::Left(std::iter::empty());
             };
 
-            Either::Right(Either::Right(izip!(time_chunk.times(), self.row_ids())))
+            Either::Right(Either::Right(izip!(time_column.times(), self.row_ids())))
         }
     }
 
@@ -79,11 +79,11 @@ impl Chunk {
                 Either::Right(Either::Left(Either::Right(indices)))
             }
         } else {
-            let Some(time_chunk) = self.timelines.get(timeline) else {
+            let Some(time_column) = self.timelines.get(timeline) else {
                 return Either::Left(std::iter::empty());
             };
 
-            let indices = izip!(time_chunk.times(), self.row_ids());
+            let indices = izip!(time_column.times(), self.row_ids());
 
             if let Some(validity) = list_array.validity() {
                 Either::Right(Either::Right(Either::Left(
@@ -106,7 +106,7 @@ impl Chunk {
         let mut timelines = self
             .timelines
             .values()
-            .map(|time_chunk| (time_chunk.timeline, time_chunk.times()))
+            .map(|time_column| (time_column.timeline, time_column.times()))
             .collect_vec();
 
         std::iter::from_fn(move || {
@@ -136,10 +136,10 @@ impl Chunk {
             let mut timelines = self
                 .timelines
                 .values()
-                .map(|time_chunk| {
+                .map(|time_column| {
                     (
-                        time_chunk.timeline,
-                        time_chunk
+                        time_column.timeline,
+                        time_column
                             .times()
                             .enumerate()
                             .filter(|(i, _)| validity.get_bit(*i))
@@ -159,7 +159,7 @@ impl Chunk {
             let mut timelines = self
                 .timelines
                 .values()
-                .map(|time_chunk| (time_chunk.timeline, time_chunk.times()))
+                .map(|time_column| (time_column.timeline, time_column.times()))
                 .collect_vec();
 
             Either::Right(Either::Right(std::iter::from_fn(move || {
@@ -533,7 +533,7 @@ impl Chunk {
 pub struct ChunkIndicesIter {
     chunk: Arc<Chunk>,
 
-    time_chunk: Option<ChunkTimeline>,
+    time_column: Option<TimeColumn>,
     index: usize,
 }
 
@@ -555,8 +555,8 @@ impl Iterator for ChunkIndicesIter {
             RowId::from_u128(((time as u128) << 64) | (inc as u128))
         };
 
-        if let Some(time_chunk) = &self.time_chunk {
-            let time = *time_chunk.times_raw().get(i)?;
+        if let Some(time_column) = &self.time_column {
+            let time = *time_column.times_raw().get(i)?;
             let time = TimeInt::new_temporal(time);
             Some((time, row_id))
         } else {
@@ -582,16 +582,16 @@ impl Chunk {
         if self.is_static() {
             Either::Left(ChunkIndicesIter {
                 chunk: self,
-                time_chunk: None,
+                time_column: None,
                 index: 0,
             })
         } else {
             self.timelines.get(timeline).cloned().map_or_else(
                 || Either::Right(Either::Left(std::iter::empty())),
-                |time_chunk| {
+                |time_column| {
                     Either::Right(Either::Right(ChunkIndicesIter {
                         chunk: self,
-                        time_chunk: Some(time_chunk),
+                        time_column: Some(time_column),
                         index: 0,
                     }))
                 },
@@ -789,7 +789,7 @@ mod tests {
                 chunk
                     .timelines
                     .get(&timeline_frame)
-                    .map(|time_chunk| time_chunk.times().collect_vec())
+                    .map(|time_column| time_column.times().collect_vec())
                     .unwrap_or_default(),
                 chunk.row_ids()
             )

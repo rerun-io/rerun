@@ -455,9 +455,9 @@ impl EntityDb {
                 chunk
                     .timelines()
                     .get(&timeline)
-                    .map_or(false, |time_chunk| {
-                        time_range.contains(time_chunk.time_range().min())
-                            || time_range.contains(time_chunk.time_range().max())
+                    .map_or(false, |time_column| {
+                        time_range.contains(time_column.time_range().min())
+                            || time_range.contains(time_column.time_range().max())
                     })
             })
             .map(|chunk| {

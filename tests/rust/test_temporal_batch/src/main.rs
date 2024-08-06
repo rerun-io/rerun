@@ -1,6 +1,6 @@
 //! Very minimal test of using the temporal batch APIs.
 
-use re_chunk::ChunkTimeline;
+use re_chunk::TimeColumn;
 use rerun::components::Scalar;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -15,7 +15,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         .collect();
 
     // Convert to rerun time / scalars
-    let timeline_values = ChunkTimeline::new_sequence("step", timeline_values);
+    let timeline_values = TimeColumn::new_sequence("step", timeline_values);
     let scalar_data: Vec<Scalar> = scalar_data.into_iter().map(Into::into).collect();
 
     rec.log_temporal_batch("scalar", [timeline_values], [&scalar_data as _])?;

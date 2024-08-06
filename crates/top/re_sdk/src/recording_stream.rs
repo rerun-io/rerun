@@ -13,7 +13,7 @@ use parking_lot::Mutex;
 use arrow2::array::{ListArray as ArrowListArray, PrimitiveArray as ArrowPrimitiveArray};
 use re_chunk::{Chunk, ChunkBatcher, ChunkBatcherConfig, ChunkBatcherError, PendingRow, RowId};
 
-use re_chunk::{ChunkError, ChunkId, ChunkTimeline, ComponentName};
+use re_chunk::{ChunkError, ChunkId, ComponentName, TimeColumn};
 use re_log_types::{
     ApplicationId, ArrowChunkReleaseCallback, BlueprintActivationCommand, EntityPath, LogMsg,
     StoreId, StoreInfo, StoreKind, StoreSource, Time, TimeInt, TimePoint, TimeType, Timeline,
@@ -894,7 +894,7 @@ impl RecordingStream {
     /// Lower-level logging API to provide data spanning multiple timepoints.
     ///
     /// Unlike the regular `log` API, which is row-oriented, this API lets you submit the data
-    /// in a columnar form. The lengths of all of the [`ChunkTimeline`] and the [`ArrowListArray`]s
+    /// in a columnar form. The lengths of all of the [`TimeColumn`] and the [`ArrowListArray`]s
     /// must match. All data that occurs at the same index across the different time and components
     /// arrays will act as a single logical row.
     ///
@@ -905,7 +905,7 @@ impl RecordingStream {
     pub fn log_temporal_batch<'a>(
         &self,
         ent_path: impl Into<EntityPath>,
-        timelines: impl IntoIterator<Item = ChunkTimeline>,
+        timelines: impl IntoIterator<Item = TimeColumn>,
         components: impl IntoIterator<Item = &'a dyn ComponentBatch>,
     ) -> RecordingStreamResult<()> {
         let id = ChunkId::new();
@@ -1464,9 +1464,9 @@ impl RecordingStream {
                 )
                 .to(time_timeline.datatype());
 
-                let time_chunk = ChunkTimeline::new(Some(true), time_timeline, repeated_time);
+                let time_column = TimeColumn::new(Some(true), time_timeline, repeated_time);
 
-                if let Err(err) = chunk.add_timeline(time_chunk) {
+                if let Err(err) = chunk.add_timeline(time_column) {
                     re_log::error!(
                         "Couldn't inject '{}' timeline into chunk (this is a bug in Rerun!): {}",
                         time_timeline.name(),
@@ -1488,7 +1488,7 @@ impl RecordingStream {
                 )
                 .to(tick_timeline.datatype());
 
-                let tick_chunk = ChunkTimeline::new(Some(true), tick_timeline, repeated_tick);
+                let tick_chunk = TimeColumn::new(Some(true), tick_timeline, repeated_tick);
 
                 if let Err(err) = chunk.add_timeline(tick_chunk) {
                     re_log::error!(

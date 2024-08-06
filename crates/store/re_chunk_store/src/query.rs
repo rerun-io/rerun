@@ -555,8 +555,8 @@ impl ChunkStore {
                 chunk
                     .timelines()
                     .get(&query.timeline())
-                    .map_or(false, |time_chunk| {
-                        time_chunk
+                    .map_or(false, |time_column| {
+                        time_column
                             .time_range_per_component(chunk.components())
                             .get(&component_name)
                             .map_or(false, |time_range| time_range.intersects(query.range()))
@@ -607,8 +607,8 @@ impl ChunkStore {
                 chunk
                     .timelines()
                     .get(&query.timeline())
-                    .map_or(false, |time_chunk| {
-                        time_chunk.time_range().intersects(query.range())
+                    .map_or(false, |time_column| {
+                        time_column.time_range().intersects(query.range())
                     })
             })
             .collect_vec();

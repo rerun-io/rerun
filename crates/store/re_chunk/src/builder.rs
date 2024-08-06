@@ -10,7 +10,7 @@ use nohash_hasher::IntMap;
 use re_log_types::{EntityPath, TimeInt, TimePoint, Timeline};
 use re_types_core::{AsComponents, ComponentBatch, ComponentName};
 
-use crate::{Chunk, ChunkId, ChunkResult, ChunkTimeline, RowId};
+use crate::{Chunk, ChunkId, ChunkResult, RowId, TimeColumn};
 
 // ---
 
@@ -22,7 +22,7 @@ pub struct ChunkBuilder {
     entity_path: EntityPath,
 
     row_ids: Vec<RowId>,
-    timelines: BTreeMap<Timeline, ChunkTimelineBuilder>,
+    timelines: BTreeMap<Timeline, TimeColumnBuilder>,
     components: BTreeMap<ComponentName, Vec<Option<Box<dyn ArrowArray>>>>,
 }
 
@@ -80,7 +80,7 @@ impl ChunkBuilder {
         for (timeline, time) in timepoint.into() {
             self.timelines
                 .entry(timeline)
-                .or_insert_with(|| ChunkTimeline::builder(timeline))
+                .or_insert_with(|| TimeColumn::builder(timeline))
                 .with_row(time);
         }
 
@@ -223,7 +223,7 @@ impl ChunkBuilder {
             &row_ids,
             timelines
                 .into_iter()
-                .map(|(timeline, time_chunk)| (timeline, time_chunk.build()))
+                .map(|(timeline, time_column)| (timeline, time_column.build()))
                 .collect(),
             components
                 .into_iter()
@@ -271,7 +271,7 @@ impl ChunkBuilder {
             &row_ids,
             timelines
                 .into_iter()
-                .map(|(timeline, time_chunk)| (timeline, time_chunk.build()))
+                .map(|(timeline, time_column)| (timeline, time_column.build()))
                 .collect(),
             components
                 .into_iter()
@@ -295,27 +295,27 @@ impl ChunkBuilder {
 
 // ---
 
-/// Helper to incrementally build a [`ChunkTimeline`].
+/// Helper to incrementally build a [`TimeColumn`].
 ///
-/// Can be created using [`ChunkTimeline::builder`].
-pub struct ChunkTimelineBuilder {
+/// Can be created using [`TimeColumn::builder`].
+pub struct TimeColumnBuilder {
     timeline: Timeline,
 
     times: Vec<i64>,
 }
 
-impl ChunkTimeline {
-    /// Initializes a new [`ChunkTimelineBuilder`].
+impl TimeColumn {
+    /// Initializes a new [`TimeColumnBuilder`].
     #[inline]
-    pub fn builder(timeline: Timeline) -> ChunkTimelineBuilder {
-        ChunkTimelineBuilder::new(timeline)
+    pub fn builder(timeline: Timeline) -> TimeColumnBuilder {
+        TimeColumnBuilder::new(timeline)
     }
 }
 
-impl ChunkTimelineBuilder {
-    /// Initializes a new [`ChunkTimelineBuilder`].
+impl TimeColumnBuilder {
+    /// Initializes a new [`TimeColumnBuilder`].
     ///
-    /// See also [`ChunkTimeline::builder`].
+    /// See also [`TimeColumn::builder`].
     #[inline]
     pub fn new(timeline: Timeline) -> Self {
         Self {
@@ -334,12 +334,12 @@ impl ChunkTimelineBuilder {
         self
     }
 
-    /// Builds and returns the final [`ChunkTimeline`].
+    /// Builds and returns the final [`TimeColumn`].
     #[inline]
-    pub fn build(self) -> ChunkTimeline {
+    pub fn build(self) -> TimeColumn {
         let Self { timeline, times } = self;
 
         let times = ArrowPrimitiveArray::<i64>::from_vec(times).to(timeline.datatype());
-        ChunkTimeline::new(None, timeline, times)
+        TimeColumn::new(None, timeline, times)
     }
 }

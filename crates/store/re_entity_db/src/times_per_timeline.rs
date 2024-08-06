@@ -56,10 +56,10 @@ impl ChunkStoreSubscriber for TimesPerTimeline {
         re_tracing::profile_function!(format!("num_events={}", events.len()));
 
         for event in events {
-            for (&timeline, time_chunk) in event.chunk.timelines() {
+            for (&timeline, time_column) in event.chunk.timelines() {
                 let per_time = self.0.entry(timeline).or_default();
 
-                for time in time_chunk.times() {
+                for time in time_column.times() {
                     let count = per_time.entry(time).or_default();
 
                     let delta = event.delta();

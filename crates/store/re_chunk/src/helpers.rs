@@ -212,8 +212,8 @@ impl UnitChunkShared {
                 .next()
                 .map(|row_id| (TimeInt::STATIC, row_id))
         } else {
-            self.timelines.get(timeline).and_then(|time_chunk| {
-                time_chunk
+            self.timelines.get(timeline).and_then(|time_column| {
+                time_column
                     .times()
                     .next()
                     .and_then(|time| self.row_ids().next().map(|row_id| (time, row_id)))

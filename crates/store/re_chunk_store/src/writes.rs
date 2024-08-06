@@ -199,12 +199,12 @@ impl ChunkStore {
                     .entry(chunk_or_compacted.entity_path().clone())
                     .or_default();
 
-                for (timeline, time_chunk) in chunk_or_compacted.timelines() {
+                for (timeline, time_column) in chunk_or_compacted.timelines() {
                     let temporal_chunk_ids_per_time = temporal_chunk_ids_per_timeline
                         .entry(*timeline)
                         .or_default();
 
-                    let time_range = time_chunk.time_range();
+                    let time_range = time_column.time_range();
 
                     // See `ChunkIdSetPerTime::max_interval_length`'s documentation.
                     temporal_chunk_ids_per_time.max_interval_length = u64::max(
