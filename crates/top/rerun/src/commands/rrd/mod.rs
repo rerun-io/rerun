@@ -19,7 +19,9 @@ pub enum RrdCommands {
     /// This ignores the `log_time` timeline.
     Compare(CompareCommand),
 
-    /// Print the contents of one or more .rrd/.rbl files.
+    /// Print the contents of one or more .rrd/.rbl files/streams.
+    ///
+    /// Reads from standard input if no paths are specified.
     ///
     /// Example: `rerun rrd print /my/recordings/*.rrd`
     Print(PrintCommand),
