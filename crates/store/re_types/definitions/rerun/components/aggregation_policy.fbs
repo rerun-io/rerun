@@ -6,6 +6,9 @@ namespace rerun.components;
 /// i.e. a single pixel covers more than one tick worth of data. It can greatly improve performance
 /// (and readability) in such situations as it prevents overdraw.
 enum AggregationPolicy: byte {
+    /// Invalid value. Won't show up in generated types.
+    Invalid = 0,
+
     /// No aggregation.
     Off,
 

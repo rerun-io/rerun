@@ -26,13 +26,13 @@ namespace rerun::components {
     enum class ColorModel : uint8_t {
 
         /// Grayscale luminance intencity/brightness/value, sometimes called `Y`
-        L = 0,
+        L = 1,
 
         /// Red, Green, Blue
-        RGB = 1,
+        RGB = 2,
 
         /// Red, Green, Blue, Alpha
-        RGBA = 2,
+        RGBA = 3,
     };
 } // namespace rerun::components
 

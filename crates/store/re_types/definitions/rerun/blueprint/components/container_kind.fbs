@@ -6,6 +6,9 @@ enum ContainerKind: byte (
     "attr.rerun.scope": "blueprint",
     "attr.rust.override_crate": "re_types_blueprint"
 ) {
+    /// Invalid value. Won't show up in generated types.
+    Invalid = 0,
+
     /// Put children in separate tabs
     Tabs,
 

@@ -5,6 +5,9 @@ enum Corner2D: byte (
     "attr.rerun.scope": "blueprint",
     "attr.rust.derive": "Copy, PartialEq, Eq"
 ) {
+    /// Invalid value. Won't show up in generated types.
+    Invalid = 0,
+
     /// Left top corner.
     LeftTop,
 

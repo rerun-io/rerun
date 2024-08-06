@@ -9,6 +9,9 @@ enum PanelState: byte (
   "attr.rust.repr": "transparent",
   "attr.rust.tuple_struct"
 ) {
+      /// Invalid value. Won't show up in generated types.
+    Invalid = 0,
+
   /// Completely hidden.
   Hidden,
 

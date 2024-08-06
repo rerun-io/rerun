@@ -37,12 +37,12 @@ namespace rerun::components {
         ///
         /// First comes entire image in Y in one plane,
         /// followed by a plane with interleaved lines ordered as U0, V0, U1, V1, etc.
-        NV12 = 0,
+        NV12 = 1,
 
         /// YUY2 (aka YUYV or YUYV16), is a YUV 4:2:2 chroma downsampled format with 16 bits per pixel and 8 bits per channel.
         ///
         /// The order of the channels is Y0, U0, Y1, V0, all in the same plane.
-        YUY2 = 1,
+        YUY2 = 2,
     };
 } // namespace rerun::components
 

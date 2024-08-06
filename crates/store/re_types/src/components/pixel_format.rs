@@ -38,13 +38,13 @@ pub enum PixelFormat {
     /// followed by a plane with interleaved lines ordered as U0, V0, U1, V1, etc.
     #[default]
     #[allow(clippy::upper_case_acronyms)]
-    NV12 = 0,
+    NV12 = 1,
 
     /// YUY2 (aka YUYV or YUYV16), is a YUV 4:2:2 chroma downsampled format with 16 bits per pixel and 8 bits per channel.
     ///
     /// The order of the channels is Y0, U0, Y1, V0, all in the same plane.
     #[allow(clippy::upper_case_acronyms)]
-    YUY2 = 1,
+    YUY2 = 2,
 }
 
 impl ::re_types_core::reflection::Enum for PixelFormat {
@@ -156,8 +156,8 @@ impl ::re_types_core::Loggable for PixelFormat {
             .into_iter()
             .map(|opt| opt.copied())
             .map(|typ| match typ {
-                Some(0u8) => Ok(Some(Self::NV12)),
-                Some(1u8) => Ok(Some(Self::YUY2)),
+                Some(1) => Ok(Some(Self::NV12)),
+                Some(2) => Ok(Some(Self::YUY2)),
                 None => Ok(None),
                 Some(invalid) => Err(DeserializationError::missing_union_arm(
                     Self::arrow_datatype(),

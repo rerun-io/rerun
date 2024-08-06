@@ -4,6 +4,9 @@ namespace rerun.components;
 /// The visual appearance of a point in e.g. a 2D plot.
 enum MarkerShape: byte
  {
+    /// Invalid value. Won't show up in generated types.
+    Invalid = 0,
+
     /// `⏺`
     Circle (default),
 

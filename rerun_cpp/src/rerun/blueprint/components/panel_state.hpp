@@ -24,13 +24,13 @@ namespace rerun::blueprint::components {
     enum class PanelState : uint8_t {
 
         /// Completely hidden.
-        Hidden = 0,
+        Hidden = 1,
 
         /// Visible, but as small as possible on its shorter axis.
-        Collapsed = 1,
+        Collapsed = 2,
 
         /// Fully expanded.
-        Expanded = 2,
+        Expanded = 3,
     };
 } // namespace rerun::blueprint::components
 

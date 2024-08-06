@@ -24,10 +24,10 @@ from enum import Enum
 class SortKey(Enum):
     """**Component**: Primary element by which to group by in a temporal data table."""
 
-    Entity = 0
+    Entity = 1
     """Group by entity."""
 
-    Time = 1
+    Time = 2
     """Group by instance."""
 
     @classmethod

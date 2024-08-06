@@ -30,14 +30,14 @@ from enum import Enum
 class DataframeViewMode(Enum):
     """**Component**: The kind of table displayed by the dataframe view."""
 
-    LatestAt = 0
+    LatestAt = 1
     """
     Display the entity values at the current time.
 
     In this mode, rows are entity instances, and columns are components. The visible time range setting is ignored.
     """
 
-    TimeRange = 1
+    TimeRange = 2
     """
     Display a temporal table of entity values.
 

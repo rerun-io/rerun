@@ -26,15 +26,15 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 pub enum ColorModel {
     /// Grayscale luminance intencity/brightness/value, sometimes called `Y`
     #[default]
-    L = 0,
+    L = 1,
 
     /// Red, Green, Blue
     #[allow(clippy::upper_case_acronyms)]
-    RGB = 1,
+    RGB = 2,
 
     /// Red, Green, Blue, Alpha
     #[allow(clippy::upper_case_acronyms)]
-    RGBA = 2,
+    RGBA = 3,
 }
 
 impl ::re_types_core::reflection::Enum for ColorModel {
@@ -144,9 +144,9 @@ impl ::re_types_core::Loggable for ColorModel {
             .into_iter()
             .map(|opt| opt.copied())
             .map(|typ| match typ {
-                Some(0u8) => Ok(Some(Self::L)),
-                Some(1u8) => Ok(Some(Self::RGB)),
-                Some(2u8) => Ok(Some(Self::RGBA)),
+                Some(1) => Ok(Some(Self::L)),
+                Some(2) => Ok(Some(Self::RGB)),
+                Some(3) => Ok(Some(Self::RGBA)),
                 None => Ok(None),
                 Some(invalid) => Err(DeserializationError::missing_union_arm(
                     Self::arrow_datatype(),

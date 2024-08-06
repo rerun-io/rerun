@@ -22,9 +22,6 @@ from enum import Enum
 class ValuedEnum(Enum):
     """**Datatype**: A test of an enumate with specified values."""
 
-    Default = 0
-    """Default value."""
-
     One = 1
     """One."""
 
@@ -58,11 +55,7 @@ class ValuedEnum(Enum):
         return self.name
 
 
-ValuedEnumLike = Union[
-    ValuedEnum,
-    Literal["Default", "One", "TheAnswer", "Three", "Two", "default", "one", "theanswer", "three", "two"],
-    int,
-]
+ValuedEnumLike = Union[ValuedEnum, Literal["One", "TheAnswer", "Three", "Two", "one", "theanswer", "three", "two"], int]
 ValuedEnumArrayLike = Union[ValuedEnumLike, Sequence[ValuedEnumLike]]
 
 

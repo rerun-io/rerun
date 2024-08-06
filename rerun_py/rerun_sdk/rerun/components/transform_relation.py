@@ -30,7 +30,7 @@ from enum import Enum
 class TransformRelation(Enum):
     """**Component**: Specifies relation a spatial transform describes."""
 
-    ParentFromChild = 0
+    ParentFromChild = 1
     """
     The transform describes how to transform into the parent entity's space.
 
@@ -39,7 +39,7 @@ class TransformRelation(Enum):
     From perspective of `parent/child`, the `parent` entity is translated -1 unit along `parent/child`'s Y axis.
     """
 
-    ChildFromParent = 1
+    ChildFromParent = 2
     """
     The transform describes how to transform into the child entity's space.
 

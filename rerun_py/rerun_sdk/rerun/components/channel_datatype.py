@@ -35,37 +35,37 @@ class ChannelDatatype(ChannelDatatypeExt, Enum):
     How individual color channel components are encoded.
     """
 
-    U8 = 0
+    U8 = 1
     """8-bit unsigned integer."""
 
-    U16 = 1
+    U16 = 2
     """16-bit unsigned integer."""
 
-    U32 = 2
+    U32 = 3
     """32-bit unsigned integer."""
 
-    U64 = 3
+    U64 = 4
     """64-bit unsigned integer."""
 
-    I8 = 4
+    I8 = 5
     """8-bit signed integer."""
 
-    I16 = 5
+    I16 = 6
     """16-bit signed integer."""
 
-    I32 = 6
+    I32 = 7
     """32-bit signed integer."""
 
-    I64 = 7
+    I64 = 8
     """64-bit signed integer."""
 
-    F16 = 8
+    F16 = 9
     """16-bit IEEE-754 floating point, also known as `half`."""
 
-    F32 = 9
+    F32 = 10
     """32-bit IEEE-754 floating point, also known as `float` or `single`."""
 
-    F64 = 10
+    F64 = 11
     """64-bit IEEE-754 floating point, also known as `double`."""
 
     @classmethod

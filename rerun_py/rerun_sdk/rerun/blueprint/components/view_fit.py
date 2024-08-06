@@ -24,13 +24,13 @@ from enum import Enum
 class ViewFit(Enum):
     """**Component**: Determines whether an image or texture should be scaled to fit the viewport."""
 
-    Original = 0
+    Original = 1
     """No scaling, pixel size will match the image's width/height dimensions in pixels."""
 
-    Fill = 1
+    Fill = 2
     """Scale the image for the largest possible fit in the view's container."""
 
-    FillKeepAspectRatio = 2
+    FillKeepAspectRatio = 3
     """Scale the image for the largest possible fit in the view's container, but keep the original aspect ratio."""
 
     @classmethod

@@ -36,7 +36,7 @@ class PixelFormat(Enum):
     For more compressed image formats, see [`archetypes.ImageEncoded`][rerun.archetypes.ImageEncoded].
     """
 
-    NV12 = 0
+    NV12 = 1
     """
     NV12 (aka Y_UV12) is a YUV 4:2:0 chroma downsampled format with 12 bits per pixel and 8 bits per channel.
 
@@ -44,7 +44,7 @@ class PixelFormat(Enum):
     followed by a plane with interleaved lines ordered as U0, V0, U1, V1, etc.
     """
 
-    YUY2 = 1
+    YUY2 = 2
     """
     YUY2 (aka YUYV or YUYV16), is a YUV 4:2:2 chroma downsampled format with 16 bits per pixel and 8 bits per channel.
 

@@ -22,22 +22,22 @@ from enum import Enum
 class EnumTest(Enum):
     """**Datatype**: A test of the enum type."""
 
-    Up = 0
+    Up = 1
     """Great film."""
 
-    Down = 1
+    Down = 2
     """Feeling blue."""
 
-    Right = 2
+    Right = 3
     """Correct."""
 
-    Left = 3
+    Left = 4
     """It's what's remaining."""
 
-    Forward = 4
+    Forward = 5
     """It's the only way to go."""
 
-    Back = 5
+    Back = 6
     """Baby's got it."""
 
     @classmethod

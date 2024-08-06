@@ -30,25 +30,25 @@ namespace rerun::components {
         /// A simple black to white gradient.
         ///
         /// This is a sRGB gray gradient which is perceptually uniform.
-        Grayscale = 0,
+        Grayscale = 1,
 
         /// The Inferno colormap from Matplotlib.
         ///
         /// This is a perceptually uniform colormap.
         /// It interpolates from black to red to bright yellow.
-        Inferno = 1,
+        Inferno = 2,
 
         /// The Magma colormap from Matplotlib.
         ///
         /// This is a perceptually uniform colormap.
         /// It interpolates from black to purple to white.
-        Magma = 2,
+        Magma = 3,
 
         /// The Plasma colormap from Matplotlib.
         ///
         /// This is a perceptually uniform colormap.
         /// It interpolates from dark blue to purple to yellow.
-        Plasma = 3,
+        Plasma = 4,
 
         /// Google's Turbo colormap map.
         ///
@@ -56,20 +56,20 @@ namespace rerun::components {
         /// more traditional rainbow colormaps like Jet.
         /// It is more perceptually uniform without sharp transitions and is more colorblind-friendly.
         /// Details: <https://research.google/blog/turbo-an-improved-rainbow-colormap-for-visualization/>
-        Turbo = 4,
+        Turbo = 5,
 
         /// The Viridis colormap from Matplotlib
         ///
         /// This is a perceptually uniform colormap which is robust to color blindness.
         /// It interpolates from dark purple to green to yellow.
-        Viridis = 5,
+        Viridis = 6,
 
         /// Rasmusgo's Cyan to Yellow colormap
         ///
         /// This is a perceptually uniform colormap which is robust to color blindness.
         /// It is especially suited for visualizing signed values.
         /// It interpolates from cyan to blue to dark gray to brass to yellow.
-        CyanToYellow = 6,
+        CyanToYellow = 7,
     };
 } // namespace rerun::components
 

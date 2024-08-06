@@ -4,6 +4,9 @@ namespace rerun.components;
 enum FillMode: byte(
     "attr.docs.unreleased"
 ) {
+    /// Invalid value. Won't show up in generated types.
+    Invalid = 0,
+
     /// Lines are drawn around the edges of the shape.
     ///
     /// The interior (2D) or surface (3D) are not drawn.

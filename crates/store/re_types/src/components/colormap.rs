@@ -29,25 +29,25 @@ pub enum Colormap {
     /// A simple black to white gradient.
     ///
     /// This is a sRGB gray gradient which is perceptually uniform.
-    Grayscale = 0,
+    Grayscale = 1,
 
     /// The Inferno colormap from Matplotlib.
     ///
     /// This is a perceptually uniform colormap.
     /// It interpolates from black to red to bright yellow.
-    Inferno = 1,
+    Inferno = 2,
 
     /// The Magma colormap from Matplotlib.
     ///
     /// This is a perceptually uniform colormap.
     /// It interpolates from black to purple to white.
-    Magma = 2,
+    Magma = 3,
 
     /// The Plasma colormap from Matplotlib.
     ///
     /// This is a perceptually uniform colormap.
     /// It interpolates from dark blue to purple to yellow.
-    Plasma = 3,
+    Plasma = 4,
 
     /// Google's Turbo colormap map.
     ///
@@ -56,20 +56,20 @@ pub enum Colormap {
     /// It is more perceptually uniform without sharp transitions and is more colorblind-friendly.
     /// Details: <https://research.google/blog/turbo-an-improved-rainbow-colormap-for-visualization/>
     #[default]
-    Turbo = 4,
+    Turbo = 5,
 
     /// The Viridis colormap from Matplotlib
     ///
     /// This is a perceptually uniform colormap which is robust to color blindness.
     /// It interpolates from dark purple to green to yellow.
-    Viridis = 5,
+    Viridis = 6,
 
     /// Rasmusgo's Cyan to Yellow colormap
     ///
     /// This is a perceptually uniform colormap which is robust to color blindness.
     /// It is especially suited for visualizing signed values.
     /// It interpolates from cyan to blue to dark gray to brass to yellow.
-    CyanToYellow = 6,
+    CyanToYellow = 7,
 }
 
 impl ::re_types_core::reflection::Enum for Colormap {
@@ -209,13 +209,13 @@ impl ::re_types_core::Loggable for Colormap {
             .into_iter()
             .map(|opt| opt.copied())
             .map(|typ| match typ {
-                Some(0u8) => Ok(Some(Self::Grayscale)),
-                Some(1u8) => Ok(Some(Self::Inferno)),
-                Some(2u8) => Ok(Some(Self::Magma)),
-                Some(3u8) => Ok(Some(Self::Plasma)),
-                Some(4u8) => Ok(Some(Self::Turbo)),
-                Some(5u8) => Ok(Some(Self::Viridis)),
-                Some(6u8) => Ok(Some(Self::CyanToYellow)),
+                Some(1) => Ok(Some(Self::Grayscale)),
+                Some(2) => Ok(Some(Self::Inferno)),
+                Some(3) => Ok(Some(Self::Magma)),
+                Some(4) => Ok(Some(Self::Plasma)),
+                Some(5) => Ok(Some(Self::Turbo)),
+                Some(6) => Ok(Some(Self::Viridis)),
+                Some(7) => Ok(Some(Self::CyanToYellow)),
                 None => Ok(None),
                 Some(invalid) => Err(DeserializationError::missing_union_arm(
                     Self::arrow_datatype(),

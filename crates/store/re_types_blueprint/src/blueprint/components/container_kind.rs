@@ -23,17 +23,17 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 #[repr(u8)]
 pub enum ContainerKind {
     /// Put children in separate tabs
-    Tabs = 0,
+    Tabs = 1,
 
     /// Order the children left to right
-    Horizontal = 1,
+    Horizontal = 2,
 
     /// Order the children top to bottom
-    Vertical = 2,
+    Vertical = 3,
 
     /// Organize children in a grid layout
     #[default]
-    Grid = 3,
+    Grid = 4,
 }
 
 impl ::re_types_core::reflection::Enum for ContainerKind {
@@ -145,10 +145,10 @@ impl ::re_types_core::Loggable for ContainerKind {
             .into_iter()
             .map(|opt| opt.copied())
             .map(|typ| match typ {
-                Some(0u8) => Ok(Some(Self::Tabs)),
-                Some(1u8) => Ok(Some(Self::Horizontal)),
-                Some(2u8) => Ok(Some(Self::Vertical)),
-                Some(3u8) => Ok(Some(Self::Grid)),
+                Some(1) => Ok(Some(Self::Tabs)),
+                Some(2) => Ok(Some(Self::Horizontal)),
+                Some(3) => Ok(Some(Self::Vertical)),
+                Some(4) => Ok(Some(Self::Grid)),
                 None => Ok(None),
                 Some(invalid) => Err(DeserializationError::missing_union_arm(
                     Self::arrow_datatype(),

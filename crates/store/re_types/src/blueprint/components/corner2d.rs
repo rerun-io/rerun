@@ -23,17 +23,17 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 #[repr(u8)]
 pub enum Corner2D {
     /// Left top corner.
-    LeftTop = 0,
+    LeftTop = 1,
 
     /// Right top corner.
-    RightTop = 1,
+    RightTop = 2,
 
     /// Left bottom corner.
-    LeftBottom = 2,
+    LeftBottom = 3,
 
     /// Right bottom corner.
     #[default]
-    RightBottom = 3,
+    RightBottom = 4,
 }
 
 impl ::re_types_core::reflection::Enum for Corner2D {
@@ -150,10 +150,10 @@ impl ::re_types_core::Loggable for Corner2D {
             .into_iter()
             .map(|opt| opt.copied())
             .map(|typ| match typ {
-                Some(0u8) => Ok(Some(Self::LeftTop)),
-                Some(1u8) => Ok(Some(Self::RightTop)),
-                Some(2u8) => Ok(Some(Self::LeftBottom)),
-                Some(3u8) => Ok(Some(Self::RightBottom)),
+                Some(1) => Ok(Some(Self::LeftTop)),
+                Some(2) => Ok(Some(Self::RightTop)),
+                Some(3) => Ok(Some(Self::LeftBottom)),
+                Some(4) => Ok(Some(Self::RightBottom)),
                 None => Ok(None),
                 Some(invalid) => Err(DeserializationError::missing_union_arm(
                     Self::arrow_datatype(),

@@ -5,6 +5,9 @@ namespace rerun.blueprint.components;
 enum DataframeViewMode: byte (
     "attr.rerun.scope": "blueprint"
 ) {
+    /// Invalid value. Won't show up in generated types.
+    Invalid = 0,
+
     /// Display the entity values at the current time.
     ///
     /// In this mode, rows are entity instances, and columns are components. The visible time range setting is ignored.

@@ -24,13 +24,13 @@ namespace rerun::blueprint::components {
     enum class ViewFit : uint8_t {
 
         /// No scaling, pixel size will match the image's width/height dimensions in pixels.
-        Original = 0,
+        Original = 1,
 
         /// Scale the image for the largest possible fit in the view's container.
-        Fill = 1,
+        Fill = 2,
 
         /// Scale the image for the largest possible fit in the view's container, but keep the original aspect ratio.
-        FillKeepAspectRatio = 2,
+        FillKeepAspectRatio = 3,
     };
 } // namespace rerun::blueprint::components
 

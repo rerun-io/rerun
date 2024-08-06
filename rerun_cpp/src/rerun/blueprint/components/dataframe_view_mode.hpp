@@ -26,13 +26,13 @@ namespace rerun::blueprint::components {
         /// Display the entity values at the current time.
         ///
         /// In this mode, rows are entity instances, and columns are components. The visible time range setting is ignored.
-        LatestAt = 0,
+        LatestAt = 1,
 
         /// Display a temporal table of entity values.
         ///
         /// In this mode, rows are combination of entity path, timestamp, and row id, and columns are components. The
         /// timestamp shown are determined by each view entity's visible time range setting.
-        TimeRange = 1,
+        TimeRange = 2,
     };
 } // namespace rerun::blueprint::components
 

@@ -23,14 +23,14 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 #[repr(u8)]
 pub enum PanelState {
     /// Completely hidden.
-    Hidden = 0,
+    Hidden = 1,
 
     /// Visible, but as small as possible on its shorter axis.
-    Collapsed = 1,
+    Collapsed = 2,
 
     /// Fully expanded.
     #[default]
-    Expanded = 2,
+    Expanded = 3,
 }
 
 impl ::re_types_core::reflection::Enum for PanelState {
@@ -140,9 +140,9 @@ impl ::re_types_core::Loggable for PanelState {
             .into_iter()
             .map(|opt| opt.copied())
             .map(|typ| match typ {
-                Some(0u8) => Ok(Some(Self::Hidden)),
-                Some(1u8) => Ok(Some(Self::Collapsed)),
-                Some(2u8) => Ok(Some(Self::Expanded)),
+                Some(1) => Ok(Some(Self::Hidden)),
+                Some(2) => Ok(Some(Self::Collapsed)),
+                Some(3) => Ok(Some(Self::Expanded)),
                 None => Ok(None),
                 Some(invalid) => Err(DeserializationError::missing_union_arm(
                     Self::arrow_datatype(),

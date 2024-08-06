@@ -24,13 +24,13 @@ from enum import Enum
 class PanelState(Enum):
     """**Component**: Tri-state for panel controls."""
 
-    Hidden = 0
+    Hidden = 1
     """Completely hidden."""
 
-    Collapsed = 1
+    Collapsed = 2
     """Visible, but as small as possible on its shorter axis."""
 
-    Expanded = 2
+    Expanded = 3
     """Fully expanded."""
 
     @classmethod

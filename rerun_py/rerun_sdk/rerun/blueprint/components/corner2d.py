@@ -24,16 +24,16 @@ from enum import Enum
 class Corner2D(Enum):
     """**Component**: One of four 2D corners, typically used to align objects."""
 
-    LeftTop = 0
+    LeftTop = 1
     """Left top corner."""
 
-    RightTop = 1
+    RightTop = 2
     """Right top corner."""
 
-    LeftBottom = 2
+    LeftBottom = 3
     """Left bottom corner."""
 
-    RightBottom = 3
+    RightBottom = 4
     """Right bottom corner."""
 
     @classmethod

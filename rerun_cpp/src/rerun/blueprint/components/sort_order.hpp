@@ -24,10 +24,10 @@ namespace rerun::blueprint::components {
     enum class SortOrder : uint8_t {
 
         /// Ascending
-        Ascending = 0,
+        Ascending = 1,
 
         /// Descending
-        Descending = 1,
+        Descending = 2,
     };
 } // namespace rerun::blueprint::components
 

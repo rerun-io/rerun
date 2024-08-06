@@ -24,10 +24,10 @@ from enum import Enum
 class SortOrder(Enum):
     """**Component**: Sort order for data table."""
 
-    Ascending = 0
+    Ascending = 1
     """Ascending"""
 
-    Descending = 1
+    Descending = 2
     """Descending"""
 
     @classmethod

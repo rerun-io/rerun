@@ -19,13 +19,9 @@ use ::re_types_core::{ComponentBatch, MaybeOwnedComponentBatch};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Datatype**: A test of an enumate with specified values.
-#[derive(Clone, Copy, Debug, Hash, PartialEq, Eq, Default)]
+#[derive(Clone, Copy, Debug, Hash, PartialEq, Eq)]
 #[repr(u8)]
 pub enum ValuedEnum {
-    /// Default value.
-    #[default]
-    Default = 0,
-
     /// One.
     One = 1,
 
@@ -42,19 +38,12 @@ pub enum ValuedEnum {
 impl ::re_types_core::reflection::Enum for ValuedEnum {
     #[inline]
     fn variants() -> &'static [Self] {
-        &[
-            Self::Default,
-            Self::One,
-            Self::Two,
-            Self::Three,
-            Self::TheAnswer,
-        ]
+        &[Self::One, Self::Two, Self::Three, Self::TheAnswer]
     }
 
     #[inline]
     fn docstring_md(self) -> &'static str {
         match self {
-            Self::Default => "Default value.",
             Self::One => "One.",
             Self::Two => "Two.",
             Self::Three => "Three.",
@@ -78,7 +67,6 @@ impl ::re_types_core::SizeBytes for ValuedEnum {
 impl std::fmt::Display for ValuedEnum {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Self::Default => write!(f, "Default"),
             Self::One => write!(f, "One"),
             Self::Two => write!(f, "Two"),
             Self::Three => write!(f, "Three"),
@@ -156,11 +144,10 @@ impl ::re_types_core::Loggable for ValuedEnum {
             .into_iter()
             .map(|opt| opt.copied())
             .map(|typ| match typ {
-                Some(0u8) => Ok(Some(Self::Default)),
-                Some(1u8) => Ok(Some(Self::One)),
-                Some(2u8) => Ok(Some(Self::Two)),
-                Some(3u8) => Ok(Some(Self::Three)),
-                Some(42u8) => Ok(Some(Self::TheAnswer)),
+                Some(1) => Ok(Some(Self::One)),
+                Some(2) => Ok(Some(Self::Two)),
+                Some(3) => Ok(Some(Self::Three)),
+                Some(42) => Ok(Some(Self::TheAnswer)),
                 None => Ok(None),
                 Some(invalid) => Err(DeserializationError::missing_union_arm(
                     Self::arrow_datatype(),
