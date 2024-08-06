@@ -6,12 +6,11 @@
 #include "../collection.hpp"
 #include "../compiler_utils.hpp"
 #include "../components/blob.hpp"
-#include "../components/channel_datatype.hpp"
 #include "../components/colormap.hpp"
 #include "../components/depth_meter.hpp"
 #include "../components/draw_order.hpp"
 #include "../components/fill_ratio.hpp"
-#include "../components/resolution2d.hpp"
+#include "../components/image_format.hpp"
 #include "../data_cell.hpp"
 #include "../image_utils.hpp"
 #include "../indicator_component.hpp"
@@ -78,11 +77,8 @@ namespace rerun::archetypes {
         /// The raw depth image data.
         rerun::components::Blob data;
 
-        /// The size of the image
-        rerun::components::Resolution2D resolution;
-
-        /// The data type of the depth image data (U16, F32, …).
-        rerun::components::ChannelDatatype datatype;
+        /// The format of the image.
+        rerun::components::ImageFormat format;
 
         /// An optional floating point value that specifies how long a meter is in the native depth units.
         ///

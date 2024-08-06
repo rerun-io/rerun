@@ -9,7 +9,7 @@ if TYPE_CHECKING:
 
 
 class ChannelDatatypeExt:
-    """Extension for [ChannelDatatype][rerun.components.ChannelDatatype]."""
+    """Extension for [ChannelDatatype][rerun.datatypes.ChannelDatatype]."""
 
     @staticmethod
     def from_np_dtype(dtype: Any) -> ChannelDatatype:

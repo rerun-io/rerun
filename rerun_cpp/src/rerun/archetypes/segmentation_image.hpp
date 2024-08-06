@@ -6,10 +6,9 @@
 #include "../collection.hpp"
 #include "../compiler_utils.hpp"
 #include "../components/blob.hpp"
-#include "../components/channel_datatype.hpp"
 #include "../components/draw_order.hpp"
+#include "../components/image_format.hpp"
 #include "../components/opacity.hpp"
-#include "../components/resolution2d.hpp"
 #include "../data_cell.hpp"
 #include "../image_utils.hpp"
 #include "../indicator_component.hpp"
@@ -76,11 +75,8 @@ namespace rerun::archetypes {
         /// The raw image data.
         rerun::components::Blob data;
 
-        /// The size of the image.
-        rerun::components::Resolution2D resolution;
-
-        /// The data type of the segmentation image data (U16, U32, …).
-        rerun::components::ChannelDatatype datatype;
+        /// The format of the image.
+        rerun::components::ImageFormat format;
 
         /// Opacity of the image, useful for layering the segmentation image on top of another image.
         ///

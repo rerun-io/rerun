@@ -68,25 +68,8 @@ pub struct Image {
     /// The raw image data.
     pub data: crate::components::Blob,
 
-    /// The size of the image.
-    ///
-    /// For chroma downsampled formats, this is the size of the full image (the luminance channel).
-    pub resolution: crate::components::Resolution2D,
-
-    /// Used mainly for chroma downsampled formats and differing number of bits per channel.
-    ///
-    /// If specified, this takes precedence over both [`components::ColorModel`][crate::components::ColorModel] and [`components::ChannelDatatype`][crate::components::ChannelDatatype] (which are ignored).
-    pub pixel_format: Option<crate::components::PixelFormat>,
-
-    /// L, RGB, RGBA, …
-    ///
-    /// Also requires a [`components::ChannelDatatype`][crate::components::ChannelDatatype] to fully specify the pixel format.
-    pub color_model: Option<crate::components::ColorModel>,
-
-    /// The data type of each channel (e.g. the red channel) of the image data (U8, F16, …).
-    ///
-    /// Also requires a [`components::ColorModel`][crate::components::ColorModel] to fully specify the pixel format.
-    pub datatype: Option<crate::components::ChannelDatatype>,
+    /// The format of the image.
+    pub format: crate::components::ImageFormat,
 
     /// Opacity of the image, useful for layering several images.
     ///
@@ -103,10 +86,7 @@ impl ::re_types_core::SizeBytes for Image {
     #[inline]
     fn heap_size_bytes(&self) -> u64 {
         self.data.heap_size_bytes()
-            + self.resolution.heap_size_bytes()
-            + self.pixel_format.heap_size_bytes()
-            + self.color_model.heap_size_bytes()
-            + self.datatype.heap_size_bytes()
+            + self.format.heap_size_bytes()
             + self.opacity.heap_size_bytes()
             + self.draw_order.heap_size_bytes()
     }
@@ -114,10 +94,7 @@ impl ::re_types_core::SizeBytes for Image {
     #[inline]
     fn is_pod() -> bool {
         <crate::components::Blob>::is_pod()
-            && <crate::components::Resolution2D>::is_pod()
-            && <Option<crate::components::PixelFormat>>::is_pod()
-            && <Option<crate::components::ColorModel>>::is_pod()
-            && <Option<crate::components::ChannelDatatype>>::is_pod()
+            && <crate::components::ImageFormat>::is_pod()
             && <Option<crate::components::Opacity>>::is_pod()
             && <Option<crate::components::DrawOrder>>::is_pod()
     }
@@ -127,41 +104,35 @@ static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 2usize]> =
     once_cell::sync::Lazy::new(|| {
         [
             "rerun.components.Blob".into(),
-            "rerun.components.Resolution2D".into(),
+            "rerun.components.ImageFormat".into(),
         ]
     });
 
 static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 1usize]> =
     once_cell::sync::Lazy::new(|| ["rerun.components.ImageIndicator".into()]);
 
-static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 5usize]> =
+static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 2usize]> =
     once_cell::sync::Lazy::new(|| {
         [
-            "rerun.components.PixelFormat".into(),
-            "rerun.components.ColorModel".into(),
-            "rerun.components.ChannelDatatype".into(),
             "rerun.components.Opacity".into(),
             "rerun.components.DrawOrder".into(),
         ]
     });
 
-static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 8usize]> =
+static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 5usize]> =
     once_cell::sync::Lazy::new(|| {
         [
             "rerun.components.Blob".into(),
-            "rerun.components.Resolution2D".into(),
+            "rerun.components.ImageFormat".into(),
             "rerun.components.ImageIndicator".into(),
-            "rerun.components.PixelFormat".into(),
-            "rerun.components.ColorModel".into(),
-            "rerun.components.ChannelDatatype".into(),
             "rerun.components.Opacity".into(),
             "rerun.components.DrawOrder".into(),
         ]
     });
 
 impl Image {
-    /// The total number of components in the archetype: 2 required, 1 recommended, 5 optional
-    pub const NUM_COMPONENTS: usize = 8usize;
+    /// The total number of components in the archetype: 2 required, 1 recommended, 2 optional
+    pub const NUM_COMPONENTS: usize = 5usize;
 }
 
 /// Indicator component for the [`Image`] [`::re_types_core::Archetype`]
@@ -229,45 +200,18 @@ impl ::re_types_core::Archetype for Image {
                 .ok_or_else(DeserializationError::missing_data)
                 .with_context("rerun.archetypes.Image#data")?
         };
-        let resolution = {
+        let format = {
             let array = arrays_by_name
-                .get("rerun.components.Resolution2D")
+                .get("rerun.components.ImageFormat")
                 .ok_or_else(DeserializationError::missing_data)
-                .with_context("rerun.archetypes.Image#resolution")?;
-            <crate::components::Resolution2D>::from_arrow_opt(&**array)
-                .with_context("rerun.archetypes.Image#resolution")?
+                .with_context("rerun.archetypes.Image#format")?;
+            <crate::components::ImageFormat>::from_arrow_opt(&**array)
+                .with_context("rerun.archetypes.Image#format")?
                 .into_iter()
                 .next()
                 .flatten()
                 .ok_or_else(DeserializationError::missing_data)
-                .with_context("rerun.archetypes.Image#resolution")?
-        };
-        let pixel_format = if let Some(array) = arrays_by_name.get("rerun.components.PixelFormat") {
-            <crate::components::PixelFormat>::from_arrow_opt(&**array)
-                .with_context("rerun.archetypes.Image#pixel_format")?
-                .into_iter()
-                .next()
-                .flatten()
-        } else {
-            None
-        };
-        let color_model = if let Some(array) = arrays_by_name.get("rerun.components.ColorModel") {
-            <crate::components::ColorModel>::from_arrow_opt(&**array)
-                .with_context("rerun.archetypes.Image#color_model")?
-                .into_iter()
-                .next()
-                .flatten()
-        } else {
-            None
-        };
-        let datatype = if let Some(array) = arrays_by_name.get("rerun.components.ChannelDatatype") {
-            <crate::components::ChannelDatatype>::from_arrow_opt(&**array)
-                .with_context("rerun.archetypes.Image#datatype")?
-                .into_iter()
-                .next()
-                .flatten()
-        } else {
-            None
+                .with_context("rerun.archetypes.Image#format")?
         };
         let opacity = if let Some(array) = arrays_by_name.get("rerun.components.Opacity") {
             <crate::components::Opacity>::from_arrow_opt(&**array)
@@ -289,10 +233,7 @@ impl ::re_types_core::Archetype for Image {
         };
         Ok(Self {
             data,
-            resolution,
-            pixel_format,
-            color_model,
-            datatype,
+            format,
             opacity,
             draw_order,
         })
@@ -306,16 +247,7 @@ impl ::re_types_core::AsComponents for Image {
         [
             Some(Self::indicator()),
             Some((&self.data as &dyn ComponentBatch).into()),
-            Some((&self.resolution as &dyn ComponentBatch).into()),
-            self.pixel_format
-                .as_ref()
-                .map(|comp| (comp as &dyn ComponentBatch).into()),
-            self.color_model
-                .as_ref()
-                .map(|comp| (comp as &dyn ComponentBatch).into()),
-            self.datatype
-                .as_ref()
-                .map(|comp| (comp as &dyn ComponentBatch).into()),
+            Some((&self.format as &dyn ComponentBatch).into()),
             self.opacity
                 .as_ref()
                 .map(|comp| (comp as &dyn ComponentBatch).into()),
@@ -334,53 +266,14 @@ impl Image {
     #[inline]
     pub fn new(
         data: impl Into<crate::components::Blob>,
-        resolution: impl Into<crate::components::Resolution2D>,
+        format: impl Into<crate::components::ImageFormat>,
     ) -> Self {
         Self {
             data: data.into(),
-            resolution: resolution.into(),
-            pixel_format: None,
-            color_model: None,
-            datatype: None,
+            format: format.into(),
             opacity: None,
             draw_order: None,
         }
-    }
-
-    /// Used mainly for chroma downsampled formats and differing number of bits per channel.
-    ///
-    /// If specified, this takes precedence over both [`components::ColorModel`][crate::components::ColorModel] and [`components::ChannelDatatype`][crate::components::ChannelDatatype] (which are ignored).
-    #[inline]
-    pub fn with_pixel_format(
-        mut self,
-        pixel_format: impl Into<crate::components::PixelFormat>,
-    ) -> Self {
-        self.pixel_format = Some(pixel_format.into());
-        self
-    }
-
-    /// L, RGB, RGBA, …
-    ///
-    /// Also requires a [`components::ChannelDatatype`][crate::components::ChannelDatatype] to fully specify the pixel format.
-    #[inline]
-    pub fn with_color_model(
-        mut self,
-        color_model: impl Into<crate::components::ColorModel>,
-    ) -> Self {
-        self.color_model = Some(color_model.into());
-        self
-    }
-
-    /// The data type of each channel (e.g. the red channel) of the image data (U8, F16, …).
-    ///
-    /// Also requires a [`components::ColorModel`][crate::components::ColorModel] to fully specify the pixel format.
-    #[inline]
-    pub fn with_datatype(
-        mut self,
-        datatype: impl Into<crate::components::ChannelDatatype>,
-    ) -> Self {
-        self.datatype = Some(datatype.into());
-        self
     }
 
     /// Opacity of the image, useful for layering several images.

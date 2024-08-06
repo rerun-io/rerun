@@ -19,9 +19,9 @@ Compressing images can save a lot of bandwidth and memory.
 
 ## Components
 
-**Required**: [`Blob`](../components/blob.md), [`Resolution2D`](../components/resolution2d.md)
+**Required**: [`Blob`](../components/blob.md), [`ImageFormat`](../components/image_format.md)
 
-**Optional**: [`PixelFormat`](../components/pixel_format.md), [`ColorModel`](../components/color_model.md), [`ChannelDatatype`](../components/channel_datatype.md), [`Opacity`](../components/opacity.md), [`DrawOrder`](../components/draw_order.md)
+**Optional**: [`Opacity`](../components/opacity.md), [`DrawOrder`](../components/draw_order.md)
 
 ## Shown in
 * [Spatial2DView](../views/spatial2d_view.md)

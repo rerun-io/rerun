@@ -6,12 +6,9 @@
 #include "../collection.hpp"
 #include "../compiler_utils.hpp"
 #include "../components/blob.hpp"
-#include "../components/channel_datatype.hpp"
-#include "../components/color_model.hpp"
 #include "../components/draw_order.hpp"
+#include "../components/image_format.hpp"
 #include "../components/opacity.hpp"
-#include "../components/pixel_format.hpp"
-#include "../components/resolution2d.hpp"
 #include "../data_cell.hpp"
 #include "../image_utils.hpp"
 #include "../indicator_component.hpp"
@@ -77,25 +74,8 @@ namespace rerun::archetypes {
         /// The raw image data.
         rerun::components::Blob data;
 
-        /// The size of the image.
-        ///
-        /// For chroma downsampled formats, this is the size of the full image (the luminance channel).
-        rerun::components::Resolution2D resolution;
-
-        /// Used mainly for chroma downsampled formats and differing number of bits per channel.
-        ///
-        /// If specified, this takes precedence over both `components::ColorModel` and `components::ChannelDatatype` (which are ignored).
-        std::optional<rerun::components::PixelFormat> pixel_format;
-
-        /// L, RGB, RGBA, …
-        ///
-        /// Also requires a `components::ChannelDatatype` to fully specify the pixel format.
-        std::optional<rerun::components::ColorModel> color_model;
-
-        /// The data type of each channel (e.g. the red channel) of the image data (U8, F16, …).
-        ///
-        /// Also requires a `components::ColorModel` to fully specify the pixel format.
-        std::optional<rerun::components::ChannelDatatype> datatype;
+        /// The format of the image.
+        rerun::components::ImageFormat format;
 
         /// Opacity of the image, useful for layering several images.
         ///
@@ -242,33 +222,6 @@ namespace rerun::archetypes {
       public:
         Image() = default;
         Image(Image&& other) = default;
-
-        /// Used mainly for chroma downsampled formats and differing number of bits per channel.
-        ///
-        /// If specified, this takes precedence over both `components::ColorModel` and `components::ChannelDatatype` (which are ignored).
-        Image with_pixel_format(rerun::components::PixelFormat _pixel_format) && {
-            pixel_format = std::move(_pixel_format);
-            // See: https://github.com/rerun-io/rerun/issues/4027
-            RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
-        }
-
-        /// L, RGB, RGBA, …
-        ///
-        /// Also requires a `components::ChannelDatatype` to fully specify the pixel format.
-        Image with_color_model(rerun::components::ColorModel _color_model) && {
-            color_model = std::move(_color_model);
-            // See: https://github.com/rerun-io/rerun/issues/4027
-            RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
-        }
-
-        /// The data type of each channel (e.g. the red channel) of the image data (U8, F16, …).
-        ///
-        /// Also requires a `components::ColorModel` to fully specify the pixel format.
-        Image with_datatype(rerun::components::ChannelDatatype _datatype) && {
-            datatype = std::move(_datatype);
-            // See: https://github.com/rerun-io/rerun/issues/4027
-            RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
-        }
 
         /// Opacity of the image, useful for layering several images.
         ///
