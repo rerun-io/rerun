@@ -234,7 +234,8 @@ fn instance_path_button_to_ex(
     };
 
     let response = response.on_hover_ui(|ui| {
-        instance_hover_card_ui(ui, ctx, query, db, instance_path);
+        let include_subtree = false;
+        instance_hover_card_ui(ui, ctx, query, db, instance_path, include_subtree);
     });
 
     cursor_interact_with_selectable(ctx, response, item)
@@ -292,37 +293,54 @@ pub fn instance_path_parts_buttons(
     .response
 }
 
+/// If `include_subtree=true`, stats for the entire entity subtree will be shown.
 fn entity_tree_stats_ui(
     ui: &mut egui::Ui,
     timeline: &Timeline,
     db: &re_entity_db::EntityDb,
     tree: &EntityTree,
+    include_subtree: bool,
 ) {
     use re_format::format_bytes;
 
     let subtree_caveat = if tree.children.is_empty() {
         ""
-    } else {
+    } else if include_subtree {
         " (including subtree)"
+    } else {
+        " (excluding subtree)"
     };
 
-    let static_stats = db.subtree_stats_static(&tree.path);
-    let timeline_stats = db.subtree_stats_on_timeline(&tree.path, timeline);
+    let (static_stats, timeline_stats) = if include_subtree {
+        (
+            db.subtree_stats_static(&tree.path),
+            db.subtree_stats_on_timeline(&tree.path, timeline),
+        )
+    } else {
+        (
+            db.store().entity_stats_static(&tree.path),
+            db.store().entity_stats_on_timeline(&tree.path, timeline),
+        )
+    };
+
     let total_stats = static_stats + timeline_stats;
 
     if total_stats.num_rows == 0 {
         return;
     } else if timeline_stats.num_rows == 0 {
-        ui.label(format!("{} static rows", format_uint(total_stats.num_rows)));
+        ui.label(format!(
+            "{} static rows{subtree_caveat}",
+            format_uint(total_stats.num_rows)
+        ));
     } else if static_stats.num_rows == 0 {
         ui.label(format!(
-            "{} rows on timeline '{timeline}'",
+            "{} rows on timeline '{timeline}'{subtree_caveat}",
             format_uint(total_stats.num_rows),
             timeline = timeline.name()
         ));
     } else {
         ui.label(format!(
-            "{} rows ({} static, and {} on timeline '{timeline}')",
+            "{} rows = {} static + {} on timeline '{timeline}'{subtree_caveat}",
             format_uint(total_stats.num_rows),
             format_uint(static_stats.num_rows),
             format_uint(timeline_stats.num_rows),
@@ -466,7 +484,8 @@ pub fn data_blueprint_button_to(
     let response = ui
         .selectable_label(ctx.selection().contains_item(&item), text)
         .on_hover_ui(|ui| {
-            entity_hover_card_ui(ui, ctx, query, db, entity_path);
+            let include_subtree = false;
+            entity_hover_card_ui(ui, ctx, query, db, entity_path, include_subtree);
         });
     cursor_interact_with_selectable(ctx, response, item)
 }
@@ -547,12 +566,15 @@ pub fn cursor_interact_with_selectable(
 ///
 /// The entity hover card is displayed if the provided instance path doesn't refer to a specific
 /// instance.
+///
+/// If `include_subtree=true`, stats for the entire entity subtree will be shown.
 pub fn instance_hover_card_ui(
     ui: &mut egui::Ui,
     ctx: &ViewerContext<'_>,
     query: &re_chunk_store::LatestAtQuery,
     db: &re_entity_db::EntityDb,
     instance_path: &InstancePath,
+    include_subtree: bool,
 ) {
     if !ctx.recording().is_known_entity(&instance_path.entity_path) {
         ui.label("Unknown entity.");
@@ -572,7 +594,7 @@ pub fn instance_hover_card_ui(
 
     if instance_path.instance.is_all() {
         if let Some(subtree) = ctx.recording().tree().subtree(&instance_path.entity_path) {
-            entity_tree_stats_ui(ui, &query.timeline(), db, subtree);
+            entity_tree_stats_ui(ui, &query.timeline(), db, subtree, include_subtree);
         }
     } else {
         // TODO(emilk): per-component stats
@@ -582,15 +604,18 @@ pub fn instance_hover_card_ui(
 }
 
 /// Displays the "hover card" (i.e. big tooltip) for an entity.
+///
+/// If `include_subtree=true`, stats for the entire entity subtree will be shown.
 pub fn entity_hover_card_ui(
     ui: &mut egui::Ui,
     ctx: &ViewerContext<'_>,
     query: &re_chunk_store::LatestAtQuery,
     db: &re_entity_db::EntityDb,
     entity_path: &EntityPath,
+    include_subtree: bool,
 ) {
     let instance_path = InstancePath::entity_all(entity_path.clone());
-    instance_hover_card_ui(ui, ctx, query, db, &instance_path);
+    instance_hover_card_ui(ui, ctx, query, db, &instance_path, include_subtree);
 }
 
 pub fn app_id_button_ui(
