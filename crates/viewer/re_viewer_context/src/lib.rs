@@ -23,6 +23,7 @@ mod space_view;
 mod store_context;
 pub mod store_hub;
 mod tensor;
+mod time_drag_value;
 //TODO(ab): this should be behind #[cfg(test)], but then ` cargo clippy --all-targets` fails
 pub mod test_context;
 mod time_control;
@@ -77,6 +78,7 @@ pub use store_context::StoreContext;
 pub use store_hub::StoreHub;
 pub use tensor::{ImageDecodeCache, ImageStatsCache, TensorStats, TensorStatsCache};
 pub use time_control::{Looping, PlayState, TimeControl, TimeView};
+pub use time_drag_value::TimeDragValue;
 pub use typed_entity_collections::{
     ApplicableEntities, IndicatedEntities, PerVisualizer, VisualizableEntities,
 };
