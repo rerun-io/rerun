@@ -73,5 +73,6 @@ pub fn encode_to_file(
 
     let encoding_options = re_log_encoding::EncodingOptions::COMPRESSED;
     re_log_encoding::encoder::encode(version, encoding_options, messages, &mut file)
+        .map(|_| ())
         .context("Message encode")
 }
