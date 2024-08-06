@@ -443,7 +443,7 @@ impl EntityDb {
     pub fn to_messages(
         &self,
         time_selection: Option<(Timeline, ResolvedTimeRangeF)>,
-    ) -> ChunkResult<Vec<LogMsg>> {
+    ) -> impl Iterator<Item = ChunkResult<LogMsg>> + '_ {
         re_tracing::profile_function!();
 
         let set_store_info_msg = self
@@ -460,7 +460,7 @@ impl EntityDb {
         let data_messages = self
             .store()
             .iter_chunks()
-            .filter(|chunk| {
+            .filter(move |chunk| {
                 let Some((timeline, time_range)) = time_filter else {
                     return true;
                 };
@@ -495,13 +495,10 @@ impl EntityDb {
             itertools::Either::Right(std::iter::empty())
         };
 
-        let messages: Result<Vec<_>, _> = set_store_info_msg
+        set_store_info_msg
             .into_iter()
             .chain(data_messages)
             .chain(blueprint_ready)
-            .collect();
-
-        messages
     }
 
     /// Make a clone of this [`EntityDb`], assigning it a new [`StoreId`].
