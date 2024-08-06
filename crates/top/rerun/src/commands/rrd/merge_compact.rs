@@ -4,7 +4,7 @@ use anyhow::Context as _;
 
 use re_chunk_store::ChunkStoreConfig;
 use re_entity_db::EntityDb;
-use re_log_types::{LogMsg, StoreId};
+use re_log_types::StoreId;
 use re_sdk::StoreKind;
 
 use crate::commands::read_rrd_streams_from_file_or_stdin;
@@ -201,21 +201,15 @@ fn merge_and_compact(
     let mut rrd_out = std::fs::File::create(&path_to_output_rrd)
         .with_context(|| format!("{path_to_output_rrd:?}"))?;
 
-    let messages_rbl: Result<Vec<Vec<LogMsg>>, _> = entity_dbs
+    let messages_rbl = entity_dbs
         .values()
         .filter(|entity_db| entity_db.store_kind() == StoreKind::Blueprint)
-        .map(|entity_db| entity_db.to_messages(None /* time selection */))
-        .collect();
-    let messages_rbl = messages_rbl?;
-    let messages_rbl = messages_rbl.iter().flatten();
+        .flat_map(|entity_db| entity_db.to_messages(None /* time selection */));
 
-    let messages_rrd: Result<Vec<Vec<LogMsg>>, _> = entity_dbs
+    let messages_rrd = entity_dbs
         .values()
         .filter(|entity_db| entity_db.store_kind() == StoreKind::Recording)
-        .map(|entity_db| entity_db.to_messages(None /* time selection */))
-        .collect();
-    let messages_rrd = messages_rrd?;
-    let messages_rrd = messages_rrd.iter().flatten();
+        .flat_map(|entity_db| entity_db.to_messages(None /* time selection */));
 
     let encoding_options = re_log_encoding::EncodingOptions::COMPRESSED;
     let version = entity_dbs
