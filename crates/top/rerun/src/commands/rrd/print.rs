@@ -11,7 +11,7 @@ use re_types::SizeBytes as _;
 
 #[derive(Debug, Clone, clap::Parser)]
 pub struct PrintCommand {
-    rrd_path: String,
+    path_to_input_rrds: Vec<String>,
 
     /// If specified, print out table contents.
     #[clap(long, short, default_value_t = false)]
@@ -20,19 +20,19 @@ pub struct PrintCommand {
 
 impl PrintCommand {
     pub fn run(&self) -> anyhow::Result<()> {
-        let rrd_path = PathBuf::from(&self.rrd_path);
-        self.print_rrd(&rrd_path)
-            .with_context(|| format!("path: {rrd_path:?}"))
+        let path_to_input_rrds = self.path_to_input_rrds.iter().map(PathBuf::from);
+
+        for rrd_path in path_to_input_rrds {
+            self.print_rrd(&rrd_path)
+                .with_context(|| format!("path: {rrd_path:?}"))?;
+        }
+
+        Ok(())
     }
 }
 
 impl PrintCommand {
     fn print_rrd(&self, rrd_path: &Path) -> anyhow::Result<()> {
-        let Self {
-            rrd_path: _,
-            verbose,
-        } = self;
-
         let rrd_file = std::fs::File::open(rrd_path)?;
         let version_policy = re_log_encoding::decoder::VersionPolicy::Warn;
         let decoder = re_log_encoding::decoder::Decoder::new(version_policy, rrd_file)?;
@@ -54,7 +54,7 @@ impl PrintCommand {
                         }
                     };
 
-                    if *verbose {
+                    if self.verbose {
                         println!("{chunk}");
                     } else {
                         let column_names = chunk
