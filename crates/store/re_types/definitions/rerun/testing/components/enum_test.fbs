@@ -39,7 +39,9 @@ enum ValuedEnum: byte {
     TheAnswer = 42,
 }
 
-table MultiEnum {
+table MultiEnum (
+    "attr.rust.derive": "Default, PartialEq, Eq"
+) {
     /// The first value.
     value1: EnumTest (order: 100);
 
