@@ -27,25 +27,25 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 #[repr(u8)]
 pub enum AggregationPolicy {
     /// No aggregation.
-    Off = 0u8,
+    Off = 0,
 
     /// Average all points in the range together.
-    Average = 1u8,
+    Average = 1,
 
     /// Keep only the maximum values in the range.
-    Max = 2u8,
+    Max = 2,
 
     /// Keep only the minimum values in the range.
-    Min = 3u8,
+    Min = 3,
 
     /// Keep both the minimum and maximum values in the range.
     ///
     /// This will yield two aggregated points instead of one, effectively creating a vertical line.
     #[default]
-    MinMax = 4u8,
+    MinMax = 4,
 
     /// Find both the minimum and maximum values in the range, then use the average of those.
-    MinMaxAverage = 5u8,
+    MinMaxAverage = 5,
 }
 
 impl ::re_types_core::reflection::Enum for AggregationPolicy {

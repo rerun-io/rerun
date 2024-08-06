@@ -18,8 +18,8 @@ namespace arrow {
     using UInt8Builder = NumericBuilder<UInt8Type>;
 } // namespace arrow
 
-namespace rerun::components {
-    /// **Component**: A test of an enumate with specified values.
+namespace rerun::datatypes {
+    /// **Datatype**: A test of an enumate with specified values.
     enum class ValuedEnum : uint8_t {
 
         /// Default value.
@@ -37,7 +37,7 @@ namespace rerun::components {
         /// The answer to life, the universe, and everything.
         TheAnswer = 42,
     };
-} // namespace rerun::components
+} // namespace rerun::datatypes
 
 namespace rerun {
     template <typename T>
@@ -45,21 +45,20 @@ namespace rerun {
 
     /// \private
     template <>
-    struct Loggable<components::ValuedEnum> {
-        static constexpr const char Name[] = "rerun.testing.components.ValuedEnum";
+    struct Loggable<datatypes::ValuedEnum> {
+        static constexpr const char Name[] = "rerun.testing.datatypes.ValuedEnum";
 
         /// Returns the arrow data type this type corresponds to.
         static const std::shared_ptr<arrow::DataType>& arrow_datatype();
 
-        /// Serializes an array of `rerun::components::ValuedEnum` into an arrow array.
+        /// Serializes an array of `rerun::datatypes::ValuedEnum` into an arrow array.
         static Result<std::shared_ptr<arrow::Array>> to_arrow(
-            const components::ValuedEnum* instances, size_t num_instances
+            const datatypes::ValuedEnum* instances, size_t num_instances
         );
 
         /// Fills an arrow array builder with an array of this type.
         static rerun::Error fill_arrow_array_builder(
-            arrow::UInt8Builder* builder, const components::ValuedEnum* elements,
-            size_t num_elements
+            arrow::UInt8Builder* builder, const datatypes::ValuedEnum* elements, size_t num_elements
         );
     };
 } // namespace rerun

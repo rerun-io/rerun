@@ -28,14 +28,14 @@ pub enum TransformRelation {
     /// that from the point of view of `parent`, `parent/child` is translated 1 unit along `parent`'s Y axis.
     /// From perspective of `parent/child`, the `parent` entity is translated -1 unit along `parent/child`'s Y axis.
     #[default]
-    ParentFromChild = 0u8,
+    ParentFromChild = 0,
 
     /// The transform describes how to transform into the child entity's space.
     ///
     /// E.g. a translation of (0, 1, 0) with this [`components::TransformRelation`][crate::components::TransformRelation] logged at `parent/child` means
     /// that from the point of view of `parent`, `parent/child` is translated -1 unit along `parent`'s Y axis.
     /// From perspective of `parent/child`, the `parent` entity is translated 1 unit along `parent/child`'s Y axis.
-    ChildFromParent = 1u8,
+    ChildFromParent = 1,
 }
 
 impl ::re_types_core::reflection::Enum for TransformRelation {

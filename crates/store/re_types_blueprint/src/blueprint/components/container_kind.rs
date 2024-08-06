@@ -23,17 +23,17 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 #[repr(u8)]
 pub enum ContainerKind {
     /// Put children in separate tabs
-    Tabs = 0u8,
+    Tabs = 0,
 
     /// Order the children left to right
-    Horizontal = 1u8,
+    Horizontal = 1,
 
     /// Order the children top to bottom
-    Vertical = 2u8,
+    Vertical = 2,
 
     /// Organize children in a grid layout
     #[default]
-    Grid = 3u8,
+    Grid = 3,
 }
 
 impl ::re_types_core::reflection::Enum for ContainerKind {

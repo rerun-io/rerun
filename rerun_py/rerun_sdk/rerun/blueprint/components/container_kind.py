@@ -38,7 +38,7 @@ class ContainerKind(Enum):
 
     @classmethod
     def auto(cls, val: str | int | ContainerKind) -> ContainerKind:
-        """Best-effort converter."""
+        """Best-effort converter, including a case-insensitive string matcher."""
         if isinstance(val, ContainerKind):
             return val
         if isinstance(val, int):
@@ -78,6 +78,6 @@ class ContainerKindBatch(BaseBatch[ContainerKindArrayLike], ComponentBatchMixin)
         if isinstance(data, (ContainerKind, int, str)):
             data = [data]
 
-        pa_data = [ContainerKind.auto(v).value if v else None for v in data]
+        pa_data = [ContainerKind.auto(v).value if v is not None else None for v in data]  # type: ignore[redundant-expr]
 
         return pa.array(pa_data, type=data_type)

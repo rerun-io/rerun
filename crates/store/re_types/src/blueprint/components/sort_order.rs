@@ -24,10 +24,10 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 pub enum SortOrder {
     /// Ascending
     #[default]
-    Ascending = 0u8,
+    Ascending = 0,
 
     /// Descending
-    Descending = 1u8,
+    Descending = 1,
 }
 
 impl ::re_types_core::reflection::Enum for SortOrder {

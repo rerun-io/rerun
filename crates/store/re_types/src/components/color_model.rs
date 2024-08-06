@@ -26,15 +26,15 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 pub enum ColorModel {
     /// Grayscale luminance intencity/brightness/value, sometimes called `Y`
     #[default]
-    L = 0u8,
+    L = 0,
 
     /// Red, Green, Blue
     #[allow(clippy::upper_case_acronyms)]
-    RGB = 1u8,
+    RGB = 1,
 
     /// Red, Green, Blue, Alpha
     #[allow(clippy::upper_case_acronyms)]
-    RGBA = 2u8,
+    RGBA = 2,
 }
 
 impl ::re_types_core::reflection::Enum for ColorModel {

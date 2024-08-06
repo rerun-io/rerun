@@ -11,7 +11,6 @@ import pyarrow as pa
 from rerun._baseclasses import (
     BaseBatch,
     BaseExtensionType,
-    ComponentBatchMixin,
 )
 
 __all__ = ["ValuedEnum", "ValuedEnumArrayLike", "ValuedEnumBatch", "ValuedEnumLike", "ValuedEnumType"]
@@ -21,7 +20,7 @@ from enum import Enum
 
 
 class ValuedEnum(Enum):
-    """**Component**: A test of an enumate with specified values."""
+    """**Datatype**: A test of an enumate with specified values."""
 
     Default = 0
     """Default value."""
@@ -40,7 +39,7 @@ class ValuedEnum(Enum):
 
     @classmethod
     def auto(cls, val: str | int | ValuedEnum) -> ValuedEnum:
-        """Best-effort converter."""
+        """Best-effort converter, including a case-insensitive string matcher."""
         if isinstance(val, ValuedEnum):
             return val
         if isinstance(val, int):
@@ -68,13 +67,13 @@ ValuedEnumArrayLike = Union[ValuedEnumLike, Sequence[ValuedEnumLike]]
 
 
 class ValuedEnumType(BaseExtensionType):
-    _TYPE_NAME: str = "rerun.testing.components.ValuedEnum"
+    _TYPE_NAME: str = "rerun.testing.datatypes.ValuedEnum"
 
     def __init__(self) -> None:
         pa.ExtensionType.__init__(self, pa.uint8(), self._TYPE_NAME)
 
 
-class ValuedEnumBatch(BaseBatch[ValuedEnumArrayLike], ComponentBatchMixin):
+class ValuedEnumBatch(BaseBatch[ValuedEnumArrayLike]):
     _ARROW_TYPE = ValuedEnumType()
 
     @staticmethod
@@ -82,6 +81,6 @@ class ValuedEnumBatch(BaseBatch[ValuedEnumArrayLike], ComponentBatchMixin):
         if isinstance(data, (ValuedEnum, int, str)):
             data = [data]
 
-        pa_data = [ValuedEnum.auto(v).value if v else None for v in data]
+        pa_data = [ValuedEnum.auto(v).value if v is not None else None for v in data]  # type: ignore[redundant-expr]
 
         return pa.array(pa_data, type=data_type)

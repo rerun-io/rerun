@@ -27,12 +27,12 @@ pub enum MagnificationFilter {
     /// This will give a blocky appearance when zooming in.
     /// Used as default when rendering 2D images.
     #[default]
-    Nearest = 0u8,
+    Nearest = 0,
 
     /// Linearly interpolate the nearest neighbors, creating a smoother look when zooming in.
     ///
     /// Used as default for mesh rendering.
-    Linear = 1u8,
+    Linear = 1,
 }
 
 impl ::re_types_core::reflection::Enum for MagnificationFilter {

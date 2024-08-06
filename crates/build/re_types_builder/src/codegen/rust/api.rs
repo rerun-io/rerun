@@ -511,6 +511,7 @@ fn quote_enum(
         let name = format_ident!("{}", field.name);
 
         if let Some(enum_value) = field.enum_value {
+            let quoted_enum = proc_macro2::Literal::u8_unsuffixed(enum_value);
             let quoted_doc = quote_field_docs(reporter, objects, field);
 
             let default_attr = if field.attrs.has(ATTR_DEFAULT) {
@@ -529,7 +530,7 @@ fn quote_enum(
                 #quoted_doc
                 #default_attr
                 #clippy_attrs
-                #name = #enum_value
+                #name = #quoted_enum
             }
         } else {
             reporter.error(

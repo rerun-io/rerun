@@ -90,7 +90,7 @@ class Colormap(Enum):
 
     @classmethod
     def auto(cls, val: str | int | Colormap) -> Colormap:
-        """Best-effort converter."""
+        """Best-effort converter, including a case-insensitive string matcher."""
         if isinstance(val, Colormap):
             return val
         if isinstance(val, int):
@@ -147,6 +147,6 @@ class ColormapBatch(BaseBatch[ColormapArrayLike], ComponentBatchMixin):
         if isinstance(data, (Colormap, int, str)):
             data = [data]
 
-        pa_data = [Colormap.auto(v).value if v else None for v in data]
+        pa_data = [Colormap.auto(v).value if v is not None else None for v in data]  # type: ignore[redundant-expr]
 
         return pa.array(pa_data, type=data_type)

@@ -24,10 +24,10 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 pub enum SortKey {
     /// Group by entity.
     #[default]
-    Entity = 0u8,
+    Entity = 0,
 
     /// Group by instance.
-    Time = 1u8,
+    Time = 1,
 }
 
 impl ::re_types_core::reflection::Enum for SortKey {

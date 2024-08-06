@@ -26,13 +26,13 @@ pub enum DataframeViewMode {
     ///
     /// In this mode, rows are entity instances, and columns are components. The visible time range setting is ignored.
     #[default]
-    LatestAt = 0u8,
+    LatestAt = 0,
 
     /// Display a temporal table of entity values.
     ///
     /// In this mode, rows are combination of entity path, timestamp, and row id, and columns are components. The
     /// timestamp shown are determined by each view entity's visible time range setting.
-    TimeRange = 1u8,
+    TimeRange = 1,
 }
 
 impl ::re_types_core::reflection::Enum for DataframeViewMode {

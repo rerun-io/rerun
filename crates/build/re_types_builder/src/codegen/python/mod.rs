@@ -892,7 +892,7 @@ fn code_for_enum(
         format!(
             r#"@classmethod
 def auto(cls, val: str | int | {enum_name}) -> {enum_name}:
-    '''Best-effort converter.'''
+    '''Best-effort converter, including a case-insensitive string matcher.'''
     if isinstance(val, {enum_name}):
         return val
     if isinstance(val, int):
@@ -2058,7 +2058,7 @@ fn quote_arrow_serialization(
 if isinstance(data, ({name}, int, str)):
     data = [data]
 
-pa_data = [{name}.auto(v).value if v else None for v in data]
+pa_data = [{name}.auto(v).value if v is not None else None for v in data] # type: ignore[redundant-expr]
 
 return pa.array(pa_data, type=data_type)
         "##

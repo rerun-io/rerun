@@ -47,7 +47,7 @@ class DataframeViewMode(Enum):
 
     @classmethod
     def auto(cls, val: str | int | DataframeViewMode) -> DataframeViewMode:
-        """Best-effort converter."""
+        """Best-effort converter, including a case-insensitive string matcher."""
         if isinstance(val, DataframeViewMode):
             return val
         if isinstance(val, int):
@@ -85,6 +85,6 @@ class DataframeViewModeBatch(BaseBatch[DataframeViewModeArrayLike], ComponentBat
         if isinstance(data, (DataframeViewMode, int, str)):
             data = [data]
 
-        pa_data = [DataframeViewMode.auto(v).value if v else None for v in data]
+        pa_data = [DataframeViewMode.auto(v).value if v is not None else None for v in data]  # type: ignore[redundant-expr]
 
         return pa.array(pa_data, type=data_type)

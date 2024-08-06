@@ -7,13 +7,13 @@
 #include <arrow/type_fwd.h>
 
 namespace rerun {
-    const std::shared_ptr<arrow::DataType>& Loggable<components::ValuedEnum>::arrow_datatype() {
+    const std::shared_ptr<arrow::DataType>& Loggable<datatypes::ValuedEnum>::arrow_datatype() {
         static const auto datatype = arrow::uint8();
         return datatype;
     }
 
-    Result<std::shared_ptr<arrow::Array>> Loggable<components::ValuedEnum>::to_arrow(
-        const components::ValuedEnum* instances, size_t num_instances
+    Result<std::shared_ptr<arrow::Array>> Loggable<datatypes::ValuedEnum>::to_arrow(
+        const datatypes::ValuedEnum* instances, size_t num_instances
     ) {
         // TODO(andreas): Allow configuring the memory pool.
         arrow::MemoryPool* pool = arrow::default_memory_pool();
@@ -21,7 +21,7 @@ namespace rerun {
 
         ARROW_ASSIGN_OR_RAISE(auto builder, arrow::MakeBuilder(datatype, pool))
         if (instances && num_instances > 0) {
-            RR_RETURN_NOT_OK(Loggable<components::ValuedEnum>::fill_arrow_array_builder(
+            RR_RETURN_NOT_OK(Loggable<datatypes::ValuedEnum>::fill_arrow_array_builder(
                 static_cast<arrow::UInt8Builder*>(builder.get()),
                 instances,
                 num_instances
@@ -32,8 +32,8 @@ namespace rerun {
         return array;
     }
 
-    rerun::Error Loggable<components::ValuedEnum>::fill_arrow_array_builder(
-        arrow::UInt8Builder* builder, const components::ValuedEnum* elements, size_t num_elements
+    rerun::Error Loggable<datatypes::ValuedEnum>::fill_arrow_array_builder(
+        arrow::UInt8Builder* builder, const datatypes::ValuedEnum* elements, size_t num_elements
     ) {
         if (builder == nullptr) {
             return rerun::Error(ErrorCode::UnexpectedNullArgument, "Passed array builder is null.");

@@ -50,6 +50,12 @@ pub fn quote_arrow_serializer(
         let quoted_data_dst = format_ident!("data0");
         let bitmap_dst = format_ident!("{quoted_data_dst}_bitmap");
 
+        // The choice of true or false for `elements_are_nullable` here is a bit confusing.
+        // This code-gen path forms the basis of `to_arrow_opt`, which implies that we
+        // support nullable elements. Additionally, this MAY be used as a recursive code
+        // path when using an enum within a struct, and that struct within the field may
+        // be null, as such the elements are always handled as nullable.
+        // TODO(#6819): If we get rid of nullable components this will likely need to change.
         let elements_are_nullable = true;
 
         let quoted_serializer = quote_arrow_field_serializer(
@@ -71,9 +77,7 @@ pub fn quote_arrow_serializer(
                     let datum: Option<::std::borrow::Cow<'a, Self>> = datum.map(Into::into);
 
                     let datum = datum
-                    .map(|datum| {
-                        *datum as u8
-                    });
+                    .map(|datum| *datum as u8);
 
                     (datum.is_some(), datum)
                 })
