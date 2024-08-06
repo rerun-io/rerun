@@ -2,7 +2,7 @@ use once_cell::sync::Lazy;
 use parking_lot::RwLock;
 use re_sdk::ComponentName;
 
-use crate::CComponentTypeHandle;
+use crate::{CComponentTypeHandle, CError, CErrorCode};
 
 pub struct ComponentType {
     pub name: ComponentName,
@@ -37,8 +37,14 @@ impl ComponentTypeRegistry {
         id
     }
 
-    pub fn get(&self, id: CComponentTypeHandle) -> Option<&ComponentType> {
-        self.types.get(id as usize)
+    #[allow(clippy::result_large_err)]
+    pub fn get(&self, id: CComponentTypeHandle) -> Result<&ComponentType, CError> {
+        self.types.get(id as usize).ok_or_else(|| {
+            CError::new(
+                CErrorCode::InvalidComponentTypeHandle,
+                &format!("Invalid component type handle: {id}"),
+            )
+        })
     }
 }
 

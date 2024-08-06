@@ -697,38 +697,13 @@ fn rr_recording_stream_log_impl(
         let component_type_registry = COMPONENT_TYPES.read();
 
         for batch in batches {
-            // Arrow2 implements drop for ArrowArray and ArrowSchema.
-            //
-            // Therefore, for things to work correctly we have to take ownership of the component batch!
-            // The C interface is documented to take ownership of the component batch - the user should NOT call `release`.
-            // This makes sense because from here on out we want to manage the lifetime of the underlying schema and array data:
-            // the schema won't survive a loop iteration since it's reference passed for import, whereas the ArrowArray lives
-            // on a longer within the resulting arrow::Array.
             let CComponentBatch {
                 component_type,
                 array,
-            } = unsafe { std::ptr::read(batch) };
-
-            // It would be nice to now mark the batch as "consumed" by setting the original release method to nullptr.
-            // This would signifies to the calling code that the batch is no longer owned.
-            // However, Arrow2 doesn't allow us to access the fields of the ArrowArray and ArrowSchema structs.
-
-            let component_type = component_type_registry.get(component_type).ok_or_else(|| {
-                CError::new(
-                    CErrorCode::InvalidComponentTypeHandle,
-                    &format!("Invalid component type handle: {component_type}"),
-                )
-            })?;
-
-            let values =
-                unsafe { arrow2::ffi::import_array_from_c(array, component_type.datatype.clone()) }
-                    .map_err(|err| {
-                        CError::new(
-                            CErrorCode::ArrowFfiArrayImportError,
-                            &format!("Failed to import ffi array: {err}"),
-                        )
-                    })?;
-
+            } = &batch;
+            let component_type = component_type_registry.get(*component_type)?;
+            let datatype = component_type.datatype.clone();
+            let values = unsafe { arrow_array_from_c_ffi(array, datatype) }?;
             components.insert(component_type.name, values);
         }
     }
