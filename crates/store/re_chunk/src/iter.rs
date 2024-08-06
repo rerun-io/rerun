@@ -13,7 +13,7 @@ use itertools::{izip, Itertools};
 use re_log_types::{TimeInt, TimePoint, Timeline};
 use re_types_core::{ArrowBuffer, ArrowString, Component, ComponentName};
 
-use crate::{Chunk, TimeColumn, RowId};
+use crate::{Chunk, RowId, TimeColumn};
 
 // ---
 
