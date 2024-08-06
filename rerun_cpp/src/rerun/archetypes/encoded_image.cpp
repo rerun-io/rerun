@@ -9,36 +9,36 @@ namespace rerun::archetypes {}
 
 namespace rerun {
 
-    Result<std::vector<DataCell>> AsComponents<archetypes::EncodedImage>::serialize(
+    Result<std::vector<ComponentBatch>> AsComponents<archetypes::EncodedImage>::serialize(
         const archetypes::EncodedImage& archetype
     ) {
         using namespace archetypes;
-        std::vector<DataCell> cells;
+        std::vector<ComponentBatch> cells;
         cells.reserve(5);
 
         {
-            auto result = DataCell::from_loggable(archetype.blob);
+            auto result = ComponentBatch::from_loggable(archetype.blob);
             RR_RETURN_NOT_OK(result.error);
             cells.push_back(std::move(result.value));
         }
         if (archetype.media_type.has_value()) {
-            auto result = DataCell::from_loggable(archetype.media_type.value());
+            auto result = ComponentBatch::from_loggable(archetype.media_type.value());
             RR_RETURN_NOT_OK(result.error);
             cells.push_back(std::move(result.value));
         }
         if (archetype.opacity.has_value()) {
-            auto result = DataCell::from_loggable(archetype.opacity.value());
+            auto result = ComponentBatch::from_loggable(archetype.opacity.value());
             RR_RETURN_NOT_OK(result.error);
             cells.push_back(std::move(result.value));
         }
         if (archetype.draw_order.has_value()) {
-            auto result = DataCell::from_loggable(archetype.draw_order.value());
+            auto result = ComponentBatch::from_loggable(archetype.draw_order.value());
             RR_RETURN_NOT_OK(result.error);
             cells.push_back(std::move(result.value));
         }
         {
             auto indicator = EncodedImage::IndicatorComponent();
-            auto result = DataCell::from_loggable(indicator);
+            auto result = ComponentBatch::from_loggable(indicator);
             RR_RETURN_NOT_OK(result.error);
             cells.emplace_back(std::move(result.value));
         }

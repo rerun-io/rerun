@@ -5,6 +5,7 @@
 
 #include "../collection.hpp"
 #include "../compiler_utils.hpp"
+#include "../component_batch.hpp"
 #include "../components/axis_length.hpp"
 #include "../components/rotation_axis_angle.hpp"
 #include "../components/rotation_quat.hpp"
@@ -12,7 +13,6 @@
 #include "../components/transform_mat3x3.hpp"
 #include "../components/transform_relation.hpp"
 #include "../components/translation3d.hpp"
-#include "../data_cell.hpp"
 #include "../indicator_component.hpp"
 #include "../rerun_sdk_export.hpp"
 #include "../result.hpp"
@@ -576,6 +576,8 @@ namespace rerun {
     template <>
     struct AsComponents<archetypes::Transform3D> {
         /// Serialize all set component batches.
-        static Result<std::vector<DataCell>> serialize(const archetypes::Transform3D& archetype);
+        static Result<std::vector<ComponentBatch>> serialize(
+            const archetypes::Transform3D& archetype
+        );
     };
 } // namespace rerun

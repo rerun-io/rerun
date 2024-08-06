@@ -5,7 +5,7 @@
 
 #include <rerun/as_components.hpp>
 #include <rerun/collection.hpp>
-#include <rerun/data_cell.hpp>
+#include <rerun/component_batch.hpp>
 
 template <typename T>
 void test_compare_archetype_serialization(const T& arch_a, const T& arch_b) {

@@ -82,6 +82,8 @@ pub const RR_REC_STREAM_CURRENT_BLUEPRINT: CRecordingStream = 0xFFFFFFFE;
 pub const RR_COMPONENT_TYPE_HANDLE_INVALID: CComponentTypeHandle = 0xFFFFFFFF;
 
 /// C version of [`re_sdk::SpawnOptions`].
+///
+/// See `rr_spawn_options` in the C header.
 #[derive(Debug, Clone)]
 #[repr(C)]
 pub struct CSpawnOptions {
@@ -141,7 +143,7 @@ impl From<CStoreKind> for StoreKind {
     }
 }
 
-/// Simple C version of [`CStoreInfo`]
+/// See `rr_store_info` in the C header.
 #[repr(C)]
 #[derive(Debug)]
 pub struct CStoreInfo {
@@ -156,14 +158,16 @@ pub struct CStoreInfo {
     pub store_kind: CStoreKind,
 }
 
+/// See `rr_component_type` in the C header.
 #[repr(C)]
 pub struct CComponentType {
     pub name: CStringView,
     pub schema: arrow2::ffi::ArrowSchema,
 }
 
+/// See `rr_component_batch` in the C header.
 #[repr(C)]
-pub struct CDataCell {
+pub struct CComponentBatch {
     pub component_type: CComponentTypeHandle,
     pub array: arrow2::ffi::ArrowArray,
 }
@@ -172,7 +176,7 @@ pub struct CDataCell {
 pub struct CDataRow {
     pub entity_path: CStringView,
     pub num_data_cells: u32,
-    pub data_cells: *mut CDataCell,
+    pub batches: *mut CComponentBatch,
 }
 
 #[repr(u32)]
@@ -677,7 +681,7 @@ fn rr_recording_stream_log_impl(
     let CDataRow {
         entity_path,
         num_data_cells,
-        data_cells,
+        batches,
     } = data_row;
 
     let entity_path = entity_path.as_str("entity_path")?;
@@ -686,27 +690,27 @@ fn rr_recording_stream_log_impl(
     let num_data_cells = num_data_cells as usize;
     re_log::debug!("rerun_log {entity_path:?}, num_data_cells: {num_data_cells}");
 
-    let data_cells = unsafe { std::slice::from_raw_parts_mut(data_cells, num_data_cells) };
+    let batches = unsafe { std::slice::from_raw_parts_mut(batches, num_data_cells) };
 
     let mut components = BTreeMap::default();
     {
         let component_type_registry = COMPONENT_TYPES.read();
 
-        for data_cell in data_cells {
+        for batch in batches {
             // Arrow2 implements drop for ArrowArray and ArrowSchema.
             //
-            // Therefore, for things to work correctly we have to take ownership of the data cell!
-            // The C interface is documented to take ownership of the data cell - the user should NOT call `release`.
+            // Therefore, for things to work correctly we have to take ownership of the component batch!
+            // The C interface is documented to take ownership of the component batch - the user should NOT call `release`.
             // This makes sense because from here on out we want to manage the lifetime of the underlying schema and array data:
             // the schema won't survive a loop iteration since it's reference passed for import, whereas the ArrowArray lives
             // on a longer within the resulting arrow::Array.
-            let CDataCell {
+            let CComponentBatch {
                 component_type,
                 array,
-            } = unsafe { std::ptr::read(data_cell) };
+            } = unsafe { std::ptr::read(batch) };
 
-            // It would be nice to now mark the data_cell as "consumed" by setting the original release method to nullptr.
-            // This would signifies to the calling code that the data_cell is no longer owned.
+            // It would be nice to now mark the batch as "consumed" by setting the original release method to nullptr.
+            // This would signifies to the calling code that the batch is no longer owned.
             // However, Arrow2 doesn't allow us to access the fields of the ArrowArray and ArrowSchema structs.
 
             let component_type = component_type_registry.get(component_type).ok_or_else(|| {

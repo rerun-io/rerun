@@ -4,8 +4,8 @@
 #pragma once
 
 #include "../collection.hpp"
+#include "../component_batch.hpp"
 #include "../components/disconnected_space.hpp"
-#include "../data_cell.hpp"
 #include "../indicator_component.hpp"
 #include "../result.hpp"
 
@@ -72,7 +72,7 @@ namespace rerun {
     template <>
     struct AsComponents<archetypes::DisconnectedSpace> {
         /// Serialize all set component batches.
-        static Result<std::vector<DataCell>> serialize(
+        static Result<std::vector<ComponentBatch>> serialize(
             const archetypes::DisconnectedSpace& archetype
         );
     };

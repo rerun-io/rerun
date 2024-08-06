@@ -12,7 +12,7 @@
 #include "spawn_options.hpp"
 
 namespace rerun {
-    struct DataCell;
+    struct ComponentBatch;
 
     enum class StoreKind {
         Recording,
@@ -475,7 +475,7 @@ namespace rerun {
             if (!is_enabled()) {
                 return Error::ok();
             }
-            std::vector<DataCell> serialized_batches;
+            std::vector<ComponentBatch> serialized_batches;
             Error err;
             (
                 [&] {
@@ -483,7 +483,7 @@ namespace rerun {
                         return;
                     }
 
-                    const Result<std::vector<DataCell>> serialization_result =
+                    const Result<std::vector<ComponentBatch>> serialization_result =
                         AsComponents<Ts>().serialize(archetypes_or_collections);
                     if (serialization_result.is_err()) {
                         err = serialization_result.error;
@@ -523,7 +523,7 @@ namespace rerun {
         ///
         /// \see `log`, `try_log`, `log_static`, `try_log_static`, `try_log_with_static`
         Error try_log_serialized_batches(
-            std::string_view entity_path, bool static_, std::vector<DataCell> batches
+            std::string_view entity_path, bool static_, std::vector<ComponentBatch> batches
         ) const;
 
         /// Bottom level API that logs raw data cells to the recording stream.
@@ -539,7 +539,7 @@ namespace rerun {
         ///
         /// \see `try_log_serialized_batches`
         Error try_log_data_row(
-            std::string_view entity_path, size_t num_data_cells, const DataCell* data_cells,
+            std::string_view entity_path, size_t num_data_cells, const ComponentBatch* data_cells,
             bool inject_time
         ) const;
 

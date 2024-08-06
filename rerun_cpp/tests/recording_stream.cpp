@@ -44,7 +44,7 @@ struct BadArchetype {
 namespace rerun {
     template <>
     struct AsComponents<BadArchetype> {
-        static rerun::Result<std::vector<rerun::DataCell>> serialize(const BadArchetype&) {
+        static rerun::Result<std::vector<rerun::ComponentBatch>> serialize(const BadArchetype&) {
             return Loggable<BadComponent>::error;
         }
     };
@@ -451,7 +451,7 @@ SCENARIO("Recording stream handles invalid logging gracefully", TEST_TAG) {
             const char* path = "valid";
 
             AND_GIVEN("a cell with a null buffer") {
-                rerun::DataCell cell = {};
+                rerun::ComponentBatch cell = {};
                 cell.num_instances = 1;
                 cell.component_type = 0;
 
@@ -463,7 +463,7 @@ SCENARIO("Recording stream handles invalid logging gracefully", TEST_TAG) {
                 }
             }
             AND_GIVEN("a cell with an invalid component type") {
-                rerun::DataCell cell = {};
+                rerun::ComponentBatch cell = {};
                 cell.num_instances = 1;
                 cell.component_type = RR_COMPONENT_TYPE_HANDLE_INVALID;
                 cell.array = rerun::components::indicator_arrow_array();

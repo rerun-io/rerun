@@ -9,41 +9,41 @@ namespace rerun::archetypes {}
 
 namespace rerun {
 
-    Result<std::vector<DataCell>> AsComponents<archetypes::LeafTransforms3D>::serialize(
+    Result<std::vector<ComponentBatch>> AsComponents<archetypes::LeafTransforms3D>::serialize(
         const archetypes::LeafTransforms3D& archetype
     ) {
         using namespace archetypes;
-        std::vector<DataCell> cells;
+        std::vector<ComponentBatch> cells;
         cells.reserve(6);
 
         if (archetype.translations.has_value()) {
-            auto result = DataCell::from_loggable(archetype.translations.value());
+            auto result = ComponentBatch::from_loggable(archetype.translations.value());
             RR_RETURN_NOT_OK(result.error);
             cells.push_back(std::move(result.value));
         }
         if (archetype.rotation_axis_angles.has_value()) {
-            auto result = DataCell::from_loggable(archetype.rotation_axis_angles.value());
+            auto result = ComponentBatch::from_loggable(archetype.rotation_axis_angles.value());
             RR_RETURN_NOT_OK(result.error);
             cells.push_back(std::move(result.value));
         }
         if (archetype.quaternions.has_value()) {
-            auto result = DataCell::from_loggable(archetype.quaternions.value());
+            auto result = ComponentBatch::from_loggable(archetype.quaternions.value());
             RR_RETURN_NOT_OK(result.error);
             cells.push_back(std::move(result.value));
         }
         if (archetype.scales.has_value()) {
-            auto result = DataCell::from_loggable(archetype.scales.value());
+            auto result = ComponentBatch::from_loggable(archetype.scales.value());
             RR_RETURN_NOT_OK(result.error);
             cells.push_back(std::move(result.value));
         }
         if (archetype.mat3x3.has_value()) {
-            auto result = DataCell::from_loggable(archetype.mat3x3.value());
+            auto result = ComponentBatch::from_loggable(archetype.mat3x3.value());
             RR_RETURN_NOT_OK(result.error);
             cells.push_back(std::move(result.value));
         }
         {
             auto indicator = LeafTransforms3D::IndicatorComponent();
-            auto result = DataCell::from_loggable(indicator);
+            auto result = ComponentBatch::from_loggable(indicator);
             RR_RETURN_NOT_OK(result.error);
             cells.emplace_back(std::move(result.value));
         }

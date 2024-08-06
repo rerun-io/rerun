@@ -9,21 +9,21 @@ namespace rerun::archetypes {}
 
 namespace rerun {
 
-    Result<std::vector<DataCell>> AsComponents<archetypes::DisconnectedSpace>::serialize(
+    Result<std::vector<ComponentBatch>> AsComponents<archetypes::DisconnectedSpace>::serialize(
         const archetypes::DisconnectedSpace& archetype
     ) {
         using namespace archetypes;
-        std::vector<DataCell> cells;
+        std::vector<ComponentBatch> cells;
         cells.reserve(2);
 
         {
-            auto result = DataCell::from_loggable(archetype.disconnected_space);
+            auto result = ComponentBatch::from_loggable(archetype.disconnected_space);
             RR_RETURN_NOT_OK(result.error);
             cells.push_back(std::move(result.value));
         }
         {
             auto indicator = DisconnectedSpace::IndicatorComponent();
-            auto result = DataCell::from_loggable(indicator);
+            auto result = ComponentBatch::from_loggable(indicator);
             RR_RETURN_NOT_OK(result.error);
             cells.emplace_back(std::move(result.value));
         }

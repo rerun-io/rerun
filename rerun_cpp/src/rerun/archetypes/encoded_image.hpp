@@ -5,11 +5,11 @@
 
 #include "../collection.hpp"
 #include "../compiler_utils.hpp"
+#include "../component_batch.hpp"
 #include "../components/blob.hpp"
 #include "../components/draw_order.hpp"
 #include "../components/media_type.hpp"
 #include "../components/opacity.hpp"
-#include "../data_cell.hpp"
 #include "../indicator_component.hpp"
 #include "../result.hpp"
 
@@ -149,6 +149,8 @@ namespace rerun {
     template <>
     struct AsComponents<archetypes::EncodedImage> {
         /// Serialize all set component batches.
-        static Result<std::vector<DataCell>> serialize(const archetypes::EncodedImage& archetype);
+        static Result<std::vector<ComponentBatch>> serialize(
+            const archetypes::EncodedImage& archetype
+        );
     };
 } // namespace rerun
