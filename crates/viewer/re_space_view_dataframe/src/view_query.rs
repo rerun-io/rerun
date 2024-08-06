@@ -20,12 +20,10 @@ pub(crate) enum QueryMode {
     Range {
         from: TimeInt,
         to: TimeInt,
-        //TODO(ab): add PoV components
+        //TODO(#7072): add PoV components
     },
+    //TODO(#7067): add selected components
 }
-
-//TODO: fallback to the current timeline is nice but should be saved back to the blueprint such as
-// to "freeze" the value
 
 pub(crate) struct Query {
     pub(crate) timeline: TimelineName,
@@ -394,6 +392,7 @@ struct TimelineSpec {
 }
 
 impl TimelineSpec {
+    //TODO: remove that
     fn from_time_histogram(times: &TimeHistogram) -> Self {
         Self::from_time_range(
             times.min_key().unwrap_or_default()..=times.max_key().unwrap_or_default(),

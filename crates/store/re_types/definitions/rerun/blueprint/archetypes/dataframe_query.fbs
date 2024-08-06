@@ -7,13 +7,15 @@ namespace rerun.blueprint.archetypes;
 //   settings are present for both the latest at and range modes.
 // - Timestamps are hard-invalidated by a change of timeline. So we keep them on a per-timeline basis.
 
-// TODO(ab): add visible components and (optional) PoV components, to be modelled as:
-//
+// TODO(#7067): add visible components (maybe in another archetype?)
+// TODO(#7072): add (optional) PoV components
+// Note: component list should be modelled as:
 //     component PovComponents {
 //        datatype ComponentNames {
 //            value: [string];
 //        }
 //     }
+//
 // Motivation:
 // - Chances are high that the user prefers to have their pov components _not_ invalidated by a changeof timeline.
 // - That is even though a component might _technically_ be soft-invalidated by a change of timeline (e.g. if it was
