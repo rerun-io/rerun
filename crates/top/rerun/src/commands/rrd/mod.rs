@@ -26,12 +26,18 @@ pub enum RrdCommands {
 
     /// Compacts the contents of one or more .rrd/.rbl files and writes the result to a new file.
     ///
-    /// Use the usual environment variables to control the compaction thresholds:
+    /// Uses the usual environment variables to control the compaction thresholds:
     /// `RERUN_CHUNK_MAX_ROWS`,
     /// `RERUN_CHUNK_MAX_ROWS_IF_UNSORTED`,
     /// `RERUN_CHUNK_MAX_BYTES`.
     ///
-    /// Example: `RERUN_CHUNK_MAX_ROWS=4096 RERUN_CHUNK_MAX_BYTES=1048576 rerun rrd compact /my/recordings/*.rrd -o output.rrd`
+    /// Unless explicit flags are passed, in which case they will override environment values.
+    ///
+    /// Examples:
+    ///
+    /// * `RERUN_CHUNK_MAX_ROWS=4096 RERUN_CHUNK_MAX_BYTES=1048576 rerun rrd compact /my/recordings/*.rrd -o output.rrd`
+    ///
+    /// * `rerun rrd compact --max-rows 4096 --max-bytes=1048576 /my/recordings/*.rrd -o output.rrd`
     Compact(CompactCommand),
 
     /// Merges the contents of multiple .rrd/.rbl files, and writes the result to a new file.
