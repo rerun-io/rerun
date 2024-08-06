@@ -465,19 +465,31 @@ impl Object {
             .collect();
 
         if is_enum {
+            // We want to reserve the value of 0 in all of our enums as an Invalid type variant.
+            //
+            // The reasoning behind this is twofold:
+            // - 0 is a very common accidental value to end up with if processing an incorrectly constructed buffer.
+            // - The way the .fbs compiler works, declaring an enum as a member of a struct field either requires the
+            //   enum to have a 0 value, or every struct to specify it's contextual default for that enum. This way the
+            //   fbs schema definitions are always valid.
+            //
+            // However, we then remove this field out of our generated types. This means we don't actually have to deal with
+            // invalid arms in our enums. Instead we get a deserialization error if someone accidentally uses the invalid 0
+            // value in an arrow payload.
             assert!(
                 !fields.is_empty(),
                 "enums must have at least one variant, but {fqname} has none",
             );
 
             assert!(
-            fields[0].name == "Invalid" && fields[0].enum_value == Some(0),
-            "enums must start with 'Invalid' variant with value 0, but {fqname} starts with {} = {:?}",
-            fields[0].name,
-            fields[0].enum_value,
-        );
+                fields[0].name == "Invalid" && fields[0].enum_value == Some(0),
+                "enums must start with 'Invalid' variant with value 0, but {fqname} starts with {} = {:?}",
+                fields[0].name,
+                fields[0].enum_value,
+            );
 
-            fields.remove(0); // Remove the 'Invalid' variant.
+            // Now remove the invalid variant so that it doesn't make it into our native enum definitions.
+            fields.remove(0);
         }
 
         Self {
