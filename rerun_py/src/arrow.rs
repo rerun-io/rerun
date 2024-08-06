@@ -188,25 +188,6 @@ pub fn build_chunk_from_components(
         .into_iter()
         .collect();
 
-    let mut all_lengths = timelines
-        .values()
-        .map(|timeline| (timeline.name(), timeline.num_rows()))
-        .chain(
-            components
-                .iter()
-                .map(|(component, array)| (component.as_str(), array.len())),
-        );
-
-    if let Some((_, expected)) = all_lengths.next() {
-        for (name, len) in all_lengths {
-            if len != expected {
-                return Err(PyRuntimeError::new_err(format!(
-                    "Mismatched lengths: '{name}' has length {len} but expected {expected}",
-                )));
-            }
-        }
-    }
-
     let chunk = Chunk::from_auto_row_ids(chunk_id, entity_path, timelines, components)
         .map_err(|err| PyRuntimeError::new_err(err.to_string()))?;
 
