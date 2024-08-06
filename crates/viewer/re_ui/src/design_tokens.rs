@@ -28,7 +28,10 @@ impl DesignTokens {
         Self {
             top_bar_color: Color32::from_gray(20), // copied from figma
             bottom_bar_color: get_global_color(&json, "{Global.Color.Grey.150}"),
-            bottom_bar_stroke: egui::Stroke::new(1.0, egui::Color32::from_gray(47)), // copied from figma
+            bottom_bar_stroke: egui::Stroke::new(
+                1.0,
+                get_global_color(&json, "{Global.Color.Grey.250}"),
+            ),
             bottom_bar_rounding: egui::Rounding {
                 nw: 6.0,
                 ne: 6.0,
