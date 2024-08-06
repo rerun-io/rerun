@@ -130,12 +130,14 @@ impl DesignTokens {
 
         egui_style.visuals.button_frame = true;
         egui_style.visuals.widgets.inactive.weak_bg_fill = Default::default(); // Buttons have no background color when inactive
-        egui_style.visuals.widgets.inactive.bg_fill = Color32::from_gray(50); // Fill of unchecked radio buttons, checkboxes, etc. Must be brigher than the background floating_color.
+
+        // Fill of unchecked radio buttons, checkboxes, etc. Must be brighter than the background floating_color.
+        egui_style.visuals.widgets.inactive.bg_fill =
+            get_global_color(&self.json, "{Global.Color.Grey.300}");
 
         {
             // Background colors for buttons (menu buttons, blueprint buttons, etc) when hovered or clicked:
-            // let hovered_color = get_aliased_color(&json, "{Alias.Color.Action.Hovered.value}");
-            let hovered_color = Color32::from_gray(64); // TODO(emilk): change the content of the design_tokens.json origin instead
+            let hovered_color = get_global_color(&self.json, "{Global.Color.Grey.325}");
             egui_style.visuals.widgets.hovered.weak_bg_fill = hovered_color;
             egui_style.visuals.widgets.hovered.bg_fill = hovered_color;
             egui_style.visuals.widgets.active.weak_bg_fill = hovered_color;
@@ -162,7 +164,9 @@ impl DesignTokens {
             get_aliased_color(&self.json, "{Alias.Color.Highlight.Default.value}");
         egui_style.visuals.selection.stroke.color = egui::Color32::from_rgb(173, 184, 255); // Brighter version of the above
 
-        egui_style.visuals.widgets.noninteractive.bg_stroke.color = Color32::from_gray(30); // from figma. separator lines, panel lines, etc
+        // separator lines, panel lines, etc
+        egui_style.visuals.widgets.noninteractive.bg_stroke.color =
+            get_global_color(&self.json, "{Global.Color.Grey.250}");
 
         let subdued = get_aliased_color(&self.json, "{Alias.Color.Text.Subdued.value}");
         let default = get_aliased_color(&self.json, "{Alias.Color.Text.Default.value}");
@@ -379,9 +383,9 @@ impl DesignTokens {
     }
 
     /// The color for the background of [`crate::SectionCollapsingHeader`].
-    pub fn section_collapsing_header_color() -> egui::Color32 {
+    pub fn section_collapsing_header_color(&self) -> egui::Color32 {
         // same as visuals.widgets.inactive.bg_fill
-        egui::Color32::from_gray(50)
+        get_global_color(&self.json, "{Global.Color.Grey.200}")
     }
 
     /// The color we use to mean "loop this selection"
