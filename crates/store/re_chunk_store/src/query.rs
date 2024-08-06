@@ -7,10 +7,9 @@ use itertools::Itertools;
 use re_chunk::{Chunk, LatestAtQuery, RangeQuery};
 use re_log_types::ResolvedTimeRange;
 use re_log_types::{EntityPath, TimeInt, Timeline};
-use re_types_core::SizeBytes as _;
 use re_types_core::{ComponentName, ComponentNameSet};
 
-use crate::{store::ChunkIdSetPerTime, ChunkStore};
+use crate::{store::ChunkIdSetPerTime, ChunkStore, ChunkStoreChunkStats};
 
 // Used all over in docstrings.
 #[allow(unused_imports)]
@@ -660,39 +659,60 @@ impl ChunkStore {
     }
 }
 
-// Counting
+/// ## Entity stats
 impl ChunkStore {
-    /// Returns the number of temporal events logged for an entity on a specific timeline.
+    /// Stats about all chunks with static data for an entity.
+    pub fn entity_stats_static(&self, entity_path: &EntityPath) -> ChunkStoreChunkStats {
+        re_tracing::profile_function!();
+
+        self.query_id.fetch_add(1, Ordering::Relaxed);
+
+        self.static_chunk_ids_per_entity.get(entity_path).map_or(
+            ChunkStoreChunkStats::default(),
+            |static_chunks_per_component| {
+                static_chunks_per_component
+                    .values()
+                    .filter_map(|chunk_id| self.chunks_per_chunk_id.get(chunk_id))
+                    .map(ChunkStoreChunkStats::from_chunk)
+                    .sum()
+            },
+        )
+    }
+
+    /// Stats about all the chunks that has data for an entity on a specific timeline.
     ///
-    /// This ignores static data.
-    pub fn num_temporal_events_on_timeline(
+    /// Does NOT include static data.
+    pub fn entity_stats_on_timeline(
         &self,
-        timeline: &Timeline,
         entity_path: &EntityPath,
-    ) -> u64 {
+        timeline: &Timeline,
+    ) -> ChunkStoreChunkStats {
         re_tracing::profile_function!();
 
         self.query_id.fetch_add(1, Ordering::Relaxed);
 
         self.temporal_chunk_ids_per_entity
             .get(entity_path)
-            .and_then(|temporal_chunks_events_per_timeline| {
-                temporal_chunks_events_per_timeline.get(timeline)
+            .and_then(|temporal_chunk_ids_per_timeline| {
+                temporal_chunk_ids_per_timeline.get(timeline)
             })
-            .map_or(0, |chunk_id_sets| {
-                chunk_id_sets
-                    .per_start_time
-                    .values()
-                    .flat_map(|chunk_ids| {
-                        chunk_ids
-                            .iter()
-                            .filter_map(|chunk_id| self.chunks_per_chunk_id.get(chunk_id))
-                            .map(|chunk| chunk.num_events_cumulative())
-                    })
-                    .sum()
-            })
+            .map_or(
+                ChunkStoreChunkStats::default(),
+                |chunk_id_sets| -> ChunkStoreChunkStats {
+                    chunk_id_sets
+                        .per_start_time
+                        .values()
+                        .flat_map(|chunk_ids| chunk_ids.iter())
+                        .filter_map(|id| self.chunks_per_chunk_id.get(id))
+                        .map(ChunkStoreChunkStats::from_chunk)
+                        .sum()
+                },
+            )
     }
+}
 
+/// ## Component path stats
+impl ChunkStore {
     /// Returns the number of static events logged for an entity for a specific component.
     ///
     /// This ignores temporal events.
@@ -745,56 +765,5 @@ impl ChunkStore {
                     .filter_map(|chunk| chunk.num_events_for_component(component_name))
                     .sum()
             })
-    }
-
-    /// Returns number of bytes used for an entity on a specific timeline.
-    ///
-    /// This always includes static data.
-    /// This is an approximation of the actual storage cost of the entity,
-    /// as the measurement includes the overhead of various data structures
-    /// we use in the database.
-    /// It is imprecise, because it does not account for every possible place
-    /// someone may be storing something related to the entity, only most of
-    /// what is accessible inside this chunk store.
-    ///
-    /// ⚠ This does not return the _total_ size of the entity and all its children!
-    /// For that, use `entity_db.approx_size_of_subtree_on_timeline`.
-    pub fn approx_size_of_entity_on_timeline(
-        &self,
-        timeline: &Timeline,
-        entity_path: &EntityPath,
-    ) -> u64 {
-        re_tracing::profile_function!();
-
-        self.query_id.fetch_add(1, Ordering::Relaxed);
-
-        let static_data_size_bytes = self.static_chunk_ids_per_entity.get(entity_path).map_or(
-            0,
-            |static_chunks_per_component| {
-                static_chunks_per_component
-                    .values()
-                    .filter_map(|id| self.chunks_per_chunk_id.get(id))
-                    .map(|chunk| Chunk::total_size_bytes(chunk))
-                    .sum()
-            },
-        );
-
-        let temporal_data_size_bytes = self
-            .temporal_chunk_ids_per_entity
-            .get(entity_path)
-            .and_then(|temporal_chunk_ids_per_timeline| {
-                temporal_chunk_ids_per_timeline.get(timeline)
-            })
-            .map_or(0, |chunk_id_sets| {
-                chunk_id_sets
-                    .per_start_time
-                    .values()
-                    .flat_map(|chunk_ids| chunk_ids.iter())
-                    .filter_map(|id| self.chunks_per_chunk_id.get(id))
-                    .map(|chunk| Chunk::total_size_bytes(chunk))
-                    .sum()
-            });
-
-        static_data_size_bytes + temporal_data_size_bytes
     }
 }
