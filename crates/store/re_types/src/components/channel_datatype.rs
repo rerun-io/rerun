@@ -26,37 +26,37 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 pub enum ChannelDatatype {
     /// 8-bit unsigned integer.
     #[default]
-    U8 = 0u8,
+    U8 = 0,
 
     /// 16-bit unsigned integer.
-    U16 = 1u8,
+    U16 = 1,
 
     /// 32-bit unsigned integer.
-    U32 = 2u8,
+    U32 = 2,
 
     /// 64-bit unsigned integer.
-    U64 = 3u8,
+    U64 = 3,
 
     /// 8-bit signed integer.
-    I8 = 4u8,
+    I8 = 4,
 
     /// 16-bit signed integer.
-    I16 = 5u8,
+    I16 = 5,
 
     /// 32-bit signed integer.
-    I32 = 6u8,
+    I32 = 6,
 
     /// 64-bit signed integer.
-    I64 = 7u8,
+    I64 = 7,
 
     /// 16-bit IEEE-754 floating point, also known as `half`.
-    F16 = 8u8,
+    F16 = 8,
 
     /// 32-bit IEEE-754 floating point, also known as `float` or `single`.
-    F32 = 9u8,
+    F32 = 9,
 
     /// 64-bit IEEE-754 floating point, also known as `double`.
-    F64 = 10u8,
+    F64 = 10,
 }
 
 impl ::re_types_core::reflection::Enum for ChannelDatatype {

@@ -23,14 +23,14 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 #[repr(u8)]
 pub enum ViewFit {
     /// No scaling, pixel size will match the image's width/height dimensions in pixels.
-    Original = 0u8,
+    Original = 0,
 
     /// Scale the image for the largest possible fit in the view's container.
-    Fill = 1u8,
+    Fill = 1,
 
     /// Scale the image for the largest possible fit in the view's container, but keep the original aspect ratio.
     #[default]
-    FillKeepAspectRatio = 2u8,
+    FillKeepAspectRatio = 2,
 }
 
 impl ::re_types_core::reflection::Enum for ViewFit {

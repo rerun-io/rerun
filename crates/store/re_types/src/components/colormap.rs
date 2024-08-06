@@ -29,25 +29,25 @@ pub enum Colormap {
     /// A simple black to white gradient.
     ///
     /// This is a sRGB gray gradient which is perceptually uniform.
-    Grayscale = 0u8,
+    Grayscale = 0,
 
     /// The Inferno colormap from Matplotlib.
     ///
     /// This is a perceptually uniform colormap.
     /// It interpolates from black to red to bright yellow.
-    Inferno = 1u8,
+    Inferno = 1,
 
     /// The Magma colormap from Matplotlib.
     ///
     /// This is a perceptually uniform colormap.
     /// It interpolates from black to purple to white.
-    Magma = 2u8,
+    Magma = 2,
 
     /// The Plasma colormap from Matplotlib.
     ///
     /// This is a perceptually uniform colormap.
     /// It interpolates from dark blue to purple to yellow.
-    Plasma = 3u8,
+    Plasma = 3,
 
     /// Google's Turbo colormap map.
     ///
@@ -56,20 +56,20 @@ pub enum Colormap {
     /// It is more perceptually uniform without sharp transitions and is more colorblind-friendly.
     /// Details: <https://research.google/blog/turbo-an-improved-rainbow-colormap-for-visualization/>
     #[default]
-    Turbo = 4u8,
+    Turbo = 4,
 
     /// The Viridis colormap from Matplotlib
     ///
     /// This is a perceptually uniform colormap which is robust to color blindness.
     /// It interpolates from dark purple to green to yellow.
-    Viridis = 5u8,
+    Viridis = 5,
 
     /// Rasmusgo's Cyan to Yellow colormap
     ///
     /// This is a perceptually uniform colormap which is robust to color blindness.
     /// It is especially suited for visualizing signed values.
     /// It interpolates from cyan to blue to dark gray to brass to yellow.
-    CyanToYellow = 6u8,
+    CyanToYellow = 6,
 }
 
 impl ::re_types_core::reflection::Enum for Colormap {

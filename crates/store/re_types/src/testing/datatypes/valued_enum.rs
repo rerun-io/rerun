@@ -24,19 +24,19 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 pub enum ValuedEnum {
     /// Default value.
     #[default]
-    Default = 0u8,
+    Default = 0,
 
     /// One.
-    One = 1u8,
+    One = 1,
 
     /// Two.
-    Two = 2u8,
+    Two = 2,
 
     /// Three.
-    Three = 3u8,
+    Three = 3,
 
     /// The answer to life, the universe, and everything.
-    TheAnswer = 42u8,
+    TheAnswer = 42,
 }
 
 impl ::re_types_core::reflection::Enum for ValuedEnum {

@@ -26,15 +26,15 @@ pub enum BackgroundKind {
     ///
     /// In 3D views it changes depending on the direction of the view.
     #[default]
-    GradientDark = 0u8,
+    GradientDark = 0,
 
     /// A bright gradient.
     ///
     /// In 3D views it changes depending on the direction of the view.
-    GradientBright = 1u8,
+    GradientBright = 1,
 
     /// Simple uniform color.
-    SolidColor = 2u8,
+    SolidColor = 2,
 }
 
 impl ::re_types_core::reflection::Enum for BackgroundKind {

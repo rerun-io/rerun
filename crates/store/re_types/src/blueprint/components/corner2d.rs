@@ -23,17 +23,17 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 #[repr(u8)]
 pub enum Corner2D {
     /// Left top corner.
-    LeftTop = 0u8,
+    LeftTop = 0,
 
     /// Right top corner.
-    RightTop = 1u8,
+    RightTop = 1,
 
     /// Left bottom corner.
-    LeftBottom = 2u8,
+    LeftBottom = 2,
 
     /// Right bottom corner.
     #[default]
-    RightBottom = 3u8,
+    RightBottom = 3,
 }
 
 impl ::re_types_core::reflection::Enum for Corner2D {

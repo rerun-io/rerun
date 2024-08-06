@@ -26,12 +26,12 @@ pub enum FillMode {
     ///
     /// The interior (2D) or surface (3D) are not drawn.
     #[default]
-    Wireframe = 0u8,
+    Wireframe = 0,
 
     /// The interior (2D) or surface (3D) is filled with a single color.
     ///
     /// Lines are not drawn.
-    Solid = 1u8,
+    Solid = 1,
 }
 
 impl ::re_types_core::reflection::Enum for FillMode {

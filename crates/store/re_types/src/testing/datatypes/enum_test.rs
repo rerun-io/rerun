@@ -23,23 +23,23 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 #[repr(u8)]
 pub enum EnumTest {
     /// Great film.
-    Up = 0u8,
+    Up = 0,
 
     /// Feeling blue.
-    Down = 1u8,
+    Down = 1,
 
     /// Correct.
     #[default]
-    Right = 2u8,
+    Right = 2,
 
     /// It's what's remaining.
-    Left = 3u8,
+    Left = 3,
 
     /// It's the only way to go.
-    Forward = 4u8,
+    Forward = 4,
 
     /// Baby's got it.
-    Back = 5u8,
+    Back = 5,
 }
 
 impl ::re_types_core::reflection::Enum for EnumTest {

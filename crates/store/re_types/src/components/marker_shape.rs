@@ -24,34 +24,34 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 pub enum MarkerShape {
     /// `⏺`
     #[default]
-    Circle = 0u8,
+    Circle = 0,
 
     /// `◆`
-    Diamond = 1u8,
+    Diamond = 1,
 
     /// `◼️`
-    Square = 2u8,
+    Square = 2,
 
     /// `x`
-    Cross = 3u8,
+    Cross = 3,
 
     /// `+`
-    Plus = 4u8,
+    Plus = 4,
 
     /// `▲`
-    Up = 5u8,
+    Up = 5,
 
     /// `▼`
-    Down = 6u8,
+    Down = 6,
 
     /// `◀`
-    Left = 7u8,
+    Left = 7,
 
     /// `▶`
-    Right = 8u8,
+    Right = 8,
 
     /// `*`
-    Asterisk = 9u8,
+    Asterisk = 9,
 }
 
 impl ::re_types_core::reflection::Enum for MarkerShape {

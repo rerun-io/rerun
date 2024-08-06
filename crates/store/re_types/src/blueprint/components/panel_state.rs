@@ -23,14 +23,14 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 #[repr(u8)]
 pub enum PanelState {
     /// Completely hidden.
-    Hidden = 0u8,
+    Hidden = 0,
 
     /// Visible, but as small as possible on its shorter axis.
-    Collapsed = 1u8,
+    Collapsed = 1,
 
     /// Fully expanded.
     #[default]
-    Expanded = 2u8,
+    Expanded = 2,
 }
 
 impl ::re_types_core::reflection::Enum for PanelState {
