@@ -156,6 +156,9 @@ pub struct Decoder<R: std::io::Read> {
     read: Reader<R>,
     uncompressed: Vec<u8>, // scratch space
     compressed: Vec<u8>,   // scratch space
+
+    /// The size in bytes of the data that has been decoded up to now.
+    size_bytes: u64,
 }
 
 impl<R: std::io::Read> Decoder<R> {
@@ -184,6 +187,7 @@ impl<R: std::io::Read> Decoder<R> {
             read: Reader::Raw(read),
             uncompressed: vec![],
             compressed: vec![],
+            size_bytes: FileHeader::SIZE as _,
         })
     }
 
@@ -221,6 +225,7 @@ impl<R: std::io::Read> Decoder<R> {
             read: Reader::Buffered(read),
             uncompressed: vec![],
             compressed: vec![],
+            size_bytes: FileHeader::SIZE as _,
         })
     }
 
@@ -228,6 +233,12 @@ impl<R: std::io::Read> Decoder<R> {
     #[inline]
     pub fn version(&self) -> CrateVersion {
         self.version
+    }
+
+    /// Returns the size in bytes of the data that has been decoded up to now.
+    #[inline]
+    pub fn size_bytes(&self) -> u64 {
+        self.size_bytes
     }
 
     /// Peeks ahead in search of additional `FileHeader`s in the stream.
@@ -277,6 +288,7 @@ impl<R: std::io::Read> Iterator for Decoder<R> {
 
             self.version = CrateVersion::max(self.version, version);
             self.compression = compression;
+            self.size_bytes += FileHeader::SIZE as u64;
         }
 
         let header = match MessageHeader::decode(&mut self.read) {
@@ -288,6 +300,7 @@ impl<R: std::io::Read> Iterator for Decoder<R> {
                 other => return Some(Err(other)),
             },
         };
+        self.size_bytes += MessageHeader::SIZE as u64;
 
         let uncompressed_len = header.uncompressed_len as usize;
         self.uncompressed
@@ -302,7 +315,9 @@ impl<R: std::io::Read> Iterator for Decoder<R> {
                 {
                     return Some(Err(DecodeError::Read(err)));
                 }
+                self.size_bytes += uncompressed_len as u64;
             }
+
             Compression::LZ4 => {
                 let compressed_len = header.compressed_len as usize;
                 self.compressed
@@ -322,6 +337,8 @@ impl<R: std::io::Read> Iterator for Decoder<R> {
                 ) {
                     return Some(Err(DecodeError::Lz4(err)));
                 }
+
+                self.size_bytes += compressed_len as u64;
             }
         }
 
