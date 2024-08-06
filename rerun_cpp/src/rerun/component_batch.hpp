@@ -19,13 +19,6 @@ namespace rerun {
     ///
     /// Note that this doesn't own `datatype` and `component_name`.
     struct ComponentBatch {
-        /// How many instances of the component were serialized in this component batch.
-        ///
-        /// TODO(andreas): Just like in Rust, make this part of `AsComponents`.
-        ///                 This will requiring inlining some things on RecordingStream and have some refactor ripples.
-        ///                 But it's worth keeping the language bindings more similar!
-        size_t num_instances;
-
         /// Arrow-encoded data of the component instances.
         std::shared_ptr<arrow::Array> array;
 
@@ -54,7 +47,6 @@ namespace rerun {
             RR_RETURN_NOT_OK(array.error);
 
             ComponentBatch component_batch;
-            component_batch.num_instances = components.size();
             component_batch.array = std::move(array.value);
             component_batch.component_type = component_type.value;
             return component_batch;

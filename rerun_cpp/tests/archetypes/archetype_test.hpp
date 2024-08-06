@@ -24,7 +24,6 @@ void test_compare_archetype_serialization(const T& arch_a, const T& arch_b) {
             AND_THEN("the serialized data is the same") {
                 for (size_t i = 0; i < arch_b_serialized.size(); ++i) {
                     INFO("Component batch #" << i);
-                    CHECK(arch_b_serialized[i].num_instances == arch_a_serialized[i].num_instances);
                     CHECK(
                         arch_b_serialized[i].component_type == arch_a_serialized[i].component_type
                     );

@@ -452,7 +452,6 @@ SCENARIO("Recording stream handles invalid logging gracefully", TEST_TAG) {
 
             AND_GIVEN("a cell with a null buffer") {
                 rerun::ComponentBatch cell = {};
-                cell.num_instances = 1;
                 cell.component_type = 0;
 
                 THEN("try_log_data_row fails with UnexpectedNullArgument") {
@@ -464,7 +463,6 @@ SCENARIO("Recording stream handles invalid logging gracefully", TEST_TAG) {
             }
             AND_GIVEN("a cell with an invalid component type") {
                 rerun::ComponentBatch cell = {};
-                cell.num_instances = 1;
                 cell.component_type = RR_COMPONENT_TYPE_HANDLE_INVALID;
                 cell.array = rerun::components::indicator_arrow_array();
 
@@ -493,17 +491,13 @@ SCENARIO("Recording stream handles serialization failure during logging graceful
 
             THEN("calling log with an array logs the serialization error") {
                 check_logged_error(
-                    [&] {
-                        stream.log(path, std::array{component, component});
-                    },
+                    [&] { stream.log(path, std::array{component, component}); },
                     expected_error.code
                 );
             }
             THEN("calling log with a vector logs the serialization error") {
                 check_logged_error(
-                    [&] {
-                        stream.log(path, std::vector{component, component});
-                    },
+                    [&] { stream.log(path, std::vector{component, component}); },
                     expected_error.code
                 );
             }
