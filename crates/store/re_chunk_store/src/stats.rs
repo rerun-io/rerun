@@ -102,7 +102,7 @@ pub struct ChunkStoreChunkStats {
     /// Number of rows.
     ///
     /// This is usually the same as the number of log calls the user made.
-    /// Each row can contain multiple events (see [`num_events`]).
+    /// Each row can contain multiple events (see [`Self::num_events`]).
     pub num_rows: u64,
 
     /// How many _component batches_ ("cells").
