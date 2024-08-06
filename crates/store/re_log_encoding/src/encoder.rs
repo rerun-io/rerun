@@ -1,6 +1,7 @@
 //! Encoding of [`LogMsg`]es as a binary stream, e.g. to store in an `.rrd` file, or send over network.
 
 use re_build_info::CrateVersion;
+use re_chunk::{ChunkError, ChunkResult};
 use re_log_types::LogMsg;
 
 use crate::FileHeader;
@@ -20,6 +21,9 @@ pub enum EncodeError {
 
     #[error("MsgPack error: {0}")]
     MsgPack(#[from] rmp_serde::encode::Error),
+
+    #[error("Chunk error: {0}")]
+    Chunk(#[from] ChunkError),
 
     #[error("Called append on already finished encoder")]
     AlreadyFinished,
@@ -123,30 +127,44 @@ impl<W: std::io::Write> Encoder<W> {
     }
 }
 
-pub fn encode<'a>(
+pub fn encode(
     version: CrateVersion,
     options: EncodingOptions,
-    messages: impl Iterator<Item = &'a LogMsg>,
+    messages: impl Iterator<Item = ChunkResult<LogMsg>>,
     write: &mut impl std::io::Write,
 ) -> Result<(), EncodeError> {
     re_tracing::profile_function!();
     let mut encoder = Encoder::new(version, options, write)?;
     for message in messages {
-        encoder.append(message)?;
+        encoder.append(&message?)?;
     }
     Ok(())
 }
 
-pub fn encode_as_bytes<'a>(
+pub fn encode_ref<'a>(
     version: CrateVersion,
     options: EncodingOptions,
-    messages: impl Iterator<Item = &'a LogMsg>,
+    messages: impl Iterator<Item = ChunkResult<&'a LogMsg>>,
+    write: &mut impl std::io::Write,
+) -> Result<(), EncodeError> {
+    re_tracing::profile_function!();
+    let mut encoder = Encoder::new(version, options, write)?;
+    for message in messages {
+        encoder.append(message?)?;
+    }
+    Ok(())
+}
+
+pub fn encode_as_bytes(
+    version: CrateVersion,
+    options: EncodingOptions,
+    messages: impl Iterator<Item = ChunkResult<LogMsg>>,
 ) -> Result<Vec<u8>, EncodeError> {
     re_tracing::profile_function!();
     let mut bytes: Vec<u8> = vec![];
     let mut encoder = Encoder::new(version, options, &mut bytes)?;
     for message in messages {
-        encoder.append(message)?;
+        encoder.append(&message?)?;
     }
     Ok(bytes)
 }
@@ -157,12 +175,23 @@ pub fn local_encoder() -> Result<Encoder<Vec<u8>>, EncodeError> {
 }
 
 #[inline]
-pub fn encode_as_bytes_local<'a>(
-    messages: impl IntoIterator<Item = &'a LogMsg>,
+pub fn encode_as_bytes_local(
+    messages: impl Iterator<Item = ChunkResult<LogMsg>>,
 ) -> Result<Vec<u8>, EncodeError> {
     let mut encoder = local_encoder()?;
     for message in messages {
-        encoder.append(message)?;
+        encoder.append(&message?)?;
+    }
+    Ok(encoder.into_inner())
+}
+
+#[inline]
+pub fn encode_ref_as_bytes_local<'a>(
+    messages: impl Iterator<Item = ChunkResult<&'a LogMsg>>,
+) -> Result<Vec<u8>, EncodeError> {
+    let mut encoder = local_encoder()?;
+    for message in messages {
+        encoder.append(message?)?;
     }
     Ok(encoder.into_inner())
 }
