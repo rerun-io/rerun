@@ -21,6 +21,7 @@ pub fn load_blueprint_file(
         re_tracing::profile_function!();
 
         let file = std::fs::File::open(path)?;
+        let file = std::io::BufReader::new(file);
 
         // Blueprint files change often. Be strict about the version, and then ignore any errors.
         // See https://github.com/rerun-io/rerun/issues/2830
