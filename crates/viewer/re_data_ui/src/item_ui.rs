@@ -3,6 +3,7 @@
 //! TODO(andreas): This is not a `data_ui`, can this go somewhere else, shouldn't be in `re_data_ui`.
 
 use re_entity_db::{EntityTree, InstancePath};
+use re_format::format_uint;
 use re_log_types::{ApplicationId, ComponentPath, EntityPath, TimeInt, Timeline};
 use re_ui::{icons, list_item, SyntaxHighlighting, UiExt as _};
 use re_viewer_context::{HoverHighlight, Item, SpaceViewId, UiLayout, ViewerContext};
@@ -308,6 +309,26 @@ fn entity_tree_stats_ui(
     let static_stats = db.subtree_stats_static(&tree.path);
     let timeline_stats = db.subtree_stats_on_timeline(&tree.path, timeline);
     let total_stats = static_stats + timeline_stats;
+
+    if total_stats.num_rows == 0 {
+        return;
+    } else if timeline_stats.num_rows == 0 {
+        ui.label(format!("{} static rows", format_uint(total_stats.num_rows)));
+    } else if static_stats.num_rows == 0 {
+        ui.label(format!(
+            "{} rows on timeline '{timeline}'",
+            format_uint(total_stats.num_rows),
+            timeline = timeline.name()
+        ));
+    } else {
+        ui.label(format!(
+            "{} rows ({} static, and {} on timeline '{timeline}')",
+            format_uint(total_stats.num_rows),
+            format_uint(static_stats.num_rows),
+            format_uint(timeline_stats.num_rows),
+            timeline = timeline.name()
+        ));
+    }
 
     let num_temporal_rows = timeline_stats.num_rows;
 
