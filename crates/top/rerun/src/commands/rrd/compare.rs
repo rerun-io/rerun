@@ -90,6 +90,7 @@ fn compute_uber_table(
     use re_log_types::StoreId;
 
     let rrd_file = std::fs::File::open(path_to_rrd).context("couldn't open rrd file contents")?;
+    let rrd_file = std::io::BufReader::new(rrd_file);
 
     let mut stores: std::collections::HashMap<StoreId, EntityDb> = Default::default();
     let version_policy = re_log_encoding::decoder::VersionPolicy::Error;
