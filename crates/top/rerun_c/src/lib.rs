@@ -663,7 +663,7 @@ pub extern "C" fn rr_recording_stream_reset_time(stream: CRecordingStream) {
 #[allow(unsafe_code)]
 #[allow(clippy::result_large_err)]
 #[allow(clippy::needless_pass_by_value)] // Conceptually we're consuming the data_row, as we take ownership of data it points to.
-fn rr_log_impl(
+fn rr_recording_stream_log_impl(
     stream: CRecordingStream,
     data_row: CDataRow,
     inject_time: bool,
@@ -748,14 +748,14 @@ pub unsafe extern "C" fn rr_recording_stream_log(
     inject_time: bool,
     error: *mut CError,
 ) {
-    if let Err(err) = rr_log_impl(stream, data_row, inject_time) {
+    if let Err(err) = rr_recording_stream_log_impl(stream, data_row, inject_time) {
         err.write_error(error);
     }
 }
 
 #[allow(unsafe_code)]
 #[allow(clippy::result_large_err)]
-fn rr_log_file_from_path_impl(
+fn rr_recording_stream_log_file_from_path_impl(
     stream: CRecordingStream,
     filepath: CStringView,
     entity_path_prefix: CStringView,
@@ -787,14 +787,16 @@ pub unsafe extern "C" fn rr_recording_stream_log_file_from_path(
     static_: bool,
     error: *mut CError,
 ) {
-    if let Err(err) = rr_log_file_from_path_impl(stream, filepath, entity_path_prefix, static_) {
+    if let Err(err) =
+        rr_recording_stream_log_file_from_path_impl(stream, filepath, entity_path_prefix, static_)
+    {
         err.write_error(error);
     }
 }
 
 #[allow(unsafe_code)]
 #[allow(clippy::result_large_err)]
-fn rr_log_file_from_contents_impl(
+fn rr_recording_stream_log_file_from_contents_impl(
     stream: CRecordingStream,
     filepath: CStringView,
     contents: CBytesView,
@@ -834,9 +836,13 @@ pub unsafe extern "C" fn rr_recording_stream_log_file_from_contents(
     static_: bool,
     error: *mut CError,
 ) {
-    if let Err(err) =
-        rr_log_file_from_contents_impl(stream, filepath, contents, entity_path_prefix, static_)
-    {
+    if let Err(err) = rr_recording_stream_log_file_from_contents_impl(
+        stream,
+        filepath,
+        contents,
+        entity_path_prefix,
+        static_,
+    ) {
         err.write_error(error);
     }
 }
