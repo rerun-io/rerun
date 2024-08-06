@@ -70,8 +70,11 @@ pub fn quote_arrow_deserializer(
     if is_enum {
         // An enum is very similar to a transparent type.
 
-        // A non-null enum itself must have a value.
-        let is_nullable = false;
+        // As a transparent type, it's not clear what this does or
+        // where it should come from. Also, it's not used in the internal
+        // implementation of `quote_arrow_field_deserializer` anyways.
+        // TODO(#6819): If we get rid of nullable components this will likely need to change.
+        let is_nullable = true; // Will be ignored
 
         let obj_field_fqname = format!("{obj_fqname}#enum");
 
@@ -116,8 +119,6 @@ pub fn quote_arrow_deserializer(
             #quoted_remapping
             // NOTE: implicit Vec<Result> to Result<Vec>
             .collect::<DeserializationResult<Vec<Option<_>>>>()
-            // NOTE: double context so the user can see the transparent shenanigans going on in the
-            // error.
             .with_context(#obj_fqname)?
         }
     } else if is_arrow_transparent {
