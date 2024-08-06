@@ -24,34 +24,34 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 pub enum MarkerShape {
     /// `⏺`
     #[default]
-    Circle = 0,
+    Circle = 1,
 
     /// `◆`
-    Diamond = 1,
+    Diamond = 2,
 
     /// `◼️`
-    Square = 2,
+    Square = 3,
 
     /// `x`
-    Cross = 3,
+    Cross = 4,
 
     /// `+`
-    Plus = 4,
+    Plus = 5,
 
     /// `▲`
-    Up = 5,
+    Up = 6,
 
     /// `▼`
-    Down = 6,
+    Down = 7,
 
     /// `◀`
-    Left = 7,
+    Left = 8,
 
     /// `▶`
-    Right = 8,
+    Right = 9,
 
     /// `*`
-    Asterisk = 9,
+    Asterisk = 10,
 }
 
 impl ::re_types_core::reflection::Enum for MarkerShape {
@@ -186,16 +186,16 @@ impl ::re_types_core::Loggable for MarkerShape {
             .into_iter()
             .map(|opt| opt.copied())
             .map(|typ| match typ {
-                Some(0u8) => Ok(Some(Self::Circle)),
-                Some(1u8) => Ok(Some(Self::Diamond)),
-                Some(2u8) => Ok(Some(Self::Square)),
-                Some(3u8) => Ok(Some(Self::Cross)),
-                Some(4u8) => Ok(Some(Self::Plus)),
-                Some(5u8) => Ok(Some(Self::Up)),
-                Some(6u8) => Ok(Some(Self::Down)),
-                Some(7u8) => Ok(Some(Self::Left)),
-                Some(8u8) => Ok(Some(Self::Right)),
-                Some(9u8) => Ok(Some(Self::Asterisk)),
+                Some(1) => Ok(Some(Self::Circle)),
+                Some(2) => Ok(Some(Self::Diamond)),
+                Some(3) => Ok(Some(Self::Square)),
+                Some(4) => Ok(Some(Self::Cross)),
+                Some(5) => Ok(Some(Self::Plus)),
+                Some(6) => Ok(Some(Self::Up)),
+                Some(7) => Ok(Some(Self::Down)),
+                Some(8) => Ok(Some(Self::Left)),
+                Some(9) => Ok(Some(Self::Right)),
+                Some(10) => Ok(Some(Self::Asterisk)),
                 None => Ok(None),
                 Some(invalid) => Err(DeserializationError::missing_union_arm(
                     Self::arrow_datatype(),

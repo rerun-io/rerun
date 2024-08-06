@@ -24,16 +24,16 @@ namespace rerun::blueprint::components {
     enum class Corner2D : uint8_t {
 
         /// Left top corner.
-        LeftTop = 0,
+        LeftTop = 1,
 
         /// Right top corner.
-        RightTop = 1,
+        RightTop = 2,
 
         /// Left bottom corner.
-        LeftBottom = 2,
+        LeftBottom = 3,
 
         /// Right bottom corner.
-        RightBottom = 3,
+        RightBottom = 4,
     };
 } // namespace rerun::blueprint::components
 

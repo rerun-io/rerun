@@ -24,16 +24,16 @@ namespace rerun::blueprint::components {
     enum class ContainerKind : uint8_t {
 
         /// Put children in separate tabs
-        Tabs = 0,
+        Tabs = 1,
 
         /// Order the children left to right
-        Horizontal = 1,
+        Horizontal = 2,
 
         /// Order the children top to bottom
-        Vertical = 2,
+        Vertical = 3,
 
         /// Organize children in a grid layout
-        Grid = 3,
+        Grid = 4,
     };
 } // namespace rerun::blueprint::components
 

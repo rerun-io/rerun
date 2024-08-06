@@ -24,34 +24,34 @@ namespace rerun::components {
     enum class MarkerShape : uint8_t {
 
         /// `⏺`
-        Circle = 0,
+        Circle = 1,
 
         /// `◆`
-        Diamond = 1,
+        Diamond = 2,
 
         /// `◼\u{fe0f}`
-        Square = 2,
+        Square = 3,
 
         /// `x`
-        Cross = 3,
+        Cross = 4,
 
         /// `+`
-        Plus = 4,
+        Plus = 5,
 
         /// `▲`
-        Up = 5,
+        Up = 6,
 
         /// `▼`
-        Down = 6,
+        Down = 7,
 
         /// `◀`
-        Left = 7,
+        Left = 8,
 
         /// `▶`
-        Right = 8,
+        Right = 9,
 
         /// `*`
-        Asterisk = 9,
+        Asterisk = 10,
     };
 } // namespace rerun::components
 

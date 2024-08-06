@@ -23,22 +23,22 @@ namespace rerun::datatypes {
     enum class EnumTest : uint8_t {
 
         /// Great film.
-        Up = 0,
+        Up = 1,
 
         /// Feeling blue.
-        Down = 1,
+        Down = 2,
 
         /// Correct.
-        Right = 2,
+        Right = 3,
 
         /// It's what's remaining.
-        Left = 3,
+        Left = 4,
 
         /// It's the only way to go.
-        Forward = 4,
+        Forward = 5,
 
         /// Baby's got it.
-        Back = 5,
+        Back = 6,
     };
 } // namespace rerun::datatypes
 

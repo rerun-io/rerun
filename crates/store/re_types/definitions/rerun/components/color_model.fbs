@@ -8,6 +8,9 @@ namespace rerun.components;
 enum ColorModel: byte (
     "attr.docs.unreleased"
 ) {
+    /// Invalid value. Won't show up in generated types.
+    Invalid = 0,
+
     /// Grayscale luminance intencity/brightness/value, sometimes called `Y`
     L (default),
 

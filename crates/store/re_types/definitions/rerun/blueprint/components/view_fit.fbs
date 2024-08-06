@@ -4,6 +4,9 @@ namespace rerun.blueprint.components;
 enum ViewFit: byte (
     "attr.rerun.scope": "blueprint"
 ) {
+    /// Invalid value. Won't show up in generated types.
+    Invalid = 0,
+
     /// No scaling, pixel size will match the image's width/height dimensions in pixels.
     Original,
 

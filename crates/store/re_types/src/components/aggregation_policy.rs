@@ -27,25 +27,25 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 #[repr(u8)]
 pub enum AggregationPolicy {
     /// No aggregation.
-    Off = 0,
+    Off = 1,
 
     /// Average all points in the range together.
-    Average = 1,
+    Average = 2,
 
     /// Keep only the maximum values in the range.
-    Max = 2,
+    Max = 3,
 
     /// Keep only the minimum values in the range.
-    Min = 3,
+    Min = 4,
 
     /// Keep both the minimum and maximum values in the range.
     ///
     /// This will yield two aggregated points instead of one, effectively creating a vertical line.
     #[default]
-    MinMax = 4,
+    MinMax = 5,
 
     /// Find both the minimum and maximum values in the range, then use the average of those.
-    MinMaxAverage = 5,
+    MinMaxAverage = 6,
 }
 
 impl ::re_types_core::reflection::Enum for AggregationPolicy {
@@ -172,12 +172,12 @@ impl ::re_types_core::Loggable for AggregationPolicy {
             .into_iter()
             .map(|opt| opt.copied())
             .map(|typ| match typ {
-                Some(0u8) => Ok(Some(Self::Off)),
-                Some(1u8) => Ok(Some(Self::Average)),
-                Some(2u8) => Ok(Some(Self::Max)),
-                Some(3u8) => Ok(Some(Self::Min)),
-                Some(4u8) => Ok(Some(Self::MinMax)),
-                Some(5u8) => Ok(Some(Self::MinMaxAverage)),
+                Some(1) => Ok(Some(Self::Off)),
+                Some(2) => Ok(Some(Self::Average)),
+                Some(3) => Ok(Some(Self::Max)),
+                Some(4) => Ok(Some(Self::Min)),
+                Some(5) => Ok(Some(Self::MinMax)),
+                Some(6) => Ok(Some(Self::MinMaxAverage)),
                 None => Ok(None),
                 Some(invalid) => Err(DeserializationError::missing_union_arm(
                     Self::arrow_datatype(),

@@ -24,14 +24,14 @@ from enum import Enum
 class FillMode(Enum):
     """**Component**: How a geometric shape is drawn and colored."""
 
-    Wireframe = 0
+    Wireframe = 1
     """
     Lines are drawn around the edges of the shape.
 
     The interior (2D) or surface (3D) are not drawn.
     """
 
-    Solid = 1
+    Solid = 2
     """
     The interior (2D) or surface (3D) is filled with a single color.
 

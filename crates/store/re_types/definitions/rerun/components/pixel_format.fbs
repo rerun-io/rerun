@@ -16,6 +16,9 @@ namespace rerun.components;
 enum PixelFormat: byte (
     "attr.docs.unreleased"
 ) {
+    /// Invalid value. Won't show up in generated types.
+    Invalid = 0,
+
     // TODO(emilk): consider following the naming in
     // https://facebookresearch.github.io/ocean/docs/images/pixel_formats_and_plane_layout/
 

@@ -24,10 +24,10 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 pub enum SortOrder {
     /// Ascending
     #[default]
-    Ascending = 0,
+    Ascending = 1,
 
     /// Descending
-    Descending = 1,
+    Descending = 2,
 }
 
 impl ::re_types_core::reflection::Enum for SortOrder {
@@ -135,8 +135,8 @@ impl ::re_types_core::Loggable for SortOrder {
             .into_iter()
             .map(|opt| opt.copied())
             .map(|typ| match typ {
-                Some(0u8) => Ok(Some(Self::Ascending)),
-                Some(1u8) => Ok(Some(Self::Descending)),
+                Some(1) => Ok(Some(Self::Ascending)),
+                Some(2) => Ok(Some(Self::Descending)),
                 None => Ok(None),
                 Some(invalid) => Err(DeserializationError::missing_union_arm(
                     Self::arrow_datatype(),

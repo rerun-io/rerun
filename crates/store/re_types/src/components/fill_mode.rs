@@ -26,12 +26,12 @@ pub enum FillMode {
     ///
     /// The interior (2D) or surface (3D) are not drawn.
     #[default]
-    Wireframe = 0,
+    Wireframe = 1,
 
     /// The interior (2D) or surface (3D) is filled with a single color.
     ///
     /// Lines are not drawn.
-    Solid = 1,
+    Solid = 2,
 }
 
 impl ::re_types_core::reflection::Enum for FillMode {
@@ -143,8 +143,8 @@ impl ::re_types_core::Loggable for FillMode {
             .into_iter()
             .map(|opt| opt.copied())
             .map(|typ| match typ {
-                Some(0u8) => Ok(Some(Self::Wireframe)),
-                Some(1u8) => Ok(Some(Self::Solid)),
+                Some(1) => Ok(Some(Self::Wireframe)),
+                Some(2) => Ok(Some(Self::Solid)),
                 None => Ok(None),
                 Some(invalid) => Err(DeserializationError::missing_union_arm(
                     Self::arrow_datatype(),

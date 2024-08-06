@@ -27,12 +27,12 @@ namespace rerun::components {
         ///
         /// This will give a blocky appearance when zooming in.
         /// Used as default when rendering 2D images.
-        Nearest = 0,
+        Nearest = 1,
 
         /// Linearly interpolate the nearest neighbors, creating a smoother look when zooming in.
         ///
         /// Used as default for mesh rendering.
-        Linear = 1,
+        Linear = 2,
     };
 } // namespace rerun::components
 

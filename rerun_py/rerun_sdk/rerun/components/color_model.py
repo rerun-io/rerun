@@ -28,13 +28,13 @@ class ColorModel(Enum):
     This combined with [`components.ChannelDatatype`][rerun.components.ChannelDatatype] determines the pixel format of an image.
     """
 
-    L = 0
+    L = 1
     """Grayscale luminance intencity/brightness/value, sometimes called `Y`"""
 
-    RGB = 1
+    RGB = 2
     """Red, Green, Blue"""
 
-    RGBA = 2
+    RGBA = 3
     """Red, Green, Blue, Alpha"""
 
     @classmethod

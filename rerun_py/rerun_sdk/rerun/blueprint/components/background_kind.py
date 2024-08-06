@@ -30,21 +30,21 @@ from enum import Enum
 class BackgroundKind(Enum):
     """**Component**: The type of the background in a view."""
 
-    GradientDark = 0
+    GradientDark = 1
     """
     A dark gradient.
 
     In 3D views it changes depending on the direction of the view.
     """
 
-    GradientBright = 1
+    GradientBright = 2
     """
     A bright gradient.
 
     In 3D views it changes depending on the direction of the view.
     """
 
-    SolidColor = 2
+    SolidColor = 3
     """Simple uniform color."""
 
     @classmethod

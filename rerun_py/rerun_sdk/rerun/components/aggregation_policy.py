@@ -36,26 +36,26 @@ class AggregationPolicy(Enum):
     (and readability) in such situations as it prevents overdraw.
     """
 
-    Off = 0
+    Off = 1
     """No aggregation."""
 
-    Average = 1
+    Average = 2
     """Average all points in the range together."""
 
-    Max = 2
+    Max = 3
     """Keep only the maximum values in the range."""
 
-    Min = 3
+    Min = 4
     """Keep only the minimum values in the range."""
 
-    MinMax = 4
+    MinMax = 5
     """
     Keep both the minimum and maximum values in the range.
 
     This will yield two aggregated points instead of one, effectively creating a vertical line.
     """
 
-    MinMaxAverage = 5
+    MinMaxAverage = 6
     """Find both the minimum and maximum values in the range, then use the average of those."""
 
     @classmethod

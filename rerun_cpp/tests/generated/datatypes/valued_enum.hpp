@@ -22,9 +22,6 @@ namespace rerun::datatypes {
     /// **Datatype**: A test of an enumate with specified values.
     enum class ValuedEnum : uint8_t {
 
-        /// Default value.
-        Default = 0,
-
         /// One.
         One = 1,
 

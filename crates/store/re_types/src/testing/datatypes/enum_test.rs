@@ -23,23 +23,23 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 #[repr(u8)]
 pub enum EnumTest {
     /// Great film.
-    Up = 0,
+    Up = 1,
 
     /// Feeling blue.
-    Down = 1,
+    Down = 2,
 
     /// Correct.
     #[default]
-    Right = 2,
+    Right = 3,
 
     /// It's what's remaining.
-    Left = 3,
+    Left = 4,
 
     /// It's the only way to go.
-    Forward = 4,
+    Forward = 5,
 
     /// Baby's got it.
-    Back = 5,
+    Back = 6,
 }
 
 impl ::re_types_core::reflection::Enum for EnumTest {
@@ -162,12 +162,12 @@ impl ::re_types_core::Loggable for EnumTest {
             .into_iter()
             .map(|opt| opt.copied())
             .map(|typ| match typ {
-                Some(0u8) => Ok(Some(Self::Up)),
-                Some(1u8) => Ok(Some(Self::Down)),
-                Some(2u8) => Ok(Some(Self::Right)),
-                Some(3u8) => Ok(Some(Self::Left)),
-                Some(4u8) => Ok(Some(Self::Forward)),
-                Some(5u8) => Ok(Some(Self::Back)),
+                Some(1) => Ok(Some(Self::Up)),
+                Some(2) => Ok(Some(Self::Down)),
+                Some(3) => Ok(Some(Self::Right)),
+                Some(4) => Ok(Some(Self::Left)),
+                Some(5) => Ok(Some(Self::Forward)),
+                Some(6) => Ok(Some(Self::Back)),
                 None => Ok(None),
                 Some(invalid) => Err(DeserializationError::missing_union_arm(
                     Self::arrow_datatype(),

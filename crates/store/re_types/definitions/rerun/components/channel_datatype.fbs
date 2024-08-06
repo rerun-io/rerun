@@ -6,6 +6,9 @@ namespace rerun.components;
 enum ChannelDatatype: byte (
     "attr.docs.unreleased"
 ) {
+    /// Invalid value. Won't show up in generated types.
+    Invalid = 0,
+
     /// 8-bit unsigned integer.
     U8 (default),
 

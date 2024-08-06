@@ -5,6 +5,9 @@ namespace rerun.blueprint.components;
 enum BackgroundKind: byte (
     "attr.rerun.scope": "blueprint"
 ) {
+    /// Invalid value. Won't show up in generated types.
+    Invalid = 0,
+
     /// A dark gradient.
     ///
     /// In 3D views it changes depending on the direction of the view.

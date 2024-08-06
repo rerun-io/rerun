@@ -30,7 +30,7 @@ from enum import Enum
 class MagnificationFilter(Enum):
     """**Component**: Filter used when magnifying an image/texture such that a single pixel/texel is displayed as multiple pixels on screen."""
 
-    Nearest = 0
+    Nearest = 1
     """
     Show the nearest pixel value.
 
@@ -38,7 +38,7 @@ class MagnificationFilter(Enum):
     Used as default when rendering 2D images.
     """
 
-    Linear = 1
+    Linear = 2
     """
     Linearly interpolate the nearest neighbors, creating a smoother look when zooming in.
 

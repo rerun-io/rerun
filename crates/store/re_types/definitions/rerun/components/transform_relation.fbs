@@ -4,6 +4,9 @@ namespace rerun.components;
 enum TransformRelation: byte (
     "attr.docs.unreleased"
 ) {
+    /// Invalid value. Won't show up in generated types.
+    Invalid = 0,
+
     /// The transform describes how to transform into the parent entity's space.
     ///
     /// E.g. a translation of (0, 1, 0) with this [components.TransformRelation] logged at `parent/child` means

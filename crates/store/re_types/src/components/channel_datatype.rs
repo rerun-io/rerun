@@ -26,37 +26,37 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 pub enum ChannelDatatype {
     /// 8-bit unsigned integer.
     #[default]
-    U8 = 0,
+    U8 = 1,
 
     /// 16-bit unsigned integer.
-    U16 = 1,
+    U16 = 2,
 
     /// 32-bit unsigned integer.
-    U32 = 2,
+    U32 = 3,
 
     /// 64-bit unsigned integer.
-    U64 = 3,
+    U64 = 4,
 
     /// 8-bit signed integer.
-    I8 = 4,
+    I8 = 5,
 
     /// 16-bit signed integer.
-    I16 = 5,
+    I16 = 6,
 
     /// 32-bit signed integer.
-    I32 = 6,
+    I32 = 7,
 
     /// 64-bit signed integer.
-    I64 = 7,
+    I64 = 8,
 
     /// 16-bit IEEE-754 floating point, also known as `half`.
-    F16 = 8,
+    F16 = 9,
 
     /// 32-bit IEEE-754 floating point, also known as `float` or `single`.
-    F32 = 9,
+    F32 = 10,
 
     /// 64-bit IEEE-754 floating point, also known as `double`.
-    F64 = 10,
+    F64 = 11,
 }
 
 impl ::re_types_core::reflection::Enum for ChannelDatatype {
@@ -194,17 +194,17 @@ impl ::re_types_core::Loggable for ChannelDatatype {
             .into_iter()
             .map(|opt| opt.copied())
             .map(|typ| match typ {
-                Some(0u8) => Ok(Some(Self::U8)),
-                Some(1u8) => Ok(Some(Self::U16)),
-                Some(2u8) => Ok(Some(Self::U32)),
-                Some(3u8) => Ok(Some(Self::U64)),
-                Some(4u8) => Ok(Some(Self::I8)),
-                Some(5u8) => Ok(Some(Self::I16)),
-                Some(6u8) => Ok(Some(Self::I32)),
-                Some(7u8) => Ok(Some(Self::I64)),
-                Some(8u8) => Ok(Some(Self::F16)),
-                Some(9u8) => Ok(Some(Self::F32)),
-                Some(10u8) => Ok(Some(Self::F64)),
+                Some(1) => Ok(Some(Self::U8)),
+                Some(2) => Ok(Some(Self::U16)),
+                Some(3) => Ok(Some(Self::U32)),
+                Some(4) => Ok(Some(Self::U64)),
+                Some(5) => Ok(Some(Self::I8)),
+                Some(6) => Ok(Some(Self::I16)),
+                Some(7) => Ok(Some(Self::I32)),
+                Some(8) => Ok(Some(Self::I64)),
+                Some(9) => Ok(Some(Self::F16)),
+                Some(10) => Ok(Some(Self::F32)),
+                Some(11) => Ok(Some(Self::F64)),
                 None => Ok(None),
                 Some(invalid) => Err(DeserializationError::missing_union_arm(
                     Self::arrow_datatype(),

@@ -26,15 +26,15 @@ namespace rerun::blueprint::components {
         /// A dark gradient.
         ///
         /// In 3D views it changes depending on the direction of the view.
-        GradientDark = 0,
+        GradientDark = 1,
 
         /// A bright gradient.
         ///
         /// In 3D views it changes depending on the direction of the view.
-        GradientBright = 1,
+        GradientBright = 2,
 
         /// Simple uniform color.
-        SolidColor = 2,
+        SolidColor = 3,
     };
 } // namespace rerun::blueprint::components
 

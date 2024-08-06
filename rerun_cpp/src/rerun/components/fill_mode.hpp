@@ -26,12 +26,12 @@ namespace rerun::components {
         /// Lines are drawn around the edges of the shape.
         ///
         /// The interior (2D) or surface (3D) are not drawn.
-        Wireframe = 0,
+        Wireframe = 1,
 
         /// The interior (2D) or surface (3D) is filled with a single color.
         ///
         /// Lines are not drawn.
-        Solid = 1,
+        Solid = 2,
     };
 } // namespace rerun::components
 

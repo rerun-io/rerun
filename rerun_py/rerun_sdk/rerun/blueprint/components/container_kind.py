@@ -24,16 +24,16 @@ from enum import Enum
 class ContainerKind(Enum):
     """**Component**: The kind of a blueprint container (tabs, grid, …)."""
 
-    Tabs = 0
+    Tabs = 1
     """Put children in separate tabs"""
 
-    Horizontal = 1
+    Horizontal = 2
     """Order the children left to right"""
 
-    Vertical = 2
+    Vertical = 3
     """Order the children top to bottom"""
 
-    Grid = 3
+    Grid = 4
     """Organize children in a grid layout"""
 
     @classmethod

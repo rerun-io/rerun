@@ -23,14 +23,14 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 #[repr(u8)]
 pub enum ViewFit {
     /// No scaling, pixel size will match the image's width/height dimensions in pixels.
-    Original = 0,
+    Original = 1,
 
     /// Scale the image for the largest possible fit in the view's container.
-    Fill = 1,
+    Fill = 2,
 
     /// Scale the image for the largest possible fit in the view's container, but keep the original aspect ratio.
     #[default]
-    FillKeepAspectRatio = 2,
+    FillKeepAspectRatio = 3,
 }
 
 impl ::re_types_core::reflection::Enum for ViewFit {
@@ -146,9 +146,9 @@ impl ::re_types_core::Loggable for ViewFit {
             .into_iter()
             .map(|opt| opt.copied())
             .map(|typ| match typ {
-                Some(0u8) => Ok(Some(Self::Original)),
-                Some(1u8) => Ok(Some(Self::Fill)),
-                Some(2u8) => Ok(Some(Self::FillKeepAspectRatio)),
+                Some(1) => Ok(Some(Self::Original)),
+                Some(2) => Ok(Some(Self::Fill)),
+                Some(3) => Ok(Some(Self::FillKeepAspectRatio)),
                 None => Ok(None),
                 Some(invalid) => Err(DeserializationError::missing_union_arm(
                     Self::arrow_datatype(),

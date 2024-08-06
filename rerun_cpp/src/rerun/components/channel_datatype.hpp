@@ -26,37 +26,37 @@ namespace rerun::components {
     enum class ChannelDatatype : uint8_t {
 
         /// 8-bit unsigned integer.
-        U8 = 0,
+        U8 = 1,
 
         /// 16-bit unsigned integer.
-        U16 = 1,
+        U16 = 2,
 
         /// 32-bit unsigned integer.
-        U32 = 2,
+        U32 = 3,
 
         /// 64-bit unsigned integer.
-        U64 = 3,
+        U64 = 4,
 
         /// 8-bit signed integer.
-        I8 = 4,
+        I8 = 5,
 
         /// 16-bit signed integer.
-        I16 = 5,
+        I16 = 6,
 
         /// 32-bit signed integer.
-        I32 = 6,
+        I32 = 7,
 
         /// 64-bit signed integer.
-        I64 = 7,
+        I64 = 8,
 
         /// 16-bit IEEE-754 floating point, also known as `half`.
-        F16 = 8,
+        F16 = 9,
 
         /// 32-bit IEEE-754 floating point, also known as `float` or `single`.
-        F32 = 9,
+        F32 = 10,
 
         /// 64-bit IEEE-754 floating point, also known as `double`.
-        F64 = 10,
+        F64 = 11,
     };
 } // namespace rerun::components
 

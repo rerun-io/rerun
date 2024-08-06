@@ -24,10 +24,10 @@ namespace rerun::blueprint::components {
     enum class SortKey : uint8_t {
 
         /// Group by entity.
-        Entity = 0,
+        Entity = 1,
 
         /// Group by instance.
-        Time = 1,
+        Time = 2,
     };
 } // namespace rerun::blueprint::components
 

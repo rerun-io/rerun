@@ -30,14 +30,14 @@ class Colormap(Enum):
     but currently the Viewer is limited to the types defined here.
     """
 
-    Grayscale = 0
+    Grayscale = 1
     """
     A simple black to white gradient.
 
     This is a sRGB gray gradient which is perceptually uniform.
     """
 
-    Inferno = 1
+    Inferno = 2
     """
     The Inferno colormap from Matplotlib.
 
@@ -45,7 +45,7 @@ class Colormap(Enum):
     It interpolates from black to red to bright yellow.
     """
 
-    Magma = 2
+    Magma = 3
     """
     The Magma colormap from Matplotlib.
 
@@ -53,7 +53,7 @@ class Colormap(Enum):
     It interpolates from black to purple to white.
     """
 
-    Plasma = 3
+    Plasma = 4
     """
     The Plasma colormap from Matplotlib.
 
@@ -61,7 +61,7 @@ class Colormap(Enum):
     It interpolates from dark blue to purple to yellow.
     """
 
-    Turbo = 4
+    Turbo = 5
     """
     Google's Turbo colormap map.
 
@@ -71,7 +71,7 @@ class Colormap(Enum):
     Details: <https://research.google/blog/turbo-an-improved-rainbow-colormap-for-visualization/>
     """
 
-    Viridis = 5
+    Viridis = 6
     """
     The Viridis colormap from Matplotlib
 
@@ -79,7 +79,7 @@ class Colormap(Enum):
     It interpolates from dark purple to green to yellow.
     """
 
-    CyanToYellow = 6
+    CyanToYellow = 7
     """
     Rasmusgo's Cyan to Yellow colormap
 

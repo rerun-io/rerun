@@ -26,15 +26,15 @@ pub enum BackgroundKind {
     ///
     /// In 3D views it changes depending on the direction of the view.
     #[default]
-    GradientDark = 0,
+    GradientDark = 1,
 
     /// A bright gradient.
     ///
     /// In 3D views it changes depending on the direction of the view.
-    GradientBright = 1,
+    GradientBright = 2,
 
     /// Simple uniform color.
-    SolidColor = 2,
+    SolidColor = 3,
 }
 
 impl ::re_types_core::reflection::Enum for BackgroundKind {
@@ -148,9 +148,9 @@ impl ::re_types_core::Loggable for BackgroundKind {
             .into_iter()
             .map(|opt| opt.copied())
             .map(|typ| match typ {
-                Some(0u8) => Ok(Some(Self::GradientDark)),
-                Some(1u8) => Ok(Some(Self::GradientBright)),
-                Some(2u8) => Ok(Some(Self::SolidColor)),
+                Some(1) => Ok(Some(Self::GradientDark)),
+                Some(2) => Ok(Some(Self::GradientBright)),
+                Some(3) => Ok(Some(Self::SolidColor)),
                 None => Ok(None),
                 Some(invalid) => Err(DeserializationError::missing_union_arm(
                     Self::arrow_datatype(),

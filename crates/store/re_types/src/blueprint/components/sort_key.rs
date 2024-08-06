@@ -24,10 +24,10 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 pub enum SortKey {
     /// Group by entity.
     #[default]
-    Entity = 0,
+    Entity = 1,
 
     /// Group by instance.
-    Time = 1,
+    Time = 2,
 }
 
 impl ::re_types_core::reflection::Enum for SortKey {
@@ -135,8 +135,8 @@ impl ::re_types_core::Loggable for SortKey {
             .into_iter()
             .map(|opt| opt.copied())
             .map(|typ| match typ {
-                Some(0u8) => Ok(Some(Self::Entity)),
-                Some(1u8) => Ok(Some(Self::Time)),
+                Some(1) => Ok(Some(Self::Entity)),
+                Some(2) => Ok(Some(Self::Time)),
                 None => Ok(None),
                 Some(invalid) => Err(DeserializationError::missing_union_arm(
                     Self::arrow_datatype(),

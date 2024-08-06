@@ -24,34 +24,34 @@ from enum import Enum
 class MarkerShape(Enum):
     """**Component**: The visual appearance of a point in e.g. a 2D plot."""
 
-    Circle = 0
+    Circle = 1
     """`⏺`"""
 
-    Diamond = 1
+    Diamond = 2
     """`◆`"""
 
-    Square = 2
+    Square = 3
     """`◼️`"""
 
-    Cross = 3
+    Cross = 4
     """`x`"""
 
-    Plus = 4
+    Plus = 5
     """`+`"""
 
-    Up = 5
+    Up = 6
     """`▲`"""
 
-    Down = 6
+    Down = 7
     """`▼`"""
 
-    Left = 7
+    Left = 8
     """`◀`"""
 
-    Right = 8
+    Right = 9
     """`▶`"""
 
-    Asterisk = 9
+    Asterisk = 10
     """`*`"""
 
     @classmethod
