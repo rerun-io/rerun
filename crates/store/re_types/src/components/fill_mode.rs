@@ -21,32 +21,40 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 /// **Component**: How a geometric shape is drawn and colored.
 #[derive(Clone, Copy, Debug, Hash, PartialEq, Eq, Default)]
 pub enum FillMode {
-    /// Lines are drawn around the edges of the shape.
+    /// Lines are drawn around the edges of the shape that represent the logged data.
     ///
-    /// The interior (2D) or surface (3D) are not drawn.
+    /// The interior (2D) or surface (3D) are not filled in.
     #[default]
-    Wireframe = 1,
+    MajorWireframe = 1,
+
+    /// Many lines are drawn to represent the surface of the shape.
+    ///
+    /// The interior (2D) or surface (3D) are not filled in.
+    DenseWireframe = 2,
 
     /// The interior (2D) or surface (3D) is filled with a single color.
     ///
-    /// Lines are not drawn.
-    Solid = 2,
+    /// No lines are drawn.
+    Solid = 3,
 }
 
 impl ::re_types_core::reflection::Enum for FillMode {
     #[inline]
     fn variants() -> &'static [Self] {
-        &[Self::Wireframe, Self::Solid]
+        &[Self::MajorWireframe, Self::DenseWireframe, Self::Solid]
     }
 
     #[inline]
     fn docstring_md(self) -> &'static str {
         match self {
-            Self::Wireframe => {
-                "Lines are drawn around the edges of the shape.\n\nThe interior (2D) or surface (3D) are not drawn."
+            Self::MajorWireframe => {
+                "Lines are drawn around the edges of the shape that represent the logged data.\n\nThe interior (2D) or surface (3D) are not filled in."
+            }
+            Self::DenseWireframe => {
+                "Many lines are drawn to represent the surface of the shape.\n\nThe interior (2D) or surface (3D) are not filled in."
             }
             Self::Solid => {
-                "The interior (2D) or surface (3D) is filled with a single color.\n\nLines are not drawn."
+                "The interior (2D) or surface (3D) is filled with a single color.\n\nNo lines are drawn."
             }
         }
     }
@@ -67,7 +75,8 @@ impl ::re_types_core::SizeBytes for FillMode {
 impl std::fmt::Display for FillMode {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Self::Wireframe => write!(f, "Wireframe"),
+            Self::MajorWireframe => write!(f, "MajorWireframe"),
+            Self::DenseWireframe => write!(f, "DenseWireframe"),
             Self::Solid => write!(f, "Solid"),
         }
     }
@@ -90,10 +99,11 @@ impl ::re_types_core::Loggable for FillMode {
         DataType::Union(
             std::sync::Arc::new(vec![
                 Field::new("_null_markers", DataType::Null, true),
-                Field::new("Wireframe", DataType::Null, true),
+                Field::new("MajorWireframe", DataType::Null, true),
+                Field::new("DenseWireframe", DataType::Null, true),
                 Field::new("Solid", DataType::Null, true),
             ]),
-            Some(std::sync::Arc::new(vec![0i32, 1i32, 2i32])),
+            Some(std::sync::Arc::new(vec![0i32, 1i32, 2i32, 3i32])),
             UnionMode::Sparse,
         )
     }
@@ -116,7 +126,7 @@ impl ::re_types_core::Loggable for FillMode {
                     datum
                 })
                 .collect();
-            let num_variants = 2usize;
+            let num_variants = 3usize;
             let types = data
                 .iter()
                 .map(|a| match a.as_deref() {
@@ -156,8 +166,9 @@ impl ::re_types_core::Loggable for FillMode {
                 .iter()
                 .map(|typ| match typ {
                     0 => Ok(None),
-                    1 => Ok(Some(Self::Wireframe)),
-                    2 => Ok(Some(Self::Solid)),
+                    1 => Ok(Some(Self::MajorWireframe)),
+                    2 => Ok(Some(Self::DenseWireframe)),
+                    3 => Ok(Some(Self::Solid)),
                     _ => Err(DeserializationError::missing_union_arm(
                         Self::arrow_datatype(),
                         "<invalid>",

@@ -171,7 +171,7 @@ glam = "0.28"
 glob = "0.3"
 gltf = "1.1"
 half = "2.3.1"
-hexasphere = "14.0.0"
+hexasphere = "14.1.0"
 image = { version = "0.25", default-features = false }
 indent = "0.1"
 indexmap = "2.1" # Version chosen to align with other dependencies

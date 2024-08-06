@@ -7,7 +7,8 @@ How a geometric shape is drawn and colored.
 
 ## Variants
 
-* Wireframe
+* MajorWireframe
+* DenseWireframe
 * Solid
 
 ## API reference links
