@@ -5092,6 +5092,7 @@ dependencies = [
  "re_data_ui",
  "re_entity_db",
  "re_format",
+ "re_int_histogram",
  "re_log_types",
  "re_tracing",
  "re_types",

@@ -115,6 +115,11 @@ impl RangeI64 {
     pub fn contains(&self, value: i64) -> bool {
         self.min <= value && value <= self.max
     }
+
+    #[inline]
+    pub fn length(&self) -> u64 {
+        (self.max - self.min + 1) as u64
+    }
 }
 
 impl std::fmt::Debug for RangeI64 {
