@@ -61,6 +61,7 @@ examples = [
   "mcc",
   "lerobot",
   "depth_compare",
+  "mini_nvs_solver",
   "shape_pointe",
   "llm_embedding_ner",
   "tfrecord_loader",
