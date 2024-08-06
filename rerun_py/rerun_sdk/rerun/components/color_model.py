@@ -77,6 +77,6 @@ class ColorModelBatch(BaseBatch[ColorModelArrayLike], ComponentBatchMixin):
         if isinstance(data, (ColorModel, int, str)):
             data = [data]
 
-        pa_data = [ColorModel.auto(v).value if v is not None else None for v in data]
+        pa_data = [ColorModel.auto(v).value if v is not None else None for v in data]  # type: ignore[redundant-expr]
 
         return pa.array(pa_data, type=data_type)

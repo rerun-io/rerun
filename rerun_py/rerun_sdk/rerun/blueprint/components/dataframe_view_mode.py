@@ -85,6 +85,6 @@ class DataframeViewModeBatch(BaseBatch[DataframeViewModeArrayLike], ComponentBat
         if isinstance(data, (DataframeViewMode, int, str)):
             data = [data]
 
-        pa_data = [DataframeViewMode.auto(v).value if v is not None else None for v in data]
+        pa_data = [DataframeViewMode.auto(v).value if v is not None else None for v in data]  # type: ignore[redundant-expr]
 
         return pa.array(pa_data, type=data_type)

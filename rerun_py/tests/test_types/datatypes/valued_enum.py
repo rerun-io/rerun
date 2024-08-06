@@ -81,6 +81,6 @@ class ValuedEnumBatch(BaseBatch[ValuedEnumArrayLike]):
         if isinstance(data, (ValuedEnum, int, str)):
             data = [data]
 
-        pa_data = [ValuedEnum.auto(v).value if v is not None else None for v in data]
+        pa_data = [ValuedEnum.auto(v).value if v is not None else None for v in data]  # type: ignore[redundant-expr]
 
         return pa.array(pa_data, type=data_type)
