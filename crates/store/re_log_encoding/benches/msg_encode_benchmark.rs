@@ -34,10 +34,10 @@ criterion_main!(benches);
 fn encode_log_msgs(messages: &[LogMsg]) -> Vec<u8> {
     let encoding_options = re_log_encoding::EncodingOptions::COMPRESSED;
     let mut bytes = vec![];
-    re_log_encoding::encoder::encode(
+    re_log_encoding::encoder::encode_ref(
         re_build_info::CrateVersion::LOCAL,
         encoding_options,
-        messages.iter(),
+        messages.iter().map(Ok),
         &mut bytes,
     )
     .unwrap();

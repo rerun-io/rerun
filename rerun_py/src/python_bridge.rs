@@ -16,7 +16,7 @@ use pyo3::{
 use re_log::ResultExt;
 use re_log_types::LogMsg;
 use re_log_types::{BlueprintActivationCommand, EntityPathPart, StoreKind};
-use re_sdk::external::re_log_encoding::encoder::encode_as_bytes_local;
+use re_sdk::external::re_log_encoding::encoder::encode_ref_as_bytes_local;
 use re_sdk::sink::CallbackSink;
 use re_sdk::{
     sink::{BinaryStreamStorage, MemorySinkStorage},
@@ -781,7 +781,7 @@ fn set_callback_sink(callback: PyObject, recording: Option<&PyRecordingStream>, 
 
     let callback = move |msgs: &[LogMsg]| {
         Python::with_gil(|py| {
-            let data = encode_as_bytes_local(msgs).ok_or_log_error()?;
+            let data = encode_ref_as_bytes_local(msgs.iter().map(Ok)).ok_or_log_error()?;
             let bytes = PyBytes::new(py, &data);
             callback.as_ref(py).call1((bytes,)).ok_or_log_error()?;
             Some(())
