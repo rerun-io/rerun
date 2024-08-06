@@ -1,5 +1,5 @@
 <!--[metadata]
-title = "Mini NVS Solver"
+title = "Mini NVS solver"
 tags = ["2D", "3D", "HuggingFace", "Depth", "Pinhole camera", "Diffusion"]
 source = "https://github.com/pablovela5620/mini-nvs-solver"
 thumbnail = "https://static.rerun.io/mini-nvs-solver-thumbnail/9a9cadb7a5a3beeabbdc2f4490532c1b24765dd2/480w.png"
