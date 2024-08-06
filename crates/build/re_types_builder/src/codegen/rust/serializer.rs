@@ -77,9 +77,7 @@ pub fn quote_arrow_serializer(
                     let datum: Option<::std::borrow::Cow<'a, Self>> = datum.map(Into::into);
 
                     let datum = datum
-                    .map(|datum| {
-                        *datum as u8
-                    });
+                    .map(|datum| *datum as u8);
 
                     (datum.is_some(), datum)
                 })
