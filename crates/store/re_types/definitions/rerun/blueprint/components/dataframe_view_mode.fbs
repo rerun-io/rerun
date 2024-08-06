@@ -2,7 +2,7 @@ namespace rerun.blueprint.components;
 
 
 /// The kind of table displayed by the dataframe view
-enum DataframeViewMode: byte (
+enum DataframeViewMode: ubyte (
     "attr.rerun.scope": "blueprint"
 ) {
     /// Invalid value. Won't show up in generated types.

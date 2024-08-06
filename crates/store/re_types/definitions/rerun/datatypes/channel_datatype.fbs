@@ -3,7 +3,7 @@ namespace rerun.datatypes;
 /// The innermost datatype of an image.
 ///
 /// How individual color channel components are encoded.
-enum ChannelDatatype: byte (
+enum ChannelDatatype: ubyte (
     "attr.docs.unreleased"
 ) {
     /// Invalid value. Won't show up in generated types.
