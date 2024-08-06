@@ -10,6 +10,6 @@ int main(int, char** argv) {
     // 3x2 image. Each pixel is incremented down each row
     rec.log(
         "segmentation_image",
-        rerun::archetypes::SegmentationImage(std::vector<uint8_t>{0, 1, 2, 3, 4, 5}, {3, 2})
+        rerun::archetypes::SegmentationImage(rerun::Collection<uint8_t>{0, 1, 2, 3, 4, 5}, {3, 2})
     );
 }

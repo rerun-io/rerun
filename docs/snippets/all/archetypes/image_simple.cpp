@@ -23,5 +23,5 @@ int main() {
         }
     }
 
-    rec.log("image", rerun::Image::from_rgb24({WIDTH, HEIGHT}, data));
+    rec.log("image", rerun::Image::from_rgb24(data, {WIDTH, HEIGHT}));
 }

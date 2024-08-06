@@ -1,6 +1,7 @@
 #pragma once
 
 #include "components/channel_datatype.hpp"
+#include "components/color_model.hpp"
 #include "half.hpp"
 
 #include <cstdint>
@@ -121,5 +122,20 @@ namespace rerun {
     inline components::ChannelDatatype get_datatype(const double* _unused) {
         (void)(_unused); // Suppress unused warning.
         return components::ChannelDatatype::F64;
+    }
+
+    /// Returns the number of channels for a given color model.
+    ///
+    /// This is the number of expected elements per pixel.
+    inline size_t color_model_channel_count(components::ColorModel color_model) {
+        switch (color_model) {
+            case components::ColorModel::L:
+                return 1;
+            case components::ColorModel::RGB:
+                return 3;
+            case components::ColorModel::RGBA:
+                return 4;
+        }
+        return 0;
     }
 } // namespace rerun

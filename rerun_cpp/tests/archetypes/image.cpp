@@ -8,23 +8,104 @@ using namespace rerun::components;
 #define TEST_TAG "[image][archetypes]"
 
 SCENARIO("Image archetype can be created" TEST_TAG) {
-    GIVEN("Image::from_elements") {
+    GIVEN("simple 8bit greyscale image") {
         std::vector<uint8_t> data(10 * 10, 0);
-        THEN("no error occurs on image construction with either the vector or a data pointer") {
-            auto image_from_vector = check_logged_error([&] {
-                return Image::from_elements({10, 10}, ColorModel::L, data);
-            });
-            auto image_from_ptr = check_logged_error([&] {
-                return Image::from_color_model_and_bytes(
-                    {10, 10},
-                    ColorModel::L,
-                    ChannelDatatype::U8,
-                    data
-                );
-            });
+        Image reference_image;
+        reference_image.data = rerun::borrow(data);
+        reference_image.resolution = Resolution2D(10, 10);
+        reference_image.color_model = ColorModel::L;
+        reference_image.datatype = ChannelDatatype::U8;
 
+        THEN("no error occurs on image construction from a pointer") {
+            auto image_from_ptr = check_logged_error([&] {
+                return Image(data.data(), {10, 10}, ColorModel::L);
+            });
             AND_THEN("serialization succeeds") {
-                test_compare_archetype_serialization(image_from_ptr, image_from_vector);
+                test_compare_archetype_serialization(image_from_ptr, reference_image);
+            }
+        }
+        THEN("no error occurs on image construction from a collection") {
+            auto image_from_collection = check_logged_error([&] {
+                return Image(rerun::borrow(data), {10, 10}, ColorModel::L);
+            });
+            AND_THEN("serialization succeeds") {
+                test_compare_archetype_serialization(image_from_collection, reference_image);
+            }
+        }
+        THEN("no error occurs on image construction from the greyscale utility") {
+            auto image_from_util = check_logged_error([&] {
+                return Image::from_greyscale8(data, {10, 10});
+            });
+            AND_THEN("serialization succeeds") {
+                test_compare_archetype_serialization(image_from_util, reference_image);
+            }
+        }
+    }
+
+    GIVEN("simple 8bit RGB image") {
+        std::vector<uint8_t> data(10 * 10 * 3, 0);
+        Image reference_image;
+        reference_image.data = rerun::borrow(data);
+        reference_image.resolution = Resolution2D(10, 10);
+        reference_image.color_model = ColorModel::RGB;
+        reference_image.datatype = ChannelDatatype::U8;
+
+        THEN("no error occurs on image construction from a pointer") {
+            auto image_from_ptr = check_logged_error([&] {
+                return Image(data.data(), {10, 10}, ColorModel::RGB);
+            });
+            AND_THEN("serialization succeeds") {
+                test_compare_archetype_serialization(image_from_ptr, reference_image);
+            }
+        }
+        THEN("no error occurs on image construction from a collection") {
+            auto image_from_collection = check_logged_error([&] {
+                return Image(rerun::borrow(data), {10, 10}, ColorModel::RGB);
+            });
+            AND_THEN("serialization succeeds") {
+                test_compare_archetype_serialization(image_from_collection, reference_image);
+            }
+        }
+        THEN("no error occurs on image construction from the rgb utility") {
+            auto image_from_util = check_logged_error([&] {
+                return Image::from_rgb24(data, {10, 10});
+            });
+            AND_THEN("serialization succeeds") {
+                test_compare_archetype_serialization(image_from_util, reference_image);
+            }
+        }
+    }
+
+    GIVEN("simple 8bit RGBA image") {
+        std::vector<uint8_t> data(10 * 10 * 4, 0);
+        Image reference_image;
+        reference_image.data = rerun::borrow(data);
+        reference_image.resolution = Resolution2D(10, 10);
+        reference_image.color_model = ColorModel::RGBA;
+        reference_image.datatype = ChannelDatatype::U8;
+
+        THEN("no error occurs on image construction from a pointer") {
+            auto image_from_ptr = check_logged_error([&] {
+                return Image(data.data(), {10, 10}, ColorModel::RGBA);
+            });
+            AND_THEN("serialization succeeds") {
+                test_compare_archetype_serialization(image_from_ptr, reference_image);
+            }
+        }
+        THEN("no error occurs on image construction from a collection") {
+            auto image_from_collection = check_logged_error([&] {
+                return Image(rerun::borrow(data), {10, 10}, ColorModel::RGBA);
+            });
+            AND_THEN("serialization succeeds") {
+                test_compare_archetype_serialization(image_from_collection, reference_image);
+            }
+        }
+        THEN("no error occurs on image construction from the rgba utility") {
+            auto image_from_util = check_logged_error([&] {
+                return Image::from_rgba32(data, {10, 10});
+            });
+            AND_THEN("serialization succeeds") {
+                test_compare_archetype_serialization(image_from_util, reference_image);
             }
         }
     }
