@@ -79,8 +79,21 @@ impl ChunkStore {
 #[derive(Default, Debug, Clone, Copy)]
 pub struct ChunkStoreChunkStats {
     pub num_chunks: u64,
+
+    /// Includes everything: arrow payloads, timelines, rowids, and chunk overhead.
+    ///
+    /// This is an approximation of the actual storage cost of an entity,
+    /// as the measurement includes the overhead of various data structures
+    /// we use in the database.
+    /// It is imprecise, because it does not account for every possible place
+    /// someone may be storing something related to the entity, only most of
+    /// what is accessible inside this chunk store.
     pub total_size_bytes: u64,
+
     pub total_num_rows: u64,
+
+    /// How many _component batches_ ("cells").
+    pub num_events: u64,
 }
 
 impl std::fmt::Display for ChunkStoreChunkStats {
@@ -90,6 +103,7 @@ impl std::fmt::Display for ChunkStoreChunkStats {
             num_chunks,
             total_size_bytes,
             total_num_rows,
+            num_events,
         } = *self;
 
         f.write_fmt(format_args!(
@@ -103,6 +117,10 @@ impl std::fmt::Display for ChunkStoreChunkStats {
         f.write_fmt(format_args!(
             "total_num_rows: {}\n",
             re_format::format_uint(total_num_rows)
+        ))?;
+        f.write_fmt(format_args!(
+            "num_events: {}\n",
+            re_format::format_uint(num_events)
         ))?;
 
         Ok(())
@@ -118,6 +136,7 @@ impl std::ops::Add for ChunkStoreChunkStats {
             num_chunks: self.num_chunks + rhs.num_chunks,
             total_size_bytes: self.total_size_bytes + rhs.total_size_bytes,
             total_num_rows: self.total_num_rows + rhs.total_num_rows,
+            num_events: self.num_events + rhs.num_events,
         }
     }
 }
@@ -138,6 +157,7 @@ impl std::ops::Sub for ChunkStoreChunkStats {
             num_chunks: self.num_chunks - rhs.num_chunks,
             total_size_bytes: self.total_size_bytes - rhs.total_size_bytes,
             total_num_rows: self.total_num_rows - rhs.total_num_rows,
+            num_events: self.num_events - rhs.num_events,
         }
     }
 }
@@ -149,18 +169,28 @@ impl std::ops::SubAssign for ChunkStoreChunkStats {
     }
 }
 
+impl std::iter::Sum for ChunkStoreChunkStats {
+    fn sum<I: Iterator<Item = Self>>(iter: I) -> Self {
+        let mut sum = Self::default();
+        for item in iter {
+            sum += item;
+        }
+        sum
+    }
+}
+
 impl ChunkStoreChunkStats {
     #[inline]
     pub fn from_chunk(chunk: &Arc<Chunk>) -> Self {
         // NOTE: Do _NOT_ use `chunk.total_size_bytes` as it is sitting behind an Arc
         // and would count as amortized (i.e. 0 bytes).
         let size_bytes = <Chunk as SizeBytes>::total_size_bytes(&**chunk);
-        let num_rows = chunk.num_rows() as u64;
 
         Self {
             num_chunks: 1,
             total_size_bytes: size_bytes,
-            total_num_rows: num_rows,
+            total_num_rows: chunk.num_rows() as u64,
+            num_events: chunk.num_events_cumulative(),
         }
     }
 }
