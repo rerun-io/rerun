@@ -947,7 +947,7 @@ impl RecordingStream {
 
         let chunk = Chunk::from_auto_row_ids(id, ent_path.into(), timelines, components)?;
 
-        self.record_chunk(chunk);
+        self.log_chunk(chunk);
 
         Ok(())
     }
@@ -1441,11 +1441,12 @@ impl RecordingStream {
         }
     }
 
-    /// Records a single [`Chunk`].
+    /// Logs a single [`Chunk`].
     ///
     /// Will inject `log_tick` and `log_time` timeline columns into the chunk.
+    /// If you don't want to inject these, use [`Self::send_chunk`] instead.
     #[inline]
-    pub fn record_chunk(&self, mut chunk: Chunk) {
+    pub fn log_chunk(&self, mut chunk: Chunk) {
         let f = move |inner: &RecordingStreamInner| {
             // TODO(cmc): Repeating these values is pretty wasteful. Would be nice to have a way of
             // indicating these are fixed across the whole chunk.
@@ -1499,22 +1500,22 @@ impl RecordingStream {
         };
 
         if self.with(f).is_none() {
-            re_log::warn_once!("Recording disabled - call to record_chunk() ignored");
+            re_log::warn_once!("Recording disabled - call to log_chunk() ignored");
         }
     }
 
     /// Records a single [`Chunk`].
     ///
     /// This will _not_ inject `log_tick` and `log_time` timeline columns into the chunk,
-    /// for that use [`Self::record_chunk`].
+    /// for that use [`Self::log_chunk`].
     #[inline]
-    pub fn record_chunk_raw(&self, chunk: Chunk) {
+    pub fn send_chunk(&self, chunk: Chunk) {
         let f = move |inner: &RecordingStreamInner| {
             inner.batcher.push_chunk(chunk);
         };
 
         if self.with(f).is_none() {
-            re_log::warn_once!("Recording disabled - call to record_chunk() ignored");
+            re_log::warn_once!("Recording disabled - call to send_chunk() ignored");
         }
     }
 

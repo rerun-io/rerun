@@ -1123,7 +1123,7 @@ fn log_arrow_chunk(
     // a deadlock.
     let chunk = crate::arrow::build_chunk_from_components(entity_path, timelines, components)?;
 
-    recording.record_chunk(chunk);
+    recording.log_chunk(chunk);
 
     py.allow_threads(flush_garbage_queue);
 
