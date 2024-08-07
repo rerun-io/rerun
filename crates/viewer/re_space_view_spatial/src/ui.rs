@@ -16,7 +16,7 @@ use re_space_view::{latest_at_with_blueprint_resolved_data, ScreenshotMode};
 use re_types::{
     archetypes::Pinhole,
     blueprint::components::VisualBounds2D,
-    components::{Blob, Colormap, DepthMeter, ImageFormat, ViewCoordinates},
+    components::{Colormap, DepthMeter, ImageBuffer, ImageFormat, ViewCoordinates},
     image::ImageKind,
     Loggable as _,
 };
@@ -593,7 +593,7 @@ fn picked_image_from_depth_image_query(
         &query,
         data_result,
         [
-            Blob::name(),
+            ImageBuffer::name(),
             ImageFormat::name(),
             Colormap::name(),
             DepthMeter::name(),
@@ -603,8 +603,8 @@ fn picked_image_from_depth_image_query(
 
     // TODO(andreas): Just calling `results.get_mono::<Blob>` would be a lot more elegant.
     // However, we're in the rare case where we really want a RowId to be able to identify the tensor for caching purposes.
-    let blob_untyped = results.get(Blob::name())?;
-    let blob = blob_untyped.component_mono::<Blob>()?.ok()?.0;
+    let blob_untyped = results.get(ImageBuffer::name())?;
+    let blob = blob_untyped.component_mono::<ImageBuffer>()?.ok()?.0;
 
     let format = results.get_mono::<ImageFormat>()?;
     let colormap = results.get_mono::<Colormap>()?;
@@ -617,8 +617,8 @@ fn picked_image_from_depth_image_query(
         .to_2d_image_coordinate(format.width as _);
 
     let image = ImageInfo {
-        blob_row_id,
-        blob,
+        buffer_row_id: blob_row_id,
+        buffer: blob,
         format: format.0,
         kind: ImageKind::Depth,
         colormap: Some(colormap),

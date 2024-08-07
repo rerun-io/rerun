@@ -2,7 +2,7 @@ use itertools::Itertools as _;
 
 use re_types::{
     archetypes::SegmentationImage,
-    components::{Blob, DrawOrder, ImageFormat, Opacity},
+    components::{DrawOrder, ImageBuffer, ImageFormat, Opacity},
     image::ImageKind,
     Loggable as _,
 };
@@ -81,7 +81,8 @@ impl VisualizerSystem for SegmentationImageVisualizer {
 
                 let entity_path = ctx.target_entity_path;
 
-                let Some(all_blob_chunks) = results.get_required_chunks(&Blob::name()) else {
+                let Some(all_buffer_chunks) = results.get_required_chunks(&ImageBuffer::name())
+                else {
                     return Ok(());
                 };
                 let Some(all_formats_chunks) = results.get_required_chunks(&ImageFormat::name())
@@ -90,7 +91,8 @@ impl VisualizerSystem for SegmentationImageVisualizer {
                 };
 
                 let timeline = ctx.query.timeline();
-                let all_blobs_indexed = iter_buffer::<u8>(&all_blob_chunks, timeline, Blob::name());
+                let all_buffers_indexed =
+                    iter_buffer::<u8>(&all_buffer_chunks, timeline, ImageBuffer::name());
                 let all_formats_indexed = iter_component::<ImageFormat>(
                     &all_formats_chunks,
                     timeline,
@@ -99,16 +101,16 @@ impl VisualizerSystem for SegmentationImageVisualizer {
                 let all_opacities = results.iter_as(timeline, Opacity::name());
 
                 let data = re_query::range_zip_1x2(
-                    all_blobs_indexed,
+                    all_buffers_indexed,
                     all_formats_indexed,
                     all_opacities.primitive::<f32>(),
                 )
-                .filter_map(|(index, blobs, formats, opacity)| {
-                    let blob = blobs.first()?;
+                .filter_map(|(index, buffers, formats, opacity)| {
+                    let buffer = buffers.first()?;
                     Some(SegmentationImageComponentData {
                         image: ImageInfo {
-                            blob_row_id: index.1,
-                            blob: blob.clone().into(),
+                            buffer_row_id: index.1,
+                            buffer: buffer.clone().into(),
                             format: first_copied(formats.as_deref())?.0,
                             kind: ImageKind::Segmentation,
                             colormap: None,

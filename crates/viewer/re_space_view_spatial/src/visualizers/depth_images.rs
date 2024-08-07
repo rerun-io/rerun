@@ -7,7 +7,7 @@ use re_renderer::renderer::{DepthCloud, DepthClouds};
 use re_types::{
     archetypes::DepthImage,
     components::{
-        self, Blob, Colormap, DepthMeter, DrawOrder, FillRatio, ImageFormat, ViewCoordinates,
+        self, Colormap, DepthMeter, DrawOrder, FillRatio, ImageBuffer, ImageFormat, ViewCoordinates,
     },
     image::ImageKind,
     Loggable as _,
@@ -248,7 +248,8 @@ impl VisualizerSystem for DepthImageVisualizer {
             |ctx, spatial_ctx, results| {
                 use re_space_view::RangeResultsExt as _;
 
-                let Some(all_blob_chunks) = results.get_required_chunks(&Blob::name()) else {
+                let Some(all_buffer_chunks) = results.get_required_chunks(&ImageBuffer::name())
+                else {
                     return Ok(());
                 };
                 let Some(all_format_chunks) = results.get_required_chunks(&ImageFormat::name())
@@ -257,7 +258,8 @@ impl VisualizerSystem for DepthImageVisualizer {
                 };
 
                 let timeline = ctx.query.timeline();
-                let all_blobs_indexed = iter_buffer::<u8>(&all_blob_chunks, timeline, Blob::name());
+                let all_buffers_indexed =
+                    iter_buffer::<u8>(&all_buffer_chunks, timeline, ImageBuffer::name());
                 let all_formats_indexed = iter_component::<ImageFormat>(
                     &all_format_chunks,
                     timeline,
@@ -268,19 +270,20 @@ impl VisualizerSystem for DepthImageVisualizer {
                 let all_fill_ratios = results.iter_as(timeline, FillRatio::name());
 
                 let mut data = re_query::range_zip_1x4(
-                    all_blobs_indexed,
+                    all_buffers_indexed,
                     all_formats_indexed,
                     all_colormaps.component::<components::Colormap>(),
                     all_depth_meters.primitive::<f32>(),
                     all_fill_ratios.primitive::<f32>(),
                 )
                 .filter_map(
-                    |(index, blobs, format, colormap, depth_meter, fill_ratio)| {
-                        let blob = blobs.first()?;
+                    |(index, buffers, format, colormap, depth_meter, fill_ratio)| {
+                        let buffer = buffers.first()?;
+
                         Some(DepthImageComponentData {
                             image: ImageInfo {
-                                blob_row_id: index.1,
-                                blob: blob.clone().into(),
+                                buffer_row_id: index.1,
+                                buffer: buffer.clone().into(),
                                 format: first_copied(format.as_deref())?.0,
                                 kind: ImageKind::Depth,
                                 colormap: first_copied(colormap.as_deref()),

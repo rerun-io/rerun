@@ -1,5 +1,5 @@
 use crate::{
-    components::Blob,
+    components::ImageBuffer,
     datatypes::{ChannelDatatype, ColorModel, ImageFormat, PixelFormat, TensorData},
     image::{
         blob_and_datatype_from_tensor, find_non_empty_dim_indices, ImageChannelType,
@@ -66,7 +66,7 @@ impl Image {
         };
 
         Ok(Self {
-            data: blob.into(),
+            buffer: blob.into(),
             format: image_format.into(),
             opacity: None,
             draw_order: None,
@@ -79,14 +79,14 @@ impl Image {
     pub fn from_pixel_format(
         [width, height]: [u32; 2],
         pixel_format: PixelFormat,
-        bytes: impl Into<Blob>,
+        bytes: impl Into<ImageBuffer>,
     ) -> Self {
-        let data = bytes.into();
+        let buffer = bytes.into();
 
-        let actual_bytes = data.len();
+        let actual_bytes = buffer.len();
         let bpp = pixel_format.bits_per_pixel();
         let num_expected_bytes = (width as usize * height as usize * bpp + 7) / 8; // rounding upwards
-        if data.len() != num_expected_bytes {
+        if buffer.len() != num_expected_bytes {
             re_log::warn_once!(
                 "Expected {width}x{height} {pixel_format:?} image to be {num_expected_bytes} B, but got {actual_bytes} B",
             );
@@ -95,7 +95,7 @@ impl Image {
         let image_format = ImageFormat::from_pixel_format([width, height], pixel_format);
 
         Self {
-            data,
+            buffer,
             format: image_format.into(),
             opacity: None,
             draw_order: None,
@@ -106,18 +106,18 @@ impl Image {
     ///
     /// See also [`Self::from_color_model_and_tensor`].
     pub fn from_color_model_and_bytes(
-        bytes: impl Into<Blob>,
+        bytes: impl Into<ImageBuffer>,
         [width, height]: [u32; 2],
         color_model: ColorModel,
         datatype: ChannelDatatype,
     ) -> Self {
-        let data = bytes.into();
+        let buffer = bytes.into();
 
-        let actual_bytes = data.len();
+        let actual_bytes = buffer.len();
         let num_expected_bytes =
             (width as usize * height as usize * color_model.num_channels() * datatype.bits() + 7)
                 / 8; // rounding upwards
-        if data.len() != num_expected_bytes {
+        if buffer.len() != num_expected_bytes {
             re_log::warn_once!(
                 "Expected {width}x{height} {color_model:?} {datatype:?} image to be {num_expected_bytes} B, but got {actual_bytes} B",
             );
@@ -132,7 +132,7 @@ impl Image {
         };
 
         Self {
-            data,
+            buffer,
             format: image_format.into(),
             opacity: None,
             draw_order: None,
@@ -157,17 +157,17 @@ impl Image {
     }
 
     /// From an 8-bit grayscale image.
-    pub fn from_l8(bytes: impl Into<Blob>, resolution: [u32; 2]) -> Self {
+    pub fn from_l8(bytes: impl Into<ImageBuffer>, resolution: [u32; 2]) -> Self {
         Self::from_color_model_and_bytes(bytes, resolution, ColorModel::L, ChannelDatatype::U8)
     }
 
     /// Assumes RGB, 8-bit per channel, interleaved as `RGBRGBRGB`.
-    pub fn from_rgb24(bytes: impl Into<Blob>, resolution: [u32; 2]) -> Self {
+    pub fn from_rgb24(bytes: impl Into<ImageBuffer>, resolution: [u32; 2]) -> Self {
         Self::from_color_model_and_bytes(bytes, resolution, ColorModel::RGB, ChannelDatatype::U8)
     }
 
     /// Assumes RGBA, 8-bit per channel, with separate alpha.
-    pub fn from_rgba32(bytes: impl Into<Blob>, resolution: [u32; 2]) -> Self {
+    pub fn from_rgba32(bytes: impl Into<ImageBuffer>, resolution: [u32; 2]) -> Self {
         Self::from_color_model_and_bytes(bytes, resolution, ColorModel::RGBA, ChannelDatatype::U8)
     }
 
