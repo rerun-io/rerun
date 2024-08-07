@@ -15,6 +15,7 @@ from ..._baseclasses import (
     BaseBatch,
     BaseExtensionType,
 )
+from .latest_at_query_ext import LatestAtQueryExt
 
 __all__ = ["LatestAtQuery", "LatestAtQueryArrayLike", "LatestAtQueryBatch", "LatestAtQueryLike", "LatestAtQueryType"]
 
@@ -26,15 +27,8 @@ def _latest_at_query__timeline__special_field_converter_override(x: datatypes.Ut
         return datatypes.Utf8(x)
 
 
-def _latest_at_query__time__special_field_converter_override(x: datatypes.TimeIntLike) -> datatypes.TimeInt:
-    if isinstance(x, datatypes.TimeInt):
-        return x
-    else:
-        return datatypes.TimeInt(x)
-
-
 @define(init=False)
-class LatestAtQuery:
+class LatestAtQuery(LatestAtQueryExt):
     """**Datatype**: Latest at query configuration for a specific timeline."""
 
     def __init__(self: Any, timeline: datatypes.Utf8Like, time: datatypes.TimeIntLike):
@@ -58,7 +52,9 @@ class LatestAtQuery:
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 
-    time: datatypes.TimeInt = field(converter=_latest_at_query__time__special_field_converter_override)
+    time: datatypes.TimeInt = field(
+        converter=LatestAtQueryExt.time__field_converter_override,  # type: ignore[misc]
+    )
     # Time value to use for this query.
     #
     # (Docstring intentionally commented out to hide this field from the docs)

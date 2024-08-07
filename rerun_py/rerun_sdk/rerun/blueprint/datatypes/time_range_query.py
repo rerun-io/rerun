@@ -15,6 +15,7 @@ from ..._baseclasses import (
     BaseBatch,
     BaseExtensionType,
 )
+from .time_range_query_ext import TimeRangeQueryExt
 
 __all__ = [
     "TimeRangeQuery",
@@ -32,22 +33,8 @@ def _time_range_query__timeline__special_field_converter_override(x: datatypes.U
         return datatypes.Utf8(x)
 
 
-def _time_range_query__start__special_field_converter_override(x: datatypes.TimeIntLike) -> datatypes.TimeInt:
-    if isinstance(x, datatypes.TimeInt):
-        return x
-    else:
-        return datatypes.TimeInt(x)
-
-
-def _time_range_query__end__special_field_converter_override(x: datatypes.TimeIntLike) -> datatypes.TimeInt:
-    if isinstance(x, datatypes.TimeInt):
-        return x
-    else:
-        return datatypes.TimeInt(x)
-
-
 @define(init=False)
-class TimeRangeQuery:
+class TimeRangeQuery(TimeRangeQueryExt):
     """**Datatype**: Time range query configuration for a specific timeline."""
 
     def __init__(self: Any, timeline: datatypes.Utf8Like, start: datatypes.TimeIntLike, end: datatypes.TimeIntLike):
@@ -73,12 +60,16 @@ class TimeRangeQuery:
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 
-    start: datatypes.TimeInt = field(converter=_time_range_query__start__special_field_converter_override)
+    start: datatypes.TimeInt = field(
+        converter=TimeRangeQueryExt.start__field_converter_override,  # type: ignore[misc]
+    )
     # Beginning of the time range.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 
-    end: datatypes.TimeInt = field(converter=_time_range_query__end__special_field_converter_override)
+    end: datatypes.TimeInt = field(
+        converter=TimeRangeQueryExt.end__field_converter_override,  # type: ignore[misc]
+    )
     # End of the time range.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
