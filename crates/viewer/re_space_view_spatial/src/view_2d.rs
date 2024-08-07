@@ -319,7 +319,7 @@ fn find_non_nested_image_dimensions(
 ) {
     if let Some(dimensions) = image_dimensions.get(&subtree.path) {
         // If we found an image entity, add its dimensions to the set.
-        found_image_dimensions.insert([dimensions.height() as _, dimensions.width() as _]);
+        found_image_dimensions.insert([dimensions.height as _, dimensions.width as _]);
     } else if entity_bucket
         .iter()
         .any(|e| e.is_descendant_of(&subtree.path))

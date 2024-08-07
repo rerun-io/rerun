@@ -13,26 +13,8 @@ use re_types::{
 
 #[derive(Debug, Clone, Default)]
 pub struct MaxDimensions {
-    width: u32,
-    height: u32,
-}
-
-impl MaxDimensions {
-    pub fn width(&self) -> u32 {
-        self.width
-    }
-
-    pub fn height(&self) -> u32 {
-        self.height
-    }
-
-    pub fn set_width(&mut self, width: u32) {
-        self.width = width;
-    }
-
-    pub fn set_height(&mut self, height: u32) {
-        self.height = height;
-    }
+    pub width: u32,
+    pub height: u32,
 }
 
 #[derive(Default, Debug, Clone)]
@@ -107,8 +89,8 @@ impl ChunkStoreSubscriber for MaxImageDimensionSubscriber {
                         .entry(event.diff.chunk.entity_path().clone())
                         .or_default();
 
-                    max_dim.set_height(max_dim.height().max(new_dim.height));
-                    max_dim.set_width(max_dim.width().max(new_dim.width));
+                    max_dim.height = max_dim.height.max(new_dim.height);
+                    max_dim.width = max_dim.width.max(new_dim.width);
                 }
             }
 
@@ -157,8 +139,8 @@ impl ChunkStoreSubscriber for MaxImageDimensionSubscriber {
                                 .entry(event.diff.chunk.entity_path().clone())
                                 .or_default();
 
-                            max_dim.set_height(max_dim.height().max(height));
-                            max_dim.set_width(max_dim.width().max(width));
+                            max_dim.height = max_dim.height.max(height);
+                            max_dim.width = max_dim.width.max(width);
                         }
                     }
                 }
