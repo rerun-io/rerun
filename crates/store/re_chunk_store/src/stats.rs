@@ -1,6 +1,6 @@
-use std::sync::Arc;
+use std::sync::{atomic::Ordering, Arc};
 
-use re_chunk::Chunk;
+use re_chunk::{Chunk, ComponentName, EntityPath, Timeline};
 use re_types_core::SizeBytes;
 
 use crate::ChunkStore;
@@ -205,5 +205,119 @@ impl ChunkStoreChunkStats {
             num_rows: chunk.num_rows() as u64,
             num_events: chunk.num_events_cumulative(),
         }
+    }
+}
+
+// ----------------------------------------------------------------------------
+
+/// ## Entity stats
+impl ChunkStore {
+    /// Stats about all chunks with static data for an entity.
+    pub fn entity_stats_static(&self, entity_path: &EntityPath) -> ChunkStoreChunkStats {
+        re_tracing::profile_function!();
+
+        self.query_id.fetch_add(1, Ordering::Relaxed);
+
+        self.static_chunk_ids_per_entity.get(entity_path).map_or(
+            ChunkStoreChunkStats::default(),
+            |static_chunks_per_component| {
+                let chunk_ids: ahash::HashSet<re_chunk::ChunkId> =
+                    static_chunks_per_component.values().copied().collect();
+
+                chunk_ids
+                    .into_iter()
+                    .filter_map(|chunk_id| self.chunks_per_chunk_id.get(&chunk_id))
+                    .map(ChunkStoreChunkStats::from_chunk)
+                    .sum()
+            },
+        )
+    }
+
+    /// Stats about all the chunks that has data for an entity on a specific timeline.
+    ///
+    /// Does NOT include static data.
+    pub fn entity_stats_on_timeline(
+        &self,
+        entity_path: &EntityPath,
+        timeline: &Timeline,
+    ) -> ChunkStoreChunkStats {
+        re_tracing::profile_function!();
+
+        self.query_id.fetch_add(1, Ordering::Relaxed);
+
+        self.temporal_chunk_ids_per_entity
+            .get(entity_path)
+            .and_then(|temporal_chunk_ids_per_timeline| {
+                temporal_chunk_ids_per_timeline.get(timeline)
+            })
+            .map_or(
+                ChunkStoreChunkStats::default(),
+                |chunk_id_sets| -> ChunkStoreChunkStats {
+                    chunk_id_sets
+                        .per_start_time
+                        .values()
+                        .flat_map(|chunk_ids| chunk_ids.iter())
+                        .filter_map(|id| self.chunks_per_chunk_id.get(id))
+                        .map(ChunkStoreChunkStats::from_chunk)
+                        .sum()
+                },
+            )
+    }
+}
+
+/// ## Component path stats
+impl ChunkStore {
+    /// Returns the number of static events logged for an entity for a specific component.
+    ///
+    /// This ignores temporal events.
+    pub fn num_static_events_for_component(
+        &self,
+        entity_path: &EntityPath,
+        component_name: ComponentName,
+    ) -> u64 {
+        re_tracing::profile_function!();
+
+        self.query_id.fetch_add(1, Ordering::Relaxed);
+
+        self.static_chunk_ids_per_entity
+            .get(entity_path)
+            .and_then(|static_chunks_per_component| {
+                static_chunks_per_component.get(&component_name)
+            })
+            .and_then(|chunk_id| self.chunks_per_chunk_id.get(chunk_id))
+            .and_then(|chunk| chunk.num_events_for_component(component_name))
+            .unwrap_or(0)
+    }
+
+    /// Returns the number of temporal events logged for an entity for a specific component on a given timeline.
+    ///
+    /// This ignores static events.
+    pub fn num_temporal_events_for_component_on_timeline(
+        &self,
+        timeline: &Timeline,
+        entity_path: &EntityPath,
+        component_name: ComponentName,
+    ) -> u64 {
+        re_tracing::profile_function!();
+
+        self.query_id.fetch_add(1, Ordering::Relaxed);
+
+        self.temporal_chunk_ids_per_entity_per_component
+            .get(entity_path)
+            .and_then(|temporal_chunk_ids_per_timeline| {
+                temporal_chunk_ids_per_timeline.get(timeline)
+            })
+            .and_then(|temporal_chunk_ids_per_component| {
+                temporal_chunk_ids_per_component.get(&component_name)
+            })
+            .map_or(0, |chunk_id_sets| {
+                chunk_id_sets
+                    .per_start_time
+                    .values()
+                    .flat_map(|chunk_ids| chunk_ids.iter())
+                    .filter_map(|chunk_id| self.chunks_per_chunk_id.get(chunk_id))
+                    .filter_map(|chunk| chunk.num_events_for_component(component_name))
+                    .sum()
+            })
     }
 }
