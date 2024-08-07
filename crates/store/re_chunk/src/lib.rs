@@ -20,8 +20,8 @@ pub mod util;
 #[cfg(not(target_arch = "wasm32"))]
 mod batcher;
 
-pub use self::builder::{ChunkBuilder, ChunkTimelineBuilder};
-pub use self::chunk::{Chunk, ChunkError, ChunkResult, ChunkTimeline};
+pub use self::builder::{ChunkBuilder, TimeColumnBuilder};
+pub use self::chunk::{Chunk, ChunkError, ChunkResult, TimeColumn};
 pub use self::helpers::{ChunkShared, UnitChunkShared};
 pub use self::id::{ChunkId, RowId};
 pub use self::iter::{ChunkComponentIter, ChunkComponentIterItem, ChunkIndicesIter};

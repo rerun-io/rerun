@@ -129,6 +129,12 @@ from .script_helpers import (
     script_setup as script_setup,
     script_teardown as script_teardown,
 )
+from .send_columns import (
+    TimeNanosBatch as TimeNanosBatch,
+    TimeSecondsBatch as TimeSecondsBatch,
+    TimeSequenceBatch as TimeSequenceBatch,
+    send_columns as send_columns,
+)
 from .sinks import (
     connect as connect,
     disconnect as disconnect,
@@ -137,12 +143,6 @@ from .sinks import (
     serve as serve,
     spawn as spawn,
     stdout as stdout,
-)
-from .temporal_batch import (
-    TimeNanosBatch as TimeNanosBatch,
-    TimeSecondsBatch as TimeSecondsBatch,
-    TimeSequenceBatch as TimeSequenceBatch,
-    log_temporal_batch as log_temporal_batch,
 )
 from .time import (
     disable_timeline as disable_timeline,

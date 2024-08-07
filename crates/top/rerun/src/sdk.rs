@@ -22,7 +22,7 @@ mod prelude {
     pub use re_types::Rotation3D;
 
     // Also import any component or datatype that has a unique name:
-    pub use re_chunk::ChunkTimeline;
+    pub use re_chunk::TimeColumn;
     pub use re_types::components::{
         AlbedoFactor, ChannelDatatype, Color, ColorModel, FillMode, HalfSize2D, HalfSize3D,
         LineStrip2D, LineStrip3D, MediaType, PixelFormat, Position2D, Position3D, Radius,

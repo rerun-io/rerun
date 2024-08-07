@@ -117,12 +117,12 @@ impl Chunk {
                 }
             }
         } else {
-            let Some(time_chunk) = self.timelines.get(&query.timeline()) else {
+            let Some(time_column) = self.timelines.get(&query.timeline()) else {
                 return self.emptied();
             };
 
-            let is_sorted_by_time = time_chunk.is_sorted();
-            let times = time_chunk.times_raw();
+            let is_sorted_by_time = time_column.is_sorted();
+            let times = time_column.times_raw();
 
             if is_sorted_by_time {
                 // Temporal, row-sorted, time-sorted chunk

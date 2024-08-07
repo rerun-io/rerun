@@ -6535,7 +6535,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "test_temporal_batch"
+name = "test_send_columns"
 version = "0.18.0-alpha.1+dev"
 dependencies = [
  "re_arrow2",

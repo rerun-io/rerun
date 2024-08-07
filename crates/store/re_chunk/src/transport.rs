@@ -15,7 +15,7 @@ use arrow2::{
 use re_log_types::{EntityPath, Timeline};
 use re_types_core::{Loggable as _, SizeBytes};
 
-use crate::{Chunk, ChunkError, ChunkId, ChunkResult, ChunkTimeline, RowId};
+use crate::{Chunk, ChunkError, ChunkId, ChunkResult, RowId, TimeColumn};
 
 // ---
 
@@ -389,7 +389,7 @@ impl Chunk {
             re_tracing::profile_scope!("timelines");
 
             for (timeline, info) in timelines {
-                let ChunkTimeline {
+                let TimeColumn {
                     timeline: _,
                     times,
                     is_sorted,
@@ -525,12 +525,12 @@ impl Chunk {
                     .get(TransportChunk::FIELD_METADATA_MARKER_IS_SORTED_BY_TIME)
                     .is_some();
 
-                let time_chunk = ChunkTimeline::new(
+                let time_column = TimeColumn::new(
                     is_sorted.then_some(true),
                     timeline,
                     times.clone(), /* cheap */
                 );
-                if timelines.insert(timeline, time_chunk).is_some() {
+                if timelines.insert(timeline, time_column).is_some() {
                     return Err(ChunkError::Malformed {
                         reason: format!(
                             "time column '{}' was specified more than once",
@@ -642,7 +642,7 @@ mod tests {
         let timeline1 = Timeline::new_temporal("log_time");
         let timelines1 = std::iter::once((
             timeline1,
-            ChunkTimeline::new(
+            TimeColumn::new(
                 Some(true),
                 timeline1,
                 ArrowPrimitiveArray::<i64>::from_vec(vec![42, 43, 44, 45]),
