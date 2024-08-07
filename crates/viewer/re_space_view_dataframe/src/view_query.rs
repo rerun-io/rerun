@@ -46,11 +46,12 @@ impl Query {
             space_view_id,
         );
 
+        // The presence (or not) of the timeline component determines if the view should follow the
+        // time panel timeline/latest at query, or override it.
         let Some(timeline) = property
             .component_or_empty::<components::Timeline>()?
             .map(|t| t.timeline_name())
         else {
-            // if the timeline is not set, it means that we must follow the time panel settings
             return Ok(Self::FollowTimeline);
         };
 
