@@ -5,7 +5,7 @@ use crate::{CError, CErrorCode};
 /// Safety:
 /// This must only be ever called once for a given ffi array.
 /// Conceptually, this takes ownership of the array, i.e. this should really be a move operation,
-/// but since we have typically pass c arrays (ptr + lenght), we can't actually move out data.
+/// but since we have typically pass c arrays (ptr + length), we can't actually move out data.
 #[allow(unsafe_code)]
 #[allow(clippy::result_large_err)]
 pub unsafe fn arrow_array_from_c_ffi(
