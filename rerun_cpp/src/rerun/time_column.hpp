@@ -54,7 +54,7 @@ namespace rerun {
         /// Creates a sequence time column from an array of sequence points.
         ///
         /// \param timeline_name The name of the timeline this column belongs to.
-        /// \param timepoints The sequence points.
+        /// \param sequence_points The sequence points.
         /// Make sure the sorting status is correctly specified.
         /// \param sorting_status The sorting status of the sequence points.
         static TimeColumn from_sequence_points(
@@ -71,7 +71,7 @@ namespace rerun {
         /// Creates a sequence time column from an array of sequence points.
         ///
         /// \param timeline_name The name of the timeline this column belongs to.
-        /// \param timepoints The time points in nanoseconds.
+        /// \param timepoints_in_nanoseconds The time points in nanoseconds.
         /// Make sure the sorting status is correctly specified.
         /// \param sorting_status The sorting status of the time points.
         static TimeColumn from_time(
