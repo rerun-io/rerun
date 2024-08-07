@@ -268,6 +268,7 @@ pub enum CErrorCode {
     _CategoryArgument = 0x0000_00010,
     UnexpectedNullArgument,
     InvalidStringArgument,
+    InvalidEnumValue,
     InvalidRecordingStreamHandle,
     InvalidSocketAddress,
     InvalidComponentTypeHandle,

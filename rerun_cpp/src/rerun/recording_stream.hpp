@@ -9,7 +9,9 @@
 
 #include "as_components.hpp"
 #include "error.hpp"
+#include "partitioned_component_batch.hpp"
 #include "spawn_options.hpp"
+#include "time_column.hpp"
 
 namespace rerun {
     struct ComponentBatch;
@@ -295,7 +297,7 @@ namespace rerun {
         /// @}
 
         // -----------------------------------------------------------------------------------------
-        /// \name Logging
+        /// \name Sending & logging data.
         /// @{
 
         /// Logs one or more archetype and/or component batches.
@@ -648,6 +650,20 @@ namespace rerun {
         Error try_log_file_from_contents(
             const std::filesystem::path& filepath, const std::byte* contents, size_t contents_size,
             std::string_view entity_path_prefix = std::string_view(), bool static_ = false
+        ) const;
+
+        /// TODO: docs
+        void send_columns(
+            std::string_view entity_path, Collection<TimeColumn> time_columns,
+            Collection<PartitionedComponentBatch> component_batches
+        ) const {
+            try_send_columns(entity_path, time_columns, component_batches).handle();
+        }
+
+        /// TODO: docs
+        Error try_send_columns(
+            std::string_view entity_path, Collection<TimeColumn> time_columns,
+            Collection<PartitionedComponentBatch> component_batches
         ) const;
 
         /// @}
