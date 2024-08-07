@@ -1,23 +1,25 @@
+use std::any::Any;
+
 use egui::Ui;
+
 use re_chunk_store::LatestAtQuery;
 use re_log_types::{EntityPath, ResolvedTimeRange};
 use re_space_view::view_property_ui;
-use re_types::blueprint::components::{LatestAtQueries, Timeline};
-use re_types::blueprint::{archetypes, components, datatypes};
-use re_types_core::datatypes::{TimeRange, Utf8};
+use re_types::blueprint::{archetypes, components};
+use re_types_core::datatypes::TimeRange;
 use re_types_core::SpaceViewClassIdentifier;
 use re_ui::list_item;
 use re_viewer_context::{
-    QueryContext, QueryRange, SpaceViewClass, SpaceViewClassRegistryError, SpaceViewId,
-    SpaceViewState, SpaceViewStateExt, SpaceViewSystemExecutionError, SystemExecutionOutput,
-    TypedComponentFallbackProvider, ViewQuery, ViewerContext,
+    QueryRange, SpaceViewClass, SpaceViewClassRegistryError, SpaceViewId, SpaceViewState,
+    SpaceViewStateExt, SpaceViewSystemExecutionError, SystemExecutionOutput, ViewQuery,
+    ViewerContext,
 };
 use re_viewport_blueprint::ViewProperty;
-use std::any::Any;
 
-use crate::view_query::{Query, QueryMode};
 use crate::{
-    latest_at_table::latest_at_table_ui, time_range_table::time_range_table_ui,
+    latest_at_table::latest_at_table_ui,
+    time_range_table::time_range_table_ui,
+    view_query::{Query, QueryMode},
     visualizer_system::EmptySystem,
 };
 
