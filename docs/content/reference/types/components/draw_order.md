@@ -25,7 +25,7 @@ Draw order for entities with the same draw order is generally undefined.
 * [`Arrows2D`](../archetypes/arrows2d.md)
 * [`Boxes2D`](../archetypes/boxes2d.md)
 * [`DepthImage`](../archetypes/depth_image.md)
-* [`ImageEncoded`](../archetypes/image_encoded.md?speculative-link)
+* [`EncodedImage`](../archetypes/encoded_image.md?speculative-link)
 * [`Image`](../archetypes/image.md)
 * [`LineStrips2D`](../archetypes/line_strips2d.md)
 * [`Points2D`](../archetypes/points2d.md)

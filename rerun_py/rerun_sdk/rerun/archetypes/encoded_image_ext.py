@@ -40,8 +40,8 @@ def guess_media_type(path: str | pathlib.Path) -> MediaType | None:
         return None
 
 
-class ImageEncodedExt:
-    """Extension for [ImageEncoded][rerun.archetypes.ImageEncoded]."""
+class EncodedImageExt:
+    """Extension for [EncodedImage][rerun.archetypes.EncodedImage]."""
 
     def __init__(
         self: Any,
@@ -53,7 +53,7 @@ class ImageEncodedExt:
         draw_order: Float32Like | None = None,
     ):
         """
-        Create a new instance of the ImageEncoded archetype.
+        Create a new instance of the EncodedImage archetype.
 
         Parameters
         ----------

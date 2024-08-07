@@ -34,7 +34,7 @@ namespace rerun::archetypes {
     /// The order of dimensions in the underlying `components::Blob` follows the typical
     /// row-major, interleaved-pixel image format.
     ///
-    /// Rerun also supports compressed images (JPEG, PNG, …), using `archetypes::ImageEncoded`.
+    /// Rerun also supports compressed images (JPEG, PNG, …), using `archetypes::EncodedImage`.
     /// Compressing images can save a lot of bandwidth and memory.
     ///
     /// Since the underlying [rerun::components::Blob] uses `rerun::Collection` internally,

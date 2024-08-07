@@ -8,7 +8,7 @@ mod boxes3d;
 mod cameras;
 mod depth_images;
 mod ellipsoids;
-mod image_encoded;
+mod encoded_image;
 mod images;
 mod lines2d;
 mod lines3d;
@@ -21,7 +21,7 @@ mod utilities;
 
 pub use cameras::CamerasVisualizer;
 pub use depth_images::DepthImageVisualizer;
-pub use image_encoded::ImageEncodedVisualizer;
+pub use encoded_image::EncodedImageVisualizer;
 pub use images::ImageVisualizer;
 pub use segmentation_images::SegmentationImageVisualizer;
 pub use transform3d_arrows::{add_axis_arrows, AxisLengthDetector, Transform3DArrowsVisualizer};
@@ -75,7 +75,7 @@ pub fn register_2d_spatial_visualizers(
     system_registry.register_visualizer::<boxes2d::Boxes2DVisualizer>()?;
     system_registry.register_visualizer::<boxes3d::Boxes3DVisualizer>()?;
     system_registry.register_visualizer::<depth_images::DepthImageVisualizer>()?;
-    system_registry.register_visualizer::<image_encoded::ImageEncodedVisualizer>()?;
+    system_registry.register_visualizer::<encoded_image::EncodedImageVisualizer>()?;
     system_registry.register_visualizer::<images::ImageVisualizer>()?;
     system_registry.register_visualizer::<lines2d::Lines2DVisualizer>()?;
     system_registry.register_visualizer::<lines3d::Lines3DVisualizer>()?;
@@ -98,7 +98,7 @@ pub fn register_3d_spatial_visualizers(
     system_registry.register_visualizer::<boxes3d::Boxes3DVisualizer>()?;
     system_registry.register_visualizer::<cameras::CamerasVisualizer>()?;
     system_registry.register_visualizer::<depth_images::DepthImageVisualizer>()?;
-    system_registry.register_visualizer::<image_encoded::ImageEncodedVisualizer>()?;
+    system_registry.register_visualizer::<encoded_image::EncodedImageVisualizer>()?;
     system_registry.register_visualizer::<images::ImageVisualizer>()?;
     system_registry.register_visualizer::<lines2d::Lines2DVisualizer>()?;
     system_registry.register_visualizer::<lines3d::Lines3DVisualizer>()?;
@@ -118,7 +118,7 @@ pub fn visualizers_processing_draw_order() -> impl Iterator<Item = ViewSystemIde
         arrows2d::Arrows2DVisualizer::identifier(),
         boxes2d::Boxes2DVisualizer::identifier(),
         depth_images::DepthImageVisualizer::identifier(),
-        image_encoded::ImageEncodedVisualizer::identifier(),
+        encoded_image::EncodedImageVisualizer::identifier(),
         images::ImageVisualizer::identifier(),
         lines2d::Lines2DVisualizer::identifier(),
         points2d::Points2DVisualizer::identifier(),

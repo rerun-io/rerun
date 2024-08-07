@@ -4,7 +4,7 @@ use crate::tensor_data::{TensorCastError, TensorDataType, TensorElement};
 use crate::tensor_data::{TensorImageLoadError, TensorImageSaveError};
 
 #[allow(unused_imports)] // Used for docstring links
-use crate::archetypes::ImageEncoded;
+use crate::archetypes::EncodedImage;
 
 use super::{TensorBuffer, TensorData, TensorDimension};
 
@@ -453,7 +453,7 @@ impl TensorData {
     ///
     /// This will spend CPU cycles reading the file and decoding the image.
     /// To save CPU time and storage, we recommend you instead use
-    /// [`ImageEncoded::from_file`].
+    /// [`EncodedImage::from_file`].
     ///
     /// Requires the `image` feature.
     #[cfg(not(target_arch = "wasm32"))]
@@ -482,7 +482,7 @@ impl TensorData {
     ///
     /// This will spend CPU cycles decoding the image.
     /// To save CPU time and storage, we recommend you instead use
-    /// [`ImageEncoded::from_file_contents`].
+    /// [`EncodedImage::from_file_contents`].
     ///
     /// Requires the `image` feature.
     #[inline]

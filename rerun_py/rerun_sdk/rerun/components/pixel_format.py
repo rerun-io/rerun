@@ -33,7 +33,7 @@ class PixelFormat(Enum):
 
     All these formats support random access.
 
-    For more compressed image formats, see [`archetypes.ImageEncoded`][rerun.archetypes.ImageEncoded].
+    For more compressed image formats, see [`archetypes.EncodedImage`][rerun.archetypes.EncodedImage].
     """
 
     NV12 = 1

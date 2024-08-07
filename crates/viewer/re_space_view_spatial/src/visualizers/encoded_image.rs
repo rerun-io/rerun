@@ -2,7 +2,7 @@ use itertools::Itertools as _;
 
 use re_space_view::HybridResults;
 use re_types::{
-    archetypes::ImageEncoded,
+    archetypes::EncodedImage,
     components::{Blob, DrawOrder, MediaType, Opacity},
     Loggable as _,
 };
@@ -22,12 +22,12 @@ use crate::{
 
 use super::{entity_iterator::process_archetype, SpatialViewVisualizerData};
 
-pub struct ImageEncodedVisualizer {
+pub struct EncodedImageVisualizer {
     pub data: SpatialViewVisualizerData,
     pub images: Vec<PickableImageRect>,
 }
 
-impl Default for ImageEncodedVisualizer {
+impl Default for EncodedImageVisualizer {
     fn default() -> Self {
         Self {
             data: SpatialViewVisualizerData::new(Some(SpatialSpaceViewKind::TwoD)),
@@ -36,15 +36,15 @@ impl Default for ImageEncodedVisualizer {
     }
 }
 
-impl IdentifiedViewSystem for ImageEncodedVisualizer {
+impl IdentifiedViewSystem for EncodedImageVisualizer {
     fn identifier() -> re_viewer_context::ViewSystemIdentifier {
-        "ImageEncoded".into()
+        "EncodedImage".into()
     }
 }
 
-impl VisualizerSystem for ImageEncodedVisualizer {
+impl VisualizerSystem for EncodedImageVisualizer {
     fn visualizer_query_info(&self) -> VisualizerQueryInfo {
-        VisualizerQueryInfo::from_archetype::<ImageEncoded>()
+        VisualizerQueryInfo::from_archetype::<EncodedImage>()
     }
 
     fn filter_visualizable_entities(
@@ -66,12 +66,12 @@ impl VisualizerSystem for ImageEncodedVisualizer {
             return Err(SpaceViewSystemExecutionError::NoRenderContextError);
         };
 
-        process_archetype::<Self, ImageEncoded, _>(
+        process_archetype::<Self, EncodedImage, _>(
             ctx,
             view_query,
             context_systems,
             |ctx, spatial_ctx, results| {
-                self.process_image_encoded(ctx, results, spatial_ctx);
+                self.process_encoded_image(ctx, results, spatial_ctx);
                 Ok(())
             },
         )?;
@@ -123,8 +123,8 @@ impl VisualizerSystem for ImageEncodedVisualizer {
     }
 }
 
-impl ImageEncodedVisualizer {
-    fn process_image_encoded(
+impl EncodedImageVisualizer {
+    fn process_encoded_image(
         &mut self,
         ctx: &QueryContext<'_>,
         results: &HybridResults<'_>,
@@ -166,7 +166,7 @@ impl ImageEncodedVisualizer {
                 Ok(image) => image,
                 Err(err) => {
                     re_log::warn_once!(
-                        "Failed to decode ImageEncoded at path {entity_path}: {err}"
+                        "Failed to decode EncodedImage at path {entity_path}: {err}"
                     );
                     continue;
                 }
@@ -184,7 +184,7 @@ impl ImageEncodedVisualizer {
                 spatial_ctx,
                 &image,
                 multiplicative_tint,
-                "ImageEncoded",
+                "EncodedImage",
                 &mut self.data,
             ) {
                 self.images.push(PickableImageRect {
@@ -198,16 +198,16 @@ impl ImageEncodedVisualizer {
     }
 }
 
-impl TypedComponentFallbackProvider<Opacity> for ImageEncodedVisualizer {
+impl TypedComponentFallbackProvider<Opacity> for EncodedImageVisualizer {
     fn fallback_for(&self, _ctx: &re_viewer_context::QueryContext<'_>) -> Opacity {
         1.0.into()
     }
 }
 
-impl TypedComponentFallbackProvider<DrawOrder> for ImageEncodedVisualizer {
+impl TypedComponentFallbackProvider<DrawOrder> for EncodedImageVisualizer {
     fn fallback_for(&self, _ctx: &QueryContext<'_>) -> DrawOrder {
         DrawOrder::DEFAULT_IMAGE
     }
 }
 
-re_viewer_context::impl_component_fallback_provider!(ImageEncodedVisualizer => [DrawOrder, Opacity]);
+re_viewer_context::impl_component_fallback_provider!(EncodedImageVisualizer => [DrawOrder, Opacity]);

@@ -46,7 +46,7 @@ from .archetypes import (
     DisconnectedSpace as DisconnectedSpace,
     Ellipsoids3D as Ellipsoids3D,
     Image as Image,
-    ImageEncoded as ImageEncoded,
+    EncodedImage as EncodedImage,
     LeafTransforms3D as LeafTransforms3D,
     LineStrips2D as LineStrips2D,
     LineStrips3D as LineStrips3D,

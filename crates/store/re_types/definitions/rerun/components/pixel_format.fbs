@@ -12,7 +12,7 @@ namespace rerun.components;
 ///
 /// All these formats support random access.
 ///
-/// For more compressed image formats, see [archetypes.ImageEncoded].
+/// For more compressed image formats, see [archetypes.EncodedImage].
 enum PixelFormat: byte (
     "attr.docs.unreleased"
 ) {

@@ -29,7 +29,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 /// The order of dimensions in the underlying [`components::Blob`][crate::components::Blob] follows the typical
 /// row-major, interleaved-pixel image format.
 ///
-/// Rerun also supports compressed images (JPEG, PNG, …), using [`archetypes::ImageEncoded`][crate::archetypes::ImageEncoded].
+/// Rerun also supports compressed images (JPEG, PNG, …), using [`archetypes::EncodedImage`][crate::archetypes::EncodedImage].
 /// Compressing images can save a lot of bandwidth and memory.
 ///
 /// ## Example
