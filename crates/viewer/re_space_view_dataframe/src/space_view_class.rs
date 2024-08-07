@@ -211,37 +211,4 @@ mode sets the default time range to _everything_. You can override this in the s
     }
 }
 
-// //TODO: probably no longer needed
-// impl TypedComponentFallbackProvider<components::Timeline> for DataframeSpaceView {
-//     fn fallback_for(&self, ctx: &re_viewer_context::QueryContext<'_>) -> Timeline {
-//         //TODO: add helper to Timeline component
-//         Timeline(Utf8::from(
-//             ctx.viewer_ctx
-//                 .rec_cfg
-//                 .time_ctrl
-//                 .read()
-//                 .timeline()
-//                 .name()
-//                 .as_str(),
-//         ))
-//     }
-// }
-//
-// //TODO: probably no longer needed
-// impl TypedComponentFallbackProvider<components::LatestAtQueries> for DataframeSpaceView {
-//     fn fallback_for(&self, ctx: &QueryContext<'_>) -> LatestAtQueries {
-//         let current_time = ctx.viewer_ctx.rec_cfg.time_ctrl.read();
-//
-//         let latest_at_query = datatypes::LatestAtQuery {
-//             timeline: Utf8::from(current_time.timeline().name().as_str()),
-//             time: re_types_core::datatypes::TimeInt::from(
-//                 current_time
-//                     .time_int()
-//                     .unwrap_or(re_log_types::TimeInt::MAX),
-//             ),
-//         };
-//         LatestAtQueries::from(vec![latest_at_query])
-//     }
-// }
-//
 re_viewer_context::impl_component_fallback_provider!(DataframeSpaceView => []);
