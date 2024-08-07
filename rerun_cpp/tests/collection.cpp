@@ -638,6 +638,12 @@ SCENARIO("Conversion to vector using `to_vector`", TEST_TAG) {
 
             CHECK(collection.to_vector() == expected_vector);
         }
+
+        THEN("it can be moved to a vector, resulting in no copies") {
+            CheckElementMoveAndCopyCount check;
+
+            CHECK(std::move(collection).to_vector() == expected_vector);
+        }
     }
     GIVEN("a collection with borrowed data") {
         std::vector<Element> data EXPECTED_ELEMENT_LIST;
@@ -648,6 +654,13 @@ SCENARIO("Conversion to vector using `to_vector`", TEST_TAG) {
             check.expect_copy(2);
 
             CHECK(collection.to_vector() == expected_vector);
+        }
+
+        THEN("it can be moved to a vector, resulting in copies") {
+            CheckElementMoveAndCopyCount check;
+            check.expect_copy(2);
+
+            CHECK(std::move(collection).to_vector() == expected_vector);
         }
     }
 }

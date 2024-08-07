@@ -352,7 +352,7 @@ namespace rerun {
         /// Copies the data into a new `std::vector`.
         ///
         /// If possible, this will move the underlying data.
-        std::vector<TElement> to_vector() const&& {
+        std::vector<TElement> to_vector() && {
             switch (ownership) {
                 case CollectionOwnership::Borrowed: {
                     std::vector<TElement> result;
@@ -365,7 +365,7 @@ namespace rerun {
                 }
             }
             return std::vector<TElement>();
-        } // TODO: add tests for this.
+        }
 
         /// Reinterpret this collection as a collection of bytes.
         Collection<uint8_t> to_uint8() const {
