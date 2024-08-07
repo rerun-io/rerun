@@ -16,12 +16,13 @@ from .._baseclasses import (
     BaseBatch,
     BaseExtensionType,
 )
+from .image_format_ext import ImageFormatExt
 
 __all__ = ["ImageFormat", "ImageFormatArrayLike", "ImageFormatBatch", "ImageFormatLike", "ImageFormatType"]
 
 
 @define(init=False)
-class ImageFormat:
+class ImageFormat(ImageFormatExt):
     """**Datatype**: The metadata describing the contents of a [rerun.components.ImageBuffer]."""
 
     def __init__(
@@ -75,21 +76,30 @@ class ImageFormat:
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 
-    pixel_format: datatypes.PixelFormat | None = field(default=None)
+    pixel_format: datatypes.PixelFormat | None = field(
+        default=None,
+        converter=ImageFormatExt.pixel_format__field_converter_override,  # type: ignore[misc]
+    )
     # Used mainly for chroma downsampled formats and differing number of bits per channel.
     #
     # If specified, this takes precedence over both [`datatypes.ColorModel`][rerun.datatypes.ColorModel] and [`datatypes.ChannelDatatype`][rerun.datatypes.ChannelDatatype] (which are ignored).
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 
-    color_model: datatypes.ColorModel | None = field(default=None)
+    color_model: datatypes.ColorModel | None = field(
+        default=None,
+        converter=ImageFormatExt.color_model__field_converter_override,  # type: ignore[misc]
+    )
     # L, RGB, RGBA, …
     #
     # Also requires a [`datatypes.ChannelDatatype`][rerun.datatypes.ChannelDatatype] to fully specify the pixel format.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 
-    channel_datatype: datatypes.ChannelDatatype | None = field(default=None)
+    channel_datatype: datatypes.ChannelDatatype | None = field(
+        default=None,
+        converter=ImageFormatExt.channel_datatype__field_converter_override,  # type: ignore[misc]
+    )
     # The data type of each channel (e.g. the red channel) of the image data (U8, F16, …).
     #
     # Also requires a [`datatypes.ColorModel`][rerun.datatypes.ColorModel] to fully specify the pixel format.
