@@ -7,41 +7,63 @@ import tempfile
 
 import cv2
 import numpy as np
+import pytest
 import rerun as rr  # pip install rerun-sdk
 from PIL import Image
 
 
 def test_image_encoded_png() -> None:
-    _, file_path = tempfile.mkstemp(suffix=".png")
+    with tempfile.NamedTemporaryFile(suffix=".png") as tmp:
+        file_path = tmp.name
 
-    image = Image.new("RGBA", (300, 200), color=(0, 0, 0, 0))
-    image.save(file_path)
+        image = Image.new("RGBA", (300, 200), color=(0, 0, 0, 0))
+        image.save(file_path)
 
-    img = rr.ImageEncoded(path=file_path)
+        with pytest.warns(DeprecationWarning) as warnings:
+            img = rr.ImageEncoded(path=file_path)
+            assert len(warnings) == 1
 
-    assert img.media_type == "image/png"
+        assert type(img) is rr.EncodedImage
+        assert img.media_type is not None
+        media_type_arrow = img.media_type.as_arrow_array().storage[0].as_py()
+
+        assert media_type_arrow == "image/png"
 
 
 def test_image_encoded_jpg() -> None:
-    _, file_path = tempfile.mkstemp(suffix=".jpg")
+    with tempfile.NamedTemporaryFile(suffix=".jpg") as tmp:
+        file_path = tmp.name
 
-    image = Image.new("RGB", (300, 200), color=(0, 0, 0))
-    image.save(file_path)
+        image = Image.new("RGB", (300, 200), color=(0, 0, 0))
+        image.save(file_path)
 
-    img = rr.ImageEncoded(path=file_path)
+        with pytest.warns(DeprecationWarning) as warnings:
+            img = rr.ImageEncoded(path=file_path)
+            assert len(warnings) == 1
 
-    assert img.media_type == "image/jpeg"
+        assert type(img) is rr.EncodedImage
+        assert img.media_type is not None
+        media_type_arrow = img.media_type.as_arrow_array().storage[0].as_py()
+
+        assert media_type_arrow == "image/jpeg"
 
 
 def test_image_encoded_mono_jpg() -> None:
-    _, file_path = tempfile.mkstemp(suffix=".jpg")
+    with tempfile.NamedTemporaryFile(suffix=".jpeg") as tmp:
+        file_path = tmp.name
 
-    image = Image.new("L", (300, 200), color=0)
-    image.save(file_path)
+        image = Image.new("L", (300, 200), color=0)
+        image.save(file_path)
 
-    img = rr.ImageEncoded(path=file_path)
+        with pytest.warns(DeprecationWarning) as warnings:
+            img = rr.ImageEncoded(path=file_path)
+            assert len(warnings) == 1
 
-    assert img.media_type == "image/jpeg"
+        assert type(img) is rr.EncodedImage
+        assert img.media_type is not None
+        media_type_arrow = img.media_type.as_arrow_array().storage[0].as_py()
+
+        assert media_type_arrow == "image/jpeg"
 
 
 def test_image_encoded_jpg_from_bytes() -> None:
@@ -50,14 +72,27 @@ def test_image_encoded_jpg_from_bytes() -> None:
     image = Image.new("RGB", (300, 200), color=(0, 0, 0))
     image.save(bin, format="jpeg")
 
-    img = rr.ImageEncoded(contents=bin)
+    with pytest.warns(DeprecationWarning) as warnings:
+        img = rr.ImageEncoded(contents=bin, format=rr.ImageFormat.JPEG)
+        assert len(warnings) == 1
 
-    assert img.media_type == "image/jpeg"
+    assert type(img) is rr.EncodedImage
+    assert img.media_type is not None
+    media_type_arrow = img.media_type.as_arrow_array().storage[0].as_py()
+
+    assert media_type_arrow == "image/jpeg"
 
     bin.seek(0)
-    img = rr.ImageEncoded(contents=bin.read())
 
-    assert img.media_type == "image/jpeg"
+    with pytest.warns(DeprecationWarning) as warnings:
+        img = rr.ImageEncoded(contents=bin.read(), format=rr.ImageFormat.JPEG)
+        assert len(warnings) == 1
+
+    assert type(img) is rr.EncodedImage
+    assert img.media_type is not None
+    media_type_arrow = img.media_type.as_arrow_array().storage[0].as_py()
+
+    assert media_type_arrow == "image/jpeg"
 
 
 def test_image_encoded_mono_jpg_from_bytes() -> None:
@@ -66,14 +101,27 @@ def test_image_encoded_mono_jpg_from_bytes() -> None:
     image = Image.new("L", (300, 200), color=0)
     image.save(bin, format="jpeg")
 
-    img = rr.ImageEncoded(contents=bin)
+    with pytest.warns(DeprecationWarning) as warnings:
+        img = rr.ImageEncoded(contents=bin, format=rr.ImageFormat.JPEG)
+        assert len(warnings) == 1
 
-    assert img.media_type == "image/jpeg"
+    assert type(img) is rr.EncodedImage
+    assert img.media_type is not None
+    media_type_arrow = img.media_type.as_arrow_array().storage[0].as_py()
+
+    assert media_type_arrow == "image/jpeg"
 
     bin.seek(0)
-    img = rr.ImageEncoded(contents=bin.read())
 
-    assert img.media_type == "image/jpeg"
+    with pytest.warns(DeprecationWarning) as warnings:
+        img = rr.ImageEncoded(contents=bin.read(), format=rr.ImageFormat.JPEG)
+        assert len(warnings) == 1
+
+    assert type(img) is rr.EncodedImage
+    assert img.media_type is not None
+    media_type_arrow = img.media_type.as_arrow_array().storage[0].as_py()
+
+    assert media_type_arrow == "image/jpeg"
 
 
 def test_image_encoded_nv12() -> None:
@@ -86,14 +134,30 @@ def test_image_encoded_nv12() -> None:
 
     img_bgr = np.random.randint(0, 255, (480, 640, 3), dtype=np.uint8)
 
-    img = (
-        rr.ImageEncoded(
+    with pytest.warns(DeprecationWarning) as warnings:
+        img = rr.ImageEncoded(
             contents=bytes(bgr2nv12(img_bgr)),
             format=rr.ImageFormat.NV12((480, 640)),
             draw_order=42,
-        ),
+        )
+        assert len(warnings) == 1
+
+    assert type(img) is rr.Image
+
+    image_format_arrow = img.format.as_arrow_array().storage[0].as_py()
+
+    image_format = rr.components.ImageFormat(
+        width=image_format_arrow["width"],
+        height=image_format_arrow["height"],
+        pixel_format=image_format_arrow["pixel_format"],
+        channel_datatype=image_format_arrow["channel_datatype"],
+        color_model=image_format_arrow["color_model"],
     )
 
-    assert img.resolution == rr.Resolution2D(640, 480)
-    assert img.pixel_format == rr.PixelFormat.NV12
-    assert img.draw_order == 42
+    assert image_format.width == 640
+    assert image_format.height == 480
+    assert image_format.pixel_format == rr.PixelFormat.NV12
+
+    assert img.draw_order is not None
+    draw_order_arrow = img.draw_order.as_arrow_array().storage[0].as_py()
+    assert draw_order_arrow == 42

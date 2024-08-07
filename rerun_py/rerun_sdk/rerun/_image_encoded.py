@@ -202,16 +202,18 @@ def ImageEncoded(
 
     media_type = None
     if format is not None:
-        if str(format) == "BMP":
+        if str(format).upper() == "BMP":
             media_type = "image/bmp"
-        elif str(format) == "GIF":
+        elif str(format).upper() == "GIF":
             media_type = "image/gif"
-        elif str(format) == "JPEG":
+        elif str(format).upper() == "JPEG":
             media_type = "image/jpeg"
-        elif str(format) == "PNG":
+        elif str(format).upper() == "PNG":
             media_type = "image/png"
-        elif str(format) == "TIFF":
+        elif str(format).upper() == "TIFF":
             media_type = "image/tiff"
+        else:
+            raise ValueError(f"Unknown image format: {format}")
 
     if path is not None:
         return EncodedImage(

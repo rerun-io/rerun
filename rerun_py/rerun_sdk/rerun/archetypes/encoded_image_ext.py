@@ -93,8 +93,12 @@ class EncodedImageExt:
 
             if path is None:
                 blob = contents
+
+                if media_type is None:
+                    raise ValueError("Must provide 'media_type' when 'contents' is provided")
             else:
                 blob = pathlib.Path(path).read_bytes()
+
                 if media_type is None:
                     media_type = guess_media_type(str(path))
 
