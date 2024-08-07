@@ -51,6 +51,8 @@ pub struct EntityDb {
     /// entities/components.
     ///
     /// Used for time control.
+    ///
+    /// TODO(#7084): Get rid of [`TimesPerTimeline`] and implement time-stepping with [`crate::TimeHistogram`] instead.
     times_per_timeline: TimesPerTimeline,
 
     /// A time histogram of all entities, for every timeline.
@@ -227,7 +229,7 @@ impl EntityDb {
     }
 
     pub fn timelines(&self) -> impl ExactSizeIterator<Item = &Timeline> {
-        self.times_per_timeline().keys()
+        self.time_histogram_per_timeline.timelines()
     }
 
     pub fn times_per_timeline(&self) -> &TimesPerTimeline {
@@ -235,33 +237,17 @@ impl EntityDb {
     }
 
     pub fn has_any_data_on_timeline(&self, timeline: &Timeline) -> bool {
-        if let Some(times) = self.times_per_timeline.get(timeline) {
-            !times.is_empty()
-        } else {
-            false
-        }
+        self.time_histogram_per_timeline
+            .get(timeline)
+            .map_or(false, |hist| !hist.is_empty())
     }
 
     /// Returns the time range of data on the given timeline, ignoring any static times.
-    ///
-    /// This is O(N) in the number of times on the timeline.
     pub fn time_range_for(&self, timeline: &Timeline) -> Option<ResolvedTimeRange> {
-        let (mut start, mut end) = (None, None);
-        for time in self
-            .times_per_timeline()
-            .get(timeline)?
-            .keys()
-            .filter(|v| !v.is_static())
-            .copied()
-        {
-            if start.is_none() || Some(time) < start {
-                start = Some(time);
-            }
-            if end.is_none() || Some(time) > end {
-                end = Some(time);
-            }
-        }
-        Some(ResolvedTimeRange::new(start?, end?))
+        let hist = self.time_histogram_per_timeline.get(timeline)?;
+        let min = hist.min_key()?;
+        let max = hist.max_key()?;
+        Some(ResolvedTimeRange::new(min, max))
     }
 
     /// Histogram of all events on the timeeline, of all entities.

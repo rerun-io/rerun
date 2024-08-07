@@ -64,6 +64,8 @@ impl TimeHistogramPerTimeline {
     }
 
     pub fn add(&mut self, times_per_timeline: &[(Timeline, &[i64])], n: u32) {
+        re_tracing::profile_function!();
+
         if times_per_timeline.is_empty() {
             self.num_static_messages = self
                 .num_static_messages
@@ -87,6 +89,8 @@ impl TimeHistogramPerTimeline {
     }
 
     pub fn remove(&mut self, times_per_timeline: &[(Timeline, &[i64])], n: u32) {
+        re_tracing::profile_function!();
+
         if times_per_timeline.is_empty() {
             self.num_static_messages = self
                 .num_static_messages
@@ -135,6 +139,8 @@ impl ChunkStoreSubscriber for TimeHistogramPerTimeline {
 
     #[allow(clippy::unimplemented)]
     fn on_events(&mut self, events: &[ChunkStoreEvent]) {
+        re_tracing::profile_function!();
+
         for event in events {
             let times = event
                 .chunk

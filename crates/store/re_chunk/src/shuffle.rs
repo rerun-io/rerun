@@ -112,8 +112,6 @@ impl Chunk {
     ///
     /// This is a no-op if the underlying timeline is already sorted appropriately (happy path).
     pub fn sorted_by_timeline_if_unsorted(&self, timeline: &Timeline) -> Self {
-        re_tracing::profile_function!();
-
         let mut chunk = self.clone();
 
         let Some(time_chunk) = chunk.timelines.get(timeline) else {
@@ -123,6 +121,8 @@ impl Chunk {
         if time_chunk.is_sorted() {
             return chunk;
         }
+
+        re_tracing::profile_function!();
 
         #[cfg(not(target_arch = "wasm32"))]
         let now = std::time::Instant::now();

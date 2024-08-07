@@ -63,6 +63,8 @@ impl Chunk {
     /// This can result in an empty [`Chunk`] being returned if the slice is completely OOB.
     #[inline]
     pub fn row_sliced(&self, index: usize, len: usize) -> Self {
+        re_tracing::profile_function!();
+
         let Self {
             id,
             entity_path,
@@ -328,6 +330,8 @@ impl Chunk {
             return self.clone();
         };
 
+        re_tracing::profile_function!();
+
         let mask = validity.iter().collect_vec();
         let is_sorted = *is_sorted || (mask.iter().filter(|&&b| b).count() < 2);
         let validity_filter = ArrowBooleanArray::from_slice(mask);
@@ -407,6 +411,8 @@ impl Chunk {
             timelines,
             components,
         } = self;
+
+        re_tracing::profile_function!();
 
         Self {
             id: *id,

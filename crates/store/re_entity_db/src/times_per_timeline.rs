@@ -8,6 +8,8 @@ use re_log_types::{TimeInt, Timeline};
 pub type TimeCounts = BTreeMap<TimeInt, u64>;
 
 /// A [`ChunkStoreSubscriber`] that keeps track of all unique timestamps on each [`Timeline`].
+///
+/// TODO(#7084): Get rid of [`TimesPerTimeline`] and implement time-stepping with [`crate::TimeHistogram`] instead.
 pub struct TimesPerTimeline(BTreeMap<Timeline, TimeCounts>);
 
 impl std::ops::Deref for TimesPerTimeline {

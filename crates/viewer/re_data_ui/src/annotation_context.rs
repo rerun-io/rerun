@@ -94,7 +94,7 @@ fn annotation_info(
     query: &re_chunk_store::LatestAtQuery,
     keypoint_id: KeypointId,
 ) -> Option<AnnotationInfo> {
-    // TODO(#6358): this needs to use the index of the keypoint to look up the correct
+    // TODO(#3168): this needs to use the index of the keypoint to look up the correct
     // class_id. For now we use `latest_at_component_quiet` to avoid the warning spam.
     let (_, class_id) = ctx
         .recording()
