@@ -82,12 +82,12 @@ impl CompactedStoreEvents {
                         event.delta().unsigned_abs();
                 }
             } else {
-                for (&timeline, time_chunk) in event.chunk.timelines() {
+                for (&timeline, time_column) in event.chunk.timelines() {
                     let per_timeline = this
                         .temporal
                         .entry(event.chunk.entity_path().hash())
                         .or_default();
-                    for &time in time_chunk.times_raw() {
+                    for &time in time_column.times_raw() {
                         let per_component = per_timeline.entry(timeline).or_default();
                         for component_name in event.chunk.component_names() {
                             per_component

@@ -146,7 +146,7 @@ impl ChunkStoreSubscriber for TimeHistogramPerTimeline {
                 .chunk
                 .timelines()
                 .iter()
-                .map(|(&timeline, time_chunk)| (timeline, time_chunk.times_raw()))
+                .map(|(&timeline, time_column)| (timeline, time_column.times_raw()))
                 .collect_vec();
             match event.kind {
                 ChunkStoreDiffKind::Addition => {

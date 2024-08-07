@@ -96,7 +96,7 @@ impl Chunk {
             let Some(is_sorted_by_time) = self
                 .timelines
                 .get(&query.timeline())
-                .map(|time_chunk| time_chunk.is_sorted())
+                .map(|time_column| time_column.is_sorted())
             else {
                 return self.emptied();
             };
@@ -114,7 +114,7 @@ impl Chunk {
             let Some(times) = chunk
                 .timelines
                 .get(&query.timeline())
-                .map(|time_chunk| time_chunk.times_raw())
+                .map(|time_column| time_column.times_raw())
             else {
                 return chunk.emptied();
             };
