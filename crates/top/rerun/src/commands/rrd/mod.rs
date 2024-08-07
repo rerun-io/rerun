@@ -1,8 +1,10 @@
 mod compare;
+mod filter;
 mod merge_compact;
 mod print;
 
 use self::compare::CompareCommand;
+use self::filter::FilterCommand;
 use self::merge_compact::{CompactCommand, MergeCommand};
 use self::print::PrintCommand;
 
@@ -52,6 +54,15 @@ pub enum RrdCommands {
     ///
     /// Example: `rerun merge /my/recordings/*.rrd > output.rrd`
     Merge(MergeCommand),
+
+    /// Filters out data from .rrd/.rbl files/streams, and writes the result to standard output.
+    ///
+    /// Reads from standard input if no paths are specified.
+    ///
+    /// This will not affect the chunking of the data in any way.
+    ///
+    /// Example: `rerun filter --timeline log_tick /my/recordings/*.rrd > output.rrd`
+    Filter(FilterCommand),
 }
 
 impl RrdCommands {
@@ -66,6 +77,7 @@ impl RrdCommands {
             Self::Print(print_command) => print_command.run(),
             Self::Compact(compact_command) => compact_command.run(),
             Self::Merge(merge_command) => merge_command.run(),
+            Self::Filter(drop_command) => drop_command.run(),
         }
     }
 }
