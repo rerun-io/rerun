@@ -19,6 +19,10 @@ from . import (
     experimental as experimental,
     notebook as notebook,
 )
+from ._image_encoded import (
+    ImageEncoded as ImageEncoded,
+    ImageFormat as ImageFormat,
+)
 from ._log import (
     AsComponents as AsComponents,
     ComponentBatchLike as ComponentBatchLike,
