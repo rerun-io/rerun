@@ -72,10 +72,6 @@ impl VisualizerQueryInfo {
             queried: SortedComponentNameSet::default(),
         }
     }
-
-    pub fn is_empty(&self) -> bool {
-        self.indicators.is_empty() && self.required.is_empty() && self.queried.0.is_empty()
-    }
 }
 
 /// Element of a scene derived from a single archetype query.
