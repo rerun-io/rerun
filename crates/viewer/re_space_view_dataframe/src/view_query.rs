@@ -65,8 +65,7 @@ impl Query {
                     .0
                     .into_iter()
                     .find(|q| q.timeline.as_str() == timeline)
-                    .map(|q| q.time.into())
-                    .unwrap_or(TimeInt::MAX);
+                    .map_or(TimeInt::MAX, |q| q.time.into());
 
                 QueryMode::LatestAt { time }
             }
@@ -77,8 +76,9 @@ impl Query {
                     .0
                     .into_iter()
                     .find(|q| q.timeline.as_str() == timeline)
-                    .map(|q| (q.start.into(), q.end.into()))
-                    .unwrap_or((TimeInt::MIN, TimeInt::MAX));
+                    .map_or((TimeInt::MIN, TimeInt::MAX), |q| {
+                        (q.start.into(), q.end.into())
+                    });
 
                 QueryMode::Range { from, to }
             }
@@ -91,8 +91,8 @@ impl Query {
     #[inline]
     pub(crate) fn timeline_name(&self, ctx: &ViewerContext<'_>) -> TimelineName {
         match self {
-            Query::FollowTimeline => *ctx.rec_cfg.time_ctrl.read().timeline().name(),
-            Query::Override { timeline, .. } => *timeline,
+            Self::FollowTimeline => *ctx.rec_cfg.time_ctrl.read().timeline().name(),
+            Self::Override { timeline, .. } => *timeline,
         }
     }
 
@@ -100,13 +100,13 @@ impl Query {
     #[inline]
     pub(crate) fn mode(&self, ctx: &ViewerContext<'_>) -> QueryMode {
         match self {
-            Query::FollowTimeline => {
+            Self::FollowTimeline => {
                 let time_ctrl = ctx.rec_cfg.time_ctrl.read();
                 QueryMode::LatestAt {
                     time: time_ctrl.time_int().unwrap_or(TimeInt::MAX),
                 }
             }
-            Query::Override { mode, .. } => *mode,
+            Self::Override { mode, .. } => *mode,
         }
     }
 
@@ -129,13 +129,10 @@ impl Query {
                     .component_or_empty::<components::LatestAtQueries>()?
                     .unwrap_or_default();
 
-                latest_at_queries.set_query_for_timeline(
-                    timeline_name.as_str(),
-                    Some(datatypes::LatestAtQuery {
-                        timeline: timeline_name.as_str().into(),
-                        time: (*time).into(),
-                    }),
-                );
+                latest_at_queries.set_query_for_timeline(datatypes::LatestAtQuery {
+                    timeline: timeline_name.as_str().into(),
+                    time: (*time).into(),
+                });
 
                 ctx.save_blueprint_component(&property.blueprint_store_path, &latest_at_queries);
                 ctx.save_blueprint_component(&property.blueprint_store_path, &QueryKind::LatestAt);
@@ -145,14 +142,11 @@ impl Query {
                     .component_or_empty::<components::TimeRangeQueries>()?
                     .unwrap_or_default();
 
-                time_range_queries.set_query_for_timeline(
-                    timeline_name.as_str(),
-                    Some(datatypes::TimeRangeQuery {
-                        timeline: timeline_name.as_str().into(),
-                        start: (*from).into(),
-                        end: (*to).into(),
-                    }),
-                );
+                time_range_queries.set_query_for_timeline(datatypes::TimeRangeQuery {
+                    timeline: timeline_name.as_str().into(),
+                    start: (*from).into(),
+                    end: (*to).into(),
+                });
 
                 ctx.save_blueprint_component(&property.blueprint_store_path, &time_range_queries);
                 ctx.save_blueprint_component(&property.blueprint_store_path, &QueryKind::TimeRange);
@@ -166,7 +160,7 @@ impl Query {
 pub(crate) fn query_ui(
     ctx: &ViewerContext<'_>,
     ui: &mut egui::Ui,
-    state: &mut dyn SpaceViewState,
+    state: &dyn SpaceViewState,
     space_view_id: SpaceViewId,
 ) -> Result<(), SpaceViewSystemExecutionError> {
     let property = ViewProperty::from_archetype::<archetypes::DataframeQuery>(
@@ -221,7 +215,7 @@ pub(crate) fn query_ui(
     }
 
     if override_query {
-        override_ui(ctx, ui, state, space_view_id, property)
+        override_ui(ctx, ui, state, space_view_id, &property)
     } else {
         Ok(())
     }
@@ -230,9 +224,9 @@ pub(crate) fn query_ui(
 fn override_ui(
     ctx: &ViewerContext<'_>,
     ui: &mut egui::Ui,
-    state: &mut dyn SpaceViewState,
+    state: &dyn SpaceViewState,
     space_view_id: SpaceViewId,
-    property: ViewProperty<'_>,
+    property: &ViewProperty<'_>,
 ) -> Result<(), SpaceViewSystemExecutionError> {
     let name = archetypes::DataframeQuery::name();
     let Some(reflection) = ctx.reflection.archetypes.get(&name) else {
@@ -248,9 +242,9 @@ fn override_ui(
             ctx.recording()
                 .timelines()
                 .find(|t| t.name() == &timeline_name)
-                .cloned()
+                .copied()
         })
-        .unwrap_or(ctx.rec_cfg.time_ctrl.read().timeline().clone());
+        .unwrap_or(*ctx.rec_cfg.time_ctrl.read().timeline());
     let timeline_name = timeline.name();
 
     let blueprint_path =
@@ -301,12 +295,12 @@ fn override_ui(
             } else {
                 TimeDragValue::from_time_range(0..=0)
             };
-            let changed = ui_query_mode.ui(ctx, ui, time_drag_value, timeline.typ());
+            let changed = ui_query_mode.ui(ctx, ui, &time_drag_value, timeline.typ());
             if changed {
                 Query::save_mode_for_timeline(
                     ctx,
                     space_view_id,
-                    &timeline_name,
+                    timeline_name,
                     &ui_query_mode.into(),
                 )?;
             }
@@ -332,10 +326,10 @@ impl UiQueryMode {
         &mut self,
         ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
-        time_drag_value: TimeDragValue,
+        time_drag_value: &TimeDragValue,
         time_type: TimeType,
     ) -> bool {
-        let orig_self = self.clone();
+        let orig_self = *self;
 
         ui.vertical(|ui| {
             //
@@ -492,12 +486,12 @@ impl From<QueryMode> for UiQueryMode {
 impl From<UiQueryMode> for QueryMode {
     fn from(value: UiQueryMode) -> Self {
         match value {
-            UiQueryMode::LatestAt { time } => QueryMode::LatestAt { time },
-            UiQueryMode::TimeRangeAll => QueryMode::Range {
+            UiQueryMode::LatestAt { time } => Self::LatestAt { time },
+            UiQueryMode::TimeRangeAll => Self::Range {
                 from: TimeInt::MIN,
                 to: TimeInt::MAX,
             },
-            UiQueryMode::TimeRange { from, to } => QueryMode::Range { from, to },
+            UiQueryMode::TimeRange { from, to } => Self::Range { from, to },
         }
     }
 }

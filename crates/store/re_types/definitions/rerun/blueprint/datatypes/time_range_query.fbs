@@ -10,7 +10,7 @@ table TimeRangeQuery (
   /// Name of the timeline this applies to.
   timeline: rerun.datatypes.Utf8 (order: 100);
 
-  /// Begining of the time range.
+  /// Beginning of the time range.
   start: rerun.datatypes.TimeInt (order: 200);
 
   /// End of the time range.

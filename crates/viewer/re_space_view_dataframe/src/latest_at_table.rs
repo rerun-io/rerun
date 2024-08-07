@@ -17,9 +17,8 @@ use crate::{
 pub(crate) fn latest_at_table_ui(
     ctx: &ViewerContext<'_>,
     ui: &mut egui::Ui,
-    //TODO: remove this parameter, pass space view id and BTreeSet<EntityPath> instead
     query: &ViewQuery<'_>,
-    latest_at_query: LatestAtQuery,
+    latest_at_query: &LatestAtQuery,
 ) {
     re_tracing::profile_function!();
 
@@ -53,7 +52,7 @@ pub(crate) fn latest_at_table_ui(
                     entity_path,
                     ctx.recording_store(),
                     &latest_at_query.timeline(),
-                    &latest_at_query,
+                    latest_at_query,
                 )
             })
             .collect();
@@ -134,7 +133,7 @@ pub(crate) fn latest_at_table_ui(
         row.col(|ui| {
             instance_path_button(
                 ctx,
-                &latest_at_query,
+                latest_at_query,
                 ctx.recording(),
                 ui,
                 Some(query.space_view_id),
@@ -151,14 +150,14 @@ pub(crate) fn latest_at_table_ui(
                 let result = ctx
                     .recording_store()
                     .latest_at_relevant_chunks(
-                        &latest_at_query,
+                        latest_at_query,
                         &instance_path.entity_path,
                         *component_name,
                     )
                     .into_iter()
                     .filter_map(|chunk| {
                         let (index, unit) = chunk
-                            .latest_at(&latest_at_query, *component_name)
+                            .latest_at(latest_at_query, *component_name)
                             .into_unit()
                             .and_then(|unit| {
                                 unit.index(&latest_at_query.timeline())
@@ -186,7 +185,7 @@ pub(crate) fn latest_at_table_ui(
                             ctx,
                             ui,
                             UiLayout::List,
-                            &latest_at_query,
+                            latest_at_query,
                             ctx.recording(),
                             &instance_path.entity_path,
                             *component_name,

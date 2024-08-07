@@ -59,7 +59,7 @@ class TimeRangeQuery:
         timeline:
             Name of the timeline this applies to.
         start:
-            Begining of the time range.
+            Beginning of the time range.
         end:
             End of the time range.
 
@@ -74,7 +74,7 @@ class TimeRangeQuery:
     # (Docstring intentionally commented out to hide this field from the docs)
 
     start: datatypes.TimeInt = field(converter=_time_range_query__start__special_field_converter_override)
-    # Begining of the time range.
+    # Beginning of the time range.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 

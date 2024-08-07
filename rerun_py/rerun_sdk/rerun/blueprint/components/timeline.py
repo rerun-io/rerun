@@ -15,7 +15,7 @@ __all__ = ["Timeline", "TimelineBatch", "TimelineType"]
 
 
 class Timeline(datatypes.Utf8, ComponentMixin):
-    """**Component**: A timeline."""
+    """**Component**: A timeline, identified by its name."""
 
     _BATCH_TYPE = None
     # You can define your own __init__ function as a member of TimelineExt in timeline_ext.py

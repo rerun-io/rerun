@@ -212,7 +212,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
         (
             <Timeline as Loggable>::name(),
             ComponentReflection {
-                docstring_md: "A timeline",
+                docstring_md: "A timeline, identified by its name.",
                 placeholder: Some(Timeline::default().to_arrow()?),
             },
         ),

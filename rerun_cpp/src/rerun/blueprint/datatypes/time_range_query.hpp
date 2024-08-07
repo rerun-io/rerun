@@ -22,7 +22,7 @@ namespace rerun::blueprint::datatypes {
         /// Name of the timeline this applies to.
         rerun::datatypes::Utf8 timeline;
 
-        /// Begining of the time range.
+        /// Beginning of the time range.
         rerun::datatypes::TimeInt start;
 
         /// End of the time range.

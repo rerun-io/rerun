@@ -10,6 +10,6 @@ impl Timeline {
 
     /// Set the name of the timeline.
     pub fn set_timeline_name(&mut self, timeline_name: TimelineName) {
-        self.0 = timeline_name.as_str().into()
+        self.0 = timeline_name.as_str().into();
     }
 }

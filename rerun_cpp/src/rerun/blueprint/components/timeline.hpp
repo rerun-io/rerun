@@ -12,7 +12,7 @@
 #include <utility>
 
 namespace rerun::blueprint::components {
-    /// **Component**: A timeline
+    /// **Component**: A timeline, identified by its name.
     struct Timeline {
         rerun::datatypes::Utf8 value;
 

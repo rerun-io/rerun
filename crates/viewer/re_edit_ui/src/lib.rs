@@ -20,8 +20,8 @@ use datatype_editors::{
 };
 use re_types::{
     blueprint::components::{
-        BackgroundKind, Corner2D, LockRangeDuringZoom, QueryKind, SortKey, SortOrder, Timeline,
-        ViewFit, Visible,
+        BackgroundKind, Corner2D, LockRangeDuringZoom, SortKey, SortOrder, Timeline, ViewFit,
+        Visible,
     },
     components::{
         AggregationPolicy, AlbedoFactor, AxisLength, ChannelDatatype, Color, ColorModel, Colormap,
@@ -78,7 +78,6 @@ pub fn register_editors(registry: &mut re_viewer_context::ComponentUiRegistry) {
     registry.add_singleline_edit_or_view::<Colormap>(edit_view_enum);
     registry.add_singleline_edit_or_view::<ColorModel>(edit_view_enum);
     registry.add_singleline_edit_or_view::<Corner2D>(edit_view_enum);
-    registry.add_singleline_edit_or_view::<QueryKind>(edit_view_enum);
     registry.add_singleline_edit_or_view::<FillMode>(edit_view_enum);
     registry.add_singleline_edit_or_view::<MagnificationFilter>(edit_view_enum);
     registry.add_singleline_edit_or_view::<PixelFormat>(edit_view_enum);

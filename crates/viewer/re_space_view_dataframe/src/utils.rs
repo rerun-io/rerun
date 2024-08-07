@@ -19,10 +19,10 @@ pub(crate) fn sorted_visible_entity_path(
 }
 
 /// Returns a sorted, deduplicated iterator of all instance paths for a given entity.
-pub(crate) fn sorted_instance_paths_for<'a, 'b>(
+pub(crate) fn sorted_instance_paths_for<'a>(
     entity_path: &'a EntityPath,
     store: &'a ChunkStore,
-    timeline: &'b Timeline,
+    timeline: &Timeline,
     latest_at_query: &'a LatestAtQuery,
 ) -> impl Iterator<Item = InstancePath> + 'a {
     re_tracing::profile_function!();

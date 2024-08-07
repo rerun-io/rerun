@@ -24,7 +24,7 @@ pub struct TimeRangeQuery {
     /// Name of the timeline this applies to.
     pub timeline: crate::datatypes::Utf8,
 
-    /// Begining of the time range.
+    /// Beginning of the time range.
     pub start: crate::datatypes::TimeInt,
 
     /// End of the time range.
