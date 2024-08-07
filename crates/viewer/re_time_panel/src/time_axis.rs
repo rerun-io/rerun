@@ -1,5 +1,3 @@
-use itertools::Itertools as _;
-
 use re_entity_db::TimeHistogram;
 use re_log_types::{ResolvedTimeRange, TimeInt, TimeType};
 
@@ -65,7 +63,8 @@ fn gap_size_heuristic(time_type: TimeType, times: &TimeHistogram) -> u64 {
         TimeType::Time => TimeInt::from_milliseconds(100.try_into().unwrap()).as_i64() as _,
     };
     // Collect all gaps larger than our minimum gap size.
-    let mut gap_sizes = collect_candidate_gaps(times, min_gap_size, max_collapses);
+    let mut gap_sizes =
+        collect_candidate_gaps(times, min_gap_size, max_collapses).unwrap_or_default();
     gap_sizes.sort_unstable();
 
     // Only collapse gaps that take up a significant portion of the total time,
@@ -91,11 +90,12 @@ fn gap_size_heuristic(time_type: TimeType, times: &TimeHistogram) -> u64 {
     gap_threshold
 }
 
+/// Returns `None` to signal an abort.
 fn collect_candidate_gaps(
     times: &TimeHistogram,
     min_gap_size: u64,
     max_collapses: usize,
-) -> Vec<u64> {
+) -> Option<Vec<u64>> {
     re_tracing::profile_function!();
     // We want this to be fast, even when we have _a lot_ of times.
     // `TimeHistogram::range` has a granularity argument:
@@ -107,26 +107,46 @@ fn collect_candidate_gaps(
     let max_gap_size = times.max_key().unwrap() - times.min_key().unwrap();
     let mut granularity = max_gap_size as u64;
 
-    let mut gaps = collect_gaps_with_granularity(times, granularity, min_gap_size);
+    let mut gaps = collect_gaps_with_granularity(times, granularity, min_gap_size)?;
     while gaps.len() < max_collapses && min_gap_size < granularity {
         granularity /= 2;
-        gaps = collect_gaps_with_granularity(times, granularity, min_gap_size);
+        gaps = collect_gaps_with_granularity(times, granularity, min_gap_size)?;
     }
-    gaps
+    Some(gaps)
 }
 
+/// Returns `None` to signal an abort.
 fn collect_gaps_with_granularity(
     times: &TimeHistogram,
     granularity: u64,
     min_gap_size: u64,
-) -> Vec<u64> {
+) -> Option<Vec<u64>> {
     re_tracing::profile_function!();
-    times
-        .range(.., granularity)
-        .tuple_windows()
-        .map(|((a, _), (b, _))| a.max.abs_diff(b.min))
-        .filter(|&gap_size| min_gap_size < gap_size)
-        .collect_vec()
+
+    let mut non_gap_time_span = 0;
+
+    let mut gaps = vec![];
+    let mut last_range: Option<re_int_histogram::RangeI64> = None;
+
+    for (range, _count) in times.range(.., granularity) {
+        non_gap_time_span += range.length();
+
+        if let Some(last_range) = last_range {
+            let gap_size = last_range.max.abs_diff(range.min);
+            if min_gap_size < gap_size {
+                gaps.push(gap_size);
+            }
+        }
+        last_range = Some(range);
+    }
+
+    if min_gap_size * 100 < non_gap_time_span {
+        // If the gap is such a small fracion of the total time, we don't care about it,
+        // and we abort the gap-search, which is an important early-out.
+        return None;
+    }
+
+    Some(gaps)
 }
 
 /// Collapse any gaps larger or equals to the given threshold.
