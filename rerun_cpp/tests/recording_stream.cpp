@@ -491,13 +491,17 @@ SCENARIO("Recording stream handles serialization failure during logging graceful
 
             THEN("calling log with an array logs the serialization error") {
                 check_logged_error(
-                    [&] { stream.log(path, std::array{component, component}); },
+                    [&] {
+                        stream.log(path, std::array{component, component});
+                    },
                     expected_error.code
                 );
             }
             THEN("calling log with a vector logs the serialization error") {
                 check_logged_error(
-                    [&] { stream.log(path, std::vector{component, component}); },
+                    [&] {
+                        stream.log(path, std::vector{component, component});
+                    },
                     expected_error.code
                 );
             }
