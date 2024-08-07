@@ -1,5 +1,7 @@
 #pragma once
 
+#include <cassert>
+#include <chrono>
 #include <memory> // shared_ptr
 
 #include "collection.hpp"
@@ -37,10 +39,24 @@ namespace rerun {
         SortingStatus sorting_status;
 
       public:
-        // TODO: docs
-        TimeColumn(Timeline timeline, Collection<int64_t> timepoints, SortingStatus sorting_status);
+        /// Creates a new time column from an array of time points.
+        ///
+        /// \param timeline The timeline this column belongs to.
+        /// \param timepoints The time points.
+        /// Depending on the `TimeType` of the timeline this may be either timestamps or sequence numbers.
+        /// Make sure the sorting status is correctly specified.
+        /// \param sorting_status The sorting status of the time points.
+        TimeColumn(
+            Timeline timeline, Collection<int64_t> timepoints,
+            SortingStatus sorting_status = SortingStatus::Sorted
+        );
 
-        /// Creates a new time column from an array of sequence points.
+        /// Creates a sequence time column from an array of sequence points.
+        ///
+        /// \param timeline_name The name of the timeline this column belongs to.
+        /// \param timepoints The sequence points.
+        /// Make sure the sorting status is correctly specified.
+        /// \param sorting_status The sorting status of the sequence points.
         static TimeColumn from_sequence_points(
             std::string_view timeline_name, Collection<int64_t> sequence_points,
             SortingStatus sorting_status = SortingStatus::Sorted
@@ -52,14 +68,72 @@ namespace rerun {
             );
         }
 
-        // TODO: implement this
-        /// Creates a new time column from an array of sequence points.
-        // static TimeColumn from_seconds(
-        //     std::string_view timeline_name, const Collection<float>& time_in_seconds,
-        //     SortingStatus sorting_status = SortingStatus::Sorted,
-        // );
+        /// Creates a sequence time column from an array of sequence points.
+        ///
+        /// \param timeline_name The name of the timeline this column belongs to.
+        /// \param timepoints The time points in nanoseconds.
+        /// Make sure the sorting status is correctly specified.
+        /// \param sorting_status The sorting status of the time points.
+        static TimeColumn from_time(
+            std::string_view timeline_name, Collection<int64_t> timepoints_in_nanoseconds,
+            SortingStatus sorting_status = SortingStatus::Sorted
+        ) {
+            return TimeColumn(
+                Timeline(timeline_name, TimeType::Time),
+                timepoints_in_nanoseconds,
+                sorting_status
+            );
+        }
 
-        // TODO: std::chrono support, range support.
+        /// Creates a sequence time column from an array of arbitrary std::chrono durations.
+        ///
+        /// \param timeline_name The name of the timeline this column belongs to.
+        /// \param chrono_timepoints The time points as chrono durations.
+        /// Make sure the sorting status is correctly specified.
+        /// \param sorting_status The sorting status of the time points.
+        template <typename TRep, typename TPeriod>
+        static TimeColumn from_time(
+            std::string_view timeline_name,
+            const Collection<std::chrono::duration<TRep, TPeriod>>& chrono_timepoints,
+            SortingStatus sorting_status = SortingStatus::Sorted
+        ) {
+            std::vector<int64_t> timepoints(chrono_timepoints.size());
+            for (size_t i = 0; i < chrono_timepoints.size(); i++) {
+                timepoints[i] =
+                    std::chrono::duration_cast<std::chrono::nanoseconds>(chrono_timepoints[i])
+                        .count();
+            }
+            return TimeColumn(
+                Timeline(timeline_name, TimeType::Time),
+                std::move(timepoints),
+                sorting_status
+            );
+        }
+
+        /// Creates a sequence time column from a range of sequence points.
+        ///
+        /// \param timeline_name The name of the timeline this column belongs to.
+        /// \param min The minimum sequence point, must be less than `max`.
+        /// \param max The maximum sequence point, must be greater than `min`.
+        /// \param step The step size between sequence points. Must be non-zero..
+        static TimeColumn from_sequence_range(
+            std::string_view timeline_name, int64_t min, int64_t max, int64_t step = 1
+        ) {
+            assert(step > 0);
+            assert(min < max);
+
+            auto size = (max - min) / step;
+            std::vector<int64_t> sequence_points(static_cast<size_t>(size));
+            for (int64_t i = 0; i < size; ++i) {
+                sequence_points[static_cast<size_t>(i)] = min + i * step;
+            }
+
+            return TimeColumn(
+                Timeline(timeline_name, TimeType::Sequence),
+                std::move(sequence_points),
+                SortingStatus::Sorted
+            );
+        }
 
         /// To rerun C API component batch.
         ///
