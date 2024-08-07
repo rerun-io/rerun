@@ -19,6 +19,16 @@ pub fn view_components_defaults_section_ui(
     ui: &mut egui::Ui,
     view: &SpaceViewBlueprint,
 ) {
+    // skip this section entirely if the view doesn't have any visualizer
+    if ctx
+        .visualizer_collection
+        .systems
+        .values()
+        .all(|visualizer_system| visualizer_system.visualizer_query_info().is_empty())
+    {
+        return;
+    }
+
     let db = ctx.viewer_ctx.blueprint_db();
     let query = ctx.viewer_ctx.blueprint_query;
 
