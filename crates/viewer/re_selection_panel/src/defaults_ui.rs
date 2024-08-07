@@ -33,7 +33,6 @@ pub fn view_components_defaults_section_ui(
 
     let components_to_show_in_add_menu =
         components_to_show_in_add_menu(ctx, &component_to_vis, &active_defaults);
-
     let reason_we_cannot_add_more = components_to_show_in_add_menu.as_ref().err().cloned();
 
     let mut add_button_is_open = false;
