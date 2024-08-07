@@ -1,6 +1,8 @@
+#pragma once
+
 #include <arrow/buffer.h>
 
-// Do not include this file in any public header as we don't want to infect the user's  namespace
+// Do not include this file in any public header as we don't want to infect the user's namespace
 // with symbols from arrow.
 // (in order to keep compile times managable and avoid potential arrow version conflicts)
 

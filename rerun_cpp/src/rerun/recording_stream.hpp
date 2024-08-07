@@ -674,7 +674,7 @@ namespace rerun {
         template <typename... Ts>
         void send_columns(
             std::string_view entity_path, Collection<TimeColumn> time_columns,
-            Collection<Ts>... component_batches
+            Collection<Ts>... component_batches // NOLINT
         ) const {
             try_send_columns(entity_path, time_columns, component_batches...).handle();
         }
@@ -699,7 +699,7 @@ namespace rerun {
         template <typename... Ts>
         Error try_send_columns(
             std::string_view entity_path, Collection<TimeColumn> time_columns,
-            Collection<Ts>... component_batches
+            Collection<Ts>... component_batches // NOLINT
         ) const {
             if (!is_enabled()) {
                 return Error::ok();

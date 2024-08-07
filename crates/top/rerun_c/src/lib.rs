@@ -187,6 +187,7 @@ pub struct CDataRow {
 #[repr(C)]
 pub struct CPartitionedComponentBatch {
     pub component_type: CComponentTypeHandle,
+
     /// A ListArray with the datatype `List(component_type)`.
     pub array: arrow2::ffi::ArrowArray,
 }
