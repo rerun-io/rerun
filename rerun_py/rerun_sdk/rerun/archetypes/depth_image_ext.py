@@ -66,7 +66,7 @@ class DepthImageExt:
             raise ValueError(f"Unsupported dtype {image.dtype} for DepthImage")
 
         self.__attrs_init__(
-            data=image.tobytes(),
+            buffer=image.tobytes(),
             format=ImageFormat(
                 width=width,
                 height=height,

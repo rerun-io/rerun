@@ -130,7 +130,7 @@ class ImageExt:
                 # TODO(jleibs): Validate that bytes is the expected size.
 
                 self.__attrs_init__(
-                    data=bytes,
+                    buffer=bytes,
                     format=ImageFormat(width=width, height=height, pixel_format=pixel_format),
                     opacity=opacity,
                     draw_order=draw_order,
@@ -159,7 +159,7 @@ class ImageExt:
                 # TODO(jleibs): Validate that bytes is the expected size.
 
                 self.__attrs_init__(
-                    data=bytes,
+                    buffer=bytes,
                     format=ImageFormat(
                         width=width,
                         height=height,
@@ -228,7 +228,7 @@ class ImageExt:
             _send_warning_or_raise(f"Unsupported dtype {image.dtype} for Image")
 
         self.__attrs_init__(
-            data=image.tobytes(),
+            buffer=image.tobytes(),
             format=ImageFormat(
                 width=width,
                 height=height,
@@ -292,9 +292,9 @@ class ImageExt:
                 )
 
             buf = None
-            if self.data is not None:
+            if self.buffer is not None:
                 buf = (
-                    self.data.as_arrow_array()
+                    self.buffer.as_arrow_array()
                     .storage.values.to_numpy()
                     .view(image_format.channel_datatype.to_np_dtype())
                 )
