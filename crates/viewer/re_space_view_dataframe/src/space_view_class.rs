@@ -130,33 +130,24 @@ mode sets the default time range to _everything_. You can override this in the s
         _space_origin: &EntityPath,
         space_view_id: SpaceViewId,
     ) -> Result<(), SpaceViewSystemExecutionError> {
-        // let settings = ViewProperty::from_archetype::<archetypes::DataframeViewMode>(
-        //     ctx.blueprint_db(),
-        //     ctx.blueprint_query,
-        //     space_view_id,
-        // );
-        //
-        // let mode =
-        //     settings.component_or_fallback::<components::DataframeViewMode>(ctx, self, state)?;
+        crate::view_query::query_ui(ctx, ui, state, space_view_id)?;
 
         list_item::list_item_scope(ui, "dataframe_view_selection_ui", |ui| {
-            //TODO(ab): ideally we'd drop the "Dataframe" part in the UI label
-            //view_property_ui::<archetypes::DataframeViewMode>(ctx, ui, space_view_id, self, state);
-
-            view_property_ui::<archetypes::DataframeQuery>(ctx, ui, space_view_id, self, state);
-            super::view_query::Query::ui(ctx, ui, self, state, space_view_id);
-
             //TODO: fix this :scream:
-            let view_query = Query::try_from_blueprint(ctx, space_view_id, self, state)?;
-            ui.add_enabled_ui(matches!(view_query.mode, QueryMode::Range { .. }), |ui| {
-                view_property_ui::<archetypes::TimeRangeTableOrder>(
-                    ctx,
-                    ui,
-                    space_view_id,
-                    self,
-                    state,
-                );
-            });
+            let view_query = Query::try_from_blueprint(ctx, space_view_id)?;
+
+            ui.add_enabled_ui(
+                matches!(view_query.mode(ctx), QueryMode::Range { .. }),
+                |ui| {
+                    view_property_ui::<archetypes::TimeRangeTableOrder>(
+                        ctx,
+                        ui,
+                        space_view_id,
+                        self,
+                        state,
+                    );
+                },
+            );
 
             Ok(())
         })
@@ -172,56 +163,21 @@ mode sets the default time range to _everything_. You can override this in the s
     ) -> Result<(), SpaceViewSystemExecutionError> {
         re_tracing::profile_function!();
 
-        // let settings = ViewProperty::from_archetype::<archetypes::DataframeViewMode>(
-        //     ctx.blueprint_db(),
-        //     ctx.blueprint_query,
-        //     query.space_view_id,
-        // );
-        //
-        // let mode =
-        //     settings.component_or_fallback::<components::DataframeViewMode>(ctx, self, state)?;
-        //
-        // // update state
-        // let state = state.downcast_mut::<DataframeViewState>()?;
-        // state.mode = mode;
-        //
-        // match mode {
-        //     components::DataframeViewMode::LatestAt => latest_at_table_ui(ctx, ui, query),
-        //
-        //     components::DataframeViewMode::TimeRange => {
-        //         let time_range_table_order =
-        //             ViewProperty::from_archetype::<archetypes::TimeRangeTableOrder>(
-        //                 ctx.blueprint_db(),
-        //                 ctx.blueprint_query,
-        //                 query.space_view_id,
-        //             );
-        //         let sort_key = time_range_table_order
-        //             .component_or_fallback::<components::SortKey>(ctx, self, state)?;
-        //         let sort_order = time_range_table_order
-        //             .component_or_fallback::<components::SortOrder>(ctx, self, state)?;
-        //
-        //         time_range_table_ui(ctx, ui, query, sort_key, sort_order);
-        //     }
-        // };
-
-        let view_query =
-            super::view_query::Query::try_from_blueprint(ctx, query.space_view_id, self, state)?;
+        let view_query = super::view_query::Query::try_from_blueprint(ctx, query.space_view_id)?;
+        let timeline_name = view_query.timeline_name(ctx);
+        let query_mode = view_query.mode(ctx);
 
         let Some(timeline) = ctx
             .recording()
             .timelines()
-            .find(|t| t.name() == &view_query.timeline)
+            .find(|t| t.name() == &timeline_name)
         else {
-            //TODO: create dummy timeline instead?
-            re_log::warn_once!(
-                "Could not find timeline {:?}.",
-                view_query.timeline.as_str()
-            );
+            re_log::warn_once!("Could not find timeline {:?}.", timeline_name.as_str());
             //TODO(ab): we should have an error for that
             return Ok(());
         };
 
-        match view_query.mode {
+        match query_mode {
             QueryMode::LatestAt { time } => {
                 latest_at_table_ui(ctx, ui, query, LatestAtQuery::new(*timeline, time))
             }
@@ -253,35 +209,37 @@ mode sets the default time range to _everything_. You can override this in the s
     }
 }
 
-impl TypedComponentFallbackProvider<components::Timeline> for DataframeSpaceView {
-    fn fallback_for(&self, ctx: &re_viewer_context::QueryContext<'_>) -> Timeline {
-        //TODO: add helper to Timeline component
-        Timeline(Utf8::from(
-            ctx.viewer_ctx
-                .rec_cfg
-                .time_ctrl
-                .read()
-                .timeline()
-                .name()
-                .as_str(),
-        ))
-    }
-}
-
-impl TypedComponentFallbackProvider<components::LatestAtQueries> for DataframeSpaceView {
-    fn fallback_for(&self, ctx: &QueryContext<'_>) -> LatestAtQueries {
-        let current_time = ctx.viewer_ctx.rec_cfg.time_ctrl.read();
-
-        let latest_at_query = datatypes::LatestAtQuery {
-            timeline: Utf8::from(current_time.timeline().name().as_str()),
-            time: re_types_core::datatypes::TimeInt::from(
-                current_time
-                    .time_int()
-                    .unwrap_or(re_log_types::TimeInt::MAX),
-            ),
-        };
-        LatestAtQueries::from(vec![latest_at_query])
-    }
-}
-
-re_viewer_context::impl_component_fallback_provider!(DataframeSpaceView => [Timeline, LatestAtQueries]);
+// //TODO: probably no longer needed
+// impl TypedComponentFallbackProvider<components::Timeline> for DataframeSpaceView {
+//     fn fallback_for(&self, ctx: &re_viewer_context::QueryContext<'_>) -> Timeline {
+//         //TODO: add helper to Timeline component
+//         Timeline(Utf8::from(
+//             ctx.viewer_ctx
+//                 .rec_cfg
+//                 .time_ctrl
+//                 .read()
+//                 .timeline()
+//                 .name()
+//                 .as_str(),
+//         ))
+//     }
+// }
+//
+// //TODO: probably no longer needed
+// impl TypedComponentFallbackProvider<components::LatestAtQueries> for DataframeSpaceView {
+//     fn fallback_for(&self, ctx: &QueryContext<'_>) -> LatestAtQueries {
+//         let current_time = ctx.viewer_ctx.rec_cfg.time_ctrl.read();
+//
+//         let latest_at_query = datatypes::LatestAtQuery {
+//             timeline: Utf8::from(current_time.timeline().name().as_str()),
+//             time: re_types_core::datatypes::TimeInt::from(
+//                 current_time
+//                     .time_int()
+//                     .unwrap_or(re_log_types::TimeInt::MAX),
+//             ),
+//         };
+//         LatestAtQueries::from(vec![latest_at_query])
+//     }
+// }
+//
+// re_viewer_context::impl_component_fallback_provider!(DataframeSpaceView => [Timeline, LatestAtQueries]);

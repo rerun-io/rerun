@@ -6,9 +6,8 @@ use re_data_ui::item_ui::entity_path_button;
 use re_entity_db::InstancePath;
 use re_log_types::{EntityPath, ResolvedTimeRange, TimeInt, Timeline};
 use re_types::blueprint::components::{SortKey, SortOrder};
-use re_types_core::datatypes::TimeRange;
 use re_types_core::ComponentName;
-use re_viewer_context::{Item, QueryRange, UiLayout, ViewQuery, ViewerContext};
+use re_viewer_context::{Item, UiLayout, ViewQuery, ViewerContext};
 
 use crate::table_ui::{row_id_ui, table_ui};
 
