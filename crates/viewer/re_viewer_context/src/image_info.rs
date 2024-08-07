@@ -21,7 +21,7 @@ pub struct ImageInfo {
     /// The image data, row-wise, with stride=width.
     pub buffer: Blob,
 
-    /// Describes the format of [`Self::blob`].
+    /// Describes the format of [`Self::buffer`].
     pub format: ImageFormat,
 
     /// Color, Depth, or Segmentation?
