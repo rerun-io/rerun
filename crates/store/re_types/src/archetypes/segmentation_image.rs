@@ -69,11 +69,8 @@ pub struct SegmentationImage {
     /// The raw image data.
     pub data: crate::components::Blob,
 
-    /// The size of the image.
-    pub resolution: crate::components::Resolution2D,
-
-    /// The data type of the segmentation image data (U16, U32, …).
-    pub datatype: crate::components::ChannelDatatype,
+    /// The format of the image.
+    pub format: crate::components::ImageFormat,
 
     /// Opacity of the image, useful for layering the segmentation image on top of another image.
     ///
@@ -90,8 +87,7 @@ impl ::re_types_core::SizeBytes for SegmentationImage {
     #[inline]
     fn heap_size_bytes(&self) -> u64 {
         self.data.heap_size_bytes()
-            + self.resolution.heap_size_bytes()
-            + self.datatype.heap_size_bytes()
+            + self.format.heap_size_bytes()
             + self.opacity.heap_size_bytes()
             + self.draw_order.heap_size_bytes()
     }
@@ -99,19 +95,17 @@ impl ::re_types_core::SizeBytes for SegmentationImage {
     #[inline]
     fn is_pod() -> bool {
         <crate::components::Blob>::is_pod()
-            && <crate::components::Resolution2D>::is_pod()
-            && <crate::components::ChannelDatatype>::is_pod()
+            && <crate::components::ImageFormat>::is_pod()
             && <Option<crate::components::Opacity>>::is_pod()
             && <Option<crate::components::DrawOrder>>::is_pod()
     }
 }
 
-static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 3usize]> =
+static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 2usize]> =
     once_cell::sync::Lazy::new(|| {
         [
             "rerun.components.Blob".into(),
-            "rerun.components.Resolution2D".into(),
-            "rerun.components.ChannelDatatype".into(),
+            "rerun.components.ImageFormat".into(),
         ]
     });
 
@@ -126,12 +120,11 @@ static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 2usize]> =
         ]
     });
 
-static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 6usize]> =
+static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 5usize]> =
     once_cell::sync::Lazy::new(|| {
         [
             "rerun.components.Blob".into(),
-            "rerun.components.Resolution2D".into(),
-            "rerun.components.ChannelDatatype".into(),
+            "rerun.components.ImageFormat".into(),
             "rerun.components.SegmentationImageIndicator".into(),
             "rerun.components.Opacity".into(),
             "rerun.components.DrawOrder".into(),
@@ -139,8 +132,8 @@ static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 6usize]> =
     });
 
 impl SegmentationImage {
-    /// The total number of components in the archetype: 3 required, 1 recommended, 2 optional
-    pub const NUM_COMPONENTS: usize = 6usize;
+    /// The total number of components in the archetype: 2 required, 1 recommended, 2 optional
+    pub const NUM_COMPONENTS: usize = 5usize;
 }
 
 /// Indicator component for the [`SegmentationImage`] [`::re_types_core::Archetype`]
@@ -208,31 +201,18 @@ impl ::re_types_core::Archetype for SegmentationImage {
                 .ok_or_else(DeserializationError::missing_data)
                 .with_context("rerun.archetypes.SegmentationImage#data")?
         };
-        let resolution = {
+        let format = {
             let array = arrays_by_name
-                .get("rerun.components.Resolution2D")
+                .get("rerun.components.ImageFormat")
                 .ok_or_else(DeserializationError::missing_data)
-                .with_context("rerun.archetypes.SegmentationImage#resolution")?;
-            <crate::components::Resolution2D>::from_arrow_opt(&**array)
-                .with_context("rerun.archetypes.SegmentationImage#resolution")?
+                .with_context("rerun.archetypes.SegmentationImage#format")?;
+            <crate::components::ImageFormat>::from_arrow_opt(&**array)
+                .with_context("rerun.archetypes.SegmentationImage#format")?
                 .into_iter()
                 .next()
                 .flatten()
                 .ok_or_else(DeserializationError::missing_data)
-                .with_context("rerun.archetypes.SegmentationImage#resolution")?
-        };
-        let datatype = {
-            let array = arrays_by_name
-                .get("rerun.components.ChannelDatatype")
-                .ok_or_else(DeserializationError::missing_data)
-                .with_context("rerun.archetypes.SegmentationImage#datatype")?;
-            <crate::components::ChannelDatatype>::from_arrow_opt(&**array)
-                .with_context("rerun.archetypes.SegmentationImage#datatype")?
-                .into_iter()
-                .next()
-                .flatten()
-                .ok_or_else(DeserializationError::missing_data)
-                .with_context("rerun.archetypes.SegmentationImage#datatype")?
+                .with_context("rerun.archetypes.SegmentationImage#format")?
         };
         let opacity = if let Some(array) = arrays_by_name.get("rerun.components.Opacity") {
             <crate::components::Opacity>::from_arrow_opt(&**array)
@@ -254,8 +234,7 @@ impl ::re_types_core::Archetype for SegmentationImage {
         };
         Ok(Self {
             data,
-            resolution,
-            datatype,
+            format,
             opacity,
             draw_order,
         })
@@ -269,8 +248,7 @@ impl ::re_types_core::AsComponents for SegmentationImage {
         [
             Some(Self::indicator()),
             Some((&self.data as &dyn ComponentBatch).into()),
-            Some((&self.resolution as &dyn ComponentBatch).into()),
-            Some((&self.datatype as &dyn ComponentBatch).into()),
+            Some((&self.format as &dyn ComponentBatch).into()),
             self.opacity
                 .as_ref()
                 .map(|comp| (comp as &dyn ComponentBatch).into()),
@@ -289,13 +267,11 @@ impl SegmentationImage {
     #[inline]
     pub fn new(
         data: impl Into<crate::components::Blob>,
-        resolution: impl Into<crate::components::Resolution2D>,
-        datatype: impl Into<crate::components::ChannelDatatype>,
+        format: impl Into<crate::components::ImageFormat>,
     ) -> Self {
         Self {
             data: data.into(),
-            resolution: resolution.into(),
-            datatype: datatype.into(),
+            format: format.into(),
             opacity: None,
             draw_order: None,
         }

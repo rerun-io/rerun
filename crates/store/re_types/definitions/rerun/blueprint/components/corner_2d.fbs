@@ -1,7 +1,7 @@
 namespace rerun.blueprint.components;
 
 /// One of four 2D corners, typically used to align objects.
-enum Corner2D: byte (
+enum Corner2D: ubyte (
     "attr.rerun.scope": "blueprint",
     "attr.rust.derive": "Copy, PartialEq, Eq"
 ) {

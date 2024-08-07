@@ -5,7 +5,7 @@ namespace rerun.components;
 /// This is used for lines in plots when the X axis distance of individual points goes below a single pixel,
 /// i.e. a single pixel covers more than one tick worth of data. It can greatly improve performance
 /// (and readability) in such situations as it prevents overdraw.
-enum AggregationPolicy: byte {
+enum AggregationPolicy: ubyte {
     /// Invalid value. Won't show up in generated types.
     Invalid = 0,
 

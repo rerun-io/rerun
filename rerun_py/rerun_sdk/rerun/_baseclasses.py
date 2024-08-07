@@ -272,7 +272,7 @@ class PartitionedComponentBatch(ComponentBatchLike):
     A ComponentBatch array that has been repartitioned into multiple segments.
 
     This is useful for reinterpreting a single contiguous batch as multiple sub-batches
-    to use with the `log_temporal_batch` API.
+    to use with the [`send_columns`][rerun.send_columns] API.
     """
 
     def __init__(self, component_batch: ComponentBatchLike, lengths: npt.ArrayLike):

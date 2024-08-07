@@ -279,14 +279,14 @@ impl ChunkStore {
                     let per_timeline = chunk_ids_to_be_removed
                         .entry(entity_path.clone())
                         .or_default();
-                    for (&timeline, time_chunk) in chunk.timelines() {
+                    for (&timeline, time_column) in chunk.timelines() {
                         let per_component = per_timeline.entry(timeline).or_default();
                         for component_name in chunk.component_names() {
                             let per_time = per_component.entry(component_name).or_default();
 
                             // NOTE: As usual, these are vectors of `ChunkId`s, as it is legal to
                             // have perfectly overlapping chunks.
-                            let time_range = time_chunk.time_range();
+                            let time_range = time_column.time_range();
                             per_time
                                 .entry(time_range.min())
                                 .or_default()

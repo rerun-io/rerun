@@ -15,7 +15,7 @@ use pyo3::{
     PyAny, PyResult,
 };
 
-use re_chunk::{Chunk, ChunkError, ChunkId, ChunkTimeline, PendingRow, RowId};
+use re_chunk::{Chunk, ChunkError, ChunkId, PendingRow, RowId, TimeColumn};
 use re_log_types::TimePoint;
 use re_sdk::{ComponentName, EntityPath, Timeline};
 
@@ -145,10 +145,10 @@ pub fn build_chunk_from_components(
         })
         .collect();
 
-    let timelines: BTreeMap<Timeline, ChunkTimeline> = timelines
+    let timelines: BTreeMap<Timeline, TimeColumn> = timelines
         .map_err(|err| PyRuntimeError::new_err(format!("Error converting temporal data: {err}")))?
         .into_iter()
-        .map(|(timeline, value)| (timeline, ChunkTimeline::new(None, timeline, value)))
+        .map(|(timeline, value)| (timeline, TimeColumn::new(None, timeline, value)))
         .collect();
 
     // Extract the component data
