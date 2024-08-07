@@ -1,12 +1,13 @@
-use re_chunk::RowId;
+use re_chunk::{external::arrow2::datatypes, RowId};
 use re_types::{
     archetypes::Image,
+    datatypes::ImageFormat,
     image::{ImageKind, ImageLoadError},
 };
 
 use egui::util::hash;
 
-use crate::{Cache, ImageFormat, ImageInfo};
+use crate::{Cache, ImageInfo};
 
 struct DecodedImageResult {
     /// Cached `Result` from decoding the image
@@ -87,31 +88,12 @@ fn decode_image(
 
     let image_arch = Image::from_dynamic_image(dynamic_image)?;
 
-    let Image {
-        data,
-        resolution,
-        pixel_format,
-        color_model,
-        datatype,
-        ..
-    } = image_arch;
-
-    let format = if let Some(pixel_format) = pixel_format {
-        ImageFormat::PixelFormat(pixel_format)
-    } else if let (Some(color_model), Some(datatype)) = (color_model, datatype) {
-        ImageFormat::ColorModel {
-            color_model,
-            datatype,
-        }
-    } else {
-        unreachable!()
-    };
+    let Image { data, format, .. } = image_arch;
 
     Ok(ImageInfo {
         blob_row_id: row_id,
         blob: data.0,
-        resolution: resolution.0.into(),
-        format,
+        format: format.0,
         kind: ImageKind::Color,
         colormap: None,
     })

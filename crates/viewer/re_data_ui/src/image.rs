@@ -5,7 +5,8 @@ use re_chunk_store::RowId;
 use re_log_types::EntityPath;
 use re_renderer::renderer::ColormappedTexture;
 use re_types::{
-    components::{ClassId, ColorModel},
+    components::ClassId,
+    datatypes::ColorModel,
     datatypes::{TensorData, TensorDimension},
     image::ImageKind,
     tensor_data::TensorElement,

@@ -17,6 +17,7 @@ mod class_id_ext;
 mod color_model;
 mod color_model_ext;
 mod image_format;
+mod image_format_ext;
 mod keypoint_id;
 mod keypoint_id_ext;
 mod keypoint_pair;
