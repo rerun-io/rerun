@@ -3,9 +3,10 @@ use super::PixelFormat;
 impl PixelFormat {
     /// Do we have an alpha channel?
     #[inline]
-    pub fn has_alpha(&self) -> bool {
+    pub fn has_alpha(&self) -> Option<bool> {
         match self {
-            Self::NV12 | Self::YUY2 => false,
+            Self::NV12 | Self::YUY2 => Some(false),
+            Self::GENERIC => None,
         }
     }
 
@@ -13,10 +14,11 @@ impl PixelFormat {
     ///
     /// Note that this is not necessarily divisible by 8!
     #[inline]
-    pub fn bits_per_pixel(&self) -> usize {
+    pub fn bits_per_pixel(&self) -> Option<usize> {
         match self {
-            Self::NV12 => 12,
-            Self::YUY2 => 16,
+            Self::NV12 => Some(12),
+            Self::YUY2 => Some(16),
+            Self::GENERIC => None,
         }
     }
 }

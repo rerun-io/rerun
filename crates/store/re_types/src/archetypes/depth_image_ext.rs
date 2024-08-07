@@ -1,6 +1,5 @@
 use crate::{
-    components::Resolution2D,
-    datatypes::TensorData,
+    datatypes::{ImageFormat, PixelFormat, TensorData},
     image::{blob_and_datatype_from_tensor, find_non_empty_dim_indices, ImageConstructionError},
 };
 
@@ -33,12 +32,18 @@ impl DepthImage {
         let (height, width) = (&shape[non_empty_dim_inds[0]], &shape[non_empty_dim_inds[1]]);
         let height = height.size as u32;
         let width = width.size as u32;
-        let resolution = Resolution2D::from([width, height]);
+
+        let image_format = ImageFormat {
+            width,
+            height,
+            channel_datatype: Some(datatype),
+            color_model: None,
+            pixel_format: PixelFormat::GENERIC,
+        };
 
         Ok(Self {
             data: blob.into(),
-            resolution,
-            datatype,
+            format: image_format.into(),
             draw_order: None,
             meter: None,
             colormap: None,

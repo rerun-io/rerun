@@ -1,12 +1,12 @@
 use std::collections::HashMap;
 
-use re_types::{archetypes::Image, components::ColorModel, Archetype as _, AsComponents as _};
+use re_types::{archetypes::Image, datatypes::ColorModel, Archetype as _, AsComponents as _};
 
 mod util;
 
 #[test]
 fn image_roundtrip() {
-    let all_expected = [Image::from_l8(vec![1, 2, 3, 4, 5, 6], [3, 2])];
+    let all_expected = [Image::from_l8(vec![1, 2, 3, 4, 5, 6], 3, 2)];
 
     let all_arch_serialized = [Image::from_color_model_and_tensor(
         ColorModel::L,
@@ -50,7 +50,8 @@ fn dynamic_image_roundtrip() {
             0, 0, 128, 1, 0, 128, 2, 0, 128, //
             0, 1, 128, 1, 1, 128, 2, 1, 128, //
         ],
-        [3, 2],
+        3,
+        2,
     )];
 
     let mut img = RgbImage::new(3, 2);

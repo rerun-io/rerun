@@ -20,7 +20,6 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Datatype**: The metadata describing the contents of a [rerun.components.ImageBuffer].
 #[derive(Clone, Debug, Default, Copy, PartialEq, Eq, Hash)]
-#[repr(transparent)]
 pub struct ImageFormat {
     /// The width of the image in pixels.
     pub width: u32,
