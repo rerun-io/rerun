@@ -214,6 +214,7 @@ fn merge_and_compact(
         .filter(|entity_db| entity_db.store_kind() == StoreKind::Recording)
         .flat_map(|entity_db| entity_db.to_messages(None /* time selection */));
 
+    // TODO(cmc): encoding options should match the original.
     let encoding_options = re_log_encoding::EncodingOptions::COMPRESSED;
     let version = entity_dbs
         .values()
