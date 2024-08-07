@@ -102,7 +102,7 @@ namespace rerun::archetypes {
         /// The length of the data should be `W * H * image_format.bytes_per_pixel`.
         /// @param format_ How the data should be interpreted.
         Image(Collection<uint8_t> bytes, components::ImageFormat format_)
-            : data(std::move(bytes)), format(format_) {}
+            : buffer(std::move(bytes)), format(format_) {}
 
         /// Construct an image from resolution, pixel format and bytes.
         ///
