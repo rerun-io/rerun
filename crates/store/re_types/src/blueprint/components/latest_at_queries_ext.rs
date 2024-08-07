@@ -1,12 +1,14 @@
+use re_log_types::TimelineName;
+
 use super::LatestAtQueries;
 use crate::blueprint::datatypes::LatestAtQuery;
 
 impl LatestAtQueries {
     /// Retrieves the query for a given timeline.
-    pub fn query_for_timeline(&self, timeline_name: &str) -> Option<&LatestAtQuery> {
+    pub fn query_for_timeline(&self, timeline_name: &TimelineName) -> Option<&LatestAtQuery> {
         self.0
             .iter()
-            .find(|query| query.timeline.as_str() == timeline_name)
+            .find(|query| query.timeline.as_str() == timeline_name.as_str())
     }
 
     /// Sets the query for a given timeline.

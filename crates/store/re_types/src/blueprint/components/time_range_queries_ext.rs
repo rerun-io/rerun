@@ -1,12 +1,14 @@
+use re_log_types::TimelineName;
+
 use super::TimeRangeQueries;
 use crate::blueprint::datatypes::TimeRangeQuery;
 
 impl TimeRangeQueries {
     /// Retrieves the query for a given timeline.
-    pub fn query_for_timeline(&self, timeline_name: &str) -> Option<&TimeRangeQuery> {
+    pub fn query_for_timeline(&self, timeline_name: &TimelineName) -> Option<&TimeRangeQuery> {
         self.0
             .iter()
-            .find(|query| query.timeline.as_str() == timeline_name)
+            .find(|query| query.timeline.as_str() == timeline_name.as_str())
     }
 
     /// Sets the query for a given timeline.

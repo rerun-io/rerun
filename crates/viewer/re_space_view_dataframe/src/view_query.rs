@@ -64,9 +64,7 @@ impl Query {
                 let time = property
                     .component_or_empty::<components::LatestAtQueries>()?
                     .unwrap_or_default()
-                    .0
-                    .into_iter()
-                    .find(|q| q.timeline.as_str() == timeline)
+                    .query_for_timeline(&timeline)
                     .map_or(TimeInt::MAX, |q| q.time.into());
 
                 QueryMode::LatestAt { time }
@@ -75,9 +73,7 @@ impl Query {
                 let (from, to) = property
                     .component_or_empty::<components::TimeRangeQueries>()?
                     .unwrap_or_default()
-                    .0
-                    .into_iter()
-                    .find(|q| q.timeline.as_str() == timeline)
+                    .query_for_timeline(&timeline)
                     .map_or((TimeInt::MIN, TimeInt::MAX), |q| {
                         (q.start.into(), q.end.into())
                     });
