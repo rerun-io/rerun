@@ -227,14 +227,14 @@ impl Image {
     pub fn from_dynamic_image(image: image::DynamicImage) -> Result<Self, ImageConversionError> {
         re_tracing::profile_function!();
 
-        let size = [image.width(), image.height()];
+        let res = [image.width(), image.height()];
 
         match image {
             image::DynamicImage::ImageLuma8(image) => {
-                Ok(Self::from_elements(image.as_raw(), size, ColorModel::L))
+                Ok(Self::from_elements(image.as_raw(), res, ColorModel::L))
             }
             image::DynamicImage::ImageLuma16(image) => {
-                Ok(Self::from_elements(image.as_raw(), size, ColorModel::L))
+                Ok(Self::from_elements(image.as_raw(), res, ColorModel::L))
             }
 
             image::DynamicImage::ImageLumaA8(image) => {
@@ -251,23 +251,23 @@ impl Image {
             }
 
             image::DynamicImage::ImageRgb8(image) => {
-                Ok(Self::from_elements(image.as_raw(), size, ColorModel::RGB))
+                Ok(Self::from_elements(image.as_raw(), res, ColorModel::RGB))
             }
             image::DynamicImage::ImageRgb16(image) => {
-                Ok(Self::from_elements(image.as_raw(), size, ColorModel::RGB))
+                Ok(Self::from_elements(image.as_raw(), res, ColorModel::RGB))
             }
             image::DynamicImage::ImageRgb32F(image) => {
-                Ok(Self::from_elements(image.as_raw(), size, ColorModel::RGB))
+                Ok(Self::from_elements(image.as_raw(), res, ColorModel::RGB))
             }
 
             image::DynamicImage::ImageRgba8(image) => {
-                Ok(Self::from_elements(image.as_raw(), size, ColorModel::RGBA))
+                Ok(Self::from_elements(image.as_raw(), res, ColorModel::RGBA))
             }
             image::DynamicImage::ImageRgba16(image) => {
-                Ok(Self::from_elements(image.as_raw(), size, ColorModel::RGBA))
+                Ok(Self::from_elements(image.as_raw(), res, ColorModel::RGBA))
             }
             image::DynamicImage::ImageRgba32F(image) => {
-                Ok(Self::from_elements(image.as_raw(), size, ColorModel::RGBA))
+                Ok(Self::from_elements(image.as_raw(), res, ColorModel::RGBA))
             }
 
             _ => {

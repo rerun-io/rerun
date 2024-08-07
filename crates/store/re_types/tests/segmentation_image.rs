@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use re_types::{
     archetypes::SegmentationImage,
-    datatypes::{ChannelDatatype, ImageFormat, PixelFormat},
+    datatypes::{ChannelDatatype, ImageFormat},
     Archetype as _, AsComponents as _,
 };
 

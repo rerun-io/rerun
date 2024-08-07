@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use re_types::{
     archetypes::DepthImage,
     components::DepthMeter,
-    datatypes::{ChannelDatatype, ImageFormat, PixelFormat},
+    datatypes::{ChannelDatatype, ImageFormat},
     Archetype as _, AsComponents as _,
 };
 
