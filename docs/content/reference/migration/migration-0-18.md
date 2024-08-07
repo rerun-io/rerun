@@ -29,9 +29,7 @@ TODO(andreas): more before/after image on different languages
 `EncodedImage` is our new archetype for logging an image file, e.g. a PNG or JPEG.
 
 #### Python
-In Python we already had a `ImageEncoded` class that was responsible for logging both chroma-downsampled images (NV12, YUY2) and image files (JPEG, PNG, …).
-
-Image files are now instead logged with [`EncodedImage`](https://rerun.io/docs/reference/types/archetypes/encoded_image?speculative-link),
+`rr.ImageEncoded` is deprecated. Image files (JPEG, PNG, …) should instead be logged with [`EncodedImage`](https://rerun.io/docs/reference/types/archetypes/encoded_image?speculative-link),
 and chroma-downsampled images (NV12/YUY2) are now logged with the new `Image` archetype:
 
 
