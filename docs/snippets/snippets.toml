@@ -75,9 +75,6 @@ views = [
   "rust", # Not implemented
   "py",   # Doesn't terminate
 ]
-"tutorials/send_columns" = [
-  "cpp", # TODO(#6810): Not impolemented yet
-]
 "tutorials/visualizer-overrides" = [
   "cpp",  # Not implemented
   "rust", # Not implemented
