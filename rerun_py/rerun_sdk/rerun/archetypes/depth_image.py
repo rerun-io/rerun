@@ -66,7 +66,7 @@ class DepthImage(DepthImageExt, Archetype):
     def __attrs_clear__(self) -> None:
         """Convenience method for calling `__attrs_init__` with all `None`s."""
         self.__attrs_init__(
-            data=None,  # type: ignore[arg-type]
+            buffer=None,  # type: ignore[arg-type]
             format=None,  # type: ignore[arg-type]
             meter=None,  # type: ignore[arg-type]
             colormap=None,  # type: ignore[arg-type]
@@ -81,9 +81,9 @@ class DepthImage(DepthImageExt, Archetype):
         inst.__attrs_clear__()
         return inst
 
-    data: components.BlobBatch = field(
+    buffer: components.ImageBufferBatch = field(
         metadata={"component": "required"},
-        converter=components.BlobBatch._required,  # type: ignore[misc]
+        converter=components.ImageBufferBatch._required,  # type: ignore[misc]
     )
     # The raw depth image data.
     #

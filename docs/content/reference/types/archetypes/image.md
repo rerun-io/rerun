@@ -19,7 +19,7 @@ Compressing images can save a lot of bandwidth and memory.
 
 ## Components
 
-**Required**: [`Blob`](../components/blob.md), [`ImageFormat`](../components/image_format.md)
+**Required**: [`ImageBuffer`](../components/image_buffer.md), [`ImageFormat`](../components/image_format.md)
 
 **Optional**: [`Opacity`](../components/opacity.md), [`DrawOrder`](../components/draw_order.md)
 

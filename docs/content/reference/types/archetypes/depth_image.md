@@ -9,7 +9,7 @@ Each pixel corresponds to a depth value in units specified by [`components.Depth
 
 ## Components
 
-**Required**: [`Blob`](../components/blob.md), [`ImageFormat`](../components/image_format.md)
+**Required**: [`ImageBuffer`](../components/image_buffer.md), [`ImageFormat`](../components/image_format.md)
 
 **Optional**: [`DepthMeter`](../components/depth_meter.md), [`Colormap`](../components/colormap.md), [`FillRatio`](../components/fill_ratio.md), [`DrawOrder`](../components/draw_order.md)
 

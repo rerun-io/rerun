@@ -5,11 +5,11 @@
 
 #include "../collection.hpp"
 #include "../compiler_utils.hpp"
-#include "../components/blob.hpp"
 #include "../components/colormap.hpp"
 #include "../components/depth_meter.hpp"
 #include "../components/draw_order.hpp"
 #include "../components/fill_ratio.hpp"
+#include "../components/image_buffer.hpp"
 #include "../components/image_format.hpp"
 #include "../data_cell.hpp"
 #include "../image_utils.hpp"
@@ -75,7 +75,7 @@ namespace rerun::archetypes {
     /// ```
     struct DepthImage {
         /// The raw depth image data.
-        rerun::components::Blob data;
+        rerun::components::ImageBuffer buffer;
 
         /// The format of the image.
         rerun::components::ImageFormat format;

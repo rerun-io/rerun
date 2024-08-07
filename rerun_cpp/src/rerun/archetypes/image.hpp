@@ -5,8 +5,8 @@
 
 #include "../collection.hpp"
 #include "../compiler_utils.hpp"
-#include "../components/blob.hpp"
 #include "../components/draw_order.hpp"
+#include "../components/image_buffer.hpp"
 #include "../components/image_format.hpp"
 #include "../components/opacity.hpp"
 #include "../data_cell.hpp"
@@ -72,7 +72,7 @@ namespace rerun::archetypes {
     /// ```
     struct Image {
         /// The raw image data.
-        rerun::components::Blob data;
+        rerun::components::ImageBuffer buffer;
 
         /// The format of the image.
         rerun::components::ImageFormat format;
