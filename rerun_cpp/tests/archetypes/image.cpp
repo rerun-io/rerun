@@ -3,7 +3,7 @@
 
 #include <rerun.hpp>
 using namespace rerun::archetypes;
-using namespace rerun::components;
+using namespace rerun::datatypes;
 
 #define TEST_TAG "[image][archetypes]"
 
@@ -12,14 +12,11 @@ SCENARIO("Image archetype can be created" TEST_TAG) {
         std::vector<uint8_t> data(10 * 10, 0);
         Image reference_image;
         reference_image.data = rerun::borrow(data);
-        reference_image.resolution = Resolution2D(10, 10);
-        reference_image.color_model = ColorModel::L;
-        reference_image.datatype = ChannelDatatype::U8;
+        reference_image.format = ImageFormat({10, 10}, ColorModel::L, ChannelDatatype::U8);
 
         THEN("no error occurs on image construction from a pointer") {
-            auto image_from_ptr = check_logged_error([&] {
-                return Image(data.data(), {10, 10}, ColorModel::L);
-            });
+            auto image_from_ptr =
+                check_logged_error([&] { return Image(data.data(), {10, 10}, ColorModel::L); });
             AND_THEN("serialization succeeds") {
                 test_compare_archetype_serialization(image_from_ptr, reference_image);
             }
@@ -33,9 +30,8 @@ SCENARIO("Image archetype can be created" TEST_TAG) {
             }
         }
         THEN("no error occurs on image construction from the greyscale utility") {
-            auto image_from_util = check_logged_error([&] {
-                return Image::from_greyscale8(data, {10, 10});
-            });
+            auto image_from_util =
+                check_logged_error([&] { return Image::from_greyscale8(data, {10, 10}); });
             AND_THEN("serialization succeeds") {
                 test_compare_archetype_serialization(image_from_util, reference_image);
             }
@@ -46,14 +42,11 @@ SCENARIO("Image archetype can be created" TEST_TAG) {
         std::vector<uint8_t> data(10 * 10 * 3, 0);
         Image reference_image;
         reference_image.data = rerun::borrow(data);
-        reference_image.resolution = Resolution2D(10, 10);
-        reference_image.color_model = ColorModel::RGB;
-        reference_image.datatype = ChannelDatatype::U8;
+        reference_image.format = ImageFormat({10, 10}, ColorModel::RGB, ChannelDatatype::U8);
 
         THEN("no error occurs on image construction from a pointer") {
-            auto image_from_ptr = check_logged_error([&] {
-                return Image(data.data(), {10, 10}, ColorModel::RGB);
-            });
+            auto image_from_ptr =
+                check_logged_error([&] { return Image(data.data(), {10, 10}, ColorModel::RGB); });
             AND_THEN("serialization succeeds") {
                 test_compare_archetype_serialization(image_from_ptr, reference_image);
             }
@@ -67,9 +60,8 @@ SCENARIO("Image archetype can be created" TEST_TAG) {
             }
         }
         THEN("no error occurs on image construction from the rgb utility") {
-            auto image_from_util = check_logged_error([&] {
-                return Image::from_rgb24(data, {10, 10});
-            });
+            auto image_from_util =
+                check_logged_error([&] { return Image::from_rgb24(data, {10, 10}); });
             AND_THEN("serialization succeeds") {
                 test_compare_archetype_serialization(image_from_util, reference_image);
             }
@@ -80,14 +72,11 @@ SCENARIO("Image archetype can be created" TEST_TAG) {
         std::vector<uint8_t> data(10 * 10 * 4, 0);
         Image reference_image;
         reference_image.data = rerun::borrow(data);
-        reference_image.resolution = Resolution2D(10, 10);
-        reference_image.color_model = ColorModel::RGBA;
-        reference_image.datatype = ChannelDatatype::U8;
+        reference_image.format = ImageFormat({10, 10}, ColorModel::RGBA, ChannelDatatype::U8);
 
         THEN("no error occurs on image construction from a pointer") {
-            auto image_from_ptr = check_logged_error([&] {
-                return Image(data.data(), {10, 10}, ColorModel::RGBA);
-            });
+            auto image_from_ptr =
+                check_logged_error([&] { return Image(data.data(), {10, 10}, ColorModel::RGBA); });
             AND_THEN("serialization succeeds") {
                 test_compare_archetype_serialization(image_from_ptr, reference_image);
             }
@@ -101,9 +90,8 @@ SCENARIO("Image archetype can be created" TEST_TAG) {
             }
         }
         THEN("no error occurs on image construction from the rgba utility") {
-            auto image_from_util = check_logged_error([&] {
-                return Image::from_rgba32(data, {10, 10});
-            });
+            auto image_from_util =
+                check_logged_error([&] { return Image::from_rgba32(data, {10, 10}); });
             AND_THEN("serialization succeeds") {
                 test_compare_archetype_serialization(image_from_util, reference_image);
             }
