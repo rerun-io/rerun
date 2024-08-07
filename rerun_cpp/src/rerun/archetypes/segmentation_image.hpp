@@ -101,7 +101,7 @@ namespace rerun::archetypes {
         /// @param pixels The raw image data.
         /// ⚠️ Does not take ownership of the data, the caller must ensure the data outlives the image.
         /// The number of elements is assumed to be `W * H`.
-        /// @param resolution The resolution of the image.
+        /// @param resolution The resolution of the image as {width, height}.
         template <typename TElement>
         SegmentationImage(const TElement* pixels, WidthHeight resolution)
             : SegmentationImage{
@@ -113,7 +113,7 @@ namespace rerun::archetypes {
         /// If the data does not outlive the image, use `std::move` or create the `rerun::Collection`
         /// explicitly ahead of time with `rerun::Collection::take_ownership`.
         /// The length of the data should be `W * H`.
-        /// @param resolution The resolution of the image.
+        /// @param resolution The resolution of the image as {width, height}.
         template <typename TElement>
         SegmentationImage(Collection<TElement> pixels, WidthHeight resolution)
             : SegmentationImage{pixels.to_uint8(), resolution, get_datatype(pixels.data())} {}
@@ -123,7 +123,7 @@ namespace rerun::archetypes {
         /// @param data_ The raw image data.
         /// ⚠️ Does not take ownership of the data, the caller must ensure the data outlives the image.
         /// The byte size of the data is assumed to be `W * H * datatype.size`
-        /// @param resolution The resolution of the image.
+        /// @param resolution The resolution of the image as {width, height}.
         /// @param datatype How the data should be interpreted.
         SegmentationImage(
             const void* data_, WidthHeight resolution, datatypes::ChannelDatatype datatype
@@ -137,7 +137,7 @@ namespace rerun::archetypes {
         /// If the data does not outlive the image, use `std::move` or create the `rerun::Collection`
         /// explicitly ahead of time with `rerun::Collection::take_ownership`.
         /// The length of the data should be `W * H`.
-        /// @param resolution The resolution of the image.
+        /// @param resolution The resolution of the image as {width, height}.
         /// @param datatype How the data should be interpreted.
         SegmentationImage(
             Collection<uint8_t> data_, WidthHeight resolution, datatypes::ChannelDatatype datatype

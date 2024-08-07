@@ -29,6 +29,7 @@ namespace rerun::archetypes {
     /// If the data does not outlive the image, use `std::move` or create the `rerun::Collection`
     /// explicitly ahead of time with `rerun::Collection::take_ownership`.
     /// The length of the data should be `W * H * pixel_format.bytes_per_pixel`.
+    /// @param resolution The resolution of the image as {width, height}.
     /// @param pixel_format How the data should be interpreted.
     Image(
         Collection<uint8_t> bytes, WidthHeight resolution,
@@ -42,6 +43,7 @@ namespace rerun::archetypes {
     /// If the data does not outlive the image, use `std::move` or create the `rerun::Collection`
     /// explicitly ahead of time with `rerun::Collection::take_ownership`.
     /// The length of the data should be `W * H * datatype.bytes * color_model.num_channels`.
+    /// @param resolution The resolution of the image as {width, height}.
     /// @param color_model The color model of the pixel data.
     /// @param datatype Datatype of the individual channels of the color model.
     Image(
@@ -57,6 +59,7 @@ namespace rerun::archetypes {
     /// If the data does not outlive the image, use `std::move` or create the `rerun::Collection`
     /// explicitly ahead of time with `rerun::Collection::take_ownership`.
     /// The length of the data should be `W * H * color_model.num_channels`.
+    /// @param resolution The resolution of the image as {width, height}.
     /// @param color_model The color model of the pixel data.
     /// Each element in elements is interpreted as a single channel of the color model.
     template <typename T>
@@ -72,6 +75,7 @@ namespace rerun::archetypes {
     /// @param elements The raw image data.
     /// ⚠️ Does not take ownership of the data, the caller must ensure the data outlives the image.
     /// The number of elements is assumed to be `W * H * color_model.num_channels`.
+    /// @param resolution The resolution of the image as {width, height}.
     /// @param color_model The color model of the pixel data.
     /// Each element in elements is interpreted as a single channel of the color model.
     template <typename T>
@@ -92,7 +96,7 @@ namespace rerun::archetypes {
     /// If the data does not outlive the image, use `std::move` or create the `rerun::Collection`
     /// explicitly ahead of time with `rerun::Collection::take_ownership`.
     /// The length of the data should be `W * H`.
-    /// @param resolution The resolution of the image.
+    /// @param resolution The resolution of the image as {width, height}.
     static Image from_greyscale8(Collection<uint8_t> bytes, WidthHeight resolution) {
         return Image(bytes, resolution, datatypes::ColorModel::L, datatypes::ChannelDatatype::U8);
     }
@@ -103,7 +107,7 @@ namespace rerun::archetypes {
     /// If the data does not outlive the image, use `std::move` or create the `rerun::Collection`
     /// explicitly ahead of time with `rerun::Collection::take_ownership`.
     /// The length of the data should be `W * H * 3`.
-    /// @param resolution The resolution of the image.
+    /// @param resolution The resolution of the image as {width, height}.
     static Image from_rgb24(Collection<uint8_t> bytes, WidthHeight resolution) {
         return Image(
             bytes,
@@ -119,7 +123,7 @@ namespace rerun::archetypes {
     /// If the data does not outlive the image, use `std::move` or create the `rerun::Collection`
     /// explicitly ahead of time with `rerun::Collection::take_ownership`.
     /// The length of the data should be `W * H * 4`.
-    /// @param resolution The resolution of the image.
+    /// @param resolution The resolution of the image as {width, height}.
     static Image from_rgba32(Collection<uint8_t> bytes, WidthHeight resolution) {
         return Image(
             bytes,
