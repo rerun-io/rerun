@@ -36,7 +36,7 @@ pub fn read_rrd_streams_from_file_or_stdin(
     let (tx_size_bytes, rx_size_bytes) = crossbeam::channel::bounded(1);
 
     _ = std::thread::Builder::new()
-        .name("rerun-cli-stdin".to_owned())
+        .name("rerun-rrd-in".to_owned())
         .spawn(move || {
             let mut size_bytes = 0;
 

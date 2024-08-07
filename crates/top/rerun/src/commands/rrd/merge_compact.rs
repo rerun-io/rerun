@@ -16,7 +16,7 @@ pub struct MergeCommand {
     /// Paths to read from. Reads from standard input if none are specified.
     path_to_input_rrds: Vec<String>,
 
-    /// If set, will try to continue in the face of IO and decoding errors.
+    /// If set, will try to proceed even in the face of IO and/or decoding errors in the input data.
     #[clap(long, default_value_t = false)]
     best_effort: bool,
 }
@@ -70,7 +70,7 @@ pub struct CompactCommand {
     #[arg(long = "max-rows-if-unsorted")]
     max_rows_if_unsorted: Option<u64>,
 
-    /// If set, will try to continue in the face of IO and decoding errors.
+    /// If set, will try to proceed even in the face of IO and/or decoding errors in the input data.
     #[clap(long, default_value_t = false)]
     best_effort: bool,
 }
@@ -121,23 +121,25 @@ fn merge_and_compact(
         )
     };
 
+    let now = std::time::Instant::now();
     re_log::info!(
-        max_num_rows = %re_format::format_uint(store_config.chunk_max_rows),
-        max_num_bytes = %re_format::format_bytes(store_config.chunk_max_bytes as _),
+        max_rows = %re_format::format_uint(store_config.chunk_max_rows),
+        max_rows_if_unsorted = %re_format::format_uint(store_config.chunk_max_rows_if_unsorted),
+        max_bytes = %re_format::format_bytes(store_config.chunk_max_bytes as _),
         srcs = ?path_to_input_rrds,
-        "merge started"
+        "merge/compaction started"
     );
 
-    let now = std::time::Instant::now();
-
+    // TODO(cmc): might want to make this configurable at some point.
     let version_policy = re_log_encoding::decoder::VersionPolicy::Warn;
     let (rx, rx_size_bytes) =
         read_rrd_streams_from_file_or_stdin(version_policy, path_to_input_rrds);
 
     let mut entity_dbs: std::collections::HashMap<StoreId, EntityDb> = Default::default();
-    let mut is_success = true;
 
     for res in rx {
+        let mut is_success = true;
+
         match res {
             Ok(msg) => {
                 if let Err(err) = entity_dbs
@@ -150,10 +152,11 @@ fn merge_and_compact(
                     })
                     .add(&msg)
                 {
-                    re_log::error!(%err, "couldn't index message");
+                    re_log::error!(%err, "couldn't index corrupt chunk");
                     is_success = false;
                 }
             }
+
             Err(err) => {
                 re_log::error!(err = re_error::format(err));
                 is_success = false;
@@ -161,7 +164,9 @@ fn merge_and_compact(
         }
 
         if !best_effort && !is_success {
-            break;
+            anyhow::bail!(
+                "one or more IO and/or decoding failures in the input stream (check logs)"
+            )
         }
     }
 
@@ -182,6 +187,7 @@ fn merge_and_compact(
         .filter(|entity_db| entity_db.store_kind() == StoreKind::Recording)
         .flat_map(|entity_db| entity_db.to_messages(None /* time selection */));
 
+    // TODO(cmc): encoding options should match the original.
     let encoding_options = re_log_encoding::EncodingOptions::COMPRESSED;
     let version = entity_dbs
         .values()
@@ -218,14 +224,8 @@ fn merge_and_compact(
         compaction_ratio,
         srcs = ?path_to_input_rrds,
         srcs_size_bytes = %file_size_to_string(rrds_in_size),
-        "compaction finished"
+        "merge/compaction finished"
     );
 
-    if is_success {
-        Ok(())
-    } else {
-        Err(anyhow::anyhow!(
-            "one or more IO and/or decoding failures (check logs)"
-        ))
-    }
+    Ok(())
 }

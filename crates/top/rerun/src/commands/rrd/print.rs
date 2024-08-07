@@ -18,7 +18,7 @@ pub struct PrintCommand {
     #[clap(long, short, default_value_t = false)]
     verbose: bool,
 
-    /// If set, will try to continue in the face of IO and decoding errors.
+    /// If set, will try to proceed even in the face of IO and/or decoding errors in the input data.
     #[clap(long, default_value_t = true)]
     best_effort: bool,
 }
@@ -31,12 +31,13 @@ impl PrintCommand {
             best_effort,
         } = self;
 
+        // TODO(cmc): might want to make this configurable at some point.
         let version_policy = re_log_encoding::decoder::VersionPolicy::Warn;
         let (rx, _) = read_rrd_streams_from_file_or_stdin(version_policy, path_to_input_rrds);
 
-        let mut is_success = true;
-
         for res in rx {
+            let mut is_success = true;
+
             match res {
                 Ok(msg) => {
                     if let Err(err) = print_msg(*verbose, msg) {
@@ -44,6 +45,7 @@ impl PrintCommand {
                         is_success = false;
                     }
                 }
+
                 Err(err) => {
                     re_log::error!(err = re_error::format(err));
                     is_success = false;
@@ -51,17 +53,13 @@ impl PrintCommand {
             }
 
             if !*best_effort && !is_success {
-                break;
+                anyhow::bail!(
+                    "one or more IO and/or decoding failures in the input stream (check logs)"
+                )
             }
         }
 
-        if is_success {
-            Ok(())
-        } else {
-            Err(anyhow::anyhow!(
-                "one or more IO and/or decoding failures (check logs)"
-            ))
-        }
+        Ok(())
     }
 }
 
