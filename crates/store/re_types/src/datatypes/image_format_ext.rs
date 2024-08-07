@@ -3,7 +3,7 @@ use super::{ChannelDatatype, ColorModel, ImageFormat};
 impl ImageFormat {
     /// Create a new depth image format with the given resolution and datatype.
     #[inline]
-    pub fn depth(width: u32, height: u32, datatype: ChannelDatatype) -> Self {
+    pub fn depth([width, height]: [u32; 2], datatype: ChannelDatatype) -> Self {
         Self {
             width,
             height,
@@ -15,7 +15,7 @@ impl ImageFormat {
 
     /// Create a new segmentation image format with the given resolution and datatype.
     #[inline]
-    pub fn segmentation(width: u32, height: u32, datatype: ChannelDatatype) -> Self {
+    pub fn segmentation([width, height]: [u32; 2], datatype: ChannelDatatype) -> Self {
         Self {
             width,
             height,
