@@ -3,6 +3,7 @@
 
 #pragma once
 
+#include "../image_utils.hpp"
 #include "../result.hpp"
 #include "channel_datatype.hpp"
 #include "color_model.hpp"
@@ -43,7 +44,7 @@ namespace rerun::datatypes {
         std::optional<rerun::datatypes::ChannelDatatype> channel_datatype;
 
       public: // START of extensions from image_format_ext.cpp:
-        /// From a speicifc pixel format.
+        /// From a specific pixel format.
         ImageFormat(rerun::WidthHeight resolution, datatypes::PixelFormat pixel_format_)
             : width(resolution.width), height(resolution.height), pixel_format(pixel_format_) {}
 
