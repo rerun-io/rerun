@@ -33,13 +33,7 @@ impl SegmentationImage {
         let height = height.size as u32;
         let width = width.size as u32;
 
-        let image_format = ImageFormat {
-            width,
-            height,
-            pixel_format: None,
-            channel_datatype: Some(datatype),
-            color_model: None,
-        };
+        let image_format = ImageFormat::segmentation([width, height], datatype);
 
         Ok(Self {
             data: blob.into(),

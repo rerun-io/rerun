@@ -1,4 +1,4 @@
-use super::{ChannelDatatype, ColorModel, ImageFormat};
+use super::{ChannelDatatype, ColorModel, ImageFormat, PixelFormat};
 
 impl ImageFormat {
     /// Create a new depth image format with the given resolution and datatype.
@@ -21,6 +21,18 @@ impl ImageFormat {
             height,
             pixel_format: None,
             channel_datatype: Some(datatype),
+            color_model: None,
+        }
+    }
+
+    /// From a speicifc pixel format.
+    #[inline]
+    pub fn from_pixel_format([width, height]: [u32; 2], pixel_format: PixelFormat) -> Self {
+        Self {
+            width,
+            height,
+            pixel_format: Some(pixel_format),
+            channel_datatype: None,
             color_model: None,
         }
     }

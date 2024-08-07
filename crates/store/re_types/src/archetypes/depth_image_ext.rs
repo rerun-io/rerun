@@ -33,13 +33,7 @@ impl DepthImage {
         let height = height.size as u32;
         let width = width.size as u32;
 
-        let image_format = ImageFormat {
-            width,
-            height,
-            channel_datatype: Some(datatype),
-            color_model: None,
-            pixel_format: None,
-        };
+        let image_format = ImageFormat::depth([width, height], datatype);
 
         Ok(Self {
             data: blob.into(),

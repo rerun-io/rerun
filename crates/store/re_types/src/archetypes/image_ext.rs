@@ -92,13 +92,7 @@ impl Image {
             );
         }
 
-        let image_format = ImageFormat {
-            width,
-            height,
-            pixel_format: Some(pixel_format),
-            channel_datatype: None,
-            color_model: None,
-        };
+        let image_format = ImageFormat::from_pixel_format([width, height], pixel_format);
 
         Self {
             data,
