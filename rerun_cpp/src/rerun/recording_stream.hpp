@@ -5,6 +5,7 @@
 #include <filesystem>
 #include <optional>
 #include <string_view>
+#include <type_traits>
 #include <vector>
 
 #include "as_components.hpp"

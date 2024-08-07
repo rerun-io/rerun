@@ -74,7 +74,7 @@ namespace rerun {
         /// \param timepoints_in_nanoseconds The time points in nanoseconds.
         /// Make sure the sorting status is correctly specified.
         /// \param sorting_status The sorting status of the time points.
-        static TimeColumn from_time(
+        static TimeColumn from_times_nanoseconds(
             std::string_view timeline_name, Collection<int64_t> timepoints_in_nanoseconds,
             SortingStatus sorting_status = SortingStatus::Sorted
         ) {
@@ -92,7 +92,7 @@ namespace rerun {
         /// Make sure the sorting status is correctly specified.
         /// \param sorting_status The sorting status of the time points.
         template <typename TRep, typename TPeriod>
-        static TimeColumn from_time(
+        static TimeColumn from_times(
             std::string_view timeline_name,
             const Collection<std::chrono::duration<TRep, TPeriod>>& chrono_timepoints,
             SortingStatus sorting_status = SortingStatus::Sorted
