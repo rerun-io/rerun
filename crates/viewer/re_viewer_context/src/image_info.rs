@@ -64,7 +64,44 @@ impl ImageInfo {
             return None;
         }
 
-        if self.format.pixel_format == PixelFormat::GENERIC {
+        if let Some(pixel_format) = self.format.pixel_format {
+            let buf: &[u8] = &self.blob;
+
+            // NOTE: the name `y` is already taken for the coordinate, so we use `luma` here.
+            let [luma, u, v] = match pixel_format {
+                PixelFormat::NV12 => {
+                    let uv_offset = w * h;
+                    let luma = buf[(y * w + x) as usize];
+                    let u = buf[(uv_offset + (y / 2) * w + x) as usize];
+                    let v = buf[(uv_offset + (y / 2) * w + x) as usize + 1];
+                    [luma, u, v]
+                }
+
+                PixelFormat::YUY2 => {
+                    let index = ((y * w + x) * 2) as usize;
+                    if x % 2 == 0 {
+                        [buf[index], buf[index + 1], buf[index + 3]]
+                    } else {
+                        [buf[index], buf[index - 1], buf[index + 1]]
+                    }
+                }
+            };
+
+            match pixel_format.color_model() {
+                ColorModel::L => (channel == 0).then_some(TensorElement::U8(luma)),
+
+                ColorModel::RGB | ColorModel::RGBA => {
+                    if channel < 3 {
+                        let rgb = rgb_from_yuv(luma, u, v);
+                        Some(TensorElement::U8(rgb[channel as usize]))
+                    } else if channel == 4 {
+                        Some(TensorElement::U8(255))
+                    } else {
+                        None
+                    }
+                }
+            }
+        } else {
             let num_channels = self.format.color_model().num_channels();
 
             debug_assert!(channel < num_channels as u32);
@@ -90,45 +127,6 @@ impl ImageInfo {
                 ChannelDatatype::F16 => get(&self.blob, offset).map(TensorElement::F16),
                 ChannelDatatype::F32 => get(&self.blob, offset).map(TensorElement::F32),
                 ChannelDatatype::F64 => get(&self.blob, offset).map(TensorElement::F64),
-            }
-        } else {
-            let buf: &[u8] = &self.blob;
-
-            // NOTE: the name `y` is already taken for the coordinate, so we use `luma` here.
-            let [luma, u, v] = match self.format.pixel_format {
-                PixelFormat::NV12 => {
-                    let uv_offset = w * h;
-                    let luma = buf[(y * w + x) as usize];
-                    let u = buf[(uv_offset + (y / 2) * w + x) as usize];
-                    let v = buf[(uv_offset + (y / 2) * w + x) as usize + 1];
-                    [luma, u, v]
-                }
-
-                PixelFormat::YUY2 => {
-                    let index = ((y * w + x) * 2) as usize;
-                    if x % 2 == 0 {
-                        [buf[index], buf[index + 1], buf[index + 3]]
-                    } else {
-                        [buf[index], buf[index - 1], buf[index + 1]]
-                    }
-                }
-
-                PixelFormat::GENERIC => unreachable!(),
-            };
-
-            match self.color_model() {
-                ColorModel::L => (channel == 0).then_some(TensorElement::U8(luma)),
-
-                ColorModel::RGB | ColorModel::RGBA => {
-                    if channel < 3 {
-                        let rgb = rgb_from_yuv(luma, u, v);
-                        Some(TensorElement::U8(rgb[channel as usize]))
-                    } else if channel == 4 {
-                        Some(TensorElement::U8(255))
-                    } else {
-                        None
-                    }
-                }
             }
         }
     }

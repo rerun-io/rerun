@@ -88,9 +88,9 @@ fn color_image_to_gpu(
     let texture_format = texture_handle.format();
 
     let shader_decoding = match image_format.pixel_format {
-        PixelFormat::NV12 => Some(ShaderDecoding::Nv12),
-        PixelFormat::YUY2 => Some(ShaderDecoding::Yuy2),
-        PixelFormat::GENERIC => None,
+        Some(PixelFormat::NV12) => Some(ShaderDecoding::Nv12),
+        Some(PixelFormat::YUY2) => Some(ShaderDecoding::Yuy2),
+        None => None,
     };
 
     // TODO(emilk): let the user specify the color space.
@@ -183,30 +183,31 @@ fn image_data_range_heuristic(
     }
 }
 
-/// Return whether a tensor should be assumed to be encoded in sRGB color space ("gamma space", no EOTF applied).
+/// Return whether an image should be assumed to be encoded in sRGB color space ("gamma space", no EOTF applied).
 fn image_decode_srgb_gamma_heuristic(
     tensor_stats: &TensorStats,
     image_format: ImageFormat,
 ) -> Result<bool, RangeError> {
-    match image_format.pixel_format {
-        PixelFormat::NV12 | PixelFormat::YUY2 => Ok(true),
-        PixelFormat::GENERIC => {
-            let color_model = image_format.color_model();
-            let datatype = image_format.datatype();
-            match color_model {
-                ColorModel::L | ColorModel::RGB | ColorModel::RGBA => {
-                    let (min, max) = tensor_stats.finite_range.ok_or(RangeError::MissingRange)?;
+    if let Some(pixel_format) = image_format.pixel_format {
+        match pixel_format {
+            PixelFormat::NV12 | PixelFormat::YUY2 => Ok(true),
+        }
+    } else {
+        let color_model = image_format.color_model();
+        let datatype = image_format.datatype();
+        match color_model {
+            ColorModel::L | ColorModel::RGB | ColorModel::RGBA => {
+                let (min, max) = tensor_stats.finite_range.ok_or(RangeError::MissingRange)?;
 
-                    #[allow(clippy::if_same_then_else)]
-                    if 0.0 <= min && max <= 255.0 {
-                        // If the range is suspiciously reminding us of a "regular image", assume sRGB.
-                        Ok(true)
-                    } else if datatype.is_float() && 0.0 <= min && max <= 1.0 {
-                        // Floating point images between 0 and 1 are often sRGB as well.
-                        Ok(true)
-                    } else {
-                        Ok(false)
-                    }
+                #[allow(clippy::if_same_then_else)]
+                if 0.0 <= min && max <= 255.0 {
+                    // If the range is suspiciously reminding us of a "regular image", assume sRGB.
+                    Ok(true)
+                } else if datatype.is_float() && 0.0 <= min && max <= 1.0 {
+                    // Floating point images between 0 and 1 are often sRGB as well.
+                    Ok(true)
+                } else {
+                    Ok(false)
                 }
             }
         }
@@ -219,63 +220,64 @@ fn texture_creation_desc_from_color_image<'a>(
 ) -> Texture2DCreationDesc<'a> {
     re_tracing::profile_function!();
 
-    let (data, format) = match image.format.pixel_format {
-        PixelFormat::NV12 => {
-            // Decoded in the shader.
-            return Texture2DCreationDesc {
-                label: debug_name.into(),
-                data: cast_slice_to_cow(image.blob.as_slice()),
-                format: TextureFormat::R8Uint,
-                width: image.width(),
-                height: image.height() + image.height() / 2, // !
-            };
-        }
+    if let Some(pixel_format) = image.format.pixel_format {
+        match pixel_format {
+            PixelFormat::NV12 => {
+                // Decoded in the shader.
+                return Texture2DCreationDesc {
+                    label: debug_name.into(),
+                    data: cast_slice_to_cow(image.blob.as_slice()),
+                    format: TextureFormat::R8Uint,
+                    width: image.width(),
+                    height: image.height() + image.height() / 2, // !
+                };
+            }
 
-        PixelFormat::YUY2 => {
-            // Decoded in the shader.
-            return Texture2DCreationDesc {
-                label: debug_name.into(),
-                data: cast_slice_to_cow(image.blob.as_slice()),
-                format: TextureFormat::R8Uint,
-                width: 2 * image.width(), // !
-                height: image.height(),
-            };
-        }
-        PixelFormat::GENERIC => {
-            let color_model = image.format.color_model();
-            let datatype = image.format.datatype();
-            match (color_model, datatype) {
-                // Normalize sRGB(A) textures to 0-1 range, and let the GPU premultiply alpha.
-                // Why? Because premul must happen _before_ sRGB decode, so we can't
-                // use a "Srgb-aware" texture like `Rgba8UnormSrgb` for RGBA.
-                (ColorModel::RGB, ChannelDatatype::U8) => (
-                    pad_rgb_to_rgba(&image.blob, u8::MAX).into(),
-                    TextureFormat::Rgba8Unorm,
-                ),
-
-                (ColorModel::RGBA, ChannelDatatype::U8) => {
-                    (cast_slice_to_cow(&image.blob), TextureFormat::Rgba8Unorm)
-                }
-
-                _ => {
-                    // Fallback to general case:
-                    return general_texture_creation_desc_from_image(
-                        debug_name,
-                        image,
-                        color_model,
-                        datatype,
-                    );
-                }
+            PixelFormat::YUY2 => {
+                // Decoded in the shader.
+                return Texture2DCreationDesc {
+                    label: debug_name.into(),
+                    data: cast_slice_to_cow(image.blob.as_slice()),
+                    format: TextureFormat::R8Uint,
+                    width: 2 * image.width(), // !
+                    height: image.height(),
+                };
             }
         }
-    };
+    } else {
+        let color_model = image.format.color_model();
+        let datatype = image.format.datatype();
+        let (data, format) = match (color_model, datatype) {
+            // Normalize sRGB(A) textures to 0-1 range, and let the GPU premultiply alpha.
+            // Why? Because premul must happen _before_ sRGB decode, so we can't
+            // use a "Srgb-aware" texture like `Rgba8UnormSrgb` for RGBA.
+            (ColorModel::RGB, ChannelDatatype::U8) => (
+                pad_rgb_to_rgba(&image.blob, u8::MAX).into(),
+                TextureFormat::Rgba8Unorm,
+            ),
 
-    Texture2DCreationDesc {
-        label: debug_name.into(),
-        data,
-        format,
-        width: image.width(),
-        height: image.height(),
+            (ColorModel::RGBA, ChannelDatatype::U8) => {
+                (cast_slice_to_cow(&image.blob), TextureFormat::Rgba8Unorm)
+            }
+
+            _ => {
+                // Fallback to general case:
+                return general_texture_creation_desc_from_image(
+                    debug_name,
+                    image,
+                    color_model,
+                    datatype,
+                );
+            }
+        };
+
+        Texture2DCreationDesc {
+            label: debug_name.into(),
+            data,
+            format,
+            width: image.width(),
+            height: image.height(),
+        }
     }
 }
 
@@ -288,11 +290,8 @@ fn depth_image_to_gpu(
 ) -> anyhow::Result<ColormappedTexture> {
     re_tracing::profile_function!();
 
-    if image.format.pixel_format != PixelFormat::GENERIC {
-        anyhow::bail!(
-            "Depth image does not support the PixelFormat {}",
-            image.format.pixel_format
-        );
+    if let Some(pixel_format) = image.format.pixel_format {
+        anyhow::bail!("Depth image does not support the PixelFormat {pixel_format}");
     }
 
     if image.format.color_model() != ColorModel::L {
@@ -334,11 +333,8 @@ fn segmentation_image_to_gpu(
 ) -> anyhow::Result<ColormappedTexture> {
     re_tracing::profile_function!();
 
-    if image.format.pixel_format != PixelFormat::GENERIC {
-        anyhow::bail!(
-            "Segmentation image does not support the PixelFormat {}",
-            image.format.pixel_format
-        );
+    if let Some(pixel_format) = image.format.pixel_format {
+        anyhow::bail!("Segmentation image does not support the PixelFormat {pixel_format}");
     }
 
     if image.format.color_model() != ColorModel::L {

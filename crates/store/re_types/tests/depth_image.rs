@@ -14,7 +14,7 @@ fn depth_image_roundtrip() {
     let format_expected = ImageFormat {
         width: 3,
         height: 2,
-        pixel_format: PixelFormat::GENERIC,
+        pixel_format: None,
         channel_datatype: Some(ChannelDatatype::U8),
         color_model: None,
     };

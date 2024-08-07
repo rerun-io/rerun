@@ -60,7 +60,7 @@ impl Image {
         let image_format = ImageFormat {
             width,
             height,
-            pixel_format: PixelFormat::GENERIC,
+            pixel_format: None,
             channel_datatype: Some(datatype),
             color_model: Some(color_model),
         };
@@ -85,23 +85,18 @@ impl Image {
         let data = bytes.into();
 
         let actual_bytes = data.len();
-        if let Some(bpp) = pixel_format.bits_per_pixel() {
-            let num_expected_bytes = (width as usize * height as usize * bpp + 7) / 8; // rounding upwards
-            if data.len() != num_expected_bytes {
-                re_log::warn_once!(
-                "Expected {width}x{height} {pixel_format:?} image to be {num_expected_bytes} B, but got {actual_bytes} B",
-            );
-            }
-        } else {
+        let bpp = pixel_format.bits_per_pixel();
+        let num_expected_bytes = (width as usize * height as usize * bpp + 7) / 8; // rounding upwards
+        if data.len() != num_expected_bytes {
             re_log::warn_once!(
-                "Pixel format {pixel_format:?} does not have a fixed number of bits per pixel"
+                "Expected {width}x{height} {pixel_format:?} image to be {num_expected_bytes} B, but got {actual_bytes} B",
             );
         }
 
         let image_format = ImageFormat {
             width,
             height,
-            pixel_format,
+            pixel_format: Some(pixel_format),
             channel_datatype: None,
             color_model: None,
         };
@@ -139,7 +134,7 @@ impl Image {
         let image_format = ImageFormat {
             width,
             height,
-            pixel_format: PixelFormat::GENERIC,
+            pixel_format: None,
             channel_datatype: Some(datatype),
             color_model: Some(color_model),
         };

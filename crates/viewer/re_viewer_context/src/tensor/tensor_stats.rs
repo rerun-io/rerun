@@ -122,14 +122,14 @@ impl TensorStats {
         // ---------------------------
 
         let datatype = match image.format.pixel_format {
-            PixelFormat::NV12 | PixelFormat::YUY2 => {
+            Some(PixelFormat::NV12 | PixelFormat::YUY2) => {
                 // We do the lazy thing here:
                 return Self {
                     range: Some((0.0, 255.0)),
                     finite_range: Some((0.0, 255.0)),
                 };
             }
-            PixelFormat::GENERIC => image.format.datatype(),
+            None => image.format.datatype(),
         };
 
         let range = match datatype {

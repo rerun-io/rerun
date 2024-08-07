@@ -30,7 +30,7 @@ pub struct ImageFormat {
     /// Used mainly for chroma downsampled formats and differing number of bits per channel.
     ///
     /// If specified, this takes precedence over both [`datatypes::ColorModel`][crate::datatypes::ColorModel] and [`datatypes::ChannelDatatype`][crate::datatypes::ChannelDatatype] (which are ignored).
-    pub pixel_format: crate::datatypes::PixelFormat,
+    pub pixel_format: Option<crate::datatypes::PixelFormat>,
 
     /// L, RGB, RGBA, …
     ///
@@ -57,7 +57,7 @@ impl ::re_types_core::SizeBytes for ImageFormat {
     fn is_pod() -> bool {
         <u32>::is_pod()
             && <u32>::is_pod()
-            && <crate::datatypes::PixelFormat>::is_pod()
+            && <Option<crate::datatypes::PixelFormat>>::is_pod()
             && <Option<crate::datatypes::ColorModel>>::is_pod()
             && <Option<crate::datatypes::ChannelDatatype>>::is_pod()
     }
@@ -83,7 +83,7 @@ impl ::re_types_core::Loggable for ImageFormat {
             Field::new(
                 "pixel_format",
                 <crate::datatypes::PixelFormat>::arrow_datatype(),
-                false,
+                true,
             ),
             Field::new(
                 "color_model",
@@ -164,7 +164,10 @@ impl ::re_types_core::Loggable for ImageFormat {
                         let (somes, pixel_format): (Vec<_>, Vec<_>) = data
                             .iter()
                             .map(|datum| {
-                                let datum = datum.as_ref().map(|datum| datum.pixel_format.clone());
+                                let datum = datum
+                                    .as_ref()
+                                    .map(|datum| datum.pixel_format.clone())
+                                    .flatten();
                                 (datum.is_some(), datum)
                             })
                             .unzip();
@@ -348,9 +351,7 @@ impl ::re_types_core::Loggable for ImageFormat {
                                 height: height
                                     .ok_or_else(DeserializationError::missing_data)
                                     .with_context("rerun.datatypes.ImageFormat#height")?,
-                                pixel_format: pixel_format
-                                    .ok_or_else(DeserializationError::missing_data)
-                                    .with_context("rerun.datatypes.ImageFormat#pixel_format")?,
+                                pixel_format,
                                 color_model,
                                 channel_datatype,
                             })

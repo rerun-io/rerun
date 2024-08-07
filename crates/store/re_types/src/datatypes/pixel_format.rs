@@ -45,19 +45,12 @@ pub enum PixelFormat {
     /// The order of the channels is Y0, U0, Y1, V0, all in the same plane.
     #[allow(clippy::upper_case_acronyms)]
     YUY2 = 27,
-
-    /// The pixel format is generic.
-    ///
-    /// This is used to indicate that [rerun.datatypes.ColorModel] and [rerun.datatypes.ChannelDatatype] are
-    /// instead be used to describe the pixel format.
-    #[allow(clippy::upper_case_acronyms)]
-    GENERIC = 255,
 }
 
 impl ::re_types_core::reflection::Enum for PixelFormat {
     #[inline]
     fn variants() -> &'static [Self] {
-        &[Self::NV12, Self::YUY2, Self::GENERIC]
+        &[Self::NV12, Self::YUY2]
     }
 
     #[inline]
@@ -68,9 +61,6 @@ impl ::re_types_core::reflection::Enum for PixelFormat {
             }
             Self::YUY2 => {
                 "YUY2 (aka YUYV or YUYV16), is a YUV 4:2:2 chroma downsampled format with 16 bits per pixel and 8 bits per channel.\n\nThe order of the channels is Y0, U0, Y1, V0, all in the same plane."
-            }
-            Self::GENERIC => {
-                "The pixel format is generic.\n\nThis is used to indicate that [rerun.datatypes.ColorModel] and [rerun.datatypes.ChannelDatatype] are\ninstead be used to describe the pixel format."
             }
         }
     }
@@ -93,7 +83,6 @@ impl std::fmt::Display for PixelFormat {
         match self {
             Self::NV12 => write!(f, "NV12"),
             Self::YUY2 => write!(f, "YUY2"),
-            Self::GENERIC => write!(f, "GENERIC"),
         }
     }
 }
@@ -169,7 +158,6 @@ impl ::re_types_core::Loggable for PixelFormat {
             .map(|typ| match typ {
                 Some(26) => Ok(Some(Self::NV12)),
                 Some(27) => Ok(Some(Self::YUY2)),
-                Some(255) => Ok(Some(Self::GENERIC)),
                 None => Ok(None),
                 Some(invalid) => Err(DeserializationError::missing_union_arm(
                     Self::arrow_datatype(),

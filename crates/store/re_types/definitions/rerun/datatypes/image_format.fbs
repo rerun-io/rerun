@@ -18,7 +18,7 @@ struct ImageFormat (
     /// Used mainly for chroma downsampled formats and differing number of bits per channel.
     ///
     /// If specified, this takes precedence over both [datatypes.ColorModel] and [datatypes.ChannelDatatype] (which are ignored).
-    pixel_format: rerun.datatypes.PixelFormat (order: 300);
+    pixel_format: rerun.datatypes.PixelFormat (order: 300, nullable);
 
     /// L, RGB, RGBA, …
     ///

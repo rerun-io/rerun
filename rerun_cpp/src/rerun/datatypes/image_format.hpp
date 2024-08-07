@@ -30,7 +30,7 @@ namespace rerun::datatypes {
         /// Used mainly for chroma downsampled formats and differing number of bits per channel.
         ///
         /// If specified, this takes precedence over both `datatypes::ColorModel` and `datatypes::ChannelDatatype` (which are ignored).
-        rerun::datatypes::PixelFormat pixel_format;
+        std::optional<rerun::datatypes::PixelFormat> pixel_format;
 
         /// L, RGB, RGBA, …
         ///

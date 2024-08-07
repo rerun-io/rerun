@@ -20,7 +20,7 @@ namespace rerun {
             arrow::field(
                 "pixel_format",
                 Loggable<rerun::datatypes::PixelFormat>::arrow_datatype(),
-                false
+                true
             ),
             arrow::field(
                 "color_model",
@@ -87,11 +87,18 @@ namespace rerun {
             auto field_builder = static_cast<arrow::UInt8Builder*>(builder->field_builder(2));
             ARROW_RETURN_NOT_OK(field_builder->Reserve(static_cast<int64_t>(num_elements)));
             for (size_t elem_idx = 0; elem_idx < num_elements; elem_idx += 1) {
-                RR_RETURN_NOT_OK(Loggable<rerun::datatypes::PixelFormat>::fill_arrow_array_builder(
-                    field_builder,
-                    &elements[elem_idx].pixel_format,
-                    1
-                ));
+                const auto& element = elements[elem_idx];
+                if (element.pixel_format.has_value()) {
+                    RR_RETURN_NOT_OK(
+                        Loggable<rerun::datatypes::PixelFormat>::fill_arrow_array_builder(
+                            field_builder,
+                            &element.pixel_format.value(),
+                            1
+                        )
+                    );
+                } else {
+                    ARROW_RETURN_NOT_OK(field_builder->AppendNull());
+                }
             }
         }
         {

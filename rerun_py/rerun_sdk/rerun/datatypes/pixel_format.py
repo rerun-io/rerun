@@ -50,14 +50,6 @@ class PixelFormat(Enum):
     The order of the channels is Y0, U0, Y1, V0, all in the same plane.
     """
 
-    GENERIC = 255
-    """
-    The pixel format is generic.
-
-    This is used to indicate that [rerun.datatypes.ColorModel] and [rerun.datatypes.ChannelDatatype] are
-    instead be used to describe the pixel format.
-    """
-
     @classmethod
     def auto(cls, val: str | int | PixelFormat) -> PixelFormat:
         """Best-effort converter, including a case-insensitive string matcher."""
@@ -79,7 +71,7 @@ class PixelFormat(Enum):
         return self.name
 
 
-PixelFormatLike = Union[PixelFormat, Literal["GENERIC", "NV12", "YUY2", "generic", "nv12", "yuy2"], int]
+PixelFormatLike = Union[PixelFormat, Literal["NV12", "YUY2", "nv12", "yuy2"], int]
 PixelFormatArrayLike = Union[PixelFormatLike, Sequence[PixelFormatLike]]
 
 

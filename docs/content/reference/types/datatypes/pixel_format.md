@@ -19,7 +19,6 @@ For more compressed image formats, see [`archetypes.EncodedImage`](https://rerun
 
 * NV12
 * YUY2
-* GENERIC
 
 ## API reference links
  * 🌊 [C++ API docs for `PixelFormat`](https://ref.rerun.io/docs/cpp/stable/namespacererun_1_1datatypes.html?speculative-link)

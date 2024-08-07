@@ -36,10 +36,4 @@ enum PixelFormat: ubyte (
     ///
     /// The order of the channels is Y0, U0, Y1, V0, all in the same plane.
     YUY2 = 27,
-
-    /// The pixel format is generic.
-    ///
-    /// This is used to indicate that [rerun.datatypes.ColorModel] and [rerun.datatypes.ChannelDatatype] are
-    /// instead be used to describe the pixel format.
-    GENERIC = 255,
 }

@@ -28,7 +28,7 @@ class ImageFormat:
         self: Any,
         width: int,
         height: int,
-        pixel_format: datatypes.PixelFormatLike,
+        pixel_format: datatypes.PixelFormatLike | None = None,
         color_model: datatypes.ColorModelLike | None = None,
         channel_datatype: datatypes.ChannelDatatypeLike | None = None,
     ):
@@ -75,7 +75,7 @@ class ImageFormat:
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 
-    pixel_format: datatypes.PixelFormat = field()
+    pixel_format: datatypes.PixelFormat | None = field(default=None)
     # Used mainly for chroma downsampled formats and differing number of bits per channel.
     #
     # If specified, this takes precedence over both [`datatypes.ColorModel`][rerun.datatypes.ColorModel] and [`datatypes.ChannelDatatype`][rerun.datatypes.ChannelDatatype] (which are ignored).
@@ -113,7 +113,7 @@ class ImageFormatType(BaseExtensionType):
             pa.struct([
                 pa.field("width", pa.uint32(), nullable=False, metadata={}),
                 pa.field("height", pa.uint32(), nullable=False, metadata={}),
-                pa.field("pixel_format", pa.uint8(), nullable=False, metadata={}),
+                pa.field("pixel_format", pa.uint8(), nullable=True, metadata={}),
                 pa.field("color_model", pa.uint8(), nullable=True, metadata={}),
                 pa.field("channel_datatype", pa.uint8(), nullable=True, metadata={}),
             ]),

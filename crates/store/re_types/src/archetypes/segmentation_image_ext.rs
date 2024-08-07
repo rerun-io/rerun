@@ -1,5 +1,5 @@
 use crate::{
-    datatypes::{ImageFormat, PixelFormat, TensorData},
+    datatypes::{ImageFormat, TensorData},
     image::{blob_and_datatype_from_tensor, find_non_empty_dim_indices, ImageConstructionError},
 };
 
@@ -36,7 +36,7 @@ impl SegmentationImage {
         let image_format = ImageFormat {
             width,
             height,
-            pixel_format: PixelFormat::GENERIC,
+            pixel_format: None,
             channel_datatype: Some(datatype),
             color_model: None,
         };
