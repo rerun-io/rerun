@@ -4,7 +4,6 @@ use itertools::Itertools as _;
 use re_renderer::renderer::ColormappedTexture;
 use re_types::{
     components::{ClassId, ColorModel},
-    datatypes::TensorData,
     image::ImageKind,
     tensor_data::TensorElement,
 };
@@ -398,7 +397,7 @@ fn rgb8_histogram_ui(ui: &mut egui::Ui, rgb: &[u8]) -> egui::Response {
 
 #[allow(dead_code)] // TODO(#6891): use again when we can view image archetypes in the selection view
 #[cfg(not(target_arch = "wasm32"))]
-fn copy_and_save_image_ui(ui: &mut egui::Ui, tensor: &TensorData, _encoded_tensor: &TensorData) {
+fn copy_and_save_image_ui(ui: &mut egui::Ui, tensor: &re_types::datatypes::TensorData) {
     ui.horizontal(|ui| {
         if tensor.could_be_dynamic_image() && ui.button("Click to copy image").clicked() {
             match tensor.to_dynamic_image() {
