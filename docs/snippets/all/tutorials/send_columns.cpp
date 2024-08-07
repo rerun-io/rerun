@@ -25,8 +25,6 @@ int main() {
     auto time_column = rerun::TimeColumn::from_sequence_points("step", std::move(timeline_values));
     auto scalar_data_collection =
         rerun::Collection<rerun::components::Scalar>(std::move(scalar_data));
-    auto batch =
-        rerun::PartitionedComponentBatch::from_loggable(scalar_data_collection).value_or_throw();
 
-    rec.send_columns("scalars", time_column, batch);
+    rec.send_columns("scalars", time_column, scalar_data_collection);
 }
