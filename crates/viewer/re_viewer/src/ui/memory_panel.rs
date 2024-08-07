@@ -230,6 +230,8 @@ impl MemoryPanel {
                 ui.label(egui::RichText::new("Stats").italics());
                 ui.label("Chunks");
                 ui.label("Rows (total)");
+                ui.label("Events (total)")
+                    .on_hover_text("Number of non-null component batches (cells)");
                 ui.label("Size (total)");
                 ui.end_row();
 
@@ -237,11 +239,13 @@ impl MemoryPanel {
                     let ChunkStoreChunkStats {
                         num_chunks,
                         total_size_bytes,
-                        total_num_rows,
+                        num_rows,
+                        num_events,
                     } = stats;
 
                     ui.label(re_format::format_uint(num_chunks));
-                    ui.label(re_format::format_uint(total_num_rows));
+                    ui.label(re_format::format_uint(num_rows));
+                    ui.label(re_format::format_uint(num_events));
                     ui.label(re_format::format_bytes(total_size_bytes as _));
                 }
 

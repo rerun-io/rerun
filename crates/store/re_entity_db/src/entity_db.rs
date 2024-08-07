@@ -5,8 +5,8 @@ use parking_lot::Mutex;
 
 use re_chunk::{Chunk, ChunkResult, RowId, TimeInt};
 use re_chunk_store::{
-    ChunkStore, ChunkStoreConfig, ChunkStoreEvent, ChunkStoreSubscriber, GarbageCollectionOptions,
-    GarbageCollectionTarget,
+    ChunkStore, ChunkStoreChunkStats, ChunkStoreConfig, ChunkStoreEvent, ChunkStoreSubscriber,
+    GarbageCollectionOptions, GarbageCollectionTarget,
 };
 use re_log_types::{
     ApplicationId, EntityPath, EntityPathHash, LogMsg, ResolvedTimeRange, ResolvedTimeRangeF,
@@ -257,7 +257,7 @@ impl EntityDb {
 
     #[inline]
     pub fn num_rows(&self) -> u64 {
-        self.data_store.stats().total().total_num_rows
+        self.data_store.stats().total().num_rows
     }
 
     /// Return the current `ChunkStoreGeneration`. This can be used to determine whether the
@@ -524,29 +524,48 @@ impl EntityDb {
 
         Ok(new_db)
     }
+}
 
-    /// Returns the byte size of an entity and all its children on the given timeline, recursively.
+/// ## Stats
+impl EntityDb {
+    /// Returns the stats for the static store of the entity and all its children, recursively.
     ///
-    /// This includes static data.
-    pub fn approx_size_of_subtree_on_timeline(
-        &self,
-        timeline: &Timeline,
-        entity_path: &EntityPath,
-    ) -> u64 {
+    /// This excludes temporal data.
+    pub fn subtree_stats_static(&self, entity_path: &EntityPath) -> ChunkStoreChunkStats {
         re_tracing::profile_function!();
 
         let Some(subtree) = self.tree.subtree(entity_path) else {
-            return 0;
+            return Default::default();
         };
 
-        let mut size = 0;
+        let mut stats = ChunkStoreChunkStats::default();
         subtree.visit_children_recursively(|path| {
-            size += self
-                .store()
-                .approx_size_of_entity_on_timeline(timeline, path);
+            stats += self.store().entity_stats_static(path);
         });
 
-        size
+        stats
+    }
+
+    /// Returns the stats for the entity and all its children on the given timeline, recursively.
+    ///
+    /// This excludes static data.
+    pub fn subtree_stats_on_timeline(
+        &self,
+        entity_path: &EntityPath,
+        timeline: &Timeline,
+    ) -> ChunkStoreChunkStats {
+        re_tracing::profile_function!();
+
+        let Some(subtree) = self.tree.subtree(entity_path) else {
+            return Default::default();
+        };
+
+        let mut stats = ChunkStoreChunkStats::default();
+        subtree.visit_children_recursively(|path| {
+            stats += self.store().entity_stats_on_timeline(path, timeline);
+        });
+
+        stats
     }
 
     /// Returns true if an entity or any of its children have any data on the given timeline.

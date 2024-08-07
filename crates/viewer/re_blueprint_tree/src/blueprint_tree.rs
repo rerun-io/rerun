@@ -610,12 +610,14 @@ impl BlueprintTree {
 
         let response = response.on_hover_ui(|ui| {
             let query = ctx.current_query();
+            let include_subtree = false;
             re_data_ui::item_ui::entity_hover_card_ui(
                 ui,
                 ctx,
                 &query,
                 ctx.recording(),
                 entity_path,
+                include_subtree,
             );
 
             if empty_origin {
