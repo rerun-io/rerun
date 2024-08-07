@@ -22,7 +22,7 @@
 #include <vector>
 
 namespace rerun::archetypes {
-    /// **Archetype**: 2D boxes with half-extents and optional center, rotations, colors etc.
+    /// **Archetype**: 2D boxes with half-extents and optional center, colors etc.
     ///
     /// ## Example
     ///
