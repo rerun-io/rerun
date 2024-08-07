@@ -1,4 +1,4 @@
-use re_log_types::{TimeInt, TimeType, TimelineName};
+use re_log_types::{ResolvedTimeRange, TimeInt, TimeType, TimelineName};
 use re_types::blueprint::components::QueryKind;
 use re_types::blueprint::{archetypes, components, datatypes};
 use re_types_core::{Archetype as _, Loggable as _};
@@ -293,7 +293,8 @@ fn override_ui(
             } else {
                 TimeDragValue::from_time_range(0..=0)
             };
-            let changed = ui_query_mode.ui(ctx, ui, &time_drag_value, timeline.typ());
+            let changed =
+                ui_query_mode.ui(ctx, ui, &time_drag_value, timeline.name(), timeline.typ());
             if changed {
                 Query::save_mode_for_timeline(
                     ctx,
@@ -325,6 +326,7 @@ impl UiQueryMode {
         ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
         time_drag_value: &TimeDragValue,
+        timeline_name: &TimelineName,
         time_type: TimeType,
     ) -> bool {
         let orig_self = *self;
@@ -396,6 +398,8 @@ impl UiQueryMode {
                     .re_radio_value(&mut is_time_range_custom, true, "Define time range")
                     .changed();
 
+                let mut should_display_time_range = false;
+
                 if is_time_range_custom {
                     ui.spacing_mut().indent = ui.spacing().icon_width + ui.spacing().icon_spacing;
                     ui.indent("time_range_custom", |ui| {
@@ -414,41 +418,51 @@ impl UiQueryMode {
                         list_item::list_item_scope(ui, "time_range_custom_scope", |ui| {
                             ui.list_item_flat_noninteractive(
                                 list_item::PropertyContent::new("Start").value_fn(|ui, _| {
-                                    changed |= match time_type {
-                                        TimeType::Time => time_drag_value
-                                            .temporal_drag_value_ui(
-                                                ui,
-                                                &mut from,
-                                                true,
-                                                None,
-                                                ctx.app_options.time_zone,
-                                            )
-                                            .0
-                                            .changed(),
+                                    let response = match time_type {
+                                        TimeType::Time => {
+                                            time_drag_value
+                                                .temporal_drag_value_ui(
+                                                    ui,
+                                                    &mut from,
+                                                    true,
+                                                    None,
+                                                    ctx.app_options.time_zone,
+                                                )
+                                                .0
+                                        }
                                         TimeType::Sequence => time_drag_value
-                                            .sequence_drag_value_ui(ui, &mut from, true, None)
-                                            .changed(),
+                                            .sequence_drag_value_ui(ui, &mut from, true, None),
                                     };
+
+                                    changed |= response.changed();
+                                    should_display_time_range |= response.hovered()
+                                        || response.dragged()
+                                        || response.has_focus();
                                 }),
                             );
 
                             ui.list_item_flat_noninteractive(
                                 list_item::PropertyContent::new("End").value_fn(|ui, _| {
-                                    changed |= match time_type {
-                                        TimeType::Time => time_drag_value
-                                            .temporal_drag_value_ui(
-                                                ui,
-                                                &mut to,
-                                                true,
-                                                Some(from),
-                                                ctx.app_options.time_zone,
-                                            )
-                                            .0
-                                            .changed(),
+                                    let response = match time_type {
+                                        TimeType::Time => {
+                                            time_drag_value
+                                                .temporal_drag_value_ui(
+                                                    ui,
+                                                    &mut to,
+                                                    true,
+                                                    Some(from),
+                                                    ctx.app_options.time_zone,
+                                                )
+                                                .0
+                                        }
                                         TimeType::Sequence => time_drag_value
-                                            .sequence_drag_value_ui(ui, &mut to, true, Some(from))
-                                            .changed(),
+                                            .sequence_drag_value_ui(ui, &mut to, true, Some(from)),
                                     };
+
+                                    changed |= response.changed();
+                                    should_display_time_range |= response.hovered()
+                                        || response.dragged()
+                                        || response.has_focus();
                                 }),
                             );
                         });
@@ -458,6 +472,14 @@ impl UiQueryMode {
                                 from: from.into(),
                                 to: to.into(),
                             };
+                        }
+
+                        if should_display_time_range {
+                            let mut time_ctrl = ctx.rec_cfg.time_ctrl.write();
+                            if time_ctrl.timeline().name() == timeline_name {
+                                time_ctrl.highlighted_range =
+                                    Some(ResolvedTimeRange::new(from, to));
+                            }
                         }
                     });
                 }
