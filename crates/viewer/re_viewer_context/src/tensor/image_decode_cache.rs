@@ -1,7 +1,6 @@
-use re_chunk::{external::arrow2::datatypes, RowId};
+use re_chunk::RowId;
 use re_types::{
     archetypes::Image,
-    datatypes::ImageFormat,
     image::{ImageKind, ImageLoadError},
 };
 

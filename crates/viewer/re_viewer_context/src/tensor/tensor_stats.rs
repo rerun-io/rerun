@@ -129,7 +129,7 @@ impl TensorStats {
                     finite_range: Some((0.0, 255.0)),
                 };
             }
-            _ => image.format.datatype(),
+            PixelFormat::GENERIC => image.format.datatype(),
         };
 
         let range = match datatype {

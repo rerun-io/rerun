@@ -12,12 +12,12 @@ use re_types::{
 };
 
 #[derive(Debug, Clone, Default)]
-pub struct Resolution {
+pub struct MaxDimensions {
     width: u32,
     height: u32,
 }
 
-impl Resolution {
+impl MaxDimensions {
     pub fn width(&self) -> u32 {
         self.width
     }
@@ -36,13 +36,13 @@ impl Resolution {
 }
 
 #[derive(Default, Debug, Clone)]
-pub struct MaxImageDimensions(IntMap<EntityPath, Resolution>);
+pub struct MaxImageDimensions(IntMap<EntityPath, MaxDimensions>);
 
 impl MaxImageDimensions {
     /// Accesses the image dimension information for a given store
     pub fn access<T>(
         store_id: &StoreId,
-        f: impl FnOnce(&IntMap<EntityPath, Resolution>) -> T,
+        f: impl FnOnce(&IntMap<EntityPath, MaxDimensions>) -> T,
     ) -> Option<T> {
         ChunkStore::with_subscriber_once(
             MaxImageDimensionSubscriber::subscription_handle(),

@@ -16,7 +16,7 @@ use re_space_view::{latest_at_with_blueprint_resolved_data, ScreenshotMode};
 use re_types::{
     archetypes::Pinhole,
     blueprint::components::VisualBounds2D,
-    components::{Blob, ChannelDatatype, Colormap, DepthMeter, Resolution2D, ViewCoordinates},
+    components::{Blob, Colormap, DepthMeter, ImageFormat, ViewCoordinates},
     image::ImageKind,
     Loggable as _,
 };
@@ -594,8 +594,7 @@ fn picked_image_from_depth_image_query(
         data_result,
         [
             Blob::name(),
-            Resolution2D::name(),
-            ChannelDatatype::name(),
+            ImageFormat::name(),
             Colormap::name(),
             DepthMeter::name(),
         ],
@@ -607,22 +606,20 @@ fn picked_image_from_depth_image_query(
     let blob_untyped = results.get(Blob::name())?;
     let blob = blob_untyped.component_mono::<Blob>()?.ok()?.0;
 
-    let resolution = results.get_mono::<Resolution2D>()?;
-    let datatype = results.get_mono::<ChannelDatatype>()?;
-    let colormap = results.get_mono_with_fallback::<Colormap>();
+    let format = results.get_mono::<ImageFormat>()?;
+    let colormap = results.get_mono::<Colormap>()?;
     let depth_meter = results.get_mono::<DepthMeter>();
 
     let (_, blob_row_id) = blob_untyped.index(&query.timeline())?;
     let coordinates = hit
         .instance_path_hash
         .instance
-        .to_2d_image_coordinate(resolution.width() as _);
+        .to_2d_image_coordinate(format.width as _);
 
     let image = ImageInfo {
         blob_row_id,
         blob,
-        resolution: resolution.0.into(),
-        format: re_viewer_context::ImageFormat::depth(datatype),
+        format: format.0,
         kind: ImageKind::Depth,
         colormap: Some(colormap),
     };
@@ -667,7 +664,7 @@ fn image_hover_ui(
 
     ui.label(instance_path.to_string());
 
-    let (w, h) = (image.resolution[0] as u64, image.resolution[1] as u64);
+    let (w, h) = (image.format.width as u64, image.format.height as u64);
 
     ui.add_space(8.0);
 

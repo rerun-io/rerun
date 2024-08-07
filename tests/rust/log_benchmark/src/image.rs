@@ -41,7 +41,8 @@ fn execute(mut raw_image_data: Vec<u8>) -> anyhow::Result<()> {
                 // Note that even though our example here is *very* contrived, it's likely that a user
                 // will want to keep their image, so this copy is definitely part of our API overhead!
                 raw_image_data.clone(),
-                [IMAGE_DIMENSION as _, IMAGE_DIMENSION as _],
+                IMAGE_DIMENSION as _,
+                IMAGE_DIMENSION as _,
             ),
         )?;
     }
