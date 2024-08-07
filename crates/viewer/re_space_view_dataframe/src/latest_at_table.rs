@@ -1,9 +1,10 @@
+use std::collections::BTreeSet;
+
 use re_chunk_store::LatestAtQuery;
 use re_data_ui::item_ui::instance_path_button;
 use re_entity_db::InstancePath;
 use re_log_types::Instance;
 use re_viewer_context::{Item, UiLayout, ViewQuery, ViewerContext};
-use std::collections::BTreeSet;
 
 use crate::{
     table_ui::table_ui,

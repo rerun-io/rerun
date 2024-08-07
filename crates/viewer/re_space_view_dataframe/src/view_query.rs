@@ -1,4 +1,3 @@
-use crate::visualizer_system::EmptySystem;
 use re_log_types::{TimeInt, TimeType, TimelineName};
 use re_types::blueprint::components::QueryKind;
 use re_types::blueprint::{archetypes, components, datatypes};
@@ -9,6 +8,8 @@ use re_viewer_context::{
     ViewerContext,
 };
 use re_viewport_blueprint::{entity_path_for_view_property, ViewProperty};
+
+use crate::visualizer_system::EmptySystem;
 
 /// The query mode for the dataframe view.
 #[derive(Debug, Clone, Copy)]
