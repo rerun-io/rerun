@@ -5,7 +5,7 @@ use once_cell::sync::OnceCell;
 use re_chunk_store::{ChunkStore, ChunkStoreSubscriber, ChunkStoreSubscriberHandle};
 use re_log_types::{EntityPath, StoreId};
 use re_types::{
-    archetypes::ImageEncoded,
+    archetypes::EncodedImage,
     components::{Blob, MediaType, Resolution2D},
     external::image,
     Archetype, Loggable,
@@ -95,7 +95,7 @@ impl ChunkStoreSubscriber for MaxImageDimensionSubscriber {
                 .diff
                 .chunk
                 .components()
-                .get(&ImageEncoded::indicator().name())
+                .get(&EncodedImage::indicator().name())
                 .is_some()
             {
                 let media_types = event.diff.chunk.iter_component_arrays(&MediaType::name());

@@ -1,5 +1,5 @@
 #include "../error.hpp"
-#include "image_encoded.hpp"
+#include "encoded_image.hpp"
 
 #include "../collection_adapter_builtins.hpp"
 
@@ -23,18 +23,18 @@ namespace rerun::archetypes {
 #ifdef EDIT_EXTENSION
     // <CODEGEN_COPY_TO_HEADER>
 
-    /// Create a new `ImageEncoded` from the contents of a file on disk, e.g. a PNG or JPEG.
-    static Result<ImageEncoded> from_file(const std::filesystem::path& filepath);
+    /// Create a new `EncodedImage` from the contents of a file on disk, e.g. a PNG or JPEG.
+    static Result<EncodedImage> from_file(const std::filesystem::path& filepath);
 
-    /// Create a new `ImageEncoded` from the contents of an image file, like a PNG or JPEG.
+    /// Create a new `EncodedImage` from the contents of an image file, like a PNG or JPEG.
     ///
     /// If no `MediaType` is specified, the Rerun Viewer will try to guess one from the data
     /// at render-time. If it can't, rendering will fail with an error.
-    static ImageEncoded from_bytes(
+    static EncodedImage from_bytes(
         rerun::Collection<uint8_t> image_contents,
         std::optional<rerun::components::MediaType> media_type = {}
     ) {
-        ImageEncoded image;
+        EncodedImage image;
         image.blob = image_contents;
         image.media_type = media_type;
         return image;
@@ -47,7 +47,7 @@ namespace rerun::archetypes {
     // </CODEGEN_COPY_TO_HEADER>
 #endif
 
-    Result<ImageEncoded> ImageEncoded::from_file(const std::filesystem::path& filepath) {
+    Result<EncodedImage> EncodedImage::from_file(const std::filesystem::path& filepath) {
         std::ifstream file(filepath, std::ios::binary);
         if (!file) {
             return Error(ErrorCode::FileRead, filepath.string());
@@ -64,10 +64,10 @@ namespace rerun::archetypes {
             return Error(ErrorCode::FileRead, filepath.string());
         }
 
-        return ImageEncoded::from_bytes(file_bytes, ImageEncoded::guess_media_type(filepath));
+        return EncodedImage::from_bytes(file_bytes, EncodedImage::guess_media_type(filepath));
     }
 
-    std::optional<rerun::components::MediaType> ImageEncoded::guess_media_type(
+    std::optional<rerun::components::MediaType> EncodedImage::guess_media_type(
         const std::filesystem::path& path
     ) {
         std::filesystem::path file_path(path);

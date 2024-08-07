@@ -38,7 +38,7 @@ use crate::{
     picking::{PickableUiRect, PickingContext, PickingHitType, PickingResult},
     view_kind::SpatialSpaceViewKind,
     visualizers::{
-        CamerasVisualizer, DepthImageVisualizer, ImageEncodedVisualizer, ImageVisualizer,
+        CamerasVisualizer, DepthImageVisualizer, EncodedImageVisualizer, ImageVisualizer,
         SegmentationImageVisualizer, UiLabel, UiLabelTarget,
     },
 };
@@ -105,7 +105,7 @@ impl SpatialSpaceViewState {
         let view_systems = &system_output.view_systems;
 
         self.num_non_segmentation_images_last_frame +=
-            view_systems.get::<ImageEncodedVisualizer>()?.images.len();
+            view_systems.get::<EncodedImageVisualizer>()?.images.len();
         self.num_non_segmentation_images_last_frame +=
             view_systems.get::<ImageVisualizer>()?.images.len();
         self.num_non_segmentation_images_last_frame +=
@@ -389,7 +389,7 @@ pub fn picking(
 
     let depth_images = visualizers.get::<DepthImageVisualizer>()?;
     let images = visualizers.get::<ImageVisualizer>()?;
-    let images_encoded = visualizers.get::<ImageEncodedVisualizer>()?;
+    let images_encoded = visualizers.get::<EncodedImageVisualizer>()?;
     let segmentation_images = visualizers.get::<SegmentationImageVisualizer>()?;
     let image_picking_rects = itertools::chain!(
         &depth_images.images,

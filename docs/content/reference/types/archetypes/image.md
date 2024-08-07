@@ -14,7 +14,7 @@ and the pixel format (e.g. RGB, RGBA, …).
 The order of dimensions in the underlying [`components.Blob`](https://rerun.io/docs/reference/types/components/blob) follows the typical
 row-major, interleaved-pixel image format.
 
-Rerun also supports compressed images (JPEG, PNG, …), using [`archetypes.ImageEncoded`](https://rerun.io/docs/reference/types/archetypes/image_encoded?speculative-link).
+Rerun also supports compressed images (JPEG, PNG, …), using [`archetypes.EncodedImage`](https://rerun.io/docs/reference/types/archetypes/encoded_image?speculative-link).
 Compressing images can save a lot of bandwidth and memory.
 
 ## Components

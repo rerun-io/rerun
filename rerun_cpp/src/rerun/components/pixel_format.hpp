@@ -30,7 +30,7 @@ namespace rerun::components {
     ///
     /// All these formats support random access.
     ///
-    /// For more compressed image formats, see `archetypes::ImageEncoded`.
+    /// For more compressed image formats, see `archetypes::EncodedImage`.
     enum class PixelFormat : uint8_t {
 
         /// NV12 (aka Y_UV12) is a YUV 4:2:0 chroma downsampled format with 12 bits per pixel and 8 bits per channel.

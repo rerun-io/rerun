@@ -28,7 +28,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 ///
 /// All these formats support random access.
 ///
-/// For more compressed image formats, see [`archetypes::ImageEncoded`][crate::archetypes::ImageEncoded].
+/// For more compressed image formats, see [`archetypes::EncodedImage`][crate::archetypes::EncodedImage].
 #[derive(Clone, Copy, Debug, Hash, PartialEq, Eq, Default)]
 #[repr(u8)]
 pub enum PixelFormat {

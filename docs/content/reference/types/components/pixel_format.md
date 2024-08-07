@@ -13,7 +13,7 @@ use differing number of bits per channel, and that is what this [`components.Pix
 
 All these formats support random access.
 
-For more compressed image formats, see [`archetypes.ImageEncoded`](https://rerun.io/docs/reference/types/archetypes/image_encoded?speculative-link).
+For more compressed image formats, see [`archetypes.EncodedImage`](https://rerun.io/docs/reference/types/archetypes/encoded_image?speculative-link).
 
 ## Variants
 

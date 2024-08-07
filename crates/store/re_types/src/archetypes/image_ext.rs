@@ -10,7 +10,7 @@ use crate::{
 #[cfg(feature = "image")]
 use crate::image::{ImageConversionError, ImageLoadError};
 
-use super::ImageEncoded;
+use super::EncodedImage;
 
 use super::Image;
 
@@ -166,24 +166,24 @@ impl Image {
     /// Creates a new [`Image`] from a file.
     ///
     /// The image format will be inferred from the path (extension), or the contents if that fails.
-    #[deprecated = "Use ImageEncoded::from_file instead"]
+    #[deprecated = "Use EncodedImage::from_file instead"]
     #[cfg(not(target_arch = "wasm32"))]
     #[inline]
-    pub fn from_file_path(filepath: impl AsRef<std::path::Path>) -> std::io::Result<ImageEncoded> {
-        ImageEncoded::from_file(filepath)
+    pub fn from_file_path(filepath: impl AsRef<std::path::Path>) -> std::io::Result<EncodedImage> {
+        EncodedImage::from_file(filepath)
     }
 
     /// Creates a new [`Image`] from the contents of a file.
     ///
     /// If unspecified, the image format will be inferred from the contents.
-    #[deprecated = "Use ImageEncoded::from_file_contents instead"]
+    #[deprecated = "Use EncodedImage::from_file_contents instead"]
     #[cfg(feature = "image")]
     #[inline]
     pub fn from_file_contents(
         contents: Vec<u8>,
         _format: Option<image::ImageFormat>,
-    ) -> ImageEncoded {
-        ImageEncoded::from_file_contents(contents)
+    ) -> EncodedImage {
+        EncodedImage::from_file_contents(contents)
     }
 }
 
@@ -193,7 +193,7 @@ impl Image {
     ///
     /// This will spend CPU cycles decoding the image.
     /// To save CPU time and storage, we recommend you instead use
-    /// [`ImageEncoded::from_file_contents`].
+    /// [`EncodedImage::from_file_contents`].
     ///
     /// Requires the `image` feature.
     #[inline]

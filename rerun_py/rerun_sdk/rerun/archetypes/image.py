@@ -30,7 +30,7 @@ class Image(ImageExt, Archetype):
     The order of dimensions in the underlying [`components.Blob`][rerun.components.Blob] follows the typical
     row-major, interleaved-pixel image format.
 
-    Rerun also supports compressed images (JPEG, PNG, …), using [`archetypes.ImageEncoded`][rerun.archetypes.ImageEncoded].
+    Rerun also supports compressed images (JPEG, PNG, …), using [`archetypes.EncodedImage`][rerun.archetypes.EncodedImage].
     Compressing images can save a lot of bandwidth and memory.
 
     Example

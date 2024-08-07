@@ -1,8 +1,8 @@
 use crate::components::Blob;
 
-use super::ImageEncoded;
+use super::EncodedImage;
 
-impl ImageEncoded {
+impl EncodedImage {
     /// Creates a new image from the file contents at `path`.
     ///
     /// The [`MediaType`][crate::components::MediaType] will first be guessed from the file contents.

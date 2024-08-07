@@ -18,7 +18,7 @@ Visualize the [nuScenes dataset](https://www.nuscenes.org/) including lidar, rad
 </picture>
 
 ## Used Rerun types
-[`Transform3D`](https://www.rerun.io/docs/reference/types/archetypes/transform3d), [`Points3D`](https://www.rerun.io/docs/reference/types/archetypes/points3d), [`Boxes3D`](https://www.rerun.io/docs/reference/types/archetypes/boxes3d), [`Pinhole`](https://www.rerun.io/docs/reference/types/archetypes/pinhole), [`ImageEncoded`](https://www.rerun.io/docs/reference/types/archetypes/image_encoded?speculative-link)
+[`Transform3D`](https://www.rerun.io/docs/reference/types/archetypes/transform3d), [`Points3D`](https://www.rerun.io/docs/reference/types/archetypes/points3d), [`Boxes3D`](https://www.rerun.io/docs/reference/types/archetypes/boxes3d), [`Pinhole`](https://www.rerun.io/docs/reference/types/archetypes/pinhole), [`EncodedImage`](https://www.rerun.io/docs/reference/types/archetypes/encoded_image?speculative-link)
 
 ## Background
 This example demonstrates the ability to read and visualize scenes from the nuScenes dataset, which is a public large-scale dataset specifically designed for autonomous driving.
@@ -90,9 +90,9 @@ rr.log(f"world/ego_vehicle/{sensor_name}", rr.Points3D(points, colors=point_colo
 ```
 
 ### Camera data
-Camera data is logged as encoded images using [`ImageEncoded`](https://www.rerun.io/docs/reference/types/archetypes/image_encoded?speculative-link).
+Camera data is logged as encoded images using [`EncodedImage`](https://www.rerun.io/docs/reference/types/archetypes/encoded_image?speculative-link).
 ```python
-rr.log(f"world/ego_vehicle/{sensor_name}", rr.ImageEncoded(path=data_file_path))
+rr.log(f"world/ego_vehicle/{sensor_name}", rr.EncodedImage(path=data_file_path))
 ```
 
 ### Radar data

@@ -25,13 +25,14 @@ The constructs have changed to now expect the shape in `[width, height]` order.
 TODO(andreas): more before/after image on different languages
 
 
-### [`ImageEncoded`](https://rerun.io/docs/reference/types/archetypes/image_encoded?speculative-link)
-`ImageEncoded` is our new archetype for logging an image file, e.g. a PNG or JPEG.
+### [`EncodedImage`](https://rerun.io/docs/reference/types/archetypes/encoded_image?speculative-link)
+`EncodedImage` is our new archetype for logging an image file, e.g. a PNG or JPEG.
 
 #### Python
-In Python we already had a `ImageEncoded` class, but this has now been replaced with the new archetype.
+In Python we already had a `ImageEncoded` class that was responsible for logging both chroma-downsampled images (NV12, YUY2) and image files (JPEG, PNG, …).
 
-* Python: `NV12/YUY2` are now logged with the new `Image`:
+Image files are now instead logged with [`EncodedImage`](https://rerun.io/docs/reference/types/archetypes/encoded_image?speculative-link),
+and chroma-downsampled images (NV12/YUY2) are now logged with the new `Image` archetype:
 
 
 ```py
@@ -46,15 +47,13 @@ rr.log(
 )
 ```
 
-* `ImageEncoded`:s `format` parameter has been replaced with `media_type` (MIME)
-    * `ImageFormat` is now only for `NV12/YUY2`
 
 #### Rust
 * Removed `TensorBuffer::JPEG`
 * Removed `TensorData::from_jpeg_bytes`
 * Deprecated `Image::from_file_path` and `from_file_contents`
 
-For all of these, use `ImageEncoded` instead.
+For all of these, use [`EncodedImage`](https://rerun.io/docs/reference/types/archetypes/encoded_image?speculative-link) instead.
 
 
 ### `mesh_material: Material` has been renamed to `albedo_factor: AlbedoFactor` [#6841](https://github.com/rerun-io/rerun/pull/6841)

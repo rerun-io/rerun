@@ -26,7 +26,7 @@ if TYPE_CHECKING:
         npt.NDArray[np.uint64],
         npt.NDArray[np.uint8],
     ]
-    from . import Image, ImageEncoded
+    from . import EncodedImage, Image
 
 
 def _to_numpy(tensor: ImageLike) -> npt.NDArray[Any]:
@@ -229,7 +229,7 @@ class ImageExt:
             draw_order=draw_order,
         )
 
-    def compress(self: Any, jpeg_quality: int = 95) -> ImageEncoded | Image:
+    def compress(self: Any, jpeg_quality: int = 95) -> EncodedImage | Image:
         """
         Compress the given image as a JPEG.
 
@@ -248,7 +248,7 @@ class ImageExt:
 
         from PIL import Image as PILImage
 
-        from ..archetypes import ImageEncoded
+        from ..archetypes import EncodedImage
 
         with catch_and_log_exceptions(context="Image compression"):
             pixel_format = None
@@ -307,7 +307,7 @@ class ImageExt:
             pil_image.save(output, format="JPEG", quality=jpeg_quality)
             jpeg_bytes = output.getvalue()
             output.close()
-            return ImageEncoded(contents=jpeg_bytes, media_type="image/jpeg")
+            return EncodedImage(contents=jpeg_bytes, media_type="image/jpeg")
 
         # On failure to compress, return a raw image
         return self  # type: ignore[no-any-return]
