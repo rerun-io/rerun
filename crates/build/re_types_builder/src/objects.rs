@@ -966,8 +966,8 @@ impl Type {
             if enum_index < enums.len() {
                 // It is an enum.
                 assert!(
-                    typ == FbsBaseType::Byte,
-                    "{virtpath}: For consistency, enums must be declared as the `byte` type"
+                    typ == FbsBaseType::UByte,
+                    "{virtpath}: For consistency, enums must be declared as the `ubyte` type"
                 );
 
                 let enum_ = &enums[field_type.index() as usize];

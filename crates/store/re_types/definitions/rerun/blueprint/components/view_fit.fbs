@@ -1,7 +1,7 @@
 namespace rerun.blueprint.components;
 
 /// Determines whether an image or texture should be scaled to fit the viewport.
-enum ViewFit: byte (
+enum ViewFit: ubyte (
     "attr.rerun.scope": "blueprint"
 ) {
     /// Invalid value. Won't show up in generated types.

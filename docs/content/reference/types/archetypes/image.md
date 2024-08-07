@@ -7,8 +7,8 @@ A monochrome or color image.
 
 See also [`archetypes.DepthImage`](https://rerun.io/docs/reference/types/archetypes/depth_image) and [`archetypes.SegmentationImage`](https://rerun.io/docs/reference/types/archetypes/segmentation_image).
 
-The raw image data is stored as a single buffer of bytes in a [rerun.components.Blob].
-The meaning of these bytes is determined by the `ImageFormat` which specifies the resolution
+The raw image data is stored as a single buffer of bytes in a [`components.Blob`](https://rerun.io/docs/reference/types/components/blob).
+The meaning of these bytes is determined by the [`components.ImageFormat`](https://rerun.io/docs/reference/types/components/image_format?speculative-link) which specifies the resolution
 and the pixel format (e.g. RGB, RGBA, …).
 
 The order of dimensions in the underlying [`components.Blob`](https://rerun.io/docs/reference/types/components/blob) follows the typical
@@ -19,9 +19,9 @@ Compressing images can save a lot of bandwidth and memory.
 
 ## Components
 
-**Required**: [`Blob`](../components/blob.md), [`Resolution2D`](../components/resolution2d.md)
+**Required**: [`Blob`](../components/blob.md), [`ImageFormat`](../components/image_format.md)
 
-**Optional**: [`PixelFormat`](../components/pixel_format.md), [`ColorModel`](../components/color_model.md), [`ChannelDatatype`](../components/channel_datatype.md), [`Opacity`](../components/opacity.md), [`DrawOrder`](../components/draw_order.md)
+**Optional**: [`Opacity`](../components/opacity.md), [`DrawOrder`](../components/draw_order.md)
 
 ## Shown in
 * [Spatial2DView](../views/spatial2d_view.md)

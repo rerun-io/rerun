@@ -6,12 +6,11 @@
 #include "../collection.hpp"
 #include "../compiler_utils.hpp"
 #include "../components/blob.hpp"
-#include "../components/channel_datatype.hpp"
 #include "../components/colormap.hpp"
 #include "../components/depth_meter.hpp"
 #include "../components/draw_order.hpp"
 #include "../components/fill_ratio.hpp"
-#include "../components/resolution2d.hpp"
+#include "../components/image_format.hpp"
 #include "../data_cell.hpp"
 #include "../image_utils.hpp"
 #include "../indicator_component.hpp"
@@ -78,11 +77,8 @@ namespace rerun::archetypes {
         /// The raw depth image data.
         rerun::components::Blob data;
 
-        /// The size of the image
-        rerun::components::Resolution2D resolution;
-
-        /// The data type of the depth image data (U16, F32, …).
-        rerun::components::ChannelDatatype datatype;
+        /// The format of the image.
+        rerun::components::ImageFormat format;
 
         /// An optional floating point value that specifies how long a meter is in the native depth units.
         ///
@@ -125,11 +121,11 @@ namespace rerun::archetypes {
         /// @param pixels The raw image data.
         /// ⚠️ Does not take ownership of the data, the caller must ensure the data outlives the image.
         /// The number of elements is assumed to be `W * H`.
-        /// @param resolution_ The resolution of the image.
+        /// @param resolution The resolution of the image as {width, height}.
         template <typename TElement>
-        DepthImage(const TElement* pixels, components::Resolution2D resolution_)
+        DepthImage(const TElement* pixels, WidthHeight resolution)
             : DepthImage{
-                  reinterpret_cast<const uint8_t*>(pixels), resolution_, get_datatype(pixels)} {}
+                  reinterpret_cast<const uint8_t*>(pixels), resolution, get_datatype(pixels)} {}
 
         /// Constructs image from pixel data + resolution with datatype inferred from the passed collection.
         ///
@@ -137,25 +133,21 @@ namespace rerun::archetypes {
         /// If the data does not outlive the image, use `std::move` or create the `rerun::Collection`
         /// explicitly ahead of time with `rerun::Collection::take_ownership`.
         /// The length of the data should be `W * H`.
-        /// @param resolution_ The resolution of the image.
+        /// @param resolution The resolution of the image as {width, height}.
         template <typename TElement>
-        DepthImage(Collection<TElement> pixels, components::Resolution2D resolution_)
-            : DepthImage{pixels.to_uint8(), resolution_, get_datatype(pixels.data())} {}
+        DepthImage(Collection<TElement> pixels, WidthHeight resolution)
+            : DepthImage{pixels.to_uint8(), resolution, get_datatype(pixels.data())} {}
 
         /// Constructs image from pixel data + resolution with explicit datatype. Borrows data from a pointer (i.e. data must outlive the image!).
         ///
         /// @param data_ The raw image data.
         /// ⚠️ Does not take ownership of the data, the caller must ensure the data outlives the image.
         /// The byte size of the data is assumed to be `W * H * datatype.size`
-        /// @param resolution_ The resolution of the image.
-        /// @param datatype_ How the data should be interpreted.
-        DepthImage(
-            const void* data_, components::Resolution2D resolution_,
-            components::ChannelDatatype datatype_
-        )
-            : data{Collection<uint8_t>::borrow(data_, num_bytes(resolution_, datatype_))},
-              resolution{resolution_},
-              datatype{datatype_} {}
+        /// @param resolution The resolution of the image as {width, height}.
+        /// @param datatype How the data should be interpreted.
+        DepthImage(const void* data_, WidthHeight resolution, datatypes::ChannelDatatype datatype)
+            : data{Collection<uint8_t>::borrow(data_, num_bytes(resolution, datatype))},
+              format{datatypes::ImageFormat{resolution, datatype}} {}
 
         /// Constructs image from pixel data + resolution + datatype.
         ///
@@ -163,13 +155,12 @@ namespace rerun::archetypes {
         /// If the data does not outlive the image, use `std::move` or create the `rerun::Collection`
         /// explicitly ahead of time with `rerun::Collection::take_ownership`.
         /// The length of the data should be `W * H`.
-        /// @param resolution_ The resolution of the image.
-        /// @param datatype_ How the data should be interpreted.
+        /// @param resolution The resolution of the image as {width, height}.
+        /// @param datatype How the data should be interpreted.
         DepthImage(
-            Collection<uint8_t> data_, components::Resolution2D resolution_,
-            components::ChannelDatatype datatype_
+            Collection<uint8_t> data_, WidthHeight resolution, datatypes::ChannelDatatype datatype
         )
-            : data{data_}, resolution{resolution_}, datatype{datatype_} {}
+            : data{data_}, format{datatypes::ImageFormat{resolution, datatype}} {}
 
         // END of extensions from depth_image_ext.cpp, start of generated code:
 

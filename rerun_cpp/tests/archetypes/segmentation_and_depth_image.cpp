@@ -5,7 +5,7 @@
 #include <rerun/archetypes/segmentation_image.hpp>
 
 using namespace rerun::archetypes;
-using namespace rerun::components;
+using namespace rerun::datatypes;
 
 #define TEST_TAG "[image][archetypes]"
 
@@ -15,8 +15,7 @@ void run_image_tests() {
         std::vector<uint8_t> data(10 * 10, 0);
         ImageType reference_image;
         reference_image.data = rerun::borrow(data);
-        reference_image.resolution = Resolution2D(10, 10);
-        reference_image.datatype = ChannelDatatype::U8;
+        reference_image.format = ImageFormat({10, 10}, ChannelDatatype::U8);
 
         THEN("no error occurs on image construction from a pointer") {
             auto image_from_ptr = check_logged_error([&] {

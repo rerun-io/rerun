@@ -67,8 +67,7 @@ class DepthImage(DepthImageExt, Archetype):
         """Convenience method for calling `__attrs_init__` with all `None`s."""
         self.__attrs_init__(
             data=None,  # type: ignore[arg-type]
-            resolution=None,  # type: ignore[arg-type]
-            datatype=None,  # type: ignore[arg-type]
+            format=None,  # type: ignore[arg-type]
             meter=None,  # type: ignore[arg-type]
             colormap=None,  # type: ignore[arg-type]
             point_fill_ratio=None,  # type: ignore[arg-type]
@@ -90,19 +89,11 @@ class DepthImage(DepthImageExt, Archetype):
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 
-    resolution: components.Resolution2DBatch = field(
+    format: components.ImageFormatBatch = field(
         metadata={"component": "required"},
-        converter=components.Resolution2DBatch._required,  # type: ignore[misc]
+        converter=components.ImageFormatBatch._required,  # type: ignore[misc]
     )
-    # The size of the image
-    #
-    # (Docstring intentionally commented out to hide this field from the docs)
-
-    datatype: components.ChannelDatatypeBatch = field(
-        metadata={"component": "required"},
-        converter=components.ChannelDatatypeBatch._required,  # type: ignore[misc]
-    )
-    # The data type of the depth image data (U16, F32, …).
+    # The format of the image.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 

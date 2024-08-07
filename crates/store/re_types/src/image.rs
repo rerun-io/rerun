@@ -3,7 +3,7 @@
 use smallvec::{smallvec, SmallVec};
 
 use crate::{
-    components::ChannelDatatype,
+    datatypes::ChannelDatatype,
     datatypes::{Blob, TensorBuffer, TensorData, TensorDimension},
 };
 
