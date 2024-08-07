@@ -22,8 +22,8 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 ///
 /// See also [`archetypes::DepthImage`][crate::archetypes::DepthImage] and [`archetypes::SegmentationImage`][crate::archetypes::SegmentationImage].
 ///
-/// The raw image data is stored as a single buffer of bytes in a [rerun.components.Blob].
-/// The meaning of these bytes is determined by the `ImageFormat` which specifies the resolution
+/// The raw image data is stored as a single buffer of bytes in a [`components::Blob`][crate::components::Blob].
+/// The meaning of these bytes is determined by the [`components::ImageFormat`][crate::components::ImageFormat] which specifies the resolution
 /// and the pixel format (e.g. RGB, RGBA, …).
 ///
 /// The order of dimensions in the underlying [`components::Blob`][crate::components::Blob] follows the typical

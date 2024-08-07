@@ -42,6 +42,26 @@ namespace rerun::datatypes {
         /// Also requires a `datatypes::ColorModel` to fully specify the pixel format.
         std::optional<rerun::datatypes::ChannelDatatype> channel_datatype;
 
+      public: // START of extensions from image_format_ext.cpp:
+        /// From a speicifc pixel format.
+        ImageFormat(rerun::WidthHeight resolution, datatypes::PixelFormat pixel_format_)
+            : width(resolution.width), height(resolution.height), pixel_format(pixel_format_) {}
+
+        /// Create a new image format for depth or segmentation images with the given resolution and datatype.
+        ImageFormat(rerun::WidthHeight resolution, datatypes::ChannelDatatype datatype_)
+            : width(resolution.width), height(resolution.height), channel_datatype(datatype_) {}
+
+        ImageFormat(
+            rerun::WidthHeight resolution, datatypes::ColorModel color_model_,
+            datatypes::ChannelDatatype datatype_
+        )
+            : width(resolution.width),
+              height(resolution.height),
+              color_model(color_model_),
+              channel_datatype(datatype_) {}
+
+        // END of extensions from image_format_ext.cpp, start of generated code:
+
       public:
         ImageFormat() = default;
     };
