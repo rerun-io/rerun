@@ -131,7 +131,7 @@ class ImageExt:
 
                 self.__attrs_init__(
                     data=bytes,
-                    image_format=ImageFormat(width=width, height=height, pixel_format=pixel_format),
+                    format=ImageFormat(width=width, height=height, pixel_format=pixel_format),
                     opacity=opacity,
                     draw_order=draw_order,
                 )
