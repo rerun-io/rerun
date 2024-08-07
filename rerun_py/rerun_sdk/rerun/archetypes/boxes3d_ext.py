@@ -20,6 +20,7 @@ class Boxes3DExt:
         centers: datatypes.Vec3DArrayLike | None = None,
         rotation_axis_angles: datatypes.RotationAxisAngleArrayLike | None = None,
         quaternions: datatypes.QuaternionArrayLike | None = None,
+        rotations: datatypes.RotationAxisAngleArrayLike | datatypes.QuaternionArrayLike | None = None,
         colors: datatypes.Rgba32ArrayLike | None = None,
         radii: datatypes.Float32ArrayLike | None = None,
         fill_mode: components.FillMode | None = None,
@@ -54,6 +55,8 @@ class Boxes3DExt:
 
             If no rotation is specified, the axes of the boxes align with the axes of the local coordinate system.
             Note that this uses a [`components.LeafRotationQuat`][rerun.components.LeafRotationQuat] which is also used by [`archetypes.LeafTransforms3D`][rerun.archetypes.LeafTransforms3D].
+        rotations:
+            Backwards compatible parameter for specifying rotations. Tries to infer the type of rotation from the input. Prefer using `quaternions` or `rotation_axis_angles`.
         colors:
             Optional colors for the boxes.
         radii:
@@ -89,6 +92,33 @@ class Boxes3DExt:
                 mins = np.asarray(mins, dtype=np.float32)
                 half_sizes = np.asarray(half_sizes, dtype=np.float32)
                 centers = mins + half_sizes
+
+            if rotations is not None:
+                if quaternions is not None or rotation_axis_angles is not None:
+                    _send_warning_or_raise(
+                        "Cannot specify both `rotations` and `quaternions` or `rotation_axis_angles`.", 1
+                    )
+                else:
+                    try:
+                        from ..components import LeafRotationQuatBatch
+
+                        quaternions = LeafRotationQuatBatch(rotations, strict=True).as_arrow_array()  # type: ignore[arg-type]
+                    except Exception:
+                        pass
+
+                    if quaternions is None:
+                        try:
+                            from ..components import LeafRotationAxisAngleBatch
+
+                            rotation_axis_angles = LeafRotationAxisAngleBatch(rotations, strict=True).as_arrow_array()  # type: ignore[arg-type]
+                        except Exception:
+                            pass
+
+                    if rotation_axis_angles is None and quaternions is None:
+                        _send_warning_or_raise(
+                            "Could not infer the type of rotation from the input. Please use `quaternions` or `rotation_axis_angles`.",
+                            1,
+                        )
 
             self.__attrs_init__(
                 half_sizes=half_sizes,
