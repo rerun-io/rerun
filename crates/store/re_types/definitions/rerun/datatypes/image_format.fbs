@@ -29,5 +29,4 @@ struct ImageFormat (
     ///
     /// Also requires a [datatypes.ColorModel] to fully specify the pixel format.
     channel_datatype: rerun.datatypes.ChannelDatatype (order: 500, nullable);
-
 }

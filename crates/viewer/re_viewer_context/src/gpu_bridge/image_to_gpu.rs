@@ -31,13 +31,13 @@ fn generate_texture_key(image: &ImageInfo) -> u64 {
         blob_row_id,
         blob: _, // we hash `blob_row_id` instead; much faster!
 
-        format: image_format,
-        kind: meaning,
+        format,
+        kind,
 
         colormap: _, // No need to upload new texture when this changes
     } = image;
 
-    hash((blob_row_id, image_format, meaning))
+    hash((blob_row_id, format, kind))
 }
 
 pub fn image_to_gpu(
