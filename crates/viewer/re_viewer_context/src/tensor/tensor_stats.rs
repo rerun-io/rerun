@@ -6,12 +6,14 @@ use re_types::tensor_data::TensorDataType;
 /// Stats about a tensor or image.
 #[derive(Clone, Copy, Debug)]
 pub struct TensorStats {
-    /// This will currently only be `None` for jpeg-encoded tensors.
+    /// The range of values, ignoring `NaN`s.
+    ///
+    /// `None` for empty tensors.
     pub range: Option<(f64, f64)>,
 
     /// Like `range`, but ignoring all `NaN`/inf values.
     ///
-    /// None if there are no finite values at all, or if the tensor is jpeg-encoded.
+    /// `None` if there are no finite values at all.
     pub finite_range: Option<(f64, f64)>,
 }
 
@@ -122,14 +124,24 @@ impl TensorStats {
             TensorDataType::F16 => ArrayViewD::<f16>::try_from(tensor).map(tensor_range_f16),
             TensorDataType::F32 => ArrayViewD::<f32>::try_from(tensor).map(tensor_range_f32),
             TensorDataType::F64 => ArrayViewD::<f64>::try_from(tensor).map(tensor_range_f64),
-        };
+        }
+        .ok();
+
+        if let Some((min, max)) = range {
+            if max < min {
+                // Empty tensor
+                return Self {
+                    range: None,
+                    finite_range: None,
+                };
+            }
+        }
 
         let finite_range = if range
             .as_ref()
-            .ok()
             .map_or(true, |r| r.0.is_finite() && r.1.is_finite())
         {
-            range.clone().ok()
+            range
         } else {
             let finite_range = match tensor.dtype() {
                 TensorDataType::U8
@@ -139,21 +151,21 @@ impl TensorStats {
                 | TensorDataType::I8
                 | TensorDataType::I16
                 | TensorDataType::I32
-                | TensorDataType::I64 => range.clone(),
+                | TensorDataType::I64 => range,
 
-                TensorDataType::F16 => {
-                    ArrayViewD::<f16>::try_from(tensor).map(tensor_finite_range_f16)
-                }
-                TensorDataType::F32 => {
-                    ArrayViewD::<f32>::try_from(tensor).map(tensor_finite_range_f32)
-                }
-                TensorDataType::F64 => {
-                    ArrayViewD::<f64>::try_from(tensor).map(tensor_finite_range_f64)
-                }
+                TensorDataType::F16 => ArrayViewD::<f16>::try_from(tensor)
+                    .ok()
+                    .map(tensor_finite_range_f16),
+                TensorDataType::F32 => ArrayViewD::<f32>::try_from(tensor)
+                    .ok()
+                    .map(tensor_finite_range_f32),
+                TensorDataType::F64 => ArrayViewD::<f64>::try_from(tensor)
+                    .ok()
+                    .map(tensor_finite_range_f64),
             };
 
             // If we didn't find a finite range, set it to None.
-            finite_range.ok().and_then(|r| {
+            finite_range.and_then(|r| {
                 if r.0.is_finite() && r.1.is_finite() {
                     Some(r)
                 } else {
@@ -163,7 +175,7 @@ impl TensorStats {
         };
 
         Self {
-            range: range.ok(),
+            range,
             finite_range,
         }
     }

@@ -7,12 +7,14 @@ use crate::{image_info::ImageFormat, ImageInfo};
 /// Stats about an image.
 #[derive(Clone, Copy, Debug)]
 pub struct ImageStats {
-    /// This will currently only be `None` for jpeg-encoded tensors.
+    /// The range of values, ignoring `NaN`s.
+    ///
+    /// `None` for empty tensors.
     pub range: Option<(f64, f64)>,
 
     /// Like `range`, but ignoring all `NaN`/inf values.
     ///
-    /// None if there are no finite values at all, or if the tensor is jpeg-encoded.
+    /// `None` if there are no finite values at all.
     pub finite_range: Option<(f64, f64)>,
 }
 
@@ -145,6 +147,14 @@ impl ImageStats {
             ChannelDatatype::F32 => slice_range_f32(&image.to_slice()),
             ChannelDatatype::F64 => slice_range_f64(&image.to_slice()),
         };
+
+        if range.1 < range.0 {
+            // Empty image
+            return Self {
+                range: None,
+                finite_range: None,
+            };
+        }
 
         let finite_range = if range.0.is_finite() && range.1.is_finite() {
             // Already finite
