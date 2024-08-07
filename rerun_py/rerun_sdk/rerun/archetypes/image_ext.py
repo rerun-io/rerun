@@ -26,7 +26,7 @@ if TYPE_CHECKING:
         npt.NDArray[np.uint64],
         npt.NDArray[np.uint8],
     ]
-    from . import Image, EncodedImage
+    from . import EncodedImage, Image
 
 
 def _to_numpy(tensor: ImageLike) -> npt.NDArray[Any]:
