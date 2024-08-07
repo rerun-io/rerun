@@ -2,18 +2,19 @@ use egui::util::hash;
 
 use crate::{Cache, ImageInfo};
 
-use super::TensorStats;
+use super::ImageStats;
+
 // Caches image stats using a [`RowId`]
 #[derive(Default)]
-pub struct ImageStatsCache(ahash::HashMap<u64, TensorStats>);
+pub struct ImageStatsCache(ahash::HashMap<u64, ImageStats>);
 
 impl ImageStatsCache {
-    pub fn entry(&mut self, image: &ImageInfo) -> TensorStats {
+    pub fn entry(&mut self, image: &ImageInfo) -> ImageStats {
         let key = hash((image.blob_row_id, image.format));
         *self
             .0
             .entry(key)
-            .or_insert_with(|| TensorStats::from_image(image))
+            .or_insert_with(|| ImageStats::from_image(image))
     }
 }
 

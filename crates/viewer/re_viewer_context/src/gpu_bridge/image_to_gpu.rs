@@ -17,7 +17,7 @@ use re_types::{components::ChannelDatatype, image::ImageKind};
 
 use crate::{
     gpu_bridge::colormap::colormap_to_re_renderer, image_info::ImageFormat, Annotations, ImageInfo,
-    TensorStats,
+    ImageStats,
 };
 
 use super::{get_or_create_texture, RangeError};
@@ -47,7 +47,7 @@ pub fn image_to_gpu(
     render_ctx: &RenderContext,
     debug_name: &str,
     image: &ImageInfo,
-    tensor_stats: &TensorStats,
+    image_stats: &ImageStats,
     annotations: &Annotations,
 ) -> anyhow::Result<ColormappedTexture> {
     re_tracing::profile_function!();
@@ -56,17 +56,17 @@ pub fn image_to_gpu(
 
     match image.kind {
         ImageKind::Color => {
-            color_image_to_gpu(render_ctx, debug_name, texture_key, image, tensor_stats)
+            color_image_to_gpu(render_ctx, debug_name, texture_key, image, image_stats)
         }
         ImageKind::Depth => {
-            depth_image_to_gpu(render_ctx, debug_name, texture_key, image, tensor_stats)
+            depth_image_to_gpu(render_ctx, debug_name, texture_key, image, image_stats)
         }
         ImageKind::Segmentation => segmentation_image_to_gpu(
             render_ctx,
             debug_name,
             texture_key,
             image,
-            tensor_stats,
+            image_stats,
             annotations,
         ),
     }
@@ -77,7 +77,7 @@ fn color_image_to_gpu(
     debug_name: &str,
     texture_key: u64,
     image: &ImageInfo,
-    tensor_stats: &TensorStats,
+    image_stats: &ImageStats,
 ) -> anyhow::Result<ColormappedTexture> {
     re_tracing::profile_function!();
 
@@ -100,7 +100,7 @@ fn color_image_to_gpu(
 
     // TODO(emilk): let the user specify the color space.
     let decode_srgb = texture_format == TextureFormat::Rgba8Unorm
-        || image_decode_srgb_gamma_heuristic(tensor_stats, image_format)?;
+        || image_decode_srgb_gamma_heuristic(image_stats, image_format)?;
 
     // Special casing for normalized textures used above:
     let range = if matches!(
@@ -116,7 +116,7 @@ fn color_image_to_gpu(
         }
     } else {
         // TODO(#2341): The range should be determined by a `DataRange` component. In absence this, heuristics apply.
-        image_data_range_heuristic(tensor_stats, image_format)?
+        image_data_range_heuristic(image_stats, image_format)?
     };
 
     let color_mapper = if let Some(shader_decoding) = shader_decoding {
@@ -162,10 +162,10 @@ fn color_image_to_gpu(
 
 /// Get a valid, finite range for the gpu to use.
 fn image_data_range_heuristic(
-    tensor_stats: &TensorStats,
+    image_stats: &ImageStats,
     image_format: ImageFormat,
 ) -> Result<[f32; 2], RangeError> {
-    let (min, max) = tensor_stats.finite_range.ok_or(RangeError::MissingRange)?;
+    let (min, max) = image_stats.finite_range.ok_or(RangeError::MissingRange)?;
 
     let min = min as f32;
     let max = max as f32;
@@ -190,7 +190,7 @@ fn image_data_range_heuristic(
 
 /// Return whether a tensor should be assumed to be encoded in sRGB color space ("gamma space", no EOTF applied).
 fn image_decode_srgb_gamma_heuristic(
-    tensor_stats: &TensorStats,
+    image_stats: &ImageStats,
     image_format: ImageFormat,
 ) -> Result<bool, RangeError> {
     match image_format {
@@ -203,7 +203,7 @@ fn image_decode_srgb_gamma_heuristic(
         } => {
             match color_model {
                 ColorModel::L | ColorModel::RGB | ColorModel::RGBA => {
-                    let (min, max) = tensor_stats.finite_range.ok_or(RangeError::MissingRange)?;
+                    let (min, max) = image_stats.finite_range.ok_or(RangeError::MissingRange)?;
 
                     #[allow(clippy::if_same_then_else)]
                     if 0.0 <= min && max <= 255.0 {
@@ -295,7 +295,7 @@ fn depth_image_to_gpu(
     debug_name: &str,
     texture_key: u64,
     image: &ImageInfo,
-    tensor_stats: &TensorStats,
+    image_stats: &ImageStats,
 ) -> anyhow::Result<ColormappedTexture> {
     re_tracing::profile_function!();
 
@@ -306,7 +306,7 @@ fn depth_image_to_gpu(
         ImageFormat::ColorModel { datatype, .. } => datatype,
     };
 
-    let range = data_range(tensor_stats, datatype);
+    let range = data_range(image_stats, datatype);
 
     let texture = get_or_create_texture(render_ctx, texture_key, || {
         general_texture_creation_desc_from_image(debug_name, image, ColorModel::L, datatype)
@@ -331,7 +331,7 @@ fn segmentation_image_to_gpu(
     debug_name: &str,
     texture_key: u64,
     image: &ImageInfo,
-    tensor_stats: &TensorStats,
+    image_stats: &ImageStats,
     annotations: &Annotations,
 ) -> anyhow::Result<ColormappedTexture> {
     re_tracing::profile_function!();
@@ -345,7 +345,7 @@ fn segmentation_image_to_gpu(
 
     let colormap_key = hash(annotations.row_id());
 
-    let (_, mut max) = tensor_stats
+    let (_, mut max) = image_stats
         .range
         .ok_or_else(|| anyhow::anyhow!("compressed_tensor!?"))?;
 
@@ -397,7 +397,7 @@ fn segmentation_image_to_gpu(
     })
 }
 
-fn data_range(tensor_stats: &TensorStats, datatype: ChannelDatatype) -> [f32; 2] {
+fn data_range(image_stats: &ImageStats, datatype: ChannelDatatype) -> [f32; 2] {
     let default_min = 0.0;
     let default_max = if datatype.is_float() {
         1.0
@@ -405,7 +405,7 @@ fn data_range(tensor_stats: &TensorStats, datatype: ChannelDatatype) -> [f32; 2]
         datatype.max_value()
     };
 
-    let range = tensor_stats
+    let range = image_stats
         .finite_range
         .unwrap_or((default_min, default_max));
     let (mut min, mut max) = range;

@@ -12,7 +12,8 @@ use re_types::{
 };
 use re_ui::UiExt as _;
 use re_viewer_context::{
-    gpu_bridge, Annotations, ImageInfo, TensorStats, TensorStatsCache, UiLayout, ViewerContext,
+    gpu_bridge, Annotations, ImageInfo, ImageStats, TensorStats, TensorStatsCache, UiLayout,
+    ViewerContext,
 };
 
 use super::EntityDataUi;
@@ -286,14 +287,14 @@ pub fn show_zoomed_image_region(
     render_ctx: &re_renderer::RenderContext,
     ui: &mut egui::Ui,
     image: &ImageInfo,
-    tensor_stats: &TensorStats,
+    image_stats: &ImageStats,
     annotations: &Annotations,
     meter: Option<f32>,
     debug_name: &str,
     center_texel: [isize; 2],
 ) {
     let texture =
-        match gpu_bridge::image_to_gpu(render_ctx, debug_name, image, tensor_stats, annotations) {
+        match gpu_bridge::image_to_gpu(render_ctx, debug_name, image, image_stats, annotations) {
             Ok(texture) => texture,
             Err(err) => {
                 ui.label(format!("Error: {err}"));
