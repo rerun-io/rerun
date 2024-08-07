@@ -79,7 +79,7 @@ pub fn register_editors(registry: &mut re_viewer_context::ComponentUiRegistry) {
     registry.add_singleline_edit_or_view::<SortOrder>(edit_view_enum);
     registry.add_singleline_edit_or_view::<TransformRelation>(edit_view_enum);
     registry.add_singleline_edit_or_view::<ViewFit>(edit_view_enum);
-    // TODO(jleibs): Editor for ImageFormat
+    // TODO(#7100): Editor for ImageFormat
 
     registry.add_multiline_edit_or_view(visual_bounds2d::multiline_edit_visual_bounds2d);
     registry.add_singleline_edit_or_view(visual_bounds2d::singleline_edit_visual_bounds2d);
