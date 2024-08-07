@@ -43,9 +43,7 @@ impl ImageFormat {
         if let Some(pixel_format) = self.pixel_format {
             pixel_format.has_alpha()
         } else {
-            self.color_model
-                .as_ref()
-                .map_or(false, |color_model| color_model.has_alpha())
+            self.color_model.unwrap_or_default().has_alpha()
         }
     }
 
@@ -55,9 +53,7 @@ impl ImageFormat {
         if let Some(pixel_format) = self.pixel_format {
             pixel_format.is_float()
         } else {
-            self.channel_datatype
-                .as_ref()
-                .map_or(false, |datatype| datatype.is_float())
+            self.channel_datatype.unwrap_or_default().is_float()
         }
     }
 
