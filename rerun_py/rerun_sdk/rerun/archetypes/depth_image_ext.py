@@ -72,7 +72,6 @@ class DepthImageExt:
                 height=height,
                 channel_datatype=datatype,
             ),
-            datatype=datatype,
             meter=meter,
             colormap=colormap,
         )
