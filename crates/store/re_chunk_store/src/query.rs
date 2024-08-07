@@ -670,12 +670,12 @@ impl ChunkStore {
         self.static_chunk_ids_per_entity.get(entity_path).map_or(
             ChunkStoreChunkStats::default(),
             |static_chunks_per_component| {
-                let chunk_ids: ahash::HashSet<&re_chunk::ChunkId> =
-                    static_chunks_per_component.values().collect();
+                let chunk_ids: ahash::HashSet<re_chunk::ChunkId> =
+                    static_chunks_per_component.values().copied().collect();
 
                 chunk_ids
                     .into_iter()
-                    .filter_map(|chunk_id| self.chunks_per_chunk_id.get(chunk_id))
+                    .filter_map(|chunk_id| self.chunks_per_chunk_id.get(&chunk_id))
                     .map(ChunkStoreChunkStats::from_chunk)
                     .sum()
             },
