@@ -242,4 +242,4 @@ mode sets the default time range to _everything_. You can override this in the s
 //     }
 // }
 //
-// re_viewer_context::impl_component_fallback_provider!(DataframeSpaceView => [Timeline, LatestAtQueries]);
+re_viewer_context::impl_component_fallback_provider!(DataframeSpaceView => []);
