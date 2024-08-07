@@ -32,14 +32,6 @@ impl From<BTreeMap<Timeline, TimeInt>> for TimePoint {
 }
 
 impl TimePoint {
-    /// A static [`TimePoint`], containing no times.
-    ///
-    /// Same as [`Self::default`], i.e. empty.
-    #[inline]
-    pub fn static_() -> Self {
-        Self::default()
-    }
-
     #[inline]
     pub fn get(&self, timeline: &Timeline) -> Option<&TimeInt> {
         self.0.get(timeline)
