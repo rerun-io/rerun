@@ -1,4 +1,4 @@
-use itertools::Itertools as _;
+use itertools::Itertools;
 
 use re_space_view::range_with_blueprint_resolved_data;
 use re_types::archetypes;
@@ -235,11 +235,11 @@ impl SeriesLineSystem {
                 re_tracing::profile_scope!("fill values");
 
                 debug_assert_eq!(Scalar::arrow_datatype(), ArrowDatatype::Float64);
-                let mut i = 0;
                 all_scalar_chunks
                     .iter()
                     .flat_map(|chunk| chunk.iter_primitive::<f64>(&Scalar::name()))
-                    .for_each(|values| {
+                    .enumerate()
+                    .for_each(|(i, values)| {
                         if !values.is_empty() {
                             if values.len() > 1 {
                                 re_log::warn_once!(
@@ -251,8 +251,6 @@ impl SeriesLineSystem {
                         } else {
                             points[i].attrs.kind = PlotSeriesKind::Clear;
                         }
-
-                        i += 1;
                     });
             }
 
