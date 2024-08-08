@@ -24,9 +24,9 @@ use crate::{
     objects::ObjectClass,
     ArrowRegistry, CodeGenerator, ElementType, Object, ObjectField, ObjectKind, Objects, Reporter,
     Type, ATTR_DEFAULT, ATTR_RERUN_COMPONENT_OPTIONAL, ATTR_RERUN_COMPONENT_RECOMMENDED,
-    ATTR_RERUN_COMPONENT_REQUIRED, ATTR_RERUN_VIEW_IDENTIFIER, ATTR_RUST_CUSTOM_CLAUSE,
-    ATTR_RUST_DERIVE, ATTR_RUST_DERIVE_ONLY, ATTR_RUST_GENERATE_FIELD_INFO,
-    ATTR_RUST_NEW_PUB_CRATE, ATTR_RUST_REPR,
+    ATTR_RERUN_COMPONENT_REQUIRED, ATTR_RERUN_LOG_MISSING_AS_EMPTY, ATTR_RERUN_VIEW_IDENTIFIER,
+    ATTR_RUST_CUSTOM_CLAUSE, ATTR_RUST_DERIVE, ATTR_RUST_DERIVE_ONLY,
+    ATTR_RUST_GENERATE_FIELD_INFO, ATTR_RUST_NEW_PUB_CRATE, ATTR_RUST_REPR,
 };
 
 use super::{
@@ -1011,6 +1011,8 @@ fn quote_trait_impls_for_datatype_or_component(
 }
 
 fn quote_trait_impls_for_archetype(obj: &Object) -> TokenStream {
+    #![allow(clippy::collapsible_else_if)]
+
     let Object {
         fqname, name, kind, ..
     } = obj;
@@ -1069,16 +1071,27 @@ fn quote_trait_impls_for_archetype(obj: &Object) -> TokenStream {
 
             // NOTE: The nullability we're dealing with here is the nullability of an entire array of components,
             // not the nullability of individual elements (i.e. instances)!
-            match (is_plural, is_nullable) {
-                (true, true) => quote! {
-                    self.#field_name.as_ref().map(|comp_batch| (comp_batch as &dyn ComponentBatch).into())
-                },
-                (false, true) => quote! {
-                    self.#field_name.as_ref().map(|comp| (comp as &dyn ComponentBatch).into())
-                },
-                (_, false) => quote! {
-                    Some((&self.#field_name as &dyn ComponentBatch).into())
+            if is_nullable {
+                if obj.attrs.has(ATTR_RERUN_LOG_MISSING_AS_EMPTY) {
+                    if is_plural {
+                        // Always log Option<Vec<C>> as Vec<V>, mapping None to empty batch
+                        quote!{ Some((&self.#field_name.as_ref().unwrap_or_default() as &dyn ComponentBatch).into()) }
+                    } else {
+                        // Always log Option<C>, mapping None to empty batch
+                        quote!{ Some((&self.#field_name as &dyn ComponentBatch).into()) }
+                    }
+                } else {
+                    if is_plural {
+                        // Maybe logging an Option<Vec<C>>
+                        quote!{ self.#field_name.as_ref().map(|comp_batch| (comp_batch as &dyn ComponentBatch).into()) }
+                    } else {
+                        // Maybe logging an Option<C>
+                        quote!{ self.#field_name.as_ref().map(|comp| (comp as &dyn ComponentBatch).into()) }
+                    }
                 }
+            } else {
+                // Always logging a Vec<C> or C
+                quote!{ Some((&self.#field_name as &dyn ComponentBatch).into()) }
             }
         }))
     };

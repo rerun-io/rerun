@@ -385,27 +385,13 @@ impl ::re_types_core::AsComponents for Transform3D {
         use ::re_types_core::Archetype as _;
         [
             Some(Self::indicator()),
-            self.translation
-                .as_ref()
-                .map(|comp| (comp as &dyn ComponentBatch).into()),
-            self.rotation_axis_angle
-                .as_ref()
-                .map(|comp| (comp as &dyn ComponentBatch).into()),
-            self.quaternion
-                .as_ref()
-                .map(|comp| (comp as &dyn ComponentBatch).into()),
-            self.scale
-                .as_ref()
-                .map(|comp| (comp as &dyn ComponentBatch).into()),
-            self.mat3x3
-                .as_ref()
-                .map(|comp| (comp as &dyn ComponentBatch).into()),
-            self.relation
-                .as_ref()
-                .map(|comp| (comp as &dyn ComponentBatch).into()),
-            self.axis_length
-                .as_ref()
-                .map(|comp| (comp as &dyn ComponentBatch).into()),
+            Some((&self.translation as &dyn ComponentBatch).into()),
+            Some((&self.rotation_axis_angle as &dyn ComponentBatch).into()),
+            Some((&self.quaternion as &dyn ComponentBatch).into()),
+            Some((&self.scale as &dyn ComponentBatch).into()),
+            Some((&self.mat3x3 as &dyn ComponentBatch).into()),
+            Some((&self.relation as &dyn ComponentBatch).into()),
+            Some((&self.axis_length as &dyn ComponentBatch).into()),
         ]
         .into_iter()
         .flatten()

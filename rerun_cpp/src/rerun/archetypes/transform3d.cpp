@@ -16,38 +16,38 @@ namespace rerun {
         std::vector<ComponentBatch> cells;
         cells.reserve(8);
 
-        if (archetype.translation.has_value()) {
-            auto result = ComponentBatch::from_loggable(archetype.translation.value());
+        {
+            auto result = ComponentBatch::from_loggable(archetype.translation);
             RR_RETURN_NOT_OK(result.error);
             cells.push_back(std::move(result.value));
         }
-        if (archetype.rotation_axis_angle.has_value()) {
-            auto result = ComponentBatch::from_loggable(archetype.rotation_axis_angle.value());
+        {
+            auto result = ComponentBatch::from_loggable(archetype.rotation_axis_angle);
             RR_RETURN_NOT_OK(result.error);
             cells.push_back(std::move(result.value));
         }
-        if (archetype.quaternion.has_value()) {
-            auto result = ComponentBatch::from_loggable(archetype.quaternion.value());
+        {
+            auto result = ComponentBatch::from_loggable(archetype.quaternion);
             RR_RETURN_NOT_OK(result.error);
             cells.push_back(std::move(result.value));
         }
-        if (archetype.scale.has_value()) {
-            auto result = ComponentBatch::from_loggable(archetype.scale.value());
+        {
+            auto result = ComponentBatch::from_loggable(archetype.scale);
             RR_RETURN_NOT_OK(result.error);
             cells.push_back(std::move(result.value));
         }
-        if (archetype.mat3x3.has_value()) {
-            auto result = ComponentBatch::from_loggable(archetype.mat3x3.value());
+        {
+            auto result = ComponentBatch::from_loggable(archetype.mat3x3);
             RR_RETURN_NOT_OK(result.error);
             cells.push_back(std::move(result.value));
         }
-        if (archetype.relation.has_value()) {
-            auto result = ComponentBatch::from_loggable(archetype.relation.value());
+        {
+            auto result = ComponentBatch::from_loggable(archetype.relation);
             RR_RETURN_NOT_OK(result.error);
             cells.push_back(std::move(result.value));
         }
-        if (archetype.axis_length.has_value()) {
-            auto result = ComponentBatch::from_loggable(archetype.axis_length.value());
+        {
+            auto result = ComponentBatch::from_loggable(archetype.axis_length);
             RR_RETURN_NOT_OK(result.error);
             cells.push_back(std::move(result.value));
         }

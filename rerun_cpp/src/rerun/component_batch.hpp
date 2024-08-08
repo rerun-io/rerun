@@ -62,6 +62,20 @@ namespace rerun {
             return from_loggable(collection);
         }
 
+        /// Creates a new data cell from a single optional component instance.
+        ///
+        /// None is represented as a data cell with 0 instances.
+        ///
+        /// Automatically registers the component type the first time this type is encountered.
+        template <typename T>
+        static Result<DataCell> from_loggable(const std::optional<T>& component) {
+            if (component.has_value()) {
+                return from_loggable(component.value());
+            } else {
+                return from_loggable(Collection<T>());
+            }
+        }
+
         /// To rerun C API component batch.
         ///
         /// The resulting `rr_component_batch` keeps the `arrow::Array` alive until it is released.
