@@ -81,7 +81,8 @@ impl<W: std::io::Write> Encoder<W> {
         })
     }
 
-    pub fn append(&mut self, message: &LogMsg) -> Result<(), EncodeError> {
+    /// Returns the size in bytes of the encoded data.
+    pub fn append(&mut self, message: &LogMsg) -> Result<u64, EncodeError> {
         re_tracing::profile_function!();
 
         self.uncompressed.clear();
@@ -96,8 +97,10 @@ impl<W: std::io::Write> Encoder<W> {
                 .encode(&mut self.write)?;
                 self.write
                     .write_all(&self.uncompressed)
-                    .map_err(EncodeError::Write)?;
+                    .map(|_| self.uncompressed.len() as _)
+                    .map_err(EncodeError::Write)
             }
+
             Compression::LZ4 => {
                 let max_len = lz4_flex::block::get_maximum_output_size(self.uncompressed.len());
                 self.compressed.resize(max_len, 0);
@@ -111,11 +114,10 @@ impl<W: std::io::Write> Encoder<W> {
                 .encode(&mut self.write)?;
                 self.write
                     .write_all(&self.compressed[..compressed_len])
-                    .map_err(EncodeError::Write)?;
+                    .map(|_| compressed_len as _)
+                    .map_err(EncodeError::Write)
             }
         }
-
-        Ok(())
     }
 
     pub fn flush_blocking(&mut self) -> std::io::Result<()> {
@@ -127,32 +129,36 @@ impl<W: std::io::Write> Encoder<W> {
     }
 }
 
+/// Returns the size in bytes of the encoded data.
 pub fn encode(
     version: CrateVersion,
     options: EncodingOptions,
     messages: impl Iterator<Item = ChunkResult<LogMsg>>,
     write: &mut impl std::io::Write,
-) -> Result<(), EncodeError> {
+) -> Result<u64, EncodeError> {
     re_tracing::profile_function!();
     let mut encoder = Encoder::new(version, options, write)?;
+    let mut size_bytes = 0;
     for message in messages {
-        encoder.append(&message?)?;
+        size_bytes += encoder.append(&message?)?;
     }
-    Ok(())
+    Ok(size_bytes)
 }
 
+/// Returns the size in bytes of the encoded data.
 pub fn encode_ref<'a>(
     version: CrateVersion,
     options: EncodingOptions,
     messages: impl Iterator<Item = ChunkResult<&'a LogMsg>>,
     write: &mut impl std::io::Write,
-) -> Result<(), EncodeError> {
+) -> Result<u64, EncodeError> {
     re_tracing::profile_function!();
     let mut encoder = Encoder::new(version, options, write)?;
+    let mut size_bytes = 0;
     for message in messages {
-        encoder.append(message?)?;
+        size_bytes += encoder.append(message?)?;
     }
-    Ok(())
+    Ok(size_bytes)
 }
 
 pub fn encode_as_bytes(

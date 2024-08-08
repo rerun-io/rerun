@@ -33,7 +33,7 @@ impl PrintCommand {
 
         // TODO(cmc): might want to make this configurable at some point.
         let version_policy = re_log_encoding::decoder::VersionPolicy::Warn;
-        let rx = read_rrd_streams_from_file_or_stdin(version_policy, path_to_input_rrds);
+        let (rx, _) = read_rrd_streams_from_file_or_stdin(version_policy, path_to_input_rrds);
 
         for res in rx {
             let mut is_success = true;

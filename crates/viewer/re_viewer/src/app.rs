@@ -1888,6 +1888,7 @@ fn save_blueprint(app: &mut App, store_context: Option<&StoreContext<'_>>) -> an
 }
 
 #[allow(clippy::needless_pass_by_ref_mut)] // `app` is only used on native
+#[allow(clippy::unnecessary_wraps)] // cannot return error on web
 fn save_entity_db(
     #[allow(unused_variables)] app: &mut App, // only used on native
     rrd_version: CrateVersion,
@@ -1909,10 +1910,10 @@ fn save_entity_db(
     // Web
     #[cfg(target_arch = "wasm32")]
     {
-        let messages = to_log_messages()?;
-
         wasm_bindgen_futures::spawn_local(async move {
-            if let Err(err) = async_save_dialog(rrd_version, &file_name, &title, &messages).await {
+            if let Err(err) =
+                async_save_dialog(rrd_version, &file_name, &title, messages.into_iter()).await
+            {
                 re_log::error!("File saving failed: {err}");
             }
         });
@@ -1944,7 +1945,7 @@ async fn async_save_dialog(
     rrd_version: CrateVersion,
     file_name: &str,
     title: &str,
-    messages: &[LogMsg],
+    messages: impl Iterator<Item = re_chunk::ChunkResult<LogMsg>>,
 ) -> anyhow::Result<()> {
     use anyhow::Context as _;
 
@@ -1961,7 +1962,7 @@ async fn async_save_dialog(
     let bytes = re_log_encoding::encoder::encode_as_bytes(
         rrd_version,
         re_log_encoding::EncodingOptions::COMPRESSED,
-        messages.iter(),
+        messages,
     )?;
     file_handle.write(&bytes).await.context("Failed to save")
 }

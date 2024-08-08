@@ -1,6 +1,7 @@
-use std::path::PathBuf;
+use std::io::{IsTerminal, Write};
 
 use anyhow::Context as _;
+use itertools::Either;
 
 use re_chunk_store::ChunkStoreConfig;
 use re_entity_db::EntityDb;
@@ -16,8 +17,9 @@ pub struct MergeCommand {
     /// Paths to read from. Reads from standard input if none are specified.
     path_to_input_rrds: Vec<String>,
 
+    /// Path to write to. Writes to standard output if unspecified.
     #[arg(short = 'o', long = "output", value_name = "dst.(rrd|rbl)")]
-    path_to_output_rrd: String,
+    path_to_output_rrd: Option<String>,
 
     /// If set, will try to proceed even in the face of IO and/or decoding errors in the input data.
     #[clap(long, default_value_t = false)]
@@ -32,6 +34,13 @@ impl MergeCommand {
             best_effort,
         } = self;
 
+        if path_to_output_rrd.is_none() {
+            anyhow::ensure!(
+                !std::io::stdout().is_terminal(),
+                "you must redirect the output to a file and/or stream"
+            );
+        }
+
         // NOTE #1: We're doing headless processing, there's no point in running subscribers, it will just
         // (massively) slow us down.
         // NOTE #2: We do not want to modify the configuration of the original data in any way
@@ -42,7 +51,7 @@ impl MergeCommand {
             *best_effort,
             &store_config,
             path_to_input_rrds,
-            path_to_output_rrd,
+            path_to_output_rrd.as_ref(),
         )
     }
 }
@@ -54,8 +63,9 @@ pub struct CompactCommand {
     /// Paths to read from. Reads from standard input if none are specified.
     path_to_input_rrds: Vec<String>,
 
+    /// Path to write to. Writes to standard output if unspecified.
     #[arg(short = 'o', long = "output", value_name = "dst.(rrd|rbl)")]
-    path_to_output_rrd: String,
+    path_to_output_rrd: Option<String>,
 
     /// What is the threshold, in bytes, after which a Chunk cannot be compacted any further?
     ///
@@ -93,6 +103,13 @@ impl CompactCommand {
             best_effort,
         } = self;
 
+        if path_to_output_rrd.is_none() {
+            anyhow::ensure!(
+                !std::io::stdout().is_terminal(),
+                "you must redirect the output to a file and/or stream"
+            );
+        }
+
         let mut store_config = ChunkStoreConfig::from_env().unwrap_or_default();
         // NOTE: We're doing headless processing, there's no point in running subscribers, it will just
         // (massively) slow us down.
@@ -112,7 +129,7 @@ impl CompactCommand {
             *best_effort,
             &store_config,
             path_to_input_rrds,
-            path_to_output_rrd,
+            path_to_output_rrd.as_ref(),
         )
     }
 }
@@ -121,26 +138,8 @@ fn merge_and_compact(
     best_effort: bool,
     store_config: &ChunkStoreConfig,
     path_to_input_rrds: &[String],
-    path_to_output_rrd: &str,
+    path_to_output_rrd: Option<&String>,
 ) -> anyhow::Result<()> {
-    let path_to_output_rrd = PathBuf::from(path_to_output_rrd);
-
-    let rrds_in_size = {
-        let rrds_in: Result<Vec<_>, _> = path_to_input_rrds
-            .iter()
-            .map(|path_to_input_rrd| {
-                std::fs::File::open(path_to_input_rrd)
-                    .with_context(|| format!("{path_to_input_rrd:?}"))
-            })
-            .collect();
-        rrds_in.ok().and_then(|rrds_in| {
-            rrds_in
-                .iter()
-                .map(|rrd_in| rrd_in.metadata().ok().map(|md| md.len()))
-                .sum::<Option<u64>>()
-        })
-    };
-
     let file_size_to_string = |size: Option<u64>| {
         size.map_or_else(
             || "<unknown>".to_owned(),
@@ -159,7 +158,8 @@ fn merge_and_compact(
 
     // TODO(cmc): might want to make this configurable at some point.
     let version_policy = re_log_encoding::decoder::VersionPolicy::Warn;
-    let rx = read_rrd_streams_from_file_or_stdin(version_policy, path_to_input_rrds);
+    let (rx, rx_size_bytes) =
+        read_rrd_streams_from_file_or_stdin(version_policy, path_to_input_rrds);
 
     let mut entity_dbs: std::collections::HashMap<StoreId, EntityDb> = Default::default();
 
@@ -196,8 +196,13 @@ fn merge_and_compact(
         }
     }
 
-    let mut rrd_out = std::fs::File::create(&path_to_output_rrd)
-        .with_context(|| format!("{path_to_output_rrd:?}"))?;
+    let mut rrd_out = if let Some(path) = path_to_output_rrd {
+        Either::Left(std::io::BufWriter::new(
+            std::fs::File::create(path).with_context(|| format!("{path:?}"))?,
+        ))
+    } else {
+        Either::Right(std::io::BufWriter::new(std::io::stdout().lock()))
+    };
 
     let messages_rbl = entity_dbs
         .values()
@@ -216,7 +221,7 @@ fn merge_and_compact(
         .and_then(|db| db.store_info())
         .and_then(|info| info.store_version)
         .unwrap_or(re_build_info::CrateVersion::LOCAL);
-    re_log_encoding::encoder::encode(
+    let rrd_out_size = re_log_encoding::encoder::encode(
         version,
         encoding_options,
         // NOTE: We want to make sure all blueprints come first, so that the viewer can immediately
@@ -226,23 +231,22 @@ fn merge_and_compact(
     )
     .context("couldn't encode messages")?;
 
-    let rrd_out_size = rrd_out.metadata().ok().map(|md| md.len());
+    rrd_out.flush().context("couldn't flush output")?;
 
-    let compaction_ratio =
-        if let (Some(rrds_in_size), Some(rrd_out_size)) = (rrds_in_size, rrd_out_size) {
-            format!(
-                "{:3.3}%",
-                100.0 - rrd_out_size as f64 / (rrds_in_size as f64 + f64::EPSILON) * 100.0
-            )
-        } else {
-            "N/A".to_owned()
-        };
+    let rrds_in_size = rx_size_bytes.recv().ok();
+    let size_reduction = if let (Some(rrds_in_size), rrd_out_size) = (rrds_in_size, rrd_out_size) {
+        format!(
+            "-{:3.3}%",
+            100.0 - rrd_out_size as f64 / (rrds_in_size as f64 + f64::EPSILON) * 100.0
+        )
+    } else {
+        "N/A".to_owned()
+    };
 
     re_log::info!(
-        dst = ?path_to_output_rrd,
-        dst_size_bytes = %file_size_to_string(rrd_out_size),
+        dst_size_bytes = %file_size_to_string(Some(rrd_out_size)),
         time = ?now.elapsed(),
-        compaction_ratio,
+        size_reduction,
         srcs = ?path_to_input_rrds,
         srcs_size_bytes = %file_size_to_string(rrds_in_size),
         "merge/compaction finished"
