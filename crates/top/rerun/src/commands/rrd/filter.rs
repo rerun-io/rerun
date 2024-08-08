@@ -20,12 +20,12 @@ pub struct FilterCommand {
     path_to_output_rrd: Option<String>,
 
     /// Names of the timelines to be filtered out.
-    #[clap(long = "timeline")]
+    #[clap(long = "drop-timeline")]
     dropped_timelines: Vec<String>,
 
     /// If set, will try to proceed even in the face of IO and/or decoding errors in the input data.
-    #[clap(long, default_value_t = false)]
-    best_effort: bool,
+    #[clap(long = "continue-on-error", default_value_t = false)]
+    continue_on_error: bool,
 }
 
 impl FilterCommand {
@@ -34,7 +34,7 @@ impl FilterCommand {
             path_to_input_rrds,
             path_to_output_rrd,
             dropped_timelines,
-            best_effort,
+            continue_on_error,
         } = self;
 
         let path_to_output_rrd = path_to_output_rrd.clone();
@@ -99,7 +99,7 @@ impl FilterCommand {
                             let (fields, columns): (Vec<_>, Vec<_>) =
                                 itertools::izip!(msg.schema.fields.iter(), msg.chunk.iter())
                                     .filter(|(field, _col)| {
-                                        filter_timeline(&dropped_timelines, field)
+                                        should_keep_timeline(&dropped_timelines, field)
                                     })
                                     .map(|(field, col)| (field.clone(), col.clone()))
                                     .unzip();
@@ -122,7 +122,7 @@ impl FilterCommand {
                 }
             }
 
-            if !*best_effort && !is_success {
+            if !*continue_on_error && !is_success {
                 anyhow::bail!(
                     "one or more IO and/or decoding failures in the input stream (check logs)"
                 )
@@ -136,10 +136,10 @@ impl FilterCommand {
             .unwrap()?;
 
         let rrds_in_size = rx_size_bytes.recv().ok();
-        let filtered_ratio =
+        let size_reduction =
             if let (Some(rrds_in_size), rrd_out_size) = (rrds_in_size, rrd_out_size) {
                 format!(
-                    "{:3.3}%",
+                    "-{:3.3}%",
                     100.0 - rrd_out_size as f64 / (rrds_in_size as f64 + f64::EPSILON) * 100.0
                 )
             } else {
@@ -156,7 +156,7 @@ impl FilterCommand {
         re_log::info!(
             dst_size_bytes = %file_size_to_string(Some(rrd_out_size)),
             time = ?now.elapsed(),
-            filtered_ratio,
+            size_reduction,
             srcs = ?path_to_input_rrds,
             srcs_size_bytes = %file_size_to_string(rrds_in_size),
             "filter finished"
@@ -170,7 +170,7 @@ impl FilterCommand {
 
 use re_sdk::external::arrow2::datatypes::Field as ArrowField;
 
-fn filter_timeline(dropped_timelines: &HashSet<&String>, field: &ArrowField) -> bool {
+fn should_keep_timeline(dropped_timelines: &HashSet<&String>, field: &ArrowField) -> bool {
     let is_timeline = field
         .metadata
         .get(TransportChunk::FIELD_METADATA_KEY_KIND)
