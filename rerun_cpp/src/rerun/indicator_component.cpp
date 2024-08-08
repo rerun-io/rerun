@@ -13,4 +13,8 @@ namespace rerun::components {
             std::make_shared<arrow::NullArray>(1);
         return single_indicator_array;
     }
+
+    std::shared_ptr<arrow::Array> indicator_arrow_array(size_t num_instances) {
+        return std::make_shared<arrow::NullArray>(num_instances);
+    }
 } // namespace rerun::components

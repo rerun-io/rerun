@@ -21,8 +21,10 @@ use once_cell::sync::Lazy;
 
 use arrow_utils::arrow_array_from_c_ffi;
 use re_sdk::{
-    log::PendingRow, ComponentName, EntityPath, RecordingStream, RecordingStreamBuilder, StoreKind,
-    TimePoint,
+    log::{Chunk, ChunkId, PendingRow, TimeColumn},
+    time::TimeType,
+    ComponentName, EntityPath, RecordingStream, RecordingStreamBuilder, StoreKind, TimePoint,
+    Timeline,
 };
 use recording_streams::{recording_stream, RECORDING_STREAMS};
 
@@ -181,6 +183,84 @@ pub struct CDataRow {
     pub batches: *mut CComponentBatch,
 }
 
+/// See `rr_partitioned_component_batch` in the C header.
+#[repr(C)]
+pub struct CPartitionedComponentBatch {
+    pub component_type: CComponentTypeHandle,
+
+    /// A ListArray with the datatype `List(component_type)`.
+    pub array: arrow2::ffi::ArrowArray,
+}
+
+/// See `rr_sorting_status` in the C header.
+#[repr(u32)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum CSortingStatus {
+    Unknown = 0,
+    Sorted = 1,
+    Unsorted = 2,
+}
+
+impl CSortingStatus {
+    fn is_sorted(&self) -> Option<bool> {
+        match self {
+            Self::Sorted => Some(true),
+            Self::Unsorted => Some(false),
+            Self::Unknown => None,
+        }
+    }
+}
+
+/// See `rr_time_type` in the C header.
+/// Equivalent to Rust [`re_sdk::time::TimeType`].
+#[repr(u32)]
+#[derive(Debug, Clone, Copy)]
+pub enum CTimeType {
+    /// Normal wall time.
+    Time = 0,
+
+    /// Used e.g. for frames in a film.
+    Sequence = 1,
+}
+
+/// See `rr_timeline` in the C header.
+/// Equivalent to Rust [`re_sdk::Timeline`].
+#[repr(C)]
+#[derive(Debug, Clone)]
+pub struct CTimeline {
+    /// The name of the timeline.
+    pub name: CStringView,
+
+    /// The type of the timeline.
+    pub typ: CTimeType,
+}
+
+impl TryFrom<CTimeline> for Timeline {
+    type Error = CError;
+
+    fn try_from(timeline: CTimeline) -> Result<Self, CError> {
+        let name = timeline.name.as_str("timeline.name")?;
+        let typ = match timeline.typ {
+            CTimeType::Time => TimeType::Time,
+            CTimeType::Sequence => TimeType::Sequence,
+        };
+        Ok(Self::new(name, typ))
+    }
+}
+
+/// See `rr_time_column` in the C header.
+/// Equivalent to Rust [`re_sdk::log::TimeColumn`].
+#[repr(C)]
+pub struct CTimeColumn {
+    pub timeline: CTimeline,
+
+    /// Times, a primitive array of i64.
+    pub times: arrow2::ffi::ArrowArray,
+
+    /// The sorting order of the times array.
+    pub sorting_status: CSortingStatus,
+}
+
 #[repr(u32)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum CErrorCode {
@@ -189,6 +269,7 @@ pub enum CErrorCode {
     _CategoryArgument = 0x0000_00010,
     UnexpectedNullArgument,
     InvalidStringArgument,
+    InvalidEnumValue,
     InvalidRecordingStreamHandle,
     InvalidSocketAddress,
     InvalidComponentTypeHandle,
@@ -199,6 +280,7 @@ pub enum CErrorCode {
     RecordingStreamSaveFailure,
     RecordingStreamStdoutFailure,
     RecordingStreamSpawnFailure,
+    RecordingStreamChunkValidationFailure,
 
     _CategoryArrow = 0x0000_1000,
     ArrowFfiSchemaImportError,
@@ -824,6 +906,113 @@ pub unsafe extern "C" fn rr_recording_stream_log_file_from_contents(
         entity_path_prefix,
         static_,
     ) {
+        err.write_error(error);
+    }
+}
+
+#[allow(unsafe_code)]
+#[allow(clippy::result_large_err)]
+fn rr_recording_stream_send_columns_impl(
+    stream: CRecordingStream,
+    entity_path: CStringView,
+    time_columns: &[CTimeColumn],
+    component_batches: &[CPartitionedComponentBatch],
+) -> Result<(), CError> {
+    // Create chunk-id as early as possible. It has a timestamp and is used to estimate e2e latency.
+    let id = ChunkId::new();
+
+    let stream = recording_stream(stream)?;
+    let entity_path = entity_path.as_str("entity_path")?;
+
+    let time_columns: BTreeMap<Timeline, TimeColumn> = time_columns
+        .iter()
+        .map(|time_column| {
+            let timeline: Timeline = time_column.timeline.clone().try_into()?;
+            let datatype = arrow2::datatypes::DataType::Int64;
+            let time_values_untyped = unsafe { arrow_array_from_c_ffi(&time_column.times, datatype) }?;
+            let time_values = time_values_untyped
+                .as_any()
+                .downcast_ref::<arrow2::array::PrimitiveArray<i64>>()
+                .ok_or_else(|| {
+                    CError::new(
+                        CErrorCode::ArrowFfiArrayImportError,
+                        "Arrow C FFI import did not produce a Int64 time array - please file an issue at https://github.com/rerun-io/rerun/issues if you see this! This shouldn't be possible since conversion from C was successful with this datatype."
+                    )
+                })?;
+
+            Ok((
+                timeline,
+                TimeColumn::new(
+                    time_column.sorting_status.is_sorted(),
+                    timeline,
+                    time_values.clone(),
+                ),
+            ))
+        })
+        .collect::<Result<_, CError>>()?;
+
+    let components: BTreeMap<ComponentName, arrow2::array::ListArray<i32>> = {
+        let component_type_registry = COMPONENT_TYPES.read();
+        component_batches
+            .iter()
+            .map(|batch| {
+                let CPartitionedComponentBatch {
+                    component_type,
+                    array,
+                } = &batch;
+                let component_type = component_type_registry.get(*component_type)?;
+                let datatype = arrow2::array::ListArray::<i32>::default_datatype(
+                    component_type.datatype.clone(),
+                );
+
+                let component_values_untyped = unsafe { arrow_array_from_c_ffi(array, datatype) }?;
+                let component_values = component_values_untyped
+                    .as_any()
+                    .downcast_ref::<arrow2::array::ListArray<i32>>()
+                    .ok_or_else(|| {
+                        CError::new(
+                            CErrorCode::ArrowFfiArrayImportError,
+                            "Arrow C FFI import did not produce a ListArray - please file an issue at https://github.com/rerun-io/rerun/issues if you see this! This shouldn't be possible since conversion from C was successful with this datatype.",
+                        )
+                    })?;
+
+                Ok((component_type.name, component_values.clone()))
+            })
+            .collect::<Result<_, CError>>()?
+    };
+
+    let chunk = Chunk::from_auto_row_ids(id, entity_path.into(), time_columns, components)
+        .map_err(|err| {
+            CError::new(
+                CErrorCode::RecordingStreamChunkValidationFailure,
+                &format!("Failed to create chunk: {err}"),
+            )
+        })?;
+
+    stream.send_chunk(chunk);
+
+    Ok(())
+}
+
+#[allow(unsafe_code)]
+#[no_mangle]
+pub unsafe extern "C" fn rr_recording_stream_send_columns(
+    stream: CRecordingStream,
+    entity_path: CStringView,
+    time_columns: *const CTimeColumn,
+    num_time_columns: u32,
+    component_batches: *const CPartitionedComponentBatch,
+    num_component_batches: u32,
+    error: *mut CError,
+) {
+    let time_columns =
+        unsafe { std::slice::from_raw_parts(time_columns, num_time_columns as usize) };
+    let component_batches =
+        unsafe { std::slice::from_raw_parts(component_batches, num_component_batches as usize) };
+
+    if let Err(err) =
+        rr_recording_stream_send_columns_impl(stream, entity_path, time_columns, component_batches)
+    {
         err.write_error(error);
     }
 }

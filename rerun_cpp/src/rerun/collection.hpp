@@ -341,12 +341,29 @@ namespace rerun {
         }
 
         /// Copies the data into a new `std::vector`.
-        std::vector<TElement> to_vector() const {
-            // TODO(andreas): Overload this for `const &` and `&&` to avoid the copy when possible.
+        std::vector<TElement> to_vector() const& {
             std::vector<TElement> result;
             result.reserve(size());
             result.insert(result.end(), begin(), end());
             return result;
+        }
+
+        /// Copies the data into a new `std::vector`.
+        ///
+        /// If possible, this will move the underlying data.
+        std::vector<TElement> to_vector() && {
+            switch (ownership) {
+                case CollectionOwnership::Borrowed: {
+                    std::vector<TElement> result;
+                    result.reserve(size());
+                    result.insert(result.end(), begin(), end());
+                    return result;
+                }
+                case CollectionOwnership::VectorOwned: {
+                    return std::move(storage.vector_owned);
+                }
+            }
+            return std::vector<TElement>();
         }
 
         /// Reinterpret this collection as a collection of bytes.
