@@ -2,7 +2,7 @@ namespace rerun.blueprint.components;
 
 
 /// The kind of query displayed by the dataframe view
-enum QueryKind: byte (
+enum QueryKind: ubyte (
     "attr.rerun.scope": "blueprint"
 ) {
     /// Invalid value. Won't show up in generated types.
