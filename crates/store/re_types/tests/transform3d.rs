@@ -15,7 +15,7 @@ fn roundtrip() {
             translation: Some(Vec3D([1.0, 2.0, 3.0]).into()),
             scale: Some(Scale3D::uniform(42.0)),
             relation: Some(TransformRelation::ChildFromParent),
-            ..Default::default()
+            ..Transform3D::clear()
         }, //
         Transform3D {
             translation: Some([1.0, 2.0, 3.0].into()),
@@ -26,7 +26,7 @@ fn roundtrip() {
                 }
                 .into(),
             ),
-            ..Default::default()
+            ..Transform3D::clear()
         }, //
         Transform3D {
             translation: Some(Vec3D([1.0, 2.0, 3.0]).into()),
@@ -39,17 +39,17 @@ fn roundtrip() {
             ),
             scale: Some(Scale3D::uniform(42.0)),
             relation: Some(TransformRelation::ChildFromParent),
-            ..Default::default()
+            ..Transform3D::clear()
         }, //
         Transform3D {
             translation: Some(Vec3D([1.0, 2.0, 3.0]).into()),
             relation: Some(TransformRelation::ChildFromParent),
-            ..Default::default()
+            ..Transform3D::clear()
         }, //
         Transform3D {
             mat3x3: Some(Mat3x3([1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0]).into()),
             relation: Some(TransformRelation::ParentFromChild),
-            ..Default::default()
+            ..Transform3D::clear()
         }, //
     ];
 
