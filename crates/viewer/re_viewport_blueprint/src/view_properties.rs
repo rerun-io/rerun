@@ -93,7 +93,7 @@ impl<'a> ViewProperty<'a> {
     }
 
     /// Get the component array for a given type or its fallback if the component is not present or empty.
-    pub fn component_array_or_fallback<C: re_types::Component + Default>(
+    pub fn component_array_or_fallback<C: re_types::Component>(
         &self,
         ctx: &'a ViewerContext<'a>,
         fallback_provider: &dyn ComponentFallbackProvider,
