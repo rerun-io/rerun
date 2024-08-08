@@ -48,9 +48,10 @@ namespace rerun {
         /// Depending on the `TimeType` of the timeline this may be either timestamps or sequence numbers.
         /// Make sure the sorting status is correctly specified.
         /// \param sorting_status The sorting status of the time points.
+        /// Already sorted time points may perform better.
         TimeColumn(
             Timeline timeline, Collection<int64_t> timepoints,
-            SortingStatus sorting_status = SortingStatus::Sorted
+            SortingStatus sorting_status = SortingStatus::Unknown
         );
 
         /// Creates a sequence time column from an array of sequence points.
@@ -59,9 +60,10 @@ namespace rerun {
         /// \param sequence_points The sequence points.
         /// Make sure the sorting status is correctly specified.
         /// \param sorting_status The sorting status of the sequence points.
+        /// Already sorted time points may perform better.
         static TimeColumn from_sequence_points(
             std::string_view timeline_name, Collection<int64_t> sequence_points,
-            SortingStatus sorting_status = SortingStatus::Sorted
+            SortingStatus sorting_status = SortingStatus::Unknown
         ) {
             return TimeColumn(
                 Timeline(timeline_name, TimeType::Sequence),
@@ -76,9 +78,10 @@ namespace rerun {
         /// \param timepoints_in_nanoseconds The time points in nanoseconds.
         /// Make sure the sorting status is correctly specified.
         /// \param sorting_status The sorting status of the time points.
+        /// Already sorted time points may perform better.
         static TimeColumn from_times_nanoseconds(
             std::string_view timeline_name, Collection<int64_t> timepoints_in_nanoseconds,
-            SortingStatus sorting_status = SortingStatus::Sorted
+            SortingStatus sorting_status = SortingStatus::Unknown
         ) {
             return TimeColumn(
                 Timeline(timeline_name, TimeType::Time),
@@ -93,11 +96,12 @@ namespace rerun {
         /// \param chrono_timepoints The time points as chrono durations.
         /// Make sure the sorting status is correctly specified.
         /// \param sorting_status The sorting status of the time points.
+        /// Already sorted time points may perform better.
         template <typename TRep, typename TPeriod>
         static TimeColumn from_times(
             std::string_view timeline_name,
             const Collection<std::chrono::duration<TRep, TPeriod>>& chrono_timepoints,
-            SortingStatus sorting_status = SortingStatus::Sorted
+            SortingStatus sorting_status = SortingStatus::Unknown
         ) {
             std::vector<int64_t> timepoints(chrono_timepoints.size());
             for (size_t i = 0; i < chrono_timepoints.size(); i++) {
