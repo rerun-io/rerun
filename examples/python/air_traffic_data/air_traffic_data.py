@@ -24,7 +24,7 @@ from pyproj.aoi import AreaOfInterest
 from pyproj.database import query_utm_crs_info
 from tqdm import tqdm
 
-DATA_DIR = Path(__file__).parent / "data"
+DATA_DIR = Path(__file__).parent / "dataset"
 MAP_DATA_DIR = DATA_DIR / "map_data"
 if not DATA_DIR.exists():
     DATA_DIR.mkdir()
