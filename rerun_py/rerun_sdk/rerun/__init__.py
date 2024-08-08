@@ -105,6 +105,9 @@ from .datatypes import (
 from .error_utils import (
     set_strict_mode as set_strict_mode,
 )
+from .legacy_notebook import (
+    legacy_notebook_show as legacy_notebook_show,
+)
 from .logging_handler import (
     LoggingHandler as LoggingHandler,
 )
