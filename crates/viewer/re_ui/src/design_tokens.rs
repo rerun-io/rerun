@@ -9,12 +9,16 @@ use crate::{design_tokens, CUSTOM_WINDOW_DECORATIONS};
 #[derive(Clone, Debug)]
 pub struct DesignTokens {
     pub json: serde_json::Value,
+    // TODO(ab): some colors, etc. are defined here, and some others are defined as functions. This
+    //           should be unified, in a way that minimize the number of json->Color32 conversions
+    //           at runtime.
     pub top_bar_color: egui::Color32,
     pub bottom_bar_color: egui::Color32,
     pub bottom_bar_stroke: egui::Stroke,
     pub bottom_bar_rounding: egui::Rounding,
     pub shadow_gradient_dark_start: egui::Color32,
     pub tab_bar_color: egui::Color32,
+    pub native_frame_stroke: egui::Stroke,
 }
 
 impl DesignTokens {
@@ -39,6 +43,10 @@ impl DesignTokens {
             }, // copied from figma, should be top only
             shadow_gradient_dark_start: egui::Color32::from_black_alpha(77),
             tab_bar_color: get_global_color(&json, "{Global.Color.Grey.200}"),
+            native_frame_stroke: egui::Stroke::new(
+                1.0,
+                get_global_color(&json, "{Global.Color.Grey.250}"),
+            ),
             json,
         }
     }
@@ -398,6 +406,11 @@ impl DesignTokens {
     /// The color we use to mean "loop all the data"
     pub fn loop_everything_color() -> egui::Color32 {
         egui::Color32::from_rgb(2, 80, 45) // from figma 2023-02-09
+    }
+
+    /// Used by the "add view or container" modal.
+    pub fn thumbnail_background_color(&self) -> egui::Color32 {
+        get_global_color(&design_tokens().json, "{Global.Color.Grey.250}")
     }
 }
 

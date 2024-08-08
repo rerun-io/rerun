@@ -1694,12 +1694,10 @@ fn paint_native_window_frame(egui_ctx: &egui::Context) {
         egui::Rect::EVERYTHING,
     );
 
-    let stroke = egui::Stroke::new(1.0, egui::Color32::from_gray(42)); // from figma 2022-02-06
-
     painter.rect_stroke(
         egui_ctx.screen_rect().shrink(0.5),
         re_ui::DesignTokens::native_window_rounding(),
-        stroke,
+        re_ui::design_tokens().native_frame_stroke,
     );
 }
 
