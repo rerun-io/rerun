@@ -1075,7 +1075,19 @@ fn quote_trait_impls_for_archetype(obj: &Object) -> TokenStream {
                 if obj.attrs.has(ATTR_RERUN_LOG_MISSING_AS_EMPTY) {
                     if is_plural {
                         // Always log Option<Vec<C>> as Vec<V>, mapping None to empty batch
-                        quote!{ Some((&self.#field_name.as_ref().unwrap_or_default() as &dyn ComponentBatch).into()) }
+                        let component_type = quote_field_type_from_typ(&obj_field.typ, false).0;
+                        quote!{
+                            Some((
+                                if let Some(comp_batch) = &self.#field_name {
+                                    (comp_batch as &dyn ComponentBatch)
+                                } else {
+                                    // We need a reference to something that outives the function call
+                                    static EMPTY_BATCH: once_cell::sync::OnceCell<#component_type> = once_cell::sync::OnceCell::new();
+                                    let empty_batch: &#component_type = EMPTY_BATCH.get_or_init(|| Vec::new());
+                                    (empty_batch as &dyn ComponentBatch)
+                                }
+                            ).into())
+                        }
                     } else {
                         // Always log Option<C>, mapping None to empty batch
                         quote!{ Some((&self.#field_name as &dyn ComponentBatch).into()) }
