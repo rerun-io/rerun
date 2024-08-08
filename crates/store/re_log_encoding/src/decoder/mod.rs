@@ -161,13 +161,14 @@ pub struct Decoder<R: std::io::Read> {
 impl<R: std::io::Read> Decoder<R> {
     /// Instantiates a new decoder.
     ///
-    /// This does not support multiplexed streams.
+    /// This does not support concatenated streams (i.e. streams of bytes where multiple RRD files
+    /// -- not recordings, RRD files! -- follow each other).
     ///
-    /// If you're not familiar with multiplexed RRD streams, then this is probably the function
+    /// If you're not familiar with concatenated RRD streams, then this is probably the function
     /// that you want to be using.
     ///
     /// See also:
-    /// * [`Decoder::new_multiplexed`]
+    /// * [`Decoder::new_concatenated`]
     pub fn new(version_policy: VersionPolicy, mut read: R) -> Result<Self, DecodeError> {
         re_tracing::profile_function!();
 
@@ -186,22 +187,23 @@ impl<R: std::io::Read> Decoder<R> {
         })
     }
 
-    /// Instantiates a new multiplexed decoder.
+    /// Instantiates a new concatenated decoder.
     ///
-    /// This will gracefully handle multiplexed RRD streams, at the cost of extra performance
-    /// overhead, by looking ahead for potential `FileHeader`s in the stream.
+    /// This will gracefully handle concatenated RRD streams (i.e. streams of bytes where multiple
+    /// RRD files -- not recordings, RRD files! -- follow each other), at the cost of extra
+    /// performance overhead, by looking ahead for potential `FileHeader`s in the stream.
     ///
-    /// The [`CrateVersion`] of the final, demultiplexed stream will correspond to the most recent
+    /// The [`CrateVersion`] of the final, deconcatenated stream will correspond to the most recent
     /// version among all the versions found in the stream.
     ///
     /// This is particularly useful when working with stdio streams.
     ///
-    /// If you're not familiar with multiplexed RRD streams, then you probably want to use
+    /// If you're not familiar with concatenated RRD streams, then you probably want to use
     /// [`Decoder::new`] instead.
     ///
     /// See also:
     /// * [`Decoder::new`]
-    pub fn new_multiplexed(
+    pub fn new_concatenated(
         version_policy: VersionPolicy,
         mut read: std::io::BufReader<R>,
     ) -> Result<Self, DecodeError> {
@@ -232,7 +234,7 @@ impl<R: std::io::Read> Decoder<R> {
     ///
     /// Returns true if a valid header was found.
     ///
-    /// No-op if the decoder wasn't initialized with [`Decoder::new_multiplexed`].
+    /// No-op if the decoder wasn't initialized with [`Decoder::new_concatenated`].
     fn peek_file_header(&mut self) -> bool {
         match &mut self.read {
             Reader::Raw(_) => false,

@@ -9,7 +9,7 @@ pub fn load_stdin(tx: Sender<LogMsg>) -> anyhow::Result<()> {
     let version_policy = re_log_encoding::decoder::VersionPolicy::Warn;
 
     let stdin = std::io::BufReader::new(std::io::stdin());
-    let decoder = re_log_encoding::decoder::Decoder::new_multiplexed(version_policy, stdin)?;
+    let decoder = re_log_encoding::decoder::Decoder::new_concatenated(version_policy, stdin)?;
 
     rayon::spawn(move || {
         re_tracing::profile_scope!("stdin");
