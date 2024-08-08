@@ -64,6 +64,14 @@ namespace rerun {
             );
         }
 
+        /// Creates a new partitioned component batch with a given number of archetype indicators for a given archetype type.
+        template <typename Archetype>
+        static Result<PartitionedComponentBatch> from_indicators(uint32_t num_indicators) {
+            return PartitionedComponentBatch::from_loggable<Archetype::IndicatorComponent>(
+                std::vector(num_indicators, Archetype::IndicatorComponent())
+            );
+        }
+
         /// Creates a new component batch partition from a batch and a collection of run lengths.
         ///
         /// \param batch A batch of components which is about to be partitioned.
