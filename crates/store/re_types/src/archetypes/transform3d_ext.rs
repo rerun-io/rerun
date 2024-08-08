@@ -26,7 +26,7 @@ impl Transform3D {
     pub fn from_translation(translation: impl Into<Translation3D>) -> Self {
         Self {
             translation: Some(translation.into()),
-            ..Self::default()
+            ..Self::clear()
         }
     }
 
@@ -35,14 +35,14 @@ impl Transform3D {
     pub fn from_mat3x3(mat3x3: impl Into<TransformMat3x3>) -> Self {
         Self {
             mat3x3: Some(mat3x3.into()),
-            ..Self::default()
+            ..Self::clear()
         }
     }
 
     /// From a rotation
     #[inline]
     pub fn from_rotation(rotation: impl Into<Rotation3D>) -> Self {
-        Self::default().with_rotation(rotation)
+        Self::clear().with_rotation(rotation)
     }
 
     /// From a scale
@@ -50,7 +50,7 @@ impl Transform3D {
     pub fn from_scale(scale: impl Into<Scale3D>) -> Self {
         Self {
             scale: Some(scale.into()),
-            ..Self::default()
+            ..Self::clear()
         }
     }
 
@@ -62,7 +62,7 @@ impl Transform3D {
     ) -> Self {
         Self {
             translation: Some(translation.into()),
-            ..Self::default()
+            ..Self::clear()
         }
         .with_rotation(rotation)
     }
@@ -76,7 +76,7 @@ impl Transform3D {
         Self {
             mat3x3: Some(mat3x3.into()),
             translation: Some(translation.into()),
-            ..Self::default()
+            ..Self::clear()
         }
     }
 
@@ -89,7 +89,7 @@ impl Transform3D {
         Self {
             scale: Some(scale.into()),
             translation: Some(translation.into()),
-            ..Self::default()
+            ..Self::clear()
         }
     }
 
@@ -103,7 +103,7 @@ impl Transform3D {
         Self {
             scale: Some(scale.into()),
             translation: Some(translation.into()),
-            ..Self::default()
+            ..Self::clear()
         }
         .with_rotation(rotation)
     }
@@ -113,7 +113,7 @@ impl Transform3D {
     pub fn from_rotation_scale(rotation: impl Into<Rotation3D>, scale: impl Into<Scale3D>) -> Self {
         Self {
             scale: Some(scale.into()),
-            ..Self::default()
+            ..Self::clear()
         }
         .with_rotation(rotation)
     }
