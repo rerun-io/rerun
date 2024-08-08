@@ -3,7 +3,8 @@
 
 namespace rerun::components {
     const std::shared_ptr<arrow::DataType>& indicator_arrow_datatype() {
-        return arrow::null();
+        static std::shared_ptr<arrow::DataType> datatype = arrow::null();
+        return datatype;
     }
 
     const std::shared_ptr<arrow::Array>& indicator_arrow_array() {
