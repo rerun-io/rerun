@@ -22,8 +22,8 @@ pub struct MergeCommand {
     path_to_output_rrd: Option<String>,
 
     /// If set, will try to proceed even in the face of IO and/or decoding errors in the input data.
-    #[clap(long, default_value_t = false)]
-    best_effort: bool,
+    #[clap(long = "continue-on-error", default_value_t = false)]
+    continue_on_error: bool,
 }
 
 impl MergeCommand {
@@ -31,7 +31,7 @@ impl MergeCommand {
         let Self {
             path_to_input_rrds,
             path_to_output_rrd,
-            best_effort,
+            continue_on_error,
         } = self;
 
         if path_to_output_rrd.is_none() {
@@ -48,7 +48,7 @@ impl MergeCommand {
         let store_config = ChunkStoreConfig::ALL_DISABLED;
 
         merge_and_compact(
-            *best_effort,
+            *continue_on_error,
             &store_config,
             path_to_input_rrds,
             path_to_output_rrd.as_ref(),
@@ -88,8 +88,8 @@ pub struct CompactCommand {
     max_rows_if_unsorted: Option<u64>,
 
     /// If set, will try to proceed even in the face of IO and/or decoding errors in the input data.
-    #[clap(long, default_value_t = false)]
-    best_effort: bool,
+    #[clap(long = "continue-on-error", default_value_t = false)]
+    continue_on_error: bool,
 }
 
 impl CompactCommand {
@@ -100,7 +100,7 @@ impl CompactCommand {
             max_bytes,
             max_rows,
             max_rows_if_unsorted,
-            best_effort,
+            continue_on_error,
         } = self;
 
         if path_to_output_rrd.is_none() {
@@ -126,7 +126,7 @@ impl CompactCommand {
         }
 
         merge_and_compact(
-            *best_effort,
+            *continue_on_error,
             &store_config,
             path_to_input_rrds,
             path_to_output_rrd.as_ref(),
@@ -135,7 +135,7 @@ impl CompactCommand {
 }
 
 fn merge_and_compact(
-    best_effort: bool,
+    continue_on_error: bool,
     store_config: &ChunkStoreConfig,
     path_to_input_rrds: &[String],
     path_to_output_rrd: Option<&String>,
@@ -189,7 +189,7 @@ fn merge_and_compact(
             }
         }
 
-        if !best_effort && !is_success {
+        if !continue_on_error && !is_success {
             anyhow::bail!(
                 "one or more IO and/or decoding failures in the input stream (check logs)"
             )
@@ -214,6 +214,7 @@ fn merge_and_compact(
         .filter(|entity_db| entity_db.store_kind() == StoreKind::Recording)
         .flat_map(|entity_db| entity_db.to_messages(None /* time selection */));
 
+    // TODO(cmc): encoding options should match the original.
     let encoding_options = re_log_encoding::EncodingOptions::COMPRESSED;
     let version = entity_dbs
         .values()
