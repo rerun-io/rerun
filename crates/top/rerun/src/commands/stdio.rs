@@ -36,16 +36,18 @@ pub fn read_rrd_streams_from_file_or_stdin(
 
                 let stdin = std::io::BufReader::new(std::io::stdin().lock());
 
-                let decoder =
-                    match re_log_encoding::decoder::Decoder::new_multiplexed(version_policy, stdin)
-                        .context("couldn't decode stdin stream -- skipping")
-                    {
-                        Ok(decoder) => decoder,
-                        Err(err) => {
-                            tx.send(Err(err)).ok();
-                            return;
-                        }
-                    };
+                let decoder = match re_log_encoding::decoder::Decoder::new_concatenated(
+                    version_policy,
+                    stdin,
+                )
+                .context("couldn't decode stdin stream -- skipping")
+                {
+                    Ok(decoder) => decoder,
+                    Err(err) => {
+                        tx.send(Err(err)).ok();
+                        return;
+                    }
+                };
 
                 for res in decoder {
                     let res = res.context("couldn't decode message from stdin -- skipping");
