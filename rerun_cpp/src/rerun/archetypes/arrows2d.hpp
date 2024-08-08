@@ -5,6 +5,7 @@
 
 #include "../collection.hpp"
 #include "../compiler_utils.hpp"
+#include "../component_batch.hpp"
 #include "../components/class_id.hpp"
 #include "../components/color.hpp"
 #include "../components/draw_order.hpp"
@@ -12,7 +13,6 @@
 #include "../components/radius.hpp"
 #include "../components/text.hpp"
 #include "../components/vector2d.hpp"
-#include "../data_cell.hpp"
 #include "../indicator_component.hpp"
 #include "../result.hpp"
 
@@ -166,6 +166,6 @@ namespace rerun {
     template <>
     struct AsComponents<archetypes::Arrows2D> {
         /// Serialize all set component batches.
-        static Result<std::vector<DataCell>> serialize(const archetypes::Arrows2D& archetype);
+        static Result<std::vector<ComponentBatch>> serialize(const archetypes::Arrows2D& archetype);
     };
 } // namespace rerun

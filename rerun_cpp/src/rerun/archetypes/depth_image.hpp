@@ -5,13 +5,13 @@
 
 #include "../collection.hpp"
 #include "../compiler_utils.hpp"
+#include "../component_batch.hpp"
 #include "../components/colormap.hpp"
 #include "../components/depth_meter.hpp"
 #include "../components/draw_order.hpp"
 #include "../components/fill_ratio.hpp"
 #include "../components/image_buffer.hpp"
 #include "../components/image_format.hpp"
-#include "../data_cell.hpp"
 #include "../image_utils.hpp"
 #include "../indicator_component.hpp"
 #include "../result.hpp"
@@ -224,6 +224,7 @@ namespace rerun {
     template <>
     struct AsComponents<archetypes::DepthImage> {
         /// Serialize all set component batches.
-        static Result<std::vector<DataCell>> serialize(const archetypes::DepthImage& archetype);
+        static Result<std::vector<ComponentBatch>> serialize(const archetypes::DepthImage& archetype
+        );
     };
 } // namespace rerun

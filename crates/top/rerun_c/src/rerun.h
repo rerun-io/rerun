@@ -191,13 +191,13 @@ typedef struct rr_component_type {
 } rr_component_type;
 
 /// Arrow-encoded data of a single batch components for a single entity.
-typedef struct rr_data_cell {
-    /// The component type to use for this data cell.
+typedef struct rr_component_batch {
+    /// The component type to use for this batch.
     rr_component_type_handle component_type;
 
     /// A batch of instances of this component serialized into an arrow array.
     struct ArrowArray array;
-} rr_data_cell;
+} rr_component_batch;
 
 /// Arrow-encoded log data for a single entity.
 /// May contain many components.
@@ -205,11 +205,11 @@ typedef struct {
     /// Where to log to, e.g. `world/camera`.
     rr_string entity_path;
 
-    /// Number of components.
-    uint32_t num_data_cells;
+    /// Number of different component batches.
+    uint32_t num_component_batches;
 
     /// One for each component.
-    rr_data_cell* data_cells;
+    rr_component_batch* component_batches;
 } rr_data_row;
 
 /// Error codes returned by the Rerun C SDK as part of `rr_error`.
@@ -282,7 +282,7 @@ extern const char* rr_version_string(void);
 /// If a Rerun Viewer is already listening on this TCP port, this does nothing.
 extern void rr_spawn(const rr_spawn_options* spawn_opts, rr_error* error);
 
-/// Registers a new component type to be used in `rr_data_cell`.
+/// Registers a new component type to be used in `rr_component_batch`.
 ///
 /// A component with a given name can only be registered once.
 /// Takes ownership of the passed arrow schema and will release it once it is no longer needed.
@@ -438,7 +438,7 @@ extern void rr_recording_stream_reset_time(rr_recording_stream stream);
 /// If `inject_time` is set to `true`, the row's timestamp data will be
 /// overridden using the recording streams internal clock.
 ///
-/// Takes ownership of the passed data cells and will release underlying
+/// Takes ownership of the passed data component batches and will release underlying
 /// arrow data once it is no longer needed.
 /// Any pointers passed via `rr_string` can be safely freed after this call.
 extern void rr_recording_stream_log(

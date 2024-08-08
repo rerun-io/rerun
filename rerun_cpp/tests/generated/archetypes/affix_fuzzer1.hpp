@@ -28,7 +28,7 @@
 
 #include <cstdint>
 #include <rerun/collection.hpp>
-#include <rerun/data_cell.hpp>
+#include <rerun/component_batch.hpp>
 #include <rerun/indicator_component.hpp>
 #include <rerun/result.hpp>
 #include <utility>
@@ -139,6 +139,8 @@ namespace rerun {
     template <>
     struct AsComponents<archetypes::AffixFuzzer1> {
         /// Serialize all set component batches.
-        static Result<std::vector<DataCell>> serialize(const archetypes::AffixFuzzer1& archetype);
+        static Result<std::vector<ComponentBatch>> serialize(
+            const archetypes::AffixFuzzer1& archetype
+        );
     };
 } // namespace rerun

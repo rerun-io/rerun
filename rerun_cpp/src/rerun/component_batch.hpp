@@ -12,20 +12,13 @@ namespace arrow {
     class DataType;
 } // namespace arrow
 
-struct rr_data_cell;
+struct rr_component_batch;
 
 namespace rerun {
     /// Arrow-encoded data of a single batch components for a single entity.
     ///
-    /// Note that the DataCell doesn't own `datatype` and `component_name`.
-    struct DataCell {
-        /// How many instances of the component were serialized in this data cell.
-        ///
-        /// TODO(andreas): Just like in Rust, make this part of `AsComponents`.
-        ///                 This will requiring inlining some things on RecordingStream and have some refactor ripples.
-        ///                 But it's worth keeping the language bindings more similar!
-        size_t num_instances;
-
+    /// Note that this doesn't own `datatype` and `component_name`.
+    struct ComponentBatch {
         /// Arrow-encoded data of the component instances.
         std::shared_ptr<arrow::Array> array;
 
@@ -33,11 +26,11 @@ namespace rerun {
         ComponentTypeHandle component_type;
 
       public:
-        /// Creates a new data cell from a collection of component instances.
+        /// Creates a new component batch from a collection of component instances.
         ///
         /// Automatically registers the component type the first time this type is encountered.
         template <typename T>
-        static Result<DataCell> from_loggable(const rerun::Collection<T>& components) {
+        static Result<ComponentBatch> from_loggable(const rerun::Collection<T>& components) {
             static_assert(
                 rerun::is_loggable<T>,
                 "The given type does not implement the rerun::Loggable trait."
@@ -53,26 +46,25 @@ namespace rerun {
             auto array = Loggable<T>::to_arrow(components.data(), components.size());
             RR_RETURN_NOT_OK(array.error);
 
-            DataCell cell;
-            cell.num_instances = components.size();
-            cell.array = std::move(array.value);
-            cell.component_type = component_type.value;
-            return cell;
+            ComponentBatch component_batch;
+            component_batch.array = std::move(array.value);
+            component_batch.component_type = component_type.value;
+            return component_batch;
         }
 
-        /// Creates a new data cell from a single component instance.
+        /// Creates a new component batch from a single component instance.
         ///
         /// Automatically registers the component type the first time this type is encountered.
         template <typename T>
-        static Result<DataCell> from_loggable(const T& component) {
+        static Result<ComponentBatch> from_loggable(const T& component) {
             // Collection adapter will automatically borrow for single elements, but let's do this explicitly, avoiding the extra hoop.
             const auto collection = Collection<T>::borrow(&component, 1);
             return from_loggable(collection);
         }
 
-        /// To rerun C API data cell.
+        /// To rerun C API component batch.
         ///
-        /// The resulting `rr_data_cell` keeps the `arrow::Array` alive until it is released.
-        Error to_c_ffi_struct(rr_data_cell& out_cell) const;
+        /// The resulting `rr_component_batch` keeps the `arrow::Array` alive until it is released.
+        Error to_c_ffi_struct(rr_component_batch& out_component_batch) const;
     };
 } // namespace rerun

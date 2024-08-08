@@ -5,6 +5,7 @@
 #![crate_type = "staticlib"]
 #![allow(clippy::missing_safety_doc, clippy::undocumented_unsafe_blocks)] // Too much unsafe
 
+mod arrow_utils;
 mod component_type_registry;
 mod error;
 mod ptr;
@@ -18,6 +19,7 @@ use std::{
 use component_type_registry::COMPONENT_TYPES;
 use once_cell::sync::Lazy;
 
+use arrow_utils::arrow_array_from_c_ffi;
 use re_sdk::{
     log::PendingRow, ComponentName, EntityPath, RecordingStream, RecordingStreamBuilder, StoreKind,
     TimePoint,
@@ -82,6 +84,8 @@ pub const RR_REC_STREAM_CURRENT_BLUEPRINT: CRecordingStream = 0xFFFFFFFE;
 pub const RR_COMPONENT_TYPE_HANDLE_INVALID: CComponentTypeHandle = 0xFFFFFFFF;
 
 /// C version of [`re_sdk::SpawnOptions`].
+///
+/// See `rr_spawn_options` in the C header.
 #[derive(Debug, Clone)]
 #[repr(C)]
 pub struct CSpawnOptions {
@@ -141,7 +145,7 @@ impl From<CStoreKind> for StoreKind {
     }
 }
 
-/// Simple C version of [`CStoreInfo`]
+/// See `rr_store_info` in the C header.
 #[repr(C)]
 #[derive(Debug)]
 pub struct CStoreInfo {
@@ -156,14 +160,16 @@ pub struct CStoreInfo {
     pub store_kind: CStoreKind,
 }
 
+/// See `rr_component_type` in the C header.
 #[repr(C)]
 pub struct CComponentType {
     pub name: CStringView,
     pub schema: arrow2::ffi::ArrowSchema,
 }
 
+/// See `rr_component_batch` in the C header.
 #[repr(C)]
-pub struct CDataCell {
+pub struct CComponentBatch {
     pub component_type: CComponentTypeHandle,
     pub array: arrow2::ffi::ArrowArray,
 }
@@ -172,7 +178,7 @@ pub struct CDataCell {
 pub struct CDataRow {
     pub entity_path: CStringView,
     pub num_data_cells: u32,
-    pub data_cells: *mut CDataCell,
+    pub batches: *mut CComponentBatch,
 }
 
 #[repr(u32)]
@@ -663,7 +669,7 @@ pub extern "C" fn rr_recording_stream_reset_time(stream: CRecordingStream) {
 #[allow(unsafe_code)]
 #[allow(clippy::result_large_err)]
 #[allow(clippy::needless_pass_by_value)] // Conceptually we're consuming the data_row, as we take ownership of data it points to.
-fn rr_log_impl(
+fn rr_recording_stream_log_impl(
     stream: CRecordingStream,
     data_row: CDataRow,
     inject_time: bool,
@@ -677,7 +683,7 @@ fn rr_log_impl(
     let CDataRow {
         entity_path,
         num_data_cells,
-        data_cells,
+        batches,
     } = data_row;
 
     let entity_path = entity_path.as_str("entity_path")?;
@@ -686,45 +692,20 @@ fn rr_log_impl(
     let num_data_cells = num_data_cells as usize;
     re_log::debug!("rerun_log {entity_path:?}, num_data_cells: {num_data_cells}");
 
-    let data_cells = unsafe { std::slice::from_raw_parts_mut(data_cells, num_data_cells) };
+    let batches = unsafe { std::slice::from_raw_parts_mut(batches, num_data_cells) };
 
     let mut components = BTreeMap::default();
     {
         let component_type_registry = COMPONENT_TYPES.read();
 
-        for data_cell in data_cells {
-            // Arrow2 implements drop for ArrowArray and ArrowSchema.
-            //
-            // Therefore, for things to work correctly we have to take ownership of the data cell!
-            // The C interface is documented to take ownership of the data cell - the user should NOT call `release`.
-            // This makes sense because from here on out we want to manage the lifetime of the underlying schema and array data:
-            // the schema won't survive a loop iteration since it's reference passed for import, whereas the ArrowArray lives
-            // on a longer within the resulting arrow::Array.
-            let CDataCell {
+        for batch in batches {
+            let CComponentBatch {
                 component_type,
                 array,
-            } = unsafe { std::ptr::read(data_cell) };
-
-            // It would be nice to now mark the data_cell as "consumed" by setting the original release method to nullptr.
-            // This would signifies to the calling code that the data_cell is no longer owned.
-            // However, Arrow2 doesn't allow us to access the fields of the ArrowArray and ArrowSchema structs.
-
-            let component_type = component_type_registry.get(component_type).ok_or_else(|| {
-                CError::new(
-                    CErrorCode::InvalidComponentTypeHandle,
-                    &format!("Invalid component type handle: {component_type}"),
-                )
-            })?;
-
-            let values =
-                unsafe { arrow2::ffi::import_array_from_c(array, component_type.datatype.clone()) }
-                    .map_err(|err| {
-                        CError::new(
-                            CErrorCode::ArrowFfiArrayImportError,
-                            &format!("Failed to import ffi array: {err}"),
-                        )
-                    })?;
-
+            } = &batch;
+            let component_type = component_type_registry.get(*component_type)?;
+            let datatype = component_type.datatype.clone();
+            let values = unsafe { arrow_array_from_c_ffi(array, datatype) }?;
             components.insert(component_type.name, values);
         }
     }
@@ -748,14 +729,14 @@ pub unsafe extern "C" fn rr_recording_stream_log(
     inject_time: bool,
     error: *mut CError,
 ) {
-    if let Err(err) = rr_log_impl(stream, data_row, inject_time) {
+    if let Err(err) = rr_recording_stream_log_impl(stream, data_row, inject_time) {
         err.write_error(error);
     }
 }
 
 #[allow(unsafe_code)]
 #[allow(clippy::result_large_err)]
-fn rr_log_file_from_path_impl(
+fn rr_recording_stream_log_file_from_path_impl(
     stream: CRecordingStream,
     filepath: CStringView,
     entity_path_prefix: CStringView,
@@ -787,14 +768,16 @@ pub unsafe extern "C" fn rr_recording_stream_log_file_from_path(
     static_: bool,
     error: *mut CError,
 ) {
-    if let Err(err) = rr_log_file_from_path_impl(stream, filepath, entity_path_prefix, static_) {
+    if let Err(err) =
+        rr_recording_stream_log_file_from_path_impl(stream, filepath, entity_path_prefix, static_)
+    {
         err.write_error(error);
     }
 }
 
 #[allow(unsafe_code)]
 #[allow(clippy::result_large_err)]
-fn rr_log_file_from_contents_impl(
+fn rr_recording_stream_log_file_from_contents_impl(
     stream: CRecordingStream,
     filepath: CStringView,
     contents: CBytesView,
@@ -834,9 +817,13 @@ pub unsafe extern "C" fn rr_recording_stream_log_file_from_contents(
     static_: bool,
     error: *mut CError,
 ) {
-    if let Err(err) =
-        rr_log_file_from_contents_impl(stream, filepath, contents, entity_path_prefix, static_)
-    {
+    if let Err(err) = rr_recording_stream_log_file_from_contents_impl(
+        stream,
+        filepath,
+        contents,
+        entity_path_prefix,
+        static_,
+    ) {
         err.write_error(error);
     }
 }

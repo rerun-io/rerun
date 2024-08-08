@@ -9,37 +9,37 @@ namespace rerun::blueprint::archetypes {}
 
 namespace rerun {
 
-    Result<std::vector<DataCell>>
+    Result<std::vector<ComponentBatch>>
         AsComponents<blueprint::archetypes::SpaceViewBlueprint>::serialize(
             const blueprint::archetypes::SpaceViewBlueprint& archetype
         ) {
         using namespace blueprint::archetypes;
-        std::vector<DataCell> cells;
+        std::vector<ComponentBatch> cells;
         cells.reserve(5);
 
         {
-            auto result = DataCell::from_loggable(archetype.class_identifier);
+            auto result = ComponentBatch::from_loggable(archetype.class_identifier);
             RR_RETURN_NOT_OK(result.error);
             cells.push_back(std::move(result.value));
         }
         if (archetype.display_name.has_value()) {
-            auto result = DataCell::from_loggable(archetype.display_name.value());
+            auto result = ComponentBatch::from_loggable(archetype.display_name.value());
             RR_RETURN_NOT_OK(result.error);
             cells.push_back(std::move(result.value));
         }
         if (archetype.space_origin.has_value()) {
-            auto result = DataCell::from_loggable(archetype.space_origin.value());
+            auto result = ComponentBatch::from_loggable(archetype.space_origin.value());
             RR_RETURN_NOT_OK(result.error);
             cells.push_back(std::move(result.value));
         }
         if (archetype.visible.has_value()) {
-            auto result = DataCell::from_loggable(archetype.visible.value());
+            auto result = ComponentBatch::from_loggable(archetype.visible.value());
             RR_RETURN_NOT_OK(result.error);
             cells.push_back(std::move(result.value));
         }
         {
             auto indicator = SpaceViewBlueprint::IndicatorComponent();
-            auto result = DataCell::from_loggable(indicator);
+            auto result = ComponentBatch::from_loggable(indicator);
             RR_RETURN_NOT_OK(result.error);
             cells.emplace_back(std::move(result.value));
         }

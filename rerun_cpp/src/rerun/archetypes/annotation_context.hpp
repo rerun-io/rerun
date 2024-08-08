@@ -4,8 +4,8 @@
 #pragma once
 
 #include "../collection.hpp"
+#include "../component_batch.hpp"
 #include "../components/annotation_context.hpp"
-#include "../data_cell.hpp"
 #include "../indicator_component.hpp"
 #include "../result.hpp"
 
@@ -92,7 +92,7 @@ namespace rerun {
     template <>
     struct AsComponents<archetypes::AnnotationContext> {
         /// Serialize all set component batches.
-        static Result<std::vector<DataCell>> serialize(
+        static Result<std::vector<ComponentBatch>> serialize(
             const archetypes::AnnotationContext& archetype
         );
     };

@@ -4,8 +4,8 @@
 #pragma once
 
 #include "../collection.hpp"
+#include "../component_batch.hpp"
 #include "../components/scalar.hpp"
-#include "../data_cell.hpp"
 #include "../indicator_component.hpp"
 #include "../result.hpp"
 
@@ -73,6 +73,6 @@ namespace rerun {
     template <>
     struct AsComponents<archetypes::Scalar> {
         /// Serialize all set component batches.
-        static Result<std::vector<DataCell>> serialize(const archetypes::Scalar& archetype);
+        static Result<std::vector<ComponentBatch>> serialize(const archetypes::Scalar& archetype);
     };
 } // namespace rerun
