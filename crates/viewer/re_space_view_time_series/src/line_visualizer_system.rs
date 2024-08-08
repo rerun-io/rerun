@@ -96,7 +96,7 @@ impl SeriesLineSystem {
 
         let data_results = query.iter_visible_data_results(ctx, Self::identifier());
 
-        let parallel_loading = false; // TODO(emilk): enable parallel loading when it is faster, because right now it is often slower.
+        let parallel_loading = true;
         if parallel_loading {
             use rayon::prelude::*;
             re_tracing::profile_wait!("load_series");
