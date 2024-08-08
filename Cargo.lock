@@ -2041,13 +2041,13 @@ dependencies = [
 
 [[package]]
 name = "fixed"
-version = "1.23.1"
+version = "1.26.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "79386fdcec5e0fde91b1a6a5bcd89677d1f9304f7f986b154a1b9109038854d9"
+checksum = "4810bcba5534219e7c160473f3a59167e2c98bd7516bc0eec5185848bcd38963"
 dependencies = [
  "az",
  "bytemuck",
- "half 2.3.1",
+ "half 1.8.2",
  "serde",
  "typenum",
 ]
