@@ -174,5 +174,5 @@ jobs:
       - name: Build and run C++ tests with g++
         run: |
           pixi run -e cpp cpp-clean
-          RERUN_WERROR=ON RERUN_USE_ASAN=ON ASAN_OPTIONS=suppressions=.github/workflows/asan_suppressions.supp CXX=g++ pixi run -e cpp cpp-build-all
-          RERUN_WERROR=ON RERUN_USE_ASAN=ON ASAN_OPTIONS=suppressions=.github/workflows/asan_suppressions.supp CXX=g++ pixi run -e cpp cpp-test
+          RERUN_WERROR=ON RERUN_USE_ASAN=ON LSAN_OPTIONS=suppressions=.github/workflows/lsan_suppressions.supp CXX=g++ pixi run -e cpp cpp-build-all
+          RERUN_WERROR=ON RERUN_USE_ASAN=ON LSAN_OPTIONS=suppressions=.github/workflows/lsan_suppressions.supp CXX=g++ pixi run -e cpp cpp-test
