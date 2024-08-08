@@ -1,7 +1,6 @@
 #![allow(clippy::unwrap_used)] // fixed json file
 
 use crate::{design_tokens, CUSTOM_WINDOW_DECORATIONS};
-use egui::Color32;
 
 /// The look and feel of the UI.
 ///
@@ -26,7 +25,7 @@ impl DesignTokens {
                 .expect("Failed to parse data/design_tokens.json");
 
         Self {
-            top_bar_color: Color32::from_gray(20), // copied from figma
+            top_bar_color: get_aliased_color(&json, "{Alias.Color.Surface.Default.value}"),
             bottom_bar_color: get_global_color(&json, "{Global.Color.Grey.150}"),
             bottom_bar_stroke: egui::Stroke::new(
                 1.0,
@@ -39,7 +38,7 @@ impl DesignTokens {
                 se: 0.0,
             }, // copied from figma, should be top only
             shadow_gradient_dark_start: egui::Color32::from_black_alpha(77),
-            tab_bar_color: get_global_color(&json, "{Global.Color.Grey.175}"),
+            tab_bar_color: get_global_color(&json, "{Global.Color.Grey.200}"),
             json,
         }
     }
@@ -121,7 +120,7 @@ impl DesignTokens {
 
         let panel_bg_color = get_aliased_color(&self.json, "{Alias.Color.Surface.Default.value}");
         // let floating_color = get_aliased_color(&json, "{Alias.Color.Surface.Floating.value}");
-        let floating_color = Color32::from_gray(35); // TODO(emilk): change the content of the design_tokens.json origin instead
+        let floating_color = get_global_color(&self.json, "{Global.Color.Grey.250}");
 
         // Used as the background of text edits, scroll bars and others things
         // that needs to look different from other interactive stuff.
