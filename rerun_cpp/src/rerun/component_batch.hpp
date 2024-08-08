@@ -1,6 +1,7 @@
 #pragma once
 
 #include <memory> // shared_ptr
+#include <optional>
 
 #include "collection.hpp"
 #include "component_type.hpp"
