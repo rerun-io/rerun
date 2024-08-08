@@ -12,7 +12,7 @@ use nohash_hasher::IntMap;
 use re_log_types::{EntityPath, ResolvedTimeRange, TimeInt, TimePoint, Timeline};
 use re_types_core::{ComponentName, SizeBytes as _};
 
-use crate::{Chunk, ChunkId, ChunkResult, ChunkTimeline, RowId};
+use crate::{Chunk, ChunkId, ChunkResult, RowId, TimeColumn};
 
 // ---
 
@@ -727,8 +727,8 @@ impl PendingRow {
             .into_iter()
             .map(|(timeline, time)| {
                 let times = ArrowPrimitiveArray::<i64>::from_vec(vec![time.as_i64()]);
-                let time_chunk = ChunkTimeline::new(Some(true), timeline, times);
-                (timeline, time_chunk)
+                let time_column = TimeColumn::new(Some(true), timeline, times);
+                (timeline, time_column)
             })
             .collect();
 
@@ -822,7 +822,7 @@ impl PendingRow {
                 re_tracing::profile_scope!("iterate per datatype set");
 
                 let mut row_ids: Vec<RowId> = Vec::with_capacity(rows.len());
-                let mut timelines: BTreeMap<Timeline, PendingChunkTimeline> = BTreeMap::default();
+                let mut timelines: BTreeMap<Timeline, PendingTimeColumn> = BTreeMap::default();
 
                 // Create all the logical list arrays that we're going to need, accounting for the
                 // possibility of sparse components in the data.
@@ -848,13 +848,13 @@ impl PendingRow {
                     // the pre-configured `chunk_max_rows_if_unsorted` threshold, then split _even_
                     // further!
                     for (&timeline, _) in row_timepoint {
-                        let time_chunk = timelines
+                        let time_column = timelines
                             .entry(timeline)
-                            .or_insert_with(|| PendingChunkTimeline::new(timeline));
+                            .or_insert_with(|| PendingTimeColumn::new(timeline));
 
                         if !row_ids.is_empty() // just being extra cautious
                             && row_ids.len() as u64 >= chunk_max_rows_if_unsorted
-                            && !time_chunk.is_sorted
+                            && !time_column.is_sorted
                         {
                             chunks.push(Chunk::from_native_row_ids(
                                 ChunkId::new(),
@@ -863,7 +863,7 @@ impl PendingRow {
                                 &std::mem::take(&mut row_ids),
                                 std::mem::take(&mut timelines)
                                     .into_iter()
-                                    .map(|(timeline, time_chunk)| (timeline, time_chunk.finish()))
+                                    .map(|(timeline, time_column)| (timeline, time_column.finish()))
                                     .collect(),
                                 std::mem::take(&mut components)
                                     .into_iter()
@@ -881,10 +881,10 @@ impl PendingRow {
                     row_ids.push(*row_id);
 
                     for (&timeline, &time) in row_timepoint {
-                        let time_chunk = timelines
+                        let time_column = timelines
                             .entry(timeline)
-                            .or_insert_with(|| PendingChunkTimeline::new(timeline));
-                        time_chunk.push(time);
+                            .or_insert_with(|| PendingTimeColumn::new(timeline));
+                        time_column.push(time);
                     }
 
                     for (component_name, arrays) in &mut components {
@@ -905,7 +905,7 @@ impl PendingRow {
                     &std::mem::take(&mut row_ids),
                     timelines
                         .into_iter()
-                        .map(|(timeline, time_chunk)| (timeline, time_chunk.finish()))
+                        .map(|(timeline, time_column)| (timeline, time_column.finish()))
                         .collect(),
                     components
                         .into_iter()
@@ -925,14 +925,14 @@ impl PendingRow {
 /// Helper class used to buffer time data.
 ///
 /// See [`PendingRow::many_into_chunks`] for usage.
-struct PendingChunkTimeline {
+struct PendingTimeColumn {
     timeline: Timeline,
     times: Vec<i64>,
     is_sorted: bool,
     time_range: ResolvedTimeRange,
 }
 
-impl PendingChunkTimeline {
+impl PendingTimeColumn {
     fn new(timeline: Timeline) -> Self {
         Self {
             timeline,
@@ -957,7 +957,7 @@ impl PendingChunkTimeline {
         times.push(time.as_i64());
     }
 
-    fn finish(self) -> ChunkTimeline {
+    fn finish(self) -> TimeColumn {
         let Self {
             timeline,
             times,
@@ -965,7 +965,7 @@ impl PendingChunkTimeline {
             time_range,
         } = self;
 
-        ChunkTimeline {
+        TimeColumn {
             timeline,
             times: ArrowPrimitiveArray::<i64>::from_vec(times).to(timeline.datatype()),
             is_sorted,
@@ -1044,7 +1044,7 @@ mod tests {
             let expected_row_ids = vec![row1.row_id, row2.row_id, row3.row_id];
             let expected_timelines = [(
                 timeline1,
-                ChunkTimeline::new(
+                TimeColumn::new(
                     Some(true),
                     timeline1,
                     ArrowPrimitiveArray::from_vec(vec![42, 43, 44]),
@@ -1200,7 +1200,7 @@ mod tests {
             let expected_row_ids = vec![row1.row_id, row3.row_id];
             let expected_timelines = [(
                 timeline1,
-                ChunkTimeline::new(
+                TimeColumn::new(
                     Some(true),
                     timeline1,
                     ArrowPrimitiveArray::from_vec(vec![42, 44]),
@@ -1228,7 +1228,7 @@ mod tests {
             let expected_row_ids = vec![row2.row_id];
             let expected_timelines = [(
                 timeline1,
-                ChunkTimeline::new(
+                TimeColumn::new(
                     Some(true),
                     timeline1,
                     ArrowPrimitiveArray::from_vec(vec![43]),
@@ -1315,7 +1315,7 @@ mod tests {
             let expected_row_ids = vec![row1.row_id];
             let expected_timelines = [(
                 timeline1,
-                ChunkTimeline::new(
+                TimeColumn::new(
                     Some(true),
                     timeline1,
                     ArrowPrimitiveArray::from_vec(vec![42]),
@@ -1344,7 +1344,7 @@ mod tests {
             let expected_timelines = [
                 (
                     timeline1,
-                    ChunkTimeline::new(
+                    TimeColumn::new(
                         Some(true),
                         timeline1,
                         ArrowPrimitiveArray::from_vec(vec![43, 44]),
@@ -1352,7 +1352,7 @@ mod tests {
                 ),
                 (
                     timeline2,
-                    ChunkTimeline::new(
+                    TimeColumn::new(
                         Some(true),
                         timeline2,
                         ArrowPrimitiveArray::from_vec(vec![1000, 1001]),
@@ -1436,7 +1436,7 @@ mod tests {
             let expected_row_ids = vec![row1.row_id, row3.row_id];
             let expected_timelines = [(
                 timeline1,
-                ChunkTimeline::new(
+                TimeColumn::new(
                     Some(true),
                     timeline1,
                     ArrowPrimitiveArray::from_vec(vec![42, 44]),
@@ -1464,7 +1464,7 @@ mod tests {
             let expected_row_ids = vec![row2.row_id];
             let expected_timelines = [(
                 timeline1,
-                ChunkTimeline::new(
+                TimeColumn::new(
                     Some(true),
                     timeline1,
                     ArrowPrimitiveArray::from_vec(vec![43]),
@@ -1566,7 +1566,7 @@ mod tests {
             let expected_timelines = [
                 (
                     timeline1,
-                    ChunkTimeline::new(
+                    TimeColumn::new(
                         Some(false),
                         timeline1,
                         ArrowPrimitiveArray::from_vec(vec![45, 42, 43, 44]),
@@ -1574,7 +1574,7 @@ mod tests {
                 ),
                 (
                     timeline2,
-                    ChunkTimeline::new(
+                    TimeColumn::new(
                         Some(false),
                         timeline2,
                         ArrowPrimitiveArray::from_vec(vec![1003, 1000, 1001, 1002]),
@@ -1680,7 +1680,7 @@ mod tests {
             let expected_timelines = [
                 (
                     timeline1,
-                    ChunkTimeline::new(
+                    TimeColumn::new(
                         Some(false),
                         timeline1,
                         ArrowPrimitiveArray::from_vec(vec![45, 42, 43]),
@@ -1688,7 +1688,7 @@ mod tests {
                 ),
                 (
                     timeline2,
-                    ChunkTimeline::new(
+                    TimeColumn::new(
                         Some(false),
                         timeline2,
                         ArrowPrimitiveArray::from_vec(vec![1003, 1000, 1001]),
@@ -1719,7 +1719,7 @@ mod tests {
             let expected_timelines = [
                 (
                     timeline1,
-                    ChunkTimeline::new(
+                    TimeColumn::new(
                         Some(true),
                         timeline1,
                         ArrowPrimitiveArray::from_vec(vec![44]),
@@ -1727,7 +1727,7 @@ mod tests {
                 ),
                 (
                     timeline2,
-                    ChunkTimeline::new(
+                    TimeColumn::new(
                         Some(true),
                         timeline2,
                         ArrowPrimitiveArray::from_vec(vec![1002]),

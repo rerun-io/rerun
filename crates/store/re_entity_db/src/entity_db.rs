@@ -5,8 +5,8 @@ use parking_lot::Mutex;
 
 use re_chunk::{Chunk, ChunkResult, RowId, TimeInt};
 use re_chunk_store::{
-    ChunkStore, ChunkStoreConfig, ChunkStoreEvent, ChunkStoreSubscriber, GarbageCollectionOptions,
-    GarbageCollectionTarget,
+    ChunkStore, ChunkStoreChunkStats, ChunkStoreConfig, ChunkStoreEvent, ChunkStoreSubscriber,
+    GarbageCollectionOptions, GarbageCollectionTarget,
 };
 use re_log_types::{
     ApplicationId, EntityPath, EntityPathHash, LogMsg, ResolvedTimeRange, ResolvedTimeRangeF,
@@ -51,6 +51,8 @@ pub struct EntityDb {
     /// entities/components.
     ///
     /// Used for time control.
+    ///
+    /// TODO(#7084): Get rid of [`TimesPerTimeline`] and implement time-stepping with [`crate::TimeHistogram`] instead.
     times_per_timeline: TimesPerTimeline,
 
     /// A time histogram of all entities, for every timeline.
@@ -227,7 +229,7 @@ impl EntityDb {
     }
 
     pub fn timelines(&self) -> impl ExactSizeIterator<Item = &Timeline> {
-        self.times_per_timeline().keys()
+        self.time_histogram_per_timeline.timelines()
     }
 
     pub fn times_per_timeline(&self) -> &TimesPerTimeline {
@@ -235,33 +237,17 @@ impl EntityDb {
     }
 
     pub fn has_any_data_on_timeline(&self, timeline: &Timeline) -> bool {
-        if let Some(times) = self.times_per_timeline.get(timeline) {
-            !times.is_empty()
-        } else {
-            false
-        }
+        self.time_histogram_per_timeline
+            .get(timeline)
+            .map_or(false, |hist| !hist.is_empty())
     }
 
     /// Returns the time range of data on the given timeline, ignoring any static times.
-    ///
-    /// This is O(N) in the number of times on the timeline.
     pub fn time_range_for(&self, timeline: &Timeline) -> Option<ResolvedTimeRange> {
-        let (mut start, mut end) = (None, None);
-        for time in self
-            .times_per_timeline()
-            .get(timeline)?
-            .keys()
-            .filter(|v| !v.is_static())
-            .copied()
-        {
-            if start.is_none() || Some(time) < start {
-                start = Some(time);
-            }
-            if end.is_none() || Some(time) > end {
-                end = Some(time);
-            }
-        }
-        Some(ResolvedTimeRange::new(start?, end?))
+        let hist = self.time_histogram_per_timeline.get(timeline)?;
+        let min = hist.min_key()?;
+        let max = hist.max_key()?;
+        Some(ResolvedTimeRange::new(min, max))
     }
 
     /// Histogram of all events on the timeeline, of all entities.
@@ -271,7 +257,7 @@ impl EntityDb {
 
     #[inline]
     pub fn num_rows(&self) -> u64 {
-        self.data_store.stats().total().total_num_rows
+        self.data_store.stats().total().num_rows
     }
 
     /// Return the current `ChunkStoreGeneration`. This can be used to determine whether the
@@ -469,9 +455,9 @@ impl EntityDb {
                 chunk
                     .timelines()
                     .get(&timeline)
-                    .map_or(false, |time_chunk| {
-                        time_range.contains(time_chunk.time_range().min())
-                            || time_range.contains(time_chunk.time_range().max())
+                    .map_or(false, |time_column| {
+                        time_range.contains(time_column.time_range().min())
+                            || time_range.contains(time_column.time_range().max())
                     })
             })
             .map(|chunk| {
@@ -538,29 +524,48 @@ impl EntityDb {
 
         Ok(new_db)
     }
+}
 
-    /// Returns the byte size of an entity and all its children on the given timeline, recursively.
+/// ## Stats
+impl EntityDb {
+    /// Returns the stats for the static store of the entity and all its children, recursively.
     ///
-    /// This includes static data.
-    pub fn approx_size_of_subtree_on_timeline(
-        &self,
-        timeline: &Timeline,
-        entity_path: &EntityPath,
-    ) -> u64 {
+    /// This excludes temporal data.
+    pub fn subtree_stats_static(&self, entity_path: &EntityPath) -> ChunkStoreChunkStats {
         re_tracing::profile_function!();
 
         let Some(subtree) = self.tree.subtree(entity_path) else {
-            return 0;
+            return Default::default();
         };
 
-        let mut size = 0;
+        let mut stats = ChunkStoreChunkStats::default();
         subtree.visit_children_recursively(|path| {
-            size += self
-                .store()
-                .approx_size_of_entity_on_timeline(timeline, path);
+            stats += self.store().entity_stats_static(path);
         });
 
-        size
+        stats
+    }
+
+    /// Returns the stats for the entity and all its children on the given timeline, recursively.
+    ///
+    /// This excludes static data.
+    pub fn subtree_stats_on_timeline(
+        &self,
+        entity_path: &EntityPath,
+        timeline: &Timeline,
+    ) -> ChunkStoreChunkStats {
+        re_tracing::profile_function!();
+
+        let Some(subtree) = self.tree.subtree(entity_path) else {
+            return Default::default();
+        };
+
+        let mut stats = ChunkStoreChunkStats::default();
+        subtree.visit_children_recursively(|path| {
+            stats += self.store().entity_stats_on_timeline(path, timeline);
+        });
+
+        stats
     }
 
     /// Returns true if an entity or any of its children have any data on the given timeline.

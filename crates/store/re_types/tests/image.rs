@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use re_types::{archetypes::Image, components::ColorModel, Archetype as _, AsComponents as _};
+use re_types::{archetypes::Image, datatypes::ColorModel, Archetype as _, AsComponents as _};
 
 mod util;
 

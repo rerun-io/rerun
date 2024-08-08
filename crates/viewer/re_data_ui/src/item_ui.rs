@@ -3,6 +3,7 @@
 //! TODO(andreas): This is not a `data_ui`, can this go somewhere else, shouldn't be in `re_data_ui`.
 
 use re_entity_db::{EntityTree, InstancePath};
+use re_format::format_uint;
 use re_log_types::{ApplicationId, ComponentPath, EntityPath, TimeInt, Timeline};
 use re_ui::{icons, list_item, SyntaxHighlighting, UiExt as _};
 use re_viewer_context::{HoverHighlight, Item, SpaceViewId, UiLayout, ViewerContext};
@@ -233,7 +234,8 @@ fn instance_path_button_to_ex(
     };
 
     let response = response.on_hover_ui(|ui| {
-        instance_hover_card_ui(ui, ctx, query, db, instance_path);
+        let include_subtree = false;
+        instance_hover_card_ui(ui, ctx, query, db, instance_path, include_subtree);
     });
 
     cursor_interact_with_selectable(ctx, response, item)
@@ -291,37 +293,71 @@ pub fn instance_path_parts_buttons(
     .response
 }
 
+/// If `include_subtree=true`, stats for the entire entity subtree will be shown.
 fn entity_tree_stats_ui(
     ui: &mut egui::Ui,
     timeline: &Timeline,
     db: &re_entity_db::EntityDb,
     tree: &EntityTree,
+    include_subtree: bool,
 ) {
     use re_format::format_bytes;
 
     let subtree_caveat = if tree.children.is_empty() {
         ""
-    } else {
+    } else if include_subtree {
         " (including subtree)"
+    } else {
+        " (excluding subtree)"
     };
 
-    let approx_num_bytes = db.approx_size_of_subtree_on_timeline(timeline, &tree.path);
-    if approx_num_bytes == 0 {
+    let (static_stats, timeline_stats) = if include_subtree {
+        (
+            db.subtree_stats_static(&tree.path),
+            db.subtree_stats_on_timeline(&tree.path, timeline),
+        )
+    } else {
+        (
+            db.store().entity_stats_static(&tree.path),
+            db.store().entity_stats_on_timeline(&tree.path, timeline),
+        )
+    };
+
+    let total_stats = static_stats + timeline_stats;
+
+    if total_stats.num_rows == 0 {
         return;
+    } else if timeline_stats.num_rows == 0 {
+        ui.label(format!(
+            "{} static rows{subtree_caveat}",
+            format_uint(total_stats.num_rows)
+        ));
+    } else if static_stats.num_rows == 0 {
+        ui.label(format!(
+            "{} rows on timeline '{timeline}'{subtree_caveat}",
+            format_uint(total_stats.num_rows),
+            timeline = timeline.name()
+        ));
+    } else {
+        ui.label(format!(
+            "{} rows = {} static + {} on timeline '{timeline}'{subtree_caveat}",
+            format_uint(total_stats.num_rows),
+            format_uint(static_stats.num_rows),
+            format_uint(timeline_stats.num_rows),
+            timeline = timeline.name()
+        ));
     }
+
+    let num_temporal_rows = timeline_stats.num_rows;
 
     let mut data_rate = None;
 
-    // Try to estimate data-rate
-    if db.subtree_has_temporal_data_on_timeline(timeline, &tree.path) {
-        let num_events = db
-            .store()
-            .num_temporal_events_on_timeline(timeline, &tree.path);
-
+    if 0 < timeline_stats.total_size_bytes && 1 < num_temporal_rows {
+        // Try to estimate data-rate:
         if let Some(time_range) = db.store().entity_time_range(timeline, &tree.path) {
             let min_time = time_range.min();
             let max_time = time_range.max();
-            if min_time < max_time && 1 < num_events {
+            if min_time < max_time {
                 // Let's do our best to avoid fencepost errors.
                 // If we log 1 MiB once every second, then after three
                 // events we have a span of 2 seconds, and 3 MiB,
@@ -333,10 +369,10 @@ fn entity_tree_stats_ui(
 
                 let duration = max_time.as_f64() - min_time.as_f64();
 
-                let mut bytes_per_time = approx_num_bytes as f64 / duration;
+                let mut bytes_per_time = timeline_stats.total_size_bytes as f64 / duration;
 
                 // Fencepost adjustment:
-                bytes_per_time *= (num_events - 1) as f64 / num_events as f64;
+                bytes_per_time *= (num_temporal_rows - 1) as f64 / num_temporal_rows as f64;
 
                 data_rate = Some(match timeline.typ() {
                     re_log_types::TimeType::Time => {
@@ -360,13 +396,13 @@ fn entity_tree_stats_ui(
     if let Some(data_rate) = data_rate {
         ui.label(format!(
             "Using ~{}{subtree_caveat} ≈ {}",
-            format_bytes(approx_num_bytes as f64),
+            format_bytes(total_stats.total_size_bytes as f64),
             data_rate
         ));
     } else {
         ui.label(format!(
             "Using ~{}{subtree_caveat}",
-            format_bytes(approx_num_bytes as f64)
+            format_bytes(total_stats.total_size_bytes as f64)
         ));
     }
 }
@@ -448,7 +484,8 @@ pub fn data_blueprint_button_to(
     let response = ui
         .selectable_label(ctx.selection().contains_item(&item), text)
         .on_hover_ui(|ui| {
-            entity_hover_card_ui(ui, ctx, query, db, entity_path);
+            let include_subtree = false;
+            entity_hover_card_ui(ui, ctx, query, db, entity_path, include_subtree);
         });
     cursor_interact_with_selectable(ctx, response, item)
 }
@@ -529,12 +566,15 @@ pub fn cursor_interact_with_selectable(
 ///
 /// The entity hover card is displayed if the provided instance path doesn't refer to a specific
 /// instance.
+///
+/// If `include_subtree=true`, stats for the entire entity subtree will be shown.
 pub fn instance_hover_card_ui(
     ui: &mut egui::Ui,
     ctx: &ViewerContext<'_>,
     query: &re_chunk_store::LatestAtQuery,
     db: &re_entity_db::EntityDb,
     instance_path: &InstancePath,
+    include_subtree: bool,
 ) {
     if !ctx.recording().is_known_entity(&instance_path.entity_path) {
         ui.label("Unknown entity.");
@@ -554,7 +594,7 @@ pub fn instance_hover_card_ui(
 
     if instance_path.instance.is_all() {
         if let Some(subtree) = ctx.recording().tree().subtree(&instance_path.entity_path) {
-            entity_tree_stats_ui(ui, &query.timeline(), db, subtree);
+            entity_tree_stats_ui(ui, &query.timeline(), db, subtree, include_subtree);
         }
     } else {
         // TODO(emilk): per-component stats
@@ -564,15 +604,18 @@ pub fn instance_hover_card_ui(
 }
 
 /// Displays the "hover card" (i.e. big tooltip) for an entity.
+///
+/// If `include_subtree=true`, stats for the entire entity subtree will be shown.
 pub fn entity_hover_card_ui(
     ui: &mut egui::Ui,
     ctx: &ViewerContext<'_>,
     query: &re_chunk_store::LatestAtQuery,
     db: &re_entity_db::EntityDb,
     entity_path: &EntityPath,
+    include_subtree: bool,
 ) {
     let instance_path = InstancePath::entity_all(entity_path.clone());
-    instance_hover_card_ui(ui, ctx, query, db, &instance_path);
+    instance_hover_card_ui(ui, ctx, query, db, &instance_path, include_subtree);
 }
 
 pub fn app_id_button_ui(

@@ -474,6 +474,17 @@ fn test_format_large_number() {
 pub fn format_bytes(number_of_bytes: f64) -> String {
     if number_of_bytes < 0.0 {
         format!("{MINUS}{}", format_bytes(-number_of_bytes))
+    } else if number_of_bytes == 0.0 {
+        "0 B".to_owned()
+    } else if number_of_bytes < 1.0 {
+        format!("{number_of_bytes} B")
+    } else if number_of_bytes < 20.0 {
+        let is_integer = number_of_bytes.round() == number_of_bytes;
+        if is_integer {
+            format!("{number_of_bytes:.0} B")
+        } else {
+            format!("{number_of_bytes:.1} B")
+        }
     } else if number_of_bytes < 10.0_f64.exp2() {
         format!("{number_of_bytes:.0} B")
     } else if number_of_bytes < 20.0_f64.exp2() {
@@ -491,6 +502,11 @@ pub fn format_bytes(number_of_bytes: f64) -> String {
 #[test]
 fn test_format_bytes() {
     let test_cases = [
+        (0.0, "0 B"),
+        (0.25, "0.25 B"),
+        (1.51, "1.5 B"),
+        (11.0, "11 B"),
+        (12.5, "12.5 B"),
         (999.0, "999 B"),
         (1000.0, "1000 B"),
         (1001.0, "1001 B"),

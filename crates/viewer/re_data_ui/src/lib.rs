@@ -19,6 +19,7 @@ mod data_source;
 mod entity_db;
 mod entity_path;
 mod image;
+mod image_format;
 mod instance_path;
 mod log_msg;
 mod pinhole;

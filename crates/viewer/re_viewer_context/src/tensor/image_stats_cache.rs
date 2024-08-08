@@ -10,7 +10,7 @@ pub struct ImageStatsCache(ahash::HashMap<u64, ImageStats>);
 
 impl ImageStatsCache {
     pub fn entry(&mut self, image: &ImageInfo) -> ImageStats {
-        let key = hash((image.blob_row_id, image.format));
+        let key = hash((image.buffer_row_id, image.format));
         *self
             .0
             .entry(key)

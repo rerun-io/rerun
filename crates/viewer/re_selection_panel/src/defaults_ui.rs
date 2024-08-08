@@ -25,6 +25,12 @@ pub fn view_components_defaults_section_ui(
     let active_defaults = active_defaults(ctx, view, db, query);
     let component_to_vis = component_to_vis(ctx);
 
+    // If there is nothing set by the user and nothing to be possibly added, we skip the section
+    // entirely.
+    if active_defaults.is_empty() && component_to_vis.is_empty() {
+        return;
+    }
+
     let components_to_show_in_add_menu =
         components_to_show_in_add_menu(ctx, &component_to_vis, &active_defaults);
     let reason_we_cannot_add_more = components_to_show_in_add_menu.as_ref().err().cloned();

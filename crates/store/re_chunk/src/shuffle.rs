@@ -8,7 +8,7 @@ use arrow2::{
 use itertools::Itertools as _;
 use re_log_types::Timeline;
 
-use crate::{Chunk, ChunkTimeline};
+use crate::{Chunk, TimeColumn};
 
 // ---
 
@@ -41,7 +41,7 @@ impl Chunk {
     pub fn is_time_sorted(&self) -> bool {
         self.timelines
             .values()
-            .all(|time_chunk| time_chunk.is_sorted())
+            .all(|time_column| time_column.is_sorted())
     }
 
     /// Is the chunk ascendingly sorted by time, for a specific timeline?
@@ -55,7 +55,7 @@ impl Chunk {
             || self
                 .timelines
                 .get(timeline)
-                .map_or(false, |time_chunk| time_chunk.is_sorted())
+                .map_or(false, |time_column| time_column.is_sorted())
     }
 
     /// For debugging purposes.
@@ -66,7 +66,7 @@ impl Chunk {
             || self
                 .timelines
                 .get(timeline)
-                .map_or(false, |time_chunk| time_chunk.is_sorted_uncached())
+                .map_or(false, |time_column| time_column.is_sorted_uncached())
     }
 
     /// Sort the chunk, if needed.
@@ -112,17 +112,17 @@ impl Chunk {
     ///
     /// This is a no-op if the underlying timeline is already sorted appropriately (happy path).
     pub fn sorted_by_timeline_if_unsorted(&self, timeline: &Timeline) -> Self {
-        re_tracing::profile_function!();
-
         let mut chunk = self.clone();
 
-        let Some(time_chunk) = chunk.timelines.get(timeline) else {
+        let Some(time_column) = chunk.timelines.get(timeline) else {
             return chunk;
         };
 
-        if time_chunk.is_sorted() {
+        if time_column.is_sorted() {
             return chunk;
         }
+
+        re_tracing::profile_function!();
 
         #[cfg(not(target_arch = "wasm32"))]
         let now = std::time::Instant::now();
@@ -130,7 +130,7 @@ impl Chunk {
         let swaps = {
             re_tracing::profile_scope!("swaps");
             let row_ids = chunk.row_ids().collect_vec();
-            let times = time_chunk.times_raw().to_vec();
+            let times = time_column.times_raw().to_vec();
             let mut swaps = (0..times.len()).collect::<Vec<_>>();
             swaps.sort_by_key(|&i| (times[i], row_ids[i]));
             swaps
@@ -234,7 +234,7 @@ impl Chunk {
             re_tracing::profile_scope!("timelines");
 
             for info in timelines.values_mut() {
-                let ChunkTimeline {
+                let TimeColumn {
                     timeline,
                     times,
                     is_sorted,
@@ -286,7 +286,7 @@ impl Chunk {
     }
 }
 
-impl ChunkTimeline {
+impl TimeColumn {
     /// Is the timeline sorted?
     ///
     /// This is O(1) (cached).

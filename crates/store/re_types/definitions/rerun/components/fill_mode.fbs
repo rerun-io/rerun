@@ -1,7 +1,7 @@
 namespace rerun.components;
 
 /// How a geometric shape is drawn and colored.
-enum FillMode: byte(
+enum FillMode: ubyte(
     "attr.docs.unreleased"
 ) {
     /// Invalid value. Won't show up in generated types.

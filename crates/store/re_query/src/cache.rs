@@ -234,8 +234,8 @@ impl ChunkStoreSubscriber for Caches {
                     }
                 }
 
-                for (&timeline, time_chunk) in chunk.timelines() {
-                    for data_time in time_chunk.times() {
+                for (&timeline, time_column) in chunk.timelines() {
+                    for data_time in time_column.times() {
                         for component_name in chunk.component_names() {
                             let key = CacheKey::new(
                                 chunk.entity_path().clone(),

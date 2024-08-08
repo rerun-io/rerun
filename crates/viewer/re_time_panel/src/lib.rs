@@ -649,12 +649,14 @@ impl TimePanel {
             );
 
         let response = response.on_hover_ui(|ui| {
+            let include_subtree = true;
             re_data_ui::item_ui::entity_hover_card_ui(
                 ui,
                 ctx,
                 &time_ctrl.current_query(),
                 db,
                 &tree.path,
+                include_subtree,
             );
         });
 

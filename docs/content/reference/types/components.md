@@ -18,11 +18,9 @@ on [Entities and Components](../../concepts/entity-component.md).
 * [`AnnotationContext`](components/annotation_context.md): The annotation context provides additional information on how to display entities.
 * [`AxisLength`](components/axis_length.md): The length of an axis in local units of the space.
 * [`Blob`](components/blob.md): A binary blob of data.
-* [`ChannelDatatype`](components/channel_datatype.md): The innermost datatype of an image.
 * [`ClassId`](components/class_id.md): A 16-bit ID representing a type of semantic class.
 * [`ClearIsRecursive`](components/clear_is_recursive.md): Configures how a clear operation should behave - recursive or not.
 * [`Color`](components/color.md): An RGBA color with unmultiplied/separate alpha, in sRGB gamma space with linear alpha.
-* [`ColorModel`](components/color_model.md): Specified what color components are present in an [`archetypes.Image`](https://rerun.io/docs/reference/types/archetypes/image).
 * [`Colormap`](components/colormap.md): Colormap for mapping scalar values within a given range to a color.
 * [`DepthMeter`](components/depth_meter.md): The world->depth map scaling factor.
 * [`DisconnectedSpace`](components/disconnected_space.md): Spatially disconnect this entity from its parent.
@@ -32,6 +30,8 @@ on [Entities and Components](../../concepts/entity-component.md).
 * [`GammaCorrection`](components/gamma_correction.md): A gamma correction value to be used with a scalar value or color.
 * [`HalfSize2D`](components/half_size2d.md): Half-size (radius) of a 2D box.
 * [`HalfSize3D`](components/half_size3d.md): Half-size (radius) of a 3D box.
+* [`ImageBuffer`](components/image_buffer.md): A buffer that is known to store image data.
+* [`ImageFormat`](components/image_format.md): The metadata describing the contents of a [rerun.components.ImageBuffer].
 * [`ImagePlaneDistance`](components/image_plane_distance.md): The distance from the camera origin to the image plane when the projection is shown in a 3D viewer.
 * [`KeypointId`](components/keypoint_id.md): A 16-bit ID representing a type of semantic keypoint within a class.
 * [`LeafRotationAxisAngle`](components/leaf_rotation_axis_angle.md): 3D rotation represented by a rotation around a given axis that doesn't propagate in the transform hierarchy.
@@ -48,13 +48,11 @@ on [Entities and Components](../../concepts/entity-component.md).
 * [`Name`](components/name.md): A display name, typically for an entity or a item like a plot series.
 * [`Opacity`](components/opacity.md): Degree of transparency ranging from 0.0 (fully transparent) to 1.0 (fully opaque).
 * [`PinholeProjection`](components/pinhole_projection.md): Camera projection, from image coordinates to view coordinates.
-* [`PixelFormat`](components/pixel_format.md): Specifieds a particular format of an [`archetypes.Image`](https://rerun.io/docs/reference/types/archetypes/image).
 * [`Position2D`](components/position2d.md): A position in 2D space.
 * [`Position3D`](components/position3d.md): A position in 3D space.
 * [`Radius`](components/radius.md): The radius of something, e.g. a point.
 * [`Range1D`](components/range1d.md): A 1D range, specifying a lower and upper bound.
 * [`Resolution`](components/resolution.md): Pixel resolution width & height, e.g. of a camera sensor.
-* [`Resolution2D`](components/resolution2d.md): The width and height of a 2D image.
 * [`RotationAxisAngle`](components/rotation_axis_angle.md): 3D rotation represented by a rotation around a given axis.
 * [`RotationQuat`](components/rotation_quat.md): A 3D rotation expressed as a quaternion.
 * [`Scalar`](components/scalar.md): A scalar value, encoded as a 64-bit floating point.

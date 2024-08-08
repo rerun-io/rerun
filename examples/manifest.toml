@@ -98,6 +98,7 @@ examples = [
   "kiss-icp",
   "differentiable_blocks_world",
   "stereo_vision_slam",
+  "glomap",
   "signed_distance_fields",
   "raw_mesh",
 ]

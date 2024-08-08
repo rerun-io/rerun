@@ -3,9 +3,7 @@ use itertools::Itertools as _;
 
 use re_renderer::renderer::ColormappedTexture;
 use re_types::{
-    components::{ClassId, ColorModel},
-    image::ImageKind,
-    tensor_data::TensorElement,
+    components::ClassId, datatypes::ColorModel, image::ImageKind, tensor_data::TensorElement,
 };
 use re_viewer_context::{gpu_bridge, Annotations, ImageInfo, ImageStats};
 

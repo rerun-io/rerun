@@ -423,7 +423,7 @@ fn clear_and_gc() -> anyhow::Result<()> {
         db.gc_everything_but_the_latest_row_on_non_default_timelines();
 
         let stats = db.store().stats();
-        assert_eq!(stats.temporal_chunks.total_num_rows, 1);
+        assert_eq!(stats.temporal_chunks.num_rows, 1);
 
         let chunk = Chunk::builder(entity_path.clone())
             .with_component_batches(
@@ -443,7 +443,7 @@ fn clear_and_gc() -> anyhow::Result<()> {
 
         // No rows should remain because the table should have been purged
         let stats = db.store().stats();
-        assert_eq!(stats.temporal_chunks.total_num_rows, 0);
+        assert_eq!(stats.temporal_chunks.num_rows, 0);
 
         // EntityTree should be empty again when we end since everything was GC'd
         assert!(db.tree().is_empty(db.store()));

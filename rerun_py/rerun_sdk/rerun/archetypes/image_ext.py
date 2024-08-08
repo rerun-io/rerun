@@ -6,10 +6,15 @@ from typing import TYPE_CHECKING, Any, Union
 import numpy as np
 import numpy.typing as npt
 
-from ..components import ChannelDatatype, ChannelDatatypeLike, Resolution2D
-from ..components.color_model import ColorModel, ColorModelLike
-from ..components.pixel_format import PixelFormat, PixelFormatLike
-from ..datatypes import Float32Like
+from ..components import ImageFormat
+from ..datatypes import (
+    ChannelDatatype,
+    ChannelDatatypeLike,
+    ColorModel,
+    ColorModelLike,
+    Float32Like,
+    PixelFormatLike,
+)
 from ..error_utils import _send_warning_or_raise, catch_and_log_exceptions
 
 if TYPE_CHECKING:
@@ -26,7 +31,7 @@ if TYPE_CHECKING:
         npt.NDArray[np.uint64],
         npt.NDArray[np.uint8],
     ]
-    from . import Image, ImageEncoded
+    from . import EncodedImage, Image
 
 
 def _to_numpy(tensor: ImageLike) -> npt.NDArray[Any]:
@@ -125,9 +130,8 @@ class ImageExt:
                 # TODO(jleibs): Validate that bytes is the expected size.
 
                 self.__attrs_init__(
-                    data=bytes,
-                    resolution=Resolution2D(width=width, height=height),
-                    pixel_format=pixel_format,
+                    buffer=bytes,
+                    format=ImageFormat(width=width, height=height, pixel_format=pixel_format),
                     opacity=opacity,
                     draw_order=draw_order,
                 )
@@ -155,10 +159,13 @@ class ImageExt:
                 # TODO(jleibs): Validate that bytes is the expected size.
 
                 self.__attrs_init__(
-                    data=bytes,
-                    resolution=Resolution2D(width=width, height=height),
-                    color_model=color_model,
-                    datatype=datatype,
+                    buffer=bytes,
+                    format=ImageFormat(
+                        width=width,
+                        height=height,
+                        channel_datatype=datatype,  # type: ignore[arg-type]
+                        color_model=color_model,
+                    ),
                     opacity=opacity,
                     draw_order=draw_order,
                 )
@@ -221,15 +228,18 @@ class ImageExt:
             _send_warning_or_raise(f"Unsupported dtype {image.dtype} for Image")
 
         self.__attrs_init__(
-            data=image.tobytes(),
-            resolution=Resolution2D(width=width, height=height),
-            color_model=color_model,
-            datatype=datatype,
+            buffer=image.tobytes(),
+            format=ImageFormat(
+                width=width,
+                height=height,
+                channel_datatype=datatype,  # type: ignore[arg-type]
+                color_model=color_model,
+            ),
             opacity=opacity,
             draw_order=draw_order,
         )
 
-    def compress(self: Any, jpeg_quality: int = 95) -> ImageEncoded | Image:
+    def compress(self: Any, jpeg_quality: int = 95) -> EncodedImage | Image:
         """
         Compress the given image as a JPEG.
 
@@ -248,66 +258,64 @@ class ImageExt:
 
         from PIL import Image as PILImage
 
-        from ..archetypes import ImageEncoded
+        from ..archetypes import EncodedImage
 
         with catch_and_log_exceptions(context="Image compression"):
-            pixel_format = None
-            if self.pixel_format is not None:
-                pixel_format = PixelFormat(self.pixel_format.as_arrow_array().storage[0].as_py())
+            if self.format is None:
+                raise ValueError("Cannot JPEG compress an image without a known image_format")
+
+            image_format_arrow = self.format.as_arrow_array().storage[0].as_py()
+
+            image_format = ImageFormat(
+                width=image_format_arrow["width"],
+                height=image_format_arrow["height"],
+                pixel_format=image_format_arrow["pixel_format"],
+                channel_datatype=image_format_arrow["channel_datatype"],
+                color_model=image_format_arrow["color_model"],
+            )
 
             # TODO(jleibs): Support conversions here
-            if pixel_format is not None:
-                raise ValueError(f"Cannot JPEG compress an image with pixel_format {pixel_format}")
+            if image_format.pixel_format is not None:
+                raise ValueError(f"Cannot JPEG compress an image with pixel_format {image_format.pixel_format}")
 
-            color_model = None
-            if self.color_model is not None:
-                color_model = ColorModel(self.color_model.as_arrow_array().storage[0].as_py())
-
-            if color_model not in (ColorModel.L, ColorModel.RGB):
+            if image_format.color_model not in (ColorModel.L, ColorModel.RGB):
                 # TODO(#2340): BGR support!
                 raise ValueError(
-                    f"Cannot JPEG compress an image of type {color_model}. Only L (monochrome) and RGB are supported."
+                    f"Cannot JPEG compress an image of type {image_format.color_model}. Only L (monochrome) and RGB are supported."
                 )
 
-            datatype = None
-            if self.datatype is not None:
-                datatype = ChannelDatatype(self.datatype.as_arrow_array().storage[0].as_py())
-
-            if datatype != ChannelDatatype.U8:
+            if image_format.channel_datatype != ChannelDatatype.U8:
                 # See: https://pillow.readthedocs.io/en/stable/handbook/concepts.html#concept-modes
                 # Note that modes F and I do not support jpeg compression
-                raise ValueError(f"Cannot JPEG compress an image of datatype {datatype}. Only U8 is supported.")
-
-            width = None
-            height = None
-            if self.resolution is not None:
-                resolution = self.resolution.as_arrow_array()[0].as_py()
-                width = resolution[0]
-                height = resolution[1]
-
-            if width is None or height is None:
-                raise ValueError("Cannot JPEG compress an image without a resolution")
+                raise ValueError(
+                    f"Cannot JPEG compress an image of datatype {image_format.channel_datatype}. Only U8 is supported."
+                )
 
             buf = None
-            if self.data is not None:
-                buf = self.data.as_arrow_array().storage.values.to_numpy().view(datatype.to_np_dtype())
+            if self.buffer is not None:
+                buf = (
+                    self.buffer.as_arrow_array()
+                    .storage.values.to_numpy()
+                    .view(image_format.channel_datatype.to_np_dtype())
+                )
 
             if buf is None:
                 raise ValueError("Cannot JPEG compress an image without data")
 
-            if color_model == ColorModel.L:
-                image = buf.reshape(height, width)
+            # Note: np array shape is always (height, width, channels)
+            if image_format.color_model == ColorModel.L:
+                image = buf.reshape(image_format.height, image_format.width)
             else:
-                image = buf.reshape(height, width, 3)
+                image = buf.reshape(image_format.height, image_format.width, 3)
 
-            mode = str(color_model)
+            mode = str(image_format.color_model)
 
             pil_image = PILImage.fromarray(image, mode=mode)
             output = BytesIO()
             pil_image.save(output, format="JPEG", quality=jpeg_quality)
             jpeg_bytes = output.getvalue()
             output.close()
-            return ImageEncoded(contents=jpeg_bytes, media_type="image/jpeg")
+            return EncodedImage(contents=jpeg_bytes, media_type="image/jpeg")
 
         # On failure to compress, return a raw image
         return self  # type: ignore[no-any-return]

@@ -13,8 +13,8 @@ from .clear import Clear
 from .depth_image import DepthImage
 from .disconnected_space import DisconnectedSpace
 from .ellipsoids3d import Ellipsoids3D
+from .encoded_image import EncodedImage
 from .image import Image
-from .image_encoded import ImageEncoded
 from .leaf_transforms3d import LeafTransforms3D
 from .line_strips2d import LineStrips2D
 from .line_strips3d import LineStrips3D
@@ -44,8 +44,8 @@ __all__ = [
     "DepthImage",
     "DisconnectedSpace",
     "Ellipsoids3D",
+    "EncodedImage",
     "Image",
-    "ImageEncoded",
     "LeafTransforms3D",
     "LineStrips2D",
     "LineStrips3D",

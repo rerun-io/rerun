@@ -155,7 +155,7 @@ def log_cameras(first_camera_tokens: list[str], nusc: nuscenes.NuScenes, max_tim
             sensor_name = sample_data["channel"]
             rr.set_time_seconds("timestamp", sample_data["timestamp"] * 1e-6)
             data_file_path = nusc.dataroot / sample_data["filename"]
-            rr.log(f"world/ego_vehicle/{sensor_name}", rr.ImageEncoded(path=data_file_path))
+            rr.log(f"world/ego_vehicle/{sensor_name}", rr.EncodedImage(path=data_file_path))
             current_camera_token = sample_data["next"]
 
 

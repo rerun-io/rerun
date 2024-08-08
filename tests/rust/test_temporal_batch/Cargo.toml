@@ -1,5 +1,5 @@
 [package]
-name = "test_temporal_batch"
+name = "test_send_columns"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
