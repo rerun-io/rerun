@@ -23,8 +23,8 @@ namespace rerun {
 
       public:
         /// Creates a new timeline.
-        Timeline(std::string_view _name, TimeType _type = TimeType::Time)
-            : name(std::string(_name)), type(_type) {}
+        Timeline(std::string _name, TimeType _type = TimeType::Time)
+            : name(std::move(_name)), type(_type) {}
 
         Timeline() = delete;
 
