@@ -1,6 +1,7 @@
 use std::{collections::HashSet, io::IsTerminal};
 
 use anyhow::Context as _;
+use itertools::Either;
 
 use re_build_info::CrateVersion;
 use re_chunk::{external::crossbeam, TransportChunk};
@@ -14,6 +15,10 @@ pub struct FilterCommand {
     /// Paths to read from. Reads from standard input if none are specified.
     path_to_input_rrds: Vec<String>,
 
+    /// Path to write to. Writes to standard output if unspecified.
+    #[arg(short = 'o', long = "output", value_name = "dst.(rrd|rbl)")]
+    path_to_output_rrd: Option<String>,
+
     /// Names of the timelines to be filtered out.
     #[clap(long = "timeline")]
     dropped_timelines: Vec<String>,
@@ -25,16 +30,20 @@ pub struct FilterCommand {
 
 impl FilterCommand {
     pub fn run(&self) -> anyhow::Result<()> {
-        anyhow::ensure!(
-            !std::io::stdout().is_terminal(),
-            "you must redirect the output to a file and/or stream"
-        );
-
         let Self {
             path_to_input_rrds,
+            path_to_output_rrd,
             dropped_timelines,
             best_effort,
         } = self;
+
+        let path_to_output_rrd = path_to_output_rrd.clone();
+        if path_to_output_rrd.is_none() {
+            anyhow::ensure!(
+                !std::io::stdout().is_terminal(),
+                "you must redirect the output to a file and/or stream"
+            );
+        }
 
         let now = std::time::Instant::now();
         re_log::info!(srcs = ?path_to_input_rrds, ?dropped_timelines, "filter started");
@@ -54,7 +63,13 @@ impl FilterCommand {
             .spawn(move || -> anyhow::Result<u64> {
                 use std::io::Write as _;
 
-                let mut rrd_out = std::io::BufWriter::new(std::io::stdout().lock());
+                let mut rrd_out = if let Some(path) = path_to_output_rrd.as_ref() {
+                    Either::Left(std::io::BufWriter::new(
+                        std::fs::File::create(path).with_context(|| format!("{path:?}"))?,
+                    ))
+                } else {
+                    Either::Right(std::io::BufWriter::new(std::io::stdout().lock()))
+                };
 
                 let mut encoder = {
                     // TODO(cmc): encoding options & version should match the original.
