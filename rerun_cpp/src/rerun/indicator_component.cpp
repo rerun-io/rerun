@@ -9,6 +9,7 @@ namespace rerun::components {
         return datatype;
     }
 
+    RR_DISABLE_ADDRESS_SANITIZER
     const std::shared_ptr<arrow::Array>& indicator_arrow_array() {
         // Lazily create an array for the indicator (only once)
         static const std::shared_ptr<arrow::Array> single_indicator_array =
