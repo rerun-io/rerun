@@ -28,8 +28,8 @@ use super::{get_or_create_texture, RangeError};
 fn generate_texture_key(image: &ImageInfo) -> u64 {
     // We need to inclde anything that, if changes, should result in a new texture being uploaded.
     let ImageInfo {
-        blob_row_id,
-        blob: _, // we hash `blob_row_id` instead; much faster!
+        buffer_row_id: blob_row_id,
+        buffer: _, // we hash `blob_row_id` instead; much faster!
 
         format,
         kind,
@@ -226,7 +226,7 @@ fn texture_creation_desc_from_color_image<'a>(
                 // Decoded in the shader.
                 return Texture2DCreationDesc {
                     label: debug_name.into(),
-                    data: cast_slice_to_cow(image.blob.as_slice()),
+                    data: cast_slice_to_cow(image.buffer.as_slice()),
                     format: TextureFormat::R8Uint,
                     width: image.width(),
                     height: image.height() + image.height() / 2, // !
@@ -237,7 +237,7 @@ fn texture_creation_desc_from_color_image<'a>(
                 // Decoded in the shader.
                 return Texture2DCreationDesc {
                     label: debug_name.into(),
-                    data: cast_slice_to_cow(image.blob.as_slice()),
+                    data: cast_slice_to_cow(image.buffer.as_slice()),
                     format: TextureFormat::R8Uint,
                     width: 2 * image.width(), // !
                     height: image.height(),
@@ -252,12 +252,12 @@ fn texture_creation_desc_from_color_image<'a>(
             // Why? Because premul must happen _before_ sRGB decode, so we can't
             // use a "Srgb-aware" texture like `Rgba8UnormSrgb` for RGBA.
             (ColorModel::RGB, ChannelDatatype::U8) => (
-                pad_rgb_to_rgba(&image.blob, u8::MAX).into(),
+                pad_rgb_to_rgba(&image.buffer, u8::MAX).into(),
                 TextureFormat::Rgba8Unorm,
             ),
 
             (ColorModel::RGBA, ChannelDatatype::U8) => {
-                (cast_slice_to_cow(&image.blob), TextureFormat::Rgba8Unorm)
+                (cast_slice_to_cow(&image.buffer), TextureFormat::Rgba8Unorm)
             }
 
             _ => {
@@ -441,7 +441,7 @@ fn general_texture_creation_desc_from_image<'a>(
     let width = image.width();
     let height = image.height();
 
-    let buf: &[u8] = image.blob.as_ref();
+    let buf: &[u8] = image.buffer.as_ref();
 
     let (data, format) = match color_model {
         ColorModel::L => {

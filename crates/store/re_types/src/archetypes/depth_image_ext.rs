@@ -36,7 +36,7 @@ impl DepthImage {
         let image_format = ImageFormat::depth([width, height], datatype);
 
         Ok(Self {
-            data: blob.into(),
+            buffer: blob.into(),
             format: image_format.into(),
             draw_order: None,
             meter: None,

@@ -11,7 +11,7 @@ SCENARIO("Image archetype can be created" TEST_TAG) {
     GIVEN("simple 8bit greyscale image") {
         std::vector<uint8_t> data(10 * 10, 0);
         Image reference_image;
-        reference_image.data = rerun::borrow(data);
+        reference_image.buffer = rerun::borrow(data);
         reference_image.format = ImageFormat({10, 10}, ColorModel::L, ChannelDatatype::U8);
 
         THEN("no error occurs on image construction from a pointer") {
@@ -43,7 +43,7 @@ SCENARIO("Image archetype can be created" TEST_TAG) {
     GIVEN("simple 8bit RGB image") {
         std::vector<uint8_t> data(10 * 10 * 3, 0);
         Image reference_image;
-        reference_image.data = rerun::borrow(data);
+        reference_image.buffer = rerun::borrow(data);
         reference_image.format = ImageFormat({10, 10}, ColorModel::RGB, ChannelDatatype::U8);
 
         THEN("no error occurs on image construction from a pointer") {
@@ -75,7 +75,7 @@ SCENARIO("Image archetype can be created" TEST_TAG) {
     GIVEN("simple 8bit RGBA image") {
         std::vector<uint8_t> data(10 * 10 * 4, 0);
         Image reference_image;
-        reference_image.data = rerun::borrow(data);
+        reference_image.buffer = rerun::borrow(data);
         reference_image.format = ImageFormat({10, 10}, ColorModel::RGBA, ChannelDatatype::U8);
 
         THEN("no error occurs on image construction from a pointer") {

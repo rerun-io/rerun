@@ -20,7 +20,7 @@ fn depth_image_roundtrip() {
     };
 
     let all_expected = [DepthImage {
-        data: vec![1, 2, 3, 4, 5, 6].into(),
+        buffer: vec![1, 2, 3, 4, 5, 6].into(),
         format: format_expected.into(),
         meter: Some(DepthMeter::from(1000.0)),
         draw_order: None,

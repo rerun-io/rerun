@@ -21,7 +21,7 @@ namespace rerun::archetypes {
     Image(
         Collection<uint8_t> bytes, components::ImageFormat format_
     )
-        : data(std::move(bytes)), format(format_) {}
+        : buffer(std::move(bytes)), format(format_) {}
 
     /// Construct an image from resolution, pixel format and bytes.
     ///

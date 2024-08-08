@@ -14,7 +14,7 @@ See also [`archetypes.AnnotationContext`](https://rerun.io/docs/reference/types/
 
 ## Components
 
-**Required**: [`Blob`](../components/blob.md), [`ImageFormat`](../components/image_format.md)
+**Required**: [`ImageBuffer`](../components/image_buffer.md), [`ImageFormat`](../components/image_format.md)
 
 **Optional**: [`Opacity`](../components/opacity.md), [`DrawOrder`](../components/draw_order.md)
 

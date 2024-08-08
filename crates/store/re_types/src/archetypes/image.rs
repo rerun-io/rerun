@@ -66,7 +66,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 #[derive(Clone, Debug, PartialEq)]
 pub struct Image {
     /// The raw image data.
-    pub data: crate::components::Blob,
+    pub buffer: crate::components::ImageBuffer,
 
     /// The format of the image.
     pub format: crate::components::ImageFormat,
@@ -85,7 +85,7 @@ pub struct Image {
 impl ::re_types_core::SizeBytes for Image {
     #[inline]
     fn heap_size_bytes(&self) -> u64 {
-        self.data.heap_size_bytes()
+        self.buffer.heap_size_bytes()
             + self.format.heap_size_bytes()
             + self.opacity.heap_size_bytes()
             + self.draw_order.heap_size_bytes()
@@ -93,7 +93,7 @@ impl ::re_types_core::SizeBytes for Image {
 
     #[inline]
     fn is_pod() -> bool {
-        <crate::components::Blob>::is_pod()
+        <crate::components::ImageBuffer>::is_pod()
             && <crate::components::ImageFormat>::is_pod()
             && <Option<crate::components::Opacity>>::is_pod()
             && <Option<crate::components::DrawOrder>>::is_pod()
@@ -103,7 +103,7 @@ impl ::re_types_core::SizeBytes for Image {
 static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 2usize]> =
     once_cell::sync::Lazy::new(|| {
         [
-            "rerun.components.Blob".into(),
+            "rerun.components.ImageBuffer".into(),
             "rerun.components.ImageFormat".into(),
         ]
     });
@@ -122,7 +122,7 @@ static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 2usize]> =
 static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 5usize]> =
     once_cell::sync::Lazy::new(|| {
         [
-            "rerun.components.Blob".into(),
+            "rerun.components.ImageBuffer".into(),
             "rerun.components.ImageFormat".into(),
             "rerun.components.ImageIndicator".into(),
             "rerun.components.Opacity".into(),
@@ -187,18 +187,18 @@ impl ::re_types_core::Archetype for Image {
             .into_iter()
             .map(|(name, array)| (name.full_name(), array))
             .collect();
-        let data = {
+        let buffer = {
             let array = arrays_by_name
-                .get("rerun.components.Blob")
+                .get("rerun.components.ImageBuffer")
                 .ok_or_else(DeserializationError::missing_data)
-                .with_context("rerun.archetypes.Image#data")?;
-            <crate::components::Blob>::from_arrow_opt(&**array)
-                .with_context("rerun.archetypes.Image#data")?
+                .with_context("rerun.archetypes.Image#buffer")?;
+            <crate::components::ImageBuffer>::from_arrow_opt(&**array)
+                .with_context("rerun.archetypes.Image#buffer")?
                 .into_iter()
                 .next()
                 .flatten()
                 .ok_or_else(DeserializationError::missing_data)
-                .with_context("rerun.archetypes.Image#data")?
+                .with_context("rerun.archetypes.Image#buffer")?
         };
         let format = {
             let array = arrays_by_name
@@ -232,7 +232,7 @@ impl ::re_types_core::Archetype for Image {
             None
         };
         Ok(Self {
-            data,
+            buffer,
             format,
             opacity,
             draw_order,
@@ -246,7 +246,7 @@ impl ::re_types_core::AsComponents for Image {
         use ::re_types_core::Archetype as _;
         [
             Some(Self::indicator()),
-            Some((&self.data as &dyn ComponentBatch).into()),
+            Some((&self.buffer as &dyn ComponentBatch).into()),
             Some((&self.format as &dyn ComponentBatch).into()),
             self.opacity
                 .as_ref()
@@ -265,11 +265,11 @@ impl Image {
     /// Create a new `Image`.
     #[inline]
     pub fn new(
-        data: impl Into<crate::components::Blob>,
+        buffer: impl Into<crate::components::ImageBuffer>,
         format: impl Into<crate::components::ImageFormat>,
     ) -> Self {
         Self {
-            data: data.into(),
+            buffer: buffer.into(),
             format: format.into(),
             opacity: None,
             draw_order: None,

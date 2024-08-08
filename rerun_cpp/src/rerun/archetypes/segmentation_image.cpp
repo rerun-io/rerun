@@ -17,7 +17,7 @@ namespace rerun {
         cells.reserve(5);
 
         {
-            auto result = DataCell::from_loggable(archetype.data);
+            auto result = DataCell::from_loggable(archetype.buffer);
             RR_RETURN_NOT_OK(result.error);
             cells.push_back(std::move(result.value));
         }

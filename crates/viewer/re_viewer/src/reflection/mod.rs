@@ -357,6 +357,13 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             },
         ),
         (
+            <ImageBuffer as Loggable>::name(),
+            ComponentReflection {
+                docstring_md: "A buffer that is known to store image data.\n\nTo interpret the contents of this buffer, see, [rerun.components.ImageFormat].",
+                placeholder: Some(ImageBuffer::default().to_arrow()?),
+            },
+        ),
+        (
             <ImageFormat as Loggable>::name(),
             ComponentReflection {
                 docstring_md: "The metadata describing the contents of a [rerun.components.ImageBuffer].",

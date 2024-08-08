@@ -14,7 +14,7 @@ void run_image_tests() {
     GIVEN("a vector of u8 data") {
         std::vector<uint8_t> data(10 * 10, 0);
         ImageType reference_image;
-        reference_image.data = rerun::borrow(data);
+        reference_image.buffer = rerun::borrow(data);
         reference_image.format = ImageFormat({10, 10}, ChannelDatatype::U8);
 
         THEN("no error occurs on image construction from a pointer") {
