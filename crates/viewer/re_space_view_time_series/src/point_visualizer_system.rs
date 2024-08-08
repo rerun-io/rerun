@@ -88,115 +88,166 @@ impl TypedComponentFallbackProvider<Name> for SeriesPointSystem {
 re_viewer_context::impl_component_fallback_provider!(SeriesPointSystem => [Color, MarkerSize, Name]);
 
 impl SeriesPointSystem {
-    fn load_scalars(&mut self, ctx: &ViewContext<'_>, view_query: &ViewQuery<'_>) {
+    fn load_scalars(&mut self, ctx: &ViewContext<'_>, query: &ViewQuery<'_>) {
         re_tracing::profile_function!();
 
         let (plot_bounds, time_per_pixel) =
-            determine_plot_bounds_and_time_per_pixel(ctx.viewer_ctx, view_query);
+            determine_plot_bounds_and_time_per_pixel(ctx.viewer_ctx, query);
 
-        // TODO(cmc): this should be thread-pooled in case there are a gazillon series in the same plot…
-        for data_result in view_query.iter_visible_data_results(ctx, Self::identifier()) {
-            let current_query = ctx.current_query();
-            let query_ctx = ctx.query_context(data_result, &current_query);
+        let data_results = query.iter_visible_data_results(ctx, Self::identifier());
 
-            let fallback_color =
-                re_viewer_context::TypedComponentFallbackProvider::<Color>::fallback_for(
-                    self, &query_ctx,
+        let parallel_loading = true;
+        if parallel_loading {
+            use rayon::prelude::*;
+            re_tracing::profile_wait!("load_series");
+            for mut one_series in data_results
+                .collect_vec()
+                .par_iter()
+                .map(|data_result| -> Vec<PlotSeries> {
+                    let mut series = vec![];
+                    self.load_series(
+                        ctx,
+                        query,
+                        plot_bounds,
+                        time_per_pixel,
+                        data_result,
+                        &mut series,
+                    );
+                    series
+                })
+                .collect::<Vec<_>>()
+            {
+                self.all_series.append(&mut one_series);
+            }
+        } else {
+            let mut series = vec![];
+            for data_result in data_results {
+                self.load_series(
+                    ctx,
+                    query,
+                    plot_bounds,
+                    time_per_pixel,
+                    data_result,
+                    &mut series,
                 );
+            }
+            self.all_series = series;
+        }
+    }
 
-            let fallback_size =
-                re_viewer_context::TypedComponentFallbackProvider::<MarkerSize>::fallback_for(
-                    self, &query_ctx,
-                );
+    #[allow(clippy::too_many_arguments)]
+    fn load_series(
+        &self,
+        ctx: &ViewContext<'_>,
+        view_query: &ViewQuery<'_>,
+        plot_bounds: Option<egui_plot::PlotBounds>,
+        time_per_pixel: f64,
+        data_result: &re_viewer_context::DataResult,
+        all_series: &mut Vec<PlotSeries>,
+    ) {
+        re_tracing::profile_function!();
 
-            let fallback_shape = MarkerShape::default();
+        let current_query = ctx.current_query();
+        let query_ctx = ctx.query_context(data_result, &current_query);
 
-            // All the default values for a `PlotPoint`, accounting for both overrides and default
-            // values.
-            let default_point = PlotPoint {
-                time: 0,
-                value: 0.0,
-                attrs: PlotPointAttrs {
-                    color: fallback_color.into(),
-                    radius_ui: **fallback_size,
-                    kind: PlotSeriesKind::Scatter(ScatterAttrs {
-                        marker: fallback_shape,
-                    }),
-                },
-            };
-
-            let mut points;
-
-            let time_range = determine_time_range(
-                view_query.latest_at,
-                data_result,
-                plot_bounds,
-                ctx.viewer_ctx.app_options.experimental_plot_query_clamping,
+        let fallback_color =
+            re_viewer_context::TypedComponentFallbackProvider::<Color>::fallback_for(
+                self, &query_ctx,
             );
 
+        let fallback_size =
+            re_viewer_context::TypedComponentFallbackProvider::<MarkerSize>::fallback_for(
+                self, &query_ctx,
+            );
+
+        let fallback_shape = MarkerShape::default();
+
+        // All the default values for a `PlotPoint`, accounting for both overrides and default
+        // values.
+        let default_point = PlotPoint {
+            time: 0,
+            value: 0.0,
+            attrs: PlotPointAttrs {
+                color: fallback_color.into(),
+                radius_ui: **fallback_size,
+                kind: PlotSeriesKind::Scatter(ScatterAttrs {
+                    marker: fallback_shape,
+                }),
+            },
+        };
+
+        let mut points;
+
+        let time_range = determine_time_range(
+            view_query.latest_at,
+            data_result,
+            plot_bounds,
+            ctx.viewer_ctx.app_options.experimental_plot_query_clamping,
+        );
+
+        {
+            use re_space_view::RangeResultsExt as _;
+
+            re_tracing::profile_scope!("primary", &data_result.entity_path.to_string());
+
+            let entity_path = &data_result.entity_path;
+            let query = re_chunk_store::RangeQuery::new(view_query.timeline, time_range);
+
+            let results = range_with_blueprint_resolved_data(
+                ctx,
+                None,
+                &query,
+                data_result,
+                [
+                    Color::name(),
+                    MarkerShape::name(),
+                    MarkerSize::name(),
+                    Name::name(),
+                    Scalar::name(),
+                ],
+            );
+
+            // If we have no scalars, we can't do anything.
+            let Some(all_scalar_chunks) = results.get_required_chunks(&Scalar::name()) else {
+                return;
+            };
+
+            let all_scalars_indices = || {
+                all_scalar_chunks
+                    .iter()
+                    .flat_map(|chunk| {
+                        chunk.iter_component_indices(&query.timeline(), &Scalar::name())
+                    })
+                    .map(|index| (index, ()))
+            };
+
+            // Allocate all points.
             {
-                use re_space_view::RangeResultsExt as _;
+                re_tracing::profile_scope!("alloc");
 
-                re_tracing::profile_scope!("primary", &data_result.entity_path.to_string());
+                points = all_scalar_chunks
+                    .iter()
+                    .flat_map(|chunk| {
+                        chunk.iter_component_indices(&query.timeline(), &Scalar::name())
+                    })
+                    .map(|(data_time, _)| {
+                        debug_assert_eq!(Scalar::arrow_datatype(), ArrowDatatype::Float64);
 
-                let entity_path = &data_result.entity_path;
-                let query = re_chunk_store::RangeQuery::new(view_query.timeline, time_range);
+                        PlotPoint {
+                            time: data_time.as_i64(),
+                            ..default_point.clone()
+                        }
+                    })
+                    .collect_vec();
+            }
 
-                let results = range_with_blueprint_resolved_data(
-                    ctx,
-                    None,
-                    &query,
-                    data_result,
-                    [
-                        Color::name(),
-                        MarkerShape::name(),
-                        MarkerSize::name(),
-                        Name::name(),
-                        Scalar::name(),
-                    ],
-                );
+            // Fill in values.
+            {
+                re_tracing::profile_scope!("fill values");
 
-                // If we have no scalars, we can't do anything.
-                let Some(all_scalar_chunks) = results.get_required_chunks(&Scalar::name()) else {
-                    return;
-                };
-
-                let all_scalars_indices = || {
-                    all_scalar_chunks
-                        .iter()
-                        .flat_map(|chunk| {
-                            chunk.iter_component_indices(&query.timeline(), &Scalar::name())
-                        })
-                        .map(|index| (index, ()))
-                };
-
-                // Allocate all points.
-                {
-                    re_tracing::profile_scope!("alloc");
-
-                    points = all_scalar_chunks
-                        .iter()
-                        .flat_map(|chunk| {
-                            chunk.iter_component_indices(&query.timeline(), &Scalar::name())
-                        })
-                        .map(|(data_time, _)| {
-                            debug_assert_eq!(Scalar::arrow_datatype(), ArrowDatatype::Float64);
-
-                            PlotPoint {
-                                time: data_time.as_i64(),
-                                ..default_point.clone()
-                            }
-                        })
-                        .collect_vec();
-                }
-
-                // Fill in values.
-                {
-                    re_tracing::profile_scope!("fill values");
-
-                    debug_assert_eq!(Scalar::arrow_datatype(), ArrowDatatype::Float64);
-                    let mut i = 0;
-                    all_scalar_chunks
+                debug_assert_eq!(Scalar::arrow_datatype(), ArrowDatatype::Float64);
+                let mut i = 0;
+                all_scalar_chunks
                         .iter()
                         .flat_map(|chunk| chunk.iter_primitive::<f64>(&Scalar::name()))
                         .for_each(|values| {
@@ -214,199 +265,192 @@ impl SeriesPointSystem {
 
                             i += 1;
                         });
-                }
+            }
 
-                // Fill in colors.
-                {
-                    re_tracing::profile_scope!("fill colors");
+            // Fill in colors.
+            {
+                re_tracing::profile_scope!("fill colors");
 
-                    debug_assert_eq!(Color::arrow_datatype(), ArrowDatatype::UInt32);
+                debug_assert_eq!(Color::arrow_datatype(), ArrowDatatype::UInt32);
 
-                    fn map_raw_color(raw: &[u32]) -> Option<re_renderer::Color32> {
-                        raw.first().map(|c| {
-                            let [a, b, g, r] = c.to_le_bytes();
-                            if a == 255 {
-                                // Common-case optimization
-                                re_renderer::Color32::from_rgb(r, g, b)
-                            } else {
-                                re_renderer::Color32::from_rgba_unmultiplied(r, g, b, a)
-                            }
-                        })
-                    }
-
-                    if let Some(all_color_chunks) = results.get_required_chunks(&Color::name()) {
-                        if all_color_chunks.len() == 1 && all_color_chunks[0].is_static() {
-                            re_tracing::profile_scope!("override fast path");
-
-                            let color = all_color_chunks[0]
-                                .iter_primitive::<u32>(&Color::name())
-                                .next()
-                                .and_then(map_raw_color);
-
-                            if let Some(color) = color {
-                                points.iter_mut().for_each(|p| p.attrs.color = color);
-                            }
+                fn map_raw_color(raw: &[u32]) -> Option<re_renderer::Color32> {
+                    raw.first().map(|c| {
+                        let [a, b, g, r] = c.to_le_bytes();
+                        if a == 255 {
+                            // Common-case optimization
+                            re_renderer::Color32::from_rgb(r, g, b)
                         } else {
-                            re_tracing::profile_scope!("standard path");
-
-                            let all_colors = all_color_chunks.iter().flat_map(|chunk| {
-                                itertools::izip!(
-                                    chunk.iter_component_indices(&query.timeline(), &Color::name()),
-                                    chunk.iter_primitive::<u32>(&Color::name())
-                                )
-                            });
-
-                            let all_frames =
-                                re_query::range_zip_1x1(all_scalars_indices(), all_colors)
-                                    .enumerate();
-
-                            all_frames.for_each(|(i, (_index, _scalars, colors))| {
-                                if let Some(color) = colors.and_then(map_raw_color) {
-                                    points[i].attrs.color = color;
-                                }
-                            });
+                            re_renderer::Color32::from_rgba_unmultiplied(r, g, b, a)
                         }
-                    }
+                    })
                 }
 
-                // Fill in marker sizes
-                {
-                    re_tracing::profile_scope!("fill marker sizes");
+                if let Some(all_color_chunks) = results.get_required_chunks(&Color::name()) {
+                    if all_color_chunks.len() == 1 && all_color_chunks[0].is_static() {
+                        re_tracing::profile_scope!("override fast path");
 
-                    debug_assert_eq!(MarkerSize::arrow_datatype(), ArrowDatatype::Float32);
+                        let color = all_color_chunks[0]
+                            .iter_primitive::<u32>(&Color::name())
+                            .next()
+                            .and_then(map_raw_color);
 
-                    if let Some(all_marker_size_chunks) =
-                        results.get_required_chunks(&MarkerSize::name())
-                    {
-                        if all_marker_size_chunks.len() == 1
-                            && all_marker_size_chunks[0].is_static()
-                        {
-                            re_tracing::profile_scope!("override fast path");
+                        if let Some(color) = color {
+                            points.iter_mut().for_each(|p| p.attrs.color = color);
+                        }
+                    } else {
+                        re_tracing::profile_scope!("standard path");
 
-                            let marker_size = all_marker_size_chunks[0]
-                                .iter_primitive::<f32>(&MarkerSize::name())
-                                .next()
-                                .and_then(|marker_sizes| marker_sizes.first().copied());
+                        let all_colors = all_color_chunks.iter().flat_map(|chunk| {
+                            itertools::izip!(
+                                chunk.iter_component_indices(&query.timeline(), &Color::name()),
+                                chunk.iter_primitive::<u32>(&Color::name())
+                            )
+                        });
 
-                            if let Some(marker_size) = marker_size {
-                                points
-                                    .iter_mut()
-                                    .for_each(|p| p.attrs.radius_ui = marker_size * 0.5);
+                        let all_frames =
+                            re_query::range_zip_1x1(all_scalars_indices(), all_colors).enumerate();
+
+                        all_frames.for_each(|(i, (_index, _scalars, colors))| {
+                            if let Some(color) = colors.and_then(map_raw_color) {
+                                points[i].attrs.color = color;
                             }
-                        } else {
-                            re_tracing::profile_scope!("standard path");
+                        });
+                    }
+                }
+            }
 
-                            let all_marker_sizes =
-                                all_marker_size_chunks.iter().flat_map(|chunk| {
-                                    itertools::izip!(
-                                        chunk.iter_component_indices(
-                                            &query.timeline(),
-                                            &MarkerSize::name()
-                                        ),
-                                        chunk.iter_primitive::<f32>(&MarkerSize::name())
+            // Fill in marker sizes
+            {
+                re_tracing::profile_scope!("fill marker sizes");
+
+                debug_assert_eq!(MarkerSize::arrow_datatype(), ArrowDatatype::Float32);
+
+                if let Some(all_marker_size_chunks) =
+                    results.get_required_chunks(&MarkerSize::name())
+                {
+                    if all_marker_size_chunks.len() == 1 && all_marker_size_chunks[0].is_static() {
+                        re_tracing::profile_scope!("override fast path");
+
+                        let marker_size = all_marker_size_chunks[0]
+                            .iter_primitive::<f32>(&MarkerSize::name())
+                            .next()
+                            .and_then(|marker_sizes| marker_sizes.first().copied());
+
+                        if let Some(marker_size) = marker_size {
+                            points
+                                .iter_mut()
+                                .for_each(|p| p.attrs.radius_ui = marker_size * 0.5);
+                        }
+                    } else {
+                        re_tracing::profile_scope!("standard path");
+
+                        let all_marker_sizes = all_marker_size_chunks.iter().flat_map(|chunk| {
+                            itertools::izip!(
+                                chunk
+                                    .iter_component_indices(&query.timeline(), &MarkerSize::name()),
+                                chunk.iter_primitive::<f32>(&MarkerSize::name())
+                            )
+                        });
+
+                        let all_frames =
+                            re_query::range_zip_1x1(all_scalars_indices(), all_marker_sizes)
+                                .enumerate();
+
+                        all_frames.for_each(|(i, (_index, _scalars, marker_sizes))| {
+                            if let Some(marker_size) =
+                                marker_sizes.and_then(|marker_sizes| marker_sizes.first().copied())
+                            {
+                                points[i].attrs.radius_ui = marker_size * 0.5;
+                            }
+                        });
+                    }
+                }
+            }
+
+            // Fill in marker shapes
+            {
+                re_tracing::profile_scope!("fill marker shapes");
+
+                if let Some(all_marker_shapes_chunks) =
+                    results.get_required_chunks(&MarkerShape::name())
+                {
+                    if all_marker_shapes_chunks.len() == 1
+                        && all_marker_shapes_chunks[0].is_static()
+                    {
+                        re_tracing::profile_scope!("override fast path");
+
+                        let marker_shape = all_marker_shapes_chunks[0]
+                            .iter_component::<MarkerShape>()
+                            .next()
+                            .and_then(|marker_shapes| marker_shapes.first().copied());
+
+                        if let Some(marker_shape) = marker_shape {
+                            for p in &mut points {
+                                p.attrs.kind = PlotSeriesKind::Scatter(ScatterAttrs {
+                                    marker: marker_shape,
+                                });
+                            }
+                        }
+                    } else {
+                        re_tracing::profile_scope!("standard path");
+
+                        let mut all_marker_shapes_iters = all_marker_shapes_chunks
+                            .iter()
+                            .map(|chunk| chunk.iter_component::<MarkerShape>())
+                            .collect_vec();
+                        let all_marker_shapes_indexed = {
+                            let all_marker_shapes = all_marker_shapes_iters
+                                .iter_mut()
+                                .flat_map(|it| it.into_iter());
+                            let all_marker_shapes_indices =
+                                all_marker_shapes_chunks.iter().flat_map(|chunk| {
+                                    chunk.iter_component_indices(
+                                        &query.timeline(),
+                                        &MarkerShape::name(),
                                     )
                                 });
+                            itertools::izip!(all_marker_shapes_indices, all_marker_shapes)
+                        };
 
-                            let all_frames =
-                                re_query::range_zip_1x1(all_scalars_indices(), all_marker_sizes)
-                                    .enumerate();
+                        let all_frames = re_query::range_zip_1x1(
+                            all_scalars_indices(),
+                            all_marker_shapes_indexed,
+                        )
+                        .enumerate();
 
-                            all_frames.for_each(|(i, (_index, _scalars, marker_sizes))| {
-                                if let Some(marker_size) = marker_sizes
-                                    .and_then(|marker_sizes| marker_sizes.first().copied())
-                                {
-                                    points[i].attrs.radius_ui = marker_size * 0.5;
-                                }
-                            });
-                        }
-                    }
-                }
-
-                // Fill in marker shapes
-                {
-                    re_tracing::profile_scope!("fill marker shapes");
-
-                    if let Some(all_marker_shapes_chunks) =
-                        results.get_required_chunks(&MarkerShape::name())
-                    {
-                        if all_marker_shapes_chunks.len() == 1
-                            && all_marker_shapes_chunks[0].is_static()
-                        {
-                            re_tracing::profile_scope!("override fast path");
-
-                            let marker_shape = all_marker_shapes_chunks[0]
-                                .iter_component::<MarkerShape>()
-                                .next()
-                                .and_then(|marker_shapes| marker_shapes.first().copied());
-
-                            if let Some(marker_shape) = marker_shape {
-                                for p in &mut points {
-                                    p.attrs.kind = PlotSeriesKind::Scatter(ScatterAttrs {
-                                        marker: marker_shape,
-                                    });
-                                }
+                        all_frames.for_each(|(i, (_index, _scalars, marker_shapes))| {
+                            if let Some(marker_shape) = marker_shapes
+                                .and_then(|marker_shapes| marker_shapes.first().copied())
+                            {
+                                points[i].attrs.kind = PlotSeriesKind::Scatter(ScatterAttrs {
+                                    marker: marker_shape,
+                                });
                             }
-                        } else {
-                            re_tracing::profile_scope!("standard path");
-
-                            let mut all_marker_shapes_iters = all_marker_shapes_chunks
-                                .iter()
-                                .map(|chunk| chunk.iter_component::<MarkerShape>())
-                                .collect_vec();
-                            let all_marker_shapes_indexed = {
-                                let all_marker_shapes = all_marker_shapes_iters
-                                    .iter_mut()
-                                    .flat_map(|it| it.into_iter());
-                                let all_marker_shapes_indices =
-                                    all_marker_shapes_chunks.iter().flat_map(|chunk| {
-                                        chunk.iter_component_indices(
-                                            &query.timeline(),
-                                            &MarkerShape::name(),
-                                        )
-                                    });
-                                itertools::izip!(all_marker_shapes_indices, all_marker_shapes)
-                            };
-
-                            let all_frames = re_query::range_zip_1x1(
-                                all_scalars_indices(),
-                                all_marker_shapes_indexed,
-                            )
-                            .enumerate();
-
-                            all_frames.for_each(|(i, (_index, _scalars, marker_shapes))| {
-                                if let Some(marker_shape) = marker_shapes
-                                    .and_then(|marker_shapes| marker_shapes.first().copied())
-                                {
-                                    points[i].attrs.kind = PlotSeriesKind::Scatter(ScatterAttrs {
-                                        marker: marker_shape,
-                                    });
-                                }
-                            });
-                        }
+                        });
                     }
                 }
-
-                // Extract the series name
-                let series_name = results
-                    .get_optional_chunks(&Name::name())
-                    .iter()
-                    .find(|chunk| !chunk.is_empty())
-                    .and_then(|chunk| chunk.component_mono::<Name>(0)?.ok())
-                    .unwrap_or_else(|| self.fallback_for(&query_ctx));
-
-                // Now convert the `PlotPoints` into `Vec<PlotSeries>`
-                points_to_series(
-                    &data_result.entity_path,
-                    time_per_pixel,
-                    points,
-                    ctx.recording_store(),
-                    view_query,
-                    &series_name,
-                    // Aggregation for points is not supported.
-                    re_types::components::AggregationPolicy::Off,
-                    &mut self.all_series,
-                );
             }
+
+            // Extract the series name
+            let series_name = results
+                .get_optional_chunks(&Name::name())
+                .iter()
+                .find(|chunk| !chunk.is_empty())
+                .and_then(|chunk| chunk.component_mono::<Name>(0)?.ok())
+                .unwrap_or_else(|| self.fallback_for(&query_ctx));
+
+            // Now convert the `PlotPoints` into `Vec<PlotSeries>`
+            points_to_series(
+                &data_result.entity_path,
+                time_per_pixel,
+                points,
+                ctx.recording_store(),
+                view_query,
+                &series_name,
+                // Aggregation for points is not supported.
+                re_types::components::AggregationPolicy::Off,
+                all_series,
+            );
         }
     }
 }
