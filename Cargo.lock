@@ -3985,14 +3985,15 @@ dependencies = [
 
 [[package]]
 name = "puffin"
-version = "0.19.0"
+version = "0.19.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b9f76ad4bb049fded4e572df72cbb6381ff5d1f41f85c3a04b56e4eca287a02f"
+checksum = "fa9dae7b05c02ec1a6bc9bcf20d8bc64a7dcbf57934107902a872014899b741f"
 dependencies = [
  "anyhow",
  "bincode",
  "byteorder",
  "cfg-if",
+ "itertools 0.10.5",
  "lz4_flex",
  "once_cell",
  "parking_lot",

@@ -210,7 +210,7 @@ impl<'a, T: Pod + Send + Sync> DataTextureSource<'a, T> {
             return Ok(());
         }
 
-        re_tracing::profile_function!();
+        re_tracing::profile_function_if!(10_000 < elements.len());
 
         let num_elements_available = self.reserve(elements.len())?;
         let total_elements_actually_added = num_elements_available.min(elements.len());
@@ -247,7 +247,7 @@ impl<'a, T: Pod + Send + Sync> DataTextureSource<'a, T> {
             return Ok(());
         }
 
-        re_tracing::profile_function!();
+        re_tracing::profile_function_if!(10_000 < num_elements);
 
         let num_elements_available = self.reserve(num_elements)?;
         let total_elements_actually_added = num_elements_available.min(num_elements);
