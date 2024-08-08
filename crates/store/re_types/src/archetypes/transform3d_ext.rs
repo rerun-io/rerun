@@ -6,6 +6,20 @@ use crate::{
 use super::Transform3D;
 
 impl Transform3D {
+    /// The identity transform.
+    ///
+    /// This is the same as [`Self::clear`], i.e. it logs an empty (default)
+    /// value for all components.
+    pub const IDENTITY: Self = Self {
+        translation: None,
+        rotation_axis_angle: None,
+        quaternion: None,
+        scale: None,
+        mat3x3: None,
+        relation: None,
+        axis_length: None,
+    };
+
     /// Convenience method that takes any kind of (single) rotation representation and sets it on this transform.
     #[inline]
     pub fn with_rotation(self, rotation: impl Into<Rotation3D>) -> Self {
