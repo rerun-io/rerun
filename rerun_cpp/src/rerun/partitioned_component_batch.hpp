@@ -14,7 +14,7 @@ namespace rerun {
     /// Arrow-encoded data of a component batch partitioned into several runs of components.
     ///
     /// This is essentially an array of `rerun::ComponentBatch` with all batches
-    /// continously in a single array.
+    /// continuously in a single array.
     ///
     /// \see `rerun::RecordingStream::send_columns`
     struct PartitionedComponentBatch {
@@ -29,7 +29,7 @@ namespace rerun {
         ///
         /// Automatically registers the component type the first time this type is encountered.
         ///
-        /// \param components Continous collection of components which is about to be partitioned.
+        /// \param components Continuous collection of components which is about to be partitioned.
         /// \param lengths The number of components in each run. for `rerun::RecordingStream::send_columns`,
         /// this specifies the number of components at each time point.
         /// The sum of the lengths must be equal to the number of components in the batch.
@@ -55,7 +55,7 @@ namespace rerun {
         ///
         /// Automatically registers the component type the first time this type is encountered.
         ///
-        /// \param components Continous collection of components which is about to be partitioned into runs of length one.
+        /// \param components Continuous collection of components which is about to be partitioned into runs of length one.
         template <typename T>
         static Result<PartitionedComponentBatch> from_loggable(const Collection<T>& components) {
             return PartitionedComponentBatch::from_loggable_with_lengths(

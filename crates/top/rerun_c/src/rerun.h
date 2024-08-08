@@ -215,7 +215,7 @@ typedef struct rr_data_row {
 /// Arrow-encoded data of a component batch partitioned into several runs of components.
 ///
 /// This is essentially an array of `rr_component_batch` with all batches
-/// continously in a single array.
+/// continuously in a single array.
 typedef struct rr_partitioned_component_batch {
     /// The component type used for the components inside the list array.
     ///

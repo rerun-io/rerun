@@ -15,7 +15,7 @@ namespace rerun {
         static auto datatype = arrow::int64();
 
         // We could alternatively assume that the `timepoints` collection stays alive long enough.
-        // To do so we would store it on this struct. But what if the collection itself is allready a borrow?
+        // To do so we would store it on this struct. But what if the collection itself is already a borrow?
         // This would add more complicated constrains, so instead we take ownership of the data here
         // which may or may not be another copy (if the collection already owns the data this is just a move).
         auto length = static_cast<int64_t>(timepoints.size());
