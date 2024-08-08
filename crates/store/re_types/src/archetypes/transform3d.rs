@@ -402,9 +402,9 @@ impl ::re_types_core::AsComponents for Transform3D {
 impl ::re_types_core::ArchetypeReflectionMarker for Transform3D {}
 
 impl Transform3D {
-    /// Create a new `Transform3D`.
+    /// Create a new `Transform3D` which when logged will clear the values of all components.
     #[inline]
-    pub fn new() -> Self {
+    pub fn clear() -> Self {
         Self {
             translation: None,
             rotation_axis_angle: None,

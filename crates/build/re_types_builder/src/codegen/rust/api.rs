@@ -1460,55 +1460,73 @@ fn quote_builder_from_obj(reporter: &Reporter, objects: &Objects, obj: &Object) 
         .filter(|field| field.is_nullable)
         .collect::<Vec<_>>();
 
-    // --- impl new() ---
+    let fn_new = {
+        // fn new()
+        let quoted_params = required.iter().map(|field| {
+            let field_name = format_ident!("{}", field.name);
+            let (typ, unwrapped) = quote_field_type_from_typ(&field.typ, true);
+            if unwrapped {
+                // This was originally a vec/array!
+                quote!(#field_name: impl IntoIterator<Item = impl Into<#typ>>)
+            } else {
+                quote!(#field_name: impl Into<#typ>)
+            }
+        });
 
-    let quoted_params = required.iter().map(|field| {
-        let field_name = format_ident!("{}", field.name);
-        let (typ, unwrapped) = quote_field_type_from_typ(&field.typ, true);
-        if unwrapped {
-            // This was originally a vec/array!
-            quote!(#field_name: impl IntoIterator<Item = impl Into<#typ>>)
+        let quoted_required = required.iter().map(|field| {
+            let field_name = format_ident!("{}", field.name);
+            let (_, unwrapped) = quote_field_type_from_typ(&field.typ, true);
+            if unwrapped {
+                // This was originally a vec/array!
+                quote!(#field_name: #field_name.into_iter().map(Into::into).collect())
+            } else {
+                quote!(#field_name: #field_name.into())
+            }
+        });
+
+        let quoted_optional = optional.iter().map(|field| {
+            let field_name = format_ident!("{}", field.name);
+            quote!(#field_name: None)
+        });
+
+        let fn_new_pub = if obj.is_attr_set(ATTR_RUST_NEW_PUB_CRATE) {
+            quote!(pub(crate))
         } else {
-            quote!(#field_name: impl Into<#typ>)
-        }
-    });
+            quote!(pub)
+        };
 
-    let quoted_required = required.iter().map(|field| {
-        let field_name = format_ident!("{}", field.name);
-        let (_, unwrapped) = quote_field_type_from_typ(&field.typ, true);
-        if unwrapped {
-            // This was originally a vec/array!
-            quote!(#field_name: #field_name.into_iter().map(Into::into).collect())
+        if required.is_empty() && obj.attrs.has(ATTR_RERUN_LOG_MISSING_AS_EMPTY) {
+            let docstring = quote_doc_line(&format!(
+                "Create a new `{name}` which when logged will clear the values of all components."
+            ));
+
+            quote! {
+                #docstring
+                #[inline]
+                #fn_new_pub fn clear() -> Self {
+                    Self {
+                        #(#quoted_optional,)*
+                    }
+                }
+            }
         } else {
-            quote!(#field_name: #field_name.into())
-        }
-    });
+            let docstring = quote_doc_line(&format!("Create a new `{name}`."));
 
-    let quoted_optional = optional.iter().map(|field| {
-        let field_name = format_ident!("{}", field.name);
-        quote!(#field_name: None)
-    });
-
-    let fn_new_pub = if obj.is_attr_set(ATTR_RUST_NEW_PUB_CRATE) {
-        quote!(pub(crate))
-    } else {
-        quote!(pub)
-    };
-    let fn_new_docstring = quote_doc_line(&format!("Create a new `{name}`."));
-    let fn_new = quote! {
-        #fn_new_docstring
-        #[inline]
-        #fn_new_pub fn new(#(#quoted_params,)*) -> Self {
-            Self {
-                #(#quoted_required,)*
-                #(#quoted_optional,)*
+            quote! {
+                #docstring
+                #[inline]
+                #fn_new_pub fn new(#(#quoted_params,)*) -> Self {
+                    Self {
+                        #(#quoted_required,)*
+                        #(#quoted_optional,)*
+                    }
+                }
             }
         }
     };
 
-    // --- impl with_*() ---
-
     let with_methods = optional.iter().map(|field| {
+        // fn with_*()
         let field_name = format_ident!("{}", field.name);
         let method_name = format_ident!("with_{field_name}");
         let (typ, unwrapped) = quote_field_type_from_typ(&field.typ, true);
