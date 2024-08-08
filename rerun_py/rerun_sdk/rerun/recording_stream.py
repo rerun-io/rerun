@@ -25,6 +25,10 @@ def new_recording(
 
     If you only need a single global recording, [`rerun.init`][] might be simpler.
 
+    Note that unless setting `spawn=True` new recording streams always begin connected to a buffered sink.
+    To send the data to a viewer or file you will likely want to call [`rerun.connect`][] or [`rerun.save`][]
+    explicitly.
+
     !!! Warning
         If you don't specify a `recording_id`, it will default to a random value that is generated once
         at the start of the process.
@@ -84,6 +88,24 @@ def new_recording(
     -------
     RecordingStream
         A handle to the [`rerun.RecordingStream`][]. Use it to log data to Rerun.
+
+    Examples
+    --------
+    Using a recording stream object directly.
+    ```python
+    from uuid import uuid4
+    stream = rr.new_recording("my_app", recording_id=uuid4())
+    stream.connect()
+    stream.log("hello", rr.TextLog("Hello world"))
+    ```
+
+    Setting up a new global recording explicitly.
+    ```python
+    from uuid import uuid4
+    rr.new_recording("my_app", make_default=True, recording_id=uuid4())
+    rr.connect()
+    rr.log("hello", rr.TextLog("Hello world"))
+    ```
 
     """
 
