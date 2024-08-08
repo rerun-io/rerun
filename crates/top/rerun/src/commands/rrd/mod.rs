@@ -19,12 +19,16 @@ pub enum RrdCommands {
     /// This ignores the `log_time` timeline.
     Compare(CompareCommand),
 
-    /// Print the contents of one or more .rrd/.rbl files.
+    /// Print the contents of one or more .rrd/.rbl files/streams.
+    ///
+    /// Reads from standard input if no paths are specified.
     ///
     /// Example: `rerun rrd print /my/recordings/*.rrd`
     Print(PrintCommand),
 
-    /// Compacts the contents of one or more .rrd/.rbl files and writes the result to a new file.
+    /// Compacts the contents of one or more .rrd/.rbl files/streams and writes the result to a new file.
+    ///
+    /// Reads from standard input if no paths are specified.
     ///
     /// Uses the usual environment variables to control the compaction thresholds:
     /// `RERUN_CHUNK_MAX_ROWS`,
@@ -40,7 +44,9 @@ pub enum RrdCommands {
     /// * `rerun rrd compact --max-rows 4096 --max-bytes=1048576 /my/recordings/*.rrd -o output.rrd`
     Compact(CompactCommand),
 
-    /// Merges the contents of multiple .rrd/.rbl files, and writes the result to a new file.
+    /// Merges the contents of multiple .rrd/.rbl files/streams, and writes the result to a new file.
+    ///
+    /// Reads from standard input if no paths are specified.
     ///
     /// This will not affect the chunking of the data in any way.
     ///
