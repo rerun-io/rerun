@@ -342,7 +342,6 @@ namespace rerun {
 
         /// Copies the data into a new `std::vector`.
         std::vector<TElement> to_vector() const& {
-            // TODO(andreas): Overload this for `const &` and `&&` to avoid the copy when possible.
             std::vector<TElement> result;
             result.reserve(size());
             result.insert(result.end(), begin(), end());

@@ -217,9 +217,9 @@ typedef struct rr_data_row {
 /// This is essentially an array of `rr_component_batch` with all batches
 /// continously in a single array.
 typedef struct rr_partitioned_component_batch {
-    /// The component type to use for this batch.
+    /// The component type used for the components inside the list array.
     ///
-    /// This is *not* the type of the array, but of the underlying batch.
+    /// This is *not* the type of the arrow list array itself, but of the underlying batch.
     rr_component_type_handle component_type;
 
     /// A ListArray with the datatype `List(component_type)`.
@@ -232,8 +232,10 @@ typedef uint32_t rr_sorting_status;
 enum {
     /// It's not known whether the array is sorted or not.
     RR_SORTING_STATUS_UNKNOWN = 0,
+
     /// The array is known to be sorted.
     RR_SORTING_STATUS_SORTED = 1,
+
     /// The array is known to be unsorted.
     RR_SORTING_STATUS_UNSORTED = 2,
 };

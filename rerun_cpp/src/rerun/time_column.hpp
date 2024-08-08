@@ -19,8 +19,10 @@ namespace rerun {
     enum class SortingStatus {
         /// It's not known whether the array is sorted or not.
         Unknown = 0,
+
         /// The array is known to be sorted.
         Sorted = 1,
+
         /// The array is known to be unsorted.
         Unsorted = 2,
     };

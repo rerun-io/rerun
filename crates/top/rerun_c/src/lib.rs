@@ -936,7 +936,7 @@ fn rr_recording_stream_send_columns_impl(
                 .ok_or_else(|| {
                     CError::new(
                         CErrorCode::ArrowFfiArrayImportError,
-                        "Arrow C FFI import did not produce a Int64 time array - please file an issue if you see this! This shouldn't be possible since conversion from C was successful with this datatype.",
+                        "Arrow C FFI import did not produce a Int64 time array - please file an issue at https://github.com/rerun-io/rerun/issues if you see this! This shouldn't be possible since conversion from C was successful with this datatype."
                     )
                 })?;
 
@@ -972,7 +972,7 @@ fn rr_recording_stream_send_columns_impl(
                     .ok_or_else(|| {
                         CError::new(
                             CErrorCode::ArrowFfiArrayImportError,
-                            "Arrow C FFI import did not produce a ListArray - please file an issue if you see this! This shouldn't be possible since conversion from C was successful with this datatype.",
+                            "Arrow C FFI import did not produce a ListArray - please file an issue at https://github.com/rerun-io/rerun/issues if you see this! This shouldn't be possible since conversion from C was successful with this datatype.",
                         )
                     })?;
 

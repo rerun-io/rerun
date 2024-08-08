@@ -13,7 +13,10 @@ namespace rerun {
                 out_column.type = RR_TIME_TYPE_SEQUENCE;
                 break;
             default:
-                return Error(ErrorCode::InvalidEnumValue, "Invalid TimeType");
+                return Error(
+                    ErrorCode::InvalidEnumValue,
+                    "Invalid TimeType" + std::to_string(static_cast<int>(type))
+                );
         }
         out_column.name = detail::to_rr_string(name);
 

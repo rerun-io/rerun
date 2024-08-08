@@ -10,7 +10,7 @@ int main() {
     const auto rec = rerun::RecordingStream("rerun_example_send_columns_arrays");
     rec.spawn().exit_on_failure();
 
-    // 5 point clouds each with 4 points.
+    // Prepare a point cloud that evolves over time 5 timesteps, changing the number of points in the process.
     std::vector<std::array<float, 3>> positions = {
         // clang-format off
         {1.0, 0.0, 1.0}, {0.5, 0.5, 2.0},
@@ -21,7 +21,7 @@ int main() {
         // clang-format on
     };
 
-    // At each time stamp, all point clouds share the same but changing color.
+    // At each time stamp, all points in the cloud share the same but changing color.
     std::vector<uint32_t> colors = {0xFF0000FF, 0x00FF00FF, 0x0000FFFF, 0xFFFF00FF, 0x00FFFFFF};
 
     // Log at seconds 10-14

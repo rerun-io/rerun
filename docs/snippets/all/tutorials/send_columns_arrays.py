@@ -8,7 +8,7 @@ import rerun as rr
 
 rr.init("rerun_example_send_columns_arrays", spawn=True)
 
-# 5 point clouds of varying sizes, stretching from second 10 to second 14.
+# Prepare a point cloud that evolves over time 5 timesteps, changing the number of points in the process.
 times = np.arange(10, 15, 1.0)
 positions = [
     [[1.0, 0.0, 1.0], [0.5, 0.5, 2.0]],
@@ -19,7 +19,7 @@ positions = [
 ]
 positions_arr = np.concatenate(positions)
 
-# At each time stamp, all point clouds share the same but changing color.
+# At each time stamp, all points in the cloud share the same but changing color.
 colors = [0xFF0000FF, 0x00FF00FF, 0x0000FFFF, 0xFFFF00FF, 0x00FFFFFF]
 
 rr.send_columns(
