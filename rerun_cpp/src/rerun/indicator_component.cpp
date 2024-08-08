@@ -1,11 +1,8 @@
 #include "indicator_component.hpp"
+#include "compiler_utils.hpp"
+
 #include <arrow/array/array_base.h>
 
-#if __has_feature(address_sanitizer)
-#define RR_DISABLE_ADDRESS_SANITIZER __attribute__((no_sanitize("address")))
-#else
-#define RR_DISABLE_ADDRESS_SANITIZER
-#endif
 namespace rerun::components {
     const std::shared_ptr<arrow::DataType>& indicator_arrow_datatype() {
         static const auto datatype = arrow::null();
