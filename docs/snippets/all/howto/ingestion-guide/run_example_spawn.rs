@@ -1,0 +1,1 @@
+cargo r --release | rerun -

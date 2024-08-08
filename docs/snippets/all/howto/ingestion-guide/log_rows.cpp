@@ -21,3 +21,4 @@ int main() {
         rec.log("scalar", rerun::Scalar(std::sin(static_cast<double>(step) * COEFF)));
     }
 }
+
