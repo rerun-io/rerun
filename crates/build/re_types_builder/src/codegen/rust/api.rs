@@ -806,470 +806,489 @@ fn quote_trait_impls_from_obj(
     objects: &Objects,
     obj: &Object,
 ) -> TokenStream {
+    match obj.kind {
+        ObjectKind::Datatype | ObjectKind::Component => {
+            quote_trait_impls_for_datatype_or_component(objects, arrow_registry, obj)
+        }
+
+        ObjectKind::Archetype => quote_trait_impls_for_archetype(obj),
+
+        ObjectKind::View => quote_trait_impls_for_view(reporter, obj),
+    }
+}
+
+fn quote_trait_impls_for_datatype_or_component(
+    objects: &Objects,
+    arrow_registry: &ArrowRegistry,
+    obj: &Object,
+) -> TokenStream {
     let Object {
         fqname, name, kind, ..
     } = obj;
 
+    assert!(matches!(kind, ObjectKind::Datatype | ObjectKind::Component));
+
+    let name = format_ident!("{name}");
+
+    let quoted_kind = if *kind == ObjectKind::Datatype {
+        quote!(Datatype)
+    } else {
+        quote!(Component)
+    };
+    let kind_name = format_ident!("{quoted_kind}Name");
+
+    let datatype = arrow_registry.get(fqname);
+
+    let optimize_for_buffer_slice = should_optimize_buffer_slice_deserialize(obj, arrow_registry);
+
+    let is_forwarded_type = obj.is_arrow_transparent()
+        && !obj.fields[0].is_nullable
+        && matches!(obj.fields[0].typ, Type::Object(_));
+    let forwarded_type =
+        is_forwarded_type.then(|| quote_field_type_from_typ(&obj.fields[0].typ, true).0);
+
+    let quoted_arrow_datatype = if let Some(forwarded_type) = forwarded_type.as_ref() {
+        quote! {
+            #[inline]
+            fn arrow_datatype() -> arrow2::datatypes::DataType {
+                #forwarded_type::arrow_datatype()
+            }
+        }
+    } else {
+        let datatype = ArrowDataTypeTokenizer(&datatype, false);
+        quote! {
+            #[inline]
+            fn arrow_datatype() -> arrow2::datatypes::DataType {
+                #![allow(clippy::wildcard_imports)]
+                use arrow2::datatypes::*;
+                #datatype
+            }
+        }
+    };
+
+    let quoted_from_arrow = if optimize_for_buffer_slice {
+        let from_arrow_body = if let Some(forwarded_type) = forwarded_type.as_ref() {
+            let is_pod = obj
+                .try_get_attr::<String>(ATTR_RUST_DERIVE)
+                .map_or(false, |d| d.contains("bytemuck::Pod"))
+                || obj
+                    .try_get_attr::<String>(ATTR_RUST_DERIVE_ONLY)
+                    .map_or(false, |d| d.contains("bytemuck::Pod"));
+            if is_pod {
+                quote! {
+                    #forwarded_type::from_arrow(arrow_data).map(bytemuck::cast_vec)
+                }
+            } else {
+                quote! {
+                    #forwarded_type::from_arrow(arrow_data).map(|v| v.into_iter().map(Self).collect())
+                }
+            }
+        } else {
+            let quoted_deserializer =
+                quote_arrow_deserializer_buffer_slice(arrow_registry, objects, obj);
+
+            quote! {
+                // NOTE(#3850): Don't add a profile scope here: the profiler overhead is too big for this fast function.
+                // re_tracing::profile_function!();
+
+                #![allow(clippy::wildcard_imports)]
+                use arrow2::{datatypes::*, array::*, buffer::*};
+                use ::re_types_core::{Loggable as _, ResultExt as _};
+
+                // This code-path cannot have null fields. If it does have a validity mask
+                // all bits must indicate valid data.
+                if let Some(validity) = arrow_data.validity() {
+                    if validity.unset_bits() != 0 {
+                        return Err(DeserializationError::missing_data());
+                    }
+                }
+
+                Ok(#quoted_deserializer)
+            }
+        };
+
+        quote! {
+            #[inline]
+            fn from_arrow(
+                arrow_data: &dyn arrow2::array::Array,
+            ) -> DeserializationResult<Vec<Self>>
+            where
+                Self: Sized
+            {
+                #from_arrow_body
+            }
+        }
+    } else {
+        quote!()
+    };
+
+    // Forward deserialization to existing datatype if it's transparent.
+    let quoted_deserializer = if let Some(forwarded_type) = forwarded_type.as_ref() {
+        quote! {
+            #forwarded_type::from_arrow_opt(arrow_data).map(|v| v.into_iter().map(|v| v.map(Self)).collect())
+        }
+    } else {
+        let quoted_deserializer = quote_arrow_deserializer(arrow_registry, objects, obj);
+        quote! {
+            // NOTE(#3850): Don't add a profile scope here: the profiler overhead is too big for this fast function.
+            // re_tracing::profile_function!();
+
+            #![allow(clippy::wildcard_imports)]
+            use arrow2::{datatypes::*, array::*, buffer::*};
+            use ::re_types_core::{Loggable as _, ResultExt as _};
+            Ok(#quoted_deserializer)
+        }
+    };
+
+    let quoted_serializer = if let Some(forwarded_type) = forwarded_type.as_ref() {
+        quote! {
+            fn to_arrow_opt<'a>(
+                data: impl IntoIterator<Item = Option<impl Into<::std::borrow::Cow<'a, Self>>>>,
+            ) -> SerializationResult<Box<dyn arrow2::array::Array>>
+            where
+                Self: Clone + 'a,
+            {
+                #forwarded_type::to_arrow_opt(data.into_iter().map(|datum| {
+                    datum.map(|datum| match datum.into() {
+                        ::std::borrow::Cow::Borrowed(datum) => ::std::borrow::Cow::Borrowed(&datum.0),
+                        ::std::borrow::Cow::Owned(datum) => ::std::borrow::Cow::Owned(datum.0),
+                    })
+                }))
+            }
+        }
+    } else {
+        let quoted_serializer =
+            quote_arrow_serializer(arrow_registry, objects, obj, &format_ident!("data"));
+
+        quote! {
+            // NOTE: Don't inline this, this gets _huge_.
+            fn to_arrow_opt<'a>(
+                data: impl IntoIterator<Item = Option<impl Into<::std::borrow::Cow<'a, Self>>>>,
+            ) -> SerializationResult<Box<dyn arrow2::array::Array>>
+            where
+                Self: Clone + 'a
+            {
+                // NOTE(#3850): Don't add a profile scope here: the profiler overhead is too big for this fast function.
+                // re_tracing::profile_function!();
+
+                #![allow(clippy::wildcard_imports)]
+                use arrow2::{datatypes::*, array::*};
+                use ::re_types_core::{Loggable as _, ResultExt as _};
+
+                Ok(#quoted_serializer)
+            }
+        }
+    };
+
+    quote! {
+        ::re_types_core::macros::impl_into_cow!(#name);
+
+        impl ::re_types_core::Loggable for #name {
+            type Name = ::re_types_core::#kind_name;
+
+            #[inline]
+            fn name() -> Self::Name {
+                #fqname.into()
+            }
+
+            #quoted_arrow_datatype
+
+            #quoted_serializer
+
+            // NOTE: Don't inline this, this gets _huge_.
+            fn from_arrow_opt(
+                arrow_data: &dyn arrow2::array::Array,
+            ) -> DeserializationResult<Vec<Option<Self>>>
+            where
+                Self: Sized
+            {
+                #quoted_deserializer
+            }
+
+            #quoted_from_arrow
+        }
+    }
+}
+
+fn quote_trait_impls_for_archetype(obj: &Object) -> TokenStream {
+    let Object {
+        fqname, name, kind, ..
+    } = obj;
+
+    assert_eq!(kind, &ObjectKind::Archetype);
+
     let display_name = re_case::to_human_case(name);
     let name = format_ident!("{name}");
 
-    match kind {
-        ObjectKind::Datatype | ObjectKind::Component => {
-            let quoted_kind = if *kind == ObjectKind::Datatype {
-                quote!(Datatype)
-            } else {
-                quote!(Component)
-            };
-            let kind_name = format_ident!("{quoted_kind}Name");
+    fn compute_components(
+        obj: &Object,
+        attr: &'static str,
+        extras: impl IntoIterator<Item = String>,
+    ) -> (usize, TokenStream) {
+        let components = iter_archetype_components(obj, attr)
+            .chain(extras)
+            // Do *not* sort again, we want to preserve the order given by the datatype definition
+            .collect::<Vec<_>>();
 
-            let datatype = arrow_registry.get(fqname);
+        let num_components = components.len();
+        let quoted_components = quote!(#(#components.into(),)*);
 
-            let optimize_for_buffer_slice =
-                should_optimize_buffer_slice_deserialize(obj, arrow_registry);
+        (num_components, quoted_components)
+    }
 
-            let is_forwarded_type = obj.is_arrow_transparent()
-                && !obj.fields[0].is_nullable
-                && matches!(obj.fields[0].typ, Type::Object(_));
-            let forwarded_type =
-                is_forwarded_type.then(|| quote_field_type_from_typ(&obj.fields[0].typ, true).0);
+    let indicator_name = format!("{}Indicator", obj.name);
+    let indicator_fqname = format!("{}Indicator", obj.fqname).replace("archetypes", "components");
 
-            let quoted_arrow_datatype = if let Some(forwarded_type) = forwarded_type.as_ref() {
+    let quoted_indicator_name = format_ident!("{indicator_name}");
+    let quoted_indicator_doc =
+        format!("Indicator component for the [`{name}`] [`::re_types_core::Archetype`]");
+
+    let (num_required, required) = compute_components(obj, ATTR_RERUN_COMPONENT_REQUIRED, []);
+    let (num_recommended, recommended) =
+        compute_components(obj, ATTR_RERUN_COMPONENT_RECOMMENDED, [indicator_fqname]);
+    let (num_optional, optional) = compute_components(obj, ATTR_RERUN_COMPONENT_OPTIONAL, []);
+
+    let num_components_docstring  = quote_doc_line(&format!(
+        "The total number of components in the archetype: {num_required} required, {num_recommended} recommended, {num_optional} optional"
+    ));
+    let num_all = num_required + num_recommended + num_optional;
+
+    let quoted_field_names = obj
+        .fields
+        .iter()
+        .map(|field| format_ident!("{}", field.name))
+        .collect::<Vec<_>>();
+
+    let all_component_batches = {
+        std::iter::once(quote!{
+            Some(Self::indicator())
+        }).chain(obj.fields.iter().map(|obj_field| {
+            let field_name = format_ident!("{}", obj_field.name);
+            let is_plural = obj_field.typ.is_plural();
+            let is_nullable = obj_field.is_nullable;
+
+            // NOTE: The nullability we're dealing with here is the nullability of an entire array of components,
+            // not the nullability of individual elements (i.e. instances)!
+            match (is_plural, is_nullable) {
+                (true, true) => quote! {
+                    self.#field_name.as_ref().map(|comp_batch| (comp_batch as &dyn ComponentBatch).into())
+                },
+                (false, true) => quote! {
+                    self.#field_name.as_ref().map(|comp| (comp as &dyn ComponentBatch).into())
+                },
+                (_, false) => quote! {
+                    Some((&self.#field_name as &dyn ComponentBatch).into())
+                }
+            }
+        }))
+    };
+
+    let all_deserializers = {
+        obj.fields.iter().map(|obj_field| {
+            let obj_field_fqname = obj_field.fqname.as_str();
+            let field_typ_fqname_str = obj_field.typ.fqname().unwrap();
+            let field_name = format_ident!("{}", obj_field.name);
+
+            let is_plural = obj_field.typ.is_plural();
+            let is_nullable = obj_field.is_nullable;
+
+            // NOTE: unwrapping is safe since the field must point to a component.
+            let component = quote_fqname_as_type_path(obj_field.typ.fqname().unwrap());
+
+            let quoted_collection = if is_plural {
                 quote! {
-                    #[inline]
-                    fn arrow_datatype() -> arrow2::datatypes::DataType {
-                        #forwarded_type::arrow_datatype()
-                    }
+                    .into_iter()
+                    .map(|v| v.ok_or_else(DeserializationError::missing_data))
+                    .collect::<DeserializationResult<Vec<_>>>()
+                    .with_context(#obj_field_fqname)?
                 }
             } else {
-                let datatype = ArrowDataTypeTokenizer(&datatype, false);
                 quote! {
-                    #[inline]
-                    fn arrow_datatype() -> arrow2::datatypes::DataType {
-                        #![allow(clippy::wildcard_imports)]
-                        use arrow2::datatypes::*;
-                        #datatype
-                    }
+                    .into_iter()
+                    .next()
+                    .flatten()
+                    .ok_or_else(DeserializationError::missing_data)
+                    .with_context(#obj_field_fqname)?
                 }
             };
 
-            let quoted_from_arrow = if optimize_for_buffer_slice {
-                let from_arrow_body = if let Some(forwarded_type) = forwarded_type.as_ref() {
-                    let is_pod = obj
-                        .try_get_attr::<String>(ATTR_RUST_DERIVE)
-                        .map_or(false, |d| d.contains("bytemuck::Pod"))
-                        || obj
-                            .try_get_attr::<String>(ATTR_RUST_DERIVE_ONLY)
-                            .map_or(false, |d| d.contains("bytemuck::Pod"));
-                    if is_pod {
-                        quote! {
-                            #forwarded_type::from_arrow(arrow_data).map(bytemuck::cast_vec)
-                        }
-                    } else {
-                        quote! {
-                            #forwarded_type::from_arrow(arrow_data).map(|v| v.into_iter().map(Self).collect())
-                        }
-                    }
-                } else {
-                    let quoted_deserializer =
-                        quote_arrow_deserializer_buffer_slice(arrow_registry, objects, obj);
 
+            // NOTE: An archetype cannot have overlapped component types by definition, so use the
+            // component's fqname to do the mapping.
+            let quoted_deser = if is_nullable && !is_plural{
+                // For a nullable mono-component, it's valid for data to be missing
+                // after a clear.
+                let quoted_collection =
                     quote! {
-                        // NOTE(#3850): Don't add a profile scope here: the profiler overhead is too big for this fast function.
-                        // re_tracing::profile_function!();
-
-                        #![allow(clippy::wildcard_imports)]
-                        use arrow2::{datatypes::*, array::*, buffer::*};
-                        use ::re_types_core::{Loggable as _, ResultExt as _};
-
-                        // This code-path cannot have null fields. If it does have a validity mask
-                        // all bits must indicate valid data.
-                        if let Some(validity) = arrow_data.validity() {
-                            if validity.unset_bits() != 0 {
-                                return Err(DeserializationError::missing_data());
-                            }
-                        }
-
-                        Ok(#quoted_deserializer)
-                    }
-                };
-
-                quote! {
-                    #[inline]
-                    fn from_arrow(
-                        arrow_data: &dyn arrow2::array::Array,
-                    ) -> DeserializationResult<Vec<Self>>
-                    where
-                        Self: Sized
-                    {
-                        #from_arrow_body
-                    }
-                }
-            } else {
-                quote!()
-            };
-
-            // Forward deserialization to existing datatype if it's transparent.
-            let quoted_deserializer = if let Some(forwarded_type) = forwarded_type.as_ref() {
-                quote! {
-                    #forwarded_type::from_arrow_opt(arrow_data).map(|v| v.into_iter().map(|v| v.map(Self)).collect())
-                }
-            } else {
-                let quoted_deserializer = quote_arrow_deserializer(arrow_registry, objects, obj);
-                quote! {
-                    // NOTE(#3850): Don't add a profile scope here: the profiler overhead is too big for this fast function.
-                    // re_tracing::profile_function!();
-
-                    #![allow(clippy::wildcard_imports)]
-                    use arrow2::{datatypes::*, array::*, buffer::*};
-                    use ::re_types_core::{Loggable as _, ResultExt as _};
-                    Ok(#quoted_deserializer)
-                }
-            };
-
-            let quoted_serializer = if let Some(forwarded_type) = forwarded_type.as_ref() {
-                quote! {
-                    fn to_arrow_opt<'a>(
-                        data: impl IntoIterator<Item = Option<impl Into<::std::borrow::Cow<'a, Self>>>>,
-                    ) -> SerializationResult<Box<dyn arrow2::array::Array>>
-                    where
-                        Self: Clone + 'a,
-                    {
-                        #forwarded_type::to_arrow_opt(data.into_iter().map(|datum| {
-                            datum.map(|datum| match datum.into() {
-                                ::std::borrow::Cow::Borrowed(datum) => ::std::borrow::Cow::Borrowed(&datum.0),
-                                ::std::borrow::Cow::Owned(datum) => ::std::borrow::Cow::Owned(datum.0),
-                            })
-                        }))
-                    }
-                }
-            } else {
-                let quoted_serializer =
-                    quote_arrow_serializer(arrow_registry, objects, obj, &format_ident!("data"));
-
-                quote! {
-                    // NOTE: Don't inline this, this gets _huge_.
-                    fn to_arrow_opt<'a>(
-                        data: impl IntoIterator<Item = Option<impl Into<::std::borrow::Cow<'a, Self>>>>,
-                    ) -> SerializationResult<Box<dyn arrow2::array::Array>>
-                    where
-                        Self: Clone + 'a
-                    {
-                        // NOTE(#3850): Don't add a profile scope here: the profiler overhead is too big for this fast function.
-                        // re_tracing::profile_function!();
-
-                        #![allow(clippy::wildcard_imports)]
-                        use arrow2::{datatypes::*, array::*};
-                        use ::re_types_core::{Loggable as _, ResultExt as _};
-
-                        Ok(#quoted_serializer)
-                    }
-                }
-            };
-
-            quote! {
-                ::re_types_core::macros::impl_into_cow!(#name);
-
-                impl ::re_types_core::Loggable for #name {
-                    type Name = ::re_types_core::#kind_name;
-
-                    #[inline]
-                    fn name() -> Self::Name {
-                        #fqname.into()
-                    }
-
-                    #quoted_arrow_datatype
-
-                    #quoted_serializer
-
-                    // NOTE: Don't inline this, this gets _huge_.
-                    fn from_arrow_opt(
-                        arrow_data: &dyn arrow2::array::Array,
-                    ) -> DeserializationResult<Vec<Option<Self>>>
-                    where
-                        Self: Sized
-                    {
-                        #quoted_deserializer
-                    }
-
-                    #quoted_from_arrow
-                }
-            }
-        }
-
-        ObjectKind::Archetype => {
-            fn compute_components(
-                obj: &Object,
-                attr: &'static str,
-                extras: impl IntoIterator<Item = String>,
-            ) -> (usize, TokenStream) {
-                let components = iter_archetype_components(obj, attr)
-                    .chain(extras)
-                    // Do *not* sort again, we want to preserve the order given by the datatype definition
-                    .collect::<Vec<_>>();
-
-                let num_components = components.len();
-                let quoted_components = quote!(#(#components.into(),)*);
-
-                (num_components, quoted_components)
-            }
-
-            let indicator_name = format!("{}Indicator", obj.name);
-            let indicator_fqname =
-                format!("{}Indicator", obj.fqname).replace("archetypes", "components");
-
-            let quoted_indicator_name = format_ident!("{indicator_name}");
-            let quoted_indicator_doc =
-                format!("Indicator component for the [`{name}`] [`::re_types_core::Archetype`]");
-
-            let (num_required, required) =
-                compute_components(obj, ATTR_RERUN_COMPONENT_REQUIRED, []);
-            let (num_recommended, recommended) =
-                compute_components(obj, ATTR_RERUN_COMPONENT_RECOMMENDED, [indicator_fqname]);
-            let (num_optional, optional) =
-                compute_components(obj, ATTR_RERUN_COMPONENT_OPTIONAL, []);
-
-            let num_components_docstring  = quote_doc_line(&format!(
-                "The total number of components in the archetype: {num_required} required, {num_recommended} recommended, {num_optional} optional"
-            ));
-            let num_all = num_required + num_recommended + num_optional;
-
-            let quoted_field_names = obj
-                .fields
-                .iter()
-                .map(|field| format_ident!("{}", field.name))
-                .collect::<Vec<_>>();
-
-            let all_component_batches = {
-                std::iter::once(quote!{
-                    Some(Self::indicator())
-                }).chain(obj.fields.iter().map(|obj_field| {
-                    let field_name = format_ident!("{}", obj_field.name);
-                    let is_plural = obj_field.typ.is_plural();
-                    let is_nullable = obj_field.is_nullable;
-
-                    // NOTE: Archetypes are AoS (arrays of structs), thus the nullability we're
-                    // dealing with here is the nullability of an entire array of components, not
-                    // the nullability of individual elements (i.e. instances)!
-                    match (is_plural, is_nullable) {
-                        (true, true) => quote! {
-                            self.#field_name.as_ref().map(|comp_batch| (comp_batch as &dyn ComponentBatch).into())
-                        },
-                        (false, true) => quote! {
-                            self.#field_name.as_ref().map(|comp| (comp as &dyn ComponentBatch).into())
-                        },
-                        (_, false) => quote! {
-                            Some((&self.#field_name as &dyn ComponentBatch).into())
-                        }
-                    }
-                }))
-            };
-
-            let all_deserializers = {
-                obj.fields.iter().map(|obj_field| {
-                    let obj_field_fqname = obj_field.fqname.as_str();
-                    let field_typ_fqname_str = obj_field.typ.fqname().unwrap();
-                    let field_name = format_ident!("{}", obj_field.name);
-
-                    let is_plural = obj_field.typ.is_plural();
-                    let is_nullable = obj_field.is_nullable;
-
-                    // NOTE: unwrapping is safe since the field must point to a component.
-                    let component = quote_fqname_as_type_path(obj_field.typ.fqname().unwrap());
-
-                    let quoted_collection = if is_plural {
-                        quote! {
-                            .into_iter()
-                            .map(|v| v.ok_or_else(DeserializationError::missing_data))
-                            .collect::<DeserializationResult<Vec<_>>>()
-                            .with_context(#obj_field_fqname)?
-                        }
-                    } else {
-                        quote! {
-                            .into_iter()
-                            .next()
-                            .flatten()
-                            .ok_or_else(DeserializationError::missing_data)
-                            .with_context(#obj_field_fqname)?
-                        }
+                        .into_iter()
+                        .next()
+                        .flatten()
                     };
 
-
-                    // NOTE: An archetype cannot have overlapped component types by definition, so use the
-                    // component's fqname to do the mapping.
-                    let quoted_deser = if is_nullable && !is_plural{
-                        // For a nullable mono-component, it's valid for data to be missing
-                        // after a clear.
-                        let quoted_collection =
-                            quote! {
-                                .into_iter()
-                                .next()
-                                .flatten()
-                            };
-
-                        quote! {
-                            if let Some(array) = arrays_by_name.get(#field_typ_fqname_str) {
-                                <#component>::from_arrow_opt(&**array)
-                                    .with_context(#obj_field_fqname)?
-                                    #quoted_collection
-                            } else {
-                                None
-                            }
-                        }
-                    } else if is_nullable {
-                        quote! {
-                            if let Some(array) = arrays_by_name.get(#field_typ_fqname_str) {
-                                Some({
-                                    <#component>::from_arrow_opt(&**array)
-                                        .with_context(#obj_field_fqname)?
-                                        #quoted_collection
-                                })
-                            } else {
-                                None
-                            }
-                        }
-                    } else {
-                        quote! {{
-                            let array = arrays_by_name
-                                .get(#field_typ_fqname_str)
-                                .ok_or_else(DeserializationError::missing_data)
-                                .with_context(#obj_field_fqname)?;
-
-                            <#component>::from_arrow_opt(&**array).with_context(#obj_field_fqname)? #quoted_collection
-                        }}
-                    };
-
-                    quote!(let #field_name = #quoted_deser;)
-                })
-            };
-
-            let impl_archetype_reflection_marker = if obj.is_attr_set(ATTR_RUST_GENERATE_FIELD_INFO)
-            {
                 quote! {
-                    impl ::re_types_core::ArchetypeReflectionMarker for #name { }
+                    if let Some(array) = arrays_by_name.get(#field_typ_fqname_str) {
+                        <#component>::from_arrow_opt(&**array)
+                            .with_context(#obj_field_fqname)?
+                            #quoted_collection
+                    } else {
+                        None
+                    }
                 }
-            } else {
-                quote!()
-            };
-
-            quote! {
-                static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentName; #num_required]> =
-                    once_cell::sync::Lazy::new(|| {[#required]});
-
-                static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentName; #num_recommended]> =
-                    once_cell::sync::Lazy::new(|| {[#recommended]});
-
-                static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; #num_optional]> =
-                    once_cell::sync::Lazy::new(|| {[#optional]});
-
-                static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; #num_all]> =
-                    once_cell::sync::Lazy::new(|| {[#required #recommended #optional]});
-
-                impl #name {
-                    #num_components_docstring
-                    pub const NUM_COMPONENTS: usize = #num_all;
-                }
-
-                #[doc = #quoted_indicator_doc]
-                pub type #quoted_indicator_name = ::re_types_core::GenericIndicatorComponent<#name>;
-
-                impl ::re_types_core::Archetype for #name {
-                    type Indicator = #quoted_indicator_name;
-
-                    #[inline]
-                    fn name() -> ::re_types_core::ArchetypeName {
-                        #fqname.into()
-                    }
-
-                    #[inline]
-                    fn display_name() -> &'static str {
-                        #display_name
-                    }
-
-                    #[inline]
-                    fn indicator() -> MaybeOwnedComponentBatch<'static> {
-                        static INDICATOR: #quoted_indicator_name = #quoted_indicator_name::DEFAULT;
-                        MaybeOwnedComponentBatch::Ref(&INDICATOR)
-                    }
-
-                    #[inline]
-                    fn required_components() -> ::std::borrow::Cow<'static, [ComponentName]> {
-                        REQUIRED_COMPONENTS.as_slice().into()
-                    }
-
-                    #[inline]
-                    fn recommended_components() -> ::std::borrow::Cow<'static, [ComponentName]>  {
-                        RECOMMENDED_COMPONENTS.as_slice().into()
-                    }
-
-                    #[inline]
-                    fn optional_components() -> ::std::borrow::Cow<'static, [ComponentName]>  {
-                        OPTIONAL_COMPONENTS.as_slice().into()
-                    }
-
-                    // NOTE: Don't rely on default implementation so that we can keep everything static.
-                    #[inline]
-                    fn all_components() -> ::std::borrow::Cow<'static, [ComponentName]>  {
-                        ALL_COMPONENTS.as_slice().into()
-                    }
-
-                    #[inline]
-                    fn from_arrow_components(
-                        arrow_data: impl IntoIterator<Item = (
-                            ComponentName,
-                            Box<dyn arrow2::array::Array>,
-                        )>,
-                    ) -> DeserializationResult<Self> {
-                        re_tracing::profile_function!();
-
-                        use ::re_types_core::{Loggable as _, ResultExt as _};
-
-                        // NOTE: Even though ComponentName is an InternedString, we must
-                        // convert to &str here because the .get("component.name") accessors
-                        // will fail otherwise.
-                        let arrays_by_name: ::std::collections::HashMap<_, _> = arrow_data
-                            .into_iter()
-                            .map(|(name, array)| (name.full_name(), array)).collect();
-
-                        #(#all_deserializers;)*
-
-                        Ok(Self {
-                            #(#quoted_field_names,)*
+            } else if is_nullable {
+                quote! {
+                    if let Some(array) = arrays_by_name.get(#field_typ_fqname_str) {
+                        Some({
+                            <#component>::from_arrow_opt(&**array)
+                                .with_context(#obj_field_fqname)?
+                                #quoted_collection
                         })
+                    } else {
+                        None
                     }
                 }
+            } else {
+                quote! {{
+                    let array = arrays_by_name
+                        .get(#field_typ_fqname_str)
+                        .ok_or_else(DeserializationError::missing_data)
+                        .with_context(#obj_field_fqname)?;
 
-                impl ::re_types_core::AsComponents for #name {
-                    fn as_component_batches(&self) -> Vec<MaybeOwnedComponentBatch<'_>> {
-                        re_tracing::profile_function!();
-
-                        use ::re_types_core::Archetype as _;
-
-                        [#(#all_component_batches,)*].into_iter().flatten().collect()
-                    }
-                }
-
-                #impl_archetype_reflection_marker
-            }
-        }
-        ObjectKind::View => {
-            let Some(identifier): Option<String> = obj.try_get_attr(ATTR_RERUN_VIEW_IDENTIFIER)
-            else {
-                reporter.error(
-                    &obj.virtpath,
-                    &obj.fqname,
-                    format!("Missing {ATTR_RERUN_VIEW_IDENTIFIER} attribute for view"),
-                );
-                return TokenStream::new();
+                    <#component>::from_arrow_opt(&**array).with_context(#obj_field_fqname)? #quoted_collection
+                }}
             };
 
-            quote! {
-                impl ::re_types_core::View for #name {
-                    #[inline]
-                    fn identifier() -> ::re_types_core::SpaceViewClassIdentifier {
-                        #identifier .into()
-                    }
+            quote!(let #field_name = #quoted_deser;)
+        })
+    };
 
-                }
+    let impl_archetype_reflection_marker = if obj.is_attr_set(ATTR_RUST_GENERATE_FIELD_INFO) {
+        quote! {
+            impl ::re_types_core::ArchetypeReflectionMarker for #name { }
+        }
+    } else {
+        quote!()
+    };
+
+    quote! {
+        static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentName; #num_required]> =
+            once_cell::sync::Lazy::new(|| {[#required]});
+
+        static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentName; #num_recommended]> =
+            once_cell::sync::Lazy::new(|| {[#recommended]});
+
+        static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; #num_optional]> =
+            once_cell::sync::Lazy::new(|| {[#optional]});
+
+        static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; #num_all]> =
+            once_cell::sync::Lazy::new(|| {[#required #recommended #optional]});
+
+        impl #name {
+            #num_components_docstring
+            pub const NUM_COMPONENTS: usize = #num_all;
+        }
+
+        #[doc = #quoted_indicator_doc]
+        pub type #quoted_indicator_name = ::re_types_core::GenericIndicatorComponent<#name>;
+
+        impl ::re_types_core::Archetype for #name {
+            type Indicator = #quoted_indicator_name;
+
+            #[inline]
+            fn name() -> ::re_types_core::ArchetypeName {
+                #fqname.into()
+            }
+
+            #[inline]
+            fn display_name() -> &'static str {
+                #display_name
+            }
+
+            #[inline]
+            fn indicator() -> MaybeOwnedComponentBatch<'static> {
+                static INDICATOR: #quoted_indicator_name = #quoted_indicator_name::DEFAULT;
+                MaybeOwnedComponentBatch::Ref(&INDICATOR)
+            }
+
+            #[inline]
+            fn required_components() -> ::std::borrow::Cow<'static, [ComponentName]> {
+                REQUIRED_COMPONENTS.as_slice().into()
+            }
+
+            #[inline]
+            fn recommended_components() -> ::std::borrow::Cow<'static, [ComponentName]>  {
+                RECOMMENDED_COMPONENTS.as_slice().into()
+            }
+
+            #[inline]
+            fn optional_components() -> ::std::borrow::Cow<'static, [ComponentName]>  {
+                OPTIONAL_COMPONENTS.as_slice().into()
+            }
+
+            // NOTE: Don't rely on default implementation so that we can keep everything static.
+            #[inline]
+            fn all_components() -> ::std::borrow::Cow<'static, [ComponentName]>  {
+                ALL_COMPONENTS.as_slice().into()
+            }
+
+            #[inline]
+            fn from_arrow_components(
+                arrow_data: impl IntoIterator<Item = (
+                    ComponentName,
+                    Box<dyn arrow2::array::Array>,
+                )>,
+            ) -> DeserializationResult<Self> {
+                re_tracing::profile_function!();
+
+                use ::re_types_core::{Loggable as _, ResultExt as _};
+
+                // NOTE: Even though ComponentName is an InternedString, we must
+                // convert to &str here because the .get("component.name") accessors
+                // will fail otherwise.
+                let arrays_by_name: ::std::collections::HashMap<_, _> = arrow_data
+                    .into_iter()
+                    .map(|(name, array)| (name.full_name(), array)).collect();
+
+                #(#all_deserializers;)*
+
+                Ok(Self {
+                    #(#quoted_field_names,)*
+                })
+            }
+        }
+
+        impl ::re_types_core::AsComponents for #name {
+            fn as_component_batches(&self) -> Vec<MaybeOwnedComponentBatch<'_>> {
+                re_tracing::profile_function!();
+
+                use ::re_types_core::Archetype as _;
+
+                [#(#all_component_batches,)*].into_iter().flatten().collect()
+            }
+        }
+
+        #impl_archetype_reflection_marker
+    }
+}
+
+fn quote_trait_impls_for_view(reporter: &Reporter, obj: &Object) -> TokenStream {
+    assert_eq!(obj.kind, ObjectKind::View);
+
+    let name = format_ident!("{}", obj.name);
+
+    let Some(identifier): Option<String> = obj.try_get_attr(ATTR_RERUN_VIEW_IDENTIFIER) else {
+        reporter.error(
+            &obj.virtpath,
+            &obj.fqname,
+            format!("Missing {ATTR_RERUN_VIEW_IDENTIFIER} attribute for view"),
+        );
+        return TokenStream::new();
+    };
+
+    quote! {
+        impl ::re_types_core::View for #name {
+            #[inline]
+            fn identifier() -> ::re_types_core::SpaceViewClassIdentifier {
+                #identifier .into()
             }
         }
     }
