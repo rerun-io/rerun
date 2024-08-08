@@ -5,15 +5,15 @@
 
 namespace rerun::components {
     const std::shared_ptr<arrow::DataType>& indicator_arrow_datatype() {
-        static const std::shared_ptr<arrow::DataType> datatype = arrow::null();
-        return datatype;
+        return arrow::null(); // Note that this already returns a shared_ptr reference.
     }
 
-    RR_DISABLE_ADDRESS_SANITIZER
+    // Workaround. TODO: describe if this works.
+    static const std::shared_ptr<arrow::Array> single_indicator_array =
+        std::make_shared<arrow::NullArray>(1);
+
+    //RR_DISABLE_ADDRESS_SANITIZER
     const std::shared_ptr<arrow::Array>& indicator_arrow_array() {
-        // Lazily create an array for the indicator (only once)
-        static const std::shared_ptr<arrow::Array> single_indicator_array =
-            std::make_shared<arrow::NullArray>(1);
         return single_indicator_array;
     }
 } // namespace rerun::components
