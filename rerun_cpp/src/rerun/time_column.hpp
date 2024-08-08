@@ -44,13 +44,13 @@ namespace rerun {
         /// Creates a new time column from an array of time points.
         ///
         /// \param timeline The timeline this column belongs to.
-        /// \param timepoints The time points.
+        /// \param times The time values.
         /// Depending on the `TimeType` of the timeline this may be either timestamps or sequence numbers.
         /// Make sure the sorting status is correctly specified.
         /// \param sorting_status The sorting status of the time points.
         /// Already sorted time points may perform better.
         TimeColumn(
-            Timeline timeline, Collection<int64_t> timepoints,
+            Timeline timeline, Collection<int64_t> times,
             SortingStatus sorting_status = SortingStatus::Unknown
         );
 
@@ -75,17 +75,17 @@ namespace rerun {
         /// Creates a sequence time column from an array of sequence points.
         ///
         /// \param timeline_name The name of the timeline this column belongs to.
-        /// \param timepoints_in_nanoseconds The time points in nanoseconds.
+        /// \param times_in_nanoseconds Time values in nanoseconds.
         /// Make sure the sorting status is correctly specified.
         /// \param sorting_status The sorting status of the time points.
         /// Already sorted time points may perform better.
         static TimeColumn from_times_nanoseconds(
-            std::string timeline_name, Collection<int64_t> timepoints_in_nanoseconds,
+            std::string timeline_name, Collection<int64_t> times_in_nanoseconds,
             SortingStatus sorting_status = SortingStatus::Unknown
         ) {
             return TimeColumn(
                 Timeline(std::move(timeline_name), TimeType::Time),
-                std::move(timepoints_in_nanoseconds),
+                std::move(times_in_nanoseconds),
                 sorting_status
             );
         }
@@ -93,25 +93,24 @@ namespace rerun {
         /// Creates a sequence time column from an array of arbitrary std::chrono durations.
         ///
         /// \param timeline_name The name of the timeline this column belongs to.
-        /// \param chrono_timepoints The time points as chrono durations.
+        /// \param chrono_times Time values as chrono durations.
         /// Make sure the sorting status is correctly specified.
         /// \param sorting_status The sorting status of the time points.
         /// Already sorted time points may perform better.
         template <typename TRep, typename TPeriod>
         static TimeColumn from_times(
             std::string timeline_name,
-            const Collection<std::chrono::duration<TRep, TPeriod>>& chrono_timepoints,
+            const Collection<std::chrono::duration<TRep, TPeriod>>& chrono_times,
             SortingStatus sorting_status = SortingStatus::Unknown
         ) {
-            std::vector<int64_t> timepoints(chrono_timepoints.size());
-            for (size_t i = 0; i < chrono_timepoints.size(); i++) {
-                timepoints[i] =
-                    std::chrono::duration_cast<std::chrono::nanoseconds>(chrono_timepoints[i])
-                        .count();
+            std::vector<int64_t> times(chrono_times.size());
+            for (size_t i = 0; i < chrono_times.size(); i++) {
+                times[i] =
+                    std::chrono::duration_cast<std::chrono::nanoseconds>(chrono_times[i]).count();
             }
             return TimeColumn(
                 Timeline(std::move(timeline_name), TimeType::Time),
-                std::move(timepoints),
+                std::move(times),
                 sorting_status
             );
         }
