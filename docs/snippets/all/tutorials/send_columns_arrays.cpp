@@ -33,7 +33,7 @@ int main() {
     auto indicator_batch =
         rerun::PartitionedComponentBatch::from_loggable(rerun::take_ownership(std::move(indicators))
         );
-    auto position_batch = rerun::PartitionedComponentBatch::from_loggable(
+    auto position_batch = rerun::PartitionedComponentBatch::from_loggable_with_lengths(
         rerun::Collection<rerun::components::Position3D>(std::move(positions)),
         {2, 4, 4, 3, 4}
     );

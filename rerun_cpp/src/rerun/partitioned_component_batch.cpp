@@ -14,23 +14,33 @@ namespace rerun {
         return arrow::list(inner_type);
     }
 
-    Result<PartitionedComponentBatch> PartitionedComponentBatch::from_batch_and_lengths(
+    Result<PartitionedComponentBatch> PartitionedComponentBatch::from_batch_with_lengths(
         ComponentBatch batch, const Collection<uint32_t>& lengths,
         std::shared_ptr<arrow::DataType> list_array_type
     ) {
         // Convert lengths into offsets.
-        // TODO(andreas): Should we expose a version with offsets directly?
-        std::vector<uint32_t> offsets;
-        offsets.resize(lengths.size() + 1);
+        std::vector<uint32_t> offsets(lengths.size() + 1);
         offsets[0] = 0;
         for (size_t i = 0; i < lengths.size(); i++) {
             offsets[i + 1] = offsets[i] + lengths[i];
         }
 
-        auto offset_buffer = arrow_buffer_from_vector(std::move(offsets));
+        return PartitionedComponentBatch::from_batch_with_offsets(
+            batch,
+            std::move(offsets),
+            list_array_type
+        );
+    }
+
+    Result<PartitionedComponentBatch> PartitionedComponentBatch::from_batch_with_offsets(
+        ComponentBatch batch, Collection<uint32_t> offsets,
+        std::shared_ptr<arrow::DataType> list_array_type
+    ) {
+        auto length = offsets.size() - 1;
+        auto offset_buffer = arrow_buffer_from_vector(std::move(offsets).to_vector());
         auto list_array = std::make_shared<arrow::ListArray>(
             list_array_type,
-            lengths.size(),
+            length,
             offset_buffer,
             std::move(batch.array)
         );
