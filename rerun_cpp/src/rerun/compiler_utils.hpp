@@ -70,10 +70,8 @@
 // Disable address sanitizer (ASAN) for a function.
 #if RR_ASAN_ENABLED
 #if defined(_MSC_VER)
-__declspec(no_sanitize_address)
+#define RR_DISABLE_ADDRESS_SANITIZER __declspec(no_sanitize_address)
 #else
-#define RR_DISABLE_ADDRESS_SANITIZER __attribute__((no_sanitize("address")))
+#define RR_DISABLE_ADDRESS_SANITIZER __attribute__((no_sanitize_address))
 #endif
-#else
-#define RR_DISABLE_ADDRESS_SANITIZER
 #endif
