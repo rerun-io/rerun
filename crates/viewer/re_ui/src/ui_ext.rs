@@ -50,7 +50,7 @@ pub trait UiExt {
         let tint = if *selected {
             self.ui().visuals().widgets.inactive.fg_stroke.color
         } else {
-            egui::Color32::from_gray(100) // TODO(emilk): get from design tokens
+            self.ui().visuals().widgets.noninteractive.fg_stroke.color
         };
         let mut response = self
             .ui_mut()
