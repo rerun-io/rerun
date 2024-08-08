@@ -5,6 +5,7 @@
 #![crate_type = "staticlib"]
 #![allow(clippy::missing_safety_doc, clippy::undocumented_unsafe_blocks)] // Too much unsafe
 
+mod arrow_utils;
 mod component_type_registry;
 mod error;
 mod ptr;
@@ -18,6 +19,7 @@ use std::{
 use component_type_registry::COMPONENT_TYPES;
 use once_cell::sync::Lazy;
 
+use arrow_utils::arrow_array_from_c_ffi;
 use re_sdk::{
     log::PendingRow, ComponentName, EntityPath, RecordingStream, RecordingStreamBuilder, StoreKind,
     TimePoint,
