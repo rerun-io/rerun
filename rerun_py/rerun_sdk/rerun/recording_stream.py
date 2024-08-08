@@ -26,7 +26,7 @@ def new_recording(
     If you only need a single global recording, [`rerun.init`][] might be simpler.
 
     Note that unless setting `spawn=True` new recording streams always begin connected to a buffered sink.
-    To send the data to a viewer or file you will likely want to call [`rerun.connect`][], [`rerun.save`][]
+    To send the data to a viewer or file you will likely want to call [`rerun.connect`][] or [`rerun.save`][]
     explicitly.
 
     !!! Warning
