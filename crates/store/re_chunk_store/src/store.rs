@@ -239,7 +239,7 @@ pub struct ChunkIdSetPerTime {
     ///   [`Chunk`] contains data for this particular component on this particular timeline (see
     ///   [`Chunk::time_range_per_component`]).
     /// * For an `(entity, timeline)` index, that would be the first timestamp at which this [`Chunk`]
-    ///   contains data for any component on this particular timeline (see [`re_chunk::ChunkTimeline::time_range`]).
+    ///   contains data for any component on this particular timeline (see [`re_chunk::TimeColumn::time_range`]).
     pub(crate) per_start_time: BTreeMap<TimeInt, ChunkIdSet>,
 
     /// [`ChunkId`]s organized by their _most specific_ end time.
@@ -250,7 +250,7 @@ pub struct ChunkIdSetPerTime {
     ///   [`Chunk`] contains data for this particular component on this particular timeline (see
     ///   [`Chunk::time_range_per_component`]).
     /// * For an `(entity, timeline)` index, that would be the last timestamp at which this [`Chunk`]
-    ///   contains data for any component on this particular timeline (see [`re_chunk::ChunkTimeline::time_range`]).
+    ///   contains data for any component on this particular timeline (see [`re_chunk::TimeColumn::time_range`]).
     pub(crate) per_end_time: BTreeMap<TimeInt, ChunkIdSet>,
 }
 

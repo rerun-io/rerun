@@ -38,17 +38,28 @@ class FillMode(Enum):
     Lines are not drawn.
     """
 
+    @classmethod
+    def auto(cls, val: str | int | FillMode) -> FillMode:
+        """Best-effort converter, including a case-insensitive string matcher."""
+        if isinstance(val, FillMode):
+            return val
+        if isinstance(val, int):
+            return cls(val)
+        try:
+            return cls[val]
+        except KeyError:
+            val_lower = val.lower()
+            for variant in cls:
+                if variant.name.lower() == val_lower:
+                    return variant
+        raise ValueError(f"Cannot convert {val} to {cls.__name__}")
+
     def __str__(self) -> str:
         """Returns the variant name."""
-        if self == FillMode.Wireframe:
-            return "Wireframe"
-        elif self == FillMode.Solid:
-            return "Solid"
-        else:
-            raise ValueError("Unknown enum variant")
+        return self.name
 
 
-FillModeLike = Union[FillMode, Literal["Solid", "Wireframe", "solid", "wireframe"]]
+FillModeLike = Union[FillMode, Literal["Solid", "Wireframe", "solid", "wireframe"], int]
 FillModeArrayLike = Union[FillModeLike, Sequence[FillModeLike]]
 
 
@@ -56,15 +67,7 @@ class FillModeType(BaseExtensionType):
     _TYPE_NAME: str = "rerun.components.FillMode"
 
     def __init__(self) -> None:
-        pa.ExtensionType.__init__(
-            self,
-            pa.sparse_union([
-                pa.field("_null_markers", pa.null(), nullable=True, metadata={}),
-                pa.field("Wireframe", pa.null(), nullable=True, metadata={}),
-                pa.field("Solid", pa.null(), nullable=True, metadata={}),
-            ]),
-            self._TYPE_NAME,
-        )
+        pa.ExtensionType.__init__(self, pa.uint8(), self._TYPE_NAME)
 
 
 class FillModeBatch(BaseBatch[FillModeArrayLike], ComponentBatchMixin):
@@ -75,36 +78,6 @@ class FillModeBatch(BaseBatch[FillModeArrayLike], ComponentBatchMixin):
         if isinstance(data, (FillMode, int, str)):
             data = [data]
 
-        types: list[int] = []
+        pa_data = [FillMode.auto(v).value if v is not None else None for v in data]  # type: ignore[redundant-expr]
 
-        for value in data:
-            if value is None:
-                types.append(0)
-            elif isinstance(value, FillMode):
-                types.append(value.value)  # Actual enum value
-            elif isinstance(value, int):
-                types.append(value)  # By number
-            elif isinstance(value, str):
-                if hasattr(FillMode, value):
-                    types.append(FillMode[value].value)  # fast path
-                elif value.lower() == "wireframe":
-                    types.append(FillMode.Wireframe.value)
-                elif value.lower() == "solid":
-                    types.append(FillMode.Solid.value)
-                else:
-                    raise ValueError(f"Unknown FillMode kind: {value}")
-            else:
-                raise ValueError(f"Unknown FillMode kind: {value}")
-
-        buffers = [
-            None,
-            pa.array(types, type=pa.int8()).buffers()[1],
-        ]
-        children = (1 + 2) * [pa.nulls(len(data))]
-
-        return pa.UnionArray.from_buffers(
-            type=data_type,
-            length=len(data),
-            buffers=buffers,
-            children=children,
-        )
+        return pa.array(pa_data, type=data_type)

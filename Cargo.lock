@@ -5092,6 +5092,7 @@ dependencies = [
  "re_data_ui",
  "re_entity_db",
  "re_format",
+ "re_int_histogram",
  "re_log_types",
  "re_tracing",
  "re_types",
@@ -5526,6 +5527,7 @@ checksum = "19b30a45b0cd0bcca8037f3d0dc3421eaf95327a17cad11964fb8179b4fc4832"
 name = "rerun"
 version = "0.18.0-alpha.1+dev"
 dependencies = [
+ "ahash",
  "anyhow",
  "clap",
  "document-features",
@@ -5542,6 +5544,7 @@ dependencies = [
  "re_crash_handler",
  "re_data_source",
  "re_entity_db",
+ "re_error",
  "re_format",
  "re_log",
  "re_log_encoding",
@@ -6534,7 +6537,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "test_temporal_batch"
+name = "test_send_columns"
 version = "0.18.0-alpha.1+dev"
 dependencies = [
  "re_arrow2",

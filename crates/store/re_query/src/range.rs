@@ -168,7 +168,7 @@ impl RangeCache {
                     .chunk
                     .timelines()
                     .get(&self.cache_key.timeline)
-                    .map(|time_chunk| time_chunk.time_range())
+                    .map(|time_column| time_column.time_range())
             })
             .fold(ResolvedTimeRange::EMPTY, |mut acc, time_range| {
                 acc.set_min(TimeInt::min(acc.min(), time_range.min()));

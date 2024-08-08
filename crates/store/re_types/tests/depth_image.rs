@@ -2,7 +2,8 @@ use std::collections::HashMap;
 
 use re_types::{
     archetypes::DepthImage,
-    components::{ChannelDatatype, DepthMeter, Resolution2D},
+    components::DepthMeter,
+    datatypes::{ChannelDatatype, ImageFormat},
     Archetype as _, AsComponents as _,
 };
 
@@ -10,10 +11,17 @@ mod util;
 
 #[test]
 fn depth_image_roundtrip() {
+    let format_expected = ImageFormat {
+        width: 3,
+        height: 2,
+        pixel_format: None,
+        channel_datatype: Some(ChannelDatatype::U8),
+        color_model: None,
+    };
+
     let all_expected = [DepthImage {
-        data: vec![1, 2, 3, 4, 5, 6].into(),
-        resolution: Resolution2D::new(3, 2),
-        datatype: ChannelDatatype::U8,
+        buffer: vec![1, 2, 3, 4, 5, 6].into(),
+        format: format_expected.into(),
         meter: Some(DepthMeter::from(1000.0)),
         draw_order: None,
         colormap: None,

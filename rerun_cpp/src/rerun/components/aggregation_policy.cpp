@@ -9,15 +9,7 @@
 namespace rerun {
     const std::shared_ptr<arrow::DataType>& Loggable<components::AggregationPolicy>::arrow_datatype(
     ) {
-        static const auto datatype = arrow::sparse_union({
-            arrow::field("_null_markers", arrow::null(), true, nullptr),
-            arrow::field("Off", arrow::null(), true),
-            arrow::field("Average", arrow::null(), true),
-            arrow::field("Max", arrow::null(), true),
-            arrow::field("Min", arrow::null(), true),
-            arrow::field("MinMax", arrow::null(), true),
-            arrow::field("MinMaxAverage", arrow::null(), true),
-        });
+        static const auto datatype = arrow::uint8();
         return datatype;
     }
 
@@ -31,7 +23,7 @@ namespace rerun {
         ARROW_ASSIGN_OR_RAISE(auto builder, arrow::MakeBuilder(datatype, pool))
         if (instances && num_instances > 0) {
             RR_RETURN_NOT_OK(Loggable<components::AggregationPolicy>::fill_arrow_array_builder(
-                static_cast<arrow::SparseUnionBuilder*>(builder.get()),
+                static_cast<arrow::UInt8Builder*>(builder.get()),
                 instances,
                 num_instances
             ));
@@ -42,7 +34,7 @@ namespace rerun {
     }
 
     rerun::Error Loggable<components::AggregationPolicy>::fill_arrow_array_builder(
-        arrow::SparseUnionBuilder* builder, const components::AggregationPolicy* elements,
+        arrow::UInt8Builder* builder, const components::AggregationPolicy* elements,
         size_t num_elements
     ) {
         if (builder == nullptr) {
@@ -58,7 +50,7 @@ namespace rerun {
         ARROW_RETURN_NOT_OK(builder->Reserve(static_cast<int64_t>(num_elements)));
         for (size_t elem_idx = 0; elem_idx < num_elements; elem_idx += 1) {
             const auto variant = elements[elem_idx];
-            ARROW_RETURN_NOT_OK(builder->Append(static_cast<int8_t>(variant)));
+            ARROW_RETURN_NOT_OK(builder->Append(static_cast<uint8_t>(variant)));
         }
 
         return Error::ok();

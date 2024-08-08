@@ -14,30 +14,15 @@ namespace rerun {
     ) {
         using namespace archetypes;
         std::vector<DataCell> cells;
-        cells.reserve(8);
+        cells.reserve(5);
 
         {
-            auto result = DataCell::from_loggable(archetype.data);
+            auto result = DataCell::from_loggable(archetype.buffer);
             RR_RETURN_NOT_OK(result.error);
             cells.push_back(std::move(result.value));
         }
         {
-            auto result = DataCell::from_loggable(archetype.resolution);
-            RR_RETURN_NOT_OK(result.error);
-            cells.push_back(std::move(result.value));
-        }
-        if (archetype.pixel_format.has_value()) {
-            auto result = DataCell::from_loggable(archetype.pixel_format.value());
-            RR_RETURN_NOT_OK(result.error);
-            cells.push_back(std::move(result.value));
-        }
-        if (archetype.color_model.has_value()) {
-            auto result = DataCell::from_loggable(archetype.color_model.value());
-            RR_RETURN_NOT_OK(result.error);
-            cells.push_back(std::move(result.value));
-        }
-        if (archetype.datatype.has_value()) {
-            auto result = DataCell::from_loggable(archetype.datatype.value());
+            auto result = DataCell::from_loggable(archetype.format);
             RR_RETURN_NOT_OK(result.error);
             cells.push_back(std::move(result.value));
         }

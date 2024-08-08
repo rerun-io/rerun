@@ -1,9 +1,12 @@
 namespace rerun.components;
 
 /// How a geometric shape is drawn and colored.
-enum FillMode: byte(
+enum FillMode: ubyte(
     "attr.docs.unreleased"
 ) {
+    /// Invalid value. Won't show up in generated types.
+    Invalid = 0,
+
     /// Lines are drawn around the edges of the shape.
     ///
     /// The interior (2D) or surface (3D) are not drawn.

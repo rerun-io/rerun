@@ -2,12 +2,12 @@ use itertools::Itertools as _;
 
 use re_types::{
     archetypes::SegmentationImage,
-    components::{Blob, ChannelDatatype, DrawOrder, Opacity, Resolution2D},
+    components::{DrawOrder, ImageBuffer, ImageFormat, Opacity},
     image::ImageKind,
     Loggable as _,
 };
 use re_viewer_context::{
-    ApplicableEntities, IdentifiedViewSystem, ImageFormat, ImageInfo, QueryContext,
+    ApplicableEntities, IdentifiedViewSystem, ImageInfo, QueryContext,
     SpaceViewSystemExecutionError, TypedComponentFallbackProvider, ViewContext,
     ViewContextCollection, ViewQuery, VisualizableEntities, VisualizableFilterContext,
     VisualizerQueryInfo, VisualizerSystem,
@@ -71,9 +71,7 @@ impl VisualizerSystem for SegmentationImageVisualizer {
             return Err(SpaceViewSystemExecutionError::NoRenderContextError);
         };
 
-        use super::entity_iterator::{
-            iter_buffer, iter_component, iter_primitive_array, process_archetype,
-        };
+        use super::entity_iterator::{iter_buffer, iter_component, process_archetype};
         process_archetype::<Self, SegmentationImage, _>(
             ctx,
             view_query,
@@ -83,42 +81,37 @@ impl VisualizerSystem for SegmentationImageVisualizer {
 
                 let entity_path = ctx.target_entity_path;
 
-                let Some(all_blob_chunks) = results.get_required_chunks(&Blob::name()) else {
-                    return Ok(());
-                };
-                let Some(all_datatype_chunks) =
-                    results.get_required_chunks(&ChannelDatatype::name())
+                let Some(all_buffer_chunks) = results.get_required_chunks(&ImageBuffer::name())
                 else {
                     return Ok(());
                 };
-                let Some(all_resolution_chunks) =
-                    results.get_required_chunks(&Resolution2D::name())
+                let Some(all_formats_chunks) = results.get_required_chunks(&ImageFormat::name())
                 else {
                     return Ok(());
                 };
 
                 let timeline = ctx.query.timeline();
-                let all_blobs_indexed = iter_buffer::<u8>(&all_blob_chunks, timeline, Blob::name());
-                let all_resolutions_indexed =
-                    iter_primitive_array(&all_resolution_chunks, timeline, Resolution2D::name());
-                let all_datatypes_indexed =
-                    iter_component(&all_datatype_chunks, timeline, ChannelDatatype::name());
+                let all_buffers_indexed =
+                    iter_buffer::<u8>(&all_buffer_chunks, timeline, ImageBuffer::name());
+                let all_formats_indexed = iter_component::<ImageFormat>(
+                    &all_formats_chunks,
+                    timeline,
+                    ImageFormat::name(),
+                );
                 let all_opacities = results.iter_as(timeline, Opacity::name());
 
-                let data = re_query::range_zip_1x3(
-                    all_blobs_indexed,
-                    all_datatypes_indexed,
-                    all_resolutions_indexed,
+                let data = re_query::range_zip_1x2(
+                    all_buffers_indexed,
+                    all_formats_indexed,
                     all_opacities.primitive::<f32>(),
                 )
-                .filter_map(|(index, blobs, data_type, resolution, opacity)| {
-                    let blob = blobs.first()?;
+                .filter_map(|(index, buffers, formats, opacity)| {
+                    let buffer = buffers.first()?;
                     Some(SegmentationImageComponentData {
                         image: ImageInfo {
-                            blob_row_id: index.1,
-                            blob: blob.clone().into(),
-                            resolution: first_copied(resolution)?,
-                            format: ImageFormat::segmentation(first_copied(data_type.as_deref())?),
+                            buffer_row_id: index.1,
+                            buffer: buffer.clone().into(),
+                            format: first_copied(formats.as_deref())?.0,
                             kind: ImageKind::Segmentation,
                             colormap: None,
                         },

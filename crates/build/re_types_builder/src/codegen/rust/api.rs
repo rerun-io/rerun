@@ -507,31 +507,38 @@ fn quote_enum(
     // * the arrow datatype
     // * the GUI
 
-    let quoted_fields = fields.iter().enumerate().map(|(i, field)| {
+    let quoted_fields = fields.iter().map(|field| {
         let name = format_ident!("{}", field.name);
 
-        let quoted_doc = quote_field_docs(reporter, objects, field);
+        if let Some(enum_value) = field.enum_value {
+            let quoted_enum = proc_macro2::Literal::u8_unsuffixed(enum_value);
+            let quoted_doc = quote_field_docs(reporter, objects, field);
 
-        // We assign the arrow type index to the enum fields to make encoding simpler and faster:
-        let arrow_type_index = proc_macro2::Literal::usize_unsuffixed(1 + i); // 0 is reserved for `_null_markers`
+            let default_attr = if field.attrs.has(ATTR_DEFAULT) {
+                quote!(#[default])
+            } else {
+                quote!()
+            };
 
-        let default_attr = if field.attrs.has(ATTR_DEFAULT) {
-            quote!(#[default])
+            let clippy_attrs = if field.name == field.pascal_case_name() {
+                quote!()
+            } else {
+                quote!(#[allow(clippy::upper_case_acronyms)]) // e.g. for `ColorModel::RGBA`
+            };
+
+            quote! {
+                #quoted_doc
+                #default_attr
+                #clippy_attrs
+                #name = #quoted_enum
+            }
         } else {
-            quote!()
-        };
-
-        let clippy_attrs = if field.name == field.pascal_case_name() {
-            quote!()
-        } else {
-            quote!(#[allow(clippy::upper_case_acronyms)]) // e.g. for `ColorModel::RGBA`
-        };
-
-        quote! {
-            #quoted_doc
-            #default_attr
-            #clippy_attrs
-            #name = #arrow_type_index
+            reporter.error(
+                &field.virtpath,
+                &field.fqname,
+                "Enum ObjectFields must have an enum_value. This is likely a bug.",
+            );
+            quote! {}
         }
     });
 
@@ -572,6 +579,7 @@ fn quote_enum(
         #quoted_doc
         #[derive( #(#derives,)* )]
         #quoted_custom_clause
+        #[repr(u8)]
         pub enum #name {
             #(#quoted_fields,)*
         }

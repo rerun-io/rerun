@@ -22,16 +22,16 @@ mod prelude {
     pub use re_types::Rotation3D;
 
     // Also import any component or datatype that has a unique name:
-    pub use re_chunk::ChunkTimeline;
+    pub use re_chunk::TimeColumn;
     pub use re_types::components::{
-        AlbedoFactor, ChannelDatatype, Color, ColorModel, FillMode, HalfSize2D, HalfSize3D,
-        LineStrip2D, LineStrip3D, MediaType, PixelFormat, Position2D, Position3D, Radius,
-        Resolution2D, Scale3D, Text, TextLogLevel, TransformRelation, TriangleIndices, Vector2D,
-        Vector3D,
+        AlbedoFactor, Color, FillMode, HalfSize2D, HalfSize3D, ImageFormat, LineStrip2D,
+        LineStrip3D, MediaType, Position2D, Position3D, Radius, Scale3D, Text, TextLogLevel,
+        TransformRelation, TriangleIndices, Vector2D, Vector3D,
     };
     pub use re_types::datatypes::{
-        Angle, AnnotationInfo, ClassDescription, Float32, KeypointPair, Mat3x3, Quaternion, Rgba32,
-        RotationAxisAngle, TensorBuffer, TensorData, TensorDimension, Vec2D, Vec3D, Vec4D,
+        Angle, AnnotationInfo, ChannelDatatype, ClassDescription, ColorModel, Float32,
+        KeypointPair, Mat3x3, PixelFormat, Quaternion, Rgba32, RotationAxisAngle, TensorBuffer,
+        TensorData, TensorDimension, Vec2D, Vec3D, Vec4D,
     };
 }
 pub use prelude::*;

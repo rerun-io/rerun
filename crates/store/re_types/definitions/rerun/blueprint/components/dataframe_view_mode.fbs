@@ -2,9 +2,12 @@ namespace rerun.blueprint.components;
 
 
 /// The kind of table displayed by the dataframe view
-enum DataframeViewMode: byte (
+enum DataframeViewMode: ubyte (
     "attr.rerun.scope": "blueprint"
 ) {
+    /// Invalid value. Won't show up in generated types.
+    Invalid = 0,
+
     /// Display the entity values at the current time.
     ///
     /// In this mode, rows are entity instances, and columns are components. The visible time range setting is ignored.

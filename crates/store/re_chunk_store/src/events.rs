@@ -254,9 +254,9 @@ mod tests {
                 if event.is_static() {
                     self.num_static += delta_rows;
                 } else {
-                    for (&timeline, time_chunk) in event.chunk.timelines() {
+                    for (&timeline, time_column) in event.chunk.timelines() {
                         *self.timelines.entry(timeline).or_default() += delta_rows;
-                        for time in time_chunk.times() {
+                        for time in time_column.times() {
                             *self.times.entry(time).or_default() += delta_chunks;
                         }
                     }

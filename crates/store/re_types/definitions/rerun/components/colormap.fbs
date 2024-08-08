@@ -5,7 +5,10 @@ namespace rerun.components;
 /// This provides a number of popular pre-defined colormaps.
 /// In the future, the Rerun Viewer will allow users to define their own colormaps,
 /// but currently the Viewer is limited to the types defined here.
-enum Colormap: byte {
+enum Colormap: ubyte {
+    /// Invalid value. Won't show up in generated types.
+    Invalid = 0,
+
     /// A simple black to white gradient.
     ///
     /// This is a sRGB gray gradient which is perceptually uniform.

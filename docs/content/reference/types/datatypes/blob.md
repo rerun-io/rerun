@@ -18,3 +18,4 @@ A binary blob of data.
 ## Used by
 
 * [`Blob`](../components/blob.md)
+* [`ImageBuffer`](../components/image_buffer.md)

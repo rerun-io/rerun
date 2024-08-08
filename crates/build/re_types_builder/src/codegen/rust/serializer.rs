@@ -21,6 +21,7 @@ pub fn quote_arrow_serializer(
 
     let quoted_datatype = quote! { Self::arrow_datatype() };
 
+    let is_enum = obj.is_enum();
     let is_arrow_transparent = obj.datatype.is_none();
     let is_tuple_struct = is_tuple_struct_from_obj(obj);
 
@@ -44,7 +45,50 @@ pub fn quote_arrow_serializer(
         }
     };
 
-    if is_arrow_transparent {
+    if is_enum {
+        let quoted_data_src = data_src.clone();
+        let quoted_data_dst = format_ident!("data0");
+        let bitmap_dst = format_ident!("{quoted_data_dst}_bitmap");
+
+        // The choice of true or false for `elements_are_nullable` here is a bit confusing.
+        // This code-gen path forms the basis of `to_arrow_opt`, which implies that we
+        // support nullable elements. Additionally, this MAY be used as a recursive code
+        // path when using an enum within a struct, and that struct within the field may
+        // be null, as such the elements are always handled as nullable.
+        // TODO(#6819): If we get rid of nullable components this will likely need to change.
+        let elements_are_nullable = true;
+
+        let quoted_serializer = quote_arrow_field_serializer(
+            objects,
+            datatype.to_logical_type(),
+            &quoted_datatype,
+            &bitmap_dst,
+            elements_are_nullable,
+            &quoted_data_dst,
+            InnerRepr::NativeIterable,
+        );
+
+        let quoted_bitmap = quoted_bitmap(bitmap_dst);
+
+        quote! {{
+            let (somes, #quoted_data_dst): (Vec<_>, Vec<_>) = #quoted_data_src
+                .into_iter()
+                .map(|datum| {
+                    let datum: Option<::std::borrow::Cow<'a, Self>> = datum.map(Into::into);
+
+                    let datum = datum
+                    .map(|datum| *datum as u8);
+
+                    (datum.is_some(), datum)
+                })
+                .unzip();
+
+
+            #quoted_bitmap;
+
+            #quoted_serializer
+        }}
+    } else if is_arrow_transparent {
         // NOTE: Arrow transparent objects must have a single field, no more no less.
         // The semantic pass would have failed already if this wasn't the case.
         let obj_field = &obj.fields[0];
@@ -428,6 +472,24 @@ fn quote_arrow_field_serializer(
     } else {
         None
     };
+
+    // If the inner object is an enum, then dispatch to its serializer.
+    if let Some(obj) = inner_obj {
+        if obj.is_enum() {
+            let fqname_use = quote_fqname_as_type_path(&obj.fqname);
+            let option_wrapper = if elements_are_nullable {
+                quote! {}
+            } else {
+                quote! { .into_iter().map(Some) }
+            };
+
+            return quote! {{
+                _ = #bitmap_src;
+                #fqname_use::to_arrow_opt(#data_src #option_wrapper)?
+            }};
+        }
+    }
+
     let inner_is_arrow_transparent = inner_obj.map_or(false, |obj| obj.datatype.is_none());
 
     match datatype.to_logical_type() {

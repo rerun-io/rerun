@@ -18,7 +18,7 @@ use ::re_types_core::SerializationResult;
 use ::re_types_core::{ComponentBatch, MaybeOwnedComponentBatch};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
-/// **Archetype**: 2D boxes with half-extents and optional center, rotations, colors etc.
+/// **Archetype**: 2D boxes with half-extents and optional center, colors etc.
 ///
 /// ## Example
 ///

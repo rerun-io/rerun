@@ -58,22 +58,25 @@ class AggregationPolicy(Enum):
     MinMaxAverage = 6
     """Find both the minimum and maximum values in the range, then use the average of those."""
 
+    @classmethod
+    def auto(cls, val: str | int | AggregationPolicy) -> AggregationPolicy:
+        """Best-effort converter, including a case-insensitive string matcher."""
+        if isinstance(val, AggregationPolicy):
+            return val
+        if isinstance(val, int):
+            return cls(val)
+        try:
+            return cls[val]
+        except KeyError:
+            val_lower = val.lower()
+            for variant in cls:
+                if variant.name.lower() == val_lower:
+                    return variant
+        raise ValueError(f"Cannot convert {val} to {cls.__name__}")
+
     def __str__(self) -> str:
         """Returns the variant name."""
-        if self == AggregationPolicy.Off:
-            return "Off"
-        elif self == AggregationPolicy.Average:
-            return "Average"
-        elif self == AggregationPolicy.Max:
-            return "Max"
-        elif self == AggregationPolicy.Min:
-            return "Min"
-        elif self == AggregationPolicy.MinMax:
-            return "MinMax"
-        elif self == AggregationPolicy.MinMaxAverage:
-            return "MinMaxAverage"
-        else:
-            raise ValueError("Unknown enum variant")
+        return self.name
 
 
 AggregationPolicyLike = Union[
@@ -92,6 +95,7 @@ AggregationPolicyLike = Union[
         "minmaxaverage",
         "off",
     ],
+    int,
 ]
 AggregationPolicyArrayLike = Union[AggregationPolicyLike, Sequence[AggregationPolicyLike]]
 
@@ -100,19 +104,7 @@ class AggregationPolicyType(BaseExtensionType):
     _TYPE_NAME: str = "rerun.components.AggregationPolicy"
 
     def __init__(self) -> None:
-        pa.ExtensionType.__init__(
-            self,
-            pa.sparse_union([
-                pa.field("_null_markers", pa.null(), nullable=True, metadata={}),
-                pa.field("Off", pa.null(), nullable=True, metadata={}),
-                pa.field("Average", pa.null(), nullable=True, metadata={}),
-                pa.field("Max", pa.null(), nullable=True, metadata={}),
-                pa.field("Min", pa.null(), nullable=True, metadata={}),
-                pa.field("MinMax", pa.null(), nullable=True, metadata={}),
-                pa.field("MinMaxAverage", pa.null(), nullable=True, metadata={}),
-            ]),
-            self._TYPE_NAME,
-        )
+        pa.ExtensionType.__init__(self, pa.uint8(), self._TYPE_NAME)
 
 
 class AggregationPolicyBatch(BaseBatch[AggregationPolicyArrayLike], ComponentBatchMixin):
@@ -123,44 +115,6 @@ class AggregationPolicyBatch(BaseBatch[AggregationPolicyArrayLike], ComponentBat
         if isinstance(data, (AggregationPolicy, int, str)):
             data = [data]
 
-        types: list[int] = []
+        pa_data = [AggregationPolicy.auto(v).value if v is not None else None for v in data]  # type: ignore[redundant-expr]
 
-        for value in data:
-            if value is None:
-                types.append(0)
-            elif isinstance(value, AggregationPolicy):
-                types.append(value.value)  # Actual enum value
-            elif isinstance(value, int):
-                types.append(value)  # By number
-            elif isinstance(value, str):
-                if hasattr(AggregationPolicy, value):
-                    types.append(AggregationPolicy[value].value)  # fast path
-                elif value.lower() == "off":
-                    types.append(AggregationPolicy.Off.value)
-                elif value.lower() == "average":
-                    types.append(AggregationPolicy.Average.value)
-                elif value.lower() == "max":
-                    types.append(AggregationPolicy.Max.value)
-                elif value.lower() == "min":
-                    types.append(AggregationPolicy.Min.value)
-                elif value.lower() == "minmax":
-                    types.append(AggregationPolicy.MinMax.value)
-                elif value.lower() == "minmaxaverage":
-                    types.append(AggregationPolicy.MinMaxAverage.value)
-                else:
-                    raise ValueError(f"Unknown AggregationPolicy kind: {value}")
-            else:
-                raise ValueError(f"Unknown AggregationPolicy kind: {value}")
-
-        buffers = [
-            None,
-            pa.array(types, type=pa.int8()).buffers()[1],
-        ]
-        children = (1 + 6) * [pa.nulls(len(data))]
-
-        return pa.UnionArray.from_buffers(
-            type=data_type,
-            length=len(data),
-            buffers=buffers,
-            children=children,
-        )
+        return pa.array(pa_data, type=data_type)

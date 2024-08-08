@@ -47,21 +47,31 @@ class BackgroundKind(Enum):
     SolidColor = 3
     """Simple uniform color."""
 
+    @classmethod
+    def auto(cls, val: str | int | BackgroundKind) -> BackgroundKind:
+        """Best-effort converter, including a case-insensitive string matcher."""
+        if isinstance(val, BackgroundKind):
+            return val
+        if isinstance(val, int):
+            return cls(val)
+        try:
+            return cls[val]
+        except KeyError:
+            val_lower = val.lower()
+            for variant in cls:
+                if variant.name.lower() == val_lower:
+                    return variant
+        raise ValueError(f"Cannot convert {val} to {cls.__name__}")
+
     def __str__(self) -> str:
         """Returns the variant name."""
-        if self == BackgroundKind.GradientDark:
-            return "GradientDark"
-        elif self == BackgroundKind.GradientBright:
-            return "GradientBright"
-        elif self == BackgroundKind.SolidColor:
-            return "SolidColor"
-        else:
-            raise ValueError("Unknown enum variant")
+        return self.name
 
 
 BackgroundKindLike = Union[
     BackgroundKind,
     Literal["GradientBright", "GradientDark", "SolidColor", "gradientbright", "gradientdark", "solidcolor"],
+    int,
 ]
 BackgroundKindArrayLike = Union[BackgroundKindLike, Sequence[BackgroundKindLike]]
 
@@ -70,16 +80,7 @@ class BackgroundKindType(BaseExtensionType):
     _TYPE_NAME: str = "rerun.blueprint.components.BackgroundKind"
 
     def __init__(self) -> None:
-        pa.ExtensionType.__init__(
-            self,
-            pa.sparse_union([
-                pa.field("_null_markers", pa.null(), nullable=True, metadata={}),
-                pa.field("GradientDark", pa.null(), nullable=True, metadata={}),
-                pa.field("GradientBright", pa.null(), nullable=True, metadata={}),
-                pa.field("SolidColor", pa.null(), nullable=True, metadata={}),
-            ]),
-            self._TYPE_NAME,
-        )
+        pa.ExtensionType.__init__(self, pa.uint8(), self._TYPE_NAME)
 
 
 class BackgroundKindBatch(BaseBatch[BackgroundKindArrayLike], ComponentBatchMixin):
@@ -90,38 +91,6 @@ class BackgroundKindBatch(BaseBatch[BackgroundKindArrayLike], ComponentBatchMixi
         if isinstance(data, (BackgroundKind, int, str)):
             data = [data]
 
-        types: list[int] = []
+        pa_data = [BackgroundKind.auto(v).value if v is not None else None for v in data]  # type: ignore[redundant-expr]
 
-        for value in data:
-            if value is None:
-                types.append(0)
-            elif isinstance(value, BackgroundKind):
-                types.append(value.value)  # Actual enum value
-            elif isinstance(value, int):
-                types.append(value)  # By number
-            elif isinstance(value, str):
-                if hasattr(BackgroundKind, value):
-                    types.append(BackgroundKind[value].value)  # fast path
-                elif value.lower() == "gradientdark":
-                    types.append(BackgroundKind.GradientDark.value)
-                elif value.lower() == "gradientbright":
-                    types.append(BackgroundKind.GradientBright.value)
-                elif value.lower() == "solidcolor":
-                    types.append(BackgroundKind.SolidColor.value)
-                else:
-                    raise ValueError(f"Unknown BackgroundKind kind: {value}")
-            else:
-                raise ValueError(f"Unknown BackgroundKind kind: {value}")
-
-        buffers = [
-            None,
-            pa.array(types, type=pa.int8()).buffers()[1],
-        ]
-        children = (1 + 3) * [pa.nulls(len(data))]
-
-        return pa.UnionArray.from_buffers(
-            type=data_type,
-            length=len(data),
-            buffers=buffers,
-            children=children,
-        )
+        return pa.array(pa_data, type=data_type)

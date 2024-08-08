@@ -13,7 +13,7 @@ use parking_lot::Mutex;
 use arrow2::array::{ListArray as ArrowListArray, PrimitiveArray as ArrowPrimitiveArray};
 use re_chunk::{Chunk, ChunkBatcher, ChunkBatcherConfig, ChunkBatcherError, PendingRow, RowId};
 
-use re_chunk::{ChunkError, ChunkId, ChunkTimeline, ComponentName};
+use re_chunk::{ChunkError, ChunkId, ComponentName, TimeColumn};
 use re_log_types::{
     ApplicationId, ArrowChunkReleaseCallback, BlueprintActivationCommand, EntityPath, LogMsg,
     StoreId, StoreInfo, StoreKind, StoreSource, Time, TimeInt, TimePoint, TimeType, Timeline,
@@ -894,14 +894,18 @@ impl RecordingStream {
     /// Lower-level logging API to provide data spanning multiple timepoints.
     ///
     /// Unlike the regular `log` API, which is row-oriented, this API lets you submit the data
-    /// in a columnar form. The lengths of all of the [`ChunkTimeline`] and the [`ArrowListArray`]s
+    /// in a columnar form. The lengths of all of the [`TimeColumn`] and the [`ArrowListArray`]s
     /// must match. All data that occurs at the same index across the different time and components
     /// arrays will act as a single logical row.
+    ///
+    /// Note that this API ignores any stateful time set on the log stream via the
+    /// [`Self::set_timepoint`]/[`Self::set_time_nanos`]/etc. APIs.
+    /// Furthermore, this will _not_ inject the default timelines `log_tick` and `log_time` timeline columns.
     #[inline]
-    pub fn log_temporal_batch<'a>(
+    pub fn send_columns<'a>(
         &self,
         ent_path: impl Into<EntityPath>,
-        timelines: impl IntoIterator<Item = ChunkTimeline>,
+        timelines: impl IntoIterator<Item = TimeColumn>,
         components: impl IntoIterator<Item = &'a dyn ComponentBatch>,
     ) -> RecordingStreamResult<()> {
         let id = ChunkId::new();
@@ -947,7 +951,7 @@ impl RecordingStream {
 
         let chunk = Chunk::from_auto_row_ids(id, ent_path.into(), timelines, components)?;
 
-        self.record_chunk(chunk);
+        self.send_chunk(chunk);
 
         Ok(())
     }
@@ -1441,11 +1445,12 @@ impl RecordingStream {
         }
     }
 
-    /// Records a single [`Chunk`].
+    /// Logs a single [`Chunk`].
     ///
     /// Will inject `log_tick` and `log_time` timeline columns into the chunk.
+    /// If you don't want to inject these, use [`Self::send_chunk`] instead.
     #[inline]
-    pub fn record_chunk(&self, mut chunk: Chunk) {
+    pub fn log_chunk(&self, mut chunk: Chunk) {
         let f = move |inner: &RecordingStreamInner| {
             // TODO(cmc): Repeating these values is pretty wasteful. Would be nice to have a way of
             // indicating these are fixed across the whole chunk.
@@ -1459,9 +1464,9 @@ impl RecordingStream {
                 )
                 .to(time_timeline.datatype());
 
-                let time_chunk = ChunkTimeline::new(Some(true), time_timeline, repeated_time);
+                let time_column = TimeColumn::new(Some(true), time_timeline, repeated_time);
 
-                if let Err(err) = chunk.add_timeline(time_chunk) {
+                if let Err(err) = chunk.add_timeline(time_column) {
                     re_log::error!(
                         "Couldn't inject '{}' timeline into chunk (this is a bug in Rerun!): {}",
                         time_timeline.name(),
@@ -1483,7 +1488,7 @@ impl RecordingStream {
                 )
                 .to(tick_timeline.datatype());
 
-                let tick_chunk = ChunkTimeline::new(Some(true), tick_timeline, repeated_tick);
+                let tick_chunk = TimeColumn::new(Some(true), tick_timeline, repeated_tick);
 
                 if let Err(err) = chunk.add_timeline(tick_chunk) {
                     re_log::error!(
@@ -1499,22 +1504,22 @@ impl RecordingStream {
         };
 
         if self.with(f).is_none() {
-            re_log::warn_once!("Recording disabled - call to record_chunk() ignored");
+            re_log::warn_once!("Recording disabled - call to log_chunk() ignored");
         }
     }
 
     /// Records a single [`Chunk`].
     ///
     /// This will _not_ inject `log_tick` and `log_time` timeline columns into the chunk,
-    /// for that use [`Self::record_chunk`].
+    /// for that use [`Self::log_chunk`].
     #[inline]
-    pub fn record_chunk_raw(&self, chunk: Chunk) {
+    pub fn send_chunk(&self, chunk: Chunk) {
         let f = move |inner: &RecordingStreamInner| {
             inner.batcher.push_chunk(chunk);
         };
 
         if self.with(f).is_none() {
-            re_log::warn_once!("Recording disabled - call to record_chunk() ignored");
+            re_log::warn_once!("Recording disabled - call to send_chunk() ignored");
         }
     }
 

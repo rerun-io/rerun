@@ -139,7 +139,7 @@ fn load_image(
 
     let rows = [
         {
-            let mut arch = re_types::archetypes::ImageEncoded::from_file_contents(contents);
+            let mut arch = re_types::archetypes::EncodedImage::from_file_contents(contents);
 
             if let Ok(format) = image::ImageFormat::from_path(filepath) {
                 arch.media_type = Some(MediaType::from(format.to_mime_type()));
