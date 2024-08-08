@@ -36,6 +36,10 @@ class LeafTransforms3D(Archetype):
     E.g. if both a translation and a max3x3 transform are present,
     the 3x3 matrix is applied first, followed by the translation.
 
+    Whenever you log this archetype, it will write all components, even if you do not explicitly set them.
+    This means that if you first log a transform with only a translation, and then log one with only a rotation,
+    i will be resolved to a transform with only a rotation.
+
     Example
     -------
     ### Regular & leaf transform in tandom:
@@ -131,7 +135,7 @@ class LeafTransforms3D(Archetype):
     translations: components.LeafTranslation3DBatch | None = field(
         metadata={"component": "optional"},
         default=None,
-        converter=components.LeafTranslation3DBatch._optional,  # type: ignore[misc]
+        converter=components.LeafTranslation3DBatch._required,  # type: ignore[misc]
     )
     # Translation vectors.
     #
@@ -140,7 +144,7 @@ class LeafTransforms3D(Archetype):
     rotation_axis_angles: components.LeafRotationAxisAngleBatch | None = field(
         metadata={"component": "optional"},
         default=None,
-        converter=components.LeafRotationAxisAngleBatch._optional,  # type: ignore[misc]
+        converter=components.LeafRotationAxisAngleBatch._required,  # type: ignore[misc]
     )
     # Rotations via axis + angle.
     #
@@ -149,7 +153,7 @@ class LeafTransforms3D(Archetype):
     quaternions: components.LeafRotationQuatBatch | None = field(
         metadata={"component": "optional"},
         default=None,
-        converter=components.LeafRotationQuatBatch._optional,  # type: ignore[misc]
+        converter=components.LeafRotationQuatBatch._required,  # type: ignore[misc]
     )
     # Rotations via quaternion.
     #
@@ -158,7 +162,7 @@ class LeafTransforms3D(Archetype):
     scales: components.LeafScale3DBatch | None = field(
         metadata={"component": "optional"},
         default=None,
-        converter=components.LeafScale3DBatch._optional,  # type: ignore[misc]
+        converter=components.LeafScale3DBatch._required,  # type: ignore[misc]
     )
     # Scaling factors.
     #
@@ -167,7 +171,7 @@ class LeafTransforms3D(Archetype):
     mat3x3: components.LeafTransformMat3x3Batch | None = field(
         metadata={"component": "optional"},
         default=None,
-        converter=components.LeafTransformMat3x3Batch._optional,  # type: ignore[misc]
+        converter=components.LeafTransformMat3x3Batch._required,  # type: ignore[misc]
     )
     # 3x3 transformation matrices.
     #

@@ -33,6 +33,10 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 /// E.g. if both a translation and a max3x3 transform are present,
 /// the 3x3 matrix is applied first, followed by the translation.
 ///
+/// Whenever you log this archetype, it will write all components, even if you do not explicitly set them.
+/// This means that if you first log a transform with only a translation, and then log one with only a rotation,
+/// i will be resolved to a transform with only a rotation.
+///
 /// ## Example
 ///
 /// ### Regular & leaf transform in tandom
@@ -74,7 +78,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 ///         let translation = [0.0, 0.0, (i as f32 * 0.1 - 5.0).abs() - 5.0];
 ///         rec.log(
 ///             "world/box",
-///             &rerun::LeafTransforms3D::new().with_translations([translation]),
+///             &rerun::LeafTransforms3D::clear().with_translations([translation]),
 ///         )?;
 ///     }
 ///
@@ -90,7 +94,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 ///   <img src="https://static.rerun.io/leaf_transform3d/41674f0082d6de489f8a1cd1583f60f6b5820ddf/full.png" width="640">
 /// </picture>
 /// </center>
-#[derive(Clone, Debug, Default, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct LeafTransforms3D {
     /// Translation vectors.
     pub translations: Option<Vec<crate::components::LeafTranslation3D>>,
@@ -294,21 +298,71 @@ impl ::re_types_core::AsComponents for LeafTransforms3D {
         use ::re_types_core::Archetype as _;
         [
             Some(Self::indicator()),
-            self.translations
-                .as_ref()
-                .map(|comp_batch| (comp_batch as &dyn ComponentBatch).into()),
-            self.rotation_axis_angles
-                .as_ref()
-                .map(|comp_batch| (comp_batch as &dyn ComponentBatch).into()),
-            self.quaternions
-                .as_ref()
-                .map(|comp_batch| (comp_batch as &dyn ComponentBatch).into()),
-            self.scales
-                .as_ref()
-                .map(|comp_batch| (comp_batch as &dyn ComponentBatch).into()),
-            self.mat3x3
-                .as_ref()
-                .map(|comp_batch| (comp_batch as &dyn ComponentBatch).into()),
+            Some(
+                (if let Some(comp_batch) = &self.translations {
+                    (comp_batch as &dyn ComponentBatch)
+                } else {
+                    static EMPTY_BATCH: once_cell::sync::OnceCell<
+                        Vec<crate::components::LeafTranslation3D>,
+                    > = once_cell::sync::OnceCell::new();
+                    let empty_batch: &Vec<crate::components::LeafTranslation3D> =
+                        EMPTY_BATCH.get_or_init(|| Vec::new());
+                    (empty_batch as &dyn ComponentBatch)
+                })
+                .into(),
+            ),
+            Some(
+                (if let Some(comp_batch) = &self.rotation_axis_angles {
+                    (comp_batch as &dyn ComponentBatch)
+                } else {
+                    static EMPTY_BATCH: once_cell::sync::OnceCell<
+                        Vec<crate::components::LeafRotationAxisAngle>,
+                    > = once_cell::sync::OnceCell::new();
+                    let empty_batch: &Vec<crate::components::LeafRotationAxisAngle> =
+                        EMPTY_BATCH.get_or_init(|| Vec::new());
+                    (empty_batch as &dyn ComponentBatch)
+                })
+                .into(),
+            ),
+            Some(
+                (if let Some(comp_batch) = &self.quaternions {
+                    (comp_batch as &dyn ComponentBatch)
+                } else {
+                    static EMPTY_BATCH: once_cell::sync::OnceCell<
+                        Vec<crate::components::LeafRotationQuat>,
+                    > = once_cell::sync::OnceCell::new();
+                    let empty_batch: &Vec<crate::components::LeafRotationQuat> =
+                        EMPTY_BATCH.get_or_init(|| Vec::new());
+                    (empty_batch as &dyn ComponentBatch)
+                })
+                .into(),
+            ),
+            Some(
+                (if let Some(comp_batch) = &self.scales {
+                    (comp_batch as &dyn ComponentBatch)
+                } else {
+                    static EMPTY_BATCH: once_cell::sync::OnceCell<
+                        Vec<crate::components::LeafScale3D>,
+                    > = once_cell::sync::OnceCell::new();
+                    let empty_batch: &Vec<crate::components::LeafScale3D> =
+                        EMPTY_BATCH.get_or_init(|| Vec::new());
+                    (empty_batch as &dyn ComponentBatch)
+                })
+                .into(),
+            ),
+            Some(
+                (if let Some(comp_batch) = &self.mat3x3 {
+                    (comp_batch as &dyn ComponentBatch)
+                } else {
+                    static EMPTY_BATCH: once_cell::sync::OnceCell<
+                        Vec<crate::components::LeafTransformMat3x3>,
+                    > = once_cell::sync::OnceCell::new();
+                    let empty_batch: &Vec<crate::components::LeafTransformMat3x3> =
+                        EMPTY_BATCH.get_or_init(|| Vec::new());
+                    (empty_batch as &dyn ComponentBatch)
+                })
+                .into(),
+            ),
         ]
         .into_iter()
         .flatten()
@@ -319,9 +373,9 @@ impl ::re_types_core::AsComponents for LeafTransforms3D {
 impl ::re_types_core::ArchetypeReflectionMarker for LeafTransforms3D {}
 
 impl LeafTransforms3D {
-    /// Create a new `LeafTransforms3D`.
+    /// Create a new `LeafTransforms3D` which when logged will clear the values of all components.
     #[inline]
-    pub fn new() -> Self {
+    pub fn clear() -> Self {
         Self {
             translations: None,
             rotation_axis_angles: None,
