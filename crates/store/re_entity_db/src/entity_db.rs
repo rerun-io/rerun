@@ -206,6 +206,11 @@ impl EntityDb {
     }
 
     #[inline]
+    pub fn store_mut(&mut self) -> &mut ChunkStore {
+        &mut self.data_store
+    }
+
+    #[inline]
     pub fn store_kind(&self) -> StoreKind {
         self.store_id().kind
     }
