@@ -29,12 +29,12 @@ int main() {
     auto time_column = rerun::TimeColumn::from_times("time", std::move(times));
 
     // Interpret raw positions and color data as rerun components and partition them.
-    auto indicator_batch = rerun::PartitionedComponentBatch::from_indicators<rerun::Points3D>(5);
-    auto position_batch = rerun::PartitionedComponentBatch::from_loggable_with_lengths(
+    auto indicator_batch = rerun::ComponentColumn::from_indicators<rerun::Points3D>(5);
+    auto position_batch = rerun::ComponentColumn::from_loggable_with_lengths(
         rerun::Collection<rerun::components::Position3D>(std::move(positions)),
         {2, 4, 4, 3, 4}
     );
-    auto color_batch = rerun::PartitionedComponentBatch::from_loggable(
+    auto color_batch = rerun::ComponentColumn::from_loggable(
         rerun::Collection<rerun::components::Color>(std::move(colors))
     );
 

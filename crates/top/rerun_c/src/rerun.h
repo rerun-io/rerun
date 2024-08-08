@@ -212,11 +212,11 @@ typedef struct rr_data_row {
     rr_component_batch* component_batches;
 } rr_data_row;
 
-/// Arrow-encoded data of a component batch partitioned into several runs of components.
+/// Arrow-encoded data of a column of components.
 ///
 /// This is essentially an array of `rr_component_batch` with all batches
 /// continuously in a single array.
-typedef struct rr_partitioned_component_batch {
+typedef struct rr_component_column {
     /// The component type used for the components inside the list array.
     ///
     /// This is *not* the type of the arrow list array itself, but of the underlying batch.
@@ -224,7 +224,7 @@ typedef struct rr_partitioned_component_batch {
 
     /// A ListArray with the datatype `List(component_type)`.
     struct ArrowArray array;
-} rr_partitioned_component_batch;
+} rr_component_column;
 
 /// Describes whether an array is known to be sorted or not.
 typedef uint32_t rr_sorting_status;
@@ -537,7 +537,7 @@ extern void rr_recording_stream_log_file_from_contents(
 /// Sends the columns of components to the stream.
 ///
 /// Unlike the regular `log` API, which is row-oriented, this API lets you submit the data
-/// in a columnar form. The lengths of all `rr_time_column` and `component_batches`
+/// in a columnar form. The lengths of all `time_columns` and `component_columns`
 /// must match. All data that occurs at the same index across the different time and components
 /// arrays will act as a single logical row.
 ///
@@ -545,9 +545,9 @@ extern void rr_recording_stream_log_file_from_contents(
 /// `rr_recording_stream_set_time_sequence`/`rr_recording_stream_set_time_nanos`/etc. APIs.
 /// Furthermore, this will _not_ inject the default timelines `log_tick` and `log_time` timeline columns.
 extern void rr_recording_stream_send_columns(
-    rr_recording_stream stream, rr_string entity_path,                                       //
-    const rr_time_column* time_columns, uint32_t num_time_columns,                           //
-    const rr_partitioned_component_batch* component_batches, uint32_t num_component_batches, //
+    rr_recording_stream stream, rr_string entity_path,                            //
+    const rr_time_column* time_columns, uint32_t num_time_columns,                //
+    const rr_component_column* component_columns, uint32_t num_component_columns, //
     rr_error* error
 );
 

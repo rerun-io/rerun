@@ -183,9 +183,9 @@ pub struct CDataRow {
     pub batches: *mut CComponentBatch,
 }
 
-/// See `rr_partitioned_component_batch` in the C header.
+/// See `rr_component_column` in the C header.
 #[repr(C)]
-pub struct CPartitionedComponentBatch {
+pub struct CComponentColumns {
     pub component_type: CComponentTypeHandle,
 
     /// A ListArray with the datatype `List(component_type)`.
@@ -916,7 +916,7 @@ fn rr_recording_stream_send_columns_impl(
     stream: CRecordingStream,
     entity_path: CStringView,
     time_columns: &[CTimeColumn],
-    component_batches: &[CPartitionedComponentBatch],
+    component_columns: &[CComponentColumns],
 ) -> Result<(), CError> {
     // Create chunk-id as early as possible. It has a timestamp and is used to estimate e2e latency.
     let id = ChunkId::new();
@@ -953,10 +953,10 @@ fn rr_recording_stream_send_columns_impl(
 
     let components: BTreeMap<ComponentName, arrow2::array::ListArray<i32>> = {
         let component_type_registry = COMPONENT_TYPES.read();
-        component_batches
+        component_columns
             .iter()
             .map(|batch| {
-                let CPartitionedComponentBatch {
+                let CComponentColumns {
                     component_type,
                     array,
                 } = &batch;
@@ -1001,7 +1001,7 @@ pub unsafe extern "C" fn rr_recording_stream_send_columns(
     entity_path: CStringView,
     time_columns: *const CTimeColumn,
     num_time_columns: u32,
-    component_batches: *const CPartitionedComponentBatch,
+    component_batches: *const CComponentColumns,
     num_component_batches: u32,
     error: *mut CError,
 ) {
