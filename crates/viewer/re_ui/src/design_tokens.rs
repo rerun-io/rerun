@@ -410,7 +410,7 @@ impl DesignTokens {
 
     /// Used by the "add view or container" modal.
     pub fn thumbnail_background_color(&self) -> egui::Color32 {
-        get_global_color(&design_tokens().json, "{Global.Color.Grey.250}")
+        get_global_color(&self.json, "{Global.Color.Grey.250}")
     }
 }
 
