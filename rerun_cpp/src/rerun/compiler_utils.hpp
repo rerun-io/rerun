@@ -53,24 +53,27 @@
 #define RR_DISABLE_DEPRECATION_WARNING
 #endif
 
-// TODO: needed?
 // Detecting address sanitizer (ASAN) being enabled.
-// #if defined(__clang__)
-// #define RR_ASAN_ENABLED __has_feature(address_sanitizer)
-// #else
-// // Both GCC and MSVC 2019 use this macro
-// // MSVC: https://learn.microsoft.com/en-us/cpp/sanitizers/asan-building?view=msvc-160#__sanitize_address__
-// // GCC: https://gcc.gnu.org/onlinedocs/cpp/Common-Predefined-Macros.html
-// #define RR_ASAN_ENABLED (defined(__SANITIZE_ADDRESS__) && __SANITIZE_ADDRESS__)
-// #endif
+#if defined(__clang__)
+#define RR_ASAN_ENABLED __has_feature(address_sanitizer)
+#else
+// Both GCC and MSVC 2019 use this macro
+// MSVC: https://learn.microsoft.com/en-us/cpp/sanitizers/asan-building?view=msvc-160#__sanitize_address__
+// GCC: https://gcc.gnu.org/onlinedocs/cpp/Common-Predefined-Macros.html
+#ifdef __SANITIZE_ADDRESS__
+#define RR_ASAN_ENABLED __SANITIZE_ADDRESS__
+#else
+#define RR_ASAN_ENABLED 0
+#endif
+#endif
 
-// // Disable address sanitizer (ASAN) for a function.
-// #if RR_ASAN_ENABLED
-// #if defined(_MSC_VER)
-// __declspec(no_sanitize_address)
-// #else
-// #define RR_DISABLE_ADDRESS_SANITIZER __attribute__((no_sanitize("address")))
-// #endif
-// #else
-// #define RR_DISABLE_ADDRESS_SANITIZER
-// #endif
+// Disable address sanitizer (ASAN) for a function.
+#if RR_ASAN_ENABLED
+#if defined(_MSC_VER)
+__declspec(no_sanitize_address)
+#else
+#define RR_DISABLE_ADDRESS_SANITIZER __attribute__((no_sanitize("address")))
+#endif
+#else
+#define RR_DISABLE_ADDRESS_SANITIZER
+#endif
