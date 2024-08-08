@@ -38,7 +38,13 @@ def download_with_progress(url: str, what: str) -> io.BytesIO:
     chunk_size = 1024 * 1024
     resp = requests.get(url, stream=True)
     total_size = int(resp.headers.get("content-length", 0))
-    with tqdm(desc=f"Downloading {what}…", total=total_size, unit="iB", unit_scale=True, unit_divisor=1024) as progress:
+    with tqdm(
+        desc=f"Downloading {what}…",
+        total=total_size,
+        unit="iB",
+        unit_scale=True,
+        unit_divisor=1024,
+    ) as progress:
         download_file = io.BytesIO()
         for data in resp.iter_content(chunk_size):
             download_file.write(data)
@@ -87,15 +93,18 @@ def log_region_boundaries_for_country(
     for i, row in map_data[map_data.CNTR_CODE == country_code].iterrows():
         entity_path = f"region_boundaries/{country_code}/{level}/{row.NUTS_ID}"
         lines = shapely_geom_to_numpy(row.geometry)
-        rr.log(entity_path + "/2D", rr.LineStrips2D(lines, colors=color), timeless=True)
+        rr.log(entity_path + "/2D", rr.LineStrips2D(lines, colors=color), static=True)
         rr.log(
             entity_path + "/3D",
-            rr.LineStrips3D([np.hstack([line, np.zeros((len(line), 1))]) for line in lines], colors=color),
-            timeless=True,
+            rr.LineStrips3D(
+                [np.hstack([line, np.zeros((len(line), 1))]) for line in lines],
+                colors=color,
+            ),
+            static=True,
         )
         metadata = row.to_dict()
         metadata.pop("geometry")
-        rr.log(entity_path, rr.AnyValues(**metadata), timeless=True)
+        rr.log(entity_path, rr.AnyValues(**metadata), static=True)
 
 
 @dataclasses.dataclass
@@ -207,7 +216,7 @@ def log_everything(paths: list[Path], raw: bool) -> None:
         log_region_boundaries_for_country(country_code, level, color, utm_crs)
 
     # Exaggerate altitudes
-    rr.log("aircraft", rr.Transform3D(rr.TranslationRotationScale3D(scale=[1, 1, 10])), timeless=True)
+    rr.log("aircraft", rr.Transform3D(scale=[1, 1, 10]), static=True)
 
     for measurement in tqdm(measurements, "Logging measurements"):
         if measurement.icao_id is None:
@@ -233,7 +242,11 @@ def log_everything(paths: list[Path], raw: bool) -> None:
             rr.log(
                 entity_path,
                 rr.Points3D([
-                    proj.transform(measurement.longitude, measurement.latitude, measurement.barometric_altitude)
+                    proj.transform(
+                        measurement.longitude,
+                        measurement.latitude,
+                        measurement.barometric_altitude,
+                    )
                 ]),
             )
 
@@ -260,7 +273,11 @@ def main() -> None:
         action="store_true",
         help="If true, logs the raw data with all its issues (useful to stress edge cases in the viewer)",
     )
-    parser.add_argument("--dir", type=Path, help="Use this directory of data instead of downloading a dataset")
+    parser.add_argument(
+        "--dir",
+        type=Path,
+        help="Use this directory of data instead of downloading a dataset",
+    )
     rr.script_add_args(parser)
     args = parser.parse_args()
 
