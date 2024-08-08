@@ -8,11 +8,6 @@ namespace rerun::components {
         return arrow::null(); // Note that this already returns a shared_ptr reference.
     }
 
-    // Unclear why ASAN complains about the make_shared in here.
-    // We use this pattern in a lot of places only that the shared pointers are usually produced by the arrow library.
-    // While technically "leaking" until application shutdown, this should be cleaned up correctly and
-    // is still pointed to, so by a more technical definition it's not a leak.
-    RR_DISABLE_ADDRESS_SANITIZER
     const std::shared_ptr<arrow::Array>& indicator_arrow_array() {
         static const std::shared_ptr<arrow::Array> single_indicator_array =
             std::make_shared<arrow::NullArray>(1);
