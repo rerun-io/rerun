@@ -26,6 +26,10 @@ class Transform3D(Transform3DExt, Archetype):
     E.g. if both a translation and a max3x3 transform are present,
     the 3x3 matrix is applied first, followed by the translation.
 
+    Whenever you log this archetype, it will write all components, even if you do not explicitly set them.
+    This means that if you first log a transform with only a translation, and then log one with only a rotation,
+    i will be resolved to a transform with only a rotation.
+
     Examples
     --------
     ### Variety of 3D transforms:
