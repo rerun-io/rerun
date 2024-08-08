@@ -24,12 +24,13 @@ mod instance_path;
 mod log_msg;
 mod pinhole;
 mod store_id;
+mod tensor;
 
 pub mod item_ui;
 
-pub use crate::image::{
-    show_zoomed_image_region, show_zoomed_image_region_area_outline,
-    tensor_summary_ui_grid_contents,
+pub use crate::{
+    image::{show_zoomed_image_region, show_zoomed_image_region_area_outline},
+    tensor::tensor_summary_ui_grid_contents,
 };
 pub use component::EntityLatestAtResults;
 pub use component_ui_registry::{add_to_registry, create_component_ui_registry};
