@@ -62,12 +62,12 @@ namespace rerun {
         /// \param sorting_status The sorting status of the sequence points.
         /// Already sorted time points may perform better.
         static TimeColumn from_sequence_points(
-            std::string_view timeline_name, Collection<int64_t> sequence_points,
+            std::string timeline_name, Collection<int64_t> sequence_points,
             SortingStatus sorting_status = SortingStatus::Unknown
         ) {
             return TimeColumn(
-                Timeline(timeline_name, TimeType::Sequence),
-                sequence_points,
+                Timeline(std::move(timeline_name), TimeType::Sequence),
+                std::move(sequence_points),
                 sorting_status
             );
         }
@@ -80,12 +80,12 @@ namespace rerun {
         /// \param sorting_status The sorting status of the time points.
         /// Already sorted time points may perform better.
         static TimeColumn from_times_nanoseconds(
-            std::string_view timeline_name, Collection<int64_t> timepoints_in_nanoseconds,
+            std::string timeline_name, Collection<int64_t> timepoints_in_nanoseconds,
             SortingStatus sorting_status = SortingStatus::Unknown
         ) {
             return TimeColumn(
-                Timeline(timeline_name, TimeType::Time),
-                timepoints_in_nanoseconds,
+                Timeline(std::move(timeline_name), TimeType::Time),
+                std::move(timepoints_in_nanoseconds),
                 sorting_status
             );
         }
@@ -99,7 +99,7 @@ namespace rerun {
         /// Already sorted time points may perform better.
         template <typename TRep, typename TPeriod>
         static TimeColumn from_times(
-            std::string_view timeline_name,
+            std::string timeline_name,
             const Collection<std::chrono::duration<TRep, TPeriod>>& chrono_timepoints,
             SortingStatus sorting_status = SortingStatus::Unknown
         ) {
@@ -110,7 +110,7 @@ namespace rerun {
                         .count();
             }
             return TimeColumn(
-                Timeline(timeline_name, TimeType::Time),
+                Timeline(std::move(timeline_name), TimeType::Time),
                 std::move(timepoints),
                 sorting_status
             );
@@ -123,7 +123,7 @@ namespace rerun {
         /// \param max The maximum sequence point, must be greater than `min`.
         /// \param step The step size between sequence points. Must be non-zero..
         static TimeColumn from_sequence_range(
-            std::string_view timeline_name, int64_t min, int64_t max, int64_t step = 1
+            std::string timeline_name, int64_t min, int64_t max, int64_t step = 1
         ) {
             assert(step > 0);
             assert(min < max);
@@ -135,7 +135,7 @@ namespace rerun {
             }
 
             return TimeColumn(
-                Timeline(timeline_name, TimeType::Sequence),
+                Timeline(std::move(timeline_name), TimeType::Sequence),
                 std::move(sequence_points),
                 SortingStatus::Sorted
             );
