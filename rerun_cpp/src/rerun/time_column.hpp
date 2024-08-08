@@ -116,31 +116,6 @@ namespace rerun {
             );
         }
 
-        /// Creates a sequence time column from a range of sequence points.
-        ///
-        /// \param timeline_name The name of the timeline this column belongs to.
-        /// \param min The minimum sequence point, must be less than `max`.
-        /// \param max The maximum sequence point, must be greater than `min`.
-        /// \param step The step size between sequence points. Must be non-zero..
-        static TimeColumn from_sequence_range(
-            std::string timeline_name, int64_t min, int64_t max, int64_t step = 1
-        ) {
-            assert(step > 0);
-            assert(min < max);
-
-            auto size = (max - min) / step;
-            std::vector<int64_t> sequence_points(static_cast<size_t>(size));
-            for (int64_t i = 0; i < size; ++i) {
-                sequence_points[static_cast<size_t>(i)] = min + i * step;
-            }
-
-            return TimeColumn(
-                Timeline(std::move(timeline_name), TimeType::Sequence),
-                std::move(sequence_points),
-                SortingStatus::Sorted
-            );
-        }
-
         /// To rerun C API component batch.
         ///
         /// The resulting `rr_time_column` keeps the `arrow::Array` alive until it is released.
