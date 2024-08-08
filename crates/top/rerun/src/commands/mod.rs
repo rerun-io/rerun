@@ -23,12 +23,14 @@ impl CallSource {
 
 mod entrypoint;
 mod rrd;
+mod stdio;
 
 #[cfg(feature = "analytics")]
 mod analytics;
 
 pub use self::entrypoint::run;
 pub use self::rrd::RrdCommands;
+pub use self::stdio::read_rrd_streams_from_file_or_stdin;
 
 #[cfg(feature = "analytics")]
 pub(crate) use self::analytics::AnalyticsCommands;

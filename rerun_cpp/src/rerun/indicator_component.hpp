@@ -35,7 +35,7 @@ namespace rerun {
             return components::indicator_arrow_datatype();
         }
 
-        /// Creates an arrow DataCell from an array of IndicatorComponent components.
+        /// Creates an arrow ComponentBatch from an array of IndicatorComponent components.
         static Result<std::shared_ptr<arrow::Array>> to_arrow(
             const components::IndicatorComponent<Name_>*, size_t
         ) {

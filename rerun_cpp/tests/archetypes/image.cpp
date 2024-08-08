@@ -3,7 +3,7 @@
 
 #include <rerun.hpp>
 using namespace rerun::archetypes;
-using namespace rerun::components;
+using namespace rerun::datatypes;
 
 #define TEST_TAG "[image][archetypes]"
 
@@ -11,10 +11,8 @@ SCENARIO("Image archetype can be created" TEST_TAG) {
     GIVEN("simple 8bit greyscale image") {
         std::vector<uint8_t> data(10 * 10, 0);
         Image reference_image;
-        reference_image.data = rerun::borrow(data);
-        reference_image.resolution = Resolution2D(10, 10);
-        reference_image.color_model = ColorModel::L;
-        reference_image.datatype = ChannelDatatype::U8;
+        reference_image.buffer = rerun::borrow(data);
+        reference_image.format = ImageFormat({10, 10}, ColorModel::L, ChannelDatatype::U8);
 
         THEN("no error occurs on image construction from a pointer") {
             auto image_from_ptr = check_logged_error([&] {
@@ -45,10 +43,8 @@ SCENARIO("Image archetype can be created" TEST_TAG) {
     GIVEN("simple 8bit RGB image") {
         std::vector<uint8_t> data(10 * 10 * 3, 0);
         Image reference_image;
-        reference_image.data = rerun::borrow(data);
-        reference_image.resolution = Resolution2D(10, 10);
-        reference_image.color_model = ColorModel::RGB;
-        reference_image.datatype = ChannelDatatype::U8;
+        reference_image.buffer = rerun::borrow(data);
+        reference_image.format = ImageFormat({10, 10}, ColorModel::RGB, ChannelDatatype::U8);
 
         THEN("no error occurs on image construction from a pointer") {
             auto image_from_ptr = check_logged_error([&] {
@@ -79,10 +75,8 @@ SCENARIO("Image archetype can be created" TEST_TAG) {
     GIVEN("simple 8bit RGBA image") {
         std::vector<uint8_t> data(10 * 10 * 4, 0);
         Image reference_image;
-        reference_image.data = rerun::borrow(data);
-        reference_image.resolution = Resolution2D(10, 10);
-        reference_image.color_model = ColorModel::RGBA;
-        reference_image.datatype = ChannelDatatype::U8;
+        reference_image.buffer = rerun::borrow(data);
+        reference_image.format = ImageFormat({10, 10}, ColorModel::RGBA, ChannelDatatype::U8);
 
         THEN("no error occurs on image construction from a pointer") {
             auto image_from_ptr = check_logged_error([&] {

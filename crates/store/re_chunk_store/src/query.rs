@@ -115,7 +115,7 @@ impl ChunkStore {
         entity_path: &EntityPath,
         component_name: &ComponentName,
     ) -> bool {
-        re_tracing::profile_function!();
+        // re_tracing::profile_function!(); // This function is too fast; profiling will only add overhead
 
         self.entity_has_static_component(entity_path, component_name)
             || self.entity_has_temporal_component_on_timeline(timeline, entity_path, component_name)
@@ -129,7 +129,7 @@ impl ChunkStore {
         entity_path: &EntityPath,
         component_name: &ComponentName,
     ) -> bool {
-        re_tracing::profile_function!();
+        // re_tracing::profile_function!(); // This function is too fast; profiling will only add overhead
 
         self.entity_has_static_component(entity_path, component_name)
             || self.entity_has_temporal_component(entity_path, component_name)
@@ -144,7 +144,7 @@ impl ChunkStore {
         entity_path: &EntityPath,
         component_name: &ComponentName,
     ) -> bool {
-        re_tracing::profile_function!();
+        // re_tracing::profile_function!(); // This function is too fast; profiling will only add overhead
 
         self.query_id.fetch_add(1, Ordering::Relaxed);
 
@@ -164,7 +164,7 @@ impl ChunkStore {
         entity_path: &EntityPath,
         component_name: &ComponentName,
     ) -> bool {
-        re_tracing::profile_function!();
+        // re_tracing::profile_function!(); // This function is too fast; profiling will only add overhead
 
         self.query_id.fetch_add(1, Ordering::Relaxed);
 
@@ -187,7 +187,7 @@ impl ChunkStore {
         entity_path: &EntityPath,
         component_name: &ComponentName,
     ) -> bool {
-        re_tracing::profile_function!();
+        // re_tracing::profile_function!(); // This function is too fast; profiling will only add overhead
 
         self.query_id.fetch_add(1, Ordering::Relaxed);
 
@@ -212,7 +212,7 @@ impl ChunkStore {
         timeline: &Timeline,
         entity_path: &EntityPath,
     ) -> bool {
-        re_tracing::profile_function!();
+        // re_tracing::profile_function!(); // This function is too fast; profiling will only add overhead
 
         self.entity_has_static_data(entity_path)
             || self.entity_has_temporal_data_on_timeline(timeline, entity_path)
@@ -224,7 +224,7 @@ impl ChunkStore {
     /// that some _data_ currently exists in the store for this entity.
     #[inline]
     pub fn entity_has_data(&self, entity_path: &EntityPath) -> bool {
-        re_tracing::profile_function!();
+        // re_tracing::profile_function!(); // This function is too fast; profiling will only add overhead
 
         self.entity_has_static_data(entity_path) || self.entity_has_temporal_data(entity_path)
     }
@@ -235,7 +235,7 @@ impl ChunkStore {
     /// that some _data_ currently exists in the store for this entity.
     #[inline]
     pub fn entity_has_static_data(&self, entity_path: &EntityPath) -> bool {
-        re_tracing::profile_function!();
+        // re_tracing::profile_function!(); // This function is too fast; profiling will only add overhead
 
         self.query_id.fetch_add(1, Ordering::Relaxed);
 
@@ -254,7 +254,7 @@ impl ChunkStore {
     /// that some _data_ currently exists in the store for this entity.
     #[inline]
     pub fn entity_has_temporal_data(&self, entity_path: &EntityPath) -> bool {
-        re_tracing::profile_function!();
+        // re_tracing::profile_function!(); // This function is too fast; profiling will only add overhead
 
         self.query_id.fetch_add(1, Ordering::Relaxed);
 
@@ -282,7 +282,7 @@ impl ChunkStore {
         timeline: &Timeline,
         entity_path: &EntityPath,
     ) -> bool {
-        re_tracing::profile_function!();
+        // re_tracing::profile_function!(); // This function is too fast; profiling will only add overhead
 
         self.query_id.fetch_add(1, Ordering::Relaxed);
 

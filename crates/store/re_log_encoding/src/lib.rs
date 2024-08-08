@@ -107,7 +107,7 @@ pub enum OptionsError {
 }
 
 #[cfg(any(feature = "encoder", feature = "decoder"))]
-#[derive(Clone, Copy)]
+#[derive(Debug, Clone, Copy)]
 pub(crate) struct FileHeader {
     pub magic: [u8; 4],
     pub version: [u8; 4],

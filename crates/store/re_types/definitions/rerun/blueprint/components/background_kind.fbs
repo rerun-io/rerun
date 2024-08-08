@@ -2,7 +2,7 @@ namespace rerun.blueprint.components;
 
 
 /// The type of the background in a view.
-enum BackgroundKind: byte (
+enum BackgroundKind: ubyte (
     "attr.rerun.scope": "blueprint"
 ) {
     /// Invalid value. Won't show up in generated types.

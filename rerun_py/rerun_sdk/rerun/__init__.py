@@ -7,6 +7,9 @@ from uuid import UUID
 
 import numpy as np
 
+__version__ = "0.18.0-alpha.1"
+__version_info__ = (0, 18, 0, "alpha.1")
+
 # =====================================
 # API RE-EXPORTS
 # Important: always us the `import _ as _` format to make it explicit to type-checkers that these are public APIs.
@@ -18,6 +21,10 @@ from . import (
     blueprint as blueprint,
     experimental as experimental,
     notebook as notebook,
+)
+from ._image_encoded import (
+    ImageEncoded as ImageEncoded,
+    ImageFormat as ImageFormat,
 )
 from ._log import (
     AsComponents as AsComponents,
@@ -72,10 +79,7 @@ from .blueprint.api import (
 )
 from .components import (
     AlbedoFactor as AlbedoFactor,
-    ChannelDatatype as ChannelDatatype,
-    ColorModel as ColorModel,
     MediaType as MediaType,
-    PixelFormat as PixelFormat,
     Radius as Radius,
     Scale3D as Scale3D,
     TensorDimensionIndexSelection as TensorDimensionIndexSelection,
@@ -85,7 +89,10 @@ from .components import (
 from .datatypes import (
     Angle as Angle,
     AnnotationInfo as AnnotationInfo,
+    ChannelDatatype as ChannelDatatype,
     ClassDescription as ClassDescription,
+    ColorModel as ColorModel,
+    PixelFormat as PixelFormat,
     Quaternion as Quaternion,
     RotationAxisAngle as RotationAxisAngle,
     TensorData as TensorData,

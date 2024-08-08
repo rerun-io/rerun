@@ -12,7 +12,8 @@ mod view_property_ui;
 
 pub use heuristics::suggest_space_view_for_each_entity;
 pub use query::{
-    latest_at_with_blueprint_resolved_data, range_with_blueprint_resolved_data, DataResultQuery,
+    latest_at_with_blueprint_resolved_data, range_with_blueprint_resolved_data,
+    range_with_blueprint_resolved_data_opts, DataResultQuery,
 };
 pub use results_ext::{
     HybridLatestAtResults, HybridResults, HybridResultsChunkIter, RangeResultsExt,

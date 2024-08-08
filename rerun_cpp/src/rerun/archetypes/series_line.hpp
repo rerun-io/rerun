@@ -5,11 +5,11 @@
 
 #include "../collection.hpp"
 #include "../compiler_utils.hpp"
+#include "../component_batch.hpp"
 #include "../components/aggregation_policy.hpp"
 #include "../components/color.hpp"
 #include "../components/name.hpp"
 #include "../components/stroke_width.hpp"
-#include "../data_cell.hpp"
 #include "../indicator_component.hpp"
 #include "../result.hpp"
 
@@ -139,6 +139,7 @@ namespace rerun {
     template <>
     struct AsComponents<archetypes::SeriesLine> {
         /// Serialize all set component batches.
-        static Result<std::vector<DataCell>> serialize(const archetypes::SeriesLine& archetype);
+        static Result<std::vector<ComponentBatch>> serialize(const archetypes::SeriesLine& archetype
+        );
     };
 } // namespace rerun

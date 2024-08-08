@@ -1,7 +1,7 @@
 namespace rerun.testing.datatypes;
 
 /// A test of the enum type.
-enum EnumTest: byte {
+enum EnumTest: ubyte {
     /// Invalid value. Won't show up in generated types.
     Invalid = 0,
 
@@ -25,7 +25,7 @@ enum EnumTest: byte {
 }
 
 /// A test of an enumate with specified values.
-enum ValuedEnum: byte {
+enum ValuedEnum: ubyte {
     /// Invalid value. Won't show up in generated types.
     Invalid = 0,
 

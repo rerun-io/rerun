@@ -62,7 +62,7 @@ def main() -> None:
         rr.Image(
             width=img_bgra.shape[1],
             height=img_bgra.shape[0],
-            pixel_format=rr.PixelFormat.Nv12,
+            pixel_format=rr.PixelFormat.NV12,
             bytes=bgra2nv12(img_bgra).tobytes(),
         ),
     )
@@ -71,7 +71,7 @@ def main() -> None:
         rr.Image(
             width=img_bgra.shape[1],
             height=img_bgra.shape[0],
-            pixel_format=rr.PixelFormat.Yuy2,
+            pixel_format=rr.PixelFormat.YUY2,
             bytes=bgra2yuy2(img_bgra).tobytes(),
         ),
     )

@@ -6,19 +6,25 @@ use re_chunk_store::{ChunkStore, ChunkStoreSubscriber, ChunkStoreSubscriberHandl
 use re_log_types::{EntityPath, StoreId};
 use re_types::{
     archetypes::EncodedImage,
-    components::{Blob, MediaType, Resolution2D},
+    components::{Blob, ImageFormat, MediaType},
     external::image,
     Archetype, Loggable,
 };
 
+#[derive(Debug, Clone, Default)]
+pub struct MaxDimensions {
+    pub width: u32,
+    pub height: u32,
+}
+
 #[derive(Default, Debug, Clone)]
-pub struct MaxImageDimensions(IntMap<EntityPath, Resolution2D>);
+pub struct MaxImageDimensions(IntMap<EntityPath, MaxDimensions>);
 
 impl MaxImageDimensions {
     /// Accesses the image dimension information for a given store
     pub fn access<T>(
         store_id: &StoreId,
-        f: impl FnOnce(&IntMap<EntityPath, Resolution2D>) -> T,
+        f: impl FnOnce(&IntMap<EntityPath, MaxDimensions>) -> T,
     ) -> Option<T> {
         ChunkStore::with_subscriber_once(
             MaxImageDimensionSubscriber::subscription_handle(),
@@ -70,11 +76,10 @@ impl ChunkStoreSubscriber for MaxImageDimensionSubscriber {
                 continue;
             }
 
-            if let Some(all_dimensions) = event.diff.chunk.components().get(&Resolution2D::name()) {
+            if let Some(all_dimensions) = event.diff.chunk.components().get(&ImageFormat::name()) {
                 for new_dim in all_dimensions.iter().filter_map(|array| {
-                    array.and_then(|array| {
-                        Resolution2D::from_arrow(&*array).ok()?.into_iter().next()
-                    })
+                    array
+                        .and_then(|array| ImageFormat::from_arrow(&*array).ok()?.into_iter().next())
                 }) {
                     let max_dim = self
                         .max_dimensions
@@ -84,8 +89,8 @@ impl ChunkStoreSubscriber for MaxImageDimensionSubscriber {
                         .entry(event.diff.chunk.entity_path().clone())
                         .or_default();
 
-                    max_dim.set_height(max_dim.height().max(new_dim.height()));
-                    max_dim.set_width(max_dim.width().max(new_dim.width()));
+                    max_dim.height = max_dim.height.max(new_dim.height);
+                    max_dim.width = max_dim.width.max(new_dim.width);
                 }
             }
 
@@ -134,8 +139,8 @@ impl ChunkStoreSubscriber for MaxImageDimensionSubscriber {
                                 .entry(event.diff.chunk.entity_path().clone())
                                 .or_default();
 
-                            max_dim.set_height(max_dim.height().max(height));
-                            max_dim.set_width(max_dim.width().max(width));
+                            max_dim.height = max_dim.height.max(height);
+                            max_dim.width = max_dim.width.max(width);
                         }
                     }
                 }

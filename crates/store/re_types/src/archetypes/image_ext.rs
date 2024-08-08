@@ -1,6 +1,6 @@
 use crate::{
-    components::{Blob, ChannelDatatype, ColorModel, PixelFormat, Resolution2D},
-    datatypes::TensorData,
+    components::ImageBuffer,
+    datatypes::{ChannelDatatype, ColorModel, ImageFormat, PixelFormat, TensorData},
     image::{
         blob_and_datatype_from_tensor, find_non_empty_dim_indices, ImageChannelType,
         ImageConstructionError,
@@ -56,14 +56,18 @@ impl Image {
         let (height, width) = (&shape[non_empty_dim_inds[0]], &shape[non_empty_dim_inds[1]]);
         let height = height.size as u32;
         let width = width.size as u32;
-        let resolution = Resolution2D::from([width, height]);
+
+        let image_format = ImageFormat {
+            width,
+            height,
+            pixel_format: None,
+            channel_datatype: Some(datatype),
+            color_model: Some(color_model),
+        };
 
         Ok(Self {
-            data: blob.into(),
-            resolution,
-            pixel_format: None,
-            color_model: Some(color_model),
-            datatype: Some(datatype),
+            buffer: blob.into(),
+            format: image_format.into(),
             opacity: None,
             draw_order: None,
         })
@@ -73,27 +77,26 @@ impl Image {
     ///
     /// See also [`Self::from_color_model_and_tensor`].
     pub fn from_pixel_format(
-        resolution: impl Into<Resolution2D>,
+        [width, height]: [u32; 2],
         pixel_format: PixelFormat,
-        bytes: impl Into<Blob>,
+        bytes: impl Into<ImageBuffer>,
     ) -> Self {
-        let resolution = resolution.into();
-        let data = bytes.into();
+        let buffer = bytes.into();
 
-        let actual_bytes = data.len();
-        let num_expected_bytes = (resolution.area() * pixel_format.bits_per_pixel() + 7) / 8; // rounding upwards
-        if data.len() != num_expected_bytes {
+        let actual_bytes = buffer.len();
+        let bpp = pixel_format.bits_per_pixel();
+        let num_expected_bytes = (width as usize * height as usize * bpp + 7) / 8; // rounding upwards
+        if buffer.len() != num_expected_bytes {
             re_log::warn_once!(
-                "Expected {resolution} {pixel_format:?} image to be {num_expected_bytes} B, but got {actual_bytes} B",
+                "Expected {width}x{height} {pixel_format:?} image to be {num_expected_bytes} B, but got {actual_bytes} B",
             );
         }
 
+        let image_format = ImageFormat::from_pixel_format([width, height], pixel_format);
+
         Self {
-            data,
-            resolution,
-            pixel_format: Some(pixel_format),
-            color_model: None,
-            datatype: None,
+            buffer,
+            format: image_format.into(),
             opacity: None,
             draw_order: None,
         }
@@ -103,29 +106,34 @@ impl Image {
     ///
     /// See also [`Self::from_color_model_and_tensor`].
     pub fn from_color_model_and_bytes(
-        bytes: impl Into<Blob>,
-        resolution: impl Into<Resolution2D>,
+        bytes: impl Into<ImageBuffer>,
+        [width, height]: [u32; 2],
         color_model: ColorModel,
         datatype: ChannelDatatype,
     ) -> Self {
-        let resolution = resolution.into();
-        let data = bytes.into();
+        let buffer = bytes.into();
 
-        let actual_bytes = data.len();
+        let actual_bytes = buffer.len();
         let num_expected_bytes =
-            (resolution.area() * color_model.num_channels() * datatype.bits() + 7) / 8; // rounding upwards
-        if data.len() != num_expected_bytes {
+            (width as usize * height as usize * color_model.num_channels() * datatype.bits() + 7)
+                / 8; // rounding upwards
+        if buffer.len() != num_expected_bytes {
             re_log::warn_once!(
-                "Expected {resolution} {color_model:?} {datatype:?} image to be {num_expected_bytes} B, but got {actual_bytes} B",
+                "Expected {width}x{height} {color_model:?} {datatype:?} image to be {num_expected_bytes} B, but got {actual_bytes} B",
             );
         }
 
-        Self {
-            data,
-            resolution,
+        let image_format = ImageFormat {
+            width,
+            height,
             pixel_format: None,
+            channel_datatype: Some(datatype),
             color_model: Some(color_model),
-            datatype: Some(datatype),
+        };
+
+        Self {
+            buffer,
+            format: image_format.into(),
             opacity: None,
             draw_order: None,
         }
@@ -135,31 +143,31 @@ impl Image {
     /// and using the data type of the given vector.
     pub fn from_elements<T: ImageChannelType>(
         elements: &[T],
-        resolution: impl Into<Resolution2D>,
+        [width, height]: [u32; 2],
         color_model: ColorModel,
     ) -> Self {
         let datatype = T::CHANNEL_TYPE;
         let bytes: &[u8] = bytemuck::cast_slice(elements);
         Self::from_color_model_and_bytes(
             re_types_core::ArrowBuffer::<u8>::from(bytes),
-            resolution,
+            [width, height],
             color_model,
             datatype,
         )
     }
 
     /// From an 8-bit grayscale image.
-    pub fn from_l8(bytes: impl Into<Blob>, resolution: impl Into<Resolution2D>) -> Self {
+    pub fn from_l8(bytes: impl Into<ImageBuffer>, resolution: [u32; 2]) -> Self {
         Self::from_color_model_and_bytes(bytes, resolution, ColorModel::L, ChannelDatatype::U8)
     }
 
     /// Assumes RGB, 8-bit per channel, interleaved as `RGBRGBRGB`.
-    pub fn from_rgb24(bytes: impl Into<Blob>, resolution: impl Into<Resolution2D>) -> Self {
+    pub fn from_rgb24(bytes: impl Into<ImageBuffer>, resolution: [u32; 2]) -> Self {
         Self::from_color_model_and_bytes(bytes, resolution, ColorModel::RGB, ChannelDatatype::U8)
     }
 
     /// Assumes RGBA, 8-bit per channel, with separate alpha.
-    pub fn from_rgba32(bytes: impl Into<Blob>, resolution: impl Into<Resolution2D>) -> Self {
+    pub fn from_rgba32(bytes: impl Into<ImageBuffer>, resolution: [u32; 2]) -> Self {
         Self::from_color_model_and_bytes(bytes, resolution, ColorModel::RGBA, ChannelDatatype::U8)
     }
 
@@ -219,8 +227,7 @@ impl Image {
     pub fn from_dynamic_image(image: image::DynamicImage) -> Result<Self, ImageConversionError> {
         re_tracing::profile_function!();
 
-        let (w, h) = (image.width(), image.height());
-        let res = Resolution2D::new(w, h);
+        let res = [image.width(), image.height()];
 
         match image {
             image::DynamicImage::ImageLuma8(image) => {

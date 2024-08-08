@@ -45,6 +45,9 @@ class BlobExt:
         elif isinstance(data, bytes):
             inners = [pa.array(np.frombuffer(data, dtype=np.uint8))]
 
+        elif hasattr(data, "read"):
+            inners = [pa.array(np.frombuffer(data.read(), dtype=np.uint8))]
+
         # sequences
         elif isinstance(data, Sequence):
             if len(data) == 0:

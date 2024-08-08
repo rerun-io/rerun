@@ -5,6 +5,7 @@
 
 #include "../collection.hpp"
 #include "../compiler_utils.hpp"
+#include "../component_batch.hpp"
 #include "../components/class_id.hpp"
 #include "../components/color.hpp"
 #include "../components/fill_mode.hpp"
@@ -14,7 +15,6 @@
 #include "../components/leaf_translation3d.hpp"
 #include "../components/radius.hpp"
 #include "../components/text.hpp"
-#include "../data_cell.hpp"
 #include "../indicator_component.hpp"
 #include "../result.hpp"
 
@@ -200,6 +200,8 @@ namespace rerun {
     template <>
     struct AsComponents<archetypes::Ellipsoids3D> {
         /// Serialize all set component batches.
-        static Result<std::vector<DataCell>> serialize(const archetypes::Ellipsoids3D& archetype);
+        static Result<std::vector<ComponentBatch>> serialize(
+            const archetypes::Ellipsoids3D& archetype
+        );
     };
 } // namespace rerun

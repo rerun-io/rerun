@@ -6,7 +6,7 @@ use re_types::{
 
 use egui::util::hash;
 
-use crate::{Cache, ImageFormat, ImageInfo};
+use crate::{Cache, ImageInfo};
 
 struct DecodedImageResult {
     /// Cached `Result` from decoding the image
@@ -46,7 +46,7 @@ impl ImageDecodeCache {
 
         let lookup = self.cache.entry(key).or_insert_with(|| {
             let result = decode_image(row_id, image_bytes, media_type);
-            let memory_used = result.as_ref().map_or(0, |image| image.blob.len() as u64);
+            let memory_used = result.as_ref().map_or(0, |image| image.buffer.len() as u64);
             self.memory_used += memory_used;
             DecodedImageResult {
                 result,
@@ -87,31 +87,12 @@ fn decode_image(
 
     let image_arch = Image::from_dynamic_image(dynamic_image)?;
 
-    let Image {
-        data,
-        resolution,
-        pixel_format,
-        color_model,
-        datatype,
-        ..
-    } = image_arch;
-
-    let format = if let Some(pixel_format) = pixel_format {
-        ImageFormat::PixelFormat(pixel_format)
-    } else if let (Some(color_model), Some(datatype)) = (color_model, datatype) {
-        ImageFormat::ColorModel {
-            color_model,
-            datatype,
-        }
-    } else {
-        unreachable!()
-    };
+    let Image { buffer, format, .. } = image_arch;
 
     Ok(ImageInfo {
-        blob_row_id: row_id,
-        blob: data.0,
-        resolution: resolution.0.into(),
-        format,
+        buffer_row_id: row_id,
+        buffer: buffer.0,
+        format: format.0,
         kind: ImageKind::Color,
         colormap: None,
     })

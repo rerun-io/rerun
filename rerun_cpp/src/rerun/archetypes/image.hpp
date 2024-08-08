@@ -5,14 +5,11 @@
 
 #include "../collection.hpp"
 #include "../compiler_utils.hpp"
-#include "../components/blob.hpp"
-#include "../components/channel_datatype.hpp"
-#include "../components/color_model.hpp"
+#include "../component_batch.hpp"
 #include "../components/draw_order.hpp"
+#include "../components/image_buffer.hpp"
+#include "../components/image_format.hpp"
 #include "../components/opacity.hpp"
-#include "../components/pixel_format.hpp"
-#include "../components/resolution2d.hpp"
-#include "../data_cell.hpp"
 #include "../image_utils.hpp"
 #include "../indicator_component.hpp"
 #include "../result.hpp"
@@ -27,8 +24,8 @@ namespace rerun::archetypes {
     ///
     /// See also `archetypes::DepthImage` and `archetypes::SegmentationImage`.
     ///
-    /// The raw image data is stored as a single buffer of bytes in a [rerun.components.Blob].
-    /// The meaning of these bytes is determined by the `ImageFormat` which specifies the resolution
+    /// The raw image data is stored as a single buffer of bytes in a `components::Blob`.
+    /// The meaning of these bytes is determined by the `components::ImageFormat` which specifies the resolution
     /// and the pixel format (e.g. RGB, RGBA, …).
     ///
     /// The order of dimensions in the underlying `components::Blob` follows the typical
@@ -75,27 +72,10 @@ namespace rerun::archetypes {
     /// ```
     struct Image {
         /// The raw image data.
-        rerun::components::Blob data;
+        rerun::components::ImageBuffer buffer;
 
-        /// The size of the image.
-        ///
-        /// For chroma downsampled formats, this is the size of the full image (the luminance channel).
-        rerun::components::Resolution2D resolution;
-
-        /// Used mainly for chroma downsampled formats and differing number of bits per channel.
-        ///
-        /// If specified, this takes precedence over both `components::ColorModel` and `components::ChannelDatatype` (which are ignored).
-        std::optional<rerun::components::PixelFormat> pixel_format;
-
-        /// L, RGB, RGBA, …
-        ///
-        /// Also requires a `components::ChannelDatatype` to fully specify the pixel format.
-        std::optional<rerun::components::ColorModel> color_model;
-
-        /// The data type of each channel (e.g. the red channel) of the image data (U8, F16, …).
-        ///
-        /// Also requires a `components::ColorModel` to fully specify the pixel format.
-        std::optional<rerun::components::ChannelDatatype> datatype;
+        /// The format of the image.
+        rerun::components::ImageFormat format;
 
         /// Opacity of the image, useful for layering several images.
         ///
@@ -114,19 +94,28 @@ namespace rerun::archetypes {
         using IndicatorComponent = rerun::components::IndicatorComponent<IndicatorComponentName>;
 
       public: // START of extensions from image_ext.cpp:
+        /// Construct an image from bytes and image format.
+        ///
+        /// @param bytes The raw image data as bytes.
+        /// If the data does not outlive the image, use `std::move` or create the `rerun::Collection`
+        /// explicitly ahead of time with `rerun::Collection::take_ownership`.
+        /// The length of the data should be `W * H * image_format.bytes_per_pixel`.
+        /// @param format_ How the data should be interpreted.
+        Image(Collection<uint8_t> bytes, components::ImageFormat format_)
+            : buffer(std::move(bytes)), format(format_) {}
+
         /// Construct an image from resolution, pixel format and bytes.
         ///
         /// @param bytes The raw image data as bytes.
         /// If the data does not outlive the image, use `std::move` or create the `rerun::Collection`
         /// explicitly ahead of time with `rerun::Collection::take_ownership`.
         /// The length of the data should be `W * H * pixel_format.bytes_per_pixel`.
-        /// @param resolution_ The resolution of the image.
-        /// @param pixel_format_ How the data should be interpreted.
+        /// @param resolution The resolution of the image as {width, height}.
+        /// @param pixel_format How the data should be interpreted.
         Image(
-            Collection<uint8_t> bytes, components::Resolution2D resolution_,
-            components::PixelFormat pixel_format_
+            Collection<uint8_t> bytes, WidthHeight resolution, datatypes::PixelFormat pixel_format
         )
-            : data(std::move(bytes)), resolution(resolution_), pixel_format(pixel_format_) {}
+            : Image{std::move(bytes), datatypes::ImageFormat{resolution, pixel_format}} {}
 
         /// Construct an image from resolution, color model, channel datatype and bytes.
         ///
@@ -134,17 +123,14 @@ namespace rerun::archetypes {
         /// If the data does not outlive the image, use `std::move` or create the `rerun::Collection`
         /// explicitly ahead of time with `rerun::Collection::take_ownership`.
         /// The length of the data should be `W * H * datatype.bytes * color_model.num_channels`.
-        /// @param resolution_ The resolution of the image.
-        /// @param color_model_ The color model of the pixel data.
-        /// @param datatype_ Datatype of the individual channels of the color model.
+        /// @param resolution The resolution of the image as {width, height}.
+        /// @param color_model The color model of the pixel data.
+        /// @param datatype Datatype of the individual channels of the color model.
         Image(
-            Collection<uint8_t> bytes, components::Resolution2D resolution_,
-            components::ColorModel color_model_, components::ChannelDatatype datatype_
+            Collection<uint8_t> bytes, WidthHeight resolution, datatypes::ColorModel color_model,
+            datatypes::ChannelDatatype datatype
         )
-            : data(std::move(bytes)),
-              resolution(resolution_),
-              color_model(color_model_),
-              datatype(datatype_) {}
+            : Image(std::move(bytes), datatypes::ImageFormat(resolution, color_model, datatype)) {}
 
         /// Construct an image from resolution, color model and elements,
         /// inferring the channel datatype from the element type.
@@ -153,16 +139,12 @@ namespace rerun::archetypes {
         /// If the data does not outlive the image, use `std::move` or create the `rerun::Collection`
         /// explicitly ahead of time with `rerun::Collection::take_ownership`.
         /// The length of the data should be `W * H * color_model.num_channels`.
-        /// @param resolution_ The resolution of the image.
-        /// @param color_model_ The color model of the pixel data.
+        /// @param resolution The resolution of the image as {width, height}.
+        /// @param color_model The color model of the pixel data.
         /// Each element in elements is interpreted as a single channel of the color model.
         template <typename T>
-        Image(
-            Collection<T> elements, components::Resolution2D resolution_,
-            components::ColorModel color_model_
-        )
-            : Image(elements.to_uint8(), resolution_, color_model_, get_datatype(elements.data())) {
-        }
+        Image(Collection<T> elements, WidthHeight resolution, datatypes::ColorModel color_model)
+            : Image(elements.to_uint8(), resolution, color_model, get_datatype(elements.data())) {}
 
         /// Construct an image from resolution, color model and element pointer,
         /// inferring the channel datatype from the element type.
@@ -170,21 +152,17 @@ namespace rerun::archetypes {
         /// @param elements The raw image data.
         /// ⚠️ Does not take ownership of the data, the caller must ensure the data outlives the image.
         /// The number of elements is assumed to be `W * H * color_model.num_channels`.
-        /// @param resolution_ The resolution of the image.
-        /// @param color_model_ The color model of the pixel data.
+        /// @param resolution The resolution of the image as {width, height}.
+        /// @param color_model The color model of the pixel data.
         /// Each element in elements is interpreted as a single channel of the color model.
         template <typename T>
-        Image(
-            const T* elements, components::Resolution2D resolution_,
-            components::ColorModel color_model_
-        )
+        Image(const T* elements, WidthHeight resolution, datatypes::ColorModel color_model)
             : Image(
                   rerun::Collection<uint8_t>::borrow(
                       reinterpret_cast<const uint8_t*>(elements),
-                      resolution_.width() * resolution_.height() *
-                          color_model_channel_count(color_model_)
+                      resolution.width * resolution.height * color_model_channel_count(color_model)
                   ),
-                  resolution_, color_model_, get_datatype(elements)
+                  resolution, color_model, get_datatype(elements)
               ) {}
 
         /// Assumes single channel greyscale/luminance with 8-bit per value.
@@ -193,15 +171,13 @@ namespace rerun::archetypes {
         /// If the data does not outlive the image, use `std::move` or create the `rerun::Collection`
         /// explicitly ahead of time with `rerun::Collection::take_ownership`.
         /// The length of the data should be `W * H`.
-        /// @param resolution The resolution of the image.
-        static Image from_greyscale8(
-            Collection<uint8_t> bytes, components::Resolution2D resolution
-        ) {
+        /// @param resolution The resolution of the image as {width, height}.
+        static Image from_greyscale8(Collection<uint8_t> bytes, WidthHeight resolution) {
             return Image(
                 bytes,
                 resolution,
-                components::ColorModel::L,
-                components::ChannelDatatype::U8
+                datatypes::ColorModel::L,
+                datatypes::ChannelDatatype::U8
             );
         }
 
@@ -211,13 +187,13 @@ namespace rerun::archetypes {
         /// If the data does not outlive the image, use `std::move` or create the `rerun::Collection`
         /// explicitly ahead of time with `rerun::Collection::take_ownership`.
         /// The length of the data should be `W * H * 3`.
-        /// @param resolution The resolution of the image.
-        static Image from_rgb24(Collection<uint8_t> bytes, components::Resolution2D resolution) {
+        /// @param resolution The resolution of the image as {width, height}.
+        static Image from_rgb24(Collection<uint8_t> bytes, WidthHeight resolution) {
             return Image(
                 bytes,
                 resolution,
-                components::ColorModel::RGB,
-                components::ChannelDatatype::U8
+                datatypes::ColorModel::RGB,
+                datatypes::ChannelDatatype::U8
             );
         }
 
@@ -227,13 +203,13 @@ namespace rerun::archetypes {
         /// If the data does not outlive the image, use `std::move` or create the `rerun::Collection`
         /// explicitly ahead of time with `rerun::Collection::take_ownership`.
         /// The length of the data should be `W * H * 4`.
-        /// @param resolution The resolution of the image.
-        static Image from_rgba32(Collection<uint8_t> bytes, components::Resolution2D resolution) {
+        /// @param resolution The resolution of the image as {width, height}.
+        static Image from_rgba32(Collection<uint8_t> bytes, WidthHeight resolution) {
             return Image(
                 bytes,
                 resolution,
-                components::ColorModel::RGBA,
-                components::ChannelDatatype::U8
+                datatypes::ColorModel::RGBA,
+                datatypes::ChannelDatatype::U8
             );
         }
 
@@ -242,33 +218,6 @@ namespace rerun::archetypes {
       public:
         Image() = default;
         Image(Image&& other) = default;
-
-        /// Used mainly for chroma downsampled formats and differing number of bits per channel.
-        ///
-        /// If specified, this takes precedence over both `components::ColorModel` and `components::ChannelDatatype` (which are ignored).
-        Image with_pixel_format(rerun::components::PixelFormat _pixel_format) && {
-            pixel_format = std::move(_pixel_format);
-            // See: https://github.com/rerun-io/rerun/issues/4027
-            RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
-        }
-
-        /// L, RGB, RGBA, …
-        ///
-        /// Also requires a `components::ChannelDatatype` to fully specify the pixel format.
-        Image with_color_model(rerun::components::ColorModel _color_model) && {
-            color_model = std::move(_color_model);
-            // See: https://github.com/rerun-io/rerun/issues/4027
-            RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
-        }
-
-        /// The data type of each channel (e.g. the red channel) of the image data (U8, F16, …).
-        ///
-        /// Also requires a `components::ColorModel` to fully specify the pixel format.
-        Image with_datatype(rerun::components::ChannelDatatype _datatype) && {
-            datatype = std::move(_datatype);
-            // See: https://github.com/rerun-io/rerun/issues/4027
-            RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
-        }
 
         /// Opacity of the image, useful for layering several images.
         ///
@@ -300,6 +249,6 @@ namespace rerun {
     template <>
     struct AsComponents<archetypes::Image> {
         /// Serialize all set component batches.
-        static Result<std::vector<DataCell>> serialize(const archetypes::Image& archetype);
+        static Result<std::vector<ComponentBatch>> serialize(const archetypes::Image& archetype);
     };
 } // namespace rerun

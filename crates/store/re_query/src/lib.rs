@@ -12,7 +12,7 @@ pub use self::cache::{CacheKey, Caches};
 pub use self::cache_stats::{CacheStats, CachesStats};
 pub use self::clamped_zip::*;
 pub use self::latest_at::LatestAtResults;
-pub use self::range::RangeResults;
+pub use self::range::{RangeQueryOptions, RangeResults};
 pub use self::range_zip::*;
 
 pub(crate) use self::latest_at::LatestAtCache;

@@ -100,11 +100,11 @@ impl ChunkStoreConfig {
         // become a bit too costly to concatenate beyond that.
         chunk_max_bytes: 4 * 1024 * 1024,
 
-        // Empirical testing shows that 1024 is the threshold after which we really start to get
-        // dimishing returns space-wise.
-        chunk_max_rows: 1024,
+        // Empirical testing shows that 4096 is the threshold after which we really start to get
+        // dimishing returns space and compute wise.
+        chunk_max_rows: 4096,
 
-        chunk_max_rows_if_unsorted: 256,
+        chunk_max_rows_if_unsorted: 1024,
     };
 
     /// [`Self::DEFAULT`], but with compaction entirely disabled.

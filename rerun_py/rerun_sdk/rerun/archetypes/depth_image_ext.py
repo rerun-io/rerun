@@ -5,8 +5,8 @@ from typing import TYPE_CHECKING, Any, Union
 import numpy as np
 import numpy.typing as npt
 
-from ..components import ChannelDatatype, Colormap, Resolution2D
-from ..datatypes import Float32Like
+from ..components import Colormap, ImageFormat
+from ..datatypes import ChannelDatatype, Float32Like
 
 if TYPE_CHECKING:
     ImageLike = Union[
@@ -66,9 +66,12 @@ class DepthImageExt:
             raise ValueError(f"Unsupported dtype {image.dtype} for DepthImage")
 
         self.__attrs_init__(
-            data=image.tobytes(),
-            resolution=Resolution2D(width=width, height=height),
-            datatype=datatype,
+            buffer=image.tobytes(),
+            format=ImageFormat(
+                width=width,
+                height=height,
+                channel_datatype=datatype,
+            ),
             meter=meter,
             colormap=colormap,
         )

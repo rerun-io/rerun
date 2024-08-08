@@ -89,7 +89,11 @@ where
     /// If the buffer is not big enough, only the first `self.remaining_capacity()` elements are pushed before returning an error.
     #[inline]
     pub fn extend_from_slice(&mut self, elements: &[T]) -> Result<(), CpuWriteGpuReadError> {
-        re_tracing::profile_function!();
+        if elements.is_empty() {
+            return Ok(());
+        }
+
+        re_tracing::profile_function_if!(10_000 < elements.len());
 
         let remaining_capacity = self.remaining_capacity();
         let (result, elements) = if elements.len() > remaining_capacity {
@@ -162,7 +166,7 @@ where
             return Ok(());
         }
 
-        re_tracing::profile_function!();
+        re_tracing::profile_function_if!(10_000 < num_elements);
 
         let remaining_capacity = self.remaining_capacity();
         let (result, num_elements) = if num_elements > remaining_capacity {

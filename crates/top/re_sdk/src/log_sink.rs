@@ -279,7 +279,7 @@ impl MemorySinkStorage {
         let mut inner = self.inner.lock();
         inner.has_been_used = true;
 
-        encode_as_bytes_local(std::mem::take(&mut inner.msgs).iter())
+        encode_as_bytes_local(std::mem::take(&mut inner.msgs).into_iter().map(Ok))
     }
 
     #[inline]

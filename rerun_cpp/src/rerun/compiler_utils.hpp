@@ -16,16 +16,16 @@
 // See: https://github.com/rerun-io/rerun/issues/4027
 
 #define RR_WITH_MAYBE_UNINITIALIZED_DISABLED(expr) \
-    RERUN_DISABLE_MAYBE_UNINITIALIZED_PUSH         \
+    RR_DISABLE_MAYBE_UNINITIALIZED_PUSH            \
     expr RR_DISABLE_MAYBE_UNINITIALIZED_POP
 
 #if defined(__GNUC__) && !defined(__clang__)
 
-#define RERUN_DISABLE_MAYBE_UNINITIALIZED_PUSH \
-    RR_PUSH_WARNINGS                           \
+#define RR_DISABLE_MAYBE_UNINITIALIZED_PUSH \
+    RR_PUSH_WARNINGS                        \
     _Pragma("GCC diagnostic ignored \"-Wmaybe-uninitialized\"")
 #else
-#define RERUN_DISABLE_MAYBE_UNINITIALIZED_PUSH RR_PUSH_WARNINGS
+#define RR_DISABLE_MAYBE_UNINITIALIZED_PUSH RR_PUSH_WARNINGS
 #endif
 
 #define RR_DISABLE_MAYBE_UNINITIALIZED_POP RR_POP_WARNINGS

@@ -629,7 +629,7 @@ impl TimeColumn {
         timeline: Timeline,
         times: ArrowPrimitiveArray<i64>,
     ) -> Self {
-        re_tracing::profile_function!(format!("{} times", times.len()));
+        re_tracing::profile_function_if!(1000 < times.len(), format!("{} times", times.len()));
 
         let times = times.to(timeline.datatype());
         let time_slice = times.values().as_slice();

@@ -294,13 +294,6 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             },
         ),
         (
-            <ChannelDatatype as Loggable>::name(),
-            ComponentReflection {
-                docstring_md: "The innermost datatype of an image.\n\nHow individual color channel components are encoded.",
-                placeholder: Some(ChannelDatatype::default().to_arrow()?),
-            },
-        ),
-        (
             <ClassId as Loggable>::name(),
             ComponentReflection {
                 docstring_md: "A 16-bit ID representing a type of semantic class.",
@@ -319,13 +312,6 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             ComponentReflection {
                 docstring_md: "An RGBA color with unmultiplied/separate alpha, in sRGB gamma space with linear alpha.\n\nThe color is stored as a 32-bit integer, where the most significant\nbyte is `R` and the least significant byte is `A`.",
                 placeholder: Some(Color::default().to_arrow()?),
-            },
-        ),
-        (
-            <ColorModel as Loggable>::name(),
-            ComponentReflection {
-                docstring_md: "Specified what color components are present in an [`archetypes.Image`](https://rerun.io/docs/reference/types/archetypes/image).\n\nThis combined with [`components.ChannelDatatype`](https://rerun.io/docs/reference/types/components/channel_datatype?speculative-link) determines the pixel format of an image.",
-                placeholder: Some(ColorModel::default().to_arrow()?),
             },
         ),
         (
@@ -389,6 +375,20 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             ComponentReflection {
                 docstring_md: "Half-size (radius) of a 3D box.\n\nMeasured in its local coordinate system.\n\nThe box extends both in negative and positive direction along each axis.\nNegative sizes indicate that the box is flipped along the respective axis, but this has no effect on how it is displayed.",
                 placeholder: Some(HalfSize3D::default().to_arrow()?),
+            },
+        ),
+        (
+            <ImageBuffer as Loggable>::name(),
+            ComponentReflection {
+                docstring_md: "A buffer that is known to store image data.\n\nTo interpret the contents of this buffer, see, [rerun.components.ImageFormat].",
+                placeholder: Some(ImageBuffer::default().to_arrow()?),
+            },
+        ),
+        (
+            <ImageFormat as Loggable>::name(),
+            ComponentReflection {
+                docstring_md: "The metadata describing the contents of a [rerun.components.ImageBuffer].",
+                placeholder: Some(ImageFormat::default().to_arrow()?),
             },
         ),
         (
@@ -504,13 +504,6 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             },
         ),
         (
-            <PixelFormat as Loggable>::name(),
-            ComponentReflection {
-                docstring_md: "Specifieds a particular format of an [`archetypes.Image`](https://rerun.io/docs/reference/types/archetypes/image).\n\nMost images can be described by a [`components.ColorModel`](https://rerun.io/docs/reference/types/components/color_model?speculative-link) and a [`components.ChannelDatatype`](https://rerun.io/docs/reference/types/components/channel_datatype?speculative-link),\ne.g. `RGB` and `U8` respectively.\n\nHowever, some image formats has chroma downsampling and/or\nuse differing number of bits per channel, and that is what this [`components.PixelFormat`](https://rerun.io/docs/reference/types/components/pixel_format?speculative-link) is for.\n\nAll these formats support random access.\n\nFor more compressed image formats, see [`archetypes.EncodedImage`](https://rerun.io/docs/reference/types/archetypes/encoded_image?speculative-link).",
-                placeholder: Some(PixelFormat::default().to_arrow()?),
-            },
-        ),
-        (
             <Position2D as Loggable>::name(),
             ComponentReflection {
                 docstring_md: "A position in 2D space.",
@@ -543,13 +536,6 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             ComponentReflection {
                 docstring_md: "Pixel resolution width & height, e.g. of a camera sensor.\n\nTypically in integer units, but for some use cases floating point may be used.",
                 placeholder: Some(Resolution::default().to_arrow()?),
-            },
-        ),
-        (
-            <Resolution2D as Loggable>::name(),
-            ComponentReflection {
-                docstring_md: "The width and height of a 2D image.",
-                placeholder: Some(Resolution2D::default().to_arrow()?),
             },
         ),
         (

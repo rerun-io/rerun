@@ -24,12 +24,32 @@ macro_rules! profile_function {
     };
 }
 
+/// Create a profile scope based on the function name, if the given confition holds true.
+///
+/// Call this at the very top of a potentially expensive function.
+#[macro_export]
+macro_rules! profile_function_if {
+    ($($arg: tt)*) => {
+        #[cfg(not(target_arch = "wasm32"))]
+        $crate::reexports::puffin::profile_function_if!($($arg)*);
+    };
+}
+
 /// Create a profiling scope with a custom name.
 #[macro_export]
 macro_rules! profile_scope {
     ($($arg: tt)*) => {
         #[cfg(not(target_arch = "wasm32"))]
         $crate::reexports::puffin::profile_scope!($($arg)*);
+    };
+}
+
+/// Create a profiling scope with a custom name, if the given confition holds true.
+#[macro_export]
+macro_rules! profile_scope_if {
+    ($($arg: tt)*) => {
+        #[cfg(not(target_arch = "wasm32"))]
+        $crate::reexports::puffin::profile_scope_if!($($arg)*);
     };
 }
 

@@ -2,7 +2,7 @@ namespace rerun.blueprint.components;
 
 
 /// Sort order for data table.
-enum SortOrder: byte (
+enum SortOrder: ubyte (
     "attr.rerun.scope": "blueprint"
 ) {
     /// Invalid value. Won't show up in generated types.

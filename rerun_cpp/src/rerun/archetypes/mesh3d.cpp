@@ -9,56 +9,56 @@ namespace rerun::archetypes {}
 
 namespace rerun {
 
-    Result<std::vector<DataCell>> AsComponents<archetypes::Mesh3D>::serialize(
+    Result<std::vector<ComponentBatch>> AsComponents<archetypes::Mesh3D>::serialize(
         const archetypes::Mesh3D& archetype
     ) {
         using namespace archetypes;
-        std::vector<DataCell> cells;
+        std::vector<ComponentBatch> cells;
         cells.reserve(9);
 
         {
-            auto result = DataCell::from_loggable(archetype.vertex_positions);
+            auto result = ComponentBatch::from_loggable(archetype.vertex_positions);
             RR_RETURN_NOT_OK(result.error);
             cells.push_back(std::move(result.value));
         }
         if (archetype.triangle_indices.has_value()) {
-            auto result = DataCell::from_loggable(archetype.triangle_indices.value());
+            auto result = ComponentBatch::from_loggable(archetype.triangle_indices.value());
             RR_RETURN_NOT_OK(result.error);
             cells.push_back(std::move(result.value));
         }
         if (archetype.vertex_normals.has_value()) {
-            auto result = DataCell::from_loggable(archetype.vertex_normals.value());
+            auto result = ComponentBatch::from_loggable(archetype.vertex_normals.value());
             RR_RETURN_NOT_OK(result.error);
             cells.push_back(std::move(result.value));
         }
         if (archetype.vertex_colors.has_value()) {
-            auto result = DataCell::from_loggable(archetype.vertex_colors.value());
+            auto result = ComponentBatch::from_loggable(archetype.vertex_colors.value());
             RR_RETURN_NOT_OK(result.error);
             cells.push_back(std::move(result.value));
         }
         if (archetype.vertex_texcoords.has_value()) {
-            auto result = DataCell::from_loggable(archetype.vertex_texcoords.value());
+            auto result = ComponentBatch::from_loggable(archetype.vertex_texcoords.value());
             RR_RETURN_NOT_OK(result.error);
             cells.push_back(std::move(result.value));
         }
         if (archetype.albedo_factor.has_value()) {
-            auto result = DataCell::from_loggable(archetype.albedo_factor.value());
+            auto result = ComponentBatch::from_loggable(archetype.albedo_factor.value());
             RR_RETURN_NOT_OK(result.error);
             cells.push_back(std::move(result.value));
         }
         if (archetype.albedo_texture.has_value()) {
-            auto result = DataCell::from_loggable(archetype.albedo_texture.value());
+            auto result = ComponentBatch::from_loggable(archetype.albedo_texture.value());
             RR_RETURN_NOT_OK(result.error);
             cells.push_back(std::move(result.value));
         }
         if (archetype.class_ids.has_value()) {
-            auto result = DataCell::from_loggable(archetype.class_ids.value());
+            auto result = ComponentBatch::from_loggable(archetype.class_ids.value());
             RR_RETURN_NOT_OK(result.error);
             cells.push_back(std::move(result.value));
         }
         {
             auto indicator = Mesh3D::IndicatorComponent();
-            auto result = DataCell::from_loggable(indicator);
+            auto result = ComponentBatch::from_loggable(indicator);
             RR_RETURN_NOT_OK(result.error);
             cells.emplace_back(std::move(result.value));
         }

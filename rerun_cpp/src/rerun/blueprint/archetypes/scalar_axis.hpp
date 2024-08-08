@@ -6,8 +6,8 @@
 #include "../../blueprint/components/lock_range_during_zoom.hpp"
 #include "../../collection.hpp"
 #include "../../compiler_utils.hpp"
+#include "../../component_batch.hpp"
 #include "../../components/range1d.hpp"
-#include "../../data_cell.hpp"
 #include "../../indicator_component.hpp"
 #include "../../result.hpp"
 
@@ -66,7 +66,7 @@ namespace rerun {
     template <>
     struct AsComponents<blueprint::archetypes::ScalarAxis> {
         /// Serialize all set component batches.
-        static Result<std::vector<DataCell>> serialize(
+        static Result<std::vector<ComponentBatch>> serialize(
             const blueprint::archetypes::ScalarAxis& archetype
         );
     };

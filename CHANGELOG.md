@@ -6,7 +6,7 @@
 * `mesh_material: Material` has been renamed to `albedo_factor: AlbedoFactor` [#6841](https://github.com/rerun-io/rerun/pull/6841)
 * 3D transform APIs: Previously, the transform component was represented as one of several variants (an Arrow union, `enum` in Rust) depending on how the transform was expressed. Instead, there are now several components for translation/scale/rotation/matrices that can live side-by-side in the 3D transform archetype.
 * Python: `NV12/YUY2` are now logged with `Image`
-* `ImageEncoded` has been replaced with [`EncodedImage`](https://rerun.io/docs/reference/types/archetypes/encoded_image?speculative-link) (JPEG, PNG, …) and  [`Image`](https://rerun.io/docs/reference/types/archetypes/image?speculative-link) (NV12, YUY2, …)
+* `ImageEncoded` is deprecated and replaced with [`EncodedImage`](https://rerun.io/docs/reference/types/archetypes/encoded_image?speculative-link) (JPEG, PNG, …) and  [`Image`](https://rerun.io/docs/reference/types/archetypes/image?speculative-link) (NV12, YUY2, …)
 * [`DepthImage`](https://rerun.io/docs/reference/types/archetypes/depth_image) and [`SegmentationImage`](https://rerun.io/docs/reference/types/archetypes/segmentation_image) are no longer encoded as a tensors, and expects its shape in `[width, height]` order
 
 🧳 Migration guide: http://rerun.io/docs/reference/migration/migration-0-18?speculative-link

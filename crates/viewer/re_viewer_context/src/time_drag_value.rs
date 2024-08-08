@@ -11,7 +11,7 @@ use re_types_core::datatypes::TimeInt;
 /// Compute and store various information about the time range related to how the UI should behave.
 #[derive(Debug)]
 pub struct TimeDragValue {
-    /// Allowed range ofr value.
+    /// Allowed range for value.
     pub range: RangeInclusive<i64>,
 
     /// For ranges with large offsets (e.g. `log_time`), this is a rounded time just before the
