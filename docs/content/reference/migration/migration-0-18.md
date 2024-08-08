@@ -213,13 +213,16 @@ impl From<GltfTransform> for rerun::Transform3D {
 ```
 
 Since all aspects of the transform archetypes are now granular, they can be chained with `with_` functions:
+
 ```rust
-rerun::Transform3D::default().with_mat3x3(matrix).with_translation(translation)
+rerun::Transform3D::clear().with_mat3x3(matrix).with_translation(translation)
 ```
+
 Note that the order of the method calls does _not_ affect the order in which transformation is applied!
 
-`rerun::Transform3D::IDENTITY` has been removed, sue `rerun::Transform3D::default()` to start out with
-an empty archetype instead that you can populate (e.g. `rerun::Transform3D::default().with_mat3x3(rerun::datatypes::Mat3x3::IDENTITY)`).
+`Transform3D::clear` is named so, because whenever you log the `Transform3D` archetype, it will clear ALL of its components,
+by logging an empty value for them.
+This means logging a `Transform3D::from_rotation(…)` followed by a `Transform3D::from_translation(…)` will only result in the translation, as the later log call will clear the previous rotation.
 
 
 Asset3D previously had a `transform` field, now you have to log either a `LeafTransform3D` or a `Transform3D` on the same entity:

@@ -12,23 +12,18 @@ int main() {
     rec.set_time_sequence("step", 0);
 
     rec.log("base", base_axes);
-    rec.log("base/rotated", other_axes);
-    rec.log("base/rotated/translated", other_axes);
 
     for (int deg = 0; deg < 360; deg++) {
         rec.set_time_sequence("step", deg);
 
         rec.log(
             "base/rotated",
-            rerun::Transform3D::from_rotation(rerun::RotationAxisAngle(
+            other_axes.with_rotation(rerun::RotationAxisAngle(
                 {1.0f, 1.0f, 1.0f},
                 rerun::Angle::degrees(static_cast<float>(deg))
             ))
         );
 
-        rec.log(
-            "base/rotated/translated",
-            rerun::Transform3D::from_translation({2.0f, 0.0f, 0.0f})
-        );
+        rec.log("base/rotated/translated", other_axes.with_translation({2.0f, 0.0f, 0.0f}));
     }
 }

@@ -10,7 +10,7 @@ use re_types::{
 #[test]
 fn roundtrip() {
     let all_expected = [
-        Transform3D::default(),
+        Transform3D::clear(),
         Transform3D {
             translation: Some(Vec3D([1.0, 2.0, 3.0]).into()),
             scale: Some(Scale3D::uniform(42.0)),
@@ -54,7 +54,7 @@ fn roundtrip() {
     ];
 
     let all_arch = [
-        Transform3D::default(),
+        Transform3D::clear(),
         Transform3D::from_translation_scale([1.0, 2.0, 3.0], Scale3D::uniform(42.0))
             .with_relation(TransformRelation::ChildFromParent), //
         Transform3D::from_translation_rotation(
