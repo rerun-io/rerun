@@ -9,6 +9,7 @@ impl EntityDataUi for re_types::components::Blob {
         ui: &mut egui::Ui,
         ui_layout: re_viewer_context::UiLayout,
         entity_path: &re_log_types::EntityPath,
+        row_id: Option<re_chunk_store::RowId>,
         query: &re_chunk_store::LatestAtQuery,
         db: &re_entity_db::EntityDb,
     ) {

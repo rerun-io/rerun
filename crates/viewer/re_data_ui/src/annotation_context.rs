@@ -17,6 +17,7 @@ impl crate::EntityDataUi for re_types::components::ClassId {
         ui: &mut egui::Ui,
         ui_layout: UiLayout,
         entity_path: &re_log_types::EntityPath,
+        _row_id: Option<re_chunk_store::RowId>,
         query: &re_chunk_store::LatestAtQuery,
         _db: &re_entity_db::EntityDb,
     ) {
@@ -62,6 +63,7 @@ impl crate::EntityDataUi for re_types::components::KeypointId {
         ui: &mut egui::Ui,
         ui_layout: UiLayout,
         entity_path: &re_log_types::EntityPath,
+        _row_id: Option<re_chunk_store::RowId>,
         query: &re_chunk_store::LatestAtQuery,
         _db: &re_entity_db::EntityDb,
     ) {

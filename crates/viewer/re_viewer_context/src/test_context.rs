@@ -56,7 +56,7 @@ impl TestContext {
             let blueprint_query = LatestAtQuery::latest(self.active_timeline);
             let (command_sender, _) = command_channel();
             let component_ui_registry = ComponentUiRegistry::new(Box::new(
-                |_ctx, _ui, _ui_layout, _query, _db, _entity_path, _component| {},
+                |_ctx, _ui, _ui_layout, _query, _db, _entity_path, _row_id, _component| {},
             ));
 
             let store_context = StoreContext {

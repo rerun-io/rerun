@@ -176,6 +176,7 @@ type ComponentUiCallback = Box<
             &LatestAtQuery,
             &EntityDb,
             &EntityPath,
+            Option<RowId>,
             &dyn arrow2::array::Array,
         ) + Send
         + Sync,
@@ -434,7 +435,16 @@ impl ComponentUiRegistry {
 
         // Prefer the versatile UI callback if there is one.
         if let Some(ui_callback) = self.component_uis.get(&component_name) {
-            (*ui_callback)(ctx, ui, ui_layout, query, db, entity_path, component_raw);
+            (*ui_callback)(
+                ctx,
+                ui,
+                ui_layout,
+                query,
+                db,
+                entity_path,
+                row_id,
+                component_raw,
+            );
             return;
         }
 
@@ -450,7 +460,16 @@ impl ComponentUiRegistry {
             return;
         }
 
-        (*self.fallback_ui)(ctx, ui, ui_layout, query, db, entity_path, component_raw);
+        (*self.fallback_ui)(
+            ctx,
+            ui,
+            ui_layout,
+            query,
+            db,
+            entity_path,
+            row_id,
+            component_raw,
+        );
     }
 
     /// Show a multi-line editor for this instance of this component.

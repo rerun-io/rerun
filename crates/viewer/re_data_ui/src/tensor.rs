@@ -45,17 +45,14 @@ impl EntityDataUi for re_types::components::TensorData {
         ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
         ui_layout: UiLayout,
-        entity_path: &EntityPath,
-        query: &re_chunk_store::LatestAtQuery,
+        _entity_path: &EntityPath,
+        row_id: Option<re_chunk_store::RowId>,
+        _query: &re_chunk_store::LatestAtQuery,
         _db: &re_entity_db::EntityDb,
     ) {
         re_tracing::profile_function!();
 
-        let tensor_data_row_id = ctx
-            .recording()
-            .latest_at_component::<Self>(entity_path, query)
-            .map_or(RowId::ZERO, |((_time, row_id), _tensor)| row_id);
-
+        let tensor_data_row_id = row_id.unwrap_or(RowId::ZERO);
         tensor_ui(ctx, ui, ui_layout, tensor_data_row_id, &self.0);
     }
 }

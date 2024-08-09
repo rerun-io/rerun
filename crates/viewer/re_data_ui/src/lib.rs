@@ -72,12 +72,14 @@ pub trait DataUi {
 /// This is given the context of the entity it is part of so it can do queries.
 pub trait EntityDataUi {
     /// If you need to lookup something in the chunk store, use the given query to do so.
+    #[allow(clippy::too_many_arguments)]
     fn entity_data_ui(
         &self,
         ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
         ui_layout: UiLayout,
         entity_path: &EntityPath,
+        row_id: Option<re_chunk_store::RowId>,
         query: &re_chunk_store::LatestAtQuery,
         db: &re_entity_db::EntityDb,
     );
@@ -93,6 +95,7 @@ where
         ui: &mut egui::Ui,
         ui_layout: UiLayout,
         entity_path: &EntityPath,
+        _row_id: Option<re_chunk_store::RowId>,
         query: &re_chunk_store::LatestAtQuery,
         db: &re_entity_db::EntityDb,
     ) {

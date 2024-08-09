@@ -1,4 +1,4 @@
-use re_chunk_store::LatestAtQuery;
+use re_chunk_store::{LatestAtQuery, RowId};
 use re_entity_db::EntityDb;
 use re_log_types::{external::arrow2, EntityPath};
 use re_types::external::arrow2::array::Utf8Array;
@@ -36,7 +36,7 @@ pub fn add_to_registry<C: EntityDataUi + re_types::Component>(registry: &mut Com
     registry.add_display_ui(
         C::name(),
         Box::new(
-            |ctx, ui, ui_layout, query, db, entity_path, component_raw| match C::from_arrow(
+            |ctx, ui, ui_layout, query, db, entity_path, row_id, component_raw| match C::from_arrow(
                 component_raw,
             ) {
                 Ok(components) => match components.len() {
@@ -44,7 +44,15 @@ pub fn add_to_registry<C: EntityDataUi + re_types::Component>(registry: &mut Com
                         ui.weak("(empty)");
                     }
                     1 => {
-                        components[0].entity_data_ui(ctx, ui, ui_layout, entity_path, query, db);
+                        components[0].entity_data_ui(
+                            ctx,
+                            ui,
+                            ui_layout,
+                            entity_path,
+                            row_id,
+                            query,
+                            db,
+                        );
                     }
                     i => {
                         ui.label(format!("{} values", re_format::format_uint(i)));
@@ -59,6 +67,7 @@ pub fn add_to_registry<C: EntityDataUi + re_types::Component>(registry: &mut Com
     );
 }
 
+#[allow(clippy::too_many_arguments)]
 fn fallback_component_ui(
     _ctx: &ViewerContext<'_>,
     ui: &mut egui::Ui,
@@ -66,6 +75,7 @@ fn fallback_component_ui(
     _query: &LatestAtQuery,
     _db: &EntityDb,
     _entity_path: &EntityPath,
+    _row_id: Option<RowId>,
     component: &dyn arrow2::array::Array,
 ) {
     arrow_ui(ui, ui_layout, component);
