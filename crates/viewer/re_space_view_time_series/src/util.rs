@@ -11,29 +11,27 @@ use crate::{
 };
 
 /// Find the plot bounds and the per-ui-point delta from egui.
-pub fn determine_plot_bounds_and_time_per_pixel(
+pub fn determine_time_per_pixel(
     ctx: &ViewerContext<'_>,
-    query: &ViewQuery<'_>,
-) -> (Option<egui_plot::PlotBounds>, f64) {
+    plot_mem: Option<&egui_plot::PlotMemory>,
+) -> f64 {
     let egui_ctx = ctx.egui_ctx;
-
-    let plot_mem = egui_plot::PlotMemory::load(egui_ctx, crate::plot_id(query.space_view_id));
-    let plot_bounds = plot_mem.as_ref().map(|mem| *mem.bounds());
 
     // How many ui points per time unit?
     let points_per_time = plot_mem
         .as_ref()
         .map_or(1.0, |mem| mem.transform().dpos_dvalue_x());
     let pixels_per_time = egui_ctx.pixels_per_point() as f64 * points_per_time;
+
     // How many time units per physical pixel?
-    let time_per_pixel = 1.0 / pixels_per_time.max(f64::EPSILON);
-    (plot_bounds, time_per_pixel)
+    1.0 / pixels_per_time.max(f64::EPSILON)
 }
 
 pub fn determine_time_range(
     time_cursor: re_log_types::TimeInt,
+    time_offset: i64,
     data_result: &re_viewer_context::DataResult,
-    plot_bounds: Option<egui_plot::PlotBounds>,
+    plot_mem: Option<&egui_plot::PlotMemory>,
     enable_query_clamping: bool,
 ) -> ResolvedTimeRange {
     let query_range = data_result.query_range();
@@ -56,22 +54,27 @@ pub fn determine_time_range(
     let mut time_range =
         ResolvedTimeRange::from_relative_time_range(&visible_time_range, time_cursor);
 
-    // TODO(cmc): We would love to reduce the query to match the actual plot bounds, but because
-    // the plot widget handles zoom after we provide it with data for the current frame,
-    // this results in an extremely jarring frame delay.
-    // Just try it out and you'll see what I mean.
-    if enable_query_clamping {
-        if let Some(plot_bounds) = plot_bounds {
-            time_range.set_min(i64::max(
-                time_range.min().as_i64(),
-                plot_bounds.range_x().start().floor() as i64,
-            ));
-            time_range.set_max(i64::min(
-                time_range.max().as_i64(),
-                plot_bounds.range_x().end().ceil() as i64,
-            ));
+    let is_auto_bounds = plot_mem.map_or(false, |mem| mem.auto_bounds.x || mem.auto_bounds.y);
+    let plot_bounds = plot_mem.map(|mem| {
+        let bounds = mem.bounds().range_x();
+        let x_min = bounds.start().floor() as i64;
+        let x_max = bounds.end().ceil() as i64;
+        // We offset the time values of the plot so that unix timestamps don't run out of precision.
+        (
+            x_min.saturating_add(time_offset),
+            x_max.saturating_add(time_offset),
+        )
+    });
+
+    // If we're not in auto mode, which is the mode where the query drives the bounds of the plot,
+    // then we want the bounds of the plots to drive the query!
+    if !is_auto_bounds && enable_query_clamping {
+        if let Some((x_min, x_max)) = plot_bounds {
+            time_range.set_min(i64::max(time_range.min().as_i64(), x_min));
+            time_range.set_max(i64::min(time_range.max().as_i64(), x_max));
         }
     }
+
     time_range
 }
 

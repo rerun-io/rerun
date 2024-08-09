@@ -43,6 +43,12 @@ pub struct TimeSeriesSpaceViewState {
 
     /// The range of the scalar values currently on screen.
     scalar_range: Range1D,
+
+    /// We offset the time values of the plot so that unix timestamps don't run out of precision.
+    ///
+    /// Other parts of the system, such as query clamping, need to be aware of that offset in order
+    /// to work properly.
+    pub(crate) time_offset: i64,
 }
 
 impl Default for TimeSeriesSpaceViewState {
@@ -52,6 +58,7 @@ impl Default for TimeSeriesSpaceViewState {
             was_dragging_time_cursor: false,
             saved_auto_bounds: Default::default(),
             scalar_range: [0.0, 0.0].into(),
+            time_offset: 0,
         }
     }
 }
@@ -255,7 +262,6 @@ Display time series data in a plot.
         ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
         state: &mut dyn SpaceViewState,
-
         query: &ViewQuery<'_>,
         system_output: SystemExecutionOutput,
     ) -> Result<(), SpaceViewSystemExecutionError> {
@@ -325,6 +331,7 @@ Display time series data in a plot.
         } else {
             min_time
         };
+        state.time_offset = time_offset;
 
         // use timeline_name as part of id, so that egui stores different pan/zoom for different timelines
         let plot_id_src = ("plot", &timeline_name);

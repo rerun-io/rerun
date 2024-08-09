@@ -8,13 +8,15 @@ use re_types::{
     Archetype as _, Loggable as _,
 };
 use re_viewer_context::{
-    auto_color_for_entity_path, IdentifiedViewSystem, QueryContext, SpaceViewSystemExecutionError,
-    TypedComponentFallbackProvider, ViewContext, ViewQuery, VisualizerQueryInfo, VisualizerSystem,
+    auto_color_for_entity_path, IdentifiedViewSystem, QueryContext, SpaceViewStateExt as _,
+    SpaceViewSystemExecutionError, TypedComponentFallbackProvider, ViewContext, ViewQuery,
+    VisualizerQueryInfo, VisualizerSystem,
 };
 
 use crate::{
-    util::{determine_plot_bounds_and_time_per_pixel, determine_time_range, points_to_series},
-    ScatterAttrs, {PlotPoint, PlotPointAttrs, PlotSeries, PlotSeriesKind},
+    space_view_class::TimeSeriesSpaceViewState,
+    util::{determine_time_per_pixel, determine_time_range, points_to_series},
+    PlotPoint, PlotPointAttrs, PlotSeries, PlotSeriesKind, ScatterAttrs,
 };
 
 /// The system for rendering [`SeriesPoint`] archetypes.
@@ -91,8 +93,11 @@ impl SeriesPointSystem {
     fn load_scalars(&mut self, ctx: &ViewContext<'_>, query: &ViewQuery<'_>) {
         re_tracing::profile_function!();
 
-        let (plot_bounds, time_per_pixel) =
-            determine_plot_bounds_and_time_per_pixel(ctx.viewer_ctx, query);
+        let plot_mem = egui_plot::PlotMemory::load(
+            ctx.viewer_ctx.egui_ctx,
+            crate::plot_id(query.space_view_id),
+        );
+        let time_per_pixel = determine_time_per_pixel(ctx.viewer_ctx, plot_mem.as_ref());
 
         let data_results = query.iter_visible_data_results(ctx, Self::identifier());
 
@@ -108,7 +113,7 @@ impl SeriesPointSystem {
                     self.load_series(
                         ctx,
                         query,
-                        plot_bounds,
+                        plot_mem.as_ref(),
                         time_per_pixel,
                         data_result,
                         &mut series,
@@ -125,7 +130,7 @@ impl SeriesPointSystem {
                 self.load_series(
                     ctx,
                     query,
-                    plot_bounds,
+                    plot_mem.as_ref(),
                     time_per_pixel,
                     data_result,
                     &mut series,
@@ -140,7 +145,7 @@ impl SeriesPointSystem {
         &self,
         ctx: &ViewContext<'_>,
         view_query: &ViewQuery<'_>,
-        plot_bounds: Option<egui_plot::PlotBounds>,
+        plot_mem: Option<&egui_plot::PlotMemory>,
         time_per_pixel: f64,
         data_result: &re_viewer_context::DataResult,
         all_series: &mut Vec<PlotSeries>,
@@ -178,10 +183,15 @@ impl SeriesPointSystem {
 
         let mut points;
 
+        let time_offset = ctx
+            .view_state
+            .downcast_ref::<TimeSeriesSpaceViewState>()
+            .map_or(0, |state| state.time_offset);
         let time_range = determine_time_range(
             view_query.latest_at,
+            time_offset,
             data_result,
-            plot_bounds,
+            plot_mem,
             ctx.viewer_ctx.app_options.experimental_plot_query_clamping,
         );
 
@@ -191,7 +201,10 @@ impl SeriesPointSystem {
             re_tracing::profile_scope!("primary", &data_result.entity_path.to_string());
 
             let entity_path = &data_result.entity_path;
-            let query = re_chunk_store::RangeQuery::new(view_query.timeline, time_range);
+            let query = re_chunk_store::RangeQuery::new(view_query.timeline, time_range)
+                // We must fetch data with extended bounds, otherwise the query clamping would
+                // cut-off the data early at the edge of the view.
+                .include_extended_bounds(true);
 
             let results = range_with_blueprint_resolved_data(
                 ctx,
