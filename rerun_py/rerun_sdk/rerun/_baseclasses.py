@@ -315,7 +315,7 @@ ComponentColumnLike = ComponentBatchLike | ComponentColumn
 Type alias for component column-like objects.
 
 Every component batch can be interpreted as a component column.
-`ComponentColumn` implements the `ComponentBatchLike` interface but is still explicitely included here.
+`ComponentColumn` implements the `ComponentBatchLike` interface but is still explicitly included here.
 """
 
 
