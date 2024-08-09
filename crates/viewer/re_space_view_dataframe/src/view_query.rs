@@ -177,6 +177,8 @@ pub(crate) fn query_ui(
             .find(|t| t.name() == &timeline_name)
     });
 
+    ui.add_space(5.0);
+
     let mut override_query = timeline.is_some();
     let changed = ui.selectable_toggle(|ui| {
         ui.selectable_value(&mut override_query, false, "Follow timeline")
@@ -225,7 +227,9 @@ fn override_ui(
     space_view_id: SpaceViewId,
     property: &ViewProperty<'_>,
 ) -> Result<(), SpaceViewSystemExecutionError> {
-    ui.selection_grid("dataframe_view_query_ui")
+    egui::Grid::new("dataframe_view_query_ui")
+        .num_columns(2)
+        .spacing(egui::vec2(8.0, 10.0))
         .show(ui, |ui| {
             ui.grid_left_hand_label("Timeline");
 

@@ -98,6 +98,8 @@ impl UiQueryKind {
                 if is_time_range_custom {
                     ui.spacing_mut().indent = ui.spacing().icon_width + ui.spacing().icon_spacing;
                     ui.indent("time_range_custom", |ui| {
+                        ui.add_space(-4.0);
+
                         let mut from = if let Self::TimeRange { from, .. } = self {
                             (*from).into()
                         } else {
