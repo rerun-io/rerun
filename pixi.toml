@@ -531,6 +531,7 @@ jupyter = ">=1.0"
 
 # Rerun libs
 
+air_traffic_data = { path = "examples/python/air_traffic_data", editable = true }
 arkit_scenes = { path = "examples/python/arkit_scenes", editable = true }
 blueprint = { path = "examples/python/blueprint", editable = true }
 blueprint_stocks = { path = "examples/python/blueprint_stocks", editable = true }
