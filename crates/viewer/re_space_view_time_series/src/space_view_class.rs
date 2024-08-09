@@ -325,6 +325,7 @@ Display time series data in a plot.
         } else {
             min_time
         };
+        let time_offset = 0;
 
         // use timeline_name as part of id, so that egui stores different pan/zoom for different timelines
         let plot_id_src = ("plot", &timeline_name);

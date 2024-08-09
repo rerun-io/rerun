@@ -1,7 +1,8 @@
-use re_log_types::{EntityPath, ResolvedTimeRange};
+use re_log_types::{EntityPath, ResolvedTimeRange, TimeInt, TimeType};
 use re_types::{
-    components::AggregationPolicy,
+    components::{AggregationPolicy, Scalar},
     datatypes::{TimeRange, TimeRangeBoundary},
+    Loggable,
 };
 use re_viewer_context::{ViewQuery, ViewerContext};
 
@@ -11,29 +12,26 @@ use crate::{
 };
 
 /// Find the plot bounds and the per-ui-point delta from egui.
-pub fn determine_plot_bounds_and_time_per_pixel(
+pub fn determine_time_per_pixel(
     ctx: &ViewerContext<'_>,
-    query: &ViewQuery<'_>,
-) -> (Option<egui_plot::PlotBounds>, f64) {
+    plot_mem: Option<&egui_plot::PlotMemory>,
+) -> f64 {
     let egui_ctx = ctx.egui_ctx;
-
-    let plot_mem = egui_plot::PlotMemory::load(egui_ctx, crate::plot_id(query.space_view_id));
-    let plot_bounds = plot_mem.as_ref().map(|mem| *mem.bounds());
 
     // How many ui points per time unit?
     let points_per_time = plot_mem
         .as_ref()
         .map_or(1.0, |mem| mem.transform().dpos_dvalue_x());
     let pixels_per_time = egui_ctx.pixels_per_point() as f64 * points_per_time;
+
     // How many time units per physical pixel?
-    let time_per_pixel = 1.0 / pixels_per_time.max(f64::EPSILON);
-    (plot_bounds, time_per_pixel)
+    1.0 / pixels_per_time.max(f64::EPSILON)
 }
 
 pub fn determine_time_range(
     time_cursor: re_log_types::TimeInt,
     data_result: &re_viewer_context::DataResult,
-    plot_bounds: Option<egui_plot::PlotBounds>,
+    plot_mem: Option<&egui_plot::PlotMemory>,
     enable_query_clamping: bool,
 ) -> ResolvedTimeRange {
     let query_range = data_result.query_range();
@@ -56,12 +54,24 @@ pub fn determine_time_range(
     let mut time_range =
         ResolvedTimeRange::from_relative_time_range(&visible_time_range, time_cursor);
 
-    // TODO(cmc): We would love to reduce the query to match the actual plot bounds, but because
-    // the plot widget handles zoom after we provide it with data for the current frame,
-    // this results in an extremely jarring frame delay.
-    // Just try it out and you'll see what I mean.
-    if enable_query_clamping {
-        if let Some(plot_bounds) = plot_bounds {
+    let is_auto_bounds = plot_mem.map_or(false, |mem| mem.auto_bounds.x || mem.auto_bounds.y);
+    let plot_bounds = plot_mem.map(|mem| mem.bounds());
+
+    fn round_ns_to_start_of_day(ns: i64) -> i64 {
+        let ns_per_day = 24 * 60 * 60 * 1_000_000_000;
+        (ns + ns_per_day / 2) / ns_per_day * ns_per_day
+    }
+
+    // let time_offset = if c.typ() == TimeType::Time {
+    //     // In order to make the tick-marks on the time axis fall on whole days, hours, minutes etc,
+    //     // we need to round to a whole day:
+    //     round_ns_to_start_of_day(min_time)
+    // } else {
+    //     min_time
+    // };
+
+    if !is_auto_bounds && enable_query_clamping {
+        if let Some(plot_bounds) = &plot_bounds {
             time_range.set_min(i64::max(
                 time_range.min().as_i64(),
                 plot_bounds.range_x().start().floor() as i64,
@@ -72,6 +82,12 @@ pub fn determine_time_range(
             ));
         }
     }
+
+    // dbg!((
+    //     plot_bounds.map(|x| x.range_x()),
+    //     (time_range.min(), time_range.max())
+    // ));
+
     time_range
 }
 
