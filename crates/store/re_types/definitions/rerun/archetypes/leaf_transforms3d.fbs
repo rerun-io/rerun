@@ -18,7 +18,7 @@ namespace rerun.archetypes;
 ///
 /// Whenever you log this archetype, it will write all components, even if you do not explicitly set them.
 /// This means that if you first log a transform with only a translation, and then log one with only a rotation,
-/// i will be resolved to a transform with only a rotation.
+/// it will be resolved to a transform with only a rotation.
 ///
 /// \example archetypes/leaf_transforms3d_combined title="Regular & leaf transform in tandom" image="https://static.rerun.io/leaf_transform3d/41674f0082d6de489f8a1cd1583f60f6b5820ddf/1200w.png"
 table LeafTransforms3D (
