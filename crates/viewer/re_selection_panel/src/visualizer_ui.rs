@@ -372,8 +372,8 @@ fn visualizer_components(
                             ui,
                             component_name,
                             override_path,
-                            raw_override.as_ref().map(|(_, raw_override)| raw_override),
-                            raw_default.as_ref().map(|(_, raw_override)| raw_override),
+                            &raw_override.clone().map(|(_, raw_override)| raw_override),
+                            raw_default.clone().map(|(_, raw_override)| raw_override),
                             raw_fallback.as_ref(),
                             raw_current_value.as_ref(),
                         );
@@ -426,8 +426,8 @@ fn menu_more(
     ui: &mut egui::Ui,
     component_name: re_types::ComponentName,
     override_path: &EntityPath,
-    raw_override: Option<&Box<dyn arrow2::array::Array>>,
-    raw_default: Option<&Box<dyn arrow2::array::Array>>,
+    raw_override: &Option<Box<dyn arrow2::array::Array>>,
+    raw_default: Option<Box<dyn arrow2::array::Array>>,
     raw_fallback: &dyn arrow2::array::Array,
     raw_current_value: &dyn arrow2::array::Array,
 ) {
@@ -449,7 +449,7 @@ fn menu_more(
         .clicked()
     {
         if let Some(raw_default) = raw_default {
-            ctx.save_blueprint_array(override_path, component_name, raw_default.clone());
+            ctx.save_blueprint_array(override_path, component_name, raw_default);
         }
         ui.close_menu();
     }
@@ -460,10 +460,9 @@ fn menu_more(
     }
 
     let override_differs_from_default = raw_override
-        != ctx
+        != &ctx
             .viewer_ctx
-            .raw_latest_at_in_default_blueprint(override_path, component_name)
-            .as_ref();
+            .raw_latest_at_in_default_blueprint(override_path, component_name);
     if ui
         .add_enabled(
             override_differs_from_default,
