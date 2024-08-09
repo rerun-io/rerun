@@ -180,7 +180,7 @@ impl SeriesLineSystem {
             time_offset,
             data_result,
             plot_mem,
-            ctx.viewer_ctx.app_options.experimental_plot_query_clamping,
+            ctx.viewer_ctx.app_options.plot_query_clamping,
         );
         {
             use re_space_view::RangeResultsExt as _;

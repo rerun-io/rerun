@@ -21,7 +21,7 @@ pub struct AppOptions {
     pub experimental_dataframe_space_view: bool,
 
     /// Toggle query clamping for the plot visualizers.
-    pub experimental_plot_query_clamping: bool,
+    pub plot_query_clamping: bool,
 
     /// Displays an overlay for debugging picking.
     pub show_picking_debug_overlay: bool,
@@ -52,7 +52,7 @@ impl Default for AppOptions {
 
             experimental_dataframe_space_view: false,
 
-            experimental_plot_query_clamping: false,
+            plot_query_clamping: true,
 
             show_picking_debug_overlay: false,
 
