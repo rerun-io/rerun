@@ -37,22 +37,17 @@ impl crate::EntityDataUi for re_types::components::ClassId {
             });
 
             let id = self.0;
-            match ui_layout {
-                UiLayout::List => {
-                    if !class.keypoint_connections.is_empty()
-                        || !class.keypoint_annotations.is_empty()
-                    {
-                        response.response.on_hover_ui(|ui| {
-                            class_description_ui(ui, UiLayout::Tooltip, class, id);
-                        });
-                    }
+
+            if ui_layout.is_single_line() {
+                if !class.keypoint_connections.is_empty() || !class.keypoint_annotations.is_empty()
+                {
+                    response.response.on_hover_ui(|ui| {
+                        class_description_ui(ui, UiLayout::Tooltip, class, id);
+                    });
                 }
-                UiLayout::Tooltip
-                | UiLayout::SelectionPanelFull
-                | UiLayout::SelectionPanelLimitHeight => {
-                    ui.separator();
-                    class_description_ui(ui, ui_layout, class, id);
-                }
+            } else {
+                ui.separator();
+                class_description_ui(ui, ui_layout, class, id);
             }
         } else {
             ui_layout.label(ui, format!("{}", self.0));

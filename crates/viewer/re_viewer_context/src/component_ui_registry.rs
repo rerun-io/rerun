@@ -45,6 +45,15 @@ pub enum UiLayout {
 }
 
 impl UiLayout {
+    /// Should the UI fit on one line?
+    #[inline]
+    pub fn is_single_line(&self) -> bool {
+        match self {
+            Self::List => true,
+            Self::Tooltip | Self::SelectionPanelLimitHeight | Self::SelectionPanelFull => false,
+        }
+    }
+
     /// Do we have a lot of vertical space?
     #[inline]
     pub fn is_selection_panel(self) -> bool {

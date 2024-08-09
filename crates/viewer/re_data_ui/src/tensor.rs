@@ -73,34 +73,30 @@ pub fn tensor_ui(
         .cache
         .entry(|c: &mut TensorStatsCache| c.entry(tensor_data_row_id, tensor));
 
-    match ui_layout {
-        UiLayout::List => {
-            ui.horizontal(|ui| {
-                let shape = match tensor.image_height_width_channels() {
-                    Some([h, w, c]) => vec![
-                        TensorDimension::height(h),
-                        TensorDimension::width(w),
-                        TensorDimension::depth(c),
-                    ],
-                    None => tensor.shape.clone(),
-                };
-                let text = format!(
-                    "{}, {}",
-                    tensor.dtype(),
-                    format_tensor_shape_single_line(&shape)
-                );
-                ui_layout.label(ui, text).on_hover_ui(|ui| {
-                    tensor_summary_ui(ui, tensor, &tensor_stats);
-                });
-            });
-        }
-
-        UiLayout::SelectionPanelFull | UiLayout::SelectionPanelLimitHeight | UiLayout::Tooltip => {
-            ui.vertical(|ui| {
-                ui.set_min_width(100.0);
+    if ui_layout.is_single_line() {
+        ui.horizontal(|ui| {
+            let shape = match tensor.image_height_width_channels() {
+                Some([h, w, c]) => vec![
+                    TensorDimension::height(h),
+                    TensorDimension::width(w),
+                    TensorDimension::depth(c),
+                ],
+                None => tensor.shape.clone(),
+            };
+            let text = format!(
+                "{}, {}",
+                tensor.dtype(),
+                format_tensor_shape_single_line(&shape)
+            );
+            ui_layout.label(ui, text).on_hover_ui(|ui| {
                 tensor_summary_ui(ui, tensor, &tensor_stats);
             });
-        }
+        });
+    } else {
+        ui.vertical(|ui| {
+            ui.set_min_width(100.0);
+            tensor_summary_ui(ui, tensor, &tensor_stats);
+        });
     }
 }
 
