@@ -130,7 +130,7 @@ impl TimeDragValue {
             time_range = low_bound_override.0.at_least(*time_range.start())..=*time_range.end();
         }
 
-        let mut time_unit = (value.0 - offset) as f32 / factor;
+        let mut time_unit = (value.0.saturating_sub(offset)) as f32 / factor;
 
         let time_range = (*time_range.start() - offset) as f32 / factor
             ..=(*time_range.end() - offset) as f32 / factor;

@@ -84,13 +84,6 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             },
         ),
         (
-            <DataframeViewMode as Loggable>::name(),
-            ComponentReflection {
-                docstring_md: "The kind of table displayed by the dataframe view",
-                placeholder: Some(DataframeViewMode::default().to_arrow()?),
-            },
-        ),
-        (
             <GridColumns as Loggable>::name(),
             ComponentReflection {
                 docstring_md: "How many columns a grid container should have.",
@@ -119,6 +112,13 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             },
         ),
         (
+            <LatestAtQueries as Loggable>::name(),
+            ComponentReflection {
+                docstring_md: "Configuration for latest at queries.\n\nNote: configuration as saved on a per-timeline basis.",
+                placeholder: Some(LatestAtQueries::default().to_arrow()?),
+            },
+        ),
+        (
             <LockRangeDuringZoom as Loggable>::name(),
             ComponentReflection {
                 docstring_md: "Indicate whether the range should be locked when zooming in on the data.\n\nDefault is `false`, i.e. zoom will change the visualized range.",
@@ -137,6 +137,13 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             ComponentReflection {
                 docstring_md: "An individual query expression used to filter a set of [`datatypes.EntityPath`](https://rerun.io/docs/reference/types/datatypes/entity_path)s.\n\nEach expression is either an inclusion or an exclusion expression.\nInclusions start with an optional `+` and exclusions must start with a `-`.\n\nMultiple expressions are combined together as part of `SpaceViewContents`.\n\nThe `/**` suffix matches the whole subtree, i.e. self and any child, recursively\n(`/world/**` matches both `/world` and `/world/car/driver`).\nOther uses of `*` are not (yet) supported.",
                 placeholder: Some(QueryExpression::default().to_arrow()?),
+            },
+        ),
+        (
+            <QueryKind as Loggable>::name(),
+            ComponentReflection {
+                docstring_md: "The kind of query displayed by the dataframe view",
+                placeholder: Some(QueryKind::default().to_arrow()?),
             },
         ),
         (
@@ -193,6 +200,20 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             ComponentReflection {
                 docstring_md: "Show a slider for the index of some dimension of a slider.",
                 placeholder: Some(TensorDimensionIndexSlider::default().to_arrow()?),
+            },
+        ),
+        (
+            <TimeRangeQueries as Loggable>::name(),
+            ComponentReflection {
+                docstring_md: "Configuration for time range queries.\n\nNote: configuration as saved on a per-timeline basis.",
+                placeholder: Some(TimeRangeQueries::default().to_arrow()?),
+            },
+        ),
+        (
+            <TimelineName as Loggable>::name(),
+            ComponentReflection {
+                docstring_md: "A timeline identified by its name.",
+                placeholder: Some(TimelineName::default().to_arrow()?),
             },
         ),
         (
@@ -733,14 +754,27 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
             },
         ),
         (
-            ArchetypeName::new("rerun.blueprint.archetypes.DataframeViewMode"),
+            ArchetypeName::new("rerun.blueprint.archetypes.DataframeQuery"),
             ArchetypeReflection {
-                display_name: "Dataframe view mode",
-                docstring_md: "Configuration for the dataframe view",
+                display_name: "Dataframe query",
+                docstring_md: "The query for the dataframe view.",
                 fields: vec![
                     ArchetypeFieldReflection { component_name :
-                    "rerun.blueprint.components.DataframeViewMode".into(), display_name :
-                    "Mode", docstring_md : "The kind of table to display", },
+                    "rerun.blueprint.components.TimelineName".into(), display_name :
+                    "Timeline", docstring_md :
+                    "The timeline for this query.\n\nIf unset, use the time panel's timeline and a latest at query, ignoring all other components of this archetype.",
+                    }, ArchetypeFieldReflection { component_name :
+                    "rerun.blueprint.components.QueryKind".into(), display_name : "Kind",
+                    docstring_md : "Kind of query: latest-at or range.", },
+                    ArchetypeFieldReflection { component_name :
+                    "rerun.blueprint.components.LatestAtQueries".into(), display_name :
+                    "Latest at queries", docstring_md :
+                    "Configuration for latest-at queries.\n\nNote: configuration as saved on a per-timeline basis.",
+                    }, ArchetypeFieldReflection { component_name :
+                    "rerun.blueprint.components.TimeRangeQueries".into(), display_name :
+                    "Time range queries", docstring_md :
+                    "Configuration for the time range queries.\n\nNote: configuration as saved on a per-timeline basis.",
+                    },
                 ],
             },
         ),

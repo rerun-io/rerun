@@ -1,5 +1,6 @@
 use std::collections::BTreeSet;
 
+use re_chunk_store::LatestAtQuery;
 use re_data_ui::item_ui::instance_path_button;
 use re_entity_db::InstancePath;
 use re_log_types::Instance;
@@ -18,6 +19,7 @@ pub(crate) fn latest_at_table_ui(
     ctx: &ViewerContext<'_>,
     ui: &mut egui::Ui,
     query: &ViewQuery<'_>,
+    latest_at_query: &LatestAtQuery,
 ) {
     re_tracing::profile_function!();
 
@@ -27,7 +29,6 @@ pub(crate) fn latest_at_table_ui(
 
     // These are the entity paths whose content we must display.
     let sorted_entity_paths = sorted_visible_entity_path(ctx, query);
-    let latest_at_query = query.latest_at_query();
 
     let sorted_instance_paths: Vec<_>;
     let sorted_components: BTreeSet<_>;
@@ -51,8 +52,8 @@ pub(crate) fn latest_at_table_ui(
                 sorted_instance_paths_for(
                     entity_path,
                     ctx.recording_store(),
-                    &query.timeline,
-                    &latest_at_query,
+                    &latest_at_query.timeline(),
+                    latest_at_query,
                 )
             })
             .collect();
@@ -63,7 +64,7 @@ pub(crate) fn latest_at_table_ui(
             .iter()
             .flat_map(|entity_path| {
                 ctx.recording_store()
-                    .all_components_on_timeline(&query.timeline, entity_path)
+                    .all_components_on_timeline(&latest_at_query.timeline(), entity_path)
                     .unwrap_or_default()
             })
             // TODO(#4466): make showing/hiding indicators components an explicit optional
@@ -133,7 +134,7 @@ pub(crate) fn latest_at_table_ui(
         row.col(|ui| {
             instance_path_button(
                 ctx,
-                &latest_at_query,
+                latest_at_query,
                 ctx.recording(),
                 ui,
                 Some(query.space_view_id),
@@ -150,17 +151,18 @@ pub(crate) fn latest_at_table_ui(
                 let result = ctx
                     .recording_store()
                     .latest_at_relevant_chunks(
-                        &latest_at_query,
+                        latest_at_query,
                         &instance_path.entity_path,
                         *component_name,
                     )
                     .into_iter()
                     .filter_map(|chunk| {
                         let (index, unit) = chunk
-                            .latest_at(&latest_at_query, *component_name)
+                            .latest_at(latest_at_query, *component_name)
                             .into_unit()
                             .and_then(|unit| {
-                                unit.index(&query.timeline).map(|index| (index, unit))
+                                unit.index(&latest_at_query.timeline())
+                                    .map(|index| (index, unit))
                             })?;
 
                         unit.component_batch_raw(component_name)
@@ -184,7 +186,7 @@ pub(crate) fn latest_at_table_ui(
                             ctx,
                             ui,
                             UiLayout::List,
-                            &latest_at_query,
+                            latest_at_query,
                             ctx.recording(),
                             &instance_path.entity_path,
                             *component_name,
