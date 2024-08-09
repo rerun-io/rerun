@@ -519,20 +519,9 @@ impl App {
             }
             SystemCommand::DropEntity(blueprint_id, entity_path) => {
                 let blueprint_db = store_hub.entity_db_mut(&blueprint_id);
-
-                // Accumulate drop candidates to avoid borrowing issues
-                let mut to_drop = vec![entity_path.clone()];
-
-                if let Some(tree) = blueprint_db.tree().subtree(&entity_path) {
-                    tree.visit_children_recursively(|path| {
-                        to_drop.push(path.clone());
-                    });
-                }
-
-                for path in to_drop {
-                    blueprint_db.store_mut().drop_entity_path(&path);
-                }
+                blueprint_db.drop_entity_path(entity_path);
             }
+
             #[cfg(debug_assertions)]
             SystemCommand::EnableInspectBlueprintTimeline(show) => {
                 self.app_options_mut().inspect_blueprint_timeline = show;
