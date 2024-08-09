@@ -279,6 +279,7 @@ pub(crate) fn time_range_table_ui(
                         ctx.recording(),
                         entity_path,
                         *component_name,
+                        Some(*row_id),
                         &*content,
                     );
                 } else {

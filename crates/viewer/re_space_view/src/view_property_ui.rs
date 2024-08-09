@@ -1,4 +1,4 @@
-use re_chunk_store::external::re_chunk::ArrowArray;
+use re_chunk_store::{external::re_chunk::ArrowArray, RowId};
 use re_types_core::{
     reflection::{ArchetypeFieldReflection, ArchetypeReflection},
     Archetype, ArchetypeName, ArchetypeReflectionMarker, ComponentName,
@@ -75,6 +75,7 @@ fn view_property_ui_impl(
             name,
             field,
             &blueprint_path,
+            component_results.component_row_id(&field.component_name),
             component_array.as_deref(),
             fallback_provider,
         );
@@ -92,6 +93,7 @@ fn view_property_ui_impl(
                     name,
                     field,
                     &blueprint_path,
+                    component_results.component_row_id(&field.component_name),
                     component_array.as_deref(),
                     fallback_provider,
                 );
@@ -120,6 +122,7 @@ fn view_property_component_ui(
     archetype_name: ArchetypeName,
     field: &ArchetypeFieldReflection,
     blueprint_path: &re_log_types::EntityPath,
+    row_id: Option<RowId>,
     component_array: Option<&dyn ArrowArray>,
     fallback_provider: &dyn ComponentFallbackProvider,
 ) {
@@ -128,6 +131,7 @@ fn view_property_component_ui(
         root_item_display_name,
         blueprint_path,
         component_name,
+        row_id,
         component_array,
         fallback_provider,
     );
@@ -154,6 +158,7 @@ fn view_property_component_ui(
                         ctx.viewer_ctx.blueprint_db(),
                         blueprint_path,
                         component_name,
+                        row_id,
                         component_array,
                         fallback_provider,
                     );
@@ -226,6 +231,7 @@ fn singleline_list_item_content<'a>(
     display_name: &str,
     blueprint_path: &'a re_log_types::EntityPath,
     component_name: ComponentName,
+    row_id: Option<RowId>,
     component_array: Option<&'a dyn ArrowArray>,
     fallback_provider: &'a dyn ComponentFallbackProvider,
 ) -> list_item::PropertyContent<'a> {
@@ -246,6 +252,7 @@ fn singleline_list_item_content<'a>(
                 ctx.viewer_ctx.blueprint_db(),
                 blueprint_path,
                 component_name,
+                row_id,
                 component_array,
                 fallback_provider,
             );
