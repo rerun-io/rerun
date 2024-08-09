@@ -140,9 +140,9 @@ from .script_helpers import (
     script_teardown as script_teardown,
 )
 from .send_columns import (
-    TimeNanosBatch as TimeNanosBatch,
-    TimeSecondsBatch as TimeSecondsBatch,
-    TimeSequenceBatch as TimeSequenceBatch,
+    TimeNanosColumn as TimeNanosColumn,
+    TimeSecondsColumn as TimeSecondsColumn,
+    TimeSequenceColumn as TimeSequenceColumn,
     send_columns as send_columns,
 )
 from .sinks import (

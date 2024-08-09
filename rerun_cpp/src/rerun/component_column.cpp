@@ -1,4 +1,4 @@
-#include "partitioned_component_batch.hpp"
+#include "component_column.hpp"
 
 #include "arrow_utils.hpp"
 #include "c/rerun.h"
@@ -8,13 +8,13 @@
 #include <arrow/c/bridge.h>
 
 namespace rerun {
-    std::shared_ptr<arrow::DataType> PartitionedComponentBatch::list_array_type_for(
+    std::shared_ptr<arrow::DataType> ComponentColumn::list_array_type_for(
         std::shared_ptr<arrow::DataType> inner_type
     ) {
         return arrow::list(inner_type);
     }
 
-    Result<PartitionedComponentBatch> PartitionedComponentBatch::from_batch_with_lengths(
+    Result<ComponentColumn> ComponentColumn::from_batch_with_lengths(
         ComponentBatch batch, const Collection<uint32_t>& lengths,
         std::shared_ptr<arrow::DataType> list_array_type
     ) {
@@ -25,14 +25,10 @@ namespace rerun {
             offsets[i + 1] = offsets[i] + lengths[i];
         }
 
-        return PartitionedComponentBatch::from_batch_with_offsets(
-            batch,
-            std::move(offsets),
-            list_array_type
-        );
+        return ComponentColumn::from_batch_with_offsets(batch, std::move(offsets), list_array_type);
     }
 
-    Result<PartitionedComponentBatch> PartitionedComponentBatch::from_batch_with_offsets(
+    Result<ComponentColumn> ComponentColumn::from_batch_with_offsets(
         ComponentBatch batch, Collection<uint32_t> offsets,
         std::shared_ptr<arrow::DataType> list_array_type
     ) {
@@ -45,15 +41,13 @@ namespace rerun {
             std::move(batch.array)
         );
 
-        PartitionedComponentBatch component_batch;
+        ComponentColumn component_batch;
         component_batch.array = list_array;
         component_batch.component_type = batch.component_type;
         return component_batch;
     }
 
-    Error PartitionedComponentBatch::to_c_ffi_struct(
-        rr_partitioned_component_batch& out_component_batch
-    ) const {
+    Error ComponentColumn::to_c_ffi_struct(rr_component_column& out_component_batch) const {
         if (array == nullptr) {
             return Error(ErrorCode::UnexpectedNullArgument, "array is null");
         }

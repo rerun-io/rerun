@@ -9,8 +9,8 @@
 #include <vector>
 
 #include "as_components.hpp"
+#include "component_column.hpp"
 #include "error.hpp"
-#include "partitioned_component_batch.hpp"
 #include "spawn_options.hpp"
 #include "time_column.hpp"
 
@@ -478,7 +478,7 @@ namespace rerun {
             if (!is_enabled()) {
                 return Error::ok();
             }
-            std::vector<ComponentBatch> serialized_batches;
+            std::vector<ComponentBatch> serialized_columns;
             Error err;
             (
                 [&] {
@@ -493,12 +493,12 @@ namespace rerun {
                         return;
                     }
 
-                    if (serialized_batches.empty()) {
+                    if (serialized_columns.empty()) {
                         // Fast path for the first batch (which is usually the only one!)
-                        serialized_batches = std::move(serialization_result.value);
+                        serialized_columns = std::move(serialization_result.value);
                     } else {
-                        serialized_batches.insert(
-                            serialized_batches.end(),
+                        serialized_columns.insert(
+                            serialized_columns.end(),
                             std::make_move_iterator(serialization_result.value.begin()),
                             std::make_move_iterator(serialization_result.value.end())
                         );
@@ -508,7 +508,7 @@ namespace rerun {
             );
             RR_RETURN_NOT_OK(err);
 
-            return try_log_serialized_batches(entity_path, static_, std::move(serialized_batches));
+            return try_log_serialized_batches(entity_path, static_, std::move(serialized_columns));
         }
 
         /// Logs several serialized batches batches, returning an error on failure.
@@ -666,18 +666,17 @@ namespace rerun {
         /// Any failures that may occur during serialization are handled with `Error::handle`.
         ///
         /// \param entity_path Path to the entity in the space hierarchy.
-        /// \param time_columns The timepoints of this batch of data.
-        /// Each `TimeColumn` object represents a single column of timestamps.
-        /// \param component_batches The batches of components to log.
-        /// Each individual component in each batch will be associated with a single time value.
-        /// I.e. this creates `PartitionedComponentBatch` objects consisting of single component runs.
+        /// \param time_columns The time columns to send.
+        /// \param component_columns The columns of components to send.
+        /// Each individual component in each collection will be associated with a single time value.
+        /// I.e. this creates `ComponentColumn` objects consisting of single component runs.
         /// \see `try_send_columns`
         template <typename... Ts>
         void send_columns(
             std::string_view entity_path, Collection<TimeColumn> time_columns,
-            Collection<Ts>... component_batches // NOLINT
+            Collection<Ts>... component_columns // NOLINT
         ) const {
-            try_send_columns(entity_path, time_columns, component_batches...).handle();
+            try_send_columns(entity_path, time_columns, component_columns...).handle();
         }
 
         /// Directly log a columns of data to Rerun.
@@ -691,21 +690,20 @@ namespace rerun {
         /// Furthermore, this will _not_ inject the default timelines `log_tick` and `log_time` timeline columns.
         ///
         /// \param entity_path Path to the entity in the space hierarchy.
-        /// \param time_columns The timepoints of this batch of data.
-        /// Each `TimeColumn` object represents a single column of timestamps.
-        /// \param component_batches The batches of components to log.
-        /// Each individual component in each batch will be associated with a single time value.
-        /// I.e. this creates `PartitionedComponentBatch` objects consisting of single component runs.
+        /// \param time_columns The time columns to send.
+        /// \param component_columns The columns of components to send.
+        /// Each individual component in each collection will be associated with a single time value.
+        /// I.e. this creates `ComponentColumn` objects consisting of single component runs.
         /// \see `send_columns`
         template <typename... Ts>
         Error try_send_columns(
             std::string_view entity_path, Collection<TimeColumn> time_columns,
-            Collection<Ts>... component_batches // NOLINT
+            Collection<Ts>... component_columns // NOLINT
         ) const {
             if (!is_enabled()) {
                 return Error::ok();
             }
-            std::vector<PartitionedComponentBatch> serialized_batches;
+            std::vector<ComponentColumn> serialized_columns;
             Error err;
             (
                 [&] {
@@ -713,25 +711,25 @@ namespace rerun {
                         return;
                     }
 
-                    const Result<PartitionedComponentBatch> serialization_result =
-                        PartitionedComponentBatch::from_loggable(component_batches);
+                    const Result<ComponentColumn> serialization_result =
+                        ComponentColumn::from_loggable(component_columns);
                     if (serialization_result.is_err()) {
                         err = serialization_result.error;
                         return;
                     }
-                    serialized_batches.emplace_back(std::move(serialization_result.value));
+                    serialized_columns.emplace_back(std::move(serialization_result.value));
                 }(),
                 ...
             );
             RR_RETURN_NOT_OK(err);
 
-            return try_send_columns(entity_path, time_columns, std::move(serialized_batches));
+            return try_send_columns(entity_path, time_columns, std::move(serialized_columns));
         }
 
         /// Directly log a columns of data to Rerun.
         ///
         /// Unlike the regular `log` API, which is row-oriented, this API lets you submit the data
-        /// in a columnar form. Each `TimeColumn` and `PartitionedComponentBatch` represents a column of data that will be sent to Rerun.
+        /// in a columnar form. Each `TimeColumn` and `ComponentColumn` represents a column of data that will be sent to Rerun.
         /// The lengths of all of these columns must match, and all
         /// data that shares the same index across the different columns will act as a single logical row,
         /// equivalent to a single call to `RecordingStream::log`.
@@ -742,22 +740,20 @@ namespace rerun {
         /// Any failures that may occur during serialization are handled with `Error::handle`.
         ///
         /// \param entity_path Path to the entity in the space hierarchy.
-        /// \param time_columns The timepoints of this batch of data.
-        /// Each `TimeColumn` object represents a single column of timestamps.
-        /// \param component_batches The batches of components to log.
-        /// Each `PartitionedComponentBatch` object represents a single column of data.
+        /// \param time_columns The time columns to send.
+        /// \param component_columns The columns of components to send.
         /// \see `try_send_columns`
         void send_columns(
             std::string_view entity_path, Collection<TimeColumn> time_columns,
-            Collection<PartitionedComponentBatch> component_batches
+            Collection<ComponentColumn> component_columns
         ) const {
-            try_send_columns(entity_path, time_columns, component_batches).handle();
+            try_send_columns(entity_path, time_columns, component_columns).handle();
         }
 
         /// Directly log a columns of data to Rerun.
         ///
         /// Unlike the regular `log` API, which is row-oriented, this API lets you submit the data
-        /// in a columnar form. Each `TimeColumn` and `PartitionedComponentBatch` represents a column of data that will be sent to Rerun.
+        /// in a columnar form. Each `TimeColumn` and `ComponentColumn` represents a column of data that will be sent to Rerun.
         /// The lengths of all of these columns must match, and all
         /// data that shares the same index across the different columns will act as a single logical row,
         /// equivalent to a single call to `RecordingStream::log`.
@@ -766,14 +762,12 @@ namespace rerun {
         /// Furthermore, this will _not_ inject the default timelines `log_tick` and `log_time` timeline columns.
         ///
         /// \param entity_path Path to the entity in the space hierarchy.
-        /// \param time_columns The timepoints of this batch of data.
-        /// Each `TimeColumn` object represents a single column of timestamps.
-        /// \param component_batches The batches of components to log.
-        /// Each `PartitionedComponentBatch` object represents a single column of data.
+        /// \param time_columns The time columns to send.
+        /// \param component_columns The columns of components to send.
         /// \see `send_columns`
         Error try_send_columns(
             std::string_view entity_path, Collection<TimeColumn> time_columns,
-            Collection<PartitionedComponentBatch> component_batches
+            Collection<ComponentColumn> component_columns
         ) const;
 
         /// @}

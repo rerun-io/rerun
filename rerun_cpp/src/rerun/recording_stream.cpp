@@ -273,7 +273,7 @@ namespace rerun {
 
     Error RecordingStream::try_send_columns(
         std::string_view entity_path, rerun::Collection<TimeColumn> time_columns,
-        rerun::Collection<PartitionedComponentBatch> component_batches
+        rerun::Collection<ComponentColumn> component_columns
     ) const {
         if (!is_enabled()) {
             return Error::ok();
@@ -287,12 +287,12 @@ namespace rerun {
             c_time_columns.push_back(c_time_column);
         }
 
-        std::vector<rr_partitioned_component_batch> c_component_batches;
-        c_component_batches.reserve(component_batches.size());
-        for (const auto& component_batch : component_batches) {
-            rr_partitioned_component_batch c_component_batch;
+        std::vector<rr_component_column> c_component_columns;
+        c_component_columns.reserve(component_columns.size());
+        for (const auto& component_batch : component_columns) {
+            rr_component_column c_component_batch;
             RR_RETURN_NOT_OK(component_batch.to_c_ffi_struct(c_component_batch));
-            c_component_batches.push_back(c_component_batch);
+            c_component_columns.push_back(c_component_batch);
         }
 
         rr_error status = {};
@@ -301,8 +301,8 @@ namespace rerun {
             detail::to_rr_string(entity_path),
             c_time_columns.data(),
             static_cast<uint32_t>(c_time_columns.size()),
-            c_component_batches.data(),
-            static_cast<uint32_t>(c_component_batches.size()),
+            c_component_columns.data(),
+            static_cast<uint32_t>(c_component_columns.size()),
             &status
         );
 
