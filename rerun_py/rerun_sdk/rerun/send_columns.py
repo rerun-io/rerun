@@ -12,7 +12,7 @@ from .recording_stream import RecordingStream
 
 
 class TimeBatchLike(Protocol):
-    """Describes interface for objects that can be converted to batch of rerun timepoints."""
+    """Describes interface for objects that can be converted to a column of rerun time values."""
 
     def timeline_name(self) -> str:
         """Returns the name of the timeline."""
@@ -25,7 +25,7 @@ class TimeBatchLike(Protocol):
 
 class TimeSequenceBatch(TimeBatchLike):
     """
-    A batch of timepoints that are represented as an integer sequence.
+    A column of time values that are represented as an integer sequence.
 
     Equivalent to `rr.set_time_sequence`.
     """
@@ -43,7 +43,7 @@ class TimeSequenceBatch(TimeBatchLike):
 
 class TimeSecondsBatch(TimeBatchLike):
     """
-    A batch of timepoints that are represented as an floating point seconds.
+    A column of time values that are represented as an floating point seconds.
 
     Equivalent to `rr.set_time_seconds`.
     """
@@ -61,7 +61,7 @@ class TimeSecondsBatch(TimeBatchLike):
 
 class TimeNanosBatch(TimeBatchLike):
     """
-    A batch of timepoints that are represented as an integer nanoseconds.
+    A column of time values that are represented as an integer nanoseconds.
 
     Equivalent to `rr.set_time_nanos`.
     """
@@ -144,7 +144,7 @@ def send_columns(
 
         See <https://www.rerun.io/docs/concepts/entity-path> for more on entity paths.
     times:
-        The timepoints of this batch of data. Each `TimeBatchLike` object represents a single column
+        The time values of this batch of data. Each `TimeBatchLike` object represents a single column
         of timestamps. Generally you should use one of the provided classes: [`TimeSequenceBatch`][],
         [`TimeSecondsBatch`][], or [`TimeNanosBatch`][].
     components:

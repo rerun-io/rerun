@@ -14,7 +14,7 @@
 namespace rerun::components {
     /// **Component**: A buffer that is known to store image data.
     ///
-    /// To interpret the contents of this buffer, see, [rerun.components.ImageFormat].
+    /// To interpret the contents of this buffer, see, `components::ImageFormat`.
     struct ImageBuffer {
         rerun::datatypes::Blob buffer;
 

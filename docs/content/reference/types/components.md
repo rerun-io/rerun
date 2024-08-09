@@ -31,7 +31,7 @@ on [Entities and Components](../../concepts/entity-component.md).
 * [`HalfSize2D`](components/half_size2d.md): Half-size (radius) of a 2D box.
 * [`HalfSize3D`](components/half_size3d.md): Half-size (radius) of a 3D box.
 * [`ImageBuffer`](components/image_buffer.md): A buffer that is known to store image data.
-* [`ImageFormat`](components/image_format.md): The metadata describing the contents of a [rerun.components.ImageBuffer].
+* [`ImageFormat`](components/image_format.md): The metadata describing the contents of a [`components.ImageBuffer`](https://rerun.io/docs/reference/types/components/image_buffer).
 * [`ImagePlaneDistance`](components/image_plane_distance.md): The distance from the camera origin to the image plane when the projection is shown in a 3D viewer.
 * [`KeypointId`](components/keypoint_id.md): A 16-bit ID representing a type of semantic keypoint within a class.
 * [`LeafRotationAxisAngle`](components/leaf_rotation_axis_angle.md): 3D rotation represented by a rotation around a given axis that doesn't propagate in the transform hierarchy.

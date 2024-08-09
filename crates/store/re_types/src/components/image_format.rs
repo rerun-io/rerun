@@ -18,7 +18,7 @@ use ::re_types_core::SerializationResult;
 use ::re_types_core::{ComponentBatch, MaybeOwnedComponentBatch};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
-/// **Component**: The metadata describing the contents of a [rerun.components.ImageBuffer].
+/// **Component**: The metadata describing the contents of a [`components::ImageBuffer`][crate::components::ImageBuffer].
 #[derive(Clone, Debug, Default, Copy, PartialEq, Eq, Hash)]
 #[repr(transparent)]
 pub struct ImageFormat(pub crate::datatypes::ImageFormat);

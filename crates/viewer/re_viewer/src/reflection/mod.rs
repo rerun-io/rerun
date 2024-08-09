@@ -380,14 +380,14 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
         (
             <ImageBuffer as Loggable>::name(),
             ComponentReflection {
-                docstring_md: "A buffer that is known to store image data.\n\nTo interpret the contents of this buffer, see, [rerun.components.ImageFormat].",
+                docstring_md: "A buffer that is known to store image data.\n\nTo interpret the contents of this buffer, see, [`components.ImageFormat`](https://rerun.io/docs/reference/types/components/image_format?speculative-link).",
                 placeholder: Some(ImageBuffer::default().to_arrow()?),
             },
         ),
         (
             <ImageFormat as Loggable>::name(),
             ComponentReflection {
-                docstring_md: "The metadata describing the contents of a [rerun.components.ImageBuffer].",
+                docstring_md: "The metadata describing the contents of a [`components.ImageBuffer`](https://rerun.io/docs/reference/types/components/image_buffer).",
                 placeholder: Some(ImageFormat::default().to_arrow()?),
             },
         ),

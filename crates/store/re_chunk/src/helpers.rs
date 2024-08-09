@@ -230,23 +230,17 @@ impl UnitChunkShared {
         self.row_ids().next()
     }
 
-    /// Returns the number of instances of the single row within.
-    ///
-    /// The maximum value amongst all components is what's returned.
+    /// Returns the number of instances of the single row within for a given component.
     #[inline]
-    pub fn num_instances(&self) -> u64 {
+    pub fn num_instances(&self, component_name: &ComponentName) -> u64 {
         debug_assert!(self.num_rows() == 1);
-        self.components
-            .values()
-            .map(|list_array| {
-                let array = list_array.value(0);
-                array.validity().map_or_else(
-                    || array.len(),
-                    |validity| validity.len() - validity.unset_bits(),
-                )
-            })
-            .max()
-            .unwrap_or(0) as u64
+        self.components.get(component_name).map_or(0, |list_array| {
+            let array = list_array.value(0);
+            array.validity().map_or_else(
+                || array.len(),
+                |validity| validity.len() - validity.unset_bits(),
+            )
+        }) as u64
     }
 }
 

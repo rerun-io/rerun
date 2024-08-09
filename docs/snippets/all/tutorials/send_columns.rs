@@ -1,4 +1,4 @@
-//! Very minimal test of using the send columns APIs.
+//! Use the `send_columns` API to send scalars over time in a single call.
 
 use rerun::components::Scalar;
 use rerun::TimeColumn;

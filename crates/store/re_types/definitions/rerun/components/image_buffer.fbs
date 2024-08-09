@@ -4,7 +4,7 @@ namespace rerun.components;
 
 /// A buffer that is known to store image data.
 ///
-/// To interpret the contents of this buffer, see, [rerun.components.ImageFormat].
+/// To interpret the contents of this buffer, see, [components.ImageFormat].
 table ImageBuffer (
   "attr.arrow.transparent",
   "attr.python.aliases": "bytes, npt.NDArray[np.uint8]",
