@@ -1,6 +1,7 @@
 #pragma once
 
 #include <memory> // shared_ptr
+#include <optional>
 
 #include "collection.hpp"
 #include "component_type.hpp"
@@ -60,6 +61,36 @@ namespace rerun {
             // Collection adapter will automatically borrow for single elements, but let's do this explicitly, avoiding the extra hoop.
             const auto collection = Collection<T>::borrow(&component, 1);
             return from_loggable(collection);
+        }
+
+        /// Creates a new data cell from a single optional component instance.
+        ///
+        /// None is represented as a data cell with 0 instances.
+        ///
+        /// Automatically registers the component type the first time this type is encountered.
+        template <typename T>
+        static Result<ComponentBatch> from_loggable(const std::optional<T>& component) {
+            if (component.has_value()) {
+                return from_loggable(component.value());
+            } else {
+                return from_loggable(Collection<T>());
+            }
+        }
+
+        /// Creates a new data cell from an optional collection of component instances.
+        ///
+        /// None is represented as a data cell with 0 instances.
+        ///
+        /// Automatically registers the component type the first time this type is encountered.
+        template <typename T>
+        static Result<ComponentBatch> from_loggable(
+            const std::optional<rerun::Collection<T>>& components
+        ) {
+            if (components.has_value()) {
+                return from_loggable(components.value());
+            } else {
+                return from_loggable(Collection<T>());
+            }
         }
 
         /// To rerun C API component batch.

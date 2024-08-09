@@ -75,9 +75,9 @@ We are in active development.
 There are many features we want to add, and the API is still evolving.
 _Expect breaking changes!_
 
-Current shortcomings that we are working on:
+Some shortcomings:
 * [Multi-million point clouds are slow](https://github.com/rerun-io/rerun/issues/1136)
-* [Logging many tiny things (e.g. scalars) has a lot of overhead](https://github.com/rerun-io/rerun/issues/5967)
+* [The viewer slows down when there are too many entities](https://github.com/rerun-io/rerun/issues/7115)
 * The data you want to visualize must fit in RAM
   - See <https://www.rerun.io/docs/howto/limit-ram> for how to bound memory use.
   - We plan on having a disk-based data store some time in the future.

@@ -18,6 +18,14 @@ attribute "attr.rerun.component_recommended";
 /// Only applies to the fields of an archetype.
 attribute "attr.rerun.component_optional";
 
+/// Always log all components, even if they are not set by the user.
+///
+/// Unset components will be logged as an empty component batch,
+/// overwriting any previous value.
+///
+/// See https://github.com/rerun-io/rerun/issues/6909#issuecomment-2275237788 for motivation.
+attribute "attr.rerun.log_missing_as_empty";
+
 /// Override the type of a field.
 ///
 /// The only permitted value is "float16", which can only be used to override the type of a ushort.

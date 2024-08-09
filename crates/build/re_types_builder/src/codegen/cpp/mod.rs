@@ -17,6 +17,7 @@ use crate::{
     objects::ObjectClass,
     ArrowRegistry, Docs, ElementType, GeneratedFiles, Object, ObjectField, ObjectKind, Objects,
     Reporter, Type, ATTR_CPP_NO_FIELD_CTORS, ATTR_CPP_RENAME_FIELD,
+    ATTR_RERUN_LOG_MISSING_AS_EMPTY,
 };
 
 use self::array_builder::{arrow_array_builder_type, arrow_array_builder_type_object};
@@ -1581,7 +1582,7 @@ fn archetype_serialize(type_ident: &Ident, obj: &Object, hpp_includes: &mut Incl
         };
 
         // TODO(andreas): Introducing MonoCollection will remove the need for distinguishing these two cases.
-        if field.is_nullable {
+        if field.is_nullable && !obj.attrs.has(ATTR_RERUN_LOG_MISSING_AS_EMPTY) {
             quote! {
                 if (#field_accessor.has_value()) {
                     auto result = ComponentBatch::from_loggable(#field_accessor.value());

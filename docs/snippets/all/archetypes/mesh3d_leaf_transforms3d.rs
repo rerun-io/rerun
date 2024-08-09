@@ -26,7 +26,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         rec.set_time_sequence("frame", i);
         rec.log(
             "shape",
-            &rerun::LeafTransforms3D::default()
+            &rerun::LeafTransforms3D::clear()
                 .with_translations([
                     [2.0, 0.0, 0.0],
                     [0.0, 2.0, 0.0],

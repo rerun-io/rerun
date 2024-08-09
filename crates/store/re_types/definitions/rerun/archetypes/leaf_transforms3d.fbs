@@ -16,12 +16,17 @@ namespace rerun.archetypes;
 /// E.g. if both a translation and a max3x3 transform are present,
 /// the 3x3 matrix is applied first, followed by the translation.
 ///
+/// Whenever you log this archetype, it will write all components, even if you do not explicitly set them.
+/// This means that if you first log a transform with only a translation, and then log one with only a rotation,
+/// it will be resolved to a transform with only a rotation.
+///
 /// \example archetypes/leaf_transforms3d_combined title="Regular & leaf transform in tandom" image="https://static.rerun.io/leaf_transform3d/41674f0082d6de489f8a1cd1583f60f6b5820ddf/1200w.png"
 table LeafTransforms3D (
-  "attr.rust.derive": "Default, PartialEq",
-  "attr.rust.generate_field_info",
   "attr.docs.category": "Spatial 3D",
-  "attr.docs.view_types": "Spatial3DView, Spatial2DView: if logged above active projection"
+  "attr.docs.view_types": "Spatial3DView, Spatial2DView: if logged above active projection",
+  "attr.rerun.log_missing_as_empty", // See https://github.com/rerun-io/rerun/issues/6909
+  "attr.rust.derive": " PartialEq",
+  "attr.rust.generate_field_info"
 ) {
   /// Translation vectors.
   translations: [rerun.components.LeafTranslation3D] ("attr.rerun.component_optional", nullable, order: 1100);
