@@ -18,7 +18,7 @@ class ImageBuffer(datatypes.Blob, ComponentMixin):
     """
     **Component**: A buffer that is known to store image data.
 
-    To interpret the contents of this buffer, see, [rerun.components.ImageFormat].
+    To interpret the contents of this buffer, see, [`components.ImageFormat`][rerun.components.ImageFormat].
     """
 
     _BATCH_TYPE = None
