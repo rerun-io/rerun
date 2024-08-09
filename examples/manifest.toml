@@ -122,6 +122,7 @@ examples = [
   "tfrecord_loader",
   "eigen_opencv",
   "dicom_mri",
+  "imu",
   "blueprint_stocks",
   "arflow",
 ]
