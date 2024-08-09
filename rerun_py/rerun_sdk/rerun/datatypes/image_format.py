@@ -23,7 +23,7 @@ __all__ = ["ImageFormat", "ImageFormatArrayLike", "ImageFormatBatch", "ImageForm
 
 @define(init=False)
 class ImageFormat(ImageFormatExt):
-    """**Datatype**: The metadata describing the contents of a [rerun.components.ImageBuffer]."""
+    """**Datatype**: The metadata describing the contents of a [`components.ImageBuffer`][rerun.components.ImageBuffer]."""
 
     def __init__(
         self: Any,

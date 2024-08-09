@@ -20,7 +20,7 @@ namespace arrow {
 } // namespace arrow
 
 namespace rerun::datatypes {
-    /// **Datatype**: The metadata describing the contents of a [rerun.components.ImageBuffer].
+    /// **Datatype**: The metadata describing the contents of a `components::ImageBuffer`.
     struct ImageFormat {
         /// The width of the image in pixels.
         uint32_t width;
