@@ -113,6 +113,76 @@ def test_boxes3d() -> None:
         assert arch.class_ids == class_ids_expected(class_ids)
 
 
+# Test `rotations` parameter
+def test_boxes3d_rotations_quat() -> None:
+    all_arrays = itertools.zip_longest(
+        half_sizes_arrays,
+        quaternions_arrays,
+    )
+
+    for (
+        half_sizes,
+        quaternions,
+    ) in all_arrays:
+        half_sizes = half_sizes if half_sizes is not None else half_sizes_arrays[-1]
+
+        # make Pyright happy as it's apparently not able to track typing info trough zip_longest
+        half_sizes = cast(Vec3DArrayLike, half_sizes)
+        quaternions = cast(QuaternionArrayLike, quaternions)
+
+        print(f"rr.Boxes3D(\n" f"    half_sizes={half_sizes}\n" f"    rotations={quaternions!r}\n" f")")
+        arch = rr.Boxes3D(
+            half_sizes=half_sizes,
+            rotations=quaternions,
+        )
+        print(f"{arch.quaternions}\n")
+        if arch.quaternions is not None:
+            print(f"{arch.quaternions.as_arrow_array()}\n")
+
+        assert arch.half_sizes == half_sizes_expected(half_sizes, HalfSize3DBatch)
+        assert arch.quaternions == quaternions_expected(quaternions, LeafRotationQuatBatch)
+
+
+# Test `rotations` parameter
+def test_boxes3d_rotations_rotation_axis_angle() -> None:
+    all_arrays = itertools.zip_longest(
+        half_sizes_arrays,
+        rotation_axis_angle_arrays,
+    )
+
+    for (
+        half_sizes,
+        rotation_axis_angles,
+    ) in all_arrays:
+        half_sizes = half_sizes if half_sizes is not None else half_sizes_arrays[-1]
+
+        # make Pyright happy as it's apparently not able to track typing info trough zip_longest
+        half_sizes = cast(Vec3DArrayLike, half_sizes)
+        rotation_axis_angles = cast(RotationAxisAngleArrayLike, rotation_axis_angles)
+
+        print(f"rr.Boxes3D(\n" f"    half_sizes={half_sizes}\n" f"    rotations={rotation_axis_angles}\n" f")")
+        arch = rr.Boxes3D(
+            half_sizes=half_sizes,
+            rotations=rotation_axis_angles,
+        )
+        print(f"{arch.quaternions}\n")
+        if arch.quaternions is not None:
+            print(f"{arch.quaternions.as_arrow_array()}\n")
+
+        if arch.rotation_axis_angles is not None:
+            print(f"{arch.rotation_axis_angles.as_arrow_array()}\n")
+
+        assert arch.half_sizes == half_sizes_expected(half_sizes, HalfSize3DBatch)
+
+        print(
+            f"{arch.rotation_axis_angles} == {expected_rotation_axis_angles(rotation_axis_angles, LeafRotationAxisAngleBatch)}"
+        )
+
+        assert arch.rotation_axis_angles == expected_rotation_axis_angles(
+            rotation_axis_angles, LeafRotationAxisAngleBatch
+        )
+
+
 def test_with_sizes() -> None:
     assert rr.Boxes3D(sizes=[1, 2, 3]) == rr.Boxes3D(half_sizes=[0.5, 1, 1.5])
 
