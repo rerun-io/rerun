@@ -1,12 +1,13 @@
 use egui::{NumExt, Vec2};
+use re_log::ResultExt;
 use re_renderer::renderer::ColormappedTexture;
-use re_types::components::MediaType;
+use re_types::components::{Blob, MediaType};
 use re_ui::{list_item::PropertyContent, UiExt as _};
-use re_viewer_context::gpu_bridge::image_to_gpu;
+use re_viewer_context::{gpu_bridge::image_to_gpu, SystemCommandSender};
 
 use crate::{image::show_image_preview, EntityDataUi};
 
-impl EntityDataUi for re_types::components::Blob {
+impl EntityDataUi for Blob {
     fn entity_data_ui(
         &self,
         ctx: &re_viewer_context::ViewerContext<'_>,
@@ -70,7 +71,31 @@ impl EntityDataUi for re_types::components::Blob {
                 let preview_size =
                     Vec2::splat(ui.available_width().at_least(240.0)).at_most(Vec2::splat(640.0));
                 let debug_name = entity_path.to_string();
-                show_image_preview(render_ctx, ui, texture.clone(), &debug_name, preview_size).ok();
+                show_image_preview(render_ctx, ui, texture.clone(), &debug_name, preview_size)
+                    .unwrap_or_else(|(response, err)| {
+                        re_log::warn_once!("Failed to show texture {entity_path}: {err}");
+                        response
+                    });
+            }
+
+            let text = if cfg!(target_arch = "wasm32") {
+                "Download blob…"
+            } else {
+                "Save blob to file…"
+            };
+            if ui.button(text).clicked() {
+                let mut file_name = entity_path
+                    .last()
+                    .map_or("blob", |name| name.unescaped_str())
+                    .to_owned();
+
+                if let Some(file_extension) = media_type.as_ref().and_then(|mt| mt.file_extension())
+                {
+                    file_name.push('.');
+                    file_name.push_str(file_extension);
+                }
+
+                save_blob(ctx, file_name, "Save blob".to_owned(), self.clone()).ok_or_log_error();
             }
         }
     }
@@ -106,7 +131,7 @@ fn blob_as_texture(
     query: &re_chunk_store::LatestAtQuery,
     entity_path: &re_log_types::EntityPath,
     row_id: Option<re_chunk_store::RowId>,
-    blob: &re_types::components::Blob,
+    blob: &Blob,
     media_type: Option<&MediaType>,
 ) -> Option<ColormappedTexture> {
     let render_ctx = ctx.render_ctx?;
@@ -124,4 +149,73 @@ fn blob_as_texture(
         .entry(|c: &mut re_viewer_context::ImageStatsCache| c.entry(&image));
     let annotations = crate::annotations(ctx, query, entity_path);
     image_to_gpu(render_ctx, &debug_name, &image, &image_stats, &annotations).ok()
+}
+
+#[allow(clippy::needless_pass_by_ref_mut)] // `app` is only used on native
+#[allow(clippy::unnecessary_wraps)] // cannot return error on web
+fn save_blob(
+    #[allow(unused_variables)] ctx: &re_viewer_context::ViewerContext<'_>, // only used on native
+    file_name: String,
+    title: String,
+    data: Blob,
+) -> anyhow::Result<()> {
+    re_tracing::profile_function!();
+
+    // Web
+    #[cfg(target_arch = "wasm32")]
+    {
+        wasm_bindgen_futures::spawn_local(async move {
+            if let Err(err) = async_save_dialog(rrd_version, &file_name, &title, blob).await {
+                re_log::error!("File saving failed: {err}");
+            }
+        });
+    }
+
+    // Native
+    #[cfg(not(target_arch = "wasm32"))]
+    {
+        let path = {
+            re_tracing::profile_scope!("file_dialog");
+            rfd::FileDialog::new()
+                .set_file_name(file_name)
+                .set_title(title)
+                .save_file()
+        };
+        if let Some(path) = path {
+            ctx.command_sender
+                .send_system(re_viewer_context::SystemCommand::FileSaver(Box::new(
+                    move || {
+                        std::fs::write(&path, data.as_slice())?;
+                        Ok(path)
+                    },
+                )));
+        }
+    }
+
+    Ok(())
+}
+
+#[cfg(target_arch = "wasm32")]
+async fn async_save_dialog(
+    rrd_version: CrateVersion,
+    file_name: &str,
+    title: &str,
+    data: Blob,
+) -> anyhow::Result<()> {
+    use anyhow::Context as _;
+
+    let file_handle = rfd::AsyncFileDialog::new()
+        .set_file_name(file_name)
+        .set_title(title)
+        .save_file()
+        .await;
+
+    let Some(file_handle) = file_handle else {
+        return Ok(()); // aborted
+    };
+
+    file_handle
+        .write(&data.as_slice())
+        .await
+        .context("Failed to save")
 }
