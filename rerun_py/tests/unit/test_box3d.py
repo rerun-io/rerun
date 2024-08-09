@@ -130,7 +130,7 @@ def test_boxes3d_rotations_quat() -> None:
         half_sizes = cast(Vec3DArrayLike, half_sizes)
         quaternions = cast(QuaternionArrayLike, quaternions)
 
-        print(f"rr.Boxes3D(\n" f"    half_sizes={half_sizes}\n" f"    rotations={quaternions}\n" f")")
+        print(f"rr.Boxes3D(\n" f"    half_sizes={half_sizes}\n" f"    rotations={quaternions!r}\n" f")")
         arch = rr.Boxes3D(
             half_sizes=half_sizes,
             rotations=quaternions,
