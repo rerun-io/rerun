@@ -120,9 +120,12 @@ fn active_default_ui(
 
             // TODO(jleibs): We're already doing this query above as part of the filter. This is kind of silly to do it again.
             // Change the structure to avoid this.
-            let component_array = {
+            let (row_id, component_array) = {
                 let results = db.latest_at(query, &view.defaults_path, [component_name]);
-                results.component_batch_raw(&component_name)
+                (
+                    results.component_row_id(&component_name),
+                    results.component_batch_raw(&component_name),
+                )
             };
 
             if let Some(component_array) = component_array {
@@ -133,6 +136,7 @@ fn active_default_ui(
                         db,
                         &view.defaults_path,
                         component_name,
+                        row_id,
                         Some(&*component_array),
                         visualizer.as_fallback_provider(),
                     );

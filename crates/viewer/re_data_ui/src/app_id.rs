@@ -26,7 +26,7 @@ impl crate::DataUi for ApplicationId {
                 ui.end_row();
             });
 
-        if ui_layout == UiLayout::List {
+        if ui_layout.is_single_line() {
             return;
         }
 

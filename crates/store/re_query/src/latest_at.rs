@@ -271,6 +271,14 @@ impl LatestAtResults {
 impl LatestAtResults {
     // --- Batch ---
 
+    /// Returns the `RowId` for the specified component.
+    #[inline]
+    pub fn component_row_id(&self, component_name: &ComponentName) -> Option<RowId> {
+        self.components
+            .get(component_name)
+            .and_then(|unit| unit.row_id())
+    }
+
     /// Returns the raw data for the specified component.
     #[inline]
     pub fn component_batch_raw(

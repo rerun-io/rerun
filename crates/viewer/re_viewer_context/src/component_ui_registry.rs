@@ -1,6 +1,6 @@
 use std::collections::BTreeMap;
 
-use re_chunk::{ArrowArray, UnitChunkShared};
+use re_chunk::{ArrowArray, RowId, UnitChunkShared};
 use re_chunk_store::LatestAtQuery;
 use re_entity_db::{EntityDb, EntityPath};
 use re_log::ResultExt;
@@ -45,6 +45,15 @@ pub enum UiLayout {
 }
 
 impl UiLayout {
+    /// Should the UI fit on one line?
+    #[inline]
+    pub fn is_single_line(&self) -> bool {
+        match self {
+            Self::List => true,
+            Self::Tooltip | Self::SelectionPanelLimitHeight | Self::SelectionPanelFull => false,
+        }
+    }
+
     /// Do we have a lot of vertical space?
     #[inline]
     pub fn is_selection_panel(self) -> bool {
@@ -167,6 +176,7 @@ type ComponentUiCallback = Box<
             &LatestAtQuery,
             &EntityDb,
             &EntityPath,
+            Option<RowId>,
             &dyn arrow2::array::Array,
         ) + Send
         + Sync,
@@ -397,6 +407,7 @@ impl ComponentUiRegistry {
             db,
             entity_path,
             component_name,
+            unit.row_id(),
             component_raw.as_ref(),
         );
     }
@@ -412,6 +423,7 @@ impl ComponentUiRegistry {
         db: &EntityDb,
         entity_path: &EntityPath,
         component_name: ComponentName,
+        row_id: Option<RowId>,
         component_raw: &dyn arrow2::array::Array,
     ) {
         re_tracing::profile_function!(component_name.full_name());
@@ -423,7 +435,16 @@ impl ComponentUiRegistry {
 
         // Prefer the versatile UI callback if there is one.
         if let Some(ui_callback) = self.component_uis.get(&component_name) {
-            (*ui_callback)(ctx, ui, ui_layout, query, db, entity_path, component_raw);
+            (*ui_callback)(
+                ctx,
+                ui,
+                ui_layout,
+                query,
+                db,
+                entity_path,
+                row_id,
+                component_raw,
+            );
             return;
         }
 
@@ -439,7 +460,16 @@ impl ComponentUiRegistry {
             return;
         }
 
-        (*self.fallback_ui)(ctx, ui, ui_layout, query, db, entity_path, component_raw);
+        (*self.fallback_ui)(
+            ctx,
+            ui,
+            ui_layout,
+            query,
+            db,
+            entity_path,
+            row_id,
+            component_raw,
+        );
     }
 
     /// Show a multi-line editor for this instance of this component.
@@ -455,6 +485,7 @@ impl ComponentUiRegistry {
         origin_db: &EntityDb,
         blueprint_write_path: &EntityPath,
         component_name: ComponentName,
+        row_id: Option<RowId>,
         component_array: Option<&dyn ArrowArray>,
         fallback_provider: &dyn ComponentFallbackProvider,
     ) {
@@ -465,6 +496,7 @@ impl ComponentUiRegistry {
             origin_db,
             blueprint_write_path,
             component_name,
+            row_id,
             component_array,
             fallback_provider,
             multiline,
@@ -484,6 +516,7 @@ impl ComponentUiRegistry {
         origin_db: &EntityDb,
         blueprint_write_path: &EntityPath,
         component_name: ComponentName,
+        row_id: Option<RowId>,
         component_query_result: Option<&dyn ArrowArray>,
         fallback_provider: &dyn ComponentFallbackProvider,
     ) {
@@ -494,6 +527,7 @@ impl ComponentUiRegistry {
             origin_db,
             blueprint_write_path,
             component_name,
+            row_id,
             component_query_result,
             fallback_provider,
             multiline,
@@ -508,6 +542,7 @@ impl ComponentUiRegistry {
         origin_db: &EntityDb,
         blueprint_write_path: &EntityPath,
         component_name: ComponentName,
+        row_id: Option<RowId>,
         component_array: Option<&dyn ArrowArray>,
         fallback_provider: &dyn ComponentFallbackProvider,
         multiline: bool,
@@ -539,6 +574,7 @@ impl ComponentUiRegistry {
             origin_db,
             blueprint_write_path,
             component_name,
+            row_id,
             component_raw.as_ref(),
             multiline,
         );
@@ -552,6 +588,7 @@ impl ComponentUiRegistry {
         origin_db: &EntityDb,
         blueprint_write_path: &EntityPath,
         component_name: ComponentName,
+        row_id: Option<RowId>,
         component_raw: &dyn arrow2::array::Array,
         multiline: bool,
     ) {
@@ -572,6 +609,7 @@ impl ComponentUiRegistry {
                 origin_db,
                 ctx.target_entity_path,
                 component_name,
+                row_id,
                 component_raw,
             );
         }

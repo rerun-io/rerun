@@ -37,13 +37,6 @@ impl<'a> DataUi for EntityLatestAtResults<'a> {
             return;
         };
 
-        let one_line = match ui_layout {
-            UiLayout::List => true,
-            UiLayout::Tooltip
-            | UiLayout::SelectionPanelLimitHeight
-            | UiLayout::SelectionPanelFull => false,
-        };
-
         // in some cases, we don't want to display all instances
         let max_row = match ui_layout {
             UiLayout::List => 0,
@@ -52,7 +45,7 @@ impl<'a> DataUi for EntityLatestAtResults<'a> {
         };
 
         // Display data time and additional diagnostic information for static components.
-        if ui_layout != UiLayout::List {
+        if !ui_layout.is_single_line() {
             let time = self
                 .unit
                 .index(&query.timeline())
@@ -146,7 +139,7 @@ impl<'a> DataUi for EntityLatestAtResults<'a> {
                 self.unit,
                 &Instance::from(0),
             );
-        } else if one_line {
+        } else if ui_layout.is_single_line() {
             ui.label(format!("{} values", re_format::format_uint(num_instances)));
         } else {
             ui_layout
