@@ -3,7 +3,7 @@ use re_log::ResultExt;
 use re_renderer::renderer::ColormappedTexture;
 use re_types::components::{Blob, MediaType};
 use re_ui::{list_item::PropertyContent, UiExt as _};
-use re_viewer_context::{gpu_bridge::image_to_gpu, SystemCommandSender};
+use re_viewer_context::{gpu_bridge::image_to_gpu, SystemCommandSender, UiLayout};
 
 use crate::{image::show_image_preview, EntityDataUi};
 
@@ -12,7 +12,7 @@ impl EntityDataUi for Blob {
         &self,
         ctx: &re_viewer_context::ViewerContext<'_>,
         ui: &mut egui::Ui,
-        ui_layout: re_viewer_context::UiLayout,
+        ui_layout: UiLayout,
         entity_path: &re_log_types::EntityPath,
         row_id: Option<re_chunk_store::RowId>,
         query: &re_chunk_store::LatestAtQuery,
@@ -78,24 +78,28 @@ impl EntityDataUi for Blob {
                     });
             }
 
-            let text = if cfg!(target_arch = "wasm32") {
-                "Download blob…"
-            } else {
-                "Save blob to file…"
-            };
-            if ui.button(text).clicked() {
-                let mut file_name = entity_path
-                    .last()
-                    .map_or("blob", |name| name.unescaped_str())
-                    .to_owned();
+            if ui_layout != UiLayout::Tooltip {
+                let text = if cfg!(target_arch = "wasm32") {
+                    "Download blob…"
+                } else {
+                    "Save blob to file…"
+                };
+                if ui.button(text).clicked() {
+                    let mut file_name = entity_path
+                        .last()
+                        .map_or("blob", |name| name.unescaped_str())
+                        .to_owned();
 
-                if let Some(file_extension) = media_type.as_ref().and_then(|mt| mt.file_extension())
-                {
-                    file_name.push('.');
-                    file_name.push_str(file_extension);
+                    if let Some(file_extension) =
+                        media_type.as_ref().and_then(|mt| mt.file_extension())
+                    {
+                        file_name.push('.');
+                        file_name.push_str(file_extension);
+                    }
+
+                    save_blob(ctx, file_name, "Save blob".to_owned(), self.clone())
+                        .ok_or_log_error();
                 }
-
-                save_blob(ctx, file_name, "Save blob".to_owned(), self.clone()).ok_or_log_error();
             }
         }
     }
