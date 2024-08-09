@@ -626,15 +626,31 @@ impl ChunkStore {
 
         temporal_chunk_ids_per_times
             .map(|temporal_chunk_ids_per_time| {
+                // See `RangeQueryOptions::include_extended_bounds` for more information.
+                let query_min = if query.options().include_extended_bounds {
+                    re_log_types::TimeInt::new_temporal(
+                        query.range.min().as_i64().saturating_sub(1),
+                    )
+                } else {
+                    query.range.min()
+                };
+                let query_max = if query.options().include_extended_bounds {
+                    re_log_types::TimeInt::new_temporal(
+                        query.range.max().as_i64().saturating_add(1),
+                    )
+                } else {
+                    query.range.max()
+                };
+
                 let start_time = temporal_chunk_ids_per_time
                     .per_start_time
-                    .range(..=query.range.min())
+                    .range(..=query_min)
                     .next_back()
                     .map_or(TimeInt::MIN, |(&time, _)| time);
 
                 let end_time = temporal_chunk_ids_per_time
                     .per_start_time
-                    .range(..=query.range.max())
+                    .range(..=query_max)
                     .next_back()
                     .map_or(start_time, |(&time, _)| time);
 
