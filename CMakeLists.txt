@@ -123,7 +123,7 @@ if(NOT DEFINED CMAKE_GENERATOR AND UNIX)
     set(CMAKE_GENERATOR "Unix Makefiles")
 endif()
 
-# If using MSVC, always enable multi-process compiling for all targets.
+# If using MSVC, always enable multi-process compiling for all targets.1
 # Note that this setting is repeated for rerun_sdk's CMakeLists.txt since it should also work stand-alone.
 if(MSVC)
     add_compile_options("/MP")
@@ -136,13 +136,6 @@ endif()
 
 # Signal to all our build scripts that we're inside the Rerun repository.
 set(RERUN_REPOSITORY YES)
-
-# Set version number.
-# Read it from the Rust toml with a regex so we don't have another place to maintain!
-file(READ "Cargo.toml" CARGO_TOML)
-string(REGEX MATCH "\nversion = \"([a-z0-9\.\+-]+)\"\n" _ ${CARGO_TOML})
-set(RERUN_VERSION ${CMAKE_MATCH_1})
-message(STATUS "Rerun version ${RERUN_VERSION}")
 
 # ------------------------------------------------------------------------------
 # Loguru logging library (https://github.com/emilk/loguru):
