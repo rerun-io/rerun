@@ -126,6 +126,7 @@ if(MSVC AND BUILD_SHARED_LIBS)
     # in CMake the behavior of Linux/macOS. However, it does not cover
     # static variables.
     set_property(TARGET rerun_sdk PROPERTY WINDOWS_EXPORT_ALL_SYMBOLS ON)
+
     # For exporting static variables in shared libraries in Windows, it
     # is not possible to just use WINDOWS_EXPORT_ALL_SYMBOLS, we need instead
     # to manually annotate with the appropriate storage-class attributes
@@ -196,7 +197,7 @@ include(CMakePackageConfigHelpers)
 
 # Extract the version from rerun.h.
 # Intentionally only grab major.minor.patch, not the full version, since version file can't handle it otherwise.
-file(READ "${CMAKE_CURRENT_SOURCE_DIR}/src/rerun/c/rerun.h" RERUN_H_CONTENTS)
+file(READ "${CMAKE_CURRENT_SOURCE_DIR}/src/rerun/c/sdk_info.h" RERUN_H_CONTENTS)
 string(REGEX MATCH "\n#define RERUN_SDK_HEADER_VERSION \"([0-9]+.[0-9]+.[0-9]+)" _ ${RERUN_H_CONTENTS})
 set(RERUN_INSTALL_VERSION ${CMAKE_MATCH_1})
 message(STATUS "Rerun SDK install version: ${RERUN_INSTALL_VERSION}")

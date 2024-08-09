@@ -123,7 +123,7 @@ if(NOT DEFINED CMAKE_GENERATOR AND UNIX)
     set(CMAKE_GENERATOR "Unix Makefiles")
 endif()
 
-# If using MSVC, always enable multi-process compiling for all targets.1
+# If using MSVC, always enable multi-process compiling for all targets.
 # Note that this setting is repeated for rerun_sdk's CMakeLists.txt since it should also work stand-alone.
 if(MSVC)
     add_compile_options("/MP")
