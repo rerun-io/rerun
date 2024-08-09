@@ -32,7 +32,7 @@ var searchData=
   ['linestrip3d_29',['LineStrip3D',['../structrerun_1_1components_1_1LineStrip3D.html',1,'rerun::components']]],
   ['linestrips2d_30',['LineStrips2D',['../structrerun_1_1archetypes_1_1LineStrips2D.html',1,'rerun::archetypes']]],
   ['linestrips3d_31',['LineStrips3D',['../structrerun_1_1archetypes_1_1LineStrips3D.html',1,'rerun::archetypes']]],
-  ['list_5farray_5ftype_5ffor_32',['list_array_type_for',['../structrerun_1_1PartitionedComponentBatch.html#af80833019a9d2d17693a52f01753132e',1,'rerun::PartitionedComponentBatch::list_array_type_for()'],['../structrerun_1_1PartitionedComponentBatch.html#a80d907b2c597883035fc47796a18d1ab',1,'rerun::PartitionedComponentBatch::list_array_type_for(std::shared_ptr&lt; arrow::DataType &gt; inner_type)']]],
+  ['list_5farray_5ftype_5ffor_32',['list_array_type_for',['../structrerun_1_1ComponentColumn.html#a53da5f1f8cacbf4ef361f4d9ffd27ab1',1,'rerun::ComponentColumn::list_array_type_for()'],['../structrerun_1_1ComponentColumn.html#aa88c2fc67e1acf64447afd98fc3b09ba',1,'rerun::ComponentColumn::list_array_type_for(std::shared_ptr&lt; arrow::DataType &gt; inner_type)']]],
   ['lockrangeduringzoom_33',['LockRangeDuringZoom',['../structrerun_1_1blueprint_1_1components_1_1LockRangeDuringZoom.html',1,'rerun::blueprint::components']]],
   ['log_34',['log',['../classrerun_1_1RecordingStream.html#a7badac918d44d66e04e948f38818ff11',1,'rerun::RecordingStream']]],
   ['log_5ffile_5ffrom_5fcontents_35',['log_file_from_contents',['../classrerun_1_1RecordingStream.html#a8f253422a7adc2a19b89d1538c05bcac',1,'rerun::RecordingStream']]],

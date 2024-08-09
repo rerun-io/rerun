@@ -17,7 +17,7 @@ var searchData=
   ['annotationcontext_14',['AnnotationContext',['../structrerun_1_1components_1_1AnnotationContext.html#ab37c2821d10ddbbd896f558e99c0af46',1,'rerun::components::AnnotationContext::AnnotationContext()'],['../structrerun_1_1archetypes_1_1AnnotationContext.html',1,'rerun::archetypes::AnnotationContext'],['../structrerun_1_1components_1_1AnnotationContext.html',1,'rerun::components::AnnotationContext']]],
   ['annotationinfo_15',['AnnotationInfo',['../structrerun_1_1datatypes_1_1AnnotationInfo.html',1,'rerun::datatypes']]],
   ['argudesc_16',['ArguDesc',['../structcxxopts_1_1values_1_1parser__tool_1_1ArguDesc.html',1,'cxxopts::values::parser_tool']]],
-  ['array_17',['array',['../structrerun_1_1ComponentBatch.html#abc3d3cb6e3119b69b4df3319d41a7131',1,'rerun::ComponentBatch::array'],['../structrerun_1_1PartitionedComponentBatch.html#a936c3abcda79b5f4a2d91aec7df4668b',1,'rerun::PartitionedComponentBatch::array'],['../structrerun_1_1TimeColumn.html#a28bb45e4b12dbd0cebd135ce1aa06403',1,'rerun::TimeColumn::array']]],
+  ['array_17',['array',['../structrerun_1_1ComponentBatch.html#abc3d3cb6e3119b69b4df3319d41a7131',1,'rerun::ComponentBatch::array'],['../structrerun_1_1ComponentColumn.html#a9250846feeb80b12621ae67157e43eaa',1,'rerun::ComponentColumn::array'],['../structrerun_1_1TimeColumn.html#a28bb45e4b12dbd0cebd135ce1aa06403',1,'rerun::TimeColumn::array']]],
   ['arrow_5fbuffer_5ffrom_5fvector_18',['arrow_buffer_from_vector',['../namespacererun.html#a7949b7c06f565d8176a45e08335bb448',1,'rerun']]],
   ['arrows2d_19',['Arrows2D',['../structrerun_1_1archetypes_1_1Arrows2D.html',1,'rerun::archetypes']]],
   ['arrows3d_20',['Arrows3D',['../structrerun_1_1archetypes_1_1Arrows3D.html',1,'rerun::archetypes']]],

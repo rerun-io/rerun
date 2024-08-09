@@ -30,8 +30,8 @@ var classrerun_1_1RecordingStream =
     [ "try_log_file_from_path", "classrerun_1_1RecordingStream.html#a4fad856c89909271e411cc711185b03b", null ],
     [ "log_file_from_contents", "classrerun_1_1RecordingStream.html#a8f253422a7adc2a19b89d1538c05bcac", null ],
     [ "try_log_file_from_contents", "classrerun_1_1RecordingStream.html#ae34190dd8becde6fb08dd5e13ca82677", null ],
-    [ "send_columns", "classrerun_1_1RecordingStream.html#ad013cc05719a94954a781a4c70211fd0", null ],
-    [ "try_send_columns", "classrerun_1_1RecordingStream.html#aaa537142ade9ac77e1956bea5581f3c8", null ],
-    [ "send_columns", "classrerun_1_1RecordingStream.html#a50d51ba42e893caab536647440932ffe", null ],
-    [ "try_send_columns", "classrerun_1_1RecordingStream.html#aa0638f79be62885804215e8be1af2805", null ]
+    [ "send_columns", "classrerun_1_1RecordingStream.html#ad17571d51185ce2fc2fc2f5c3070ad65", null ],
+    [ "try_send_columns", "classrerun_1_1RecordingStream.html#a7e326526d1473c02fcb2ed94afe6da69", null ],
+    [ "send_columns", "classrerun_1_1RecordingStream.html#a4d8c152606ea11043b379b9baec2c6ae", null ],
+    [ "try_send_columns", "classrerun_1_1RecordingStream.html#a078a739b7410df5bcbef5b63df7f0b37", null ]
 ];

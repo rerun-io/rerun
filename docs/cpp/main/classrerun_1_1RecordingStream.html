@@ -229,20 +229,20 @@ template&lt;typename... Ts&gt; </td></tr>
 <tr class="memitem:ae34190dd8becde6fb08dd5e13ca82677"><td class="memItemLeft" align="right" valign="top"><a class="el" href="classrerun_1_1Error.html">Error</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classrerun_1_1RecordingStream.html#ae34190dd8becde6fb08dd5e13ca82677">try_log_file_from_contents</a> (const std::filesystem::path &amp;filepath, const std::byte *contents, size_t contents_size, std::string_view entity_path_prefix=std::string_view(), bool static_=false) const</td></tr>
 <tr class="memdesc:ae34190dd8becde6fb08dd5e13ca82677"><td class="mdescLeft">&#160;</td><td class="mdescRight">Logs the given <code>contents</code> using all <code>DataLoader</code>s available.  <br /></td></tr>
 <tr class="separator:ae34190dd8becde6fb08dd5e13ca82677"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ad013cc05719a94954a781a4c70211fd0"><td class="memTemplParams" colspan="2">template&lt;typename... Ts&gt; </td></tr>
-<tr class="memitem:ad013cc05719a94954a781a4c70211fd0"><td class="memTemplItemLeft" align="right" valign="top">void&#160;</td><td class="memTemplItemRight" valign="bottom"><a class="el" href="classrerun_1_1RecordingStream.html#ad013cc05719a94954a781a4c70211fd0">send_columns</a> (std::string_view entity_path, <a class="el" href="classrerun_1_1Collection.html">Collection</a>&lt; <a class="el" href="structrerun_1_1TimeColumn.html">TimeColumn</a> &gt; time_columns, <a class="el" href="classrerun_1_1Collection.html">Collection</a>&lt; Ts &gt;... component_batches) const</td></tr>
-<tr class="memdesc:ad013cc05719a94954a781a4c70211fd0"><td class="mdescLeft">&#160;</td><td class="mdescRight">Directly log a columns of data to Rerun.  <br /></td></tr>
-<tr class="separator:ad013cc05719a94954a781a4c70211fd0"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:aaa537142ade9ac77e1956bea5581f3c8"><td class="memTemplParams" colspan="2">template&lt;typename... Ts&gt; </td></tr>
-<tr class="memitem:aaa537142ade9ac77e1956bea5581f3c8"><td class="memTemplItemLeft" align="right" valign="top"><a class="el" href="classrerun_1_1Error.html">Error</a>&#160;</td><td class="memTemplItemRight" valign="bottom"><a class="el" href="classrerun_1_1RecordingStream.html#aaa537142ade9ac77e1956bea5581f3c8">try_send_columns</a> (std::string_view entity_path, <a class="el" href="classrerun_1_1Collection.html">Collection</a>&lt; <a class="el" href="structrerun_1_1TimeColumn.html">TimeColumn</a> &gt; time_columns, <a class="el" href="classrerun_1_1Collection.html">Collection</a>&lt; Ts &gt;... component_batches) const</td></tr>
-<tr class="memdesc:aaa537142ade9ac77e1956bea5581f3c8"><td class="mdescLeft">&#160;</td><td class="mdescRight">Directly log a columns of data to Rerun.  <br /></td></tr>
-<tr class="separator:aaa537142ade9ac77e1956bea5581f3c8"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a50d51ba42e893caab536647440932ffe"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classrerun_1_1RecordingStream.html#a50d51ba42e893caab536647440932ffe">send_columns</a> (std::string_view entity_path, <a class="el" href="classrerun_1_1Collection.html">Collection</a>&lt; <a class="el" href="structrerun_1_1TimeColumn.html">TimeColumn</a> &gt; time_columns, <a class="el" href="classrerun_1_1Collection.html">Collection</a>&lt; <a class="el" href="structrerun_1_1PartitionedComponentBatch.html">PartitionedComponentBatch</a> &gt; component_batches) const</td></tr>
-<tr class="memdesc:a50d51ba42e893caab536647440932ffe"><td class="mdescLeft">&#160;</td><td class="mdescRight">Directly log a columns of data to Rerun.  <br /></td></tr>
-<tr class="separator:a50d51ba42e893caab536647440932ffe"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:aa0638f79be62885804215e8be1af2805"><td class="memItemLeft" align="right" valign="top"><a class="el" href="classrerun_1_1Error.html">Error</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classrerun_1_1RecordingStream.html#aa0638f79be62885804215e8be1af2805">try_send_columns</a> (std::string_view entity_path, <a class="el" href="classrerun_1_1Collection.html">Collection</a>&lt; <a class="el" href="structrerun_1_1TimeColumn.html">TimeColumn</a> &gt; time_columns, <a class="el" href="classrerun_1_1Collection.html">Collection</a>&lt; <a class="el" href="structrerun_1_1PartitionedComponentBatch.html">PartitionedComponentBatch</a> &gt; component_batches) const</td></tr>
-<tr class="memdesc:aa0638f79be62885804215e8be1af2805"><td class="mdescLeft">&#160;</td><td class="mdescRight">Directly log a columns of data to Rerun.  <br /></td></tr>
-<tr class="separator:aa0638f79be62885804215e8be1af2805"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ad17571d51185ce2fc2fc2f5c3070ad65"><td class="memTemplParams" colspan="2">template&lt;typename... Ts&gt; </td></tr>
+<tr class="memitem:ad17571d51185ce2fc2fc2f5c3070ad65"><td class="memTemplItemLeft" align="right" valign="top">void&#160;</td><td class="memTemplItemRight" valign="bottom"><a class="el" href="classrerun_1_1RecordingStream.html#ad17571d51185ce2fc2fc2f5c3070ad65">send_columns</a> (std::string_view entity_path, <a class="el" href="classrerun_1_1Collection.html">Collection</a>&lt; <a class="el" href="structrerun_1_1TimeColumn.html">TimeColumn</a> &gt; time_columns, <a class="el" href="classrerun_1_1Collection.html">Collection</a>&lt; Ts &gt;... component_columns) const</td></tr>
+<tr class="memdesc:ad17571d51185ce2fc2fc2f5c3070ad65"><td class="mdescLeft">&#160;</td><td class="mdescRight">Directly log a columns of data to Rerun.  <br /></td></tr>
+<tr class="separator:ad17571d51185ce2fc2fc2f5c3070ad65"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a7e326526d1473c02fcb2ed94afe6da69"><td class="memTemplParams" colspan="2">template&lt;typename... Ts&gt; </td></tr>
+<tr class="memitem:a7e326526d1473c02fcb2ed94afe6da69"><td class="memTemplItemLeft" align="right" valign="top"><a class="el" href="classrerun_1_1Error.html">Error</a>&#160;</td><td class="memTemplItemRight" valign="bottom"><a class="el" href="classrerun_1_1RecordingStream.html#a7e326526d1473c02fcb2ed94afe6da69">try_send_columns</a> (std::string_view entity_path, <a class="el" href="classrerun_1_1Collection.html">Collection</a>&lt; <a class="el" href="structrerun_1_1TimeColumn.html">TimeColumn</a> &gt; time_columns, <a class="el" href="classrerun_1_1Collection.html">Collection</a>&lt; Ts &gt;... component_columns) const</td></tr>
+<tr class="memdesc:a7e326526d1473c02fcb2ed94afe6da69"><td class="mdescLeft">&#160;</td><td class="mdescRight">Directly log a columns of data to Rerun.  <br /></td></tr>
+<tr class="separator:a7e326526d1473c02fcb2ed94afe6da69"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a4d8c152606ea11043b379b9baec2c6ae"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classrerun_1_1RecordingStream.html#a4d8c152606ea11043b379b9baec2c6ae">send_columns</a> (std::string_view entity_path, <a class="el" href="classrerun_1_1Collection.html">Collection</a>&lt; <a class="el" href="structrerun_1_1TimeColumn.html">TimeColumn</a> &gt; time_columns, <a class="el" href="classrerun_1_1Collection.html">Collection</a>&lt; <a class="el" href="structrerun_1_1ComponentColumn.html">ComponentColumn</a> &gt; component_columns) const</td></tr>
+<tr class="memdesc:a4d8c152606ea11043b379b9baec2c6ae"><td class="mdescLeft">&#160;</td><td class="mdescRight">Directly log a columns of data to Rerun.  <br /></td></tr>
+<tr class="separator:a4d8c152606ea11043b379b9baec2c6ae"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a078a739b7410df5bcbef5b63df7f0b37"><td class="memItemLeft" align="right" valign="top"><a class="el" href="classrerun_1_1Error.html">Error</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classrerun_1_1RecordingStream.html#a078a739b7410df5bcbef5b63df7f0b37">try_send_columns</a> (std::string_view entity_path, <a class="el" href="classrerun_1_1Collection.html">Collection</a>&lt; <a class="el" href="structrerun_1_1TimeColumn.html">TimeColumn</a> &gt; time_columns, <a class="el" href="classrerun_1_1Collection.html">Collection</a>&lt; <a class="el" href="structrerun_1_1ComponentColumn.html">ComponentColumn</a> &gt; component_columns) const</td></tr>
+<tr class="memdesc:a078a739b7410df5bcbef5b63df7f0b37"><td class="mdescLeft">&#160;</td><td class="mdescRight">Directly log a columns of data to Rerun.  <br /></td></tr>
+<tr class="separator:a078a739b7410df5bcbef5b63df7f0b37"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader">Controlling globally available instances of RecordingStream.</h2></td></tr>
 <tr class="memitem:aed57a5ae9232a50a82f7f4569745ed63"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classrerun_1_1RecordingStream.html#aed57a5ae9232a50a82f7f4569745ed63">set_global</a> () const</td></tr>
@@ -1474,8 +1474,8 @@ template&lt;typename... Ts&gt; </div>
 
 </div>
 </div>
-<a id="ad013cc05719a94954a781a4c70211fd0" name="ad013cc05719a94954a781a4c70211fd0"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#ad013cc05719a94954a781a4c70211fd0">&#9670;&#160;</a></span>send_columns() <span class="overload">[1/2]</span></h2>
+<a id="ad17571d51185ce2fc2fc2f5c3070ad65" name="ad17571d51185ce2fc2fc2f5c3070ad65"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#ad17571d51185ce2fc2fc2f5c3070ad65">&#9670;&#160;</a></span>send_columns() <span class="overload">[1/2]</span></h2>
 
 <div class="memitem">
 <div class="memproto">
@@ -1501,7 +1501,7 @@ template&lt;typename... Ts&gt; </div>
           <td class="paramkey"></td>
           <td></td>
           <td class="paramtype"><a class="el" href="classrerun_1_1Collection.html">Collection</a>&lt; Ts &gt;...&#160;</td>
-          <td class="paramname"><em>component_batches</em>&#160;</td>
+          <td class="paramname"><em>component_columns</em>&#160;</td>
         </tr>
         <tr>
           <td></td>
@@ -1523,17 +1523,17 @@ template&lt;typename... Ts&gt; </div>
 <dl class="params"><dt>Parameters</dt><dd>
   <table class="params">
     <tr><td class="paramname">entity_path</td><td>Path to the entity in the space hierarchy. </td></tr>
-    <tr><td class="paramname">time_columns</td><td>The timepoints of this batch of data. Each <code><a class="el" href="structrerun_1_1TimeColumn.html" title="Arrow-encoded data for a column of time points.">TimeColumn</a></code> object represents a single column of timestamps. </td></tr>
-    <tr><td class="paramname">component_batches</td><td>The batches of components to log. Each individual component in each batch will be associated with a single time value. I.e. this creates <code><a class="el" href="structrerun_1_1PartitionedComponentBatch.html" title="Arrow-encoded data of a component batch partitioned into several runs of components.">PartitionedComponentBatch</a></code> objects consisting of single component runs. </td></tr>
+    <tr><td class="paramname">time_columns</td><td>The time columns to send. </td></tr>
+    <tr><td class="paramname">component_columns</td><td>The columns of components to send. Each individual component in each collection will be associated with a single time value. I.e. this creates <code><a class="el" href="structrerun_1_1ComponentColumn.html" title="Arrow-encoded data of a column of components.">ComponentColumn</a></code> objects consisting of single component runs. </td></tr>
   </table>
   </dd>
 </dl>
-<dl class="section see"><dt>See also</dt><dd><code><a class="el" href="classrerun_1_1RecordingStream.html#aaa537142ade9ac77e1956bea5581f3c8" title="Directly log a columns of data to Rerun.">try_send_columns</a></code> </dd></dl>
+<dl class="section see"><dt>See also</dt><dd><code><a class="el" href="classrerun_1_1RecordingStream.html#a7e326526d1473c02fcb2ed94afe6da69" title="Directly log a columns of data to Rerun.">try_send_columns</a></code> </dd></dl>
 
 </div>
 </div>
-<a id="aaa537142ade9ac77e1956bea5581f3c8" name="aaa537142ade9ac77e1956bea5581f3c8"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#aaa537142ade9ac77e1956bea5581f3c8">&#9670;&#160;</a></span>try_send_columns() <span class="overload">[1/2]</span></h2>
+<a id="a7e326526d1473c02fcb2ed94afe6da69" name="a7e326526d1473c02fcb2ed94afe6da69"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a7e326526d1473c02fcb2ed94afe6da69">&#9670;&#160;</a></span>try_send_columns() <span class="overload">[1/2]</span></h2>
 
 <div class="memitem">
 <div class="memproto">
@@ -1559,7 +1559,7 @@ template&lt;typename... Ts&gt; </div>
           <td class="paramkey"></td>
           <td></td>
           <td class="paramtype"><a class="el" href="classrerun_1_1Collection.html">Collection</a>&lt; Ts &gt;...&#160;</td>
-          <td class="paramname"><em>component_batches</em>&#160;</td>
+          <td class="paramname"><em>component_columns</em>&#160;</td>
         </tr>
         <tr>
           <td></td>
@@ -1580,17 +1580,17 @@ template&lt;typename... Ts&gt; </div>
 <dl class="params"><dt>Parameters</dt><dd>
   <table class="params">
     <tr><td class="paramname">entity_path</td><td>Path to the entity in the space hierarchy. </td></tr>
-    <tr><td class="paramname">time_columns</td><td>The timepoints of this batch of data. Each <code><a class="el" href="structrerun_1_1TimeColumn.html" title="Arrow-encoded data for a column of time points.">TimeColumn</a></code> object represents a single column of timestamps. </td></tr>
-    <tr><td class="paramname">component_batches</td><td>The batches of components to log. Each individual component in each batch will be associated with a single time value. I.e. this creates <code><a class="el" href="structrerun_1_1PartitionedComponentBatch.html" title="Arrow-encoded data of a component batch partitioned into several runs of components.">PartitionedComponentBatch</a></code> objects consisting of single component runs. </td></tr>
+    <tr><td class="paramname">time_columns</td><td>The time columns to send. </td></tr>
+    <tr><td class="paramname">component_columns</td><td>The columns of components to send. Each individual component in each collection will be associated with a single time value. I.e. this creates <code><a class="el" href="structrerun_1_1ComponentColumn.html" title="Arrow-encoded data of a column of components.">ComponentColumn</a></code> objects consisting of single component runs. </td></tr>
   </table>
   </dd>
 </dl>
-<dl class="section see"><dt>See also</dt><dd><code><a class="el" href="classrerun_1_1RecordingStream.html#ad013cc05719a94954a781a4c70211fd0" title="Directly log a columns of data to Rerun.">send_columns</a></code> </dd></dl>
+<dl class="section see"><dt>See also</dt><dd><code><a class="el" href="classrerun_1_1RecordingStream.html#ad17571d51185ce2fc2fc2f5c3070ad65" title="Directly log a columns of data to Rerun.">send_columns</a></code> </dd></dl>
 
 </div>
 </div>
-<a id="a50d51ba42e893caab536647440932ffe" name="a50d51ba42e893caab536647440932ffe"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a50d51ba42e893caab536647440932ffe">&#9670;&#160;</a></span>send_columns() <span class="overload">[2/2]</span></h2>
+<a id="a4d8c152606ea11043b379b9baec2c6ae" name="a4d8c152606ea11043b379b9baec2c6ae"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a4d8c152606ea11043b379b9baec2c6ae">&#9670;&#160;</a></span>send_columns() <span class="overload">[2/2]</span></h2>
 
 <div class="memitem">
 <div class="memproto">
@@ -1613,8 +1613,8 @@ template&lt;typename... Ts&gt; </div>
         <tr>
           <td class="paramkey"></td>
           <td></td>
-          <td class="paramtype"><a class="el" href="classrerun_1_1Collection.html">Collection</a>&lt; <a class="el" href="structrerun_1_1PartitionedComponentBatch.html">PartitionedComponentBatch</a> &gt;&#160;</td>
-          <td class="paramname"><em>component_batches</em>&#160;</td>
+          <td class="paramtype"><a class="el" href="classrerun_1_1Collection.html">Collection</a>&lt; <a class="el" href="structrerun_1_1ComponentColumn.html">ComponentColumn</a> &gt;&#160;</td>
+          <td class="paramname"><em>component_columns</em>&#160;</td>
         </tr>
         <tr>
           <td></td>
@@ -1630,23 +1630,23 @@ template&lt;typename... Ts&gt; </div>
 </div><div class="memdoc">
 
 <p>Directly log a columns of data to Rerun. </p>
-<p>Unlike the regular <code>log</code> API, which is row-oriented, this API lets you submit the data in a columnar form. Each <code><a class="el" href="structrerun_1_1TimeColumn.html" title="Arrow-encoded data for a column of time points.">TimeColumn</a></code> and <code><a class="el" href="structrerun_1_1PartitionedComponentBatch.html" title="Arrow-encoded data of a component batch partitioned into several runs of components.">PartitionedComponentBatch</a></code> represents a column of data that will be sent to Rerun. The lengths of all of these columns must match, and all data that shares the same index across the different columns will act as a single logical row, equivalent to a single call to <code><a class="el" href="classrerun_1_1RecordingStream.html#a7badac918d44d66e04e948f38818ff11" title="Logs one or more archetype and/or component batches.">RecordingStream::log</a></code>.</p>
+<p>Unlike the regular <code>log</code> API, which is row-oriented, this API lets you submit the data in a columnar form. Each <code><a class="el" href="structrerun_1_1TimeColumn.html" title="Arrow-encoded data for a column of time points.">TimeColumn</a></code> and <code><a class="el" href="structrerun_1_1ComponentColumn.html" title="Arrow-encoded data of a column of components.">ComponentColumn</a></code> represents a column of data that will be sent to Rerun. The lengths of all of these columns must match, and all data that shares the same index across the different columns will act as a single logical row, equivalent to a single call to <code><a class="el" href="classrerun_1_1RecordingStream.html#a7badac918d44d66e04e948f38818ff11" title="Logs one or more archetype and/or component batches.">RecordingStream::log</a></code>.</p>
 <p>Note that this API ignores any stateful time set on the log stream via the <code>RecordingStream::set_time_*</code> APIs. Furthermore, this will <em>not</em> inject the default timelines <code>log_tick</code> and <code>log_time</code> timeline columns.</p>
 <p>Any failures that may occur during serialization are handled with <code><a class="el" href="classrerun_1_1Error.html#a0419e00a9d421e449b50fb2a8dc6cd4a" title="Handle this error based on the set log handler.">Error::handle</a></code>.</p>
 <dl class="params"><dt>Parameters</dt><dd>
   <table class="params">
     <tr><td class="paramname">entity_path</td><td>Path to the entity in the space hierarchy. </td></tr>
-    <tr><td class="paramname">time_columns</td><td>The timepoints of this batch of data. Each <code><a class="el" href="structrerun_1_1TimeColumn.html" title="Arrow-encoded data for a column of time points.">TimeColumn</a></code> object represents a single column of timestamps. </td></tr>
-    <tr><td class="paramname">component_batches</td><td>The batches of components to log. Each <code><a class="el" href="structrerun_1_1PartitionedComponentBatch.html" title="Arrow-encoded data of a component batch partitioned into several runs of components.">PartitionedComponentBatch</a></code> object represents a single column of data. </td></tr>
+    <tr><td class="paramname">time_columns</td><td>The time columns to send. </td></tr>
+    <tr><td class="paramname">component_columns</td><td>The columns of components to send. </td></tr>
   </table>
   </dd>
 </dl>
-<dl class="section see"><dt>See also</dt><dd><code><a class="el" href="classrerun_1_1RecordingStream.html#aaa537142ade9ac77e1956bea5581f3c8" title="Directly log a columns of data to Rerun.">try_send_columns</a></code> </dd></dl>
+<dl class="section see"><dt>See also</dt><dd><code><a class="el" href="classrerun_1_1RecordingStream.html#a7e326526d1473c02fcb2ed94afe6da69" title="Directly log a columns of data to Rerun.">try_send_columns</a></code> </dd></dl>
 
 </div>
 </div>
-<a id="aa0638f79be62885804215e8be1af2805" name="aa0638f79be62885804215e8be1af2805"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#aa0638f79be62885804215e8be1af2805">&#9670;&#160;</a></span>try_send_columns() <span class="overload">[2/2]</span></h2>
+<a id="a078a739b7410df5bcbef5b63df7f0b37" name="a078a739b7410df5bcbef5b63df7f0b37"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a078a739b7410df5bcbef5b63df7f0b37">&#9670;&#160;</a></span>try_send_columns() <span class="overload">[2/2]</span></h2>
 
 <div class="memitem">
 <div class="memproto">
@@ -1666,8 +1666,8 @@ template&lt;typename... Ts&gt; </div>
         <tr>
           <td class="paramkey"></td>
           <td></td>
-          <td class="paramtype"><a class="el" href="classrerun_1_1Collection.html">Collection</a>&lt; <a class="el" href="structrerun_1_1PartitionedComponentBatch.html">PartitionedComponentBatch</a> &gt;&#160;</td>
-          <td class="paramname"><em>component_batches</em>&#160;</td>
+          <td class="paramtype"><a class="el" href="classrerun_1_1Collection.html">Collection</a>&lt; <a class="el" href="structrerun_1_1ComponentColumn.html">ComponentColumn</a> &gt;&#160;</td>
+          <td class="paramname"><em>component_columns</em>&#160;</td>
         </tr>
         <tr>
           <td></td>
@@ -1678,17 +1678,17 @@ template&lt;typename... Ts&gt; </div>
 </div><div class="memdoc">
 
 <p>Directly log a columns of data to Rerun. </p>
-<p>Unlike the regular <code>log</code> API, which is row-oriented, this API lets you submit the data in a columnar form. Each <code><a class="el" href="structrerun_1_1TimeColumn.html" title="Arrow-encoded data for a column of time points.">TimeColumn</a></code> and <code><a class="el" href="structrerun_1_1PartitionedComponentBatch.html" title="Arrow-encoded data of a component batch partitioned into several runs of components.">PartitionedComponentBatch</a></code> represents a column of data that will be sent to Rerun. The lengths of all of these columns must match, and all data that shares the same index across the different columns will act as a single logical row, equivalent to a single call to <code><a class="el" href="classrerun_1_1RecordingStream.html#a7badac918d44d66e04e948f38818ff11" title="Logs one or more archetype and/or component batches.">RecordingStream::log</a></code>.</p>
+<p>Unlike the regular <code>log</code> API, which is row-oriented, this API lets you submit the data in a columnar form. Each <code><a class="el" href="structrerun_1_1TimeColumn.html" title="Arrow-encoded data for a column of time points.">TimeColumn</a></code> and <code><a class="el" href="structrerun_1_1ComponentColumn.html" title="Arrow-encoded data of a column of components.">ComponentColumn</a></code> represents a column of data that will be sent to Rerun. The lengths of all of these columns must match, and all data that shares the same index across the different columns will act as a single logical row, equivalent to a single call to <code><a class="el" href="classrerun_1_1RecordingStream.html#a7badac918d44d66e04e948f38818ff11" title="Logs one or more archetype and/or component batches.">RecordingStream::log</a></code>.</p>
 <p>Note that this API ignores any stateful time set on the log stream via the <code>RecordingStream::set_time_*</code> APIs. Furthermore, this will <em>not</em> inject the default timelines <code>log_tick</code> and <code>log_time</code> timeline columns.</p>
 <dl class="params"><dt>Parameters</dt><dd>
   <table class="params">
     <tr><td class="paramname">entity_path</td><td>Path to the entity in the space hierarchy. </td></tr>
-    <tr><td class="paramname">time_columns</td><td>The timepoints of this batch of data. Each <code><a class="el" href="structrerun_1_1TimeColumn.html" title="Arrow-encoded data for a column of time points.">TimeColumn</a></code> object represents a single column of timestamps. </td></tr>
-    <tr><td class="paramname">component_batches</td><td>The batches of components to log. Each <code><a class="el" href="structrerun_1_1PartitionedComponentBatch.html" title="Arrow-encoded data of a component batch partitioned into several runs of components.">PartitionedComponentBatch</a></code> object represents a single column of data. </td></tr>
+    <tr><td class="paramname">time_columns</td><td>The time columns to send. </td></tr>
+    <tr><td class="paramname">component_columns</td><td>The columns of components to send. </td></tr>
   </table>
   </dd>
 </dl>
-<dl class="section see"><dt>See also</dt><dd><code><a class="el" href="classrerun_1_1RecordingStream.html#ad013cc05719a94954a781a4c70211fd0" title="Directly log a columns of data to Rerun.">send_columns</a></code> </dd></dl>
+<dl class="section see"><dt>See also</dt><dd><code><a class="el" href="classrerun_1_1RecordingStream.html#ad17571d51185ce2fc2fc2f5c3070ad65" title="Directly log a columns of data to Rerun.">send_columns</a></code> </dd></dl>
 
 </div>
 </div>

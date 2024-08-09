@@ -40,6 +40,7 @@ var searchData=
   ['color_37',['Color',['../structrerun_1_1components_1_1Color.html',1,'rerun::components']]],
   ['columnshare_38',['ColumnShare',['../structrerun_1_1blueprint_1_1components_1_1ColumnShare.html',1,'rerun::blueprint::components']]],
   ['componentbatch_39',['ComponentBatch',['../structrerun_1_1ComponentBatch.html',1,'rerun']]],
-  ['componenttype_40',['ComponentType',['../structrerun_1_1ComponentType.html',1,'rerun']]],
-  ['containerblueprint_41',['ContainerBlueprint',['../structrerun_1_1blueprint_1_1archetypes_1_1ContainerBlueprint.html',1,'rerun::blueprint::archetypes']]]
+  ['componentcolumn_40',['ComponentColumn',['../structrerun_1_1ComponentColumn.html',1,'rerun']]],
+  ['componenttype_41',['ComponentType',['../structrerun_1_1ComponentType.html',1,'rerun']]],
+  ['containerblueprint_42',['ContainerBlueprint',['../structrerun_1_1blueprint_1_1archetypes_1_1ContainerBlueprint.html',1,'rerun::blueprint::archetypes']]]
 ];
