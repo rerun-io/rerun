@@ -48,7 +48,7 @@ class TimeRangeQuery(TimeRangeQueryExt):
         start:
             Beginning of the time range.
         end:
-            End of the time range.
+            End of the time range (inclusive).
 
         """
 
@@ -70,7 +70,7 @@ class TimeRangeQuery(TimeRangeQueryExt):
     end: datatypes.TimeInt = field(
         converter=TimeRangeQueryExt.end__field_converter_override,  # type: ignore[misc]
     )
-    # End of the time range.
+    # End of the time range (inclusive).
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 

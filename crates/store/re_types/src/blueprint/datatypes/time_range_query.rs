@@ -27,7 +27,7 @@ pub struct TimeRangeQuery {
     /// Beginning of the time range.
     pub start: crate::datatypes::TimeInt,
 
-    /// End of the time range.
+    /// End of the time range (inclusive).
     pub end: crate::datatypes::TimeInt,
 }
 

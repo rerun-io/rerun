@@ -25,7 +25,7 @@ include "./components/space_view_maximized.fbs";
 include "./components/space_view_origin.fbs";
 include "./components/tensor_dimension_index_slider.fbs";
 include "./components/time_range_queries.fbs";
-include "./components/timeline.fbs";
+include "./components/timeline_name.fbs";
 include "./components/view_fit.fbs";
 include "./components/viewer_recommendation_hash.fbs";
 include "./components/visible.fbs";

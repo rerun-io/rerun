@@ -19,7 +19,7 @@ pub use re_types::blueprint::components::SpaceViewClass;
 pub use re_types::blueprint::components::SpaceViewOrigin;
 pub use re_types::blueprint::components::TensorDimensionIndexSlider;
 pub use re_types::blueprint::components::TimeRangeQueries;
-pub use re_types::blueprint::components::Timeline;
+pub use re_types::blueprint::components::TimelineName;
 pub use re_types::blueprint::components::ViewFit;
 pub use re_types::blueprint::components::ViewerRecommendationHash;
 pub use re_types::blueprint::components::Visible;
@@ -63,7 +63,7 @@ pub fn is_valid_blueprint(blueprint: &EntityDb) -> bool {
         && validate_component::<SpaceViewOrigin>(blueprint)
         && validate_component::<TensorDimensionIndexSlider>(blueprint)
         && validate_component::<TimeRangeQueries>(blueprint)
-        && validate_component::<Timeline>(blueprint)
+        && validate_component::<TimelineName>(blueprint)
         && validate_component::<ViewFit>(blueprint)
         && validate_component::<ViewerRecommendationHash>(blueprint)
         && validate_component::<Visible>(blueprint)

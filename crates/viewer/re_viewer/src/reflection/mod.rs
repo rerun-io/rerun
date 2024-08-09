@@ -210,10 +210,10 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             },
         ),
         (
-            <Timeline as Loggable>::name(),
+            <TimelineName as Loggable>::name(),
             ComponentReflection {
-                docstring_md: "A timeline, identified by its name.",
-                placeholder: Some(Timeline::default().to_arrow()?),
+                docstring_md: "A timeline identified by its name.",
+                placeholder: Some(TimelineName::default().to_arrow()?),
             },
         ),
         (
@@ -760,7 +760,7 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                 docstring_md: "The query for the dataframe view.",
                 fields: vec![
                     ArchetypeFieldReflection { component_name :
-                    "rerun.blueprint.components.Timeline".into(), display_name :
+                    "rerun.blueprint.components.TimelineName".into(), display_name :
                     "Timeline", docstring_md :
                     "The timeline for this query.\n\nIf unset, use the time panel's timeline and a latest at query, ignoring all other components of this archetype.",
                     }, ArchetypeFieldReflection { component_name :

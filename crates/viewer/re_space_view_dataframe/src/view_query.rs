@@ -48,8 +48,8 @@ impl Query {
         // The presence (or not) of the timeline component determines if the view should follow the
         // time panel timeline/latest at query, or override it.
         let Some(timeline) = property
-            .component_or_empty::<components::Timeline>()?
-            .map(|t| t.timeline_name())
+            .component_or_empty::<components::TimelineName>()?
+            .map(|t| t.into())
         else {
             return Ok(Self::FollowTimeline);
         };
@@ -168,8 +168,8 @@ pub(crate) fn query_ui(
 
     // The existence of a timeline component determines if we are in follow time panel or
     // override mode.
-    let timeline_component = property.component_or_empty::<components::Timeline>()?;
-    let timeline_name = timeline_component.as_ref().map(|t| t.timeline_name());
+    let timeline_component = property.component_or_empty::<components::TimelineName>()?;
+    let timeline_name: Option<TimelineName> = timeline_component.as_ref().map(|t| t.into());
 
     let timeline = timeline_name.and_then(|timeline_name| {
         ctx.recording()
@@ -196,7 +196,7 @@ pub(crate) fn query_ui(
             // the table content remains stable.
             property.save_blueprint_component(
                 ctx,
-                &components::Timeline::from(timeline.name().as_str()),
+                &components::TimelineName::from(timeline.name().as_str()),
             );
             Query::save_kind_for_timeline(
                 ctx,
@@ -207,7 +207,7 @@ pub(crate) fn query_ui(
                 },
             )?;
         } else {
-            property.reset_blueprint_component::<components::Timeline>(ctx);
+            property.reset_blueprint_component::<components::TimelineName>(ctx);
         }
     }
 
@@ -229,7 +229,7 @@ fn override_ui(
         .show(ui, |ui| {
             ui.grid_left_hand_label("Timeline");
 
-            let component_name = components::Timeline::name();
+            let component_name = components::TimelineName::name();
 
             //TODO(ab, andreas): maybe have a `singleline_edit_ui` wrapper directly in `ViewProperty`
             ctx.component_ui_registry.singleline_edit_ui(
@@ -248,9 +248,9 @@ fn override_ui(
             ui.grid_left_hand_label("Showing");
 
             let timeline = property
-                .component_or_empty::<components::Timeline>()?
-                .map(|t| t.timeline_name())
-                .and_then(|timeline_name| {
+                .component_or_empty::<components::TimelineName>()?
+                .map(|t| t.into())
+                .and_then(|timeline_name: TimelineName| {
                     ctx.recording()
                         .timelines()
                         .find(|t| t.name() == &timeline_name)

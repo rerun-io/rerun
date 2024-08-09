@@ -24,7 +24,7 @@ pub struct DataframeQuery {
     /// The timeline for this query.
     ///
     /// If unset, use the time panel's timeline and a latest at query, ignoring all other components of this archetype.
-    pub timeline: Option<crate::blueprint::components::Timeline>,
+    pub timeline: Option<crate::blueprint::components::TimelineName>,
 
     /// Kind of query: latest-at or range.
     pub kind: Option<crate::blueprint::components::QueryKind>,
@@ -51,7 +51,7 @@ impl ::re_types_core::SizeBytes for DataframeQuery {
 
     #[inline]
     fn is_pod() -> bool {
-        <Option<crate::blueprint::components::Timeline>>::is_pod()
+        <Option<crate::blueprint::components::TimelineName>>::is_pod()
             && <Option<crate::blueprint::components::QueryKind>>::is_pod()
             && <Option<crate::blueprint::components::LatestAtQueries>>::is_pod()
             && <Option<crate::blueprint::components::TimeRangeQueries>>::is_pod()
@@ -67,7 +67,7 @@ static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 1usize]> =
 static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 4usize]> =
     once_cell::sync::Lazy::new(|| {
         [
-            "rerun.blueprint.components.Timeline".into(),
+            "rerun.blueprint.components.TimelineName".into(),
             "rerun.blueprint.components.QueryKind".into(),
             "rerun.blueprint.components.LatestAtQueries".into(),
             "rerun.blueprint.components.TimeRangeQueries".into(),
@@ -78,7 +78,7 @@ static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 5usize]> =
     once_cell::sync::Lazy::new(|| {
         [
             "rerun.blueprint.components.DataframeQueryIndicator".into(),
-            "rerun.blueprint.components.Timeline".into(),
+            "rerun.blueprint.components.TimelineName".into(),
             "rerun.blueprint.components.QueryKind".into(),
             "rerun.blueprint.components.LatestAtQueries".into(),
             "rerun.blueprint.components.TimeRangeQueries".into(),
@@ -143,8 +143,8 @@ impl ::re_types_core::Archetype for DataframeQuery {
             .map(|(name, array)| (name.full_name(), array))
             .collect();
         let timeline =
-            if let Some(array) = arrays_by_name.get("rerun.blueprint.components.Timeline") {
-                <crate::blueprint::components::Timeline>::from_arrow_opt(&**array)
+            if let Some(array) = arrays_by_name.get("rerun.blueprint.components.TimelineName") {
+                <crate::blueprint::components::TimelineName>::from_arrow_opt(&**array)
                     .with_context("rerun.blueprint.archetypes.DataframeQuery#timeline")?
                     .into_iter()
                     .next()
@@ -236,7 +236,7 @@ impl DataframeQuery {
     #[inline]
     pub fn with_timeline(
         mut self,
-        timeline: impl Into<crate::blueprint::components::Timeline>,
+        timeline: impl Into<crate::blueprint::components::TimelineName>,
     ) -> Self {
         self.timeline = Some(timeline.into());
         self

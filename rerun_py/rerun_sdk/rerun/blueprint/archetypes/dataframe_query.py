@@ -77,10 +77,10 @@ class DataframeQuery(Archetype):
         inst.__attrs_clear__()
         return inst
 
-    timeline: blueprint_components.TimelineBatch | None = field(
+    timeline: blueprint_components.TimelineNameBatch | None = field(
         metadata={"component": "optional"},
         default=None,
-        converter=blueprint_components.TimelineBatch._optional,  # type: ignore[misc]
+        converter=blueprint_components.TimelineNameBatch._optional,  # type: ignore[misc]
     )
     # The timeline for this query.
     #

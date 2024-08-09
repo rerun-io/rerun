@@ -55,7 +55,7 @@ from .time_range_queries import (
     TimeRangeQueriesLike,
     TimeRangeQueriesType,
 )
-from .timeline import Timeline, TimelineBatch, TimelineType
+from .timeline_name import TimelineName, TimelineNameBatch, TimelineNameType
 from .view_fit import ViewFit, ViewFitArrayLike, ViewFitBatch, ViewFitLike, ViewFitType
 from .viewer_recommendation_hash import (
     ViewerRecommendationHash,
@@ -161,9 +161,9 @@ __all__ = [
     "TimeRangeQueriesBatch",
     "TimeRangeQueriesLike",
     "TimeRangeQueriesType",
-    "Timeline",
-    "TimelineBatch",
-    "TimelineType",
+    "TimelineName",
+    "TimelineNameBatch",
+    "TimelineNameType",
     "ViewFit",
     "ViewFitArrayLike",
     "ViewFitBatch",

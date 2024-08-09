@@ -20,7 +20,7 @@ use datatype_editors::{
 };
 use re_types::{
     blueprint::components::{
-        BackgroundKind, Corner2D, LockRangeDuringZoom, SortKey, SortOrder, Timeline, ViewFit,
+        BackgroundKind, Corner2D, LockRangeDuringZoom, SortKey, SortOrder, TimelineName, ViewFit,
         Visible,
     },
     components::{
@@ -61,7 +61,7 @@ pub fn register_editors(registry: &mut re_viewer_context::ComponentUiRegistry) {
     registry.add_singleline_edit_or_view::<Visible>(edit_bool);
     registry.add_singleline_edit_or_view::<LockRangeDuringZoom>(edit_bool);
 
-    registry.add_singleline_edit_or_view::<Timeline>(timeline::edit_timeline);
+    registry.add_singleline_edit_or_view::<TimelineName>(timeline::edit_timeline_name);
 
     registry.add_display_ui(Text::name(), Box::new(display_text_ui));
     registry.add_singleline_edit_or_view::<Text>(edit_singleline_string);

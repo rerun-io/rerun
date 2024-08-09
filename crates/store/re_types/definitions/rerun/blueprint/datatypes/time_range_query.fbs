@@ -13,6 +13,6 @@ table TimeRangeQuery (
   /// Beginning of the time range.
   start: rerun.datatypes.TimeInt (order: 200);
 
-  /// End of the time range.
+  /// End of the time range (inclusive).
   end: rerun.datatypes.TimeInt (order: 300);
 }

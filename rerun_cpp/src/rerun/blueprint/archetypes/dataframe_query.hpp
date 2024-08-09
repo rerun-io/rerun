@@ -6,7 +6,7 @@
 #include "../../blueprint/components/latest_at_queries.hpp"
 #include "../../blueprint/components/query_kind.hpp"
 #include "../../blueprint/components/time_range_queries.hpp"
-#include "../../blueprint/components/timeline.hpp"
+#include "../../blueprint/components/timeline_name.hpp"
 #include "../../collection.hpp"
 #include "../../compiler_utils.hpp"
 #include "../../component_batch.hpp"
@@ -24,7 +24,7 @@ namespace rerun::blueprint::archetypes {
         /// The timeline for this query.
         ///
         /// If unset, use the time panel's timeline and a latest at query, ignoring all other components of this archetype.
-        std::optional<rerun::blueprint::components::Timeline> timeline;
+        std::optional<rerun::blueprint::components::TimelineName> timeline;
 
         /// Kind of query: latest-at or range.
         std::optional<rerun::blueprint::components::QueryKind> kind;
@@ -53,7 +53,7 @@ namespace rerun::blueprint::archetypes {
         /// The timeline for this query.
         ///
         /// If unset, use the time panel's timeline and a latest at query, ignoring all other components of this archetype.
-        DataframeQuery with_timeline(rerun::blueprint::components::Timeline _timeline) && {
+        DataframeQuery with_timeline(rerun::blueprint::components::TimelineName _timeline) && {
             timeline = std::move(_timeline);
             // See: https://github.com/rerun-io/rerun/issues/4027
             RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)

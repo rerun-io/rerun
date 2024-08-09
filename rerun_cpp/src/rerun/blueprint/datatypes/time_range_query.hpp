@@ -25,7 +25,7 @@ namespace rerun::blueprint::datatypes {
         /// Beginning of the time range.
         rerun::datatypes::TimeInt start;
 
-        /// End of the time range.
+        /// End of the time range (inclusive).
         rerun::datatypes::TimeInt end;
 
       public:
