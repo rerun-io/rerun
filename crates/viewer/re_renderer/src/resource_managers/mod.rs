@@ -17,3 +17,8 @@ pub use texture_manager::{
 
 mod resource_manager;
 pub use resource_manager::{ResourceHandle, ResourceLifeTime, ResourceManagerError};
+
+#[cfg(target_arch = "wasm32")]
+mod video_manager;
+#[cfg(target_arch = "wasm32")]
+pub use video_manager::{VideoHandle, VideoManager};

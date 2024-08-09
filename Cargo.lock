@@ -3318,9 +3318,9 @@ dependencies = [
 
 [[package]]
 name = "num-traits"
-version = "0.2.15"
+version = "0.2.19"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "578ede34cf02f8924ab9447f50c28075b4d3e5b269972345e7e0372b38c6cdcd"
+checksum = "071dfc062690e90b734c0b2273ce72ad0ffa95f0c74596bc250dcfd960262841"
 dependencies = [
  "autocfg",
  "libm",
@@ -4739,8 +4739,10 @@ dependencies = [
  "gltf",
  "half 2.3.1",
  "itertools 0.13.0",
+ "js-sys",
  "never",
  "notify",
+ "once_cell",
  "ordered-float",
  "parking_lot",
  "pathdiff",
@@ -4761,9 +4763,12 @@ dependencies = [
  "type-map",
  "unindent",
  "walkdir",
+ "wasm-bindgen",
  "wasm-bindgen-futures",
+ "web-sys",
  "wgpu",
  "wgpu-core",
+ "wgpu-types",
 ]
 
 [[package]]
@@ -4774,18 +4779,22 @@ dependencies = [
  "anyhow",
  "bytemuck",
  "console_error_panic_hook",
+ "ehttp",
  "glam",
  "image",
  "itertools 0.13.0",
+ "js-sys",
  "pollster",
  "rand",
  "re_log",
  "re_math",
  "re_renderer",
+ "wasm-bindgen",
  "wasm-bindgen-futures",
  "web-sys",
  "web-time",
  "wgpu",
+ "wgpu-types",
  "winit",
  "zip",
 ]

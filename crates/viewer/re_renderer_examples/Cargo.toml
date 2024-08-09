@@ -36,6 +36,9 @@ path = "outlines.rs"
 name = "picking"
 path = "picking.rs"
 
+[[bin]]
+name = "video"
+path = "video.rs"
 
 [dependencies]
 re_log = { workspace = true, features = ["setup"] }
@@ -45,6 +48,7 @@ re_renderer = { workspace = true, features = ["import-obj", "import-gltf"] }
 ahash.workspace = true
 anyhow.workspace = true
 bytemuck.workspace = true
+ehttp = { workspace = true, optional = true, features = ["streaming"] }
 glam.workspace = true
 image = { workspace = true, default-features = false, features = ["png"] }
 itertools.workspace = true
@@ -52,6 +56,7 @@ pollster.workspace = true
 rand = { workspace = true, features = ["std", "std_rng"] }
 web-time.workspace = true
 wgpu.workspace = true
+wgpu-types.workspace = true
 winit = { workspace = true, default-features = false, features = [
   "rwh_06",
   "x11",
@@ -71,4 +76,7 @@ web-sys = { workspace = true, features = [
   "RequestInit",
   "RequestMode",
   "Response",
+  "HtmlVideoElement",
 ] }
+js-sys = { workspace = true }
+wasm-bindgen = { workspace = true }

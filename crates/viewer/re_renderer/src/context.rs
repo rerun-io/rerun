@@ -73,6 +73,8 @@ pub struct RenderContext {
 
     pub mesh_manager: RwLock<MeshManager>,
     pub texture_manager_2d: TextureManager2D,
+    #[cfg(web)]
+    pub video_manager: RwLock<crate::resource_managers::VideoManager>,
     pub(crate) cpu_write_gpu_read_belt: Mutex<CpuWriteGpuReadBelt>,
     pub(crate) gpu_readback_belt: Mutex<GpuReadbackBelt>,
 
@@ -221,6 +223,8 @@ impl RenderContext {
         let mesh_manager = RwLock::new(MeshManager::new());
         let texture_manager_2d =
             TextureManager2D::new(device.clone(), queue.clone(), &gpu_resources.textures);
+        #[cfg(web)]
+        let video_manager = RwLock::new(crate::resource_managers::VideoManager::new());
 
         let active_frame = ActiveFrameContext {
             before_view_builder_encoder: Mutex::new(FrameGlobalCommandEncoder::new(&device)),
@@ -263,6 +267,8 @@ impl RenderContext {
             top_level_error_tracker,
             mesh_manager,
             texture_manager_2d,
+            #[cfg(web)]
+            video_manager,
             cpu_write_gpu_read_belt,
             gpu_readback_belt,
             inflight_queue_submissions: Vec::new(),
@@ -389,6 +395,10 @@ This means, either a call to RenderContext::before_submit was omitted, or the pr
 
         self.mesh_manager.get_mut().begin_frame(frame_index);
         self.texture_manager_2d.begin_frame(frame_index);
+        #[cfg(web)]
+        {
+            self.video_manager.get_mut().begin_frame(frame_index);
+        }
         self.gpu_readback_belt.get_mut().begin_frame(frame_index);
 
         {
