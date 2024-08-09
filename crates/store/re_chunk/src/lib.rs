@@ -26,7 +26,7 @@ pub use self::helpers::{ChunkShared, UnitChunkShared};
 pub use self::id::{ChunkId, RowId};
 pub use self::iter::{ChunkComponentIter, ChunkComponentIterItem, ChunkIndicesIter};
 pub use self::latest_at::LatestAtQuery;
-pub use self::range::RangeQuery;
+pub use self::range::{RangeQuery, RangeQueryOptions};
 pub use self::transport::TransportChunk;
 
 #[cfg(not(target_arch = "wasm32"))]

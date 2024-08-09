@@ -4,9 +4,8 @@ use re_chunk_store::RowId;
 use re_entity_db::EntityPath;
 use re_log_types::TimeInt;
 use re_log_types::TimePoint;
-use re_query::RangeQueryOptions;
 use re_query::{clamped_zip_1x2, range_zip_1x2};
-use re_space_view::{range_with_blueprint_resolved_data_opts, RangeResultsExt};
+use re_space_view::{range_with_blueprint_resolved_data, RangeResultsExt};
 use re_types::{
     archetypes::TextLog,
     components::{Color, Text, TextLogLevel},
@@ -54,7 +53,8 @@ impl VisualizerSystem for TextLogSystem {
         re_tracing::profile_function!();
 
         let query =
-            re_chunk_store::RangeQuery::new(view_query.timeline, ResolvedTimeRange::EVERYTHING);
+            re_chunk_store::RangeQuery::new(view_query.timeline, ResolvedTimeRange::EVERYTHING)
+                .keep_extra_timelines(true);
 
         for data_result in view_query.iter_visible_data_results(ctx, Self::identifier()) {
             self.process_entity(ctx, &query, data_result);
@@ -87,14 +87,10 @@ impl TextLogSystem {
     ) {
         re_tracing::profile_function!();
 
-        let results = range_with_blueprint_resolved_data_opts(
+        let results = range_with_blueprint_resolved_data(
             ctx,
             None,
             query,
-            &RangeQueryOptions {
-                keep_extra_timelines: true,
-                keep_extra_components: false,
-            },
             data_result,
             [Text::name(), TextLogLevel::name(), Color::name()],
         );
