@@ -7,9 +7,11 @@ This includes:
 - Python
     - `rerun.__version__`
     - `rerun.__version_info__`
-- C
+- C/C++
     - `#define RERUN_SDK_HEADER_VERSION`
-    - `#define RERUN_SDK_HEADER_VERSION_INFO`
+    - `#define RERUN_SDK_HEADER_VERSION_MAJOR`
+    - `#define RERUN_SDK_HEADER_VERSION_MINOR`
+    - `#define RERUN_SDK_HEADER_VERSION_PATCH`
 """
 
 from __future__ import annotations
@@ -107,7 +109,7 @@ def main() -> None:
 
     sem_version = semver.VersionInfo.parse(args.VERSION)
     set_rerun_py_version(project_path / "rerun_py" / "rerun_sdk" / "rerun" / "__init__.py", sem_version)
-    set_rerun_c_version(project_path / "rerun_cpp" / "src" / "rerun" / "c" / "rerun.h", sem_version)
+    set_rerun_c_version(project_path / "rerun_cpp" / "src" / "rerun" / "c" / "sdk_info.h", sem_version)
 
 
 if __name__ == "__main__":
