@@ -3,7 +3,7 @@
 //! A Space View that shows the data contained in entities in a table.
 
 mod latest_at_table;
-mod query_mode_ui;
+mod query_kind_ui;
 mod space_view_class;
 mod table_ui;
 mod time_range_table;

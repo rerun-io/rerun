@@ -1,5 +1,4 @@
 use re_log_types::{TimeInt, TimelineName};
-use re_types::blueprint::components::QueryKind;
 use re_types::blueprint::{archetypes, components, datatypes};
 use re_types_core::Loggable as _;
 use re_ui::UiExt as _;
@@ -8,12 +7,12 @@ use re_viewer_context::{
 };
 use re_viewport_blueprint::ViewProperty;
 
-use crate::query_mode_ui::UiQueryMode;
+use crate::query_kind_ui::UiQueryKind;
 use crate::visualizer_system::EmptySystem;
 
-/// The query mode for the dataframe view.
+/// The query kind for the dataframe view.
 #[derive(Debug, Clone, Copy)]
-pub(crate) enum QueryMode {
+pub(crate) enum QueryKind {
     LatestAt {
         time: TimeInt,
     },
@@ -31,7 +30,7 @@ pub(crate) enum Query {
 
     Override {
         timeline: TimelineName,
-        mode: QueryMode,
+        kind: QueryKind,
     },
 }
 
@@ -55,21 +54,21 @@ impl Query {
             return Ok(Self::FollowTimeline);
         };
 
-        let mode = property
+        let kind = property
             .component_or_empty::<components::QueryKind>()?
-            .unwrap_or(QueryKind::LatestAt);
+            .unwrap_or(components::QueryKind::LatestAt);
 
-        let mode = match mode {
-            QueryKind::LatestAt => {
+        let kind = match kind {
+            components::QueryKind::LatestAt => {
                 let time = property
                     .component_or_empty::<components::LatestAtQueries>()?
                     .unwrap_or_default()
                     .query_for_timeline(&timeline)
                     .map_or(TimeInt::MAX, |q| q.time.into());
 
-                QueryMode::LatestAt { time }
+                QueryKind::LatestAt { time }
             }
-            QueryKind::TimeRange => {
+            components::QueryKind::TimeRange => {
                 let (from, to) = property
                     .component_or_empty::<components::TimeRangeQueries>()?
                     .unwrap_or_default()
@@ -78,11 +77,11 @@ impl Query {
                         (q.start.into(), q.end.into())
                     });
 
-                QueryMode::Range { from, to }
+                QueryKind::Range { from, to }
             }
         };
 
-        Ok(Self::Override { timeline, mode })
+        Ok(Self::Override { timeline, kind })
     }
 
     /// Get the timeline name for the query
@@ -94,26 +93,26 @@ impl Query {
         }
     }
 
-    /// Get the mode for the query
+    /// Get the kind for the query
     #[inline]
-    pub(crate) fn mode(&self, ctx: &ViewerContext<'_>) -> QueryMode {
+    pub(crate) fn kind(&self, ctx: &ViewerContext<'_>) -> QueryKind {
         match self {
             Self::FollowTimeline => {
                 let time_ctrl = ctx.rec_cfg.time_ctrl.read();
-                QueryMode::LatestAt {
+                QueryKind::LatestAt {
                     time: time_ctrl.time_int().unwrap_or(TimeInt::MAX),
                 }
             }
-            Self::Override { mode, .. } => *mode,
+            Self::Override { kind, .. } => *kind,
         }
     }
 
-    /// Save the query mode for the given timeline to the blueprint.
-    pub(crate) fn save_mode_for_timeline(
+    /// Save the query kind for the given timeline to the blueprint.
+    pub(crate) fn save_kind_for_timeline(
         ctx: &ViewerContext<'_>,
         space_view_id: SpaceViewId,
         timeline_name: &TimelineName,
-        query_mode: &QueryMode,
+        query_kind: &QueryKind,
     ) -> Result<(), SpaceViewSystemExecutionError> {
         let property = ViewProperty::from_archetype::<archetypes::DataframeQuery>(
             ctx.blueprint_db(),
@@ -121,8 +120,8 @@ impl Query {
             space_view_id,
         );
 
-        match query_mode {
-            QueryMode::LatestAt { time } => {
+        match query_kind {
+            QueryKind::LatestAt { time } => {
                 let mut latest_at_queries = property
                     .component_or_empty::<components::LatestAtQueries>()?
                     .unwrap_or_default();
@@ -133,9 +132,9 @@ impl Query {
                 });
 
                 property.save_blueprint_component(ctx, &latest_at_queries);
-                property.save_blueprint_component(ctx, &QueryKind::LatestAt);
+                property.save_blueprint_component(ctx, &components::QueryKind::LatestAt);
             }
-            QueryMode::Range { from, to } => {
+            QueryKind::Range { from, to } => {
                 let mut time_range_queries = property
                     .component_or_empty::<components::TimeRangeQueries>()?
                     .unwrap_or_default();
@@ -147,7 +146,7 @@ impl Query {
                 });
 
                 property.save_blueprint_component(ctx, &time_range_queries);
-                property.save_blueprint_component(ctx, &QueryKind::TimeRange);
+                property.save_blueprint_component(ctx, &components::QueryKind::TimeRange);
             }
         };
 
@@ -199,11 +198,11 @@ pub(crate) fn query_ui(
                 ctx,
                 &components::Timeline::from(timeline.name().as_str()),
             );
-            Query::save_mode_for_timeline(
+            Query::save_kind_for_timeline(
                 ctx,
                 space_view_id,
                 timeline.name(),
-                &QueryMode::LatestAt {
+                &QueryKind::LatestAt {
                     time: time_ctrl.time_int().unwrap_or(TimeInt::MAX),
                 },
             )?;
@@ -261,20 +260,20 @@ fn override_ui(
             let timeline_name = timeline.name();
 
             let query = Query::try_from_blueprint(ctx, space_view_id)?;
-            let mut ui_query_mode: UiQueryMode = query.mode(ctx).into();
+            let mut ui_query_kind: UiQueryKind = query.kind(ctx).into();
             let time_drag_value = if let Some(times) = ctx.recording().time_histogram(&timeline) {
                 TimeDragValue::from_time_histogram(times)
             } else {
                 TimeDragValue::from_time_range(0..=0)
             };
             let changed =
-                ui_query_mode.ui(ctx, ui, &time_drag_value, timeline.name(), timeline.typ());
+                ui_query_kind.ui(ctx, ui, &time_drag_value, timeline.name(), timeline.typ());
             if changed {
-                Query::save_mode_for_timeline(
+                Query::save_kind_for_timeline(
                     ctx,
                     space_view_id,
                     timeline_name,
-                    &ui_query_mode.into(),
+                    &ui_query_kind.into(),
                 )?;
             }
 

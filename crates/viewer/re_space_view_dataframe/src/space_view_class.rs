@@ -15,7 +15,7 @@ use re_viewport_blueprint::ViewProperty;
 use crate::{
     latest_at_table::latest_at_table_ui,
     time_range_table::time_range_table_ui,
-    view_query::{Query, QueryMode},
+    view_query::{Query, QueryKind},
     visualizer_system::EmptySystem,
 };
 
@@ -98,7 +98,7 @@ mode sets the default time range to _everything_. You can override this in the s
             let view_query = Query::try_from_blueprint(ctx, space_view_id)?;
             //TODO(#7070): column order and sorting needs much love
             ui.add_enabled_ui(
-                matches!(view_query.mode(ctx), QueryMode::Range { .. }),
+                matches!(view_query.kind(ctx), QueryKind::Range { .. }),
                 |ui| {
                     view_property_ui::<archetypes::TimeRangeTableOrder>(
                         ctx,
@@ -126,7 +126,7 @@ mode sets the default time range to _everything_. You can override this in the s
 
         let view_query = super::view_query::Query::try_from_blueprint(ctx, query.space_view_id)?;
         let timeline_name = view_query.timeline_name(ctx);
-        let query_mode = view_query.mode(ctx);
+        let query_mode = view_query.kind(ctx);
 
         let Some(timeline) = ctx
             .recording()
@@ -139,10 +139,10 @@ mode sets the default time range to _everything_. You can override this in the s
         };
 
         match query_mode {
-            QueryMode::LatestAt { time } => {
+            QueryKind::LatestAt { time } => {
                 latest_at_table_ui(ctx, ui, query, &LatestAtQuery::new(*timeline, time));
             }
-            QueryMode::Range { from, to } => {
+            QueryKind::Range { from, to } => {
                 let time_range_table_order =
                     ViewProperty::from_archetype::<archetypes::TimeRangeTableOrder>(
                         ctx.blueprint_db(),

@@ -36,10 +36,10 @@ table DataframeQuery (
     /// If unset, use the time panel's timeline and a latest at query, ignoring all other components of this archetype.
     timeline: rerun.blueprint.components.Timeline ("attr.rerun.component_optional", nullable, order: 100);
 
-    /// Type of query: latest at or range
-    mode: rerun.blueprint.components.QueryKind ("attr.rerun.component_optional", nullable,order: 200);
+    /// Kind of query: latest-at or range.
+    kind: rerun.blueprint.components.QueryKind ("attr.rerun.component_optional", nullable,order: 200);
 
-    /// Configuration for latest at queries.attribute
+    /// Configuration for latest-at queries.
     ///
     /// Note: configuration as saved on a per-timeline basis.
     latest_at_queries: rerun.blueprint.components.LatestAtQueries ("attr.rerun.component_optional", nullable,order: 400);

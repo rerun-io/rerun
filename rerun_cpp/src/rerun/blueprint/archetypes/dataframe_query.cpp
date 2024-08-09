@@ -22,8 +22,8 @@ namespace rerun {
             RR_RETURN_NOT_OK(result.error);
             cells.push_back(std::move(result.value));
         }
-        if (archetype.mode.has_value()) {
-            auto result = ComponentBatch::from_loggable(archetype.mode.value());
+        if (archetype.kind.has_value()) {
+            auto result = ComponentBatch::from_loggable(archetype.kind.value());
             RR_RETURN_NOT_OK(result.error);
             cells.push_back(std::move(result.value));
         }

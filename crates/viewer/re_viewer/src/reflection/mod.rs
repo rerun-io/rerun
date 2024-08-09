@@ -764,12 +764,12 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                     "Timeline", docstring_md :
                     "The timeline for this query.\n\nIf unset, use the time panel's timeline and a latest at query, ignoring all other components of this archetype.",
                     }, ArchetypeFieldReflection { component_name :
-                    "rerun.blueprint.components.QueryKind".into(), display_name : "Mode",
-                    docstring_md : "Type of query: latest at or range", },
+                    "rerun.blueprint.components.QueryKind".into(), display_name : "Kind",
+                    docstring_md : "Kind of query: latest-at or range.", },
                     ArchetypeFieldReflection { component_name :
                     "rerun.blueprint.components.LatestAtQueries".into(), display_name :
                     "Latest at queries", docstring_md :
-                    "Configuration for latest at queries.attribute\n\nNote: configuration as saved on a per-timeline basis.",
+                    "Configuration for latest-at queries.\n\nNote: configuration as saved on a per-timeline basis.",
                     }, ArchetypeFieldReflection { component_name :
                     "rerun.blueprint.components.TimeRangeQueries".into(), display_name :
                     "Time range queries", docstring_md :

@@ -26,10 +26,10 @@ namespace rerun::blueprint::archetypes {
         /// If unset, use the time panel's timeline and a latest at query, ignoring all other components of this archetype.
         std::optional<rerun::blueprint::components::Timeline> timeline;
 
-        /// Type of query: latest at or range
-        std::optional<rerun::blueprint::components::QueryKind> mode;
+        /// Kind of query: latest-at or range.
+        std::optional<rerun::blueprint::components::QueryKind> kind;
 
-        /// Configuration for latest at queries.attribute
+        /// Configuration for latest-at queries.
         ///
         /// Note: configuration as saved on a per-timeline basis.
         std::optional<rerun::blueprint::components::LatestAtQueries> latest_at_queries;
@@ -59,14 +59,14 @@ namespace rerun::blueprint::archetypes {
             RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
         }
 
-        /// Type of query: latest at or range
-        DataframeQuery with_mode(rerun::blueprint::components::QueryKind _mode) && {
-            mode = std::move(_mode);
+        /// Kind of query: latest-at or range.
+        DataframeQuery with_kind(rerun::blueprint::components::QueryKind _kind) && {
+            kind = std::move(_kind);
             // See: https://github.com/rerun-io/rerun/issues/4027
             RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
         }
 
-        /// Configuration for latest at queries.attribute
+        /// Configuration for latest-at queries.
         ///
         /// Note: configuration as saved on a per-timeline basis.
         DataframeQuery with_latest_at_queries(

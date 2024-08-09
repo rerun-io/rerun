@@ -2,20 +2,20 @@ use re_log_types::{ResolvedTimeRange, TimeInt, TimeType, TimelineName};
 use re_ui::{list_item, UiExt};
 use re_viewer_context::{TimeDragValue, ViewerContext};
 
-use crate::view_query::QueryMode;
+use crate::view_query::QueryKind;
 
-/// Helper to handle the UI for the various query modes are they are shown to the user.
+/// Helper to handle the UI for the various query kinds are they are shown to the user.
 ///
-/// This struct is the "UI equivalent" of the [`QueryMode`] enum.
+/// This struct is the "UI equivalent" of the [`QueryKind`] enum.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub(crate) enum UiQueryMode {
+pub(crate) enum UiQueryKind {
     LatestAt { time: TimeInt },
     TimeRangeAll,
     TimeRange { from: TimeInt, to: TimeInt },
 }
 
-impl UiQueryMode {
-    /// Show the UI for the query mode selector.
+impl UiQueryKind {
+    /// Show the UI for the query kind selector.
     pub(crate) fn ui(
         &mut self,
         ctx: &ViewerContext<'_>,
@@ -185,28 +185,28 @@ impl UiQueryMode {
     }
 }
 
-impl From<QueryMode> for UiQueryMode {
-    fn from(value: QueryMode) -> Self {
+impl From<QueryKind> for UiQueryKind {
+    fn from(value: QueryKind) -> Self {
         match value {
-            QueryMode::LatestAt { time } => Self::LatestAt { time },
-            QueryMode::Range {
+            QueryKind::LatestAt { time } => Self::LatestAt { time },
+            QueryKind::Range {
                 from: TimeInt::MIN,
                 to: TimeInt::MAX,
             } => Self::TimeRangeAll,
-            QueryMode::Range { from, to } => Self::TimeRange { from, to },
+            QueryKind::Range { from, to } => Self::TimeRange { from, to },
         }
     }
 }
 
-impl From<UiQueryMode> for QueryMode {
-    fn from(value: UiQueryMode) -> Self {
+impl From<UiQueryKind> for QueryKind {
+    fn from(value: UiQueryKind) -> Self {
         match value {
-            UiQueryMode::LatestAt { time } => Self::LatestAt { time },
-            UiQueryMode::TimeRangeAll => Self::Range {
+            UiQueryKind::LatestAt { time } => Self::LatestAt { time },
+            UiQueryKind::TimeRangeAll => Self::Range {
                 from: TimeInt::MIN,
                 to: TimeInt::MAX,
             },
-            UiQueryMode::TimeRange { from, to } => Self::Range { from, to },
+            UiQueryKind::TimeRange { from, to } => Self::Range { from, to },
         }
     }
 }
