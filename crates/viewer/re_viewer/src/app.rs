@@ -519,7 +519,7 @@ impl App {
             }
             SystemCommand::DropEntity(blueprint_id, entity_path) => {
                 let blueprint_db = store_hub.entity_db_mut(&blueprint_id);
-                blueprint_db.drop_entity_path(entity_path);
+                blueprint_db.drop_entity_path(&entity_path);
             }
 
             #[cfg(debug_assertions)]
