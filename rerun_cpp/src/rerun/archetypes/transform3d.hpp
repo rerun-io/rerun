@@ -33,7 +33,7 @@ namespace rerun::archetypes {
     ///
     /// Whenever you log this archetype, it will write all components, even if you do not explicitly set them.
     /// This means that if you first log a transform with only a translation, and then log one with only a rotation,
-    /// i will be resolved to a transform with only a rotation.
+    /// it will be resolved to a transform with only a rotation.
     ///
     /// ## Examples
     ///
