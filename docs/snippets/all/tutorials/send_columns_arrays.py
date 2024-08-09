@@ -24,7 +24,7 @@ colors = [0xFF0000FF, 0x00FF00FF, 0x0000FFFF, 0xFFFF00FF, 0x00FFFFFF]
 
 rr.send_columns(
     "points",
-    times=[rr.TimeSecondsBatch("time", times)],
+    times=[rr.TimeSecondsColumn("time", times)],
     components=[
         rr.Points3D.indicator(),
         rr.components.Position3DBatch(positions_arr).partition([len(row) for row in positions]),

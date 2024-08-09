@@ -13,6 +13,6 @@ scalars = np.sin(times / 10.0)
 
 rr.send_columns(
     "scalars",
-    times=[rr.TimeSequenceBatch("step", times)],
+    times=[rr.TimeSequenceColumn("step", times)],
     components=[rr.components.ScalarBatch(scalars)],
 )

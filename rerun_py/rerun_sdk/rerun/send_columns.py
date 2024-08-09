@@ -11,7 +11,7 @@ from .error_utils import catch_and_log_exceptions
 from .recording_stream import RecordingStream
 
 
-class TimeBatchLike(Protocol):
+class TimeColumnLike(Protocol):
     """Describes interface for objects that can be converted to a column of rerun time values."""
 
     def timeline_name(self) -> str:
@@ -23,7 +23,7 @@ class TimeBatchLike(Protocol):
         ...
 
 
-class TimeSequenceBatch(TimeBatchLike):
+class TimeSequenceColumn(TimeColumnLike):
     """
     A column of time values that are represented as an integer sequence.
 
@@ -41,7 +41,7 @@ class TimeSequenceBatch(TimeBatchLike):
         return pa.array(self.times, type=pa.int64())
 
 
-class TimeSecondsBatch(TimeBatchLike):
+class TimeSecondsColumn(TimeColumnLike):
     """
     A column of time values that are represented as an floating point seconds.
 
@@ -59,7 +59,7 @@ class TimeSecondsBatch(TimeBatchLike):
         return pa.array([int(t * 1e9) for t in self.times], type=pa.timestamp("ns"))
 
 
-class TimeNanosBatch(TimeBatchLike):
+class TimeNanosColumn(TimeColumnLike):
     """
     A column of time values that are represented as an integer nanoseconds.
 
@@ -83,7 +83,7 @@ TArchetype = TypeVar("TArchetype", bound=Archetype)
 @catch_and_log_exceptions()
 def send_columns(
     entity_path: str,
-    times: Iterable[TimeBatchLike],
+    times: Iterable[TimeColumnLike],
     components: Iterable[ComponentBatchLike],
     recording: RecordingStream | None = None,
     strict: bool | None = None,
@@ -92,7 +92,7 @@ def send_columns(
     Directly log a columns of data to Rerun.
 
     Unlike the regular `log` API, which is row-oriented, this API lets you submit the data
-    in a columnar form. Each `TimeBatchLike` and `ComponentBatchLike` object represents a column
+    in a columnar form. Each `TimeColumnLike` and `ComponentBatchLike` object represents a column
     of data that will be sent to Rerun. The lengths of all of these columns must match, and all
     data that shares the same index across the different columns will act as a single logical row,
     equivalent to a single call to `rr.log()`.
@@ -110,7 +110,7 @@ def send_columns(
 
     rr.send_columns(
         "scalars",
-        times=[rr.TimeSequenceBatch("step", times)],
+        times=[rr.TimeSequenceColumn("step", times)],
         components=[rr.components.ScalarBatch(scalars)],
     )
     ```
@@ -128,7 +128,7 @@ def send_columns(
 
     rr.send_columns(
         "points",
-        times=[rr.TimeSequenceBatch("step", times)],
+        times=[rr.TimeSequenceColumn("step", times)],
         components=[
             rr.Points3D.indicator(),
             rr.components.Position3DBatch(positions).partition([20, 20, 20, 20, 20]),
@@ -144,9 +144,9 @@ def send_columns(
 
         See <https://www.rerun.io/docs/concepts/entity-path> for more on entity paths.
     times:
-        The time values of this batch of data. Each `TimeBatchLike` object represents a single column
-        of timestamps. Generally you should use one of the provided classes: [`TimeSequenceBatch`][],
-        [`TimeSecondsBatch`][], or [`TimeNanosBatch`][].
+        The time values of this batch of data. Each `TimeColumnLike` object represents a single column
+        of timestamps. Generally you should use one of the provided classes: [`TimeSequenceColumn`][],
+        [`TimeSecondsColumn`][], or [`TimeNanosColumn`][].
     components:
         The batches of components to log. Each `ComponentBatchLike` object represents a single column of data.
     recording:
