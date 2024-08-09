@@ -16,7 +16,6 @@ use re_types::{
     },
     components::Name,
 };
-use re_types_core::archetypes::Clear;
 use re_types_core::Archetype as _;
 use re_viewer_context::{
     ContentsName, PerSystemEntities, QueryRange, RecommendedSpaceView, SpaceViewClass,
@@ -310,8 +309,10 @@ impl SpaceViewBlueprint {
     }
 
     pub fn clear(&self, ctx: &ViewerContext<'_>) {
-        let clear = Clear::recursive();
-        ctx.save_blueprint_component(&self.entity_path(), &clear.is_recursive);
+        ctx.command_sender.send_system(SystemCommand::DropEntity(
+            ctx.store_context.blueprint.store_id().clone(),
+            self.entity_path(),
+        ));
     }
 
     #[inline]

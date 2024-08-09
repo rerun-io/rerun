@@ -517,6 +517,11 @@ impl App {
                     }
                 }
             }
+            SystemCommand::DropEntity(blueprint_id, entity_path) => {
+                let blueprint_db = store_hub.entity_db_mut(&blueprint_id);
+                blueprint_db.drop_entity_path_recursive(&entity_path);
+            }
+
             #[cfg(debug_assertions)]
             SystemCommand::EnableInspectBlueprintTimeline(show) => {
                 self.app_options_mut().inspect_blueprint_timeline = show;

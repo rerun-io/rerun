@@ -1,3 +1,4 @@
+use re_chunk::EntityPath;
 use re_chunk_store::external::re_chunk::Chunk;
 use re_data_source::DataSource;
 use re_log_types::StoreId;
@@ -46,6 +47,15 @@ pub enum SystemCommand {
     /// but is tracked manually to ensure self-consistency if the blueprint
     /// is both modified and changed in the same frame.
     UpdateBlueprint(StoreId, Vec<Chunk>),
+
+    /// Drop a specific entity from a store.
+    ///
+    /// Also drops all recursive children.
+    ///
+    /// The [`StoreId`] should generally be the currently selected blueprint
+    /// but is tracked manually to ensure self-consistency if the blueprint
+    /// is both modified and changed in the same frame.
+    DropEntity(StoreId, EntityPath),
 
     /// Show a timeline of the blueprint data.
     #[cfg(debug_assertions)]

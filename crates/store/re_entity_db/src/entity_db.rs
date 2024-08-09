@@ -407,6 +407,36 @@ impl EntityDb {
         self.on_store_deletions(&store_events);
     }
 
+    /// Unconditionally drops all the data for a given [`EntityPath`] .
+    ///
+    /// This is _not_ recursive. Children of this entity will not be affected.
+    ///
+    /// To drop the entire subtree below an entity, see: [`Self::drop_entity_path_recursive`].
+    pub fn drop_entity_path(&mut self, entity_path: &EntityPath) {
+        re_tracing::profile_function!();
+
+        let store_events = self.data_store.drop_entity_path(entity_path);
+
+        self.on_store_deletions(&store_events);
+    }
+
+    /// Unconditionally drops all the data for a given [`EntityPath`] and all its children.
+    pub fn drop_entity_path_recursive(&mut self, entity_path: &EntityPath) {
+        re_tracing::profile_function!();
+
+        let mut to_drop = vec![entity_path.clone()];
+
+        if let Some(tree) = self.tree().subtree(entity_path) {
+            tree.visit_children_recursively(|path| {
+                to_drop.push(path.clone());
+            });
+        }
+
+        for entity_path in to_drop {
+            self.drop_entity_path(&entity_path);
+        }
+    }
+
     fn on_store_deletions(&mut self, store_events: &[ChunkStoreEvent]) {
         re_tracing::profile_function!();
 
