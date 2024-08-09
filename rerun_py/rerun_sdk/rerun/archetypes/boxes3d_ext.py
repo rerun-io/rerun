@@ -103,6 +103,7 @@ class Boxes3DExt:
                         from ..components import LeafRotationQuatBatch
 
                         quaternions = LeafRotationQuatBatch(rotations, strict=True).as_arrow_array()  # type: ignore[arg-type]
+                        rotation_axis_angles = []
                     except Exception:
                         pass
 
@@ -111,6 +112,7 @@ class Boxes3DExt:
                             from ..components import LeafRotationAxisAngleBatch
 
                             rotation_axis_angles = LeafRotationAxisAngleBatch(rotations, strict=True).as_arrow_array()  # type: ignore[arg-type]
+                            quaternions = []
                         except Exception:
                             pass
 
