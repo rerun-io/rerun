@@ -1,6 +1,6 @@
 //! The Rerun C SDK.
 //!
-//! The functions here must match `rerun.h`.
+//! The functions here must match `rerun_cpp/src/rerun/c/rerun.h`.
 
 #![crate_type = "staticlib"]
 #![allow(clippy::missing_safety_doc, clippy::undocumented_unsafe_blocks)] // Too much unsafe
@@ -305,7 +305,15 @@ pub struct CError {
 #[no_mangle]
 pub extern "C" fn rr_version_string() -> *const c_char {
     static VERSION: Lazy<CString> = Lazy::new(|| {
-        CString::new(re_sdk::build_info().version.to_string()).expect("CString::new failed")
+        CString::new(
+            re_sdk::build_info()
+                .version
+                .to_string()
+                // We use `+dev` as a marker for "this version is unreleased".
+                // Ignore it here since we don't update the version macros either on that frequency.
+                .trim_end_matches("+dev"),
+        )
+        .expect("CString::new failed")
     }); // unwrap: there won't be any NUL bytes in the string
 
     VERSION.as_ptr()
