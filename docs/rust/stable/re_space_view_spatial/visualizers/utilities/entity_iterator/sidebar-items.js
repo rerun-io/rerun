@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"fn":["clamped","process_archetype","query_archetype_with_history"]};

@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"enum":["AutoSizeUnit"],"fn":["create_labels","format_vector","hit_ui","image_hover_ui","outline_config","picking","screenshot_context_menu"],"struct":["SpatialSpaceViewState"]};

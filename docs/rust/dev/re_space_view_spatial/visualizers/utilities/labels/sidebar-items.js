@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"constant":["MAX_NUM_LABELS_PER_ENTITY"],"enum":["UiLabelTarget"],"fn":["process_labels_2d","process_labels_3d"],"struct":["UiLabel"]};

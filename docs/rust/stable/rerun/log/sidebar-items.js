@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"enum":["ChunkBatcherError","ChunkError","LogMsg"],"struct":["Chunk","ChunkBatcher","ChunkBatcherConfig","DataCell","DataRow","DataTable","PendingRow","RowId","TableId","TransportChunk"],"type":["ChunkBatcherResult","ChunkResult"]};

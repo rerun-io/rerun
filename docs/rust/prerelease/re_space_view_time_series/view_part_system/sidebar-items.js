@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"enum":["PlotSeriesKind"],"struct":["PlotPoint","PlotPointAttrs","PlotSeries","TimeSeriesSystem"]};

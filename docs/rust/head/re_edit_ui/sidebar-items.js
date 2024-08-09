@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"fn":["register_editors"],"mod":["color","datatype_editors","marker_shape","radius","range1d","response_utils","timeline","transforms","visual_bounds2d"]};

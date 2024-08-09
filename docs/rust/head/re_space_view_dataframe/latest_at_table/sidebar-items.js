@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"fn":["latest_at_table_ui"]};

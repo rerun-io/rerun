@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"enum":["ItemKind"],"fn":["find_drop_target"],"struct":["DropTarget","ItemContext"]};

@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"fn":["create_and_fill_uniform_buffer","create_and_fill_uniform_buffer_batch"],"struct":["UniformBufferAlignmentCheck"]};

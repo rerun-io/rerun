@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"enum":["DataReadError","DataRowError"],"struct":["DataCellRow","DataRow","RowId"],"type":["DataCellVec","DataReadResult","DataRowResult"]};

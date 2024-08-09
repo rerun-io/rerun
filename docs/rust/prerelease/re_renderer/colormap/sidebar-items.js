@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"enum":["Colormap"],"fn":["colormap_inferno_srgb","colormap_magma_srgb","colormap_plasma_srgb","colormap_srgb","colormap_turbo_srgb","colormap_viridis_srgb","grayscale_srgb"]};

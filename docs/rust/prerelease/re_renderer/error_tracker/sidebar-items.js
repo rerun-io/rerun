@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"fn":["type_of_var"],"macro":["impl_trait","try_downcast"],"struct":["ErrorTracker","WrappedContextError"],"trait":["DedupableError"]};

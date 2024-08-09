@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"fn":["edit_range1d"]};

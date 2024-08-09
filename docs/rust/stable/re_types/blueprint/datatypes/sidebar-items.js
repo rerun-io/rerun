@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"mod":["tensor_dimension_index_slider"],"struct":["TensorDimensionIndexSlider"]};

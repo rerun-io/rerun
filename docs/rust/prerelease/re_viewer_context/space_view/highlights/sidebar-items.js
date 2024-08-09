@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"struct":["OptionalSpaceViewEntityHighlight","SPACEVIEW_OUTLINE_MASK_NONE","SpaceViewEntityHighlight","SpaceViewHighlights","SpaceViewOutlineMasks"]};

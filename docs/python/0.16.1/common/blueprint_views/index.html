@@ -1,0 +1,2948 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+      
+      
+        <link rel="canonical" href="https://ref.rerun.io/docs/python/0.16.1/common/blueprint_views/">
+      
+      
+        <link rel="prev" href="../blueprint_components/">
+      
+      
+        <link rel="next" href="../script_helpers/">
+      
+      
+      <link rel="icon" href="../../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.5.3, mkdocs-material-9.4.7">
+    
+    
+      
+        <title>Views - Rerun Python APIs</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/stylesheets/main.4b4a2bd9.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/_mkdocstrings.css">
+    
+      <link rel="stylesheet" href="../../css/mkdocstrings.css">
+    
+    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce((e,_)=>(e<<5)-e+_.charCodeAt(0),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+    
+  </head>
+  
+  
+    <body dir="ltr">
+  
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&"object"==typeof palette.color)for(var key of Object.keys(palette.color))document.body.setAttribute("data-md-color-"+key,palette.color[key])</script>
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#rerun.blueprint.views" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+      <div data-md-color-scheme="default" data-md-component="outdated" hidden>
+        
+      </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow md-header--lifted" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../.." title="Rerun Python APIs" class="md-header__button md-logo" aria-label="Rerun Python APIs" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54Z"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3V6m0 5h18v2H3v-2m0 5h18v2H3v-2Z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Rerun Python APIs
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Views
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+    
+    
+      <label class="md-header__button md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.516 6.516 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5Z"/></svg>
+      </label>
+      <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.516 6.516 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5Z"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11h12Z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12 19 6.41Z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/rerun-io/rerun/" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 6.4.2 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2023 Fonticons, Inc.--><path d="M439.55 236.05 244 40.45a28.87 28.87 0 0 0-40.81 0l-40.66 40.63 51.52 51.52c27.06-9.14 52.68 16.77 43.39 43.68l49.66 49.66c34.23-11.8 61.18 31 35.47 56.69-26.49 26.49-70.21-2.87-56-37.34L240.22 199v121.85c25.3 12.54 22.26 41.85 9.08 55a34.34 34.34 0 0 1-48.55 0c-17.57-17.6-11.07-46.91 11.25-56v-123c-20.8-8.51-24.6-30.74-18.64-45L142.57 101 8.45 235.14a28.86 28.86 0 0 0 0 40.81l195.61 195.6a28.86 28.86 0 0 0 40.8 0l194.69-194.69a28.86 28.86 0 0 0 0-40.81z"/></svg>
+  </div>
+  <div class="md-source__repository">
+    GitHub
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+    
+      
+<nav class="md-tabs" aria-label="Tabs" data-md-component="tabs">
+  <div class="md-grid">
+    <ul class="md-tabs__list">
+      
+        
+  
+  
+    
+  
+  
+    
+    
+      <li class="md-tabs__item md-tabs__item--active">
+        <a href="../" class="md-tabs__link">
+          
+  
+    
+  
+  Common APIs
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../../writing_docs/" class="md-tabs__link">
+        
+  
+    
+  
+  Writing Docs
+
+      </a>
+    </li>
+  
+
+      
+    </ul>
+  </div>
+</nav>
+    
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+  
+
+
+<nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../.." title="Rerun Python APIs" class="md-nav__button md-logo" aria-label="Rerun Python APIs" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54Z"/></svg>
+
+    </a>
+    Rerun Python APIs
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/rerun-io/rerun/" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 6.4.2 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2023 Fonticons, Inc.--><path d="M439.55 236.05 244 40.45a28.87 28.87 0 0 0-40.81 0l-40.66 40.63 51.52 51.52c27.06-9.14 52.68 16.77 43.39 43.68l49.66 49.66c34.23-11.8 61.18 31 35.47 56.69-26.49 26.49-70.21-2.87-56-37.34L240.22 199v121.85c25.3 12.54 22.26 41.85 9.08 55a34.34 34.34 0 0 1-48.55 0c-17.57-17.6-11.07-46.91 11.25-56v-123c-20.8-8.51-24.6-30.74-18.64-45L142.57 101 8.45 235.14a28.86 28.86 0 0 0 0 40.81l195.61 195.6a28.86 28.86 0 0 0 40.8 0l194.69-194.69a28.86 28.86 0 0 0 0-40.81z"/></svg>
+  </div>
+  <div class="md-source__repository">
+    GitHub
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+    
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+    
+      
+      
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_1" checked>
+        
+          
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../" class="md-nav__link ">
+              
+  
+  <span class="md-ellipsis">
+    Common APIs
+  </span>
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_1" id="__nav_1_label" tabindex="">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_1_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_1">
+            <span class="md-nav__icon md-icon"></span>
+            Common APIs
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../initialization_functions/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Initialization functions
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../logging_functions/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Logging functions
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../timeline_functions/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Timeline functions
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../archetypes/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Archetypes
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../components/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Components
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../datatypes/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Datatypes
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../custom_data/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Custom Data
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../image_helpers/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Image Helpers
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../enums/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Enums
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../interfaces/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Interfaces
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
+      
+        
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_1_12" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_1_12" id="__nav_1_12_label" tabindex="0">
+            
+  
+  <span class="md-ellipsis">
+    Blueprint
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_1_12_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_1_12">
+            <span class="md-nav__icon md-icon"></span>
+            Blueprint
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../blueprint_apis/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    APIs
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../blueprint_archetypes/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Archetypes
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../blueprint_components/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Components
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  <span class="md-ellipsis">
+    Views
+  </span>
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  <span class="md-ellipsis">
+    Views
+  </span>
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#rerun.blueprint.views" class="md-nav__link">
+    views
+  </a>
+  
+    <nav class="md-nav" aria-label="views">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#rerun.blueprint.views.BarChartView" class="md-nav__link">
+    BarChartView
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#rerun.blueprint.views.Spatial2DView" class="md-nav__link">
+    Spatial2DView
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#rerun.blueprint.views.Spatial3DView" class="md-nav__link">
+    Spatial3DView
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#rerun.blueprint.views.TensorView" class="md-nav__link">
+    TensorView
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#rerun.blueprint.views.TextDocumentView" class="md-nav__link">
+    TextDocumentView
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#rerun.blueprint.views.TextLogView" class="md-nav__link">
+    TextLogView
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#rerun.blueprint.views.TimeSeriesView" class="md-nav__link">
+    TimeSeriesView
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../script_helpers/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Script Helpers
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../other_classes_and_functions/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Other classes and functions
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../utilities/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Utilities
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../experimental/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Experimental
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../writing_docs/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Writing Docs
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#rerun.blueprint.views" class="md-nav__link">
+    views
+  </a>
+  
+    <nav class="md-nav" aria-label="views">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#rerun.blueprint.views.BarChartView" class="md-nav__link">
+    BarChartView
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#rerun.blueprint.views.Spatial2DView" class="md-nav__link">
+    Spatial2DView
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#rerun.blueprint.views.Spatial3DView" class="md-nav__link">
+    Spatial3DView
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#rerun.blueprint.views.TensorView" class="md-nav__link">
+    TensorView
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#rerun.blueprint.views.TextDocumentView" class="md-nav__link">
+    TextDocumentView
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#rerun.blueprint.views.TextLogView" class="md-nav__link">
+    TextLogView
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#rerun.blueprint.views.TimeSeriesView" class="md-nav__link">
+    TimeSeriesView
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  <h1>Views</h1>
+
+<div class="doc doc-object doc-module">
+
+
+
+
+<h3 id="rerun.blueprint.views" class="doc doc-heading">
+          <code>rerun.blueprint.views</code>
+
+
+</h3>
+
+  <div class="doc doc-contents first">
+
+  
+
+  <div class="doc doc-children">
+
+
+
+
+
+
+
+
+
+<div class="doc doc-object doc-class">
+
+
+
+<h4 id="rerun.blueprint.views.BarChartView" class="doc doc-heading">
+<code class="highlight language-python"><span class="k">class</span> <span class="nc">BarChartView</span></code>
+
+</h4>
+
+
+  <div class="doc doc-contents">
+      <p class="doc doc-class-bases">
+        Bases: <code><a class="autorefs autorefs-internal" title="rerun.blueprint.api.SpaceView" href="../blueprint_apis/#rerun.blueprint.SpaceView">SpaceView</a></code></p>
+
+  
+      <p><strong>View</strong>: A bar chart view.</p>
+
+<details class="example" open>
+  <summary>Example</summary>
+  <h6 id="rerun.blueprint.views.BarChartView--use-a-blueprint-to-create-a-barchartview">Use a blueprint to create a BarChartView.:</h6>
+<p><div class="highlight"><pre><span></span><code><span class="kn">import</span> <span class="nn">rerun</span> <span class="k">as</span> <span class="nn">rr</span>
+<span class="kn">import</span> <span class="nn">rerun.blueprint</span> <span class="k">as</span> <span class="nn">rrb</span>
+
+<span class="n">rr</span><span class="o">.</span><span class="n">init</span><span class="p">(</span><span class="s2">&quot;rerun_example_bar_chart&quot;</span><span class="p">,</span> <span class="n">spawn</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="c1"># It&#39;s recommended to log bar charts with the `rr.BarChart` archetype,</span>
+<span class="c1"># but single dimensional tensors can also be used if a `BarChartView` is created explicitly.</span>
+<span class="n">rr</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="s2">&quot;tensor&quot;</span><span class="p">,</span> <span class="n">rr</span><span class="o">.</span><span class="n">Tensor</span><span class="p">([</span><span class="mi">8</span><span class="p">,</span> <span class="mi">4</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">9</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">4</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">6</span><span class="p">,</span> <span class="mi">9</span><span class="p">,</span> <span class="mi">0</span><span class="p">]))</span>
+
+<span class="c1"># Create a bar chart view to display the chart.</span>
+<span class="n">blueprint</span> <span class="o">=</span> <span class="n">rrb</span><span class="o">.</span><span class="n">Blueprint</span><span class="p">(</span><span class="n">rrb</span><span class="o">.</span><span class="n">BarChartView</span><span class="p">(</span><span class="n">origin</span><span class="o">=</span><span class="s2">&quot;tensor&quot;</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s2">&quot;Bar Chart&quot;</span><span class="p">),</span> <span class="n">collapse_panels</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+<span class="n">rr</span><span class="o">.</span><span class="n">send_blueprint</span><span class="p">(</span><span class="n">blueprint</span><span class="p">)</span>
+</code></pre></div>
+<center>
+<picture>
+  <source media="(max-width: 480px)" srcset="https://static.rerun.io/bar_chart_view/74fa45af3c7310b51cd283c37439ed8f8ca9356d/480w.png">
+  <source media="(max-width: 768px)" srcset="https://static.rerun.io/bar_chart_view/74fa45af3c7310b51cd283c37439ed8f8ca9356d/768w.png">
+  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/bar_chart_view/74fa45af3c7310b51cd283c37439ed8f8ca9356d/1024w.png">
+  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/bar_chart_view/74fa45af3c7310b51cd283c37439ed8f8ca9356d/1200w.png">
+  <img src="https://static.rerun.io/bar_chart_view/74fa45af3c7310b51cd283c37439ed8f8ca9356d/full.png" width="640">
+</picture>
+</center></p>
+</details>
+
+
+  
+
+  <div class="doc doc-children">
+
+
+
+
+
+
+
+
+
+<div class="doc doc-object doc-function">
+
+
+
+<h5 id="rerun.blueprint.views.BarChartView.__init__" class="doc doc-heading">
+<code class="highlight language-python"><span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="o">*</span><span class="p">,</span> <span class="n">origin</span><span class="o">=</span><span class="s1">&#39;/&#39;</span><span class="p">,</span> <span class="n">contents</span><span class="o">=</span><span class="s1">&#39;$origin/**&#39;</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">visible</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span></code>
+
+</h5>
+
+
+  <div class="doc doc-contents">
+  
+      <p>Construct a blueprint for a new BarChartView view.</p>
+
+
+
+  <table>
+    <thead>
+      <tr>
+        <th><b>PARAMETER</b></th>
+        <th><b> DESCRIPTION</b></th>
+      </tr>
+    </thead>
+    <tbody>
+        <tr>
+          <td><code>origin</code></td>
+          <td class="doc-param-details">
+            <div class="doc-md-description">
+              <p>The <code>EntityPath</code> to use as the origin of this view.
+All other entities will be transformed to be displayed relative to this origin.</p>
+            </div>
+            <p>
+                <span class="doc-param-annotation">
+                  <b>TYPE:</b>
+                    <code><span title="rerun.datatypes.EntityPathLike">EntityPathLike</span></code>
+                </span>
+                <span class="doc-param-default">
+                  <b>DEFAULT:</b> 
+                    <code>&#39;/&#39;</code>
+                </span>
+            </p>
+          </td>
+        </tr>
+        <tr>
+          <td><code>contents</code></td>
+          <td class="doc-param-details">
+            <div class="doc-md-description">
+              <p>The contents of the view specified as a query expression.
+This is either a single expression, or a list of multiple expressions.
+See <a class="autorefs autorefs-internal" href="../blueprint_archetypes/#rerun.blueprint.archetypes.SpaceViewContents">rerun.blueprint.archetypes.SpaceViewContents</a>.</p>
+            </div>
+            <p>
+                <span class="doc-param-annotation">
+                  <b>TYPE:</b>
+                    <code><span title="rerun.blueprint.api.SpaceViewContentsLike">SpaceViewContentsLike</span></code>
+                </span>
+                <span class="doc-param-default">
+                  <b>DEFAULT:</b> 
+                    <code>&#39;$origin/**&#39;</code>
+                </span>
+            </p>
+          </td>
+        </tr>
+        <tr>
+          <td><code>name</code></td>
+          <td class="doc-param-details">
+            <div class="doc-md-description">
+              <p>The display name of the view.</p>
+            </div>
+            <p>
+                <span class="doc-param-annotation">
+                  <b>TYPE:</b>
+                    <code><span title="rerun.datatypes.Utf8Like">Utf8Like</span> | None</code>
+                </span>
+                <span class="doc-param-default">
+                  <b>DEFAULT:</b> 
+                    <code>None</code>
+                </span>
+            </p>
+          </td>
+        </tr>
+        <tr>
+          <td><code>visible</code></td>
+          <td class="doc-param-details">
+            <div class="doc-md-description">
+              <p>Whether this view is visible.</p>
+<p>Defaults to true if not specified.</p>
+            </div>
+            <p>
+                <span class="doc-param-annotation">
+                  <b>TYPE:</b>
+                    <code><span title="rerun.blueprint.components.VisibleLike">VisibleLike</span> | None</code>
+                </span>
+                <span class="doc-param-default">
+                  <b>DEFAULT:</b> 
+                    <code>None</code>
+                </span>
+            </p>
+          </td>
+        </tr>
+    </tbody>
+  </table>
+
+  </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+
+<h5 id="rerun.blueprint.views.BarChartView.blueprint_path" class="doc doc-heading">
+<code class="highlight language-python"><span class="k">def</span> <span class="nf">blueprint_path</span><span class="p">()</span></code>
+
+</h5>
+
+
+  <div class="doc doc-contents">
+  
+      <p>The blueprint path where this space view will be logged.</p>
+<p>Note that although this is an <code>EntityPath</code>, is scoped to the blueprint tree and
+not a part of the regular data hierarchy.</p>
+
+  </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+
+<h5 id="rerun.blueprint.views.BarChartView.to_blueprint" class="doc doc-heading">
+<code class="highlight language-python"><span class="k">def</span> <span class="nf">to_blueprint</span><span class="p">()</span></code>
+
+</h5>
+
+
+  <div class="doc doc-contents">
+  
+      <p>Convert this space view to a full blueprint.</p>
+
+  </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+
+<h5 id="rerun.blueprint.views.BarChartView.to_container" class="doc doc-heading">
+<code class="highlight language-python"><span class="k">def</span> <span class="nf">to_container</span><span class="p">()</span></code>
+
+</h5>
+
+
+  <div class="doc doc-contents">
+  
+      <p>Convert this space view to a container.</p>
+
+  </div>
+
+</div>
+
+
+
+  </div>
+
+  </div>
+
+</div>
+
+
+<div class="doc doc-object doc-class">
+
+
+
+<h4 id="rerun.blueprint.views.Spatial2DView" class="doc doc-heading">
+<code class="highlight language-python"><span class="k">class</span> <span class="nc">Spatial2DView</span></code>
+
+</h4>
+
+
+  <div class="doc doc-contents">
+      <p class="doc doc-class-bases">
+        Bases: <code><a class="autorefs autorefs-internal" title="rerun.blueprint.api.SpaceView" href="../blueprint_apis/#rerun.blueprint.SpaceView">SpaceView</a></code></p>
+
+  
+      <p><strong>View</strong>: For viewing spatial 2D data.</p>
+
+<details class="example" open>
+  <summary>Example</summary>
+  <h6 id="rerun.blueprint.views.Spatial2DView--use-a-blueprint-to-customize-a-spatial2dview">Use a blueprint to customize a Spatial2DView.:</h6>
+<p><div class="highlight"><pre><span></span><code><span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span class="kn">import</span> <span class="nn">rerun</span> <span class="k">as</span> <span class="nn">rr</span>
+<span class="kn">import</span> <span class="nn">rerun.blueprint</span> <span class="k">as</span> <span class="nn">rrb</span>
+
+<span class="n">rr</span><span class="o">.</span><span class="n">init</span><span class="p">(</span><span class="s2">&quot;rerun_example_spatial_2d&quot;</span><span class="p">,</span> <span class="n">spawn</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+<span class="c1"># Create a spiral of points:</span>
+<span class="n">n</span> <span class="o">=</span> <span class="mi">150</span>
+<span class="n">angle</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">10</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">pi</span><span class="p">,</span> <span class="n">n</span><span class="p">)</span>
+<span class="n">spiral_radius</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="mf">0.0</span><span class="p">,</span> <span class="mf">3.0</span><span class="p">,</span> <span class="n">n</span><span class="p">)</span> <span class="o">**</span> <span class="mi">2</span>
+<span class="n">positions</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">column_stack</span><span class="p">((</span><span class="n">np</span><span class="o">.</span><span class="n">cos</span><span class="p">(</span><span class="n">angle</span><span class="p">)</span> <span class="o">*</span> <span class="n">spiral_radius</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">sin</span><span class="p">(</span><span class="n">angle</span><span class="p">)</span> <span class="o">*</span> <span class="n">spiral_radius</span><span class="p">))</span>
+<span class="n">colors</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">dstack</span><span class="p">((</span><span class="n">np</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="mi">255</span><span class="p">,</span> <span class="mi">255</span><span class="p">,</span> <span class="n">n</span><span class="p">),</span> <span class="n">np</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="mi">255</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="n">n</span><span class="p">),</span> <span class="n">np</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">255</span><span class="p">,</span> <span class="n">n</span><span class="p">)))[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">int</span><span class="p">)</span>
+<span class="n">radii</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="mf">0.01</span><span class="p">,</span> <span class="mf">0.7</span><span class="p">,</span> <span class="n">n</span><span class="p">)</span>
+
+<span class="n">rr</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="s2">&quot;points&quot;</span><span class="p">,</span> <span class="n">rr</span><span class="o">.</span><span class="n">Points2D</span><span class="p">(</span><span class="n">positions</span><span class="p">,</span> <span class="n">colors</span><span class="o">=</span><span class="n">colors</span><span class="p">,</span> <span class="n">radii</span><span class="o">=</span><span class="n">radii</span><span class="p">))</span>
+
+<span class="c1"># Create a Spatial2D view to display the points.</span>
+<span class="n">blueprint</span> <span class="o">=</span> <span class="n">rrb</span><span class="o">.</span><span class="n">Blueprint</span><span class="p">(</span>
+    <span class="n">rrb</span><span class="o">.</span><span class="n">Spatial2DView</span><span class="p">(</span>
+        <span class="n">origin</span><span class="o">=</span><span class="s2">&quot;/&quot;</span><span class="p">,</span>
+        <span class="n">name</span><span class="o">=</span><span class="s2">&quot;2D Scene&quot;</span><span class="p">,</span>
+        <span class="c1"># Set the background color</span>
+        <span class="n">background</span><span class="o">=</span><span class="p">[</span><span class="mi">105</span><span class="p">,</span> <span class="mi">20</span><span class="p">,</span> <span class="mi">105</span><span class="p">],</span>
+        <span class="c1"># Note that this range is smaller than the range of the points,</span>
+        <span class="c1"># so some points will not be visible.</span>
+        <span class="n">visual_bounds</span><span class="o">=</span><span class="n">rrb</span><span class="o">.</span><span class="n">VisualBounds2D</span><span class="p">(</span><span class="n">x_range</span><span class="o">=</span><span class="p">[</span><span class="o">-</span><span class="mi">5</span><span class="p">,</span> <span class="mi">5</span><span class="p">],</span> <span class="n">y_range</span><span class="o">=</span><span class="p">[</span><span class="o">-</span><span class="mi">5</span><span class="p">,</span> <span class="mi">5</span><span class="p">]),</span>
+    <span class="p">),</span>
+    <span class="n">collapse_panels</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+<span class="p">)</span>
+
+<span class="n">rr</span><span class="o">.</span><span class="n">send_blueprint</span><span class="p">(</span><span class="n">blueprint</span><span class="p">)</span>
+</code></pre></div>
+<center>
+<picture>
+  <source media="(max-width: 480px)" srcset="https://static.rerun.io/Spatial2DVIew/824a075e0c50ea4110eb6ddd60257f087cb2264d/480w.png">
+  <source media="(max-width: 768px)" srcset="https://static.rerun.io/Spatial2DVIew/824a075e0c50ea4110eb6ddd60257f087cb2264d/768w.png">
+  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/Spatial2DVIew/824a075e0c50ea4110eb6ddd60257f087cb2264d/1024w.png">
+  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/Spatial2DVIew/824a075e0c50ea4110eb6ddd60257f087cb2264d/1200w.png">
+  <img src="https://static.rerun.io/Spatial2DVIew/824a075e0c50ea4110eb6ddd60257f087cb2264d/full.png" width="640">
+</picture>
+</center></p>
+</details>
+
+
+  
+
+  <div class="doc doc-children">
+
+
+
+
+
+
+
+
+
+<div class="doc doc-object doc-function">
+
+
+
+<h5 id="rerun.blueprint.views.Spatial2DView.__init__" class="doc doc-heading">
+<code class="highlight language-python"><span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="o">*</span><span class="p">,</span> <span class="n">origin</span><span class="o">=</span><span class="s1">&#39;/&#39;</span><span class="p">,</span> <span class="n">contents</span><span class="o">=</span><span class="s1">&#39;$origin/**&#39;</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">visible</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">background</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">visual_bounds</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">time_ranges</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span></code>
+
+</h5>
+
+
+  <div class="doc doc-contents">
+  
+      <p>Construct a blueprint for a new Spatial2DView view.</p>
+
+
+
+  <table>
+    <thead>
+      <tr>
+        <th><b>PARAMETER</b></th>
+        <th><b> DESCRIPTION</b></th>
+      </tr>
+    </thead>
+    <tbody>
+        <tr>
+          <td><code>origin</code></td>
+          <td class="doc-param-details">
+            <div class="doc-md-description">
+              <p>The <code>EntityPath</code> to use as the origin of this view.
+All other entities will be transformed to be displayed relative to this origin.</p>
+            </div>
+            <p>
+                <span class="doc-param-annotation">
+                  <b>TYPE:</b>
+                    <code><span title="rerun.datatypes.EntityPathLike">EntityPathLike</span></code>
+                </span>
+                <span class="doc-param-default">
+                  <b>DEFAULT:</b> 
+                    <code>&#39;/&#39;</code>
+                </span>
+            </p>
+          </td>
+        </tr>
+        <tr>
+          <td><code>contents</code></td>
+          <td class="doc-param-details">
+            <div class="doc-md-description">
+              <p>The contents of the view specified as a query expression.
+This is either a single expression, or a list of multiple expressions.
+See <a class="autorefs autorefs-internal" href="../blueprint_archetypes/#rerun.blueprint.archetypes.SpaceViewContents">rerun.blueprint.archetypes.SpaceViewContents</a>.</p>
+            </div>
+            <p>
+                <span class="doc-param-annotation">
+                  <b>TYPE:</b>
+                    <code><span title="rerun.blueprint.api.SpaceViewContentsLike">SpaceViewContentsLike</span></code>
+                </span>
+                <span class="doc-param-default">
+                  <b>DEFAULT:</b> 
+                    <code>&#39;$origin/**&#39;</code>
+                </span>
+            </p>
+          </td>
+        </tr>
+        <tr>
+          <td><code>name</code></td>
+          <td class="doc-param-details">
+            <div class="doc-md-description">
+              <p>The display name of the view.</p>
+            </div>
+            <p>
+                <span class="doc-param-annotation">
+                  <b>TYPE:</b>
+                    <code><span title="rerun.datatypes.Utf8Like">Utf8Like</span> | None</code>
+                </span>
+                <span class="doc-param-default">
+                  <b>DEFAULT:</b> 
+                    <code>None</code>
+                </span>
+            </p>
+          </td>
+        </tr>
+        <tr>
+          <td><code>visible</code></td>
+          <td class="doc-param-details">
+            <div class="doc-md-description">
+              <p>Whether this view is visible.</p>
+<p>Defaults to true if not specified.</p>
+            </div>
+            <p>
+                <span class="doc-param-annotation">
+                  <b>TYPE:</b>
+                    <code><span title="rerun.blueprint.components.VisibleLike">VisibleLike</span> | None</code>
+                </span>
+                <span class="doc-param-default">
+                  <b>DEFAULT:</b> 
+                    <code>None</code>
+                </span>
+            </p>
+          </td>
+        </tr>
+        <tr>
+          <td><code>background</code></td>
+          <td class="doc-param-details">
+            <div class="doc-md-description">
+              <p>Configuration for the background of the view.</p>
+            </div>
+            <p>
+                <span class="doc-param-annotation">
+                  <b>TYPE:</b>
+                    <code><a class="autorefs autorefs-internal" title="rerun.blueprint.archetypes.Background" href="../blueprint_archetypes/#rerun.blueprint.archetypes.Background">Background</a> | <span title="rerun.datatypes.Rgba32Like">Rgba32Like</span> | <span title="rerun.blueprint.components.BackgroundKindLike">BackgroundKindLike</span> | None</code>
+                </span>
+                <span class="doc-param-default">
+                  <b>DEFAULT:</b> 
+                    <code>None</code>
+                </span>
+            </p>
+          </td>
+        </tr>
+        <tr>
+          <td><code>visual_bounds</code></td>
+          <td class="doc-param-details">
+            <div class="doc-md-description">
+              <p>The visible parts of the scene, in the coordinate space of the scene.</p>
+<p>Everything within these bounds are guaranteed to be visible.
+Somethings outside of these bounds may also be visible due to letterboxing.</p>
+            </div>
+            <p>
+                <span class="doc-param-annotation">
+                  <b>TYPE:</b>
+                    <code><a class="autorefs autorefs-internal" title="rerun.blueprint.archetypes.VisualBounds2D" href="../blueprint_archetypes/#rerun.blueprint.archetypes.VisualBounds2D">VisualBounds2D</a> | None</code>
+                </span>
+                <span class="doc-param-default">
+                  <b>DEFAULT:</b> 
+                    <code>None</code>
+                </span>
+            </p>
+          </td>
+        </tr>
+        <tr>
+          <td><code>time_ranges</code></td>
+          <td class="doc-param-details">
+            <div class="doc-md-description">
+              <p>Configures which range on each timeline is shown by this view (unless specified differently per entity).</p>
+<p>If not specified, the default is to show the latest state of each component.
+If a timeline is specified more than once, the first entry will be used.</p>
+            </div>
+            <p>
+                <span class="doc-param-annotation">
+                  <b>TYPE:</b>
+                    <code><a class="autorefs autorefs-internal" title="rerun.blueprint.archetypes.VisibleTimeRanges" href="../blueprint_archetypes/#rerun.blueprint.archetypes.VisibleTimeRanges">VisibleTimeRanges</a> | <span title="rerun.datatypes.VisibleTimeRangeLike">VisibleTimeRangeLike</span> | <a class="autorefs autorefs-external" title="typing.Sequence" href="https://docs.python.org/3/library/typing.html#typing.Sequence">Sequence</a>[<span title="rerun.datatypes.VisibleTimeRangeLike">VisibleTimeRangeLike</span>] | None</code>
+                </span>
+                <span class="doc-param-default">
+                  <b>DEFAULT:</b> 
+                    <code>None</code>
+                </span>
+            </p>
+          </td>
+        </tr>
+    </tbody>
+  </table>
+
+  </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+
+<h5 id="rerun.blueprint.views.Spatial2DView.blueprint_path" class="doc doc-heading">
+<code class="highlight language-python"><span class="k">def</span> <span class="nf">blueprint_path</span><span class="p">()</span></code>
+
+</h5>
+
+
+  <div class="doc doc-contents">
+  
+      <p>The blueprint path where this space view will be logged.</p>
+<p>Note that although this is an <code>EntityPath</code>, is scoped to the blueprint tree and
+not a part of the regular data hierarchy.</p>
+
+  </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+
+<h5 id="rerun.blueprint.views.Spatial2DView.to_blueprint" class="doc doc-heading">
+<code class="highlight language-python"><span class="k">def</span> <span class="nf">to_blueprint</span><span class="p">()</span></code>
+
+</h5>
+
+
+  <div class="doc doc-contents">
+  
+      <p>Convert this space view to a full blueprint.</p>
+
+  </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+
+<h5 id="rerun.blueprint.views.Spatial2DView.to_container" class="doc doc-heading">
+<code class="highlight language-python"><span class="k">def</span> <span class="nf">to_container</span><span class="p">()</span></code>
+
+</h5>
+
+
+  <div class="doc doc-contents">
+  
+      <p>Convert this space view to a container.</p>
+
+  </div>
+
+</div>
+
+
+
+  </div>
+
+  </div>
+
+</div>
+
+
+<div class="doc doc-object doc-class">
+
+
+
+<h4 id="rerun.blueprint.views.Spatial3DView" class="doc doc-heading">
+<code class="highlight language-python"><span class="k">class</span> <span class="nc">Spatial3DView</span></code>
+
+</h4>
+
+
+  <div class="doc doc-contents">
+      <p class="doc doc-class-bases">
+        Bases: <code><a class="autorefs autorefs-internal" title="rerun.blueprint.api.SpaceView" href="../blueprint_apis/#rerun.blueprint.SpaceView">SpaceView</a></code></p>
+
+  
+      <p><strong>View</strong>: For viewing spatial 3D data.</p>
+
+<details class="example" open>
+  <summary>Example</summary>
+  <h6 id="rerun.blueprint.views.Spatial3DView--use-a-blueprint-to-customize-a-spatial3dview">Use a blueprint to customize a Spatial3DView.:</h6>
+<p><div class="highlight"><pre><span></span><code><span class="kn">import</span> <span class="nn">rerun</span> <span class="k">as</span> <span class="nn">rr</span>
+<span class="kn">import</span> <span class="nn">rerun.blueprint</span> <span class="k">as</span> <span class="nn">rrb</span>
+<span class="kn">from</span> <span class="nn">numpy.random</span> <span class="kn">import</span> <span class="n">default_rng</span>
+
+<span class="n">rr</span><span class="o">.</span><span class="n">init</span><span class="p">(</span><span class="s2">&quot;rerun_example_spatial_3d&quot;</span><span class="p">,</span> <span class="n">spawn</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+<span class="c1"># Create some random points.</span>
+<span class="n">rng</span> <span class="o">=</span> <span class="n">default_rng</span><span class="p">(</span><span class="mi">12345</span><span class="p">)</span>
+<span class="n">positions</span> <span class="o">=</span> <span class="n">rng</span><span class="o">.</span><span class="n">uniform</span><span class="p">(</span><span class="o">-</span><span class="mi">5</span><span class="p">,</span> <span class="mi">5</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="p">[</span><span class="mi">50</span><span class="p">,</span> <span class="mi">3</span><span class="p">])</span>
+<span class="n">colors</span> <span class="o">=</span> <span class="n">rng</span><span class="o">.</span><span class="n">uniform</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">255</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="p">[</span><span class="mi">50</span><span class="p">,</span> <span class="mi">3</span><span class="p">])</span>
+<span class="n">radii</span> <span class="o">=</span> <span class="n">rng</span><span class="o">.</span><span class="n">uniform</span><span class="p">(</span><span class="mf">0.1</span><span class="p">,</span> <span class="mf">0.5</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="p">[</span><span class="mi">50</span><span class="p">])</span>
+
+<span class="n">rr</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="s2">&quot;points&quot;</span><span class="p">,</span> <span class="n">rr</span><span class="o">.</span><span class="n">Points3D</span><span class="p">(</span><span class="n">positions</span><span class="p">,</span> <span class="n">colors</span><span class="o">=</span><span class="n">colors</span><span class="p">,</span> <span class="n">radii</span><span class="o">=</span><span class="n">radii</span><span class="p">))</span>
+<span class="n">rr</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="s2">&quot;box&quot;</span><span class="p">,</span> <span class="n">rr</span><span class="o">.</span><span class="n">Boxes3D</span><span class="p">(</span><span class="n">half_sizes</span><span class="o">=</span><span class="p">[</span><span class="mi">5</span><span class="p">,</span> <span class="mi">5</span><span class="p">,</span> <span class="mi">5</span><span class="p">],</span> <span class="n">colors</span><span class="o">=</span><span class="mi">0</span><span class="p">))</span>
+
+<span class="c1"># Create a Spatial3D view to display the points.</span>
+<span class="n">blueprint</span> <span class="o">=</span> <span class="n">rrb</span><span class="o">.</span><span class="n">Blueprint</span><span class="p">(</span>
+    <span class="n">rrb</span><span class="o">.</span><span class="n">Spatial3DView</span><span class="p">(</span>
+        <span class="n">origin</span><span class="o">=</span><span class="s2">&quot;/&quot;</span><span class="p">,</span>
+        <span class="n">name</span><span class="o">=</span><span class="s2">&quot;3D Scene&quot;</span><span class="p">,</span>
+        <span class="c1"># Set the background color to light blue.</span>
+        <span class="n">background</span><span class="o">=</span><span class="p">[</span><span class="mi">100</span><span class="p">,</span> <span class="mi">149</span><span class="p">,</span> <span class="mi">237</span><span class="p">],</span>
+    <span class="p">),</span>
+    <span class="n">collapse_panels</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+<span class="p">)</span>
+
+<span class="n">rr</span><span class="o">.</span><span class="n">send_blueprint</span><span class="p">(</span><span class="n">blueprint</span><span class="p">)</span>
+</code></pre></div>
+<center>
+<picture>
+  <source media="(max-width: 480px)" srcset="https://static.rerun.io/spatial3d/4816694fc4176cc284ff30d9c8f06c936a625ac9/480w.png">
+  <source media="(max-width: 768px)" srcset="https://static.rerun.io/spatial3d/4816694fc4176cc284ff30d9c8f06c936a625ac9/768w.png">
+  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/spatial3d/4816694fc4176cc284ff30d9c8f06c936a625ac9/1024w.png">
+  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/spatial3d/4816694fc4176cc284ff30d9c8f06c936a625ac9/1200w.png">
+  <img src="https://static.rerun.io/spatial3d/4816694fc4176cc284ff30d9c8f06c936a625ac9/full.png" width="640">
+</picture>
+</center></p>
+</details>
+
+
+  
+
+  <div class="doc doc-children">
+
+
+
+
+
+
+
+
+
+<div class="doc doc-object doc-function">
+
+
+
+<h5 id="rerun.blueprint.views.Spatial3DView.__init__" class="doc doc-heading">
+<code class="highlight language-python"><span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="o">*</span><span class="p">,</span> <span class="n">origin</span><span class="o">=</span><span class="s1">&#39;/&#39;</span><span class="p">,</span> <span class="n">contents</span><span class="o">=</span><span class="s1">&#39;$origin/**&#39;</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">visible</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">background</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">time_ranges</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span></code>
+
+</h5>
+
+
+  <div class="doc doc-contents">
+  
+      <p>Construct a blueprint for a new Spatial3DView view.</p>
+
+
+
+  <table>
+    <thead>
+      <tr>
+        <th><b>PARAMETER</b></th>
+        <th><b> DESCRIPTION</b></th>
+      </tr>
+    </thead>
+    <tbody>
+        <tr>
+          <td><code>origin</code></td>
+          <td class="doc-param-details">
+            <div class="doc-md-description">
+              <p>The <code>EntityPath</code> to use as the origin of this view.
+All other entities will be transformed to be displayed relative to this origin.</p>
+            </div>
+            <p>
+                <span class="doc-param-annotation">
+                  <b>TYPE:</b>
+                    <code><span title="rerun.datatypes.EntityPathLike">EntityPathLike</span></code>
+                </span>
+                <span class="doc-param-default">
+                  <b>DEFAULT:</b> 
+                    <code>&#39;/&#39;</code>
+                </span>
+            </p>
+          </td>
+        </tr>
+        <tr>
+          <td><code>contents</code></td>
+          <td class="doc-param-details">
+            <div class="doc-md-description">
+              <p>The contents of the view specified as a query expression.
+This is either a single expression, or a list of multiple expressions.
+See <a class="autorefs autorefs-internal" href="../blueprint_archetypes/#rerun.blueprint.archetypes.SpaceViewContents">rerun.blueprint.archetypes.SpaceViewContents</a>.</p>
+            </div>
+            <p>
+                <span class="doc-param-annotation">
+                  <b>TYPE:</b>
+                    <code><span title="rerun.blueprint.api.SpaceViewContentsLike">SpaceViewContentsLike</span></code>
+                </span>
+                <span class="doc-param-default">
+                  <b>DEFAULT:</b> 
+                    <code>&#39;$origin/**&#39;</code>
+                </span>
+            </p>
+          </td>
+        </tr>
+        <tr>
+          <td><code>name</code></td>
+          <td class="doc-param-details">
+            <div class="doc-md-description">
+              <p>The display name of the view.</p>
+            </div>
+            <p>
+                <span class="doc-param-annotation">
+                  <b>TYPE:</b>
+                    <code><span title="rerun.datatypes.Utf8Like">Utf8Like</span> | None</code>
+                </span>
+                <span class="doc-param-default">
+                  <b>DEFAULT:</b> 
+                    <code>None</code>
+                </span>
+            </p>
+          </td>
+        </tr>
+        <tr>
+          <td><code>visible</code></td>
+          <td class="doc-param-details">
+            <div class="doc-md-description">
+              <p>Whether this view is visible.</p>
+<p>Defaults to true if not specified.</p>
+            </div>
+            <p>
+                <span class="doc-param-annotation">
+                  <b>TYPE:</b>
+                    <code><span title="rerun.blueprint.components.VisibleLike">VisibleLike</span> | None</code>
+                </span>
+                <span class="doc-param-default">
+                  <b>DEFAULT:</b> 
+                    <code>None</code>
+                </span>
+            </p>
+          </td>
+        </tr>
+        <tr>
+          <td><code>background</code></td>
+          <td class="doc-param-details">
+            <div class="doc-md-description">
+              <p>Configuration for the background of the view.</p>
+            </div>
+            <p>
+                <span class="doc-param-annotation">
+                  <b>TYPE:</b>
+                    <code><a class="autorefs autorefs-internal" title="rerun.blueprint.archetypes.Background" href="../blueprint_archetypes/#rerun.blueprint.archetypes.Background">Background</a> | <span title="rerun.datatypes.Rgba32Like">Rgba32Like</span> | <span title="rerun.blueprint.components.BackgroundKindLike">BackgroundKindLike</span> | None</code>
+                </span>
+                <span class="doc-param-default">
+                  <b>DEFAULT:</b> 
+                    <code>None</code>
+                </span>
+            </p>
+          </td>
+        </tr>
+        <tr>
+          <td><code>time_ranges</code></td>
+          <td class="doc-param-details">
+            <div class="doc-md-description">
+              <p>Configures which range on each timeline is shown by this view (unless specified differently per entity).</p>
+<p>If not specified, the default is to show the latest state of each component.
+If a timeline is specified more than once, the first entry will be used.</p>
+            </div>
+            <p>
+                <span class="doc-param-annotation">
+                  <b>TYPE:</b>
+                    <code><a class="autorefs autorefs-internal" title="rerun.blueprint.archetypes.VisibleTimeRanges" href="../blueprint_archetypes/#rerun.blueprint.archetypes.VisibleTimeRanges">VisibleTimeRanges</a> | <span title="rerun.datatypes.VisibleTimeRangeLike">VisibleTimeRangeLike</span> | <a class="autorefs autorefs-external" title="typing.Sequence" href="https://docs.python.org/3/library/typing.html#typing.Sequence">Sequence</a>[<span title="rerun.datatypes.VisibleTimeRangeLike">VisibleTimeRangeLike</span>] | None</code>
+                </span>
+                <span class="doc-param-default">
+                  <b>DEFAULT:</b> 
+                    <code>None</code>
+                </span>
+            </p>
+          </td>
+        </tr>
+    </tbody>
+  </table>
+
+  </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+
+<h5 id="rerun.blueprint.views.Spatial3DView.blueprint_path" class="doc doc-heading">
+<code class="highlight language-python"><span class="k">def</span> <span class="nf">blueprint_path</span><span class="p">()</span></code>
+
+</h5>
+
+
+  <div class="doc doc-contents">
+  
+      <p>The blueprint path where this space view will be logged.</p>
+<p>Note that although this is an <code>EntityPath</code>, is scoped to the blueprint tree and
+not a part of the regular data hierarchy.</p>
+
+  </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+
+<h5 id="rerun.blueprint.views.Spatial3DView.to_blueprint" class="doc doc-heading">
+<code class="highlight language-python"><span class="k">def</span> <span class="nf">to_blueprint</span><span class="p">()</span></code>
+
+</h5>
+
+
+  <div class="doc doc-contents">
+  
+      <p>Convert this space view to a full blueprint.</p>
+
+  </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+
+<h5 id="rerun.blueprint.views.Spatial3DView.to_container" class="doc doc-heading">
+<code class="highlight language-python"><span class="k">def</span> <span class="nf">to_container</span><span class="p">()</span></code>
+
+</h5>
+
+
+  <div class="doc doc-contents">
+  
+      <p>Convert this space view to a container.</p>
+
+  </div>
+
+</div>
+
+
+
+  </div>
+
+  </div>
+
+</div>
+
+
+<div class="doc doc-object doc-class">
+
+
+
+<h4 id="rerun.blueprint.views.TensorView" class="doc doc-heading">
+<code class="highlight language-python"><span class="k">class</span> <span class="nc">TensorView</span></code>
+
+</h4>
+
+
+  <div class="doc doc-contents">
+      <p class="doc doc-class-bases">
+        Bases: <code><a class="autorefs autorefs-internal" title="rerun.blueprint.api.SpaceView" href="../blueprint_apis/#rerun.blueprint.SpaceView">SpaceView</a></code></p>
+
+  
+      <p><strong>View</strong>: A view on a tensor of any dimensionality.</p>
+
+<details class="example" open>
+  <summary>Example</summary>
+  <h6 id="rerun.blueprint.views.TensorView--use-a-blueprint-to-create-a-tensorview">Use a blueprint to create a TensorView.:</h6>
+<p><div class="highlight"><pre><span></span><code><span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span class="kn">import</span> <span class="nn">rerun</span> <span class="k">as</span> <span class="nn">rr</span>
+<span class="kn">import</span> <span class="nn">rerun.blueprint</span> <span class="k">as</span> <span class="nn">rrb</span>
+
+<span class="n">rr</span><span class="o">.</span><span class="n">init</span><span class="p">(</span><span class="s2">&quot;rerun_example_tensor&quot;</span><span class="p">,</span> <span class="n">spawn</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+<span class="n">tensor_one</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">randint</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">256</span><span class="p">,</span> <span class="p">(</span><span class="mi">8</span><span class="p">,</span> <span class="mi">6</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">5</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">uint8</span><span class="p">)</span>
+<span class="n">rr</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="s2">&quot;tensors/one&quot;</span><span class="p">,</span> <span class="n">rr</span><span class="o">.</span><span class="n">Tensor</span><span class="p">(</span><span class="n">tensor_one</span><span class="p">,</span> <span class="n">dim_names</span><span class="o">=</span><span class="p">(</span><span class="s2">&quot;width&quot;</span><span class="p">,</span> <span class="s2">&quot;height&quot;</span><span class="p">,</span> <span class="s2">&quot;channel&quot;</span><span class="p">,</span> <span class="s2">&quot;batch&quot;</span><span class="p">)))</span>
+<span class="n">tensor_two</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">random_sample</span><span class="p">((</span><span class="mi">10</span><span class="p">,</span> <span class="mi">20</span><span class="p">,</span> <span class="mi">30</span><span class="p">))</span>
+<span class="n">rr</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="s2">&quot;tensors/two&quot;</span><span class="p">,</span> <span class="n">rr</span><span class="o">.</span><span class="n">Tensor</span><span class="p">(</span><span class="n">tensor_two</span><span class="p">))</span>
+
+<span class="c1"># Create a tensor view that displays both tensors (you can switch between them inside the view).</span>
+<span class="n">blueprint</span> <span class="o">=</span> <span class="n">rrb</span><span class="o">.</span><span class="n">Blueprint</span><span class="p">(</span><span class="n">rrb</span><span class="o">.</span><span class="n">TensorView</span><span class="p">(</span><span class="n">origin</span><span class="o">=</span><span class="s2">&quot;/tensors&quot;</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s2">&quot;Tensors&quot;</span><span class="p">),</span> <span class="n">collapse_panels</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+<span class="n">rr</span><span class="o">.</span><span class="n">send_blueprint</span><span class="p">(</span><span class="n">blueprint</span><span class="p">)</span>
+</code></pre></div>
+<center>
+<picture>
+  <source media="(max-width: 480px)" srcset="https://static.rerun.io/tensor_view/3b452ace3cdb29ada1a613eae8e8e8e165a1d396/480w.png">
+  <source media="(max-width: 768px)" srcset="https://static.rerun.io/tensor_view/3b452ace3cdb29ada1a613eae8e8e8e165a1d396/768w.png">
+  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/tensor_view/3b452ace3cdb29ada1a613eae8e8e8e165a1d396/1024w.png">
+  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/tensor_view/3b452ace3cdb29ada1a613eae8e8e8e165a1d396/1200w.png">
+  <img src="https://static.rerun.io/tensor_view/3b452ace3cdb29ada1a613eae8e8e8e165a1d396/full.png" width="640">
+</picture>
+</center></p>
+</details>
+
+
+  
+
+  <div class="doc doc-children">
+
+
+
+
+
+
+
+
+
+<div class="doc doc-object doc-function">
+
+
+
+<h5 id="rerun.blueprint.views.TensorView.__init__" class="doc doc-heading">
+<code class="highlight language-python"><span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="o">*</span><span class="p">,</span> <span class="n">origin</span><span class="o">=</span><span class="s1">&#39;/&#39;</span><span class="p">,</span> <span class="n">contents</span><span class="o">=</span><span class="s1">&#39;$origin/**&#39;</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">visible</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span></code>
+
+</h5>
+
+
+  <div class="doc doc-contents">
+  
+      <p>Construct a blueprint for a new TensorView view.</p>
+
+
+
+  <table>
+    <thead>
+      <tr>
+        <th><b>PARAMETER</b></th>
+        <th><b> DESCRIPTION</b></th>
+      </tr>
+    </thead>
+    <tbody>
+        <tr>
+          <td><code>origin</code></td>
+          <td class="doc-param-details">
+            <div class="doc-md-description">
+              <p>The <code>EntityPath</code> to use as the origin of this view.
+All other entities will be transformed to be displayed relative to this origin.</p>
+            </div>
+            <p>
+                <span class="doc-param-annotation">
+                  <b>TYPE:</b>
+                    <code><span title="rerun.datatypes.EntityPathLike">EntityPathLike</span></code>
+                </span>
+                <span class="doc-param-default">
+                  <b>DEFAULT:</b> 
+                    <code>&#39;/&#39;</code>
+                </span>
+            </p>
+          </td>
+        </tr>
+        <tr>
+          <td><code>contents</code></td>
+          <td class="doc-param-details">
+            <div class="doc-md-description">
+              <p>The contents of the view specified as a query expression.
+This is either a single expression, or a list of multiple expressions.
+See <a class="autorefs autorefs-internal" href="../blueprint_archetypes/#rerun.blueprint.archetypes.SpaceViewContents">rerun.blueprint.archetypes.SpaceViewContents</a>.</p>
+            </div>
+            <p>
+                <span class="doc-param-annotation">
+                  <b>TYPE:</b>
+                    <code><span title="rerun.blueprint.api.SpaceViewContentsLike">SpaceViewContentsLike</span></code>
+                </span>
+                <span class="doc-param-default">
+                  <b>DEFAULT:</b> 
+                    <code>&#39;$origin/**&#39;</code>
+                </span>
+            </p>
+          </td>
+        </tr>
+        <tr>
+          <td><code>name</code></td>
+          <td class="doc-param-details">
+            <div class="doc-md-description">
+              <p>The display name of the view.</p>
+            </div>
+            <p>
+                <span class="doc-param-annotation">
+                  <b>TYPE:</b>
+                    <code><span title="rerun.datatypes.Utf8Like">Utf8Like</span> | None</code>
+                </span>
+                <span class="doc-param-default">
+                  <b>DEFAULT:</b> 
+                    <code>None</code>
+                </span>
+            </p>
+          </td>
+        </tr>
+        <tr>
+          <td><code>visible</code></td>
+          <td class="doc-param-details">
+            <div class="doc-md-description">
+              <p>Whether this view is visible.</p>
+<p>Defaults to true if not specified.</p>
+            </div>
+            <p>
+                <span class="doc-param-annotation">
+                  <b>TYPE:</b>
+                    <code><span title="rerun.blueprint.components.VisibleLike">VisibleLike</span> | None</code>
+                </span>
+                <span class="doc-param-default">
+                  <b>DEFAULT:</b> 
+                    <code>None</code>
+                </span>
+            </p>
+          </td>
+        </tr>
+    </tbody>
+  </table>
+
+  </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+
+<h5 id="rerun.blueprint.views.TensorView.blueprint_path" class="doc doc-heading">
+<code class="highlight language-python"><span class="k">def</span> <span class="nf">blueprint_path</span><span class="p">()</span></code>
+
+</h5>
+
+
+  <div class="doc doc-contents">
+  
+      <p>The blueprint path where this space view will be logged.</p>
+<p>Note that although this is an <code>EntityPath</code>, is scoped to the blueprint tree and
+not a part of the regular data hierarchy.</p>
+
+  </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+
+<h5 id="rerun.blueprint.views.TensorView.to_blueprint" class="doc doc-heading">
+<code class="highlight language-python"><span class="k">def</span> <span class="nf">to_blueprint</span><span class="p">()</span></code>
+
+</h5>
+
+
+  <div class="doc doc-contents">
+  
+      <p>Convert this space view to a full blueprint.</p>
+
+  </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+
+<h5 id="rerun.blueprint.views.TensorView.to_container" class="doc doc-heading">
+<code class="highlight language-python"><span class="k">def</span> <span class="nf">to_container</span><span class="p">()</span></code>
+
+</h5>
+
+
+  <div class="doc doc-contents">
+  
+      <p>Convert this space view to a container.</p>
+
+  </div>
+
+</div>
+
+
+
+  </div>
+
+  </div>
+
+</div>
+
+
+<div class="doc doc-object doc-class">
+
+
+
+<h4 id="rerun.blueprint.views.TextDocumentView" class="doc doc-heading">
+<code class="highlight language-python"><span class="k">class</span> <span class="nc">TextDocumentView</span></code>
+
+</h4>
+
+
+  <div class="doc doc-contents">
+      <p class="doc doc-class-bases">
+        Bases: <code><a class="autorefs autorefs-internal" title="rerun.blueprint.api.SpaceView" href="../blueprint_apis/#rerun.blueprint.SpaceView">SpaceView</a></code></p>
+
+  
+      <p><strong>View</strong>: A view of a single text document, for use with the <code>TextDocument</code> archetype.</p>
+
+<details class="example" open>
+  <summary>Example</summary>
+  <h6 id="rerun.blueprint.views.TextDocumentView--use-a-blueprint-to-show-a-text-document">Use a blueprint to show a text document.:</h6>
+<p><div class="highlight"><pre><span></span><code><span class="kn">import</span> <span class="nn">rerun</span> <span class="k">as</span> <span class="nn">rr</span>
+<span class="kn">import</span> <span class="nn">rerun.blueprint</span> <span class="k">as</span> <span class="nn">rrb</span>
+
+<span class="n">rr</span><span class="o">.</span><span class="n">init</span><span class="p">(</span><span class="s2">&quot;rerun_example_text_document&quot;</span><span class="p">,</span> <span class="n">spawn</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+<span class="n">rr</span><span class="o">.</span><span class="n">log</span><span class="p">(</span>
+    <span class="s2">&quot;markdown&quot;</span><span class="p">,</span>
+    <span class="n">rr</span><span class="o">.</span><span class="n">TextDocument</span><span class="p">(</span>
+<span class="w">        </span><span class="sd">&#39;&#39;&#39;</span>
+<span class="sd"># Hello Markdown!</span>
+<span class="sd">[Click here to see the raw text](recording://markdown:Text).</span>
+
+<span class="sd">Basic formatting:</span>
+
+<span class="sd">| **Feature**       | **Alternative** |</span>
+<span class="sd">| ----------------- | --------------- |</span>
+<span class="sd">| Plain             |                 |</span>
+<span class="sd">| *italics*         | _italics_       |</span>
+<span class="sd">| **bold**          | __bold__        |</span>
+<span class="sd">| ~~strikethrough~~ |                 |</span>
+<span class="sd">| `inline code`     |                 |</span>
+
+<span class="sd">----------------------------------</span>
+
+<span class="sd">## Support</span>
+<span class="sd">- [x] [Commonmark](https://commonmark.org/help/) support</span>
+<span class="sd">- [x] GitHub-style strikethrough, tables, and checkboxes</span>
+<span class="sd">- Basic syntax highlighting for:</span>
+<span class="sd">  - [x] C and C++</span>
+<span class="sd">  - [x] Python</span>
+<span class="sd">  - [x] Rust</span>
+<span class="sd">  - [ ] Other languages</span>
+
+<span class="sd">## Links</span>
+<span class="sd">You can link to [an entity](recording://markdown),</span>
+<span class="sd">a [specific instance of an entity](recording://markdown[#0]),</span>
+<span class="sd">or a [specific component](recording://markdown:Text).</span>
+
+<span class="sd">Of course you can also have [normal https links](https://github.com/rerun-io/rerun), e.g. &lt;https://rerun.io&gt;.</span>
+
+<span class="sd">## Image</span>
+<span class="sd">![A random image](https://picsum.photos/640/480)</span>
+<span class="sd">&#39;&#39;&#39;</span><span class="o">.</span><span class="n">strip</span><span class="p">(),</span>
+        <span class="n">media_type</span><span class="o">=</span><span class="n">rr</span><span class="o">.</span><span class="n">MediaType</span><span class="o">.</span><span class="n">MARKDOWN</span><span class="p">,</span>
+    <span class="p">),</span>
+<span class="p">)</span>
+
+<span class="c1"># Create a text view that displays the markdown.</span>
+<span class="n">blueprint</span> <span class="o">=</span> <span class="n">rrb</span><span class="o">.</span><span class="n">Blueprint</span><span class="p">(</span><span class="n">rrb</span><span class="o">.</span><span class="n">TextDocumentView</span><span class="p">(</span><span class="n">origin</span><span class="o">=</span><span class="s2">&quot;markdown&quot;</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s2">&quot;Markdown example&quot;</span><span class="p">),</span> <span class="n">collapse_panels</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+<span class="n">rr</span><span class="o">.</span><span class="n">send_blueprint</span><span class="p">(</span><span class="n">blueprint</span><span class="p">)</span>
+</code></pre></div>
+<center>
+<picture>
+  <source media="(max-width: 480px)" srcset="https://static.rerun.io/text_log/27f15235fe9639ff42b6ea0d2f0ce580685c021c/480w.png">
+  <source media="(max-width: 768px)" srcset="https://static.rerun.io/text_log/27f15235fe9639ff42b6ea0d2f0ce580685c021c/768w.png">
+  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/text_log/27f15235fe9639ff42b6ea0d2f0ce580685c021c/1024w.png">
+  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/text_log/27f15235fe9639ff42b6ea0d2f0ce580685c021c/1200w.png">
+  <img src="https://static.rerun.io/text_log/27f15235fe9639ff42b6ea0d2f0ce580685c021c/full.png" width="640">
+</picture>
+</center></p>
+</details>
+
+
+  
+
+  <div class="doc doc-children">
+
+
+
+
+
+
+
+
+
+<div class="doc doc-object doc-function">
+
+
+
+<h5 id="rerun.blueprint.views.TextDocumentView.__init__" class="doc doc-heading">
+<code class="highlight language-python"><span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="o">*</span><span class="p">,</span> <span class="n">origin</span><span class="o">=</span><span class="s1">&#39;/&#39;</span><span class="p">,</span> <span class="n">contents</span><span class="o">=</span><span class="s1">&#39;$origin/**&#39;</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">visible</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span></code>
+
+</h5>
+
+
+  <div class="doc doc-contents">
+  
+      <p>Construct a blueprint for a new TextDocumentView view.</p>
+
+
+
+  <table>
+    <thead>
+      <tr>
+        <th><b>PARAMETER</b></th>
+        <th><b> DESCRIPTION</b></th>
+      </tr>
+    </thead>
+    <tbody>
+        <tr>
+          <td><code>origin</code></td>
+          <td class="doc-param-details">
+            <div class="doc-md-description">
+              <p>The <code>EntityPath</code> to use as the origin of this view.
+All other entities will be transformed to be displayed relative to this origin.</p>
+            </div>
+            <p>
+                <span class="doc-param-annotation">
+                  <b>TYPE:</b>
+                    <code><span title="rerun.datatypes.EntityPathLike">EntityPathLike</span></code>
+                </span>
+                <span class="doc-param-default">
+                  <b>DEFAULT:</b> 
+                    <code>&#39;/&#39;</code>
+                </span>
+            </p>
+          </td>
+        </tr>
+        <tr>
+          <td><code>contents</code></td>
+          <td class="doc-param-details">
+            <div class="doc-md-description">
+              <p>The contents of the view specified as a query expression.
+This is either a single expression, or a list of multiple expressions.
+See <a class="autorefs autorefs-internal" href="../blueprint_archetypes/#rerun.blueprint.archetypes.SpaceViewContents">rerun.blueprint.archetypes.SpaceViewContents</a>.</p>
+            </div>
+            <p>
+                <span class="doc-param-annotation">
+                  <b>TYPE:</b>
+                    <code><span title="rerun.blueprint.api.SpaceViewContentsLike">SpaceViewContentsLike</span></code>
+                </span>
+                <span class="doc-param-default">
+                  <b>DEFAULT:</b> 
+                    <code>&#39;$origin/**&#39;</code>
+                </span>
+            </p>
+          </td>
+        </tr>
+        <tr>
+          <td><code>name</code></td>
+          <td class="doc-param-details">
+            <div class="doc-md-description">
+              <p>The display name of the view.</p>
+            </div>
+            <p>
+                <span class="doc-param-annotation">
+                  <b>TYPE:</b>
+                    <code><span title="rerun.datatypes.Utf8Like">Utf8Like</span> | None</code>
+                </span>
+                <span class="doc-param-default">
+                  <b>DEFAULT:</b> 
+                    <code>None</code>
+                </span>
+            </p>
+          </td>
+        </tr>
+        <tr>
+          <td><code>visible</code></td>
+          <td class="doc-param-details">
+            <div class="doc-md-description">
+              <p>Whether this view is visible.</p>
+<p>Defaults to true if not specified.</p>
+            </div>
+            <p>
+                <span class="doc-param-annotation">
+                  <b>TYPE:</b>
+                    <code><span title="rerun.blueprint.components.VisibleLike">VisibleLike</span> | None</code>
+                </span>
+                <span class="doc-param-default">
+                  <b>DEFAULT:</b> 
+                    <code>None</code>
+                </span>
+            </p>
+          </td>
+        </tr>
+    </tbody>
+  </table>
+
+  </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+
+<h5 id="rerun.blueprint.views.TextDocumentView.blueprint_path" class="doc doc-heading">
+<code class="highlight language-python"><span class="k">def</span> <span class="nf">blueprint_path</span><span class="p">()</span></code>
+
+</h5>
+
+
+  <div class="doc doc-contents">
+  
+      <p>The blueprint path where this space view will be logged.</p>
+<p>Note that although this is an <code>EntityPath</code>, is scoped to the blueprint tree and
+not a part of the regular data hierarchy.</p>
+
+  </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+
+<h5 id="rerun.blueprint.views.TextDocumentView.to_blueprint" class="doc doc-heading">
+<code class="highlight language-python"><span class="k">def</span> <span class="nf">to_blueprint</span><span class="p">()</span></code>
+
+</h5>
+
+
+  <div class="doc doc-contents">
+  
+      <p>Convert this space view to a full blueprint.</p>
+
+  </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+
+<h5 id="rerun.blueprint.views.TextDocumentView.to_container" class="doc doc-heading">
+<code class="highlight language-python"><span class="k">def</span> <span class="nf">to_container</span><span class="p">()</span></code>
+
+</h5>
+
+
+  <div class="doc doc-contents">
+  
+      <p>Convert this space view to a container.</p>
+
+  </div>
+
+</div>
+
+
+
+  </div>
+
+  </div>
+
+</div>
+
+
+<div class="doc doc-object doc-class">
+
+
+
+<h4 id="rerun.blueprint.views.TextLogView" class="doc doc-heading">
+<code class="highlight language-python"><span class="k">class</span> <span class="nc">TextLogView</span></code>
+
+</h4>
+
+
+  <div class="doc doc-contents">
+      <p class="doc doc-class-bases">
+        Bases: <code><a class="autorefs autorefs-internal" title="rerun.blueprint.api.SpaceView" href="../blueprint_apis/#rerun.blueprint.SpaceView">SpaceView</a></code></p>
+
+  
+      <p><strong>View</strong>: A view of a text log, for use with the <code>TextLog</code> archetype.</p>
+
+<details class="example" open>
+  <summary>Example</summary>
+  <h6 id="rerun.blueprint.views.TextLogView--use-a-blueprint-to-show-a-textlogview">Use a blueprint to show a TextLogView.:</h6>
+<p><div class="highlight"><pre><span></span><code><span class="kn">import</span> <span class="nn">rerun</span> <span class="k">as</span> <span class="nn">rr</span>
+<span class="kn">import</span> <span class="nn">rerun.blueprint</span> <span class="k">as</span> <span class="nn">rrb</span>
+
+<span class="n">rr</span><span class="o">.</span><span class="n">init</span><span class="p">(</span><span class="s2">&quot;rerun_example_text_log&quot;</span><span class="p">,</span> <span class="n">spawn</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+<span class="n">rr</span><span class="o">.</span><span class="n">set_time_sequence</span><span class="p">(</span><span class="s2">&quot;time&quot;</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+<span class="n">rr</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="s2">&quot;log/status&quot;</span><span class="p">,</span> <span class="n">rr</span><span class="o">.</span><span class="n">TextLog</span><span class="p">(</span><span class="s2">&quot;Application started.&quot;</span><span class="p">,</span> <span class="n">level</span><span class="o">=</span><span class="n">rr</span><span class="o">.</span><span class="n">TextLogLevel</span><span class="o">.</span><span class="n">INFO</span><span class="p">))</span>
+<span class="n">rr</span><span class="o">.</span><span class="n">set_time_sequence</span><span class="p">(</span><span class="s2">&quot;time&quot;</span><span class="p">,</span> <span class="mi">5</span><span class="p">)</span>
+<span class="n">rr</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="s2">&quot;log/other&quot;</span><span class="p">,</span> <span class="n">rr</span><span class="o">.</span><span class="n">TextLog</span><span class="p">(</span><span class="s2">&quot;A warning.&quot;</span><span class="p">,</span> <span class="n">level</span><span class="o">=</span><span class="n">rr</span><span class="o">.</span><span class="n">TextLogLevel</span><span class="o">.</span><span class="n">WARN</span><span class="p">))</span>
+<span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">10</span><span class="p">):</span>
+    <span class="n">rr</span><span class="o">.</span><span class="n">set_time_sequence</span><span class="p">(</span><span class="s2">&quot;time&quot;</span><span class="p">,</span> <span class="n">i</span><span class="p">)</span>
+    <span class="n">rr</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="s2">&quot;log/status&quot;</span><span class="p">,</span> <span class="n">rr</span><span class="o">.</span><span class="n">TextLog</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Processing item </span><span class="si">{</span><span class="n">i</span><span class="si">}</span><span class="s2">.&quot;</span><span class="p">,</span> <span class="n">level</span><span class="o">=</span><span class="n">rr</span><span class="o">.</span><span class="n">TextLogLevel</span><span class="o">.</span><span class="n">INFO</span><span class="p">))</span>
+
+<span class="c1"># Create a text view that displays all logs.</span>
+<span class="n">blueprint</span> <span class="o">=</span> <span class="n">rrb</span><span class="o">.</span><span class="n">Blueprint</span><span class="p">(</span><span class="n">rrb</span><span class="o">.</span><span class="n">TextLogView</span><span class="p">(</span><span class="n">origin</span><span class="o">=</span><span class="s2">&quot;/log&quot;</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s2">&quot;Text Logs&quot;</span><span class="p">),</span> <span class="n">collapse_panels</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+<span class="n">rr</span><span class="o">.</span><span class="n">send_blueprint</span><span class="p">(</span><span class="n">blueprint</span><span class="p">)</span>
+</code></pre></div>
+<center>
+<picture>
+  <source media="(max-width: 480px)" srcset="https://static.rerun.io/text_log/457ab91ec42a481bacae4146c0fc01eee397bb86/480w.png">
+  <source media="(max-width: 768px)" srcset="https://static.rerun.io/text_log/457ab91ec42a481bacae4146c0fc01eee397bb86/768w.png">
+  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/text_log/457ab91ec42a481bacae4146c0fc01eee397bb86/1024w.png">
+  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/text_log/457ab91ec42a481bacae4146c0fc01eee397bb86/1200w.png">
+  <img src="https://static.rerun.io/text_log/457ab91ec42a481bacae4146c0fc01eee397bb86/full.png" width="640">
+</picture>
+</center></p>
+</details>
+
+
+  
+
+  <div class="doc doc-children">
+
+
+
+
+
+
+
+
+
+<div class="doc doc-object doc-function">
+
+
+
+<h5 id="rerun.blueprint.views.TextLogView.__init__" class="doc doc-heading">
+<code class="highlight language-python"><span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="o">*</span><span class="p">,</span> <span class="n">origin</span><span class="o">=</span><span class="s1">&#39;/&#39;</span><span class="p">,</span> <span class="n">contents</span><span class="o">=</span><span class="s1">&#39;$origin/**&#39;</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">visible</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span></code>
+
+</h5>
+
+
+  <div class="doc doc-contents">
+  
+      <p>Construct a blueprint for a new TextLogView view.</p>
+
+
+
+  <table>
+    <thead>
+      <tr>
+        <th><b>PARAMETER</b></th>
+        <th><b> DESCRIPTION</b></th>
+      </tr>
+    </thead>
+    <tbody>
+        <tr>
+          <td><code>origin</code></td>
+          <td class="doc-param-details">
+            <div class="doc-md-description">
+              <p>The <code>EntityPath</code> to use as the origin of this view.
+All other entities will be transformed to be displayed relative to this origin.</p>
+            </div>
+            <p>
+                <span class="doc-param-annotation">
+                  <b>TYPE:</b>
+                    <code><span title="rerun.datatypes.EntityPathLike">EntityPathLike</span></code>
+                </span>
+                <span class="doc-param-default">
+                  <b>DEFAULT:</b> 
+                    <code>&#39;/&#39;</code>
+                </span>
+            </p>
+          </td>
+        </tr>
+        <tr>
+          <td><code>contents</code></td>
+          <td class="doc-param-details">
+            <div class="doc-md-description">
+              <p>The contents of the view specified as a query expression.
+This is either a single expression, or a list of multiple expressions.
+See <a class="autorefs autorefs-internal" href="../blueprint_archetypes/#rerun.blueprint.archetypes.SpaceViewContents">rerun.blueprint.archetypes.SpaceViewContents</a>.</p>
+            </div>
+            <p>
+                <span class="doc-param-annotation">
+                  <b>TYPE:</b>
+                    <code><span title="rerun.blueprint.api.SpaceViewContentsLike">SpaceViewContentsLike</span></code>
+                </span>
+                <span class="doc-param-default">
+                  <b>DEFAULT:</b> 
+                    <code>&#39;$origin/**&#39;</code>
+                </span>
+            </p>
+          </td>
+        </tr>
+        <tr>
+          <td><code>name</code></td>
+          <td class="doc-param-details">
+            <div class="doc-md-description">
+              <p>The display name of the view.</p>
+            </div>
+            <p>
+                <span class="doc-param-annotation">
+                  <b>TYPE:</b>
+                    <code><span title="rerun.datatypes.Utf8Like">Utf8Like</span> | None</code>
+                </span>
+                <span class="doc-param-default">
+                  <b>DEFAULT:</b> 
+                    <code>None</code>
+                </span>
+            </p>
+          </td>
+        </tr>
+        <tr>
+          <td><code>visible</code></td>
+          <td class="doc-param-details">
+            <div class="doc-md-description">
+              <p>Whether this view is visible.</p>
+<p>Defaults to true if not specified.</p>
+            </div>
+            <p>
+                <span class="doc-param-annotation">
+                  <b>TYPE:</b>
+                    <code><span title="rerun.blueprint.components.VisibleLike">VisibleLike</span> | None</code>
+                </span>
+                <span class="doc-param-default">
+                  <b>DEFAULT:</b> 
+                    <code>None</code>
+                </span>
+            </p>
+          </td>
+        </tr>
+    </tbody>
+  </table>
+
+  </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+
+<h5 id="rerun.blueprint.views.TextLogView.blueprint_path" class="doc doc-heading">
+<code class="highlight language-python"><span class="k">def</span> <span class="nf">blueprint_path</span><span class="p">()</span></code>
+
+</h5>
+
+
+  <div class="doc doc-contents">
+  
+      <p>The blueprint path where this space view will be logged.</p>
+<p>Note that although this is an <code>EntityPath</code>, is scoped to the blueprint tree and
+not a part of the regular data hierarchy.</p>
+
+  </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+
+<h5 id="rerun.blueprint.views.TextLogView.to_blueprint" class="doc doc-heading">
+<code class="highlight language-python"><span class="k">def</span> <span class="nf">to_blueprint</span><span class="p">()</span></code>
+
+</h5>
+
+
+  <div class="doc doc-contents">
+  
+      <p>Convert this space view to a full blueprint.</p>
+
+  </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+
+<h5 id="rerun.blueprint.views.TextLogView.to_container" class="doc doc-heading">
+<code class="highlight language-python"><span class="k">def</span> <span class="nf">to_container</span><span class="p">()</span></code>
+
+</h5>
+
+
+  <div class="doc doc-contents">
+  
+      <p>Convert this space view to a container.</p>
+
+  </div>
+
+</div>
+
+
+
+  </div>
+
+  </div>
+
+</div>
+
+
+<div class="doc doc-object doc-class">
+
+
+
+<h4 id="rerun.blueprint.views.TimeSeriesView" class="doc doc-heading">
+<code class="highlight language-python"><span class="k">class</span> <span class="nc">TimeSeriesView</span></code>
+
+</h4>
+
+
+  <div class="doc doc-contents">
+      <p class="doc doc-class-bases">
+        Bases: <code><a class="autorefs autorefs-internal" title="rerun.blueprint.api.SpaceView" href="../blueprint_apis/#rerun.blueprint.SpaceView">SpaceView</a></code></p>
+
+  
+      <p><strong>View</strong>: A time series view for scalars over time, for use with the <code>Scalars</code> archetype.</p>
+
+<details class="example" open>
+  <summary>Example</summary>
+  <h6 id="rerun.blueprint.views.TimeSeriesView--use-a-blueprint-to-customize-a-timeseriesview">Use a blueprint to customize a TimeSeriesView.:</h6>
+<p><div class="highlight"><pre><span></span><code><span class="kn">import</span> <span class="nn">math</span>
+
+<span class="kn">import</span> <span class="nn">rerun</span> <span class="k">as</span> <span class="nn">rr</span>
+<span class="kn">import</span> <span class="nn">rerun.blueprint</span> <span class="k">as</span> <span class="nn">rrb</span>
+
+<span class="n">rr</span><span class="o">.</span><span class="n">init</span><span class="p">(</span><span class="s2">&quot;rerun_example_timeseries&quot;</span><span class="p">,</span> <span class="n">spawn</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+<span class="c1"># Log some trigonometric functions</span>
+<span class="n">rr</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="s2">&quot;trig/sin&quot;</span><span class="p">,</span> <span class="n">rr</span><span class="o">.</span><span class="n">SeriesLine</span><span class="p">(</span><span class="n">color</span><span class="o">=</span><span class="p">[</span><span class="mi">255</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">],</span> <span class="n">name</span><span class="o">=</span><span class="s2">&quot;sin(0.01t)&quot;</span><span class="p">),</span> <span class="n">static</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="n">rr</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="s2">&quot;trig/cos&quot;</span><span class="p">,</span> <span class="n">rr</span><span class="o">.</span><span class="n">SeriesLine</span><span class="p">(</span><span class="n">color</span><span class="o">=</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">255</span><span class="p">,</span> <span class="mi">0</span><span class="p">],</span> <span class="n">name</span><span class="o">=</span><span class="s2">&quot;cos(0.01t)&quot;</span><span class="p">),</span> <span class="n">static</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="n">rr</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="s2">&quot;trig/cos&quot;</span><span class="p">,</span> <span class="n">rr</span><span class="o">.</span><span class="n">SeriesLine</span><span class="p">(</span><span class="n">color</span><span class="o">=</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">255</span><span class="p">],</span> <span class="n">name</span><span class="o">=</span><span class="s2">&quot;cos(0.01t) scaled&quot;</span><span class="p">),</span> <span class="n">static</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="k">for</span> <span class="n">t</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="nb">int</span><span class="p">(</span><span class="n">math</span><span class="o">.</span><span class="n">pi</span> <span class="o">*</span> <span class="mi">4</span> <span class="o">*</span> <span class="mf">100.0</span><span class="p">)):</span>
+    <span class="n">rr</span><span class="o">.</span><span class="n">set_time_sequence</span><span class="p">(</span><span class="s2">&quot;timeline0&quot;</span><span class="p">,</span> <span class="n">t</span><span class="p">)</span>
+    <span class="n">rr</span><span class="o">.</span><span class="n">set_time_seconds</span><span class="p">(</span><span class="s2">&quot;timeline1&quot;</span><span class="p">,</span> <span class="n">t</span><span class="p">)</span>
+    <span class="n">rr</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="s2">&quot;trig/sin&quot;</span><span class="p">,</span> <span class="n">rr</span><span class="o">.</span><span class="n">Scalar</span><span class="p">(</span><span class="n">math</span><span class="o">.</span><span class="n">sin</span><span class="p">(</span><span class="nb">float</span><span class="p">(</span><span class="n">t</span><span class="p">)</span> <span class="o">/</span> <span class="mf">100.0</span><span class="p">)))</span>
+    <span class="n">rr</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="s2">&quot;trig/cos&quot;</span><span class="p">,</span> <span class="n">rr</span><span class="o">.</span><span class="n">Scalar</span><span class="p">(</span><span class="n">math</span><span class="o">.</span><span class="n">cos</span><span class="p">(</span><span class="nb">float</span><span class="p">(</span><span class="n">t</span><span class="p">)</span> <span class="o">/</span> <span class="mf">100.0</span><span class="p">)))</span>
+    <span class="n">rr</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="s2">&quot;trig/cos_scaled&quot;</span><span class="p">,</span> <span class="n">rr</span><span class="o">.</span><span class="n">Scalar</span><span class="p">(</span><span class="n">math</span><span class="o">.</span><span class="n">cos</span><span class="p">(</span><span class="nb">float</span><span class="p">(</span><span class="n">t</span><span class="p">)</span> <span class="o">/</span> <span class="mf">100.0</span><span class="p">)</span> <span class="o">*</span> <span class="mf">2.0</span><span class="p">))</span>
+
+<span class="c1"># Create a TimeSeries View</span>
+<span class="n">blueprint</span> <span class="o">=</span> <span class="n">rrb</span><span class="o">.</span><span class="n">Blueprint</span><span class="p">(</span>
+    <span class="n">rrb</span><span class="o">.</span><span class="n">TimeSeriesView</span><span class="p">(</span>
+        <span class="n">origin</span><span class="o">=</span><span class="s2">&quot;/trig&quot;</span><span class="p">,</span>
+        <span class="c1"># Set a custom Y axis.</span>
+        <span class="n">axis_y</span><span class="o">=</span><span class="n">rrb</span><span class="o">.</span><span class="n">ScalarAxis</span><span class="p">(</span><span class="nb">range</span><span class="o">=</span><span class="p">(</span><span class="o">-</span><span class="mf">1.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">),</span> <span class="n">lock_range_during_zoom</span><span class="o">=</span><span class="kc">True</span><span class="p">),</span>
+        <span class="c1"># Configure the legend.</span>
+        <span class="n">plot_legend</span><span class="o">=</span><span class="n">rrb</span><span class="o">.</span><span class="n">PlotLegend</span><span class="p">(</span><span class="n">visible</span><span class="o">=</span><span class="kc">False</span><span class="p">),</span>
+        <span class="c1"># Set time different time ranges for different timelines.</span>
+        <span class="n">time_ranges</span><span class="o">=</span><span class="p">[</span>
+            <span class="c1"># Sliding window depending on the time cursor for the first timeline.</span>
+            <span class="n">rrb</span><span class="o">.</span><span class="n">VisibleTimeRange</span><span class="p">(</span>
+                <span class="s2">&quot;timeline0&quot;</span><span class="p">,</span>
+                <span class="n">start</span><span class="o">=</span><span class="n">rrb</span><span class="o">.</span><span class="n">TimeRangeBoundary</span><span class="o">.</span><span class="n">cursor_relative</span><span class="p">(</span><span class="n">seq</span><span class="o">=-</span><span class="mi">100</span><span class="p">),</span>
+                <span class="n">end</span><span class="o">=</span><span class="n">rrb</span><span class="o">.</span><span class="n">TimeRangeBoundary</span><span class="o">.</span><span class="n">cursor_relative</span><span class="p">(),</span>
+            <span class="p">),</span>
+            <span class="c1"># Time range from some point to the end of the timeline for the second timeline.</span>
+            <span class="n">rrb</span><span class="o">.</span><span class="n">VisibleTimeRange</span><span class="p">(</span>
+                <span class="s2">&quot;timeline1&quot;</span><span class="p">,</span>
+                <span class="n">start</span><span class="o">=</span><span class="n">rrb</span><span class="o">.</span><span class="n">TimeRangeBoundary</span><span class="o">.</span><span class="n">absolute</span><span class="p">(</span><span class="n">seconds</span><span class="o">=</span><span class="mf">300.0</span><span class="p">),</span>
+                <span class="n">end</span><span class="o">=</span><span class="n">rrb</span><span class="o">.</span><span class="n">TimeRangeBoundary</span><span class="o">.</span><span class="n">infinite</span><span class="p">(),</span>
+            <span class="p">),</span>
+        <span class="p">],</span>
+    <span class="p">),</span>
+    <span class="n">collapse_panels</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+<span class="p">)</span>
+
+<span class="n">rr</span><span class="o">.</span><span class="n">send_blueprint</span><span class="p">(</span><span class="n">blueprint</span><span class="p">)</span>
+</code></pre></div>
+<center>
+<picture>
+  <source media="(max-width: 480px)" srcset="https://static.rerun.io/timeseries_view/c87150647feb413627fdb8563afe33b39d7dbf57/480w.png">
+  <source media="(max-width: 768px)" srcset="https://static.rerun.io/timeseries_view/c87150647feb413627fdb8563afe33b39d7dbf57/768w.png">
+  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/timeseries_view/c87150647feb413627fdb8563afe33b39d7dbf57/1024w.png">
+  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/timeseries_view/c87150647feb413627fdb8563afe33b39d7dbf57/1200w.png">
+  <img src="https://static.rerun.io/timeseries_view/c87150647feb413627fdb8563afe33b39d7dbf57/full.png" width="640">
+</picture>
+</center></p>
+</details>
+
+
+  
+
+  <div class="doc doc-children">
+
+
+
+
+
+
+
+
+
+<div class="doc doc-object doc-function">
+
+
+
+<h5 id="rerun.blueprint.views.TimeSeriesView.__init__" class="doc doc-heading">
+<code class="highlight language-python"><span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="o">*</span><span class="p">,</span> <span class="n">origin</span><span class="o">=</span><span class="s1">&#39;/&#39;</span><span class="p">,</span> <span class="n">contents</span><span class="o">=</span><span class="s1">&#39;$origin/**&#39;</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">visible</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">axis_y</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">plot_legend</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">time_ranges</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span></code>
+
+</h5>
+
+
+  <div class="doc doc-contents">
+  
+      <p>Construct a blueprint for a new TimeSeriesView view.</p>
+
+
+
+  <table>
+    <thead>
+      <tr>
+        <th><b>PARAMETER</b></th>
+        <th><b> DESCRIPTION</b></th>
+      </tr>
+    </thead>
+    <tbody>
+        <tr>
+          <td><code>origin</code></td>
+          <td class="doc-param-details">
+            <div class="doc-md-description">
+              <p>The <code>EntityPath</code> to use as the origin of this view.
+All other entities will be transformed to be displayed relative to this origin.</p>
+            </div>
+            <p>
+                <span class="doc-param-annotation">
+                  <b>TYPE:</b>
+                    <code><span title="rerun.datatypes.EntityPathLike">EntityPathLike</span></code>
+                </span>
+                <span class="doc-param-default">
+                  <b>DEFAULT:</b> 
+                    <code>&#39;/&#39;</code>
+                </span>
+            </p>
+          </td>
+        </tr>
+        <tr>
+          <td><code>contents</code></td>
+          <td class="doc-param-details">
+            <div class="doc-md-description">
+              <p>The contents of the view specified as a query expression.
+This is either a single expression, or a list of multiple expressions.
+See <a class="autorefs autorefs-internal" href="../blueprint_archetypes/#rerun.blueprint.archetypes.SpaceViewContents">rerun.blueprint.archetypes.SpaceViewContents</a>.</p>
+            </div>
+            <p>
+                <span class="doc-param-annotation">
+                  <b>TYPE:</b>
+                    <code><span title="rerun.blueprint.api.SpaceViewContentsLike">SpaceViewContentsLike</span></code>
+                </span>
+                <span class="doc-param-default">
+                  <b>DEFAULT:</b> 
+                    <code>&#39;$origin/**&#39;</code>
+                </span>
+            </p>
+          </td>
+        </tr>
+        <tr>
+          <td><code>name</code></td>
+          <td class="doc-param-details">
+            <div class="doc-md-description">
+              <p>The display name of the view.</p>
+            </div>
+            <p>
+                <span class="doc-param-annotation">
+                  <b>TYPE:</b>
+                    <code><span title="rerun.datatypes.Utf8Like">Utf8Like</span> | None</code>
+                </span>
+                <span class="doc-param-default">
+                  <b>DEFAULT:</b> 
+                    <code>None</code>
+                </span>
+            </p>
+          </td>
+        </tr>
+        <tr>
+          <td><code>visible</code></td>
+          <td class="doc-param-details">
+            <div class="doc-md-description">
+              <p>Whether this view is visible.</p>
+<p>Defaults to true if not specified.</p>
+            </div>
+            <p>
+                <span class="doc-param-annotation">
+                  <b>TYPE:</b>
+                    <code><span title="rerun.blueprint.components.VisibleLike">VisibleLike</span> | None</code>
+                </span>
+                <span class="doc-param-default">
+                  <b>DEFAULT:</b> 
+                    <code>None</code>
+                </span>
+            </p>
+          </td>
+        </tr>
+        <tr>
+          <td><code>axis_y</code></td>
+          <td class="doc-param-details">
+            <div class="doc-md-description">
+              <p>Configures the vertical axis of the plot.</p>
+            </div>
+            <p>
+                <span class="doc-param-annotation">
+                  <b>TYPE:</b>
+                    <code><a class="autorefs autorefs-internal" title="rerun.blueprint.archetypes.ScalarAxis" href="../blueprint_archetypes/#rerun.blueprint.archetypes.ScalarAxis">ScalarAxis</a> | None</code>
+                </span>
+                <span class="doc-param-default">
+                  <b>DEFAULT:</b> 
+                    <code>None</code>
+                </span>
+            </p>
+          </td>
+        </tr>
+        <tr>
+          <td><code>plot_legend</code></td>
+          <td class="doc-param-details">
+            <div class="doc-md-description">
+              <p>Configures the legend of the plot.</p>
+            </div>
+            <p>
+                <span class="doc-param-annotation">
+                  <b>TYPE:</b>
+                    <code><a class="autorefs autorefs-internal" title="rerun.blueprint.archetypes.PlotLegend" href="../blueprint_archetypes/#rerun.blueprint.archetypes.PlotLegend">PlotLegend</a> | <a class="autorefs autorefs-internal" title="rerun.blueprint.components.Corner2D" href="../blueprint_components/#rerun.blueprint.components.Corner2D">Corner2D</a> | None</code>
+                </span>
+                <span class="doc-param-default">
+                  <b>DEFAULT:</b> 
+                    <code>None</code>
+                </span>
+            </p>
+          </td>
+        </tr>
+        <tr>
+          <td><code>time_ranges</code></td>
+          <td class="doc-param-details">
+            <div class="doc-md-description">
+              <p>Configures which range on each timeline is shown by this view (unless specified differently per entity).</p>
+<p>If not specified, the default is to show the entire timeline.
+If a timeline is specified more than once, the first entry will be used.</p>
+            </div>
+            <p>
+                <span class="doc-param-annotation">
+                  <b>TYPE:</b>
+                    <code><a class="autorefs autorefs-internal" title="rerun.blueprint.archetypes.VisibleTimeRanges" href="../blueprint_archetypes/#rerun.blueprint.archetypes.VisibleTimeRanges">VisibleTimeRanges</a> | <span title="rerun.datatypes.VisibleTimeRangeLike">VisibleTimeRangeLike</span> | <a class="autorefs autorefs-external" title="typing.Sequence" href="https://docs.python.org/3/library/typing.html#typing.Sequence">Sequence</a>[<span title="rerun.datatypes.VisibleTimeRangeLike">VisibleTimeRangeLike</span>] | None</code>
+                </span>
+                <span class="doc-param-default">
+                  <b>DEFAULT:</b> 
+                    <code>None</code>
+                </span>
+            </p>
+          </td>
+        </tr>
+    </tbody>
+  </table>
+
+  </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+
+<h5 id="rerun.blueprint.views.TimeSeriesView.blueprint_path" class="doc doc-heading">
+<code class="highlight language-python"><span class="k">def</span> <span class="nf">blueprint_path</span><span class="p">()</span></code>
+
+</h5>
+
+
+  <div class="doc doc-contents">
+  
+      <p>The blueprint path where this space view will be logged.</p>
+<p>Note that although this is an <code>EntityPath</code>, is scoped to the blueprint tree and
+not a part of the regular data hierarchy.</p>
+
+  </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+
+<h5 id="rerun.blueprint.views.TimeSeriesView.to_blueprint" class="doc doc-heading">
+<code class="highlight language-python"><span class="k">def</span> <span class="nf">to_blueprint</span><span class="p">()</span></code>
+
+</h5>
+
+
+  <div class="doc doc-contents">
+  
+      <p>Convert this space view to a full blueprint.</p>
+
+  </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+
+<h5 id="rerun.blueprint.views.TimeSeriesView.to_container" class="doc doc-heading">
+<code class="highlight language-python"><span class="k">def</span> <span class="nf">to_container</span><span class="p">()</span></code>
+
+</h5>
+
+
+  <div class="doc doc-contents">
+  
+      <p>Convert this space view to a container.</p>
+
+  </div>
+
+</div>
+
+
+
+  </div>
+
+  </div>
+
+</div>
+
+
+
+
+  </div>
+
+  </div>
+
+</div>
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+        </div>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    <script id="__config" type="application/json">{"base": "../..", "features": ["navigation.indexes", "navigation.instant", "navigation.tabs", "navigation.tabs.sticky", "navigation.tracking"], "search": "../../assets/javascripts/workers/search.f886a092.min.js", "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"default": "latest", "provider": "mike"}}</script>
+    
+    
+      <script src="../../assets/javascripts/bundle.aecac24b.min.js"></script>
+      
+    
+  </body>
+</html>

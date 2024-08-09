@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"fn":["color_hover","display_color_ui","edit_color_ui"]};

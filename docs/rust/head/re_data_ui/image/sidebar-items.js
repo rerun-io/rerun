@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"constant":["ZOOMED_IMAGE_TEXEL_RADIUS"],"fn":["copy_and_save_image_ui","image_pixel_value_ui","largest_size_that_fits_in","rgb8_histogram_ui","save_image","show_image_preview","show_zoomed_image_region","show_zoomed_image_region_area_outline","try_show_zoomed_image_region"]};

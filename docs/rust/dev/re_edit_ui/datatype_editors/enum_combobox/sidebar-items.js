@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"fn":["edit_enum","edit_enum_impl","variant_ui"]};

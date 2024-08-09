@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"fn":["edit_bool","edit_bool_impl","edit_bool_raw"]};

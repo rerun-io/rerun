@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"fn":["hash","hash_with"],"struct":["OrderedFloat"]};

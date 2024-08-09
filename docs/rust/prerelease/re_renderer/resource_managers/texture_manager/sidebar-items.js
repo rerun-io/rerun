@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"enum":["TextureCreationError","TextureManager2DError"],"fn":["create_zero_texture"],"struct":["GpuTexture2D","Inner","Texture2DCreationDesc","TextureManager2D"]};

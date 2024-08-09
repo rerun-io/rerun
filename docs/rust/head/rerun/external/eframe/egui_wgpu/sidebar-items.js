@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"enum":["SurfaceErrorAction","WgpuError"],"fn":["adapter_info_summary","depth_format_from_bits","preferred_framebuffer_format"],"mod":["wgpu","winit"],"struct":["Callback","RenderState","Renderer","ScreenDescriptor","WgpuConfiguration"],"trait":["CallbackTrait"],"type":["CallbackResources"]};

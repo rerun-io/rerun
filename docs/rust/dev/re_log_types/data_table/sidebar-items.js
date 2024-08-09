@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"constant":["METADATA_KIND","METADATA_KIND_CONTROL","METADATA_KIND_DATA","METADATA_KIND_TIME"],"enum":["DataTableError"],"struct":["DataCellColumn","DataTable","TableId"],"type":["DataCellOptVec","DataTableResult","EntityPathVec","ErasedTimeVec","RowIdVec","TimeOptVec","TimePointVec"]};

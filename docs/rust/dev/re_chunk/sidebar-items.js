@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"enum":["ChunkBatcherError","ChunkError"],"fn":["arrays_to_list_array"],"mod":["batcher","chunk","external","shuffle","transport","util"],"struct":["Chunk","ChunkBatcher","ChunkBatcherConfig","ChunkTimeline","PendingRow","TransportChunk"],"type":["ChunkBatcherResult","ChunkId","ChunkResult"]};

@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"fn":["collect_snippets_recursively"],"struct":["Config","OptOut","Snippet","Snippets"]};

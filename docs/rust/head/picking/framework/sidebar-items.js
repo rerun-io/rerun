@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"fn":["load_rerun_mesh","main","preferred_framebuffer_format","run","split_resolution","start"],"struct":["Application","SplitView","Time","ViewDrawResult"],"trait":["Example"]};

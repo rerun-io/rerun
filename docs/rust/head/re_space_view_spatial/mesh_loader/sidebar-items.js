@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"fn":["mesh_texture_from_tensor_data","texture_height_width_channels"],"struct":["LoadedMesh"]};

@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"enum":["UiLayout"],"fn":["none_or_many_values_ui","try_deserialize"],"struct":["ComponentUiRegistry","ComponentUiTypes"],"type":["ComponentUiCallback","UntypedComponentEditCallback"]};
