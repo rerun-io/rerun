@@ -13,6 +13,7 @@ pub fn create_component_ui_registry() -> ComponentUiRegistry {
     let mut registry = ComponentUiRegistry::new(Box::new(&fallback_component_ui));
 
     add_to_registry::<re_types::components::AnnotationContext>(&mut registry);
+    add_to_registry::<re_types::components::Blob>(&mut registry);
     add_to_registry::<re_types::components::ClassId>(&mut registry);
     add_to_registry::<re_types::components::ImageFormat>(&mut registry);
     add_to_registry::<re_types::components::KeypointId>(&mut registry);

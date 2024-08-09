@@ -8,6 +8,7 @@ use re_viewer_context::{UiLayout, ViewerContext};
 
 mod annotation_context;
 mod app_id;
+mod blob;
 mod blueprint_data;
 mod blueprint_types;
 mod component;
