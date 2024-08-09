@@ -1235,9 +1235,9 @@
     <span class="kw">pub </span>batches: <span class="kw-2">*mut </span>CComponentBatch,
 }
 
-<span class="doccomment">/// See `rr_partitioned_component_batch` in the C header.
+<span class="doccomment">/// See `rr_component_column` in the C header.
 </span><span class="attr">#[repr(C)]
-</span><span class="kw">pub struct </span>CPartitionedComponentBatch {
+</span><span class="kw">pub struct </span>CComponentColumns {
     <span class="kw">pub </span>component_type: CComponentTypeHandle,
 
     <span class="doccomment">/// A ListArray with the datatype `List(component_type)`.
@@ -1968,7 +1968,7 @@
     stream: CRecordingStream,
     entity_path: CStringView,
     time_columns: <span class="kw-2">&amp;</span>[CTimeColumn],
-    component_batches: <span class="kw-2">&amp;</span>[CPartitionedComponentBatch],
+    component_columns: <span class="kw-2">&amp;</span>[CComponentColumns],
 ) -&gt; <span class="prelude-ty">Result</span>&lt;(), CError&gt; {
     <span class="comment">// Create chunk-id as early as possible. It has a timestamp and is used to estimate e2e latency.
     </span><span class="kw">let </span>id = ChunkId::new();
@@ -2005,10 +2005,10 @@
 
     <span class="kw">let </span>components: BTreeMap&lt;ComponentName, arrow2::array::ListArray&lt;i32&gt;&gt; = {
         <span class="kw">let </span>component_type_registry = COMPONENT_TYPES.read();
-        component_batches
+        component_columns
             .iter()
             .map(|batch| {
-                <span class="kw">let </span>CPartitionedComponentBatch {
+                <span class="kw">let </span>CComponentColumns {
                     component_type,
                     array,
                 } = <span class="kw-2">&amp;</span>batch;
@@ -2053,7 +2053,7 @@
     entity_path: CStringView,
     time_columns: <span class="kw-2">*const </span>CTimeColumn,
     num_time_columns: u32,
-    component_batches: <span class="kw-2">*const </span>CPartitionedComponentBatch,
+    component_batches: <span class="kw-2">*const </span>CComponentColumns,
     num_component_batches: u32,
     error: <span class="kw-2">*mut </span>CError,
 ) {

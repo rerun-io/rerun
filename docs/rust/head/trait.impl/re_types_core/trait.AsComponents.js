@@ -6,5 +6,5 @@
 "re_types_core":[],
 "re_viewer":[],
 "rerun":[],
-"snippets":[["impl <a class=\"trait\" href=\"re_types_core/trait.AsComponents.html\" title=\"trait re_types_core::AsComponents\">AsComponents</a> for <a class=\"struct\" href=\"snippets/snippets/custom_data/struct.CustomPoints3D.html\" title=\"struct snippets::snippets::custom_data::CustomPoints3D\">CustomPoints3D</a>"]]
+"snippets":[["impl AsComponents for <a class=\"struct\" href=\"snippets/snippets/custom_data/struct.CustomPoints3D.html\" title=\"struct snippets::snippets::custom_data::CustomPoints3D\">CustomPoints3D</a>"]]
 };if (window.register_implementors) {window.register_implementors(implementors);} else {window.pending_implementors = implementors;}})()

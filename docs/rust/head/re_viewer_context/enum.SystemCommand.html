@@ -2,7 +2,7 @@
     <main><div class="width-limiter"><nav class="sub"><form class="search-form"><span></span><div id="sidebar-button" tabindex="-1"><a href="../re_viewer_context/all.html" title="show sidebar"></a></div><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" tabindex="-1"><a href="../help.html" title="help">?</a></div><div id="settings-menu" tabindex="-1"><a href="../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="main-heading"><h1>Enum <a href="index.html">re_viewer_context</a>::<wbr><a class="enum" href="#">SystemCommand</a><button id="copy-path" title="Copy item path to clipboard"><img src="../static.files/clipboard-7571035ce49a181d.svg" width="19" height="18" alt="Copy item path"></button></h1><span class="out-of-band"><a class="src" href="../src/re_viewer_context/command_sender.rs.html#11-83">source</a> · <button id="toggle-all-docs" title="collapse all docs">[<span>&#x2212;</span>]</button></span></div><pre class="rust item-decl"><code>pub enum SystemCommand {
 <details class="toggle type-contents-toggle"><summary class="hideme"><span>Show 17 variants</span></summary>    ActivateApp(ApplicationId),
     CloseApp(ApplicationId),
-    LoadDataSource(<a class="enum" href="../re_data_source/data_source/enum.DataSource.html" title="enum re_data_source::data_source::DataSource">DataSource</a>),
+    LoadDataSource(DataSource),
     ClearSourceAndItsStores(SmartChannelSource),
     AddReceiver(Receiver&lt;LogMsg&gt;),
     ResetViewer,
@@ -11,7 +11,7 @@
     ActivateRecording(StoreId),
     CloseStore(StoreId),
     CloseAllRecordings,
-    UpdateBlueprint(StoreId, <a class="struct" href="https://doc.rust-lang.org/1.76.0/alloc/vec/struct.Vec.html" title="struct alloc::vec::Vec">Vec</a>&lt;<a class="struct" href="../re_chunk/chunk/struct.Chunk.html" title="struct re_chunk::chunk::Chunk">Chunk</a>&gt;),
+    UpdateBlueprint(StoreId, <a class="struct" href="https://doc.rust-lang.org/1.76.0/alloc/vec/struct.Vec.html" title="struct alloc::vec::Vec">Vec</a>&lt;Chunk&gt;),
     DropEntity(StoreId, EntityPath),
     EnableInspectBlueprintTimeline(<a class="primitive" href="https://doc.rust-lang.org/1.76.0/std/primitive.bool.html">bool</a>),
     EnableExperimentalDataframeSpaceView(<a class="primitive" href="https://doc.rust-lang.org/1.76.0/std/primitive.bool.html">bool</a>),
@@ -20,7 +20,7 @@
 </details>}</code></pre><details class="toggle top-doc" open><summary class="hideme"><span>Expand description</span></summary><div class="docblock"><p>Commands used by internal system components</p>
 </div></details><h2 id="variants" class="variants section-header">Variants<a href="#variants" class="anchor">§</a></h2><div class="variants"><section id="variant.ActivateApp" class="variant"><a href="#variant.ActivateApp" class="anchor">§</a><h3 class="code-header">ActivateApp(ApplicationId)</h3></section><div class="docblock"><p>Make this the active application.</p>
 </div><section id="variant.CloseApp" class="variant"><a href="#variant.CloseApp" class="anchor">§</a><h3 class="code-header">CloseApp(ApplicationId)</h3></section><div class="docblock"><p>Close this app and all its recordings.</p>
-</div><section id="variant.LoadDataSource" class="variant"><a href="#variant.LoadDataSource" class="anchor">§</a><h3 class="code-header">LoadDataSource(<a class="enum" href="../re_data_source/data_source/enum.DataSource.html" title="enum re_data_source::data_source::DataSource">DataSource</a>)</h3></section><div class="docblock"><p>Load some data.</p>
+</div><section id="variant.LoadDataSource" class="variant"><a href="#variant.LoadDataSource" class="anchor">§</a><h3 class="code-header">LoadDataSource(DataSource)</h3></section><div class="docblock"><p>Load some data.</p>
 </div><section id="variant.ClearSourceAndItsStores" class="variant"><a href="#variant.ClearSourceAndItsStores" class="anchor">§</a><h3 class="code-header">ClearSourceAndItsStores(SmartChannelSource)</h3></section><div class="docblock"><p>Clear everything that came from this source, and close the source.</p>
 </div><section id="variant.AddReceiver" class="variant"><a href="#variant.AddReceiver" class="anchor">§</a><h3 class="code-header">AddReceiver(Receiver&lt;LogMsg&gt;)</h3></section><section id="variant.ResetViewer" class="variant"><a href="#variant.ResetViewer" class="anchor">§</a><h3 class="code-header">ResetViewer</h3></section><div class="docblock"><p>Reset the <code>Viewer</code> to the default state</p>
 </div><section id="variant.ClearActiveBlueprint" class="variant"><a href="#variant.ClearActiveBlueprint" class="anchor">§</a><h3 class="code-header">ClearActiveBlueprint</h3></section><div class="docblock"><p>Reset the <code>Blueprint</code> to the default state</p>
@@ -28,7 +28,7 @@
 </div><section id="variant.ActivateRecording" class="variant"><a href="#variant.ActivateRecording" class="anchor">§</a><h3 class="code-header">ActivateRecording(StoreId)</h3></section><div class="docblock"><p>If this is a recording, switch to it.</p>
 </div><section id="variant.CloseStore" class="variant"><a href="#variant.CloseStore" class="anchor">§</a><h3 class="code-header">CloseStore(StoreId)</h3></section><div class="docblock"><p>Close a recording or blueprint (free its memory).</p>
 </div><section id="variant.CloseAllRecordings" class="variant"><a href="#variant.CloseAllRecordings" class="anchor">§</a><h3 class="code-header">CloseAllRecordings</h3></section><div class="docblock"><p>Close all stores and show the welcome screen again.</p>
-</div><section id="variant.UpdateBlueprint" class="variant"><a href="#variant.UpdateBlueprint" class="anchor">§</a><h3 class="code-header">UpdateBlueprint(StoreId, <a class="struct" href="https://doc.rust-lang.org/1.76.0/alloc/vec/struct.Vec.html" title="struct alloc::vec::Vec">Vec</a>&lt;<a class="struct" href="../re_chunk/chunk/struct.Chunk.html" title="struct re_chunk::chunk::Chunk">Chunk</a>&gt;)</h3></section><div class="docblock"><p>Update the blueprint with additional data</p>
+</div><section id="variant.UpdateBlueprint" class="variant"><a href="#variant.UpdateBlueprint" class="anchor">§</a><h3 class="code-header">UpdateBlueprint(StoreId, <a class="struct" href="https://doc.rust-lang.org/1.76.0/alloc/vec/struct.Vec.html" title="struct alloc::vec::Vec">Vec</a>&lt;Chunk&gt;)</h3></section><div class="docblock"><p>Update the blueprint with additional data</p>
 <p>The [<code>StoreId</code>] should generally be the currently selected blueprint
 but is tracked manually to ensure self-consistency if the blueprint
 is both modified and changed in the same frame.</p>

@@ -16,13 +16,13 @@ highlight.</p>
 </div><h2 id="implementations" class="section-header">Implementations<a href="#implementations" class="anchor">§</a></h2><div id="implementations-list"><details class="toggle implementors-toggle" open><summary><section id="impl-BlueprintTree" class="impl"><a class="src rightside" href="../src/re_blueprint_tree/blueprint_tree.rs.html#72-888">source</a><a href="#impl-BlueprintTree" class="anchor">§</a><h3 class="code-header">impl <a class="struct" href="blueprint_tree/struct.BlueprintTree.html" title="struct re_blueprint_tree::blueprint_tree::BlueprintTree">BlueprintTree</a></h3></section></summary><div class="impl-items"><details class="toggle method-toggle" open><summary><section id="method.show" class="method"><a class="src rightside" href="../src/re_blueprint_tree/blueprint_tree.rs.html#74-94">source</a><h4 class="code-header">pub fn <a href="#method.show" class="fn">show</a>(
     &amp;mut self,
     ctx: &amp;<a class="struct" href="../re_viewer_context/viewer_context/struct.ViewerContext.html" title="struct re_viewer_context::viewer_context::ViewerContext">ViewerContext</a>&lt;'_&gt;,
-    blueprint: &amp;<a class="struct" href="../re_viewport_blueprint/viewport_blueprint/struct.ViewportBlueprint.html" title="struct re_viewport_blueprint::viewport_blueprint::ViewportBlueprint">ViewportBlueprint</a>,
+    blueprint: &amp;ViewportBlueprint,
     ui: &amp;mut Ui
-)</h4></section></summary><div class="docblock"><p>Show the Blueprint section of the left panel based on the current <a href="../re_viewport_blueprint/viewport_blueprint/struct.ViewportBlueprint.html" title="struct re_viewport_blueprint::viewport_blueprint::ViewportBlueprint"><code>ViewportBlueprint</code></a></p>
+)</h4></section></summary><div class="docblock"><p>Show the Blueprint section of the left panel based on the current [<code>ViewportBlueprint</code>]</p>
 </div></details><details class="toggle method-toggle" open><summary><section id="method.tree_ui" class="method"><a class="src rightside" href="../src/re_blueprint_tree/blueprint_tree.rs.html#97-139">source</a><h4 class="code-header">fn <a href="#method.tree_ui" class="fn">tree_ui</a>(
     &amp;mut self,
     ctx: &amp;<a class="struct" href="../re_viewer_context/viewer_context/struct.ViewerContext.html" title="struct re_viewer_context::viewer_context::ViewerContext">ViewerContext</a>&lt;'_&gt;,
-    blueprint: &amp;<a class="struct" href="../re_viewport_blueprint/viewport_blueprint/struct.ViewportBlueprint.html" title="struct re_viewport_blueprint::viewport_blueprint::ViewportBlueprint">ViewportBlueprint</a>,
+    blueprint: &amp;ViewportBlueprint,
     ui: &amp;mut Ui
 )</h4></section></summary><div class="docblock"><p>Show the blueprint panel tree view.</p>
 </div></details><details class="toggle method-toggle" open><summary><section id="method.scroll_to_me_if_needed" class="method"><a class="src rightside" href="../src/re_blueprint_tree/blueprint_tree.rs.html#142-151">source</a><h4 class="code-header">fn <a href="#method.scroll_to_me_if_needed" class="fn">scroll_to_me_if_needed</a>(&amp;self, ui: &amp;Ui, item: &amp;<a class="enum" href="../re_viewer_context/item/enum.Item.html" title="enum re_viewer_context::item::Item">Item</a>, response: &amp;Response)</h4></section></summary><div class="docblock"><p>Check if the provided item should be scrolled to.</p>
@@ -30,14 +30,14 @@ highlight.</p>
 </div></details><section id="method.contents_ui" class="method"><a class="src rightside" href="../src/re_blueprint_tree/blueprint_tree.rs.html#159-175">source</a><h4 class="code-header">fn <a href="#method.contents_ui" class="fn">contents_ui</a>(
     &amp;mut self,
     ctx: &amp;<a class="struct" href="../re_viewer_context/viewer_context/struct.ViewerContext.html" title="struct re_viewer_context::viewer_context::ViewerContext">ViewerContext</a>&lt;'_&gt;,
-    blueprint: &amp;<a class="struct" href="../re_viewport_blueprint/viewport_blueprint/struct.ViewportBlueprint.html" title="struct re_viewport_blueprint::viewport_blueprint::ViewportBlueprint">ViewportBlueprint</a>,
+    blueprint: &amp;ViewportBlueprint,
     ui: &amp;mut Ui,
     contents: &amp;<a class="enum" href="../re_viewer_context/contents/enum.Contents.html" title="enum re_viewer_context::contents::Contents">Contents</a>,
     parent_visible: <a class="primitive" href="https://doc.rust-lang.org/1.76.0/std/primitive.bool.html">bool</a>
 )</h4></section><details class="toggle method-toggle" open><summary><section id="method.root_container_tree_ui" class="method"><a class="src rightside" href="../src/re_blueprint_tree/blueprint_tree.rs.html#181-232">source</a><h4 class="code-header">fn <a href="#method.root_container_tree_ui" class="fn">root_container_tree_ui</a>(
     &amp;mut self,
     ctx: &amp;<a class="struct" href="../re_viewer_context/viewer_context/struct.ViewerContext.html" title="struct re_viewer_context::viewer_context::ViewerContext">ViewerContext</a>&lt;'_&gt;,
-    blueprint: &amp;<a class="struct" href="../re_viewport_blueprint/viewport_blueprint/struct.ViewportBlueprint.html" title="struct re_viewport_blueprint::viewport_blueprint::ViewportBlueprint">ViewportBlueprint</a>,
+    blueprint: &amp;ViewportBlueprint,
     ui: &amp;mut Ui
 )</h4></section></summary><div class="docblock"><p>Display the root container.</p>
 <p>The root container is different from other containers in that it cannot be removed or dragged, and it cannot be
@@ -45,55 +45,55 @@ collapsed, so it’s drawn without a collapsing triangle.</p>
 </div></details><section id="method.container_tree_ui" class="method"><a class="src rightside" href="../src/re_blueprint_tree/blueprint_tree.rs.html#234-317">source</a><h4 class="code-header">fn <a href="#method.container_tree_ui" class="fn">container_tree_ui</a>(
     &amp;mut self,
     ctx: &amp;<a class="struct" href="../re_viewer_context/viewer_context/struct.ViewerContext.html" title="struct re_viewer_context::viewer_context::ViewerContext">ViewerContext</a>&lt;'_&gt;,
-    blueprint: &amp;<a class="struct" href="../re_viewport_blueprint/viewport_blueprint/struct.ViewportBlueprint.html" title="struct re_viewport_blueprint::viewport_blueprint::ViewportBlueprint">ViewportBlueprint</a>,
+    blueprint: &amp;ViewportBlueprint,
     ui: &amp;mut Ui,
     container_id: &amp;<a class="type" href="../re_viewer_context/blueprint_id/type.ContainerId.html" title="type re_viewer_context::blueprint_id::ContainerId">ContainerId</a>,
     parent_visible: <a class="primitive" href="https://doc.rust-lang.org/1.76.0/std/primitive.bool.html">bool</a>
 )</h4></section><section id="method.space_view_entry_ui" class="method"><a class="src rightside" href="../src/re_blueprint_tree/blueprint_tree.rs.html#319-458">source</a><h4 class="code-header">fn <a href="#method.space_view_entry_ui" class="fn">space_view_entry_ui</a>(
     &amp;mut self,
     ctx: &amp;<a class="struct" href="../re_viewer_context/viewer_context/struct.ViewerContext.html" title="struct re_viewer_context::viewer_context::ViewerContext">ViewerContext</a>&lt;'_&gt;,
-    blueprint: &amp;<a class="struct" href="../re_viewport_blueprint/viewport_blueprint/struct.ViewportBlueprint.html" title="struct re_viewport_blueprint::viewport_blueprint::ViewportBlueprint">ViewportBlueprint</a>,
+    blueprint: &amp;ViewportBlueprint,
     ui: &amp;mut Ui,
     space_view_id: &amp;<a class="type" href="../re_viewer_context/blueprint_id/type.SpaceViewId.html" title="type re_viewer_context::blueprint_id::SpaceViewId">SpaceViewId</a>,
     container_visible: <a class="primitive" href="https://doc.rust-lang.org/1.76.0/std/primitive.bool.html">bool</a>
 )</h4></section><section id="method.space_view_entity_hierarchy_ui" class="method"><a class="src rightside" href="../src/re_blueprint_tree/blueprint_tree.rs.html#461-639">source</a><h4 class="code-header">fn <a href="#method.space_view_entity_hierarchy_ui" class="fn">space_view_entity_hierarchy_ui</a>(
     &amp;self,
     ctx: &amp;<a class="struct" href="../re_viewer_context/viewer_context/struct.ViewerContext.html" title="struct re_viewer_context::viewer_context::ViewerContext">ViewerContext</a>&lt;'_&gt;,
-    blueprint: &amp;<a class="struct" href="../re_viewport_blueprint/viewport_blueprint/struct.ViewportBlueprint.html" title="struct re_viewport_blueprint::viewport_blueprint::ViewportBlueprint">ViewportBlueprint</a>,
+    blueprint: &amp;ViewportBlueprint,
     ui: &amp;mut Ui,
     query_result: &amp;<a class="struct" href="../re_viewer_context/query_context/struct.DataQueryResult.html" title="struct re_viewer_context::query_context::DataQueryResult">DataQueryResult</a>,
     node_or_path: &amp;<a class="enum" href="blueprint_tree/enum.DataResultNodeOrPath.html" title="enum re_blueprint_tree::blueprint_tree::DataResultNodeOrPath">DataResultNodeOrPath</a>&lt;'_&gt;,
-    space_view: &amp;<a class="struct" href="../re_viewport_blueprint/space_view/struct.SpaceViewBlueprint.html" title="struct re_viewport_blueprint::space_view::SpaceViewBlueprint">SpaceViewBlueprint</a>,
+    space_view: &amp;SpaceViewBlueprint,
     space_view_visible: <a class="primitive" href="https://doc.rust-lang.org/1.76.0/std/primitive.bool.html">bool</a>,
     projection_mode: <a class="primitive" href="https://doc.rust-lang.org/1.76.0/std/primitive.bool.html">bool</a>
 )</h4></section><details class="toggle method-toggle" open><summary><section id="method.add_new_spaceview_button_ui" class="method"><a class="src rightside" href="../src/re_blueprint_tree/blueprint_tree.rs.html#643-667">source</a><h4 class="code-header">fn <a href="#method.add_new_spaceview_button_ui" class="fn">add_new_spaceview_button_ui</a>(
     &amp;self,
     ctx: &amp;<a class="struct" href="../re_viewer_context/viewer_context/struct.ViewerContext.html" title="struct re_viewer_context::viewer_context::ViewerContext">ViewerContext</a>&lt;'_&gt;,
-    blueprint: &amp;<a class="struct" href="../re_viewport_blueprint/viewport_blueprint/struct.ViewportBlueprint.html" title="struct re_viewport_blueprint::viewport_blueprint::ViewportBlueprint">ViewportBlueprint</a>,
+    blueprint: &amp;ViewportBlueprint,
     ui: &amp;mut Ui
 )</h4></section></summary><div class="docblock"><p>Add a button to trigger the addition of a new space view or container.</p>
 </div></details><section id="method.handle_root_container_drag_and_drop_interaction" class="method"><a class="src rightside" href="../src/re_blueprint_tree/blueprint_tree.rs.html#672-714">source</a><h4 class="code-header">fn <a href="#method.handle_root_container_drag_and_drop_interaction" class="fn">handle_root_container_drag_and_drop_interaction</a>(
     &amp;mut self,
-    blueprint: &amp;<a class="struct" href="../re_viewport_blueprint/viewport_blueprint/struct.ViewportBlueprint.html" title="struct re_viewport_blueprint::viewport_blueprint::ViewportBlueprint">ViewportBlueprint</a>,
+    blueprint: &amp;ViewportBlueprint,
     ui: &amp;Ui,
     contents: <a class="enum" href="../re_viewer_context/contents/enum.Contents.html" title="enum re_viewer_context::contents::Contents">Contents</a>,
     response: &amp;Response
 )</h4></section><section id="method.handle_drag_and_drop_interaction" class="method"><a class="src rightside" href="../src/re_blueprint_tree/blueprint_tree.rs.html#716-798">source</a><h4 class="code-header">fn <a href="#method.handle_drag_and_drop_interaction" class="fn">handle_drag_and_drop_interaction</a>(
     &amp;mut self,
     ctx: &amp;<a class="struct" href="../re_viewer_context/viewer_context/struct.ViewerContext.html" title="struct re_viewer_context::viewer_context::ViewerContext">ViewerContext</a>&lt;'_&gt;,
-    blueprint: &amp;<a class="struct" href="../re_viewport_blueprint/viewport_blueprint/struct.ViewportBlueprint.html" title="struct re_viewport_blueprint::viewport_blueprint::ViewportBlueprint">ViewportBlueprint</a>,
+    blueprint: &amp;ViewportBlueprint,
     ui: &amp;Ui,
     contents: <a class="enum" href="../re_viewer_context/contents/enum.Contents.html" title="enum re_viewer_context::contents::Contents">Contents</a>,
     response: &amp;Response,
     body_response: <a class="enum" href="https://doc.rust-lang.org/1.76.0/core/option/enum.Option.html" title="enum core::option::Option">Option</a>&lt;&amp;Response&gt;
 )</h4></section><section id="method.handle_empty_space_drag_and_drop_interaction" class="method"><a class="src rightside" href="../src/re_blueprint_tree/blueprint_tree.rs.html#800-838">source</a><h4 class="code-header">fn <a href="#method.handle_empty_space_drag_and_drop_interaction" class="fn">handle_empty_space_drag_and_drop_interaction</a>(
     &amp;mut self,
-    blueprint: &amp;<a class="struct" href="../re_viewport_blueprint/viewport_blueprint/struct.ViewportBlueprint.html" title="struct re_viewport_blueprint::viewport_blueprint::ViewportBlueprint">ViewportBlueprint</a>,
+    blueprint: &amp;ViewportBlueprint,
     ui: &amp;Ui,
     empty_space: Rect
 )</h4></section><section id="method.handle_drop_target" class="method"><a class="src rightside" href="../src/re_blueprint_tree/blueprint_tree.rs.html#840-879">source</a><h4 class="code-header">fn <a href="#method.handle_drop_target" class="fn">handle_drop_target</a>(
     &amp;mut self,
-    blueprint: &amp;<a class="struct" href="../re_viewport_blueprint/viewport_blueprint/struct.ViewportBlueprint.html" title="struct re_viewport_blueprint::viewport_blueprint::ViewportBlueprint">ViewportBlueprint</a>,
+    blueprint: &amp;ViewportBlueprint,
     ui: &amp;Ui,
     dragged_item_id: <a class="enum" href="../re_viewer_context/contents/enum.Contents.html" title="enum re_viewer_context::contents::Contents">Contents</a>,
     drop_target: &amp;<a class="struct" href="../re_ui/drag_and_drop/struct.DropTarget.html" title="struct re_ui::drag_and_drop::DropTarget">DropTarget</a>&lt;<a class="enum" href="../re_viewer_context/contents/enum.Contents.html" title="enum re_viewer_context::contents::Contents">Contents</a>&gt;

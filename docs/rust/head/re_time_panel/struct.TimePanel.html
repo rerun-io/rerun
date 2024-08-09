@@ -16,11 +16,11 @@
 </div><h2 id="implementations" class="section-header">Implementations<a href="#implementations" class="anchor">§</a></h2><div id="implementations-list"><details class="toggle implementors-toggle" open><summary><section id="impl-TimePanel" class="impl"><a class="src rightside" href="../src/re_time_panel/lib.rs.html#140-957">source</a><a href="#impl-TimePanel" class="anchor">§</a><h3 class="code-header">impl <a class="struct" href="struct.TimePanel.html" title="struct re_time_panel::TimePanel">TimePanel</a></h3></section></summary><div class="impl-items"><section id="method.new_blueprint_panel" class="method"><a class="src rightside" href="../src/re_time_panel/lib.rs.html#141-146">source</a><h4 class="code-header">pub fn <a href="#method.new_blueprint_panel" class="fn">new_blueprint_panel</a>() -&gt; Self</h4></section><section id="method.show_panel" class="method"><a class="src rightside" href="../src/re_time_panel/lib.rs.html#148-266">source</a><h4 class="code-header">pub fn <a href="#method.show_panel" class="fn">show_panel</a>(
     &amp;mut self,
     ctx: &amp;<a class="struct" href="../re_viewer_context/viewer_context/struct.ViewerContext.html" title="struct re_viewer_context::viewer_context::ViewerContext">ViewerContext</a>&lt;'_&gt;,
-    viewport_blueprint: &amp;<a class="struct" href="../re_viewport_blueprint/viewport_blueprint/struct.ViewportBlueprint.html" title="struct re_viewport_blueprint::viewport_blueprint::ViewportBlueprint">ViewportBlueprint</a>,
+    viewport_blueprint: &amp;ViewportBlueprint,
     entity_db: &amp;<a class="struct" href="../re_entity_db/entity_db/struct.EntityDb.html" title="struct re_entity_db::entity_db::EntityDb">EntityDb</a>,
     rec_cfg: &amp;<a class="struct" href="../re_viewer_context/viewer_context/struct.RecordingConfig.html" title="struct re_viewer_context::viewer_context::RecordingConfig">RecordingConfig</a>,
     ui: &amp;mut Ui,
-    state: <a class="enum" href="../re_types/blueprint/components/panel_state/enum.PanelState.html" title="enum re_types::blueprint::components::panel_state::PanelState">PanelState</a>
+    state: PanelState
 )</h4></section><section id="method.collapsed_ui" class="method"><a class="src rightside" href="../src/re_time_panel/lib.rs.html#269-317">source</a><h4 class="code-header">pub(crate) fn <a href="#method.collapsed_ui" class="fn">collapsed_ui</a>(
     &amp;mut self,
     ctx: &amp;<a class="struct" href="../re_viewer_context/viewer_context/struct.ViewerContext.html" title="struct re_viewer_context::viewer_context::ViewerContext">ViewerContext</a>&lt;'_&gt;,
@@ -30,14 +30,14 @@
 )</h4></section><section id="method.expanded_ui" class="method"><a class="src rightside" href="../src/re_time_panel/lib.rs.html#319-503">source</a><h4 class="code-header">pub(crate) fn <a href="#method.expanded_ui" class="fn">expanded_ui</a>(
     &amp;mut self,
     ctx: &amp;<a class="struct" href="../re_viewer_context/viewer_context/struct.ViewerContext.html" title="struct re_viewer_context::viewer_context::ViewerContext">ViewerContext</a>&lt;'_&gt;,
-    viewport_blueprint: &amp;<a class="struct" href="../re_viewport_blueprint/viewport_blueprint/struct.ViewportBlueprint.html" title="struct re_viewport_blueprint::viewport_blueprint::ViewportBlueprint">ViewportBlueprint</a>,
+    viewport_blueprint: &amp;ViewportBlueprint,
     entity_db: &amp;<a class="struct" href="../re_entity_db/entity_db/struct.EntityDb.html" title="struct re_entity_db::entity_db::EntityDb">EntityDb</a>,
     ui: &amp;mut Ui,
     time_ctrl: &amp;mut <a class="struct" href="../re_viewer_context/time_control/struct.TimeControl.html" title="struct re_viewer_context::time_control::TimeControl">TimeControl</a>
 )</h4></section><section id="method.tree_ui" class="method"><a class="src rightside" href="../src/re_time_panel/lib.rs.html#507-561">source</a><h4 class="code-header">pub(crate) fn <a href="#method.tree_ui" class="fn">tree_ui</a>(
     &amp;mut self,
     ctx: &amp;<a class="struct" href="../re_viewer_context/viewer_context/struct.ViewerContext.html" title="struct re_viewer_context::viewer_context::ViewerContext">ViewerContext</a>&lt;'_&gt;,
-    viewport_blueprint: &amp;<a class="struct" href="../re_viewport_blueprint/viewport_blueprint/struct.ViewportBlueprint.html" title="struct re_viewport_blueprint::viewport_blueprint::ViewportBlueprint">ViewportBlueprint</a>,
+    viewport_blueprint: &amp;ViewportBlueprint,
     entity_db: &amp;<a class="struct" href="../re_entity_db/entity_db/struct.EntityDb.html" title="struct re_entity_db::entity_db::EntityDb">EntityDb</a>,
     time_ctrl: &amp;mut <a class="struct" href="../re_viewer_context/time_control/struct.TimeControl.html" title="struct re_viewer_context::time_control::TimeControl">TimeControl</a>,
     time_area_response: &amp;Response,
@@ -46,19 +46,19 @@
 )</h4></section><section id="method.show_tree" class="method"><a class="src rightside" href="../src/re_time_panel/lib.rs.html#564-719">source</a><h4 class="code-header">pub(crate) fn <a href="#method.show_tree" class="fn">show_tree</a>(
     &amp;mut self,
     ctx: &amp;<a class="struct" href="../re_viewer_context/viewer_context/struct.ViewerContext.html" title="struct re_viewer_context::viewer_context::ViewerContext">ViewerContext</a>&lt;'_&gt;,
-    viewport_blueprint: &amp;<a class="struct" href="../re_viewport_blueprint/viewport_blueprint/struct.ViewportBlueprint.html" title="struct re_viewport_blueprint::viewport_blueprint::ViewportBlueprint">ViewportBlueprint</a>,
+    viewport_blueprint: &amp;ViewportBlueprint,
     entity_db: &amp;<a class="struct" href="../re_entity_db/entity_db/struct.EntityDb.html" title="struct re_entity_db::entity_db::EntityDb">EntityDb</a>,
     time_ctrl: &amp;mut <a class="struct" href="../re_viewer_context/time_control/struct.TimeControl.html" title="struct re_viewer_context::time_control::TimeControl">TimeControl</a>,
     time_area_response: &amp;Response,
     time_area_painter: &amp;Painter,
-    last_path_part: <a class="enum" href="https://doc.rust-lang.org/1.76.0/core/option/enum.Option.html" title="enum core::option::Option">Option</a>&lt;&amp;<a class="struct" href="../re_log_types/path/entity_path_part/struct.EntityPathPart.html" title="struct re_log_types::path::entity_path_part::EntityPathPart">EntityPathPart</a>&gt;,
+    last_path_part: <a class="enum" href="https://doc.rust-lang.org/1.76.0/core/option/enum.Option.html" title="enum core::option::Option">Option</a>&lt;&amp;EntityPathPart&gt;,
     tree: &amp;<a class="struct" href="../re_entity_db/entity_tree/struct.EntityTree.html" title="struct re_entity_db::entity_tree::EntityTree">EntityTree</a>,
     ui: &amp;mut Ui,
     show_root_as: &amp;<a class="primitive" href="https://doc.rust-lang.org/1.76.0/std/primitive.str.html">str</a>
 )</h4></section><section id="method.show_children" class="method"><a class="src rightside" href="../src/re_time_panel/lib.rs.html#722-897">source</a><h4 class="code-header">pub(crate) fn <a href="#method.show_children" class="fn">show_children</a>(
     &amp;mut self,
     ctx: &amp;<a class="struct" href="../re_viewer_context/viewer_context/struct.ViewerContext.html" title="struct re_viewer_context::viewer_context::ViewerContext">ViewerContext</a>&lt;'_&gt;,
-    viewport_blueprint: &amp;<a class="struct" href="../re_viewport_blueprint/viewport_blueprint/struct.ViewportBlueprint.html" title="struct re_viewport_blueprint::viewport_blueprint::ViewportBlueprint">ViewportBlueprint</a>,
+    viewport_blueprint: &amp;ViewportBlueprint,
     entity_db: &amp;<a class="struct" href="../re_entity_db/entity_db/struct.EntityDb.html" title="struct re_entity_db::entity_db::EntityDb">EntityDb</a>,
     time_ctrl: &amp;mut <a class="struct" href="../re_viewer_context/time_control/struct.TimeControl.html" title="struct re_viewer_context::time_control::TimeControl">TimeControl</a>,
     time_area_response: &amp;Response,

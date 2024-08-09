@@ -107,7 +107,7 @@ call to <code>flush</code> to block indefinitely if a connection cannot be estab
     self,
     bind_ip: &amp;<a class="primitive" href="https://doc.rust-lang.org/1.76.0/std/primitive.str.html">str</a>,
     web_port: <a class="struct" href="../../re_web_viewer_server/struct.WebViewerServerPort.html" title="struct re_web_viewer_server::WebViewerServerPort">WebViewerServerPort</a>,
-    ws_port: <a class="struct" href="../../re_ws_comms/struct.RerunServerPort.html" title="struct re_ws_comms::RerunServerPort">RerunServerPort</a>,
+    ws_port: RerunServerPort,
     server_memory_limit: <a class="struct" href="../struct.MemoryLimit.html" title="struct re_sdk::MemoryLimit">MemoryLimit</a>,
     open_browser: <a class="primitive" href="https://doc.rust-lang.org/1.76.0/std/primitive.bool.html">bool</a>
 ) -&gt; <a class="type" href="type.RecordingStreamResult.html" title="type re_sdk::recording_stream::RecordingStreamResult">RecordingStreamResult</a>&lt;<a class="struct" href="struct.RecordingStream.html" title="struct re_sdk::recording_stream::RecordingStream">RecordingStream</a>&gt;</h4></section></summary><div class="docblock"><p>Creates a new <a href="struct.RecordingStream.html" title="struct re_sdk::recording_stream::RecordingStream"><code>RecordingStream</code></a> that is pre-configured to stream the data through to a

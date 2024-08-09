@@ -10,5 +10,5 @@
 "re_types_core":[],
 "re_viewer":[],
 "rerun":[],
-"snippets":[["impl <a class=\"trait\" href=\"re_types_core/size_bytes/trait.SizeBytes.html\" title=\"trait re_types_core::size_bytes::SizeBytes\">SizeBytes</a> for <a class=\"struct\" href=\"snippets/snippets/custom_data/struct.Confidence.html\" title=\"struct snippets::snippets::custom_data::Confidence\">Confidence</a>"]]
+"snippets":[["impl SizeBytes for <a class=\"struct\" href=\"snippets/snippets/custom_data/struct.Confidence.html\" title=\"struct snippets::snippets::custom_data::Confidence\">Confidence</a>"]]
 };if (window.register_implementors) {window.register_implementors(implementors);} else {window.pending_implementors = implementors;}})()

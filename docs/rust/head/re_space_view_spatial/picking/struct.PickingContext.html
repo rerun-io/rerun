@@ -21,8 +21,8 @@ does not hover it directly.</p>
     eye: &amp;<a class="struct" href="../eye/struct.Eye.html" title="struct re_space_view_spatial::eye::Eye">Eye</a>
 ) -&gt; Self</h4></section><details class="toggle method-toggle" open><summary><section id="method.pick" class="method"><a class="src rightside" href="../../src/re_space_view_spatial/picking.rs.html#106-160">source</a><h4 class="code-header">pub fn <a href="#method.pick" class="fn">pick</a>&lt;'a&gt;(
     &amp;self,
-    render_ctx: &amp;<a class="struct" href="../../re_renderer/context/struct.RenderContext.html" title="struct re_renderer::context::RenderContext">RenderContext</a>,
-    gpu_readback_identifier: <a class="type" href="../../re_renderer/allocator/gpu_readback_belt/type.GpuReadbackIdentifier.html" title="type re_renderer::allocator::gpu_readback_belt::GpuReadbackIdentifier">GpuReadbackIdentifier</a>,
+    render_ctx: &amp;RenderContext,
+    gpu_readback_identifier: GpuReadbackIdentifier,
     previous_picking_result: &amp;<a class="enum" href="https://doc.rust-lang.org/1.76.0/core/option/enum.Option.html" title="enum core::option::Option">Option</a>&lt;<a class="struct" href="struct.PickingResult.html" title="struct re_space_view_spatial::picking::PickingResult">PickingResult</a>&gt;,
     images: impl <a class="trait" href="https://doc.rust-lang.org/1.76.0/core/iter/traits/iterator/trait.Iterator.html" title="trait core::iter::traits::iterator::Iterator">Iterator</a>&lt;Item = &amp;'a <a class="struct" href="../pickable_image/struct.PickableImageRect.html" title="struct re_space_view_spatial::pickable_image::PickableImageRect">PickableImageRect</a>&gt;,
     ui_rects: &amp;[<a class="struct" href="struct.PickableUiRect.html" title="struct re_space_view_spatial::picking::PickableUiRect">PickableUiRect</a>]

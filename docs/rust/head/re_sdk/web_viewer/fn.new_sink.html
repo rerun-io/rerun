@@ -3,7 +3,7 @@
     open_browser: <a class="primitive" href="https://doc.rust-lang.org/1.76.0/std/primitive.bool.html">bool</a>,
     bind_ip: &amp;<a class="primitive" href="https://doc.rust-lang.org/1.76.0/std/primitive.str.html">str</a>,
     web_port: <a class="struct" href="../../re_web_viewer_server/struct.WebViewerServerPort.html" title="struct re_web_viewer_server::WebViewerServerPort">WebViewerServerPort</a>,
-    ws_port: <a class="struct" href="../../re_ws_comms/struct.RerunServerPort.html" title="struct re_ws_comms::RerunServerPort">RerunServerPort</a>,
+    ws_port: RerunServerPort,
     server_memory_limit: <a class="struct" href="../struct.MemoryLimit.html" title="struct re_sdk::MemoryLimit">MemoryLimit</a>
 ) -&gt; <a class="enum" href="https://doc.rust-lang.org/1.76.0/core/result/enum.Result.html" title="enum core::result::Result">Result</a>&lt;<a class="struct" href="https://doc.rust-lang.org/1.76.0/alloc/boxed/struct.Box.html" title="struct alloc::boxed::Box">Box</a>&lt;dyn <a class="trait" href="../log_sink/trait.LogSink.html" title="trait re_sdk::log_sink::LogSink">LogSink</a>&gt;, <a class="enum" href="enum.WebViewerSinkError.html" title="enum re_sdk::web_viewer::WebViewerSinkError">WebViewerSinkError</a>&gt;</code></pre><details class="toggle top-doc" open><summary class="hideme"><span>Expand description</span></summary><div class="docblock"><p>Serve log-data over WebSockets and serve a Rerun web viewer over HTTP.</p>
 <p>If the <code>open_browser</code> argument is <code>true</code>, your default browser

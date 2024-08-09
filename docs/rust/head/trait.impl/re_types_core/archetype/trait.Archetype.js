@@ -1,5 +1,5 @@
 (function() {var implementors = {
-"custom_space_view":[["impl <a class=\"trait\" href=\"re_types_core/archetype/trait.Archetype.html\" title=\"trait re_types_core::archetype::Archetype\">Archetype</a> for <a class=\"struct\" href=\"custom_space_view/color_coordinates_visualizer_system/struct.ColorArchetype.html\" title=\"struct custom_space_view::color_coordinates_visualizer_system::ColorArchetype\">ColorArchetype</a>"]],
+"custom_space_view":[["impl Archetype for <a class=\"struct\" href=\"custom_space_view/color_coordinates_visualizer_system/struct.ColorArchetype.html\" title=\"struct custom_space_view::color_coordinates_visualizer_system::ColorArchetype\">ColorArchetype</a>"]],
 "re_log_types":[["impl Archetype for <a class=\"struct\" href=\"re_log_types/example_components/struct.MyPoints.html\" title=\"struct re_log_types::example_components::MyPoints\">MyPoints</a>"]],
 "re_sdk":[],
 "re_space_view":[],

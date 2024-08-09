@@ -3,10 +3,10 @@
     ctx: &amp;<a class="struct" href="../../re_viewer_context/viewer_context/struct.ViewerContext.html" title="struct re_viewer_context::viewer_context::ViewerContext">ViewerContext</a>&lt;'_&gt;,
     ui: &amp;mut Ui,
     query: &amp;<a class="struct" href="../../re_viewer_context/space_view/view_query/struct.ViewQuery.html" title="struct re_viewer_context::space_view::view_query::ViewQuery">ViewQuery</a>&lt;'_&gt;,
-    sort_key: <a class="enum" href="../../re_types/blueprint/components/sort_key/enum.SortKey.html" title="enum re_types::blueprint::components::sort_key::SortKey">SortKey</a>,
-    sort_order: <a class="enum" href="../../re_types/blueprint/components/sort_order/enum.SortOrder.html" title="enum re_types::blueprint::components::sort_order::SortOrder">SortOrder</a>,
-    timeline: &amp;<a class="struct" href="../../re_log_types/time_point/timeline/struct.Timeline.html" title="struct re_log_types::time_point::timeline::Timeline">Timeline</a>,
-    resolved_time_range: <a class="struct" href="../../re_log_types/resolved_time_range/struct.ResolvedTimeRange.html" title="struct re_log_types::resolved_time_range::ResolvedTimeRange">ResolvedTimeRange</a>
+    sort_key: SortKey,
+    sort_order: SortOrder,
+    timeline: &amp;Timeline,
+    resolved_time_range: ResolvedTimeRange
 )</code></pre><details class="toggle top-doc" open><summary class="hideme"><span>Expand description</span></summary><div class="docblock"><p>Show a table with entities and time as rows, and components as columns.</p>
 <p>Here, a “row” is a tuple of <code>(entity_path, time, row_id)</code>. This means that both “over logging”
 (i.e. logging multiple times the same entity/component at the same timestamp) and “split
