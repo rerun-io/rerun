@@ -26,6 +26,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 ///
 /// Note that orienting and placing the ellipsoids/spheres is handled via `[archetypes.LeafTransforms3D]`.
 /// Some of its component are repeated here for convenience.
+/// If there's more leaf transforms than half sizes, the last half size will be repeated for the remaining transforms.
 #[derive(Clone, Debug, PartialEq)]
 pub struct Ellipsoids3D {
     /// For each ellipsoid, half of its size on its three axes.
