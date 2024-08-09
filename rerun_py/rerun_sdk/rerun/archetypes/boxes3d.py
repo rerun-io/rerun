@@ -23,6 +23,7 @@ class Boxes3D(Boxes3DExt, Archetype):
 
     Note that orienting and placing the box is handled via `[archetypes.LeafTransforms3D]`.
     Some of its component are repeated here for convenience.
+    If there's more leaf transforms than half sizes, the last half size will be repeated for the remaining transforms.
 
     Example
     -------

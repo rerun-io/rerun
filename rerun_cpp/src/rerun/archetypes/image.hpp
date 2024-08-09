@@ -5,11 +5,11 @@
 
 #include "../collection.hpp"
 #include "../compiler_utils.hpp"
-#include "../components/blob.hpp"
+#include "../component_batch.hpp"
 #include "../components/draw_order.hpp"
+#include "../components/image_buffer.hpp"
 #include "../components/image_format.hpp"
 #include "../components/opacity.hpp"
-#include "../data_cell.hpp"
 #include "../image_utils.hpp"
 #include "../indicator_component.hpp"
 #include "../result.hpp"
@@ -72,7 +72,7 @@ namespace rerun::archetypes {
     /// ```
     struct Image {
         /// The raw image data.
-        rerun::components::Blob data;
+        rerun::components::ImageBuffer buffer;
 
         /// The format of the image.
         rerun::components::ImageFormat format;
@@ -102,7 +102,7 @@ namespace rerun::archetypes {
         /// The length of the data should be `W * H * image_format.bytes_per_pixel`.
         /// @param format_ How the data should be interpreted.
         Image(Collection<uint8_t> bytes, components::ImageFormat format_)
-            : data(std::move(bytes)), format(format_) {}
+            : buffer(std::move(bytes)), format(format_) {}
 
         /// Construct an image from resolution, pixel format and bytes.
         ///
@@ -249,6 +249,6 @@ namespace rerun {
     template <>
     struct AsComponents<archetypes::Image> {
         /// Serialize all set component batches.
-        static Result<std::vector<DataCell>> serialize(const archetypes::Image& archetype);
+        static Result<std::vector<ComponentBatch>> serialize(const archetypes::Image& archetype);
     };
 } // namespace rerun

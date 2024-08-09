@@ -7,7 +7,7 @@
 #include "../../blueprint/components/visible.hpp"
 #include "../../collection.hpp"
 #include "../../compiler_utils.hpp"
-#include "../../data_cell.hpp"
+#include "../../component_batch.hpp"
 #include "../../indicator_component.hpp"
 #include "../../result.hpp"
 
@@ -70,7 +70,7 @@ namespace rerun {
     template <>
     struct AsComponents<blueprint::archetypes::PlotLegend> {
         /// Serialize all set component batches.
-        static Result<std::vector<DataCell>> serialize(
+        static Result<std::vector<ComponentBatch>> serialize(
             const blueprint::archetypes::PlotLegend& archetype
         );
     };

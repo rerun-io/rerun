@@ -4,8 +4,9 @@ use re_chunk_store::RowId;
 use re_entity_db::EntityPath;
 use re_log_types::TimeInt;
 use re_log_types::TimePoint;
+use re_query::RangeQueryOptions;
 use re_query::{clamped_zip_1x2, range_zip_1x2};
-use re_space_view::{range_with_blueprint_resolved_data, RangeResultsExt};
+use re_space_view::{range_with_blueprint_resolved_data_opts, RangeResultsExt};
 use re_types::{
     archetypes::TextLog,
     components::{Color, Text, TextLogLevel},
@@ -86,10 +87,14 @@ impl TextLogSystem {
     ) {
         re_tracing::profile_function!();
 
-        let results = range_with_blueprint_resolved_data(
+        let results = range_with_blueprint_resolved_data_opts(
             ctx,
             None,
             query,
+            &RangeQueryOptions {
+                keep_extra_timelines: true,
+                keep_extra_components: false,
+            },
             data_result,
             [Text::name(), TextLogLevel::name(), Color::name()],
         );

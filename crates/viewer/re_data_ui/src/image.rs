@@ -1,118 +1,11 @@
 use egui::{Color32, Vec2};
 use itertools::Itertools as _;
 
-use re_chunk_store::RowId;
-use re_log_types::EntityPath;
 use re_renderer::renderer::ColormappedTexture;
 use re_types::{
-    components::ClassId,
-    datatypes::ColorModel,
-    datatypes::{TensorData, TensorDimension},
-    image::ImageKind,
-    tensor_data::TensorElement,
+    components::ClassId, datatypes::ColorModel, image::ImageKind, tensor_data::TensorElement,
 };
-use re_ui::UiExt as _;
-use re_viewer_context::{
-    gpu_bridge, Annotations, ImageInfo, TensorStats, TensorStatsCache, UiLayout, ViewerContext,
-};
-
-use super::EntityDataUi;
-
-pub fn format_tensor_shape_single_line(shape: &[TensorDimension]) -> String {
-    const MAX_SHOWN: usize = 4; // should be enough for width/height/depth and then some!
-    let iter = shape.iter().take(MAX_SHOWN);
-    let labelled = iter.clone().any(|dim| dim.name.is_some());
-    let shapes = iter
-        .map(|dim| {
-            format!(
-                "{}{}",
-                dim.size,
-                if let Some(name) = &dim.name {
-                    format!(" ({name})")
-                } else {
-                    String::new()
-                }
-            )
-        })
-        .join(if labelled { " × " } else { "×" });
-    format!(
-        "{shapes}{}",
-        if shape.len() > MAX_SHOWN {
-            if labelled {
-                " × …"
-            } else {
-                "×…"
-            }
-        } else {
-            ""
-        }
-    )
-}
-
-impl EntityDataUi for re_types::components::TensorData {
-    fn entity_data_ui(
-        &self,
-        ctx: &ViewerContext<'_>,
-        ui: &mut egui::Ui,
-        ui_layout: UiLayout,
-        entity_path: &EntityPath,
-        query: &re_chunk_store::LatestAtQuery,
-        _db: &re_entity_db::EntityDb,
-    ) {
-        re_tracing::profile_function!();
-
-        let tensor_data_row_id = ctx
-            .recording()
-            .latest_at_component::<Self>(entity_path, query)
-            .map_or(RowId::ZERO, |((_time, row_id), _tensor)| row_id);
-
-        tensor_ui(ctx, ui, ui_layout, tensor_data_row_id, &self.0);
-    }
-}
-
-pub fn tensor_ui(
-    ctx: &ViewerContext<'_>,
-    ui: &mut egui::Ui,
-    ui_layout: UiLayout,
-    tensor_data_row_id: RowId,
-    tensor: &TensorData,
-) {
-    // See if we can convert the tensor to a GPU texture.
-    // Even if not, we will show info about the tensor.
-    let tensor_stats = ctx
-        .cache
-        .entry(|c: &mut TensorStatsCache| c.entry(tensor_data_row_id, tensor));
-
-    match ui_layout {
-        UiLayout::List => {
-            ui.horizontal(|ui| {
-                let shape = match tensor.image_height_width_channels() {
-                    Some([h, w, c]) => vec![
-                        TensorDimension::height(h),
-                        TensorDimension::width(w),
-                        TensorDimension::depth(c),
-                    ],
-                    None => tensor.shape.clone(),
-                };
-                let text = format!(
-                    "{}, {}",
-                    tensor.dtype(),
-                    format_tensor_shape_single_line(&shape)
-                );
-                ui_layout.label(ui, text).on_hover_ui(|ui| {
-                    tensor_summary_ui(ui, tensor, &tensor_stats);
-                });
-            });
-        }
-
-        UiLayout::SelectionPanelFull | UiLayout::SelectionPanelLimitHeight | UiLayout::Tooltip => {
-            ui.vertical(|ui| {
-                ui.set_min_width(100.0);
-                tensor_summary_ui(ui, tensor, &tensor_stats);
-            });
-        }
-    }
-}
+use re_viewer_context::{gpu_bridge, Annotations, ImageInfo, ImageStats};
 
 /// Shows preview of an image.
 ///
@@ -181,71 +74,6 @@ fn largest_size_that_fits_in(aspect_ratio: f32, max_size: Vec2) -> Vec2 {
     }
 }
 
-pub fn tensor_summary_ui_grid_contents(
-    ui: &mut egui::Ui,
-    tensor: &TensorData,
-    tensor_stats: &TensorStats,
-) {
-    let TensorData { shape, buffer: _ } = tensor;
-
-    ui.grid_left_hand_label("Data type")
-        .on_hover_text("Data type used for all individual elements within the tensor");
-    ui.label(tensor.dtype().to_string());
-    ui.end_row();
-
-    ui.grid_left_hand_label("Shape")
-        .on_hover_text("Extent of every dimension");
-    ui.vertical(|ui| {
-        // For unnamed tensor dimension more than a single line usually doesn't make sense!
-        // But what if some are named and some are not?
-        // -> If more than 1 is named, make it a column!
-        if shape.iter().filter(|d| d.name.is_some()).count() > 1 {
-            for dim in shape {
-                ui.label(dim.to_string());
-            }
-        } else {
-            ui.label(format_tensor_shape_single_line(shape));
-        }
-    });
-    ui.end_row();
-
-    let TensorStats {
-        range,
-        finite_range,
-    } = tensor_stats;
-
-    if let Some((min, max)) = range {
-        ui.label("Data range")
-            .on_hover_text("All values of the tensor range within these bounds");
-        ui.monospace(format!(
-            "[{} - {}]",
-            re_format::format_f64(*min),
-            re_format::format_f64(*max)
-        ));
-        ui.end_row();
-    }
-    // Show finite range only if it is different from the actual range.
-    if let (true, Some((min, max))) = (range != finite_range, finite_range) {
-        ui.label("Finite data range").on_hover_text(
-            "The finite values (ignoring all NaN & -Inf/+Inf) of the tensor range within these bounds"
-        );
-        ui.monospace(format!(
-            "[{} - {}]",
-            re_format::format_f64(*min),
-            re_format::format_f64(*max)
-        ));
-        ui.end_row();
-    }
-}
-
-pub fn tensor_summary_ui(ui: &mut egui::Ui, tensor: &TensorData, tensor_stats: &TensorStats) {
-    egui::Grid::new("tensor_summary_ui")
-        .num_columns(2)
-        .show(ui, |ui| {
-            tensor_summary_ui_grid_contents(ui, tensor, tensor_stats);
-        });
-}
-
 // Show the surrounding pixels:
 const ZOOMED_IMAGE_TEXEL_RADIUS: isize = 10;
 
@@ -287,14 +115,14 @@ pub fn show_zoomed_image_region(
     render_ctx: &re_renderer::RenderContext,
     ui: &mut egui::Ui,
     image: &ImageInfo,
-    tensor_stats: &TensorStats,
+    image_stats: &ImageStats,
     annotations: &Annotations,
     meter: Option<f32>,
     debug_name: &str,
     center_texel: [isize; 2],
 ) {
     let texture =
-        match gpu_bridge::image_to_gpu(render_ctx, debug_name, image, tensor_stats, annotations) {
+        match gpu_bridge::image_to_gpu(render_ctx, debug_name, image, image_stats, annotations) {
             Ok(texture) => texture,
             Err(err) => {
                 ui.label(format!("Error: {err}"));
@@ -567,7 +395,7 @@ fn rgb8_histogram_ui(ui: &mut egui::Ui, rgb: &[u8]) -> egui::Response {
 
 #[allow(dead_code)] // TODO(#6891): use again when we can view image archetypes in the selection view
 #[cfg(not(target_arch = "wasm32"))]
-fn copy_and_save_image_ui(ui: &mut egui::Ui, tensor: &TensorData, _encoded_tensor: &TensorData) {
+fn copy_and_save_image_ui(ui: &mut egui::Ui, tensor: &re_types::datatypes::TensorData) {
     ui.horizontal(|ui| {
         if tensor.could_be_dynamic_image() && ui.button("Click to copy image").clicked() {
             match tensor.to_dynamic_image() {

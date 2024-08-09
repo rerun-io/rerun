@@ -17,6 +17,7 @@ use crate::{
     objects::ObjectClass,
     ArrowRegistry, Docs, ElementType, GeneratedFiles, Object, ObjectField, ObjectKind, Objects,
     Reporter, Type, ATTR_CPP_NO_FIELD_CTORS, ATTR_CPP_RENAME_FIELD,
+    ATTR_RERUN_LOG_MISSING_AS_EMPTY,
 };
 
 use self::array_builder::{arrow_array_builder_type, arrow_array_builder_type_object};
@@ -1559,9 +1560,8 @@ fn to_arrow_method(
 }
 
 fn archetype_serialize(type_ident: &Ident, obj: &Object, hpp_includes: &mut Includes) -> Method {
-    hpp_includes.insert_rerun("data_cell.hpp");
+    hpp_includes.insert_rerun("component_batch.hpp");
     hpp_includes.insert_rerun("collection.hpp");
-    hpp_includes.insert_rerun("data_cell.hpp");
     hpp_includes.insert_system("vector"); // std::vector
 
     let quoted_scoped_archetypes = if let Some(scope) = obj.scope() {
@@ -1582,17 +1582,17 @@ fn archetype_serialize(type_ident: &Ident, obj: &Object, hpp_includes: &mut Incl
         };
 
         // TODO(andreas): Introducing MonoCollection will remove the need for distinguishing these two cases.
-        if field.is_nullable {
+        if field.is_nullable && !obj.attrs.has(ATTR_RERUN_LOG_MISSING_AS_EMPTY) {
             quote! {
                 if (#field_accessor.has_value()) {
-                    auto result = DataCell::from_loggable(#field_accessor.value());
+                    auto result = ComponentBatch::from_loggable(#field_accessor.value());
                     #push_back
                 }
             }
         } else {
             quote! {
                 {
-                    auto result = DataCell::from_loggable(#field_accessor);
+                    auto result = ComponentBatch::from_loggable(#field_accessor);
                     #push_back
                 }
             }
@@ -1604,20 +1604,20 @@ fn archetype_serialize(type_ident: &Ident, obj: &Object, hpp_includes: &mut Incl
         declaration: MethodDeclaration {
             is_static: true,
             // TODO(andreas): Use a rerun::Collection here as well.
-            return_type: quote!(Result<std::vector<DataCell>>),
+            return_type: quote!(Result<std::vector<ComponentBatch>>),
             name_and_parameters: quote!(serialize(const #quoted_scoped_archetypes::#type_ident& archetype)),
         },
         definition_body: quote! {
             using namespace #quoted_scoped_archetypes;
             #NEWLINE_TOKEN
-            std::vector<DataCell> cells;
+            std::vector<ComponentBatch> cells;
             cells.reserve(#num_fields);
             #NEWLINE_TOKEN
             #NEWLINE_TOKEN
             #(#push_batches)*
             {
                 auto indicator = #type_ident::IndicatorComponent();
-                auto result = DataCell::from_loggable(indicator);
+                auto result = ComponentBatch::from_loggable(indicator);
                 RR_RETURN_NOT_OK(result.error);
                 cells.emplace_back(std::move(result.value));
             }

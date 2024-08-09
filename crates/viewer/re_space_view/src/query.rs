@@ -2,7 +2,7 @@ use nohash_hasher::IntSet;
 
 use re_chunk_store::{LatestAtQuery, RangeQuery, RowId};
 use re_log_types::TimeInt;
-use re_query::LatestAtResults;
+use re_query::{LatestAtResults, RangeQueryOptions};
 use re_types_core::ComponentName;
 use re_viewer_context::{DataResult, ViewContext, ViewerContext};
 
@@ -23,8 +23,37 @@ use crate::results_ext::{HybridLatestAtResults, HybridRangeResults};
 /// [`crate::HybridResults`].
 pub fn range_with_blueprint_resolved_data(
     ctx: &ViewContext<'_>,
+    annotations: Option<&re_viewer_context::Annotations>,
+    range_query: &RangeQuery,
+    data_result: &re_viewer_context::DataResult,
+    component_names: impl IntoIterator<Item = ComponentName>,
+) -> HybridRangeResults {
+    range_with_blueprint_resolved_data_opts(
+        ctx,
+        annotations,
+        range_query,
+        &RangeQueryOptions::DEFAULT,
+        data_result,
+        component_names,
+    )
+}
+
+/// Queries for the given `component_names` using range semantics with blueprint support.
+///
+/// Data will be resolved, in order of priority:
+/// - Data overrides from the blueprint
+/// - Data from the recording
+/// - Default data from the blueprint
+/// - Fallback from the visualizer
+/// - Placeholder from the component.
+///
+/// Data should be accessed via the [`crate::RangeResultsExt`] trait which is implemented for
+/// [`crate::HybridResults`].
+pub fn range_with_blueprint_resolved_data_opts(
+    ctx: &ViewContext<'_>,
     _annotations: Option<&re_viewer_context::Annotations>,
     range_query: &RangeQuery,
+    range_query_opts: &RangeQueryOptions,
     data_result: &re_viewer_context::DataResult,
     component_names: impl IntoIterator<Item = ComponentName>,
 ) -> HybridRangeResults {
@@ -37,9 +66,10 @@ pub fn range_with_blueprint_resolved_data(
     // No need to query for components that have overrides.
     component_set.retain(|component| !overrides.components.contains_key(component));
 
-    let results = ctx.recording().query_caches().range(
+    let results = ctx.recording().query_caches().range_opts(
         ctx.recording_store(),
         range_query,
+        range_query_opts,
         &data_result.entity_path,
         component_set.iter().copied(),
     );

@@ -9,32 +9,32 @@ namespace rerun::blueprint::archetypes {}
 
 namespace rerun {
 
-    Result<std::vector<DataCell>>
+    Result<std::vector<ComponentBatch>>
         AsComponents<blueprint::archetypes::TensorScalarMapping>::serialize(
             const blueprint::archetypes::TensorScalarMapping& archetype
         ) {
         using namespace blueprint::archetypes;
-        std::vector<DataCell> cells;
+        std::vector<ComponentBatch> cells;
         cells.reserve(4);
 
         if (archetype.mag_filter.has_value()) {
-            auto result = DataCell::from_loggable(archetype.mag_filter.value());
+            auto result = ComponentBatch::from_loggable(archetype.mag_filter.value());
             RR_RETURN_NOT_OK(result.error);
             cells.push_back(std::move(result.value));
         }
         if (archetype.colormap.has_value()) {
-            auto result = DataCell::from_loggable(archetype.colormap.value());
+            auto result = ComponentBatch::from_loggable(archetype.colormap.value());
             RR_RETURN_NOT_OK(result.error);
             cells.push_back(std::move(result.value));
         }
         if (archetype.gamma.has_value()) {
-            auto result = DataCell::from_loggable(archetype.gamma.value());
+            auto result = ComponentBatch::from_loggable(archetype.gamma.value());
             RR_RETURN_NOT_OK(result.error);
             cells.push_back(std::move(result.value));
         }
         {
             auto indicator = TensorScalarMapping::IndicatorComponent();
-            auto result = DataCell::from_loggable(indicator);
+            auto result = ComponentBatch::from_loggable(indicator);
             RR_RETURN_NOT_OK(result.error);
             cells.emplace_back(std::move(result.value));
         }

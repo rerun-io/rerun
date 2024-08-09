@@ -5,14 +5,17 @@
 #include <filesystem>
 #include <optional>
 #include <string_view>
+#include <type_traits>
 #include <vector>
 
 #include "as_components.hpp"
 #include "error.hpp"
+#include "partitioned_component_batch.hpp"
 #include "spawn_options.hpp"
+#include "time_column.hpp"
 
 namespace rerun {
-    struct DataCell;
+    struct ComponentBatch;
 
     enum class StoreKind {
         Recording,
@@ -295,7 +298,7 @@ namespace rerun {
         /// @}
 
         // -----------------------------------------------------------------------------------------
-        /// \name Logging
+        /// \name Sending & logging data.
         /// @{
 
         /// Logs one or more archetype and/or component batches.
@@ -475,7 +478,7 @@ namespace rerun {
             if (!is_enabled()) {
                 return Error::ok();
             }
-            std::vector<DataCell> serialized_batches;
+            std::vector<ComponentBatch> serialized_batches;
             Error err;
             (
                 [&] {
@@ -483,7 +486,7 @@ namespace rerun {
                         return;
                     }
 
-                    const Result<std::vector<DataCell>> serialization_result =
+                    const Result<std::vector<ComponentBatch>> serialization_result =
                         AsComponents<Ts>().serialize(archetypes_or_collections);
                     if (serialization_result.is_err()) {
                         err = serialization_result.error;
@@ -523,7 +526,7 @@ namespace rerun {
         ///
         /// \see `log`, `try_log`, `log_static`, `try_log_static`, `try_log_with_static`
         Error try_log_serialized_batches(
-            std::string_view entity_path, bool static_, std::vector<DataCell> batches
+            std::string_view entity_path, bool static_, std::vector<ComponentBatch> batches
         ) const;
 
         /// Bottom level API that logs raw data cells to the recording stream.
@@ -539,7 +542,7 @@ namespace rerun {
         ///
         /// \see `try_log_serialized_batches`
         Error try_log_data_row(
-            std::string_view entity_path, size_t num_data_cells, const DataCell* data_cells,
+            std::string_view entity_path, size_t num_data_cells, const ComponentBatch* data_cells,
             bool inject_time
         ) const;
 
@@ -648,6 +651,129 @@ namespace rerun {
         Error try_log_file_from_contents(
             const std::filesystem::path& filepath, const std::byte* contents, size_t contents_size,
             std::string_view entity_path_prefix = std::string_view(), bool static_ = false
+        ) const;
+
+        /// Directly log a columns of data to Rerun.
+        ///
+        /// Unlike the regular `log` API, which is row-oriented, this API lets you submit the data
+        /// in a columnar form. Each `TimeColumn` and `Collection<T>` represents a column of data that will be sent to Rerun.
+        /// The lengths of all of these columns must match, equivalent to a single call to `RecordingStream::log` with a list
+        /// of individual components.
+        ///
+        /// Note that this API ignores any stateful time set on the log stream via the `RecordingStream::set_time_*` APIs.
+        /// Furthermore, this will _not_ inject the default timelines `log_tick` and `log_time` timeline columns.
+        ///
+        /// Any failures that may occur during serialization are handled with `Error::handle`.
+        ///
+        /// \param entity_path Path to the entity in the space hierarchy.
+        /// \param time_columns The timepoints of this batch of data.
+        /// Each `TimeColumn` object represents a single column of timestamps.
+        /// \param component_batches The batches of components to log.
+        /// Each individual component in each batch will be associated with a single time value.
+        /// I.e. this creates `PartitionedComponentBatch` objects consisting of single component runs.
+        /// \see `try_send_columns`
+        template <typename... Ts>
+        void send_columns(
+            std::string_view entity_path, Collection<TimeColumn> time_columns,
+            Collection<Ts>... component_batches // NOLINT
+        ) const {
+            try_send_columns(entity_path, time_columns, component_batches...).handle();
+        }
+
+        /// Directly log a columns of data to Rerun.
+        ///
+        /// Unlike the regular `log` API, which is row-oriented, this API lets you submit the data
+        /// in a columnar form. Each `TimeColumn` and `Collection<T>` represents a column of data that will be sent to Rerun.
+        /// The lengths of all of these columns must match, equivalent to a single call to `RecordingStream::log` with a list
+        /// of individual components.
+        ///
+        /// Note that this API ignores any stateful time set on the log stream via the `RecordingStream::set_time_*` APIs.
+        /// Furthermore, this will _not_ inject the default timelines `log_tick` and `log_time` timeline columns.
+        ///
+        /// \param entity_path Path to the entity in the space hierarchy.
+        /// \param time_columns The timepoints of this batch of data.
+        /// Each `TimeColumn` object represents a single column of timestamps.
+        /// \param component_batches The batches of components to log.
+        /// Each individual component in each batch will be associated with a single time value.
+        /// I.e. this creates `PartitionedComponentBatch` objects consisting of single component runs.
+        /// \see `send_columns`
+        template <typename... Ts>
+        Error try_send_columns(
+            std::string_view entity_path, Collection<TimeColumn> time_columns,
+            Collection<Ts>... component_batches // NOLINT
+        ) const {
+            if (!is_enabled()) {
+                return Error::ok();
+            }
+            std::vector<PartitionedComponentBatch> serialized_batches;
+            Error err;
+            (
+                [&] {
+                    if (err.is_err()) {
+                        return;
+                    }
+
+                    const Result<PartitionedComponentBatch> serialization_result =
+                        PartitionedComponentBatch::from_loggable(component_batches);
+                    if (serialization_result.is_err()) {
+                        err = serialization_result.error;
+                        return;
+                    }
+                    serialized_batches.emplace_back(std::move(serialization_result.value));
+                }(),
+                ...
+            );
+            RR_RETURN_NOT_OK(err);
+
+            return try_send_columns(entity_path, time_columns, std::move(serialized_batches));
+        }
+
+        /// Directly log a columns of data to Rerun.
+        ///
+        /// Unlike the regular `log` API, which is row-oriented, this API lets you submit the data
+        /// in a columnar form. Each `TimeColumn` and `PartitionedComponentBatch` represents a column of data that will be sent to Rerun.
+        /// The lengths of all of these columns must match, and all
+        /// data that shares the same index across the different columns will act as a single logical row,
+        /// equivalent to a single call to `RecordingStream::log`.
+        ///
+        /// Note that this API ignores any stateful time set on the log stream via the `RecordingStream::set_time_*` APIs.
+        /// Furthermore, this will _not_ inject the default timelines `log_tick` and `log_time` timeline columns.
+        ///
+        /// Any failures that may occur during serialization are handled with `Error::handle`.
+        ///
+        /// \param entity_path Path to the entity in the space hierarchy.
+        /// \param time_columns The timepoints of this batch of data.
+        /// Each `TimeColumn` object represents a single column of timestamps.
+        /// \param component_batches The batches of components to log.
+        /// Each `PartitionedComponentBatch` object represents a single column of data.
+        /// \see `try_send_columns`
+        void send_columns(
+            std::string_view entity_path, Collection<TimeColumn> time_columns,
+            Collection<PartitionedComponentBatch> component_batches
+        ) const {
+            try_send_columns(entity_path, time_columns, component_batches).handle();
+        }
+
+        /// Directly log a columns of data to Rerun.
+        ///
+        /// Unlike the regular `log` API, which is row-oriented, this API lets you submit the data
+        /// in a columnar form. Each `TimeColumn` and `PartitionedComponentBatch` represents a column of data that will be sent to Rerun.
+        /// The lengths of all of these columns must match, and all
+        /// data that shares the same index across the different columns will act as a single logical row,
+        /// equivalent to a single call to `RecordingStream::log`.
+        ///
+        /// Note that this API ignores any stateful time set on the log stream via the `RecordingStream::set_time_*` APIs.
+        /// Furthermore, this will _not_ inject the default timelines `log_tick` and `log_time` timeline columns.
+        ///
+        /// \param entity_path Path to the entity in the space hierarchy.
+        /// \param time_columns The timepoints of this batch of data.
+        /// Each `TimeColumn` object represents a single column of timestamps.
+        /// \param component_batches The batches of components to log.
+        /// Each `PartitionedComponentBatch` object represents a single column of data.
+        /// \see `send_columns`
+        Error try_send_columns(
+            std::string_view entity_path, Collection<TimeColumn> time_columns,
+            Collection<PartitionedComponentBatch> component_batches
         ) const;
 
         /// @}

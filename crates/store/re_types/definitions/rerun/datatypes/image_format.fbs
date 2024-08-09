@@ -4,7 +4,7 @@ include "./pixel_format.fbs";
 
 namespace rerun.datatypes;
 
-/// The metadata describing the contents of a [rerun.components.ImageBuffer].
+/// The metadata describing the contents of a [components.ImageBuffer].
 struct ImageFormat (
   "attr.docs.unreleased",
   "attr.rust.derive": "Default, Copy, PartialEq, Eq, Hash"

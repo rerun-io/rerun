@@ -1419,7 +1419,7 @@ fn blueprint_loader() -> BlueprintPersistence {
     fn save_blueprint_to_disk(app_id: &ApplicationId, blueprint: &EntityDb) -> anyhow::Result<()> {
         let blueprint_path = crate::saving::default_blueprint_path(app_id)?;
 
-        let messages = blueprint.to_messages(None)?;
+        let messages = blueprint.to_messages(None);
         let rrd_version = blueprint
             .store_info()
             .and_then(|info| info.store_version)
@@ -1427,7 +1427,7 @@ fn blueprint_loader() -> BlueprintPersistence {
 
         // TODO(jleibs): Should we push this into a background thread? Blueprints should generally
         // be small & fast to save, but maybe not once we start adding big pieces of user data?
-        crate::saving::encode_to_file(rrd_version, &blueprint_path, messages.iter())?;
+        crate::saving::encode_to_file(rrd_version, &blueprint_path, messages)?;
 
         re_log::debug!("Saved blueprint for {app_id} to {blueprint_path:?}");
 
@@ -1694,12 +1694,10 @@ fn paint_native_window_frame(egui_ctx: &egui::Context) {
         egui::Rect::EVERYTHING,
     );
 
-    let stroke = egui::Stroke::new(1.0, egui::Color32::from_gray(42)); // from figma 2022-02-06
-
     painter.rect_stroke(
         egui_ctx.screen_rect().shrink(0.5),
         re_ui::DesignTokens::native_window_rounding(),
-        stroke,
+        re_ui::design_tokens().native_frame_stroke,
     );
 }
 
@@ -1848,7 +1846,7 @@ fn save_recording(
         rrd_version,
         file_name.to_owned(),
         title.to_owned(),
-        || entity_db.to_messages(loop_selection),
+        entity_db.to_messages(loop_selection),
     )
 }
 
@@ -1871,10 +1869,12 @@ fn save_blueprint(app: &mut App, store_context: Option<&StoreContext<'_>>) -> an
     // which mean they will merge in a strange way.
     // This is also related to https://github.com/rerun-io/rerun/issues/5295
     let new_store_id = re_log_types::StoreId::random(StoreKind::Blueprint);
-    let mut messages = store_context.blueprint.to_messages(None)?;
-    for message in &mut messages {
-        message.set_store_id(new_store_id.clone());
-    }
+    let messages = store_context.blueprint.to_messages(None).map(|mut msg| {
+        if let Ok(msg) = &mut msg {
+            msg.set_store_id(new_store_id.clone());
+        };
+        msg
+    });
 
     let file_name = format!(
         "{}.rbl",
@@ -1882,28 +1882,36 @@ fn save_blueprint(app: &mut App, store_context: Option<&StoreContext<'_>>) -> an
     );
     let title = "Save blueprint";
 
-    save_entity_db(app, rrd_version, file_name, title.to_owned(), || {
-        Ok(messages)
-    })
+    save_entity_db(app, rrd_version, file_name, title.to_owned(), messages)
 }
 
 #[allow(clippy::needless_pass_by_ref_mut)] // `app` is only used on native
+#[allow(clippy::unnecessary_wraps)] // cannot return error on web
 fn save_entity_db(
     #[allow(unused_variables)] app: &mut App, // only used on native
     rrd_version: CrateVersion,
     file_name: String,
     title: String,
-    to_log_messages: impl FnOnce() -> re_chunk::ChunkResult<Vec<LogMsg>>,
+    messages: impl Iterator<Item = re_chunk::ChunkResult<LogMsg>>,
 ) -> anyhow::Result<()> {
     re_tracing::profile_function!();
+
+    // TODO(#6984): Ideally we wouldn't collect at all and just stream straight to the
+    // encoder from the store.
+    //
+    // From a memory usage perspective this isn't too bad though: the data within is still
+    // refcounted straight from the store in any case.
+    //
+    // It just sucks latency-wise.
+    let messages = messages.collect::<Vec<_>>();
 
     // Web
     #[cfg(target_arch = "wasm32")]
     {
-        let messages = to_log_messages()?;
-
         wasm_bindgen_futures::spawn_local(async move {
-            if let Err(err) = async_save_dialog(rrd_version, &file_name, &title, &messages).await {
+            if let Err(err) =
+                async_save_dialog(rrd_version, &file_name, &title, messages.into_iter()).await
+            {
                 re_log::error!("File saving failed: {err}");
             }
         });
@@ -1920,9 +1928,8 @@ fn save_entity_db(
                 .save_file()
         };
         if let Some(path) = path {
-            let messages = to_log_messages()?;
             app.background_tasks.spawn_file_saver(move || {
-                crate::saving::encode_to_file(rrd_version, &path, messages.iter())?;
+                crate::saving::encode_to_file(rrd_version, &path, messages.into_iter())?;
                 Ok(path)
             })?;
         }
@@ -1936,7 +1943,7 @@ async fn async_save_dialog(
     rrd_version: CrateVersion,
     file_name: &str,
     title: &str,
-    messages: &[LogMsg],
+    messages: impl Iterator<Item = re_chunk::ChunkResult<LogMsg>>,
 ) -> anyhow::Result<()> {
     use anyhow::Context as _;
 
@@ -1953,7 +1960,7 @@ async fn async_save_dialog(
     let bytes = re_log_encoding::encoder::encode_as_bytes(
         rrd_version,
         re_log_encoding::EncodingOptions::COMPRESSED,
-        messages.iter(),
+        messages,
     )?;
     file_handle.write(&bytes).await.context("Failed to save")
 }

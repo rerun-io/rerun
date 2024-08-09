@@ -162,7 +162,7 @@ document-features = "0.2.8"
 ehttp = "0.5.0"
 enumset = "1.0.12"
 env_logger = { version = "0.10", default-features = false }
-fixed = { version = "1.17", default-features = false }
+fixed = { version = "<1.28", default-features = false } # 1.28+ is MSRV 1.79+
 flatbuffers = "23.0"
 futures-channel = "0.3"
 futures-util = { version = "0.3", default-features = false }

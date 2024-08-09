@@ -46,7 +46,7 @@ impl ImageDecodeCache {
 
         let lookup = self.cache.entry(key).or_insert_with(|| {
             let result = decode_image(row_id, image_bytes, media_type);
-            let memory_used = result.as_ref().map_or(0, |image| image.blob.len() as u64);
+            let memory_used = result.as_ref().map_or(0, |image| image.buffer.len() as u64);
             self.memory_used += memory_used;
             DecodedImageResult {
                 result,
@@ -87,11 +87,11 @@ fn decode_image(
 
     let image_arch = Image::from_dynamic_image(dynamic_image)?;
 
-    let Image { data, format, .. } = image_arch;
+    let Image { buffer, format, .. } = image_arch;
 
     Ok(ImageInfo {
-        blob_row_id: row_id,
-        blob: data.0,
+        buffer_row_id: row_id,
+        buffer: buffer.0,
         format: format.0,
         kind: ImageKind::Color,
         colormap: None,

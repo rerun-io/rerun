@@ -55,7 +55,7 @@ def test_image() -> None:
     for input in IMAGE_INPUTS:
         arch = rr.Image(**input)
 
-        assert arch.data == expected.data
+        assert arch.buffer == expected.buffer
         assert arch.format == expected.format
 
 

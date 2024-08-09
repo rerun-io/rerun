@@ -10,7 +10,7 @@
 #include <memory>
 
 namespace rerun::components {
-    /// **Component**: The metadata describing the contents of a [rerun.components.ImageBuffer].
+    /// **Component**: The metadata describing the contents of a `components::ImageBuffer`.
     struct ImageFormat {
         rerun::datatypes::ImageFormat image_format;
 

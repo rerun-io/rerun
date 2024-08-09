@@ -3,7 +3,6 @@ use std::collections::HashSet;
 use egui::{NumExt as _, Ui};
 
 use re_log_types::{EntityPath, ResolvedTimeRange, TimeType, TimelineName};
-use re_space_view_dataframe::DataframeSpaceView;
 use re_space_view_spatial::{SpatialSpaceView2D, SpatialSpaceView3D};
 use re_space_view_time_series::TimeSeriesSpaceView;
 use re_types::{
@@ -23,7 +22,6 @@ static VISIBLE_HISTORY_SUPPORTED_SPACE_VIEWS: once_cell::sync::Lazy<
         SpatialSpaceView3D::identifier(),
         SpatialSpaceView2D::identifier(),
         TimeSeriesSpaceView::identifier(),
-        DataframeSpaceView::identifier(),
     ]
     .map(Into::into)
     .into()

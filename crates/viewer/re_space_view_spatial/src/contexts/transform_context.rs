@@ -608,10 +608,11 @@ fn query_and_resolve_leaf_transform_at_entity(
 
     let max_count = result
         .components
-        .values()
-        .map(|comp| comp.num_instances())
+        .iter()
+        .map(|(name, row)| row.num_instances(name))
         .max()
         .unwrap_or(0) as usize;
+
     if max_count == 0 {
         return Vec::new();
     }

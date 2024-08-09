@@ -15,13 +15,13 @@ use re_types::{
 pub struct ImageInfo {
     /// The row id that contaoned the blob.
     ///
-    /// Can be used instead of hashing [`Self::blob`].
-    pub blob_row_id: RowId,
+    /// Can be used instead of hashing [`Self::buffer`].
+    pub buffer_row_id: RowId,
 
     /// The image data, row-wise, with stride=width.
-    pub blob: Blob,
+    pub buffer: Blob,
 
-    /// Describes the format of [`Self::blob`].
+    /// Describes the format of [`Self::buffer`].
     pub format: ImageFormat,
 
     /// Color, Depth, or Segmentation?
@@ -65,7 +65,7 @@ impl ImageInfo {
         }
 
         if let Some(pixel_format) = self.format.pixel_format {
-            let buf: &[u8] = &self.blob;
+            let buf: &[u8] = &self.buffer;
 
             // NOTE: the name `y` is already taken for the coordinate, so we use `luma` here.
             let [luma, u, v] = match pixel_format {
@@ -114,19 +114,19 @@ impl ImageInfo {
                 (y as usize * stride as usize + x as usize) * num_channels + channel as usize;
 
             match self.format.datatype() {
-                ChannelDatatype::U8 => self.blob.get(offset).copied().map(TensorElement::U8),
-                ChannelDatatype::U16 => get(&self.blob, offset).map(TensorElement::U16),
-                ChannelDatatype::U32 => get(&self.blob, offset).map(TensorElement::U32),
-                ChannelDatatype::U64 => get(&self.blob, offset).map(TensorElement::U64),
+                ChannelDatatype::U8 => self.buffer.get(offset).copied().map(TensorElement::U8),
+                ChannelDatatype::U16 => get(&self.buffer, offset).map(TensorElement::U16),
+                ChannelDatatype::U32 => get(&self.buffer, offset).map(TensorElement::U32),
+                ChannelDatatype::U64 => get(&self.buffer, offset).map(TensorElement::U64),
 
-                ChannelDatatype::I8 => get(&self.blob, offset).map(TensorElement::I8),
-                ChannelDatatype::I16 => get(&self.blob, offset).map(TensorElement::I16),
-                ChannelDatatype::I32 => get(&self.blob, offset).map(TensorElement::I32),
-                ChannelDatatype::I64 => get(&self.blob, offset).map(TensorElement::I64),
+                ChannelDatatype::I8 => get(&self.buffer, offset).map(TensorElement::I8),
+                ChannelDatatype::I16 => get(&self.buffer, offset).map(TensorElement::I16),
+                ChannelDatatype::I32 => get(&self.buffer, offset).map(TensorElement::I32),
+                ChannelDatatype::I64 => get(&self.buffer, offset).map(TensorElement::I64),
 
-                ChannelDatatype::F16 => get(&self.blob, offset).map(TensorElement::F16),
-                ChannelDatatype::F32 => get(&self.blob, offset).map(TensorElement::F32),
-                ChannelDatatype::F64 => get(&self.blob, offset).map(TensorElement::F64),
+                ChannelDatatype::F16 => get(&self.buffer, offset).map(TensorElement::F16),
+                ChannelDatatype::F32 => get(&self.buffer, offset).map(TensorElement::F32),
+                ChannelDatatype::F64 => get(&self.buffer, offset).map(TensorElement::F64),
             }
         }
     }
@@ -140,9 +140,9 @@ impl ImageInfo {
     /// this function will copy the data.
     pub fn to_slice<T: bytemuck::Pod>(&self) -> Cow<'_, [T]> {
         let element_size = std::mem::size_of::<T>();
-        let num_elements = self.blob.len() / element_size;
+        let num_elements = self.buffer.len() / element_size;
         let num_bytes = num_elements * element_size;
-        let bytes = &self.blob[..num_bytes];
+        let bytes = &self.buffer[..num_bytes];
 
         if let Ok(slice) = bytemuck::try_cast_slice(bytes) {
             Cow::Borrowed(slice)

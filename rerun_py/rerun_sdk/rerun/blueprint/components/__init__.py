@@ -21,20 +21,21 @@ from .container_kind import (
     ContainerKindType,
 )
 from .corner2d import Corner2D, Corner2DArrayLike, Corner2DBatch, Corner2DLike, Corner2DType
-from .dataframe_view_mode import (
-    DataframeViewMode,
-    DataframeViewModeArrayLike,
-    DataframeViewModeBatch,
-    DataframeViewModeLike,
-    DataframeViewModeType,
-)
 from .grid_columns import GridColumns, GridColumnsBatch, GridColumnsType
 from .included_content import IncludedContent, IncludedContentBatch, IncludedContentType
 from .included_space_view import IncludedSpaceView, IncludedSpaceViewBatch, IncludedSpaceViewType
 from .interactive import Interactive, InteractiveBatch, InteractiveType
+from .latest_at_queries import (
+    LatestAtQueries,
+    LatestAtQueriesArrayLike,
+    LatestAtQueriesBatch,
+    LatestAtQueriesLike,
+    LatestAtQueriesType,
+)
 from .lock_range_during_zoom import LockRangeDuringZoom, LockRangeDuringZoomBatch, LockRangeDuringZoomType
 from .panel_state import PanelState, PanelStateArrayLike, PanelStateBatch, PanelStateLike, PanelStateType
 from .query_expression import QueryExpression, QueryExpressionBatch, QueryExpressionType
+from .query_kind import QueryKind, QueryKindArrayLike, QueryKindBatch, QueryKindLike, QueryKindType
 from .root_container import RootContainer, RootContainerBatch, RootContainerType
 from .row_share import RowShare, RowShareBatch, RowShareType
 from .sort_key import SortKey, SortKeyArrayLike, SortKeyBatch, SortKeyLike, SortKeyType
@@ -47,6 +48,14 @@ from .tensor_dimension_index_slider import (
     TensorDimensionIndexSliderBatch,
     TensorDimensionIndexSliderType,
 )
+from .time_range_queries import (
+    TimeRangeQueries,
+    TimeRangeQueriesArrayLike,
+    TimeRangeQueriesBatch,
+    TimeRangeQueriesLike,
+    TimeRangeQueriesType,
+)
+from .timeline_name import TimelineName, TimelineNameBatch, TimelineNameType
 from .view_fit import ViewFit, ViewFitArrayLike, ViewFitBatch, ViewFitLike, ViewFitType
 from .viewer_recommendation_hash import (
     ViewerRecommendationHash,
@@ -86,11 +95,6 @@ __all__ = [
     "Corner2DBatch",
     "Corner2DLike",
     "Corner2DType",
-    "DataframeViewMode",
-    "DataframeViewModeArrayLike",
-    "DataframeViewModeBatch",
-    "DataframeViewModeLike",
-    "DataframeViewModeType",
     "GridColumns",
     "GridColumnsBatch",
     "GridColumnsType",
@@ -103,6 +107,11 @@ __all__ = [
     "Interactive",
     "InteractiveBatch",
     "InteractiveType",
+    "LatestAtQueries",
+    "LatestAtQueriesArrayLike",
+    "LatestAtQueriesBatch",
+    "LatestAtQueriesLike",
+    "LatestAtQueriesType",
     "LockRangeDuringZoom",
     "LockRangeDuringZoomBatch",
     "LockRangeDuringZoomType",
@@ -114,6 +123,11 @@ __all__ = [
     "QueryExpression",
     "QueryExpressionBatch",
     "QueryExpressionType",
+    "QueryKind",
+    "QueryKindArrayLike",
+    "QueryKindBatch",
+    "QueryKindLike",
+    "QueryKindType",
     "RootContainer",
     "RootContainerBatch",
     "RootContainerType",
@@ -142,6 +156,14 @@ __all__ = [
     "TensorDimensionIndexSlider",
     "TensorDimensionIndexSliderBatch",
     "TensorDimensionIndexSliderType",
+    "TimeRangeQueries",
+    "TimeRangeQueriesArrayLike",
+    "TimeRangeQueriesBatch",
+    "TimeRangeQueriesLike",
+    "TimeRangeQueriesType",
+    "TimelineName",
+    "TimelineNameBatch",
+    "TimelineNameType",
     "ViewFit",
     "ViewFitArrayLike",
     "ViewFitBatch",

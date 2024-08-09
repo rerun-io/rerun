@@ -8,7 +8,8 @@ use re_smart_channel::Sender;
 pub fn load_stdin(tx: Sender<LogMsg>) -> anyhow::Result<()> {
     let version_policy = re_log_encoding::decoder::VersionPolicy::Warn;
 
-    let decoder = re_log_encoding::decoder::Decoder::new(version_policy, std::io::stdin())?;
+    let stdin = std::io::BufReader::new(std::io::stdin());
+    let decoder = re_log_encoding::decoder::Decoder::new_concatenated(version_policy, stdin)?;
 
     rayon::spawn(move || {
         re_tracing::profile_scope!("stdin");

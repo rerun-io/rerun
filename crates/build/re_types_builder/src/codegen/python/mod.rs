@@ -19,6 +19,7 @@ use crate::{
     objects::ObjectClass,
     ArrowRegistry, CodeGenerator, Docs, ElementType, GeneratedFiles, Object, ObjectField,
     ObjectKind, Objects, Reporter, Type, ATTR_PYTHON_ALIASES, ATTR_PYTHON_ARRAY_ALIASES,
+    ATTR_RERUN_LOG_MISSING_AS_EMPTY,
 };
 
 use self::views::code_for_view;
@@ -572,10 +573,10 @@ fn code_for_struct(
             } else if *kind == ObjectKind::Archetype {
                 // Archetypes use the ComponentBatch constructor for their fields
                 let (typ_unwrapped, _) = quote_field_type_from_field(objects, field, true);
-                if field.is_nullable {
-                    format!("converter={typ_unwrapped}Batch._optional, # type: ignore[misc]\n")
+                if field.is_nullable && !obj.attrs.has(ATTR_RERUN_LOG_MISSING_AS_EMPTY) {
+                    format!("converter={typ_unwrapped}Batch._optional,  # type: ignore[misc]\n")
                 } else {
-                    format!("converter={typ_unwrapped}Batch._required, # type: ignore[misc]\n")
+                    format!("converter={typ_unwrapped}Batch._required,  # type: ignore[misc]\n")
                 }
             } else if !default_converter.is_empty() {
                 code.push_indented(0, &converter_function, 1);

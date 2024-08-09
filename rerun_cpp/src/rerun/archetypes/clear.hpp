@@ -4,8 +4,8 @@
 #pragma once
 
 #include "../collection.hpp"
+#include "../component_batch.hpp"
 #include "../components/clear_is_recursive.hpp"
-#include "../data_cell.hpp"
 #include "../indicator_component.hpp"
 #include "../rerun_sdk_export.hpp"
 #include "../result.hpp"
@@ -118,6 +118,6 @@ namespace rerun {
     template <>
     struct AsComponents<archetypes::Clear> {
         /// Serialize all set component batches.
-        static Result<std::vector<DataCell>> serialize(const archetypes::Clear& archetype);
+        static Result<std::vector<ComponentBatch>> serialize(const archetypes::Clear& archetype);
     };
 } // namespace rerun

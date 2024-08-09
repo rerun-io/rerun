@@ -1,0 +1,14 @@
+
+namespace rerun.blueprint.components;
+
+/// Configuration for latest at queries.
+///
+/// Note: configuration as saved on a per-timeline basis.
+table LatestAtQueries (
+  "attr.arrow.transparent",
+  "attr.rust.derive": "Default, PartialEq, Eq",
+  "attr.rust.repr": "transparent",
+  "attr.rerun.scope": "blueprint"
+) {
+    queries: [rerun.blueprint.datatypes.LatestAtQuery] (order: 100);
+}

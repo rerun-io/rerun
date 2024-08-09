@@ -5,11 +5,11 @@
 
 #include "../collection.hpp"
 #include "../compiler_utils.hpp"
-#include "../components/blob.hpp"
+#include "../component_batch.hpp"
 #include "../components/draw_order.hpp"
+#include "../components/image_buffer.hpp"
 #include "../components/image_format.hpp"
 #include "../components/opacity.hpp"
-#include "../data_cell.hpp"
 #include "../image_utils.hpp"
 #include "../indicator_component.hpp"
 #include "../result.hpp"
@@ -73,7 +73,7 @@ namespace rerun::archetypes {
     /// ```
     struct SegmentationImage {
         /// The raw image data.
-        rerun::components::Blob data;
+        rerun::components::ImageBuffer buffer;
 
         /// The format of the image.
         rerun::components::ImageFormat format;
@@ -120,29 +120,29 @@ namespace rerun::archetypes {
 
         /// Constructs image from pixel data + resolution with explicit datatype. Borrows data from a pointer (i.e. data must outlive the image!).
         ///
-        /// @param data_ The raw image data.
+        /// @param bytes The raw image data.
         /// ⚠️ Does not take ownership of the data, the caller must ensure the data outlives the image.
         /// The byte size of the data is assumed to be `W * H * datatype.size`
         /// @param resolution The resolution of the image as {width, height}.
         /// @param datatype How the data should be interpreted.
         SegmentationImage(
-            const void* data_, WidthHeight resolution, datatypes::ChannelDatatype datatype
+            const void* bytes, WidthHeight resolution, datatypes::ChannelDatatype datatype
         )
-            : data{Collection<uint8_t>::borrow(data_, num_bytes(resolution, datatype))},
+            : buffer{Collection<uint8_t>::borrow(bytes, num_bytes(resolution, datatype))},
               format{datatypes::ImageFormat{resolution, datatype}} {}
 
         /// Constructs image from pixel data + resolution + datatype.
         ///
-        /// @param data_ The raw image data as bytes.
+        /// @param bytes The raw image data as bytes.
         /// If the data does not outlive the image, use `std::move` or create the `rerun::Collection`
         /// explicitly ahead of time with `rerun::Collection::take_ownership`.
         /// The length of the data should be `W * H`.
         /// @param resolution The resolution of the image as {width, height}.
         /// @param datatype How the data should be interpreted.
         SegmentationImage(
-            Collection<uint8_t> data_, WidthHeight resolution, datatypes::ChannelDatatype datatype
+            Collection<uint8_t> bytes, WidthHeight resolution, datatypes::ChannelDatatype datatype
         )
-            : data{data_}, format{datatypes::ImageFormat{resolution, datatype}} {}
+            : buffer{bytes}, format{datatypes::ImageFormat{resolution, datatype}} {}
 
         // END of extensions from segmentation_image_ext.cpp, start of generated code:
 
@@ -180,7 +180,7 @@ namespace rerun {
     template <>
     struct AsComponents<archetypes::SegmentationImage> {
         /// Serialize all set component batches.
-        static Result<std::vector<DataCell>> serialize(
+        static Result<std::vector<ComponentBatch>> serialize(
             const archetypes::SegmentationImage& archetype
         );
     };

@@ -7,6 +7,9 @@ from uuid import UUID
 
 import numpy as np
 
+__version__ = "0.18.0-alpha.1"
+__version_info__ = (0, 18, 0, "alpha.1")
+
 # =====================================
 # API RE-EXPORTS
 # Important: always us the `import _ as _` format to make it explicit to type-checkers that these are public APIs.
@@ -101,6 +104,9 @@ from .datatypes import (
 )
 from .error_utils import (
     set_strict_mode as set_strict_mode,
+)
+from .legacy_notebook import (
+    legacy_notebook_show as legacy_notebook_show,
 )
 from .logging_handler import (
     LoggingHandler as LoggingHandler,

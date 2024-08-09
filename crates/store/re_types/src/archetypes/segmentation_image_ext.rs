@@ -36,7 +36,7 @@ impl SegmentationImage {
         let image_format = ImageFormat::segmentation([width, height], datatype);
 
         Ok(Self {
-            data: blob.into(),
+            buffer: blob.into(),
             format: image_format.into(),
             draw_order: None,
             opacity: None,

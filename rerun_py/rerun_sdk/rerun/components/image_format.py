@@ -15,7 +15,7 @@ __all__ = ["ImageFormat", "ImageFormatBatch", "ImageFormatType"]
 
 
 class ImageFormat(datatypes.ImageFormat, ComponentMixin):
-    """**Component**: The metadata describing the contents of a [rerun.components.ImageBuffer]."""
+    """**Component**: The metadata describing the contents of a [`components.ImageBuffer`][rerun.components.ImageBuffer]."""
 
     _BATCH_TYPE = None
     # You can define your own __init__ function as a member of ImageFormatExt in image_format_ext.py

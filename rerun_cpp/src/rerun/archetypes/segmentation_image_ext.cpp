@@ -34,31 +34,31 @@ namespace rerun::archetypes {
 
     /// Constructs image from pixel data + resolution with explicit datatype. Borrows data from a pointer (i.e. data must outlive the image!).
     ///
-    /// @param data_ The raw image data.
+    /// @param bytes The raw image data.
     /// ⚠️ Does not take ownership of the data, the caller must ensure the data outlives the image.
     /// The byte size of the data is assumed to be `W * H * datatype.size`
     /// @param resolution The resolution of the image as {width, height}.
     /// @param datatype How the data should be interpreted.
     SegmentationImage(
-        const void* data_, WidthHeight resolution,
+        const void* bytes, WidthHeight resolution,
         datatypes::ChannelDatatype datatype
     )
-        : data{Collection<uint8_t>::borrow(data_, num_bytes(resolution, datatype))},
+        : buffer{Collection<uint8_t>::borrow(bytes, num_bytes(resolution, datatype))},
           format{datatypes::ImageFormat{resolution, datatype}} {}
 
     /// Constructs image from pixel data + resolution + datatype.
     ///
-    /// @param data_ The raw image data as bytes.
+    /// @param bytes The raw image data as bytes.
     /// If the data does not outlive the image, use `std::move` or create the `rerun::Collection`
     /// explicitly ahead of time with `rerun::Collection::take_ownership`.
     /// The length of the data should be `W * H`.
     /// @param resolution The resolution of the image as {width, height}.
     /// @param datatype How the data should be interpreted.
     SegmentationImage(
-        Collection<uint8_t> data_, WidthHeight resolution,
+        Collection<uint8_t> bytes, WidthHeight resolution,
         datatypes::ChannelDatatype datatype
     )
-        : data{data_}, format{datatypes::ImageFormat{resolution, datatype}} {}
+        : buffer{bytes}, format{datatypes::ImageFormat{resolution, datatype}} {}
 
     // </CODEGEN_COPY_TO_HEADER>
 

@@ -19,7 +19,7 @@ fn segmentation_image_roundtrip() {
     };
 
     let all_expected = [SegmentationImage {
-        data: vec![1, 2, 3, 4, 5, 6].into(),
+        buffer: vec![1, 2, 3, 4, 5, 6].into(),
         format: format_expected.into(),
         draw_order: None,
         opacity: None,
