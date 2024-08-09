@@ -5,7 +5,7 @@ from typing import Iterable, Protocol, TypeVar
 import pyarrow as pa
 import rerun_bindings as bindings
 
-from ._baseclasses import Archetype, ComponentBatchLike
+from ._baseclasses import Archetype, ComponentColumnLike
 from ._log import IndicatorComponentBatch
 from .error_utils import catch_and_log_exceptions
 from .recording_stream import RecordingStream
@@ -84,7 +84,7 @@ TArchetype = TypeVar("TArchetype", bound=Archetype)
 def send_columns(
     entity_path: str,
     times: Iterable[TimeColumnLike],
-    components: Iterable[ComponentBatchLike],
+    components: Iterable[ComponentColumnLike],
     recording: RecordingStream | None = None,
     strict: bool | None = None,
 ) -> None:
@@ -92,7 +92,7 @@ def send_columns(
     Directly log a columns of data to Rerun.
 
     Unlike the regular `log` API, which is row-oriented, this API lets you submit the data
-    in a columnar form. Each `TimeColumnLike` and `ComponentBatchLike` object represents a column
+    in a columnar form. Each `TimeColumnLike` and `ComponentColumnLike` object represents a column
     of data that will be sent to Rerun. The lengths of all of these columns must match, and all
     data that shares the same index across the different columns will act as a single logical row,
     equivalent to a single call to `rr.log()`.
@@ -148,7 +148,7 @@ def send_columns(
         of timestamps. Generally you should use one of the provided classes: [`TimeSequenceColumn`][],
         [`TimeSecondsColumn`][], or [`TimeNanosColumn`][].
     components:
-        The batches of components to log. Each `ComponentBatchLike` object represents a single column of data.
+        The batches of components to log. Each `ComponentColumnLike` object represents a single column of data.
     recording:
         Specifies the [`rerun.RecordingStream`][] to use.
         If left unspecified, defaults to the current active data recording, if there is one.
