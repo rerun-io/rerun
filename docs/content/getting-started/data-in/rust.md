@@ -312,7 +312,7 @@ for i in 0..400 {
 
     rec.log(
         "dna/structure",
-        &rerun::archetypes::Transform3D::new(rerun::RotationAxisAngle::new(
+        &rerun::archetypes::Transform3D::from_rotation(rerun::RotationAxisAngle::new(
             glam::Vec3::Z,
             rerun::Angle::Radians(time / 4.0 * TAU),
         )),

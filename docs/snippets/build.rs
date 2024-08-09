@@ -102,6 +102,9 @@ fn main() {
             ${MATCH_SNIPPETS}
             _ => {
                 eprintln!("Unknown snippet: {snippet_name}");
+                eprintln!("Available snippets:");
+                eprintln!();
+                eprintln!("${SNIPPETS}");
                 std::process::exit(1);
             }
         }

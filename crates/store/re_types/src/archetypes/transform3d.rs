@@ -25,6 +25,10 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 /// E.g. if both a translation and a max3x3 transform are present,
 /// the 3x3 matrix is applied first, followed by the translation.
 ///
+/// Whenever you log this archetype, it will write all components, even if you do not explicitly set them.
+/// This means that if you first log a transform with only a translation, and then log one with only a rotation,
+/// it will be resolved to a transform with only a rotation.
+///
 /// ## Examples
 ///
 /// ### Variety of 3D transforms
@@ -160,7 +164,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 ///   <img src="https://static.rerun.io/transform_hierarchy/cb7be7a5a31fcb2efc02ba38e434849248f87554/full.png" width="640">
 /// </picture>
 /// </center>
-#[derive(Clone, Debug, Default, PartialEq)]
+#[derive(Clone, Debug, Copy, PartialEq)]
 pub struct Transform3D {
     /// Translation vector.
     pub translation: Option<crate::components::Translation3D>,
@@ -385,27 +389,13 @@ impl ::re_types_core::AsComponents for Transform3D {
         use ::re_types_core::Archetype as _;
         [
             Some(Self::indicator()),
-            self.translation
-                .as_ref()
-                .map(|comp| (comp as &dyn ComponentBatch).into()),
-            self.rotation_axis_angle
-                .as_ref()
-                .map(|comp| (comp as &dyn ComponentBatch).into()),
-            self.quaternion
-                .as_ref()
-                .map(|comp| (comp as &dyn ComponentBatch).into()),
-            self.scale
-                .as_ref()
-                .map(|comp| (comp as &dyn ComponentBatch).into()),
-            self.mat3x3
-                .as_ref()
-                .map(|comp| (comp as &dyn ComponentBatch).into()),
-            self.relation
-                .as_ref()
-                .map(|comp| (comp as &dyn ComponentBatch).into()),
-            self.axis_length
-                .as_ref()
-                .map(|comp| (comp as &dyn ComponentBatch).into()),
+            Some((&self.translation as &dyn ComponentBatch).into()),
+            Some((&self.rotation_axis_angle as &dyn ComponentBatch).into()),
+            Some((&self.quaternion as &dyn ComponentBatch).into()),
+            Some((&self.scale as &dyn ComponentBatch).into()),
+            Some((&self.mat3x3 as &dyn ComponentBatch).into()),
+            Some((&self.relation as &dyn ComponentBatch).into()),
+            Some((&self.axis_length as &dyn ComponentBatch).into()),
         ]
         .into_iter()
         .flatten()
@@ -416,9 +406,9 @@ impl ::re_types_core::AsComponents for Transform3D {
 impl ::re_types_core::ArchetypeReflectionMarker for Transform3D {}
 
 impl Transform3D {
-    /// Create a new `Transform3D`.
+    /// Create a new `Transform3D` which when logged will clear the values of all components.
     #[inline]
-    pub fn new() -> Self {
+    pub fn clear() -> Self {
         Self {
             translation: None,
             rotation_axis_angle: None,

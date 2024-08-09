@@ -78,8 +78,8 @@ def test_leaf_transform3d() -> None:
         )
         print(f"{arch}\n")
 
-        assert arch.translations == rr.components.LeafTranslation3DBatch._optional(translations)
-        assert arch.rotation_axis_angles == rr.components.LeafRotationAxisAngleBatch._optional(rotation_axis_angles)
-        assert arch.quaternions == rr.components.LeafRotationQuatBatch._optional(quaternions)
-        assert arch.scales == rr.components.LeafScale3DBatch._optional(scales)
-        assert arch.mat3x3 == rr.components.LeafTransformMat3x3Batch._optional(mat3x3)
+        assert arch.translations == rr.components.LeafTranslation3DBatch._required(translations)
+        assert arch.rotation_axis_angles == rr.components.LeafRotationAxisAngleBatch._required(rotation_axis_angles)
+        assert arch.quaternions == rr.components.LeafRotationQuatBatch._required(quaternions)
+        assert arch.scales == rr.components.LeafScale3DBatch._required(scales)
+        assert arch.mat3x3 == rr.components.LeafTransformMat3x3Batch._required(mat3x3)
