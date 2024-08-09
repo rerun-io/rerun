@@ -5,6 +5,7 @@ readme = "README.md"
 dependencies = [
   "geopandas",
   "numpy",
+  "polars",
   "pyproj",
   "requests",
   "rerun-sdk",

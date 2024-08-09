@@ -13,6 +13,8 @@ from typing import Any
 import geopandas as gpd
 import numpy as np
 import numpy.typing as npt
+import polars
+import pyproj
 import requests
 import rerun as rr
 import rerun.blueprint as rrb
@@ -200,36 +202,31 @@ def get_paths_for_directory(directory: Path) -> list[Path]:
     return sorted(directory.rglob("*.json"), key=natural_keys)
 
 
-def log_everything(paths: list[Path], raw: bool) -> None:
-    measurements = load_measurements(paths)
-    utm_crs = find_best_utm_crs(measurements)
+# ================================================================================================
+# Simple logger
 
-    ignored_fields = [
-        "icao_id",  # already the entity's path
-        "timestamp",  # already the clock's value
-    ]
 
-    proj = Transformer.from_crs("EPSG:4326", utm_crs, always_xy=True)
+class MeasurementLogger:
+    """Logger class that uses regular `rr.log` calls."""
 
-    rr.set_time_seconds("unix_time", 0)
-    for country_code, (level, color) in itertools.product(["DE", "FR", "CH"], [(0, (1, 0.5, 0.5))]):
-        log_region_boundaries_for_country(country_code, level, color, utm_crs)
+    def __init__(self, proj: pyproj.Transformer, raw: bool):
+        self._proj = proj
+        self._raw = raw
 
-    # Exaggerate altitudes
-    rr.log("aircraft", rr.Transform3D(scale=[1, 1, 10]), static=True)
+        self._ignored_fields = [
+            "icao_id",  # already the entity's path
+            "timestamp",  # already the clock's value
+        ]
 
-    for measurement in tqdm(measurements, "Logging measurements"):
-        if measurement.icao_id is None:
-            continue
-
+    def process_measurement(self, measurement: Measurement) -> None:
         rr.set_time_seconds("unix_time", measurement.timestamp)
 
-        if raw:
+        if self._raw:
             metadata = dataclasses.asdict(measurement)
         else:
             metadata = dataclasses.asdict(
                 measurement,
-                dict_factory=lambda x: {k: v for (k, v) in x if k not in ignored_fields and v is not None},
+                dict_factory=lambda x: {k: v for (k, v) in x if k not in self._ignored_fields and v is not None},
             )
 
         entity_path = f"aircraft/{measurement.icao_id}"
@@ -242,7 +239,7 @@ def log_everything(paths: list[Path], raw: bool) -> None:
             rr.log(
                 entity_path,
                 rr.Points3D([
-                    proj.transform(
+                    self._proj.transform(
                         measurement.longitude,
                         measurement.latitude,
                         measurement.barometric_altitude,
@@ -259,6 +256,133 @@ def log_everything(paths: list[Path], raw: bool) -> None:
                 rr.Scalar(measurement.barometric_altitude),
             )
 
+    def flush(self) -> None:
+        pass
+
+
+# ================================================================================================
+# Batch logger
+
+
+class MeasurementBatchLogger:
+    """Logger class that batches measurements and uses `rr.send_columns` calls."""
+
+    def __init__(self, proj: pyproj.Transformer, batch_size: int = 8192):
+        self._proj = proj
+        self._batch_size = batch_size
+        self._measurements: list[Measurement] = []
+        self._position_indicators: set[str] = set()
+
+    def process_measurement(self, measurement: Measurement) -> None:
+        self._measurements.append(measurement)
+
+        if len(self._measurements) >= 8192:
+            self.flush()
+
+    def flush(self):
+        # !!! the raw data is not sorted by timestamp, so we sort it here
+        df = polars.DataFrame(self._measurements).sort("timestamp")
+        self._measurements = []
+
+        for (icao_id,), group in df.group_by("icao_id"):
+            icao_id = str(icao_id)
+
+            # Note: this splitting in 3 different functions is due to the pattern of nulls in the raw data.
+            self.log_position_and_altitude(group, icao_id)
+            self.log_ground_status(group, icao_id)
+            self.log_metadata(group, icao_id)
+
+    def log_position_and_altitude(self, df: polars.DataFrame, icao_id: str) -> None:
+        entity_path = f"aircraft/{icao_id}"
+        df = df["timestamp", "latitude", "longitude", "barometric_altitude"].drop_nulls()
+
+        if df.height == 0:
+            return
+
+        if icao_id not in self._position_indicators:
+            rr.log(entity_path, [rr.archetypes.Points3D.indicator()], static=True)
+            self._position_indicators.add(icao_id)
+
+        timestamps = rr.TimeSecondsBatch("unix_time", df["timestamp"].to_numpy())
+        pos = self._proj.transform(df["longitude"], df["latitude"], df["barometric_altitude"])
+        positions = rr.components.Position3DBatch(np.vstack(pos).T)
+
+        raw_coordinates = rr.AnyValues(
+            latitude=df["latitude"].to_numpy(),
+            longitude=df["longitude"].to_numpy(),
+            barometric_altitude=df["barometric_altitude"].to_numpy(),
+        )
+
+        rr.send_columns(
+            entity_path,
+            [timestamps],
+            [positions] + raw_coordinates.component_batches,
+        )
+
+        rr.send_columns(
+            entity_path + "/barometric_altitude",
+            [timestamps],
+            [rr.components.ScalarBatch(df["barometric_altitude"].to_numpy())],
+        )
+
+    def log_ground_status(self, df: polars.DataFrame, icao_id: str) -> None:
+        entity_path = f"aircraft/{icao_id}"
+        df = df["timestamp", "ground_status"].drop_nulls()
+
+        timestamps = rr.TimeSecondsBatch("unix_time", df["timestamp"].to_numpy())
+        batches = rr.AnyValues(ground_status=df["ground_status"].to_numpy())
+
+        rr.send_columns(
+            entity_path,
+            [timestamps],
+            batches.component_batches,
+        )
+
+    def log_metadata(self, df: polars.DataFrame, icao_id: str) -> None:
+        entity_path = f"aircraft/{icao_id}"
+        df = df["timestamp", "course", "ground_speed", "vertical_speed"].drop_nulls()
+
+        metadata = rr.AnyValues(
+            course=df["course"].to_numpy(),
+            ground_speed=df["ground_speed"].to_numpy(),
+            vertical_speed=df["vertical_speed"].to_numpy(),
+        )
+
+        rr.send_columns(
+            entity_path,
+            [rr.TimeSecondsBatch("unix_time", df["timestamp"].to_numpy())],
+            metadata.component_batches,
+        )
+
+
+# ================================================================================================
+
+
+def log_everything(paths: list[Path], raw: bool, batch: bool, batch_size: int) -> None:
+    measurements = load_measurements(paths)
+    utm_crs = find_best_utm_crs(measurements)
+
+    proj = Transformer.from_crs("EPSG:4326", utm_crs, always_xy=True)
+
+    rr.set_time_seconds("unix_time", 0)
+    for country_code, (level, color) in itertools.product(["DE", "FR", "CH"], [(0, (1, 0.5, 0.5))]):
+        log_region_boundaries_for_country(country_code, level, color, utm_crs)
+
+    # Exaggerate altitudes
+    rr.log("aircraft", rr.Transform3D(scale=[1, 1, 10]), static=True)
+
+    if batch:
+        logger = MeasurementBatchLogger(proj, batch_size)
+    else:
+        logger = MeasurementLogger(proj, raw)
+
+    for measurement in tqdm(measurements, "Logging measurements"):
+        if measurement.icao_id is None:
+            continue
+
+        logger.process_measurement(measurement)
+    logger.flush()
+
 
 def main() -> None:
     parser = ArgumentParser(description="Visualize INVOLI data")
@@ -272,6 +396,17 @@ def main() -> None:
         "--raw",
         action="store_true",
         help="If true, logs the raw data with all its issues (useful to stress edge cases in the viewer)",
+    )
+    parser.add_argument(
+        "--batch",
+        action="store_true",
+        help="If true, use the batch logger function (rerun 0.18 required)",
+    )
+    parser.add_argument(
+        "--batch-size",
+        type=int,
+        default=8192,
+        help="Batch size for the batch logger",
     )
     parser.add_argument(
         "--dir",
@@ -297,7 +432,7 @@ def main() -> None:
     rr.script_setup(args, "rerun_example_air_traffic_data", default_blueprint=blueprint)
 
     paths = get_paths_for_directory(dataset_directory)
-    log_everything(paths, args.raw)
+    log_everything(paths, args.raw, args.batch, args.batch_size)
 
 
 if __name__ == "__main__":
