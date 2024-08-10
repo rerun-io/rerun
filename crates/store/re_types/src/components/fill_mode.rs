@@ -22,14 +22,13 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 #[derive(Clone, Copy, Debug, Hash, PartialEq, Eq, Default)]
 #[repr(u8)]
 pub enum FillMode {
-    /// Lines are drawn around the features of the shape which directly correspond to the logged
-    /// data.
+    /// Lines are drawn around the parts of the shape which directly correspond to the logged data.
     ///
     /// Examples of what this means:
     ///
-    /// * An `Ellipsoids3D` will draw three axis-aligned ellipses that are cross-sections
+    /// * An [`archetypes::Ellipsoids3D`][crate::archetypes::Ellipsoids3D] will draw three axis-aligned ellipses that are cross-sections
     ///   of each ellipsoid, each of which displays two out of three of the sizes of the ellipsoid.
-    /// * For `Boxes3D`, it is the edges of the box, identical to `DenseWireframe`.
+    /// * For [`archetypes::Boxes3D`][crate::archetypes::Boxes3D], it is the edges of the box, identical to `DenseWireframe`.
     #[default]
     MajorWireframe = 1,
 
@@ -37,8 +36,9 @@ pub enum FillMode {
     ///
     /// Examples of what this means:
     ///
-    /// * An `Ellipsoids3D` will draw a wireframe triangle mesh that approximates each ellipsoid.
-    /// * For `Boxes3D`, it is the edges of the box, `MajorWireframe`.
+    /// * An [`archetypes::Ellipsoids3D`][crate::archetypes::Ellipsoids3D] will draw a wireframe triangle mesh that approximates each
+    ///   ellipsoid.
+    /// * For [`archetypes::Boxes3D`][crate::archetypes::Boxes3D], it is the edges of the box, identical to `MajorWireframe`.
     DenseWireframe = 2,
 
     /// The surface of the shape is filled in with a solid color. No lines are drawn.
@@ -55,10 +55,10 @@ impl ::re_types_core::reflection::Enum for FillMode {
     fn docstring_md(self) -> &'static str {
         match self {
             Self::MajorWireframe => {
-                "Lines are drawn around the features of the shape which directly correspond to the logged\ndata.\n\nExamples of what this means:\n\n* An `Ellipsoids3D` will draw three axis-aligned ellipses that are cross-sections\n  of each ellipsoid, each of which displays two out of three of the sizes of the ellipsoid.\n* For `Boxes3D`, it is the edges of the box, identical to `DenseWireframe`."
+                "Lines are drawn around the parts of the shape which directly correspond to the logged data.\n\nExamples of what this means:\n\n* An [`archetypes::Ellipsoids3D`][crate::archetypes::Ellipsoids3D] will draw three axis-aligned ellipses that are cross-sections\n  of each ellipsoid, each of which displays two out of three of the sizes of the ellipsoid.\n* For [`archetypes::Boxes3D`][crate::archetypes::Boxes3D], it is the edges of the box, identical to `DenseWireframe`."
             }
             Self::DenseWireframe => {
-                "Many lines are drawn to represent the surface of the shape in a see-through fashion.\n\nExamples of what this means:\n\n* An `Ellipsoids3D` will draw a wireframe triangle mesh that approximates each ellipsoid.\n* For `Boxes3D`, it is the edges of the box, `MajorWireframe`."
+                "Many lines are drawn to represent the surface of the shape in a see-through fashion.\n\nExamples of what this means:\n\n* An [`archetypes::Ellipsoids3D`][crate::archetypes::Ellipsoids3D] will draw a wireframe triangle mesh that approximates each\n  ellipsoid.\n* For [`archetypes::Boxes3D`][crate::archetypes::Boxes3D], it is the edges of the box, identical to `MajorWireframe`."
             }
             Self::Solid => {
                 "The surface of the shape is filled in with a solid color. No lines are drawn."

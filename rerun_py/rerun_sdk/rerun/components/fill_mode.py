@@ -26,14 +26,13 @@ class FillMode(Enum):
 
     MajorWireframe = 1
     """
-    Lines are drawn around the features of the shape which directly correspond to the logged
-    data.
+    Lines are drawn around the parts of the shape which directly correspond to the logged data.
 
     Examples of what this means:
 
-    * An `Ellipsoids3D` will draw three axis-aligned ellipses that are cross-sections
+    * An [`archetypes.Ellipsoids3D`][rerun.archetypes.Ellipsoids3D] will draw three axis-aligned ellipses that are cross-sections
       of each ellipsoid, each of which displays two out of three of the sizes of the ellipsoid.
-    * For `Boxes3D`, it is the edges of the box, identical to `DenseWireframe`.
+    * For [`archetypes.Boxes3D`][rerun.archetypes.Boxes3D], it is the edges of the box, identical to `DenseWireframe`.
     """
 
     DenseWireframe = 2
@@ -42,8 +41,9 @@ class FillMode(Enum):
 
     Examples of what this means:
 
-    * An `Ellipsoids3D` will draw a wireframe triangle mesh that approximates each ellipsoid.
-    * For `Boxes3D`, it is the edges of the box, `MajorWireframe`.
+    * An [`archetypes.Ellipsoids3D`][rerun.archetypes.Ellipsoids3D] will draw a wireframe triangle mesh that approximates each
+      ellipsoid.
+    * For [`archetypes.Boxes3D`][rerun.archetypes.Boxes3D], it is the edges of the box, identical to `MajorWireframe`.
     """
 
     Solid = 3
