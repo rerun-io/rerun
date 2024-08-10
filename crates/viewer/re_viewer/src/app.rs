@@ -546,6 +546,7 @@ impl App {
                 self.state.focused_item = Some(item);
             }
 
+            #[cfg(not(target_arch = "wasm32"))]
             SystemCommand::FileSaver(file_saver) => {
                 if let Err(err) = self.background_tasks.spawn_file_saver(file_saver) {
                     re_log::error!("Failed to save file: {err}");

@@ -1,9 +1,10 @@
 use egui::{NumExt, Vec2};
+
 use re_log::ResultExt;
 use re_renderer::renderer::ColormappedTexture;
 use re_types::components::{Blob, MediaType};
 use re_ui::{list_item::PropertyContent, UiExt as _};
-use re_viewer_context::{gpu_bridge::image_to_gpu, SystemCommandSender, UiLayout};
+use re_viewer_context::{gpu_bridge::image_to_gpu, UiLayout};
 
 use crate::{image::show_image_preview, EntityDataUi};
 
@@ -165,7 +166,7 @@ fn save_blob(
     #[allow(unused_variables)] ctx: &re_viewer_context::ViewerContext<'_>, // only used on native
     file_name: String,
     title: String,
-    data: Blob,
+    blob: Blob,
 ) -> anyhow::Result<()> {
     re_tracing::profile_function!();
 
@@ -173,7 +174,7 @@ fn save_blob(
     #[cfg(target_arch = "wasm32")]
     {
         wasm_bindgen_futures::spawn_local(async move {
-            if let Err(err) = async_save_dialog(rrd_version, &file_name, &title, blob).await {
+            if let Err(err) = async_save_dialog(&file_name, &title, blob).await {
                 re_log::error!("File saving failed: {err}");
             }
         });
@@ -193,7 +194,7 @@ fn save_blob(
             ctx.command_sender
                 .send_system(re_viewer_context::SystemCommand::FileSaver(Box::new(
                     move || {
-                        std::fs::write(&path, data.as_slice())?;
+                        std::fs::write(&path, blob.as_slice())?;
                         Ok(path)
                     },
                 )));
@@ -204,12 +205,7 @@ fn save_blob(
 }
 
 #[cfg(target_arch = "wasm32")]
-async fn async_save_dialog(
-    rrd_version: CrateVersion,
-    file_name: &str,
-    title: &str,
-    data: Blob,
-) -> anyhow::Result<()> {
+async fn async_save_dialog(file_name: &str, title: &str, data: Blob) -> anyhow::Result<()> {
     use anyhow::Context as _;
 
     let file_handle = rfd::AsyncFileDialog::new()
