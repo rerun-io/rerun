@@ -168,8 +168,6 @@ fn save_blob(
     title: String,
     blob: Blob,
 ) -> anyhow::Result<()> {
-    use re_viewer_context::SystemCommandSender as _;
-
     re_tracing::profile_function!();
 
     // Web
@@ -193,6 +191,7 @@ fn save_blob(
                 .save_file()
         };
         if let Some(path) = path {
+            use re_viewer_context::SystemCommandSender as _;
             ctx.command_sender
                 .send_system(re_viewer_context::SystemCommand::FileSaver(Box::new(
                     move || {
