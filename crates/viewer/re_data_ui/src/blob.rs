@@ -20,8 +20,12 @@ impl EntityDataUi for Blob {
     ) {
         let compact_size_string = re_format::format_bytes(self.len() as _);
 
-        // We ignore the logged `MediaType` component, because the user is looking
-        // at the blob specifically, not the entity as a whole!
+        // We show the actual mime of the blob here instead of doing
+        // a side-lookup of the sibling `MediaType` component.
+        // This is part of "showing the data as it is".
+        // If the user clicked on the blob, is because they want to see info about the blob,
+        // not about a sibling component.
+        // This can also help a user debug if they log the contents of `.png` file with a `image/jpeg` `MediaType`.
         let media_type = MediaType::guess_from_data(self);
 
         let texture = blob_as_texture(ctx, query, entity_path, row_id, self, media_type.as_ref());
