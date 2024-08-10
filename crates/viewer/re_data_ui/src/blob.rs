@@ -220,7 +220,7 @@ async fn async_save_dialog(file_name: &str, title: &str, data: Blob) -> anyhow::
     };
 
     file_handle
-        .write(&data.as_slice())
+        .write(data.as_slice())
         .await
         .context("Failed to save")
 }
