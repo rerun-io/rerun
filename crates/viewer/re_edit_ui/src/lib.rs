@@ -9,6 +9,7 @@ mod marker_shape;
 mod radius;
 mod range1d;
 mod response_utils;
+mod timeline;
 mod transforms;
 mod visual_bounds2d;
 
@@ -19,14 +20,13 @@ use datatype_editors::{
 };
 use re_types::{
     blueprint::components::{
-        BackgroundKind, Corner2D, DataframeViewMode, LockRangeDuringZoom, SortKey, SortOrder,
-        ViewFit, Visible,
+        BackgroundKind, Corner2D, LockRangeDuringZoom, SortKey, SortOrder, TimelineName, ViewFit,
+        Visible,
     },
     components::{
-        AggregationPolicy, AlbedoFactor, AxisLength, ChannelDatatype, Color, ColorModel, Colormap,
-        DepthMeter, DrawOrder, FillMode, FillRatio, GammaCorrection, ImagePlaneDistance,
-        MagnificationFilter, MarkerSize, Name, Opacity, PixelFormat, Scale3D, StrokeWidth, Text,
-        TransformRelation, Translation3D,
+        AggregationPolicy, AlbedoFactor, AxisLength, Color, Colormap, DepthMeter, DrawOrder,
+        FillMode, FillRatio, GammaCorrection, ImagePlaneDistance, MagnificationFilter, MarkerSize,
+        Name, Opacity, Scale3D, StrokeWidth, Text, TransformRelation, Translation3D,
     },
     Loggable as _,
 };
@@ -61,6 +61,8 @@ pub fn register_editors(registry: &mut re_viewer_context::ComponentUiRegistry) {
     registry.add_singleline_edit_or_view::<Visible>(edit_bool);
     registry.add_singleline_edit_or_view::<LockRangeDuringZoom>(edit_bool);
 
+    registry.add_singleline_edit_or_view::<TimelineName>(timeline::edit_timeline_name);
+
     registry.add_display_ui(Text::name(), Box::new(display_text_ui));
     registry.add_singleline_edit_or_view::<Text>(edit_singleline_string);
     registry.add_multiline_edit_or_view::<Text>(edit_multiline_string);
@@ -71,18 +73,15 @@ pub fn register_editors(registry: &mut re_viewer_context::ComponentUiRegistry) {
     // TODO(#6974): Enums editors trivial and always the same, provide them automatically!
     registry.add_singleline_edit_or_view::<AggregationPolicy>(edit_view_enum);
     registry.add_singleline_edit_or_view::<BackgroundKind>(edit_view_enum);
-    registry.add_singleline_edit_or_view::<ChannelDatatype>(edit_view_enum);
     registry.add_singleline_edit_or_view::<Colormap>(edit_view_enum);
-    registry.add_singleline_edit_or_view::<ColorModel>(edit_view_enum);
     registry.add_singleline_edit_or_view::<Corner2D>(edit_view_enum);
-    registry.add_singleline_edit_or_view::<DataframeViewMode>(edit_view_enum);
     registry.add_singleline_edit_or_view::<FillMode>(edit_view_enum);
     registry.add_singleline_edit_or_view::<MagnificationFilter>(edit_view_enum);
-    registry.add_singleline_edit_or_view::<PixelFormat>(edit_view_enum);
     registry.add_singleline_edit_or_view::<SortKey>(edit_view_enum);
     registry.add_singleline_edit_or_view::<SortOrder>(edit_view_enum);
     registry.add_singleline_edit_or_view::<TransformRelation>(edit_view_enum);
     registry.add_singleline_edit_or_view::<ViewFit>(edit_view_enum);
+    // TODO(#7100): Editor for ImageFormat
 
     registry.add_multiline_edit_or_view(visual_bounds2d::multiline_edit_visual_bounds2d);
     registry.add_singleline_edit_or_view(visual_bounds2d::singleline_edit_visual_bounds2d);

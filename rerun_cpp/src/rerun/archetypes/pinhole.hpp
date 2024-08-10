@@ -5,11 +5,11 @@
 
 #include "../collection.hpp"
 #include "../compiler_utils.hpp"
+#include "../component_batch.hpp"
 #include "../components/image_plane_distance.hpp"
 #include "../components/pinhole_projection.hpp"
 #include "../components/resolution.hpp"
 #include "../components/view_coordinates.hpp"
-#include "../data_cell.hpp"
 #include "../indicator_component.hpp"
 #include "../result.hpp"
 
@@ -46,7 +46,7 @@ namespace rerun::archetypes {
     ///         return static_cast<uint8_t>(std::rand());
     ///     });
     ///
-    ///     rec.log("world/image", rerun::Image::from_rgb24({3, 3}, random_data));
+    ///     rec.log("world/image", rerun::Image::from_rgb24(random_data, {3, 3}));
     /// }
     /// ```
     ///
@@ -260,6 +260,6 @@ namespace rerun {
     template <>
     struct AsComponents<archetypes::Pinhole> {
         /// Serialize all set component batches.
-        static Result<std::vector<DataCell>> serialize(const archetypes::Pinhole& archetype);
+        static Result<std::vector<ComponentBatch>> serialize(const archetypes::Pinhole& archetype);
     };
 } // namespace rerun

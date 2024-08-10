@@ -13,6 +13,33 @@ use crate::{CacheKey, Caches};
 
 // --- Public API ---
 
+#[derive(Debug, Clone)]
+pub struct RangeQueryOptions {
+    /// Should the results contain all extra timeline information available in the [`Chunk`]?
+    ///
+    /// While this information can be useful in some cases, it comes at a performance cost.
+    pub keep_extra_timelines: bool,
+
+    /// Should the results contain all extra component information available in the [`Chunk`]?
+    ///
+    /// While this information can be useful in some cases, it comes at a performance cost.
+    pub keep_extra_components: bool,
+}
+
+impl RangeQueryOptions {
+    pub const DEFAULT: Self = Self {
+        keep_extra_timelines: false,
+        keep_extra_components: false,
+    };
+}
+
+impl Default for RangeQueryOptions {
+    #[inline]
+    fn default() -> Self {
+        Self::DEFAULT
+    }
+}
+
 impl Caches {
     /// Queries for the given `component_names` using range semantics.
     ///
@@ -23,6 +50,23 @@ impl Caches {
         &self,
         store: &ChunkStore,
         query: &RangeQuery,
+        entity_path: &EntityPath,
+        component_names: impl IntoIterator<Item = ComponentName>,
+    ) -> RangeResults {
+        let opts = &RangeQueryOptions::DEFAULT;
+        self.range_opts(store, query, opts, entity_path, component_names)
+    }
+
+    /// Queries for the given `component_names` using range semantics.
+    ///
+    /// See [`RangeResults`] for more information about how to handle the results.
+    ///
+    /// This is a cached API -- data will be lazily cached upon access.
+    pub fn range_opts(
+        &self,
+        store: &ChunkStore,
+        query: &RangeQuery,
+        query_opts: &RangeQueryOptions,
         entity_path: &EntityPath,
         component_names: impl IntoIterator<Item = ComponentName>,
     ) -> RangeResults {
@@ -51,7 +95,7 @@ impl Caches {
 
             cache.handle_pending_invalidation();
 
-            let cached = cache.range(store, query, entity_path, component_name);
+            let cached = cache.range(store, query, query_opts, entity_path, component_name);
             if !cached.is_empty() {
                 results.add(component_name, cached);
             }
@@ -168,7 +212,7 @@ impl RangeCache {
                     .chunk
                     .timelines()
                     .get(&self.cache_key.timeline)
-                    .map(|time_chunk| time_chunk.time_range())
+                    .map(|time_column| time_column.time_range())
             })
             .fold(ResolvedTimeRange::EMPTY, |mut acc, time_range| {
                 acc.set_min(TimeInt::min(acc.min(), time_range.min()));
@@ -252,6 +296,7 @@ impl RangeCache {
         &mut self,
         store: &ChunkStore,
         query: &RangeQuery,
+        query_opts: &RangeQueryOptions,
         entity_path: &EntityPath,
         component_name: ComponentName,
     ) -> Vec<Chunk> {
@@ -288,6 +333,11 @@ impl RangeCache {
         // Since these `Chunk`s have already been pre-processed adequately, running a range filter
         // on them will be quite cheap.
 
+        let RangeQueryOptions {
+            keep_extra_timelines,
+            keep_extra_components,
+        } = query_opts;
+
         raw_chunks
             .into_iter()
             .filter_map(|raw_chunk| self.chunks.get(&raw_chunk.id()))
@@ -295,7 +345,24 @@ impl RangeCache {
                 debug_assert!(cached_sorted_chunk
                     .chunk
                     .is_timeline_sorted(&query.timeline()));
-                cached_sorted_chunk.chunk.range(query, component_name)
+
+                let chunk = &cached_sorted_chunk.chunk;
+
+                // Pre-slice the data if the caller allowed us: this will make further slicing
+                // (e.g. the range query itself) much cheaper to compute.
+                use std::borrow::Cow;
+                let chunk = if !keep_extra_timelines {
+                    Cow::Owned(chunk.timeline_sliced(query.timeline()))
+                } else {
+                    Cow::Borrowed(chunk)
+                };
+                let chunk = if !keep_extra_components {
+                    Cow::Owned(chunk.component_sliced(component_name))
+                } else {
+                    chunk
+                };
+
+                chunk.range(query, component_name)
             })
             .filter(|chunk| !chunk.is_empty())
             .collect()

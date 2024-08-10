@@ -5,7 +5,7 @@
 
 #include "../../blueprint/components/visual_bounds2d.hpp"
 #include "../../collection.hpp"
-#include "../../data_cell.hpp"
+#include "../../component_batch.hpp"
 #include "../../indicator_component.hpp"
 #include "../../result.hpp"
 
@@ -53,7 +53,7 @@ namespace rerun {
     template <>
     struct AsComponents<blueprint::archetypes::VisualBounds2D> {
         /// Serialize all set component batches.
-        static Result<std::vector<DataCell>> serialize(
+        static Result<std::vector<ComponentBatch>> serialize(
             const blueprint::archetypes::VisualBounds2D& archetype
         );
     };

@@ -5,7 +5,7 @@
 
 #include "../../blueprint/components/visible_time_range.hpp"
 #include "../../collection.hpp"
-#include "../../data_cell.hpp"
+#include "../../component_batch.hpp"
 #include "../../indicator_component.hpp"
 #include "../../result.hpp"
 
@@ -57,7 +57,7 @@ namespace rerun {
     template <>
     struct AsComponents<blueprint::archetypes::VisibleTimeRanges> {
         /// Serialize all set component batches.
-        static Result<std::vector<DataCell>> serialize(
+        static Result<std::vector<ComponentBatch>> serialize(
             const blueprint::archetypes::VisibleTimeRanges& archetype
         );
     };

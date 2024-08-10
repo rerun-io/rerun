@@ -7,6 +7,9 @@ from uuid import UUID
 
 import numpy as np
 
+__version__ = "0.18.0-alpha.1"
+__version_info__ = (0, 18, 0, "alpha.1")
+
 # =====================================
 # API RE-EXPORTS
 # Important: always us the `import _ as _` format to make it explicit to type-checkers that these are public APIs.
@@ -18,6 +21,10 @@ from . import (
     blueprint as blueprint,
     experimental as experimental,
     notebook as notebook,
+)
+from ._image_encoded import (
+    ImageEncoded as ImageEncoded,
+    ImageFormat as ImageFormat,
 )
 from ._log import (
     AsComponents as AsComponents,
@@ -45,8 +52,8 @@ from .archetypes import (
     DepthImage as DepthImage,
     DisconnectedSpace as DisconnectedSpace,
     Ellipsoids3D as Ellipsoids3D,
+    EncodedImage as EncodedImage,
     Image as Image,
-    ImageEncoded as ImageEncoded,
     LeafTransforms3D as LeafTransforms3D,
     LineStrips2D as LineStrips2D,
     LineStrips3D as LineStrips3D,
@@ -72,10 +79,7 @@ from .blueprint.api import (
 )
 from .components import (
     AlbedoFactor as AlbedoFactor,
-    ChannelDatatype as ChannelDatatype,
-    ColorModel as ColorModel,
     MediaType as MediaType,
-    PixelFormat as PixelFormat,
     Radius as Radius,
     Scale3D as Scale3D,
     TensorDimensionIndexSelection as TensorDimensionIndexSelection,
@@ -85,7 +89,10 @@ from .components import (
 from .datatypes import (
     Angle as Angle,
     AnnotationInfo as AnnotationInfo,
+    ChannelDatatype as ChannelDatatype,
     ClassDescription as ClassDescription,
+    ColorModel as ColorModel,
+    PixelFormat as PixelFormat,
     Quaternion as Quaternion,
     RotationAxisAngle as RotationAxisAngle,
     TensorData as TensorData,
@@ -97,6 +104,9 @@ from .datatypes import (
 )
 from .error_utils import (
     set_strict_mode as set_strict_mode,
+)
+from .legacy_notebook import (
+    legacy_notebook_show as legacy_notebook_show,
 )
 from .logging_handler import (
     LoggingHandler as LoggingHandler,
@@ -129,6 +139,12 @@ from .script_helpers import (
     script_setup as script_setup,
     script_teardown as script_teardown,
 )
+from .send_columns import (
+    TimeNanosColumn as TimeNanosColumn,
+    TimeSecondsColumn as TimeSecondsColumn,
+    TimeSequenceColumn as TimeSequenceColumn,
+    send_columns as send_columns,
+)
 from .sinks import (
     connect as connect,
     disconnect as disconnect,
@@ -137,12 +153,6 @@ from .sinks import (
     serve as serve,
     spawn as spawn,
     stdout as stdout,
-)
-from .temporal_batch import (
-    TimeNanosBatch as TimeNanosBatch,
-    TimeSecondsBatch as TimeSecondsBatch,
-    TimeSequenceBatch as TimeSequenceBatch,
-    log_temporal_batch as log_temporal_batch,
 )
 from .time import (
     disable_timeline as disable_timeline,

@@ -15,6 +15,3 @@ A uint32 vector in 2D space.
  * 🦀 [Rust API docs for `UVec2D`](https://docs.rs/rerun/latest/rerun/datatypes/struct.UVec2D.html)
 
 
-## Used by
-
-* [`Resolution2D`](../components/resolution2d.md?speculative-link)

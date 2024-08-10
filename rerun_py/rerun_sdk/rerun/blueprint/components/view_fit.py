@@ -33,20 +33,29 @@ class ViewFit(Enum):
     FillKeepAspectRatio = 3
     """Scale the image for the largest possible fit in the view's container, but keep the original aspect ratio."""
 
+    @classmethod
+    def auto(cls, val: str | int | ViewFit) -> ViewFit:
+        """Best-effort converter, including a case-insensitive string matcher."""
+        if isinstance(val, ViewFit):
+            return val
+        if isinstance(val, int):
+            return cls(val)
+        try:
+            return cls[val]
+        except KeyError:
+            val_lower = val.lower()
+            for variant in cls:
+                if variant.name.lower() == val_lower:
+                    return variant
+        raise ValueError(f"Cannot convert {val} to {cls.__name__}")
+
     def __str__(self) -> str:
         """Returns the variant name."""
-        if self == ViewFit.Original:
-            return "Original"
-        elif self == ViewFit.Fill:
-            return "Fill"
-        elif self == ViewFit.FillKeepAspectRatio:
-            return "FillKeepAspectRatio"
-        else:
-            raise ValueError("Unknown enum variant")
+        return self.name
 
 
 ViewFitLike = Union[
-    ViewFit, Literal["Fill", "FillKeepAspectRatio", "Original", "fill", "fillkeepaspectratio", "original"]
+    ViewFit, Literal["Fill", "FillKeepAspectRatio", "Original", "fill", "fillkeepaspectratio", "original"], int
 ]
 ViewFitArrayLike = Union[ViewFitLike, Sequence[ViewFitLike]]
 
@@ -55,16 +64,7 @@ class ViewFitType(BaseExtensionType):
     _TYPE_NAME: str = "rerun.blueprint.components.ViewFit"
 
     def __init__(self) -> None:
-        pa.ExtensionType.__init__(
-            self,
-            pa.sparse_union([
-                pa.field("_null_markers", pa.null(), nullable=True, metadata={}),
-                pa.field("Original", pa.null(), nullable=True, metadata={}),
-                pa.field("Fill", pa.null(), nullable=True, metadata={}),
-                pa.field("FillKeepAspectRatio", pa.null(), nullable=True, metadata={}),
-            ]),
-            self._TYPE_NAME,
-        )
+        pa.ExtensionType.__init__(self, pa.uint8(), self._TYPE_NAME)
 
 
 class ViewFitBatch(BaseBatch[ViewFitArrayLike], ComponentBatchMixin):
@@ -75,38 +75,6 @@ class ViewFitBatch(BaseBatch[ViewFitArrayLike], ComponentBatchMixin):
         if isinstance(data, (ViewFit, int, str)):
             data = [data]
 
-        types: list[int] = []
+        pa_data = [ViewFit.auto(v).value if v is not None else None for v in data]  # type: ignore[redundant-expr]
 
-        for value in data:
-            if value is None:
-                types.append(0)
-            elif isinstance(value, ViewFit):
-                types.append(value.value)  # Actual enum value
-            elif isinstance(value, int):
-                types.append(value)  # By number
-            elif isinstance(value, str):
-                if hasattr(ViewFit, value):
-                    types.append(ViewFit[value].value)  # fast path
-                elif value.lower() == "original":
-                    types.append(ViewFit.Original.value)
-                elif value.lower() == "fill":
-                    types.append(ViewFit.Fill.value)
-                elif value.lower() == "fillkeepaspectratio":
-                    types.append(ViewFit.FillKeepAspectRatio.value)
-                else:
-                    raise ValueError(f"Unknown ViewFit kind: {value}")
-            else:
-                raise ValueError(f"Unknown ViewFit kind: {value}")
-
-        buffers = [
-            None,
-            pa.array(types, type=pa.int8()).buffers()[1],
-        ]
-        children = (1 + 3) * [pa.nulls(len(data))]
-
-        return pa.UnionArray.from_buffers(
-            type=data_type,
-            length=len(data),
-            buffers=buffers,
-            children=children,
-        )
+        return pa.array(pa_data, type=data_type)

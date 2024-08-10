@@ -23,14 +23,14 @@ class Image(ImageExt, Archetype):
 
     See also [`archetypes.DepthImage`][rerun.archetypes.DepthImage] and [`archetypes.SegmentationImage`][rerun.archetypes.SegmentationImage].
 
-    The raw image data is stored as a single buffer of bytes in a [rerun.components.Blob].
-    The meaning of these bytes is determined by the `ImageFormat` which specifies the resolution
+    The raw image data is stored as a single buffer of bytes in a [`components.Blob`][rerun.components.Blob].
+    The meaning of these bytes is determined by the [`components.ImageFormat`][rerun.components.ImageFormat] which specifies the resolution
     and the pixel format (e.g. RGB, RGBA, …).
 
     The order of dimensions in the underlying [`components.Blob`][rerun.components.Blob] follows the typical
     row-major, interleaved-pixel image format.
 
-    Rerun also supports compressed images (JPEG, PNG, …), using [`archetypes.ImageEncoded`][rerun.archetypes.ImageEncoded].
+    Rerun also supports compressed images (JPEG, PNG, …), using [`archetypes.EncodedImage`][rerun.archetypes.EncodedImage].
     Compressing images can save a lot of bandwidth and memory.
 
     Example
@@ -66,11 +66,8 @@ class Image(ImageExt, Archetype):
     def __attrs_clear__(self) -> None:
         """Convenience method for calling `__attrs_init__` with all `None`s."""
         self.__attrs_init__(
-            data=None,  # type: ignore[arg-type]
-            resolution=None,  # type: ignore[arg-type]
-            pixel_format=None,  # type: ignore[arg-type]
-            color_model=None,  # type: ignore[arg-type]
-            datatype=None,  # type: ignore[arg-type]
+            buffer=None,  # type: ignore[arg-type]
+            format=None,  # type: ignore[arg-type]
             opacity=None,  # type: ignore[arg-type]
             draw_order=None,  # type: ignore[arg-type]
         )
@@ -82,54 +79,19 @@ class Image(ImageExt, Archetype):
         inst.__attrs_clear__()
         return inst
 
-    data: components.BlobBatch = field(
+    buffer: components.ImageBufferBatch = field(
         metadata={"component": "required"},
-        converter=components.BlobBatch._required,  # type: ignore[misc]
+        converter=components.ImageBufferBatch._required,  # type: ignore[misc]
     )
     # The raw image data.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 
-    resolution: components.Resolution2DBatch = field(
+    format: components.ImageFormatBatch = field(
         metadata={"component": "required"},
-        converter=components.Resolution2DBatch._required,  # type: ignore[misc]
+        converter=components.ImageFormatBatch._required,  # type: ignore[misc]
     )
-    # The size of the image.
-    #
-    # For chroma downsampled formats, this is the size of the full image (the luminance channel).
-    #
-    # (Docstring intentionally commented out to hide this field from the docs)
-
-    pixel_format: components.PixelFormatBatch | None = field(
-        metadata={"component": "optional"},
-        default=None,
-        converter=components.PixelFormatBatch._optional,  # type: ignore[misc]
-    )
-    # Used mainly for chroma downsampled formats and differing number of bits per channel.
-    #
-    # If specified, this takes precedence over both [`components.ColorModel`][rerun.components.ColorModel] and [`components.ChannelDatatype`][rerun.components.ChannelDatatype] (which are ignored).
-    #
-    # (Docstring intentionally commented out to hide this field from the docs)
-
-    color_model: components.ColorModelBatch | None = field(
-        metadata={"component": "optional"},
-        default=None,
-        converter=components.ColorModelBatch._optional,  # type: ignore[misc]
-    )
-    # L, RGB, RGBA, …
-    #
-    # Also requires a [`components.ChannelDatatype`][rerun.components.ChannelDatatype] to fully specify the pixel format.
-    #
-    # (Docstring intentionally commented out to hide this field from the docs)
-
-    datatype: components.ChannelDatatypeBatch | None = field(
-        metadata={"component": "optional"},
-        default=None,
-        converter=components.ChannelDatatypeBatch._optional,  # type: ignore[misc]
-    )
-    # The data type of each channel (e.g. the red channel) of the image data (U8, F16, …).
-    #
-    # Also requires a [`components.ColorModel`][rerun.components.ColorModel] to fully specify the pixel format.
+    # The format of the image.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 

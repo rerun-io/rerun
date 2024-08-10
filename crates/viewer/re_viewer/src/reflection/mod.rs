@@ -84,13 +84,6 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             },
         ),
         (
-            <DataframeViewMode as Loggable>::name(),
-            ComponentReflection {
-                docstring_md: "The kind of table displayed by the dataframe view",
-                placeholder: Some(DataframeViewMode::default().to_arrow()?),
-            },
-        ),
-        (
             <GridColumns as Loggable>::name(),
             ComponentReflection {
                 docstring_md: "How many columns a grid container should have.",
@@ -119,6 +112,13 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             },
         ),
         (
+            <LatestAtQueries as Loggable>::name(),
+            ComponentReflection {
+                docstring_md: "Configuration for latest at queries.\n\nNote: configuration as saved on a per-timeline basis.",
+                placeholder: Some(LatestAtQueries::default().to_arrow()?),
+            },
+        ),
+        (
             <LockRangeDuringZoom as Loggable>::name(),
             ComponentReflection {
                 docstring_md: "Indicate whether the range should be locked when zooming in on the data.\n\nDefault is `false`, i.e. zoom will change the visualized range.",
@@ -137,6 +137,13 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             ComponentReflection {
                 docstring_md: "An individual query expression used to filter a set of [`datatypes.EntityPath`](https://rerun.io/docs/reference/types/datatypes/entity_path)s.\n\nEach expression is either an inclusion or an exclusion expression.\nInclusions start with an optional `+` and exclusions must start with a `-`.\n\nMultiple expressions are combined together as part of `SpaceViewContents`.\n\nThe `/**` suffix matches the whole subtree, i.e. self and any child, recursively\n(`/world/**` matches both `/world` and `/world/car/driver`).\nOther uses of `*` are not (yet) supported.",
                 placeholder: Some(QueryExpression::default().to_arrow()?),
+            },
+        ),
+        (
+            <QueryKind as Loggable>::name(),
+            ComponentReflection {
+                docstring_md: "The kind of query displayed by the dataframe view",
+                placeholder: Some(QueryKind::default().to_arrow()?),
             },
         ),
         (
@@ -193,6 +200,20 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             ComponentReflection {
                 docstring_md: "Show a slider for the index of some dimension of a slider.",
                 placeholder: Some(TensorDimensionIndexSlider::default().to_arrow()?),
+            },
+        ),
+        (
+            <TimeRangeQueries as Loggable>::name(),
+            ComponentReflection {
+                docstring_md: "Configuration for time range queries.\n\nNote: configuration as saved on a per-timeline basis.",
+                placeholder: Some(TimeRangeQueries::default().to_arrow()?),
+            },
+        ),
+        (
+            <TimelineName as Loggable>::name(),
+            ComponentReflection {
+                docstring_md: "A timeline identified by its name.",
+                placeholder: Some(TimelineName::default().to_arrow()?),
             },
         ),
         (
@@ -273,13 +294,6 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             },
         ),
         (
-            <ChannelDatatype as Loggable>::name(),
-            ComponentReflection {
-                docstring_md: "The innermost datatype of an image.\n\nHow individual color channel components are encoded.",
-                placeholder: Some(ChannelDatatype::default().to_arrow()?),
-            },
-        ),
-        (
             <ClassId as Loggable>::name(),
             ComponentReflection {
                 docstring_md: "A 16-bit ID representing a type of semantic class.",
@@ -298,13 +312,6 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             ComponentReflection {
                 docstring_md: "An RGBA color with unmultiplied/separate alpha, in sRGB gamma space with linear alpha.\n\nThe color is stored as a 32-bit integer, where the most significant\nbyte is `R` and the least significant byte is `A`.",
                 placeholder: Some(Color::default().to_arrow()?),
-            },
-        ),
-        (
-            <ColorModel as Loggable>::name(),
-            ComponentReflection {
-                docstring_md: "Specified what color components are present in an [`archetypes.Image`](https://rerun.io/docs/reference/types/archetypes/image).\n\nThis combined with [`components.ChannelDatatype`](https://rerun.io/docs/reference/types/components/channel_datatype?speculative-link) determines the pixel format of an image.",
-                placeholder: Some(ColorModel::default().to_arrow()?),
             },
         ),
         (
@@ -368,6 +375,20 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             ComponentReflection {
                 docstring_md: "Half-size (radius) of a 3D box.\n\nMeasured in its local coordinate system.\n\nThe box extends both in negative and positive direction along each axis.\nNegative sizes indicate that the box is flipped along the respective axis, but this has no effect on how it is displayed.",
                 placeholder: Some(HalfSize3D::default().to_arrow()?),
+            },
+        ),
+        (
+            <ImageBuffer as Loggable>::name(),
+            ComponentReflection {
+                docstring_md: "A buffer that is known to store image data.\n\nTo interpret the contents of this buffer, see, [`components.ImageFormat`](https://rerun.io/docs/reference/types/components/image_format?speculative-link).",
+                placeholder: Some(ImageBuffer::default().to_arrow()?),
+            },
+        ),
+        (
+            <ImageFormat as Loggable>::name(),
+            ComponentReflection {
+                docstring_md: "The metadata describing the contents of a [`components.ImageBuffer`](https://rerun.io/docs/reference/types/components/image_buffer).",
+                placeholder: Some(ImageFormat::default().to_arrow()?),
             },
         ),
         (
@@ -483,13 +504,6 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             },
         ),
         (
-            <PixelFormat as Loggable>::name(),
-            ComponentReflection {
-                docstring_md: "Specifieds a particular format of an [`archetypes.Image`](https://rerun.io/docs/reference/types/archetypes/image).\n\nMost images can be described by a [`components.ColorModel`](https://rerun.io/docs/reference/types/components/color_model?speculative-link) and a [`components.ChannelDatatype`](https://rerun.io/docs/reference/types/components/channel_datatype?speculative-link),\ne.g. `RGB` and `U8` respectively.\n\nHowever, some image formats has chroma downsampling and/or\nuse differing number of bits per channel, and that is what this [`components.PixelFormat`](https://rerun.io/docs/reference/types/components/pixel_format?speculative-link) is for.\n\nAll these formats support random access.\n\nFor more compressed image formats, see [`archetypes.ImageEncoded`](https://rerun.io/docs/reference/types/archetypes/image_encoded?speculative-link).",
-                placeholder: Some(PixelFormat::default().to_arrow()?),
-            },
-        ),
-        (
             <Position2D as Loggable>::name(),
             ComponentReflection {
                 docstring_md: "A position in 2D space.",
@@ -522,13 +536,6 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             ComponentReflection {
                 docstring_md: "Pixel resolution width & height, e.g. of a camera sensor.\n\nTypically in integer units, but for some use cases floating point may be used.",
                 placeholder: Some(Resolution::default().to_arrow()?),
-            },
-        ),
-        (
-            <Resolution2D as Loggable>::name(),
-            ComponentReflection {
-                docstring_md: "The width and height of a 2D image.",
-                placeholder: Some(Resolution2D::default().to_arrow()?),
             },
         ),
         (
@@ -679,7 +686,7 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
             ArchetypeName::new("rerun.archetypes.LeafTransforms3D"),
             ArchetypeReflection {
                 display_name: "Leaf transforms 3D",
-                docstring_md: "One or more transforms between the parent and the current entity which are *not* propagated in the transform hierarchy.\n\nFor transforms that are propagated in the transform hierarchy, see [`archetypes.Transform3D`](https://rerun.io/docs/reference/types/archetypes/transform3d).\n\nIf both [`archetypes.LeafTransforms3D`](https://rerun.io/docs/reference/types/archetypes/leaf_transforms3d) and [`archetypes.Transform3D`](https://rerun.io/docs/reference/types/archetypes/transform3d) are present,\nfirst the tree propagating [`archetypes.Transform3D`](https://rerun.io/docs/reference/types/archetypes/transform3d) is applied, then [`archetypes.LeafTransforms3D`](https://rerun.io/docs/reference/types/archetypes/leaf_transforms3d).\n\nCurrently, many visualizers support only a single leaf transform per entity.\nCheck archetype documentations for details - if not otherwise specified, only the first leaf transform is applied.\n\nFrom the point of view of the entity's coordinate system,\nall components are applied in the inverse order they are listed here.\nE.g. if both a translation and a max3x3 transform are present,\nthe 3x3 matrix is applied first, followed by the translation.\n\n## Example\n\n### Regular & leaf transform in tandom\n```ignore\nuse rerun::{\n    demo_util::grid,\n    external::{anyhow, glam},\n};\n\nfn main() -> anyhow::Result<()> {\n    let rec =\n        rerun::RecordingStreamBuilder::new(\"rerun_example_leaf_transform3d_combined\").spawn()?;\n\n    rec.set_time_sequence(\"frame\", 0);\n\n    // Log a box and points further down in the hierarchy.\n    rec.log(\n        \"world/box\",\n        &rerun::Boxes3D::from_half_sizes([[1.0, 1.0, 1.0]]),\n    )?;\n    rec.log(\n        \"world/box/points\",\n        &rerun::Points3D::new(grid(glam::Vec3::splat(-10.0), glam::Vec3::splat(10.0), 10)),\n    )?;\n\n    for i in 0..180 {\n        rec.set_time_sequence(\"frame\", i);\n\n        // Log a regular transform which affects both the box and the points.\n        rec.log(\n            \"world/box\",\n            &rerun::Transform3D::from_rotation(rerun::RotationAxisAngle {\n                axis: [0.0, 0.0, 1.0].into(),\n                angle: rerun::Angle::from_degrees(i as f32 * 2.0),\n            }),\n        )?;\n\n        // Log an leaf transform which affects only the box.\n        let translation = [0.0, 0.0, (i as f32 * 0.1 - 5.0).abs() - 5.0];\n        rec.log(\n            \"world/box\",\n            &rerun::LeafTransforms3D::new().with_translations([translation]),\n        )?;\n    }\n\n    Ok(())\n}\n```\n<center>\n<picture>\n  <source media=\"(max-width: 480px)\" srcset=\"https://static.rerun.io/leaf_transform3d/41674f0082d6de489f8a1cd1583f60f6b5820ddf/480w.png\">\n  <source media=\"(max-width: 768px)\" srcset=\"https://static.rerun.io/leaf_transform3d/41674f0082d6de489f8a1cd1583f60f6b5820ddf/768w.png\">\n  <source media=\"(max-width: 1024px)\" srcset=\"https://static.rerun.io/leaf_transform3d/41674f0082d6de489f8a1cd1583f60f6b5820ddf/1024w.png\">\n  <source media=\"(max-width: 1200px)\" srcset=\"https://static.rerun.io/leaf_transform3d/41674f0082d6de489f8a1cd1583f60f6b5820ddf/1200w.png\">\n  <img src=\"https://static.rerun.io/leaf_transform3d/41674f0082d6de489f8a1cd1583f60f6b5820ddf/full.png\" width=\"640\">\n</picture>\n</center>",
+                docstring_md: "One or more transforms between the parent and the current entity which are *not* propagated in the transform hierarchy.\n\nFor transforms that are propagated in the transform hierarchy, see [`archetypes.Transform3D`](https://rerun.io/docs/reference/types/archetypes/transform3d).\n\nIf both [`archetypes.LeafTransforms3D`](https://rerun.io/docs/reference/types/archetypes/leaf_transforms3d) and [`archetypes.Transform3D`](https://rerun.io/docs/reference/types/archetypes/transform3d) are present,\nfirst the tree propagating [`archetypes.Transform3D`](https://rerun.io/docs/reference/types/archetypes/transform3d) is applied, then [`archetypes.LeafTransforms3D`](https://rerun.io/docs/reference/types/archetypes/leaf_transforms3d).\n\nCurrently, many visualizers support only a single leaf transform per entity.\nCheck archetype documentations for details - if not otherwise specified, only the first leaf transform is applied.\n\nFrom the point of view of the entity's coordinate system,\nall components are applied in the inverse order they are listed here.\nE.g. if both a translation and a max3x3 transform are present,\nthe 3x3 matrix is applied first, followed by the translation.\n\nWhenever you log this archetype, it will write all components, even if you do not explicitly set them.\nThis means that if you first log a transform with only a translation, and then log one with only a rotation,\nit will be resolved to a transform with only a rotation.\n\n## Example\n\n### Regular & leaf transform in tandom\n```ignore\nuse rerun::{\n    demo_util::grid,\n    external::{anyhow, glam},\n};\n\nfn main() -> anyhow::Result<()> {\n    let rec =\n        rerun::RecordingStreamBuilder::new(\"rerun_example_leaf_transform3d_combined\").spawn()?;\n\n    rec.set_time_sequence(\"frame\", 0);\n\n    // Log a box and points further down in the hierarchy.\n    rec.log(\n        \"world/box\",\n        &rerun::Boxes3D::from_half_sizes([[1.0, 1.0, 1.0]]),\n    )?;\n    rec.log(\n        \"world/box/points\",\n        &rerun::Points3D::new(grid(glam::Vec3::splat(-10.0), glam::Vec3::splat(10.0), 10)),\n    )?;\n\n    for i in 0..180 {\n        rec.set_time_sequence(\"frame\", i);\n\n        // Log a regular transform which affects both the box and the points.\n        rec.log(\n            \"world/box\",\n            &rerun::Transform3D::from_rotation(rerun::RotationAxisAngle {\n                axis: [0.0, 0.0, 1.0].into(),\n                angle: rerun::Angle::from_degrees(i as f32 * 2.0),\n            }),\n        )?;\n\n        // Log an leaf transform which affects only the box.\n        let translation = [0.0, 0.0, (i as f32 * 0.1 - 5.0).abs() - 5.0];\n        rec.log(\n            \"world/box\",\n            &rerun::LeafTransforms3D::clear().with_translations([translation]),\n        )?;\n    }\n\n    Ok(())\n}\n```\n<center>\n<picture>\n  <source media=\"(max-width: 480px)\" srcset=\"https://static.rerun.io/leaf_transform3d/41674f0082d6de489f8a1cd1583f60f6b5820ddf/480w.png\">\n  <source media=\"(max-width: 768px)\" srcset=\"https://static.rerun.io/leaf_transform3d/41674f0082d6de489f8a1cd1583f60f6b5820ddf/768w.png\">\n  <source media=\"(max-width: 1024px)\" srcset=\"https://static.rerun.io/leaf_transform3d/41674f0082d6de489f8a1cd1583f60f6b5820ddf/1024w.png\">\n  <source media=\"(max-width: 1200px)\" srcset=\"https://static.rerun.io/leaf_transform3d/41674f0082d6de489f8a1cd1583f60f6b5820ddf/1200w.png\">\n  <img src=\"https://static.rerun.io/leaf_transform3d/41674f0082d6de489f8a1cd1583f60f6b5820ddf/full.png\" width=\"640\">\n</picture>\n</center>",
                 fields: vec![
                     ArchetypeFieldReflection { component_name :
                     "rerun.components.LeafTranslation3D".into(), display_name :
@@ -703,7 +710,7 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
             ArchetypeName::new("rerun.archetypes.Transform3D"),
             ArchetypeReflection {
                 display_name: "Transform 3D",
-                docstring_md: "A transform between two 3D spaces, i.e. a pose.\n\nFrom the point of view of the entity's coordinate system,\nall components are applied in the inverse order they are listed here.\nE.g. if both a translation and a max3x3 transform are present,\nthe 3x3 matrix is applied first, followed by the translation.\n\n## Examples\n\n### Variety of 3D transforms\n```ignore\nuse std::f32::consts::TAU;\n\nfn main() -> Result<(), Box<dyn std::error::Error>> {\n    let rec = rerun::RecordingStreamBuilder::new(\"rerun_example_transform3d\").spawn()?;\n\n    let arrow = rerun::Arrows3D::from_vectors([(0.0, 1.0, 0.0)]).with_origins([(0.0, 0.0, 0.0)]);\n\n    rec.log(\"base\", &arrow)?;\n\n    rec.log(\n        \"base/translated\",\n        &rerun::Transform3D::from_translation([1.0, 0.0, 0.0]),\n    )?;\n\n    rec.log(\"base/translated\", &arrow)?;\n\n    rec.log(\n        \"base/rotated_scaled\",\n        &rerun::Transform3D::from_rotation_scale(\n            rerun::RotationAxisAngle::new([0.0, 0.0, 1.0], rerun::Angle::from_radians(TAU / 8.0)),\n            rerun::Scale3D::from(2.0),\n        ),\n    )?;\n\n    rec.log(\"base/rotated_scaled\", &arrow)?;\n\n    Ok(())\n}\n```\n<center>\n<picture>\n  <source media=\"(max-width: 480px)\" srcset=\"https://static.rerun.io/transform3d_simple/141368b07360ce3fcb1553079258ae3f42bdb9ac/480w.png\">\n  <source media=\"(max-width: 768px)\" srcset=\"https://static.rerun.io/transform3d_simple/141368b07360ce3fcb1553079258ae3f42bdb9ac/768w.png\">\n  <source media=\"(max-width: 1024px)\" srcset=\"https://static.rerun.io/transform3d_simple/141368b07360ce3fcb1553079258ae3f42bdb9ac/1024w.png\">\n  <source media=\"(max-width: 1200px)\" srcset=\"https://static.rerun.io/transform3d_simple/141368b07360ce3fcb1553079258ae3f42bdb9ac/1200w.png\">\n  <img src=\"https://static.rerun.io/transform3d_simple/141368b07360ce3fcb1553079258ae3f42bdb9ac/full.png\" width=\"640\">\n</picture>\n</center>\n\n### Transform hierarchy\n```ignore\nfn main() -> Result<(), Box<dyn std::error::Error>> {\n    let rec = rerun::RecordingStreamBuilder::new(\"rerun_example_transform3d_hierarchy\").spawn()?;\n\n    // TODO(#5521): log two space views as in the python example\n\n    rec.set_time_seconds(\"sim_time\", 0.0);\n\n    // Planetary motion is typically in the XY plane.\n    rec.log_static(\"/\", &rerun::ViewCoordinates::RIGHT_HAND_Z_UP)?;\n\n    // Setup points, all are in the center of their own space:\n    rec.log(\n        \"sun\",\n        &rerun::Points3D::new([[0.0, 0.0, 0.0]])\n            .with_radii([1.0])\n            .with_colors([rerun::Color::from_rgb(255, 200, 10)]),\n    )?;\n    rec.log(\n        \"sun/planet\",\n        &rerun::Points3D::new([[0.0, 0.0, 0.0]])\n            .with_radii([0.4])\n            .with_colors([rerun::Color::from_rgb(40, 80, 200)]),\n    )?;\n    rec.log(\n        \"sun/planet/moon\",\n        &rerun::Points3D::new([[0.0, 0.0, 0.0]])\n            .with_radii([0.15])\n            .with_colors([rerun::Color::from_rgb(180, 180, 180)]),\n    )?;\n\n    // Draw fixed paths where the planet & moon move.\n    let d_planet = 6.0;\n    let d_moon = 3.0;\n    let angles = (0..=100).map(|i| i as f32 * 0.01 * std::f32::consts::TAU);\n    let circle: Vec<_> = angles.map(|angle| [angle.sin(), angle.cos()]).collect();\n    rec.log(\n        \"sun/planet_path\",\n        &rerun::LineStrips3D::new([rerun::LineStrip3D::from_iter(\n            circle\n                .iter()\n                .map(|p| [p[0] * d_planet, p[1] * d_planet, 0.0]),\n        )]),\n    )?;\n    rec.log(\n        \"sun/planet/moon_path\",\n        &rerun::LineStrips3D::new([rerun::LineStrip3D::from_iter(\n            circle.iter().map(|p| [p[0] * d_moon, p[1] * d_moon, 0.0]),\n        )]),\n    )?;\n\n    // Movement via transforms.\n    for i in 0..(6 * 120) {\n        let time = i as f32 / 120.0;\n        rec.set_time_seconds(\"sim_time\", time);\n        let r_moon = time * 5.0;\n        let r_planet = time * 2.0;\n\n        rec.log(\n            \"sun/planet\",\n            &rerun::Transform3D::from_translation_rotation(\n                [r_planet.sin() * d_planet, r_planet.cos() * d_planet, 0.0],\n                rerun::RotationAxisAngle {\n                    axis: [1.0, 0.0, 0.0].into(),\n                    angle: rerun::Angle::from_degrees(20.0),\n                },\n            ),\n        )?;\n        rec.log(\n            \"sun/planet/moon\",\n            &rerun::Transform3D::from_translation([\n                r_moon.cos() * d_moon,\n                r_moon.sin() * d_moon,\n                0.0,\n            ])\n            .with_relation(rerun::TransformRelation::ChildFromParent),\n        )?;\n    }\n\n    Ok(())\n}\n```\n<center>\n<picture>\n  <source media=\"(max-width: 480px)\" srcset=\"https://static.rerun.io/transform_hierarchy/cb7be7a5a31fcb2efc02ba38e434849248f87554/480w.png\">\n  <source media=\"(max-width: 768px)\" srcset=\"https://static.rerun.io/transform_hierarchy/cb7be7a5a31fcb2efc02ba38e434849248f87554/768w.png\">\n  <source media=\"(max-width: 1024px)\" srcset=\"https://static.rerun.io/transform_hierarchy/cb7be7a5a31fcb2efc02ba38e434849248f87554/1024w.png\">\n  <source media=\"(max-width: 1200px)\" srcset=\"https://static.rerun.io/transform_hierarchy/cb7be7a5a31fcb2efc02ba38e434849248f87554/1200w.png\">\n  <img src=\"https://static.rerun.io/transform_hierarchy/cb7be7a5a31fcb2efc02ba38e434849248f87554/full.png\" width=\"640\">\n</picture>\n</center>",
+                docstring_md: "A transform between two 3D spaces, i.e. a pose.\n\nFrom the point of view of the entity's coordinate system,\nall components are applied in the inverse order they are listed here.\nE.g. if both a translation and a max3x3 transform are present,\nthe 3x3 matrix is applied first, followed by the translation.\n\nWhenever you log this archetype, it will write all components, even if you do not explicitly set them.\nThis means that if you first log a transform with only a translation, and then log one with only a rotation,\nit will be resolved to a transform with only a rotation.\n\n## Examples\n\n### Variety of 3D transforms\n```ignore\nuse std::f32::consts::TAU;\n\nfn main() -> Result<(), Box<dyn std::error::Error>> {\n    let rec = rerun::RecordingStreamBuilder::new(\"rerun_example_transform3d\").spawn()?;\n\n    let arrow = rerun::Arrows3D::from_vectors([(0.0, 1.0, 0.0)]).with_origins([(0.0, 0.0, 0.0)]);\n\n    rec.log(\"base\", &arrow)?;\n\n    rec.log(\n        \"base/translated\",\n        &rerun::Transform3D::from_translation([1.0, 0.0, 0.0]),\n    )?;\n\n    rec.log(\"base/translated\", &arrow)?;\n\n    rec.log(\n        \"base/rotated_scaled\",\n        &rerun::Transform3D::from_rotation_scale(\n            rerun::RotationAxisAngle::new([0.0, 0.0, 1.0], rerun::Angle::from_radians(TAU / 8.0)),\n            rerun::Scale3D::from(2.0),\n        ),\n    )?;\n\n    rec.log(\"base/rotated_scaled\", &arrow)?;\n\n    Ok(())\n}\n```\n<center>\n<picture>\n  <source media=\"(max-width: 480px)\" srcset=\"https://static.rerun.io/transform3d_simple/141368b07360ce3fcb1553079258ae3f42bdb9ac/480w.png\">\n  <source media=\"(max-width: 768px)\" srcset=\"https://static.rerun.io/transform3d_simple/141368b07360ce3fcb1553079258ae3f42bdb9ac/768w.png\">\n  <source media=\"(max-width: 1024px)\" srcset=\"https://static.rerun.io/transform3d_simple/141368b07360ce3fcb1553079258ae3f42bdb9ac/1024w.png\">\n  <source media=\"(max-width: 1200px)\" srcset=\"https://static.rerun.io/transform3d_simple/141368b07360ce3fcb1553079258ae3f42bdb9ac/1200w.png\">\n  <img src=\"https://static.rerun.io/transform3d_simple/141368b07360ce3fcb1553079258ae3f42bdb9ac/full.png\" width=\"640\">\n</picture>\n</center>\n\n### Transform hierarchy\n```ignore\nfn main() -> Result<(), Box<dyn std::error::Error>> {\n    let rec = rerun::RecordingStreamBuilder::new(\"rerun_example_transform3d_hierarchy\").spawn()?;\n\n    // TODO(#5521): log two space views as in the python example\n\n    rec.set_time_seconds(\"sim_time\", 0.0);\n\n    // Planetary motion is typically in the XY plane.\n    rec.log_static(\"/\", &rerun::ViewCoordinates::RIGHT_HAND_Z_UP)?;\n\n    // Setup points, all are in the center of their own space:\n    rec.log(\n        \"sun\",\n        &rerun::Points3D::new([[0.0, 0.0, 0.0]])\n            .with_radii([1.0])\n            .with_colors([rerun::Color::from_rgb(255, 200, 10)]),\n    )?;\n    rec.log(\n        \"sun/planet\",\n        &rerun::Points3D::new([[0.0, 0.0, 0.0]])\n            .with_radii([0.4])\n            .with_colors([rerun::Color::from_rgb(40, 80, 200)]),\n    )?;\n    rec.log(\n        \"sun/planet/moon\",\n        &rerun::Points3D::new([[0.0, 0.0, 0.0]])\n            .with_radii([0.15])\n            .with_colors([rerun::Color::from_rgb(180, 180, 180)]),\n    )?;\n\n    // Draw fixed paths where the planet & moon move.\n    let d_planet = 6.0;\n    let d_moon = 3.0;\n    let angles = (0..=100).map(|i| i as f32 * 0.01 * std::f32::consts::TAU);\n    let circle: Vec<_> = angles.map(|angle| [angle.sin(), angle.cos()]).collect();\n    rec.log(\n        \"sun/planet_path\",\n        &rerun::LineStrips3D::new([rerun::LineStrip3D::from_iter(\n            circle\n                .iter()\n                .map(|p| [p[0] * d_planet, p[1] * d_planet, 0.0]),\n        )]),\n    )?;\n    rec.log(\n        \"sun/planet/moon_path\",\n        &rerun::LineStrips3D::new([rerun::LineStrip3D::from_iter(\n            circle.iter().map(|p| [p[0] * d_moon, p[1] * d_moon, 0.0]),\n        )]),\n    )?;\n\n    // Movement via transforms.\n    for i in 0..(6 * 120) {\n        let time = i as f32 / 120.0;\n        rec.set_time_seconds(\"sim_time\", time);\n        let r_moon = time * 5.0;\n        let r_planet = time * 2.0;\n\n        rec.log(\n            \"sun/planet\",\n            &rerun::Transform3D::from_translation_rotation(\n                [r_planet.sin() * d_planet, r_planet.cos() * d_planet, 0.0],\n                rerun::RotationAxisAngle {\n                    axis: [1.0, 0.0, 0.0].into(),\n                    angle: rerun::Angle::from_degrees(20.0),\n                },\n            ),\n        )?;\n        rec.log(\n            \"sun/planet/moon\",\n            &rerun::Transform3D::from_translation([\n                r_moon.cos() * d_moon,\n                r_moon.sin() * d_moon,\n                0.0,\n            ])\n            .with_relation(rerun::TransformRelation::ChildFromParent),\n        )?;\n    }\n\n    Ok(())\n}\n```\n<center>\n<picture>\n  <source media=\"(max-width: 480px)\" srcset=\"https://static.rerun.io/transform_hierarchy/cb7be7a5a31fcb2efc02ba38e434849248f87554/480w.png\">\n  <source media=\"(max-width: 768px)\" srcset=\"https://static.rerun.io/transform_hierarchy/cb7be7a5a31fcb2efc02ba38e434849248f87554/768w.png\">\n  <source media=\"(max-width: 1024px)\" srcset=\"https://static.rerun.io/transform_hierarchy/cb7be7a5a31fcb2efc02ba38e434849248f87554/1024w.png\">\n  <source media=\"(max-width: 1200px)\" srcset=\"https://static.rerun.io/transform_hierarchy/cb7be7a5a31fcb2efc02ba38e434849248f87554/1200w.png\">\n  <img src=\"https://static.rerun.io/transform_hierarchy/cb7be7a5a31fcb2efc02ba38e434849248f87554/full.png\" width=\"640\">\n</picture>\n</center>",
                 fields: vec![
                     ArchetypeFieldReflection { component_name :
                     "rerun.components.Translation3D".into(), display_name :
@@ -747,14 +754,27 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
             },
         ),
         (
-            ArchetypeName::new("rerun.blueprint.archetypes.DataframeViewMode"),
+            ArchetypeName::new("rerun.blueprint.archetypes.DataframeQuery"),
             ArchetypeReflection {
-                display_name: "Dataframe view mode",
-                docstring_md: "Configuration for the dataframe view",
+                display_name: "Dataframe query",
+                docstring_md: "The query for the dataframe view.",
                 fields: vec![
                     ArchetypeFieldReflection { component_name :
-                    "rerun.blueprint.components.DataframeViewMode".into(), display_name :
-                    "Mode", docstring_md : "The kind of table to display", },
+                    "rerun.blueprint.components.TimelineName".into(), display_name :
+                    "Timeline", docstring_md :
+                    "The timeline for this query.\n\nIf unset, use the time panel's timeline and a latest at query, ignoring all other components of this archetype.",
+                    }, ArchetypeFieldReflection { component_name :
+                    "rerun.blueprint.components.QueryKind".into(), display_name : "Kind",
+                    docstring_md : "Kind of query: latest-at or range.", },
+                    ArchetypeFieldReflection { component_name :
+                    "rerun.blueprint.components.LatestAtQueries".into(), display_name :
+                    "Latest at queries", docstring_md :
+                    "Configuration for latest-at queries.\n\nNote: configuration as saved on a per-timeline basis.",
+                    }, ArchetypeFieldReflection { component_name :
+                    "rerun.blueprint.components.TimeRangeQueries".into(), display_name :
+                    "Time range queries", docstring_md :
+                    "Configuration for the time range queries.\n\nNote: configuration as saved on a per-timeline basis.",
+                    },
                 ],
             },
         ),

@@ -6,7 +6,7 @@ use arrow2::array::{
 };
 use itertools::{izip, Itertools};
 
-use crate::{Chunk, ChunkError, ChunkId, ChunkResult, ChunkTimeline};
+use crate::{Chunk, ChunkError, ChunkId, ChunkResult, TimeColumn};
 
 // ---
 
@@ -66,7 +66,7 @@ impl Chunk {
                         debug_assert_eq!(lhs_timeline, rhs_timeline);
                         lhs_time_chunk
                             .concatenated(rhs_time_chunk)
-                            .map(|time_chunk| (*lhs_timeline, time_chunk))
+                            .map(|time_column| (*lhs_timeline, time_column))
                     },
                 )
                 .collect()
@@ -243,11 +243,11 @@ impl Chunk {
     }
 }
 
-impl ChunkTimeline {
-    /// Concatenates two `ChunkTimeline`s into a new one.
+impl TimeColumn {
+    /// Concatenates two [`TimeColumn`]s into a new one.
     ///
     /// The order of the arguments matter: `self`'s contents will precede `rhs`' contents in the
-    /// returned `ChunkTimeline`.
+    /// returned [`TimeColumn`].
     ///
     /// This will return `None` if the time chunks do not share the same timeline.
     pub fn concatenated(&self, rhs: &Self) -> Option<Self> {

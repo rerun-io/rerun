@@ -67,10 +67,10 @@ fn log_messages() {
     fn encode_log_msg(log_msg: &LogMsg) -> Vec<u8> {
         let mut bytes = vec![];
         let encoding_options = re_log_encoding::EncodingOptions::COMPRESSED;
-        re_log_encoding::encoder::encode(
+        re_log_encoding::encoder::encode_ref(
             re_build_info::CrateVersion::LOCAL,
             encoding_options,
-            std::iter::once(log_msg),
+            std::iter::once(log_msg).map(Ok),
             &mut bytes,
         )
         .unwrap();

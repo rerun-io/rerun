@@ -9,7 +9,7 @@ use nohash_hasher::IntSet;
 use re_log_types::Timeline;
 use re_types_core::ComponentName;
 
-use crate::{Chunk, ChunkTimeline, RowId};
+use crate::{Chunk, RowId, TimeColumn};
 
 // ---
 
@@ -63,6 +63,8 @@ impl Chunk {
     /// This can result in an empty [`Chunk`] being returned if the slice is completely OOB.
     #[inline]
     pub fn row_sliced(&self, index: usize, len: usize) -> Self {
+        re_tracing::profile_function!();
+
         let Self {
             id,
             entity_path,
@@ -97,7 +99,7 @@ impl Chunk {
             row_ids: row_ids.clone().sliced(index, len),
             timelines: timelines
                 .iter()
-                .map(|(timeline, time_chunk)| (*timeline, time_chunk.row_sliced(index, len)))
+                .map(|(timeline, time_column)| (*timeline, time_column.row_sliced(index, len)))
                 .collect(),
             components: components
                 .iter()
@@ -162,7 +164,7 @@ impl Chunk {
             row_ids: row_ids.clone(),
             timelines: timelines
                 .get_key_value(&timeline)
-                .map(|(timeline, time_chunk)| (*timeline, time_chunk.clone()))
+                .map(|(timeline, time_column)| (*timeline, time_column.clone()))
                 .into_iter()
                 .collect(),
             components: components.clone(),
@@ -243,7 +245,7 @@ impl Chunk {
             timelines: timelines
                 .iter()
                 .filter(|(timeline, _)| timelines_to_keep.contains(timeline))
-                .map(|(timeline, time_chunk)| (*timeline, time_chunk.clone()))
+                .map(|(timeline, time_column)| (*timeline, time_column.clone()))
                 .collect(),
             components: components.clone(),
         };
@@ -328,6 +330,8 @@ impl Chunk {
             return self.clone();
         };
 
+        re_tracing::profile_function!();
+
         let mask = validity.iter().collect_vec();
         let is_sorted = *is_sorted || (mask.iter().filter(|&&b| b).count() < 2);
         let validity_filter = ArrowBooleanArray::from_slice(mask);
@@ -340,7 +344,7 @@ impl Chunk {
             row_ids: crate::util::filter_array(row_ids, &validity_filter),
             timelines: timelines
                 .iter()
-                .map(|(&timeline, time_chunk)| (timeline, time_chunk.filtered(&validity_filter)))
+                .map(|(&timeline, time_column)| (timeline, time_column.filtered(&validity_filter)))
                 .collect(),
             components: components
                 .iter()
@@ -408,6 +412,8 @@ impl Chunk {
             components,
         } = self;
 
+        re_tracing::profile_function!();
+
         Self {
             id: *id,
             entity_path: entity_path.clone(),
@@ -416,7 +422,7 @@ impl Chunk {
             row_ids: StructArray::new_empty(row_ids.data_type().clone()),
             timelines: timelines
                 .iter()
-                .map(|(&timeline, time_chunk)| (timeline, time_chunk.emptied()))
+                .map(|(&timeline, time_column)| (timeline, time_column.emptied()))
                 .collect(),
             components: components
                 .iter()
@@ -431,14 +437,14 @@ impl Chunk {
     }
 }
 
-impl ChunkTimeline {
-    /// Slices the [`ChunkTimeline`] vertically.
+impl TimeColumn {
+    /// Slices the [`TimeColumn`] vertically.
     ///
-    /// The result is a new [`ChunkTimeline`] with the same timelines and (potentially) less rows.
+    /// The result is a new [`TimeColumn`] with the same timelines and (potentially) less rows.
     ///
     /// This cannot fail nor panic: `index` and `len` will be capped so that they cannot
     /// run out of bounds.
-    /// This can result in an empty [`ChunkTimeline`] being returned if the slice is completely OOB.
+    /// This can result in an empty [`TimeColumn`] being returned if the slice is completely OOB.
     #[inline]
     pub fn row_sliced(&self, index: usize, len: usize) -> Self {
         let Self {
@@ -492,9 +498,9 @@ impl ChunkTimeline {
         )
     }
 
-    /// Empties the [`ChunkTimeline`] vertically.
+    /// Empties the [`TimeColumn`] vertically.
     ///
-    /// The result is a new [`ChunkTimeline`] with the same columns but zero rows.
+    /// The result is a new [`TimeColumn`] with the same columns but zero rows.
     #[inline]
     pub fn emptied(&self) -> Self {
         let Self {

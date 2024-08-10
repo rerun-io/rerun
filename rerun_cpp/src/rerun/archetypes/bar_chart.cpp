@@ -9,26 +9,26 @@ namespace rerun::archetypes {}
 
 namespace rerun {
 
-    Result<std::vector<DataCell>> AsComponents<archetypes::BarChart>::serialize(
+    Result<std::vector<ComponentBatch>> AsComponents<archetypes::BarChart>::serialize(
         const archetypes::BarChart& archetype
     ) {
         using namespace archetypes;
-        std::vector<DataCell> cells;
+        std::vector<ComponentBatch> cells;
         cells.reserve(3);
 
         {
-            auto result = DataCell::from_loggable(archetype.values);
+            auto result = ComponentBatch::from_loggable(archetype.values);
             RR_RETURN_NOT_OK(result.error);
             cells.push_back(std::move(result.value));
         }
         if (archetype.color.has_value()) {
-            auto result = DataCell::from_loggable(archetype.color.value());
+            auto result = ComponentBatch::from_loggable(archetype.color.value());
             RR_RETURN_NOT_OK(result.error);
             cells.push_back(std::move(result.value));
         }
         {
             auto indicator = BarChart::IndicatorComponent();
-            auto result = DataCell::from_loggable(indicator);
+            auto result = ComponentBatch::from_loggable(indicator);
             RR_RETURN_NOT_OK(result.error);
             cells.emplace_back(std::move(result.value));
         }

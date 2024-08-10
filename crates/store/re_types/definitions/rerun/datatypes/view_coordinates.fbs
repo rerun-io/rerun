@@ -3,7 +3,7 @@ namespace rerun.datatypes;
 
 // TODO(#6320)
 /*
-enum ViewDir: byte {
+enum ViewDir: ubyte {
     Up = 1,
     Down = 2,
     Right = 3,

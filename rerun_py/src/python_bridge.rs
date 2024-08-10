@@ -16,7 +16,7 @@ use pyo3::{
 use re_log::ResultExt;
 use re_log_types::LogMsg;
 use re_log_types::{BlueprintActivationCommand, EntityPathPart, StoreKind};
-use re_sdk::external::re_log_encoding::encoder::encode_as_bytes_local;
+use re_sdk::external::re_log_encoding::encoder::encode_ref_as_bytes_local;
 use re_sdk::sink::CallbackSink;
 use re_sdk::{
     sink::{BinaryStreamStorage, MemorySinkStorage},
@@ -157,9 +157,9 @@ fn rerun_bindings(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
 
     // log any
     m.add_function(wrap_pyfunction!(log_arrow_msg, m)?)?;
-    m.add_function(wrap_pyfunction!(log_arrow_chunk, m)?)?;
     m.add_function(wrap_pyfunction!(log_file_from_path, m)?)?;
     m.add_function(wrap_pyfunction!(log_file_from_contents, m)?)?;
+    m.add_function(wrap_pyfunction!(send_arrow_chunk, m)?)?;
     m.add_function(wrap_pyfunction!(send_blueprint, m)?)?;
 
     // misc
@@ -781,7 +781,7 @@ fn set_callback_sink(callback: PyObject, recording: Option<&PyRecordingStream>, 
 
     let callback = move |msgs: &[LogMsg]| {
         Python::with_gil(|py| {
-            let data = encode_as_bytes_local(msgs).ok_or_log_error()?;
+            let data = encode_ref_as_bytes_local(msgs.iter().map(Ok)).ok_or_log_error()?;
             let bytes = PyBytes::new(py, &data);
             callback.as_ref(py).call1((bytes,)).ok_or_log_error()?;
             Some(())
@@ -1088,7 +1088,7 @@ fn log_arrow_msg(
     Ok(())
 }
 
-/// Directly log an arrow chunk to the recording stream.
+/// Directly send an arrow chunk to the recording stream.
 ///
 /// Params
 /// ------
@@ -1105,7 +1105,7 @@ fn log_arrow_msg(
     components,
     recording=None,
 ))]
-fn log_arrow_chunk(
+fn send_arrow_chunk(
     py: Python<'_>,
     entity_path: &str,
     timelines: &PyDict,
@@ -1123,7 +1123,7 @@ fn log_arrow_chunk(
     // a deadlock.
     let chunk = crate::arrow::build_chunk_from_components(entity_path, timelines, components)?;
 
-    recording.record_chunk(chunk);
+    recording.send_chunk(chunk);
 
     py.allow_threads(flush_garbage_queue);
 

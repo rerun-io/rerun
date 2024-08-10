@@ -5,10 +5,10 @@
 
 #include "../collection.hpp"
 #include "../compiler_utils.hpp"
+#include "../component_batch.hpp"
 #include "../components/color.hpp"
 #include "../components/text.hpp"
 #include "../components/text_log_level.hpp"
-#include "../data_cell.hpp"
 #include "../indicator_component.hpp"
 #include "../result.hpp"
 
@@ -130,6 +130,6 @@ namespace rerun {
     template <>
     struct AsComponents<archetypes::TextLog> {
         /// Serialize all set component batches.
-        static Result<std::vector<DataCell>> serialize(const archetypes::TextLog& archetype);
+        static Result<std::vector<ComponentBatch>> serialize(const archetypes::TextLog& archetype);
     };
 } // namespace rerun

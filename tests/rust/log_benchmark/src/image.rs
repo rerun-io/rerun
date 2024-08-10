@@ -36,12 +36,12 @@ fn execute(mut raw_image_data: Vec<u8>) -> anyhow::Result<()> {
         rec.log(
             "test_image",
             &rerun::Image::from_rgba32(
-                rerun::Resolution2D::new(IMAGE_DIMENSION as _, IMAGE_DIMENSION as _),
                 // TODO(andreas): We have to copy the image every time since the tensor buffer wants to
                 // take ownership of it.
                 // Note that even though our example here is *very* contrived, it's likely that a user
                 // will want to keep their image, so this copy is definitely part of our API overhead!
                 raw_image_data.clone(),
+                [IMAGE_DIMENSION as _, IMAGE_DIMENSION as _],
             ),
         )?;
     }

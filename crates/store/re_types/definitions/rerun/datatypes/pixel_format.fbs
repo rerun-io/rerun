@@ -1,0 +1,39 @@
+namespace rerun.datatypes;
+
+/// Specifieds a particular format of an [archetypes.Image].
+///
+/// Most images can be described by a [datatypes.ColorModel] and a [datatypes.ChannelDatatype],
+/// e.g. `RGB` and `U8` respectively.
+///
+/// However, some image formats has chroma downsampling and/or
+/// use differing number of bits per channel, and that is what this [datatypes.PixelFormat] is for.
+///
+/// All these formats support random access.
+///
+/// For more compressed image formats, see [archetypes.EncodedImage].
+enum PixelFormat: ubyte (
+    "attr.docs.unreleased"
+) {
+    /// Invalid value. Won't show up in generated types.
+    Invalid = 0,
+
+    // Given lack of a universal standard, the values of the enums are arbitrarily chosen to match
+    // those from the `predefined pixel format` portion of the `Frame` class in the Ocean library:
+    // https://github.com/facebookresearch/ocean/blob/1112f6101077c97a72a1d750e62dbff3ff01bd72/impl/ocean/base/Frame.h#L182
+    //
+    // However, this is not a strict requirement and implementations should not depend on this
+    // this fact. It merely exists to minimizes to take advantage of the thought that went into
+    // this organization and subsequently reduce the chance we may find ourselves wanting to
+    // change the values in the future.
+
+    /// NV12 (aka Y_UV12) is a YUV 4:2:0 chroma downsampled format with 12 bits per pixel and 8 bits per channel.
+    ///
+    /// First comes entire image in Y in one plane,
+    /// followed by a plane with interleaved lines ordered as U0, V0, U1, V1, etc.
+    NV12 = 26 (default), // _something_ has to be the default 🤷‍♀️
+
+    /// YUY2 (aka YUYV or YUYV16), is a YUV 4:2:2 chroma downsampled format with 16 bits per pixel and 8 bits per channel.
+    ///
+    /// The order of the channels is Y0, U0, Y1, V0, all in the same plane.
+    YUY2 = 27,
+}

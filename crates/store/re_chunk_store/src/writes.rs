@@ -199,12 +199,12 @@ impl ChunkStore {
                     .entry(chunk_or_compacted.entity_path().clone())
                     .or_default();
 
-                for (timeline, time_chunk) in chunk_or_compacted.timelines() {
+                for (timeline, time_column) in chunk_or_compacted.timelines() {
                     let temporal_chunk_ids_per_time = temporal_chunk_ids_per_timeline
                         .entry(*timeline)
                         .or_default();
 
-                    let time_range = time_chunk.time_range();
+                    let time_range = time_column.time_range();
 
                     // See `ChunkIdSetPerTime::max_interval_length`'s documentation.
                     temporal_chunk_ids_per_time.max_interval_length = u64::max(
@@ -501,17 +501,25 @@ impl ChunkStore {
                 *temporal_chunks_stats -= ChunkStoreChunkStats::from_chunk(chunk);
             });
 
-        dropped_static_chunks
-            .into_iter()
-            .chain(dropped_temporal_chunks)
-            .map(ChunkStoreDiff::deletion)
-            .map(|diff| ChunkStoreEvent {
-                store_id: id.clone(),
-                store_generation: generation.clone(),
-                event_id: event_id.fetch_add(1, std::sync::atomic::Ordering::Relaxed),
-                diff,
-            })
-            .collect()
+        if self.config.enable_changelog {
+            let events: Vec<_> = dropped_static_chunks
+                .into_iter()
+                .chain(dropped_temporal_chunks)
+                .map(ChunkStoreDiff::deletion)
+                .map(|diff| ChunkStoreEvent {
+                    store_id: id.clone(),
+                    store_generation: generation.clone(),
+                    event_id: event_id.fetch_add(1, std::sync::atomic::Ordering::Relaxed),
+                    diff,
+                })
+                .collect();
+
+            Self::on_events(&events);
+
+            events
+        } else {
+            Vec::new()
+        }
     }
 }
 

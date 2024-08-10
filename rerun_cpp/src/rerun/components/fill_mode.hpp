@@ -9,28 +9,39 @@
 #include <memory>
 
 namespace arrow {
+    /// \private
+    template <typename T>
+    class NumericBuilder;
+
     class Array;
     class DataType;
-    class SparseUnionBuilder;
+    class UInt8Type;
+    using UInt8Builder = NumericBuilder<UInt8Type>;
 } // namespace arrow
 
 namespace rerun::components {
     /// **Component**: How a geometric shape is drawn and colored.
     enum class FillMode : uint8_t {
 
-        /// Lines are drawn around the edges of the shape that represent the logged data.
+        /// Lines are drawn around the features of the shape which directly correspond to the logged
+        /// data.
         ///
-        /// The interior (2D) or surface (3D) are not filled in.
+        /// Examples of what this means:
+        ///
+        /// * An `Ellipsoids3D` will draw three axis-aligned ellipses that are cross-sections
+        ///   of each ellipsoid, each of which displays two out of three of the sizes of the ellipsoid.
+        /// * For `Boxes3D`, it is the edges of the box, identical to `DenseWireframe`.
         MajorWireframe = 1,
 
-        /// Many lines are drawn to represent the surface of the shape.
+        /// Many lines are drawn to represent the surface of the shape in a see-through fashion.
         ///
-        /// The interior (2D) or surface (3D) are not filled in.
+        /// Examples of what this means:
+        ///
+        /// * An `Ellipsoids3D` will draw a wireframe triangle mesh that approximates each ellipsoid.
+        /// * For `Boxes3D`, it is the edges of the box, `MajorWireframe`.
         DenseWireframe = 2,
 
-        /// The interior (2D) or surface (3D) is filled with a single color.
-        ///
-        /// No lines are drawn.
+        /// The surface of the shape is filled in with a solid color. No lines are drawn.
         Solid = 3,
     };
 } // namespace rerun::components
@@ -54,8 +65,7 @@ namespace rerun {
 
         /// Fills an arrow array builder with an array of this type.
         static rerun::Error fill_arrow_array_builder(
-            arrow::SparseUnionBuilder* builder, const components::FillMode* elements,
-            size_t num_elements
+            arrow::UInt8Builder* builder, const components::FillMode* elements, size_t num_elements
         );
     };
 } // namespace rerun

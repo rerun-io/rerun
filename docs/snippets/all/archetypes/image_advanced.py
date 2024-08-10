@@ -19,7 +19,7 @@ image.save(file_path)
 rr.init("rerun_example_image_advanced", spawn=True)
 
 # Log the image from the file.
-rr.log("from_file", rr.ImageEncoded(path=file_path))
+rr.log("from_file", rr.EncodedImage(path=file_path))
 
 # Read with Pillow and NumPy, and log the image.
 image = np.array(PILImage.open(file_path))

@@ -15,10 +15,9 @@ pub fn blueprint_timepoint_for_writes(blueprint: &re_entity_db::EntityDb) -> Tim
     let timeline = blueprint_timeline();
 
     let max_time = blueprint
-        .times_per_timeline()
-        .get(&timeline)
-        .and_then(|times| times.last_key_value())
-        .map_or(0, |(time, _)| time.as_i64())
+        .time_histogram(&timeline)
+        .and_then(|times| times.max_key())
+        .unwrap_or(0)
         .saturating_add(1);
 
     TimePoint::from([(timeline, TimeInt::new_temporal(max_time))])

@@ -5,14 +5,14 @@ namespace rerun.archetypes;
 ///
 /// See also [archetypes.DepthImage] and [archetypes.SegmentationImage].
 ///
-/// The raw image data is stored as a single buffer of bytes in a [rerun.components.Blob].
-/// The meaning of these bytes is determined by the `ImageFormat` which specifies the resolution
+/// The raw image data is stored as a single buffer of bytes in a [components.Blob].
+/// The meaning of these bytes is determined by the [components.ImageFormat] which specifies the resolution
 /// and the pixel format (e.g. RGB, RGBA, …).
 ///
 /// The order of dimensions in the underlying [components.Blob] follows the typical
 /// row-major, interleaved-pixel image format.
 ///
-/// Rerun also supports compressed images (JPEG, PNG, …), using [archetypes.ImageEncoded].
+/// Rerun also supports compressed images (JPEG, PNG, …), using [archetypes.EncodedImage].
 /// Compressing images can save a lot of bandwidth and memory.
 ///
 /// \cpp Since the underlying [rerun::components::Blob] uses `rerun::Collection` internally,
@@ -29,29 +29,10 @@ table Image (
   // --- Required ---
 
   /// The raw image data.
-  data: rerun.components.Blob ("attr.rerun.component_required", order: 1000);
+  buffer: rerun.components.ImageBuffer ("attr.rerun.component_required", order: 1000);
 
-  /// The size of the image.
-  ///
-  /// For chroma downsampled formats, this is the size of the full image (the luminance channel).
-  resolution: rerun.components.Resolution2D ("attr.rerun.component_required", order: 1200);
-
-  // --- Image format ---
-
-  /// Used mainly for chroma downsampled formats and differing number of bits per channel.
-  ///
-  /// If specified, this takes precedence over both [components.ColorModel] and [components.ChannelDatatype] (which are ignored).
-  pixel_format: rerun.components.PixelFormat ("attr.rerun.component_optional", nullable, order: 2000);
-
-  /// L, RGB, RGBA, …
-  ///
-  /// Also requires a [components.ChannelDatatype] to fully specify the pixel format.
-  color_model: rerun.components.ColorModel ("attr.rerun.component_optional", nullable, order: 2100);
-
-  /// The data type of each channel (e.g. the red channel) of the image data (U8, F16, …).
-  ///
-  /// Also requires a [components.ColorModel] to fully specify the pixel format.
-  datatype: rerun.components.ChannelDatatype ("attr.rerun.component_optional", nullable, order: 2200);
+  /// The format of the image.
+  format: rerun.components.ImageFormat ("attr.rerun.component_required", order: 1100);
 
   // --- Optional ---
 

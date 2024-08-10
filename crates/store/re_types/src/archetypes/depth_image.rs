@@ -67,13 +67,10 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 #[derive(Clone, Debug, PartialEq)]
 pub struct DepthImage {
     /// The raw depth image data.
-    pub data: crate::components::Blob,
+    pub buffer: crate::components::ImageBuffer,
 
-    /// The size of the image
-    pub resolution: crate::components::Resolution2D,
-
-    /// The data type of the depth image data (U16, F32, …).
-    pub datatype: crate::components::ChannelDatatype,
+    /// The format of the image.
+    pub format: crate::components::ImageFormat,
 
     /// An optional floating point value that specifies how long a meter is in the native depth units.
     ///
@@ -107,9 +104,8 @@ pub struct DepthImage {
 impl ::re_types_core::SizeBytes for DepthImage {
     #[inline]
     fn heap_size_bytes(&self) -> u64 {
-        self.data.heap_size_bytes()
-            + self.resolution.heap_size_bytes()
-            + self.datatype.heap_size_bytes()
+        self.buffer.heap_size_bytes()
+            + self.format.heap_size_bytes()
             + self.meter.heap_size_bytes()
             + self.colormap.heap_size_bytes()
             + self.point_fill_ratio.heap_size_bytes()
@@ -118,9 +114,8 @@ impl ::re_types_core::SizeBytes for DepthImage {
 
     #[inline]
     fn is_pod() -> bool {
-        <crate::components::Blob>::is_pod()
-            && <crate::components::Resolution2D>::is_pod()
-            && <crate::components::ChannelDatatype>::is_pod()
+        <crate::components::ImageBuffer>::is_pod()
+            && <crate::components::ImageFormat>::is_pod()
             && <Option<crate::components::DepthMeter>>::is_pod()
             && <Option<crate::components::Colormap>>::is_pod()
             && <Option<crate::components::FillRatio>>::is_pod()
@@ -128,12 +123,11 @@ impl ::re_types_core::SizeBytes for DepthImage {
     }
 }
 
-static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 3usize]> =
+static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 2usize]> =
     once_cell::sync::Lazy::new(|| {
         [
-            "rerun.components.Blob".into(),
-            "rerun.components.Resolution2D".into(),
-            "rerun.components.ChannelDatatype".into(),
+            "rerun.components.ImageBuffer".into(),
+            "rerun.components.ImageFormat".into(),
         ]
     });
 
@@ -150,12 +144,11 @@ static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 4usize]> =
         ]
     });
 
-static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 8usize]> =
+static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 7usize]> =
     once_cell::sync::Lazy::new(|| {
         [
-            "rerun.components.Blob".into(),
-            "rerun.components.Resolution2D".into(),
-            "rerun.components.ChannelDatatype".into(),
+            "rerun.components.ImageBuffer".into(),
+            "rerun.components.ImageFormat".into(),
             "rerun.components.DepthImageIndicator".into(),
             "rerun.components.DepthMeter".into(),
             "rerun.components.Colormap".into(),
@@ -165,8 +158,8 @@ static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 8usize]> =
     });
 
 impl DepthImage {
-    /// The total number of components in the archetype: 3 required, 1 recommended, 4 optional
-    pub const NUM_COMPONENTS: usize = 8usize;
+    /// The total number of components in the archetype: 2 required, 1 recommended, 4 optional
+    pub const NUM_COMPONENTS: usize = 7usize;
 }
 
 /// Indicator component for the [`DepthImage`] [`::re_types_core::Archetype`]
@@ -221,44 +214,31 @@ impl ::re_types_core::Archetype for DepthImage {
             .into_iter()
             .map(|(name, array)| (name.full_name(), array))
             .collect();
-        let data = {
+        let buffer = {
             let array = arrays_by_name
-                .get("rerun.components.Blob")
+                .get("rerun.components.ImageBuffer")
                 .ok_or_else(DeserializationError::missing_data)
-                .with_context("rerun.archetypes.DepthImage#data")?;
-            <crate::components::Blob>::from_arrow_opt(&**array)
-                .with_context("rerun.archetypes.DepthImage#data")?
+                .with_context("rerun.archetypes.DepthImage#buffer")?;
+            <crate::components::ImageBuffer>::from_arrow_opt(&**array)
+                .with_context("rerun.archetypes.DepthImage#buffer")?
                 .into_iter()
                 .next()
                 .flatten()
                 .ok_or_else(DeserializationError::missing_data)
-                .with_context("rerun.archetypes.DepthImage#data")?
+                .with_context("rerun.archetypes.DepthImage#buffer")?
         };
-        let resolution = {
+        let format = {
             let array = arrays_by_name
-                .get("rerun.components.Resolution2D")
+                .get("rerun.components.ImageFormat")
                 .ok_or_else(DeserializationError::missing_data)
-                .with_context("rerun.archetypes.DepthImage#resolution")?;
-            <crate::components::Resolution2D>::from_arrow_opt(&**array)
-                .with_context("rerun.archetypes.DepthImage#resolution")?
+                .with_context("rerun.archetypes.DepthImage#format")?;
+            <crate::components::ImageFormat>::from_arrow_opt(&**array)
+                .with_context("rerun.archetypes.DepthImage#format")?
                 .into_iter()
                 .next()
                 .flatten()
                 .ok_or_else(DeserializationError::missing_data)
-                .with_context("rerun.archetypes.DepthImage#resolution")?
-        };
-        let datatype = {
-            let array = arrays_by_name
-                .get("rerun.components.ChannelDatatype")
-                .ok_or_else(DeserializationError::missing_data)
-                .with_context("rerun.archetypes.DepthImage#datatype")?;
-            <crate::components::ChannelDatatype>::from_arrow_opt(&**array)
-                .with_context("rerun.archetypes.DepthImage#datatype")?
-                .into_iter()
-                .next()
-                .flatten()
-                .ok_or_else(DeserializationError::missing_data)
-                .with_context("rerun.archetypes.DepthImage#datatype")?
+                .with_context("rerun.archetypes.DepthImage#format")?
         };
         let meter = if let Some(array) = arrays_by_name.get("rerun.components.DepthMeter") {
             <crate::components::DepthMeter>::from_arrow_opt(&**array)
@@ -298,9 +278,8 @@ impl ::re_types_core::Archetype for DepthImage {
             None
         };
         Ok(Self {
-            data,
-            resolution,
-            datatype,
+            buffer,
+            format,
             meter,
             colormap,
             point_fill_ratio,
@@ -315,9 +294,8 @@ impl ::re_types_core::AsComponents for DepthImage {
         use ::re_types_core::Archetype as _;
         [
             Some(Self::indicator()),
-            Some((&self.data as &dyn ComponentBatch).into()),
-            Some((&self.resolution as &dyn ComponentBatch).into()),
-            Some((&self.datatype as &dyn ComponentBatch).into()),
+            Some((&self.buffer as &dyn ComponentBatch).into()),
+            Some((&self.format as &dyn ComponentBatch).into()),
             self.meter
                 .as_ref()
                 .map(|comp| (comp as &dyn ComponentBatch).into()),
@@ -341,14 +319,12 @@ impl DepthImage {
     /// Create a new `DepthImage`.
     #[inline]
     pub fn new(
-        data: impl Into<crate::components::Blob>,
-        resolution: impl Into<crate::components::Resolution2D>,
-        datatype: impl Into<crate::components::ChannelDatatype>,
+        buffer: impl Into<crate::components::ImageBuffer>,
+        format: impl Into<crate::components::ImageFormat>,
     ) -> Self {
         Self {
-            data: data.into(),
-            resolution: resolution.into(),
-            datatype: datatype.into(),
+            buffer: buffer.into(),
+            format: format.into(),
             meter: None,
             colormap: None,
             point_fill_ratio: None,

@@ -22,9 +22,9 @@ use crate::{
 };
 
 use super::{
-    filter_visualizable_3d_entities, process_annotation_and_keypoint_slices, process_color_slice,
-    process_labels_3d, process_radius_slice, SpatialViewVisualizerData,
-    SIZE_BOOST_IN_POINTS_FOR_LINE_OUTLINES,
+    entity_iterator::clamped_or_nothing, filter_visualizable_3d_entities,
+    process_annotation_and_keypoint_slices, process_color_slice, process_labels_3d,
+    process_radius_slice, SpatialViewVisualizerData, SIZE_BOOST_IN_POINTS_FOR_LINE_OUTLINES,
 };
 
 // ---
@@ -56,15 +56,22 @@ impl Boxes3DVisualizer {
         let entity_path = ctx.target_entity_path;
 
         for data in data {
-            let num_instances = data.half_sizes.len();
-            if num_instances == 0 {
+            if data.half_sizes.is_empty() {
                 continue;
             }
+
+            // Draw as many boxes as we have max(instances, boxes), all components get repeated over that number.
+            // TODO(#7026): We should formalize this kind of hybrid joining better.
+            let num_instances = data
+                .half_sizes
+                .len()
+                .max(ent_context.transform_info.reference_from_instances.len());
+            let half_sizes = clamped_or_nothing(data.half_sizes, num_instances);
 
             let (annotation_infos, _) = process_annotation_and_keypoint_slices(
                 query.latest_at,
                 num_instances,
-                data.half_sizes.iter().map(|_| glam::Vec3::ZERO),
+                std::iter::repeat(glam::Vec3::ZERO).take(num_instances),
                 data.keypoint_ids,
                 data.class_ids,
                 &ent_context.annotations,
@@ -90,7 +97,7 @@ impl Boxes3DVisualizer {
                 .clamped_reference_from_instances();
 
             for (instance_index, (half_size, world_from_instance, radius, &color)) in
-                itertools::izip!(data.half_sizes, world_from_instances, radii, &colors).enumerate()
+                itertools::izip!(half_sizes, world_from_instances, radii, &colors).enumerate()
             {
                 let instance = Instance::from(instance_index as u64);
                 let proc_mesh_key = proc_mesh::ProcMeshKey::Cube;

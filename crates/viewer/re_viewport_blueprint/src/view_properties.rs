@@ -29,7 +29,10 @@ impl From<ViewPropertyQueryError> for SpaceViewSystemExecutionError {
 
 /// Utility for querying view properties.
 pub struct ViewProperty<'a> {
+    /// Entity path in the blueprint store where all components of this view property archetype are
+    /// stored.
     pub blueprint_store_path: EntityPath,
+
     archetype_name: ArchetypeName,
     component_names: Vec<ComponentName>,
     query_results: LatestAtResults,
@@ -133,7 +136,7 @@ impl<'a> ViewProperty<'a> {
             .map(|value| value.unwrap_or_default())
     }
 
-    fn component_raw(
+    pub fn component_raw(
         &self,
         component_name: ComponentName,
     ) -> Option<Box<dyn arrow2::array::Array>> {
@@ -194,7 +197,8 @@ impl<'a> ViewProperty<'a> {
         })
     }
 
-    fn query_context(
+    /// Create a query context for this view property.
+    pub fn query_context(
         &self,
         viewer_ctx: &'a ViewerContext<'a>,
         view_state: &'a dyn re_viewer_context::SpaceViewState,
@@ -210,6 +214,8 @@ impl<'a> ViewProperty<'a> {
     }
 }
 
+/// Entity path in the blueprint store where all components of the given view property archetype are
+/// stored.
 pub fn entity_path_for_view_property(
     space_view_id: SpaceViewId,
     _blueprint_entity_tree: &EntityTree,

@@ -1,5 +1,6 @@
-use itertools::Itertools as _;
+use itertools::Itertools;
 
+use re_log_types::TimeInt;
 use re_space_view::range_with_blueprint_resolved_data;
 use re_types::archetypes;
 use re_types::components::AggregationPolicy;
@@ -96,7 +97,7 @@ impl SeriesLineSystem {
 
         let data_results = query.iter_visible_data_results(ctx, Self::identifier());
 
-        let parallel_loading = false; // TODO(emilk): enable parallel loading when it is faster, because right now it is often slower.
+        let parallel_loading = true;
         if parallel_loading {
             use rayon::prelude::*;
             re_tracing::profile_wait!("load_series");
@@ -235,11 +236,11 @@ impl SeriesLineSystem {
                 re_tracing::profile_scope!("fill values");
 
                 debug_assert_eq!(Scalar::arrow_datatype(), ArrowDatatype::Float64);
-                let mut i = 0;
                 all_scalar_chunks
                     .iter()
                     .flat_map(|chunk| chunk.iter_primitive::<f64>(&Scalar::name()))
-                    .for_each(|values| {
+                    .enumerate()
+                    .for_each(|(i, values)| {
                         if !values.is_empty() {
                             if values.len() > 1 {
                                 re_log::warn_once!(
@@ -251,8 +252,6 @@ impl SeriesLineSystem {
                         } else {
                             points[i].attrs.kind = PlotSeriesKind::Clear;
                         }
-
-                        i += 1;
                     });
             }
 
@@ -377,9 +376,24 @@ impl SeriesLineSystem {
                 //                This is fine, because we know there's no `TypedFallbackProvider`, but wrong if one were to be added.
                 .unwrap_or_default();
 
+            // NOTE: The chunks themselves are already sorted as best as possible (hint: overlap)
+            // by the query engine.
+            let all_chunks_sorted_and_not_overlapped =
+                all_scalar_chunks.iter().tuple_windows().all(|(lhs, rhs)| {
+                    let lhs_time_max = lhs
+                        .timelines()
+                        .get(&query.timeline())
+                        .map_or(TimeInt::MAX, |time_column| time_column.time_range().max());
+                    let rhs_time_min = rhs
+                        .timelines()
+                        .get(&query.timeline())
+                        .map_or(TimeInt::MIN, |time_column| time_column.time_range().min());
+                    lhs_time_max <= rhs_time_min
+                });
+
             // This is _almost_ sorted already: all the individual chunks are sorted, but we still
             // have to deal with overlap chunks.
-            {
+            if !all_chunks_sorted_and_not_overlapped {
                 re_tracing::profile_scope!("sort");
                 points.sort_by_key(|p| p.time);
             }

@@ -30,17 +30,28 @@ class SortOrder(Enum):
     Descending = 2
     """Descending"""
 
+    @classmethod
+    def auto(cls, val: str | int | SortOrder) -> SortOrder:
+        """Best-effort converter, including a case-insensitive string matcher."""
+        if isinstance(val, SortOrder):
+            return val
+        if isinstance(val, int):
+            return cls(val)
+        try:
+            return cls[val]
+        except KeyError:
+            val_lower = val.lower()
+            for variant in cls:
+                if variant.name.lower() == val_lower:
+                    return variant
+        raise ValueError(f"Cannot convert {val} to {cls.__name__}")
+
     def __str__(self) -> str:
         """Returns the variant name."""
-        if self == SortOrder.Ascending:
-            return "Ascending"
-        elif self == SortOrder.Descending:
-            return "Descending"
-        else:
-            raise ValueError("Unknown enum variant")
+        return self.name
 
 
-SortOrderLike = Union[SortOrder, Literal["Ascending", "Descending", "ascending", "descending"]]
+SortOrderLike = Union[SortOrder, Literal["Ascending", "Descending", "ascending", "descending"], int]
 SortOrderArrayLike = Union[SortOrderLike, Sequence[SortOrderLike]]
 
 
@@ -48,15 +59,7 @@ class SortOrderType(BaseExtensionType):
     _TYPE_NAME: str = "rerun.blueprint.components.SortOrder"
 
     def __init__(self) -> None:
-        pa.ExtensionType.__init__(
-            self,
-            pa.sparse_union([
-                pa.field("_null_markers", pa.null(), nullable=True, metadata={}),
-                pa.field("Ascending", pa.null(), nullable=True, metadata={}),
-                pa.field("Descending", pa.null(), nullable=True, metadata={}),
-            ]),
-            self._TYPE_NAME,
-        )
+        pa.ExtensionType.__init__(self, pa.uint8(), self._TYPE_NAME)
 
 
 class SortOrderBatch(BaseBatch[SortOrderArrayLike], ComponentBatchMixin):
@@ -67,36 +70,6 @@ class SortOrderBatch(BaseBatch[SortOrderArrayLike], ComponentBatchMixin):
         if isinstance(data, (SortOrder, int, str)):
             data = [data]
 
-        types: list[int] = []
+        pa_data = [SortOrder.auto(v).value if v is not None else None for v in data]  # type: ignore[redundant-expr]
 
-        for value in data:
-            if value is None:
-                types.append(0)
-            elif isinstance(value, SortOrder):
-                types.append(value.value)  # Actual enum value
-            elif isinstance(value, int):
-                types.append(value)  # By number
-            elif isinstance(value, str):
-                if hasattr(SortOrder, value):
-                    types.append(SortOrder[value].value)  # fast path
-                elif value.lower() == "ascending":
-                    types.append(SortOrder.Ascending.value)
-                elif value.lower() == "descending":
-                    types.append(SortOrder.Descending.value)
-                else:
-                    raise ValueError(f"Unknown SortOrder kind: {value}")
-            else:
-                raise ValueError(f"Unknown SortOrder kind: {value}")
-
-        buffers = [
-            None,
-            pa.array(types, type=pa.int8()).buffers()[1],
-        ]
-        children = (1 + 2) * [pa.nulls(len(data))]
-
-        return pa.UnionArray.from_buffers(
-            type=data_type,
-            length=len(data),
-            buffers=buffers,
-            children=children,
-        )
+        return pa.array(pa_data, type=data_type)

@@ -20,21 +20,28 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Component**: How a geometric shape is drawn and colored.
 #[derive(Clone, Copy, Debug, Hash, PartialEq, Eq, Default)]
+#[repr(u8)]
 pub enum FillMode {
-    /// Lines are drawn around the edges of the shape that represent the logged data.
+    /// Lines are drawn around the features of the shape which directly correspond to the logged
+    /// data.
     ///
-    /// The interior (2D) or surface (3D) are not filled in.
+    /// Examples of what this means:
+    ///
+    /// * An `Ellipsoids3D` will draw three axis-aligned ellipses that are cross-sections
+    ///   of each ellipsoid, each of which displays two out of three of the sizes of the ellipsoid.
+    /// * For `Boxes3D`, it is the edges of the box, identical to `DenseWireframe`.
     #[default]
     MajorWireframe = 1,
 
-    /// Many lines are drawn to represent the surface of the shape.
+    /// Many lines are drawn to represent the surface of the shape in a see-through fashion.
     ///
-    /// The interior (2D) or surface (3D) are not filled in.
+    /// Examples of what this means:
+    ///
+    /// * An `Ellipsoids3D` will draw a wireframe triangle mesh that approximates each ellipsoid.
+    /// * For `Boxes3D`, it is the edges of the box, `MajorWireframe`.
     DenseWireframe = 2,
 
-    /// The interior (2D) or surface (3D) is filled with a single color.
-    ///
-    /// No lines are drawn.
+    /// The surface of the shape is filled in with a solid color. No lines are drawn.
     Solid = 3,
 }
 
@@ -48,13 +55,13 @@ impl ::re_types_core::reflection::Enum for FillMode {
     fn docstring_md(self) -> &'static str {
         match self {
             Self::MajorWireframe => {
-                "Lines are drawn around the edges of the shape that represent the logged data.\n\nThe interior (2D) or surface (3D) are not filled in."
+                "Lines are drawn around the features of the shape which directly correspond to the logged\ndata.\n\nExamples of what this means:\n\n* An `Ellipsoids3D` will draw three axis-aligned ellipses that are cross-sections\n  of each ellipsoid, each of which displays two out of three of the sizes of the ellipsoid.\n* For `Boxes3D`, it is the edges of the box, identical to `DenseWireframe`."
             }
             Self::DenseWireframe => {
-                "Many lines are drawn to represent the surface of the shape.\n\nThe interior (2D) or surface (3D) are not filled in."
+                "Many lines are drawn to represent the surface of the shape in a see-through fashion.\n\nExamples of what this means:\n\n* An `Ellipsoids3D` will draw a wireframe triangle mesh that approximates each ellipsoid.\n* For `Boxes3D`, it is the edges of the box, `MajorWireframe`."
             }
             Self::Solid => {
-                "The interior (2D) or surface (3D) is filled with a single color.\n\nNo lines are drawn."
+                "The surface of the shape is filled in with a solid color. No lines are drawn."
             }
         }
     }
@@ -96,16 +103,7 @@ impl ::re_types_core::Loggable for FillMode {
     fn arrow_datatype() -> arrow2::datatypes::DataType {
         #![allow(clippy::wildcard_imports)]
         use arrow2::datatypes::*;
-        DataType::Union(
-            std::sync::Arc::new(vec![
-                Field::new("_null_markers", DataType::Null, true),
-                Field::new("MajorWireframe", DataType::Null, true),
-                Field::new("DenseWireframe", DataType::Null, true),
-                Field::new("Solid", DataType::Null, true),
-            ]),
-            Some(std::sync::Arc::new(vec![0i32, 1i32, 2i32, 3i32])),
-            UnionMode::Sparse,
-        )
+        DataType::UInt8
     }
 
     fn to_arrow_opt<'a>(
@@ -118,27 +116,24 @@ impl ::re_types_core::Loggable for FillMode {
         use ::re_types_core::{Loggable as _, ResultExt as _};
         use arrow2::{array::*, datatypes::*};
         Ok({
-            // Sparse Arrow union
-            let data: Vec<_> = data
+            let (somes, data0): (Vec<_>, Vec<_>) = data
                 .into_iter()
                 .map(|datum| {
                     let datum: Option<::std::borrow::Cow<'a, Self>> = datum.map(Into::into);
-                    datum
+                    let datum = datum.map(|datum| *datum as u8);
+                    (datum.is_some(), datum)
                 })
-                .collect();
-            let num_variants = 3usize;
-            let types = data
-                .iter()
-                .map(|a| match a.as_deref() {
-                    None => 0,
-                    Some(value) => *value as i8,
-                })
-                .collect();
-            let fields: Vec<_> =
-                std::iter::repeat(NullArray::new(DataType::Null, data.len()).boxed())
-                    .take(1 + num_variants)
-                    .collect();
-            UnionArray::new(Self::arrow_datatype(), types, fields, None).boxed()
+                .unzip();
+            let data0_bitmap: Option<arrow2::bitmap::Bitmap> = {
+                let any_nones = somes.iter().any(|some| !*some);
+                any_nones.then(|| somes.into())
+            };
+            PrimitiveArray::new(
+                Self::arrow_datatype(),
+                data0.into_iter().map(|v| v.unwrap_or_default()).collect(),
+                data0_bitmap,
+            )
+            .boxed()
         })
     }
 
@@ -151,32 +146,29 @@ impl ::re_types_core::Loggable for FillMode {
         #![allow(clippy::wildcard_imports)]
         use ::re_types_core::{Loggable as _, ResultExt as _};
         use arrow2::{array::*, buffer::*, datatypes::*};
-        Ok({
-            let arrow_data = arrow_data
-                .as_any()
-                .downcast_ref::<arrow2::array::UnionArray>()
-                .ok_or_else(|| {
-                    let expected = Self::arrow_datatype();
-                    let actual = arrow_data.data_type().clone();
-                    DeserializationError::datatype_mismatch(expected, actual)
-                })
-                .with_context("rerun.components.FillMode")?;
-            let arrow_data_types = arrow_data.types();
-            arrow_data_types
-                .iter()
-                .map(|typ| match typ {
-                    0 => Ok(None),
-                    1 => Ok(Some(Self::MajorWireframe)),
-                    2 => Ok(Some(Self::DenseWireframe)),
-                    3 => Ok(Some(Self::Solid)),
-                    _ => Err(DeserializationError::missing_union_arm(
-                        Self::arrow_datatype(),
-                        "<invalid>",
-                        *typ as _,
-                    )),
-                })
-                .collect::<DeserializationResult<Vec<_>>>()
-                .with_context("rerun.components.FillMode")?
-        })
+        Ok(arrow_data
+            .as_any()
+            .downcast_ref::<UInt8Array>()
+            .ok_or_else(|| {
+                let expected = Self::arrow_datatype();
+                let actual = arrow_data.data_type().clone();
+                DeserializationError::datatype_mismatch(expected, actual)
+            })
+            .with_context("rerun.components.FillMode#enum")?
+            .into_iter()
+            .map(|opt| opt.copied())
+            .map(|typ| match typ {
+                Some(1) => Ok(Some(Self::MajorWireframe)),
+                Some(2) => Ok(Some(Self::DenseWireframe)),
+                Some(3) => Ok(Some(Self::Solid)),
+                None => Ok(None),
+                Some(invalid) => Err(DeserializationError::missing_union_arm(
+                    Self::arrow_datatype(),
+                    "<invalid>",
+                    invalid as _,
+                )),
+            })
+            .collect::<DeserializationResult<Vec<Option<_>>>>()
+            .with_context("rerun.components.FillMode")?)
     }
 }

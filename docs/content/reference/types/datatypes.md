@@ -11,16 +11,20 @@ Data types are the lowest layer of the data model hierarchy. They are re-usable 
 * [`AnnotationInfo`](datatypes/annotation_info.md): Annotation info annotating a class id or key-point id.
 * [`Blob`](datatypes/blob.md): A binary blob of data.
 * [`Bool`](datatypes/bool.md): A single boolean.
+* [`ChannelDatatype`](datatypes/channel_datatype.md): The innermost datatype of an image.
 * [`ClassDescription`](datatypes/class_description.md): The description of a semantic Class.
 * [`ClassDescriptionMapElem`](datatypes/class_description_map_elem.md): A helper type for mapping [`datatypes.ClassId`](https://rerun.io/docs/reference/types/datatypes/class_id)s to class descriptions.
 * [`ClassId`](datatypes/class_id.md): A 16-bit ID representing a type of semantic class.
+* [`ColorModel`](datatypes/color_model.md): Specified what color components are present in an [`archetypes.Image`](https://rerun.io/docs/reference/types/archetypes/image).
 * [`EntityPath`](datatypes/entity_path.md): A path to an entity in the `ChunkStore`.
 * [`Float32`](datatypes/float32.md): A single-precision 32-bit IEEE 754 floating point number.
 * [`Float64`](datatypes/float64.md): A double-precision 64-bit IEEE 754 floating point number.
+* [`ImageFormat`](datatypes/image_format.md): The metadata describing the contents of a [`components.ImageBuffer`](https://rerun.io/docs/reference/types/components/image_buffer).
 * [`KeypointId`](datatypes/keypoint_id.md): A 16-bit ID representing a type of semantic keypoint within a class.
 * [`KeypointPair`](datatypes/keypoint_pair.md): A connection between two [`datatypes.KeypointId`](https://rerun.io/docs/reference/types/datatypes/keypoint_id)s.
 * [`Mat3x3`](datatypes/mat3x3.md): A 3x3 Matrix.
 * [`Mat4x4`](datatypes/mat4x4.md): A 4x4 Matrix.
+* [`PixelFormat`](datatypes/pixel_format.md): Specifieds a particular format of an [`archetypes.Image`](https://rerun.io/docs/reference/types/archetypes/image).
 * [`Quaternion`](datatypes/quaternion.md): A Quaternion represented by 4 real numbers.
 * [`Range1D`](datatypes/range1d.md): A 1D range, specifying a lower and upper bound.
 * [`Range2D`](datatypes/range2d.md): An Axis-Aligned Bounding Box in 2D space, implemented as the minimum and maximum corners.

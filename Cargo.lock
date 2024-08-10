@@ -2041,13 +2041,13 @@ dependencies = [
 
 [[package]]
 name = "fixed"
-version = "1.23.1"
+version = "1.26.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "79386fdcec5e0fde91b1a6a5bcd89677d1f9304f7f986b154a1b9109038854d9"
+checksum = "4810bcba5534219e7c160473f3a59167e2c98bd7516bc0eec5185848bcd38963"
 dependencies = [
  "az",
  "bytemuck",
- "half 2.3.1",
+ "half 1.8.2",
  "serde",
  "typenum",
 ]
@@ -3985,14 +3985,15 @@ dependencies = [
 
 [[package]]
 name = "puffin"
-version = "0.19.0"
+version = "0.19.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b9f76ad4bb049fded4e572df72cbb6381ff5d1f41f85c3a04b56e4eca287a02f"
+checksum = "fa9dae7b05c02ec1a6bc9bcf20d8bc64a7dcbf57934107902a872014899b741f"
 dependencies = [
  "anyhow",
  "bincode",
  "byteorder",
  "cfg-if",
+ "itertools 0.10.5",
  "lz4_flex",
  "once_cell",
  "parking_lot",
@@ -4857,7 +4858,6 @@ dependencies = [
  "re_log",
  "re_log_types",
  "re_space_view",
- "re_space_view_dataframe",
  "re_space_view_spatial",
  "re_space_view_time_series",
  "re_tracing",
@@ -5092,6 +5092,7 @@ dependencies = [
  "re_data_ui",
  "re_entity_db",
  "re_format",
+ "re_int_histogram",
  "re_log_types",
  "re_tracing",
  "re_types",
@@ -5152,6 +5153,7 @@ dependencies = [
  "re_build_tools",
  "re_format",
  "re_log",
+ "re_log_types",
  "re_tracing",
  "re_types_builder",
  "re_types_core",
@@ -5526,6 +5528,7 @@ checksum = "19b30a45b0cd0bcca8037f3d0dc3421eaf95327a17cad11964fb8179b4fc4832"
 name = "rerun"
 version = "0.18.0-alpha.1+dev"
 dependencies = [
+ "ahash",
  "anyhow",
  "clap",
  "document-features",
@@ -5542,6 +5545,7 @@ dependencies = [
  "re_crash_handler",
  "re_data_source",
  "re_entity_db",
+ "re_error",
  "re_format",
  "re_log",
  "re_log_encoding",
@@ -6534,7 +6538,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "test_temporal_batch"
+name = "test_send_columns"
 version = "0.18.0-alpha.1+dev"
 dependencies = [
  "re_arrow2",

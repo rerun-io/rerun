@@ -63,7 +63,7 @@
 //!
 //! rec.set_time_sequence("frame", 42);
 //! rec.log("path/to/points", &rerun::Points3D::new(points).with_colors(colors))?;
-//! rec.log("path/to/image", &rerun::Image::from_color_model_and_tensor(image)?)?;
+//! rec.log("path/to/image", &rerun::Image::from_color_model_and_tensor(rerun::ColorModel::RGB, image)?)?;
 //!
 //! # Ok::<(), Box<dyn std::error::Error>>(())
 //! ```
@@ -106,7 +106,7 @@
 #![warn(missing_docs)] // Let's keep the this crate well-documented!
 
 #[cfg(feature = "run")]
-mod run;
+mod commands;
 
 #[cfg(feature = "sdk")]
 mod sdk;
@@ -131,7 +131,7 @@ pub use re_log::default_log_filter;
 pub use log_integration::Logger;
 
 #[cfg(feature = "run")]
-pub use run::{run, CallSource};
+pub use commands::{run, CallSource};
 
 #[cfg(feature = "sdk")]
 pub use sdk::*;

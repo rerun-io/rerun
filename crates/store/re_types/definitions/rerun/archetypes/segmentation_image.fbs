@@ -24,13 +24,10 @@ table SegmentationImage (
   // --- Required ---
 
   /// The raw image data.
-  data: rerun.components.Blob ("attr.rerun.component_required", order: 1000);
+  buffer: rerun.components.ImageBuffer ("attr.rerun.component_required", order: 1000);
 
-  /// The size of the image.
-  resolution: rerun.components.Resolution2D ("attr.rerun.component_required", order: 1500);
-
-  /// The data type of the segmentation image data (U16, U32, …).
-  datatype: rerun.components.ChannelDatatype ("attr.rerun.component_required", order: 2000);
+  /// The format of the image.
+  format: rerun.components.ImageFormat ("attr.rerun.component_required", order: 1100);
 
   // --- Optional ---
 

@@ -20,5 +20,5 @@ int main() {
         std::fill_n(pixels.begin() + y * WIDTH + 100, 180, static_cast<uint16_t>(45000));
     }
 
-    rec.log("depth", rerun::DepthImage(std::move(pixels), {WIDTH, HEIGHT}).with_meter(10000.0));
+    rec.log("depth", rerun::DepthImage(pixels.data(), {WIDTH, HEIGHT}).with_meter(10000.0));
 }

@@ -15,7 +15,7 @@ use pyo3::{
     PyAny, PyResult,
 };
 
-use re_chunk::{Chunk, ChunkError, ChunkId, ChunkTimeline, PendingRow, RowId};
+use re_chunk::{Chunk, ChunkError, ChunkId, PendingRow, RowId, TimeColumn};
 use re_log_types::TimePoint;
 use re_sdk::{ComponentName, EntityPath, Timeline};
 
@@ -145,10 +145,10 @@ pub fn build_chunk_from_components(
         })
         .collect();
 
-    let timelines: BTreeMap<Timeline, ChunkTimeline> = timelines
+    let timelines: BTreeMap<Timeline, TimeColumn> = timelines
         .map_err(|err| PyRuntimeError::new_err(format!("Error converting temporal data: {err}")))?
         .into_iter()
-        .map(|(timeline, value)| (timeline, ChunkTimeline::new(None, timeline, value)))
+        .map(|(timeline, value)| (timeline, TimeColumn::new(None, timeline, value)))
         .collect();
 
     // Extract the component data
@@ -187,25 +187,6 @@ pub fn build_chunk_from_components(
         .map_err(|err| PyRuntimeError::new_err(format!("Error converting component data: {err}")))?
         .into_iter()
         .collect();
-
-    let mut all_lengths = timelines
-        .values()
-        .map(|timeline| (timeline.name(), timeline.num_rows()))
-        .chain(
-            components
-                .iter()
-                .map(|(component, array)| (component.as_str(), array.len())),
-        );
-
-    if let Some((_, expected)) = all_lengths.next() {
-        for (name, len) in all_lengths {
-            if len != expected {
-                return Err(PyRuntimeError::new_err(format!(
-                    "Mismatched lengths: '{name}' has length {len} but expected {expected}",
-                )));
-            }
-        }
-    }
 
     let chunk = Chunk::from_auto_row_ids(chunk_id, entity_path, timelines, components)
         .map_err(|err| PyRuntimeError::new_err(err.to_string()))?;

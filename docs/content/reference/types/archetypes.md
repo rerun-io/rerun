@@ -15,8 +15,8 @@ This page lists all built-in archetypes.
 ## Image & tensor
 
 * [`DepthImage`](archetypes/depth_image.md): A depth image, i.e. as captured by a depth camera.
+* [`EncodedImage`](archetypes/encoded_image.md): An image encoded as e.g. a JPEG or PNG.
 * [`Image`](archetypes/image.md): A monochrome or color image.
-* [`ImageEncoded`](archetypes/image_encoded.md): An image encoded as e.g. a JPEG or PNG.
 * [`SegmentationImage`](archetypes/segmentation_image.md): An image made up of integer [`components.ClassId`](https://rerun.io/docs/reference/types/components/class_id)s.
 * [`Tensor`](archetypes/tensor.md): An N-dimensional array of numbers.
 
@@ -30,7 +30,7 @@ This page lists all built-in archetypes.
 ## Spatial 2D
 
 * [`Arrows2D`](archetypes/arrows2d.md): 2D arrows with optional colors, radii, labels, etc.
-* [`Boxes2D`](archetypes/boxes2d.md): 2D boxes with half-extents and optional center, rotations, colors etc.
+* [`Boxes2D`](archetypes/boxes2d.md): 2D boxes with half-extents and optional center, colors etc.
 * [`LineStrips2D`](archetypes/line_strips2d.md): 2D line strips with positions and optional colors, radii, labels, etc.
 * [`Points2D`](archetypes/points2d.md): A 2D point cloud with positions and optional colors, radii, labels, etc.
 

@@ -215,7 +215,7 @@ def uvec3ds_expected(obj: Any, type_: Any | None = None) -> Any:
     return type_._optional(expected)
 
 
-quaternion_arrays: list[QuaternionArrayLike] = [
+quaternions_arrays: list[QuaternionArrayLike] = [
     [],
     Quaternion(xyzw=[1, 2, 3, 4]),
     Quaternion(xyzw=[1.0, 2.0, 3.0, 4.0]),
@@ -225,13 +225,15 @@ quaternion_arrays: list[QuaternionArrayLike] = [
         Quaternion(xyzw=np.array([1, 2, 3, 4])),
         Quaternion(xyzw=[1, 2, 3, 4]),
     ],
+    # QuaternionArrayLike: npt.NDArray[np.float32]
+    np.array([[1, 2, 3, 4], [1, 2, 3, 4]], dtype=np.float32),
 ]
 
 
-def expected_quaternions(rotations: QuaternionArrayLike, type_: Any) -> Any:
+def quaternions_expected(rotations: QuaternionArrayLike, type_: Any) -> Any:
     if rotations is None:
         return type_._optional(None)
-    elif hasattr(rotations, "__len__") and len(rotations) == 0:
+    elif hasattr(rotations, "__len__") and len(rotations) == 0:  # type: ignore[arg-type]
         return type_._optional(rotations)
     elif isinstance(rotations, Quaternion):
         return type_._optional(Quaternion(xyzw=[1, 2, 3, 4]))

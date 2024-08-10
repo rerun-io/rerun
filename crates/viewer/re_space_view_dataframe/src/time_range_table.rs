@@ -1,14 +1,13 @@
 use std::collections::{BTreeMap, BTreeSet};
 use std::sync::Arc;
 
-use re_chunk_store::{Chunk, RangeQuery, RowId};
+use re_chunk_store::{Chunk, LatestAtQuery, RangeQuery, RowId};
 use re_data_ui::item_ui::entity_path_button;
 use re_entity_db::InstancePath;
 use re_log_types::{EntityPath, ResolvedTimeRange, TimeInt, Timeline};
 use re_types::blueprint::components::{SortKey, SortOrder};
-use re_types_core::datatypes::TimeRange;
 use re_types_core::ComponentName;
-use re_viewer_context::{Item, QueryRange, UiLayout, ViewQuery, ViewerContext};
+use re_viewer_context::{Item, UiLayout, ViewQuery, ViewerContext};
 
 use crate::table_ui::{row_id_ui, table_ui};
 
@@ -33,6 +32,8 @@ pub(crate) fn time_range_table_ui(
     query: &ViewQuery<'_>,
     sort_key: SortKey,
     sort_order: SortOrder,
+    timeline: &Timeline,
+    resolved_time_range: ResolvedTimeRange,
 ) {
     re_tracing::profile_function!();
 
@@ -51,7 +52,7 @@ pub(crate) fn time_range_table_ui(
             .filter(|data_result| data_result.is_visible(ctx))
             .flat_map(|data_result| {
                 ctx.recording_store()
-                    .all_components_on_timeline(&query.timeline, &data_result.entity_path)
+                    .all_components_on_timeline(timeline, &data_result.entity_path)
                     .unwrap_or_default()
             })
             // TODO(#4466): make showing/hiding indicators components an explicit optional
@@ -119,20 +120,12 @@ pub(crate) fn time_range_table_ui(
         .iter_all_data_results()
         .filter(|data_result| data_result.is_visible(ctx))
         .flat_map(|data_result| {
-            let time_range = match &data_result.property_overrides.query_range {
-                QueryRange::TimeRange(time_range) => time_range.clone(),
-                QueryRange::LatestAt => TimeRange::AT_CURSOR,
-            };
-
-            let resolved_time_range =
-                ResolvedTimeRange::from_relative_time_range(&time_range, ctx.current_query().at());
-
             sorted_components.iter().flat_map(move |component| {
                 entity_components_to_key_value_iter(
                     ctx,
                     &data_result.entity_path,
                     component,
-                    query.timeline,
+                    *timeline,
                     resolved_time_range,
                 )
             })
@@ -218,17 +211,17 @@ pub(crate) fn time_range_table_ui(
         }
     };
 
-    let latest_at_query = query.latest_at_query();
-    let entity_ui = |ui: &mut egui::Ui, entity_path: &EntityPath| {
-        entity_path_button(
-            ctx,
-            &latest_at_query,
-            ctx.recording(),
-            ui,
-            Some(query.space_view_id),
-            entity_path,
-        );
-    };
+    let entity_ui =
+        |ui: &mut egui::Ui, entity_path: &EntityPath, latest_at_query: &LatestAtQuery| {
+            entity_path_button(
+                ctx,
+                latest_at_query,
+                ctx.recording(),
+                ui,
+                Some(query.space_view_id),
+                entity_path,
+            );
+        };
 
     let time_ui = |ui: &mut egui::Ui, time: &TimeInt| {
         if ui
@@ -245,20 +238,22 @@ pub(crate) fn time_range_table_ui(
     };
 
     // Draw a single line of the table. This is called for each _visible_ row.
-    let latest_at_query = query.latest_at_query();
     let row_ui = |mut row: egui_extras::TableRow<'_, '_>| {
         let row_key = rows[row.index()];
         let row_chunk = &rows_to_chunk[row_key];
         let (entity_path, time, row_id) = row_key;
 
+        // Latest at query corresponding to the current time
+        let latest_at_query = LatestAtQuery::new(*timeline, *time);
+
         match sort_key {
             SortKey::Entity => {
-                row.col(|ui| entity_ui(ui, entity_path));
+                row.col(|ui| entity_ui(ui, entity_path, &latest_at_query));
                 row.col(|ui| time_ui(ui, time));
             }
             SortKey::Time => {
                 row.col(|ui| time_ui(ui, time));
-                row.col(|ui| entity_ui(ui, entity_path));
+                row.col(|ui| entity_ui(ui, entity_path, &latest_at_query));
             }
         };
 

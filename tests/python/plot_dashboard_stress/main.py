@@ -166,13 +166,13 @@ def main() -> None:
             (sim_times[offset : offset + args.temporal_batch_size] for offset in offsets),
         )
 
-    time_batch = None
+    time_column = None
 
     for index, sim_time in ticks:
         if args.temporal_batch_size is None:
             rr.set_time_seconds("sim_time", sim_time)
         else:
-            time_batch = rr.TimeSecondsBatch("sim_time", sim_time)
+            time_column = rr.TimeBatch("sim_time", sim_time)
 
         # Log
         for plot_idx, plot_path in enumerate(plot_paths):
@@ -183,9 +183,9 @@ def main() -> None:
                 else:
                     value_index = slice(index, index + args.temporal_batch_size)
                     value_batch = rr.components.ScalarBatch(values[value_index, plot_idx, series_idx])
-                    rr.log_temporal_batch(
+                    rr.send_columns(
                         f"{plot_path}/{series_path}",
-                        times=[time_batch],
+                        times=[time_column],
                         components=[value_batch],
                     )
 

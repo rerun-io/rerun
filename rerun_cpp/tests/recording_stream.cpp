@@ -44,7 +44,7 @@ struct BadArchetype {
 namespace rerun {
     template <>
     struct AsComponents<BadArchetype> {
-        static rerun::Result<std::vector<rerun::DataCell>> serialize(const BadArchetype&) {
+        static rerun::Result<std::vector<rerun::ComponentBatch>> serialize(const BadArchetype&) {
             return Loggable<BadComponent>::error;
         }
     };
@@ -451,8 +451,7 @@ SCENARIO("Recording stream handles invalid logging gracefully", TEST_TAG) {
             const char* path = "valid";
 
             AND_GIVEN("a cell with a null buffer") {
-                rerun::DataCell cell = {};
-                cell.num_instances = 1;
+                rerun::ComponentBatch cell = {};
                 cell.component_type = 0;
 
                 THEN("try_log_data_row fails with UnexpectedNullArgument") {
@@ -463,8 +462,7 @@ SCENARIO("Recording stream handles invalid logging gracefully", TEST_TAG) {
                 }
             }
             AND_GIVEN("a cell with an invalid component type") {
-                rerun::DataCell cell = {};
-                cell.num_instances = 1;
+                rerun::ComponentBatch cell = {};
                 cell.component_type = RR_COMPONENT_TYPE_HANDLE_INVALID;
                 cell.array = rerun::components::indicator_arrow_array();
 
@@ -652,4 +650,13 @@ SCENARIO("Deprecated log_timeless still works", TEST_TAG) {
     }
 
     RR_POP_WARNINGS // For `RR_DISABLE_DEPRECATION_WARNING`.
+}
+
+SCENARIO("Global RecordingStream doesn't cause crashes", TEST_TAG) {
+    // This caused a crash on Mac & Linux due to issues with cleanup order of global variables
+    // in Rust vs C++.
+    // See:
+    // * https://github.com/rerun-io/rerun/issues/5697
+    // * https://github.com/rerun-io/rerun/issues/5260
+    static rerun::RecordingStream global_stream("global");
 }

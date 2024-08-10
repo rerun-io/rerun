@@ -3,12 +3,15 @@ namespace rerun.blueprint.components;
 // ---
 
 /// Tri-state for panel controls.
-enum PanelState: byte (
+enum PanelState: ubyte (
   "attr.rerun.scope": "blueprint",
   "attr.rust.derive": "Copy, PartialEq, Eq",
   "attr.rust.repr": "transparent",
   "attr.rust.tuple_struct"
 ) {
+      /// Invalid value. Won't show up in generated types.
+    Invalid = 0,
+
   /// Completely hidden.
   Hidden,
 

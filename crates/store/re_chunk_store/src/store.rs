@@ -100,11 +100,11 @@ impl ChunkStoreConfig {
         // become a bit too costly to concatenate beyond that.
         chunk_max_bytes: 4 * 1024 * 1024,
 
-        // Empirical testing shows that 1024 is the threshold after which we really start to get
-        // dimishing returns space-wise.
-        chunk_max_rows: 1024,
+        // Empirical testing shows that 4096 is the threshold after which we really start to get
+        // dimishing returns space and compute wise.
+        chunk_max_rows: 4096,
 
-        chunk_max_rows_if_unsorted: 256,
+        chunk_max_rows_if_unsorted: 1024,
     };
 
     /// [`Self::DEFAULT`], but with compaction entirely disabled.
@@ -239,7 +239,7 @@ pub struct ChunkIdSetPerTime {
     ///   [`Chunk`] contains data for this particular component on this particular timeline (see
     ///   [`Chunk::time_range_per_component`]).
     /// * For an `(entity, timeline)` index, that would be the first timestamp at which this [`Chunk`]
-    ///   contains data for any component on this particular timeline (see [`re_chunk::ChunkTimeline::time_range`]).
+    ///   contains data for any component on this particular timeline (see [`re_chunk::TimeColumn::time_range`]).
     pub(crate) per_start_time: BTreeMap<TimeInt, ChunkIdSet>,
 
     /// [`ChunkId`]s organized by their _most specific_ end time.
@@ -250,7 +250,7 @@ pub struct ChunkIdSetPerTime {
     ///   [`Chunk`] contains data for this particular component on this particular timeline (see
     ///   [`Chunk::time_range_per_component`]).
     /// * For an `(entity, timeline)` index, that would be the last timestamp at which this [`Chunk`]
-    ///   contains data for any component on this particular timeline (see [`re_chunk::ChunkTimeline::time_range`]).
+    ///   contains data for any component on this particular timeline (see [`re_chunk::TimeColumn::time_range`]).
     pub(crate) per_end_time: BTreeMap<TimeInt, ChunkIdSet>,
 }
 

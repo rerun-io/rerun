@@ -50,7 +50,7 @@ pub trait UiExt {
         let tint = if *selected {
             self.ui().visuals().widgets.inactive.fg_stroke.color
         } else {
-            egui::Color32::from_gray(100) // TODO(emilk): get from design tokens
+            self.ui().visuals().widgets.noninteractive.fg_stroke.color
         };
         let mut response = self
             .ui_mut()
@@ -985,6 +985,57 @@ pub trait UiExt {
 
         // should never happen
         egui::Rangef::EVERYTHING
+    }
+
+    /// Style [`egui::Ui::selectable_value`]s and friends into a horizontal, toggle-like widget.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// # egui::__run_test_ui(|ui| {
+    /// # use re_ui::UiExt as _;
+    /// let mut flag = false;
+    /// ui.selectable_toggle(|ui| {
+    ///     ui.selectable_value(&mut flag, false, "Inactive");
+    ///     ui.selectable_value(&mut flag, true, "Active");
+    /// });
+    /// # });
+    /// ```
+    fn selectable_toggle<R>(&mut self, content: impl FnOnce(&mut egui::Ui) -> R) -> R {
+        let ui = self.ui_mut();
+
+        // ensure cursor is on an integer value, otherwise we get weird optical alignment of the text
+        //TODO(ab): fix when https://github.com/emilk/egui/issues/4928 is resolved
+        ui.add_space(-ui.cursor().min.y.fract());
+
+        egui::Frame {
+            inner_margin: egui::Margin::same(3.0),
+            stroke: design_tokens().bottom_bar_stroke,
+            rounding: ui.visuals().widgets.hovered.rounding + egui::Rounding::same(3.0),
+            ..Default::default()
+        }
+        .show(ui, |ui| {
+            ui.visuals_mut().widgets.hovered.expansion = 0.0;
+            ui.visuals_mut().widgets.active.expansion = 0.0;
+            ui.visuals_mut().widgets.inactive.expansion = 0.0;
+
+            ui.visuals_mut().selection.bg_fill = ui.visuals_mut().widgets.inactive.bg_fill;
+            ui.visuals_mut().selection.stroke = ui.visuals_mut().widgets.inactive.fg_stroke;
+            ui.visuals_mut().widgets.hovered.weak_bg_fill = egui::Color32::TRANSPARENT;
+
+            ui.visuals_mut().widgets.hovered.fg_stroke.color =
+                ui.visuals().widgets.inactive.fg_stroke.color;
+            ui.visuals_mut().widgets.active.fg_stroke.color =
+                ui.visuals().widgets.inactive.fg_stroke.color;
+            ui.visuals_mut().widgets.inactive.fg_stroke.color =
+                ui.visuals().widgets.noninteractive.fg_stroke.color;
+
+            ui.spacing_mut().button_padding = egui::vec2(6.0, 2.0);
+            ui.spacing_mut().item_spacing.x = 3.0;
+
+            ui.horizontal(content).inner
+        })
+        .inner
     }
 }
 

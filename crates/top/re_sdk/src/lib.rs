@@ -78,7 +78,7 @@ pub mod sink {
 pub mod log {
     pub use re_chunk::{
         Chunk, ChunkBatcher, ChunkBatcherConfig, ChunkBatcherError, ChunkBatcherResult, ChunkError,
-        ChunkId, ChunkResult, PendingRow, RowId, TransportChunk,
+        ChunkId, ChunkResult, PendingRow, RowId, TimeColumn, TransportChunk,
     };
     pub use re_log_types::LogMsg;
 }

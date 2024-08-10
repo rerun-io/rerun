@@ -7,7 +7,6 @@ use itertools::Itertools;
 use re_chunk::{Chunk, LatestAtQuery, RangeQuery};
 use re_log_types::ResolvedTimeRange;
 use re_log_types::{EntityPath, TimeInt, Timeline};
-use re_types_core::SizeBytes as _;
 use re_types_core::{ComponentName, ComponentNameSet};
 
 use crate::{store::ChunkIdSetPerTime, ChunkStore};
@@ -116,7 +115,7 @@ impl ChunkStore {
         entity_path: &EntityPath,
         component_name: &ComponentName,
     ) -> bool {
-        re_tracing::profile_function!();
+        // re_tracing::profile_function!(); // This function is too fast; profiling will only add overhead
 
         self.entity_has_static_component(entity_path, component_name)
             || self.entity_has_temporal_component_on_timeline(timeline, entity_path, component_name)
@@ -130,7 +129,7 @@ impl ChunkStore {
         entity_path: &EntityPath,
         component_name: &ComponentName,
     ) -> bool {
-        re_tracing::profile_function!();
+        // re_tracing::profile_function!(); // This function is too fast; profiling will only add overhead
 
         self.entity_has_static_component(entity_path, component_name)
             || self.entity_has_temporal_component(entity_path, component_name)
@@ -145,7 +144,7 @@ impl ChunkStore {
         entity_path: &EntityPath,
         component_name: &ComponentName,
     ) -> bool {
-        re_tracing::profile_function!();
+        // re_tracing::profile_function!(); // This function is too fast; profiling will only add overhead
 
         self.query_id.fetch_add(1, Ordering::Relaxed);
 
@@ -165,7 +164,7 @@ impl ChunkStore {
         entity_path: &EntityPath,
         component_name: &ComponentName,
     ) -> bool {
-        re_tracing::profile_function!();
+        // re_tracing::profile_function!(); // This function is too fast; profiling will only add overhead
 
         self.query_id.fetch_add(1, Ordering::Relaxed);
 
@@ -188,7 +187,7 @@ impl ChunkStore {
         entity_path: &EntityPath,
         component_name: &ComponentName,
     ) -> bool {
-        re_tracing::profile_function!();
+        // re_tracing::profile_function!(); // This function is too fast; profiling will only add overhead
 
         self.query_id.fetch_add(1, Ordering::Relaxed);
 
@@ -213,7 +212,7 @@ impl ChunkStore {
         timeline: &Timeline,
         entity_path: &EntityPath,
     ) -> bool {
-        re_tracing::profile_function!();
+        // re_tracing::profile_function!(); // This function is too fast; profiling will only add overhead
 
         self.entity_has_static_data(entity_path)
             || self.entity_has_temporal_data_on_timeline(timeline, entity_path)
@@ -225,7 +224,7 @@ impl ChunkStore {
     /// that some _data_ currently exists in the store for this entity.
     #[inline]
     pub fn entity_has_data(&self, entity_path: &EntityPath) -> bool {
-        re_tracing::profile_function!();
+        // re_tracing::profile_function!(); // This function is too fast; profiling will only add overhead
 
         self.entity_has_static_data(entity_path) || self.entity_has_temporal_data(entity_path)
     }
@@ -236,7 +235,7 @@ impl ChunkStore {
     /// that some _data_ currently exists in the store for this entity.
     #[inline]
     pub fn entity_has_static_data(&self, entity_path: &EntityPath) -> bool {
-        re_tracing::profile_function!();
+        // re_tracing::profile_function!(); // This function is too fast; profiling will only add overhead
 
         self.query_id.fetch_add(1, Ordering::Relaxed);
 
@@ -255,7 +254,7 @@ impl ChunkStore {
     /// that some _data_ currently exists in the store for this entity.
     #[inline]
     pub fn entity_has_temporal_data(&self, entity_path: &EntityPath) -> bool {
-        re_tracing::profile_function!();
+        // re_tracing::profile_function!(); // This function is too fast; profiling will only add overhead
 
         self.query_id.fetch_add(1, Ordering::Relaxed);
 
@@ -283,7 +282,7 @@ impl ChunkStore {
         timeline: &Timeline,
         entity_path: &EntityPath,
     ) -> bool {
-        re_tracing::profile_function!();
+        // re_tracing::profile_function!(); // This function is too fast; profiling will only add overhead
 
         self.query_id.fetch_add(1, Ordering::Relaxed);
 
@@ -555,8 +554,8 @@ impl ChunkStore {
                 chunk
                     .timelines()
                     .get(&query.timeline())
-                    .map_or(false, |time_chunk| {
-                        time_chunk
+                    .map_or(false, |time_column| {
+                        time_column
                             .time_range_per_component(chunk.components())
                             .get(&component_name)
                             .map_or(false, |time_range| time_range.intersects(query.range()))
@@ -607,8 +606,8 @@ impl ChunkStore {
                 chunk
                     .timelines()
                     .get(&query.timeline())
-                    .map_or(false, |time_chunk| {
-                        time_chunk.time_range().intersects(query.range())
+                    .map_or(false, |time_column| {
+                        time_column.time_range().intersects(query.range())
                     })
             })
             .collect_vec();
@@ -657,144 +656,5 @@ impl ChunkStore {
                     .filter_map(|chunk_id| self.chunks_per_chunk_id.get(chunk_id).cloned())
             })
             .collect()
-    }
-}
-
-// Counting
-impl ChunkStore {
-    /// Returns the number of temporal events logged for an entity on a specific timeline.
-    ///
-    /// This ignores static data.
-    pub fn num_temporal_events_on_timeline(
-        &self,
-        timeline: &Timeline,
-        entity_path: &EntityPath,
-    ) -> u64 {
-        re_tracing::profile_function!();
-
-        self.query_id.fetch_add(1, Ordering::Relaxed);
-
-        self.temporal_chunk_ids_per_entity
-            .get(entity_path)
-            .and_then(|temporal_chunks_events_per_timeline| {
-                temporal_chunks_events_per_timeline.get(timeline)
-            })
-            .map_or(0, |chunk_id_sets| {
-                chunk_id_sets
-                    .per_start_time
-                    .values()
-                    .flat_map(|chunk_ids| {
-                        chunk_ids
-                            .iter()
-                            .filter_map(|chunk_id| self.chunks_per_chunk_id.get(chunk_id))
-                            .map(|chunk| chunk.num_events_cumulative())
-                    })
-                    .sum()
-            })
-    }
-
-    /// Returns the number of static events logged for an entity for a specific component.
-    ///
-    /// This ignores temporal events.
-    pub fn num_static_events_for_component(
-        &self,
-        entity_path: &EntityPath,
-        component_name: ComponentName,
-    ) -> u64 {
-        re_tracing::profile_function!();
-
-        self.query_id.fetch_add(1, Ordering::Relaxed);
-
-        self.static_chunk_ids_per_entity
-            .get(entity_path)
-            .and_then(|static_chunks_per_component| {
-                static_chunks_per_component.get(&component_name)
-            })
-            .and_then(|chunk_id| self.chunks_per_chunk_id.get(chunk_id))
-            .and_then(|chunk| chunk.num_events_for_component(component_name))
-            .unwrap_or(0)
-    }
-
-    /// Returns the number of temporal events logged for an entity for a specific component on a given timeline.
-    ///
-    /// This ignores static events.
-    pub fn num_temporal_events_for_component_on_timeline(
-        &self,
-        timeline: &Timeline,
-        entity_path: &EntityPath,
-        component_name: ComponentName,
-    ) -> u64 {
-        re_tracing::profile_function!();
-
-        self.query_id.fetch_add(1, Ordering::Relaxed);
-
-        self.temporal_chunk_ids_per_entity_per_component
-            .get(entity_path)
-            .and_then(|temporal_chunk_ids_per_timeline| {
-                temporal_chunk_ids_per_timeline.get(timeline)
-            })
-            .and_then(|temporal_chunk_ids_per_component| {
-                temporal_chunk_ids_per_component.get(&component_name)
-            })
-            .map_or(0, |chunk_id_sets| {
-                chunk_id_sets
-                    .per_start_time
-                    .values()
-                    .flat_map(|chunk_ids| chunk_ids.iter())
-                    .filter_map(|chunk_id| self.chunks_per_chunk_id.get(chunk_id))
-                    .filter_map(|chunk| chunk.num_events_for_component(component_name))
-                    .sum()
-            })
-    }
-
-    /// Returns number of bytes used for an entity on a specific timeline.
-    ///
-    /// This always includes static data.
-    /// This is an approximation of the actual storage cost of the entity,
-    /// as the measurement includes the overhead of various data structures
-    /// we use in the database.
-    /// It is imprecise, because it does not account for every possible place
-    /// someone may be storing something related to the entity, only most of
-    /// what is accessible inside this chunk store.
-    ///
-    /// ⚠ This does not return the _total_ size of the entity and all its children!
-    /// For that, use `entity_db.approx_size_of_subtree_on_timeline`.
-    pub fn approx_size_of_entity_on_timeline(
-        &self,
-        timeline: &Timeline,
-        entity_path: &EntityPath,
-    ) -> u64 {
-        re_tracing::profile_function!();
-
-        self.query_id.fetch_add(1, Ordering::Relaxed);
-
-        let static_data_size_bytes = self.static_chunk_ids_per_entity.get(entity_path).map_or(
-            0,
-            |static_chunks_per_component| {
-                static_chunks_per_component
-                    .values()
-                    .filter_map(|id| self.chunks_per_chunk_id.get(id))
-                    .map(|chunk| Chunk::total_size_bytes(chunk))
-                    .sum()
-            },
-        );
-
-        let temporal_data_size_bytes = self
-            .temporal_chunk_ids_per_entity
-            .get(entity_path)
-            .and_then(|temporal_chunk_ids_per_timeline| {
-                temporal_chunk_ids_per_timeline.get(timeline)
-            })
-            .map_or(0, |chunk_id_sets| {
-                chunk_id_sets
-                    .per_start_time
-                    .values()
-                    .flat_map(|chunk_ids| chunk_ids.iter())
-                    .filter_map(|id| self.chunks_per_chunk_id.get(id))
-                    .map(|chunk| Chunk::total_size_bytes(chunk))
-                    .sum()
-            });
-
-        static_data_size_bytes + temporal_data_size_bytes
     }
 }

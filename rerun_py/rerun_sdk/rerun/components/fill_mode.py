@@ -26,39 +26,52 @@ class FillMode(Enum):
 
     MajorWireframe = 1
     """
-    Lines are drawn around the edges of the shape that represent the logged data.
+    Lines are drawn around the features of the shape which directly correspond to the logged
+    data.
 
-    The interior (2D) or surface (3D) are not filled in.
+    Examples of what this means:
+
+    * An `Ellipsoids3D` will draw three axis-aligned ellipses that are cross-sections
+      of each ellipsoid, each of which displays two out of three of the sizes of the ellipsoid.
+    * For `Boxes3D`, it is the edges of the box, identical to `DenseWireframe`.
     """
 
     DenseWireframe = 2
     """
-    Many lines are drawn to represent the surface of the shape.
+    Many lines are drawn to represent the surface of the shape in a see-through fashion.
 
-    The interior (2D) or surface (3D) are not filled in.
+    Examples of what this means:
+
+    * An `Ellipsoids3D` will draw a wireframe triangle mesh that approximates each ellipsoid.
+    * For `Boxes3D`, it is the edges of the box, `MajorWireframe`.
     """
 
     Solid = 3
-    """
-    The interior (2D) or surface (3D) is filled with a single color.
+    """The surface of the shape is filled in with a solid color. No lines are drawn."""
 
-    No lines are drawn.
-    """
+    @classmethod
+    def auto(cls, val: str | int | FillMode) -> FillMode:
+        """Best-effort converter, including a case-insensitive string matcher."""
+        if isinstance(val, FillMode):
+            return val
+        if isinstance(val, int):
+            return cls(val)
+        try:
+            return cls[val]
+        except KeyError:
+            val_lower = val.lower()
+            for variant in cls:
+                if variant.name.lower() == val_lower:
+                    return variant
+        raise ValueError(f"Cannot convert {val} to {cls.__name__}")
 
     def __str__(self) -> str:
         """Returns the variant name."""
-        if self == FillMode.MajorWireframe:
-            return "MajorWireframe"
-        elif self == FillMode.DenseWireframe:
-            return "DenseWireframe"
-        elif self == FillMode.Solid:
-            return "Solid"
-        else:
-            raise ValueError("Unknown enum variant")
+        return self.name
 
 
 FillModeLike = Union[
-    FillMode, Literal["DenseWireframe", "MajorWireframe", "Solid", "densewireframe", "majorwireframe", "solid"]
+    FillMode, Literal["DenseWireframe", "MajorWireframe", "Solid", "densewireframe", "majorwireframe", "solid"], int
 ]
 FillModeArrayLike = Union[FillModeLike, Sequence[FillModeLike]]
 
@@ -67,16 +80,7 @@ class FillModeType(BaseExtensionType):
     _TYPE_NAME: str = "rerun.components.FillMode"
 
     def __init__(self) -> None:
-        pa.ExtensionType.__init__(
-            self,
-            pa.sparse_union([
-                pa.field("_null_markers", pa.null(), nullable=True, metadata={}),
-                pa.field("MajorWireframe", pa.null(), nullable=True, metadata={}),
-                pa.field("DenseWireframe", pa.null(), nullable=True, metadata={}),
-                pa.field("Solid", pa.null(), nullable=True, metadata={}),
-            ]),
-            self._TYPE_NAME,
-        )
+        pa.ExtensionType.__init__(self, pa.uint8(), self._TYPE_NAME)
 
 
 class FillModeBatch(BaseBatch[FillModeArrayLike], ComponentBatchMixin):
@@ -87,38 +91,6 @@ class FillModeBatch(BaseBatch[FillModeArrayLike], ComponentBatchMixin):
         if isinstance(data, (FillMode, int, str)):
             data = [data]
 
-        types: list[int] = []
+        pa_data = [FillMode.auto(v).value if v is not None else None for v in data]  # type: ignore[redundant-expr]
 
-        for value in data:
-            if value is None:
-                types.append(0)
-            elif isinstance(value, FillMode):
-                types.append(value.value)  # Actual enum value
-            elif isinstance(value, int):
-                types.append(value)  # By number
-            elif isinstance(value, str):
-                if hasattr(FillMode, value):
-                    types.append(FillMode[value].value)  # fast path
-                elif value.lower() == "majorwireframe":
-                    types.append(FillMode.MajorWireframe.value)
-                elif value.lower() == "densewireframe":
-                    types.append(FillMode.DenseWireframe.value)
-                elif value.lower() == "solid":
-                    types.append(FillMode.Solid.value)
-                else:
-                    raise ValueError(f"Unknown FillMode kind: {value}")
-            else:
-                raise ValueError(f"Unknown FillMode kind: {value}")
-
-        buffers = [
-            None,
-            pa.array(types, type=pa.int8()).buffers()[1],
-        ]
-        children = (1 + 3) * [pa.nulls(len(data))]
-
-        return pa.UnionArray.from_buffers(
-            type=data_type,
-            length=len(data),
-            buffers=buffers,
-            children=children,
-        )
+        return pa.array(pa_data, type=data_type)

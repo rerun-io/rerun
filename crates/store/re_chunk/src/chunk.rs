@@ -81,7 +81,7 @@ pub struct Chunk {
     /// Each column must be the same length as `row_ids`.
     ///
     /// Empty if this is a static chunk.
-    pub(crate) timelines: BTreeMap<Timeline, ChunkTimeline>,
+    pub(crate) timelines: BTreeMap<Timeline, TimeColumn>,
 
     /// A sparse `ListArray` for each component.
     ///
@@ -227,10 +227,10 @@ impl Chunk {
 
         self.timelines
             .iter()
-            .map(|(&timeline, time_chunk)| {
+            .map(|(&timeline, time_column)| {
                 (
                     timeline,
-                    time_chunk.time_range_per_component(&self.components),
+                    time_column.time_range_per_component(&self.components),
                 )
             })
             .collect()
@@ -272,19 +272,19 @@ impl Chunk {
             return vec![(TimeInt::STATIC, self.num_events_cumulative())];
         }
 
-        let Some(time_chunk) = self.timelines().get(timeline) else {
+        let Some(time_column) = self.timelines().get(timeline) else {
             return Vec::new();
         };
 
-        let time_range = time_chunk.time_range();
+        let time_range = time_column.time_range();
         if time_range.min() == time_range.max() {
             return vec![(time_range.min(), self.num_events_cumulative())];
         }
 
-        let counts = if time_chunk.is_sorted() {
-            self.num_events_cumulative_per_unique_time_sorted(time_chunk)
+        let counts = if time_column.is_sorted() {
+            self.num_events_cumulative_per_unique_time_sorted(time_column)
         } else {
-            self.num_events_cumulative_per_unique_time_unsorted(time_chunk)
+            self.num_events_cumulative_per_unique_time_unsorted(time_column)
         };
 
         debug_assert!(counts
@@ -297,11 +297,11 @@ impl Chunk {
 
     fn num_events_cumulative_per_unique_time_sorted(
         &self,
-        time_chunk: &ChunkTimeline,
+        time_column: &TimeColumn,
     ) -> Vec<(TimeInt, u64)> {
         re_tracing::profile_function!();
 
-        debug_assert!(time_chunk.is_sorted());
+        debug_assert!(time_column.is_sorted());
 
         // NOTE: This is used on some very hot paths (time panel rendering).
         // Performance trumps readability. Optimized empirically.
@@ -323,11 +323,11 @@ impl Chunk {
 
         let mut counts = Vec::with_capacity(counts_raw.len());
 
-        let Some(mut cur_time) = time_chunk.times().next() else {
+        let Some(mut cur_time) = time_column.times().next() else {
             return Vec::new();
         };
         let mut cur_count = 0;
-        izip!(time_chunk.times(), counts_raw).for_each(|(time, count)| {
+        izip!(time_column.times(), counts_raw).for_each(|(time, count)| {
             if time == cur_time {
                 cur_count += count;
             } else {
@@ -346,17 +346,17 @@ impl Chunk {
 
     fn num_events_cumulative_per_unique_time_unsorted(
         &self,
-        time_chunk: &ChunkTimeline,
+        time_column: &TimeColumn,
     ) -> Vec<(TimeInt, u64)> {
         re_tracing::profile_function!();
 
-        debug_assert!(!time_chunk.is_sorted());
+        debug_assert!(!time_column.is_sorted());
 
         self.components
             .values()
             .flat_map(move |list_array| {
                 izip!(
-                    time_chunk.times(),
+                    time_column.times(),
                     // Reminder: component columns are sparse, we must take a look at the validity bitmaps.
                     list_array.validity().map_or_else(
                         || arrow2::Either::Left(std::iter::repeat(1).take(self.num_rows())),
@@ -450,7 +450,7 @@ impl Chunk {
 // ---
 
 #[derive(Debug, Clone, PartialEq)]
-pub struct ChunkTimeline {
+pub struct TimeColumn {
     pub(crate) timeline: Timeline,
 
     /// Every single timestamp for this timeline.
@@ -488,7 +488,7 @@ impl Chunk {
         entity_path: EntityPath,
         is_sorted: Option<bool>,
         row_ids: ArrowStructArray,
-        timelines: BTreeMap<Timeline, ChunkTimeline>,
+        timelines: BTreeMap<Timeline, TimeColumn>,
         components: BTreeMap<ComponentName, ArrowListArray<i32>>,
     ) -> ChunkResult<Self> {
         let mut chunk = Self {
@@ -522,7 +522,7 @@ impl Chunk {
         entity_path: EntityPath,
         is_sorted: Option<bool>,
         row_ids: &[RowId],
-        timelines: BTreeMap<Timeline, ChunkTimeline>,
+        timelines: BTreeMap<Timeline, TimeColumn>,
         components: BTreeMap<ComponentName, ArrowListArray<i32>>,
     ) -> ChunkResult<Self> {
         let row_ids = row_ids
@@ -552,7 +552,7 @@ impl Chunk {
     pub fn from_auto_row_ids(
         id: ChunkId,
         entity_path: EntityPath,
-        timelines: BTreeMap<Timeline, ChunkTimeline>,
+        timelines: BTreeMap<Timeline, TimeColumn>,
         components: BTreeMap<ComponentName, ArrowListArray<i32>>,
     ) -> ChunkResult<Self> {
         let count = components
@@ -610,15 +610,15 @@ impl Chunk {
     }
 
     #[inline]
-    pub fn add_timeline(&mut self, chunk_timeline: ChunkTimeline) -> ChunkResult<()> {
+    pub fn add_timeline(&mut self, chunk_timeline: TimeColumn) -> ChunkResult<()> {
         self.timelines
             .insert(chunk_timeline.timeline, chunk_timeline);
         self.sanity_check()
     }
 }
 
-impl ChunkTimeline {
-    /// Creates a new [`ChunkTimeline`].
+impl TimeColumn {
+    /// Creates a new [`TimeColumn`].
     ///
     /// Iff you know for sure whether the data is already appropriately sorted or not, specify `is_sorted`.
     /// When left unspecified (`None`), it will be computed in O(n) time.
@@ -629,7 +629,7 @@ impl ChunkTimeline {
         timeline: Timeline,
         times: ArrowPrimitiveArray<i64>,
     ) -> Self {
-        re_tracing::profile_function!(format!("{} times", times.len()));
+        re_tracing::profile_function_if!(1000 < times.len(), format!("{} times", times.len()));
 
         let times = times.to(timeline.datatype());
         let time_slice = times.values().as_slice();
@@ -672,7 +672,7 @@ impl ChunkTimeline {
         }
     }
 
-    /// Creates a new [`ChunkTimeline`] of sequence type.
+    /// Creates a new [`TimeColumn`] of sequence type.
     pub fn new_sequence(
         name: impl Into<re_log_types::TimelineName>,
         times: impl IntoIterator<Item = impl Into<i64>>,
@@ -684,7 +684,7 @@ impl ChunkTimeline {
                     re_log::error!(
                 illegal_value = t,
                 new_value = TimeInt::MIN.as_i64(),
-                "ChunkTimeline::new_sequence() called with illegal value - clamped to minimum legal value"
+                "TimeColumn::new_sequence() called with illegal value - clamped to minimum legal value"
             );
                     TimeInt::MIN
                 })
@@ -698,7 +698,7 @@ impl ChunkTimeline {
         )
     }
 
-    /// Creates a new [`ChunkTimeline`] of sequence type.
+    /// Creates a new [`TimeColumn`] of sequence type.
     pub fn new_seconds(
         name: impl Into<re_log_types::TimelineName>,
         times: impl IntoIterator<Item = impl Into<f64>>,
@@ -711,7 +711,7 @@ impl ChunkTimeline {
                     re_log::error!(
                 illegal_value = t,
                 new_value = TimeInt::MIN.as_i64(),
-                "ChunkTimeline::new_seconds() called with illegal value - clamped to minimum legal value"
+                "TimeColumn::new_seconds() called with illegal value - clamped to minimum legal value"
             );
                     TimeInt::MIN
                 })
@@ -725,25 +725,28 @@ impl ChunkTimeline {
         )
     }
 
-    /// Creates a new [`ChunkTimeline`] of nanoseconds type.
+    /// Creates a new [`TimeColumn`] of nanoseconds type.
     pub fn new_nanos(
         name: impl Into<re_log_types::TimelineName>,
         times: impl IntoIterator<Item = impl Into<i64>>,
     ) -> Self {
-        let time_vec = times.into_iter().map(|t| {
-            let t = t.into();
-            let time = Time::from_ns_since_epoch(t);
-            TimeInt::try_from(time)
-                .unwrap_or_else(|_| {
-                    re_log::error!(
+        let time_vec = times
+            .into_iter()
+            .map(|t| {
+                let t = t.into();
+                let time = Time::from_ns_since_epoch(t);
+                TimeInt::try_from(time)
+                    .unwrap_or_else(|_| {
+                        re_log::error!(
                 illegal_value = t,
                 new_value = TimeInt::MIN.as_i64(),
-                "ChunkTimeline::new_nanos() called with illegal value - clamped to minimum legal value"
+                "TimeColumn::new_nanos() called with illegal value - clamped to minimum legal value"
             );
-                    TimeInt::MIN
-                })
-                .as_i64()
-        }).collect();
+                        TimeInt::MIN
+                    })
+                    .as_i64()
+            })
+            .collect();
 
         Self::new(
             None,
@@ -917,7 +920,7 @@ impl Chunk {
     }
 
     #[inline]
-    pub fn timelines(&self) -> &BTreeMap<Timeline, ChunkTimeline> {
+    pub fn timelines(&self) -> &BTreeMap<Timeline, TimeColumn> {
         &self.timelines
     }
 
@@ -953,7 +956,7 @@ impl std::fmt::Display for Chunk {
     }
 }
 
-impl ChunkTimeline {
+impl TimeColumn {
     #[inline]
     pub fn timeline(&self) -> &Timeline {
         &self.timeline
@@ -996,7 +999,7 @@ impl ChunkTimeline {
 
     /// Computes the time range covered by each individual component column.
     ///
-    /// This is different from the time range covered by the [`ChunkTimeline`] as a whole
+    /// This is different from the time range covered by the [`TimeColumn`] as a whole
     /// because component columns are potentially sparse.
     ///
     /// This is crucial for indexing and queries to work properly.
@@ -1078,7 +1081,7 @@ impl re_types_core::SizeBytes for Chunk {
     }
 }
 
-impl re_types_core::SizeBytes for ChunkTimeline {
+impl re_types_core::SizeBytes for TimeColumn {
     #[inline]
     fn heap_size_bytes(&self) -> u64 {
         let Self {
@@ -1155,18 +1158,18 @@ impl Chunk {
         }
 
         // Timelines
-        for (timeline, time_chunk) in timelines {
-            if time_chunk.times.len() != row_ids.len() {
+        for (timeline, time_column) in timelines {
+            if time_column.times.len() != row_ids.len() {
                 return Err(ChunkError::Malformed {
                     reason: format!(
                         "All timelines in a chunk must have the same number of timestamps, matching the number of row IDs.\
                          Found {} row IDs but {} timestamps for timeline {:?}",
-                        row_ids.len(), time_chunk.times.len(), timeline.name(),
+                        row_ids.len(), time_column.times.len(), timeline.name(),
                     ),
                 });
             }
 
-            time_chunk.sanity_check()?;
+            time_column.sanity_check()?;
         }
 
         // Components
@@ -1216,7 +1219,7 @@ impl Chunk {
     }
 }
 
-impl ChunkTimeline {
+impl TimeColumn {
     /// Returns an error if the Chunk's invariants are not upheld.
     ///
     /// Costly checks are only run in debug builds.
@@ -1246,7 +1249,7 @@ impl ChunkTimeline {
             if *is_sorted != times.windows(2).all(|times| times[0] <= times[1]) {
                 return Err(ChunkError::Malformed {
                     reason: format!(
-                        "Chunk timeline is marked as {}sorted but isn't: {times:?}",
+                        "Time column is marked as {}sorted but isn't: {times:?}",
                         if *is_sorted { "" } else { "un" },
                     ),
                 });
@@ -1261,7 +1264,7 @@ impl ChunkTimeline {
 
             if !self.is_empty() && !is_tight_bound {
                 return Err(ChunkError::Malformed {
-                    reason: "Chunk timeline's cached time range isn't a tight bound.".to_owned(),
+                    reason: "Time column's cached time range isn't a tight bound.".to_owned(),
                 });
             }
 
@@ -1269,7 +1272,7 @@ impl ChunkTimeline {
                 if time < time_range.min().as_i64() || time > time_range.max().as_i64() {
                     return Err(ChunkError::Malformed {
                         reason: format!(
-                            "Chunk timeline's cached time range is wrong.\
+                            "Time column's cached time range is wrong.\
                              Found a time value of {time} while its time range is {time_range:?}",
                         ),
                     });

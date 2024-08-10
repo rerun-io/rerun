@@ -9,7 +9,6 @@ use re_types::components::Name;
 use re_types::{blueprint::components::Visible, Archetype as _};
 use re_types_blueprint::blueprint::archetypes as blueprint_archetypes;
 use re_types_blueprint::blueprint::components::{ContainerKind, GridColumns};
-use re_types_core::archetypes::Clear;
 use re_viewer_context::{
     ContainerId, Contents, ContentsName, SpaceViewId, SystemCommand, SystemCommandSender as _,
     ViewerContext,
@@ -337,8 +336,10 @@ impl ContainerBlueprint {
     /// Clears the blueprint component for this container.
     // TODO(jleibs): Should this be a recursive clear?
     pub fn clear(&self, ctx: &ViewerContext<'_>) {
-        let clear = Clear::recursive();
-        ctx.save_blueprint_component(&self.entity_path(), &clear.is_recursive);
+        ctx.command_sender.send_system(SystemCommand::DropEntity(
+            ctx.store_context.blueprint.store_id().clone(),
+            self.entity_path(),
+        ));
     }
 
     pub fn to_tile(&self) -> egui_tiles::Tile<SpaceViewId> {

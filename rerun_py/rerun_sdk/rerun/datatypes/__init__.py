@@ -12,6 +12,13 @@ from .annotation_info import (
 )
 from .blob import Blob, BlobArrayLike, BlobBatch, BlobLike, BlobType
 from .bool import Bool, BoolArrayLike, BoolBatch, BoolLike, BoolType
+from .channel_datatype import (
+    ChannelDatatype,
+    ChannelDatatypeArrayLike,
+    ChannelDatatypeBatch,
+    ChannelDatatypeLike,
+    ChannelDatatypeType,
+)
 from .class_description import (
     ClassDescription,
     ClassDescriptionArrayLike,
@@ -27,13 +34,16 @@ from .class_description_map_elem import (
     ClassDescriptionMapElemType,
 )
 from .class_id import ClassId, ClassIdArrayLike, ClassIdBatch, ClassIdLike, ClassIdType
+from .color_model import ColorModel, ColorModelArrayLike, ColorModelBatch, ColorModelLike, ColorModelType
 from .entity_path import EntityPath, EntityPathArrayLike, EntityPathBatch, EntityPathLike, EntityPathType
 from .float32 import Float32, Float32ArrayLike, Float32Batch, Float32Like, Float32Type
 from .float64 import Float64, Float64ArrayLike, Float64Batch, Float64Like, Float64Type
+from .image_format import ImageFormat, ImageFormatArrayLike, ImageFormatBatch, ImageFormatLike, ImageFormatType
 from .keypoint_id import KeypointId, KeypointIdArrayLike, KeypointIdBatch, KeypointIdLike, KeypointIdType
 from .keypoint_pair import KeypointPair, KeypointPairArrayLike, KeypointPairBatch, KeypointPairLike, KeypointPairType
 from .mat3x3 import Mat3x3, Mat3x3ArrayLike, Mat3x3Batch, Mat3x3Like, Mat3x3Type
 from .mat4x4 import Mat4x4, Mat4x4ArrayLike, Mat4x4Batch, Mat4x4Like, Mat4x4Type
+from .pixel_format import PixelFormat, PixelFormatArrayLike, PixelFormatBatch, PixelFormatLike, PixelFormatType
 from .quaternion import Quaternion, QuaternionArrayLike, QuaternionBatch, QuaternionLike, QuaternionType
 from .range1d import Range1D, Range1DArrayLike, Range1DBatch, Range1DLike, Range1DType
 from .range2d import Range2D, Range2DArrayLike, Range2DBatch, Range2DLike, Range2DType
@@ -123,6 +133,11 @@ __all__ = [
     "BoolBatch",
     "BoolLike",
     "BoolType",
+    "ChannelDatatype",
+    "ChannelDatatypeArrayLike",
+    "ChannelDatatypeBatch",
+    "ChannelDatatypeLike",
+    "ChannelDatatypeType",
     "ClassDescription",
     "ClassDescriptionArrayLike",
     "ClassDescriptionBatch",
@@ -138,6 +153,11 @@ __all__ = [
     "ClassIdBatch",
     "ClassIdLike",
     "ClassIdType",
+    "ColorModel",
+    "ColorModelArrayLike",
+    "ColorModelBatch",
+    "ColorModelLike",
+    "ColorModelType",
     "EntityPath",
     "EntityPathArrayLike",
     "EntityPathBatch",
@@ -153,6 +173,11 @@ __all__ = [
     "Float64Batch",
     "Float64Like",
     "Float64Type",
+    "ImageFormat",
+    "ImageFormatArrayLike",
+    "ImageFormatBatch",
+    "ImageFormatLike",
+    "ImageFormatType",
     "KeypointId",
     "KeypointIdArrayLike",
     "KeypointIdBatch",
@@ -173,6 +198,11 @@ __all__ = [
     "Mat4x4Batch",
     "Mat4x4Like",
     "Mat4x4Type",
+    "PixelFormat",
+    "PixelFormatArrayLike",
+    "PixelFormatBatch",
+    "PixelFormatLike",
+    "PixelFormatType",
     "Quaternion",
     "QuaternionArrayLike",
     "QuaternionBatch",

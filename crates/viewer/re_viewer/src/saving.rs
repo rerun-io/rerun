@@ -60,10 +60,10 @@ pub fn default_blueprint_path(app_id: &ApplicationId) -> anyhow::Result<std::pat
 }
 
 #[cfg(not(target_arch = "wasm32"))]
-pub fn encode_to_file<'a>(
+pub fn encode_to_file(
     version: re_build_info::CrateVersion,
     path: &std::path::Path,
-    messages: impl Iterator<Item = &'a re_log_types::LogMsg>,
+    messages: impl Iterator<Item = re_chunk::ChunkResult<re_log_types::LogMsg>>,
 ) -> anyhow::Result<()> {
     re_tracing::profile_function!();
     use anyhow::Context as _;
@@ -73,5 +73,6 @@ pub fn encode_to_file<'a>(
 
     let encoding_options = re_log_encoding::EncodingOptions::COMPRESSED;
     re_log_encoding::encoder::encode(version, encoding_options, messages, &mut file)
+        .map(|_| ())
         .context("Message encode")
 }

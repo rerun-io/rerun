@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from .background import Background
 from .container_blueprint import ContainerBlueprint
-from .dataframe_view_mode import DataframeViewMode
+from .dataframe_query import DataframeQuery
 from .panel_blueprint import PanelBlueprint
 from .plot_legend import PlotLegend
 from .scalar_axis import ScalarAxis
@@ -21,7 +21,7 @@ from .visual_bounds2d import VisualBounds2D
 __all__ = [
     "Background",
     "ContainerBlueprint",
-    "DataframeViewMode",
+    "DataframeQuery",
     "PanelBlueprint",
     "PlotLegend",
     "ScalarAxis",

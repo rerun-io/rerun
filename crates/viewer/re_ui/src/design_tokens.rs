@@ -1,7 +1,6 @@
 #![allow(clippy::unwrap_used)] // fixed json file
 
 use crate::{design_tokens, CUSTOM_WINDOW_DECORATIONS};
-use egui::Color32;
 
 /// The look and feel of the UI.
 ///
@@ -10,12 +9,16 @@ use egui::Color32;
 #[derive(Clone, Debug)]
 pub struct DesignTokens {
     pub json: serde_json::Value,
+    // TODO(ab): some colors, etc. are defined here, and some others are defined as functions. This
+    //           should be unified, in a way that minimize the number of json->Color32 conversions
+    //           at runtime.
     pub top_bar_color: egui::Color32,
     pub bottom_bar_color: egui::Color32,
     pub bottom_bar_stroke: egui::Stroke,
     pub bottom_bar_rounding: egui::Rounding,
     pub shadow_gradient_dark_start: egui::Color32,
     pub tab_bar_color: egui::Color32,
+    pub native_frame_stroke: egui::Stroke,
 }
 
 impl DesignTokens {
@@ -26,9 +29,12 @@ impl DesignTokens {
                 .expect("Failed to parse data/design_tokens.json");
 
         Self {
-            top_bar_color: Color32::from_gray(20), // copied from figma
+            top_bar_color: get_aliased_color(&json, "{Alias.Color.Surface.Default.value}"),
             bottom_bar_color: get_global_color(&json, "{Global.Color.Grey.150}"),
-            bottom_bar_stroke: egui::Stroke::new(1.0, egui::Color32::from_gray(47)), // copied from figma
+            bottom_bar_stroke: egui::Stroke::new(
+                1.0,
+                get_global_color(&json, "{Global.Color.Grey.250}"),
+            ),
             bottom_bar_rounding: egui::Rounding {
                 nw: 6.0,
                 ne: 6.0,
@@ -36,7 +42,11 @@ impl DesignTokens {
                 se: 0.0,
             }, // copied from figma, should be top only
             shadow_gradient_dark_start: egui::Color32::from_black_alpha(77),
-            tab_bar_color: get_global_color(&json, "{Global.Color.Grey.175}"),
+            tab_bar_color: get_global_color(&json, "{Global.Color.Grey.200}"),
+            native_frame_stroke: egui::Stroke::new(
+                1.0,
+                get_global_color(&json, "{Global.Color.Grey.250}"),
+            ),
             json,
         }
     }
@@ -118,7 +128,7 @@ impl DesignTokens {
 
         let panel_bg_color = get_aliased_color(&self.json, "{Alias.Color.Surface.Default.value}");
         // let floating_color = get_aliased_color(&json, "{Alias.Color.Surface.Floating.value}");
-        let floating_color = Color32::from_gray(35); // TODO(emilk): change the content of the design_tokens.json origin instead
+        let floating_color = get_global_color(&self.json, "{Global.Color.Grey.250}");
 
         // Used as the background of text edits, scroll bars and others things
         // that needs to look different from other interactive stuff.
@@ -130,12 +140,14 @@ impl DesignTokens {
 
         egui_style.visuals.button_frame = true;
         egui_style.visuals.widgets.inactive.weak_bg_fill = Default::default(); // Buttons have no background color when inactive
-        egui_style.visuals.widgets.inactive.bg_fill = Color32::from_gray(50); // Fill of unchecked radio buttons, checkboxes, etc. Must be brigher than the background floating_color.
+
+        // Fill of unchecked radio buttons, checkboxes, etc. Must be brighter than the background floating_color.
+        egui_style.visuals.widgets.inactive.bg_fill =
+            get_global_color(&self.json, "{Global.Color.Grey.300}");
 
         {
             // Background colors for buttons (menu buttons, blueprint buttons, etc) when hovered or clicked:
-            // let hovered_color = get_aliased_color(&json, "{Alias.Color.Action.Hovered.value}");
-            let hovered_color = Color32::from_gray(64); // TODO(emilk): change the content of the design_tokens.json origin instead
+            let hovered_color = get_global_color(&self.json, "{Global.Color.Grey.325}");
             egui_style.visuals.widgets.hovered.weak_bg_fill = hovered_color;
             egui_style.visuals.widgets.hovered.bg_fill = hovered_color;
             egui_style.visuals.widgets.active.weak_bg_fill = hovered_color;
@@ -162,7 +174,9 @@ impl DesignTokens {
             get_aliased_color(&self.json, "{Alias.Color.Highlight.Default.value}");
         egui_style.visuals.selection.stroke.color = egui::Color32::from_rgb(173, 184, 255); // Brighter version of the above
 
-        egui_style.visuals.widgets.noninteractive.bg_stroke.color = Color32::from_gray(30); // from figma. separator lines, panel lines, etc
+        // separator lines, panel lines, etc
+        egui_style.visuals.widgets.noninteractive.bg_stroke.color =
+            get_global_color(&self.json, "{Global.Color.Grey.250}");
 
         let subdued = get_aliased_color(&self.json, "{Alias.Color.Text.Subdued.value}");
         let default = get_aliased_color(&self.json, "{Alias.Color.Text.Default.value}");
@@ -379,9 +393,9 @@ impl DesignTokens {
     }
 
     /// The color for the background of [`crate::SectionCollapsingHeader`].
-    pub fn section_collapsing_header_color() -> egui::Color32 {
+    pub fn section_collapsing_header_color(&self) -> egui::Color32 {
         // same as visuals.widgets.inactive.bg_fill
-        egui::Color32::from_gray(50)
+        get_global_color(&self.json, "{Global.Color.Grey.200}")
     }
 
     /// The color we use to mean "loop this selection"
@@ -392,6 +406,11 @@ impl DesignTokens {
     /// The color we use to mean "loop all the data"
     pub fn loop_everything_color() -> egui::Color32 {
         egui::Color32::from_rgb(2, 80, 45) // from figma 2023-02-09
+    }
+
+    /// Used by the "add view or container" modal.
+    pub fn thumbnail_background_color(&self) -> egui::Color32 {
+        get_global_color(&self.json, "{Global.Color.Grey.250}")
     }
 }
 

@@ -5,6 +5,7 @@
 
 #include "../collection.hpp"
 #include "../compiler_utils.hpp"
+#include "../component_batch.hpp"
 #include "../components/class_id.hpp"
 #include "../components/color.hpp"
 #include "../components/draw_order.hpp"
@@ -12,7 +13,6 @@
 #include "../components/position2d.hpp"
 #include "../components/radius.hpp"
 #include "../components/text.hpp"
-#include "../data_cell.hpp"
 #include "../indicator_component.hpp"
 #include "../result.hpp"
 
@@ -22,7 +22,7 @@
 #include <vector>
 
 namespace rerun::archetypes {
-    /// **Archetype**: 2D boxes with half-extents and optional center, rotations, colors etc.
+    /// **Archetype**: 2D boxes with half-extents and optional center, colors etc.
     ///
     /// ## Example
     ///
@@ -192,6 +192,6 @@ namespace rerun {
     template <>
     struct AsComponents<archetypes::Boxes2D> {
         /// Serialize all set component batches.
-        static Result<std::vector<DataCell>> serialize(const archetypes::Boxes2D& archetype);
+        static Result<std::vector<ComponentBatch>> serialize(const archetypes::Boxes2D& archetype);
     };
 } // namespace rerun

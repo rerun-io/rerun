@@ -22,7 +22,7 @@ pub(crate) fn sorted_visible_entity_path(
 pub(crate) fn sorted_instance_paths_for<'a>(
     entity_path: &'a EntityPath,
     store: &'a ChunkStore,
-    timeline: &'a Timeline,
+    timeline: &Timeline,
     latest_at_query: &'a LatestAtQuery,
 ) -> impl Iterator<Item = InstancePath> + 'a {
     re_tracing::profile_function!();

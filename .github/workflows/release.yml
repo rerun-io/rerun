@@ -137,6 +137,10 @@ jobs:
           echo "current=$current"   >> "$GITHUB_OUTPUT"
           echo "final=$final"       >> "$GITHUB_OUTPUT"
 
+      - name: Update rerun_py version
+        run: |
+          pixi run python scripts/ci/update_rerun_py_version.py "${{ steps.versioning.outputs.current }}"
+
       - name: Update rerun_notebook package version
         run: |
           pixi run python scripts/ci/update_rerun_notebook_version.py "${{ steps.versioning.outputs.current }}"

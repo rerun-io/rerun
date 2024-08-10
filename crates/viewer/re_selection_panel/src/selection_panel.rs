@@ -898,7 +898,15 @@ fn list_existing_data_blueprints(
 
                 let item = Item::DataResult(view_id, instance_path.clone());
                 let response = response.on_hover_ui(|ui| {
-                    item_ui::instance_hover_card_ui(ui, ctx, &query, db, instance_path);
+                    let include_subtree = false;
+                    item_ui::instance_hover_card_ui(
+                        ui,
+                        ctx,
+                        &query,
+                        db,
+                        instance_path,
+                        include_subtree,
+                    );
                 });
 
                 // We don't use item_ui::cursor_interact_with_selectable here because the forced

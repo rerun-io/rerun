@@ -22,13 +22,15 @@ The constructs have changed to now expect the shape in `[width, height]` order.
   * Alternatively images can also be constructed using a `bytes` argument, but the resolution and pixel format must
     be provided explicitly.
 
-### [`ImageEncoded`](https://rerun.io/docs/reference/types/archetypes/image_encoded?speculative-link)
-`ImageEncoded` is our new archetype for logging an image file, e.g. a PNG or JPEG.
+TODO(andreas): more before/after image on different languages
+
+
+### [`EncodedImage`](https://rerun.io/docs/reference/types/archetypes/encoded_image?speculative-link)
+`EncodedImage` is our new archetype for logging an image file, e.g. a PNG or JPEG.
 
 #### Python
-In Python we already had a `ImageEncoded` class, but this has now been replaced with the new archetype.
-
-* Python: `NV12/YUY2` are now logged with the new `Image`:
+`rr.ImageEncoded` is deprecated. Image files (JPEG, PNG, …) should instead be logged with [`EncodedImage`](https://rerun.io/docs/reference/types/archetypes/encoded_image?speculative-link),
+and chroma-downsampled images (NV12/YUY2) are now logged with the new `Image` archetype:
 
 
 ```py
@@ -43,15 +45,13 @@ rr.log(
 )
 ```
 
-* `ImageEncoded`:s `format` parameter has been replaced with `media_type` (MIME)
-    * `ImageFormat` is now only for `NV12/YUY2`
 
-### Rust
+#### Rust
 * Removed `TensorBuffer::JPEG`
 * Removed `TensorData::from_jpeg_bytes`
 * Deprecated `Image::from_file_path` and `from_file_contents`
 
-For all of these, use `ImageEncoded` instead.
+For all of these, use [`EncodedImage`](https://rerun.io/docs/reference/types/archetypes/encoded_image?speculative-link) instead.
 
 
 ### `mesh_material: Material` has been renamed to `albedo_factor: AlbedoFactor` [#6841](https://github.com/rerun-io/rerun/pull/6841)
@@ -82,8 +82,11 @@ For this purpose `TranslationRotationScale3D` and `TranslationAndMat3x3` datatyp
    * this replaces the previous `from_parent` bool
    * `from_parent` is still available in all SDK languages, but deprecated
 
-All components are applied to the final transform in the opposite order they're listed in. E.g. if both a 4x4 matrix and a translation is set, the entity is first translated and then transformed with the matrix.
+All components are applied to the final transform in the opposite order they're listed in. E.g. if both a 3x3 matrix and a translation is set, the entity is first translated and then transformed with the matrix.
 If translation, rotation & scale are applied, then (just as in prior versions), from the point of view of the parent space the object is first scaled, then rotated and then translated.
+
+When you log the `Transform3D` archetype, _all_ components are written, even if you don't set them.
+This means that if you first log a `Transform3D` with a `Translation3D` and then later another `Transform3D` with a `RotationQuat`, this will result in an entity that is only rotated.
 
 Other changes in data representation:
 * Scaling no longer distinguishes uniform and 3D scaling in its data representation, it is now always expressed as 3 floats with the same value. Helper functions are provided to build uniform scales.
@@ -213,13 +216,16 @@ impl From<GltfTransform> for rerun::Transform3D {
 ```
 
 Since all aspects of the transform archetypes are now granular, they can be chained with `with_` functions:
+
 ```rust
-rerun::Transform3D::default().with_mat3x3(matrix).with_translation(translation)
+rerun::Transform3D::clear().with_mat3x3(matrix).with_translation(translation)
 ```
+
 Note that the order of the method calls does _not_ affect the order in which transformation is applied!
 
-`rerun::Transform3D::IDENTITY` has been removed, sue `rerun::Transform3D::default()` to start out with
-an empty archetype instead that you can populate (e.g. `rerun::Transform3D::default().with_mat3x3(rerun::datatypes::Mat3x3::IDENTITY)`).
+`Transform3D::clear` is named so, because whenever you log the `Transform3D` archetype, it will clear ALL of its components,
+by logging an empty value for them.
+This means logging a `Transform3D::from_rotation(…)` followed by a `Transform3D::from_translation(…)` will only result in the translation, as the later log call will clear the previous rotation.
 
 
 Asset3D previously had a `transform` field, now you have to log either a `LeafTransform3D` or a `Transform3D` on the same entity:

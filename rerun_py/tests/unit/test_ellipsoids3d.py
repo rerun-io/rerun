@@ -20,11 +20,11 @@ from .common_arrays import (
     class_ids_expected,
     colors_arrays,
     colors_expected,
-    expected_quaternions,
     expected_rotation_axis_angles,
     labels_arrays,
     labels_expected,
-    quaternion_arrays,
+    quaternions_arrays,
+    quaternions_expected,
     radii_arrays,
     radii_expected,
     rotation_axis_angle_arrays,
@@ -47,7 +47,7 @@ def test_ellipsoids() -> None:
         half_sizes_arrays,
         centers_arrays,
         rotation_axis_angle_arrays,
-        quaternion_arrays,
+        quaternions_arrays,
         colors_arrays,
         radii_arrays,
         fill_mode_arrays,
@@ -110,7 +110,7 @@ def test_ellipsoids() -> None:
         assert arch.rotation_axis_angles == expected_rotation_axis_angles(
             rotation_axis_angles, LeafRotationAxisAngleBatch
         )
-        assert arch.quaternions == expected_quaternions(quaternions, LeafRotationQuatBatch)
+        assert arch.quaternions == quaternions_expected(quaternions, LeafRotationQuatBatch)
         assert arch.colors == colors_expected(colors)
         assert arch.line_radii == radii_expected(line_radii)
         assert arch.fill_mode == rr.components.FillModeBatch._optional(fill_mode)

@@ -2,79 +2,11 @@ use std::borrow::Cow;
 
 use re_chunk::RowId;
 use re_types::{
-    components::{ChannelDatatype, ColorModel, Colormap, PixelFormat},
-    datatypes::Blob,
+    components::Colormap,
+    datatypes::{Blob, ChannelDatatype, ColorModel, ImageFormat, PixelFormat},
     image::ImageKind,
     tensor_data::TensorElement,
 };
-
-/// Describes the contents of the byte buffer of an [`ImageInfo`].
-#[derive(Clone, Copy, Debug, Hash, PartialEq, Eq)]
-pub enum ImageFormat {
-    /// Only used for color images.
-    PixelFormat(PixelFormat),
-
-    ColorModel {
-        /// L, RGB, RGBA, …. Only used for color images.
-        ///
-        /// Depth and segmentation images uses [`ColorModel::L`].
-        color_model: ColorModel,
-
-        /// The innermost data type (e.g. `U8`).
-        datatype: ChannelDatatype,
-    },
-}
-
-impl ImageFormat {
-    #[inline]
-    pub fn depth(datatype: ChannelDatatype) -> Self {
-        Self::ColorModel {
-            color_model: ColorModel::L,
-            datatype,
-        }
-    }
-
-    #[inline]
-    pub fn segmentation(datatype: ChannelDatatype) -> Self {
-        Self::ColorModel {
-            color_model: ColorModel::L,
-            datatype,
-        }
-    }
-
-    #[inline]
-    pub fn has_alpha(&self) -> bool {
-        match self {
-            Self::PixelFormat(pixel_format) => pixel_format.has_alpha(),
-            Self::ColorModel { color_model, .. } => color_model.has_alpha(),
-        }
-    }
-
-    #[inline]
-    pub fn is_float(&self) -> bool {
-        match self {
-            Self::PixelFormat(pixel_format) => match pixel_format {
-                PixelFormat::NV12 | PixelFormat::YUY2 => false,
-            },
-            Self::ColorModel { datatype, .. } => datatype.is_float(),
-        }
-    }
-
-    /// Number of bits needed to represent a single pixel.
-    ///
-    /// Note that this is not necessarily divisible by 8!
-    #[inline]
-    pub fn bits_per_pixel(&self) -> usize {
-        match self {
-            Self::PixelFormat(pixel_format) => pixel_format.bits_per_pixel(),
-
-            Self::ColorModel {
-                color_model,
-                datatype,
-            } => color_model.num_channels() * datatype.bits(),
-        }
-    }
-}
 
 /// Represents an `Image`, `SegmentationImage` or `DepthImage`.
 ///
@@ -83,16 +15,13 @@ impl ImageFormat {
 pub struct ImageInfo {
     /// The row id that contaoned the blob.
     ///
-    /// Can be used instead of hashing [`Self::blob`].
-    pub blob_row_id: RowId,
+    /// Can be used instead of hashing [`Self::buffer`].
+    pub buffer_row_id: RowId,
 
     /// The image data, row-wise, with stride=width.
-    pub blob: Blob,
+    pub buffer: Blob,
 
-    /// Width and height
-    pub resolution: [u32; 2],
-
-    /// Describes the format of [`Self::blob`].
+    /// Describes the format of [`Self::buffer`].
     pub format: ImageFormat,
 
     /// Color, Depth, or Segmentation?
@@ -106,25 +35,21 @@ pub struct ImageInfo {
 impl ImageInfo {
     #[inline]
     pub fn width(&self) -> u32 {
-        self.resolution[0]
+        self.format.width
     }
 
     #[inline]
     pub fn height(&self) -> u32 {
-        self.resolution[1]
+        self.format.height
     }
 
     /// Returns [`ColorModel::L`] for depth and segmentation images.
     ///
     /// Currently return [`ColorModel::RGB`] for chroma-subsampled images,
     /// but this may change in the future when we add YUV support to [`ColorModel`].
+    #[inline]
     pub fn color_model(&self) -> ColorModel {
-        match self.format {
-            ImageFormat::PixelFormat(pixel_format) => match pixel_format {
-                PixelFormat::NV12 | PixelFormat::YUY2 => ColorModel::RGB,
-            },
-            ImageFormat::ColorModel { color_model, .. } => color_model,
-        }
+        self.format.color_model()
     }
 
     /// Get the value of the element at the given index.
@@ -139,76 +64,69 @@ impl ImageInfo {
             return None;
         }
 
-        match self.format {
-            ImageFormat::PixelFormat(pixel_format) => {
-                let buf: &[u8] = &self.blob;
+        if let Some(pixel_format) = self.format.pixel_format {
+            let buf: &[u8] = &self.buffer;
 
-                // NOTE: the name `y` is already taken for the coordinate, so we use `luma` here.
-                let [luma, u, v] = match pixel_format {
-                    PixelFormat::NV12 => {
-                        let uv_offset = w * h;
-                        let luma = buf[(y * w + x) as usize];
-                        let u = buf[(uv_offset + (y / 2) * w + x) as usize];
-                        let v = buf[(uv_offset + (y / 2) * w + x) as usize + 1];
-                        [luma, u, v]
+            // NOTE: the name `y` is already taken for the coordinate, so we use `luma` here.
+            let [luma, u, v] = match pixel_format {
+                PixelFormat::NV12 => {
+                    let uv_offset = w * h;
+                    let luma = buf[(y * w + x) as usize];
+                    let u = buf[(uv_offset + (y / 2) * w + x) as usize];
+                    let v = buf[(uv_offset + (y / 2) * w + x) as usize + 1];
+                    [luma, u, v]
+                }
+
+                PixelFormat::YUY2 => {
+                    let index = ((y * w + x) * 2) as usize;
+                    if x % 2 == 0 {
+                        [buf[index], buf[index + 1], buf[index + 3]]
+                    } else {
+                        [buf[index], buf[index - 1], buf[index + 1]]
                     }
+                }
+            };
 
-                    PixelFormat::YUY2 => {
-                        let index = ((y * w + x) * 2) as usize;
-                        if x % 2 == 0 {
-                            [buf[index], buf[index + 1], buf[index + 3]]
-                        } else {
-                            [buf[index], buf[index - 1], buf[index + 1]]
-                        }
-                    }
-                };
+            match pixel_format.color_model() {
+                ColorModel::L => (channel == 0).then_some(TensorElement::U8(luma)),
 
-                match self.color_model() {
-                    ColorModel::L => (channel == 0).then_some(TensorElement::U8(luma)),
-
-                    ColorModel::RGB | ColorModel::RGBA => {
-                        if channel < 3 {
-                            let rgb = rgb_from_yuv(luma, u, v);
-                            Some(TensorElement::U8(rgb[channel as usize]))
-                        } else if channel == 4 {
-                            Some(TensorElement::U8(255))
-                        } else {
-                            None
-                        }
+                ColorModel::RGB | ColorModel::RGBA => {
+                    if channel < 3 {
+                        let rgb = rgb_from_yuv(luma, u, v);
+                        Some(TensorElement::U8(rgb[channel as usize]))
+                    } else if channel == 4 {
+                        Some(TensorElement::U8(255))
+                    } else {
+                        None
                     }
                 }
             }
+        } else {
+            let num_channels = self.format.color_model().num_channels();
 
-            ImageFormat::ColorModel {
-                color_model,
-                datatype,
-            } => {
-                let num_channels = color_model.num_channels();
+            debug_assert!(channel < num_channels as u32);
+            if num_channels as u32 <= channel {
+                return None;
+            }
 
-                debug_assert!(channel < num_channels as u32);
-                if num_channels as u32 <= channel {
-                    return None;
-                }
+            let stride = w; // TODO(#6008): support stride
+            let offset =
+                (y as usize * stride as usize + x as usize) * num_channels + channel as usize;
 
-                let stride = w; // TODO(#6008): support stride
-                let offset =
-                    (y as usize * stride as usize + x as usize) * num_channels + channel as usize;
+            match self.format.datatype() {
+                ChannelDatatype::U8 => self.buffer.get(offset).copied().map(TensorElement::U8),
+                ChannelDatatype::U16 => get(&self.buffer, offset).map(TensorElement::U16),
+                ChannelDatatype::U32 => get(&self.buffer, offset).map(TensorElement::U32),
+                ChannelDatatype::U64 => get(&self.buffer, offset).map(TensorElement::U64),
 
-                match datatype {
-                    ChannelDatatype::U8 => self.blob.get(offset).copied().map(TensorElement::U8),
-                    ChannelDatatype::U16 => get(&self.blob, offset).map(TensorElement::U16),
-                    ChannelDatatype::U32 => get(&self.blob, offset).map(TensorElement::U32),
-                    ChannelDatatype::U64 => get(&self.blob, offset).map(TensorElement::U64),
+                ChannelDatatype::I8 => get(&self.buffer, offset).map(TensorElement::I8),
+                ChannelDatatype::I16 => get(&self.buffer, offset).map(TensorElement::I16),
+                ChannelDatatype::I32 => get(&self.buffer, offset).map(TensorElement::I32),
+                ChannelDatatype::I64 => get(&self.buffer, offset).map(TensorElement::I64),
 
-                    ChannelDatatype::I8 => get(&self.blob, offset).map(TensorElement::I8),
-                    ChannelDatatype::I16 => get(&self.blob, offset).map(TensorElement::I16),
-                    ChannelDatatype::I32 => get(&self.blob, offset).map(TensorElement::I32),
-                    ChannelDatatype::I64 => get(&self.blob, offset).map(TensorElement::I64),
-
-                    ChannelDatatype::F16 => get(&self.blob, offset).map(TensorElement::F16),
-                    ChannelDatatype::F32 => get(&self.blob, offset).map(TensorElement::F32),
-                    ChannelDatatype::F64 => get(&self.blob, offset).map(TensorElement::F64),
-                }
+                ChannelDatatype::F16 => get(&self.buffer, offset).map(TensorElement::F16),
+                ChannelDatatype::F32 => get(&self.buffer, offset).map(TensorElement::F32),
+                ChannelDatatype::F64 => get(&self.buffer, offset).map(TensorElement::F64),
             }
         }
     }
@@ -222,9 +140,9 @@ impl ImageInfo {
     /// this function will copy the data.
     pub fn to_slice<T: bytemuck::Pod>(&self) -> Cow<'_, [T]> {
         let element_size = std::mem::size_of::<T>();
-        let num_elements = self.blob.len() / element_size;
+        let num_elements = self.buffer.len() / element_size;
         let num_bytes = num_elements * element_size;
-        let bytes = &self.blob[..num_bytes];
+        let bytes = &self.buffer[..num_bytes];
 
         if let Ok(slice) = bytemuck::try_cast_slice(bytes) {
             Cow::Borrowed(slice)
