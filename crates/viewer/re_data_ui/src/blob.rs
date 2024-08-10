@@ -168,6 +168,8 @@ fn save_blob(
     title: String,
     blob: Blob,
 ) -> anyhow::Result<()> {
+    use re_viewer_context::SystemCommandSender as _;
+
     re_tracing::profile_function!();
 
     // Web
