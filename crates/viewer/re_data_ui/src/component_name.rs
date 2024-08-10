@@ -13,7 +13,7 @@ impl DataUi for ComponentName {
         _query: &re_chunk_store::LatestAtQuery,
         _db: &re_entity_db::EntityDb,
     ) {
-        if ui_layout == UiLayout::List {
+        if ui_layout.is_single_line() {
             ui.label(self.full_name());
         } else {
             ui.scope(|ui| {

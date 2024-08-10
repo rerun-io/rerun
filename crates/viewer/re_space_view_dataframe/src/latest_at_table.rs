@@ -172,7 +172,7 @@ pub(crate) fn latest_at_table_ui(
 
                 // TODO(#4466): it would be nice to display the time and row id somewhere, since we
                 //              have them.
-                if let Some(((_time, _row_id), array)) = result {
+                if let Some(((_time, row_id), array)) = result {
                     let instance_index = instance_path.instance.get() as usize;
 
                     let (data, clamped) = if instance_index >= array.len() {
@@ -190,6 +190,7 @@ pub(crate) fn latest_at_table_ui(
                             ctx.recording(),
                             &instance_path.entity_path,
                             *component_name,
+                            Some(row_id),
                             &*data,
                         );
                     });

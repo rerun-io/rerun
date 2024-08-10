@@ -1,5 +1,6 @@
 use itertools::Itertools;
 
+use re_chunk::{ComponentName, RowId, UnitChunkShared};
 use re_data_ui::{sorted_component_list_for_ui, DataUi};
 use re_entity_db::EntityDb;
 use re_log_types::EntityPath;
@@ -142,6 +143,20 @@ fn visualizer_components(
     data_result: &DataResult,
     visualizer_id: ViewSystemIdentifier,
 ) {
+    // Helper for code below
+    fn non_empty_component_batch_raw(
+        unit: Option<&UnitChunkShared>,
+        component_name: &ComponentName,
+    ) -> Option<(Option<RowId>, Box<dyn re_chunk::ArrowArray>)> {
+        let unit = unit?;
+        let batch = unit.component_batch_raw(component_name)?;
+        if batch.is_empty() {
+            None
+        } else {
+            Some((unit.row_id(), batch))
+        }
+    }
+
     // List all components that the visualizer may consume.
     let Ok(visualizer) = ctx.visualizer_collection.get_by_identifier(visualizer_id) else {
         re_log::warn!(
@@ -177,22 +192,13 @@ fn visualizer_components(
         // Query all the sources for our value.
         // (technically we only need to query those that are shown, but rolling this out makes things easier).
         let result_override = query_result.overrides.get(&component_name);
-        let raw_override = result_override.and_then(|r| {
-            r.component_batch_raw(&component_name)
-                .and_then(|v| (!v.is_empty()).then_some(v))
-        });
+        let raw_override = non_empty_component_batch_raw(result_override, &component_name);
 
         let result_store = query_result.results.get(&component_name);
-        let raw_store = result_store.and_then(|r| {
-            r.component_batch_raw(&component_name)
-                .and_then(|v| (!v.is_empty()).then_some(v))
-        });
+        let raw_store = non_empty_component_batch_raw(result_store, &component_name);
 
         let result_default = query_result.defaults.get(&component_name);
-        let raw_default = result_default.and_then(|r| {
-            r.component_batch_raw(&component_name)
-                .and_then(|v| (!v.is_empty()).then_some(v))
-        });
+        let raw_default = non_empty_component_batch_raw(result_default, &component_name);
 
         let raw_fallback = match visualizer.fallback_for(&query_ctx, component_name) {
             Ok(fallback) => fallback,
@@ -204,16 +210,16 @@ fn visualizer_components(
 
         // Determine where the final value comes from.
         // Putting this into an enum makes it easier to reason about the next steps.
-        let (value_source, raw_current_value) = match (
-            raw_override.as_ref(),
-            raw_store.as_ref(),
-            raw_default.as_ref(),
-        ) {
-            (Some(override_value), _, _) => (ValueSource::Override, override_value.as_ref()),
-            (None, Some(store_value), _) => (ValueSource::Store, store_value.as_ref()),
-            (None, None, Some(default_value)) => (ValueSource::Default, default_value.as_ref()),
-            (None, None, None) => (ValueSource::FallbackOrPlaceholder, raw_fallback.as_ref()),
-        };
+        let (value_source, (current_value_row_id, raw_current_value)) =
+            match (raw_override.clone(), raw_store.clone(), raw_default.clone()) {
+                (Some(override_value), _, _) => (ValueSource::Override, override_value),
+                (None, Some(store_value), _) => (ValueSource::Store, store_value),
+                (None, None, Some(default_value)) => (ValueSource::Default, default_value),
+                (None, None, None) => (
+                    ValueSource::FallbackOrPlaceholder,
+                    (None, raw_fallback.clone()),
+                ),
+            };
 
         let override_path = data_result.individual_override_path();
 
@@ -225,7 +231,7 @@ fn visualizer_components(
                 || !ctx.viewer_ctx.component_ui_registry.try_show_edit_ui(
                     ctx.viewer_ctx,
                     ui,
-                    raw_current_value,
+                    raw_current_value.as_ref()                    ,
                     override_path,
                     component_name,
                     multiline,
@@ -265,7 +271,8 @@ fn visualizer_components(
                             ctx.recording(),
                             &data_result.entity_path,
                             component_name,
-                            raw_current_value,
+                            current_value_row_id,
+                            raw_current_value.as_ref(),
                         );
                         return;
                     }
@@ -282,13 +289,14 @@ fn visualizer_components(
 
         let add_children = |ui: &mut egui::Ui| {
             // Override (if available)
-            if let Some(raw_override) = raw_override.as_ref() {
+            if let Some((row_id, raw_override)) = raw_override.as_ref() {
                 editable_blueprint_component_list_item(
                     &query_ctx,
                     ui,
                     "Override",
                     override_path,
                     component_name,
+                    *row_id,
                     raw_override.as_ref(),
                 )
                 .on_hover_text("Override value for this specific entity in the current view");
@@ -314,13 +322,14 @@ fn visualizer_components(
                 .on_hover_text("The value that was logged to the data store");
             }
             // Default (if available)
-            if let Some(raw_default) = raw_default.as_ref() {
+            if let Some((row_id, raw_default)) = raw_default.as_ref() {
                 editable_blueprint_component_list_item(
                     &query_ctx,
                     ui,
                     "Default",
                     ctx.defaults_path,
                     component_name,
+                    *row_id,
                     raw_default.as_ref(),
                 )
                 .on_hover_text("Default value for all component of this type is the current view");
@@ -338,6 +347,7 @@ fn visualizer_components(
                             ctx.recording(),
                             &data_result.entity_path,
                             component_name,
+                            None,
                             raw_fallback.as_ref(),
                         );
                     }),
@@ -362,10 +372,10 @@ fn visualizer_components(
                             ui,
                             component_name,
                             override_path,
-                            &raw_override,
-                            &raw_default,
+                            &raw_override.clone().map(|(_, raw_override)| raw_override),
+                            raw_default.clone().map(|(_, raw_override)| raw_override),
                             raw_fallback.as_ref(),
-                            raw_current_value,
+                            raw_current_value.as_ref(),
                         );
                     }),
                 add_children,
@@ -383,6 +393,7 @@ fn editable_blueprint_component_list_item(
     name: &'static str,
     blueprint_path: &EntityPath,
     component: re_types::ComponentName,
+    row_id: Option<RowId>,
     raw_override: &dyn arrow2::array::Array,
 ) -> egui::Response {
     ui.list_item_flat_noninteractive(
@@ -395,6 +406,7 @@ fn editable_blueprint_component_list_item(
                     query_ctx.viewer_ctx.blueprint_db(),
                     blueprint_path,
                     component,
+                    row_id,
                     raw_override,
                     multiline,
                 );
@@ -415,7 +427,7 @@ fn menu_more(
     component_name: re_types::ComponentName,
     override_path: &EntityPath,
     raw_override: &Option<Box<dyn arrow2::array::Array>>,
-    raw_default: &Option<Box<dyn arrow2::array::Array>>,
+    raw_default: Option<Box<dyn arrow2::array::Array>>,
     raw_fallback: &dyn arrow2::array::Array,
     raw_current_value: &dyn arrow2::array::Array,
 ) {
@@ -436,8 +448,8 @@ fn menu_more(
         .on_disabled_hover_text("There's no default component active")
         .clicked()
     {
-        if let Some(raw_default) = raw_default.as_ref() {
-            ctx.save_blueprint_array(override_path, component_name, raw_default.clone());
+        if let Some(raw_default) = raw_default {
+            ctx.save_blueprint_array(override_path, component_name, raw_default);
         }
         ui.close_menu();
     }

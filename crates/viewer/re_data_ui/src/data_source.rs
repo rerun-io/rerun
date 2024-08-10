@@ -14,7 +14,7 @@ impl crate::DataUi for re_smart_channel::SmartChannelSource {
     ) {
         ui.label(self.to_string());
 
-        if ui_layout == UiLayout::List {
+        if ui_layout.is_single_line() {
             return;
         }
 
