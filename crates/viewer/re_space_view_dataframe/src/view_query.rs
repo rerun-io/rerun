@@ -242,6 +242,7 @@ fn override_ui(
                 ctx.blueprint_db(),
                 &property.blueprint_store_path,
                 component_name,
+                None,
                 property.component_raw(component_name).as_deref(),
                 // we don't need to provide a fallback here as the timeline should be present by definition
                 &EmptySystem {},
