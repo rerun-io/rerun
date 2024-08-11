@@ -85,7 +85,7 @@ pub fn points_to_series(
     points: Vec<PlotPoint>,
     store: &re_chunk_store::ChunkStore,
     query: &ViewQuery<'_>,
-    series_name: &re_types::components::Name,
+    series_label: Option<String>,
     aggregator: AggregationPolicy,
     all_series: &mut Vec<PlotSeries>,
 ) {
@@ -107,7 +107,7 @@ pub fn points_to_series(
         }
 
         all_series.push(PlotSeries {
-            label: series_name.0.clone(),
+            label: series_label,
             color: points[0].attrs.color,
             radius_ui: points[0].attrs.radius_ui,
             kind,
@@ -119,7 +119,7 @@ pub fn points_to_series(
         });
     } else {
         add_series_runs(
-            series_name,
+            &series_label,
             points,
             entity_path,
             aggregator,
@@ -198,7 +198,7 @@ pub fn apply_aggregation(
 
 #[inline(never)] // Better callstacks on crashes
 fn add_series_runs(
-    series_name: &re_types::components::Name,
+    series_label: &Option<String>,
     points: Vec<PlotPoint>,
     entity_path: &EntityPath,
     aggregator: AggregationPolicy,
@@ -211,7 +211,7 @@ fn add_series_runs(
     let num_points = points.len();
     let mut attrs = points[0].attrs.clone();
     let mut series: PlotSeries = PlotSeries {
-        label: series_name.0.clone(),
+        label: series_label.clone(),
         color: attrs.color,
         radius_ui: attrs.radius_ui,
         points: Vec::with_capacity(num_points),
@@ -235,7 +235,7 @@ fn add_series_runs(
             let prev_series = std::mem::replace(
                 &mut series,
                 PlotSeries {
-                    label: series_name.0.clone(),
+                    label: series_label.clone(),
                     color: attrs.color,
                     radius_ui: attrs.radius_ui,
                     kind: attrs.kind,
