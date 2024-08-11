@@ -271,6 +271,8 @@ impl EntityPath {
     ) -> HashMap<Self, String> {
         struct ShortenedEntity {
             entity: EntityPath,
+
+            /// How many parts (from the end) to use for the short name
             num_part: usize,
         }
 
@@ -304,6 +306,11 @@ impl EntityPath {
 
                 if str_to_entities.contains_key(&new_label) || known_bad_labels.contains(&new_label)
                 {
+                    // we have a conflict so:
+                    // - we fix the previously added entity by increasing its `num_part`
+                    // - we increase the `num_part` of the current entity
+                    // - we record this label as bad
+
                     known_bad_labels.insert(new_label.clone());
 
                     if let Some(mut existing_shortened) = str_to_entities.remove(&new_label) {
@@ -313,7 +320,8 @@ impl EntityPath {
 
                     shortened.num_part += 1;
                     if shortened.ui_string() == new_label {
-                        // this avoids infinite loop
+                        // we must have reached the root for this entity, so we bail out to avoid
+                        // an infinite loop
                         break;
                     }
                 } else {
@@ -637,5 +645,9 @@ mod tests {
         ]);
 
         run_test(&[("/", "/"), ("/a", "a")]);
+
+        // degenerate cases
+        run_test(&[("/", "/"), ("/", "/")]);
+        run_test(&[("a/b", "a/b"), ("a/b", "a/b")]);
     }
 }
