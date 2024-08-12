@@ -23,7 +23,7 @@ namespace rerun {
         array = std::make_shared<arrow::PrimitiveArray>(datatype, length, buffer);
     }
 
-    TimeColumn TimeColumn::from_times_nanoseconds(
+    TimeColumn TimeColumn::from_nanoseconds(
         std::string timeline_name, Collection<int64_t> times_in_nanoseconds,
         SortingStatus sorting_status
     ) {
@@ -34,7 +34,7 @@ namespace rerun {
         );
     }
 
-    TimeColumn TimeColumn::from_times_seconds(
+    TimeColumn TimeColumn::from_seconds(
         std::string timeline_name, Collection<double> times_in_seconds, SortingStatus sorting_status
     ) {
         std::vector<int64_t> times_in_nanoseconds;

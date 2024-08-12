@@ -79,7 +79,7 @@ namespace rerun {
         /// Make sure the sorting status is correctly specified.
         /// \param sorting_status The sorting status of the time points.
         /// Already sorted time points may perform better.
-        static TimeColumn from_times_nanoseconds(
+        static TimeColumn from_nanoseconds(
             std::string timeline_name, Collection<int64_t> times_in_nanoseconds,
             SortingStatus sorting_status = SortingStatus::Unknown
         );
@@ -91,7 +91,7 @@ namespace rerun {
         /// Make sure the sorting status is correctly specified.
         /// \param sorting_status The sorting status of the time points.
         /// Already sorted time points may perform better.
-        static TimeColumn from_times_seconds(
+        static TimeColumn from_seconds(
             std::string timeline_name, Collection<double> times_in_seconds,
             SortingStatus sorting_status = SortingStatus::Unknown
         );
