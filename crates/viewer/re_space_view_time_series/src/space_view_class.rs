@@ -420,7 +420,7 @@ Display time series data in a plot.
             *state.scalar_range.start_mut() = f64::INFINITY;
             *state.scalar_range.end_mut() = f64::NEG_INFINITY;
 
-            let entity_to_label = EntityPath::short_names_with_disambiguation(
+            let label_from_entity = EntityPath::short_names_with_disambiguation(
                 all_plot_series
                     .iter()
                     .map(|series| series.entity_path.clone()),
@@ -449,7 +449,7 @@ Display time series data in a plot.
                 let label = series
                     .label
                     .as_ref()
-                    .or_else(|| entity_to_label.get(&series.entity_path))
+                    .or_else(|| label_from_entity.get(&series.entity_path))
                     .cloned()
                     .unwrap_or_else(|| "unknown".to_owned());
 
