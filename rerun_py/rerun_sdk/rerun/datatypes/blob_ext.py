@@ -54,6 +54,8 @@ class BlobExt:
                 inners = []
             elif isinstance(data[0], Blob):
                 inners = [pa.array(np.array(datum.data, dtype=np.uint8).flatten()) for datum in data]  # type: ignore[union-attr]
+            elif isinstance(data[0], bytes):
+                inners = [pa.array(np.frombuffer(datum, dtype=np.uint8)) for datum in data]  # type: ignore[arg-type]
             else:
                 inners = [pa.array(np.array(datum, dtype=np.uint8).flatten()) for datum in data]
 
