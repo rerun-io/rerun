@@ -110,7 +110,7 @@ impl Ellipsoids3DVisualizer {
                 let subdivisions = match data.fill_mode {
                     FillMode::DenseWireframe => 2, // Don't make it too crowded - let the user see inside the mesh.
                     FillMode::Solid => 6,          // Smooth, but not too CPU/GPU intensive
-                    FillMode::MajorWireframe => 8, // Three smooth ellipses
+                    FillMode::MajorWireframe => 12, // Three smooth ellipses
                 };
                 let proc_mesh_key = proc_mesh::ProcMeshKey::Sphere {
                     subdivisions,
