@@ -2,6 +2,7 @@ use crate::ViewerContext;
 
 impl<'a> ViewerContext<'a> {
     /// Save some bytes to disk, after first showing a save dialog.
+    #[allow(clippy::unused_self)] // Not used on Wasm
     pub fn save_file_dialog(&self, file_name: String, title: String, data: Vec<u8>) {
         re_tracing::profile_function!();
 
