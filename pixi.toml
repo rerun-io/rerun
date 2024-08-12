@@ -89,7 +89,7 @@ wheel-test = [
 # The package will be installed in editable mode, so changes to the python code will be reflected immediately.
 # However, any changes to do the rust bindings will require running `pixi run py-build-examples`.
 examples = ["examples-common", "python-dev", "wheel-build", "examples-tasks"]
-examples-ocr = ["examples-ocr", "wheel-build"]
+# examples-ocr = ["examples-ocr", "wheel-build"]
 
 # This environment uses the pypi-published version of the python package. This avoids the need to
 # build the package from source if you just want to try running the examples locally.
@@ -584,23 +584,23 @@ face_tracking = { path = "examples/python/face_tracking", editable = true }
 gesture_detection = { path = "examples/python/gesture_detection", editable = true }
 human_pose_tracking = { path = "examples/python/human_pose_tracking", editable = true }
 
-# OCR Needs an isolated environment because it depends on opencv-4.6 by way of the `paddleclas` package
-[feature.examples-ocr]
-platforms = ["linux-64", "osx-arm64", "osx-64", "win-64"]
-
-[feature.examples-ocr.system-requirements]
-macos = "12.0" # needed for scipy
-
-[feature.examples-ocr.dependencies]
-poppler = "24.04"     # Needed to read pdf files.
-faiss-cpu = "==1.7.2" # Dep comes from paddleclas but we want the conda version to avoid source-wheel build
-
-# Note these are the same as in `python-dev` but we need to repeat them here because the two are mutually exclusive.
-numpy = "<2" # Rerun still needs numpy <2. Enforce this outside of the pypi dep tree so we pick up the conda version.
-
-[feature.examples-ocr.pypi-dependencies]
-rerun-sdk = { path = "rerun_py", editable = true }
-rerun-notebook = { path = "rerun_notebook", editable = true }
-
-paddleclas = { version = "==2.5.2" }
-ocr = { path = "examples/python/ocr", editable = true }
+# # OCR Needs an isolated environment because it depends on opencv-4.6 by way of the `paddleclas` package
+# [feature.examples-ocr]
+# platforms = ["linux-64", "osx-arm64", "osx-64", "win-64"]
+#
+# [feature.examples-ocr.system-requirements]
+# macos = "12.0" # needed for scipy
+#
+# [feature.examples-ocr.dependencies]
+# poppler = "24.04"     # Needed to read pdf files.
+# faiss-cpu = "==1.7.2" # Dep comes from paddleclas but we want the conda version to avoid source-wheel build
+#
+# # Note these are the same as in `python-dev` but we need to repeat them here because the two are mutually exclusive.
+# numpy = "<2" # Rerun still needs numpy <2. Enforce this outside of the pypi dep tree so we pick up the conda version.
+#
+# [feature.examples-ocr.pypi-dependencies]
+# rerun-sdk = { path = "rerun_py", editable = true }
+# rerun-notebook = { path = "rerun_notebook", editable = true }
+#
+# paddleclas = { version = "==2.5.2" }
+# ocr = { path = "examples/python/ocr", editable = true }
