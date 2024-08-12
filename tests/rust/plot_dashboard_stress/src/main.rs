@@ -49,6 +49,10 @@ struct Args {
     #[clap(long, default_value = "1000.0")]
     freq: f64,
 
+    /// Frequency of logging (applies to all series).
+    #[clap(long, default_value = None)]
+    temporal_batch_size: Option<u64>,
+
     /// What order to log the data in (applies to all series).
     #[clap(long, value_enum, default_value = "forwards")]
     order: Order,
@@ -75,7 +79,13 @@ fn run(rec: &rerun::RecordingStream, args: &Args) -> anyhow::Result<()> {
         .collect();
 
     let num_series = args.num_plots * args.num_series_per_plot;
-    let time_per_tick = 1.0 / args.freq;
+    let mut time_per_tick = 1.0 / args.freq;
+    let mut scalars_per_tick = num_series * args.num_series_per_plot;
+    if let Some(temporal_batch_size) = args.temporal_batch_size {
+        time_per_tick *= temporal_batch_size as f64;
+        scalars_per_tick *= temporal_batch_size;
+    }
+
     let expected_total_freq = args.freq * num_series as f64;
 
     use rand::Rng as _;
@@ -113,6 +123,10 @@ fn run(rec: &rerun::RecordingStream, args: &Args) -> anyhow::Result<()> {
     .take(num_series as _)
     .collect();
 
+    let offsets = (0..sim_times.len())
+        .step_by(args.temporal_batch_size.unwrap_or(1) as usize)
+        .collect::<Vec<_>>();
+
     let mut total_num_scalars = 0;
     let mut total_start_time = std::time::Instant::now();
     let mut max_load = 0.0;
@@ -120,25 +134,40 @@ fn run(rec: &rerun::RecordingStream, args: &Args) -> anyhow::Result<()> {
     let mut tick_start_time = std::time::Instant::now();
 
     #[allow(clippy::unchecked_duration_subtraction)]
-    for (time_step, sim_time) in sim_times.into_iter().enumerate() {
-        rec.set_time_seconds("sim_time", sim_time);
+    for offset in offsets {
+        if args.temporal_batch_size.is_none() {
+            rec.set_time_seconds("sim_time", sim_times[offset]);
+        }
 
         // Log
 
         for (plot_idx, plot_path) in plot_paths.iter().enumerate() {
             let plot_idx = plot_idx * args.num_series_per_plot as usize;
             for (series_idx, series_path) in series_paths.iter().enumerate() {
-                let value = values_per_series[plot_idx + series_idx][time_step];
-                rec.log(
-                    format!("{plot_path}/{series_path}"),
-                    &rerun::Scalar::new(value),
-                )?;
+                let path = format!("{plot_path}/{series_path}");
+                let series_values = &values_per_series[plot_idx + series_idx];
+                if let Some(temporal_batch_size) = args.temporal_batch_size {
+                    let temporal_batch_size = temporal_batch_size as usize;
+                    let seconds = sim_times.iter().skip(offset).take(temporal_batch_size);
+                    let values = series_values.iter().skip(offset).take(temporal_batch_size);
+                    rec.send_columns(
+                        path,
+                        [rerun::TimeColumn::new_seconds("sim_time", seconds.copied())],
+                        [&values
+                            .copied()
+                            .map(Into::into)
+                            .collect::<Vec<rerun::components::Scalar>>()
+                            as _],
+                    )?;
+                } else {
+                    rec.log(path, &rerun::Scalar::new(series_values[offset]))?;
+                }
             }
         }
 
         // Progress report
 
-        total_num_scalars += num_series;
+        total_num_scalars += scalars_per_tick;
         let total_elapsed = total_start_time.elapsed();
         if total_elapsed.as_secs_f64() >= 1.0 {
             println!(
