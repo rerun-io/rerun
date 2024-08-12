@@ -174,10 +174,7 @@ impl ImageInfo {
     /// to the full `u16` range, then rounded.
     ///
     /// Returns `None` for invalid images (if the buffer is the wrong size).
-    pub fn to_dynamic_image(
-        &self,
-        data_range: &RangeInclusive<f32>,
-    ) -> Option<image::DynamicImage> {
+    pub fn to_dynamic_image(&self, data_range: RangeInclusive<f32>) -> Option<image::DynamicImage> {
         re_tracing::profile_function!();
 
         use image::{DynamicImage, GrayImage, RgbImage, RgbaImage};
@@ -245,12 +242,12 @@ impl ImageInfo {
     }
 
     /// See [`Self::to_dynamic_image`].
-    pub fn to_rgba8_image(&self, data_range: &RangeInclusive<f32>) -> Option<image::RgbaImage> {
+    pub fn to_rgba8_image(&self, data_range: RangeInclusive<f32>) -> Option<image::RgbaImage> {
         self.to_dynamic_image(data_range).map(|img| img.to_rgba8())
     }
 
     /// Remaps the given data range to `u16`, with rounding and clamping.
-    fn to_vec_u16(&self, datatype: ChannelDatatype, data_range: &RangeInclusive<f32>) -> Vec<u16> {
+    fn to_vec_u16(&self, datatype: ChannelDatatype, data_range: RangeInclusive<f32>) -> Vec<u16> {
         re_tracing::profile_function!();
 
         let data_range = emath::Rangef::from(data_range);
@@ -327,7 +324,7 @@ impl ImageInfo {
     }
 
     /// Convert this image to an encoded PNG
-    pub fn to_png(&self, data_range: &RangeInclusive<f32>) -> anyhow::Result<Vec<u8>> {
+    pub fn to_png(&self, data_range: RangeInclusive<f32>) -> anyhow::Result<Vec<u8>> {
         if let Some(dynamic_image) = self.to_dynamic_image(data_range) {
             let mut png_bytes = Vec::new();
             if let Err(err) = dynamic_image.write_to(
@@ -384,4 +381,71 @@ fn rgb_from_yuv(y: u8, u: u8, v: u8) -> [u8; 3] {
     // let b = y + 1.856 * u;
 
     [(255.0 * r) as u8, (255.0 * g) as u8, (255.0 * b) as u8]
+}
+
+#[cfg(test)]
+mod tests {
+    use re_chunk::RowId;
+    use re_types::{datatypes::ColorModel, image::ImageChannelType};
+
+    use super::ImageInfo;
+
+    fn new_2x2_image_info<T: ImageChannelType>(
+        color_model: ColorModel,
+        elements: &[T],
+    ) -> ImageInfo {
+        assert_eq!(elements.len(), 2 * 2);
+        let image = re_types::archetypes::Image::from_elements(elements, [2, 2], color_model);
+        ImageInfo {
+            buffer_row_id: RowId::ZERO, // unused
+            buffer: image.buffer.0,
+            format: image.format.0,
+            kind: re_types::image::ImageKind::Color,
+            colormap: None,
+        }
+    }
+
+    fn dynamic_image_from_png(png_bytes: &[u8]) -> image::DynamicImage {
+        image::load_from_memory_with_format(png_bytes, image::ImageFormat::Png).unwrap()
+    }
+
+    #[test]
+    fn test_image_l_u8_roundtrip() {
+        let contents = vec![1_u8, 42_u8, 69_u8, 137_u8];
+
+        let image_info = new_2x2_image_info(ColorModel::L, &contents);
+        assert_eq!(image_info.to_slice::<u8>().to_vec(), contents);
+        assert_eq!(
+            image_info.to_dynamic_image(0.0..=1.0).unwrap(),
+            image_info.to_dynamic_image(0.0..=255.0).unwrap(),
+            "Data range should be ignored for u8"
+        );
+        let png_bytes = image_info.to_png(0.0..=255.0).unwrap();
+        let dynamic_image = dynamic_image_from_png(&png_bytes);
+        if let image::DynamicImage::ImageLuma8(image) = dynamic_image {
+            assert_eq!(&image.into_vec(), &contents);
+        } else {
+            panic!("Expected ImageLuma8, got {dynamic_image:?}");
+        }
+    }
+
+    #[test]
+    fn test_image_l_u16_roundtrip() {
+        let contents = vec![1_u16, 42_u16, 69_u16, 137_u16];
+
+        let image_info = new_2x2_image_info(ColorModel::L, &contents);
+        assert_eq!(image_info.to_slice::<u16>().to_vec(), contents);
+        assert_eq!(
+            image_info.to_dynamic_image(0.0..=1.0).unwrap(),
+            image_info.to_dynamic_image(0.0..=255.0).unwrap(),
+            "Data range should be ignored for u16"
+        );
+        let png_bytes = image_info.to_png(0.0..=255.0).unwrap();
+        let dynamic_image = dynamic_image_from_png(&png_bytes);
+        if let image::DynamicImage::ImageLuma16(image) = dynamic_image {
+            assert_eq!(&image.into_vec(), &contents);
+        } else {
+            panic!("Expected ImageLuma8, got {dynamic_image:?}");
+        }
+    }
 }

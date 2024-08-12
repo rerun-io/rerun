@@ -279,7 +279,7 @@ fn preview_if_image_ui(
                     .on_hover_text("Copy image to system clipboard")
                     .clicked()
                 {
-                    if let Some(rgba) = image.to_rgba8_image(&data_range.into()) {
+                    if let Some(rgba) = image.to_rgba8_image(data_range.into()) {
                         re_viewer_context::Clipboard::with(|clipboard| {
                             clipboard.set_image(
                                 [rgba.width() as _, rgba.height() as _],
@@ -297,7 +297,7 @@ fn preview_if_image_ui(
                     "Save image…"
                 };
                 if ui.button(text).clicked() {
-                    match image.to_png(&data_range.into()) {
+                    match image.to_png(data_range.into()) {
                         Ok(png_bytes) => {
                             let file_name = format!(
                                 "{}.png",
