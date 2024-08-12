@@ -190,8 +190,8 @@ mimalloc = "=0.1.37" # TODO(#5875): `mimalloc` starts leaking OS pages starting 
 mime_guess2 = "2.0" # infer MIME type by file extension, and map mime to file extension
 mint = "0.5.9"
 natord = "1.0.9"
-ndarray = "0.15"
-ndarray-rand = "0.14"
+ndarray = "0.16"
+ndarray-rand = "0.15"
 never = "0.1"
 nohash-hasher = "0.2"
 notify = "6.0"
