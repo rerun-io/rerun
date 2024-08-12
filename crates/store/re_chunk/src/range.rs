@@ -263,7 +263,7 @@ impl Chunk {
             if include_extended_bounds {
                 start_index = start_index.saturating_sub(1);
                 end_index = usize::min(
-                    self.num_rows().saturating_sub(1),
+                    self.num_rows(),
                     end_index.saturating_add(1),
                 );
             }
