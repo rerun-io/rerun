@@ -367,10 +367,10 @@ fn experimental_feature_ui(
     }
 
     ui.re_checkbox(
-        &mut app_options.experimental_plot_query_clamping,
+        &mut app_options.plot_query_clamping,
         "Plots: query clamping",
     )
-    .on_hover_text("Toggle query clamping for the plot visualizers.");
+    .on_hover_text("Toggle query clamping for the plot visualizers. This is enabled by default and is only made toggable to facilitate potential bug hunts and performance comparisons.");
 }
 
 #[cfg(debug_assertions)]
