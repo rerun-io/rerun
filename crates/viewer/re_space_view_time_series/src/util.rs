@@ -10,7 +10,7 @@ use crate::{
     PlotPoint, PlotSeries, PlotSeriesKind, ScatterAttrs,
 };
 
-/// Find the plot bounds and the per-ui-point delta from egui.
+/// Find the number of time units per physical pixel.
 pub fn determine_time_per_pixel(
     ctx: &ViewerContext<'_>,
     plot_mem: Option<&egui_plot::PlotMemory>,
