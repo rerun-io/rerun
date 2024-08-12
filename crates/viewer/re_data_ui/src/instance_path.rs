@@ -297,26 +297,20 @@ fn preview_if_image_ui(
                     "Save image…"
                 };
                 if ui.button(text).clicked() {
-                    if let Some(dynamic_image) = image.to_dynamic_image(&data_range.into()) {
-                        let file_name = format!(
-                            "{}.png",
-                            entity_path
-                                .last()
-                                .map_or("image", |name| name.unescaped_str())
-                                .to_owned()
-                        );
-
-                        let mut png_bytes = Vec::new();
-                        if let Err(err) = dynamic_image.write_to(
-                            &mut std::io::Cursor::new(&mut png_bytes),
-                            image::ImageFormat::Png,
-                        ) {
-                            re_log::error!("Failed to encode PNG: {err}");
-                        } else {
+                    match image.to_png(&data_range.into()) {
+                        Ok(png_bytes) => {
+                            let file_name = format!(
+                                "{}.png",
+                                entity_path
+                                    .last()
+                                    .map_or("image", |name| name.unescaped_str())
+                                    .to_owned()
+                            );
                             ctx.save_file_dialog(file_name, "Save image".to_owned(), png_bytes);
                         }
-                    } else {
-                        re_log::error!("Invalid image");
+                        Err(err) => {
+                            re_log::error!("{err}");
+                        }
                     }
                 }
             });

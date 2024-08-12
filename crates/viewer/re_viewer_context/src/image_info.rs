@@ -325,6 +325,22 @@ impl ImageInfo {
                 .collect(),
         }
     }
+
+    /// Convert this image to an encoded PNG
+    pub fn to_png(&self, data_range: &RangeInclusive<f32>) -> anyhow::Result<Vec<u8>> {
+        if let Some(dynamic_image) = self.to_dynamic_image(data_range) {
+            let mut png_bytes = Vec::new();
+            if let Err(err) = dynamic_image.write_to(
+                &mut std::io::Cursor::new(&mut png_bytes),
+                image::ImageFormat::Png,
+            ) {
+                anyhow::bail!("Failed to encode PNG: {err}");
+            }
+            Ok(png_bytes)
+        } else {
+            anyhow::bail!("Invalid image");
+        }
+    }
 }
 
 fn get<T: bytemuck::Pod>(blob: &[u8], element_offset: usize) -> Option<T> {
