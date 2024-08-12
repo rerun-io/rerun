@@ -33,9 +33,9 @@ the 3x3 matrix is applied first, followed by the translation.
 
 ### Regular & instance transforms in tandem
 
-snippet: archetypes/instance_pose3d_combined
+snippet: archetypes/instance_poses3d_combined
 
-<picture data-inline-viewer="snippets/instance_pose3d_combined">
+<picture data-inline-viewer="snippets/instance_poses3d_combined">
   <source media="(max-width: 480px)" srcset="https://static.rerun.io/leaf_transform3d/41674f0082d6de489f8a1cd1583f60f6b5820ddf/480w.png">
   <source media="(max-width: 768px)" srcset="https://static.rerun.io/leaf_transform3d/41674f0082d6de489f8a1cd1583f60f6b5820ddf/768w.png">
   <source media="(max-width: 1024px)" srcset="https://static.rerun.io/leaf_transform3d/41674f0082d6de489f8a1cd1583f60f6b5820ddf/1024w.png">
