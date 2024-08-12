@@ -128,6 +128,11 @@ The Rerun command-line interface:
 >
 > [Default: `false`]
 
+* `--web-viewer-port <WEB_VIEWER_PORT>`
+> What port do we listen to for hosting the web viewer over HTTP. A port of 0 will pick a random port.
+>
+> [Default: `9090`]
+
 * `--hide-welcome-screen <HIDE_WELCOME_SCREEN>`
 > Hide the normal Rerun welcome screen.
 >
