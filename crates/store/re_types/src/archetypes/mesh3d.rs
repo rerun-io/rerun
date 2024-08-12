@@ -80,7 +80,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 ///         rec.set_time_sequence("frame", i);
 ///         rec.log(
 ///             "shape",
-///             &rerun::InstancePoses3D::clear()
+///             &rerun::InstancePoses3D::new()
 ///                 .with_translations([
 ///                     [2.0, 0.0, 0.0],
 ///                     [0.0, 2.0, 0.0],

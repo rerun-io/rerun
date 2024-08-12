@@ -72,7 +72,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 ///         let translation = [0.0, 0.0, (i as f32 * 0.1 - 5.0).abs() - 5.0];
 ///         rec.log(
 ///             "world/box",
-///             &rerun::InstancePoses3D::clear().with_translations([translation]),
+///             &rerun::InstancePoses3D::new().with_translations([translation]),
 ///         )?;
 ///     }
 ///
