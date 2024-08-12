@@ -23,6 +23,33 @@ namespace rerun {
         array = std::make_shared<arrow::PrimitiveArray>(datatype, length, buffer);
     }
 
+    TimeColumn TimeColumn::from_times_nanoseconds(
+        std::string timeline_name, Collection<int64_t> times_in_nanoseconds,
+        SortingStatus sorting_status
+    ) {
+        return TimeColumn(
+            Timeline(std::move(timeline_name), TimeType::Time),
+            std::move(times_in_nanoseconds),
+            sorting_status
+        );
+    }
+
+    TimeColumn TimeColumn::from_times_seconds(
+        std::string timeline_name, Collection<double> times_in_seconds, SortingStatus sorting_status
+    ) {
+        std::vector<int64_t> times_in_nanoseconds;
+        times_in_nanoseconds.reserve(times_in_seconds.size());
+        for (auto time_in_seconds : times_in_seconds) {
+            times_in_nanoseconds.push_back(static_cast<int64_t>(time_in_seconds * 1.0e9 + 0.5));
+        }
+
+        return TimeColumn(
+            Timeline(std::move(timeline_name), TimeType::Time),
+            std::move(times_in_nanoseconds),
+            sorting_status
+        );
+    }
+
     Error to_rr_sorting_status(SortingStatus status, rr_sorting_status& out_status) {
         switch (status) {
             case SortingStatus::Unknown:
