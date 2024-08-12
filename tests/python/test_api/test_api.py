@@ -310,7 +310,7 @@ def run_gradient_image() -> None:
     rr.log("gradient_u16_0_1020", rr.Image(im))
 
 
-def run_image_tensors() -> None:
+def run_image_datatypes() -> None:
     # Make sure you use a colorful image with alpha!
     dir_path = os.path.dirname(os.path.realpath(__file__))
     img_path = f"{dir_path}/../../../crates/viewer/re_ui/data/logo_dark_mode.png"
@@ -355,7 +355,7 @@ def main() -> None:
         "bbox": run_bounding_box,
         "extension_components": run_extension_component,
         "gradient_image": run_gradient_image,
-        "image_tensors": run_image_tensors,
+        "image_datatypes": run_image_datatypes,
         "log_cleared": run_log_cleared,
         "raw_mesh": raw_mesh,
         "rects": run_rects,
@@ -394,7 +394,7 @@ def main() -> None:
         threads = []
         for name, test in tests.items():
             # Some tests are just a bit… too much
-            if args.test == "most" and name in ["image_tensors", "transforms"]:
+            if args.test == "most" and name in ["image_datatypes", "transforms"]:
                 continue
 
             if args.split_recordings:
