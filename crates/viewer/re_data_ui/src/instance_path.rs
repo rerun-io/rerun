@@ -1,9 +1,17 @@
+use egui::{epaint::color, NumExt as _, Vec2};
+use nohash_hasher::IntMap;
+
 use re_chunk_store::UnitChunkShared;
 use re_entity_db::InstancePath;
 use re_log_types::ComponentPath;
-use re_types::ComponentName;
+use re_types::{archetypes, components, image::ImageKind, Archetype, ComponentName, Loggable};
 use re_ui::{ContextExt as _, UiExt as _};
-use re_viewer_context::{HoverHighlight, Item, UiLayout, ViewerContext};
+use re_viewer_context::{
+    gpu_bridge::image_to_gpu, HoverHighlight, ImageInfo, ImageStatsCache, Item, UiLayout,
+    ViewerContext,
+};
+
+use crate::image::show_image_preview;
 
 use super::DataUi;
 
@@ -76,6 +84,11 @@ impl DataUi for InstancePath {
             instance,
             &components,
         );
+
+        if instance.is_all() {
+            let component_map = components.into_iter().collect();
+            preview_if_image_ui(ctx, ui, ui_layout, query, entity_path, &component_map);
+        }
     }
 }
 
@@ -206,4 +219,82 @@ fn component_list_ui(
             }
         }
     });
+}
+
+/// If this entity is an image, show it together with buttons to download and copy the image.
+fn preview_if_image_ui(
+    ctx: &ViewerContext<'_>,
+    ui: &mut egui::Ui,
+    ui_layout: UiLayout,
+    query: &re_chunk_store::LatestAtQuery,
+    entity_path: &re_log_types::EntityPath,
+    component_map: &IntMap<ComponentName, UnitChunkShared>,
+) -> Option<()> {
+    let image_buffer = component_map.get(&components::ImageBuffer::name())?;
+    let buffer_row_id = image_buffer.row_id()?;
+    let image_buffer = image_buffer
+        .component_mono::<components::ImageBuffer>()?
+        .ok()?;
+
+    let image_format = component_map
+        .get(&components::ImageFormat::name())?
+        .component_mono::<components::ImageFormat>()?
+        .ok()?;
+
+    let kind = if component_map.contains_key(&archetypes::DepthImage::indicator().name()) {
+        ImageKind::Depth
+    } else if component_map.contains_key(&archetypes::SegmentationImage::indicator().name()) {
+        ImageKind::Segmentation
+    } else {
+        ImageKind::Color
+    };
+
+    let colormap = component_map
+        .get(&components::Colormap::name())
+        .and_then(|colormap| {
+            colormap
+                .component_mono::<components::Colormap>()
+                .transpose()
+                .ok()
+                .flatten()
+        });
+
+    let image = ImageInfo {
+        buffer_row_id,
+        buffer: image_buffer.0,
+        format: image_format.0,
+        kind,
+        colormap,
+    };
+
+    image_preview_ui(ctx, ui, query, entity_path, &image);
+
+    Some(())
+}
+
+/// Show the image.
+fn image_preview_ui(
+    ctx: &ViewerContext<'_>,
+    ui: &mut egui::Ui,
+    query: &re_chunk_store::LatestAtQuery,
+    entity_path: &re_log_types::EntityPath,
+    image: &ImageInfo,
+) -> Option<()> {
+    let render_ctx = ctx.render_ctx?;
+    let image_stats = ctx.cache.entry(|c: &mut ImageStatsCache| c.entry(image));
+    let annotations = crate::annotations(ctx, query, entity_path);
+    let debug_name = entity_path.to_string();
+    let texture = image_to_gpu(render_ctx, &debug_name, image, &image_stats, &annotations).ok()?;
+
+    let preview_size =
+        Vec2::splat(ui.available_width().at_least(240.0)).at_most(Vec2::splat(640.0));
+    let debug_name = entity_path.to_string();
+    show_image_preview(render_ctx, ui, texture.clone(), &debug_name, preview_size).unwrap_or_else(
+        |(response, err)| {
+            re_log::warn_once!("Failed to show texture {entity_path}: {err}");
+            response
+        },
+    );
+
+    Some(())
 }
