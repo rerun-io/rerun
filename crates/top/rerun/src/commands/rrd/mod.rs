@@ -13,6 +13,7 @@ use self::print::PrintCommand;
 use anyhow::Context as _;
 use clap::Subcommand;
 
+/// Manipulate the contents of .rrd and .rbl files.
 #[derive(Debug, Clone, Subcommand)]
 pub enum RrdCommands {
     /// Compares the data between 2 .rrd files, returning a successful shell exit code if they
@@ -61,7 +62,7 @@ pub enum RrdCommands {
     ///
     /// This will not affect the chunking of the data in any way.
     ///
-    /// Example: `rerun filter --timeline log_tick /my/recordings/*.rrd > output.rrd`
+    /// Example: `rerun filter --drop-timeline log_tick /my/recordings/*.rrd > output.rrd`
     Filter(FilterCommand),
 }
 

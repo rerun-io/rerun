@@ -1180,6 +1180,7 @@ def main() -> None:
         "./.pytest_cache",
         "./CODE_STYLE.md",
         "./crates/re_types_builder/src/reflection.rs",  # auto-generated
+        "./docs/content/reference/cli.md",  # auto-generated
         "./examples/assets",
         "./examples/python/detect_and_track_objects/cache/version.txt",
         "./examples/python/objectron/objectron/proto/",  # auto-generated

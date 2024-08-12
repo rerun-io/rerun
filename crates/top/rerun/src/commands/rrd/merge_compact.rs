@@ -69,13 +69,13 @@ pub struct CompactCommand {
 
     /// What is the threshold, in bytes, after which a Chunk cannot be compacted any further?
     ///
-    /// Overrides RERUN_CHUNK_MAX_BYTES if set.
+    /// Overrides `RERUN_CHUNK_MAX_BYTES` if set.
     #[arg(long = "max-bytes")]
     max_bytes: Option<u64>,
 
     /// What is the threshold, in rows, after which a Chunk cannot be compacted any further?
     ///
-    /// Overrides RERUN_CHUNK_MAX_ROWS if set.
+    /// Overrides `RERUN_CHUNK_MAX_ROWS` if set.
     #[arg(long = "max-rows")]
     max_rows: Option<u64>,
 
@@ -83,7 +83,7 @@ pub struct CompactCommand {
     ///
     /// This specifically applies to _non_ time-sorted chunks.
     ///
-    /// Overrides RERUN_CHUNK_MAX_ROWS_IF_UNSORTED if set.
+    /// Overrides `RERUN_CHUNK_MAX_ROWS_IF_UNSORTED` if set.
     #[arg(long = "max-rows-if-unsorted")]
     max_rows_if_unsorted: Option<u64>,
 
