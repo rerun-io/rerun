@@ -244,6 +244,11 @@ impl ImageInfo {
         }
     }
 
+    /// See [`Self::to_dynamic_image`].
+    pub fn to_rgba8_image(&self, data_range: &RangeInclusive<f32>) -> Option<image::RgbaImage> {
+        self.to_dynamic_image(data_range).map(|img| img.to_rgba8())
+    }
+
     /// Remaps the given data range to `u16`, with rounding and clamping.
     fn to_vec_u16(&self, datatype: ChannelDatatype, data_range: &RangeInclusive<f32>) -> Vec<u16> {
         re_tracing::profile_function!();

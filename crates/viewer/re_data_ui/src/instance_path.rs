@@ -6,8 +6,8 @@ use re_log_types::ComponentPath;
 use re_types::{archetypes, components, image::ImageKind, Archetype, ComponentName, Loggable};
 use re_ui::{ContextExt as _, UiExt as _};
 use re_viewer_context::{
-    gpu_bridge::image_to_gpu, HoverHighlight, ImageInfo, ImageStatsCache, Item, UiLayout,
-    ViewerContext,
+    gpu_bridge::{image_data_range_heuristic, image_to_gpu},
+    HoverHighlight, ImageInfo, ImageStatsCache, Item, UiLayout, ViewerContext,
 };
 
 use crate::image::texture_preview_ui;
@@ -266,6 +266,31 @@ fn preview_if_image_ui(
     };
 
     image_preview_ui(ctx, ui, ui_layout, query, entity_path, &image);
+
+    let image_stats = ctx.cache.entry(|c: &mut ImageStatsCache| c.entry(&image));
+
+    // TODO(#2341): The range should be determined by a `DataRange` component. In absence this, heuristics apply.
+    if let Ok(data_range) = image_data_range_heuristic(&image_stats, &image.format) {
+        if !ui_layout.is_single_line() && ui_layout != UiLayout::Tooltip {
+            #[cfg(not(target_arch = "wasm32"))]
+            if ui
+                .button("Copy image")
+                .on_hover_text("Copy image to system clipboard")
+                .clicked()
+            {
+                if let Some(rgba) = image.to_rgba8_image(&data_range.into()) {
+                    re_viewer_context::Clipboard::with(|clipboard| {
+                        clipboard.set_image(
+                            [rgba.width() as _, rgba.height() as _],
+                            bytemuck::cast_slice(rgba.as_raw()),
+                        );
+                    });
+                } else {
+                    re_log::error!("Invalid image");
+                }
+            }
+        }
+    }
 
     Some(())
 }
