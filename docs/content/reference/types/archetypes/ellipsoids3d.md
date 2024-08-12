@@ -34,5 +34,5 @@ If there's more instance poses than half sizes, the last half size will be repea
 
 ### Batch of ellipsoids
 
-snippet: archetypes/ellipsoid_batch
+snippet: archetypes/ellipsoid3d_batch
 
