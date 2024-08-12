@@ -328,7 +328,7 @@ def run_image_datatypes() -> None:
         "uint16",
         "uint32",
         "uint64",
-        "int8",  # produces wrap-around when casting, producing ugly images, but clipping which is not useful as a test
+        "int8",
         "int16",
         "int32",
         "int64",
@@ -337,10 +337,17 @@ def run_image_datatypes() -> None:
         "float64",
     ]
 
+    def cast_to(array, dtype):
+        if dtype == "int8":
+            # remap [0, 255] to [-128, 127]
+            return (array.astype("int16") - 128).astype("int8")
+        else:
+            return array.astype(dtype)
+
     for dtype in dtypes:
-        rr.log(f"img_rgba_{dtype}", rr.Image(img_rgba.astype(dtype)))
-        rr.log(f"img_rgb_{dtype}", rr.Image(img_rgb.astype(dtype)))
-        rr.log(f"img_gray_{dtype}", rr.Image(img_gray.astype(dtype)))
+        rr.log(f"img_rgba_{dtype}", rr.Image(cast_to(img_rgba, dtype)))
+        rr.log(f"img_rgb_{dtype}", rr.Image(cast_to(img_rgb, dtype)))
+        rr.log(f"img_gray_{dtype}", rr.Image(cast_to(img_gray, dtype)))
 
 
 def spawn_test(test: Callable[[], None], rec: rr.RecordingStream) -> None:
