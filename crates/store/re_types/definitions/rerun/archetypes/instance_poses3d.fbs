@@ -14,7 +14,7 @@ namespace rerun.archetypes;
 /// E.g. if both a translation and a max3x3 transform are present,
 /// the 3x3 matrix is applied first, followed by the translation.
 ///
-/// \example archetypes/instance_pose3d_combined title="Regular & instance transforms in tandem" image="https://static.rerun.io/leaf_transform3d/41674f0082d6de489f8a1cd1583f60f6b5820ddf/1200w.png"
+/// \example archetypes/instance_poses3d_combined title="Regular & instance transforms in tandem" image="https://static.rerun.io/leaf_transform3d/41674f0082d6de489f8a1cd1583f60f6b5820ddf/1200w.png"
 table InstancePoses3D (
   "attr.docs.category": "Spatial 3D",
   "attr.docs.view_types": "Spatial3DView, Spatial2DView: if logged above active projection",
