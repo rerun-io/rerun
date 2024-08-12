@@ -3,7 +3,12 @@ use nohash_hasher::IntMap;
 use re_chunk_store::UnitChunkShared;
 use re_entity_db::InstancePath;
 use re_log_types::ComponentPath;
-use re_types::{archetypes, components, image::ImageKind, Archetype, ComponentName, Loggable};
+use re_types::{
+    archetypes, components,
+    datatypes::{ChannelDatatype, ColorModel},
+    image::ImageKind,
+    Archetype, ComponentName, Loggable,
+};
 use re_ui::{ContextExt as _, UiExt as _};
 use re_viewer_context::{
     gpu_bridge::{image_data_range_heuristic, image_to_gpu},
@@ -267,54 +272,68 @@ fn preview_if_image_ui(
 
     image_preview_ui(ctx, ui, ui_layout, query, entity_path, &image);
 
+    if ui_layout.is_single_line() || ui_layout == UiLayout::Tooltip {
+        return Some(()); // no more ui
+    }
+
     let image_stats = ctx.cache.entry(|c: &mut ImageStatsCache| c.entry(&image));
 
     // TODO(#2341): The range should be determined by a `DataRange` component. In absence this, heuristics apply.
     if let Ok(data_range) = image_data_range_heuristic(&image_stats, &image.format) {
-        if !ui_layout.is_single_line() && ui_layout != UiLayout::Tooltip {
-            ui.horizontal(|ui| {
-                #[cfg(not(target_arch = "wasm32"))]
-                if ui
-                    .button("Copy image")
-                    .on_hover_text("Copy image to system clipboard")
-                    .clicked()
-                {
-                    if let Some(rgba) = image.to_rgba8_image(data_range.into()) {
-                        re_viewer_context::Clipboard::with(|clipboard| {
-                            clipboard.set_image(
-                                [rgba.width() as _, rgba.height() as _],
-                                bytemuck::cast_slice(rgba.as_raw()),
-                            );
-                        });
-                    } else {
-                        re_log::error!("Invalid image");
-                    }
-                }
-
-                let text = if cfg!(target_arch = "wasm32") {
-                    "Download image…"
+        ui.horizontal(|ui| {
+            #[cfg(not(target_arch = "wasm32"))]
+            if ui
+                .button("Copy image")
+                .on_hover_text("Copy image to system clipboard")
+                .clicked()
+            {
+                if let Some(rgba) = image.to_rgba8_image(data_range.into()) {
+                    re_viewer_context::Clipboard::with(|clipboard| {
+                        clipboard.set_image(
+                            [rgba.width() as _, rgba.height() as _],
+                            bytemuck::cast_slice(rgba.as_raw()),
+                        );
+                    });
                 } else {
-                    "Save image…"
-                };
-                if ui.button(text).clicked() {
-                    match image.to_png(data_range.into()) {
-                        Ok(png_bytes) => {
-                            let file_name = format!(
-                                "{}.png",
-                                entity_path
-                                    .last()
-                                    .map_or("image", |name| name.unescaped_str())
-                                    .to_owned()
-                            );
-                            ctx.save_file_dialog(file_name, "Save image".to_owned(), png_bytes);
-                        }
-                        Err(err) => {
-                            re_log::error!("{err}");
-                        }
+                    re_log::error!("Invalid image");
+                }
+            }
+
+            let text = if cfg!(target_arch = "wasm32") {
+                "Download image…"
+            } else {
+                "Save image…"
+            };
+            if ui.button(text).clicked() {
+                match image.to_png(data_range.into()) {
+                    Ok(png_bytes) => {
+                        let file_name = format!(
+                            "{}.png",
+                            entity_path
+                                .last()
+                                .map_or("image", |name| name.unescaped_str())
+                                .to_owned()
+                        );
+                        ctx.save_file_dialog(file_name, "Save image".to_owned(), png_bytes);
+                    }
+                    Err(err) => {
+                        re_log::error!("{err}");
                     }
                 }
+            }
+        });
+    }
+
+    // TODO(emilk): we should really support histograms for all types of images
+    if image.format.pixel_format.is_none()
+        && image.format.color_model() == ColorModel::RGB
+        && image.format.datatype() == ChannelDatatype::U8
+    {
+        ui.section_collapsing_header("Histogram")
+            .default_open(false)
+            .show(ui, |ui| {
+                rgb8_histogram_ui(ui, &image.buffer);
             });
-        }
     }
 
     Some(())
@@ -338,4 +357,63 @@ fn image_preview_ui(
     texture_preview_ui(render_ctx, ui, ui_layout, entity_path, texture);
 
     Some(())
+}
+
+fn rgb8_histogram_ui(ui: &mut egui::Ui, rgb: &[u8]) -> egui::Response {
+    use egui::Color32;
+    use itertools::Itertools as _;
+
+    re_tracing::profile_function!();
+
+    let mut histograms = [[0_u64; 256]; 3];
+    {
+        // TODO(emilk): this is slow, so cache the results!
+        re_tracing::profile_scope!("build");
+        for pixel in rgb.chunks_exact(3) {
+            for c in 0..3 {
+                histograms[c][pixel[c] as usize] += 1;
+            }
+        }
+    }
+
+    use egui_plot::{Bar, BarChart, Legend, Plot};
+
+    let names = ["R", "G", "B"];
+    let colors = [Color32::RED, Color32::GREEN, Color32::BLUE];
+
+    let charts = histograms
+        .into_iter()
+        .enumerate()
+        .map(|(component, histogram)| {
+            let fill = colors[component].linear_multiply(0.5);
+
+            BarChart::new(
+                histogram
+                    .into_iter()
+                    .enumerate()
+                    .map(|(i, count)| {
+                        Bar::new(i as _, count as _)
+                            .width(0.9)
+                            .fill(fill)
+                            .vertical()
+                            .stroke(egui::Stroke::NONE)
+                    })
+                    .collect(),
+            )
+            .color(colors[component])
+            .name(names[component])
+        })
+        .collect_vec();
+
+    re_tracing::profile_scope!("show");
+    Plot::new("rgb_histogram")
+        .legend(Legend::default())
+        .height(200.0)
+        .show_axes([false; 2])
+        .show(ui, |plot_ui| {
+            for chart in charts {
+                plot_ui.bar_chart(chart);
+            }
+        })
+        .response
 }
