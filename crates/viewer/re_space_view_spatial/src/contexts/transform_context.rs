@@ -5,10 +5,10 @@ use re_chunk_store::LatestAtQuery;
 use re_entity_db::{EntityDb, EntityPath, EntityTree};
 use re_space_view::DataResultQuery as _;
 use re_types::{
-    archetypes::{LeafTransforms3D, Pinhole, Transform3D},
+    archetypes::{InstancePoses3D, Pinhole, Transform3D},
     components::{
-        DisconnectedSpace, ImagePlaneDistance, LeafRotationAxisAngle, LeafRotationQuat,
-        LeafScale3D, LeafTransformMat3x3, LeafTranslation3D, PinholeProjection, RotationAxisAngle,
+        DisconnectedSpace, ImagePlaneDistance, PinholeProjection, PoseRotationAxisAngle,
+        PoseRotationQuat, PoseScale3D, PoseTransformMat3x3, PoseTranslation3D, RotationAxisAngle,
         RotationQuat, Scale3D, TransformMat3x3, TransformRelation, Translation3D, ViewCoordinates,
     },
     Archetype, ComponentNameSet, Loggable as _,
@@ -24,15 +24,15 @@ use crate::{
 pub struct TransformInfo {
     /// The transform from the entity to the reference space.
     ///
-    /// ⚠️ Does not include per instance leaf transforms! ⚠️
+    /// ⚠️ Does not include per instance poses! ⚠️
     /// Include 3D-from-2D / 2D-from-3D pinhole transform if present.
     reference_from_entity: glam::Affine3A,
 
-    /// List of transforms per instance including leaf transforms.
+    /// List of transforms per instance including poses.
     ///
-    /// If no leaf transforms are present, this is always the same as `reference_from_entity`.
+    /// If no poses are present, this is always the same as `reference_from_entity`.
     /// (also implying that in this case there is only a single element).
-    /// If there are leaf transforms there may be more than one element.
+    /// If there are poses there may be more than one element.
     pub reference_from_instances: SmallVec1<[glam::Affine3A; 1]>,
 
     /// If this entity is under (!) a pinhole camera, this contains additional information.
@@ -74,7 +74,7 @@ impl TransformInfo {
     ) {
         if self.reference_from_instances.len() > 1 {
             re_log::warn_once!(
-                "There are multiple leaf transforms for entity {entity_name:?}. Visualizer {visualizer_name:?} supports only one transform per entity. Using the first one."
+                "There are multiple poses for entity {entity_name:?}. Visualizer {visualizer_name:?} supports only one transform per entity. Using the first one."
             );
         }
     }
@@ -160,7 +160,7 @@ impl ViewContextSystem for TransformContext {
     fn compatible_component_sets(&self) -> Vec<ComponentNameSet> {
         vec![
             Transform3D::all_components().iter().copied().collect(),
-            LeafTransforms3D::all_components().iter().copied().collect(),
+            InstancePoses3D::all_components().iter().copied().collect(),
             std::iter::once(PinholeProjection::name()).collect(),
             std::iter::once(DisconnectedSpace::name()).collect(),
         ]
@@ -385,26 +385,26 @@ fn transform_info_for_upward_propagation(
         reference_from_entity *= entity_from_2d_pinhole_content.inverse();
     }
 
-    // Collect & compute leaf transforms.
-    let (mut reference_from_instances, has_leaf_transforms) = if let Ok(mut entity_from_instances) =
-        SmallVec1::<[glam::Affine3A; 1]>::try_from_vec(
-            transforms_at_entity.entity_from_instance_leaf_transforms,
+    // Collect & compute poses.
+    let (mut reference_from_instances, has_instance_transforms) =
+        if let Ok(mut entity_from_instances) = SmallVec1::<[glam::Affine3A; 1]>::try_from_vec(
+            transforms_at_entity.entity_from_instance_pose_transforms,
         ) {
-        for entity_from_instance in &mut entity_from_instances {
-            *entity_from_instance = reference_from_entity * entity_from_instance.inverse();
-            // Now this is actually `reference_from_instance`.
-        }
-        (entity_from_instances, true)
-    } else {
-        (SmallVec1::new(reference_from_entity), false)
-    };
+            for entity_from_instance in &mut entity_from_instances {
+                *entity_from_instance = reference_from_entity * entity_from_instance.inverse();
+                // Now this is actually `reference_from_instance`.
+            }
+            (entity_from_instances, true)
+        } else {
+            (SmallVec1::new(reference_from_entity), false)
+        };
 
     // Apply tree transform if any.
     if let Some(parent_from_entity_tree_transform) =
         transforms_at_entity.parent_from_entity_tree_transform
     {
         reference_from_entity *= parent_from_entity_tree_transform.inverse();
-        if has_leaf_transforms {
+        if has_instance_transforms {
             for reference_from_instance in &mut reference_from_instances {
                 *reference_from_instance = reference_from_entity * (*reference_from_instance);
             }
@@ -439,18 +439,19 @@ fn transform_info_for_downward_propagation(
         reference_from_entity *= parent_from_entity_tree_transform;
     }
 
-    // Collect & compute leaf transforms.
-    let (mut reference_from_instances, has_leaf_transforms) = if let Ok(mut entity_from_instances) =
-        SmallVec1::try_from_vec(transforms_at_entity.entity_from_instance_leaf_transforms)
-    {
-        for entity_from_instance in &mut entity_from_instances {
-            *entity_from_instance = reference_from_entity * (*entity_from_instance);
-            // Now this is actually `reference_from_instance`.
-        }
-        (entity_from_instances, true)
-    } else {
-        (SmallVec1::new(reference_from_entity), false)
-    };
+    // Collect & compute poses.
+    let (mut reference_from_instances, has_instance_transforms) =
+        if let Ok(mut entity_from_instances) =
+            SmallVec1::try_from_vec(transforms_at_entity.entity_from_instance_pose_transforms)
+        {
+            for entity_from_instance in &mut entity_from_instances {
+                *entity_from_instance = reference_from_entity * (*entity_from_instance);
+                // Now this is actually `reference_from_instance`.
+            }
+            (entity_from_instances, true)
+        } else {
+            (SmallVec1::new(reference_from_entity), false)
+        };
 
     // Apply 2D->3D transform if present.
     if let Some(entity_from_2d_pinhole_content) =
@@ -468,8 +469,8 @@ fn transform_info_for_downward_propagation(
         });
         reference_from_entity *= entity_from_2d_pinhole_content;
 
-        // Need to update per instance transforms as well if there are leaf transforms!
-        if has_leaf_transforms {
+        // Need to update per instance transforms as well if there are poses!
+        if has_instance_transforms {
             *reference_from_instances.first_mut() = reference_from_entity;
         } else {
             for reference_from_instance in &mut reference_from_instances {
@@ -580,13 +581,13 @@ fn query_and_resolve_tree_transform_at_entity(
     Some(transform)
 }
 
-fn query_and_resolve_leaf_transform_at_entity(
+fn query_and_resolve_pose_transform_at_entity(
     entity_path: &EntityPath,
     entity_db: &EntityDb,
     query: &LatestAtQuery,
 ) -> Vec<glam::Affine3A> {
     if !TransformComponentTracker::access(entity_db.store_id(), |tracker| {
-        tracker.is_potentially_transformed_leaf_transform3d(entity_path)
+        tracker.is_potentially_transformed_pose3d(entity_path)
     })
     .unwrap_or(false)
     {
@@ -598,11 +599,11 @@ fn query_and_resolve_leaf_transform_at_entity(
         query,
         entity_path,
         [
-            LeafTranslation3D::name(),
-            LeafRotationAxisAngle::name(),
-            LeafRotationQuat::name(),
-            LeafScale3D::name(),
-            LeafTransformMat3x3::name(),
+            PoseTranslation3D::name(),
+            PoseRotationAxisAngle::name(),
+            PoseRotationQuat::name(),
+            PoseScale3D::name(),
+            PoseTransformMat3x3::name(),
         ],
     );
 
@@ -636,29 +637,29 @@ fn query_and_resolve_leaf_transform_at_entity(
 
     let mut iter_translation = clamped_or_nothing(
         result
-            .component_batch::<LeafTranslation3D>()
+            .component_batch::<PoseTranslation3D>()
             .unwrap_or_default(),
         max_count,
     );
     let mut iter_rotation_quat = clamped_or_nothing(
         result
-            .component_batch::<LeafRotationQuat>()
+            .component_batch::<PoseRotationQuat>()
             .unwrap_or_default(),
         max_count,
     );
     let mut iter_rotation_axis_angle = clamped_or_nothing(
         result
-            .component_batch::<LeafRotationAxisAngle>()
+            .component_batch::<PoseRotationAxisAngle>()
             .unwrap_or_default(),
         max_count,
     );
     let mut iter_scale = clamped_or_nothing(
-        result.component_batch::<LeafScale3D>().unwrap_or_default(),
+        result.component_batch::<PoseScale3D>().unwrap_or_default(),
         max_count,
     );
     let mut iter_mat3x3 = clamped_or_nothing(
         result
-            .component_batch::<LeafTransformMat3x3>()
+            .component_batch::<PoseTransformMat3x3>()
             .unwrap_or_default(),
         max_count,
     );
@@ -746,7 +747,7 @@ fn query_and_resolve_obj_from_pinhole_image_plane(
 /// Resolved transforms at an entity.
 struct TransformsAtEntity {
     parent_from_entity_tree_transform: Option<glam::Affine3A>,
-    entity_from_instance_leaf_transforms: Vec<glam::Affine3A>,
+    entity_from_instance_pose_transforms: Vec<glam::Affine3A>,
     instance_from_pinhole_image_plane: Option<glam::Affine3A>,
 }
 
@@ -765,7 +766,7 @@ fn transforms_at(
             entity_db,
             query,
         ),
-        entity_from_instance_leaf_transforms: query_and_resolve_leaf_transform_at_entity(
+        entity_from_instance_pose_transforms: query_and_resolve_pose_transform_at_entity(
             entity_path,
             entity_db,
             query,
@@ -795,7 +796,7 @@ fn transforms_at(
         .parent_from_entity_tree_transform
         .is_none()
         && transforms_at_entity
-            .entity_from_instance_leaf_transforms
+            .entity_from_instance_pose_transforms
             .is_empty()
         && transforms_at_entity
             .instance_from_pinhole_image_plane

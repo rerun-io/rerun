@@ -93,7 +93,8 @@ Other changes in data representation:
 * Angles (as used in `RotationAxisAngle`) are now always stored in radians, conversion functions for degrees are provided.
 Scaling no longer distinguishes uniform and 3D scaling in its data representation. Uniform scaling is now always expressed as 3 floats with the same value.
 
-`OutOfTreeTransform3D` got removed. Instead, there is now a new [`LeafTransforms3D`](https://rerun.io/docs/reference/types/archetypes/leaf_transform3d#speculative-link). archetype which fulfills the same role, but works more similar to the `Transform3D` archetype and is supported by all 3D spatial primitives.
+`OutOfTreeTransform3D` got removed. Instead, there is now a new [`InstancePoses3D`](https://rerun.io/docs/reference/types/archetypes/instance_poses3d#speculative-link) archetype which fulfills the same role, but works more similar to the `Transform3D` archetype and is supported by all 3D spatial primitives.
+Furthermore, it can be used for instancing 3D meshes and is used to represent the poses of boxes and ellipsoids/spheres.
 
 
 #### Python
@@ -109,7 +110,7 @@ After:
 rr.log("myentity", rr.Transform3D(translation=Vec3D([1, 2, 3]), relation=rr.TransformRelation.ChildFromParent))
 ```
 
-Asset3D previously had a `transform` argument, now you have to log either a `LeafTransform3D` or a `Transform3D` on the same entity:
+Asset3D previously had a `transform` argument, now you have to log either a `PoseInstance3D` or a `Transform3D` on the same entity:
 Before:
 ```python
 rr.log("world/mesh", rr.Asset3D(
@@ -122,7 +123,7 @@ rr.log("world/mesh", rr.Asset3D(
 After:
 ```python
 rr.log("world/mesh", rr.Asset3D(path=path))
-rr.log("world/mesh", rr.LeafTransform3D(translation=center, scale=scale))
+rr.log("world/mesh", rr.PoseInstance3D(translation=center, scale=scale))
 ```
 
 #### C++
@@ -163,7 +164,7 @@ auto scale_uniform = rerun::Scale3D::uniform(2.0);
 auto scale_y = rerun::Scale3D::from([1.0, 2.0, 1.0]);
 ```
 
-Asset3D previously had a `transform` field, now you have to log either a `LeafTransform3D` or a `Transform3D` on the same entity:
+Asset3D previously had a `transform` field, now you have to log either a `PoseInstance3D` or a `Transform3D` on the same entity:
 Before:
 ```cpp
 rec.log("world/asset", rerun::Asset3D::from_file(path).value_or_throw()
@@ -173,7 +174,7 @@ rec.log("world/asset", rerun::Asset3D::from_file(path).value_or_throw()
 After:
 ```cpp
 rec.log("world/asset", rerun::Asset3D::from_file(path).value_or_throw());
-rec.log("world/mesh", &rerun::archetypes::LeafTransform3D().with_translations(translation));
+rec.log("world/mesh", &rerun::archetypes::PoseInstance3D().with_translations(translation));
 ```
 
 #### Rust
@@ -228,7 +229,7 @@ by logging an empty value for them.
 This means logging a `Transform3D::from_rotation(…)` followed by a `Transform3D::from_translation(…)` will only result in the translation, as the later log call will clear the previous rotation.
 
 
-Asset3D previously had a `transform` field, now you have to log either a `LeafTransform3D` or a `Transform3D` on the same entity:
+Asset3D previously had a `transform` field, now you have to log either a `PoseInstance3D` or a `Transform3D` on the same entity:
 Before:
 ```rust
 rec.log("world/mesh", &rerun::Asset3D::from_file(path)?
@@ -238,14 +239,14 @@ rec.log("world/mesh", &rerun::Asset3D::from_file(path)?
 After:
 ```rust
 rec.log("world/mesh", &rerun::Asset3D::from_file(path)?)?;
-rec.log("world/mesh", &rerun::LeafTransform3D::default().with_translations([translation]))?;
+rec.log("world/mesh", &rerun::PoseInstance3D::default().with_translations([translation]))?;
 ```
 
 ### [`Boxes3D`](https://rerun.io/docs/reference/types/archetypes/boxes3d) changes
 
-`centers` is now a [`LeafTranslation3D`](https://rerun.io/docs/reference/types/components/leaf_translation3d#speculative-link) instead of a [`Position3D`](https://rerun.io/docs/reference/types/components/position3d) component.
-The main difference in behavior is that this means it overlaps with the newly introduced [`LeafTransforms3D`](https://rerun.io/docs/reference/types/archetypes/leaf_transform3d#speculative-link) archetype.
+`centers` is now a [`PoseTranslation3D`](https://rerun.io/docs/reference/types/components/pose_translation3d#speculative-link) instead of a [`Position3D`](https://rerun.io/docs/reference/types/components/position3d) component.
+The main difference in behavior is that this means it overlaps with the newly introduced [`InstancePoses3D`](https://rerun.io/docs/reference/types/archetypes/instance_poses3d#speculative-link) archetype.
 
 `rotation` was removed in favor of `rotation_axis_angles` and `quaternions` which are
-[`LeafRotationAxisAngle`](https://rerun.io/docs/reference/types/components/leaf_rotation_axis_angle#speculative-link) and `LeafRotationQuat`(https://rerun.io/docs/reference/types/components/leaf_rotation_quat#speculative-link) components.
+[`PoseRotationAxisAngle`](https://rerun.io/docs/reference/types/components/pose_rotation_axis_angle#speculative-link) and `PoseRotationQuat`(https://rerun.io/docs/reference/types/components/pose_rotation_quat#speculative-link) components.
 Consequently, instead of using `with_rotations` (C++/Rust) or `rotation=` (Python) you'll need to use `with_quaternions`/`quaternions=`  or `with_rotation_axis_angles`/`rotation_axis_angles=` respectively.

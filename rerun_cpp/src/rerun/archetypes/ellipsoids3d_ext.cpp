@@ -32,7 +32,7 @@ namespace rerun {
 
         /// Creates new `Ellipsoids3D` with `centers` and `half_sizes`.
         static Ellipsoids3D from_centers_and_half_sizes(
-            Collection<components::LeafTranslation3D> centers,
+            Collection<components::PoseTranslation3D> centers,
             Collection<components::HalfSize3D> half_sizes
         ) {
             Ellipsoids3D ellipsoids;

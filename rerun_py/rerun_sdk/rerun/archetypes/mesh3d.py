@@ -23,7 +23,7 @@ class Mesh3D(Mesh3DExt, Archetype):
 
     See also [`archetypes.Asset3D`][rerun.archetypes.Asset3D].
 
-    If there are multiple [`archetypes.LeafTransforms3D`][rerun.archetypes.LeafTransforms3D] instances logged to the same entity as a mesh,
+    If there are multiple [`archetypes.InstancePoses3D`][rerun.archetypes.InstancePoses3D] instances logged to the same entity as a mesh,
     an instance of the mesh will be drawn for each transform.
 
     Examples
@@ -54,11 +54,11 @@ class Mesh3D(Mesh3DExt, Archetype):
     </picture>
     </center>
 
-    ### 3D mesh with leaf transforms:
+    ### 3D mesh with instancing:
     ```python
     import rerun as rr
 
-    rr.init("rerun_example_mesh3d_leaf_transforms3d", spawn=True)
+    rr.init("rerun_example_mesh3d_instancing", spawn=True)
     rr.set_time_sequence("frame", 0)
 
     rr.log(
@@ -69,7 +69,7 @@ class Mesh3D(Mesh3DExt, Archetype):
             vertex_colors=[[255, 0, 0], [0, 255, 0], [0, 0, 255], [255, 255, 0]],
         ),
     )
-    # This box will not be affected by its parent's leaf transforms!
+    # This box will not be affected by its parent's instance poses!
     rr.log(
         "shape/box",
         rr.Boxes3D(half_sizes=[[5.0, 5.0, 5.0]]),
@@ -79,7 +79,7 @@ class Mesh3D(Mesh3DExt, Archetype):
         rr.set_time_sequence("frame", i)
         rr.log(
             "shape",
-            rr.LeafTransforms3D(
+            rr.InstancePoses3D(
                 translations=[[2, 0, 0], [0, 2, 0], [0, -2, 0], [-2, 0, 0]],
                 rotation_axis_angles=rr.RotationAxisAngle([0, 0, 1], rr.Angle(deg=i * 2)),
             ),

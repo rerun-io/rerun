@@ -4,9 +4,9 @@ namespace rerun.archetypes;
 
 /// 3D boxes with half-extents and optional center, rotations, colors etc.
 ///
-/// Note that orienting and placing the box is handled via `[archetypes.LeafTransforms3D]`.
+/// Note that orienting and placing the box is handled via `[archetypes.InstancePoses3D]`.
 /// Some of its component are repeated here for convenience.
-/// If there's more leaf transforms than half sizes, the last half size will be repeated for the remaining transforms.
+/// If there's more instance poses than half sizes, the last half size will be repeated for the remaining poses.
 ///
 /// \example archetypes/box3d_simple !api title="Simple 3D boxes" image="https://static.rerun.io/box3d_simple/d6a3f38d2e3360fbacac52bb43e44762635be9c8/1200w.png"
 /// \example archetypes/box3d_batch title="Batch of 3D boxes" image="https://static.rerun.io/box3d_batch/6d3e453c3a0201ae42bbae9de941198513535f1d/1200w.png"
@@ -27,20 +27,20 @@ table Boxes3D (
   /// Optional center positions of the boxes.
   ///
   /// If not specified, the centers will be at (0, 0, 0).
-  /// Note that this uses a [components.LeafTranslation3D] which is also used by [archetypes.LeafTransforms3D].
-  centers: [rerun.components.LeafTranslation3D] ("attr.rerun.component_recommended", nullable, order: 2000);
+  /// Note that this uses a [components.PoseTranslation3D] which is also used by [archetypes.InstancePoses3D].
+  centers: [rerun.components.PoseTranslation3D] ("attr.rerun.component_recommended", nullable, order: 2000);
 
   /// Rotations via axis + angle.
   ///
   /// If no rotation is specified, the axes of the boxes align with the axes of the local coordinate system.
-  /// Note that this uses a [components.LeafRotationAxisAngle] which is also used by [archetypes.LeafTransforms3D].
-  rotation_axis_angles: [rerun.components.LeafRotationAxisAngle] ("attr.rerun.component_optional", nullable, order: 2100);
+  /// Note that this uses a [components.PoseRotationAxisAngle] which is also used by [archetypes.InstancePoses3D].
+  rotation_axis_angles: [rerun.components.PoseRotationAxisAngle] ("attr.rerun.component_optional", nullable, order: 2100);
 
   /// Rotations via quaternion.
   ///
   /// If no rotation is specified, the axes of the boxes align with the axes of the local coordinate system.
-  /// Note that this uses a [components.LeafRotationQuat] which is also used by [archetypes.LeafTransforms3D].
-  quaternions: [rerun.components.LeafRotationQuat] ("attr.rerun.component_optional", nullable, order: 2200);
+  /// Note that this uses a [components.PoseRotationQuat] which is also used by [archetypes.InstancePoses3D].
+  quaternions: [rerun.components.PoseRotationQuat] ("attr.rerun.component_optional", nullable, order: 2200);
 
   /// Optional colors for the boxes.
   colors: [rerun.components.Color] ("attr.rerun.component_recommended", nullable, order: 2300);

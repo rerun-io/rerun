@@ -10,7 +10,7 @@ struct Translation3D (
 }
 
 /// A translation vector in 3D space that doesn't propagate in the transform hierarchy.
-struct LeafTranslation3D (
+struct PoseTranslation3D (
   "attr.docs.unreleased",
   "attr.rust.derive": "Default, Copy, PartialEq, bytemuck::Pod, bytemuck::Zeroable",
   "attr.rust.repr": "transparent"

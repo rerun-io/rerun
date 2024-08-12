@@ -69,7 +69,7 @@ for i, label_info in enumerate(annotation["data"]):
             labels=label,
             colors=colors[i],
         ),
-        rr.LeafTransforms3D(mat3x3=mat3x3),
+        rr.InstancePoses3D(mat3x3=mat3x3),
         timeless=True,
     )
 ```
