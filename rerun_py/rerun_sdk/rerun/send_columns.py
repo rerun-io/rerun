@@ -5,7 +5,7 @@ from typing import Iterable, Protocol, TypeVar
 import pyarrow as pa
 import rerun_bindings as bindings
 
-from ._baseclasses import Archetype, ComponentColumnLike
+from ._baseclasses import Archetype, ComponentColumn, ComponentColumnLike
 from ._log import IndicatorComponentBatch
 from .error_utils import catch_and_log_exceptions
 from .recording_stream import RecordingStream
@@ -182,15 +182,21 @@ def send_columns(
             indicators.append(c)
             continue
         component_name = c.component_name()
-        component_column = c.as_arrow_array()  # type: ignore[union-attr]
+
+        if isinstance(c, ComponentColumn):
+            component_column = c
+        else:
+            component_column = c.partition([1] * len(c))  # type: ignore[union-attr, attr-defined, arg-type]
+        arrow_list_array = component_column.as_arrow_array()
+
         if expected_length is None:
-            expected_length = len(component_column)
-        elif len(component_column) != expected_length:
+            expected_length = len(arrow_list_array)
+        elif len(arrow_list_array) != expected_length:
             raise ValueError(
-                f"All times and components in a batch must have the same length. Expected length: {expected_length} but got: {len(component_column)} for component: {component_name}"
+                f"All times and components in a batch must have the same length. Expected length: {expected_length} but got: {len(arrow_list_array)} for component: {component_name}"
             )
 
-        components_args[component_name] = component_column
+        components_args[component_name] = arrow_list_array
 
     for i in indicators:
         if expected_length is None:
