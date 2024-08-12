@@ -25,11 +25,9 @@ import semver
 
 def update_python_line(line: str, version_line: str, version_info_line: str) -> str:
     if line.startswith("__version__"):
-        if line != version_line:
-            return version_line
+        return version_line
     if line.startswith("__version_info__"):
-        if line != version_info_line:
-            return version_info_line
+        return version_info_line
     return line
 
 
@@ -59,17 +57,13 @@ def update_c_line(
     version_line_patch: str,
 ) -> str:
     if line.startswith("#define RERUN_SDK_HEADER_VERSION_MAJOR"):
-        if line != version_line_major:
-            return version_line_major
+        return version_line_major
     elif line.startswith("#define RERUN_SDK_HEADER_VERSION_MINOR"):
-        if line != version_line_minor:
-            return version_line_minor
+        return version_line_minor
     elif line.startswith("#define RERUN_SDK_HEADER_VERSION_PATCH"):
-        if line != version_line_patch:
-            return version_line_patch
+        return version_line_patch
     elif line.startswith("#define RERUN_SDK_HEADER_VERSION"):
-        if line != version_line:
-            return version_line
+        return version_line
 
     return line
 
