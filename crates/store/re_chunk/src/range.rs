@@ -15,15 +15,53 @@ use crate::Chunk;
 pub struct RangeQuery {
     pub timeline: Timeline,
     pub range: ResolvedTimeRange,
+    pub options: RangeQueryOptions,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct RangeQueryOptions {
+    /// Should the results contain all extra timeline information available in the [`Chunk`]?
+    ///
+    /// While this information can be useful in some cases, it comes at a performance cost.
+    pub keep_extra_timelines: bool,
+
+    /// Should the results contain all extra component information available in the [`Chunk`]?
+    ///
+    /// While this information can be useful in some cases, it comes at a performance cost.
+    pub keep_extra_components: bool,
+}
+
+impl RangeQueryOptions {
+    pub const DEFAULT: Self = Self {
+        keep_extra_timelines: false,
+        keep_extra_components: false,
+    };
+}
+
+impl Default for RangeQueryOptions {
+    #[inline]
+    fn default() -> Self {
+        Self::DEFAULT
+    }
 }
 
 impl std::fmt::Debug for RangeQuery {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.write_fmt(format_args!(
-            "<ranging from {} to {} (all inclusive) on {:?}",
+            "<ranging {}..={} on {:?} ([{}]keep_timelines [{}]keep_components)>",
             self.timeline.typ().format_utc(self.range.min()),
             self.timeline.typ().format_utc(self.range.max()),
             self.timeline.name(),
+            if self.options.keep_extra_timelines {
+                "✓"
+            } else {
+                " "
+            },
+            if self.options.keep_extra_components {
+                "✓"
+            } else {
+                " "
+            },
         ))
     }
 }
@@ -32,7 +70,26 @@ impl RangeQuery {
     /// The returned query is guaranteed to never include [`TimeInt::STATIC`].
     #[inline]
     pub const fn new(timeline: Timeline, range: ResolvedTimeRange) -> Self {
-        Self { timeline, range }
+        Self {
+            timeline,
+            range,
+            options: RangeQueryOptions::DEFAULT,
+        }
+    }
+
+    /// The returned query is guaranteed to never include [`TimeInt::STATIC`].
+    ///
+    /// Keeps all extra timelines and components around.
+    #[inline]
+    pub const fn with_extras(timeline: Timeline, range: ResolvedTimeRange) -> Self {
+        Self {
+            timeline,
+            range,
+            options: RangeQueryOptions {
+                keep_extra_timelines: true,
+                keep_extra_components: true,
+            },
+        }
     }
 
     #[inline]
@@ -40,7 +97,26 @@ impl RangeQuery {
         Self {
             timeline,
             range: ResolvedTimeRange::EVERYTHING,
+            options: RangeQueryOptions::DEFAULT,
         }
+    }
+
+    /// Should the results contain all extra timeline information available in the [`Chunk`]?
+    ///
+    /// While this information can be useful in some cases, it comes at a performance cost.
+    #[inline]
+    pub fn keep_extra_timelines(mut self, toggle: bool) -> Self {
+        self.options.keep_extra_timelines = toggle;
+        self
+    }
+
+    /// Should the results contain all extra component information available in the [`Chunk`]?
+    ///
+    /// While this information can be useful in some cases, it comes at a performance cost.
+    #[inline]
+    pub fn keep_extra_components(mut self, toggle: bool) -> Self {
+        self.options.keep_extra_components = toggle;
+        self
     }
 
     #[inline]
@@ -51,6 +127,11 @@ impl RangeQuery {
     #[inline]
     pub fn range(&self) -> ResolvedTimeRange {
         self.range
+    }
+
+    #[inline]
+    pub fn options(&self) -> RangeQueryOptions {
+        self.options.clone()
     }
 }
 
@@ -82,26 +163,43 @@ impl Chunk {
 
         re_tracing::profile_function!(format!("{query:?}"));
 
-        let is_static = self.is_static();
+        let RangeQueryOptions {
+            keep_extra_timelines,
+            keep_extra_components,
+        } = query.options();
 
-        if is_static {
+        // Pre-slice the data if the caller allowed us: this will make further slicing
+        // (e.g. the range query itself) much cheaper to compute.
+        use std::borrow::Cow;
+        let chunk = if !keep_extra_timelines {
+            Cow::Owned(self.timeline_sliced(query.timeline()))
+        } else {
+            Cow::Borrowed(self)
+        };
+        let chunk = if !keep_extra_components {
+            Cow::Owned(chunk.component_sliced(component_name))
+        } else {
+            chunk
+        };
+
+        if chunk.is_static() {
             // NOTE: A given component for a given entity can only have one static entry associated
             // with it, and this entry overrides everything else, which means it is functionally
             // equivalent to just running a latest-at query.
-            self.latest_at(
+            chunk.latest_at(
                 &crate::LatestAtQuery::new(query.timeline(), TimeInt::MAX),
                 component_name,
             )
         } else {
-            let Some(is_sorted_by_time) = self
+            let Some(is_sorted_by_time) = chunk
                 .timelines
                 .get(&query.timeline())
                 .map(|time_column| time_column.is_sorted())
             else {
-                return self.emptied();
+                return chunk.emptied();
             };
 
-            let chunk = self.densified(component_name);
+            let chunk = chunk.densified(component_name);
 
             let chunk = if is_sorted_by_time {
                 // Temporal, row-sorted, time-sorted chunk

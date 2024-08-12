@@ -63,7 +63,7 @@ fn temporal_sorted() -> anyhow::Result<()> {
         .build()?;
 
     {
-        let query = RangeQuery::new(
+        let query = RangeQuery::with_extras(
             Timeline::new_sequence("frame"),
             ResolvedTimeRange::EVERYTHING,
         );
@@ -118,7 +118,8 @@ fn temporal_sorted() -> anyhow::Result<()> {
     }
 
     {
-        let query = RangeQuery::new(Timeline::log_time(), ResolvedTimeRange::new(1020, 1050));
+        let query =
+            RangeQuery::with_extras(Timeline::log_time(), ResolvedTimeRange::new(1020, 1050));
 
         let expected = chunk.emptied();
         query_and_compare((MyPoint::name(), &query), &chunk, &expected);
@@ -194,7 +195,7 @@ fn temporal_unsorted() -> anyhow::Result<()> {
         .build()?;
 
     {
-        let query = RangeQuery::new(Timeline::log_time(), ResolvedTimeRange::EVERYTHING);
+        let query = RangeQuery::with_extras(Timeline::log_time(), ResolvedTimeRange::EVERYTHING);
 
         let expected = Chunk::builder_with_id(chunk.id(), ENTITY_PATH.into())
             .with_sparse_component_batches(
@@ -246,7 +247,8 @@ fn temporal_unsorted() -> anyhow::Result<()> {
     }
 
     {
-        let query = RangeQuery::new(Timeline::log_time(), ResolvedTimeRange::new(1020, 1050));
+        let query =
+            RangeQuery::with_extras(Timeline::log_time(), ResolvedTimeRange::new(1020, 1050));
 
         let expected = chunk.emptied();
         query_and_compare((MyPoint::name(), &query), &chunk, &expected);
@@ -311,11 +313,11 @@ fn static_sorted() -> anyhow::Result<()> {
         .build()?;
 
     let queries = [
-        RangeQuery::new(
+        RangeQuery::with_extras(
             Timeline::new_sequence("frame"),
             ResolvedTimeRange::EVERYTHING,
         ),
-        RangeQuery::new(Timeline::log_time(), ResolvedTimeRange::new(1020, 1050)),
+        RangeQuery::with_extras(Timeline::log_time(), ResolvedTimeRange::new(1020, 1050)),
     ];
 
     for query in queries {
@@ -392,11 +394,11 @@ fn static_unsorted() -> anyhow::Result<()> {
         .build()?;
 
     let queries = [
-        RangeQuery::new(
+        RangeQuery::with_extras(
             Timeline::new_sequence("frame"),
             ResolvedTimeRange::EVERYTHING,
         ),
-        RangeQuery::new(Timeline::log_time(), ResolvedTimeRange::new(1020, 1050)),
+        RangeQuery::with_extras(Timeline::log_time(), ResolvedTimeRange::new(1020, 1050)),
     ];
 
     for query in queries {

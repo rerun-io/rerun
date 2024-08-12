@@ -31,7 +31,8 @@ pub use self::subscribers::{ChunkStoreSubscriber, ChunkStoreSubscriberHandle};
 // Re-exports
 #[doc(no_inline)]
 pub use re_chunk::{
-    Chunk, ChunkId, ChunkShared, LatestAtQuery, RangeQuery, RowId, UnitChunkShared,
+    Chunk, ChunkId, ChunkShared, LatestAtQuery, RangeQuery, RangeQueryOptions, RowId,
+    UnitChunkShared,
 };
 #[doc(no_inline)]
 pub use re_log_types::{ResolvedTimeRange, TimeInt, TimeType, Timeline};
