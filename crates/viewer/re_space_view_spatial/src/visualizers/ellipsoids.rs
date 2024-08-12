@@ -107,8 +107,18 @@ impl Ellipsoids3DVisualizer {
 
                 // TODO(kpreid): subdivisions should be configurable, and possibly dynamic based on
                 // either world size or screen size (depending on application).
-                let subdivisions = 2;
-                let proc_mesh_key = proc_mesh::ProcMeshKey::Sphere { subdivisions };
+                let subdivisions = match data.fill_mode {
+                    FillMode::DenseWireframe => 2, // Don't make it too crowded - let the user see inside the mesh.
+                    FillMode::Solid => 6,          // Smooth, but not too CPU/GPU intensive
+                    FillMode::MajorWireframe => 12, // Three smooth ellipses
+                };
+                let proc_mesh_key = proc_mesh::ProcMeshKey::Sphere {
+                    subdivisions,
+                    axes_only: match data.fill_mode {
+                        FillMode::MajorWireframe => true,
+                        FillMode::DenseWireframe | FillMode::Solid => false,
+                    },
+                };
 
                 // No need to take half_size times 2 since the mesh we're using is already scaled accordingly.
                 let world_from_instance =
@@ -120,7 +130,7 @@ impl Ellipsoids3DVisualizer {
                 );
 
                 match data.fill_mode {
-                    FillMode::Wireframe => {
+                    FillMode::MajorWireframe | FillMode::DenseWireframe => {
                         let Some(wireframe_mesh) =
                             ctx.viewer_ctx
                                 .cache

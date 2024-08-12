@@ -22,32 +22,46 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 #[derive(Clone, Copy, Debug, Hash, PartialEq, Eq, Default)]
 #[repr(u8)]
 pub enum FillMode {
-    /// Lines are drawn around the edges of the shape.
+    /// Lines are drawn around the parts of the shape which directly correspond to the logged data.
     ///
-    /// The interior (2D) or surface (3D) are not drawn.
+    /// Examples of what this means:
+    ///
+    /// * An [`archetypes::Ellipsoids3D`][crate::archetypes::Ellipsoids3D] will draw three axis-aligned ellipses that are cross-sections
+    ///   of each ellipsoid, each of which displays two out of three of the sizes of the ellipsoid.
+    /// * For [`archetypes::Boxes3D`][crate::archetypes::Boxes3D], it is the edges of the box, identical to `DenseWireframe`.
     #[default]
-    Wireframe = 1,
+    MajorWireframe = 1,
 
-    /// The interior (2D) or surface (3D) is filled with a single color.
+    /// Many lines are drawn to represent the surface of the shape in a see-through fashion.
     ///
-    /// Lines are not drawn.
-    Solid = 2,
+    /// Examples of what this means:
+    ///
+    /// * An [`archetypes::Ellipsoids3D`][crate::archetypes::Ellipsoids3D] will draw a wireframe triangle mesh that approximates each
+    ///   ellipsoid.
+    /// * For [`archetypes::Boxes3D`][crate::archetypes::Boxes3D], it is the edges of the box, identical to `MajorWireframe`.
+    DenseWireframe = 2,
+
+    /// The surface of the shape is filled in with a solid color. No lines are drawn.
+    Solid = 3,
 }
 
 impl ::re_types_core::reflection::Enum for FillMode {
     #[inline]
     fn variants() -> &'static [Self] {
-        &[Self::Wireframe, Self::Solid]
+        &[Self::MajorWireframe, Self::DenseWireframe, Self::Solid]
     }
 
     #[inline]
     fn docstring_md(self) -> &'static str {
         match self {
-            Self::Wireframe => {
-                "Lines are drawn around the edges of the shape.\n\nThe interior (2D) or surface (3D) are not drawn."
+            Self::MajorWireframe => {
+                "Lines are drawn around the parts of the shape which directly correspond to the logged data.\n\nExamples of what this means:\n\n* An [`archetypes::Ellipsoids3D`][crate::archetypes::Ellipsoids3D] will draw three axis-aligned ellipses that are cross-sections\n  of each ellipsoid, each of which displays two out of three of the sizes of the ellipsoid.\n* For [`archetypes::Boxes3D`][crate::archetypes::Boxes3D], it is the edges of the box, identical to `DenseWireframe`."
+            }
+            Self::DenseWireframe => {
+                "Many lines are drawn to represent the surface of the shape in a see-through fashion.\n\nExamples of what this means:\n\n* An [`archetypes::Ellipsoids3D`][crate::archetypes::Ellipsoids3D] will draw a wireframe triangle mesh that approximates each\n  ellipsoid.\n* For [`archetypes::Boxes3D`][crate::archetypes::Boxes3D], it is the edges of the box, identical to `MajorWireframe`."
             }
             Self::Solid => {
-                "The interior (2D) or surface (3D) is filled with a single color.\n\nLines are not drawn."
+                "The surface of the shape is filled in with a solid color. No lines are drawn."
             }
         }
     }
@@ -68,7 +82,8 @@ impl ::re_types_core::SizeBytes for FillMode {
 impl std::fmt::Display for FillMode {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Self::Wireframe => write!(f, "Wireframe"),
+            Self::MajorWireframe => write!(f, "MajorWireframe"),
+            Self::DenseWireframe => write!(f, "DenseWireframe"),
             Self::Solid => write!(f, "Solid"),
         }
     }
@@ -143,8 +158,9 @@ impl ::re_types_core::Loggable for FillMode {
             .into_iter()
             .map(|opt| opt.copied())
             .map(|typ| match typ {
-                Some(1) => Ok(Some(Self::Wireframe)),
-                Some(2) => Ok(Some(Self::Solid)),
+                Some(1) => Ok(Some(Self::MajorWireframe)),
+                Some(2) => Ok(Some(Self::DenseWireframe)),
+                Some(3) => Ok(Some(Self::Solid)),
                 None => Ok(None),
                 Some(invalid) => Err(DeserializationError::missing_union_arm(
                     Self::arrow_datatype(),

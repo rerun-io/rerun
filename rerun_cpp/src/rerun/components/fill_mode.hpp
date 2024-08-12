@@ -23,15 +23,26 @@ namespace rerun::components {
     /// **Component**: How a geometric shape is drawn and colored.
     enum class FillMode : uint8_t {
 
-        /// Lines are drawn around the edges of the shape.
+        /// Lines are drawn around the parts of the shape which directly correspond to the logged data.
         ///
-        /// The interior (2D) or surface (3D) are not drawn.
-        Wireframe = 1,
+        /// Examples of what this means:
+        ///
+        /// * An `archetypes::Ellipsoids3D` will draw three axis-aligned ellipses that are cross-sections
+        ///   of each ellipsoid, each of which displays two out of three of the sizes of the ellipsoid.
+        /// * For `archetypes::Boxes3D`, it is the edges of the box, identical to `DenseWireframe`.
+        MajorWireframe = 1,
 
-        /// The interior (2D) or surface (3D) is filled with a single color.
+        /// Many lines are drawn to represent the surface of the shape in a see-through fashion.
         ///
-        /// Lines are not drawn.
-        Solid = 2,
+        /// Examples of what this means:
+        ///
+        /// * An `archetypes::Ellipsoids3D` will draw a wireframe triangle mesh that approximates each
+        ///   ellipsoid.
+        /// * For `archetypes::Boxes3D`, it is the edges of the box, identical to `MajorWireframe`.
+        DenseWireframe = 2,
+
+        /// The surface of the shape is filled in with a solid color. No lines are drawn.
+        Solid = 3,
     };
 } // namespace rerun::components
 
