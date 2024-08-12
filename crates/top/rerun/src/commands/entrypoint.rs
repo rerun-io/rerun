@@ -395,7 +395,7 @@ impl Args {
             // """
             // **Arguments**
             //
-            // `[URL_OR_PATHS]...`
+            // `[URL_OR_PATHS]…`
             // > Any combination of:
             // > - A WebSocket url to a Rerun server
             // > - A path to a Rerun .rrd recording
