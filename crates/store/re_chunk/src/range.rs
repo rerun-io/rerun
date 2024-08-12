@@ -262,10 +262,7 @@ impl Chunk {
             // See `RangeQueryOptions::include_extended_bounds` for more information.
             if include_extended_bounds {
                 start_index = start_index.saturating_sub(1);
-                end_index = usize::min(
-                    self.num_rows(),
-                    end_index.saturating_add(1),
-                );
+                end_index = usize::min(self.num_rows(), end_index.saturating_add(1));
             }
 
             chunk.row_sliced(start_index, end_index.saturating_sub(start_index))
