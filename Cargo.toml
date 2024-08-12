@@ -187,7 +187,7 @@ log-once = "0.4"
 lz4_flex = "0.11"
 memory-stats = "1.1"
 mimalloc = "=0.1.37" # TODO(#5875): `mimalloc` starts leaking OS pages starting with `0.1.38`.
-mime_guess2 = "2.0"
+mime_guess2 = "2.0" # infer MIME type by file extension, and map mime to file extension
 mint = "0.5.9"
 natord = "1.0.9"
 ndarray = "0.15"

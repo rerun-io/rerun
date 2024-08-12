@@ -46,3 +46,8 @@ image.workspace = true
 itertools.workspace = true
 rfd.workspace = true
 unindent.workspace = true
+
+
+# web
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+wasm-bindgen-futures.workspace = true

@@ -10,30 +10,28 @@ use crate::{
     PlotPoint, PlotSeries, PlotSeriesKind, ScatterAttrs,
 };
 
-/// Find the plot bounds and the per-ui-point delta from egui.
-pub fn determine_plot_bounds_and_time_per_pixel(
+/// Find the number of time units per physical pixel.
+pub fn determine_time_per_pixel(
     ctx: &ViewerContext<'_>,
-    query: &ViewQuery<'_>,
-) -> (Option<egui_plot::PlotBounds>, f64) {
+    plot_mem: Option<&egui_plot::PlotMemory>,
+) -> f64 {
     let egui_ctx = ctx.egui_ctx;
-
-    let plot_mem = egui_plot::PlotMemory::load(egui_ctx, crate::plot_id(query.space_view_id));
-    let plot_bounds = plot_mem.as_ref().map(|mem| *mem.bounds());
 
     // How many ui points per time unit?
     let points_per_time = plot_mem
         .as_ref()
         .map_or(1.0, |mem| mem.transform().dpos_dvalue_x());
     let pixels_per_time = egui_ctx.pixels_per_point() as f64 * points_per_time;
+
     // How many time units per physical pixel?
-    let time_per_pixel = 1.0 / pixels_per_time.max(f64::EPSILON);
-    (plot_bounds, time_per_pixel)
+    1.0 / pixels_per_time.max(f64::EPSILON)
 }
 
 pub fn determine_time_range(
     time_cursor: re_log_types::TimeInt,
+    time_offset: i64,
     data_result: &re_viewer_context::DataResult,
-    plot_bounds: Option<egui_plot::PlotBounds>,
+    plot_mem: Option<&egui_plot::PlotMemory>,
     enable_query_clamping: bool,
 ) -> ResolvedTimeRange {
     let query_range = data_result.query_range();
@@ -56,22 +54,27 @@ pub fn determine_time_range(
     let mut time_range =
         ResolvedTimeRange::from_relative_time_range(&visible_time_range, time_cursor);
 
-    // TODO(cmc): We would love to reduce the query to match the actual plot bounds, but because
-    // the plot widget handles zoom after we provide it with data for the current frame,
-    // this results in an extremely jarring frame delay.
-    // Just try it out and you'll see what I mean.
-    if enable_query_clamping {
-        if let Some(plot_bounds) = plot_bounds {
-            time_range.set_min(i64::max(
-                time_range.min().as_i64(),
-                plot_bounds.range_x().start().floor() as i64,
-            ));
-            time_range.set_max(i64::min(
-                time_range.max().as_i64(),
-                plot_bounds.range_x().end().ceil() as i64,
-            ));
+    let is_auto_bounds = plot_mem.map_or(false, |mem| mem.auto_bounds.x || mem.auto_bounds.y);
+    let plot_bounds = plot_mem.map(|mem| {
+        let bounds = mem.bounds().range_x();
+        let x_min = bounds.start().floor() as i64;
+        let x_max = bounds.end().ceil() as i64;
+        // We offset the time values of the plot so that unix timestamps don't run out of precision.
+        (
+            x_min.saturating_add(time_offset),
+            x_max.saturating_add(time_offset),
+        )
+    });
+
+    // If we're not in auto mode, which is the mode where the query drives the bounds of the plot,
+    // then we want the bounds of the plots to drive the query!
+    if !is_auto_bounds && enable_query_clamping {
+        if let Some((x_min, x_max)) = plot_bounds {
+            time_range.set_min(i64::max(time_range.min().as_i64(), x_min));
+            time_range.set_max(i64::min(time_range.max().as_i64(), x_max));
         }
     }
+
     time_range
 }
 
@@ -85,7 +88,7 @@ pub fn points_to_series(
     points: Vec<PlotPoint>,
     store: &re_chunk_store::ChunkStore,
     query: &ViewQuery<'_>,
-    series_name: &re_types::components::Name,
+    series_label: Option<String>,
     aggregator: AggregationPolicy,
     all_series: &mut Vec<PlotSeries>,
 ) {
@@ -107,7 +110,7 @@ pub fn points_to_series(
         }
 
         all_series.push(PlotSeries {
-            label: series_name.0.clone(),
+            label: series_label,
             color: points[0].attrs.color,
             radius_ui: points[0].attrs.radius_ui,
             kind,
@@ -119,7 +122,7 @@ pub fn points_to_series(
         });
     } else {
         add_series_runs(
-            series_name,
+            &series_label,
             points,
             entity_path,
             aggregator,
@@ -198,7 +201,7 @@ pub fn apply_aggregation(
 
 #[inline(never)] // Better callstacks on crashes
 fn add_series_runs(
-    series_name: &re_types::components::Name,
+    series_label: &Option<String>,
     points: Vec<PlotPoint>,
     entity_path: &EntityPath,
     aggregator: AggregationPolicy,
@@ -211,7 +214,7 @@ fn add_series_runs(
     let num_points = points.len();
     let mut attrs = points[0].attrs.clone();
     let mut series: PlotSeries = PlotSeries {
-        label: series_name.0.clone(),
+        label: series_label.clone(),
         color: attrs.color,
         radius_ui: attrs.radius_ui,
         points: Vec::with_capacity(num_points),
@@ -235,7 +238,7 @@ fn add_series_runs(
             let prev_series = std::mem::replace(
                 &mut series,
                 PlotSeries {
-                    label: series_name.0.clone(),
+                    label: series_label.clone(),
                     color: attrs.color,
                     radius_ui: attrs.radius_ui,
                     kind: attrs.kind,

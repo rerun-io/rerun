@@ -16,7 +16,7 @@ impl crate::DataUi for EntityDb {
         _query: &re_chunk_store::LatestAtQuery,
         _db: &re_entity_db::EntityDb,
     ) {
-        if ui_layout == UiLayout::List {
+        if ui_layout.is_single_line() {
             // TODO(emilk): standardize this formatting with that in `entity_db_button_ui`
             let mut string = self.store_id().to_string();
             if let Some(data_source) = &self.data_source {

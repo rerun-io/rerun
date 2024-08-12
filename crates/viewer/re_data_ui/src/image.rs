@@ -15,8 +15,7 @@ use re_viewer_context::{gpu_bridge, Annotations, ImageInfo, ImageStats};
 /// This does not preserve aspect ratio, but we only stretch it to a very thin size, so it is fine.
 ///
 /// Returns error if the image could not be rendered.
-#[allow(dead_code)] // TODO(#6891): use again when we can view image archetypes in the selection view
-fn show_image_preview(
+pub fn show_image_preview(
     render_ctx: &re_renderer::RenderContext,
     ui: &mut egui::Ui,
     colormapped_texture: ColormappedTexture,

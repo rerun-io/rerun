@@ -43,6 +43,12 @@ pub struct TimeSeriesSpaceViewState {
 
     /// The range of the scalar values currently on screen.
     scalar_range: Range1D,
+
+    /// We offset the time values of the plot so that unix timestamps don't run out of precision.
+    ///
+    /// Other parts of the system, such as query clamping, need to be aware of that offset in order
+    /// to work properly.
+    pub(crate) time_offset: i64,
 }
 
 impl Default for TimeSeriesSpaceViewState {
@@ -52,6 +58,7 @@ impl Default for TimeSeriesSpaceViewState {
             was_dragging_time_cursor: false,
             saved_auto_bounds: Default::default(),
             scalar_range: [0.0, 0.0].into(),
+            time_offset: 0,
         }
     }
 }
@@ -255,7 +262,6 @@ Display time series data in a plot.
         ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
         state: &mut dyn SpaceViewState,
-
         query: &ViewQuery<'_>,
         system_output: SystemExecutionOutput,
     ) -> Result<(), SpaceViewSystemExecutionError> {
@@ -325,6 +331,7 @@ Display time series data in a plot.
         } else {
             min_time
         };
+        state.time_offset = time_offset;
 
         // use timeline_name as part of id, so that egui stores different pan/zoom for different timelines
         let plot_id_src = ("plot", &timeline_name);
@@ -420,6 +427,12 @@ Display time series data in a plot.
             *state.scalar_range.start_mut() = f64::INFINITY;
             *state.scalar_range.end_mut() = f64::NEG_INFINITY;
 
+            let label_from_entity = EntityPath::short_names_with_disambiguation(
+                all_plot_series
+                    .iter()
+                    .map(|series| series.entity_path.clone()),
+            );
+
             for series in all_plot_series {
                 let points = series
                     .points
@@ -440,17 +453,24 @@ Display time series data in a plot.
                 let id = egui::Id::new(series.entity_path.hash());
                 plot_item_id_to_entity_path.insert(id, series.entity_path.clone());
 
+                let label = series
+                    .label
+                    .as_ref()
+                    .or_else(|| label_from_entity.get(&series.entity_path))
+                    .cloned()
+                    .unwrap_or_else(|| "unknown".to_owned());
+
                 match series.kind {
                     PlotSeriesKind::Continuous => plot_ui.line(
                         Line::new(points)
-                            .name(series.label.as_str())
+                            .name(label)
                             .color(color)
                             .width(2.0 * series.radius_ui)
                             .id(id),
                     ),
                     PlotSeriesKind::Scatter(scatter_attrs) => plot_ui.points(
                         Points::new(points)
-                            .name(series.label.as_str())
+                            .name(label)
                             .color(color)
                             .radius(series.radius_ui)
                             .shape(scatter_attrs.marker.into())

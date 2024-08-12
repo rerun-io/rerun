@@ -48,7 +48,7 @@ impl DataUi for InstancePath {
             .filter(|c| c.is_indicator_component())
             .count();
 
-        if ui_layout == UiLayout::List {
+        if ui_layout.is_single_line() {
             ui_layout.label(
                 ui,
                 format!(
