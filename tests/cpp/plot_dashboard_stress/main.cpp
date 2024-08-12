@@ -41,6 +41,7 @@ int main(int argc, char** argv) {
       ("num-series-per-plot", "How many series in each single plot?", cxxopts::value<uint64_t>()->default_value("1"))
       ("num-points-per-series", "How many points in each single series?", cxxopts::value<uint64_t>()->default_value("100000"))
       ("freq", "Frequency of logging (applies to all series)", cxxopts::value<double>()->default_value("1000.0"))
+      ("temporal-batch-size", "Number of rows to include in each log call", cxxopts::value<uint64_t>())
     ("order", "What order to log the data in ('forwards', 'backwards', 'random') (applies to all series).", cxxopts::value<std::string>()->default_value("forwards"))
     ("series-type", "The method used to generate time series ('gaussian-random-walk', 'sin-uniform').", cxxopts::value<std::string>()->default_value("gaussian-random-walk"))
     ;
@@ -69,6 +70,9 @@ int main(int argc, char** argv) {
     const auto num_plots = args["num-plots"].as<uint64_t>();
     const auto num_series_per_plot = args["num-series-per-plot"].as<uint64_t>();
     const auto num_points_per_series = args["num-points-per-series"].as<uint64_t>();
+    const auto temporal_batch_size = args.count("temporal-batch-size")
+                                         ? std::optional(args["temporal-batch-size"].as<uint64_t>())
+                                         : std::nullopt;
 
     std::vector<std::string> plot_paths;
     plot_paths.reserve(num_plots);
@@ -84,9 +88,7 @@ int main(int argc, char** argv) {
 
     const auto freq = args["freq"].as<double>();
 
-    const auto num_series = num_plots * num_series_per_plot;
-    const auto time_per_tick = 1.0 / freq;
-    const auto expected_total_freq = freq * static_cast<double>(num_series);
+    auto time_per_sim_step = 1.0 / freq;
 
     std::random_device rd;
     std::mt19937 rng(rd());
@@ -99,18 +101,27 @@ int main(int argc, char** argv) {
 
     if (order == "forwards") {
         for (int64_t i = 0; i < static_cast<int64_t>(num_points_per_series); ++i) {
-            sim_times.push_back(static_cast<double>(i) * time_per_tick);
+            sim_times.push_back(static_cast<double>(i) * time_per_sim_step);
         }
     } else if (order == "backwards") {
         for (int64_t i = static_cast<int64_t>(num_points_per_series); i > 0; --i) {
-            sim_times.push_back(static_cast<double>(i - 1) * time_per_tick);
+            sim_times.push_back(static_cast<double>(i - 1) * time_per_sim_step);
         }
     } else if (order == "random") {
         for (int64_t i = 0; i < static_cast<int64_t>(num_points_per_series); ++i) {
-            sim_times.push_back(static_cast<double>(i) * time_per_tick);
+            sim_times.push_back(static_cast<double>(i) * time_per_sim_step);
         }
         std::shuffle(sim_times.begin(), sim_times.end(), rng);
     }
+
+    const auto num_series = num_plots * num_series_per_plot;
+    auto time_per_tick = 1.0 / freq;
+    auto scalars_per_tick = num_series * num_series_per_plot;
+    if (temporal_batch_size.has_value()) {
+        time_per_tick *= static_cast<double>(*temporal_batch_size);
+        scalars_per_tick *= *temporal_batch_size;
+    }
+    const auto expected_total_freq = freq * static_cast<double>(num_series);
 
     std::vector<std::vector<double>> values_per_series;
     for (uint64_t series_idx = 0; series_idx < num_series; ++series_idx) {
@@ -133,6 +144,16 @@ int main(int argc, char** argv) {
         values_per_series.push_back(values);
     }
 
+    std::vector<uint64_t> offsets;
+    if (temporal_batch_size.has_value()) {
+        for (uint64_t i = 0; i < num_points_per_series; i += *temporal_batch_size) {
+            offsets.push_back(i);
+        }
+    } else {
+        offsets.resize(sim_times.size());
+        std::iota(offsets.begin(), offsets.end(), 0);
+    }
+
     uint64_t total_num_scalars = 0;
     auto total_start_time = std::chrono::high_resolution_clock::now();
     double max_load = 0.0;
@@ -140,27 +161,49 @@ int main(int argc, char** argv) {
     auto tick_start_time = std::chrono::high_resolution_clock::now();
 
     size_t time_step = 0;
-    for (auto sim_time : sim_times) {
-        rec.set_time_seconds("sim_time", sim_time);
+    for (auto offset : offsets) {
+        std::optional<rerun::TimeColumn> time_column;
+        if (temporal_batch_size.has_value()) {
+            time_column = rerun::TimeColumn::from_times_seconds(
+                "sim_time",
+                rerun::borrow(sim_times.data() + offset, *temporal_batch_size),
+                rerun::SortingStatus::Sorted
+            );
+        } else {
+            rec.set_time_seconds("sim_time", sim_times[static_cast<size_t>(offset)]);
+        }
 
         // Log
 
-        size_t plot_idx = 0;
-        for (auto plot_path : plot_paths) {
+        for (size_t plot_idx = 0; plot_idx < plot_paths.size(); ++plot_idx) {
             auto global_plot_idx = plot_idx * num_series_per_plot;
-            size_t series_idx = 0;
-            for (auto series_path : series_paths) {
-                double value = values_per_series[global_plot_idx + series_idx][time_step];
-                rec.log(plot_path + "/" + series_path, rerun::Scalar(value));
-                ++series_idx;
+
+            for (size_t series_idx = 0; series_idx < series_paths.size(); ++series_idx) {
+                auto path = plot_paths[plot_idx] + "/" + series_paths[series_idx];
+                auto series_values = values_per_series[global_plot_idx + series_idx];
+                if (temporal_batch_size.has_value()) {
+                    rec.send_columns(
+                        path,
+                        *time_column,
+                        rerun::Collection<rerun::components::Scalar>::borrow(
+                            series_values.data() + time_step,
+                            *temporal_batch_size
+                        )
+                    );
+                } else {
+                    rec.log(path, rerun::Scalar(series_values[time_step]));
+                }
             }
-            ++plot_idx;
         }
-        ++time_step;
+        if (temporal_batch_size.has_value()) {
+            time_step += *temporal_batch_size;
+        } else {
+            ++time_step;
+        }
 
         // Progress report
 
-        total_num_scalars += num_series;
+        total_num_scalars += scalars_per_tick;
         auto total_elapsed = std::chrono::high_resolution_clock::now() - total_start_time;
         if (total_elapsed >= std::chrono::seconds(1)) {
             double total_elapsed_secs =
