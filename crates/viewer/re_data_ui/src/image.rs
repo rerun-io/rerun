@@ -1,4 +1,4 @@
-use egui::{Color32, Vec2};
+use egui::{Color32, NumExt as _, Vec2};
 use itertools::Itertools as _;
 
 use re_renderer::renderer::ColormappedTexture;
@@ -41,7 +41,11 @@ pub fn texture_preview_ui(
         } else {
             egui::Rangef::new(240.0, 640.0)
         };
-        let preview_size = Vec2::splat(size_range.clamp(ui.available_width()));
+        let preview_size = Vec2::splat(
+            size_range
+                .clamp(ui.available_width())
+                .at_most(16.0 * texture.texture.width().max(texture.texture.height()) as f32),
+        );
         let debug_name = entity_path.to_string();
         show_image_preview(render_ctx, ui, texture, &debug_name, preview_size).unwrap_or_else(
             |(response, err)| {
