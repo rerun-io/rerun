@@ -19,7 +19,12 @@ use crate::commands::AnalyticsCommands;
 
 // ---
 
-const SHORT_ABOUT: &str = "The Rerun Viewer and Server";
+const LONG_ABOUT: &str = r#"
+The Rerun command-line interface:
+* Spawn viewers to visualize Rerun recordings and other supported formats.
+* Start TCP and WebSocket servers to share recordings over the network, on native or web.
+* Inspect, edit and filter Rerun recordings.
+"#;
 
 // Place the important help _last_, to make it most visible in the terminal.
 const EXAMPLES: &str = r#"
@@ -57,7 +62,7 @@ Examples:
 
 #[derive(Debug, clap::Parser)]
 #[clap(
-    about = SHORT_ABOUT,
+    long_about = LONG_ABOUT,
     // Place most of the help last, as that is most visible in the terminal.
     after_long_help = EXAMPLES
 )]
@@ -107,9 +112,9 @@ Example: `16GB` or `50%` (of system total)."
         default_value_t = true,
         long_help = r"Whether the Rerun Viewer should persist the state of the viewer to disk.
 When persisted, the state will be stored at the following locations:
-- Linux: /home/UserName/.local/share/rerun
-- macOS: /Users/UserName/Library/Application Support/rerun
-- Windows: C:\Users\UserName\AppData\Roaming\rerun"
+- Linux: `/home/UserName/.local/share/rerun`
+- macOS: `/Users/UserName/Library/Application Support/rerun`
+- Windows: `C:\Users\UserName\AppData\Roaming\rerun`"
     )]
     persist_state: bool,
 
@@ -211,14 +216,16 @@ If no arguments are given, a server will be hosted which a Rerun SDK can connect
 
     /// Override the default graphics backend and for a specific one instead.
     ///
-    /// When using `--web-viewer` this should be one of:
-    /// * `webgpu`
-    /// * `webgl`
+    /// When using `--web-viewer` this should be one of: `webgpu`, `webgl`.
     ///
     /// When starting a native viewer instead this should be one of:
+    ///
     /// * `vulkan` (Linux & Windows only)
+    ///
     /// * `gl` (Linux & Windows only)
+    ///
     /// * `metal` (macOS only)
+    //
     // Note that we don't compile with DX12 right now, but we could (we don't since this adds permutation and wgpu still has some issues with it).
     // GL could be enabled on MacOS via `angle` but given prior issues with ANGLE this seems to be a bad idea!
     #[clap(long)]
@@ -265,7 +272,13 @@ impl Args {
                         .join("\n"),
                 )
             } else {
-                arg.get_help().map(|help| format!("> {help}."))
+                arg.get_help().map(|help| {
+                    if help.to_string().ends_with('?') {
+                        format!("> {help}")
+                    } else {
+                        format!("> {help}.")
+                    }
+                })
             };
 
             let rendered = if names.is_empty() {
@@ -361,7 +374,7 @@ impl Args {
                         let help = cmd.render_help().to_string();
                         let help = help.split_once('\n').map_or("", |(help, _)| help);
                         // E.g. "`analytics`:  Configure the behavior of our analytics"
-                        format!("* `{name}`: {help}")
+                        format!("* `{name}`: {help}.")
                     })
                     .collect_vec()
                     .join("\n");

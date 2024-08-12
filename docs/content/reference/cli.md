@@ -5,16 +5,21 @@ order: 250
 
 ## rerun
 
-The Rerun Viewer and Server.
+
+The Rerun command-line interface:
+* Spawn viewers to visualize Rerun recordings and other supported formats.
+* Start TCP and WebSocket servers to share recordings over the network, on native or web.
+* Inspect, edit and filter Rerun recordings.
+
 
 **Usage**: ` rerun [OPTIONS] [URL_OR_PATHS]... [COMMAND]`
 
 **Commands**
 
-* `analytics`: Configure the behavior of our analytics
-* `rrd`: Manipulate the contents of .rrd and .rbl files
-* `reset`: Reset the memory of the Rerun Viewer
-* `man`: Generates the Rerun CLI manual (markdown)
+* `analytics`: Configure the behavior of our analytics.
+* `rrd`: Manipulate the contents of .rrd and .rbl files.
+* `reset`: Reset the memory of the Rerun Viewer.
+* `man`: Generates the Rerun CLI manual (markdown).
 
 **Arguments**
 
@@ -60,14 +65,14 @@ The Rerun Viewer and Server.
 * `--persist-state <PERSIST_STATE>`
 > Whether the Rerun Viewer should persist the state of the viewer to disk.
 > When persisted, the state will be stored at the following locations:
-> - Linux: /home/UserName/.local/share/rerun
-> - macOS: /Users/UserName/Library/Application Support/rerun
-> - Windows: C:\Users\UserName\AppData\Roaming\rerun
+> - Linux: `/home/UserName/.local/share/rerun`
+> - macOS: `/Users/UserName/Library/Application Support/rerun`
+> - Windows: `C:\Users\UserName\AppData\Roaming\rerun`
 >
 > [Default: `true`]
 
 * `--port <PORT>`
-> What TCP port do we listen to (for SDKs to connect to)?.
+> What TCP port do we listen to (for SDKs to connect to)?
 >
 > [Default: `9876`]
 
@@ -139,9 +144,15 @@ The Rerun Viewer and Server.
 * `--renderer <RENDERER>`
 > Override the default graphics backend and for a specific one instead.
 > 
-> When using `--web-viewer` this should be one of: * `webgpu` * `webgl`
+> When using `--web-viewer` this should be one of: `webgpu`, `webgl`.
 > 
-> When starting a native viewer instead this should be one of: * `vulkan` (Linux & Windows only) * `gl` (Linux & Windows only) * `metal` (macOS only)
+> When starting a native viewer instead this should be one of:
+> 
+> * `vulkan` (Linux & Windows only)
+> 
+> * `gl` (Linux & Windows only)
+> 
+> * `metal` (macOS only)
 
 * `--test-receive <TEST_RECEIVE>`
 > Ingest data and then quit once the goodbye message has been received.
@@ -160,12 +171,12 @@ Configure the behavior of our analytics.
 
 **Commands**
 
-* `details`: Prints extra information about analytics
-* `clear`: Deletes everything related to analytics
-* `email`: Associate an email address with the current user
-* `enable`: Enable analytics
-* `disable`: Disable analytics
-* `config`: Prints the current configuration
+* `details`: Prints extra information about analytics.
+* `clear`: Deletes everything related to analytics.
+* `email`: Associate an email address with the current user.
+* `enable`: Enable analytics.
+* `disable`: Disable analytics.
+* `config`: Prints the current configuration.
 
 ## rerun analytics email
 
@@ -185,11 +196,11 @@ Manipulate the contents of .rrd and .rbl files.
 
 **Commands**
 
-* `compare`: Compares the data between 2 .rrd files, returning a successful shell exit code if they match
-* `print`: Print the contents of one or more .rrd/.rbl files/streams
-* `compact`: Compacts the contents of one or more .rrd/.rbl files/streams and writes the result standard output
-* `merge`: Merges the contents of multiple .rrd/.rbl files/streams, and writes the result to standard output
-* `filter`: Filters out data from .rrd/.rbl files/streams, and writes the result to standard output
+* `compare`: Compares the data between 2 .rrd files, returning a successful shell exit code if they match.
+* `print`: Print the contents of one or more .rrd/.rbl files/streams.
+* `compact`: Compacts the contents of one or more .rrd/.rbl files/streams and writes the result standard output.
+* `merge`: Merges the contents of multiple .rrd/.rbl files/streams, and writes the result to standard output.
+* `filter`: Filters out data from .rrd/.rbl files/streams, and writes the result to standard output.
 
 ## rerun rrd compare
 
@@ -270,19 +281,19 @@ Examples:
 * `--max-bytes <MAX_BYTES>`
 > What is the threshold, in bytes, after which a Chunk cannot be compacted any further?
 > 
-> Overrides RERUN_CHUNK_MAX_BYTES if set.
+> Overrides `RERUN_CHUNK_MAX_BYTES` if set.
 
 * `--max-rows <MAX_ROWS>`
 > What is the threshold, in rows, after which a Chunk cannot be compacted any further?
 > 
-> Overrides RERUN_CHUNK_MAX_ROWS if set.
+> Overrides `RERUN_CHUNK_MAX_ROWS` if set.
 
 * `--max-rows-if-unsorted <MAX_ROWS_IF_UNSORTED>`
 > What is the threshold, in rows, after which a Chunk cannot be compacted any further?
 > 
 > This specifically applies to _non_ time-sorted chunks.
 > 
-> Overrides RERUN_CHUNK_MAX_ROWS_IF_UNSORTED if set.
+> Overrides `RERUN_CHUNK_MAX_ROWS_IF_UNSORTED` if set.
 
 * `--continue-on-error <CONTINUE_ON_ERROR>`
 > If set, will try to proceed even in the face of IO and/or decoding errors in the input data.
