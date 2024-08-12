@@ -5,7 +5,52 @@ use re_renderer::renderer::ColormappedTexture;
 use re_types::{
     components::ClassId, datatypes::ColorModel, image::ImageKind, tensor_data::TensorElement,
 };
-use re_viewer_context::{gpu_bridge, Annotations, ImageInfo, ImageStats};
+use re_viewer_context::{gpu_bridge, Annotations, ImageInfo, ImageStats, UiLayout};
+
+/// Show the given texture with an appropriate size.
+pub fn texture_preview_ui(
+    render_ctx: &re_renderer::RenderContext,
+    ui: &mut egui::Ui,
+    ui_layout: UiLayout,
+    entity_path: &re_log_types::EntityPath,
+    texture: ColormappedTexture,
+) {
+    if ui_layout.is_single_line() {
+        let preview_size = Vec2::splat(ui.available_height());
+        let debug_name = entity_path.to_string();
+        ui.allocate_ui_with_layout(
+            preview_size,
+            egui::Layout::centered_and_justified(egui::Direction::TopDown),
+            |ui| {
+                ui.set_min_size(preview_size);
+
+                match show_image_preview(render_ctx, ui, texture.clone(), &debug_name, preview_size)
+                {
+                    Ok(response) => response.on_hover_ui(|ui| {
+                        // Show larger image on hover.
+                        let hover_size = Vec2::splat(400.0);
+                        show_image_preview(render_ctx, ui, texture, &debug_name, hover_size).ok();
+                    }),
+                    Err((response, err)) => response.on_hover_text(err.to_string()),
+                }
+            },
+        );
+    } else {
+        let size_range = if ui_layout == UiLayout::Tooltip {
+            egui::Rangef::new(64.0, 256.0)
+        } else {
+            egui::Rangef::new(240.0, 640.0)
+        };
+        let preview_size = Vec2::splat(size_range.clamp(ui.available_width()));
+        let debug_name = entity_path.to_string();
+        show_image_preview(render_ctx, ui, texture, &debug_name, preview_size).unwrap_or_else(
+            |(response, err)| {
+                re_log::warn_once!("Failed to show texture {entity_path}: {err}");
+                response
+            },
+        );
+    }
+}
 
 /// Shows preview of an image.
 ///
@@ -15,7 +60,7 @@ use re_viewer_context::{gpu_bridge, Annotations, ImageInfo, ImageStats};
 /// This does not preserve aspect ratio, but we only stretch it to a very thin size, so it is fine.
 ///
 /// Returns error if the image could not be rendered.
-pub fn show_image_preview(
+fn show_image_preview(
     render_ctx: &re_renderer::RenderContext,
     ui: &mut egui::Ui,
     colormapped_texture: ColormappedTexture,

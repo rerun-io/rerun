@@ -1,4 +1,3 @@
-use egui::{epaint::color, NumExt as _, Vec2};
 use nohash_hasher::IntMap;
 
 use re_chunk_store::UnitChunkShared;
@@ -11,7 +10,7 @@ use re_viewer_context::{
     ViewerContext,
 };
 
-use crate::image::show_image_preview;
+use crate::image::texture_preview_ui;
 
 use super::DataUi;
 
@@ -58,6 +57,8 @@ impl DataUi for InstancePath {
             .filter(|c| c.is_indicator_component())
             .count();
 
+        let components = latest_at(db, query, entity_path, &components);
+
         if ui_layout.is_single_line() {
             ui_layout.label(
                 ui,
@@ -69,21 +70,18 @@ impl DataUi for InstancePath {
                     if indicator_count > 1 { "s" } else { "" }
                 ),
             );
-            return;
+        } else {
+            component_list_ui(
+                ctx,
+                ui,
+                ui_layout,
+                query,
+                db,
+                entity_path,
+                instance,
+                &components,
+            );
         }
-
-        let components = latest_at(db, query, entity_path, &components);
-
-        component_list_ui(
-            ctx,
-            ui,
-            ui_layout,
-            query,
-            db,
-            entity_path,
-            instance,
-            &components,
-        );
 
         if instance.is_all() {
             let component_map = components.into_iter().collect();
@@ -267,7 +265,7 @@ fn preview_if_image_ui(
         colormap,
     };
 
-    image_preview_ui(ctx, ui, query, entity_path, &image);
+    image_preview_ui(ctx, ui, ui_layout, query, entity_path, &image);
 
     Some(())
 }
@@ -276,6 +274,7 @@ fn preview_if_image_ui(
 fn image_preview_ui(
     ctx: &ViewerContext<'_>,
     ui: &mut egui::Ui,
+    ui_layout: UiLayout,
     query: &re_chunk_store::LatestAtQuery,
     entity_path: &re_log_types::EntityPath,
     image: &ImageInfo,
@@ -286,15 +285,7 @@ fn image_preview_ui(
     let debug_name = entity_path.to_string();
     let texture = image_to_gpu(render_ctx, &debug_name, image, &image_stats, &annotations).ok()?;
 
-    let preview_size =
-        Vec2::splat(ui.available_width().at_least(240.0)).at_most(Vec2::splat(640.0));
-    let debug_name = entity_path.to_string();
-    show_image_preview(render_ctx, ui, texture.clone(), &debug_name, preview_size).unwrap_or_else(
-        |(response, err)| {
-            re_log::warn_once!("Failed to show texture {entity_path}: {err}");
-            response
-        },
-    );
+    texture_preview_ui(render_ctx, ui, ui_layout, entity_path, texture);
 
     Some(())
 }

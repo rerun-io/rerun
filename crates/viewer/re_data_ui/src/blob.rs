@@ -1,12 +1,10 @@
-use egui::{NumExt, Vec2};
-
 use re_log::ResultExt;
 use re_renderer::renderer::ColormappedTexture;
 use re_types::components::{Blob, MediaType};
 use re_ui::{list_item::PropertyContent, UiExt as _};
 use re_viewer_context::{gpu_bridge::image_to_gpu, UiLayout};
 
-use crate::{image::show_image_preview, EntityDataUi};
+use crate::{image::texture_preview_ui, EntityDataUi};
 
 impl EntityDataUi for Blob {
     fn entity_data_ui(
@@ -41,11 +39,7 @@ impl EntityDataUi for Blob {
                 }
 
                 if let (Some(render_ctx), Some(texture)) = (ctx.render_ctx, texture) {
-                    // We want all preview images to take up the same amount of space,
-                    // no matter what the actual aspect ratio of the images are.
-                    let preview_size = Vec2::splat(ui.available_height());
-                    let debug_name = entity_path.to_string();
-                    show_mini_image_on_same_row(render_ctx, ui, preview_size, texture, &debug_name);
+                    texture_preview_ui(render_ctx, ui, ui_layout, entity_path, texture);
                 }
             });
         } else {
@@ -71,16 +65,7 @@ impl EntityDataUi for Blob {
             }
 
             if let (Some(render_ctx), Some(texture)) = (ctx.render_ctx, texture) {
-                // We want all preview images to take up the same amount of space,
-                // no matter what the actual aspect ratio of the images are.
-                let preview_size =
-                    Vec2::splat(ui.available_width().at_least(240.0)).at_most(Vec2::splat(640.0));
-                let debug_name = entity_path.to_string();
-                show_image_preview(render_ctx, ui, texture.clone(), &debug_name, preview_size)
-                    .unwrap_or_else(|(response, err)| {
-                        re_log::warn_once!("Failed to show texture {entity_path}: {err}");
-                        response
-                    });
+                texture_preview_ui(render_ctx, ui, ui_layout, entity_path, texture);
             }
 
             if ui_layout != UiLayout::Tooltip {
@@ -108,31 +93,6 @@ impl EntityDataUi for Blob {
             }
         }
     }
-}
-
-fn show_mini_image_on_same_row(
-    render_ctx: &re_renderer::RenderContext,
-    ui: &mut egui::Ui,
-    preview_size: Vec2,
-    texture: ColormappedTexture,
-    debug_name: &str,
-) {
-    ui.allocate_ui_with_layout(
-        preview_size,
-        egui::Layout::centered_and_justified(egui::Direction::TopDown),
-        |ui| {
-            ui.set_min_size(preview_size);
-
-            match show_image_preview(render_ctx, ui, texture.clone(), debug_name, preview_size) {
-                Ok(response) => response.on_hover_ui(|ui| {
-                    // Show larger image on hover.
-                    let hover_size = Vec2::splat(400.0);
-                    show_image_preview(render_ctx, ui, texture, debug_name, hover_size).ok();
-                }),
-                Err((response, err)) => response.on_hover_text(err.to_string()),
-            }
-        },
-    );
 }
 
 fn blob_as_texture(
