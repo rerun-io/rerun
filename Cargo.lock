@@ -5368,6 +5368,7 @@ dependencies = [
  "re_types",
  "re_types_core",
  "re_ui",
+ "rfd",
  "serde",
  "slotmap",
  "smallvec",

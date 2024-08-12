@@ -1,4 +1,3 @@
-use re_log::ResultExt;
 use re_renderer::renderer::ColormappedTexture;
 use re_types::components::{Blob, MediaType};
 use re_ui::{list_item::PropertyContent, UiExt as _};
@@ -87,8 +86,7 @@ impl EntityDataUi for Blob {
                         file_name.push_str(file_extension);
                     }
 
-                    save_blob(ctx, file_name, "Save blob".to_owned(), self.clone())
-                        .ok_or_log_error();
+                    ctx.save_file_dialog(file_name, "Save blob".to_owned(), self.to_vec());
                 }
             }
         }
@@ -118,69 +116,4 @@ fn blob_as_texture(
         .entry(|c: &mut re_viewer_context::ImageStatsCache| c.entry(&image));
     let annotations = crate::annotations(ctx, query, entity_path);
     image_to_gpu(render_ctx, &debug_name, &image, &image_stats, &annotations).ok()
-}
-
-#[allow(clippy::needless_pass_by_ref_mut)] // `app` is only used on native
-#[allow(clippy::unnecessary_wraps)] // cannot return error on web
-fn save_blob(
-    #[allow(unused_variables)] ctx: &re_viewer_context::ViewerContext<'_>, // only used on native
-    file_name: String,
-    title: String,
-    blob: Blob,
-) -> anyhow::Result<()> {
-    re_tracing::profile_function!();
-
-    // Web
-    #[cfg(target_arch = "wasm32")]
-    {
-        wasm_bindgen_futures::spawn_local(async move {
-            if let Err(err) = async_save_dialog(&file_name, &title, blob).await {
-                re_log::error!("File saving failed: {err}");
-            }
-        });
-    }
-
-    // Native
-    #[cfg(not(target_arch = "wasm32"))]
-    {
-        let path = {
-            re_tracing::profile_scope!("file_dialog");
-            rfd::FileDialog::new()
-                .set_file_name(file_name)
-                .set_title(title)
-                .save_file()
-        };
-        if let Some(path) = path {
-            use re_viewer_context::SystemCommandSender as _;
-            ctx.command_sender
-                .send_system(re_viewer_context::SystemCommand::FileSaver(Box::new(
-                    move || {
-                        std::fs::write(&path, blob.as_slice())?;
-                        Ok(path)
-                    },
-                )));
-        }
-    }
-
-    Ok(())
-}
-
-#[cfg(target_arch = "wasm32")]
-async fn async_save_dialog(file_name: &str, title: &str, data: Blob) -> anyhow::Result<()> {
-    use anyhow::Context as _;
-
-    let file_handle = rfd::AsyncFileDialog::new()
-        .set_file_name(file_name)
-        .set_title(title)
-        .save_file()
-        .await;
-
-    let Some(file_handle) = file_handle else {
-        return Ok(()); // aborted
-    };
-
-    file_handle
-        .write(data.as_slice())
-        .await
-        .context("Failed to save")
 }
