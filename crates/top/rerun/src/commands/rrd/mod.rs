@@ -62,7 +62,7 @@ pub enum RrdCommands {
     ///
     /// This will not affect the chunking of the data in any way.
     ///
-    /// Example: `rerun filter --timeline log_tick /my/recordings/*.rrd > output.rrd`
+    /// Example: `rerun filter --drop-timeline log_tick /my/recordings/*.rrd > output.rrd`
     Filter(FilterCommand),
 }
 
