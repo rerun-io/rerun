@@ -91,7 +91,11 @@ fn show_image_preview(
         &painter,
         texture_rect_on_screen,
         colormapped_texture,
-        egui::TextureOptions::LINEAR,
+        egui::TextureOptions {
+            magnification: egui::TextureFilter::Nearest,
+            minification: egui::TextureFilter::Linear,
+            ..Default::default()
+        },
         debug_name,
     ) {
         let color = ui.visuals().error_fg_color;
