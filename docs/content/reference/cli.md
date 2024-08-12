@@ -12,7 +12,7 @@ The Rerun command-line interface:
 * Inspect, edit and filter Rerun recordings.
 
 
-**Usage**: ` rerun [OPTIONS] [URL_OR_PATHS]... [COMMAND]`
+**Usage**: ` rerun [OPTIONS] [URL_OR_PATHS]… [COMMAND]`
 
 **Commands**
 
@@ -30,7 +30,7 @@ The Rerun command-line interface:
 > - A path to a Rerun .rbl blueprint
 > - An HTTP(S) URL to an .rrd or .rbl file to load
 > - A path to an image or mesh, or any other file that Rerun can load (see https://www.rerun.io/docs/reference/data-loaders/overview)
-> 
+>
 > If no arguments are given, a server will be hosted which a Rerun SDK can connect to.
 
 **Options**
@@ -42,9 +42,9 @@ The Rerun command-line interface:
 
 * `--drop-at-latency <DROP_AT_LATENCY>`
 > Set a maximum input latency, e.g. "200ms" or "10s".
-> 
+>
 > If we go over this, we start dropping packets.
-> 
+>
 > The default is no limit, which means Rerun might eat more and more memory and have longer and longer latency, if you are logging data faster than Rerun can index it.
 
 * `--memory-limit <MEMORY_LIMIT>`
@@ -89,27 +89,27 @@ The Rerun command-line interface:
 
 * `--serve <SERVE>`
 > Serve the recordings over WebSocket to one or more Rerun Viewers.
-> 
+>
 > This will also host a web-viewer over HTTP that can connect to the WebSocket address, but you can also connect with the native binary.
-> 
+>
 > `rerun --serve` will act like a proxy, listening for incoming TCP connection from logging SDKs, and forwarding it to Rerun viewers.
 >
 > [Default: `false`]
 
 * `--expect-data-soon <EXPECT_DATA_SOON>`
 > This is a hint that we expect a recording to stream in very soon.
-> 
+>
 > This is set by the `spawn()` method in our logging SDK.
-> 
+>
 > The viewer will respond by fading in the welcome screen, instead of showing it directly. This ensures that it won't blink for a few frames before switching to the recording.
 >
 > [Default: `false`]
 
 * `-j, --threads <THREADS>`
 > The number of compute threads to use.
-> 
+>
 > If zero, the same number of threads as the number of cores will be used. If negative, will use that much fewer threads than cores.
-> 
+>
 > Rerun will still use some additional threads for I/O.
 >
 > [Default: `-2`]
@@ -121,9 +121,9 @@ The Rerun command-line interface:
 
 * `--web-viewer <WEB_VIEWER>`
 > Start the viewer in the browser (instead of locally).
-> 
+>
 > Requires Rerun to have been compiled with the 'web_viewer' feature.
-> 
+>
 > This implies `--serve`.
 >
 > [Default: `false`]
@@ -148,22 +148,22 @@ The Rerun command-line interface:
 
 * `--renderer <RENDERER>`
 > Override the default graphics backend and for a specific one instead.
-> 
+>
 > When using `--web-viewer` this should be one of: `webgpu`, `webgl`.
-> 
+>
 > When starting a native viewer instead this should be one of:
-> 
+>
 > * `vulkan` (Linux & Windows only)
-> 
+>
 > * `gl` (Linux & Windows only)
-> 
+>
 > * `metal` (macOS only)
 
 * `--test-receive <TEST_RECEIVE>`
 > Ingest data and then quit once the goodbye message has been received.
-> 
+>
 > Used for testing together with `RERUN_PANIC_ON_WARN=1`.
-> 
+>
 > Fails if no messages are received, or if no messages are received within a dozen or so seconds.
 >
 > [Default: `false`]
@@ -236,7 +236,7 @@ Reads from standard input if no paths are specified.
 
 Example: `rerun rrd print /my/recordings/*.rrd`
 
-**Usage**: `rerun rrd print [OPTIONS] [PATH_TO_INPUT_RRDS]...`
+**Usage**: `rerun rrd print [OPTIONS] [PATH_TO_INPUT_RRDS]…`
 
 **Arguments**
 
@@ -250,7 +250,7 @@ Example: `rerun rrd print /my/recordings/*.rrd`
 >
 > [Default: `false`]
 
-* `--best-effort <BEST_EFFORT>`
+* `--continue-on-error <CONTINUE_ON_ERROR>`
 > If set, will try to proceed even in the face of IO and/or decoding errors in the input data.
 >
 > [Default: `true`]
@@ -271,7 +271,7 @@ Examples:
 
 * `rerun rrd compact --max-rows 4096 --max-bytes=1048576 /my/recordings/*.rrd > output.rrd`
 
-**Usage**: `rerun rrd compact [OPTIONS] [PATH_TO_INPUT_RRDS]...`
+**Usage**: `rerun rrd compact [OPTIONS] [PATH_TO_INPUT_RRDS]…`
 
 **Arguments**
 
@@ -285,19 +285,19 @@ Examples:
 
 * `--max-bytes <MAX_BYTES>`
 > What is the threshold, in bytes, after which a Chunk cannot be compacted any further?
-> 
+>
 > Overrides `RERUN_CHUNK_MAX_BYTES` if set.
 
 * `--max-rows <MAX_ROWS>`
 > What is the threshold, in rows, after which a Chunk cannot be compacted any further?
-> 
+>
 > Overrides `RERUN_CHUNK_MAX_ROWS` if set.
 
 * `--max-rows-if-unsorted <MAX_ROWS_IF_UNSORTED>`
 > What is the threshold, in rows, after which a Chunk cannot be compacted any further?
-> 
+>
 > This specifically applies to _non_ time-sorted chunks.
-> 
+>
 > Overrides `RERUN_CHUNK_MAX_ROWS_IF_UNSORTED` if set.
 
 * `--continue-on-error <CONTINUE_ON_ERROR>`
@@ -315,7 +315,7 @@ This will not affect the chunking of the data in any way.
 
 Example: `rerun merge /my/recordings/*.rrd > output.rrd`
 
-**Usage**: `rerun rrd merge [OPTIONS] [PATH_TO_INPUT_RRDS]...`
+**Usage**: `rerun rrd merge [OPTIONS] [PATH_TO_INPUT_RRDS]…`
 
 **Arguments**
 
@@ -340,9 +340,9 @@ Reads from standard input if no paths are specified.
 
 This will not affect the chunking of the data in any way.
 
-Example: `rerun filter --timeline log_tick /my/recordings/*.rrd > output.rrd`
+Example: `rerun filter --drop-timeline log_tick /my/recordings/*.rrd > output.rrd`
 
-**Usage**: `rerun rrd filter [OPTIONS] [PATH_TO_INPUT_RRDS]...`
+**Usage**: `rerun rrd filter [OPTIONS] [PATH_TO_INPUT_RRDS]…`
 
 **Arguments**
 
@@ -361,5 +361,3 @@ Example: `rerun filter --timeline log_tick /my/recordings/*.rrd > output.rrd`
 > If set, will try to proceed even in the face of IO and/or decoding errors in the input data.
 >
 > [Default: `false`]
-
-
