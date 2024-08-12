@@ -427,6 +427,12 @@ Display time series data in a plot.
             *state.scalar_range.start_mut() = f64::INFINITY;
             *state.scalar_range.end_mut() = f64::NEG_INFINITY;
 
+            let label_from_entity = EntityPath::short_names_with_disambiguation(
+                all_plot_series
+                    .iter()
+                    .map(|series| series.entity_path.clone()),
+            );
+
             for series in all_plot_series {
                 let points = series
                     .points
@@ -447,17 +453,24 @@ Display time series data in a plot.
                 let id = egui::Id::new(series.entity_path.hash());
                 plot_item_id_to_entity_path.insert(id, series.entity_path.clone());
 
+                let label = series
+                    .label
+                    .as_ref()
+                    .or_else(|| label_from_entity.get(&series.entity_path))
+                    .cloned()
+                    .unwrap_or_else(|| "unknown".to_owned());
+
                 match series.kind {
                     PlotSeriesKind::Continuous => plot_ui.line(
                         Line::new(points)
-                            .name(series.label.as_str())
+                            .name(label)
                             .color(color)
                             .width(2.0 * series.radius_ui)
                             .id(id),
                     ),
                     PlotSeriesKind::Scatter(scatter_attrs) => plot_ui.points(
                         Points::new(points)
-                            .name(series.label.as_str())
+                            .name(label)
                             .color(color)
                             .radius(series.radius_ui)
                             .shape(scatter_attrs.marker.into())

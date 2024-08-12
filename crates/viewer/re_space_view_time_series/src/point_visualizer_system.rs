@@ -78,16 +78,7 @@ impl TypedComponentFallbackProvider<MarkerSize> for SeriesPointSystem {
     }
 }
 
-impl TypedComponentFallbackProvider<Name> for SeriesPointSystem {
-    fn fallback_for(&self, ctx: &QueryContext<'_>) -> Name {
-        ctx.target_entity_path
-            .last()
-            .map(|part| part.ui_string().into())
-            .unwrap_or_default()
-    }
-}
-
-re_viewer_context::impl_component_fallback_provider!(SeriesPointSystem => [Color, MarkerSize, Name]);
+re_viewer_context::impl_component_fallback_provider!(SeriesPointSystem => [Color, MarkerSize]);
 
 impl SeriesPointSystem {
     fn load_scalars(&mut self, ctx: &ViewContext<'_>, query: &ViewQuery<'_>) {
@@ -450,7 +441,7 @@ impl SeriesPointSystem {
                 .iter()
                 .find(|chunk| !chunk.is_empty())
                 .and_then(|chunk| chunk.component_mono::<Name>(0)?.ok())
-                .unwrap_or_else(|| self.fallback_for(&query_ctx));
+                .map(|name| name.0.to_string());
 
             // Now convert the `PlotPoints` into `Vec<PlotSeries>`
             points_to_series(
@@ -459,7 +450,7 @@ impl SeriesPointSystem {
                 points,
                 ctx.recording_store(),
                 view_query,
-                &series_name,
+                series_name,
                 // Aggregation for points is not supported.
                 re_types::components::AggregationPolicy::Off,
                 all_series,
