@@ -16,10 +16,6 @@ all components are applied in the inverse order they are listed here.
 E.g. if both a translation and a max3x3 transform are present,
 the 3x3 matrix is applied first, followed by the translation.
 
-Whenever you log this archetype, it will write all components, even if you do not explicitly set them.
-This means that if you first log a transform with only a translation, and then log one with only a rotation,
-it will be resolved to a transform with only a rotation.
-
 ## Components
 
 **Optional**: [`PoseTranslation3D`](../components/pose_translation3d.md), [`PoseRotationAxisAngle`](../components/pose_rotation_axis_angle.md), [`PoseRotationQuat`](../components/pose_rotation_quat.md), [`PoseScale3D`](../components/pose_scale3d.md), [`PoseTransformMat3x3`](../components/pose_transform_mat3x3.md)

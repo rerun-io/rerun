@@ -31,10 +31,6 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 /// E.g. if both a translation and a max3x3 transform are present,
 /// the 3x3 matrix is applied first, followed by the translation.
 ///
-/// Whenever you log this archetype, it will write all components, even if you do not explicitly set them.
-/// This means that if you first log a transform with only a translation, and then log one with only a rotation,
-/// it will be resolved to a transform with only a rotation.
-///
 /// ## Example
 ///
 /// ### Regular & instance transforms in tandem
@@ -296,71 +292,21 @@ impl ::re_types_core::AsComponents for InstancePoses3D {
         use ::re_types_core::Archetype as _;
         [
             Some(Self::indicator()),
-            Some(
-                (if let Some(comp_batch) = &self.translations {
-                    (comp_batch as &dyn ComponentBatch)
-                } else {
-                    static EMPTY_BATCH: once_cell::sync::OnceCell<
-                        Vec<crate::components::PoseTranslation3D>,
-                    > = once_cell::sync::OnceCell::new();
-                    let empty_batch: &Vec<crate::components::PoseTranslation3D> =
-                        EMPTY_BATCH.get_or_init(|| Vec::new());
-                    (empty_batch as &dyn ComponentBatch)
-                })
-                .into(),
-            ),
-            Some(
-                (if let Some(comp_batch) = &self.rotation_axis_angles {
-                    (comp_batch as &dyn ComponentBatch)
-                } else {
-                    static EMPTY_BATCH: once_cell::sync::OnceCell<
-                        Vec<crate::components::PoseRotationAxisAngle>,
-                    > = once_cell::sync::OnceCell::new();
-                    let empty_batch: &Vec<crate::components::PoseRotationAxisAngle> =
-                        EMPTY_BATCH.get_or_init(|| Vec::new());
-                    (empty_batch as &dyn ComponentBatch)
-                })
-                .into(),
-            ),
-            Some(
-                (if let Some(comp_batch) = &self.quaternions {
-                    (comp_batch as &dyn ComponentBatch)
-                } else {
-                    static EMPTY_BATCH: once_cell::sync::OnceCell<
-                        Vec<crate::components::PoseRotationQuat>,
-                    > = once_cell::sync::OnceCell::new();
-                    let empty_batch: &Vec<crate::components::PoseRotationQuat> =
-                        EMPTY_BATCH.get_or_init(|| Vec::new());
-                    (empty_batch as &dyn ComponentBatch)
-                })
-                .into(),
-            ),
-            Some(
-                (if let Some(comp_batch) = &self.scales {
-                    (comp_batch as &dyn ComponentBatch)
-                } else {
-                    static EMPTY_BATCH: once_cell::sync::OnceCell<
-                        Vec<crate::components::PoseScale3D>,
-                    > = once_cell::sync::OnceCell::new();
-                    let empty_batch: &Vec<crate::components::PoseScale3D> =
-                        EMPTY_BATCH.get_or_init(|| Vec::new());
-                    (empty_batch as &dyn ComponentBatch)
-                })
-                .into(),
-            ),
-            Some(
-                (if let Some(comp_batch) = &self.mat3x3 {
-                    (comp_batch as &dyn ComponentBatch)
-                } else {
-                    static EMPTY_BATCH: once_cell::sync::OnceCell<
-                        Vec<crate::components::PoseTransformMat3x3>,
-                    > = once_cell::sync::OnceCell::new();
-                    let empty_batch: &Vec<crate::components::PoseTransformMat3x3> =
-                        EMPTY_BATCH.get_or_init(|| Vec::new());
-                    (empty_batch as &dyn ComponentBatch)
-                })
-                .into(),
-            ),
+            self.translations
+                .as_ref()
+                .map(|comp_batch| (comp_batch as &dyn ComponentBatch).into()),
+            self.rotation_axis_angles
+                .as_ref()
+                .map(|comp_batch| (comp_batch as &dyn ComponentBatch).into()),
+            self.quaternions
+                .as_ref()
+                .map(|comp_batch| (comp_batch as &dyn ComponentBatch).into()),
+            self.scales
+                .as_ref()
+                .map(|comp_batch| (comp_batch as &dyn ComponentBatch).into()),
+            self.mat3x3
+                .as_ref()
+                .map(|comp_batch| (comp_batch as &dyn ComponentBatch).into()),
         ]
         .into_iter()
         .flatten()
@@ -371,9 +317,9 @@ impl ::re_types_core::AsComponents for InstancePoses3D {
 impl ::re_types_core::ArchetypeReflectionMarker for InstancePoses3D {}
 
 impl InstancePoses3D {
-    /// Create a new `InstancePoses3D` which when logged will clear the values of all components.
+    /// Create a new `InstancePoses3D`.
     #[inline]
-    pub fn clear() -> Self {
+    pub fn new() -> Self {
         Self {
             translations: None,
             rotation_axis_angles: None,

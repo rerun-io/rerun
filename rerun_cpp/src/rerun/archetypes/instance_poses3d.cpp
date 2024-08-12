@@ -16,28 +16,28 @@ namespace rerun {
         std::vector<ComponentBatch> cells;
         cells.reserve(6);
 
-        {
-            auto result = ComponentBatch::from_loggable(archetype.translations);
+        if (archetype.translations.has_value()) {
+            auto result = ComponentBatch::from_loggable(archetype.translations.value());
             RR_RETURN_NOT_OK(result.error);
             cells.push_back(std::move(result.value));
         }
-        {
-            auto result = ComponentBatch::from_loggable(archetype.rotation_axis_angles);
+        if (archetype.rotation_axis_angles.has_value()) {
+            auto result = ComponentBatch::from_loggable(archetype.rotation_axis_angles.value());
             RR_RETURN_NOT_OK(result.error);
             cells.push_back(std::move(result.value));
         }
-        {
-            auto result = ComponentBatch::from_loggable(archetype.quaternions);
+        if (archetype.quaternions.has_value()) {
+            auto result = ComponentBatch::from_loggable(archetype.quaternions.value());
             RR_RETURN_NOT_OK(result.error);
             cells.push_back(std::move(result.value));
         }
-        {
-            auto result = ComponentBatch::from_loggable(archetype.scales);
+        if (archetype.scales.has_value()) {
+            auto result = ComponentBatch::from_loggable(archetype.scales.value());
             RR_RETURN_NOT_OK(result.error);
             cells.push_back(std::move(result.value));
         }
-        {
-            auto result = ComponentBatch::from_loggable(archetype.mat3x3);
+        if (archetype.mat3x3.has_value()) {
+            auto result = ComponentBatch::from_loggable(archetype.mat3x3.value());
             RR_RETURN_NOT_OK(result.error);
             cells.push_back(std::move(result.value));
         }
