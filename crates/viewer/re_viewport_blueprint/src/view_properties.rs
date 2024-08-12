@@ -136,6 +136,12 @@ impl<'a> ViewProperty<'a> {
             .map(|value| value.unwrap_or_default())
     }
 
+    pub fn component_row_id(&self, component_name: ComponentName) -> Option<re_chunk::RowId> {
+        self.query_results
+            .get(&component_name)
+            .and_then(|unit| unit.row_id())
+    }
+
     pub fn component_raw(
         &self,
         component_name: ComponentName,
