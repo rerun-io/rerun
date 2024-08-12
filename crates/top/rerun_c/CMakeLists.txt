@@ -28,10 +28,3 @@ add_custom_command(
 # In CMake you can't depend on an output file directly. We have to wrap this in a target that rerun_c then depends on.
 add_custom_target(rerun_c_build DEPENDS "${RERUN_C_BUILD_ARTIFACT}")
 add_dependencies(rerun_c rerun_c_build)
-
-# Put `rerun.h` into the same place where it's on a user's machine and apply CMake variables like version number.
-configure_file(
-    "${CMAKE_CURRENT_SOURCE_DIR}/src/rerun.h"
-    "${PROJECT_SOURCE_DIR}/rerun_cpp/src/rerun/c/rerun.h"
-    NEWLINE_STYLE LF # Specify line endings, otherwise CMake wants to change them on Windows.
-)
