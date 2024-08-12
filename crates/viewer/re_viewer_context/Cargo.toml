@@ -46,6 +46,7 @@ egui_extras.workspace = true
 egui_tiles.workspace = true
 egui-wgpu.workspace = true
 egui.workspace = true
+emath.workspace = true
 glam = { workspace = true, features = ["serde"] }
 half.workspace = true
 image = { workspace = true, features = ["jpeg", "png"] }

@@ -1,4 +1,4 @@
-use std::borrow::Cow;
+use std::{borrow::Cow, ops::RangeInclusive};
 
 use re_chunk::RowId;
 use re_types::{
@@ -163,6 +163,161 @@ impl ImageInfo {
             let dest_bytes: &mut [u8] = bytemuck::cast_slice_mut(&mut dest);
             dest_bytes.copy_from_slice(bytes);
             Cow::Owned(dest)
+        }
+    }
+
+    /// Best-effort.
+    ///
+    /// `u8` and `u16` images are returned as is.
+    ///
+    /// Other data types are remapped from the given `data_range`
+    /// to the full `u16` range, then rounded.
+    ///
+    /// Returns `None` for invalid images (if the buffer is the wrong size).
+    pub fn to_dynamic_image(
+        &self,
+        data_range: &RangeInclusive<f32>,
+    ) -> Option<image::DynamicImage> {
+        re_tracing::profile_function!();
+
+        use image::{DynamicImage, GrayImage, RgbImage, RgbaImage};
+        type Gray16Image = image::ImageBuffer<image::Luma<u16>, Vec<u16>>;
+        type Rgb16Image = image::ImageBuffer<image::Rgb<u16>, Vec<u16>>;
+        type Rgba16Image = image::ImageBuffer<image::Rgba<u16>, Vec<u16>>;
+
+        let (w, h) = (self.width(), self.height());
+
+        if let Some(pixel_format) = self.format.pixel_format {
+            // Convert to RGB:
+            let buf: &[u8] = &self.buffer;
+            let mut rgb = Vec::with_capacity((w * h * 3) as usize);
+            for y in 0..h {
+                for x in 0..w {
+                    // NOTE: the name `y` is already taken for the coordinate, so we use `luma` here.
+                    let [luma, u, v] = match pixel_format {
+                        PixelFormat::NV12 => {
+                            let uv_offset = w * h;
+                            let luma = buf[(y * w + x) as usize];
+                            let u = buf[(uv_offset + (y / 2) * w + x) as usize];
+                            let v = buf[(uv_offset + (y / 2) * w + x) as usize + 1];
+                            [luma, u, v]
+                        }
+
+                        PixelFormat::YUY2 => {
+                            let index = ((y * w + x) * 2) as usize;
+                            if x % 2 == 0 {
+                                [buf[index], buf[index + 1], buf[index + 3]]
+                            } else {
+                                [buf[index], buf[index - 1], buf[index + 1]]
+                            }
+                        }
+                    };
+                    let [r, g, b] = rgb_from_yuv(luma, u, v);
+                    rgb.push(r);
+                    rgb.push(g);
+                    rgb.push(b);
+                }
+            }
+            RgbImage::from_vec(w, h, rgb).map(DynamicImage::ImageRgb8)
+        } else if self.format.datatype() == ChannelDatatype::U8 {
+            let u8 = self.buffer.to_vec();
+            match self.color_model() {
+                ColorModel::L => GrayImage::from_vec(w, h, u8).map(DynamicImage::ImageLuma8),
+                ColorModel::RGB => RgbImage::from_vec(w, h, u8).map(DynamicImage::ImageRgb8),
+                ColorModel::RGBA => RgbaImage::from_vec(w, h, u8).map(DynamicImage::ImageRgba8),
+            }
+        } else if self.format.datatype() == ChannelDatatype::U16 {
+            // Lossless conversion of u16, ignoring data_range
+            let u16 = self.to_slice::<u16>().to_vec();
+            match self.color_model() {
+                ColorModel::L => Gray16Image::from_vec(w, h, u16).map(DynamicImage::ImageLuma16),
+                ColorModel::RGB => Rgb16Image::from_vec(w, h, u16).map(DynamicImage::ImageRgb16),
+                ColorModel::RGBA => Rgba16Image::from_vec(w, h, u16).map(DynamicImage::ImageRgba16),
+            }
+        } else {
+            let u16 = self.to_vec_u16(self.format.datatype(), data_range);
+            match self.color_model() {
+                ColorModel::L => Gray16Image::from_vec(w, h, u16).map(DynamicImage::ImageLuma16),
+                ColorModel::RGB => Rgb16Image::from_vec(w, h, u16).map(DynamicImage::ImageRgb16),
+                ColorModel::RGBA => Rgba16Image::from_vec(w, h, u16).map(DynamicImage::ImageRgba16),
+            }
+        }
+    }
+
+    /// Remaps the given data range to `u16`, with rounding and clamping.
+    fn to_vec_u16(&self, datatype: ChannelDatatype, data_range: &RangeInclusive<f32>) -> Vec<u16> {
+        re_tracing::profile_function!();
+
+        let data_range = emath::Rangef::from(data_range);
+        let u16_range = emath::Rangef::new(0.0, u16::MAX as f32);
+        let remap_range = |x: f32| -> u16 { emath::remap(x, data_range, u16_range).round() as u16 };
+
+        match datatype {
+            ChannelDatatype::U8 => self
+                .to_slice::<u8>()
+                .iter()
+                .map(|&x| remap_range(x as f32))
+                .collect(),
+
+            ChannelDatatype::I8 => self
+                .to_slice::<i8>()
+                .iter()
+                .map(|&x| remap_range(x as f32))
+                .collect(),
+
+            ChannelDatatype::U16 => self
+                .to_slice::<u16>()
+                .iter()
+                .map(|&x| remap_range(x as f32))
+                .collect(),
+
+            ChannelDatatype::I16 => self
+                .to_slice::<i16>()
+                .iter()
+                .map(|&x| remap_range(x as f32))
+                .collect(),
+
+            ChannelDatatype::U32 => self
+                .to_slice::<u32>()
+                .iter()
+                .map(|&x| remap_range(x as f32))
+                .collect(),
+
+            ChannelDatatype::I32 => self
+                .to_slice::<i32>()
+                .iter()
+                .map(|&x| remap_range(x as f32))
+                .collect(),
+
+            ChannelDatatype::U64 => self
+                .to_slice::<u64>()
+                .iter()
+                .map(|&x| remap_range(x as f32))
+                .collect(),
+
+            ChannelDatatype::I64 => self
+                .to_slice::<i64>()
+                .iter()
+                .map(|&x| remap_range(x as f32))
+                .collect(),
+
+            ChannelDatatype::F16 => self
+                .to_slice::<half::f16>()
+                .iter()
+                .map(|&x| remap_range(x.to_f32()))
+                .collect(),
+
+            ChannelDatatype::F32 => self
+                .to_slice::<f32>()
+                .iter()
+                .map(|&x| remap_range(x))
+                .collect(),
+
+            ChannelDatatype::F64 => self
+                .to_slice::<f64>()
+                .iter()
+                .map(|&x| remap_range(x as f32))
+                .collect(),
         }
     }
 }

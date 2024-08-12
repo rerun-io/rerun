@@ -5340,6 +5340,7 @@ dependencies = [
  "egui-wgpu",
  "egui_extras",
  "egui_tiles",
+ "emath",
  "glam",
  "half 2.3.1",
  "image",
