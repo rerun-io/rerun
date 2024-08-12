@@ -272,23 +272,54 @@ fn preview_if_image_ui(
     // TODO(#2341): The range should be determined by a `DataRange` component. In absence this, heuristics apply.
     if let Ok(data_range) = image_data_range_heuristic(&image_stats, &image.format) {
         if !ui_layout.is_single_line() && ui_layout != UiLayout::Tooltip {
-            #[cfg(not(target_arch = "wasm32"))]
-            if ui
-                .button("Copy image")
-                .on_hover_text("Copy image to system clipboard")
-                .clicked()
-            {
-                if let Some(rgba) = image.to_rgba8_image(&data_range.into()) {
-                    re_viewer_context::Clipboard::with(|clipboard| {
-                        clipboard.set_image(
-                            [rgba.width() as _, rgba.height() as _],
-                            bytemuck::cast_slice(rgba.as_raw()),
-                        );
-                    });
-                } else {
-                    re_log::error!("Invalid image");
+            ui.horizontal(|ui| {
+                #[cfg(not(target_arch = "wasm32"))]
+                if ui
+                    .button("Copy image")
+                    .on_hover_text("Copy image to system clipboard")
+                    .clicked()
+                {
+                    if let Some(rgba) = image.to_rgba8_image(&data_range.into()) {
+                        re_viewer_context::Clipboard::with(|clipboard| {
+                            clipboard.set_image(
+                                [rgba.width() as _, rgba.height() as _],
+                                bytemuck::cast_slice(rgba.as_raw()),
+                            );
+                        });
+                    } else {
+                        re_log::error!("Invalid image");
+                    }
                 }
-            }
+
+                let text = if cfg!(target_arch = "wasm32") {
+                    "Download image…"
+                } else {
+                    "Save image…"
+                };
+                if ui.button(text).clicked() {
+                    if let Some(dynamic_image) = image.to_dynamic_image(&data_range.into()) {
+                        let file_name = format!(
+                            "{}.png",
+                            entity_path
+                                .last()
+                                .map_or("image", |name| name.unescaped_str())
+                                .to_owned()
+                        );
+
+                        let mut png_bytes = Vec::new();
+                        if let Err(err) = dynamic_image.write_to(
+                            &mut std::io::Cursor::new(&mut png_bytes),
+                            image::ImageFormat::Png,
+                        ) {
+                            re_log::error!("Failed to encode PNG: {err}");
+                        } else {
+                            ctx.save_file_dialog(file_name, "Save image".to_owned(), png_bytes);
+                        }
+                    } else {
+                        re_log::error!("Invalid image");
+                    }
+                }
+            });
         }
     }
 

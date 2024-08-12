@@ -71,7 +71,7 @@ impl EntityDataUi for Blob {
                 let text = if cfg!(target_arch = "wasm32") {
                     "Download blob…"
                 } else {
-                    "Save blob to file…"
+                    "Save blob…"
                 };
                 if ui.button(text).clicked() {
                     let mut file_name = entity_path
