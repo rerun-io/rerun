@@ -388,7 +388,7 @@ fn transform_info_for_upward_propagation(
     // Collect & compute poses.
     let (mut reference_from_instances, has_instance_transforms) =
         if let Ok(mut entity_from_instances) = SmallVec1::<[glam::Affine3A; 1]>::try_from_vec(
-            transforms_at_entity.entity_from_instance_pose_transforms,
+            transforms_at_entity.entity_from_instance_poses,
         ) {
             for entity_from_instance in &mut entity_from_instances {
                 *entity_from_instance = reference_from_entity * entity_from_instance.inverse();
@@ -442,7 +442,7 @@ fn transform_info_for_downward_propagation(
     // Collect & compute poses.
     let (mut reference_from_instances, has_instance_transforms) =
         if let Ok(mut entity_from_instances) =
-            SmallVec1::try_from_vec(transforms_at_entity.entity_from_instance_pose_transforms)
+            SmallVec1::try_from_vec(transforms_at_entity.entity_from_instance_poses)
         {
             for entity_from_instance in &mut entity_from_instances {
                 *entity_from_instance = reference_from_entity * (*entity_from_instance);
@@ -581,7 +581,7 @@ fn query_and_resolve_tree_transform_at_entity(
     Some(transform)
 }
 
-fn query_and_resolve_pose_transform_at_entity(
+fn query_and_resolve_instance_poses_at_entity(
     entity_path: &EntityPath,
     entity_db: &EntityDb,
     query: &LatestAtQuery,
@@ -747,7 +747,7 @@ fn query_and_resolve_obj_from_pinhole_image_plane(
 /// Resolved transforms at an entity.
 struct TransformsAtEntity {
     parent_from_entity_tree_transform: Option<glam::Affine3A>,
-    entity_from_instance_pose_transforms: Vec<glam::Affine3A>,
+    entity_from_instance_poses: Vec<glam::Affine3A>,
     instance_from_pinhole_image_plane: Option<glam::Affine3A>,
 }
 
@@ -766,7 +766,7 @@ fn transforms_at(
             entity_db,
             query,
         ),
-        entity_from_instance_pose_transforms: query_and_resolve_pose_transform_at_entity(
+        entity_from_instance_poses: query_and_resolve_instance_poses_at_entity(
             entity_path,
             entity_db,
             query,
@@ -795,9 +795,7 @@ fn transforms_at(
     if transforms_at_entity
         .parent_from_entity_tree_transform
         .is_none()
-        && transforms_at_entity
-            .entity_from_instance_pose_transforms
-            .is_empty()
+        && transforms_at_entity.entity_from_instance_poses.is_empty()
         && transforms_at_entity
             .instance_from_pinhole_image_plane
             .is_none()
