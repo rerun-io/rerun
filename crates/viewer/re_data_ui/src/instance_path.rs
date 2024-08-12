@@ -64,6 +64,21 @@ impl DataUi for InstancePath {
 
         let components = latest_at(db, query, entity_path, &components);
 
+        if components.is_empty() {
+            ui_layout.label(
+                ui,
+                format!(
+                    "Nothing logged at {} = {}",
+                    query.timeline().name(),
+                    query
+                        .timeline()
+                        .typ()
+                        .format(query.at(), ctx.app_options.time_zone),
+                ),
+            );
+            return;
+        }
+
         if ui_layout.is_single_line() {
             ui_layout.label(
                 ui,
