@@ -12,22 +12,17 @@ impl DataUi for ImageFormat {
         _query: &re_chunk_store::LatestAtQuery,
         _db: &re_entity_db::EntityDb,
     ) {
-        if let Some(pixel_format) = self.pixel_format {
-            ui_layout.data_label(
-                ui,
-                format!("{}: {} × {}", pixel_format, self.width, self.height),
-            );
+        let label = if let Some(pixel_format) = self.pixel_format {
+            format!("{} {}×{}", pixel_format, self.width, self.height)
         } else {
-            ui_layout.data_label(
-                ui,
-                format!(
-                    "{} {}: {} × {}",
-                    self.color_model(),
-                    self.datatype(),
-                    self.width,
-                    self.height
-                ),
-            );
-        }
+            format!(
+                "{} {} {}×{}",
+                self.color_model(),
+                self.datatype(),
+                self.width,
+                self.height
+            )
+        };
+        ui_layout.data_label(ui, label);
     }
 }
