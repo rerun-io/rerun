@@ -172,7 +172,13 @@ jobs:
           pixi run -e wheel-test-min which rerun
           pixi run -e wheel-test-min rerun-from-path  --version
 
+      - name: Run unit tests (with linux arm64 opencv workaround)
+        if: ${{ inputs.PLATFORM == 'linux-arm64' }}
+        # Workaround for OpenCV TLS issue, see https://github.com/opencv/opencv/issues/14884#issuecomment-815632861
+        run: cd rerun_py/tests && LD_PRELOAD=/usr/lib/aarch64-linux-gnu/libgomp.so.1 pixi run -e wheel-test-min pytest -c ../pyproject.toml
+
       - name: Run unit tests
+        if: ${{ inputs.PLATFORM != 'linux-arm64' }}
         run: cd rerun_py/tests && pixi run -e wheel-test-min pytest -c ../pyproject.toml
 
       - name: Run e2e test

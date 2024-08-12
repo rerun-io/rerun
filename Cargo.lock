@@ -4447,6 +4447,7 @@ dependencies = [
  "egui_plot",
  "image",
  "itertools 0.13.0",
+ "nohash-hasher",
  "re_chunk_store",
  "re_entity_db",
  "re_error",
