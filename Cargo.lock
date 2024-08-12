@@ -4464,7 +4464,6 @@ dependencies = [
  "re_viewer_context",
  "rfd",
  "unindent",
- "wasm-bindgen-futures",
 ]
 
 [[package]]
@@ -5374,6 +5373,7 @@ dependencies = [
  "smallvec",
  "thiserror",
  "uuid",
+ "wasm-bindgen-futures",
  "wgpu",
 ]
 
