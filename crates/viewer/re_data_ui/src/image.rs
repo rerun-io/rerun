@@ -37,7 +37,7 @@ pub fn texture_preview_ui(
         );
     } else {
         let size_range = if ui_layout == UiLayout::Tooltip {
-            egui::Rangef::new(64.0, 256.0)
+            egui::Rangef::new(64.0, 128.0)
         } else {
             egui::Rangef::new(240.0, 640.0)
         };
