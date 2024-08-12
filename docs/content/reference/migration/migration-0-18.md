@@ -8,22 +8,49 @@ NOTE! Rerun 0.18 has not yet been released
 
 ## ⚠️ Breaking changes
 ### [`DepthImage`](https://rerun.io/docs/reference/types/archetypes/depth_image) and [`SegmentationImage`](https://rerun.io/docs/reference/types/archetypes/segmentation_image)
-The `DepthImage` and `SegmentationImage` archetypes used to be encoded as a tensor, but now it is encoded as a blob of bytes, a resolution, and a datatype.
-The constructs have changed to now expect the shape in `[width, height]` order.
+The `DepthImage` and `SegmentationImage` archetypes used to be encoded as a tensor, but now it is encoded as a blob of bytes with an [`ImageFormat`](https://rerun.io/docs/reference/types/components/image_format#speculative-link) consisting of a resolution and a datatype.
+The resolution is now specified in `[width, height]` order.
+
+The Python & Rust APIs are largely unchanged, but in particular C++ users need to be careful to use the correct shape order. Also, C++ constructors have changed and expect now either `rerun::Collection` or raw pointers as their first arguments respectively:
+
+Before:
+```cpp
+rec.log("segmentation", rerun::SegmentationImage({HEIGHT, WIDTH}, data));
+rec.log("depth", rerun::DepthImage({HEIGHT, WIDTH}, data).with_meter(10000.0));
+```
+After:
+```cpp
+rec.log("segmentation", rerun::SegmentationImage(data.data(), {WIDTH, HEIGHT}));
+rec.log("depth", rerun::DepthImage(pixels.data(), {WIDTH, HEIGHT}).with_meter(10000.0));
+```
 
 
 ### [`Image`](https://rerun.io/docs/reference/types/archetypes/image)
-* The `Image` data no longer uses `TensorData` internally.
-* `Image` now stores a raw buffer which is decoded with an image format including resolution and pixel format.
-  * This allows for more explicit support of chroma-downsampled formats such as NV12.
-* The `data` argument of the `Image()` constructor has been removed.
-  * The first default parameter is now `image`, which can be a `numpy.ArrayLike`, which will also be used to extract
-    the relevant metadata.
-  * Alternatively images can also be constructed using a `bytes` argument, but the resolution and pixel format must
-    be provided explicitly.
+The `Image` and `SegmentationImage` archetypes used to be encoded as a tensor, but now it is encoded as a blob of bytes with an [`ImageFormat`](https://rerun.io/docs/reference/types/components/image_format#speculative-link) consisting of a resolution and a datatype.
+Special formats like `NV12` are specified by a `PixelFormat` enum which takes precedence over the datatype and color-model specified in the `ImageFormat`.
+The resolution is now specified in `[width, height]` order.
 
-TODO(andreas): more before/after image on different languages
+#### Python
+The `data` argument of the `Image()` constructor has been removed.
+The first default parameter is now `image`, which can be a `numpy.ArrayLike`, which will also be used to extract the relevant metadata.
+Alternatively images can also be constructed using a `bytes` argument, but the resolution and pixel format must be provided explicitly.
 
+#### C++
+Argument order has changed. Also, make sure to specify resolution in the corrected order:
+
+Before:
+```cpp
+rec.log("image", rerun::Image({HEIGHT, WIDTH, 3}, data));
+```
+After:
+```cpp
+rec.log("image", rerun::Image(data, {WIDTH, HEIGHT}, datatypes::ColorModel::RGB));
+```
+
+The same can now also achieved with this utility:
+```cpp
+rec.log("image", rerun::Image::from_rgb24(data, {WIDTH, HEIGHT}));
+```
 
 ### [`EncodedImage`](https://rerun.io/docs/reference/types/archetypes/encoded_image?speculative-link)
 `EncodedImage` is our new archetype for logging an image file, e.g. a PNG or JPEG.
@@ -32,19 +59,15 @@ TODO(andreas): more before/after image on different languages
 `rr.ImageEncoded` is deprecated. Image files (JPEG, PNG, …) should instead be logged with [`EncodedImage`](https://rerun.io/docs/reference/types/archetypes/encoded_image?speculative-link),
 and chroma-downsampled images (NV12/YUY2) are now logged with the new `Image` archetype:
 
-
+Before:
 ```py
-rr.log(
-    "my_image",
-    rr.Image(
-        bytes=…,
-        width=…,
-        height=…,
-        pixel_format=rr.PixelFormat.Nv12,
-    ),
-)
+rr.log("NV12", rr.ImageEncoded(contents=nv12_bytes, format=rr.ImageFormat.NV12((height, width))))
 ```
 
+After:
+```py
+rr.log("NV12", rr.Image(bytes=nv12_bytes, width=width, height=height, pixel_format=rr.PixelFormat.NV12))
+```
 
 #### Rust
 * Removed `TensorBuffer::JPEG`
@@ -102,17 +125,17 @@ Furthermore, it can be used for instancing 3D meshes and is used to represent th
 The `Transform3D` archetype no longer has a `transform` argument. Use one of the other arguments instead.
 
 Before:
-```python
+```py
 rr.log("myentity", rr.Transform3D(rr.TranslationRotationScale3D(translation=Vec3D([1, 2, 3]), from_parent=True)))
 ```
 After:
-```python
+```py
 rr.log("myentity", rr.Transform3D(translation=Vec3D([1, 2, 3]), relation=rr.TransformRelation.ChildFromParent))
 ```
 
 Asset3D previously had a `transform` argument, now you have to log either a `PoseInstance3D` or a `Transform3D` on the same entity:
 Before:
-```python
+```py
 rr.log("world/mesh", rr.Asset3D(
         path=path,
         transform=rr.OutOfTreeTransform3DBatch(
@@ -121,7 +144,7 @@ rr.log("world/mesh", rr.Asset3D(
     ))
 ```
 After:
-```python
+```py
 rr.log("world/mesh", rr.Asset3D(path=path))
 rr.log("world/mesh", rr.PoseInstance3D(translation=center, scale=scale))
 ```
