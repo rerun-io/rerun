@@ -80,7 +80,7 @@ fn run(rec: &rerun::RecordingStream, args: &Args) -> anyhow::Result<()> {
 
     let num_series = args.num_plots * args.num_series_per_plot;
     let mut time_per_tick = 1.0 / args.freq;
-    let mut scalars_per_tick = num_series * args.num_series_per_plot;
+    let mut scalars_per_tick = num_series;
     if let Some(temporal_batch_size) = args.temporal_batch_size {
         time_per_tick *= temporal_batch_size as f64;
         scalars_per_tick *= temporal_batch_size;

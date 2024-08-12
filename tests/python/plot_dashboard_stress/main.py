@@ -131,7 +131,7 @@ def main() -> None:
 
     num_series = len(plot_paths) * len(series_paths)
     time_per_tick = time_per_sim_step
-    scalars_per_tick = num_series * args.num_series_per_plot
+    scalars_per_tick = num_series
     if args.temporal_batch_size is not None:
         time_per_tick *= args.temporal_batch_size
         scalars_per_tick *= args.temporal_batch_size

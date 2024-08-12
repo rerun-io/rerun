@@ -117,7 +117,7 @@ int main(int argc, char** argv) {
 
     const auto num_series = num_plots * num_series_per_plot;
     auto time_per_tick = 1.0 / freq;
-    auto scalars_per_tick = num_series * num_series_per_plot;
+    auto scalars_per_tick = num_series;
     if (temporal_batch_size.has_value()) {
         time_per_tick *= static_cast<double>(*temporal_batch_size);
         scalars_per_tick *= *temporal_batch_size;
