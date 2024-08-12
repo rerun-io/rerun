@@ -12,7 +12,7 @@ namespace rerun.archetypes;
 /// Some of its component are repeated here for convenience.
 /// If there's more instance poses than half sizes, the last half size will be repeated for the remaining poses.
 ///
-/// \example archetypes/ellipsoid_batch !api title="Batch of ellipsoids"
+/// \example archetypes/ellipsoid3d_batch !api title="Batch of ellipsoids"
 table Ellipsoids3D (
   "attr.rust.derive": "PartialEq",
   "attr.rust.new_pub_crate",
