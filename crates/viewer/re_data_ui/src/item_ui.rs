@@ -581,13 +581,15 @@ pub fn instance_hover_card_ui(
         return;
     }
 
-    let subtype_string = if instance_path.instance.is_all() {
-        "Entity"
-    } else {
-        "Entity instance"
-    };
-    ui.strong(subtype_string);
-    ui.label(instance_path.syntax_highlighted(ui.style()));
+    ui.horizontal(|ui| {
+        let subtype_string = if instance_path.instance.is_all() {
+            "Entity"
+        } else {
+            "Entity instance"
+        };
+        ui.strong(subtype_string);
+        ui.label(instance_path.syntax_highlighted(ui.style()));
+    });
 
     // TODO(emilk): give data_ui an alternate "everything on this timeline" query?
     // Then we can move the size view into `data_ui`.
