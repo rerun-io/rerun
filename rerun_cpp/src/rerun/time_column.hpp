@@ -41,7 +41,7 @@ namespace rerun {
         SortingStatus sorting_status;
 
       public:
-        /// Creates a new time column from an array of time points.
+        /// Creates a time column from an array of time points.
         ///
         /// \param timeline The timeline this column belongs to.
         /// \param times The time values.
@@ -54,7 +54,7 @@ namespace rerun {
             SortingStatus sorting_status = SortingStatus::Unknown
         );
 
-        /// Creates a sequence time column from an array of sequence points.
+        /// Creates a time column from an array of sequence points.
         ///
         /// \param timeline_name The name of the timeline this column belongs to.
         /// \param sequence_points The sequence points.
@@ -84,7 +84,7 @@ namespace rerun {
             SortingStatus sorting_status = SortingStatus::Unknown
         );
 
-        /// Creates a sequence time column from an array of seconds.
+        /// Creates a time column from an array of seconds.
         ///
         /// \param timeline_name The name of the timeline this column belongs to.
         /// \param times_in_seconds Time values in seconds.
@@ -96,7 +96,7 @@ namespace rerun {
             SortingStatus sorting_status = SortingStatus::Unknown
         );
 
-        /// Creates a sequence time column from an array of arbitrary std::chrono durations.
+        /// Creates a time column from an array of arbitrary std::chrono durations.
         ///
         /// \param timeline_name The name of the timeline this column belongs to.
         /// \param chrono_times Time values as chrono durations.
