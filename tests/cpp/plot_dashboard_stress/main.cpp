@@ -144,9 +144,9 @@ int main(int argc, char** argv) {
         values_per_series.push_back(values);
     }
 
-    std::vector<uint64_t> offsets;
+    std::vector<size_t> offsets;
     if (temporal_batch_size.has_value()) {
-        for (uint64_t i = 0; i < num_points_per_series; i += *temporal_batch_size) {
+        for (size_t i = 0; i < num_points_per_series; i += *temporal_batch_size) {
             offsets.push_back(i);
         }
     } else {
@@ -170,7 +170,7 @@ int main(int argc, char** argv) {
                 rerun::SortingStatus::Sorted
             );
         } else {
-            rec.set_time_seconds("sim_time", sim_times[static_cast<size_t>(offset)]);
+            rec.set_time_seconds("sim_time", sim_times[offset]);
         }
 
         // Log
@@ -180,7 +180,7 @@ int main(int argc, char** argv) {
 
             for (size_t series_idx = 0; series_idx < series_paths.size(); ++series_idx) {
                 auto path = plot_paths[plot_idx] + "/" + series_paths[series_idx];
-                auto series_values = values_per_series[global_plot_idx + series_idx];
+                const auto& series_values = values_per_series[global_plot_idx + series_idx];
                 if (temporal_batch_size.has_value()) {
                     rec.send_columns(
                         path,
