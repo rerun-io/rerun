@@ -2047,7 +2047,7 @@ checksum = "4810bcba5534219e7c160473f3a59167e2c98bd7516bc0eec5185848bcd38963"
 dependencies = [
  "az",
  "bytemuck",
- "half 1.8.2",
+ "half 2.3.1",
  "serde",
  "typenum",
 ]
@@ -5562,6 +5562,7 @@ dependencies = [
  "re_web_viewer_server",
  "re_ws_comms",
  "similar-asserts",
+ "unindent",
 ]
 
 [[package]]

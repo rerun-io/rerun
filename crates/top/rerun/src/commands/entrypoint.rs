@@ -458,6 +458,12 @@ enum Command {
     /// Rerun will forget all blueprints, as well as the native window's size, position and scale factor.
     #[cfg(feature = "native_viewer")]
     Reset,
+
+    /// Generates the Rerun CLI manual (markdown).
+    ///
+    /// Example: `rerun man > docs/content/reference/cli.md`
+    #[command(name = "man")]
+    Manual,
 }
 
 /// Run the Rerun application and return an exit code.
@@ -515,6 +521,20 @@ where
 
             #[cfg(feature = "native_viewer")]
             Command::Reset => re_viewer::reset_viewer_persistence(),
+
+            Command::Manual => {
+                let man = Args::generate_markdown_manual();
+                let web_header = unindent::unindent(
+                    "\
+                    ---
+                    title: CLI manual
+                    order: 250
+                    ---\
+                    ",
+                );
+                println!("{web_header}\n\n{man}");
+                Ok(())
+            }
         }
     } else {
         run_impl(build_info, call_source, args)
