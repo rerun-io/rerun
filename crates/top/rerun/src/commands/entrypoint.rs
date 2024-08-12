@@ -267,7 +267,7 @@ impl Args {
                 Some(
                     help.to_string()
                         .lines()
-                        .map(|line| format!("> {line}"))
+                        .map(|line| format!("> {line}").trim().to_owned())
                         .collect_vec()
                         .join("\n"),
                 )
@@ -278,6 +278,8 @@ impl Args {
                     } else {
                         format!("> {help}.")
                     }
+                    .trim()
+                    .to_owned()
                 })
             };
 
@@ -285,13 +287,17 @@ impl Args {
                 format!("* `{values}`")
             } else {
                 format!("* `{} {values}`", names.join(", "))
-            };
+            }
+            .trim()
+            .to_owned();
 
             let rendered = if let Some(help) = help {
                 format!("{rendered}\n{help}")
             } else {
                 rendered
-            };
+            }
+            .trim()
+            .to_owned();
 
             let defaults = arg.get_default_values();
             if defaults.is_empty() {
@@ -299,10 +305,12 @@ impl Args {
             } else {
                 let defaults = defaults
                     .iter()
-                    .map(|v| format!("`{}`", v.to_string_lossy()))
+                    .map(|v| format!("`{}`", v.to_string_lossy().trim()))
                     .collect_vec()
                     .join(", ");
                 format!("{rendered}\n>\n> [Default: {defaults}]")
+                    .trim()
+                    .to_owned()
             }
         }
 
@@ -333,10 +341,11 @@ impl Args {
             }
 
             // E.g. "## rerun analytics"
-            let header = format!("{} {}", "##", full_name.join(" "));
+            let header = format!("{} {}", "##", full_name.join(" "))
+                .trim()
+                .to_owned();
 
             // E.g. "**Usage**: `rerun [OPTIONS] [URL_OR_PATHS]... [COMMAND]`"
-            // TODO: help
             let usage = {
                 let usage = cmd.render_usage().to_string();
                 let (_, usage) = usage.split_at(7);
@@ -352,7 +361,7 @@ impl Args {
                 } else if let Some(about) = cmd.get_about() {
                     rendered += &format!("{about}.\n\n");
                 }
-                rendered += &format!("**Usage**: `{} {usage}`", full_name.join(" "));
+                rendered += format!("**Usage**: `{} {usage}`", full_name.join(" ")).trim();
 
                 rendered
             };
@@ -372,7 +381,7 @@ impl Args {
                     .map(|cmd| {
                         let name = cmd.get_name().to_owned();
                         let help = cmd.render_help().to_string();
-                        let help = help.split_once('\n').map_or("", |(help, _)| help);
+                        let help = help.split_once('\n').map_or("", |(help, _)| help).trim();
                         // E.g. "`analytics`:  Configure the behavior of our analytics"
                         format!("* `{name}`: {help}.")
                     })
@@ -449,7 +458,7 @@ impl Args {
 
         generate_markdown_manual(Vec::new(), &mut out, &mut Self::command());
 
-        out
+        out.trim().replace("...", "…")
     }
 }
 
