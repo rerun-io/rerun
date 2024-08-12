@@ -27,7 +27,7 @@ namespace rerun::archetypes {
     ///
     /// See also `archetypes::Asset3D`.
     ///
-    /// If there are multiple `archetypes::LeafTransforms3D` instances logged to the same entity as a mesh,
+    /// If there are multiple `archetypes::InstancePoses3D` instances logged to the same entity as a mesh,
     /// an instance of the mesh will be drawn for each transform.
     ///
     /// ## Examples
@@ -65,14 +65,14 @@ namespace rerun::archetypes {
     /// }
     /// ```
     ///
-    /// ### 3D mesh with leaf transforms
+    /// ### 3D mesh with instancing
     /// ![image](https://static.rerun.io/mesh3d_leaf_transforms3d/c2d0ee033129da53168f5705625a9b033f3a3d61/full.png)
     ///
     /// ```cpp
     /// #include <rerun.hpp>
     ///
     /// int main() {
-    ///     const auto rec = rerun::RecordingStream("rerun_example_mesh3d_leaf_transforms3d");
+    ///     const auto rec = rerun::RecordingStream("rerun_example_mesh3d_instancing");
     ///     rec.spawn().exit_on_failure();
     ///
     ///     rec.set_time_sequence("frame", 0);
@@ -84,14 +84,14 @@ namespace rerun::archetypes {
     ///             .with_triangle_indices({{0, 1, 2}, {0, 1, 3}, {0, 2, 3}, {1, 2, 3}})
     ///             .with_vertex_colors({0xFF0000FF, 0x00FF00FF, 0x00000FFFF, 0xFFFF00FF})
     ///     );
-    ///     // This box will not be affected by its parent's leaf transforms!
+    ///     // This box will not be affected by its parent's instance poses!
     ///     rec.log("shape/box", rerun::Boxes3D::from_half_sizes({{5.0f, 5.0f, 5.0f}}));
     ///
     ///     for (int i = 0; i <100; ++i) {
     ///         rec.set_time_sequence("frame", i);
     ///         rec.log(
     ///             "shape",
-    ///             rerun::LeafTransforms3D()
+    ///             rerun::InstancePoses3D()
     ///                 .with_translations(
     ///                     {{2.0f, 0.0f, 0.0f},
     ///                      {0.0f, 2.0f, 0.0f},

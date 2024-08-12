@@ -10,7 +10,7 @@ import rerun.blueprint as rrb
 README = """\
 # Component & transform clamping behavior
 
-This test checks the clamping behavior of components & leaf transforms on boxes & spheres.
+This test checks the clamping behavior of components & instance poses on boxes & spheres.
 
 One view shows spheres, the other boxes.
 
@@ -47,12 +47,12 @@ def log_data() -> None:
     rr.log(
         "/boxes/more_transforms_than_sizes",
         rr.Boxes3D(half_sizes=[[1, 1, 1]], centers=[[0, 5, 0]], colors=[[0, 0, 255]]),
-        rr.LeafTransforms3D(scales=[[1, 1, 1], [2, 2, 2]]),
+        rr.InstancePoses3D(scales=[[1, 1, 1], [2, 2, 2]]),
     )
     rr.log(
         "/boxes/no_primaries",
         rr.Boxes3D(half_sizes=[], centers=[[5, 0, 0]], colors=[[255, 0, 255]]),
-        rr.LeafTransforms3D(scales=[[1, 1, 1], [2, 2, 2]]),
+        rr.InstancePoses3D(scales=[[1, 1, 1], [2, 2, 2]]),
     )
     # Same again but with spheres.
     rr.log("/spheres/clamped_colors", rr.Ellipsoids3D(half_sizes=[[1, 1, 1], [2, 2, 2]], colors=[[255, 0, 0]]))
@@ -63,12 +63,12 @@ def log_data() -> None:
     rr.log(
         "/spheres/more_transforms_than_sizes",
         rr.Ellipsoids3D(half_sizes=[[1, 1, 1]], centers=[[0, 5, 0]], colors=[[0, 0, 255]]),
-        rr.LeafTransforms3D(scales=[[1, 1, 1], [2, 2, 2]]),
+        rr.InstancePoses3D(scales=[[1, 1, 1], [2, 2, 2]]),
     )
     rr.log(
         "/spheres/no_primaries",
         rr.Ellipsoids3D(half_sizes=[], centers=[[5, 0, 0]], colors=[[255, 0, 255]]),
-        rr.LeafTransforms3D(scales=[[1, 1, 1], [2, 2, 2]]),
+        rr.InstancePoses3D(scales=[[1, 1, 1], [2, 2, 2]]),
     )
 
 

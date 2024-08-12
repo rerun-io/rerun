@@ -22,7 +22,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 ///
 /// See also [`archetypes::Asset3D`][crate::archetypes::Asset3D].
 ///
-/// If there are multiple [`archetypes::LeafTransforms3D`][crate::archetypes::LeafTransforms3D] instances logged to the same entity as a mesh,
+/// If there are multiple [`archetypes::InstancePoses3D`][crate::archetypes::InstancePoses3D] instances logged to the same entity as a mesh,
 /// an instance of the mesh will be drawn for each transform.
 ///
 /// ## Examples
@@ -53,11 +53,10 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 /// </picture>
 /// </center>
 ///
-/// ### 3D mesh with leaf transforms
+/// ### 3D mesh with instancing
 /// ```ignore
 /// fn main() -> Result<(), Box<dyn std::error::Error>> {
-///     let rec =
-///         rerun::RecordingStreamBuilder::new("rerun_example_mesh3d_leaf_transforms3d").spawn()?;
+///     let rec = rerun::RecordingStreamBuilder::new("rerun_example_mesh3d_instancing").spawn()?;
 ///
 ///     rec.set_time_sequence("frame", 0);
 ///     rec.log(
@@ -71,7 +70,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 ///         .with_triangle_indices([[0, 1, 2], [0, 1, 3], [0, 2, 3], [1, 2, 3]])
 ///         .with_vertex_colors([0xFF0000FF, 0x00FF00FF, 0x00000FFFF, 0xFFFF00FF]),
 ///     )?;
-///     // This box will not be affected by its parent's leaf transforms!
+///     // This box will not be affected by its parent's instance poses!
 ///     rec.log(
 ///         "shape/box",
 ///         &rerun::Boxes3D::from_half_sizes([[5.0, 5.0, 5.0]]),
@@ -81,7 +80,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 ///         rec.set_time_sequence("frame", i);
 ///         rec.log(
 ///             "shape",
-///             &rerun::LeafTransforms3D::clear()
+///             &rerun::InstancePoses3D::new()
 ///                 .with_translations([
 ///                     [2.0, 0.0, 0.0],
 ///                     [0.0, 2.0, 0.0],

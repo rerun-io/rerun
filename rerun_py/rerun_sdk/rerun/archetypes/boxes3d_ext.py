@@ -44,17 +44,17 @@ class Boxes3DExt:
             Optional center positions of the boxes.
 
             If not specified, the centers will be at (0, 0, 0).
-            Note that this uses a [`components.LeafTranslation3D`][rerun.components.LeafTranslation3D] which is also used by [`archetypes.LeafTransforms3D`][rerun.archetypes.LeafTransforms3D].
+            Note that this uses a [`components.PoseTranslation3D`][rerun.components.PoseTranslation3D] which is also used by [`archetypes.InstancePoses3D`][rerun.archetypes.InstancePoses3D].
         rotation_axis_angles:
             Rotations via axis + angle.
 
             If no rotation is specified, the axes of the boxes align with the axes of the local coordinate system.
-            Note that this uses a [`components.LeafRotationAxisAngle`][rerun.components.LeafRotationAxisAngle] which is also used by [`archetypes.LeafTransforms3D`][rerun.archetypes.LeafTransforms3D].
+            Note that this uses a [`components.PoseRotationAxisAngle`][rerun.components.PoseRotationAxisAngle] which is also used by [`archetypes.InstancePoses3D`][rerun.archetypes.InstancePoses3D].
         quaternions:
             Rotations via quaternion.
 
             If no rotation is specified, the axes of the boxes align with the axes of the local coordinate system.
-            Note that this uses a [`components.LeafRotationQuat`][rerun.components.LeafRotationQuat] which is also used by [`archetypes.LeafTransforms3D`][rerun.archetypes.LeafTransforms3D].
+            Note that this uses a [`components.PoseRotationQuat`][rerun.components.PoseRotationQuat] which is also used by [`archetypes.InstancePoses3D`][rerun.archetypes.InstancePoses3D].
         rotations:
             Backwards compatible parameter for specifying rotations. Tries to infer the type of rotation from the input. Prefer using `quaternions` or `rotation_axis_angles`.
         colors:
@@ -100,18 +100,18 @@ class Boxes3DExt:
                     )
                 else:
                     try:
-                        from ..components import LeafRotationQuatBatch
+                        from ..components import PoseRotationQuatBatch
 
-                        quaternions = LeafRotationQuatBatch(rotations, strict=True).as_arrow_array()  # type: ignore[arg-type]
+                        quaternions = PoseRotationQuatBatch(rotations, strict=True).as_arrow_array()  # type: ignore[arg-type]
                         rotation_axis_angles = []
                     except Exception:
                         pass
 
                     if quaternions is None:
                         try:
-                            from ..components import LeafRotationAxisAngleBatch
+                            from ..components import PoseRotationAxisAngleBatch
 
-                            rotation_axis_angles = LeafRotationAxisAngleBatch(rotations, strict=True).as_arrow_array()  # type: ignore[arg-type]
+                            rotation_axis_angles = PoseRotationAxisAngleBatch(rotations, strict=True).as_arrow_array()  # type: ignore[arg-type]
                             quaternions = []
                         except Exception:
                             pass

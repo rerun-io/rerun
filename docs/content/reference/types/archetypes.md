@@ -40,7 +40,7 @@ This page lists all built-in archetypes.
 * [`Asset3D`](archetypes/asset3d.md): A prepacked 3D asset (`.gltf`, `.glb`, `.obj`, `.stl`, etc.).
 * [`Boxes3D`](archetypes/boxes3d.md): 3D boxes with half-extents and optional center, rotations, colors etc.
 * [`Ellipsoids3D`](archetypes/ellipsoids3d.md): 3D ellipsoids or spheres.
-* [`LeafTransforms3D`](archetypes/leaf_transforms3d.md): One or more transforms between the parent and the current entity which are *not* propagated in the transform hierarchy.
+* [`InstancePoses3D`](archetypes/instance_poses3d.md): One or more transforms between the current entity and its parent. Unlike [`archetypes.Transform3D`](https://rerun.io/docs/reference/types/archetypes/transform3d), it is *not* propagated in the transform hierarchy.
 * [`LineStrips3D`](archetypes/line_strips3d.md): 3D line strips with positions and optional colors, radii, labels, etc.
 * [`Mesh3D`](archetypes/mesh3d.md): A 3D triangle mesh as specified by its per-mesh and per-vertex properties.
 * [`Pinhole`](archetypes/pinhole.md): Camera perspective projection (a.k.a. intrinsics).

@@ -204,7 +204,7 @@ SECTION_TABLE: Final[list[Section]] = [
             "archetypes.DisconnectedSpace",
             "archetypes.Pinhole",
             "archetypes.Transform3D",
-            "archetypes.LeafTransforms3D",
+            "archetypes.InstancePoses3D",
             "archetypes.ViewCoordinates",
             "components.Scale3D",
             "datatypes.Quaternion",

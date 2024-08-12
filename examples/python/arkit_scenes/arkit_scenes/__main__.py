@@ -76,7 +76,7 @@ def log_annotated_bboxes(annotation: dict[str, Any]) -> None:
                 centers=centroid,
                 labels=label,
             ),
-            rr.LeafTransforms3D(mat3x3=mat3x3),
+            rr.InstancePoses3D(mat3x3=mat3x3),
             static=True,
         )
 

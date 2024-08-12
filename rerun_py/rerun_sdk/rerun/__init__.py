@@ -54,7 +54,7 @@ from .archetypes import (
     Ellipsoids3D as Ellipsoids3D,
     EncodedImage as EncodedImage,
     Image as Image,
-    LeafTransforms3D as LeafTransforms3D,
+    InstancePoses3D as InstancePoses3D,
     LineStrips2D as LineStrips2D,
     LineStrips3D as LineStrips3D,
     Mesh3D as Mesh3D,

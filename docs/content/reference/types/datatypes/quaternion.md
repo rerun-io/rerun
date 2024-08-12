@@ -20,5 +20,5 @@ datastore as provided, when used in the Viewer Quaternions will always be normal
 
 ## Used by
 
-* [`LeafRotationQuat`](../components/leaf_rotation_quat.md?speculative-link)
+* [`PoseRotationQuat`](../components/pose_rotation_quat.md?speculative-link)
 * [`RotationQuat`](../components/rotation_quat.md?speculative-link)

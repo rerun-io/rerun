@@ -23,8 +23,8 @@ pub struct TransformComponentTracker {
     /// Which entities have had any `Transform3D` component at any point in time.
     transform3d_entities: IntSet<EntityPathHash>,
 
-    /// Which entities have had any `LeafTransforms3D` components at any point in time.
-    leaf_transforms3d_entities: IntSet<EntityPathHash>,
+    /// Which entities have had any `InstancePoses3D` components at any point in time.
+    pose3d_entities: IntSet<EntityPathHash>,
 }
 
 impl TransformComponentTracker {
@@ -46,9 +46,8 @@ impl TransformComponentTracker {
     }
 
     #[inline]
-    pub fn is_potentially_transformed_leaf_transform3d(&self, entity_path: &EntityPath) -> bool {
-        self.leaf_transforms3d_entities
-            .contains(&entity_path.hash())
+    pub fn is_potentially_transformed_pose3d(&self, entity_path: &EntityPath) -> bool {
+        self.pose3d_entities.contains(&entity_path.hash())
     }
 }
 
@@ -57,7 +56,7 @@ impl TransformComponentTracker {
 pub struct TransformComponentTrackerStoreSubscriber {
     /// The components of interest.
     transform_components: IntSet<ComponentName>,
-    leaf_transform_components: IntSet<ComponentName>,
+    pose_components: IntSet<ComponentName>,
 
     per_store: HashMap<StoreId, TransformComponentTracker>,
 }
@@ -71,7 +70,7 @@ impl Default for TransformComponentTrackerStoreSubscriber {
                 .iter()
                 .copied()
                 .collect(),
-            leaf_transform_components: re_types::archetypes::LeafTransforms3D::all_components()
+            pose_components: re_types::archetypes::InstancePoses3D::all_components()
                 .iter()
                 .copied()
                 .collect(),
@@ -125,9 +124,9 @@ impl ChunkStoreSubscriber for TransformComponentTrackerStoreSubscriber {
                         .transform3d_entities
                         .insert(entity_path_hash);
                 }
-                if self.leaf_transform_components.contains(&component_name) {
+                if self.pose_components.contains(&component_name) {
                     transform_component_tracker
-                        .leaf_transforms3d_entities
+                        .pose3d_entities
                         .insert(entity_path_hash);
                 }
             }

@@ -10,9 +10,9 @@
 #include "../components/color.hpp"
 #include "../components/fill_mode.hpp"
 #include "../components/half_size3d.hpp"
-#include "../components/leaf_rotation_axis_angle.hpp"
-#include "../components/leaf_rotation_quat.hpp"
-#include "../components/leaf_translation3d.hpp"
+#include "../components/pose_rotation_axis_angle.hpp"
+#include "../components/pose_rotation_quat.hpp"
+#include "../components/pose_translation3d.hpp"
 #include "../components/radius.hpp"
 #include "../components/text.hpp"
 #include "../indicator_component.hpp"
@@ -30,9 +30,9 @@ namespace rerun::archetypes {
     /// (e.g. a bounding sphere).
     /// For points whose radii are for the sake of visualization, use `archetypes::Points3D` instead.
     ///
-    /// Note that orienting and placing the ellipsoids/spheres is handled via `[archetypes.LeafTransforms3D]`.
+    /// Note that orienting and placing the ellipsoids/spheres is handled via `[archetypes.InstancePoses3D]`.
     /// Some of its component are repeated here for convenience.
-    /// If there's more leaf transforms than half sizes, the last half size will be repeated for the remaining transforms.
+    /// If there's more instance poses than half sizes, the last half size will be repeated for the remaining poses.
     struct Ellipsoids3D {
         /// For each ellipsoid, half of its size on its three axes.
         ///
@@ -42,20 +42,20 @@ namespace rerun::archetypes {
         /// Optional center positions of the ellipsoids.
         ///
         /// If not specified, the centers will be at (0, 0, 0).
-        /// Note that this uses a `components::LeafTranslation3D` which is also used by `archetypes::LeafTransforms3D`.
-        std::optional<Collection<rerun::components::LeafTranslation3D>> centers;
+        /// Note that this uses a `components::PoseTranslation3D` which is also used by `archetypes::InstancePoses3D`.
+        std::optional<Collection<rerun::components::PoseTranslation3D>> centers;
 
         /// Rotations via axis + angle.
         ///
         /// If no rotation is specified, the axes of the ellipsoid align with the axes of the local coordinate system.
-        /// Note that this uses a `components::LeafRotationAxisAngle` which is also used by `archetypes::LeafTransforms3D`.
-        std::optional<Collection<rerun::components::LeafRotationAxisAngle>> rotation_axis_angles;
+        /// Note that this uses a `components::PoseRotationAxisAngle` which is also used by `archetypes::InstancePoses3D`.
+        std::optional<Collection<rerun::components::PoseRotationAxisAngle>> rotation_axis_angles;
 
         /// Rotations via quaternion.
         ///
         /// If no rotation is specified, the axes of the ellipsoid align with the axes of the local coordinate system.
-        /// Note that this uses a `components::LeafRotationQuat` which is also used by `archetypes::LeafTransforms3D`.
-        std::optional<Collection<rerun::components::LeafRotationQuat>> quaternions;
+        /// Note that this uses a `components::PoseRotationQuat` which is also used by `archetypes::InstancePoses3D`.
+        std::optional<Collection<rerun::components::PoseRotationQuat>> quaternions;
 
         /// Optional colors for the ellipsoids.
         std::optional<Collection<rerun::components::Color>> colors;
@@ -104,7 +104,7 @@ namespace rerun::archetypes {
 
         /// Creates new `Ellipsoids3D` with `centers` and `half_sizes`.
         static Ellipsoids3D from_centers_and_half_sizes(
-            Collection<components::LeafTranslation3D> centers,
+            Collection<components::PoseTranslation3D> centers,
             Collection<components::HalfSize3D> half_sizes
         ) {
             Ellipsoids3D ellipsoids;
@@ -122,8 +122,8 @@ namespace rerun::archetypes {
         /// Optional center positions of the ellipsoids.
         ///
         /// If not specified, the centers will be at (0, 0, 0).
-        /// Note that this uses a `components::LeafTranslation3D` which is also used by `archetypes::LeafTransforms3D`.
-        Ellipsoids3D with_centers(Collection<rerun::components::LeafTranslation3D> _centers) && {
+        /// Note that this uses a `components::PoseTranslation3D` which is also used by `archetypes::InstancePoses3D`.
+        Ellipsoids3D with_centers(Collection<rerun::components::PoseTranslation3D> _centers) && {
             centers = std::move(_centers);
             // See: https://github.com/rerun-io/rerun/issues/4027
             RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
@@ -132,9 +132,9 @@ namespace rerun::archetypes {
         /// Rotations via axis + angle.
         ///
         /// If no rotation is specified, the axes of the ellipsoid align with the axes of the local coordinate system.
-        /// Note that this uses a `components::LeafRotationAxisAngle` which is also used by `archetypes::LeafTransforms3D`.
+        /// Note that this uses a `components::PoseRotationAxisAngle` which is also used by `archetypes::InstancePoses3D`.
         Ellipsoids3D with_rotation_axis_angles(
-            Collection<rerun::components::LeafRotationAxisAngle> _rotation_axis_angles
+            Collection<rerun::components::PoseRotationAxisAngle> _rotation_axis_angles
         ) && {
             rotation_axis_angles = std::move(_rotation_axis_angles);
             // See: https://github.com/rerun-io/rerun/issues/4027
@@ -144,8 +144,8 @@ namespace rerun::archetypes {
         /// Rotations via quaternion.
         ///
         /// If no rotation is specified, the axes of the ellipsoid align with the axes of the local coordinate system.
-        /// Note that this uses a `components::LeafRotationQuat` which is also used by `archetypes::LeafTransforms3D`.
-        Ellipsoids3D with_quaternions(Collection<rerun::components::LeafRotationQuat> _quaternions
+        /// Note that this uses a `components::PoseRotationQuat` which is also used by `archetypes::InstancePoses3D`.
+        Ellipsoids3D with_quaternions(Collection<rerun::components::PoseRotationQuat> _quaternions
         ) && {
             quaternions = std::move(_quaternions);
             // See: https://github.com/rerun-io/rerun/issues/4027
