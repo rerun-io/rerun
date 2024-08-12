@@ -15,6 +15,7 @@
 #include <cmath>
 #include <cstdint>
 #include <iostream>
+#include <numeric>
 #include <random>
 #include <thread>
 #include <vector>
