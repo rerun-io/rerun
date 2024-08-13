@@ -1,10 +1,10 @@
-use std::borrow::Cow;
+use std::{borrow::Cow, ops::RangeInclusive};
 
 use re_chunk::RowId;
 use re_types::{
     components::Colormap,
-    datatypes::{Blob, ChannelDatatype, ColorModel, ImageFormat, PixelFormat},
-    image::ImageKind,
+    datatypes::{Blob, ChannelDatatype, ColorModel, ImageFormat},
+    image::{rgb_from_yuv, ImageKind},
     tensor_data::TensorElement,
 };
 
@@ -65,27 +65,8 @@ impl ImageInfo {
         }
 
         if let Some(pixel_format) = self.format.pixel_format {
-            let buf: &[u8] = &self.buffer;
-
             // NOTE: the name `y` is already taken for the coordinate, so we use `luma` here.
-            let [luma, u, v] = match pixel_format {
-                PixelFormat::NV12 => {
-                    let uv_offset = w * h;
-                    let luma = buf[(y * w + x) as usize];
-                    let u = buf[(uv_offset + (y / 2) * w + x) as usize];
-                    let v = buf[(uv_offset + (y / 2) * w + x) as usize + 1];
-                    [luma, u, v]
-                }
-
-                PixelFormat::YUY2 => {
-                    let index = ((y * w + x) * 2) as usize;
-                    if x % 2 == 0 {
-                        [buf[index], buf[index + 1], buf[index + 3]]
-                    } else {
-                        [buf[index], buf[index - 1], buf[index + 1]]
-                    }
-                }
-            };
+            let [luma, u, v] = pixel_format.decode_yuv_at(&self.buffer, [w, h], [x, y])?;
 
             match pixel_format.color_model() {
                 ColorModel::L => (channel == 0).then_some(TensorElement::U8(luma)),
@@ -165,6 +146,160 @@ impl ImageInfo {
             Cow::Owned(dest)
         }
     }
+
+    /// Best-effort.
+    ///
+    /// `u8` and `u16` images are returned as is.
+    ///
+    /// Other data types are remapped from the given `data_range`
+    /// to the full `u16` range, then rounded.
+    ///
+    /// Returns `None` for invalid images (if the buffer is the wrong size).
+    pub fn to_dynamic_image(&self, data_range: RangeInclusive<f32>) -> Option<image::DynamicImage> {
+        re_tracing::profile_function!();
+
+        use image::{DynamicImage, GrayImage, RgbImage, RgbaImage};
+        type Gray16Image = image::ImageBuffer<image::Luma<u16>, Vec<u16>>;
+        type Rgb16Image = image::ImageBuffer<image::Rgb<u16>, Vec<u16>>;
+        type Rgba16Image = image::ImageBuffer<image::Rgba<u16>, Vec<u16>>;
+
+        let (w, h) = (self.width(), self.height());
+
+        if let Some(pixel_format) = self.format.pixel_format {
+            // Convert to RGB.
+            // TODO(emilk): this can probably be optimized.
+            let mut rgb = Vec::with_capacity((w * h * 3) as usize);
+            for y in 0..h {
+                for x in 0..w {
+                    let [r, g, b] = pixel_format.decode_rgb_at(&self.buffer, [w, h], [x, y])?;
+                    rgb.push(r);
+                    rgb.push(g);
+                    rgb.push(b);
+                }
+            }
+            RgbImage::from_vec(w, h, rgb).map(DynamicImage::ImageRgb8)
+        } else if self.format.datatype() == ChannelDatatype::U8 {
+            let u8 = self.buffer.to_vec();
+            match self.color_model() {
+                ColorModel::L => GrayImage::from_vec(w, h, u8).map(DynamicImage::ImageLuma8),
+                ColorModel::RGB => RgbImage::from_vec(w, h, u8).map(DynamicImage::ImageRgb8),
+                ColorModel::RGBA => RgbaImage::from_vec(w, h, u8).map(DynamicImage::ImageRgba8),
+            }
+        } else if self.format.datatype() == ChannelDatatype::U16 {
+            // Lossless conversion of u16, ignoring data_range
+            let u16 = self.to_slice::<u16>().to_vec();
+            match self.color_model() {
+                ColorModel::L => Gray16Image::from_vec(w, h, u16).map(DynamicImage::ImageLuma16),
+                ColorModel::RGB => Rgb16Image::from_vec(w, h, u16).map(DynamicImage::ImageRgb16),
+                ColorModel::RGBA => Rgba16Image::from_vec(w, h, u16).map(DynamicImage::ImageRgba16),
+            }
+        } else {
+            let u16 = self.to_vec_u16(self.format.datatype(), data_range);
+            match self.color_model() {
+                ColorModel::L => Gray16Image::from_vec(w, h, u16).map(DynamicImage::ImageLuma16),
+                ColorModel::RGB => Rgb16Image::from_vec(w, h, u16).map(DynamicImage::ImageRgb16),
+                ColorModel::RGBA => Rgba16Image::from_vec(w, h, u16).map(DynamicImage::ImageRgba16),
+            }
+        }
+    }
+
+    /// See [`Self::to_dynamic_image`].
+    pub fn to_rgba8_image(&self, data_range: RangeInclusive<f32>) -> Option<image::RgbaImage> {
+        self.to_dynamic_image(data_range).map(|img| img.to_rgba8())
+    }
+
+    /// Remaps the given data range to `u16`, with rounding and clamping.
+    fn to_vec_u16(&self, datatype: ChannelDatatype, data_range: RangeInclusive<f32>) -> Vec<u16> {
+        re_tracing::profile_function!();
+
+        let data_range = emath::Rangef::from(data_range);
+        let u16_range = emath::Rangef::new(0.0, u16::MAX as f32);
+        let remap_range = |x: f32| -> u16 { emath::remap(x, data_range, u16_range).round() as u16 };
+
+        match datatype {
+            ChannelDatatype::U8 => self
+                .to_slice::<u8>()
+                .iter()
+                .map(|&x| remap_range(x as f32))
+                .collect(),
+
+            ChannelDatatype::I8 => self
+                .to_slice::<i8>()
+                .iter()
+                .map(|&x| remap_range(x as f32))
+                .collect(),
+
+            ChannelDatatype::U16 => self
+                .to_slice::<u16>()
+                .iter()
+                .map(|&x| remap_range(x as f32))
+                .collect(),
+
+            ChannelDatatype::I16 => self
+                .to_slice::<i16>()
+                .iter()
+                .map(|&x| remap_range(x as f32))
+                .collect(),
+
+            ChannelDatatype::U32 => self
+                .to_slice::<u32>()
+                .iter()
+                .map(|&x| remap_range(x as f32))
+                .collect(),
+
+            ChannelDatatype::I32 => self
+                .to_slice::<i32>()
+                .iter()
+                .map(|&x| remap_range(x as f32))
+                .collect(),
+
+            ChannelDatatype::U64 => self
+                .to_slice::<u64>()
+                .iter()
+                .map(|&x| remap_range(x as f32))
+                .collect(),
+
+            ChannelDatatype::I64 => self
+                .to_slice::<i64>()
+                .iter()
+                .map(|&x| remap_range(x as f32))
+                .collect(),
+
+            ChannelDatatype::F16 => self
+                .to_slice::<half::f16>()
+                .iter()
+                .map(|&x| remap_range(x.to_f32()))
+                .collect(),
+
+            ChannelDatatype::F32 => self
+                .to_slice::<f32>()
+                .iter()
+                .map(|&x| remap_range(x))
+                .collect(),
+
+            ChannelDatatype::F64 => self
+                .to_slice::<f64>()
+                .iter()
+                .map(|&x| remap_range(x as f32))
+                .collect(),
+        }
+    }
+
+    /// Convert this image to an encoded PNG
+    pub fn to_png(&self, data_range: RangeInclusive<f32>) -> anyhow::Result<Vec<u8>> {
+        if let Some(dynamic_image) = self.to_dynamic_image(data_range) {
+            let mut png_bytes = Vec::new();
+            if let Err(err) = dynamic_image.write_to(
+                &mut std::io::Cursor::new(&mut png_bytes),
+                image::ImageFormat::Png,
+            ) {
+                anyhow::bail!("Failed to encode PNG: {err}");
+            }
+            Ok(png_bytes)
+        } else {
+            anyhow::bail!("Invalid image");
+        }
+    }
 }
 
 fn get<T: bytemuck::Pod>(blob: &[u8], element_offset: usize) -> Option<T> {
@@ -184,28 +319,69 @@ fn get<T: bytemuck::Pod>(blob: &[u8], element_offset: usize) -> Option<T> {
     Some(dest)
 }
 
-/// Sets the color standard for the given YUV color.
-///
-/// This conversion mirrors the function of the same name in `crates/viewer/re_renderer/shader/decodings.wgsl`
-///
-/// Specifying the color standard should be exposed in the future [#3541](https://github.com/rerun-io/rerun/pull/3541)
-fn rgb_from_yuv(y: u8, u: u8, v: u8) -> [u8; 3] {
-    let (y, u, v) = (y as f32, u as f32, v as f32);
+#[cfg(test)]
+mod tests {
+    use re_chunk::RowId;
+    use re_types::{datatypes::ColorModel, image::ImageChannelType};
 
-    // rescale YUV values
-    let y = (y - 16.0) / 219.0;
-    let u = (u - 128.0) / 224.0;
-    let v = (v - 128.0) / 224.0;
+    use super::ImageInfo;
 
-    // BT.601 (aka. SDTV, aka. Rec.601). wiki: https://en.wikipedia.org/wiki/YCbCr#ITU-R_BT.601_conversion
-    let r = y + 1.402 * v;
-    let g = y - 0.344 * u - 0.714 * v;
-    let b = y + 1.772 * u;
+    fn new_2x2_image_info<T: ImageChannelType>(
+        color_model: ColorModel,
+        elements: &[T],
+    ) -> ImageInfo {
+        assert_eq!(elements.len(), 2 * 2);
+        let image = re_types::archetypes::Image::from_elements(elements, [2, 2], color_model);
+        ImageInfo {
+            buffer_row_id: RowId::ZERO, // unused
+            buffer: image.buffer.0,
+            format: image.format.0,
+            kind: re_types::image::ImageKind::Color,
+            colormap: None,
+        }
+    }
 
-    // BT.709 (aka. HDTV, aka. Rec.709). wiki: https://en.wikipedia.org/wiki/YCbCr#ITU-R_BT.709_conversion
-    // let r = y + 1.575 * v;
-    // let g = y - 0.187 * u - 0.468 * v;
-    // let b = y + 1.856 * u;
+    fn dynamic_image_from_png(png_bytes: &[u8]) -> image::DynamicImage {
+        image::load_from_memory_with_format(png_bytes, image::ImageFormat::Png).unwrap()
+    }
 
-    [(255.0 * r) as u8, (255.0 * g) as u8, (255.0 * b) as u8]
+    #[test]
+    fn test_image_l_u8_roundtrip() {
+        let contents = vec![1_u8, 42_u8, 69_u8, 137_u8];
+
+        let image_info = new_2x2_image_info(ColorModel::L, &contents);
+        assert_eq!(image_info.to_slice::<u8>().to_vec(), contents);
+        assert_eq!(
+            image_info.to_dynamic_image(0.0..=1.0).unwrap(),
+            image_info.to_dynamic_image(0.0..=255.0).unwrap(),
+            "Data range should be ignored for u8"
+        );
+        let png_bytes = image_info.to_png(0.0..=255.0).unwrap();
+        let dynamic_image = dynamic_image_from_png(&png_bytes);
+        if let image::DynamicImage::ImageLuma8(image) = dynamic_image {
+            assert_eq!(&image.into_vec(), &contents);
+        } else {
+            panic!("Expected ImageLuma8, got {dynamic_image:?}");
+        }
+    }
+
+    #[test]
+    fn test_image_l_u16_roundtrip() {
+        let contents = vec![1_u16, 42_u16, 69_u16, 137_u16];
+
+        let image_info = new_2x2_image_info(ColorModel::L, &contents);
+        assert_eq!(image_info.to_slice::<u16>().to_vec(), contents);
+        assert_eq!(
+            image_info.to_dynamic_image(0.0..=1.0).unwrap(),
+            image_info.to_dynamic_image(0.0..=255.0).unwrap(),
+            "Data range should be ignored for u16"
+        );
+        let png_bytes = image_info.to_png(0.0..=255.0).unwrap();
+        let dynamic_image = dynamic_image_from_png(&png_bytes);
+        if let image::DynamicImage::ImageLuma16(image) = dynamic_image {
+            assert_eq!(&image.into_vec(), &contents);
+        } else {
+            panic!("Expected ImageLuma8, got {dynamic_image:?}");
+        }
+    }
 }

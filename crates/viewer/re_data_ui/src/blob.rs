@@ -1,10 +1,8 @@
-use re_log::ResultExt;
-use re_renderer::renderer::ColormappedTexture;
 use re_types::components::{Blob, MediaType};
 use re_ui::{list_item::PropertyContent, UiExt as _};
-use re_viewer_context::{gpu_bridge::image_to_gpu, UiLayout};
+use re_viewer_context::UiLayout;
 
-use crate::{image::texture_preview_ui, EntityDataUi};
+use crate::{image::image_preview_ui, EntityDataUi};
 
 impl EntityDataUi for Blob {
     fn entity_data_ui(
@@ -27,8 +25,6 @@ impl EntityDataUi for Blob {
         // This can also help a user debug if they log the contents of `.png` file with a `image/jpeg` `MediaType`.
         let media_type = MediaType::guess_from_data(self);
 
-        let texture = blob_as_texture(ctx, query, entity_path, row_id, self, media_type.as_ref());
-
         if ui_layout.is_single_line() {
             ui.horizontal(|ui| {
                 ui.label(compact_size_string);
@@ -38,9 +34,16 @@ impl EntityDataUi for Blob {
                         .on_hover_text("Media type (MIME) based on magic header bytes");
                 }
 
-                if let (Some(render_ctx), Some(texture)) = (ctx.render_ctx, texture) {
-                    texture_preview_ui(render_ctx, ui, ui_layout, entity_path, texture);
-                }
+                blob_preview_and_save_ui(
+                    ctx,
+                    ui,
+                    ui_layout,
+                    query,
+                    entity_path,
+                    row_id,
+                    self,
+                    media_type.as_ref(),
+                );
             });
         } else {
             let all_digits_size_string = format!("{} B", re_format::format_uint(self.len()));
@@ -64,123 +67,77 @@ impl EntityDataUi for Blob {
                 .on_hover_text("Failed to detect media type (Mime) from magic header bytes");
             }
 
-            if let (Some(render_ctx), Some(texture)) = (ctx.render_ctx, texture) {
-                texture_preview_ui(render_ctx, ui, ui_layout, entity_path, texture);
-            }
-
-            if ui_layout != UiLayout::Tooltip {
-                let text = if cfg!(target_arch = "wasm32") {
-                    "Download blob…"
-                } else {
-                    "Save blob to file…"
-                };
-                if ui.button(text).clicked() {
-                    let mut file_name = entity_path
-                        .last()
-                        .map_or("blob", |name| name.unescaped_str())
-                        .to_owned();
-
-                    if let Some(file_extension) =
-                        media_type.as_ref().and_then(|mt| mt.file_extension())
-                    {
-                        file_name.push('.');
-                        file_name.push_str(file_extension);
-                    }
-
-                    save_blob(ctx, file_name, "Save blob".to_owned(), self.clone())
-                        .ok_or_log_error();
-                }
-            }
+            blob_preview_and_save_ui(
+                ctx,
+                ui,
+                ui_layout,
+                query,
+                entity_path,
+                row_id,
+                self,
+                media_type.as_ref(),
+            );
         }
     }
 }
 
-fn blob_as_texture(
+#[allow(clippy::too_many_arguments)]
+pub fn blob_preview_and_save_ui(
     ctx: &re_viewer_context::ViewerContext<'_>,
+    ui: &mut egui::Ui,
+    ui_layout: UiLayout,
     query: &re_chunk_store::LatestAtQuery,
     entity_path: &re_log_types::EntityPath,
-    row_id: Option<re_chunk_store::RowId>,
-    blob: &Blob,
+    blob_row_id: Option<re_chunk_store::RowId>,
+    blob: &[u8],
     media_type: Option<&MediaType>,
-) -> Option<ColormappedTexture> {
-    let render_ctx = ctx.render_ctx?;
-    let debug_name = entity_path.to_string();
-
-    let image = row_id.and_then(|row_id| {
+) {
+    let image = blob_row_id.and_then(|row_id| {
         ctx.cache
             .entry(|c: &mut re_viewer_context::ImageDecodeCache| {
                 c.entry(row_id, blob, media_type.as_ref().map(|mt| mt.as_str()))
             })
             .ok()
-    })?;
-    let image_stats = ctx
-        .cache
-        .entry(|c: &mut re_viewer_context::ImageStatsCache| c.entry(&image));
-    let annotations = crate::annotations(ctx, query, entity_path);
-    image_to_gpu(render_ctx, &debug_name, &image, &image_stats, &annotations).ok()
-}
+    });
 
-#[allow(clippy::needless_pass_by_ref_mut)] // `app` is only used on native
-#[allow(clippy::unnecessary_wraps)] // cannot return error on web
-fn save_blob(
-    #[allow(unused_variables)] ctx: &re_viewer_context::ViewerContext<'_>, // only used on native
-    file_name: String,
-    title: String,
-    blob: Blob,
-) -> anyhow::Result<()> {
-    re_tracing::profile_function!();
+    if let Some(image) = &image {
+        image_preview_ui(ctx, ui, ui_layout, query, entity_path, image);
+    }
 
-    // Web
-    #[cfg(target_arch = "wasm32")]
-    {
-        wasm_bindgen_futures::spawn_local(async move {
-            if let Err(err) = async_save_dialog(&file_name, &title, blob).await {
-                re_log::error!("File saving failed: {err}");
+    if !ui_layout.is_single_line() && ui_layout != UiLayout::Tooltip {
+        ui.horizontal(|ui| {
+            let text = if cfg!(target_arch = "wasm32") {
+                "Download blob…"
+            } else {
+                "Save blob…"
+            };
+            if ui.button(text).clicked() {
+                let mut file_name = entity_path
+                    .last()
+                    .map_or("blob", |name| name.unescaped_str())
+                    .to_owned();
+
+                if let Some(file_extension) = media_type.as_ref().and_then(|mt| mt.file_extension())
+                {
+                    file_name.push('.');
+                    file_name.push_str(file_extension);
+                }
+
+                ctx.save_file_dialog(file_name, "Save blob".to_owned(), blob.to_vec());
+            }
+
+            #[cfg(not(target_arch = "wasm32"))]
+            if let Some(image) = image {
+                let image_stats = ctx
+                    .cache
+                    .entry(|c: &mut re_viewer_context::ImageStatsCache| c.entry(&image));
+                if let Ok(data_range) = re_viewer_context::gpu_bridge::image_data_range_heuristic(
+                    &image_stats,
+                    &image.format,
+                ) {
+                    crate::image::copy_image_button_ui(ui, &image, data_range);
+                }
             }
         });
     }
-
-    // Native
-    #[cfg(not(target_arch = "wasm32"))]
-    {
-        let path = {
-            re_tracing::profile_scope!("file_dialog");
-            rfd::FileDialog::new()
-                .set_file_name(file_name)
-                .set_title(title)
-                .save_file()
-        };
-        if let Some(path) = path {
-            use re_viewer_context::SystemCommandSender as _;
-            ctx.command_sender
-                .send_system(re_viewer_context::SystemCommand::FileSaver(Box::new(
-                    move || {
-                        std::fs::write(&path, blob.as_slice())?;
-                        Ok(path)
-                    },
-                )));
-        }
-    }
-
-    Ok(())
-}
-
-#[cfg(target_arch = "wasm32")]
-async fn async_save_dialog(file_name: &str, title: &str, data: Blob) -> anyhow::Result<()> {
-    use anyhow::Context as _;
-
-    let file_handle = rfd::AsyncFileDialog::new()
-        .set_file_name(file_name)
-        .set_title(title)
-        .save_file()
-        .await;
-
-    let Some(file_handle) = file_handle else {
-        return Ok(()); // aborted
-    };
-
-    file_handle
-        .write(data.as_slice())
-        .await
-        .context("Failed to save")
 }
