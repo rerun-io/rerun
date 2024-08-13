@@ -19,6 +19,7 @@ These improvements come in 3 broad categories:
 * a new, configurable background compaction mechanism in the datastore,
 * new CLI tools to filter, prune and compact RRD files.
 
+TODO: do we want to include all the Transform and Image stuff in the overview or is the breaking change section enough already?
 TODO: link to ingestion guide
 
 #### New `send` APIs
@@ -28,13 +29,13 @@ Unlike the regular row-oriented `log` APIs, the new `send` APIs let you submit d
 This can both greatly simplify logging code and drastically improve performance for some workloads, in particular timeseries, [although we have already seen it used for other purposes!](https://github.com/rerun-io/rerun/pull/7155).
 
 API documentation:
-- 🐍 [Python `send_columns` docs](TODO)
-- 🌊 [C++ `send_columns` docs](TODO)
-- 🦀 [Rust `send_columns` docs](TODO)
+* 🐍 [Python `send_columns` docs](TODO)
+* 🌊 [C++ `send_columns` docs](TODO)
+* 🦀 [Rust `send_columns` docs](TODO)
 
 API usage examples:
 <details>
-  <summary>* Python timeseries</summary>
+  <summary>Python timeseries</summary>
 
   Using `log()` (slow, memory inefficient):
   ```python
@@ -58,7 +59,7 @@ API usage examples:
 </details>
 
 <details>
-  <summary>* C++ timeseries</summary>
+  <summary>C++ timeseries</summary>
 
   Using `log()` (slow, memory inefficient):
   ```c++
@@ -92,7 +93,7 @@ API usage examples:
 </details>
 
 <details>
-  <summary>* Rust timeseries</summary>
+  <summary>Rust timeseries</summary>
 
   Using `log()` (slow, memory inefficient):
   ```rust
@@ -123,12 +124,22 @@ API usage examples:
 
 #### Background compaction
 
-TODO: fill out doc page
-* runtime compaction variables (TODO: create doc page + link to doc)
+The Rerun datastore now continuously compacts data as it comes in, in order find a sweet spot between ingestion speed, query performance and memory overhead.
+
+This is very similar to, and has many parallels with, the [micro-batching mechanism running on the SDK side](https://rerun.io/docs/reference/sdk-micro-batching).
+
+You can read more about this in the [dedicated documentation entry](https://rerun.io/docs/reference/store-compaction?speculative-link).
 
 #### Post-processing of RRD files
 
-* rrd compact snippets (TODO: link to CLI doc)
+To help improve efficiency for completed recordings, Rerun 0.18 introduces some new commands for working with rrd files.
+
+Multiple files can be merged, whole entity paths can be dropped, and chunks can be compacted.
+
+You can read more about it [in the new CLI reference manual](https://rerun.io/docs/reference/cli), but to give a sense of how it works the below example merges all recordings in a folder and runs chunk compaction using the `max-rows` and `max-bytes` settings:
+```sh
+rerun rrd compact --max-rows 4096 --max-bytes=1048576 /my/recordings/*.rrd > output.rrd
+```
 
 ### ⚠️  Breaking changes
 * `mesh_material: Material` has been renamed to `albedo_factor: AlbedoFactor` [#6841](https://github.com/rerun-io/rerun/pull/6841)
