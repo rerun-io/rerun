@@ -8,7 +8,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let sigmas: [f32; 3] = [5., 3., 1.];
 
     let mut rng = rand::thread_rng();
-    let normal = rand_distr::Normal::new(0.0, 1.0).unwrap();
+    let normal = rand_distr::Normal::new(0.0, 1.0)?;
 
     rec.log(
         "points",
