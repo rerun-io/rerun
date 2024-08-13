@@ -1897,6 +1897,7 @@ fn save_blueprint(app: &mut App, store_context: Option<&StoreContext<'_>>) -> an
     save_entity_db(app, rrd_version, file_name, title.to_owned(), messages)
 }
 
+// TODO(emilk): unify this with `ViewerContext::save_file_dialog`
 #[allow(clippy::needless_pass_by_ref_mut)] // `app` is only used on native
 #[allow(clippy::unnecessary_wraps)] // cannot return error on web
 fn save_entity_db(
