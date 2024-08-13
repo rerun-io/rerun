@@ -6,7 +6,6 @@ use re_data_ui::item_ui::entity_path_button;
 use re_entity_db::InstancePath;
 use re_log_types::{EntityPath, ResolvedTimeRange, TimeInt, Timeline};
 use re_types::blueprint::components::{SortKey, SortOrder};
-use re_types_core::ComponentName;
 use re_viewer_context::{Item, UiLayout, ViewQuery, ViewerContext};
 
 use crate::table_ui::{row_id_ui, table_ui};
@@ -87,23 +86,25 @@ pub(crate) fn time_range_table_ui(
     }
 
     #[inline]
-    fn entity_components_to_key_value_iter<'a>(
+    fn entity_to_key_value_iter<'a>(
         ctx: &ViewerContext<'_>,
         entity_path: &'a EntityPath,
-        component: &'a ComponentName,
         timeline: Timeline,
         resolved_time_range: ResolvedTimeRange,
     ) -> impl Iterator<Item = (RowKey, Arc<Chunk>)> + 'a {
         let range_query = RangeQuery::new(timeline, resolved_time_range);
 
         ctx.recording_store()
-            .range_relevant_chunks(&range_query, entity_path, *component)
+            .range_relevant_chunks_for_all_components(&range_query, entity_path)
             .into_iter()
             // Exploit the fact that the returned iterator (if any) is *not* bound to the lifetime
             // of the chunk (it has an internal Arc).
             .map(move |chunk| {
-                let chunk = Arc::new(chunk.range(&range_query, *component));
-                (Arc::clone(&chunk).iter_indices_owned(&timeline), chunk)
+                let all_indices = Arc::clone(&chunk)
+                    .iter_indices_owned(&timeline)
+                    .filter(move |(time, _)| range_query.range.contains(*time));
+
+                (all_indices, chunk)
             })
             .flat_map(move |(indices_iter, chunk)| {
                 map_chunk_indices_to_key_value_iter(
@@ -120,15 +121,12 @@ pub(crate) fn time_range_table_ui(
         .iter_all_data_results()
         .filter(|data_result| data_result.is_visible(ctx))
         .flat_map(|data_result| {
-            sorted_components.iter().flat_map(move |component| {
-                entity_components_to_key_value_iter(
-                    ctx,
-                    &data_result.entity_path,
-                    component,
-                    *timeline,
-                    resolved_time_range,
-                )
-            })
+            entity_to_key_value_iter(
+                ctx,
+                &data_result.entity_path,
+                *timeline,
+                resolved_time_range,
+            )
         })
         .collect::<BTreeMap<_, _>>();
 
