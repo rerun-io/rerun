@@ -1,5 +1,5 @@
 ---
-title: Migrating from 0.17 to 0.18 (unreleased)
+title: Migrating from 0.17 to 0.18
 order: 180
 ---
 
@@ -8,22 +8,49 @@ NOTE! Rerun 0.18 has not yet been released
 
 ## ⚠️ Breaking changes
 ### [`DepthImage`](https://rerun.io/docs/reference/types/archetypes/depth_image) and [`SegmentationImage`](https://rerun.io/docs/reference/types/archetypes/segmentation_image)
-The `DepthImage` and `SegmentationImage` archetypes used to be encoded as a tensor, but now it is encoded as a blob of bytes, a resolution, and a datatype.
-The constructs have changed to now expect the shape in `[width, height]` order.
+The `DepthImage` and `SegmentationImage` archetypes used to be encoded as tensors, but now they are encoded as blobs of bytes with an [`ImageFormat`](https://rerun.io/docs/reference/types/components/image_format#speculative-link) consisting of a resolution and a datatype.
+The resolution is now specified in `[width, height]` order.
+
+The Python & Rust APIs are largely unchanged, but in particular C++ users need to be careful to use the correct shape order. Also, C++ constructors have changed and expect now either `rerun::Collection` or raw pointers as their first arguments respectively:
+
+Before:
+```cpp
+rec.log("segmentation", rerun::SegmentationImage({HEIGHT, WIDTH}, data));
+rec.log("depth", rerun::DepthImage({HEIGHT, WIDTH}, data).with_meter(10000.0));
+```
+After:
+```cpp
+rec.log("segmentation", rerun::SegmentationImage(data.data(), {WIDTH, HEIGHT}));
+rec.log("depth", rerun::DepthImage(pixels.data(), {WIDTH, HEIGHT}).with_meter(10000.0));
+```
 
 
 ### [`Image`](https://rerun.io/docs/reference/types/archetypes/image)
-* The `Image` data no longer uses `TensorData` internally.
-* `Image` now stores a raw buffer which is decoded with an image format including resolution and pixel format.
-  * This allows for more explicit support of chroma-downsampled formats such as NV12.
-* The `data` argument of the `Image()` constructor has been removed.
-  * The first default parameter is now `image`, which can be a `numpy.ArrayLike`, which will also be used to extract
-    the relevant metadata.
-  * Alternatively images can also be constructed using a `bytes` argument, but the resolution and pixel format must
-    be provided explicitly.
+The `Image` and `SegmentationImage` archetypes used to be encoded as tensors, but now they are encoded as blobs of bytes with an [`ImageFormat`](https://rerun.io/docs/reference/types/components/image_format#speculative-link) consisting of a resolution and a datatype.
+Special formats like `NV12` are specified by a `PixelFormat` enum which takes precedence over the datatype and color-model specified in the `ImageFormat`.
+The resolution is now specified in `[width, height]` order.
 
-TODO(andreas): more before/after image on different languages
+#### Python
+The `data` argument of the `Image()` constructor has been removed.
+The first default parameter is now `image`, which can be a `numpy.ArrayLike`, which will also be used to extract the relevant metadata.
+Alternatively images can also be constructed using a `bytes` argument, but the resolution and pixel format must be provided explicitly.
 
+#### C++
+Argument order has changed. Also, make sure to specify resolution in the corrected order:
+
+Before:
+```cpp
+rec.log("image", rerun::Image({HEIGHT, WIDTH, 3}, data));
+```
+After:
+```cpp
+rec.log("image", rerun::Image(data, {WIDTH, HEIGHT}, datatypes::ColorModel::RGB));
+```
+
+The same can now also achieved with this utility:
+```cpp
+rec.log("image", rerun::Image::from_rgb24(data, {WIDTH, HEIGHT}));
+```
 
 ### [`EncodedImage`](https://rerun.io/docs/reference/types/archetypes/encoded_image?speculative-link)
 `EncodedImage` is our new archetype for logging an image file, e.g. a PNG or JPEG.
@@ -32,19 +59,15 @@ TODO(andreas): more before/after image on different languages
 `rr.ImageEncoded` is deprecated. Image files (JPEG, PNG, …) should instead be logged with [`EncodedImage`](https://rerun.io/docs/reference/types/archetypes/encoded_image?speculative-link),
 and chroma-downsampled images (NV12/YUY2) are now logged with the new `Image` archetype:
 
-
-```py
-rr.log(
-    "my_image",
-    rr.Image(
-        bytes=…,
-        width=…,
-        height=…,
-        pixel_format=rr.PixelFormat.Nv12,
-    ),
-)
+Before:
+```python
+rr.log("NV12", rr.ImageEncoded(contents=nv12_bytes, format=rr.ImageFormat.NV12((height, width))))
 ```
 
+After:
+```python
+rr.log("NV12", rr.Image(bytes=nv12_bytes, width=width, height=height, pixel_format=rr.PixelFormat.NV12))
+```
 
 #### Rust
 * Removed `TensorBuffer::JPEG`
@@ -58,13 +81,11 @@ For all of these, use [`EncodedImage`](https://rerun.io/docs/reference/types/arc
 The field `mesh_material` in `Mesh3D` is now named `albedo_factor` and wraps a `datatypes.Rgba32`.
 
 When constructing a [`Mesh3D`](https://rerun.io/docs/reference/types/archetypes/mesh3d):
-* C++ & Rust: `.with_mesh_material(Material::from_albedo_factor(color))` -> `with_albedo_factor(color)`
-* Python: `mesh_material=rr.Material(albedo_factor=color)` -> `albedo_factor=color`
+* C++ & Rust: `.with_mesh_material(Material::from_albedo_factor(color))` ➡ `with_albedo_factor(color)`
+* Python: `mesh_material=rr.Material(albedo_factor=color)` ➡ `albedo_factor=color`
 
 
 ### Overhaul of [`Transform3D`](https://rerun.io/docs/reference/types/archetypes/Transform3D)
-
-In order to simplify the Arrow schema (which determines how data is stored and retrieved) wide reaching changes have been made to the Transform3D API.
 Previously, the transform component was represented as one of several variants (an Arrow union, `enum` in Rust) depending on how the transform was expressed, sometimes nested within.
 (for instance, the `TranslationRotationScale3D` variant had internally several variants for rotation & scale).
 
@@ -82,23 +103,17 @@ For this purpose `TranslationRotationScale3D` and `TranslationAndMat3x3` datatyp
    * this replaces the previous `from_parent` bool
    * `from_parent` is still available in all SDK languages, but deprecated
 
-All components are applied to the final transform in the opposite order they're listed in. E.g. if both a 3x3 matrix and a translation is set, the entity is first translated and then transformed with the matrix.
-If translation, rotation & scale are applied, then (just as in prior versions), from the point of view of the parent space the object is first scaled, then rotated and then translated.
+All components are applied to the final transform in the opposite order they're listed in.
+This means that if translation, rotation & scale are applied, then (just as in 0.17 and earlier), the object is first scaled, then rotated and then translated (from the point of view of the parent space).
 
-When you log the `Transform3D` archetype, _all_ components are written, even if you don't set them.
+When a `Transform3D` archetype is sent, _all_ components are written, even if you don't set them.
 This means that if you first log a `Transform3D` with a `Translation3D` and then later another `Transform3D` with a `RotationQuat`, this will result in an entity that is only rotated.
 
 Other changes in data representation:
 * Scaling no longer distinguishes uniform and 3D scaling in its data representation, it is now always expressed as 3 floats with the same value. Helper functions are provided to build uniform scales.
 * Angles (as used in `RotationAxisAngle`) are now always stored in radians, conversion functions for degrees are provided.
-Scaling no longer distinguishes uniform and 3D scaling in its data representation. Uniform scaling is now always expressed as 3 floats with the same value.
-
-`OutOfTreeTransform3D` got removed. Instead, there is now a new [`InstancePoses3D`](https://rerun.io/docs/reference/types/archetypes/instance_poses3d#speculative-link) archetype which fulfills the same role, but works more similar to the `Transform3D` archetype and is supported by all 3D spatial primitives.
-Furthermore, it can be used for instancing 3D meshes and is used to represent the poses of boxes and ellipsoids/spheres.
-
 
 #### Python
-
 The `Transform3D` archetype no longer has a `transform` argument. Use one of the other arguments instead.
 
 Before:
@@ -110,24 +125,7 @@ After:
 rr.log("myentity", rr.Transform3D(translation=Vec3D([1, 2, 3]), relation=rr.TransformRelation.ChildFromParent))
 ```
 
-Asset3D previously had a `transform` argument, now you have to log either a `PoseInstance3D` or a `Transform3D` on the same entity:
-Before:
-```python
-rr.log("world/mesh", rr.Asset3D(
-        path=path,
-        transform=rr.OutOfTreeTransform3DBatch(
-            rr.TranslationRotationScale3D(translation=center, scale=scale)
-        )
-    ))
-```
-After:
-```python
-rr.log("world/mesh", rr.Asset3D(path=path))
-rr.log("world/mesh", rr.PoseInstance3D(translation=center, scale=scale))
-```
-
 #### C++
-
 Most of the previous constructors of `rerun::Transform3D` archetype are still present. However,
 most of them expect now concrete components which oftentimes makes automatic type conversion fail.
 
@@ -148,11 +146,11 @@ rerun::Transform3D().with_mat3x3(matrix).with_translation(translation)
 ```
 Note that the order of the method calls does _not_ affect the order in which transformation is applied!
 
-`rerun::Transform3D::IDENTITY` has been removed, sue `rerun::Transform3D()` to start out with
+`rerun::Transform3D::IDENTITY` has been removed, use `rerun::Transform3D()` to start out with
 an empty archetype instead that you can populate (e.g. `rerun::Transform3D().with_mat3x3(rerun::datatypes::Mat3x3::IDENTITY)`).
 
 
-Scale is no longer an enum datatype but a component with a 3D vec:
+Scale is no longer an enum datatype but a component with a 3D vector:
 Before:
 ```cpp
 auto scale_uniform = rerun::Scale3D::Uniform(2.0);
@@ -162,19 +160,6 @@ After:
 ```cpp
 auto scale_uniform = rerun::Scale3D::uniform(2.0);
 auto scale_y = rerun::Scale3D::from([1.0, 2.0, 1.0]);
-```
-
-Asset3D previously had a `transform` field, now you have to log either a `PoseInstance3D` or a `Transform3D` on the same entity:
-Before:
-```cpp
-rec.log("world/asset", rerun::Asset3D::from_file(path).value_or_throw()
-                    .with_transform(rerun::OutOfTreeTransform3D(translation))
-);
-```
-After:
-```cpp
-rec.log("world/asset", rerun::Asset3D::from_file(path).value_or_throw());
-rec.log("world/mesh", &rerun::archetypes::PoseInstance3D().with_translations(translation));
 ```
 
 #### Rust
@@ -224,22 +209,59 @@ rerun::Transform3D::clear().with_mat3x3(matrix).with_translation(translation)
 
 Note that the order of the method calls does _not_ affect the order in which transformation is applied!
 
-`Transform3D::clear` is named so, because whenever you log the `Transform3D` archetype, it will clear ALL of its components,
-by logging an empty value for them.
+`Transform3D::clear` is named so, because whenever you send the `Transform3D` archetype, it will clear ALL of its components,
+by sending an empty value for them.
 This means logging a `Transform3D::from_rotation(…)` followed by a `Transform3D::from_translation(…)` will only result in the translation, as the later log call will clear the previous rotation.
 
+### `OutOfTreeTransform3D` removed in favor of [`InstancePoses3D`](https://rerun.io/docs/reference/types/archetypes/instance_poses3d#speculative-link)
+[`InstancePoses3D`](https://rerun.io/docs/reference/types/archetypes/instance_poses3d#speculative-link) fulfills an extended role:
+It works more similar to the [`Transform3D`](https://rerun.io/docs/reference/types/archetypes/transform3d) archetype and is supported by all 3D spatial primitives.
+Furthermore, it can be used for instancing 3D meshes and is used to represent the poses of boxes and ellipsoids/spheres.
 
-Asset3D previously had a `transform` field, now you have to log either a `PoseInstance3D` or a `Transform3D` on the same entity:
+#### Python
+Asset3D previously had a `transform` argument, now you have to send either a `InstancePoses3D` or a `Transform3D` on the same entity:
+Before:
+```python
+rr.log("world/asset", rr.Asset3D(
+        path=path,
+        transform=rr.OutOfTreeTransform3DBatch(
+            rr.TranslationRotationScale3D(translation=center, scale=scale)
+        )
+    ))
+```
+After:
+```python
+rr.log("world/asset", rr.Asset3D(path=path), rr.InstancePoses3D(translation=center, scale=scale))
+```
+
+#### C++
+Asset3D previously had a `transform` field, now you have to send either a `InstancePoses3D` or a `Transform3D` on the same entity:
+Before:
+```cpp
+rec.log("world/asset", rerun::Asset3D::from_file(path).value_or_throw()
+                    .with_transform(rerun::OutOfTreeTransform3D(translation))
+);
+```
+After:
+```cpp
+rec.log("world/asset",
+    rerun::Asset3D::from_file(path).value_or_throw(),
+    rerun::InstancePoses3D().with_translations(translation)
+);
+```
+
+#### Rust
+Asset3D previously had a `transform` field, now you have to send either a `InstancePoses3D` or a `Transform3D` on the same entity:
 Before:
 ```rust
-rec.log("world/mesh", &rerun::Asset3D::from_file(path)?
+rec.log("world/asset", &rerun::Asset3D::from_file(path)?
         .with_transform(rerun::OutOfTreeTransform3D::from(rerun::TranslationRotationScale3D(translation)))
 )?;
 ```
 After:
 ```rust
-rec.log("world/mesh", &rerun::Asset3D::from_file(path)?)?;
-rec.log("world/mesh", &rerun::PoseInstance3D::default().with_translations([translation]))?;
+rec.log("world/asset", &rerun::Asset3D::from_file(path)?)?;
+rec.log("world/asset", &rerun::InstancePoses3D::default().with_translations([translation]))?;
 ```
 
 ### [`Boxes3D`](https://rerun.io/docs/reference/types/archetypes/boxes3d) changes
