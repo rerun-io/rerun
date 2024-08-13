@@ -1,8 +1,4 @@
-"""
-Send multiple images at once using `send_columns`.
-
-This is useful when several images over time are already consecutive in memory.
-"""
+"""Send multiple images at once using `send_columns`."""
 
 import numpy as np
 import rerun as rr

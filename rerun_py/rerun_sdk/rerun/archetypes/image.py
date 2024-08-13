@@ -33,8 +33,8 @@ class Image(ImageExt, Archetype):
     Rerun also supports compressed images (JPEG, PNG, …), using [`archetypes.EncodedImage`][rerun.archetypes.EncodedImage].
     Compressing images can save a lot of bandwidth and memory.
 
-    Example
-    -------
+    Examples
+    --------
     ### `image_simple`:
     ```python
     import numpy as np
@@ -58,6 +58,37 @@ class Image(ImageExt, Archetype):
       <img src="https://static.rerun.io/image_simple/06ba7f8582acc1ffb42a7fd0006fad7816f3e4e4/full.png" width="640">
     </picture>
     </center>
+
+    ### `image_send_columns`:
+    ```python
+    import numpy as np
+    import rerun as rr
+
+    rr.init("rerun_example_image_send_columns", spawn=True)
+
+    # Timeline on which the images are distributed.
+    times = np.arange(0, 20)
+
+    # Create a batch of images with a moving rectangle.
+    width, height = 300, 200
+    images = np.zeros((len(times), height, width, 3), dtype=np.uint8)
+    images[:, :, :, 2] = 255
+    for t in times:
+        images[t, 50:150, (t * 10) : (t * 10 + 100), 1] = 255
+
+    # Log the ImageFormat and indicator once, as static.
+    format_static = rr.components.ImageFormat(width=width, height=height, color_model="RGB", channel_datatype="U8")
+    rr.log("images", [format_static, rr.Image.indicator()])  # TODO:, static=True)
+
+    # Send all images at once.
+    rr.send_columns(
+        "images",
+        times=[rr.TimeSequenceColumn("step", times)],
+        # Reshape the images so `ImageBufferBatch` can tell that this is several blobs.
+        components=[rr.components.ImageBufferBatch(images.reshape(len(times), -1))],
+    )
+    ```
+    <img src="Advanced usage of `send_columns` to send multiple images at once">
 
     """
 

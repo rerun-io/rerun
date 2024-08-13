@@ -32,7 +32,7 @@ Compressing images can save a lot of bandwidth and memory.
  * 🐍 [Python API docs for `Image`](https://ref.rerun.io/docs/python/stable/common/archetypes#rerun.archetypes.Image)
  * 🦀 [Rust API docs for `Image`](https://docs.rs/rerun/latest/rerun/archetypes/struct.Image.html)
 
-## Example
+## Examples
 
 ### image_simple
 
@@ -45,4 +45,10 @@ snippet: archetypes/image_simple
   <source media="(max-width: 1200px)" srcset="https://static.rerun.io/image_simple/06ba7f8582acc1ffb42a7fd0006fad7816f3e4e4/1200w.png">
   <img src="https://static.rerun.io/image_simple/06ba7f8582acc1ffb42a7fd0006fad7816f3e4e4/full.png">
 </picture>
+
+### image_send_columns
+
+snippet: archetypes/image_send_columns
+
+<img src="Advanced usage of `send_columns` to send multiple images at once">
 
