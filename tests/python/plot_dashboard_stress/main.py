@@ -172,7 +172,7 @@ def main() -> None:
         if args.temporal_batch_size is None:
             rr.set_time_seconds("sim_time", sim_time)
         else:
-            time_column = rr.TimeBatch("sim_time", sim_time)
+            time_column = rr.TimeSecondsColumn("sim_time", sim_time)
 
         # Log
         for plot_idx, plot_path in enumerate(plot_paths):
