@@ -8,7 +8,7 @@ NOTE! Rerun 0.18 has not yet been released
 
 ## ⚠️ Breaking changes
 ### [`DepthImage`](https://rerun.io/docs/reference/types/archetypes/depth_image) and [`SegmentationImage`](https://rerun.io/docs/reference/types/archetypes/segmentation_image)
-The `DepthImage` and `SegmentationImage` archetypes used to be encoded as a tensor, but now it is encoded as a blob of bytes with an [`ImageFormat`](https://rerun.io/docs/reference/types/components/image_format#speculative-link) consisting of a resolution and a datatype.
+The `DepthImage` and `SegmentationImage` archetypes used to be encoded as tensors, but now they are encoded as blobs of bytes with an [`ImageFormat`](https://rerun.io/docs/reference/types/components/image_format#speculative-link) consisting of a resolution and a datatype.
 The resolution is now specified in `[width, height]` order.
 
 The Python & Rust APIs are largely unchanged, but in particular C++ users need to be careful to use the correct shape order. Also, C++ constructors have changed and expect now either `rerun::Collection` or raw pointers as their first arguments respectively:
@@ -26,7 +26,7 @@ rec.log("depth", rerun::DepthImage(pixels.data(), {WIDTH, HEIGHT}).with_meter(10
 
 
 ### [`Image`](https://rerun.io/docs/reference/types/archetypes/image)
-The `Image` and `SegmentationImage` archetypes used to be encoded as a tensor, but now it is encoded as a blob of bytes with an [`ImageFormat`](https://rerun.io/docs/reference/types/components/image_format#speculative-link) consisting of a resolution and a datatype.
+The `Image` and `SegmentationImage` archetypes used to be encoded as tensors, but now they are encoded as blobs of bytes with an [`ImageFormat`](https://rerun.io/docs/reference/types/components/image_format#speculative-link) consisting of a resolution and a datatype.
 Special formats like `NV12` are specified by a `PixelFormat` enum which takes precedence over the datatype and color-model specified in the `ImageFormat`.
 The resolution is now specified in `[width, height]` order.
 
@@ -60,12 +60,12 @@ rec.log("image", rerun::Image::from_rgb24(data, {WIDTH, HEIGHT}));
 and chroma-downsampled images (NV12/YUY2) are now logged with the new `Image` archetype:
 
 Before:
-```py
+```python
 rr.log("NV12", rr.ImageEncoded(contents=nv12_bytes, format=rr.ImageFormat.NV12((height, width))))
 ```
 
 After:
-```py
+```python
 rr.log("NV12", rr.Image(bytes=nv12_bytes, width=width, height=height, pixel_format=rr.PixelFormat.NV12))
 ```
 
@@ -117,11 +117,11 @@ Other changes in data representation:
 The `Transform3D` archetype no longer has a `transform` argument. Use one of the other arguments instead.
 
 Before:
-```py
+```python
 rr.log("myentity", rr.Transform3D(rr.TranslationRotationScale3D(translation=Vec3D([1, 2, 3]), from_parent=True)))
 ```
 After:
-```py
+```python
 rr.log("myentity", rr.Transform3D(translation=Vec3D([1, 2, 3]), relation=rr.TransformRelation.ChildFromParent))
 ```
 
@@ -146,7 +146,7 @@ rerun::Transform3D().with_mat3x3(matrix).with_translation(translation)
 ```
 Note that the order of the method calls does _not_ affect the order in which transformation is applied!
 
-`rerun::Transform3D::IDENTITY` has been removed, sue `rerun::Transform3D()` to start out with
+`rerun::Transform3D::IDENTITY` has been removed, use `rerun::Transform3D()` to start out with
 an empty archetype instead that you can populate (e.g. `rerun::Transform3D().with_mat3x3(rerun::datatypes::Mat3x3::IDENTITY)`).
 
 
@@ -221,7 +221,7 @@ Furthermore, it can be used for instancing 3D meshes and is used to represent th
 #### Python
 Asset3D previously had a `transform` argument, now you have to send either a `InstancePoses3D` or a `Transform3D` on the same entity:
 Before:
-```py
+```python
 rr.log("world/asset", rr.Asset3D(
         path=path,
         transform=rr.OutOfTreeTransform3DBatch(
@@ -230,7 +230,7 @@ rr.log("world/asset", rr.Asset3D(
     ))
 ```
 After:
-```py
+```python
 rr.log("world/asset", rr.Asset3D(path=path), rr.InstancePoses3D(translation=center, scale=scale))
 ```
 
