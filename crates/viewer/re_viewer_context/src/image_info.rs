@@ -3,7 +3,7 @@ use std::{borrow::Cow, ops::RangeInclusive};
 use re_chunk::RowId;
 use re_types::{
     components::Colormap,
-    datatypes::{Blob, ChannelDatatype, ColorModel, ImageFormat, PixelFormat},
+    datatypes::{Blob, ChannelDatatype, ColorModel, ImageFormat},
     image::{rgb_from_yuv, ImageKind},
     tensor_data::TensorElement,
 };

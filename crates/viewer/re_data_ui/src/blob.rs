@@ -1,11 +1,8 @@
 use re_types::components::{Blob, MediaType};
 use re_ui::{list_item::PropertyContent, UiExt as _};
-use re_viewer_context::{gpu_bridge::image_data_range_heuristic, ImageStatsCache, UiLayout};
+use re_viewer_context::UiLayout;
 
-use crate::{
-    image::{copy_image_button_ui, image_preview_ui},
-    EntityDataUi,
-};
+use crate::{image::image_preview_ui, EntityDataUi};
 
 impl EntityDataUi for Blob {
     fn entity_data_ui(
@@ -46,7 +43,7 @@ impl EntityDataUi for Blob {
                 }
 
                 if let Some(image) = &image {
-                    image_preview_ui(ctx, ui, ui_layout, query, entity_path, `image);
+                    image_preview_ui(ctx, ui, ui_layout, query, entity_path, image);
                 }
             });
         } else {
@@ -100,12 +97,16 @@ impl EntityDataUi for Blob {
 
                     #[cfg(not(target_arch = "wasm32"))]
                     if let Some(image) = image {
-                        let image_stats =
-                            ctx.cache.entry(|c: &mut ImageStatsCache| c.entry(&image));
+                        let image_stats = ctx
+                            .cache
+                            .entry(|c: &mut re_viewer_context::ImageStatsCache| c.entry(&image));
                         if let Ok(data_range) =
-                            image_data_range_heuristic(&image_stats, &image.format)
+                            re_viewer_context::gpu_bridge::image_data_range_heuristic(
+                                &image_stats,
+                                &image.format,
+                            )
                         {
-                            copy_image_button_ui(ui, &image, data_range);
+                            crate::image::copy_image_button_ui(ui, &image, data_range);
                         }
                     }
                 });

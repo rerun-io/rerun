@@ -15,7 +15,7 @@ use re_viewer_context::{
     UiLayout, ViewerContext,
 };
 
-use crate::image::{copy_image_button_ui, image_preview_ui};
+use crate::image::image_preview_ui;
 
 use super::DataUi;
 
@@ -298,7 +298,7 @@ fn preview_if_image_ui(
             download_button_ui(ctx, ui, entity_path, &image, data_range);
 
             #[cfg(not(target_arch = "wasm32"))]
-            copy_image_button_ui(ui, &image, data_range);
+            crate::image::copy_image_button_ui(ui, &image, data_range);
         });
     }
 
