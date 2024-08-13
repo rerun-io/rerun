@@ -99,13 +99,7 @@ pub(crate) fn time_range_table_ui(
             .into_iter()
             // Exploit the fact that the returned iterator (if any) is *not* bound to the lifetime
             // of the chunk (it has an internal Arc).
-            .map(move |chunk| {
-                let all_indices = Arc::clone(&chunk)
-                    .iter_indices_owned(&timeline)
-                    .filter(move |(time, _)| range_query.range.contains(*time));
-
-                (all_indices, chunk)
-            })
+            .map(move |chunk| (Arc::clone(&chunk).iter_indices_owned(&timeline), chunk))
             .flat_map(move |(indices_iter, chunk)| {
                 map_chunk_indices_to_key_value_iter(
                     indices_iter,
