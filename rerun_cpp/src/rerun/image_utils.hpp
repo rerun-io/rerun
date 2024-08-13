@@ -2,6 +2,7 @@
 
 #include "datatypes/channel_datatype.hpp"
 #include "datatypes/color_model.hpp"
+#include "datatypes/pixel_format.hpp"
 #include "half.hpp"
 
 #include <cstdint>
@@ -140,6 +141,16 @@ namespace rerun {
                 return 3;
             case datatypes::ColorModel::RGBA:
                 return 4;
+        }
+        return 0;
+    }
+
+    inline size_t pixel_format_bits_per_pixel(datatypes::PixelFormat pixel_format) {
+        switch (pixel_format) {
+            case datatypes::PixelFormat::NV12:
+                return 12;
+            case datatypes::PixelFormat::YUY2:
+                return 16;
         }
         return 0;
     }

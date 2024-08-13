@@ -18,6 +18,14 @@ namespace rerun::components {
     struct ImageBuffer {
         rerun::datatypes::Blob buffer;
 
+      public: // START of extensions from image_buffer_ext.cpp:
+        /// Number of bytes
+        size_t size() const {
+            return buffer.size();
+        }
+
+        // END of extensions from image_buffer_ext.cpp, start of generated code:
+
       public:
         ImageBuffer() = default;
 

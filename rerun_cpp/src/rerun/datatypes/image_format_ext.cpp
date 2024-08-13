@@ -41,6 +41,24 @@ namespace rerun {
                   color_model(color_model_),
                   channel_datatype(datatype_) {}
 
+            /// How many bytes will this image occupy?
+            size_t num_bytes() const {
+                return width * height * this->bits_per_pixel() / 8;
+            }
+
+            /// How many bits per pixel?
+            ///
+            /// Note that this is not necessarily a factor of 8.
+            size_t bits_per_pixel() const {
+                if (pixel_format) {
+                    return pixel_format_bits_per_pixel(*pixel_format);
+                } else {
+                    auto cm = color_model.value_or(datatypes::ColorModel());
+                    auto dt = channel_datatype.value_or(datatypes::ChannelDatatype());
+                    return color_model_channel_count(cm) * datatype_bits(dt);
+                }
+            }
+
             // </CODEGEN_COPY_TO_HEADER>
         };
 
