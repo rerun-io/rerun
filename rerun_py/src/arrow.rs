@@ -59,7 +59,20 @@ fn array_to_rust(arrow_array: &PyAny, name: Option<&str>) -> PyResult<(Box<dyn A
         //
         // See <https://github.com/rerun-io/rerun/issues/6606>.
         let datatype = if let DataType::List(inner) = field.data_type() {
-            ListArray::<i32>::default_datatype(inner.data_type().to_logical_type().clone())
+            let Field {
+                name,
+                data_type,
+                is_nullable,
+                metadata,
+            } = &**inner;
+            DataType::List(std::sync::Arc::new(
+                Field::new(
+                    name.clone(),
+                    data_type.to_logical_type().clone(),
+                    *is_nullable,
+                )
+                .with_metadata(metadata.clone()),
+            ))
         } else {
             field.data_type().to_logical_type().clone()
         };
