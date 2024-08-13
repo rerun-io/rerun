@@ -1,11 +1,11 @@
 from __future__ import annotations
 
-from typing import Iterable, Protocol, TypeVar
+from typing import Iterable, Protocol, TypeVar, Union
 
 import pyarrow as pa
 import rerun_bindings as bindings
 
-from ._baseclasses import Archetype, ComponentColumn, ComponentColumnLike
+from ._baseclasses import Archetype, ComponentBatchMixin, ComponentColumn
 from ._log import IndicatorComponentBatch
 from .error_utils import catch_and_log_exceptions
 from .recording_stream import RecordingStream
@@ -84,7 +84,7 @@ TArchetype = TypeVar("TArchetype", bound=Archetype)
 def send_columns(
     entity_path: str,
     times: Iterable[TimeColumnLike],
-    components: Iterable[ComponentColumnLike],
+    components: Iterable[Union[ComponentBatchMixin, ComponentColumn]],
     recording: RecordingStream | None = None,
     strict: bool | None = None,
 ) -> None:
@@ -148,7 +148,11 @@ def send_columns(
         of timestamps. Generally you should use one of the provided classes: [`TimeSequenceColumn`][],
         [`TimeSecondsColumn`][], or [`TimeNanosColumn`][].
     components:
-        The batches of components to log. Each `ComponentColumnLike` object represents a single column of data.
+        The columns of components to log. Each object represents a single column of data.
+
+        If a batch of components is passed, it will be partitioned with one element per timepoint.
+        In order to send multiple components per time value, explicitely create a [`ComponentColumn`][rerun.ComponentColumn]
+        either by constructing it directly, or by calling the `.partition()` method on a `ComponentBatch` type.
     recording:
         Specifies the [`rerun.RecordingStream`][] to use.
         If left unspecified, defaults to the current active data recording, if there is one.
@@ -185,8 +189,12 @@ def send_columns(
 
         if isinstance(c, ComponentColumn):
             component_column = c
+        elif isinstance(c, ComponentBatchMixin):
+            component_column = c.partition([1] * len(c))  # type: ignore[arg-type]
         else:
-            component_column = c.partition([1] * len(c))  # type: ignore[union-attr, attr-defined, arg-type]
+            raise TypeError(
+                f"Expected either a type that implements the `ComponentMixin` or a `ComponentColumn`, got: {type(c)}"
+            )
         arrow_list_array = component_column.as_arrow_array()
 
         if expected_length is None:

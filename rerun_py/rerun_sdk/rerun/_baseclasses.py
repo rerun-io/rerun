@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Any, Generic, Iterable, Protocol, TypeVar, Union
+from typing import Any, Generic, Iterable, Protocol, TypeVar
 
 import numpy as np
 import numpy.typing as npt
@@ -308,15 +308,6 @@ class ComponentColumn:
         array = self.component_batch.as_arrow_array()
         offsets = np.concatenate((np.array([0], dtype="int32"), np.cumsum(self.lengths, dtype="int32")))
         return pa.ListArray.from_arrays(offsets, array)
-
-
-ComponentColumnLike = Union[ComponentBatchLike, ComponentColumn]
-"""
-Type alias for component column-like objects.
-
-Every component batch can be interpreted as a component column.
-`ComponentColumn` implements the `ComponentBatchLike` interface but is still explicitly included here.
-"""
 
 
 class ComponentBatchMixin(ComponentBatchLike):
