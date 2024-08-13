@@ -271,6 +271,12 @@ rerun rrd compact --max-rows 4096 --max-bytes=1048576 /my/recordings/*.rrd > out
 
 #### ✨ Other Enhancement
 - Support decoding multiplexed RRD streams [#7091](https://github.com/rerun-io/rerun/pull/7091)
+- Query-time clears (latest-at only) [#6586](https://github.com/rerun-io/rerun/pull/6586)
+- Introduce `ChunkStore::drop_entity_path` [#6588](https://github.com/rerun-io/rerun/pull/6588)
+- Implement `Chunk::cell` [#6875](https://github.com/rerun-io/rerun/pull/6875)
+- Implement `Chunk::iter_indices` [#6877](https://github.com/rerun-io/rerun/pull/6877)
+- Drop, rather than clear, removed blueprint entities [#7120](https://github.com/rerun-io/rerun/pull/7120)
+- Implement support for `RangeQueryOptions::include_extended_bounds` [#7132](https://github.com/rerun-io/rerun/pull/7132)
 
 #### 🧑‍💻 Dev-experience
 - Introduce `Chunk` component-level helpers and `UnitChunk` [#6990](https://github.com/rerun-io/rerun/pull/6990)
@@ -291,16 +297,9 @@ rerun rrd compact --max-rows 4096 --max-bytes=1048576 /my/recordings/*.rrd > out
 - Update to glam 0.28 & replace `macaw` with fork `re_math` [#6867](https://github.com/rerun-io/rerun/pull/6867)
 
 #### 🤷‍ Other
-- Query-time clears (latest-at only) [#6586](https://github.com/rerun-io/rerun/pull/6586)
-- Introduce `ChunkStore::drop_entity_path` [#6588](https://github.com/rerun-io/rerun/pull/6588)
 - Fix linkchecker: proper allow-list of stackoverflow.com [#6838](https://github.com/rerun-io/rerun/pull/6838)
-- Implement `Chunk::cell` [#6875](https://github.com/rerun-io/rerun/pull/6875)
-- Implement `Chunk::iter_indices` [#6877](https://github.com/rerun-io/rerun/pull/6877)
 - Don't lint comments inside `[metadata]` frontmatter [#6903](https://github.com/rerun-io/rerun/pull/6903)
-- Fix links in lerobot example [#6904](https://github.com/rerun-io/rerun/pull/6904) (thanks [@02alexander](https://github.com/02alexander)!)
 - Add basic checklist to test different 3D transform types & transform hierarchy propagation [#6968](https://github.com/rerun-io/rerun/pull/6968)
-- Drop, rather than clear, removed blueprint entities [#7120](https://github.com/rerun-io/rerun/pull/7120)
-- Implement support for `RangeQueryOptions::include_extended_bounds` [#7132](https://github.com/rerun-io/rerun/pull/7132)
 
 
 
