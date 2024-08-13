@@ -15,7 +15,7 @@ use re_viewer_context::{
     UiLayout, ViewerContext,
 };
 
-use crate::image::image_preview_ui;
+use crate::{blob::blob_preview_and_save_ui, image::image_preview_ui};
 
 use super::DataUi;
 
@@ -106,6 +106,7 @@ impl DataUi for InstancePath {
         if instance.is_all() {
             let component_map = components.into_iter().collect();
             preview_if_image_ui(ctx, ui, ui_layout, query, entity_path, &component_map);
+            preview_if_blob_ui(ctx, ui, ui_layout, query, entity_path, &component_map);
         }
     }
 }
@@ -295,7 +296,7 @@ fn preview_if_image_ui(
 
     if let Ok(data_range) = image_data_range_heuristic(&image_stats, &image.format) {
         ui.horizontal(|ui| {
-            download_button_ui(ctx, ui, entity_path, &image, data_range);
+            image_download_button_ui(ctx, ui, entity_path, &image, data_range);
 
             #[cfg(not(target_arch = "wasm32"))]
             crate::image::copy_image_button_ui(ui, &image, data_range);
@@ -317,7 +318,7 @@ fn preview_if_image_ui(
     Some(())
 }
 
-fn download_button_ui(
+fn image_download_button_ui(
     ctx: &ViewerContext<'_>,
     ui: &mut egui::Ui,
     entity_path: &re_log_types::EntityPath,
@@ -405,4 +406,34 @@ fn rgb8_histogram_ui(ui: &mut egui::Ui, rgb: &[u8]) -> egui::Response {
             }
         })
         .response
+}
+
+/// If this entity has a blob, preview it and show a download button
+fn preview_if_blob_ui(
+    ctx: &ViewerContext<'_>,
+    ui: &mut egui::Ui,
+    ui_layout: UiLayout,
+    query: &re_chunk_store::LatestAtQuery,
+    entity_path: &re_log_types::EntityPath,
+    component_map: &IntMap<ComponentName, UnitChunkShared>,
+) -> Option<()> {
+    let blob = component_map.get(&components::Blob::name())?;
+    let blob_row_id = blob.row_id();
+    let blob = blob.component_mono::<components::Blob>()?.ok()?;
+    let media_type = component_map
+        .get(&components::MediaType::name())
+        .and_then(|unit| unit.component_mono::<components::MediaType>()?.ok());
+
+    blob_preview_and_save_ui(
+        ctx,
+        ui,
+        ui_layout,
+        query,
+        entity_path,
+        blob_row_id,
+        &blob,
+        media_type.as_ref(),
+    );
+
+    Some(())
 }
