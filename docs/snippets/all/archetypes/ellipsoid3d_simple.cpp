@@ -29,7 +29,6 @@ int main() {
         rerun::Points3D(points3d).with_radii(0.02).with_colors(rerun::Rgba32(188, 77, 185))
     );
 
-    float three = 3.0f;
     rec.log(
         "ellipsoid",
         rerun::Ellipsoids3D::from_centers_and_half_sizes(
