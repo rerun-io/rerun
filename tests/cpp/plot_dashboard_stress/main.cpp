@@ -202,7 +202,37 @@ int main(int argc, char** argv) {
             ++time_step;
         }
 
+        // Measure how long this took and how high the load was.
+
+        auto elapsed = std::chrono::high_resolution_clock::now() - tick_start_time;
+        max_load = std::max(
+            max_load,
+            std::chrono::duration_cast<std::chrono::duration<double>>(elapsed).count() /
+                time_per_tick
+        );
+
+        // Throttle
+
+        auto sleep_duration = std::chrono::duration<double>(time_per_tick) - elapsed;
+        if (sleep_duration.count() > 0.0) {
+            auto sleep_start_time = std::chrono::high_resolution_clock::now();
+            std::this_thread::sleep_for(sleep_duration);
+            auto sleep_elapsed = std::chrono::high_resolution_clock::now() - sleep_start_time;
+
+            // We will very likely be put to sleep for more than we asked for, and therefore need
+            // to pay off that debt in order to meet our frequency goal.
+            auto sleep_debt = sleep_elapsed - sleep_duration;
+            tick_start_time = std::chrono::high_resolution_clock::now() -
+                              std::chrono::duration_cast<std::chrono::nanoseconds>(sleep_debt);
+        } else {
+            tick_start_time = std::chrono::high_resolution_clock::now();
+        }
+
         // Progress report
+        //
+        // Must come after throttle since we report every wall-clock second:
+        // If ticks are large & fast, then after each send we run into throttle.
+        // So if this was before throttle, we'd not report the first tick no matter how large it was.
 
         total_num_scalars += scalars_per_tick;
         auto total_elapsed = std::chrono::high_resolution_clock::now() - total_start_time;
@@ -219,47 +249,18 @@ int main(int argc, char** argv) {
             ); // just keep the fractional part
             total_start_time = std::chrono::high_resolution_clock::now() -
                                std::chrono::duration_cast<std::chrono::nanoseconds>(elapsed_debt);
-
-            total_start_time = std::chrono::high_resolution_clock::now();
             total_num_scalars = 0;
             max_load = 0.0;
         }
-
-        // Throttle
-
-        auto elapsed = std::chrono::high_resolution_clock::now() - tick_start_time;
-        double sleep_time =
-            time_per_tick -
-            std::chrono::duration_cast<std::chrono::duration<double>>(elapsed).count();
-
-        if (sleep_time > 0.0) {
-            auto sleep_duration = std::chrono::duration<double>(sleep_time);
-
-            auto sleep_start_time = std::chrono::high_resolution_clock::now();
-            std::this_thread::sleep_for(sleep_duration);
-            auto sleep_elapsed = std::chrono::high_resolution_clock::now() - sleep_start_time;
-
-            // We will very likely be put to sleep for more than we asked for, and therefore need
-            // to pay off that debt in order to meet our frequency goal.
-            auto sleep_debt = sleep_elapsed - sleep_duration;
-            tick_start_time = std::chrono::high_resolution_clock::now() -
-                              std::chrono::duration_cast<std::chrono::nanoseconds>(sleep_debt);
-        } else {
-            tick_start_time = std::chrono::high_resolution_clock::now();
-        }
-
-        max_load = std::max(
-            max_load,
-            std::chrono::duration_cast<std::chrono::duration<double>>(elapsed).count() /
-                time_per_tick
-        );
     }
 
-    auto total_elapsed = std::chrono::high_resolution_clock::now() - total_start_time;
-    double total_elapsed_secs =
-        std::chrono::duration_cast<std::chrono::duration<double>>(total_elapsed).count();
-    std::cout << "logged " << total_num_scalars << " scalars over " << total_elapsed_secs
-              << "s (freq=" << static_cast<double>(total_num_scalars) / total_elapsed_secs
-              << "Hz, expected=" << expected_total_freq << "Hz, load=" << max_load * 100.0 << "%)"
-              << std::endl;
+    if (total_num_scalars > 0) {
+        auto total_elapsed = std::chrono::high_resolution_clock::now() - total_start_time;
+        double total_elapsed_secs =
+            std::chrono::duration_cast<std::chrono::duration<double>>(total_elapsed).count();
+        std::cout << "logged " << total_num_scalars << " scalars over " << total_elapsed_secs
+                  << "s (freq=" << static_cast<double>(total_num_scalars) / total_elapsed_secs
+                  << "Hz, expected=" << expected_total_freq << "Hz, load=" << max_load * 100.0
+                  << "%)" << std::endl;
+    }
 }

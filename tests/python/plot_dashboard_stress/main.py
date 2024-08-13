@@ -138,12 +138,6 @@ def main() -> None:
 
     expected_total_freq = args.freq * num_series
 
-    total_start_time = time.time()
-    total_num_scalars = 0
-
-    tick_start_time = time.time()
-    max_load = 0.0
-
     values_shape = (
         len(sim_times),
         len(plot_paths),
@@ -168,6 +162,12 @@ def main() -> None:
 
     time_column = None
 
+    total_start_time = time.time()
+    total_num_scalars = 0
+
+    tick_start_time = time.time()
+    max_load = 0.0
+
     for index, sim_time in ticks:
         if args.temporal_batch_size is None:
             rr.set_time_seconds("sim_time", sim_time)
@@ -183,31 +183,19 @@ def main() -> None:
                 else:
                     value_index = slice(index, index + args.temporal_batch_size)
                     value_batch = rr.components.ScalarBatch(values[value_index, plot_idx, series_idx])
-                    rr.send_columns(
+                    rr.send_columnsstorage_type(
                         f"{plot_path}/{series_path}",
                         times=[time_column],
                         components=[value_batch],
                     )
 
-        # Progress report
+        # Measure how long this took and how high the load was.
 
-        total_num_scalars += scalars_per_tick
-        total_elapsed = time.time() - total_start_time
-        if total_elapsed >= 1.0:
-            print(
-                f"logged {total_num_scalars} scalars over {round(total_elapsed, 3)}s \
-(freq={round(total_num_scalars / total_elapsed, 3)}Hz, expected={round(expected_total_freq, 3)}Hz, \
-load={round(max_load * 100.0, 3)}%)"
-            )
-
-            elapsed_debt = total_elapsed % 1  # just keep the fractional part
-            total_start_time = time.time() - elapsed_debt
-            total_num_scalars = 0
-            max_load = 0.0
+        elapsed = time.time() - tick_start_time
+        max_load = max(max_load, elapsed / time_per_tick)
 
         # Throttle
 
-        elapsed = time.time() - tick_start_time
         sleep_duration = time_per_tick - elapsed
         if sleep_duration > 0.0:
             sleep_start_time = time.time()
@@ -221,14 +209,34 @@ load={round(max_load * 100.0, 3)}%)"
         else:
             tick_start_time = time.time()
 
-        max_load = max(max_load, elapsed / time_per_tick)
+        # Progress report
+        #
+        # Must come after throttle since we report every wall-clock second:
+        # If ticks are large & fast, then after each send we run into throttle.
+        # So if this was before throttle, we'd not report the first tick no matter how large it was.
 
-    total_elapsed = time.time() - total_start_time
-    print(
-        f"logged {total_num_scalars} scalars over {round(total_elapsed, 3)}s \
+        total_num_scalars += scalars_per_tick
+        total_elapsed = time.time() - total_start_time
+
+        if total_elapsed >= 1.0:
+            print(
+                f"logged {total_num_scalars} scalars over {round(total_elapsed, 3)}s \
 (freq={round(total_num_scalars / total_elapsed, 3)}Hz, expected={round(expected_total_freq, 3)}Hz, \
 load={round(max_load * 100.0, 3)}%)"
-    )
+            )
+
+            elapsed_debt = total_elapsed % 1  # just keep the fractional part
+            total_start_time = time.time() - elapsed_debt
+            total_num_scalars = 0
+            max_load = 0.0
+
+    if total_num_scalars > 0:
+        total_elapsed = time.time() - total_start_time
+        print(
+            f"logged {total_num_scalars} scalars over {round(total_elapsed, 3)}s \
+(freq={round(total_num_scalars / total_elapsed, 3)}Hz, expected={round(expected_total_freq, 3)}Hz, \
+load={round(max_load * 100.0, 3)}%)"
+        )
 
     rr.script_teardown(args)
 

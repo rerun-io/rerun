@@ -165,28 +165,13 @@ fn run(rec: &rerun::RecordingStream, args: &Args) -> anyhow::Result<()> {
             }
         }
 
-        // Progress report
+        // Measure how long this took and how high the load was.
 
-        total_num_scalars += scalars_per_tick;
-        let total_elapsed = total_start_time.elapsed();
-        if total_elapsed.as_secs_f64() >= 1.0 {
-            println!(
-                "logged {total_num_scalars} scalars over {:?} (freq={:.3}Hz, expected={expected_total_freq:.3}Hz, load={:.3}%)",
-                total_elapsed,
-                total_num_scalars as f64 / total_elapsed.as_secs_f64(),
-                max_load * 100.0,
-            );
-
-            let elapsed_debt =
-                std::time::Duration::from_secs_f64(total_elapsed.as_secs_f64().fract());
-            total_start_time = std::time::Instant::now() - elapsed_debt;
-            total_num_scalars = 0;
-            max_load = 0.0;
-        }
+        let elapsed = tick_start_time.elapsed();
+        max_load = f64::max(max_load, elapsed.as_secs_f64() / time_per_tick);
 
         // Throttle
 
-        let elapsed = tick_start_time.elapsed();
         let sleep_duration = time_per_tick - elapsed.as_secs_f64();
         if sleep_duration > 0.0 {
             let sleep_duration = std::time::Duration::from_secs_f64(sleep_duration);
@@ -201,16 +186,39 @@ fn run(rec: &rerun::RecordingStream, args: &Args) -> anyhow::Result<()> {
             tick_start_time = std::time::Instant::now();
         }
 
-        max_load = f64::max(max_load, elapsed.as_secs_f64() / time_per_tick);
+        // Progress report
+        //
+        // Must come after throttle since we report every wall-clock second:
+        // If ticks are large & fast, then after each send we run into throttle.
+        // So if this was before throttle, we'd not report the first tick no matter how large it was.
+
+        total_num_scalars += scalars_per_tick;
+        let total_elapsed = total_start_time.elapsed();
+        if total_elapsed.as_secs_f64() >= 1.0 {
+            println!(
+                        "logged {total_num_scalars} scalars over {:?} (freq={:.3}Hz, expected={expected_total_freq:.3}Hz, load={:.3}%)",
+                        total_elapsed,
+                        total_num_scalars as f64 / total_elapsed.as_secs_f64(),
+                        max_load * 100.0,
+                    );
+
+            let elapsed_debt =
+                std::time::Duration::from_secs_f64(total_elapsed.as_secs_f64().fract());
+            total_start_time = std::time::Instant::now() - elapsed_debt;
+            total_num_scalars = 0;
+            max_load = 0.0;
+        }
     }
 
-    let total_elapsed = total_start_time.elapsed();
-    println!(
+    if total_num_scalars > 0 {
+        let total_elapsed = total_start_time.elapsed();
+        println!(
         "logged {total_num_scalars} scalars over {:?} (freq={:.3}Hz, expected={expected_total_freq:.3}Hz, load={:.3}%)",
         total_elapsed,
         total_num_scalars as f64 / total_elapsed.as_secs_f64(),
         max_load * 100.0,
     );
+    }
 
     Ok(())
 }
