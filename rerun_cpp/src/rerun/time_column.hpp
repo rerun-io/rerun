@@ -41,7 +41,7 @@ namespace rerun {
         SortingStatus sorting_status;
 
       public:
-        /// Creates a new time column from an array of time points.
+        /// Creates a time column from an array of time points.
         ///
         /// \param timeline The timeline this column belongs to.
         /// \param times The time values.
@@ -54,7 +54,7 @@ namespace rerun {
             SortingStatus sorting_status = SortingStatus::Unknown
         );
 
-        /// Creates a sequence time column from an array of sequence points.
+        /// Creates a time column from an array of sequence points.
         ///
         /// \param timeline_name The name of the timeline this column belongs to.
         /// \param sequence_points The sequence points.
@@ -72,25 +72,31 @@ namespace rerun {
             );
         }
 
-        /// Creates a sequence time column from an array of sequence points.
+        /// Creates a time column from an array of nanoseconds.
         ///
         /// \param timeline_name The name of the timeline this column belongs to.
         /// \param times_in_nanoseconds Time values in nanoseconds.
         /// Make sure the sorting status is correctly specified.
         /// \param sorting_status The sorting status of the time points.
         /// Already sorted time points may perform better.
-        static TimeColumn from_times_nanoseconds(
+        static TimeColumn from_nanoseconds(
             std::string timeline_name, Collection<int64_t> times_in_nanoseconds,
             SortingStatus sorting_status = SortingStatus::Unknown
-        ) {
-            return TimeColumn(
-                Timeline(std::move(timeline_name), TimeType::Time),
-                std::move(times_in_nanoseconds),
-                sorting_status
-            );
-        }
+        );
 
-        /// Creates a sequence time column from an array of arbitrary std::chrono durations.
+        /// Creates a time column from an array of seconds.
+        ///
+        /// \param timeline_name The name of the timeline this column belongs to.
+        /// \param times_in_seconds Time values in seconds.
+        /// Make sure the sorting status is correctly specified.
+        /// \param sorting_status The sorting status of the time points.
+        /// Already sorted time points may perform better.
+        static TimeColumn from_seconds(
+            std::string timeline_name, Collection<double> times_in_seconds,
+            SortingStatus sorting_status = SortingStatus::Unknown
+        );
+
+        /// Creates a time column from an array of arbitrary std::chrono durations.
         ///
         /// \param timeline_name The name of the timeline this column belongs to.
         /// \param chrono_times Time values as chrono durations.
