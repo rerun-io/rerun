@@ -57,7 +57,6 @@ API usage examples:
   )
   ```
 </details>
-
 <details>
   <summary>C++ timeseries</summary>
 
@@ -91,7 +90,6 @@ API usage examples:
   rec.send_columns("scalars", time_column, scalar_data_collection);
   ```
 </details>
-
 <details>
   <summary>Rust timeseries</summary>
 
@@ -147,13 +145,6 @@ rerun rrd compact --max-rows 4096 --max-bytes=1048576 /my/recordings/*.rrd > out
 * Python: `NV12/YUY2` are now logged with `Image`
 * `ImageEncoded` is deprecated and replaced with [`EncodedImage`](https://rerun.io/docs/reference/types/archetypes/encoded_image?speculative-link) (JPEG, PNG, …) and  [`Image`](https://rerun.io/docs/reference/types/archetypes/image?speculative-link) (NV12, YUY2, …)
 * [`DepthImage`](https://rerun.io/docs/reference/types/archetypes/depth_image) and [`SegmentationImage`](https://rerun.io/docs/reference/types/archetypes/segmentation_image) are no longer encoded as a tensors, and expects its shape in `[width, height]` order
-
-TODO: add diff links for all relevant snippets
-* breaking change diffs (TODO: link to actual doc segments)
-  * Image, DepthImage, SegmentationImage, EncodedImage
-  * Transform3D, OutOfTreeTransform3D
-  * Boxes3D
-  * Mesh3D::AlbedoFactor
 
 🧳 Migration guide: http://rerun.io/docs/reference/migration/migration-0-18?speculative-link
 
