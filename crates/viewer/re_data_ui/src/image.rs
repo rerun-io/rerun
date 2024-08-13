@@ -9,6 +9,27 @@ use re_viewer_context::{
     Annotations, ImageInfo, ImageStats, ImageStatsCache, UiLayout, ViewerContext,
 };
 
+/// Show a button letting the user copy the image
+#[cfg(not(target_arch = "wasm32"))]
+pub fn copy_image_button_ui(ui: &mut egui::Ui, image: &ImageInfo, data_range: egui::Rangef) {
+    if ui
+        .button("Copy image")
+        .on_hover_text("Copy image to system clipboard")
+        .clicked()
+    {
+        if let Some(rgba) = image.to_rgba8_image(data_range.into()) {
+            re_viewer_context::Clipboard::with(|clipboard| {
+                clipboard.set_image(
+                    [rgba.width() as _, rgba.height() as _],
+                    bytemuck::cast_slice(rgba.as_raw()),
+                );
+            });
+        } else {
+            re_log::error!("Invalid image");
+        }
+    }
+}
+
 /// Show the given image with an appropriate size.
 ///
 /// For segmentation images, the annotation context is looked up.

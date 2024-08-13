@@ -15,7 +15,7 @@ use re_viewer_context::{
     UiLayout, ViewerContext,
 };
 
-use crate::image::image_preview_ui;
+use crate::image::{copy_image_button_ui, image_preview_ui};
 
 use super::DataUi;
 
@@ -293,34 +293,12 @@ fn preview_if_image_ui(
 
     let image_stats = ctx.cache.entry(|c: &mut ImageStatsCache| c.entry(&image));
 
-    // TODO(#2341): The range should be determined by a `DataRange` component. In absence this, heuristics apply.
     if let Ok(data_range) = image_data_range_heuristic(&image_stats, &image.format) {
         ui.horizontal(|ui| {
+            download_button_ui(ctx, ui, entity_path, &image, data_range);
+
             #[cfg(not(target_arch = "wasm32"))]
             copy_image_button_ui(ui, &image, data_range);
-
-            let text = if cfg!(target_arch = "wasm32") {
-                "Download image…"
-            } else {
-                "Save image…"
-            };
-            if ui.button(text).clicked() {
-                match image.to_png(data_range.into()) {
-                    Ok(png_bytes) => {
-                        let file_name = format!(
-                            "{}.png",
-                            entity_path
-                                .last()
-                                .map_or("image", |name| name.unescaped_str())
-                                .to_owned()
-                        );
-                        ctx.save_file_dialog(file_name, "Save image".to_owned(), png_bytes);
-                    }
-                    Err(err) => {
-                        re_log::error!("{err}");
-                    }
-                }
-            }
         });
     }
 
@@ -339,22 +317,33 @@ fn preview_if_image_ui(
     Some(())
 }
 
-#[cfg(not(target_arch = "wasm32"))]
-fn copy_image_button_ui(ui: &mut egui::Ui, image: &ImageInfo, data_range: egui::Rangef) {
-    if ui
-        .button("Copy image")
-        .on_hover_text("Copy image to system clipboard")
-        .clicked()
-    {
-        if let Some(rgba) = image.to_rgba8_image(data_range.into()) {
-            re_viewer_context::Clipboard::with(|clipboard| {
-                clipboard.set_image(
-                    [rgba.width() as _, rgba.height() as _],
-                    bytemuck::cast_slice(rgba.as_raw()),
+fn download_button_ui(
+    ctx: &ViewerContext<'_>,
+    ui: &mut egui::Ui,
+    entity_path: &re_log_types::EntityPath,
+    image: &ImageInfo,
+    data_range: egui::Rangef,
+) {
+    let text = if cfg!(target_arch = "wasm32") {
+        "Download image…"
+    } else {
+        "Save image…"
+    };
+    if ui.button(text).clicked() {
+        match image.to_png(data_range.into()) {
+            Ok(png_bytes) => {
+                let file_name = format!(
+                    "{}.png",
+                    entity_path
+                        .last()
+                        .map_or("image", |name| name.unescaped_str())
+                        .to_owned()
                 );
-            });
-        } else {
-            re_log::error!("Invalid image");
+                ctx.save_file_dialog(file_name, "Save image".to_owned(), png_bytes);
+            }
+            Err(err) => {
+                re_log::error!("{err}");
+            }
         }
     }
 }

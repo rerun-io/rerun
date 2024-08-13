@@ -110,7 +110,6 @@ fn color_image_to_gpu(
             ShaderDecoding::Nv12 | ShaderDecoding::Yuy2 => [0.0, 1.0],
         }
     } else {
-        // TODO(#2341): The range should be determined by a `DataRange` component. In absence this, heuristics apply.
         image_data_range_heuristic(image_stats, &image_format)
             .map(|range| [range.min, range.max])?
     };
@@ -157,6 +156,7 @@ fn color_image_to_gpu(
 }
 
 /// Get a valid, finite range for the gpu to use.
+// TODO(#2341): The range should be determined by a `DataRange` component. In absence this, heuristics apply.
 pub fn image_data_range_heuristic(
     image_stats: &ImageStats,
     image_format: &ImageFormat,
