@@ -73,6 +73,8 @@ fn main() {
         }
     }
 
+    snippets.sort();
+
     assert!(
         snippets.len() > 10,
         "Found too few snippets in {all_path:?}"
