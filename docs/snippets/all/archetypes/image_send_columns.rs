@@ -31,7 +31,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     });
     rec.log_component_batches(
         "images",
-        false, // TODO: static=true,
+        true,
         [&format as _, &rerun::Image::indicator() as _],
     )?;
 

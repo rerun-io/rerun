@@ -78,7 +78,7 @@ class Image(ImageExt, Archetype):
 
     # Log the ImageFormat and indicator once, as static.
     format_static = rr.components.ImageFormat(width=width, height=height, color_model="RGB", channel_datatype="U8")
-    rr.log("images", [format_static, rr.Image.indicator()])  # TODO:, static=True)
+    rr.log("images", [format_static, rr.Image.indicator()], static=True)
 
     # Send all images at once.
     rr.send_columns(

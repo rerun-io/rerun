@@ -107,11 +107,7 @@ namespace rerun::archetypes {
     ///         rerun::ColorModel::RGB,
     ///         rerun::ChannelDatatype::U8
     ///     );
-    ///     rec.log(
-    ///         "images",
-    ///         rerun::borrow(&format, 1),
-    ///         rerun::Image::IndicatorComponent()
-    ///     ); // TODO: make static
+    ///     rec.log_static("images", rerun::borrow(&format, 1), rerun::Image::IndicatorComponent());
     ///
     ///     // Split up the image data into several components referencing the underlying data.
     ///     const size_t image_size_in_bytes = width * height * 3;

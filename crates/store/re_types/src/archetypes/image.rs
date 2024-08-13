@@ -99,7 +99,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 ///     });
 ///     rec.log_component_batches(
 ///         "images",
-///         false, // TODO: static=true,
+///         true,
 ///         [&format as _, &rerun::Image::indicator() as _],
 ///     )?;
 ///
