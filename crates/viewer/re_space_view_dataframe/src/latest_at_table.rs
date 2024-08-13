@@ -175,25 +175,29 @@ pub(crate) fn latest_at_table_ui(
                 if let Some(((_time, row_id), array)) = result {
                     let instance_index = instance_path.instance.get() as usize;
 
-                    let (data, clamped) = if instance_index >= array.len() {
-                        (array.sliced(array.len() - 1, 1), true)
+                    if array.is_empty() {
+                        ui.weak("-");
                     } else {
-                        (array.sliced(instance_index, 1), false)
-                    };
+                        let (data, clamped) = if instance_index >= array.len() {
+                            (array.sliced(array.len() - 1, 1), true)
+                        } else {
+                            (array.sliced(instance_index, 1), false)
+                        };
 
-                    ui.add_enabled_ui(!clamped, |ui| {
-                        ctx.component_ui_registry.ui_raw(
-                            ctx,
-                            ui,
-                            UiLayout::List,
-                            latest_at_query,
-                            ctx.recording(),
-                            &instance_path.entity_path,
-                            *component_name,
-                            Some(row_id),
-                            &*data,
-                        );
-                    });
+                        ui.add_enabled_ui(!clamped, |ui| {
+                            ctx.component_ui_registry.ui_raw(
+                                ctx,
+                                ui,
+                                UiLayout::List,
+                                latest_at_query,
+                                ctx.recording(),
+                                &instance_path.entity_path,
+                                *component_name,
+                                Some(row_id),
+                                &*data,
+                            );
+                        });
+                    }
                 } else {
                     ui.weak("-");
                 }
