@@ -19,14 +19,13 @@ impl PixelFormat {
         }
     }
 
-    /// Number of bits needed to represent a single pixel.
-    ///
-    /// Note that this is not necessarily divisible by 8!
+    /// Number of bytes needed to represent an image of the given size.
     #[inline]
-    pub fn bits_per_pixel(&self) -> usize {
+    pub fn num_bytes(&self, [w, h]: [u32; 2]) -> usize {
+        let num_pixels = w as usize * h as usize;
         match self {
-            Self::NV12 => 12,
-            Self::YUY2 => 16,
+            Self::NV12 => 12 * num_pixels / 8,
+            Self::YUY2 => 16 * num_pixels / 8,
         }
     }
 
