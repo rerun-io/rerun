@@ -310,7 +310,7 @@ def run_gradient_image() -> None:
     rr.log("gradient_u16_0_1020", rr.Image(im))
 
 
-def run_image_tensors() -> None:
+def run_image_datatypes() -> None:
     # Make sure you use a colorful image with alpha!
     dir_path = os.path.dirname(os.path.realpath(__file__))
     img_path = f"{dir_path}/../../../crates/viewer/re_ui/data/logo_dark_mode.png"
@@ -328,7 +328,7 @@ def run_image_tensors() -> None:
         "uint16",
         "uint32",
         "uint64",
-        "int8",  # produces wrap-around when casting, producing ugly images, but clipping which is not useful as a test
+        "int8",
         "int16",
         "int32",
         "int64",
@@ -337,10 +337,17 @@ def run_image_tensors() -> None:
         "float64",
     ]
 
+    def cast_to(array, dtype):
+        if dtype == "int8":
+            # remap [0, 255] to [-128, 127]
+            return (array.astype("int16") - 128).astype("int8")
+        else:
+            return array.astype(dtype)
+
     for dtype in dtypes:
-        rr.log(f"img_rgba_{dtype}", rr.Image(img_rgba.astype(dtype)))
-        rr.log(f"img_rgb_{dtype}", rr.Image(img_rgb.astype(dtype)))
-        rr.log(f"img_gray_{dtype}", rr.Image(img_gray.astype(dtype)))
+        rr.log(f"img_rgba_{dtype}", rr.Image(cast_to(img_rgba, dtype)))
+        rr.log(f"img_rgb_{dtype}", rr.Image(cast_to(img_rgb, dtype)))
+        rr.log(f"img_gray_{dtype}", rr.Image(cast_to(img_gray, dtype)))
 
 
 def spawn_test(test: Callable[[], None], rec: rr.RecordingStream) -> None:
@@ -355,7 +362,7 @@ def main() -> None:
         "bbox": run_bounding_box,
         "extension_components": run_extension_component,
         "gradient_image": run_gradient_image,
-        "image_tensors": run_image_tensors,
+        "image_datatypes": run_image_datatypes,
         "log_cleared": run_log_cleared,
         "raw_mesh": raw_mesh,
         "rects": run_rects,
@@ -394,7 +401,7 @@ def main() -> None:
         threads = []
         for name, test in tests.items():
             # Some tests are just a bit… too much
-            if args.test == "most" and name in ["image_tensors", "transforms"]:
+            if args.test == "most" and name in ["image_datatypes", "transforms"]:
                 continue
 
             if args.split_recordings:

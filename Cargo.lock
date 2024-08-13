@@ -4464,7 +4464,6 @@ dependencies = [
  "re_viewer_context",
  "rfd",
  "unindent",
- "wasm-bindgen-futures",
 ]
 
 [[package]]
@@ -5340,6 +5339,7 @@ dependencies = [
  "egui-wgpu",
  "egui_extras",
  "egui_tiles",
+ "emath",
  "glam",
  "half 2.3.1",
  "image",
@@ -5367,11 +5367,13 @@ dependencies = [
  "re_types",
  "re_types_core",
  "re_ui",
+ "rfd",
  "serde",
  "slotmap",
  "smallvec",
  "thiserror",
  "uuid",
+ "wasm-bindgen-futures",
  "wgpu",
 ]
 

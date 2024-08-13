@@ -4,7 +4,7 @@ use std::collections::BTreeMap;
 
 use arrow2::{
     array::{Array, ListArray, PrimitiveArray},
-    datatypes::Field,
+    datatypes::{DataType, Field},
     ffi,
     offset::Offsets,
 };
@@ -58,7 +58,24 @@ fn array_to_rust(arrow_array: &PyAny, name: Option<&str>) -> PyResult<(Box<dyn A
         // certain where we're going, this is a nice, painless and easily reversible solution.
         //
         // See <https://github.com/rerun-io/rerun/issues/6606>.
-        let datatype = field.data_type().to_logical_type().clone();
+        let datatype = if let DataType::List(inner) = field.data_type() {
+            let Field {
+                name,
+                data_type,
+                is_nullable,
+                metadata,
+            } = &**inner;
+            DataType::List(std::sync::Arc::new(
+                Field::new(
+                    name.clone(),
+                    data_type.to_logical_type().clone(),
+                    *is_nullable,
+                )
+                .with_metadata(metadata.clone()),
+            ))
+        } else {
+            field.data_type().to_logical_type().clone()
+        };
 
         let array = ffi::import_array_from_c(*array, datatype)
             .map_err(|err| PyValueError::new_err(format!("Error importing Array: {err}")))?;

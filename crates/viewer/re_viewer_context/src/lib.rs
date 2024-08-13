@@ -12,6 +12,7 @@ mod command_sender;
 mod component_fallbacks;
 mod component_ui_registry;
 mod contents;
+mod file_dialog;
 mod image_info;
 mod item;
 mod maybe_mut_ref;
@@ -23,10 +24,9 @@ mod space_view;
 mod store_context;
 pub mod store_hub;
 mod tensor;
-mod time_drag_value;
-//TODO(ab): this should be behind #[cfg(test)], but then ` cargo clippy --all-targets` fails
-pub mod test_context;
+pub mod test_context; //TODO(ab): this should be behind #[cfg(test)], but then ` cargo clippy --all-targets` fails
 mod time_control;
+mod time_drag_value;
 mod typed_entity_collections;
 mod utils;
 mod viewer_context;
