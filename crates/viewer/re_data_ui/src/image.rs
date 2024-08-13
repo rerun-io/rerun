@@ -4,10 +4,33 @@ use re_renderer::renderer::ColormappedTexture;
 use re_types::{
     components::ClassId, datatypes::ColorModel, image::ImageKind, tensor_data::TensorElement,
 };
-use re_viewer_context::{gpu_bridge, Annotations, ImageInfo, ImageStats, UiLayout};
+use re_viewer_context::{
+    gpu_bridge::{self, image_to_gpu},
+    Annotations, ImageInfo, ImageStats, ImageStatsCache, UiLayout, ViewerContext,
+};
+
+/// Show the given image with an appropriate size.
+///
+/// For segmentation images, the annotation context is looked up.
+pub fn image_preview_ui(
+    ctx: &ViewerContext<'_>,
+    ui: &mut egui::Ui,
+    ui_layout: UiLayout,
+    query: &re_chunk_store::LatestAtQuery,
+    entity_path: &re_log_types::EntityPath,
+    image: &ImageInfo,
+) -> Option<()> {
+    let render_ctx = ctx.render_ctx?;
+    let image_stats = ctx.cache.entry(|c: &mut ImageStatsCache| c.entry(image));
+    let annotations = crate::annotations(ctx, query, entity_path);
+    let debug_name = entity_path.to_string();
+    let texture = image_to_gpu(render_ctx, &debug_name, image, &image_stats, &annotations).ok()?;
+    texture_preview_ui(render_ctx, ui, ui_layout, entity_path, texture);
+    Some(())
+}
 
 /// Show the given texture with an appropriate size.
-pub fn texture_preview_ui(
+fn texture_preview_ui(
     render_ctx: &re_renderer::RenderContext,
     ui: &mut egui::Ui,
     ui_layout: UiLayout,

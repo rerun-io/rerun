@@ -11,11 +11,11 @@ use re_types::{
 };
 use re_ui::{ContextExt as _, UiExt as _};
 use re_viewer_context::{
-    gpu_bridge::{image_data_range_heuristic, image_to_gpu},
-    HoverHighlight, ImageInfo, ImageStatsCache, Item, UiLayout, ViewerContext,
+    gpu_bridge::image_data_range_heuristic, HoverHighlight, ImageInfo, ImageStatsCache, Item,
+    UiLayout, ViewerContext,
 };
 
-use crate::image::texture_preview_ui;
+use crate::image::image_preview_ui;
 
 use super::DataUi;
 
@@ -297,22 +297,7 @@ fn preview_if_image_ui(
     if let Ok(data_range) = image_data_range_heuristic(&image_stats, &image.format) {
         ui.horizontal(|ui| {
             #[cfg(not(target_arch = "wasm32"))]
-            if ui
-                .button("Copy image")
-                .on_hover_text("Copy image to system clipboard")
-                .clicked()
-            {
-                if let Some(rgba) = image.to_rgba8_image(data_range.into()) {
-                    re_viewer_context::Clipboard::with(|clipboard| {
-                        clipboard.set_image(
-                            [rgba.width() as _, rgba.height() as _],
-                            bytemuck::cast_slice(rgba.as_raw()),
-                        );
-                    });
-                } else {
-                    re_log::error!("Invalid image");
-                }
-            }
+            copy_image_button_ui(ui, &image, data_range);
 
             let text = if cfg!(target_arch = "wasm32") {
                 "Download image…"
@@ -354,24 +339,24 @@ fn preview_if_image_ui(
     Some(())
 }
 
-/// Show the image.
-fn image_preview_ui(
-    ctx: &ViewerContext<'_>,
-    ui: &mut egui::Ui,
-    ui_layout: UiLayout,
-    query: &re_chunk_store::LatestAtQuery,
-    entity_path: &re_log_types::EntityPath,
-    image: &ImageInfo,
-) -> Option<()> {
-    let render_ctx = ctx.render_ctx?;
-    let image_stats = ctx.cache.entry(|c: &mut ImageStatsCache| c.entry(image));
-    let annotations = crate::annotations(ctx, query, entity_path);
-    let debug_name = entity_path.to_string();
-    let texture = image_to_gpu(render_ctx, &debug_name, image, &image_stats, &annotations).ok()?;
-
-    texture_preview_ui(render_ctx, ui, ui_layout, entity_path, texture);
-
-    Some(())
+#[cfg(not(target_arch = "wasm32"))]
+fn copy_image_button_ui(ui: &mut egui::Ui, image: &ImageInfo, data_range: egui::Rangef) {
+    if ui
+        .button("Copy image")
+        .on_hover_text("Copy image to system clipboard")
+        .clicked()
+    {
+        if let Some(rgba) = image.to_rgba8_image(data_range.into()) {
+            re_viewer_context::Clipboard::with(|clipboard| {
+                clipboard.set_image(
+                    [rgba.width() as _, rgba.height() as _],
+                    bytemuck::cast_slice(rgba.as_raw()),
+                );
+            });
+        } else {
+            re_log::error!("Invalid image");
+        }
+    }
 }
 
 fn rgb8_histogram_ui(ui: &mut egui::Ui, rgb: &[u8]) -> egui::Response {

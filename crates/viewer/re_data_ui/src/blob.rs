@@ -1,9 +1,8 @@
-use re_renderer::renderer::ColormappedTexture;
 use re_types::components::{Blob, MediaType};
 use re_ui::{list_item::PropertyContent, UiExt as _};
-use re_viewer_context::{gpu_bridge::image_to_gpu, UiLayout};
+use re_viewer_context::UiLayout;
 
-use crate::{image::texture_preview_ui, EntityDataUi};
+use crate::{image::image_preview_ui, EntityDataUi};
 
 impl EntityDataUi for Blob {
     fn entity_data_ui(
@@ -26,7 +25,13 @@ impl EntityDataUi for Blob {
         // This can also help a user debug if they log the contents of `.png` file with a `image/jpeg` `MediaType`.
         let media_type = MediaType::guess_from_data(self);
 
-        let texture = blob_as_texture(ctx, query, entity_path, row_id, self, media_type.as_ref());
+        let image = row_id.and_then(|row_id| {
+            ctx.cache
+                .entry(|c: &mut re_viewer_context::ImageDecodeCache| {
+                    c.entry(row_id, self, media_type.as_ref().map(|mt| mt.as_str()))
+                })
+                .ok()
+        });
 
         if ui_layout.is_single_line() {
             ui.horizontal(|ui| {
@@ -37,8 +42,8 @@ impl EntityDataUi for Blob {
                         .on_hover_text("Media type (MIME) based on magic header bytes");
                 }
 
-                if let (Some(render_ctx), Some(texture)) = (ctx.render_ctx, texture) {
-                    texture_preview_ui(render_ctx, ui, ui_layout, entity_path, texture);
+                if let Some(image) = image {
+                    image_preview_ui(ctx, ui, ui_layout, query, entity_path, &image);
                 }
             });
         } else {
@@ -63,8 +68,8 @@ impl EntityDataUi for Blob {
                 .on_hover_text("Failed to detect media type (Mime) from magic header bytes");
             }
 
-            if let (Some(render_ctx), Some(texture)) = (ctx.render_ctx, texture) {
-                texture_preview_ui(render_ctx, ui, ui_layout, entity_path, texture);
+            if let Some(image) = image {
+                image_preview_ui(ctx, ui, ui_layout, query, entity_path, &image);
             }
 
             if ui_layout != UiLayout::Tooltip {
@@ -91,29 +96,4 @@ impl EntityDataUi for Blob {
             }
         }
     }
-}
-
-fn blob_as_texture(
-    ctx: &re_viewer_context::ViewerContext<'_>,
-    query: &re_chunk_store::LatestAtQuery,
-    entity_path: &re_log_types::EntityPath,
-    row_id: Option<re_chunk_store::RowId>,
-    blob: &Blob,
-    media_type: Option<&MediaType>,
-) -> Option<ColormappedTexture> {
-    let render_ctx = ctx.render_ctx?;
-    let debug_name = entity_path.to_string();
-
-    let image = row_id.and_then(|row_id| {
-        ctx.cache
-            .entry(|c: &mut re_viewer_context::ImageDecodeCache| {
-                c.entry(row_id, blob, media_type.as_ref().map(|mt| mt.as_str()))
-            })
-            .ok()
-    })?;
-    let image_stats = ctx
-        .cache
-        .entry(|c: &mut re_viewer_context::ImageStatsCache| c.entry(&image));
-    let annotations = crate::annotations(ctx, query, entity_path);
-    image_to_gpu(render_ctx, &debug_name, &image, &image_stats, &annotations).ok()
 }
