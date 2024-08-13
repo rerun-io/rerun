@@ -198,7 +198,7 @@ impl ChunkStoreSubscriber for Caches {
             temporal_range: HashMap<CacheKey, BTreeSet<ChunkId>>,
         }
 
-        let mut compacted = CompactedEvents::default();
+        let mut compacted_events = CompactedEvents::default();
 
         for event in events {
             let ChunkStoreEvent {
@@ -218,7 +218,7 @@ impl ChunkStoreSubscriber for Caches {
             let ChunkStoreDiff {
                 kind: _, // Don't care: both additions and deletions invalidate query results.
                 chunk,
-                compacted: _,
+                compacted,
             } = diff;
 
             {
@@ -226,11 +226,18 @@ impl ChunkStoreSubscriber for Caches {
 
                 if chunk.is_static() {
                     for component_name in chunk.component_names() {
-                        compacted
+                        let compacted_events = compacted_events
                             .static_
                             .entry((chunk.entity_path().clone(), component_name))
-                            .or_default()
-                            .insert(chunk.id());
+                            .or_default();
+
+                        compacted_events.insert(chunk.id());
+                        // If a compaction was triggered, make sure to drop the original chunks too.
+                        compacted_events.extend(
+                            compacted
+                                .iter()
+                                .flat_map(|(compacted_chunk_ids, _)| compacted_chunk_ids),
+                        );
                     }
                 }
 
@@ -243,17 +250,24 @@ impl ChunkStoreSubscriber for Caches {
                                 component_name,
                             );
 
-                            compacted
+                            compacted_events
                                 .temporal_latest_at
                                 .entry(key.clone())
                                 .and_modify(|time| *time = TimeInt::min(*time, data_time))
                                 .or_insert(data_time);
 
-                            compacted
-                                .temporal_range
-                                .entry(key)
-                                .or_default()
-                                .insert(chunk.id());
+                            {
+                                let compacted_events =
+                                    compacted_events.temporal_range.entry(key).or_default();
+
+                                compacted_events.insert(chunk.id());
+                                // If a compaction was triggered, make sure to drop the original chunks too.
+                                compacted_events.extend(
+                                    compacted
+                                        .iter()
+                                        .flat_map(|(compacted_chunk_ids, _)| compacted_chunk_ids),
+                                );
+                            }
                         }
                     }
                 }
@@ -274,7 +288,7 @@ impl ChunkStoreSubscriber for Caches {
             // yet another layer of caching indirection.
             // But since this pretty much never happens in practice, let's not go there until we
             // have metrics showing that show we need to.
-            for ((entity_path, component_name), chunk_ids) in compacted.static_ {
+            for ((entity_path, component_name), chunk_ids) in compacted_events.static_ {
                 if component_name == ClearIsRecursive::name() {
                     might_require_clearing.insert(entity_path.clone());
                 }
@@ -299,7 +313,7 @@ impl ChunkStoreSubscriber for Caches {
         {
             re_tracing::profile_scope!("temporal");
 
-            for (key, time) in compacted.temporal_latest_at {
+            for (key, time) in compacted_events.temporal_latest_at {
                 if key.component_name == ClearIsRecursive::name() {
                     might_require_clearing.insert(key.entity_path.clone());
                 }
@@ -310,7 +324,7 @@ impl ChunkStoreSubscriber for Caches {
                 }
             }
 
-            for (key, chunk_ids) in compacted.temporal_range {
+            for (key, chunk_ids) in compacted_events.temporal_range {
                 if let Some(cache) = caches_range.get(&key) {
                     cache
                         .write()
