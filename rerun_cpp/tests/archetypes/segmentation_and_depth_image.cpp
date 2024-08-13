@@ -16,6 +16,8 @@ void run_image_tests() {
         ImageType reference_image;
         reference_image.buffer = rerun::borrow(data);
         reference_image.format = ImageFormat({10, 10}, ChannelDatatype::U8);
+        INFO("Format bits-per-pixel: " << reference_image.format.image_format.bits_per_pixel());
+        INFO("Format byte size: " << reference_image.format.image_format.num_bytes());
 
         THEN("no error occurs on image construction from a pointer") {
             auto image_from_ptr = check_logged_error([&] {

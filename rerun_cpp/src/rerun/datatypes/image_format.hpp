@@ -73,8 +73,8 @@ namespace rerun::datatypes {
             if (pixel_format) {
                 return pixel_format_bits_per_pixel(*pixel_format);
             } else {
-                auto cm = color_model.value_or(datatypes::ColorModel());
-                auto dt = channel_datatype.value_or(datatypes::ChannelDatatype());
+                auto cm = color_model.value_or(datatypes::ColorModel::L);
+                auto dt = channel_datatype.value_or(datatypes::ChannelDatatype::U8);
                 return color_model_channel_count(cm) * datatype_bits(dt);
             }
         }
