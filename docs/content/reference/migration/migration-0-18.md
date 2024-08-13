@@ -1,5 +1,5 @@
 ---
-title: Migrating from 0.17 to 0.18 (unreleased)
+title: Migrating from 0.17 to 0.18
 order: 180
 ---
 
