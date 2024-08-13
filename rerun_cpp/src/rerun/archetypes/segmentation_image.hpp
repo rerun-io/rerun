@@ -128,8 +128,10 @@ namespace rerun::archetypes {
         SegmentationImage(
             const void* bytes, WidthHeight resolution, datatypes::ChannelDatatype datatype
         )
-            : buffer{Collection<uint8_t>::borrow(bytes, num_bytes(resolution, datatype))},
-              format{datatypes::ImageFormat{resolution, datatype}} {}
+            : SegmentationImage{
+                  Collection<uint8_t>::borrow(bytes, num_bytes(resolution, datatype)),
+                  resolution,
+                  datatype} {}
 
         /// Constructs image from pixel data + resolution + datatype.
         ///
@@ -142,7 +144,17 @@ namespace rerun::archetypes {
         SegmentationImage(
             Collection<uint8_t> bytes, WidthHeight resolution, datatypes::ChannelDatatype datatype
         )
-            : buffer{bytes}, format{datatypes::ImageFormat{resolution, datatype}} {}
+            : buffer{bytes}, format{datatypes::ImageFormat{resolution, datatype}} {
+            if (buffer.size() != format.image_format.num_bytes()) {
+                Error(
+                    ErrorCode::InvalidTensorDimension,
+                    "SegmentationImage buffer has the wrong size. Got " +
+                        std::to_string(buffer.size()) + " bytes, expected " +
+                        std::to_string(format.image_format.num_bytes())
+                )
+                    .handle();
+            }
+        }
 
         // END of extensions from segmentation_image_ext.cpp, start of generated code:
 

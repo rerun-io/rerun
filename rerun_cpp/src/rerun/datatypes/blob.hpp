@@ -21,6 +21,14 @@ namespace rerun::datatypes {
     struct Blob {
         rerun::Collection<uint8_t> data;
 
+      public: // START of extensions from blob_ext.cpp:
+        /// Number of bytes
+        size_t size() const {
+            return data.size();
+        }
+
+        // END of extensions from blob_ext.cpp, start of generated code:
+
       public:
         Blob() = default;
 

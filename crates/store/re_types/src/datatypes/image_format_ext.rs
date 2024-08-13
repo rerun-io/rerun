@@ -57,16 +57,16 @@ impl ImageFormat {
         }
     }
 
-    /// Number of bits needed to represent a single pixel.
-    ///
-    /// Note that this is not necessarily divisible by 8!
+    /// Number of bytes for the whole image.
     #[inline]
-    pub fn bits_per_pixel(&self) -> usize {
+    pub fn num_bytes(&self) -> usize {
         if let Some(pixel_format) = self.pixel_format {
-            pixel_format.bits_per_pixel()
+            pixel_format.num_bytes([self.width, self.height])
         } else {
-            self.color_model.unwrap_or_default().num_channels()
-                * self.channel_datatype.unwrap_or_default().bits()
+            let bits_per_pixel = self.color_model.unwrap_or_default().num_channels()
+                * self.channel_datatype.unwrap_or_default().bits();
+            // rounding upwards:
+            (self.width as usize * self.height as usize * bits_per_pixel + 7) / 8
         }
     }
 
