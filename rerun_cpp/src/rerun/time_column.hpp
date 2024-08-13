@@ -72,7 +72,7 @@ namespace rerun {
             );
         }
 
-        /// Creates a sequence time column from an array of nanoseconds.
+        /// Creates a time column from an array of nanoseconds.
         ///
         /// \param timeline_name The name of the timeline this column belongs to.
         /// \param times_in_nanoseconds Time values in nanoseconds.
