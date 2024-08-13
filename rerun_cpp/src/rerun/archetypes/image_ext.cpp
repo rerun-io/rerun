@@ -25,7 +25,7 @@ namespace rerun::archetypes {
             if (buffer.size() != format.image_format.num_bytes()) {
                 Error(
                     ErrorCode::InvalidTensorDimension,
-                    "Image buffer had the wrong size. Got " + std::to_string(buffer.size()) +
+                    "Image buffer has the wrong size. Got " + std::to_string(buffer.size()) +
                         " bytes, expected " + std::to_string(format.image_format.num_bytes())
                 )
                     .handle();
