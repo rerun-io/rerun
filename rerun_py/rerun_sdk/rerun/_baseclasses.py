@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Any, Generic, Iterable, Protocol, TypeVar
+from typing import Any, Generic, Iterable, Protocol, TypeVar, Union
 
 import numpy as np
 import numpy.typing as npt
@@ -310,7 +310,7 @@ class ComponentColumn:
         return pa.ListArray.from_arrays(offsets, array)
 
 
-ComponentColumnLike = ComponentBatchLike | ComponentColumn
+ComponentColumnLike = Union[ComponentBatchLike, ComponentColumn]
 """
 Type alias for component column-like objects.
 
