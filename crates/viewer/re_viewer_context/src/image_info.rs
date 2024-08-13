@@ -4,7 +4,7 @@ use re_chunk::RowId;
 use re_types::{
     components::Colormap,
     datatypes::{Blob, ChannelDatatype, ColorModel, ImageFormat, PixelFormat},
-    image::ImageKind,
+    image::{rgb_from_yuv, ImageKind},
     tensor_data::TensorElement,
 };
 
@@ -65,27 +65,8 @@ impl ImageInfo {
         }
 
         if let Some(pixel_format) = self.format.pixel_format {
-            let buf: &[u8] = &self.buffer;
-
             // NOTE: the name `y` is already taken for the coordinate, so we use `luma` here.
-            let [luma, u, v] = match pixel_format {
-                PixelFormat::NV12 => {
-                    let uv_offset = w * h;
-                    let luma = buf[(y * w + x) as usize];
-                    let u = buf[(uv_offset + (y / 2) * w + x) as usize];
-                    let v = buf[(uv_offset + (y / 2) * w + x) as usize + 1];
-                    [luma, u, v]
-                }
-
-                PixelFormat::YUY2 => {
-                    let index = ((y * w + x) * 2) as usize;
-                    if x % 2 == 0 {
-                        [buf[index], buf[index + 1], buf[index + 3]]
-                    } else {
-                        [buf[index], buf[index - 1], buf[index + 1]]
-                    }
-                }
-            };
+            let [luma, u, v] = pixel_format.decode_yuv_at(&self.buffer, [w, h], [x, y])?;
 
             match pixel_format.color_model() {
                 ColorModel::L => (channel == 0).then_some(TensorElement::U8(luma)),
@@ -185,31 +166,12 @@ impl ImageInfo {
         let (w, h) = (self.width(), self.height());
 
         if let Some(pixel_format) = self.format.pixel_format {
-            // Convert to RGB:
-            let buf: &[u8] = &self.buffer;
+            // Convert to RGB.
+            // TODO(emilk): this can probably be optimized.
             let mut rgb = Vec::with_capacity((w * h * 3) as usize);
             for y in 0..h {
                 for x in 0..w {
-                    // NOTE: the name `y` is already taken for the coordinate, so we use `luma` here.
-                    let [luma, u, v] = match pixel_format {
-                        PixelFormat::NV12 => {
-                            let uv_offset = w * h;
-                            let luma = buf[(y * w + x) as usize];
-                            let u = buf[(uv_offset + (y / 2) * w + x) as usize];
-                            let v = buf[(uv_offset + (y / 2) * w + x) as usize + 1];
-                            [luma, u, v]
-                        }
-
-                        PixelFormat::YUY2 => {
-                            let index = ((y * w + x) * 2) as usize;
-                            if x % 2 == 0 {
-                                [buf[index], buf[index + 1], buf[index + 3]]
-                            } else {
-                                [buf[index], buf[index - 1], buf[index + 1]]
-                            }
-                        }
-                    };
-                    let [r, g, b] = rgb_from_yuv(luma, u, v);
+                    let [r, g, b] = pixel_format.decode_rgb_at(&self.buffer, [w, h], [x, y])?;
                     rgb.push(r);
                     rgb.push(g);
                     rgb.push(b);
@@ -355,32 +317,6 @@ fn get<T: bytemuck::Pod>(blob: &[u8], element_offset: usize) -> Option<T> {
     let mut dest = T::zeroed();
     bytemuck::bytes_of_mut(&mut dest).copy_from_slice(slice);
     Some(dest)
-}
-
-/// Sets the color standard for the given YUV color.
-///
-/// This conversion mirrors the function of the same name in `crates/viewer/re_renderer/shader/decodings.wgsl`
-///
-/// Specifying the color standard should be exposed in the future [#3541](https://github.com/rerun-io/rerun/pull/3541)
-fn rgb_from_yuv(y: u8, u: u8, v: u8) -> [u8; 3] {
-    let (y, u, v) = (y as f32, u as f32, v as f32);
-
-    // rescale YUV values
-    let y = (y - 16.0) / 219.0;
-    let u = (u - 128.0) / 224.0;
-    let v = (v - 128.0) / 224.0;
-
-    // BT.601 (aka. SDTV, aka. Rec.601). wiki: https://en.wikipedia.org/wiki/YCbCr#ITU-R_BT.601_conversion
-    let r = y + 1.402 * v;
-    let g = y - 0.344 * u - 0.714 * v;
-    let b = y + 1.772 * u;
-
-    // BT.709 (aka. HDTV, aka. Rec.709). wiki: https://en.wikipedia.org/wiki/YCbCr#ITU-R_BT.709_conversion
-    // let r = y + 1.575 * v;
-    // let g = y - 0.187 * u - 0.468 * v;
-    // let b = y + 1.856 * u;
-
-    [(255.0 * r) as u8, (255.0 * g) as u8, (255.0 * b) as u8]
 }
 
 #[cfg(test)]

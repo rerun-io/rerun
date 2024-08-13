@@ -255,3 +255,31 @@ fn test_find_non_empty_dim_indices() {
     expect(&[1, 1, 3], &[0, 1, 2]);
     expect(&[1, 1, 3, 1], &[2, 3]);
 }
+
+// ----------------------------------------------------------------------------
+
+/// Returns sRGB from YUV color.
+///
+/// This conversion mirrors the function of the same name in `crates/viewer/re_renderer/shader/decodings.wgsl`
+///
+/// Specifying the color standard should be exposed in the future [#3541](https://github.com/rerun-io/rerun/pull/3541)
+pub fn rgb_from_yuv(y: u8, u: u8, v: u8) -> [u8; 3] {
+    let (y, u, v) = (y as f32, u as f32, v as f32);
+
+    // rescale YUV values
+    let y = (y - 16.0) / 219.0;
+    let u = (u - 128.0) / 224.0;
+    let v = (v - 128.0) / 224.0;
+
+    // BT.601 (aka. SDTV, aka. Rec.601). wiki: https://en.wikipedia.org/wiki/YCbCr#ITU-R_BT.601_conversion
+    let r = y + 1.402 * v;
+    let g = y - 0.344 * u - 0.714 * v;
+    let b = y + 1.772 * u;
+
+    // BT.709 (aka. HDTV, aka. Rec.709). wiki: https://en.wikipedia.org/wiki/YCbCr#ITU-R_BT.709_conversion
+    // let r = y + 1.575 * v;
+    // let g = y - 0.187 * u - 0.468 * v;
+    // let b = y + 1.856 * u;
+
+    [(255.0 * r) as u8, (255.0 * g) as u8, (255.0 * b) as u8]
+}
