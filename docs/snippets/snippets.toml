@@ -111,6 +111,11 @@ quick_start = [ # These examples don't have exactly the same implementation.
 "archetypes/bar_chart" = [ # On Windows this logs f64 instead of u64 unless a numpy array with explicit type is used.
   "py",
 ]
+"archetypes/ellipsoid3d_simple" = [ # TODO(#3206): examples use different RNGs
+  "cpp",
+  "py",
+  "rust",
+]
 "archetypes/mesh3d_partial_updates" = [
   "cpp",
   "py",
