@@ -310,15 +310,6 @@ class ComponentColumn:
         return pa.ListArray.from_arrays(offsets, array)
 
 
-ComponentColumnLike = ComponentBatchLike | ComponentColumn
-"""
-Type alias for component column-like objects.
-
-Every component batch can be interpreted as a component column.
-`ComponentColumn` implements the `ComponentBatchLike` interface but is still explicitly included here.
-"""
-
-
 class ComponentBatchMixin(ComponentBatchLike):
     def component_name(self) -> str:
         """

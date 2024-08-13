@@ -1,11 +1,11 @@
 from __future__ import annotations
 
-from typing import Iterable, Protocol, TypeVar
+from typing import Iterable, Protocol, TypeVar, Union
 
 import pyarrow as pa
 import rerun_bindings as bindings
 
-from ._baseclasses import Archetype, ComponentColumnLike
+from ._baseclasses import Archetype, ComponentBatchMixin, ComponentColumn
 from ._log import IndicatorComponentBatch
 from .error_utils import catch_and_log_exceptions
 from .recording_stream import RecordingStream
@@ -84,7 +84,7 @@ TArchetype = TypeVar("TArchetype", bound=Archetype)
 def send_columns(
     entity_path: str,
     times: Iterable[TimeColumnLike],
-    components: Iterable[ComponentColumnLike],
+    components: Iterable[Union[ComponentBatchMixin, ComponentColumn]],
     recording: RecordingStream | None = None,
     strict: bool | None = None,
 ) -> None:
@@ -148,7 +148,11 @@ def send_columns(
         of timestamps. Generally you should use one of the provided classes: [`TimeSequenceColumn`][],
         [`TimeSecondsColumn`][], or [`TimeNanosColumn`][].
     components:
-        The batches of components to log. Each `ComponentColumnLike` object represents a single column of data.
+        The columns of components to log. Each object represents a single column of data.
+
+        If a batch of components is passed, it will be partitioned with one element per timepoint.
+        In order to send multiple components per time value, explicitly create a [`ComponentColumn`][rerun.ComponentColumn]
+        either by constructing it directly, or by calling the `.partition()` method on a `ComponentBatch` type.
     recording:
         Specifies the [`rerun.RecordingStream`][] to use.
         If left unspecified, defaults to the current active data recording, if there is one.
@@ -182,15 +186,25 @@ def send_columns(
             indicators.append(c)
             continue
         component_name = c.component_name()
-        component_column = c.as_arrow_array()  # type: ignore[union-attr]
+
+        if isinstance(c, ComponentColumn):
+            component_column = c
+        elif isinstance(c, ComponentBatchMixin):
+            component_column = c.partition([1] * len(c))  # type: ignore[arg-type]
+        else:
+            raise TypeError(
+                f"Expected either a type that implements the `ComponentMixin` or a `ComponentColumn`, got: {type(c)}"
+            )
+        arrow_list_array = component_column.as_arrow_array()
+
         if expected_length is None:
-            expected_length = len(component_column)
-        elif len(component_column) != expected_length:
+            expected_length = len(arrow_list_array)
+        elif len(arrow_list_array) != expected_length:
             raise ValueError(
-                f"All times and components in a batch must have the same length. Expected length: {expected_length} but got: {len(component_column)} for component: {component_name}"
+                f"All times and components in a batch must have the same length. Expected length: {expected_length} but got: {len(arrow_list_array)} for component: {component_name}"
             )
 
-        components_args[component_name] = component_column
+        components_args[component_name] = arrow_list_array
 
     for i in indicators:
         if expected_length is None:
