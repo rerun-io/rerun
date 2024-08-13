@@ -2,20 +2,133 @@
 
 ## [Unreleased](https://github.com/rerun-io/rerun/compare/latest...HEAD)
 
-# ⚠️ Breaking changes
-
 ## [0.18.0](https://github.com/rerun-io/rerun/compare/0.16.1...HEAD) - Ingestion speed and memory footprint
 
-TODO: add link to release video
+TODO: Video of side by side loading of time series in 0.17 vs 0.18
 
 📖 Release blogpost: TODO: add link
 
 🧳 Migration guide: http://rerun.io/docs/reference/migration/migration-0-18?speculative-link
 
 ### ✨ Overview & highlights
-TODO: ingestion speed, memory overhead
-TODO: fill in
+
+Rerun 0.18 introduces new column-oriented APIs and internal storage datastructures (`Chunk` & `ChunkStore`) that can both simplify logging code as well as improve ingestion speeds and memory overhead by a couple orders of magnitude in many cases (timeseries-heavy workloads in particular).
+
+These improvements come in 3 broad categories:
+* a new `send` family of APIs, available in all 3 SDKs (Python, C++, Rust),
+* a new, configurable background compaction mechanism in the datastore,
+* new CLI tools to filter, prune and compact RRD files.
+
 TODO: link to ingestion guide
+
+#### New `send` APIs
+
+Unlike the regular row-oriented `log` APIs, the new `send` APIs let you submit data in a columnar form, even if the data extends over multiple timestamps.
+
+This can both greatly simplify logging code and drastically improve performance for some workloads, in particular timeseries, [although we have already seen it used for other purposes!](https://github.com/rerun-io/rerun/pull/7155).
+
+API documentation:
+- 🐍 [Python `send_columns` docs](TODO)
+- 🌊 [C++ `send_columns` docs](TODO)
+- 🦀 [Rust `send_columns` docs](TODO)
+
+API usage examples:
+<details>
+  <summary>* Python timeseries</summary>
+
+  Using `log()` (slow, memory inefficient):
+  ```python
+  rr.init("rerun_example_scalar", spawn=True)
+
+  for step in range(0, 64):
+      rr.set_time_sequence("step", step)
+      rr.log("scalar", rr.Scalar(math.sin(step / 10.0)))
+  ```
+
+  Using `send()` (fast, memory efficient):
+  ```python
+  rr.init("rerun_example_send_columns", spawn=True)
+
+  rr.send_columns(
+      "scalars",
+      times=[rr.TimeSequenceColumn("step", np.arange(0, 64))],
+      components=[rr.components.ScalarBatch(np.sin(times / 10.0))],
+  )
+  ```
+</details>
+
+<details>
+  <summary>* C++ timeseries</summary>
+
+  Using `log()` (slow, memory inefficient):
+  ```c++
+  const auto rec = rerun::RecordingStream("rerun_example_scalar");
+  rec.spawn().exit_on_failure();
+
+  for (int step = 0; step < 64; ++step) {
+      rec.set_time_sequence("step", step);
+      rec.log("scalar", rerun::Scalar(std::sin(static_cast<double>(step) / 10.0)));
+  }
+  ```
+
+  Using `send()` (fast, memory efficient):
+  ```c++
+  const auto rec = rerun::RecordingStream("rerun_example_send_columns");
+  rec.spawn().exit_on_failure();
+
+  std::vector<double> scalar_data(64);
+  for (size_t i = 0; i < 64; ++i) {
+      scalar_data[i] = sin(static_cast<double>(i) / 10.0);
+  }
+  std::vector<int64_t> times(64);
+  std::iota(times.begin(), times.end(), 0);
+
+  auto time_column = rerun::TimeColumn::from_sequence_points("step", std::move(times));
+  auto scalar_data_collection =
+      rerun::Collection<rerun::components::Scalar>(std::move(scalar_data));
+
+  rec.send_columns("scalars", time_column, scalar_data_collection);
+  ```
+</details>
+
+<details>
+  <summary>* Rust timeseries</summary>
+
+  Using `log()` (slow, memory inefficient):
+  ```rust
+  let rec = rerun::RecordingStreamBuilder::new("rerun_example_scalar").spawn()?;
+
+  for step in 0..64 {
+      rec.set_time_sequence("step", step);
+      rec.log("scalar", &rerun::Scalar::new((step as f64 / 10.0).sin()))?;
+  }
+  ```
+
+  Using `send()` (fast, memory efficient):
+  ```rust
+  let rec = rerun::RecordingStreamBuilder::new("rerun_example_send_columns").spawn()?;
+
+  let timeline_values = (0..64).collect::<Vec<_>>();
+  let scalar_data: Vec<f64> = timeline_values
+      .iter()
+      .map(|step| (*step as f64 / 10.0).sin())
+      .collect();
+
+  let timeline_values = TimeColumn::new_sequence("step", timeline_values);
+  let scalar_data: Vec<Scalar> = scalar_data.into_iter().map(Into::into).collect();
+
+  rec.send_columns("scalars", [timeline_values], [&scalar_data as _])?;
+  ```
+</details>
+
+#### Background compaction
+
+TODO: fill out doc page
+* runtime compaction variables (TODO: create doc page + link to doc)
+
+#### Post-processing of RRD files
+
+* rrd compact snippets (TODO: link to CLI doc)
 
 ### ⚠️  Breaking changes
 * `mesh_material: Material` has been renamed to `albedo_factor: AlbedoFactor` [#6841](https://github.com/rerun-io/rerun/pull/6841)
@@ -25,6 +138,11 @@ TODO: link to ingestion guide
 * [`DepthImage`](https://rerun.io/docs/reference/types/archetypes/depth_image) and [`SegmentationImage`](https://rerun.io/docs/reference/types/archetypes/segmentation_image) are no longer encoded as a tensors, and expects its shape in `[width, height]` order
 
 TODO: add diff links for all relevant snippets
+* breaking change diffs (TODO: link to actual doc segments)
+  * Image, DepthImage, SegmentationImage, EncodedImage
+  * Transform3D, OutOfTreeTransform3D
+  * Boxes3D
+  * Mesh3D::AlbedoFactor
 
 🧳 Migration guide: http://rerun.io/docs/reference/migration/migration-0-18?speculative-link
 
