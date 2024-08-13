@@ -5538,6 +5538,7 @@ dependencies = [
  "mimalloc",
  "nohash-hasher",
  "once_cell",
+ "ordered-float",
  "re_chunk_store",
  "re_data_ui",
  "re_entity_db",

@@ -413,6 +413,13 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             },
         ),
         (
+            <Length as Loggable>::name(),
+            ComponentReflection {
+                docstring_md: "Length, or one-dimensional size.\n\nMeasured in its local coordinate system; consult the archetype in use to determine which\naxis or part of the entity this is the length of.",
+                placeholder: Some(Length::default().to_arrow()?),
+            },
+        ),
+        (
             <LineStrip2D as Loggable>::name(),
             ComponentReflection {
                 docstring_md: "A line strip in 2D space.\n\nA line strip is a list of points connected by line segments. It can be used to draw\napproximations of smooth curves.\n\nThe points will be connected in order, like so:\n```text\n       2------3     5\n      /        \\   /\n0----1          \\ /\n                 4\n```",
@@ -917,6 +924,48 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                     "rerun.components.ClassId".into(), display_name : "Class ids",
                     docstring_md :
                     "Optional [`components.ClassId`](https://rerun.io/docs/reference/types/components/class_id)s for the boxes.\n\nThe [`components.ClassId`](https://rerun.io/docs/reference/types/components/class_id) provides colors and labels if not specified explicitly.",
+                    is_required : false, },
+                ],
+            },
+        ),
+        (
+            ArchetypeName::new("rerun.archetypes.Capsules3D"),
+            ArchetypeReflection {
+                display_name: "Capsules 3D",
+                fields: vec![
+                    ArchetypeFieldReflection { component_name : "rerun.components.Length"
+                    .into(), display_name : "Lengths", docstring_md :
+                    "The shape of the capsule defined as the length of the line between its endpoints.",
+                    is_required : true, }, ArchetypeFieldReflection { component_name :
+                    "rerun.components.Radius".into(), display_name : "Radii",
+                    docstring_md : "Radius of the capsules.", is_required : true, },
+                    ArchetypeFieldReflection { component_name :
+                    "rerun.components.PoseTranslation3D".into(), display_name :
+                    "Translations", docstring_md :
+                    "Optional translations of the capsules.\n\nIf not specified, one end of each capsule will be at (0, 0, 0).\nNote that this uses a [`components.PoseTranslation3D`](https://rerun.io/docs/reference/types/components/pose_translation3d) which is also used by [`archetypes.InstancePoses3D`](https://rerun.io/docs/reference/types/archetypes/instance_poses3d).",
+                    is_required : false, }, ArchetypeFieldReflection { component_name :
+                    "rerun.components.PoseRotationAxisAngle".into(), display_name :
+                    "Rotation axis angles", docstring_md :
+                    "Rotations via axis + angle.\n\nIf no rotation is specified, the capsules align with the +Z axis of the local coordinate system.\nNote that this uses a [`components.PoseRotationAxisAngle`](https://rerun.io/docs/reference/types/components/pose_rotation_axis_angle) which is also used by [`archetypes.InstancePoses3D`](https://rerun.io/docs/reference/types/archetypes/instance_poses3d).",
+                    is_required : false, }, ArchetypeFieldReflection { component_name :
+                    "rerun.components.PoseRotationQuat".into(), display_name :
+                    "Quaternions", docstring_md :
+                    "Rotations via quaternion.\n\nIf no rotation is specified, the capsules align with the +Z axis of the local coordinate system.\nNote that this uses a [`components.PoseRotationQuat`](https://rerun.io/docs/reference/types/components/pose_rotation_quat) which is also used by [`archetypes.InstancePoses3D`](https://rerun.io/docs/reference/types/archetypes/instance_poses3d).",
+                    is_required : false, }, ArchetypeFieldReflection { component_name :
+                    "rerun.components.Color".into(), display_name : "Colors",
+                    docstring_md : "Optional colors for the capsules.", is_required :
+                    false, }, ArchetypeFieldReflection { component_name :
+                    "rerun.components.Text".into(), display_name : "Labels", docstring_md
+                    :
+                    "Optional text labels for the capsules, which will be located at their centers.",
+                    is_required : false, }, ArchetypeFieldReflection { component_name :
+                    "rerun.components.ShowLabels".into(), display_name : "Show labels",
+                    docstring_md :
+                    "Optional choice of whether the text labels should be shown by default.",
+                    is_required : false, }, ArchetypeFieldReflection { component_name :
+                    "rerun.components.ClassId".into(), display_name : "Class ids",
+                    docstring_md :
+                    "Optional class ID for the ellipsoids.\n\nThe class ID provides colors and labels if not specified explicitly.",
                     is_required : false, },
                 ],
             },

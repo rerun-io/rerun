@@ -7,6 +7,8 @@ use std::sync::Arc;
 use glam::{uvec3, vec3, Vec3, Vec3A};
 use hexasphere::BaseShape;
 use itertools::Itertools as _;
+use ordered_float::NotNan;
+use re_math::MeshGen;
 use re_renderer::mesh::GpuMesh;
 use re_renderer::mesh::MeshError;
 use smallvec::smallvec;
@@ -31,11 +33,38 @@ pub enum ProcMeshKey {
     /// of other sizes.
     Sphere {
         /// Number of triangle subdivisions to perform to create a finer, rounder mesh.
+        ///
+        /// If this number is zero, then the “sphere” is an octahedron. Increasing it to N
+        /// breaks the edges of that octahedron into N segments. Around a great circle of the
+        /// sphere, there are (N + 1) × 4 segments.
         subdivisions: usize,
 
         /// If true, then when a wireframe mesh is generated, it includes only
         /// the 3 axis-aligned “equatorial” circles, and not the full triangle mesh.
         axes_only: bool,
+    },
+
+    /// A capsule; a cylinder with hemispherical end caps.
+    ///
+    /// The capsule always has radius 1. It should be scaled to obtain the desired radius.
+    /// It always extends along the positive direction of the Z axis.
+    Capsule {
+        /// The length of the capsule; the distance between the centers of its endpoints.
+        /// This length must be non-negative.
+        //
+        // TODO(#1361): This is a bad approach to rendering capsules of arbitrary
+        // length, because it fills the cache with many distinct meshes.
+        // Instead, the renderers should be extended to support “bones” such that a mesh
+        // can have parts which are independently offset, thus allowing us to stretch a
+        // single sphere/capsule mesh into an arbitrary length and radius capsule.
+        // (Tapered capsules will still need distinct meshes.)
+        length: NotNan<f32>,
+
+        /// Number of triangle subdivisions to use to create a finer, rounder mesh.
+        ///
+        /// The cylinder part of the capsule is approximated as a mesh with (N + 1) × 4
+        /// flat faces.
+        subdivisions: usize,
     },
 }
 
@@ -54,6 +83,13 @@ impl ProcMeshKey {
             Self::Cube => {
                 re_math::BoundingBox::from_center_size(Vec3::splat(0.0), Vec3::splat(1.0))
             }
+            Self::Capsule {
+                subdivisions: _,
+                length,
+            } => re_math::BoundingBox::from_min_max(
+                Vec3::new(-1.0, -1.0, -1.0),
+                Vec3::new(1.0, 1.0, 1.0 + length.into_inner()),
+            ),
         }
     }
 }
@@ -216,6 +252,15 @@ fn generate_wireframe(key: &ProcMeshKey, render_ctx: &RenderContext) -> Wirefram
                 line_strips,
             }
         }
+        ProcMeshKey::Capsule {
+            length: _,
+            subdivisions: _,
+        } => {
+            // This is unreachable, because no visualizer asks for it yet,
+            // because it is unimplemented. Implementing it will require writing
+            // a new capsule wireframe algorithm that agrees with the solid algorithm.
+            unreachable!("wireframe capsules are not yet implemented or used")
+        }
     }
 }
 
@@ -270,27 +315,7 @@ fn generate_solid(key: &ProcMeshKey, render_ctx: &RenderContext) -> Result<Solid
         ProcMeshKey::Cube => {
             let mut mg = re_math::MeshGen::new();
             mg.push_cube(Vec3::splat(0.5), re_math::IsoTransform::IDENTITY);
-
-            let num_vertices = mg.positions.len();
-
-            let triangle_indices: Vec<glam::UVec3> = mg
-                .indices
-                .into_iter()
-                .tuples()
-                .map(|(i1, i2, i3)| uvec3(i1, i2, i3))
-                .collect();
-            let materials = materials_for_uncolored_mesh(render_ctx, triangle_indices.len());
-
-            mesh::Mesh {
-                label: format!("{key:?}").into(),
-                materials,
-                triangle_indices,
-                vertex_positions: mg.positions,
-                vertex_normals: mg.normals,
-                // Colors are black so that the instance `additive_tint` can set per-instance color.
-                vertex_colors: vec![re_renderer::Rgba32Unmul::BLACK; num_vertices],
-                vertex_texcoords: vec![glam::Vec2::ZERO; num_vertices],
-            }
+            mesh_from_mesh_gen(format!("{key:?}").into(), mg, render_ctx)
         }
         ProcMeshKey::Sphere {
             subdivisions,
@@ -329,6 +354,35 @@ fn generate_solid(key: &ProcMeshKey, render_ctx: &RenderContext) -> Result<Solid
                 materials,
             }
         }
+        ProcMeshKey::Capsule {
+            length,
+            subdivisions,
+        } => {
+            // Design note: there are two reasons why this uses `re_math` instead of `hexasphere`.
+            //
+            // First, `re_math` already has a capsule routine, whereas we'd have to postprocess the
+            // output of `hexasphere`.
+            //
+            // Second, one design perspective is that we should in the long run extend `re_math`
+            // to do *all* our mesh generation, and this is an experiment in that. How exactly that
+            // will handle wireframes is yet undecided.
+
+            let mg_subdivisions = (subdivisions + 1) * 4;
+
+            let mut mg = re_math::MeshGen::new();
+            mg.push_capsule(
+                1.0,
+                length.into_inner(),
+                mg_subdivisions,
+                mg_subdivisions,
+                // rotate from the Y axis (baked into MeshGen) onto the Z axis (our choice of
+                // default orientation, aligned with Rerun’s default of Z-up).
+                re_math::IsoTransform::from_quat(glam::Quat::from_rotation_x(
+                    std::f32::consts::FRAC_PI_2,
+                )),
+            );
+            mesh_from_mesh_gen(format!("{key:?}").into(), mg, render_ctx)
+        }
     };
 
     mesh.sanity_check()?;
@@ -337,6 +391,33 @@ fn generate_solid(key: &ProcMeshKey, render_ctx: &RenderContext) -> Result<Solid
         bbox: key.simple_bounding_box(),
         gpu_mesh: Arc::new(GpuMesh::new(render_ctx, &mesh)?),
     })
+}
+
+fn mesh_from_mesh_gen(
+    label: re_renderer::DebugLabel,
+    mg: MeshGen,
+    render_ctx: &RenderContext,
+) -> mesh::Mesh {
+    let num_vertices = mg.positions.len();
+
+    let triangle_indices: Vec<glam::UVec3> = mg
+        .indices
+        .into_iter()
+        .tuples()
+        .map(|(i1, i2, i3)| uvec3(i1, i2, i3))
+        .collect();
+    let materials = materials_for_uncolored_mesh(render_ctx, triangle_indices.len());
+
+    mesh::Mesh {
+        label,
+        materials,
+        triangle_indices,
+        vertex_positions: mg.positions,
+        vertex_normals: mg.normals,
+        // Colors are black so that the instance `additive_tint` can set per-instance color.
+        vertex_colors: vec![re_renderer::Rgba32Unmul::BLACK; num_vertices],
+        vertex_texcoords: vec![glam::Vec2::ZERO; num_vertices],
+    }
 }
 
 fn materials_for_uncolored_mesh(
