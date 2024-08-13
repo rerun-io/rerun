@@ -71,13 +71,14 @@ cpp = ["base", "cpp"]
 # ```
 
 #  Just the deps for running roundtrips
-wheel-test-min = ["base", "cpp", "wheel-test", "py-test-deps", "python-pypi"]
+wheel-test-min = ["base", "cpp", "wheel-test", "wheel-build", "py-test-deps", "python-pypi"]
 
 # The full deps for running all examples
 wheel-test = [
   "base",
   "cpp",
   "wheel-test",
+  "wheel-build",
   "py-test-deps",
   "examples-common",
   "python-pypi",
