@@ -11,7 +11,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let normal = rand_distr::Normal::new(0.0, 1.0).unwrap();
 
     rec.log(
-        "random",
+        "points",
         &rerun::Points3D::new((0..50_000).map(|_| {
             (
                 sigmas[0] * normal.sample(&mut rng),
