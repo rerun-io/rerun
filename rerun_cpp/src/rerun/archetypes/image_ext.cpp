@@ -21,7 +21,16 @@ namespace rerun::archetypes {
     Image(
         Collection<uint8_t> bytes, components::ImageFormat format_
     )
-        : buffer(std::move(bytes)), format(format_) {}
+        : buffer(std::move(bytes)), format(format_) {
+            if (buffer.size() != format.image_format.num_bytes()) {
+                Error(
+                    ErrorCode::InvalidTensorDimension,
+                    "Image buffer has the wrong size. Got " + std::to_string(buffer.size()) +
+                        " bytes, expected " + std::to_string(format.image_format.num_bytes())
+                )
+                    .handle();
+            }
+        }
 
     /// Construct an image from resolution, pixel format and bytes.
     ///

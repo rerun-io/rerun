@@ -1,4 +1,7 @@
-use std::{collections::BTreeMap, sync::Arc};
+use std::{
+    collections::{BTreeMap, BTreeSet},
+    sync::Arc,
+};
 
 use arrow2::array::Array as ArrowArray;
 use nohash_hasher::IntMap;
@@ -526,13 +529,13 @@ pub struct LatestAtCache {
     /// out what to render, and this scales linearly with the number of entity.
     pub per_query_time: BTreeMap<TimeInt, LatestAtCachedChunk>,
 
-    /// The smallest timestamp that has been invalidated.
+    /// These timestamps have been invalidated asynchronously.
     ///
     /// The next time this cache gets queried, it must remove any invalidated entries accordingly.
     ///
     /// Invalidation is deferred to query time because it is far more efficient that way: the frame
     /// time effectively behaves as a natural micro-batching mechanism.
-    pub pending_invalidation: Option<TimeInt>,
+    pub pending_invalidations: BTreeSet<TimeInt>,
 }
 
 impl LatestAtCache {
@@ -541,7 +544,7 @@ impl LatestAtCache {
         Self {
             cache_key,
             per_query_time: Default::default(),
-            pending_invalidation: Default::default(),
+            pending_invalidations: Default::default(),
         }
     }
 }
@@ -552,7 +555,7 @@ impl std::fmt::Debug for LatestAtCache {
         let Self {
             cache_key,
             per_query_time,
-            pending_invalidation: _,
+            pending_invalidations: _,
         } = self;
 
         let mut strings = Vec::new();
@@ -605,13 +608,13 @@ impl SizeBytes for LatestAtCache {
         let Self {
             cache_key: _,
             per_query_time,
-            pending_invalidation,
+            pending_invalidations,
         } = self;
 
         let per_query_time = per_query_time.total_size_bytes();
-        let pending_invalidation = pending_invalidation.total_size_bytes();
+        let pending_invalidations = pending_invalidations.total_size_bytes();
 
-        per_query_time + pending_invalidation
+        per_query_time + pending_invalidations
     }
 }
 
@@ -631,7 +634,7 @@ impl LatestAtCache {
         let Self {
             cache_key: _,
             per_query_time,
-            pending_invalidation: _,
+            pending_invalidations: _,
         } = self;
 
         if let Some(cached) = per_query_time.get(&query.at()) {
@@ -649,43 +652,56 @@ impl LatestAtCache {
             })
             .max_by_key(|(index, _chunk)| *index)?;
 
-        let to_be_cached = if let Some(cached) = per_query_time.get(&data_time) {
-            // If already cached, just reference that, it's still cheaper than cloning all the
-            // arrow arrays etc.
-            LatestAtCachedChunk {
-                unit: cached.unit.clone(),
-                is_reference: true,
-            }
-        } else {
-            LatestAtCachedChunk {
+        let cached = per_query_time
+            .entry(data_time)
+            .or_insert_with(|| LatestAtCachedChunk {
                 unit,
                 is_reference: false,
-            }
-        };
+            })
+            .clone();
 
-        per_query_time.insert(query.at(), to_be_cached.clone());
-        // Even though we're caching per query-time, we know for a fact that a query at that
-        // data-time would also yield the same result, i.e. this is the one case where
-        // data-time == query_time.
-        per_query_time.insert(data_time, to_be_cached.clone());
+        if query.at() != data_time {
+            per_query_time
+                .entry(query.at())
+                .or_insert_with(|| LatestAtCachedChunk {
+                    unit: cached.unit.clone(),
+                    is_reference: true,
+                });
+        }
 
-        Some(to_be_cached.unit)
+        Some(cached.unit)
     }
 
     pub fn handle_pending_invalidation(&mut self) {
         let Self {
             cache_key: _,
             per_query_time,
-            pending_invalidation,
+            pending_invalidations,
         } = self;
 
-        // Remove any data indexed by a _query time_ that's more recent than the oldest
-        // _data time_ that's been invalidated.
-        //
-        // Note that this data time might very well be `TimeInt::STATIC`, in which case the entire
-        // query-time-based index will be dropped.
-        if let Some(oldest_data_time) = pending_invalidation.take() {
-            per_query_time.retain(|&query_time, _| query_time < oldest_data_time);
+        if let Some(oldest_data_time) = pending_invalidations.first() {
+            // Remove any data indexed by a _query time_ that's more recent than the oldest
+            // _data time_ that's been invalidated.
+            //
+            // Note that this data time might very well be `TimeInt::STATIC`, in which case the entire
+            // query-time-based index will be dropped.
+            let discarded = per_query_time.split_off(oldest_data_time);
+
+            // TODO(#5974): Because of non-deterministic ordering, parallelism, and most importantly lack
+            // of centralized query layer, it can happen that we try to handle pending invalidations
+            // before we even cached the associated data.
+            //
+            // If that happens, the data will be cached after we've invalidated *nothing*, and will stay
+            // there indefinitely since the cache doesn't have a dedicated GC yet.
+            //
+            // TL;DR: make sure to keep track of pending invalidations indefinitely as long as we
+            // haven't had the opportunity to actually invalidate the associated data.
+            pending_invalidations.retain(|data_time| {
+                let is_reference = discarded
+                    .get(data_time)
+                    .map_or(true, |chunk| chunk.is_reference);
+                !is_reference
+            });
         }
     }
 }

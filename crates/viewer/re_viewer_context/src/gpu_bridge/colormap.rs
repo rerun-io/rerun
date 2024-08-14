@@ -1,5 +1,5 @@
 use re_types::reflection::Enum as _;
-use re_ui::{list_item, UiExt};
+use re_ui::list_item;
 
 use crate::{
     gpu_bridge::{get_or_create_texture, render_image},
@@ -101,7 +101,7 @@ fn colormap_variant_ui(
 }
 
 pub fn colormap_edit_or_view_ui(
-    render_ctx: Option<&re_renderer::RenderContext>,
+    ctx: &crate::ViewerContext<'_>,
     ui: &mut egui::Ui,
     map: &mut MaybeMutRef<'_, re_types::components::Colormap>,
 ) -> egui::Response {
@@ -114,10 +114,10 @@ pub fn colormap_edit_or_view_ui(
                 return ui.label("<no variants>");
             };
 
-            let mut response = colormap_variant_ui(render_ctx, ui, first, map);
+            let mut response = colormap_variant_ui(ctx.render_ctx, ui, first, map);
 
             for option in iter {
-                response |= colormap_variant_ui(render_ctx, ui, option, map);
+                response |= colormap_variant_ui(ctx.render_ctx, ui, option, map);
             }
 
             response
@@ -136,18 +136,21 @@ pub fn colormap_edit_or_view_ui(
         inner_response.response
     } else {
         let map: re_types::components::Colormap = **map;
-        if let Some(render_ctx) = render_ctx {
-            ui.list_item_flat_noninteractive(
-                list_item::PropertyContent::new(map.to_string())
-                    .min_desired_width(MIN_WIDTH)
-                    .value_fn(|ui, _| {
-                        if let Err(err) = colormap_preview_ui(render_ctx, ui, map) {
-                            re_log::error_once!("Failed to paint colormap preview: {err}");
-                        }
-                    }),
-            )
+        let colormap_response = if let Some(render_ctx) = ctx.render_ctx {
+            let result = colormap_preview_ui(render_ctx, ui, map);
+            if let Err(err) = &result {
+                re_log::error_once!("Failed to paint colormap preview: {err}");
+            }
+            result.ok()
         } else {
-            ui.list_item_flat_noninteractive(list_item::LabelContent::new(map.to_string()))
+            None
+        };
+
+        let label_response = ui.add(egui::Label::new(map.to_string()).truncate());
+
+        match colormap_response {
+            Some(colormap_response) => colormap_response | label_response,
+            None => label_response,
         }
     }
 }

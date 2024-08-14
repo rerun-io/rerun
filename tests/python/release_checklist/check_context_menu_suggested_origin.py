@@ -70,9 +70,7 @@ def log_some_space_views() -> None:
     rr.log(
         "/world/camera",
         rr.Transform3D(
-            rr.TranslationRotationScale3D(
-                rotation=rr.RotationAxisAngle(axis=[0, 0, 1], angle=math.pi / 2),
-            )
+            rotation=rr.RotationAxisAngle(axis=[0, 0, 1], angle=math.pi / 2),
         ),
     )
 

@@ -36,21 +36,9 @@ impl Install {
         }
 
         let progress = MultiProgress::new();
-        let output = wait_for_output(cmd, "installing examples", &progress)?;
+        wait_for_output(cmd, "installing examples", &progress)?;
 
-        if output.status.success() {
-            println!("Successfully installed examples");
-        } else {
-            anyhow::bail!(
-                "Failed to install examples: \
-                \nstdout: \
-                \n{} \
-                \nstderr: \
-                \n{}",
-                String::from_utf8(output.stdout)?,
-                String::from_utf8(output.stderr)?,
-            );
-        }
+        println!("Successfully installed examples");
 
         Ok(())
     }

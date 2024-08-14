@@ -29,6 +29,7 @@ mod half_size3d;
 mod half_size3d_ext;
 mod image_buffer;
 mod image_format;
+mod image_format_ext;
 mod image_plane_distance;
 mod image_plane_distance_ext;
 mod keypoint_id;

@@ -34,7 +34,6 @@ pub fn recordings_panel_ui(
     egui::ScrollArea::both()
         .id_source("recordings_scroll_area")
         .auto_shrink([false, true])
-        .max_height(300.)
         .show(ui, |ui| {
             ui.panel_content(|ui| {
                 re_ui::list_item::list_item_scope(ui, "recording panel", |ui| {

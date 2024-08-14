@@ -35,6 +35,9 @@ views = [
   "cpp",  # Missing examples
   "rust", # Missing examples
 ]
+"archetypes/points3d_send_columns" = [
+  "rust", # Doesn't support partitioned component batches yet.
+]
 "migration/log_line" = [ # Not a complete example -- just a single log line
   "cpp",
   "rust",
@@ -79,9 +82,6 @@ views = [
   "cpp",  # Not implemented
   "rust", # Not implemented
 ]
-"tutorials/send_columns_arrays" = [
-  "rust", # Doesn't support partitioned component batches yet.
-]
 
 # These entries will run but their results won't be compared to the baseline.
 #
@@ -110,6 +110,11 @@ quick_start = [ # These examples don't have exactly the same implementation.
 ]
 "archetypes/bar_chart" = [ # On Windows this logs f64 instead of u64 unless a numpy array with explicit type is used.
   "py",
+]
+"archetypes/ellipsoid3d_simple" = [ # TODO(#3206): examples use different RNGs
+  "cpp",
+  "py",
+  "rust",
 ]
 "archetypes/mesh3d_partial_updates" = [
   "cpp",
@@ -163,6 +168,11 @@ quick_start = [ # These examples don't have exactly the same implementation.
   "py",
 ]
 "archetypes/instance_poses3d_combined" = [ # TODO(#3235): Slight floating point differences in point grid.
+  "cpp",
+  "py",
+  "rust",
+]
+"archetypes/image_send_columns" = [ # This mixes `log` and `send_columns`. Since `log` is suspect to delays by the batcher, this test gets flaky.
   "cpp",
   "py",
   "rust",

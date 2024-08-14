@@ -894,13 +894,17 @@ impl RecordingStream {
     /// Lower-level logging API to provide data spanning multiple timepoints.
     ///
     /// Unlike the regular `log` API, which is row-oriented, this API lets you submit the data
-    /// in a columnar form. The lengths of all of the [`TimeColumn`] and the [`ArrowListArray`]s
+    /// in a columnar form. The lengths of all of the [`TimeColumn`] and the component batches
     /// must match. All data that occurs at the same index across the different time and components
     /// arrays will act as a single logical row.
     ///
     /// Note that this API ignores any stateful time set on the log stream via the
     /// [`Self::set_timepoint`]/[`Self::set_time_nanos`]/etc. APIs.
     /// Furthermore, this will _not_ inject the default timelines `log_tick` and `log_time` timeline columns.
+    ///
+    /// TODO(#7167): Unlike Python and C++, this API does not yet support arbitrary partitions of the incoming
+    /// component arrays. Each component will be individually associated with a single timepoint, rather
+    /// than offering how big the component arrays are that are associated with each timepoint.
     #[inline]
     pub fn send_columns<'a>(
         &self,
@@ -920,27 +924,21 @@ impl RecordingStream {
             .map(|batch| {
                 let array = batch.to_arrow()?;
 
-                let array = if let Some(array) =
-                    array.as_any().downcast_ref::<ArrowListArray<i32>>()
-                {
-                    array.clone()
-                } else {
-                    let offsets = Offsets::try_from_lengths(std::iter::repeat(1).take(array.len()))
-                        .map_err(|err| ChunkError::Malformed {
-                            reason: format!("Failed to create offsets: {err}"),
-                        })?;
-                    let data_type =
-                        ArrowListArray::<i32>::default_datatype(array.data_type().clone());
-                    ArrowListArray::<i32>::try_new(
-                        data_type,
-                        offsets.into(),
-                        array.to_boxed(),
-                        None,
-                    )
+                let offsets = Offsets::try_from_lengths(std::iter::repeat(1).take(array.len()))
                     .map_err(|err| ChunkError::Malformed {
-                        reason: format!("Failed to wrap in List array: {err}"),
-                    })?
-                };
+                        reason: format!("Failed to create offsets: {err}"),
+                    })?;
+                let data_type = ArrowListArray::<i32>::default_datatype(array.data_type().clone());
+
+                let array = ArrowListArray::<i32>::try_new(
+                    data_type,
+                    offsets.into(),
+                    array.to_boxed(),
+                    None,
+                )
+                .map_err(|err| ChunkError::Malformed {
+                    reason: format!("Failed to wrap in List array: {err}"),
+                })?;
 
                 Ok((batch.name(), array))
             })

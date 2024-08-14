@@ -2,6 +2,7 @@
 
 #include "datatypes/channel_datatype.hpp"
 #include "datatypes/color_model.hpp"
+#include "datatypes/pixel_format.hpp"
 #include "half.hpp"
 
 #include <cstdint>
@@ -56,8 +57,8 @@ namespace rerun {
     }
 
     inline size_t num_bytes(WidthHeight resolution, datatypes::ChannelDatatype datatype) {
-        return (resolution.width * resolution.height * datatype_bits(datatype) + 7) /
-               8; // rounding upwards
+        // rounding upwards:
+        return (resolution.width * resolution.height * datatype_bits(datatype) + 7) / 8;
     }
 
     template <typename TElement>
@@ -140,6 +141,19 @@ namespace rerun {
                 return 3;
             case datatypes::ColorModel::RGBA:
                 return 4;
+        }
+        return 0;
+    }
+
+    inline size_t pixel_format_num_bytes(
+        WidthHeight resolution, datatypes::PixelFormat pixel_format
+    ) {
+        auto num_pixels = resolution.width * resolution.height;
+        switch (pixel_format) {
+            case datatypes::PixelFormat::NV12:
+                return 12 * num_pixels / 8;
+            case datatypes::PixelFormat::YUY2:
+                return 16 * num_pixels / 8;
         }
         return 0;
     }

@@ -30,7 +30,7 @@ use re_types::{
     },
     Loggable as _,
 };
-
+use re_viewer_context::gpu_bridge::colormap_edit_or_view_ui;
 // ----
 
 /// Registers all editors of this crate in the component UI registry.
@@ -70,10 +70,12 @@ pub fn register_editors(registry: &mut re_viewer_context::ComponentUiRegistry) {
     registry.add_singleline_edit_or_view::<Name>(edit_singleline_string);
     registry.add_multiline_edit_or_view::<Name>(edit_multiline_string);
 
+    // `Colormap` _is_ an enum, but its custom editor is far better.
+    registry.add_singleline_edit_or_view::<Colormap>(colormap_edit_or_view_ui);
+
     // TODO(#6974): Enums editors trivial and always the same, provide them automatically!
     registry.add_singleline_edit_or_view::<AggregationPolicy>(edit_view_enum);
     registry.add_singleline_edit_or_view::<BackgroundKind>(edit_view_enum);
-    registry.add_singleline_edit_or_view::<Colormap>(edit_view_enum);
     registry.add_singleline_edit_or_view::<Corner2D>(edit_view_enum);
     registry.add_singleline_edit_or_view::<FillMode>(edit_view_enum);
     registry.add_singleline_edit_or_view::<MagnificationFilter>(edit_view_enum);
