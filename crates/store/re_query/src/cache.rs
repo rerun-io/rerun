@@ -246,14 +246,34 @@ impl ChunkStoreSubscriber for Caches {
                         let key =
                             CacheKey::new(chunk.entity_path().clone(), timeline, component_name);
 
-                        let data_time_min = time_range.min();
+                        // latest-at
+                        {
+                            let mut data_time_min = time_range.min();
 
-                        compacted_events
-                            .temporal_latest_at
-                            .entry(key.clone())
-                            .and_modify(|time| *time = TimeInt::min(*time, data_time_min))
-                            .or_insert(data_time_min);
+                            // If a compaction was triggered, make sure to drop the original chunks too.
+                            if let Some((compacted_chunks, _)) = compacted {
+                                for chunk in compacted_chunks.values() {
+                                    let data_time_compacted = chunk
+                                        .time_range_per_component()
+                                        .get(&timeline)
+                                        .and_then(|per_component| {
+                                            per_component.get(&component_name)
+                                        })
+                                        .map_or(TimeInt::MAX, |time_range| time_range.min());
 
+                                    data_time_min =
+                                        TimeInt::min(data_time_min, data_time_compacted);
+                                }
+                            }
+
+                            compacted_events
+                                .temporal_latest_at
+                                .entry(key.clone())
+                                .and_modify(|time| *time = TimeInt::min(*time, data_time_min))
+                                .or_insert(data_time_min);
+                        }
+
+                        // range
                         {
                             let compacted_events =
                                 compacted_events.temporal_range.entry(key).or_default();
