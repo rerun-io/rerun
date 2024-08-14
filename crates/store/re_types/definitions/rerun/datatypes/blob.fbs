@@ -3,6 +3,7 @@ namespace rerun.datatypes;
 // ---
 
 /// A binary blob of data.
+/// \rs Ref-counted internally and therefore cheap to clone.
 table Blob (
   "attr.docs.unreleased",
   "attr.arrow.transparent",

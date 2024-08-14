@@ -19,6 +19,7 @@ use ::re_types_core::{ComponentBatch, MaybeOwnedComponentBatch};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Datatype**: A binary blob of data.
+/// Ref-counted internally and therefore cheap to clone.
 #[derive(Clone, Debug, PartialEq, Eq)]
 #[repr(transparent)]
 pub struct Blob(pub ::re_types_core::ArrowBuffer<u8>);
