@@ -5,7 +5,7 @@ namespace rerun.blueprint.archetypes;
 table TimeRangeTableOrder (
     "attr.rerun.scope": "blueprint",
     "attr.rust.derive": "Copy",
-    "attr.rust.generate_field_info"
+    "attr.rust.generate_reflection"
 ) {
     // --- Optional ---
 

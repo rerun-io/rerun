@@ -6,7 +6,7 @@ table Background (
     "attr.python.aliases": "datatypes.Rgba32Like, blueprint_components.BackgroundKindLike",
     "attr.rerun.scope": "blueprint",
     "attr.rust.derive": "Copy",
-    "attr.rust.generate_field_info"
+    "attr.rust.generate_reflection"
 ) {
     // --- Required ---
 

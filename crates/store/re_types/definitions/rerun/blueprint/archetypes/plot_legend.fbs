@@ -7,7 +7,7 @@ namespace rerun.blueprint.archetypes;
 table PlotLegend (
     "attr.rerun.scope": "blueprint",
     "attr.rust.derive": "Default",
-    "attr.rust.generate_field_info",
+    "attr.rust.generate_reflection",
     "attr.python.aliases": "blueprint_components.Corner2D"
 ) {
     // --- Optional ---

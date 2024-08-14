@@ -27,7 +27,7 @@ namespace rerun.blueprint.archetypes;
 /// The query for the dataframe view.
 table DataframeQuery (
     "attr.rerun.scope": "blueprint",
-    "attr.rust.generate_field_info"
+    "attr.rust.generate_reflection"
 ) {
     // --- Optional ---
 

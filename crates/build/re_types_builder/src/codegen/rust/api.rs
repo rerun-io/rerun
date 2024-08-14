@@ -26,7 +26,7 @@ use crate::{
     Type, ATTR_DEFAULT, ATTR_RERUN_COMPONENT_OPTIONAL, ATTR_RERUN_COMPONENT_RECOMMENDED,
     ATTR_RERUN_COMPONENT_REQUIRED, ATTR_RERUN_LOG_MISSING_AS_EMPTY, ATTR_RERUN_VIEW_IDENTIFIER,
     ATTR_RUST_CUSTOM_CLAUSE, ATTR_RUST_DERIVE, ATTR_RUST_DERIVE_ONLY,
-    ATTR_RUST_GENERATE_FIELD_INFO, ATTR_RUST_NEW_PUB_CRATE, ATTR_RUST_REPR,
+    ATTR_RUST_GENERATE_REFLECTION, ATTR_RUST_NEW_PUB_CRATE, ATTR_RUST_REPR,
 };
 
 use super::{
@@ -1186,7 +1186,7 @@ fn quote_trait_impls_for_archetype(obj: &Object) -> TokenStream {
         })
     };
 
-    let impl_archetype_reflection_marker = if obj.is_attr_set(ATTR_RUST_GENERATE_FIELD_INFO) {
+    let impl_archetype_reflection_marker = if obj.is_attr_set(ATTR_RUST_GENERATE_REFLECTION) {
         quote! {
             impl ::re_types_core::ArchetypeReflectionMarker for #name { }
         }

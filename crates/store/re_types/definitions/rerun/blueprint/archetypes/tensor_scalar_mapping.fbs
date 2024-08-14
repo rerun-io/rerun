@@ -4,7 +4,7 @@ namespace rerun.blueprint.archetypes;
 table TensorScalarMapping (
     "attr.rerun.scope": "blueprint",
     "attr.rust.derive": "Default",
-    "attr.rust.generate_field_info"
+    "attr.rust.generate_reflection"
 ) {
     /// Filter used when zooming in on the tensor.
     ///

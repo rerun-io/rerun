@@ -136,7 +136,7 @@ pub trait Archetype {
     }
 }
 
-/// Indicates that the archetype has the `attr.rust.generate_field_info`
+/// Indicates that the archetype has the `attr.rust.generate_reflection`
 /// attribute, meaning it will have runtime reflection data available for it.
 pub trait ArchetypeReflectionMarker {}
 

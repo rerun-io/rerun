@@ -19,7 +19,7 @@ table InstancePoses3D (
   "attr.docs.category": "Spatial 3D",
   "attr.docs.view_types": "Spatial3DView, Spatial2DView: if logged above active projection",
   "attr.rust.derive": " PartialEq",
-  "attr.rust.generate_field_info"
+  "attr.rust.generate_reflection"
 ) {
   /// Translation vectors.
   translations: [rerun.components.PoseTranslation3D] ("attr.rerun.component_optional", nullable, order: 1100);

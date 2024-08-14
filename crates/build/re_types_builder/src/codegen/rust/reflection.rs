@@ -6,7 +6,7 @@ use quote::{format_ident, quote};
 
 use crate::{
     codegen::{autogen_warning, Target},
-    ObjectKind, Objects, Reporter, ATTR_RUST_GENERATE_FIELD_INFO,
+    ObjectKind, Objects, Reporter, ATTR_RUST_GENERATE_REFLECTION,
 };
 
 use super::util::{append_tokens, doc_as_lines};
@@ -141,7 +141,7 @@ fn generate_archetype_reflection(reporter: &Reporter, objects: &Objects) -> Toke
     for obj in objects
         .objects_of_kind(ObjectKind::Archetype)
         .filter(|obj| !obj.is_testing())
-        .filter(|obj| obj.is_attr_set(ATTR_RUST_GENERATE_FIELD_INFO))
+        .filter(|obj| obj.is_attr_set(ATTR_RUST_GENERATE_REFLECTION))
     {
         let quoted_field_reflections = obj.fields.iter().map(|field| {
             let Some(component_name) = field.typ.fqname() else {

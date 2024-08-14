@@ -7,7 +7,7 @@ namespace rerun.blueprint.archetypes;
 table ScalarAxis (
     "attr.rerun.scope": "blueprint",
     "attr.rust.derive": "Default",
-    "attr.rust.generate_field_info"
+    "attr.rust.generate_reflection"
 ) {
     // --- Optional ---
 

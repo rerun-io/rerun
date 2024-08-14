@@ -11,7 +11,7 @@ namespace rerun.blueprint.archetypes;
 table VisualBounds2D (
     "attr.rerun.scope": "blueprint",
     "attr.rust.derive": "Copy",
-    "attr.rust.generate_field_info"
+    "attr.rust.generate_reflection"
 ) {
     /// Controls the visible range of a 2D view.
     ///
