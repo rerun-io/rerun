@@ -70,7 +70,7 @@ pub fn register_editors(registry: &mut re_viewer_context::ComponentUiRegistry) {
     registry.add_singleline_edit_or_view::<Name>(edit_singleline_string);
     registry.add_multiline_edit_or_view::<Name>(edit_multiline_string);
 
-    // `Colormap` _is_ an enum, but it's custom editor is far better.
+    // `Colormap` _is_ an enum, but its custom editor is far better.
     registry.add_singleline_edit_or_view::<Colormap>(colormap_edit_or_view_ui);
 
     // TODO(#6974): Enums editors trivial and always the same, provide them automatically!
