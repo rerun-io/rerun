@@ -496,7 +496,7 @@ impl EntityDb {
             // Try to roughly preserve the order of the chunks
             // from how they were originally logged.
             // See https://github.com/rerun-io/rerun/issues/7175 for why.
-            chunks.sort_by_key(|chunk| chunk.row_id_range().map(|(min, _)| min);
+            chunks.sort_by_key(|chunk| chunk.row_id_range().map(|(min, _)| min));
 
             chunks.into_iter().map(|chunk| {
                 chunk
