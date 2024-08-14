@@ -27,14 +27,26 @@ class TimeSequenceColumn(TimeColumnLike):
     """
     A column of time values that are represented as an integer sequence.
 
-    Equivalent to `rr.set_time_sequence`.
+    Columnar equivalent to [rr.set_time_sequence][rerun.set_time_sequence].
     """
 
     def __init__(self, timeline: str, times: Iterable[int]):
+        """
+        Create a column of integer sequence time values.
+
+        Parameters
+        ----------
+        timeline:
+            The name of the timeline.
+        times:
+            An iterable of integer time values.
+
+        """
         self.timeline = timeline
         self.times = times
 
     def timeline_name(self) -> str:
+        """Returns the name of the timeline."""
         return self.timeline
 
     def as_arrow_array(self) -> pa.Array:
@@ -43,16 +55,28 @@ class TimeSequenceColumn(TimeColumnLike):
 
 class TimeSecondsColumn(TimeColumnLike):
     """
-    A column of time values that are represented as an floating point seconds.
+    A column of time values that are represented as floating point seconds.
 
-    Equivalent to `rr.set_time_seconds`.
+    Columnar equivalent to [rr.set_time_seconds][rerun.set_time_seconds].
     """
 
     def __init__(self, timeline: str, times: Iterable[float]):
+        """
+        Create a column of floating point seconds time values.
+
+        Parameters
+        ----------
+        timeline:
+            The name of the timeline.
+        times:
+            An iterable of floating point second time values.
+
+        """
         self.timeline = timeline
         self.times = times
 
     def timeline_name(self) -> str:
+        """Returns the name of the timeline."""
         return self.timeline
 
     def as_arrow_array(self) -> pa.Array:
@@ -61,16 +85,28 @@ class TimeSecondsColumn(TimeColumnLike):
 
 class TimeNanosColumn(TimeColumnLike):
     """
-    A column of time values that are represented as an integer nanoseconds.
+    A column of time values that are represented as integer nanoseconds.
 
-    Equivalent to `rr.set_time_nanos`.
+    Columnar equivalent to [rr.set_time_nanos][rerun.set_time_nanos].
     """
 
     def __init__(self, timeline: str, times: Iterable[int]):
+        """
+        Create a column of integer nanoseconds time values.
+
+        Parameters
+        ----------
+        timeline:
+            The name of the timeline.
+        times:
+            An iterable of integer nanosecond time values.
+
+        """
         self.timeline = timeline
         self.times = times
 
     def timeline_name(self) -> str:
+        """Returns the name of the timeline."""
         return self.timeline
 
     def as_arrow_array(self) -> pa.Array:
@@ -89,7 +125,7 @@ def send_columns(
     strict: bool | None = None,
 ) -> None:
     r"""
-    Directly log a columns of data to Rerun.
+    Send columnar data to Rerun.
 
     Unlike the regular `log` API, which is row-oriented, this API lets you submit the data
     in a columnar form. Each `TimeColumnLike` and `ComponentColumnLike` object represents a column
