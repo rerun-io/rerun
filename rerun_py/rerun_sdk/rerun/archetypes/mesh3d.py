@@ -108,7 +108,8 @@ class Mesh3D(Mesh3DExt, Archetype):
             vertex_colors=None,  # type: ignore[arg-type]
             vertex_texcoords=None,  # type: ignore[arg-type]
             albedo_factor=None,  # type: ignore[arg-type]
-            albedo_texture=None,  # type: ignore[arg-type]
+            albedo_texture_buffer=None,  # type: ignore[arg-type]
+            albedo_texture_format=None,  # type: ignore[arg-type]
             class_ids=None,  # type: ignore[arg-type]
         )
 
@@ -174,17 +175,23 @@ class Mesh3D(Mesh3DExt, Archetype):
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 
-    albedo_texture: components.TensorDataBatch | None = field(
+    albedo_texture_buffer: components.ImageBufferBatch | None = field(
         metadata={"component": "optional"},
         default=None,
-        converter=components.TensorDataBatch._optional,  # type: ignore[misc]
+        converter=components.ImageBufferBatch._optional,  # type: ignore[misc]
     )
     # Optional albedo texture.
     #
     # Used with the [`components.Texcoord2D`][rerun.components.Texcoord2D] of the mesh.
     #
-    # Currently supports only sRGB(A) textures, ignoring alpha.
-    # (meaning that the tensor must have 3 or 4 channels and use the `u8` format)
+    # (Docstring intentionally commented out to hide this field from the docs)
+
+    albedo_texture_format: components.ImageFormatBatch | None = field(
+        metadata={"component": "optional"},
+        default=None,
+        converter=components.ImageFormatBatch._optional,  # type: ignore[misc]
+    )
+    # The format of the `albedo_texture_buffer`, if any.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 

@@ -21,4 +21,5 @@ To interpret the contents of this buffer, see, [`components.ImageFormat`](https:
 
 * [`DepthImage`](../archetypes/depth_image.md)
 * [`Image`](../archetypes/image.md)
+* [`Mesh3D`](../archetypes/mesh3d.md)
 * [`SegmentationImage`](../archetypes/segmentation_image.md)

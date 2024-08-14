@@ -19,4 +19,5 @@ The metadata describing the contents of a [`components.ImageBuffer`](https://rer
 
 * [`DepthImage`](../archetypes/depth_image.md)
 * [`Image`](../archetypes/image.md)
+* [`Mesh3D`](../archetypes/mesh3d.md)
 * [`SegmentationImage`](../archetypes/segmentation_image.md)
