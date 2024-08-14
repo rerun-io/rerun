@@ -238,7 +238,11 @@ SECTION_TABLE: Final[list[Section]] = [
     Section(
         title="Interfaces",
         mod_path="rerun",
-        class_list=["AsComponents", "ComponentBatchLike"],
+        class_list=[
+            "AsComponents",
+            "ComponentBatchLike",
+            "ComponentColumn",
+        ],
         default_filters=False,
     ),
     ################################################################################

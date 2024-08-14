@@ -269,7 +269,7 @@ class BaseBatch(Generic[T]):
 
 class ComponentColumn:
     """
-    A column of components that can be send using `send_columns`.
+    A column of components that can be sent using `send_columns`.
 
     This is represented by a ComponentBatch array that has been repartitioned into multiple segments.
     This is useful for reinterpreting a single contiguous batch as multiple sub-batches

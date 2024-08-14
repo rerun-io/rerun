@@ -137,7 +137,7 @@ def send_columns(
     Furthermore, this will _not_ inject the default timelines `log_tick` and `log_time` timeline columns.
 
     When using a regular `ComponentBatch` input, the batch data will map to single-valued component
-    instance at each timepoint.
+    instances at each timepoint.
 
     For example, scalars would be logged as:
     ```py
@@ -181,8 +181,8 @@ def send_columns(
         See <https://www.rerun.io/docs/concepts/entity-path> for more on entity paths.
     times:
         The time values of this batch of data. Each `TimeColumnLike` object represents a single column
-        of timestamps. Generally you should use one of the provided classes: [`TimeSequenceColumn`][],
-        [`TimeSecondsColumn`][], or [`TimeNanosColumn`][].
+        of timestamps. Generally, you should use one of the provided classes: [`TimeSequenceColumn`][rerun.TimeSequenceColumn],
+        [`TimeSecondsColumn`][rerun.TimeSecondsColumn], or [`TimeNanosColumn`][rerun.TimeNanosColumn].
     components:
         The columns of components to log. Each object represents a single column of data.
 

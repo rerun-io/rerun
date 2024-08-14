@@ -22,6 +22,9 @@ from . import (
     experimental as experimental,
     notebook as notebook,
 )
+from ._baseclasses import (
+    ComponentColumn as ComponentColumn,
+)
 from ._image_encoded import (
     ImageEncoded as ImageEncoded,
     ImageFormat as ImageFormat,
