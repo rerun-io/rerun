@@ -74,21 +74,39 @@ impl Rrd {
 
 impl Example {
     fn build(self, progress: &MultiProgress, output_dir: &Path) -> anyhow::Result<PathBuf> {
-        let rrd_path = output_dir.join(&self.name).with_extension("rrd");
+        let tempdir = tempfile::tempdir()?;
+
+        let initial_rrd_path = tempdir.path().join(&self.name).with_extension("rrd");
+
+        {
+            let mut cmd = Command::new("python3");
+            cmd.arg("-m").arg(&self.name);
+            cmd.arg("--save").arg(&initial_rrd_path);
+            cmd.args(self.script_args);
+
+            // Configure flushing so that:
+            // * the resulting file size is deterministic
+            // * the file is chunked into small batches for better streaming
+            cmd.env("RERUN_FLUSH_TICK_SECS", 1_000_000_000.to_string());
+            cmd.env("RERUN_FLUSH_NUM_BYTES", (128 * 1024).to_string());
+
+            wait_for_output(cmd, &self.name, progress)?;
+        }
+
+        // Now run compaction on the result:
+        let final_rrd_path = output_dir.join(&self.name).with_extension("rrd");
 
         let mut cmd = Command::new("python3");
-        cmd.arg("-m").arg(&self.name);
-        cmd.arg("--save").arg(&rrd_path);
-        cmd.args(self.script_args);
+        cmd.arg("-m").arg("rerun");
+        cmd.arg("rrd");
+        cmd.arg("compact");
+        // Small chunks for better streaming:
+        cmd.arg("--max-bytes").arg((128 * 1024).to_string());
+        cmd.arg(&initial_rrd_path);
+        cmd.arg("-o").arg(&final_rrd_path);
 
-        // Configure flushing so that:
-        // * the resulting file size is deterministic
-        // * the file is chunked into small batches for better streaming
-        cmd.env("RERUN_FLUSH_TICK_SECS", 1_000_000_000.to_string());
-        cmd.env("RERUN_FLUSH_NUM_BYTES", (128 * 1024).to_string());
+        wait_for_output(cmd, &format!("{} compaction", self.name), progress)?;
 
-        wait_for_output(cmd, &self.name, progress)?;
-
-        Ok(rrd_path)
+        Ok(final_rrd_path)
     }
 }
