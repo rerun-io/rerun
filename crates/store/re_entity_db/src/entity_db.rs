@@ -467,11 +467,21 @@ impl EntityDb {
             .map(|msg| Ok(LogMsg::SetStoreInfo(msg.clone())));
 
         let data_messages = {
-            let mut chunks: Vec<&Arc<Chunk>> = self.store().iter_chunks().collect();
+            let time_filter = time_selection.map(|(timeline, range)| {
+                (
+                    timeline,
+                    ResolvedTimeRange::new(range.min.floor(), range.max.ceil()),
+                )
+            });
 
-            if let Some((timeline, range)) = time_selection {
-                let time_range = ResolvedTimeRange::new(range.min.floor(), range.max.ceil());
-                chunks.retain(|chunk| {
+            let mut chunks: Vec<&Arc<Chunk>> = self
+                .store()
+                .iter_chunks()
+                .filter(move |chunk| {
+                    let Some((timeline, time_range)) = time_filter else {
+                        return true;
+                    };
+
                     // TODO(cmc): chunk.slice_time_selection(time_selection)
                     chunk
                         .timelines()
@@ -480,8 +490,8 @@ impl EntityDb {
                             time_range.contains(time_column.time_range().min())
                                 || time_range.contains(time_column.time_range().max())
                         })
-                });
-            }
+                })
+                .collect();
 
             // Try to roughly preserve the order of the chunks
             // from how they were originally logged.
