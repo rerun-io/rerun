@@ -43,7 +43,6 @@ use re_types::{
     archetypes,
     blueprint::components::BackgroundKind,
     components::{self, Color, ImageFormat, MediaType, Resolution},
-    Archetype as _, Loggable as _,
 };
 use re_viewport_blueprint::{ViewProperty, ViewPropertyQueryError};
 
@@ -61,10 +60,12 @@ fn resolution_of_image_at(
     entity_path: &re_log_types::EntityPath,
 ) -> Option<Resolution> {
     // First check assumptions:
-    debug_assert!(ctx.reflection.archetypes[&archetypes::Image::name()]
-        .has_component(&components::ImageFormat::name()));
-    debug_assert!(ctx.reflection.archetypes[&archetypes::EncodedImage::name()]
-        .has_component(&components::Blob::name()));
+    fn _check_image_has_format(image: &archetypes::Image) {
+        let _: components::ImageFormat = image.format;
+    }
+    fn _check_encoded_image_has_blob(image: &archetypes::EncodedImage) {
+        let _: components::Blob = image.blob;
+    }
 
     let db = ctx.recording();
 

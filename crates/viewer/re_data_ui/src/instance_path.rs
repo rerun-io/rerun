@@ -249,18 +249,18 @@ fn preview_if_image_ui(
     entity_path: &re_log_types::EntityPath,
     component_map: &IntMap<ComponentName, UnitChunkShared>,
 ) -> Option<()> {
-    // Sanity check assumptions in debug builds:
-    for archetype in [
-        archetypes::DepthImage::name(),
-        archetypes::Image::name(),
-        archetypes::SegmentationImage::name(),
-    ] {
-        for component in [
-            components::ImageBuffer::name(),
-            components::ImageFormat::name(),
-        ] {
-            debug_assert!(ctx.reflection.archetypes[&archetype].has_component(&component));
-        }
+    // First check assumptions:
+    fn _check_image_has_buffer_format(image: &archetypes::Image) {
+        let _: components::ImageBuffer = image.buffer;
+        let _: components::ImageFormat = image.format;
+    }
+    fn _check_depth_image_has_buffer_format(image: &archetypes::DepthImage) {
+        let _: components::ImageBuffer = image.buffer;
+        let _: components::ImageFormat = image.format;
+    }
+    fn _check_segmentation_image_has_buffer_format(image: &archetypes::SegmentationImage) {
+        let _: components::ImageBuffer = image.buffer;
+        let _: components::ImageFormat = image.format;
     }
 
     let image_buffer = component_map.get(&components::ImageBuffer::name())?;

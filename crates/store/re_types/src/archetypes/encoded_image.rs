@@ -242,8 +242,6 @@ impl ::re_types_core::AsComponents for EncodedImage {
     }
 }
 
-impl ::re_types_core::ArchetypeReflectionMarker for EncodedImage {}
-
 impl EncodedImage {
     /// Create a new `EncodedImage`.
     #[inline]

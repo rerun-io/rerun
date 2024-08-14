@@ -19,8 +19,7 @@ table SegmentationImage (
   "attr.cpp.no_field_ctors",
   "attr.docs.category": "Image & tensor",
   "attr.docs.view_types": "Spatial2DView, Spatial3DView: if logged under a projection",
-  "attr.rust.derive": "PartialEq",
-  "attr.rust.generate_reflection"
+  "attr.rust.derive": "PartialEq"
 ) {
   // --- Required ---
 

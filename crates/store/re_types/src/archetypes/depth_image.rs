@@ -315,8 +315,6 @@ impl ::re_types_core::AsComponents for DepthImage {
     }
 }
 
-impl ::re_types_core::ArchetypeReflectionMarker for DepthImage {}
-
 impl DepthImage {
     /// Create a new `DepthImage`.
     #[inline]

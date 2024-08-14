@@ -683,83 +683,6 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
     re_tracing::profile_function!();
     let array = [
         (
-            ArchetypeName::new("rerun.archetypes.DepthImage"),
-            ArchetypeReflection {
-                display_name: "Depth image",
-                fields: vec![
-                    ArchetypeFieldReflection { component_name :
-                    "rerun.components.ImageBuffer".into(), display_name : "Buffer",
-                    docstring_md : "The raw depth image data.", },
-                    ArchetypeFieldReflection { component_name :
-                    "rerun.components.ImageFormat".into(), display_name : "Format",
-                    docstring_md : "The format of the image.", },
-                    ArchetypeFieldReflection { component_name :
-                    "rerun.components.DepthMeter".into(), display_name : "Meter",
-                    docstring_md :
-                    "An optional floating point value that specifies how long a meter is in the native depth units.\n\nFor instance: with uint16, perhaps meter=1000 which would mean you have millimeter precision\nand a range of up to ~65 meters (2^16 / 1000).\n\nNote that the only effect on 2D views is the physical depth values shown when hovering the image.\nIn 3D views on the other hand, this affects where the points of the point cloud are placed.",
-                    }, ArchetypeFieldReflection { component_name :
-                    "rerun.components.Colormap".into(), display_name : "Colormap",
-                    docstring_md :
-                    "Colormap to use for rendering the depth image.\n\nIf not set, the depth image will be rendered using the Turbo colormap.",
-                    }, ArchetypeFieldReflection { component_name :
-                    "rerun.components.FillRatio".into(), display_name :
-                    "Point fill ratio", docstring_md :
-                    "Scale the radii of the points in the point cloud generated from this image.\n\nA fill ratio of 1.0 (the default) means that each point is as big as to touch the center of its neighbor\nif it is at the same depth, leaving no gaps.\nA fill ratio of 0.5 means that each point touches the edge of its neighbor if it has the same depth.\n\nTODO(#6744): This applies only to 3D views!",
-                    }, ArchetypeFieldReflection { component_name :
-                    "rerun.components.DrawOrder".into(), display_name : "Draw order",
-                    docstring_md :
-                    "An optional floating point value that specifies the 2D drawing order, used only if the depth image is shown as a 2D image.\n\nObjects with higher values are drawn on top of those with lower values.",
-                    },
-                ],
-            },
-        ),
-        (
-            ArchetypeName::new("rerun.archetypes.EncodedImage"),
-            ArchetypeReflection {
-                display_name: "Encoded image",
-                fields: vec![
-                    ArchetypeFieldReflection { component_name : "rerun.components.Blob"
-                    .into(), display_name : "Blob", docstring_md :
-                    "The encoded content of some image file, e.g. a PNG or JPEG.", },
-                    ArchetypeFieldReflection { component_name :
-                    "rerun.components.MediaType".into(), display_name : "Media type",
-                    docstring_md :
-                    "The Media Type of the asset.\n\nSupported values:\n* `image/jpeg`\n* `image/png`\n\nIf omitted, the viewer will try to guess from the data blob.\nIf it cannot guess, it won't be able to render the asset.",
-                    }, ArchetypeFieldReflection { component_name :
-                    "rerun.components.Opacity".into(), display_name : "Opacity",
-                    docstring_md :
-                    "Opacity of the image, useful for layering several images.\n\nDefaults to 1.0 (fully opaque).",
-                    }, ArchetypeFieldReflection { component_name :
-                    "rerun.components.DrawOrder".into(), display_name : "Draw order",
-                    docstring_md :
-                    "An optional floating point value that specifies the 2D drawing order.\n\nObjects with higher values are drawn on top of those with lower values.",
-                    },
-                ],
-            },
-        ),
-        (
-            ArchetypeName::new("rerun.archetypes.Image"),
-            ArchetypeReflection {
-                display_name: "Image",
-                fields: vec![
-                    ArchetypeFieldReflection { component_name :
-                    "rerun.components.ImageBuffer".into(), display_name : "Buffer",
-                    docstring_md : "The raw image data.", }, ArchetypeFieldReflection {
-                    component_name : "rerun.components.ImageFormat".into(), display_name
-                    : "Format", docstring_md : "The format of the image.", },
-                    ArchetypeFieldReflection { component_name :
-                    "rerun.components.Opacity".into(), display_name : "Opacity",
-                    docstring_md :
-                    "Opacity of the image, useful for layering several images.\n\nDefaults to 1.0 (fully opaque).",
-                    }, ArchetypeFieldReflection { component_name :
-                    "rerun.components.DrawOrder".into(), display_name : "Draw order",
-                    docstring_md :
-                    "An optional floating point value that specifies the 2D drawing order.\n\nObjects with higher values are drawn on top of those with lower values.",
-                    },
-                ],
-            },
-        ),
-        (
             ArchetypeName::new("rerun.archetypes.InstancePoses3D"),
             ArchetypeReflection {
                 display_name: "Instance poses 3D",
@@ -779,28 +702,6 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                     component_name : "rerun.components.PoseTransformMat3x3".into(),
                     display_name : "Mat 3x 3", docstring_md :
                     "3x3 transformation matrices.", },
-                ],
-            },
-        ),
-        (
-            ArchetypeName::new("rerun.archetypes.SegmentationImage"),
-            ArchetypeReflection {
-                display_name: "Segmentation image",
-                fields: vec![
-                    ArchetypeFieldReflection { component_name :
-                    "rerun.components.ImageBuffer".into(), display_name : "Buffer",
-                    docstring_md : "The raw image data.", }, ArchetypeFieldReflection {
-                    component_name : "rerun.components.ImageFormat".into(), display_name
-                    : "Format", docstring_md : "The format of the image.", },
-                    ArchetypeFieldReflection { component_name :
-                    "rerun.components.Opacity".into(), display_name : "Opacity",
-                    docstring_md :
-                    "Opacity of the image, useful for layering the segmentation image on top of another image.\n\nDefaults to 0.5 if there's any other images in the scene, otherwise 1.0.",
-                    }, ArchetypeFieldReflection { component_name :
-                    "rerun.components.DrawOrder".into(), display_name : "Draw order",
-                    docstring_md :
-                    "An optional floating point value that specifies the 2D drawing order.\n\nObjects with higher values are drawn on top of those with lower values.",
-                    },
                 ],
             },
         ),
