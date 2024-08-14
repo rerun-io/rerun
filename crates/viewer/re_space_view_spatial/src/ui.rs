@@ -97,10 +97,12 @@ impl SpatialSpaceViewState {
         &mut self,
         ui: &egui::Ui,
         system_output: &re_viewer_context::SystemExecutionOutput,
+        space_kind: SpatialSpaceViewKind,
     ) -> Result<(), SpaceViewSystemExecutionError> {
         re_tracing::profile_function!();
 
-        self.bounding_boxes.update(ui, &system_output.view_systems);
+        self.bounding_boxes
+            .update(ui, &system_output.view_systems, space_kind);
 
         let view_systems = &system_output.view_systems;
 
