@@ -708,6 +708,7 @@ fn write_example_list(o: &mut String, examples: &[ExampleInfo<'_>]) {
         title,
         image,
         exclude_from_api_docs: _,
+        missing_extensions: _,
     } in examples
     {
         let title = title.unwrap_or(name);
