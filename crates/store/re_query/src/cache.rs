@@ -119,7 +119,7 @@ impl std::fmt::Debug for Caches {
                 let cache = cache.read();
                 strings.push(format!(
                     "  [{cache_key:?} (pending_invalidation_min={:?})]",
-                    cache.pending_invalidation.map(|t| cache_key
+                    cache.pending_invalidations.first().map(|&t| cache_key
                         .timeline
                         .format_time_range_utc(&ResolvedTimeRange::new(t, TimeInt::MAX))),
                 ));
@@ -310,7 +310,7 @@ impl ChunkStoreSubscriber for Caches {
 
                 for (key, cache) in caches_latest_at.iter() {
                     if key.entity_path == entity_path && key.component_name == component_name {
-                        cache.write().pending_invalidation = Some(TimeInt::STATIC);
+                        cache.write().pending_invalidations.insert(TimeInt::STATIC);
                     }
                 }
 
@@ -335,7 +335,7 @@ impl ChunkStoreSubscriber for Caches {
 
                 if let Some(cache) = caches_latest_at.get(&key) {
                     let mut cache = cache.write();
-                    cache.pending_invalidation = Some(time);
+                    cache.pending_invalidations.insert(time);
                 }
             }
 
