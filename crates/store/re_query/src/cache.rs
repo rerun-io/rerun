@@ -241,33 +241,30 @@ impl ChunkStoreSubscriber for Caches {
                     }
                 }
 
-                for (&timeline, time_column) in chunk.timelines() {
-                    for data_time in time_column.times() {
-                        for component_name in chunk.component_names() {
-                            let key = CacheKey::new(
-                                chunk.entity_path().clone(),
-                                timeline,
-                                component_name,
+                for (timeline, per_component) in chunk.time_range_per_component() {
+                    for (component_name, time_range) in per_component {
+                        let key =
+                            CacheKey::new(chunk.entity_path().clone(), timeline, component_name);
+
+                        let data_time_min = time_range.min();
+
+                        compacted_events
+                            .temporal_latest_at
+                            .entry(key.clone())
+                            .and_modify(|time| *time = TimeInt::min(*time, data_time_min))
+                            .or_insert(data_time_min);
+
+                        {
+                            let compacted_events =
+                                compacted_events.temporal_range.entry(key).or_default();
+
+                            compacted_events.insert(chunk.id());
+                            // If a compaction was triggered, make sure to drop the original chunks too.
+                            compacted_events.extend(
+                                compacted
+                                    .iter()
+                                    .flat_map(|(compacted_chunk_ids, _)| compacted_chunk_ids),
                             );
-
-                            compacted_events
-                                .temporal_latest_at
-                                .entry(key.clone())
-                                .and_modify(|time| *time = TimeInt::min(*time, data_time))
-                                .or_insert(data_time);
-
-                            {
-                                let compacted_events =
-                                    compacted_events.temporal_range.entry(key).or_default();
-
-                                compacted_events.insert(chunk.id());
-                                // If a compaction was triggered, make sure to drop the original chunks too.
-                                compacted_events.extend(
-                                    compacted
-                                        .iter()
-                                        .flat_map(|(compacted_chunk_ids, _)| compacted_chunk_ids),
-                                );
-                            }
                         }
                     }
                 }
