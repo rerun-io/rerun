@@ -289,6 +289,7 @@ rerun rrd compact --max-rows 4096 --max-bytes=1048576 /my/recordings/*.rrd > out
 - Improved CLI: stdin streaming support [#7092](https://github.com/rerun-io/rerun/pull/7092)
 - Improved CLI: stdout streaming support [#7094](https://github.com/rerun-io/rerun/pull/7094)
 - Improved CLI: implement `rerun rrd filter` [#7095](https://github.com/rerun-io/rerun/pull/7095)
+- Add support for `rerun rrd filter --drop-entity` [#7185](https://github.com/rerun-io/rerun/pull/7185)
 
 #### 🗣 Refactors
 - Forward Rust (de-)serialization of transparent datatypes [#6793](https://github.com/rerun-io/rerun/pull/6793)
