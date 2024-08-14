@@ -27,7 +27,7 @@ class TimeSequenceColumn(TimeColumnLike):
     """
     A column of time values that are represented as an integer sequence.
 
-    Columnar equivalent to [rr.set_time_sequence][rerun.set_time_sequence].
+    Columnar equivalent to [`rerun.set_time_sequence`][rerun.set_time_sequence].
     """
 
     def __init__(self, timeline: str, times: Iterable[int]):
@@ -57,7 +57,7 @@ class TimeSecondsColumn(TimeColumnLike):
     """
     A column of time values that are represented as floating point seconds.
 
-    Columnar equivalent to [rr.set_time_seconds][rerun.set_time_seconds].
+    Columnar equivalent to [`rerun.set_time_seconds`][rerun.set_time_seconds].
     """
 
     def __init__(self, timeline: str, times: Iterable[float]):
@@ -87,7 +87,7 @@ class TimeNanosColumn(TimeColumnLike):
     """
     A column of time values that are represented as integer nanoseconds.
 
-    Columnar equivalent to [rr.set_time_nanos][rerun.set_time_nanos].
+    Columnar equivalent to [`rerun.set_time_nanos`][rerun.set_time_nanos].
     """
 
     def __init__(self, timeline: str, times: Iterable[int]):
