@@ -12,7 +12,7 @@ fn is_blank<T: AsRef<str>>(line: T) -> bool {
     line.as_ref().chars().all(char::is_whitespace)
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct ExampleInfo<'a> {
     /// Path to the snippet relative to the snippet directory.
     pub path: &'a str,
@@ -28,6 +28,9 @@ pub struct ExampleInfo<'a> {
 
     /// If true, use this example only for the manual, not for documentation embedded in the emitted code.
     pub exclude_from_api_docs: bool,
+
+    /// Any of the extensions lists here are allowed to be missing.
+    pub missing_extensions: Vec<String>,
 }
 
 impl<'a> ExampleInfo<'a> {
@@ -63,6 +66,8 @@ impl<'a> ExampleInfo<'a> {
 
         let (mut title, mut image, mut exclude_from_api_docs) = (None, None, false);
 
+        let mut missing_extensions = Vec::new();
+
         if let Some(args) = args {
             let args = args.trim();
 
@@ -77,9 +82,12 @@ impl<'a> ExampleInfo<'a> {
                 // \example example_name "Example Title"
                 title = args.strip_prefix('"').and_then(|v| v.strip_suffix('"'));
             } else {
-                // \example example_name title="Example Title" image="https://static.rerun.io/annotation_context_rects/9b446c36011ed30fce7dc6ed03d5fd9557460f70/1200w.png"
+                // \example example_name title="Example Title" image="https://static.rerun.io/annotation_context_rects/9b446c36011ed30fce7dc6ed03d5fd9557460f70/1200w.png" missing="cpp, py"
                 title = find_keyed("title", args);
                 image = find_keyed("image", args).map(ImageUrl::parse);
+                if let Some(missing) = find_keyed("missing", args) {
+                    missing_extensions.extend(missing.split(',').map(|s| s.trim().to_owned()));
+                }
             }
         }
 
@@ -89,11 +97,12 @@ impl<'a> ExampleInfo<'a> {
             title,
             image,
             exclude_from_api_docs,
+            missing_extensions,
         }
     }
 }
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Debug)]
 pub enum ImageUrl<'a> {
     /// A URL with our specific format:
     ///
@@ -175,7 +184,7 @@ impl<'a> std::fmt::Display for SnippetId<'a> {
     }
 }
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Debug)]
 pub struct RerunImageUrl<'a> {
     pub name: &'a str,
     pub hash: &'a str,
@@ -301,7 +310,13 @@ pub fn collect_snippets_for_api_docs<'a>(
         let content = match std::fs::read_to_string(&path) {
             Ok(content) => content,
             Err(_) if !required => continue,
-            Err(err) => return Err(err).with_context(|| format!("couldn't open snippet {path:?}")),
+            Err(err) => {
+                if base.missing_extensions.iter().any(|ext| ext == extension) {
+                    continue;
+                } else {
+                    return Err(err).with_context(|| format!("couldn't open snippet {path:?}"));
+                }
+            }
         };
         let mut content = content
             .split('\n')

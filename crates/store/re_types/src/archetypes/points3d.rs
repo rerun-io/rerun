@@ -19,6 +19,81 @@ use ::re_types_core::{ComponentBatch, MaybeOwnedComponentBatch};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Archetype**: A 3D point cloud with positions and optional colors, radii, labels, etc.
+///
+/// ## Examples
+///
+/// ### Randomly distributed 3D points with varying color and radius
+/// ```ignore
+/// use rand::{distributions::Uniform, Rng as _};
+///
+/// fn main() -> Result<(), Box<dyn std::error::Error>> {
+///     let rec = rerun::RecordingStreamBuilder::new("rerun_example_points3d_random").spawn()?;
+///
+///     let mut rng = rand::thread_rng();
+///     let dist = Uniform::new(-5., 5.);
+///
+///     rec.log(
+///         "random",
+///         &rerun::Points3D::new(
+///             (0..10).map(|_| (rng.sample(dist), rng.sample(dist), rng.sample(dist))),
+///         )
+///         .with_colors((0..10).map(|_| rerun::Color::from_rgb(rng.gen(), rng.gen(), rng.gen())))
+///         .with_radii((0..10).map(|_| rng.gen::<f32>())),
+///     )?;
+///
+///     Ok(())
+/// }
+/// ```
+/// <center>
+/// <picture>
+///   <source media="(max-width: 480px)" srcset="https://static.rerun.io/point3d_random/7e94e1806d2c381943748abbb3bedb68d564de24/480w.png">
+///   <source media="(max-width: 768px)" srcset="https://static.rerun.io/point3d_random/7e94e1806d2c381943748abbb3bedb68d564de24/768w.png">
+///   <source media="(max-width: 1024px)" srcset="https://static.rerun.io/point3d_random/7e94e1806d2c381943748abbb3bedb68d564de24/1024w.png">
+///   <source media="(max-width: 1200px)" srcset="https://static.rerun.io/point3d_random/7e94e1806d2c381943748abbb3bedb68d564de24/1200w.png">
+///   <img src="https://static.rerun.io/point3d_random/7e94e1806d2c381943748abbb3bedb68d564de24/full.png" width="640">
+/// </picture>
+/// </center>
+///
+/// ### Log points with radii given in UI points
+/// ```ignore
+/// fn main() -> Result<(), Box<dyn std::error::Error>> {
+///     let rec = rerun::RecordingStreamBuilder::new("rerun_example_points3d_ui_radius").spawn()?;
+///
+///     // Two blue points with scene unit radii of 0.1 and 0.3.
+///     rec.log(
+///         "scene_units",
+///         &rerun::Points3D::new([(0.0, 1.0, 0.0), (1.0, 1.0, 1.0)])
+///             // By default, radii are interpreted as world-space units.
+///             .with_radii([0.1, 0.3])
+///             .with_colors([rerun::Color::from_rgb(0, 0, 255)]),
+///     )?;
+///
+///     // Two red points with ui point radii of 40 and 60.
+///     // UI points are independent of zooming in Views, but are sensitive to the application UI scaling.
+///     // For 100% ui scaling, UI points are equal to pixels.
+///     rec.log(
+///         "ui_points",
+///         &rerun::Points3D::new([(0.0, 0.0, 0.0), (1.0, 0.0, 1.0)])
+///             // rerun::Radius::new_ui_points produces a radius that the viewer interprets as given in ui points.
+///             .with_radii([
+///                 rerun::Radius::new_ui_points(40.0),
+///                 rerun::Radius::new_ui_points(60.0),
+///             ])
+///             .with_colors([rerun::Color::from_rgb(255, 0, 0)]),
+///     )?;
+///
+///     Ok(())
+/// }
+/// ```
+/// <center>
+/// <picture>
+///   <source media="(max-width: 480px)" srcset="https://static.rerun.io/point3d_ui_radius/e051a65b4317438bcaea8d0eee016ac9460b5336/480w.png">
+///   <source media="(max-width: 768px)" srcset="https://static.rerun.io/point3d_ui_radius/e051a65b4317438bcaea8d0eee016ac9460b5336/768w.png">
+///   <source media="(max-width: 1024px)" srcset="https://static.rerun.io/point3d_ui_radius/e051a65b4317438bcaea8d0eee016ac9460b5336/1024w.png">
+///   <source media="(max-width: 1200px)" srcset="https://static.rerun.io/point3d_ui_radius/e051a65b4317438bcaea8d0eee016ac9460b5336/1200w.png">
+///   <img src="https://static.rerun.io/point3d_ui_radius/e051a65b4317438bcaea8d0eee016ac9460b5336/full.png" width="640">
+/// </picture>
+/// </center>
 #[derive(Clone, Debug, PartialEq)]
 pub struct Points3D {
     /// All the 3D positions at which the point cloud shows points.
