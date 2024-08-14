@@ -50,6 +50,13 @@ pub struct ArchetypeReflection {
     pub fields: Vec<ArchetypeFieldReflection>,
 }
 
+impl ArchetypeReflection {
+    #[inline]
+    pub fn has_component(&self, component: &ComponentName) -> bool {
+        self.fields.iter().any(|c| &c.component_name == component)
+    }
+}
+
 /// Additional information about an archetype's field.
 #[derive(Clone, Debug)]
 pub struct ArchetypeFieldReflection {

@@ -13,7 +13,8 @@ table EncodedImage (
   "attr.docs.category": "Image & tensor",
   "attr.docs.unreleased",
   "attr.docs.view_types": "Spatial2DView, Spatial3DView: if logged under a projection",
-  "attr.rust.derive": "PartialEq"
+  "attr.rust.derive": "PartialEq",
+  "attr.rust.generate_reflection"
 ) {
   // --- Required ---
 

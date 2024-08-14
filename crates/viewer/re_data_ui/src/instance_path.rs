@@ -249,6 +249,20 @@ fn preview_if_image_ui(
     entity_path: &re_log_types::EntityPath,
     component_map: &IntMap<ComponentName, UnitChunkShared>,
 ) -> Option<()> {
+    // Sanity check assumptions in debug builds:
+    for archetype in [
+        archetypes::DepthImage::name(),
+        archetypes::Image::name(),
+        archetypes::SegmentationImage::name(),
+    ] {
+        for component in [
+            components::ImageBuffer::name(),
+            components::ImageFormat::name(),
+        ] {
+            debug_assert!(ctx.reflection.archetypes[&archetype].has_component(&component));
+        }
+    }
+
     let image_buffer = component_map.get(&components::ImageBuffer::name())?;
     let buffer_row_id = image_buffer.row_id()?;
     let image_buffer = image_buffer
