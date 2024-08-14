@@ -236,7 +236,7 @@ impl ChunkStoreSubscriber for Caches {
                         compacted_events.extend(
                             compacted
                                 .iter()
-                                .flat_map(|(compacted_chunk_ids, _)| compacted_chunk_ids),
+                                .flat_map(|(compacted_chunks, _)| compacted_chunks.keys().copied()),
                         );
                     }
                 }
@@ -260,11 +260,9 @@ impl ChunkStoreSubscriber for Caches {
 
                             compacted_events.insert(chunk.id());
                             // If a compaction was triggered, make sure to drop the original chunks too.
-                            compacted_events.extend(
-                                compacted
-                                    .iter()
-                                    .flat_map(|(compacted_chunk_ids, _)| compacted_chunk_ids),
-                            );
+                            compacted_events.extend(compacted.iter().flat_map(
+                                |(compacted_chunks, _)| compacted_chunks.keys().copied(),
+                            ));
                         }
                     }
                 }
