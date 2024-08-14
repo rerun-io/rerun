@@ -101,7 +101,7 @@ fn colormap_variant_ui(
 }
 
 pub fn colormap_edit_or_view_ui(
-    render_ctx: Option<&re_renderer::RenderContext>,
+    ctx: &crate::ViewerContext<'_>,
     ui: &mut egui::Ui,
     map: &mut MaybeMutRef<'_, re_types::components::Colormap>,
 ) -> egui::Response {
@@ -114,10 +114,10 @@ pub fn colormap_edit_or_view_ui(
                 return ui.label("<no variants>");
             };
 
-            let mut response = colormap_variant_ui(render_ctx, ui, first, map);
+            let mut response = colormap_variant_ui(ctx.render_ctx, ui, first, map);
 
             for option in iter {
-                response |= colormap_variant_ui(render_ctx, ui, option, map);
+                response |= colormap_variant_ui(ctx.render_ctx, ui, option, map);
             }
 
             response
@@ -136,7 +136,7 @@ pub fn colormap_edit_or_view_ui(
         inner_response.response
     } else {
         let map: re_types::components::Colormap = **map;
-        if let Some(render_ctx) = render_ctx {
+        if let Some(render_ctx) = ctx.render_ctx {
             ui.list_item_flat_noninteractive(
                 list_item::PropertyContent::new(map.to_string())
                     .min_desired_width(MIN_WIDTH)
