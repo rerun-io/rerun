@@ -81,32 +81,14 @@ impl Example {
         cmd.arg("--save").arg(&rrd_path);
         cmd.args(self.script_args);
 
-        let final_args = cmd
-            .get_args()
-            .map(|arg| arg.to_string_lossy().to_string())
-            .collect::<Vec<_>>();
-
         // Configure flushing so that:
         // * the resulting file size is deterministic
         // * the file is chunked into small batches for better streaming
         cmd.env("RERUN_FLUSH_TICK_SECS", 1_000_000_000.to_string());
         cmd.env("RERUN_FLUSH_NUM_BYTES", (128 * 1024).to_string());
 
-        let output = wait_for_output(cmd, &self.name, progress)?;
+        wait_for_output(cmd, &self.name, progress)?;
 
-        if output.status.success() {
-            Ok(rrd_path)
-        } else {
-            anyhow::bail!(
-                "Failed to run `python3 {}`: \
-                \nstdout: \
-                \n{} \
-                \nstderr: \
-                \n{}",
-                final_args.join(" "),
-                String::from_utf8(output.stdout)?,
-                String::from_utf8(output.stderr)?,
-            );
-        }
+        Ok(rrd_path)
     }
 }
