@@ -165,6 +165,9 @@ impl SeriesPointSystem {
             value: 0.0,
             attrs: PlotPointAttrs {
                 color: fallback_color.into(),
+                // NOTE: arguably, the `MarkerSize` value should be twice the `radius_ui`. We do
+                // stick to the semantics of `MarkerSize` == radius for backward compatibility and
+                // because markers need a decent radius value to be at all legible.
                 radius_ui: **fallback_size,
                 kind: PlotSeriesKind::Scatter(ScatterAttrs {
                     marker: fallback_shape,
@@ -343,7 +346,8 @@ impl SeriesPointSystem {
                         if let Some(marker_size) = marker_size {
                             points
                                 .iter_mut()
-                                .for_each(|p| p.attrs.radius_ui = marker_size * 0.5);
+                                // `marker_size` is a radius, see NOTE above
+                                .for_each(|p| p.attrs.radius_ui = marker_size);
                         }
                     } else {
                         re_tracing::profile_scope!("standard path");
@@ -364,7 +368,8 @@ impl SeriesPointSystem {
                             if let Some(marker_size) =
                                 marker_sizes.and_then(|marker_sizes| marker_sizes.first().copied())
                             {
-                                points[i].attrs.radius_ui = marker_size * 0.5;
+                                // `marker_size` is a radius, see NOTE above
+                                points[i].attrs.radius_ui = marker_size;
                             }
                         });
                     }
