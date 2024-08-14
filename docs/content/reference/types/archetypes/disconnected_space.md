@@ -30,10 +30,10 @@ This is useful for specifying that a subgraph is independent of the rest of the 
 snippet: archetypes/disconnected_space
 
 <picture data-inline-viewer="snippets/disconnected_space">
-  <source media="(max-width: 480px)" srcset="https://static.rerun.io/disconnected_space/b8f95b0e32359de625a765247c84935146c1fba9/480w.png">
-  <source media="(max-width: 768px)" srcset="https://static.rerun.io/disconnected_space/b8f95b0e32359de625a765247c84935146c1fba9/768w.png">
-  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/disconnected_space/b8f95b0e32359de625a765247c84935146c1fba9/1024w.png">
-  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/disconnected_space/b8f95b0e32359de625a765247c84935146c1fba9/1200w.png">
-  <img src="https://static.rerun.io/disconnected_space/b8f95b0e32359de625a765247c84935146c1fba9/full.png">
+  <source media="(max-width: 480px)" srcset="https://static.rerun.io/disconnected_space/709041fc304b50c74db773b780e32294fe90c95f/480w.png">
+  <source media="(max-width: 768px)" srcset="https://static.rerun.io/disconnected_space/709041fc304b50c74db773b780e32294fe90c95f/768w.png">
+  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/disconnected_space/709041fc304b50c74db773b780e32294fe90c95f/1024w.png">
+  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/disconnected_space/709041fc304b50c74db773b780e32294fe90c95f/1200w.png">
+  <img src="https://static.rerun.io/disconnected_space/709041fc304b50c74db773b780e32294fe90c95f/full.png">
 </picture>
 
