@@ -236,38 +236,53 @@ impl ChunkStoreSubscriber for Caches {
                         compacted_events.extend(
                             compacted
                                 .iter()
-                                .flat_map(|(compacted_chunk_ids, _)| compacted_chunk_ids),
+                                .flat_map(|(compacted_chunks, _)| compacted_chunks.keys().copied()),
                         );
                     }
                 }
 
-                for (&timeline, time_column) in chunk.timelines() {
-                    for data_time in time_column.times() {
-                        for component_name in chunk.component_names() {
-                            let key = CacheKey::new(
-                                chunk.entity_path().clone(),
-                                timeline,
-                                component_name,
-                            );
+                for (timeline, per_component) in chunk.time_range_per_component() {
+                    for (component_name, time_range) in per_component {
+                        let key =
+                            CacheKey::new(chunk.entity_path().clone(), timeline, component_name);
+
+                        // latest-at
+                        {
+                            let mut data_time_min = time_range.min();
+
+                            // If a compaction was triggered, make sure to drop the original chunks too.
+                            if let Some((compacted_chunks, _)) = compacted {
+                                for chunk in compacted_chunks.values() {
+                                    let data_time_compacted = chunk
+                                        .time_range_per_component()
+                                        .get(&timeline)
+                                        .and_then(|per_component| {
+                                            per_component.get(&component_name)
+                                        })
+                                        .map_or(TimeInt::MAX, |time_range| time_range.min());
+
+                                    data_time_min =
+                                        TimeInt::min(data_time_min, data_time_compacted);
+                                }
+                            }
 
                             compacted_events
                                 .temporal_latest_at
                                 .entry(key.clone())
-                                .and_modify(|time| *time = TimeInt::min(*time, data_time))
-                                .or_insert(data_time);
+                                .and_modify(|time| *time = TimeInt::min(*time, data_time_min))
+                                .or_insert(data_time_min);
+                        }
 
-                            {
-                                let compacted_events =
-                                    compacted_events.temporal_range.entry(key).or_default();
+                        // range
+                        {
+                            let compacted_events =
+                                compacted_events.temporal_range.entry(key).or_default();
 
-                                compacted_events.insert(chunk.id());
-                                // If a compaction was triggered, make sure to drop the original chunks too.
-                                compacted_events.extend(
-                                    compacted
-                                        .iter()
-                                        .flat_map(|(compacted_chunk_ids, _)| compacted_chunk_ids),
-                                );
-                            }
+                            compacted_events.insert(chunk.id());
+                            // If a compaction was triggered, make sure to drop the original chunks too.
+                            compacted_events.extend(compacted.iter().flat_map(
+                                |(compacted_chunks, _)| compacted_chunks.keys().copied(),
+                            ));
                         }
                     }
                 }
