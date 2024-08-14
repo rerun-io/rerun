@@ -48,7 +48,7 @@ fn edit_view_enum_impl<EnumT: re_types_core::reflection::Enum>(
 
         response_with_changes_of_inner(combobox_response)
     } else {
-        ui.label(current_value.to_string())
+        ui.add(egui::Label::new(current_value.to_string()).truncate())
     }
 }
 
