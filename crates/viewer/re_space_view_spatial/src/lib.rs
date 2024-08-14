@@ -63,6 +63,7 @@ fn resolution_of_image_at(
     fn _check_image_has_format(image: &archetypes::Image) {
         let _: components::ImageFormat = image.format;
     }
+
     fn _check_encoded_image_has_blob(image: &archetypes::EncodedImage) {
         let _: components::Blob = image.blob;
     }

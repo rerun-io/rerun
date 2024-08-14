@@ -254,10 +254,12 @@ fn preview_if_image_ui(
         let _: components::ImageBuffer = image.buffer;
         let _: components::ImageFormat = image.format;
     }
+
     fn _check_depth_image_has_buffer_format(image: &archetypes::DepthImage) {
         let _: components::ImageBuffer = image.buffer;
         let _: components::ImageFormat = image.format;
     }
+
     fn _check_segmentation_image_has_buffer_format(image: &archetypes::SegmentationImage) {
         let _: components::ImageBuffer = image.buffer;
         let _: components::ImageFormat = image.format;
