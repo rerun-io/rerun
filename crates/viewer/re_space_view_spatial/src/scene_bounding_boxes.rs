@@ -53,7 +53,7 @@ impl SceneBoundingBoxes {
                 if space_kind == SpatialSpaceViewKind::ThreeD
                     && data
                         .preferred_view_kind
-                        .map_or(true, |kind| kind != space_kind)
+                        .map_or(false, |kind| kind != space_kind)
                 {
                     continue;
                 }
