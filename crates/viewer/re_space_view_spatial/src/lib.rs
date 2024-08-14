@@ -39,8 +39,12 @@ use re_space_view::DataResultQuery as _;
 use re_viewer_context::{ImageDecodeCache, ViewContext, ViewerContext};
 
 use re_renderer::RenderContext;
-use re_types::components::{Color, MediaType, Resolution};
-use re_types::{blueprint::components::BackgroundKind, components::ImageFormat};
+use re_types::{
+    archetypes,
+    blueprint::components::BackgroundKind,
+    components::{self, Color, ImageFormat, MediaType, Resolution},
+    Archetype as _, Loggable as _,
+};
 use re_viewport_blueprint::{ViewProperty, ViewPropertyQueryError};
 
 mod view_kind {
@@ -56,6 +60,12 @@ fn resolution_of_image_at(
     query: &re_chunk_store::LatestAtQuery,
     entity_path: &re_log_types::EntityPath,
 ) -> Option<Resolution> {
+    // First check assumptions:
+    debug_assert!(ctx.reflection.archetypes[&archetypes::Image::name()]
+        .has_component(&components::ImageFormat::name()));
+    debug_assert!(ctx.reflection.archetypes[&archetypes::EncodedImage::name()]
+        .has_component(&components::Blob::name()));
+
     let db = ctx.recording();
 
     if let Some((_, image_format)) = db.latest_at_component::<ImageFormat>(entity_path, query) {
