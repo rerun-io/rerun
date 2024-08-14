@@ -613,6 +613,7 @@ impl Chunk {
 
     #[inline]
     pub fn to_arrow_msg(&self) -> ChunkResult<re_log_types::ArrowMsg> {
+        re_tracing::profile_function!();
         self.sanity_check()?;
 
         let transport = self.to_transport()?;
