@@ -113,6 +113,17 @@ SECTION_TABLE: Final[list[Section]] = [
             "reset_time",
         ],
     ),
+    Section(
+        title="Columnar API",
+        func_list=[
+            "send_columns",
+        ],
+        class_list=[
+            "TimeNanosColumn",
+            "TimeSecondsColumn",
+            "TimeSequenceColumn",
+        ],
+    ),
     ################################################################################
     # These sections don't have tables, but generate pages containing all the archetypes, components, datatypes
     Section(
@@ -227,7 +238,11 @@ SECTION_TABLE: Final[list[Section]] = [
     Section(
         title="Interfaces",
         mod_path="rerun",
-        class_list=["AsComponents", "ComponentBatchLike"],
+        class_list=[
+            "AsComponents",
+            "ComponentBatchLike",
+            "ComponentColumn",
+        ],
         default_filters=False,
     ),
     ################################################################################
