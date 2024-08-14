@@ -392,13 +392,21 @@ impl AppState {
                 // before drawing the blueprint panel.
                 ui.spacing_mut().item_spacing.y = 0.0;
 
-                let pre_cursor = ui.cursor();
-                recordings_panel_ui(&ctx, rx, ui, welcome_screen_state);
-                let any_recording_shows = pre_cursor == ui.cursor();
+                egui::TopBottomPanel::top("recording_panel")
+                    .frame(egui::Frame::none())
+                    .resizable(true)
+                    .min_height(90.0)
+                    .default_height(210.0)
+                    .max_height(ui.available_height() - 90.0) // Leave space for blueprint panel
+                    .show_inside(ui, |ui| {
+                        let pre_cursor = ui.cursor();
+                        recordings_panel_ui(&ctx, rx, ui, welcome_screen_state);
+                        let any_recording_shows = pre_cursor == ui.cursor();
 
-                if any_recording_shows {
-                    ui.add_space(4.0);
-                }
+                        if any_recording_shows {
+                            ui.add_space(4.0);
+                        }
+                    });
 
                 if !show_welcome {
                     blueprint_tree.show(&ctx, &viewport_blueprint, ui);
