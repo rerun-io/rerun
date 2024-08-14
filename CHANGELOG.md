@@ -196,6 +196,7 @@ rerun rrd compact --max-rows 4096 --max-bytes=1048576 /my/recordings/*.rrd > out
 - Fix zero length transform axis having an effect bounding box used for heuristics etc [#6967](https://github.com/rerun-io/rerun/pull/6967)
 - Disambiguate plot labels with multiple entities ending with the same part [#7140](https://github.com/rerun-io/rerun/pull/7140)
 - `rerun rrd compact`: always put blueprints at the start of the recordings [#6998](https://github.com/rerun-io/rerun/pull/6998)
+- Fix 2D objects in 3D affecting bounding box and thus causing flickering of automatic pinhole plane distance [#7176](https://github.com/rerun-io/rerun/pull/7176)
 
 #### 🌁 Viewer Improvements
 - Add cyan to yellow colormap [#7001](https://github.com/rerun-io/rerun/pull/7001) (thanks [@rasmusgo](https://github.com/rasmusgo)!)
@@ -204,6 +205,7 @@ rerun rrd compact --max-rows 4096 --max-bytes=1048576 /my/recordings/*.rrd > out
 - Time panel chunkification [#6934](https://github.com/rerun-io/rerun/pull/6934)
 - Integrate new data APIs with EntityDb/UI/Blueprint things [#6994](https://github.com/rerun-io/rerun/pull/6994)
 - Chunkified text-log view with multi-timeline display [#7027](https://github.com/rerun-io/rerun/pull/7027)
+- Make the recordings panel resizable [#7180](https://github.com/rerun-io/rerun/pull/7180)
 
 #### 🚀 Performance Improvements
 - Optimize large point clouds [#6767](https://github.com/rerun-io/rerun/pull/6767)
@@ -241,6 +243,7 @@ rerun rrd compact --max-rows 4096 --max-bytes=1048576 /my/recordings/*.rrd > out
 - add depth compare example [#6885](https://github.com/rerun-io/rerun/pull/6885) (thanks [@pablovela5620](https://github.com/pablovela5620)!)
 - Add mini NVS solver example [#6888](https://github.com/rerun-io/rerun/pull/6888) (thanks [@pablovela5620](https://github.com/pablovela5620)!)
 - Add link to GLOMAP example [#7097](https://github.com/rerun-io/rerun/pull/7097) (thanks [@02alexander](https://github.com/02alexander)!)
+- Add `send_columns` examples for images, fix rust `send_columns`  handling of listarrays [#7172](https://github.com/rerun-io/rerun/pull/7172)
 
 #### 📚 Docs
 - New code snippet for Transform3D demonstrating an animated hierarchy [#6851](https://github.com/rerun-io/rerun/pull/6851)
