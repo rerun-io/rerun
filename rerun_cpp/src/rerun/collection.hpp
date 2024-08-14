@@ -148,7 +148,7 @@ namespace rerun {
         /// Since `rerun::Collection` does not provide write access, data is guaranteed to be unchanged by
         /// any function or operation taking on a `Collection`.
         template <typename T>
-        static Collection<TElement> borrow(const T* data, size_t num_instances) {
+        static Collection<TElement> borrow(const T* data, size_t num_instances = 1) {
             static_assert(
                 sizeof(T) == sizeof(TElement),
                 "T & TElement are not binary compatible: Size mismatch."
@@ -175,7 +175,7 @@ namespace rerun {
         ///
         /// Since `rerun::Collection` does not provide write access, data is guaranteed to be unchanged by
         /// any function or operation taking on a `rerun::Collection`.
-        static Collection borrow(const void* data, size_t num_instances) {
+        static Collection borrow(const void* data, size_t num_instances = 1) {
             return borrow(reinterpret_cast<const TElement*>(data), num_instances);
         }
 
@@ -422,7 +422,7 @@ namespace rerun {
     /// Since `rerun::Collection` does not provide write access, data is guaranteed to be unchanged by
     /// any function or operation taking on a `Collection`.
     template <typename TElement>
-    inline Collection<TElement> borrow(const TElement* data, size_t num_instances) {
+    inline Collection<TElement> borrow(const TElement* data, size_t num_instances = 1) {
         return Collection<TElement>::borrow(data, num_instances);
     }
 

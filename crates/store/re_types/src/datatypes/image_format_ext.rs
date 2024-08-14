@@ -25,6 +25,30 @@ impl ImageFormat {
         }
     }
 
+    /// Create a new rgb image format with 8 bit per channel with the given resolution.
+    #[inline]
+    pub fn rgb8([width, height]: [u32; 2]) -> Self {
+        Self {
+            width,
+            height,
+            pixel_format: None,
+            channel_datatype: Some(ChannelDatatype::U8),
+            color_model: Some(ColorModel::RGB),
+        }
+    }
+
+    /// Create a new rgba image format with 8 bit per channel with the given resolution.
+    #[inline]
+    pub fn rgba8([width, height]: [u32; 2]) -> Self {
+        Self {
+            width,
+            height,
+            pixel_format: None,
+            channel_datatype: Some(ChannelDatatype::U8),
+            color_model: Some(ColorModel::RGBA),
+        }
+    }
+
     /// From a speicifc pixel format.
     #[inline]
     pub fn from_pixel_format([width, height]: [u32; 2], pixel_format: PixelFormat) -> Self {

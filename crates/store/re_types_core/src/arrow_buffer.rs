@@ -54,6 +54,17 @@ impl<T> ArrowBuffer<T> {
     pub fn into_inner(self) -> Buffer<T> {
         self.0
     }
+
+    /// Returns a new [`Buffer`] that is a slice of this buffer starting at `offset`.
+    ///
+    /// Doing so allows the same memory region to be shared between buffers.
+    ///
+    /// # Panics
+    /// Panics iff `offset + length` is larger than `len`.
+    #[inline]
+    pub fn sliced(self, range: std::ops::Range<usize>) -> Self {
+        Self(self.0.sliced(range.start, range.len()))
+    }
 }
 
 impl<T: bytemuck::Pod> ArrowBuffer<T> {
