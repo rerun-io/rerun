@@ -686,7 +686,6 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
             ArchetypeName::new("rerun.archetypes.InstancePoses3D"),
             ArchetypeReflection {
                 display_name: "Instance poses 3D",
-                docstring_md: "One or more transforms between the current entity and its parent. Unlike [`archetypes.Transform3D`](https://rerun.io/docs/reference/types/archetypes/transform3d), it is *not* propagated in the transform hierarchy.\n\nIf both [`archetypes.InstancePoses3D`](https://rerun.io/docs/reference/types/archetypes/instance_poses3d) and [`archetypes.Transform3D`](https://rerun.io/docs/reference/types/archetypes/transform3d) are present,\nfirst the tree propagating [`archetypes.Transform3D`](https://rerun.io/docs/reference/types/archetypes/transform3d) is applied, then [`archetypes.InstancePoses3D`](https://rerun.io/docs/reference/types/archetypes/instance_poses3d).\n\nCurrently, many visualizers support only a single instance transform per entity.\nCheck archetype documentations for details - if not otherwise specified, only the first instance transform is applied.\n\nFrom the point of view of the entity's coordinate system,\nall components are applied in the inverse order they are listed here.\nE.g. if both a translation and a max3x3 transform are present,\nthe 3x3 matrix is applied first, followed by the translation.\n\n## Example\n\n### Regular & instance transforms in tandem\n```ignore\nuse rerun::{\n    demo_util::grid,\n    external::{anyhow, glam},\n};\n\nfn main() -> anyhow::Result<()> {\n    let rec =\n        rerun::RecordingStreamBuilder::new(\"rerun_example_instance_pose3d_combined\").spawn()?;\n\n    rec.set_time_sequence(\"frame\", 0);\n\n    // Log a box and points further down in the hierarchy.\n    rec.log(\n        \"world/box\",\n        &rerun::Boxes3D::from_half_sizes([[1.0, 1.0, 1.0]]),\n    )?;\n    rec.log(\n        \"world/box/points\",\n        &rerun::Points3D::new(grid(glam::Vec3::splat(-10.0), glam::Vec3::splat(10.0), 10)),\n    )?;\n\n    for i in 0..180 {\n        rec.set_time_sequence(\"frame\", i);\n\n        // Log a regular transform which affects both the box and the points.\n        rec.log(\n            \"world/box\",\n            &rerun::Transform3D::from_rotation(rerun::RotationAxisAngle {\n                axis: [0.0, 0.0, 1.0].into(),\n                angle: rerun::Angle::from_degrees(i as f32 * 2.0),\n            }),\n        )?;\n\n        // Log an instance pose which affects only the box.\n        let translation = [0.0, 0.0, (i as f32 * 0.1 - 5.0).abs() - 5.0];\n        rec.log(\n            \"world/box\",\n            &rerun::InstancePoses3D::new().with_translations([translation]),\n        )?;\n    }\n\n    Ok(())\n}\n```\n<center>\n<picture>\n  <source media=\"(max-width: 480px)\" srcset=\"https://static.rerun.io/leaf_transform3d/41674f0082d6de489f8a1cd1583f60f6b5820ddf/480w.png\">\n  <source media=\"(max-width: 768px)\" srcset=\"https://static.rerun.io/leaf_transform3d/41674f0082d6de489f8a1cd1583f60f6b5820ddf/768w.png\">\n  <source media=\"(max-width: 1024px)\" srcset=\"https://static.rerun.io/leaf_transform3d/41674f0082d6de489f8a1cd1583f60f6b5820ddf/1024w.png\">\n  <source media=\"(max-width: 1200px)\" srcset=\"https://static.rerun.io/leaf_transform3d/41674f0082d6de489f8a1cd1583f60f6b5820ddf/1200w.png\">\n  <img src=\"https://static.rerun.io/leaf_transform3d/41674f0082d6de489f8a1cd1583f60f6b5820ddf/full.png\" width=\"640\">\n</picture>\n</center>",
                 fields: vec![
                     ArchetypeFieldReflection { component_name :
                     "rerun.components.PoseTranslation3D".into(), display_name :
@@ -710,7 +709,6 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
             ArchetypeName::new("rerun.archetypes.Transform3D"),
             ArchetypeReflection {
                 display_name: "Transform 3D",
-                docstring_md: "A transform between two 3D spaces, i.e. a pose.\n\nFrom the point of view of the entity's coordinate system,\nall components are applied in the inverse order they are listed here.\nE.g. if both a translation and a max3x3 transform are present,\nthe 3x3 matrix is applied first, followed by the translation.\n\nWhenever you log this archetype, it will write all components, even if you do not explicitly set them.\nThis means that if you first log a transform with only a translation, and then log one with only a rotation,\nit will be resolved to a transform with only a rotation.\n\n## Examples\n\n### Variety of 3D transforms\n```ignore\nuse std::f32::consts::TAU;\n\nfn main() -> Result<(), Box<dyn std::error::Error>> {\n    let rec = rerun::RecordingStreamBuilder::new(\"rerun_example_transform3d\").spawn()?;\n\n    let arrow = rerun::Arrows3D::from_vectors([(0.0, 1.0, 0.0)]).with_origins([(0.0, 0.0, 0.0)]);\n\n    rec.log(\"base\", &arrow)?;\n\n    rec.log(\n        \"base/translated\",\n        &rerun::Transform3D::from_translation([1.0, 0.0, 0.0]),\n    )?;\n\n    rec.log(\"base/translated\", &arrow)?;\n\n    rec.log(\n        \"base/rotated_scaled\",\n        &rerun::Transform3D::from_rotation_scale(\n            rerun::RotationAxisAngle::new([0.0, 0.0, 1.0], rerun::Angle::from_radians(TAU / 8.0)),\n            rerun::Scale3D::from(2.0),\n        ),\n    )?;\n\n    rec.log(\"base/rotated_scaled\", &arrow)?;\n\n    Ok(())\n}\n```\n<center>\n<picture>\n  <source media=\"(max-width: 480px)\" srcset=\"https://static.rerun.io/transform3d_simple/141368b07360ce3fcb1553079258ae3f42bdb9ac/480w.png\">\n  <source media=\"(max-width: 768px)\" srcset=\"https://static.rerun.io/transform3d_simple/141368b07360ce3fcb1553079258ae3f42bdb9ac/768w.png\">\n  <source media=\"(max-width: 1024px)\" srcset=\"https://static.rerun.io/transform3d_simple/141368b07360ce3fcb1553079258ae3f42bdb9ac/1024w.png\">\n  <source media=\"(max-width: 1200px)\" srcset=\"https://static.rerun.io/transform3d_simple/141368b07360ce3fcb1553079258ae3f42bdb9ac/1200w.png\">\n  <img src=\"https://static.rerun.io/transform3d_simple/141368b07360ce3fcb1553079258ae3f42bdb9ac/full.png\" width=\"640\">\n</picture>\n</center>\n\n### Transform hierarchy\n```ignore\nfn main() -> Result<(), Box<dyn std::error::Error>> {\n    let rec = rerun::RecordingStreamBuilder::new(\"rerun_example_transform3d_hierarchy\").spawn()?;\n\n    // TODO(#5521): log two space views as in the python example\n\n    rec.set_time_seconds(\"sim_time\", 0.0);\n\n    // Planetary motion is typically in the XY plane.\n    rec.log_static(\"/\", &rerun::ViewCoordinates::RIGHT_HAND_Z_UP)?;\n\n    // Setup points, all are in the center of their own space:\n    rec.log(\n        \"sun\",\n        &rerun::Points3D::new([[0.0, 0.0, 0.0]])\n            .with_radii([1.0])\n            .with_colors([rerun::Color::from_rgb(255, 200, 10)]),\n    )?;\n    rec.log(\n        \"sun/planet\",\n        &rerun::Points3D::new([[0.0, 0.0, 0.0]])\n            .with_radii([0.4])\n            .with_colors([rerun::Color::from_rgb(40, 80, 200)]),\n    )?;\n    rec.log(\n        \"sun/planet/moon\",\n        &rerun::Points3D::new([[0.0, 0.0, 0.0]])\n            .with_radii([0.15])\n            .with_colors([rerun::Color::from_rgb(180, 180, 180)]),\n    )?;\n\n    // Draw fixed paths where the planet & moon move.\n    let d_planet = 6.0;\n    let d_moon = 3.0;\n    let angles = (0..=100).map(|i| i as f32 * 0.01 * std::f32::consts::TAU);\n    let circle: Vec<_> = angles.map(|angle| [angle.sin(), angle.cos()]).collect();\n    rec.log(\n        \"sun/planet_path\",\n        &rerun::LineStrips3D::new([rerun::LineStrip3D::from_iter(\n            circle\n                .iter()\n                .map(|p| [p[0] * d_planet, p[1] * d_planet, 0.0]),\n        )]),\n    )?;\n    rec.log(\n        \"sun/planet/moon_path\",\n        &rerun::LineStrips3D::new([rerun::LineStrip3D::from_iter(\n            circle.iter().map(|p| [p[0] * d_moon, p[1] * d_moon, 0.0]),\n        )]),\n    )?;\n\n    // Movement via transforms.\n    for i in 0..(6 * 120) {\n        let time = i as f32 / 120.0;\n        rec.set_time_seconds(\"sim_time\", time);\n        let r_moon = time * 5.0;\n        let r_planet = time * 2.0;\n\n        rec.log(\n            \"sun/planet\",\n            &rerun::Transform3D::from_translation_rotation(\n                [r_planet.sin() * d_planet, r_planet.cos() * d_planet, 0.0],\n                rerun::RotationAxisAngle {\n                    axis: [1.0, 0.0, 0.0].into(),\n                    angle: rerun::Angle::from_degrees(20.0),\n                },\n            ),\n        )?;\n        rec.log(\n            \"sun/planet/moon\",\n            &rerun::Transform3D::from_translation([\n                r_moon.cos() * d_moon,\n                r_moon.sin() * d_moon,\n                0.0,\n            ])\n            .with_relation(rerun::TransformRelation::ChildFromParent),\n        )?;\n    }\n\n    Ok(())\n}\n```\n<center>\n<picture>\n  <source media=\"(max-width: 480px)\" srcset=\"https://static.rerun.io/transform_hierarchy/cb7be7a5a31fcb2efc02ba38e434849248f87554/480w.png\">\n  <source media=\"(max-width: 768px)\" srcset=\"https://static.rerun.io/transform_hierarchy/cb7be7a5a31fcb2efc02ba38e434849248f87554/768w.png\">\n  <source media=\"(max-width: 1024px)\" srcset=\"https://static.rerun.io/transform_hierarchy/cb7be7a5a31fcb2efc02ba38e434849248f87554/1024w.png\">\n  <source media=\"(max-width: 1200px)\" srcset=\"https://static.rerun.io/transform_hierarchy/cb7be7a5a31fcb2efc02ba38e434849248f87554/1200w.png\">\n  <img src=\"https://static.rerun.io/transform_hierarchy/cb7be7a5a31fcb2efc02ba38e434849248f87554/full.png\" width=\"640\">\n</picture>\n</center>",
                 fields: vec![
                     ArchetypeFieldReflection { component_name :
                     "rerun.components.Translation3D".into(), display_name :
@@ -742,7 +740,6 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
             ArchetypeName::new("rerun.blueprint.archetypes.Background"),
             ArchetypeReflection {
                 display_name: "Background",
-                docstring_md: "Configuration for the background of a view.",
                 fields: vec![
                     ArchetypeFieldReflection { component_name :
                     "rerun.blueprint.components.BackgroundKind".into(), display_name :
@@ -757,7 +754,6 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
             ArchetypeName::new("rerun.blueprint.archetypes.DataframeQuery"),
             ArchetypeReflection {
                 display_name: "Dataframe query",
-                docstring_md: "The query for the dataframe view.",
                 fields: vec![
                     ArchetypeFieldReflection { component_name :
                     "rerun.blueprint.components.TimelineName".into(), display_name :
@@ -782,7 +778,6 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
             ArchetypeName::new("rerun.blueprint.archetypes.PlotLegend"),
             ArchetypeReflection {
                 display_name: "Plot legend",
-                docstring_md: "Configuration for the legend of a plot.",
                 fields: vec![
                     ArchetypeFieldReflection { component_name :
                     "rerun.blueprint.components.Corner2D".into(), display_name :
@@ -799,7 +794,6 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
             ArchetypeName::new("rerun.blueprint.archetypes.ScalarAxis"),
             ArchetypeReflection {
                 display_name: "Scalar axis",
-                docstring_md: "Configuration for the scalar axis of a plot.",
                 fields: vec![
                     ArchetypeFieldReflection { component_name :
                     "rerun.components.Range1D".into(), display_name : "Range",
@@ -817,7 +811,6 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
             ArchetypeName::new("rerun.blueprint.archetypes.TensorScalarMapping"),
             ArchetypeReflection {
                 display_name: "Tensor scalar mapping",
-                docstring_md: "Configures how tensor scalars are mapped to color.",
                 fields: vec![
                     ArchetypeFieldReflection { component_name :
                     "rerun.components.MagnificationFilter".into(), display_name :
@@ -838,7 +831,6 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
             ArchetypeName::new("rerun.blueprint.archetypes.TensorSliceSelection"),
             ArchetypeReflection {
                 display_name: "Tensor slice selection",
-                docstring_md: "Specifies a 2D slice of a tensor.",
                 fields: vec![
                     ArchetypeFieldReflection { component_name :
                     "rerun.components.TensorWidthDimension".into(), display_name :
@@ -864,7 +856,6 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
             ArchetypeName::new("rerun.blueprint.archetypes.TensorViewFit"),
             ArchetypeReflection {
                 display_name: "Tensor view fit",
-                docstring_md: "Configures how a selected tensor slice is shown on screen.",
                 fields: vec![
                     ArchetypeFieldReflection { component_name :
                     "rerun.blueprint.components.ViewFit".into(), display_name :
@@ -877,7 +868,6 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
             ArchetypeName::new("rerun.blueprint.archetypes.TimeRangeTableOrder"),
             ArchetypeReflection {
                 display_name: "Time range table order",
-                docstring_md: "Ordering of the time range table of the dataframe view",
                 fields: vec![
                     ArchetypeFieldReflection { component_name :
                     "rerun.blueprint.components.SortKey".into(), display_name :
@@ -892,7 +882,6 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
             ArchetypeName::new("rerun.blueprint.archetypes.VisualBounds2D"),
             ArchetypeReflection {
                 display_name: "Visual bounds 2D",
-                docstring_md: "Controls the visual bounds of a 2D view.\n\nEverything within these bounds are guaranteed to be visible.\nSomethings outside of these bounds may also be visible due to letterboxing.\n\nIf no visual bounds are set, it will be determined automatically,\nbased on the bounding-box of the data or other camera information present in the view.",
                 fields: vec![
                     ArchetypeFieldReflection { component_name :
                     "rerun.blueprint.components.VisualBounds2D".into(), display_name :
