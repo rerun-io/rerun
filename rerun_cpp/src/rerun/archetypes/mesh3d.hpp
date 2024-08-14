@@ -33,7 +33,7 @@ namespace rerun::archetypes {
     /// ## Examples
     ///
     /// ### Simple indexed 3D mesh
-    /// ![image](https://static.rerun.io/mesh3d_simple/e1e5fd97265daf0d0bc7b782d862f19086fd6975/full.png)
+    /// ![image](https://static.rerun.io/mesh3d_indexed/57c70dc992e6dc0bd9c5222ca084f5b6240cea75/full.png)
     ///
     /// ```cpp
     /// #include <rerun.hpp>

@@ -25,7 +25,7 @@ namespace rerun::archetypes {
     /// ## Examples
     ///
     /// ### Many strips
-    /// ![image](https://static.rerun.io/line_strip3d_batch/102e5ec5271475657fbc76b469267e4ec8e84337/full.png)
+    /// ![image](https://static.rerun.io/line_strip3d_batch/15e8ff18a6c95a3191acb0eae6eb04adea3b4874/full.png)
     ///
     /// ```cpp
     /// #include <rerun.hpp>
@@ -63,7 +63,7 @@ namespace rerun::archetypes {
     /// ```
     ///
     /// ### Lines with scene & UI radius each
-    /// ![image](https://static.rerun.io/line_strip3d_ui_radius/99ed4d16eef710f6ee3e97ddf457ea4f0bc48133/full.png)
+    /// ![image](https://static.rerun.io/line_strip3d_ui_radius/36b98f47e45747b5a3601511ff39b8d74c61d120/full.png)
     ///
     /// ```cpp
     /// #include <rerun.hpp>
