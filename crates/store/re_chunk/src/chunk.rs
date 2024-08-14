@@ -833,6 +833,9 @@ impl Chunk {
         (times, counters)
     }
 
+    /// All the [`RowId`] in this chunk.
+    ///
+    /// This could be in any order if this chunk is unsorted.
     #[inline]
     pub fn row_ids(&self) -> impl Iterator<Item = RowId> + '_ {
         let (times, counters) = self.row_ids_raw();
