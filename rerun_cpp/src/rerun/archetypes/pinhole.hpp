@@ -51,7 +51,7 @@ namespace rerun::archetypes {
     /// ```
     ///
     /// ### Perspective pinhole camera
-    /// ![image](https://static.rerun.io/pinhole_perspective/d0bd02a0cf354a5c8eafb79a84fe8674335cab98/full.png)
+    /// ![image](https://static.rerun.io/pinhole_perspective/317e2de6d212b238dcdad5b67037e9e2a2afafa0/full.png)
     ///
     /// ```cpp
     /// #include <rerun.hpp>
@@ -66,11 +66,13 @@ namespace rerun::archetypes {
     ///         "world/cam",
     ///         rerun::Pinhole::from_fov_and_aspect_ratio(fov_y, aspect_ratio)
     ///             .with_camera_xyz(rerun::components::ViewCoordinates::RUB)
+    ///             .with_image_plane_distance(0.1f)
     ///     );
     ///
     ///     rec.log(
     ///         "world/points",
-    ///         rerun::Points3D({{0.0f, 0.0f, -0.5f}, {0.1f, 0.1f, -0.5f}, {-0.1f, -0.1f, -0.5f}})
+    ///         rerun::Points3D({{0.0f, 0.0f, -0.5f}, {0.1f, 0.1f, -0.5f}, {-0.1f, -0.1f, -0.5f}}
+    ///         ).with_radii({0.025f})
     ///     );
     /// }
     /// ```
