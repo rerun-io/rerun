@@ -11,7 +11,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let width = 300;
     let height = 200;
     let mut images = Array::<u8, _>::zeros((times.len(), height, width, 3).f())
-        .as_standard_layout() // Make sure the data is layed out as we expect it.
+        .as_standard_layout() // Make sure the data is laid out as we expect it.
         .into_owned();
     images.slice_mut(s![.., .., .., 2]).fill(255);
     for &t in &times {

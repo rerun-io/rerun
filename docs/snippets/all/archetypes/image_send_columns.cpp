@@ -20,7 +20,7 @@ int main() {
                 size_t idx = (t * height * width + y * width + x) * 3;
                 images[idx + 2] = 255; // Blue background
                 if (y >= 50 && y < 150 && x >= t * 10 && x < t * 10 + 100) {
-                    images[idx + 1] = 255; // Turkoise rectangle
+                    images[idx + 1] = 255; // Turquoise rectangle
                 }
             }
         }
