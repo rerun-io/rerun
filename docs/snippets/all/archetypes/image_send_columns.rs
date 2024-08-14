@@ -22,13 +22,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
 
     // Log the ImageFormat and indicator once, as static.
-    let format = rerun::components::ImageFormat::from(rerun::datatypes::ImageFormat {
-        width: width as _,
-        height: height as _,
-        pixel_format: None,
-        color_model: Some(rerun::datatypes::ColorModel::RGB),
-        channel_datatype: Some(rerun::datatypes::ChannelDatatype::U8),
-    });
+    let format = rerun::components::ImageFormat::rgb8([width as _, height as _]);
     rec.log_component_batches(
         "images",
         true,
