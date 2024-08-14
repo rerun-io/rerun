@@ -50,11 +50,10 @@ impl SceneBoundingBoxes {
                 // If we're in a 3D space, but the visualizer is distintivly 2D, don't count it towards the bounding box.
                 // These visualizers show up when we're on a pinhole camera plane which itself is heuristically fed by the
                 // bounding box, creating a feedback loop if we were to add it here.
-                if space_kind == SpatialSpaceViewKind::ThreeD
-                    && data
-                        .preferred_view_kind
-                        .map_or(false, |kind| kind != space_kind)
-                {
+                let data_is_only_2d = data
+                    .preferred_view_kind
+                    .map_or(false, |kind| kind == SpatialSpaceViewKind::TwoD);
+                if space_kind == SpatialSpaceViewKind::ThreeD && data_is_only_2d {
                     continue;
                 }
 
