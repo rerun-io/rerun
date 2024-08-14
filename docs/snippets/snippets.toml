@@ -35,6 +35,9 @@ views = [
   "cpp",  # Missing examples
   "rust", # Missing examples
 ]
+"archetypes/points3d_send_columns" = [
+  "rust", # Doesn't support partitioned component batches yet.
+]
 "migration/log_line" = [ # Not a complete example -- just a single log line
   "cpp",
   "rust",
@@ -78,9 +81,6 @@ views = [
 "tutorials/visualizer-overrides" = [
   "cpp",  # Not implemented
   "rust", # Not implemented
-]
-"tutorials/send_columns_arrays" = [
-  "rust", # Doesn't support partitioned component batches yet.
 ]
 
 # These entries will run but their results won't be compared to the baseline.
