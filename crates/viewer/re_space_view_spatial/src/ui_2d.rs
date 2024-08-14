@@ -177,7 +177,7 @@ impl SpatialSpaceView2D {
         // necessary to properly handle overrides, defaults, or fallbacks. We don't actually use the image_plane_distance
         // so it doesnt technically matter.
         state.pinhole_at_origin =
-            query_pinhole_legacy(ctx.recording(), &ctx.current_query(), query.space_origin);
+            query_pinhole_legacy(ctx, &ctx.current_query(), query.space_origin);
 
         let (mut response, painter) =
             ui.allocate_painter(ui.available_size(), egui::Sense::click_and_drag());

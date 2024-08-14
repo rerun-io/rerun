@@ -143,7 +143,7 @@ impl DepthImageVisualizer {
         re_tracing::profile_function!();
 
         let Some(intrinsics) = query_pinhole_legacy(
-            ctx.recording(),
+            ctx.viewer_ctx,
             ctx.query,
             &twod_in_threed_info.parent_pinhole,
         ) else {

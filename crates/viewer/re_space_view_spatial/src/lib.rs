@@ -36,11 +36,11 @@ pub(crate) use pickable_image::PickableImageRect;
 // ---
 
 use re_space_view::DataResultQuery as _;
-use re_viewer_context::{ViewContext, ViewerContext};
+use re_viewer_context::{ImageDecodeCache, ViewContext, ViewerContext};
 
 use re_renderer::RenderContext;
-use re_types::blueprint::components::BackgroundKind;
-use re_types::components::{Color, Resolution, TensorData};
+use re_types::components::{Color, MediaType, Resolution};
+use re_types::{blueprint::components::BackgroundKind, components::ImageFormat};
 use re_viewport_blueprint::{ViewProperty, ViewPropertyQueryError};
 
 mod view_kind {
@@ -51,18 +51,41 @@ mod view_kind {
     }
 }
 
-fn resolution_from_tensor(
-    entity_db: &re_entity_db::EntityDb,
+fn resolution_of_image_at(
+    ctx: &ViewerContext<'_>,
     query: &re_chunk_store::LatestAtQuery,
     entity_path: &re_log_types::EntityPath,
 ) -> Option<Resolution> {
-    entity_db
-        .latest_at_component::<TensorData>(entity_path, query)
-        .and_then(|(_index, tensor)| {
-            tensor
-                .image_height_width_channels()
-                .map(|hwc| Resolution([hwc[1] as f32, hwc[0] as f32].into()))
-        })
+    let db = ctx.recording();
+
+    if let Some((_, image_format)) = db.latest_at_component::<ImageFormat>(entity_path, query) {
+        // Normal `Image` archetype
+        return Some(Resolution::from([
+            image_format.width as f32,
+            image_format.height as f32,
+        ]));
+    } else if let Some(((_time, row_id), blob)) =
+        db.latest_at_component::<re_types::components::Blob>(entity_path, query)
+    {
+        // `archetypes.EncodedImage`
+
+        let media_type = db
+            .latest_at_component::<MediaType>(entity_path, query)
+            .map(|(_, c)| c);
+
+        let image = ctx.cache.entry(|c: &mut ImageDecodeCache| {
+            c.entry(row_id, &blob, media_type.as_ref().map(|mt| mt.as_str()))
+        });
+
+        if let Ok(image) = image {
+            return Some(Resolution::from([
+                image.format.width as f32,
+                image.format.height as f32,
+            ]));
+        }
+    }
+
+    None
 }
 
 /// Utility for querying a pinhole archetype instance.
@@ -76,9 +99,11 @@ fn query_pinhole(
 
     let image_from_camera = results.get_mono()?;
 
-    let resolution = results
-        .get_mono()
-        .or_else(|| resolution_from_tensor(ctx.recording(), query, &data_result.entity_path));
+    let resolution = results.get_mono().or_else(|| {
+        // If the Pinhole has no resolution, use the resolution for the image logged at the same path.
+        // See https://github.com/rerun-io/rerun/issues/3852
+        resolution_of_image_at(ctx.viewer_ctx, query, &data_result.entity_path)
+    });
 
     let camera_xyz = results.get_mono();
 
@@ -98,10 +123,11 @@ fn query_pinhole(
 ///
 // TODO(andreas): This is duplicated into `re_viewport`
 fn query_pinhole_legacy(
-    entity_db: &re_entity_db::EntityDb,
+    ctx: &ViewerContext<'_>,
     query: &re_chunk_store::LatestAtQuery,
     entity_path: &re_log_types::EntityPath,
 ) -> Option<re_types::archetypes::Pinhole> {
+    let entity_db = ctx.recording();
     entity_db
         .latest_at_component::<re_types::components::PinholeProjection>(entity_path, query)
         .map(
@@ -110,7 +136,7 @@ fn query_pinhole_legacy(
                 resolution: entity_db
                     .latest_at_component(entity_path, query)
                     .map(|(_index, c)| c)
-                    .or_else(|| resolution_from_tensor(entity_db, query, entity_path)),
+                    .or_else(|| resolution_of_image_at(ctx, query, entity_path)),
                 camera_xyz: entity_db
                     .latest_at_component(entity_path, query)
                     .map(|(_index, c)| c),
