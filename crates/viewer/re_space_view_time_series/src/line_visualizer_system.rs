@@ -1,9 +1,10 @@
 use itertools::Itertools;
 
-use re_log_types::TimeInt;
+use re_chunk_store::{RangeQuery, RowId};
+use re_log_types::{EntityPath, TimeInt};
 use re_space_view::range_with_blueprint_resolved_data;
 use re_types::archetypes;
-use re_types::components::AggregationPolicy;
+use re_types::components::{AggregationPolicy, ClearIsRecursive};
 use re_types::external::arrow2::datatypes::DataType as ArrowDatatype;
 use re_types::{
     archetypes::SeriesLine,
@@ -393,9 +394,26 @@ impl SeriesLineSystem {
                     lhs_time_max <= rhs_time_min
                 });
 
+            let has_discontinuities = {
+                // Find all clears that may apply, in order to render discontinuities properly.
+
+                re_tracing::profile_scope!("discontinuities");
+
+                let cleared_indices = collect_recursive_clears(ctx, &query, entity_path);
+                let has_discontinuities = !cleared_indices.is_empty();
+                points.extend(cleared_indices.into_iter().map(|(data_time, _)| {
+                    let mut point = default_point.clone();
+                    point.time = data_time.as_i64();
+                    point.attrs.kind = PlotSeriesKind::Clear;
+                    point
+                }));
+
+                has_discontinuities
+            };
+
             // This is _almost_ sorted already: all the individual chunks are sorted, but we still
-            // have to deal with overlap chunks.
-            if !all_chunks_sorted_and_not_overlapped {
+            // have to deal with overlapped chunks, or discontinuities introduced by query-time clears.
+            if !all_chunks_sorted_and_not_overlapped || has_discontinuities {
                 re_tracing::profile_scope!("sort");
                 points.sort_by_key(|p| p.time);
             }
@@ -412,4 +430,55 @@ impl SeriesLineSystem {
             );
         }
     }
+}
+
+fn collect_recursive_clears(
+    ctx: &ViewContext<'_>,
+    query: &RangeQuery,
+    entity_path: &EntityPath,
+) -> Vec<(TimeInt, RowId)> {
+    re_tracing::profile_function!();
+
+    let mut cleared_indices = Vec::new();
+
+    let mut clear_entity_path = entity_path.clone();
+    loop {
+        let results = ctx.recording().query_caches().range(
+            ctx.recording_store(),
+            query,
+            &clear_entity_path,
+            [ClearIsRecursive::name()],
+        );
+
+        let empty = Vec::new();
+        let chunks = results
+            .components
+            .get(&ClearIsRecursive::name())
+            .unwrap_or(&empty);
+
+        for chunk in chunks {
+            cleared_indices.extend(
+                itertools::izip!(
+                    chunk.iter_component_indices(&query.timeline(), &ClearIsRecursive::name()),
+                    chunk
+                        .iter_component::<ClearIsRecursive>()
+                        .map(|is_recursive| {
+                            is_recursive.as_slice().first().map_or(false, |v| *v.0)
+                        })
+                )
+                .filter_map(|(index, is_recursive)| {
+                    let is_recursive = is_recursive || clear_entity_path == *entity_path;
+                    is_recursive.then_some(index)
+                }),
+            );
+        }
+
+        let Some(parent_entity_path) = clear_entity_path.parent() else {
+            break;
+        };
+
+        clear_entity_path = parent_entity_path;
+    }
+
+    cleared_indices
 }

@@ -22,6 +22,9 @@ from . import (
     experimental as experimental,
     notebook as notebook,
 )
+from ._baseclasses import (
+    ComponentColumn as ComponentColumn,
+)
 from ._image_encoded import (
     ImageEncoded as ImageEncoded,
     ImageFormat as ImageFormat,
@@ -36,6 +39,12 @@ from ._log import (
     log_file_from_contents as log_file_from_contents,
     log_file_from_path as log_file_from_path,
     new_entity_path as new_entity_path,
+)
+from ._send_columns import (
+    TimeNanosColumn as TimeNanosColumn,
+    TimeSecondsColumn as TimeSecondsColumn,
+    TimeSequenceColumn as TimeSequenceColumn,
+    send_columns as send_columns,
 )
 from .any_value import (
     AnyValues as AnyValues,
@@ -138,12 +147,6 @@ from .script_helpers import (
     script_add_args as script_add_args,
     script_setup as script_setup,
     script_teardown as script_teardown,
-)
-from .send_columns import (
-    TimeNanosColumn as TimeNanosColumn,
-    TimeSecondsColumn as TimeSecondsColumn,
-    TimeSequenceColumn as TimeSequenceColumn,
-    send_columns as send_columns,
 )
 from .sinks import (
     connect as connect,

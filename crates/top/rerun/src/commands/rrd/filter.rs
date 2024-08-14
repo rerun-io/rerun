@@ -23,6 +23,10 @@ pub struct FilterCommand {
     #[clap(long = "drop-timeline")]
     dropped_timelines: Vec<String>,
 
+    /// Paths of the entities to be filtered out.
+    #[clap(long = "drop-entity")]
+    dropped_entity_paths: Vec<String>,
+
     /// If set, will try to proceed even in the face of IO and/or decoding errors in the input data.
     #[clap(long = "continue-on-error", default_value_t = false)]
     continue_on_error: bool,
@@ -34,6 +38,7 @@ impl FilterCommand {
             path_to_input_rrds,
             path_to_output_rrd,
             dropped_timelines,
+            dropped_entity_paths,
             continue_on_error,
         } = self;
 
@@ -49,6 +54,10 @@ impl FilterCommand {
         re_log::info!(srcs = ?path_to_input_rrds, ?dropped_timelines, "filter started");
 
         let dropped_timelines: HashSet<_> = dropped_timelines.iter().collect();
+        let dropped_entity_paths: HashSet<EntityPath> = dropped_entity_paths
+            .iter()
+            .map(|s| EntityPath::parse_forgiving(s))
+            .collect();
 
         // TODO(cmc): might want to make this configurable at some point.
         let version_policy = re_log_encoding::decoder::VersionPolicy::Warn;
@@ -96,24 +105,31 @@ impl FilterCommand {
                 Ok(msg) => {
                     let msg = match msg {
                         re_log_types::LogMsg::ArrowMsg(store_id, mut msg) => {
-                            let (fields, columns): (Vec<_>, Vec<_>) =
-                                itertools::izip!(msg.schema.fields.iter(), msg.chunk.iter())
-                                    .filter(|(field, _col)| {
-                                        should_keep_timeline(&dropped_timelines, field)
-                                    })
-                                    .map(|(field, col)| (field.clone(), col.clone()))
-                                    .unzip();
+                            if !should_keep_entity_path(&dropped_entity_paths, &msg.schema) {
+                                None
+                            } else {
+                                let (fields, columns): (Vec<_>, Vec<_>) =
+                                    itertools::izip!(msg.schema.fields.iter(), msg.chunk.iter())
+                                        .filter(|(field, _col)| {
+                                            should_keep_timeline(&dropped_timelines, field)
+                                        })
+                                        .map(|(field, col)| (field.clone(), col.clone()))
+                                        .unzip();
 
-                            msg.schema.fields = fields;
-                            msg.chunk = re_log_types::external::arrow2::chunk::Chunk::new(columns);
+                                msg.schema.fields = fields;
+                                msg.chunk =
+                                    re_log_types::external::arrow2::chunk::Chunk::new(columns);
 
-                            re_log_types::LogMsg::ArrowMsg(store_id, msg)
+                                Some(re_log_types::LogMsg::ArrowMsg(store_id, msg))
+                            }
                         }
 
-                        msg => msg,
+                        msg => Some(msg),
                     };
 
-                    tx_encoder.send(msg).ok();
+                    if let Some(msg) = msg {
+                        tx_encoder.send(msg).ok();
+                    }
                 }
 
                 Err(err) => {
@@ -168,7 +184,10 @@ impl FilterCommand {
 
 // ---
 
-use re_sdk::external::arrow2::datatypes::Field as ArrowField;
+use re_sdk::{
+    external::arrow2::{datatypes::Field as ArrowField, datatypes::Schema as ArrowSchema},
+    EntityPath,
+};
 
 fn should_keep_timeline(dropped_timelines: &HashSet<&String>, field: &ArrowField) -> bool {
     let is_timeline = field
@@ -180,4 +199,21 @@ fn should_keep_timeline(dropped_timelines: &HashSet<&String>, field: &ArrowField
     let is_dropped = dropped_timelines.contains(&field.name);
 
     !is_timeline || !is_dropped
+}
+
+fn should_keep_entity_path(
+    dropped_entity_paths: &HashSet<EntityPath>,
+    schema: &ArrowSchema,
+) -> bool {
+    let Some(entity_path) = schema
+        .metadata
+        .get(TransportChunk::CHUNK_METADATA_KEY_ENTITY_PATH)
+        .map(|s| EntityPath::parse_forgiving(s))
+    else {
+        return true;
+    };
+
+    let is_dropped = dropped_entity_paths.contains(&entity_path);
+
+    !is_dropped
 }
