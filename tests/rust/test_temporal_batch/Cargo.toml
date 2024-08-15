@@ -10,6 +10,5 @@ publish = false
 workspace = true
 
 [dependencies]
-arrow2.workspace = true
 re_chunk.workspace = true
 rerun = { path = "../../../crates/top/rerun" }

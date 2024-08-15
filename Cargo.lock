@@ -4302,7 +4302,6 @@ version = "0.18.0-rc.7"
 dependencies = [
  "ahash",
  "anyhow",
- "backtrace",
  "bytemuck",
  "criterion",
  "crossbeam",
@@ -4312,21 +4311,16 @@ dependencies = [
  "nohash-hasher",
  "rand",
  "re_arrow2",
- "re_build_info",
  "re_error",
  "re_format",
  "re_format_arrow",
  "re_log",
  "re_log_types",
- "re_string_interner",
  "re_tracing",
  "re_tuid",
  "re_types_core",
  "serde",
- "serde_bytes",
  "similar-asserts",
- "smallvec",
- "static_assertions",
  "thiserror",
 ]
 
@@ -4349,14 +4343,12 @@ dependencies = [
  "re_arrow2",
  "re_chunk",
  "re_format",
- "re_format_arrow",
  "re_log",
  "re_log_types",
  "re_tracing",
  "re_types",
  "re_types_core",
  "similar-asserts",
- "smallvec",
  "thiserror",
  "tinyvec",
  "web-time",
@@ -4450,7 +4442,6 @@ dependencies = [
  "nohash-hasher",
  "re_chunk_store",
  "re_entity_db",
- "re_error",
  "re_format",
  "re_log",
  "re_log_types",
@@ -4462,7 +4453,6 @@ dependencies = [
  "re_types_core",
  "re_ui",
  "re_viewer_context",
- "rfd",
  "unindent",
 ]
 
@@ -4501,7 +4491,6 @@ dependencies = [
  "egui_plot",
  "re_format",
  "re_types",
- "re_types_blueprint",
  "re_types_core",
  "re_ui",
  "re_viewer_context",
@@ -4516,7 +4505,6 @@ dependencies = [
  "criterion",
  "document-features",
  "emath",
- "getrandom",
  "itertools 0.13.0",
  "mimalloc",
  "nohash-hasher",
@@ -4638,7 +4626,6 @@ dependencies = [
  "re_arrow2",
  "re_build_info",
  "re_format",
- "re_format_arrow",
  "re_log",
  "re_string_interner",
  "re_tracing",
@@ -4647,7 +4634,6 @@ dependencies = [
  "serde",
  "serde_bytes",
  "similar-asserts",
- "smallvec",
  "static_assertions",
  "thiserror",
  "time",
@@ -4697,7 +4683,6 @@ dependencies = [
  "bytemuck",
  "criterion",
  "indent",
- "indexmap 2.1.0",
  "itertools 0.13.0",
  "mimalloc",
  "nohash-hasher",
@@ -4712,12 +4697,10 @@ dependencies = [
  "re_log",
  "re_log_types",
  "re_tracing",
- "re_tuid",
  "re_types",
  "re_types_core",
  "seq-macro",
  "similar-asserts",
- "static_assertions",
  "thiserror",
 ]
 
@@ -4888,7 +4871,6 @@ dependencies = [
 name = "re_space_view"
 version = "0.18.0-rc.7"
 dependencies = [
- "ahash",
  "bytemuck",
  "egui",
  "itertools 0.13.0",
@@ -4913,7 +4895,6 @@ dependencies = [
  "egui_plot",
  "re_chunk_store",
  "re_entity_db",
- "re_log",
  "re_log_types",
  "re_renderer",
  "re_space_view",
@@ -4987,7 +4968,6 @@ dependencies = [
 name = "re_space_view_tensor"
 version = "0.18.0-rc.7"
 dependencies = [
- "ahash",
  "anyhow",
  "bytemuck",
  "egui",
@@ -4995,8 +4975,6 @@ dependencies = [
  "ndarray",
  "re_chunk_store",
  "re_data_ui",
- "re_entity_db",
- "re_log",
  "re_log_types",
  "re_renderer",
  "re_space_view",
@@ -5005,7 +4983,6 @@ dependencies = [
  "re_ui",
  "re_viewer_context",
  "re_viewport_blueprint",
- "serde",
  "thiserror",
  "wgpu",
 ]
@@ -5035,7 +5012,6 @@ dependencies = [
  "re_chunk_store",
  "re_data_ui",
  "re_entity_db",
- "re_log",
  "re_log_types",
  "re_query",
  "re_renderer",
@@ -5170,8 +5146,6 @@ dependencies = [
 name = "re_types_blueprint"
 version = "0.18.0-rc.7"
 dependencies = [
- "array-init",
- "bytemuck",
  "once_cell",
  "re_arrow2",
  "re_tracing",
@@ -5355,7 +5329,6 @@ dependencies = [
  "re_chunk_store",
  "re_data_source",
  "re_entity_db",
- "re_error",
  "re_format",
  "re_log",
  "re_log_types",
@@ -5533,7 +5506,6 @@ checksum = "19b30a45b0cd0bcca8037f3d0dc3421eaf95327a17cad11964fb8179b4fc4832"
 name = "rerun"
 version = "0.18.0-rc.7"
 dependencies = [
- "ahash",
  "anyhow",
  "clap",
  "document-features",
@@ -6518,7 +6490,6 @@ name = "test_data_density_graph"
 version = "0.18.0-rc.7"
 dependencies = [
  "anyhow",
- "clap",
  "rand",
  "re_log",
  "rerun",
@@ -6548,7 +6519,6 @@ dependencies = [
 name = "test_send_columns"
 version = "0.18.0-rc.7"
 dependencies = [
- "re_arrow2",
  "re_chunk",
  "rerun",
 ]
