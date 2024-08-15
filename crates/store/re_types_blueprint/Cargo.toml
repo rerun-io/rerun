@@ -31,11 +31,9 @@ re_types.workspace = true
 re_types_core.workspace = true
 
 # External
-array-init.workspace = true
 arrow2 = { workspace = true, features = [
   "io_ipc",
   "io_print",
   "compute_concatenate",
 ] }
-bytemuck.workspace = true
 once_cell.workspace = true
