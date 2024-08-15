@@ -288,71 +288,92 @@ fn visualizer_components(
         };
 
         let add_children = |ui: &mut egui::Ui| {
+            // NOTE: each of the override/store/etc. UI elements may well resemble each other much,
+            // e.g. be the same edit UI. We must ensure that we seed egui kd differently for each of
+            // them to avoid id clashes.
+
             // Override (if available)
             if let Some((row_id, raw_override)) = raw_override.as_ref() {
-                editable_blueprint_component_list_item(
-                    &query_ctx,
-                    ui,
-                    "Override",
-                    override_path,
-                    component_name,
-                    *row_id,
-                    raw_override.as_ref(),
-                )
-                .on_hover_text("Override value for this specific entity in the current view");
+                ui.push_id("override", |ui| {
+                    editable_blueprint_component_list_item(
+                        &query_ctx,
+                        ui,
+                        "Override",
+                        override_path,
+                        component_name,
+                        *row_id,
+                        raw_override.as_ref(),
+                    )
+                    .on_hover_text("Override value for this specific entity in the current view");
+                });
             }
+
             // Store (if available)
             if let Some(unit) = result_store {
-                ui.list_item_flat_noninteractive(
-                    list_item::PropertyContent::new("Store").value_fn(|ui, _style| {
-                        re_data_ui::EntityLatestAtResults {
-                            entity_path: data_result.entity_path.clone(),
-                            component_name,
-                            unit,
-                        }
-                        .data_ui(
-                            ctx.viewer_ctx,
-                            ui,
-                            UiLayout::List,
-                            &store_query,
-                            ctx.recording(),
-                        );
-                    }),
-                )
-                .on_hover_text("The value that was logged to the data store");
+                ui.push_id("store", |ui| {
+                    ui.list_item_flat_noninteractive(
+                        list_item::PropertyContent::new("Store").value_fn(|ui, _style| {
+                            re_data_ui::EntityLatestAtResults {
+                                entity_path: data_result.entity_path.clone(),
+                                component_name,
+                                unit,
+                            }
+                            .data_ui(
+                                ctx.viewer_ctx,
+                                ui,
+                                UiLayout::List,
+                                &store_query,
+                                ctx.recording(),
+                            );
+                        }),
+                    )
+                    .on_hover_text("The value that was logged to the data store");
+                });
             }
+
             // Default (if available)
             if let Some((row_id, raw_default)) = raw_default.as_ref() {
-                editable_blueprint_component_list_item(
-                    &query_ctx,
-                    ui,
-                    "Default",
-                    ctx.defaults_path,
-                    component_name,
-                    *row_id,
-                    raw_default.as_ref(),
-                )
-                .on_hover_text("Default value for all component of this type is the current view");
+                ui.push_id("default", |ui| {
+                    editable_blueprint_component_list_item(
+                        &query_ctx,
+                        ui,
+                        "Default",
+                        ctx.defaults_path,
+                        component_name,
+                        *row_id,
+                        raw_default.as_ref(),
+                    )
+                    .on_hover_text(
+                        "Default value for all components of this type is the current view",
+                    );
+                });
             }
+
             // Fallback (always there)
             {
-                ui.list_item_flat_noninteractive(
-                    list_item::PropertyContent::new("Fallback").value_fn(|ui, _| {
-                        // TODO(andreas): db & entity path don't make sense here.
-                        ctx.viewer_ctx.component_ui_registry.ui_raw(
-                            ctx.viewer_ctx,
-                            ui,
-                            UiLayout::List,
-                            &store_query,
-                            ctx.recording(),
-                            &data_result.entity_path,
-                            component_name,
-                            None,
-                            raw_fallback.as_ref(),
-                        );
-                    }),
-                )
-                .on_hover_text("Context sensitive fallback value for this component type, used only if nothing else was specified. Unlike the other values, this may differ per visualizer.");
+                ui.push_id("fallback", |ui| {
+                    ui.list_item_flat_noninteractive(
+                        list_item::PropertyContent::new("Fallback").value_fn(|ui, _| {
+                            // TODO(andreas): db & entity path don't make sense here.
+                            ctx.viewer_ctx.component_ui_registry.ui_raw(
+                                ctx.viewer_ctx,
+                                ui,
+                                UiLayout::List,
+                                &store_query,
+                                ctx.recording(),
+                                &data_result.entity_path,
+                                component_name,
+                                None,
+                                raw_fallback.as_ref(),
+                            );
+                        }),
+                    )
+                    .on_hover_text(
+                        "Context sensitive fallback value for this component type, used only if \
+                    nothing else was specified. Unlike the other values, this may differ per \
+                    visualizer.",
+                    );
+                });
             }
         };
 
@@ -396,6 +417,7 @@ fn editable_blueprint_component_list_item(
     row_id: Option<RowId>,
     raw_override: &dyn arrow2::array::Array,
 ) -> egui::Response {
+    ui.skip_ahead_auto_ids(10);
     ui.list_item_flat_noninteractive(
         list_item::PropertyContent::new(name)
             .value_fn(|ui, _style| {
