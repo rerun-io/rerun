@@ -209,7 +209,7 @@ If no default blueprint was set or it didn't set any value for this field, this 
 
     let response = ui
         .add_enabled(
-            component_array.is_none(),
+            component_array.is_some(),
             egui::Button::new("Unset"),
         )
         .on_hover_text(
