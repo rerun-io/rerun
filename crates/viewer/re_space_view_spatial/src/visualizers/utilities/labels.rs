@@ -47,24 +47,14 @@ pub fn process_labels_3d<'a>(
     annotation_infos: &'a ResolvedAnnotationInfos,
     world_from_obj: glam::Affine3A,
 ) -> impl Iterator<Item = UiLabel> + 'a {
-    let labels = izip!(
-        annotation_infos.iter(),
-        labels.iter().map(Some).chain(std::iter::repeat(None))
+    process_labels_common(
+        entity_path,
+        positions,
+        labels,
+        colors,
+        annotation_infos,
+        move |position| UiLabelTarget::Position3D(world_from_obj.transform_point3(position)),
     )
-    .map(|(annotation_info, label)| annotation_info.label(label.map(|l| l.as_str())));
-
-    let colors = clamped_or(colors, &egui::Color32::WHITE);
-
-    itertools::izip!(positions, labels, colors)
-        .enumerate()
-        .filter_map(move |(i, (point, label, color))| {
-            label.map(|label| UiLabel {
-                text: label,
-                color: *color,
-                target: UiLabelTarget::Position3D(world_from_obj.transform_point3(point)),
-                labeled_instance: InstancePathHash::instance(entity_path, Instance::from(i as u64)),
-            })
-        })
 }
 
 /// Produces 2D ui labels from component data.
@@ -79,6 +69,27 @@ pub fn process_labels_2d<'a>(
     annotation_infos: &'a ResolvedAnnotationInfos,
     world_from_obj: glam::Affine3A,
 ) -> impl Iterator<Item = UiLabel> + 'a {
+    process_labels_common(
+        entity_path,
+        positions,
+        labels,
+        colors,
+        annotation_infos,
+        move |position| {
+            let point = world_from_obj.transform_point3(position.extend(0.0));
+            UiLabelTarget::Point2D(egui::pos2(point.x, point.y))
+        },
+    )
+}
+
+fn process_labels_common<'a, P>(
+    entity_path: &'a EntityPath,
+    positions: impl Iterator<Item = P> + 'a,
+    labels: &'a [re_types::ArrowString],
+    colors: &'a [egui::Color32],
+    annotation_infos: &'a ResolvedAnnotationInfos,
+    target_from_position: impl Fn(P) -> UiLabelTarget + 'a,
+) -> impl Iterator<Item = UiLabel> + 'a {
     let labels = izip!(
         annotation_infos.iter(),
         labels.iter().map(Some).chain(std::iter::repeat(None))
@@ -89,18 +100,12 @@ pub fn process_labels_2d<'a>(
 
     itertools::izip!(positions, labels, colors)
         .enumerate()
-        .filter_map(move |(i, (point, label, color))| {
-            label.map(|label| {
-                let point = world_from_obj.transform_point3(glam::Vec3::new(point.x, point.y, 0.0));
-                UiLabel {
-                    text: label,
-                    color: *color,
-                    target: UiLabelTarget::Point2D(egui::pos2(point.x, point.y)),
-                    labeled_instance: InstancePathHash::instance(
-                        entity_path,
-                        Instance::from(i as u64),
-                    ),
-                }
+        .filter_map(move |(i, (position, label, color))| {
+            label.map(|label| UiLabel {
+                text: label,
+                color: *color,
+                target: target_from_position(position),
+                labeled_instance: InstancePathHash::instance(entity_path, Instance::from(i as u64)),
             })
         })
 }
