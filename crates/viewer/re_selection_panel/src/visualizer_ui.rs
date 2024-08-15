@@ -417,7 +417,6 @@ fn editable_blueprint_component_list_item(
     row_id: Option<RowId>,
     raw_override: &dyn arrow2::array::Array,
 ) -> egui::Response {
-    ui.skip_ahead_auto_ids(10);
     ui.list_item_flat_noninteractive(
         list_item::PropertyContent::new(name)
             .value_fn(|ui, _style| {
