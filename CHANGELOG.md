@@ -150,7 +150,7 @@ There are now additionally [`InstancePoses3D`](https://rerun.io/docs/reference/t
 _All four tetrahedron meshes on this screen share the same vertices and are instanced using an [`InstancePoses3D`](https://rerun.io/docs/reference/types/archetypes/instance_poses3d) archetype with 4 different translations_
 
 
-### ⚠️  Breaking changes
+### ⚠️ Breaking changes
 * `.rrd` files from older versions won't load correctly in Rerun 0.18
 * `mesh_material: Material` has been renamed to `albedo_factor: AlbedoFactor` [#6841](https://github.com/rerun-io/rerun/pull/6841)
 * [`Transform3D`](https://rerun.io/docs/reference/types/archetypes/transform3d) is no longer a single component but split into its constituent parts. From this follow various smaller API changes
@@ -200,7 +200,7 @@ _All four tetrahedron meshes on this screen share the same vertices and are inst
 - Recommend install rerun-cli with `--locked` [#6868](https://github.com/rerun-io/rerun/pull/6868)
 - Remove `TensorBuffer::JPEG`, `DecodedTensor`, `TensorDecodeCache` [#6884](https://github.com/rerun-io/rerun/pull/6884)
 
-#### 🪳 Bug Fixes
+#### 🪳Bug Fixes
 - Respect 0.0 for start and end boundaries of scalar axis [#6887](https://github.com/rerun-io/rerun/pull/6887) (thanks [@amidabucu](https://github.com/amidabucu)!)
 - Fix text log/document view icons [#6855](https://github.com/rerun-io/rerun/pull/6855)
 - Fix outdated use of view coordinates in `Spaces and Transforms` doc page [#6955](https://github.com/rerun-io/rerun/pull/6955)
@@ -210,7 +210,7 @@ _All four tetrahedron meshes on this screen share the same vertices and are inst
 - Fix 2D objects in 3D affecting bounding box and thus causing flickering of automatic pinhole plane distance [#7176](https://github.com/rerun-io/rerun/pull/7176)
 - Fix a UI issue where a visualiser would have both an override and default set for some component [#7206](https://github.com/rerun-io/rerun/pull/7206)
 
-#### 🌁 Viewer Improvements
+#### 🌁 Viewer improvements
 - Add cyan to yellow colormap [#7001](https://github.com/rerun-io/rerun/pull/7001) (thanks [@rasmusgo](https://github.com/rasmusgo)!)
 - Add optional solid/filled (triangle mesh) rendering to `Boxes3D` and `Ellipsoids` [#6953](https://github.com/rerun-io/rerun/pull/6953) (thanks [@kpreid](https://github.com/kpreid)!)
 - Improve bounding box based heuristics [#6791](https://github.com/rerun-io/rerun/pull/6791)
@@ -219,7 +219,7 @@ _All four tetrahedron meshes on this screen share the same vertices and are inst
 - Chunkified text-log view with multi-timeline display [#7027](https://github.com/rerun-io/rerun/pull/7027)
 - Make the recordings panel resizable [#7180](https://github.com/rerun-io/rerun/pull/7180)
 
-#### 🚀 Performance Improvements
+#### 🚀 Performance improvements
 - Optimize large point clouds [#6767](https://github.com/rerun-io/rerun/pull/6767)
 - Optimize data clamping in spatial view [#6870](https://github.com/rerun-io/rerun/pull/6870)
 - Add `--blueprint` to `plot_dashboard_stress` [#6996](https://github.com/rerun-io/rerun/pull/6996)
@@ -265,7 +265,7 @@ _All four tetrahedron meshes on this screen share the same vertices and are inst
 - Clarify in docs when ViewCoordinate is picked up by a 3D view [#7034](https://github.com/rerun-io/rerun/pull/7034)
 - CLI manual [#7149](https://github.com/rerun-io/rerun/pull/7149)
 
-#### 🖼 UI Improvements
+#### 🖼 UI improvements
 - Display compaction information in the recording UI [#6859](https://github.com/rerun-io/rerun/pull/6859)
 - Use markdown for the view help widget [#6878](https://github.com/rerun-io/rerun/pull/6878)
 - Improve navigation between entity and data results in the selection panel [#6871](https://github.com/rerun-io/rerun/pull/6871)
@@ -280,11 +280,11 @@ _All four tetrahedron meshes on this screen share the same vertices and are inst
 - Better ui for `Blob`s, especially those representing images [#7128](https://github.com/rerun-io/rerun/pull/7128)
 - Add button for copying and saving images [#7156](https://github.com/rerun-io/rerun/pull/7156)
 
-#### 🕸️  Web
+#### 🕸️ Web
 - Add missing props to React package [#6895](https://github.com/rerun-io/rerun/pull/6895)
 - Fix multi rrd on `app.rerun.io` [#6972](https://github.com/rerun-io/rerun/pull/6972)
 
-#### ✨ Other Enhancement
+#### ✨ Other enhancement
 - Support decoding multiplexed RRD streams [#7091](https://github.com/rerun-io/rerun/pull/7091)
 - Query-time clears (latest-at only) [#6586](https://github.com/rerun-io/rerun/pull/6586)
 - Introduce `ChunkStore::drop_entity_path` [#6588](https://github.com/rerun-io/rerun/pull/6588)
