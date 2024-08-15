@@ -141,6 +141,7 @@ class Points3D(Points3DExt, Archetype):
             radii=None,  # type: ignore[arg-type]
             colors=None,  # type: ignore[arg-type]
             labels=None,  # type: ignore[arg-type]
+            show_labels=None,  # type: ignore[arg-type]
             class_ids=None,  # type: ignore[arg-type]
             keypoint_ids=None,  # type: ignore[arg-type]
         )
@@ -190,6 +191,15 @@ class Points3D(Points3DExt, Archetype):
     #
     # If there's a single label present, it will be placed at the center of the entity.
     # Otherwise, each instance will have its own label.
+    #
+    # (Docstring intentionally commented out to hide this field from the docs)
+
+    show_labels: components.ShowLabelsBatch | None = field(
+        metadata={"component": "optional"},
+        default=None,
+        converter=components.ShowLabelsBatch._optional,  # type: ignore[misc]
+    )
+    # Optional choice of whether the text labels should be shown by default.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 

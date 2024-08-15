@@ -567,6 +567,13 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             },
         ),
         (
+            <ShowLabels as Loggable>::name(),
+            ComponentReflection {
+                docstring_md: "Whether the entity's [`components.Text`](https://rerun.io/docs/reference/types/components/text) label is shown.\n\nThe main purpose of this component existing separately from the labels themselves\nis to be overridden when desired, to allow hiding and showing from the viewer and\nblueprints.",
+                placeholder: Some(ShowLabels::default().to_arrow()?),
+            },
+        ),
+        (
             <StrokeWidth as Loggable>::name(),
             ComponentReflection {
                 docstring_md: "The width of a stroke specified in UI points.",

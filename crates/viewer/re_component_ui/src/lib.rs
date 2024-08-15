@@ -26,7 +26,7 @@ use re_types::{
     components::{
         AggregationPolicy, AlbedoFactor, AxisLength, Color, Colormap, DepthMeter, DrawOrder,
         FillMode, FillRatio, GammaCorrection, ImagePlaneDistance, MagnificationFilter, MarkerSize,
-        Name, Opacity, Scale3D, StrokeWidth, Text, TransformRelation, Translation3D,
+        Name, Opacity, Scale3D, ShowLabels, StrokeWidth, Text, TransformRelation, Translation3D,
     },
     Loggable as _,
 };
@@ -58,8 +58,9 @@ pub fn register_editors(registry: &mut re_viewer_context::ComponentUiRegistry) {
 
     registry.add_singleline_edit_or_view::<Opacity>(edit_f32_zero_to_one);
 
-    registry.add_singleline_edit_or_view::<Visible>(edit_bool);
     registry.add_singleline_edit_or_view::<LockRangeDuringZoom>(edit_bool);
+    registry.add_singleline_edit_or_view::<ShowLabels>(edit_bool);
+    registry.add_singleline_edit_or_view::<Visible>(edit_bool);
 
     registry.add_singleline_edit_or_view::<TimelineName>(timeline::edit_timeline_name);
 

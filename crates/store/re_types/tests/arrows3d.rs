@@ -34,6 +34,7 @@ fn roundtrip() {
             ClassId::from(126), //
             ClassId::from(127), //
         ]),
+        show_labels: Some(true.into()),
     };
 
     let arch = Arrows3D::from_vectors([[1.0, 2.0, 3.0], [10.0, 20.0, 30.0]])
@@ -41,7 +42,8 @@ fn roundtrip() {
         .with_radii([1.0, 10.0])
         .with_colors([0xAA0000CC, 0x00BB00DD])
         .with_labels(["hello", "friend"])
-        .with_class_ids([126, 127]);
+        .with_class_ids([126, 127])
+        .with_show_labels(true);
     similar_asserts::assert_eq!(expected, arch);
 
     let expected_extensions: HashMap<_, _> = [
@@ -50,6 +52,7 @@ fn roundtrip() {
         ("colors", vec!["rerun.components.Color"]),
         ("labels", vec!["rerun.components.Text"]),
         ("class_ids", vec!["rerun.components.ClassId"]),
+        ("show_labels", vec!["rerun.components.ShowLabels"]),
     ]
     .into();
 
