@@ -8,7 +8,7 @@ TODO: Video of side by side loading of time series in 0.17 vs 0.18
 
 📖 Release blogpost: TODO: add link
 
-🧳 Migration guide: http://rerun.io/docs/reference/migration/migration-0-18?speculative-link
+🧳 Migration guide: http://rerun.io/docs/reference/migration/migration-0-18
 
 ### ✨ Overview & highlights
 
@@ -127,7 +127,7 @@ The Rerun datastore now continuously compacts data as it comes in, in order find
 
 This is very similar to, and has many parallels with, the [micro-batching mechanism running on the SDK side](https://rerun.io/docs/reference/sdk-micro-batching).
 
-You can read more about this in the [dedicated documentation entry](https://rerun.io/docs/reference/store-compaction?speculative-link).
+You can read more about this in the [dedicated documentation entry](https://rerun.io/docs/reference/store-compaction).
 
 #### Post-processing of RRD files
 
@@ -145,10 +145,10 @@ rerun rrd compact --max-rows 4096 --max-bytes=1048576 /my/recordings/*.rrd > out
 * `mesh_material: Material` has been renamed to `albedo_factor: AlbedoFactor` [#6841](https://github.com/rerun-io/rerun/pull/6841)
 * 3D transform APIs: Previously, the transform component was represented as one of several variants (an Arrow union, `enum` in Rust) depending on how the transform was expressed. Instead, there are now several components for translation/scale/rotation/matrices that can live side-by-side in the 3D transform archetype.
 * Python: `NV12/YUY2` are now logged with `Image`
-* `ImageEncoded` is deprecated and replaced with [`EncodedImage`](https://rerun.io/docs/reference/types/archetypes/encoded_image?speculative-link) (JPEG, PNG, …) and  [`Image`](https://rerun.io/docs/reference/types/archetypes/image?speculative-link) (NV12, YUY2, …)
+* `ImageEncoded` is deprecated and replaced with [`EncodedImage`](https://rerun.io/docs/reference/types/archetypes/encoded_image) (JPEG, PNG, …) and  [`Image`](https://rerun.io/docs/reference/types/archetypes/image) (NV12, YUY2, …)
 * [`DepthImage`](https://rerun.io/docs/reference/types/archetypes/depth_image) and [`SegmentationImage`](https://rerun.io/docs/reference/types/archetypes/segmentation_image) are no longer encoded as a tensors, and expects its shape in `[width, height]` order
 
-🧳 Migration guide: http://rerun.io/docs/reference/migration/migration-0-18?speculative-link
+🧳 Migration guide: http://rerun.io/docs/reference/migration/migration-0-18
 
 ### 🔎 Details
 
