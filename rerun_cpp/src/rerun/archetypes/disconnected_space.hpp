@@ -24,7 +24,7 @@ namespace rerun::archetypes {
     /// ## Example
     ///
     /// ### Disconnected space
-    /// ![image](https://static.rerun.io/disconnected_space/b8f95b0e32359de625a765247c84935146c1fba9/full.png)
+    /// ![image](https://static.rerun.io/disconnected_space/709041fc304b50c74db773b780e32294fe90c95f/full.png)
     ///
     /// ```cpp
     /// #include <rerun.hpp>

@@ -215,7 +215,7 @@ fn image_decode_srgb_gamma_heuristic(
     }
 }
 
-fn texture_creation_desc_from_color_image<'a>(
+pub fn texture_creation_desc_from_color_image<'a>(
     image: &'a ImageInfo,
     debug_name: &'a str,
 ) -> Texture2DCreationDesc<'a> {

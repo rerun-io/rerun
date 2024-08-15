@@ -4,6 +4,7 @@ use re_chunk_store::{LatestAtQuery, RangeQuery};
 use re_log_types::{TimeInt, Timeline};
 use re_space_view::{
     latest_at_with_blueprint_resolved_data, range_with_blueprint_resolved_data, HybridResults,
+    TimeKey,
 };
 use re_types::Archetype;
 use re_viewer_context::{
@@ -200,7 +201,7 @@ where
 
 // ---
 
-use re_chunk::{Chunk, ChunkComponentIterItem, ComponentName, RowId};
+use re_chunk::{Chunk, ChunkComponentIterItem, ComponentName};
 use re_chunk_store::external::{re_chunk, re_chunk::external::arrow2};
 
 /// Iterate `chunks` as indexed deserialized batches.
@@ -211,10 +212,12 @@ pub fn iter_component<'a, C: re_types::Component>(
     chunks: &'a std::borrow::Cow<'a, [Chunk]>,
     timeline: Timeline,
     component_name: ComponentName,
-) -> impl Iterator<Item = ((TimeInt, RowId), ChunkComponentIterItem<C>)> + 'a {
+) -> impl Iterator<Item = (TimeKey, ChunkComponentIterItem<C>)> + 'a {
     chunks.iter().flat_map(move |chunk| {
         itertools::izip!(
-            chunk.iter_component_indices(&timeline, &component_name),
+            chunk
+                .iter_component_indices(&timeline, &component_name)
+                .map(TimeKey::from),
             chunk.iter_component::<C>()
         )
     })
@@ -228,10 +231,12 @@ pub fn iter_primitive<'a, T: arrow2::types::NativeType>(
     chunks: &'a std::borrow::Cow<'a, [Chunk]>,
     timeline: Timeline,
     component_name: ComponentName,
-) -> impl Iterator<Item = ((TimeInt, RowId), &'a [T])> + 'a {
+) -> impl Iterator<Item = (TimeKey, &'a [T])> + 'a {
     chunks.iter().flat_map(move |chunk| {
         itertools::izip!(
-            chunk.iter_component_indices(&timeline, &component_name),
+            chunk
+                .iter_component_indices(&timeline, &component_name)
+                .map(TimeKey::from),
             chunk.iter_primitive::<T>(&component_name)
         )
     })
@@ -245,13 +250,15 @@ pub fn iter_primitive_array<'a, const N: usize, T: arrow2::types::NativeType>(
     chunks: &'a std::borrow::Cow<'a, [Chunk]>,
     timeline: Timeline,
     component_name: ComponentName,
-) -> impl Iterator<Item = ((TimeInt, RowId), &'a [[T; N]])> + 'a
+) -> impl Iterator<Item = (TimeKey, &'a [[T; N]])> + 'a
 where
     [T; N]: bytemuck::Pod,
 {
     chunks.iter().flat_map(move |chunk| {
         itertools::izip!(
-            chunk.iter_component_indices(&timeline, &component_name),
+            chunk
+                .iter_component_indices(&timeline, &component_name)
+                .map(TimeKey::from),
             chunk.iter_primitive_array::<N, T>(&component_name)
         )
     })
@@ -265,13 +272,15 @@ pub fn iter_primitive_array_list<'a, const N: usize, T: arrow2::types::NativeTyp
     chunks: &'a std::borrow::Cow<'a, [Chunk]>,
     timeline: Timeline,
     component_name: ComponentName,
-) -> impl Iterator<Item = ((TimeInt, RowId), Vec<&'a [[T; N]]>)> + 'a
+) -> impl Iterator<Item = (TimeKey, Vec<&'a [[T; N]]>)> + 'a
 where
     [T; N]: bytemuck::Pod,
 {
     chunks.iter().flat_map(move |chunk| {
         itertools::izip!(
-            chunk.iter_component_indices(&timeline, &component_name),
+            chunk
+                .iter_component_indices(&timeline, &component_name)
+                .map(TimeKey::from),
             chunk.iter_primitive_array_list::<N, T>(&component_name)
         )
     })
@@ -285,10 +294,12 @@ pub fn iter_string<'a>(
     chunks: &'a std::borrow::Cow<'a, [Chunk]>,
     timeline: Timeline,
     component_name: ComponentName,
-) -> impl Iterator<Item = ((TimeInt, RowId), Vec<re_types::ArrowString>)> + 'a {
+) -> impl Iterator<Item = (TimeKey, Vec<re_types::ArrowString>)> + 'a {
     chunks.iter().flat_map(move |chunk| {
         itertools::izip!(
-            chunk.iter_component_indices(&timeline, &component_name),
+            chunk
+                .iter_component_indices(&timeline, &component_name)
+                .map(TimeKey::from),
             chunk.iter_string(&component_name)
         )
     })
@@ -302,10 +313,12 @@ pub fn iter_buffer<'a, T: arrow2::types::NativeType>(
     chunks: &'a std::borrow::Cow<'a, [Chunk]>,
     timeline: Timeline,
     component_name: ComponentName,
-) -> impl Iterator<Item = ((TimeInt, RowId), Vec<re_types::ArrowBuffer<T>>)> + 'a {
+) -> impl Iterator<Item = (TimeKey, Vec<re_types::ArrowBuffer<T>>)> + 'a {
     chunks.iter().flat_map(move |chunk| {
         itertools::izip!(
-            chunk.iter_component_indices(&timeline, &component_name),
+            chunk
+                .iter_component_indices(&timeline, &component_name)
+                .map(TimeKey::from),
             chunk.iter_buffer(&component_name)
         )
     })

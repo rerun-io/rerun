@@ -46,11 +46,11 @@ class Mesh3D(Mesh3DExt, Archetype):
     ```
     <center>
     <picture>
-      <source media="(max-width: 480px)" srcset="https://static.rerun.io/mesh3d_simple/e1e5fd97265daf0d0bc7b782d862f19086fd6975/480w.png">
-      <source media="(max-width: 768px)" srcset="https://static.rerun.io/mesh3d_simple/e1e5fd97265daf0d0bc7b782d862f19086fd6975/768w.png">
-      <source media="(max-width: 1024px)" srcset="https://static.rerun.io/mesh3d_simple/e1e5fd97265daf0d0bc7b782d862f19086fd6975/1024w.png">
-      <source media="(max-width: 1200px)" srcset="https://static.rerun.io/mesh3d_simple/e1e5fd97265daf0d0bc7b782d862f19086fd6975/1200w.png">
-      <img src="https://static.rerun.io/mesh3d_simple/e1e5fd97265daf0d0bc7b782d862f19086fd6975/full.png" width="640">
+      <source media="(max-width: 480px)" srcset="https://static.rerun.io/mesh3d_indexed/57c70dc992e6dc0bd9c5222ca084f5b6240cea75/480w.png">
+      <source media="(max-width: 768px)" srcset="https://static.rerun.io/mesh3d_indexed/57c70dc992e6dc0bd9c5222ca084f5b6240cea75/768w.png">
+      <source media="(max-width: 1024px)" srcset="https://static.rerun.io/mesh3d_indexed/57c70dc992e6dc0bd9c5222ca084f5b6240cea75/1024w.png">
+      <source media="(max-width: 1200px)" srcset="https://static.rerun.io/mesh3d_indexed/57c70dc992e6dc0bd9c5222ca084f5b6240cea75/1200w.png">
+      <img src="https://static.rerun.io/mesh3d_indexed/57c70dc992e6dc0bd9c5222ca084f5b6240cea75/full.png" width="640">
     </picture>
     </center>
 
@@ -108,7 +108,8 @@ class Mesh3D(Mesh3DExt, Archetype):
             vertex_colors=None,  # type: ignore[arg-type]
             vertex_texcoords=None,  # type: ignore[arg-type]
             albedo_factor=None,  # type: ignore[arg-type]
-            albedo_texture=None,  # type: ignore[arg-type]
+            albedo_texture_buffer=None,  # type: ignore[arg-type]
+            albedo_texture_format=None,  # type: ignore[arg-type]
             class_ids=None,  # type: ignore[arg-type]
         )
 
@@ -174,10 +175,10 @@ class Mesh3D(Mesh3DExt, Archetype):
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 
-    albedo_texture: components.TensorDataBatch | None = field(
+    albedo_texture_buffer: components.ImageBufferBatch | None = field(
         metadata={"component": "optional"},
         default=None,
-        converter=components.TensorDataBatch._optional,  # type: ignore[misc]
+        converter=components.ImageBufferBatch._optional,  # type: ignore[misc]
     )
     # Optional albedo texture.
     #
@@ -185,6 +186,15 @@ class Mesh3D(Mesh3DExt, Archetype):
     #
     # Currently supports only sRGB(A) textures, ignoring alpha.
     # (meaning that the tensor must have 3 or 4 channels and use the `u8` format)
+    #
+    # (Docstring intentionally commented out to hide this field from the docs)
+
+    albedo_texture_format: components.ImageFormatBatch | None = field(
+        metadata={"component": "optional"},
+        default=None,
+        converter=components.ImageFormatBatch._optional,  # type: ignore[misc]
+    )
+    # The format of the `albedo_texture_buffer`, if any.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 

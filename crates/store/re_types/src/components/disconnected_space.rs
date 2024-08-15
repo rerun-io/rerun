@@ -29,7 +29,8 @@ pub struct DisconnectedSpace(
     /// Whether the entity path at which this is logged is disconnected from its parent.
     ///
     /// Set to true to disconnect the entity from its parent.
-    /// Set to false to disable the effects of this component, (re-)connecting the entity to its parent again.
+    /// Set to false to disable the effects of this component
+    /// TODO(#7121): Once a space is disconnected, it can't be re-connected again.
     pub crate::datatypes::Bool,
 );
 

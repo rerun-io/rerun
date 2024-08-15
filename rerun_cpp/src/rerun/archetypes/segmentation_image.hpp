@@ -36,7 +36,7 @@ namespace rerun::archetypes {
     /// ## Example
     ///
     /// ### Simple segmentation image
-    /// ![image](https://static.rerun.io/segmentation_image_simple/eb49e0b8cb870c75a69e2a47a2d202e5353115f6/full.png)
+    /// ![image](https://static.rerun.io/segmentation_image_simple/f8aac62abcf4c59c5d62f9ebc2d86fd0285c1736/full.png)
     ///
     /// ```cpp
     /// #include <rerun.hpp>

@@ -165,7 +165,7 @@ impl ImageVisualizer {
 
             Some(ImageComponentData {
                 image: ImageInfo {
-                    buffer_row_id: index.1,
+                    buffer_row_id: index.row_id,
                     buffer: buffer.clone().into(),
                     format: first_copied(formats.as_deref())?.0,
                     kind: ImageKind::Color,

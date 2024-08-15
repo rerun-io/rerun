@@ -78,7 +78,28 @@ impl TypedComponentFallbackProvider<StrokeWidth> for SeriesLineSystem {
     }
 }
 
-re_viewer_context::impl_component_fallback_provider!(SeriesLineSystem => [Color, StrokeWidth]);
+impl TypedComponentFallbackProvider<Name> for SeriesLineSystem {
+    fn fallback_for(&self, ctx: &QueryContext<'_>) -> Name {
+        let state = ctx.view_state.downcast_ref::<TimeSeriesSpaceViewState>();
+
+        state
+            .ok()
+            .and_then(|state| {
+                state
+                    .default_names_for_entities
+                    .get(ctx.target_entity_path)
+                    .map(|name| name.clone().into())
+            })
+            .or_else(|| {
+                ctx.target_entity_path
+                    .last()
+                    .map(|part| part.ui_string().into())
+            })
+            .unwrap_or_default()
+    }
+}
+
+re_viewer_context::impl_component_fallback_provider!(SeriesLineSystem => [Color, StrokeWidth, Name]);
 
 impl SeriesLineSystem {
     fn load_scalars(&mut self, ctx: &ViewContext<'_>, query: &ViewQuery<'_>) {
@@ -367,7 +388,7 @@ impl SeriesLineSystem {
                 .iter()
                 .find(|chunk| !chunk.is_empty())
                 .and_then(|chunk| chunk.component_mono::<Name>(0)?.ok())
-                .map(|name| name.0.to_string());
+                .unwrap_or_else(|| self.fallback_for(&query_ctx));
 
             // Now convert the `PlotPoints` into `Vec<PlotSeries>`
             let aggregator = results
@@ -424,7 +445,7 @@ impl SeriesLineSystem {
                 points,
                 ctx.recording_store(),
                 view_query,
-                series_name,
+                series_name.into(),
                 aggregator,
                 all_series,
             );

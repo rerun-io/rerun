@@ -8,12 +8,14 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     rec.log(
         "world/cam",
         &rerun::Pinhole::from_fov_and_aspect_ratio(fov_y, aspect_ratio)
-            .with_camera_xyz(rerun::components::ViewCoordinates::RUB),
+            .with_camera_xyz(rerun::components::ViewCoordinates::RUB)
+            .with_image_plane_distance(0.1),
     )?;
 
     rec.log(
         "world/points",
-        &rerun::Points3D::new([(0.0, 0.0, -0.5), (0.1, 0.1, -0.5), (-0.1, -0.1, -0.5)]),
+        &rerun::Points3D::new([(0.0, 0.0, -0.5), (0.1, 0.1, -0.5), (-0.1, -0.1, -0.5)])
+            .with_radii([0.025]),
     )?;
 
     Ok(())

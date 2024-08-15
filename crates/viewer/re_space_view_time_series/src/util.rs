@@ -88,7 +88,7 @@ pub fn points_to_series(
     points: Vec<PlotPoint>,
     store: &re_chunk_store::ChunkStore,
     query: &ViewQuery<'_>,
-    series_label: Option<String>,
+    series_label: String,
     aggregator: AggregationPolicy,
     all_series: &mut Vec<PlotSeries>,
 ) {
@@ -122,7 +122,7 @@ pub fn points_to_series(
         });
     } else {
         add_series_runs(
-            &series_label,
+            series_label,
             points,
             entity_path,
             aggregator,
@@ -199,9 +199,10 @@ pub fn apply_aggregation(
     (actual_aggregation_factor, points)
 }
 
+#[allow(clippy::needless_pass_by_value)]
 #[inline(never)] // Better callstacks on crashes
 fn add_series_runs(
-    series_label: &Option<String>,
+    series_label: String,
     points: Vec<PlotPoint>,
     entity_path: &EntityPath,
     aggregator: AggregationPolicy,

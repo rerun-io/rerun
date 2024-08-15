@@ -8,6 +8,7 @@ mod heuristics;
 mod query;
 mod results_ext;
 mod screenshot;
+mod time_key;
 mod view_property_ui;
 
 pub use heuristics::suggest_space_view_for_each_entity;
@@ -18,6 +19,7 @@ pub use results_ext::{
     HybridLatestAtResults, HybridResults, HybridResultsChunkIter, RangeResultsExt,
 };
 pub use screenshot::ScreenshotMode;
+pub use time_key::TimeKey;
 pub use view_property_ui::view_property_ui;
 
 pub mod external {

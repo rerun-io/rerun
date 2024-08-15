@@ -3,26 +3,14 @@ use std::collections::HashMap;
 use re_types::{
     archetypes::Mesh3D,
     components::{ClassId, Position3D, Texcoord2D, TriangleIndices, Vector3D},
-    datatypes::{Rgba32, TensorBuffer, TensorData, TensorDimension, UVec3D, Vec2D, Vec3D},
+    datatypes::{Rgba32, UVec3D, Vec2D, Vec3D},
     Archetype as _, AsComponents as _,
 };
 
 #[test]
 fn roundtrip() {
-    let tensor_data: re_types::components::TensorData = TensorData {
-        shape: vec![
-            TensorDimension {
-                size: 2,
-                name: Some("height".into()),
-            },
-            TensorDimension {
-                size: 3,
-                name: Some("width".into()),
-            },
-        ],
-        buffer: TensorBuffer::U8(vec![1, 2, 3, 4, 5, 6].into()),
-    }
-    .into();
+    let texture_format = re_types::components::ImageFormat::rgb8([2, 3]);
+    let texture_buffer = re_types::components::ImageBuffer::from(vec![0x42_u8; 2 * 3 * 3]);
 
     let expected = Mesh3D {
         vertex_positions: vec![
@@ -46,7 +34,8 @@ fn roundtrip() {
             Texcoord2D(Vec2D([2.0, 3.0])), //
         ]),
         albedo_factor: Some(Rgba32::from_unmultiplied_rgba(0xEE, 0x11, 0x22, 0x33).into()),
-        albedo_texture: Some(tensor_data.clone()),
+        albedo_texture_format: Some(texture_format),
+        albedo_texture_buffer: Some(texture_buffer.clone()),
         class_ids: Some(vec![
             ClassId::from(126), //
             ClassId::from(127), //
@@ -60,7 +49,7 @@ fn roundtrip() {
         .with_vertex_texcoords([[0.0, 1.0], [2.0, 3.0]])
         .with_albedo_factor(0xEE112233)
         .with_class_ids([126, 127])
-        .with_albedo_texture(tensor_data);
+        .with_albedo_texture(texture_format, texture_buffer);
     similar_asserts::assert_eq!(expected, arch);
 
     let expected_extensions: HashMap<_, _> = [

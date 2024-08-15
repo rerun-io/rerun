@@ -3,14 +3,8 @@
 
 use half::f16;
 
-#[cfg(feature = "image")]
-use crate::datatypes::TensorDimension;
-
 #[allow(unused_imports)] // Used for docstring links
 use crate::datatypes::TensorData;
-
-// Much of the following duplicates code from: `crates/re_components/src/tensor.rs`, which
-// will eventually go away as the Tensor migration is completed.
 
 // ----------------------------------------------------------------------------
 
@@ -61,20 +55,6 @@ impl From<std::io::Error> for TensorImageLoadError {
     fn from(err: std::io::Error) -> Self {
         Self::ReadError(std::sync::Arc::new(err))
     }
-}
-
-/// Errors when converting [`TensorData`] to [`image`] images.
-#[cfg(feature = "image")]
-#[derive(thiserror::Error, Debug)]
-pub enum TensorImageSaveError {
-    #[error("Expected image-shaped tensor, got {0:?}")]
-    ShapeNotAnImage(Vec<TensorDimension>),
-
-    #[error("Cannot convert tensor with {0} channels and datatype {1} to an image")]
-    UnsupportedChannelsDtype(u64, TensorDataType),
-
-    #[error("The tensor data did not match tensor dimensions")]
-    BadData,
 }
 
 // ----------------------------------------------------------------------------
