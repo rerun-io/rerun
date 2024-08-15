@@ -71,8 +71,8 @@ namespace rerun::archetypes {
     /// }
     /// ```
     ///
-    /// ### image_send_columns:
-    /// ![example image](Advanced usage of `send_columns` to send multiple images at once)
+    /// ### Advanced usage of `send_columns` to send multiple images at once
+    /// ![image](https://static.rerun.io/image_send_columns/321455161d79e2c45d6f5a6f175d6f765f418897/full.png)
     ///
     /// ```cpp
     /// #include <numeric>
