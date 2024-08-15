@@ -282,7 +282,7 @@ impl VisualizerSystem for DepthImageVisualizer {
 
                         Some(DepthImageComponentData {
                             image: ImageInfo {
-                                buffer_row_id: index.1,
+                                buffer_row_id: index.row_id,
                                 buffer: buffer.clone().into(),
                                 format: first_copied(format.as_deref())?.0,
                                 kind: ImageKind::Depth,
