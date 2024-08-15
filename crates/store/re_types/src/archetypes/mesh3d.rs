@@ -131,6 +131,9 @@ pub struct Mesh3D {
     /// Optional albedo texture.
     ///
     /// Used with the [`components::Texcoord2D`][crate::components::Texcoord2D] of the mesh.
+    ///
+    /// Currently supports only sRGB(A) textures, ignoring alpha.
+    /// (meaning that the tensor must have 3 or 4 channels and use the `u8` format)
     pub albedo_texture_buffer: Option<crate::components::ImageBuffer>,
 
     /// The format of the `albedo_texture_buffer`, if any.
@@ -495,6 +498,9 @@ impl Mesh3D {
     /// Optional albedo texture.
     ///
     /// Used with the [`components::Texcoord2D`][crate::components::Texcoord2D] of the mesh.
+    ///
+    /// Currently supports only sRGB(A) textures, ignoring alpha.
+    /// (meaning that the tensor must have 3 or 4 channels and use the `u8` format)
     #[inline]
     pub fn with_albedo_texture_buffer(
         mut self,

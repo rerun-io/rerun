@@ -131,6 +131,9 @@ namespace rerun::archetypes {
         /// Optional albedo texture.
         ///
         /// Used with the `components::Texcoord2D` of the mesh.
+        ///
+        /// Currently supports only sRGB(A) textures, ignoring alpha.
+        /// (meaning that the tensor must have 3 or 4 channels and use the `u8` format)
         std::optional<rerun::components::ImageBuffer> albedo_texture_buffer;
 
         /// The format of the `albedo_texture_buffer`, if any.
@@ -195,6 +198,9 @@ namespace rerun::archetypes {
         /// Optional albedo texture.
         ///
         /// Used with the `components::Texcoord2D` of the mesh.
+        ///
+        /// Currently supports only sRGB(A) textures, ignoring alpha.
+        /// (meaning that the tensor must have 3 or 4 channels and use the `u8` format)
         Mesh3D with_albedo_texture_buffer(rerun::components::ImageBuffer _albedo_texture_buffer
         ) && {
             albedo_texture_buffer = std::move(_albedo_texture_buffer);

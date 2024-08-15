@@ -184,6 +184,9 @@ class Mesh3D(Mesh3DExt, Archetype):
     #
     # Used with the [`components.Texcoord2D`][rerun.components.Texcoord2D] of the mesh.
     #
+    # Currently supports only sRGB(A) textures, ignoring alpha.
+    # (meaning that the tensor must have 3 or 4 channels and use the `u8` format)
+    #
     # (Docstring intentionally commented out to hide this field from the docs)
 
     albedo_texture_format: components.ImageFormatBatch | None = field(
