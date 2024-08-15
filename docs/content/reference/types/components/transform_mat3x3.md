@@ -22,9 +22,9 @@ row 2 | flat_columns[2] flat_columns[5] flat_columns[8]
 * matrix: [`Mat3x3`](../datatypes/mat3x3.md)
 
 ## API reference links
- * 🌊 [C++ API docs for `TransformMat3x3`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1components_1_1TransformMat3x3.html?speculative-link)
- * 🐍 [Python API docs for `TransformMat3x3`](https://ref.rerun.io/docs/python/stable/common/components?speculative-link#rerun.components.TransformMat3x3)
- * 🦀 [Rust API docs for `TransformMat3x3`](https://docs.rs/rerun/latest/rerun/components/struct.TransformMat3x3.html?speculative-link)
+ * 🌊 [C++ API docs for `TransformMat3x3`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1components_1_1TransformMat3x3.html)
+ * 🐍 [Python API docs for `TransformMat3x3`](https://ref.rerun.io/docs/python/stable/common/components#rerun.components.TransformMat3x3)
+ * 🦀 [Rust API docs for `TransformMat3x3`](https://docs.rs/rerun/latest/rerun/components/struct.TransformMat3x3.html)
 
 
 ## Used by

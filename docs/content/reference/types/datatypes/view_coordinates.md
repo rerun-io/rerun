@@ -25,9 +25,9 @@ The following constants are used to represent the different directions:
 * coordinates: 3x `u8`
 
 ## API reference links
- * 🌊 [C++ API docs for `ViewCoordinates`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1datatypes_1_1ViewCoordinates.html?speculative-link)
- * 🐍 [Python API docs for `ViewCoordinates`](https://ref.rerun.io/docs/python/stable/common/datatypes?speculative-link#rerun.datatypes.ViewCoordinates)
- * 🦀 [Rust API docs for `ViewCoordinates`](https://docs.rs/rerun/latest/rerun/datatypes/struct.ViewCoordinates.html?speculative-link)
+ * 🌊 [C++ API docs for `ViewCoordinates`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1datatypes_1_1ViewCoordinates.html)
+ * 🐍 [Python API docs for `ViewCoordinates`](https://ref.rerun.io/docs/python/stable/common/datatypes#rerun.datatypes.ViewCoordinates)
+ * 🦀 [Rust API docs for `ViewCoordinates`](https://docs.rs/rerun/latest/rerun/datatypes/struct.ViewCoordinates.html)
 
 
 ## Used by
