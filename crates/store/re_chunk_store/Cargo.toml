@@ -30,7 +30,6 @@ deadlock_detection = ["parking_lot/deadlock_detection"]
 # Rerun dependencies:
 re_chunk.workspace = true
 re_format.workspace = true
-re_format_arrow.workspace = true
 re_log = { workspace = true, features = ["setup"] }
 re_log_types.workspace = true
 re_tracing.workspace = true
@@ -45,7 +44,6 @@ itertools = { workspace = true }
 nohash-hasher.workspace = true
 once_cell.workspace = true
 parking_lot.workspace = true
-smallvec.workspace = true
 thiserror.workspace = true
 web-time.workspace = true
 
