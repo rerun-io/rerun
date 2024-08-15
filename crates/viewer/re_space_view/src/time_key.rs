@@ -9,6 +9,8 @@ use re_log_types::TimeInt;
 /// If you override some static data (e.g. point cloud radius), the row id should be ignored,
 /// otherwise the zipping iterators will say the override came _after_ the original data,
 /// and so by latest-at semantics, the override will be ignored.
+///
+/// See <https://github.com/rerun-io/rerun/pull/7199> for more.
 #[derive(Clone, Copy, Debug)]
 pub struct TimeKey {
     pub time: TimeInt,
