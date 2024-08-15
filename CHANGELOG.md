@@ -141,6 +141,7 @@ rerun rrd compact --max-rows 4096 --max-bytes=1048576 /my/recordings/*.rrd > out
 ```
 
 ### ⚠️  Breaking changes
+* `.rrd` files from older versions won't load correctly in Rerun 0.18
 * `mesh_material: Material` has been renamed to `albedo_factor: AlbedoFactor` [#6841](https://github.com/rerun-io/rerun/pull/6841)
 * 3D transform APIs: Previously, the transform component was represented as one of several variants (an Arrow union, `enum` in Rust) depending on how the transform was expressed. Instead, there are now several components for translation/scale/rotation/matrices that can live side-by-side in the 3D transform archetype.
 * Python: `NV12/YUY2` are now logged with `Image`
