@@ -1,7 +1,7 @@
-use re_chunk_store::RowId;
-use re_log_types::{hash::Hash64, Instance, TimeInt};
+use re_log_types::{hash::Hash64, Instance};
 use re_renderer::renderer::MeshInstance;
 use re_renderer::RenderContext;
+use re_space_view::TimeKey;
 use re_types::{
     archetypes::Asset3D,
     components::{Blob, MediaType},
@@ -33,7 +33,7 @@ impl Default for Asset3DVisualizer {
 }
 
 struct Asset3DComponentData {
-    index: (TimeInt, RowId),
+    index: TimeKey,
 
     blob: ArrowBuffer<u8>,
     media_type: Option<ArrowString>,
@@ -58,7 +58,7 @@ impl Asset3DVisualizer {
                 media_type: data.media_type.clone().map(Into::into),
             };
 
-            let primary_row_id = data.index.1;
+            let primary_row_id = data.index.row_id;
             let picking_instance_hash = re_entity_db::InstancePathHash::entity_all(entity_path);
             let outline_mask_ids = ent_context.highlight.index_outline_mask(Instance::ALL);
 

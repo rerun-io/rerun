@@ -9,6 +9,7 @@ use re_types_core::ComponentName;
 use re_viewer_context::{DataResult, QueryContext, ViewContext};
 
 use crate::DataResultQuery as _;
+use crate::TimeKey;
 
 // ---
 
@@ -393,10 +394,11 @@ impl<'a> RangeResultsExt for HybridResults<'a> {
 
 // ---
 
-use re_chunk::{ChunkComponentIterItem, RowId, TimeInt, Timeline};
+use re_chunk::{ChunkComponentIterItem, Timeline};
 use re_chunk_store::external::{re_chunk, re_chunk::external::arrow2};
 
 /// The iterator type backing [`HybridResults::iter_as`].
+#[derive(Debug)]
 pub struct HybridResultsChunkIter<'a> {
     chunks: Cow<'a, [Chunk]>,
     timeline: Timeline,
@@ -409,10 +411,12 @@ impl<'a> HybridResultsChunkIter<'a> {
     /// See [`Chunk::iter_component`] for more information.
     pub fn component<C: re_types_core::Component>(
         &'a self,
-    ) -> impl Iterator<Item = ((TimeInt, RowId), ChunkComponentIterItem<C>)> + 'a {
+    ) -> impl Iterator<Item = (TimeKey, ChunkComponentIterItem<C>)> + 'a {
         self.chunks.iter().flat_map(move |chunk| {
             itertools::izip!(
-                chunk.iter_component_indices(&self.timeline, &self.component_name),
+                chunk
+                    .iter_component_indices(&self.timeline, &self.component_name)
+                    .map(TimeKey::from),
                 chunk.iter_component::<C>(),
             )
         })
@@ -423,10 +427,12 @@ impl<'a> HybridResultsChunkIter<'a> {
     /// See [`Chunk::iter_primitive`] for more information.
     pub fn primitive<T: arrow2::types::NativeType>(
         &'a self,
-    ) -> impl Iterator<Item = ((TimeInt, RowId), &'a [T])> + 'a {
+    ) -> impl Iterator<Item = (TimeKey, &'a [T])> + 'a {
         self.chunks.iter().flat_map(move |chunk| {
             itertools::izip!(
-                chunk.iter_component_indices(&self.timeline, &self.component_name),
+                chunk
+                    .iter_component_indices(&self.timeline, &self.component_name)
+                    .map(TimeKey::from),
                 chunk.iter_primitive::<T>(&self.component_name)
             )
         })
@@ -437,13 +443,15 @@ impl<'a> HybridResultsChunkIter<'a> {
     /// See [`Chunk::iter_primitive_array`] for more information.
     pub fn primitive_array<const N: usize, T: arrow2::types::NativeType>(
         &'a self,
-    ) -> impl Iterator<Item = ((TimeInt, RowId), &'a [[T; N]])> + 'a
+    ) -> impl Iterator<Item = (TimeKey, &'a [[T; N]])> + 'a
     where
         [T; N]: bytemuck::Pod,
     {
         self.chunks.iter().flat_map(move |chunk| {
             itertools::izip!(
-                chunk.iter_component_indices(&self.timeline, &self.component_name),
+                chunk
+                    .iter_component_indices(&self.timeline, &self.component_name)
+                    .map(TimeKey::from),
                 chunk.iter_primitive_array::<N, T>(&self.component_name)
             )
         })
@@ -454,13 +462,15 @@ impl<'a> HybridResultsChunkIter<'a> {
     /// See [`Chunk::iter_primitive_array_list`] for more information.
     pub fn primitive_array_list<const N: usize, T: arrow2::types::NativeType>(
         &'a self,
-    ) -> impl Iterator<Item = ((TimeInt, RowId), Vec<&'a [[T; N]]>)> + 'a
+    ) -> impl Iterator<Item = (TimeKey, Vec<&'a [[T; N]]>)> + 'a
     where
         [T; N]: bytemuck::Pod,
     {
         self.chunks.iter().flat_map(move |chunk| {
             itertools::izip!(
-                chunk.iter_component_indices(&self.timeline, &self.component_name),
+                chunk
+                    .iter_component_indices(&self.timeline, &self.component_name)
+                    .map(TimeKey::from),
                 chunk.iter_primitive_array_list::<N, T>(&self.component_name)
             )
         })
@@ -471,10 +481,12 @@ impl<'a> HybridResultsChunkIter<'a> {
     /// See [`Chunk::iter_string`] for more information.
     pub fn string(
         &'a self,
-    ) -> impl Iterator<Item = ((TimeInt, RowId), Vec<re_types_core::ArrowString>)> + 'a {
+    ) -> impl Iterator<Item = (TimeKey, Vec<re_types_core::ArrowString>)> + 'a {
         self.chunks.iter().flat_map(|chunk| {
             itertools::izip!(
-                chunk.iter_component_indices(&self.timeline, &self.component_name),
+                chunk
+                    .iter_component_indices(&self.timeline, &self.component_name)
+                    .map(TimeKey::from),
                 chunk.iter_string(&self.component_name)
             )
         })
@@ -485,10 +497,12 @@ impl<'a> HybridResultsChunkIter<'a> {
     /// See [`Chunk::iter_buffer`] for more information.
     pub fn buffer<T: arrow2::types::NativeType>(
         &'a self,
-    ) -> impl Iterator<Item = ((TimeInt, RowId), Vec<re_types_core::ArrowBuffer<T>>)> + 'a {
+    ) -> impl Iterator<Item = (TimeKey, Vec<re_types_core::ArrowBuffer<T>>)> + 'a {
         self.chunks.iter().flat_map(|chunk| {
             itertools::izip!(
-                chunk.iter_component_indices(&self.timeline, &self.component_name),
+                chunk
+                    .iter_component_indices(&self.timeline, &self.component_name)
+                    .map(TimeKey::from),
                 chunk.iter_buffer(&self.component_name)
             )
         })

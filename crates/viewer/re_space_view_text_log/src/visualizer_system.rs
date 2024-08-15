@@ -119,7 +119,7 @@ impl TextLogSystem {
 
         let all_frames = izip!(all_timepoints, all_frames);
 
-        for (timepoint, ((data_time, row_id), bodies, levels, colors)) in all_frames {
+        for (timepoint, (index, bodies, levels, colors)) in all_frames {
             let levels = levels.as_deref().unwrap_or(&[]).iter().cloned().map(Some);
             let colors = colors
                 .unwrap_or(&[])
@@ -136,9 +136,9 @@ impl TextLogSystem {
 
             for (text, level, color) in results {
                 self.entries.push(Entry {
-                    row_id,
+                    row_id: index.row_id,
                     entity_path: data_result.entity_path.clone(),
-                    time: data_time,
+                    time: index.time,
                     timepoint: timepoint.clone(),
                     color,
                     body: text.clone().into(),
