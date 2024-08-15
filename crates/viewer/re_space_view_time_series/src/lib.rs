@@ -74,10 +74,7 @@ pub enum PlotSeriesKind {
 #[derive(Clone, Debug)]
 pub struct PlotSeries {
     /// Label of the series.
-    ///
-    /// If `None`, it means no label was logged or overridden. In this case, it should be derived
-    /// from the entity path.
-    pub label: Option<String>,
+    pub label: String,
 
     pub color: egui::Color32,
 

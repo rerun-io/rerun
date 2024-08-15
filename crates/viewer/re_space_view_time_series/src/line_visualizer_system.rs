@@ -388,7 +388,7 @@ impl SeriesLineSystem {
                 .iter()
                 .find(|chunk| !chunk.is_empty())
                 .and_then(|chunk| chunk.component_mono::<Name>(0)?.ok())
-                .map(|name| name.0.to_string());
+                .unwrap_or_else(|| self.fallback_for(&query_ctx));
 
             // Now convert the `PlotPoints` into `Vec<PlotSeries>`
             let aggregator = results
@@ -445,7 +445,7 @@ impl SeriesLineSystem {
                 points,
                 ctx.recording_store(),
                 view_query,
-                series_name,
+                series_name.into(),
                 aggregator,
                 all_series,
             );

@@ -467,7 +467,7 @@ impl SeriesPointSystem {
                 .iter()
                 .find(|chunk| !chunk.is_empty())
                 .and_then(|chunk| chunk.component_mono::<Name>(0)?.ok())
-                .map(|name| name.0.to_string());
+                .unwrap_or_else(|| self.fallback_for(&query_ctx));
 
             // Now convert the `PlotPoints` into `Vec<PlotSeries>`
             points_to_series(
@@ -476,7 +476,7 @@ impl SeriesPointSystem {
                 points,
                 ctx.recording_store(),
                 view_query,
-                series_name,
+                series_name.into(),
                 // Aggregation for points is not supported.
                 re_types::components::AggregationPolicy::Off,
                 all_series,

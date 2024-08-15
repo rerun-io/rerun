@@ -78,6 +78,81 @@ pub fn determine_time_range(
     time_range
 }
 
+#[allow(clippy::needless_pass_by_value)]
+#[inline(never)] // Better callstacks on crashes
+fn add_series_runs(
+    series_label: String,
+    points: Vec<PlotPoint>,
+    entity_path: &EntityPath,
+    aggregator: AggregationPolicy,
+    aggregation_factor: f64,
+    min_time: i64,
+    all_series: &mut Vec<PlotSeries>,
+) {
+    re_tracing::profile_function!();
+
+    let num_points = points.len();
+    let mut attrs = points[0].attrs.clone();
+    let mut series: PlotSeries = PlotSeries {
+        label: series_label.clone(),
+        color: attrs.color,
+        radius_ui: attrs.radius_ui,
+        points: Vec::with_capacity(num_points),
+        kind: attrs.kind,
+        entity_path: entity_path.clone(),
+        aggregator,
+        aggregation_factor,
+        min_time,
+    };
+
+    for (i, p) in points.into_iter().enumerate() {
+        if p.attrs == attrs {
+            // Same attributes, just add to the current series.
+
+            series.points.push((p.time, p.value));
+        } else {
+            // Attributes changed since last point, break up the current run into a
+            // its own series, and start the next one.
+
+            attrs = p.attrs;
+            let prev_series = std::mem::replace(
+                &mut series,
+                PlotSeries {
+                    label: series_label.clone(),
+                    color: attrs.color,
+                    radius_ui: attrs.radius_ui,
+                    kind: attrs.kind,
+                    points: Vec::with_capacity(num_points - i),
+                    entity_path: entity_path.clone(),
+                    aggregator,
+                    aggregation_factor,
+                    min_time,
+                },
+            );
+
+            let cur_continuous = matches!(attrs.kind, PlotSeriesKind::Continuous);
+            let prev_continuous = matches!(prev_series.kind, PlotSeriesKind::Continuous);
+
+            let prev_point = *prev_series.points.last().unwrap();
+            all_series.push(prev_series);
+
+            // If the previous point was continuous and the current point is continuous
+            // too, then we want the 2 segments to appear continuous even though they
+            // are actually split from a data standpoint.
+            if cur_continuous && prev_continuous {
+                series.points.push(prev_point);
+            }
+
+            // Add the point that triggered the split to the new segment.
+            series.points.push((p.time, p.value));
+        }
+    }
+
+    if !series.points.is_empty() {
+        all_series.push(series);
+    }
+}
+
 // We have a bunch of raw points, and now we need to group them into individual series.
 // A series is a continuous run of points with identical attributes: each time
 // we notice a change in attributes, we need a new series.
@@ -88,7 +163,7 @@ pub fn points_to_series(
     points: Vec<PlotPoint>,
     store: &re_chunk_store::ChunkStore,
     query: &ViewQuery<'_>,
-    series_label: Option<String>,
+    series_label: String,
     aggregator: AggregationPolicy,
     all_series: &mut Vec<PlotSeries>,
 ) {
@@ -122,7 +197,7 @@ pub fn points_to_series(
         });
     } else {
         add_series_runs(
-            &series_label,
+            series_label,
             points,
             entity_path,
             aggregator,
@@ -197,78 +272,4 @@ pub fn apply_aggregation(
     );
 
     (actual_aggregation_factor, points)
-}
-
-#[inline(never)] // Better callstacks on crashes
-fn add_series_runs(
-    series_label: &Option<String>,
-    points: Vec<PlotPoint>,
-    entity_path: &EntityPath,
-    aggregator: AggregationPolicy,
-    aggregation_factor: f64,
-    min_time: i64,
-    all_series: &mut Vec<PlotSeries>,
-) {
-    re_tracing::profile_function!();
-
-    let num_points = points.len();
-    let mut attrs = points[0].attrs.clone();
-    let mut series: PlotSeries = PlotSeries {
-        label: series_label.clone(),
-        color: attrs.color,
-        radius_ui: attrs.radius_ui,
-        points: Vec::with_capacity(num_points),
-        kind: attrs.kind,
-        entity_path: entity_path.clone(),
-        aggregator,
-        aggregation_factor,
-        min_time,
-    };
-
-    for (i, p) in points.into_iter().enumerate() {
-        if p.attrs == attrs {
-            // Same attributes, just add to the current series.
-
-            series.points.push((p.time, p.value));
-        } else {
-            // Attributes changed since last point, break up the current run into a
-            // its own series, and start the next one.
-
-            attrs = p.attrs;
-            let prev_series = std::mem::replace(
-                &mut series,
-                PlotSeries {
-                    label: series_label.clone(),
-                    color: attrs.color,
-                    radius_ui: attrs.radius_ui,
-                    kind: attrs.kind,
-                    points: Vec::with_capacity(num_points - i),
-                    entity_path: entity_path.clone(),
-                    aggregator,
-                    aggregation_factor,
-                    min_time,
-                },
-            );
-
-            let cur_continuous = matches!(attrs.kind, PlotSeriesKind::Continuous);
-            let prev_continuous = matches!(prev_series.kind, PlotSeriesKind::Continuous);
-
-            let prev_point = *prev_series.points.last().unwrap();
-            all_series.push(prev_series);
-
-            // If the previous point was continuous and the current point is continuous
-            // too, then we want the 2 segments to appear continuous even though they
-            // are actually split from a data standpoint.
-            if cur_continuous && prev_continuous {
-                series.points.push(prev_point);
-            }
-
-            // Add the point that triggered the split to the new segment.
-            series.points.push((p.time, p.value));
-        }
-    }
-
-    if !series.points.is_empty() {
-        all_series.push(series);
-    }
 }
