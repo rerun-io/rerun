@@ -49,6 +49,13 @@ pub struct TimeSeriesSpaceViewState {
     /// Other parts of the system, such as query clamping, need to be aware of that offset in order
     /// to work properly.
     pub(crate) time_offset: i64,
+
+    /// Default names for entities, used when no label is provided.
+    ///
+    /// This is here because it must be computed with full knowledge of all entities in the plot
+    /// (e.g. to avoid `hello/x` and `world/x` both being named `x`), and this knowledge must be
+    /// forwarded to the default providers.
+    pub(crate) default_names_for_entities: HashMap<EntityPath, String>,
 }
 
 impl Default for TimeSeriesSpaceViewState {
@@ -59,6 +66,7 @@ impl Default for TimeSeriesSpaceViewState {
             saved_auto_bounds: Default::default(),
             scalar_range: [0.0, 0.0].into(),
             time_offset: 0,
+            default_names_for_entities: Default::default(),
         }
     }
 }
@@ -427,7 +435,8 @@ Display time series data in a plot.
             *state.scalar_range.start_mut() = f64::INFINITY;
             *state.scalar_range.end_mut() = f64::NEG_INFINITY;
 
-            let label_from_entity = EntityPath::short_names_with_disambiguation(
+            // This is stored in state such that default providers may access it
+            state.default_names_for_entities = EntityPath::short_names_with_disambiguation(
                 all_plot_series
                     .iter()
                     .map(|series| series.entity_path.clone()),
@@ -456,7 +465,7 @@ Display time series data in a plot.
                 let label = series
                     .label
                     .as_ref()
-                    .or_else(|| label_from_entity.get(&series.entity_path))
+                    .or_else(|| state.default_names_for_entities.get(&series.entity_path))
                     .cloned()
                     .unwrap_or_else(|| "unknown".to_owned());
 
