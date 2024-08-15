@@ -184,9 +184,14 @@ impl ChunkStoreSubscriber for VisualizerEntitySubscriber {
                 continue;
             }
 
-            for component_name in event.diff.chunk.component_names() {
-                if let Some(index) = self.required_components_indices.get(&component_name) {
-                    required_components_bitmap.set(*index, true);
+            for (component_name, list_array) in event.diff.chunk.components() {
+                if let Some(index) = self.required_components_indices.get(component_name) {
+                    // The component might be present, but logged completely empty.
+                    // That shouldn't count towards filling "having the required component present"!
+                    // (Note: This happens frequently now with `Transform3D`'s component which always get logged, thus tripping of the `AxisLengthDetector`!)` )
+                    if !list_array.values().is_empty() {
+                        required_components_bitmap.set(*index, true);
+                    }
                 }
             }
 
