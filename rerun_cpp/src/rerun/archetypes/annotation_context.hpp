@@ -27,7 +27,7 @@ namespace rerun::archetypes {
     /// ## Example
     ///
     /// ### Segmentation
-    /// ![image](https://static.rerun.io/annotation_context_segmentation/0e21c0a04e456fec41d16b0deaa12c00cddf2d9b/full.png)
+    /// ![image](https://static.rerun.io/annotation_context_segmentation/6c9e88fc9d44a08031cadd444c2e58a985cc1208/full.png)
     ///
     /// ```cpp
     /// #include <rerun.hpp>

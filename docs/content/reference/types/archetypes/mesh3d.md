@@ -34,11 +34,11 @@ an instance of the mesh will be drawn for each transform.
 snippet: archetypes/mesh3d_indexed
 
 <picture data-inline-viewer="snippets/mesh3d_indexed">
-  <source media="(max-width: 480px)" srcset="https://static.rerun.io/mesh3d_simple/e1e5fd97265daf0d0bc7b782d862f19086fd6975/480w.png">
-  <source media="(max-width: 768px)" srcset="https://static.rerun.io/mesh3d_simple/e1e5fd97265daf0d0bc7b782d862f19086fd6975/768w.png">
-  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/mesh3d_simple/e1e5fd97265daf0d0bc7b782d862f19086fd6975/1024w.png">
-  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/mesh3d_simple/e1e5fd97265daf0d0bc7b782d862f19086fd6975/1200w.png">
-  <img src="https://static.rerun.io/mesh3d_simple/e1e5fd97265daf0d0bc7b782d862f19086fd6975/full.png">
+  <source media="(max-width: 480px)" srcset="https://static.rerun.io/mesh3d_indexed/57c70dc992e6dc0bd9c5222ca084f5b6240cea75/480w.png">
+  <source media="(max-width: 768px)" srcset="https://static.rerun.io/mesh3d_indexed/57c70dc992e6dc0bd9c5222ca084f5b6240cea75/768w.png">
+  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/mesh3d_indexed/57c70dc992e6dc0bd9c5222ca084f5b6240cea75/1024w.png">
+  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/mesh3d_indexed/57c70dc992e6dc0bd9c5222ca084f5b6240cea75/1200w.png">
+  <img src="https://static.rerun.io/mesh3d_indexed/57c70dc992e6dc0bd9c5222ca084f5b6240cea75/full.png">
 </picture>
 
 ### 3D mesh with partial updates
@@ -46,11 +46,11 @@ snippet: archetypes/mesh3d_indexed
 snippet: archetypes/mesh3d_partial_updates
 
 <picture data-inline-viewer="snippets/mesh3d_partial_updates">
-  <source media="(max-width: 480px)" srcset="https://static.rerun.io/mesh3d_partial_updates/a11e4accb0257dcd9531867b7e1d6fd5e3bee5c3/480w.png">
-  <source media="(max-width: 768px)" srcset="https://static.rerun.io/mesh3d_partial_updates/a11e4accb0257dcd9531867b7e1d6fd5e3bee5c3/768w.png">
-  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/mesh3d_partial_updates/a11e4accb0257dcd9531867b7e1d6fd5e3bee5c3/1024w.png">
-  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/mesh3d_partial_updates/a11e4accb0257dcd9531867b7e1d6fd5e3bee5c3/1200w.png">
-  <img src="https://static.rerun.io/mesh3d_partial_updates/a11e4accb0257dcd9531867b7e1d6fd5e3bee5c3/full.png">
+  <source media="(max-width: 480px)" srcset="https://static.rerun.io/mesh3d_partial_updates/7de33d26220585691a403098c953cd46f94c3262/480w.png">
+  <source media="(max-width: 768px)" srcset="https://static.rerun.io/mesh3d_partial_updates/7de33d26220585691a403098c953cd46f94c3262/768w.png">
+  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/mesh3d_partial_updates/7de33d26220585691a403098c953cd46f94c3262/1024w.png">
+  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/mesh3d_partial_updates/7de33d26220585691a403098c953cd46f94c3262/1200w.png">
+  <img src="https://static.rerun.io/mesh3d_partial_updates/7de33d26220585691a403098c953cd46f94c3262/full.png">
 </picture>
 
 ### 3D mesh with instancing

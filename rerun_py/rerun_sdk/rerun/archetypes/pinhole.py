@@ -51,17 +51,20 @@ class Pinhole(PinholeExt, Archetype):
 
     rr.init("rerun_example_pinhole_perspective", spawn=True)
 
-    rr.log("world/cam", rr.Pinhole(fov_y=0.7853982, aspect_ratio=1.7777778, camera_xyz=rr.ViewCoordinates.RUB))
+    rr.log(
+        "world/cam",
+        rr.Pinhole(fov_y=0.7853982, aspect_ratio=1.7777778, camera_xyz=rr.ViewCoordinates.RUB, image_plane_distance=0.1),
+    )
 
-    rr.log("world/points", rr.Points3D([(0.0, 0.0, -0.5), (0.1, 0.1, -0.5), (-0.1, -0.1, -0.5)]))
+    rr.log("world/points", rr.Points3D([(0.0, 0.0, -0.5), (0.1, 0.1, -0.5), (-0.1, -0.1, -0.5)], radii=0.025))
     ```
     <center>
     <picture>
-      <source media="(max-width: 480px)" srcset="https://static.rerun.io/pinhole_perspective/d0bd02a0cf354a5c8eafb79a84fe8674335cab98/480w.png">
-      <source media="(max-width: 768px)" srcset="https://static.rerun.io/pinhole_perspective/d0bd02a0cf354a5c8eafb79a84fe8674335cab98/768w.png">
-      <source media="(max-width: 1024px)" srcset="https://static.rerun.io/pinhole_perspective/d0bd02a0cf354a5c8eafb79a84fe8674335cab98/1024w.png">
-      <source media="(max-width: 1200px)" srcset="https://static.rerun.io/pinhole_perspective/d0bd02a0cf354a5c8eafb79a84fe8674335cab98/1200w.png">
-      <img src="https://static.rerun.io/pinhole_perspective/d0bd02a0cf354a5c8eafb79a84fe8674335cab98/full.png" width="640">
+      <source media="(max-width: 480px)" srcset="https://static.rerun.io/pinhole_perspective/317e2de6d212b238dcdad5b67037e9e2a2afafa0/480w.png">
+      <source media="(max-width: 768px)" srcset="https://static.rerun.io/pinhole_perspective/317e2de6d212b238dcdad5b67037e9e2a2afafa0/768w.png">
+      <source media="(max-width: 1024px)" srcset="https://static.rerun.io/pinhole_perspective/317e2de6d212b238dcdad5b67037e9e2a2afafa0/1024w.png">
+      <source media="(max-width: 1200px)" srcset="https://static.rerun.io/pinhole_perspective/317e2de6d212b238dcdad5b67037e9e2a2afafa0/1200w.png">
+      <img src="https://static.rerun.io/pinhole_perspective/317e2de6d212b238dcdad5b67037e9e2a2afafa0/full.png" width="640">
     </picture>
     </center>
 

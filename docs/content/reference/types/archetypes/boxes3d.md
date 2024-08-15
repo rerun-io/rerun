@@ -45,10 +45,10 @@ snippet: archetypes/box3d_simple
 snippet: archetypes/box3d_batch
 
 <picture data-inline-viewer="snippets/box3d_batch">
-  <source media="(max-width: 480px)" srcset="https://static.rerun.io/box3d_batch/6d3e453c3a0201ae42bbae9de941198513535f1d/480w.png">
-  <source media="(max-width: 768px)" srcset="https://static.rerun.io/box3d_batch/6d3e453c3a0201ae42bbae9de941198513535f1d/768w.png">
-  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/box3d_batch/6d3e453c3a0201ae42bbae9de941198513535f1d/1024w.png">
-  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/box3d_batch/6d3e453c3a0201ae42bbae9de941198513535f1d/1200w.png">
-  <img src="https://static.rerun.io/box3d_batch/6d3e453c3a0201ae42bbae9de941198513535f1d/full.png">
+  <source media="(max-width: 480px)" srcset="https://static.rerun.io/box3d_batch/5aac5b5d29c9f2ecd572c93f6970fcec17f4984b/480w.png">
+  <source media="(max-width: 768px)" srcset="https://static.rerun.io/box3d_batch/5aac5b5d29c9f2ecd572c93f6970fcec17f4984b/768w.png">
+  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/box3d_batch/5aac5b5d29c9f2ecd572c93f6970fcec17f4984b/1024w.png">
+  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/box3d_batch/5aac5b5d29c9f2ecd572c93f6970fcec17f4984b/1200w.png">
+  <img src="https://static.rerun.io/box3d_batch/5aac5b5d29c9f2ecd572c93f6970fcec17f4984b/full.png">
 </picture>
 

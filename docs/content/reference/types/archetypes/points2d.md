@@ -29,11 +29,11 @@ A 2D point cloud with positions and optional colors, radii, labels, etc.
 snippet: archetypes/point2d_simple
 
 <picture data-inline-viewer="snippets/point2d_simple">
-  <source media="(max-width: 480px)" srcset="https://static.rerun.io/point2d_simple/a8e801958bce5aa4e080659c033630f86ce95f71/480w.png">
-  <source media="(max-width: 768px)" srcset="https://static.rerun.io/point2d_simple/a8e801958bce5aa4e080659c033630f86ce95f71/768w.png">
-  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/point2d_simple/a8e801958bce5aa4e080659c033630f86ce95f71/1024w.png">
-  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/point2d_simple/a8e801958bce5aa4e080659c033630f86ce95f71/1200w.png">
-  <img src="https://static.rerun.io/point2d_simple/a8e801958bce5aa4e080659c033630f86ce95f71/full.png">
+  <source media="(max-width: 480px)" srcset="https://static.rerun.io/point2d_simple/66e33b237ecd3d51363e56706566c5e7a58fe075/480w.png">
+  <source media="(max-width: 768px)" srcset="https://static.rerun.io/point2d_simple/66e33b237ecd3d51363e56706566c5e7a58fe075/768w.png">
+  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/point2d_simple/66e33b237ecd3d51363e56706566c5e7a58fe075/1024w.png">
+  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/point2d_simple/66e33b237ecd3d51363e56706566c5e7a58fe075/1200w.png">
+  <img src="https://static.rerun.io/point2d_simple/66e33b237ecd3d51363e56706566c5e7a58fe075/full.png">
 </picture>
 
 ### Randomly distributed 2D points with varying color and radius
