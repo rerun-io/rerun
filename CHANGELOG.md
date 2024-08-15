@@ -4,7 +4,7 @@
 
 ## [0.18.0](https://github.com/rerun-io/rerun/compare/0.16.1...HEAD) - Ingestion speed and memory footprint
 
-TODO: Video of side by side loading of time series in 0.17 vs 0.18
+https://github.com/user-attachments/assets/95380a64-df05-4f85-b40a-0c6b8ec8d5cf
 
 📖 Release blogpost: TODO: add link
 🧳 Migration guide: http://rerun.io/docs/reference/migration/migration-0-18
