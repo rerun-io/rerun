@@ -87,6 +87,7 @@ from .time_range_boundary import (
     TimeRangeBoundaryLike,
     TimeRangeBoundaryType,
 )
+from .uint16 import UInt16, UInt16ArrayLike, UInt16Batch, UInt16Like, UInt16Type
 from .uint32 import UInt32, UInt32ArrayLike, UInt32Batch, UInt32Like, UInt32Type
 from .uint64 import UInt64, UInt64ArrayLike, UInt64Batch, UInt64Like, UInt64Type
 from .utf8 import Utf8, Utf8ArrayLike, Utf8Batch, Utf8Like, Utf8Type
@@ -97,6 +98,10 @@ from .uvec4d import UVec4D, UVec4DArrayLike, UVec4DBatch, UVec4DLike, UVec4DType
 from .vec2d import Vec2D, Vec2DArrayLike, Vec2DBatch, Vec2DLike, Vec2DType
 from .vec3d import Vec3D, Vec3DArrayLike, Vec3DBatch, Vec3DLike, Vec3DType
 from .vec4d import Vec4D, Vec4DArrayLike, Vec4DBatch, Vec4DLike, Vec4DType
+from .video import Video, VideoArrayLike, VideoBatch, VideoLike, VideoType
+from .video_config import VideoConfig, VideoConfigArrayLike, VideoConfigBatch, VideoConfigLike, VideoConfigType
+from .video_sample import VideoSample, VideoSampleArrayLike, VideoSampleBatch, VideoSampleLike, VideoSampleType
+from .video_segment import VideoSegment, VideoSegmentArrayLike, VideoSegmentBatch, VideoSegmentLike, VideoSegmentType
 from .view_coordinates import (
     ViewCoordinates,
     ViewCoordinatesArrayLike,
@@ -268,6 +273,11 @@ __all__ = [
     "TimeRangeBoundaryType",
     "TimeRangeLike",
     "TimeRangeType",
+    "UInt16",
+    "UInt16ArrayLike",
+    "UInt16Batch",
+    "UInt16Like",
+    "UInt16Type",
     "UInt32",
     "UInt32ArrayLike",
     "UInt32Batch",
@@ -318,6 +328,26 @@ __all__ = [
     "Vec4DBatch",
     "Vec4DLike",
     "Vec4DType",
+    "Video",
+    "VideoArrayLike",
+    "VideoBatch",
+    "VideoConfig",
+    "VideoConfigArrayLike",
+    "VideoConfigBatch",
+    "VideoConfigLike",
+    "VideoConfigType",
+    "VideoLike",
+    "VideoSample",
+    "VideoSampleArrayLike",
+    "VideoSampleBatch",
+    "VideoSampleLike",
+    "VideoSampleType",
+    "VideoSegment",
+    "VideoSegmentArrayLike",
+    "VideoSegmentBatch",
+    "VideoSegmentLike",
+    "VideoSegmentType",
+    "VideoType",
     "ViewCoordinates",
     "ViewCoordinatesArrayLike",
     "ViewCoordinatesBatch",

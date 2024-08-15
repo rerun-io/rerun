@@ -1,0 +1,75 @@
+namespace rerun.datatypes;
+
+/// Video configuration.
+// Must be a table because flatbuffers doesn't support strings in structs
+table VideoConfig {
+  /// String used to identify the codec and some of its configuration.
+  codec: rerun.datatypes.Utf8 (order: 100);
+
+  /// Natural height of the video.
+  coded_height: rerun.datatypes.UInt16 (order: 200);
+
+  /// Natural width of the video.
+  coded_width: rerun.datatypes.UInt16 (order: 300);
+
+  /// Codec-specific configuration.
+  // TODO(jan): why can't this be `rerun.datatypes.Blob`?
+  description: [ubyte] (order: 400);
+}
+
+/// A video sample.
+///
+/// Similar to a frame of video, but decoding a full frame typically requires more than one sample.
+///
+/// Samples can either be key frames or delta frames. Only key frames have enough data to decode a full frame,
+/// delta frames always require the context of a key frame and possibly also some number of preceding delta
+/// frames to decode a full frame.
+///
+/// The type of a given sample is implicit in its position in the [datatypes.VideoSegment] it belongs to,
+/// where the first sample is always a key frame.
+struct VideoSample (
+  "attr.rust.derive": "Default"
+) {
+  /// Time at which this sample appears, in time units.
+  timestamp: rerun.datatypes.UInt64 (order: 100);
+
+  /// Offset into video data.
+  byte_offset: rerun.datatypes.UInt32 (order: 200);
+
+  /// Length of the sample starting at the sample's byte offset.
+  byte_length: rerun.datatypes.UInt32 (order: 300);
+}
+
+/// A segment of video made up of one or more samples, always starts with a key frame.
+table VideoSegment (
+  "attr.rust.derive": "Default"
+) {
+  /// Time of the first sample in this segment, in time units.
+  timestamp: rerun.datatypes.UInt64 (order: 100);
+
+  /// List of samples contained in this segment.
+  ///
+  /// At least one sample per segment is guaranteed, and the first sample is always a key frame.
+  samples: [rerun.datatypes.VideoSample] (order: 200);
+}
+
+/// Minimal video container format.
+table Video {
+  /// The config for this video.
+  config: rerun.datatypes.VideoConfig (order: 100);
+
+  /// Number of time units per second.
+  timescale: rerun.datatypes.UInt64 (order: 200);
+
+  /// Duration of the video in time units.
+  duration: rerun.datatypes.UInt64 (order: 300);
+
+  /// Video is split into segments.
+  ///
+  /// Each segment begins with a key frame, followed by any number of delta frames.
+  segments: [rerun.datatypes.VideoSegment] (order: 400);
+
+  /// Raw video data.
+  // TODO(jan): why can't this be `rerun.datatypes.Blob`?
+  data: [ubyte] (order: 500);
+}

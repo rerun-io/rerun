@@ -38,6 +38,7 @@ Data types are the lowest layer of the data model hierarchy. They are re-usable 
 * [`TimeInt`](datatypes/time_int.md): A 64-bit number describing either nanoseconds OR sequence numbers.
 * [`TimeRange`](datatypes/time_range.md): Visible time range bounds for a specific timeline.
 * [`TimeRangeBoundary`](datatypes/time_range_boundary.md): Left or right boundary of a time range.
+* [`UInt16`](datatypes/uint16.md): A 16bit unsigned integer.
 * [`UInt32`](datatypes/uint32.md): A 32bit unsigned integer.
 * [`UInt64`](datatypes/uint64.md): A 64bit unsigned integer.
 * [`UVec2D`](datatypes/uvec2d.md): A uint32 vector in 2D space.
@@ -48,6 +49,10 @@ Data types are the lowest layer of the data model hierarchy. They are re-usable 
 * [`Vec2D`](datatypes/vec2d.md): A vector in 2D space.
 * [`Vec3D`](datatypes/vec3d.md): A vector in 3D space.
 * [`Vec4D`](datatypes/vec4d.md): A vector in 4D space.
+* [`Video`](datatypes/video.md): Minimal video container format.
+* [`VideoConfig`](datatypes/video_config.md): Video configuration.
+* [`VideoSample`](datatypes/video_sample.md): A video sample.
+* [`VideoSegment`](datatypes/video_segment.md): A segment of video made up of one or more samples, always starts with a key frame.
 * [`ViewCoordinates`](datatypes/view_coordinates.md): How we interpret the coordinate system of an entity/space.
 * [`VisibleTimeRange`](datatypes/visible_time_range.md): Visible time range bounds for a specific timeline.
 

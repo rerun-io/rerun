@@ -15,3 +15,6 @@ A 32bit unsigned integer.
  * 🦀 [Rust API docs for `UInt32`](https://docs.rs/rerun/latest/rerun/datatypes/struct.UInt32.html)
 
 
+## Used by
+
+* [`VideoSample`](../datatypes/video_sample.md)
