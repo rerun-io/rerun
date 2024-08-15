@@ -7,7 +7,6 @@
 TODO: Video of side by side loading of time series in 0.17 vs 0.18
 
 📖 Release blogpost: TODO: add link
-
 🧳 Migration guide: http://rerun.io/docs/reference/migration/migration-0-18
 
 ### ✨ Overview & highlights
@@ -19,9 +18,7 @@ These improvements come in 3 broad categories:
 * a new, configurable background compaction mechanism in the datastore,
 * new CLI tools to filter, prune and compact RRD files.
 
-TODO: do we want to include all the Transform and Image stuff in the overview or is the breaking change section enough already?
-
-TODO: link to ingestion guide
+Furthermore, we started cleaning up our data schema, leading to various changes in the way represent transforms & images.
 
 #### New `send` APIs
 
@@ -140,10 +137,23 @@ You can read more about it [in the new CLI reference manual](https://rerun.io/do
 rerun rrd compact --max-rows 4096 --max-bytes=1048576 /my/recordings/*.rrd > output.rrd
 ```
 
+#### Overhauled 3D transforms & instancing
+As part of improving our arrow schema and in preparation for reading data back in the SDK, we've split up transforms into several parts.
+This makes it much more performant to log large number of transforms as it allows updating only the parts you're interested in, e.g. logging a translation is now as lightweight as logging a single position.
+
+There are now additionally [`InstancePoses3D`](https://rerun.io/docs/reference/types/archetypes/instance_poses3d) which allow you to do two things:
+* all 3D entities: apply a transform to the entity without affecting its children
+* [`Mesh3D`](https://rerun.io/docs/reference/types/archetypes/mesh3d)/[`Asset3D`](https://rerun.io/docs/reference/types/archetypes/asset3d)/[`Boxes3D`](https://rerun.io/docs/reference/types/archetypes/boxes3d)/[`Ellipsoids3D`](https://rerun.io/docs/reference/types/archetypes/ellipsoids3d): instantiate objects several times with different poses, known as "instancing"
+  * Support for instancing of other archetypes is coming in the future!
+
+![instancing in action](https://static.rerun.io/mesh3d_leaf_transforms3d/c2d0ee033129da53168f5705625a9b033f3a3d61/1200w.png)
+_All four tetrahedron meshes on this screen share the same vertices and are instanced using an [`InstancePoses3D`](https://rerun.io/docs/reference/types/archetypes/instance_poses3d) archetype with 4 different translations_
+
+
 ### ⚠️  Breaking changes
 * `.rrd` files from older versions won't load correctly in Rerun 0.18
 * `mesh_material: Material` has been renamed to `albedo_factor: AlbedoFactor` [#6841](https://github.com/rerun-io/rerun/pull/6841)
-* 3D transform APIs: Previously, the transform component was represented as one of several variants (an Arrow union, `enum` in Rust) depending on how the transform was expressed. Instead, there are now several components for translation/scale/rotation/matrices that can live side-by-side in the 3D transform archetype.
+* [`Transform3D`](https://rerun.io/docs/reference/types/archetypes/transform3d) is no longer a single component but split into its constituent parts. From this follow various smaller API changes
 * Python: `NV12/YUY2` are now logged with `Image`
 * `ImageEncoded` is deprecated and replaced with [`EncodedImage`](https://rerun.io/docs/reference/types/archetypes/encoded_image) (JPEG, PNG, …) and  [`Image`](https://rerun.io/docs/reference/types/archetypes/image) (NV12, YUY2, …)
 * [`DepthImage`](https://rerun.io/docs/reference/types/archetypes/depth_image) and [`SegmentationImage`](https://rerun.io/docs/reference/types/archetypes/segmentation_image) are no longer encoded as a tensors, and expects its shape in `[width, height]` order
