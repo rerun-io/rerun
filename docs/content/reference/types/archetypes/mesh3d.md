@@ -16,7 +16,7 @@ an instance of the mesh will be drawn for each transform.
 
 **Recommended**: [`TriangleIndices`](../components/triangle_indices.md), [`Vector3D`](../components/vector3d.md)
 
-**Optional**: [`Color`](../components/color.md), [`Texcoord2D`](../components/texcoord2d.md), [`AlbedoFactor`](../components/albedo_factor.md), [`TensorData`](../components/tensor_data.md), [`ClassId`](../components/class_id.md)
+**Optional**: [`Color`](../components/color.md), [`Texcoord2D`](../components/texcoord2d.md), [`AlbedoFactor`](../components/albedo_factor.md), [`ImageBuffer`](../components/image_buffer.md), [`ImageFormat`](../components/image_format.md), [`ClassId`](../components/class_id.md)
 
 ## Shown in
 * [Spatial3DView](../views/spatial3d_view.md)

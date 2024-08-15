@@ -134,7 +134,10 @@ pub struct Mesh3D {
     ///
     /// Currently supports only sRGB(A) textures, ignoring alpha.
     /// (meaning that the tensor must have 3 or 4 channels and use the `u8` format)
-    pub albedo_texture: Option<crate::components::TensorData>,
+    pub albedo_texture_buffer: Option<crate::components::ImageBuffer>,
+
+    /// The format of the `albedo_texture_buffer`, if any.
+    pub albedo_texture_format: Option<crate::components::ImageFormat>,
 
     /// Optional class Ids for the vertices.
     ///
@@ -151,7 +154,8 @@ impl ::re_types_core::SizeBytes for Mesh3D {
             + self.vertex_colors.heap_size_bytes()
             + self.vertex_texcoords.heap_size_bytes()
             + self.albedo_factor.heap_size_bytes()
-            + self.albedo_texture.heap_size_bytes()
+            + self.albedo_texture_buffer.heap_size_bytes()
+            + self.albedo_texture_format.heap_size_bytes()
             + self.class_ids.heap_size_bytes()
     }
 
@@ -163,7 +167,8 @@ impl ::re_types_core::SizeBytes for Mesh3D {
             && <Option<Vec<crate::components::Color>>>::is_pod()
             && <Option<Vec<crate::components::Texcoord2D>>>::is_pod()
             && <Option<crate::components::AlbedoFactor>>::is_pod()
-            && <Option<crate::components::TensorData>>::is_pod()
+            && <Option<crate::components::ImageBuffer>>::is_pod()
+            && <Option<crate::components::ImageFormat>>::is_pod()
             && <Option<Vec<crate::components::ClassId>>>::is_pod()
     }
 }
@@ -180,18 +185,19 @@ static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 3usize]> =
         ]
     });
 
-static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 5usize]> =
+static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 6usize]> =
     once_cell::sync::Lazy::new(|| {
         [
             "rerun.components.Color".into(),
             "rerun.components.Texcoord2D".into(),
             "rerun.components.AlbedoFactor".into(),
-            "rerun.components.TensorData".into(),
+            "rerun.components.ImageBuffer".into(),
+            "rerun.components.ImageFormat".into(),
             "rerun.components.ClassId".into(),
         ]
     });
 
-static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 9usize]> =
+static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 10usize]> =
     once_cell::sync::Lazy::new(|| {
         [
             "rerun.components.Position3D".into(),
@@ -201,14 +207,15 @@ static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 9usize]> =
             "rerun.components.Color".into(),
             "rerun.components.Texcoord2D".into(),
             "rerun.components.AlbedoFactor".into(),
-            "rerun.components.TensorData".into(),
+            "rerun.components.ImageBuffer".into(),
+            "rerun.components.ImageFormat".into(),
             "rerun.components.ClassId".into(),
         ]
     });
 
 impl Mesh3D {
-    /// The total number of components in the archetype: 1 required, 3 recommended, 5 optional
-    pub const NUM_COMPONENTS: usize = 9usize;
+    /// The total number of components in the archetype: 1 required, 3 recommended, 6 optional
+    pub const NUM_COMPONENTS: usize = 10usize;
 }
 
 /// Indicator component for the [`Mesh3D`] [`::re_types_core::Archetype`]
@@ -335,16 +342,26 @@ impl ::re_types_core::Archetype for Mesh3D {
         } else {
             None
         };
-        let albedo_texture = if let Some(array) = arrays_by_name.get("rerun.components.TensorData")
-        {
-            <crate::components::TensorData>::from_arrow_opt(&**array)
-                .with_context("rerun.archetypes.Mesh3D#albedo_texture")?
-                .into_iter()
-                .next()
-                .flatten()
-        } else {
-            None
-        };
+        let albedo_texture_buffer =
+            if let Some(array) = arrays_by_name.get("rerun.components.ImageBuffer") {
+                <crate::components::ImageBuffer>::from_arrow_opt(&**array)
+                    .with_context("rerun.archetypes.Mesh3D#albedo_texture_buffer")?
+                    .into_iter()
+                    .next()
+                    .flatten()
+            } else {
+                None
+            };
+        let albedo_texture_format =
+            if let Some(array) = arrays_by_name.get("rerun.components.ImageFormat") {
+                <crate::components::ImageFormat>::from_arrow_opt(&**array)
+                    .with_context("rerun.archetypes.Mesh3D#albedo_texture_format")?
+                    .into_iter()
+                    .next()
+                    .flatten()
+            } else {
+                None
+            };
         let class_ids = if let Some(array) = arrays_by_name.get("rerun.components.ClassId") {
             Some({
                 <crate::components::ClassId>::from_arrow_opt(&**array)
@@ -364,7 +381,8 @@ impl ::re_types_core::Archetype for Mesh3D {
             vertex_colors,
             vertex_texcoords,
             albedo_factor,
-            albedo_texture,
+            albedo_texture_buffer,
+            albedo_texture_format,
             class_ids,
         })
     }
@@ -392,7 +410,10 @@ impl ::re_types_core::AsComponents for Mesh3D {
             self.albedo_factor
                 .as_ref()
                 .map(|comp| (comp as &dyn ComponentBatch).into()),
-            self.albedo_texture
+            self.albedo_texture_buffer
+                .as_ref()
+                .map(|comp| (comp as &dyn ComponentBatch).into()),
+            self.albedo_texture_format
                 .as_ref()
                 .map(|comp| (comp as &dyn ComponentBatch).into()),
             self.class_ids
@@ -418,7 +439,8 @@ impl Mesh3D {
             vertex_colors: None,
             vertex_texcoords: None,
             albedo_factor: None,
-            albedo_texture: None,
+            albedo_texture_buffer: None,
+            albedo_texture_format: None,
             class_ids: None,
         }
     }
@@ -480,11 +502,21 @@ impl Mesh3D {
     /// Currently supports only sRGB(A) textures, ignoring alpha.
     /// (meaning that the tensor must have 3 or 4 channels and use the `u8` format)
     #[inline]
-    pub fn with_albedo_texture(
+    pub fn with_albedo_texture_buffer(
         mut self,
-        albedo_texture: impl Into<crate::components::TensorData>,
+        albedo_texture_buffer: impl Into<crate::components::ImageBuffer>,
     ) -> Self {
-        self.albedo_texture = Some(albedo_texture.into());
+        self.albedo_texture_buffer = Some(albedo_texture_buffer.into());
+        self
+    }
+
+    /// The format of the `albedo_texture_buffer`, if any.
+    #[inline]
+    pub fn with_albedo_texture_format(
+        mut self,
+        albedo_texture_format: impl Into<crate::components::ImageFormat>,
+    ) -> Self {
+        self.albedo_texture_format = Some(albedo_texture_format.into());
         self
     }
 

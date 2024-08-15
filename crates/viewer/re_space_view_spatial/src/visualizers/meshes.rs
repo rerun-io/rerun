@@ -5,7 +5,8 @@ use re_space_view::TimeKey;
 use re_types::{
     archetypes::Mesh3D,
     components::{
-        AlbedoFactor, ClassId, Color, Position3D, TensorData, Texcoord2D, TriangleIndices, Vector3D,
+        AlbedoFactor, ClassId, Color, ImageBuffer, ImageFormat, Position3D, Texcoord2D,
+        TriangleIndices, Vector3D,
     },
     Loggable as _,
 };
@@ -50,7 +51,8 @@ struct Mesh3DComponentData<'a> {
 
     triangle_indices: Option<&'a [TriangleIndices]>,
     albedo_factor: Option<&'a AlbedoFactor>,
-    albedo_texture: Option<TensorData>,
+    albedo_buffer: Option<ImageBuffer>,
+    albedo_format: Option<ImageFormat>,
 
     class_ids: &'a [ClassId],
 }
@@ -106,8 +108,8 @@ impl Mesh3DVisualizer {
                             vertex_texcoords: (!vertex_texcoords.is_empty())
                                 .then_some(vertex_texcoords),
                             albedo_factor: data.albedo_factor.copied(),
-                            // NOTE: not actually cloning anything.
-                            albedo_texture: data.albedo_texture.clone(),
+                            albedo_texture_buffer: data.albedo_buffer.clone(), // shallow clone
+                            albedo_texture_format: data.albedo_format,
                             class_ids: (!data.class_ids.is_empty())
                                 .then(|| data.class_ids.to_owned()),
                         },
@@ -201,21 +203,21 @@ impl VisualizerSystem for Mesh3DVisualizer {
                 let all_vertex_texcoords = results.iter_as(timeline, Texcoord2D::name());
                 let all_triangle_indices = results.iter_as(timeline, TriangleIndices::name());
                 let all_albedo_factors = results.iter_as(timeline, AlbedoFactor::name());
-                // TODO(#6386): we have to deserialize here because `TensorData` is still a complex
-                // type at this point.
-                let all_albedo_textures = results.iter_as(timeline, TensorData::name());
+                let all_albedo_buffers = results.iter_as(timeline, ImageBuffer::name());
+                let all_albedo_formats = results.iter_as(timeline, ImageFormat::name());
                 let all_class_ids = results.iter_as(timeline, ClassId::name());
 
                 let query_result_hash = results.query_result_hash();
 
-                let data = re_query::range_zip_1x7(
+                let data = re_query::range_zip_1x8(
                     all_vertex_positions_indexed,
                     all_vertex_normals.primitive_array::<3, f32>(),
                     all_vertex_colors.primitive::<u32>(),
                     all_vertex_texcoords.primitive_array::<2, f32>(),
                     all_triangle_indices.primitive_array::<3, u32>(),
                     all_albedo_factors.primitive::<u32>(),
-                    all_albedo_textures.component::<TensorData>(),
+                    all_albedo_buffers.component::<ImageBuffer>(),
+                    all_albedo_formats.component::<ImageFormat>(),
                     all_class_ids.primitive::<u16>(),
                 )
                 .map(
@@ -227,7 +229,8 @@ impl VisualizerSystem for Mesh3DVisualizer {
                         vertex_texcoords,
                         triangle_indices,
                         albedo_factors,
-                        albedo_textures,
+                        albedo_buffers,
+                        albedo_formats,
                         class_ids,
                     )| {
                         Mesh3DComponentData {
@@ -247,8 +250,8 @@ impl VisualizerSystem for Mesh3DVisualizer {
                                     bytemuck::cast_slice(albedo_factors)
                                 })
                                 .first(),
-                            // NOTE: not actually cloning anything.
-                            albedo_texture: albedo_textures.unwrap_or_default().first().cloned(),
+                            albedo_buffer: albedo_buffers.unwrap_or_default().first().cloned(), // shallow clone
+                            albedo_format: albedo_formats.unwrap_or_default().first().copied(),
                             class_ids: class_ids
                                 .map_or(&[], |class_ids| bytemuck::cast_slice(class_ids)),
                         }

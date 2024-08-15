@@ -72,18 +72,10 @@ pub fn tensor_ui(
 
     if ui_layout.is_single_line() {
         ui.horizontal(|ui| {
-            let shape = match tensor.image_height_width_channels() {
-                Some([h, w, c]) => vec![
-                    TensorDimension::height(h),
-                    TensorDimension::width(w),
-                    TensorDimension::depth(c),
-                ],
-                None => tensor.shape.clone(),
-            };
             let text = format!(
                 "{}, {}",
                 tensor.dtype(),
-                format_tensor_shape_single_line(&shape)
+                format_tensor_shape_single_line(&tensor.shape)
             );
             ui_layout.label(ui, text).on_hover_ui(|ui| {
                 tensor_summary_ui(ui, tensor, &tensor_stats);

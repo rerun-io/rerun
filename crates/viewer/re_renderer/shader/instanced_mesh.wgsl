@@ -64,7 +64,8 @@ fn vs_main(in_vertex: VertexIn, in_instance: InstanceIn) -> VertexOut {
 
 @fragment
 fn fs_main_shaded(in: VertexOut) -> @location(0) vec4f {
-    let albedo = textureSample(albedo_texture, trilinear_sampler, in.texcoord).rgb
+    let texture = linear_from_srgb(textureSample(albedo_texture, trilinear_sampler, in.texcoord).rgb);
+    let albedo = texture
                  * in.color.rgb
                  * material.albedo_factor.rgb
                  + in.additive_tint_rgb;

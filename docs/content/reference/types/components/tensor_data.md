@@ -25,5 +25,4 @@ which stores a contiguous array of typed values.
 ## Used by
 
 * [`BarChart`](../archetypes/bar_chart.md)
-* [`Mesh3D`](../archetypes/mesh3d.md)
 * [`Tensor`](../archetypes/tensor.md)

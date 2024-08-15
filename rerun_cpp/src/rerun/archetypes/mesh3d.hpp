@@ -9,8 +9,9 @@
 #include "../components/albedo_factor.hpp"
 #include "../components/class_id.hpp"
 #include "../components/color.hpp"
+#include "../components/image_buffer.hpp"
+#include "../components/image_format.hpp"
 #include "../components/position3d.hpp"
-#include "../components/tensor_data.hpp"
 #include "../components/texcoord2d.hpp"
 #include "../components/triangle_indices.hpp"
 #include "../components/vector3d.hpp"
@@ -133,7 +134,10 @@ namespace rerun::archetypes {
         ///
         /// Currently supports only sRGB(A) textures, ignoring alpha.
         /// (meaning that the tensor must have 3 or 4 channels and use the `u8` format)
-        std::optional<rerun::components::TensorData> albedo_texture;
+        std::optional<rerun::components::ImageBuffer> albedo_texture_buffer;
+
+        /// The format of the `albedo_texture_buffer`, if any.
+        std::optional<rerun::components::ImageFormat> albedo_texture_format;
 
         /// Optional class Ids for the vertices.
         ///
@@ -197,8 +201,17 @@ namespace rerun::archetypes {
         ///
         /// Currently supports only sRGB(A) textures, ignoring alpha.
         /// (meaning that the tensor must have 3 or 4 channels and use the `u8` format)
-        Mesh3D with_albedo_texture(rerun::components::TensorData _albedo_texture) && {
-            albedo_texture = std::move(_albedo_texture);
+        Mesh3D with_albedo_texture_buffer(rerun::components::ImageBuffer _albedo_texture_buffer
+        ) && {
+            albedo_texture_buffer = std::move(_albedo_texture_buffer);
+            // See: https://github.com/rerun-io/rerun/issues/4027
+            RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
+        }
+
+        /// The format of the `albedo_texture_buffer`, if any.
+        Mesh3D with_albedo_texture_format(rerun::components::ImageFormat _albedo_texture_format
+        ) && {
+            albedo_texture_format = std::move(_albedo_texture_format);
             // See: https://github.com/rerun-io/rerun/issues/4027
             RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
         }
