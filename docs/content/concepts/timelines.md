@@ -27,6 +27,11 @@ snippet: concepts/different_data_per_timeline
 
 On one timeline the points will appear blue, on the other they appear red.
 
+### Sending many time points at once
+To get full control over the logged timelines you can use [`send_columns`](../howto/send_columns.md).
+This is often a lot more efficent when you already have a chunk of temporal data, e.g. some sensor value over time.
+
+
 ## Events
 
 An _event_ refer to an instance of logging one or more component batches to one or more timelines. In the viewer, the Time panel provide a graphical representation of these events across time and entities.
@@ -48,6 +53,3 @@ This is useful for data that isn't part of normal data capture, but sets the sce
 For instance, if you are logging cars on a street, perhaps you want to always show a street mesh as part of the scenery, and for that it makes sense for that data to be static.
 
 Similarly, [coordinate systems](spaces-and-transforms.md) or [annotation context](annotation-context.md) are typically static.
-
-## `send_columns`
-To get full control over the logged timelines you can use [`send_columns`](../howto/send_columns.md) instead of `log`.
