@@ -70,7 +70,8 @@ impl ImageInfo {
             match pixel_format.color_model() {
                 ColorModel::L => (channel == 0).then_some(TensorElement::U8(luma)),
 
-                ColorModel::RGB | ColorModel::RGBA => {
+                // Shouldn't hit BGR and BGRA, but we'll handle it like RGB and RGBA here for completeness.
+                ColorModel::RGB | ColorModel::RGBA | ColorModel::BGR | ColorModel::BGRA => {
                     if channel < 3 {
                         let rgb = rgb_from_yuv(luma, u, v);
                         Some(TensorElement::U8(rgb[channel as usize]))
@@ -178,26 +179,50 @@ impl ImageInfo {
             }
             RgbImage::from_vec(w, h, rgb).map(DynamicImage::ImageRgb8)
         } else if self.format.datatype() == ChannelDatatype::U8 {
-            let u8 = self.buffer.to_vec();
+            let mut u8 = self.buffer.to_vec();
             match self.color_model() {
                 ColorModel::L => GrayImage::from_vec(w, h, u8).map(DynamicImage::ImageLuma8),
                 ColorModel::RGB => RgbImage::from_vec(w, h, u8).map(DynamicImage::ImageRgb8),
                 ColorModel::RGBA => RgbaImage::from_vec(w, h, u8).map(DynamicImage::ImageRgba8),
+                ColorModel::BGR => {
+                    bgr_to_rgb(&mut u8);
+                    RgbImage::from_vec(w, h, u8).map(DynamicImage::ImageRgb8)
+                }
+                ColorModel::BGRA => {
+                    bgra_to_rgba(&mut u8);
+                    RgbaImage::from_vec(w, h, u8).map(DynamicImage::ImageRgba8)
+                }
             }
         } else if self.format.datatype() == ChannelDatatype::U16 {
             // Lossless conversion of u16, ignoring data_range
-            let u16 = self.to_slice::<u16>().to_vec();
+            let mut u16 = self.to_slice::<u16>().to_vec();
             match self.color_model() {
                 ColorModel::L => Gray16Image::from_vec(w, h, u16).map(DynamicImage::ImageLuma16),
                 ColorModel::RGB => Rgb16Image::from_vec(w, h, u16).map(DynamicImage::ImageRgb16),
                 ColorModel::RGBA => Rgba16Image::from_vec(w, h, u16).map(DynamicImage::ImageRgba16),
+                ColorModel::BGR => {
+                    bgr_to_rgb(&mut u16);
+                    Rgb16Image::from_vec(w, h, u16).map(DynamicImage::ImageRgb16)
+                }
+                ColorModel::BGRA => {
+                    bgra_to_rgba(&mut u16);
+                    Rgba16Image::from_vec(w, h, u16).map(DynamicImage::ImageRgba16)
+                }
             }
         } else {
-            let u16 = self.to_vec_u16(self.format.datatype(), data_range);
+            let mut u16 = self.to_vec_u16(self.format.datatype(), data_range);
             match self.color_model() {
                 ColorModel::L => Gray16Image::from_vec(w, h, u16).map(DynamicImage::ImageLuma16),
                 ColorModel::RGB => Rgb16Image::from_vec(w, h, u16).map(DynamicImage::ImageRgb16),
                 ColorModel::RGBA => Rgba16Image::from_vec(w, h, u16).map(DynamicImage::ImageRgba16),
+                ColorModel::BGR => {
+                    bgr_to_rgb(&mut u16);
+                    Rgb16Image::from_vec(w, h, u16).map(DynamicImage::ImageRgb16)
+                }
+                ColorModel::BGRA => {
+                    bgra_to_rgba(&mut u16);
+                    Rgba16Image::from_vec(w, h, u16).map(DynamicImage::ImageRgba16)
+                }
             }
         }
     }
@@ -298,6 +323,18 @@ impl ImageInfo {
         } else {
             anyhow::bail!("Invalid image");
         }
+    }
+}
+
+fn bgr_to_rgb<T: Clone>(bgr_elements: &mut [T]) {
+    for bgr in bgr_elements.chunks_exact_mut(3) {
+        bgr.swap(0, 2);
+    }
+}
+
+fn bgra_to_rgba<T: Clone>(bgra_elements: &mut [T]) {
+    for bgra in bgra_elements.chunks_exact_mut(4) {
+        bgra.swap(0, 2);
     }
 }
 

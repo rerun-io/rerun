@@ -150,26 +150,19 @@ impl LoadedMesh {
             re_math::BoundingBox::from_points(vertex_positions.iter().copied())
         };
 
-        let albedo = if let (Some(albedo_texture_buffer), Some(albedo_texture_format)) =
-            (&albedo_texture_buffer, albedo_texture_format)
-        {
-            let image_info = ImageInfo {
-                buffer_row_id: RowId::ZERO, // unused
-                buffer: albedo_texture_buffer.0.clone(),
-                format: albedo_texture_format.0,
-                kind: re_types::image::ImageKind::Color,
-                colormap: None,
-            };
-            re_viewer_context::gpu_bridge::get_or_create_texture(render_ctx, texture_key, || {
-                let debug_name = "mesh albedo texture";
-                texture_creation_desc_from_color_image(&image_info, debug_name)
-            })?
-        } else {
+        let albedo = try_get_or_create_albedo_texture(
+            albedo_texture_buffer,
+            albedo_texture_format,
+            render_ctx,
+            texture_key,
+            &name,
+        )
+        .unwrap_or_else(|| {
             render_ctx
                 .texture_manager_2d
                 .white_texture_unorm_handle()
                 .clone()
-        };
+        });
 
         let mesh = re_renderer::mesh::Mesh {
             label: name.clone().into(),
@@ -209,5 +202,46 @@ impl LoadedMesh {
 
     pub fn bbox(&self) -> re_math::BoundingBox {
         self.bbox
+    }
+}
+
+fn try_get_or_create_albedo_texture(
+    albedo_texture_buffer: &Option<re_types::components::ImageBuffer>,
+    albedo_texture_format: &Option<re_types::components::ImageFormat>,
+    render_ctx: &RenderContext,
+    texture_key: u64,
+    name: &str,
+) -> Option<re_renderer::resource_managers::GpuTexture2D> {
+    let (Some(albedo_texture_buffer), Some(albedo_texture_format)) =
+        (&albedo_texture_buffer, albedo_texture_format)
+    else {
+        return None;
+    };
+
+    let image_info = ImageInfo {
+        buffer_row_id: RowId::ZERO, // unused
+        buffer: albedo_texture_buffer.0.clone(),
+        format: albedo_texture_format.0,
+        kind: re_types::image::ImageKind::Color,
+        colormap: None,
+    };
+
+    if re_viewer_context::gpu_bridge::required_shader_decode(albedo_texture_format).is_some() {
+        re_log::warn_once!("Mesh can't yet handle encoded image formats like NV12 & YUY2 or BGR(A) formats without a channel type other than U8. Ignoring the texture at {name:?}.");
+        return None;
+    }
+
+    let texture =
+        re_viewer_context::gpu_bridge::get_or_create_texture(render_ctx, texture_key, || {
+            let debug_name = "mesh albedo texture";
+            texture_creation_desc_from_color_image(&image_info, debug_name)
+        });
+
+    match texture {
+        Ok(texture) => Some(texture),
+        Err(err) => {
+            re_log::warn_once!("Failed to create mesh albedo texture for {name:?}: {err}");
+            None
+        }
     }
 }

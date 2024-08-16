@@ -87,11 +87,7 @@ fn color_image_to_gpu(
 
     let texture_format = texture_handle.format();
 
-    let shader_decoding = match image_format.pixel_format {
-        Some(PixelFormat::NV12) => Some(ShaderDecoding::Nv12),
-        Some(PixelFormat::YUY2) => Some(ShaderDecoding::Yuy2),
-        None => None,
-    };
+    let shader_decoding = required_shader_decode(&image_format);
 
     // TODO(emilk): let the user specify the color space.
     let decode_srgb = texture_format == TextureFormat::Rgba8Unorm
@@ -100,7 +96,7 @@ fn color_image_to_gpu(
     // Special casing for normalized textures used above:
     let range = if matches!(
         texture_format,
-        TextureFormat::R8Unorm | TextureFormat::Rgba8Unorm
+        TextureFormat::R8Unorm | TextureFormat::Rgba8Unorm | TextureFormat::Bgra8Unorm
     ) {
         [0.0, 1.0]
     } else if texture_format == TextureFormat::R8Snorm {
@@ -108,6 +104,8 @@ fn color_image_to_gpu(
     } else if let Some(shader_decoding) = shader_decoding {
         match shader_decoding {
             ShaderDecoding::Nv12 | ShaderDecoding::Yuy2 => [0.0, 1.0],
+            ShaderDecoding::Bgr => image_data_range_heuristic(image_stats, &image_format)
+                .map(|range| [range.min, range.max])?,
         }
     } else {
         image_data_range_heuristic(image_stats, &image_format)
@@ -116,7 +114,10 @@ fn color_image_to_gpu(
 
     let color_mapper = if let Some(shader_decoding) = shader_decoding {
         match shader_decoding {
-            ShaderDecoding::Nv12 | ShaderDecoding::Yuy2 => ColorMapper::OffRGB,
+            // We only have 1D color mapps, therefore chroma downsampled and BGR formats can't have color maps.
+            ShaderDecoding::Bgr | ShaderDecoding::Nv12 | ShaderDecoding::Yuy2 => {
+                ColorMapper::OffRGB
+            }
         }
     } else if texture_format.components() == 1 {
         // TODO(andreas): support colormap property
@@ -194,27 +195,49 @@ fn image_decode_srgb_gamma_heuristic(
             PixelFormat::NV12 | PixelFormat::YUY2 => Ok(true),
         }
     } else {
-        let color_model = image_format.color_model();
-        let datatype = image_format.datatype();
-        match color_model {
-            ColorModel::L | ColorModel::RGB | ColorModel::RGBA => {
-                let (min, max) = image_stats.finite_range.ok_or(RangeError::MissingRange)?;
+        let (min, max) = image_stats.finite_range.ok_or(RangeError::MissingRange)?;
 
-                #[allow(clippy::if_same_then_else)]
-                if 0.0 <= min && max <= 255.0 {
-                    // If the range is suspiciously reminding us of a "regular image", assume sRGB.
-                    Ok(true)
-                } else if datatype.is_float() && 0.0 <= min && max <= 1.0 {
-                    // Floating point images between 0 and 1 are often sRGB as well.
-                    Ok(true)
-                } else {
-                    Ok(false)
-                }
+        #[allow(clippy::if_same_then_else)]
+        if 0.0 <= min && max <= 255.0 {
+            // If the range is suspiciously reminding us of a "regular image", assume sRGB.
+            Ok(true)
+        } else if image_format.datatype().is_float() && 0.0 <= min && max <= 1.0 {
+            // Floating point images between 0 and 1 are often sRGB as well.
+            Ok(true)
+        } else {
+            Ok(false)
+        }
+    }
+}
+
+/// Determines if and how the shader needs to decode the image.
+///
+/// Assumes creation as done by [`texture_creation_desc_from_color_image`].
+pub fn required_shader_decode(image_format: &ImageFormat) -> Option<ShaderDecoding> {
+    match image_format.pixel_format {
+        Some(PixelFormat::NV12) => Some(ShaderDecoding::Nv12),
+        Some(PixelFormat::YUY2) => Some(ShaderDecoding::Yuy2),
+        None => {
+            if image_format.datatype() == ChannelDatatype::U8 {
+                // U8 can be converted to RGBA without the shader's help since there's a format for it.
+                None
+            } else {
+                let color_model = image_format.color_model();
+                (color_model == ColorModel::BGR || color_model == ColorModel::BGRA)
+                    .then_some(ShaderDecoding::Bgr)
             }
         }
     }
 }
 
+/// Creates a [`Texture2DCreationDesc`] for creating a texture from an [`ImageInfo`].
+///
+/// The resulting texture has requirements as describe by [`required_shader_decode`] and [`required_shader_bgr_conversion`].
+///
+/// TODO(andreas): The consumer needs to be aware of bgr and chroma downsampling conversions.
+/// It would be much better if we had a separate `re_renderer`/gpu driven conversion pipeline for this
+/// which would allow us to virtually extend over wgpu's texture formats.
+/// This would allow us to seamlessly support e.g. NV12 on meshes without the mesh shader having to be updated.
 pub fn texture_creation_desc_from_color_image<'a>(
     image: &'a ImageInfo,
     debug_name: &'a str,
@@ -224,7 +247,7 @@ pub fn texture_creation_desc_from_color_image<'a>(
     if let Some(pixel_format) = image.format.pixel_format {
         match pixel_format {
             PixelFormat::NV12 => {
-                // Decoded in the shader.
+                // Decoded in the shader, see [`required_shader_decode`].
                 return Texture2DCreationDesc {
                     label: debug_name.into(),
                     data: cast_slice_to_cow(image.buffer.as_slice()),
@@ -235,7 +258,7 @@ pub fn texture_creation_desc_from_color_image<'a>(
             }
 
             PixelFormat::YUY2 => {
-                // Decoded in the shader.
+                // Decoded in the shader, see [`required_shader_decode`].
                 return Texture2DCreationDesc {
                     label: debug_name.into(),
                     data: cast_slice_to_cow(image.buffer.as_slice()),
@@ -248,17 +271,29 @@ pub fn texture_creation_desc_from_color_image<'a>(
     } else {
         let color_model = image.format.color_model();
         let datatype = image.format.datatype();
+
         let (data, format) = match (color_model, datatype) {
-            // Normalize sRGB(A) textures to 0-1 range, and let the GPU premultiply alpha.
-            // Why? Because premul must happen _before_ sRGB decode, so we can't
+            // sRGB(A) handling is done by `ColormappedTexture`.
+            // Why not use `Rgba8UnormSrgb`? Because premul must happen _before_ sRGB decode, so we can't
             // use a "Srgb-aware" texture like `Rgba8UnormSrgb` for RGBA.
             (ColorModel::RGB, ChannelDatatype::U8) => (
                 pad_rgb_to_rgba(&image.buffer, u8::MAX).into(),
                 TextureFormat::Rgba8Unorm,
             ),
 
+            (ColorModel::BGR, ChannelDatatype::U8) => {
+                (
+                    pad_rgb_to_rgba(&image.buffer, u8::MAX).into(),
+                    TextureFormat::Bgra8Unorm,
+                ) // See also [`required_shader_decode`].
+            }
+
             (ColorModel::RGBA, ChannelDatatype::U8) => {
                 (cast_slice_to_cow(&image.buffer), TextureFormat::Rgba8Unorm)
+            }
+
+            (ColorModel::BGRA, ChannelDatatype::U8) => {
+                (cast_slice_to_cow(&image.buffer), TextureFormat::Bgra8Unorm) // See also [`required_shader_decode`].
             }
 
             _ => {
@@ -475,7 +510,8 @@ fn general_texture_creation_desc_from_image<'a>(
             }
         }
 
-        ColorModel::RGB => {
+        // BGR->RGB conversion is done in the shader.
+        ColorModel::RGB | ColorModel::BGR => {
             // There are no 3-channel textures in wgpu, so we need to pad to 4 channels.
             // What should we pad with? It depends on whether or not the shader interprets these as alpha.
             // To be safe, we pad with the MAX value of integers, and with 1.0 for floats.
@@ -513,7 +549,8 @@ fn general_texture_creation_desc_from_image<'a>(
             }
         }
 
-        ColorModel::RGBA => {
+        // BGR->RGB conversion is done in the shader.
+        ColorModel::RGBA | ColorModel::BGRA => {
             // TODO(emilk): premultiply alpha, or tell the shader to assume unmultiplied alpha
 
             match datatype {
