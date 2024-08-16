@@ -450,7 +450,9 @@ impl ComponentUiRegistry {
 
         // Fallback to the more specialized UI callbacks.
         let edit_or_view_ui = if ui_layout == UiLayout::SelectionPanelFull {
-            self.component_multiline_edit_or_view.get(&component_name)
+            self.component_multiline_edit_or_view
+                .get(&component_name)
+                .or_else(|| self.component_singleline_edit_or_view.get(&component_name))
         } else {
             self.component_singleline_edit_or_view.get(&component_name)
         };
