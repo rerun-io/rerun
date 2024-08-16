@@ -64,7 +64,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 /// </picture>
 /// </center>
 ///
-/// ### `image_send_columns`:
+/// ### Advanced usage of `send_columns` to send multiple images at once
 /// ```ignore
 /// use ndarray::{s, Array, ShapeBuilder};
 /// use rerun::Archetype as _;
@@ -118,7 +118,15 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 ///     Ok(())
 /// }
 /// ```
-/// <img src="Advanced usage of `send_columns` to send multiple images at once">
+/// <center>
+/// <picture>
+///   <source media="(max-width: 480px)" srcset="https://static.rerun.io/image_send_columns/321455161d79e2c45d6f5a6f175d6f765f418897/480w.png">
+///   <source media="(max-width: 768px)" srcset="https://static.rerun.io/image_send_columns/321455161d79e2c45d6f5a6f175d6f765f418897/768w.png">
+///   <source media="(max-width: 1024px)" srcset="https://static.rerun.io/image_send_columns/321455161d79e2c45d6f5a6f175d6f765f418897/1024w.png">
+///   <source media="(max-width: 1200px)" srcset="https://static.rerun.io/image_send_columns/321455161d79e2c45d6f5a6f175d6f765f418897/1200w.png">
+///   <img src="https://static.rerun.io/image_send_columns/321455161d79e2c45d6f5a6f175d6f765f418897/full.png" width="640">
+/// </picture>
+/// </center>
 #[derive(Clone, Debug, PartialEq)]
 pub struct Image {
     /// The raw image data.

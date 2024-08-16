@@ -46,9 +46,15 @@ snippet: archetypes/image_simple
   <img src="https://static.rerun.io/image_simple/06ba7f8582acc1ffb42a7fd0006fad7816f3e4e4/full.png">
 </picture>
 
-### image_send_columns
+### Advanced usage of `send_columns` to send multiple images at once
 
 snippet: archetypes/image_send_columns
 
-<img src="Advanced usage of `send_columns` to send multiple images at once">
+<picture data-inline-viewer="snippets/image_send_columns">
+  <source media="(max-width: 480px)" srcset="https://static.rerun.io/image_send_columns/321455161d79e2c45d6f5a6f175d6f765f418897/480w.png">
+  <source media="(max-width: 768px)" srcset="https://static.rerun.io/image_send_columns/321455161d79e2c45d6f5a6f175d6f765f418897/768w.png">
+  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/image_send_columns/321455161d79e2c45d6f5a6f175d6f765f418897/1024w.png">
+  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/image_send_columns/321455161d79e2c45d6f5a6f175d6f765f418897/1200w.png">
+  <img src="https://static.rerun.io/image_send_columns/321455161d79e2c45d6f5a6f175d6f765f418897/full.png">
+</picture>
 
