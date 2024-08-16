@@ -33,9 +33,11 @@ def update_python_line(line: str, version_line: str, version_info_line: str) -> 
 
 def set_rerun_py_version(init_path: Path, version: semver.VersionInfo) -> None:
     version_line = f'__version__ = "{version}"\n'
-    version_info_line = (
-        f'__version_info__ = ({version.major}, {version.minor}, {version.patch}, "{version.prerelease}")\n'
-    )
+    version_info_items = list(str(item) for item in (version.major, version.minor, version.patch))
+    if version.prerelease is not None:
+        version_info_items.append(f'"{version.prerelease}"')
+
+    version_info_line = f'__version_info__ = ({", ".join(version_info_items)})\n'
 
     with init_path.open() as f:
         lines = f.readlines()
