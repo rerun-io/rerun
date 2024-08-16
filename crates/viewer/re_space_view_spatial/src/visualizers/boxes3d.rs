@@ -153,30 +153,19 @@ impl Boxes3DVisualizer {
                 .bounding_boxes
                 .push((entity_path.hash(), world_space_bounding_box));
 
-            if data.labels.len() == 1 || num_instances <= super::MAX_NUM_LABELS_PER_ENTITY {
-                // If there's many boxes but only a single label, place the single label at the middle of the visualization.
-                let label_positions = if data.labels.len() == 1 && num_instances > 1 {
-                    // TODO(andreas): A smoothed over time (+ discontinuity detection) bounding box would be great.
-                    itertools::Either::Left(std::iter::once(world_space_bounding_box.center()))
-                } else {
-                    // Take center point of every box.
-                    itertools::Either::Right(
-                        ent_context
-                            .transform_info
-                            .clamped_reference_from_instances()
-                            .map(|t| t.translation.into()),
-                    )
-                };
-
-                self.0.ui_labels.extend(process_labels_3d(
-                    entity_path,
-                    label_positions,
-                    &data.labels,
-                    &colors,
-                    &annotation_infos,
-                    glam::Affine3A::IDENTITY,
-                ));
-            }
+            self.0.ui_labels.extend(process_labels_3d(
+                entity_path,
+                num_instances,
+                world_space_bounding_box.center(),
+                ent_context
+                    .transform_info
+                    .clamped_reference_from_instances()
+                    .map(|t| t.translation.into()),
+                &data.labels,
+                &colors,
+                &annotation_infos,
+                glam::Affine3A::IDENTITY,
+            ));
         }
 
         Ok(())
