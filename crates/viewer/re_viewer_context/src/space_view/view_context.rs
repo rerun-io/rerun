@@ -151,6 +151,7 @@ impl<'a> ViewContext<'a> {
             .reset_blueprint_component_by_name(entity_path, component_name);
     }
 
+    /// Clears a component in the blueprint store by logging an empty array if it exists.
     #[inline]
     pub fn clear_blueprint_component_by_name(
         &self,

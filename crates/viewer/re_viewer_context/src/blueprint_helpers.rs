@@ -148,9 +148,7 @@ impl ViewerContext<'_> {
         }
     }
 
-    /// Helper to save a component to the blueprint store.
-    ///
-    /// Does nothing if the component doesn't exist at that path.
+    /// Clears a component in the blueprint store by logging an empty array if it exists.
     pub fn clear_blueprint_component_by_name(
         &self,
         entity_path: &EntityPath,
