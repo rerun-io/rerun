@@ -402,6 +402,7 @@ impl AppState {
                     egui::TopBottomPanel::top("recording_panel")
                         .frame(egui::Frame::none())
                         .resizable(resizable)
+                        .show_separator_line(false)
                         .min_height(min_height_each)
                         .default_height(210.0)
                         .max_height(ui.available_height() - min_height_each)
