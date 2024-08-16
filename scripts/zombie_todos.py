@@ -119,7 +119,7 @@ def main() -> None:
                 filepath = os.path.join(root, filename)
                 if should_ignore(filepath):
                     continue
-                if filepath not in exclude_paths:
+                if filepath.replace("\\", "/") not in exclude_paths:
                     ok &= check_file(filepath)
 
     if not ok:
