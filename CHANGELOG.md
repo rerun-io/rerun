@@ -27,9 +27,9 @@ Unlike the regular row-oriented `log` APIs, the new `send` APIs let you submit d
 This can both greatly simplify logging code and drastically improve performance for some workloads, in particular timeseries, [although we have already seen it used for other purposes](https://github.com/rerun-io/rerun/pull/7155)!
 
 API documentation:
-* 🐍 [Python `send_columns` docs](TODO)
-* 🌊 [C++ `send_columns` docs](TODO)
-* 🦀 [Rust `send_columns` docs](TODO)
+* 🐍 [Python `send_columns` docs](https://ref.rerun.io/docs/python/stable/common/columnar_api/#rerun.send_columns)
+* 🌊 [C++ `send_columns` docs](https://ref.rerun.io/docs/cpp/stable/classrerun_1_1RecordingStream.html#ad17571d51185ce2fc2fc2f5c3070ad65)
+* 🦀 [Rust `send_columns` docs](https://docs.rs/rerun/latest/rerun/struct.RecordingStream.html#method.send_columns)
 
 API usage examples:
 <details>
