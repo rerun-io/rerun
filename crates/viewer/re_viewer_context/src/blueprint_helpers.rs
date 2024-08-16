@@ -144,12 +144,14 @@ impl ViewerContext<'_> {
         {
             self.save_blueprint_array(entity_path, component_name, default_value);
         } else {
-            self.save_empty_blueprint_component_by_name(entity_path, component_name);
+            self.clear_blueprint_component_by_name(entity_path, component_name);
         }
     }
 
     /// Helper to save a component to the blueprint store.
-    pub fn save_empty_blueprint_component_by_name(
+    ///
+    /// Does nothing if the component doesn't exist at that path.
+    pub fn clear_blueprint_component_by_name(
         &self,
         entity_path: &EntityPath,
         component_name: ComponentName,
@@ -164,10 +166,7 @@ impl ViewerContext<'_> {
                     .map(|array| array.data_type().clone())
             })
         else {
-            re_log::error!(
-                "Tried to clear a component with unknown type: {}",
-                component_name
-            );
+            // There's no component at this path yet, so there's nothing to clear.
             return;
         };
 

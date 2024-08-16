@@ -152,13 +152,13 @@ impl<'a> ViewContext<'a> {
     }
 
     #[inline]
-    pub fn save_empty_blueprint_component_by_name(
+    pub fn clear_blueprint_component_by_name(
         &self,
         entity_path: &EntityPath,
         component_name: ComponentName,
     ) {
         self.viewer_ctx
-            .save_empty_blueprint_component_by_name(entity_path, component_name);
+            .clear_blueprint_component_by_name(entity_path, component_name);
     }
 
     #[inline]

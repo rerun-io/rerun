@@ -191,7 +191,7 @@ impl<'a> ViewProperty<'a> {
     /// Resets all components to empty values, i.e. the fallback.
     pub fn reset_all_components_to_empty(&self, ctx: &'a ViewerContext<'a>) {
         for &component_name in self.query_results.components.keys() {
-            ctx.save_empty_blueprint_component_by_name(&self.blueprint_store_path, component_name);
+            ctx.clear_blueprint_component_by_name(&self.blueprint_store_path, component_name);
         }
     }
 
