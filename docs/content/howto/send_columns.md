@@ -22,6 +22,6 @@ snippet: archetypes/image_send_columns
 
 ### Using `send_columns` for logging points
 Each row the in the component column can be a batch of data, e.g. a batch of positions.
-This lets you log the evolution of a point cloud over time efficently.
+This lets you log the evolution of a point cloud over time efficiently.
 
 snippet: archetypes/points3d_send_columns.py
