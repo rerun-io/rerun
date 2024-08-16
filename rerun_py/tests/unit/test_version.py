@@ -15,9 +15,7 @@ def test_version() -> None:
         assert ver.prerelease == rr.__version_info__[3]
     else:
         # The last field is `None` if there is no prerelease.
-        # TODO(andreas): We released `0.18.0` `"None"` as prerelease, but really it should be `None`.
-        # assert rr.__version_info__[3] is None
-        assert len(rr.__version_info__) == 4
+        assert rr.__version_info__[3] is None
 
     assert rr.__version__ in rr.version()
 

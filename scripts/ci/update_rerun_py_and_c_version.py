@@ -36,6 +36,8 @@ def set_rerun_py_version(init_path: Path, version: semver.VersionInfo) -> None:
     version_info_items = list(str(item) for item in (version.major, version.minor, version.patch))
     if version.prerelease is not None:
         version_info_items.append(f'"{version.prerelease}"')
+    else:
+        version_info_items.append("None")
 
     version_info_line = f'__version_info__ = ({", ".join(version_info_items)})\n'
 
