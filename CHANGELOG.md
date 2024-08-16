@@ -1,15 +1,322 @@
-6# Rerun changelog
+# Rerun changelog
 
 ## [Unreleased](https://github.com/rerun-io/rerun/compare/latest...HEAD)
 
-# ⚠️ Breaking changes
+## [0.18.0](https://github.com/rerun-io/rerun/compare/0.16.1...HEAD) - Ingestion speed and memory footprint
+
+https://github.com/user-attachments/assets/95380a64-df05-4f85-b40a-0c6b8ec8d5cf
+
+* 📖 Release blogpost: http://rerun.io/blog/column-chunks
+* 🧳 Migration guide: http://rerun.io/docs/reference/migration/migration-0-18
+
+### ✨ Overview & highlights
+
+Rerun 0.18 introduces new column-oriented APIs and internal storage datastructures (`Chunk` & `ChunkStore`) that can both simplify logging code as well as improve ingestion speeds and memory overhead by a couple orders of magnitude in many cases (timeseries-heavy workloads in particular).
+
+These improvements come in 3 broad categories:
+* a new `send` family of APIs, available in all 3 SDKs (Python, C++, Rust),
+* a new, configurable background compaction mechanism in the datastore,
+* new CLI tools to filter, prune and compact RRD files.
+
+Furthermore, we started cleaning up our data schema, leading to various changes in the way represent transforms & images.
+
+#### New `send` APIs
+
+Unlike the regular row-oriented `log` APIs, the new `send` APIs let you submit data in a columnar form, even if the data extends over multiple timestamps.
+
+This can both greatly simplify logging code and drastically improve performance for some workloads, in particular timeseries, [although we have already seen it used for other purposes](https://github.com/rerun-io/rerun/pull/7155)!
+
+API documentation:
+* 🐍 [Python `send_columns` docs](https://ref.rerun.io/docs/python/stable/common/columnar_api/#rerun.send_columns)
+* 🌊 [C++ `send_columns` docs](https://ref.rerun.io/docs/cpp/stable/classrerun_1_1RecordingStream.html#ad17571d51185ce2fc2fc2f5c3070ad65)
+* 🦀 [Rust `send_columns` docs](https://docs.rs/rerun/latest/rerun/struct.RecordingStream.html#method.send_columns)
+
+API usage examples:
+<details>
+  <summary>Python timeseries</summary>
+
+  Using `log()` (slow, memory inefficient):
+  ```python
+  rr.init("rerun_example_scalar", spawn=True)
+
+  for step in range(0, 64):
+      rr.set_time_sequence("step", step)
+      rr.log("scalar", rr.Scalar(math.sin(step / 10.0)))
+  ```
+
+  Using `send()` (fast, memory efficient):
+  ```python
+  rr.init("rerun_example_send_columns", spawn=True)
+
+  rr.send_columns(
+      "scalars",
+      times=[rr.TimeSequenceColumn("step", np.arange(0, 64))],
+      components=[rr.components.ScalarBatch(np.sin(times / 10.0))],
+  )
+  ```
+</details>
+<details>
+  <summary>C++ timeseries</summary>
+
+  Using `log()` (slow, memory inefficient):
+  ```c++
+  const auto rec = rerun::RecordingStream("rerun_example_scalar");
+  rec.spawn().exit_on_failure();
+
+  for (int step = 0; step < 64; ++step) {
+      rec.set_time_sequence("step", step);
+      rec.log("scalar", rerun::Scalar(std::sin(static_cast<double>(step) / 10.0)));
+  }
+  ```
+
+  Using `send()` (fast, memory efficient):
+  ```c++
+  const auto rec = rerun::RecordingStream("rerun_example_send_columns");
+  rec.spawn().exit_on_failure();
+
+  std::vector<double> scalar_data(64);
+  for (size_t i = 0; i < 64; ++i) {
+      scalar_data[i] = sin(static_cast<double>(i) / 10.0);
+  }
+  std::vector<int64_t> times(64);
+  std::iota(times.begin(), times.end(), 0);
+
+  auto time_column = rerun::TimeColumn::from_sequence_points("step", std::move(times));
+  auto scalar_data_collection =
+      rerun::Collection<rerun::components::Scalar>(std::move(scalar_data));
+
+  rec.send_columns("scalars", time_column, scalar_data_collection);
+  ```
+</details>
+<details>
+  <summary>Rust timeseries</summary>
+
+  Using `log()` (slow, memory inefficient):
+  ```rust
+  let rec = rerun::RecordingStreamBuilder::new("rerun_example_scalar").spawn()?;
+
+  for step in 0..64 {
+      rec.set_time_sequence("step", step);
+      rec.log("scalar", &rerun::Scalar::new((step as f64 / 10.0).sin()))?;
+  }
+  ```
+
+  Using `send()` (fast, memory efficient):
+  ```rust
+  let rec = rerun::RecordingStreamBuilder::new("rerun_example_send_columns").spawn()?;
+
+  let timeline_values = (0..64).collect::<Vec<_>>();
+  let scalar_data: Vec<f64> = timeline_values
+      .iter()
+      .map(|step| (*step as f64 / 10.0).sin())
+      .collect();
+
+  let timeline_values = TimeColumn::new_sequence("step", timeline_values);
+  let scalar_data: Vec<Scalar> = scalar_data.into_iter().map(Into::into).collect();
+
+  rec.send_columns("scalars", [timeline_values], [&scalar_data as _])?;
+  ```
+</details>
+
+#### Background compaction
+
+The Rerun datastore now continuously compacts data as it comes in, in order find a sweet spot between ingestion speed, query performance and memory overhead.
+
+This is very similar to, and has many parallels with, the [micro-batching mechanism running on the SDK side](https://rerun.io/docs/reference/sdk-micro-batching).
+
+You can read more about this in the [dedicated documentation entry](https://rerun.io/docs/reference/store-compaction).
+
+#### Post-processing of RRD files
+
+To help improve efficiency for completed recordings, Rerun 0.18 introduces some new commands for working with rrd files.
+
+Multiple files can be merged, whole entity paths can be dropped, and chunks can be compacted.
+
+You can read more about it [in the new CLI reference manual](https://rerun.io/docs/reference/cli), but to give a sense of how it works the below example merges all recordings in a folder and runs chunk compaction using the `max-rows` and `max-bytes` settings:
+```sh
+rerun rrd compact --max-rows 4096 --max-bytes=1048576 /my/recordings/*.rrd > output.rrd
+```
+
+#### Overhauled 3D transforms & instancing
+As part of improving our arrow schema and in preparation for reading data back in the SDK, we've split up transforms into several parts.
+This makes it much more performant to log large number of transforms as it allows updating only the parts you're interested in, e.g. logging a translation is now as lightweight as logging a single position.
+
+There are now additionally [`InstancePoses3D`](https://rerun.io/docs/reference/types/archetypes/instance_poses3d) which allow you to do two things:
+* all 3D entities: apply a transform to the entity without affecting its children
+* [`Mesh3D`](https://rerun.io/docs/reference/types/archetypes/mesh3d)/[`Asset3D`](https://rerun.io/docs/reference/types/archetypes/asset3d)/[`Boxes3D`](https://rerun.io/docs/reference/types/archetypes/boxes3d)/[`Ellipsoids3D`](https://rerun.io/docs/reference/types/archetypes/ellipsoids3d): instantiate objects several times with different poses, known as "instancing"
+  * Support for instancing of other archetypes is coming in the future!
+
+![instancing in action](https://static.rerun.io/mesh3d_leaf_transforms3d/c2d0ee033129da53168f5705625a9b033f3a3d61/1200w.png)
+_All four tetrahedron meshes on this screen share the same vertices and are instanced using an [`InstancePoses3D`](https://rerun.io/docs/reference/types/archetypes/instance_poses3d) archetype with 4 different translations_
+
+
+### ⚠️ Breaking changes
+* `.rrd` files from older versions won't load correctly in Rerun 0.18
 * `mesh_material: Material` has been renamed to `albedo_factor: AlbedoFactor` [#6841](https://github.com/rerun-io/rerun/pull/6841)
-* 3D transform APIs: Previously, the transform component was represented as one of several variants (an Arrow union, `enum` in Rust) depending on how the transform was expressed. Instead, there are now several components for translation/scale/rotation/matrices that can live side-by-side in the 3D transform archetype.
+* [`Transform3D`](https://rerun.io/docs/reference/types/archetypes/transform3d) is no longer a single component but split into its constituent parts. From this follow various smaller API changes
 * Python: `NV12/YUY2` are now logged with `Image`
-* `ImageEncoded` is deprecated and replaced with [`EncodedImage`](https://rerun.io/docs/reference/types/archetypes/encoded_image?speculative-link) (JPEG, PNG, …) and  [`Image`](https://rerun.io/docs/reference/types/archetypes/image?speculative-link) (NV12, YUY2, …)
+* `ImageEncoded` is deprecated and replaced with [`EncodedImage`](https://rerun.io/docs/reference/types/archetypes/encoded_image) (JPEG, PNG, …) and  [`Image`](https://rerun.io/docs/reference/types/archetypes/image) (NV12, YUY2, …)
 * [`DepthImage`](https://rerun.io/docs/reference/types/archetypes/depth_image) and [`SegmentationImage`](https://rerun.io/docs/reference/types/archetypes/segmentation_image) are no longer encoded as a tensors, and expects its shape in `[width, height]` order
 
-🧳 Migration guide: http://rerun.io/docs/reference/migration/migration-0-18?speculative-link
+🧳 Migration guide: http://rerun.io/docs/reference/migration/migration-0-18
+
+### 🔎 Details
+
+#### 🪵 Log API
+- Add `Ellipsoids3D` archetype [#6853](https://github.com/rerun-io/rerun/pull/6853) (thanks [@kpreid](https://github.com/kpreid)!)
+- Dont forward datatype extensions beyond the FFI barrier [#6777](https://github.com/rerun-io/rerun/pull/6777)
+- All components are now consistently implemented by a datatype [#6823](https://github.com/rerun-io/rerun/pull/6823)
+- Add new `archetypes.ImageEncoded` with PNG and JPEG support [#6874](https://github.com/rerun-io/rerun/pull/6874)
+- New transform components: `Translation3D` & `TransformMat3x3` [#6866](https://github.com/rerun-io/rerun/pull/6866)
+- Add Scale3D component [#6892](https://github.com/rerun-io/rerun/pull/6892)
+- Angle datatype stores now only radians [#6916](https://github.com/rerun-io/rerun/pull/6916)
+- New `DepthImage` archetype [#6915](https://github.com/rerun-io/rerun/pull/6915)
+- Port `SegmentationImage` to the new image archetype style [#6928](https://github.com/rerun-io/rerun/pull/6928)
+- Add components for `RotationAxisAngle` and `RotationQuat` [#6929](https://github.com/rerun-io/rerun/pull/6929)
+- Introduce `TransformRelation` component [#6944](https://github.com/rerun-io/rerun/pull/6944)
+- New `LeafTransform3D`, replacing `OutOfTreeTransform3D` [#7015](https://github.com/rerun-io/rerun/pull/7015)
+- Remove `Scale3D`/`Transform3D`/`TranslationRotationScale3D` datatypes, remove `Transform3D` component [#7000](https://github.com/rerun-io/rerun/pull/7000)
+- Rewrite `Image` archetype [#6942](https://github.com/rerun-io/rerun/pull/6942)
+- Use `LeafTranslation` (centers), `LeafRotationQuat` and `LeafRotationAxisAngle` directly on `Boxes3D`/`Ellipsoids3D` [#7029](https://github.com/rerun-io/rerun/pull/7029)
+- Removed now unused `Rotation3D` component & datatype [#7030](https://github.com/rerun-io/rerun/pull/7030)
+- Introduce new ImageFormat component [#7083](https://github.com/rerun-io/rerun/pull/7083)
+
+#### 🌊 C++ API
+- Fix resetting time destroying recording stream [#6914](https://github.com/rerun-io/rerun/pull/6914)
+- Improve usability of `rerun::Collection` by providing free functions for `borrow` & `take_ownership` [#7055](https://github.com/rerun-io/rerun/pull/7055)
+- Fix crash on shutdown when using global recording stream variables in C++ [#7063](https://github.com/rerun-io/rerun/pull/7063)
+- C++ API for `send_columns` [#7103](https://github.com/rerun-io/rerun/pull/7103)
+- Add numeric SDK version macros to C/C++ [#7127](https://github.com/rerun-io/rerun/pull/7127)
+
+#### 🐍 Python API
+- New temporal batch APIs [#6587](https://github.com/rerun-io/rerun/pull/6587)
+- Python SDK: Rename `ImageEncoded` to `ImageEncodedHelper` [#6882](https://github.com/rerun-io/rerun/pull/6882)
+- Introduce `ImageChromaDownsampled` [#6883](https://github.com/rerun-io/rerun/pull/6883)
+- Allow logging batches of quaternions from numpy arrays [#7038](https://github.com/rerun-io/rerun/pull/7038)
+- Add `__version__` and `__version_info__` to rerun package [#7104](https://github.com/rerun-io/rerun/pull/7104)
+- Restore support for the legacy notebook mechanism from 0.16 [#7122](https://github.com/rerun-io/rerun/pull/7122)
+
+#### 🦀 Rust API
+- Recommend install rerun-cli with `--locked` [#6868](https://github.com/rerun-io/rerun/pull/6868)
+- Remove `TensorBuffer::JPEG`, `DecodedTensor`, `TensorDecodeCache` [#6884](https://github.com/rerun-io/rerun/pull/6884)
+
+#### 🪳Bug Fixes
+- Respect 0.0 for start and end boundaries of scalar axis [#6887](https://github.com/rerun-io/rerun/pull/6887) (thanks [@amidabucu](https://github.com/amidabucu)!)
+- Fix text log/document view icons [#6855](https://github.com/rerun-io/rerun/pull/6855)
+- Fix outdated use of view coordinates in `Spaces and Transforms` doc page [#6955](https://github.com/rerun-io/rerun/pull/6955)
+- Fix zero length transform axis having an effect bounding box used for heuristics etc [#6967](https://github.com/rerun-io/rerun/pull/6967)
+- Disambiguate plot labels with multiple entities ending with the same part [#7140](https://github.com/rerun-io/rerun/pull/7140)
+- `rerun rrd compact`: always put blueprints at the start of the recordings [#6998](https://github.com/rerun-io/rerun/pull/6998)
+- Fix 2D objects in 3D affecting bounding box and thus causing flickering of automatic pinhole plane distance [#7176](https://github.com/rerun-io/rerun/pull/7176)
+- Fix a UI issue where a visualiser would have both an override and default set for some component [#7206](https://github.com/rerun-io/rerun/pull/7206)
+
+#### 🌁 Viewer improvements
+- Add cyan to yellow colormap [#7001](https://github.com/rerun-io/rerun/pull/7001) (thanks [@rasmusgo](https://github.com/rasmusgo)!)
+- Add optional solid/filled (triangle mesh) rendering to `Boxes3D` and `Ellipsoids` [#6953](https://github.com/rerun-io/rerun/pull/6953) (thanks [@kpreid](https://github.com/kpreid)!)
+- Improve bounding box based heuristics [#6791](https://github.com/rerun-io/rerun/pull/6791)
+- Time panel chunkification [#6934](https://github.com/rerun-io/rerun/pull/6934)
+- Integrate new data APIs with EntityDb/UI/Blueprint things [#6994](https://github.com/rerun-io/rerun/pull/6994)
+- Chunkified text-log view with multi-timeline display [#7027](https://github.com/rerun-io/rerun/pull/7027)
+- Make the recordings panel resizable [#7180](https://github.com/rerun-io/rerun/pull/7180)
+
+#### 🚀 Performance improvements
+- Optimize large point clouds [#6767](https://github.com/rerun-io/rerun/pull/6767)
+- Optimize data clamping in spatial view [#6870](https://github.com/rerun-io/rerun/pull/6870)
+- Add `--blueprint` to `plot_dashboard_stress` [#6996](https://github.com/rerun-io/rerun/pull/6996)
+- Add `Transformables` subscriber for improved `TransformContext` perf [#6997](https://github.com/rerun-io/rerun/pull/6997)
+- Optimize gap detector on dense timelines, like `log_tick` [#7082](https://github.com/rerun-io/rerun/pull/7082)
+- Re-enable per-series parallelism [#7110](https://github.com/rerun-io/rerun/pull/7110)
+- Query: configurable timeline|component eager slicing [#7112](https://github.com/rerun-io/rerun/pull/7112)
+- Optimize out unnecessary sorts in line series visualizer [#7129](https://github.com/rerun-io/rerun/pull/7129)
+- Implement timeseries query clamping [#7133](https://github.com/rerun-io/rerun/pull/7133)
+- Chunks:
+  - Implement ChunkStore and integrate it everywhere [#6570](https://github.com/rerun-io/rerun/pull/6570)
+  - `Chunk` concatenation primitives [#6857](https://github.com/rerun-io/rerun/pull/6857)
+  - Implement on-write `Chunk` compaction [#6858](https://github.com/rerun-io/rerun/pull/6858)
+  - CLI command for compacting recordings [#6860](https://github.com/rerun-io/rerun/pull/6860)
+  - CLI command for merging recordings [#6862](https://github.com/rerun-io/rerun/pull/6862)
+  - `ChunkStore`: implement new component-less indices and APIs [#6879](https://github.com/rerun-io/rerun/pull/6879)
+  - Compaction-aware store events [#6940](https://github.com/rerun-io/rerun/pull/6940)
+  - New and improved iteration APIs for `Chunk`s [#6989](https://github.com/rerun-io/rerun/pull/6989)
+  - New chunkified latest-at APIs and caches [#6992](https://github.com/rerun-io/rerun/pull/6992)
+  - New chunkified range APIs and caches [#6993](https://github.com/rerun-io/rerun/pull/6993)
+  - New `Chunk`-based time-series views [#6995](https://github.com/rerun-io/rerun/pull/6995)
+  - Chunkified, deserialization-free Point Cloud visualizers [#7011](https://github.com/rerun-io/rerun/pull/7011)
+  - Chunkified, (almost)deserialization-free Mesh/Asset visualizers [#7016](https://github.com/rerun-io/rerun/pull/7016)
+  - Chunkified, deserialization-free LineStrip visualizers [#7018](https://github.com/rerun-io/rerun/pull/7018)
+  - Chunkified, deserialization-free visualizers for all standard shapes [#7020](https://github.com/rerun-io/rerun/pull/7020)
+  - Chunkified image visualizers [#7023](https://github.com/rerun-io/rerun/pull/7023)
+  - Chunkify everything left [#7032](https://github.com/rerun-io/rerun/pull/7032)
+  - Higher compaction thresholds by default (x4) [#7113](https://github.com/rerun-io/rerun/pull/7113)
+
+#### 🧑‍🏫 Examples
+- Add LeRobot example link [#6873](https://github.com/rerun-io/rerun/pull/6873) (thanks [@02alexander](https://github.com/02alexander)!)
+- Add link to chess robot example [#6982](https://github.com/rerun-io/rerun/pull/6982) (thanks [@02alexander](https://github.com/02alexander)!)
+- add depth compare example [#6885](https://github.com/rerun-io/rerun/pull/6885) (thanks [@pablovela5620](https://github.com/pablovela5620)!)
+- Add mini NVS solver example [#6888](https://github.com/rerun-io/rerun/pull/6888) (thanks [@pablovela5620](https://github.com/pablovela5620)!)
+- Add link to GLOMAP example [#7097](https://github.com/rerun-io/rerun/pull/7097) (thanks [@02alexander](https://github.com/02alexander)!)
+- Add `send_columns` examples for images, fix rust `send_columns`  handling of listarrays [#7172](https://github.com/rerun-io/rerun/pull/7172)
+
+#### 📚 Docs
+- New code snippet for Transform3D demonstrating an animated hierarchy [#6851](https://github.com/rerun-io/rerun/pull/6851)
+- Implement codegen of doclinks [#6850](https://github.com/rerun-io/rerun/pull/6850)
+- Add example for different data per timeline on `Events and Timelines` doc page [#6912](https://github.com/rerun-io/rerun/pull/6912)
+- Add troubleshooting section to pip install issues with outdated pip version [#6956](https://github.com/rerun-io/rerun/pull/6956)
+- Clarify in docs when ViewCoordinate is picked up by a 3D view [#7034](https://github.com/rerun-io/rerun/pull/7034)
+- CLI manual [#7149](https://github.com/rerun-io/rerun/pull/7149)
+
+#### 🖼 UI improvements
+- Display compaction information in the recording UI [#6859](https://github.com/rerun-io/rerun/pull/6859)
+- Use markdown for the view help widget [#6878](https://github.com/rerun-io/rerun/pull/6878)
+- Improve navigation between entity and data results in the selection panel [#6871](https://github.com/rerun-io/rerun/pull/6871)
+- Add support for visible time range to the dataframe view [#6869](https://github.com/rerun-io/rerun/pull/6869)
+- Make clamped component data distinguishable in the "latest at" table [#6894](https://github.com/rerun-io/rerun/pull/6894)
+- Scroll dataframe view to focused item [#6908](https://github.com/rerun-io/rerun/pull/6908)
+- Add an explicit "mode" view property to the dataframe view [#6927](https://github.com/rerun-io/rerun/pull/6927)
+- Introduce a "Selectable Toggle" widget and use it for the 3D view's camera kind [#7064](https://github.com/rerun-io/rerun/pull/7064)
+- Improve entity stats when hovered [#7074](https://github.com/rerun-io/rerun/pull/7074)
+- Update the UI colors to use our (blueish) ramp instead of pure greys [#7075](https://github.com/rerun-io/rerun/pull/7075)
+- Query editor for the dataframe view [#7071](https://github.com/rerun-io/rerun/pull/7071)
+- Better ui for `Blob`s, especially those representing images [#7128](https://github.com/rerun-io/rerun/pull/7128)
+- Add button for copying and saving images [#7156](https://github.com/rerun-io/rerun/pull/7156)
+
+#### 🕸️ Web
+- Add missing props to React package [#6895](https://github.com/rerun-io/rerun/pull/6895)
+- Fix multi rrd on `app.rerun.io` [#6972](https://github.com/rerun-io/rerun/pull/6972)
+
+#### ✨ Other enhancement
+- Support decoding multiplexed RRD streams [#7091](https://github.com/rerun-io/rerun/pull/7091)
+- Query-time clears (latest-at only) [#6586](https://github.com/rerun-io/rerun/pull/6586)
+- Introduce `ChunkStore::drop_entity_path` [#6588](https://github.com/rerun-io/rerun/pull/6588)
+- Implement `Chunk::cell` [#6875](https://github.com/rerun-io/rerun/pull/6875)
+- Implement `Chunk::iter_indices` [#6877](https://github.com/rerun-io/rerun/pull/6877)
+- Drop, rather than clear, removed blueprint entities [#7120](https://github.com/rerun-io/rerun/pull/7120)
+- Implement support for `RangeQueryOptions::include_extended_bounds` [#7132](https://github.com/rerun-io/rerun/pull/7132)
+
+#### 🧑‍💻 Dev-experience
+- Introduce `Chunk` component-level helpers and `UnitChunk` [#6990](https://github.com/rerun-io/rerun/pull/6990)
+- Vastly improved support for deserialized iteration [#7024](https://github.com/rerun-io/rerun/pull/7024)
+- Improved CLI: support wildcard inputs for all relevant `rerun rrd` subcommands [#7060](https://github.com/rerun-io/rerun/pull/7060)
+- Improved CLI: explicit CLI flags for compaction settings [#7061](https://github.com/rerun-io/rerun/pull/7061)
+- Improved CLI: stdin streaming support [#7092](https://github.com/rerun-io/rerun/pull/7092)
+- Improved CLI: stdout streaming support [#7094](https://github.com/rerun-io/rerun/pull/7094)
+- Improved CLI: implement `rerun rrd filter` [#7095](https://github.com/rerun-io/rerun/pull/7095)
+- Add support for `rerun rrd filter --drop-entity` [#7185](https://github.com/rerun-io/rerun/pull/7185)
+
+#### 🗣 Refactors
+- Forward Rust (de-)serialization of transparent datatypes [#6793](https://github.com/rerun-io/rerun/pull/6793)
+- CLI refactor: introduce `rerun rrd <compare|print|compact>` subscommand [#6861](https://github.com/rerun-io/rerun/pull/6861)
+- Remove legacy query engine and promises [#7033](https://github.com/rerun-io/rerun/pull/7033)
+- Implement `RangeQueryOptions` directly within `RangeQuery` [#7131](https://github.com/rerun-io/rerun/pull/7131)
+
+#### 📦 Dependencies
+- Update to glam 0.28 & replace `macaw` with fork `re_math` [#6867](https://github.com/rerun-io/rerun/pull/6867)
+
+#### 🤷‍ Other
+- Fix linkchecker: proper allow-list of stackoverflow.com [#6838](https://github.com/rerun-io/rerun/pull/6838)
+- Don't lint comments inside `[metadata]` frontmatter [#6903](https://github.com/rerun-io/rerun/pull/6903)
+- Add basic checklist to test different 3D transform types & transform hierarchy propagation [#6968](https://github.com/rerun-io/rerun/pull/6968)
+
 
 
 ## [0.17.0](https://github.com/rerun-io/rerun/compare/0.16.1...0.17.0) - More Blueprint features and better notebooks - 2024-07-08

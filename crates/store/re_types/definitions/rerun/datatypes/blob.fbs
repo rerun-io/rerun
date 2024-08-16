@@ -6,7 +6,6 @@ namespace rerun.datatypes;
 /// \rs
 /// \rs Ref-counted internally and therefore cheap to clone.
 table Blob (
-  "attr.docs.unreleased",
   "attr.arrow.transparent",
   "attr.python.aliases": "bytes, npt.NDArray[np.uint8]",
   "attr.python.array_aliases": "bytes, npt.NDArray[np.uint8]",

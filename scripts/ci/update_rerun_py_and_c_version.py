@@ -34,6 +34,7 @@ def update_python_line(line: str, version_line: str, version_info_line: str) -> 
 def set_rerun_py_version(init_path: Path, version: semver.VersionInfo) -> None:
     version_line = f'__version__ = "{version}"\n'
     version_info_line = (
+        # TODO(andreas): We released `0.18.0` `"None"` as prerelease, but really it should be `None`.
         f'__version_info__ = ({version.major}, {version.minor}, {version.patch}, "{version.prerelease}")\n'
     )
 

@@ -8,6 +8,8 @@ The Rerun SDK automatically handles micro-batching in a background thread in ord
 
 The flushing is triggered by both time and space thresholds, whichever happens to trigger first.
 
+This is very similar to, and has many parallels with, the [compaction mechanism running on the datastore side](./store-compaction).
+
 You can configure these thresholds using the following environment variables:
 
 #### RERUN_FLUSH_TICK_SECS

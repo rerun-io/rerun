@@ -6,7 +6,6 @@ namespace rerun.components;
 /// A scale of 2.0 means doubling the size.
 /// Each component scales along the corresponding axis.
 struct Scale3D (
-  "attr.docs.unreleased",
   "attr.rust.derive": "Copy, PartialEq, bytemuck::Pod, bytemuck::Zeroable",
   "attr.rust.repr": "transparent"
 ) {
@@ -19,7 +18,6 @@ struct Scale3D (
 /// A scale of 2.0 means doubling the size.
 /// Each component scales along the corresponding axis.
 struct PoseScale3D (
-  "attr.docs.unreleased",
   "attr.rust.derive": "Copy, PartialEq, bytemuck::Pod, bytemuck::Zeroable",
   "attr.rust.repr": "transparent"
 ) {

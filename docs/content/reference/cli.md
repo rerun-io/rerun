@@ -357,6 +357,9 @@ Example: `rerun filter --drop-timeline log_tick /my/recordings/*.rrd > output.rr
 * `--drop-timeline <DROPPED_TIMELINES>`
 > Names of the timelines to be filtered out.
 
+* `--drop-entity <DROPPED_ENTITY_PATHS>`
+> Paths of the entities to be filtered out.
+
 * `--continue-on-error <CONTINUE_ON_ERROR>`
 > If set, will try to proceed even in the face of IO and/or decoding errors in the input data.
 >

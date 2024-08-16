@@ -10,9 +10,9 @@ A color multiplier, usually applied to a whole entity, e.g. a mesh.
 * albedo_factor: [`Rgba32`](../datatypes/rgba32.md)
 
 ## API reference links
- * 🌊 [C++ API docs for `AlbedoFactor`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1components_1_1AlbedoFactor.html?speculative-link)
- * 🐍 [Python API docs for `AlbedoFactor`](https://ref.rerun.io/docs/python/stable/common/components?speculative-link#rerun.components.AlbedoFactor)
- * 🦀 [Rust API docs for `AlbedoFactor`](https://docs.rs/rerun/latest/rerun/components/struct.AlbedoFactor.html?speculative-link)
+ * 🌊 [C++ API docs for `AlbedoFactor`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1components_1_1AlbedoFactor.html)
+ * 🐍 [Python API docs for `AlbedoFactor`](https://ref.rerun.io/docs/python/stable/common/components#rerun.components.AlbedoFactor)
+ * 🦀 [Rust API docs for `AlbedoFactor`](https://docs.rs/rerun/latest/rerun/components/struct.AlbedoFactor.html)
 
 
 ## Used by

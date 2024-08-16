@@ -13,9 +13,9 @@ datastore as provided, when used in the Viewer, quaternions will always be norma
 * quaternion: [`Quaternion`](../datatypes/quaternion.md)
 
 ## API reference links
- * 🌊 [C++ API docs for `RotationQuat`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1components_1_1RotationQuat.html?speculative-link)
- * 🐍 [Python API docs for `RotationQuat`](https://ref.rerun.io/docs/python/stable/common/components?speculative-link#rerun.components.RotationQuat)
- * 🦀 [Rust API docs for `RotationQuat`](https://docs.rs/rerun/latest/rerun/components/struct.RotationQuat.html?speculative-link)
+ * 🌊 [C++ API docs for `RotationQuat`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1components_1_1RotationQuat.html)
+ * 🐍 [Python API docs for `RotationQuat`](https://ref.rerun.io/docs/python/stable/common/components#rerun.components.RotationQuat)
+ * 🦀 [Rust API docs for `RotationQuat`](https://docs.rs/rerun/latest/rerun/components/struct.RotationQuat.html)
 
 
 ## Used by

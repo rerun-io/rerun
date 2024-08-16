@@ -3,9 +3,7 @@ namespace rerun.datatypes;
 /// Specified what color components are present in an [archetypes.Image].
 ///
 /// This combined with [datatypes.ChannelDatatype] determines the pixel format of an image.
-enum ColorModel: ubyte (
-    "attr.docs.unreleased"
-) {
+enum ColorModel: ubyte{
     /// Invalid value. Won't show up in generated types.
     Invalid = 0,
 

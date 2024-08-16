@@ -14,11 +14,11 @@ The metadata describing the contents of a [`components.ImageBuffer`](https://rer
 * channel_datatype: [`ChannelDatatype`](../datatypes/channel_datatype.md)
 
 ## API reference links
- * 🌊 [C++ API docs for `ImageFormat`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1datatypes_1_1ImageFormat.html?speculative-link)
- * 🐍 [Python API docs for `ImageFormat`](https://ref.rerun.io/docs/python/stable/common/datatypes?speculative-link#rerun.datatypes.ImageFormat)
- * 🦀 [Rust API docs for `ImageFormat`](https://docs.rs/rerun/latest/rerun/datatypes/struct.ImageFormat.html?speculative-link)
+ * 🌊 [C++ API docs for `ImageFormat`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1datatypes_1_1ImageFormat.html)
+ * 🐍 [Python API docs for `ImageFormat`](https://ref.rerun.io/docs/python/stable/common/datatypes#rerun.datatypes.ImageFormat)
+ * 🦀 [Rust API docs for `ImageFormat`](https://docs.rs/rerun/latest/rerun/datatypes/struct.ImageFormat.html)
 
 
 ## Used by
 
-* [`ImageFormat`](../components/image_format.md?speculative-link)
+* [`ImageFormat`](../components/image_format.md)
