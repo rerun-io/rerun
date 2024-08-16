@@ -7,6 +7,8 @@ import semver
 def test_version() -> None:
     ver = semver.VersionInfo.parse(rr.__version__)
 
+    assert len(rr.__version_info__) == 4
+
     assert ver.major == rr.__version_info__[0]
     assert ver.minor == rr.__version_info__[1]
     assert ver.patch == rr.__version_info__[2]
