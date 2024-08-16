@@ -84,7 +84,7 @@ def check_file(path: str) -> bool:
             if matches is not None:
                 for match in matches.groups():
                     if match is not None and int(match) in closed_issues:
-                        print(f"{path}+{i}: {line.strip()}")
+                        print(f"{path}:{i}: {line.strip()}")
                         ok &= False
     return ok
 
