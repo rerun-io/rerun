@@ -424,7 +424,7 @@ jobs:
 
       - name: Update rerun_py & rerun_c version
         run: |
-          pixi run python scripts/ci/update_rerun_py_and_c_version.py "${{ steps.versioning.outputs.current }}"
+          pixi run python scripts/ci/update_rerun_py_and_c_version.py "${{ steps.crates.outputs.current }}"
 
       - run: pixi run toml-fmt
 
