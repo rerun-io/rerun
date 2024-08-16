@@ -87,7 +87,7 @@ class Image(ImageExt, Archetype):
         # Reshape the images so `ImageBufferBatch` can tell that this is several blobs.
         #
         # Note that the `ImageBufferBatch` consumes arrays of bytes,
-        # so if you have a different channel datatype than `U8`, you need need to make sure
+        # so if you have a different channel datatype than `U8`, you need to make sure
         # that the data is converted to arrays of bytes before passing it to `ImageBufferBatch`.
         components=[rr.components.ImageBufferBatch(images.reshape(len(times), -1))],
     )
