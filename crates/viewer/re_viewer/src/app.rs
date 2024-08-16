@@ -959,11 +959,6 @@ impl App {
                     .callback_resources
                     .get_mut::<re_renderer::RenderContext>()
                 {
-                    // TODO(#5283): There's no great reason to do this if we have no store-view and
-                    // subsequently won't actually be rendering anything. However, doing this here
-                    // avoids a hang on linux. Consider moving this back inside the below `if let`.
-                    // once the upstream issues that fix the hang properly have been resolved.
-                    render_ctx.begin_frame();
                     if let Some(store_view) = store_context {
                         let entity_db = store_view.recording;
 
@@ -972,6 +967,7 @@ impl App {
                         #[cfg(not(target_arch = "wasm32"))]
                         let is_history_enabled = false;
 
+                        render_ctx.begin_frame();
                         self.state.show(
                             app_blueprint,
                             ui,
@@ -989,8 +985,8 @@ impl App {
                             },
                             is_history_enabled,
                         );
+                        render_ctx.before_submit();
                     }
-                    render_ctx.before_submit();
                 }
             });
     }
