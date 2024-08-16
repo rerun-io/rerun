@@ -545,7 +545,7 @@ impl ComponentUiRegistry {
         row_id: Option<RowId>,
         component_array: Option<&dyn ArrowArray>,
         fallback_provider: &dyn ComponentFallbackProvider,
-        multiline: bool,
+        allow_multiline: bool,
     ) {
         re_tracing::profile_function!(component_name.full_name());
 
@@ -574,7 +574,7 @@ impl ComponentUiRegistry {
             component_name,
             row_id,
             component_raw.as_ref(),
-            multiline,
+            allow_multiline,
         );
     }
 
@@ -588,7 +588,7 @@ impl ComponentUiRegistry {
         component_name: ComponentName,
         row_id: Option<RowId>,
         component_raw: &dyn arrow2::array::Array,
-        multiline: bool,
+        allow_multiline: bool,
     ) {
         if !self.try_show_edit_ui(
             ctx.viewer_ctx,
@@ -596,7 +596,7 @@ impl ComponentUiRegistry {
             component_raw.as_ref(),
             blueprint_write_path,
             component_name,
-            multiline,
+            allow_multiline,
         ) {
             // Even if we can't edit the component, it's still helpful to show what the value is.
             self.ui_raw(
@@ -624,7 +624,7 @@ impl ComponentUiRegistry {
         raw_current_value: &dyn arrow2::array::Array,
         blueprint_write_path: &EntityPath,
         component_name: ComponentName,
-        multiline: bool,
+        allow_multiline: bool,
     ) -> bool {
         re_tracing::profile_function!(component_name.full_name());
 
@@ -632,12 +632,14 @@ impl ComponentUiRegistry {
             return false;
         }
 
-        let edit_or_view = if multiline {
-            &self.component_multiline_edit_or_view
+        let edit_or_view = if allow_multiline {
+            self.component_multiline_edit_or_view
+                .get(&component_name)
+                .or_else(|| self.component_singleline_edit_or_view.get(&component_name))
         } else {
-            &self.component_singleline_edit_or_view
+            self.component_singleline_edit_or_view.get(&component_name)
         };
-        if let Some(edit_or_view) = edit_or_view.get(&component_name) {
+        if let Some(edit_or_view) = edit_or_view {
             if let Some(updated) = (*edit_or_view)(ctx, ui, raw_current_value, EditOrView::Edit) {
                 ctx.save_blueprint_array(blueprint_write_path, component_name, updated);
             }
