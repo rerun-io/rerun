@@ -10,13 +10,13 @@ A translation vector in 3D space that doesn't propagate in the transform hierarc
 * vector: [`Vec3D`](../datatypes/vec3d.md)
 
 ## API reference links
- * 🌊 [C++ API docs for `PoseTranslation3D`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1components_1_1PoseTranslation3D.html?speculative-link)
- * 🐍 [Python API docs for `PoseTranslation3D`](https://ref.rerun.io/docs/python/stable/common/components?speculative-link#rerun.components.PoseTranslation3D)
- * 🦀 [Rust API docs for `PoseTranslation3D`](https://docs.rs/rerun/latest/rerun/components/struct.PoseTranslation3D.html?speculative-link)
+ * 🌊 [C++ API docs for `PoseTranslation3D`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1components_1_1PoseTranslation3D.html)
+ * 🐍 [Python API docs for `PoseTranslation3D`](https://ref.rerun.io/docs/python/stable/common/components#rerun.components.PoseTranslation3D)
+ * 🦀 [Rust API docs for `PoseTranslation3D`](https://docs.rs/rerun/latest/rerun/components/struct.PoseTranslation3D.html)
 
 
 ## Used by
 
 * [`Boxes3D`](../archetypes/boxes3d.md)
-* [`Ellipsoids3D`](../archetypes/ellipsoids3d.md?speculative-link)
+* [`Ellipsoids3D`](../archetypes/ellipsoids3d.md)
 * [`InstancePoses3D`](../archetypes/instance_poses3d.md)

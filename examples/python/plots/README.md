@@ -134,3 +134,8 @@ If you wish to customize it, explore additional features, or save it use the CLI
 ```bash
 python -m plots --help
 ```
+
+## Advanced time series - [`send_columns`](https://ref.rerun.io/docs/python/stable/common/columnar_api/#rerun.send_columns)
+Logging many scalars individually can be slow.
+The [`send_columns`](https://ref.rerun.io/docs/python/stable/common/columnar_api/#rerun.send_columns) API can be used to log many scalars at once.
+Check the [`Scalar` `send_columns` snippet](https://rerun.io/docs/reference/types/archetypes/scalar#scalar-send-columns) to learn more.

@@ -12,12 +12,12 @@ How a geometric shape is drawn and colored.
 * Solid
 
 ## API reference links
- * 🌊 [C++ API docs for `FillMode`](https://ref.rerun.io/docs/cpp/stable/namespacererun_1_1components.html?speculative-link)
- * 🐍 [Python API docs for `FillMode`](https://ref.rerun.io/docs/python/stable/common/components?speculative-link#rerun.components.FillMode)
- * 🦀 [Rust API docs for `FillMode`](https://docs.rs/rerun/latest/rerun/components/enum.FillMode.html?speculative-link)
+ * 🌊 [C++ API docs for `FillMode`](https://ref.rerun.io/docs/cpp/stable/namespacererun_1_1components.html)
+ * 🐍 [Python API docs for `FillMode`](https://ref.rerun.io/docs/python/stable/common/components#rerun.components.FillMode)
+ * 🦀 [Rust API docs for `FillMode`](https://docs.rs/rerun/latest/rerun/components/enum.FillMode.html)
 
 
 ## Used by
 
 * [`Boxes3D`](../archetypes/boxes3d.md)
-* [`Ellipsoids3D`](../archetypes/ellipsoids3d.md?speculative-link)
+* [`Ellipsoids3D`](../archetypes/ellipsoids3d.md)

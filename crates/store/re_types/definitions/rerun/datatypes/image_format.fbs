@@ -6,7 +6,6 @@ namespace rerun.datatypes;
 
 /// The metadata describing the contents of a [components.ImageBuffer].
 struct ImageFormat (
-  "attr.docs.unreleased",
   "attr.rust.derive": "Default, Copy, PartialEq, Eq, Hash"
 ) {
     /// The width of the image in pixels.

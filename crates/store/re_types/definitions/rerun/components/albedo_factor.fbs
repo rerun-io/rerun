@@ -4,7 +4,6 @@ namespace rerun.components;
 
 /// A color multiplier, usually applied to a whole entity, e.g. a mesh.
 table AlbedoFactor (
-  "attr.docs.unreleased",
   "attr.rust.derive": "Copy, PartialEq, Eq, PartialOrd, Ord, Hash, bytemuck::Pod, bytemuck::Zeroable",
   "attr.rust.repr": "transparent"
 ) {

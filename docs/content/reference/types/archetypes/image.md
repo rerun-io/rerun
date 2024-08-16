@@ -8,13 +8,13 @@ A monochrome or color image.
 See also [`archetypes.DepthImage`](https://rerun.io/docs/reference/types/archetypes/depth_image) and [`archetypes.SegmentationImage`](https://rerun.io/docs/reference/types/archetypes/segmentation_image).
 
 The raw image data is stored as a single buffer of bytes in a [`components.Blob`](https://rerun.io/docs/reference/types/components/blob).
-The meaning of these bytes is determined by the [`components.ImageFormat`](https://rerun.io/docs/reference/types/components/image_format?speculative-link) which specifies the resolution
+The meaning of these bytes is determined by the [`components.ImageFormat`](https://rerun.io/docs/reference/types/components/image_format) which specifies the resolution
 and the pixel format (e.g. RGB, RGBA, …).
 
 The order of dimensions in the underlying [`components.Blob`](https://rerun.io/docs/reference/types/components/blob) follows the typical
 row-major, interleaved-pixel image format.
 
-Rerun also supports compressed images (JPEG, PNG, …), using [`archetypes.EncodedImage`](https://rerun.io/docs/reference/types/archetypes/encoded_image?speculative-link).
+Rerun also supports compressed images (JPEG, PNG, …), using [`archetypes.EncodedImage`](https://rerun.io/docs/reference/types/archetypes/encoded_image).
 Compressing images can save a lot of bandwidth and memory.
 
 ## Components
@@ -46,9 +46,15 @@ snippet: archetypes/image_simple
   <img src="https://static.rerun.io/image_simple/06ba7f8582acc1ffb42a7fd0006fad7816f3e4e4/full.png">
 </picture>
 
-### image_send_columns
+### Advanced usage of `send_columns` to send multiple images at once
 
 snippet: archetypes/image_send_columns
 
-<img src="Advanced usage of `send_columns` to send multiple images at once">
+<picture data-inline-viewer="snippets/image_send_columns">
+  <source media="(max-width: 480px)" srcset="https://static.rerun.io/image_send_columns/321455161d79e2c45d6f5a6f175d6f765f418897/480w.png">
+  <source media="(max-width: 768px)" srcset="https://static.rerun.io/image_send_columns/321455161d79e2c45d6f5a6f175d6f765f418897/768w.png">
+  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/image_send_columns/321455161d79e2c45d6f5a6f175d6f765f418897/1024w.png">
+  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/image_send_columns/321455161d79e2c45d6f5a6f175d6f765f418897/1200w.png">
+  <img src="https://static.rerun.io/image_send_columns/321455161d79e2c45d6f5a6f175d6f765f418897/full.png">
+</picture>
 

@@ -10,9 +10,9 @@ A translation vector in 3D space.
 * vector: [`Vec3D`](../datatypes/vec3d.md)
 
 ## API reference links
- * 🌊 [C++ API docs for `Translation3D`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1components_1_1Translation3D.html?speculative-link)
- * 🐍 [Python API docs for `Translation3D`](https://ref.rerun.io/docs/python/stable/common/components?speculative-link#rerun.components.Translation3D)
- * 🦀 [Rust API docs for `Translation3D`](https://docs.rs/rerun/latest/rerun/components/struct.Translation3D.html?speculative-link)
+ * 🌊 [C++ API docs for `Translation3D`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1components_1_1Translation3D.html)
+ * 🐍 [Python API docs for `Translation3D`](https://ref.rerun.io/docs/python/stable/common/components#rerun.components.Translation3D)
+ * 🦀 [Rust API docs for `Translation3D`](https://docs.rs/rerun/latest/rerun/components/struct.Translation3D.html)
 
 
 ## Used by

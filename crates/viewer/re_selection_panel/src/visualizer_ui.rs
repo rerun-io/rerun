@@ -435,7 +435,7 @@ fn editable_blueprint_component_list_item(
             .action_button(&re_ui::icons::CLOSE, || {
                 query_ctx
                     .viewer_ctx
-                    .save_empty_blueprint_component_by_name(blueprint_path, component);
+                    .clear_blueprint_component_by_name(blueprint_path, component);
             }),
     )
 }
@@ -457,7 +457,7 @@ fn menu_more(
         .on_disabled_hover_text("There's no override active")
         .clicked()
     {
-        ctx.save_empty_blueprint_component_by_name(override_path, component_name);
+        ctx.clear_blueprint_component_by_name(override_path, component_name);
         ui.close_menu();
     }
 

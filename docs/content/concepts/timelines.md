@@ -27,6 +27,11 @@ snippet: concepts/different_data_per_timeline
 
 On one timeline the points will appear blue, on the other they appear red.
 
+### Sending many time points at once
+To get full control over the logged timelines you can use [`send_columns`](../howto/send_columns.md).
+This is often a lot more efficient when you already have a chunk of temporal data, e.g. some sensor value over time.
+
+
 ## Events
 
 An _event_ refer to an instance of logging one or more component batches to one or more timelines. In the viewer, the Time panel provide a graphical representation of these events across time and entities.

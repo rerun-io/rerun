@@ -11,9 +11,9 @@ Specifies relation a spatial transform describes.
 * ChildFromParent
 
 ## API reference links
- * 🌊 [C++ API docs for `TransformRelation`](https://ref.rerun.io/docs/cpp/stable/namespacererun_1_1components.html?speculative-link)
- * 🐍 [Python API docs for `TransformRelation`](https://ref.rerun.io/docs/python/stable/common/components?speculative-link#rerun.components.TransformRelation)
- * 🦀 [Rust API docs for `TransformRelation`](https://docs.rs/rerun/latest/rerun/components/enum.TransformRelation.html?speculative-link)
+ * 🌊 [C++ API docs for `TransformRelation`](https://ref.rerun.io/docs/cpp/stable/namespacererun_1_1components.html)
+ * 🐍 [Python API docs for `TransformRelation`](https://ref.rerun.io/docs/python/stable/common/components#rerun.components.TransformRelation)
+ * 🦀 [Rust API docs for `TransformRelation`](https://docs.rs/rerun/latest/rerun/components/enum.TransformRelation.html)
 
 
 ## Used by

@@ -218,7 +218,7 @@ This has the same effect as not setting the value in the blueprint at all."
         )
         .on_disabled_hover_text("The property is already unset.");
     if response.clicked() {
-        ctx.save_empty_blueprint_component_by_name(blueprint_path, component_name);
+        ctx.clear_blueprint_component_by_name(blueprint_path, component_name);
         ui.close_menu();
     }
 

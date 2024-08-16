@@ -18,5 +18,5 @@ title: "RotationAxisAngle"
 
 ## Used by
 
-* [`PoseRotationAxisAngle`](../components/pose_rotation_axis_angle.md?speculative-link)
-* [`RotationAxisAngle`](../components/rotation_axis_angle.md?speculative-link)
+* [`PoseRotationAxisAngle`](../components/pose_rotation_axis_angle.md)
+* [`RotationAxisAngle`](../components/rotation_axis_angle.md)

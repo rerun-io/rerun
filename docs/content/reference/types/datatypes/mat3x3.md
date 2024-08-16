@@ -27,5 +27,5 @@ row 2 | flat_columns[2] flat_columns[5] flat_columns[8]
 ## Used by
 
 * [`PinholeProjection`](../components/pinhole_projection.md)
-* [`PoseTransformMat3x3`](../components/pose_transform_mat3x3.md?speculative-link)
-* [`TransformMat3x3`](../components/transform_mat3x3.md?speculative-link)
+* [`PoseTransformMat3x3`](../components/pose_transform_mat3x3.md)
+* [`TransformMat3x3`](../components/transform_mat3x3.md)

@@ -59,7 +59,7 @@ class Image(ImageExt, Archetype):
     </picture>
     </center>
 
-    ### `image_send_columns`:
+    ### Advanced usage of `send_columns` to send multiple images at once:
     ```python
     import numpy as np
     import rerun as rr
@@ -85,10 +85,22 @@ class Image(ImageExt, Archetype):
         "images",
         times=[rr.TimeSequenceColumn("step", times)],
         # Reshape the images so `ImageBufferBatch` can tell that this is several blobs.
+        #
+        # Note that the `ImageBufferBatch` consumes arrays of bytes,
+        # so if you have a different channel datatype than `U8`, you need to make sure
+        # that the data is converted to arrays of bytes before passing it to `ImageBufferBatch`.
         components=[rr.components.ImageBufferBatch(images.reshape(len(times), -1))],
     )
     ```
-    <img src="Advanced usage of `send_columns` to send multiple images at once">
+    <center>
+    <picture>
+      <source media="(max-width: 480px)" srcset="https://static.rerun.io/image_send_columns/321455161d79e2c45d6f5a6f175d6f765f418897/480w.png">
+      <source media="(max-width: 768px)" srcset="https://static.rerun.io/image_send_columns/321455161d79e2c45d6f5a6f175d6f765f418897/768w.png">
+      <source media="(max-width: 1024px)" srcset="https://static.rerun.io/image_send_columns/321455161d79e2c45d6f5a6f175d6f765f418897/1024w.png">
+      <source media="(max-width: 1200px)" srcset="https://static.rerun.io/image_send_columns/321455161d79e2c45d6f5a6f175d6f765f418897/1200w.png">
+      <img src="https://static.rerun.io/image_send_columns/321455161d79e2c45d6f5a6f175d6f765f418897/full.png" width="640">
+    </picture>
+    </center>
 
     """
 

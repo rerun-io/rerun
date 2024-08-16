@@ -10,9 +10,9 @@ A double-precision 64-bit IEEE 754 floating point number.
 * value: `f64`
 
 ## API reference links
- * 🌊 [C++ API docs for `Float64`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1datatypes_1_1Float64.html?speculative-link)
- * 🐍 [Python API docs for `Float64`](https://ref.rerun.io/docs/python/stable/common/datatypes?speculative-link#rerun.datatypes.Float64)
- * 🦀 [Rust API docs for `Float64`](https://docs.rs/rerun/latest/rerun/datatypes/struct.Float64.html?speculative-link)
+ * 🌊 [C++ API docs for `Float64`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1datatypes_1_1Float64.html)
+ * 🐍 [Python API docs for `Float64`](https://ref.rerun.io/docs/python/stable/common/datatypes#rerun.datatypes.Float64)
+ * 🦀 [Rust API docs for `Float64`](https://docs.rs/rerun/latest/rerun/datatypes/struct.Float64.html)
 
 
 ## Used by

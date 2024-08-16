@@ -10,13 +10,13 @@ title: "PoseRotationAxisAngle"
 * rotation: [`RotationAxisAngle`](../datatypes/rotation_axis_angle.md)
 
 ## API reference links
- * 🌊 [C++ API docs for `PoseRotationAxisAngle`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1components_1_1PoseRotationAxisAngle.html?speculative-link)
- * 🐍 [Python API docs for `PoseRotationAxisAngle`](https://ref.rerun.io/docs/python/stable/common/components?speculative-link#rerun.components.PoseRotationAxisAngle)
- * 🦀 [Rust API docs for `PoseRotationAxisAngle`](https://docs.rs/rerun/latest/rerun/components/struct.PoseRotationAxisAngle.html?speculative-link)
+ * 🌊 [C++ API docs for `PoseRotationAxisAngle`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1components_1_1PoseRotationAxisAngle.html)
+ * 🐍 [Python API docs for `PoseRotationAxisAngle`](https://ref.rerun.io/docs/python/stable/common/components#rerun.components.PoseRotationAxisAngle)
+ * 🦀 [Rust API docs for `PoseRotationAxisAngle`](https://docs.rs/rerun/latest/rerun/components/struct.PoseRotationAxisAngle.html)
 
 
 ## Used by
 
 * [`Boxes3D`](../archetypes/boxes3d.md)
-* [`Ellipsoids3D`](../archetypes/ellipsoids3d.md?speculative-link)
+* [`Ellipsoids3D`](../archetypes/ellipsoids3d.md)
 * [`InstancePoses3D`](../archetypes/instance_poses3d.md)
