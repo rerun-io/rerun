@@ -6,7 +6,7 @@
 
 https://github.com/user-attachments/assets/95380a64-df05-4f85-b40a-0c6b8ec8d5cf
 
-* 📖 Release blogpost: TODO: add link
+* 📖 Release blogpost: http://rerun.io/blog/column-chunks
 * 🧳 Migration guide: http://rerun.io/docs/reference/migration/migration-0-18
 
 ### ✨ Overview & highlights
