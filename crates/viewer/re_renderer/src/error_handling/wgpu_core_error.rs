@@ -174,31 +174,28 @@ impl std::hash::Hash for WgpuCoreWrappedContextError {
         };
 
         label.hash(state); // e.g. "composite_encoder"
-        self.0.label_key.hash(state); // e.g. "encoder"
-        self.0.string.hash(state); // e.g. "a RenderPass"
+        self.0.fn_ident.hash(state);
 
         // try to downcast into something that implements `DedupableError`, and
         // then call `DedupableError::hash`.
-        if try_downcast!(self.0.cause => |inner| DedupableError::hash(inner, state)).is_none() {
-            re_log::warn!(cause=?self.0.cause, "unknown error cause");
+        if try_downcast!(self.0.source => |inner| DedupableError::hash(inner, state)).is_none() {
+            re_log::warn!(cause=?self.0.source, "unknown error cause");
         }
     }
 }
 
 impl PartialEq for WgpuCoreWrappedContextError {
     fn eq(&self, rhs: &Self) -> bool {
-        let mut is_eq = self.0.label.eq(&rhs.0.label)
-            && self.0.label_key.eq(rhs.0.label_key)
-            && self.0.string.eq(rhs.0.string);
+        let mut is_eq = self.0.label.eq(&rhs.0.label) && self.0.fn_ident.eq(rhs.0.fn_ident);
 
         // try to downcast into something that implements `DedupableError`, and
         // then call `DedupableError::eq`.
         if let Some(finer_eq) =
-            try_downcast!(self.0.cause => |inner| DedupableError::eq(inner, &*rhs.0.cause))
+            try_downcast!(self.0.source => |inner| DedupableError::eq(inner, &*rhs.0.source))
         {
             is_eq |= finer_eq;
         } else {
-            re_log::warn!(cause=?self.0.cause, "unknown error cause");
+            re_log::warn!(cause=?self.0.source, "unknown error cause");
         }
 
         is_eq

@@ -268,10 +268,10 @@ wasm-bindgen-futures = "0.4.33"
 web-sys = "0.3"
 web-time = "0.2.0"
 webbrowser = "1.0"
-winit = { version = "0.29.9", default-features = false }
+winit = { version = "0.30.5", default-features = false }
 # TODO(andreas): Try to get rid of `fragile-send-sync-non-atomic-wasm`. This requires re_renderer being aware of single-thread restriction on resources.
 # See also https://gpuweb.github.io/gpuweb/explainer/#multithreading-transfer (unsolved part of the Spec as of writing!)
-wgpu = { version = "0.20.1", default-features = false, features = [
+wgpu = { version = "22.1", default-features = false, features = [
   # Backends (see https://docs.rs/wgpu/latest/wgpu/#feature-flags)
   "webgl",
   "metal",
@@ -285,7 +285,7 @@ wgpu = { version = "0.20.1", default-features = false, features = [
   # Other:
   "fragile-send-sync-non-atomic-wasm",
 ] }
-wgpu-core = "0.21.0"
+wgpu-core = "22.1"
 xshell = "0.2"
 zip = { version = "0.6", default-features = false }
 
@@ -503,22 +503,23 @@ missing_errors_doc = "allow"
 # As a last resport, patch with a commit to our own repository.
 # ALWAYS document what PR the commit hash is part of, or when it was merged into the upstream trunk.
 
-# ecolor = { git = "https://github.com/emilk/egui.git", rev = "249b69d534d4c92c1b5da83178cf8ba450886436" }      # egui master 2024-07-02
-# eframe = { git = "https://github.com/emilk/egui.git", rev = "249b69d534d4c92c1b5da83178cf8ba450886436" }      # egui master 2024-07-02
-# egui = { git = "https://github.com/emilk/egui.git", rev = "249b69d534d4c92c1b5da83178cf8ba450886436" }        # egui master 2024-07-02
-# egui_extras = { git = "https://github.com/emilk/egui.git", rev = "249b69d534d4c92c1b5da83178cf8ba450886436" } # egui master 2024-07-02
-# egui_plot = { git = "https://github.com/emilk/egui.git", rev = "249b69d534d4c92c1b5da83178cf8ba450886436" }   # egui master 2024-07-02
-# egui-wgpu = { git = "https://github.com/emilk/egui.git", rev = "249b69d534d4c92c1b5da83178cf8ba450886436" }   # egui master 2024-07-02
-# emath = { git = "https://github.com/emilk/egui.git", rev = "249b69d534d4c92c1b5da83178cf8ba450886436" }       # egui master 2024-07-02
+ecolor = { git = "https://github.com/emilk/egui.git", rev = "1f6ae49a5f6bf43a869c215dea0d3028be8d742a" }      # egui master 2024-07-02
+eframe = { git = "https://github.com/emilk/egui.git", rev = "1f6ae49a5f6bf43a869c215dea0d3028be8d742a" }      # egui master 2024-07-02
+egui = { git = "https://github.com/emilk/egui.git", rev = "1f6ae49a5f6bf43a869c215dea0d3028be8d742a" }        # egui master 2024-07-02
+egui_extras = { git = "https://github.com/emilk/egui.git", rev = "1f6ae49a5f6bf43a869c215dea0d3028be8d742a" } # egui master 2024-07-02
+egui-wgpu = { git = "https://github.com/emilk/egui.git", rev = "1f6ae49a5f6bf43a869c215dea0d3028be8d742a" }   # egui master 2024-07-02
+emath = { git = "https://github.com/emilk/egui.git", rev = "1f6ae49a5f6bf43a869c215dea0d3028be8d742a" }       # egui master 2024-07-02
 
 # Useful while developing:
 # ecolor = { path = "../../egui/crates/ecolor" }
 # eframe = { path = "../../egui/crates/eframe" }
 # egui = { path = "../../egui/crates/egui" }
 # egui_extras = { path = "../../egui/crates/egui_extras" }
-# egui_plot = { path = "../../egui/crates/egui_plot" }
 # egui-wgpu = { path = "../../egui/crates/egui-wgpu" }
 # emath = { path = "../../egui/crates/emath" }
+
+# egui_plot = { git = "https://github.com/emilk/egui_plot.git", rev = "1f6ae49a5f6bf43a869c215dea0d3028be8d742a" }
+# egui_plot = { path = "../../egui_plot/egui_plot" }
 
 # egui_tiles = { git = "https://github.com/rerun-io/egui_tiles", rev = "f9cbcc10521ee10e5a8927dae20f73689add7223" } # https://github.com/rerun-io/egui_tiles/pull/67 2024-06-25
 # egui_tiles = { path = "../egui_tiles" }

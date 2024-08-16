@@ -136,6 +136,7 @@ impl<E: Example + 'static> Application<E> {
                     label: None,
                     required_features: wgpu::Features::empty(),
                     required_limits: device_caps.limits(),
+                    memory_hints: Default::default(),
                 },
                 None,
             )

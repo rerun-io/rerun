@@ -90,6 +90,11 @@ pub fn apply_style_and_install_loaders(egui_ctx: &egui::Context) {
         include_bytes!("../data/logo_light_mode.png"),
     );
 
+    egui_ctx.options_mut(|o| {
+        o.follow_system_theme = false;
+        o.fallback_theme = egui::Theme::Dark;
+    });
+
     design_tokens().apply(egui_ctx);
 
     egui_ctx.style_mut(|style| {
