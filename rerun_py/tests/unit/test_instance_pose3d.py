@@ -38,7 +38,6 @@ def test_instance_poses3d() -> None:
     # TODO(andreas): It would be nice to support scalar values here
     scale_arrays = [None, [1.0, 2.0, 3.0], [[1.0, 2.0, 3.0], [4.0, 5.0, 6.0]]]
 
-    # TODO(#6831): repopulate this list with all transform variants
     all_arrays = itertools.zip_longest(
         VEC_3D_INPUT + [None],
         rotation_axis_angle_arrays,
