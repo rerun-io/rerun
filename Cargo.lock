@@ -4457,6 +4457,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "re_datastore_ui"
+version = "0.19.0-alpha.1+dev"
+dependencies = [
+ "egui",
+ "re_chunk_store",
+ "re_data_ui",
+ "re_entity_db",
+ "re_types",
+ "re_ui",
+ "re_viewer_context",
+]
+
+[[package]]
 name = "re_dev_tools"
 version = "0.19.0-alpha.1+dev"
 dependencies = [
@@ -5254,6 +5267,7 @@ dependencies = [
  "re_data_loader",
  "re_data_source",
  "re_data_ui",
+ "re_datastore_ui",
  "re_edit_ui",
  "re_entity_db",
  "re_error",
