@@ -14,7 +14,7 @@ The Rerun SDK provides 4 modes of operation: `spawn`, `connect`, `serve` & `save
 
 All four of them are optional: when none of these modes are active, the client will simply buffer the logged data in memory, waiting for one of these modes to be enabled so that it can flush it.
 
-### Spawn
+## Spawn
 
 This is the default behavior you get when running all of our C++/Python/Rust examples, and is generally the most convenient when you're experimenting.
 
