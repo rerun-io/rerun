@@ -479,6 +479,18 @@ impl ChunkStore {
         self.chunks_per_chunk_id.values()
     }
 
+    /// Get a chunk based on its ID.
+    #[inline]
+    pub fn chunk(&self, id: &ChunkId) -> Option<&Arc<Chunk>> {
+        self.chunks_per_chunk_id.get(id)
+    }
+
+    /// Get the number of chunks.
+    #[inline]
+    pub fn num_chunks(&self) -> usize {
+        self.chunks_per_chunk_id.len()
+    }
+
     /// Lookup the _latest_ arrow [`ArrowDataType`] used by a specific [`re_types_core::Component`].
     #[inline]
     pub fn lookup_datatype(&self, component_name: &ComponentName) -> Option<&ArrowDataType> {
