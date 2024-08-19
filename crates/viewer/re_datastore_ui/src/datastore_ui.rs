@@ -55,7 +55,8 @@ impl DatastoreUi {
     }
 
     fn chunk_store_ui(&mut self, ui: &mut egui::Ui, chunk_store: &ChunkStore) {
-        self.chunk_store_info_ui(ui, chunk_store);
+        let should_copy_chunk = self.chunk_store_info_ui(ui, chunk_store);
+
         let chunk_iterator = chunk_store.iter_chunks();
 
         //
@@ -99,11 +100,20 @@ impl DatastoreUi {
             }))
         };
 
+        let chunks: Vec<_> = chunk_iterator.collect_vec();
+
+        //
+        // Copy
+        //
+
+        if should_copy_chunk {
+            let s = chunks.iter().map(|chunk| chunk.to_string()).join("\n\n");
+            ui.output_mut(|o| o.copied_text = s);
+        }
+
         //
         // Table
         //
-
-        let chunks: Vec<_> = chunk_iterator.collect_vec();
 
         let header_ui = |mut row: TableRow<'_, '_>| {
             row.col(|ui| {
@@ -211,7 +221,10 @@ impl DatastoreUi {
             });
     }
 
-    fn chunk_store_info_ui(&mut self, ui: &mut egui::Ui, chunk_store: &ChunkStore) {
+    // copy the (filtered) chunks to clipboard if this returns true
+    fn chunk_store_info_ui(&mut self, ui: &mut egui::Ui, chunk_store: &ChunkStore) -> bool {
+        let mut should_copy_chunks = false;
+
         let chunk_store_stats_ui = |ui: &mut egui::Ui| {
             ui.list_item_flat_noninteractive(
                 list_item::PropertyContent::new("ID").value_text(chunk_store.id().to_string()),
@@ -257,6 +270,10 @@ impl DatastoreUi {
                     ui.selectable_value(&mut self.store_kind, StoreKind::Recording, "Recording");
                     ui.selectable_value(&mut self.store_kind, StoreKind::Blueprint, "Blueprint");
                 });
+
+                if ui.button("Copy").clicked() {
+                    should_copy_chunks = true;
+                }
             });
 
             list_item::list_item_scope(ui, "chunk_store_stats", |ui| {
@@ -271,6 +288,8 @@ impl DatastoreUi {
                     );
             });
         });
+
+        should_copy_chunks
     }
 
     fn chunk_ui(&mut self, ctx: &ViewerContext<'_>, ui: &mut egui::Ui, chunk: &Arc<Chunk>) {
