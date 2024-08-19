@@ -56,7 +56,7 @@ namespace rerun::archetypes {
             rerun::Collection<uint8_t> bytes,
             std::optional<rerun::components::MediaType> media_type = {}
         ) {
-            // TODO(cmc): we could try and guess using magic bytes here, like rust does.
+            // TODO(jan): we could try and guess using magic bytes here, like rust does.
             AssetVideo asset = AssetVideo(std::move(bytes));
             asset.media_type = media_type;
             return asset;
