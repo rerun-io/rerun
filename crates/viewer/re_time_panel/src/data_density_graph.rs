@@ -30,6 +30,8 @@ const MARGIN_X: f32 = 2.0;
 /// Higher = slower, but more accurate.
 const DENSITIES_PER_UI_PIXEL: f32 = 1.0;
 
+const DEBUG_PAINT: bool = false;
+
 // ----------------------------------------------------------------------------
 
 /// Persistent data for painting the data density graph.
@@ -476,6 +478,17 @@ pub fn build_density_graph<'a>(
         re_tracing::profile_scope!("add_data");
 
         let can_render_individual_events = total_events < config.max_total_chunk_events;
+
+        if DEBUG_PAINT {
+            ui.ctx().debug_painter().debug_rect(
+                row_rect,
+                egui::Color32::LIGHT_BLUE,
+                format!(
+                    "{} chunks, {total_events} events, render individual: {can_render_individual_events}",
+                    chunk_ranges.len()
+                ),
+            );
+        }
 
         for (chunk, time_range, num_events_in_chunk) in chunk_ranges {
             re_tracing::profile_scope!("chunk_range");
