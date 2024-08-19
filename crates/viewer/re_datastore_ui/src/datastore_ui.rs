@@ -99,15 +99,21 @@ impl DatastoreUi {
                 ui.label(chunk.num_rows().to_string());
             });
 
-            //TODO: make that a filter and show static vs. timeline count here
             row.col(|ui| {
-                ui.label(
-                    chunk
-                        .timelines()
-                        .keys()
-                        .map(|timeline| timeline.name().as_str())
-                        .join(", "),
-                );
+                if chunk.is_static() {
+                    ui.label("static");
+                } else {
+                    ui.label(format!("{} timelines", chunk.timelines().len(),))
+                        .on_hover_ui(|ui| {
+                            ui.label(
+                                chunk
+                                    .timelines()
+                                    .keys()
+                                    .map(|timeline| timeline.name().as_str())
+                                    .join(", "),
+                            );
+                        });
+                }
             });
 
             //TODO: make that a filter and show component as tooltip.
@@ -228,11 +234,11 @@ impl DatastoreUi {
                 ui.strong("Row ID");
             });
 
-            time_columns.iter().for_each(|time_column| {
+            for time_column in &time_columns {
                 row.col(|ui| {
                     ui.strong(time_column.timeline().name().as_str());
                 });
-            });
+            }
 
             for component_name in &component_names {
                 row.col(|ui| {
@@ -265,7 +271,7 @@ impl DatastoreUi {
                 ui.label(row_id.to_string());
             });
 
-            for time_column in time_columns.iter() {
+            for time_column in &time_columns {
                 row.col(|ui| {
                     let time = TimeInt::from(time_column.times_raw()[row_index]);
 
