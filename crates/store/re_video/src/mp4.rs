@@ -38,8 +38,8 @@ impl Video {
         let coded_width = video_track.width();
 
         let config = Config {
-            codec: codec.into_boxed_str(),
-            description: description.into_boxed_slice(),
+            codec,
+            description,
             coded_height,
             coded_width,
         };
@@ -58,7 +58,7 @@ impl Video {
             if sample.is_sync && !samples.is_empty() {
                 segments.push(Segment {
                     timestamp: samples[0].timestamp,
-                    samples: samples.into_boxed_slice(),
+                    samples,
                 });
                 samples = Vec::new();
             }
@@ -79,16 +79,16 @@ impl Video {
         if !samples.is_empty() {
             segments.push(Segment {
                 timestamp: samples[0].timestamp,
-                samples: samples.into_boxed_slice(),
+                samples,
             });
         }
 
         Ok(Self {
             config,
-            data: data.into_boxed_slice(),
+            data,
             timescale,
             duration,
-            segments: segments.into_boxed_slice(),
+            segments,
         })
     }
 }

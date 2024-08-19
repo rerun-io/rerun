@@ -15,6 +15,3 @@ A 16bit unsigned integer.
  * 🦀 [Rust API docs for `UInt16`](https://docs.rs/rerun/latest/rerun/datatypes/struct.UInt16.html)
 
 
-## Used by
-
-* [`VideoConfig`](../datatypes/video_config.md)

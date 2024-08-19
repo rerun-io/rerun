@@ -12,10 +12,10 @@ pub struct Video {
 
     /// We split video into segments, each beginning with a key frame,
     /// followed by any number of delta frames.
-    pub segments: Box<[Segment]>,
+    pub segments: Vec<Segment>,
 
     /// This array stores all data used by samples.
-    pub data: Box<[u8]>,
+    pub data: Vec<u8>,
 }
 
 #[derive(Clone)]
@@ -26,7 +26,7 @@ pub struct Segment {
     /// List of samples contained in this segment.
     /// At least one sample per segment is guaranteed,
     /// and the first sample is always a key frame.
-    pub samples: Box<[Sample]>,
+    pub samples: Vec<Sample>,
 }
 
 #[derive(Debug, Clone)]
@@ -44,10 +44,10 @@ pub struct Sample {
 #[derive(Debug, Clone)]
 pub struct Config {
     /// String used to identify the codec and some of its configuration.
-    pub codec: Box<str>,
+    pub codec: String,
 
     /// Codec-specific configuration.
-    pub description: Box<[u8]>,
+    pub description: Vec<u8>,
 
     /// Natural height of the video.
     pub coded_height: u16,

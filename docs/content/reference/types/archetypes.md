@@ -56,6 +56,7 @@ This page lists all built-in archetypes.
 ## Other
 
 * [`AnnotationContext`](archetypes/annotation_context.md): The annotation context provides additional information on how to display entities.
+* [`AssetVideo`](archetypes/asset_video.md): A video file.
 * [`Clear`](archetypes/clear.md): Empties all the components of an entity.
 * [`DisconnectedSpace`](archetypes/disconnected_space.md): Spatially disconnect this entity from its parent.
 

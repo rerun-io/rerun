@@ -67,6 +67,16 @@ class MediaTypeExt:
     <https://www.iana.org/assignments/media-types/model/stl>
     """
 
+    # --------------------------
+    # Video:
+
+    MP4: MediaType = None  # type: ignore[assignment]
+    """
+    [`mp4`](https://en.wikipedia.org/wiki/MP4_file_format): `video/mp4`.
+
+    <https://www.iana.org/assignments/media-types/video/mp4>
+    """
+
     @staticmethod
     def deferred_patch_class(cls: Any) -> None:
         cls.TEXT = cls("text/plain")
@@ -79,3 +89,5 @@ class MediaTypeExt:
         cls.GLTF = cls("model/gltf+json")
         cls.OBJ = cls("model/obj")
         cls.STL = cls("model/stl")
+
+        cls.MP4 = cls("video/mp4")

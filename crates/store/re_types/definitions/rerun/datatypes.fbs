@@ -39,6 +39,5 @@ include "./datatypes/uvec4d.fbs";
 include "./datatypes/vec2d.fbs";
 include "./datatypes/vec3d.fbs";
 include "./datatypes/vec4d.fbs";
-include "./datatypes/video.fbs";
 include "./datatypes/view_coordinates.fbs";
 include "./datatypes/visible_time_range.fbs";
