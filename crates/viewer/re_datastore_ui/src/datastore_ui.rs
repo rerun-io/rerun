@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use egui_extras::{Column, TableRow};
-use itertools::Itertools;
+use itertools::{Either, Itertools};
 
 use re_chunk_store::external::re_chunk::external::arrow2;
 use re_chunk_store::external::re_chunk::external::arrow2::array::Utf8Array;
@@ -22,6 +22,10 @@ fn outer_frame() -> egui::Frame {
 pub struct DatastoreUi {
     store_kind: StoreKind,
     focused_chunk: Option<Arc<Chunk>>,
+
+    // filters
+    entity_path_filter: String,
+    component_filter: String,
 }
 
 impl Default for DatastoreUi {
@@ -29,6 +33,8 @@ impl Default for DatastoreUi {
         Self {
             store_kind: StoreKind::Recording,
             focused_chunk: None,
+            entity_path_filter: String::new(),
+            component_filter: String::new(),
         }
     }
 }
@@ -50,8 +56,54 @@ impl DatastoreUi {
 
     fn chunk_store_ui(&mut self, ui: &mut egui::Ui, chunk_store: &ChunkStore) {
         self.chunk_store_info_ui(ui, chunk_store);
+        let chunk_iterator = chunk_store.iter_chunks();
 
-        let chunks = chunk_store.iter_chunks().collect_vec();
+        //
+        // Filters
+        //
+
+        ui.horizontal(|ui| {
+            ui.spacing_mut().text_edit_width = 120.0;
+
+            ui.label("Entity:");
+            ui.text_edit_singleline(&mut self.entity_path_filter);
+
+            ui.label("Component:");
+            ui.text_edit_singleline(&mut self.component_filter);
+
+            if ui.small_icon_button(&re_ui::icons::CLOSE).clicked() {
+                self.entity_path_filter = String::new();
+                self.component_filter = String::new();
+            }
+        });
+
+        let chunk_iterator = if self.entity_path_filter.is_empty() {
+            Either::Left(chunk_iterator)
+        } else {
+            Either::Right(chunk_iterator.filter(|chunk| {
+                chunk
+                    .entity_path()
+                    .to_string()
+                    .contains(&self.entity_path_filter)
+            }))
+        };
+
+        let chunk_iterator = if self.component_filter.is_empty() {
+            Either::Left(chunk_iterator)
+        } else {
+            Either::Right(chunk_iterator.filter(|chunk| {
+                chunk
+                    .components()
+                    .keys()
+                    .any(|name| name.short_name().contains(&self.component_filter))
+            }))
+        };
+
+        //
+        // Table
+        //
+
+        let chunks: Vec<_> = chunk_iterator.collect_vec();
 
         let header_ui = |mut row: TableRow<'_, '_>| {
             row.col(|ui| {
@@ -116,7 +168,6 @@ impl DatastoreUi {
                 }
             });
 
-            //TODO: make that a filter and show component as tooltip.
             row.col(|ui| {
                 ui.label(
                     chunk
