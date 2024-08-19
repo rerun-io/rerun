@@ -1,78 +1,74 @@
 {
-    "editor.formatOnSave": true,
-    "editor.semanticTokenColorCustomizations": {
-        "rules": {
-            "*.unsafe:rust": "#eb5046"
-        }
-    },
-    "files.autoGuessEncoding": true,
-    "files.insertFinalNewline": true,
-    "files.trimTrailingWhitespace": true,
-    // Whether `--workspace` should be passed to `cargo check`. If false, `-p <package>` will be passed instead.
-    "rust-analyzer.check.workspace": false,
-    "rust-analyzer.cargo.allTargets": true,
-    // --all-features will set the `__ci` feature flag, which stops re_web_viewer_server/build.rs from building the web viewer
-    "rust-analyzer.cargo.features": "all",
-    "rust-analyzer.cargo.targetDir": "target_ra",
-    "rust-analyzer.check.invocationLocation": "workspace",
-    "rust-analyzer.check.invocationStrategy": "per_workspace",
-    "rust-analyzer.check.overrideCommand": [
-        "cargo",
-        "clippy",
-        "--message-format=json",
-        // We shouldn't need this, except we do based on my empirical testing.
-        "--target-dir=target_ra",
-    ],
-    "rust-analyzer.cargo.buildScripts.invocationLocation": "workspace",
-    "rust-analyzer.cargo.buildScripts.invocationStrategy": "per_workspace",
-    "rust-analyzer.cargo.buildScripts.overrideCommand": [
-        "cargo",
-        "check",
-        "--quiet",
-        "--message-format=json",
-        // We shouldn't need this, except we do based on my empirical testing.
-        "--target-dir=target_ra",
-    ],
-    // Our build scripts are generating code.
-    // Having Rust Analyzer do this while doing other builds can lead to catastrophic failures.
-    // INCLUDING attempts to publish a new release!
-    "rust-analyzer.cargo.buildScripts.enable": false,
-    "rust-analyzer.cargo.extraEnv": {
-        "IS_IN_RERUN_WORKSPACE": "yes"
-    },
-    "rust-analyzer.diagnostics.enable": false, // False positives
-    "rust-analyzer.showUnlinkedFileNotification": false,
-    // Uncomment the following option and restart rust-analyzer to get it to check code behind `cfg(target_arch=wasm32)`.
-    // Don't forget to put it in a comment again before committing.
-    // "rust-analyzer.cargo.target": "wasm32-unknown-unknown"
-    "C_Cpp.default.configurationProvider": "ms-vscode.cmake-tools", // Use cmake-tools to grab configs.
-    "C_Cpp.autoAddFileAssociations": false,
-    "cmake.buildDirectory": "${workspaceRoot}/build/debug",
-    "cmake.generator": "Ninja", // Use Ninja, just like we do in our just/pixi command.
-    "python.analysis.extraPaths": [
-        "rerun_py/rerun_sdk"
-    ],
-    "ruff.format.args": [
-        "--config=rerun_py/pyproject.toml"
-    ],
-    "ruff.lint.args": [
-        "--config=rerun_py/pyproject.toml"
-    ],
-    "prettier.requireConfig": true,
-    "prettier.configPath": ".prettierrc.toml",
-    "[python]": {
-        "editor.defaultFormatter": "charliermarsh.ruff"
-    },
-    "[javascript]": {
-        "editor.defaultFormatter": "esbenp.prettier-vscode"
-    },
-    "[html]": {
-        "editor.defaultFormatter": "esbenp.prettier-vscode"
-    },
-    "[css]": {
-        "editor.defaultFormatter": "esbenp.prettier-vscode"
-    },
-    "[yaml]": {
-        "editor.defaultFormatter": "esbenp.prettier-vscode"
+  "editor.formatOnSave": true,
+  "editor.semanticTokenColorCustomizations": {
+    "rules": {
+      "*.unsafe:rust": "#eb5046"
     }
+  },
+  "files.autoGuessEncoding": true,
+  "files.insertFinalNewline": true,
+  "files.trimTrailingWhitespace": true,
+  // Whether `--workspace` should be passed to `cargo check`. If false, `-p <package>` will be passed instead.
+  "rust-analyzer.check.workspace": false,
+  "rust-analyzer.cargo.allTargets": true,
+  // --all-features will set the `__ci` feature flag, which stops re_web_viewer_server/build.rs from building the web viewer
+  "rust-analyzer.cargo.features": "all",
+  "rust-analyzer.cargo.targetDir": "target_ra",
+  "rust-analyzer.check.invocationLocation": "workspace",
+  "rust-analyzer.check.invocationStrategy": "per_workspace",
+  "rust-analyzer.check.overrideCommand": [
+    "cargo",
+    "clippy",
+    "--message-format=json",
+    // We shouldn't need this, except we do based on my empirical testing.
+    "--target-dir=target_ra"
+  ],
+  "rust-analyzer.cargo.buildScripts.invocationLocation": "workspace",
+  "rust-analyzer.cargo.buildScripts.invocationStrategy": "per_workspace",
+  "rust-analyzer.cargo.buildScripts.overrideCommand": [
+    "cargo",
+    "check",
+    "--quiet",
+    "--message-format=json",
+    // We shouldn't need this, except we do based on my empirical testing.
+    "--target-dir=target_ra"
+  ],
+  // Our build scripts are generating code.
+  // Having Rust Analyzer do this while doing other builds can lead to catastrophic failures.
+  // INCLUDING attempts to publish a new release!
+  "rust-analyzer.cargo.buildScripts.enable": false,
+  "rust-analyzer.cargo.extraEnv": {
+    "IS_IN_RERUN_WORKSPACE": "yes"
+  },
+  "rust-analyzer.diagnostics.enable": false, // False positives
+  "rust-analyzer.showUnlinkedFileNotification": false,
+  // Uncomment the following option and restart rust-analyzer to get it to check code behind `cfg(target_arch=wasm32)`.
+  // Don't forget to put it in a comment again before committing.
+  // "rust-analyzer.cargo.target": "wasm32-unknown-unknown"
+  "C_Cpp.default.configurationProvider": "ms-vscode.cmake-tools", // Use cmake-tools to grab configs.
+  "C_Cpp.autoAddFileAssociations": false,
+  "cmake.buildDirectory": "${workspaceRoot}/build/debug",
+  "cmake.generator": "Ninja", // Use Ninja, just like we do in our just/pixi command.
+  "python.analysis.extraPaths": ["rerun_py/rerun_sdk"],
+  "ruff.format.args": ["--config=rerun_py/pyproject.toml"],
+  "ruff.lint.args": ["--config=rerun_py/pyproject.toml"],
+  "prettier.requireConfig": true,
+  "prettier.configPath": ".prettierrc.toml",
+  "[python]": {
+    "editor.defaultFormatter": "charliermarsh.ruff"
+  },
+  "[javascript]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode"
+  },
+  "[html]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode"
+  },
+  "[css]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode"
+  },
+  "[yaml]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode"
+  },
+"python.analysis.typeCheckingMode": "basic",
+"python.analysis.autoImportCompletions": true
 }

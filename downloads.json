@@ -1,0 +1,399 @@
+[
+  {
+    "version": "0.18.0",
+    "downloads": {
+      "librerun_c-0.18.0-aarch64-apple-darwin.a": 0,
+      "librerun_c-0.18.0-aarch64-unknown-linux-gnu.a": 0,
+      "librerun_c-0.18.0-x86_64-apple-darwin.a": 0,
+      "librerun_c-0.18.0-x86_64-unknown-linux-gnu.a": 0,
+      "rerun-cli-0.18.0-aarch64-apple-darwin": 2,
+      "rerun-cli-0.18.0-aarch64-unknown-linux-gnu": 0,
+      "rerun-cli-0.18.0-x86_64-apple-darwin": 0,
+      "rerun-cli-0.18.0-x86_64-pc-windows-msvc.exe": 13,
+      "rerun-cli-0.18.0-x86_64-unknown-linux-gnu": 8,
+      "rerun_c-0.18.0-x86_64-pc-windows-msvc.lib": 0,
+      "rerun_cpp_sdk-0.18.0-multiplatform.zip": 0,
+      "rerun_cpp_sdk.zip": 163,
+      "rerun_notebook-0.18.0-py2.py3-none-any.whl": 0,
+      "rerun_sdk-0.18.0-cp38-abi3-macosx_10_12_x86_64.whl": 0,
+      "rerun_sdk-0.18.0-cp38-abi3-macosx_11_0_arm64.whl": 0,
+      "rerun_sdk-0.18.0-cp38-abi3-manylinux_2_31_aarch64.whl": 0,
+      "rerun_sdk-0.18.0-cp38-abi3-manylinux_2_31_x86_64.whl": 0,
+      "rerun_sdk-0.18.0-cp38-abi3-win_amd64.whl": 0
+    }
+  },
+  {
+    "version": "0.17.0",
+    "downloads": {
+      "librerun_c-0.17.0-aarch64-apple-darwin.a": 31,
+      "librerun_c-0.17.0-aarch64-unknown-linux-gnu.a": 11,
+      "librerun_c-0.17.0-x86_64-apple-darwin.a": 29,
+      "librerun_c-0.17.0-x86_64-unknown-linux-gnu.a": 10,
+      "rerun-cli-0.17.0-aarch64-apple-darwin": 60,
+      "rerun-cli-0.17.0-aarch64-unknown-linux-gnu": 7,
+      "rerun-cli-0.17.0-x86_64-apple-darwin": 19,
+      "rerun-cli-0.17.0-x86_64-pc-windows-msvc.exe": 93,
+      "rerun-cli-0.17.0-x86_64-unknown-linux-gnu": 103,
+      "rerun_c-0.17.0-x86_64-pc-windows-msvc.lib": 8,
+      "rerun_cpp_sdk-0.17.0-multiplatform.zip": 20,
+      "rerun_cpp_sdk.zip": 4087,
+      "rerun_notebook-0.17.0-py2.py3-none-any.whl": 5,
+      "rerun_sdk-0.17.0-cp38-abi3-macosx_10_12_x86_64.whl": 6,
+      "rerun_sdk-0.17.0-cp38-abi3-macosx_11_0_arm64.whl": 9,
+      "rerun_sdk-0.17.0-cp38-abi3-manylinux_2_31_aarch64.whl": 11,
+      "rerun_sdk-0.17.0-cp38-abi3-manylinux_2_31_x86_64.whl": 40,
+      "rerun_sdk-0.17.0-cp38-abi3-win_amd64.whl": 28
+    }
+  },
+  {
+    "version": "0.16.1",
+    "downloads": {
+      "librerun_c-0.16.1-aarch64-apple-darwin.a": 9,
+      "librerun_c-0.16.1-aarch64-unknown-linux-gnu.a": 7,
+      "librerun_c-0.16.1-x86_64-apple-darwin.a": 4,
+      "librerun_c-0.16.1-x86_64-unknown-linux-gnu.a": 12,
+      "rerun-cli-0.16.1-aarch64-apple-darwin": 55,
+      "rerun-cli-0.16.1-aarch64-unknown-linux-gnu": 13,
+      "rerun-cli-0.16.1-x86_64-apple-darwin": 12,
+      "rerun-cli-0.16.1-x86_64-pc-windows-msvc.exe": 116,
+      "rerun-cli-0.16.1-x86_64-unknown-linux-gnu": 53,
+      "rerun_c-0.16.1-x86_64-pc-windows-msvc.lib": 31,
+      "rerun_cpp_sdk-0.16.1-multiplatform.zip": 53,
+      "rerun_cpp_sdk.zip": 2957,
+      "rerun_sdk-0.16.1-cp38-abi3-macosx_10_12_x86_64.whl": 7,
+      "rerun_sdk-0.16.1-cp38-abi3-macosx_11_0_arm64.whl": 35,
+      "rerun_sdk-0.16.1-cp38-abi3-manylinux_2_31_aarch64.whl": 9,
+      "rerun_sdk-0.16.1-cp38-abi3-manylinux_2_31_x86_64.whl": 21,
+      "rerun_sdk-0.16.1-cp38-abi3-win_amd64.whl": 7
+    }
+  },
+  {
+    "version": "0.16.0",
+    "downloads": {
+      "librerun_c-0.16.0-aarch64-apple-darwin.a": 5,
+      "librerun_c-0.16.0-aarch64-unknown-linux-gnu.a": 25,
+      "librerun_c-0.16.0-x86_64-apple-darwin.a": 25,
+      "librerun_c-0.16.0-x86_64-unknown-linux-gnu.a": 6,
+      "rerun-cli-0.16.0-aarch64-apple-darwin": 10,
+      "rerun-cli-0.16.0-aarch64-unknown-linux-gnu": 7,
+      "rerun-cli-0.16.0-x86_64-apple-darwin": 26,
+      "rerun-cli-0.16.0-x86_64-pc-windows-msvc.exe": 57,
+      "rerun-cli-0.16.0-x86_64-unknown-linux-gnu": 34,
+      "rerun_c-0.16.0-x86_64-pc-windows-msvc.lib": 7,
+      "rerun_cpp_sdk-0.16.0-multiplatform.zip": 20,
+      "rerun_cpp_sdk.zip": 1179,
+      "rerun_sdk-0.16.0-cp38-abi3-macosx_10_12_x86_64.whl": 26,
+      "rerun_sdk-0.16.0-cp38-abi3-macosx_11_0_arm64.whl": 28,
+      "rerun_sdk-0.16.0-cp38-abi3-manylinux_2_31_aarch64.whl": 7,
+      "rerun_sdk-0.16.0-cp38-abi3-manylinux_2_31_x86_64.whl": 32,
+      "rerun_sdk-0.16.0-cp38-abi3-win_amd64.whl": 28
+    }
+  },
+  {
+    "version": "0.15.1",
+    "downloads": {
+      "librerun_c-0.15.1-aarch64-apple-darwin.a": 7,
+      "librerun_c-0.15.1-aarch64-unknown-linux-gnu.a": 27,
+      "librerun_c-0.15.1-x86_64-apple-darwin.a": 4,
+      "librerun_c-0.15.1-x86_64-unknown-linux-gnu.a": 30,
+      "rerun-cli-0.15.1-aarch64-apple-darwin": 26,
+      "rerun-cli-0.15.1-aarch64-unknown-linux-gnu": 29,
+      "rerun-cli-0.15.1-x86_64-apple-darwin": 11,
+      "rerun-cli-0.15.1-x86_64-pc-windows-msvc.exe": 94,
+      "rerun-cli-0.15.1-x86_64-unknown-linux-gnu": 217,
+      "rerun_c-0.15.1-x86_64-pc-windows-msvc.lib": 28,
+      "rerun_cpp_sdk-0.15.1-multiplatform.zip": 20,
+      "rerun_cpp_sdk.zip": 3157,
+      "rerun_sdk-0.15.1-cp38-abi3-macosx_10_12_x86_64.whl": 25,
+      "rerun_sdk-0.15.1-cp38-abi3-macosx_11_0_arm64.whl": 7,
+      "rerun_sdk-0.15.1-cp38-abi3-manylinux_2_31_aarch64.whl": 33,
+      "rerun_sdk-0.15.1-cp38-abi3-manylinux_2_31_x86_64.whl": 20,
+      "rerun_sdk-0.15.1-cp38-abi3-win_amd64.whl": 8
+    }
+  },
+  {
+    "version": "0.15.0",
+    "downloads": {
+      "librerun_c-0.15.0-aarch64-apple-darwin.a": 27,
+      "librerun_c-0.15.0-aarch64-unknown-linux-gnu.a": 5,
+      "librerun_c-0.15.0-x86_64-apple-darwin.a": 25,
+      "librerun_c-0.15.0-x86_64-unknown-linux-gnu.a": 6,
+      "rerun-cli-0.15.0-aarch64-apple-darwin": 30,
+      "rerun-cli-0.15.0-aarch64-unknown-linux-gnu": 5,
+      "rerun-cli-0.15.0-x86_64-apple-darwin": 5,
+      "rerun-cli-0.15.0-x86_64-pc-windows-msvc.exe": 44,
+      "rerun-cli-0.15.0-x86_64-unknown-linux-gnu": 15,
+      "rerun_c-0.15.0-x86_64-pc-windows-msvc.lib": 6,
+      "rerun_cpp_sdk-0.15.0-multiplatform.zip": 2496,
+      "rerun_cpp_sdk.zip": 3339,
+      "rerun_sdk-0.15.0-cp38-abi3-macosx_10_12_x86_64.whl": 4,
+      "rerun_sdk-0.15.0-cp38-abi3-macosx_11_0_arm64.whl": 6,
+      "rerun_sdk-0.15.0-cp38-abi3-manylinux_2_31_aarch64.whl": 6,
+      "rerun_sdk-0.15.0-cp38-abi3-manylinux_2_31_x86_64.whl": 9,
+      "rerun_sdk-0.15.0-cp38-abi3-win_amd64.whl": 8
+    }
+  },
+  {
+    "version": "0.14.1",
+    "downloads": {
+      "librerun_c-0.14.1-aarch64-apple-darwin.a": 9,
+      "librerun_c-0.14.1-x86_64-apple-darwin.a": 5,
+      "librerun_c-0.14.1-x86_64-unknown-linux-gnu.a": 30,
+      "rerun-cli-0.14.1-aarch64-apple-darwin": 23,
+      "rerun-cli-0.14.1-x86_64-apple-darwin": 10,
+      "rerun-cli-0.14.1-x86_64-pc-windows-msvc.exe": 122,
+      "rerun-cli-0.14.1-x86_64-unknown-linux-gnu": 83,
+      "rerun_c-0.14.1-x86_64-pc-windows-msvc.lib": 10,
+      "rerun_cpp_sdk-0.14.1-multiplatform.zip": 64,
+      "rerun_cpp_sdk.zip": 2596,
+      "rerun_sdk-0.14.1-cp38-abi3-macosx_10_12_x86_64.whl": 7,
+      "rerun_sdk-0.14.1-cp38-abi3-macosx_11_0_arm64.whl": 6,
+      "rerun_sdk-0.14.1-cp38-abi3-manylinux_2_31_x86_64.whl": 19,
+      "rerun_sdk-0.14.1-cp38-abi3-win_amd64.whl": 11
+    }
+  },
+  {
+    "version": "0.14.0",
+    "downloads": {
+      "librerun_c-0.14.0-aarch64-apple-darwin.a": 3,
+      "librerun_c-0.14.0-x86_64-apple-darwin.a": 25,
+      "librerun_c-0.14.0-x86_64-unknown-linux-gnu.a": 5,
+      "rerun-cli-0.14.0-aarch64-apple-darwin": 10,
+      "rerun-cli-0.14.0-x86_64-apple-darwin": 5,
+      "rerun-cli-0.14.0-x86_64-pc-windows-msvc.exe": 7,
+      "rerun-cli-0.14.0-x86_64-unknown-linux-gnu": 7,
+      "rerun_c-0.14.0-x86_64-pc-windows-msvc.lib": 3,
+      "rerun_cpp_sdk-0.14.0-multiplatform.zip": 5,
+      "rerun_cpp_sdk.zip": 1211,
+      "rerun_sdk-0.14.0-cp38-abi3-macosx_10_12_x86_64.whl": 26,
+      "rerun_sdk-0.14.0-cp38-abi3-macosx_11_0_arm64.whl": 5,
+      "rerun_sdk-0.14.0-cp38-abi3-manylinux_2_31_x86_64.whl": 5,
+      "rerun_sdk-0.14.0-cp38-abi3-win_amd64.whl": 5
+    }
+  },
+  {
+    "version": "0.13.0",
+    "downloads": {
+      "librerun_c-0.13.0-aarch64-apple-darwin.a": 6,
+      "librerun_c-0.13.0-x86_64-apple-darwin.a": 5,
+      "librerun_c-0.13.0-x86_64-unknown-linux-gnu.a": 26,
+      "rerun-cli-0.13.0-aarch64-apple-darwin": 9,
+      "rerun-cli-0.13.0-x86_64-apple-darwin": 8,
+      "rerun-cli-0.13.0-x86_64-pc-windows-msvc.exe": 71,
+      "rerun-cli-0.13.0-x86_64-unknown-linux-gnu": 168,
+      "rerun_c-0.13.0-x86_64-pc-windows-msvc.lib": 7,
+      "rerun_cpp_sdk-0.13.0-multiplatform.zip": 37,
+      "rerun_cpp_sdk.zip": 2990,
+      "rerun_sdk-0.13.0-cp38-abi3-macosx_10_12_x86_64.whl": 5,
+      "rerun_sdk-0.13.0-cp38-abi3-macosx_11_0_arm64.whl": 5,
+      "rerun_sdk-0.13.0-cp38-abi3-manylinux_2_31_x86_64.whl": 5,
+      "rerun_sdk-0.13.0-cp38-abi3-win_amd64.whl": 7
+    }
+  },
+  {
+    "version": "0.12.1",
+    "downloads": {
+      "librerun_c-0.12.1-aarch64-apple-darwin.a": 8,
+      "librerun_c-0.12.1-x86_64-apple-darwin.a": 7,
+      "librerun_c-0.12.1-x86_64-unknown-linux-gnu.a": 7,
+      "rerun-cli-0.12.1-aarch64-apple-darwin": 11,
+      "rerun-cli-0.12.1-x86_64-apple-darwin": 36,
+      "rerun-cli-0.12.1-x86_64-pc-windows-msvc.exe": 52,
+      "rerun-cli-0.12.1-x86_64-unknown-linux-gnu": 78,
+      "rerun_c-0.12.1-x86_64-pc-windows-msvc.lib": 26,
+      "rerun_cpp_sdk-0.12.1-multiplatform.zip": 27,
+      "rerun_cpp_sdk.zip": 787,
+      "rerun_sdk-0.12.1-cp38-abi3-macosx_10_12_x86_64.whl": 7,
+      "rerun_sdk-0.12.1-cp38-abi3-macosx_11_0_arm64.whl": 8,
+      "rerun_sdk-0.12.1-cp38-abi3-manylinux_2_31_x86_64.whl": 18,
+      "rerun_sdk-0.12.1-cp38-abi3-win_amd64.whl": 28
+    }
+  },
+  {
+    "version": "0.12.0",
+    "downloads": {
+      "librerun_c-0.12.0-aarch64-apple-darwin.a": 6,
+      "librerun_c-0.12.0-x86_64-apple-darwin.a": 6,
+      "librerun_c-0.12.0-x86_64-unknown-linux-gnu.a": 7,
+      "rerun-cli-0.12.0-aarch64-apple-darwin": 8,
+      "rerun-cli-0.12.0-x86_64-apple-darwin": 29,
+      "rerun-cli-0.12.0-x86_64-pc-windows-msvc.exe": 20,
+      "rerun-cli-0.12.0-x86_64-unknown-linux-gnu": 31,
+      "rerun_c-0.12.0-x86_64-pc-windows-msvc.lib": 29,
+      "rerun_cpp_sdk-0.12.0-multiplatform.zip": 14,
+      "rerun_cpp_sdk.zip": 444,
+      "rerun_sdk-0.12.0-cp38-abi3-macosx_10_12_x86_64.whl": 29,
+      "rerun_sdk-0.12.0-cp38-abi3-macosx_11_0_arm64.whl": 5,
+      "rerun_sdk-0.12.0-cp38-abi3-manylinux_2_31_x86_64.whl": 10,
+      "rerun_sdk-0.12.0-cp38-abi3-win_amd64.whl": 6
+    }
+  },
+  {
+    "version": "0.11.0",
+    "downloads": {
+      "librerun_c-0.11.0-aarch64-apple-darwin.a": 28,
+      "librerun_c-0.11.0-x86_64-apple-darwin.a": 6,
+      "librerun_c-0.11.0-x86_64-unknown-linux-gnu.a": 10,
+      "rerun-cli-0.11.0-aarch64-apple-darwin": 16,
+      "rerun-cli-0.11.0-x86_64-apple-darwin": 9,
+      "rerun-cli-0.11.0-x86_64-pc-windows-msvc.exe": 72,
+      "rerun-cli-0.11.0-x86_64-unknown-linux-gnu": 35,
+      "rerun_c-0.11.0-x86_64-pc-windows-msvc.lib": 5,
+      "rerun_cpp_sdk-0.11.0-multiplatform.zip": 13,
+      "rerun_cpp_sdk.zip": 1542,
+      "rerun_sdk-0.11.0-cp38-abi3-macosx_10_7_x86_64.whl": 4,
+      "rerun_sdk-0.11.0-cp38-abi3-macosx_11_0_arm64.whl": 7,
+      "rerun_sdk-0.11.0-cp38-abi3-manylinux_2_31_x86_64.whl": 16,
+      "rerun_sdk-0.11.0-cp38-abi3-win_amd64.whl": 8
+    }
+  },
+  {
+    "version": "0.10.1",
+    "downloads": {
+      "librerun_c-0.10.1-aarch64-apple-darwin.a": 27,
+      "librerun_c-0.10.1-x86_64-apple-darwin.a": 6,
+      "librerun_c-0.10.1-x86_64-unknown-linux-gnu.a": 6,
+      "rerun-cli-0.10.1-aarch64-apple-darwin": 13,
+      "rerun-cli-0.10.1-x86_64-apple-darwin": 12,
+      "rerun-cli-0.10.1-x86_64-pc-windows-msvc.exe": 23,
+      "rerun-cli-0.10.1-x86_64-unknown-linux-gnu": 76,
+      "rerun_c-0.10.1-x86_64-pc-windows-msvc.lib": 26,
+      "rerun_cpp_sdk-0.10.1-multiplatform.zip": 6,
+      "rerun_cpp_sdk.zip": 683,
+      "rerun_sdk-0.10.1-cp38-abi3-macosx_10_7_x86_64.whl": 6,
+      "rerun_sdk-0.10.1-cp38-abi3-macosx_11_0_arm64.whl": 6,
+      "rerun_sdk-0.10.1-cp38-abi3-manylinux_2_31_x86_64.whl": 29,
+      "rerun_sdk-0.10.1-cp38-abi3-win_amd64.whl": 26
+    }
+  },
+  {
+    "version": "0.10.0",
+    "downloads": {
+      "librerun_c-0.10.0-aarch64-apple-darwin.a": 27,
+      "librerun_c-0.10.0-x86_64-apple-darwin.a": 7,
+      "librerun_c-0.10.0-x86_64-unknown-linux-gnu.a": 28,
+      "rerun-cli-0.10.0-aarch64-apple-darwin": 7,
+      "rerun-cli-0.10.0-x86_64-apple-darwin": 26,
+      "rerun-cli-0.10.0-x86_64-pc-windows-msvc.exe": 11,
+      "rerun-cli-0.10.0-x86_64-unknown-linux-gnu": 14,
+      "rerun_c-0.10.0-x86_64-pc-windows-msvc.lib": 5,
+      "rerun_cpp_sdk-0.10.0-multiplatform.zip": 18,
+      "rerun_cpp_sdk.zip": 92,
+      "rerun_sdk-0.10.0-cp38-abi3-macosx_10_7_x86_64.whl": 6,
+      "rerun_sdk-0.10.0-cp38-abi3-macosx_11_0_arm64.whl": 25,
+      "rerun_sdk-0.10.0-cp38-abi3-manylinux_2_31_x86_64.whl": 9,
+      "rerun_sdk-0.10.0-cp38-abi3-win_amd64.whl": 6
+    }
+  },
+  {
+    "version": "0.9.1",
+    "downloads": {
+      "rerun_cpp_sdk-0.9.1-multiplatform.zip": 6,
+      "rerun_cpp_sdk.zip": 12,
+      "rerun_sdk-0.9.1-aarch64-apple-darwin.whl": 6,
+      "rerun_sdk-0.9.1-x86_64-apple-darwin.whl": 6,
+      "rerun_sdk-0.9.1-x86_64-pc-windows-msvc.whl": 7,
+      "rerun_sdk-0.9.1-x86_64-unknown-linux-gnu.whl": 6
+    }
+  },
+  {
+    "version": "0.9.0",
+    "downloads": {
+      "librerun_c.x86_64-unknown-linux-gnu.a": 6,
+      "rerun_sdk-0.9.0-cp38-abi3-macosx_10_7_x86_64.whl": 28,
+      "rerun_sdk-0.9.0-cp38-abi3-macosx_11_0_arm64.whl": 7,
+      "rerun_sdk-0.9.0-cp38-abi3-manylinux_2_31_x86_64.whl": 5,
+      "rerun_sdk-0.9.0-cp38-abi3-win_amd64.whl": 6
+    }
+  },
+  {
+    "version": "0.8.2",
+    "downloads": {
+      "rerun_sdk-0.8.2-cp38-abi3-macosx_10_7_x86_64.whl": 7,
+      "rerun_sdk-0.8.2-cp38-abi3-macosx_11_0_arm64.whl": 8,
+      "rerun_sdk-0.8.2-cp38-abi3-manylinux_2_31_x86_64.whl": 5,
+      "rerun_sdk-0.8.2-cp38-abi3-win_amd64.whl": 8
+    }
+  },
+  {
+    "version": "0.8.1",
+    "downloads": {
+      "rerun_sdk-0.8.1-cp38-abi3-macosx_10_7_x86_64.whl": 4,
+      "rerun_sdk-0.8.1-cp38-abi3-macosx_11_0_arm64.whl": 7,
+      "rerun_sdk-0.8.1-cp38-abi3-manylinux_2_31_x86_64.whl": 6,
+      "rerun_sdk-0.8.1-cp38-abi3-win_amd64.whl": 7
+    }
+  },
+  {
+    "version": "0.8.0",
+    "downloads": {
+      "rerun_sdk-0.8.0-cp38-abi3-macosx_10_7_x86_64.whl": 5,
+      "rerun_sdk-0.8.0-cp38-abi3-macosx_11_0_arm64.whl": 5,
+      "rerun_sdk-0.8.0-cp38-abi3-manylinux_2_31_x86_64.whl": 5,
+      "rerun_sdk-0.8.0-cp38-abi3-win_amd64.whl": 5
+    }
+  },
+  {
+    "version": "0.7.0",
+    "downloads": {
+      "rerun_sdk-0.7.0-cp38-abi3-macosx_10_7_x86_64.whl": 33,
+      "rerun_sdk-0.7.0-cp38-abi3-macosx_11_0_arm64.whl": 27,
+      "rerun_sdk-0.7.0-cp38-abi3-manylinux_2_31_x86_64.whl": 12,
+      "rerun_sdk-0.7.0-cp38-abi3-win_amd64.whl": 30
+    }
+  },
+  {
+    "version": "0.6.0",
+    "downloads": {
+      "rerun_sdk-0.6.0-cp38-abi3-macosx_10_7_x86_64.whl": 30,
+      "rerun_sdk-0.6.0-cp38-abi3-macosx_11_0_arm64.whl": 9,
+      "rerun_sdk-0.6.0-cp38-abi3-manylinux_2_31_x86_64.whl": 13,
+      "rerun_sdk-0.6.0-cp38-abi3-win_amd64.whl": 34
+    }
+  },
+  {
+    "version": "v0.5.1",
+    "downloads": {
+      "rerun_sdk-0.5.1-cp38-abi3-macosx_10_7_x86_64.whl": 10,
+      "rerun_sdk-0.5.1-cp38-abi3-macosx_11_0_arm64.whl": 30,
+      "rerun_sdk-0.5.1-cp38-abi3-manylinux_2_31_x86_64.whl": 35,
+      "rerun_sdk-0.5.1-cp38-abi3-win_amd64.whl": 31
+    }
+  },
+  {
+    "version": "v0.5.0",
+    "downloads": {
+      "rerun_sdk-0.5.0-cp38-abi3-macosx_10_7_x86_64.whl": 11,
+      "rerun_sdk-0.5.0-cp38-abi3-macosx_11_0_arm64.whl": 6,
+      "rerun_sdk-0.5.0-cp38-abi3-manylinux_2_31_x86_64.whl": 10,
+      "rerun_sdk-0.5.0-cp38-abi3-win_amd64.whl": 8
+    }
+  },
+  {
+    "version": "v0.4.0",
+    "downloads": {
+      "rerun_sdk-0.4.0-cp38-abi3-macosx_10_7_x86_64.whl": 29,
+      "rerun_sdk-0.4.0-cp38-abi3-macosx_11_0_arm64.whl": 30,
+      "rerun_sdk-0.4.0-cp38-abi3-manylinux_2_31_x86_64.whl": 12,
+      "rerun_sdk-0.4.0-cp38-abi3-win_amd64.whl": 15
+    }
+  },
+  {
+    "version": "v0.3.1",
+    "downloads": {
+      "rerun_sdk-0.3.1-cp38-abi3-macosx_10_7_x86_64.whl": 33,
+      "rerun_sdk-0.3.1-cp38-abi3-macosx_11_0_arm64.whl": 7,
+      "rerun_sdk-0.3.1-cp38-abi3-manylinux_2_31_x86_64.whl": 28,
+      "rerun_sdk-0.3.1-cp38-abi3-win_amd64.whl": 7
+    }
+  },
+  {
+    "version": "v0.3.0",
+    "downloads": {
+      "rerun_sdk-0.3.0-cp38-abi3-macosx_10_7_x86_64.whl": 8,
+      "rerun_sdk-0.3.0-cp38-abi3-macosx_11_0_arm64.whl": 6,
+      "rerun_sdk-0.3.0-cp38-abi3-manylinux_2_31_x86_64.whl": 17,
+      "rerun_sdk-0.3.0-cp38-abi3-win_amd64.whl": 9
+    }
+  }
+]
