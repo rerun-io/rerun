@@ -544,8 +544,8 @@ impl Default for DensityGraphBuilderConfig {
             // It does not seem to matter how many chunks there are, only how many total events we're showing.
             //
             // We want to stay around 1ms if possible, preferring to instead spend our frame budget on actually
-            // visualizing the data, so we undershoot the limit here by a good amount:
-            max_total_chunk_events: 50_000,
+            // visualizing the data, and we also want to support multiple data density graphs on the screen at once.
+            max_total_chunk_events: 10_000,
 
             // For individual chunks, the limits are completely arbitrary, and help preserve visual clarity of the data
             // when there are too many events in a given chunk.
