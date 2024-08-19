@@ -479,7 +479,7 @@ pub fn build_density_graph<'a>(
 
         for (chunk, time_range, num_events_in_chunk) in chunk_ranges {
             let should_render_individual_events = can_render_individual_events
-                && if chunk.is_time_sorted() {
+                && if chunk.is_timeline_sorted(&timeline) {
                     num_events_in_chunk < config.max_events_in_sorted_chunk
                 } else {
                     num_events_in_chunk < config.max_events_in_unsorted_chunk
