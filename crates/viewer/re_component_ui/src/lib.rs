@@ -24,13 +24,12 @@ use datatype_editors::{
 };
 use re_types::{
     blueprint::components::{
-        BackgroundKind, Corner2D, LockRangeDuringZoom, SortKey, SortOrder, TimelineName, ViewFit,
-        Visible,
+        BackgroundKind, Corner2D, LockRangeDuringZoom, SortKey, SortOrder, ViewFit, Visible,
     },
     components::{
-        AggregationPolicy, AlbedoFactor, AxisLength, Color, Colormap, DepthMeter, DrawOrder,
-        FillMode, FillRatio, GammaCorrection, ImagePlaneDistance, MagnificationFilter, MarkerSize,
-        Name, Opacity, Scale3D, StrokeWidth, Text, TransformRelation, Translation3D,
+        AggregationPolicy, AlbedoFactor, AxisLength, Color, DepthMeter, DrawOrder, FillMode,
+        FillRatio, GammaCorrection, ImagePlaneDistance, MagnificationFilter, MarkerSize, Name,
+        Opacity, Scale3D, StrokeWidth, Text, TransformRelation, Translation3D,
     },
     Loggable as _,
 };
@@ -42,14 +41,11 @@ use re_viewer_context::gpu_bridge::colormap_edit_or_view_ui;
 /// ⚠️ This is supposed to be the only export of this crate.
 /// This crate is meant to be a leaf crate in the viewer ecosystem and should only be used by the `re_viewer` crate itself.
 pub fn register_component_uis(registry: &mut re_viewer_context::ComponentUiRegistry) {
+    // Color components:
     registry.add_singleline_edit_or_view::<Color>(color::edit_rgba32);
-
-    registry.add_singleline_edit_or_view(radius::edit_radius_ui);
-
-    registry.add_singleline_edit_or_view(marker_shape::edit_marker_shape_ui);
     registry.add_singleline_edit_or_view::<AlbedoFactor>(color::edit_rgba32);
-    registry.add_singleline_edit_or_view(range1d::edit_range1d);
 
+    // 0-inf float components:
     registry.add_singleline_edit_or_view::<AxisLength>(edit_f32_zero_to_max);
     registry.add_singleline_edit_or_view::<DepthMeter>(edit_f32_zero_to_max);
     registry.add_singleline_edit_or_view::<FillRatio>(edit_f32_zero_to_max);
@@ -58,25 +54,25 @@ pub fn register_component_uis(registry: &mut re_viewer_context::ComponentUiRegis
     registry.add_singleline_edit_or_view::<MarkerSize>(edit_f32_zero_to_max);
     registry.add_singleline_edit_or_view::<StrokeWidth>(edit_f32_zero_to_max);
 
+    // float min-max components:
     registry.add_singleline_edit_or_view::<DrawOrder>(edit_f32_min_to_max_float);
 
+    // float 0-1 components:
     registry.add_singleline_edit_or_view::<Opacity>(edit_f32_zero_to_one);
 
+    // Bool components:
     registry.add_singleline_edit_or_view::<Visible>(edit_bool);
     registry.add_singleline_edit_or_view::<LockRangeDuringZoom>(edit_bool);
 
-    registry.add_singleline_edit_or_view::<TimelineName>(timeline::edit_timeline_name);
-
-    registry.add_display_ui(Text::name(), Box::new(display_text_ui));
+    // Text components:
+    registry.add_display_ui(Text::name(), Box::new(display_text_ui)); // TODO(andreas): Why is there a display ui?
     registry.add_singleline_edit_or_view::<Text>(edit_singleline_string);
     registry.add_multiline_edit_or_view::<Text>(edit_multiline_string);
-    registry.add_display_ui(Name::name(), Box::new(display_name_ui));
+    registry.add_display_ui(Name::name(), Box::new(display_name_ui)); // TODO(andreas): Why is there a display ui?
     registry.add_singleline_edit_or_view::<Name>(edit_singleline_string);
     registry.add_multiline_edit_or_view::<Name>(edit_multiline_string);
 
-    // `Colormap` _is_ an enum, but its custom editor is far better.
-    registry.add_singleline_edit_or_view::<Colormap>(colormap_edit_or_view_ui);
-
+    // Enums:
     // TODO(#6974): Enums editors trivial and always the same, provide them automatically!
     registry.add_singleline_edit_or_view::<AggregationPolicy>(edit_view_enum);
     registry.add_singleline_edit_or_view::<BackgroundKind>(edit_view_enum);
@@ -88,8 +84,18 @@ pub fn register_component_uis(registry: &mut re_viewer_context::ComponentUiRegis
     registry.add_singleline_edit_or_view::<TransformRelation>(edit_view_enum);
     registry.add_singleline_edit_or_view::<ViewFit>(edit_view_enum);
 
+    // Vec3 components:
     registry.add_singleline_edit_or_view::<Translation3D>(edit_or_view_vec3d);
     registry.add_singleline_edit_or_view::<Scale3D>(edit_or_view_vec3d);
+
+    // --------------------------------------------------------------------------------
+    // All other special components:
+    // --------------------------------------------------------------------------------
+
+    // `Colormap` _is_ an enum, but its custom editor is far better.
+    registry.add_singleline_edit_or_view(colormap_edit_or_view_ui);
+
+    registry.add_singleline_edit_or_view(timeline::edit_timeline_name);
 
     registry.add_multiline_edit_or_view(visual_bounds2d::multiline_edit_visual_bounds2d);
     registry.add_singleline_edit_or_view(visual_bounds2d::singleline_edit_visual_bounds2d);
@@ -100,6 +106,10 @@ pub fn register_component_uis(registry: &mut re_viewer_context::ComponentUiRegis
     registry.add_singleline_edit_or_view(image_format::edit_or_view_image_format);
     registry.add_singleline_edit_or_view(resolution::edit_or_view_resolution);
     registry.add_singleline_edit_or_view(view_coordinates::edit_or_view_view_coordinates);
+
+    registry.add_singleline_edit_or_view(radius::edit_radius_ui);
+    registry.add_singleline_edit_or_view(marker_shape::edit_marker_shape_ui);
+    registry.add_singleline_edit_or_view(range1d::edit_range1d);
 
     registry.add_multiline_edit_or_view(visual_bounds2d::multiline_edit_visual_bounds2d);
     registry.add_singleline_edit_or_view(visual_bounds2d::singleline_edit_visual_bounds2d);
