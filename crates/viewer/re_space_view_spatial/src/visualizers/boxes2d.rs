@@ -2,7 +2,9 @@ use re_log_types::Instance;
 use re_renderer::{LineDrawableBuilder, PickingLayerInstanceId};
 use re_types::{
     archetypes::Boxes2D,
-    components::{ClassId, Color, DrawOrder, HalfSize2D, KeypointId, Position2D, Radius, Text},
+    components::{
+        ClassId, Color, DrawOrder, HalfSize2D, KeypointId, Position2D, Radius, ShowLabels, Text,
+    },
     ArrowString, Loggable as _,
 };
 use re_viewer_context::{
@@ -140,6 +142,7 @@ impl Boxes2DVisualizer {
                         }),
                     labels: &data.labels,
                     colors: &colors,
+                    show_labels: data.show_labels,
                     annotation_infos: &annotation_infos,
                 },
                 std::convert::identity,
@@ -161,6 +164,9 @@ struct Boxes2DComponentData<'a> {
     labels: Vec<ArrowString>,
     keypoint_ids: &'a [KeypointId],
     class_ids: &'a [ClassId],
+
+    // Non-repeated
+    show_labels: Option<ShowLabels>,
 }
 
 impl IdentifiedViewSystem for Boxes2DVisualizer {
@@ -234,8 +240,9 @@ impl VisualizerSystem for Boxes2DVisualizer {
                 let all_labels = results.iter_as(timeline, Text::name());
                 let all_class_ids = results.iter_as(timeline, ClassId::name());
                 let all_keypoint_ids = results.iter_as(timeline, KeypointId::name());
+                let all_show_labels = results.iter_as(timeline, ShowLabels::name());
 
-                let data = re_query::range_zip_1x6(
+                let data = re_query::range_zip_1x7(
                     all_half_sizes_indexed,
                     all_centers.primitive_array::<2, f32>(),
                     all_colors.primitive::<u32>(),
@@ -243,6 +250,7 @@ impl VisualizerSystem for Boxes2DVisualizer {
                     all_labels.string(),
                     all_class_ids.primitive::<u16>(),
                     all_keypoint_ids.primitive::<u16>(),
+                    all_show_labels.component::<ShowLabels>(),
                 )
                 .map(
                     |(
@@ -254,6 +262,7 @@ impl VisualizerSystem for Boxes2DVisualizer {
                         labels,
                         class_ids,
                         keypoint_ids,
+                        show_labels,
                     )| {
                         Boxes2DComponentData {
                             half_sizes: bytemuck::cast_slice(half_sizes),
@@ -265,6 +274,7 @@ impl VisualizerSystem for Boxes2DVisualizer {
                                 .map_or(&[], |class_ids| bytemuck::cast_slice(class_ids)),
                             keypoint_ids: keypoint_ids
                                 .map_or(&[], |keypoint_ids| bytemuck::cast_slice(keypoint_ids)),
+                            show_labels: show_labels.unwrap_or_default().first().copied(),
                         }
                     },
                 );

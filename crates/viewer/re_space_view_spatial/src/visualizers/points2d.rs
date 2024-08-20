@@ -3,7 +3,7 @@ use itertools::Itertools as _;
 use re_renderer::{LineDrawableBuilder, PickingLayerInstanceId, PointCloudBuilder};
 use re_types::{
     archetypes::Points2D,
-    components::{ClassId, Color, DrawOrder, KeypointId, Position2D, Radius, Text},
+    components::{ClassId, Color, DrawOrder, KeypointId, Position2D, Radius, ShowLabels, Text},
     ArrowString, Loggable as _,
 };
 use re_viewer_context::{
@@ -137,6 +137,7 @@ impl Points2DVisualizer {
                     instance_positions: data.positions.iter().map(|p| glam::vec2(p.x(), p.y())),
                     labels: &data.labels,
                     colors: &colors,
+                    show_labels: data.show_labels,
                     annotation_infos: &annotation_infos,
                 },
                 world_from_obj,
@@ -160,6 +161,9 @@ pub struct Points2DComponentData<'a> {
     pub labels: Vec<ArrowString>,
     pub keypoint_ids: &'a [KeypointId],
     pub class_ids: &'a [ClassId],
+
+    // Non-repeated
+    show_labels: Option<ShowLabels>,
 }
 
 impl IdentifiedViewSystem for Points2DVisualizer {
@@ -238,17 +242,28 @@ impl VisualizerSystem for Points2DVisualizer {
                 let all_labels = results.iter_as(timeline, Text::name());
                 let all_class_ids = results.iter_as(timeline, ClassId::name());
                 let all_keypoint_ids = results.iter_as(timeline, KeypointId::name());
+                let all_show_labels = results.iter_as(timeline, ShowLabels::name());
 
-                let data = re_query::range_zip_1x5(
+                let data = re_query::range_zip_1x6(
                     all_positions_indexed,
                     all_colors.primitive::<u32>(),
                     all_radii.primitive::<f32>(),
                     all_labels.string(),
                     all_class_ids.primitive::<u16>(),
                     all_keypoint_ids.primitive::<u16>(),
+                    all_show_labels.component::<ShowLabels>(),
                 )
                 .map(
-                    |(_index, positions, colors, radii, labels, class_ids, keypoint_ids)| {
+                    |(
+                        _index,
+                        positions,
+                        colors,
+                        radii,
+                        labels,
+                        class_ids,
+                        keypoint_ids,
+                        show_labels,
+                    )| {
                         Points2DComponentData {
                             positions: bytemuck::cast_slice(positions),
                             colors: colors.map_or(&[], |colors| bytemuck::cast_slice(colors)),
@@ -258,6 +273,7 @@ impl VisualizerSystem for Points2DVisualizer {
                                 .map_or(&[], |class_ids| bytemuck::cast_slice(class_ids)),
                             keypoint_ids: keypoint_ids
                                 .map_or(&[], |keypoint_ids| bytemuck::cast_slice(keypoint_ids)),
+                            show_labels: show_labels.unwrap_or_default().first().copied(),
                         }
                     },
                 );

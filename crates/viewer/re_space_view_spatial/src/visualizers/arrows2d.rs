@@ -2,7 +2,9 @@ use re_log_types::Instance;
 use re_renderer::{renderer::LineStripFlags, LineDrawableBuilder, PickingLayerInstanceId};
 use re_types::{
     archetypes::Arrows2D,
-    components::{ClassId, Color, DrawOrder, KeypointId, Position2D, Radius, Text, Vector2D},
+    components::{
+        ClassId, Color, DrawOrder, KeypointId, Position2D, Radius, ShowLabels, Text, Vector2D,
+    },
     ArrowString, Loggable as _,
 };
 use re_viewer_context::{
@@ -135,6 +137,7 @@ impl Arrows2DVisualizer {
                     },
                     labels: &data.labels,
                     colors: &colors,
+                    show_labels: data.show_labels,
                     annotation_infos: &annotation_infos,
                 },
                 world_from_obj,
@@ -156,6 +159,9 @@ struct Arrows2DComponentData<'a> {
     labels: Vec<ArrowString>,
     keypoint_ids: &'a [KeypointId],
     class_ids: &'a [ClassId],
+
+    // Non-repeated
+    show_labels: Option<ShowLabels>,
 }
 
 impl IdentifiedViewSystem for Arrows2DVisualizer {
@@ -225,8 +231,9 @@ impl VisualizerSystem for Arrows2DVisualizer {
                 let all_labels = results.iter_as(timeline, Text::name());
                 let all_class_ids = results.iter_as(timeline, ClassId::name());
                 let all_keypoint_ids = results.iter_as(timeline, KeypointId::name());
+                let all_show_labels = results.iter_as(timeline, ShowLabels::name());
 
-                let data = re_query::range_zip_1x6(
+                let data = re_query::range_zip_1x7(
                     all_vectors_indexed,
                     all_origins.primitive_array::<2, f32>(),
                     all_colors.primitive::<u32>(),
@@ -234,9 +241,20 @@ impl VisualizerSystem for Arrows2DVisualizer {
                     all_labels.string(),
                     all_class_ids.primitive::<u16>(),
                     all_keypoint_ids.primitive::<u16>(),
+                    all_show_labels.component::<ShowLabels>(),
                 )
                 .map(
-                    |(_index, vectors, origins, colors, radii, labels, class_ids, keypoint_ids)| {
+                    |(
+                        _index,
+                        vectors,
+                        origins,
+                        colors,
+                        radii,
+                        labels,
+                        class_ids,
+                        keypoint_ids,
+                        show_labels,
+                    )| {
                         Arrows2DComponentData {
                             vectors: bytemuck::cast_slice(vectors),
                             origins: origins.map_or(&[], |origins| bytemuck::cast_slice(origins)),
@@ -247,6 +265,7 @@ impl VisualizerSystem for Arrows2DVisualizer {
                                 .map_or(&[], |class_ids| bytemuck::cast_slice(class_ids)),
                             keypoint_ids: keypoint_ids
                                 .map_or(&[], |keypoint_ids| bytemuck::cast_slice(keypoint_ids)),
+                            show_labels: show_labels.unwrap_or_default().first().copied(),
                         }
                     },
                 );

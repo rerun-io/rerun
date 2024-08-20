@@ -4,6 +4,7 @@ use itertools::{izip, Either};
 
 use re_entity_db::InstancePathHash;
 use re_log_types::{EntityPath, Instance};
+use re_types::components::ShowLabels;
 use re_viewer_context::ResolvedAnnotationInfos;
 
 use crate::visualizers::entity_iterator::clamped_or;
@@ -65,6 +66,8 @@ pub struct LabeledBatch<'a, P: 'a, I: Iterator<Item = P> + 'a> {
     /// Length 1 is treated as a color for the whole batch.
     pub colors: &'a [egui::Color32],
 
+    pub show_labels: Option<re_types::components::ShowLabels>,
+
     pub annotation_infos: &'a ResolvedAnnotationInfos,
 }
 
@@ -113,11 +116,16 @@ pub fn process_labels<'a, P: 'a>(
         instance_positions,
         labels,
         colors,
+        show_labels,
         annotation_infos,
     } = batch;
 
-    if labels.len() > 1 && num_instances > MAX_NUM_LABELS_PER_ENTITY {
-        // Too many labels. Don't draw them.
+    let show_labels = match show_labels {
+        Some(ShowLabels(value)) => bool::from(value),
+        // Choose based on automatic policy.
+        None => labels.len() == 1 || num_instances < MAX_NUM_LABELS_PER_ENTITY,
+    };
+    if !show_labels {
         return Either::Left(iter::empty());
     }
 
