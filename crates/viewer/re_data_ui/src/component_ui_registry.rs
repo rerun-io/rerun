@@ -12,18 +12,25 @@ pub fn create_component_ui_registry() -> ComponentUiRegistry {
 
     let mut registry = ComponentUiRegistry::new(Box::new(&fallback_component_ui));
 
+    // separate components could simplify this to the extent that multi/single line is enough?
     add_to_registry::<re_types::components::AnnotationContext>(&mut registry);
+
+    // image preview is a bit hard because row_id and size stuff needs to be known
     add_to_registry::<re_types::components::Blob>(&mut registry);
+    add_to_registry::<re_types::components::TensorData>(&mut registry);
+
+    // Funky AnnotationContext querying thing. Maybe we can get away with a store querying hack?
     add_to_registry::<re_types::components::ClassId>(&mut registry);
-    add_to_registry::<re_types::components::ImageFormat>(&mut registry);
     add_to_registry::<re_types::components::KeypointId>(&mut registry);
+
+    // Unclear if we need more information than single & multiline. Maybe that's enough.
+    add_to_registry::<re_types::components::PinholeProjection>(&mut registry);
+
+    // trivially convertable to multi/single line component
+    add_to_registry::<re_types::components::ViewCoordinates>(&mut registry);
+    add_to_registry::<re_types::components::ImageFormat>(&mut registry);
     add_to_registry::<re_types::components::LineStrip2D>(&mut registry);
     add_to_registry::<re_types::components::LineStrip3D>(&mut registry);
-    add_to_registry::<re_types::components::PinholeProjection>(&mut registry);
-    add_to_registry::<re_types::components::Resolution>(&mut registry);
-    add_to_registry::<re_types::components::TensorData>(&mut registry);
-    add_to_registry::<re_types::components::ViewCoordinates>(&mut registry);
-
     add_to_registry::<re_types_blueprint::blueprint::components::IncludedSpaceView>(&mut registry);
     add_to_registry::<re_types_blueprint::blueprint::components::SpaceViewMaximized>(&mut registry);
     add_to_registry::<re_types_blueprint::blueprint::components::VisualBounds2D>(&mut registry);

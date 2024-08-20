@@ -8,6 +8,7 @@ mod datatype_editors;
 mod marker_shape;
 mod radius;
 mod range1d;
+mod resolution;
 mod response_utils;
 mod timeline;
 mod transforms;
@@ -93,4 +94,6 @@ pub fn register_editors(registry: &mut re_viewer_context::ComponentUiRegistry) {
 
     registry.add_singleline_edit_or_view::<Translation3D>(edit_or_view_vec3d);
     registry.add_singleline_edit_or_view::<Scale3D>(edit_or_view_vec3d);
+
+    registry.add_singleline_edit_or_view(resolution::edit_or_view_resolution);
 }
