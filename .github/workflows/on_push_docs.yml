@@ -3,6 +3,10 @@ name: "Push Docs"
 on:
   push:
     branches: [docs-latest]
+  pull_request:
+    types:
+      - opened
+      - synchronize
 
 concurrency:
   group: on-push-docs
@@ -53,7 +57,8 @@ jobs:
           save_cache: false
           workload_identity_provider: ${{ secrets.GOOGLE_WORKLOAD_IDENTITY_PROVIDER }}
           service_account: ${{ secrets.GOOGLE_SERVICE_ACCOUNT }}
-          toolchains: "nightly"
+          # pinned to a specific version that happens to work with current `rustdoc-types`
+          toolchains: "nightly-2024-08-10"
 
       - uses: prefix-dev/setup-pixi@v0.8.1
         with:
