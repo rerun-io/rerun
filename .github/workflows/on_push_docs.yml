@@ -3,10 +3,6 @@ name: "Push Docs"
 on:
   push:
     branches: [docs-latest]
-  pull_request:
-    types:
-      - opened
-      - synchronize
 
 concurrency:
   group: on-push-docs
