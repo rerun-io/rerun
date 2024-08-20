@@ -18,6 +18,7 @@ mod points3d;
 mod segmentation_images;
 mod transform3d_arrows;
 mod utilities;
+mod videos;
 
 pub use cameras::CamerasVisualizer;
 pub use depth_images::DepthImageVisualizer;

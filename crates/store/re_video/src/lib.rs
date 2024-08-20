@@ -1,7 +1,8 @@
 mod mp4;
+pub use mp4::load_mp4;
 
 #[derive(Clone)]
-pub struct Video {
+pub struct VideoData {
     pub config: Config,
 
     /// How many time units per second there are.
@@ -62,6 +63,7 @@ pub enum VideoLoadError {
     NoVideoTrack,
     InvalidConfigFormat,
     InvalidSamples,
+    UnknownMediaType,
 }
 
 impl std::fmt::Display for VideoLoadError {
@@ -71,6 +73,7 @@ impl std::fmt::Display for VideoLoadError {
             Self::NoVideoTrack => write!(f, "video file has no video tracks"),
             Self::InvalidConfigFormat => write!(f, "video file track config is invalid"),
             Self::InvalidSamples => write!(f, "video file has invalid sample entries"),
+            Self::UnknownMediaType => write!(f, "unrecognized media type"),
         }
     }
 }
@@ -83,7 +86,7 @@ impl From<::mp4::Error> for VideoLoadError {
     }
 }
 
-impl std::fmt::Debug for Video {
+impl std::fmt::Debug for VideoData {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("Video")
             .field("config", &self.config)

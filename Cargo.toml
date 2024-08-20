@@ -287,6 +287,7 @@ wgpu = { version = "0.20.1", default-features = false, features = [
   "fragile-send-sync-non-atomic-wasm",
 ] }
 wgpu-core = "0.21.0"
+wgpu-types = "0.20.0"
 xshell = "0.2"
 zip = { version = "0.6", default-features = false }
 
