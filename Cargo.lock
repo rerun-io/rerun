@@ -4377,6 +4377,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "re_component_ui"
+version = "0.19.0-alpha.1+dev"
+dependencies = [
+ "egui",
+ "egui_plot",
+ "re_format",
+ "re_types",
+ "re_types_core",
+ "re_ui",
+ "re_viewer_context",
+]
+
+[[package]]
 name = "re_context_menu"
 version = "0.19.0-alpha.1+dev"
 dependencies = [
@@ -4503,19 +4516,6 @@ dependencies = [
  "ureq",
  "url",
  "wasm-bindgen-cli-support",
-]
-
-[[package]]
-name = "re_edit_ui"
-version = "0.19.0-alpha.1+dev"
-dependencies = [
- "egui",
- "egui_plot",
- "re_format",
- "re_types",
- "re_types_core",
- "re_ui",
- "re_viewer_context",
 ]
 
 [[package]]
@@ -5273,10 +5273,10 @@ dependencies = [
  "re_build_tools",
  "re_chunk",
  "re_chunk_store",
+ "re_component_ui",
  "re_data_loader",
  "re_data_source",
  "re_data_ui",
- "re_edit_ui",
  "re_entity_db",
  "re_error",
  "re_format",
