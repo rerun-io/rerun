@@ -2,7 +2,7 @@
 //!
 //! This crate provides ui elements for Rerun component data for the Rerun Viewer.
 
-use re_log_types::{EntityPath, TimePoint};
+use re_log_types::EntityPath;
 use re_types::ComponentName;
 use re_viewer_context::{UiLayout, ViewerContext};
 
@@ -22,7 +22,6 @@ mod entity_path;
 mod image;
 mod image_format;
 mod instance_path;
-mod log_msg;
 mod pinhole;
 mod store_id;
 mod tensor;
@@ -33,7 +32,7 @@ pub use crate::{
     image::{show_zoomed_image_region, show_zoomed_image_region_area_outline},
     tensor::tensor_summary_ui_grid_contents,
 };
-pub use component::EntityLatestAtResults;
+pub use component::ComponentPathLatestAtResults;
 pub use component_ui_registry::{add_to_registry, create_component_ui_registry};
 
 /// Sort components for display in the UI.
@@ -109,27 +108,27 @@ where
 
 // ----------------------------------------------------------------------------
 
-impl DataUi for TimePoint {
-    fn data_ui(
-        &self,
-        ctx: &ViewerContext<'_>,
-        ui: &mut egui::Ui,
-        _ui_layout: UiLayout,
-        _query: &re_chunk_store::LatestAtQuery,
-        _db: &re_entity_db::EntityDb,
-    ) {
-        ui.vertical(|ui| {
-            egui::Grid::new("time_point").num_columns(2).show(ui, |ui| {
-                ui.spacing_mut().item_spacing.x = 0.0;
-                for (timeline, value) in self.iter() {
-                    item_ui::timeline_button_to(ctx, ui, format!("{}:", timeline.name()), timeline);
-                    item_ui::time_button(ctx, ui, timeline, *value);
-                    ui.end_row();
-                }
-            });
-        });
-    }
-}
+// impl DataUi for TimePoint {
+//     fn data_ui(
+//         &self,
+//         ctx: &ViewerContext<'_>,
+//         ui: &mut egui::Ui,
+//         _ui_layout: UiLayout,
+//         _query: &re_chunk_store::LatestAtQuery,
+//         _db: &re_entity_db::EntityDb,
+//     ) {
+//         ui.vertical(|ui| {
+//             egui::Grid::new("time_point").num_columns(2).show(ui, |ui| {
+//                 ui.spacing_mut().item_spacing.x = 0.0;
+//                 for (timeline, value) in self.iter() {
+//                     item_ui::timeline_button_to(ctx, ui, format!("{}:", timeline.name()), timeline);
+//                     item_ui::time_button(ctx, ui, timeline, *value);
+//                     ui.end_row();
+//                 }
+//             });
+//         });
+//     }
+// }
 
 // ---------------------------------------------------------------------------
 
