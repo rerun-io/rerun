@@ -27,7 +27,6 @@ pub fn create_component_ui_registry() -> ComponentUiRegistry {
     add_to_registry::<re_types::components::PinholeProjection>(&mut registry);
 
     // trivially convertable to multi/single line component
-    add_to_registry::<re_types::components::ViewCoordinates>(&mut registry);
     add_to_registry::<re_types::components::ImageFormat>(&mut registry);
     add_to_registry::<re_types::components::LineStrip2D>(&mut registry);
     add_to_registry::<re_types::components::LineStrip3D>(&mut registry);

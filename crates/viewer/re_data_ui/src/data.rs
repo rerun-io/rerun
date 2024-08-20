@@ -4,26 +4,13 @@ use re_chunk_store::LatestAtQuery;
 use re_entity_db::EntityDb;
 use re_format::format_f32;
 use re_types::blueprint::components::VisualBounds2D;
-use re_types::components::{LineStrip2D, LineStrip3D, ViewCoordinates};
+use re_types::components::{LineStrip2D, LineStrip3D};
 use re_viewer_context::{UiLayout, ViewerContext};
 
 use super::DataUi;
 
 /// Default number of ui points to show a number.
 const DEFAULT_NUMBER_WIDTH: f32 = 52.0;
-
-impl DataUi for ViewCoordinates {
-    fn data_ui(
-        &self,
-        _ctx: &ViewerContext<'_>,
-        ui: &mut egui::Ui,
-        ui_layout: UiLayout,
-        _query: &re_chunk_store::LatestAtQuery,
-        _db: &re_entity_db::EntityDb,
-    ) {
-        ui_layout.label(ui, self.describe());
-    }
-}
 
 impl DataUi for re_types::datatypes::Mat3x3 {
     fn data_ui(

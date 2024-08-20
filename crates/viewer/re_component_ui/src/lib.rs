@@ -12,6 +12,7 @@ mod resolution;
 mod response_utils;
 mod timeline;
 mod transforms;
+mod view_coordinates;
 mod visual_bounds2d;
 
 use datatype_editors::{
@@ -96,4 +97,5 @@ pub fn register_editors(registry: &mut re_viewer_context::ComponentUiRegistry) {
     registry.add_singleline_edit_or_view::<Scale3D>(edit_or_view_vec3d);
 
     registry.add_singleline_edit_or_view(resolution::edit_or_view_resolution);
+    registry.add_singleline_edit_or_view(view_coordinates::edit_or_view_view_coordinates);
 }
