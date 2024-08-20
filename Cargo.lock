@@ -4385,6 +4385,7 @@ dependencies = [
  "egui_plot",
  "re_data_ui",
  "re_format",
+ "re_tracing",
  "re_types",
  "re_types_blueprint",
  "re_types_core",

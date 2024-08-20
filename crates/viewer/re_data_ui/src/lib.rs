@@ -28,7 +28,7 @@ pub use crate::{
     tensor::tensor_summary_ui_grid_contents,
 };
 pub use component::ComponentPathLatestAtResults;
-pub use component_ui_registry::{add_to_registry, create_component_ui_registry};
+pub use component_ui_registry::{add_to_registry, register_component_uis};
 
 /// Sort components for display in the UI.
 pub fn sorted_component_list_for_ui<'a>(

@@ -21,6 +21,7 @@ all-features = true
 [dependencies]
 re_data_ui.workspace = true # Needed for `item_ui`.
 re_format.workspace = true
+re_tracing.workspace = true
 re_types = { workspace = true, features = [
   "egui_plot", # Needed to draw marker shapes.
 ] }

@@ -5,6 +5,7 @@
 
 mod color;
 mod datatype_uis;
+mod fallback_ui;
 mod image_format;
 mod line_strip;
 mod marker_shape;
@@ -40,11 +41,16 @@ use re_viewer_context::gpu_bridge::colormap_edit_or_view_ui;
 
 // ----
 
-/// Registers all editors of this crate in the component UI registry.
+/// Crates a component ui registry and registers all editors of this crate to it.
 ///
 /// ⚠️ This is supposed to be the only export of this crate.
 /// This crate is meant to be a leaf crate in the viewer ecosystem and should only be used by the `re_viewer` crate itself.
-pub fn register_component_uis(registry: &mut re_viewer_context::ComponentUiRegistry) {
+pub fn create_component_ui_registry() -> re_viewer_context::ComponentUiRegistry {
+    re_tracing::profile_function!();
+
+    let mut registry =
+        re_viewer_context::ComponentUiRegistry::new(Box::new(&fallback_ui::fallback_component_ui));
+
     // Color components:
     registry.add_singleline_edit_or_view::<Color>(color::edit_rgba32);
     registry.add_singleline_edit_or_view::<AlbedoFactor>(color::edit_rgba32);
@@ -127,5 +133,7 @@ pub fn register_component_uis(registry: &mut re_viewer_context::ComponentUiRegis
     registry.add_singleline_edit_or_view(pinhole::singleline_view_pinhole);
     registry.add_multiline_edit_or_view(pinhole::multiline_view_pinhole);
 
-    line_strip::register_linestrip_component_ui(registry);
+    line_strip::register_linestrip_component_ui(&mut registry);
+
+    registry
 }
