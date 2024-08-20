@@ -1,9 +1,8 @@
 use egui::NumExt;
 
 use re_chunk_store::UnitChunkShared;
-use re_entity_db::{EntityPath, InstancePath};
-use re_log_types::{Instance, TimeInt};
-use re_types::ComponentName;
+use re_entity_db::InstancePath;
+use re_log_types::{ComponentPath, Instance, TimeInt};
 use re_ui::{ContextExt as _, SyntaxHighlighting as _};
 use re_viewer_context::{UiLayout, ViewerContext};
 
@@ -11,13 +10,12 @@ use super::DataUi;
 use crate::item_ui;
 
 /// All the values of a specific [`re_log_types::ComponentPath`].
-pub struct EntityLatestAtResults<'a> {
-    pub entity_path: EntityPath,
-    pub component_name: ComponentName,
+pub struct ComponentPathLatestAtResults<'a> {
+    pub component_path: ComponentPath,
     pub unit: &'a UnitChunkShared,
 }
 
-impl<'a> DataUi for EntityLatestAtResults<'a> {
+impl<'a> DataUi for ComponentPathLatestAtResults<'a> {
     fn data_ui(
         &self,
         ctx: &ViewerContext<'_>,
@@ -26,11 +24,16 @@ impl<'a> DataUi for EntityLatestAtResults<'a> {
         query: &re_chunk_store::LatestAtQuery,
         db: &re_entity_db::EntityDb,
     ) {
-        re_tracing::profile_function!(self.component_name);
+        re_tracing::profile_function!(self.component_path.component_name);
+
+        let ComponentPath {
+            entity_path,
+            component_name,
+        } = &self.component_path;
 
         let Some(num_instances) = self
             .unit
-            .component_batch_raw(&self.component_name)
+            .component_batch_raw(component_name)
             .map(|data| data.len())
         else {
             ui.weak("<pending>");
@@ -50,24 +53,12 @@ impl<'a> DataUi for EntityLatestAtResults<'a> {
                 .unit
                 .index(&query.timeline())
                 .map_or(TimeInt::STATIC, |(time, _)| time);
-            if time.is_static() {
-                // No need to show anything here. We already tell the user this is a static component elsewhere.
-            } else {
-                let formatted_time = query
-                    .timeline()
-                    .typ()
-                    .format(time, ctx.app_options.time_zone);
-                ui.horizontal(|ui| {
-                    ui.add(re_ui::icons::COMPONENT_TEMPORAL.as_image());
-                    ui.label(format!("Temporal component at {formatted_time}"));
-                });
-            }
 
             // if the component is static, we display extra diagnostic information
-            if self.unit.is_static() {
+            if time.is_static() {
                 let static_message_count = db
                     .store()
-                    .num_static_events_for_component(&self.entity_path, self.component_name);
+                    .num_static_events_for_component(entity_path, *component_name);
                 if static_message_count > 1 {
                     ui.label(ui.ctx().warning_text(format!(
                         "Static component value was overridden {} times",
@@ -83,8 +74,8 @@ impl<'a> DataUi for EntityLatestAtResults<'a> {
                 let temporal_message_count =
                     db.store().num_temporal_events_for_component_on_timeline(
                         &query.timeline(),
-                        &self.entity_path,
-                        self.component_name,
+                        entity_path,
+                        *component_name,
                     );
                 if temporal_message_count > 0 {
                     ui.label(ui.ctx().error_text(format!(
@@ -98,6 +89,15 @@ impl<'a> DataUi for EntityLatestAtResults<'a> {
                         displayed.",
                     );
                 }
+            } else {
+                let formatted_time = query
+                    .timeline()
+                    .typ()
+                    .format(time, ctx.app_options.time_zone);
+                ui.horizontal(|ui| {
+                    ui.add(re_ui::icons::COMPONENT_TEMPORAL.as_image());
+                    ui.label(format!("Temporal component at {formatted_time}"));
+                });
             }
         }
 
@@ -134,8 +134,8 @@ impl<'a> DataUi for EntityLatestAtResults<'a> {
                 ui_layout,
                 query,
                 db,
-                &self.entity_path,
-                self.component_name,
+                entity_path,
+                *component_name,
                 self.unit,
                 &Instance::from(0),
             );
@@ -154,7 +154,7 @@ impl<'a> DataUi for EntityLatestAtResults<'a> {
                         ui.label("Index");
                     });
                     header.col(|ui| {
-                        ui.label(self.component_name.short_name());
+                        ui.label(component_name.short_name());
                     });
                 })
                 .body(|mut body| {
@@ -164,7 +164,7 @@ impl<'a> DataUi for EntityLatestAtResults<'a> {
                         let instance = Instance::from(row.index() as u64);
                         row.col(|ui| {
                             let instance_path =
-                                InstancePath::instance(self.entity_path.clone(), instance);
+                                InstancePath::instance(entity_path.clone(), instance);
                             item_ui::instance_path_button_to(
                                 ctx,
                                 query,
@@ -182,8 +182,8 @@ impl<'a> DataUi for EntityLatestAtResults<'a> {
                                 UiLayout::List,
                                 query,
                                 db,
-                                &self.entity_path,
-                                self.component_name,
+                                entity_path,
+                                *component_name,
                                 self.unit,
                                 &instance,
                             );

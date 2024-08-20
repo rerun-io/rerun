@@ -3,9 +3,6 @@ title: Migrating from 0.17 to 0.18
 order: 180
 ---
 
-NOTE! Rerun 0.18 has not yet been released
-
-
 ## ⚠️ Breaking changes
 ### [`DepthImage`](https://rerun.io/docs/reference/types/archetypes/depth_image) and [`SegmentationImage`](https://rerun.io/docs/reference/types/archetypes/segmentation_image)
 The `DepthImage` and `SegmentationImage` archetypes used to be encoded as tensors, but now they are encoded as blobs of bytes with an [`ImageFormat`](https://rerun.io/docs/reference/types/components/image_format) consisting of a resolution and a datatype.

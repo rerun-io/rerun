@@ -79,7 +79,7 @@ re_tuid = { path = "crates/utils/re_tuid", version = "=0.19.0-alpha.1", default-
 re_blueprint_tree = { path = "crates/viewer/re_blueprint_tree", version = "=0.19.0-alpha.1", default-features = false }
 re_context_menu = { path = "crates/viewer/re_context_menu", version = "=0.19.0-alpha.1", default-features = false }
 re_data_ui = { path = "crates/viewer/re_data_ui", version = "=0.19.0-alpha.1", default-features = false }
-re_edit_ui = { path = "crates/viewer/re_edit_ui", version = "=0.19.0-alpha.1", default-features = false }
+re_component_ui = { path = "crates/viewer/re_component_ui", version = "=0.19.0-alpha.1", default-features = false }
 re_renderer = { path = "crates/viewer/re_renderer", version = "=0.19.0-alpha.1", default-features = false }
 re_renderer_examples = { path = "crates/viewer/re_renderer_examples", version = "=0.19.0-alpha.1", default-features = false }
 re_selection_panel = { path = "crates/viewer/re_selection_panel", version = "=0.19.0-alpha.1", default-features = false }
@@ -210,7 +210,7 @@ pollster = "0.3"
 prettyplease = "0.2"
 proc-macro2 = { version = "1.0", default-features = false }
 profiling = { version = "1.0.12", default-features = false }
-puffin = "0.19"
+puffin = "0.19.1"
 puffin_http = "0.16"
 pyo3 = "0.20.2"
 pyo3-build-config = "0.20.2"
