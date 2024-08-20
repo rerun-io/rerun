@@ -15,13 +15,11 @@ mod component;
 mod component_name;
 mod component_path;
 mod component_ui_registry;
-mod data;
 mod data_source;
 mod entity_db;
 mod entity_path;
 mod image;
 mod instance_path;
-mod pinhole;
 mod store_id;
 mod tensor;
 

@@ -8,6 +8,7 @@ mod datatype_editors;
 mod image_format;
 mod line_strip;
 mod marker_shape;
+mod pinhole;
 mod radius;
 mod range1d;
 mod resolution;
@@ -115,6 +116,9 @@ pub fn register_component_uis(registry: &mut re_viewer_context::ComponentUiRegis
     registry.add_singleline_edit_or_view(visual_bounds2d::singleline_edit_visual_bounds2d);
     registry.add_multiline_edit_or_view(visual_bounds2d::multiline_edit_visual_bounds2d);
     registry.add_singleline_edit_or_view(visual_bounds2d::singleline_edit_visual_bounds2d);
+
+    registry.add_singleline_edit_or_view(pinhole::singleline_view_pinhole);
+    registry.add_multiline_edit_or_view(pinhole::multiline_view_pinhole);
 
     line_strip::register_linestrip_component_ui(registry);
 }

@@ -27,9 +27,6 @@ pub fn create_component_ui_registry() -> ComponentUiRegistry {
     add_to_registry::<re_types_blueprint::blueprint::components::IncludedSpaceView>(&mut registry);
     add_to_registry::<re_types_blueprint::blueprint::components::SpaceViewMaximized>(&mut registry);
 
-    // TODO(andreas): Move this to component_ui_registry. Unclear if we need more information than single & multiline. Maybe that's enough.
-    add_to_registry::<re_types::components::PinholeProjection>(&mut registry);
-
     registry
 }
 
