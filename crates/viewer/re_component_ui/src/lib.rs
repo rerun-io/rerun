@@ -5,6 +5,7 @@
 
 mod color;
 mod datatype_editors;
+mod image_format;
 mod marker_shape;
 mod radius;
 mod range1d;
@@ -85,7 +86,9 @@ pub fn register_editors(registry: &mut re_viewer_context::ComponentUiRegistry) {
     registry.add_singleline_edit_or_view::<SortOrder>(edit_view_enum);
     registry.add_singleline_edit_or_view::<TransformRelation>(edit_view_enum);
     registry.add_singleline_edit_or_view::<ViewFit>(edit_view_enum);
-    // TODO(#7100): Editor for ImageFormat
+
+    registry.add_singleline_edit_or_view::<Translation3D>(edit_or_view_vec3d);
+    registry.add_singleline_edit_or_view::<Scale3D>(edit_or_view_vec3d);
 
     registry.add_multiline_edit_or_view(visual_bounds2d::multiline_edit_visual_bounds2d);
     registry.add_singleline_edit_or_view(visual_bounds2d::singleline_edit_visual_bounds2d);
@@ -93,9 +96,7 @@ pub fn register_editors(registry: &mut re_viewer_context::ComponentUiRegistry) {
     registry.add_multiline_edit_or_view(transforms::multiline_view_transform_mat3x3);
     registry.add_singleline_edit_or_view(transforms::singleline_view_transform_mat3x3);
 
-    registry.add_singleline_edit_or_view::<Translation3D>(edit_or_view_vec3d);
-    registry.add_singleline_edit_or_view::<Scale3D>(edit_or_view_vec3d);
-
+    registry.add_singleline_edit_or_view(image_format::edit_or_view_image_format);
     registry.add_singleline_edit_or_view(resolution::edit_or_view_resolution);
     registry.add_singleline_edit_or_view(view_coordinates::edit_or_view_view_coordinates);
 }
