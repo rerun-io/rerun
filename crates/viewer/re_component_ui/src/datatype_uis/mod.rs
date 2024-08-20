@@ -3,6 +3,7 @@ mod enum_combobox;
 mod float_drag;
 mod singleline_string;
 mod vec;
+mod view_id;
 
 pub use bool_toggle::edit_bool;
 pub use enum_combobox::edit_view_enum;
@@ -11,3 +12,4 @@ pub use singleline_string::{
     display_name_ui, display_text_ui, edit_multiline_string, edit_singleline_string,
 };
 pub use vec::edit_or_view_vec3d;
+pub use view_id::view_view_id;

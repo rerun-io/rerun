@@ -23,10 +23,6 @@ pub fn create_component_ui_registry() -> ComponentUiRegistry {
     add_to_registry::<re_types::components::ClassId>(&mut registry);
     add_to_registry::<re_types::components::KeypointId>(&mut registry);
 
-    // TODO(andreas): Move this to component_ui_registry.
-    add_to_registry::<re_types_blueprint::blueprint::components::IncludedSpaceView>(&mut registry);
-    add_to_registry::<re_types_blueprint::blueprint::components::SpaceViewMaximized>(&mut registry);
-
     registry
 }
 

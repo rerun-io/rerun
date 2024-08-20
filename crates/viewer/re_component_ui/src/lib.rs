@@ -21,8 +21,9 @@ mod visual_bounds2d;
 use datatype_uis::{
     display_name_ui, display_text_ui, edit_bool, edit_f32_min_to_max_float, edit_f32_zero_to_max,
     edit_f32_zero_to_one, edit_multiline_string, edit_or_view_vec3d, edit_singleline_string,
-    edit_view_enum,
+    edit_view_enum, view_view_id,
 };
+
 use re_types::{
     blueprint::components::{
         BackgroundKind, Corner2D, LockRangeDuringZoom, SortKey, SortOrder, ViewFit, Visible,
@@ -34,7 +35,9 @@ use re_types::{
     },
     Loggable as _,
 };
+use re_types_blueprint::blueprint::components::{IncludedSpaceView, SpaceViewMaximized};
 use re_viewer_context::gpu_bridge::colormap_edit_or_view_ui;
+
 // ----
 
 /// Registers all editors of this crate in the component UI registry.
@@ -88,6 +91,10 @@ pub fn register_component_uis(registry: &mut re_viewer_context::ComponentUiRegis
     // Vec3 components:
     registry.add_singleline_edit_or_view::<Translation3D>(edit_or_view_vec3d);
     registry.add_singleline_edit_or_view::<Scale3D>(edit_or_view_vec3d);
+
+    // Components that refer to views:
+    registry.add_singleline_edit_or_view::<IncludedSpaceView>(view_view_id);
+    registry.add_singleline_edit_or_view::<SpaceViewMaximized>(view_view_id);
 
     // --------------------------------------------------------------------------------
     // All other special components:
