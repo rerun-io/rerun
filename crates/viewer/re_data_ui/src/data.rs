@@ -3,7 +3,6 @@ use egui::Ui;
 use re_chunk_store::LatestAtQuery;
 use re_entity_db::EntityDb;
 use re_format::format_f32;
-use re_types::blueprint::components::VisualBounds2D;
 use re_types::components::{LineStrip2D, LineStrip3D};
 use re_viewer_context::{UiLayout, ViewerContext};
 
@@ -37,19 +36,6 @@ impl DataUi for re_types::datatypes::Mat3x3 {
             ui.monospace(self[8].to_string());
             ui.end_row();
         });
-    }
-}
-
-impl DataUi for VisualBounds2D {
-    fn data_ui(
-        &self,
-        _ctx: &ViewerContext<'_>,
-        ui: &mut Ui,
-        ui_layout: UiLayout,
-        _query: &LatestAtQuery,
-        _db: &EntityDb,
-    ) {
-        ui_layout.data_label(ui, self.to_string());
     }
 }
 
