@@ -23,8 +23,8 @@ use crate::{
 };
 
 use super::{
-    filter_visualizable_3d_entities, process_labels_3d, SpatialViewVisualizerData,
-    SIZE_BOOST_IN_POINTS_FOR_POINT_OUTLINES,
+    filter_visualizable_3d_entities, process_labels_3d, utilities::LabeledBatch,
+    SpatialViewVisualizerData, SIZE_BOOST_IN_POINTS_FOR_POINT_OUTLINES,
 };
 
 // ---
@@ -135,13 +135,15 @@ impl Points3DVisualizer {
             load_keypoint_connections(line_builder, ent_context, entity_path, &keypoints)?;
 
             self.data.ui_labels.extend(process_labels_3d(
-                entity_path,
-                num_instances,
-                obj_space_bounding_box.center(),
-                positions.iter().copied(),
-                &data.labels,
-                &colors,
-                &annotation_infos,
+                LabeledBatch {
+                    entity_path,
+                    num_instances,
+                    overall_position: obj_space_bounding_box.center(),
+                    instance_positions: positions.iter().copied(),
+                    labels: &data.labels,
+                    colors: &colors,
+                    annotation_infos: &annotation_infos,
+                },
                 world_from_obj,
             ));
         }

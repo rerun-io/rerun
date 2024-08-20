@@ -20,8 +20,9 @@ use crate::{
 
 use super::{
     filter_visualizable_2d_entities, process_annotation_and_keypoint_slices, process_color_slice,
-    process_radius_slice, utilities::process_labels, SpatialViewVisualizerData,
-    SIZE_BOOST_IN_POINTS_FOR_LINE_OUTLINES,
+    process_radius_slice,
+    utilities::{process_labels, LabeledBatch},
+    SpatialViewVisualizerData, SIZE_BOOST_IN_POINTS_FOR_LINE_OUTLINES,
 };
 
 // ---
@@ -118,26 +119,29 @@ impl Boxes2DVisualizer {
                 .add_bounding_box(entity_path.hash(), obj_space_bounding_box, world_from_obj);
 
             self.data.ui_labels.extend(process_labels(
-                entity_path,
-                num_instances,
-                UiLabelTarget::Point2D(
-                    <[f32; 2]>::from(obj_space_bounding_box.center().truncate()).into(),
-                ),
-                data.half_sizes
-                    .iter()
-                    .copied()
-                    .zip(clamped_or(data.centers, &Position2D::ZERO).copied())
-                    .map(|(half_size, center)| {
-                        let min = half_size.box_min(center);
-                        let max = half_size.box_max(center);
-                        UiLabelTarget::Rect(egui::Rect::from_min_max(
-                            egui::pos2(min.x, min.y),
-                            egui::pos2(max.x, max.y),
-                        ))
-                    }),
-                &data.labels,
-                &colors,
-                &annotation_infos,
+                LabeledBatch {
+                    entity_path,
+                    num_instances,
+                    overall_position: UiLabelTarget::Point2D(
+                        <[f32; 2]>::from(obj_space_bounding_box.center().truncate()).into(),
+                    ),
+                    instance_positions: data
+                        .half_sizes
+                        .iter()
+                        .copied()
+                        .zip(clamped_or(data.centers, &Position2D::ZERO).copied())
+                        .map(|(half_size, center)| {
+                            let min = half_size.box_min(center);
+                            let max = half_size.box_max(center);
+                            UiLabelTarget::Rect(egui::Rect::from_min_max(
+                                egui::pos2(min.x, min.y),
+                                egui::pos2(max.x, max.y),
+                            ))
+                        }),
+                    labels: &data.labels,
+                    colors: &colors,
+                    annotation_infos: &annotation_infos,
+                },
                 std::convert::identity,
             ));
         }

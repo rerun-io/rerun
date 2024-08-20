@@ -16,8 +16,9 @@ use crate::{contexts::SpatialSceneEntityContext, view_kind::SpatialSpaceViewKind
 
 use super::{
     filter_visualizable_2d_entities, process_annotation_and_keypoint_slices, process_color_slice,
-    process_radius_slice, utilities::process_labels_2d, SpatialViewVisualizerData,
-    SIZE_BOOST_IN_POINTS_FOR_LINE_OUTLINES,
+    process_radius_slice,
+    utilities::{process_labels_2d, LabeledBatch},
+    SpatialViewVisualizerData, SIZE_BOOST_IN_POINTS_FOR_LINE_OUTLINES,
 };
 
 // ---
@@ -107,20 +108,22 @@ impl Lines2DVisualizer {
                 .add_bounding_box(entity_path.hash(), obj_space_bounding_box, world_from_obj);
 
             self.data.ui_labels.extend(process_labels_2d(
-                entity_path,
-                num_instances,
-                obj_space_bounding_box.center().truncate(),
-                data.strips.iter().map(|strip| {
-                    strip
-                        .iter()
-                        .copied()
-                        .map(glam::Vec2::from)
-                        .sum::<glam::Vec2>()
-                        / (strip.len() as f32)
-                }),
-                &data.labels,
-                &colors,
-                &annotation_infos,
+                LabeledBatch {
+                    entity_path,
+                    num_instances,
+                    overall_position: obj_space_bounding_box.center().truncate(),
+                    instance_positions: data.strips.iter().map(|strip| {
+                        strip
+                            .iter()
+                            .copied()
+                            .map(glam::Vec2::from)
+                            .sum::<glam::Vec2>()
+                            / (strip.len() as f32)
+                    }),
+                    labels: &data.labels,
+                    colors: &colors,
+                    annotation_infos: &annotation_infos,
+                },
                 world_from_obj,
             ));
         }

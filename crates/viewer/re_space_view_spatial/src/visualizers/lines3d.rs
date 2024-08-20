@@ -13,8 +13,9 @@ use re_viewer_context::{
 };
 
 use crate::{
-    contexts::SpatialSceneEntityContext, view_kind::SpatialSpaceViewKind,
-    visualizers::process_labels_3d,
+    contexts::SpatialSceneEntityContext,
+    view_kind::SpatialSpaceViewKind,
+    visualizers::utilities::{process_labels_3d, LabeledBatch},
 };
 
 use super::{
@@ -114,20 +115,22 @@ impl Lines3DVisualizer {
                 .add_bounding_box(entity_path.hash(), obj_space_bounding_box, world_from_obj);
 
             self.data.ui_labels.extend(process_labels_3d(
-                entity_path,
-                num_instances,
-                obj_space_bounding_box.center(),
-                data.strips.iter().map(|strip| {
-                    strip
-                        .iter()
-                        .copied()
-                        .map(glam::Vec3::from)
-                        .sum::<glam::Vec3>()
-                        / (strip.len() as f32)
-                }),
-                &data.labels,
-                &colors,
-                &annotation_infos,
+                LabeledBatch {
+                    entity_path,
+                    num_instances,
+                    overall_position: obj_space_bounding_box.center(),
+                    instance_positions: data.strips.iter().map(|strip| {
+                        strip
+                            .iter()
+                            .copied()
+                            .map(glam::Vec3::from)
+                            .sum::<glam::Vec3>()
+                            / (strip.len() as f32)
+                    }),
+                    labels: &data.labels,
+                    colors: &colors,
+                    annotation_infos: &annotation_infos,
+                },
                 world_from_obj,
             ));
         }

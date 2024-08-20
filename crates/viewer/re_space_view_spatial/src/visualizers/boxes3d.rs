@@ -24,7 +24,8 @@ use crate::{
 use super::{
     entity_iterator::clamped_or_nothing, filter_visualizable_3d_entities,
     process_annotation_and_keypoint_slices, process_color_slice, process_labels_3d,
-    process_radius_slice, SpatialViewVisualizerData, SIZE_BOOST_IN_POINTS_FOR_LINE_OUTLINES,
+    process_radius_slice, utilities::LabeledBatch, SpatialViewVisualizerData,
+    SIZE_BOOST_IN_POINTS_FOR_LINE_OUTLINES,
 };
 
 // ---
@@ -154,16 +155,18 @@ impl Boxes3DVisualizer {
                 .push((entity_path.hash(), world_space_bounding_box));
 
             self.0.ui_labels.extend(process_labels_3d(
-                entity_path,
-                num_instances,
-                world_space_bounding_box.center(),
-                ent_context
-                    .transform_info
-                    .clamped_reference_from_instances()
-                    .map(|t| t.translation.into()),
-                &data.labels,
-                &colors,
-                &annotation_infos,
+                LabeledBatch {
+                    entity_path,
+                    num_instances,
+                    overall_position: world_space_bounding_box.center(),
+                    instance_positions: ent_context
+                        .transform_info
+                        .clamped_reference_from_instances()
+                        .map(|t| t.translation.into()),
+                    labels: &data.labels,
+                    colors: &colors,
+                    annotation_infos: &annotation_infos,
+                },
                 glam::Affine3A::IDENTITY,
             ));
         }

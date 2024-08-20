@@ -18,9 +18,10 @@ use crate::{
 };
 
 use super::{
-    entity_iterator::clamped_or, process_annotation_and_keypoint_slices, process_color_slice,
-    process_radius_slice, utilities::process_labels_2d, SpatialViewVisualizerData,
-    SIZE_BOOST_IN_POINTS_FOR_LINE_OUTLINES,
+    entity_iterator::clamped_or,
+    process_annotation_and_keypoint_slices, process_color_slice, process_radius_slice,
+    utilities::{process_labels_2d, LabeledBatch},
+    SpatialViewVisualizerData, SIZE_BOOST_IN_POINTS_FOR_LINE_OUTLINES,
 };
 
 // ---
@@ -120,20 +121,22 @@ impl Arrows2DVisualizer {
                 .add_bounding_box(entity_path.hash(), obj_space_bounding_box, world_from_obj);
 
             self.data.ui_labels.extend(process_labels_2d(
-                entity_path,
-                num_instances,
-                obj_space_bounding_box.center().truncate(),
-                {
-                    // Take middle point of every arrow.
-                    let origins = clamped_or(data.origins, &Position2D::ZERO);
-                    itertools::izip!(data.vectors, origins).map(|(vector, origin)| {
-                        // `0.45` rather than `0.5` to account for cap and such
-                        glam::Vec2::from(origin.0) + glam::Vec2::from(vector.0) * 0.45
-                    })
+                LabeledBatch {
+                    entity_path,
+                    num_instances,
+                    overall_position: obj_space_bounding_box.center().truncate(),
+                    instance_positions: {
+                        // Take middle point of every arrow.
+                        let origins = clamped_or(data.origins, &Position2D::ZERO);
+                        itertools::izip!(data.vectors, origins).map(|(vector, origin)| {
+                            // `0.45` rather than `0.5` to account for cap and such
+                            glam::Vec2::from(origin.0) + glam::Vec2::from(vector.0) * 0.45
+                        })
+                    },
+                    labels: &data.labels,
+                    colors: &colors,
+                    annotation_infos: &annotation_infos,
                 },
-                &data.labels,
-                &colors,
-                &annotation_infos,
                 world_from_obj,
             ));
         }

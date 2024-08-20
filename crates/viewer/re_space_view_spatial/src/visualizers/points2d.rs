@@ -23,8 +23,9 @@ use crate::{
 };
 
 use super::{
-    filter_visualizable_2d_entities, utilities::process_labels_2d, SpatialViewVisualizerData,
-    SIZE_BOOST_IN_POINTS_FOR_POINT_OUTLINES,
+    filter_visualizable_2d_entities,
+    utilities::{process_labels_2d, LabeledBatch},
+    SpatialViewVisualizerData, SIZE_BOOST_IN_POINTS_FOR_POINT_OUTLINES,
 };
 
 // ---
@@ -129,13 +130,15 @@ impl Points2DVisualizer {
             load_keypoint_connections(line_builder, ent_context, entity_path, &keypoints)?;
 
             self.data.ui_labels.extend(process_labels_2d(
-                entity_path,
-                num_instances,
-                obj_space_bounding_box.center().truncate(),
-                data.positions.iter().map(|p| glam::vec2(p.x(), p.y())),
-                &data.labels,
-                &colors,
-                &annotation_infos,
+                LabeledBatch {
+                    entity_path,
+                    num_instances,
+                    overall_position: obj_space_bounding_box.center().truncate(),
+                    instance_positions: data.positions.iter().map(|p| glam::vec2(p.x(), p.y())),
+                    labels: &data.labels,
+                    colors: &colors,
+                    annotation_infos: &annotation_infos,
+                },
                 world_from_obj,
             ));
         }

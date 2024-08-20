@@ -19,7 +19,7 @@ use crate::{
 
 use super::{
     entity_iterator::clamped_or, process_annotation_and_keypoint_slices, process_color_slice,
-    process_labels_3d, process_radius_slice, SpatialViewVisualizerData,
+    process_labels_3d, process_radius_slice, utilities::LabeledBatch, SpatialViewVisualizerData,
     SIZE_BOOST_IN_POINTS_FOR_LINE_OUTLINES,
 };
 
@@ -121,7 +121,7 @@ impl Arrows3DVisualizer {
                 .add_bounding_box(entity_path.hash(), obj_space_bounding_box, world_from_obj);
 
             {
-                let label_positions = {
+                let instance_positions = {
                     // Take middle point of every arrow.
                     let origins = clamped_or(data.origins, &Position3D::ZERO);
 
@@ -132,13 +132,15 @@ impl Arrows3DVisualizer {
                 };
 
                 self.data.ui_labels.extend(process_labels_3d(
-                    entity_path,
-                    num_instances,
-                    obj_space_bounding_box.center(),
-                    label_positions,
-                    &data.labels,
-                    &colors,
-                    &annotation_infos,
+                    LabeledBatch {
+                        entity_path,
+                        num_instances,
+                        overall_position: obj_space_bounding_box.center(),
+                        instance_positions,
+                        labels: &data.labels,
+                        colors: &colors,
+                        annotation_infos: &annotation_infos,
+                    },
                     world_from_obj,
                 ));
             }
