@@ -1,7 +1,7 @@
 namespace rerun.blueprint.datatypes;
 
 
-/// Latest at query configuration for a specific timeline.
+/// Latest-at query configuration for a specific timeline.
 // Has to be a table because flatbuffer doesn't support strings in structs.
 table LatestAtQuery (
   "attr.rust.derive": "PartialEq, Eq",

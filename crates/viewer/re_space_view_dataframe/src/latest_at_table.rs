@@ -11,10 +11,10 @@ use crate::{
     utils::{sorted_instance_paths_for, sorted_visible_entity_path},
 };
 
-/// Display a "latest at" table.
+/// Display a "latest-at" table.
 ///
 /// This table has entity instances as rows and components as columns. That data is the result of a
-/// "latest at" query based on the current timeline and time.
+/// "latest-at" query based on the current timeline and time.
 pub(crate) fn latest_at_table_ui(
     ctx: &ViewerContext<'_>,
     ui: &mut egui::Ui,

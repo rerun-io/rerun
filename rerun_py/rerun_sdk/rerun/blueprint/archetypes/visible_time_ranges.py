@@ -21,7 +21,7 @@ class VisibleTimeRanges(VisibleTimeRangesExt, Archetype):
     """
     **Archetype**: Configures what range of each timeline is shown on a view.
 
-    Whenever no visual time range applies, queries are done with "latest at" semantics.
+    Whenever no visual time range applies, queries are done with "latest-at" semantics.
     This means that the view will, starting from the time cursor position,
     query the latest data available for each component type.
 

@@ -18,7 +18,7 @@ use ::re_types_core::SerializationResult;
 use ::re_types_core::{ComponentBatch, MaybeOwnedComponentBatch};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
-/// **Datatype**: Latest at query configuration for a specific timeline.
+/// **Datatype**: Latest-at query configuration for a specific timeline.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct LatestAtQuery {
     /// Name of the timeline this applies to.

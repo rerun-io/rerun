@@ -30,7 +30,7 @@ __all__ = [
 @define(init=False)
 class LatestAtQueries(ComponentMixin):
     """
-    **Component**: Configuration for latest at queries.
+    **Component**: Configuration for latest-at queries.
 
     Note: configuration as saved on a per-timeline basis.
     """

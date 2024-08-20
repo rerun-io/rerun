@@ -28,14 +28,14 @@ impl UiQueryKind {
 
         ui.vertical(|ui| {
             //
-            // LATEST AT
+            // LATEST-AT
             //
 
             ui.horizontal(|ui| {
                 let mut is_latest_at = matches!(self, Self::LatestAt { .. });
 
                 let mut changed = ui
-                    .re_radio_value(&mut is_latest_at, true, "Latest at")
+                    .re_radio_value(&mut is_latest_at, true, "Latest-at")
                     .changed();
 
                 if is_latest_at {
