@@ -41,7 +41,7 @@ use re_viewer_context::gpu_bridge::colormap_edit_or_view_ui;
 ///
 /// ⚠️ This is supposed to be the only export of this crate.
 /// This crate is meant to be a leaf crate in the viewer ecosystem and should only be used by the `re_viewer` crate itself.
-pub fn register_editors(registry: &mut re_viewer_context::ComponentUiRegistry) {
+pub fn register_component_uis(registry: &mut re_viewer_context::ComponentUiRegistry) {
     registry.add_singleline_edit_or_view::<Color>(color::edit_rgba32);
 
     registry.add_singleline_edit_or_view(radius::edit_radius_ui);
