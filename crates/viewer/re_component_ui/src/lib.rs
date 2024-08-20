@@ -1,6 +1,6 @@
 //! This crate implements various component editors.
 //!
-//! The only entry point is [`register_editors`], which registers all editors in the component UI registry.
+//! The only entry point is [`create_component_ui_registry`], which registers all editors in the component UI registry.
 //! This should be called by `re_viewer` on startup.
 
 mod color;
