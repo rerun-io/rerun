@@ -4,7 +4,7 @@
 //! This should be called by `re_viewer` on startup.
 
 mod color;
-mod datatype_editors;
+mod datatype_uis;
 mod image_format;
 mod line_strip;
 mod marker_shape;
@@ -18,7 +18,7 @@ mod transforms;
 mod view_coordinates;
 mod visual_bounds2d;
 
-use datatype_editors::{
+use datatype_uis::{
     display_name_ui, display_text_ui, edit_bool, edit_f32_min_to_max_float, edit_f32_zero_to_max,
     edit_f32_zero_to_one, edit_multiline_string, edit_or_view_vec3d, edit_singleline_string,
     edit_view_enum,
