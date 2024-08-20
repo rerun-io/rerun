@@ -106,30 +106,6 @@ where
     }
 }
 
-// ----------------------------------------------------------------------------
-
-// impl DataUi for TimePoint {
-//     fn data_ui(
-//         &self,
-//         ctx: &ViewerContext<'_>,
-//         ui: &mut egui::Ui,
-//         _ui_layout: UiLayout,
-//         _query: &re_chunk_store::LatestAtQuery,
-//         _db: &re_entity_db::EntityDb,
-//     ) {
-//         ui.vertical(|ui| {
-//             egui::Grid::new("time_point").num_columns(2).show(ui, |ui| {
-//                 ui.spacing_mut().item_spacing.x = 0.0;
-//                 for (timeline, value) in self.iter() {
-//                     item_ui::timeline_button_to(ctx, ui, format!("{}:", timeline.name()), timeline);
-//                     item_ui::time_button(ctx, ui, timeline, *value);
-//                     ui.end_row();
-//                 }
-//             });
-//         });
-//     }
-// }
-
 // ---------------------------------------------------------------------------
 
 pub fn annotations(
