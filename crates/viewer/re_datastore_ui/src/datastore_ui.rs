@@ -1,3 +1,4 @@
+use std::collections::BTreeMap;
 use std::sync::Arc;
 
 use egui_extras::{Column, TableRow};
@@ -5,10 +6,11 @@ use itertools::{Either, Itertools};
 
 use re_chunk_store::external::re_chunk::external::arrow2;
 use re_chunk_store::external::re_chunk::external::arrow2::array::Utf8Array;
+use re_chunk_store::external::re_chunk::{ArrowArray, TransportChunk};
 use re_chunk_store::{Chunk, ChunkStore};
 use re_log_types::{StoreKind, TimeZone};
 use re_types::datatypes::TimeInt;
-use re_types::SizeBytes as _;
+use re_types::SizeBytes;
 use re_ui::{list_item, UiExt as _};
 use re_viewer_context::{UiLayout, ViewerContext};
 
@@ -42,7 +44,7 @@ impl Default for DatastoreUi {
 impl DatastoreUi {
     pub fn ui(&mut self, ctx: &ViewerContext<'_>, ui: &mut egui::Ui) {
         if let Some(focused_chunk) = self.focused_chunk.clone() {
-            self.chunk_ui(ctx, ui, &focused_chunk);
+            self.chunk_ui(ui, &focused_chunk);
         } else {
             self.chunk_store_ui(
                 ui,
@@ -56,6 +58,9 @@ impl DatastoreUi {
 
     fn chunk_store_ui(&mut self, ui: &mut egui::Ui, chunk_store: &ChunkStore) {
         let should_copy_chunk = self.chunk_store_info_ui(ui, chunk_store);
+
+        // Each of these must be a column that contains the corresponding time range.
+        let all_timelines = chunk_store.all_timelines();
 
         let chunk_iterator = chunk_store.iter_chunks();
 
@@ -81,22 +86,25 @@ impl DatastoreUi {
         let chunk_iterator = if self.entity_path_filter.is_empty() {
             Either::Left(chunk_iterator)
         } else {
-            Either::Right(chunk_iterator.filter(|chunk| {
+            let entity_path_filter = self.entity_path_filter.to_lowercase();
+            Either::Right(chunk_iterator.filter(move |chunk| {
                 chunk
                     .entity_path()
                     .to_string()
-                    .contains(&self.entity_path_filter)
+                    .to_lowercase()
+                    .contains(&entity_path_filter)
             }))
         };
 
         let chunk_iterator = if self.component_filter.is_empty() {
             Either::Left(chunk_iterator)
         } else {
-            Either::Right(chunk_iterator.filter(|chunk| {
+            let component_filter = self.component_filter.to_lowercase();
+            Either::Right(chunk_iterator.filter(move |chunk| {
                 chunk
                     .components()
                     .keys()
-                    .any(|name| name.short_name().contains(&self.component_filter))
+                    .any(|name| name.short_name().to_lowercase().contains(&component_filter))
             }))
         };
 
@@ -125,16 +133,14 @@ impl DatastoreUi {
             });
 
             row.col(|ui| {
-                ui.strong("Sorted");
-            });
-
-            row.col(|ui| {
                 ui.strong("Rows");
             });
 
-            row.col(|ui| {
-                ui.strong("Timelines");
-            });
+            for timeline in &all_timelines {
+                row.col(|ui| {
+                    ui.strong(timeline.name().as_str());
+                });
+            }
 
             row.col(|ui| {
                 ui.strong("Components");
@@ -143,6 +149,7 @@ impl DatastoreUi {
 
         let row_ui = |mut row: TableRow<'_, '_>| {
             let chunk = chunks[row.index()];
+
             row.col(|ui| {
                 if ui.button(chunk.id().to_string()).clicked() {
                     self.focused_chunk = Some(Arc::clone(chunk));
@@ -154,29 +161,31 @@ impl DatastoreUi {
             });
 
             row.col(|ui| {
-                ui.label(if chunk.is_sorted() { "yes" } else { "no" });
-            });
-
-            row.col(|ui| {
                 ui.label(chunk.num_rows().to_string());
             });
 
-            row.col(|ui| {
-                if chunk.is_static() {
-                    ui.label("static");
+            let timeline_ranges = chunk
+                .timelines()
+                .iter()
+                .map(|(timeline, time_column)| {
+                    (
+                        timeline,
+                        timeline.format_time_range_utc(&time_column.time_range()),
+                    )
+                })
+                .collect::<BTreeMap<_, _>>();
+
+            for timeline in &all_timelines {
+                if let Some(range) = timeline_ranges.get(timeline) {
+                    row.col(|ui| {
+                        ui.label(range);
+                    });
                 } else {
-                    ui.label(format!("{} timelines", chunk.timelines().len(),))
-                        .on_hover_ui(|ui| {
-                            ui.label(
-                                chunk
-                                    .timelines()
-                                    .keys()
-                                    .map(|timeline| timeline.name().as_str())
-                                    .join(", "),
-                            );
-                        });
+                    row.col(|ui| {
+                        ui.label("-");
+                    });
                 }
-            });
+            }
 
             row.col(|ui| {
                 ui.label(
@@ -199,7 +208,10 @@ impl DatastoreUi {
                     //TODO: btw, set unique UIs in dataframe view as well.
                     ui.push_id("chunk_list", |ui| {
                         let table_builder = egui_extras::TableBuilder::new(ui)
-                            .columns(Column::auto_with_initial_suggestion(200.0).clip(true), 6)
+                            .columns(
+                                Column::auto_with_initial_suggestion(200.0).clip(true),
+                                4 + all_timelines.len(),
+                            )
                             .resizable(true)
                             .vscroll(true)
                             //TODO(ab): remove when https://github.com/emilk/egui/pull/4817 is merged/released
@@ -292,12 +304,19 @@ impl DatastoreUi {
         should_copy_chunks
     }
 
-    fn chunk_ui(&mut self, ctx: &ViewerContext<'_>, ui: &mut egui::Ui, chunk: &Arc<Chunk>) {
+    fn chunk_ui(&mut self, ui: &mut egui::Ui, chunk: &Arc<Chunk>) {
         self.chunk_info_ui(ui, chunk);
 
         let row_ids = chunk.row_ids().collect_vec();
         let time_columns = chunk.timelines().values().collect_vec();
-        let component_names = chunk.component_names().collect_vec();
+
+        let components = chunk
+            .components()
+            .iter()
+            .map(|(component_name, list_array)| {
+                (*component_name, format!("{:#?}", list_array.data_type()))
+            })
+            .collect::<BTreeMap<_, _>>();
 
         let header_ui = |mut row: TableRow<'_, '_>| {
             row.col(|ui| {
@@ -310,25 +329,15 @@ impl DatastoreUi {
                 });
             }
 
-            for component_name in &component_names {
+            for (component_name, datatype) in &components {
                 row.col(|ui| {
-                    //TODO: tooltip: arrow schema
-                    ui.strong(component_name.short_name()).on_hover_ui(|ui| {
-                        //TODO(#1809): I wish there was a central place to look up for datatype
-                        let datatype = ctx
-                            .recording_store()
-                            .lookup_datatype(component_name)
-                            .or_else(|| ctx.blueprint_store().lookup_datatype(component_name));
-
-                        if let Some(datatype) = datatype {
-                            UiLayout::Tooltip.data_label(
-                                ui,
-                                re_format_arrow::DisplayDatatype(datatype).to_string(),
-                            );
-                        } else {
-                            ui.error_label("Couldn't find a type definition.");
-                        }
+                    let response = ui.button(component_name.short_name()).on_hover_ui(|ui| {
+                        ui.label(format!("{datatype}\n\nClick header to copy"));
                     });
+
+                    if response.clicked() {
+                        ui.output_mut(|o| o.copied_text = datatype.clone());
+                    }
                 });
             }
         };
@@ -345,12 +354,12 @@ impl DatastoreUi {
                 row.col(|ui| {
                     let time = TimeInt::from(time_column.times_raw()[row_index]);
 
-                    //TODO: use the user's timezone
+                    //TODO: use the user's timezone?
                     ui.label(time_column.timeline().typ().format(time, TimeZone::Utc));
                 });
             }
 
-            for component_name in &component_names {
+            for component_name in components.keys() {
                 row.col(|ui| {
                     let component_data = chunk.component_batch_raw(component_name, row_index);
                     if let Some(Ok(data)) = component_data {
@@ -375,7 +384,7 @@ impl DatastoreUi {
                         let table_builder = egui_extras::TableBuilder::new(ui)
                             .columns(
                                 Column::auto_with_initial_suggestion(200.0).clip(true),
-                                1 + time_columns.len() + component_names.len(),
+                                1 + time_columns.len() + components.len(),
                             )
                             .resizable(true)
                             .vscroll(true)
@@ -399,6 +408,30 @@ impl DatastoreUi {
     }
 
     fn chunk_info_ui(&mut self, ui: &mut egui::Ui, chunk: &Arc<Chunk>) {
+        let metadata_ui = |ui: &mut egui::Ui, metadata: &BTreeMap<String, String>| {
+            for (key, value) in metadata {
+                ui.list_item_flat_noninteractive(
+                    list_item::PropertyContent::new(key).value_text(value),
+                );
+            }
+        };
+
+        let fields_ui = |ui: &mut egui::Ui, transport: &TransportChunk| {
+            for field in &transport.schema.fields {
+                ui.push_id(field.name.clone(), |ui| {
+                    ui.list_item_collapsible_noninteractive_label(&field.name, false, |ui| {
+                        ui.list_item_collapsible_noninteractive_label("Data type", false, |ui| {
+                            ui.label(format!("{:#?}", field.data_type));
+                        });
+
+                        ui.list_item_collapsible_noninteractive_label("Metadata", false, |ui| {
+                            metadata_ui(ui, &field.metadata);
+                        });
+                    });
+                });
+            }
+        };
+
         let chunk_stats_ui = |ui: &mut egui::Ui| {
             ui.list_item_flat_noninteractive(
                 list_item::PropertyContent::new("ID").value_text(chunk.id().to_string()),
@@ -415,8 +448,9 @@ impl DatastoreUi {
             );
 
             ui.list_item_flat_noninteractive(
-                list_item::PropertyContent::new("Heap size")
-                    .value_text(re_format::format_bytes(chunk.heap_size_bytes() as f64)),
+                list_item::PropertyContent::new("Heap size").value_text(re_format::format_bytes(
+                    <Chunk as SizeBytes>::heap_size_bytes(chunk) as f64,
+                )),
             );
 
             ui.list_item_flat_noninteractive(
@@ -446,34 +480,29 @@ impl DatastoreUi {
                     let s = chunk.to_string();
                     ui.output_mut(|o| o.copied_text = s);
                 }
-
-                // ui.help_hover_button().on_hover_ui(|ui| {
-                //     list_item::list_item_scope(ui, "chunk_stats", chunk_stats_ui);
-                // });
-
-                // ui.scope(|ui| {
-                //     ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Wrap);
-                //     ui.label(format!(
-                //         "ID: {} | Entity path: {} | Row count: {} | Heap size: {} | Sorted: {} | Static: {}",
-                //         chunk.id().to_string(),
-                //         chunk.entity_path().to_string(),
-                //         chunk.num_rows(),
-                //         re_format::format_bytes(chunk.heap_size_bytes() as f64),
-                //         if chunk.is_sorted() { "yes" } else { "no" },
-                //         if chunk.is_static() { "yes" } else { "no" },
-                //     ));
             });
 
             list_item::list_item_scope(ui, "chunk_stats", |ui| {
-                list_item::ListItem::new()
-                    .interactive(false)
-                    .show_hierarchical_with_children(
-                        ui,
-                        "chunk_stats".into(),
-                        false,
-                        list_item::LabelContent::new("Chunk stats"),
-                        chunk_stats_ui,
-                    );
+                ui.list_item_collapsible_noninteractive_label("Stats", false, chunk_stats_ui);
+                match chunk.to_transport() {
+                    Ok(transport) => {
+                        ui.list_item_collapsible_noninteractive_label("Transport", false, |ui| {
+                            ui.list_item_collapsible_noninteractive_label(
+                                "Metadata",
+                                false,
+                                |ui| {
+                                    metadata_ui(ui, &transport.schema.metadata);
+                                },
+                            );
+                            ui.list_item_collapsible_noninteractive_label("Fields", false, |ui| {
+                                fields_ui(ui, &transport);
+                            });
+                        });
+                    }
+                    Err(err) => {
+                        ui.error_label(&format!("Failed to convert to transport: {err}"));
+                    }
+                }
             });
         });
     }

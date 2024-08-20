@@ -106,7 +106,7 @@ impl std::fmt::Display for DisplayIntervalUnit {
 
 //TODO(john) move this and the Display impl upstream into arrow2
 #[repr(transparent)]
-pub struct DisplayDatatype<'a>(pub &'a DataType);
+struct DisplayDatatype<'a>(&'a DataType);
 
 impl std::fmt::Display for DisplayDatatype<'_> {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {

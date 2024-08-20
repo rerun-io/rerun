@@ -23,6 +23,14 @@ use crate::RowId;
 // as both static and temporal, which is probably wrong.
 
 impl ChunkStore {
+    /// Retrieve all timelines contained in at least one chunk.
+    pub fn all_timelines(&self) -> BTreeSet<Timeline> {
+        self.temporal_chunk_ids_per_entity
+            .values()
+            .flat_map(|per_timeline| per_timeline.keys().copied())
+            .collect()
+    }
+
     /// Retrieve all the [`ComponentName`]s that have been written to for a given [`EntityPath`] on
     /// the specified [`Timeline`].
     ///
