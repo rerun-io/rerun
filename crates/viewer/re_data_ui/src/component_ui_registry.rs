@@ -30,10 +30,6 @@ pub fn create_component_ui_registry() -> ComponentUiRegistry {
     // TODO(andreas): Move this to component_ui_registry. Unclear if we need more information than single & multiline. Maybe that's enough.
     add_to_registry::<re_types::components::PinholeProjection>(&mut registry);
 
-    // TODO: trivially convertable to multi/single line component
-    add_to_registry::<re_types::components::LineStrip2D>(&mut registry);
-    add_to_registry::<re_types::components::LineStrip3D>(&mut registry);
-
     registry
 }
 

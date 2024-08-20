@@ -6,6 +6,7 @@
 mod color;
 mod datatype_editors;
 mod image_format;
+mod line_strip;
 mod marker_shape;
 mod radius;
 mod range1d;
@@ -99,4 +100,11 @@ pub fn register_editors(registry: &mut re_viewer_context::ComponentUiRegistry) {
     registry.add_singleline_edit_or_view(image_format::edit_or_view_image_format);
     registry.add_singleline_edit_or_view(resolution::edit_or_view_resolution);
     registry.add_singleline_edit_or_view(view_coordinates::edit_or_view_view_coordinates);
+
+    registry.add_multiline_edit_or_view(visual_bounds2d::multiline_edit_visual_bounds2d);
+    registry.add_singleline_edit_or_view(visual_bounds2d::singleline_edit_visual_bounds2d);
+    registry.add_multiline_edit_or_view(visual_bounds2d::multiline_edit_visual_bounds2d);
+    registry.add_singleline_edit_or_view(visual_bounds2d::singleline_edit_visual_bounds2d);
+
+    line_strip::register_linestrip_component_ui(registry);
 }
