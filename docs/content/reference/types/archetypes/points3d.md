@@ -60,3 +60,15 @@ snippet: archetypes/point3d_ui_radius
   <img src="https://static.rerun.io/point3d_ui_radius/e051a65b4317438bcaea8d0eee016ac9460b5336/full.png">
 </picture>
 
+### Send several point clouds with varying point count over time in a single call
+
+snippet: archetypes/points3d_send_columns
+
+<picture data-inline-viewer="snippets/points3d_send_columns">
+  <source media="(max-width: 480px)" srcset="https://static.rerun.io/points3d_send_columns/633b524a2ee439b0e3afc3f894f4927ce938a3ec/480w.png">
+  <source media="(max-width: 768px)" srcset="https://static.rerun.io/points3d_send_columns/633b524a2ee439b0e3afc3f894f4927ce938a3ec/768w.png">
+  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/points3d_send_columns/633b524a2ee439b0e3afc3f894f4927ce938a3ec/1024w.png">
+  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/points3d_send_columns/633b524a2ee439b0e3afc3f894f4927ce938a3ec/1200w.png">
+  <img src="https://static.rerun.io/points3d_send_columns/633b524a2ee439b0e3afc3f894f4927ce938a3ec/full.png">
+</picture>
+

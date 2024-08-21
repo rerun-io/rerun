@@ -10,9 +10,9 @@
 #include "../components/color.hpp"
 #include "../components/fill_mode.hpp"
 #include "../components/half_size3d.hpp"
-#include "../components/leaf_rotation_axis_angle.hpp"
-#include "../components/leaf_rotation_quat.hpp"
-#include "../components/leaf_translation3d.hpp"
+#include "../components/pose_rotation_axis_angle.hpp"
+#include "../components/pose_rotation_quat.hpp"
+#include "../components/pose_translation3d.hpp"
 #include "../components/radius.hpp"
 #include "../components/text.hpp"
 #include "../indicator_component.hpp"
@@ -26,14 +26,14 @@
 namespace rerun::archetypes {
     /// **Archetype**: 3D boxes with half-extents and optional center, rotations, colors etc.
     ///
-    /// Note that orienting and placing the box is handled via `[archetypes.LeafTransforms3D]`.
+    /// Note that orienting and placing the box is handled via `[archetypes.InstancePoses3D]`.
     /// Some of its component are repeated here for convenience.
-    /// If there's more leaf transforms than half sizes, the last half size will be repeated for the remaining transforms.
+    /// If there's more instance poses than half sizes, the last half size will be repeated for the remaining poses.
     ///
     /// ## Example
     ///
     /// ### Batch of 3D boxes
-    /// ![image](https://static.rerun.io/box3d_batch/6d3e453c3a0201ae42bbae9de941198513535f1d/full.png)
+    /// ![image](https://static.rerun.io/box3d_batch/5aac5b5d29c9f2ecd572c93f6970fcec17f4984b/full.png)
     ///
     /// ```cpp
     /// #include <rerun.hpp>
@@ -71,20 +71,20 @@ namespace rerun::archetypes {
         /// Optional center positions of the boxes.
         ///
         /// If not specified, the centers will be at (0, 0, 0).
-        /// Note that this uses a `components::LeafTranslation3D` which is also used by `archetypes::LeafTransforms3D`.
-        std::optional<Collection<rerun::components::LeafTranslation3D>> centers;
+        /// Note that this uses a `components::PoseTranslation3D` which is also used by `archetypes::InstancePoses3D`.
+        std::optional<Collection<rerun::components::PoseTranslation3D>> centers;
 
         /// Rotations via axis + angle.
         ///
         /// If no rotation is specified, the axes of the boxes align with the axes of the local coordinate system.
-        /// Note that this uses a `components::LeafRotationAxisAngle` which is also used by `archetypes::LeafTransforms3D`.
-        std::optional<Collection<rerun::components::LeafRotationAxisAngle>> rotation_axis_angles;
+        /// Note that this uses a `components::PoseRotationAxisAngle` which is also used by `archetypes::InstancePoses3D`.
+        std::optional<Collection<rerun::components::PoseRotationAxisAngle>> rotation_axis_angles;
 
         /// Rotations via quaternion.
         ///
         /// If no rotation is specified, the axes of the boxes align with the axes of the local coordinate system.
-        /// Note that this uses a `components::LeafRotationQuat` which is also used by `archetypes::LeafTransforms3D`.
-        std::optional<Collection<rerun::components::LeafRotationQuat>> quaternions;
+        /// Note that this uses a `components::PoseRotationQuat` which is also used by `archetypes::InstancePoses3D`.
+        std::optional<Collection<rerun::components::PoseRotationQuat>> quaternions;
 
         /// Optional colors for the boxes.
         std::optional<Collection<rerun::components::Color>> colors;
@@ -122,7 +122,7 @@ namespace rerun::archetypes {
 
         /// Creates new `Boxes3D` with `centers` and `half_sizes`.
         static Boxes3D from_centers_and_half_sizes(
-            Collection<components::LeafTranslation3D> centers,
+            Collection<components::PoseTranslation3D> centers,
             Collection<components::HalfSize3D> half_sizes
         ) {
             Boxes3D boxes;
@@ -145,7 +145,7 @@ namespace rerun::archetypes {
         /// from the input data.
         /// TODO(andreas): This should not take an std::vector.
         static Boxes3D from_centers_and_sizes(
-            Collection<components::LeafTranslation3D> centers,
+            Collection<components::PoseTranslation3D> centers,
             const std::vector<datatypes::Vec3D>& sizes
         ) {
             Boxes3D boxes = from_sizes(std::move(sizes));
@@ -172,8 +172,8 @@ namespace rerun::archetypes {
         /// Optional center positions of the boxes.
         ///
         /// If not specified, the centers will be at (0, 0, 0).
-        /// Note that this uses a `components::LeafTranslation3D` which is also used by `archetypes::LeafTransforms3D`.
-        Boxes3D with_centers(Collection<rerun::components::LeafTranslation3D> _centers) && {
+        /// Note that this uses a `components::PoseTranslation3D` which is also used by `archetypes::InstancePoses3D`.
+        Boxes3D with_centers(Collection<rerun::components::PoseTranslation3D> _centers) && {
             centers = std::move(_centers);
             // See: https://github.com/rerun-io/rerun/issues/4027
             RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
@@ -182,9 +182,9 @@ namespace rerun::archetypes {
         /// Rotations via axis + angle.
         ///
         /// If no rotation is specified, the axes of the boxes align with the axes of the local coordinate system.
-        /// Note that this uses a `components::LeafRotationAxisAngle` which is also used by `archetypes::LeafTransforms3D`.
+        /// Note that this uses a `components::PoseRotationAxisAngle` which is also used by `archetypes::InstancePoses3D`.
         Boxes3D with_rotation_axis_angles(
-            Collection<rerun::components::LeafRotationAxisAngle> _rotation_axis_angles
+            Collection<rerun::components::PoseRotationAxisAngle> _rotation_axis_angles
         ) && {
             rotation_axis_angles = std::move(_rotation_axis_angles);
             // See: https://github.com/rerun-io/rerun/issues/4027
@@ -194,8 +194,8 @@ namespace rerun::archetypes {
         /// Rotations via quaternion.
         ///
         /// If no rotation is specified, the axes of the boxes align with the axes of the local coordinate system.
-        /// Note that this uses a `components::LeafRotationQuat` which is also used by `archetypes::LeafTransforms3D`.
-        Boxes3D with_quaternions(Collection<rerun::components::LeafRotationQuat> _quaternions) && {
+        /// Note that this uses a `components::PoseRotationQuat` which is also used by `archetypes::InstancePoses3D`.
+        Boxes3D with_quaternions(Collection<rerun::components::PoseRotationQuat> _quaternions) && {
             quaternions = std::move(_quaternions);
             // See: https://github.com/rerun-io/rerun/issues/4027
             RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)

@@ -12,10 +12,7 @@ mod space_view_class;
 mod util;
 
 use re_log_types::EntityPath;
-use re_types::{
-    components::{AggregationPolicy, MarkerShape},
-    datatypes::Utf8,
-};
+use re_types::components::{AggregationPolicy, MarkerShape};
 pub use space_view_class::TimeSeriesSpaceView;
 
 /// Computes a deterministic, globally unique ID for the plot based on the ID of the space view
@@ -76,7 +73,9 @@ pub enum PlotSeriesKind {
 
 #[derive(Clone, Debug)]
 pub struct PlotSeries {
-    pub label: Utf8,
+    /// Label of the series.
+    pub label: String,
+
     pub color: egui::Color32,
 
     /// Radius of markers, or stroke radius for lines.

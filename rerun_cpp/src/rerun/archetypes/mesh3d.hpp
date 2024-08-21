@@ -9,8 +9,9 @@
 #include "../components/albedo_factor.hpp"
 #include "../components/class_id.hpp"
 #include "../components/color.hpp"
+#include "../components/image_buffer.hpp"
+#include "../components/image_format.hpp"
 #include "../components/position3d.hpp"
-#include "../components/tensor_data.hpp"
 #include "../components/texcoord2d.hpp"
 #include "../components/triangle_indices.hpp"
 #include "../components/vector3d.hpp"
@@ -27,13 +28,13 @@ namespace rerun::archetypes {
     ///
     /// See also `archetypes::Asset3D`.
     ///
-    /// If there are multiple `archetypes::LeafTransforms3D` instances logged to the same entity as a mesh,
+    /// If there are multiple `archetypes::InstancePoses3D` instances logged to the same entity as a mesh,
     /// an instance of the mesh will be drawn for each transform.
     ///
     /// ## Examples
     ///
     /// ### Simple indexed 3D mesh
-    /// ![image](https://static.rerun.io/mesh3d_simple/e1e5fd97265daf0d0bc7b782d862f19086fd6975/full.png)
+    /// ![image](https://static.rerun.io/mesh3d_indexed/57c70dc992e6dc0bd9c5222ca084f5b6240cea75/full.png)
     ///
     /// ```cpp
     /// #include <rerun.hpp>
@@ -65,14 +66,14 @@ namespace rerun::archetypes {
     /// }
     /// ```
     ///
-    /// ### 3D mesh with leaf transforms
+    /// ### 3D mesh with instancing
     /// ![image](https://static.rerun.io/mesh3d_leaf_transforms3d/c2d0ee033129da53168f5705625a9b033f3a3d61/full.png)
     ///
     /// ```cpp
     /// #include <rerun.hpp>
     ///
     /// int main() {
-    ///     const auto rec = rerun::RecordingStream("rerun_example_mesh3d_leaf_transforms3d");
+    ///     const auto rec = rerun::RecordingStream("rerun_example_mesh3d_instancing");
     ///     rec.spawn().exit_on_failure();
     ///
     ///     rec.set_time_sequence("frame", 0);
@@ -84,14 +85,14 @@ namespace rerun::archetypes {
     ///             .with_triangle_indices({{0, 1, 2}, {0, 1, 3}, {0, 2, 3}, {1, 2, 3}})
     ///             .with_vertex_colors({0xFF0000FF, 0x00FF00FF, 0x00000FFFF, 0xFFFF00FF})
     ///     );
-    ///     // This box will not be affected by its parent's leaf transforms!
+    ///     // This box will not be affected by its parent's instance poses!
     ///     rec.log("shape/box", rerun::Boxes3D::from_half_sizes({{5.0f, 5.0f, 5.0f}}));
     ///
     ///     for (int i = 0; i <100; ++i) {
     ///         rec.set_time_sequence("frame", i);
     ///         rec.log(
     ///             "shape",
-    ///             rerun::LeafTransforms3D()
+    ///             rerun::InstancePoses3D()
     ///                 .with_translations(
     ///                     {{2.0f, 0.0f, 0.0f},
     ///                      {0.0f, 2.0f, 0.0f},
@@ -133,7 +134,10 @@ namespace rerun::archetypes {
         ///
         /// Currently supports only sRGB(A) textures, ignoring alpha.
         /// (meaning that the tensor must have 3 or 4 channels and use the `u8` format)
-        std::optional<rerun::components::TensorData> albedo_texture;
+        std::optional<rerun::components::ImageBuffer> albedo_texture_buffer;
+
+        /// The format of the `albedo_texture_buffer`, if any.
+        std::optional<rerun::components::ImageFormat> albedo_texture_format;
 
         /// Optional class Ids for the vertices.
         ///
@@ -197,8 +201,17 @@ namespace rerun::archetypes {
         ///
         /// Currently supports only sRGB(A) textures, ignoring alpha.
         /// (meaning that the tensor must have 3 or 4 channels and use the `u8` format)
-        Mesh3D with_albedo_texture(rerun::components::TensorData _albedo_texture) && {
-            albedo_texture = std::move(_albedo_texture);
+        Mesh3D with_albedo_texture_buffer(rerun::components::ImageBuffer _albedo_texture_buffer
+        ) && {
+            albedo_texture_buffer = std::move(_albedo_texture_buffer);
+            // See: https://github.com/rerun-io/rerun/issues/4027
+            RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
+        }
+
+        /// The format of the `albedo_texture_buffer`, if any.
+        Mesh3D with_albedo_texture_format(rerun::components::ImageFormat _albedo_texture_format
+        ) && {
+            albedo_texture_format = std::move(_albedo_texture_format);
             // See: https://github.com/rerun-io/rerun/issues/4027
             RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
         }

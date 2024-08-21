@@ -35,11 +35,6 @@ from .image_buffer import ImageBuffer, ImageBufferBatch, ImageBufferType
 from .image_format import ImageFormat, ImageFormatBatch, ImageFormatType
 from .image_plane_distance import ImagePlaneDistance, ImagePlaneDistanceBatch, ImagePlaneDistanceType
 from .keypoint_id import KeypointId, KeypointIdBatch, KeypointIdType
-from .leaf_rotation_axis_angle import LeafRotationAxisAngle, LeafRotationAxisAngleBatch, LeafRotationAxisAngleType
-from .leaf_rotation_quat import LeafRotationQuat, LeafRotationQuatBatch, LeafRotationQuatType
-from .leaf_scale3d import LeafScale3D, LeafScale3DBatch, LeafScale3DType
-from .leaf_transform_mat3x3 import LeafTransformMat3x3, LeafTransformMat3x3Batch, LeafTransformMat3x3Type
-from .leaf_translation3d import LeafTranslation3D, LeafTranslation3DBatch, LeafTranslation3DType
 from .line_strip2d import LineStrip2D, LineStrip2DArrayLike, LineStrip2DBatch, LineStrip2DLike, LineStrip2DType
 from .line_strip3d import LineStrip3D, LineStrip3DArrayLike, LineStrip3DBatch, LineStrip3DLike, LineStrip3DType
 from .magnification_filter import (
@@ -55,6 +50,11 @@ from .media_type import MediaType, MediaTypeBatch, MediaTypeType
 from .name import Name, NameBatch, NameType
 from .opacity import Opacity, OpacityBatch, OpacityType
 from .pinhole_projection import PinholeProjection, PinholeProjectionBatch, PinholeProjectionType
+from .pose_rotation_axis_angle import PoseRotationAxisAngle, PoseRotationAxisAngleBatch, PoseRotationAxisAngleType
+from .pose_rotation_quat import PoseRotationQuat, PoseRotationQuatBatch, PoseRotationQuatType
+from .pose_scale3d import PoseScale3D, PoseScale3DBatch, PoseScale3DType
+from .pose_transform_mat3x3 import PoseTransformMat3x3, PoseTransformMat3x3Batch, PoseTransformMat3x3Type
+from .pose_translation3d import PoseTranslation3D, PoseTranslation3DBatch, PoseTranslation3DType
 from .position2d import Position2D, Position2DBatch, Position2DType
 from .position3d import Position3D, Position3DBatch, Position3DType
 from .radius import Radius, RadiusBatch, RadiusType
@@ -162,21 +162,6 @@ __all__ = [
     "KeypointId",
     "KeypointIdBatch",
     "KeypointIdType",
-    "LeafRotationAxisAngle",
-    "LeafRotationAxisAngleBatch",
-    "LeafRotationAxisAngleType",
-    "LeafRotationQuat",
-    "LeafRotationQuatBatch",
-    "LeafRotationQuatType",
-    "LeafScale3D",
-    "LeafScale3DBatch",
-    "LeafScale3DType",
-    "LeafTransformMat3x3",
-    "LeafTransformMat3x3Batch",
-    "LeafTransformMat3x3Type",
-    "LeafTranslation3D",
-    "LeafTranslation3DBatch",
-    "LeafTranslation3DType",
     "LineStrip2D",
     "LineStrip2DArrayLike",
     "LineStrip2DBatch",
@@ -212,6 +197,21 @@ __all__ = [
     "PinholeProjection",
     "PinholeProjectionBatch",
     "PinholeProjectionType",
+    "PoseRotationAxisAngle",
+    "PoseRotationAxisAngleBatch",
+    "PoseRotationAxisAngleType",
+    "PoseRotationQuat",
+    "PoseRotationQuatBatch",
+    "PoseRotationQuatType",
+    "PoseScale3D",
+    "PoseScale3DBatch",
+    "PoseScale3DType",
+    "PoseTransformMat3x3",
+    "PoseTransformMat3x3Batch",
+    "PoseTransformMat3x3Type",
+    "PoseTranslation3D",
+    "PoseTranslation3DBatch",
+    "PoseTranslation3DType",
     "Position2D",
     "Position2DBatch",
     "Position2DType",

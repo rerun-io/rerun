@@ -3,7 +3,7 @@ use itertools::Itertools;
 use re_chunk::{ComponentName, RowId, UnitChunkShared};
 use re_data_ui::{sorted_component_list_for_ui, DataUi};
 use re_entity_db::EntityDb;
-use re_log_types::EntityPath;
+use re_log_types::{ComponentPath, EntityPath};
 use re_space_view::latest_at_with_blueprint_resolved_data;
 use re_types::external::arrow2;
 use re_types_blueprint::blueprint::components::VisualizerOverrides;
@@ -278,9 +278,8 @@ fn visualizer_components(
                     }
                 };
 
-                re_data_ui::EntityLatestAtResults {
-                    entity_path: entity_path.clone(),
-                    component_name,
+                re_data_ui::ComponentPathLatestAtResults {
+                    component_path: ComponentPath::new(entity_path.clone(), component_name),
                     unit: latest_at_unit,
                 }
                 .data_ui(ctx.viewer_ctx, ui, UiLayout::List, query, db);
@@ -288,71 +287,94 @@ fn visualizer_components(
         };
 
         let add_children = |ui: &mut egui::Ui| {
+            // NOTE: each of the override/store/etc. UI elements may well resemble each other much,
+            // e.g. be the same edit UI. We must ensure that we seed egui kd differently for each of
+            // them to avoid id clashes.
+
             // Override (if available)
             if let Some((row_id, raw_override)) = raw_override.as_ref() {
-                editable_blueprint_component_list_item(
-                    &query_ctx,
-                    ui,
-                    "Override",
-                    override_path,
-                    component_name,
-                    *row_id,
-                    raw_override.as_ref(),
-                )
-                .on_hover_text("Override value for this specific entity in the current view");
+                ui.push_id("override", |ui| {
+                    editable_blueprint_component_list_item(
+                        &query_ctx,
+                        ui,
+                        "Override",
+                        override_path,
+                        component_name,
+                        *row_id,
+                        raw_override.as_ref(),
+                    )
+                    .on_hover_text("Override value for this specific entity in the current view");
+                });
             }
+
             // Store (if available)
             if let Some(unit) = result_store {
-                ui.list_item_flat_noninteractive(
-                    list_item::PropertyContent::new("Store").value_fn(|ui, _style| {
-                        re_data_ui::EntityLatestAtResults {
-                            entity_path: data_result.entity_path.clone(),
-                            component_name,
-                            unit,
-                        }
-                        .data_ui(
-                            ctx.viewer_ctx,
-                            ui,
-                            UiLayout::List,
-                            &store_query,
-                            ctx.recording(),
-                        );
-                    }),
-                )
-                .on_hover_text("The value that was logged to the data store");
+                ui.push_id("store", |ui| {
+                    ui.list_item_flat_noninteractive(
+                        list_item::PropertyContent::new("Store").value_fn(|ui, _style| {
+                            re_data_ui::ComponentPathLatestAtResults {
+                                component_path: ComponentPath::new(
+                                    data_result.entity_path.clone(),
+                                    component_name,
+                                ),
+                                unit,
+                            }
+                            .data_ui(
+                                ctx.viewer_ctx,
+                                ui,
+                                UiLayout::List,
+                                &store_query,
+                                ctx.recording(),
+                            );
+                        }),
+                    )
+                    .on_hover_text("The value that was logged to the data store");
+                });
             }
+
             // Default (if available)
             if let Some((row_id, raw_default)) = raw_default.as_ref() {
-                editable_blueprint_component_list_item(
-                    &query_ctx,
-                    ui,
-                    "Default",
-                    ctx.defaults_path,
-                    component_name,
-                    *row_id,
-                    raw_default.as_ref(),
-                )
-                .on_hover_text("Default value for all component of this type is the current view");
+                ui.push_id("default", |ui| {
+                    editable_blueprint_component_list_item(
+                        &query_ctx,
+                        ui,
+                        "Default",
+                        ctx.defaults_path,
+                        component_name,
+                        *row_id,
+                        raw_default.as_ref(),
+                    )
+                    .on_hover_text(
+                        "Default value for all components of this type is the current view",
+                    );
+                });
             }
+
             // Fallback (always there)
             {
-                ui.list_item_flat_noninteractive(
-                    list_item::PropertyContent::new("Fallback").value_fn(|ui, _| {
-                        // TODO(andreas): db & entity path don't make sense here.
-                        ctx.viewer_ctx.component_ui_registry.ui_raw(
-                            ctx.viewer_ctx,
-                            ui,
-                            UiLayout::List,
-                            &store_query,
-                            ctx.recording(),
-                            &data_result.entity_path,
-                            component_name,
-                            None,
-                            raw_fallback.as_ref(),
-                        );
-                    }),
-                )
-                .on_hover_text("Context sensitive fallback value for this component type, used only if nothing else was specified. Unlike the other values, this may differ per visualizer.");
+                ui.push_id("fallback", |ui| {
+                    ui.list_item_flat_noninteractive(
+                        list_item::PropertyContent::new("Fallback").value_fn(|ui, _| {
+                            // TODO(andreas): db & entity path don't make sense here.
+                            ctx.viewer_ctx.component_ui_registry.ui_raw(
+                                ctx.viewer_ctx,
+                                ui,
+                                UiLayout::List,
+                                &store_query,
+                                ctx.recording(),
+                                &data_result.entity_path,
+                                component_name,
+                                None,
+                                raw_fallback.as_ref(),
+                            );
+                        }),
+                    )
+                    .on_hover_text(
+                        "Context sensitive fallback value for this component type, used only if \
+                    nothing else was specified. Unlike the other values, this may differ per \
+                    visualizer.",
+                    );
+                });
             }
         };
 
@@ -414,7 +436,7 @@ fn editable_blueprint_component_list_item(
             .action_button(&re_ui::icons::CLOSE, || {
                 query_ctx
                     .viewer_ctx
-                    .save_empty_blueprint_component_by_name(blueprint_path, component);
+                    .clear_blueprint_component_by_name(blueprint_path, component);
             }),
     )
 }
@@ -436,7 +458,7 @@ fn menu_more(
         .on_disabled_hover_text("There's no override active")
         .clicked()
     {
-        ctx.save_empty_blueprint_component_by_name(override_path, component_name);
+        ctx.clear_blueprint_component_by_name(override_path, component_name);
         ui.close_menu();
     }
 

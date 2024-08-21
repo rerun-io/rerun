@@ -22,5 +22,5 @@ consulted at <https://www.iana.org/assignments/media-types/media-types.xhtml>.
 
 * [`Asset3D`](../archetypes/asset3d.md)
 * [`AssetVideo`](../archetypes/asset_video.md)
-* [`EncodedImage`](../archetypes/encoded_image.md?speculative-link)
+* [`EncodedImage`](../archetypes/encoded_image.md)
 * [`TextDocument`](../archetypes/text_document.md)

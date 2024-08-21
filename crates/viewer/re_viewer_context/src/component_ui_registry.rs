@@ -450,7 +450,9 @@ impl ComponentUiRegistry {
 
         // Fallback to the more specialized UI callbacks.
         let edit_or_view_ui = if ui_layout == UiLayout::SelectionPanelFull {
-            self.component_multiline_edit_or_view.get(&component_name)
+            self.component_multiline_edit_or_view
+                .get(&component_name)
+                .or_else(|| self.component_singleline_edit_or_view.get(&component_name))
         } else {
             self.component_singleline_edit_or_view.get(&component_name)
         };
@@ -549,19 +551,17 @@ impl ComponentUiRegistry {
     ) {
         re_tracing::profile_function!(component_name.full_name());
 
-        let create_fallback = || {
-            fallback_provider
-                .fallback_for(ctx, component_name)
-                .map_err(|_err| format!("No fallback value available for {component_name}."))
-        };
-
-        let component_raw = if let Some(array) = component_array {
-            array.to_boxed()
+        // Use a fallback if there's either no component data at all or the component array is empty.
+        let component_raw = if let Some(component_raw) =
+            component_array.and_then(|array| (!array.is_empty()).then(|| array.to_boxed()))
+        {
+            component_raw
         } else {
-            match create_fallback() {
+            match fallback_provider.fallback_for(ctx, component_name) {
                 Ok(value) => value,
-                Err(error_text) => {
-                    re_log::error_once!("{error_text}");
+                Err(err) => {
+                    let error_text = format!("No fallback value available for {component_name}.");
+                    re_log::error_once!("{error_text} ({err})");
                     ui.error_label(&error_text);
                     return;
                 }

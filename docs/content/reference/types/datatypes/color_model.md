@@ -5,7 +5,7 @@ title: "ColorModel"
 
 Specified what color components are present in an [`archetypes.Image`](https://rerun.io/docs/reference/types/archetypes/image).
 
-This combined with [`datatypes.ChannelDatatype`](https://rerun.io/docs/reference/types/datatypes/channel_datatype?speculative-link) determines the pixel format of an image.
+This combined with [`datatypes.ChannelDatatype`](https://rerun.io/docs/reference/types/datatypes/channel_datatype) determines the pixel format of an image.
 
 ## Variants
 
@@ -14,11 +14,11 @@ This combined with [`datatypes.ChannelDatatype`](https://rerun.io/docs/reference
 * RGBA
 
 ## API reference links
- * 🌊 [C++ API docs for `ColorModel`](https://ref.rerun.io/docs/cpp/stable/namespacererun_1_1datatypes.html?speculative-link)
- * 🐍 [Python API docs for `ColorModel`](https://ref.rerun.io/docs/python/stable/common/datatypes?speculative-link#rerun.datatypes.ColorModel)
- * 🦀 [Rust API docs for `ColorModel`](https://docs.rs/rerun/latest/rerun/datatypes/enum.ColorModel.html?speculative-link)
+ * 🌊 [C++ API docs for `ColorModel`](https://ref.rerun.io/docs/cpp/stable/namespacererun_1_1datatypes.html)
+ * 🐍 [Python API docs for `ColorModel`](https://ref.rerun.io/docs/python/stable/common/datatypes#rerun.datatypes.ColorModel)
+ * 🦀 [Rust API docs for `ColorModel`](https://docs.rs/rerun/latest/rerun/datatypes/enum.ColorModel.html)
 
 
 ## Used by
 
-* [`ImageFormat`](../datatypes/image_format.md?speculative-link)
+* [`ImageFormat`](../datatypes/image_format.md)

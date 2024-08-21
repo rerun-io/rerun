@@ -146,7 +146,7 @@ fn active_default_ui(
                     re_ui::list_item::PropertyContent::new(component_name.short_name())
                         .min_desired_width(150.0)
                         .action_button(&re_ui::icons::CLOSE, || {
-                            ctx.save_empty_blueprint_component_by_name(
+                            ctx.clear_blueprint_component_by_name(
                                 &view.defaults_path,
                                 component_name,
                             );

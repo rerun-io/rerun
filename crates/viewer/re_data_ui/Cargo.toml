@@ -21,7 +21,6 @@ all-features = true
 [dependencies]
 re_chunk_store.workspace = true
 re_entity_db.workspace = true
-re_error.workspace = true
 re_format.workspace = true
 re_log.workspace = true
 re_log_types.workspace = true
@@ -44,10 +43,5 @@ egui_plot.workspace = true
 egui.workspace = true
 image.workspace = true
 itertools.workspace = true
-rfd.workspace = true
+nohash-hasher.workspace = true
 unindent.workspace = true
-
-
-# web
-[target.'cfg(target_arch = "wasm32")'.dependencies]
-wasm-bindgen-futures.workspace = true

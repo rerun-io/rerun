@@ -74,39 +74,39 @@ impl Rrd {
 
 impl Example {
     fn build(self, progress: &MultiProgress, output_dir: &Path) -> anyhow::Result<PathBuf> {
-        let rrd_path = output_dir.join(&self.name).with_extension("rrd");
+        let tempdir = tempfile::tempdir()?;
+
+        let initial_rrd_path = tempdir.path().join(&self.name).with_extension("rrd");
+
+        {
+            let mut cmd = Command::new("python3");
+            cmd.arg("-m").arg(&self.name);
+            cmd.arg("--save").arg(&initial_rrd_path);
+            cmd.args(self.script_args);
+
+            // Configure flushing so that:
+            // * the resulting file size is deterministic
+            // * the file is chunked into small batches for better streaming
+            cmd.env("RERUN_FLUSH_TICK_SECS", 1_000_000_000.to_string());
+            cmd.env("RERUN_FLUSH_NUM_BYTES", (128 * 1024).to_string());
+
+            wait_for_output(cmd, &self.name, progress)?;
+        }
+
+        // Now run compaction on the result:
+        let final_rrd_path = output_dir.join(&self.name).with_extension("rrd");
 
         let mut cmd = Command::new("python3");
-        cmd.arg("-m").arg(&self.name);
-        cmd.arg("--save").arg(&rrd_path);
-        cmd.args(self.script_args);
+        cmd.arg("-m").arg("rerun");
+        cmd.arg("rrd");
+        cmd.arg("compact");
+        // Small chunks for better streaming:
+        cmd.arg("--max-bytes").arg((128 * 1024).to_string());
+        cmd.arg(&initial_rrd_path);
+        cmd.arg("-o").arg(&final_rrd_path);
 
-        let final_args = cmd
-            .get_args()
-            .map(|arg| arg.to_string_lossy().to_string())
-            .collect::<Vec<_>>();
+        wait_for_output(cmd, &format!("{} compaction", self.name), progress)?;
 
-        // Configure flushing so that:
-        // * the resulting file size is deterministic
-        // * the file is chunked into small batches for better streaming
-        cmd.env("RERUN_FLUSH_TICK_SECS", 1_000_000_000.to_string());
-        cmd.env("RERUN_FLUSH_NUM_BYTES", (128 * 1024).to_string());
-
-        let output = wait_for_output(cmd, &self.name, progress)?;
-
-        if output.status.success() {
-            Ok(rrd_path)
-        } else {
-            anyhow::bail!(
-                "Failed to run `python3 {}`: \
-                \nstdout: \
-                \n{} \
-                \nstderr: \
-                \n{}",
-                final_args.join(" "),
-                String::from_utf8(output.stdout)?,
-                String::from_utf8(output.stderr)?,
-            );
-        }
+        Ok(final_rrd_path)
     }
 }

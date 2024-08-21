@@ -80,6 +80,7 @@ native_viewer = ["dep:re_viewer"]
 run = [
   "clap",
   "sdk",
+  "unindent",
   "dep:re_chunk_store",
   "dep:re_data_source",
   "dep:re_log_encoding",
@@ -116,8 +117,6 @@ re_log.workspace = true
 re_memory.workspace = true
 re_smart_channel.workspace = true
 re_tracing.workspace = true
-
-ahash.workspace = true
 anyhow.workspace = true
 document-features.workspace = true
 itertools.workspace = true
@@ -148,6 +147,7 @@ rayon.workspace = true
 
 # Native, optional:
 clap = { workspace = true, optional = true, features = ["derive"] }
+unindent = { workspace = true, optional = true }
 
 [build-dependencies]
 re_build_tools.workspace = true

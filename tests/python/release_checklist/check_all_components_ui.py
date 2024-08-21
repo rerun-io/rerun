@@ -76,7 +76,13 @@ class TestCase:
 
 ALL_COMPONENTS: dict[str, TestCase] = {
     "AggregationPolicyBatch": TestCase(rr.components.AggregationPolicy.Average),
-    "AlbedoFactor": TestCase(rr.components.AlbedoFactor((255, 255, 0, 255))),
+    "AlbedoFactorBatch": TestCase(
+        batch=[
+            rr.components.AlbedoFactor([255, 255, 0, 255]),
+            rr.components.AlbedoFactor([255, 0, 255, 255]),
+            rr.components.AlbedoFactor([0, 255, 255, 255]),
+        ]
+    ),
     "AnnotationContextBatch": TestCase([
         rr.datatypes.ClassDescriptionMapElem(
             class_id=1,
@@ -105,10 +111,32 @@ ALL_COMPONENTS: dict[str, TestCase] = {
     "DepthMeterBatch": TestCase(1000.0),
     "DisconnectedSpaceBatch": TestCase(True),
     "DrawOrderBatch": TestCase(100.0),
+    "FillModeBatch": TestCase(
+        batch=[
+            rr.components.FillMode.MajorWireframe,
+            rr.components.FillMode.DenseWireframe,
+            rr.components.FillMode.Solid,
+        ]
+    ),
     "FillRatioBatch": TestCase(0.5),
     "GammaCorrectionBatch": TestCase(2.2),
     "HalfSize2DBatch": TestCase(batch=[(5.0, 10.0), (50, 30), (23, 45)]),
     "HalfSize3DBatch": TestCase(batch=[(5.0, 10.0, 20.0), (50, 30, 40), (23, 45, 67)]),
+    "ImageBufferBatch": TestCase(
+        alternatives=[
+            b"\x00\x01\x02\x03\x04\x05\x06\x07\x08\x09",
+            np.random.randint(0, 255, (10, 10), dtype=np.uint8).tobytes(),
+        ]
+    ),
+    "ImageFormatBatch": TestCase(
+        rr.datatypes.ImageFormat(
+            width=1920,
+            height=1080,
+            pixel_format=rr.PixelFormat.NV12,
+            color_model=rr.ColorModel.RGB,
+            channel_datatype=rr.ChannelDatatype.F16,
+        ),
+    ),
     "ImagePlaneDistanceBatch": TestCase(batch=[100.0, 200.0, 300.0]),
     "KeypointIdBatch": TestCase(batch=[5, 6, 7]),
     "LineStrip2DBatch": TestCase(batch=[((0, 0), (1, 1), (2, 2)), ((3, 3), (4, 4), (5, 5)), ((6, 6), (7, 7), (8, 8))]),
@@ -124,19 +152,24 @@ ALL_COMPONENTS: dict[str, TestCase] = {
     "NameBatch": TestCase(batch=["Hello World", "Foo Bar", "Baz Qux"]),
     "OpacityBatch": TestCase(0.5),
     "PinholeProjectionBatch": TestCase([(0, 1, 2), (3, 4, 5), (6, 7, 8)]),
+    "PoseRotationAxisAngleBatch": TestCase(
+        rr.datatypes.RotationAxisAngle(axis=(1, 0, 0), angle=rr.datatypes.Angle(rad=math.pi))
+    ),
+    "PoseRotationQuatBatch": TestCase(batch=((1, 0, 0, 0), (0, 1, 0, 0), (0, 0, 1, 0))),
+    "PoseScale3DBatch": TestCase(batch=[(1, 2, 3), (4, 5, 6), (7, 8, 9)]),
+    "PoseTransformMat3x3Batch": TestCase(rr.datatypes.Mat3x3([1, 2, 3, 4, 5, 6, 7, 8, 9])),
+    "PoseTranslation3DBatch": TestCase(batch=[(1, 2, 3), (4, 5, 6), (7, 8, 9)]),
     "Position2DBatch": TestCase(batch=[(0, 1), (2, 3), (4, 5)]),
     "Position3DBatch": TestCase(batch=[(0, 3, 4), (1, 4, 5), (2, 5, 6)]),
     "RadiusBatch": TestCase(batch=[4.5, 5, 6, 7]),
     "Range1DBatch": TestCase((0, 5)),
     "ResolutionBatch": TestCase((1920, 1080)),
-    "Rotation3DBatch": TestCase(
-        alternatives=[
-            rr.datatypes.Quaternion(xyzw=[0, 0, 0, 1]),
-            rr.datatypes.RotationAxisAngle(axis=(1, 0, 0), angle=rr.datatypes.Angle(rad=math.pi)),
-            rr.datatypes.RotationAxisAngle(axis=(1, 0, 0), angle=rr.datatypes.Angle(deg=180)),
-        ]
+    "RotationAxisAngleBatch": TestCase(
+        rr.datatypes.RotationAxisAngle(axis=(1, 0, 0), angle=rr.datatypes.Angle(rad=math.pi))
     ),
+    "RotationQuatBatch": TestCase(batch=((1, 0, 0, 0), (0, 1, 0, 0), (0, 0, 1, 0))),
     "ScalarBatch": TestCase(3),
+    "Scale3DBatch": TestCase(batch=[(1, 2, 3), (4, 5, 6), (7, 8, 9)]),
     "StrokeWidthBatch": TestCase(2.0),
     "TensorDataBatch": TestCase(
         alternatives=[
@@ -158,13 +191,14 @@ ALL_COMPONENTS: dict[str, TestCase] = {
     "Texcoord2DBatch": TestCase(batch=[(0, 0), (1, 1), (2, 2)]),
     "TextBatch": TestCase("Hello world"),
     "TextLogLevelBatch": TestCase(batch=["INFO", "CRITICAL", "WARNING"]),
-    "Transform3DBatch": TestCase(
-        alternatives=[
-            rr.datatypes.TranslationRotationScale3D(
-                translation=(1, 2, 3), rotation=rr.datatypes.Quaternion(xyzw=[0, 0, 0, 1]), scale=(1, 1, 1)
-            ),
+    "TransformMat3x3Batch": TestCase(rr.datatypes.Mat3x3([1, 2, 3, 4, 5, 6, 7, 8, 9])),
+    "TransformRelationBatch": TestCase(
+        batch=[
+            rr.TransformRelation.ChildFromParent,
+            rr.TransformRelation.ParentFromChild,
         ]
     ),
+    "Translation3DBatch": TestCase(batch=[(1, 2, 3), (4, 5, 6), (7, 8, 9)]),
     "TriangleIndicesBatch": TestCase(batch=[(0, 1, 2), (3, 4, 5), (6, 7, 8)]),
     "Vector2DBatch": TestCase(batch=[(0, 1), (2, 3), (4, 5)]),
     "Vector3DBatch": TestCase(batch=[(0, 3, 4), (1, 4, 5), (2, 5, 6)]),

@@ -1,10 +1,11 @@
 use itertools::Itertools;
+use re_chunk_store::RowId;
 use re_renderer::{resource_managers::ResourceLifeTime, RenderContext, Rgba32Unmul};
 use re_types::{
     archetypes::{Asset3D, Mesh3D},
     components::MediaType,
-    datatypes::TensorBuffer,
 };
+use re_viewer_context::{gpu_bridge::texture_creation_desc_from_color_image, ImageInfo};
 
 use crate::mesh_cache::AnyMesh;
 
@@ -98,7 +99,8 @@ impl LoadedMesh {
             triangle_indices,
             albedo_factor,
             class_ids: _,
-            albedo_texture,
+            albedo_texture_buffer,
+            albedo_texture_format,
         } = mesh3d;
 
         let vertex_positions: &[glam::Vec3] = bytemuck::cast_slice(vertex_positions.as_slice());
@@ -148,8 +150,20 @@ impl LoadedMesh {
             re_math::BoundingBox::from_points(vertex_positions.iter().copied())
         };
 
-        let albedo = if let Some(albedo_texture) = &albedo_texture {
-            mesh_texture_from_tensor_data(&albedo_texture.0, render_ctx, texture_key)?
+        let albedo = if let (Some(albedo_texture_buffer), Some(albedo_texture_format)) =
+            (&albedo_texture_buffer, albedo_texture_format)
+        {
+            let image_info = ImageInfo {
+                buffer_row_id: RowId::ZERO, // unused
+                buffer: albedo_texture_buffer.0.clone(),
+                format: albedo_texture_format.0,
+                kind: re_types::image::ImageKind::Color,
+                colormap: None,
+            };
+            re_viewer_context::gpu_bridge::get_or_create_texture(render_ctx, texture_key, || {
+                let debug_name = "mesh albedo texture";
+                texture_creation_desc_from_color_image(&image_info, debug_name)
+            })?
         } else {
             render_ctx
                 .texture_manager_2d
@@ -196,51 +210,4 @@ impl LoadedMesh {
     pub fn bbox(&self) -> re_math::BoundingBox {
         self.bbox
     }
-}
-
-fn mesh_texture_from_tensor_data(
-    albedo_texture: &re_types::datatypes::TensorData,
-    render_ctx: &RenderContext,
-    texture_key: u64,
-) -> anyhow::Result<re_renderer::resource_managers::GpuTexture2D> {
-    let [height, width, depth] = texture_height_width_channels(albedo_texture)?;
-
-    re_viewer_context::gpu_bridge::try_get_or_create_texture(render_ctx, texture_key, || {
-        let data = match (depth, &albedo_texture.buffer) {
-            (3, TensorBuffer::U8(buf)) => re_renderer::pad_rgb_to_rgba(buf, u8::MAX).into(),
-            (4, TensorBuffer::U8(buf)) => bytemuck::cast_slice(buf.as_slice()).into(),
-
-            _ => {
-                anyhow::bail!(
-                    "Only 3 and 4 channel u8 tensor data is supported currently for mesh textures."
-                );
-            }
-        };
-
-        Ok(re_renderer::resource_managers::Texture2DCreationDesc {
-            label: "mesh albedo texture from tensor data".into(),
-            data,
-            format: re_renderer::external::wgpu::TextureFormat::Rgba8UnormSrgb,
-            width,
-            height,
-        })
-    })
-    .map_err(|err| anyhow::format_err!("{err}"))
-}
-
-fn texture_height_width_channels(
-    tensor: &re_types::datatypes::TensorData,
-) -> anyhow::Result<[u32; 3]> {
-    use anyhow::Context as _;
-
-    let Some([height, width, channel]) = tensor.image_height_width_channels() else {
-        anyhow::bail!("TensorData with shape {:?} is not an image", tensor.shape);
-    };
-
-    let [height, width] = [
-        u32::try_from(height).context("Image height is too large")?,
-        u32::try_from(width).context("Image width is too large")?,
-    ];
-
-    Ok([height, width, channel as u32])
 }

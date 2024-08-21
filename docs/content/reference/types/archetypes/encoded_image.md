@@ -20,9 +20,9 @@ Rerun also supports uncompressed images with the [`archetypes.Image`](https://re
 * [Spatial3DView](../views/spatial3d_view.md) (if logged under a projection)
 
 ## API reference links
- * 🌊 [C++ API docs for `EncodedImage`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1archetypes_1_1EncodedImage.html?speculative-link)
- * 🐍 [Python API docs for `EncodedImage`](https://ref.rerun.io/docs/python/stable/common/archetypes?speculative-link#rerun.archetypes.EncodedImage)
- * 🦀 [Rust API docs for `EncodedImage`](https://docs.rs/rerun/latest/rerun/archetypes/struct.EncodedImage.html?speculative-link)
+ * 🌊 [C++ API docs for `EncodedImage`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1archetypes_1_1EncodedImage.html)
+ * 🐍 [Python API docs for `EncodedImage`](https://ref.rerun.io/docs/python/stable/common/archetypes#rerun.archetypes.EncodedImage)
+ * 🦀 [Rust API docs for `EncodedImage`](https://docs.rs/rerun/latest/rerun/archetypes/struct.EncodedImage.html)
 
 ## Example
 

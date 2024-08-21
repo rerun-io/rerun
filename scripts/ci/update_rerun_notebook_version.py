@@ -55,7 +55,7 @@ def main() -> None:
     try:
         semver.VersionInfo.parse(args.VERSION)
     except ValueError:
-        print(f"Invalid semver version: {args.VERSION}", file=sys.stderr, flush=True)
+        print(f"Invalid semver version: '{args.VERSION}'", file=sys.stderr, flush=True)
         sys.exit(1)
 
     project_path = Path(__file__).parent.parent.parent.absolute()

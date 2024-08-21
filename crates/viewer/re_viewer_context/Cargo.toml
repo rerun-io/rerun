@@ -23,7 +23,6 @@ re_chunk_store.workspace = true
 re_chunk.workspace = true
 re_data_source.workspace = true
 re_entity_db = { workspace = true, features = ["serde"] }
-re_error.workspace = true
 re_format.workspace = true
 re_log_types.workspace = true
 re_log.workspace = true
@@ -46,6 +45,7 @@ egui_extras.workspace = true
 egui_tiles.workspace = true
 egui-wgpu.workspace = true
 egui.workspace = true
+emath.workspace = true
 glam = { workspace = true, features = ["serde"] }
 half.workspace = true
 image = { workspace = true, features = ["jpeg", "png"] }
@@ -56,6 +56,7 @@ ndarray.workspace = true
 nohash-hasher.workspace = true
 once_cell.workspace = true
 parking_lot = { workspace = true, features = ["serde"] }
+rfd.workspace = true
 serde.workspace = true
 slotmap.workspace = true
 smallvec.workspace = true
@@ -63,8 +64,12 @@ thiserror.workspace = true
 uuid = { workspace = true, features = ["serde", "v4", "js"] }
 wgpu.workspace = true
 
-# Native only dependencies.
+# Native dependencies:
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 arboard = { workspace = true, default-features = false, features = [
   "image-data",
 ] }
+
+# Web dependencies:
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+wasm-bindgen-futures.workspace = true

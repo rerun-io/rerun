@@ -1,4 +1,3 @@
-use re_entity_db::{EntityPath, InstancePathHash};
 use re_log_types::Instance;
 use re_renderer::{LineDrawableBuilder, PickingLayerInstanceId};
 use re_types::{
@@ -8,20 +7,20 @@ use re_types::{
 };
 use re_viewer_context::{
     auto_color_for_entity_path, ApplicableEntities, IdentifiedViewSystem, QueryContext,
-    ResolvedAnnotationInfos, SpaceViewSystemExecutionError, TypedComponentFallbackProvider,
-    ViewContext, ViewContextCollection, ViewQuery, VisualizableEntities, VisualizableFilterContext,
+    SpaceViewSystemExecutionError, TypedComponentFallbackProvider, ViewContext,
+    ViewContextCollection, ViewQuery, VisualizableEntities, VisualizableFilterContext,
     VisualizerQueryInfo, VisualizerSystem,
 };
 
 use crate::{
     contexts::SpatialSceneEntityContext,
     view_kind::SpatialSpaceViewKind,
-    visualizers::{entity_iterator::clamped_or, UiLabel, UiLabelTarget},
+    visualizers::{entity_iterator::clamped_or, UiLabelTarget},
 };
 
 use super::{
     filter_visualizable_2d_entities, process_annotation_and_keypoint_slices, process_color_slice,
-    process_radius_slice, utilities::process_labels_2d, SpatialViewVisualizerData,
+    process_radius_slice, utilities::process_labels, SpatialViewVisualizerData,
     SIZE_BOOST_IN_POINTS_FOR_LINE_OUTLINES,
 };
 
@@ -42,53 +41,6 @@ impl Default for Boxes2DVisualizer {
 // NOTE: Do not put profile scopes in these methods. They are called for all entities and all
 // timestamps within a time range -- it's _a lot_.
 impl Boxes2DVisualizer {
-    /// Produces 2D rect ui labels from component data.
-    ///
-    /// Does nothing if there's no positions or no labels passed.
-    /// Assumes that there's at least a single color in `colors`.
-    /// Otherwise, produces one label per center position passed.
-    fn process_labels<'a>(
-        entity_path: &'a EntityPath,
-        half_sizes: &'a [HalfSize2D],
-        centers: impl Iterator<Item = &'a Position2D> + 'a,
-        labels: &'a [ArrowString],
-        colors: &'a [egui::Color32],
-        annotation_infos: &'a ResolvedAnnotationInfos,
-    ) -> impl Iterator<Item = UiLabel> + 'a {
-        debug_assert!(
-            labels.is_empty() || !colors.is_empty(),
-            "Cannot add labels without colors"
-        );
-
-        let labels = annotation_infos
-            .iter()
-            .zip(labels.iter().map(Some).chain(std::iter::repeat(None)))
-            .map(|(annotation_info, label)| annotation_info.label(label.map(|l| l.as_str())));
-
-        let colors = clamped_or(colors, &egui::Color32::WHITE);
-
-        itertools::izip!(half_sizes, centers, labels, colors)
-            .enumerate()
-            .filter_map(move |(i, (half_size, center, label, color))| {
-                label.map(|label| {
-                    let min = half_size.box_min(*center);
-                    let max = half_size.box_max(*center);
-                    UiLabel {
-                        text: label,
-                        color: *color,
-                        target: UiLabelTarget::Rect(egui::Rect::from_min_max(
-                            egui::pos2(min.x, min.y),
-                            egui::pos2(max.x, max.y),
-                        )),
-                        labeled_instance: InstancePathHash::instance(
-                            entity_path,
-                            Instance::from(i as u64),
-                        ),
-                    }
-                })
-            })
-    }
-
     fn process_data<'a>(
         &mut self,
         ctx: &QueryContext<'_>,
@@ -165,30 +117,29 @@ impl Boxes2DVisualizer {
             self.data
                 .add_bounding_box(entity_path.hash(), obj_space_bounding_box, world_from_obj);
 
-            if data.labels.len() == 1 || num_instances <= super::MAX_NUM_LABELS_PER_ENTITY {
-                if data.labels.len() == 1 && num_instances > 1 {
-                    // If there's many boxes but only a single label, place the single label at the middle of the visualization.
-                    // TODO(andreas): A smoothed over time (+ discontinuity detection) bounding box would be great.
-                    self.data.ui_labels.extend(process_labels_2d(
-                        entity_path,
-                        std::iter::once(obj_space_bounding_box.center().truncate()),
-                        &data.labels,
-                        &colors,
-                        &annotation_infos,
-                        world_from_obj,
-                    ));
-                } else {
-                    let centers = clamped_or(data.centers, &Position2D::ZERO);
-                    self.data.ui_labels.extend(Self::process_labels(
-                        entity_path,
-                        data.half_sizes,
-                        centers,
-                        &data.labels,
-                        &colors,
-                        &annotation_infos,
-                    ));
-                }
-            }
+            self.data.ui_labels.extend(process_labels(
+                entity_path,
+                num_instances,
+                UiLabelTarget::Point2D(
+                    <[f32; 2]>::from(obj_space_bounding_box.center().truncate()).into(),
+                ),
+                data.half_sizes
+                    .iter()
+                    .copied()
+                    .zip(clamped_or(data.centers, &Position2D::ZERO).copied())
+                    .map(|(half_size, center)| {
+                        let min = half_size.box_min(center);
+                        let max = half_size.box_max(center);
+                        UiLabelTarget::Rect(egui::Rect::from_min_max(
+                            egui::pos2(min.x, min.y),
+                            egui::pos2(max.x, max.y),
+                        ))
+                    }),
+                &data.labels,
+                &colors,
+                &annotation_infos,
+                std::convert::identity,
+            ));
         }
     }
 }

@@ -19,4 +19,4 @@ A binary blob of data.
 
 * [`Asset3D`](../archetypes/asset3d.md)
 * [`AssetVideo`](../archetypes/asset_video.md)
-* [`EncodedImage`](../archetypes/encoded_image.md?speculative-link)
+* [`EncodedImage`](../archetypes/encoded_image.md)

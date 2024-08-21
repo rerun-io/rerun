@@ -5,15 +5,15 @@ title: "PixelFormat"
 
 Specifieds a particular format of an [`archetypes.Image`](https://rerun.io/docs/reference/types/archetypes/image).
 
-Most images can be described by a [`datatypes.ColorModel`](https://rerun.io/docs/reference/types/datatypes/color_model?speculative-link) and a [`datatypes.ChannelDatatype`](https://rerun.io/docs/reference/types/datatypes/channel_datatype?speculative-link),
+Most images can be described by a [`datatypes.ColorModel`](https://rerun.io/docs/reference/types/datatypes/color_model) and a [`datatypes.ChannelDatatype`](https://rerun.io/docs/reference/types/datatypes/channel_datatype),
 e.g. `RGB` and `U8` respectively.
 
 However, some image formats has chroma downsampling and/or
-use differing number of bits per channel, and that is what this [`datatypes.PixelFormat`](https://rerun.io/docs/reference/types/datatypes/pixel_format?speculative-link) is for.
+use differing number of bits per channel, and that is what this [`datatypes.PixelFormat`](https://rerun.io/docs/reference/types/datatypes/pixel_format) is for.
 
 All these formats support random access.
 
-For more compressed image formats, see [`archetypes.EncodedImage`](https://rerun.io/docs/reference/types/archetypes/encoded_image?speculative-link).
+For more compressed image formats, see [`archetypes.EncodedImage`](https://rerun.io/docs/reference/types/archetypes/encoded_image).
 
 ## Variants
 
@@ -21,11 +21,11 @@ For more compressed image formats, see [`archetypes.EncodedImage`](https://rerun
 * YUY2
 
 ## API reference links
- * 🌊 [C++ API docs for `PixelFormat`](https://ref.rerun.io/docs/cpp/stable/namespacererun_1_1datatypes.html?speculative-link)
- * 🐍 [Python API docs for `PixelFormat`](https://ref.rerun.io/docs/python/stable/common/datatypes?speculative-link#rerun.datatypes.PixelFormat)
- * 🦀 [Rust API docs for `PixelFormat`](https://docs.rs/rerun/latest/rerun/datatypes/enum.PixelFormat.html?speculative-link)
+ * 🌊 [C++ API docs for `PixelFormat`](https://ref.rerun.io/docs/cpp/stable/namespacererun_1_1datatypes.html)
+ * 🐍 [Python API docs for `PixelFormat`](https://ref.rerun.io/docs/python/stable/common/datatypes#rerun.datatypes.PixelFormat)
+ * 🦀 [Rust API docs for `PixelFormat`](https://docs.rs/rerun/latest/rerun/datatypes/enum.PixelFormat.html)
 
 
 ## Used by
 
-* [`ImageFormat`](../datatypes/image_format.md?speculative-link)
+* [`ImageFormat`](../datatypes/image_format.md)

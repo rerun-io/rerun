@@ -119,33 +119,23 @@ impl Arrows2DVisualizer {
             self.data
                 .add_bounding_box(entity_path.hash(), obj_space_bounding_box, world_from_obj);
 
-            if data.labels.len() == 1 || num_instances <= super::MAX_NUM_LABELS_PER_ENTITY {
-                // If there's many arrows but only a single label, place the single label at the middle of the visualization.
-                let label_positions = if data.labels.len() == 1 && num_instances > 1 {
-                    // TODO(andreas): A smoothed over time (+ discontinuity detection) bounding box would be great.
-                    itertools::Either::Left(std::iter::once(
-                        obj_space_bounding_box.center().truncate(),
-                    ))
-                } else {
+            self.data.ui_labels.extend(process_labels_2d(
+                entity_path,
+                num_instances,
+                obj_space_bounding_box.center().truncate(),
+                {
                     // Take middle point of every arrow.
                     let origins = clamped_or(data.origins, &Position2D::ZERO);
-                    itertools::Either::Right(itertools::izip!(data.vectors, origins).map(
-                        |(vector, origin)| {
-                            // `0.45` rather than `0.5` to account for cap and such
-                            glam::Vec2::from(origin.0) + glam::Vec2::from(vector.0) * 0.45
-                        },
-                    ))
-                };
-
-                self.data.ui_labels.extend(process_labels_2d(
-                    entity_path,
-                    label_positions,
-                    &data.labels,
-                    &colors,
-                    &annotation_infos,
-                    world_from_obj,
-                ));
-            }
+                    itertools::izip!(data.vectors, origins).map(|(vector, origin)| {
+                        // `0.45` rather than `0.5` to account for cap and such
+                        glam::Vec2::from(origin.0) + glam::Vec2::from(vector.0) * 0.45
+                    })
+                },
+                &data.labels,
+                &colors,
+                &annotation_infos,
+                world_from_obj,
+            ));
         }
     }
 }

@@ -14,5 +14,4 @@ re_log = { workspace = true, features = ["setup"] }
 rerun = { path = "../../../crates/top/rerun", features = ["clap"] }
 
 anyhow.workspace = true
-clap = { workspace = true, features = ["derive"] }
 rand = { workspace = true, features = ["std", "std_rng"] }

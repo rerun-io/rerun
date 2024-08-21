@@ -1,11 +1,103 @@
-use egui::{Color32, Vec2};
-use itertools::Itertools as _;
+use egui::{Color32, NumExt as _, Vec2};
 
 use re_renderer::renderer::ColormappedTexture;
 use re_types::{
     components::ClassId, datatypes::ColorModel, image::ImageKind, tensor_data::TensorElement,
 };
-use re_viewer_context::{gpu_bridge, Annotations, ImageInfo, ImageStats};
+use re_viewer_context::{
+    gpu_bridge::{self, image_to_gpu},
+    Annotations, ImageInfo, ImageStats, ImageStatsCache, UiLayout, ViewerContext,
+};
+
+/// Show a button letting the user copy the image
+#[cfg(not(target_arch = "wasm32"))]
+pub fn copy_image_button_ui(ui: &mut egui::Ui, image: &ImageInfo, data_range: egui::Rangef) {
+    if ui
+        .button("Copy image")
+        .on_hover_text("Copy image to system clipboard")
+        .clicked()
+    {
+        if let Some(rgba) = image.to_rgba8_image(data_range.into()) {
+            re_viewer_context::Clipboard::with(|clipboard| {
+                clipboard.set_image(
+                    [rgba.width() as _, rgba.height() as _],
+                    bytemuck::cast_slice(rgba.as_raw()),
+                );
+            });
+        } else {
+            re_log::error!("Invalid image");
+        }
+    }
+}
+
+/// Show the given image with an appropriate size.
+///
+/// For segmentation images, the annotation context is looked up.
+pub fn image_preview_ui(
+    ctx: &ViewerContext<'_>,
+    ui: &mut egui::Ui,
+    ui_layout: UiLayout,
+    query: &re_chunk_store::LatestAtQuery,
+    entity_path: &re_log_types::EntityPath,
+    image: &ImageInfo,
+) -> Option<()> {
+    let render_ctx = ctx.render_ctx?;
+    let image_stats = ctx.cache.entry(|c: &mut ImageStatsCache| c.entry(image));
+    let annotations = crate::annotations(ctx, query, entity_path);
+    let debug_name = entity_path.to_string();
+    let texture = image_to_gpu(render_ctx, &debug_name, image, &image_stats, &annotations).ok()?;
+    texture_preview_ui(render_ctx, ui, ui_layout, entity_path, texture);
+    Some(())
+}
+
+/// Show the given texture with an appropriate size.
+fn texture_preview_ui(
+    render_ctx: &re_renderer::RenderContext,
+    ui: &mut egui::Ui,
+    ui_layout: UiLayout,
+    entity_path: &re_log_types::EntityPath,
+    texture: ColormappedTexture,
+) {
+    if ui_layout.is_single_line() {
+        let preview_size = Vec2::splat(ui.available_height());
+        let debug_name = entity_path.to_string();
+        ui.allocate_ui_with_layout(
+            preview_size,
+            egui::Layout::centered_and_justified(egui::Direction::TopDown),
+            |ui| {
+                ui.set_min_size(preview_size);
+
+                match show_image_preview(render_ctx, ui, texture.clone(), &debug_name, preview_size)
+                {
+                    Ok(response) => response.on_hover_ui(|ui| {
+                        // Show larger image on hover.
+                        let hover_size = Vec2::splat(400.0);
+                        show_image_preview(render_ctx, ui, texture, &debug_name, hover_size).ok();
+                    }),
+                    Err((response, err)) => response.on_hover_text(err.to_string()),
+                }
+            },
+        );
+    } else {
+        let size_range = if ui_layout == UiLayout::Tooltip {
+            egui::Rangef::new(64.0, 128.0)
+        } else {
+            egui::Rangef::new(240.0, 640.0)
+        };
+        let preview_size = Vec2::splat(
+            size_range
+                .clamp(ui.available_width())
+                .at_most(16.0 * texture.texture.width().max(texture.texture.height()) as f32),
+        );
+        let debug_name = entity_path.to_string();
+        show_image_preview(render_ctx, ui, texture, &debug_name, preview_size).unwrap_or_else(
+            |(response, err)| {
+                re_log::warn_once!("Failed to show texture {entity_path}: {err}");
+                response
+            },
+        );
+    }
+}
 
 /// Shows preview of an image.
 ///
@@ -15,7 +107,7 @@ use re_viewer_context::{gpu_bridge, Annotations, ImageInfo, ImageStats};
 /// This does not preserve aspect ratio, but we only stretch it to a very thin size, so it is fine.
 ///
 /// Returns error if the image could not be rendered.
-pub fn show_image_preview(
+fn show_image_preview(
     render_ctx: &re_renderer::RenderContext,
     ui: &mut egui::Ui,
     colormapped_texture: ColormappedTexture,
@@ -46,7 +138,11 @@ pub fn show_image_preview(
         &painter,
         texture_rect_on_screen,
         colormapped_texture,
-        egui::TextureOptions::LINEAR,
+        egui::TextureOptions {
+            magnification: egui::TextureFilter::Nearest,
+            minification: egui::TextureFilter::Linear,
+            ..Default::default()
+        },
         debug_name,
     ) {
         let color = ui.visuals().error_fg_color;
@@ -332,114 +428,5 @@ fn image_pixel_value_ui(
         ui.label(text);
     } else {
         ui.label("No Value");
-    }
-}
-
-#[allow(dead_code)] // TODO(#6891): use again when we can view image archetypes in the selection view
-fn rgb8_histogram_ui(ui: &mut egui::Ui, rgb: &[u8]) -> egui::Response {
-    re_tracing::profile_function!();
-
-    let mut histograms = [[0_u64; 256]; 3];
-    {
-        // TODO(emilk): this is slow, so cache the results!
-        re_tracing::profile_scope!("build");
-        for pixel in rgb.chunks_exact(3) {
-            for c in 0..3 {
-                histograms[c][pixel[c] as usize] += 1;
-            }
-        }
-    }
-
-    use egui_plot::{Bar, BarChart, Legend, Plot};
-
-    let names = ["R", "G", "B"];
-    let colors = [Color32::RED, Color32::GREEN, Color32::BLUE];
-
-    let charts = histograms
-        .into_iter()
-        .enumerate()
-        .map(|(component, histogram)| {
-            let fill = colors[component].linear_multiply(0.5);
-
-            BarChart::new(
-                histogram
-                    .into_iter()
-                    .enumerate()
-                    .map(|(i, count)| {
-                        Bar::new(i as _, count as _)
-                            .width(0.9)
-                            .fill(fill)
-                            .vertical()
-                            .stroke(egui::Stroke::NONE)
-                    })
-                    .collect(),
-            )
-            .color(colors[component])
-            .name(names[component])
-        })
-        .collect_vec();
-
-    re_tracing::profile_scope!("show");
-    Plot::new("rgb_histogram")
-        .legend(Legend::default())
-        .height(200.0)
-        .show_axes([false; 2])
-        .show(ui, |plot_ui| {
-            for chart in charts {
-                plot_ui.bar_chart(chart);
-            }
-        })
-        .response
-}
-
-#[allow(dead_code)] // TODO(#6891): use again when we can view image archetypes in the selection view
-#[cfg(not(target_arch = "wasm32"))]
-fn copy_and_save_image_ui(ui: &mut egui::Ui, tensor: &re_types::datatypes::TensorData) {
-    ui.horizontal(|ui| {
-        if tensor.could_be_dynamic_image() && ui.button("Click to copy image").clicked() {
-            match tensor.to_dynamic_image() {
-                Ok(dynamic_image) => {
-                    let rgba = dynamic_image.to_rgba8();
-                    re_viewer_context::Clipboard::with(|clipboard| {
-                        clipboard.set_image(
-                            [rgba.width() as _, rgba.height() as _],
-                            bytemuck::cast_slice(rgba.as_raw()),
-                        );
-                    });
-                }
-                Err(err) => {
-                    re_log::error!("Failed to convert tensor to image: {err}");
-                }
-            }
-        }
-
-        if ui.button("Save image…").clicked() {
-            match tensor.to_dynamic_image() {
-                Ok(dynamic_image) => {
-                    save_image(&dynamic_image);
-                }
-                Err(err) => {
-                    re_log::error!("Failed to convert tensor to image: {err}");
-                }
-            }
-        }
-    });
-}
-
-#[allow(dead_code)] // TODO(#6891): use again when we can view image archetypes in the selection view
-#[cfg(not(target_arch = "wasm32"))]
-fn save_image(dynamic_image: &image::DynamicImage) {
-    if let Some(path) = rfd::FileDialog::new()
-        .set_file_name("image.png")
-        .save_file()
-    {
-        match dynamic_image.save(&path) {
-            Ok(()) => {
-                re_log::info!("Image saved to {path:?}");
-            }
-            Err(err) => {
-                re_log::error!("Failed saving image to {path:?}: {err}");
-            }
-        }
     }
 }

@@ -264,7 +264,7 @@ impl SpaceViewClass for SpatialSpaceView2D {
         re_tracing::profile_function!();
 
         let state = state.downcast_mut::<SpatialSpaceViewState>()?;
-        state.update_frame_statistics(ui, &system_output)?;
+        state.update_frame_statistics(ui, &system_output, SpatialSpaceViewKind::TwoD)?;
 
         self.view_2d(ctx, ui, state, query, system_output)
     }

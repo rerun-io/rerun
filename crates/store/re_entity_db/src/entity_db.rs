@@ -466,35 +466,44 @@ impl EntityDb {
             .store_info_msg()
             .map(|msg| Ok(LogMsg::SetStoreInfo(msg.clone())));
 
-        let time_filter = time_selection.map(|(timeline, range)| {
-            (
-                timeline,
-                ResolvedTimeRange::new(range.min.floor(), range.max.ceil()),
-            )
-        });
+        let data_messages = {
+            let time_filter = time_selection.map(|(timeline, range)| {
+                (
+                    timeline,
+                    ResolvedTimeRange::new(range.min.floor(), range.max.ceil()),
+                )
+            });
 
-        let data_messages = self
-            .store()
-            .iter_chunks()
-            .filter(move |chunk| {
-                let Some((timeline, time_range)) = time_filter else {
-                    return true;
-                };
+            let mut chunks: Vec<&Arc<Chunk>> = self
+                .store()
+                .iter_chunks()
+                .filter(move |chunk| {
+                    let Some((timeline, time_range)) = time_filter else {
+                        return true;
+                    };
 
-                // TODO(cmc): chunk.slice_time_selection(time_selection)
-                chunk
-                    .timelines()
-                    .get(&timeline)
-                    .map_or(false, |time_column| {
-                        time_range.contains(time_column.time_range().min())
-                            || time_range.contains(time_column.time_range().max())
-                    })
-            })
-            .map(|chunk| {
+                    // TODO(cmc): chunk.slice_time_selection(time_selection)
+                    chunk
+                        .timelines()
+                        .get(&timeline)
+                        .map_or(false, |time_column| {
+                            time_range.contains(time_column.time_range().min())
+                                || time_range.contains(time_column.time_range().max())
+                        })
+                })
+                .collect();
+
+            // Try to roughly preserve the order of the chunks
+            // from how they were originally logged.
+            // See https://github.com/rerun-io/rerun/issues/7175 for why.
+            chunks.sort_by_key(|chunk| chunk.row_id_range().map(|(min, _)| min));
+
+            chunks.into_iter().map(|chunk| {
                 chunk
                     .to_arrow_msg()
                     .map(|msg| LogMsg::ArrowMsg(self.store_id().clone(), msg))
-            });
+            })
+        };
 
         // If this is a blueprint, make sure to include the `BlueprintActivationCommand` message.
         // We generally use `to_messages` to export a blueprint via "save". In that

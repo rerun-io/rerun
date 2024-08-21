@@ -35,18 +35,18 @@ fn decode_nv12_or_yuy2(sample_type: u32, texture: texture_2d<u32>, coords: vec2i
     }
     // WARNING! WARNING! WARNING! WARNING! WARNING! WARNING! WARNING! WARNING! WARNING! WARNING!
 
-    let rgb = set_color_standard(vec3f(y, u, v));
+    let rgb = rgb_from_yuv(vec3f(y, u, v));
 
     return vec4f(rgb, 1.0);
 }
 
 
-/// Sets the color standard for the given YUV color.
+/// Returns sRGB from YUV color.
 ///
 /// This conversion mirrors the function in `crates/store/re_types/src/datatypes/tensor_data_ext.rs`
 ///
 /// Specifying the color standard should be exposed in the future [#3541](https://github.com/rerun-io/rerun/pull/3541)
-fn set_color_standard(yuv: vec3f) -> vec3f {
+fn rgb_from_yuv(yuv: vec3f) -> vec3f {
     // rescale YUV values
     let y = (yuv.x - 16.0) / 219.0;
     let u = (yuv.y - 128.0) / 224.0;

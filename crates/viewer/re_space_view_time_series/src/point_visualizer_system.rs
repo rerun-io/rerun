@@ -80,9 +80,21 @@ impl TypedComponentFallbackProvider<MarkerSize> for SeriesPointSystem {
 
 impl TypedComponentFallbackProvider<Name> for SeriesPointSystem {
     fn fallback_for(&self, ctx: &QueryContext<'_>) -> Name {
-        ctx.target_entity_path
-            .last()
-            .map(|part| part.ui_string().into())
+        let state = ctx.view_state.downcast_ref::<TimeSeriesSpaceViewState>();
+
+        state
+            .ok()
+            .and_then(|state| {
+                state
+                    .default_names_for_entities
+                    .get(ctx.target_entity_path)
+                    .map(|name| name.clone().into())
+            })
+            .or_else(|| {
+                ctx.target_entity_path
+                    .last()
+                    .map(|part| part.ui_string().into())
+            })
             .unwrap_or_default()
     }
 }
@@ -174,6 +186,9 @@ impl SeriesPointSystem {
             value: 0.0,
             attrs: PlotPointAttrs {
                 color: fallback_color.into(),
+                // NOTE: arguably, the `MarkerSize` value should be twice the `radius_ui`. We do
+                // stick to the semantics of `MarkerSize` == radius for backward compatibility and
+                // because markers need a decent radius value to be at all legible.
                 radius_ui: **fallback_size,
                 kind: PlotSeriesKind::Scatter(ScatterAttrs {
                     marker: fallback_shape,
@@ -352,7 +367,8 @@ impl SeriesPointSystem {
                         if let Some(marker_size) = marker_size {
                             points
                                 .iter_mut()
-                                .for_each(|p| p.attrs.radius_ui = marker_size * 0.5);
+                                // `marker_size` is a radius, see NOTE above
+                                .for_each(|p| p.attrs.radius_ui = marker_size);
                         }
                     } else {
                         re_tracing::profile_scope!("standard path");
@@ -373,7 +389,8 @@ impl SeriesPointSystem {
                             if let Some(marker_size) =
                                 marker_sizes.and_then(|marker_sizes| marker_sizes.first().copied())
                             {
-                                points[i].attrs.radius_ui = marker_size * 0.5;
+                                // `marker_size` is a radius, see NOTE above
+                                points[i].attrs.radius_ui = marker_size;
                             }
                         });
                     }
@@ -459,7 +476,7 @@ impl SeriesPointSystem {
                 points,
                 ctx.recording_store(),
                 view_query,
-                &series_name,
+                series_name.into(),
                 // Aggregation for points is not supported.
                 re_types::components::AggregationPolicy::Off,
                 all_series,

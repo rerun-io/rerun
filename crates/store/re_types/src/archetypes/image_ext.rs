@@ -83,16 +83,14 @@ impl Image {
     ) -> Self {
         let buffer = bytes.into();
 
-        let actual_bytes = buffer.len();
-        let bpp = pixel_format.bits_per_pixel();
-        let num_expected_bytes = (width as usize * height as usize * bpp + 7) / 8; // rounding upwards
+        let image_format = ImageFormat::from_pixel_format([width, height], pixel_format);
+
+        let num_expected_bytes = image_format.num_bytes();
         if buffer.len() != num_expected_bytes {
             re_log::warn_once!(
-                "Expected {width}x{height} {pixel_format:?} image to be {num_expected_bytes} B, but got {actual_bytes} B",
+                "Expected {width}x{height} {pixel_format:?} image to be {num_expected_bytes} B, but got {} B", buffer.len()
             );
         }
-
-        let image_format = ImageFormat::from_pixel_format([width, height], pixel_format);
 
         Self {
             buffer,
@@ -113,16 +111,6 @@ impl Image {
     ) -> Self {
         let buffer = bytes.into();
 
-        let actual_bytes = buffer.len();
-        let num_expected_bytes =
-            (width as usize * height as usize * color_model.num_channels() * datatype.bits() + 7)
-                / 8; // rounding upwards
-        if buffer.len() != num_expected_bytes {
-            re_log::warn_once!(
-                "Expected {width}x{height} {color_model:?} {datatype:?} image to be {num_expected_bytes} B, but got {actual_bytes} B",
-            );
-        }
-
         let image_format = ImageFormat {
             width,
             height,
@@ -130,6 +118,13 @@ impl Image {
             channel_datatype: Some(datatype),
             color_model: Some(color_model),
         };
+
+        let num_expected_bytes = image_format.num_bytes();
+        if buffer.len() != num_expected_bytes {
+            re_log::warn_once!(
+                "Expected {width}x{height} {color_model:?} {datatype:?} image to be {num_expected_bytes} B, but got {} B", buffer.len()
+            );
+        }
 
         Self {
             buffer,

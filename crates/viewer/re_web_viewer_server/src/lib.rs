@@ -24,11 +24,11 @@ mod data {
     #![allow(clippy::large_include_file)]
 
     // If you add/remove/change the paths here, also update the include-list in `Cargo.toml`!
-    pub const INDEX_HTML: &[u8] = include_bytes!("../../../../web_viewer/index.html");
-    pub const FAVICON: &[u8] = include_bytes!("../../../../web_viewer/favicon.svg");
-    pub const SW_JS: &[u8] = include_bytes!("../../../../web_viewer/sw.js");
-    pub const VIEWER_JS: &[u8] = include_bytes!("../../../../web_viewer/re_viewer.js");
-    pub const VIEWER_WASM: &[u8] = include_bytes!("../../../../web_viewer/re_viewer_bg.wasm");
+    pub const INDEX_HTML: &[u8] = include_bytes!("../web_viewer/index.html");
+    pub const FAVICON: &[u8] = include_bytes!("../web_viewer/favicon.svg");
+    pub const SW_JS: &[u8] = include_bytes!("../web_viewer/sw.js");
+    pub const VIEWER_JS: &[u8] = include_bytes!("../web_viewer/re_viewer.js");
+    pub const VIEWER_WASM: &[u8] = include_bytes!("../web_viewer/re_viewer_bg.wasm");
 }
 
 /// Failure to host the web viewer.
@@ -217,16 +217,16 @@ impl WebViewerServerInner {
         }
     }
 
-    #[cfg(feature = "__ci")]
+    #[cfg(any(disable_web_viewer_server, feature = "__ci"))]
     #[allow(clippy::needless_pass_by_value)]
     fn send_response(&self, _request: tiny_http::Request) -> Result<(), std::io::Error> {
         if false {
             self.on_serve_wasm(); // to silence warning about the function being unused
         }
-        panic!("web_server compiled with '__ci' feature (or `--all-features`). DON'T DO THAT! It's only for the CI!");
+        panic!("web_server compiled with '__ci' feature, `--all-features`, or '--cfg disable_web_viewer_server'. DON'T DO THAT! It's only for the CI!");
     }
 
-    #[cfg(not(feature = "__ci"))]
+    #[cfg(not(any(disable_web_viewer_server, feature = "__ci")))]
     fn send_response(&self, request: tiny_http::Request) -> Result<(), std::io::Error> {
         // Strip arguments from url so we get the actual path.
         let url = request.url();

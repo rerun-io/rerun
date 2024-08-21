@@ -35,7 +35,6 @@ re_format.workspace = true
 re_log.workspace = true
 re_log_types.workspace = true
 re_tracing.workspace = true
-re_tuid.workspace = true
 re_types_core.workspace = true
 
 # External dependencies:
@@ -44,13 +43,11 @@ anyhow.workspace = true
 arrow2.workspace = true
 backtrace.workspace = true
 indent.workspace = true
-indexmap.workspace = true
 itertools.workspace = true
 nohash-hasher.workspace = true
 parking_lot.workspace = true
 paste.workspace = true
 seq-macro.workspace = true
-static_assertions.workspace = true
 thiserror.workspace = true
 
 

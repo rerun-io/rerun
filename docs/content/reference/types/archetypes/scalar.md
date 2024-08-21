@@ -51,3 +51,15 @@ snippet: archetypes/scalar_multiple_plots
   <img src="https://static.rerun.io/scalar_multiple/15845c2a348f875248fbd694e03eabd922741c4c/full.png">
 </picture>
 
+### Multiple scalars in a single `send_columns` call
+
+snippet: archetypes/scalar_send_columns
+
+<picture data-inline-viewer="snippets/scalar_send_columns">
+  <source media="(max-width: 480px)" srcset="https://static.rerun.io/scalar_send_columns/b4bf172256f521f4851dfec5c2c6e3143f5d6923/480w.png">
+  <source media="(max-width: 768px)" srcset="https://static.rerun.io/scalar_send_columns/b4bf172256f521f4851dfec5c2c6e3143f5d6923/768w.png">
+  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/scalar_send_columns/b4bf172256f521f4851dfec5c2c6e3143f5d6923/1024w.png">
+  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/scalar_send_columns/b4bf172256f521f4851dfec5c2c6e3143f5d6923/1200w.png">
+  <img src="https://static.rerun.io/scalar_send_columns/b4bf172256f521f4851dfec5c2c6e3143f5d6923/full.png">
+</picture>
+

@@ -1,6 +1,6 @@
 //! The Rerun C SDK.
 //!
-//! The functions here must match `rerun.h`.
+//! The functions here must match `rerun_cpp/src/rerun/c/rerun.h`.
 
 #![crate_type = "staticlib"]
 #![allow(clippy::missing_safety_doc, clippy::undocumented_unsafe_blocks)] // Too much unsafe

@@ -137,9 +137,9 @@ jobs:
           echo "current=$current"   >> "$GITHUB_OUTPUT"
           echo "final=$final"       >> "$GITHUB_OUTPUT"
 
-      - name: Update rerun_py version
+      - name: Update rerun_py & rerun_c version
         run: |
-          pixi run python scripts/ci/update_rerun_py_version.py "${{ steps.versioning.outputs.current }}"
+          pixi run python scripts/ci/update_rerun_py_and_c_version.py "${{ steps.versioning.outputs.current }}"
 
       - name: Update rerun_notebook package version
         run: |
@@ -148,12 +148,6 @@ jobs:
       - name: Update JS package versions
         run: |
           pixi run node rerun_js/scripts/version.mjs "${{ steps.versioning.outputs.current }}"
-
-      - name: Update rerun_c version
-
-        # Configuring CMake is enough to change the version on rerun.h!
-        run: |
-          cmake -B build -S .
 
       - run: pixi run toml-fmt
 
@@ -428,10 +422,9 @@ jobs:
         run: |
           pixi run node rerun_js/scripts/version.mjs "${{ steps.crates.outputs.version }}"
 
-      - name: Update rerun_c version
-        # Configuring CMake is enough to change the version on rerun.h!
+      - name: Update rerun_py & rerun_c version
         run: |
-          cmake -B build -S .
+          pixi run python scripts/ci/update_rerun_py_and_c_version.py "${{ steps.crates.outputs.current }}"
 
       - run: pixi run toml-fmt
 

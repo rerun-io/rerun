@@ -134,26 +134,16 @@ impl Points3DVisualizer {
 
             load_keypoint_connections(line_builder, ent_context, entity_path, &keypoints)?;
 
-            if data.labels.len() == 1 || num_instances <= super::MAX_NUM_LABELS_PER_ENTITY {
-                // If there's many points but only a single label, place the single label at the middle of the visualization.
-                let obj_space_bbox_center;
-                let label_positions = if data.labels.len() == 1 && positions.len() > 1 {
-                    // TODO(andreas): A smoothed over time (+ discontinuity detection) bounding box would be great.
-                    obj_space_bbox_center = [obj_space_bounding_box.center()];
-                    &obj_space_bbox_center
-                } else {
-                    positions
-                };
-
-                self.data.ui_labels.extend(process_labels_3d(
-                    entity_path,
-                    label_positions.iter().copied(),
-                    &data.labels,
-                    &colors,
-                    &annotation_infos,
-                    world_from_obj,
-                ));
-            }
+            self.data.ui_labels.extend(process_labels_3d(
+                entity_path,
+                num_instances,
+                obj_space_bounding_box.center(),
+                positions.iter().copied(),
+                &data.labels,
+                &colors,
+                &annotation_infos,
+                world_from_obj,
+            ));
         }
 
         Ok(())

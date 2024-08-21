@@ -19,8 +19,8 @@ pub struct PrintCommand {
     verbose: bool,
 
     /// If set, will try to proceed even in the face of IO and/or decoding errors in the input data.
-    #[clap(long, default_value_t = true)]
-    best_effort: bool,
+    #[clap(long = "continue-on-error", default_value_t = true)]
+    continue_on_error: bool,
 }
 
 impl PrintCommand {
@@ -28,7 +28,7 @@ impl PrintCommand {
         let Self {
             path_to_input_rrds,
             verbose,
-            best_effort,
+            continue_on_error,
         } = self;
 
         // TODO(cmc): might want to make this configurable at some point.
@@ -52,7 +52,7 @@ impl PrintCommand {
                 }
             }
 
-            if !*best_effort && !is_success {
+            if !*continue_on_error && !is_success {
                 anyhow::bail!(
                     "one or more IO and/or decoding failures in the input stream (check logs)"
                 )

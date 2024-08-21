@@ -21,9 +21,9 @@ class Boxes3D(Boxes3DExt, Archetype):
     """
     **Archetype**: 3D boxes with half-extents and optional center, rotations, colors etc.
 
-    Note that orienting and placing the box is handled via `[archetypes.LeafTransforms3D]`.
+    Note that orienting and placing the box is handled via `[archetypes.InstancePoses3D]`.
     Some of its component are repeated here for convenience.
-    If there's more leaf transforms than half sizes, the last half size will be repeated for the remaining transforms.
+    If there's more instance poses than half sizes, the last half size will be repeated for the remaining poses.
 
     Example
     -------
@@ -51,11 +51,11 @@ class Boxes3D(Boxes3DExt, Archetype):
     ```
     <center>
     <picture>
-      <source media="(max-width: 480px)" srcset="https://static.rerun.io/box3d_batch/6d3e453c3a0201ae42bbae9de941198513535f1d/480w.png">
-      <source media="(max-width: 768px)" srcset="https://static.rerun.io/box3d_batch/6d3e453c3a0201ae42bbae9de941198513535f1d/768w.png">
-      <source media="(max-width: 1024px)" srcset="https://static.rerun.io/box3d_batch/6d3e453c3a0201ae42bbae9de941198513535f1d/1024w.png">
-      <source media="(max-width: 1200px)" srcset="https://static.rerun.io/box3d_batch/6d3e453c3a0201ae42bbae9de941198513535f1d/1200w.png">
-      <img src="https://static.rerun.io/box3d_batch/6d3e453c3a0201ae42bbae9de941198513535f1d/full.png" width="640">
+      <source media="(max-width: 480px)" srcset="https://static.rerun.io/box3d_batch/5aac5b5d29c9f2ecd572c93f6970fcec17f4984b/480w.png">
+      <source media="(max-width: 768px)" srcset="https://static.rerun.io/box3d_batch/5aac5b5d29c9f2ecd572c93f6970fcec17f4984b/768w.png">
+      <source media="(max-width: 1024px)" srcset="https://static.rerun.io/box3d_batch/5aac5b5d29c9f2ecd572c93f6970fcec17f4984b/1024w.png">
+      <source media="(max-width: 1200px)" srcset="https://static.rerun.io/box3d_batch/5aac5b5d29c9f2ecd572c93f6970fcec17f4984b/1200w.png">
+      <img src="https://static.rerun.io/box3d_batch/5aac5b5d29c9f2ecd572c93f6970fcec17f4984b/full.png" width="640">
     </picture>
     </center>
 
@@ -92,39 +92,39 @@ class Boxes3D(Boxes3DExt, Archetype):
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 
-    centers: components.LeafTranslation3DBatch | None = field(
+    centers: components.PoseTranslation3DBatch | None = field(
         metadata={"component": "optional"},
         default=None,
-        converter=components.LeafTranslation3DBatch._optional,  # type: ignore[misc]
+        converter=components.PoseTranslation3DBatch._optional,  # type: ignore[misc]
     )
     # Optional center positions of the boxes.
     #
     # If not specified, the centers will be at (0, 0, 0).
-    # Note that this uses a [`components.LeafTranslation3D`][rerun.components.LeafTranslation3D] which is also used by [`archetypes.LeafTransforms3D`][rerun.archetypes.LeafTransforms3D].
+    # Note that this uses a [`components.PoseTranslation3D`][rerun.components.PoseTranslation3D] which is also used by [`archetypes.InstancePoses3D`][rerun.archetypes.InstancePoses3D].
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 
-    rotation_axis_angles: components.LeafRotationAxisAngleBatch | None = field(
+    rotation_axis_angles: components.PoseRotationAxisAngleBatch | None = field(
         metadata={"component": "optional"},
         default=None,
-        converter=components.LeafRotationAxisAngleBatch._optional,  # type: ignore[misc]
+        converter=components.PoseRotationAxisAngleBatch._optional,  # type: ignore[misc]
     )
     # Rotations via axis + angle.
     #
     # If no rotation is specified, the axes of the boxes align with the axes of the local coordinate system.
-    # Note that this uses a [`components.LeafRotationAxisAngle`][rerun.components.LeafRotationAxisAngle] which is also used by [`archetypes.LeafTransforms3D`][rerun.archetypes.LeafTransforms3D].
+    # Note that this uses a [`components.PoseRotationAxisAngle`][rerun.components.PoseRotationAxisAngle] which is also used by [`archetypes.InstancePoses3D`][rerun.archetypes.InstancePoses3D].
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 
-    quaternions: components.LeafRotationQuatBatch | None = field(
+    quaternions: components.PoseRotationQuatBatch | None = field(
         metadata={"component": "optional"},
         default=None,
-        converter=components.LeafRotationQuatBatch._optional,  # type: ignore[misc]
+        converter=components.PoseRotationQuatBatch._optional,  # type: ignore[misc]
     )
     # Rotations via quaternion.
     #
     # If no rotation is specified, the axes of the boxes align with the axes of the local coordinate system.
-    # Note that this uses a [`components.LeafRotationQuat`][rerun.components.LeafRotationQuat] which is also used by [`archetypes.LeafTransforms3D`][rerun.archetypes.LeafTransforms3D].
+    # Note that this uses a [`components.PoseRotationQuat`][rerun.components.PoseRotationQuat] which is also used by [`archetypes.InstancePoses3D`][rerun.archetypes.InstancePoses3D].
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 

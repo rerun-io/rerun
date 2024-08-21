@@ -2,7 +2,6 @@ namespace rerun.components;
 
 /// 3D rotation represented by a rotation around a given axis.
 table RotationAxisAngle (
-  "attr.docs.unreleased",
   "attr.rust.derive": "Default, Copy, PartialEq",
   "attr.rust.repr": "transparent"
 ) {
@@ -10,8 +9,7 @@ table RotationAxisAngle (
 }
 
 /// 3D rotation represented by a rotation around a given axis that doesn't propagate in the transform hierarchy.
-table LeafRotationAxisAngle (
-  "attr.docs.unreleased",
+table PoseRotationAxisAngle (
   "attr.rust.derive": "Default, Copy, PartialEq",
   "attr.rust.repr": "transparent"
 ) {

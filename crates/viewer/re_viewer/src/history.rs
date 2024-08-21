@@ -175,6 +175,9 @@ fn handle_popstate(
             continue;
         };
 
+        command_sender.send_system(SystemCommand::ClearSourceAndItsStores(
+            receiver.source().clone(),
+        ));
         command_sender.send_system(SystemCommand::AddReceiver(receiver));
 
         re_log::debug!("popstate: add receiver {url:?}");

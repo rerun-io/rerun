@@ -13,14 +13,16 @@ from PIL import Image
 
 
 def test_image_encoded_png() -> None:
-    with tempfile.NamedTemporaryFile(suffix=".png") as tmp:
+    with tempfile.NamedTemporaryFile(suffix=".png", delete=False) as tmp:
         file_path = tmp.name
 
         image = Image.new("RGBA", (300, 200), color=(0, 0, 0, 0))
-        image.save(file_path)
+        image.save(tmp)
+        tmp.close()  # Close the file before opening it again in `ImageEncoded` (Windows can't handle another opening)
 
         with pytest.warns(DeprecationWarning) as warnings:
             img = rr.ImageEncoded(path=file_path)
+            print([str(w.message) for w in warnings])
             assert len(warnings) == 1
 
         assert type(img) is rr.EncodedImage
@@ -31,14 +33,16 @@ def test_image_encoded_png() -> None:
 
 
 def test_image_encoded_jpg() -> None:
-    with tempfile.NamedTemporaryFile(suffix=".jpg") as tmp:
+    with tempfile.NamedTemporaryFile(suffix=".jpg", delete=False) as tmp:
         file_path = tmp.name
 
         image = Image.new("RGB", (300, 200), color=(0, 0, 0))
-        image.save(file_path)
+        image.save(tmp)
+        tmp.close()  # Close the file before opening it again in `ImageEncoded` (Windows can't handle another opening)
 
         with pytest.warns(DeprecationWarning) as warnings:
             img = rr.ImageEncoded(path=file_path)
+            print([str(w.message) for w in warnings])
             assert len(warnings) == 1
 
         assert type(img) is rr.EncodedImage
@@ -49,14 +53,16 @@ def test_image_encoded_jpg() -> None:
 
 
 def test_image_encoded_mono_jpg() -> None:
-    with tempfile.NamedTemporaryFile(suffix=".jpeg") as tmp:
+    with tempfile.NamedTemporaryFile(suffix=".jpeg", delete=False) as tmp:
         file_path = tmp.name
 
         image = Image.new("L", (300, 200), color=0)
-        image.save(file_path)
+        image.save(tmp)
+        tmp.close()  # Close the file before opening it again in `ImageEncoded` (Windows can't handle another opening)
 
         with pytest.warns(DeprecationWarning) as warnings:
             img = rr.ImageEncoded(path=file_path)
+            print([str(w.message) for w in warnings])
             assert len(warnings) == 1
 
         assert type(img) is rr.EncodedImage
@@ -74,6 +80,7 @@ def test_image_encoded_jpg_from_bytes() -> None:
 
     with pytest.warns(DeprecationWarning) as warnings:
         img = rr.ImageEncoded(contents=bin, format=rr.ImageFormat.JPEG)
+        print([str(w.message) for w in warnings])
         assert len(warnings) == 1
 
     assert type(img) is rr.EncodedImage
@@ -103,6 +110,7 @@ def test_image_encoded_mono_jpg_from_bytes() -> None:
 
     with pytest.warns(DeprecationWarning) as warnings:
         img = rr.ImageEncoded(contents=bin, format=rr.ImageFormat.JPEG)
+        print([str(w.message) for w in warnings])
         assert len(warnings) == 1
 
     assert type(img) is rr.EncodedImage
@@ -115,6 +123,7 @@ def test_image_encoded_mono_jpg_from_bytes() -> None:
 
     with pytest.warns(DeprecationWarning) as warnings:
         img = rr.ImageEncoded(contents=bin.read(), format=rr.ImageFormat.JPEG)
+        print([str(w.message) for w in warnings])
         assert len(warnings) == 1
 
     assert type(img) is rr.EncodedImage
@@ -140,6 +149,7 @@ def test_image_encoded_nv12() -> None:
             format=rr.ImageFormat.NV12((480, 640)),
             draw_order=42,
         )
+        print([str(w.message) for w in warnings])
         assert len(warnings) == 1
 
     assert type(img) is rr.Image

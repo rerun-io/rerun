@@ -7,7 +7,7 @@ A 3D triangle mesh as specified by its per-mesh and per-vertex properties.
 
 See also [`archetypes.Asset3D`](https://rerun.io/docs/reference/types/archetypes/asset3d).
 
-If there are multiple [`archetypes.LeafTransforms3D`](https://rerun.io/docs/reference/types/archetypes/leaf_transforms3d) instances logged to the same entity as a mesh,
+If there are multiple [`archetypes.InstancePoses3D`](https://rerun.io/docs/reference/types/archetypes/instance_poses3d) instances logged to the same entity as a mesh,
 an instance of the mesh will be drawn for each transform.
 
 ## Components
@@ -16,7 +16,7 @@ an instance of the mesh will be drawn for each transform.
 
 **Recommended**: [`TriangleIndices`](../components/triangle_indices.md), [`Vector3D`](../components/vector3d.md)
 
-**Optional**: [`Color`](../components/color.md), [`Texcoord2D`](../components/texcoord2d.md), [`AlbedoFactor`](../components/albedo_factor.md), [`TensorData`](../components/tensor_data.md), [`ClassId`](../components/class_id.md)
+**Optional**: [`Color`](../components/color.md), [`Texcoord2D`](../components/texcoord2d.md), [`AlbedoFactor`](../components/albedo_factor.md), [`ImageBuffer`](../components/image_buffer.md), [`ImageFormat`](../components/image_format.md), [`ClassId`](../components/class_id.md)
 
 ## Shown in
 * [Spatial3DView](../views/spatial3d_view.md)
@@ -34,11 +34,11 @@ an instance of the mesh will be drawn for each transform.
 snippet: archetypes/mesh3d_indexed
 
 <picture data-inline-viewer="snippets/mesh3d_indexed">
-  <source media="(max-width: 480px)" srcset="https://static.rerun.io/mesh3d_simple/e1e5fd97265daf0d0bc7b782d862f19086fd6975/480w.png">
-  <source media="(max-width: 768px)" srcset="https://static.rerun.io/mesh3d_simple/e1e5fd97265daf0d0bc7b782d862f19086fd6975/768w.png">
-  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/mesh3d_simple/e1e5fd97265daf0d0bc7b782d862f19086fd6975/1024w.png">
-  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/mesh3d_simple/e1e5fd97265daf0d0bc7b782d862f19086fd6975/1200w.png">
-  <img src="https://static.rerun.io/mesh3d_simple/e1e5fd97265daf0d0bc7b782d862f19086fd6975/full.png">
+  <source media="(max-width: 480px)" srcset="https://static.rerun.io/mesh3d_indexed/57c70dc992e6dc0bd9c5222ca084f5b6240cea75/480w.png">
+  <source media="(max-width: 768px)" srcset="https://static.rerun.io/mesh3d_indexed/57c70dc992e6dc0bd9c5222ca084f5b6240cea75/768w.png">
+  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/mesh3d_indexed/57c70dc992e6dc0bd9c5222ca084f5b6240cea75/1024w.png">
+  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/mesh3d_indexed/57c70dc992e6dc0bd9c5222ca084f5b6240cea75/1200w.png">
+  <img src="https://static.rerun.io/mesh3d_indexed/57c70dc992e6dc0bd9c5222ca084f5b6240cea75/full.png">
 </picture>
 
 ### 3D mesh with partial updates
@@ -46,18 +46,18 @@ snippet: archetypes/mesh3d_indexed
 snippet: archetypes/mesh3d_partial_updates
 
 <picture data-inline-viewer="snippets/mesh3d_partial_updates">
-  <source media="(max-width: 480px)" srcset="https://static.rerun.io/mesh3d_partial_updates/a11e4accb0257dcd9531867b7e1d6fd5e3bee5c3/480w.png">
-  <source media="(max-width: 768px)" srcset="https://static.rerun.io/mesh3d_partial_updates/a11e4accb0257dcd9531867b7e1d6fd5e3bee5c3/768w.png">
-  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/mesh3d_partial_updates/a11e4accb0257dcd9531867b7e1d6fd5e3bee5c3/1024w.png">
-  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/mesh3d_partial_updates/a11e4accb0257dcd9531867b7e1d6fd5e3bee5c3/1200w.png">
-  <img src="https://static.rerun.io/mesh3d_partial_updates/a11e4accb0257dcd9531867b7e1d6fd5e3bee5c3/full.png">
+  <source media="(max-width: 480px)" srcset="https://static.rerun.io/mesh3d_partial_updates/7de33d26220585691a403098c953cd46f94c3262/480w.png">
+  <source media="(max-width: 768px)" srcset="https://static.rerun.io/mesh3d_partial_updates/7de33d26220585691a403098c953cd46f94c3262/768w.png">
+  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/mesh3d_partial_updates/7de33d26220585691a403098c953cd46f94c3262/1024w.png">
+  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/mesh3d_partial_updates/7de33d26220585691a403098c953cd46f94c3262/1200w.png">
+  <img src="https://static.rerun.io/mesh3d_partial_updates/7de33d26220585691a403098c953cd46f94c3262/full.png">
 </picture>
 
-### 3D mesh with leaf transforms
+### 3D mesh with instancing
 
-snippet: archetypes/mesh3d_leaf_transforms3d
+snippet: archetypes/mesh3d_instancing
 
-<picture data-inline-viewer="snippets/mesh3d_leaf_transforms3d">
+<picture data-inline-viewer="snippets/mesh3d_instancing">
   <source media="(max-width: 480px)" srcset="https://static.rerun.io/mesh3d_leaf_transforms3d/c2d0ee033129da53168f5705625a9b033f3a3d61/480w.png">
   <source media="(max-width: 768px)" srcset="https://static.rerun.io/mesh3d_leaf_transforms3d/c2d0ee033129da53168f5705625a9b033f3a3d61/768w.png">
   <source media="(max-width: 1024px)" srcset="https://static.rerun.io/mesh3d_leaf_transforms3d/c2d0ee033129da53168f5705625a9b033f3a3d61/1024w.png">

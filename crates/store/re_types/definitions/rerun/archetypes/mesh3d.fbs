@@ -6,12 +6,12 @@ namespace rerun.archetypes;
 ///
 /// See also [archetypes.Asset3D].
 ///
-/// If there are multiple [archetypes.LeafTransforms3D] instances logged to the same entity as a mesh,
+/// If there are multiple [archetypes.InstancePoses3D] instances logged to the same entity as a mesh,
 /// an instance of the mesh will be drawn for each transform.
 ///
-/// \example archetypes/mesh3d_indexed title="Simple indexed 3D mesh" image="https://static.rerun.io/mesh3d_simple/e1e5fd97265daf0d0bc7b782d862f19086fd6975/1200w.png"
-/// \example archetypes/mesh3d_partial_updates !api title="3D mesh with partial updates" image="https://static.rerun.io/mesh3d_partial_updates/a11e4accb0257dcd9531867b7e1d6fd5e3bee5c3/1200w.png"
-/// \example archetypes/mesh3d_leaf_transforms3d title="3D mesh with leaf transforms" image="https://static.rerun.io/mesh3d_leaf_transforms3d/c2d0ee033129da53168f5705625a9b033f3a3d61/1200w.png"
+/// \example archetypes/mesh3d_indexed title="Simple indexed 3D mesh" image="https://static.rerun.io/mesh3d_indexed/57c70dc992e6dc0bd9c5222ca084f5b6240cea75/1200w.png"
+/// \example archetypes/mesh3d_partial_updates !api title="3D mesh with partial updates" image="https://static.rerun.io/mesh3d_partial_updates/7de33d26220585691a403098c953cd46f94c3262/1200w.png"
+/// \example archetypes/mesh3d_instancing title="3D mesh with instancing" image="https://static.rerun.io/mesh3d_leaf_transforms3d/c2d0ee033129da53168f5705625a9b033f3a3d61/1200w.png"
 table Mesh3D (
   "attr.rust.derive": "PartialEq",
   "attr.docs.category": "Spatial 3D",
@@ -49,7 +49,10 @@ table Mesh3D (
   ///
   /// Currently supports only sRGB(A) textures, ignoring alpha.
   /// (meaning that the tensor must have 3 or 4 channels and use the `u8` format)
-  albedo_texture: rerun.components.TensorData ("attr.rerun.component_optional", nullable, order: 3400);
+  albedo_texture_buffer: rerun.components.ImageBuffer ("attr.rerun.component_optional", nullable, order: 3400);
+
+  /// The format of the `albedo_texture_buffer`, if any.
+  albedo_texture_format: rerun.components.ImageFormat ("attr.rerun.component_optional", nullable, order: 3450);
 
   /// Optional class Ids for the vertices.
   ///

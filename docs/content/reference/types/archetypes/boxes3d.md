@@ -5,17 +5,17 @@ title: "Boxes3D"
 
 3D boxes with half-extents and optional center, rotations, colors etc.
 
-Note that orienting and placing the box is handled via `[archetypes.LeafTransforms3D]`.
+Note that orienting and placing the box is handled via `[archetypes.InstancePoses3D]`.
 Some of its component are repeated here for convenience.
-If there's more leaf transforms than half sizes, the last half size will be repeated for the remaining transforms.
+If there's more instance poses than half sizes, the last half size will be repeated for the remaining poses.
 
 ## Components
 
 **Required**: [`HalfSize3D`](../components/half_size3d.md)
 
-**Recommended**: [`LeafTranslation3D`](../components/leaf_translation3d.md), [`Color`](../components/color.md)
+**Recommended**: [`PoseTranslation3D`](../components/pose_translation3d.md), [`Color`](../components/color.md)
 
-**Optional**: [`LeafRotationAxisAngle`](../components/leaf_rotation_axis_angle.md), [`LeafRotationQuat`](../components/leaf_rotation_quat.md), [`Radius`](../components/radius.md), [`FillMode`](../components/fill_mode.md), [`Text`](../components/text.md), [`ClassId`](../components/class_id.md)
+**Optional**: [`PoseRotationAxisAngle`](../components/pose_rotation_axis_angle.md), [`PoseRotationQuat`](../components/pose_rotation_quat.md), [`Radius`](../components/radius.md), [`FillMode`](../components/fill_mode.md), [`Text`](../components/text.md), [`ClassId`](../components/class_id.md)
 
 ## Shown in
 * [Spatial3DView](../views/spatial3d_view.md)
@@ -45,10 +45,10 @@ snippet: archetypes/box3d_simple
 snippet: archetypes/box3d_batch
 
 <picture data-inline-viewer="snippets/box3d_batch">
-  <source media="(max-width: 480px)" srcset="https://static.rerun.io/box3d_batch/6d3e453c3a0201ae42bbae9de941198513535f1d/480w.png">
-  <source media="(max-width: 768px)" srcset="https://static.rerun.io/box3d_batch/6d3e453c3a0201ae42bbae9de941198513535f1d/768w.png">
-  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/box3d_batch/6d3e453c3a0201ae42bbae9de941198513535f1d/1024w.png">
-  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/box3d_batch/6d3e453c3a0201ae42bbae9de941198513535f1d/1200w.png">
-  <img src="https://static.rerun.io/box3d_batch/6d3e453c3a0201ae42bbae9de941198513535f1d/full.png">
+  <source media="(max-width: 480px)" srcset="https://static.rerun.io/box3d_batch/5aac5b5d29c9f2ecd572c93f6970fcec17f4984b/480w.png">
+  <source media="(max-width: 768px)" srcset="https://static.rerun.io/box3d_batch/5aac5b5d29c9f2ecd572c93f6970fcec17f4984b/768w.png">
+  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/box3d_batch/5aac5b5d29c9f2ecd572c93f6970fcec17f4984b/1024w.png">
+  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/box3d_batch/5aac5b5d29c9f2ecd572c93f6970fcec17f4984b/1200w.png">
+  <img src="https://static.rerun.io/box3d_batch/5aac5b5d29c9f2ecd572c93f6970fcec17f4984b/full.png">
 </picture>
 

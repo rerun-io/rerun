@@ -18,7 +18,7 @@ Visualize the [Google Research Objectron](https://github.com/google-research-dat
 </picture>
 
 ## Used Rerun types
- [`Points3D`](https://www.rerun.io/docs/reference/types/archetypes/points3d), [`Boxes3D`](https://www.rerun.io/docs/reference/types/archetypes/boxes3d), [`EncodedImage`](https://www.rerun.io/docs/reference/types/archetypes/encoded_image?speculative-link), [`Transform3D`](https://www.rerun.io/docs/reference/types/archetypes/transform3d), [`Pinhole`](https://www.rerun.io/docs/reference/types/archetypes/pinhole)
+ [`Points3D`](https://www.rerun.io/docs/reference/types/archetypes/points3d), [`Boxes3D`](https://www.rerun.io/docs/reference/types/archetypes/boxes3d), [`EncodedImage`](https://www.rerun.io/docs/reference/types/archetypes/encoded_image), [`Transform3D`](https://www.rerun.io/docs/reference/types/archetypes/transform3d), [`Pinhole`](https://www.rerun.io/docs/reference/types/archetypes/pinhole)
 
 ## Background
 
@@ -60,7 +60,7 @@ rr.log(
     ),
 )
 ```
-The input video is logged as a sequence of [`EncodedImage`](https://www.rerun.io/docs/reference/types/archetypes/encoded_image?speculative-link) objects to the `world/camera` entity.
+The input video is logged as a sequence of [`EncodedImage`](https://www.rerun.io/docs/reference/types/archetypes/encoded_image) objects to the `world/camera` entity.
 ```python
 rr.log("world/camera", rr.EncodedImage(path=sample.image_path))
 ```

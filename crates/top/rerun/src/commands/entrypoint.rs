@@ -1,4 +1,4 @@
-use clap::Subcommand;
+use clap::{CommandFactory, Subcommand};
 use itertools::Itertools;
 
 use re_data_source::DataSource;
@@ -19,7 +19,12 @@ use crate::commands::AnalyticsCommands;
 
 // ---
 
-const SHORT_ABOUT: &str = "The Rerun Viewer and Server";
+const LONG_ABOUT: &str = r#"
+The Rerun command-line interface:
+* Spawn viewers to visualize Rerun recordings and other supported formats.
+* Start TCP and WebSocket servers to share recordings over the network, on native or web.
+* Inspect, edit and filter Rerun recordings.
+"#;
 
 // Place the important help _last_, to make it most visible in the terminal.
 const EXAMPLES: &str = r#"
@@ -57,7 +62,7 @@ Examples:
 
 #[derive(Debug, clap::Parser)]
 #[clap(
-    about = SHORT_ABOUT,
+    long_about = LONG_ABOUT,
     // Place most of the help last, as that is most visible in the terminal.
     after_long_help = EXAMPLES
 )]
@@ -107,9 +112,9 @@ Example: `16GB` or `50%` (of system total)."
         default_value_t = true,
         long_help = r"Whether the Rerun Viewer should persist the state of the viewer to disk.
 When persisted, the state will be stored at the following locations:
-- Linux: /home/UserName/.local/share/rerun
-- macOS: /Users/UserName/Library/Application Support/rerun
-- Windows: C:\Users\UserName\AppData\Roaming\rerun"
+- Linux: `/home/UserName/.local/share/rerun`
+- macOS: `/Users/UserName/Library/Application Support/rerun`
+- Windows: `C:\Users\UserName\AppData\Roaming\rerun`"
     )]
     persist_state: bool,
 
@@ -211,14 +216,16 @@ If no arguments are given, a server will be hosted which a Rerun SDK can connect
 
     /// Override the default graphics backend and for a specific one instead.
     ///
-    /// When using `--web-viewer` this should be one of:
-    /// * `webgpu`
-    /// * `webgl`
+    /// When using `--web-viewer` this should be one of: `webgpu`, `webgl`.
     ///
     /// When starting a native viewer instead this should be one of:
+    ///
     /// * `vulkan` (Linux & Windows only)
+    ///
     /// * `gl` (Linux & Windows only)
+    ///
     /// * `metal` (macOS only)
+    //
     // Note that we don't compile with DX12 right now, but we could (we don't since this adds permutation and wgpu still has some issues with it).
     // GL could be enabled on MacOS via `angle` but given prior issues with ANGLE this seems to be a bad idea!
     #[clap(long)]
@@ -233,6 +240,226 @@ If no arguments are given, a server will be hosted which a Rerun SDK can connect
     /// Fails if no messages are received, or if no messages are received within a dozen or so seconds.
     #[clap(long)]
     test_receive: bool,
+}
+
+impl Args {
+    fn generate_markdown_manual() -> String {
+        let mut out = String::new();
+
+        fn generate_arg_doc(arg: &clap::Arg) -> String {
+            let mut names = Vec::new();
+            if let Some(short) = arg.get_short() {
+                names.push(format!("-{short}"));
+            }
+            if let Some(long) = arg.get_long() {
+                names.push(format!("--{long}"));
+            }
+
+            let values = arg.get_value_names().map_or_else(String::new, |values| {
+                values
+                    .iter()
+                    .map(|v| format!("<{v}>"))
+                    .collect_vec()
+                    .join(", ")
+            });
+
+            let help = if let Some(help) = arg.get_long_help() {
+                Some(
+                    help.to_string()
+                        .lines()
+                        .map(|line| format!("> {line}").trim().to_owned())
+                        .collect_vec()
+                        .join("\n"),
+                )
+            } else {
+                arg.get_help().map(|help| {
+                    if help.to_string().ends_with('?') {
+                        format!("> {help}")
+                    } else {
+                        format!("> {help}.")
+                    }
+                    .trim()
+                    .to_owned()
+                })
+            };
+
+            let rendered = if names.is_empty() {
+                format!("* `{values}`")
+            } else {
+                format!("* `{} {values}`", names.join(", "))
+            }
+            .trim()
+            .to_owned();
+
+            let rendered = if let Some(help) = help {
+                format!("{rendered}\n{help}")
+            } else {
+                rendered
+            }
+            .trim()
+            .to_owned();
+
+            let defaults = arg.get_default_values();
+            if defaults.is_empty() {
+                rendered
+            } else {
+                let defaults = defaults
+                    .iter()
+                    .map(|v| format!("`{}`", v.to_string_lossy().trim()))
+                    .collect_vec()
+                    .join(", ");
+                format!("{rendered}\n>\n> [Default: {defaults}]")
+                    .trim()
+                    .to_owned()
+            }
+        }
+
+        fn generate_markdown_manual(
+            full_name: Vec<String>,
+            out: &mut String,
+            cmd: &mut clap::Command,
+        ) {
+            let name = cmd.get_name();
+
+            if name == "help" {
+                return;
+            }
+
+            let any_subcommands = cmd.get_subcommands().any(|cmd| cmd.get_name() != "help");
+            let any_positional_args = cmd.get_arguments().any(|arg| arg.is_positional());
+            let any_floating_args = cmd
+                .get_arguments()
+                .any(|arg| !arg.is_positional() && arg.get_long() != Some("help"));
+
+            let full_name = full_name
+                .into_iter()
+                .chain(std::iter::once(name.to_owned()))
+                .collect_vec();
+
+            if !any_positional_args && !any_floating_args && !any_subcommands {
+                return;
+            }
+
+            // E.g. "## rerun analytics"
+            let header = format!("{} {}", "##", full_name.join(" "))
+                .trim()
+                .to_owned();
+
+            // E.g. "**Usage**: `rerun [OPTIONS] [URL_OR_PATHS]... [COMMAND]`"
+            let usage = {
+                let usage = cmd.render_usage().to_string();
+                let (_, usage) = usage.split_at(7);
+                let full_name = {
+                    let mut full_name = full_name.clone();
+                    _ = full_name.pop();
+                    full_name
+                };
+
+                let mut rendered = String::new();
+                if let Some(about) = cmd.get_long_about() {
+                    rendered += &format!("{about}\n\n");
+                } else if let Some(about) = cmd.get_about() {
+                    rendered += &format!("{about}.\n\n");
+                }
+                rendered += format!("**Usage**: `{} {usage}`", full_name.join(" ")).trim();
+
+                rendered
+            };
+
+            // E.g.:
+            // """
+            // **Commands**
+            //
+            // * `analytics`: Configure the behavior of our analytics
+            // * `rrd`: Manipulate the contents of .rrd and .rbl files
+            // * `reset`: Reset the memory of the Rerun Viewer
+            // """
+            let commands = any_subcommands.then(|| {
+                let commands = cmd
+                    .get_subcommands_mut()
+                    .filter(|cmd| cmd.get_name() != "help")
+                    .map(|cmd| {
+                        let name = cmd.get_name().to_owned();
+                        let help = cmd.render_help().to_string();
+                        let help = help.split_once('\n').map_or("", |(help, _)| help).trim();
+                        // E.g. "`analytics`:  Configure the behavior of our analytics"
+                        format!("* `{name}`: {help}.")
+                    })
+                    .collect_vec()
+                    .join("\n");
+
+                format!("**Commands**\n\n{commands}")
+            });
+
+            // E.g.:
+            // """
+            // **Arguments**
+            //
+            // `[URL_OR_PATHS]…`
+            // > Any combination of:
+            // > - A WebSocket url to a Rerun server
+            // > - A path to a Rerun .rrd recording
+            // > - A path to a Rerun .rbl blueprint
+            // > - An HTTP(S) URL to an .rrd or .rbl file to load
+            // > - A path to an image or mesh, or any other file that Rerun can load (see https://www.rerun.io/docs/reference/data-loaders/overview)
+            // >
+            // > If no arguments are given, a server will be hosted which a Rerun SDK can connect to.
+            // """
+            let positionals = any_positional_args.then(|| {
+                let arguments = cmd
+                    .get_arguments()
+                    .filter(|arg| arg.is_positional())
+                    .map(generate_arg_doc)
+                    .collect_vec()
+                    .join("\n\n");
+
+                format!("**Arguments**\n\n{arguments}")
+            });
+
+            // E.g.:
+            // """
+            // **Options**
+            //
+            // `--bind <BIND>`
+            // > What bind address IP to use
+            // >
+            // > [default: 0.0.0.0]
+            //
+            // `--drop-at-latency <DROP_AT_LATENCY>`
+            // > Set a maximum input latency, e.g. "200ms" or "10s".
+            // >
+            // > If we go over this, we start dropping packets.
+            // >
+            // > The default is no limit, which means Rerun might eat more and more memory and have longer and longer latency, if you are logging data faster than Rerun can index it.
+            // """
+            let floatings = any_floating_args.then(|| {
+                let options = cmd
+                    .get_arguments()
+                    .filter(|arg| !arg.is_positional() && arg.get_long() != Some("help"))
+                    .map(generate_arg_doc)
+                    .collect_vec()
+                    .join("\n\n");
+
+                format!("**Options**\n\n{options}")
+            });
+
+            *out += &[Some(header), Some(usage), commands, positionals, floatings]
+                .into_iter()
+                .flatten()
+                .collect_vec()
+                .join("\n\n");
+
+            *out += "\n\n";
+
+            for cmd in cmd.get_subcommands_mut() {
+                generate_markdown_manual(full_name.clone(), out, cmd);
+            }
+        }
+
+        generate_markdown_manual(Vec::new(), &mut out, &mut Self::command());
+
+        out.trim().replace("...", "…")
+    }
 }
 
 #[derive(Debug, Clone, Subcommand)]
@@ -253,6 +480,12 @@ enum Command {
     /// Rerun will forget all blueprints, as well as the native window's size, position and scale factor.
     #[cfg(feature = "native_viewer")]
     Reset,
+
+    /// Generates the Rerun CLI manual (markdown).
+    ///
+    /// Example: `rerun man > docs/content/reference/cli.md`
+    #[command(name = "man")]
+    Manual,
 }
 
 /// Run the Rerun application and return an exit code.
@@ -310,6 +543,20 @@ where
 
             #[cfg(feature = "native_viewer")]
             Command::Reset => re_viewer::reset_viewer_persistence(),
+
+            Command::Manual => {
+                let man = Args::generate_markdown_manual();
+                let web_header = unindent::unindent(
+                    "\
+                    ---
+                    title: CLI manual
+                    order: 250
+                    ---\
+                    ",
+                );
+                println!("{web_header}\n\n{man}");
+                Ok(())
+            }
         }
     } else {
         run_impl(build_info, call_source, args)

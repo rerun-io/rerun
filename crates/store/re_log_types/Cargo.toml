@@ -44,7 +44,6 @@ serde = [
 # Rerun
 re_build_info.workspace = true
 re_format.workspace = true
-re_format_arrow.workspace = true
 re_log.workspace = true
 re_string_interner.workspace = true
 re_tracing.workspace = true
@@ -73,7 +72,6 @@ nohash-hasher.workspace = true
 num-derive.workspace = true
 num-traits.workspace = true
 similar-asserts.workspace = true
-smallvec.workspace = true
 static_assertions.workspace = true
 thiserror.workspace = true
 time = { workspace = true, features = ["formatting", "macros", "local-offset"] }

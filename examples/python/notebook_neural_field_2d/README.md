@@ -18,7 +18,7 @@ You need the separate support package [`rerun-notebook`](https://pypi.org/projec
 pip install "rerun-sdk[notebook]"
 ```
 
-Check out the [minimal notebook example](https://rerun.io/examples/integrations/notebook?speculative-link) for a quick start.
+Check out the [minimal notebook example](https://rerun.io/examples/integrations/notebook) for a quick start.
 
 ## Background
 

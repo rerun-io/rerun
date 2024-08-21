@@ -1,4 +1,5 @@
 use ahash::HashMap;
+use egui::NumExt as _;
 
 use re_chunk_store::LatestAtQuery;
 use re_entity_db::EntityDb;
@@ -392,13 +393,27 @@ impl AppState {
                 // before drawing the blueprint panel.
                 ui.spacing_mut().item_spacing.y = 0.0;
 
-                let pre_cursor = ui.cursor();
-                recordings_panel_ui(&ctx, rx, ui, welcome_screen_state);
-                let any_recording_shows = pre_cursor == ui.cursor();
+                let resizable = ctx.store_context.bundle.recordings().count() > 3;
 
-                if any_recording_shows {
-                    ui.add_space(4.0);
+                if resizable {
+                    // Don't shrink either recordings panel or blueprint panel below this height
+                    let min_height_each = 90.0_f32.at_most(ui.available_height() / 2.0);
+
+                    egui::TopBottomPanel::top("recording_panel")
+                        .frame(egui::Frame::none())
+                        .resizable(resizable)
+                        .show_separator_line(false)
+                        .min_height(min_height_each)
+                        .default_height(210.0)
+                        .max_height(ui.available_height() - min_height_each)
+                        .show_inside(ui, |ui| {
+                            recordings_panel_ui(&ctx, rx, ui, welcome_screen_state);
+                        });
+                } else {
+                    recordings_panel_ui(&ctx, rx, ui, welcome_screen_state);
                 }
+
+                ui.add_space(4.0);
 
                 if !show_welcome {
                     blueprint_tree.show(&ctx, &viewport_blueprint, ui);

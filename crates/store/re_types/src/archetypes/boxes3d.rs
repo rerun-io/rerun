@@ -20,9 +20,9 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Archetype**: 3D boxes with half-extents and optional center, rotations, colors etc.
 ///
-/// Note that orienting and placing the box is handled via `[archetypes.LeafTransforms3D]`.
+/// Note that orienting and placing the box is handled via `[archetypes.InstancePoses3D]`.
 /// Some of its component are repeated here for convenience.
-/// If there's more leaf transforms than half sizes, the last half size will be repeated for the remaining transforms.
+/// If there's more instance poses than half sizes, the last half size will be repeated for the remaining poses.
 ///
 /// ## Example
 ///
@@ -56,11 +56,11 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 /// ```
 /// <center>
 /// <picture>
-///   <source media="(max-width: 480px)" srcset="https://static.rerun.io/box3d_batch/6d3e453c3a0201ae42bbae9de941198513535f1d/480w.png">
-///   <source media="(max-width: 768px)" srcset="https://static.rerun.io/box3d_batch/6d3e453c3a0201ae42bbae9de941198513535f1d/768w.png">
-///   <source media="(max-width: 1024px)" srcset="https://static.rerun.io/box3d_batch/6d3e453c3a0201ae42bbae9de941198513535f1d/1024w.png">
-///   <source media="(max-width: 1200px)" srcset="https://static.rerun.io/box3d_batch/6d3e453c3a0201ae42bbae9de941198513535f1d/1200w.png">
-///   <img src="https://static.rerun.io/box3d_batch/6d3e453c3a0201ae42bbae9de941198513535f1d/full.png" width="640">
+///   <source media="(max-width: 480px)" srcset="https://static.rerun.io/box3d_batch/5aac5b5d29c9f2ecd572c93f6970fcec17f4984b/480w.png">
+///   <source media="(max-width: 768px)" srcset="https://static.rerun.io/box3d_batch/5aac5b5d29c9f2ecd572c93f6970fcec17f4984b/768w.png">
+///   <source media="(max-width: 1024px)" srcset="https://static.rerun.io/box3d_batch/5aac5b5d29c9f2ecd572c93f6970fcec17f4984b/1024w.png">
+///   <source media="(max-width: 1200px)" srcset="https://static.rerun.io/box3d_batch/5aac5b5d29c9f2ecd572c93f6970fcec17f4984b/1200w.png">
+///   <img src="https://static.rerun.io/box3d_batch/5aac5b5d29c9f2ecd572c93f6970fcec17f4984b/full.png" width="640">
 /// </picture>
 /// </center>
 #[derive(Clone, Debug, PartialEq)]
@@ -71,20 +71,20 @@ pub struct Boxes3D {
     /// Optional center positions of the boxes.
     ///
     /// If not specified, the centers will be at (0, 0, 0).
-    /// Note that this uses a [`components::LeafTranslation3D`][crate::components::LeafTranslation3D] which is also used by [`archetypes::LeafTransforms3D`][crate::archetypes::LeafTransforms3D].
-    pub centers: Option<Vec<crate::components::LeafTranslation3D>>,
+    /// Note that this uses a [`components::PoseTranslation3D`][crate::components::PoseTranslation3D] which is also used by [`archetypes::InstancePoses3D`][crate::archetypes::InstancePoses3D].
+    pub centers: Option<Vec<crate::components::PoseTranslation3D>>,
 
     /// Rotations via axis + angle.
     ///
     /// If no rotation is specified, the axes of the boxes align with the axes of the local coordinate system.
-    /// Note that this uses a [`components::LeafRotationAxisAngle`][crate::components::LeafRotationAxisAngle] which is also used by [`archetypes::LeafTransforms3D`][crate::archetypes::LeafTransforms3D].
-    pub rotation_axis_angles: Option<Vec<crate::components::LeafRotationAxisAngle>>,
+    /// Note that this uses a [`components::PoseRotationAxisAngle`][crate::components::PoseRotationAxisAngle] which is also used by [`archetypes::InstancePoses3D`][crate::archetypes::InstancePoses3D].
+    pub rotation_axis_angles: Option<Vec<crate::components::PoseRotationAxisAngle>>,
 
     /// Rotations via quaternion.
     ///
     /// If no rotation is specified, the axes of the boxes align with the axes of the local coordinate system.
-    /// Note that this uses a [`components::LeafRotationQuat`][crate::components::LeafRotationQuat] which is also used by [`archetypes::LeafTransforms3D`][crate::archetypes::LeafTransforms3D].
-    pub quaternions: Option<Vec<crate::components::LeafRotationQuat>>,
+    /// Note that this uses a [`components::PoseRotationQuat`][crate::components::PoseRotationQuat] which is also used by [`archetypes::InstancePoses3D`][crate::archetypes::InstancePoses3D].
+    pub quaternions: Option<Vec<crate::components::PoseRotationQuat>>,
 
     /// Optional colors for the boxes.
     pub colors: Option<Vec<crate::components::Color>>,
@@ -124,9 +124,9 @@ impl ::re_types_core::SizeBytes for Boxes3D {
     #[inline]
     fn is_pod() -> bool {
         <Vec<crate::components::HalfSize3D>>::is_pod()
-            && <Option<Vec<crate::components::LeafTranslation3D>>>::is_pod()
-            && <Option<Vec<crate::components::LeafRotationAxisAngle>>>::is_pod()
-            && <Option<Vec<crate::components::LeafRotationQuat>>>::is_pod()
+            && <Option<Vec<crate::components::PoseTranslation3D>>>::is_pod()
+            && <Option<Vec<crate::components::PoseRotationAxisAngle>>>::is_pod()
+            && <Option<Vec<crate::components::PoseRotationQuat>>>::is_pod()
             && <Option<Vec<crate::components::Color>>>::is_pod()
             && <Option<Vec<crate::components::Radius>>>::is_pod()
             && <Option<crate::components::FillMode>>::is_pod()
@@ -141,7 +141,7 @@ static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 1usize]> =
 static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 3usize]> =
     once_cell::sync::Lazy::new(|| {
         [
-            "rerun.components.LeafTranslation3D".into(),
+            "rerun.components.PoseTranslation3D".into(),
             "rerun.components.Color".into(),
             "rerun.components.Boxes3DIndicator".into(),
         ]
@@ -150,8 +150,8 @@ static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 3usize]> =
 static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 6usize]> =
     once_cell::sync::Lazy::new(|| {
         [
-            "rerun.components.LeafRotationAxisAngle".into(),
-            "rerun.components.LeafRotationQuat".into(),
+            "rerun.components.PoseRotationAxisAngle".into(),
+            "rerun.components.PoseRotationQuat".into(),
             "rerun.components.Radius".into(),
             "rerun.components.FillMode".into(),
             "rerun.components.Text".into(),
@@ -163,11 +163,11 @@ static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 10usize]> =
     once_cell::sync::Lazy::new(|| {
         [
             "rerun.components.HalfSize3D".into(),
-            "rerun.components.LeafTranslation3D".into(),
+            "rerun.components.PoseTranslation3D".into(),
             "rerun.components.Color".into(),
             "rerun.components.Boxes3DIndicator".into(),
-            "rerun.components.LeafRotationAxisAngle".into(),
-            "rerun.components.LeafRotationQuat".into(),
+            "rerun.components.PoseRotationAxisAngle".into(),
+            "rerun.components.PoseRotationQuat".into(),
             "rerun.components.Radius".into(),
             "rerun.components.FillMode".into(),
             "rerun.components.Text".into(),
@@ -244,10 +244,10 @@ impl ::re_types_core::Archetype for Boxes3D {
                 .collect::<DeserializationResult<Vec<_>>>()
                 .with_context("rerun.archetypes.Boxes3D#half_sizes")?
         };
-        let centers = if let Some(array) = arrays_by_name.get("rerun.components.LeafTranslation3D")
+        let centers = if let Some(array) = arrays_by_name.get("rerun.components.PoseTranslation3D")
         {
             Some({
-                <crate::components::LeafTranslation3D>::from_arrow_opt(&**array)
+                <crate::components::PoseTranslation3D>::from_arrow_opt(&**array)
                     .with_context("rerun.archetypes.Boxes3D#centers")?
                     .into_iter()
                     .map(|v| v.ok_or_else(DeserializationError::missing_data))
@@ -258,9 +258,9 @@ impl ::re_types_core::Archetype for Boxes3D {
             None
         };
         let rotation_axis_angles =
-            if let Some(array) = arrays_by_name.get("rerun.components.LeafRotationAxisAngle") {
+            if let Some(array) = arrays_by_name.get("rerun.components.PoseRotationAxisAngle") {
                 Some({
-                    <crate::components::LeafRotationAxisAngle>::from_arrow_opt(&**array)
+                    <crate::components::PoseRotationAxisAngle>::from_arrow_opt(&**array)
                         .with_context("rerun.archetypes.Boxes3D#rotation_axis_angles")?
                         .into_iter()
                         .map(|v| v.ok_or_else(DeserializationError::missing_data))
@@ -271,9 +271,9 @@ impl ::re_types_core::Archetype for Boxes3D {
                 None
             };
         let quaternions =
-            if let Some(array) = arrays_by_name.get("rerun.components.LeafRotationQuat") {
+            if let Some(array) = arrays_by_name.get("rerun.components.PoseRotationQuat") {
                 Some({
-                    <crate::components::LeafRotationQuat>::from_arrow_opt(&**array)
+                    <crate::components::PoseRotationQuat>::from_arrow_opt(&**array)
                         .with_context("rerun.archetypes.Boxes3D#quaternions")?
                         .into_iter()
                         .map(|v| v.ok_or_else(DeserializationError::missing_data))
@@ -414,11 +414,11 @@ impl Boxes3D {
     /// Optional center positions of the boxes.
     ///
     /// If not specified, the centers will be at (0, 0, 0).
-    /// Note that this uses a [`components::LeafTranslation3D`][crate::components::LeafTranslation3D] which is also used by [`archetypes::LeafTransforms3D`][crate::archetypes::LeafTransforms3D].
+    /// Note that this uses a [`components::PoseTranslation3D`][crate::components::PoseTranslation3D] which is also used by [`archetypes::InstancePoses3D`][crate::archetypes::InstancePoses3D].
     #[inline]
     pub fn with_centers(
         mut self,
-        centers: impl IntoIterator<Item = impl Into<crate::components::LeafTranslation3D>>,
+        centers: impl IntoIterator<Item = impl Into<crate::components::PoseTranslation3D>>,
     ) -> Self {
         self.centers = Some(centers.into_iter().map(Into::into).collect());
         self
@@ -427,12 +427,12 @@ impl Boxes3D {
     /// Rotations via axis + angle.
     ///
     /// If no rotation is specified, the axes of the boxes align with the axes of the local coordinate system.
-    /// Note that this uses a [`components::LeafRotationAxisAngle`][crate::components::LeafRotationAxisAngle] which is also used by [`archetypes::LeafTransforms3D`][crate::archetypes::LeafTransforms3D].
+    /// Note that this uses a [`components::PoseRotationAxisAngle`][crate::components::PoseRotationAxisAngle] which is also used by [`archetypes::InstancePoses3D`][crate::archetypes::InstancePoses3D].
     #[inline]
     pub fn with_rotation_axis_angles(
         mut self,
         rotation_axis_angles: impl IntoIterator<
-            Item = impl Into<crate::components::LeafRotationAxisAngle>,
+            Item = impl Into<crate::components::PoseRotationAxisAngle>,
         >,
     ) -> Self {
         self.rotation_axis_angles =
@@ -443,11 +443,11 @@ impl Boxes3D {
     /// Rotations via quaternion.
     ///
     /// If no rotation is specified, the axes of the boxes align with the axes of the local coordinate system.
-    /// Note that this uses a [`components::LeafRotationQuat`][crate::components::LeafRotationQuat] which is also used by [`archetypes::LeafTransforms3D`][crate::archetypes::LeafTransforms3D].
+    /// Note that this uses a [`components::PoseRotationQuat`][crate::components::PoseRotationQuat] which is also used by [`archetypes::InstancePoses3D`][crate::archetypes::InstancePoses3D].
     #[inline]
     pub fn with_quaternions(
         mut self,
-        quaternions: impl IntoIterator<Item = impl Into<crate::components::LeafRotationQuat>>,
+        quaternions: impl IntoIterator<Item = impl Into<crate::components::PoseRotationQuat>>,
     ) -> Self {
         self.quaternions = Some(quaternions.into_iter().map(Into::into).collect());
         self

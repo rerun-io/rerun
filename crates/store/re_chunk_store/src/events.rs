@@ -1,4 +1,4 @@
-use std::{collections::BTreeSet, sync::Arc};
+use std::{collections::BTreeMap, sync::Arc};
 
 use re_chunk::Chunk;
 use re_log_types::StoreId;
@@ -120,14 +120,14 @@ pub struct ChunkStoreDiff {
     // deallocated.
     pub chunk: Arc<Chunk>,
 
-    /// Reports which [`ChunkId`]s were merged into a new [`ChunkId`] (srcs, dst) during a compaction.
+    /// Reports which [`Chunk`]s were merged into a new [`ChunkId`] (srcs, dst) during a compaction.
     ///
     /// This is only specified if an addition to the store triggered a compaction.
     /// When that happens, it is guaranteed that [`ChunkStoreDiff::chunk`] will be present in the
     /// set of source chunks below, since it was compacted on arrival.
     ///
     /// A corollary to that is that the destination [`ChunkId`] must have never been seen before.
-    pub compacted: Option<(BTreeSet<ChunkId>, ChunkId)>,
+    pub compacted: Option<(BTreeMap<ChunkId, Arc<Chunk>>, ChunkId)>,
 }
 
 impl PartialEq for ChunkStoreDiff {
@@ -146,7 +146,10 @@ impl Eq for ChunkStoreDiff {}
 
 impl ChunkStoreDiff {
     #[inline]
-    pub fn addition(chunk: Arc<Chunk>, compacted: Option<(BTreeSet<ChunkId>, ChunkId)>) -> Self {
+    pub fn addition(
+        chunk: Arc<Chunk>,
+        compacted: Option<(BTreeMap<ChunkId, Arc<Chunk>>, ChunkId)>,
+    ) -> Self {
         Self {
             kind: ChunkStoreDiffKind::Addition,
             chunk,

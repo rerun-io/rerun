@@ -4,7 +4,6 @@ namespace rerun.blueprint.datatypes;
 //
 // NOTE: Apache Arrow uses UTF-8 encoding of its String type, as does Rust.
 table Utf8List (
-  "attr.docs.unreleased",
   "attr.arrow.transparent",
   "attr.python.aliases": "Sequence[str]",
   "attr.rerun.scope": "blueprint",

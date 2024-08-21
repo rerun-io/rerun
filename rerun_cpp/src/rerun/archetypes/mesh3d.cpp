@@ -14,7 +14,7 @@ namespace rerun {
     ) {
         using namespace archetypes;
         std::vector<ComponentBatch> cells;
-        cells.reserve(9);
+        cells.reserve(10);
 
         {
             auto result = ComponentBatch::from_loggable(archetype.vertex_positions);
@@ -46,8 +46,13 @@ namespace rerun {
             RR_RETURN_NOT_OK(result.error);
             cells.push_back(std::move(result.value));
         }
-        if (archetype.albedo_texture.has_value()) {
-            auto result = ComponentBatch::from_loggable(archetype.albedo_texture.value());
+        if (archetype.albedo_texture_buffer.has_value()) {
+            auto result = ComponentBatch::from_loggable(archetype.albedo_texture_buffer.value());
+            RR_RETURN_NOT_OK(result.error);
+            cells.push_back(std::move(result.value));
+        }
+        if (archetype.albedo_texture_format.has_value()) {
+            auto result = ComponentBatch::from_loggable(archetype.albedo_texture_format.value());
             RR_RETURN_NOT_OK(result.error);
             cells.push_back(std::move(result.value));
         }

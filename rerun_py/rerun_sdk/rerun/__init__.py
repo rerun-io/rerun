@@ -7,8 +7,8 @@ from uuid import UUID
 
 import numpy as np
 
-__version__ = "0.18.0-alpha.1"
-__version_info__ = (0, 18, 0, "alpha.1")
+__version__ = "0.19.0-alpha.1+dev"
+__version_info__ = (0, 19, 0, "alpha.1")
 
 # =====================================
 # API RE-EXPORTS
@@ -21,6 +21,9 @@ from . import (
     blueprint as blueprint,
     experimental as experimental,
     notebook as notebook,
+)
+from ._baseclasses import (
+    ComponentColumn as ComponentColumn,
 )
 from ._image_encoded import (
     ImageEncoded as ImageEncoded,
@@ -36,6 +39,12 @@ from ._log import (
     log_file_from_contents as log_file_from_contents,
     log_file_from_path as log_file_from_path,
     new_entity_path as new_entity_path,
+)
+from ._send_columns import (
+    TimeNanosColumn as TimeNanosColumn,
+    TimeSecondsColumn as TimeSecondsColumn,
+    TimeSequenceColumn as TimeSequenceColumn,
+    send_columns as send_columns,
 )
 from .any_value import (
     AnyValues as AnyValues,
@@ -54,7 +63,7 @@ from .archetypes import (
     Ellipsoids3D as Ellipsoids3D,
     EncodedImage as EncodedImage,
     Image as Image,
-    LeafTransforms3D as LeafTransforms3D,
+    InstancePoses3D as InstancePoses3D,
     LineStrips2D as LineStrips2D,
     LineStrips3D as LineStrips3D,
     Mesh3D as Mesh3D,
@@ -138,12 +147,6 @@ from .script_helpers import (
     script_add_args as script_add_args,
     script_setup as script_setup,
     script_teardown as script_teardown,
-)
-from .send_columns import (
-    TimeNanosColumn as TimeNanosColumn,
-    TimeSecondsColumn as TimeSecondsColumn,
-    TimeSequenceColumn as TimeSequenceColumn,
-    send_columns as send_columns,
 )
 from .sinks import (
     connect as connect,

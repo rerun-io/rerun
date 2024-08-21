@@ -269,7 +269,7 @@ class BaseBatch(Generic[T]):
 
 class ComponentColumn:
     """
-    A column of components that can be send using `send_columns`.
+    A column of components that can be sent using `send_columns`.
 
     This is represented by a ComponentBatch array that has been repartitioned into multiple segments.
     This is useful for reinterpreting a single contiguous batch as multiple sub-batches
@@ -308,15 +308,6 @@ class ComponentColumn:
         array = self.component_batch.as_arrow_array()
         offsets = np.concatenate((np.array([0], dtype="int32"), np.cumsum(self.lengths, dtype="int32")))
         return pa.ListArray.from_arrays(offsets, array)
-
-
-ComponentColumnLike = ComponentBatchLike | ComponentColumn
-"""
-Type alias for component column-like objects.
-
-Every component batch can be interpreted as a component column.
-`ComponentColumn` implements the `ComponentBatchLike` interface but is still explicitly included here.
-"""
 
 
 class ComponentBatchMixin(ComponentBatchLike):

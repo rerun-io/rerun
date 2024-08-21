@@ -107,8 +107,18 @@ impl Ellipsoids3DVisualizer {
 
                 // TODO(kpreid): subdivisions should be configurable, and possibly dynamic based on
                 // either world size or screen size (depending on application).
-                let subdivisions = 2;
-                let proc_mesh_key = proc_mesh::ProcMeshKey::Sphere { subdivisions };
+                let subdivisions = match data.fill_mode {
+                    FillMode::DenseWireframe => 2, // Don't make it too crowded - let the user see inside the mesh.
+                    FillMode::Solid => 6,          // Smooth, but not too CPU/GPU intensive
+                    FillMode::MajorWireframe => 12, // Three smooth ellipses
+                };
+                let proc_mesh_key = proc_mesh::ProcMeshKey::Sphere {
+                    subdivisions,
+                    axes_only: match data.fill_mode {
+                        FillMode::MajorWireframe => true,
+                        FillMode::DenseWireframe | FillMode::Solid => false,
+                    },
+                };
 
                 // No need to take half_size times 2 since the mesh we're using is already scaled accordingly.
                 let world_from_instance =
@@ -120,7 +130,7 @@ impl Ellipsoids3DVisualizer {
                 );
 
                 match data.fill_mode {
-                    FillMode::Wireframe => {
+                    FillMode::MajorWireframe | FillMode::DenseWireframe => {
                         let Some(wireframe_mesh) =
                             ctx.viewer_ctx
                                 .cache
@@ -184,30 +194,19 @@ impl Ellipsoids3DVisualizer {
                 .bounding_boxes
                 .push((entity_path.hash(), world_space_bounding_box));
 
-            if data.labels.len() == 1 || num_instances <= super::MAX_NUM_LABELS_PER_ENTITY {
-                // If there's many boxes but only a single label, place the single label at the middle of the visualization.
-                let label_positions = if data.labels.len() == 1 && num_instances > 1 {
-                    // TODO(andreas): A smoothed over time (+ discontinuity detection) bounding box would be great.
-                    itertools::Either::Left(std::iter::once(world_space_bounding_box.center()))
-                } else {
-                    // Take center point of every box.
-                    itertools::Either::Right(
-                        ent_context
-                            .transform_info
-                            .clamped_reference_from_instances()
-                            .map(|t| t.translation.into()),
-                    )
-                };
-
-                self.0.ui_labels.extend(process_labels_3d(
-                    entity_path,
-                    label_positions,
-                    &data.labels,
-                    &colors,
-                    &annotation_infos,
-                    glam::Affine3A::IDENTITY,
-                ));
-            }
+            self.0.ui_labels.extend(process_labels_3d(
+                entity_path,
+                num_instances,
+                world_space_bounding_box.center(),
+                ent_context
+                    .transform_info
+                    .clamped_reference_from_instances()
+                    .map(|t| t.translation.into()),
+                &data.labels,
+                &colors,
+                &annotation_infos,
+                glam::Affine3A::IDENTITY,
+            ));
         }
 
         Ok(())

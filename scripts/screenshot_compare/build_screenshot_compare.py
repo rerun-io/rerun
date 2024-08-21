@@ -125,7 +125,7 @@ SNIPPET_URLS = extract_snippet_urls_from_fbs()
 
 def build_snippets() -> None:
     cmd = [
-        str(SNIPPETS_DIR / "roundtrips.py"),
+        str(SNIPPETS_DIR / "compare_snippet_output.py"),
         "--no-py",
         "--no-cpp",
         "--no-py-build",
@@ -138,9 +138,11 @@ def build_snippets() -> None:
 
 def collect_snippets() -> Iterable[Example]:
     for name in sorted(SNIPPET_URLS.keys()):
-        rrd = SNIPPETS_DIR / f"{name}_rust.rrd"
-        assert rrd.exists(), f"Missing {rrd} for {name}"
-        yield Example(name=name, title=name, rrd=rrd, screenshot_url=SNIPPET_URLS[name])
+        rrd = SNIPPETS_DIR / "all" / f"{name}_rust.rrd"
+        if rrd.exists():
+            yield Example(name=name, title=name, rrd=rrd, screenshot_url=SNIPPET_URLS[name])
+        else:
+            print(f"WARNING: Missing {rrd} for {name}")
 
 
 # ====================================================================================================
@@ -153,16 +155,22 @@ def collect_snippets() -> Iterable[Example]:
 def build_examples() -> None:
     # fmt: off
     cmd = [
+        "pixi", "run", "-e", "examples",
         "cargo", "run", "--locked",
         "-p", "re_dev_tools", "--",
         "build-examples", "rrd", "example_data",
+        # TODO(andreas): nightly channel would be better, but the dependencies that requires make things hard to get to run.
+        "--channel", "main"
     ]
     run(cmd, cwd=RERUN_DIR)
 
     cmd = [
+        "pixi", "run", "-e", "examples",
         "cargo", "run", "--locked",
         "-p", "re_dev_tools", "--",
         "build-examples", "manifest", "example_data/examples_manifest.json",
+        # TODO(andreas): nightly channel would be better, but the dependencies that requires make things hard to get to run.
+        "--channel", "main"
     ]
     run(cmd, cwd=RERUN_DIR)
     # fmt: on

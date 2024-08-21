@@ -2,7 +2,6 @@ namespace rerun.datatypes;
 
 /// A double-precision 64-bit IEEE 754 floating point number.
 struct Float64 (
-  "attr.docs.unreleased",
   "attr.arrow.transparent",
   "attr.python.aliases": "float",
   "attr.python.array_aliases": "npt.NDArray[Any], npt.ArrayLike, Sequence[Sequence[float]], Sequence[float]",

@@ -138,7 +138,8 @@ def lint_line(
             return "It's 'GitHub', not 'github'"
 
     if re.search(r"[.a-zA-Z]  [a-zA-Z]", line):
-        return "Found double space"
+        if r"\n  " not in line:  # Allow `\n  `, which happens e.g. when markdown is embeedded in a string
+            return "Found double space"
 
     if double_the.search(line.lower()):
         return "Found 'the the'"
@@ -1179,6 +1180,7 @@ def main() -> None:
         "./.pytest_cache",
         "./CODE_STYLE.md",
         "./crates/re_types_builder/src/reflection.rs",  # auto-generated
+        "./docs/content/reference/cli.md",  # auto-generated
         "./examples/assets",
         "./examples/python/detect_and_track_objects/cache/version.txt",
         "./examples/python/objectron/objectron/proto/",  # auto-generated

@@ -209,7 +209,7 @@ If no default blueprint was set or it didn't set any value for this field, this 
 
     let response = ui
         .add_enabled(
-            component_array.is_none(),
+            component_array.is_some(),
             egui::Button::new("Unset"),
         )
         .on_hover_text(
@@ -218,7 +218,7 @@ This has the same effect as not setting the value in the blueprint at all."
         )
         .on_disabled_hover_text("The property is already unset.");
     if response.clicked() {
-        ctx.save_empty_blueprint_component_by_name(blueprint_path, component_name);
+        ctx.clear_blueprint_component_by_name(blueprint_path, component_name);
         ui.close_menu();
     }
 

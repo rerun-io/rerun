@@ -1,4 +1,8 @@
-use crate::{components::TriangleIndices, datatypes::UVec3D};
+use crate::{
+    archetypes,
+    components::{self, TriangleIndices},
+    datatypes::UVec3D,
+};
 
 use super::Mesh3D;
 
@@ -18,6 +22,23 @@ pub enum Mesh3DError {
 }
 
 impl Mesh3D {
+    /// Use this image as the albedo texture.
+    pub fn with_albedo_texture_image(self, image: impl Into<archetypes::Image>) -> Self {
+        let image = image.into();
+        self.with_albedo_texture_format(image.format)
+            .with_albedo_texture_buffer(image.buffer)
+    }
+
+    /// Use this image as the albedo texture.
+    pub fn with_albedo_texture(
+        self,
+        image_format: impl Into<components::ImageFormat>,
+        image_buffer: impl Into<components::ImageBuffer>,
+    ) -> Self {
+        self.with_albedo_texture_format(image_format)
+            .with_albedo_texture_buffer(image_buffer)
+    }
+
     /// Check that this is a valid mesh, e.g. that the vertex indices are within bounds
     /// and that we have the same number of positions and normals (if any).
     pub fn sanity_check(&self) -> Result<(), Mesh3DError> {

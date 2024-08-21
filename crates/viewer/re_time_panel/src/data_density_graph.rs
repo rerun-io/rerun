@@ -11,7 +11,6 @@ use egui::{epaint::Vertex, lerp, pos2, remap, Color32, NumExt as _, Rect, Shape}
 
 use re_chunk_store::Chunk;
 use re_chunk_store::RangeQuery;
-use re_data_ui::item_ui;
 use re_log_types::EntityPath;
 use re_log_types::TimeInt;
 use re_log_types::Timeline;
@@ -420,7 +419,7 @@ pub fn data_density_graph_ui(
                 ui.layer_id(),
                 egui::Id::new("data_tooltip"),
                 |ui| {
-                    show_row_ids_tooltip2(ctx, ui, time_ctrl, db, item, hovered_time);
+                    show_row_ids_tooltip(ctx, ui, time_ctrl, db, item, hovered_time);
                 },
             );
         }
@@ -558,7 +557,7 @@ impl Default for DensityGraphBuilderConfig {
     }
 }
 
-fn show_row_ids_tooltip2(
+fn show_row_ids_tooltip(
     ctx: &ViewerContext<'_>,
     ui: &mut egui::Ui,
     time_ctrl: &TimeControl,
@@ -577,15 +576,11 @@ fn show_row_ids_tooltip2(
     } = item;
 
     if let Some(component_name) = component_name {
-        let component_path = ComponentPath::new(entity_path.clone(), *component_name);
-        item_ui::component_path_button(ctx, ui, &component_path, db);
-        ui.add_space(8.0);
-        component_path.data_ui(ctx, ui, ui_layout, &query, db);
+        ComponentPath::new(entity_path.clone(), *component_name)
+            .data_ui(ctx, ui, ui_layout, &query, db);
     } else {
-        let instance_path = re_entity_db::InstancePath::entity_all(entity_path.clone());
-        item_ui::instance_path_button(ctx, &query, db, ui, None, &instance_path);
-        ui.add_space(8.0);
-        instance_path.data_ui(ctx, ui, ui_layout, &query, db);
+        re_entity_db::InstancePath::entity_all(entity_path.clone())
+            .data_ui(ctx, ui, ui_layout, &query, db);
     }
 }
 

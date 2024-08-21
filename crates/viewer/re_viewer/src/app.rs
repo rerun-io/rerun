@@ -267,7 +267,7 @@ impl App {
         let (command_sender, command_receiver) = command_channel();
 
         let mut component_ui_registry = re_data_ui::create_component_ui_registry();
-        re_edit_ui::register_editors(&mut component_ui_registry);
+        re_component_ui::register_editors(&mut component_ui_registry);
 
         // TODO(emilk): `Instant::MIN` when we have our own `Instant` that supports it.;
         let long_time_ago = web_time::Instant::now()
@@ -1897,6 +1897,7 @@ fn save_blueprint(app: &mut App, store_context: Option<&StoreContext<'_>>) -> an
     save_entity_db(app, rrd_version, file_name, title.to_owned(), messages)
 }
 
+// TODO(emilk): unify this with `ViewerContext::save_file_dialog`
 #[allow(clippy::needless_pass_by_ref_mut)] // `app` is only used on native
 #[allow(clippy::unnecessary_wraps)] // cannot return error on web
 fn save_entity_db(

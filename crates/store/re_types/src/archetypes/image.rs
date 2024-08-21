@@ -32,7 +32,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 /// Rerun also supports compressed images (JPEG, PNG, …), using [`archetypes::EncodedImage`][crate::archetypes::EncodedImage].
 /// Compressing images can save a lot of bandwidth and memory.
 ///
-/// ## Example
+/// ## Examples
 ///
 /// ### `image_simple`:
 /// ```ignore
@@ -61,6 +61,70 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 ///   <source media="(max-width: 1024px)" srcset="https://static.rerun.io/image_simple/06ba7f8582acc1ffb42a7fd0006fad7816f3e4e4/1024w.png">
 ///   <source media="(max-width: 1200px)" srcset="https://static.rerun.io/image_simple/06ba7f8582acc1ffb42a7fd0006fad7816f3e4e4/1200w.png">
 ///   <img src="https://static.rerun.io/image_simple/06ba7f8582acc1ffb42a7fd0006fad7816f3e4e4/full.png" width="640">
+/// </picture>
+/// </center>
+///
+/// ### Advanced usage of `send_columns` to send multiple images at once
+/// ```ignore
+/// use ndarray::{s, Array, ShapeBuilder};
+/// use rerun::Archetype as _;
+///
+/// fn main() -> Result<(), Box<dyn std::error::Error>> {
+///     let rec = rerun::RecordingStreamBuilder::new("rerun_example_image_send_columns").spawn()?;
+///
+///     // Timeline on which the images are distributed.
+///     let times = (0..20).collect::<Vec<i64>>();
+///
+///     // Create a batch of images with a moving rectangle.
+///     let width = 300;
+///     let height = 200;
+///     let mut images = Array::<u8, _>::zeros((times.len(), height, width, 3).f())
+///         .as_standard_layout() // Make sure the data is laid out as we expect it.
+///         .into_owned();
+///     images.slice_mut(s![.., .., .., 2]).fill(255);
+///     for &t in &times {
+///         let t = t as usize;
+///         images
+///             .slice_mut(s![t, 50..150, (t * 10)..(t * 10 + 100), 1])
+///             .fill(255);
+///     }
+///
+///     // Log the ImageFormat and indicator once, as static.
+///     let format = rerun::components::ImageFormat::rgb8([width as _, height as _]);
+///     rec.log_component_batches(
+///         "images",
+///         true,
+///         [&format as _, &rerun::Image::indicator() as _],
+///     )?;
+///
+///     // Split up the image data into several components referencing the underlying data.
+///     let image_size_in_bytes = width * height * 3;
+///     let blob = rerun::datatypes::Blob::from(images.into_raw_vec());
+///     let image_column = times
+///         .iter()
+///         .map(|&t| {
+///             let byte_offset = image_size_in_bytes * (t as usize);
+///             rerun::components::ImageBuffer::from(
+///                 blob.clone() // Clone is only a reference count increase, not a full copy.
+///                     .sliced(byte_offset..(byte_offset + image_size_in_bytes)),
+///             )
+///         })
+///         .collect::<Vec<_>>();
+///
+///     // Send all images at once.
+///     let timeline_values = rerun::TimeColumn::new_sequence("step", times);
+///     rec.send_columns("images", [timeline_values], [&image_column as _])?;
+///
+///     Ok(())
+/// }
+/// ```
+/// <center>
+/// <picture>
+///   <source media="(max-width: 480px)" srcset="https://static.rerun.io/image_send_columns/321455161d79e2c45d6f5a6f175d6f765f418897/480w.png">
+///   <source media="(max-width: 768px)" srcset="https://static.rerun.io/image_send_columns/321455161d79e2c45d6f5a6f175d6f765f418897/768w.png">
+///   <source media="(max-width: 1024px)" srcset="https://static.rerun.io/image_send_columns/321455161d79e2c45d6f5a6f175d6f765f418897/1024w.png">
+///   <source media="(max-width: 1200px)" srcset="https://static.rerun.io/image_send_columns/321455161d79e2c45d6f5a6f175d6f765f418897/1200w.png">
+///   <img src="https://static.rerun.io/image_send_columns/321455161d79e2c45d6f5a6f175d6f765f418897/full.png" width="640">
 /// </picture>
 /// </center>
 #[derive(Clone, Debug, PartialEq)]
