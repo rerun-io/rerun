@@ -7,6 +7,8 @@ use re_types::{
     Archetype as _, AsComponents as _,
 };
 
+use crate::util;
+
 #[test]
 fn roundtrip() {
     let texture_format = re_types::components::ImageFormat::rgb8([2, 3]);
@@ -78,5 +80,3 @@ fn roundtrip() {
     let deserialized = Mesh3D::from_arrow(serialized).unwrap();
     similar_asserts::assert_eq!(expected, deserialized);
 }
-
-mod util;

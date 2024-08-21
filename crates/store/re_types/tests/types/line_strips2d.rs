@@ -1,51 +1,58 @@
 use std::collections::HashMap;
 
-use re_types::{archetypes::Points2D, components, Archetype as _, AsComponents as _};
+use re_types::{
+    archetypes::LineStrips2D,
+    components::{ClassId, Color, DrawOrder, LineStrip2D, Radius},
+    Archetype as _, AsComponents as _,
+};
+
+use crate::util;
 
 #[test]
 fn roundtrip() {
-    let expected = Points2D {
-        positions: vec![
-            components::Position2D::new(1.0, 2.0), //
-            components::Position2D::new(3.0, 4.0),
+    let expected = LineStrips2D {
+        #[rustfmt::skip]
+        strips: vec![
+            LineStrip2D::from_iter([[0., 0.], [2., 1.], [4., -1.], [6., 0.]]), //
+            LineStrip2D::from_iter([[0., 3.], [1., 4.], [2., 2.], [3., 4.], [4., 2.], [5., 4.], [6., 3.]]), //
         ],
         radii: Some(vec![
-            components::Radius::from(42.0), //
-            components::Radius::from(43.0),
+            Radius::from(42.0), //
+            Radius::from(43.0),
         ]),
         colors: Some(vec![
-            components::Color::from_unmultiplied_rgba(0xAA, 0x00, 0x00, 0xCC), //
-            components::Color::from_unmultiplied_rgba(0x00, 0xBB, 0x00, 0xDD),
+            Color::from_unmultiplied_rgba(0xAA, 0x00, 0x00, 0xCC), //
+            Color::from_unmultiplied_rgba(0x00, 0xBB, 0x00, 0xDD),
         ]),
         labels: Some(vec![
             "hello".into(),  //
             "friend".into(), //
         ]),
-        draw_order: Some(components::DrawOrder(300.0.into())),
+        draw_order: Some(DrawOrder(300.0.into())),
         class_ids: Some(vec![
-            components::ClassId::from(126), //
-            components::ClassId::from(127), //
-        ]),
-        keypoint_ids: Some(vec![
-            components::KeypointId::from(2), //
-            components::KeypointId::from(3), //
+            ClassId::from(126), //
+            ClassId::from(127), //
         ]),
     };
 
-    let arch = Points2D::new([(1.0, 2.0), (3.0, 4.0)])
+    #[rustfmt::skip]
+    let strips = [
+        [[0., 0.], [2., 1.], [4., -1.], [6., 0.]].to_vec(),
+        [[0., 3.], [1., 4.], [2., 2.], [3., 4.], [4., 2.], [5., 4.], [6., 3.]].to_vec(),
+    ];
+    let arch = LineStrips2D::new(strips)
         .with_radii([42.0, 43.0])
         .with_colors([0xAA0000CC, 0x00BB00DD])
         .with_labels(["hello", "friend"])
         .with_draw_order(300.0)
-        .with_class_ids([126, 127])
-        .with_keypoint_ids([2, 3]);
+        .with_class_ids([126, 127]);
     similar_asserts::assert_eq!(expected, arch);
 
     let expected_extensions: HashMap<_, _> = [
-        ("points", vec!["rerun.components.Position2D"]),
+        ("points", vec!["rerun.components.LineStrip2D"]),
         ("radii", vec!["rerun.components.Radius"]),
         ("colors", vec!["rerun.components.Color"]),
-        ("labels", vec!["rerun.components.Label"]),
+        ("labels", vec!["rerun.components.Text"]),
         ("draw_order", vec!["rerun.components.DrawOrder"]),
         ("class_ids", vec!["rerun.components.ClassId"]),
         ("keypoint_ids", vec!["rerun.components.KeypointId"]),
@@ -70,8 +77,6 @@ fn roundtrip() {
         }
     }
 
-    let deserialized = Points2D::from_arrow(serialized).unwrap();
+    let deserialized = LineStrips2D::from_arrow(serialized).unwrap();
     similar_asserts::assert_eq!(expected, deserialized);
 }
-
-mod util;

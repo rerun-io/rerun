@@ -7,6 +7,8 @@ use re_types::{
     Archetype as _, AsComponents as _,
 };
 
+use crate::util;
+
 #[test]
 fn roundtrip() {
     let all_expected = [
@@ -103,5 +105,3 @@ fn roundtrip() {
         similar_asserts::assert_eq!(expected, deserialized);
     }
 }
-
-mod util;

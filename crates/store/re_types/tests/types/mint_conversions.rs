@@ -1,8 +1,6 @@
-#[cfg(feature = "mint")]
 use re_types::{components, datatypes};
 
 #[test]
-#[cfg(feature = "mint")]
 fn vec2d() {
     {
         let datatype: datatypes::Vec2D = [1.0, 2.0].into();
@@ -18,7 +16,6 @@ fn vec2d() {
 }
 
 #[test]
-#[cfg(feature = "mint")]
 fn vec3d() {
     {
         let datatype: datatypes::Vec3D = [1.0, 2.0, 3.0].into();
@@ -35,7 +32,6 @@ fn vec3d() {
 }
 
 #[test]
-#[cfg(feature = "mint")]
 fn vec4d() {
     {
         let datatype: datatypes::Vec4D = [1.0, 2.0, 3.0, 4.0].into();
@@ -56,7 +52,6 @@ fn vec4d() {
 }
 
 #[test]
-#[cfg(feature = "mint")]
 fn position2d() {
     {
         let component: components::Position2D = [1.0, 2.0].into();
@@ -73,7 +68,6 @@ fn position2d() {
 }
 
 #[test]
-#[cfg(feature = "mint")]
 fn position3d() {
     {
         let component: components::Position3D = [1.0, 2.0, 3.0].into();
@@ -90,7 +84,6 @@ fn position3d() {
 }
 
 #[test]
-#[cfg(feature = "mint")]
 fn half_sizes_2d() {
     {
         let component: components::HalfSize2D = [1.0, 2.0].into();
@@ -106,7 +99,6 @@ fn half_sizes_2d() {
 }
 
 #[test]
-#[cfg(feature = "mint")]
 fn half_sizes_3d() {
     {
         let component: components::HalfSize3D = [1.0, 2.0, 3.0].into();
@@ -123,7 +115,6 @@ fn half_sizes_3d() {
 }
 
 #[test]
-#[cfg(feature = "mint")]
 fn quaternion() {
     {
         let datatype = datatypes::Quaternion::from_xyzw([1.0, 2.0, 3.0, 4.0]);
@@ -141,7 +132,6 @@ fn quaternion() {
 }
 
 #[test]
-#[cfg(feature = "mint")]
 fn mat3() {
     let m = [
         [1.0, 2.0, 3.0], //
@@ -162,7 +152,6 @@ fn mat3() {
 }
 
 #[test]
-#[cfg(feature = "mint")]
 fn mat4() {
     let m = [
         [0.0, 1.0, 2.0, 3.0],

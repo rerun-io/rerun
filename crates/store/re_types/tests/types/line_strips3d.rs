@@ -1,18 +1,20 @@
 use std::collections::HashMap;
 
 use re_types::{
-    archetypes::LineStrips2D,
-    components::{ClassId, Color, DrawOrder, LineStrip2D, Radius},
+    archetypes::LineStrips3D,
+    components::{ClassId, Color, LineStrip3D, Radius},
     Archetype as _, AsComponents as _,
 };
 
+use crate::util;
+
 #[test]
 fn roundtrip() {
-    let expected = LineStrips2D {
+    let expected = LineStrips3D {
         #[rustfmt::skip]
         strips: vec![
-            LineStrip2D::from_iter([[0., 0.], [2., 1.], [4., -1.], [6., 0.]]), //
-            LineStrip2D::from_iter([[0., 3.], [1., 4.], [2., 2.], [3., 4.], [4., 2.], [5., 4.], [6., 3.]]), //
+            LineStrip3D::from_iter([[0., 0., 1.], [2., 1., 2.], [4., -1., 3.], [6., 0., 4.]]),
+            LineStrip3D::from_iter([[0., 3., 1.], [1., 4., 2.], [2.,  2., 3.], [3., 4., 4.], [4., 2., 5.], [5., 4., 6.], [6., 3., 7.]]),
         ],
         radii: Some(vec![
             Radius::from(42.0), //
@@ -26,7 +28,6 @@ fn roundtrip() {
             "hello".into(),  //
             "friend".into(), //
         ]),
-        draw_order: Some(DrawOrder(300.0.into())),
         class_ids: Some(vec![
             ClassId::from(126), //
             ClassId::from(127), //
@@ -35,19 +36,18 @@ fn roundtrip() {
 
     #[rustfmt::skip]
     let strips = [
-        [[0., 0.], [2., 1.], [4., -1.], [6., 0.]].to_vec(),
-        [[0., 3.], [1., 4.], [2., 2.], [3., 4.], [4., 2.], [5., 4.], [6., 3.]].to_vec(),
+        [[0., 0., 1.], [2., 1., 2.], [4., -1., 3.], [6., 0., 4.]].to_vec(),
+        [[0., 3., 1.], [1., 4., 2.], [2.,  2., 3.], [3., 4., 4.], [4., 2., 5.], [5., 4., 6.], [6., 3., 7.]].to_vec(),
     ];
-    let arch = LineStrips2D::new(strips)
+    let arch = LineStrips3D::new(strips)
         .with_radii([42.0, 43.0])
         .with_colors([0xAA0000CC, 0x00BB00DD])
         .with_labels(["hello", "friend"])
-        .with_draw_order(300.0)
         .with_class_ids([126, 127]);
     similar_asserts::assert_eq!(expected, arch);
 
     let expected_extensions: HashMap<_, _> = [
-        ("points", vec!["rerun.components.LineStrip2D"]),
+        ("points", vec!["rerun.components.LineStrip3D"]),
         ("radii", vec!["rerun.components.Radius"]),
         ("colors", vec!["rerun.components.Color"]),
         ("labels", vec!["rerun.components.Text"]),
@@ -75,8 +75,6 @@ fn roundtrip() {
         }
     }
 
-    let deserialized = LineStrips2D::from_arrow(serialized).unwrap();
+    let deserialized = LineStrips3D::from_arrow(serialized).unwrap();
     similar_asserts::assert_eq!(expected, deserialized);
 }
-
-mod util;

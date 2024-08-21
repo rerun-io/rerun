@@ -6,7 +6,7 @@ use re_types::{
     Archetype as _, AsComponents as _,
 };
 
-mod util;
+use crate::util;
 
 #[test]
 fn segmentation_image_roundtrip() {

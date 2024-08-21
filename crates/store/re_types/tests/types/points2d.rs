@@ -1,13 +1,15 @@
 use std::collections::HashMap;
 
-use re_types::{archetypes::Points3D, components, Archetype as _, AsComponents as _};
+use re_types::{archetypes::Points2D, components, Archetype as _, AsComponents as _};
+
+use crate::util;
 
 #[test]
 fn roundtrip() {
-    let expected = Points3D {
+    let expected = Points2D {
         positions: vec![
-            components::Position3D::new(1.0, 2.0, 3.0), //
-            components::Position3D::new(4.0, 5.0, 6.0),
+            components::Position2D::new(1.0, 2.0), //
+            components::Position2D::new(3.0, 4.0),
         ],
         radii: Some(vec![
             components::Radius::from(42.0), //
@@ -21,6 +23,7 @@ fn roundtrip() {
             "hello".into(),  //
             "friend".into(), //
         ]),
+        draw_order: Some(components::DrawOrder(300.0.into())),
         class_ids: Some(vec![
             components::ClassId::from(126), //
             components::ClassId::from(127), //
@@ -31,19 +34,21 @@ fn roundtrip() {
         ]),
     };
 
-    let arch = Points3D::new([(1.0, 2.0, 3.0), (4.0, 5.0, 6.0)])
+    let arch = Points2D::new([(1.0, 2.0), (3.0, 4.0)])
         .with_radii([42.0, 43.0])
         .with_colors([0xAA0000CC, 0x00BB00DD])
         .with_labels(["hello", "friend"])
+        .with_draw_order(300.0)
         .with_class_ids([126, 127])
         .with_keypoint_ids([2, 3]);
     similar_asserts::assert_eq!(expected, arch);
 
     let expected_extensions: HashMap<_, _> = [
-        ("points", vec!["rerun.components.Position3D"]),
+        ("points", vec!["rerun.components.Position2D"]),
         ("radii", vec!["rerun.components.Radius"]),
         ("colors", vec!["rerun.components.Color"]),
-        ("labels", vec!["rerun.components.Text"]),
+        ("labels", vec!["rerun.components.Label"]),
+        ("draw_order", vec!["rerun.components.DrawOrder"]),
         ("class_ids", vec!["rerun.components.ClassId"]),
         ("keypoint_ids", vec!["rerun.components.KeypointId"]),
     ]
@@ -67,8 +72,6 @@ fn roundtrip() {
         }
     }
 
-    let deserialized = Points3D::from_arrow(serialized).unwrap();
+    let deserialized = Points2D::from_arrow(serialized).unwrap();
     similar_asserts::assert_eq!(expected, deserialized);
 }
-
-mod util;
