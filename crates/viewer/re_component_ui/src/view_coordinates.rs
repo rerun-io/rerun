@@ -6,7 +6,7 @@ pub fn edit_or_view_view_coordinates(
     ui: &mut egui::Ui,
     value: &mut MaybeMutRef<'_, ViewCoordinates>,
 ) -> egui::Response {
-    // Don't allow editing view coordinates for now.
-    // It's overrides are likely not always correctly queried.
+    // TODO(#6743): Don't allow editing view coordinates for now.
+    // Its overrides are likely not always correctly queried.
     UiLayout::List.data_label(ui, value.as_ref().describe())
 }

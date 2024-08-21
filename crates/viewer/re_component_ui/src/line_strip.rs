@@ -1,4 +1,4 @@
-use re_format::format_f32;
+use re_format::{format_f32, format_uint};
 use re_types::components::{LineStrip2D, LineStrip3D};
 use re_viewer_context::{MaybeMutRef, UiLayout, ViewerContext};
 
@@ -10,7 +10,10 @@ fn singleline_view_line_strip_3d(
     ui: &mut egui::Ui,
     value: &mut MaybeMutRef<'_, LineStrip3D>,
 ) -> egui::Response {
-    UiLayout::List.label(ui, format!("{} positions", value.as_ref().0.len()))
+    UiLayout::List.label(
+        ui,
+        format!("{} positions", format_uint(value.as_ref().0.len())),
+    )
 }
 
 fn multiline_view_line_strip_3d(
@@ -69,7 +72,10 @@ fn singleline_view_line_strip_2d(
     ui: &mut egui::Ui,
     value: &mut MaybeMutRef<'_, LineStrip2D>,
 ) -> egui::Response {
-    UiLayout::List.label(ui, format!("{} positions", value.as_ref().0.len()))
+    UiLayout::List.label(
+        ui,
+        format!("{} positions", format_uint(value.as_ref().0.len())),
+    )
 }
 
 fn multiline_view_line_strip_2d(
