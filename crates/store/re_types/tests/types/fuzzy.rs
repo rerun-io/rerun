@@ -11,6 +11,8 @@ use re_types::{
     Archetype as _, AsComponents as _,
 };
 
+use crate::util;
+
 #[test]
 fn roundtrip() {
     let fuzzy1 = components::AffixFuzzer1(datatypes::AffixFuzzer1 {
@@ -440,5 +442,3 @@ fn roundtrip() {
         similar_asserts::assert_eq!(arch, deserialized);
     }
 }
-
-mod util;

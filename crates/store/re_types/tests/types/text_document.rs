@@ -4,6 +4,8 @@ use re_types::{
     archetypes::TextDocument, components::MediaType, Archetype as _, AsComponents as _,
 };
 
+use crate::util;
+
 #[test]
 fn roundtrip() {
     let expected = TextDocument {
@@ -42,5 +44,3 @@ fn roundtrip() {
     let deserialized = TextDocument::from_arrow(serialized).unwrap();
     similar_asserts::assert_eq!(expected, deserialized);
 }
-
-mod util;

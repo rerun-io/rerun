@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use re_types::{archetypes::Pinhole, components, Archetype as _, AsComponents as _};
 
-mod util;
+use crate::util;
 
 #[test]
 fn roundtrip() {

@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use re_types::{archetypes::Image, datatypes::ColorModel, Archetype as _, AsComponents as _};
 
-mod util;
+use crate::util;
 
 #[test]
 fn image_roundtrip() {

@@ -7,6 +7,8 @@ use re_types::{
     Archetype as _, AsComponents as _,
 };
 
+use crate::util;
+
 #[test]
 fn roundtrip() {
     let expected = components::AnnotationContext::from([
@@ -44,5 +46,3 @@ fn roundtrip() {
     let deserialized = AnnotationContext::from_arrow(serialized).unwrap();
     similar_asserts::assert_eq!(arch, deserialized);
 }
-
-mod util;

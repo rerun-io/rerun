@@ -5,6 +5,8 @@ use re_types::{
     AsComponents as _,
 };
 
+use crate::util;
+
 #[test]
 fn roundtrip() {
     let expected = ViewCoordinates {
@@ -94,5 +96,3 @@ fn view_coordinates() {
         }
     }
 }
-
-mod util;

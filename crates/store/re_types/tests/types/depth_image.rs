@@ -7,7 +7,7 @@ use re_types::{
     Archetype as _, AsComponents as _,
 };
 
-mod util;
+use crate::util;
 
 #[test]
 fn depth_image_roundtrip() {

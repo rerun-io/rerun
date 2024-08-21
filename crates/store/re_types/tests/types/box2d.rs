@@ -2,6 +2,8 @@ use std::collections::HashMap;
 
 use re_types::{archetypes::Boxes2D, components, Archetype as _, AsComponents as _};
 
+use crate::util;
+
 #[test]
 fn roundtrip() {
     let expected = Boxes2D {
@@ -101,5 +103,3 @@ fn from_mins_and_sizes() {
     let from_half_sizes = Boxes2D::from_half_sizes([(1., 2.)]).with_centers([(0., 1.)]);
     similar_asserts::assert_eq!(from_half_sizes, from_mins_and_sizes);
 }
-
-mod util;

@@ -113,9 +113,3 @@ rayon.workspace = true
 
 [package.metadata.cargo-machete]
 ignored = ["rayon", "re_build_tools", "re_types_builder"]
-
-
-[[test]]
-name = "fuzzy"
-path = "tests/fuzzy.rs"
-required-features = ["testing"]

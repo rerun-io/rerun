@@ -40,5 +40,3 @@ fn roundtrip() {
     let deserialized = Asset3D::from_arrow(serialized).unwrap();
     similar_asserts::assert_eq!(expected, deserialized);
 }
-
-mod util;

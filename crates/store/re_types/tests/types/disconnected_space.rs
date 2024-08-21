@@ -1,25 +1,34 @@
 use std::collections::HashMap;
 
-use re_types::{archetypes::Clear, Archetype as _, AsComponents as _};
+use re_types::{archetypes::DisconnectedSpace, Archetype as _, AsComponents as _};
+
+use crate::util;
 
 #[test]
 fn roundtrip() {
     let all_expected = [
-        Clear {
-            is_recursive: true.into(),
+        DisconnectedSpace {
+            disconnected_space: true.into(),
         }, //
-        Clear {
-            is_recursive: false.into(),
+        DisconnectedSpace {
+            disconnected_space: false.into(),
         },
     ];
 
     let all_arch = [
-        Clear::recursive(), //
-        Clear::flat(),      //
+        DisconnectedSpace::new(true),  //
+        DisconnectedSpace::new(false), //
     ];
 
     let expected_extensions: HashMap<_, _> = [
-        ("recursive", vec!["rerun.components.Clear"]), //
+        (
+            "disconnected_space",
+            vec!["rerun.components.DisconnectedSpace"],
+        ), //
+        (
+            "disconnected_space",
+            vec!["rerun.components.DisconnectedSpace"],
+        ), //
     ]
     .into();
 
@@ -44,9 +53,7 @@ fn roundtrip() {
             }
         }
 
-        let deserialized = Clear::from_arrow(serialized).unwrap();
+        let deserialized = DisconnectedSpace::from_arrow(serialized).unwrap();
         similar_asserts::assert_eq!(expected, deserialized);
     }
 }
-
-mod util;
