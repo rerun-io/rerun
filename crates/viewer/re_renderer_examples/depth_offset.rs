@@ -7,7 +7,7 @@
 //! Press arrow up/down to increase/decrease the distance of the camera to the z==0 plane in tandem with the scale of the rectangles.
 //! Press arrow left/right to increase/decrease the near plane distance.
 
-// TODO(#3408): remove unwrap()
+// TODO(#6330): remove unwrap()
 #![allow(clippy::unwrap_used)]
 
 use re_renderer::Hsva;

@@ -3,7 +3,7 @@
 //! It is easiest to call this using `just codegen`,
 //! which will set up the necessary tools.
 
-// TODO(#3408): remove unwrap()
+// TODO(#6330): remove unwrap()
 #![allow(clippy::unwrap_used)]
 
 use re_build_tools::{

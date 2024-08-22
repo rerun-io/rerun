@@ -69,7 +69,7 @@ pub fn ingest(ctx: &Context, exclude_crates: &[String]) -> anyhow::Result<()> {
         }
 
         let path = rustdoc_json::Builder::default()
-            .toolchain("nightly")
+            .toolchain("nightly-2024-08-10")
             .all_features(true)
             .quiet(true)
             .manifest_path(&pkg.manifest_path)
@@ -276,7 +276,7 @@ impl<'a> Visitor<'a> {
             }
             I::Function(_) => self.push(pub_in_priv, id, ItemKind::Function),
             I::TypeAlias(_) => self.push(pub_in_priv, id, ItemKind::Type),
-            I::Constant(_) => self.push(pub_in_priv, id, ItemKind::Constant),
+            I::Constant { .. } => self.push(pub_in_priv, id, ItemKind::Constant),
             I::Macro(_) => self.push(pub_in_priv, id, ItemKind::Macro),
 
             I::AssocConst { .. }
@@ -286,7 +286,6 @@ impl<'a> Visitor<'a> {
             | I::Union(_)
             | I::ExternCrate { .. }
             | I::TraitAlias(_)
-            | I::OpaqueTy(_)
             | I::Static(_)
             | I::ForeignType
             | I::ProcMacro(_)
@@ -530,7 +529,7 @@ impl ItemKindExt for Item {
             ItemEnum::Function(_) => Some(ItemKind::Function),
             ItemEnum::Trait(_) => Some(ItemKind::Trait),
             ItemEnum::TypeAlias(_) => Some(ItemKind::Type),
-            ItemEnum::Constant(_) => Some(ItemKind::Constant),
+            ItemEnum::Constant { .. } => Some(ItemKind::Constant),
             ItemEnum::Macro(_) => Some(ItemKind::Macro),
             _ => None,
         }

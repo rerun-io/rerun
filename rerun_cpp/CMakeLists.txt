@@ -153,8 +153,12 @@ install(TARGETS rerun_sdk
     INCLUDES DESTINATION include
 )
 
+# Some public headers are shared by both the C++ and C sdk, so we install
+# them with the C++ headers also if RERUN_INSTALL_RERUN_C is OFF
+set(RERUN_PATTERN_HEADER_SHARED_BETWEEN_CXX_AND_C "sdk_info.h")
+
 # Add all C++ headers to the install.
-install(DIRECTORY "${RERUN_CPP_SOURCE_DIR}/" TYPE INCLUDE FILES_MATCHING PATTERN "*.hpp")
+install(DIRECTORY "${RERUN_CPP_SOURCE_DIR}/" TYPE INCLUDE FILES_MATCHING PATTERN "*.hpp" PATTERN ${RERUN_PATTERN_HEADER_SHARED_BETWEEN_CXX_AND_C})
 
 option(RERUN_INSTALL_RERUN_C "Install rerun_c file." ON)
 
@@ -168,7 +172,7 @@ endif()
 if(RERUN_INSTALL_RERUN_C)
     # CMake doesn't allow installing imported targets which is why we need to add this as a file.
     get_target_property(RERUN_C_LIB_LOCATION rerun_c IMPORTED_LOCATION)
-    install(DIRECTORY "${RERUN_CPP_SOURCE_DIR}/" TYPE INCLUDE FILES_MATCHING PATTERN "*.h")
+    install(DIRECTORY "${RERUN_CPP_SOURCE_DIR}/" TYPE INCLUDE FILES_MATCHING PATTERN "*.h" PATTERN ${RERUN_PATTERN_HEADER_SHARED_BETWEEN_CXX_AND_C} EXCLUDE)
     install(FILES ${RERUN_C_LIB_LOCATION} DESTINATION lib)
 endif()
 

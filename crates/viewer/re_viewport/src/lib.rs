@@ -2,7 +2,7 @@
 //!
 //! This crate provides the central panel that contains all space views.
 
-// TODO(#3408): remove unwrap()
+// TODO(#6330): remove unwrap()
 #![allow(clippy::unwrap_used)]
 
 mod auto_layout;

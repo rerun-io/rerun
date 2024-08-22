@@ -2,7 +2,7 @@
 //!
 //! On the left is a 2D view, on the right a 3D view of the same scene.
 
-// TODO(#3408): remove unwrap()
+// TODO(#6330): remove unwrap()
 #![allow(clippy::unwrap_used)]
 
 use itertools::Itertools as _;

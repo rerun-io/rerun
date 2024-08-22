@@ -2,7 +2,7 @@
 //!
 //! A Space View dedicated to visualizing tensors with arbitrary dimensionality.
 
-// TODO(#3408): remove unwrap()
+// TODO(#6330): remove unwrap()
 #![allow(clippy::unwrap_used)]
 
 mod dimension_mapping;

@@ -29,7 +29,6 @@ pub struct ImageInfo {
 
     /// Primarily for depth images atm
     pub colormap: Option<Colormap>,
-    // TODO(#6386): `PixelFormat` and `ColorModel`
 }
 
 impl ImageInfo {
