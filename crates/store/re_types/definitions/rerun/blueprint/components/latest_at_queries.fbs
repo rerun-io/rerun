@@ -1,7 +1,7 @@
 
 namespace rerun.blueprint.components;
 
-/// Configuration for latest at queries.
+/// Configuration for latest-at queries.
 ///
 /// Note: configuration as saved on a per-timeline basis.
 table LatestAtQueries (
