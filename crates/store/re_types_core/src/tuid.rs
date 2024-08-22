@@ -64,7 +64,8 @@ impl Loggable for Tuid {
         ];
         let validity = None;
 
-        Ok(StructArray::new(Self::arrow_datatype(), values, validity).boxed())
+        // TODO(cmc): We use the extended type here because we rely on it for formatting.
+        Ok(StructArray::new(Self::extended_arrow_datatype(), values, validity).boxed())
     }
 
     fn from_arrow(array: &dyn ::arrow2::array::Array) -> crate::DeserializationResult<Vec<Self>> {
