@@ -266,8 +266,8 @@ impl App {
 
         let (command_sender, command_receiver) = command_channel();
 
-        let mut component_ui_registry = re_data_ui::create_component_ui_registry();
-        re_component_ui::register_editors(&mut component_ui_registry);
+        let mut component_ui_registry = re_component_ui::create_component_ui_registry();
+        re_data_ui::register_component_uis(&mut component_ui_registry);
 
         // TODO(emilk): `Instant::MIN` when we have our own `Instant` that supports it.;
         let long_time_ago = web_time::Instant::now()

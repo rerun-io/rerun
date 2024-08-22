@@ -168,7 +168,7 @@ bitflags::bitflags! {
     }
 }
 
-type ComponentUiCallback = Box<
+type LegacyDisplayComponentUiCallback = Box<
     dyn Fn(
             &ViewerContext<'_>,
             &mut egui::Ui,
@@ -209,10 +209,25 @@ type UntypedComponentEditOrViewCallback = Box<
 /// How to display components in a Ui.
 pub struct ComponentUiRegistry {
     /// Ui method to use if there was no specific one registered for a component.
-    fallback_ui: ComponentUiCallback,
+    fallback_ui: LegacyDisplayComponentUiCallback,
 
-    /// Pure viewers
-    component_uis: BTreeMap<ComponentName, ComponentUiCallback>,
+    /// Older component uis - TODO(#6661): we're in the process of removing these.
+    ///
+    /// The main issue with these is that they take a lot of parameters:
+    /// Not only does it make them more verbose to implement,
+    /// it also makes them on overly flexible (they know a lot about the context of a component)
+    /// on one hand and too inflexible on the other - these additional parameters are not always be meaningful in all contexts.
+    /// -> They are unsuitable for interacting with blueprint overrides & defaults,
+    /// as there are several entity paths associated with single component
+    /// (the blueprint entity path where the component is stored and the entity path in the store that they apply to).
+    ///
+    /// Other issues:
+    /// * duality of edit & view:
+    /// In this old system we didn't take into account that most types should also be editable in the UI.
+    /// This makes implementations of view & edit overly asymmetric when instead they are often rather similar.
+    /// * unawareness of `ListItem` context:
+    /// We often want to display components as list items and in the older callbacks we don't know whether we're in a list item or not.
+    legacy_display_component_uis: BTreeMap<ComponentName, LegacyDisplayComponentUiCallback>,
 
     /// Implements viewing and probably editing
     component_singleline_edit_or_view: BTreeMap<ComponentName, UntypedComponentEditOrViewCallback>,
@@ -222,10 +237,10 @@ pub struct ComponentUiRegistry {
 }
 
 impl ComponentUiRegistry {
-    pub fn new(fallback_ui: ComponentUiCallback) -> Self {
+    pub fn new(fallback_ui: LegacyDisplayComponentUiCallback) -> Self {
         Self {
             fallback_ui,
-            component_uis: Default::default(),
+            legacy_display_component_uis: Default::default(),
             component_singleline_edit_or_view: Default::default(),
             component_multiline_edit_or_view: Default::default(),
         }
@@ -234,8 +249,12 @@ impl ComponentUiRegistry {
     /// Registers how to show a given component in the UI.
     ///
     /// If the component has already a display UI registered, the new callback replaces the old one.
-    pub fn add_display_ui(&mut self, name: ComponentName, callback: ComponentUiCallback) {
-        self.component_uis.insert(name, callback);
+    pub fn add_legacy_display_ui(
+        &mut self,
+        name: ComponentName,
+        callback: LegacyDisplayComponentUiCallback,
+    ) {
+        self.legacy_display_component_uis.insert(name, callback);
     }
 
     /// Registers how to view, and maybe edit, a given component in the UI in a single list item line.
@@ -342,7 +361,7 @@ impl ComponentUiRegistry {
     pub fn registered_ui_types(&self, name: ComponentName) -> ComponentUiTypes {
         let mut types = ComponentUiTypes::empty();
 
-        if self.component_uis.contains_key(&name) {
+        if self.legacy_display_component_uis.contains_key(&name) {
             types |= ComponentUiTypes::DisplayUi;
         }
         if self.component_singleline_edit_or_view.contains_key(&name) {
@@ -434,7 +453,7 @@ impl ComponentUiRegistry {
         }
 
         // Prefer the versatile UI callback if there is one.
-        if let Some(ui_callback) = self.component_uis.get(&component_name) {
+        if let Some(ui_callback) = self.legacy_display_component_uis.get(&component_name) {
             (*ui_callback)(
                 ctx,
                 ui,
