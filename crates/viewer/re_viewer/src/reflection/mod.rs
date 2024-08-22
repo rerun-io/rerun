@@ -768,7 +768,7 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                     docstring_md : "Kind of query: latest-at or range.", },
                     ArchetypeFieldReflection { component_name :
                     "rerun.blueprint.components.LatestAtQueries".into(), display_name :
-                    "Latest-at queries", docstring_md :
+                    "Latest at queries", docstring_md :
                     "Configuration for latest-at queries.\n\nNote: configuration as saved on a per-timeline basis.",
                     }, ArchetypeFieldReflection { component_name :
                     "rerun.blueprint.components.TimeRangeQueries".into(), display_name :
