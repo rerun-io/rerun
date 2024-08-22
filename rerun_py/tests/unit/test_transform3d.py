@@ -77,7 +77,6 @@ def test_transform3d() -> None:
         "childfromparent",
     ]
 
-    # TODO(#6831): repopulate this list with all transform variants
     all_arrays = itertools.zip_longest(
         VEC_3D_INPUT + [None],
         rotation_axis_angle,

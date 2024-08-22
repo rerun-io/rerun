@@ -45,6 +45,5 @@ table Transform3D (
   ///
   /// The length is interpreted in the local coordinate system of the transform.
   /// If the transform is scaled, the axes will be scaled accordingly.
-  // TODO(#6831): Should be an array as well.
   axis_length: rerun.components.AxisLength ("attr.rerun.component_optional", nullable, order: 2000);
 }
