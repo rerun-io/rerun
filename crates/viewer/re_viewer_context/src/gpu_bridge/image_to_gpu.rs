@@ -114,7 +114,7 @@ fn color_image_to_gpu(
 
     let color_mapper = if let Some(shader_decoding) = shader_decoding {
         match shader_decoding {
-            // We only have 1D color mapps, therefore chroma downsampled and BGR formats can't have color maps.
+            // We only have 1D color maps, therefore chroma downsampled and BGR formats can't have color maps.
             ShaderDecoding::Bgr | ShaderDecoding::Nv12 | ShaderDecoding::Yuy2 => {
                 ColorMapper::OffRGB
             }
@@ -280,20 +280,29 @@ pub fn texture_creation_desc_from_color_image<'a>(
                 pad_rgb_to_rgba(&image.buffer, u8::MAX).into(),
                 TextureFormat::Rgba8Unorm,
             ),
-
-            (ColorModel::BGR, ChannelDatatype::U8) => {
-                (
-                    pad_rgb_to_rgba(&image.buffer, u8::MAX).into(),
-                    TextureFormat::Bgra8Unorm,
-                ) // See also [`required_shader_decode`].
-            }
-
             (ColorModel::RGBA, ChannelDatatype::U8) => {
                 (cast_slice_to_cow(&image.buffer), TextureFormat::Rgba8Unorm)
             }
 
+            // Make use of wgpu's BGR(A)8 formats.
+            //
+            // From the pov of our on-the-fly decoding textured rect shader this is just a strange special case
+            // given that it already has to deal with other BGR(A) formats.
+            //
+            // However, we have other places where we don't have the luxury of having a shader that can do the decoding for us.
+            // In those cases we'd like to support as many formats as possible without decoding.
+            //
+            // (in some hopefully not too far future, re_renderer will have an internal conversion pipeline
+            // that injects on-the-fly texture conversion from source formats before the consumer of a given texture is run
+            // and caches the result alongside with the source data)
+            //
+            // See also [`required_shader_decode`] which lists this case as a format that does not need to be decoded.
+            (ColorModel::BGR, ChannelDatatype::U8) => (
+                pad_rgb_to_rgba(&image.buffer, u8::MAX).into(),
+                TextureFormat::Bgra8Unorm,
+            ),
             (ColorModel::BGRA, ChannelDatatype::U8) => {
-                (cast_slice_to_cow(&image.buffer), TextureFormat::Bgra8Unorm) // See also [`required_shader_decode`].
+                (cast_slice_to_cow(&image.buffer), TextureFormat::Bgra8Unorm)
             }
 
             _ => {
