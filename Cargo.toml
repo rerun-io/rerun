@@ -496,6 +496,7 @@ missing_assert_message = "allow"
 missing_errors_doc = "allow"
 
 [patch.crates-io]
+arrow2 = { path = "/home/cmc/dev/rerun-io/re_arrow2", package = "re_arrow2" }
 # Try to avoid patching crates! It prevents us from publishing the crates on crates.io.
 # If you do patch always prefer to patch to a commit on the trunk of the upstream repo.
 # If that is not possible, patch to a branch that has a PR open on the upstream repo.
