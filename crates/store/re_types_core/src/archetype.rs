@@ -221,25 +221,13 @@ impl<A: Archetype> crate::LoggableBatch for GenericIndicatorComponent<A> {
     }
 
     #[inline]
-    fn arrow_field(&self) -> arrow2::datatypes::Field {
-        let name = self.name().to_string();
-        arrow2::datatypes::Field::new(
-            name.clone(),
-            arrow2::datatypes::DataType::Extension(
-                name,
-                Arc::new(arrow2::datatypes::DataType::Null),
-                None,
-            ),
-            false,
-        )
-    }
-
-    #[inline]
     fn to_arrow(&self) -> SerializationResult<Box<dyn arrow2::array::Array>> {
-        Ok(
-            arrow2::array::NullArray::new(arrow2::datatypes::DataType::Null, self.num_instances())
-                .boxed(),
-        )
+        let datatype = arrow2::datatypes::DataType::Extension(
+            self.name().to_string(),
+            Arc::new(arrow2::datatypes::DataType::Null),
+            None,
+        );
+        Ok(arrow2::array::NullArray::new(datatype, self.num_instances()).boxed())
     }
 }
 
@@ -279,25 +267,13 @@ impl crate::LoggableBatch for NamedIndicatorComponent {
     }
 
     #[inline]
-    fn arrow_field(&self) -> arrow2::datatypes::Field {
-        let name = self.name().to_string();
-        arrow2::datatypes::Field::new(
-            name.clone(),
-            arrow2::datatypes::DataType::Extension(
-                name,
-                Arc::new(arrow2::datatypes::DataType::Null),
-                None,
-            ),
-            false,
-        )
-    }
-
-    #[inline]
     fn to_arrow(&self) -> SerializationResult<Box<dyn arrow2::array::Array>> {
-        Ok(
-            arrow2::array::NullArray::new(arrow2::datatypes::DataType::Null, self.num_instances())
-                .boxed(),
-        )
+        let datatype = arrow2::datatypes::DataType::Extension(
+            self.name().to_string(),
+            Arc::new(arrow2::datatypes::DataType::Null),
+            None,
+        );
+        Ok(arrow2::array::NullArray::new(datatype, self.num_instances()).boxed())
     }
 }
 
