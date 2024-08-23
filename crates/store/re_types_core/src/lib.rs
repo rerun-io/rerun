@@ -9,7 +9,7 @@
 //! When multiple instances of a [`Component`] are put together in an array, they yield a
 //! [`ComponentBatch`]: the atomic unit of (de)serialization.
 //!
-//! Internally, [`Component`]s are implemented using many different [`Datatype`]s.
+//! Internally, [`Component`]s are implemented using many different [`Loggable`]s.
 //!
 //! ## Feature flags
 #![doc = document_features::document_features!()]
@@ -95,8 +95,8 @@ pub use self::{
     },
     arrow_buffer::ArrowBuffer,
     arrow_string::ArrowString,
-    loggable::{Component, ComponentName, ComponentNameSet, Datatype, DatatypeName, Loggable},
-    loggable_batch::{ComponentBatch, DatatypeBatch, LoggableBatch, MaybeOwnedComponentBatch},
+    loggable::{Component, ComponentName, ComponentNameSet, DatatypeName, Loggable},
+    loggable_batch::{ComponentBatch, LoggableBatch, MaybeOwnedComponentBatch},
     result::{
         DeserializationError, DeserializationResult, ResultExt, SerializationError,
         SerializationResult, _Backtrace,
@@ -117,7 +117,7 @@ pub mod archetypes;
 /// There are also re-exported by `re_types`.
 pub mod components;
 
-/// Fundamental [`Datatype`]s that are implemented in `re_types_core` directly for convenience and
+/// Fundamental datatypes that are implemented in `re_types_core` directly for convenience and
 /// dependency optimization.
 ///
 /// There are also re-exported by `re_types`.
