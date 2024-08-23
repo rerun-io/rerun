@@ -1,15 +1,13 @@
 mod mp4;
 pub use mp4::load_mp4;
+use ordered_float::OrderedFloat;
 
 #[derive(Clone)]
 pub struct VideoData {
     pub config: Config,
 
-    /// How many time units per second there are.
-    pub timescale: u64,
-
-    /// Duration of the video, in time units.
-    pub duration: u64,
+    /// Duration of the video, in milliseconds.
+    pub duration: TimeMs,
 
     /// We split video into segments, each beginning with a key frame,
     /// followed by any number of delta frames.
@@ -21,8 +19,8 @@ pub struct VideoData {
 
 #[derive(Clone)]
 pub struct Segment {
-    /// Time of the first sample in this segment, in time units.
-    pub timestamp: u64,
+    /// Time of the first sample in this segment, in milliseconds.
+    pub timestamp: TimeMs,
 
     /// List of samples contained in this segment.
     /// At least one sample per segment is guaranteed,
@@ -32,8 +30,11 @@ pub struct Segment {
 
 #[derive(Debug, Clone)]
 pub struct Sample {
-    /// Time at which this sample appears, in time units.
-    pub timestamp: u64,
+    /// Time at which this sample appears, in milliseconds.
+    pub timestamp: TimeMs,
+
+    /// Duration of the sample, in milliseconds.
+    pub duration: TimeMs,
 
     /// Offset into [`Video::data`]
     pub byte_offset: u32,
@@ -55,6 +56,25 @@ pub struct Config {
 
     /// Natural width of the video.
     pub coded_width: u16,
+}
+
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+pub struct TimeMs(OrderedFloat<f64>);
+
+impl TimeMs {
+    pub fn new(ms: f64) -> Self {
+        Self(OrderedFloat(ms))
+    }
+
+    pub fn as_f64(&self) -> f64 {
+        self.0.into_inner()
+    }
+}
+
+impl std::fmt::Debug for TimeMs {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        std::fmt::Debug::fmt(&self.0, f)
+    }
 }
 
 #[derive(Debug)]

@@ -3159,7 +3159,6 @@ dependencies = [
 [[package]]
 name = "mp4"
 version = "0.14.0"
-source = "git+https://github.com/rerun-io/mp4?rev=fff4559d2a8a1aaf2d8aa99dc52e941f896d3090#fff4559d2a8a1aaf2d8aa99dc52e941f896d3090"
 dependencies = [
  "byteorder",
  "bytes",
@@ -5296,6 +5295,7 @@ name = "re_video"
 version = "0.19.0-alpha.1+dev"
 dependencies = [
  "mp4",
+ "ordered-float",
 ]
 
 [[package]]

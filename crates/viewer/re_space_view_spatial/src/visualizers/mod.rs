@@ -27,8 +27,8 @@ pub use images::ImageVisualizer;
 pub use segmentation_images::SegmentationImageVisualizer;
 pub use transform3d_arrows::{add_axis_arrows, AxisLengthDetector, Transform3DArrowsVisualizer};
 pub use utilities::{
-    entity_iterator, process_labels_3d, textured_rect_from_image, SpatialViewVisualizerData,
-    UiLabel, UiLabelTarget,
+    bounding_box_for_textured_rect, entity_iterator, process_labels_3d, textured_rect_from_image,
+    SpatialViewVisualizerData, UiLabel, UiLabelTarget,
 };
 
 // ---
@@ -86,6 +86,7 @@ pub fn register_2d_spatial_visualizers(
     system_registry.register_visualizer::<segmentation_images::SegmentationImageVisualizer>()?;
     system_registry.register_visualizer::<transform3d_arrows::AxisLengthDetector>()?;
     system_registry.register_visualizer::<transform3d_arrows::Transform3DArrowsVisualizer>()?;
+    system_registry.register_visualizer::<videos::AssetVideoVisualizer>()?;
     Ok(())
 }
 
@@ -110,10 +111,12 @@ pub fn register_3d_spatial_visualizers(
     system_registry.register_visualizer::<ellipsoids::Ellipsoids3DVisualizer>()?;
     system_registry.register_visualizer::<transform3d_arrows::AxisLengthDetector>()?;
     system_registry.register_visualizer::<transform3d_arrows::Transform3DArrowsVisualizer>()?;
+    system_registry.register_visualizer::<videos::AssetVideoVisualizer>()?;
     Ok(())
 }
 
 /// List of all visualizers that read [`re_types::components::DrawOrder`].
+// TODO(jan, andreas): consider adding DrawOrder to video
 pub fn visualizers_processing_draw_order() -> impl Iterator<Item = ViewSystemIdentifier> {
     [
         arrows2d::Arrows2DVisualizer::identifier(),

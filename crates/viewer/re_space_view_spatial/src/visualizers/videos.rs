@@ -1,56 +1,65 @@
-use itertools::Itertools as _;
-
-use re_space_view::HybridResults;
-use re_types::{
-    archetypes::Image,
-    components::{DrawOrder, ImageBuffer, ImageFormat, Opacity},
-    image::ImageKind,
-    Loggable as _,
-};
+use glam::Vec3;
+use re_log_types::hash::Hash64;
+use re_log_types::TimeType;
+use re_renderer::renderer::ColormappedTexture;
+use re_renderer::renderer::RectangleOptions;
+use re_renderer::renderer::TextureFilterMag;
+use re_renderer::renderer::TextureFilterMin;
+use re_renderer::renderer::TexturedRect;
+use re_renderer::RenderContext;
+use re_space_view::TimeKey;
+use re_types::archetypes::AssetVideo;
+use re_types::components::Blob;
+use re_types::components::MediaType;
+use re_types::ArrowBuffer;
+use re_types::ArrowString;
+use re_types::Loggable as _;
+use re_viewer_context::SpaceViewClass as _;
 use re_viewer_context::{
-    ApplicableEntities, IdentifiedViewSystem, ImageInfo, QueryContext,
-    SpaceViewSystemExecutionError, TypedComponentFallbackProvider, ViewContext,
-    ViewContextCollection, ViewQuery, VisualizableEntities, VisualizableFilterContext,
+    ApplicableEntities, IdentifiedViewSystem, QueryContext, SpaceViewSystemExecutionError,
+    ViewContext, ViewContextCollection, ViewQuery, VisualizableEntities, VisualizableFilterContext,
     VisualizerQueryInfo, VisualizerSystem,
 };
 
+use crate::video_cache::VideoCache;
+use crate::video_cache::VideoCacheKey;
+use crate::visualizers::entity_iterator::iter_buffer;
+use crate::SpatialSpaceView2D;
 use crate::{
-    contexts::SpatialSceneEntityContext,
-    view_kind::SpatialSpaceViewKind,
-    visualizers::{filter_visualizable_2d_entities, textured_rect_from_image},
-    PickableImageRect,
+    contexts::SpatialSceneEntityContext, view_kind::SpatialSpaceViewKind,
+    visualizers::filter_visualizable_2d_entities,
 };
 
+use super::bounding_box_for_textured_rect;
 use super::{entity_iterator::process_archetype, SpatialViewVisualizerData};
 
-pub struct VideoVisualizer {
+pub struct AssetVideoVisualizer {
     pub data: SpatialViewVisualizerData,
-    pub images: Vec<PickableImageRect>,
 }
 
-impl Default for VideoVisualizer {
+struct AssetVideoComponentData {
+    index: TimeKey,
+    blob: ArrowBuffer<u8>,
+    media_type: Option<ArrowString>,
+}
+
+impl Default for AssetVideoVisualizer {
     fn default() -> Self {
         Self {
             data: SpatialViewVisualizerData::new(Some(SpatialSpaceViewKind::TwoD)),
-            images: Vec::new(),
         }
     }
 }
 
-struct ImageComponentData {
-    image: ImageInfo,
-    opacity: Option<Opacity>,
-}
-
-impl IdentifiedViewSystem for VideoVisualizer {
+impl IdentifiedViewSystem for AssetVideoVisualizer {
     fn identifier() -> re_viewer_context::ViewSystemIdentifier {
-        "Image".into()
+        "Video".into()
     }
 }
 
-impl VisualizerSystem for VideoVisualizer {
+impl VisualizerSystem for AssetVideoVisualizer {
     fn visualizer_query_info(&self) -> VisualizerQueryInfo {
-        VisualizerQueryInfo::from_archetype::<Image>()
+        VisualizerQueryInfo::from_archetype::<AssetVideo>()
     }
 
     fn filter_visualizable_entities(
@@ -72,38 +81,56 @@ impl VisualizerSystem for VideoVisualizer {
             return Err(SpaceViewSystemExecutionError::NoRenderContextError);
         };
 
-        process_archetype::<Self, Image, _>(
+        let mut rectangles = Vec::new();
+
+        process_archetype::<Self, AssetVideo, _>(
             ctx,
             view_query,
             context_systems,
             |ctx, spatial_ctx, results| {
-                self.process_image(ctx, results, spatial_ctx);
+                use re_space_view::RangeResultsExt as _;
+                let Some(all_blob_chunks) = results.get_required_chunks(&Blob::name()) else {
+                    return Ok(());
+                };
+
+                let timeline = ctx.query.timeline();
+                let all_blobs_indexed = iter_buffer::<u8>(&all_blob_chunks, timeline, Blob::name());
+                let all_media_types = results.iter_as(timeline, MediaType::name());
+
+                let data = re_query::range_zip_1x1(all_blobs_indexed, all_media_types.string())
+                    .filter_map(|(index, blobs, media_types)| {
+                        blobs.first().map(|blob| AssetVideoComponentData {
+                            index,
+                            blob: blob.clone(),
+                            media_type: media_types
+                                .and_then(|media_types| media_types.first().cloned()),
+                        })
+                    });
+
+                let current_time_nanoseconds = match timeline.typ() {
+                    TimeType::Time => view_query.latest_at.as_f64(),
+                    // TODO(jan): scale by ticks per second
+                    #[allow(clippy::match_same_arms)]
+                    TimeType::Sequence => view_query.latest_at.as_f64(),
+                };
+                let current_time_seconds = current_time_nanoseconds / 1e9;
+
+                self.process_data(
+                    ctx,
+                    render_ctx,
+                    &mut rectangles,
+                    spatial_ctx,
+                    data,
+                    current_time_seconds,
+                    results.query_result_hash(),
+                );
+
                 Ok(())
             },
         )?;
 
-        // TODO(#702): draw order is translated to depth offset, which works fine for opaque images,
-        // but for everything with transparency, actual drawing order is still important.
-        // We mitigate this a bit by at least sorting the images within each other.
-        // Sorting of Images vs DepthImage vs SegmentationImage uses the fact that
-        // visualizers are executed in the order of their identifiers.
-        // -> The draw order is always DepthImage then Image then SegmentationImage,
-        //    which happens to be exactly what we want 🙈
-        self.images.sort_by_key(|image| {
-            (
-                image.textured_rect.options.depth_offset,
-                egui::emath::OrderedFloat(image.textured_rect.options.multiplicative_tint.a()),
-            )
-        });
-
         let mut draw_data_list = Vec::new();
 
-        // TODO(wumpf): Can we avoid this copy, maybe let DrawData take an iterator?
-        let rectangles = self
-            .images
-            .iter()
-            .map(|image| image.textured_rect.clone())
-            .collect_vec();
         match re_renderer::renderer::RectangleDrawData::new(render_ctx, &rectangles) {
             Ok(draw_data) => {
                 draw_data_list.push(draw_data.into());
@@ -129,91 +156,81 @@ impl VisualizerSystem for VideoVisualizer {
     }
 }
 
-impl VideoVisualizer {
-    fn process_image(
+// NOTE: Do not put profile scopes in these methods. They are called for all entities and all
+// timestamps within a time range -- it's _a lot_.
+impl AssetVideoVisualizer {
+    // TODO(jan): need to write to `self.data` at some point
+    #[allow(clippy::unused_self)]
+    fn process_data(
         &mut self,
         ctx: &QueryContext<'_>,
-        results: &HybridResults<'_>,
-        spatial_ctx: &SpatialSceneEntityContext<'_>,
+        render_ctx: &RenderContext,
+        rectangles: &mut Vec<TexturedRect>,
+        ent_context: &SpatialSceneEntityContext<'_>,
+        data: impl Iterator<Item = AssetVideoComponentData>,
+        current_time_seconds: f64,
+        query_result_hash: Hash64,
     ) {
-        use super::entity_iterator::{iter_buffer, iter_component};
-        use re_space_view::RangeResultsExt as _;
-
         let entity_path = ctx.target_entity_path;
 
-        let Some(all_buffer_chunks) = results.get_required_chunks(&ImageBuffer::name()) else {
-            return;
-        };
-        let Some(all_formats_chunks) = results.get_required_chunks(&ImageFormat::name()) else {
-            return;
-        };
+        for data in data {
+            let timestamp_s = current_time_seconds - data.index.time.as_f64() / 1e9;
+            let video = AssetVideo {
+                blob: data.blob.clone().into(),
+                media_type: data.media_type.clone().map(Into::into),
+            };
 
-        let timeline = ctx.query.timeline();
-        let all_buffers_indexed =
-            iter_buffer::<u8>(&all_buffer_chunks, timeline, ImageBuffer::name());
-        let all_formats_indexed =
-            iter_component::<ImageFormat>(&all_formats_chunks, timeline, ImageFormat::name());
-        let all_opacities = results.iter_as(timeline, Opacity::name());
+            let primary_row_id = data.index.row_id;
+            let picking_instance_hash = re_entity_db::InstancePathHash::entity_all(entity_path);
 
-        let data = re_query::range_zip_1x2(
-            all_buffers_indexed,
-            all_formats_indexed,
-            all_opacities.primitive::<f32>(),
-        )
-        .filter_map(|(index, buffers, formats, opacities)| {
-            let buffer = buffers.first()?;
+            let video = ctx.viewer_ctx.cache.entry(|c: &mut VideoCache| {
+                c.entry(
+                    &entity_path.to_string(),
+                    VideoCacheKey {
+                        versioned_instance_path_hash: picking_instance_hash
+                            .versioned(primary_row_id),
+                        query_result_hash,
+                        media_type: data.media_type.clone().map(Into::into),
+                    },
+                    &video.blob,
+                    video.media_type.as_ref().map(|v| v.as_str()),
+                    render_ctx,
+                )
+            });
 
-            Some(ImageComponentData {
-                image: ImageInfo {
-                    buffer_row_id: index.1,
-                    buffer: buffer.clone().into(),
-                    format: first_copied(formats.as_deref())?.0,
-                    kind: ImageKind::Color,
-                    colormap: None,
-                },
-                opacity: first_copied(opacities).map(Into::into),
-            })
-        });
+            if let Some(video) = video {
+                let mut video = video.lock();
+                let texture = video.get_frame(timestamp_s);
 
-        for ImageComponentData { image, opacity } in data {
-            let opacity = opacity.unwrap_or_else(|| self.fallback_for(ctx));
-            let multiplicative_tint =
-                re_renderer::Rgba::from_white_alpha(opacity.0.clamp(0.0, 1.0));
+                let world_from_entity = ent_context
+                    .transform_info
+                    .single_entity_transform_required(ctx.target_entity_path, "Video");
+                // TODO(jan): texture extents are wrong, this only shows roughly the top-left corner of the video
+                let textured_rect = TexturedRect {
+                    top_left_corner_position: world_from_entity.transform_point3(Vec3::ZERO),
+                    extent_u: world_from_entity.transform_vector3(Vec3::X * video.width() as f32),
+                    extent_v: world_from_entity.transform_vector3(Vec3::Y * video.height() as f32),
 
-            if let Some(textured_rect) = textured_rect_from_image(
-                ctx.viewer_ctx,
-                entity_path,
-                spatial_ctx,
-                &image,
-                multiplicative_tint,
-                "Image",
-                &mut self.data,
-            ) {
-                self.images.push(PickableImageRect {
-                    ent_path: entity_path.clone(),
-                    image,
-                    textured_rect,
-                    depth_meter: None,
-                });
-            }
+                    colormapped_texture: ColormappedTexture::from_unorm_rgba(texture),
+                    options: RectangleOptions {
+                        texture_filter_magnification: TextureFilterMag::Nearest,
+                        texture_filter_minification: TextureFilterMin::Linear,
+                        ..Default::default()
+                    },
+                };
+
+                if ent_context.space_view_class_identifier == SpatialSpaceView2D::identifier() {
+                    self.data.add_bounding_box(
+                        entity_path.hash(),
+                        bounding_box_for_textured_rect(&textured_rect),
+                        world_from_entity,
+                    );
+                }
+
+                rectangles.push(textured_rect);
+            };
         }
     }
 }
 
-impl TypedComponentFallbackProvider<Opacity> for VideoVisualizer {
-    fn fallback_for(&self, _ctx: &re_viewer_context::QueryContext<'_>) -> Opacity {
-        1.0.into()
-    }
-}
-
-impl TypedComponentFallbackProvider<DrawOrder> for VideoVisualizer {
-    fn fallback_for(&self, _ctx: &QueryContext<'_>) -> DrawOrder {
-        DrawOrder::DEFAULT_IMAGE
-    }
-}
-
-re_viewer_context::impl_component_fallback_provider!(VideoVisualizer => [DrawOrder, Opacity]);
-
-fn first_copied<T: Copy>(slice: Option<&[T]>) -> Option<T> {
-    slice.and_then(|element| element.first()).copied()
-}
+re_viewer_context::impl_component_fallback_provider!(AssetVideoVisualizer => []);

@@ -16,5 +16,5 @@ table AssetVideo {
   ///
   /// If omitted, the viewer will try to guess from the data blob.
   /// If it cannot guess, it won't be able to render the asset.
-  media_type: rerun.components.MediaType  ("attr.rerun.component_recommended", nullable, order: 2000);
+  media_type: rerun.components.MediaType ("attr.rerun.component_recommended", nullable, order: 2000);
 }

@@ -36,6 +36,9 @@ path = "outlines.rs"
 name = "picking"
 path = "picking.rs"
 
+[[bin]]
+name = "video"
+path = "video.rs"
 
 [dependencies]
 re_log = { workspace = true, features = ["setup"] }
