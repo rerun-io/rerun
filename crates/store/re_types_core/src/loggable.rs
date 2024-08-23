@@ -5,7 +5,7 @@ use crate::{
 };
 
 #[allow(unused_imports)] // used in docstrings
-use crate::{Archetype, ComponentBatch, DatatypeBatch, LoggableBatch};
+use crate::{Archetype, ComponentBatch, LoggableBatch};
 
 // ---
 
@@ -14,13 +14,12 @@ use crate::{Archetype, ComponentBatch, DatatypeBatch, LoggableBatch};
 /// Internally, Arrow, and by extension Rerun, only deal with arrays of data.
 /// We refer to individual entries in these arrays as instances.
 ///
-/// [`Datatype`] and [`Component`] are specialization of the [`Loggable`] trait that are
-/// automatically implemented based on the type used for [`Loggable::Name`].
+/// [`Component`] is a specialization of the [`Loggable`] trait where [`Loggable::Name`] ==
+/// [`ComponentName`].
 ///
-/// Implementing the [`Loggable`] trait (and by extension [`Datatype`]/[`Component`])
-/// automatically derives the [`LoggableBatch`] implementation (and by extension
-/// [`DatatypeBatch`]/[`ComponentBatch`]), which makes it possible to work with lists' worth of data
-/// in a generic fashion.
+/// Implementing the [`Loggable`] trait (and by extension [`Component`]) automatically derives the
+/// [`LoggableBatch`] implementation (and by extension [`ComponentBatch`]), which makes it possible to
+/// work with lists' worth of data in a generic fashion.
 pub trait Loggable: 'static + Send + Sync + Clone + Sized + SizeBytes {
     type Name: std::fmt::Display;
 
@@ -32,7 +31,6 @@ pub trait Loggable: 'static + Send + Sync + Clone + Sized + SizeBytes {
 
     /// Given an iterator of options of owned or reference values to the current
     /// [`Loggable`], serializes them into an Arrow array.
-    /// The Arrow array's datatype will match [`Loggable::arrow_field`].
     ///
     /// When using Rerun's builtin components & datatypes, this can only fail if the data
     /// exceeds the maximum number of entries in an Arrow array (2^31 for standard arrays,
@@ -58,25 +56,10 @@ pub trait Loggable: 'static + Send + Sync + Clone + Sized + SizeBytes {
         )
     }
 
-    /// The underlying [`arrow2::datatypes::Field`], including datatype extensions.
-    ///
-    /// The default implementation will simply wrap [`Self::extended_arrow_datatype`] in a
-    /// [`arrow2::datatypes::Field`], which is what you want in most cases (e.g. because you want
-    /// to declare the field as nullable).
-    #[inline]
-    fn arrow_field() -> arrow2::datatypes::Field {
-        arrow2::datatypes::Field::new(
-            Self::name().to_string(),
-            Self::extended_arrow_datatype(),
-            false,
-        )
-    }
-
     // --- Optional serialization methods ---
 
     /// Given an iterator of owned or reference values to the current [`Loggable`], serializes
     /// them into an Arrow array.
-    /// The Arrow array's datatype will match [`Loggable::arrow_field`].
     ///
     /// When using Rerun's builtin components & datatypes, this can only fail if the data
     /// exceeds the maximum number of entries in an Arrow array (2^31 for standard arrays,
@@ -95,9 +78,6 @@ pub trait Loggable: 'static + Send + Sync + Clone + Sized + SizeBytes {
     // --- Optional deserialization methods ---
 
     /// Given an Arrow array, deserializes it into a collection of [`Loggable`]s.
-    ///
-    /// This will _never_ fail if the Arrow array's datatype matches the one returned by
-    /// [`Loggable::arrow_field`].
     #[inline]
     fn from_arrow(data: &dyn ::arrow2::array::Array) -> DeserializationResult<Vec<Self>> {
         re_tracing::profile_function!();
@@ -113,9 +93,6 @@ pub trait Loggable: 'static + Send + Sync + Clone + Sized + SizeBytes {
     }
 
     /// Given an Arrow array, deserializes it into a collection of optional [`Loggable`]s.
-    ///
-    /// This will _never_ fail if the Arrow array's datatype matches the one returned by
-    /// [`Loggable::arrow_field`].
     fn from_arrow_opt(
         data: &dyn ::arrow2::array::Array,
     ) -> DeserializationResult<Vec<Option<Self>>> {
@@ -126,14 +103,6 @@ pub trait Loggable: 'static + Send + Sync + Clone + Sized + SizeBytes {
         })
     }
 }
-
-/// A [`Datatype`] describes plain old data that can be used by any number of [`Component`]s.
-///
-/// Any [`Loggable`] with a [`Loggable::Name`] set to [`DatatypeName`] automatically implements
-/// [`Datatype`].
-pub trait Datatype: Loggable<Name = DatatypeName> {}
-
-impl<L: Loggable<Name = DatatypeName>> Datatype for L {}
 
 /// A [`Component`] describes semantic data that can be used by any number of [`Archetype`]s.
 ///

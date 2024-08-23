@@ -18,9 +18,9 @@ use crate::table_ui::{row_id_ui, table_ui};
 /// lead to multiple rows. In other words, no joining is done here.
 ///
 /// Also:
-/// - View entities have their query range "forced" to a range query. If set to "latest at", they
+/// - View entities have their query range "forced" to a range query. If set to "latest-at", they
 ///   are converted to Rel(0)-Rel(0).
-/// - Only the data logged in the query range is displayed. There is no implicit "latest at" like
+/// - Only the data logged in the query range is displayed. There is no implicit "latest-at" like
 ///   it's done for regular views.
 /// - Static data is always shown.
 /// - When both static and non-static data exist for the same entity/component, the non-static data
@@ -235,7 +235,7 @@ pub(crate) fn time_range_table_ui(
         let row_chunk = &rows_to_chunk[row_key];
         let (entity_path, time, row_id) = row_key;
 
-        // Latest at query corresponding to the current time
+        // Latest-at query corresponding to the current time
         let latest_at_query = LatestAtQuery::new(*timeline, *time);
 
         match sort_key {

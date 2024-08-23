@@ -4416,9 +4416,13 @@ name = "re_component_ui"
 version = "0.19.0-alpha.1+dev"
 dependencies = [
  "egui",
+ "egui_extras",
  "egui_plot",
+ "re_data_ui",
  "re_format",
+ "re_tracing",
  "re_types",
+ "re_types_blueprint",
  "re_types_core",
  "re_ui",
  "re_viewer_context",

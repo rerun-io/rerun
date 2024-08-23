@@ -51,6 +51,10 @@ pub enum TextureFilterMin {
 pub enum ShaderDecoding {
     Nv12,
     Yuy2,
+
+    /// BGR(A)->RGB(A) conversion is done in the shader.
+    /// (as opposed to doing it via ``)
+    Bgr,
 }
 
 /// Describes a texture and how to map it to a color.
@@ -151,7 +155,7 @@ impl ColormappedTexture {
                 let [width, height] = self.texture.width_height();
                 [width / 2, height]
             }
-            _ => self.texture.width_height(),
+            Some(ShaderDecoding::Bgr) | None => self.texture.width_height(),
         }
     }
 }
@@ -275,7 +279,8 @@ mod gpu_data {
 
         decode_srgb: u32,
         multiply_rgb_with_alpha: u32,
-        _row_padding: [u32; 2],
+        bgra_to_rgba: u32,
+        _row_padding: [u32; 1],
 
         _end_padding: [wgpu_buffer_types::PaddingRow; 16 - 7],
     }
@@ -362,6 +367,7 @@ mod gpu_data {
                 super::TextureFilterMag::Linear => FILTER_BILINEAR,
                 super::TextureFilterMag::Nearest => FILTER_NEAREST,
             };
+            let bgra_to_rgba = shader_decoding == &Some(super::ShaderDecoding::Bgr);
 
             Ok(Self {
                 top_left_corner_position: (*top_left_corner_position).into(),
@@ -379,6 +385,7 @@ mod gpu_data {
                 magnification_filter,
                 decode_srgb: *decode_srgb as _,
                 multiply_rgb_with_alpha: *multiply_rgb_with_alpha as _,
+                bgra_to_rgba: bgra_to_rgba as _,
                 _row_padding: Default::default(),
                 _end_padding: Default::default(),
             })

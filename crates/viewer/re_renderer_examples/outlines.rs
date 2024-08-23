@@ -1,6 +1,6 @@
 //! Demonstrates outline rendering.
 
-// TODO(#3408): remove unwrap()
+// TODO(#6330): remove unwrap()
 #![allow(clippy::unwrap_used)]
 
 use itertools::Itertools;

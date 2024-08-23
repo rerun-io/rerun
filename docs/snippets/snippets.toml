@@ -30,7 +30,6 @@ views = [
   "rust", # TODO(#5521): Rust views are not yet implemented
 ]
 
-"archetypes/annotation_context_connections" = ["cpp"] # TODO(#6925)
 "archetypes/image_advanced" = [
   "cpp",  # Missing examples
   "rust", # Missing examples

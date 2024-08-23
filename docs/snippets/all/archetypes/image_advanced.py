@@ -33,6 +33,5 @@ rr.log("from_pillow_rgb", rr.Image(image_rgb))
 # Read with OpenCV
 image = cv2.imread(file_path)
 
-# OpenCV uses BGR ordering, so we need to convert to RGB.
-image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
-rr.log("from_opencv", rr.Image(image))
+# OpenCV uses BGR ordering, we need to make this known to Rerun.
+rr.log("from_opencv", rr.Image(image, color_model="BGR"))

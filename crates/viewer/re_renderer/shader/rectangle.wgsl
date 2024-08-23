@@ -59,6 +59,9 @@ struct UniformBuffer {
 
     /// Boolean: multiply RGB with alpha before filtering
     multiply_rgb_with_alpha: u32,
+
+    /// Boolean: swizzle RGBA to BGRA
+    bgra_to_rgba: u32,
 };
 
 @group(1) @binding(0)

@@ -15,4 +15,10 @@ enum ColorModel: ubyte{
 
     /// Red, Green, Blue, Alpha
     RGBA = 3,
+
+    /// Blue, Green, Red
+    BGR,
+
+    /// Blue, Green, Red, Alpha
+    BGRA,
 }
