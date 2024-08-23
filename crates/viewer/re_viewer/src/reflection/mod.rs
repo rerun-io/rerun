@@ -114,7 +114,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
         (
             <LatestAtQueries as Loggable>::name(),
             ComponentReflection {
-                docstring_md: "Configuration for latest at queries.\n\nNote: configuration as saved on a per-timeline basis.",
+                docstring_md: "Configuration for latest-at queries.\n\nNote: configuration as saved on a per-timeline basis.",
                 placeholder: Some(LatestAtQueries::default().to_arrow()?),
             },
         ),
@@ -769,7 +769,7 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                     ArchetypeFieldReflection { component_name :
                     "rerun.blueprint.components.TimelineName".into(), display_name :
                     "Timeline", docstring_md :
-                    "The timeline for this query.\n\nIf unset, use the time panel's timeline and a latest at query, ignoring all other components of this archetype.",
+                    "The timeline for this query.\n\nIf unset, use the time panel's timeline and a latest-at query, ignoring all other components of this archetype.",
                     }, ArchetypeFieldReflection { component_name :
                     "rerun.blueprint.components.QueryKind".into(), display_name : "Kind",
                     docstring_md : "Kind of query: latest-at or range.", },

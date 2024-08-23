@@ -39,7 +39,7 @@ class DataframeQuery(Archetype):
         timeline:
             The timeline for this query.
 
-            If unset, use the time panel's timeline and a latest at query, ignoring all other components of this archetype.
+            If unset, use the time panel's timeline and a latest-at query, ignoring all other components of this archetype.
         kind:
             Kind of query: latest-at or range.
         latest_at_queries:
@@ -84,7 +84,7 @@ class DataframeQuery(Archetype):
     )
     # The timeline for this query.
     #
-    # If unset, use the time panel's timeline and a latest at query, ignoring all other components of this archetype.
+    # If unset, use the time panel's timeline and a latest-at query, ignoring all other components of this archetype.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 

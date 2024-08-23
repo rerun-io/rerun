@@ -6,7 +6,7 @@
 //!
 //! Motivation: <https://github.com/rerun-io/rerun/issues/4623>
 
-// TODO(#3408): remove unwrap()
+// TODO(#6330): remove unwrap()
 #![allow(clippy::unwrap_used)]
 
 use std::{fs, path::Path};

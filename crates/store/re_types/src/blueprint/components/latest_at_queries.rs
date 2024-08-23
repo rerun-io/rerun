@@ -18,7 +18,7 @@ use ::re_types_core::SerializationResult;
 use ::re_types_core::{ComponentBatch, MaybeOwnedComponentBatch};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
-/// **Component**: Configuration for latest at queries.
+/// **Component**: Configuration for latest-at queries.
 ///
 /// Note: configuration as saved on a per-timeline basis.
 #[derive(Clone, Debug, Default, PartialEq, Eq)]

@@ -46,7 +46,7 @@ impl Query {
         );
 
         // The presence (or not) of the timeline component determines if the view should follow the
-        // time panel timeline/latest at query, or override it.
+        // time panel timeline/latest-at query, or override it.
         let Some(timeline) = property
             .component_or_empty::<components::TimelineName>()?
             .map(|t| t.into())

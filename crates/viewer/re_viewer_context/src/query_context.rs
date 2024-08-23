@@ -12,7 +12,7 @@ slotmap::new_key_type! {
     pub struct DataResultHandle;
 }
 
-/// Context for a latest at query in a specific view.
+/// Context for a latest-at query in a specific view.
 // TODO(andreas) this is centered around latest-at queries. Does it have to be? Makes sense for UI, but that means it won't scale much into Visualizer queriers.
 // This is currently used only for fallback providers, but the expectation is that we're using this more widely as the primary context object
 // in all places where we query a specific entity in a specific view.

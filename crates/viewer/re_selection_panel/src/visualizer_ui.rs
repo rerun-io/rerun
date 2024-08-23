@@ -421,7 +421,7 @@ fn editable_blueprint_component_list_item(
     ui.list_item_flat_noninteractive(
         list_item::PropertyContent::new(name)
             .value_fn(|ui, _style| {
-                let multiline = false;
+                let allow_multiline = false;
                 query_ctx.viewer_ctx.component_ui_registry.edit_ui_raw(
                     query_ctx,
                     ui,
@@ -430,7 +430,7 @@ fn editable_blueprint_component_list_item(
                     component,
                     row_id,
                     raw_override,
-                    multiline,
+                    allow_multiline,
                 );
             })
             .action_button(&re_ui::icons::CLOSE, || {

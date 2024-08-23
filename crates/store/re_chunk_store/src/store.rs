@@ -297,7 +297,6 @@ pub struct ChunkStore {
     ///
     /// See also [`Self::lookup_datatype`].
     //
-    // TODO(#1809): replace this with a centralized Arrow registry.
     // TODO(cmc): this would become fairly problematic in a world where each chunk can use a
     // different datatype for a given component.
     pub(crate) type_registry: IntMap<ComponentName, ArrowDataType>,

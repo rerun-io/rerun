@@ -23,7 +23,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 pub struct DataframeQuery {
     /// The timeline for this query.
     ///
-    /// If unset, use the time panel's timeline and a latest at query, ignoring all other components of this archetype.
+    /// If unset, use the time panel's timeline and a latest-at query, ignoring all other components of this archetype.
     pub timeline: Option<crate::blueprint::components::TimelineName>,
 
     /// Kind of query: latest-at or range.
@@ -232,7 +232,7 @@ impl DataframeQuery {
 
     /// The timeline for this query.
     ///
-    /// If unset, use the time panel's timeline and a latest at query, ignoring all other components of this archetype.
+    /// If unset, use the time panel's timeline and a latest-at query, ignoring all other components of this archetype.
     #[inline]
     pub fn with_timeline(
         mut self,

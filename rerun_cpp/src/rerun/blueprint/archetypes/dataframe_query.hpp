@@ -23,7 +23,7 @@ namespace rerun::blueprint::archetypes {
     struct DataframeQuery {
         /// The timeline for this query.
         ///
-        /// If unset, use the time panel's timeline and a latest at query, ignoring all other components of this archetype.
+        /// If unset, use the time panel's timeline and a latest-at query, ignoring all other components of this archetype.
         std::optional<rerun::blueprint::components::TimelineName> timeline;
 
         /// Kind of query: latest-at or range.
@@ -52,7 +52,7 @@ namespace rerun::blueprint::archetypes {
 
         /// The timeline for this query.
         ///
-        /// If unset, use the time panel's timeline and a latest at query, ignoring all other components of this archetype.
+        /// If unset, use the time panel's timeline and a latest-at query, ignoring all other components of this archetype.
         DataframeQuery with_timeline(rerun::blueprint::components::TimelineName _timeline) && {
             timeline = std::move(_timeline);
             // See: https://github.com/rerun-io/rerun/issues/4027

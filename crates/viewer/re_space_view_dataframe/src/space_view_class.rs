@@ -42,10 +42,10 @@ This view displays the content of the entities it contains in tabular form.
 
 ## View types
 
-The Dataframe view operates in two modes: the _latest at_ mode and the _time range_ mode. You can
+The Dataframe view operates in two modes: the _latest-at_ mode and the _time range_ mode. You can
 select the mode in the selection panel.
 
-In the _latest at_ mode, the view displays the latest data for the timeline and time set in the time
+In the _latest-at_ mode, the view displays the latest data for the timeline and time set in the time
 panel. A row is shown for each entity instance.
 
 In the _time range_ mode, the view displays all the data logged within the time range set for each

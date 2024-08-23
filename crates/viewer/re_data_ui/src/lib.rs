@@ -9,20 +9,15 @@ use re_viewer_context::{UiLayout, ViewerContext};
 mod annotation_context;
 mod app_id;
 mod blob;
-mod blueprint_data;
-mod blueprint_types;
 mod component;
 mod component_name;
 mod component_path;
 mod component_ui_registry;
-mod data;
 mod data_source;
 mod entity_db;
 mod entity_path;
 mod image;
-mod image_format;
 mod instance_path;
-mod pinhole;
 mod store_id;
 mod tensor;
 
@@ -33,7 +28,7 @@ pub use crate::{
     tensor::tensor_summary_ui_grid_contents,
 };
 pub use component::ComponentPathLatestAtResults;
-pub use component_ui_registry::{add_to_registry, create_component_ui_registry};
+pub use component_ui_registry::{add_to_registry, register_component_uis};
 
 /// Sort components for display in the UI.
 pub fn sorted_component_list_for_ui<'a>(
