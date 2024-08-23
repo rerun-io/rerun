@@ -24,9 +24,6 @@ pub trait LoggableBatch {
     /// The fully-qualified name of this batch, e.g. `rerun.datatypes.Vec2D`.
     fn name(&self) -> Self::Name;
 
-    /// The number of component instances stored into this batch.
-    fn num_instances(&self) -> usize;
-
     /// Serializes the batch into an Arrow array.
     fn to_arrow(&self) -> SerializationResult<Box<dyn ::arrow2::array::Array>>;
 }
@@ -91,11 +88,6 @@ impl<'a> LoggableBatch for MaybeOwnedComponentBatch<'a> {
     }
 
     #[inline]
-    fn num_instances(&self) -> usize {
-        self.as_ref().num_instances()
-    }
-
-    #[inline]
     fn to_arrow(&self) -> SerializationResult<Box<dyn ::arrow2::array::Array>> {
         self.as_ref().to_arrow()
     }
@@ -111,11 +103,6 @@ impl<L: Clone + Loggable> LoggableBatch for L {
     #[inline]
     fn name(&self) -> Self::Name {
         L::name()
-    }
-
-    #[inline]
-    fn num_instances(&self) -> usize {
-        1
     }
 
     #[inline]
@@ -137,11 +124,6 @@ impl<L: Clone + Loggable> LoggableBatch for Option<L> {
     }
 
     #[inline]
-    fn num_instances(&self) -> usize {
-        self.is_some() as usize
-    }
-
-    #[inline]
     fn to_arrow(&self) -> SerializationResult<Box<dyn ::arrow2::array::Array>> {
         L::to_arrow(self.iter().map(|v| std::borrow::Cow::Borrowed(v)))
     }
@@ -160,11 +142,6 @@ impl<L: Clone + Loggable> LoggableBatch for Vec<L> {
     }
 
     #[inline]
-    fn num_instances(&self) -> usize {
-        self.len()
-    }
-
-    #[inline]
     fn to_arrow(&self) -> SerializationResult<Box<dyn ::arrow2::array::Array>> {
         L::to_arrow(self.iter().map(|v| std::borrow::Cow::Borrowed(v)))
     }
@@ -180,11 +157,6 @@ impl<L: Loggable> LoggableBatch for Vec<Option<L>> {
     #[inline]
     fn name(&self) -> Self::Name {
         L::name()
-    }
-
-    #[inline]
-    fn num_instances(&self) -> usize {
-        self.len()
     }
 
     #[inline]
@@ -209,11 +181,6 @@ impl<L: Loggable, const N: usize> LoggableBatch for [L; N] {
     }
 
     #[inline]
-    fn num_instances(&self) -> usize {
-        N
-    }
-
-    #[inline]
     fn to_arrow(&self) -> SerializationResult<Box<dyn ::arrow2::array::Array>> {
         L::to_arrow(self.iter().map(|v| std::borrow::Cow::Borrowed(v)))
     }
@@ -229,11 +196,6 @@ impl<L: Loggable, const N: usize> LoggableBatch for [Option<L>; N] {
     #[inline]
     fn name(&self) -> Self::Name {
         L::name()
-    }
-
-    #[inline]
-    fn num_instances(&self) -> usize {
-        N
     }
 
     #[inline]
@@ -258,11 +220,6 @@ impl<'a, L: Loggable> LoggableBatch for &'a [L] {
     }
 
     #[inline]
-    fn num_instances(&self) -> usize {
-        self.len()
-    }
-
-    #[inline]
     fn to_arrow(&self) -> SerializationResult<Box<dyn ::arrow2::array::Array>> {
         L::to_arrow(self.iter().map(|v| std::borrow::Cow::Borrowed(v)))
     }
@@ -278,11 +235,6 @@ impl<'a, L: Loggable> LoggableBatch for &'a [Option<L>] {
     #[inline]
     fn name(&self) -> Self::Name {
         L::name()
-    }
-
-    #[inline]
-    fn num_instances(&self) -> usize {
-        self.len()
     }
 
     #[inline]
@@ -307,11 +259,6 @@ impl<'a, L: Loggable, const N: usize> LoggableBatch for &'a [L; N] {
     }
 
     #[inline]
-    fn num_instances(&self) -> usize {
-        N
-    }
-
-    #[inline]
     fn to_arrow(&self) -> SerializationResult<Box<dyn ::arrow2::array::Array>> {
         L::to_arrow(self.iter().map(|v| std::borrow::Cow::Borrowed(v)))
     }
@@ -327,11 +274,6 @@ impl<'a, L: Loggable, const N: usize> LoggableBatch for &'a [Option<L>; N] {
     #[inline]
     fn name(&self) -> Self::Name {
         L::name()
-    }
-
-    #[inline]
-    fn num_instances(&self) -> usize {
-        N
     }
 
     #[inline]
