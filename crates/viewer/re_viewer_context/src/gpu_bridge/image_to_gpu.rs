@@ -232,7 +232,7 @@ pub fn required_shader_decode(image_format: &ImageFormat) -> Option<ShaderDecodi
 
 /// Creates a [`Texture2DCreationDesc`] for creating a texture from an [`ImageInfo`].
 ///
-/// The resulting texture has requirements as describe by [`required_shader_decode`] and [`required_shader_bgr_conversion`].
+/// The resulting texture has requirements as describe by [`required_shader_decode`].
 ///
 /// TODO(andreas): The consumer needs to be aware of bgr and chroma downsampling conversions.
 /// It would be much better if we had a separate `re_renderer`/gpu driven conversion pipeline for this
