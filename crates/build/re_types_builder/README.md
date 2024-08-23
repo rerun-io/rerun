@@ -11,7 +11,7 @@ This crate implements Rerun's code generation tools.
 
 These tools translate language-agnostic IDL definitions (flatbuffers) into code.
 
-You can generate the code with `just codegen`.
+You can generate the code with `pixi run codegen`.
 
 ### Doclinks
 The `.fbs` files can contain docstring (`///`) which in turn can contain doclinks.
