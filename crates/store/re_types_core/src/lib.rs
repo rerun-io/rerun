@@ -95,8 +95,8 @@ pub use self::{
     },
     arrow_buffer::ArrowBuffer,
     arrow_string::ArrowString,
-    loggable::{Component, ComponentName, ComponentNameSet, Datatype, DatatypeName, Loggable},
-    loggable_batch::{ComponentBatch, DatatypeBatch, LoggableBatch, MaybeOwnedComponentBatch},
+    loggable::{Component, ComponentName, ComponentNameSet, DatatypeName, Loggable},
+    loggable_batch::{ComponentBatch, LoggableBatch, MaybeOwnedComponentBatch},
     result::{
         DeserializationError, DeserializationResult, ResultExt, SerializationError,
         SerializationResult, _Backtrace,

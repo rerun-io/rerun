@@ -5,7 +5,7 @@ use crate::{
 };
 
 #[allow(unused_imports)] // used in docstrings
-use crate::{Archetype, ComponentBatch, DatatypeBatch, LoggableBatch};
+use crate::{Archetype, ComponentBatch, LoggableBatch};
 
 // ---
 
@@ -126,14 +126,6 @@ pub trait Loggable: 'static + Send + Sync + Clone + Sized + SizeBytes {
         })
     }
 }
-
-/// A [`Datatype`] describes plain old data that can be used by any number of [`Component`]s.
-///
-/// Any [`Loggable`] with a [`Loggable::Name`] set to [`DatatypeName`] automatically implements
-/// [`Datatype`].
-pub trait Datatype: Loggable<Name = DatatypeName> {}
-
-impl<L: Loggable<Name = DatatypeName>> Datatype for L {}
 
 /// A [`Component`] describes semantic data that can be used by any number of [`Archetype`]s.
 ///
