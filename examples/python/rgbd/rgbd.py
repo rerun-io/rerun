@@ -44,13 +44,11 @@ def parse_timestamp(filename: str) -> datetime:
     return datetime.fromtimestamp(float(time))
 
 
-def read_image_rgb(buf: bytes) -> npt.NDArray[np.uint8]:
+def read_image_bgr(buf: bytes) -> npt.NDArray[np.uint8]:
     """Decode an image provided in `buf`, and interpret it as RGB data."""
     np_buf: npt.NDArray[np.uint8] = np.ndarray(shape=(1, len(buf)), dtype=np.uint8, buffer=buf)
-    # OpenCV reads images in BGR rather than RGB format
-    img_bgr = cv2.imdecode(np_buf, cv2.IMREAD_COLOR)
-    img_rgb: npt.NDArray[Any] = cv2.cvtColor(img_bgr, cv2.COLOR_BGR2RGB)
-    return img_rgb
+    img_bgr: npt.NDArray[Any] = cv2.imdecode(np_buf, cv2.IMREAD_COLOR)
+    return img_bgr
 
 
 def read_depth_image(buf: bytes) -> npt.NDArray[Any]:
@@ -85,8 +83,8 @@ def log_nyud_data(recording_path: Path, subset_idx: int, frames: int) -> None:
 
             if f.filename.endswith(".ppm"):
                 buf = archive.read(f)
-                img_rgb = read_image_rgb(buf)
-                rr.log("world/camera/image/rgb", rr.Image(img_rgb).compress(jpeg_quality=95))
+                img_bgr = read_image_bgr(buf)
+                rr.log("world/camera/image/rgb", rr.Image(img_bgr, color_model="BGR").compress(jpeg_quality=95))
 
             elif f.filename.endswith(".pgm"):
                 buf = archive.read(f)

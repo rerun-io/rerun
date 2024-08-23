@@ -137,8 +137,10 @@ namespace rerun {
         switch (color_model) {
             case datatypes::ColorModel::L:
                 return 1;
+            case datatypes::ColorModel::BGR:
             case datatypes::ColorModel::RGB:
                 return 3;
+            case datatypes::ColorModel::BGRA:
             case datatypes::ColorModel::RGBA:
                 return 4;
         }
