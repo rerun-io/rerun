@@ -527,4 +527,6 @@ missing_errors_doc = "allow"
 
 # egui_commonmark = { git = "https://github.com/rerun-io/egui_commonmark", rev = "63d5c8933445b9ea9088c4a50b71f4ede1f3c247" } # https://github.com/lampsitter/egui_commonmark/pull/51
 
-mp4 = { path = "/Users/jan/rerun-io/mp4" }
+# commit on `rerun-io/mp4` `main` branch
+# https://github.com/rerun-io/mp4/commit/523ebcc71032e7022335f61d7314b89f6068208a
+mp4 = { git = "https://github.com/rerun-io/mp4", rev = "523ebcc71032e7022335f61d7314b89f6068208a" }
