@@ -8,8 +8,8 @@ impl ColorModel {
     pub fn num_channels(self) -> usize {
         match self {
             Self::L => 1,
-            Self::RGB => 3,
-            Self::RGBA => 4,
+            Self::RGB | Self::BGR => 3,
+            Self::RGBA | Self::BGRA => 4,
         }
     }
 
@@ -17,8 +17,8 @@ impl ColorModel {
     #[inline]
     pub fn has_alpha(&self) -> bool {
         match self {
-            Self::L | Self::RGB => false,
-            Self::RGBA => true,
+            Self::L | Self::RGB | Self::BGR => false,
+            Self::RGBA | Self::BGRA => true,
         }
     }
 }

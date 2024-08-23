@@ -10,7 +10,7 @@
 #![doc = document_features::document_features!()]
 //!
 
-// TODO(#3408): remove unwrap()
+// TODO(#6330): remove unwrap()
 #![allow(clippy::unwrap_used)]
 #![warn(missing_docs)] // Let's keep the this crate well-documented!
 
@@ -90,9 +90,9 @@ pub mod time {
 pub use time::{Time, TimePoint, Timeline};
 
 pub use re_types_core::{
-    Archetype, ArchetypeName, AsComponents, Component, ComponentBatch, ComponentName, Datatype,
-    DatatypeBatch, DatatypeName, GenericIndicatorComponent, Loggable, LoggableBatch,
-    MaybeOwnedComponentBatch, NamedIndicatorComponent, SizeBytes,
+    Archetype, ArchetypeName, AsComponents, Component, ComponentBatch, ComponentName, DatatypeName,
+    GenericIndicatorComponent, Loggable, LoggableBatch, MaybeOwnedComponentBatch,
+    NamedIndicatorComponent, SizeBytes,
 };
 
 #[cfg(feature = "data_loaders")]

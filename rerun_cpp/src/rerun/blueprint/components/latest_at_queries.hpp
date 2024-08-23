@@ -18,7 +18,7 @@ namespace arrow {
 } // namespace arrow
 
 namespace rerun::blueprint::components {
-    /// **Component**: Configuration for latest at queries.
+    /// **Component**: Configuration for latest-at queries.
     ///
     /// Note: configuration as saved on a per-timeline basis.
     struct LatestAtQueries {

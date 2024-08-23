@@ -29,7 +29,7 @@ def _latest_at_query__timeline__special_field_converter_override(x: datatypes.Ut
 
 @define(init=False)
 class LatestAtQuery(LatestAtQueryExt):
-    """**Datatype**: Latest at query configuration for a specific timeline."""
+    """**Datatype**: Latest-at query configuration for a specific timeline."""
 
     def __init__(self: Any, timeline: datatypes.Utf8Like, time: datatypes.TimeIntLike):
         """

@@ -19,7 +19,7 @@ pub struct LatestAtQuery {
 impl std::fmt::Debug for LatestAtQuery {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.write_fmt(format_args!(
-            "<latest at {} on {:?}>",
+            "<latest-at {} on {:?}>",
             self.timeline.typ().format_utc(self.at),
             self.timeline.name(),
         ))

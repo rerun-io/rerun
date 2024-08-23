@@ -4,7 +4,7 @@ namespace rerun.blueprint.archetypes;
 // Rationale behind the present data modelling:
 // - Avoid using `union` at all cost.
 // - An explicit "mode" enum maps well with a UI toggle and API parameter, and enabled a hard disambiguation when
-//   settings are present for both the latest at and range modes.
+//   settings are present for both the latest-at and range modes.
 // - Timestamps are hard-invalidated by a change of timeline. So we keep them on a per-timeline basis.
 
 // TODO(#7067): add visible components (maybe in another archetype?)
@@ -33,7 +33,7 @@ table DataframeQuery (
 
     /// The timeline for this query.
     ///
-    /// If unset, use the time panel's timeline and a latest at query, ignoring all other components of this archetype.
+    /// If unset, use the time panel's timeline and a latest-at query, ignoring all other components of this archetype.
     timeline: rerun.blueprint.components.TimelineName ("attr.rerun.component_optional", nullable, order: 100);
 
     /// Kind of query: latest-at or range.

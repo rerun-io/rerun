@@ -3,7 +3,7 @@ use itertools::Itertools;
 use re_chunk::{ComponentName, RowId, UnitChunkShared};
 use re_data_ui::{sorted_component_list_for_ui, DataUi};
 use re_entity_db::EntityDb;
-use re_log_types::EntityPath;
+use re_log_types::{ComponentPath, EntityPath};
 use re_space_view::latest_at_with_blueprint_resolved_data;
 use re_types::external::arrow2;
 use re_types_blueprint::blueprint::components::VisualizerOverrides;
@@ -278,9 +278,8 @@ fn visualizer_components(
                     }
                 };
 
-                re_data_ui::EntityLatestAtResults {
-                    entity_path: entity_path.clone(),
-                    component_name,
+                re_data_ui::ComponentPathLatestAtResults {
+                    component_path: ComponentPath::new(entity_path.clone(), component_name),
                     unit: latest_at_unit,
                 }
                 .data_ui(ctx.viewer_ctx, ui, UiLayout::List, query, db);
@@ -313,9 +312,11 @@ fn visualizer_components(
                 ui.push_id("store", |ui| {
                     ui.list_item_flat_noninteractive(
                         list_item::PropertyContent::new("Store").value_fn(|ui, _style| {
-                            re_data_ui::EntityLatestAtResults {
-                                entity_path: data_result.entity_path.clone(),
-                                component_name,
+                            re_data_ui::ComponentPathLatestAtResults {
+                                component_path: ComponentPath::new(
+                                    data_result.entity_path.clone(),
+                                    component_name,
+                                ),
                                 unit,
                             }
                             .data_ui(
@@ -420,7 +421,7 @@ fn editable_blueprint_component_list_item(
     ui.list_item_flat_noninteractive(
         list_item::PropertyContent::new(name)
             .value_fn(|ui, _style| {
-                let multiline = false;
+                let allow_multiline = false;
                 query_ctx.viewer_ctx.component_ui_registry.edit_ui_raw(
                     query_ctx,
                     ui,
@@ -429,7 +430,7 @@ fn editable_blueprint_component_list_item(
                     component,
                     row_id,
                     raw_override,
-                    multiline,
+                    allow_multiline,
                 );
             })
             .action_button(&re_ui::icons::CLOSE, || {

@@ -91,6 +91,32 @@ pub fn entity_path_parts_buttons(
     .response
 }
 
+/// Show an entity path that is part of the blueprint and make it selectable.
+///
+/// Like [`entity_path_button_to`] but with the apriori knowledge that this exists in the blueprint.
+pub fn blueprint_entity_path_button_to(
+    ctx: &ViewerContext<'_>,
+    ui: &mut egui::Ui,
+    entity_path: &EntityPath,
+    text: impl Into<egui::WidgetText>,
+) -> egui::Response {
+    // If we're targeting an entity in the blueprint store,
+    // it doesn't make much sense to specify the space view id since space view ids are
+    // embedded in entity paths of the blueprint store.
+    // I.e. if there is a view relationship that we would care about, we would know that from the path!
+    let space_view_id = None;
+
+    entity_path_button_to(
+        ctx,
+        ctx.blueprint_query,
+        ctx.blueprint_db(),
+        ui,
+        space_view_id,
+        entity_path,
+        text,
+    )
+}
+
 /// Show an entity path and make it selectable.
 pub fn entity_path_button_to(
     ctx: &ViewerContext<'_>,

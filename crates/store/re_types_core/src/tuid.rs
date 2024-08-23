@@ -64,7 +64,7 @@ impl Loggable for Tuid {
         ];
         let validity = None;
 
-        // TODO(#3360): We use the extended type here because we rely on it for formatting.
+        // TODO(cmc): We use the extended type here because we rely on it for formatting.
         Ok(StructArray::new(Self::extended_arrow_datatype(), values, validity).boxed())
     }
 

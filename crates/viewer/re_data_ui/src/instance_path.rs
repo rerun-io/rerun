@@ -199,9 +199,11 @@ fn component_list_ui(
                     .with_icon(icon)
                     .value_fn(|ui, _| {
                         if instance.is_all() {
-                            crate::EntityLatestAtResults {
-                                entity_path: entity_path.clone(),
-                                component_name,
+                            crate::ComponentPathLatestAtResults {
+                                component_path: ComponentPath::new(
+                                    entity_path.clone(),
+                                    component_name,
+                                ),
                                 unit,
                             }
                             .data_ui(

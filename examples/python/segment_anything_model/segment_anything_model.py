@@ -138,6 +138,7 @@ def load_image(image_uri: str) -> cv2.typing.MatLike:
     else:
         image = cv2.imread(image_uri, cv2.IMREAD_COLOR)
 
+    # Rerun can handle BGR as well, but SAM requires RGB.
     image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
     return image
 

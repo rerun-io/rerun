@@ -67,7 +67,9 @@ pub fn load_gltf_from_buffer(
             if image.format == gltf::image::Format::R8G8B8 {
                 re_log::debug!("Converting Rgb8 to Rgba8");
                 (
-                    wgpu::TextureFormat::Rgba8UnormSrgb,
+                    // Don't use `Rgba8UnormSrgb`, Mesh shader assumes it has to do the conversion itself!
+                    // This is done so we can handle non-premultiplied alpha.
+                    wgpu::TextureFormat::Rgba8Unorm,
                     crate::pad_rgb_to_rgba(&image.pixels, 255),
                 )
             } else {
@@ -149,7 +151,9 @@ fn map_format(format: gltf::image::Format) -> Option<wgpu::TextureFormat> {
         Format::R8 => Some(TextureFormat::R8Unorm),
         Format::R8G8 => Some(TextureFormat::Rg8Unorm),
         Format::R8G8B8 => None,
-        Format::R8G8B8A8 => Some(TextureFormat::Rgba8UnormSrgb),
+        // Don't use `Rgba8UnormSrgb`, Mesh shader assumes it has to do the conversion itself!
+        // This is done so we can handle non-premultiplied alpha.
+        Format::R8G8B8A8 => Some(TextureFormat::Rgba8Unorm),
 
         Format::R16 => Some(TextureFormat::R16Unorm),
         Format::R16G16 => Some(TextureFormat::Rg16Unorm),

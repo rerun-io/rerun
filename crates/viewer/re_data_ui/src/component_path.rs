@@ -27,9 +27,8 @@ impl DataUi for ComponentPath {
                 db.query_caches()
                     .latest_at(db.store(), query, entity_path, [*component_name]);
             if let Some(unit) = results.components.get(component_name) {
-                crate::EntityLatestAtResults {
-                    entity_path: entity_path.clone(),
-                    component_name: *component_name,
+                crate::ComponentPathLatestAtResults {
+                    component_path: self.clone(),
                     unit,
                 }
                 .data_ui(ctx, ui, ui_layout, query, db);

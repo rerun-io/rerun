@@ -2,7 +2,7 @@
 //!
 //! Space Views that show entities in a 2D or 3D spatial relationship.
 
-// TODO(#3408): remove unwrap()
+// TODO(#6330): remove unwrap()
 #![allow(clippy::unwrap_used)]
 
 mod contexts;

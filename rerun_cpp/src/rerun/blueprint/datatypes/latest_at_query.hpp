@@ -17,7 +17,7 @@ namespace arrow {
 } // namespace arrow
 
 namespace rerun::blueprint::datatypes {
-    /// **Datatype**: Latest at query configuration for a specific timeline.
+    /// **Datatype**: Latest-at query configuration for a specific timeline.
     struct LatestAtQuery {
         /// Name of the timeline this applies to.
         rerun::datatypes::Utf8 timeline;

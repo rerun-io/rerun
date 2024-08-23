@@ -30,6 +30,8 @@ const MARGIN_X: f32 = 2.0;
 /// Higher = slower, but more accurate.
 const DENSITIES_PER_UI_PIXEL: f32 = 1.0;
 
+const DEBUG_PAINT: bool = false;
+
 // ----------------------------------------------------------------------------
 
 /// Persistent data for painting the data density graph.
@@ -477,9 +479,22 @@ pub fn build_density_graph<'a>(
 
         let can_render_individual_events = total_events < config.max_total_chunk_events;
 
+        if DEBUG_PAINT {
+            ui.ctx().debug_painter().debug_rect(
+                row_rect,
+                egui::Color32::LIGHT_BLUE,
+                format!(
+                    "{} chunks, {total_events} events, render individual: {can_render_individual_events}",
+                    chunk_ranges.len()
+                ),
+            );
+        }
+
         for (chunk, time_range, num_events_in_chunk) in chunk_ranges {
+            re_tracing::profile_scope!("chunk_range");
+
             let should_render_individual_events = can_render_individual_events
-                && if chunk.is_time_sorted() {
+                && if chunk.is_timeline_sorted(&timeline) {
                     num_events_in_chunk < config.max_events_in_sorted_chunk
                 } else {
                     num_events_in_chunk < config.max_events_in_unsorted_chunk
@@ -544,8 +559,8 @@ impl Default for DensityGraphBuilderConfig {
             // It does not seem to matter how many chunks there are, only how many total events we're showing.
             //
             // We want to stay around 1ms if possible, preferring to instead spend our frame budget on actually
-            // visualizing the data, so we undershoot the limit here by a good amount:
-            max_total_chunk_events: 50_000,
+            // visualizing the data, and we also want to support multiple data density graphs on the screen at once.
+            max_total_chunk_events: 10_000,
 
             // For individual chunks, the limits are completely arbitrary, and help preserve visual clarity of the data
             // when there are too many events in a given chunk.

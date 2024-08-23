@@ -270,7 +270,7 @@ _All four tetrahedron meshes on this screen share the same vertices and are inst
 - Use markdown for the view help widget [#6878](https://github.com/rerun-io/rerun/pull/6878)
 - Improve navigation between entity and data results in the selection panel [#6871](https://github.com/rerun-io/rerun/pull/6871)
 - Add support for visible time range to the dataframe view [#6869](https://github.com/rerun-io/rerun/pull/6869)
-- Make clamped component data distinguishable in the "latest at" table [#6894](https://github.com/rerun-io/rerun/pull/6894)
+- Make clamped component data distinguishable in the "latest-at" table [#6894](https://github.com/rerun-io/rerun/pull/6894)
 - Scroll dataframe view to focused item [#6908](https://github.com/rerun-io/rerun/pull/6908)
 - Add an explicit "mode" view property to the dataframe view [#6927](https://github.com/rerun-io/rerun/pull/6927)
 - Introduce a "Selectable Toggle" widget and use it for the 3D view's camera kind [#7064](https://github.com/rerun-io/rerun/pull/7064)
