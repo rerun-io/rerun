@@ -1,5 +1,3 @@
-use std::sync::Arc;
-
 use crate::{
     ComponentBatch, ComponentName, DeserializationResult, MaybeOwnedComponentBatch,
     SerializationResult, _Backtrace,
@@ -222,11 +220,7 @@ impl<A: Archetype> crate::LoggableBatch for GenericIndicatorComponent<A> {
 
     #[inline]
     fn to_arrow(&self) -> SerializationResult<Box<dyn arrow2::array::Array>> {
-        let datatype = arrow2::datatypes::DataType::Extension(
-            self.name().to_string(),
-            Arc::new(arrow2::datatypes::DataType::Null),
-            None,
-        );
+        let datatype = arrow2::datatypes::DataType::Null;
         Ok(arrow2::array::NullArray::new(datatype, self.num_instances()).boxed())
     }
 }
@@ -268,11 +262,7 @@ impl crate::LoggableBatch for NamedIndicatorComponent {
 
     #[inline]
     fn to_arrow(&self) -> SerializationResult<Box<dyn arrow2::array::Array>> {
-        let datatype = arrow2::datatypes::DataType::Extension(
-            self.name().to_string(),
-            Arc::new(arrow2::datatypes::DataType::Null),
-            None,
-        );
+        let datatype = arrow2::datatypes::DataType::Null;
         Ok(arrow2::array::NullArray::new(datatype, self.num_instances()).boxed())
     }
 }
