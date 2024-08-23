@@ -275,21 +275,23 @@ impl TimePanel {
     ) {
         ui.spacing_mut().item_spacing.x = 18.0; // from figma
 
-        let has_any_data_on_timeline = entity_db.has_any_data_on_timeline(time_ctrl.timeline());
+        let time_range = entity_db.time_range_for(time_ctrl.timeline());
+        let has_more_than_one_time_point =
+            time_range.map_or(false, |time_range| time_range.min() != time_range.max());
 
-        if ui.max_rect().width() < 600.0 && has_any_data_on_timeline {
+        if ui.max_rect().width() < 600.0 && has_more_than_one_time_point {
             // Responsive ui for narrow screens, e.g. mobile. Split the controls into two rows.
             ui.vertical(|ui| {
-                ui.horizontal(|ui| {
-                    let times_per_timeline = entity_db.times_per_timeline();
-                    self.time_control_ui
-                        .play_pause_ui(time_ctrl, times_per_timeline, ui);
+                if has_more_than_one_time_point {
+                    ui.horizontal(|ui| {
+                        let times_per_timeline = entity_db.times_per_timeline();
+                        self.time_control_ui
+                            .play_pause_ui(time_ctrl, times_per_timeline, ui);
 
-                    if has_any_data_on_timeline {
                         self.time_control_ui.playback_speed_ui(time_ctrl, ui);
                         self.time_control_ui.fps_ui(time_ctrl, ui);
-                    }
-                });
+                    });
+                }
                 ui.horizontal(|ui| {
                     self.time_control_ui.timeline_selector_ui(
                         time_ctrl,
@@ -302,12 +304,16 @@ impl TimePanel {
         } else {
             // One row:
             let times_per_timeline = entity_db.times_per_timeline();
-            self.time_control_ui
-                .play_pause_ui(time_ctrl, times_per_timeline, ui);
+
+            if has_more_than_one_time_point {
+                self.time_control_ui
+                    .play_pause_ui(time_ctrl, times_per_timeline, ui);
+            }
+
             self.time_control_ui
                 .timeline_selector_ui(time_ctrl, times_per_timeline, ui);
 
-            if has_any_data_on_timeline {
+            if has_more_than_one_time_point {
                 self.time_control_ui.playback_speed_ui(time_ctrl, ui);
                 self.time_control_ui.fps_ui(time_ctrl, ui);
             }
@@ -993,16 +999,19 @@ fn collapsed_time_marker_and_time(
 ) {
     let timeline = time_ctrl.timeline();
 
-    if !entity_db.has_any_data_on_timeline(timeline) {
+    let Some(time_range) = entity_db.time_range_for(timeline) else {
+        // We have no data on this timeline
         return;
-    }
-
-    let space_needed_for_current_time = match timeline.typ() {
-        re_chunk_store::TimeType::Time => 220.0,
-        re_chunk_store::TimeType::Sequence => 100.0,
     };
 
-    {
+    if time_range.min() == time_range.max() {
+        // Only one time point - showing a slider that can't be moved is just annoying
+    } else {
+        let space_needed_for_current_time = match timeline.typ() {
+            re_chunk_store::TimeType::Time => 220.0,
+            re_chunk_store::TimeType::Sequence => 100.0,
+        };
+
         let mut time_range_rect = ui.available_rect_before_wrap();
         time_range_rect.max.x -= space_needed_for_current_time;
 
