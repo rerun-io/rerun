@@ -68,7 +68,14 @@ pub trait AsComponents {
                 comp_batch
                     .as_ref()
                     .to_arrow()
-                    .map(|array| (comp_batch.as_ref().arrow_field(), array))
+                    .map(|array| {
+                        let field = arrow2::datatypes::Field::new(
+                            comp_batch.name().to_string(),
+                            array.data_type().clone(),
+                            false,
+                        );
+                        (field, array)
+                    })
                     .with_context(comp_batch.as_ref().name())
             })
             .collect()
