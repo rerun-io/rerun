@@ -338,7 +338,7 @@ impl AppState {
         };
 
         if *show_datastore_ui {
-            datastore_ui.ui(&ctx, ui);
+            datastore_ui.ui(&ctx, ui, app_options.time_zone);
         } else {
             //
             // Blueprint time panel
