@@ -145,7 +145,7 @@ impl Points3DVisualizer {
                     instance_positions: positions.iter().copied(),
                     labels: &data.labels,
                     colors: &colors,
-                    show_labels: data.show_labels,
+                    show_labels: data.show_labels.unwrap_or_else(|| self.fallback_for(ctx)),
                     annotation_infos: &annotation_infos,
                 },
                 world_from_obj,
@@ -305,4 +305,10 @@ impl TypedComponentFallbackProvider<Color> for Points3DVisualizer {
     }
 }
 
-re_viewer_context::impl_component_fallback_provider!(Points3DVisualizer => [Color]);
+impl TypedComponentFallbackProvider<ShowLabels> for Points3DVisualizer {
+    fn fallback_for(&self, ctx: &QueryContext<'_>) -> ShowLabels {
+        super::utilities::show_labels_fallback::<Position3D>(ctx)
+    }
+}
+
+re_viewer_context::impl_component_fallback_provider!(Points3DVisualizer => [Color, ShowLabels]);
