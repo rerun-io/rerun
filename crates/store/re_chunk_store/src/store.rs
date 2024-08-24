@@ -96,12 +96,13 @@ impl ChunkStoreConfig {
     pub const DEFAULT: Self = Self {
         enable_changelog: true,
 
-        // This gives us 64 bytes per row (assuming a default limit of 4096 rows), which is enough to
-        // fit a couple scalar columns + a RowId column + a handful of timeline columns.
+        // This gives us 96 bytes per row (assuming a default limit of 4096 rows), which is enough to
+        // fit a couple scalar columns, a RowId column, a handful of timeline columns, all the
+        // necessary offsets, etc.
         //
         // A few megabytes turned out to be way too costly to concatenate in real-time in the
         // Viewer (see <https://github.com/rerun-io/rerun/issues/7222>).
-        chunk_max_bytes: 8 * 8 * 4096,
+        chunk_max_bytes: 12 * 8 * 4096,
 
         // Empirical testing shows that 4096 is the threshold after which we really start to get
         // dimishing returns space and compute wise.
