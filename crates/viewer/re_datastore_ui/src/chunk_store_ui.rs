@@ -4,12 +4,13 @@ use std::sync::Arc;
 use egui_extras::{Column, TableRow};
 use itertools::{Either, Itertools};
 
-use re_chunk_store::{Chunk, ChunkStore, LatestAtQuery, RangeQuery};
+use re_chunk_store::{ChunkStore, LatestAtQuery, RangeQuery};
 use re_log_types::{StoreKind, TimeZone, TimelineName};
 use re_ui::{list_item, UiExt as _};
 use re_viewer_context::ViewerContext;
 
 use crate::chunk_list_mode::{ChunkListMode, ChunkListQueryMode};
+use crate::chunk_ui::ChunkUi;
 use crate::sort::{sortable_column_header_ui, SortColumn, SortDirection};
 
 fn outer_frame() -> egui::Frame {
@@ -37,7 +38,9 @@ impl ChunkListColumn {
             Self::ChunkId => sortable_column_header_ui(self, ui, sort_column, "ID"),
             Self::EntityPath => sortable_column_header_ui(self, ui, sort_column, "Entity"),
             Self::RowCount => sortable_column_header_ui(self, ui, sort_column, "Row#"),
-            Self::Timeline(name) => sortable_column_header_ui(self, ui, sort_column, name.as_str()),
+            Self::Timeline(timeline_name) => {
+                sortable_column_header_ui(self, ui, sort_column, timeline_name.as_str());
+            }
         }
     }
 }
@@ -45,7 +48,7 @@ impl ChunkListColumn {
 /// Browser UI for [`re_chunk_store::ChunkStore`].
 pub struct DatastoreUi {
     store_kind: StoreKind,
-    focused_chunk: Option<Arc<Chunk>>,
+    focused_chunk: Option<ChunkUi>,
 
     chunk_list_mode: ChunkListMode,
 
@@ -79,10 +82,8 @@ impl DatastoreUi {
         time_zone: TimeZone,
     ) {
         outer_frame().show(ui, |ui| {
-            if let Some(focused_chunk) = self.focused_chunk.clone() {
-                if crate::chunk_ui::chunk_ui(ui, &focused_chunk, time_zone) {
-                    self.focused_chunk = None;
-                }
+            let exit_focused_chunk = if let Some(focused_chunk) = &mut self.focused_chunk {
+                focused_chunk.ui(ui, time_zone)
             } else {
                 self.chunk_store_ui(
                     ui,
@@ -93,6 +94,12 @@ impl DatastoreUi {
                     datastore_ui_active,
                     time_zone,
                 );
+
+                false
+            };
+
+            if exit_focused_chunk {
+                self.focused_chunk = None;
             }
         });
     }
@@ -263,7 +270,7 @@ impl DatastoreUi {
 
             row.col(|ui| {
                 if ui.button(chunk.id().to_string()).clicked() {
-                    self.focused_chunk = Some(Arc::clone(chunk));
+                    self.focused_chunk = Some(ChunkUi::new(chunk));
                 }
             });
 
