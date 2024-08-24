@@ -101,6 +101,9 @@ pub struct Boxes3D {
     /// Otherwise, each instance will have its own label.
     pub labels: Option<Vec<crate::components::Text>>,
 
+    /// Optional choice of whether the text labels should be shown by default.
+    pub show_labels: Option<crate::components::ShowLabels>,
+
     /// Optional [`components::ClassId`][crate::components::ClassId]s for the boxes.
     ///
     /// The [`components::ClassId`][crate::components::ClassId] provides colors and labels if not specified explicitly.
@@ -118,6 +121,7 @@ impl ::re_types_core::SizeBytes for Boxes3D {
             + self.radii.heap_size_bytes()
             + self.fill_mode.heap_size_bytes()
             + self.labels.heap_size_bytes()
+            + self.show_labels.heap_size_bytes()
             + self.class_ids.heap_size_bytes()
     }
 
@@ -131,6 +135,7 @@ impl ::re_types_core::SizeBytes for Boxes3D {
             && <Option<Vec<crate::components::Radius>>>::is_pod()
             && <Option<crate::components::FillMode>>::is_pod()
             && <Option<Vec<crate::components::Text>>>::is_pod()
+            && <Option<crate::components::ShowLabels>>::is_pod()
             && <Option<Vec<crate::components::ClassId>>>::is_pod()
     }
 }
@@ -147,7 +152,7 @@ static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 3usize]> =
         ]
     });
 
-static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 6usize]> =
+static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 7usize]> =
     once_cell::sync::Lazy::new(|| {
         [
             "rerun.components.PoseRotationAxisAngle".into(),
@@ -155,11 +160,12 @@ static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 6usize]> =
             "rerun.components.Radius".into(),
             "rerun.components.FillMode".into(),
             "rerun.components.Text".into(),
+            "rerun.components.ShowLabels".into(),
             "rerun.components.ClassId".into(),
         ]
     });
 
-static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 10usize]> =
+static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 11usize]> =
     once_cell::sync::Lazy::new(|| {
         [
             "rerun.components.HalfSize3D".into(),
@@ -171,13 +177,14 @@ static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 10usize]> =
             "rerun.components.Radius".into(),
             "rerun.components.FillMode".into(),
             "rerun.components.Text".into(),
+            "rerun.components.ShowLabels".into(),
             "rerun.components.ClassId".into(),
         ]
     });
 
 impl Boxes3D {
-    /// The total number of components in the archetype: 1 required, 3 recommended, 6 optional
-    pub const NUM_COMPONENTS: usize = 10usize;
+    /// The total number of components in the archetype: 1 required, 3 recommended, 7 optional
+    pub const NUM_COMPONENTS: usize = 11usize;
 }
 
 /// Indicator component for the [`Boxes3D`] [`::re_types_core::Archetype`]
@@ -328,6 +335,15 @@ impl ::re_types_core::Archetype for Boxes3D {
         } else {
             None
         };
+        let show_labels = if let Some(array) = arrays_by_name.get("rerun.components.ShowLabels") {
+            <crate::components::ShowLabels>::from_arrow_opt(&**array)
+                .with_context("rerun.archetypes.Boxes3D#show_labels")?
+                .into_iter()
+                .next()
+                .flatten()
+        } else {
+            None
+        };
         let class_ids = if let Some(array) = arrays_by_name.get("rerun.components.ClassId") {
             Some({
                 <crate::components::ClassId>::from_arrow_opt(&**array)
@@ -349,6 +365,7 @@ impl ::re_types_core::Archetype for Boxes3D {
             radii,
             fill_mode,
             labels,
+            show_labels,
             class_ids,
         })
     }
@@ -382,6 +399,9 @@ impl ::re_types_core::AsComponents for Boxes3D {
             self.labels
                 .as_ref()
                 .map(|comp_batch| (comp_batch as &dyn ComponentBatch).into()),
+            self.show_labels
+                .as_ref()
+                .map(|comp| (comp as &dyn ComponentBatch).into()),
             self.class_ids
                 .as_ref()
                 .map(|comp_batch| (comp_batch as &dyn ComponentBatch).into()),
@@ -407,6 +427,7 @@ impl Boxes3D {
             radii: None,
             fill_mode: None,
             labels: None,
+            show_labels: None,
             class_ids: None,
         }
     }
@@ -490,6 +511,16 @@ impl Boxes3D {
         labels: impl IntoIterator<Item = impl Into<crate::components::Text>>,
     ) -> Self {
         self.labels = Some(labels.into_iter().map(Into::into).collect());
+        self
+    }
+
+    /// Optional choice of whether the text labels should be shown by default.
+    #[inline]
+    pub fn with_show_labels(
+        mut self,
+        show_labels: impl Into<crate::components::ShowLabels>,
+    ) -> Self {
+        self.show_labels = Some(show_labels.into());
         self
     }
 

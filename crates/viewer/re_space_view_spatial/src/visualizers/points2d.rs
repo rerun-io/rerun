@@ -3,7 +3,7 @@ use itertools::Itertools as _;
 use re_renderer::{LineDrawableBuilder, PickingLayerInstanceId, PointCloudBuilder};
 use re_types::{
     archetypes::Points2D,
-    components::{ClassId, Color, DrawOrder, KeypointId, Position2D, Radius, Text},
+    components::{ClassId, Color, DrawOrder, KeypointId, Position2D, Radius, ShowLabels, Text},
     ArrowString, Loggable as _,
 };
 use re_viewer_context::{
@@ -23,8 +23,9 @@ use crate::{
 };
 
 use super::{
-    filter_visualizable_2d_entities, utilities::process_labels_2d, SpatialViewVisualizerData,
-    SIZE_BOOST_IN_POINTS_FOR_POINT_OUTLINES,
+    filter_visualizable_2d_entities,
+    utilities::{process_labels_2d, LabeledBatch},
+    SpatialViewVisualizerData, SIZE_BOOST_IN_POINTS_FOR_POINT_OUTLINES,
 };
 
 // ---
@@ -129,13 +130,16 @@ impl Points2DVisualizer {
             load_keypoint_connections(line_builder, ent_context, entity_path, &keypoints)?;
 
             self.data.ui_labels.extend(process_labels_2d(
-                entity_path,
-                num_instances,
-                obj_space_bounding_box.center().truncate(),
-                data.positions.iter().map(|p| glam::vec2(p.x(), p.y())),
-                &data.labels,
-                &colors,
-                &annotation_infos,
+                LabeledBatch {
+                    entity_path,
+                    num_instances,
+                    overall_position: obj_space_bounding_box.center().truncate(),
+                    instance_positions: data.positions.iter().map(|p| glam::vec2(p.x(), p.y())),
+                    labels: &data.labels,
+                    colors: &colors,
+                    show_labels: data.show_labels,
+                    annotation_infos: &annotation_infos,
+                },
                 world_from_obj,
             ));
         }
@@ -157,6 +161,9 @@ pub struct Points2DComponentData<'a> {
     pub labels: Vec<ArrowString>,
     pub keypoint_ids: &'a [KeypointId],
     pub class_ids: &'a [ClassId],
+
+    // Non-repeated
+    show_labels: Option<ShowLabels>,
 }
 
 impl IdentifiedViewSystem for Points2DVisualizer {
@@ -235,17 +242,28 @@ impl VisualizerSystem for Points2DVisualizer {
                 let all_labels = results.iter_as(timeline, Text::name());
                 let all_class_ids = results.iter_as(timeline, ClassId::name());
                 let all_keypoint_ids = results.iter_as(timeline, KeypointId::name());
+                let all_show_labels = results.iter_as(timeline, ShowLabels::name());
 
-                let data = re_query::range_zip_1x5(
+                let data = re_query::range_zip_1x6(
                     all_positions_indexed,
                     all_colors.primitive::<u32>(),
                     all_radii.primitive::<f32>(),
                     all_labels.string(),
                     all_class_ids.primitive::<u16>(),
                     all_keypoint_ids.primitive::<u16>(),
+                    all_show_labels.component::<ShowLabels>(),
                 )
                 .map(
-                    |(_index, positions, colors, radii, labels, class_ids, keypoint_ids)| {
+                    |(
+                        _index,
+                        positions,
+                        colors,
+                        radii,
+                        labels,
+                        class_ids,
+                        keypoint_ids,
+                        show_labels,
+                    )| {
                         Points2DComponentData {
                             positions: bytemuck::cast_slice(positions),
                             colors: colors.map_or(&[], |colors| bytemuck::cast_slice(colors)),
@@ -255,6 +273,7 @@ impl VisualizerSystem for Points2DVisualizer {
                                 .map_or(&[], |class_ids| bytemuck::cast_slice(class_ids)),
                             keypoint_ids: keypoint_ids
                                 .map_or(&[], |keypoint_ids| bytemuck::cast_slice(keypoint_ids)),
+                            show_labels: show_labels.unwrap_or_default().first().copied(),
                         }
                     },
                 );
