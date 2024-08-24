@@ -2,9 +2,10 @@
 
 mod arrow_ui;
 mod chunk_list_mode;
-mod datastore_ui;
+mod chunk_store_ui;
+mod chunk_ui;
 
-pub use datastore_ui::DatastoreUi;
+pub use chunk_store_ui::DatastoreUi;
 
 // --
 
