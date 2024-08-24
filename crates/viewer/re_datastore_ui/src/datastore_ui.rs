@@ -6,18 +6,73 @@ use itertools::{Either, Itertools};
 
 use re_chunk_store::external::re_chunk::{ArrowArray, TransportChunk};
 use re_chunk_store::{Chunk, ChunkStore, LatestAtQuery, RangeQuery};
-use re_log_types::{StoreKind, TimeZone};
+use re_log_types::{StoreKind, TimeZone, TimelineName};
 use re_types::datatypes::TimeInt;
 use re_types::SizeBytes;
 use re_ui::{list_item, UiExt as _};
 use re_viewer_context::{UiLayout, ViewerContext};
 
 use crate::chunk_list_mode::{ChunkListMode, ChunkListQueryMode};
+use crate::SortDirection;
 
 fn outer_frame() -> egui::Frame {
     egui::Frame {
         inner_margin: egui::Margin::same(5.0),
         ..Default::default()
+    }
+}
+
+#[derive(Default, Clone, Copy, PartialEq)]
+enum ChunkListColumn {
+    #[default]
+    RowId,
+    EntityPath,
+    RowCount,
+    Timeline(TimelineName),
+}
+
+#[derive(Default, Clone, Copy)]
+struct ChunkListSortColumn {
+    column: ChunkListColumn,
+    direction: SortDirection,
+}
+
+impl ChunkListColumn {
+    pub(crate) fn ui(&self, ui: &mut egui::Ui, sort_column: &mut ChunkListSortColumn) {
+        match self {
+            Self::RowId => self.ui_impl(ui, sort_column, "ID"),
+            Self::EntityPath => self.ui_impl(ui, sort_column, "Entity"),
+            Self::RowCount => self.ui_impl(ui, sort_column, "Row#"),
+            Self::Timeline(name) => self.ui_impl(ui, sort_column, name.as_str()),
+        }
+    }
+
+    fn ui_impl(
+        &self,
+        ui: &mut egui::Ui,
+        sort_column: &mut ChunkListSortColumn,
+        label: &'static str,
+    ) {
+        let label = format!(
+            "{label}{}",
+            if self == &sort_column.column {
+                format!(" {}", sort_column.direction)
+            } else {
+                String::new()
+            }
+        );
+
+        if ui
+            .add(egui::Button::new(egui::WidgetText::from(label).strong()))
+            .clicked()
+        {
+            if &sort_column.column == self {
+                sort_column.direction.toggle();
+            } else {
+                sort_column.column = *self;
+                sort_column.direction = SortDirection::default();
+            }
+        }
     }
 }
 
@@ -27,6 +82,8 @@ pub struct DatastoreUi {
     focused_chunk: Option<Arc<Chunk>>,
 
     chunk_list_mode: ChunkListMode,
+
+    chunk_list_sort_column: ChunkListSortColumn,
 
     // filters
     entity_path_filter: String,
@@ -39,6 +96,7 @@ impl Default for DatastoreUi {
             store_kind: StoreKind::Recording,
             focused_chunk: None,
             chunk_list_mode: ChunkListMode::default(),
+            chunk_list_sort_column: ChunkListSortColumn::default(),
             entity_path_filter: String::new(),
             component_filter: String::new(),
         }
@@ -167,7 +225,32 @@ impl DatastoreUi {
             }))
         };
 
-        let chunks = chunk_iterator.collect_vec();
+        let mut chunks = chunk_iterator.collect_vec();
+
+        //
+        // Sort
+        //
+
+        match &self.chunk_list_sort_column.column {
+            ChunkListColumn::RowId => {} // already sorted by row IDs
+            ChunkListColumn::EntityPath => {
+                chunks.sort_by_key(|chunk| chunk.entity_path().to_string());
+            }
+            ChunkListColumn::RowCount => chunks.sort_by_key(|chunk| chunk.num_rows()),
+            ChunkListColumn::Timeline(timeline_name) => chunks.sort_by_key(|chunk| {
+                chunk
+                    .timelines()
+                    .iter()
+                    .find(|(timeline, _)| timeline.name() == timeline_name)
+                    .map_or(re_log_types::TimeInt::MIN, |(_, time_column)| {
+                        time_column.time_range().min()
+                    })
+            }),
+        }
+
+        if self.chunk_list_sort_column.direction == SortDirection::Descending {
+            chunks.reverse();
+        }
 
         //
         // Copy to clipboard
@@ -184,20 +267,21 @@ impl DatastoreUi {
 
         let header_ui = |mut row: TableRow<'_, '_>| {
             row.col(|ui| {
-                ui.strong("ID");
+                ChunkListColumn::RowId.ui(ui, &mut self.chunk_list_sort_column);
             });
 
             row.col(|ui| {
-                ui.strong("EntityPath");
+                ChunkListColumn::EntityPath.ui(ui, &mut self.chunk_list_sort_column);
             });
 
             row.col(|ui| {
-                ui.strong("Rows");
+                ChunkListColumn::RowCount.ui(ui, &mut self.chunk_list_sort_column);
             });
 
             for timeline in &all_timelines {
                 row.col(|ui| {
-                    ui.strong(timeline.name().as_str());
+                    ChunkListColumn::Timeline(*timeline.name())
+                        .ui(ui, &mut self.chunk_list_sort_column);
                 });
             }
 
