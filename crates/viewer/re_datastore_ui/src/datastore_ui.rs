@@ -47,7 +47,13 @@ impl Default for DatastoreUi {
 
 impl DatastoreUi {
     /// Show the ui.
-    pub fn ui(&mut self, ctx: &ViewerContext<'_>, ui: &mut egui::Ui, time_zone: TimeZone) {
+    pub fn ui(
+        &mut self,
+        ctx: &ViewerContext<'_>,
+        ui: &mut egui::Ui,
+        datastore_ui_active: &mut bool,
+        time_zone: TimeZone,
+    ) {
         outer_frame().show(ui, |ui| {
             if let Some(focused_chunk) = self.focused_chunk.clone() {
                 self.chunk_ui(ui, &focused_chunk, time_zone);
@@ -58,14 +64,21 @@ impl DatastoreUi {
                         StoreKind::Recording => ctx.recording_store(),
                         StoreKind::Blueprint => ctx.blueprint_store(),
                     },
+                    datastore_ui_active,
                     time_zone,
                 );
             }
         });
     }
 
-    fn chunk_store_ui(&mut self, ui: &mut egui::Ui, chunk_store: &ChunkStore, time_zone: TimeZone) {
-        let should_copy_chunk = self.chunk_store_info_ui(ui, chunk_store);
+    fn chunk_store_ui(
+        &mut self,
+        ui: &mut egui::Ui,
+        chunk_store: &ChunkStore,
+        datastore_ui_active: &mut bool,
+        time_zone: TimeZone,
+    ) {
+        let should_copy_chunk = self.chunk_store_info_ui(ui, chunk_store, datastore_ui_active);
 
         // Each of these must be a column that contains the corresponding time range.
         let all_timelines = chunk_store.all_timelines();
@@ -278,7 +291,12 @@ impl DatastoreUi {
     }
 
     // copy the (filtered) chunks to clipboard if this returns true
-    fn chunk_store_info_ui(&mut self, ui: &mut egui::Ui, chunk_store: &ChunkStore) -> bool {
+    fn chunk_store_info_ui(
+        &mut self,
+        ui: &mut egui::Ui,
+        chunk_store: &ChunkStore,
+        datastore_ui_active: &mut bool,
+    ) -> bool {
         let mut should_copy_chunks = false;
 
         let chunk_store_stats_ui = |ui: &mut egui::Ui| {
@@ -325,6 +343,10 @@ impl DatastoreUi {
                 ui.selectable_value(&mut self.store_kind, StoreKind::Recording, "Recording");
                 ui.selectable_value(&mut self.store_kind, StoreKind::Blueprint, "Blueprint");
             });
+
+            if ui.button("Close").clicked() {
+                *datastore_ui_active = false;
+            }
 
             if ui.button("Copy").clicked() {
                 should_copy_chunks = true;
