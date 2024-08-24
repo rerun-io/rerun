@@ -10,7 +10,7 @@ use re_ui::{list_item, UiExt as _};
 use re_viewer_context::ViewerContext;
 
 use crate::chunk_list_mode::{ChunkListMode, ChunkListQueryMode};
-use crate::SortDirection;
+use crate::sort::{sortable_column_header_ui, SortColumn, SortDirection};
 
 fn outer_frame() -> egui::Frame {
     egui::Frame {
@@ -19,56 +19,25 @@ fn outer_frame() -> egui::Frame {
     }
 }
 
+/// Any column that can be sorted.
 #[derive(Default, Clone, Copy, PartialEq)]
 enum ChunkListColumn {
     #[default]
-    RowId,
+    ChunkId,
     EntityPath,
     RowCount,
     Timeline(TimelineName),
 }
 
-#[derive(Default, Clone, Copy)]
-struct ChunkListSortColumn {
-    column: ChunkListColumn,
-    direction: SortDirection,
-}
+type ChunkListSortColumn = SortColumn<ChunkListColumn>;
 
 impl ChunkListColumn {
     pub(crate) fn ui(&self, ui: &mut egui::Ui, sort_column: &mut ChunkListSortColumn) {
         match self {
-            Self::RowId => self.ui_impl(ui, sort_column, "ID"),
-            Self::EntityPath => self.ui_impl(ui, sort_column, "Entity"),
-            Self::RowCount => self.ui_impl(ui, sort_column, "Row#"),
-            Self::Timeline(name) => self.ui_impl(ui, sort_column, name.as_str()),
-        }
-    }
-
-    fn ui_impl(
-        &self,
-        ui: &mut egui::Ui,
-        sort_column: &mut ChunkListSortColumn,
-        label: &'static str,
-    ) {
-        let label = format!(
-            "{label}{}",
-            if self == &sort_column.column {
-                format!(" {}", sort_column.direction)
-            } else {
-                String::new()
-            }
-        );
-
-        if ui
-            .add(egui::Button::new(egui::WidgetText::from(label).strong()))
-            .clicked()
-        {
-            if &sort_column.column == self {
-                sort_column.direction.toggle();
-            } else {
-                sort_column.column = *self;
-                sort_column.direction = SortDirection::default();
-            }
+            Self::ChunkId => sortable_column_header_ui(self, ui, sort_column, "ID"),
+            Self::EntityPath => sortable_column_header_ui(self, ui, sort_column, "Entity"),
+            Self::RowCount => sortable_column_header_ui(self, ui, sort_column, "Row#"),
+            Self::Timeline(name) => sortable_column_header_ui(self, ui, sort_column, name.as_str()),
         }
     }
 }
@@ -231,7 +200,7 @@ impl DatastoreUi {
         //
 
         match &self.chunk_list_sort_column.column {
-            ChunkListColumn::RowId => {} // already sorted by row IDs
+            ChunkListColumn::ChunkId => {} // already sorted by row IDs
             ChunkListColumn::EntityPath => {
                 chunks.sort_by_key(|chunk| chunk.entity_path().to_string());
             }
@@ -266,7 +235,7 @@ impl DatastoreUi {
 
         let header_ui = |mut row: TableRow<'_, '_>| {
             row.col(|ui| {
-                ChunkListColumn::RowId.ui(ui, &mut self.chunk_list_sort_column);
+                ChunkListColumn::ChunkId.ui(ui, &mut self.chunk_list_sort_column);
             });
 
             row.col(|ui| {
