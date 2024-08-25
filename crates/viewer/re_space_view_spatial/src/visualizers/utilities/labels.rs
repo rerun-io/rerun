@@ -8,6 +8,9 @@ use re_types::components::{ShowLabels, Text};
 use re_types::{Component, Loggable as _};
 use re_viewer_context::ResolvedAnnotationInfos;
 
+#[cfg(doc)]
+use re_viewer_context::ComponentFallbackProvider;
+
 use crate::visualizers::entity_iterator::clamped_or;
 
 #[derive(Clone)]
@@ -86,7 +89,7 @@ const MAX_NUM_LABELS_PER_ENTITY: usize = 30;
 /// The type parameter `C` must be the component type that defines the number of instances
 /// in the batch.
 ///
-// TODO(kpreid): This componenent type (or the length directly) should be gotten from some kind of
+// TODO(kpreid): This component type (or the length directly) should be gotten from some kind of
 // general mechanism of "how big is this batch?" rather than requiring the caller to specify it,
 // possibly incorrectly.
 ///
