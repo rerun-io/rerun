@@ -19,22 +19,6 @@ impl SortDirection {
     }
 }
 
-/// Private wrapper to make formatting [`SortDirection`] easier in [`sortable_column_header_ui`].
-struct SortDirectionHeaderPrinter(Option<SortDirection>);
-
-impl std::fmt::Display for SortDirectionHeaderPrinter {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        if let Some(direction) = self.0 {
-            match direction {
-                SortDirection::Ascending => " ↓".fmt(f),
-                SortDirection::Descending => " ↑".fmt(f),
-            }
-        } else {
-            Ok(())
-        }
-    }
-}
-
 /// Defines which column is currently sorted and in which direction.
 #[derive(Default, Clone, Copy)]
 pub(crate) struct SortColumn<T> {
@@ -50,20 +34,31 @@ pub(crate) fn sortable_column_header_ui<T: Default + Copy + PartialEq>(
     label: &'static str,
 ) {
     let is_sorted = &sort_column.column == column;
-    let label = format!(
-        "{label}{}",
-        SortDirectionHeaderPrinter(is_sorted.then_some(sort_column.direction)),
-    );
 
-    if ui
-        .add(egui::Button::new(egui::WidgetText::from(label).strong()))
-        .clicked()
-    {
+    ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+        ui.spacing_mut().item_spacing.x = 2.0;
+
         if is_sorted {
-            sort_column.direction.toggle();
-        } else {
-            sort_column.column = *column;
-            sort_column.direction = SortDirection::default();
+            ui.label(match sort_column.direction {
+                SortDirection::Ascending => "↓",
+                SortDirection::Descending => "↑",
+            });
         }
-    }
+
+        ui.with_layout(egui::Layout::left_to_right(egui::Align::Center), |ui| {
+            ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Truncate);
+
+            if ui
+                .add(egui::Button::new(egui::WidgetText::from(label).strong()))
+                .clicked()
+            {
+                if is_sorted {
+                    sort_column.direction.toggle();
+                } else {
+                    sort_column.column = *column;
+                    sort_column.direction = SortDirection::default();
+                }
+            }
+        });
+    });
 }
