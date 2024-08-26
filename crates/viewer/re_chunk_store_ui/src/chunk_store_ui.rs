@@ -30,7 +30,7 @@ impl ChunkListColumn {
         match self {
             Self::ChunkId => sortable_column_header_ui(self, ui, sort_column, "Chunk ID"),
             Self::EntityPath => sortable_column_header_ui(self, ui, sort_column, "Entity"),
-            Self::RowCount => sortable_column_header_ui(self, ui, sort_column, "Row#"),
+            Self::RowCount => sortable_column_header_ui(self, ui, sort_column, "# row"),
             Self::Timeline(timeline_name) => {
                 sortable_column_header_ui(self, ui, sort_column, timeline_name.as_str());
             }

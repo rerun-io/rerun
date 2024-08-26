@@ -26,8 +26,8 @@ impl std::fmt::Display for SortDirectionHeaderPrinter {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         if let Some(direction) = self.0 {
             match direction {
-                SortDirection::Ascending => " ▼".fmt(f),
-                SortDirection::Descending => " ▲".fmt(f),
+                SortDirection::Ascending => " ↓".fmt(f),
+                SortDirection::Descending => " ↑".fmt(f),
             }
         } else {
             Ok(())
