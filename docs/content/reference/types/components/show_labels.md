@@ -14,9 +14,9 @@ blueprints.
 * show_labels: [`Bool`](../datatypes/bool.md)
 
 ## API reference links
- * 🌊 [C++ API docs for `ShowLabels`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1components_1_1ShowLabels.html)
- * 🐍 [Python API docs for `ShowLabels`](https://ref.rerun.io/docs/python/stable/common/components#rerun.components.ShowLabels)
- * 🦀 [Rust API docs for `ShowLabels`](https://docs.rs/rerun/latest/rerun/components/struct.ShowLabels.html)
+ * 🌊 [C++ API docs for `ShowLabels`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1components_1_1ShowLabels.html?speculative-link)
+ * 🐍 [Python API docs for `ShowLabels`](https://ref.rerun.io/docs/python/stable/common/components?speculative-link#rerun.components.ShowLabels)
+ * 🦀 [Rust API docs for `ShowLabels`](https://docs.rs/rerun/latest/rerun/components/struct.ShowLabels.html?speculative-link)
 
 
 ## Used by
