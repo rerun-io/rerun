@@ -38,7 +38,7 @@ pub enum UICommand {
     ToggleBlueprintPanel,
     ToggleSelectionPanel,
     ToggleTimePanel,
-    ToggleDatastoreBrowser,
+    ToggleChunkStoreBrowser,
 
     #[cfg(debug_assertions)]
     ToggleBlueprintInspectionPanel,
@@ -151,7 +151,7 @@ impl UICommand {
             Self::ToggleBlueprintPanel => ("Toggle blueprint panel", "Toggle the left panel"),
             Self::ToggleSelectionPanel => ("Toggle selection panel", "Toggle the right panel"),
             Self::ToggleTimePanel => ("Toggle time panel", "Toggle the bottom panel"),
-            Self::ToggleDatastoreBrowser => ("Toggle datastore browser", "Toggle the datastore browser"),
+            Self::ToggleChunkStoreBrowser => ("Toggle chunk store browser", "Toggle the chunk store browser"),
 
             #[cfg(debug_assertions)]
             Self::ToggleBlueprintInspectionPanel => (
@@ -299,7 +299,7 @@ impl UICommand {
             Self::ToggleBlueprintPanel => Some(ctrl_shift(Key::B)),
             Self::ToggleSelectionPanel => Some(ctrl_shift(Key::S)),
             Self::ToggleTimePanel => Some(ctrl_shift(Key::T)),
-            Self::ToggleDatastoreBrowser => Some(ctrl_shift(Key::D)),
+            Self::ToggleChunkStoreBrowser => Some(ctrl_shift(Key::D)),
 
             #[cfg(debug_assertions)]
             Self::ToggleBlueprintInspectionPanel => Some(ctrl_shift(Key::I)),
