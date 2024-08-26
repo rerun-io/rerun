@@ -321,8 +321,7 @@ impl DatastoreUi {
             .show(ui, |ui| {
                 ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Extend);
 
-                //TODO: `TableBuilder` should have a custom ID API.
-                //TODO: btw, set unique UIs in dataframe view as well.
+                //TODO(ab): `TableBuilder` should have a custom ID API (https://github.com/emilk/egui/issues/4982)
                 ui.push_id("chunk_list", |ui| {
                     let table_builder = egui_extras::TableBuilder::new(ui)
                         .columns(
@@ -358,45 +357,6 @@ impl DatastoreUi {
     ) -> bool {
         let mut should_copy_chunks = false;
 
-        let chunk_store_stats_ui = |ui: &mut egui::Ui| {
-            ui.list_item_flat_noninteractive(
-                list_item::PropertyContent::new("ID").value_text(chunk_store.id().to_string()),
-            );
-
-            //TODO: config
-
-            let stats = chunk_store.stats().total();
-            list_item::ListItem::new()
-                .interactive(false)
-                .show_hierarchical_with_children(
-                    ui,
-                    "stats".into(),
-                    true,
-                    list_item::LabelContent::new("Stats"),
-                    |ui| {
-                        ui.list_item_flat_noninteractive(
-                            list_item::PropertyContent::new("Chunk count")
-                                .value_text(stats.num_chunks.to_string()),
-                        );
-
-                        ui.list_item_flat_noninteractive(
-                            list_item::PropertyContent::new("Heap size")
-                                .value_text(re_format::format_bytes(stats.total_size_bytes as f64)),
-                        );
-
-                        ui.list_item_flat_noninteractive(
-                            list_item::PropertyContent::new("Rows")
-                                .value_text(stats.num_rows.to_string()),
-                        );
-
-                        ui.list_item_flat_noninteractive(
-                            list_item::PropertyContent::new("Events")
-                                .value_text(stats.num_events.to_string()),
-                        );
-                    },
-                );
-        };
-
         ui.horizontal(|ui| {
             ui.selectable_toggle(|ui| {
                 ui.selectable_value(&mut self.store_kind, StoreKind::Recording, "Recording");
@@ -412,16 +372,56 @@ impl DatastoreUi {
             }
         });
 
-        list_item::list_item_scope(ui, "chunk_store_stats", |ui| {
-            list_item::ListItem::new()
-                .interactive(false)
-                .show_hierarchical_with_children(
-                    ui,
-                    "chunk_store_stats".into(),
-                    false,
-                    list_item::LabelContent::new("Chunk store stats"),
-                    chunk_store_stats_ui,
+        list_item::list_item_scope(ui, "chunk store info", |ui| {
+            let stats = chunk_store.stats().total();
+            ui.list_item_collapsible_noninteractive_label("Info", false, |ui| {
+                ui.list_item_flat_noninteractive(
+                    list_item::PropertyContent::new("ID").value_text(chunk_store.id().to_string()),
                 );
+
+                ui.list_item_flat_noninteractive(
+                    list_item::PropertyContent::new("Chunk count")
+                        .value_text(stats.num_chunks.to_string()),
+                );
+
+                ui.list_item_flat_noninteractive(
+                    list_item::PropertyContent::new("Heap size")
+                        .value_text(re_format::format_bytes(stats.total_size_bytes as f64)),
+                );
+
+                ui.list_item_flat_noninteractive(
+                    list_item::PropertyContent::new("Rows").value_text(stats.num_rows.to_string()),
+                );
+
+                ui.list_item_flat_noninteractive(
+                    list_item::PropertyContent::new("Events")
+                        .value_text(stats.num_events.to_string()),
+                );
+            });
+
+            ui.list_item_collapsible_noninteractive_label("Config", false, |ui| {
+                ui.list_item_flat_noninteractive(
+                    list_item::PropertyContent::new("Enable changelog")
+                        .value_bool(chunk_store.config().enable_changelog),
+                );
+
+                ui.list_item_flat_noninteractive(
+                    list_item::PropertyContent::new("Chunk max byte").value_text(
+                        re_format::format_bytes(chunk_store.config().chunk_max_bytes as f64),
+                    ),
+                );
+
+                ui.list_item_flat_noninteractive(
+                    list_item::PropertyContent::new("Chunk max rows")
+                        .value_text(re_format::format_uint(chunk_store.config().chunk_max_rows)),
+                );
+
+                ui.list_item_flat_noninteractive(
+                    list_item::PropertyContent::new("Chunk max rows (unsorted)").value_text(
+                        re_format::format_uint(chunk_store.config().chunk_max_rows_if_unsorted),
+                    ),
+                );
+            });
         });
 
         should_copy_chunks

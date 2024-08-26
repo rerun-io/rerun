@@ -22,8 +22,6 @@ pub(crate) enum ChunkListMode {
         entity_path: EntityPath,
         component_name: ComponentName,
 
-        component_name_filter: String,
-
         query: ChunkListQueryMode,
     },
 }
@@ -78,7 +76,6 @@ impl ChunkListMode {
                         timeline: current_timeline,
                         entity_path: current_entity.clone(),
                         component_name: current_component,
-                        component_name_filter: String::new(),
                         query: ChunkListQueryMode::LatestAt(TimeInt::MAX),
                     };
                 }
@@ -101,25 +98,19 @@ impl ChunkListMode {
                         query: ChunkListQueryMode::Range(ResolvedTimeRange::EVERYTHING),
                         entity_path: current_entity.clone(),
                         component_name: current_component,
-                        component_name_filter: String::new(),
                     };
                 }
             });
 
-            //TODO: more compact way to do that?
-            let (query_timeline, query_component, query_entity, component_name_filter) = match self
-            {
-                Self::All => {
-                    // No query, we're done here
-                    return;
-                }
-                Self::Query {
-                    timeline,
-                    component_name,
-                    entity_path,
-                    component_name_filter,
-                    ..
-                } => (timeline, component_name, entity_path, component_name_filter),
+            let Self::Query {
+                timeline: query_timeline,
+                component_name: query_component,
+                entity_path: query_entity,
+                ..
+            } = self
+            else {
+                // No query, we're done here
+                return;
             };
 
             ui.horizontal(|ui| {
@@ -146,33 +137,17 @@ impl ChunkListMode {
                     });
 
                 ui.label("Component:");
-                let resp = egui::ComboBox::new("component_name", "")
+                //TODO(ab): this should be a text edit with auto-complete (like view origin)
+                egui::ComboBox::new("component_name", "")
                     .selected_text(current_component.short_name())
                     .height(500.0)
                     .show_ui(ui, |ui| {
-                        //TODO: this doesn't really work well, make a custom one.
-                        ui.add_space(3.0);
-                        ui.text_edit_singleline(component_name_filter)
-                            .request_focus();
-
-                        for compname in all_components {
-                            if !component_name_filter.is_empty()
-                                && !compname
-                                    .short_name()
-                                    .to_lowercase()
-                                    .contains(&component_name_filter.to_lowercase())
-                            {
-                                continue;
-                            }
-
-                            if ui.button(compname.short_name()).clicked() {
-                                *query_component = compname;
+                        for component_name in all_components {
+                            if ui.button(component_name.short_name()).clicked() {
+                                *query_component = component_name;
                             }
                         }
                     });
-                if resp.response.clicked() {
-                    *component_name_filter = String::new();
-                }
             });
 
             let time_drag_value = if let Some(time_range) = chunk_store.time_range(query_timeline) {

@@ -2,7 +2,7 @@ use re_chunk_store::external::re_chunk::external::arrow2;
 use re_chunk_store::external::re_chunk::external::arrow2::array::Utf8Array;
 use re_viewer_context::UiLayout;
 
-//TODO: adapted from `re_data_ui`
+//TODO(ab): this is copied/modified from `re_data_ui`. Consider unifying them?
 pub(crate) fn arrow_ui(
     ui: &mut egui::Ui,
     ui_layout: UiLayout,
@@ -27,7 +27,6 @@ pub(crate) fn arrow_ui(
 
     let num_bytes = array.total_size_bytes();
     if num_bytes < 3000 {
-        //TODO: had to add that to avoid a panic
         if array.is_empty() {
             return ui_layout.data_label(ui, "[]");
         }
@@ -43,7 +42,6 @@ pub(crate) fn arrow_ui(
     // Fallback:
     let bytes = re_format::format_bytes(num_bytes as _);
 
-    // TODO(emilk): pretty-print data type
     let data_type_formatted = format!("{:?}", array.data_type());
 
     if data_type_formatted.len() < 20 {

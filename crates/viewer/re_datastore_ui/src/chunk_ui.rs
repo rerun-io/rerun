@@ -133,12 +133,19 @@ impl ChunkUi {
             for component_name in components.keys() {
                 row.col(|ui| {
                     let component_data = chunk.component_batch_raw(component_name, row_index);
-                    if let Some(Ok(data)) = component_data {
-                        crate::arrow_ui::arrow_ui(ui, UiLayout::List, &*data);
-                    } else {
-                        //TODO: handle error here
-                        ui.label("-");
-                    }
+                    match component_data {
+                        Some(Ok(data)) => {
+                            crate::arrow_ui::arrow_ui(ui, UiLayout::List, &*data);
+                        }
+                        Some(Err(err)) => {
+                            ui.error_label("error").on_hover_ui(|ui| {
+                                ui.label(format!("{err}"));
+                            });
+                        }
+                        None => {
+                            ui.weak("-");
+                        }
+                    };
                 });
             }
         };
@@ -148,8 +155,7 @@ impl ChunkUi {
             .show(ui, |ui| {
                 ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Extend);
 
-                //TODO: `TableBuilder` should have a custom ID API.
-                //TODO: btw, set unique UIs in dataframe view as well.
+                //TODO(ab): `TableBuilder` should have a custom ID API (https://github.com/emilk/egui/issues/4982)
                 ui.push_id("chunk", |ui| {
                     let table_builder = egui_extras::TableBuilder::new(ui)
                         .columns(
