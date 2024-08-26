@@ -262,8 +262,8 @@ vec1 = "1.8"
 walkdir = "2.0"
 # NOTE: `rerun_js/web-viewer/build-wasm.mjs` is HIGHLY sensitive to changes in `wasm-bindgen`.
 #       Whenever updating `wasm-bindgen`, make sure that the build script still works.
-wasm-bindgen = "=0.2.92"
-wasm-bindgen-cli-support = "=0.2.92"
+wasm-bindgen = "=0.2.93"
+wasm-bindgen-cli-support = "=0.2.93"
 wasm-bindgen-futures = "0.4.33"
 web-sys = "0.3"
 web-time = "0.2.0"
@@ -503,12 +503,12 @@ missing_errors_doc = "allow"
 # As a last resport, patch with a commit to our own repository.
 # ALWAYS document what PR the commit hash is part of, or when it was merged into the upstream trunk.
 
-ecolor = { git = "https://github.com/emilk/egui.git", rev = "1f6ae49a5f6bf43a869c215dea0d3028be8d742a" }      # egui master 2024-07-02
-eframe = { git = "https://github.com/emilk/egui.git", rev = "1f6ae49a5f6bf43a869c215dea0d3028be8d742a" }      # egui master 2024-07-02
-egui = { git = "https://github.com/emilk/egui.git", rev = "1f6ae49a5f6bf43a869c215dea0d3028be8d742a" }        # egui master 2024-07-02
-egui_extras = { git = "https://github.com/emilk/egui.git", rev = "1f6ae49a5f6bf43a869c215dea0d3028be8d742a" } # egui master 2024-07-02
-egui-wgpu = { git = "https://github.com/emilk/egui.git", rev = "1f6ae49a5f6bf43a869c215dea0d3028be8d742a" }   # egui master 2024-07-02
-emath = { git = "https://github.com/emilk/egui.git", rev = "1f6ae49a5f6bf43a869c215dea0d3028be8d742a" }       # egui master 2024-07-02
+ecolor = { git = "https://github.com/emilk/egui.git", rev = "47c0aeb7b9cef00d7793b2e84dc6e6a10c83552a" }      # egui master 2024-08-26
+eframe = { git = "https://github.com/emilk/egui.git", rev = "47c0aeb7b9cef00d7793b2e84dc6e6a10c83552a" }      # egui master 2024-08-26
+egui = { git = "https://github.com/emilk/egui.git", rev = "47c0aeb7b9cef00d7793b2e84dc6e6a10c83552a" }        # egui master 2024-08-26
+egui_extras = { git = "https://github.com/emilk/egui.git", rev = "47c0aeb7b9cef00d7793b2e84dc6e6a10c83552a" } # egui master 2024-08-26
+egui-wgpu = { git = "https://github.com/emilk/egui.git", rev = "47c0aeb7b9cef00d7793b2e84dc6e6a10c83552a" }   # egui master 2024-08-26
+emath = { git = "https://github.com/emilk/egui.git", rev = "47c0aeb7b9cef00d7793b2e84dc6e6a10c83552a" }       # egui master 2024-08-26
 
 # Useful while developing:
 # ecolor = { path = "../../egui/crates/ecolor" }
@@ -521,7 +521,7 @@ emath = { git = "https://github.com/emilk/egui.git", rev = "1f6ae49a5f6bf43a869c
 # egui_plot = { git = "https://github.com/emilk/egui_plot.git", rev = "1f6ae49a5f6bf43a869c215dea0d3028be8d742a" }
 # egui_plot = { path = "../../egui_plot/egui_plot" }
 
-# egui_tiles = { git = "https://github.com/rerun-io/egui_tiles", rev = "f9cbcc10521ee10e5a8927dae20f73689add7223" } # https://github.com/rerun-io/egui_tiles/pull/67 2024-06-25
+egui_tiles = { git = "https://github.com/rerun-io/egui_tiles", rev = "b2f5e232524deed983bcad01c05f27d0e8b89d98" } # https://github.com/rerun-io/egui_tiles/pull/78 2024-08-28
 # egui_tiles = { path = "../egui_tiles" }
 
 # egui_commonmark = { git = "https://github.com/rerun-io/egui_commonmark", rev = "63d5c8933445b9ea9088c4a50b71f4ede1f3c247" } # https://github.com/lampsitter/egui_commonmark/pull/51
