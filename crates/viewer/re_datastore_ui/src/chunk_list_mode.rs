@@ -54,6 +54,7 @@ impl ChunkListMode {
             ui.selectable_toggle(|ui| {
                 if ui
                     .selectable_label(matches!(self, Self::All), "All")
+                    .on_hover_text("Display all chunks")
                     .clicked()
                 {
                     *self = Self::All;
@@ -70,6 +71,7 @@ impl ChunkListMode {
                         ),
                         "Latest at",
                     )
+                    .on_hover_text("Display chunks relevant to the provided latest-at query")
                     .clicked()
                 {
                     *self = Self::Query {
@@ -91,6 +93,7 @@ impl ChunkListMode {
                         ),
                         "Range",
                     )
+                    .on_hover_text("Display chunks relevant to the provided range query")
                     .clicked()
                 {
                     *self = Self::Query {
@@ -114,7 +117,7 @@ impl ChunkListMode {
             };
 
             ui.horizontal(|ui| {
-                ui.label("Timeline:");
+                ui.label("timeline:");
                 egui::ComboBox::new("timeline", "")
                     .selected_text(current_timeline.name().as_str())
                     .show_ui(ui, |ui| {
@@ -125,7 +128,7 @@ impl ChunkListMode {
                         }
                     });
 
-                ui.label("Entity:");
+                ui.label("entity:");
                 egui::ComboBox::new("entity_path", "")
                     .selected_text(current_entity.to_string())
                     .show_ui(ui, |ui| {
@@ -136,7 +139,7 @@ impl ChunkListMode {
                         }
                     });
 
-                ui.label("Component:");
+                ui.label("component:");
                 //TODO(ab): this should be a text edit with auto-complete (like view origin)
                 egui::ComboBox::new("component_name", "")
                     .selected_text(current_component.short_name())
@@ -180,12 +183,12 @@ impl ChunkListMode {
                     ..
                 } => {
                     let (mut min, mut max) = (range.min().into(), range.max().into());
-                    ui.label("Range:");
+                    ui.label("from:");
                     match time_typ {
                         TimeType::Time => {
                             time_drag_value
                                 .temporal_drag_value_ui(ui, &mut min, true, None, time_zone);
-
+                            ui.label("to:");
                             time_drag_value.temporal_drag_value_ui(
                                 ui,
                                 &mut max,
@@ -196,6 +199,7 @@ impl ChunkListMode {
                         }
                         TimeType::Sequence => {
                             time_drag_value.sequence_drag_value_ui(ui, &mut min, true, None);
+                            ui.label("to:");
                             time_drag_value.sequence_drag_value_ui(ui, &mut max, true, Some(min));
                         }
                     };

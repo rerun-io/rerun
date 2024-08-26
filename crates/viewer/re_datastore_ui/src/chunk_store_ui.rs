@@ -35,7 +35,7 @@ type ChunkListSortColumn = SortColumn<ChunkListColumn>;
 impl ChunkListColumn {
     pub(crate) fn ui(&self, ui: &mut egui::Ui, sort_column: &mut ChunkListSortColumn) {
         match self {
-            Self::ChunkId => sortable_column_header_ui(self, ui, sort_column, "ID"),
+            Self::ChunkId => sortable_column_header_ui(self, ui, sort_column, "Chunk ID"),
             Self::EntityPath => sortable_column_header_ui(self, ui, sort_column, "Entity"),
             Self::RowCount => sortable_column_header_ui(self, ui, sort_column, "Row#"),
             Self::Timeline(timeline_name) => {
@@ -163,10 +163,14 @@ impl DatastoreUi {
         ui.horizontal(|ui| {
             ui.spacing_mut().text_edit_width = 120.0;
 
-            ui.label("Entity:");
+            ui.label("Filter:").on_hover_text(
+                "Filter the chunk list by entity path and/or component. Filtering is \
+                case-insensitive text-based.",
+            );
+            ui.label("entity:");
             ui.text_edit_singleline(&mut self.entity_path_filter);
 
-            ui.label("Component:");
+            ui.label("component:");
             ui.text_edit_singleline(&mut self.component_filter);
 
             if ui.small_icon_button(&re_ui::icons::CLOSE).clicked() {
@@ -359,15 +363,25 @@ impl DatastoreUi {
 
         ui.horizontal(|ui| {
             ui.selectable_toggle(|ui| {
-                ui.selectable_value(&mut self.store_kind, StoreKind::Recording, "Recording");
-                ui.selectable_value(&mut self.store_kind, StoreKind::Blueprint, "Blueprint");
+                ui.selectable_value(&mut self.store_kind, StoreKind::Recording, "Recording")
+                    .on_hover_text("Display the current recording's data store");
+                ui.selectable_value(&mut self.store_kind, StoreKind::Blueprint, "Blueprint")
+                    .on_hover_text("Display the current recording's blueprint store");
             });
 
-            if ui.button("Close").clicked() {
+            if ui
+                .button("Close")
+                .on_hover_text("Close the datastore browser")
+                .clicked()
+            {
                 *datastore_ui_active = false;
             }
 
-            if ui.button("Copy").clicked() {
+            if ui
+                .button("Copy")
+                .on_hover_text("Copy the currently listed chunks as text")
+                .clicked()
+            {
                 should_copy_chunks = true;
             }
         });
@@ -376,7 +390,8 @@ impl DatastoreUi {
             let stats = chunk_store.stats().total();
             ui.list_item_collapsible_noninteractive_label("Info", false, |ui| {
                 ui.list_item_flat_noninteractive(
-                    list_item::PropertyContent::new("ID").value_text(chunk_store.id().to_string()),
+                    list_item::PropertyContent::new("Store ID")
+                        .value_text(chunk_store.id().to_string()),
                 );
 
                 ui.list_item_flat_noninteractive(
@@ -396,6 +411,11 @@ impl DatastoreUi {
                 ui.list_item_flat_noninteractive(
                     list_item::PropertyContent::new("Events")
                         .value_text(stats.num_events.to_string()),
+                );
+
+                ui.list_item_flat_noninteractive(
+                    list_item::PropertyContent::new("Generation")
+                        .value_text(format!("{:?}", chunk_store.generation())),
                 );
             });
 

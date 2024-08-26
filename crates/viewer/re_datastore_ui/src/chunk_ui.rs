@@ -26,7 +26,7 @@ type ChunkSortColumn = SortColumn<ChunkColumn>;
 impl ChunkColumn {
     pub(crate) fn ui(&self, ui: &mut egui::Ui, sort_column: &mut ChunkSortColumn) {
         match self {
-            Self::RowId => sortable_column_header_ui(self, ui, sort_column, "ID"),
+            Self::RowId => sortable_column_header_ui(self, ui, sort_column, "Row ID"),
             Self::Timeline(timeline) => {
                 sortable_column_header_ui(self, ui, sort_column, timeline.name().as_str());
             }
@@ -213,7 +213,8 @@ impl ChunkUi {
         let chunk_stats_ui =
             |ui: &mut egui::Ui| {
                 ui.list_item_flat_noninteractive(
-                    list_item::PropertyContent::new("ID").value_text(self.chunk.id().to_string()),
+                    list_item::PropertyContent::new("Chunk ID")
+                        .value_text(self.chunk.id().to_string()),
                 );
 
                 ui.list_item_flat_noninteractive(
@@ -246,11 +247,19 @@ impl ChunkUi {
             };
         let mut should_exit = false;
         ui.horizontal(|ui| {
-            if ui.button("Back").clicked() {
+            if ui
+                .button("Back")
+                .on_hover_text("Return to the chunk list view")
+                .clicked()
+            {
                 should_exit = true;
             }
 
-            if ui.button("Copy").clicked() {
+            if ui
+                .button("Copy")
+                .on_hover_text("Copy this chunk as text")
+                .clicked()
+            {
                 let s = self.chunk.to_string();
                 ui.output_mut(|o| o.copied_text = s);
             }
