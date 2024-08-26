@@ -262,6 +262,7 @@ pub mod external {
 
     pub use anyhow;
     pub use arrow2;
+    pub use ndarray;
     pub use uuid;
 
     #[cfg(feature = "ecolor")]
