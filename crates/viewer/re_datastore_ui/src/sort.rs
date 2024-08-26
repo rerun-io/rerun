@@ -1,3 +1,8 @@
+//! Helpers to assist with column-based sorting.
+
+//TODO(ab): make this more generally applicable, in particular for the dataframe view?
+
+/// Sort direction.
 #[derive(Debug, Clone, Copy, Default, PartialEq)]
 pub(crate) enum SortDirection {
     #[default]
@@ -14,15 +19,23 @@ impl SortDirection {
     }
 }
 
-impl std::fmt::Display for SortDirection {
+/// Private wrapper to make formatting [`SortDirection`] easier in [`sortable_column_header_ui`].
+struct SortDirectionHeaderPrinter(Option<SortDirection>);
+
+impl std::fmt::Display for SortDirectionHeaderPrinter {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Self::Ascending => " ▼".fmt(f),
-            Self::Descending => " ▲".fmt(f),
+        if let Some(direction) = self.0 {
+            match direction {
+                SortDirection::Ascending => " ▼".fmt(f),
+                SortDirection::Descending => " ▲".fmt(f),
+            }
+        } else {
+            Ok(())
         }
     }
 }
 
+/// Defines which column is currently sorted and in which direction.
 #[derive(Default, Clone, Copy)]
 pub(crate) struct SortColumn<T> {
     pub(crate) column: T,
@@ -36,20 +49,17 @@ pub(crate) fn sortable_column_header_ui<T: Default + Copy + PartialEq>(
     sort_column: &mut SortColumn<T>,
     label: &'static str,
 ) {
+    let is_sorted = &sort_column.column == column;
     let label = format!(
         "{label}{}",
-        if column == &sort_column.column {
-            format!(" {}", sort_column.direction)
-        } else {
-            String::new()
-        }
+        SortDirectionHeaderPrinter(is_sorted.then_some(sort_column.direction)),
     );
 
     if ui
         .add(egui::Button::new(egui::WidgetText::from(label).strong()))
         .clicked()
     {
-        if &sort_column.column == column {
+        if is_sorted {
             sort_column.direction.toggle();
         } else {
             sort_column.column = *column;

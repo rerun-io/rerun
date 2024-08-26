@@ -16,12 +16,14 @@ pub(crate) enum ChunkListQueryMode {
 #[derive(Debug, Default)]
 pub(crate) enum ChunkListMode {
     #[default]
+    /// Show all chunks.
     All,
+
+    /// Only show chunks that are relevant to a given latest-at or range query.
     Query {
         timeline: Timeline,
         entity_path: EntityPath,
         component_name: ComponentName,
-
         query: ChunkListQueryMode,
     },
 }
@@ -109,7 +111,7 @@ impl ChunkListMode {
                 timeline: query_timeline,
                 component_name: query_component,
                 entity_path: query_entity,
-                ..
+                query,
             } = self
             else {
                 // No query, we're done here
@@ -163,11 +165,8 @@ impl ChunkListMode {
             };
             let time_typ = query_timeline.typ();
 
-            match self {
-                Self::Query {
-                    query: ChunkListQueryMode::LatestAt(time),
-                    ..
-                } => {
+            match query {
+                ChunkListQueryMode::LatestAt(time) => {
                     ui.label("at:");
                     match time_typ {
                         TimeType::Time => {
@@ -178,10 +177,7 @@ impl ChunkListMode {
                         }
                     };
                 }
-                Self::Query {
-                    query: ChunkListQueryMode::Range(range),
-                    ..
-                } => {
+                ChunkListQueryMode::Range(range) => {
                     let (mut min, mut max) = (range.min().into(), range.max().into());
                     ui.label("from:");
                     match time_typ {
@@ -206,7 +202,6 @@ impl ChunkListMode {
                     range.set_min(min);
                     range.set_max(max);
                 }
-                _ => {}
             }
         });
 

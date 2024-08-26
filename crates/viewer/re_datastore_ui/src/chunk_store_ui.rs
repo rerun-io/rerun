@@ -13,13 +13,6 @@ use crate::chunk_list_mode::{ChunkListMode, ChunkListQueryMode};
 use crate::chunk_ui::ChunkUi;
 use crate::sort::{sortable_column_header_ui, SortColumn, SortDirection};
 
-fn outer_frame() -> egui::Frame {
-    egui::Frame {
-        inner_margin: egui::Margin::same(5.0),
-        ..Default::default()
-    }
-}
-
 /// Any column that can be sorted.
 #[derive(Default, Clone, Copy, PartialEq)]
 enum ChunkListColumn {
@@ -81,7 +74,11 @@ impl DatastoreUi {
         datastore_ui_active: &mut bool,
         time_zone: TimeZone,
     ) {
-        outer_frame().show(ui, |ui| {
+        egui::Frame {
+            inner_margin: egui::Margin::same(5.0),
+            ..Default::default()
+        }
+        .show(ui, |ui| {
             let exit_focused_chunk = if let Some(focused_chunk) = &mut self.focused_chunk {
                 focused_chunk.ui(ui, time_zone)
             } else {
