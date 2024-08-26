@@ -668,6 +668,8 @@ impl App {
             }
             UICommand::ToggleTimePanel => app_blueprint.toggle_time_panel(&self.command_sender),
 
+            UICommand::ToggleDatastoreBrowser => self.state.show_datastore_ui ^= true,
+
             #[cfg(debug_assertions)]
             UICommand::ToggleBlueprintInspectionPanel => {
                 self.app_options_mut().inspect_blueprint_timeline ^= true;
