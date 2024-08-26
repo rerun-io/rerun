@@ -1,10 +1,10 @@
 [package]
 authors.workspace = true
-description = "Display the contents of the datastore."
+description = "Display the contents of chunk stores."
 edition.workspace = true
 homepage.workspace = true
 license.workspace = true
-name = "re_datastore_ui"
+name = "re_chunk_store_ui"
 publish = true
 readme = "README.md"
 repository.workspace = true

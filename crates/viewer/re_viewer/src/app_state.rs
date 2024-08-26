@@ -46,7 +46,7 @@ pub struct AppState {
     welcome_screen: crate::ui::WelcomeScreen,
 
     #[serde(skip)]
-    datastore_ui: re_datastore_ui::DatastoreUi,
+    datastore_ui: re_chunk_store_ui::DatastoreUi,
 
     #[serde(skip)]
     pub(crate) show_datastore_ui: bool,

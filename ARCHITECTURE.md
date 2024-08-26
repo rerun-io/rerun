@@ -88,11 +88,11 @@ Of course, this will only take us so far. In the future we plan on caching queri
 Here is an overview of the crates included in the project:
 
 <picture>
-  <img src="https://static.rerun.io/crates/5636274b1bb359b625dba1b04bf2dbf44d3eff8d/full.png" alt="">
-  <source media="(max-width: 480px)" srcset="https://static.rerun.io/crates/5636274b1bb359b625dba1b04bf2dbf44d3eff8d/480w.png">
-  <source media="(max-width: 768px)" srcset="https://static.rerun.io/crates/5636274b1bb359b625dba1b04bf2dbf44d3eff8d/768w.png">
-  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/crates/5636274b1bb359b625dba1b04bf2dbf44d3eff8d/1024w.png">
-  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/crates/5636274b1bb359b625dba1b04bf2dbf44d3eff8d/1200w.png">
+  <img src="https://static.rerun.io/crates/0973a21dff25026ed999e7d70d7c177cd2621514/full.png" alt="">
+  <source media="(max-width: 480px)" srcset="https://static.rerun.io/crates/0973a21dff25026ed999e7d70d7c177cd2621514/480w.png">
+  <source media="(max-width: 768px)" srcset="https://static.rerun.io/crates/0973a21dff25026ed999e7d70d7c177cd2621514/768w.png">
+  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/crates/0973a21dff25026ed999e7d70d7c177cd2621514/1024w.png">
+  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/crates/0973a21dff25026ed999e7d70d7c177cd2621514/1200w.png">
 </picture>
 
 
@@ -129,7 +129,7 @@ Update instructions:
 | Crate                       | Description                                                                                                |
 |-----------------------------|------------------------------------------------------------------------------------------------------------|
 | re_blueprint_tree           | The UI for the blueprint tree in the left panel.                                                           |
-| re_datastore_ui             | The UI for the datastore browser.                                                                          |
+| re_chunk_store_ui           | A chunk store browser UI.                                                                                  |
 | re_component_ui             | Provides UI editors for Rerun component data for registration with the Rerun Viewer component UI registry. |
 | re_selection_panel          | The UI for the selection panel.                                                                            |
 | re_space_view               | Types & utilities for defining Space View classes and communicating with the Viewport.                     |

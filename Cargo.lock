@@ -4355,6 +4355,24 @@ dependencies = [
 ]
 
 [[package]]
+name = "re_chunk_store_ui"
+version = "0.19.0-alpha.1+dev"
+dependencies = [
+ "egui",
+ "egui_extras",
+ "itertools 0.13.0",
+ "re_chunk_store",
+ "re_data_ui",
+ "re_entity_db",
+ "re_format",
+ "re_format_arrow",
+ "re_log_types",
+ "re_types",
+ "re_ui",
+ "re_viewer_context",
+]
+
+[[package]]
 name = "re_component_ui"
 version = "0.19.0-alpha.1+dev"
 dependencies = [
@@ -4471,24 +4489,6 @@ dependencies = [
  "re_ui",
  "re_viewer_context",
  "unindent",
-]
-
-[[package]]
-name = "re_datastore_ui"
-version = "0.19.0-alpha.1+dev"
-dependencies = [
- "egui",
- "egui_extras",
- "itertools 0.13.0",
- "re_chunk_store",
- "re_data_ui",
- "re_entity_db",
- "re_format",
- "re_format_arrow",
- "re_log_types",
- "re_types",
- "re_ui",
- "re_viewer_context",
 ]
 
 [[package]]
@@ -5273,11 +5273,11 @@ dependencies = [
  "re_build_tools",
  "re_chunk",
  "re_chunk_store",
+ "re_chunk_store_ui",
  "re_component_ui",
  "re_data_loader",
  "re_data_source",
  "re_data_ui",
- "re_datastore_ui",
  "re_entity_db",
  "re_error",
  "re_format",
