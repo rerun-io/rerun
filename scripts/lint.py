@@ -1179,7 +1179,7 @@ def main() -> None:
         "./.github/workflows/reusable_checks.yml",  # zombie TODO hunting job
         "./.pytest_cache",
         "./CODE_STYLE.md",
-        "./crates/re_types_builder/src/reflection.rs",  # auto-generated
+        "./crates/build/re_types_builder/src/reflection.rs",  # auto-generated
         "./docs/content/reference/cli.md",  # auto-generated
         "./examples/assets",
         "./examples/python/detect_and_track_objects/cache/version.txt",

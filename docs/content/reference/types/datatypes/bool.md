@@ -19,4 +19,4 @@ A single boolean.
 
 * [`ClearIsRecursive`](../components/clear_is_recursive.md)
 * [`DisconnectedSpace`](../components/disconnected_space.md)
-* [`ShowLabels`](../components/show_labels.md)
+* [`ShowLabels`](../components/show_labels.md?speculative-link)
