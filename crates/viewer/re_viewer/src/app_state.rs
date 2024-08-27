@@ -45,6 +45,12 @@ pub struct AppState {
     #[serde(skip)]
     welcome_screen: crate::ui::WelcomeScreen,
 
+    #[serde(skip)]
+    datastore_ui: re_chunk_store_ui::DatastoreUi,
+
+    #[serde(skip)]
+    pub(crate) show_datastore_ui: bool,
+
     /// Storage for the state of each `SpaceView`
     ///
     /// This is stored here for simplicity. An exclusive reference for that is passed to the users,
@@ -75,6 +81,8 @@ impl Default for AppState {
             blueprint_panel: re_time_panel::TimePanel::new_blueprint_panel(),
             blueprint_tree: Default::default(),
             welcome_screen: Default::default(),
+            datastore_ui: Default::default(),
+            show_datastore_ui: false,
             view_states: Default::default(),
             selection_state: Default::default(),
             focused_item: Default::default(),
@@ -149,6 +157,8 @@ impl AppState {
             blueprint_panel,
             blueprint_tree,
             welcome_screen,
+            datastore_ui,
+            show_datastore_ui,
             view_states,
             selection_state,
             focused_item,
@@ -327,118 +337,127 @@ impl AppState {
             focused_item,
         };
 
-        //
-        // Blueprint time panel
-        //
+        if *show_datastore_ui {
+            datastore_ui.ui(&ctx, ui, show_datastore_ui, app_options.time_zone);
+        } else {
+            //
+            // Blueprint time panel
+            //
 
-        if app_options.inspect_blueprint_timeline {
-            blueprint_panel.show_panel(
+            if app_options.inspect_blueprint_timeline {
+                blueprint_panel.show_panel(
+                    &ctx,
+                    &viewport_blueprint,
+                    ctx.store_context.blueprint,
+                    blueprint_cfg,
+                    ui,
+                    PanelState::Expanded,
+                );
+            }
+
+            //
+            // Time panel
+            //
+
+            time_panel.show_panel(
                 &ctx,
                 &viewport_blueprint,
-                ctx.store_context.blueprint,
-                blueprint_cfg,
+                ctx.recording(),
+                ctx.rec_cfg,
                 ui,
-                PanelState::Expanded,
+                app_blueprint.time_panel_state(),
             );
-        }
 
-        //
-        // Time panel
-        //
+            //
+            // Selection Panel
+            //
 
-        time_panel.show_panel(
-            &ctx,
-            &viewport_blueprint,
-            ctx.recording(),
-            ctx.rec_cfg,
-            ui,
-            app_blueprint.time_panel_state(),
-        );
+            selection_panel.show_panel(
+                &ctx,
+                &viewport_blueprint,
+                view_states,
+                ui,
+                app_blueprint.selection_panel_state().is_expanded(),
+            );
 
-        //
-        // Selection Panel
-        //
+            //
+            // Left panel (recordings and blueprint)
+            //
 
-        selection_panel.show_panel(
-            &ctx,
-            &viewport_blueprint,
-            view_states,
-            ui,
-            app_blueprint.selection_panel_state().is_expanded(),
-        );
+            let left_panel = egui::SidePanel::left("blueprint_panel")
+                .resizable(true)
+                .frame(egui::Frame {
+                    fill: ui.visuals().panel_fill,
+                    ..Default::default()
+                })
+                .min_width(120.0)
+                .default_width(default_blueprint_panel_width(
+                    ui.ctx().screen_rect().width(),
+                ));
 
-        //
-        // Left panel (recordings and blueprint)
-        //
+            let show_welcome =
+                store_context.blueprint.app_id() == Some(&StoreHub::welcome_screen_app_id());
 
-        let left_panel = egui::SidePanel::left("blueprint_panel")
-            .resizable(true)
-            .frame(egui::Frame {
-                fill: ui.visuals().panel_fill,
+            left_panel.show_animated_inside(
+                ui,
+                app_blueprint.blueprint_panel_state().is_expanded(),
+                |ui: &mut egui::Ui| {
+                    // ListItem don't need vertical spacing so we disable it, but restore it
+                    // before drawing the blueprint panel.
+                    ui.spacing_mut().item_spacing.y = 0.0;
+
+                    let resizable = ctx.store_context.bundle.recordings().count() > 3;
+
+                    if resizable {
+                        // Don't shrink either recordings panel or blueprint panel below this height
+                        let min_height_each = 90.0_f32.at_most(ui.available_height() / 2.0);
+
+                        egui::TopBottomPanel::top("recording_panel")
+                            .frame(egui::Frame::none())
+                            .resizable(resizable)
+                            .show_separator_line(false)
+                            .min_height(min_height_each)
+                            .default_height(210.0)
+                            .max_height(ui.available_height() - min_height_each)
+                            .show_inside(ui, |ui| {
+                                recordings_panel_ui(&ctx, rx, ui, welcome_screen_state);
+                            });
+                    } else {
+                        recordings_panel_ui(&ctx, rx, ui, welcome_screen_state);
+                    }
+
+                    ui.add_space(4.0);
+
+                    if !show_welcome {
+                        blueprint_tree.show(&ctx, &viewport_blueprint, ui);
+                    }
+                },
+            );
+
+            //
+            // Viewport
+            //
+
+            let viewport_frame = egui::Frame {
+                fill: ui.style().visuals.panel_fill,
                 ..Default::default()
-            })
-            .min_width(120.0)
-            .default_width(default_blueprint_panel_width(
-                ui.ctx().screen_rect().width(),
-            ));
+            };
 
-        let show_welcome =
-            store_context.blueprint.app_id() == Some(&StoreHub::welcome_screen_app_id());
-
-        left_panel.show_animated_inside(
-            ui,
-            app_blueprint.blueprint_panel_state().is_expanded(),
-            |ui: &mut egui::Ui| {
-                // ListItem don't need vertical spacing so we disable it, but restore it
-                // before drawing the blueprint panel.
-                ui.spacing_mut().item_spacing.y = 0.0;
-
-                let resizable = ctx.store_context.bundle.recordings().count() > 3;
-
-                if resizable {
-                    // Don't shrink either recordings panel or blueprint panel below this height
-                    let min_height_each = 90.0_f32.at_most(ui.available_height() / 2.0);
-
-                    egui::TopBottomPanel::top("recording_panel")
-                        .frame(egui::Frame::none())
-                        .resizable(resizable)
-                        .show_separator_line(false)
-                        .min_height(min_height_each)
-                        .default_height(210.0)
-                        .max_height(ui.available_height() - min_height_each)
-                        .show_inside(ui, |ui| {
-                            recordings_panel_ui(&ctx, rx, ui, welcome_screen_state);
-                        });
-                } else {
-                    recordings_panel_ui(&ctx, rx, ui, welcome_screen_state);
-                }
-
-                ui.add_space(4.0);
-
-                if !show_welcome {
-                    blueprint_tree.show(&ctx, &viewport_blueprint, ui);
-                }
-            },
-        );
-
-        //
-        // Viewport
-        //
-
-        let viewport_frame = egui::Frame {
-            fill: ui.style().visuals.panel_fill,
-            ..Default::default()
-        };
-
-        egui::CentralPanel::default()
-            .frame(viewport_frame)
-            .show_inside(ui, |ui| {
-                if show_welcome {
-                    welcome_screen.ui(ui, command_sender, welcome_screen_state, is_history_enabled);
-                } else {
-                    viewport.viewport_ui(ui, &ctx, view_states);
-                }
-            });
+            egui::CentralPanel::default()
+                .frame(viewport_frame)
+                .show_inside(ui, |ui| {
+                    if show_welcome {
+                        welcome_screen.ui(
+                            ui,
+                            command_sender,
+                            welcome_screen_state,
+                            is_history_enabled,
+                        );
+                    } else {
+                        viewport.viewport_ui(ui, &ctx, view_states);
+                    }
+                });
+        }
 
         //
         // Other UI things
