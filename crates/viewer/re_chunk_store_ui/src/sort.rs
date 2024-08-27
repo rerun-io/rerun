@@ -27,6 +27,7 @@ pub(crate) struct SortColumn<T> {
 }
 
 /// UI for a column header that is sortable.
+//TODO(ab): this UI could be much improved with https://github.com/emilk/egui/issues/5015
 pub(crate) fn sortable_column_header_ui<T: Default + Copy + PartialEq>(
     column: &T,
     ui: &mut egui::Ui,
@@ -35,30 +36,27 @@ pub(crate) fn sortable_column_header_ui<T: Default + Copy + PartialEq>(
 ) {
     let is_sorted = &sort_column.column == column;
 
-    ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-        ui.spacing_mut().item_spacing.x = 2.0;
+    ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Truncate);
 
-        if is_sorted {
-            ui.label(match sort_column.direction {
-                SortDirection::Ascending => "↓",
-                SortDirection::Descending => "↑",
-            });
-        }
-
-        ui.with_layout(egui::Layout::left_to_right(egui::Align::Center), |ui| {
-            ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Truncate);
-
-            if ui
-                .add(egui::Button::new(egui::WidgetText::from(label).strong()))
-                .clicked()
-            {
-                if is_sorted {
-                    sort_column.direction.toggle();
-                } else {
-                    sort_column.column = *column;
-                    sort_column.direction = SortDirection::default();
+    if ui
+        .add(egui::Button::new(
+            egui::WidgetText::from(format!(
+                "{label}{}",
+                match (is_sorted, sort_column.direction) {
+                    (true, SortDirection::Ascending) => " ↓",
+                    (true, SortDirection::Descending) => " ↑",
+                    _ => "",
                 }
-            }
-        });
-    });
+            ))
+            .strong(),
+        ))
+        .clicked()
+    {
+        if is_sorted {
+            sort_column.direction.toggle();
+        } else {
+            sort_column.column = *column;
+            sort_column.direction = SortDirection::default();
+        }
+    }
 }
