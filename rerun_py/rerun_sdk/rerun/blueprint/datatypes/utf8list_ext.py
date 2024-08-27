@@ -12,7 +12,7 @@ class Utf8ListExt:
     """Extension for [Utf8List][rerun.blueprint.datatypes.Utf8List]."""
 
     @staticmethod
-    def visualizers__field_converter_override(value: str | list[str]) -> list[str]:
+    def value__field_converter_override(value: str | list[str]) -> list[str]:
         if isinstance(value, str):
             return [value]
         return value
