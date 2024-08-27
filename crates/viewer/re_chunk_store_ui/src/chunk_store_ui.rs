@@ -233,6 +233,7 @@ impl DatastoreUi {
         //
 
         if should_copy_chunk {
+            //TODO(#7282): make sure the output is not dependant on the parent terminal's width
             let s = chunks.iter().map(|chunk| chunk.to_string()).join("\n\n");
             ui.output_mut(|o| o.copied_text = s);
         }

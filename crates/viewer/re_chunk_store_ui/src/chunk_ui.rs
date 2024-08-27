@@ -268,6 +268,7 @@ impl ChunkUi {
                 .on_hover_text("Copy this chunk as text")
                 .clicked()
             {
+                //TODO(#7282): make sure the output is not dependant on the parent terminal's width
                 let s = self.chunk.to_string();
                 ui.output_mut(|o| o.copied_text = s);
             }
@@ -287,7 +288,7 @@ impl ChunkUi {
                     });
                 }
                 Err(err) => {
-                    ui.error_label(&format!("Failed to convert to transport: {err}"));
+                    ui.error_label(&format!("Failed to convert to tqransport: {err}"));
                 }
             }
         });
