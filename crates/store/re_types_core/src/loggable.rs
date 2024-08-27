@@ -1,5 +1,3 @@
-use std::sync::Arc;
-
 use crate::{
     result::_Backtrace, DeserializationResult, ResultExt as _, SerializationResult, SizeBytes,
 };
@@ -40,21 +38,6 @@ pub trait Loggable: 'static + Send + Sync + Clone + Sized + SizeBytes {
     ) -> SerializationResult<Box<dyn ::arrow2::array::Array>>
     where
         Self: 'a;
-
-    // --- Optional metadata methods ---
-
-    /// The underlying [`arrow2::datatypes::DataType`], including datatype extensions.
-    ///
-    /// The default implementation will simply wrap [`Self::arrow_datatype`] in an extension called
-    /// [`Self::name`], which is what you want in most cases.
-    #[inline]
-    fn extended_arrow_datatype() -> arrow2::datatypes::DataType {
-        arrow2::datatypes::DataType::Extension(
-            Self::name().to_string(),
-            Arc::new(Self::arrow_datatype()),
-            None,
-        )
-    }
 
     // --- Optional serialization methods ---
 

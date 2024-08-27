@@ -64,8 +64,14 @@ impl Loggable for Tuid {
         ];
         let validity = None;
 
+        let datatype = arrow2::datatypes::DataType::Extension(
+            Self::name().to_string(),
+            Arc::new(Self::arrow_datatype()),
+            None,
+        );
+
         // TODO(cmc): We use the extended type here because we rely on it for formatting.
-        Ok(StructArray::new(Self::extended_arrow_datatype(), values, validity).boxed())
+        Ok(StructArray::new(datatype, values, validity).boxed())
     }
 
     fn from_arrow(array: &dyn ::arrow2::array::Array) -> crate::DeserializationResult<Vec<Self>> {
