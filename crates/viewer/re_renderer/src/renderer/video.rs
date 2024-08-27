@@ -43,6 +43,9 @@ impl Video {
         self.decoder.height()
     }
 
+    /// Returns a texture with the latest frame at the given timestamp.
+    ///
+    /// If the timestamp is negative, a zeroed texture is returned.
     pub fn get_frame(&mut self, timestamp_s: f64) -> GpuTexture2D {
         re_tracing::profile_function!();
         self.decoder.get_frame(TimeMs::new(timestamp_s * 1e3))
@@ -178,6 +181,7 @@ mod decoder {
         device: Arc<wgpu::Device>,
         queue: Arc<wgpu::Queue>,
         texture: GpuTexture2D,
+        zeroed_texture_float: GpuTexture2D,
 
         decoder: web_sys::VideoDecoder,
 
@@ -216,18 +220,27 @@ mod decoder {
                 }
             })?;
 
+            // NOTE: both textures are assumed to be rgba8unorm
             let texture = super::alloc_video_frame_texture(
                 &device,
                 &render_context.gpu_resources.textures,
                 data.config.coded_width as u32,
                 data.config.coded_height as u32,
             );
+            let zeroed_texture_float = GpuTexture2D::new(
+                render_context
+                    .texture_manager_2d
+                    .zeroed_texture_float()
+                    .clone(),
+            )
+            .expect("expected texture to be 2d");
 
             let mut this = Self {
                 data,
                 device,
                 queue,
                 texture,
+                zeroed_texture_float,
 
                 decoder,
 
@@ -257,6 +270,11 @@ mod decoder {
         }
 
         pub fn get_frame(&mut self, timestamp: TimeMs) -> GpuTexture2D {
+            if timestamp.as_f64() < 0 {
+                // TODO(andreas): This is a hack, we should have a better way to handle this
+                return self.zeroed_texture_float.clone();
+            }
+
             let Some(segment_idx) =
                 latest_at_idx(&self.data.segments, |segment| segment.timestamp, &timestamp)
             else {
@@ -469,6 +487,10 @@ mod decoder {
 
     use crate::resource_managers::GpuTexture2D;
     use crate::RenderContext;
+
+    // TODO(jan): remove once we have native video decoding
+    #[allow(unused_imports)]
+    use super::latest_at_idx;
 
     use re_video::TimeMs;
 
