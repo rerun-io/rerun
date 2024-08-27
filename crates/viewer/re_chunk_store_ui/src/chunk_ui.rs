@@ -95,6 +95,8 @@ impl ChunkUi {
 
             for (component_name, datatype) in &components {
                 row.col(|ui| {
+                    ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Truncate);
+
                     let response = ui.button(component_name.short_name()).on_hover_ui(|ui| {
                         ui.label(format!("{datatype}\n\nClick header to copy"));
                     });
@@ -120,11 +122,15 @@ impl ChunkUi {
             let row_id = row_ids[row_index];
 
             row.col(|ui| {
+                ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Truncate);
+
                 ui.label(row_id.to_string());
             });
 
             for time_column in &time_columns {
                 row.col(|ui| {
+                    ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Truncate);
+
                     let time = TimeInt::from(time_column.times_raw()[row_index]);
                     ui.label(time_column.timeline().typ().format(time, time_zone));
                 });
@@ -132,6 +138,8 @@ impl ChunkUi {
 
             for component_name in components.keys() {
                 row.col(|ui| {
+                    ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Truncate);
+
                     let component_data = chunk.component_batch_raw(component_name, row_index);
                     match component_data {
                         Some(Ok(data)) => {

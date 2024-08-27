@@ -262,6 +262,8 @@ impl DatastoreUi {
             }
 
             row.col(|ui| {
+                ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Truncate);
+
                 ui.strong("Components");
             });
         };
@@ -270,16 +272,22 @@ impl DatastoreUi {
             let chunk = &chunks[row.index()];
 
             row.col(|ui| {
+                ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Truncate);
+
                 if ui.button(chunk.id().to_string()).clicked() {
                     self.focused_chunk = Some(ChunkUi::new(chunk));
                 }
             });
 
             row.col(|ui| {
+                ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Truncate);
+
                 ui.label(chunk.entity_path().to_string());
             });
 
             row.col(|ui| {
+                ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Truncate);
+
                 ui.label(chunk.num_rows().to_string());
             });
 
@@ -295,15 +303,11 @@ impl DatastoreUi {
                 .collect::<BTreeMap<_, _>>();
 
             for timeline in &all_timelines {
-                if let Some(range) = timeline_ranges.get(timeline) {
-                    row.col(|ui| {
-                        ui.label(range);
-                    });
-                } else {
-                    row.col(|ui| {
-                        ui.label("-");
-                    });
-                }
+                row.col(|ui| {
+                    ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Truncate);
+
+                    ui.label(timeline_ranges.get(timeline).map_or("-", |s| s.as_str()));
+                });
             }
 
             row.col(|ui| {
