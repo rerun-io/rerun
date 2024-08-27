@@ -21,15 +21,17 @@ impl Chunk {
         component_name: &ComponentName,
         row_index: usize,
     ) -> Option<ChunkResult<Box<dyn ArrowArray>>> {
-        self.components.get(component_name).map(|list_array| {
+        self.components.get(component_name).and_then(|list_array| {
             if list_array.len() > row_index {
-                Ok(list_array.value(row_index))
+                list_array
+                    .is_valid(row_index)
+                    .then(|| Ok(list_array.value(row_index)))
             } else {
-                Err(crate::ChunkError::IndexOutOfBounds {
+                Some(Err(crate::ChunkError::IndexOutOfBounds {
                     kind: "row".to_owned(),
                     len: list_array.len(),
                     index: row_index,
-                })
+                }))
             }
         })
     }
