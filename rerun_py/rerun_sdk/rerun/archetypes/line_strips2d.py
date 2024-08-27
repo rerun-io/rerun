@@ -100,6 +100,7 @@ class LineStrips2D(Archetype):
         radii: datatypes.Float32ArrayLike | None = None,
         colors: datatypes.Rgba32ArrayLike | None = None,
         labels: datatypes.Utf8ArrayLike | None = None,
+        show_labels: datatypes.BoolLike | None = None,
         draw_order: datatypes.Float32Like | None = None,
         class_ids: datatypes.ClassIdArrayLike | None = None,
     ):
@@ -119,6 +120,8 @@ class LineStrips2D(Archetype):
 
             If there's a single label present, it will be placed at the center of the entity.
             Otherwise, each instance will have its own label.
+        show_labels:
+            Optional choice of whether the text labels should be shown by default.
         draw_order:
             An optional floating point value that specifies the 2D drawing order of each line strip.
 
@@ -133,7 +136,13 @@ class LineStrips2D(Archetype):
         # You can define your own __init__ function as a member of LineStrips2DExt in line_strips2d_ext.py
         with catch_and_log_exceptions(context=self.__class__.__name__):
             self.__attrs_init__(
-                strips=strips, radii=radii, colors=colors, labels=labels, draw_order=draw_order, class_ids=class_ids
+                strips=strips,
+                radii=radii,
+                colors=colors,
+                labels=labels,
+                show_labels=show_labels,
+                draw_order=draw_order,
+                class_ids=class_ids,
             )
             return
         self.__attrs_clear__()
@@ -145,6 +154,7 @@ class LineStrips2D(Archetype):
             radii=None,  # type: ignore[arg-type]
             colors=None,  # type: ignore[arg-type]
             labels=None,  # type: ignore[arg-type]
+            show_labels=None,  # type: ignore[arg-type]
             draw_order=None,  # type: ignore[arg-type]
             class_ids=None,  # type: ignore[arg-type]
         )
@@ -191,6 +201,15 @@ class LineStrips2D(Archetype):
     #
     # If there's a single label present, it will be placed at the center of the entity.
     # Otherwise, each instance will have its own label.
+    #
+    # (Docstring intentionally commented out to hide this field from the docs)
+
+    show_labels: components.ShowLabelsBatch | None = field(
+        metadata={"component": "optional"},
+        default=None,
+        converter=components.ShowLabelsBatch._optional,  # type: ignore[misc]
+    )
+    # Optional choice of whether the text labels should be shown by default.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 

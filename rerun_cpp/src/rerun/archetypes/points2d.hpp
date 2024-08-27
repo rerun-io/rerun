@@ -12,6 +12,7 @@
 #include "../components/keypoint_id.hpp"
 #include "../components/position2d.hpp"
 #include "../components/radius.hpp"
+#include "../components/show_labels.hpp"
 #include "../components/text.hpp"
 #include "../indicator_component.hpp"
 #include "../result.hpp"
@@ -119,6 +120,9 @@ namespace rerun::archetypes {
         /// Otherwise, each instance will have its own label.
         std::optional<Collection<rerun::components::Text>> labels;
 
+        /// Optional choice of whether the text labels should be shown by default.
+        std::optional<rerun::components::ShowLabels> show_labels;
+
         /// An optional floating point value that specifies the 2D drawing order.
         ///
         /// Objects with higher values are drawn on top of those with lower values.
@@ -172,6 +176,13 @@ namespace rerun::archetypes {
         /// Otherwise, each instance will have its own label.
         Points2D with_labels(Collection<rerun::components::Text> _labels) && {
             labels = std::move(_labels);
+            // See: https://github.com/rerun-io/rerun/issues/4027
+            RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
+        }
+
+        /// Optional choice of whether the text labels should be shown by default.
+        Points2D with_show_labels(rerun::components::ShowLabels _show_labels) && {
+            show_labels = std::move(_show_labels);
             // See: https://github.com/rerun-io/rerun/issues/4027
             RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
         }

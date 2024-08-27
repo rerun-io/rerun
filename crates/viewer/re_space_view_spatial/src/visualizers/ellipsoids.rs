@@ -5,7 +5,7 @@ use re_renderer::{
 };
 use re_types::{
     archetypes::Ellipsoids3D,
-    components::{ClassId, Color, FillMode, HalfSize3D, KeypointId, Radius, Text},
+    components::{ClassId, Color, FillMode, HalfSize3D, KeypointId, Radius, ShowLabels, Text},
     ArrowString, Loggable as _,
 };
 use re_viewer_context::{
@@ -24,7 +24,8 @@ use crate::{
 use super::{
     entity_iterator::clamped_or_nothing, filter_visualizable_3d_entities,
     process_annotation_and_keypoint_slices, process_color_slice, process_labels_3d,
-    process_radius_slice, SpatialViewVisualizerData, SIZE_BOOST_IN_POINTS_FOR_LINE_OUTLINES,
+    process_radius_slice, utilities::LabeledBatch, SpatialViewVisualizerData,
+    SIZE_BOOST_IN_POINTS_FOR_LINE_OUTLINES,
 };
 
 // ---
@@ -195,16 +196,19 @@ impl Ellipsoids3DVisualizer {
                 .push((entity_path.hash(), world_space_bounding_box));
 
             self.0.ui_labels.extend(process_labels_3d(
-                entity_path,
-                num_instances,
-                world_space_bounding_box.center(),
-                ent_context
-                    .transform_info
-                    .clamped_reference_from_instances()
-                    .map(|t| t.translation.into()),
-                &data.labels,
-                &colors,
-                &annotation_infos,
+                LabeledBatch {
+                    entity_path,
+                    num_instances,
+                    overall_position: world_space_bounding_box.center(),
+                    instance_positions: ent_context
+                        .transform_info
+                        .clamped_reference_from_instances()
+                        .map(|t| t.translation.into()),
+                    labels: &data.labels,
+                    colors: &colors,
+                    show_labels: data.show_labels,
+                    annotation_infos: &annotation_infos,
+                },
                 glam::Affine3A::IDENTITY,
             ));
         }
@@ -226,6 +230,8 @@ struct Ellipsoids3DComponentData<'a> {
     keypoint_ids: &'a [KeypointId],
     class_ids: &'a [ClassId],
 
+    // Non-repeated
+    show_labels: Option<ShowLabels>,
     fill_mode: FillMode,
 }
 
@@ -307,8 +313,9 @@ impl VisualizerSystem for Ellipsoids3DVisualizer {
                 let all_labels = results.iter_as(timeline, Text::name());
                 let all_class_ids = results.iter_as(timeline, ClassId::name());
                 let all_keypoint_ids = results.iter_as(timeline, KeypointId::name());
+                let all_show_labels = results.iter_as(timeline, ShowLabels::name());
 
-                let data = re_query::range_zip_1x6(
+                let data = re_query::range_zip_1x7(
                     all_half_sizes_indexed,
                     all_colors.primitive::<u32>(),
                     all_line_radii.primitive::<f32>(),
@@ -316,6 +323,7 @@ impl VisualizerSystem for Ellipsoids3DVisualizer {
                     all_labels.string(),
                     all_class_ids.primitive::<u16>(),
                     all_keypoint_ids.primitive::<u16>(),
+                    all_show_labels.component::<ShowLabels>(),
                 )
                 .map(
                     |(
@@ -327,6 +335,7 @@ impl VisualizerSystem for Ellipsoids3DVisualizer {
                         labels,
                         class_ids,
                         keypoint_ids,
+                        show_labels,
                     )| {
                         Ellipsoids3DComponentData {
                             half_sizes: bytemuck::cast_slice(half_sizes),
@@ -344,6 +353,7 @@ impl VisualizerSystem for Ellipsoids3DVisualizer {
                                 .map_or(&[], |class_ids| bytemuck::cast_slice(class_ids)),
                             keypoint_ids: keypoint_ids
                                 .map_or(&[], |keypoint_ids| bytemuck::cast_slice(keypoint_ids)),
+                            show_labels: show_labels.unwrap_or_default().first().copied(),
                         }
                     },
                 );

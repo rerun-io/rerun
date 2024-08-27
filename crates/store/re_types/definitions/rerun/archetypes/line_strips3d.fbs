@@ -34,6 +34,9 @@ table LineStrips3D (
   /// Otherwise, each instance will have its own label.
   labels: [rerun.components.Text] ("attr.rerun.component_optional", nullable, order: 3000);
 
+  /// Optional choice of whether the text labels should be shown by default.
+  show_labels: rerun.components.ShowLabels ("attr.rerun.component_optional", nullable, order: 3050);
+
   /// Optional [components.ClassId]s for the lines.
   ///
   /// The [components.ClassId] provides colors and labels if not specified explicitly.

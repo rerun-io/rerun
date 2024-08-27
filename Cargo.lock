@@ -4287,9 +4287,9 @@ dependencies = [
 
 [[package]]
 name = "re_arrow2"
-version = "0.17.4"
+version = "0.17.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c1285f33f03e2faf9f77b06c19f32f8c54792a4cbb19df762b9ea70b79e0773d"
+checksum = "55322c12f50d5a372e8c8b9bf672894e8280772dc62af3a44188c98556363404"
 dependencies = [
  "ahash",
  "arrow-format",

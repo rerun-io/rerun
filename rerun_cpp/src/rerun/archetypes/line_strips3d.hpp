@@ -10,6 +10,7 @@
 #include "../components/color.hpp"
 #include "../components/line_strip3d.hpp"
 #include "../components/radius.hpp"
+#include "../components/show_labels.hpp"
 #include "../components/text.hpp"
 #include "../indicator_component.hpp"
 #include "../result.hpp"
@@ -115,6 +116,9 @@ namespace rerun::archetypes {
         /// Otherwise, each instance will have its own label.
         std::optional<Collection<rerun::components::Text>> labels;
 
+        /// Optional choice of whether the text labels should be shown by default.
+        std::optional<rerun::components::ShowLabels> show_labels;
+
         /// Optional `components::ClassId`s for the lines.
         ///
         /// The `components::ClassId` provides colors and labels if not specified explicitly.
@@ -154,6 +158,13 @@ namespace rerun::archetypes {
         /// Otherwise, each instance will have its own label.
         LineStrips3D with_labels(Collection<rerun::components::Text> _labels) && {
             labels = std::move(_labels);
+            // See: https://github.com/rerun-io/rerun/issues/4027
+            RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
+        }
+
+        /// Optional choice of whether the text labels should be shown by default.
+        LineStrips3D with_show_labels(rerun::components::ShowLabels _show_labels) && {
+            show_labels = std::move(_show_labels);
             // See: https://github.com/rerun-io/rerun/issues/4027
             RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
         }
