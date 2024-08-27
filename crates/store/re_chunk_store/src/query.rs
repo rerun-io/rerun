@@ -23,7 +23,7 @@ use crate::RowId;
 // as both static and temporal, which is probably wrong.
 
 impl ChunkStore {
-    /// Retrieve all timelines contained in at least one chunk.
+    /// Retrieve all [`Timeline`]s in the store.
     pub fn all_timelines(&self) -> BTreeSet<Timeline> {
         self.temporal_chunk_ids_per_entity
             .values()
