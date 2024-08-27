@@ -31,7 +31,7 @@ impl ChunkStore {
             .collect()
     }
 
-    /// Retrieve all entities contained in the store.
+    /// Retrieve all [`EntityPath`]s in the store.
     pub fn all_entities(&self) -> BTreeSet<EntityPath> {
         self.static_chunk_ids_per_entity
             .keys()
