@@ -260,7 +260,7 @@ impl UnitChunkShared {
         debug_assert!(self.num_rows() == 1);
         self.components
             .get(component_name)
-            .map(|list_array| list_array.value(0))
+            .and_then(|list_array| list_array.is_valid(0).then(|| list_array.value(0)))
     }
 
     /// Returns the deserialized data for the specified component.
