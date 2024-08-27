@@ -20,8 +20,6 @@ pub struct VideoCacheKey {
 
 struct Entry {
     used_this_frame: AtomicBool,
-    // TODO(jan): warn_once instead of having option here
-    //            who cares if it wastes cycles loading the video
     video: Option<Arc<Mutex<Video>>>,
 }
 
@@ -47,7 +45,7 @@ impl VideoCache {
             let video = match result {
                 Ok(video) => Some(Arc::new(Mutex::new(video))),
                 Err(err) => {
-                    re_log::warn!("Failed to load video {name:?}: {err}");
+                    re_log::warn_once!("Failed to load video {name:?}: {err}");
                     None
                 }
             };
