@@ -164,7 +164,7 @@ impl ChunkUi {
                 ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Extend);
 
                 //TODO(ab): `TableBuilder` should have a custom ID API (https://github.com/emilk/egui/issues/4982)
-                ui.push_id("chunk", |ui| {
+                ui.push_id(chunk.id().clone(), |ui| {
                     let table_builder = egui_extras::TableBuilder::new(ui)
                         .columns(
                             Column::auto_with_initial_suggestion(200.0).clip(true),
