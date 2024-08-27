@@ -159,8 +159,8 @@ impl VisualizerSystem for AssetVideoVisualizer {
 // NOTE: Do not put profile scopes in these methods. They are called for all entities and all
 // timestamps within a time range -- it's _a lot_.
 impl AssetVideoVisualizer {
-    // TODO(jan): need to write to `self.data` at some point
     #[allow(clippy::unused_self)]
+    #[allow(clippy::too_many_arguments)]
     fn process_data(
         &mut self,
         ctx: &QueryContext<'_>,
@@ -205,7 +205,6 @@ impl AssetVideoVisualizer {
                 let world_from_entity = ent_context
                     .transform_info
                     .single_entity_transform_required(ctx.target_entity_path, "Video");
-                // TODO(jan): texture extents are wrong, this only shows roughly the top-left corner of the video
                 let textured_rect = TexturedRect {
                     top_left_corner_position: world_from_entity.transform_point3(Vec3::ZERO),
                     extent_u: world_from_entity.transform_vector3(Vec3::X * video.width() as f32),
