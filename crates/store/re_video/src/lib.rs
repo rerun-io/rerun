@@ -1,7 +1,12 @@
+//! Video decoding library.
+//!
+//! The entry point is [`load_mp4`], which produces an instance of [`VideoData`].
+
 mod mp4;
 pub use mp4::load_mp4;
 use ordered_float::OrderedFloat;
 
+/// Decoded video data.
 #[derive(Clone)]
 pub struct VideoData {
     pub config: Config,
@@ -17,6 +22,7 @@ pub struct VideoData {
     pub data: Vec<u8>,
 }
 
+/// A segment of a video.
 #[derive(Clone)]
 pub struct Segment {
     /// Time of the first sample in this segment, in milliseconds.
@@ -28,6 +34,7 @@ pub struct Segment {
     pub samples: Vec<Sample>,
 }
 
+/// A single sample in a video.
 #[derive(Debug, Clone)]
 pub struct Sample {
     /// Time at which this sample appears, in milliseconds.
@@ -36,13 +43,14 @@ pub struct Sample {
     /// Duration of the sample, in milliseconds.
     pub duration: TimeMs,
 
-    /// Offset into [`Video::data`]
+    /// Offset into [`VideoData::data`]
     pub byte_offset: u32,
 
     /// Length of sample starting at [`Sample::byte_offset`].
     pub byte_length: u32,
 }
 
+/// Configuration of a video.
 #[derive(Debug, Clone)]
 pub struct Config {
     /// String used to identify the codec and some of its configuration.
@@ -77,6 +85,7 @@ impl std::fmt::Debug for TimeMs {
     }
 }
 
+/// Errors that can occur when loading a video.
 #[derive(Debug)]
 pub enum VideoLoadError {
     ParseMp4(::mp4::Error),
