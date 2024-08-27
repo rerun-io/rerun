@@ -293,7 +293,9 @@ impl RangeResultsExt for HybridRangeResults {
         if self.overrides.contains(component_name) {
             let unit = self.overrides.get(component_name)?;
             // Because this is an override we always re-index the data as static
-            let chunk = Arc::unwrap_or_clone(unit.clone().into_chunk()).into_static();
+            let chunk = Arc::unwrap_or_clone(unit.clone().into_chunk())
+                .into_static()
+                .zeroed();
             Some(Cow::Owned(vec![chunk]))
         } else {
             self.results.get_required_chunks(component_name)
@@ -307,7 +309,9 @@ impl RangeResultsExt for HybridRangeResults {
                 return Cow::Owned(Vec::new());
             };
             // Because this is an override we always re-index the data as static
-            let chunk = Arc::unwrap_or_clone(unit.clone().into_chunk()).into_static();
+            let chunk = Arc::unwrap_or_clone(unit.clone().into_chunk())
+                .into_static()
+                .zeroed();
             Cow::Owned(vec![chunk])
         } else {
             let chunks = self.results.get_optional_chunks(component_name);
@@ -336,7 +340,9 @@ impl<'a> RangeResultsExt for HybridLatestAtResults<'a> {
         if self.overrides.contains(component_name) {
             let unit = self.overrides.get(component_name)?;
             // Because this is an override we always re-index the data as static
-            let chunk = Arc::unwrap_or_clone(unit.clone().into_chunk()).into_static();
+            let chunk = Arc::unwrap_or_clone(unit.clone().into_chunk())
+                .into_static()
+                .zeroed();
             Some(Cow::Owned(vec![chunk]))
         } else {
             self.results.get_required_chunks(component_name)
@@ -350,7 +356,9 @@ impl<'a> RangeResultsExt for HybridLatestAtResults<'a> {
                 return Cow::Owned(Vec::new());
             };
             // Because this is an override we always re-index the data as static
-            let chunk = Arc::unwrap_or_clone(unit.clone().into_chunk()).into_static();
+            let chunk = Arc::unwrap_or_clone(unit.clone().into_chunk())
+                .into_static()
+                .zeroed();
             Cow::Owned(vec![chunk])
         } else {
             let chunks = self.results.get_optional_chunks(component_name);
