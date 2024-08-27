@@ -190,11 +190,27 @@ mod decoder {
         current_sample_idx: usize,
     }
 
-    // Web is single-threaded, so Send/Sync is safe
+    // SAFETY: There is no way to access the same JS object from different OS threads
+    //         in a way that could result in a data race.
+
     #[allow(unsafe_code)]
+    // Clippy did not recognize a safety comment on these impls no matter what I tried:
+    #[allow(clippy::undocumented_unsafe_blocks)]
     unsafe impl Send for VideoDecoder {}
+
     #[allow(unsafe_code)]
+    #[allow(clippy::undocumented_unsafe_blocks)]
     unsafe impl Sync for VideoDecoder {}
+
+    #[allow(unsafe_code)]
+    #[allow(clippy::undocumented_unsafe_blocks)]
+    unsafe impl Send for VideoFrame {}
+
+    /// # Safety
+    /// Wasm is single-threaded, so Send/Sync is safe
+    #[allow(unsafe_code)]
+    #[allow(clippy::undocumented_unsafe_blocks)]
+    unsafe impl Sync for VideoFrame {}
 
     impl Drop for VideoDecoder {
         fn drop(&mut self) {
@@ -370,7 +386,7 @@ mod decoder {
             chunk.duration(sample.duration.as_f64());
             let Some(chunk) = EncodedVideoChunk::new(&chunk)
                 .inspect_err(|err| {
-                    re_log::error!("failed to create video chunk: {}", js_error_to_string(&err))
+                    re_log::error!("failed to create video chunk: {}", js_error_to_string(err));
                 })
                 .ok()
             else {
@@ -400,17 +416,21 @@ mod decoder {
             height: frame.display_height(),
             depth_or_array_layers: 1,
         };
-        let source = wgpu_types::ImageCopyExternalImage {
+        let source = {
+            // TODO(jan): Add `VideoFrame` support to `wgpu`
+
             // SAFETY: Depends on the fact that `wgpu` passes the object through as-is,
             // and doesn't actually inspect it in any way. The browser then does its own
             // typecheck that doesn't care what kind of image source wgpu gave it.
-            // TODO(jan): Add `VideoFrame` support to `wgpu`
             #[allow(unsafe_code)]
-            source: wgpu_types::ExternalImageSource::HTMLVideoElement(unsafe {
-                std::mem::transmute(frame)
-            }),
-            origin: wgpu_types::Origin2d { x: 0, y: 0 },
-            flip_y: false,
+            let frame = unsafe {
+                std::mem::transmute::<web_sys::VideoFrame, web_sys::HtmlVideoElement>(frame)
+            };
+            wgpu_types::ImageCopyExternalImage {
+                source: wgpu_types::ExternalImageSource::HTMLVideoElement(frame),
+                origin: wgpu_types::Origin2d { x: 0, y: 0 },
+                flip_y: false,
+            }
         };
         let dest = wgpu::ImageCopyTextureTagged {
             texture,

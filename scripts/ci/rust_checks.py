@@ -48,8 +48,8 @@ def run_cargo(cargo_cmd: str, cargo_args: str, clippy_conf: str | None = None) -
     start_time = time.time()
 
     additional_env_vars = {}
-    additional_env_vars["RUSTFLAGS"] = "--deny warnings"
-    additional_env_vars["RUSTDOCFLAGS"] = "--deny warnings"
+    additional_env_vars["RUSTFLAGS"] = "--cfg=web_sys_unstable_apis --deny warnings"
+    additional_env_vars["RUSTDOCFLAGS"] = "--cfg=web_sys_unstable_apis --deny warnings"
     if clippy_conf is not None:
         additional_env_vars["CLIPPY_CONF_DIR"] = (
             # Clippy has issues finding this directory on CI when we're not using an absolute path here.
