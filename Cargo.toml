@@ -126,7 +126,7 @@ egui_extras = { version = "0.28.1", features = [
   "serde",
 ] }
 egui_plot = "0.28.1"
-egui_tiles = "0.9.0"
+egui_tiles = "0.9.1"
 egui-wgpu = "0.28.1"
 emath = "0.28.1"
 
