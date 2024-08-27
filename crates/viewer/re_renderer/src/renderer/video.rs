@@ -148,11 +148,9 @@ mod decoder {
     use re_video::TimeMs;
     use re_video::VideoData;
     use std::ops::Deref;
-    use std::ops::DerefMut;
     use std::sync::Arc;
     use wasm_bindgen::closure::Closure;
     use wasm_bindgen::JsCast as _;
-    use wasm_bindgen::JsValue;
     use web_sys::EncodedVideoChunk;
     use web_sys::EncodedVideoChunkInit;
     use web_sys::EncodedVideoChunkType;
@@ -180,7 +178,6 @@ mod decoder {
 
     pub struct VideoDecoder {
         data: re_video::VideoData,
-        device: Arc<wgpu::Device>,
         queue: Arc<wgpu::Queue>,
         texture: GpuTexture2D,
         zeroed_texture_float: GpuTexture2D,
@@ -209,9 +206,6 @@ mod decoder {
         pub fn new(render_context: &RenderContext, data: VideoData) -> Option<Self> {
             let frames = Arc::new(Mutex::new(Vec::with_capacity(16)));
 
-            let device = render_context.device.clone();
-            let queue = render_context.queue.clone();
-
             let decoder = init_video_decoder({
                 let frames = frames.clone();
                 move |frame: web_sys::VideoFrame| {
@@ -222,9 +216,11 @@ mod decoder {
                 }
             })?;
 
+            let queue = render_context.queue.clone();
+
             // NOTE: both textures are assumed to be rgba8unorm
             let texture = super::alloc_video_frame_texture(
-                &device,
+                &render_context.device,
                 &render_context.gpu_resources.textures,
                 data.config.coded_width as u32,
                 data.config.coded_height as u32,
@@ -239,7 +235,6 @@ mod decoder {
 
             let mut this = Self {
                 data,
-                device,
                 queue,
                 texture,
                 zeroed_texture_float,
@@ -272,7 +267,7 @@ mod decoder {
         }
 
         pub fn get_frame(&mut self, timestamp: TimeMs) -> GpuTexture2D {
-            if timestamp.as_f64() < 0 {
+            if timestamp.as_f64() < 0.0 {
                 // TODO(andreas): This is a hack, we should have a better way to handle this
                 return self.zeroed_texture_float.clone();
             }
@@ -426,11 +421,6 @@ mod decoder {
             premultiplied_alpha: false,
         };
         queue.copy_external_image_to_texture(&source, dest, size);
-    }
-
-    struct CurrentFrameId {
-        segment: u64,
-        sample: u64,
     }
 
     fn init_video_decoder(
