@@ -84,46 +84,25 @@ fn alloc_video_frame_texture(
     texture
 }
 
-// fn latest_at<'a, T, K: Ord>(v: &'a [T], key: impl Fn(&T) -> K, needle: &K) -> Option<&'a T> {
-//     latest_at_idx(v, key, needle).map(|idx| &v[idx])
-// }
-
 /// Returns the index of:
 /// - The index of `needle` in `v`, if it exists
 /// - The index of the first element in `v` that is lesser than `needle`, if it exists
-/// - `-1`, if `v` is empty OR `needle` is greater than all elements in `v`
+/// - `None`, if `v` is empty OR `needle` is greater than all elements in `v`
 fn latest_at_idx<T, K: Ord>(v: &[T], key: impl Fn(&T) -> K, needle: &K) -> Option<usize> {
-    fn inner<T, K: Ord>(v: &[T], key: impl Fn(&T) -> K, needle: &K) -> isize {
-        let mut left = 0isize;
-        let mut right = v.len() as isize;
-
-        if right == 0 {
-            return -1;
-        }
-
-        if right > 0 && &key(&v[0]) > needle {
-            return -1;
-        }
-
-        while left < right {
-            let middle = (left + right) / 2;
-
-            if &key(&v[middle as usize]) <= needle {
-                left = middle + 1;
-            } else {
-                right = middle;
-            }
-        }
-
-        left - 1
+    if v.is_empty() {
+        return None;
     }
 
-    let idx = inner(v, key, needle);
-    if idx < 0 {
-        None
-    } else {
-        Some(idx as usize)
+    let idx = v.partition_point(|x| key(x) <= *needle);
+
+    if idx == 0 {
+        // If idx is 0, then all elements are greater than the needle
+        if &key(&v[0]) > needle {
+            return None;
+        }
     }
+
+    Some(idx.saturating_sub(1))
 }
 
 #[cfg(test)]
