@@ -5,7 +5,7 @@ use egui_extras::{Column, TableRow};
 use itertools::{Either, Itertools};
 
 use re_chunk_store::{ChunkStore, LatestAtQuery, RangeQuery};
-use re_log_types::{StoreKind, TimeZone, TimelineName};
+use re_log_types::{ResolvedTimeRange, StoreKind, TimeType, TimeZone, Timeline, TimelineName};
 use re_ui::{list_item, UiExt as _};
 use re_viewer_context::ViewerContext;
 
@@ -295,19 +295,18 @@ impl DatastoreUi {
             let timeline_ranges = chunk
                 .timelines()
                 .iter()
-                .map(|(timeline, time_column)| {
-                    (
-                        timeline,
-                        timeline.format_time_range(&time_column.time_range(), time_zone),
-                    )
-                })
+                .map(|(timeline, time_column)| (timeline, time_column.time_range()))
                 .collect::<BTreeMap<_, _>>();
 
             for timeline in &all_timelines {
                 row.col(|ui| {
                     ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Truncate);
 
-                    ui.label(timeline_ranges.get(timeline).map_or("-", |s| s.as_str()));
+                    if let Some(time_range) = timeline_ranges.get(timeline) {
+                        ui.label(format_time_range(timeline, time_range, time_zone));
+                    } else {
+                        ui.label("-");
+                    };
                 });
             }
 
@@ -447,5 +446,34 @@ impl DatastoreUi {
         });
 
         should_copy_chunks
+    }
+}
+
+fn format_time_range(
+    timeline: &Timeline,
+    time_range: &ResolvedTimeRange,
+    time_zone: TimeZone,
+) -> String {
+    if time_range.min() == time_range.max() {
+        timeline.typ().format(time_range.min(), time_zone)
+    } else {
+        format!(
+            "{} ({})",
+            timeline.format_time_range(time_range, time_zone),
+            match timeline.typ() {
+                TimeType::Time => {
+                    format!(
+                        "{}s",
+                        re_format::format_f64(
+                            (time_range.max().as_f64() - time_range.min().as_f64())
+                                / 1_000_000_000.0
+                        )
+                    )
+                }
+                TimeType::Sequence => {
+                    format!("{} ticks", re_format::format_uint(time_range.abs_length()))
+                }
+            }
+        )
     }
 }
