@@ -290,8 +290,7 @@ impl RangeResultsExt for RangeResults {
 impl RangeResultsExt for HybridRangeResults {
     #[inline]
     fn get_required_chunks(&self, component_name: &ComponentName) -> Option<Cow<'_, [Chunk]>> {
-        if self.overrides.contains(component_name) {
-            let unit = self.overrides.get(component_name)?;
+        if let Some(unit) = self.overrides.get(component_name) {
             // Because this is an override we always re-index the data as static
             let chunk = Arc::unwrap_or_clone(unit.clone().into_chunk())
                 .into_static()
@@ -304,10 +303,7 @@ impl RangeResultsExt for HybridRangeResults {
 
     #[inline]
     fn get_optional_chunks(&self, component_name: &ComponentName) -> Cow<'_, [Chunk]> {
-        if self.overrides.contains(component_name) {
-            let Some(unit) = self.overrides.get(component_name) else {
-                return Cow::Owned(Vec::new());
-            };
+        if let Some(unit) = self.overrides.get(component_name) {
             // Because this is an override we always re-index the data as static
             let chunk = Arc::unwrap_or_clone(unit.clone().into_chunk())
                 .into_static()
@@ -337,8 +333,7 @@ impl RangeResultsExt for HybridRangeResults {
 impl<'a> RangeResultsExt for HybridLatestAtResults<'a> {
     #[inline]
     fn get_required_chunks(&self, component_name: &ComponentName) -> Option<Cow<'_, [Chunk]>> {
-        if self.overrides.contains(component_name) {
-            let unit = self.overrides.get(component_name)?;
+        if let Some(unit) = self.overrides.get(component_name) {
             // Because this is an override we always re-index the data as static
             let chunk = Arc::unwrap_or_clone(unit.clone().into_chunk())
                 .into_static()
@@ -351,10 +346,7 @@ impl<'a> RangeResultsExt for HybridLatestAtResults<'a> {
 
     #[inline]
     fn get_optional_chunks(&self, component_name: &ComponentName) -> Cow<'_, [Chunk]> {
-        if self.overrides.contains(component_name) {
-            let Some(unit) = self.overrides.get(component_name) else {
-                return Cow::Owned(Vec::new());
-            };
+        if let Some(unit) = self.overrides.get(component_name) {
             // Because this is an override we always re-index the data as static
             let chunk = Arc::unwrap_or_clone(unit.clone().into_chunk())
                 .into_static()
