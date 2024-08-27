@@ -40,7 +40,7 @@ impl ChunkStore {
             .collect()
     }
 
-    // Retrieve all components contained in at least one chunk.
+    /// Retrieve all [`ComponentName`]s in the store.
     pub fn all_components(&self) -> BTreeSet<ComponentName> {
         self.static_chunk_ids_per_entity
             .values()
