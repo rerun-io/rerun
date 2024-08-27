@@ -83,6 +83,7 @@ pub enum VideoLoadError {
     NoVideoTrack,
     InvalidConfigFormat,
     InvalidSamples,
+    UnsupportedMediaType(String),
     UnknownMediaType,
 }
 
@@ -93,7 +94,10 @@ impl std::fmt::Display for VideoLoadError {
             Self::NoVideoTrack => write!(f, "video file has no video tracks"),
             Self::InvalidConfigFormat => write!(f, "video file track config is invalid"),
             Self::InvalidSamples => write!(f, "video file has invalid sample entries"),
-            Self::UnknownMediaType => write!(f, "unrecognized media type"),
+            Self::UnsupportedMediaType(type_) => {
+                write!(f, "unsupported media type {type_:?}")
+            }
+            Self::UnknownMediaType => write!(f, "unknown media type"),
         }
     }
 }

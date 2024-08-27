@@ -19,7 +19,12 @@ impl Video {
     ) -> Result<Self, VideoError> {
         let data = match media_type {
             Some("video/mp4") => re_video::load_mp4(data)?,
-            _ => return Err(VideoError::Load(VideoLoadError::UnknownMediaType)),
+            Some(media_type) => {
+                return Err(VideoError::Load(VideoLoadError::UnsupportedMediaType(
+                    media_type.to_owned(),
+                )))
+            }
+            None => return Err(VideoError::Load(VideoLoadError::UnknownMediaType)),
         };
         let decoder = VideoDecoder::new(render_context, data).ok_or_else(|| VideoError::Init)?;
 
