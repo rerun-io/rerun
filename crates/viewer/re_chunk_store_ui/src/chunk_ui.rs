@@ -4,14 +4,14 @@ use std::sync::Arc;
 use egui_extras::{Column, TableRow};
 use itertools::Itertools;
 
-use crate::sort::{sortable_column_header_ui, SortColumn, SortDirection};
 use re_chunk_store::external::re_chunk::{ArrowArray, TransportChunk};
 use re_chunk_store::Chunk;
 use re_log_types::external::re_types_core::SizeBytes;
 use re_log_types::{TimeZone, Timeline};
 use re_types::datatypes::TimeInt;
 use re_ui::{list_item, UiExt};
-use re_viewer_context::UiLayout;
+
+use crate::sort::{sortable_column_header_ui, SortColumn, SortDirection};
 
 /// Any column that can be sorted
 #[derive(Default, Clone, Copy, PartialEq)]
@@ -135,7 +135,7 @@ impl ChunkUi {
                     let component_data = chunk.component_batch_raw(component_name, row_index);
                     match component_data {
                         Some(Ok(data)) => {
-                            crate::arrow_ui::arrow_ui(ui, UiLayout::List, &*data);
+                            crate::arrow_ui::arrow_ui(ui, &*data);
                         }
                         Some(Err(err)) => {
                             ui.error_label("error").on_hover_ui(|ui| {
