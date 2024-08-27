@@ -29,7 +29,17 @@ pub fn load_mp4(bytes: &[u8]) -> Result<VideoData, VideoLoadError> {
         description = av1c_raw.clone();
     } else {
         // TODO(jan): support h.264, h.265, vp8, vp9
-        panic!("todo: support other codecs");
+        let stsd = &video_track.trak(&mp4).mdia.minf.stbl.stsd;
+        let codec_name = if stsd.avc1.is_some() {
+            "avc"
+        } else if stsd.hev1.is_some() {
+            "hevc"
+        } else if stsd.vp09.is_some() {
+            "vp9"
+        } else {
+            "unknown"
+        };
+        return Err(VideoLoadError::UnsupportedCodec(codec_name.into()));
     }
 
     let coded_height = video_track.height;

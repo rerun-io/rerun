@@ -56,6 +56,7 @@ impl Video {
 pub enum VideoError {
     #[error("{0}")]
     Load(#[from] VideoLoadError),
+
     #[error("failed to initialize video decoder")]
     Init,
 }
@@ -171,6 +172,7 @@ mod decoder {
     impl Deref for VideoFrame {
         type Target = web_sys::VideoFrame;
 
+        #[inline]
         fn deref(&self) -> &Self::Target {
             &self.0
         }
@@ -233,7 +235,7 @@ mod decoder {
                     .zeroed_texture_float()
                     .clone(),
             )
-            .expect("expected texture to be 2d");
+            .expect("expected texture to be 2D");
 
             let mut this = Self {
                 data,
