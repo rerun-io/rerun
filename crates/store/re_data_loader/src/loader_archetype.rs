@@ -96,6 +96,14 @@ impl DataLoader for ArchetypeLoader {
                 entity_path,
                 contents.into_owned(),
             )?);
+        } else if crate::SUPPORTED_VIDEO_EXTENSIONS.contains(&extension.as_str()) {
+            re_log::debug!(?filepath, loader = self.name(), "Loading video…",);
+            rows.extend(load_video(
+                &filepath,
+                timepoint,
+                entity_path,
+                contents.into_owned(),
+            )?);
         } else if crate::SUPPORTED_MESH_EXTENSIONS.contains(&extension.as_str()) {
             re_log::debug!(?filepath, loader = self.name(), "Loading 3D model…",);
             rows.extend(load_mesh(
@@ -151,6 +159,55 @@ fn load_image(
         },
         //
     ];
+
+    Ok(rows.into_iter())
+}
+
+fn load_video(
+    filepath: &std::path::Path,
+    mut timepoint: TimePoint,
+    entity_path: EntityPath,
+    contents: Vec<u8>,
+) -> Result<impl ExactSizeIterator<Item = Chunk>, DataLoaderError> {
+    re_tracing::profile_function!();
+
+    timepoint.insert(
+        re_log_types::Timeline::new_temporal("video"),
+        re_log_types::TimeInt::new_temporal(0),
+    );
+
+    let mut rows = vec![Chunk::builder(entity_path)
+        .with_archetype(
+            RowId::new(),
+            timepoint.clone(),
+            &re_types::archetypes::AssetVideo::from_file_contents(
+                contents,
+                MediaType::guess_from_path(filepath),
+            ),
+        )
+        .build()?];
+
+    for i in 0..100 {
+        // We need some breadcrumbs of timepoints because the video doesn't have a duration yet.
+        // TODO(#7272): fix this
+        timepoint.insert(
+            re_log_types::Timeline::new_temporal("video"),
+            re_log_types::TimeInt::new_temporal(i * 10_000_000_000),
+        );
+
+        rows.push(
+            Chunk::builder(EntityPath::parse_forgiving("README"))
+                .with_archetype(
+                    RowId::new(),
+                    timepoint.clone(),
+                    &re_types::archetypes::TextDocument::from_markdown(
+                        // TODO(#7298): stabilize video support
+                        "Video support in Rerun is experimental!",
+                    ),
+                )
+                .build()?,
+        );
+    }
 
     Ok(rows.into_iter())
 }
