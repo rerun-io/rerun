@@ -240,11 +240,31 @@ impl ExtensionClass {
             let has_array = methods.contains(&ARRAY_METHOD);
             let has_native_to_pa_array = methods.contains(&NATIVE_TO_PA_ARRAY_METHOD);
             let has_deferred_patch_class = methods.contains(&DEFERRED_PATCH_CLASS_METHOD);
-            let field_converter_overrides = methods
+            let field_converter_overrides: Vec<String> = methods
                 .into_iter()
                 .filter(|l| l.ends_with(FIELD_CONVERTER_SUFFIX))
                 .map(|l| l.to_owned())
                 .collect();
+
+            let valid_converter_overrides = if obj.is_union() {
+                itertools::Either::Left(std::iter::once("inner"))
+            } else {
+                itertools::Either::Right(obj.fields.iter().map(|field| field.name.as_str()))
+            }
+            .map(|field| format!("{field}{FIELD_CONVERTER_SUFFIX}"))
+            .collect::<HashSet<_>>();
+
+            for converter in &field_converter_overrides {
+                if !valid_converter_overrides.contains(converter) {
+                    reporter.error(
+                        ext_filepath.as_str(),
+                        &obj.fqname,
+                        format!(
+                            "The field converter override `{converter}` is not a valid field name.",
+                        ),
+                    );
+                }
+            }
 
             Self {
                 found: true,

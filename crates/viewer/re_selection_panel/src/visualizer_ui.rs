@@ -10,6 +10,7 @@ use re_types_blueprint::blueprint::components::VisualizerOverrides;
 use re_ui::{list_item, UiExt as _};
 use re_viewer_context::{
     DataResult, QueryContext, SpaceViewClassExt as _, UiLayout, ViewContext, ViewSystemIdentifier,
+    VisualizerSystem,
 };
 use re_viewport_blueprint::SpaceViewBlueprint;
 
@@ -111,18 +112,30 @@ pub fn visualizer_ui_impl(
 
         for &visualizer_id in active_visualizers {
             let default_open = true;
-            ui.list_item()
-                .interactive(false)
-                .show_hierarchical_with_children(
-                    ui,
-                    ui.make_persistent_id(visualizer_id),
-                    default_open,
-                    list_item::LabelContent::new(visualizer_id.as_str())
+
+            // List all components that the visualizer may consume.
+            if let Ok(visualizer) = ctx.visualizer_collection.get_by_identifier(visualizer_id) {
+                ui.list_item()
+                    .interactive(false)
+                    .show_hierarchical_with_children(
+                        ui,
+                        ui.make_persistent_id(visualizer_id),
+                        default_open,
+                        list_item::LabelContent::new(visualizer_id.as_str())
+                            .min_desired_width(150.0)
+                            .with_buttons(|ui| remove_visualizer_button(ui, visualizer_id))
+                            .always_show_buttons(true),
+                        |ui| visualizer_components(ctx, ui, data_result, visualizer),
+                    );
+            } else {
+                ui.list_item_flat_noninteractive(
+                    list_item::LabelContent::new(format!("{visualizer_id} (unknown visualizer)"))
+                        .weak(true)
                         .min_desired_width(150.0)
                         .with_buttons(|ui| remove_visualizer_button(ui, visualizer_id))
                         .always_show_buttons(true),
-                    |ui| visualizer_components(ctx, ui, data_result, visualizer_id),
                 );
+            }
         }
     });
 }
@@ -141,7 +154,7 @@ fn visualizer_components(
     ctx: &ViewContext<'_>,
     ui: &mut egui::Ui,
     data_result: &DataResult,
-    visualizer_id: ViewSystemIdentifier,
+    visualizer: &dyn VisualizerSystem,
 ) {
     // Helper for code below
     fn non_empty_component_batch_raw(
@@ -156,14 +169,6 @@ fn visualizer_components(
             Some((unit.row_id(), batch))
         }
     }
-
-    // List all components that the visualizer may consume.
-    let Ok(visualizer) = ctx.visualizer_collection.get_by_identifier(visualizer_id) else {
-        re_log::warn!(
-            "Failed to resolve visualizer identifier {visualizer_id}, to a visualizer implementation"
-        );
-        return;
-    };
 
     let query_info = visualizer.visualizer_query_info();
 
