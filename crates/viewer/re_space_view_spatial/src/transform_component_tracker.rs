@@ -130,9 +130,7 @@ impl ChunkStoreSubscriber for TransformComponentTrackerStoreSubscriber {
                         .components()
                         .get(&component_name)
                         .map_or(false, |list_array| {
-                            list_array
-                                .iter()
-                                .any(|list| !list.map_or(false, |list| list.is_empty()))
+                            list_array.offsets().lengths().any(|len| len > 0)
                         })
                 {
                     transform_component_tracker
@@ -147,9 +145,7 @@ impl ChunkStoreSubscriber for TransformComponentTrackerStoreSubscriber {
                         .components()
                         .get(&component_name)
                         .map_or(false, |list_array| {
-                            list_array
-                                .iter()
-                                .any(|list| !list.map_or(false, |list| list.is_empty()))
+                            list_array.offsets().lengths().any(|len| len > 0)
                         })
                 {
                     transform_component_tracker
