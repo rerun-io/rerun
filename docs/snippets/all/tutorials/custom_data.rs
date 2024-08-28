@@ -38,7 +38,7 @@ impl rerun::AsComponents for CustomPoints3D {
 
 // ---
 
-/// A custom [`rerun::Component`] that is backed by a builtin [`rerun::Float32`] scalar.
+/// A custom [`rerun::Component`] that is backed by a builtin [`rerun::Float32`] scalar [`rerun::Datatype`].
 #[derive(Debug, Clone, Copy)]
 struct Confidence(rerun::Float32);
 

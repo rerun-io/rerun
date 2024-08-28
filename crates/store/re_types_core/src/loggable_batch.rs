@@ -1,4 +1,4 @@
-use crate::{Component, ComponentName, Loggable, SerializationResult};
+use crate::{Component, ComponentName, Datatype, DatatypeName, Loggable, SerializationResult};
 
 #[allow(unused_imports)] // used in docstrings
 use crate::Archetype;
@@ -33,6 +33,12 @@ pub trait LoggableBatch {
     /// Serializes the batch into an Arrow array.
     fn to_arrow(&self) -> SerializationResult<Box<dyn ::arrow2::array::Array>>;
 }
+
+/// A [`DatatypeBatch`] represents an array's worth of [`Datatype`] instances.
+///
+/// Any [`LoggableBatch`] with a [`Loggable::Name`] set to [`DatatypeName`] automatically
+/// implements [`DatatypeBatch`].
+pub trait DatatypeBatch: LoggableBatch<Name = DatatypeName> {}
 
 /// A [`ComponentBatch`] represents an array's worth of [`Component`] instances.
 ///
@@ -137,6 +143,8 @@ impl<L: Clone + Loggable> LoggableBatch for L {
     }
 }
 
+impl<D: Datatype> DatatypeBatch for D {}
+
 impl<C: Component> ComponentBatch for C {}
 
 // --- Unary Option ---
@@ -165,6 +173,8 @@ impl<L: Clone + Loggable> LoggableBatch for Option<L> {
     }
 }
 
+impl<D: Datatype> DatatypeBatch for Option<D> {}
+
 impl<C: Component> ComponentBatch for Option<C> {}
 
 // --- Vec ---
@@ -192,6 +202,8 @@ impl<L: Clone + Loggable> LoggableBatch for Vec<L> {
         L::to_arrow(self.iter().map(|v| std::borrow::Cow::Borrowed(v)))
     }
 }
+
+impl<D: Datatype> DatatypeBatch for Vec<D> {}
 
 impl<C: Component> ComponentBatch for Vec<C> {}
 
@@ -224,6 +236,8 @@ impl<L: Loggable> LoggableBatch for Vec<Option<L>> {
     }
 }
 
+impl<D: Datatype> DatatypeBatch for Vec<Option<D>> {}
+
 impl<C: Component> ComponentBatch for Vec<Option<C>> {}
 
 // --- Array ---
@@ -251,6 +265,8 @@ impl<L: Loggable, const N: usize> LoggableBatch for [L; N] {
         L::to_arrow(self.iter().map(|v| std::borrow::Cow::Borrowed(v)))
     }
 }
+
+impl<D: Datatype, const N: usize> DatatypeBatch for [D; N] {}
 
 impl<C: Component, const N: usize> ComponentBatch for [C; N] {}
 
@@ -283,6 +299,8 @@ impl<L: Loggable, const N: usize> LoggableBatch for [Option<L>; N] {
     }
 }
 
+impl<D: Datatype, const N: usize> DatatypeBatch for [Option<D>; N] {}
+
 impl<C: Component, const N: usize> ComponentBatch for [Option<C>; N] {}
 
 // --- Slice ---
@@ -310,6 +328,8 @@ impl<'a, L: Loggable> LoggableBatch for &'a [L] {
         L::to_arrow(self.iter().map(|v| std::borrow::Cow::Borrowed(v)))
     }
 }
+
+impl<'a, D: Datatype> DatatypeBatch for &'a [D] {}
 
 impl<'a, C: Component> ComponentBatch for &'a [C] {}
 
@@ -342,6 +362,8 @@ impl<'a, L: Loggable> LoggableBatch for &'a [Option<L>] {
     }
 }
 
+impl<'a, D: Datatype> DatatypeBatch for &'a [Option<D>] {}
+
 impl<'a, C: Component> ComponentBatch for &'a [Option<C>] {}
 
 // --- ArrayRef ---
@@ -369,6 +391,8 @@ impl<'a, L: Loggable, const N: usize> LoggableBatch for &'a [L; N] {
         L::to_arrow(self.iter().map(|v| std::borrow::Cow::Borrowed(v)))
     }
 }
+
+impl<'a, D: Datatype, const N: usize> DatatypeBatch for &'a [D; N] {}
 
 impl<'a, C: Component, const N: usize> ComponentBatch for &'a [C; N] {}
 
@@ -400,5 +424,7 @@ impl<'a, L: Loggable, const N: usize> LoggableBatch for &'a [Option<L>; N] {
         )
     }
 }
+
+impl<'a, D: Datatype, const N: usize> DatatypeBatch for &'a [Option<D>; N] {}
 
 impl<'a, C: Component, const N: usize> ComponentBatch for &'a [Option<C>; N] {}

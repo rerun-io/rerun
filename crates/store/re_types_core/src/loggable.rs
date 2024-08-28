@@ -5,7 +5,7 @@ use crate::{
 };
 
 #[allow(unused_imports)] // used in docstrings
-use crate::{Archetype, ComponentBatch, LoggableBatch};
+use crate::{Archetype, ComponentBatch, DatatypeBatch, LoggableBatch};
 
 // ---
 
@@ -14,12 +14,13 @@ use crate::{Archetype, ComponentBatch, LoggableBatch};
 /// Internally, Arrow, and by extension Rerun, only deal with arrays of data.
 /// We refer to individual entries in these arrays as instances.
 ///
-/// [`Component`] is a specialization of the [`Loggable`] trait where [`Loggable::Name`] ==
-/// [`ComponentName`].
+/// [`Datatype`] and [`Component`] are specialization of the [`Loggable`] trait that are
+/// automatically implemented based on the type used for [`Loggable::Name`].
 ///
-/// Implementing the [`Loggable`] trait (and by extension [`Component`]) automatically derives the
-/// [`LoggableBatch`] implementation (and by extension [`ComponentBatch`]), which makes it possible to
-/// work with lists' worth of data in a generic fashion.
+/// Implementing the [`Loggable`] trait (and by extension [`Datatype`]/[`Component`])
+/// automatically derives the [`LoggableBatch`] implementation (and by extension
+/// [`DatatypeBatch`]/[`ComponentBatch`]), which makes it possible to work with lists' worth of data
+/// in a generic fashion.
 pub trait Loggable: 'static + Send + Sync + Clone + Sized + SizeBytes {
     type Name: std::fmt::Display;
 
@@ -125,6 +126,14 @@ pub trait Loggable: 'static + Send + Sync + Clone + Sized + SizeBytes {
         })
     }
 }
+
+/// A [`Datatype`] describes plain old data that can be used by any number of [`Component`]s.
+///
+/// Any [`Loggable`] with a [`Loggable::Name`] set to [`DatatypeName`] automatically implements
+/// [`Datatype`].
+pub trait Datatype: Loggable<Name = DatatypeName> {}
+
+impl<L: Loggable<Name = DatatypeName>> Datatype for L {}
 
 /// A [`Component`] describes semantic data that can be used by any number of [`Archetype`]s.
 ///

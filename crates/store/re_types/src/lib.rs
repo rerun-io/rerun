@@ -227,7 +227,7 @@ pub mod components {
 
 /// The low-level datatypes that [`components`] are built from.
 ///
-/// They all implement the [`Loggable`] trait.
+/// They all implement the [`Datatype`] trait.
 pub mod datatypes {
 
     // Some datatypes are so fundamental and used everywhere that we want them to be exposed
