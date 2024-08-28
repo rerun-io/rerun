@@ -381,7 +381,10 @@
 
         check_for_panic();
 
-        handle.start(document.getElementById("the_canvas_id")).then(on_app_started).catch(on_wasm_error);
+        handle
+          .start(document.getElementById("the_canvas_id"))
+          .then(on_app_started)
+          .catch(on_wasm_error);
       }
 
       function get_query_bool(
