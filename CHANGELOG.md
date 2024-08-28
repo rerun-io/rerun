@@ -4,19 +4,17 @@
 ## [Unreleased](https://github.com/rerun-io/rerun/compare/latest...HEAD)
 
 
-## [0.18.1](https://github.com/rerun-io/rerun/compare/0.18.0...0.18.1) - Bug fix
-
-Bug fixes and performance improvements for Rerun 0.18.0.
+## [0.18.1](https://github.com/rerun-io/rerun/compare/0.18.0...0.18.1) - Bug fixes and performance improvements
 
 #### 🌊 C++ API
-- Install sdk_info.h even if RERUN_INSTALL_RERUN_C option is OFF [#7246](https://github.com/rerun-io/rerun/pull/7246) (thanks [@traversaro](https://github.com/traversaro)!)
+- Install `sdk_info.h` even if `RERUN_INSTALL_RERUN_C` option is `OFF` [#7246](https://github.com/rerun-io/rerun/pull/7246) (thanks [@traversaro](https://github.com/traversaro)!)
 
 #### 🐍 Python API
-- Fix VisualizerOverrides serializer and improved error handling [#7288](https://github.com/rerun-io/rerun/pull/7288)
+- Fix `VisualizerOverrides` serializer and improved error handling [#7288](https://github.com/rerun-io/rerun/pull/7288)
 
 #### 🦀 Rust API
 - Add `rerun::external::ndarray` [#7259](https://github.com/rerun-io/rerun/pull/7259)
-- Handle proper half-size splatting semantics in from_mins_and_sizes [#7291](https://github.com/rerun-io/rerun/pull/7291)
+- Handle proper half-size splatting semantics in `from_mins_and_sizes` [#7291](https://github.com/rerun-io/rerun/pull/7291)
 
 #### 🪳 Bug Fixes
 - Fix error when trying to clear non-existent component [#7215](https://github.com/rerun-io/rerun/pull/7215)
@@ -24,21 +22,20 @@ Bug fixes and performance improvements for Rerun 0.18.0.
 - Fix `Chunk::component_batch_raw` not checking the bitmap first [#7286](https://github.com/rerun-io/rerun/pull/7286)
 - Fix and test all known `HybridResults` issues from 0.18 [#7297](https://github.com/rerun-io/rerun/pull/7297)
 - Fix secondary plot components ignoring blueprint defaults [#7302](https://github.com/rerun-io/rerun/pull/7302)
+- Fix relayout on tab background click [#7283](https://github.com/rerun-io/rerun/pull/7283)
 
 #### 🚀 Performance improvements
 - Speed up data density graph by rendering them more coarsly [#7229](https://github.com/rerun-io/rerun/pull/7229)
 - Default `RERUN_CHUNK_MAX_BYTES` to 384kiB instead of 4MiB [#7263](https://github.com/rerun-io/rerun/pull/7263)
 - Speed up handling of large numbers of transform entities [#7300](https://github.com/rerun-io/rerun/pull/7300)
+- Fix memory leak by updating to `re_arrow2 0.17.5` [#7262](https://github.com/rerun-io/rerun/pull/7262)
 
 #### 🖼 UI improvements
 - Hide time controls if there is only one time point on a timeline [#7241](https://github.com/rerun-io/rerun/pull/7241)
-- Update to egui_tiles 0.9.1: fix relayout on tab background click [#7283](https://github.com/rerun-io/rerun/pull/7283)
-- Chunk store browser [#7226](https://github.com/rerun-io/rerun/pull/7226)
 
 #### 📦 Dependencies
 - Correct dependency on `puffin` to 0.19.1, preventing a possible build failure [#7221](https://github.com/rerun-io/rerun/pull/7221) (thanks [@kpreid](https://github.com/kpreid)!)
 - Update `time` crate to 0.3.36, fixing compilation on newer Rust versions [#7228](https://github.com/rerun-io/rerun/pull/7228)
-- re_arrow2 0.17.5 (fixes memory leak) [#7262](https://github.com/rerun-io/rerun/pull/7262)
 
 
 ## [0.18.0](https://github.com/rerun-io/rerun/compare/0.17.0...0.18.0) - Ingestion speed and memory footprint
