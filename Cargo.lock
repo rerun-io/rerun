@@ -850,9 +850,9 @@ dependencies = [
 
 [[package]]
 name = "cargo-manifest"
-version = "0.15.0"
+version = "0.15.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "de6c0a20b187645f8569845874d0589d167f86a17504a6b6c2c9e0921c906ee3"
+checksum = "6b29a81447dee6418e779b6d25c8ca7250d06b583fc3975e6577162518da9d80"
 dependencies = [
  "serde",
  "thiserror",
@@ -1473,16 +1473,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7e962a19be5cfc3f3bf6dd8f61eb50107f356ad6270fbb3ed41476571db78be5"
 
 [[package]]
-name = "deranged"
-version = "0.3.11"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b42b6fa04a440b495c8b04d0e71b707c585f83cb9cb28cf8cd0d976c315e31b4"
-dependencies = [
- "powerfmt",
- "serde",
-]
-
-[[package]]
 name = "derivative"
 version = "2.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1753,9 +1743,9 @@ dependencies = [
 
 [[package]]
 name = "egui_tiles"
-version = "0.9.0"
+version = "0.9.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "269227b10b417e635dc71a2d7350db1721386a3a4098c9855e5a2fe57092cea5"
+checksum = "9ec2e18c8665b7aaccfb560e383d08bfbce9cb905e055417f6bb0ecd63056561"
 dependencies = [
  "ahash",
  "egui",
@@ -3330,12 +3320,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "num-conv"
-version = "0.1.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "51d515d32fb182ee37cda2ccdcb92950d6a3c2893aa280e540671c2cd0f3b1d9"
-
-[[package]]
 name = "num-derive"
 version = "0.4.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3912,12 +3896,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3bccab0e7fd7cc19f820a1c8c91720af652d0c88dc9664dd72aef2614f04af3b"
 
 [[package]]
-name = "powerfmt"
-version = "0.2.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "439ee305def115ba05938db6eb1644ff94165c5ab5e9420d1c1bcedbba909391"
-
-[[package]]
 name = "ppv-lite86"
 version = "0.2.17"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4410,6 +4388,24 @@ dependencies = [
  "thiserror",
  "tinyvec",
  "web-time",
+]
+
+[[package]]
+name = "re_chunk_store_ui"
+version = "0.19.0-alpha.1+dev"
+dependencies = [
+ "egui",
+ "egui_extras",
+ "itertools 0.13.0",
+ "re_chunk_store",
+ "re_data_ui",
+ "re_entity_db",
+ "re_format",
+ "re_format_arrow",
+ "re_log_types",
+ "re_types",
+ "re_ui",
+ "re_viewer_context",
 ]
 
 [[package]]
@@ -5327,6 +5323,7 @@ dependencies = [
  "re_build_tools",
  "re_chunk",
  "re_chunk_store",
+ "re_chunk_store_ui",
  "re_component_ui",
  "re_data_loader",
  "re_data_source",
@@ -6644,17 +6641,14 @@ dependencies = [
 
 [[package]]
 name = "time"
-version = "0.3.36"
+version = "0.3.21"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5dfd88e563464686c916c7e46e623e520ddc6d79fa6641390f2e3fa86e83e885"
+checksum = "8f3403384eaacbca9923fa06940178ac13e4edb725486d70e8e15881d0c836cc"
 dependencies = [
- "deranged",
  "itoa",
  "js-sys",
  "libc",
- "num-conv",
  "num_threads",
- "powerfmt",
  "serde",
  "time-core",
  "time-macros",
@@ -6662,17 +6656,16 @@ dependencies = [
 
 [[package]]
 name = "time-core"
-version = "0.1.2"
+version = "0.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ef927ca75afb808a4d64dd374f00a2adf8d0fcff8e7b184af886c3c87ec4a3f3"
+checksum = "7300fbefb4dadc1af235a9cef3737cea692a9d97e1b9cbcd4ebdae6f8868e6fb"
 
 [[package]]
 name = "time-macros"
-version = "0.2.18"
+version = "0.2.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3f252a68540fde3a3877aeea552b832b40ab9a69e318efd078774a01ddee1ccf"
+checksum = "372950940a5f07bf38dbe211d7283c9e6d7327df53794992d293e534c733d09b"
 dependencies = [
- "num-conv",
  "time-core",
 ]
 

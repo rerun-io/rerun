@@ -426,7 +426,7 @@ impl DataQueryPropertyResolver<'_> {
                 {
                     for component_name in blueprint
                         .store()
-                        .all_components(&recursive_override_subtree.path)
+                        .all_components_for_entity(&recursive_override_subtree.path)
                         .unwrap_or_default()
                     {
                         if let Some(component_data) = blueprint
@@ -461,7 +461,7 @@ impl DataQueryPropertyResolver<'_> {
                 {
                     for component_name in blueprint
                         .store()
-                        .all_components(&individual_override_subtree.path)
+                        .all_components_for_entity(&individual_override_subtree.path)
                         .unwrap_or_default()
                     {
                         if let Some(component_data) = blueprint

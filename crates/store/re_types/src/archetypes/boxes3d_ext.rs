@@ -51,18 +51,32 @@ impl Boxes3D {
         sizes: impl IntoIterator<Item = impl Into<Vec3D>>,
     ) -> Self {
         let boxes = Self::from_sizes(sizes);
-        let centers: Vec<_> = mins
-            .into_iter()
-            .zip(boxes.half_sizes.iter())
-            .map(|(min, half_size)| {
-                let min = min.into();
-                PoseTranslation3D::new(
-                    min.x() + half_size.x(),
-                    min.y() + half_size.y(),
-                    min.z() + half_size.z(),
+
+        // The box semantics are such that the last half-size is used for all remaining boxes.
+        if let Some(last_half_size) = boxes.half_sizes.last() {
+            let centers: Vec<_> = mins
+                .into_iter()
+                .zip(
+                    boxes
+                        .half_sizes
+                        .iter()
+                        .chain(std::iter::repeat(last_half_size)),
                 )
-            })
-            .collect();
-        boxes.with_centers(centers)
+                .map(|(min, half_size)| {
+                    let min = min.into();
+                    PoseTranslation3D::new(
+                        min.x() + half_size.x(),
+                        min.y() + half_size.y(),
+                        min.z() + half_size.z(),
+                    )
+                })
+                .collect();
+            boxes.with_centers(centers)
+        } else {
+            if mins.into_iter().next().is_some() {
+                re_log::warn_once!("Must provide at least one size to create boxes.");
+            }
+            boxes.with_centers(std::iter::empty::<crate::components::PoseTranslation3D>())
+        }
     }
 }
