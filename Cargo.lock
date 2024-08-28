@@ -687,14 +687,8 @@ version = "0.6.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f0481a0e032742109b1133a095184ee93d88f3dc9e0d28a5d033dc77a073f44f"
 dependencies = [
- "bit-vec 0.7.0",
+ "bit-vec",
 ]
-
-[[package]]
-name = "bit-vec"
-version = "0.6.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "349f9b6a179ed607305526ca489b34ad0a41aed5f7980fa90eb03160b69598fb"
 
 [[package]]
 name = "bit-vec"
@@ -1609,7 +1603,7 @@ dependencies = [
  "wasm-bindgen",
  "wasm-bindgen-futures",
  "web-sys",
- "web-time 1.1.0",
+ "web-time",
  "wgpu",
  "winapi",
  "winit",
@@ -1646,7 +1640,7 @@ dependencies = [
  "puffin",
  "thiserror",
  "type-map",
- "web-time 1.1.0",
+ "web-time",
  "wgpu",
  "winit",
 ]
@@ -1665,7 +1659,7 @@ dependencies = [
  "raw-window-handle 0.6.0",
  "serde",
  "smithay-clipboard",
- "web-time 1.1.0",
+ "web-time",
  "webbrowser",
  "winit",
 ]
@@ -4463,7 +4457,7 @@ dependencies = [
  "similar-asserts",
  "thiserror",
  "tinyvec",
- "web-time 0.2.0",
+ "web-time",
 ]
 
 [[package]]
@@ -4660,7 +4654,7 @@ dependencies = [
  "serde",
  "similar-asserts",
  "thiserror",
- "web-time 0.2.0",
+ "web-time",
 ]
 
 [[package]]
@@ -4734,7 +4728,7 @@ dependencies = [
  "wasm-bindgen",
  "wasm-bindgen-futures",
  "web-sys",
- "web-time 0.2.0",
+ "web-time",
 ]
 
 [[package]]
@@ -4773,7 +4767,7 @@ dependencies = [
  "time",
  "typenum",
  "uuid",
- "web-time 0.2.0",
+ "web-time",
 ]
 
 [[package]]
@@ -4804,7 +4798,7 @@ dependencies = [
  "smallvec",
  "sysinfo",
  "wasm-bindgen",
- "web-time 0.2.0",
+ "web-time",
 ]
 
 [[package]]
@@ -4903,7 +4897,7 @@ dependencies = [
  "re_renderer",
  "wasm-bindgen-futures",
  "web-sys",
- "web-time 0.2.0",
+ "web-time",
  "wgpu",
  "winit",
  "zip",
@@ -4998,7 +4992,7 @@ dependencies = [
  "parking_lot",
  "re_tracing",
  "serde",
- "web-time 0.2.0",
+ "web-time",
 ]
 
 [[package]]
@@ -5095,7 +5089,7 @@ dependencies = [
  "serde",
  "smallvec",
  "vec1",
- "web-time 0.2.0",
+ "web-time",
 ]
 
 [[package]]
@@ -5234,7 +5228,7 @@ dependencies = [
  "getrandom",
  "once_cell",
  "serde",
- "web-time 0.2.0",
+ "web-time",
 ]
 
 [[package]]
@@ -5431,7 +5425,7 @@ dependencies = [
  "wasm-bindgen",
  "wasm-bindgen-futures",
  "web-sys",
- "web-time 0.2.0",
+ "web-time",
  "wgpu",
 ]
 
@@ -5442,7 +5436,7 @@ dependencies = [
  "ahash",
  "anyhow",
  "arboard",
- "bit-vec 0.6.3",
+ "bit-vec",
  "bitflags 2.6.0",
  "bytemuck",
  "egui",
@@ -7420,17 +7414,6 @@ dependencies = [
 
 [[package]]
 name = "web-time"
-version = "0.2.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "19353897b48e2c4d849a2d73cb0aeb16dc2be4e00c565abfc11eb65a806e47de"
-dependencies = [
- "js-sys",
- "once_cell",
- "wasm-bindgen",
-]
-
-[[package]]
-name = "web-time"
 version = "1.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "5a6580f308b1fad9207618087a65c04e7a10bc77e02c8e84e9b00dd4b12fa0bb"
@@ -7510,7 +7493,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0348c840d1051b8e86c3bcd31206080c5e71e5933dabd79be1ce732b0b2f089a"
 dependencies = [
  "arrayvec",
- "bit-vec 0.7.0",
+ "bit-vec",
  "bitflags 2.6.0",
  "cfg_aliases 0.1.1",
  "document-features",
@@ -7939,7 +7922,7 @@ dependencies = [
  "wayland-protocols",
  "wayland-protocols-plasma",
  "web-sys",
- "web-time 1.1.0",
+ "web-time",
  "windows-sys 0.52.0",
  "x11-dl",
  "x11rb",
@@ -8054,9 +8037,9 @@ checksum = "1dbabb1cbd15a1d6d12d9ed6b35cc6777d4af87ab3ba155ea37215f20beab80c"
 
 [[package]]
 name = "zbus"
-version = "3.14.1"
+version = "3.15.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "31de390a2d872e4cd04edd71b425e29853f786dc99317ed72d73d6fcf5ebb948"
+checksum = "675d170b632a6ad49804c8cf2105d7c31eddd3312555cffd4b740e08e97c25e6"
 dependencies = [
  "async-broadcast",
  "async-executor",
@@ -8095,9 +8078,9 @@ dependencies = [
 
 [[package]]
 name = "zbus_macros"
-version = "3.14.1"
+version = "3.15.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "41d1794a946878c0e807f55a397187c11fc7a038ba5d868e7db4f3bd7760bc9d"
+checksum = "7131497b0f887e8061b430c530240063d33bf9455fa34438f388a245da69e0a5"
 dependencies = [
  "proc-macro-crate",
  "proc-macro2",
