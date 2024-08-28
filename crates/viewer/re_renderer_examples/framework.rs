@@ -386,14 +386,13 @@ async fn run<E: Example + 'static>(event_loop: EventLoop<()>, window: Window) {
 
 pub fn start<E: Example + 'static>() {
     let event_loop = EventLoop::new().unwrap();
-    let window = winit::window::WindowBuilder::new()
+    let window = winit::window::WindowAttributes::new()
         .with_title(format!("re_renderer sample - {}", E::title()))
         .with_inner_size(winit::dpi::PhysicalSize {
             width: 1920,
             height: 1080,
-        })
-        .build(&event_loop)
-        .unwrap();
+        });
+    let window = event_loop.create_window(window).unwrap();
 
     #[cfg(not(target_arch = "wasm32"))]
     {
