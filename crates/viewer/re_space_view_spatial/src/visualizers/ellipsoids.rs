@@ -206,7 +206,7 @@ impl Ellipsoids3DVisualizer {
                         .map(|t| t.translation.into()),
                     labels: &data.labels,
                     colors: &colors,
-                    show_labels: data.show_labels,
+                    show_labels: data.show_labels.unwrap_or_else(|| self.fallback_for(ctx)),
                     annotation_infos: &annotation_infos,
                 },
                 glam::Affine3A::IDENTITY,
@@ -411,4 +411,10 @@ impl TypedComponentFallbackProvider<Color> for Ellipsoids3DVisualizer {
     }
 }
 
-re_viewer_context::impl_component_fallback_provider!(Ellipsoids3DVisualizer => [Color]);
+impl TypedComponentFallbackProvider<ShowLabels> for Ellipsoids3DVisualizer {
+    fn fallback_for(&self, ctx: &QueryContext<'_>) -> ShowLabels {
+        super::utilities::show_labels_fallback::<HalfSize3D>(ctx)
+    }
+}
+
+re_viewer_context::impl_component_fallback_provider!(Ellipsoids3DVisualizer => [Color, ShowLabels]);
