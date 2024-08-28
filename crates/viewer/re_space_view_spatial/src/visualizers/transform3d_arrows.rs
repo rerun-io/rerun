@@ -122,8 +122,9 @@ impl VisualizerSystem for Transform3DArrowsVisualizer {
                     .single_entity_transform_required(&data_result.entity_path, "Transform3DArrows")
             };
 
-            // Note, we use this interface instead of `data_result latest_at_with_blueprint_resolved_data` to avoid querying
-            // for a bunch of unused components.
+            // Note, we use this interface instead of `data_result.latest_at_with_blueprint_resolved_data` to avoid querying
+            // for a bunch of unused components. The actual transform data comes out of the context manager and can't be
+            // overridden via blueprint anyways.
             let results = latest_at_with_blueprint_resolved_data(
                 ctx,
                 None,
