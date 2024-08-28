@@ -1,7 +1,7 @@
 use egui::Color32;
 use nohash_hasher::IntSet;
 use re_log_types::{EntityPath, Instance};
-use re_space_view::DataResultQuery;
+use re_space_view::{latest_at_with_blueprint_resolved_data, DataResultQuery};
 use re_types::{
     archetypes::{Pinhole, Transform3D},
     components::{AxisLength, ImagePlaneDistance},
@@ -122,8 +122,18 @@ impl VisualizerSystem for Transform3DArrowsVisualizer {
                     .single_entity_transform_required(&data_result.entity_path, "Transform3DArrows")
             };
 
-            let results = data_result
-                .latest_at_with_blueprint_resolved_data::<Transform3D>(ctx, &latest_at_query);
+            // Note, we use this interface instead of `data_result.latest_at_with_blueprint_resolved_data` to avoid querying
+            // for a bunch of unused components. The actual transform data comes out of the context manager and can't be
+            // overridden via blueprint anyways.
+            let results = latest_at_with_blueprint_resolved_data(
+                ctx,
+                None,
+                &latest_at_query,
+                data_result,
+                std::iter::once(AxisLength::name()),
+                false,
+            );
+
             let axis_length: f32 = results.get_mono_with_fallback::<AxisLength>().into();
 
             if axis_length == 0.0 {

@@ -1,7 +1,7 @@
 use ahash::HashMap;
 use once_cell::sync::OnceCell;
 
-use nohash_hasher::IntSet;
+use nohash_hasher::{IntMap, IntSet};
 use re_chunk_store::{
     ChunkStore, ChunkStoreDiffKind, ChunkStoreEvent, ChunkStoreSubscriber,
     ChunkStoreSubscriberHandle,
@@ -20,11 +20,13 @@ use re_types::ComponentName;
 /// This is a huge performance improvement in practice, especially in recordings with many entities.
 #[derive(Default)]
 pub struct TransformComponentTracker {
-    /// Which entities have had any `Transform3D` component at any point in time.
-    transform3d_entities: IntSet<EntityPathHash>,
+    /// Which entities have had any `Transform3D` component at any point in time, and which
+    /// components they actually make use of.
+    transform3d_entities: IntMap<EntityPathHash, IntSet<ComponentName>>,
 
-    /// Which entities have had any `InstancePoses3D` components at any point in time.
-    pose3d_entities: IntSet<EntityPathHash>,
+    /// Which entities have had any `InstancePoses3D` components at any point in time, and
+    /// which components they actually make use of.
+    pose3d_entities: IntMap<EntityPathHash, IntSet<ComponentName>>,
 }
 
 impl TransformComponentTracker {
@@ -41,13 +43,16 @@ impl TransformComponentTracker {
     }
 
     #[inline]
-    pub fn is_potentially_transformed_transform3d(&self, entity_path: &EntityPath) -> bool {
-        self.transform3d_entities.contains(&entity_path.hash())
+    pub fn transform3d_components(
+        &self,
+        entity_path: &EntityPath,
+    ) -> Option<&IntSet<ComponentName>> {
+        self.transform3d_entities.get(&entity_path.hash())
     }
 
     #[inline]
-    pub fn is_potentially_transformed_pose3d(&self, entity_path: &EntityPath) -> bool {
-        self.pose3d_entities.contains(&entity_path.hash())
+    pub fn pose3d_components(&self, entity_path: &EntityPath) -> Option<&IntSet<ComponentName>> {
+        self.pose3d_entities.get(&entity_path.hash())
     }
 }
 
@@ -119,15 +124,35 @@ impl ChunkStoreSubscriber for TransformComponentTrackerStoreSubscriber {
             let entity_path_hash = event.chunk.entity_path().hash();
 
             for component_name in event.chunk.component_names() {
-                if self.transform_components.contains(&component_name) {
+                if self.transform_components.contains(&component_name)
+                    && event
+                        .chunk
+                        .components()
+                        .get(&component_name)
+                        .map_or(false, |list_array| {
+                            list_array.offsets().lengths().any(|len| len > 0)
+                        })
+                {
                     transform_component_tracker
                         .transform3d_entities
-                        .insert(entity_path_hash);
+                        .entry(entity_path_hash)
+                        .or_default()
+                        .insert(component_name);
                 }
-                if self.pose_components.contains(&component_name) {
+                if self.pose_components.contains(&component_name)
+                    && event
+                        .chunk
+                        .components()
+                        .get(&component_name)
+                        .map_or(false, |list_array| {
+                            list_array.offsets().lengths().any(|len| len > 0)
+                        })
+                {
                     transform_component_tracker
                         .pose3d_entities
-                        .insert(entity_path_hash);
+                        .entry(entity_path_hash)
+                        .or_default()
+                        .insert(component_name);
                 }
             }
         }
