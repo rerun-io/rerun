@@ -41,7 +41,7 @@ Bug fixes and performance improvements for Rerun 0.18.0.
 - re_arrow2 0.17.5 (fixes memory leak) [#7262](https://github.com/rerun-io/rerun/pull/7262)
 
 
-## [0.18.0](https://github.com/rerun-io/rerun/compare/0.17.0...HEAD) - Ingestion speed and memory footprint
+## [0.18.0](https://github.com/rerun-io/rerun/compare/0.17.0...0.18.0) - Ingestion speed and memory footprint
 
 https://github.com/user-attachments/assets/95380a64-df05-4f85-b40a-0c6b8ec8d5cf
 
