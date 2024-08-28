@@ -129,7 +129,7 @@ impl Lines3DVisualizer {
                     }),
                     labels: &data.labels,
                     colors: &colors,
-                    show_labels: data.show_labels.unwrap_or_else(|| self.fallback_for(ctx)),
+                    show_labels: data.show_labels,
                     annotation_infos: &annotation_infos,
                 },
                 world_from_obj,
@@ -294,10 +294,4 @@ impl TypedComponentFallbackProvider<Color> for Lines3DVisualizer {
     }
 }
 
-impl TypedComponentFallbackProvider<ShowLabels> for Lines3DVisualizer {
-    fn fallback_for(&self, ctx: &QueryContext<'_>) -> ShowLabels {
-        super::utilities::show_labels_fallback::<LineStrip3D>(ctx)
-    }
-}
-
-re_viewer_context::impl_component_fallback_provider!(Lines3DVisualizer => [Color, ShowLabels]);
+re_viewer_context::impl_component_fallback_provider!(Lines3DVisualizer => [Color]);

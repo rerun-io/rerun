@@ -165,7 +165,7 @@ impl Boxes3DVisualizer {
                         .map(|t| t.translation.into()),
                     labels: &data.labels,
                     colors: &colors,
-                    show_labels: data.show_labels.unwrap_or_else(|| self.fallback_for(ctx)),
+                    show_labels: data.show_labels,
                     annotation_infos: &annotation_infos,
                 },
                 glam::Affine3A::IDENTITY,
@@ -378,10 +378,4 @@ impl TypedComponentFallbackProvider<Color> for Boxes3DVisualizer {
     }
 }
 
-impl TypedComponentFallbackProvider<ShowLabels> for Boxes3DVisualizer {
-    fn fallback_for(&self, ctx: &QueryContext<'_>) -> ShowLabels {
-        super::utilities::show_labels_fallback::<HalfSize3D>(ctx)
-    }
-}
-
-re_viewer_context::impl_component_fallback_provider!(Boxes3DVisualizer => [Color, ShowLabels]);
+re_viewer_context::impl_component_fallback_provider!(Boxes3DVisualizer => [Color]);

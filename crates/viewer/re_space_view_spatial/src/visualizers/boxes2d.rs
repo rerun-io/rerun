@@ -142,7 +142,7 @@ impl Boxes2DVisualizer {
                         }),
                     labels: &data.labels,
                     colors: &colors,
-                    show_labels: data.show_labels.unwrap_or_else(|| self.fallback_for(ctx)),
+                    show_labels: data.show_labels,
                     annotation_infos: &annotation_infos,
                 },
                 std::convert::identity,
@@ -313,10 +313,4 @@ impl TypedComponentFallbackProvider<DrawOrder> for Boxes2DVisualizer {
     }
 }
 
-impl TypedComponentFallbackProvider<ShowLabels> for Boxes2DVisualizer {
-    fn fallback_for(&self, ctx: &QueryContext<'_>) -> ShowLabels {
-        super::utilities::show_labels_fallback::<HalfSize2D>(ctx)
-    }
-}
-
-re_viewer_context::impl_component_fallback_provider!(Boxes2DVisualizer => [Color, DrawOrder, ShowLabels]);
+re_viewer_context::impl_component_fallback_provider!(Boxes2DVisualizer => [Color, DrawOrder]);
