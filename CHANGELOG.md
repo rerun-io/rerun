@@ -11,7 +11,7 @@ Bug fixes and performance improvements for Rerun 0.18.0.
 - Document `send_columns` [#7212](https://github.com/rerun-io/rerun/pull/7212)
 - Call out `send_columns` in data loader and plot examples [#7214](https://github.com/rerun-io/rerun/pull/7214)
 - Deduplicate space view label processing code [#7208](https://github.com/rerun-io/rerun/pull/7208)
-- Fix error when trying to clear non-existant component [#7215](https://github.com/rerun-io/rerun/pull/7215)
+- Fix error when trying to clear non-existent component [#7215](https://github.com/rerun-io/rerun/pull/7215)
 - Correct dependency on `puffin` to 0.19.1, preventing a possible build failure [#7221](https://github.com/rerun-io/rerun/pull/7221)
 - Remove “has not yet been released” from migration-0-18.md [#7220](https://github.com/rerun-io/rerun/pull/7220)
 - Update `time` crate to 0.3.36, fixing compilation on newer Rust versions [#7228](https://github.com/rerun-io/rerun/pull/7228)
