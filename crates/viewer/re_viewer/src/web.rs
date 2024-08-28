@@ -59,7 +59,7 @@ impl WebHandle {
         let web_options = eframe::WebOptions {
             wgpu_options: crate::wgpu_options(app_options.render_backend.clone()),
             depth_buffer: 0,
-            dithering: true, // TODO: are we sure about this?
+            dithering: true,
         };
 
         self.runner
