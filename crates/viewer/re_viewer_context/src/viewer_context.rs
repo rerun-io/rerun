@@ -99,12 +99,6 @@ impl<'a> ViewerContext<'a> {
         self.store_context.recording.store()
     }
 
-    /// The chunk store of the active blueprint.
-    #[inline]
-    pub fn blueprint_store(&self) -> &re_chunk_store::ChunkStore {
-        self.store_context.blueprint.store()
-    }
-
     /// The `StoreId` of the active recording.
     #[inline]
     pub fn recording_id(&self) -> &re_log_types::StoreId {

@@ -23,43 +23,6 @@ use crate::RowId;
 // as both static and temporal, which is probably wrong.
 
 impl ChunkStore {
-    /// Retrieve all [`Timeline`]s in the store.
-    pub fn all_timelines(&self) -> BTreeSet<Timeline> {
-        self.temporal_chunk_ids_per_entity
-            .values()
-            .flat_map(|per_timeline| per_timeline.keys().copied())
-            .collect()
-    }
-
-    /// Retrieve all [`EntityPath`]s in the store.
-    pub fn all_entities(&self) -> BTreeSet<EntityPath> {
-        self.static_chunk_ids_per_entity
-            .keys()
-            .cloned()
-            .chain(self.temporal_chunk_ids_per_entity.keys().cloned())
-            .collect()
-    }
-
-    /// Retrieve all [`ComponentName`]s in the store.
-    pub fn all_components(&self) -> BTreeSet<ComponentName> {
-        self.static_chunk_ids_per_entity
-            .values()
-            .flat_map(|static_chunks_per_component| static_chunks_per_component.keys())
-            .chain(
-                self.temporal_chunk_ids_per_entity_per_component
-                    .values()
-                    .flat_map(|temporal_chunk_ids_per_timeline| {
-                        temporal_chunk_ids_per_timeline.values().flat_map(
-                            |temporal_chunk_ids_per_component| {
-                                temporal_chunk_ids_per_component.keys()
-                            },
-                        )
-                    }),
-            )
-            .copied()
-            .collect()
-    }
-
     /// Retrieve all the [`ComponentName`]s that have been written to for a given [`EntityPath`] on
     /// the specified [`Timeline`].
     ///
@@ -109,7 +72,7 @@ impl ChunkStore {
     /// Static components are always included in the results.
     ///
     /// Returns `None` if the entity has never had any data logged to it.
-    pub fn all_components_for_entity(&self, entity_path: &EntityPath) -> Option<ComponentNameSet> {
+    pub fn all_components(&self, entity_path: &EntityPath) -> Option<ComponentNameSet> {
         re_tracing::profile_function!();
 
         self.query_id.fetch_add(1, Ordering::Relaxed);
@@ -385,26 +348,6 @@ impl ChunkStore {
         let end = chunk_id_sets.per_end_time.last_key_value()?.0;
 
         Some(ResolvedTimeRange::new(*start, *end))
-    }
-
-    /// Returns the min and max times at which data was logged on a specific timeline, considering
-    /// all entities.
-    ///
-    /// This ignores static data.
-    pub fn time_range(&self, timeline: &Timeline) -> Option<ResolvedTimeRange> {
-        re_tracing::profile_function!();
-
-        self.query_id.fetch_add(1, Ordering::Relaxed);
-
-        self.temporal_chunk_ids_per_entity
-            .values()
-            .filter_map(|temporal_chunk_ids_per_timeline| {
-                let per_time = temporal_chunk_ids_per_timeline.get(timeline)?;
-                let start = per_time.per_start_time.first_key_value()?.0;
-                let end = per_time.per_end_time.last_key_value()?.0;
-                Some(ResolvedTimeRange::new(*start, *end))
-            })
-            .reduce(|r1, r2| r1.union(r2))
     }
 }
 

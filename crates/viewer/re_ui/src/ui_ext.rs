@@ -576,29 +576,6 @@ pub trait UiExt {
             .show_flat(self.ui_mut(), content)
     }
 
-    /// Convenience to create a non-interactive, collapsible [`list_item::ListItem`] with just a
-    /// label. The children UI is wrapped in a [`list_item::list_item_scope`].
-    fn list_item_collapsible_noninteractive_label<R>(
-        &mut self,
-        label: impl Into<egui::WidgetText>,
-        default_open: bool,
-        children_ui: impl FnOnce(&mut egui::Ui) -> R,
-    ) -> Option<R> {
-        let label = label.into();
-        let id = self.ui().id().with(egui::Id::new(label.text()));
-        self.list_item()
-            .interactive(false)
-            .show_hierarchical_with_children(
-                self.ui_mut(),
-                id,
-                default_open,
-                list_item::LabelContent::new(label),
-                |ui| list_item::list_item_scope(ui, id, children_ui),
-            )
-            .body_response
-            .map(|r| r.inner)
-    }
-
     /// Convenience function to create a [`crate::SectionCollapsingHeader`].
     #[allow(clippy::unused_self)]
     fn section_collapsing_header<'a>(
