@@ -31,6 +31,7 @@ Bug fixes and performance improvements for Rerun 0.18.0.
 - Fix gamma (srgb EOTF) for GLTF via `Asset3D` embedded rgb(a) textures [#7251](https://github.com/rerun-io/rerun/pull/7251)
 - Fix `Chunk::component_batch_raw` not checking the bitmap first [#7286](https://github.com/rerun-io/rerun/pull/7286)
 - Fix and test all known `HybridResults` issues from 0.18 [#7297](https://github.com/rerun-io/rerun/pull/7297)
+- Fix secondary plot components ignoring blueprint defaults [#7302](https://github.com/rerun-io/rerun/pull/7302)
 
 #### 🌁 Viewer improvements
 - BGR(A) image format support [#7238](https://github.com/rerun-io/rerun/pull/7238)
