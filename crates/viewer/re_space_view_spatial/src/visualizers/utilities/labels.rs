@@ -4,8 +4,12 @@ use itertools::{izip, Either};
 
 use re_entity_db::InstancePathHash;
 use re_log_types::{EntityPath, Instance};
-use re_types::components::ShowLabels;
+use re_types::components::{ShowLabels, Text};
+use re_types::{Component, Loggable as _};
 use re_viewer_context::ResolvedAnnotationInfos;
+
+#[cfg(doc)]
+use re_viewer_context::ComponentFallbackProvider;
 
 use crate::visualizers::entity_iterator::clamped_or;
 
@@ -66,15 +70,44 @@ pub struct LabeledBatch<'a, P: 'a, I: Iterator<Item = P> + 'a> {
     /// Length 1 is treated as a color for the whole batch.
     pub colors: &'a [egui::Color32],
 
-    pub show_labels: Option<re_types::components::ShowLabels>,
+    /// The [`ShowLabels`] component value.
+    ///
+    /// If no value is available from the data, use [`show_labels_fallback`] to obtain it.
+    pub show_labels: re_types::components::ShowLabels,
 
     pub annotation_infos: &'a ResolvedAnnotationInfos,
 }
 
-/// Maximum number of labels after which we stop displaying labels for that entity all together.
+/// Maximum number of labels after which we stop displaying labels for that entity all together,
+/// unless overridden by a [`ShowLabels`] component.
+const MAX_NUM_LABELS_PER_ENTITY: usize = 30;
+
+/// Given a visualizer’s query context, compute its [`ShowLabels`] fallback value
+/// (used when neither the logged data nor the blueprint provides a value).
 ///
-/// TODO(#4451): Hiding of labels should be configurable. This can be the heuristic for it.
-pub const MAX_NUM_LABELS_PER_ENTITY: usize = 30;
+/// Assumes that the visualizer reads the [`Text`] component for components.
+/// The type parameter `C` must be the component type that defines the number of instances
+/// in the batch.
+///
+// TODO(kpreid): This component type (or the length directly) should be gotten from some kind of
+// general mechanism of "how big is this batch?" rather than requiring the caller to specify it,
+// possibly incorrectly.
+///
+/// This function is normally used to implement the [`ComponentFallbackProvider`]
+/// that will be used in a [`LabeledBatch`].
+pub fn show_labels_fallback<C: Component>(ctx: &re_viewer_context::QueryContext<'_>) -> ShowLabels {
+    let results =
+        ctx.recording()
+            .latest_at(ctx.query, ctx.target_entity_path, [C::name(), Text::name()]);
+    let num_instances = results
+        .component_batch_raw(&C::name())
+        .map_or(0, |array| array.len());
+    let num_labels = results
+        .component_batch_raw(&Text::name())
+        .map_or(0, |array| array.len());
+
+    ShowLabels::from(num_labels == 1 || num_instances < MAX_NUM_LABELS_PER_ENTITY)
+}
 
 /// Produces 3D ui labels from component data.
 ///
@@ -119,12 +152,8 @@ pub fn process_labels<'a, P: 'a>(
         show_labels,
         annotation_infos,
     } = batch;
+    let show_labels = bool::from(show_labels.0);
 
-    let show_labels = match show_labels {
-        Some(ShowLabels(value)) => bool::from(value),
-        // Choose based on automatic policy.
-        None => labels.len() == 1 || num_instances < MAX_NUM_LABELS_PER_ENTITY,
-    };
     if !show_labels {
         return Either::Left(iter::empty());
     }
