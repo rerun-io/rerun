@@ -32,7 +32,6 @@ fn roundtrip() {
             components::KeypointId::from(2), //
             components::KeypointId::from(3), //
         ]),
-        show_labels: Some(false.into()),
     };
 
     let arch = Points2D::new([(1.0, 2.0), (3.0, 4.0)])
@@ -41,8 +40,7 @@ fn roundtrip() {
         .with_labels(["hello", "friend"])
         .with_draw_order(300.0)
         .with_class_ids([126, 127])
-        .with_keypoint_ids([2, 3])
-        .with_show_labels(false);
+        .with_keypoint_ids([2, 3]);
     similar_asserts::assert_eq!(expected, arch);
 
     let expected_extensions: HashMap<_, _> = [
@@ -53,7 +51,6 @@ fn roundtrip() {
         ("draw_order", vec!["rerun.components.DrawOrder"]),
         ("class_ids", vec!["rerun.components.ClassId"]),
         ("keypoint_ids", vec!["rerun.components.KeypointId"]),
-        ("show_labels", vec!["rerun.components.ShowLabels"]),
     ]
     .into();
 

@@ -15,7 +15,7 @@ If there's more instance poses than half sizes, the last half size will be repea
 
 **Recommended**: [`PoseTranslation3D`](../components/pose_translation3d.md), [`Color`](../components/color.md)
 
-**Optional**: [`PoseRotationAxisAngle`](../components/pose_rotation_axis_angle.md), [`PoseRotationQuat`](../components/pose_rotation_quat.md), [`Radius`](../components/radius.md), [`FillMode`](../components/fill_mode.md), [`Text`](../components/text.md), [`ShowLabels`](../components/show_labels.md), [`ClassId`](../components/class_id.md)
+**Optional**: [`PoseRotationAxisAngle`](../components/pose_rotation_axis_angle.md), [`PoseRotationQuat`](../components/pose_rotation_quat.md), [`Radius`](../components/radius.md), [`FillMode`](../components/fill_mode.md), [`Text`](../components/text.md), [`ClassId`](../components/class_id.md)
 
 ## Shown in
 * [Spatial3DView](../views/spatial3d_view.md)

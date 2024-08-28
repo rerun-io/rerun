@@ -2,9 +2,7 @@ use re_log_types::Instance;
 use re_renderer::{LineDrawableBuilder, PickingLayerInstanceId};
 use re_types::{
     archetypes::Boxes2D,
-    components::{
-        ClassId, Color, DrawOrder, HalfSize2D, KeypointId, Position2D, Radius, ShowLabels, Text,
-    },
+    components::{ClassId, Color, DrawOrder, HalfSize2D, KeypointId, Position2D, Radius, Text},
     ArrowString, Loggable as _,
 };
 use re_viewer_context::{
@@ -22,9 +20,8 @@ use crate::{
 
 use super::{
     filter_visualizable_2d_entities, process_annotation_and_keypoint_slices, process_color_slice,
-    process_radius_slice,
-    utilities::{process_labels, LabeledBatch},
-    SpatialViewVisualizerData, SIZE_BOOST_IN_POINTS_FOR_LINE_OUTLINES,
+    process_radius_slice, utilities::process_labels, SpatialViewVisualizerData,
+    SIZE_BOOST_IN_POINTS_FOR_LINE_OUTLINES,
 };
 
 // ---
@@ -121,30 +118,26 @@ impl Boxes2DVisualizer {
                 .add_bounding_box(entity_path.hash(), obj_space_bounding_box, world_from_obj);
 
             self.data.ui_labels.extend(process_labels(
-                LabeledBatch {
-                    entity_path,
-                    num_instances,
-                    overall_position: UiLabelTarget::Point2D(
-                        <[f32; 2]>::from(obj_space_bounding_box.center().truncate()).into(),
-                    ),
-                    instance_positions: data
-                        .half_sizes
-                        .iter()
-                        .copied()
-                        .zip(clamped_or(data.centers, &Position2D::ZERO).copied())
-                        .map(|(half_size, center)| {
-                            let min = half_size.box_min(center);
-                            let max = half_size.box_max(center);
-                            UiLabelTarget::Rect(egui::Rect::from_min_max(
-                                egui::pos2(min.x, min.y),
-                                egui::pos2(max.x, max.y),
-                            ))
-                        }),
-                    labels: &data.labels,
-                    colors: &colors,
-                    show_labels: data.show_labels,
-                    annotation_infos: &annotation_infos,
-                },
+                entity_path,
+                num_instances,
+                UiLabelTarget::Point2D(
+                    <[f32; 2]>::from(obj_space_bounding_box.center().truncate()).into(),
+                ),
+                data.half_sizes
+                    .iter()
+                    .copied()
+                    .zip(clamped_or(data.centers, &Position2D::ZERO).copied())
+                    .map(|(half_size, center)| {
+                        let min = half_size.box_min(center);
+                        let max = half_size.box_max(center);
+                        UiLabelTarget::Rect(egui::Rect::from_min_max(
+                            egui::pos2(min.x, min.y),
+                            egui::pos2(max.x, max.y),
+                        ))
+                    }),
+                &data.labels,
+                &colors,
+                &annotation_infos,
                 std::convert::identity,
             ));
         }
@@ -164,9 +157,6 @@ struct Boxes2DComponentData<'a> {
     labels: Vec<ArrowString>,
     keypoint_ids: &'a [KeypointId],
     class_ids: &'a [ClassId],
-
-    // Non-repeated
-    show_labels: Option<ShowLabels>,
 }
 
 impl IdentifiedViewSystem for Boxes2DVisualizer {
@@ -240,9 +230,8 @@ impl VisualizerSystem for Boxes2DVisualizer {
                 let all_labels = results.iter_as(timeline, Text::name());
                 let all_class_ids = results.iter_as(timeline, ClassId::name());
                 let all_keypoint_ids = results.iter_as(timeline, KeypointId::name());
-                let all_show_labels = results.iter_as(timeline, ShowLabels::name());
 
-                let data = re_query::range_zip_1x7(
+                let data = re_query::range_zip_1x6(
                     all_half_sizes_indexed,
                     all_centers.primitive_array::<2, f32>(),
                     all_colors.primitive::<u32>(),
@@ -250,7 +239,6 @@ impl VisualizerSystem for Boxes2DVisualizer {
                     all_labels.string(),
                     all_class_ids.primitive::<u16>(),
                     all_keypoint_ids.primitive::<u16>(),
-                    all_show_labels.component::<ShowLabels>(),
                 )
                 .map(
                     |(
@@ -262,7 +250,6 @@ impl VisualizerSystem for Boxes2DVisualizer {
                         labels,
                         class_ids,
                         keypoint_ids,
-                        show_labels,
                     )| {
                         Boxes2DComponentData {
                             half_sizes: bytemuck::cast_slice(half_sizes),
@@ -274,7 +261,6 @@ impl VisualizerSystem for Boxes2DVisualizer {
                                 .map_or(&[], |class_ids| bytemuck::cast_slice(class_ids)),
                             keypoint_ids: keypoint_ids
                                 .map_or(&[], |keypoint_ids| bytemuck::cast_slice(keypoint_ids)),
-                            show_labels: show_labels.unwrap_or_default().first().copied(),
                         }
                     },
                 );

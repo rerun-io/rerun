@@ -11,7 +11,7 @@ A 2D point cloud with positions and optional colors, radii, labels, etc.
 
 **Recommended**: [`Radius`](../components/radius.md), [`Color`](../components/color.md)
 
-**Optional**: [`Text`](../components/text.md), [`ShowLabels`](../components/show_labels.md), [`DrawOrder`](../components/draw_order.md), [`ClassId`](../components/class_id.md), [`KeypointId`](../components/keypoint_id.md)
+**Optional**: [`Text`](../components/text.md), [`DrawOrder`](../components/draw_order.md), [`ClassId`](../components/class_id.md), [`KeypointId`](../components/keypoint_id.md)
 
 ## Shown in
 * [Spatial2DView](../views/spatial2d_view.md)

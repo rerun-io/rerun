@@ -32,7 +32,6 @@ fn roundtrip() {
             components::ClassId::from(126), //
             components::ClassId::from(127), //
         ]),
-        show_labels: Some(true.into()),
     };
 
     let arch = Boxes2D::from_half_sizes([(1.0, 2.0), (3.0, 4.0)])
@@ -41,8 +40,7 @@ fn roundtrip() {
         .with_radii([42.0, 43.0])
         .with_labels(["hello", "friend"])
         .with_draw_order(300.0)
-        .with_class_ids([126, 127])
-        .with_show_labels(true);
+        .with_class_ids([126, 127]);
     similar_asserts::assert_eq!(expected, arch);
 
     let expected_extensions: HashMap<_, _> = [
@@ -53,7 +51,6 @@ fn roundtrip() {
         ("labels", vec!["rerun.components.Label"]),
         ("draw_order", vec!["rerun.components.DrawOrder"]),
         ("class_ids", vec!["rerun.components.ClassId"]),
-        ("show_labels", vec!["rerun.components.ShowLabels"]),
     ]
     .into();
 

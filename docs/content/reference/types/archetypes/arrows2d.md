@@ -11,7 +11,7 @@ title: "Arrows2D"
 
 **Recommended**: [`Position2D`](../components/position2d.md)
 
-**Optional**: [`Radius`](../components/radius.md), [`Color`](../components/color.md), [`Text`](../components/text.md), [`ShowLabels`](../components/show_labels.md), [`DrawOrder`](../components/draw_order.md), [`ClassId`](../components/class_id.md)
+**Optional**: [`Radius`](../components/radius.md), [`Color`](../components/color.md), [`Text`](../components/text.md), [`DrawOrder`](../components/draw_order.md), [`ClassId`](../components/class_id.md)
 
 ## Shown in
 * [Spatial2DView](../views/spatial2d_view.md)

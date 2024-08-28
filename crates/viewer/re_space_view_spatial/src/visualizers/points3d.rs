@@ -3,7 +3,7 @@ use itertools::Itertools;
 use re_renderer::{LineDrawableBuilder, PickingLayerInstanceId, PointCloudBuilder};
 use re_types::{
     archetypes::Points3D,
-    components::{ClassId, Color, KeypointId, Position3D, Radius, ShowLabels, Text},
+    components::{ClassId, Color, KeypointId, Position3D, Radius, Text},
     ArrowString, Loggable,
 };
 use re_viewer_context::{
@@ -23,8 +23,8 @@ use crate::{
 };
 
 use super::{
-    filter_visualizable_3d_entities, process_labels_3d, utilities::LabeledBatch,
-    SpatialViewVisualizerData, SIZE_BOOST_IN_POINTS_FOR_POINT_OUTLINES,
+    filter_visualizable_3d_entities, process_labels_3d, SpatialViewVisualizerData,
+    SIZE_BOOST_IN_POINTS_FOR_POINT_OUTLINES,
 };
 
 // ---
@@ -51,9 +51,6 @@ struct Points3DComponentData<'a> {
     labels: Vec<ArrowString>,
     keypoint_ids: &'a [KeypointId],
     class_ids: &'a [ClassId],
-
-    // Non-repeated
-    show_labels: Option<ShowLabels>,
 }
 
 // NOTE: Do not put profile scopes in these methods. They are called for all entities and all
@@ -138,16 +135,13 @@ impl Points3DVisualizer {
             load_keypoint_connections(line_builder, ent_context, entity_path, &keypoints)?;
 
             self.data.ui_labels.extend(process_labels_3d(
-                LabeledBatch {
-                    entity_path,
-                    num_instances,
-                    overall_position: obj_space_bounding_box.center(),
-                    instance_positions: positions.iter().copied(),
-                    labels: &data.labels,
-                    colors: &colors,
-                    show_labels: data.show_labels,
-                    annotation_infos: &annotation_infos,
-                },
+                entity_path,
+                num_instances,
+                obj_space_bounding_box.center(),
+                positions.iter().copied(),
+                &data.labels,
+                &colors,
+                &annotation_infos,
                 world_from_obj,
             ));
         }
@@ -232,28 +226,17 @@ impl VisualizerSystem for Points3DVisualizer {
                 let all_labels = results.iter_as(timeline, Text::name());
                 let all_class_ids = results.iter_as(timeline, ClassId::name());
                 let all_keypoint_ids = results.iter_as(timeline, KeypointId::name());
-                let all_show_labels = results.iter_as(timeline, ShowLabels::name());
 
-                let data = re_query::range_zip_1x6(
+                let data = re_query::range_zip_1x5(
                     all_positions_indexed,
                     all_colors.primitive::<u32>(),
                     all_radii.primitive::<f32>(),
                     all_labels.string(),
                     all_class_ids.primitive::<u16>(),
                     all_keypoint_ids.primitive::<u16>(),
-                    all_show_labels.component::<ShowLabels>(),
                 )
                 .map(
-                    |(
-                        _index,
-                        positions,
-                        colors,
-                        radii,
-                        labels,
-                        class_ids,
-                        keypoint_ids,
-                        show_labels,
-                    )| {
+                    |(_index, positions, colors, radii, labels, class_ids, keypoint_ids)| {
                         Points3DComponentData {
                             positions: bytemuck::cast_slice(positions),
                             colors: colors.map_or(&[], |colors| bytemuck::cast_slice(colors)),
@@ -263,7 +246,6 @@ impl VisualizerSystem for Points3DVisualizer {
                                 .map_or(&[], |class_ids| bytemuck::cast_slice(class_ids)),
                             keypoint_ids: keypoint_ids
                                 .map_or(&[], |keypoint_ids| bytemuck::cast_slice(keypoint_ids)),
-                            show_labels: show_labels.unwrap_or_default().first().copied(),
                         }
                     },
                 );

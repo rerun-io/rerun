@@ -119,7 +119,6 @@ class LineStrips3D(Archetype):
         radii: datatypes.Float32ArrayLike | None = None,
         colors: datatypes.Rgba32ArrayLike | None = None,
         labels: datatypes.Utf8ArrayLike | None = None,
-        show_labels: datatypes.BoolLike | None = None,
         class_ids: datatypes.ClassIdArrayLike | None = None,
     ):
         """
@@ -138,8 +137,6 @@ class LineStrips3D(Archetype):
 
             If there's a single label present, it will be placed at the center of the entity.
             Otherwise, each instance will have its own label.
-        show_labels:
-            Optional choice of whether the text labels should be shown by default.
         class_ids:
             Optional [`components.ClassId`][rerun.components.ClassId]s for the lines.
 
@@ -149,9 +146,7 @@ class LineStrips3D(Archetype):
 
         # You can define your own __init__ function as a member of LineStrips3DExt in line_strips3d_ext.py
         with catch_and_log_exceptions(context=self.__class__.__name__):
-            self.__attrs_init__(
-                strips=strips, radii=radii, colors=colors, labels=labels, show_labels=show_labels, class_ids=class_ids
-            )
+            self.__attrs_init__(strips=strips, radii=radii, colors=colors, labels=labels, class_ids=class_ids)
             return
         self.__attrs_clear__()
 
@@ -162,7 +157,6 @@ class LineStrips3D(Archetype):
             radii=None,  # type: ignore[arg-type]
             colors=None,  # type: ignore[arg-type]
             labels=None,  # type: ignore[arg-type]
-            show_labels=None,  # type: ignore[arg-type]
             class_ids=None,  # type: ignore[arg-type]
         )
 
@@ -208,15 +202,6 @@ class LineStrips3D(Archetype):
     #
     # If there's a single label present, it will be placed at the center of the entity.
     # Otherwise, each instance will have its own label.
-    #
-    # (Docstring intentionally commented out to hide this field from the docs)
-
-    show_labels: components.ShowLabelsBatch | None = field(
-        metadata={"component": "optional"},
-        default=None,
-        converter=components.ShowLabelsBatch._optional,  # type: ignore[misc]
-    )
-    # Optional choice of whether the text labels should be shown by default.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 

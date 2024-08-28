@@ -32,7 +32,7 @@ use re_types::{
     components::{
         AggregationPolicy, AlbedoFactor, AxisLength, Color, DepthMeter, DrawOrder, FillMode,
         FillRatio, GammaCorrection, ImagePlaneDistance, MagnificationFilter, MarkerSize, Name,
-        Opacity, Scale3D, ShowLabels, StrokeWidth, Text, TransformRelation, Translation3D,
+        Opacity, Scale3D, StrokeWidth, Text, TransformRelation, Translation3D,
     },
     Loggable as _,
 };
@@ -73,8 +73,6 @@ pub fn create_component_ui_registry() -> re_viewer_context::ComponentUiRegistry 
     // Bool components:
     registry.add_singleline_edit_or_view::<Visible>(edit_bool);
     registry.add_singleline_edit_or_view::<LockRangeDuringZoom>(edit_bool);
-    registry.add_singleline_edit_or_view::<ShowLabels>(edit_bool);
-    registry.add_singleline_edit_or_view::<Visible>(edit_bool);
 
     // Text components:
     registry.add_legacy_display_ui(Text::name(), Box::new(display_text_ui)); // TODO(andreas): Why is there a display ui?

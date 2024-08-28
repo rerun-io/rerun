@@ -39,7 +39,6 @@ include "./components/rotation_axis_angle.fbs";
 include "./components/rotation_quat.fbs";
 include "./components/scalar.fbs";
 include "./components/scale3d.fbs";
-include "./components/show_labels.fbs";
 include "./components/stroke_width.fbs";
 include "./components/tensor_data.fbs";
 include "./components/tensor_dimension_selection.fbs";

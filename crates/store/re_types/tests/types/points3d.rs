@@ -31,7 +31,6 @@ fn roundtrip() {
             components::KeypointId::from(2), //
             components::KeypointId::from(3), //
         ]),
-        show_labels: Some(true.into()),
     };
 
     let arch = Points3D::new([(1.0, 2.0, 3.0), (4.0, 5.0, 6.0)])
@@ -39,8 +38,7 @@ fn roundtrip() {
         .with_colors([0xAA0000CC, 0x00BB00DD])
         .with_labels(["hello", "friend"])
         .with_class_ids([126, 127])
-        .with_keypoint_ids([2, 3])
-        .with_show_labels(true);
+        .with_keypoint_ids([2, 3]);
     similar_asserts::assert_eq!(expected, arch);
 
     let expected_extensions: HashMap<_, _> = [
@@ -50,7 +48,6 @@ fn roundtrip() {
         ("labels", vec!["rerun.components.Text"]),
         ("class_ids", vec!["rerun.components.ClassId"]),
         ("keypoint_ids", vec!["rerun.components.KeypointId"]),
-        ("show_labels", vec!["rerun.components.ShowLabels"]),
     ]
     .into();
 

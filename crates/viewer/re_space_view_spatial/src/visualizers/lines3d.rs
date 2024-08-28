@@ -2,7 +2,7 @@ use re_log_types::Instance;
 use re_renderer::PickingLayerInstanceId;
 use re_types::{
     archetypes::LineStrips3D,
-    components::{ClassId, Color, KeypointId, LineStrip3D, Radius, ShowLabels, Text},
+    components::{ClassId, Color, KeypointId, LineStrip3D, Radius, Text},
     ArrowString, Loggable as _,
 };
 use re_viewer_context::{
@@ -13,9 +13,8 @@ use re_viewer_context::{
 };
 
 use crate::{
-    contexts::SpatialSceneEntityContext,
-    view_kind::SpatialSpaceViewKind,
-    visualizers::utilities::{process_labels_3d, LabeledBatch},
+    contexts::SpatialSceneEntityContext, view_kind::SpatialSpaceViewKind,
+    visualizers::process_labels_3d,
 };
 
 use super::{
@@ -115,23 +114,20 @@ impl Lines3DVisualizer {
                 .add_bounding_box(entity_path.hash(), obj_space_bounding_box, world_from_obj);
 
             self.data.ui_labels.extend(process_labels_3d(
-                LabeledBatch {
-                    entity_path,
-                    num_instances,
-                    overall_position: obj_space_bounding_box.center(),
-                    instance_positions: data.strips.iter().map(|strip| {
-                        strip
-                            .iter()
-                            .copied()
-                            .map(glam::Vec3::from)
-                            .sum::<glam::Vec3>()
-                            / (strip.len() as f32)
-                    }),
-                    labels: &data.labels,
-                    colors: &colors,
-                    show_labels: data.show_labels,
-                    annotation_infos: &annotation_infos,
-                },
+                entity_path,
+                num_instances,
+                obj_space_bounding_box.center(),
+                data.strips.iter().map(|strip| {
+                    strip
+                        .iter()
+                        .copied()
+                        .map(glam::Vec3::from)
+                        .sum::<glam::Vec3>()
+                        / (strip.len() as f32)
+                }),
+                &data.labels,
+                &colors,
+                &annotation_infos,
                 world_from_obj,
             ));
         }
@@ -150,9 +146,6 @@ struct Lines3DComponentData<'a> {
     labels: Vec<ArrowString>,
     keypoint_ids: &'a [KeypointId],
     class_ids: &'a [ClassId],
-
-    // Non-repeated
-    show_labels: Option<ShowLabels>,
 }
 
 impl IdentifiedViewSystem for Lines3DVisualizer {
@@ -230,28 +223,17 @@ impl VisualizerSystem for Lines3DVisualizer {
                 let all_labels = results.iter_as(timeline, Text::name());
                 let all_class_ids = results.iter_as(timeline, ClassId::name());
                 let all_keypoint_ids = results.iter_as(timeline, KeypointId::name());
-                let all_show_labels = results.iter_as(timeline, ShowLabels::name());
 
-                let data = re_query::range_zip_1x6(
+                let data = re_query::range_zip_1x5(
                     all_strips_indexed,
                     all_colors.primitive::<u32>(),
                     all_radii.primitive::<f32>(),
                     all_labels.string(),
                     all_class_ids.primitive::<u16>(),
                     all_keypoint_ids.primitive::<u16>(),
-                    all_show_labels.component::<ShowLabels>(),
                 )
                 .map(
-                    |(
-                        _index,
-                        strips,
-                        colors,
-                        radii,
-                        labels,
-                        class_ids,
-                        keypoint_ids,
-                        show_labels,
-                    )| {
+                    |(_index, strips, colors, radii, labels, class_ids, keypoint_ids)| {
                         Lines3DComponentData {
                             strips,
                             colors: colors.map_or(&[], |colors| bytemuck::cast_slice(colors)),
@@ -261,7 +243,6 @@ impl VisualizerSystem for Lines3DVisualizer {
                                 .map_or(&[], |class_ids| bytemuck::cast_slice(class_ids)),
                             keypoint_ids: keypoint_ids
                                 .map_or(&[], |keypoint_ids| bytemuck::cast_slice(keypoint_ids)),
-                            show_labels: show_labels.unwrap_or_default().first().copied(),
                         }
                     },
                 );

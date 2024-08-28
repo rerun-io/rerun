@@ -32,7 +32,6 @@ fn roundtrip() {
             ClassId::from(126), //
             ClassId::from(127), //
         ]),
-        show_labels: Some(true.into()),
     };
 
     #[rustfmt::skip]
@@ -44,8 +43,7 @@ fn roundtrip() {
         .with_radii([42.0, 43.0])
         .with_colors([0xAA0000CC, 0x00BB00DD])
         .with_labels(["hello", "friend"])
-        .with_class_ids([126, 127])
-        .with_show_labels(true);
+        .with_class_ids([126, 127]);
     similar_asserts::assert_eq!(expected, arch);
 
     let expected_extensions: HashMap<_, _> = [
@@ -56,7 +54,6 @@ fn roundtrip() {
         ("draw_order", vec!["rerun.components.DrawOrder"]),
         ("class_ids", vec!["rerun.components.ClassId"]),
         ("keypoint_ids", vec!["rerun.components.KeypointId"]),
-        ("show_labels", vec!["rerun.components.ShowLabels"]),
     ]
     .into();
 

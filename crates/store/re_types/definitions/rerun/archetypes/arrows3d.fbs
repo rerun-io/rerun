@@ -41,9 +41,6 @@ table Arrows3D (
   /// Otherwise, each instance will have its own label.
   labels: [rerun.components.Text] ("attr.rerun.component_optional", nullable, order: 3200);
 
-  /// Optional choice of whether the text labels should be shown by default.
-  show_labels: rerun.components.ShowLabels ("attr.rerun.component_optional", nullable, order: 3250);
-
   /// Optional class Ids for the points.
   ///
   /// The [components.ClassId] provides colors and labels if not specified explicitly.

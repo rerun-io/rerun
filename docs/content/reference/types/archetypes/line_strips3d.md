@@ -11,7 +11,7 @@ title: "LineStrips3D"
 
 **Recommended**: [`Radius`](../components/radius.md), [`Color`](../components/color.md)
 
-**Optional**: [`Text`](../components/text.md), [`ShowLabels`](../components/show_labels.md), [`ClassId`](../components/class_id.md)
+**Optional**: [`Text`](../components/text.md), [`ClassId`](../components/class_id.md)
 
 ## Shown in
 * [Spatial3DView](../views/spatial3d_view.md)

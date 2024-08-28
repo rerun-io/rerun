@@ -100,9 +100,6 @@ pub struct LineStrips2D {
     /// Otherwise, each instance will have its own label.
     pub labels: Option<Vec<crate::components::Text>>,
 
-    /// Optional choice of whether the text labels should be shown by default.
-    pub show_labels: Option<crate::components::ShowLabels>,
-
     /// An optional floating point value that specifies the 2D drawing order of each line strip.
     ///
     /// Objects with higher values are drawn on top of those with lower values.
@@ -121,7 +118,6 @@ impl ::re_types_core::SizeBytes for LineStrips2D {
             + self.radii.heap_size_bytes()
             + self.colors.heap_size_bytes()
             + self.labels.heap_size_bytes()
-            + self.show_labels.heap_size_bytes()
             + self.draw_order.heap_size_bytes()
             + self.class_ids.heap_size_bytes()
     }
@@ -132,7 +128,6 @@ impl ::re_types_core::SizeBytes for LineStrips2D {
             && <Option<Vec<crate::components::Radius>>>::is_pod()
             && <Option<Vec<crate::components::Color>>>::is_pod()
             && <Option<Vec<crate::components::Text>>>::is_pod()
-            && <Option<crate::components::ShowLabels>>::is_pod()
             && <Option<crate::components::DrawOrder>>::is_pod()
             && <Option<Vec<crate::components::ClassId>>>::is_pod()
     }
@@ -150,17 +145,16 @@ static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 3usize]> =
         ]
     });
 
-static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 4usize]> =
+static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 3usize]> =
     once_cell::sync::Lazy::new(|| {
         [
             "rerun.components.Text".into(),
-            "rerun.components.ShowLabels".into(),
             "rerun.components.DrawOrder".into(),
             "rerun.components.ClassId".into(),
         ]
     });
 
-static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 8usize]> =
+static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 7usize]> =
     once_cell::sync::Lazy::new(|| {
         [
             "rerun.components.LineStrip2D".into(),
@@ -168,15 +162,14 @@ static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 8usize]> =
             "rerun.components.Color".into(),
             "rerun.components.LineStrips2DIndicator".into(),
             "rerun.components.Text".into(),
-            "rerun.components.ShowLabels".into(),
             "rerun.components.DrawOrder".into(),
             "rerun.components.ClassId".into(),
         ]
     });
 
 impl LineStrips2D {
-    /// The total number of components in the archetype: 1 required, 3 recommended, 4 optional
-    pub const NUM_COMPONENTS: usize = 8usize;
+    /// The total number of components in the archetype: 1 required, 3 recommended, 3 optional
+    pub const NUM_COMPONENTS: usize = 7usize;
 }
 
 /// Indicator component for the [`LineStrips2D`] [`::re_types_core::Archetype`]
@@ -279,15 +272,6 @@ impl ::re_types_core::Archetype for LineStrips2D {
         } else {
             None
         };
-        let show_labels = if let Some(array) = arrays_by_name.get("rerun.components.ShowLabels") {
-            <crate::components::ShowLabels>::from_arrow_opt(&**array)
-                .with_context("rerun.archetypes.LineStrips2D#show_labels")?
-                .into_iter()
-                .next()
-                .flatten()
-        } else {
-            None
-        };
         let draw_order = if let Some(array) = arrays_by_name.get("rerun.components.DrawOrder") {
             <crate::components::DrawOrder>::from_arrow_opt(&**array)
                 .with_context("rerun.archetypes.LineStrips2D#draw_order")?
@@ -314,7 +298,6 @@ impl ::re_types_core::Archetype for LineStrips2D {
             radii,
             colors,
             labels,
-            show_labels,
             draw_order,
             class_ids,
         })
@@ -337,9 +320,6 @@ impl ::re_types_core::AsComponents for LineStrips2D {
             self.labels
                 .as_ref()
                 .map(|comp_batch| (comp_batch as &dyn ComponentBatch).into()),
-            self.show_labels
-                .as_ref()
-                .map(|comp| (comp as &dyn ComponentBatch).into()),
             self.draw_order
                 .as_ref()
                 .map(|comp| (comp as &dyn ComponentBatch).into()),
@@ -364,7 +344,6 @@ impl LineStrips2D {
             radii: None,
             colors: None,
             labels: None,
-            show_labels: None,
             draw_order: None,
             class_ids: None,
         }
@@ -400,16 +379,6 @@ impl LineStrips2D {
         labels: impl IntoIterator<Item = impl Into<crate::components::Text>>,
     ) -> Self {
         self.labels = Some(labels.into_iter().map(Into::into).collect());
-        self
-    }
-
-    /// Optional choice of whether the text labels should be shown by default.
-    #[inline]
-    pub fn with_show_labels(
-        mut self,
-        show_labels: impl Into<crate::components::ShowLabels>,
-    ) -> Self {
-        self.show_labels = Some(show_labels.into());
         self
     }
 

@@ -64,7 +64,6 @@ from .rotation_axis_angle import RotationAxisAngle, RotationAxisAngleBatch, Rota
 from .rotation_quat import RotationQuat, RotationQuatBatch, RotationQuatType
 from .scalar import Scalar, ScalarBatch, ScalarType
 from .scale3d import Scale3D, Scale3DBatch, Scale3DType
-from .show_labels import ShowLabels, ShowLabelsBatch, ShowLabelsType
 from .stroke_width import StrokeWidth, StrokeWidthBatch, StrokeWidthType
 from .tensor_data import TensorData, TensorDataBatch, TensorDataType
 from .tensor_dimension_index_selection import (
@@ -240,9 +239,6 @@ __all__ = [
     "Scale3D",
     "Scale3DBatch",
     "Scale3DType",
-    "ShowLabels",
-    "ShowLabelsBatch",
-    "ShowLabelsType",
     "StrokeWidth",
     "StrokeWidthBatch",
     "StrokeWidthType",
