@@ -1,8 +1,59 @@
 # Rerun changelog
 
+
 ## [Unreleased](https://github.com/rerun-io/rerun/compare/latest...HEAD)
 
-## [0.18.0](https://github.com/rerun-io/rerun/compare/0.16.1...HEAD) - Ingestion speed and memory footprint
+
+## [0.18.1](https://github.com/rerun-io/rerun/compare/0.17.0...HEAD) - Bug fix
+
+Bug fixes and performance improvements for Rerun 0.18.0.
+
+- Document `send_columns` [#7212](https://github.com/rerun-io/rerun/pull/7212)
+- Call out `send_columns` in data loader and plot examples [#7214](https://github.com/rerun-io/rerun/pull/7214)
+- Deduplicate space view label processing code [#7208](https://github.com/rerun-io/rerun/pull/7208)
+- Fix error when trying to clear non-existant component [#7215](https://github.com/rerun-io/rerun/pull/7215)
+- Correct dependency on `puffin` to 0.19.1, preventing a possible build failure [#7221](https://github.com/rerun-io/rerun/pull/7221)
+- Remove “has not yet been released” from migration-0-18.md [#7220](https://github.com/rerun-io/rerun/pull/7220)
+- Update `time` crate to 0.3.36, fixing compilation on newer Rust versions [#7228](https://github.com/rerun-io/rerun/pull/7228)
+- Typo fix - Rust - re_tracing [#7234](https://github.com/rerun-io/rerun/pull/7234)
+- Fix typo in arrow_cpp_install.md [#7235](https://github.com/rerun-io/rerun/pull/7235)
+- Dead code removal, renames, and clean-up [#7239](https://github.com/rerun-io/rerun/pull/7239)
+- Fix search index build [#7242](https://github.com/rerun-io/rerun/pull/7242)
+- Install sdk_info.h even if RERUN_INSTALL_RERUN_C option is OFF [#7246](https://github.com/rerun-io/rerun/pull/7246)
+- Combine `re_types` integration tests into one test target [#7250](https://github.com/rerun-io/rerun/pull/7250)
+- Convert most remaining `DataUI` component implementations to component uis in `re_component_ui` [#7247](https://github.com/rerun-io/rerun/pull/7247)
+- Fix references to closed tickets [#7219](https://github.com/rerun-io/rerun/pull/7219)
+- Fix gamma (srgb EOTF) for GLTF via `Asset3D` embedded rgb(a) textures [#7251](https://github.com/rerun-io/rerun/pull/7251)
+- Consistently call it "latest-at", with a dash [#7240](https://github.com/rerun-io/rerun/pull/7240)
+- Link to the per-language docs for `send_columns` [#7244](https://github.com/rerun-io/rerun/pull/7244)
+- Remove references to justfile [#7243](https://github.com/rerun-io/rerun/pull/7243)
+- Show single-line editor if there is no multiline editor [#7211](https://github.com/rerun-io/rerun/pull/7211)
+- Fix python version updating script [#7213](https://github.com/rerun-io/rerun/pull/7213)
+- Fix url to event.rs in `rerun analytics details` [#7230](https://github.com/rerun-io/rerun/pull/7230)
+- BGR(A) image format support [#7238](https://github.com/rerun-io/rerun/pull/7238)
+- Fix header levels in `sdk-operating-modes.md` [#7231](https://github.com/rerun-io/rerun/pull/7231)
+- Hide time controls if there is only one time point on a timeline [#7241](https://github.com/rerun-io/rerun/pull/7241)
+- Speed up data density graph by rendering them more coarsly [#7229](https://github.com/rerun-io/rerun/pull/7229)
+- Remove `Datatype` and `DatatypeBatch` [#7256](https://github.com/rerun-io/rerun/pull/7256)
+- Fix typo in spaces-and-transforms.md [#7255](https://github.com/rerun-io/rerun/pull/7255)
+- Remove `Loggable{Batch}::arrow_field` [#7257](https://github.com/rerun-io/rerun/pull/7257)
+- Remove `LoggableBatch::num_instances` [#7258](https://github.com/rerun-io/rerun/pull/7258)
+- re_arrow2 0.17.5 [#7262](https://github.com/rerun-io/rerun/pull/7262)
+- Fix main (`cargo insta review`) [#7264](https://github.com/rerun-io/rerun/pull/7264)
+- Add `ShowLabels` component, which controls whether instances’ labels are shown [#7249](https://github.com/rerun-io/rerun/pull/7249)
+- Default `RERUN_CHUNK_MAX_BYTES` to 384kiB instead of 4MiB [#7263](https://github.com/rerun-io/rerun/pull/7263)
+- Add `rerun::external::ndarray` [#7259](https://github.com/rerun-io/rerun/pull/7259)
+- Fix a bunch of broken links [#7269](https://github.com/rerun-io/rerun/pull/7269)
+- Remove unused `Loggable::extended_arrow_datatype` [#7260](https://github.com/rerun-io/rerun/pull/7260)
+- Update to egui_tiles 0.9.1: fix relayout on tab background click [#7283](https://github.com/rerun-io/rerun/pull/7283)
+- Chunk store browser [#7226](https://github.com/rerun-io/rerun/pull/7226)
+- Fix `Chunk::component_batch_raw` not checking the bitmap first [#7286](https://github.com/rerun-io/rerun/pull/7286)
+- Handle proper half-size splatting semantics in from_mins_and_sizes [#7291](https://github.com/rerun-io/rerun/pull/7291)
+- Fix VisualizerOverrides serializer and improved error handling [#7288](https://github.com/rerun-io/rerun/pull/7288)
+- Fix and test all known `HybridResults` issues from 0.18 [#7297](https://github.com/rerun-io/rerun/pull/7297)
+
+
+## [0.18.0](https://github.com/rerun-io/rerun/compare/0.17.0...HEAD) - Ingestion speed and memory footprint
 
 https://github.com/user-attachments/assets/95380a64-df05-4f85-b40a-0c6b8ec8d5cf
 
@@ -318,7 +369,6 @@ _All four tetrahedron meshes on this screen share the same vertices and are inst
 - Add basic checklist to test different 3D transform types & transform hierarchy propagation [#6968](https://github.com/rerun-io/rerun/pull/6968)
 
 
-
 ## [0.17.0](https://github.com/rerun-io/rerun/compare/0.16.1...0.17.0) - More Blueprint features and better notebooks - 2024-07-08
 
 https://github.com/rerun-io/rerun/assets/49431240/1c75b816-7e3e-4882-9ee6-ba124c00d73c
@@ -485,7 +535,6 @@ https://github.com/rerun-io/rerun/assets/49431240/1c75b816-7e3e-4882-9ee6-ba124c
 - Update to egui 0.28.1 [#6752](https://github.com/rerun-io/rerun/pull/6752), [#6785](https://github.com/rerun-io/rerun/pull/6785)
 - Update ewebsock to 0.6.0 [#6394](https://github.com/rerun-io/rerun/pull/6394)
 - Update to `wgpu 0.20`, fixing crashes with some Linux setups [#6171](https://github.com/rerun-io/rerun/pull/6171)
-
 
 
 ## [0.16.1](https://github.com/rerun-io/rerun/compare/0.16.0...0.16.1) - Bug fix - 2024-05-29
