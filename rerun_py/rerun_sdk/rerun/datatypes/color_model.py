@@ -36,12 +36,6 @@ class ColorModel(Enum):
     RGBA = 3
     """Red, Green, Blue, Alpha"""
 
-    BGR = 4
-    """Blue, Green, Red"""
-
-    BGRA = 5
-    """Blue, Green, Red, Alpha"""
-
     @classmethod
     def auto(cls, val: str | int | ColorModel) -> ColorModel:
         """Best-effort converter, including a case-insensitive string matcher."""
@@ -63,7 +57,7 @@ class ColorModel(Enum):
         return self.name
 
 
-ColorModelLike = Union[ColorModel, Literal["BGR", "BGRA", "L", "RGB", "RGBA", "bgr", "bgra", "l", "rgb", "rgba"], int]
+ColorModelLike = Union[ColorModel, Literal["L", "RGB", "RGBA", "l", "rgb", "rgba"], int]
 ColorModelArrayLike = Union[ColorModelLike, Sequence[ColorModelLike]]
 
 

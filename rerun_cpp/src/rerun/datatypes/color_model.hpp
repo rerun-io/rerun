@@ -33,12 +33,6 @@ namespace rerun::datatypes {
 
         /// Red, Green, Blue, Alpha
         RGBA = 3,
-
-        /// Blue, Green, Red
-        BGR = 4,
-
-        /// Blue, Green, Red, Alpha
-        BGRA = 5,
     };
 } // namespace rerun::datatypes
 

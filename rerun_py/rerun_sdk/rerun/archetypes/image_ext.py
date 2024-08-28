@@ -81,7 +81,7 @@ class ImageExt:
             `1x480x640x3x1` is treated as a `480x640x3`.
             You also need to specify the `color_model` of it (e.g. "RGB").
         color_model:
-            L, RGB, RGBA, BGR, BGRA, etc, specifying how to interpret `image`.
+            L, RGB, RGBA, etc, specifying how to interpret `image`.
         pixel_format:
             NV12, YUV420, etc. For chroma-downsampling.
             Requires `width`, `height`, and `bytes`.
@@ -207,9 +207,9 @@ class ImageExt:
             if channels == 1:
                 color_model = ColorModel.L
             elif channels == 3:
-                color_model = ColorModel.RGB
+                color_model = ColorModel.RGB  # TODO(#2340): change default to BGR
             elif channels == 4:
-                color_model = ColorModel.RGBA
+                color_model = ColorModel.RGBA  # TODO(#2340): change default to BGRA
             else:
                 _send_warning_or_raise(f"Expected 1, 3, or 4 channels; got {channels}")
         else:
@@ -278,9 +278,10 @@ class ImageExt:
             if image_format.pixel_format is not None:
                 raise ValueError(f"Cannot JPEG compress an image with pixel_format {image_format.pixel_format}")
 
-            if image_format.color_model not in (ColorModel.L, ColorModel.RGB, ColorModel.BGR):
+            if image_format.color_model not in (ColorModel.L, ColorModel.RGB):
+                # TODO(#2340): BGR support!
                 raise ValueError(
-                    f"Cannot JPEG compress an image of type {image_format.color_model}. Only L (monochrome), RGB and BGR are supported."
+                    f"Cannot JPEG compress an image of type {image_format.color_model}. Only L (monochrome) and RGB are supported."
                 )
 
             if image_format.channel_datatype != ChannelDatatype.U8:
@@ -307,12 +308,7 @@ class ImageExt:
             else:
                 image = buf.reshape(image_format.height, image_format.width, 3)
 
-            # PIL doesn't understand BGR.
-            if image_format.color_model == ColorModel.BGR:
-                mode = "RGB"
-                image = image[:, :, ::-1]
-            else:
-                mode = str(image_format.color_model)
+            mode = str(image_format.color_model)
 
             pil_image = PILImage.fromarray(image, mode=mode)
             output = BytesIO()

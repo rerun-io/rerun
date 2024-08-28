@@ -12,8 +12,6 @@ This combined with [`datatypes.ChannelDatatype`](https://rerun.io/docs/reference
 * L
 * RGB
 * RGBA
-* BGR
-* BGRA
 
 ## API reference links
  * 🌊 [C++ API docs for `ColorModel`](https://ref.rerun.io/docs/cpp/stable/namespacererun_1_1datatypes.html)

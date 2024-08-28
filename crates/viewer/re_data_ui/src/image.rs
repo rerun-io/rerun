@@ -421,52 +421,6 @@ fn image_pixel_value_ui(
                     None
                 }
             }
-
-            ColorModel::BGR => {
-                if let Some([b, g, r]) = {
-                    if let [Some(b), Some(g), Some(r)] = [
-                        image.get_xyc(x, y, 0),
-                        image.get_xyc(x, y, 1),
-                        image.get_xyc(x, y, 2),
-                    ] {
-                        Some([r, g, b])
-                    } else {
-                        None
-                    }
-                } {
-                    match (b, g, r) {
-                        (TensorElement::U8(b), TensorElement::U8(g), TensorElement::U8(r)) => {
-                            Some(format!("B: {b}, G: {g}, R: {r}, #{b:02X}{g:02X}{r:02X}"))
-                        }
-                        _ => Some(format!("B: {b}, G: {g}, R: {r}")),
-                    }
-                } else {
-                    None
-                }
-            }
-
-            ColorModel::BGRA => {
-                if let (Some(b), Some(g), Some(r), Some(a)) = (
-                    image.get_xyc(x, y, 0),
-                    image.get_xyc(x, y, 1),
-                    image.get_xyc(x, y, 2),
-                    image.get_xyc(x, y, 3),
-                ) {
-                    match (b, g, r, a) {
-                        (
-                            TensorElement::U8(b),
-                            TensorElement::U8(g),
-                            TensorElement::U8(r),
-                            TensorElement::U8(a),
-                        ) => Some(format!(
-                            "B: {b}, G: {g}, R: {r}, A: {a}, #{r:02X}{g:02X}{b:02X}{a:02X}"
-                        )),
-                        _ => Some(format!("B: {b}, G: {g}, R: {r}, A: {a}")),
-                    }
-                } else {
-                    None
-                }
-            }
         },
     };
 

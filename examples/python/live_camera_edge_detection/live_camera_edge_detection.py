@@ -42,7 +42,8 @@ def run_canny(num_frames: int | None) -> None:
         frame_nr += 1
 
         # Log the original image
-        rr.log("image/rgb", rr.Image(img, color_model="BGR"))
+        rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+        rr.log("image/rgb", rr.Image(rgb))
 
         # Convert to grayscale
         gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)

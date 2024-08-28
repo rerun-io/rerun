@@ -28,11 +28,6 @@ fn decode_color(sampled_value: vec4f) -> vec4f {
     // Normalize the value first, otherwise premultiplying alpha and linear space conversion won't make sense.
     var rgba = normalize_range(sampled_value);
 
-    // BGR(A) -> RGB(A)
-    if rect_info.bgra_to_rgba != 0u {
-        rgba = rgba.bgra;
-    }
-
     // Convert to linear space
     if rect_info.decode_srgb != 0u {
         if all(vec3f(0.0) <= rgba.rgb) && all(rgba.rgb <= vec3f(1.0)) {

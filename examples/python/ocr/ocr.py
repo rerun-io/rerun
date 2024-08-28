@@ -365,7 +365,7 @@ def detect_and_log_layouts(file_path: str) -> None:
     else:
         # read image
         img = cv2.imread(file_path)
-        image_rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)  # Rerun can handle BGR as well, but `ocr_model_pp` expects RGB
+        image_rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
         images.append(image_rgb.astype(np.uint8))
 
     # Extracte the layout from each image

@@ -39,10 +39,10 @@ impl Image {
 
         let is_shape_correct = match color_model {
             ColorModel::L => non_empty_dim_inds.len() == 2,
-            ColorModel::RGB | ColorModel::BGR => {
+            ColorModel::RGB => {
                 non_empty_dim_inds.len() == 3 && shape[non_empty_dim_inds[2]].size == 3
             }
-            ColorModel::RGBA | ColorModel::BGRA => {
+            ColorModel::RGBA => {
                 non_empty_dim_inds.len() == 3 && shape[non_empty_dim_inds[2]].size == 4
             }
         };
