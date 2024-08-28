@@ -415,6 +415,7 @@ use re_chunk::{ChunkComponentIterItem, RowId, TimeInt, Timeline};
 use re_chunk_store::external::{re_chunk, re_chunk::external::arrow2};
 
 /// The iterator type backing [`HybridResults::iter_as`].
+#[derive(Debug)]
 pub struct HybridResultsChunkIter<'a> {
     chunks: Cow<'a, [Chunk]>,
     timeline: Timeline,
