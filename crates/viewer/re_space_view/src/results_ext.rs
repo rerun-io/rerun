@@ -1,6 +1,8 @@
 use std::borrow::Cow;
 use std::sync::Arc;
 
+use itertools::Itertools as _;
+
 use re_chunk_store::{Chunk, LatestAtQuery, RangeQuery, UnitChunkShared};
 use re_log_types::external::arrow2::array::Array as ArrowArray;
 use re_log_types::hash::Hash64;
@@ -303,6 +305,8 @@ impl RangeResultsExt for HybridRangeResults {
 
     #[inline]
     fn get_optional_chunks(&self, component_name: &ComponentName) -> Cow<'_, [Chunk]> {
+        re_tracing::profile_function!();
+
         if let Some(unit) = self.overrides.get(component_name) {
             // Because this is an override we always re-index the data as static
             let chunk = Arc::unwrap_or_clone(unit.clone().into_chunk())
@@ -310,22 +314,27 @@ impl RangeResultsExt for HybridRangeResults {
                 .zeroed();
             Cow::Owned(vec![chunk])
         } else {
+            re_tracing::profile_scope!("defaults");
+
+            // NOTE: Because this is a range query, we always need the defaults to come first,
+            // since range queries don't have any state to bootstrap from.
+            let defaults = self.defaults.get(component_name).map(|unit| {
+                // Because this is an default from the blueprint we always re-index the data as static
+                Arc::unwrap_or_clone(unit.clone().into_chunk())
+                    .into_static()
+                    .zeroed()
+            });
+
             let chunks = self.results.get_optional_chunks(component_name);
 
-            // If the data is not empty, return it.
-
-            if !chunks.is_empty() {
-                return chunks;
-            }
-
-            // Otherwise try to use the default data.
-
-            let Some(unit) = self.defaults.get(component_name) else {
-                return Cow::Owned(Vec::new());
-            };
-            // Because this is an default from the blueprint we always re-index the data as static
-            let chunk = Arc::unwrap_or_clone(unit.clone().into_chunk()).into_static();
-            Cow::Owned(vec![chunk])
+            // TODO(cmc): this `collect_vec()` sucks, let's keep an eye on it and see if it ever
+            // becomes an issue.
+            Cow::Owned(
+                defaults
+                    .into_iter()
+                    .chain(chunks.iter().cloned())
+                    .collect_vec(),
+            )
         }
     }
 }
