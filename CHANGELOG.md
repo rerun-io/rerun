@@ -4,7 +4,7 @@
 ## [Unreleased](https://github.com/rerun-io/rerun/compare/latest...HEAD)
 
 
-## [0.18.1](https://github.com/rerun-io/rerun/compare/0.17.0...HEAD) - Bug fix
+## [0.18.1](https://github.com/rerun-io/rerun/compare/0.18.0...0.18.1) - Bug fix
 
 Bug fixes and performance improvements for Rerun 0.18.0.
 
