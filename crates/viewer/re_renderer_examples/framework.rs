@@ -198,30 +198,6 @@ impl<E: Example + 'static> Application<E> {
         self.window.request_redraw();
     }
 
-    #[cfg(target_arch = "wasm32")]
-    fn run(mut self, event_loop: EventLoop<()>) {
-        event_loop
-            .run(move |event, event_loop_window_target| {
-                // Keep our example busy.
-                // Not how one should generally do it, but great for animated content and
-                // checking on perf.
-                event_loop_window_target.set_control_flow(winit::event_loop::ControlFlow::Poll);
-
-                match event {
-                    winit::event::Event::NewEvents(winit::event::StartCause::Init) => {
-                        self.configure_surface(self.window.inner_size());
-                    }
-
-                    winit::event::Event::WindowEvent { event, .. } => {
-                        self.on_window_event(event);
-                    }
-
-                    _ => {}
-                }
-            })
-            .unwrap();
-    }
-
     fn on_window_event(&mut self, event: WindowEvent) {
         match event {
             WindowEvent::Resized(size) => {
@@ -375,17 +351,20 @@ struct WrapApp<E: Example + 'static> {
 }
 
 impl<E: Example + 'static> ApplicationHandler for WrapApp<E> {
-    fn resumed(&mut self, event_loop: &ActiveEventLoop) {
-        let attributes = winit::window::WindowAttributes::default()
-            .with_title(format!("re_renderer sample - {}", E::title()))
-            .with_inner_size(winit::dpi::PhysicalSize {
-                width: 1920,
-                height: 1080,
-            });
-        let window = event_loop
-            .create_window(attributes)
-            .expect("Failed to create window");
-        self.app = Some(pollster::block_on(Application::new(window)).unwrap());
+    fn resumed(&mut self, _event_loop: &ActiveEventLoop) {
+        #[cfg(not(target_arch = "wasm32"))]
+        {
+            let attributes = winit::window::WindowAttributes::default()
+                .with_title(format!("re_renderer sample - {}", E::title()))
+                .with_inner_size(winit::dpi::PhysicalSize {
+                    width: 1920,
+                    height: 1080,
+                });
+            let window = _event_loop
+                .create_window(attributes)
+                .expect("Failed to create window");
+            self.app = Some(pollster::block_on(Application::new(window)).unwrap());
+        }
     }
 
     fn window_event(
@@ -405,11 +384,12 @@ impl<E: Example + 'static> ApplicationHandler for WrapApp<E> {
 }
 
 pub fn start<E: Example + 'static>() {
+    re_log::setup_logging();
+
     let event_loop = EventLoop::new().unwrap();
 
     #[cfg(not(target_arch = "wasm32"))]
     {
-        re_log::setup_logging();
         let mut wrap_app = WrapApp::<E> { app: None };
         event_loop.run_app(&mut wrap_app).unwrap();
     }
@@ -418,7 +398,8 @@ pub fn start<E: Example + 'static>() {
     {
         async fn run<E: Example + 'static>(event_loop: EventLoop<()>, window: Window) {
             let app = Application::<E>::new(window).await.unwrap();
-            app.run(event_loop);
+            let mut wrap_app = WrapApp::<E> { app: Some(app) };
+            event_loop.run_app(&mut wrap_app).unwrap();
         }
 
         // Make sure panics are logged using `console.error`.
@@ -426,12 +407,15 @@ pub fn start<E: Example + 'static>() {
 
         re_log::setup_logging();
 
-        let window = winit::window::WindowAttributes::new()
+        let window = winit::window::WindowAttributes::default()
             .with_title(format!("re_renderer sample - {}", E::title()))
             .with_inner_size(winit::dpi::PhysicalSize {
                 width: 1920,
                 height: 1080,
             });
+
+        // TODO(emilk): port this to the winit 0.30 API, using maybe https://docs.rs/winit/latest/winit/platform/web/trait.EventLoopExtWebSys.html ?
+        #[allow(deprecated)]
         let window = event_loop.create_window(window).unwrap();
 
         use winit::platform::web::WindowExtWebSys;
