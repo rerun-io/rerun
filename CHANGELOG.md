@@ -8,14 +8,6 @@
 
 Bug fixes and performance improvements for Rerun 0.18.0.
 
-### 🔎 Details
-
-### ⚠️ Breaking changes
-- Remove unused `Datatype` and `DatatypeBatch` [#7256](https://github.com/rerun-io/rerun/pull/7256)
-- Remove unused `Loggable{Batch}::arrow_field` [#7257](https://github.com/rerun-io/rerun/pull/7257)
-- Remove unused `LoggableBatch::num_instances` [#7258](https://github.com/rerun-io/rerun/pull/7258)
-- Remove unused `Loggable::extended_arrow_datatype` [#7260](https://github.com/rerun-io/rerun/pull/7260)
-
 #### 🌊 C++ API
 - Install sdk_info.h even if RERUN_INSTALL_RERUN_C option is OFF [#7246](https://github.com/rerun-io/rerun/pull/7246) (thanks [@traversaro](https://github.com/traversaro)!)
 
@@ -33,10 +25,6 @@ Bug fixes and performance improvements for Rerun 0.18.0.
 - Fix and test all known `HybridResults` issues from 0.18 [#7297](https://github.com/rerun-io/rerun/pull/7297)
 - Fix secondary plot components ignoring blueprint defaults [#7302](https://github.com/rerun-io/rerun/pull/7302)
 
-#### 🌁 Viewer improvements
-- BGR(A) image format support [#7238](https://github.com/rerun-io/rerun/pull/7238)
-- Add `ShowLabels` component, which controls whether instances’ labels are shown [#7249](https://github.com/rerun-io/rerun/pull/7249) (thanks [@kpreid](https://github.com/kpreid)!)
-
 #### 🚀 Performance improvements
 - Speed up data density graph by rendering them more coarsly [#7229](https://github.com/rerun-io/rerun/pull/7229)
 - Default `RERUN_CHUNK_MAX_BYTES` to 384kiB instead of 4MiB [#7263](https://github.com/rerun-io/rerun/pull/7263)
@@ -51,13 +39,6 @@ Bug fixes and performance improvements for Rerun 0.18.0.
 - Correct dependency on `puffin` to 0.19.1, preventing a possible build failure [#7221](https://github.com/rerun-io/rerun/pull/7221) (thanks [@kpreid](https://github.com/kpreid)!)
 - Update `time` crate to 0.3.36, fixing compilation on newer Rust versions [#7228](https://github.com/rerun-io/rerun/pull/7228)
 - re_arrow2 0.17.5 (fixes memory leak) [#7262](https://github.com/rerun-io/rerun/pull/7262)
-
-#### 🤷‍ Other
-- Fix typo in spaces-and-transforms.md [#7255](https://github.com/rerun-io/rerun/pull/7255) (thanks [@NickLaurenson-Visionick](https://github.com/NickLaurenson-Visionick)!)
-- Rerun 0.18.1 [2d87f50aafa63c0a89cbed0f683e4aed1330052f](https://github.com/rerun-io/rerun/commit/2d87f50aafa63c0a89cbed0f683e4aed1330052f)
-- changelog [35a5e2f0ddb975760f3b508ca00b5e15c30372b0](https://github.com/rerun-io/rerun/commit/35a5e2f0ddb975760f3b508ca00b5e15c30372b0)
-- have to fix the pixi.lock for some reason? im not sure [80af97e61460c91ab312751f052ca2e33b0d9947](https://github.com/rerun-io/rerun/commit/80af97e61460c91ab312751f052ca2e33b0d9947)
-- typo [4711939c6f77a7802d07fb4cf97c40c11cc39fca](https://github.com/rerun-io/rerun/commit/4711939c6f77a7802d07fb4cf97c40c11cc39fca)
 
 
 ## [0.18.0](https://github.com/rerun-io/rerun/compare/0.17.0...HEAD) - Ingestion speed and memory footprint
