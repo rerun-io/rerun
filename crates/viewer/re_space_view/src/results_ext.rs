@@ -353,21 +353,30 @@ impl<'a> RangeResultsExt for HybridLatestAtResults<'a> {
                 .zeroed();
             Cow::Owned(vec![chunk])
         } else {
-            let chunks = self.results.get_optional_chunks(component_name);
+            let chunks = self
+                .results
+                .get_optional_chunks(component_name)
+                .iter()
+                // NOTE: Since this is a latest-at query that is being coerced into a range query, we
+                // need to make sure that every secondary column has an index smaller then the primary column
+                // (we use `(TimeInt::STATIC, RowId::ZERO)`), otherwise range zipping would yield unexpected
+                // results.
+                .map(|chunk| chunk.clone().into_static().zeroed())
+                .collect_vec();
 
             // If the data is not empty, return it.
-
             if !chunks.is_empty() {
-                return chunks;
+                return Cow::Owned(chunks);
             }
 
             // Otherwise try to use the default data.
-
             let Some(unit) = self.defaults.get(component_name) else {
                 return Cow::Owned(Vec::new());
             };
             // Because this is an default from the blueprint we always re-index the data as static
-            let chunk = Arc::unwrap_or_clone(unit.clone().into_chunk()).into_static();
+            let chunk = Arc::unwrap_or_clone(unit.clone().into_chunk())
+                .into_static()
+                .zeroed();
             Cow::Owned(vec![chunk])
         }
     }
