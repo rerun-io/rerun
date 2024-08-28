@@ -979,8 +979,10 @@ pub trait UiExt {
         content: impl FnOnce(&mut egui::Ui) -> R,
     ) -> R {
         self.ui_mut()
-            .push_stack_info(
-                egui::UiStackInfo::default().with_tag_value(FULL_SPAN_TAG, span.into()),
+            .scope_builder(
+                egui::UiBuilder::new().ui_stack_info(
+                    egui::UiStackInfo::default().with_tag_value(FULL_SPAN_TAG, span.into()),
+                ),
                 content,
             )
             .inner

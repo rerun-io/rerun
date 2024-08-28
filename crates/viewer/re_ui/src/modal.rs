@@ -273,10 +273,10 @@ impl Modal {
 
             ui.add_space(16.0);
 
-            let mut ui = ui.child_ui(
-                ui.max_rect(),
-                egui::Layout::right_to_left(egui::Align::Center),
-                None,
+            let mut ui = ui.new_child(
+                egui::UiBuilder::new()
+                    .max_rect(ui.max_rect())
+                    .layout(egui::Layout::right_to_left(egui::Align::Center)),
             );
             if ui.small_icon_button(&crate::icons::CLOSE).clicked() {
                 *open = false;
