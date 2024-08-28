@@ -39,6 +39,7 @@ Bug fixes and performance improvements for Rerun 0.18.0.
 #### 🚀 Performance improvements
 - Speed up data density graph by rendering them more coarsly [#7229](https://github.com/rerun-io/rerun/pull/7229)
 - Default `RERUN_CHUNK_MAX_BYTES` to 384kiB instead of 4MiB [#7263](https://github.com/rerun-io/rerun/pull/7263)
+- Speed up handling of large numbers of transform entities [#7300](https://github.com/rerun-io/rerun/pull/7300)
 
 #### 🖼 UI improvements
 - Hide time controls if there is only one time point on a timeline [#7241](https://github.com/rerun-io/rerun/pull/7241)
