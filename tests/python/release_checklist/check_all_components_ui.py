@@ -139,13 +139,27 @@ ALL_COMPONENTS: dict[str, TestCase] = {
     ),
     "ImagePlaneDistanceBatch": TestCase(batch=[100.0, 200.0, 300.0]),
     "KeypointIdBatch": TestCase(batch=[5, 6, 7]),
-    "LineStrip2DBatch": TestCase(batch=[((0, 0), (1, 1), (2, 2)), ((3, 3), (4, 4), (5, 5)), ((6, 6), (7, 7), (8, 8))]),
+    "LineStrip2DBatch": TestCase(
+        batch=[
+            ((0, 0), (1, 1), (2, 2)),
+            ((3, 3), (4, 4), (5, 5)),
+            ((6, 6), (7, 7), (8, 8)),
+        ]
+    ),
     "LineStrip3DBatch": TestCase(
-        batch=[((0, 0, 0), (1, 1, 1), (2, 2, 2)), ((3, 3, 3), (4, 4, 4), (5, 5, 5)), ((6, 6, 6), (7, 7, 7), (8, 8, 8))]
+        batch=[
+            ((0, 0, 0), (1, 1, 1), (2, 2, 2)),
+            ((3, 3, 3), (4, 4, 4), (5, 5, 5)),
+            ((6, 6, 6), (7, 7, 7), (8, 8, 8)),
+        ]
     ),
     "MagnificationFilterBatch": TestCase(rr.components.MagnificationFilter.Linear),
     "MarkerShapeBatch": TestCase(
-        batch=[rr.components.MarkerShape.Plus, rr.components.MarkerShape.Cross, rr.components.MarkerShape.Circle]
+        batch=[
+            rr.components.MarkerShape.Plus,
+            rr.components.MarkerShape.Cross,
+            rr.components.MarkerShape.Circle,
+        ]
     ),
     "MarkerSizeBatch": TestCase(batch=[5.0, 1.0, 2.0]),
     "MediaTypeBatch": TestCase("application/jpg"),
@@ -170,6 +184,7 @@ ALL_COMPONENTS: dict[str, TestCase] = {
     "RotationQuatBatch": TestCase(batch=((1, 0, 0, 0), (0, 1, 0, 0), (0, 0, 1, 0))),
     "ScalarBatch": TestCase(3),
     "Scale3DBatch": TestCase(batch=[(1, 2, 3), (4, 5, 6), (7, 8, 9)]),
+    "ShowLabelsBatch": TestCase(alternatives=[True, False]),
     "StrokeWidthBatch": TestCase(2.0),
     "TensorDataBatch": TestCase(
         alternatives=[
