@@ -16,7 +16,7 @@
 - Add `rerun::external::ndarray` [#7259](https://github.com/rerun-io/rerun/pull/7259)
 - Handle proper half-size splatting semantics in `from_mins_and_sizes` [#7291](https://github.com/rerun-io/rerun/pull/7291)
 
-#### 🪳 Bug Fixes
+#### 🪳 Bug fixes
 - Fix error when trying to clear non-existent component [#7215](https://github.com/rerun-io/rerun/pull/7215)
 - Fix gamma (srgb EOTF) for GLTF via `Asset3D` embedded rgb(a) textures [#7251](https://github.com/rerun-io/rerun/pull/7251)
 - Fix `Chunk::component_batch_raw` not checking the bitmap first [#7286](https://github.com/rerun-io/rerun/pull/7286)

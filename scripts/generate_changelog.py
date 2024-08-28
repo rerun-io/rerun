@@ -283,7 +283,7 @@ def main() -> None:
     print_section("🌊 C++ API", cpp)
     print_section("🐍 Python API", python)
     print_section("🦀 Rust API", rust)
-    print_section("🪳 Bug Fixes", bugs)
+    print_section("🪳 Bug fixes", bugs)
     print_section("🌁 Viewer improvements", viewer)
     print_section("🚀 Performance improvements", performance)
     print_section("🧑‍🏫 Examples", examples)
