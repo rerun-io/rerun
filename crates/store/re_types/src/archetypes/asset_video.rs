@@ -19,6 +19,10 @@ use ::re_types_core::{ComponentBatch, MaybeOwnedComponentBatch};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Archetype**: A video file.
+///
+/// NOTE: Videos may only be visualized in the web viewer for now
+///
+/// ⚠️ **This type is experimental and may be removed in future versions**
 #[derive(Clone, Debug)]
 pub struct AssetVideo {
     /// The asset's bytes.

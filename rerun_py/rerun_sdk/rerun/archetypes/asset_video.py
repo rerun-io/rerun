@@ -18,7 +18,13 @@ __all__ = ["AssetVideo"]
 
 @define(str=False, repr=False, init=False)
 class AssetVideo(AssetVideoExt, Archetype):
-    """**Archetype**: A video file."""
+    """
+    **Archetype**: A video file.
+
+    NOTE: Videos may only be visualized in the web viewer for now
+
+    ⚠️ **This type is experimental and may be removed in future versions**
+    """
 
     # __init__ can be found in asset_video_ext.py
 

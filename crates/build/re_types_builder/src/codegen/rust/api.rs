@@ -563,6 +563,7 @@ fn quote_enum(
             &field.fqname,
             &field.docs,
             Target::Rust,
+            false,
         )
         .join("\n");
         if docstring_md.is_empty() {
@@ -660,6 +661,7 @@ fn quote_field_docs(reporter: &Reporter, objects: &Objects, field: &ObjectField)
         &field.fqname,
         &field.docs,
         Target::Rust,
+        false,
     );
 
     let require_field_docs = false;
@@ -678,6 +680,7 @@ fn quote_obj_docs(reporter: &Reporter, objects: &Objects, obj: &Object) -> Token
         &obj.fqname,
         &obj.docs,
         Target::Rust,
+        obj.is_experimental(),
     );
 
     // Prefix first line with `**Datatype**: ` etc:

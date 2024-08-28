@@ -230,6 +230,7 @@ fn object_page(
     views_per_archetype: &ViewsPerArchetype,
 ) -> String {
     let is_unreleased = object.is_attr_set(crate::ATTR_DOCS_UNRELEASED);
+    let is_experimental = object.is_experimental();
 
     let top_level_docs = object.docs.lines_for(objects, Target::WebDocsMarkdown);
 
@@ -253,6 +254,15 @@ fn object_page(
 
     write_frontmatter(&mut page, &title, None);
     putln!(page);
+
+    if is_experimental {
+        putln!(page);
+        putln!(
+            page,
+            "⚠️ **This type is experimental and may be removed in future versions**"
+        );
+        putln!(page);
+    }
 
     if let Some(deprecation_notice) = object.deprecation_notice() {
         putln!(

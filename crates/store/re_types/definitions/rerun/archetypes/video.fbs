@@ -1,7 +1,11 @@
 namespace rerun.archetypes;
 
 /// A video file.
-table AssetVideo {
+///
+/// NOTE: Videos may only be visualized in the web viewer for now
+table AssetVideo (
+  "attr.rerun.experimental"
+) {
   // --- Required ---
 
   /// The asset's bytes.
