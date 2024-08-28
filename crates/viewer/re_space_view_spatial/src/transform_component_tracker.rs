@@ -1,7 +1,7 @@
 use ahash::HashMap;
 use once_cell::sync::OnceCell;
 
-use nohash_hasher::IntSet;
+use nohash_hasher::{IntMap, IntSet};
 use re_chunk_store::{
     ChunkStore, ChunkStoreDiffKind, ChunkStoreEvent, ChunkStoreSubscriber,
     ChunkStoreSubscriberHandle,
@@ -22,11 +22,11 @@ use re_types::ComponentName;
 pub struct TransformComponentTracker {
     /// Which entities have had any `Transform3D` component at any point in time, and which
     /// components they actually make use of.
-    transform3d_entities: HashMap<EntityPathHash, IntSet<ComponentName>>,
+    transform3d_entities: IntMap<EntityPathHash, IntSet<ComponentName>>,
 
     /// Which entities have had any `InstancePoses3D` components at any point in time, and
     /// which components they actually make use of.
-    pose3d_entities: HashMap<EntityPathHash, IntSet<ComponentName>>,
+    pose3d_entities: IntMap<EntityPathHash, IntSet<ComponentName>>,
 }
 
 impl TransformComponentTracker {
