@@ -195,7 +195,7 @@ export class WebViewer {
 
     this.#handle = new WebHandle_class({ ...options, fullscreen });
     try {
-      await this.#handle.start(this.#canvas.id);
+      await this.#handle.start(document.getElementById(this.#canvas.id));
     } catch (e) {
       this.stop();
       throw e;

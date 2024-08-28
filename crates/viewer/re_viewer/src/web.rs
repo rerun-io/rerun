@@ -51,18 +51,20 @@ impl WebHandle {
     /// - `manifest_url` is an optional URL to an `examples_manifest.json` file over http.
     /// - `force_wgpu_backend` is an optional string to force a specific backend, either `webgl` or `webgpu`.
     #[wasm_bindgen]
-    pub async fn start(&self, canvas_id: String) -> Result<(), wasm_bindgen::JsValue> {
+    pub async fn start(
+        &self,
+        canvas: web_sys::HtmlCanvasElement,
+    ) -> Result<(), wasm_bindgen::JsValue> {
         let app_options = self.app_options.clone();
         let web_options = eframe::WebOptions {
-            follow_system_theme: false,
-            default_theme: eframe::Theme::Dark,
             wgpu_options: crate::wgpu_options(app_options.render_backend.clone()),
             depth_buffer: 0,
+            dithering: true, // TODO: are we sure about this?
         };
 
         self.runner
             .start(
-                &canvas_id,
+                canvas,
                 web_options,
                 Box::new(move |cc| Ok(Box::new(create_app(cc, app_options)?))),
             )
