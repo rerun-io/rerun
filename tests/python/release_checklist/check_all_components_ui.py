@@ -184,7 +184,6 @@ ALL_COMPONENTS: dict[str, TestCase] = {
     "RotationQuatBatch": TestCase(batch=((1, 0, 0, 0), (0, 1, 0, 0), (0, 0, 1, 0))),
     "ScalarBatch": TestCase(3),
     "Scale3DBatch": TestCase(batch=[(1, 2, 3), (4, 5, 6), (7, 8, 9)]),
-    "ShowLabelsBatch": TestCase(alternatives=[True, False]),
     "StrokeWidthBatch": TestCase(2.0),
     "TensorDataBatch": TestCase(
         alternatives=[
