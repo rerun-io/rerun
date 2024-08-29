@@ -448,8 +448,7 @@ mod decoder {
             depth_or_array_layers: 1,
         };
         let source = {
-            // TODO(jan): Add `VideoFrame` support to `wgpu`
-
+            // TODO(jan): Remove this unsafe code when https://github.com/gfx-rs/wgpu/pull/6170 ships.
             // SAFETY: Depends on the fact that `wgpu` passes the object through as-is,
             // and doesn't actually inspect it in any way. The browser then does its own
             // typecheck that doesn't care what kind of image source wgpu gave it.
