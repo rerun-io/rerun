@@ -1,7 +1,7 @@
-use re_log_types::{hash::Hash64, Instance};
+use re_chunk_store::RowId;
+use re_log_types::{hash::Hash64, Instance, TimeInt};
 use re_renderer::renderer::MeshInstance;
 use re_renderer::RenderContext;
-use re_space_view::TimeKey;
 use re_types::{
     archetypes::Mesh3D,
     components::{
@@ -41,7 +41,7 @@ impl Default for Mesh3DVisualizer {
 }
 
 struct Mesh3DComponentData<'a> {
-    index: TimeKey,
+    index: (TimeInt, RowId),
     query_result_hash: Hash64,
 
     vertex_positions: &'a [Position3D],
@@ -71,7 +71,7 @@ impl Mesh3DVisualizer {
         let entity_path = ctx.target_entity_path;
 
         for data in data {
-            let primary_row_id = data.index.row_id;
+            let primary_row_id = data.index.1;
             let picking_instance_hash = re_entity_db::InstancePathHash::entity_all(entity_path);
             let outline_mask_ids = ent_context.highlight.index_outline_mask(Instance::ALL);
 

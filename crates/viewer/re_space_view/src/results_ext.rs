@@ -1,6 +1,8 @@
 use std::borrow::Cow;
 use std::sync::Arc;
 
+use itertools::Itertools as _;
+
 use re_chunk_store::{Chunk, LatestAtQuery, RangeQuery, UnitChunkShared};
 use re_log_types::external::arrow2::array::Array as ArrowArray;
 use re_log_types::hash::Hash64;
@@ -9,7 +11,6 @@ use re_types_core::ComponentName;
 use re_viewer_context::{DataResult, QueryContext, ViewContext};
 
 use crate::DataResultQuery as _;
-use crate::TimeKey;
 
 // ---
 
@@ -293,7 +294,9 @@ impl RangeResultsExt for HybridRangeResults {
     fn get_required_chunks(&self, component_name: &ComponentName) -> Option<Cow<'_, [Chunk]>> {
         if let Some(unit) = self.overrides.get(component_name) {
             // Because this is an override we always re-index the data as static
-            let chunk = Arc::unwrap_or_clone(unit.clone().into_chunk()).into_static();
+            let chunk = Arc::unwrap_or_clone(unit.clone().into_chunk())
+                .into_static()
+                .zeroed();
             Some(Cow::Owned(vec![chunk]))
         } else {
             self.results.get_required_chunks(component_name)
@@ -302,27 +305,36 @@ impl RangeResultsExt for HybridRangeResults {
 
     #[inline]
     fn get_optional_chunks(&self, component_name: &ComponentName) -> Cow<'_, [Chunk]> {
+        re_tracing::profile_function!();
+
         if let Some(unit) = self.overrides.get(component_name) {
             // Because this is an override we always re-index the data as static
-            let chunk = Arc::unwrap_or_clone(unit.clone().into_chunk()).into_static();
+            let chunk = Arc::unwrap_or_clone(unit.clone().into_chunk())
+                .into_static()
+                .zeroed();
             Cow::Owned(vec![chunk])
         } else {
+            re_tracing::profile_scope!("defaults");
+
+            // NOTE: Because this is a range query, we always need the defaults to come first,
+            // since range queries don't have any state to bootstrap from.
+            let defaults = self.defaults.get(component_name).map(|unit| {
+                // Because this is an default from the blueprint we always re-index the data as static
+                Arc::unwrap_or_clone(unit.clone().into_chunk())
+                    .into_static()
+                    .zeroed()
+            });
+
             let chunks = self.results.get_optional_chunks(component_name);
 
-            // If the data is not empty, return it.
-
-            if !chunks.is_empty() {
-                return chunks;
-            }
-
-            // Otherwise try to use the default data.
-
-            let Some(unit) = self.defaults.get(component_name) else {
-                return Cow::Owned(Vec::new());
-            };
-            // Because this is an default from the blueprint we always re-index the data as static
-            let chunk = Arc::unwrap_or_clone(unit.clone().into_chunk()).into_static();
-            Cow::Owned(vec![chunk])
+            // TODO(cmc): this `collect_vec()` sucks, let's keep an eye on it and see if it ever
+            // becomes an issue.
+            Cow::Owned(
+                defaults
+                    .into_iter()
+                    .chain(chunks.iter().cloned())
+                    .collect_vec(),
+            )
         }
     }
 }
@@ -332,7 +344,9 @@ impl<'a> RangeResultsExt for HybridLatestAtResults<'a> {
     fn get_required_chunks(&self, component_name: &ComponentName) -> Option<Cow<'_, [Chunk]>> {
         if let Some(unit) = self.overrides.get(component_name) {
             // Because this is an override we always re-index the data as static
-            let chunk = Arc::unwrap_or_clone(unit.clone().into_chunk()).into_static();
+            let chunk = Arc::unwrap_or_clone(unit.clone().into_chunk())
+                .into_static()
+                .zeroed();
             Some(Cow::Owned(vec![chunk]))
         } else {
             self.results.get_required_chunks(component_name)
@@ -343,24 +357,35 @@ impl<'a> RangeResultsExt for HybridLatestAtResults<'a> {
     fn get_optional_chunks(&self, component_name: &ComponentName) -> Cow<'_, [Chunk]> {
         if let Some(unit) = self.overrides.get(component_name) {
             // Because this is an override we always re-index the data as static
-            let chunk = Arc::unwrap_or_clone(unit.clone().into_chunk()).into_static();
+            let chunk = Arc::unwrap_or_clone(unit.clone().into_chunk())
+                .into_static()
+                .zeroed();
             Cow::Owned(vec![chunk])
         } else {
-            let chunks = self.results.get_optional_chunks(component_name);
+            let chunks = self
+                .results
+                .get_optional_chunks(component_name)
+                .iter()
+                // NOTE: Since this is a latest-at query that is being coerced into a range query, we
+                // need to make sure that every secondary column has an index smaller then the primary column
+                // (we use `(TimeInt::STATIC, RowId::ZERO)`), otherwise range zipping would yield unexpected
+                // results.
+                .map(|chunk| chunk.clone().into_static().zeroed())
+                .collect_vec();
 
             // If the data is not empty, return it.
-
             if !chunks.is_empty() {
-                return chunks;
+                return Cow::Owned(chunks);
             }
 
             // Otherwise try to use the default data.
-
             let Some(unit) = self.defaults.get(component_name) else {
                 return Cow::Owned(Vec::new());
             };
             // Because this is an default from the blueprint we always re-index the data as static
-            let chunk = Arc::unwrap_or_clone(unit.clone().into_chunk()).into_static();
+            let chunk = Arc::unwrap_or_clone(unit.clone().into_chunk())
+                .into_static()
+                .zeroed();
             Cow::Owned(vec![chunk])
         }
     }
@@ -386,11 +411,10 @@ impl<'a> RangeResultsExt for HybridResults<'a> {
 
 // ---
 
-use re_chunk::{ChunkComponentIterItem, Timeline};
+use re_chunk::{ChunkComponentIterItem, RowId, TimeInt, Timeline};
 use re_chunk_store::external::{re_chunk, re_chunk::external::arrow2};
 
 /// The iterator type backing [`HybridResults::iter_as`].
-#[derive(Debug)]
 pub struct HybridResultsChunkIter<'a> {
     chunks: Cow<'a, [Chunk]>,
     timeline: Timeline,
@@ -403,12 +427,10 @@ impl<'a> HybridResultsChunkIter<'a> {
     /// See [`Chunk::iter_component`] for more information.
     pub fn component<C: re_types_core::Component>(
         &'a self,
-    ) -> impl Iterator<Item = (TimeKey, ChunkComponentIterItem<C>)> + 'a {
+    ) -> impl Iterator<Item = ((TimeInt, RowId), ChunkComponentIterItem<C>)> + 'a {
         self.chunks.iter().flat_map(move |chunk| {
             itertools::izip!(
-                chunk
-                    .iter_component_indices(&self.timeline, &self.component_name)
-                    .map(TimeKey::from),
+                chunk.iter_component_indices(&self.timeline, &self.component_name),
                 chunk.iter_component::<C>(),
             )
         })
@@ -419,12 +441,10 @@ impl<'a> HybridResultsChunkIter<'a> {
     /// See [`Chunk::iter_primitive`] for more information.
     pub fn primitive<T: arrow2::types::NativeType>(
         &'a self,
-    ) -> impl Iterator<Item = (TimeKey, &'a [T])> + 'a {
+    ) -> impl Iterator<Item = ((TimeInt, RowId), &'a [T])> + 'a {
         self.chunks.iter().flat_map(move |chunk| {
             itertools::izip!(
-                chunk
-                    .iter_component_indices(&self.timeline, &self.component_name)
-                    .map(TimeKey::from),
+                chunk.iter_component_indices(&self.timeline, &self.component_name),
                 chunk.iter_primitive::<T>(&self.component_name)
             )
         })
@@ -435,15 +455,13 @@ impl<'a> HybridResultsChunkIter<'a> {
     /// See [`Chunk::iter_primitive_array`] for more information.
     pub fn primitive_array<const N: usize, T: arrow2::types::NativeType>(
         &'a self,
-    ) -> impl Iterator<Item = (TimeKey, &'a [[T; N]])> + 'a
+    ) -> impl Iterator<Item = ((TimeInt, RowId), &'a [[T; N]])> + 'a
     where
         [T; N]: bytemuck::Pod,
     {
         self.chunks.iter().flat_map(move |chunk| {
             itertools::izip!(
-                chunk
-                    .iter_component_indices(&self.timeline, &self.component_name)
-                    .map(TimeKey::from),
+                chunk.iter_component_indices(&self.timeline, &self.component_name),
                 chunk.iter_primitive_array::<N, T>(&self.component_name)
             )
         })
@@ -454,15 +472,13 @@ impl<'a> HybridResultsChunkIter<'a> {
     /// See [`Chunk::iter_primitive_array_list`] for more information.
     pub fn primitive_array_list<const N: usize, T: arrow2::types::NativeType>(
         &'a self,
-    ) -> impl Iterator<Item = (TimeKey, Vec<&'a [[T; N]]>)> + 'a
+    ) -> impl Iterator<Item = ((TimeInt, RowId), Vec<&'a [[T; N]]>)> + 'a
     where
         [T; N]: bytemuck::Pod,
     {
         self.chunks.iter().flat_map(move |chunk| {
             itertools::izip!(
-                chunk
-                    .iter_component_indices(&self.timeline, &self.component_name)
-                    .map(TimeKey::from),
+                chunk.iter_component_indices(&self.timeline, &self.component_name),
                 chunk.iter_primitive_array_list::<N, T>(&self.component_name)
             )
         })
@@ -473,12 +489,10 @@ impl<'a> HybridResultsChunkIter<'a> {
     /// See [`Chunk::iter_string`] for more information.
     pub fn string(
         &'a self,
-    ) -> impl Iterator<Item = (TimeKey, Vec<re_types_core::ArrowString>)> + 'a {
+    ) -> impl Iterator<Item = ((TimeInt, RowId), Vec<re_types_core::ArrowString>)> + 'a {
         self.chunks.iter().flat_map(|chunk| {
             itertools::izip!(
-                chunk
-                    .iter_component_indices(&self.timeline, &self.component_name)
-                    .map(TimeKey::from),
+                chunk.iter_component_indices(&self.timeline, &self.component_name),
                 chunk.iter_string(&self.component_name)
             )
         })
@@ -489,12 +503,10 @@ impl<'a> HybridResultsChunkIter<'a> {
     /// See [`Chunk::iter_buffer`] for more information.
     pub fn buffer<T: arrow2::types::NativeType>(
         &'a self,
-    ) -> impl Iterator<Item = (TimeKey, Vec<re_types_core::ArrowBuffer<T>>)> + 'a {
+    ) -> impl Iterator<Item = ((TimeInt, RowId), Vec<re_types_core::ArrowBuffer<T>>)> + 'a {
         self.chunks.iter().flat_map(|chunk| {
             itertools::izip!(
-                chunk
-                    .iter_component_indices(&self.timeline, &self.component_name)
-                    .map(TimeKey::from),
+                chunk.iter_component_indices(&self.timeline, &self.component_name),
                 chunk.iter_buffer(&self.component_name)
             )
         })

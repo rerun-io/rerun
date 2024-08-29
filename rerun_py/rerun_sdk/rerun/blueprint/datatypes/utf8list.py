@@ -29,7 +29,9 @@ class Utf8List(Utf8ListExt):
         # You can define your own __init__ function as a member of Utf8ListExt in utf8list_ext.py
         self.__attrs_init__(value=value)
 
-    value: list[str] = field()
+    value: list[str] = field(
+        converter=Utf8ListExt.value__field_converter_override,  # type: ignore[misc]
+    )
 
 
 if TYPE_CHECKING:

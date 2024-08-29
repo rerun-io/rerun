@@ -211,6 +211,25 @@ impl Chunk {
         self
     }
 
+    /// Clones the chunk into a new chunk where all [`RowId`]s are [`RowId::ZERO`].
+    pub fn zeroed(self) -> Self {
+        let row_ids = std::iter::repeat(RowId::ZERO)
+            .take(self.row_ids.len())
+            .collect_vec();
+
+        #[allow(clippy::unwrap_used)]
+        let row_ids = <RowId as Loggable>::to_arrow(&row_ids)
+            // Unwrap: native RowIds cannot fail to serialize.
+            .unwrap()
+            .as_any()
+            .downcast_ref::<ArrowStructArray>()
+            // Unwrap: RowId schema is known in advance to be a struct array -- always.
+            .unwrap()
+            .clone();
+
+        Self { row_ids, ..self }
+    }
+
     /// Computes the time range covered by each individual component column on each timeline.
     ///
     /// This is different from the time range covered by the [`Chunk`] as a whole because component

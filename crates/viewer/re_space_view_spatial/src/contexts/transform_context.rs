@@ -530,27 +530,17 @@ fn query_and_resolve_tree_transform_at_entity(
     entity_db: &EntityDb,
     query: &LatestAtQuery,
 ) -> Option<glam::Affine3A> {
-    if !TransformComponentTracker::access(entity_db.store_id(), |tracker| {
-        tracker.is_potentially_transformed_transform3d(entity_path)
-    })
-    .unwrap_or(false)
-    {
+    let Some(transform3d_components) =
+        TransformComponentTracker::access(entity_db.store_id(), |tracker| {
+            tracker.transform3d_components(entity_path).cloned()
+        })
+        .flatten()
+    else {
         return None;
-    }
+    };
 
     // TODO(#6743): Doesn't take into account overrides.
-    let result = entity_db.latest_at(
-        query,
-        entity_path,
-        [
-            Translation3D::name(),
-            RotationAxisAngle::name(),
-            RotationQuat::name(),
-            Scale3D::name(),
-            TransformMat3x3::name(),
-            TransformRelation::name(),
-        ],
-    );
+    let result = entity_db.latest_at(query, entity_path, transform3d_components);
     if result.components.is_empty() {
         return None;
     }
@@ -586,26 +576,17 @@ fn query_and_resolve_instance_poses_at_entity(
     entity_db: &EntityDb,
     query: &LatestAtQuery,
 ) -> Vec<glam::Affine3A> {
-    if !TransformComponentTracker::access(entity_db.store_id(), |tracker| {
-        tracker.is_potentially_transformed_pose3d(entity_path)
-    })
-    .unwrap_or(false)
-    {
+    let Some(pose3d_components) =
+        TransformComponentTracker::access(entity_db.store_id(), |tracker| {
+            tracker.pose3d_components(entity_path).cloned()
+        })
+        .flatten()
+    else {
         return Vec::new();
-    }
+    };
 
     // TODO(#6743): Doesn't take into account overrides.
-    let result = entity_db.latest_at(
-        query,
-        entity_path,
-        [
-            PoseTranslation3D::name(),
-            PoseRotationAxisAngle::name(),
-            PoseRotationQuat::name(),
-            PoseScale3D::name(),
-            PoseTransformMat3x3::name(),
-        ],
-    );
+    let result = entity_db.latest_at(query, entity_path, pose3d_components);
 
     let max_count = result
         .components

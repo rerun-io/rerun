@@ -109,7 +109,7 @@ impl VisualizerSystem for SegmentationImageVisualizer {
                     let buffer = buffers.first()?;
                     Some(SegmentationImageComponentData {
                         image: ImageInfo {
-                            buffer_row_id: index.row_id,
+                            buffer_row_id: index.1,
                             buffer: buffer.clone().into(),
                             format: first_copied(formats.as_deref())?.0,
                             kind: ImageKind::Segmentation,
