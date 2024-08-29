@@ -1,4 +1,6 @@
 use glam::Vec3;
+use re_chunk_store::RowId;
+use re_chunk_store::TimeInt;
 use re_log_types::hash::Hash64;
 use re_log_types::TimeType;
 use re_renderer::renderer::ColormappedTexture;
@@ -173,13 +175,13 @@ impl AssetVideoVisualizer {
         let entity_path = ctx.target_entity_path;
 
         for data in data {
-            let timestamp_s = current_time_seconds - data.index.time.as_f64() / 1e9;
+            let timestamp_s = current_time_seconds - data.index.0.as_f64() / 1e9;
             let video = AssetVideo {
                 blob: data.blob.clone().into(),
                 media_type: data.media_type.clone().map(Into::into),
             };
 
-            let primary_row_id = data.index.row_id;
+            let primary_row_id = data.index.1;
             let picking_instance_hash = re_entity_db::InstancePathHash::entity_all(entity_path);
 
             let video = ctx.viewer_ctx.cache.entry(|c: &mut VideoCache| {
