@@ -213,6 +213,8 @@ fn load_video(
 ) -> Result<impl ExactSizeIterator<Item = Chunk>, DataLoaderError> {
     re_tracing::profile_function!();
 
+    re_log::warn_once!("Video support in Rerun is experimental!");
+
     timepoint.insert(
         re_log_types::Timeline::new_temporal("video"),
         re_log_types::TimeInt::new_temporal(0),
@@ -237,19 +239,6 @@ fn load_video(
             &re_types::archetypes::AssetVideo::from_file_contents(contents, media_type),
         )
         .build()?];
-
-    rows.push(
-        Chunk::builder(EntityPath::parse_forgiving("README"))
-            .with_archetype(
-                RowId::new(),
-                timepoint.clone(),
-                &re_types::archetypes::TextDocument::from_markdown(
-                    // TODO(#7298): stabilize video support
-                    "Video support in Rerun is experimental!",
-                ),
-            )
-            .build()?,
-    );
 
     for i in 0..duration_s {
         // We need some breadcrumbs of timepoints because the video doesn't have a duration yet.
