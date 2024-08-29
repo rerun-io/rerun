@@ -79,6 +79,13 @@ namespace rerun {
                 return "model/stl";
             }
 
+            /// [MP4 video](https://en.wikipedia.org/wiki/MP4_file_format): `video/mp4`.
+            ///
+            /// <https://www.iana.org/assignments/media-types/video/mp4>
+            static MediaType mp4() {
+                return "video/mp4";
+            }
+
             // </CODEGEN_COPY_TO_HEADER>
         }
     };
