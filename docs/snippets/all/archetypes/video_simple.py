@@ -10,4 +10,4 @@ if len(sys.argv) < 2:
 
 rr.init("rerun_example_asset_video", spawn=True)
 
-rr.log(f"world/video", rr.AssetVideo(path=sys.argv[1]))
+rr.log("world/video", rr.AssetVideo(path=sys.argv[1]))
