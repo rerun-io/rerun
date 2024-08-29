@@ -4,6 +4,11 @@
 ## [Unreleased](https://github.com/rerun-io/rerun/compare/latest...HEAD)
 
 
+## [0.18.2](https://github.com/rerun-io/rerun/compare/0.18.1...0.18.2) - Even more bug fixes
+
+- Update `time` crate to 0.3.36, fixing compilation on newer Rust versions [#7308](https://github.com/rerun-io/rerun/pull/7308)
+
+
 ## [0.18.1](https://github.com/rerun-io/rerun/compare/0.18.0...0.18.1) - Bug fixes and performance improvements
 
 #### 🌊 C++ API
