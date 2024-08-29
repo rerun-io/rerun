@@ -387,6 +387,9 @@ mod decoder {
             self.texture.clone()
         }
 
+        /// Enqueue all samples in the given segment.
+        ///
+        /// Does nothing if the index is out of bounds.
         fn enqueue_all(&self, segment_idx: usize) {
             let Some(segment) = self.data.segments.get(segment_idx) else {
                 return;
@@ -398,6 +401,7 @@ mod decoder {
             }
         }
 
+        /// Enqueue the given sample.
         fn enqueue(&self, sample: &re_video::Sample, is_key: bool) {
             let data = Uint8Array::from(
                 &self.data.data[sample.byte_offset as usize
@@ -422,6 +426,7 @@ mod decoder {
             self.decoder.decode(&chunk);
         }
 
+        /// Reset the video decoder and discard all frames.
         fn reset(&mut self) {
             self.decoder.reset();
             self.decoder
