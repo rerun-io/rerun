@@ -206,8 +206,6 @@ mod decoder {
     #[allow(clippy::undocumented_unsafe_blocks)]
     unsafe impl Send for VideoFrame {}
 
-    /// # Safety
-    /// Wasm is single-threaded, so Send/Sync is safe
     #[allow(unsafe_code)]
     #[allow(clippy::undocumented_unsafe_blocks)]
     unsafe impl Sync for VideoFrame {}
@@ -284,7 +282,6 @@ mod decoder {
 
         pub fn get_frame(&mut self, timestamp: TimeMs) -> GpuTexture2D {
             if timestamp.as_f64() < 0.0 {
-                // TODO(andreas): This is a hack, we should have a better way to handle this
                 return self.zeroed_texture_float.clone();
             }
 
