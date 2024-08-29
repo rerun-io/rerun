@@ -52,6 +52,7 @@ re_error.workspace = true
 re_log.workspace = true
 re_math.workspace = true
 re_tracing.workspace = true
+re_video.workspace = true
 
 ahash.workspace = true
 anyhow.workspace = true
@@ -78,6 +79,7 @@ thiserror.workspace = true
 type-map.workspace = true
 wgpu.workspace = true
 wgpu-core.workspace = true                                           # Needed for error handling when wgpu-core implemented backend is used.
+wgpu-types.workspace = true
 
 # optional
 arrow2 = { workspace = true, optional = true }
@@ -96,7 +98,18 @@ notify.workspace = true
 getrandom = { workspace = true, features = [
   "js",
 ] } # getrandom needs the `js` feature to be enabled. It is dragged in indirectly.
+js-sys = { workspace = true }
 wasm-bindgen-futures.workspace = true
+web-sys = { workspace = true, features = [
+  "EncodedVideoChunk",
+  "EncodedVideoChunkInit",
+  "EncodedVideoChunkType",
+  "VideoFrame",
+  "VideoDecoder",
+  "VideoDecoderConfig",
+  "VideoDecoderInit",
+] }
+wasm-bindgen = { workspace = true }
 
 
 [dev-dependencies]

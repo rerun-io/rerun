@@ -108,6 +108,7 @@ fn generate_component_reflection(
             &obj.fqname,
             &obj.docs,
             Target::WebDocsMarkdown,
+            obj.is_experimental(),
         )
         .join("\n");
         let quoted_reflection = quote! {
@@ -155,6 +156,7 @@ fn generate_archetype_reflection(reporter: &Reporter, objects: &Objects) -> Toke
                 &field.fqname,
                 &field.docs,
                 Target::WebDocsMarkdown,
+                obj.is_experimental(),
             )
             .join("\n");
 
@@ -177,6 +179,7 @@ fn generate_archetype_reflection(reporter: &Reporter, objects: &Objects) -> Toke
             &obj.fqname,
             &obj.docs,
             Target::WebDocsMarkdown,
+            obj.is_experimental(),
         )
         .join("\n");
         let quoted_archetype_reflection = quote! {

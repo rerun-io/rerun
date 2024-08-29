@@ -52,3 +52,8 @@ attribute "attr.rerun.view_identifier";
 ///
 /// TODO(andreas): This is not yet supported on fields.
 attribute "attr.rerun.deprecated";
+
+/// Marks something as experimental.
+///
+/// This is a struct-level attribute, not a field-level attribute.
+attribute "attr.rerun.experimental";

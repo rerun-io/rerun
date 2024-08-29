@@ -187,6 +187,7 @@ pub const ATTR_RERUN_OVERRIDE_TYPE: &str = "attr.rerun.override_type";
 pub const ATTR_RERUN_SCOPE: &str = "attr.rerun.scope";
 pub const ATTR_RERUN_VIEW_IDENTIFIER: &str = "attr.rerun.view_identifier";
 pub const ATTR_RERUN_DEPRECATED: &str = "attr.rerun.deprecated";
+pub const ATTR_RERUN_EXPERIMENTAL: &str = "attr.rerun.experimental";
 
 pub const ATTR_PYTHON_ALIASES: &str = "attr.python.aliases";
 pub const ATTR_PYTHON_ARRAY_ALIASES: &str = "attr.python.array_aliases";

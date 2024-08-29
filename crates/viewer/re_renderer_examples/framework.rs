@@ -2,7 +2,6 @@
 
 // TODO(#6330): remove unwrap()
 #![allow(clippy::unwrap_used)]
-
 use std::sync::Arc;
 
 use anyhow::Context as _;

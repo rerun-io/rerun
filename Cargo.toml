@@ -53,6 +53,7 @@ re_sdk_comms = { path = "crates/store/re_sdk_comms", version = "=0.19.0-alpha.1"
 re_types = { path = "crates/store/re_types", version = "=0.19.0-alpha.1", default-features = false }
 re_types_blueprint = { path = "crates/store/re_types_blueprint", version = "=0.19.0-alpha.1", default-features = false }
 re_types_core = { path = "crates/store/re_types_core", version = "=0.19.0-alpha.1", default-features = false }
+re_video = { path = "crates/store/re_video", version = "=0.19.0-alpha.1", default-features = false }
 re_ws_comms = { path = "crates/store/re_ws_comms", version = "=0.19.0-alpha.1", default-features = false }
 
 # crates/top:
@@ -190,6 +191,7 @@ memory-stats = "1.1"
 mimalloc = "=0.1.37" # TODO(#5875): `mimalloc` starts leaking OS pages starting with `0.1.38`.
 mime_guess2 = "2.0" # infer MIME type by file extension, and map mime to file extension
 mint = "0.5.9"
+mp4 = "0.14.0"
 natord = "1.0.9"
 ndarray = "0.15"
 ndarray-rand = "0.14"
@@ -286,6 +288,7 @@ wgpu = { version = "0.20.1", default-features = false, features = [
   "fragile-send-sync-non-atomic-wasm",
 ] }
 wgpu-core = "0.21.0"
+wgpu-types = "0.20.0"
 xshell = "0.2"
 zip = { version = "0.6", default-features = false }
 
@@ -524,3 +527,7 @@ missing_errors_doc = "allow"
 # egui_tiles = { path = "../egui_tiles" }
 
 # egui_commonmark = { git = "https://github.com/rerun-io/egui_commonmark", rev = "63d5c8933445b9ea9088c4a50b71f4ede1f3c247" } # https://github.com/lampsitter/egui_commonmark/pull/51
+
+# commit on `rerun-io/mp4` `main` branch
+# https://github.com/rerun-io/mp4/commit/523ebcc71032e7022335f61d7314b89f6068208a
+mp4 = { git = "https://github.com/rerun-io/mp4", rev = "523ebcc71032e7022335f61d7314b89f6068208a" }

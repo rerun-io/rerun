@@ -317,8 +317,16 @@ pub fn doc_as_lines(
     fqname: &str,
     docs: &Docs,
     target: Target,
+    is_experimental: bool,
 ) -> Vec<String> {
     let mut lines = docs.lines_for(objects, target);
+
+    if is_experimental {
+        lines.push(String::new());
+        lines.push(
+            "⚠️ **This type is experimental and may be removed in future versions**".to_owned(),
+        );
+    }
 
     let examples = if !fqname.starts_with("rerun.blueprint.views") {
         collect_snippets_for_api_docs(docs, "rs", true)

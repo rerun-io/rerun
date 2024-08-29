@@ -33,6 +33,7 @@
 #include "datatypes/time_int.hpp"
 #include "datatypes/time_range.hpp"
 #include "datatypes/time_range_boundary.hpp"
+#include "datatypes/uint16.hpp"
 #include "datatypes/uint32.hpp"
 #include "datatypes/uint64.hpp"
 #include "datatypes/utf8.hpp"

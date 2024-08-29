@@ -3157,6 +3157,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "mp4"
+version = "0.14.0"
+source = "git+https://github.com/rerun-io/mp4?rev=523ebcc71032e7022335f61d7314b89f6068208a#523ebcc71032e7022335f61d7314b89f6068208a"
+dependencies = [
+ "byteorder",
+ "bytes",
+ "num-rational",
+ "serde",
+ "serde_json",
+ "thiserror",
+]
+
+[[package]]
 name = "multimap"
 version = "0.10.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3297,6 +3310,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "num-bigint"
+version = "0.4.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "608e7659b5c3d7cba262d894801b9ec9d00de989e8a82bd4bef91d08da45cdc0"
+dependencies = [
+ "autocfg",
+ "num-integer",
+ "num-traits",
+]
+
+[[package]]
 name = "num-complex"
 version = "0.4.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3333,10 +3357,22 @@ dependencies = [
 ]
 
 [[package]]
-name = "num-traits"
-version = "0.2.15"
+name = "num-rational"
+version = "0.4.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "578ede34cf02f8924ab9447f50c28075b4d3e5b269972345e7e0372b38c6cdcd"
+checksum = "f83d14da390562dca69fc84082e73e548e1ad308d24accdedd2720017cb37824"
+dependencies = [
+ "num-bigint",
+ "num-integer",
+ "num-traits",
+ "serde",
+]
+
+[[package]]
+name = "num-traits"
+version = "0.2.19"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "071dfc062690e90b734c0b2273ce72ad0ffa95f0c74596bc250dcfd960262841"
 dependencies = [
  "autocfg",
  "libm",
@@ -4768,6 +4804,7 @@ dependencies = [
  "gltf",
  "half 2.3.1",
  "itertools 0.13.0",
+ "js-sys",
  "never",
  "notify",
  "ordered-float",
@@ -4780,6 +4817,7 @@ dependencies = [
  "re_log",
  "re_math",
  "re_tracing",
+ "re_video",
  "serde",
  "slotmap",
  "smallvec",
@@ -4790,9 +4828,12 @@ dependencies = [
  "type-map",
  "unindent",
  "walkdir",
+ "wasm-bindgen",
  "wasm-bindgen-futures",
+ "web-sys",
  "wgpu",
  "wgpu-core",
+ "wgpu-types",
 ]
 
 [[package]]
@@ -5179,6 +5220,7 @@ dependencies = [
  "re_tracing",
  "re_types_builder",
  "re_types_core",
+ "re_video",
  "serde",
  "similar-asserts",
  "smallvec",
@@ -5269,6 +5311,14 @@ dependencies = [
  "strum",
  "strum_macros",
  "sublime_fuzzy",
+]
+
+[[package]]
+name = "re_video"
+version = "0.19.0-alpha.1+dev"
+dependencies = [
+ "mp4",
+ "ordered-float",
 ]
 
 [[package]]

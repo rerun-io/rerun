@@ -36,7 +36,6 @@ path = "outlines.rs"
 name = "picking"
 path = "picking.rs"
 
-
 [dependencies]
 re_log = { workspace = true, features = ["setup"] }
 re_math.workspace = true

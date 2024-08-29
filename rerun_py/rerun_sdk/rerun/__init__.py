@@ -54,6 +54,7 @@ from .archetypes import (
     Arrows2D as Arrows2D,
     Arrows3D as Arrows3D,
     Asset3D as Asset3D,
+    AssetVideo as AssetVideo,
     BarChart as BarChart,
     Boxes2D as Boxes2D,
     Boxes3D as Boxes3D,

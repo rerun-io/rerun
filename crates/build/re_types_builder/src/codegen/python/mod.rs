@@ -770,7 +770,7 @@ fn code_for_struct(
 
             // Generating docs for all the fields creates A LOT of visual noise in the API docs.
             let show_fields_in_docs = false;
-            let doc_lines = lines_from_docs(reporter, objects, &field.docs);
+            let doc_lines = lines_from_docs(reporter, objects, &field.docs, false);
             if !doc_lines.is_empty() {
                 if show_fields_in_docs {
                     code.push_indented(1, quote_doc_lines(doc_lines), 0);
@@ -886,7 +886,7 @@ fn code_for_enum(
 
         // Generating docs for all the fields creates A LOT of visual noise in the API docs.
         let show_fields_in_docs = true;
-        let doc_lines = lines_from_docs(reporter, objects, &variant.docs);
+        let doc_lines = lines_from_docs(reporter, objects, &variant.docs, false);
         if !doc_lines.is_empty() {
             if show_fields_in_docs {
                 code.push_indented(1, quote_doc_lines(doc_lines), 0);
@@ -1226,7 +1226,7 @@ fn quote_examples(examples: Vec<Example<'_>>, lines: &mut Vec<String>) {
 
 /// Ends with double newlines, unless empty.
 fn quote_obj_docs(reporter: &Reporter, objects: &Objects, obj: &Object) -> String {
-    let mut lines = lines_from_docs(reporter, objects, &obj.docs);
+    let mut lines = lines_from_docs(reporter, objects, &obj.docs, obj.is_experimental());
 
     if let Some(first_line) = lines.first_mut() {
         // Prefix with object kind:
@@ -1236,8 +1236,20 @@ fn quote_obj_docs(reporter: &Reporter, objects: &Objects, obj: &Object) -> Strin
     quote_doc_lines(lines)
 }
 
-fn lines_from_docs(reporter: &Reporter, objects: &Objects, docs: &Docs) -> Vec<String> {
+fn lines_from_docs(
+    reporter: &Reporter,
+    objects: &Objects,
+    docs: &Docs,
+    is_experimental: bool,
+) -> Vec<String> {
     let mut lines = docs.lines_for(objects, Target::Python);
+
+    if is_experimental {
+        lines.push(String::new());
+        lines.push(
+            "⚠️ **This is an experimental API! It is not fully supported, and is likely to change significantly in future versions.**".to_owned(),
+        );
+    }
 
     let examples = collect_snippets_for_api_docs(docs, "py", true).unwrap_or_else(|err| {
         reporter.error_any(err);
