@@ -1,4 +1,5 @@
 use re_chunk::{Chunk, RowId};
+use re_log_types::NonMinI64;
 use re_log_types::{EntityPath, TimeInt, TimePoint};
 use re_types::components::MediaType;
 
@@ -176,23 +177,32 @@ fn load_video(
         re_log_types::TimeInt::new_temporal(0),
     );
 
+    let media_type = MediaType::guess_from_path(filepath);
+
+    let duration_s = match media_type.as_ref().map(|v| v.as_str()) {
+        Some("video/mp4") => re_video::load_mp4(&contents)
+            .ok()
+            .map(|v| v.duration.as_f64() / 1_000.0),
+        // Fallback:
+        _ => None,
+    }
+    .unwrap_or(100.0)
+    .ceil() as i64;
+
     let mut rows = vec![Chunk::builder(entity_path)
         .with_archetype(
             RowId::new(),
             timepoint.clone(),
-            &re_types::archetypes::AssetVideo::from_file_contents(
-                contents,
-                MediaType::guess_from_path(filepath),
-            ),
+            &re_types::archetypes::AssetVideo::from_file_contents(contents, media_type),
         )
         .build()?];
 
-    for i in 0..100 {
+    for i in 0..duration_s {
         // We need some breadcrumbs of timepoints because the video doesn't have a duration yet.
         // TODO(#7272): fix this
         timepoint.insert(
             re_log_types::Timeline::new_temporal("video"),
-            re_log_types::TimeInt::new_temporal(i * 10_000_000_000),
+            re_log_types::TimeInt::from_seconds(NonMinI64::new(i).expect("i > i64::MIN")),
         );
 
         rows.push(

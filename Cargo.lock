@@ -4499,6 +4499,7 @@ dependencies = [
  "re_smart_channel",
  "re_tracing",
  "re_types",
+ "re_video",
  "thiserror",
  "walkdir",
 ]
