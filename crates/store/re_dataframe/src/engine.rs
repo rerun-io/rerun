@@ -4,6 +4,8 @@ use re_chunk_store::{
 };
 use re_query::Caches;
 
+use crate::LatestAtQueryHandle;
+
 // ---
 
 // TODO(#3741): `arrow2` has no concept of a `RecordBatch`, so for now we just use our trustworthy
@@ -13,7 +15,6 @@ use re_query::Caches;
 // TODO(cmc): add an `arrow` feature to transportchunk in a follow-up pr and call it a day.
 pub type RecordBatch = TransportChunk;
 
-pub struct LatestAtQueryHandle<'a>(&'a ());
 pub struct RangeQueryHandle<'a>(&'a ());
 
 /// A generic handle to a query that is ready to be executed.
@@ -98,10 +99,10 @@ impl QueryEngine<'_> {
         query: &QueryExpression,
         columns: Option<Vec<ColumnDescriptor>>,
     ) -> QueryHandle<'_> {
-        _ = self;
-        _ = query;
-        _ = columns;
-        unimplemented!("TODO(cmc)")
+        match query {
+            QueryExpression::LatestAt(query) => self.latest_at(query, columns).into(),
+            QueryExpression::Range(query) => self.range(query, columns).into(),
+        }
     }
 
     /// Creates a new [`LatestAtQueryHandle`], which can be used to perform a latest-at query.
@@ -120,16 +121,12 @@ impl QueryEngine<'_> {
     /// for a range of data on the `frame` timeline, but still include the `log_time` timeline in
     /// the result.
     #[inline]
-    #[allow(clippy::unimplemented, clippy::needless_pass_by_value)]
     pub fn latest_at(
         &self,
         query: &LatestAtQueryExpression,
         columns: Option<Vec<ColumnDescriptor>>,
     ) -> LatestAtQueryHandle<'_> {
-        _ = self;
-        _ = query;
-        _ = columns;
-        unimplemented!("TODO(cmc)")
+        LatestAtQueryHandle::new(self, query.clone(), columns)
     }
 
     /// Creates a new [`RangeQueryHandle`], which can be used to perform a range query.
