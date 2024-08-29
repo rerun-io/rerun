@@ -1,4 +1,4 @@
-// Log a simple 3D asset.
+// Log a video file.
 
 #include <rerun.hpp>
 
@@ -8,7 +8,7 @@
 
 int main(int argc, char* argv[]) {
     if (argc < 2) {
-        std::cerr << "Usage: " << argv[0] << " <path_to_asset.[gltf|glb|obj|stl]>" << std::endl;
+        std::cerr << "Usage: " << argv[0] << " <path_to_video.[mp4]>" << std::endl;
         return 1;
     }
 
