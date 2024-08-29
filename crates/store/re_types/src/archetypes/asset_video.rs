@@ -20,7 +20,9 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Archetype**: A video file.
 ///
-/// NOTE: Videos may only be visualized in the web viewer for now
+/// NOTE: Videos can only be viewed in the Rerun web viewer.
+/// Only MP4 and AV1 is currently supported, and not in all browsers.
+/// Follow <https://github.com/rerun-io/rerun/issues/7298> for updates on the native support.
 ///
 /// ⚠️ **This type is experimental and may be removed in future versions**
 #[derive(Clone, Debug)]

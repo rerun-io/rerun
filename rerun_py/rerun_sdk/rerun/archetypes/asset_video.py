@@ -21,7 +21,9 @@ class AssetVideo(AssetVideoExt, Archetype):
     """
     **Archetype**: A video file.
 
-    NOTE: Videos may only be visualized in the web viewer for now
+    NOTE: Videos can only be viewed in the Rerun web viewer.
+    Only MP4 and AV1 is currently supported, and not in all browsers.
+    Follow <https://github.com/rerun-io/rerun/issues/7298> for updates on the native support.
 
     ⚠️ **This is an experimental API! It is not fully supported, and is likely to change significantly in future versions.**
     """
