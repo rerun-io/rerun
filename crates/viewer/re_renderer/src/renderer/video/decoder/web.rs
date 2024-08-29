@@ -198,7 +198,10 @@ impl VideoDecoder {
 
         let Some(frame_idx) = latest_at_idx(&frames, |(t, _)| *t, &timestamp) else {
             // no buffered frames - texture will be blank
-            return self.zeroed_texture.clone();
+            // not return a zeroed texture, because we may just be behind on decoding
+            // and showing an old frame is better than showing a blank frame,
+            // because it causes "black flashes" to appear
+            return self.texture.clone();
         };
 
         // drain up-to (but not including) the frame idx, clearing out any frames
@@ -218,7 +221,7 @@ impl VideoDecoder {
         // This handles the case when we have a buffered frame that's older than the requested timestamp.
         // We don't want to show this frame to the user, because it's not actually the one they requested.
         if timestamp - frame_timestamp_ms > frame_duration_ms {
-            return self.zeroed_texture.clone();
+            return self.texture.clone();
         }
 
         if self.last_used_frame_timestamp != frame_timestamp_ms {
