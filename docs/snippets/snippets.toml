@@ -187,4 +187,4 @@ quick_start = [ # These examples don't have exactly the same implementation.
 [extra_args]
 "archetypes/asset3d_simple" = ["$config_dir/../assets/cube.glb"]
 "archetypes/asset3d_out_of_tree" = ["$config_dir/../assets/cube.glb"]
-"archetypes/video_simple" = ["$config_dir/../assets/cube.glb"]
+"archetypes/video_simple" = ["$config_dir/../assets/empty.mp4"]
