@@ -200,7 +200,7 @@ impl AssetVideoVisualizer {
 
             if let Some(video) = video {
                 let mut video = video.lock();
-                let texture = video.get_frame(timestamp_s);
+                let texture = video.frame_at(timestamp_s);
 
                 let world_from_entity = ent_context
                     .transform_info

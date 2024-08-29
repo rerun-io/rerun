@@ -46,9 +46,12 @@ impl Video {
     /// Returns a texture with the latest frame at the given timestamp.
     ///
     /// If the timestamp is negative, a zeroed texture is returned.
-    pub fn get_frame(&mut self, timestamp_s: f64) -> GpuTexture2D {
+    ///
+    /// This takes `&mut self` because the decoder maintains a buffer of decoded frames,
+    /// which requires mutation. It is also not thread-safe by default.
+    pub fn frame_at(&mut self, timestamp_s: f64) -> GpuTexture2D {
         re_tracing::profile_function!();
-        self.decoder.get_frame(TimeMs::new(timestamp_s * 1e3))
+        self.decoder.frame_at(TimeMs::new(timestamp_s * 1e3))
     }
 }
 
@@ -263,7 +266,7 @@ mod decoder {
 
             // immediately enqueue some frames, assuming playback at start
             this.reset();
-            let _ = this.get_frame(TimeMs::new(0.0));
+            let _ = this.frame_at(TimeMs::new(0.0));
 
             Some(this)
         }
@@ -280,7 +283,7 @@ mod decoder {
             self.data.config.coded_height as u32
         }
 
-        pub fn get_frame(&mut self, timestamp: TimeMs) -> GpuTexture2D {
+        pub fn frame_at(&mut self, timestamp: TimeMs) -> GpuTexture2D {
             if timestamp.as_f64() < 0.0 {
                 return self.zeroed_texture_float.clone();
             }
@@ -534,7 +537,7 @@ mod decoder {
             self.data.config.coded_height as u32
         }
 
-        pub fn get_frame(&mut self, timestamp: TimeMs) -> GpuTexture2D {
+        pub fn frame_at(&mut self, timestamp: TimeMs) -> GpuTexture2D {
             self.texture.clone()
         }
     }
