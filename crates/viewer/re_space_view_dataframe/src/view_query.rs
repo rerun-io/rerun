@@ -308,6 +308,9 @@ fn override_ui(
                     true
                 });
 
+            // this line (which creates a type error) make 1.76.0 crash!
+            let all_entities = all_entities.into_iter().collect::<Vec<_>>();
+
             let changed = ui_query_kind.ui(ctx, ui, &time_drag_value, &timeline, &all_entities);
             if changed {
                 Query::save_kind_for_timeline(
