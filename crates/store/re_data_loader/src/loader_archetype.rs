@@ -167,7 +167,7 @@ fn load_image(
 /// TODO(#7272): fix this
 /// Used to expand the timeline when logging a video, so that the video can be played back.
 #[derive(Clone, Copy)]
-struct VideoTick;
+struct VideoTick(re_types::datatypes::Float64);
 
 impl re_types::AsComponents for VideoTick {
     fn as_component_batches(&self) -> Vec<re_types::MaybeOwnedComponentBatch<'_>> {
@@ -179,11 +179,11 @@ impl re_types::Loggable for VideoTick {
     type Name = re_types::ComponentName;
 
     fn name() -> Self::Name {
-        "custom.VideoTick".into()
+        "rerun.components.VideoTick".into()
     }
 
     fn arrow_datatype() -> re_chunk::external::arrow2::datatypes::DataType {
-        re_types::datatypes::Bool::arrow_datatype()
+        re_types::datatypes::Float64::arrow_datatype()
     }
 
     fn to_arrow_opt<'a>(
@@ -192,14 +192,53 @@ impl re_types::Loggable for VideoTick {
     where
         Self: 'a,
     {
-        re_types::datatypes::Bool::to_arrow_opt(
+        re_types::datatypes::Float64::to_arrow_opt(
             data.into_iter()
-                .map(|datum| datum.map(|_| re_types::datatypes::Bool(true))),
+                .map(|datum| datum.map(|datum| datum.into().0)),
         )
     }
 }
 
 impl re_types::SizeBytes for VideoTick {
+    fn heap_size_bytes(&self) -> u64 {
+        0
+    }
+}
+
+#[derive(Clone, Copy)]
+struct ExperimentalFeature;
+
+impl re_types::AsComponents for ExperimentalFeature {
+    fn as_component_batches(&self) -> Vec<re_types::MaybeOwnedComponentBatch<'_>> {
+        vec![re_types::NamedIndicatorComponent("ExperimentalFeature".into()).to_batch()]
+    }
+}
+
+impl re_types::Loggable for ExperimentalFeature {
+    type Name = re_types::ComponentName;
+
+    fn name() -> Self::Name {
+        "rerun.components.ExperimentalFeature".into()
+    }
+
+    fn arrow_datatype() -> re_chunk::external::arrow2::datatypes::DataType {
+        re_types::datatypes::Utf8::arrow_datatype()
+    }
+
+    fn to_arrow_opt<'a>(
+        data: impl IntoIterator<Item = Option<impl Into<std::borrow::Cow<'a, Self>>>>,
+    ) -> re_types::SerializationResult<Box<dyn re_chunk::external::arrow2::array::Array>>
+    where
+        Self: 'a,
+    {
+        re_types::datatypes::Utf8::to_arrow_opt(
+            data.into_iter()
+                .map(|datum| datum.map(|_| re_types::datatypes::Utf8("This is an experimental feature that is under active development and not ready for production!".into()))),
+        )
+    }
+}
+
+impl re_types::SizeBytes for ExperimentalFeature {
     fn heap_size_bytes(&self) -> u64 {
         0
     }
@@ -213,8 +252,6 @@ fn load_video(
 ) -> Result<impl ExactSizeIterator<Item = Chunk>, DataLoaderError> {
     re_tracing::profile_function!();
 
-    re_log::warn_once!("Video support in Rerun is experimental!");
-
     timepoint.insert(
         re_log_types::Timeline::new_temporal("video"),
         re_log_types::TimeInt::new_temporal(0),
@@ -226,7 +263,6 @@ fn load_video(
         Some("video/mp4") => re_video::load_mp4(&contents)
             .ok()
             .map(|v| v.duration.as_f64() / 1_000.0),
-        // Fallback:
         _ => None,
     }
     .unwrap_or(100.0)
@@ -238,6 +274,7 @@ fn load_video(
             timepoint.clone(),
             &re_types::archetypes::AssetVideo::from_file_contents(contents, media_type),
         )
+        .with_component_batch(RowId::new(), timepoint.clone(), &ExperimentalFeature)
         .build()?];
 
     for i in 0..duration_s {
@@ -250,7 +287,11 @@ fn load_video(
 
         rows.push(
             Chunk::builder(entity_path.clone())
-                .with_component_batch(RowId::new(), timepoint.clone(), &VideoTick)
+                .with_component_batch(
+                    RowId::new(),
+                    timepoint.clone(),
+                    &VideoTick(re_types::datatypes::Float64(i as f64)),
+                )
                 .build()?,
         );
     }
