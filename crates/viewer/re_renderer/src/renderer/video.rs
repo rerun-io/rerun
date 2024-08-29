@@ -104,6 +104,7 @@ fn alloc_video_frame_texture(
                 | wgpu::TextureUsages::RENDER_ATTACHMENT,
         },
     )) else {
+        // We set the dimension to `2D` above, so this should never happen.
         unreachable!();
     };
 
@@ -298,73 +299,84 @@ mod decoder {
         }
 
         pub fn frame_at(&mut self, timestamp: TimeMs) -> GpuTexture2D {
-            if timestamp.as_f64() < 0.0 {
+            if timestamp < TimeMs::ZERO {
                 return self.zeroed_texture_float.clone();
             }
 
-            let Some(segment_idx) =
+            let Some(requested_segment_idx) =
                 latest_at_idx(&self.data.segments, |segment| segment.timestamp, &timestamp)
             else {
-                return self.texture.clone();
+                // This should only happen if the video is completely empty.
+                return self.zeroed_texture_float.clone();
             };
 
-            let Some(sample_idx) = latest_at_idx(
-                &self.data.segments[segment_idx].samples,
+            let Some(requested_sample_idx) = latest_at_idx(
+                &self.data.segments[requested_segment_idx].samples,
                 |sample| sample.timestamp,
                 &timestamp,
             ) else {
-                // segments are never empty
-                unreachable!();
+                /// This should never happen, because segments are never empty.
+                return self.zeroed_texture_float.clone();
             };
 
-            if segment_idx != self.current_segment_idx {
-                let segment_distance = segment_idx as isize - self.current_segment_idx as isize;
+            // Enqueue segments as needed. We maintain a buffer of 2 segments, so we can
+            // always smoothly transition to the next segment.
+            // We can always start decoding from any segment, because segments always begin
+            // with a keyframe.
+            // Backward seeks or seeks across many segments trigger a reset of the decoder,
+            // because decoding all the samples between the previous sample and the requested
+            // one would mean decoding and immediately discarding more frames than we otherwise
+            // need to.
+            if requested_segment_idx != self.current_segment_idx {
+                let segment_distance =
+                    requested_segment_idx as isize - self.current_segment_idx as isize;
                 if segment_distance == 1 {
-                    // forward seek to next segment
-                    self.enqueue_all(segment_idx + 1);
+                    // forward seek to next segment - queue up the one _after_ requested
+                    self.enqueue_all(requested_segment_idx + 1);
                 } else {
-                    // forward seek by N>1 OR backward seek across segments
+                    // forward seek by N>1 OR backward seek across segments - reset
                     self.reset();
-                    self.enqueue_all(segment_idx);
-                    self.enqueue_all(segment_idx + 1);
+                    self.enqueue_all(requested_segment_idx);
+                    self.enqueue_all(requested_segment_idx + 1);
                 }
-            } else if sample_idx != self.current_sample_idx {
-                let sample_distance = sample_idx as isize - self.current_sample_idx as isize;
+            } else if requested_sample_idx != self.current_sample_idx {
+                // special case: handle seeking backwards within a single segment
+                // this is super inefficient, but it's the only way to handle it
+                // while maintaining a buffer of 2 segments
+                let sample_distance =
+                    requested_sample_idx as isize - self.current_sample_idx as isize;
                 if sample_distance < 0 {
                     self.reset();
-                    self.enqueue_all(segment_idx);
-                    self.enqueue_all(segment_idx + 1);
+                    self.enqueue_all(requested_segment_idx);
+                    self.enqueue_all(requested_segment_idx + 1);
                 }
             }
 
-            self.current_segment_idx = segment_idx;
-            self.current_sample_idx = sample_idx;
+            self.current_segment_idx = requested_segment_idx;
+            self.current_sample_idx = requested_sample_idx;
 
             let mut frames = self.frames.lock();
 
             let Some(frame_idx) = latest_at_idx(&frames, |(t, _)| *t, &timestamp) else {
                 // no buffered frames - texture will be blank
-                // TODO(jan): do something less bad
-                return self.texture.clone();
+                return self.zeroed_texture_float.clone();
             };
-            let frame = frames[frame_idx].1 .0.clone();
+            let (_, frame) = frames[frame_idx].clone();
 
             // drain up-to (but not including) the frame idx, clearing out any frames
             // before it. this lets the video decoder output more frames.
             drop(frames.drain(0..frame_idx));
 
-            let Some((frame_timestamp_ms, frame_duration_ms)) = frame
-                .timestamp()
-                .map(TimeMs::new)
-                .zip(frame.duration().map(TimeMs::new))
-            else {
-                // TODO(jan): figure out when this can happen and handle it
-                return self.texture.clone();
-            };
+            // https://w3c.github.io/webcodecs/#output-videoframes 1. 1. states:
+            //   Let timestamp and duration be the timestamp and duration from the EncodedVideoChunk associated with output.
+            // we always provide both, so they should always be available
+            let frame_timestamp_ms = frame.timestamp().map(TimeMs::new).unwrap_or_default();
+            let frame_duration_ms = frame.duration().map(TimeMs::new).unwrap_or_default();
 
-            if TimeMs::new(timestamp.as_f64() - frame_timestamp_ms.as_f64()) > frame_duration_ms {
-                // not relevant to the user, it's an old frame.
-                return self.texture.clone();
+            // This handles the case when we have a buffered frame that's older than the requested timestamp.
+            // We don't want to show this frame to the user, because it's not actually the one they requested.
+            if timestamp - frame_timestamp_ms > frame_duration_ms {
+                return self.zeroed_texture_float.clone();
             }
 
             if self.last_used_frame_timestamp != frame_timestamp_ms {
