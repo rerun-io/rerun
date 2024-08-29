@@ -13,7 +13,7 @@ use super::alloc_video_frame_texture;
 
 pub struct VideoDecoder {
     data: re_video::VideoData,
-    texture: GpuTexture2D,
+    zeroed_texture: GpuTexture2D,
 }
 
 impl VideoDecoder {
@@ -21,13 +21,16 @@ impl VideoDecoder {
         re_log::warn_once!("Video playback not yet available in the native viewer, try the web viewer instead. See https://github.com/rerun-io/rerun/issues/7298 for more information.");
 
         let device = render_context.device.clone();
-        let texture = alloc_video_frame_texture(
+        let zeroed_texture = alloc_video_frame_texture(
             &device,
             &render_context.gpu_resources.textures,
             data.config.coded_width as u32,
             data.config.coded_height as u32,
         );
-        Some(Self { data, texture })
+        Some(Self {
+            data,
+            zeroed_texture,
+        })
     }
 
     pub fn duration_ms(&self) -> f64 {
@@ -43,6 +46,6 @@ impl VideoDecoder {
     }
 
     pub fn frame_at(&mut self, timestamp: TimeMs) -> GpuTexture2D {
-        self.texture.clone()
+        self.zeroed_texture.clone()
     }
 }

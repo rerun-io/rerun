@@ -39,7 +39,7 @@ pub struct VideoDecoder {
     data: re_video::VideoData,
     queue: Arc<wgpu::Queue>,
     texture: GpuTexture2D,
-    zeroed_texture_float: GpuTexture2D,
+    zeroed_texture: GpuTexture2D,
 
     decoder: web_sys::VideoDecoder,
 
@@ -98,19 +98,18 @@ impl VideoDecoder {
             data.config.coded_width as u32,
             data.config.coded_height as u32,
         );
-        let zeroed_texture_float = GpuTexture2D::new(
-            render_context
-                .texture_manager_2d
-                .zeroed_texture_float()
-                .clone(),
-        )
-        .expect("expected texture to be 2D");
+        let zeroed_texture = super::alloc_video_frame_texture(
+            &render_context.device,
+            &render_context.gpu_resources.textures,
+            data.config.coded_width as u32,
+            data.config.coded_height as u32,
+        );
 
         let mut this = Self {
             data,
             queue,
             texture,
-            zeroed_texture_float,
+            zeroed_texture,
 
             decoder,
 
@@ -141,14 +140,14 @@ impl VideoDecoder {
 
     pub fn frame_at(&mut self, timestamp: TimeMs) -> GpuTexture2D {
         if timestamp < TimeMs::ZERO {
-            return self.zeroed_texture_float.clone();
+            return self.zeroed_texture.clone();
         }
 
         let Some(requested_segment_idx) =
             latest_at_idx(&self.data.segments, |segment| segment.timestamp, &timestamp)
         else {
             // This should only happen if the video is completely empty.
-            return self.zeroed_texture_float.clone();
+            return self.zeroed_texture.clone();
         };
 
         let Some(requested_sample_idx) = latest_at_idx(
@@ -157,7 +156,7 @@ impl VideoDecoder {
             &timestamp,
         ) else {
             // This should never happen, because segments are never empty.
-            return self.zeroed_texture_float.clone();
+            return self.zeroed_texture.clone();
         };
 
         // Enqueue segments as needed. We maintain a buffer of 2 segments, so we can
@@ -199,7 +198,7 @@ impl VideoDecoder {
 
         let Some(frame_idx) = latest_at_idx(&frames, |(t, _)| *t, &timestamp) else {
             // no buffered frames - texture will be blank
-            return self.zeroed_texture_float.clone();
+            return self.zeroed_texture.clone();
         };
 
         // drain up-to (but not including) the frame idx, clearing out any frames
@@ -219,7 +218,7 @@ impl VideoDecoder {
         // This handles the case when we have a buffered frame that's older than the requested timestamp.
         // We don't want to show this frame to the user, because it's not actually the one they requested.
         if timestamp - frame_timestamp_ms > frame_duration_ms {
-            return self.zeroed_texture_float.clone();
+            return self.zeroed_texture.clone();
         }
 
         if self.last_used_frame_timestamp != frame_timestamp_ms {
@@ -290,6 +289,7 @@ fn copy_video_frame_to_texture(
         height: frame.display_height(),
         depth_or_array_layers: 1,
     };
+    re_log::info!("{}x{}", frame.display_width(), frame.display_height());
     let source = {
         // TODO(jan): Remove this unsafe code when https://github.com/gfx-rs/wgpu/pull/6170 ships.
         // SAFETY: Depends on the fact that `wgpu` passes the object through as-is,
