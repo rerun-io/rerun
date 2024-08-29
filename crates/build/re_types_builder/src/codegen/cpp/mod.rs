@@ -2299,7 +2299,7 @@ fn quote_obj_docs(objects: &Objects, obj: &Object) -> TokenStream {
     if obj.is_experimental() {
         lines.push(String::new());
         lines.push(
-            "⚠ **This type is experimental and may be removed in future versions**".to_owned(),
+            "⚠ **This is an experimental API! It is not fully supported, and is likely to change significantly in future versions.**".to_owned(),
         );
     }
 

@@ -23,7 +23,7 @@ class AssetVideo(AssetVideoExt, Archetype):
 
     NOTE: Videos may only be visualized in the web viewer for now
 
-    ⚠️ **This type is experimental and may be removed in future versions**
+    ⚠️ **This is an experimental API! It is not fully supported, and is likely to change significantly in future versions.**
     """
 
     # __init__ can be found in asset_video_ext.py

@@ -22,7 +22,7 @@ namespace rerun::archetypes {
     ///
     /// NOTE: Videos may only be visualized in the web viewer for now
     ///
-    /// ⚠ **This type is experimental and may be removed in future versions**
+    /// ⚠ **This is an experimental API! It is not fully supported, and is likely to change significantly in future versions.**
     struct AssetVideo {
         /// The asset's bytes.
         rerun::components::Blob blob;

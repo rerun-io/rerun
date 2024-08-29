@@ -259,7 +259,7 @@ fn object_page(
         putln!(page);
         putln!(
             page,
-            "⚠️ **This type is experimental and may be removed in future versions**"
+            "⚠️ **This is an experimental API! It is not fully supported, and is likely to change significantly in future versions.**"
         );
         putln!(page);
     }
