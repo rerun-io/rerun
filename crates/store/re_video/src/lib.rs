@@ -66,7 +66,7 @@ pub struct Config {
     pub coded_width: u16,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub struct TimeMs(OrderedFloat<f64>);
 
 impl TimeMs {
