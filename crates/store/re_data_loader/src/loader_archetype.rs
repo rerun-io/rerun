@@ -102,7 +102,7 @@ impl DataLoader for ArchetypeLoader {
             rows.extend(load_video(
                 &filepath,
                 timepoint,
-                entity_path,
+                &entity_path,
                 contents.into_owned(),
             )?);
         } else if crate::SUPPORTED_MESH_EXTENSIONS.contains(&extension.as_str()) {
@@ -164,10 +164,51 @@ fn load_image(
     Ok(rows.into_iter())
 }
 
+/// TODO(#7272): fix this
+/// Used to expand the timeline when logging a video, so that the video can be played back.
+#[derive(Clone, Copy)]
+struct VideoTick;
+
+impl re_types::AsComponents for VideoTick {
+    fn as_component_batches(&self) -> Vec<re_types::MaybeOwnedComponentBatch<'_>> {
+        vec![re_types::NamedIndicatorComponent("VideoTick".into()).to_batch()]
+    }
+}
+
+impl re_types::Loggable for VideoTick {
+    type Name = re_types::ComponentName;
+
+    fn name() -> Self::Name {
+        "custom.VideoTick".into()
+    }
+
+    fn arrow_datatype() -> re_chunk::external::arrow2::datatypes::DataType {
+        re_types::datatypes::Bool::arrow_datatype()
+    }
+
+    fn to_arrow_opt<'a>(
+        data: impl IntoIterator<Item = Option<impl Into<std::borrow::Cow<'a, Self>>>>,
+    ) -> re_types::SerializationResult<Box<dyn re_chunk::external::arrow2::array::Array>>
+    where
+        Self: 'a,
+    {
+        re_types::datatypes::Bool::to_arrow_opt(
+            data.into_iter()
+                .map(|datum| datum.map(|_| re_types::datatypes::Bool(true))),
+        )
+    }
+}
+
+impl re_types::SizeBytes for VideoTick {
+    fn heap_size_bytes(&self) -> u64 {
+        0
+    }
+}
+
 fn load_video(
     filepath: &std::path::Path,
     mut timepoint: TimePoint,
-    entity_path: EntityPath,
+    entity_path: &EntityPath,
     contents: Vec<u8>,
 ) -> Result<impl ExactSizeIterator<Item = Chunk>, DataLoaderError> {
     re_tracing::profile_function!();
@@ -189,13 +230,26 @@ fn load_video(
     .unwrap_or(100.0)
     .ceil() as i64;
 
-    let mut rows = vec![Chunk::builder(entity_path)
+    let mut rows = vec![Chunk::builder(entity_path.clone())
         .with_archetype(
             RowId::new(),
             timepoint.clone(),
             &re_types::archetypes::AssetVideo::from_file_contents(contents, media_type),
         )
         .build()?];
+
+    rows.push(
+        Chunk::builder(EntityPath::parse_forgiving("README"))
+            .with_archetype(
+                RowId::new(),
+                timepoint.clone(),
+                &re_types::archetypes::TextDocument::from_markdown(
+                    // TODO(#7298): stabilize video support
+                    "Video support in Rerun is experimental!",
+                ),
+            )
+            .build()?,
+    );
 
     for i in 0..duration_s {
         // We need some breadcrumbs of timepoints because the video doesn't have a duration yet.
@@ -206,15 +260,8 @@ fn load_video(
         );
 
         rows.push(
-            Chunk::builder(EntityPath::parse_forgiving("README"))
-                .with_archetype(
-                    RowId::new(),
-                    timepoint.clone(),
-                    &re_types::archetypes::TextDocument::from_markdown(
-                        // TODO(#7298): stabilize video support
-                        "Video support in Rerun is experimental!",
-                    ),
-                )
+            Chunk::builder(entity_path.clone())
+                .with_component_batch(RowId::new(), timepoint.clone(), &VideoTick)
                 .build()?,
         );
     }
