@@ -2,7 +2,7 @@ namespace rerun.blueprint.archetypes;
 
 // ---
 
-/// The top-level description of the Viewport.
+/// The description of a single view.
 table SpaceViewBlueprint (
     "attr.rerun.scope": "blueprint"
 ) {
