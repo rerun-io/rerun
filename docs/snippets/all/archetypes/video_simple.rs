@@ -10,7 +10,7 @@ fn main() -> anyhow::Result<()> {
 
     let rec = rerun::RecordingStreamBuilder::new("rerun_example_asset_video").spawn()?;
 
-    rec.log("world/video", &rerun::AssetVideo::from_file_contents(path)?)?;
+    rec.log("world/video", &rerun::AssetVideo::from_file_path(path)?)?;
 
     Ok(())
 }
