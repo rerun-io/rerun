@@ -289,7 +289,6 @@ fn copy_video_frame_to_texture(
         height: frame.display_height(),
         depth_or_array_layers: 1,
     };
-    re_log::info!("{}x{}", frame.display_width(), frame.display_height());
     let source = {
         // TODO(jan): Remove this unsafe code when https://github.com/gfx-rs/wgpu/pull/6170 ships.
         // SAFETY: Depends on the fact that `wgpu` passes the object through as-is,
