@@ -23,7 +23,7 @@
 #include <vector>
 
 namespace rerun::blueprint::archetypes {
-    /// **Archetype**: The top-level description of the Viewport.
+    /// **Archetype**: The description of a container.
     struct ContainerBlueprint {
         /// The class of the view.
         rerun::blueprint::components::ContainerKind container_kind;

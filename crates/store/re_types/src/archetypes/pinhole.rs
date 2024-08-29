@@ -315,6 +315,8 @@ impl ::re_types_core::AsComponents for Pinhole {
     }
 }
 
+impl ::re_types_core::ArchetypeReflectionMarker for Pinhole {}
+
 impl Pinhole {
     /// Create a new `Pinhole`.
     #[inline]

@@ -353,6 +353,8 @@ impl ::re_types_core::AsComponents for LineStrips2D {
     }
 }
 
+impl ::re_types_core::ArchetypeReflectionMarker for LineStrips2D {}
+
 impl LineStrips2D {
     /// Create a new `LineStrips2D`.
     #[inline]

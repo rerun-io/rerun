@@ -180,6 +180,8 @@ impl ::re_types_core::AsComponents for SpaceViewContents {
     }
 }
 
+impl ::re_types_core::ArchetypeReflectionMarker for SpaceViewContents {}
+
 impl SpaceViewContents {
     /// Create a new `SpaceViewContents`.
     #[inline]

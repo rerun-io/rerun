@@ -372,6 +372,8 @@ impl ::re_types_core::AsComponents for Points3D {
     }
 }
 
+impl ::re_types_core::ArchetypeReflectionMarker for Points3D {}
+
 impl Points3D {
     /// Create a new `Points3D`.
     #[inline]

@@ -232,6 +232,8 @@ impl ::re_types_core::AsComponents for TextDocument {
     }
 }
 
+impl ::re_types_core::ArchetypeReflectionMarker for TextDocument {}
+
 impl TextDocument {
     /// Create a new `TextDocument`.
     #[inline]
