@@ -66,7 +66,7 @@ pub struct Config {
     pub coded_width: u16,
 }
 
-#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub struct TimeMs(OrderedFloat<f64>);
 
 impl TimeMs {
@@ -76,12 +76,6 @@ impl TimeMs {
 
     pub fn as_f64(&self) -> f64 {
         self.0.into_inner()
-    }
-}
-
-impl std::fmt::Debug for TimeMs {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        std::fmt::Debug::fmt(&self.0, f)
     }
 }
 
