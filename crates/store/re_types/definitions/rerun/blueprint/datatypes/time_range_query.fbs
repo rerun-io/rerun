@@ -10,9 +10,15 @@ table TimeRangeQuery (
   /// Name of the timeline this applies to.
   timeline: rerun.datatypes.Utf8 (order: 100);
 
+  /// Point-of-view entity.
+  pov_entity: rerun.datatypes.EntityPath (order: 200);
+
+  /// Point-of-view component.
+  pov_component: rerun.datatypes.Utf8 (order: 300);
+
   /// Beginning of the time range.
-  start: rerun.datatypes.TimeInt (order: 200);
+  start: rerun.datatypes.TimeInt (order: 400);
 
   /// End of the time range (inclusive).
-  end: rerun.datatypes.TimeInt (order: 300);
+  end: rerun.datatypes.TimeInt (order: 500);
 }

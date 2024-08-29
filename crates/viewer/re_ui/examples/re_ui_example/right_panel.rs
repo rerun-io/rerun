@@ -153,6 +153,34 @@ impl RightPanel {
                         }),
                 );
 
+                ui.list_item().show_hierarchical(
+                    ui,
+                    list_item::LabelContent::new("Fake radio button").with_icon_fn(
+                        |ui, rect, _visuals| {
+                            let mut ui = ui.child_ui(
+                                rect,
+                                egui::Layout::left_to_right(egui::Align::Center),
+                                None,
+                            );
+                            ui.re_radio_value(&mut self.boolean, true, "");
+                        },
+                    ),
+                );
+
+                ui.list_item().show_hierarchical(
+                    ui,
+                    list_item::LabelContent::new("Fake radio button").with_icon_fn(
+                        |ui, rect, _visuals| {
+                            let mut ui = ui.child_ui(
+                                rect,
+                                egui::Layout::left_to_right(egui::Align::Center),
+                                None,
+                            );
+                            ui.re_radio_value(&mut self.boolean, false, "");
+                        },
+                    ),
+                );
+
                 ui.list_item()
                     .show_hierarchical(
                         ui,

@@ -3,6 +3,7 @@
 
 #pragma once
 
+#include "../../datatypes/entity_path.hpp"
 #include "../../datatypes/time_int.hpp"
 #include "../../datatypes/utf8.hpp"
 #include "../../result.hpp"
@@ -21,6 +22,12 @@ namespace rerun::blueprint::datatypes {
     struct TimeRangeQuery {
         /// Name of the timeline this applies to.
         rerun::datatypes::Utf8 timeline;
+
+        /// Point-of-view entity.
+        rerun::datatypes::EntityPath pov_entity;
+
+        /// Point-of-view component.
+        rerun::datatypes::Utf8 pov_component;
 
         /// Beginning of the time range.
         rerun::datatypes::TimeInt start;

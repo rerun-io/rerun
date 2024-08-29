@@ -3,6 +3,7 @@
 
 #include "time_range_query.hpp"
 
+#include "../../datatypes/entity_path.hpp"
 #include "../../datatypes/time_int.hpp"
 #include "../../datatypes/utf8.hpp"
 
@@ -16,6 +17,16 @@ namespace rerun {
         Loggable<blueprint::datatypes::TimeRangeQuery>::arrow_datatype() {
         static const auto datatype = arrow::struct_({
             arrow::field("timeline", Loggable<rerun::datatypes::Utf8>::arrow_datatype(), false),
+            arrow::field(
+                "pov_entity",
+                Loggable<rerun::datatypes::EntityPath>::arrow_datatype(),
+                false
+            ),
+            arrow::field(
+                "pov_component",
+                Loggable<rerun::datatypes::Utf8>::arrow_datatype(),
+                false
+            ),
             arrow::field("start", Loggable<rerun::datatypes::TimeInt>::arrow_datatype(), false),
             arrow::field("end", Loggable<rerun::datatypes::TimeInt>::arrow_datatype(), false),
         });
@@ -70,7 +81,29 @@ namespace rerun {
             }
         }
         {
-            auto field_builder = static_cast<arrow::Int64Builder*>(builder->field_builder(1));
+            auto field_builder = static_cast<arrow::StringBuilder*>(builder->field_builder(1));
+            ARROW_RETURN_NOT_OK(field_builder->Reserve(static_cast<int64_t>(num_elements)));
+            for (size_t elem_idx = 0; elem_idx < num_elements; elem_idx += 1) {
+                RR_RETURN_NOT_OK(Loggable<rerun::datatypes::EntityPath>::fill_arrow_array_builder(
+                    field_builder,
+                    &elements[elem_idx].pov_entity,
+                    1
+                ));
+            }
+        }
+        {
+            auto field_builder = static_cast<arrow::StringBuilder*>(builder->field_builder(2));
+            ARROW_RETURN_NOT_OK(field_builder->Reserve(static_cast<int64_t>(num_elements)));
+            for (size_t elem_idx = 0; elem_idx < num_elements; elem_idx += 1) {
+                RR_RETURN_NOT_OK(Loggable<rerun::datatypes::Utf8>::fill_arrow_array_builder(
+                    field_builder,
+                    &elements[elem_idx].pov_component,
+                    1
+                ));
+            }
+        }
+        {
+            auto field_builder = static_cast<arrow::Int64Builder*>(builder->field_builder(3));
             ARROW_RETURN_NOT_OK(field_builder->Reserve(static_cast<int64_t>(num_elements)));
             for (size_t elem_idx = 0; elem_idx < num_elements; elem_idx += 1) {
                 RR_RETURN_NOT_OK(Loggable<rerun::datatypes::TimeInt>::fill_arrow_array_builder(
@@ -81,7 +114,7 @@ namespace rerun {
             }
         }
         {
-            auto field_builder = static_cast<arrow::Int64Builder*>(builder->field_builder(2));
+            auto field_builder = static_cast<arrow::Int64Builder*>(builder->field_builder(4));
             ARROW_RETURN_NOT_OK(field_builder->Reserve(static_cast<int64_t>(num_elements)));
             for (size_t elem_idx = 0; elem_idx < num_elements; elem_idx += 1) {
                 RR_RETURN_NOT_OK(Loggable<rerun::datatypes::TimeInt>::fill_arrow_array_builder(

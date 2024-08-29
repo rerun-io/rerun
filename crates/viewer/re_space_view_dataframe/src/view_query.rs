@@ -1,25 +1,27 @@
-use re_log_types::{TimeInt, TimelineName};
+use re_log_types::{EntityPath, TimeInt, TimelineName};
 use re_types::blueprint::{archetypes, components, datatypes};
-use re_types_core::Loggable as _;
+use re_types_core::{ComponentName, Loggable as _};
 use re_ui::UiExt as _;
 use re_viewer_context::{
     SpaceViewId, SpaceViewState, SpaceViewSystemExecutionError, TimeDragValue, ViewerContext,
 };
 use re_viewport_blueprint::ViewProperty;
+use std::collections::BTreeSet;
 
 use crate::query_kind_ui::UiQueryKind;
 use crate::visualizer_system::EmptySystem;
 
 /// The query kind for the dataframe view.
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone)]
 pub(crate) enum QueryKind {
     LatestAt {
         time: TimeInt,
     },
     Range {
+        pov_entity: EntityPath,
+        pov_component: ComponentName,
         from: TimeInt,
         to: TimeInt,
-        //TODO(#7072): add PoV components
     },
     //TODO(#7067): add selected components
 }
@@ -69,15 +71,24 @@ impl Query {
                 QueryKind::LatestAt { time }
             }
             components::QueryKind::TimeRange => {
-                let (from, to) = property
+                let time_range_queries = property
                     .component_or_empty::<components::TimeRangeQueries>()?
-                    .unwrap_or_default()
-                    .query_for_timeline(&timeline)
-                    .map_or((TimeInt::MIN, TimeInt::MAX), |q| {
-                        (q.start.into(), q.end.into())
-                    });
+                    .unwrap_or_default();
 
-                QueryKind::Range { from, to }
+                let Some(time_range_query) = time_range_queries.query_for_timeline(&timeline)
+                else {
+                    // It's hard to recover from a missing time range query and provide a meaningful
+                    // default, so we just fall back to the latest-at query.
+                    //TODO(ab): should this be an error?
+                    return Ok(Self::FollowTimeline);
+                };
+
+                QueryKind::Range {
+                    pov_entity: time_range_query.pov_entity.clone().into(),
+                    pov_component: ComponentName::from(time_range_query.pov_component.as_str()),
+                    from: time_range_query.start.into(),
+                    to: time_range_query.end.into(),
+                }
             }
         };
 
@@ -103,7 +114,7 @@ impl Query {
                     time: time_ctrl.time_int().unwrap_or(TimeInt::MAX),
                 }
             }
-            Self::Override { kind, .. } => *kind,
+            Self::Override { kind, .. } => kind.clone(),
         }
     }
 
@@ -134,13 +145,20 @@ impl Query {
                 property.save_blueprint_component(ctx, &latest_at_queries);
                 property.save_blueprint_component(ctx, &components::QueryKind::LatestAt);
             }
-            QueryKind::Range { from, to } => {
+            QueryKind::Range {
+                pov_entity,
+                pov_component,
+                from,
+                to,
+            } => {
                 let mut time_range_queries = property
                     .component_or_empty::<components::TimeRangeQueries>()?
                     .unwrap_or_default();
 
                 time_range_queries.set_query_for_timeline(datatypes::TimeRangeQuery {
                     timeline: timeline_name.as_str().into(),
+                    pov_entity: pov_entity.into(),
+                    pov_component: pov_component.as_str().into(),
                     start: (*from).into(),
                     end: (*to).into(),
                 });
@@ -271,8 +289,26 @@ fn override_ui(
             } else {
                 TimeDragValue::from_time_range(0..=0)
             };
-            let changed =
-                ui_query_kind.ui(ctx, ui, &time_drag_value, timeline.name(), timeline.typ());
+
+            // Gather all entities that can meaningfully be used as point-of-view:
+            // - part of this view
+            // - has any component on the chosen timeline
+            let mut all_entities = BTreeSet::new();
+            ctx.lookup_query_result(space_view_id)
+                .tree
+                .visit(&mut |node| {
+                    if !node.data_result.tree_prefix_only {
+                        let comp_for_entity = ctx
+                            .recording_store()
+                            .all_components_on_timeline(&timeline, &node.data_result.entity_path);
+                        if comp_for_entity.is_some_and(|components| !components.is_empty()) {
+                            all_entities.insert(node.data_result.entity_path.clone());
+                        }
+                    }
+                    true
+                });
+
+            let changed = ui_query_kind.ui(ctx, ui, &time_drag_value, &timeline, &all_entities);
             if changed {
                 Query::save_kind_for_timeline(
                     ctx,
