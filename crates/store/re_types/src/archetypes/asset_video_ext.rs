@@ -14,7 +14,7 @@ impl AssetVideo {
     /// Returns an error if the file cannot be read.
     #[cfg(not(target_arch = "wasm32"))]
     #[inline]
-    pub fn from_file(filepath: impl AsRef<std::path::Path>) -> std::io::Result<Self> {
+    pub fn from_file_path(filepath: impl AsRef<std::path::Path>) -> std::io::Result<Self> {
         let filepath = filepath.as_ref();
         let contents = std::fs::read(filepath)?;
         Ok(Self::from_file_contents(
