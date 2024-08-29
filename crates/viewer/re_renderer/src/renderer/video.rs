@@ -545,6 +545,8 @@ mod decoder {
 
     impl VideoDecoder {
         pub fn new(render_context: &RenderContext, data: re_video::VideoData) -> Option<Self> {
+            re_log::warn_once!("Video playback not yet available in the native viewer, try the web viewer instead. See https://github.com/rerun-io/rerun/issues/7298 for more information.");
+
             let device = render_context.device.clone();
             let texture = alloc_video_frame_texture(
                 &device,
