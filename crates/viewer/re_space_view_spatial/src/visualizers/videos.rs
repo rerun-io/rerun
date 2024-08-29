@@ -7,7 +7,6 @@ use re_renderer::renderer::TextureFilterMag;
 use re_renderer::renderer::TextureFilterMin;
 use re_renderer::renderer::TexturedRect;
 use re_renderer::RenderContext;
-use re_space_view::TimeKey;
 use re_types::archetypes::AssetVideo;
 use re_types::components::Blob;
 use re_types::components::MediaType;
@@ -38,7 +37,7 @@ pub struct AssetVideoVisualizer {
 }
 
 struct AssetVideoComponentData {
-    index: TimeKey,
+    index: (TimeInt, RowId),
     blob: ArrowBuffer<u8>,
     media_type: Option<ArrowString>,
 }
