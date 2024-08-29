@@ -48,6 +48,8 @@ def run_cargo(cargo_cmd: str, cargo_args: str, clippy_conf: str | None = None) -
     start_time = time.time()
 
     additional_env_vars = {}
+    # Compilation will fail we don't manually set `--cfg=web_sys_unstable_apis`,
+    # because env vars are not propagated from CI.
     additional_env_vars["RUSTFLAGS"] = "--cfg=web_sys_unstable_apis --deny warnings"
     additional_env_vars["RUSTDOCFLAGS"] = "--cfg=web_sys_unstable_apis --deny warnings"
     if clippy_conf is not None:
