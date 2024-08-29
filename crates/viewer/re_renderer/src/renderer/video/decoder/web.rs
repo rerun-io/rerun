@@ -201,11 +201,14 @@ impl VideoDecoder {
             // no buffered frames - texture will be blank
             return self.zeroed_texture_float.clone();
         };
-        let (_, frame) = frames[frame_idx].clone();
 
         // drain up-to (but not including) the frame idx, clearing out any frames
         // before it. this lets the video decoder output more frames.
         drop(frames.drain(0..frame_idx));
+
+        // after draining all old frames, the next frame will be at index 0
+        let frame_idx = 0;
+        let (_, frame) = &frames[frame_idx];
 
         // https://w3c.github.io/webcodecs/#output-videoframes 1. 1. states:
         //   Let timestamp and duration be the timestamp and duration from the EncodedVideoChunk associated with output.
@@ -279,7 +282,7 @@ impl VideoDecoder {
 
 fn copy_video_frame_to_texture(
     queue: &wgpu::Queue,
-    frame: web_sys::VideoFrame,
+    frame: &web_sys::VideoFrame,
     texture: &wgpu::Texture,
 ) {
     let size = wgpu::Extent3d {
@@ -293,8 +296,9 @@ fn copy_video_frame_to_texture(
         // and doesn't actually inspect it in any way. The browser then does its own
         // typecheck that doesn't care what kind of image source wgpu gave it.
         #[allow(unsafe_code)]
-        let frame =
-            unsafe { std::mem::transmute::<web_sys::VideoFrame, web_sys::HtmlVideoElement>(frame) };
+        let frame = unsafe {
+            std::mem::transmute::<web_sys::VideoFrame, web_sys::HtmlVideoElement>(frame.clone())
+        };
         wgpu_types::ImageCopyExternalImage {
             source: wgpu_types::ExternalImageSource::HTMLVideoElement(frame),
             origin: wgpu_types::Origin2d { x: 0, y: 0 },
