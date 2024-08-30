@@ -48,10 +48,22 @@ impl WebHandle {
     }
 
     #[wasm_bindgen]
-    pub async fn start(
-        &self,
-        canvas: web_sys::HtmlCanvasElement,
-    ) -> Result<(), wasm_bindgen::JsValue> {
+    pub async fn start(&self, canvas: JsValue) -> Result<(), wasm_bindgen::JsValue> {
+        let canvas = if let Some(canvas_id) = canvas.as_string() {\
+            // For backwards compatibility with old JS/HTML written before 2024-08-30
+            let document = web_sys::window().unwrap().document().unwrap();
+            let element = document
+                .get_element_by_id(&canvas_id)
+                .ok_or_else(|| format!("Canvas element '{canvas_id}' not found."))?;
+            element
+                .dyn_into::<web_sys::HtmlCanvasElement>()
+                .map_err(|_| "Expected a canvas element or canvas id, got {canvas:?}")?
+        } else {
+            canvas
+                .dyn_into::<web_sys::HtmlCanvasElement>()
+                .map_err(|_| "Expected a canvas element or canvas id, got {canvas:?}")?
+        };
+
         let app_options = self.app_options.clone();
         let web_options = eframe::WebOptions {
             wgpu_options: crate::wgpu_options(app_options.render_backend.clone()),
