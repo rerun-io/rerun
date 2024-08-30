@@ -49,7 +49,7 @@ impl WebHandle {
 
     #[wasm_bindgen]
     pub async fn start(&self, canvas: JsValue) -> Result<(), wasm_bindgen::JsValue> {
-        let canvas = if let Some(canvas_id) = canvas.as_string() {\
+        let canvas = if let Some(canvas_id) = canvas.as_string() {
             // For backwards compatibility with old JS/HTML written before 2024-08-30
             let document = web_sys::window().unwrap().document().unwrap();
             let element = document
