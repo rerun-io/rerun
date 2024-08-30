@@ -47,9 +47,6 @@ impl WebHandle {
         })
     }
 
-    /// - `url` is an optional URL to either an .rrd file over http, or a Rerun WebSocket server.
-    /// - `manifest_url` is an optional URL to an `examples_manifest.json` file over http.
-    /// - `force_wgpu_backend` is an optional string to force a specific backend, either `webgl` or `webgpu`.
     #[wasm_bindgen]
     pub async fn start(
         &self,
