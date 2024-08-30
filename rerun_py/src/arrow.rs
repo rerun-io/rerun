@@ -11,8 +11,8 @@ use arrow2::{
 use pyo3::{
     exceptions::{PyRuntimeError, PyValueError},
     ffi::Py_uintptr_t,
-    types::{PyDict, PyString},
-    PyAny, PyResult,
+    types::{PyAnyMethods as _, PyDict, PyDictMethods, PyString},
+    Bound, PyAny, PyResult,
 };
 
 use re_chunk::{Chunk, ChunkError, ChunkId, PendingRow, RowId, TimeColumn};
@@ -22,7 +22,10 @@ use re_sdk::{ComponentName, EntityPath, Timeline};
 /// Perform conversion between a pyarrow array to arrow2 types.
 ///
 /// `name` is the name of the Rerun component, and the name of the pyarrow `Field` (column name).
-fn array_to_rust(arrow_array: &PyAny, name: Option<&str>) -> PyResult<(Box<dyn Array>, Field)> {
+fn array_to_rust(
+    arrow_array: &Bound<'_, PyAny>,
+    name: Option<&str>,
+) -> PyResult<(Box<dyn Array>, Field)> {
     // prepare pointers to receive the Array struct
     let array = Box::new(ffi::ArrowArray::empty());
     let schema = Box::new(ffi::ArrowSchema::empty());
@@ -90,7 +93,7 @@ fn array_to_rust(arrow_array: &PyAny, name: Option<&str>) -> PyResult<(Box<dyn A
 
 /// Build a [`PendingRow`] given a '**kwargs'-style dictionary of component arrays.
 pub fn build_row_from_components(
-    components: &PyDict,
+    components: &Bound<'_, PyDict>,
     time_point: &TimePoint,
 ) -> PyResult<PendingRow> {
     // Create row-id as early as possible. It has a timestamp and is used to estimate e2e latency.
@@ -99,8 +102,9 @@ pub fn build_row_from_components(
 
     let (arrays, fields): (Vec<Box<dyn Array>>, Vec<Field>) = itertools::process_results(
         components.iter().map(|(name, array)| {
-            let name = name.downcast::<PyString>()?.to_str()?;
-            array_to_rust(array, Some(name))
+            let py_name = name.downcast::<PyString>()?;
+            let name: std::borrow::Cow<'_, str> = py_name.extract()?;
+            array_to_rust(&array, Some(&name))
         }),
         |iter| iter.unzip(),
     )?;
@@ -121,8 +125,8 @@ pub fn build_row_from_components(
 /// Build a [`Chunk`] given a '**kwargs'-style dictionary of component arrays.
 pub fn build_chunk_from_components(
     entity_path: EntityPath,
-    timelines: &PyDict,
-    components: &PyDict,
+    timelines: &Bound<'_, PyDict>,
+    components: &Bound<'_, PyDict>,
 ) -> PyResult<Chunk> {
     // Create chunk-id as early as possible. It has a timestamp and is used to estimate e2e latency.
     let chunk_id = ChunkId::new();
@@ -130,8 +134,9 @@ pub fn build_chunk_from_components(
     // Extract the timeline data
     let (arrays, fields): (Vec<Box<dyn Array>>, Vec<Field>) = itertools::process_results(
         timelines.iter().map(|(name, array)| {
-            let name = name.downcast::<PyString>()?.to_str()?;
-            array_to_rust(array, Some(name))
+            let py_name = name.downcast::<PyString>()?;
+            let name: std::borrow::Cow<'_, str> = py_name.extract()?;
+            array_to_rust(&array, Some(&name))
         }),
         |iter| iter.unzip(),
     )?;
@@ -171,8 +176,9 @@ pub fn build_chunk_from_components(
     // Extract the component data
     let (arrays, fields): (Vec<Box<dyn Array>>, Vec<Field>) = itertools::process_results(
         components.iter().map(|(name, array)| {
-            let name = name.downcast::<PyString>()?.to_str()?;
-            array_to_rust(array, Some(name))
+            let py_name = name.downcast::<PyString>()?;
+            let name: std::borrow::Cow<'_, str> = py_name.extract()?;
+            array_to_rust(&array, Some(&name))
         }),
         |iter| iter.unzip(),
     )?;
