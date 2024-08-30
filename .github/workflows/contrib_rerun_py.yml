@@ -56,6 +56,35 @@ jobs:
           pixi-version: v0.25.0
           environments: wheel-test-min
 
+      - name: Build rerun-cli
+        env:
+          # this stops `re_web_viewer_server/build.rs` from running
+          RERUN_IS_PUBLISHING: true
+        run: |
+          cargo build \
+            --locked \
+            -p rerun-cli \
+            --no-default-features \
+            --features native_viewer,web_viewer \
+            --release \
+            --target x86_64-unknown-linux-gnu
+
+      - name: Copy rerun-cli to wheel foldcer
+        run: |
+          cp target/release/rerun rerun_py/rerun_sdk/rerun_cli
+
+      - name: Build the wheel
+        run: |
+          pixi run python scripts/ci/build_and_upload_wheels.py \
+            --mode pr \
+            --target x86_64-unknown-linux-gnu \
+            --dir unused \
+            --compat manylinux_2_34
+
+      - name: Install built wheel
+        run: |
+          pixi run python scripts/ci/pixi_install_wheel.py --feature python-pypi --package rerun-sdk --dir dist/x86_64-unknown-linux-gnu
+
       - name: Run e2e test
         run: pixi run -e wheel-test-min RUST_LOG=debug scripts/run_python_e2e_test.py --no-build # rerun-sdk is already built and installed
 
