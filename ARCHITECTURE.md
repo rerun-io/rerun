@@ -216,6 +216,7 @@ Update instructions:
 | re_string_interner | Yet another string interning library                                                 |
 | re_tracing         | Helpers for tracing/spans/flamegraphs and such.                                      |
 | re_tuid            | 128-bit Time-based Unique Identifier                                                 |
+| re_video           | Video decoding library                                                               |
 
 
 

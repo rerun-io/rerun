@@ -28,6 +28,7 @@ include "./datatypes/tensor_data.fbs";
 include "./datatypes/tensor_dimension.fbs";
 include "./datatypes/tensor_dimension_selection.fbs";
 include "./datatypes/time_int.fbs";
+include "./datatypes/uint16.fbs";
 include "./datatypes/uint32.fbs";
 include "./datatypes/uint64.fbs";
 include "./datatypes/utf8.fbs";

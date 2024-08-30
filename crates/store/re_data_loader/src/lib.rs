@@ -416,6 +416,10 @@ pub const SUPPORTED_IMAGE_EXTENSIONS: &[&str] = &[
     "pbm", "pgm", "png", "ppm", "tga", "tif", "tiff", "webp",
 ];
 
+/// Experimental video support!
+// TODO(#7298): stabilize video support
+pub const SUPPORTED_VIDEO_EXTENSIONS: &[&str] = &["mp4"];
+
 pub const SUPPORTED_MESH_EXTENSIONS: &[&str] = &["glb", "gltf", "obj", "stl"];
 
 // TODO(#4532): `.ply` data loader should support 2D point cloud & meshes
@@ -431,6 +435,7 @@ pub fn supported_extensions() -> impl Iterator<Item = &'static str> {
     SUPPORTED_RERUN_EXTENSIONS
         .iter()
         .chain(SUPPORTED_IMAGE_EXTENSIONS)
+        .chain(SUPPORTED_VIDEO_EXTENSIONS)
         .chain(SUPPORTED_MESH_EXTENSIONS)
         .chain(SUPPORTED_POINT_CLOUD_EXTENSIONS)
         .chain(SUPPORTED_TEXT_EXTENSIONS)
@@ -440,6 +445,7 @@ pub fn supported_extensions() -> impl Iterator<Item = &'static str> {
 /// Is this a supported file extension by any of our builtin [`DataLoader`]s?
 pub fn is_supported_file_extension(extension: &str) -> bool {
     SUPPORTED_IMAGE_EXTENSIONS.contains(&extension)
+        || SUPPORTED_VIDEO_EXTENSIONS.contains(&extension)
         || SUPPORTED_MESH_EXTENSIONS.contains(&extension)
         || SUPPORTED_POINT_CLOUD_EXTENSIONS.contains(&extension)
         || SUPPORTED_RERUN_EXTENSIONS.contains(&extension)

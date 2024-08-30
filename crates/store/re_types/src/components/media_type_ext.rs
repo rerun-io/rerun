@@ -45,6 +45,11 @@ impl MediaType {
     /// Either binary or ASCII.
     /// <https://www.iana.org/assignments/media-types/model/stl>
     pub const STL: &'static str = "model/stl";
+
+    /// [MP4 video](https://en.wikipedia.org/wiki/MP4_file_format): `video/mp4`.
+    ///
+    /// <https://www.iana.org/assignments/media-types/video/mp4>
+    pub const MP4: &'static str = "video/mp4";
 }
 
 impl MediaType {
@@ -100,6 +105,12 @@ impl MediaType {
     #[inline]
     pub fn stl() -> Self {
         Self(Self::STL.into())
+    }
+
+    /// `video/mp4`
+    #[inline]
+    pub fn mp4() -> Self {
+        Self(Self::MP4.into())
     }
 }
 

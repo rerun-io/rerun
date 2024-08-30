@@ -313,9 +313,11 @@ impl SeriesPointSystem {
                     })
                 }
 
-                if let Some(all_color_chunks) = results.get_required_chunks(&Color::name()) {
+                {
+                    let all_color_chunks = results.get_optional_chunks(&Color::name());
+
                     if all_color_chunks.len() == 1 && all_color_chunks[0].is_static() {
-                        re_tracing::profile_scope!("override fast path");
+                        re_tracing::profile_scope!("override/default fast path");
 
                         let color = all_color_chunks[0]
                             .iter_primitive::<u32>(&Color::name())
@@ -353,11 +355,11 @@ impl SeriesPointSystem {
 
                 debug_assert_eq!(MarkerSize::arrow_datatype(), ArrowDatatype::Float32);
 
-                if let Some(all_marker_size_chunks) =
-                    results.get_required_chunks(&MarkerSize::name())
                 {
+                    let all_marker_size_chunks = results.get_optional_chunks(&MarkerSize::name());
+
                     if all_marker_size_chunks.len() == 1 && all_marker_size_chunks[0].is_static() {
-                        re_tracing::profile_scope!("override fast path");
+                        re_tracing::profile_scope!("override/default fast path");
 
                         let marker_size = all_marker_size_chunks[0]
                             .iter_primitive::<f32>(&MarkerSize::name())
@@ -401,13 +403,14 @@ impl SeriesPointSystem {
             {
                 re_tracing::profile_scope!("fill marker shapes");
 
-                if let Some(all_marker_shapes_chunks) =
-                    results.get_required_chunks(&MarkerShape::name())
                 {
+                    let all_marker_shapes_chunks =
+                        results.get_optional_chunks(&MarkerShape::name());
+
                     if all_marker_shapes_chunks.len() == 1
                         && all_marker_shapes_chunks[0].is_static()
                     {
-                        re_tracing::profile_scope!("override fast path");
+                        re_tracing::profile_scope!("override/default fast path");
 
                         let marker_shape = all_marker_shapes_chunks[0]
                             .iter_component::<MarkerShape>()

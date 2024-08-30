@@ -297,9 +297,10 @@ impl SeriesLineSystem {
                     })
                 }
 
-                if let Some(all_color_chunks) = results.get_required_chunks(&Color::name()) {
+                {
+                    let all_color_chunks = results.get_optional_chunks(&Color::name());
                     if all_color_chunks.len() == 1 && all_color_chunks[0].is_static() {
-                        re_tracing::profile_scope!("override fast path");
+                        re_tracing::profile_scope!("override/default fast path");
 
                         let color = all_color_chunks[0]
                             .iter_primitive::<u32>(&Color::name())
@@ -337,12 +338,12 @@ impl SeriesLineSystem {
 
                 debug_assert_eq!(StrokeWidth::arrow_datatype(), ArrowDatatype::Float32);
 
-                if let Some(all_stroke_width_chunks) =
-                    results.get_required_chunks(&StrokeWidth::name())
                 {
+                    let all_stroke_width_chunks = results.get_optional_chunks(&StrokeWidth::name());
+
                     if all_stroke_width_chunks.len() == 1 && all_stroke_width_chunks[0].is_static()
                     {
-                        re_tracing::profile_scope!("override fast path");
+                        re_tracing::profile_scope!("override/default fast path");
 
                         let stroke_width = all_stroke_width_chunks[0]
                             .iter_primitive::<f32>(&StrokeWidth::name())

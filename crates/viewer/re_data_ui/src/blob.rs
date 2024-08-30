@@ -81,6 +81,7 @@ impl EntityDataUi for Blob {
     }
 }
 
+// TODO(jan): this should NOT try to load videos as images
 #[allow(clippy::too_many_arguments)]
 pub fn blob_preview_and_save_ui(
     ctx: &re_viewer_context::ViewerContext<'_>,

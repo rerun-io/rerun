@@ -1,0 +1,26 @@
+namespace rerun.archetypes;
+
+/// A video file.
+///
+/// NOTE: Videos can only be viewed in the Rerun web viewer.
+/// Only MP4 and AV1 is currently supported, and not in all browsers.
+/// Follow <https://github.com/rerun-io/rerun/issues/7298> for updates on the native support.
+table AssetVideo (
+  "attr.rerun.experimental"
+) {
+  // --- Required ---
+
+  /// The asset's bytes.
+  blob: rerun.components.Blob ("attr.rerun.component_required", required, order: 1000);
+
+  // --- Recommended ---
+
+  /// The Media Type of the asset.
+  ///
+  /// Supported values:
+  /// * `video/mp4`
+  ///
+  /// If omitted, the viewer will try to guess from the data blob.
+  /// If it cannot guess, it won't be able to render the asset.
+  media_type: rerun.components.MediaType ("attr.rerun.component_recommended", nullable, order: 2000);
+}

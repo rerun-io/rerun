@@ -65,9 +65,10 @@ def blueprint() -> rrb.BlueprintLike:
                 ),
             ]
         ),
-        rrb.BlueprintPanel(state="collapsed"),
-        rrb.TimePanel(state="collapsed"),
-        rrb.SelectionPanel(state="collapsed"),
+        # NOTE: It looks nice but it's very annoying when going through several checklists.
+        # rrb.BlueprintPanel(state="collapsed"),
+        # rrb.TimePanel(state="collapsed"),
+        # rrb.SelectionPanel(state="collapsed"),
     )
 
 

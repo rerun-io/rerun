@@ -137,7 +137,7 @@ impl Points2DVisualizer {
                     instance_positions: data.positions.iter().map(|p| glam::vec2(p.x(), p.y())),
                     labels: &data.labels,
                     colors: &colors,
-                    show_labels: data.show_labels,
+                    show_labels: data.show_labels.unwrap_or_else(|| self.fallback_for(ctx)),
                     annotation_infos: &annotation_infos,
                 },
                 world_from_obj,
@@ -320,4 +320,10 @@ impl TypedComponentFallbackProvider<DrawOrder> for Points2DVisualizer {
     }
 }
 
-re_viewer_context::impl_component_fallback_provider!(Points2DVisualizer => [Color, DrawOrder]);
+impl TypedComponentFallbackProvider<ShowLabels> for Points2DVisualizer {
+    fn fallback_for(&self, ctx: &QueryContext<'_>) -> ShowLabels {
+        super::utilities::show_labels_fallback::<Position2D>(ctx)
+    }
+}
+
+re_viewer_context::impl_component_fallback_provider!(Points2DVisualizer => [Color, DrawOrder, ShowLabels]);

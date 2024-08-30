@@ -2296,6 +2296,13 @@ fn quote_obj_docs(objects: &Objects, obj: &Object) -> TokenStream {
         *first_line = format!("**{}**: {}", obj.kind.singular_name(), first_line);
     }
 
+    if obj.is_experimental() {
+        lines.push(String::new());
+        lines.push(
+            "⚠ **This is an experimental API! It is not fully supported, and is likely to change significantly in future versions.**".to_owned(),
+        );
+    }
+
     quote_doc_lines(&lines)
 }
 

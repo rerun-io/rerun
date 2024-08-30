@@ -87,6 +87,7 @@ from .time_range_boundary import (
     TimeRangeBoundaryLike,
     TimeRangeBoundaryType,
 )
+from .uint16 import UInt16, UInt16ArrayLike, UInt16Batch, UInt16Like, UInt16Type
 from .uint32 import UInt32, UInt32ArrayLike, UInt32Batch, UInt32Like, UInt32Type
 from .uint64 import UInt64, UInt64ArrayLike, UInt64Batch, UInt64Like, UInt64Type
 from .utf8 import Utf8, Utf8ArrayLike, Utf8Batch, Utf8Like, Utf8Type
@@ -268,6 +269,11 @@ __all__ = [
     "TimeRangeBoundaryType",
     "TimeRangeLike",
     "TimeRangeType",
+    "UInt16",
+    "UInt16ArrayLike",
+    "UInt16Batch",
+    "UInt16Like",
+    "UInt16Type",
     "UInt32",
     "UInt32ArrayLike",
     "UInt32Batch",

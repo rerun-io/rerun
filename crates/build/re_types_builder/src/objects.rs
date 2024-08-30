@@ -587,6 +587,10 @@ impl Object {
         self.try_get_attr::<String>(crate::ATTR_RERUN_DEPRECATED)
     }
 
+    pub fn is_experimental(&self) -> bool {
+        self.is_attr_set(crate::ATTR_RERUN_EXPERIMENTAL)
+    }
+
     pub fn doc_category(&self) -> Option<String> {
         self.try_get_attr::<String>(crate::ATTR_DOCS_CATEGORY)
     }

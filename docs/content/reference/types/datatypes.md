@@ -38,6 +38,7 @@ Data types are the lowest layer of the data model hierarchy. They are re-usable 
 * [`TimeInt`](datatypes/time_int.md): A 64-bit number describing either nanoseconds OR sequence numbers.
 * [`TimeRange`](datatypes/time_range.md): Visible time range bounds for a specific timeline.
 * [`TimeRangeBoundary`](datatypes/time_range_boundary.md): Left or right boundary of a time range.
+* [`UInt16`](datatypes/uint16.md): A 16bit unsigned integer.
 * [`UInt32`](datatypes/uint32.md): A 32bit unsigned integer.
 * [`UInt64`](datatypes/uint64.md): A 64bit unsigned integer.
 * [`UVec2D`](datatypes/uvec2d.md): A uint32 vector in 2D space.
