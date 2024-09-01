@@ -197,60 +197,59 @@ fn class_description_ui(
             &format!("Keypoint Connections for Class {}", id.0),
             true,
             |ui| {
-                ui.push_id(format!("keypoints_connections_{}", id.0), |ui| {
-                    use egui_extras::Column;
+                use egui_extras::Column;
 
-                    let table = ui_layout
-                        .table(ui)
-                        .cell_layout(egui::Layout::left_to_right(egui::Align::Center))
-                        .column(Column::auto().clip(true).at_least(40.0))
-                        .column(Column::auto().clip(true).at_least(40.0));
-                    table
-                        .header(DesignTokens::table_header_height(), |mut header| {
-                            DesignTokens::setup_table_header(&mut header);
-                            header.col(|ui| {
-                                ui.strong("From");
-                            });
-                            header.col(|ui| {
-                                ui.strong("To");
-                            });
-                        })
-                        .body(|mut body| {
-                            DesignTokens::setup_table_body(&mut body);
-
-                            // TODO(jleibs): Helper to do this with caching somewhere
-                            let keypoint_map: ahash::HashMap<KeypointId, AnnotationInfo> = {
-                                re_tracing::profile_scope!("build_annotation_map");
-                                class
-                                    .keypoint_annotations
-                                    .iter()
-                                    .map(|kp| (kp.id.into(), kp.clone()))
-                                    .collect()
-                            };
-
-                            body.rows(row_height, class.keypoint_connections.len(), |mut row| {
-                                let pair = &class.keypoint_connections[row.index()];
-                                let KeypointPair {
-                                    keypoint0,
-                                    keypoint1,
-                                } = pair;
-
-                                for id in [keypoint0, keypoint1] {
-                                    row.col(|ui| {
-                                        ui.label(
-                                            keypoint_map
-                                                .get(id)
-                                                .and_then(|info| info.label.as_ref())
-                                                .map_or_else(
-                                                    || format!("id {}", id.0),
-                                                    |label| label.to_string(),
-                                                ),
-                                        );
-                                    });
-                                }
-                            });
+                let table = ui_layout
+                    .table(ui)
+                    .id_source(("keypoints_connections", id))
+                    .cell_layout(egui::Layout::left_to_right(egui::Align::Center))
+                    .column(Column::auto().clip(true).at_least(40.0))
+                    .column(Column::auto().clip(true).at_least(40.0));
+                table
+                    .header(DesignTokens::table_header_height(), |mut header| {
+                        DesignTokens::setup_table_header(&mut header);
+                        header.col(|ui| {
+                            ui.strong("From");
                         });
-                });
+                        header.col(|ui| {
+                            ui.strong("To");
+                        });
+                    })
+                    .body(|mut body| {
+                        DesignTokens::setup_table_body(&mut body);
+
+                        // TODO(jleibs): Helper to do this with caching somewhere
+                        let keypoint_map: ahash::HashMap<KeypointId, AnnotationInfo> = {
+                            re_tracing::profile_scope!("build_annotation_map");
+                            class
+                                .keypoint_annotations
+                                .iter()
+                                .map(|kp| (kp.id.into(), kp.clone()))
+                                .collect()
+                        };
+
+                        body.rows(row_height, class.keypoint_connections.len(), |mut row| {
+                            let pair = &class.keypoint_connections[row.index()];
+                            let KeypointPair {
+                                keypoint0,
+                                keypoint1,
+                            } = pair;
+
+                            for id in [keypoint0, keypoint1] {
+                                row.col(|ui| {
+                                    ui.label(
+                                        keypoint_map
+                                            .get(id)
+                                            .and_then(|info| info.label.as_ref())
+                                            .map_or_else(
+                                                || format!("id {}", id.0),
+                                                |label| label.to_string(),
+                                            ),
+                                    );
+                                });
+                            }
+                        });
+                    });
             },
         );
     }
