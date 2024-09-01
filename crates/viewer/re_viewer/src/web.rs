@@ -57,11 +57,15 @@ impl WebHandle {
                 .ok_or_else(|| format!("Canvas element '{canvas_id}' not found."))?;
             element
                 .dyn_into::<web_sys::HtmlCanvasElement>()
-                .map_err(|_| "Expected a canvas element or canvas id, got {canvas:?}")?
+                .map_err(|element| {
+                    format!("Expected a canvas element or canvas id, got {element:?}")
+                })?
         } else {
             canvas
                 .dyn_into::<web_sys::HtmlCanvasElement>()
-                .map_err(|_| "Expected a canvas element or canvas id, got {canvas:?}")?
+                .map_err(|element| {
+                    format!("Expected a canvas element or canvas id, got {element:?}")
+                })?
         };
 
         let app_options = self.app_options.clone();
