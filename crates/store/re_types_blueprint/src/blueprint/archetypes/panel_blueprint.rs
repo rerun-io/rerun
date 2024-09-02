@@ -140,6 +140,8 @@ impl ::re_types_core::AsComponents for PanelBlueprint {
     }
 }
 
+impl ::re_types_core::ArchetypeReflectionMarker for PanelBlueprint {}
+
 impl PanelBlueprint {
     /// Create a new `PanelBlueprint`.
     #[inline]

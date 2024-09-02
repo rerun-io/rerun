@@ -21,7 +21,7 @@ __all__ = ["ContainerBlueprint"]
 
 @define(str=False, repr=False, init=False)
 class ContainerBlueprint(Archetype):
-    """**Archetype**: The top-level description of the Viewport."""
+    """**Archetype**: The description of a container."""
 
     def __init__(
         self: Any,

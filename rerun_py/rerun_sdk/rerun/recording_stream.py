@@ -189,7 +189,7 @@ class RecordingStream:
     ```
     WARNING: if using a RecordingStream as a context manager, yielding from a generator function
     while holding the context open will leak the context and likely cause your program to send data
-    to the wrong stream. See: https://github.com/rerun-io/rerun/issues/6238. You can work around this
+    to the wrong stream. See: <https://github.com/rerun-io/rerun/issues/6238>. You can work around this
     by using the [`rerun.recording_stream_generator_ctx`][] decorator.
 
     See also: [`rerun.get_data_recording`][], [`rerun.get_global_data_recording`][],

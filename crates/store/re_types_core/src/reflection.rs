@@ -64,4 +64,7 @@ pub struct ArchetypeFieldReflection {
 
     /// Markdown docstring for the field (not for the component type).
     pub docstring_md: &'static str,
+
+    /// Is this a required component?
+    pub is_required: bool,
 }

@@ -89,7 +89,7 @@ class FaceDetectorLogger:
     """
     Logger for the MediaPipe Face Detection solution.
 
-    https://developers.google.com/mediapipe/solutions/vision/face_detector
+    <https://developers.google.com/mediapipe/solutions/vision/face_detector>
     """
 
     MODEL_PATH: Final = (MODEL_DIR / "blaze_face_short_range.tflite").resolve()
@@ -158,7 +158,7 @@ class FaceLandmarkerLogger:
     """
     Logger for the MediaPipe Face Landmark Detection solution.
 
-    https://developers.google.com/mediapipe/solutions/vision/face_landmarker
+    <https://developers.google.com/mediapipe/solutions/vision/face_landmarker>
     """
 
     MODEL_PATH: Final = (MODEL_DIR / "face_landmarker.task").resolve()

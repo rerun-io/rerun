@@ -18,7 +18,7 @@ use ::re_types_core::SerializationResult;
 use ::re_types_core::{ComponentBatch, MaybeOwnedComponentBatch};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
-/// **Archetype**: The top-level description of the Viewport.
+/// **Archetype**: The description of a container.
 #[derive(Clone, Debug)]
 pub struct ContainerBlueprint {
     /// The class of the view.
@@ -320,6 +320,8 @@ impl ::re_types_core::AsComponents for ContainerBlueprint {
         .collect()
     }
 }
+
+impl ::re_types_core::ArchetypeReflectionMarker for ContainerBlueprint {}
 
 impl ContainerBlueprint {
     /// Create a new `ContainerBlueprint`.

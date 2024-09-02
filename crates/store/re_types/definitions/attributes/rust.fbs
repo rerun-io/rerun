@@ -41,6 +41,3 @@ attribute "attr.rust.new_pub_crate";
 /// an object of kind `Blueprint` with `attr.rust.override_crate=re_viewport`, the final
 /// object will be generated in `re_viewport/src/blueprint`.
 attribute "attr.rust.override_crate";
-
-/// Specify on an archetype to opt-in into generating `ArchetypeFieldInfo` for all fields.
-attribute "attr.rust.generate_field_info";

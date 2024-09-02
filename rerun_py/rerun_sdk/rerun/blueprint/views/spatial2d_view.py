@@ -114,7 +114,7 @@ class Spatial2DView(SpaceView):
 
             Important note: the path must be a fully qualified entity path starting at the root. The override paths
             do not yet support `$origin` relative paths or glob expressions.
-            This will be addressed in: [https://github.com/rerun-io/rerun/issues/6673][].
+            This will be addressed in <https://github.com/rerun-io/rerun/issues/6673>.
         background:
             Configuration for the background of the view.
         visual_bounds:

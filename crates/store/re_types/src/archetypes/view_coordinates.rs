@@ -181,6 +181,8 @@ impl ::re_types_core::AsComponents for ViewCoordinates {
     }
 }
 
+impl ::re_types_core::ArchetypeReflectionMarker for ViewCoordinates {}
+
 impl ViewCoordinates {
     /// Create a new `ViewCoordinates`.
     #[inline]

@@ -171,6 +171,8 @@ impl ::re_types_core::AsComponents for Tensor {
     }
 }
 
+impl ::re_types_core::ArchetypeReflectionMarker for Tensor {}
+
 impl Tensor {
     /// Create a new `Tensor`.
     #[inline]

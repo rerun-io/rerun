@@ -151,6 +151,8 @@ impl ::re_types_core::AsComponents for VisibleTimeRanges {
     }
 }
 
+impl ::re_types_core::ArchetypeReflectionMarker for VisibleTimeRanges {}
+
 impl VisibleTimeRanges {
     /// Create a new `VisibleTimeRanges`.
     #[inline]

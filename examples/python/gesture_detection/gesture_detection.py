@@ -57,7 +57,7 @@ class GestureDetectorLogger:
     This class provides logging and utility functions for handling gesture recognition.
 
     For more information on MediaPipe Gesture Detection:
-    https://developers.google.com/mediapipe/solutions/vision/gesture_recognizer
+    <https://developers.google.com/mediapipe/solutions/vision/gesture_recognizer>
     """
 
     # URL to the pre-trained MediaPipe Gesture Detection model

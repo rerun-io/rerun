@@ -207,6 +207,8 @@ impl ::re_types_core::AsComponents for Asset3D {
     }
 }
 
+impl ::re_types_core::ArchetypeReflectionMarker for Asset3D {}
+
 impl Asset3D {
     /// Create a new `Asset3D`.
     #[inline]

@@ -195,6 +195,8 @@ impl crate::AsComponents for Clear {
     }
 }
 
+impl crate::ArchetypeReflectionMarker for Clear {}
+
 impl Clear {
     /// Create a new `Clear`.
     #[inline]

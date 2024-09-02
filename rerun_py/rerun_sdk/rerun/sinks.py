@@ -203,7 +203,7 @@ def serve(
     The WebSocket server will buffer all log data in memory so that late connecting viewers will get all the data.
     You can limit the amount of data buffered by the WebSocket server with the `server_memory_limit` argument.
     Once reached, the earliest logged data will be dropped.
-    Note that this means that static data may be dropped if logged early (see https://github.com/rerun-io/rerun/issues/5531).
+    Note that this means that static data may be dropped if logged early (see <https://github.com/rerun-io/rerun/issues/5531>).
 
     This function returns immediately.
 

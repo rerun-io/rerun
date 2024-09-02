@@ -262,6 +262,8 @@ impl ::re_types_core::AsComponents for SegmentationImage {
     }
 }
 
+impl ::re_types_core::ArchetypeReflectionMarker for SegmentationImage {}
+
 impl SegmentationImage {
     /// Create a new `SegmentationImage`.
     #[inline]

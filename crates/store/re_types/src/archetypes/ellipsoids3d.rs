@@ -375,6 +375,8 @@ impl ::re_types_core::AsComponents for Ellipsoids3D {
     }
 }
 
+impl ::re_types_core::ArchetypeReflectionMarker for Ellipsoids3D {}
+
 impl Ellipsoids3D {
     /// Create a new `Ellipsoids3D`.
     #[inline]

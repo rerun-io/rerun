@@ -2,7 +2,7 @@ namespace rerun.blueprint.archetypes;
 
 // ---
 
-/// The top-level description of the Viewport.
+/// The top-level description of the viewport.
 table ViewportBlueprint (
     "attr.rerun.scope": "blueprint",
     "attr.rust.derive": "Default",

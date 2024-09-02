@@ -4,8 +4,7 @@ namespace rerun.blueprint.archetypes;
 /// Ordering of the time range table of the dataframe view
 table TimeRangeTableOrder (
     "attr.rerun.scope": "blueprint",
-    "attr.rust.derive": "Copy",
-    "attr.rust.generate_field_info"
+    "attr.rust.derive": "Copy"
 ) {
     // --- Optional ---
 

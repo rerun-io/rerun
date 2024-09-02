@@ -176,6 +176,8 @@ impl ::re_types_core::AsComponents for Scalar {
     }
 }
 
+impl ::re_types_core::ArchetypeReflectionMarker for Scalar {}
+
 impl Scalar {
     /// Create a new `Scalar`.
     #[inline]

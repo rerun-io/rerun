@@ -9,7 +9,7 @@ namespace rerun.archetypes;
 ///
 /// \py It's not currently possible to use `send_columns` with tensors since construction
 /// \py of `rerun.components.TensorDataBatch` does not support more than a single element.
-/// \py This will be addressed as part of https://github.com/rerun-io/rerun/issues/6832.
+/// \py This will be addressed as part of <https://github.com/rerun-io/rerun/issues/6832>.
 ///
 /// \example archetypes/tensor_simple title="Simple tensor" image="https://static.rerun.io/tensor_simple/baacb07712f7b706e3c80e696f70616c6c20b367/1200w.png"
 table Tensor (

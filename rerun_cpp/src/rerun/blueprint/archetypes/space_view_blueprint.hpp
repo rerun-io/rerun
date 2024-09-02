@@ -19,7 +19,7 @@
 #include <vector>
 
 namespace rerun::blueprint::archetypes {
-    /// **Archetype**: The top-level description of the Viewport.
+    /// **Archetype**: The description of a single view.
     struct SpaceViewBlueprint {
         /// The class of the view.
         rerun::blueprint::components::SpaceViewClass class_identifier;
