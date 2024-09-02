@@ -157,11 +157,7 @@ impl RightPanel {
                     ui,
                     list_item::LabelContent::new("Fake radio button").with_icon_fn(
                         |ui, rect, _visuals| {
-                            let mut ui = ui.child_ui(
-                                rect,
-                                egui::Layout::left_to_right(egui::Align::Center),
-                                None,
-                            );
+                            let mut ui = ui.new_child(egui::UiBuilder::new().max_rect(rect));
                             ui.re_radio_value(&mut self.boolean, true, "");
                         },
                     ),
@@ -171,11 +167,7 @@ impl RightPanel {
                     ui,
                     list_item::LabelContent::new("Fake radio button").with_icon_fn(
                         |ui, rect, _visuals| {
-                            let mut ui = ui.child_ui(
-                                rect,
-                                egui::Layout::left_to_right(egui::Align::Center),
-                                None,
-                            );
+                            let mut ui = ui.new_child(egui::UiBuilder::new().max_rect(rect));
                             ui.re_radio_value(&mut self.boolean, false, "");
                         },
                     ),
