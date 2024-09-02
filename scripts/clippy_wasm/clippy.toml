@@ -34,6 +34,7 @@ disallowed-methods = [
   { path = "poll_promise::Promise::block_and_take", reason = "Cannot block on Web" },
   { path = "poll_promise::Promise::block_until_ready_mut", reason = "Cannot block on Web" },
   { path = "poll_promise::Promise::block_until_ready", reason = "Cannot block on Web" },
+  { path = "pollster::block_on", reason = "Cannot block on Web" },
   { path = "rayon::spawn", reason = "Cannot spawn threads on wasm" },
   { path = "std::sync::mpsc::Receiver::into_iter", reason = "Cannot block on Web" },
   { path = "std::sync::mpsc::Receiver::iter", reason = "Cannot block on Web" },

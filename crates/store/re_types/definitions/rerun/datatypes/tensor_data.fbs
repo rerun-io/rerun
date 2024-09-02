@@ -13,7 +13,7 @@ namespace rerun.datatypes;
 ///
 /// \py It's not currently possible to use `send_columns` with tensors since construction
 /// \py of `rerun.components.TensorDataBatch` does not support more than a single element.
-/// \py This will be addressed as part of https://github.com/rerun-io/rerun/issues/6832.
+/// \py This will be addressed as part of <https://github.com/rerun-io/rerun/issues/6832>.
 table TensorData (
   "attr.python.aliases": "npt.ArrayLike",
   "attr.python.array_aliases": "npt.ArrayLike",

@@ -113,6 +113,8 @@ impl Drop for WebViewerSink {
 /// This url could be a hosted RRD file or a `ws://` url to a running [`re_ws_comms::RerunServer`].
 ///
 /// Note: this does not include the websocket server.
+///
+/// - `force_wgpu_backend` is an optional string to force a specific backend, either `webgl` or `webgpu`.
 #[cfg(feature = "web_viewer")]
 pub fn host_web_viewer(
     bind_ip: &str,

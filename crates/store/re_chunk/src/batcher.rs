@@ -583,7 +583,7 @@ fn batching_thread(config: ChunkBatcherConfig, rx_cmd: Receiver<Command>, tx_chu
     );
 
     // Set to `true` when a flush is triggered for a reason other than hitting the time threshold,
-    // so that the next tick will not unncessarily fire early.
+    // so that the next tick will not unnecessarily fire early.
     let mut skip_next_tick = false;
 
     use crossbeam::select;
