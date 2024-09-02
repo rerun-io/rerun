@@ -87,7 +87,7 @@ class BarChartView(SpaceView):
 
             Important note: the path must be a fully qualified entity path starting at the root. The override paths
             do not yet support `$origin` relative paths or glob expressions.
-            This will be addressed in: [https://github.com/rerun-io/rerun/issues/6673][].
+            This will be addressed in <https://github.com/rerun-io/rerun/issues/6673>.
         plot_legend:
             Configures the legend of the plot.
 
