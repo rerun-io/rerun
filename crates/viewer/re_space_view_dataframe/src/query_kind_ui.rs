@@ -1,8 +1,9 @@
+use std::collections::BTreeSet;
+
 use re_log_types::{EntityPath, ResolvedTimeRange, TimeInt, TimeType, Timeline};
-use re_types_core::ComponentName;
+use re_types_core::{ComponentName, ComponentNameSet};
 use re_ui::{list_item, UiExt};
 use re_viewer_context::{TimeDragValue, ViewerContext};
-use std::collections::BTreeSet;
 
 use crate::view_query::QueryKind;
 
@@ -169,13 +170,37 @@ impl UiQueryKind {
                             Self::LatestAt { .. } => None,
                         };
 
+                        // The list of suggested components is build as follows:
+                        // - consider all indicator components
+                        // - for the matching archetypes, take all required components
+                        // - keep those that are actually present
+                        let suggested_components = || {
+                            all_components
+                                .iter()
+                                .filter_map(|c| {
+                                    c.indicator_component_archetype().and_then(
+                                        |archetype_short_name| {
+                                            ctx.reflection.archetype_reflection_from_short_name(
+                                                &archetype_short_name,
+                                            )
+                                        },
+                                    )
+                                })
+                                .flat_map(|archetype_reflection| {
+                                    archetype_reflection
+                                        .required_fields()
+                                        .map(|field| field.component_name)
+                                })
+                                .filter(|c| all_components.contains(c))
+                                .collect::<ComponentNameSet>()
+                        };
+
                         // If the currently saved component, we auto-switch it to a reasonable one.
                         let mut pov_component = current_component
                             .and_then(|component| {
                                 all_components.contains(&component).then_some(component)
                             })
-                            //TODO(ab): we should be smarter here, e.g. take the required component of the detected archetype
-                            .or_else(|| all_components.first().copied())
+                            .or_else(|| suggested_components().first().copied())
                             .unwrap_or_else(|| ComponentName::from("-"));
                         changed |= Some(pov_component) != current_component;
 

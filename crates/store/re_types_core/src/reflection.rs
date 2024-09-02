@@ -20,6 +20,37 @@ pub struct Reflection {
     pub archetypes: ArchetypeReflectionMap,
 }
 
+impl Reflection {
+    /// Find an [`ArchetypeReflection`] based on its short name.
+    ///
+    /// Useful when the only information available is the short name, e.g. when inferring archetype
+    /// names from an indicator component.
+    //TODO( #6889): tagged component will contain a fully qualified archetype name, so this function
+    // will be unnecessary.
+    pub fn archetype_reflection_from_short_name(
+        &self,
+        short_name: &str,
+    ) -> Option<&ArchetypeReflection> {
+        // note: this mirrors `ArchetypeName::short_name`'s implementation
+        self.archetypes
+            .get(&ArchetypeName::from(short_name))
+            .or_else(|| {
+                self.archetypes.get(&ArchetypeName::from(format!(
+                    "rerun.archetypes.{short_name}"
+                )))
+            })
+            .or_else(|| {
+                self.archetypes.get(&ArchetypeName::from(format!(
+                    "rerun.blueprint.archetypes.{short_name}"
+                )))
+            })
+            .or_else(|| {
+                self.archetypes
+                    .get(&ArchetypeName::from(format!("rerun.{short_name}")))
+            })
+    }
+}
+
 /// Runtime reflection about components.
 pub type ComponentReflectionMap = nohash_hasher::IntMap<ComponentName, ComponentReflection>;
 
@@ -51,6 +82,14 @@ pub struct ArchetypeReflection {
 
     /// All the component fields of the archetype, in the order they appear in the archetype.
     pub fields: Vec<ArchetypeFieldReflection>,
+}
+
+impl ArchetypeReflection {
+    /// Iterate over this archetype's required fields.
+    #[inline]
+    pub fn required_fields(&self) -> impl Iterator<Item = &ArchetypeFieldReflection> {
+        self.fields.iter().filter(|field| field.is_required)
+    }
 }
 
 /// Additional information about an archetype's field.
