@@ -133,7 +133,7 @@ def download_progress(url: str, dst: Path) -> None:
     """
     Download file with tqdm progress bar.
 
-    From: https://gist.github.com/yanqd0/c13ed29e29432e3cf3e7c38467f42f51
+    From: <https://gist.github.com/yanqd0/c13ed29e29432e3cf3e7c38467f42f51>
     """
     resp = requests.get(url, stream=True)
     if resp.status_code != 200:
