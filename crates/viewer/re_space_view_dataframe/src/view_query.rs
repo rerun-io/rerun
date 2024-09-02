@@ -265,60 +265,50 @@ fn override_ui(
                 // we don't need to provide a fallback here as the timeline should be present by definition
                 &EmptySystem {},
             );
+        });
 
-            ui.end_row();
-
-            ui.grid_left_hand_label("Showing");
-
-            let timeline = property
-                .component_or_empty::<components::TimelineName>()?
-                .map(|t| t.into())
-                .and_then(|timeline_name: TimelineName| {
-                    ctx.recording()
-                        .timelines()
-                        .find(|t| t.name() == &timeline_name)
-                        .copied()
-                })
-                .unwrap_or(*ctx.rec_cfg.time_ctrl.read().timeline());
-            let timeline_name = timeline.name();
-
-            let query = Query::try_from_blueprint(ctx, space_view_id)?;
-            let mut ui_query_kind: UiQueryKind = query.kind(ctx).into();
-            let time_drag_value = if let Some(times) = ctx.recording().time_histogram(&timeline) {
-                TimeDragValue::from_time_histogram(times)
-            } else {
-                TimeDragValue::from_time_range(0..=0)
-            };
-
-            // Gather all entities that can meaningfully be used as point-of-view:
-            // - part of this view
-            // - has any component on the chosen timeline
-            let mut all_entities = BTreeSet::new();
-            ctx.lookup_query_result(space_view_id)
-                .tree
-                .visit(&mut |node| {
-                    if !node.data_result.tree_prefix_only {
-                        let comp_for_entity = ctx
-                            .recording_store()
-                            .all_components_on_timeline(&timeline, &node.data_result.entity_path);
-                        if comp_for_entity.is_some_and(|components| !components.is_empty()) {
-                            all_entities.insert(node.data_result.entity_path.clone());
-                        }
-                    }
-                    true
-                });
-
-            let changed = ui_query_kind.ui(ctx, ui, &time_drag_value, &timeline, &all_entities);
-            if changed {
-                Query::save_kind_for_timeline(
-                    ctx,
-                    space_view_id,
-                    timeline_name,
-                    &ui_query_kind.into(),
-                )?;
-            }
-
-            Ok(())
+    let timeline = property
+        .component_or_empty::<components::TimelineName>()?
+        .map(|t| t.into())
+        .and_then(|timeline_name: TimelineName| {
+            ctx.recording()
+                .timelines()
+                .find(|t| t.name() == &timeline_name)
+                .copied()
         })
-        .inner
+        .unwrap_or(*ctx.rec_cfg.time_ctrl.read().timeline());
+    let timeline_name = timeline.name();
+
+    let query = Query::try_from_blueprint(ctx, space_view_id)?;
+    let mut ui_query_kind: UiQueryKind = query.kind(ctx).into();
+    let time_drag_value = if let Some(times) = ctx.recording().time_histogram(&timeline) {
+        TimeDragValue::from_time_histogram(times)
+    } else {
+        TimeDragValue::from_time_range(0..=0)
+    };
+
+    // Gather all entities that can meaningfully be used as point-of-view:
+    // - part of this view
+    // - has any component on the chosen timeline
+    let mut all_entities = BTreeSet::new();
+    ctx.lookup_query_result(space_view_id)
+        .tree
+        .visit(&mut |node| {
+            if !node.data_result.tree_prefix_only {
+                let comp_for_entity = ctx
+                    .recording_store()
+                    .all_components_on_timeline(&timeline, &node.data_result.entity_path);
+                if comp_for_entity.is_some_and(|components| !components.is_empty()) {
+                    all_entities.insert(node.data_result.entity_path.clone());
+                }
+            }
+            true
+        });
+
+    let changed = ui_query_kind.ui(ctx, ui, &time_drag_value, &timeline, &all_entities);
+    if changed {
+        Query::save_kind_for_timeline(ctx, space_view_id, timeline_name, &ui_query_kind.into())?;
+    }
+
+    Ok(())
 }
