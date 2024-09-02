@@ -2514,6 +2514,7 @@ environments:
       - pypi: examples/python/detect_and_track_objects
       - pypi: examples/python/dicom_mri
       - pypi: examples/python/dna
+      - pypi: examples/python/drone_lidar
       - pypi: examples/python/face_tracking
       - pypi: examples/python/gesture_detection
       - pypi: examples/python/human_pose_tracking
@@ -2924,6 +2925,7 @@ environments:
       - pypi: examples/python/detect_and_track_objects
       - pypi: examples/python/dicom_mri
       - pypi: examples/python/dna
+      - pypi: examples/python/drone_lidar
       - pypi: examples/python/incremental_logging
       - pypi: examples/python/lidar
       - pypi: examples/python/live_camera_edge_detection
@@ -3308,6 +3310,7 @@ environments:
       - pypi: examples/python/detect_and_track_objects
       - pypi: examples/python/dicom_mri
       - pypi: examples/python/dna
+      - pypi: examples/python/drone_lidar
       - pypi: examples/python/face_tracking
       - pypi: examples/python/gesture_detection
       - pypi: examples/python/human_pose_tracking
@@ -3696,6 +3699,7 @@ environments:
       - pypi: examples/python/detect_and_track_objects
       - pypi: examples/python/dicom_mri
       - pypi: examples/python/dna
+      - pypi: examples/python/drone_lidar
       - pypi: examples/python/face_tracking
       - pypi: examples/python/gesture_detection
       - pypi: examples/python/human_pose_tracking
@@ -4076,6 +4080,7 @@ environments:
       - pypi: examples/python/detect_and_track_objects
       - pypi: examples/python/dicom_mri
       - pypi: examples/python/dna
+      - pypi: examples/python/drone_lidar
       - pypi: examples/python/face_tracking
       - pypi: examples/python/gesture_detection
       - pypi: examples/python/human_pose_tracking
@@ -4496,6 +4501,7 @@ environments:
       - pypi: examples/python/detect_and_track_objects
       - pypi: examples/python/dicom_mri
       - pypi: examples/python/dna
+      - pypi: examples/python/drone_lidar
       - pypi: examples/python/face_tracking
       - pypi: examples/python/gesture_detection
       - pypi: examples/python/human_pose_tracking
@@ -4857,6 +4863,7 @@ environments:
       - pypi: examples/python/detect_and_track_objects
       - pypi: examples/python/dicom_mri
       - pypi: examples/python/dna
+      - pypi: examples/python/drone_lidar
       - pypi: examples/python/incremental_logging
       - pypi: examples/python/lidar
       - pypi: examples/python/live_camera_edge_detection
@@ -5196,6 +5203,7 @@ environments:
       - pypi: examples/python/detect_and_track_objects
       - pypi: examples/python/dicom_mri
       - pypi: examples/python/dna
+      - pypi: examples/python/drone_lidar
       - pypi: examples/python/face_tracking
       - pypi: examples/python/gesture_detection
       - pypi: examples/python/human_pose_tracking
@@ -5539,6 +5547,7 @@ environments:
       - pypi: examples/python/detect_and_track_objects
       - pypi: examples/python/dicom_mri
       - pypi: examples/python/dna
+      - pypi: examples/python/drone_lidar
       - pypi: examples/python/face_tracking
       - pypi: examples/python/gesture_detection
       - pypi: examples/python/human_pose_tracking
@@ -5871,6 +5880,7 @@ environments:
       - pypi: examples/python/detect_and_track_objects
       - pypi: examples/python/dicom_mri
       - pypi: examples/python/dna
+      - pypi: examples/python/drone_lidar
       - pypi: examples/python/face_tracking
       - pypi: examples/python/gesture_detection
       - pypi: examples/python/human_pose_tracking
@@ -7994,6 +8004,7 @@ environments:
       - pypi: examples/python/detect_and_track_objects
       - pypi: examples/python/dicom_mri
       - pypi: examples/python/dna
+      - pypi: examples/python/drone_lidar
       - pypi: examples/python/face_tracking
       - pypi: examples/python/gesture_detection
       - pypi: examples/python/human_pose_tracking
@@ -8499,6 +8510,7 @@ environments:
       - pypi: examples/python/detect_and_track_objects
       - pypi: examples/python/dicom_mri
       - pypi: examples/python/dna
+      - pypi: examples/python/drone_lidar
       - pypi: examples/python/incremental_logging
       - pypi: examples/python/lidar
       - pypi: examples/python/live_camera_edge_detection
@@ -8975,6 +8987,7 @@ environments:
       - pypi: examples/python/detect_and_track_objects
       - pypi: examples/python/dicom_mri
       - pypi: examples/python/dna
+      - pypi: examples/python/drone_lidar
       - pypi: examples/python/face_tracking
       - pypi: examples/python/gesture_detection
       - pypi: examples/python/human_pose_tracking
@@ -9455,6 +9468,7 @@ environments:
       - pypi: examples/python/detect_and_track_objects
       - pypi: examples/python/dicom_mri
       - pypi: examples/python/dna
+      - pypi: examples/python/drone_lidar
       - pypi: examples/python/face_tracking
       - pypi: examples/python/gesture_detection
       - pypi: examples/python/human_pose_tracking
@@ -9908,6 +9922,7 @@ environments:
       - pypi: examples/python/detect_and_track_objects
       - pypi: examples/python/dicom_mri
       - pypi: examples/python/dna
+      - pypi: examples/python/drone_lidar
       - pypi: examples/python/face_tracking
       - pypi: examples/python/gesture_detection
       - pypi: examples/python/human_pose_tracking
@@ -17975,6 +17990,18 @@ packages:
   purls: []
   size: 5344962
   timestamp: 1687332955991
+- kind: pypi
+  name: drone-lidar
+  version: 0.1.0
+  path: examples/python/drone_lidar
+  sha256: 602dd2bb4646b0e1bee057e01248a8f5da1f177df270dac7ac52be3ba062d299
+  requires_dist:
+  - laspy
+  - numpy
+  - requests
+  - rerun-sdk
+  - tqdm
+  editable: true
 - kind: conda
   name: exceptiongroup
   version: 1.2.2
