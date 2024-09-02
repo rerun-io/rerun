@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import pathlib
-from typing import TYPE_CHECKING, Any
+from typing import Any
 
 from .. import datatypes
 from ..error_utils import catch_and_log_exceptions
