@@ -38,11 +38,6 @@ namespace rerun::archetypes {
             return asset;
         }
 
-
-        static std::optional<rerun::components::MediaType> guess_media_type(
-            const std::filesystem::path& path
-        );
-
         // </CODEGEN_COPY_TO_HEADER>
 #endif
 
@@ -61,27 +56,7 @@ namespace rerun::archetypes {
 
         return Asset3D::from_bytes(
             Collection<uint8_t>::take_ownership(std::move(data)),
-            Asset3D::guess_media_type(path)
+            rerun::components::MediaType::guess_from_path(path)
         );
-    }
-
-    std::optional<rerun::components::MediaType> Asset3D::guess_media_type(
-        const std::filesystem::path& path
-    ) {
-        std::filesystem::path file_path(path);
-        std::string ext = file_path.extension().string();
-        std::transform(ext.begin(), ext.end(), ext.begin(), ::tolower);
-
-        if (ext == ".glb") {
-            return rerun::components::MediaType::glb();
-        } else if (ext == ".gltf") {
-            return rerun::components::MediaType::gltf();
-        } else if (ext == ".obj") {
-            return rerun::components::MediaType::obj();
-        } else if (ext == ".stl") {
-            return rerun::components::MediaType::stl();
-        } else {
-            return std::nullopt;
-        }
     }
 } // namespace rerun::archetypes

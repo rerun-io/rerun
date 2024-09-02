@@ -10,7 +10,6 @@ from .. import datatypes
 from ..error_utils import catch_and_log_exceptions
 
 if TYPE_CHECKING:
-    from ..components import MediaType
     from ..datatypes import Float32Like
 
     ImageLike = Union[
@@ -26,18 +25,6 @@ if TYPE_CHECKING:
         npt.NDArray[np.uint64],
         npt.NDArray[np.uint8],
     ]
-
-
-def guess_media_type(path: str | pathlib.Path) -> MediaType | None:
-    from ..components import MediaType
-
-    ext = pathlib.Path(path).suffix.lower()
-    if ext == ".jpg" or ext == ".jpeg":
-        return MediaType.JPEG
-    elif ext == ".png":
-        return MediaType.PNG
-    else:
-        return None
 
 
 class EncodedImageExt:
@@ -87,6 +74,8 @@ class EncodedImageExt:
 
         """
 
+        from ..components import MediaType
+
         with catch_and_log_exceptions(context=self.__class__.__name__):
             if (path is None) == (contents is None):
                 raise ValueError("Must provide exactly one of 'path' or 'contents'")
@@ -100,7 +89,7 @@ class EncodedImageExt:
                 blob = pathlib.Path(path).read_bytes()
 
                 if media_type is None:
-                    media_type = guess_media_type(str(path))
+                    media_type = MediaType.guess_from_path(path)
 
             self.__attrs_init__(blob=blob, media_type=media_type, draw_order=draw_order, opacity=opacity)
             return

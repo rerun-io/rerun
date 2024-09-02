@@ -7,6 +7,7 @@
 #include "../result.hpp"
 
 #include <cstdint>
+#include <filesystem>
 #include <memory>
 #include <string>
 #include <utility>
@@ -91,6 +92,8 @@ namespace rerun::components {
         static MediaType mp4() {
             return "video/mp4";
         }
+
+        static std::optional<MediaType> guess_from_path(const std::filesystem::path& path);
 
         // END of extensions from media_type_ext.cpp, start of generated code:
 

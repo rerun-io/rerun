@@ -10,16 +10,6 @@ if TYPE_CHECKING:
     from ..components import MediaType
 
 
-def guess_media_type(path: str | pathlib.Path) -> MediaType | None:
-    from ..components import MediaType
-
-    ext = pathlib.Path(path).suffix.lower()
-    if ext == ".mp4":
-        return MediaType.MP4
-    else:
-        return None
-
-
 class AssetVideoExt:
     """Extension for [AssetVideo][rerun.archetypes.AssetVideo]."""
 
@@ -64,7 +54,7 @@ class AssetVideoExt:
             else:
                 blob = pathlib.Path(path).read_bytes()
                 if media_type is None:
-                    media_type = guess_media_type(str(path))
+                    media_type = MediaType.guess_from_path(path)
 
             self.__attrs_init__(blob=blob, media_type=media_type)
             return

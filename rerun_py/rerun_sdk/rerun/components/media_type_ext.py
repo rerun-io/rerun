@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
@@ -91,3 +92,31 @@ class MediaTypeExt:
         cls.STL = cls("model/stl")
 
         cls.MP4 = cls("video/mp4")
+
+    @staticmethod
+    def guess_from_path(path: str | Path) -> MediaType | None:
+        from ..components import MediaType
+
+        ext = Path(path).suffix.lower()
+
+        # Images
+        if ext == ".jpg" or ext == ".jpeg":
+            return MediaType.JPEG
+        elif ext == ".png":
+            return MediaType.PNG
+
+        # 3D Models
+        if ext == ".glb":
+            return MediaType.GLB
+        elif ext == ".gltf":
+            return MediaType.GLTF
+        elif ext == ".obj":
+            return MediaType.OBJ
+        elif ext == ".stl":
+            return MediaType.STL
+
+        # Video
+        if ext == ".mp4":
+            return MediaType.MP4
+
+        return None
