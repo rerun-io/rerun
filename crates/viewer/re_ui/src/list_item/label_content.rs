@@ -229,10 +229,10 @@ impl ListItemContent for LabelContent<'_> {
             || always_show_buttons;
         let button_response = if should_show_buttons {
             if let Some(buttons) = buttons_fn {
-                let mut ui = ui.child_ui(
-                    text_rect,
-                    egui::Layout::right_to_left(egui::Align::Center),
-                    None,
+                let mut ui = ui.new_child(
+                    egui::UiBuilder::new()
+                        .max_rect(text_rect)
+                        .layout(egui::Layout::right_to_left(egui::Align::Center)),
                 );
                 Some(buttons(&mut ui))
             } else {

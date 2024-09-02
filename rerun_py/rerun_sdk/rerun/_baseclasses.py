@@ -30,7 +30,7 @@ class AsComponents(Protocol):
 
     Note: the `num_instances()` function is an optional part of this interface. The method does not need to be
     implemented as it is only used after checking for its existence. (There is unfortunately no way to express this
-    correctly with the Python typing system, see https://github.com/python/typing/issues/601).
+    correctly with the Python typing system, see <https://github.com/python/typing/issues/601>).
     """
 
     def as_component_batches(self) -> Iterable[ComponentBatchLike]:

@@ -17,6 +17,7 @@ lod = "lod"     # level-of-detail
 ND = "ND"       # np.NDArray
 somes = "somes" # many `Some`
 teh = "teh"     # part of @teh-cmc
+trak = "trak"   # mp4 crate spelling
 
 # Use the more common spelling
 adaptor = "adapter"

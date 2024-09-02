@@ -336,10 +336,10 @@ impl ListItemContent for PropertyContent<'_> {
         };
         if let Some(value_fn) = value_fn {
             if should_show_value {
-                let mut child_ui = ui.child_ui(
-                    value_rect,
-                    egui::Layout::left_to_right(egui::Align::Center),
-                    None,
+                let mut child_ui = ui.new_child(
+                    egui::UiBuilder::new()
+                        .max_rect(value_rect)
+                        .layout(egui::Layout::left_to_right(egui::Align::Center)),
                 );
                 value_fn(&mut child_ui, visuals);
 
@@ -359,10 +359,10 @@ impl ListItemContent for PropertyContent<'_> {
 
             // the right to left layout is used to mimic LabelContent's buttons behavior and get a
             // better alignment
-            let mut child_ui = ui.child_ui(
-                action_button_rect,
-                egui::Layout::right_to_left(egui::Align::Center),
-                None,
+            let mut child_ui = ui.new_child(
+                egui::UiBuilder::new()
+                    .max_rect(action_button_rect)
+                    .layout(egui::Layout::right_to_left(egui::Align::Center)),
             );
 
             button.ui(&mut child_ui);

@@ -80,7 +80,7 @@ def as_html(
     height : int
         The height of the viewer in pixels.
     app_url : str
-        Alternative HTTP url to find the Rerun web viewer. This will default to using https://app.rerun.io
+        Alternative HTTP url to find the Rerun web viewer. This will default to using `https://app.rerun.io`
         or localhost if [rerun.start_web_viewer_server][] has been called.
     timeout_ms : int
         The number of milliseconds to wait for the Rerun web viewer to load.
@@ -152,7 +152,7 @@ def legacy_notebook_show(
     height : int
         The height of the viewer in pixels.
     app_url : str
-        Alternative HTTP url to find the Rerun web viewer. This will default to using https://app.rerun.io
+        Alternative HTTP url to find the Rerun web viewer. This will default to using `https://app.rerun.io`
         or localhost if [rerun.start_web_viewer_server][] has been called.
     timeout_ms : int
         The number of milliseconds to wait for the Rerun web viewer to load.

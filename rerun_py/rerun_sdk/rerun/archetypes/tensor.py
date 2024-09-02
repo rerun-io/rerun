@@ -23,7 +23,7 @@ class Tensor(TensorExt, Archetype):
 
     It's not currently possible to use `send_columns` with tensors since construction
     of `rerun.components.TensorDataBatch` does not support more than a single element.
-    This will be addressed as part of https://github.com/rerun-io/rerun/issues/6832.
+    This will be addressed as part of <https://github.com/rerun-io/rerun/issues/6832>.
 
     Example
     -------
