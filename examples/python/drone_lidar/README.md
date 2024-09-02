@@ -1,6 +1,6 @@
 <!--[metadata]
 title = "Drone LiDAR"
-tags = ["3d", "drone", "lidar"]
+tags = ["3D", "drone", "Lidar"]
 description = "Display drone-based LiDAR data"
 -->
 
@@ -10,7 +10,7 @@ Display drone LiDAR data kindly provided by [Flyability](https://www.flyability.
 
 ## Running
 
-Install the example pacakge
+Install the example package:
 ```bash
 pip install -e examples/python/drone_lidar
 ```
