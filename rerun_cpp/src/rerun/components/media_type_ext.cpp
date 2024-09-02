@@ -103,8 +103,8 @@ namespace rerun {
         }
 #endif
 
-        static std::optional<MediaType>
-            guess_from_path(const std::filesystem::path& path) {
+        std::optional<MediaType>
+            MediaType::guess_from_path(const std::filesystem::path& path) {
             std::filesystem::path file_path(path);
             std::string ext = file_path.extension().string();
             std::transform(ext.begin(), ext.end(), ext.begin(), ::tolower);
