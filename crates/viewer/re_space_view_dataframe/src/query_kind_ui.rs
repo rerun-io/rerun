@@ -43,8 +43,7 @@ impl UiQueryKind {
                         *time
                     } else {
                         TimeInt::MAX
-                    }
-                    .into();
+                    };
 
                     changed |= match time_type {
                         TimeType::Time => time_drag_value
@@ -63,7 +62,7 @@ impl UiQueryKind {
                     };
 
                     if changed {
-                        *self = Self::LatestAt { time: time.into() };
+                        *self = Self::LatestAt { time };
                     }
                 }
             });
@@ -101,15 +100,15 @@ impl UiQueryKind {
                         ui.add_space(-4.0);
 
                         let mut from = if let Self::TimeRange { from, .. } = self {
-                            (*from).into()
+                            *from
                         } else {
-                            (*time_drag_value.range.start()).into()
+                            time_drag_value.min_time()
                         };
 
                         let mut to = if let Self::TimeRange { to, .. } = self {
-                            (*to).into()
+                            *to
                         } else {
-                            (*time_drag_value.range.end()).into()
+                            time_drag_value.max_time()
                         };
 
                         list_item::list_item_scope(ui, "time_range_custom_scope", |ui| {
@@ -165,10 +164,7 @@ impl UiQueryKind {
                         });
 
                         if changed {
-                            *self = Self::TimeRange {
-                                from: from.into(),
-                                to: to.into(),
-                            };
+                            *self = Self::TimeRange { from, to };
                         }
 
                         if should_display_time_range {

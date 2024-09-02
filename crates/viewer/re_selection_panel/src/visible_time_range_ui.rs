@@ -540,15 +540,16 @@ fn visible_history_boundary_ui(
             let low_bound_override = if low_bound {
                 None
             } else {
-                Some(other_boundary_absolute - current_time)
+                Some((other_boundary_absolute - current_time).into())
             };
 
-            match time_type {
+            let mut edit_value = (*value).into();
+            let response = match time_type {
                 TimeType::Time => Some(
                     time_drag_value
                         .temporal_drag_value_ui(
                             ui,
-                            value,
+                            &mut edit_value,
                             false,
                             low_bound_override,
                             ctx.app_options.time_zone,
@@ -561,27 +562,30 @@ fn visible_history_boundary_ui(
                 ),
                 TimeType::Sequence => Some(
                     time_drag_value
-                        .sequence_drag_value_ui(ui, value, false, low_bound_override)
+                        .sequence_drag_value_ui(ui, &mut edit_value, false, low_bound_override)
                         .on_hover_text(
                             "Number of frames before/after the current time to use a time \
                         range boundary",
                         ),
                 ),
-            }
+            };
+            *value = edit_value.into();
+            response
         }
         TimeRangeBoundary::Absolute(value) => {
             // see note above
             let low_bound_override = if low_bound {
                 None
             } else {
-                Some(other_boundary_absolute)
+                Some(other_boundary_absolute.into())
             };
 
-            match time_type {
+            let mut edit_value = (*value).into();
+            let response = match time_type {
                 TimeType::Time => {
                     let (drag_resp, base_time_resp) = time_drag_value.temporal_drag_value_ui(
                         ui,
-                        value,
+                        &mut edit_value,
                         true,
                         low_bound_override,
                         ctx.app_options.time_zone,
@@ -595,10 +599,12 @@ fn visible_history_boundary_ui(
                 }
                 TimeType::Sequence => Some(
                     time_drag_value
-                        .sequence_drag_value_ui(ui, value, true, low_bound_override)
+                        .sequence_drag_value_ui(ui, &mut edit_value, true, low_bound_override)
                         .on_hover_text("Absolute frame number to use as time range boundary"),
                 ),
-            }
+            };
+            *value = edit_value.into();
+            response
         }
         TimeRangeBoundary::Infinite => None,
     };
