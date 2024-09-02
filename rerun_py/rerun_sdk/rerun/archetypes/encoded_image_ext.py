@@ -28,18 +28,6 @@ if TYPE_CHECKING:
     ]
 
 
-def guess_media_type(path: str | pathlib.Path) -> MediaType | None:
-    from ..components import MediaType
-
-    ext = pathlib.Path(path).suffix.lower()
-    if ext == ".jpg" or ext == ".jpeg":
-        return MediaType.JPEG
-    elif ext == ".png":
-        return MediaType.PNG
-    else:
-        return None
-
-
 class EncodedImageExt:
     """Extension for [EncodedImage][rerun.archetypes.EncodedImage]."""
 
@@ -100,7 +88,7 @@ class EncodedImageExt:
                 blob = pathlib.Path(path).read_bytes()
 
                 if media_type is None:
-                    media_type = guess_media_type(str(path))
+                    media_type = MediaType.guess_from_path(path)
 
             self.__attrs_init__(blob=blob, media_type=media_type, draw_order=draw_order, opacity=opacity)
             return

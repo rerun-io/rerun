@@ -10,22 +10,6 @@ if TYPE_CHECKING:
     from ..components import MediaType
 
 
-def guess_media_type(path: str | pathlib.Path) -> MediaType | None:
-    from ..components import MediaType
-
-    ext = pathlib.Path(path).suffix.lower()
-    if ext == ".glb":
-        return MediaType.GLB
-    elif ext == ".gltf":
-        return MediaType.GLTF
-    elif ext == ".obj":
-        return MediaType.OBJ
-    elif ext == ".stl":
-        return MediaType.STL
-    else:
-        return None
-
-
 class Asset3DExt:
     """Extension for [Asset3D][rerun.archetypes.Asset3D]."""
 
@@ -73,7 +57,7 @@ class Asset3DExt:
             else:
                 blob = pathlib.Path(path).read_bytes()
                 if media_type is None:
-                    media_type = guess_media_type(str(path))
+                    media_type = MediaType.guess_from_path(path)
 
             self.__attrs_init__(blob=blob, media_type=media_type)
             return
