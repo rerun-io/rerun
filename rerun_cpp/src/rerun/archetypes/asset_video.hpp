@@ -68,10 +68,6 @@ namespace rerun::archetypes {
             return asset;
         }
 
-        static std::optional<rerun::components::MediaType> guess_media_type(
-            const std::filesystem::path& path
-        );
-
         // END of extensions from asset_video_ext.cpp, start of generated code:
 
       public:

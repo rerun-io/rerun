@@ -40,10 +40,6 @@ namespace rerun::archetypes {
         return image;
     }
 
-    static std::optional<rerun::components::MediaType> guess_media_type(
-        const std::filesystem::path& path
-    );
-
     // </CODEGEN_COPY_TO_HEADER>
 #endif
 
@@ -64,22 +60,9 @@ namespace rerun::archetypes {
             return Error(ErrorCode::FileRead, filepath.string());
         }
 
-        return EncodedImage::from_bytes(file_bytes, EncodedImage::guess_media_type(filepath));
-    }
-
-    std::optional<rerun::components::MediaType> EncodedImage::guess_media_type(
-        const std::filesystem::path& path
-    ) {
-        std::filesystem::path file_path(path);
-        std::string ext = file_path.extension().string();
-        std::transform(ext.begin(), ext.end(), ext.begin(), ::tolower);
-
-        if (ext == ".jpg" || ext == ".jpeg") {
-            return rerun::components::MediaType::jpeg();
-        } else if (ext == ".png") {
-            return rerun::components::MediaType::png();
-        } else {
-            return std::nullopt;
-        }
+        return EncodedImage::from_bytes(
+            file_bytes,
+            rerun::components::MediaType::guess_from_path(filepath)
+        );
     }
 } // namespace rerun::archetypes
