@@ -251,6 +251,22 @@ fn preview_if_image_ui(
     entity_path: &re_log_types::EntityPath,
     component_map: &IntMap<ComponentName, UnitChunkShared>,
 ) -> Option<()> {
+    // First check assumptions:
+    fn _check_image_has_buffer_format(image: &archetypes::Image) {
+        let _: components::ImageBuffer = image.buffer;
+        let _: components::ImageFormat = image.format;
+    }
+
+    fn _check_depth_image_has_buffer_format(image: &archetypes::DepthImage) {
+        let _: components::ImageBuffer = image.buffer;
+        let _: components::ImageFormat = image.format;
+    }
+
+    fn _check_segmentation_image_has_buffer_format(image: &archetypes::SegmentationImage) {
+        let _: components::ImageBuffer = image.buffer;
+        let _: components::ImageFormat = image.format;
+    }
+
     let image_buffer = component_map.get(&components::ImageBuffer::name())?;
     let buffer_row_id = image_buffer.row_id()?;
     let image_buffer = image_buffer
