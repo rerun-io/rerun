@@ -58,7 +58,7 @@ def download_minisplit(root_dir: pathlib.Path) -> None:
     """
     Download nuScenes minisplit.
 
-    Adopted from https://colab.research.google.com/github/nutonomy/nuscenes-devkit/blob/master/python-sdk/tutorials/nuscenes_tutorial.ipynb
+    Adopted from <https://colab.research.google.com/github/nutonomy/nuscenes-devkit/blob/master/python-sdk/tutorials/nuscenes_tutorial.ipynb>
     """
     zip_file_path = pathlib.Path("./v1.0-mini.tgz")
     if not zip_file_path.is_file():
