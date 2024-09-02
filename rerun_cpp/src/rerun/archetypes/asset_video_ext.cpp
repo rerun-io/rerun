@@ -73,7 +73,7 @@ namespace rerun::archetypes {
         std::transform(ext.begin(), ext.end(), ext.begin(), ::tolower);
 
         if (ext == ".mp4") {
-            return rerun::components::MediaType::glb();
+            return rerun::components::MediaType::mp4();
         } else {
             return std::nullopt;
         }
