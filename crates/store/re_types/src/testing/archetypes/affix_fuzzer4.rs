@@ -522,6 +522,8 @@ impl ::re_types_core::AsComponents for AffixFuzzer4 {
     }
 }
 
+impl ::re_types_core::ArchetypeReflectionMarker for AffixFuzzer4 {}
+
 impl AffixFuzzer4 {
     /// Create a new `AffixFuzzer4`.
     #[inline]

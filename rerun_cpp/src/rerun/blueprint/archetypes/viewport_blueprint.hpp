@@ -20,7 +20,7 @@
 #include <vector>
 
 namespace rerun::blueprint::archetypes {
-    /// **Archetype**: The top-level description of the Viewport.
+    /// **Archetype**: The top-level description of the viewport.
     struct ViewportBlueprint {
         /// The layout of the space-views
         std::optional<rerun::blueprint::components::RootContainer> root_container;

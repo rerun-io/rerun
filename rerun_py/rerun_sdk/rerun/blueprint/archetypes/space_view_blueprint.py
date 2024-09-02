@@ -21,7 +21,7 @@ __all__ = ["SpaceViewBlueprint"]
 
 @define(str=False, repr=False, init=False)
 class SpaceViewBlueprint(Archetype):
-    """**Archetype**: The top-level description of the Viewport."""
+    """**Archetype**: The description of a single view."""
 
     def __init__(
         self: Any,

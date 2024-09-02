@@ -4,7 +4,6 @@ namespace rerun.blueprint.archetypes;
 table TensorViewFit (
     "attr.rerun.scope": "blueprint",
     "attr.rust.derive": "Default",
-    "attr.rust.generate_field_info",
     "attr.python.aliases": "blueprint_components.ViewFitLike"
 ) {
     /// How the image is scaled to fit the view.

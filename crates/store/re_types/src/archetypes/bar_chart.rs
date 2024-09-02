@@ -185,6 +185,8 @@ impl ::re_types_core::AsComponents for BarChart {
     }
 }
 
+impl ::re_types_core::ArchetypeReflectionMarker for BarChart {}
+
 impl BarChart {
     /// Create a new `BarChart`.
     #[inline]

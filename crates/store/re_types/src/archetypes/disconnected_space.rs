@@ -184,6 +184,8 @@ impl ::re_types_core::AsComponents for DisconnectedSpace {
     }
 }
 
+impl ::re_types_core::ArchetypeReflectionMarker for DisconnectedSpace {}
+
 impl DisconnectedSpace {
     /// Create a new `DisconnectedSpace`.
     #[inline]
