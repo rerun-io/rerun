@@ -426,6 +426,8 @@ impl ::re_types_core::AsComponents for Mesh3D {
     }
 }
 
+impl ::re_types_core::ArchetypeReflectionMarker for Mesh3D {}
+
 impl Mesh3D {
     /// Create a new `Mesh3D`.
     #[inline]

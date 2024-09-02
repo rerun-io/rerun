@@ -339,6 +339,8 @@ impl ::re_types_core::AsComponents for Boxes2D {
     }
 }
 
+impl ::re_types_core::ArchetypeReflectionMarker for Boxes2D {}
+
 impl Boxes2D {
     /// Create a new `Boxes2D`.
     #[inline]

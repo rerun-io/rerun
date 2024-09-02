@@ -18,7 +18,7 @@ use ::re_types_core::SerializationResult;
 use ::re_types_core::{ComponentBatch, MaybeOwnedComponentBatch};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
-/// **Archetype**: The top-level description of the Viewport.
+/// **Archetype**: The top-level description of the viewport.
 #[derive(Clone, Debug, Default)]
 pub struct ViewportBlueprint {
     /// The layout of the space-views
@@ -252,6 +252,8 @@ impl ::re_types_core::AsComponents for ViewportBlueprint {
         .collect()
     }
 }
+
+impl ::re_types_core::ArchetypeReflectionMarker for ViewportBlueprint {}
 
 impl ViewportBlueprint {
     /// Create a new `ViewportBlueprint`.

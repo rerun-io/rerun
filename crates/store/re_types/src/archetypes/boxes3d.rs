@@ -412,6 +412,8 @@ impl ::re_types_core::AsComponents for Boxes3D {
     }
 }
 
+impl ::re_types_core::ArchetypeReflectionMarker for Boxes3D {}
+
 impl Boxes3D {
     /// Create a new `Boxes3D`.
     #[inline]

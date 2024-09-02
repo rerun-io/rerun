@@ -260,6 +260,8 @@ impl ::re_types_core::AsComponents for SeriesPoint {
     }
 }
 
+impl ::re_types_core::ArchetypeReflectionMarker for SeriesPoint {}
+
 impl SeriesPoint {
     /// Create a new `SeriesPoint`.
     #[inline]

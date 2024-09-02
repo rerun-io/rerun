@@ -346,6 +346,8 @@ impl ::re_types_core::AsComponents for LineStrips3D {
     }
 }
 
+impl ::re_types_core::ArchetypeReflectionMarker for LineStrips3D {}
+
 impl LineStrips3D {
     /// Create a new `LineStrips3D`.
     #[inline]

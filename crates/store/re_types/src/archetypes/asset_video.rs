@@ -175,6 +175,8 @@ impl ::re_types_core::AsComponents for AssetVideo {
     }
 }
 
+impl ::re_types_core::ArchetypeReflectionMarker for AssetVideo {}
+
 impl AssetVideo {
     /// Create a new `AssetVideo`.
     #[inline]

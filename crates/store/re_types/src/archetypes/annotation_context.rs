@@ -192,6 +192,8 @@ impl ::re_types_core::AsComponents for AnnotationContext {
     }
 }
 
+impl ::re_types_core::ArchetypeReflectionMarker for AnnotationContext {}
+
 impl AnnotationContext {
     /// Create a new `AnnotationContext`.
     #[inline]

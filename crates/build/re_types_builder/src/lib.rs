@@ -199,8 +199,6 @@ pub const ATTR_RUST_NEW_PUB_CRATE: &str = "attr.rust.new_pub_crate";
 pub const ATTR_RUST_OVERRIDE_CRATE: &str = "attr.rust.override_crate";
 pub const ATTR_RUST_REPR: &str = "attr.rust.repr";
 pub const ATTR_RUST_TUPLE_STRUCT: &str = "attr.rust.tuple_struct";
-pub const ATTR_RUST_GENERATE_FIELD_INFO: &str = "attr.rust.generate_field_info";
-
 pub const ATTR_CPP_NO_FIELD_CTORS: &str = "attr.cpp.no_field_ctors";
 pub const ATTR_CPP_RENAME_FIELD: &str = "attr.cpp.rename_field";
 

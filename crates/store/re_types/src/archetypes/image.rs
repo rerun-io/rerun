@@ -325,6 +325,8 @@ impl ::re_types_core::AsComponents for Image {
     }
 }
 
+impl ::re_types_core::ArchetypeReflectionMarker for Image {}
+
 impl Image {
     /// Create a new `Image`.
     #[inline]

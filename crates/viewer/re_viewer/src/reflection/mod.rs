@@ -690,6 +690,387 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
     re_tracing::profile_function!();
     let array = [
         (
+            ArchetypeName::new("rerun.archetypes.AnnotationContext"),
+            ArchetypeReflection {
+                display_name: "Annotation context",
+                docstring_md: "The annotation context provides additional information on how to display entities.\n\nEntities can use [`components.ClassId`](https://rerun.io/docs/reference/types/components/class_id)s and [`components.KeypointId`](https://rerun.io/docs/reference/types/components/keypoint_id)s to provide annotations, and\nthe labels and colors will be looked up in the appropriate\nannotation context. We use the *first* annotation context we find in the\npath-hierarchy when searching up through the ancestors of a given entity\npath.\n\nSee also [`datatypes.ClassDescription`](https://rerun.io/docs/reference/types/datatypes/class_description).\n\n## Example\n\n### Segmentation\n```ignore\nuse ndarray::{s, Array, ShapeBuilder};\n\nfn main() -> Result<(), Box<dyn std::error::Error>> {\n    let rec = rerun::RecordingStreamBuilder::new(\"rerun_example_annotation_context_segmentation\")\n        .spawn()?;\n\n    // create an annotation context to describe the classes\n    rec.log_static(\n        \"segmentation\",\n        &rerun::AnnotationContext::new([\n            (1, \"red\", rerun::Rgba32::from_rgb(255, 0, 0)),\n            (2, \"green\", rerun::Rgba32::from_rgb(0, 255, 0)),\n        ]),\n    )?;\n\n    // create a segmentation image\n    let mut data = Array::<u8, _>::zeros((200, 300).f());\n    data.slice_mut(s![50..100, 50..120]).fill(1);\n    data.slice_mut(s![100..180, 130..280]).fill(2);\n\n    rec.log(\n        \"segmentation/image\",\n        &rerun::SegmentationImage::try_from(data)?,\n    )?;\n\n    Ok(())\n}\n```\n<center>\n<picture>\n  <source media=\"(max-width: 480px)\" srcset=\"https://static.rerun.io/annotation_context_segmentation/6c9e88fc9d44a08031cadd444c2e58a985cc1208/480w.png\">\n  <source media=\"(max-width: 768px)\" srcset=\"https://static.rerun.io/annotation_context_segmentation/6c9e88fc9d44a08031cadd444c2e58a985cc1208/768w.png\">\n  <source media=\"(max-width: 1024px)\" srcset=\"https://static.rerun.io/annotation_context_segmentation/6c9e88fc9d44a08031cadd444c2e58a985cc1208/1024w.png\">\n  <source media=\"(max-width: 1200px)\" srcset=\"https://static.rerun.io/annotation_context_segmentation/6c9e88fc9d44a08031cadd444c2e58a985cc1208/1200w.png\">\n  <img src=\"https://static.rerun.io/annotation_context_segmentation/6c9e88fc9d44a08031cadd444c2e58a985cc1208/full.png\" width=\"640\">\n</picture>\n</center>",
+                fields: vec![
+                    ArchetypeFieldReflection { component_name :
+                    "rerun.components.AnnotationContext".into(), display_name :
+                    "Context", docstring_md :
+                    "List of class descriptions, mapping class indices to class names, colors etc.",
+                    is_required : true, },
+                ],
+            },
+        ),
+        (
+            ArchetypeName::new("rerun.archetypes.Arrows2D"),
+            ArchetypeReflection {
+                display_name: "Arrows 2D",
+                docstring_md: "2D arrows with optional colors, radii, labels, etc.\n\n## Example\n\n### Simple batch of 2D arrows\n```ignore\nfn main() -> Result<(), Box<dyn std::error::Error>> {\n    let rec = rerun::RecordingStreamBuilder::new(\"rerun_example_arrow2d\").spawn()?;\n\n    rec.log(\n        \"arrows\",\n        &rerun::Arrows2D::from_vectors([[1.0, 0.0], [0.0, -1.0], [-0.7, 0.7]])\n            .with_radii([0.025])\n            .with_origins([[0.25, 0.0], [0.25, 0.0], [-0.1, -0.1]])\n            .with_colors([[255, 0, 0], [0, 255, 0], [127, 0, 255]])\n            .with_labels([\"right\", \"up\", \"left-down\"]),\n    )?;\n\n    Ok(())\n}\n```\n<center>\n<picture>\n  <source media=\"(max-width: 480px)\" srcset=\"https://static.rerun.io/arrow2d_simple/59f044ccc03f7bc66ee802288f75706618b29a6e/480w.png\">\n  <source media=\"(max-width: 768px)\" srcset=\"https://static.rerun.io/arrow2d_simple/59f044ccc03f7bc66ee802288f75706618b29a6e/768w.png\">\n  <source media=\"(max-width: 1024px)\" srcset=\"https://static.rerun.io/arrow2d_simple/59f044ccc03f7bc66ee802288f75706618b29a6e/1024w.png\">\n  <source media=\"(max-width: 1200px)\" srcset=\"https://static.rerun.io/arrow2d_simple/59f044ccc03f7bc66ee802288f75706618b29a6e/1200w.png\">\n  <img src=\"https://static.rerun.io/arrow2d_simple/59f044ccc03f7bc66ee802288f75706618b29a6e/full.png\" width=\"640\">\n</picture>\n</center>",
+                fields: vec![
+                    ArchetypeFieldReflection { component_name :
+                    "rerun.components.Vector2D".into(), display_name : "Vectors",
+                    docstring_md : "All the vectors for each arrow in the batch.",
+                    is_required : true, }, ArchetypeFieldReflection { component_name :
+                    "rerun.components.Position2D".into(), display_name : "Origins",
+                    docstring_md :
+                    "All the origin (base) positions for each arrow in the batch.\n\nIf no origins are set, (0, 0) is used as the origin for each arrow.",
+                    is_required : false, }, ArchetypeFieldReflection { component_name :
+                    "rerun.components.Radius".into(), display_name : "Radii",
+                    docstring_md :
+                    "Optional radii for the arrows.\n\nThe shaft is rendered as a line with `radius = 0.5 * radius`.\nThe tip is rendered with `height = 2.0 * radius` and `radius = 1.0 * radius`.",
+                    is_required : false, }, ArchetypeFieldReflection { component_name :
+                    "rerun.components.Color".into(), display_name : "Colors",
+                    docstring_md : "Optional colors for the points.", is_required :
+                    false, }, ArchetypeFieldReflection { component_name :
+                    "rerun.components.Text".into(), display_name : "Labels", docstring_md
+                    :
+                    "Optional text labels for the arrows.\n\nIf there's a single label present, it will be placed at the center of the entity.\nOtherwise, each instance will have its own label.",
+                    is_required : false, }, ArchetypeFieldReflection { component_name :
+                    "rerun.components.ShowLabels".into(), display_name : "Show labels",
+                    docstring_md :
+                    "Optional choice of whether the text labels should be shown by default.",
+                    is_required : false, }, ArchetypeFieldReflection { component_name :
+                    "rerun.components.DrawOrder".into(), display_name : "Draw order",
+                    docstring_md :
+                    "An optional floating point value that specifies the 2D drawing order.\n\nObjects with higher values are drawn on top of those with lower values.",
+                    is_required : false, }, ArchetypeFieldReflection { component_name :
+                    "rerun.components.ClassId".into(), display_name : "Class ids",
+                    docstring_md :
+                    "Optional class Ids for the points.\n\nThe [`components.ClassId`](https://rerun.io/docs/reference/types/components/class_id) provides colors and labels if not specified explicitly.",
+                    is_required : false, },
+                ],
+            },
+        ),
+        (
+            ArchetypeName::new("rerun.archetypes.Arrows3D"),
+            ArchetypeReflection {
+                display_name: "Arrows 3D",
+                docstring_md: "3D arrows with optional colors, radii, labels, etc.\n\n## Example\n\n### Simple batch of 3D arrows\n```ignore\nuse std::f32::consts::TAU;\n\nfn main() -> Result<(), Box<dyn std::error::Error>> {\n    let rec = rerun::RecordingStreamBuilder::new(\"rerun_example_arrow3d\").spawn()?;\n\n    let origins = vec![rerun::Position3D::ZERO; 100];\n    let (vectors, colors): (Vec<_>, Vec<_>) = (0..100)\n        .map(|i| {\n            let angle = TAU * i as f32 * 0.01;\n            let length = ((i + 1) as f32).log2();\n            let c = (angle / TAU * 255.0).round() as u8;\n            (\n                rerun::Vector3D::from([(length * angle.sin()), 0.0, (length * angle.cos())]),\n                rerun::Color::from_unmultiplied_rgba(255 - c, c, 128, 128),\n            )\n        })\n        .unzip();\n\n    rec.log(\n        \"arrows\",\n        &rerun::Arrows3D::from_vectors(vectors)\n            .with_origins(origins)\n            .with_colors(colors),\n    )?;\n\n    Ok(())\n}\n```\n<center>\n<picture>\n  <source media=\"(max-width: 480px)\" srcset=\"https://static.rerun.io/arrow3d_simple/55e2f794a520bbf7527d7b828b0264732146c5d0/480w.png\">\n  <source media=\"(max-width: 768px)\" srcset=\"https://static.rerun.io/arrow3d_simple/55e2f794a520bbf7527d7b828b0264732146c5d0/768w.png\">\n  <source media=\"(max-width: 1024px)\" srcset=\"https://static.rerun.io/arrow3d_simple/55e2f794a520bbf7527d7b828b0264732146c5d0/1024w.png\">\n  <source media=\"(max-width: 1200px)\" srcset=\"https://static.rerun.io/arrow3d_simple/55e2f794a520bbf7527d7b828b0264732146c5d0/1200w.png\">\n  <img src=\"https://static.rerun.io/arrow3d_simple/55e2f794a520bbf7527d7b828b0264732146c5d0/full.png\" width=\"640\">\n</picture>\n</center>",
+                fields: vec![
+                    ArchetypeFieldReflection { component_name :
+                    "rerun.components.Vector3D".into(), display_name : "Vectors",
+                    docstring_md : "All the vectors for each arrow in the batch.",
+                    is_required : true, }, ArchetypeFieldReflection { component_name :
+                    "rerun.components.Position3D".into(), display_name : "Origins",
+                    docstring_md :
+                    "All the origin (base) positions for each arrow in the batch.\n\nIf no origins are set, (0, 0, 0) is used as the origin for each arrow.",
+                    is_required : false, }, ArchetypeFieldReflection { component_name :
+                    "rerun.components.Radius".into(), display_name : "Radii",
+                    docstring_md :
+                    "Optional radii for the arrows.\n\nThe shaft is rendered as a line with `radius = 0.5 * radius`.\nThe tip is rendered with `height = 2.0 * radius` and `radius = 1.0 * radius`.",
+                    is_required : false, }, ArchetypeFieldReflection { component_name :
+                    "rerun.components.Color".into(), display_name : "Colors",
+                    docstring_md : "Optional colors for the points.", is_required :
+                    false, }, ArchetypeFieldReflection { component_name :
+                    "rerun.components.Text".into(), display_name : "Labels", docstring_md
+                    :
+                    "Optional text labels for the arrows.\n\nIf there's a single label present, it will be placed at the center of the entity.\nOtherwise, each instance will have its own label.",
+                    is_required : false, }, ArchetypeFieldReflection { component_name :
+                    "rerun.components.ShowLabels".into(), display_name : "Show labels",
+                    docstring_md :
+                    "Optional choice of whether the text labels should be shown by default.",
+                    is_required : false, }, ArchetypeFieldReflection { component_name :
+                    "rerun.components.ClassId".into(), display_name : "Class ids",
+                    docstring_md :
+                    "Optional class Ids for the points.\n\nThe [`components.ClassId`](https://rerun.io/docs/reference/types/components/class_id) provides colors and labels if not specified explicitly.",
+                    is_required : false, },
+                ],
+            },
+        ),
+        (
+            ArchetypeName::new("rerun.archetypes.Asset3D"),
+            ArchetypeReflection {
+                display_name: "Asset 3D",
+                docstring_md: "A prepacked 3D asset (`.gltf`, `.glb`, `.obj`, `.stl`, etc.).\n\nSee also [`archetypes.Mesh3D`](https://rerun.io/docs/reference/types/archetypes/mesh3d).\n\nIf there are multiple [`archetypes.InstancePoses3D`](https://rerun.io/docs/reference/types/archetypes/instance_poses3d) instances logged to the same entity as a mesh,\nan instance of the mesh will be drawn for each transform.\n\n## Example\n\n### Simple 3D asset\n```ignore\nuse rerun::external::anyhow;\n\nfn main() -> anyhow::Result<()> {\n    let args = std::env::args().collect::<Vec<_>>();\n    let Some(path) = args.get(1) else {\n        anyhow::bail!(\"Usage: {} <path_to_asset.[gltf|glb|obj|stl]>\", args[0]);\n    };\n\n    let rec = rerun::RecordingStreamBuilder::new(\"rerun_example_asset3d\").spawn()?;\n\n    rec.log_static(\"world\", &rerun::ViewCoordinates::RIGHT_HAND_Z_UP)?; // Set an up-axis\n    rec.log(\"world/asset\", &rerun::Asset3D::from_file(path)?)?;\n\n    Ok(())\n}\n```\n<center>\n<picture>\n  <source media=\"(max-width: 480px)\" srcset=\"https://static.rerun.io/asset3d_simple/af238578188d3fd0de3e330212120e2842a8ddb2/480w.png\">\n  <source media=\"(max-width: 768px)\" srcset=\"https://static.rerun.io/asset3d_simple/af238578188d3fd0de3e330212120e2842a8ddb2/768w.png\">\n  <source media=\"(max-width: 1024px)\" srcset=\"https://static.rerun.io/asset3d_simple/af238578188d3fd0de3e330212120e2842a8ddb2/1024w.png\">\n  <source media=\"(max-width: 1200px)\" srcset=\"https://static.rerun.io/asset3d_simple/af238578188d3fd0de3e330212120e2842a8ddb2/1200w.png\">\n  <img src=\"https://static.rerun.io/asset3d_simple/af238578188d3fd0de3e330212120e2842a8ddb2/full.png\" width=\"640\">\n</picture>\n</center>",
+                fields: vec![
+                    ArchetypeFieldReflection { component_name : "rerun.components.Blob"
+                    .into(), display_name : "Blob", docstring_md : "The asset's bytes.",
+                    is_required : true, }, ArchetypeFieldReflection { component_name :
+                    "rerun.components.MediaType".into(), display_name : "Media type",
+                    docstring_md :
+                    "The Media Type of the asset.\n\nSupported values:\n* `model/gltf-binary`\n* `model/gltf+json`\n* `model/obj` (.mtl material files are not supported yet, references are silently ignored)\n* `model/stl`\n\nIf omitted, the viewer will try to guess from the data blob.\nIf it cannot guess, it won't be able to render the asset.",
+                    is_required : false, },
+                ],
+            },
+        ),
+        (
+            ArchetypeName::new("rerun.archetypes.AssetVideo"),
+            ArchetypeReflection {
+                display_name: "Asset video",
+                docstring_md: "A video file.\n\nNOTE: Videos can only be viewed in the Rerun web viewer.\nOnly MP4 and AV1 is currently supported, and not in all browsers.\nFollow <https://github.com/rerun-io/rerun/issues/7298> for updates on the native support.\n\n⚠\u{fe0f} **This type is experimental and may be removed in future versions**",
+                fields: vec![
+                    ArchetypeFieldReflection { component_name : "rerun.components.Blob"
+                    .into(), display_name : "Blob", docstring_md :
+                    "The asset's bytes.\n\n⚠\u{fe0f} **This type is experimental and may be removed in future versions**",
+                    is_required : true, }, ArchetypeFieldReflection { component_name :
+                    "rerun.components.MediaType".into(), display_name : "Media type",
+                    docstring_md :
+                    "The Media Type of the asset.\n\nSupported values:\n* `video/mp4`\n\nIf omitted, the viewer will try to guess from the data blob.\nIf it cannot guess, it won't be able to render the asset.\n\n⚠\u{fe0f} **This type is experimental and may be removed in future versions**",
+                    is_required : false, },
+                ],
+            },
+        ),
+        (
+            ArchetypeName::new("rerun.archetypes.BarChart"),
+            ArchetypeReflection {
+                display_name: "Bar chart",
+                docstring_md: "A bar chart.\n\nThe x values will be the indices of the array, and the bar heights will be the provided values.\n\n## Example\n\n### Simple bar chart\n```ignore\nfn main() -> Result<(), Box<dyn std::error::Error>> {\n    let rec = rerun::RecordingStreamBuilder::new(\"rerun_example_bar_chart\").spawn()?;\n\n    rec.log(\n        \"bar_chart\",\n        &rerun::BarChart::new([8_i64, 4, 0, 9, 1, 4, 1, 6, 9, 0].as_slice()),\n    )?;\n\n    Ok(())\n}\n```\n<center>\n<picture>\n  <source media=\"(max-width: 480px)\" srcset=\"https://static.rerun.io/barchart_simple/cf6014b18265edfcaa562c06526c0716b296b193/480w.png\">\n  <source media=\"(max-width: 768px)\" srcset=\"https://static.rerun.io/barchart_simple/cf6014b18265edfcaa562c06526c0716b296b193/768w.png\">\n  <source media=\"(max-width: 1024px)\" srcset=\"https://static.rerun.io/barchart_simple/cf6014b18265edfcaa562c06526c0716b296b193/1024w.png\">\n  <source media=\"(max-width: 1200px)\" srcset=\"https://static.rerun.io/barchart_simple/cf6014b18265edfcaa562c06526c0716b296b193/1200w.png\">\n  <img src=\"https://static.rerun.io/barchart_simple/cf6014b18265edfcaa562c06526c0716b296b193/full.png\" width=\"640\">\n</picture>\n</center>",
+                fields: vec![
+                    ArchetypeFieldReflection { component_name :
+                    "rerun.components.TensorData".into(), display_name : "Values",
+                    docstring_md :
+                    "The values. Should always be a 1-dimensional tensor (i.e. a vector).",
+                    is_required : true, }, ArchetypeFieldReflection { component_name :
+                    "rerun.components.Color".into(), display_name : "Color", docstring_md
+                    : "The color of the bar chart", is_required : false, },
+                ],
+            },
+        ),
+        (
+            ArchetypeName::new("rerun.archetypes.Boxes2D"),
+            ArchetypeReflection {
+                display_name: "Boxes 2D",
+                docstring_md: "2D boxes with half-extents and optional center, colors etc.\n\n## Example\n\n### Simple 2D boxes\n```ignore\nfn main() -> Result<(), Box<dyn std::error::Error>> {\n    let rec = rerun::RecordingStreamBuilder::new(\"rerun_example_box2d\").spawn()?;\n\n    rec.log(\n        \"simple\",\n        &rerun::Boxes2D::from_mins_and_sizes([(-1., -1.)], [(2., 2.)]),\n    )?;\n\n    Ok(())\n}\n```\n<center>\n<picture>\n  <source media=\"(max-width: 480px)\" srcset=\"https://static.rerun.io/box2d_simple/ac4424f3cf747382867649610cbd749c45b2020b/480w.png\">\n  <source media=\"(max-width: 768px)\" srcset=\"https://static.rerun.io/box2d_simple/ac4424f3cf747382867649610cbd749c45b2020b/768w.png\">\n  <source media=\"(max-width: 1024px)\" srcset=\"https://static.rerun.io/box2d_simple/ac4424f3cf747382867649610cbd749c45b2020b/1024w.png\">\n  <source media=\"(max-width: 1200px)\" srcset=\"https://static.rerun.io/box2d_simple/ac4424f3cf747382867649610cbd749c45b2020b/1200w.png\">\n  <img src=\"https://static.rerun.io/box2d_simple/ac4424f3cf747382867649610cbd749c45b2020b/full.png\" width=\"640\">\n</picture>\n</center>",
+                fields: vec![
+                    ArchetypeFieldReflection { component_name :
+                    "rerun.components.HalfSize2D".into(), display_name : "Half sizes",
+                    docstring_md : "All half-extents that make up the batch of boxes.",
+                    is_required : true, }, ArchetypeFieldReflection { component_name :
+                    "rerun.components.Position2D".into(), display_name : "Centers",
+                    docstring_md : "Optional center positions of the boxes.", is_required
+                    : false, }, ArchetypeFieldReflection { component_name :
+                    "rerun.components.Color".into(), display_name : "Colors",
+                    docstring_md : "Optional colors for the boxes.", is_required : false,
+                    }, ArchetypeFieldReflection { component_name :
+                    "rerun.components.Radius".into(), display_name : "Radii",
+                    docstring_md :
+                    "Optional radii for the lines that make up the boxes.", is_required :
+                    false, }, ArchetypeFieldReflection { component_name :
+                    "rerun.components.Text".into(), display_name : "Labels", docstring_md
+                    :
+                    "Optional text labels for the boxes.\n\nIf there's a single label present, it will be placed at the center of the entity.\nOtherwise, each instance will have its own label.",
+                    is_required : false, }, ArchetypeFieldReflection { component_name :
+                    "rerun.components.ShowLabels".into(), display_name : "Show labels",
+                    docstring_md :
+                    "Optional choice of whether the text labels should be shown by default.",
+                    is_required : false, }, ArchetypeFieldReflection { component_name :
+                    "rerun.components.DrawOrder".into(), display_name : "Draw order",
+                    docstring_md :
+                    "An optional floating point value that specifies the 2D drawing order.\n\nObjects with higher values are drawn on top of those with lower values.\n\nThe default for 2D boxes is 10.0.",
+                    is_required : false, }, ArchetypeFieldReflection { component_name :
+                    "rerun.components.ClassId".into(), display_name : "Class ids",
+                    docstring_md :
+                    "Optional [`components.ClassId`](https://rerun.io/docs/reference/types/components/class_id)s for the boxes.\n\nThe [`components.ClassId`](https://rerun.io/docs/reference/types/components/class_id) provides colors and labels if not specified explicitly.",
+                    is_required : false, },
+                ],
+            },
+        ),
+        (
+            ArchetypeName::new("rerun.archetypes.Boxes3D"),
+            ArchetypeReflection {
+                display_name: "Boxes 3D",
+                docstring_md: "3D boxes with half-extents and optional center, rotations, colors etc.\n\nNote that orienting and placing the box is handled via `[archetypes.InstancePoses3D]`.\nSome of its component are repeated here for convenience.\nIf there's more instance poses than half sizes, the last half size will be repeated for the remaining poses.\n\n## Example\n\n### Batch of 3D boxes\n```ignore\nfn main() -> Result<(), Box<dyn std::error::Error>> {\n    let rec = rerun::RecordingStreamBuilder::new(\"rerun_example_box3d_batch\").spawn()?;\n\n    rec.log(\n        \"batch\",\n        &rerun::Boxes3D::from_centers_and_half_sizes(\n            [(2.0, 0.0, 0.0), (-2.0, 0.0, 0.0), (0.0, 0.0, 2.0)],\n            [(2.0, 2.0, 1.0), (1.0, 1.0, 0.5), (2.0, 0.5, 1.0)],\n        )\n        .with_quaternions([\n            rerun::Quaternion::IDENTITY,\n            rerun::Quaternion::from_xyzw([0.0, 0.0, 0.382683, 0.923880]), // 45 degrees around Z\n        ])\n        .with_radii([0.025])\n        .with_colors([\n            rerun::Color::from_rgb(255, 0, 0),\n            rerun::Color::from_rgb(0, 255, 0),\n            rerun::Color::from_rgb(0, 0, 255),\n        ])\n        .with_fill_mode(rerun::FillMode::Solid)\n        .with_labels([\"red\", \"green\", \"blue\"]),\n    )?;\n\n    Ok(())\n}\n```\n<center>\n<picture>\n  <source media=\"(max-width: 480px)\" srcset=\"https://static.rerun.io/box3d_batch/5aac5b5d29c9f2ecd572c93f6970fcec17f4984b/480w.png\">\n  <source media=\"(max-width: 768px)\" srcset=\"https://static.rerun.io/box3d_batch/5aac5b5d29c9f2ecd572c93f6970fcec17f4984b/768w.png\">\n  <source media=\"(max-width: 1024px)\" srcset=\"https://static.rerun.io/box3d_batch/5aac5b5d29c9f2ecd572c93f6970fcec17f4984b/1024w.png\">\n  <source media=\"(max-width: 1200px)\" srcset=\"https://static.rerun.io/box3d_batch/5aac5b5d29c9f2ecd572c93f6970fcec17f4984b/1200w.png\">\n  <img src=\"https://static.rerun.io/box3d_batch/5aac5b5d29c9f2ecd572c93f6970fcec17f4984b/full.png\" width=\"640\">\n</picture>\n</center>",
+                fields: vec![
+                    ArchetypeFieldReflection { component_name :
+                    "rerun.components.HalfSize3D".into(), display_name : "Half sizes",
+                    docstring_md : "All half-extents that make up the batch of boxes.",
+                    is_required : true, }, ArchetypeFieldReflection { component_name :
+                    "rerun.components.PoseTranslation3D".into(), display_name :
+                    "Centers", docstring_md :
+                    "Optional center positions of the boxes.\n\nIf not specified, the centers will be at (0, 0, 0).\nNote that this uses a [`components.PoseTranslation3D`](https://rerun.io/docs/reference/types/components/pose_translation3d) which is also used by [`archetypes.InstancePoses3D`](https://rerun.io/docs/reference/types/archetypes/instance_poses3d).",
+                    is_required : false, }, ArchetypeFieldReflection { component_name :
+                    "rerun.components.PoseRotationAxisAngle".into(), display_name :
+                    "Rotation axis angles", docstring_md :
+                    "Rotations via axis + angle.\n\nIf no rotation is specified, the axes of the boxes align with the axes of the local coordinate system.\nNote that this uses a [`components.PoseRotationAxisAngle`](https://rerun.io/docs/reference/types/components/pose_rotation_axis_angle) which is also used by [`archetypes.InstancePoses3D`](https://rerun.io/docs/reference/types/archetypes/instance_poses3d).",
+                    is_required : false, }, ArchetypeFieldReflection { component_name :
+                    "rerun.components.PoseRotationQuat".into(), display_name :
+                    "Quaternions", docstring_md :
+                    "Rotations via quaternion.\n\nIf no rotation is specified, the axes of the boxes align with the axes of the local coordinate system.\nNote that this uses a [`components.PoseRotationQuat`](https://rerun.io/docs/reference/types/components/pose_rotation_quat) which is also used by [`archetypes.InstancePoses3D`](https://rerun.io/docs/reference/types/archetypes/instance_poses3d).",
+                    is_required : false, }, ArchetypeFieldReflection { component_name :
+                    "rerun.components.Color".into(), display_name : "Colors",
+                    docstring_md : "Optional colors for the boxes.", is_required : false,
+                    }, ArchetypeFieldReflection { component_name :
+                    "rerun.components.Radius".into(), display_name : "Radii",
+                    docstring_md :
+                    "Optional radii for the lines that make up the boxes.", is_required :
+                    false, }, ArchetypeFieldReflection { component_name :
+                    "rerun.components.FillMode".into(), display_name : "Fill mode",
+                    docstring_md :
+                    "Optionally choose whether the boxes are drawn with lines or solid.",
+                    is_required : false, }, ArchetypeFieldReflection { component_name :
+                    "rerun.components.Text".into(), display_name : "Labels", docstring_md
+                    :
+                    "Optional text labels for the boxes.\n\nIf there's a single label present, it will be placed at the center of the entity.\nOtherwise, each instance will have its own label.",
+                    is_required : false, }, ArchetypeFieldReflection { component_name :
+                    "rerun.components.ShowLabels".into(), display_name : "Show labels",
+                    docstring_md :
+                    "Optional choice of whether the text labels should be shown by default.",
+                    is_required : false, }, ArchetypeFieldReflection { component_name :
+                    "rerun.components.ClassId".into(), display_name : "Class ids",
+                    docstring_md :
+                    "Optional [`components.ClassId`](https://rerun.io/docs/reference/types/components/class_id)s for the boxes.\n\nThe [`components.ClassId`](https://rerun.io/docs/reference/types/components/class_id) provides colors and labels if not specified explicitly.",
+                    is_required : false, },
+                ],
+            },
+        ),
+        (
+            ArchetypeName::new("rerun.archetypes.Clear"),
+            ArchetypeReflection {
+                display_name: "Clear",
+                docstring_md: "Empties all the components of an entity.\n\nThe presence of a clear means that a latest-at query of components at a given path(s)\nwill not return any components that were logged at those paths before the clear.\nAny logged components after the clear are unaffected by the clear.\n\nThis implies that a range query that includes time points that are before the clear,\nstill returns all components at the given path(s).\nMeaning that in practice clears are ineffective when making use of visible time ranges.\nScalar plots are an exception: they track clears and use them to represent holes in the\ndata (i.e. discontinuous lines).\n\n## Example\n\n### Flat\n```ignore\nuse rerun::external::glam;\n\nfn main() -> Result<(), Box<dyn std::error::Error>> {\n    let rec = rerun::RecordingStreamBuilder::new(\"rerun_example_clear\").spawn()?;\n\n    #[rustfmt::skip]\n    let (vectors, origins, colors) = (\n        [glam::Vec3::X,    glam::Vec3::NEG_Y, glam::Vec3::NEG_X, glam::Vec3::Y],\n        [(-0.5, 0.5, 0.0), (0.5, 0.5, 0.0),   (0.5, -0.5, 0.0),  (-0.5, -0.5, 0.0)],\n        [(200, 0, 0),      (0, 200, 0),       (0, 0, 200),       (200, 0, 200)],\n    );\n\n    // Log a handful of arrows.\n    for (i, ((vector, origin), color)) in vectors.into_iter().zip(origins).zip(colors).enumerate() {\n        rec.log(\n            format!(\"arrows/{i}\"),\n            &rerun::Arrows3D::from_vectors([vector])\n                .with_origins([origin])\n                .with_colors([rerun::Color::from_rgb(color.0, color.1, color.2)]),\n        )?;\n    }\n\n    // Now clear them, one by one on each tick.\n    for i in 0..vectors.len() {\n        rec.log(format!(\"arrows/{i}\"), &rerun::Clear::flat())?;\n    }\n\n    Ok(())\n}\n```\n<center>\n<picture>\n  <source media=\"(max-width: 480px)\" srcset=\"https://static.rerun.io/clear_simple/2f5df95fcc53e9f0552f65670aef7f94830c5c1a/480w.png\">\n  <source media=\"(max-width: 768px)\" srcset=\"https://static.rerun.io/clear_simple/2f5df95fcc53e9f0552f65670aef7f94830c5c1a/768w.png\">\n  <source media=\"(max-width: 1024px)\" srcset=\"https://static.rerun.io/clear_simple/2f5df95fcc53e9f0552f65670aef7f94830c5c1a/1024w.png\">\n  <source media=\"(max-width: 1200px)\" srcset=\"https://static.rerun.io/clear_simple/2f5df95fcc53e9f0552f65670aef7f94830c5c1a/1200w.png\">\n  <img src=\"https://static.rerun.io/clear_simple/2f5df95fcc53e9f0552f65670aef7f94830c5c1a/full.png\" width=\"640\">\n</picture>\n</center>",
+                fields: vec![
+                    ArchetypeFieldReflection { component_name :
+                    "rerun.components.ClearIsRecursive".into(), display_name :
+                    "Is recursive", docstring_md : "", is_required : true, },
+                ],
+            },
+        ),
+        (
+            ArchetypeName::new("rerun.archetypes.DepthImage"),
+            ArchetypeReflection {
+                display_name: "Depth image",
+                docstring_md: "A depth image, i.e. as captured by a depth camera.\n\nEach pixel corresponds to a depth value in units specified by [`components.DepthMeter`](https://rerun.io/docs/reference/types/components/depth_meter).\n\n## Example\n\n### Depth to 3D example\n```ignore\nuse ndarray::{s, Array, ShapeBuilder};\n\nfn main() -> Result<(), Box<dyn std::error::Error>> {\n    let rec = rerun::RecordingStreamBuilder::new(\"rerun_example_depth_image_3d\").spawn()?;\n\n    let width = 300;\n    let height = 200;\n    let mut image = Array::<u16, _>::from_elem((height, width).f(), 65535);\n    image.slice_mut(s![50..150, 50..150]).fill(20000);\n    image.slice_mut(s![130..180, 100..280]).fill(45000);\n\n    let depth_image = rerun::DepthImage::try_from(image)?\n        .with_meter(10000.0)\n        .with_colormap(rerun::components::Colormap::Viridis);\n\n    // If we log a pinhole camera model, the depth gets automatically back-projected to 3D\n    rec.log(\n        \"world/camera\",\n        &rerun::Pinhole::from_focal_length_and_resolution(\n            [200.0, 200.0],\n            [width as f32, height as f32],\n        ),\n    )?;\n\n    rec.log(\"world/camera/depth\", &depth_image)?;\n\n    Ok(())\n}\n```\n<center>\n<picture>\n  <source media=\"(max-width: 480px)\" srcset=\"https://static.rerun.io/depth_image_3d/924e9d4d6a39d63d4fdece82582855fdaa62d15e/480w.png\">\n  <source media=\"(max-width: 768px)\" srcset=\"https://static.rerun.io/depth_image_3d/924e9d4d6a39d63d4fdece82582855fdaa62d15e/768w.png\">\n  <source media=\"(max-width: 1024px)\" srcset=\"https://static.rerun.io/depth_image_3d/924e9d4d6a39d63d4fdece82582855fdaa62d15e/1024w.png\">\n  <source media=\"(max-width: 1200px)\" srcset=\"https://static.rerun.io/depth_image_3d/924e9d4d6a39d63d4fdece82582855fdaa62d15e/1200w.png\">\n  <img src=\"https://static.rerun.io/depth_image_3d/924e9d4d6a39d63d4fdece82582855fdaa62d15e/full.png\" width=\"640\">\n</picture>\n</center>",
+                fields: vec![
+                    ArchetypeFieldReflection { component_name :
+                    "rerun.components.ImageBuffer".into(), display_name : "Buffer",
+                    docstring_md : "The raw depth image data.", is_required : true, },
+                    ArchetypeFieldReflection { component_name :
+                    "rerun.components.ImageFormat".into(), display_name : "Format",
+                    docstring_md : "The format of the image.", is_required : true, },
+                    ArchetypeFieldReflection { component_name :
+                    "rerun.components.DepthMeter".into(), display_name : "Meter",
+                    docstring_md :
+                    "An optional floating point value that specifies how long a meter is in the native depth units.\n\nFor instance: with uint16, perhaps meter=1000 which would mean you have millimeter precision\nand a range of up to ~65 meters (2^16 / 1000).\n\nNote that the only effect on 2D views is the physical depth values shown when hovering the image.\nIn 3D views on the other hand, this affects where the points of the point cloud are placed.",
+                    is_required : false, }, ArchetypeFieldReflection { component_name :
+                    "rerun.components.Colormap".into(), display_name : "Colormap",
+                    docstring_md :
+                    "Colormap to use for rendering the depth image.\n\nIf not set, the depth image will be rendered using the Turbo colormap.",
+                    is_required : false, }, ArchetypeFieldReflection { component_name :
+                    "rerun.components.FillRatio".into(), display_name :
+                    "Point fill ratio", docstring_md :
+                    "Scale the radii of the points in the point cloud generated from this image.\n\nA fill ratio of 1.0 (the default) means that each point is as big as to touch the center of its neighbor\nif it is at the same depth, leaving no gaps.\nA fill ratio of 0.5 means that each point touches the edge of its neighbor if it has the same depth.\n\nTODO(#6744): This applies only to 3D views!",
+                    is_required : false, }, ArchetypeFieldReflection { component_name :
+                    "rerun.components.DrawOrder".into(), display_name : "Draw order",
+                    docstring_md :
+                    "An optional floating point value that specifies the 2D drawing order, used only if the depth image is shown as a 2D image.\n\nObjects with higher values are drawn on top of those with lower values.",
+                    is_required : false, },
+                ],
+            },
+        ),
+        (
+            ArchetypeName::new("rerun.archetypes.DisconnectedSpace"),
+            ArchetypeReflection {
+                display_name: "Disconnected space",
+                docstring_md: "Spatially disconnect this entity from its parent.\n\nSpecifies that the entity path at which this is logged is spatially disconnected from its parent,\nmaking it impossible to transform the entity path into its parent's space and vice versa.\nIt *only* applies to space views that work with spatial transformations, i.e. 2D & 3D space views.\nThis is useful for specifying that a subgraph is independent of the rest of the scene.\n\n## Example\n\n### Disconnected space\n```ignore\nfn main() -> Result<(), Box<dyn std::error::Error>> {\n    let rec = rerun::RecordingStreamBuilder::new(\"rerun_example_disconnected_space\").spawn()?;\n\n    // These two points can be projected into the same space..\n    rec.log(\n        \"world/room1/point\",\n        &rerun::Points3D::new([(0.0, 0.0, 0.0)]),\n    )?;\n    rec.log(\n        \"world/room2/point\",\n        &rerun::Points3D::new([(1.0, 1.0, 1.0)]),\n    )?;\n\n    // ..but this one lives in a completely separate space!\n    rec.log(\"world/wormhole\", &rerun::DisconnectedSpace::new(true))?;\n    rec.log(\n        \"world/wormhole/point\",\n        &rerun::Points3D::new([(2.0, 2.0, 2.0)]),\n    )?;\n\n    Ok(())\n}\n```\n<center>\n<picture>\n  <source media=\"(max-width: 480px)\" srcset=\"https://static.rerun.io/disconnected_space/709041fc304b50c74db773b780e32294fe90c95f/480w.png\">\n  <source media=\"(max-width: 768px)\" srcset=\"https://static.rerun.io/disconnected_space/709041fc304b50c74db773b780e32294fe90c95f/768w.png\">\n  <source media=\"(max-width: 1024px)\" srcset=\"https://static.rerun.io/disconnected_space/709041fc304b50c74db773b780e32294fe90c95f/1024w.png\">\n  <source media=\"(max-width: 1200px)\" srcset=\"https://static.rerun.io/disconnected_space/709041fc304b50c74db773b780e32294fe90c95f/1200w.png\">\n  <img src=\"https://static.rerun.io/disconnected_space/709041fc304b50c74db773b780e32294fe90c95f/full.png\" width=\"640\">\n</picture>\n</center>",
+                fields: vec![
+                    ArchetypeFieldReflection { component_name :
+                    "rerun.components.DisconnectedSpace".into(), display_name :
+                    "Disconnected space", docstring_md :
+                    "Whether the entity path at which this is logged is disconnected from its parent.",
+                    is_required : true, },
+                ],
+            },
+        ),
+        (
+            ArchetypeName::new("rerun.archetypes.Ellipsoids3D"),
+            ArchetypeReflection {
+                display_name: "Ellipsoids 3D",
+                docstring_md: "3D ellipsoids or spheres.\n\nThis archetype is for ellipsoids or spheres whose size is a key part of the data\n(e.g. a bounding sphere).\nFor points whose radii are for the sake of visualization, use [`archetypes.Points3D`](https://rerun.io/docs/reference/types/archetypes/points3d) instead.\n\nNote that orienting and placing the ellipsoids/spheres is handled via `[archetypes.InstancePoses3D]`.\nSome of its component are repeated here for convenience.\nIf there's more instance poses than half sizes, the last half size will be repeated for the remaining poses.",
+                fields: vec![
+                    ArchetypeFieldReflection { component_name :
+                    "rerun.components.HalfSize3D".into(), display_name : "Half sizes",
+                    docstring_md :
+                    "For each ellipsoid, half of its size on its three axes.\n\nIf all components are equal, then it is a sphere with that radius.",
+                    is_required : true, }, ArchetypeFieldReflection { component_name :
+                    "rerun.components.PoseTranslation3D".into(), display_name :
+                    "Centers", docstring_md :
+                    "Optional center positions of the ellipsoids.\n\nIf not specified, the centers will be at (0, 0, 0).\nNote that this uses a [`components.PoseTranslation3D`](https://rerun.io/docs/reference/types/components/pose_translation3d) which is also used by [`archetypes.InstancePoses3D`](https://rerun.io/docs/reference/types/archetypes/instance_poses3d).",
+                    is_required : false, }, ArchetypeFieldReflection { component_name :
+                    "rerun.components.PoseRotationAxisAngle".into(), display_name :
+                    "Rotation axis angles", docstring_md :
+                    "Rotations via axis + angle.\n\nIf no rotation is specified, the axes of the ellipsoid align with the axes of the local coordinate system.\nNote that this uses a [`components.PoseRotationAxisAngle`](https://rerun.io/docs/reference/types/components/pose_rotation_axis_angle) which is also used by [`archetypes.InstancePoses3D`](https://rerun.io/docs/reference/types/archetypes/instance_poses3d).",
+                    is_required : false, }, ArchetypeFieldReflection { component_name :
+                    "rerun.components.PoseRotationQuat".into(), display_name :
+                    "Quaternions", docstring_md :
+                    "Rotations via quaternion.\n\nIf no rotation is specified, the axes of the ellipsoid align with the axes of the local coordinate system.\nNote that this uses a [`components.PoseRotationQuat`](https://rerun.io/docs/reference/types/components/pose_rotation_quat) which is also used by [`archetypes.InstancePoses3D`](https://rerun.io/docs/reference/types/archetypes/instance_poses3d).",
+                    is_required : false, }, ArchetypeFieldReflection { component_name :
+                    "rerun.components.Color".into(), display_name : "Colors",
+                    docstring_md : "Optional colors for the ellipsoids.", is_required :
+                    false, }, ArchetypeFieldReflection { component_name :
+                    "rerun.components.Radius".into(), display_name : "Line radii",
+                    docstring_md :
+                    "Optional radii for the lines used when the ellipsoid is rendered as a wireframe.",
+                    is_required : false, }, ArchetypeFieldReflection { component_name :
+                    "rerun.components.FillMode".into(), display_name : "Fill mode",
+                    docstring_md :
+                    "Optionally choose whether the ellipsoids are drawn with lines or solid.",
+                    is_required : false, }, ArchetypeFieldReflection { component_name :
+                    "rerun.components.Text".into(), display_name : "Labels", docstring_md
+                    : "Optional text labels for the ellipsoids.", is_required : false, },
+                    ArchetypeFieldReflection { component_name :
+                    "rerun.components.ShowLabels".into(), display_name : "Show labels",
+                    docstring_md :
+                    "Optional choice of whether the text labels should be shown by default.",
+                    is_required : false, }, ArchetypeFieldReflection { component_name :
+                    "rerun.components.ClassId".into(), display_name : "Class ids",
+                    docstring_md :
+                    "Optional class ID for the ellipsoids.\n\nThe class ID provides colors and labels if not specified explicitly.",
+                    is_required : false, },
+                ],
+            },
+        ),
+        (
+            ArchetypeName::new("rerun.archetypes.EncodedImage"),
+            ArchetypeReflection {
+                display_name: "Encoded image",
+                docstring_md: "An image encoded as e.g. a JPEG or PNG.\n\nRerun also supports uncompressed images with the [`archetypes.Image`](https://rerun.io/docs/reference/types/archetypes/image).\n\n## Example\n\n### `encoded_image`:\n```ignore\nfn main() -> Result<(), Box<dyn std::error::Error>> {\n    let rec = rerun::RecordingStreamBuilder::new(\"rerun_example_encoded_image\").spawn()?;\n\n    let image = include_bytes!(\"ferris.png\");\n\n    rec.log(\n        \"image\",\n        &rerun::EncodedImage::from_file_contents(image.to_vec()),\n    )?;\n\n    Ok(())\n}\n```",
+                fields: vec![
+                    ArchetypeFieldReflection { component_name : "rerun.components.Blob"
+                    .into(), display_name : "Blob", docstring_md :
+                    "The encoded content of some image file, e.g. a PNG or JPEG.",
+                    is_required : true, }, ArchetypeFieldReflection { component_name :
+                    "rerun.components.MediaType".into(), display_name : "Media type",
+                    docstring_md :
+                    "The Media Type of the asset.\n\nSupported values:\n* `image/jpeg`\n* `image/png`\n\nIf omitted, the viewer will try to guess from the data blob.\nIf it cannot guess, it won't be able to render the asset.",
+                    is_required : false, }, ArchetypeFieldReflection { component_name :
+                    "rerun.components.Opacity".into(), display_name : "Opacity",
+                    docstring_md :
+                    "Opacity of the image, useful for layering several images.\n\nDefaults to 1.0 (fully opaque).",
+                    is_required : false, }, ArchetypeFieldReflection { component_name :
+                    "rerun.components.DrawOrder".into(), display_name : "Draw order",
+                    docstring_md :
+                    "An optional floating point value that specifies the 2D drawing order.\n\nObjects with higher values are drawn on top of those with lower values.",
+                    is_required : false, },
+                ],
+            },
+        ),
+        (
+            ArchetypeName::new("rerun.archetypes.Image"),
+            ArchetypeReflection {
+                display_name: "Image",
+                docstring_md: "A monochrome or color image.\n\nSee also [`archetypes.DepthImage`](https://rerun.io/docs/reference/types/archetypes/depth_image) and [`archetypes.SegmentationImage`](https://rerun.io/docs/reference/types/archetypes/segmentation_image).\n\nThe raw image data is stored as a single buffer of bytes in a [`components.Blob`](https://rerun.io/docs/reference/types/components/blob).\nThe meaning of these bytes is determined by the [`components.ImageFormat`](https://rerun.io/docs/reference/types/components/image_format) which specifies the resolution\nand the pixel format (e.g. RGB, RGBA, …).\n\nThe order of dimensions in the underlying [`components.Blob`](https://rerun.io/docs/reference/types/components/blob) follows the typical\nrow-major, interleaved-pixel image format.\n\nRerun also supports compressed images (JPEG, PNG, …), using [`archetypes.EncodedImage`](https://rerun.io/docs/reference/types/archetypes/encoded_image).\nCompressing images can save a lot of bandwidth and memory.\n\n## Examples\n\n### `image_simple`:\n```ignore\nuse ndarray::{s, Array, ShapeBuilder};\n\nfn main() -> Result<(), Box<dyn std::error::Error>> {\n    let rec = rerun::RecordingStreamBuilder::new(\"rerun_example_image\").spawn()?;\n\n    let mut image = Array::<u8, _>::zeros((200, 300, 3).f());\n    image.slice_mut(s![.., .., 0]).fill(255);\n    image.slice_mut(s![50..150, 50..150, 0]).fill(0);\n    image.slice_mut(s![50..150, 50..150, 1]).fill(255);\n\n    rec.log(\n        \"image\",\n        &rerun::Image::from_color_model_and_tensor(rerun::ColorModel::RGB, image)?,\n    )?;\n\n    Ok(())\n}\n```\n<center>\n<picture>\n  <source media=\"(max-width: 480px)\" srcset=\"https://static.rerun.io/image_simple/06ba7f8582acc1ffb42a7fd0006fad7816f3e4e4/480w.png\">\n  <source media=\"(max-width: 768px)\" srcset=\"https://static.rerun.io/image_simple/06ba7f8582acc1ffb42a7fd0006fad7816f3e4e4/768w.png\">\n  <source media=\"(max-width: 1024px)\" srcset=\"https://static.rerun.io/image_simple/06ba7f8582acc1ffb42a7fd0006fad7816f3e4e4/1024w.png\">\n  <source media=\"(max-width: 1200px)\" srcset=\"https://static.rerun.io/image_simple/06ba7f8582acc1ffb42a7fd0006fad7816f3e4e4/1200w.png\">\n  <img src=\"https://static.rerun.io/image_simple/06ba7f8582acc1ffb42a7fd0006fad7816f3e4e4/full.png\" width=\"640\">\n</picture>\n</center>\n\n### Advanced usage of `send_columns` to send multiple images at once\n```ignore\nuse ndarray::{s, Array, ShapeBuilder};\nuse rerun::Archetype as _;\n\nfn main() -> Result<(), Box<dyn std::error::Error>> {\n    let rec = rerun::RecordingStreamBuilder::new(\"rerun_example_image_send_columns\").spawn()?;\n\n    // Timeline on which the images are distributed.\n    let times = (0..20).collect::<Vec<i64>>();\n\n    // Create a batch of images with a moving rectangle.\n    let width = 300;\n    let height = 200;\n    let mut images = Array::<u8, _>::zeros((times.len(), height, width, 3).f())\n        .as_standard_layout() // Make sure the data is laid out as we expect it.\n        .into_owned();\n    images.slice_mut(s![.., .., .., 2]).fill(255);\n    for &t in &times {\n        let t = t as usize;\n        images\n            .slice_mut(s![t, 50..150, (t * 10)..(t * 10 + 100), 1])\n            .fill(255);\n    }\n\n    // Log the ImageFormat and indicator once, as static.\n    let format = rerun::components::ImageFormat::rgb8([width as _, height as _]);\n    rec.log_component_batches(\n        \"images\",\n        true,\n        [&format as _, &rerun::Image::indicator() as _],\n    )?;\n\n    // Split up the image data into several components referencing the underlying data.\n    let image_size_in_bytes = width * height * 3;\n    let blob = rerun::datatypes::Blob::from(images.into_raw_vec());\n    let image_column = times\n        .iter()\n        .map(|&t| {\n            let byte_offset = image_size_in_bytes * (t as usize);\n            rerun::components::ImageBuffer::from(\n                blob.clone() // Clone is only a reference count increase, not a full copy.\n                    .sliced(byte_offset..(byte_offset + image_size_in_bytes)),\n            )\n        })\n        .collect::<Vec<_>>();\n\n    // Send all images at once.\n    let timeline_values = rerun::TimeColumn::new_sequence(\"step\", times);\n    rec.send_columns(\"images\", [timeline_values], [&image_column as _])?;\n\n    Ok(())\n}\n```\n<center>\n<picture>\n  <source media=\"(max-width: 480px)\" srcset=\"https://static.rerun.io/image_send_columns/321455161d79e2c45d6f5a6f175d6f765f418897/480w.png\">\n  <source media=\"(max-width: 768px)\" srcset=\"https://static.rerun.io/image_send_columns/321455161d79e2c45d6f5a6f175d6f765f418897/768w.png\">\n  <source media=\"(max-width: 1024px)\" srcset=\"https://static.rerun.io/image_send_columns/321455161d79e2c45d6f5a6f175d6f765f418897/1024w.png\">\n  <source media=\"(max-width: 1200px)\" srcset=\"https://static.rerun.io/image_send_columns/321455161d79e2c45d6f5a6f175d6f765f418897/1200w.png\">\n  <img src=\"https://static.rerun.io/image_send_columns/321455161d79e2c45d6f5a6f175d6f765f418897/full.png\" width=\"640\">\n</picture>\n</center>",
+                fields: vec![
+                    ArchetypeFieldReflection { component_name :
+                    "rerun.components.ImageBuffer".into(), display_name : "Buffer",
+                    docstring_md : "The raw image data.", is_required : true, },
+                    ArchetypeFieldReflection { component_name :
+                    "rerun.components.ImageFormat".into(), display_name : "Format",
+                    docstring_md : "The format of the image.", is_required : true, },
+                    ArchetypeFieldReflection { component_name :
+                    "rerun.components.Opacity".into(), display_name : "Opacity",
+                    docstring_md :
+                    "Opacity of the image, useful for layering several images.\n\nDefaults to 1.0 (fully opaque).",
+                    is_required : false, }, ArchetypeFieldReflection { component_name :
+                    "rerun.components.DrawOrder".into(), display_name : "Draw order",
+                    docstring_md :
+                    "An optional floating point value that specifies the 2D drawing order.\n\nObjects with higher values are drawn on top of those with lower values.",
+                    is_required : false, },
+                ],
+            },
+        ),
+        (
             ArchetypeName::new("rerun.archetypes.InstancePoses3D"),
             ArchetypeReflection {
                 display_name: "Instance poses 3D",
@@ -697,19 +1078,365 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                 fields: vec![
                     ArchetypeFieldReflection { component_name :
                     "rerun.components.PoseTranslation3D".into(), display_name :
-                    "Translations", docstring_md : "Translation vectors.", },
-                    ArchetypeFieldReflection { component_name :
+                    "Translations", docstring_md : "Translation vectors.", is_required :
+                    false, }, ArchetypeFieldReflection { component_name :
                     "rerun.components.PoseRotationAxisAngle".into(), display_name :
                     "Rotation axis angles", docstring_md : "Rotations via axis + angle.",
-                    }, ArchetypeFieldReflection { component_name :
+                    is_required : false, }, ArchetypeFieldReflection { component_name :
                     "rerun.components.PoseRotationQuat".into(), display_name :
-                    "Quaternions", docstring_md : "Rotations via quaternion.", },
-                    ArchetypeFieldReflection { component_name :
+                    "Quaternions", docstring_md : "Rotations via quaternion.",
+                    is_required : false, }, ArchetypeFieldReflection { component_name :
                     "rerun.components.PoseScale3D".into(), display_name : "Scales",
-                    docstring_md : "Scaling factors.", }, ArchetypeFieldReflection {
-                    component_name : "rerun.components.PoseTransformMat3x3".into(),
-                    display_name : "Mat 3x 3", docstring_md :
-                    "3x3 transformation matrices.", },
+                    docstring_md : "Scaling factors.", is_required : false, },
+                    ArchetypeFieldReflection { component_name :
+                    "rerun.components.PoseTransformMat3x3".into(), display_name :
+                    "Mat 3x 3", docstring_md : "3x3 transformation matrices.",
+                    is_required : false, },
+                ],
+            },
+        ),
+        (
+            ArchetypeName::new("rerun.archetypes.LineStrips2D"),
+            ArchetypeReflection {
+                display_name: "Line strips 2D",
+                docstring_md: "2D line strips with positions and optional colors, radii, labels, etc.\n\n## Examples\n\n### `line_strip2d_batch`:\n```ignore\nfn main() -> Result<(), Box<dyn std::error::Error>> {\n    let rec = rerun::RecordingStreamBuilder::new(\"rerun_example_line_strip2d_batch\").spawn()?;\n\n    let strip1 = [[0., 0.], [2., 1.], [4., -1.], [6., 0.]];\n    #[rustfmt::skip]\n    let strip2 = [[0., 3.], [1., 4.], [2., 2.], [3., 4.], [4., 2.], [5., 4.], [6., 3.]];\n    rec.log(\n        \"strips\",\n        &rerun::LineStrips2D::new([strip1.to_vec(), strip2.to_vec()])\n            .with_colors([0xFF0000FF, 0x00FF00FF])\n            .with_radii([0.025, 0.005])\n            .with_labels([\"one strip here\", \"and one strip there\"]),\n    )?;\n\n    // TODO(#5521): log VisualBounds2D\n\n    Ok(())\n}\n```\n<center>\n<picture>\n  <source media=\"(max-width: 480px)\" srcset=\"https://static.rerun.io/line_strip2d_batch/c6f4062bcf510462d298a5dfe9fdbe87c754acee/480w.png\">\n  <source media=\"(max-width: 768px)\" srcset=\"https://static.rerun.io/line_strip2d_batch/c6f4062bcf510462d298a5dfe9fdbe87c754acee/768w.png\">\n  <source media=\"(max-width: 1024px)\" srcset=\"https://static.rerun.io/line_strip2d_batch/c6f4062bcf510462d298a5dfe9fdbe87c754acee/1024w.png\">\n  <source media=\"(max-width: 1200px)\" srcset=\"https://static.rerun.io/line_strip2d_batch/c6f4062bcf510462d298a5dfe9fdbe87c754acee/1200w.png\">\n  <img src=\"https://static.rerun.io/line_strip2d_batch/c6f4062bcf510462d298a5dfe9fdbe87c754acee/full.png\" width=\"640\">\n</picture>\n</center>\n\n### Lines with scene & UI radius each\n```ignore\nfn main() -> Result<(), Box<dyn std::error::Error>> {\n    let rec = rerun::RecordingStreamBuilder::new(\"rerun_example_line_strip3d_ui_radius\").spawn()?;\n\n    // A blue line with a scene unit radii of 0.01.\n    let points = [[0., 0., 0.], [0., 0., 1.], [1., 0., 0.], [1., 0., 1.]];\n    rec.log(\n        \"scene_unit_line\",\n        &rerun::LineStrips3D::new([points])\n            // By default, radii are interpreted as world-space units.\n            .with_radii([0.01])\n            .with_colors([rerun::Color::from_rgb(0, 0, 255)]),\n    )?;\n\n    // A red line with a ui point radii of 5.\n    // UI points are independent of zooming in Views, but are sensitive to the application UI scaling.\n    // For 100 % ui scaling, UI points are equal to pixels.\n    let points = [[3., 0., 0.], [3., 0., 1.], [4., 0., 0.], [4., 0., 1.]];\n    rec.log(\n        \"ui_points_line\",\n        &rerun::LineStrips3D::new([points])\n            // rerun::Radius::new_ui_points produces a radius that the viewer interprets as given in ui points.\n            .with_radii([rerun::Radius::new_ui_points(5.0)])\n            .with_colors([rerun::Color::from_rgb(255, 0, 0)]),\n    )?;\n\n    Ok(())\n}\n```",
+                fields: vec![
+                    ArchetypeFieldReflection { component_name :
+                    "rerun.components.LineStrip2D".into(), display_name : "Strips",
+                    docstring_md :
+                    "All the actual 2D line strips that make up the batch.", is_required
+                    : true, }, ArchetypeFieldReflection { component_name :
+                    "rerun.components.Radius".into(), display_name : "Radii",
+                    docstring_md : "Optional radii for the line strips.", is_required :
+                    false, }, ArchetypeFieldReflection { component_name :
+                    "rerun.components.Color".into(), display_name : "Colors",
+                    docstring_md : "Optional colors for the line strips.", is_required :
+                    false, }, ArchetypeFieldReflection { component_name :
+                    "rerun.components.Text".into(), display_name : "Labels", docstring_md
+                    :
+                    "Optional text labels for the line strips.\n\nIf there's a single label present, it will be placed at the center of the entity.\nOtherwise, each instance will have its own label.",
+                    is_required : false, }, ArchetypeFieldReflection { component_name :
+                    "rerun.components.ShowLabels".into(), display_name : "Show labels",
+                    docstring_md :
+                    "Optional choice of whether the text labels should be shown by default.",
+                    is_required : false, }, ArchetypeFieldReflection { component_name :
+                    "rerun.components.DrawOrder".into(), display_name : "Draw order",
+                    docstring_md :
+                    "An optional floating point value that specifies the 2D drawing order of each line strip.\n\nObjects with higher values are drawn on top of those with lower values.",
+                    is_required : false, }, ArchetypeFieldReflection { component_name :
+                    "rerun.components.ClassId".into(), display_name : "Class ids",
+                    docstring_md :
+                    "Optional [`components.ClassId`](https://rerun.io/docs/reference/types/components/class_id)s for the lines.\n\nThe [`components.ClassId`](https://rerun.io/docs/reference/types/components/class_id) provides colors and labels if not specified explicitly.",
+                    is_required : false, },
+                ],
+            },
+        ),
+        (
+            ArchetypeName::new("rerun.archetypes.LineStrips3D"),
+            ArchetypeReflection {
+                display_name: "Line strips 3D",
+                docstring_md: "3D line strips with positions and optional colors, radii, labels, etc.\n\n## Examples\n\n### Many strips\n```ignore\nfn main() -> Result<(), Box<dyn std::error::Error>> {\n    let rec = rerun::RecordingStreamBuilder::new(\"rerun_example_line_strip3d_batch\").spawn()?;\n\n    let strip1 = [[0., 0., 2.], [1., 0., 2.], [1., 1., 2.], [0., 1., 2.]];\n    let strip2 = [\n        [0., 0., 0.],\n        [0., 0., 1.],\n        [1., 0., 0.],\n        [1., 0., 1.],\n        [1., 1., 0.],\n        [1., 1., 1.],\n        [0., 1., 0.],\n        [0., 1., 1.],\n    ];\n    rec.log(\n        \"strips\",\n        &rerun::LineStrips3D::new([strip1.to_vec(), strip2.to_vec()])\n            .with_colors([0xFF0000FF, 0x00FF00FF])\n            .with_radii([0.025, 0.005])\n            .with_labels([\"one strip here\", \"and one strip there\"]),\n    )?;\n\n    Ok(())\n}\n```\n<center>\n<picture>\n  <source media=\"(max-width: 480px)\" srcset=\"https://static.rerun.io/line_strip3d_batch/15e8ff18a6c95a3191acb0eae6eb04adea3b4874/480w.png\">\n  <source media=\"(max-width: 768px)\" srcset=\"https://static.rerun.io/line_strip3d_batch/15e8ff18a6c95a3191acb0eae6eb04adea3b4874/768w.png\">\n  <source media=\"(max-width: 1024px)\" srcset=\"https://static.rerun.io/line_strip3d_batch/15e8ff18a6c95a3191acb0eae6eb04adea3b4874/1024w.png\">\n  <source media=\"(max-width: 1200px)\" srcset=\"https://static.rerun.io/line_strip3d_batch/15e8ff18a6c95a3191acb0eae6eb04adea3b4874/1200w.png\">\n  <img src=\"https://static.rerun.io/line_strip3d_batch/15e8ff18a6c95a3191acb0eae6eb04adea3b4874/full.png\" width=\"640\">\n</picture>\n</center>\n\n### Lines with scene & UI radius each\n```ignore\nfn main() -> Result<(), Box<dyn std::error::Error>> {\n    let rec = rerun::RecordingStreamBuilder::new(\"rerun_example_line_strip3d_ui_radius\").spawn()?;\n\n    // A blue line with a scene unit radii of 0.01.\n    let points = [[0., 0., 0.], [0., 0., 1.], [1., 0., 0.], [1., 0., 1.]];\n    rec.log(\n        \"scene_unit_line\",\n        &rerun::LineStrips3D::new([points])\n            // By default, radii are interpreted as world-space units.\n            .with_radii([0.01])\n            .with_colors([rerun::Color::from_rgb(0, 0, 255)]),\n    )?;\n\n    // A red line with a ui point radii of 5.\n    // UI points are independent of zooming in Views, but are sensitive to the application UI scaling.\n    // For 100 % ui scaling, UI points are equal to pixels.\n    let points = [[3., 0., 0.], [3., 0., 1.], [4., 0., 0.], [4., 0., 1.]];\n    rec.log(\n        \"ui_points_line\",\n        &rerun::LineStrips3D::new([points])\n            // rerun::Radius::new_ui_points produces a radius that the viewer interprets as given in ui points.\n            .with_radii([rerun::Radius::new_ui_points(5.0)])\n            .with_colors([rerun::Color::from_rgb(255, 0, 0)]),\n    )?;\n\n    Ok(())\n}\n```\n<center>\n<picture>\n  <source media=\"(max-width: 480px)\" srcset=\"https://static.rerun.io/line_strip3d_ui_radius/36b98f47e45747b5a3601511ff39b8d74c61d120/480w.png\">\n  <source media=\"(max-width: 768px)\" srcset=\"https://static.rerun.io/line_strip3d_ui_radius/36b98f47e45747b5a3601511ff39b8d74c61d120/768w.png\">\n  <source media=\"(max-width: 1024px)\" srcset=\"https://static.rerun.io/line_strip3d_ui_radius/36b98f47e45747b5a3601511ff39b8d74c61d120/1024w.png\">\n  <source media=\"(max-width: 1200px)\" srcset=\"https://static.rerun.io/line_strip3d_ui_radius/36b98f47e45747b5a3601511ff39b8d74c61d120/1200w.png\">\n  <img src=\"https://static.rerun.io/line_strip3d_ui_radius/36b98f47e45747b5a3601511ff39b8d74c61d120/full.png\" width=\"640\">\n</picture>\n</center>",
+                fields: vec![
+                    ArchetypeFieldReflection { component_name :
+                    "rerun.components.LineStrip3D".into(), display_name : "Strips",
+                    docstring_md :
+                    "All the actual 3D line strips that make up the batch.", is_required
+                    : true, }, ArchetypeFieldReflection { component_name :
+                    "rerun.components.Radius".into(), display_name : "Radii",
+                    docstring_md : "Optional radii for the line strips.", is_required :
+                    false, }, ArchetypeFieldReflection { component_name :
+                    "rerun.components.Color".into(), display_name : "Colors",
+                    docstring_md : "Optional colors for the line strips.", is_required :
+                    false, }, ArchetypeFieldReflection { component_name :
+                    "rerun.components.Text".into(), display_name : "Labels", docstring_md
+                    :
+                    "Optional text labels for the line strips.\n\nIf there's a single label present, it will be placed at the center of the entity.\nOtherwise, each instance will have its own label.",
+                    is_required : false, }, ArchetypeFieldReflection { component_name :
+                    "rerun.components.ShowLabels".into(), display_name : "Show labels",
+                    docstring_md :
+                    "Optional choice of whether the text labels should be shown by default.",
+                    is_required : false, }, ArchetypeFieldReflection { component_name :
+                    "rerun.components.ClassId".into(), display_name : "Class ids",
+                    docstring_md :
+                    "Optional [`components.ClassId`](https://rerun.io/docs/reference/types/components/class_id)s for the lines.\n\nThe [`components.ClassId`](https://rerun.io/docs/reference/types/components/class_id) provides colors and labels if not specified explicitly.",
+                    is_required : false, },
+                ],
+            },
+        ),
+        (
+            ArchetypeName::new("rerun.archetypes.Mesh3D"),
+            ArchetypeReflection {
+                display_name: "Mesh 3D",
+                docstring_md: "A 3D triangle mesh as specified by its per-mesh and per-vertex properties.\n\nSee also [`archetypes.Asset3D`](https://rerun.io/docs/reference/types/archetypes/asset3d).\n\nIf there are multiple [`archetypes.InstancePoses3D`](https://rerun.io/docs/reference/types/archetypes/instance_poses3d) instances logged to the same entity as a mesh,\nan instance of the mesh will be drawn for each transform.\n\n## Examples\n\n### Simple indexed 3D mesh\n```ignore\nfn main() -> Result<(), Box<dyn std::error::Error>> {\n    let rec = rerun::RecordingStreamBuilder::new(\"rerun_example_mesh3d_indexed\").spawn()?;\n\n    rec.log(\n        \"triangle\",\n        &rerun::Mesh3D::new([[0.0, 1.0, 0.0], [1.0, 0.0, 0.0], [0.0, 0.0, 0.0]])\n            .with_vertex_normals([[0.0, 0.0, 1.0]])\n            .with_vertex_colors([0x0000FFFF, 0x00FF00FF, 0xFF0000FF])\n            .with_triangle_indices([[2, 1, 0]]),\n    )?;\n\n    Ok(())\n}\n```\n<center>\n<picture>\n  <source media=\"(max-width: 480px)\" srcset=\"https://static.rerun.io/mesh3d_indexed/57c70dc992e6dc0bd9c5222ca084f5b6240cea75/480w.png\">\n  <source media=\"(max-width: 768px)\" srcset=\"https://static.rerun.io/mesh3d_indexed/57c70dc992e6dc0bd9c5222ca084f5b6240cea75/768w.png\">\n  <source media=\"(max-width: 1024px)\" srcset=\"https://static.rerun.io/mesh3d_indexed/57c70dc992e6dc0bd9c5222ca084f5b6240cea75/1024w.png\">\n  <source media=\"(max-width: 1200px)\" srcset=\"https://static.rerun.io/mesh3d_indexed/57c70dc992e6dc0bd9c5222ca084f5b6240cea75/1200w.png\">\n  <img src=\"https://static.rerun.io/mesh3d_indexed/57c70dc992e6dc0bd9c5222ca084f5b6240cea75/full.png\" width=\"640\">\n</picture>\n</center>\n\n### 3D mesh with instancing\n```ignore\nfn main() -> Result<(), Box<dyn std::error::Error>> {\n    let rec = rerun::RecordingStreamBuilder::new(\"rerun_example_mesh3d_instancing\").spawn()?;\n\n    rec.set_time_sequence(\"frame\", 0);\n    rec.log(\n        \"shape\",\n        &rerun::Mesh3D::new([\n            [1.0, 1.0, 1.0],\n            [-1.0, -1.0, 1.0],\n            [-1.0, 1.0, -1.0],\n            [1.0, -1.0, -1.0],\n        ])\n        .with_triangle_indices([[0, 1, 2], [0, 1, 3], [0, 2, 3], [1, 2, 3]])\n        .with_vertex_colors([0xFF0000FF, 0x00FF00FF, 0x00000FFFF, 0xFFFF00FF]),\n    )?;\n    // This box will not be affected by its parent's instance poses!\n    rec.log(\n        \"shape/box\",\n        &rerun::Boxes3D::from_half_sizes([[5.0, 5.0, 5.0]]),\n    )?;\n\n    for i in 0..100 {\n        rec.set_time_sequence(\"frame\", i);\n        rec.log(\n            \"shape\",\n            &rerun::InstancePoses3D::new()\n                .with_translations([\n                    [2.0, 0.0, 0.0],\n                    [0.0, 2.0, 0.0],\n                    [0.0, -2.0, 0.0],\n                    [-2.0, 0.0, 0.0],\n                ])\n                .with_rotation_axis_angles([rerun::RotationAxisAngle::new(\n                    [0.0, 0.0, 1.0],\n                    rerun::Angle::from_degrees(i as f32 * 2.0),\n                )]),\n        )?;\n    }\n\n    Ok(())\n}\n```\n<center>\n<picture>\n  <source media=\"(max-width: 480px)\" srcset=\"https://static.rerun.io/mesh3d_leaf_transforms3d/c2d0ee033129da53168f5705625a9b033f3a3d61/480w.png\">\n  <source media=\"(max-width: 768px)\" srcset=\"https://static.rerun.io/mesh3d_leaf_transforms3d/c2d0ee033129da53168f5705625a9b033f3a3d61/768w.png\">\n  <source media=\"(max-width: 1024px)\" srcset=\"https://static.rerun.io/mesh3d_leaf_transforms3d/c2d0ee033129da53168f5705625a9b033f3a3d61/1024w.png\">\n  <source media=\"(max-width: 1200px)\" srcset=\"https://static.rerun.io/mesh3d_leaf_transforms3d/c2d0ee033129da53168f5705625a9b033f3a3d61/1200w.png\">\n  <img src=\"https://static.rerun.io/mesh3d_leaf_transforms3d/c2d0ee033129da53168f5705625a9b033f3a3d61/full.png\" width=\"640\">\n</picture>\n</center>",
+                fields: vec![
+                    ArchetypeFieldReflection { component_name :
+                    "rerun.components.Position3D".into(), display_name :
+                    "Vertex positions", docstring_md :
+                    "The positions of each vertex.\n\nIf no `triangle_indices` are specified, then each triplet of positions is interpreted as a triangle.",
+                    is_required : true, }, ArchetypeFieldReflection { component_name :
+                    "rerun.components.TriangleIndices".into(), display_name :
+                    "Triangle indices", docstring_md :
+                    "Optional indices for the triangles that make up the mesh.",
+                    is_required : false, }, ArchetypeFieldReflection { component_name :
+                    "rerun.components.Vector3D".into(), display_name : "Vertex normals",
+                    docstring_md : "An optional normal for each vertex.", is_required :
+                    false, }, ArchetypeFieldReflection { component_name :
+                    "rerun.components.Color".into(), display_name : "Vertex colors",
+                    docstring_md : "An optional color for each vertex.", is_required :
+                    false, }, ArchetypeFieldReflection { component_name :
+                    "rerun.components.Texcoord2D".into(), display_name :
+                    "Vertex texcoords", docstring_md :
+                    "An optional uv texture coordinate for each vertex.", is_required :
+                    false, }, ArchetypeFieldReflection { component_name :
+                    "rerun.components.AlbedoFactor".into(), display_name :
+                    "Albedo factor", docstring_md :
+                    "A color multiplier applied to the whole mesh.", is_required : false,
+                    }, ArchetypeFieldReflection { component_name :
+                    "rerun.components.ImageBuffer".into(), display_name :
+                    "Albedo texture buffer", docstring_md :
+                    "Optional albedo texture.\n\nUsed with the [`components.Texcoord2D`](https://rerun.io/docs/reference/types/components/texcoord2d) of the mesh.\n\nCurrently supports only sRGB(A) textures, ignoring alpha.\n(meaning that the tensor must have 3 or 4 channels and use the `u8` format)",
+                    is_required : false, }, ArchetypeFieldReflection { component_name :
+                    "rerun.components.ImageFormat".into(), display_name :
+                    "Albedo texture format", docstring_md :
+                    "The format of the `albedo_texture_buffer`, if any.", is_required :
+                    false, }, ArchetypeFieldReflection { component_name :
+                    "rerun.components.ClassId".into(), display_name : "Class ids",
+                    docstring_md :
+                    "Optional class Ids for the vertices.\n\nThe [`components.ClassId`](https://rerun.io/docs/reference/types/components/class_id) provides colors and labels if not specified explicitly.",
+                    is_required : false, },
+                ],
+            },
+        ),
+        (
+            ArchetypeName::new("rerun.archetypes.Pinhole"),
+            ArchetypeReflection {
+                display_name: "Pinhole",
+                docstring_md: "Camera perspective projection (a.k.a. intrinsics).\n\n## Examples\n\n### Simple pinhole camera\n```ignore\nuse ndarray::{Array, ShapeBuilder};\n\nfn main() -> Result<(), Box<dyn std::error::Error>> {\n    let rec = rerun::RecordingStreamBuilder::new(\"rerun_example_pinhole\").spawn()?;\n\n    let mut image = Array::<u8, _>::default((3, 3, 3).f());\n    image.map_inplace(|x| *x = rand::random());\n\n    rec.log(\n        \"world/image\",\n        &rerun::Pinhole::from_focal_length_and_resolution([3., 3.], [3., 3.]),\n    )?;\n    rec.log(\n        \"world/image\",\n        &rerun::Image::from_color_model_and_tensor(rerun::ColorModel::RGB, image)?,\n    )?;\n\n    Ok(())\n}\n```\n<center>\n<picture>\n  <source media=\"(max-width: 480px)\" srcset=\"https://static.rerun.io/pinhole_simple/9af9441a94bcd9fd54e1fea44fb0c59ff381a7f2/480w.png\">\n  <source media=\"(max-width: 768px)\" srcset=\"https://static.rerun.io/pinhole_simple/9af9441a94bcd9fd54e1fea44fb0c59ff381a7f2/768w.png\">\n  <source media=\"(max-width: 1024px)\" srcset=\"https://static.rerun.io/pinhole_simple/9af9441a94bcd9fd54e1fea44fb0c59ff381a7f2/1024w.png\">\n  <source media=\"(max-width: 1200px)\" srcset=\"https://static.rerun.io/pinhole_simple/9af9441a94bcd9fd54e1fea44fb0c59ff381a7f2/1200w.png\">\n  <img src=\"https://static.rerun.io/pinhole_simple/9af9441a94bcd9fd54e1fea44fb0c59ff381a7f2/full.png\" width=\"640\">\n</picture>\n</center>\n\n### Perspective pinhole camera\n```ignore\nfn main() -> Result<(), Box<dyn std::error::Error>> {\n    let rec = rerun::RecordingStreamBuilder::new(\"rerun_example_pinhole_perspective\").spawn()?;\n\n    let fov_y = std::f32::consts::FRAC_PI_4;\n    let aspect_ratio = 1.7777778;\n    rec.log(\n        \"world/cam\",\n        &rerun::Pinhole::from_fov_and_aspect_ratio(fov_y, aspect_ratio)\n            .with_camera_xyz(rerun::components::ViewCoordinates::RUB)\n            .with_image_plane_distance(0.1),\n    )?;\n\n    rec.log(\n        \"world/points\",\n        &rerun::Points3D::new([(0.0, 0.0, -0.5), (0.1, 0.1, -0.5), (-0.1, -0.1, -0.5)])\n            .with_radii([0.025]),\n    )?;\n\n    Ok(())\n}\n```\n<center>\n<picture>\n  <source media=\"(max-width: 480px)\" srcset=\"https://static.rerun.io/pinhole_perspective/317e2de6d212b238dcdad5b67037e9e2a2afafa0/480w.png\">\n  <source media=\"(max-width: 768px)\" srcset=\"https://static.rerun.io/pinhole_perspective/317e2de6d212b238dcdad5b67037e9e2a2afafa0/768w.png\">\n  <source media=\"(max-width: 1024px)\" srcset=\"https://static.rerun.io/pinhole_perspective/317e2de6d212b238dcdad5b67037e9e2a2afafa0/1024w.png\">\n  <source media=\"(max-width: 1200px)\" srcset=\"https://static.rerun.io/pinhole_perspective/317e2de6d212b238dcdad5b67037e9e2a2afafa0/1200w.png\">\n  <img src=\"https://static.rerun.io/pinhole_perspective/317e2de6d212b238dcdad5b67037e9e2a2afafa0/full.png\" width=\"640\">\n</picture>\n</center>",
+                fields: vec![
+                    ArchetypeFieldReflection { component_name :
+                    "rerun.components.PinholeProjection".into(), display_name :
+                    "Image from camera", docstring_md :
+                    "Camera projection, from image coordinates to view coordinates.",
+                    is_required : true, }, ArchetypeFieldReflection { component_name :
+                    "rerun.components.Resolution".into(), display_name : "Resolution",
+                    docstring_md :
+                    "Pixel resolution (usually integers) of child image space. Width and height.\n\nExample:\n```text\n[1920.0, 1440.0]\n```\n\n`image_from_camera` project onto the space spanned by `(0,0)` and `resolution - 1`.",
+                    is_required : false, }, ArchetypeFieldReflection { component_name :
+                    "rerun.components.ViewCoordinates".into(), display_name :
+                    "Camera xyz", docstring_md :
+                    "Sets the view coordinates for the camera.\n\nAll common values are available as constants on the `components.ViewCoordinates` class.\n\nThe default is `ViewCoordinates::RDF`, i.e. X=Right, Y=Down, Z=Forward, and this is also the recommended setting.\nThis means that the camera frustum will point along the positive Z axis of the parent space,\nand the cameras \"up\" direction will be along the negative Y axis of the parent space.\n\nThe camera frustum will point whichever axis is set to `F` (or the opposite of `B`).\nWhen logging a depth image under this entity, this is the direction the point cloud will be projected.\nWith `RDF`, the default forward is +Z.\n\nThe frustum's \"up\" direction will be whichever axis is set to `U` (or the opposite of `D`).\nThis will match the negative Y direction of pixel space (all images are assumed to have xyz=RDF).\nWith `RDF`, the default is up is -Y.\n\nThe frustum's \"right\" direction will be whichever axis is set to `R` (or the opposite of `L`).\nThis will match the positive X direction of pixel space (all images are assumed to have xyz=RDF).\nWith `RDF`, the default right is +x.\n\nOther common formats are `RUB` (X=Right, Y=Up, Z=Back) and `FLU` (X=Forward, Y=Left, Z=Up).\n\nNOTE: setting this to something else than `RDF` (the default) will change the orientation of the camera frustum,\nand make the pinhole matrix not match up with the coordinate system of the pinhole entity.\n\nThe pinhole matrix (the `image_from_camera` argument) always project along the third (Z) axis,\nbut will be re-oriented to project along the forward axis of the `camera_xyz` argument.",
+                    is_required : false, }, ArchetypeFieldReflection { component_name :
+                    "rerun.components.ImagePlaneDistance".into(), display_name :
+                    "Image plane distance", docstring_md :
+                    "The distance from the camera origin to the image plane when the projection is shown in a 3D viewer.\n\nThis is only used for visualization purposes, and does not affect the projection itself.",
+                    is_required : false, },
+                ],
+            },
+        ),
+        (
+            ArchetypeName::new("rerun.archetypes.Points2D"),
+            ArchetypeReflection {
+                display_name: "Points 2D",
+                docstring_md: "A 2D point cloud with positions and optional colors, radii, labels, etc.\n\n## Examples\n\n### Randomly distributed 2D points with varying color and radius\n```ignore\nuse rand::{distributions::Uniform, Rng as _};\n\nfn main() -> Result<(), Box<dyn std::error::Error>> {\n    let rec = rerun::RecordingStreamBuilder::new(\"rerun_example_points2d_random\").spawn()?;\n\n    let mut rng = rand::thread_rng();\n    let dist = Uniform::new(-3., 3.);\n\n    rec.log(\n        \"random\",\n        &rerun::Points2D::new((0..10).map(|_| (rng.sample(dist), rng.sample(dist))))\n            .with_colors((0..10).map(|_| rerun::Color::from_rgb(rng.gen(), rng.gen(), rng.gen())))\n            .with_radii((0..10).map(|_| rng.gen::<f32>())),\n    )?;\n\n    // TODO(#5521): log VisualBounds2D\n\n    Ok(())\n}\n```\n<center>\n<picture>\n  <source media=\"(max-width: 480px)\" srcset=\"https://static.rerun.io/point2d_random/8e8ac75373677bd72bd3f56a15e44fcab309a168/480w.png\">\n  <source media=\"(max-width: 768px)\" srcset=\"https://static.rerun.io/point2d_random/8e8ac75373677bd72bd3f56a15e44fcab309a168/768w.png\">\n  <source media=\"(max-width: 1024px)\" srcset=\"https://static.rerun.io/point2d_random/8e8ac75373677bd72bd3f56a15e44fcab309a168/1024w.png\">\n  <source media=\"(max-width: 1200px)\" srcset=\"https://static.rerun.io/point2d_random/8e8ac75373677bd72bd3f56a15e44fcab309a168/1200w.png\">\n  <img src=\"https://static.rerun.io/point2d_random/8e8ac75373677bd72bd3f56a15e44fcab309a168/full.png\" width=\"640\">\n</picture>\n</center>\n\n### Log points with radii given in UI points\n```ignore\nfn main() -> Result<(), Box<dyn std::error::Error>> {\n    let rec = rerun::RecordingStreamBuilder::new(\"rerun_example_points2d_ui_radius\").spawn()?;\n\n    // Two blue points with scene unit radii of 0.1 and 0.3.\n    rec.log(\n        \"scene_units\",\n        &rerun::Points2D::new([(0.0, 0.0), (0.0, 1.0)])\n            // By default, radii are interpreted as world-space units.\n            .with_radii([0.1, 0.3])\n            .with_colors([rerun::Color::from_rgb(0, 0, 255)]),\n    )?;\n\n    // Two red points with ui point radii of 40 and 60.\n    // UI points are independent of zooming in Views, but are sensitive to the application UI scaling.\n    // For 100% ui scaling, UI points are equal to pixels.\n    rec.log(\n        \"ui_points\",\n        &rerun::Points2D::new([(1.0, 0.0), (1.0, 1.0)])\n            // rerun::Radius::new_ui_points produces a radius that the viewer interprets as given in ui points.\n            .with_radii([\n                rerun::Radius::new_ui_points(40.0),\n                rerun::Radius::new_ui_points(60.0),\n            ])\n            .with_colors([rerun::Color::from_rgb(255, 0, 0)]),\n    )?;\n\n    // TODO(#5521): log VisualBounds2D\n\n    Ok(())\n}\n```\n<center>\n<picture>\n  <source media=\"(max-width: 480px)\" srcset=\"https://static.rerun.io/point2d_ui_radius/ce804fc77300d89c348b4ab5960395171497b7ac/480w.png\">\n  <source media=\"(max-width: 768px)\" srcset=\"https://static.rerun.io/point2d_ui_radius/ce804fc77300d89c348b4ab5960395171497b7ac/768w.png\">\n  <source media=\"(max-width: 1024px)\" srcset=\"https://static.rerun.io/point2d_ui_radius/ce804fc77300d89c348b4ab5960395171497b7ac/1024w.png\">\n  <source media=\"(max-width: 1200px)\" srcset=\"https://static.rerun.io/point2d_ui_radius/ce804fc77300d89c348b4ab5960395171497b7ac/1200w.png\">\n  <img src=\"https://static.rerun.io/point2d_ui_radius/ce804fc77300d89c348b4ab5960395171497b7ac/full.png\" width=\"640\">\n</picture>\n</center>",
+                fields: vec![
+                    ArchetypeFieldReflection { component_name :
+                    "rerun.components.Position2D".into(), display_name : "Positions",
+                    docstring_md :
+                    "All the 2D positions at which the point cloud shows points.",
+                    is_required : true, }, ArchetypeFieldReflection { component_name :
+                    "rerun.components.Radius".into(), display_name : "Radii",
+                    docstring_md :
+                    "Optional radii for the points, effectively turning them into circles.",
+                    is_required : false, }, ArchetypeFieldReflection { component_name :
+                    "rerun.components.Color".into(), display_name : "Colors",
+                    docstring_md : "Optional colors for the points.", is_required :
+                    false, }, ArchetypeFieldReflection { component_name :
+                    "rerun.components.Text".into(), display_name : "Labels", docstring_md
+                    :
+                    "Optional text labels for the points.\n\nIf there's a single label present, it will be placed at the center of the entity.\nOtherwise, each instance will have its own label.",
+                    is_required : false, }, ArchetypeFieldReflection { component_name :
+                    "rerun.components.ShowLabels".into(), display_name : "Show labels",
+                    docstring_md :
+                    "Optional choice of whether the text labels should be shown by default.",
+                    is_required : false, }, ArchetypeFieldReflection { component_name :
+                    "rerun.components.DrawOrder".into(), display_name : "Draw order",
+                    docstring_md :
+                    "An optional floating point value that specifies the 2D drawing order.\n\nObjects with higher values are drawn on top of those with lower values.",
+                    is_required : false, }, ArchetypeFieldReflection { component_name :
+                    "rerun.components.ClassId".into(), display_name : "Class ids",
+                    docstring_md :
+                    "Optional class Ids for the points.\n\nThe [`components.ClassId`](https://rerun.io/docs/reference/types/components/class_id) provides colors and labels if not specified explicitly.",
+                    is_required : false, }, ArchetypeFieldReflection { component_name :
+                    "rerun.components.KeypointId".into(), display_name : "Keypoint ids",
+                    docstring_md :
+                    "Optional keypoint IDs for the points, identifying them within a class.\n\nIf keypoint IDs are passed in but no [`components.ClassId`](https://rerun.io/docs/reference/types/components/class_id)s were specified, the [`components.ClassId`](https://rerun.io/docs/reference/types/components/class_id) will\ndefault to 0.\nThis is useful to identify points within a single classification (which is identified\nwith `class_id`).\nE.g. the classification might be 'Person' and the keypoints refer to joints on a\ndetected skeleton.",
+                    is_required : false, },
+                ],
+            },
+        ),
+        (
+            ArchetypeName::new("rerun.archetypes.Points3D"),
+            ArchetypeReflection {
+                display_name: "Points 3D",
+                docstring_md: "A 3D point cloud with positions and optional colors, radii, labels, etc.\n\n## Examples\n\n### Randomly distributed 3D points with varying color and radius\n```ignore\nuse rand::{distributions::Uniform, Rng as _};\n\nfn main() -> Result<(), Box<dyn std::error::Error>> {\n    let rec = rerun::RecordingStreamBuilder::new(\"rerun_example_points3d_random\").spawn()?;\n\n    let mut rng = rand::thread_rng();\n    let dist = Uniform::new(-5., 5.);\n\n    rec.log(\n        \"random\",\n        &rerun::Points3D::new(\n            (0..10).map(|_| (rng.sample(dist), rng.sample(dist), rng.sample(dist))),\n        )\n        .with_colors((0..10).map(|_| rerun::Color::from_rgb(rng.gen(), rng.gen(), rng.gen())))\n        .with_radii((0..10).map(|_| rng.gen::<f32>())),\n    )?;\n\n    Ok(())\n}\n```\n<center>\n<picture>\n  <source media=\"(max-width: 480px)\" srcset=\"https://static.rerun.io/point3d_random/7e94e1806d2c381943748abbb3bedb68d564de24/480w.png\">\n  <source media=\"(max-width: 768px)\" srcset=\"https://static.rerun.io/point3d_random/7e94e1806d2c381943748abbb3bedb68d564de24/768w.png\">\n  <source media=\"(max-width: 1024px)\" srcset=\"https://static.rerun.io/point3d_random/7e94e1806d2c381943748abbb3bedb68d564de24/1024w.png\">\n  <source media=\"(max-width: 1200px)\" srcset=\"https://static.rerun.io/point3d_random/7e94e1806d2c381943748abbb3bedb68d564de24/1200w.png\">\n  <img src=\"https://static.rerun.io/point3d_random/7e94e1806d2c381943748abbb3bedb68d564de24/full.png\" width=\"640\">\n</picture>\n</center>\n\n### Log points with radii given in UI points\n```ignore\nfn main() -> Result<(), Box<dyn std::error::Error>> {\n    let rec = rerun::RecordingStreamBuilder::new(\"rerun_example_points3d_ui_radius\").spawn()?;\n\n    // Two blue points with scene unit radii of 0.1 and 0.3.\n    rec.log(\n        \"scene_units\",\n        &rerun::Points3D::new([(0.0, 1.0, 0.0), (1.0, 1.0, 1.0)])\n            // By default, radii are interpreted as world-space units.\n            .with_radii([0.1, 0.3])\n            .with_colors([rerun::Color::from_rgb(0, 0, 255)]),\n    )?;\n\n    // Two red points with ui point radii of 40 and 60.\n    // UI points are independent of zooming in Views, but are sensitive to the application UI scaling.\n    // For 100% ui scaling, UI points are equal to pixels.\n    rec.log(\n        \"ui_points\",\n        &rerun::Points3D::new([(0.0, 0.0, 0.0), (1.0, 0.0, 1.0)])\n            // rerun::Radius::new_ui_points produces a radius that the viewer interprets as given in ui points.\n            .with_radii([\n                rerun::Radius::new_ui_points(40.0),\n                rerun::Radius::new_ui_points(60.0),\n            ])\n            .with_colors([rerun::Color::from_rgb(255, 0, 0)]),\n    )?;\n\n    Ok(())\n}\n```\n<center>\n<picture>\n  <source media=\"(max-width: 480px)\" srcset=\"https://static.rerun.io/point3d_ui_radius/e051a65b4317438bcaea8d0eee016ac9460b5336/480w.png\">\n  <source media=\"(max-width: 768px)\" srcset=\"https://static.rerun.io/point3d_ui_radius/e051a65b4317438bcaea8d0eee016ac9460b5336/768w.png\">\n  <source media=\"(max-width: 1024px)\" srcset=\"https://static.rerun.io/point3d_ui_radius/e051a65b4317438bcaea8d0eee016ac9460b5336/1024w.png\">\n  <source media=\"(max-width: 1200px)\" srcset=\"https://static.rerun.io/point3d_ui_radius/e051a65b4317438bcaea8d0eee016ac9460b5336/1200w.png\">\n  <img src=\"https://static.rerun.io/point3d_ui_radius/e051a65b4317438bcaea8d0eee016ac9460b5336/full.png\" width=\"640\">\n</picture>\n</center>",
+                fields: vec![
+                    ArchetypeFieldReflection { component_name :
+                    "rerun.components.Position3D".into(), display_name : "Positions",
+                    docstring_md :
+                    "All the 3D positions at which the point cloud shows points.",
+                    is_required : true, }, ArchetypeFieldReflection { component_name :
+                    "rerun.components.Radius".into(), display_name : "Radii",
+                    docstring_md :
+                    "Optional radii for the points, effectively turning them into circles.",
+                    is_required : false, }, ArchetypeFieldReflection { component_name :
+                    "rerun.components.Color".into(), display_name : "Colors",
+                    docstring_md : "Optional colors for the points.", is_required :
+                    false, }, ArchetypeFieldReflection { component_name :
+                    "rerun.components.Text".into(), display_name : "Labels", docstring_md
+                    :
+                    "Optional text labels for the points.\n\nIf there's a single label present, it will be placed at the center of the entity.\nOtherwise, each instance will have its own label.",
+                    is_required : false, }, ArchetypeFieldReflection { component_name :
+                    "rerun.components.ShowLabels".into(), display_name : "Show labels",
+                    docstring_md :
+                    "Optional choice of whether the text labels should be shown by default.",
+                    is_required : false, }, ArchetypeFieldReflection { component_name :
+                    "rerun.components.ClassId".into(), display_name : "Class ids",
+                    docstring_md :
+                    "Optional class Ids for the points.\n\nThe [`components.ClassId`](https://rerun.io/docs/reference/types/components/class_id) provides colors and labels if not specified explicitly.",
+                    is_required : false, }, ArchetypeFieldReflection { component_name :
+                    "rerun.components.KeypointId".into(), display_name : "Keypoint ids",
+                    docstring_md :
+                    "Optional keypoint IDs for the points, identifying them within a class.\n\nIf keypoint IDs are passed in but no [`components.ClassId`](https://rerun.io/docs/reference/types/components/class_id)s were specified, the [`components.ClassId`](https://rerun.io/docs/reference/types/components/class_id) will\ndefault to 0.\nThis is useful to identify points within a single classification (which is identified\nwith `class_id`).\nE.g. the classification might be 'Person' and the keypoints refer to joints on a\ndetected skeleton.",
+                    is_required : false, },
+                ],
+            },
+        ),
+        (
+            ArchetypeName::new("rerun.archetypes.Scalar"),
+            ArchetypeReflection {
+                display_name: "Scalar",
+                docstring_md: "A double-precision scalar, e.g. for use for time-series plots.\n\nThe current timeline value will be used for the time/X-axis, hence scalars\ncannot be static.\n\nWhen used to produce a plot, this archetype is used to provide the data that\nis referenced by [`archetypes.SeriesLine`](https://rerun.io/docs/reference/types/archetypes/series_line) or [`archetypes.SeriesPoint`](https://rerun.io/docs/reference/types/archetypes/series_point). You can do\nthis by logging both archetypes to the same path, or alternatively configuring\nthe plot-specific archetypes through the blueprint.\n\n## Example\n\n### Simple line plot\n```ignore\nfn main() -> Result<(), Box<dyn std::error::Error>> {\n    let rec = rerun::RecordingStreamBuilder::new(\"rerun_example_scalar\").spawn()?;\n\n    // Log the data on a timeline called \"step\".\n    for step in 0..64 {\n        rec.set_time_sequence(\"step\", step);\n        rec.log(\"scalar\", &rerun::Scalar::new((step as f64 / 10.0).sin()))?;\n    }\n\n    Ok(())\n}\n```\n<center>\n<picture>\n  <source media=\"(max-width: 480px)\" srcset=\"https://static.rerun.io/scalar_simple/8bcc92f56268739f8cd24d60d1fe72a655f62a46/480w.png\">\n  <source media=\"(max-width: 768px)\" srcset=\"https://static.rerun.io/scalar_simple/8bcc92f56268739f8cd24d60d1fe72a655f62a46/768w.png\">\n  <source media=\"(max-width: 1024px)\" srcset=\"https://static.rerun.io/scalar_simple/8bcc92f56268739f8cd24d60d1fe72a655f62a46/1024w.png\">\n  <source media=\"(max-width: 1200px)\" srcset=\"https://static.rerun.io/scalar_simple/8bcc92f56268739f8cd24d60d1fe72a655f62a46/1200w.png\">\n  <img src=\"https://static.rerun.io/scalar_simple/8bcc92f56268739f8cd24d60d1fe72a655f62a46/full.png\" width=\"640\">\n</picture>\n</center>",
+                fields: vec![
+                    ArchetypeFieldReflection { component_name : "rerun.components.Scalar"
+                    .into(), display_name : "Scalar", docstring_md :
+                    "The scalar value to log.", is_required : true, },
+                ],
+            },
+        ),
+        (
+            ArchetypeName::new("rerun.archetypes.SegmentationImage"),
+            ArchetypeReflection {
+                display_name: "Segmentation image",
+                docstring_md: "An image made up of integer [`components.ClassId`](https://rerun.io/docs/reference/types/components/class_id)s.\n\nEach pixel corresponds to a [`components.ClassId`](https://rerun.io/docs/reference/types/components/class_id) that will be mapped to a color based on annotation context.\n\nIn the case of floating point images, the label will be looked up based on rounding to the nearest\ninteger value.\n\nSee also [`archetypes.AnnotationContext`](https://rerun.io/docs/reference/types/archetypes/annotation_context) to associate each class with a color and a label.\n\n## Example\n\n### Simple segmentation image\n```ignore\nuse ndarray::{s, Array, ShapeBuilder};\n\nfn main() -> Result<(), Box<dyn std::error::Error>> {\n    let rec = rerun::RecordingStreamBuilder::new(\"rerun_example_segmentation_image\").spawn()?;\n\n    // create a segmentation image\n    let mut image = Array::<u8, _>::zeros((8, 12).f());\n    image.slice_mut(s![0..4, 0..6]).fill(1);\n    image.slice_mut(s![4..8, 6..12]).fill(2);\n\n    // create an annotation context to describe the classes\n    let annotation = rerun::AnnotationContext::new([\n        (1, \"red\", rerun::Rgba32::from_rgb(255, 0, 0)),\n        (2, \"green\", rerun::Rgba32::from_rgb(0, 255, 0)),\n    ]);\n\n    // log the annotation and the image\n    rec.log_static(\"/\", &annotation)?;\n\n    rec.log(\"image\", &rerun::SegmentationImage::try_from(image)?)?;\n\n    Ok(())\n}\n```\n<center>\n<picture>\n  <source media=\"(max-width: 480px)\" srcset=\"https://static.rerun.io/segmentation_image_simple/f8aac62abcf4c59c5d62f9ebc2d86fd0285c1736/480w.png\">\n  <source media=\"(max-width: 768px)\" srcset=\"https://static.rerun.io/segmentation_image_simple/f8aac62abcf4c59c5d62f9ebc2d86fd0285c1736/768w.png\">\n  <source media=\"(max-width: 1024px)\" srcset=\"https://static.rerun.io/segmentation_image_simple/f8aac62abcf4c59c5d62f9ebc2d86fd0285c1736/1024w.png\">\n  <source media=\"(max-width: 1200px)\" srcset=\"https://static.rerun.io/segmentation_image_simple/f8aac62abcf4c59c5d62f9ebc2d86fd0285c1736/1200w.png\">\n  <img src=\"https://static.rerun.io/segmentation_image_simple/f8aac62abcf4c59c5d62f9ebc2d86fd0285c1736/full.png\" width=\"640\">\n</picture>\n</center>",
+                fields: vec![
+                    ArchetypeFieldReflection { component_name :
+                    "rerun.components.ImageBuffer".into(), display_name : "Buffer",
+                    docstring_md : "The raw image data.", is_required : true, },
+                    ArchetypeFieldReflection { component_name :
+                    "rerun.components.ImageFormat".into(), display_name : "Format",
+                    docstring_md : "The format of the image.", is_required : true, },
+                    ArchetypeFieldReflection { component_name :
+                    "rerun.components.Opacity".into(), display_name : "Opacity",
+                    docstring_md :
+                    "Opacity of the image, useful for layering the segmentation image on top of another image.\n\nDefaults to 0.5 if there's any other images in the scene, otherwise 1.0.",
+                    is_required : false, }, ArchetypeFieldReflection { component_name :
+                    "rerun.components.DrawOrder".into(), display_name : "Draw order",
+                    docstring_md :
+                    "An optional floating point value that specifies the 2D drawing order.\n\nObjects with higher values are drawn on top of those with lower values.",
+                    is_required : false, },
+                ],
+            },
+        ),
+        (
+            ArchetypeName::new("rerun.archetypes.SeriesLine"),
+            ArchetypeReflection {
+                display_name: "Series line",
+                docstring_md: "Define the style properties for a line series in a chart.\n\nThis archetype only provides styling information and should be logged as static\nwhen possible. The underlying data needs to be logged to the same entity-path using\n[`archetypes.Scalar`](https://rerun.io/docs/reference/types/archetypes/scalar).\n\n## Example\n\n### Line series\n```ignore\nfn main() -> Result<(), Box<dyn std::error::Error>> {\n    let rec = rerun::RecordingStreamBuilder::new(\"rerun_example_series_line_style\").spawn()?;\n\n    // Set up plot styling:\n    // They are logged static as they don't change over time and apply to all timelines.\n    // Log two lines series under a shared root so that they show in the same plot by default.\n    rec.log_static(\n        \"trig/sin\",\n        &rerun::SeriesLine::new()\n            .with_color([255, 0, 0])\n            .with_name(\"sin(0.01t)\")\n            .with_width(2.0),\n    )?;\n    rec.log_static(\n        \"trig/cos\",\n        &rerun::SeriesLine::new()\n            .with_color([0, 255, 0])\n            .with_name(\"cos(0.01t)\")\n            .with_width(4.0),\n    )?;\n\n    for t in 0..((std::f32::consts::TAU * 2.0 * 100.0) as i64) {\n        rec.set_time_sequence(\"step\", t);\n\n        // Log two time series under a shared root so that they show in the same plot by default.\n        rec.log(\"trig/sin\", &rerun::Scalar::new((t as f64 / 100.0).sin()))?;\n        rec.log(\"trig/cos\", &rerun::Scalar::new((t as f64 / 100.0).cos()))?;\n    }\n\n    Ok(())\n}\n```\n<center>\n<picture>\n  <source media=\"(max-width: 480px)\" srcset=\"https://static.rerun.io/series_line_style/d2616d98b1e46bdb85849b8669154fdf058e3453/480w.png\">\n  <source media=\"(max-width: 768px)\" srcset=\"https://static.rerun.io/series_line_style/d2616d98b1e46bdb85849b8669154fdf058e3453/768w.png\">\n  <source media=\"(max-width: 1024px)\" srcset=\"https://static.rerun.io/series_line_style/d2616d98b1e46bdb85849b8669154fdf058e3453/1024w.png\">\n  <source media=\"(max-width: 1200px)\" srcset=\"https://static.rerun.io/series_line_style/d2616d98b1e46bdb85849b8669154fdf058e3453/1200w.png\">\n  <img src=\"https://static.rerun.io/series_line_style/d2616d98b1e46bdb85849b8669154fdf058e3453/full.png\" width=\"640\">\n</picture>\n</center>",
+                fields: vec![
+                    ArchetypeFieldReflection { component_name : "rerun.components.Color"
+                    .into(), display_name : "Color", docstring_md :
+                    "Color for the corresponding series.", is_required : false, },
+                    ArchetypeFieldReflection { component_name :
+                    "rerun.components.StrokeWidth".into(), display_name : "Width",
+                    docstring_md : "Stroke width for the corresponding series.",
+                    is_required : false, }, ArchetypeFieldReflection { component_name :
+                    "rerun.components.Name".into(), display_name : "Name", docstring_md :
+                    "Display name of the series.\n\nUsed in the legend.", is_required :
+                    false, }, ArchetypeFieldReflection { component_name :
+                    "rerun.components.AggregationPolicy".into(), display_name :
+                    "Aggregation policy", docstring_md :
+                    "Configures the zoom-dependent scalar aggregation.\n\nThis is done only if steps on the X axis go below a single pixel,\ni.e. a single pixel covers more than one tick worth of data. It can greatly improve performance\n(and readability) in such situations as it prevents overdraw.",
+                    is_required : false, },
+                ],
+            },
+        ),
+        (
+            ArchetypeName::new("rerun.archetypes.SeriesPoint"),
+            ArchetypeReflection {
+                display_name: "Series point",
+                docstring_md: "Define the style properties for a point series in a chart.\n\nThis archetype only provides styling information and should be logged as static\nwhen possible. The underlying data needs to be logged to the same entity-path using\n[`archetypes.Scalar`](https://rerun.io/docs/reference/types/archetypes/scalar).\n\n## Example\n\n### Point series\n```ignore\nfn main() -> Result<(), Box<dyn std::error::Error>> {\n    let rec = rerun::RecordingStreamBuilder::new(\"rerun_example_series_point_style\").spawn()?;\n\n    // Set up plot styling:\n    // They are logged static as they don't change over time and apply to all timelines.\n    // Log two point series under a shared root so that they show in the same plot by default.\n    rec.log_static(\n        \"trig/sin\",\n        &rerun::SeriesPoint::new()\n            .with_color([255, 0, 0])\n            .with_name(\"sin(0.01t)\")\n            .with_marker(rerun::components::MarkerShape::Circle)\n            .with_marker_size(4.0),\n    )?;\n    rec.log_static(\n        \"trig/cos\",\n        &rerun::SeriesPoint::new()\n            .with_color([0, 255, 0])\n            .with_name(\"cos(0.01t)\")\n            .with_marker(rerun::components::MarkerShape::Cross)\n            .with_marker_size(2.0),\n    )?;\n\n    for t in 0..((std::f32::consts::TAU * 2.0 * 10.0) as i64) {\n        rec.set_time_sequence(\"step\", t);\n\n        // Log two time series under a shared root so that they show in the same plot by default.\n        rec.log(\"trig/sin\", &rerun::Scalar::new((t as f64 / 10.0).sin()))?;\n        rec.log(\"trig/cos\", &rerun::Scalar::new((t as f64 / 10.0).cos()))?;\n    }\n\n    Ok(())\n}\n```\n<center>\n<picture>\n  <source media=\"(max-width: 480px)\" srcset=\"https://static.rerun.io/series_point_style/82207a705da6c086b28ce161db1db9e8b12258b7/480w.png\">\n  <source media=\"(max-width: 768px)\" srcset=\"https://static.rerun.io/series_point_style/82207a705da6c086b28ce161db1db9e8b12258b7/768w.png\">\n  <source media=\"(max-width: 1024px)\" srcset=\"https://static.rerun.io/series_point_style/82207a705da6c086b28ce161db1db9e8b12258b7/1024w.png\">\n  <source media=\"(max-width: 1200px)\" srcset=\"https://static.rerun.io/series_point_style/82207a705da6c086b28ce161db1db9e8b12258b7/1200w.png\">\n  <img src=\"https://static.rerun.io/series_point_style/82207a705da6c086b28ce161db1db9e8b12258b7/full.png\" width=\"640\">\n</picture>\n</center>",
+                fields: vec![
+                    ArchetypeFieldReflection { component_name : "rerun.components.Color"
+                    .into(), display_name : "Color", docstring_md :
+                    "Color for the corresponding series.", is_required : false, },
+                    ArchetypeFieldReflection { component_name :
+                    "rerun.components.MarkerShape".into(), display_name : "Marker",
+                    docstring_md : "What shape to use to represent the point",
+                    is_required : false, }, ArchetypeFieldReflection { component_name :
+                    "rerun.components.Name".into(), display_name : "Name", docstring_md :
+                    "Display name of the series.\n\nUsed in the legend.", is_required :
+                    false, }, ArchetypeFieldReflection { component_name :
+                    "rerun.components.MarkerSize".into(), display_name : "Marker size",
+                    docstring_md : "Size of the marker.", is_required : false, },
+                ],
+            },
+        ),
+        (
+            ArchetypeName::new("rerun.archetypes.Tensor"),
+            ArchetypeReflection {
+                display_name: "Tensor",
+                docstring_md: "An N-dimensional array of numbers.\n\n## Example\n\n### Simple tensor\n```ignore\nuse ndarray::{Array, ShapeBuilder};\n\nfn main() -> Result<(), Box<dyn std::error::Error>> {\n    let rec = rerun::RecordingStreamBuilder::new(\"rerun_example_tensor\").spawn()?;\n\n    let mut data = Array::<u8, _>::default((8, 6, 3, 5).f());\n    data.map_inplace(|x| *x = rand::random());\n\n    let tensor =\n        rerun::Tensor::try_from(data)?.with_dim_names([\"width\", \"height\", \"channel\", \"batch\"]);\n    rec.log(\"tensor\", &tensor)?;\n\n    Ok(())\n}\n```\n<center>\n<picture>\n  <source media=\"(max-width: 480px)\" srcset=\"https://static.rerun.io/tensor_simple/baacb07712f7b706e3c80e696f70616c6c20b367/480w.png\">\n  <source media=\"(max-width: 768px)\" srcset=\"https://static.rerun.io/tensor_simple/baacb07712f7b706e3c80e696f70616c6c20b367/768w.png\">\n  <source media=\"(max-width: 1024px)\" srcset=\"https://static.rerun.io/tensor_simple/baacb07712f7b706e3c80e696f70616c6c20b367/1024w.png\">\n  <source media=\"(max-width: 1200px)\" srcset=\"https://static.rerun.io/tensor_simple/baacb07712f7b706e3c80e696f70616c6c20b367/1200w.png\">\n  <img src=\"https://static.rerun.io/tensor_simple/baacb07712f7b706e3c80e696f70616c6c20b367/full.png\" width=\"640\">\n</picture>\n</center>",
+                fields: vec![
+                    ArchetypeFieldReflection { component_name :
+                    "rerun.components.TensorData".into(), display_name : "Data",
+                    docstring_md : "The tensor data", is_required : true, },
+                ],
+            },
+        ),
+        (
+            ArchetypeName::new("rerun.archetypes.TextDocument"),
+            ArchetypeReflection {
+                display_name: "Text document",
+                docstring_md: "A text element intended to be displayed in its own text box.\n\nSupports raw text and markdown.\n\n## Example\n\n### Markdown text document\n```ignore\nfn main() -> Result<(), Box<dyn std::error::Error>> {\n    let rec = rerun::RecordingStreamBuilder::new(\"rerun_example_text_document\").spawn()?;\n\n    rec.log(\n        \"text_document\",\n        &rerun::TextDocument::new(\"Hello, TextDocument!\"),\n    )?;\n\n    rec.log(\n        \"markdown\",\n        &rerun::TextDocument::from_markdown(\n            r#\"\n# Hello Markdown!\n[Click here to see the raw text](recording://markdown:Text).\n\nBasic formatting:\n\n| **Feature**       | **Alternative** |\n| ----------------- | --------------- |\n| Plain             |                 |\n| *italics*         | _italics_       |\n| **bold**          | __bold__        |\n| ~~strikethrough~~ |                 |\n| `inline code`     |                 |\n\n----------------------------------\n\n## Support\n- [x] [Commonmark](https://commonmark.org/help/) support\n- [x] GitHub-style strikethrough, tables, and checkboxes\n- Basic syntax highlighting for:\n  - [x] C and C++\n  - [x] Python\n  - [x] Rust\n  - [ ] Other languages\n\n## Links\nYou can link to [an entity](recording://markdown),\na [specific instance of an entity](recording://markdown[#0]),\nor a [specific component](recording://markdown:Text).\n\nOf course you can also have [normal https links](https://github.com/rerun-io/rerun), e.g. <https://rerun.io>.\n\n## Image\n![A random image](https://picsum.photos/640/480)\n\"#.trim(),\n        )\n    )?;\n\n    Ok(())\n}\n```\n<center>\n<picture>\n  <source media=\"(max-width: 480px)\" srcset=\"https://static.rerun.io/textdocument/babda19558ee32ed8d730495b595aee7a5e2c174/480w.png\">\n  <source media=\"(max-width: 768px)\" srcset=\"https://static.rerun.io/textdocument/babda19558ee32ed8d730495b595aee7a5e2c174/768w.png\">\n  <source media=\"(max-width: 1024px)\" srcset=\"https://static.rerun.io/textdocument/babda19558ee32ed8d730495b595aee7a5e2c174/1024w.png\">\n  <source media=\"(max-width: 1200px)\" srcset=\"https://static.rerun.io/textdocument/babda19558ee32ed8d730495b595aee7a5e2c174/1200w.png\">\n  <img src=\"https://static.rerun.io/textdocument/babda19558ee32ed8d730495b595aee7a5e2c174/full.png\" width=\"640\">\n</picture>\n</center>",
+                fields: vec![
+                    ArchetypeFieldReflection { component_name : "rerun.components.Text"
+                    .into(), display_name : "Text", docstring_md :
+                    "Contents of the text document.", is_required : true, },
+                    ArchetypeFieldReflection { component_name :
+                    "rerun.components.MediaType".into(), display_name : "Media type",
+                    docstring_md :
+                    "The Media Type of the text.\n\nFor instance:\n* `text/plain`\n* `text/markdown`\n\nIf omitted, `text/plain` is assumed.",
+                    is_required : false, },
+                ],
+            },
+        ),
+        (
+            ArchetypeName::new("rerun.archetypes.TextLog"),
+            ArchetypeReflection {
+                display_name: "Text log",
+                docstring_md: "A log entry in a text log, comprised of a text body and its log level.\n\n## Example\n\n### `text_log_integration`:\n```ignore\nuse rerun::external::log;\n\nfn main() -> Result<(), Box<dyn std::error::Error>> {\n    let rec = rerun::RecordingStreamBuilder::new(\"rerun_example_text_log_integration\").spawn()?;\n\n    // Log a text entry directly:\n    rec.log(\n        \"logs\",\n        &rerun::TextLog::new(\"this entry has loglevel TRACE\")\n            .with_level(rerun::TextLogLevel::TRACE),\n    )?;\n\n    // Or log via a logging handler:\n    rerun::Logger::new(rec.clone()) // recording streams are ref-counted\n        .with_path_prefix(\"logs/handler\")\n        // You can also use the standard `RUST_LOG` environment variable!\n        .with_filter(rerun::default_log_filter())\n        .init()?;\n    log::info!(\"This INFO log got added through the standard logging interface\");\n\n    log::logger().flush();\n\n    Ok(())\n}\n```\n<center>\n<picture>\n  <source media=\"(max-width: 480px)\" srcset=\"https://static.rerun.io/text_log_integration/9737d0c986325802a9885499d6fcc773b1736488/480w.png\">\n  <source media=\"(max-width: 768px)\" srcset=\"https://static.rerun.io/text_log_integration/9737d0c986325802a9885499d6fcc773b1736488/768w.png\">\n  <source media=\"(max-width: 1024px)\" srcset=\"https://static.rerun.io/text_log_integration/9737d0c986325802a9885499d6fcc773b1736488/1024w.png\">\n  <source media=\"(max-width: 1200px)\" srcset=\"https://static.rerun.io/text_log_integration/9737d0c986325802a9885499d6fcc773b1736488/1200w.png\">\n  <img src=\"https://static.rerun.io/text_log_integration/9737d0c986325802a9885499d6fcc773b1736488/full.png\" width=\"640\">\n</picture>\n</center>",
+                fields: vec![
+                    ArchetypeFieldReflection { component_name : "rerun.components.Text"
+                    .into(), display_name : "Text", docstring_md :
+                    "The body of the message.", is_required : true, },
+                    ArchetypeFieldReflection { component_name :
+                    "rerun.components.TextLogLevel".into(), display_name : "Level",
+                    docstring_md :
+                    "The verbosity level of the message.\n\nThis can be used to filter the log messages in the Rerun Viewer.",
+                    is_required : false, }, ArchetypeFieldReflection { component_name :
+                    "rerun.components.Color".into(), display_name : "Color", docstring_md
+                    : "Optional color to use for the log line in the Rerun Viewer.",
+                    is_required : false, },
                 ],
             },
         ),
@@ -721,27 +1448,41 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                 fields: vec![
                     ArchetypeFieldReflection { component_name :
                     "rerun.components.Translation3D".into(), display_name :
-                    "Translation", docstring_md : "Translation vector.", },
-                    ArchetypeFieldReflection { component_name :
+                    "Translation", docstring_md : "Translation vector.", is_required :
+                    false, }, ArchetypeFieldReflection { component_name :
                     "rerun.components.RotationAxisAngle".into(), display_name :
                     "Rotation axis angle", docstring_md : "Rotation via axis + angle.",
-                    }, ArchetypeFieldReflection { component_name :
+                    is_required : false, }, ArchetypeFieldReflection { component_name :
                     "rerun.components.RotationQuat".into(), display_name : "Quaternion",
-                    docstring_md : "Rotation via quaternion.", },
+                    docstring_md : "Rotation via quaternion.", is_required : false, },
                     ArchetypeFieldReflection { component_name :
                     "rerun.components.Scale3D".into(), display_name : "Scale",
-                    docstring_md : "Scaling factor.", }, ArchetypeFieldReflection {
-                    component_name : "rerun.components.TransformMat3x3".into(),
-                    display_name : "Mat 3x 3", docstring_md :
-                    "3x3 transformation matrix.", }, ArchetypeFieldReflection {
-                    component_name : "rerun.components.TransformRelation".into(),
-                    display_name : "Relation", docstring_md :
+                    docstring_md : "Scaling factor.", is_required : false, },
+                    ArchetypeFieldReflection { component_name :
+                    "rerun.components.TransformMat3x3".into(), display_name : "Mat 3x 3",
+                    docstring_md : "3x3 transformation matrix.", is_required : false, },
+                    ArchetypeFieldReflection { component_name :
+                    "rerun.components.TransformRelation".into(), display_name :
+                    "Relation", docstring_md :
                     "Specifies the relation this transform establishes between this entity and its parent.",
-                    }, ArchetypeFieldReflection { component_name :
+                    is_required : false, }, ArchetypeFieldReflection { component_name :
                     "rerun.components.AxisLength".into(), display_name : "Axis length",
                     docstring_md :
                     "Visual length of the 3 axes.\n\nThe length is interpreted in the local coordinate system of the transform.\nIf the transform is scaled, the axes will be scaled accordingly.",
-                    },
+                    is_required : false, },
+                ],
+            },
+        ),
+        (
+            ArchetypeName::new("rerun.archetypes.ViewCoordinates"),
+            ArchetypeReflection {
+                display_name: "View coordinates",
+                docstring_md: "How we interpret the coordinate system of an entity/space.\n\nFor instance: What is \"up\"? What does the Z axis mean? Is this right-handed or left-handed?\n\nThe three coordinates are always ordered as [x, y, z].\n\nFor example [Right, Down, Forward] means that the X axis points to the right, the Y axis points\ndown, and the Z axis points forward.\n\nMake sure that this archetype is logged at or above the origin entity path of your 3D views.\n\n## Example\n\n### View coordinates for adjusting the eye camera\n```ignore\nfn main() -> Result<(), Box<dyn std::error::Error>> {\n    let rec = rerun::RecordingStreamBuilder::new(\"rerun_example_view_coordinates\").spawn()?;\n\n    rec.log_static(\"world\", &rerun::ViewCoordinates::RIGHT_HAND_Z_UP)?; // Set an up-axis\n    rec.log(\n        \"world/xyz\",\n        &rerun::Arrows3D::from_vectors(\n            [[1.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, 1.0]], //\n        )\n        .with_colors([[255, 0, 0], [0, 255, 0], [0, 0, 255]]),\n    )?;\n\n    Ok(())\n}\n```\n<center>\n<picture>\n  <source media=\"(max-width: 480px)\" srcset=\"https://static.rerun.io/viewcoordinates/0833f0dc8616a676b7b2c566f2a6f613363680c5/480w.png\">\n  <source media=\"(max-width: 768px)\" srcset=\"https://static.rerun.io/viewcoordinates/0833f0dc8616a676b7b2c566f2a6f613363680c5/768w.png\">\n  <source media=\"(max-width: 1024px)\" srcset=\"https://static.rerun.io/viewcoordinates/0833f0dc8616a676b7b2c566f2a6f613363680c5/1024w.png\">\n  <source media=\"(max-width: 1200px)\" srcset=\"https://static.rerun.io/viewcoordinates/0833f0dc8616a676b7b2c566f2a6f613363680c5/1200w.png\">\n  <img src=\"https://static.rerun.io/viewcoordinates/0833f0dc8616a676b7b2c566f2a6f613363680c5/full.png\" width=\"640\">\n</picture>\n</center>",
+                fields: vec![
+                    ArchetypeFieldReflection { component_name :
+                    "rerun.components.ViewCoordinates".into(), display_name : "Xyz",
+                    docstring_md : "The directions of the [x, y, z] axes.", is_required :
+                    true, },
                 ],
             },
         ),
@@ -753,10 +1494,51 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                 fields: vec![
                     ArchetypeFieldReflection { component_name :
                     "rerun.blueprint.components.BackgroundKind".into(), display_name :
-                    "Kind", docstring_md : "The type of the background.", },
-                    ArchetypeFieldReflection { component_name : "rerun.components.Color"
-                    .into(), display_name : "Color", docstring_md :
-                    "Color used for the `SolidColor` background type.", },
+                    "Kind", docstring_md : "The type of the background.", is_required :
+                    true, }, ArchetypeFieldReflection { component_name :
+                    "rerun.components.Color".into(), display_name : "Color", docstring_md
+                    : "Color used for the `SolidColor` background type.", is_required :
+                    false, },
+                ],
+            },
+        ),
+        (
+            ArchetypeName::new("rerun.blueprint.archetypes.ContainerBlueprint"),
+            ArchetypeReflection {
+                display_name: "Container blueprint",
+                docstring_md: "The description of a container.",
+                fields: vec![
+                    ArchetypeFieldReflection { component_name :
+                    "rerun.blueprint.components.ContainerKind".into(), display_name :
+                    "Container kind", docstring_md : "The class of the view.",
+                    is_required : true, }, ArchetypeFieldReflection { component_name :
+                    "rerun.components.Name".into(), display_name : "Display name",
+                    docstring_md : "The name of the container.", is_required : false, },
+                    ArchetypeFieldReflection { component_name :
+                    "rerun.blueprint.components.IncludedContent".into(), display_name :
+                    "Contents", docstring_md :
+                    "`ContainerId`s or `SpaceViewId`s that are children of this container.",
+                    is_required : false, }, ArchetypeFieldReflection { component_name :
+                    "rerun.blueprint.components.ColumnShare".into(), display_name :
+                    "Col shares", docstring_md :
+                    "The layout shares of each column in the container.\n\nFor `Horizontal` containers, the length of this list should always match the number of contents.\n\nIgnored for `Vertical` containers.",
+                    is_required : false, }, ArchetypeFieldReflection { component_name :
+                    "rerun.blueprint.components.RowShare".into(), display_name :
+                    "Row shares", docstring_md :
+                    "The layout shares of each row of the container.\n\nFor `Vertical` containers, the length of this list should always match the number of contents.\n\nIgnored for `Horizontal` containers.",
+                    is_required : false, }, ArchetypeFieldReflection { component_name :
+                    "rerun.blueprint.components.ActiveTab".into(), display_name :
+                    "Active tab", docstring_md :
+                    "Which tab is active.\n\nOnly applies to `Tabs` containers.",
+                    is_required : false, }, ArchetypeFieldReflection { component_name :
+                    "rerun.blueprint.components.Visible".into(), display_name :
+                    "Visible", docstring_md :
+                    "Whether this container is visible.\n\nDefaults to true if not specified.",
+                    is_required : false, }, ArchetypeFieldReflection { component_name :
+                    "rerun.blueprint.components.GridColumns".into(), display_name :
+                    "Grid columns", docstring_md :
+                    "How many columns this grid should have.\n\nIf unset, the grid layout will be auto.\n\nIgnored for `Horizontal`/`Vertical` containers.",
+                    is_required : false, },
                 ],
             },
         ),
@@ -770,18 +1552,30 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                     "rerun.blueprint.components.TimelineName".into(), display_name :
                     "Timeline", docstring_md :
                     "The timeline for this query.\n\nIf unset, use the time panel's timeline and a latest-at query, ignoring all other components of this archetype.",
-                    }, ArchetypeFieldReflection { component_name :
+                    is_required : false, }, ArchetypeFieldReflection { component_name :
                     "rerun.blueprint.components.QueryKind".into(), display_name : "Kind",
-                    docstring_md : "Kind of query: latest-at or range.", },
-                    ArchetypeFieldReflection { component_name :
+                    docstring_md : "Kind of query: latest-at or range.", is_required :
+                    false, }, ArchetypeFieldReflection { component_name :
                     "rerun.blueprint.components.LatestAtQueries".into(), display_name :
                     "Latest at queries", docstring_md :
                     "Configuration for latest-at queries.\n\nNote: configuration as saved on a per-timeline basis.",
-                    }, ArchetypeFieldReflection { component_name :
+                    is_required : false, }, ArchetypeFieldReflection { component_name :
                     "rerun.blueprint.components.TimeRangeQueries".into(), display_name :
                     "Time range queries", docstring_md :
                     "Configuration for the time range queries.\n\nNote: configuration as saved on a per-timeline basis.",
-                    },
+                    is_required : false, },
+                ],
+            },
+        ),
+        (
+            ArchetypeName::new("rerun.blueprint.archetypes.PanelBlueprint"),
+            ArchetypeReflection {
+                display_name: "Panel blueprint",
+                docstring_md: "Shared state for the 3 collapsible panels.",
+                fields: vec![
+                    ArchetypeFieldReflection { component_name :
+                    "rerun.blueprint.components.PanelState".into(), display_name :
+                    "State", docstring_md : "", is_required : false, },
                 ],
             },
         ),
@@ -795,10 +1589,11 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                     "rerun.blueprint.components.Corner2D".into(), display_name :
                     "Corner", docstring_md :
                     "To what corner the legend is aligned.\n\nDefaults to the right bottom corner.",
-                    }, ArchetypeFieldReflection { component_name :
+                    is_required : false, }, ArchetypeFieldReflection { component_name :
                     "rerun.blueprint.components.Visible".into(), display_name :
                     "Visible", docstring_md :
-                    "Whether the legend is shown at all.\n\nTrue by default.", },
+                    "Whether the legend is shown at all.\n\nTrue by default.",
+                    is_required : false, },
                 ],
             },
         ),
@@ -812,11 +1607,49 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                     "rerun.components.Range1D".into(), display_name : "Range",
                     docstring_md :
                     "The range of the axis.\n\nIf unset, the range well be automatically determined based on the queried data.",
-                    }, ArchetypeFieldReflection { component_name :
+                    is_required : false, }, ArchetypeFieldReflection { component_name :
                     "rerun.blueprint.components.LockRangeDuringZoom".into(), display_name
                     : "Zoom lock", docstring_md :
                     "If enabled, the Y axis range will remain locked to the specified range when zooming.",
-                    },
+                    is_required : false, },
+                ],
+            },
+        ),
+        (
+            ArchetypeName::new("rerun.blueprint.archetypes.SpaceViewBlueprint"),
+            ArchetypeReflection {
+                display_name: "Space view blueprint",
+                docstring_md: "The description of a single view.",
+                fields: vec![
+                    ArchetypeFieldReflection { component_name :
+                    "rerun.blueprint.components.SpaceViewClass".into(), display_name :
+                    "Class identifier", docstring_md : "The class of the view.",
+                    is_required : true, }, ArchetypeFieldReflection { component_name :
+                    "rerun.components.Name".into(), display_name : "Display name",
+                    docstring_md : "The name of the view.", is_required : false, },
+                    ArchetypeFieldReflection { component_name :
+                    "rerun.blueprint.components.SpaceViewOrigin".into(), display_name :
+                    "Space origin", docstring_md :
+                    "The \"anchor point\" of this space view.\n\nDefaults to the root path '/' if not specified.\n\nThe transform at this path forms the reference point for all scene->world transforms in this space view.\nI.e. the position of this entity path in space forms the origin of the coordinate system in this space view.\nFurthermore, this is the primary indicator for heuristics on what entities we show in this space view.",
+                    is_required : false, }, ArchetypeFieldReflection { component_name :
+                    "rerun.blueprint.components.Visible".into(), display_name :
+                    "Visible", docstring_md :
+                    "Whether this space view is visible.\n\nDefaults to true if not specified.",
+                    is_required : false, },
+                ],
+            },
+        ),
+        (
+            ArchetypeName::new("rerun.blueprint.archetypes.SpaceViewContents"),
+            ArchetypeReflection {
+                display_name: "Space view contents",
+                docstring_md: "The contents of a `SpaceView`.\n\nThe contents are found by combining a collection of `QueryExpression`s.\n\n```diff\n+ /world/**           # add everything…\n- /world/roads/**     # …but remove all roads…\n+ /world/roads/main   # …but show main road\n```\n\nIf there is multiple matching rules, the most specific rule wins.\nIf there are multiple rules of the same specificity, the last one wins.\nIf no rules match, the path is excluded.\n\nSpecifying a path without a `+` or `-` prefix is equivalent to `+`:\n```diff\n/world/**           # add everything…\n- /world/roads/**   # …but remove all roads…\n/world/roads/main   # …but show main road\n```\n\nThe `/**` suffix matches the whole subtree, i.e. self and any child, recursively\n(`/world/**` matches both `/world` and `/world/car/driver`).\nOther uses of `*` are not (yet) supported.\n\nInternally, `EntityPathFilter` sorts the rule by entity path, with recursive coming before non-recursive.\nThis means the last matching rule is also the most specific one. For instance:\n```diff\n+ /world/**\n- /world\n- /world/car/**\n+ /world/car/driver\n```\n\nThe last rule matching `/world/car/driver` is `+ /world/car/driver`, so it is included.\nThe last rule matching `/world/car/hood` is `- /world/car/**`, so it is excluded.\nThe last rule matching `/world` is `- /world`, so it is excluded.\nThe last rule matching `/world/house` is `+ /world/**`, so it is included.",
+                fields: vec![
+                    ArchetypeFieldReflection { component_name :
+                    "rerun.blueprint.components.QueryExpression".into(), display_name :
+                    "Query", docstring_md :
+                    "The `QueryExpression` that populates the contents for the `SpaceView`.\n\nThey determine which entities are part of the spaceview.",
+                    is_required : false, },
                 ],
             },
         ),
@@ -830,14 +1663,14 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                     "rerun.components.MagnificationFilter".into(), display_name :
                     "Mag filter", docstring_md :
                     "Filter used when zooming in on the tensor.\n\nNote that the filter is applied to the scalar values *before* they are mapped to color.",
-                    }, ArchetypeFieldReflection { component_name :
+                    is_required : false, }, ArchetypeFieldReflection { component_name :
                     "rerun.components.Colormap".into(), display_name : "Colormap",
-                    docstring_md : "How scalar values map to colors.", },
-                    ArchetypeFieldReflection { component_name :
+                    docstring_md : "How scalar values map to colors.", is_required :
+                    false, }, ArchetypeFieldReflection { component_name :
                     "rerun.components.GammaCorrection".into(), display_name : "Gamma",
                     docstring_md :
                     "Gamma exponent applied to normalized values before mapping to color.\n\nRaises the normalized values to the power of this value before mapping to color.\nActs like an inverse brightness. Defaults to 1.0.",
-                    },
+                    is_required : false, },
                 ],
             },
         ),
@@ -851,19 +1684,19 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                     "rerun.components.TensorWidthDimension".into(), display_name :
                     "Width", docstring_md :
                     "Which dimension to map to width.\n\nIf not specified, the height will be determined automatically based on the name and index of the dimension.",
-                    }, ArchetypeFieldReflection { component_name :
+                    is_required : false, }, ArchetypeFieldReflection { component_name :
                     "rerun.components.TensorHeightDimension".into(), display_name :
                     "Height", docstring_md :
                     "Which dimension to map to height.\n\nIf not specified, the height will be determined automatically based on the name and index of the dimension.",
-                    }, ArchetypeFieldReflection { component_name :
+                    is_required : false, }, ArchetypeFieldReflection { component_name :
                     "rerun.components.TensorDimensionIndexSelection".into(), display_name
                     : "Indices", docstring_md :
                     "Selected indices for all other dimensions.\n\nIf any of the here listed dimensions is equal to `width` or `height`, it will be ignored.",
-                    }, ArchetypeFieldReflection { component_name :
+                    is_required : false, }, ArchetypeFieldReflection { component_name :
                     "rerun.blueprint.components.TensorDimensionIndexSlider".into(),
                     display_name : "Slider", docstring_md :
                     "Any dimension listed here will have a slider for the index.\n\nEdits to the sliders will directly manipulate dimensions on the `indices` list.\nIf any of the here listed dimensions is equal to `width` or `height`, it will be ignored.\nIf not specified, adds slides for any dimension in `indices`.",
-                    },
+                    is_required : false, },
                 ],
             },
         ),
@@ -876,7 +1709,7 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                     ArchetypeFieldReflection { component_name :
                     "rerun.blueprint.components.ViewFit".into(), display_name :
                     "Scaling", docstring_md : "How the image is scaled to fit the view.",
-                    },
+                    is_required : false, },
                 ],
             },
         ),
@@ -888,10 +1721,53 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                 fields: vec![
                     ArchetypeFieldReflection { component_name :
                     "rerun.blueprint.components.SortKey".into(), display_name :
-                    "Sort key", docstring_md : "The primary sort key", },
-                    ArchetypeFieldReflection { component_name :
+                    "Sort key", docstring_md : "The primary sort key", is_required :
+                    false, }, ArchetypeFieldReflection { component_name :
                     "rerun.blueprint.components.SortOrder".into(), display_name :
-                    "Sort order", docstring_md : "The sort order", },
+                    "Sort order", docstring_md : "The sort order", is_required : false,
+                    },
+                ],
+            },
+        ),
+        (
+            ArchetypeName::new("rerun.blueprint.archetypes.ViewportBlueprint"),
+            ArchetypeReflection {
+                display_name: "Viewport blueprint",
+                docstring_md: "The top-level description of the viewport.",
+                fields: vec![
+                    ArchetypeFieldReflection { component_name :
+                    "rerun.blueprint.components.RootContainer".into(), display_name :
+                    "Root container", docstring_md : "The layout of the space-views",
+                    is_required : false, }, ArchetypeFieldReflection { component_name :
+                    "rerun.blueprint.components.SpaceViewMaximized".into(), display_name
+                    : "Maximized", docstring_md : "Show one tab as maximized?",
+                    is_required : false, }, ArchetypeFieldReflection { component_name :
+                    "rerun.blueprint.components.AutoLayout".into(), display_name :
+                    "Auto layout", docstring_md :
+                    "Whether the viewport layout is determined automatically.\n\nIf `true`, the container layout will be reset whenever a new space view is added or removed.\nThis defaults to `false` and is automatically set to `false` when there is user determined layout.",
+                    is_required : false, }, ArchetypeFieldReflection { component_name :
+                    "rerun.blueprint.components.AutoSpaceViews".into(), display_name :
+                    "Auto space views", docstring_md :
+                    "Whether or not space views should be created automatically.\n\nIf `true`, the viewer will only add space views that it hasn't considered previously (as identified by `past_viewer_recommendations`)\nand which aren't deemed redundant to existing space views.\nThis defaults to `false` and is automatically set to `false` when the user adds space views manually in the viewer.",
+                    is_required : false, }, ArchetypeFieldReflection { component_name :
+                    "rerun.blueprint.components.ViewerRecommendationHash".into(),
+                    display_name : "Past viewer recommendations", docstring_md :
+                    "Hashes of all recommended space views the viewer has already added and that should not be added again.\n\nThis is an internal field and should not be set usually.\nIf you want the viewer from stopping to add space views, you should set `auto_space_views` to `false`.\n\nThe viewer uses this to determine whether it should keep adding space views.",
+                    is_required : false, },
+                ],
+            },
+        ),
+        (
+            ArchetypeName::new("rerun.blueprint.archetypes.VisibleTimeRanges"),
+            ArchetypeReflection {
+                display_name: "Visible time ranges",
+                docstring_md: "Configures what range of each timeline is shown on a view.\n\nWhenever no visual time range applies, queries are done with \"latest-at\" semantics.\nThis means that the view will, starting from the time cursor position,\nquery the latest data available for each component type.\n\nThe default visual time range depends on the type of view this property applies to:\n- For time series views, the default is to show the entire timeline.\n- For any other view, the default is to apply latest-at semantics.",
+                fields: vec![
+                    ArchetypeFieldReflection { component_name :
+                    "rerun.blueprint.components.VisibleTimeRange".into(), display_name :
+                    "Ranges", docstring_md :
+                    "The time ranges to show for each timeline unless specified otherwise on a per-entity basis.\n\nIf a timeline is specified more than once, the first entry will be used.",
+                    is_required : true, },
                 ],
             },
         ),
@@ -905,7 +1781,7 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                     "rerun.blueprint.components.VisualBounds2D".into(), display_name :
                     "Range", docstring_md :
                     "Controls the visible range of a 2D view.\n\nUse this to control pan & zoom of the view.",
-                    },
+                    is_required : true, },
                 ],
             },
         ),

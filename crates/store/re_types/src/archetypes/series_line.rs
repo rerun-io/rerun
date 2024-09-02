@@ -263,6 +263,8 @@ impl ::re_types_core::AsComponents for SeriesLine {
     }
 }
 
+impl ::re_types_core::ArchetypeReflectionMarker for SeriesLine {}
+
 impl SeriesLine {
     /// Create a new `SeriesLine`.
     #[inline]

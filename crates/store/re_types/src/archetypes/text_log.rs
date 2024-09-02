@@ -222,6 +222,8 @@ impl ::re_types_core::AsComponents for TextLog {
     }
 }
 
+impl ::re_types_core::ArchetypeReflectionMarker for TextLog {}
+
 impl TextLog {
     /// Create a new `TextLog`.
     #[inline]

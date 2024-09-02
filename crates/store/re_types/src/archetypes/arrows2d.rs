@@ -346,6 +346,8 @@ impl ::re_types_core::AsComponents for Arrows2D {
     }
 }
 
+impl ::re_types_core::ArchetypeReflectionMarker for Arrows2D {}
+
 impl Arrows2D {
     /// Create a new `Arrows2D`.
     #[inline]
