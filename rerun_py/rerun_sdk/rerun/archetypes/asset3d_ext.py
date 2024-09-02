@@ -6,9 +6,6 @@ from typing import TYPE_CHECKING, Any
 from .. import datatypes
 from ..error_utils import catch_and_log_exceptions
 
-if TYPE_CHECKING:
-    from ..components import MediaType
-
 
 class Asset3DExt:
     """Extension for [Asset3D][rerun.archetypes.Asset3D]."""
@@ -47,6 +44,8 @@ class Asset3DExt:
             If the media type cannot be guessed, the viewer won't be able to render the asset.
 
         """
+
+        from ..components import MediaType
 
         with catch_and_log_exceptions(context=self.__class__.__name__):
             if (path is None) == (contents is None):

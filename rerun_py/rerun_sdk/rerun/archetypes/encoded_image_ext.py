@@ -10,7 +10,6 @@ from .. import datatypes
 from ..error_utils import catch_and_log_exceptions
 
 if TYPE_CHECKING:
-    from ..components import MediaType
     from ..datatypes import Float32Like
 
     ImageLike = Union[
@@ -74,6 +73,8 @@ class EncodedImageExt:
             lower values.
 
         """
+
+        from ..components import MediaType
 
         with catch_and_log_exceptions(context=self.__class__.__name__):
             if (path is None) == (contents is None):
