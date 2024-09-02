@@ -35,13 +35,13 @@ pub trait UiExt {
         self.ui_mut().add(widget)
     }
 
-    fn small_icon_button_widget<'a>(&self, icon: &'a Icon) -> egui::ImageButton<'a> {
+    fn small_icon_button_widget<'a>(&self, icon: &'a Icon) -> egui::Button<'a> {
         // TODO(emilk): change color and size on hover
-        egui::ImageButton::new(
+        egui::Button::image(
             icon.as_image()
-                .fit_to_exact_size(DesignTokens::small_icon_size()),
+                .fit_to_exact_size(DesignTokens::small_icon_size())
+                .tint(self.ui().visuals().widgets.inactive.fg_stroke.color),
         )
-        .tint(self.ui().visuals().widgets.inactive.fg_stroke.color)
     }
 
     fn medium_icon_toggle_button(&mut self, icon: &Icon, selected: &mut bool) -> egui::Response {
@@ -979,8 +979,10 @@ pub trait UiExt {
         content: impl FnOnce(&mut egui::Ui) -> R,
     ) -> R {
         self.ui_mut()
-            .push_stack_info(
-                egui::UiStackInfo::default().with_tag_value(FULL_SPAN_TAG, span.into()),
+            .scope_builder(
+                egui::UiBuilder::new().ui_stack_info(
+                    egui::UiStackInfo::default().with_tag_value(FULL_SPAN_TAG, span.into()),
+                ),
                 content,
             )
             .inner

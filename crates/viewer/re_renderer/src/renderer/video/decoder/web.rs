@@ -1,3 +1,5 @@
+// TODO(emilk): proper error handling: pass errors to caller instead of logging them`
+
 use super::latest_at_idx;
 use crate::resource_managers::GpuTexture2D;
 use crate::RenderContext;
@@ -71,7 +73,12 @@ unsafe impl Sync for VideoFrame {}
 
 impl Drop for VideoDecoder {
     fn drop(&mut self) {
-        self.decoder.close();
+        if let Err(err) = self.decoder.close() {
+            re_log::warn!(
+                "Error when closing video decoder: {}",
+                js_error_to_string(&err)
+            );
+        }
     }
 }
 
@@ -257,8 +264,8 @@ impl VideoDecoder {
         } else {
             EncodedVideoChunkType::Delta
         };
-        let mut chunk = EncodedVideoChunkInit::new(&data, sample.timestamp.as_f64(), type_);
-        chunk.duration(sample.duration.as_f64());
+        let chunk = EncodedVideoChunkInit::new(&data, sample.timestamp.as_f64(), type_);
+        chunk.set_duration(sample.duration.as_f64());
         let Some(chunk) = EncodedVideoChunk::new(&chunk)
             .inspect_err(|err| {
                 re_log::error!("failed to create video chunk: {}", js_error_to_string(err));
@@ -268,14 +275,29 @@ impl VideoDecoder {
             return;
         };
 
-        self.decoder.decode(&chunk);
+        if let Err(err) = self.decoder.decode(&chunk) {
+            re_log::error!("Failed to decode video chunk: {}", js_error_to_string(&err));
+        }
     }
 
     /// Reset the video decoder and discard all frames.
     fn reset(&mut self) {
-        self.decoder.reset();
-        self.decoder
-            .configure(&js_video_decoder_config(&self.data.config));
+        if let Err(err) = self.decoder.reset() {
+            re_log::error!(
+                "Failed to reset video decoder: {}",
+                js_error_to_string(&err)
+            );
+        }
+
+        if let Err(err) = self
+            .decoder
+            .configure(&js_video_decoder_config(&self.data.config))
+        {
+            re_log::error!(
+                "Failed to configure video decoder: {}",
+                js_error_to_string(&err)
+            );
+        }
 
         let mut frames = self.frames.lock();
         drop(frames.drain(..));
@@ -299,7 +321,9 @@ fn copy_video_frame_to_texture(
         // typecheck that doesn't care what kind of image source wgpu gave it.
         #[allow(unsafe_code)]
         let frame = unsafe {
-            std::mem::transmute::<web_sys::VideoFrame, web_sys::HtmlVideoElement>(frame.clone())
+            std::mem::transmute::<web_sys::VideoFrame, web_sys::HtmlVideoElement>(
+                frame.clone().expect("Failed to clone the video frame"),
+            )
         };
         wgpu_types::ImageCopyExternalImage {
             source: wgpu_types::ExternalImageSource::HTMLVideoElement(frame),
@@ -344,13 +368,13 @@ fn init_video_decoder(
 }
 
 fn js_video_decoder_config(config: &re_video::Config) -> VideoDecoderConfig {
-    let mut js = VideoDecoderConfig::new(&config.codec);
-    js.coded_width(config.coded_width as u32);
-    js.coded_height(config.coded_height as u32);
+    let js = VideoDecoderConfig::new(&config.codec);
+    js.set_coded_width(config.coded_width as u32);
+    js.set_coded_height(config.coded_height as u32);
     let description = Uint8Array::new_with_length(config.description.len() as u32);
     description.copy_from(&config.description[..]);
-    js.description(&description);
-    js.optimize_for_latency(true);
+    js.set_description(&description);
+    js.set_optimize_for_latency(true);
     js
 }
 

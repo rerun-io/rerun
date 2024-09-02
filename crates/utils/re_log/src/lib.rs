@@ -73,9 +73,11 @@ const CRATES_AT_INFO_LEVEL: &[&str] = &[
     "h2",
     "hyper",
     "ureq",
-    // only let rustls run in debug mode: https://github.com/rerun-io/rerun/issues/3104
+    // only let rustls log in debug mode: https://github.com/rerun-io/rerun/issues/3104
     #[cfg(debug_assertions)]
     "rustls",
+    // winit 0.30.5 spams about `set_cursor_visible` calls. It's gone on winit master, so hopefully gone in next winit release.
+    "winit",
 ];
 
 /// Get `RUST_LOG` environment variable or `info`, if not set.

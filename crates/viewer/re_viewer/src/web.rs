@@ -47,22 +47,37 @@ impl WebHandle {
         })
     }
 
-    /// - `url` is an optional URL to either an .rrd file over http, or a Rerun WebSocket server.
-    /// - `manifest_url` is an optional URL to an `examples_manifest.json` file over http.
-    /// - `force_wgpu_backend` is an optional string to force a specific backend, either `webgl` or `webgpu`.
     #[wasm_bindgen]
-    pub async fn start(&self, canvas_id: String) -> Result<(), wasm_bindgen::JsValue> {
+    pub async fn start(&self, canvas: JsValue) -> Result<(), wasm_bindgen::JsValue> {
+        let canvas = if let Some(canvas_id) = canvas.as_string() {
+            // For backwards compatibility with old JS/HTML written before 2024-08-30
+            let document = web_sys::window().unwrap().document().unwrap();
+            let element = document
+                .get_element_by_id(&canvas_id)
+                .ok_or_else(|| format!("Canvas element '{canvas_id}' not found."))?;
+            element
+                .dyn_into::<web_sys::HtmlCanvasElement>()
+                .map_err(|element| {
+                    format!("Expected a canvas element or canvas id, got {element:?}")
+                })?
+        } else {
+            canvas
+                .dyn_into::<web_sys::HtmlCanvasElement>()
+                .map_err(|element| {
+                    format!("Expected a canvas element or canvas id, got {element:?}")
+                })?
+        };
+
         let app_options = self.app_options.clone();
         let web_options = eframe::WebOptions {
-            follow_system_theme: false,
-            default_theme: eframe::Theme::Dark,
             wgpu_options: crate::wgpu_options(app_options.render_backend.clone()),
             depth_buffer: 0,
+            dithering: true,
         };
 
         self.runner
             .start(
-                &canvas_id,
+                canvas,
                 web_options,
                 Box::new(move |cc| Ok(Box::new(create_app(cc, app_options)?))),
             )

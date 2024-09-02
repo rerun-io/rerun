@@ -50,9 +50,6 @@ fn main() -> eframe::Result {
             .with_titlebar_shown(!re_ui::FULLSIZE_CONTENT)
             .with_transparent(re_ui::CUSTOM_WINDOW_DECORATIONS), // To have rounded corners without decorations we need transparency
 
-        follow_system_theme: false,
-        default_theme: eframe::Theme::Dark,
-
         ..Default::default()
     };
 

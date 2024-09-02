@@ -31,6 +31,22 @@ pub fn setup_logging() {
         }
 
         let mut stderr_logger = env_logger::Builder::new();
+
+        // This can be useful to enable to figure out what is causing a log message.
+        let log_file_line = false;
+        if log_file_line {
+            stderr_logger.format(|buf, record| {
+                use std::io::Write as _;
+                writeln!(
+                    buf,
+                    "{}:{} {}",
+                    record.file().unwrap_or_default(),
+                    record.line().unwrap_or_default(),
+                    record.args()
+                )
+            });
+        }
+
         stderr_logger.parse_filters(&log_filter);
         crate::add_boxed_logger(Box::new(stderr_logger.build())).expect("Failed to install logger");
 
