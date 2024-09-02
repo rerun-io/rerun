@@ -3,8 +3,7 @@ use std::ops::RangeInclusive;
 use egui::{NumExt as _, Response};
 
 use re_entity_db::TimeHistogram;
-use re_log_types::{TimeType, TimeZone};
-use re_types_core::datatypes::TimeInt;
+use re_log_types::{TimeInt, TimeType, TimeZone};
 
 /// Drag value widget for editing time values for both sequence and temporal timelines.
 ///
@@ -64,6 +63,16 @@ impl TimeDragValue {
         }
     }
 
+    /// Return the minimum time set for this drag value.
+    pub fn min_time(&self) -> TimeInt {
+        TimeInt::new_temporal(*self.range.start())
+    }
+
+    /// Return the maximum time set for this drag value.
+    pub fn max_time(&self) -> TimeInt {
+        TimeInt::new_temporal(*self.range.end())
+    }
+
     /// Show a sequence drag value widget.
     pub fn sequence_drag_value_ui(
         &self,
@@ -83,14 +92,19 @@ impl TimeDragValue {
         let speed = (span as f32 * 0.005).at_least(1.0);
 
         if let Some(low_bound_override) = low_bound_override {
-            time_range = low_bound_override.0.at_least(*time_range.start())..=*time_range.end();
+            time_range =
+                low_bound_override.as_i64().at_least(*time_range.start())..=*time_range.end();
         }
 
-        ui.add(
-            egui::DragValue::new(&mut value.0)
+        let mut value_i64 = value.as_i64();
+        let response = ui.add(
+            egui::DragValue::new(&mut value_i64)
                 .range(time_range)
                 .speed(speed),
-        )
+        );
+        *value = TimeInt::new_temporal(value_i64);
+
+        response
     }
 
     /// Show a temporal drag value widget.
@@ -127,10 +141,11 @@ impl TimeDragValue {
         let speed = (time_range.end() - time_range.start()) as f32 / factor * 0.005;
 
         if let Some(low_bound_override) = low_bound_override {
-            time_range = low_bound_override.0.at_least(*time_range.start())..=*time_range.end();
+            time_range =
+                low_bound_override.as_i64().at_least(*time_range.start())..=*time_range.end();
         }
 
-        let mut time_unit = (value.0.saturating_sub(offset)) as f32 / factor;
+        let mut time_unit = (value.as_i64().saturating_sub(offset)) as f32 / factor;
 
         let time_range = (*time_range.start() - offset) as f32 / factor
             ..=(*time_range.end() - offset) as f32 / factor;
@@ -139,7 +154,8 @@ impl TimeDragValue {
             self.base_time.map(|base_time| {
                 ui.label(format!(
                     "{} + ",
-                    TimeType::Time.format(TimeInt(base_time), time_zone_for_timestamps)
+                    TimeType::Time
+                        .format(TimeInt::new_temporal(base_time), time_zone_for_timestamps)
                 ))
             })
         } else {
@@ -153,7 +169,7 @@ impl TimeDragValue {
                 .suffix(self.unit_symbol),
         );
 
-        *value = TimeInt((time_unit * factor).round() as i64 + offset);
+        *value = TimeInt::new_temporal((time_unit * factor).round() as i64 + offset);
 
         (drag_value_response, base_time_response)
     }
