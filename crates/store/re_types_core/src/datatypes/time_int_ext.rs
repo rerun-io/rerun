@@ -1,7 +1,8 @@
 use super::TimeInt;
 
 impl TimeInt {
-    pub const MIN: Self = Self(i64::MIN);
+    // matches `re_log_types::TimeInt::MIN`
+    pub const MIN: Self = Self(i64::MIN + 1);
     pub const MAX: Self = Self(i64::MAX);
 }
 
