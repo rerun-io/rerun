@@ -51,7 +51,7 @@ impl super::ItemButton for ItemMenuButton<'_> {
         ui.add_enabled_ui(self.enabled, |ui| {
             ui.spacing_mut().item_spacing = egui::Vec2::ZERO;
 
-            let mut response = egui::menu::menu_image_button(
+            let mut response = egui::menu::menu_custom_button(
                 ui,
                 ui.small_icon_button_widget(self.icon),
                 self.add_contents,

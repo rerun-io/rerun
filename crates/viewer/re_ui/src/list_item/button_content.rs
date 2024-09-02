@@ -50,10 +50,10 @@ impl ListItemContent for ButtonContent<'_> {
             hover_text,
         } = *self;
 
-        let mut ui = ui.child_ui(
-            context.rect,
-            egui::Layout::left_to_right(egui::Align::Center),
-            None,
+        let mut ui = ui.new_child(
+            egui::UiBuilder::new()
+                .max_rect(context.rect)
+                .layout(egui::Layout::left_to_right(egui::Align::Center)),
         );
 
         // Compensate for the button padding such that the button text is aligned with other list

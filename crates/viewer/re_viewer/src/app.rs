@@ -70,7 +70,7 @@ pub struct StartupOptions {
     /// This ensures that it won't blink for a few frames before switching to the recording.
     pub expect_data_soon: Option<bool>,
 
-    /// Forces wgpu backend to use the specified graphics API.
+    /// Forces wgpu backend to use the specified graphics API, e.g. `webgl` or `webgpu`.
     pub force_wgpu_backend: Option<String>,
 
     /// Fullscreen is handled by JS on web.

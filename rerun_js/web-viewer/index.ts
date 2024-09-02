@@ -175,7 +175,6 @@ export class WebViewer {
     this.#canvas = document.createElement("canvas");
     this.#canvas.style.width = options.width ?? "640px";
     this.#canvas.style.height = options.height ?? "360px";
-    this.#canvas.id = this.#id;
     parent.append(this.#canvas);
 
     // This yield appears to be necessary to ensure that the canvas is attached to the DOM
@@ -195,7 +194,7 @@ export class WebViewer {
 
     this.#handle = new WebHandle_class({ ...options, fullscreen });
     try {
-      await this.#handle.start(this.#canvas.id);
+      await this.#handle.start(this.#canvas);
     } catch (e) {
       this.stop();
       throw e;

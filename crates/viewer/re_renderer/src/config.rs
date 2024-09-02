@@ -163,6 +163,7 @@ impl DeviceCaps {
             label: Some("re_renderer device"),
             required_features: self.features(),
             required_limits: self.limits(),
+            memory_hints: Default::default(),
         }
     }
 

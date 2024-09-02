@@ -38,9 +38,6 @@ pub fn eframe_options(force_wgpu_backend: Option<String>) -> eframe::NativeOptio
             .with_titlebar_shown(!re_ui::FULLSIZE_CONTENT)
             .with_transparent(re_ui::CUSTOM_WINDOW_DECORATIONS), // To have rounded corners without decorations we need transparency
 
-        follow_system_theme: false,
-        default_theme: eframe::Theme::Dark,
-
         renderer: eframe::Renderer::Wgpu,
         wgpu_options: crate::wgpu_options(force_wgpu_backend),
         depth_buffer: 0,

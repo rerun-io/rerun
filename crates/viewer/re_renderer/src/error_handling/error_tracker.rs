@@ -124,7 +124,7 @@ impl ErrorTracker {
                 let should_log = match _source.downcast::<wgpu_core::error::ContextError>() {
                     Ok(ctx_err) => {
                         if ctx_err
-                            .cause
+                            .source
                             .downcast_ref::<wgpu_core::command::CommandEncoderError>()
                             .is_some()
                         {
