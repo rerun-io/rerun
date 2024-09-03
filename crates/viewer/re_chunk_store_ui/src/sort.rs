@@ -36,30 +36,26 @@ pub(crate) fn sortable_column_header_ui<T: Default + Copy + PartialEq>(
     let is_sorted = &sort_column.column == column;
     let direction = sort_column.direction;
 
-    let mut toggle_left = false;
-    let mut toggle_right = false;
-
-    egui::Sides::new()
+    let (left_clicked, right_clicked) = egui::Sides::new()
         .height(re_ui::DesignTokens::table_line_height())
         .show(
             ui,
             |ui| {
                 ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Truncate);
 
-                toggle_left = ui.button(egui::WidgetText::from(label).strong()).clicked();
+                ui.button(egui::WidgetText::from(label).strong()).clicked()
             },
             |ui| {
-                toggle_right = ui
-                    .button(match (is_sorted, direction) {
-                        (true, SortDirection::Ascending) => "↓",
-                        (true, SortDirection::Descending) => "↑",
-                        _ => "",
-                    })
-                    .clicked();
+                ui.button(match (is_sorted, direction) {
+                    (true, SortDirection::Ascending) => "↓",
+                    (true, SortDirection::Descending) => "↑",
+                    _ => "",
+                })
+                .clicked()
             },
         );
 
-    if toggle_left || toggle_right {
+    if left_clicked || right_clicked {
         if is_sorted {
             sort_column.direction.toggle();
         } else {

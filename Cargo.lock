@@ -1777,7 +1777,7 @@ checksum = "68b0cf012f1230e43cd00ebb729c6bb58707ecfa8ad08b52ef3a4ccd2697fc30"
 [[package]]
 name = "ecolor"
 version = "0.28.1"
-source = "git+https://github.com/emilk/egui.git?rev=b9435541df664f36c0956007afe4155514eebc5c#b9435541df664f36c0956007afe4155514eebc5c"
+source = "git+https://github.com/emilk/egui.git?rev=454abf705b87aba70cef582d6ce80f74aa398906#454abf705b87aba70cef582d6ce80f74aa398906"
 dependencies = [
  "bytemuck",
  "emath",
@@ -1787,7 +1787,7 @@ dependencies = [
 [[package]]
 name = "eframe"
 version = "0.28.1"
-source = "git+https://github.com/emilk/egui.git?rev=b9435541df664f36c0956007afe4155514eebc5c#b9435541df664f36c0956007afe4155514eebc5c"
+source = "git+https://github.com/emilk/egui.git?rev=454abf705b87aba70cef582d6ce80f74aa398906#454abf705b87aba70cef582d6ce80f74aa398906"
 dependencies = [
  "ahash",
  "bytemuck",
@@ -1824,7 +1824,7 @@ dependencies = [
 [[package]]
 name = "egui"
 version = "0.28.1"
-source = "git+https://github.com/emilk/egui.git?rev=b9435541df664f36c0956007afe4155514eebc5c#b9435541df664f36c0956007afe4155514eebc5c"
+source = "git+https://github.com/emilk/egui.git?rev=454abf705b87aba70cef582d6ce80f74aa398906#454abf705b87aba70cef582d6ce80f74aa398906"
 dependencies = [
  "accesskit",
  "ahash",
@@ -1841,7 +1841,7 @@ dependencies = [
 [[package]]
 name = "egui-wgpu"
 version = "0.28.1"
-source = "git+https://github.com/emilk/egui.git?rev=b9435541df664f36c0956007afe4155514eebc5c#b9435541df664f36c0956007afe4155514eebc5c"
+source = "git+https://github.com/emilk/egui.git?rev=454abf705b87aba70cef582d6ce80f74aa398906#454abf705b87aba70cef582d6ce80f74aa398906"
 dependencies = [
  "ahash",
  "bytemuck",
@@ -1860,7 +1860,7 @@ dependencies = [
 [[package]]
 name = "egui-winit"
 version = "0.28.1"
-source = "git+https://github.com/emilk/egui.git?rev=b9435541df664f36c0956007afe4155514eebc5c#b9435541df664f36c0956007afe4155514eebc5c"
+source = "git+https://github.com/emilk/egui.git?rev=454abf705b87aba70cef582d6ce80f74aa398906#454abf705b87aba70cef582d6ce80f74aa398906"
 dependencies = [
  "accesskit_winit",
  "ahash",
@@ -1902,7 +1902,7 @@ dependencies = [
 [[package]]
 name = "egui_extras"
 version = "0.28.1"
-source = "git+https://github.com/emilk/egui.git?rev=b9435541df664f36c0956007afe4155514eebc5c#b9435541df664f36c0956007afe4155514eebc5c"
+source = "git+https://github.com/emilk/egui.git?rev=454abf705b87aba70cef582d6ce80f74aa398906#454abf705b87aba70cef582d6ce80f74aa398906"
 dependencies = [
  "ahash",
  "egui",
@@ -1918,7 +1918,7 @@ dependencies = [
 [[package]]
 name = "egui_glow"
 version = "0.28.1"
-source = "git+https://github.com/emilk/egui.git?rev=b9435541df664f36c0956007afe4155514eebc5c#b9435541df664f36c0956007afe4155514eebc5c"
+source = "git+https://github.com/emilk/egui.git?rev=454abf705b87aba70cef582d6ce80f74aa398906#454abf705b87aba70cef582d6ce80f74aa398906"
 dependencies = [
  "ahash",
  "bytemuck",
@@ -1981,7 +1981,7 @@ checksum = "a26ae43d7bcc3b814de94796a5e736d4029efb0ee900c12e2d54c993ad1a1e07"
 [[package]]
 name = "emath"
 version = "0.28.1"
-source = "git+https://github.com/emilk/egui.git?rev=b9435541df664f36c0956007afe4155514eebc5c#b9435541df664f36c0956007afe4155514eebc5c"
+source = "git+https://github.com/emilk/egui.git?rev=454abf705b87aba70cef582d6ce80f74aa398906#454abf705b87aba70cef582d6ce80f74aa398906"
 dependencies = [
  "bytemuck",
  "serde",
@@ -2082,7 +2082,7 @@ dependencies = [
 [[package]]
 name = "epaint"
 version = "0.28.1"
-source = "git+https://github.com/emilk/egui.git?rev=b9435541df664f36c0956007afe4155514eebc5c#b9435541df664f36c0956007afe4155514eebc5c"
+source = "git+https://github.com/emilk/egui.git?rev=454abf705b87aba70cef582d6ce80f74aa398906#454abf705b87aba70cef582d6ce80f74aa398906"
 dependencies = [
  "ab_glyph",
  "ahash",
@@ -2101,7 +2101,7 @@ dependencies = [
 [[package]]
 name = "epaint_default_fonts"
 version = "0.28.1"
-source = "git+https://github.com/emilk/egui.git?rev=b9435541df664f36c0956007afe4155514eebc5c#b9435541df664f36c0956007afe4155514eebc5c"
+source = "git+https://github.com/emilk/egui.git?rev=454abf705b87aba70cef582d6ce80f74aa398906#454abf705b87aba70cef582d6ce80f74aa398906"
 
 [[package]]
 name = "equivalent"
