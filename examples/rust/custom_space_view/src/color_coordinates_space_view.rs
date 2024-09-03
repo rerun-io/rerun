@@ -134,7 +134,7 @@ impl SpaceViewClass for ColorCoordinatesSpaceView {
 
         ui.horizontal(|ui| {
             ui.label("Coordinates mode");
-            egui::ComboBox::from_id_source("color_coordinates_mode")
+            egui::ComboBox::from_id_salt("color_coordinates_mode")
                 .selected_text(state.mode.to_string())
                 .show_ui(ui, |ui| {
                     for mode in &ColorCoordinatesMode::ALL {

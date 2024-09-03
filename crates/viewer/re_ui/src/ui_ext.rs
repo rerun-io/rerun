@@ -765,7 +765,7 @@ pub trait UiExt {
     /// The `add_contents` closure is executed in the context of a vertical layout.
     fn center<R>(
         &mut self,
-        id_source: impl Hash,
+        id_salt: impl Hash,
         add_contents: impl FnOnce(&mut egui::Ui) -> R,
     ) -> R {
         // Strategy:
@@ -779,7 +779,7 @@ pub trait UiExt {
         struct TextSize(egui::Vec2);
 
         let ui = self.ui_mut();
-        let id = ui.make_persistent_id(id_source);
+        let id = ui.make_persistent_id(id_salt);
 
         let text_size: Option<TextSize> = ui.data(|reader| reader.get_temp(id));
 
@@ -956,12 +956,12 @@ pub trait UiExt {
     /// Use this instead of using [`egui::ComboBox`] directly.
     fn drop_down_menu(
         &mut self,
-        id_source: impl std::hash::Hash,
+        id_salt: impl std::hash::Hash,
         selected_text: String,
         content: impl FnOnce(&mut egui::Ui),
     ) {
         // TODO(emilk): make the button itself a `ListItem2`
-        egui::ComboBox::from_id_source(id_source)
+        egui::ComboBox::from_id_salt(id_salt)
             .selected_text(selected_text)
             .show_ui(self.ui_mut(), |ui| {
                 list_item::list_item_scope(ui, "inner_scope", |ui| {

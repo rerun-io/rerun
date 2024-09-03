@@ -10,9 +10,9 @@ pub(crate) fn edit_timeline_name(
 ) -> egui::Response {
     if let Some(value) = value.as_mut() {
         let mut current_value: TimelineName = (&*value).into();
-        let id_source = value.name();
+        let id_salt = value.name();
         let mut changed = false;
-        let mut combobox_response = egui::ComboBox::from_id_source(id_source)
+        let mut combobox_response = egui::ComboBox::from_id_salt(id_salt)
             .selected_text(current_value.as_str())
             .show_ui(ui, |ui| {
                 for timeline in ctx.recording().timelines() {
