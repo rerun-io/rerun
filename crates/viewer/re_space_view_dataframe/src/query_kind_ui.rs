@@ -51,8 +51,7 @@ impl UiQueryKind {
                     *time
                 } else {
                     TimeInt::MAX
-                }
-                .into();
+                };
 
                 changed |= match timeline.typ() {
                     TimeType::Time => time_drag_value
@@ -71,7 +70,7 @@ impl UiQueryKind {
                 };
 
                 if changed {
-                    *self = Self::LatestAt { time: time.into() };
+                    *self = Self::LatestAt { time };
                 }
             }
         });
@@ -102,15 +101,15 @@ impl UiQueryKind {
                     let mut should_display_time_range = false;
 
                     let mut from = if let Self::TimeRange { from, .. } = self {
-                        (*from).into()
+                        *from
                     } else {
-                        TimeInt::MIN.into()
+                        TimeInt::MIN
                     };
 
                     let mut to = if let Self::TimeRange { to, .. } = self {
-                        (*to).into()
+                        *to
                     } else {
-                        TimeInt::MAX.into()
+                        TimeInt::MAX
                     };
 
                     // all time boundaries to not be aligned to the pov entity/component
@@ -140,7 +139,7 @@ impl UiQueryKind {
                         );
 
                         if reset_from {
-                            from = TimeInt::MIN.into();
+                            from = TimeInt::MIN;
                             changed = true;
                         }
 
@@ -169,7 +168,7 @@ impl UiQueryKind {
                         );
 
                         if reset_to {
-                            to = TimeInt::MAX.into();
+                            to = TimeInt::MAX;
                             changed = true;
                         }
                     });
@@ -286,8 +285,8 @@ impl UiQueryKind {
                         *self = Self::TimeRange {
                             pov_entity,
                             pov_component,
-                            from: from.into(),
-                            to: to.into(),
+                            from,
+                            to,
                         };
                     }
                 });
@@ -339,21 +338,21 @@ impl From<UiQueryKind> for QueryKind {
 fn time_boundary_ui(
     ui: &mut egui::Ui,
     time_drag_value: &TimeDragValue,
-    low_bound_override: Option<re_types_core::datatypes::TimeInt>,
+    low_bound_override: Option<TimeInt>,
     timeline_typ: TimeType,
     time_zone: TimeZone,
-    time: &mut re_types_core::datatypes::TimeInt,
+    time: &mut TimeInt,
 ) -> egui::Response {
-    if *time == re_types_core::datatypes::TimeInt::MAX {
+    if *time == TimeInt::MAX {
         let response = ui.button("+∞");
         if response.dragged() {
-            *time = (*time_drag_value.range.end()).into();
+            *time = time_drag_value.max_time();
         }
         response
-    } else if *time == re_types_core::datatypes::TimeInt::MIN {
+    } else if *time == TimeInt::MIN {
         let response = ui.button("-∞");
         if response.dragged() {
-            *time = (*time_drag_value.range.start()).into();
+            *time = time_drag_value.min_time();
         }
         response
     } else {
