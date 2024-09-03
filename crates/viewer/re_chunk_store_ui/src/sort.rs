@@ -27,7 +27,6 @@ pub(crate) struct SortColumn<T> {
 }
 
 /// UI for a column header that is sortable.
-//TODO(ab): this UI could be much improved with https://github.com/emilk/egui/issues/5015
 pub(crate) fn sortable_column_header_ui<T: Default + Copy + PartialEq>(
     column: &T,
     ui: &mut egui::Ui,
@@ -35,28 +34,33 @@ pub(crate) fn sortable_column_header_ui<T: Default + Copy + PartialEq>(
     label: &'static str,
 ) {
     let is_sorted = &sort_column.column == column;
+    let direction = sort_column.direction;
 
-    ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Truncate);
+    egui::Sides::new()
+        .height(re_ui::DesignTokens::table_line_height())
+        .show(
+            ui,
+            |ui| {
+                ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Truncate);
 
-    if ui
-        .add(egui::Button::new(
-            egui::WidgetText::from(format!(
-                "{label}{}",
-                match (is_sorted, sort_column.direction) {
-                    (true, SortDirection::Ascending) => " ↓",
-                    (true, SortDirection::Descending) => " ↑",
-                    _ => "",
+                if ui
+                    .add(egui::Button::new(egui::WidgetText::from(label).strong()))
+                    .clicked()
+                {
+                    if is_sorted {
+                        sort_column.direction.toggle();
+                    } else {
+                        sort_column.column = *column;
+                        sort_column.direction = SortDirection::default();
+                    }
                 }
-            ))
-            .strong(),
-        ))
-        .clicked()
-    {
-        if is_sorted {
-            sort_column.direction.toggle();
-        } else {
-            sort_column.column = *column;
-            sort_column.direction = SortDirection::default();
-        }
-    }
+            },
+            |ui| {
+                ui.label(match (is_sorted, direction) {
+                    (true, SortDirection::Ascending) => "↓",
+                    (true, SortDirection::Descending) => "↑",
+                    _ => "",
+                });
+            },
+        );
 }
