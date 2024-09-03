@@ -1,4 +1,6 @@
-use re_log_types::{EntityPath, TimeInt, TimelineName};
+use std::collections::BTreeSet;
+
+use re_log_types::{TimeInt, TimelineName};
 use re_types::blueprint::{archetypes, components, datatypes};
 use re_types_core::{ComponentName, Loggable as _};
 use re_ui::UiExt as _;
@@ -6,25 +8,9 @@ use re_viewer_context::{
     SpaceViewId, SpaceViewState, SpaceViewSystemExecutionError, TimeDragValue, ViewerContext,
 };
 use re_viewport_blueprint::ViewProperty;
-use std::collections::BTreeSet;
 
-use crate::query_kind_ui::UiQueryKind;
+use crate::query_kind::QueryKind;
 use crate::visualizer_system::EmptySystem;
-
-/// The query kind for the dataframe view.
-#[derive(Debug, Clone)]
-pub(crate) enum QueryKind {
-    LatestAt {
-        time: TimeInt,
-    },
-    Range {
-        pov_entity: EntityPath,
-        pov_component: ComponentName,
-        from: TimeInt,
-        to: TimeInt,
-    },
-    //TODO(#7067): add selected components
-}
 
 /// Helper for handling the dataframe view query blueprint.
 pub(crate) enum Query {
@@ -245,6 +231,7 @@ fn override_ui(
     space_view_id: SpaceViewId,
     property: &ViewProperty<'_>,
 ) -> Result<(), SpaceViewSystemExecutionError> {
+    ui.add_space(4.0);
     egui::Grid::new("dataframe_view_query_ui")
         .num_columns(2)
         .spacing(egui::vec2(8.0, 10.0))
@@ -266,6 +253,7 @@ fn override_ui(
                 &EmptySystem {},
             );
         });
+    ui.add_space(4.0);
 
     let timeline = property
         .component_or_empty::<components::TimelineName>()?
@@ -280,7 +268,7 @@ fn override_ui(
     let timeline_name = timeline.name();
 
     let query = Query::try_from_blueprint(ctx, space_view_id)?;
-    let mut ui_query_kind: UiQueryKind = query.kind(ctx).into();
+    let mut query_kind = query.kind(ctx);
     let time_drag_value = if let Some(times) = ctx.recording().time_histogram(&timeline) {
         TimeDragValue::from_time_histogram(times)
     } else {
@@ -305,9 +293,9 @@ fn override_ui(
             true
         });
 
-    let changed = ui_query_kind.ui(ctx, ui, &time_drag_value, &timeline, &all_entities);
+    let changed = query_kind.ui(ctx, ui, &time_drag_value, &timeline, &all_entities);
     if changed {
-        Query::save_kind_for_timeline(ctx, space_view_id, timeline_name, &ui_query_kind.into())?;
+        Query::save_kind_for_timeline(ctx, space_view_id, timeline_name, &query_kind)?;
     }
 
     Ok(())

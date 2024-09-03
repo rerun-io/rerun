@@ -5,25 +5,22 @@ use re_types_core::{ComponentName, ComponentNameSet};
 use re_ui::{list_item, UiExt};
 use re_viewer_context::{TimeDragValue, ViewerContext};
 
-use crate::view_query::QueryKind;
-
-/// Helper to handle the UI for the various query kinds are they are shown to the user.
-///
-/// This struct is the "UI equivalent" of the [`QueryKind`] enum.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub(crate) enum UiQueryKind {
+/// The query kind for the dataframe view.
+#[derive(Debug, Clone, PartialEq)]
+pub(crate) enum QueryKind {
     LatestAt {
         time: TimeInt,
     },
-    TimeRange {
+    Range {
         pov_entity: EntityPath,
         pov_component: ComponentName,
         from: TimeInt,
         to: TimeInt,
     },
+    //TODO(#7067): add selected components
 }
 
-impl UiQueryKind {
+impl QueryKind {
     /// Show the UI for the query kind selector.
     pub(crate) fn ui(
         &mut self,
@@ -79,7 +76,7 @@ impl UiQueryKind {
         // TIME RANGE CUSTOM
         //
 
-        let mut is_time_range_custom = matches!(self, Self::TimeRange { .. });
+        let mut is_time_range_custom = matches!(self, Self::Range { .. });
         let mut changed = ui
             .re_radio_value(&mut is_time_range_custom, true, "Define time range")
             .changed();
@@ -100,13 +97,13 @@ impl UiQueryKind {
 
                     let mut should_display_time_range = false;
 
-                    let mut from = if let Self::TimeRange { from, .. } = self {
+                    let mut from = if let Self::Range { from, .. } = self {
                         *from
                     } else {
                         TimeInt::MIN
                     };
 
-                    let mut to = if let Self::TimeRange { to, .. } = self {
+                    let mut to = if let Self::Range { to, .. } = self {
                         *to
                     } else {
                         TimeInt::MAX
@@ -118,9 +115,13 @@ impl UiQueryKind {
 
                         ui.list_item_flat_noninteractive(
                             list_item::PropertyContent::new("Start")
-                                .action_button(&re_ui::icons::ADD, || {
-                                    reset_from = true;
-                                })
+                                .action_button_with_enabled(
+                                    &re_ui::icons::RESET,
+                                    from != TimeInt::MIN,
+                                    || {
+                                        reset_from = true;
+                                    },
+                                )
                                 .value_fn(|ui, _| {
                                     let response = time_boundary_ui(
                                         ui,
@@ -147,9 +148,13 @@ impl UiQueryKind {
 
                         ui.list_item_flat_noninteractive(
                             list_item::PropertyContent::new("End")
-                                .action_button(&re_ui::icons::ADD, || {
-                                    reset_to = true;
-                                })
+                                .action_button_with_enabled(
+                                    &re_ui::icons::RESET,
+                                    to != TimeInt::MAX,
+                                    || {
+                                        reset_to = true;
+                                    },
+                                )
                                 .value_fn(|ui, _| {
                                     let response = time_boundary_ui(
                                         ui,
@@ -185,7 +190,7 @@ impl UiQueryKind {
                     //
 
                     let current_entity = match self {
-                        Self::TimeRange { pov_entity, .. } => all_entities
+                        Self::Range { pov_entity, .. } => all_entities
                             .contains(pov_entity)
                             .then(|| pov_entity.clone()),
                         Self::LatestAt { .. } => None,
@@ -226,7 +231,7 @@ impl UiQueryKind {
                         .unwrap_or_default();
 
                     let current_component = match self {
-                        Self::TimeRange { pov_component, .. } => Some(*pov_component),
+                        Self::Range { pov_component, .. } => Some(*pov_component),
                         Self::LatestAt { .. } => None,
                     };
 
@@ -282,7 +287,7 @@ impl UiQueryKind {
                     );
 
                     if changed {
-                        *self = Self::TimeRange {
+                        *self = Self::Range {
                             pov_entity,
                             pov_component,
                             from,
@@ -297,44 +302,6 @@ impl UiQueryKind {
     }
 }
 
-impl From<QueryKind> for UiQueryKind {
-    fn from(value: QueryKind) -> Self {
-        match value {
-            QueryKind::LatestAt { time } => Self::LatestAt { time },
-            QueryKind::Range {
-                pov_entity,
-                pov_component,
-                from,
-                to,
-            } => Self::TimeRange {
-                pov_entity,
-                pov_component,
-                from,
-                to,
-            },
-        }
-    }
-}
-
-impl From<UiQueryKind> for QueryKind {
-    fn from(value: UiQueryKind) -> Self {
-        match value {
-            UiQueryKind::LatestAt { time } => Self::LatestAt { time },
-            UiQueryKind::TimeRange {
-                pov_entity,
-                pov_component,
-                from,
-                to,
-            } => Self::Range {
-                pov_entity,
-                pov_component,
-                from,
-                to,
-            },
-        }
-    }
-}
-
 fn time_boundary_ui(
     ui: &mut egui::Ui,
     time_drag_value: &TimeDragValue,
@@ -344,15 +311,17 @@ fn time_boundary_ui(
     time: &mut TimeInt,
 ) -> egui::Response {
     if *time == TimeInt::MAX {
-        let response = ui.button("+∞");
-        if response.dragged() {
+        let mut response = ui.button("+∞").on_hover_text("Click to edit");
+        if response.clicked() {
             *time = time_drag_value.max_time();
+            response.mark_changed();
         }
         response
     } else if *time == TimeInt::MIN {
-        let response = ui.button("-∞");
-        if response.dragged() {
+        let mut response = ui.button("–∞").on_hover_text("Click to edit");
+        if response.clicked() {
             *time = time_drag_value.min_time();
+            response.mark_changed();
         }
         response
     } else {
