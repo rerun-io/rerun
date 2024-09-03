@@ -44,7 +44,7 @@ pub(crate) fn sortable_column_header_ui<T: Default + Copy + PartialEq>(
                 ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Truncate);
 
                 if ui
-                    .add(egui::Button::new(egui::WidgetText::from(label).strong()))
+                    .button(egui::WidgetText::from(label).strong())
                     .clicked()
                 {
                     if is_sorted {
