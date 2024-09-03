@@ -195,7 +195,7 @@ impl RangeQueryHandle<'_> {
         //
         // TODO(cmc): should keep an extra sorted datastructure and use a binsearch instead.
         while (cur_offset + cur_pov_chunk.num_rows() as u64) < offset {
-            cur_offset += offset + cur_pov_chunk.num_rows() as u64;
+            cur_offset += cur_pov_chunk.num_rows() as u64;
 
             let Some(next_pov_chunk) = pov_chunks.next().cloned() else {
                 return results;
