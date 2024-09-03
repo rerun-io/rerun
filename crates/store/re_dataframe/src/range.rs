@@ -1,4 +1,4 @@
-use std::{collections::VecDeque, sync::OnceLock};
+use std::sync::{atomic::AtomicU64, OnceLock};
 
 use ahash::HashMap;
 use arrow2::{
@@ -47,7 +47,12 @@ struct RangeQuerytHandleState {
     /// All the [`Chunk`]s for the active point-of-view.
     ///
     /// These are already sorted and vertically sliced according to the query.
-    pov_chunks: Option<VecDeque<Chunk>>,
+    pov_chunks: Option<Vec<Chunk>>,
+
+    /// Tracks the current page index. Used for [`Self::next_page`].
+    //
+    // NOTE: The state is behind a `OnceLock`, the atomic just make some things simpler down the road.
+    cur_page: AtomicU64,
 }
 
 impl<'a> RangeQueryHandle<'a> {
@@ -103,12 +108,12 @@ impl RangeQueryHandle<'_> {
                     .find_map(|(component_name, chunks)| {
                         (component_name == self.query.pov.component_name).then_some(chunks)
                     })
-                    .map(Into::into)
             };
 
             RangeQuerytHandleState {
                 columns,
                 pov_chunks,
+                cur_page: AtomicU64::new(0),
             }
         })
     }
@@ -144,8 +149,12 @@ impl RangeQueryHandle<'_> {
     pub fn next_page(&mut self) -> Option<RecordBatch> {
         re_tracing::profile_function!(format!("{:?}", self.query));
 
-        _ = self.init();
-        let pov_chunk = self.state.get_mut()?.pov_chunks.as_mut()?.pop_front()?;
+        let state = self.init();
+        let cur_page = state.cur_page.load(std::sync::atomic::Ordering::Relaxed);
+        let pov_chunk = state.pov_chunks.as_ref()?.get(cur_page as usize)?;
+        _ = state
+            .cur_page
+            .fetch_add(1, std::sync::atomic::Ordering::Relaxed);
         let pov_time_column = pov_chunk.timelines().get(&self.query.timeline)?;
         let columns = self.schema();
 
