@@ -36,6 +36,9 @@ pub(crate) fn sortable_column_header_ui<T: Default + Copy + PartialEq>(
     let is_sorted = &sort_column.column == column;
     let direction = sort_column.direction;
 
+    let mut toggle_left = false;
+    let mut toggle_right = false;
+
     egui::Sides::new()
         .height(re_ui::DesignTokens::table_line_height())
         .show(
@@ -43,24 +46,25 @@ pub(crate) fn sortable_column_header_ui<T: Default + Copy + PartialEq>(
             |ui| {
                 ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Truncate);
 
-                if ui
-                    .button(egui::WidgetText::from(label).strong())
-                    .clicked()
-                {
-                    if is_sorted {
-                        sort_column.direction.toggle();
-                    } else {
-                        sort_column.column = *column;
-                        sort_column.direction = SortDirection::default();
-                    }
-                }
+                toggle_left = ui.button(egui::WidgetText::from(label).strong()).clicked();
             },
             |ui| {
-                ui.label(match (is_sorted, direction) {
-                    (true, SortDirection::Ascending) => "↓",
-                    (true, SortDirection::Descending) => "↑",
-                    _ => "",
-                });
+                toggle_right = ui
+                    .button(match (is_sorted, direction) {
+                        (true, SortDirection::Ascending) => "↓",
+                        (true, SortDirection::Descending) => "↑",
+                        _ => "",
+                    })
+                    .clicked();
             },
         );
+
+    if toggle_left || toggle_right {
+        if is_sorted {
+            sort_column.direction.toggle();
+        } else {
+            sort_column.column = *column;
+            sort_column.direction = SortDirection::default();
+        }
+    }
 }
