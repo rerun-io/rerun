@@ -11,15 +11,15 @@ import numpy as np
 import numpy.typing as npt
 import requests
 import rerun as rr
+import rerun.blueprint as rrb
 from tqdm import tqdm
 
-DATA_DIR = Path(__file__).parent / "dataset"
-MAP_DATA_DIR = DATA_DIR / "map_data"
-if not DATA_DIR.exists():
-    DATA_DIR.mkdir()
+DATASET_DIR = Path(__file__).parent / "dataset"
+if not DATASET_DIR.exists():
+    DATASET_DIR.mkdir()
 
-LIDAR_DATA_FILE = DATA_DIR / "livemap.las"
-TRAJECTORY_DATA_FILE = DATA_DIR / "livetraj.csv"
+LIDAR_DATA_FILE = DATASET_DIR / "livemap.las"
+TRAJECTORY_DATA_FILE = DATASET_DIR / "livetraj.csv"
 
 LIDAR_DATA_URL = "https://storage.googleapis.com/rerun-example-datasets/flyability/basement/livemap.las.zip"
 TRAJECTORY_DATA_URL = "https://storage.googleapis.com/rerun-example-datasets/flyability/basement/livetraj.csv"
@@ -121,8 +121,8 @@ def log_lidar_data() -> None:
         [
             # TODO(#6889): indicator component no longer needed not needed when we have tagged components
             rr.Points3D.indicator(),
-            rr.components.Radius(-0.2),  # negative radii are interpreted in UI units (instead of scene units)
-            rr.components.Color((0, 0, 128)),
+            rr.components.Radius(-0.1),  # negative radii are interpreted in UI units (instead of scene units)
+            rr.components.Color((128, 128, 255)),
         ],
         static=True,
     )
@@ -158,10 +158,18 @@ def main() -> None:
 
     download_dataset()
 
-    # blueprint = rrb.Horizontal(rrb.Spatial3DView(origin="/"), rrb.TimeSeriesView(origin="/aircraft"))
-    # rr.script_setup(args, "rerun_example_air_traffic_data", default_blueprint=blueprint)
+    blueprint = rrb.Spatial3DView(
+        origin="/",
+        time_ranges=[
+            rrb.VisibleTimeRange(
+                timeline="time",
+                start=rrb.TimeRangeBoundary.cursor_relative(seconds=-60.0),
+                end=rrb.TimeRangeBoundary.cursor_relative(),
+            )
+        ],
+    )
 
-    rr.script_setup(args, "rerun_example_drone_lidar")
+    rr.script_setup(args, "rerun_example_drone_lidar", default_blueprint=blueprint)
 
     log_lidar_data()
     log_drone_trajectory()
