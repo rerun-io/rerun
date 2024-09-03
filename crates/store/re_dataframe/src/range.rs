@@ -19,7 +19,7 @@ use crate::{QueryEngine, RecordBatch};
 ///
 /// Cheaply created via [`QueryEngine::range`].
 ///
-/// See [`LatestAtQueryHandle::next`].
+/// See [`RangeQueryHandle::next_page`].
 //
 // TODO(cmc): pagination support
 // TODO(cmc): intra-timestamp decimation support

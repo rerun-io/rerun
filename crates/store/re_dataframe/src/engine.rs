@@ -78,7 +78,7 @@ impl QueryEngine<'_> {
     /// * second, the time columns in lexical order (`frame_nr`, `log_time`, ...);
     /// * third, the component columns in lexical order (`Color`, `Radius, ...`).
     ///
-    /// This does not run a full-blown query, but rather just inspects [`Chunk`]-level metadata,
+    /// This does not run a full-blown query, but rather just inspects `Chunk`-level metadata,
     /// which can lead to false positives, but makes this very cheap to compute.
     #[inline]
     pub fn schema_for_query(&self, query: &QueryExpression) -> Vec<ColumnDescriptor> {
