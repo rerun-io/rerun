@@ -12,12 +12,12 @@ use re_video::TimeMs;
 use super::alloc_video_frame_texture;
 
 pub struct VideoDecoder {
-    data: re_video::VideoData,
+    data: re_video::demux::VideoData,
     zeroed_texture: GpuTexture2D,
 }
 
 impl VideoDecoder {
-    pub fn new(render_context: &RenderContext, data: re_video::VideoData) -> Option<Self> {
+    pub fn new(render_context: &RenderContext, data: re_video::demux::VideoData) -> Option<Self> {
         re_log::warn_once!("Video playback not yet available in the native viewer, try the web viewer instead. See https://github.com/rerun-io/rerun/issues/7298 for more information.");
 
         let device = render_context.device.clone();

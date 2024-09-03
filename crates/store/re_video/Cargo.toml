@@ -26,5 +26,9 @@ features = ["all"]
 [features]
 
 [dependencies]
+crossbeam.workspace = true
 mp4.workspace = true
 ordered-float.workspace = true
+
+# If this package fails to build, install `nasm` locally, or build through `pixi`.
+dav1d = { path = "/home/jan/rerun-io/dav1d-rs", package = "dav1d" }

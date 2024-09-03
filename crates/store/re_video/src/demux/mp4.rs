@@ -1,3 +1,5 @@
+//! MP4 support.
+
 #![allow(clippy::map_err_ignore)]
 
 use crate::TimeMs;

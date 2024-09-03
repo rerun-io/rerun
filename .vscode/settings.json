@@ -59,6 +59,7 @@
     "python.analysis.extraPaths": [
         "rerun_py/rerun_sdk"
     ],
+    "python.terminal.activateEnvironment": false,
     "ruff.format.args": [
         "--config=rerun_py/pyproject.toml"
     ],

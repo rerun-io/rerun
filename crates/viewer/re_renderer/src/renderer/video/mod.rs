@@ -2,8 +2,8 @@ mod decoder;
 
 use crate::resource_managers::GpuTexture2D;
 use crate::RenderContext;
+use re_video::demux::{mp4, VideoLoadError};
 use re_video::TimeMs;
-use re_video::VideoLoadError;
 
 /// A video file.
 ///
@@ -23,7 +23,7 @@ impl Video {
         data: &[u8],
     ) -> Result<Self, VideoError> {
         let data = match media_type {
-            Some("video/mp4") => re_video::load_mp4(data)?,
+            Some("video/mp4") => mp4::load_mp4(data)?,
             Some(media_type) => {
                 return Err(VideoError::Load(VideoLoadError::UnsupportedMediaType(
                     media_type.to_owned(),
