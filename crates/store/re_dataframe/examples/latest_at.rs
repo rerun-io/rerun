@@ -8,13 +8,19 @@ use re_log_types::StoreKind;
 fn main() -> anyhow::Result<()> {
     let args = std::env::args().collect_vec();
 
-    let Some(path_to_rrd) = args.get(1) else {
-        eprintln!(
-            "Usage: {} <path_to_rrd>",
-            args.first().map_or("$BIN", |s| s.as_str())
-        );
-        std::process::exit(1);
+    let get_arg = |i| {
+        let Some(value) = args.get(i) else {
+            eprintln!(
+                "Usage: {} <path_to_rrd> <entity_path_expr>",
+                args.first().map_or("$BIN", |s| s.as_str())
+            );
+            std::process::exit(1);
+        };
+        value
     };
+
+    let path_to_rrd = get_arg(1);
+    let entity_path_expr = args.get(2).map_or("/**", |s| s.as_str());
 
     let stores = ChunkStore::from_rrd_filepath(
         &ChunkStoreConfig::DEFAULT,
@@ -33,31 +39,16 @@ fn main() -> anyhow::Result<()> {
             cache: &cache,
         };
 
-        {
-            let query = LatestAtQueryExpression {
-                entity_path_expr: "/**".into(),
-                timeline: Timeline::log_tick(),
-                at: TimeInt::new_temporal(30),
-            };
+        let query = LatestAtQueryExpression {
+            entity_path_expr: entity_path_expr.into(),
+            timeline: Timeline::log_time(),
+            at: TimeInt::MAX,
+        };
 
-            let query_handle = engine.latest_at(&query, None /* columns */);
-            let batch = query_handle.get();
+        let query_handle = engine.latest_at(&query, None /* columns */);
+        let batch = query_handle.get();
 
-            eprintln!("{query}:\n{batch}");
-        }
-        eprintln!("---");
-        {
-            let query = LatestAtQueryExpression {
-                entity_path_expr: "/helix/structure/scaffolding/**".into(),
-                timeline: Timeline::log_tick(),
-                at: TimeInt::new_temporal(30),
-            };
-
-            let query_handle = engine.latest_at(&query, None /* columns */);
-            let batch = query_handle.get();
-
-            eprintln!("{query}:\n{batch}");
-        }
+        eprintln!("{query}:\n{batch}");
     }
 
     Ok(())
