@@ -68,6 +68,7 @@ impl CacheKey {
     }
 }
 
+// TODO(cmc): this needs to be renamed to `QueryCache` as this will slowly become part of the public API now.
 pub struct Caches {
     /// The [`StoreId`] of the associated [`ChunkStore`].
     pub(crate) store_id: StoreId,
