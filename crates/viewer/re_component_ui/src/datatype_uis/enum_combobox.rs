@@ -8,19 +8,19 @@ pub fn edit_view_enum<EnumT: re_types_core::reflection::Enum + re_types_core::Co
     ui: &mut egui::Ui,
     current_value: &mut MaybeMutRef<'_, EnumT>,
 ) -> egui::Response {
-    let id_source = EnumT::name().full_name();
-    edit_view_enum_impl(ui, id_source, current_value)
+    let id_salt = EnumT::name().full_name();
+    edit_view_enum_impl(ui, id_salt, current_value)
 }
 
 fn edit_view_enum_impl<EnumT: re_types_core::reflection::Enum>(
     ui: &mut egui::Ui,
-    id_source: &str,
+    id_salt: &str,
     current_value: &mut MaybeMutRef<'_, EnumT>,
 ) -> egui::Response {
     if let Some(current_value) = current_value.as_mut() {
         let prev_selected_value = *current_value;
 
-        let mut combobox_response = egui::ComboBox::from_id_source(id_source)
+        let mut combobox_response = egui::ComboBox::from_id_salt(id_salt)
             .selected_text(format!("{current_value}"))
             .height(250.0)
             .show_ui(ui, |ui| {

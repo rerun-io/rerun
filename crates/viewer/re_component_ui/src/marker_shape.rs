@@ -15,7 +15,7 @@ pub(crate) fn edit_marker_shape_ui(
         let marker_text = edit_marker.to_string(); // TODO(emilk): Show marker shape in the selected text
 
         response_with_changes_of_inner(
-            egui::ComboBox::from_id_source("marker_shape")
+            egui::ComboBox::from_id_salt("marker_shape")
                 .selected_text(marker_text)
                 .height(320.0)
                 .show_ui(ui, |ui| {

@@ -982,7 +982,7 @@ fn container_top_level_properties(
 
             let mut new_columns = container.grid_columns;
 
-            egui::ComboBox::from_id_source("container_grid_columns")
+            egui::ComboBox::from_id_salt("container_grid_columns")
                 .selected_text(columns_to_string(&new_columns))
                 .show_ui(ui, |ui| {
                     ui.selectable_value(&mut new_columns, None, columns_to_string(&None));

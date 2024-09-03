@@ -164,7 +164,7 @@ impl ChunkUi {
                 ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Extend);
 
                 let table_builder = egui_extras::TableBuilder::new(ui)
-                    .id_source(chunk.id())
+                    .id_salt(chunk.id())
                     .columns(
                         Column::auto_with_initial_suggestion(200.0).clip(true),
                         1 + time_columns.len() + components.len(),
