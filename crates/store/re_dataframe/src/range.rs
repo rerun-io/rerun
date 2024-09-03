@@ -49,7 +49,7 @@ struct RangeQuerytHandleState {
     /// These are already sorted and vertically sliced according to the query.
     pov_chunks: Option<Vec<Chunk>>,
 
-    /// Tracks the current page index. Used for [`Self::next_page`].
+    /// Tracks the current page index. Used for [`RangeQueryHandle::next_page`].
     //
     // NOTE: The state is behind a `OnceLock`, the atomic just make some things simpler down the road.
     cur_page: AtomicU64,
@@ -210,7 +210,7 @@ impl RangeQueryHandle<'_> {
             0
         };
 
-        // Repeatly compute dense ranges until we've returned `len` rows.
+        // Repeatedly compute dense ranges until we've returned `len` rows.
         while len > 0 {
             cur_pov_chunk = cur_pov_chunk.row_sliced(offset as _, len as _);
             results.extend(self.dense_batch_at_pov(&cur_pov_chunk));
