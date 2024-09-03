@@ -120,7 +120,10 @@ js-sys.workspace = true
 strum.workspace = true
 strum_macros.workspace = true
 wasm-bindgen-futures.workspace = true
-wasm-bindgen.workspace = true
+# NOTE: `rerun_js/web-viewer/build-wasm.mjs` is HIGHLY sensitive to changes in `wasm-bindgen`.
+#       Whenever updating `wasm-bindgen`, update this and the broader dependency specifications in
+#       the root `/Cargo.toml`, and make sure that the build script still works.
+wasm-bindgen = "=0.2.93"
 web-sys = { workspace = true, features = [
   "History",
   "Location",
