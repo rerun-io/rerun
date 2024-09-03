@@ -10,13 +10,20 @@ use re_log_types::{ResolvedTimeRange, StoreKind};
 fn main() -> anyhow::Result<()> {
     let args = std::env::args().collect_vec();
 
-    let Some(path_to_rrd) = args.get(1) else {
-        eprintln!(
-            "Usage: {} <path_to_rrd>",
-            args.first().map_or("$BIN", |s| s.as_str())
-        );
-        std::process::exit(1);
+    let get_arg = |i| {
+        let Some(value) = args.get(i) else {
+            eprintln!(
+                "Usage: {} <path_to_rrd_with_position3ds> <entity_path_pov> [entity_path_expr]",
+                args.first().map_or("$BIN", |s| s.as_str())
+            );
+            std::process::exit(1);
+        };
+        value
     };
+
+    let path_to_rrd = get_arg(1);
+    let entity_path_pov = get_arg(2).as_str();
+    let entity_path_expr = args.get(3).map_or("/**", |s| s.as_str());
 
     let stores = ChunkStore::from_rrd_filepath(
         &ChunkStoreConfig::DEFAULT,
@@ -35,38 +42,19 @@ fn main() -> anyhow::Result<()> {
             cache: &cache,
         };
 
-        {
-            let query = RangeQueryExpression {
-                entity_path_expr: "/**".into(),
-                timeline: Timeline::log_tick(),
-                time_range: ResolvedTimeRange::new(0, 30),
-                pov: ComponentColumnDescriptor::new::<re_types::components::Position3D>(
-                    "helix/structure/scaffolding/beads".into(),
-                ),
-            };
+        let query = RangeQueryExpression {
+            entity_path_expr: entity_path_expr.into(),
+            timeline: Timeline::log_tick(),
+            time_range: ResolvedTimeRange::new(0, 30),
+            pov: ComponentColumnDescriptor::new::<re_types::components::Position3D>(
+                entity_path_pov.into(),
+            ),
+        };
 
-            let query_handle = engine.range(&query, None /* columns */);
-            eprintln!("{query}:");
-            for batch in query_handle.into_iter() {
-                eprintln!("{batch}");
-            }
-        }
-        eprintln!("---");
-        {
-            let query = RangeQueryExpression {
-                entity_path_expr: "/helix/structure/scaffolding/**".into(),
-                timeline: Timeline::log_tick(),
-                time_range: ResolvedTimeRange::new(0, 30),
-                pov: ComponentColumnDescriptor::new::<re_types::components::Position3D>(
-                    "helix/structure/scaffolding/beads".into(),
-                ),
-            };
-
-            let query_handle = engine.range(&query, None /* columns */);
-            eprintln!("{query}:");
-            for batch in query_handle.into_iter() {
-                eprintln!("{batch}");
-            }
+        let query_handle = engine.range(&query, None /* columns */);
+        eprintln!("{query}:");
+        for batch in query_handle.into_iter() {
+            eprintln!("{batch}");
         }
     }
 
