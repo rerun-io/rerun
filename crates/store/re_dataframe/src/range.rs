@@ -227,6 +227,23 @@ impl RangeQueryHandle<'_> {
         results
     }
 
+    /// How many chunks / natural pages of data will be returned?
+    #[inline]
+    pub fn num_chunks(&self) -> u64 {
+        self.init()
+            .pov_chunks
+            .as_ref()
+            .map_or(0, |pov_chunks| pov_chunks.len() as _)
+    }
+
+    /// How many rows of data will be returned?
+    #[inline]
+    pub fn num_rows(&self) -> u64 {
+        self.init().pov_chunks.as_ref().map_or(0, |pov_chunks| {
+            pov_chunks.iter().map(|chunk| chunk.num_rows() as u64).sum()
+        })
+    }
+
     fn dense_batch_at_pov(&self, pov_chunk: &Chunk) -> Option<RecordBatch> {
         let pov_time_column = pov_chunk.timelines().get(&self.query.timeline)?;
         let columns = self.schema();

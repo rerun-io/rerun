@@ -55,6 +55,11 @@ fn main() -> anyhow::Result<()> {
 
         let query_handle = engine.range(&query, None /* columns */);
         println!("{query}:");
+        println!(
+            "num_chunks:{} num_rows:{}",
+            query_handle.num_chunks(),
+            query_handle.num_rows()
+        );
 
         let (offset, len) = (0, 4);
         println!("offset:{offset} len:{len}");
