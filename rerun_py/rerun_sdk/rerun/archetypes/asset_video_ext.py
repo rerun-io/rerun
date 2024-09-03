@@ -1,23 +1,10 @@
 from __future__ import annotations
 
 import pathlib
-from typing import TYPE_CHECKING, Any
+from typing import Any
 
 from .. import datatypes
 from ..error_utils import catch_and_log_exceptions
-
-if TYPE_CHECKING:
-    from ..components import MediaType
-
-
-def guess_media_type(path: str | pathlib.Path) -> MediaType | None:
-    from ..components import MediaType
-
-    ext = pathlib.Path(path).suffix.lower()
-    if ext == ".mp4":
-        return MediaType.MP4
-    else:
-        return None
 
 
 class AssetVideoExt:
@@ -55,6 +42,8 @@ class AssetVideoExt:
 
         """
 
+        from ..components import MediaType
+
         with catch_and_log_exceptions(context=self.__class__.__name__):
             if (path is None) == (contents is None):
                 raise ValueError("Must provide exactly one of 'path' or 'contents'")
@@ -64,7 +53,7 @@ class AssetVideoExt:
             else:
                 blob = pathlib.Path(path).read_bytes()
                 if media_type is None:
-                    media_type = guess_media_type(str(path))
+                    media_type = MediaType.guess_from_path(path)
 
             self.__attrs_init__(blob=blob, media_type=media_type)
             return

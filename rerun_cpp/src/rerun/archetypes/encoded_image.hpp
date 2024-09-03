@@ -95,10 +95,6 @@ namespace rerun::archetypes {
             return image;
         }
 
-        static std::optional<rerun::components::MediaType> guess_media_type(
-            const std::filesystem::path& path
-        );
-
         // END of extensions from encoded_image_ext.cpp, start of generated code:
 
       public:

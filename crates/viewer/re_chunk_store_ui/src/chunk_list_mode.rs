@@ -2,8 +2,7 @@ use std::ops::RangeInclusive;
 
 use re_chunk_store::external::re_chunk::ComponentName;
 use re_chunk_store::ChunkStore;
-use re_log_types::external::re_types_core::datatypes::TimeInt;
-use re_log_types::{EntityPath, ResolvedTimeRange, TimeType, TimeZone, Timeline};
+use re_log_types::{EntityPath, ResolvedTimeRange, TimeInt, TimeType, TimeZone, Timeline};
 use re_ui::UiExt;
 use re_viewer_context::TimeDragValue;
 
@@ -178,7 +177,7 @@ impl ChunkListMode {
                     };
                 }
                 ChunkListQueryMode::Range(range) => {
-                    let (mut min, mut max) = (range.min().into(), range.max().into());
+                    let (mut min, mut max) = (range.min(), range.max());
                     ui.label("from:");
                     match time_typ {
                         TimeType::Time => {

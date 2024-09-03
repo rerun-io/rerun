@@ -38,11 +38,6 @@ namespace rerun::archetypes {
             return asset;
         }
 
-
-        static std::optional<rerun::components::MediaType> guess_media_type(
-            const std::filesystem::path& path
-        );
-
         // </CODEGEN_COPY_TO_HEADER>
 #endif
 
@@ -61,21 +56,7 @@ namespace rerun::archetypes {
 
         return AssetVideo::from_bytes(
             Collection<uint8_t>::take_ownership(std::move(data)),
-            AssetVideo::guess_media_type(path)
+            rerun::components::MediaType::guess_from_path(path)
         );
-    }
-
-    std::optional<rerun::components::MediaType> AssetVideo::guess_media_type(
-        const std::filesystem::path& path
-    ) {
-        std::filesystem::path file_path(path);
-        std::string ext = file_path.extension().string();
-        std::transform(ext.begin(), ext.end(), ext.begin(), ::tolower);
-
-        if (ext == ".mp4") {
-            return rerun::components::MediaType::mp4();
-        } else {
-            return std::nullopt;
-        }
     }
 } // namespace rerun::archetypes
