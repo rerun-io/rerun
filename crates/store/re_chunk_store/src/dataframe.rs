@@ -528,8 +528,28 @@ impl ChunkStore {
             })
         });
 
+        let static_components =
+            self.static_chunk_ids_per_entity
+                .iter()
+                .flat_map(|(entity_path, per_component)| {
+                    // TODO(#6889): Fill `archetype_name`/`archetype_field_name` (or whatever their
+                    // final name ends up being) once we generate tags.
+                    per_component.keys().filter_map(|component_name| {
+                        self.lookup_datatype(component_name).map(|datatype| {
+                            ColumnDescriptor::Component(ComponentColumnDescriptor {
+                                entity_path: entity_path.clone(),
+                                archetype_name: None,
+                                archetype_field_name: None,
+                                component_name: *component_name,
+                                datatype: datatype.clone(),
+                                is_static: true,
+                            })
+                        })
+                    })
+                });
+
         // TODO(cmc): Opportunities for parallelization, if it proves to be a net positive in practice.
-        let components = self
+        let temporal_components = self
             .temporal_chunk_ids_per_entity_per_component
             .iter()
             .flat_map(|(entity_path, per_timeline)| {
@@ -548,6 +568,8 @@ impl ChunkStore {
                             archetype_field_name: None,
                             component_name: *component_name,
                             datatype: datatype.clone(),
+                            // NOTE: This will make it so shadowed temporal data automatically gets
+                            // discarded from the schema.
                             is_static: self
                                 .static_chunk_ids_per_entity
                                 .get(entity_path)
@@ -557,7 +579,10 @@ impl ChunkStore {
                         })
                     })
                 })
-            })
+            });
+
+        let components = static_components
+            .chain(temporal_components)
             .collect::<BTreeSet<_>>();
 
         controls.chain(timelines).chain(components).collect()
