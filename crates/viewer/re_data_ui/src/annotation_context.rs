@@ -201,7 +201,7 @@ fn class_description_ui(
 
                 let table = ui_layout
                     .table(ui)
-                    .id_source(("keypoints_connections", id))
+                    .id_salt(("keypoints_connections", id))
                     .cell_layout(egui::Layout::left_to_right(egui::Align::Center))
                     .column(Column::auto().clip(true).at_least(40.0))
                     .column(Column::auto().clip(true).at_least(40.0));

@@ -32,7 +32,7 @@ pub fn recordings_panel_ui(
     });
 
     egui::ScrollArea::both()
-        .id_source("recordings_scroll_area")
+        .id_salt("recordings_scroll_area")
         .auto_shrink([false, true])
         .show(ui, |ui| {
             ui.panel_content(|ui| {

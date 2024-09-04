@@ -23,7 +23,7 @@ pub fn edit_radius_ui(
         let mut is_scene_units = value.scene_units().is_some();
         let selected_label = label_for_unit(is_scene_units);
 
-        let combobox_response = egui::ComboBox::from_id_source("units")
+        let combobox_response = egui::ComboBox::from_id_salt("units")
             .selected_text(selected_label)
             .show_ui(ui, |ui| {
                 ui.selectable_value(&mut is_scene_units, true, label_for_unit(true))

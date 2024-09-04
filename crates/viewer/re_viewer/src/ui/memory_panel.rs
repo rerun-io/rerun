@@ -271,7 +271,7 @@ impl MemoryPanel {
             ui.strong("LatestAt");
             egui::ScrollArea::vertical()
                 .max_height(200.0)
-                .id_source("latest_at")
+                .id_salt("latest_at")
                 .show(ui, |ui| {
                     egui::Grid::new("latest_at cache stats grid")
                         .num_columns(3)
@@ -309,7 +309,7 @@ impl MemoryPanel {
             ui.strong("Range");
             egui::ScrollArea::vertical()
                 .max_height(200.0)
-                .id_source("range")
+                .id_salt("range")
                 .show(ui, |ui| {
                     egui::Grid::new("range cache stats grid")
                         .num_columns(4)
