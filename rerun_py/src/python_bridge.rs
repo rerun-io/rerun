@@ -33,6 +33,8 @@ use re_ws_comms::RerunServerPort;
 
 use once_cell::sync::{Lazy, OnceCell};
 
+use crate::dataframe::{PyDataset, PyRRDArchive};
+
 // The bridge needs to have complete control over the lifetimes of the individual recordings,
 // otherwise all the recording shutdown machinery (which includes deallocating C, Rust and Python
 // data and joining a bunch of threads) can end up running at any time depending on what the
@@ -105,6 +107,8 @@ fn rerun_bindings(_py: Python<'_>, m: &Bound<'_, PyModule>) -> PyResult<()> {
     // These two components are necessary for imports to work
     m.add_class::<PyMemorySinkStorage>()?;
     m.add_class::<PyRecordingStream>()?;
+    m.add_class::<PyRRDArchive>()?;
+    m.add_class::<PyDataset>()?;
 
     // If this is a special RERUN_APP_ONLY context (launched via .spawn), we
     // can bypass everything else, which keeps us from preparing an SDK session
@@ -171,6 +175,9 @@ fn rerun_bindings(_py: Python<'_>, m: &Bound<'_, PyModule>) -> PyResult<()> {
 
     use crate::video::asset_video_read_frame_timestamps_ns;
     m.add_function(wrap_pyfunction!(asset_video_read_frame_timestamps_ns, m)?)?;
+
+    // dataframes
+    m.add_function(wrap_pyfunction!(crate::dataframe::load_rrd, m)?)?;
 
     Ok(())
 }
