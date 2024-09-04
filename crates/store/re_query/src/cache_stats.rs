@@ -11,8 +11,8 @@ use crate::{QueryCache, QueryCacheKey};
 /// Fetch them via [`QueryCache::stats`].
 #[derive(Default, Debug, Clone)]
 pub struct CachesStats {
-    pub latest_at: BTreeMap<QueryCacheKey, CacheStats>,
-    pub range: BTreeMap<QueryCacheKey, CacheStats>,
+    pub latest_at: BTreeMap<QueryCacheKey, QueryCacheEntryStats>,
+    pub range: BTreeMap<QueryCacheKey, QueryCacheEntryStats>,
 }
 
 impl CachesStats {
@@ -35,9 +35,9 @@ impl CachesStats {
     }
 }
 
-/// Stats for a single `crate::RangeCache`.
+/// Stats for a single entry in the [`QueryCache`].
 #[derive(Default, Debug, Clone)]
-pub struct CacheStats {
+pub struct QueryCacheEntryStats {
     /// How many chunks in the cache?
     pub total_chunks: u64,
 
@@ -64,7 +64,7 @@ impl QueryCache {
                     let cache = cache.read();
                     (
                         key.clone(),
-                        CacheStats {
+                        QueryCacheEntryStats {
                             total_chunks: cache.per_query_time.len() as _,
                             total_effective_size_bytes: cache
                                 .per_query_time
@@ -89,7 +89,7 @@ impl QueryCache {
 
                     (
                         key.clone(),
-                        CacheStats {
+                        QueryCacheEntryStats {
                             total_chunks: cache.chunks.len() as _,
                             total_effective_size_bytes: cache
                                 .chunks

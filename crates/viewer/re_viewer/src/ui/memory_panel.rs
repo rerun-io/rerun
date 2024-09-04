@@ -1,7 +1,7 @@
 use re_chunk_store::{ChunkStoreChunkStats, ChunkStoreConfig, ChunkStoreStats};
 use re_format::{format_bytes, format_uint};
 use re_memory::{util::sec_since_start, MemoryHistory, MemoryLimit, MemoryUse};
-use re_query::{CacheStats, CachesStats};
+use re_query::{CachesStats, QueryCacheEntryStats};
 use re_renderer::WgpuResourcePoolStatistics;
 use re_ui::UiExt as _;
 use re_viewer_context::store_hub::StoreHubStats;
@@ -287,7 +287,7 @@ impl MemoryPanel {
                             ui.end_row();
 
                             for (cache_key, stats) in latest_at {
-                                let &CacheStats {
+                                let &QueryCacheEntryStats {
                                     total_chunks,
                                     total_effective_size_bytes,
                                     total_actual_size_bytes,
@@ -325,7 +325,7 @@ impl MemoryPanel {
                             ui.end_row();
 
                             for (cache_key, stats) in range {
-                                let &CacheStats {
+                                let &QueryCacheEntryStats {
                                     total_chunks,
                                     total_effective_size_bytes,
                                     total_actual_size_bytes,
