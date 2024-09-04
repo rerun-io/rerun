@@ -30,6 +30,9 @@ serde = [
   "re_types_core/serde",
 ]
 
+## Enable conversion to and from arrow-rs types
+arrow = ["arrow2/arrow", "dep:arrow"]
+
 
 [dependencies]
 
@@ -60,6 +63,7 @@ thiserror.workspace = true
 
 # Optional dependencies:
 serde = { workspace = true, optional = true, features = ["derive", "rc"] }
+arrow = { workspace = true, optional = true }
 
 # Native dependencies:
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
