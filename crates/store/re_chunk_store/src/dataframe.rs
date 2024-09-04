@@ -280,9 +280,14 @@ impl ComponentColumnDescriptor {
             is_static,
         } = self;
 
+        // TODO(cmc): figure out who's in charge of adding the outer list layer.
         ArrowField::new(
             component_name.short_name().to_owned(),
-            datatype.clone(),
+            ArrowDatatype::List(std::sync::Arc::new(ArrowField::new(
+                "item",
+                datatype.clone(),
+                true, /* nullable */
+            ))),
             false, /* nullable */
         )
         // TODO(#6889): This needs some proper sorbetization -- I just threw these names randomly.
