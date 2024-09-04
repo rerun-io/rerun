@@ -65,10 +65,8 @@ impl QueryEngine<'_> {
     /// * second, the time columns in lexical order (`frame_nr`, `log_time`, ...);
     /// * third, the component columns in lexical order (`Color`, `Radius, ...`).
     #[inline]
-    #[allow(clippy::unimplemented, clippy::needless_pass_by_value)]
     pub fn schema(&self) -> Vec<ColumnDescriptor> {
-        _ = self;
-        unimplemented!("TODO(cmc)")
+        self.store.schema()
     }
 
     /// Returns the filtered schema for the given query expression.
@@ -84,11 +82,8 @@ impl QueryEngine<'_> {
     /// This does not run a full-blown query, but rather just inspects [`Chunk`]-level metadata,
     /// which can lead to false positives, but makes this very cheap to compute.
     #[inline]
-    #[allow(clippy::unimplemented, clippy::needless_pass_by_value)]
     pub fn schema_for_query(&self, query: &QueryExpression) -> Vec<ColumnDescriptor> {
-        _ = self;
-        _ = query;
-        unimplemented!("TODO(cmc)")
+        self.store.schema_for_query(query)
     }
 
     /// Creates a new appropriate [`QueryHandle`].
