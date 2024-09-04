@@ -30,7 +30,7 @@ pub use self::dataframe::{
 pub use self::events::{ChunkStoreDiff, ChunkStoreDiffKind, ChunkStoreEvent};
 pub use self::gc::{GarbageCollectionOptions, GarbageCollectionTarget};
 pub use self::stats::{ChunkStoreChunkStats, ChunkStoreStats};
-pub use self::store::{ChunkStore, ChunkStoreConfig, ChunkStoreGeneration};
+pub use self::store::{ChunkStore, ChunkStoreConfig, ChunkStoreGeneration, ChunkStoreHandle};
 pub use self::subscribers::{ChunkStoreSubscriber, ChunkStoreSubscriberHandle};
 
 // Re-exports

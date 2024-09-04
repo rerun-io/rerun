@@ -283,6 +283,33 @@ pub struct ChunkStoreGeneration {
     gc_id: u64,
 }
 
+/// A ref-counted, inner-mutable handle to a [`ChunkStore`].
+///
+/// Cheap to clone.
+#[derive(Clone)]
+pub struct ChunkStoreHandle(Arc<parking_lot::RwLock<ChunkStore>>);
+
+impl std::ops::Deref for ChunkStoreHandle {
+    type Target = parking_lot::RwLock<ChunkStore>;
+
+    #[inline]
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+impl ChunkStoreHandle {
+    #[inline]
+    pub fn new(store: ChunkStore) -> Self {
+        Self(Arc::new(parking_lot::RwLock::new(store)))
+    }
+
+    #[inline]
+    pub fn into_inner(self) -> Arc<parking_lot::RwLock<ChunkStore>> {
+        self.0
+    }
+}
+
 /// A complete chunk store: covers all timelines, all entities, everything.
 ///
 /// The chunk store _always_ works at the chunk level, whether it is for write & read queries or
