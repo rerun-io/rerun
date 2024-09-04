@@ -175,7 +175,7 @@ fn generate_archetype_reflection(reporter: &Reporter, objects: &Objects) -> Toke
         let display_name = re_case::to_human_case(&obj.name);
         if false {
             // We currently skip the docstring for the archetype itself,
-            // because it is very loong and has mebedded examples etc.
+            // because it is very loong and has embedded examples etc.
             // We also never use it.
             doc_as_lines(
                 reporter,
