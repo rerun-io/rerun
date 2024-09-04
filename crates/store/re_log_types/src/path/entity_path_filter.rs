@@ -78,6 +78,23 @@ pub struct EntityPathRule {
     pub include_subtree: bool,
 }
 
+impl std::fmt::Display for EntityPathRule {
+    #[inline]
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let Self {
+            raw_expression: _,
+            path,
+            include_subtree,
+        } = self;
+
+        f.write_fmt(format_args!(
+            "{path}{}{}",
+            if path.is_root() { "" } else { "/" },
+            if *include_subtree { "**" } else { "" }
+        ))
+    }
+}
+
 impl PartialEq for EntityPathRule {
     fn eq(&self, other: &Self) -> bool {
         self.raw_expression == other.raw_expression
