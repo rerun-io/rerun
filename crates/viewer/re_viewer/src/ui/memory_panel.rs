@@ -1,7 +1,7 @@
 use re_chunk_store::{ChunkStoreChunkStats, ChunkStoreConfig, ChunkStoreStats};
 use re_format::{format_bytes, format_uint};
 use re_memory::{util::sec_since_start, MemoryHistory, MemoryLimit, MemoryUse};
-use re_query::{CachesStats, QueryCacheEntryStats};
+use re_query::{QueryCacheEntryStats, QueryCacheStats};
 use re_renderer::WgpuResourcePoolStatistics;
 use re_ui::UiExt as _;
 use re_viewer_context::store_hub::StoreHubStats;
@@ -263,8 +263,8 @@ impl MemoryPanel {
             });
     }
 
-    fn caches_stats(ui: &mut egui::Ui, caches_stats: &CachesStats) {
-        let CachesStats { latest_at, range } = caches_stats;
+    fn caches_stats(ui: &mut egui::Ui, caches_stats: &QueryCacheStats) {
+        let QueryCacheStats { latest_at, range } = caches_stats;
 
         if !latest_at.is_empty() {
             ui.separator();

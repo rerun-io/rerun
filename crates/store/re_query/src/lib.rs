@@ -9,7 +9,7 @@ pub mod clamped_zip;
 pub mod range_zip;
 
 pub use self::cache::{QueryCache, QueryCacheKey};
-pub use self::cache_stats::{CachesStats, QueryCacheEntryStats};
+pub use self::cache_stats::{QueryCacheEntryStats, QueryCacheStats};
 pub use self::clamped_zip::*;
 pub use self::latest_at::LatestAtResults;
 pub use self::range::RangeResults;

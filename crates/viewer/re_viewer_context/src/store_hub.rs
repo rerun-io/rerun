@@ -6,7 +6,7 @@ use itertools::Itertools as _;
 use re_chunk_store::{ChunkStoreConfig, ChunkStoreGeneration, ChunkStoreStats};
 use re_entity_db::{EntityDb, StoreBundle};
 use re_log_types::{ApplicationId, StoreId, StoreKind};
-use re_query::CachesStats;
+use re_query::QueryCacheStats;
 
 use crate::StoreContext;
 
@@ -72,11 +72,11 @@ pub struct BlueprintPersistence {
 #[derive(Default)]
 pub struct StoreHubStats {
     pub blueprint_stats: ChunkStoreStats,
-    pub blueprint_cached_stats: CachesStats,
+    pub blueprint_cached_stats: QueryCacheStats,
     pub blueprint_config: ChunkStoreConfig,
 
     pub recording_stats2: ChunkStoreStats,
-    pub recording_cached_stats: CachesStats,
+    pub recording_cached_stats: QueryCacheStats,
     pub recording_config2: ChunkStoreConfig,
 }
 

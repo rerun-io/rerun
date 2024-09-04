@@ -10,12 +10,12 @@ use crate::{QueryCache, QueryCacheKey};
 ///
 /// Fetch them via [`QueryCache::stats`].
 #[derive(Default, Debug, Clone)]
-pub struct CachesStats {
+pub struct QueryCacheStats {
     pub latest_at: BTreeMap<QueryCacheKey, QueryCacheEntryStats>,
     pub range: BTreeMap<QueryCacheKey, QueryCacheEntryStats>,
 }
 
-impl CachesStats {
+impl QueryCacheStats {
     #[inline]
     pub fn total_size_bytes(&self) -> u64 {
         re_tracing::profile_function!();
@@ -35,7 +35,7 @@ impl CachesStats {
     }
 }
 
-/// Stats for a single entry in the [`QueryCache`].
+/// Stats for a single entry in the [`QueryCache`] .
 #[derive(Default, Debug, Clone)]
 pub struct QueryCacheEntryStats {
     /// How many chunks in the cache?
@@ -51,7 +51,7 @@ pub struct QueryCacheEntryStats {
 
 impl QueryCache {
     /// Computes the stats for all primary caches.
-    pub fn stats(&self) -> CachesStats {
+    pub fn stats(&self) -> QueryCacheStats {
         re_tracing::profile_function!();
 
         let latest_at = {
@@ -103,6 +103,6 @@ impl QueryCache {
                 .collect()
         };
 
-        CachesStats { latest_at, range }
+        QueryCacheStats { latest_at, range }
     }
 }
