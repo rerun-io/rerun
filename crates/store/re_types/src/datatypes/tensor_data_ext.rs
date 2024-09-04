@@ -182,7 +182,9 @@ macro_rules! tensor_from_ndarray {
                     .is_standard_layout()
                     .then(|| TensorData {
                         shape,
-                        buffer: TensorBuffer::$variant(value.to_owned().into_raw_vec().into()),
+                        buffer: TensorBuffer::$variant(
+                            value.to_owned().into_raw_vec_and_offset().0.into(),
+                        ),
                     })
                     .ok_or(TensorCastError::NotContiguousStdOrder)
             }
@@ -314,7 +316,7 @@ impl<D: ::ndarray::Dimension> TryFrom<::ndarray::Array<half::f16, D>> for Tensor
             Ok(Self {
                 shape,
                 buffer: TensorBuffer::F16(
-                    bytemuck::cast_slice(value.into_raw_vec().as_slice())
+                    bytemuck::cast_slice(value.into_raw_vec_and_offset().0.as_slice())
                         .to_vec()
                         .into(),
                 ),
