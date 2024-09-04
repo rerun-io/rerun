@@ -22,6 +22,8 @@ pub(crate) enum QueryKind {
 
 impl QueryKind {
     /// Show the UI for the query kind selector.
+    ///
+    /// Return `true` if the query kind was updated (and thus should be saved to blueprint).
     pub(crate) fn ui(
         &mut self,
         ctx: &ViewerContext<'_>,

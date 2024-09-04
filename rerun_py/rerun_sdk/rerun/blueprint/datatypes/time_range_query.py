@@ -70,8 +70,14 @@ class TimeRangeQuery(TimeRangeQueryExt):
             Name of the timeline this applies to.
         pov_entity:
             Point-of-view entity.
+
+            Each non-null value of the point-of-view column (as defined by an entity and a component name) will generate a row
+            in the results returned by the range query.
         pov_component:
             Point-of-view component.
+
+            Each non-null value of the point-of-view column (as defined by an entity and a component name) will generate a row
+            in the results returned by the range query.
         start:
             Beginning of the time range.
         end:
@@ -90,10 +96,16 @@ class TimeRangeQuery(TimeRangeQueryExt):
     pov_entity: datatypes.EntityPath = field(converter=_time_range_query__pov_entity__special_field_converter_override)
     # Point-of-view entity.
     #
+    # Each non-null value of the point-of-view column (as defined by an entity and a component name) will generate a row
+    # in the results returned by the range query.
+    #
     # (Docstring intentionally commented out to hide this field from the docs)
 
     pov_component: datatypes.Utf8 = field(converter=_time_range_query__pov_component__special_field_converter_override)
     # Point-of-view component.
+    #
+    # Each non-null value of the point-of-view column (as defined by an entity and a component name) will generate a row
+    # in the results returned by the range query.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 

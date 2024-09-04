@@ -25,9 +25,15 @@ pub struct TimeRangeQuery {
     pub timeline: crate::datatypes::Utf8,
 
     /// Point-of-view entity.
+    ///
+    /// Each non-null value of the point-of-view column (as defined by an entity and a component name) will generate a row
+    /// in the results returned by the range query.
     pub pov_entity: crate::datatypes::EntityPath,
 
     /// Point-of-view component.
+    ///
+    /// Each non-null value of the point-of-view column (as defined by an entity and a component name) will generate a row
+    /// in the results returned by the range query.
     pub pov_component: crate::datatypes::Utf8,
 
     /// Beginning of the time range.

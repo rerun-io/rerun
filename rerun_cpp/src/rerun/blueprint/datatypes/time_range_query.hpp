@@ -24,9 +24,15 @@ namespace rerun::blueprint::datatypes {
         rerun::datatypes::Utf8 timeline;
 
         /// Point-of-view entity.
+        ///
+        /// Each non-null value of the point-of-view column (as defined by an entity and a component name) will generate a row
+        /// in the results returned by the range query.
         rerun::datatypes::EntityPath pov_entity;
 
         /// Point-of-view component.
+        ///
+        /// Each non-null value of the point-of-view column (as defined by an entity and a component name) will generate a row
+        /// in the results returned by the range query.
         rerun::datatypes::Utf8 pov_component;
 
         /// Beginning of the time range.
