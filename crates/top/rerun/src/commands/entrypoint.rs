@@ -613,6 +613,7 @@ fn run_impl(
 ) -> anyhow::Result<()> {
     #[cfg(feature = "native_viewer")]
     let profiler = run_profiler(&args);
+    let mut is_another_viewer_running = false;
 
     #[cfg(feature = "native_viewer")]
     let startup_options = {
@@ -691,13 +692,26 @@ fn run_impl(
 
         #[cfg(feature = "server")]
         {
-            let server_options = re_sdk_comms::ServerOptions {
-                max_latency_sec: parse_max_latency(args.drop_at_latency.as_ref()),
-                quiet: false,
-            };
-            let tcp_listener: Receiver<LogMsg> =
-                re_sdk_comms::serve(&args.bind, args.port, server_options)?;
-            rxs.push(tcp_listener);
+            // Check if there is already a viewer running
+            // and if so, send the data to it.
+            use std::net::TcpStream;
+            let connect_addr = std::net::SocketAddr::new(args.bind.parse().unwrap(), args.port);
+            if TcpStream::connect_timeout(&connect_addr, std::time::Duration::from_secs(1)).is_ok()
+            {
+                re_log::info!(
+                    addr = %connect_addr,
+                    "A process is already listening at this address. Assuming it's a Rerun Viewer."
+                );
+                is_another_viewer_running = true;
+            } else {
+                let server_options = re_sdk_comms::ServerOptions {
+                    max_latency_sec: parse_max_latency(args.drop_at_latency.as_ref()),
+                    quiet: false,
+                };
+                let tcp_listener: Receiver<LogMsg> =
+                    re_sdk_comms::serve(&args.bind, args.port, server_options)?;
+                rxs.push(tcp_listener);
+            }
         }
 
         rxs
@@ -772,6 +786,9 @@ fn run_impl(
 
             return Ok(());
         }
+    } else if is_another_viewer_running {
+        re_log::info!("Another viewer is already running, streaming data to it.");
+        Ok(())
     } else {
         #[cfg(feature = "native_viewer")]
         return re_viewer::run_native_app(
