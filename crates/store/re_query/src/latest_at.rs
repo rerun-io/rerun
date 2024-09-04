@@ -14,7 +14,7 @@ use re_types_core::{
     components::ClearIsRecursive, Component, ComponentName, Loggable as _, SizeBytes,
 };
 
-use crate::{CacheKey, Caches, QueryError};
+use crate::{CacheKey, QueryCache, QueryError};
 
 // --- Public API ---
 
@@ -35,7 +35,7 @@ fn compare_indices(lhs: (TimeInt, RowId), rhs: (TimeInt, RowId)) -> std::cmp::Or
     }
 }
 
-impl Caches {
+impl QueryCache {
     /// Queries for the given `component_names` using latest-at semantics.
     ///
     /// See [`LatestAtResults`] for more information about how to handle the results.

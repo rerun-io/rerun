@@ -9,11 +9,11 @@ use re_chunk_store::{ChunkStore, RangeQuery, TimeInt};
 use re_log_types::{EntityPath, ResolvedTimeRange};
 use re_types_core::{ComponentName, DeserializationError, SizeBytes};
 
-use crate::{CacheKey, Caches};
+use crate::{CacheKey, QueryCache};
 
 // --- Public API ---
 
-impl Caches {
+impl QueryCache {
     /// Queries for the given `component_names` using range semantics.
     ///
     /// See [`RangeResults`] for more information about how to handle the results.

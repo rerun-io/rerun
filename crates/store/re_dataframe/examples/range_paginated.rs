@@ -38,7 +38,7 @@ fn main() -> anyhow::Result<()> {
             continue;
         }
 
-        let cache = re_dataframe::external::re_query::Caches::new(store);
+        let cache = re_dataframe::external::re_query::QueryCache::new(store);
         let engine = QueryEngine {
             store,
             cache: &cache,

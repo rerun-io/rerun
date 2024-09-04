@@ -2,7 +2,7 @@ use re_chunk::TransportChunk;
 use re_chunk_store::{
     ChunkStore, ColumnDescriptor, LatestAtQueryExpression, QueryExpression, RangeQueryExpression,
 };
-use re_query::Caches;
+use re_query::QueryCache;
 
 use crate::{LatestAtQueryHandle, RangeQueryHandle};
 
@@ -50,7 +50,7 @@ impl<'a> From<RangeQueryHandle<'a>> for QueryHandle<'a> {
 // first, and this is not as straightforward as it seems.
 pub struct QueryEngine<'a> {
     pub store: &'a ChunkStore,
-    pub cache: &'a Caches,
+    pub cache: &'a QueryCache,
 }
 
 impl QueryEngine<'_> {

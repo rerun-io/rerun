@@ -12,7 +12,7 @@ use re_log_types::{
     example_components::{MyColor, MyPoint, MyPoints},
     EntityPath, TimeInt, TimePoint,
 };
-use re_query::Caches;
+use re_query::QueryCache;
 use re_types::{Archetype as _, ComponentBatch};
 
 // ---
@@ -23,7 +23,7 @@ fn simple_query() {
         re_log_types::StoreId::random(re_log_types::StoreKind::Recording),
         Default::default(),
     );
-    let mut caches = Caches::new(&store);
+    let mut caches = QueryCache::new(&store);
 
     let entity_path = "point";
     let timepoint = [build_frame_nr(123)];
@@ -60,7 +60,7 @@ fn static_query() {
         re_log_types::StoreId::random(re_log_types::StoreKind::Recording),
         Default::default(),
     );
-    let mut caches = Caches::new(&store);
+    let mut caches = QueryCache::new(&store);
 
     let entity_path = "point";
     let timepoint = [build_frame_nr(123)];
@@ -121,7 +121,7 @@ fn invalidation() {
             re_log_types::StoreId::random(re_log_types::StoreKind::Recording),
             Default::default(),
         );
-        let mut caches = Caches::new(&store);
+        let mut caches = QueryCache::new(&store);
 
         let row_id1 = RowId::new();
         let points = vec![MyPoint::new(1.0, 2.0), MyPoint::new(3.0, 4.0)];
@@ -360,7 +360,7 @@ fn invalidation_of_future_optionals() {
         re_log_types::StoreId::random(re_log_types::StoreKind::Recording),
         Default::default(),
     );
-    let mut caches = Caches::new(&store);
+    let mut caches = QueryCache::new(&store);
 
     let entity_path = "points";
 
@@ -465,7 +465,7 @@ fn static_invalidation() {
         re_log_types::StoreId::random(re_log_types::StoreKind::Recording),
         Default::default(),
     );
-    let mut caches = Caches::new(&store);
+    let mut caches = QueryCache::new(&store);
 
     let entity_path = "points";
 
@@ -542,12 +542,12 @@ fn static_invalidation() {
 
 // ---
 
-fn insert_and_react(store: &mut ChunkStore, caches: &mut Caches, chunk: &Arc<Chunk>) {
+fn insert_and_react(store: &mut ChunkStore, caches: &mut QueryCache, chunk: &Arc<Chunk>) {
     caches.on_events(&store.insert_chunk(chunk).unwrap());
 }
 
 fn query_and_compare(
-    caches: &Caches,
+    caches: &QueryCache,
     store: &ChunkStore,
     query: &LatestAtQuery,
     entity_path: &EntityPath,
