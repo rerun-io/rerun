@@ -12,6 +12,7 @@ use re_viewer_context::{
 };
 use re_viewport_blueprint::ViewProperty;
 
+use crate::dataframe_ui::range_dataframe_ui;
 use crate::{
     latest_at_table::latest_at_table_ui, query_kind::QueryKind,
     time_range_table::time_range_table_ui, view_query::Query, visualizer_system::EmptySystem,
@@ -141,32 +142,61 @@ mode sets the default time range to _everything_. You can override this in the s
                 latest_at_table_ui(ctx, ui, query, &LatestAtQuery::new(*timeline, time));
             }
             QueryKind::Range {
-                pov_entity: _pov_entity,
-                pov_component: _pov_component,
+                pov_entity,
+                pov_component,
                 from,
                 to,
             } => {
-                //TODO(#7279): use pov entity and component
-                let time_range_table_order =
-                    ViewProperty::from_archetype::<archetypes::TimeRangeTableOrder>(
-                        ctx.blueprint_db(),
-                        ctx.blueprint_query,
-                        query.space_view_id,
-                    );
-                let sort_key = time_range_table_order
-                    .component_or_fallback::<components::SortKey>(ctx, self, state)?;
-                let sort_order = time_range_table_order
-                    .component_or_fallback::<components::SortOrder>(ctx, self, state)?;
+                let db = ctx.recording();
+                //TODO: EntityDb should have an helper
+                let query_engine = re_dataframe::QueryEngine {
+                    store: db.store(),
+                    cache: db.query_caches(),
+                };
 
-                time_range_table_ui(
-                    ctx,
-                    ui,
-                    query,
-                    sort_key,
-                    sort_order,
-                    timeline,
-                    ResolvedTimeRange::new(from, to),
-                );
+                let query = re_chunk_store::RangeQueryExpression {
+                    //TODO: wrong
+                    entity_path_expr: "/**".into(),
+                    timeline: *timeline,
+                    time_range: ResolvedTimeRange::new(from, to),
+                    //TODO: need a better way to create a descriptor
+                    pov: re_chunk_store::ComponentColumnDescriptor {
+                        entity_path: pov_entity.clone(),
+                        archetype_name: None,
+                        archetype_field_name: None,
+                        component_name: pov_component.clone(),
+                        //TODO: wrong
+                        datatype: re_chunk_store::external::re_chunk::external::arrow2::datatypes::DataType::Null,
+                        is_static: false,
+                    },
+                };
+
+                //TOOD(ab): specify which columns
+                let query_handle = query_engine.range(&query, None);
+
+                range_dataframe_ui(ctx, ui, *timeline, query_handle);
+
+                // //TODO(#7279): use pov entity and component
+                // let time_range_table_order =
+                //     ViewProperty::from_archetype::<archetypes::TimeRangeTableOrder>(
+                //         ctx.blueprint_db(),
+                //         ctx.blueprint_query,
+                //         query.space_view_id,
+                //     );
+                // let sort_key = time_range_table_order
+                //     .component_or_fallback::<components::SortKey>(ctx, self, state)?;
+                // let sort_order = time_range_table_order
+                //     .component_or_fallback::<components::SortOrder>(ctx, self, state)?;
+                //
+                // time_range_table_ui(
+                //     ctx,
+                //     ui,
+                //     query,
+                //     sort_key,
+                //     sort_order,
+                //     timeline,
+                //     ResolvedTimeRange::new(from, to),
+                // );
             }
         }
 
