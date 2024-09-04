@@ -77,9 +77,6 @@ pub struct ArchetypeReflection {
     /// The name of the field in human case.
     pub display_name: &'static str,
 
-    /// Markdown docstring for the archetype.
-    pub docstring_md: &'static str,
-
     /// All the component fields of the archetype, in the order they appear in the archetype.
     pub fields: Vec<ArchetypeFieldReflection>,
 }

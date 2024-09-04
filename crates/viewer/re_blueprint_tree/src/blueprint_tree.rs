@@ -107,7 +107,7 @@ impl BlueprintTree {
         self.next_candidate_drop_parent_container_id = None;
 
         egui::ScrollArea::both()
-            .id_source("blueprint_tree_scroll_area")
+            .id_salt("blueprint_tree_scroll_area")
             .auto_shrink([true, false])
             .show(ui, |ui| {
                 ui.panel_content(|ui| {

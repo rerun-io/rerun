@@ -484,7 +484,7 @@ fn visible_history_boundary_ui(
     let abs_time = TimeRangeBoundary::Absolute(abs_time);
     let rel_time = TimeRangeBoundary::CursorRelative(rel_time);
 
-    egui::ComboBox::from_id_source(if low_bound {
+    egui::ComboBox::from_id_salt(if low_bound {
         "time_history_low_bound"
     } else {
         "time_history_high_bound"

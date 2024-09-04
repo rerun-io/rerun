@@ -36,7 +36,7 @@ impl WelcomeScreen {
         let horizontal_scroll = ui.available_width() < 40.0 * 2.0 + MIN_COLUMN_WIDTH;
 
         let response = egui::ScrollArea::new([horizontal_scroll, true])
-            .id_source("welcome_screen_page")
+            .id_salt("welcome_screen_page")
             .auto_shrink([false, false])
             .show(ui, |ui| {
                 egui::Frame {

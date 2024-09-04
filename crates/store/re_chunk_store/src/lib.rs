@@ -14,6 +14,7 @@
 #![doc = document_features::document_features!()]
 //!
 
+mod dataframe;
 mod events;
 mod gc;
 mod query;
@@ -22,6 +23,10 @@ mod store;
 mod subscribers;
 mod writes;
 
+pub use self::dataframe::{
+    ColumnDescriptor, ComponentColumnDescriptor, ControlColumnDescriptor, LatestAtQueryExpression,
+    QueryExpression, RangeQueryExpression, TimeColumnDescriptor,
+};
 pub use self::events::{ChunkStoreDiff, ChunkStoreDiffKind, ChunkStoreEvent};
 pub use self::gc::{GarbageCollectionOptions, GarbageCollectionTarget};
 pub use self::stats::{ChunkStoreChunkStats, ChunkStoreStats};
@@ -35,10 +40,13 @@ pub use re_chunk::{
     UnitChunkShared,
 };
 #[doc(no_inline)]
+pub use re_log_encoding::decoder::VersionPolicy;
+#[doc(no_inline)]
 pub use re_log_types::{ResolvedTimeRange, TimeInt, TimeType, Timeline};
 
 pub mod external {
     pub use re_chunk;
+    pub use re_log_encoding;
 }
 
 // ---

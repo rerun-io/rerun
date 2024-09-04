@@ -165,7 +165,7 @@ document-features = "0.2.8"
 ehttp = "0.5.0"
 enumset = "1.0.12"
 env_logger = { version = "0.10", default-features = false }
-fixed = { version = "<1.28", default-features = false } # 1.28+ is MSRV 1.79+
+fixed = { version = "<1.28", default-features = false }            # 1.28+ is MSRV 1.79+
 flatbuffers = "23.0"
 futures-channel = "0.3"
 futures-util = { version = "0.3", default-features = false }
@@ -177,9 +177,9 @@ half = "2.3.1"
 hexasphere = "14.1.0"
 image = { version = "0.25", default-features = false }
 indent = "0.1"
-indexmap = "2.1" # Version chosen to align with other dependencies
-indicatif = "0.17.7" # Progress bar
-infer = "0.15" # infer MIME type by checking the magic number signaturefer MIME type by checking the magic number signature
+indexmap = "2.1"                                                   # Version chosen to align with other dependencies
+indicatif = "0.17.7"                                               # Progress bar
+infer = "0.15"                                                     # infer MIME type by checking the magic number signaturefer MIME type by checking the magic number signature
 insta = "1.23"
 itertools = "0.13"
 js-sys = "0.3"
@@ -189,7 +189,10 @@ log = "0.4"
 log-once = "0.4"
 lz4_flex = "0.11"
 memory-stats = "1.1"
-mimalloc = "=0.1.37" # TODO(#5875): `mimalloc` starts leaking OS pages starting with `0.1.38`.
+# TODO(#5875): `mimalloc` starts leaking OS pages starting with `0.1.38`.
+# This version is not pinned to avoid creating version requirement conflicts,
+# but other packages pin it to exactly "=0.1.37"
+mimalloc = "0.1.37"
 mime_guess2 = "2.0" # infer MIME type by file extension, and map mime to file extension
 mint = "0.5.9"
 mp4 = "0.14.0"
@@ -264,8 +267,11 @@ uuid = "1.1"
 vec1 = "1.8"
 walkdir = "2.0"
 # NOTE: `rerun_js/web-viewer/build-wasm.mjs` is HIGHLY sensitive to changes in `wasm-bindgen`.
-#       Whenever updating `wasm-bindgen`, make sure that the build script still works.
-wasm-bindgen = "=0.2.93"
+#       Whenever updating `wasm-bindgen`, update this and the narrower dependency specifications in
+#       `crates/viewer/re_viewer/Cargo.toml`, and make sure that the build script still works.
+#       Do not make this an `=` dependency, because that may break Rust users’ builds when a newer
+#       version is released, even if they are not building the web viewer.
+wasm-bindgen = "0.2.93"
 wasm-bindgen-cli-support = "=0.2.93"
 wasm-bindgen-futures = "0.4.33"
 web-sys = "0.3"
@@ -507,12 +513,12 @@ missing_errors_doc = "allow"
 # As a last resport, patch with a commit to our own repository.
 # ALWAYS document what PR the commit hash is part of, or when it was merged into the upstream trunk.
 
-ecolor = { git = "https://github.com/emilk/egui.git", rev = "edea5a40b9ed9531734e6e3b0f6c3b413b820381" }      # egui master 2024-09-01
-eframe = { git = "https://github.com/emilk/egui.git", rev = "edea5a40b9ed9531734e6e3b0f6c3b413b820381" }      # egui master 2024-09-01
-egui = { git = "https://github.com/emilk/egui.git", rev = "edea5a40b9ed9531734e6e3b0f6c3b413b820381" }        # egui master 2024-09-01
-egui_extras = { git = "https://github.com/emilk/egui.git", rev = "edea5a40b9ed9531734e6e3b0f6c3b413b820381" } # egui master 2024-09-01
-egui-wgpu = { git = "https://github.com/emilk/egui.git", rev = "edea5a40b9ed9531734e6e3b0f6c3b413b820381" }   # egui master 2024-09-01
-emath = { git = "https://github.com/emilk/egui.git", rev = "edea5a40b9ed9531734e6e3b0f6c3b413b820381" }       # egui master 2024-09-01
+ecolor = { git = "https://github.com/emilk/egui.git", rev = "454abf705b87aba70cef582d6ce80f74aa398906" }      # egui master 2024-09-03
+eframe = { git = "https://github.com/emilk/egui.git", rev = "454abf705b87aba70cef582d6ce80f74aa398906" }      # egui master 2024-09-03
+egui = { git = "https://github.com/emilk/egui.git", rev = "454abf705b87aba70cef582d6ce80f74aa398906" }        # egui master 2024-09-03
+egui_extras = { git = "https://github.com/emilk/egui.git", rev = "454abf705b87aba70cef582d6ce80f74aa398906" } # egui master 2024-09-03
+egui-wgpu = { git = "https://github.com/emilk/egui.git", rev = "454abf705b87aba70cef582d6ce80f74aa398906" }   # egui master 2024-09-03
+emath = { git = "https://github.com/emilk/egui.git", rev = "454abf705b87aba70cef582d6ce80f74aa398906" }       # egui master 2024-09-03
 
 # Useful while developing:
 # ecolor = { path = "../../egui/crates/ecolor" }

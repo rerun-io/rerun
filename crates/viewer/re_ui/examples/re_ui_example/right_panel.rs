@@ -84,7 +84,7 @@ impl RightPanel {
         });
 
         egui::ScrollArea::both()
-            .id_source("example_right_panel")
+            .id_salt("example_right_panel")
             .auto_shrink([false, true])
             .show(ui, |ui| {
                 ui.panel_content(|ui| {

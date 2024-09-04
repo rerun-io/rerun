@@ -88,11 +88,11 @@ Of course, this will only take us so far. In the future we plan on caching queri
 Here is an overview of the crates included in the project:
 
 <picture>
-  <img src="https://static.rerun.io/crates/0973a21dff25026ed999e7d70d7c177cd2621514/full.png" alt="">
-  <source media="(max-width: 480px)" srcset="https://static.rerun.io/crates/0973a21dff25026ed999e7d70d7c177cd2621514/480w.png">
-  <source media="(max-width: 768px)" srcset="https://static.rerun.io/crates/0973a21dff25026ed999e7d70d7c177cd2621514/768w.png">
-  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/crates/0973a21dff25026ed999e7d70d7c177cd2621514/1024w.png">
-  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/crates/0973a21dff25026ed999e7d70d7c177cd2621514/1200w.png">
+  <img src="https://static.rerun.io/crates/4f5569b318a5b8d7b0e9ab6e34e672c58ac5c63e/full.png" alt="">
+  <source media="(max-width: 480px)" srcset="https://static.rerun.io/crates/4f5569b318a5b8d7b0e9ab6e34e672c58ac5c63e/480w.png">
+  <source media="(max-width: 768px)" srcset="https://static.rerun.io/crates/4f5569b318a5b8d7b0e9ab6e34e672c58ac5c63e/768w.png">
+  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/crates/4f5569b318a5b8d7b0e9ab6e34e672c58ac5c63e/1024w.png">
+  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/crates/4f5569b318a5b8d7b0e9ab6e34e672c58ac5c63e/1200w.png">
 </picture>
 
 
@@ -163,6 +163,7 @@ Update instructions:
 |----------------------|--------------------------------------------------------------------------|
 | re_entity_db         | In-memory storage of Rerun entities                                      |
 | re_query             | Querying data in the re_chunk_store                                      |
+| re_dataframe         | The Rerun public data APIs.                                              |
 | re_types             | The built-in Rerun data types, component types, and archetypes.          |
 | re_types_blueprint   | The core traits and types that power Rerun's Blueprint sub-system.       |
 | re_log_encoding      | Helpers for encoding and transporting Rerun log messages                 |
