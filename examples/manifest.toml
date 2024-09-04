@@ -155,6 +155,7 @@ examples = [
   "custom_data_loader",
   "custom_space_view",
   "custom_store_subscriber",
+  "drone_lidar",
   "extend_viewer_ui",
   "external_data_loader",
   "incremental_logging",
