@@ -173,21 +173,25 @@ fn generate_archetype_reflection(reporter: &Reporter, objects: &Objects) -> Toke
         let fqname = &obj.fqname;
         let quoted_name = quote!( ArchetypeName::new(#fqname) );
         let display_name = re_case::to_human_case(&obj.name);
-        let docstring_md = doc_as_lines(
-            reporter,
-            objects,
-            &obj.virtpath,
-            &obj.fqname,
-            &obj.docs,
-            Target::WebDocsMarkdown,
-            obj.is_experimental(),
-        )
-        .join("\n");
+        if false {
+            // We currently skip the docstring for the archetype itself,
+            // because it is very loong and has embedded examples etc.
+            // We also never use it.
+            doc_as_lines(
+                reporter,
+                objects,
+                &obj.virtpath,
+                &obj.fqname,
+                &obj.docs,
+                Target::WebDocsMarkdown,
+                obj.is_experimental(),
+            )
+            .join("\n");
+        }
+
         let quoted_archetype_reflection = quote! {
             ArchetypeReflection {
                 display_name: #display_name,
-
-                docstring_md: #docstring_md,
 
                 fields: vec![
                     #(#quoted_field_reflections,)*
