@@ -298,6 +298,13 @@ impl std::ops::Deref for ChunkStoreHandle {
     }
 }
 
+impl From<ChunkStore> for ChunkStoreHandle {
+    #[inline]
+    fn from(store: ChunkStore) -> Self {
+        Self::new(store)
+    }
+}
+
 impl ChunkStoreHandle {
     #[inline]
     pub fn new(store: ChunkStore) -> Self {
@@ -487,8 +494,8 @@ impl ChunkStore {
     }
 
     #[inline]
-    pub fn id(&self) -> &StoreId {
-        &self.id
+    pub fn id(&self) -> StoreId {
+        self.id.clone()
     }
 
     /// Return the current [`ChunkStoreGeneration`]. This can be used to determine whether the

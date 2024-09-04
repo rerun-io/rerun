@@ -269,7 +269,6 @@ impl RangeQueryHandle<'_> {
                             let query = LatestAtQuery::new(self.query.timeline, time);
 
                             let results = self.engine.cache.latest_at(
-                                self.engine.store,
                                 &query,
                                 &descr.entity_path,
                                 [descr.component_name],

@@ -152,11 +152,11 @@ impl StoreBundle {
     /// The closest neighbor is the next recording when sorted by (app ID, time), if any, or the
     /// previous one otherwise. This is used to update the selected recording when the current one
     /// is deleted.
-    pub fn find_closest_recording(&self, id: &StoreId) -> Option<&StoreId> {
+    pub fn find_closest_recording(&self, id: &StoreId) -> Option<StoreId> {
         let mut recs = self.recordings().collect_vec();
         recs.sort_by_key(|entity_db| entity_db.sort_key());
 
-        let cur_pos = recs.iter().position(|rec| rec.store_id() == id);
+        let cur_pos = recs.iter().position(|rec| rec.store_id() == *id);
 
         if let Some(cur_pos) = cur_pos {
             if recs.len() > cur_pos + 1 {
@@ -172,7 +172,7 @@ impl StoreBundle {
     }
 
     /// Returns the [`StoreId`] of the oldest modified recording, according to [`EntityDb::last_modified_at`].
-    pub fn find_oldest_modified_recording(&self) -> Option<&StoreId> {
+    pub fn find_oldest_modified_recording(&self) -> Option<StoreId> {
         let mut entity_dbs = self
             .entity_dbs
             .values()

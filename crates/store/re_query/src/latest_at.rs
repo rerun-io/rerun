@@ -43,12 +43,13 @@ impl QueryCache {
     /// This is a cached API -- data will be lazily cached upon access.
     pub fn latest_at(
         &self,
-        store: &ChunkStore,
         query: &LatestAtQuery,
         entity_path: &EntityPath,
         component_names: impl IntoIterator<Item = ComponentName>,
     ) -> LatestAtResults {
         re_tracing::profile_function!(entity_path.to_string());
+
+        let store = self.store.read();
 
         let mut results = LatestAtResults::empty(entity_path.clone(), query.clone());
 
@@ -112,7 +113,7 @@ impl QueryCache {
                 let mut cache = cache.write();
                 cache.handle_pending_invalidation();
                 if let Some(cached) =
-                    cache.latest_at(store, query, &clear_entity_path, ClearIsRecursive::name())
+                    cache.latest_at(&store, query, &clear_entity_path, ClearIsRecursive::name())
                 {
                     let found_recursive_clear = cached
                         .component_mono::<ClearIsRecursive>()
@@ -155,7 +156,7 @@ impl QueryCache {
 
             let mut cache = cache.write();
             cache.handle_pending_invalidation();
-            if let Some(cached) = cache.latest_at(store, query, entity_path, component_name) {
+            if let Some(cached) = cache.latest_at(&store, query, entity_path, component_name) {
                 // 1. A `Clear` component doesn't shadow its own self.
                 // 2. If a `Clear` component was found with an index greater than or equal to the
                 //    component data, then we know for sure that it should shadow it.
