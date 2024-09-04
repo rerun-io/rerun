@@ -24,6 +24,18 @@ pub struct TimeRangeQuery {
     /// Name of the timeline this applies to.
     pub timeline: crate::datatypes::Utf8,
 
+    /// Point-of-view entity.
+    ///
+    /// Each non-null value of the point-of-view column (as defined by an entity and a component name) will generate a row
+    /// in the results returned by the range query.
+    pub pov_entity: crate::datatypes::EntityPath,
+
+    /// Point-of-view component.
+    ///
+    /// Each non-null value of the point-of-view column (as defined by an entity and a component name) will generate a row
+    /// in the results returned by the range query.
+    pub pov_component: crate::datatypes::Utf8,
+
     /// Beginning of the time range.
     pub start: crate::datatypes::TimeInt,
 
@@ -34,12 +46,18 @@ pub struct TimeRangeQuery {
 impl ::re_types_core::SizeBytes for TimeRangeQuery {
     #[inline]
     fn heap_size_bytes(&self) -> u64 {
-        self.timeline.heap_size_bytes() + self.start.heap_size_bytes() + self.end.heap_size_bytes()
+        self.timeline.heap_size_bytes()
+            + self.pov_entity.heap_size_bytes()
+            + self.pov_component.heap_size_bytes()
+            + self.start.heap_size_bytes()
+            + self.end.heap_size_bytes()
     }
 
     #[inline]
     fn is_pod() -> bool {
         <crate::datatypes::Utf8>::is_pod()
+            && <crate::datatypes::EntityPath>::is_pod()
+            && <crate::datatypes::Utf8>::is_pod()
             && <crate::datatypes::TimeInt>::is_pod()
             && <crate::datatypes::TimeInt>::is_pod()
     }
@@ -62,6 +80,16 @@ impl ::re_types_core::Loggable for TimeRangeQuery {
         DataType::Struct(std::sync::Arc::new(vec![
             Field::new(
                 "timeline",
+                <crate::datatypes::Utf8>::arrow_datatype(),
+                false,
+            ),
+            Field::new(
+                "pov_entity",
+                <crate::datatypes::EntityPath>::arrow_datatype(),
+                false,
+            ),
+            Field::new(
+                "pov_component",
                 <crate::datatypes::Utf8>::arrow_datatype(),
                 false,
             ),
@@ -130,6 +158,79 @@ impl ::re_types_core::Loggable for TimeRangeQuery {
                                     offsets,
                                     inner_data,
                                     timeline_bitmap,
+                                )
+                            }
+                            .boxed()
+                        }
+                    },
+                    {
+                        let (somes, pov_entity): (Vec<_>, Vec<_>) = data
+                            .iter()
+                            .map(|datum| {
+                                let datum = datum.as_ref().map(|datum| datum.pov_entity.clone());
+                                (datum.is_some(), datum)
+                            })
+                            .unzip();
+                        let pov_entity_bitmap: Option<arrow2::bitmap::Bitmap> = {
+                            let any_nones = somes.iter().any(|some| !*some);
+                            any_nones.then(|| somes.into())
+                        };
+                        {
+                            let offsets = arrow2::offset::Offsets::<i32>::try_from_lengths(
+                                pov_entity.iter().map(|opt| {
+                                    opt.as_ref().map(|datum| datum.0.len()).unwrap_or_default()
+                                }),
+                            )?
+                            .into();
+                            let inner_data: arrow2::buffer::Buffer<u8> = pov_entity
+                                .into_iter()
+                                .flatten()
+                                .flat_map(|datum| datum.0 .0)
+                                .collect();
+
+                            #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
+                            unsafe {
+                                Utf8Array::<i32>::new_unchecked(
+                                    DataType::Utf8,
+                                    offsets,
+                                    inner_data,
+                                    pov_entity_bitmap,
+                                )
+                            }
+                            .boxed()
+                        }
+                    },
+                    {
+                        let (somes, pov_component): (Vec<_>, Vec<_>) = data
+                            .iter()
+                            .map(|datum| {
+                                let datum = datum.as_ref().map(|datum| datum.pov_component.clone());
+                                (datum.is_some(), datum)
+                            })
+                            .unzip();
+                        let pov_component_bitmap: Option<arrow2::bitmap::Bitmap> = {
+                            let any_nones = somes.iter().any(|some| !*some);
+                            any_nones.then(|| somes.into())
+                        };
+                        {
+                            let offsets = arrow2::offset::Offsets::<i32>::try_from_lengths(
+                                pov_component.iter().map(|opt| {
+                                    opt.as_ref().map(|datum| datum.0.len()).unwrap_or_default()
+                                }),
+                            )?
+                            .into();
+                            let inner_data: arrow2::buffer::Buffer<u8> = pov_component
+                                .into_iter()
+                                .flatten()
+                                .flat_map(|datum| datum.0 .0)
+                                .collect();
+                            #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
+                            unsafe {
+                                Utf8Array::<i32>::new_unchecked(
+                                    DataType::Utf8,
+                                    offsets,
+                                    inner_data,
+                                    pov_component_bitmap,
                                 )
                             }
                             .boxed()
@@ -269,6 +370,118 @@ impl ::re_types_core::Loggable for TimeRangeQuery {
                         .into_iter()
                     }
                 };
+                let pov_entity = {
+                    if !arrays_by_name.contains_key("pov_entity") {
+                        return Err(DeserializationError::missing_struct_field(
+                            Self::arrow_datatype(),
+                            "pov_entity",
+                        ))
+                        .with_context("rerun.blueprint.datatypes.TimeRangeQuery");
+                    }
+                    let arrow_data = &**arrays_by_name["pov_entity"];
+                    {
+                        let arrow_data = arrow_data
+                            .as_any()
+                            .downcast_ref::<arrow2::array::Utf8Array<i32>>()
+                            .ok_or_else(|| {
+                                let expected = DataType::Utf8;
+                                let actual = arrow_data.data_type().clone();
+                                DeserializationError::datatype_mismatch(expected, actual)
+                            })
+                            .with_context("rerun.blueprint.datatypes.TimeRangeQuery#pov_entity")?;
+                        let arrow_data_buf = arrow_data.values();
+                        let offsets = arrow_data.offsets();
+                        arrow2::bitmap::utils::ZipValidity::new_with_validity(
+                            offsets.iter().zip(offsets.lengths()),
+                            arrow_data.validity(),
+                        )
+                        .map(|elem| {
+                            elem.map(|(start, len)| {
+                                let start = *start as usize;
+                                let end = start + len;
+                                if end > arrow_data_buf.len() {
+                                    return Err(DeserializationError::offset_slice_oob(
+                                        (start, end),
+                                        arrow_data_buf.len(),
+                                    ));
+                                }
+
+                                #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
+                                let data =
+                                    unsafe { arrow_data_buf.clone().sliced_unchecked(start, len) };
+                                Ok(data)
+                            })
+                            .transpose()
+                        })
+                        .map(|res_or_opt| {
+                            res_or_opt.map(|res_or_opt| {
+                                res_or_opt.map(|v| {
+                                    crate::datatypes::EntityPath(::re_types_core::ArrowString(v))
+                                })
+                            })
+                        })
+                        .collect::<DeserializationResult<Vec<Option<_>>>>()
+                        .with_context("rerun.blueprint.datatypes.TimeRangeQuery#pov_entity")?
+                        .into_iter()
+                    }
+                };
+                let pov_component = {
+                    if !arrays_by_name.contains_key("pov_component") {
+                        return Err(DeserializationError::missing_struct_field(
+                            Self::arrow_datatype(),
+                            "pov_component",
+                        ))
+                        .with_context("rerun.blueprint.datatypes.TimeRangeQuery");
+                    }
+                    let arrow_data = &**arrays_by_name["pov_component"];
+                    {
+                        let arrow_data = arrow_data
+                            .as_any()
+                            .downcast_ref::<arrow2::array::Utf8Array<i32>>()
+                            .ok_or_else(|| {
+                                let expected = DataType::Utf8;
+                                let actual = arrow_data.data_type().clone();
+                                DeserializationError::datatype_mismatch(expected, actual)
+                            })
+                            .with_context(
+                                "rerun.blueprint.datatypes.TimeRangeQuery#pov_component",
+                            )?;
+                        let arrow_data_buf = arrow_data.values();
+                        let offsets = arrow_data.offsets();
+                        arrow2::bitmap::utils::ZipValidity::new_with_validity(
+                            offsets.iter().zip(offsets.lengths()),
+                            arrow_data.validity(),
+                        )
+                        .map(|elem| {
+                            elem.map(|(start, len)| {
+                                let start = *start as usize;
+                                let end = start + len;
+                                if end > arrow_data_buf.len() {
+                                    return Err(DeserializationError::offset_slice_oob(
+                                        (start, end),
+                                        arrow_data_buf.len(),
+                                    ));
+                                }
+
+                                #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
+                                let data =
+                                    unsafe { arrow_data_buf.clone().sliced_unchecked(start, len) };
+                                Ok(data)
+                            })
+                            .transpose()
+                        })
+                        .map(|res_or_opt| {
+                            res_or_opt.map(|res_or_opt| {
+                                res_or_opt.map(|v| {
+                                    crate::datatypes::Utf8(::re_types_core::ArrowString(v))
+                                })
+                            })
+                        })
+                        .collect::<DeserializationResult<Vec<Option<_>>>>()
+                        .with_context("rerun.blueprint.datatypes.TimeRangeQuery#pov_component")?
+                        .into_iter()
+                    }
+                };
                 let start = {
                     if !arrays_by_name.contains_key("start") {
                         return Err(DeserializationError::missing_struct_field(
@@ -314,16 +527,26 @@ impl ::re_types_core::Loggable for TimeRangeQuery {
                         .map(|res_or_opt| res_or_opt.map(crate::datatypes::TimeInt))
                 };
                 arrow2::bitmap::utils::ZipValidity::new_with_validity(
-                    ::itertools::izip!(timeline, start, end),
+                    ::itertools::izip!(timeline, pov_entity, pov_component, start, end),
                     arrow_data.validity(),
                 )
                 .map(|opt| {
-                    opt.map(|(timeline, start, end)| {
+                    opt.map(|(timeline, pov_entity, pov_component, start, end)| {
                         Ok(Self {
                             timeline: timeline
                                 .ok_or_else(DeserializationError::missing_data)
                                 .with_context(
                                     "rerun.blueprint.datatypes.TimeRangeQuery#timeline",
+                                )?,
+                            pov_entity: pov_entity
+                                .ok_or_else(DeserializationError::missing_data)
+                                .with_context(
+                                "rerun.blueprint.datatypes.TimeRangeQuery#pov_entity",
+                            )?,
+                            pov_component: pov_component
+                                .ok_or_else(DeserializationError::missing_data)
+                                .with_context(
+                                    "rerun.blueprint.datatypes.TimeRangeQuery#pov_component",
                                 )?,
                             start: start
                                 .ok_or_else(DeserializationError::missing_data)

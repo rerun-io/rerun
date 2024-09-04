@@ -33,11 +33,34 @@ def _time_range_query__timeline__special_field_converter_override(x: datatypes.U
         return datatypes.Utf8(x)
 
 
+def _time_range_query__pov_entity__special_field_converter_override(
+    x: datatypes.EntityPathLike,
+) -> datatypes.EntityPath:
+    if isinstance(x, datatypes.EntityPath):
+        return x
+    else:
+        return datatypes.EntityPath(x)
+
+
+def _time_range_query__pov_component__special_field_converter_override(x: datatypes.Utf8Like) -> datatypes.Utf8:
+    if isinstance(x, datatypes.Utf8):
+        return x
+    else:
+        return datatypes.Utf8(x)
+
+
 @define(init=False)
 class TimeRangeQuery(TimeRangeQueryExt):
     """**Datatype**: Time range query configuration for a specific timeline."""
 
-    def __init__(self: Any, timeline: datatypes.Utf8Like, start: datatypes.TimeIntLike, end: datatypes.TimeIntLike):
+    def __init__(
+        self: Any,
+        timeline: datatypes.Utf8Like,
+        pov_entity: datatypes.EntityPathLike,
+        pov_component: datatypes.Utf8Like,
+        start: datatypes.TimeIntLike,
+        end: datatypes.TimeIntLike,
+    ):
         """
         Create a new instance of the TimeRangeQuery datatype.
 
@@ -45,6 +68,16 @@ class TimeRangeQuery(TimeRangeQueryExt):
         ----------
         timeline:
             Name of the timeline this applies to.
+        pov_entity:
+            Point-of-view entity.
+
+            Each non-null value of the point-of-view column (as defined by an entity and a component name) will generate a row
+            in the results returned by the range query.
+        pov_component:
+            Point-of-view component.
+
+            Each non-null value of the point-of-view column (as defined by an entity and a component name) will generate a row
+            in the results returned by the range query.
         start:
             Beginning of the time range.
         end:
@@ -53,10 +86,26 @@ class TimeRangeQuery(TimeRangeQueryExt):
         """
 
         # You can define your own __init__ function as a member of TimeRangeQueryExt in time_range_query_ext.py
-        self.__attrs_init__(timeline=timeline, start=start, end=end)
+        self.__attrs_init__(timeline=timeline, pov_entity=pov_entity, pov_component=pov_component, start=start, end=end)
 
     timeline: datatypes.Utf8 = field(converter=_time_range_query__timeline__special_field_converter_override)
     # Name of the timeline this applies to.
+    #
+    # (Docstring intentionally commented out to hide this field from the docs)
+
+    pov_entity: datatypes.EntityPath = field(converter=_time_range_query__pov_entity__special_field_converter_override)
+    # Point-of-view entity.
+    #
+    # Each non-null value of the point-of-view column (as defined by an entity and a component name) will generate a row
+    # in the results returned by the range query.
+    #
+    # (Docstring intentionally commented out to hide this field from the docs)
+
+    pov_component: datatypes.Utf8 = field(converter=_time_range_query__pov_component__special_field_converter_override)
+    # Point-of-view component.
+    #
+    # Each non-null value of the point-of-view column (as defined by an entity and a component name) will generate a row
+    # in the results returned by the range query.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 
@@ -90,6 +139,8 @@ class TimeRangeQueryType(BaseExtensionType):
             self,
             pa.struct([
                 pa.field("timeline", pa.utf8(), nullable=False, metadata={}),
+                pa.field("pov_entity", pa.utf8(), nullable=False, metadata={}),
+                pa.field("pov_component", pa.utf8(), nullable=False, metadata={}),
                 pa.field("start", pa.int64(), nullable=False, metadata={}),
                 pa.field("end", pa.int64(), nullable=False, metadata={}),
             ]),
@@ -102,7 +153,7 @@ class TimeRangeQueryBatch(BaseBatch[TimeRangeQueryArrayLike]):
 
     @staticmethod
     def _native_to_pa_array(data: TimeRangeQueryArrayLike, data_type: pa.DataType) -> pa.Array:
-        from rerun.datatypes import TimeIntBatch, Utf8Batch
+        from rerun.datatypes import EntityPathBatch, TimeIntBatch, Utf8Batch
 
         if isinstance(data, TimeRangeQuery):
             data = [data]
@@ -110,6 +161,8 @@ class TimeRangeQueryBatch(BaseBatch[TimeRangeQueryArrayLike]):
         return pa.StructArray.from_arrays(
             [
                 Utf8Batch([x.timeline for x in data]).as_arrow_array().storage,  # type: ignore[misc, arg-type]
+                EntityPathBatch([x.pov_entity for x in data]).as_arrow_array().storage,  # type: ignore[misc, arg-type]
+                Utf8Batch([x.pov_component for x in data]).as_arrow_array().storage,  # type: ignore[misc, arg-type]
                 TimeIntBatch([x.start for x in data]).as_arrow_array().storage,  # type: ignore[misc, arg-type]
                 TimeIntBatch([x.end for x in data]).as_arrow_array().storage,  # type: ignore[misc, arg-type]
             ],

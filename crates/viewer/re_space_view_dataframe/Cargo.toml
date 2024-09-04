@@ -35,3 +35,4 @@ re_viewport_blueprint.workspace = true
 
 egui_extras.workspace = true
 egui.workspace = true
+itertools.workspace = true

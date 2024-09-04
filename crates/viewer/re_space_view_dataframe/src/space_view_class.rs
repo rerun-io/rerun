@@ -13,10 +13,8 @@ use re_viewer_context::{
 use re_viewport_blueprint::ViewProperty;
 
 use crate::{
-    latest_at_table::latest_at_table_ui,
-    time_range_table::time_range_table_ui,
-    view_query::{Query, QueryKind},
-    visualizer_system::EmptySystem,
+    latest_at_table::latest_at_table_ui, query_kind::QueryKind,
+    time_range_table::time_range_table_ui, view_query::Query, visualizer_system::EmptySystem,
 };
 
 #[derive(Default)]
@@ -142,7 +140,13 @@ mode sets the default time range to _everything_. You can override this in the s
             QueryKind::LatestAt { time } => {
                 latest_at_table_ui(ctx, ui, query, &LatestAtQuery::new(*timeline, time));
             }
-            QueryKind::Range { from, to } => {
+            QueryKind::Range {
+                pov_entity: _pov_entity,
+                pov_component: _pov_component,
+                from,
+                to,
+            } => {
+                //TODO(#7279): use pov entity and component
                 let time_range_table_order =
                     ViewProperty::from_archetype::<archetypes::TimeRangeTableOrder>(
                         ctx.blueprint_db(),
