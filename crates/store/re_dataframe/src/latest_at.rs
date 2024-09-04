@@ -185,16 +185,10 @@ impl LatestAtQueryHandle<'_> {
                             .remove(&descr.timeline)
                             .and_then(|(_, chunk)| chunk.timelines().get(&descr.timeline).cloned());
 
-                        Some(if cfg!(debug_assertions) {
-                            #[allow(clippy::unwrap_used)]
-                            time_column.unwrap().times_array().to_boxed()
-                        } else {
-                            // NOTE: Technically cannot ever happen, but I'd rather that than an uwnrap.
-                            time_column.map_or_else(
-                                || arrow2::array::new_null_array(descr.datatype.clone(), 1),
-                                |time_column| time_column.times_array().to_boxed(),
-                            )
-                        })
+                        Some(time_column.map_or_else(
+                            || arrow2::array::new_null_array(descr.datatype.clone(), 1),
+                            |time_column| time_column.times_array().to_boxed(),
+                        ))
                     }
 
                     ColumnDescriptor::Component(descr) => Some(
