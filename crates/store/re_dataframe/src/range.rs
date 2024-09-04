@@ -140,6 +140,7 @@ impl RangeQueryHandle<'_> {
     /// while let Some(batch) = query_handle.next_page() {
     ///     // …
     /// }
+    /// ```
     pub fn next_page(&mut self) -> Option<RecordBatch> {
         re_tracing::profile_function!(format!("{:?}", self.query));
 
@@ -213,22 +214,15 @@ impl RangeQueryHandle<'_> {
 
                     ColumnDescriptor::Time(descr) => {
                         let time_column = pov_chunk.timelines().get(&descr.timeline).cloned();
-
-                        if cfg!(debug_assertions) {
-                            #[allow(clippy::unwrap_used)] // want to crash in dev
-                            time_column.unwrap().times_array().to_boxed()
-                        } else {
-                            // NOTE: Technically cannot ever happen, but I'd rather that than an uwnrap.
-                            time_column.map_or_else(
-                                || {
-                                    arrow2::array::new_null_array(
-                                        descr.datatype.clone(),
-                                        pov_chunk.num_rows(),
-                                    )
-                                },
-                                |time_column| time_column.times_array().to_boxed(),
-                            )
-                        }
+                        time_column.map_or_else(
+                            || {
+                                arrow2::array::new_null_array(
+                                    descr.datatype.clone(),
+                                    pov_chunk.num_rows(),
+                                )
+                            },
+                            |time_column| time_column.times_array().to_boxed(),
+                        )
                     }
 
                     ColumnDescriptor::Component(descr) => list_arrays.get(descr).map_or_else(
