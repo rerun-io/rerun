@@ -2,9 +2,11 @@
 
 mod engine;
 mod latest_at;
+mod range;
 
 pub use self::engine::{QueryEngine, QueryHandle, RecordBatch};
 pub use self::latest_at::LatestAtQueryHandle;
+pub use self::range::RangeQueryHandle;
 
 pub mod external {
     pub use re_chunk;

@@ -4,7 +4,7 @@ use re_chunk_store::{
 };
 use re_query::Caches;
 
-use crate::LatestAtQueryHandle;
+use crate::{LatestAtQueryHandle, RangeQueryHandle};
 
 // ---
 
@@ -14,8 +14,6 @@ use crate::LatestAtQueryHandle;
 // will be trivial.
 // TODO(cmc): add an `arrow` feature to transportchunk in a follow-up pr and call it a day.
 pub type RecordBatch = TransportChunk;
-
-pub struct RangeQueryHandle<'a>(&'a ());
 
 /// A generic handle to a query that is ready to be executed.
 pub enum QueryHandle<'a> {
@@ -80,7 +78,7 @@ impl QueryEngine<'_> {
     /// * second, the time columns in lexical order (`frame_nr`, `log_time`, ...);
     /// * third, the component columns in lexical order (`Color`, `Radius, ...`).
     ///
-    /// This does not run a full-blown query, but rather just inspects [`Chunk`]-level metadata,
+    /// This does not run a full-blown query, but rather just inspects `Chunk`-level metadata,
     /// which can lead to false positives, but makes this very cheap to compute.
     #[inline]
     pub fn schema_for_query(&self, query: &QueryExpression) -> Vec<ColumnDescriptor> {
@@ -93,7 +91,6 @@ impl QueryEngine<'_> {
     /// * [`Self::latest_at`]
     /// * [`Self::range`]
     #[inline]
-    #[allow(clippy::unimplemented, clippy::needless_pass_by_value)]
     pub fn query(
         &self,
         query: &QueryExpression,
@@ -145,15 +142,11 @@ impl QueryEngine<'_> {
     /// for a range of data on the `frame` timeline, but still include the `log_time` timeline in
     /// the result.
     #[inline]
-    #[allow(clippy::unimplemented, clippy::needless_pass_by_value)]
     pub fn range(
         &self,
         query: &RangeQueryExpression,
         columns: Option<Vec<ColumnDescriptor>>,
     ) -> RangeQueryHandle<'_> {
-        _ = self;
-        _ = query;
-        _ = columns;
-        unimplemented!("TODO(cmc)")
+        RangeQueryHandle::new(self, query.clone(), columns)
     }
 }
