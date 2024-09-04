@@ -8,7 +8,7 @@ mod range;
 pub mod clamped_zip;
 pub mod range_zip;
 
-pub use self::cache::{CacheKey, QueryCache};
+pub use self::cache::{QueryCache, QueryCacheKey};
 pub use self::cache_stats::{CacheStats, CachesStats};
 pub use self::clamped_zip::*;
 pub use self::latest_at::LatestAtResults;
