@@ -356,7 +356,8 @@ impl RangeQueryHandle<'_> {
             schema: ArrowSchema {
                 fields: columns
                     .iter()
-                    .map(ColumnDescriptor::to_arrow_field)
+                    .zip(packed_arrays.iter())
+                    .map(|(descr, arr)| descr.to_arrow_field(Some(arr.data_type().clone())))
                     .collect(),
                 metadata: Default::default(),
             },
