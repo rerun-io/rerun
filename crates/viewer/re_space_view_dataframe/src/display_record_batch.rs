@@ -3,20 +3,17 @@
 
 use thiserror::Error;
 
-use re_chunk_store::external::re_chunk::external::arrow2::datatypes::DataType;
 use re_chunk_store::external::re_chunk::external::arrow2::{
     array::{
         Array as ArrowArray, DictionaryArray as ArrowDictionaryArray, ListArray as ArrowListArray,
         PrimitiveArray as ArrowPrimitiveArray, StructArray as ArrowStructArray,
     },
+    datatypes::DataType,
     datatypes::DataType as ArrowDataType,
 };
-use re_chunk_store::{
-    ColumnDescriptor, ComponentColumnDescriptor, ControlColumnDescriptor, LatestAtQuery, RowId,
-    TimeColumnDescriptor,
-};
+use re_chunk_store::{ColumnDescriptor, ComponentColumnDescriptor, LatestAtQuery, RowId};
 use re_dataframe::RecordBatch;
-use re_log_types::{EntityPath, TimeInt};
+use re_log_types::{EntityPath, TimeInt, Timeline};
 use re_types::external::arrow2::datatypes::IntegerType;
 use re_types_core::ComponentName;
 use re_ui::UiExt;
@@ -34,19 +31,19 @@ pub(crate) enum DisplayRecordBatchError {
     UnexpectedComponentColumnDataType(String, ArrowDataType),
 }
 
-pub(crate) enum ComponentData<'a> {
+pub(crate) enum ComponentData {
     Null,
-    ListArray(&'a ArrowListArray<i32>),
+    ListArray(ArrowListArray<i32>),
     DictionaryArray {
-        dict: &'a ArrowDictionaryArray<u32>,
-        values: &'a ArrowListArray<i32>,
+        dict: ArrowDictionaryArray<u32>,
+        values: ArrowListArray<i32>,
     },
 }
 
-impl<'a> ComponentData<'a> {
+impl ComponentData {
     fn try_new(
         descriptor: &ComponentColumnDescriptor,
-        column_data: &'a Box<dyn ArrowArray>,
+        column_data: &Box<dyn ArrowArray>,
     ) -> Result<Self, DisplayRecordBatchError> {
         match column_data.data_type() {
             DataType::Null => Ok(ComponentData::Null),
@@ -54,18 +51,21 @@ impl<'a> ComponentData<'a> {
                 column_data
                     .as_any()
                     .downcast_ref::<ArrowListArray<i32>>()
-                    .expect("sanity checked"),
+                    .expect("sanity checked")
+                    .clone(),
             )),
             DataType::Dictionary(IntegerType::UInt32, _, _) => {
                 let dict = column_data
                     .as_any()
                     .downcast_ref::<ArrowDictionaryArray<u32>>()
-                    .expect("sanity checked");
+                    .expect("sanity checked")
+                    .clone();
                 let values = dict
                     .values()
                     .as_any()
                     .downcast_ref::<ArrowListArray<i32>>()
-                    .expect("sanity checked");
+                    .expect("sanity checked")
+                    .clone();
                 Ok(ComponentData::DictionaryArray { dict, values })
             }
             _ => Err(DisplayRecordBatchError::UnexpectedComponentColumnDataType(
@@ -116,28 +116,26 @@ impl<'a> ComponentData<'a> {
     }
 }
 
-pub(crate) enum DisplayColumn<'a> {
+pub(crate) enum DisplayColumn {
     RowId {
-        descriptor: &'a ControlColumnDescriptor,
-        row_id_times: &'a ArrowPrimitiveArray<u64>,
-        row_id_counters: &'a ArrowPrimitiveArray<u64>,
+        row_id_times: ArrowPrimitiveArray<u64>,
+        row_id_counters: ArrowPrimitiveArray<u64>,
     },
     Timeline {
-        descriptor: &'a TimeColumnDescriptor,
-        time_data: &'a ArrowPrimitiveArray<i64>,
+        timeline: Timeline,
+        time_data: ArrowPrimitiveArray<i64>,
     },
     Component {
-        descriptor: &'a ComponentColumnDescriptor,
-        //TODO: this should actually be an enum of possible component data types, eg null, dict,
-        // etc.
-        component_data: ComponentData<'a>,
+        entity_path: EntityPath,
+        component_name: ComponentName,
+        component_data: ComponentData,
     },
 }
 
-impl<'a> DisplayColumn<'a> {
+impl DisplayColumn {
     fn try_new(
-        column_schema: &'a ColumnDescriptor,
-        column_data: &'a Box<dyn ArrowArray>,
+        column_schema: &ColumnDescriptor,
+        column_data: &Box<dyn ArrowArray>,
     ) -> Result<Self, DisplayRecordBatchError> {
         match column_schema {
             ColumnDescriptor::Control(desc) => {
@@ -151,21 +149,23 @@ impl<'a> DisplayColumn<'a> {
                     };
 
                     #[allow(clippy::unwrap_used)]
-                    let times = times
+                    let row_id_times = times
                         .as_any()
                         .downcast_ref::<ArrowPrimitiveArray<u64>>()
-                        .unwrap(); // sanity checked
+                        .expect("sanity checked")
+                        .clone();
 
                     #[allow(clippy::unwrap_used)]
-                    let counters = counters
+                    let row_id_counters = counters
                         .as_any()
                         .downcast_ref::<ArrowPrimitiveArray<u64>>()
-                        .unwrap(); // sanity checked
+                        .expect("sanity checked")
+                        .clone();
 
                     Ok(DisplayColumn::RowId {
-                        descriptor: desc,
-                        row_id_times: times,
-                        row_id_counters: counters,
+                        //descriptor: desc,
+                        row_id_times,
+                        row_id_counters,
                     })
                 } else {
                     Err(DisplayRecordBatchError::UnknownControlColumn(
@@ -174,7 +174,7 @@ impl<'a> DisplayColumn<'a> {
                 }
             }
             ColumnDescriptor::Time(desc) => {
-                let time = column_data
+                let time_data = column_data
                     .as_any()
                     .downcast_ref::<ArrowPrimitiveArray<i64>>()
                     .ok_or_else(|| {
@@ -182,15 +182,17 @@ impl<'a> DisplayColumn<'a> {
                             desc.timeline.name().as_str().to_owned(),
                             column_data.data_type().to_owned(),
                         )
-                    })?;
+                    })?
+                    .clone();
 
                 Ok(DisplayColumn::Timeline {
-                    descriptor: desc,
-                    time_data: time,
+                    timeline: desc.timeline.clone(),
+                    time_data,
                 })
             }
             ColumnDescriptor::Component(desc) => Ok(DisplayColumn::Component {
-                descriptor: desc,
+                entity_path: desc.entity_path.clone(),
+                component_name: desc.component_name,
                 component_data: ComponentData::try_new(desc, column_data)?,
             }),
         }
@@ -217,18 +219,13 @@ impl<'a> DisplayColumn<'a> {
                 row_id_ui(ui, &row_id);
             }
             DisplayColumn::Timeline {
+                timeline,
                 time_data,
-                descriptor,
             } => {
                 let timestamp = TimeInt::try_from(time_data.value(index));
                 match timestamp {
                     Ok(timestamp) => {
-                        ui.label(
-                            descriptor
-                                .timeline
-                                .typ()
-                                .format(timestamp, ctx.app_options.time_zone),
-                        );
+                        ui.label(timeline.typ().format(timestamp, ctx.app_options.time_zone));
                     }
                     Err(err) => {
                         ui.error_label(&format!("{err}"));
@@ -236,16 +233,17 @@ impl<'a> DisplayColumn<'a> {
                 }
             }
             DisplayColumn::Component {
+                entity_path,
+                component_name,
                 component_data,
-                descriptor,
             } => {
                 component_data.data_ui(
                     ctx,
                     ui,
                     row_id,
                     latest_at_query,
-                    &descriptor.entity_path,
-                    descriptor.component_name,
+                    entity_path,
+                    *component_name,
                     index,
                 );
             }
@@ -253,18 +251,18 @@ impl<'a> DisplayColumn<'a> {
     }
 }
 
-pub(crate) struct DisplayRecordBatch<'a> {
-    record_batch: &'a RecordBatch,
-    columns: Vec<DisplayColumn<'a>>,
+pub(crate) struct DisplayRecordBatch {
+    num_rows: usize,
+    columns: Vec<DisplayColumn>,
 }
 
-impl<'a> DisplayRecordBatch<'a> {
+impl DisplayRecordBatch {
     /// Create a new `DisplayRecordBatch` from a `RecordBatch` and its schema.
     ///
     /// The columns in the record batch must match the schema. This is guaranteed by `re_datastore`.
     pub(crate) fn try_new(
-        record_batch: &'a RecordBatch,
-        schema: &'a [ColumnDescriptor],
+        record_batch: &RecordBatch,
+        schema: &[ColumnDescriptor],
     ) -> Result<Self, DisplayRecordBatchError> {
         let columns: Result<Vec<_>, _> = schema
             .iter()
@@ -275,16 +273,16 @@ impl<'a> DisplayRecordBatch<'a> {
             .collect();
 
         Ok(Self {
-            record_batch,
+            num_rows: record_batch.num_rows(),
             columns: columns?,
         })
     }
 
     pub(crate) fn num_rows(&self) -> usize {
-        self.record_batch.num_rows()
+        self.num_rows
     }
 
-    pub(crate) fn columns(&self) -> &[DisplayColumn<'a>] {
+    pub(crate) fn columns(&self) -> &[DisplayColumn] {
         &self.columns
     }
 }

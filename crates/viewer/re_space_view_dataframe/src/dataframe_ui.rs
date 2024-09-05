@@ -1,7 +1,7 @@
 use std::collections::BTreeMap;
 
 use re_chunk_store::{ColumnDescriptor, LatestAtQuery, RowId};
-use re_dataframe::{LatestAtQueryHandle, RangeQueryHandle};
+use re_dataframe::{LatestAtQueryHandle, RangeQueryHandle, RecordBatch};
 use re_log_types::{TimeInt, Timeline};
 use re_ui::UiExt as _;
 use re_viewer_context::ViewerContext;
@@ -15,29 +15,7 @@ pub(crate) fn latest_at_dataframe_ui(
 ) {
     re_tracing::profile_function!();
 
-    let schema = query_handle.schema();
-
-    let num_rows = 1;
-    let record_batch = query_handle.get();
-
-    let display_record_batch = DisplayRecordBatch::try_new(&record_batch, schema);
-
-    let display_record_batch = match display_record_batch {
-        Ok(display_record_batch) => display_record_batch,
-        Err(err) => {
-            ui.error_label(&format!("{err}"));
-            return;
-        }
-    };
-
-    dataframe_ui(
-        ctx,
-        ui,
-        schema,
-        &[display_record_batch],
-        query_handle.query().timeline,
-        num_rows,
-    );
+    dataframe_ui(ctx, ui, &QueryHandle::LatestAt(query_handle));
 }
 pub(crate) fn range_dataframe_ui(
     ctx: &ViewerContext<'_>,
@@ -46,51 +24,47 @@ pub(crate) fn range_dataframe_ui(
 ) {
     re_tracing::profile_function!();
 
-    let schema = query_handle.schema();
-    let num_rows = query_handle.num_rows();
-    let record_batches = query_handle.get(0, num_rows);
-    let total_batch_rows = record_batches
-        .iter()
-        .map(|batch| batch.num_rows())
-        .sum::<usize>();
-    if total_batch_rows != num_rows as usize {
-        ui.error_label(&format!(
-            "Row count mismatch: sum of record batch {total_batch_rows} (in {} batches) != query  {num_rows}", record_batches.len()
-        ));
-        return;
-    }
-
-    let display_record_batches: Result<Vec<_>, _> = record_batches
-        .iter()
-        .map(|batch| DisplayRecordBatch::try_new(batch, schema))
-        .collect();
-
-    let display_record_batches = match display_record_batches {
-        Ok(display_record_batches) => display_record_batches,
-        Err(err) => {
-            ui.error_label(&format!("{err}"));
-            return;
-        }
-    };
-
-    dataframe_ui(
-        ctx,
-        ui,
-        schema,
-        &display_record_batches,
-        query_handle.query().timeline,
-        num_rows,
-    );
+    dataframe_ui(ctx, ui, &QueryHandle::Range(query_handle));
 }
 
-fn dataframe_ui(
-    ctx: &ViewerContext<'_>,
-    ui: &mut egui::Ui,
-    schema: &[ColumnDescriptor],
-    display_record_batches: &[DisplayRecordBatch<'_>],
-    query_timeline: Timeline,
-    num_rows: u64,
-) {
+enum QueryHandle<'a> {
+    LatestAt(LatestAtQueryHandle<'a>),
+    Range(RangeQueryHandle<'a>),
+}
+
+impl QueryHandle<'_> {
+    fn schema(&self) -> &[ColumnDescriptor] {
+        match self {
+            QueryHandle::LatestAt(query_handle) => query_handle.schema(),
+            QueryHandle::Range(query_handle) => query_handle.schema(),
+        }
+    }
+
+    fn num_rows(&self) -> u64 {
+        match self {
+            QueryHandle::LatestAt(_) => 1,
+            QueryHandle::Range(query_handle) => query_handle.num_rows(),
+        }
+    }
+
+    fn get(&self, start: u64, num_rows: u64) -> Vec<RecordBatch> {
+        match self {
+            QueryHandle::LatestAt(query_handle) => {
+                vec![query_handle.get()]
+            }
+            QueryHandle::Range(query_handle) => query_handle.get(start, num_rows),
+        }
+    }
+
+    fn timeline(&self) -> Timeline {
+        match self {
+            QueryHandle::LatestAt(query_handle) => query_handle.query().timeline,
+            QueryHandle::Range(query_handle) => query_handle.query().timeline,
+        }
+    }
+}
+
+fn dataframe_ui(ctx: &ViewerContext<'_>, ui: &mut egui::Ui, query_handle: &QueryHandle<'_>) {
     re_tracing::profile_function!();
 
     // TODO(emilk): hierarchical header rows
@@ -98,37 +72,52 @@ fn dataframe_ui(
 
     struct MyTableDelegate<'a> {
         ctx: &'a ViewerContext<'a>,
+        query_handle: &'a QueryHandle<'a>,
         schema: &'a [ColumnDescriptor],
-        display_record_batches: &'a [DisplayRecordBatch<'a>],
+        display_record_batches: Option<Vec<DisplayRecordBatch>>,
         query_timeline: Timeline,
 
         batch_and_row_from_row_nr: BTreeMap<u64, (usize, usize)>,
     }
 
-    impl<'a> MyTableDelegate<'a> {
-        fn batch_and_index(&self, row: u64) -> (usize, usize) {
-            let mut row = row as usize;
-            for (batch_index, batch) in self.display_record_batches.iter().enumerate() {
-                if row < batch.num_rows() {
-                    return (batch_index, row);
-                }
-                row -= batch.num_rows();
-            }
-            panic!("row out of bounds");
-        }
-    }
-
     impl<'a> egui_table::TableDelegate for MyTableDelegate<'a> {
-        fn prefetch_rows(&mut self, row_numbers: std::ops::Range<u64>) {
-            re_tracing::profile_function!();
+        fn prefetch_rows(&mut self, mut row_numbers: std::ops::Range<u64>) {
+            let start_idx = row_numbers.start.saturating_sub(NUM_HEADER_ROWS);
+            let end_idx = row_numbers.end.saturating_sub(NUM_HEADER_ROWS);
+            if end_idx <= start_idx {
+                return;
+            }
 
-            for table_row_nr in row_numbers {
-                if table_row_nr < NUM_HEADER_ROWS {
-                    continue; // header row
+            {
+                re_tracing::profile_scope!("prefetch_rows");
+
+                dbg!("==========");
+                dbg!(start_idx, end_idx);
+
+                let display_record_batches = self
+                    .query_handle
+                    .get(start_idx, end_idx - start_idx)
+                    .into_iter()
+                    .map(|record_batch| DisplayRecordBatch::try_new(&record_batch, self.schema))
+                    .collect::<Result<Vec<_>, _>>()
+                    //TODO: error handling
+                    .expect("Failed to create DisplayRecordBatch");
+
+                dbg!(display_record_batches.len());
+
+                let mut offset = start_idx;
+                for (batch_idx, batch) in display_record_batches.iter().enumerate() {
+                    let batch_len = batch.num_rows() as u64;
+                    for row_idx in 0..batch_len {
+                        self.batch_and_row_from_row_nr
+                            .insert((offset + row_idx) as u64, (batch_idx, row_idx as usize));
+                    }
+                    offset += batch_len;
                 }
-                let row_nr = table_row_nr - NUM_HEADER_ROWS; // ignore header rows
-                self.batch_and_row_from_row_nr
-                    .insert(row_nr, self.batch_and_index(row_nr));
+
+                dbg!(&self.batch_and_row_from_row_nr);
+
+                self.display_record_batches = Some(display_record_batches);
             }
         }
 
@@ -152,30 +141,39 @@ fn dataframe_ui(
 
                     let row_nr = cell.row_nr - NUM_HEADER_ROWS; // ignore header rows
 
+                    dbg!(row_nr);
+
                     //TODO: wrong!
                     let latest_at_query = LatestAtQuery::new(self.query_timeline, TimeInt::MAX);
-
                     let row_id = RowId::ZERO;
 
-                    let (batch_nr, batch_index) = self.batch_and_row_from_row_nr[&row_nr]; // Will have been pre-fetched
-                    let batch = &self.display_record_batches[batch_nr];
-                    let column = &batch.columns()[cell.col_nr];
+                    if let Some(display_record_batches) = &self.display_record_batches {
+                        let (batch_nr, batch_index) = self.batch_and_row_from_row_nr[&row_nr]; // Will have been pre-fetched
+                        let batch = &display_record_batches[batch_nr];
+                        let column = &batch.columns()[cell.col_nr];
 
-                    if ui.is_sizing_pass() {
-                        ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Extend);
+                        if ui.is_sizing_pass() {
+                            ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Extend);
+                        } else {
+                            ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Truncate);
+                        }
+                        column.data_ui(self.ctx, ui, row_id, &latest_at_query, batch_index);
                     } else {
-                        ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Truncate);
+                        panic!("cell_ui called before pre-fetch");
                     }
-                    column.data_ui(self.ctx, ui, row_id, &latest_at_query, batch_index);
                 });
         }
     }
+
+    let schema = query_handle.schema();
+    let num_rows = query_handle.num_rows();
+
     let mut table_delegate = MyTableDelegate {
         ctx,
+        query_handle,
         schema,
-        display_record_batches,
-        query_timeline,
-
+        display_record_batches: None,
+        query_timeline: query_handle.timeline(),
         batch_and_row_from_row_nr: Default::default(), // Will be filled during pre-fetch
     };
 
