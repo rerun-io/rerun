@@ -222,3 +222,67 @@ impl<'a> LatestAtQueryHandle<'a> {
         })
     }
 }
+
+// ---
+
+#[cfg(test)]
+mod tests {
+    use re_chunk::{EntityPath, TimeInt, Timeline};
+    use re_chunk_store::{
+        ChunkStore, ChunkStoreConfig, ColumnDescriptor, ComponentColumnDescriptor,
+        LatestAtQueryExpression, TimeColumnDescriptor,
+    };
+    use re_log_types::{StoreId, StoreKind};
+    use re_query::Caches;
+    use re_types::components::{Color, Position3D, Radius};
+
+    use crate::QueryEngine;
+
+    #[test]
+    fn empty_yields_empty() {
+        let store = ChunkStore::new(
+            StoreId::random(StoreKind::Recording),
+            ChunkStoreConfig::default(),
+        );
+        let cache = Caches::new(&store);
+        let engine = QueryEngine {
+            store: &store,
+            cache: &cache,
+        };
+
+        let query = LatestAtQueryExpression {
+            entity_path_expr: "/**".into(),
+            timeline: Timeline::log_time(),
+            at: TimeInt::MAX,
+        };
+
+        let entity_path: EntityPath = "/points".into();
+        let columns = vec![
+            ColumnDescriptor::Time(TimeColumnDescriptor {
+                timeline: Timeline::log_time(),
+                datatype: Timeline::log_time().datatype(),
+            }),
+            ColumnDescriptor::Time(TimeColumnDescriptor {
+                timeline: Timeline::log_tick(),
+                datatype: Timeline::log_tick().datatype(),
+            }),
+            ColumnDescriptor::Component(ComponentColumnDescriptor::new::<Position3D>(
+                entity_path.clone(),
+            )),
+            ColumnDescriptor::Component(ComponentColumnDescriptor::new::<Radius>(
+                entity_path.clone(),
+            )),
+            ColumnDescriptor::Component(ComponentColumnDescriptor::new::<Color>(entity_path)),
+        ];
+
+        let handle = engine.latest_at(&query, Some(columns.clone()));
+        let batch = handle.get();
+
+        // The output should be an empty recordbatch with the right schema and empty arrays.
+        assert_eq!(0, batch.num_rows());
+        assert!(itertools::izip!(columns.iter(), batch.schema.fields.iter())
+            .all(|(descr, field)| descr.to_arrow_field() == *field));
+        assert!(itertools::izip!(columns.iter(), batch.data.iter())
+            .all(|(descr, array)| descr.datatype() == array.data_type()));
+    }
+}
