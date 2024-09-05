@@ -100,8 +100,6 @@ fn dataframe_ui(ctx: &ViewerContext<'_>, ui: &mut egui::Ui, query_handle: &Query
                     //TODO: error handling
                     .expect("Failed to create DisplayRecordBatch");
 
-                dbg!(display_record_batches.len());
-
                 let mut offset = start_idx;
                 for (batch_idx, batch) in display_record_batches.iter().enumerate() {
                     let batch_len = batch.num_rows() as u64;
@@ -111,8 +109,6 @@ fn dataframe_ui(ctx: &ViewerContext<'_>, ui: &mut egui::Ui, query_handle: &Query
                     }
                     offset += batch_len;
                 }
-
-                dbg!(&self.batch_and_row_from_row_nr);
 
                 self.display_record_batches = Some(display_record_batches);
             }
