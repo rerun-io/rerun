@@ -93,7 +93,7 @@ impl LatestAtQueryHandle<'_> {
     /// [`Self::schema`].
     /// Columns that do not yield any data will still be present in the results, filled with null values.
     pub fn get(&self) -> RecordBatch {
-        re_tracing::profile_function!(format!("{:?}", self.query));
+        re_tracing::profile_function!(format!("{}", self.query));
 
         let columns = self.schema();
 
@@ -154,6 +154,10 @@ impl LatestAtQueryHandle<'_> {
             }
         }
 
+        // If the query didn't return anything at all, we just want a properly empty Recordbatch with
+        // the right schema.
+        let null_array_length = max_time_per_timeline.get(&self.query.timeline).is_some() as usize;
+
         // NOTE: Keep in mind this must match the ordering specified by `Self::schema`.
         let packed_arrays = {
             re_tracing::profile_scope!("packing");
@@ -176,7 +180,12 @@ impl LatestAtQueryHandle<'_> {
                             .and_then(|(_, chunk)| chunk.timelines().get(&descr.timeline).cloned());
 
                         Some(time_column.map_or_else(
-                            || arrow2::array::new_null_array(descr.datatype.clone(), 1),
+                            || {
+                                arrow2::array::new_null_array(
+                                    descr.datatype.clone(),
+                                    null_array_length,
+                                )
+                            },
                             |time_column| time_column.times_array().to_boxed(),
                         ))
                     }
@@ -186,7 +195,12 @@ impl LatestAtQueryHandle<'_> {
                             .get(descr)
                             .and_then(|chunk| chunk.components().get(&descr.component_name))
                             .map_or_else(
-                                || arrow2::array::new_null_array(descr.datatype.clone(), 1),
+                                || {
+                                    arrow2::array::new_null_array(
+                                        descr.datatype.clone(),
+                                        null_array_length,
+                                    )
+                                },
                                 |list_array| list_array.to_boxed(),
                             ),
                     ),
