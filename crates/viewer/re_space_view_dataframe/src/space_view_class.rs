@@ -150,7 +150,7 @@ mode sets the default time range to _everything_. You can override this in the s
                     at: time,
                 };
 
-                //TOOD(ab): specify which columns
+                //TODO(ab): specify which columns
                 let query_handle = query_engine.latest_at(&query, None);
 
                 latest_at_dataframe_ui(ctx, ui, query_handle);
@@ -178,7 +178,7 @@ mode sets the default time range to _everything_. You can override this in the s
                     },
                 };
 
-                //TOOD(ab): specify which columns
+                //TODO(ab): specify which columns
                 let query_handle = query_engine.range(&query, None);
 
                 range_dataframe_ui(ctx, ui, query_handle);
