@@ -23,6 +23,7 @@ class Ellipsoids3DExt:
         line_radii: datatypes.Float32ArrayLike | None = None,
         fill_mode: components.FillMode | None = None,
         labels: datatypes.Utf8ArrayLike | None = None,
+        show_labels: datatypes.BoolLike | None = None,
         class_ids: datatypes.ClassIdArrayLike | None = None,
     ) -> None:
         """
@@ -56,6 +57,8 @@ class Ellipsoids3DExt:
             Optionally choose whether the ellipsoids are drawn with lines or solid.
         labels:
             Optional text labels for the ellipsoids.
+        show_labels:
+            Optional choice of whether the text labels should be shown by default.
         class_ids:
             Optional `ClassId`s for the ellipsoids.
 
@@ -81,6 +84,7 @@ class Ellipsoids3DExt:
                 line_radii=line_radii,
                 fill_mode=fill_mode,
                 labels=labels,
+                show_labels=show_labels,
                 class_ids=class_ids,
             )
             return

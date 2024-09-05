@@ -17,6 +17,7 @@ class Arrows3DExt:
         radii: datatypes.Float32ArrayLike | None = None,
         colors: datatypes.Rgba32ArrayLike | None = None,
         labels: datatypes.Utf8ArrayLike | None = None,
+        show_labels: datatypes.BoolLike | None = None,
         class_ids: datatypes.ClassIdArrayLike | None = None,
     ) -> None:
         """
@@ -39,6 +40,8 @@ class Arrows3DExt:
             Optional colors for the points.
         labels:
             Optional text labels for the arrows.
+        show_labels:
+            Optional choice of whether the text labels should be shown by default.
         class_ids:
             Optional class Ids for the points.
 
@@ -55,6 +58,7 @@ class Arrows3DExt:
                 radii=radii,
                 colors=colors,
                 labels=labels,
+                show_labels=show_labels,
                 class_ids=class_ids,
             )
             return

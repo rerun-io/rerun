@@ -16,6 +16,7 @@ class Points2DExt:
         radii: datatypes.Float32ArrayLike | None = None,
         colors: datatypes.Rgba32ArrayLike | None = None,
         labels: datatypes.Utf8ArrayLike | None = None,
+        show_labels: datatypes.BoolLike | None = None,
         draw_order: datatypes.Float32ArrayLike | None = None,
         class_ids: datatypes.ClassIdArrayLike | None = None,
         keypoint_ids: datatypes.KeypointIdArrayLike | None = None,
@@ -36,6 +37,8 @@ class Points2DExt:
              As either 0-1 floats or 0-255 integers, with separate alpha.
         labels:
              Optional text labels for the points.
+        show_labels:
+            Optional choice of whether the text labels should be shown by default.
         draw_order:
              An optional floating point value that specifies the 2D drawing order.
              Objects with higher values are drawn on top of those with lower values.
@@ -64,6 +67,7 @@ class Points2DExt:
                 radii=radii,
                 colors=colors,
                 labels=labels,
+                show_labels=show_labels,
                 draw_order=draw_order,
                 class_ids=class_ids,
                 keypoint_ids=keypoint_ids,
