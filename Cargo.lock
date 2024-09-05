@@ -5837,8 +5837,10 @@ version = "0.19.0-alpha.1+dev"
 dependencies = [
  "crossbeam",
  "dav1d",
+ "indicatif",
  "mp4",
  "ordered-float",
+ "parking_lot",
 ]
 
 [[package]]

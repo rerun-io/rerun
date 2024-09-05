@@ -258,6 +258,7 @@ fn test_find_non_empty_dim_indices() {
 
 // ----------------------------------------------------------------------------
 
+// TODO(jan): there is a duplicate of this function in `crates/store/re_video/src/decode/av1.rs`
 /// Returns sRGB from YUV color.
 ///
 /// This conversion mirrors the function of the same name in `crates/viewer/re_renderer/shader/decodings.wgsl`

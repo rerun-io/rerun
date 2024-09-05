@@ -22,6 +22,13 @@ pub struct VideoData {
     pub data: Vec<u8>,
 }
 
+impl VideoData {
+    pub fn get(&self, sample: &Sample) -> &[u8] {
+        &self.data
+            [sample.byte_offset as usize..sample.byte_offset as usize + sample.byte_length as usize]
+    }
+}
+
 /// A segment of a video.
 #[derive(Clone)]
 pub struct Segment {
@@ -53,8 +60,11 @@ pub struct Sample {
 /// Configuration of a video.
 #[derive(Debug, Clone)]
 pub struct Config {
+    /// `FourCC` code identifying the codec.
+    pub codec: Codec,
+
     /// String used to identify the codec and some of its configuration.
-    pub codec: String,
+    pub codec_string: String,
 
     /// Codec-specific configuration.
     pub description: Vec<u8>,
@@ -64,6 +74,24 @@ pub struct Config {
 
     /// Natural width of the video.
     pub coded_width: u16,
+}
+
+#[derive(Debug, Clone, Copy)]
+pub enum Codec {
+    /// AV1
+    Av01,
+
+    /// H.264
+    Avc1,
+
+    /// H.265
+    Hevc,
+
+    /// VP8
+    Vp08,
+
+    /// VP9
+    Vp09,
 }
 
 /// Errors that can occur when loading a video.

@@ -255,10 +255,7 @@ impl VideoDecoder {
 
     /// Enqueue the given sample.
     fn enqueue(&self, sample: &re_video::Sample, is_key: bool) {
-        let data = Uint8Array::from(
-            &self.data.data[sample.byte_offset as usize
-                ..sample.byte_offset as usize + sample.byte_length as usize],
-        );
+        let data = Uint8Array::from(&self.data.get(sample));
         let type_ = if is_key {
             EncodedVideoChunkType::Key
         } else {

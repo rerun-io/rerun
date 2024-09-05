@@ -260,7 +260,7 @@ fn load_video(
     let media_type = MediaType::guess_from_path(filepath);
 
     let duration_s = match media_type.as_ref().map(|v| v.as_str()) {
-        Some("video/mp4") => re_video::load_mp4(&contents)
+        Some("video/mp4") => re_video::demux::mp4::load_mp4(&contents)
             .ok()
             .map(|v| v.duration.as_f64() / 1_000.0),
         _ => None,

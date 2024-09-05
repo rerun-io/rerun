@@ -10,10 +10,15 @@ pub struct Chunk {
     pub duration: TimeMs,
 }
 
-pub struct Frame {}
+pub struct Frame {
+    pub data: Vec<u8>,
+    pub width: u32,
+    pub height: u32,
+    pub format: PixelFormat,
+    pub timestamp: TimeMs,
+    pub duration: TimeMs,
+}
 
 pub enum PixelFormat {
-    NV12,
-    YUY2,
-    RGB,
+    Rgba8Unorm,
 }
