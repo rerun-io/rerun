@@ -86,22 +86,13 @@ pub fn arrays_to_dictionary<Idx: Copy + Eq>(
     arrays: &[Option<(Idx, &dyn ArrowArray)>],
 ) -> Option<ArrowDictionaryArray<u32>> {
     // Dedupe the input arrays based on the given primary key.
-    let arrays_dense_deduped = {
-        let mut cur_index: Option<Idx> = None;
-        arrays
-            .iter()
-            .flatten()
-            .copied()
-            .filter_map(move |(index, array)| {
-                if Some(index) == cur_index {
-                    None
-                } else {
-                    cur_index = Some(index);
-                    Some(array)
-                }
-            })
-            .collect_vec()
-    };
+    let arrays_dense_deduped = arrays
+        .iter()
+        .flatten()
+        .copied()
+        .dedup_by(|(lhs_index, _), (rhs_index, _)| lhs_index == rhs_index)
+        .map(|(_index, array)| array)
+        .collect_vec();
 
     // Compute the keys for the final dictionary, using that same primary key.
     let keys = {
