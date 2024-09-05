@@ -91,9 +91,6 @@ fn dataframe_ui(ctx: &ViewerContext<'_>, ui: &mut egui::Ui, query_handle: &Query
             {
                 re_tracing::profile_scope!("prefetch_rows");
 
-                dbg!("==========");
-                dbg!(start_idx, end_idx);
-
                 let display_record_batches = self
                     .query_handle
                     .get(start_idx, end_idx - start_idx)
@@ -140,8 +137,6 @@ fn dataframe_ui(ctx: &ViewerContext<'_>, ui: &mut egui::Ui, query_handle: &Query
                     }
 
                     let row_nr = cell.row_nr - NUM_HEADER_ROWS; // ignore header rows
-
-                    dbg!(row_nr);
 
                     //TODO: wrong!
                     let latest_at_query = LatestAtQuery::new(self.query_timeline, TimeInt::MAX);
