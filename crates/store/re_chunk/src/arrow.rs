@@ -8,7 +8,11 @@ use crate::TransportChunk;
 
 impl TransportChunk {
     /// Create an arrow-rs [`RecordBatch`] containing the data from this [`TransportChunk`].
-    pub fn try_as_arrow_record_batch(&self) -> Result<RecordBatch, ArrowError> {
+    ///
+    /// This is a "fairly" cheap operation, as it does not copy the underlying arrow data,
+    /// but does incur overhead of generating an alternative representation of the arrow-
+    /// related rust structures that refer to those data buffers.
+    pub fn try_to_arrow_record_batch(&self) -> Result<RecordBatch, ArrowError> {
         let fields: Vec<Field> = self
             .schema
             .fields
@@ -34,6 +38,10 @@ impl TransportChunk {
     }
 
     /// Create a [`TransportChunk`] from an arrow-rs [`RecordBatch`].
+    ///
+    /// This is a "fairly" cheap operation, as it does not copy the underlying arrow data,
+    /// but does incur overhead of generating an alternative representation of the arrow-
+    /// related rust structures that refer to those data buffers.
     pub fn from_arrow_record_batch(batch: &RecordBatch) -> Self {
         let fields: Vec<arrow2::datatypes::Field> = batch
             .schema()

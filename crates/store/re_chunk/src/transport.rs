@@ -714,7 +714,7 @@ mod tests {
                 let chunk_roundtrip;
                 #[cfg(feature = "arrow")]
                 {
-                    let chunk_in_record_batch = chunk_in_transport.try_as_arrow_record_batch()?;
+                    let chunk_in_record_batch = chunk_in_transport.try_to_arrow_record_batch()?;
                     chunk_roundtrip =
                         TransportChunk::from_arrow_record_batch(&chunk_in_record_batch);
                 }
