@@ -118,6 +118,11 @@ impl RangeQueryHandle<'_> {
         })
     }
 
+    /// The query used to instantiate this handle.
+    pub fn query(&self) -> &RangeQueryExpression {
+        &self.query
+    }
+
     /// All results returned by this handle will strictly follow this schema.
     ///
     /// Columns that do not yield any data will still be present in the results, filled with null values.

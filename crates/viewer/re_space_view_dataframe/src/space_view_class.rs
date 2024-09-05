@@ -12,7 +12,7 @@ use re_viewer_context::{
 };
 use re_viewport_blueprint::ViewProperty;
 
-use crate::dataframe_ui::range_dataframe_ui;
+use crate::dataframe_ui::{latest_at_dataframe_ui, range_dataframe_ui};
 use crate::{
     latest_at_table::latest_at_table_ui, query_kind::QueryKind,
     time_range_table::time_range_table_ui, view_query::Query, visualizer_system::EmptySystem,
@@ -137,9 +137,28 @@ mode sets the default time range to _everything_. You can override this in the s
             return Ok(());
         };
 
+        let db = ctx.recording();
+        //TODO: EntityDb should have an helper
+        let query_engine = re_dataframe::QueryEngine {
+            store: db.store(),
+            cache: db.query_caches(),
+        };
+
         match query_mode {
             QueryKind::LatestAt { time } => {
-                latest_at_table_ui(ctx, ui, query, &LatestAtQuery::new(*timeline, time));
+                let query = re_chunk_store::LatestAtQueryExpression {
+                    //TODO: wrong
+                    entity_path_expr: "/**".into(),
+                    timeline: *timeline,
+                    at: time,
+                };
+
+                //TOOD(ab): specify which columns
+                let query_handle = query_engine.latest_at(&query, None);
+
+                latest_at_dataframe_ui(ctx, ui, query_handle);
+
+                //latest_at_table_ui(ctx, ui, query, &LatestAtQuery::new(*timeline, time));
             }
             QueryKind::Range {
                 pov_entity,
@@ -147,13 +166,6 @@ mode sets the default time range to _everything_. You can override this in the s
                 from,
                 to,
             } => {
-                let db = ctx.recording();
-                //TODO: EntityDb should have an helper
-                let query_engine = re_dataframe::QueryEngine {
-                    store: db.store(),
-                    cache: db.query_caches(),
-                };
-
                 let query = re_chunk_store::RangeQueryExpression {
                     //TODO: wrong
                     entity_path_expr: "/**".into(),
@@ -174,7 +186,7 @@ mode sets the default time range to _everything_. You can override this in the s
                 //TOOD(ab): specify which columns
                 let query_handle = query_engine.range(&query, None);
 
-                range_dataframe_ui(ctx, ui, *timeline, query_handle);
+                range_dataframe_ui(ctx, ui, query_handle);
 
                 // //TODO(#7279): use pov entity and component
                 // let time_range_table_order =
