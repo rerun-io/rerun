@@ -300,7 +300,7 @@ mod tests {
         // The output should be an empty recordbatch with the right schema and empty arrays.
         assert_eq!(0, batch.num_rows());
         assert!(itertools::izip!(columns.iter(), batch.schema.fields.iter())
-            .all(|(descr, field)| descr.to_arrow_field() == *field));
+            .all(|(descr, field)| descr.to_arrow_field(None) == *field));
         assert!(itertools::izip!(columns.iter(), batch.data.iter())
             .all(|(descr, array)| descr.datatype() == array.data_type()));
     }
@@ -371,6 +371,6 @@ mod tests {
                 .unwrap()
         );
         assert!(itertools::izip!(columns.iter(), batch.schema.fields.iter())
-            .all(|(descr, field)| descr.to_arrow_field() == *field));
+            .all(|(descr, field)| descr.to_arrow_field(None) == *field));
     }
 }

@@ -162,10 +162,7 @@ impl RangeQueryHandle<'_> {
                 .fetch_add(1, std::sync::atomic::Ordering::Relaxed);
             return Some(RecordBatch {
                 schema: ArrowSchema {
-                    fields: columns
-                        .iter()
-                        .map(ColumnDescriptor::to_arrow_field)
-                        .collect(),
+                    fields: columns.iter().map(|col| col.to_arrow_field(None)).collect(),
                     metadata: Default::default(),
                 },
                 data: ArrowChunk::new(
@@ -214,10 +211,7 @@ impl RangeQueryHandle<'_> {
             let columns = self.schema();
             return vec![RecordBatch {
                 schema: ArrowSchema {
-                    fields: columns
-                        .iter()
-                        .map(ColumnDescriptor::to_arrow_field)
-                        .collect(),
+                    fields: columns.iter().map(|col| col.to_arrow_field(None)).collect(),
                     metadata: Default::default(),
                 },
                 data: ArrowChunk::new(
@@ -495,7 +489,7 @@ mod tests {
             // The output should be an empty recordbatch with the right schema and empty arrays.
             assert_eq!(0, batch.num_rows());
             assert!(itertools::izip!(columns.iter(), batch.schema.fields.iter())
-                .all(|(descr, field)| descr.to_arrow_field() == *field));
+                .all(|(descr, field)| descr.to_arrow_field(None) == *field));
             assert!(itertools::izip!(columns.iter(), batch.data.iter())
                 .all(|(descr, array)| descr.datatype() == array.data_type()));
 
@@ -509,7 +503,7 @@ mod tests {
             // The output should be an empty recordbatch with the right schema and empty arrays.
             assert_eq!(0, batch.num_rows());
             assert!(itertools::izip!(columns.iter(), batch.schema.fields.iter())
-                .all(|(descr, field)| descr.to_arrow_field() == *field));
+                .all(|(descr, field)| descr.to_arrow_field(None) == *field));
             assert!(itertools::izip!(columns.iter(), batch.data.iter())
                 .all(|(descr, array)| descr.datatype() == array.data_type()));
 
@@ -589,7 +583,7 @@ mod tests {
                     .unwrap()
             );
             assert!(itertools::izip!(columns.iter(), batch.schema.fields.iter())
-                .all(|(descr, field)| descr.to_arrow_field() == *field));
+                .all(|(descr, field)| descr.to_arrow_field(None) == *field));
 
             let batch = handle.next_page();
             assert!(batch.is_none());
@@ -610,7 +604,7 @@ mod tests {
                     .unwrap()
             );
             assert!(itertools::izip!(columns.iter(), batch.schema.fields.iter())
-                .all(|(descr, field)| descr.to_arrow_field() == *field));
+                .all(|(descr, field)| descr.to_arrow_field(None) == *field));
 
             let _batch = handle.get(1, 1).pop().unwrap();
 
