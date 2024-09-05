@@ -147,10 +147,35 @@ impl RangeQueryHandle<'_> {
     /// }
     /// ```
     pub fn next_page(&mut self) -> Option<RecordBatch> {
-        re_tracing::profile_function!(format!("{:?}", self.query));
+        re_tracing::profile_function!(format!("next_page({})", self.query));
 
         let state = self.init();
         let cur_page = state.cur_page.load(std::sync::atomic::Ordering::Relaxed);
+
+        // If the query didn't return anything at all, we just want a properly empty Recordbatch with
+        // the right schema (but only for page 0, otherwise it's just nothingness).
+        if cur_page == 0 && state.pov_chunks.is_none() {
+            let columns = self.schema();
+            _ = state
+                .cur_page
+                .fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+            return Some(RecordBatch {
+                schema: ArrowSchema {
+                    fields: columns
+                        .iter()
+                        .map(ColumnDescriptor::to_arrow_field)
+                        .collect(),
+                    metadata: Default::default(),
+                },
+                data: ArrowChunk::new(
+                    columns
+                        .iter()
+                        .map(|descr| arrow2::array::new_null_array(descr.datatype().clone(), 0))
+                        .collect_vec(),
+                ),
+            });
+        }
+
         let pov_chunk = state.pov_chunks.as_ref()?.get(cur_page as usize)?;
         _ = state
             .cur_page
@@ -178,9 +203,33 @@ impl RangeQueryHandle<'_> {
     //
     // TODO(cmc): This could be turned into an actual lazy iterator at some point.
     pub fn get(&self, offset: u64, mut len: u64) -> Vec<RecordBatch> {
-        let mut results = Vec::new();
+        re_tracing::profile_function!(format!("get({offset}, {len}, {})", self.query));
 
         let state = self.init();
+
+        // If the query didn't return anything at all, we just want a properly empty Recordbatch with
+        // the right schema (but only at index 0, otherwise it's just nothingness).
+        if offset == 0 && (len == 0 || state.pov_chunks.is_none()) {
+            let columns = self.schema();
+            return vec![RecordBatch {
+                schema: ArrowSchema {
+                    fields: columns
+                        .iter()
+                        .map(ColumnDescriptor::to_arrow_field)
+                        .collect(),
+                    metadata: Default::default(),
+                },
+                data: ArrowChunk::new(
+                    columns
+                        .iter()
+                        .map(|descr| arrow2::array::new_null_array(descr.datatype().clone(), 0))
+                        .collect_vec(),
+                ),
+            }];
+        }
+
+        let mut results = Vec::new();
+
         let Some(pov_chunks) = state.pov_chunks.as_ref() else {
             return results;
         };
