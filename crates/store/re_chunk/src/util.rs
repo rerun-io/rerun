@@ -1,10 +1,14 @@
 use arrow2::{
-    array::{Array as ArrowArray, BooleanArray as ArrowBooleanArray, ListArray as ArrowListArray},
+    array::{
+        Array as ArrowArray, BooleanArray as ArrowBooleanArray,
+        DictionaryArray as ArrowDictionaryArray, ListArray as ArrowListArray,
+        PrimitiveArray as ArrowPrimitiveArray,
+    },
     bitmap::Bitmap as ArrowBitmap,
-    datatypes::DataType as ArrowDataType,
+    datatypes::DataType as ArrowDatatype,
     offset::Offsets as ArrowOffsets,
 };
-use itertools::Itertools as _;
+use itertools::Itertools;
 
 // ---
 
@@ -29,7 +33,7 @@ pub fn arrays_to_list_array_opt(arrays: &[Option<&dyn ArrowArray>]) -> Option<Ar
 ///
 /// Returns an empty list if `arrays` is empty.
 pub fn arrays_to_list_array(
-    array_datatype: ArrowDataType,
+    array_datatype: ArrowDatatype,
     arrays: &[Option<&dyn ArrowArray>],
 ) -> Option<ArrowListArray<i32>> {
     let arrays_dense = arrays.iter().flatten().copied().collect_vec();
@@ -64,6 +68,91 @@ pub fn arrays_to_list_array(
         data,
         validity.into(),
     ))
+}
+
+/// Create a sparse dictionary-array out of an array of (potentially) duplicated arrays.
+///
+/// The `Idx` is used as primary key to drive the deduplication process.
+/// Returns `None` if any of the specified `arrays` doesn't match the given `array_datatype`.
+///
+/// Returns an empty dictionary if `arrays` is empty.
+//
+// TODO(cmc): Ideally I would prefer to just use the array's underlying pointer as primary key, but
+// this has proved extremely brittle in practice. Maybe once we move to arrow-rs.
+// TODO(cmc): A possible improvement would be to pick the smallest key datatype possible based
+// on the cardinality of the input arrays.
+pub fn arrays_to_dictionary<Idx: Copy + Eq>(
+    array_datatype: ArrowDatatype,
+    arrays: &[Option<(Idx, &dyn ArrowArray)>],
+) -> Option<ArrowDictionaryArray<u32>> {
+    // Dedupe the input arrays based on the given primary key.
+    let arrays_dense_deduped = arrays
+        .iter()
+        .flatten()
+        .copied()
+        .dedup_by(|(lhs_index, _), (rhs_index, _)| lhs_index == rhs_index)
+        .map(|(_index, array)| array)
+        .collect_vec();
+
+    // Compute the keys for the final dictionary, using that same primary key.
+    let keys = {
+        let mut cur_key = 0u32;
+        arrays
+            .iter()
+            .dedup_by_with_count(|lhs, rhs| {
+                lhs.map(|(index, _)| index) == rhs.map(|(index, _)| index)
+            })
+            .flat_map(|(count, value)| {
+                if value.is_some() {
+                    let keys = std::iter::repeat(Some(cur_key)).take(count);
+                    cur_key += 1;
+                    keys
+                } else {
+                    std::iter::repeat(None).take(count)
+                }
+            })
+            .collect_vec()
+    };
+
+    // Concatenate the underlying data as usual, except only the _unique_ values!
+    let data = if arrays_dense_deduped.is_empty() {
+        arrow2::array::new_empty_array(array_datatype.clone())
+    } else {
+        arrow2::compute::concatenate::concatenate(&arrays_dense_deduped)
+            .map_err(|err| {
+                re_log::warn_once!("failed to concatenate arrays: {err}");
+                err
+            })
+            .ok()?
+    };
+
+    // We still need the underlying data to be a list-array, so the dictionary's keys can index
+    // into this list-array.
+    let data = {
+        let datatype = ArrowListArray::<i32>::default_datatype(array_datatype);
+
+        #[allow(clippy::unwrap_used)] // yes, these are indeed lengths
+        let offsets =
+            ArrowOffsets::try_from_lengths(arrays_dense_deduped.iter().map(|array| array.len()))
+                .unwrap();
+
+        ArrowListArray::<i32>::new(datatype, offsets.into(), data, None)
+    };
+
+    let datatype = ArrowDatatype::Dictionary(
+        arrow2::datatypes::IntegerType::UInt32,
+        std::sync::Arc::new(data.data_type().clone()),
+        true, // is_sorted
+    );
+
+    // And finally we build our dictionary, which indexes into our concatenated list-array of
+    // unique values.
+    ArrowDictionaryArray::try_new(
+        datatype,
+        ArrowPrimitiveArray::<u32>::from(keys),
+        data.to_boxed(),
+    )
+    .ok()
 }
 
 /// Given a sparse `ArrowListArray` (i.e. an array with a validity bitmap that contains at least

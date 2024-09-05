@@ -55,11 +55,11 @@ impl ColumnDescriptor {
     }
 
     #[inline]
-    pub fn to_arrow_field(&self) -> ArrowField {
+    pub fn to_arrow_field(&self, datatype: Option<ArrowDatatype>) -> ArrowField {
         match self {
             Self::Control(descr) => descr.to_arrow_field(),
             Self::Time(descr) => descr.to_arrow_field(),
-            Self::Component(descr) => descr.to_arrow_field(),
+            Self::Component(descr) => descr.to_arrow_field(datatype),
         }
     }
 
@@ -277,7 +277,7 @@ impl ComponentColumnDescriptor {
     }
 
     #[inline]
-    pub fn to_arrow_field(&self) -> ArrowField {
+    pub fn to_arrow_field(&self, wrapped_datatype: Option<ArrowDatatype>) -> ArrowField {
         let Self {
             entity_path,
             archetype_name,
@@ -287,14 +287,14 @@ impl ComponentColumnDescriptor {
             is_static,
         } = self;
 
+        // NOTE: Only the system doing the actual packing knows the final datatype with all of
+        // its wrappers (is it a component array? is it a list? is it a dict?).
+        let datatype = wrapped_datatype.unwrap_or_else(|| datatype.clone());
+
         // TODO(cmc): figure out who's in charge of adding the outer list layer.
         ArrowField::new(
             component_name.short_name().to_owned(),
-            ArrowDatatype::List(std::sync::Arc::new(ArrowField::new(
-                "item",
-                datatype.clone(),
-                true, /* nullable */
-            ))),
+            datatype,
             false, /* nullable */
         )
         // TODO(#6889): This needs some proper sorbetization -- I just threw these names randomly.

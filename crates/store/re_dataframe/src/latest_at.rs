@@ -102,16 +102,6 @@ impl LatestAtQueryHandle<'_> {
 
         let columns = self.schema();
 
-        let schema = ArrowSchema {
-            fields: columns
-                .iter()
-                .map(ColumnDescriptor::to_arrow_field)
-                .collect(),
-
-            // TODO(#6889): properly some sorbet stuff we want to get in there at some point.
-            metadata: Default::default(),
-        };
-
         let all_units: HashMap<&ComponentColumnDescriptor, UnitChunkShared> = {
             re_tracing::profile_scope!("queries");
 
@@ -206,11 +196,18 @@ impl LatestAtQueryHandle<'_> {
                             ),
                     ),
                 })
-                .collect()
+                .collect_vec()
         };
 
         RecordBatch {
-            schema,
+            schema: ArrowSchema {
+                fields: columns
+                    .iter()
+                    .zip(packed_arrays.iter())
+                    .map(|(descr, arr)| descr.to_arrow_field(Some(arr.data_type().clone())))
+                    .collect(),
+                metadata: Default::default(),
+            },
             data: ArrowChunk::new(packed_arrays),
         }
     }
