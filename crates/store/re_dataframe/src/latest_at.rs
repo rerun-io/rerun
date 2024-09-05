@@ -241,14 +241,19 @@ impl<'a> LatestAtQueryHandle<'a> {
 
 #[cfg(test)]
 mod tests {
-    use re_chunk::{EntityPath, TimeInt, Timeline};
+    use std::sync::Arc;
+
+    use re_chunk::{ArrowArray, Chunk, EntityPath, RowId, TimeInt, TimePoint, Timeline};
     use re_chunk_store::{
         ChunkStore, ChunkStoreConfig, ColumnDescriptor, ComponentColumnDescriptor,
         LatestAtQueryExpression, TimeColumnDescriptor,
     };
-    use re_log_types::{StoreId, StoreKind};
+    use re_log_types::{example_components::MyPoint, StoreId, StoreKind};
     use re_query::Caches;
-    use re_types::components::{Color, Position3D, Radius};
+    use re_types::{
+        components::{Color, Position3D, Radius},
+        Loggable,
+    };
 
     use crate::QueryEngine;
 
@@ -298,5 +303,74 @@ mod tests {
             .all(|(descr, field)| descr.to_arrow_field() == *field));
         assert!(itertools::izip!(columns.iter(), batch.data.iter())
             .all(|(descr, array)| descr.datatype() == array.data_type()));
+    }
+
+    #[test]
+    fn static_does_yield() {
+        let mut store = ChunkStore::new(
+            StoreId::random(StoreKind::Recording),
+            ChunkStoreConfig::default(),
+        );
+
+        let entity_path: EntityPath = "/points".into();
+        let chunk = Arc::new(
+            Chunk::builder(entity_path.clone())
+                .with_component_batches(
+                    RowId::new(),
+                    TimePoint::default(),
+                    [&[MyPoint::new(1.0, 1.0), MyPoint::new(2.0, 2.0)] as _],
+                )
+                .build()
+                .unwrap(),
+        );
+        _ = store.insert_chunk(&chunk);
+
+        eprintln!("{store}");
+
+        let cache = Caches::new(&store);
+        let engine = QueryEngine {
+            store: &store,
+            cache: &cache,
+        };
+
+        let query = LatestAtQueryExpression {
+            entity_path_expr: "/**".into(),
+            timeline: Timeline::log_time(),
+            at: TimeInt::MAX,
+        };
+
+        let columns = vec![
+            ColumnDescriptor::Time(TimeColumnDescriptor {
+                timeline: Timeline::log_time(),
+                datatype: Timeline::log_time().datatype(),
+            }),
+            ColumnDescriptor::Time(TimeColumnDescriptor {
+                timeline: Timeline::log_tick(),
+                datatype: Timeline::log_tick().datatype(),
+            }),
+            ColumnDescriptor::Component(ComponentColumnDescriptor::new::<MyPoint>(
+                entity_path.clone(),
+            )),
+            ColumnDescriptor::Component(ComponentColumnDescriptor::new::<Radius>(
+                entity_path.clone(),
+            )),
+            ColumnDescriptor::Component(ComponentColumnDescriptor::new::<Color>(entity_path)),
+        ];
+
+        let handle = engine.latest_at(&query, Some(columns.clone()));
+        let batch = handle.get();
+
+        assert_eq!(1, batch.num_rows());
+        assert_eq!(
+            chunk.components().get(&MyPoint::name()).unwrap().to_boxed(),
+            itertools::izip!(batch.schema.fields.iter(), batch.data.iter())
+                .find_map(
+                    |(field, array)| (field.name == MyPoint::name().short_name())
+                        .then_some(array.clone())
+                )
+                .unwrap()
+        );
+        assert!(itertools::izip!(columns.iter(), batch.schema.fields.iter())
+            .all(|(descr, field)| descr.to_arrow_field() == *field));
     }
 }
