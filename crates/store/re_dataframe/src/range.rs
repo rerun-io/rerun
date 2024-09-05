@@ -2,13 +2,13 @@ use std::sync::{atomic::AtomicU64, OnceLock};
 
 use ahash::HashMap;
 use arrow2::{
-    array::{Array as ArrowArray, ListArray as ArrowListArray},
+    array::{Array as ArrowArray, DictionaryArray as ArrowDictionaryArray},
     chunk::Chunk as ArrowChunk,
     datatypes::Schema as ArrowSchema,
 };
 use itertools::Itertools;
 
-use re_chunk::{Chunk, LatestAtQuery, RangeQuery};
+use re_chunk::{Chunk, LatestAtQuery, RangeQuery, RowId, TimeInt};
 use re_chunk_store::{ColumnDescriptor, ComponentColumnDescriptor, RangeQueryExpression};
 
 use crate::{QueryEngine, RecordBatch};
@@ -253,7 +253,7 @@ impl RangeQueryHandle<'_> {
         // see if this ever becomes an issue before going down this road.
         //
         // TODO(cmc): Opportunities for parallelization, if it proves to be a net positive in practice.
-        let list_arrays: HashMap<&ComponentColumnDescriptor, ArrowListArray<i32>> = {
+        let dict_arrays: HashMap<&ComponentColumnDescriptor, ArrowDictionaryArray<u32>> = {
             re_tracing::profile_scope!("queries");
 
             columns
@@ -279,24 +279,39 @@ impl RangeQueryHandle<'_> {
                                 .components
                                 .get(&descr.component_name)
                                 .and_then(|unit| {
-                                    unit.component_batch_raw(&descr.component_name).clone()
+                                    unit.component_batch_raw(&descr.component_name).clone().map(
+                                        |array| {
+                                            (
+                                                unit.index(&query.timeline())
+                                                    // NOTE: technically cannot happen, but better than unwrapping.
+                                                    .unwrap_or((TimeInt::STATIC, RowId::ZERO)),
+                                                array,
+                                            )
+                                        },
+                                    )
                                 })
                         })
                         .collect_vec();
                     let arrays = arrays
                         .iter()
-                        .map(|array| array.as_ref().map(|array| &**array as &dyn ArrowArray))
+                        .map(|array| {
+                            array
+                                .as_ref()
+                                .map(|(index, array)| (index, &**array as &dyn ArrowArray))
+                        })
                         .collect_vec();
 
-                    let list_array =
-                        re_chunk::util::arrays_to_list_array(descr.datatype.clone(), &arrays);
+                    let dict_array = {
+                        re_tracing::profile_scope!("concat");
+                        re_chunk::util::arrays_to_dictionary(descr.datatype.clone(), &arrays)
+                    };
 
                     if cfg!(debug_assertions) {
                         #[allow(clippy::unwrap_used)] // want to crash in dev
-                        Some((descr, list_array.unwrap()))
+                        Some((descr, dict_array.unwrap()))
                     } else {
                         // NOTE: Technically cannot ever happen, but I'd rather that than an uwnrap.
-                        list_array.map(|list_array| (descr, list_array))
+                        dict_array.map(|dict_array| (descr, dict_array))
                     }
                 })
                 .collect()
@@ -324,14 +339,14 @@ impl RangeQueryHandle<'_> {
                         )
                     }
 
-                    ColumnDescriptor::Component(descr) => list_arrays.get(descr).map_or_else(
+                    ColumnDescriptor::Component(descr) => dict_arrays.get(descr).map_or_else(
                         || {
                             arrow2::array::new_null_array(
                                 descr.datatype.clone(),
                                 pov_time_column.num_rows(),
                             )
                         },
-                        |list_array| list_array.to_boxed(),
+                        |dict_array| dict_array.to_boxed(),
                     ),
                 })
                 .collect_vec()
@@ -341,7 +356,8 @@ impl RangeQueryHandle<'_> {
             schema: ArrowSchema {
                 fields: columns
                     .iter()
-                    .map(ColumnDescriptor::to_arrow_field)
+                    .zip(packed_arrays.iter())
+                    .map(|(descr, arr)| descr.to_arrow_field(Some(arr.data_type().clone())))
                     .collect(),
                 metadata: Default::default(),
             },
