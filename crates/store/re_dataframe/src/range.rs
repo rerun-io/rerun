@@ -372,3 +372,91 @@ impl<'a> RangeQueryHandle<'a> {
         std::iter::from_fn(move || self.next_page())
     }
 }
+
+// ---
+
+#[cfg(test)]
+mod tests {
+    use re_chunk::{EntityPath, Timeline};
+    use re_chunk_store::{
+        ChunkStore, ChunkStoreConfig, ColumnDescriptor, ComponentColumnDescriptor,
+        RangeQueryExpression, TimeColumnDescriptor,
+    };
+    use re_log_types::{ResolvedTimeRange, StoreId, StoreKind};
+    use re_query::Caches;
+    use re_types::components::{Color, Position3D, Radius};
+
+    use crate::QueryEngine;
+
+    #[test]
+    fn empty_yields_empty() {
+        let store = ChunkStore::new(
+            StoreId::random(StoreKind::Recording),
+            ChunkStoreConfig::default(),
+        );
+        let cache = Caches::new(&store);
+        let engine = QueryEngine {
+            store: &store,
+            cache: &cache,
+        };
+
+        let entity_path: EntityPath = "/points".into();
+
+        let query = RangeQueryExpression {
+            entity_path_expr: "/**".into(),
+            timeline: Timeline::log_time(),
+            time_range: ResolvedTimeRange::EVERYTHING,
+            pov: ComponentColumnDescriptor::new::<Position3D>(entity_path.clone()),
+        };
+
+        let columns = vec![
+            ColumnDescriptor::Time(TimeColumnDescriptor {
+                timeline: Timeline::log_time(),
+                datatype: Timeline::log_time().datatype(),
+            }),
+            ColumnDescriptor::Time(TimeColumnDescriptor {
+                timeline: Timeline::log_tick(),
+                datatype: Timeline::log_tick().datatype(),
+            }),
+            ColumnDescriptor::Component(ComponentColumnDescriptor::new::<Position3D>(
+                entity_path.clone(),
+            )),
+            ColumnDescriptor::Component(ComponentColumnDescriptor::new::<Radius>(
+                entity_path.clone(),
+            )),
+            ColumnDescriptor::Component(ComponentColumnDescriptor::new::<Color>(entity_path)),
+        ];
+
+        let mut handle = engine.range(&query, Some(columns.clone()));
+
+        // Iterator API
+        {
+            let batch = handle.next_page().unwrap();
+            // The output should be an empty recordbatch with the right schema and empty arrays.
+            assert_eq!(0, batch.num_rows());
+            assert!(itertools::izip!(columns.iter(), batch.schema.fields.iter())
+                .all(|(descr, field)| descr.to_arrow_field() == *field));
+            assert!(itertools::izip!(columns.iter(), batch.data.iter())
+                .all(|(descr, array)| descr.datatype() == array.data_type()));
+
+            let batch = handle.next_page();
+            assert!(batch.is_none());
+        }
+
+        // Paginated API
+        {
+            let batch = handle.get(0, 0).pop().unwrap();
+            // The output should be an empty recordbatch with the right schema and empty arrays.
+            assert_eq!(0, batch.num_rows());
+            assert!(itertools::izip!(columns.iter(), batch.schema.fields.iter())
+                .all(|(descr, field)| descr.to_arrow_field() == *field));
+            assert!(itertools::izip!(columns.iter(), batch.data.iter())
+                .all(|(descr, array)| descr.datatype() == array.data_type()));
+
+            let _batch = handle.get(0, 1).pop().unwrap();
+
+            let batch = handle.get(1, 1).pop();
+            assert!(batch.is_none());
+        }
+    }
+}
