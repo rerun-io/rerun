@@ -5,6 +5,7 @@ use arrow2::{
     array::{Array as ArrowArray, DictionaryArray as ArrowDictionaryArray},
     chunk::Chunk as ArrowChunk,
     datatypes::Schema as ArrowSchema,
+    Either,
 };
 use itertools::Itertools;
 
@@ -152,16 +153,38 @@ impl RangeQueryHandle<'_> {
     /// }
     /// ```
     pub fn next_page(&mut self) -> Option<RecordBatch> {
-        re_tracing::profile_function!(format!("{:?}", self.query));
+        re_tracing::profile_function!(format!("next_page({})", self.query));
 
         let state = self.init();
         let cur_page = state.cur_page.load(std::sync::atomic::Ordering::Relaxed);
+
+        // If the query didn't return anything at all, we just want a properly empty Recordbatch with
+        // the right schema (but only for page 0, otherwise it's just nothingness).
+        if cur_page == 0 && state.pov_chunks.is_none() {
+            let columns = self.schema();
+            _ = state
+                .cur_page
+                .fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+            return Some(RecordBatch {
+                schema: ArrowSchema {
+                    fields: columns.iter().map(|col| col.to_arrow_field(None)).collect(),
+                    metadata: Default::default(),
+                },
+                data: ArrowChunk::new(
+                    columns
+                        .iter()
+                        .map(|descr| arrow2::array::new_null_array(descr.datatype().clone(), 0))
+                        .collect_vec(),
+                ),
+            });
+        }
+
         let pov_chunk = state.pov_chunks.as_ref()?.get(cur_page as usize)?;
         _ = state
             .cur_page
             .fetch_add(1, std::sync::atomic::Ordering::Relaxed);
 
-        self.dense_batch_at_pov(pov_chunk)
+        Some(self.dense_batch_at_pov(pov_chunk))
     }
 
     /// Partially executes the range query in order to return the specified range of rows.
@@ -183,9 +206,30 @@ impl RangeQueryHandle<'_> {
     //
     // TODO(cmc): This could be turned into an actual lazy iterator at some point.
     pub fn get(&self, offset: u64, mut len: u64) -> Vec<RecordBatch> {
-        let mut results = Vec::new();
+        re_tracing::profile_function!(format!("get({offset}, {len}, {})", self.query));
 
         let state = self.init();
+
+        // If the query didn't return anything at all, we just want a properly empty Recordbatch with
+        // the right schema (but only at index 0, otherwise it's just nothingness).
+        if offset == 0 && (len == 0 || state.pov_chunks.is_none()) {
+            let columns = self.schema();
+            return vec![RecordBatch {
+                schema: ArrowSchema {
+                    fields: columns.iter().map(|col| col.to_arrow_field(None)).collect(),
+                    metadata: Default::default(),
+                },
+                data: ArrowChunk::new(
+                    columns
+                        .iter()
+                        .map(|descr| arrow2::array::new_null_array(descr.datatype().clone(), 0))
+                        .collect_vec(),
+                ),
+            }];
+        }
+
+        let mut results = Vec::new();
+
         let Some(pov_chunks) = state.pov_chunks.as_ref() else {
             return results;
         };
@@ -218,7 +262,7 @@ impl RangeQueryHandle<'_> {
         // Repeatedly compute dense ranges until we've returned `len` rows.
         while len > 0 {
             cur_pov_chunk = cur_pov_chunk.row_sliced(offset as _, len as _);
-            results.extend(self.dense_batch_at_pov(&cur_pov_chunk));
+            results.push(self.dense_batch_at_pov(&cur_pov_chunk));
 
             offset = 0; // always start at the first row after the first chunk
             len = len.saturating_sub(cur_pov_chunk.num_rows() as u64);
@@ -249,8 +293,8 @@ impl RangeQueryHandle<'_> {
         })
     }
 
-    fn dense_batch_at_pov(&self, pov_chunk: &Chunk) -> Option<RecordBatch> {
-        let pov_time_column = pov_chunk.timelines().get(&self.query.timeline)?;
+    fn dense_batch_at_pov(&self, pov_chunk: &Chunk) -> RecordBatch {
+        let pov_time_column = pov_chunk.timelines().get(&self.query.timeline);
         let columns = self.schema();
 
         // TODO(cmc): There are more efficient, albeit infinitely more complicated ways to do this.
@@ -269,7 +313,12 @@ impl RangeQueryHandle<'_> {
                 })
                 .filter_map(|descr| {
                     let arrays = pov_time_column
-                        .times()
+                        .map_or_else(
+                            || Either::Left(std::iter::empty()),
+                            |time_column| Either::Right(time_column.times()),
+                        )
+                        .chain(std::iter::repeat(TimeInt::STATIC))
+                        .take(pov_chunk.num_rows())
                         .map(|time| {
                             let query = LatestAtQuery::new(self.query.timeline, time);
 
@@ -348,7 +397,7 @@ impl RangeQueryHandle<'_> {
                         || {
                             arrow2::array::new_null_array(
                                 descr.datatype.clone(),
-                                pov_time_column.num_rows(),
+                                pov_chunk.num_rows(),
                             )
                         },
                         |dict_array| dict_array.to_boxed(),
@@ -357,7 +406,7 @@ impl RangeQueryHandle<'_> {
                 .collect_vec()
         };
 
-        Some(RecordBatch {
+        RecordBatch {
             schema: ArrowSchema {
                 fields: columns
                     .iter()
@@ -367,7 +416,7 @@ impl RangeQueryHandle<'_> {
                 metadata: Default::default(),
             },
             data: ArrowChunk::new(packed_arrays),
-        })
+        }
     }
 }
 
@@ -375,5 +424,197 @@ impl<'a> RangeQueryHandle<'a> {
     #[allow(clippy::should_implement_trait)] // we need an anonymous closure, this won't work
     pub fn into_iter(mut self) -> impl Iterator<Item = RecordBatch> + 'a {
         std::iter::from_fn(move || self.next_page())
+    }
+}
+
+// ---
+
+#[cfg(test)]
+mod tests {
+    use std::sync::Arc;
+
+    use re_chunk::{ArrowArray, Chunk, EntityPath, RowId, TimePoint, Timeline};
+    use re_chunk_store::{
+        ChunkStore, ChunkStoreConfig, ColumnDescriptor, ComponentColumnDescriptor,
+        RangeQueryExpression, TimeColumnDescriptor,
+    };
+    use re_log_types::{example_components::MyPoint, ResolvedTimeRange, StoreId, StoreKind};
+    use re_query::Caches;
+    use re_types::{
+        components::{Color, Position3D, Radius},
+        Loggable,
+    };
+
+    use crate::QueryEngine;
+
+    #[test]
+    fn empty_yields_empty() {
+        let store = ChunkStore::new(
+            StoreId::random(StoreKind::Recording),
+            ChunkStoreConfig::default(),
+        );
+        let cache = Caches::new(&store);
+        let engine = QueryEngine {
+            store: &store,
+            cache: &cache,
+        };
+
+        let entity_path: EntityPath = "/points".into();
+
+        let query = RangeQueryExpression {
+            entity_path_expr: "/**".into(),
+            timeline: Timeline::log_time(),
+            time_range: ResolvedTimeRange::EVERYTHING,
+            pov: ComponentColumnDescriptor::new::<Position3D>(entity_path.clone()),
+        };
+
+        let columns = vec![
+            ColumnDescriptor::Time(TimeColumnDescriptor {
+                timeline: Timeline::log_time(),
+                datatype: Timeline::log_time().datatype(),
+            }),
+            ColumnDescriptor::Time(TimeColumnDescriptor {
+                timeline: Timeline::log_tick(),
+                datatype: Timeline::log_tick().datatype(),
+            }),
+            ColumnDescriptor::Component(ComponentColumnDescriptor::new::<Position3D>(
+                entity_path.clone(),
+            )),
+            ColumnDescriptor::Component(ComponentColumnDescriptor::new::<Radius>(
+                entity_path.clone(),
+            )),
+            ColumnDescriptor::Component(ComponentColumnDescriptor::new::<Color>(entity_path)),
+        ];
+
+        let mut handle = engine.range(&query, Some(columns.clone()));
+
+        // Iterator API
+        {
+            let batch = handle.next_page().unwrap();
+            // The output should be an empty recordbatch with the right schema and empty arrays.
+            assert_eq!(0, batch.num_rows());
+            assert!(itertools::izip!(columns.iter(), batch.schema.fields.iter())
+                .all(|(descr, field)| descr.to_arrow_field(None) == *field));
+            assert!(itertools::izip!(columns.iter(), batch.data.iter())
+                .all(|(descr, array)| descr.datatype() == array.data_type()));
+
+            let batch = handle.next_page();
+            assert!(batch.is_none());
+        }
+
+        // Paginated API
+        {
+            let batch = handle.get(0, 0).pop().unwrap();
+            // The output should be an empty recordbatch with the right schema and empty arrays.
+            assert_eq!(0, batch.num_rows());
+            assert!(itertools::izip!(columns.iter(), batch.schema.fields.iter())
+                .all(|(descr, field)| descr.to_arrow_field(None) == *field));
+            assert!(itertools::izip!(columns.iter(), batch.data.iter())
+                .all(|(descr, array)| descr.datatype() == array.data_type()));
+
+            let _batch = handle.get(0, 1).pop().unwrap();
+
+            let batch = handle.get(1, 1).pop();
+            assert!(batch.is_none());
+        }
+    }
+
+    #[test]
+    fn static_does_yield() {
+        let mut store = ChunkStore::new(
+            StoreId::random(StoreKind::Recording),
+            ChunkStoreConfig::default(),
+        );
+
+        let entity_path: EntityPath = "/points".into();
+        let chunk = Arc::new(
+            Chunk::builder(entity_path.clone())
+                .with_component_batches(
+                    RowId::new(),
+                    TimePoint::default(),
+                    [&[MyPoint::new(1.0, 1.0), MyPoint::new(2.0, 2.0)] as _],
+                )
+                .build()
+                .unwrap(),
+        );
+        _ = store.insert_chunk(&chunk);
+
+        eprintln!("{store}");
+
+        let cache = Caches::new(&store);
+        let engine = QueryEngine {
+            store: &store,
+            cache: &cache,
+        };
+
+        let query = RangeQueryExpression {
+            entity_path_expr: "/**".into(),
+            timeline: Timeline::log_time(),
+            time_range: ResolvedTimeRange::EVERYTHING,
+            pov: ComponentColumnDescriptor::new::<MyPoint>(entity_path.clone()),
+        };
+
+        let columns = vec![
+            ColumnDescriptor::Time(TimeColumnDescriptor {
+                timeline: Timeline::log_time(),
+                datatype: Timeline::log_time().datatype(),
+            }),
+            ColumnDescriptor::Time(TimeColumnDescriptor {
+                timeline: Timeline::log_tick(),
+                datatype: Timeline::log_tick().datatype(),
+            }),
+            ColumnDescriptor::Component(ComponentColumnDescriptor::new::<MyPoint>(
+                entity_path.clone(),
+            )),
+            ColumnDescriptor::Component(ComponentColumnDescriptor::new::<Radius>(
+                entity_path.clone(),
+            )),
+            ColumnDescriptor::Component(ComponentColumnDescriptor::new::<Color>(entity_path)),
+        ];
+
+        let mut handle = engine.range(&query, Some(columns.clone()));
+
+        // Iterator API
+        {
+            let batch = handle.next_page().unwrap();
+            assert_eq!(1, batch.num_rows());
+            assert_eq!(
+                chunk.components().get(&MyPoint::name()).unwrap().to_boxed(),
+                itertools::izip!(batch.schema.fields.iter(), batch.data.iter())
+                    .find_map(
+                        |(field, array)| (field.name == MyPoint::name().short_name())
+                            .then_some(array.clone())
+                    )
+                    .unwrap()
+            );
+            assert!(itertools::izip!(columns.iter(), batch.schema.fields.iter())
+                .all(|(descr, field)| descr.to_arrow_field(None) == *field));
+
+            let batch = handle.next_page();
+            assert!(batch.is_none());
+        }
+
+        // Paginated API
+        {
+            let batch = handle.get(0, 1).pop().unwrap();
+            // The output should be an empty recordbatch with the right schema and empty arrays.
+            assert_eq!(1, batch.num_rows());
+            assert_eq!(
+                chunk.components().get(&MyPoint::name()).unwrap().to_boxed(),
+                itertools::izip!(batch.schema.fields.iter(), batch.data.iter())
+                    .find_map(
+                        |(field, array)| (field.name == MyPoint::name().short_name())
+                            .then_some(array.clone())
+                    )
+                    .unwrap()
+            );
+            assert!(itertools::izip!(columns.iter(), batch.schema.fields.iter())
+                .all(|(descr, field)| descr.to_arrow_field(None) == *field));
+
+            let _batch = handle.get(1, 1).pop().unwrap();
+
+            let batch = handle.get(2, 1).pop();
+            assert!(batch.is_none());
+        }
     }
 }
