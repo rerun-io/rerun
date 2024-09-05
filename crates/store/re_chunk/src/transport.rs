@@ -281,8 +281,7 @@ impl TransportChunk {
             .fields
             .iter()
             .enumerate()
-            .map(|(i, field)| self.data.columns().get(i).map(|column| (field, column)))
-            .flatten()
+            .filter_map(|(i, field)| self.data.columns().get(i).map(|column| (field, column)))
     }
 
     /// Iterates all control columns present in this chunk.

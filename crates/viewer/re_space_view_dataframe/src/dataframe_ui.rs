@@ -1,18 +1,12 @@
 use std::collections::BTreeMap;
 
-use egui::ahash::HashMap;
-
-use re_chunk_store::external::re_chunk::external::arrow2::array::{
-    Array as ArrowArray, ListArray, PrimitiveArray as ArrowPrimitiveArray, StructArray,
-};
 use re_chunk_store::{ColumnDescriptor, LatestAtQuery, RowId};
-use re_dataframe::{LatestAtQueryHandle, RangeQueryHandle, RecordBatch};
-use re_log_types::{EntityPath, TimeInt, Timeline, TimelineName};
-use re_types_core::ComponentName;
+use re_dataframe::{LatestAtQueryHandle, RangeQueryHandle};
+use re_log_types::{TimeInt, Timeline};
 use re_ui::UiExt as _;
-use re_viewer_context::{UiLayout, ViewerContext};
+use re_viewer_context::ViewerContext;
 
-use crate::display_record_batch::{DisplayRecordBatch, DisplayRecordBatchError};
+use crate::display_record_batch::DisplayRecordBatch;
 
 pub(crate) fn latest_at_dataframe_ui(
     ctx: &ViewerContext<'_>,

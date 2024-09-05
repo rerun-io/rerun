@@ -1,16 +1,14 @@
 use egui::Ui;
 
-use re_chunk_store::LatestAtQuery;
 use re_log_types::{EntityPath, ResolvedTimeRange};
 use re_space_view::view_property_ui;
-use re_types::blueprint::{archetypes, components};
+use re_types::blueprint::archetypes;
 use re_types_core::SpaceViewClassIdentifier;
 use re_ui::list_item;
 use re_viewer_context::{
     SpaceViewClass, SpaceViewClassRegistryError, SpaceViewId, SpaceViewState,
     SpaceViewSystemExecutionError, SystemExecutionOutput, ViewQuery, ViewerContext,
 };
-use re_viewport_blueprint::ViewProperty;
 
 use crate::dataframe_ui::{latest_at_dataframe_ui, range_dataframe_ui};
 use crate::{query_kind::QueryKind, view_query::Query, visualizer_system::EmptySystem};
@@ -171,7 +169,7 @@ mode sets the default time range to _everything_. You can override this in the s
                         entity_path: pov_entity.clone(),
                         archetype_name: None,
                         archetype_field_name: None,
-                        component_name: pov_component.clone(),
+                        component_name: pov_component,
                         //TODO: wrong
                         datatype: re_chunk_store::external::re_chunk::external::arrow2::datatypes::DataType::Null,
                         is_static: false,
