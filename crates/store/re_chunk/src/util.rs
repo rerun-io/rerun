@@ -96,23 +96,20 @@ pub fn arrays_to_dictionary<Idx: Copy + Eq>(
 
     // Compute the keys for the final dictionary, using that same primary key.
     let keys = {
-        let mut cur_index: Option<Idx> = None;
-        let mut cur_key = 0;
+        let mut cur_key = 0u32;
         arrays
             .iter()
-            .map(move |opt| {
-                opt.map(|(index, _array)| {
-                    if Some(index) == cur_index {
-                        cur_key
-                    } else if cur_index.is_some() && Some(index) != cur_index {
-                        cur_index = Some(index);
-                        cur_key += 1;
-                        cur_key
-                    } else {
-                        cur_index = Some(index);
-                        cur_key
-                    }
-                })
+            .dedup_by_with_count(|lhs, rhs| {
+                lhs.map(|(index, _)| index) == rhs.map(|(index, _)| index)
+            })
+            .flat_map(|(count, value)| {
+                if value.is_some() {
+                    let keys = std::iter::repeat(Some(cur_key)).take(count);
+                    cur_key += 1;
+                    keys
+                } else {
+                    std::iter::repeat(None).take(count)
+                }
             })
             .collect_vec()
     };
