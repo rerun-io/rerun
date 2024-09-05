@@ -66,9 +66,6 @@ impl QueryHandle<'_> {
 fn dataframe_ui(ctx: &ViewerContext<'_>, ui: &mut egui::Ui, query_handle: &QueryHandle<'_>) {
     re_tracing::profile_function!();
 
-    // TODO(emilk): hierarchical header rows
-    const NUM_HEADER_ROWS: u64 = 1;
-
     struct MyTableDelegate<'a> {
         ctx: &'a ViewerContext<'a>,
         query_handle: &'a QueryHandle<'a>,
@@ -81,36 +78,44 @@ fn dataframe_ui(ctx: &ViewerContext<'_>, ui: &mut egui::Ui, query_handle: &Query
 
     impl<'a> egui_table::TableDelegate for MyTableDelegate<'a> {
         fn prefetch_rows(&mut self, row_numbers: std::ops::Range<u64>) {
-            let start_idx = row_numbers.start.saturating_sub(NUM_HEADER_ROWS);
-            let end_idx = row_numbers.end.saturating_sub(NUM_HEADER_ROWS);
+            re_tracing::profile_function!();
+
+            let start_idx = row_numbers.start;
+            let end_idx = row_numbers.end;
+
             if end_idx <= start_idx {
                 return;
             }
 
-            {
-                re_tracing::profile_scope!("prefetch_rows");
+            let display_record_batches = self
+                .query_handle
+                .get(start_idx, end_idx - start_idx)
+                .into_iter()
+                .map(|record_batch| DisplayRecordBatch::try_new(&record_batch, self.schema))
+                .collect::<Result<Vec<_>, _>>()
+                //TODO: error handling
+                .expect("Failed to create DisplayRecordBatch");
 
-                let display_record_batches = self
-                    .query_handle
-                    .get(start_idx, end_idx - start_idx)
-                    .into_iter()
-                    .map(|record_batch| DisplayRecordBatch::try_new(&record_batch, self.schema))
-                    .collect::<Result<Vec<_>, _>>()
-                    //TODO: error handling
-                    .expect("Failed to create DisplayRecordBatch");
-
-                let mut offset = start_idx;
-                for (batch_idx, batch) in display_record_batches.iter().enumerate() {
-                    let batch_len = batch.num_rows() as u64;
-                    for row_idx in 0..batch_len {
-                        self.batch_and_row_from_row_nr
-                            .insert(offset + row_idx, (batch_idx, row_idx as usize));
-                    }
-                    offset += batch_len;
+            let mut offset = start_idx;
+            for (batch_idx, batch) in display_record_batches.iter().enumerate() {
+                let batch_len = batch.num_rows() as u64;
+                for row_idx in 0..batch_len {
+                    self.batch_and_row_from_row_nr
+                        .insert(offset + row_idx, (batch_idx, row_idx as usize));
                 }
-
-                self.display_record_batches = Some(display_record_batches);
+                offset += batch_len;
             }
+
+            self.display_record_batches = Some(display_record_batches);
+        }
+
+        fn header_cell_ui(&mut self, ui: &mut egui::Ui, cell: &egui_table::HeaderCellInfo) {
+            egui::Frame::none()
+                .inner_margin(egui::Margin::symmetric(4.0, 0.0))
+                .show(ui, |ui| {
+                    // TODO(emilk): hierarchical row groups
+                    ui.strong(self.schema[cell.col_range.start].short_name());
+                });
         }
 
         fn cell_ui(&mut self, ui: &mut egui::Ui, cell: &egui_table::CellInfo) {
@@ -125,20 +130,12 @@ fn dataframe_ui(ctx: &ViewerContext<'_>, ui: &mut egui::Ui, query_handle: &Query
             egui::Frame::none()
                 .inner_margin(egui::Margin::symmetric(4.0, 0.0))
                 .show(ui, |ui| {
-                    if cell.row_nr < NUM_HEADER_ROWS {
-                        // Header row
-                        ui.strong(self.schema[cell.col_nr].short_name());
-                        return;
-                    }
-
-                    let row_nr = cell.row_nr - NUM_HEADER_ROWS; // ignore header rows
-
                     //TODO: wrong!
                     let latest_at_query = LatestAtQuery::new(self.query_timeline, TimeInt::MAX);
                     let row_id = RowId::ZERO;
 
                     if let Some(display_record_batches) = &self.display_record_batches {
-                        let (batch_nr, batch_index) = self.batch_and_row_from_row_nr[&row_nr]; // Will have been pre-fetched
+                        let (batch_nr, batch_index) = self.batch_and_row_from_row_nr[&cell.row_nr]; // Will have been pre-fetched
                         let batch = &display_record_batches[batch_nr];
                         let column = &batch.columns()[cell.col_nr];
 
@@ -176,8 +173,8 @@ fn dataframe_ui(ctx: &ViewerContext<'_>, ui: &mut egui::Ui, query_handle: &Query
         egui_table::Table {
             columns: vec![egui_table::Column::new(200.0, 0.0..=f32::INFINITY); schema.len()],
             num_sticky_cols,
-            sticky_row_heights: vec![20.0],
-            num_rows: NUM_HEADER_ROWS + num_rows,
+            headers: vec![egui_table::HeaderRow::new(20.0)],
+            num_rows,
             row_height: re_ui::DesignTokens::table_line_height(),
             ..Default::default()
         }
