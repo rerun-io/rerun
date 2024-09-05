@@ -4,7 +4,6 @@
 use egui::ahash::HashMap;
 use thiserror::Error;
 
-use crate::table_ui::row_id_ui;
 use re_chunk_store::external::re_chunk::external::arrow2::{
     array::{Array as ArrowArray, ListArray, PrimitiveArray as ArrowPrimitiveArray, StructArray},
     datatypes::DataType as ArrowDataType,
@@ -221,4 +220,15 @@ impl<'a> DisplayRecordBatch<'a> {
     pub(crate) fn columns(&self) -> &[DisplayColumn<'a>] {
         &self.columns
     }
+}
+
+pub(crate) fn row_id_ui(ui: &mut egui::Ui, row_id: &RowId) {
+    let s = row_id.to_string();
+    let split_pos = s.char_indices().nth_back(5);
+
+    ui.label(match split_pos {
+        Some((pos, _)) => &s[pos..],
+        None => &s,
+    })
+    .on_hover_text(s);
 }

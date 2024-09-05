@@ -11,7 +11,6 @@ use re_ui::UiExt as _;
 use re_viewer_context::{UiLayout, ViewerContext};
 
 use crate::display_record_batch::{DisplayRecordBatch, DisplayRecordBatchError};
-use crate::table_ui::row_id_ui;
 
 pub(crate) fn latest_at_dataframe_ui(
     ctx: &ViewerContext<'_>,

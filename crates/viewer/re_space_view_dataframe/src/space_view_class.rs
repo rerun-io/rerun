@@ -13,10 +13,7 @@ use re_viewer_context::{
 use re_viewport_blueprint::ViewProperty;
 
 use crate::dataframe_ui::{latest_at_dataframe_ui, range_dataframe_ui};
-use crate::{
-    latest_at_table::latest_at_table_ui, query_kind::QueryKind,
-    time_range_table::time_range_table_ui, view_query::Query, visualizer_system::EmptySystem,
-};
+use crate::{query_kind::QueryKind, view_query::Query, visualizer_system::EmptySystem};
 
 #[derive(Default)]
 pub struct DataframeSpaceView;
@@ -117,7 +114,7 @@ mode sets the default time range to _everything_. You can override this in the s
         &self,
         ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
-        state: &mut dyn SpaceViewState,
+        _state: &mut dyn SpaceViewState,
         query: &ViewQuery<'_>,
         _system_output: SystemExecutionOutput,
     ) -> Result<(), SpaceViewSystemExecutionError> {
@@ -157,8 +154,6 @@ mode sets the default time range to _everything_. You can override this in the s
                 let query_handle = query_engine.latest_at(&query, None);
 
                 latest_at_dataframe_ui(ctx, ui, query_handle);
-
-                //latest_at_table_ui(ctx, ui, query, &LatestAtQuery::new(*timeline, time));
             }
             QueryKind::Range {
                 pov_entity,
@@ -187,28 +182,6 @@ mode sets the default time range to _everything_. You can override this in the s
                 let query_handle = query_engine.range(&query, None);
 
                 range_dataframe_ui(ctx, ui, query_handle);
-
-                // //TODO(#7279): use pov entity and component
-                // let time_range_table_order =
-                //     ViewProperty::from_archetype::<archetypes::TimeRangeTableOrder>(
-                //         ctx.blueprint_db(),
-                //         ctx.blueprint_query,
-                //         query.space_view_id,
-                //     );
-                // let sort_key = time_range_table_order
-                //     .component_or_fallback::<components::SortKey>(ctx, self, state)?;
-                // let sort_order = time_range_table_order
-                //     .component_or_fallback::<components::SortOrder>(ctx, self, state)?;
-                //
-                // time_range_table_ui(
-                //     ctx,
-                //     ui,
-                //     query,
-                //     sort_key,
-                //     sort_order,
-                //     timeline,
-                //     ResolvedTimeRange::new(from, to),
-                // );
             }
         }
 
