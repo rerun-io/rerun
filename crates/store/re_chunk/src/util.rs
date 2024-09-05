@@ -142,7 +142,7 @@ pub fn arrays_to_dictionary<Idx: Copy + Eq>(
     let datatype = ArrowDatatype::Dictionary(
         arrow2::datatypes::IntegerType::UInt32,
         std::sync::Arc::new(data.data_type().clone()),
-        false, // is_sorted
+        true, // is_sorted
     );
 
     // And finally we build our dictionary, which indexes into our concatenated list-array of
