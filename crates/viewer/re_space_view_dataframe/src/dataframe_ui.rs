@@ -3,7 +3,6 @@ use std::collections::BTreeMap;
 use re_chunk_store::{ColumnDescriptor, LatestAtQuery, RowId};
 use re_dataframe::{LatestAtQueryHandle, RangeQueryHandle, RecordBatch};
 use re_log_types::{TimeInt, Timeline};
-use re_ui::UiExt as _;
 use re_viewer_context::ViewerContext;
 
 use crate::display_record_batch::DisplayRecordBatch;
@@ -81,7 +80,7 @@ fn dataframe_ui(ctx: &ViewerContext<'_>, ui: &mut egui::Ui, query_handle: &Query
     }
 
     impl<'a> egui_table::TableDelegate for MyTableDelegate<'a> {
-        fn prefetch_rows(&mut self, mut row_numbers: std::ops::Range<u64>) {
+        fn prefetch_rows(&mut self, row_numbers: std::ops::Range<u64>) {
             let start_idx = row_numbers.start.saturating_sub(NUM_HEADER_ROWS);
             let end_idx = row_numbers.end.saturating_sub(NUM_HEADER_ROWS);
             if end_idx <= start_idx {
@@ -105,7 +104,7 @@ fn dataframe_ui(ctx: &ViewerContext<'_>, ui: &mut egui::Ui, query_handle: &Query
                     let batch_len = batch.num_rows() as u64;
                     for row_idx in 0..batch_len {
                         self.batch_and_row_from_row_nr
-                            .insert((offset + row_idx) as u64, (batch_idx, row_idx as usize));
+                            .insert(offset + row_idx, (batch_idx, row_idx as usize));
                     }
                     offset += batch_len;
                 }

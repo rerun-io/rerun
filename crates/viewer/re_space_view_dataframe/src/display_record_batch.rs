@@ -46,8 +46,8 @@ impl ComponentData {
         column_data: &Box<dyn ArrowArray>,
     ) -> Result<Self, DisplayRecordBatchError> {
         match column_data.data_type() {
-            DataType::Null => Ok(ComponentData::Null),
-            DataType::List(_) => Ok(ComponentData::ListArray(
+            DataType::Null => Ok(Self::Null),
+            DataType::List(_) => Ok(Self::ListArray(
                 column_data
                     .as_any()
                     .downcast_ref::<ArrowListArray<i32>>()
@@ -66,7 +66,7 @@ impl ComponentData {
                     .downcast_ref::<ArrowListArray<i32>>()
                     .expect("sanity checked")
                     .clone();
-                Ok(ComponentData::DictionaryArray { dict, values })
+                Ok(Self::DictionaryArray { dict, values })
             }
             _ => Err(DisplayRecordBatchError::UnexpectedComponentColumnDataType(
                 descriptor.component_name.to_string(),
@@ -86,14 +86,14 @@ impl ComponentData {
         index: usize,
     ) {
         let data = match self {
-            ComponentData::Null => {
+            Self::Null => {
                 ui.label("null");
                 return;
             }
-            ComponentData::ListArray(list_array) => {
+            Self::ListArray(list_array) => {
                 list_array.is_valid(index).then(|| list_array.value(index))
             }
-            ComponentData::DictionaryArray { dict, values } => dict
+            Self::DictionaryArray { dict, values } => dict
                 .is_valid(index)
                 .then(|| values.value(dict.key_value(index))),
         };
@@ -103,7 +103,7 @@ impl ComponentData {
                 ctx,
                 ui,
                 UiLayout::List,
-                &latest_at_query,
+                latest_at_query,
                 ctx.recording(),
                 entity_path,
                 component_name,
@@ -162,7 +162,7 @@ impl DisplayColumn {
                         .expect("sanity checked")
                         .clone();
 
-                    Ok(DisplayColumn::RowId {
+                    Ok(Self::RowId {
                         //descriptor: desc,
                         row_id_times,
                         row_id_counters,
@@ -185,12 +185,12 @@ impl DisplayColumn {
                     })?
                     .clone();
 
-                Ok(DisplayColumn::Timeline {
-                    timeline: desc.timeline.clone(),
+                Ok(Self::Timeline {
+                    timeline: desc.timeline,
                     time_data,
                 })
             }
-            ColumnDescriptor::Component(desc) => Ok(DisplayColumn::Component {
+            ColumnDescriptor::Component(desc) => Ok(Self::Component {
                 entity_path: desc.entity_path.clone(),
                 component_name: desc.component_name,
                 component_data: ComponentData::try_new(desc, column_data)?,
@@ -207,7 +207,7 @@ impl DisplayColumn {
         index: usize,
     ) {
         match self {
-            DisplayColumn::RowId {
+            Self::RowId {
                 row_id_times,
                 row_id_counters,
                 ..
@@ -218,7 +218,7 @@ impl DisplayColumn {
                 );
                 row_id_ui(ui, &row_id);
             }
-            DisplayColumn::Timeline {
+            Self::Timeline {
                 timeline,
                 time_data,
             } => {
@@ -232,7 +232,7 @@ impl DisplayColumn {
                     }
                 }
             }
-            DisplayColumn::Component {
+            Self::Component {
                 entity_path,
                 component_name,
                 component_data,
