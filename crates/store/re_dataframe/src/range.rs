@@ -426,14 +426,19 @@ impl<'a> RangeQueryHandle<'a> {
 
 #[cfg(test)]
 mod tests {
-    use re_chunk::{EntityPath, Timeline};
+    use std::sync::Arc;
+
+    use re_chunk::{ArrowArray, Chunk, EntityPath, RowId, TimePoint, Timeline};
     use re_chunk_store::{
         ChunkStore, ChunkStoreConfig, ColumnDescriptor, ComponentColumnDescriptor,
         RangeQueryExpression, TimeColumnDescriptor,
     };
-    use re_log_types::{ResolvedTimeRange, StoreId, StoreKind};
+    use re_log_types::{example_components::MyPoint, ResolvedTimeRange, StoreId, StoreKind};
     use re_query::Caches;
-    use re_types::components::{Color, Position3D, Radius};
+    use re_types::{
+        components::{Color, Position3D, Radius},
+        Loggable,
+    };
 
     use crate::QueryEngine;
 
@@ -505,6 +510,105 @@ mod tests {
             let _batch = handle.get(0, 1).pop().unwrap();
 
             let batch = handle.get(1, 1).pop();
+            assert!(batch.is_none());
+        }
+    }
+
+    #[test]
+    fn static_does_yield() {
+        let mut store = ChunkStore::new(
+            StoreId::random(StoreKind::Recording),
+            ChunkStoreConfig::default(),
+        );
+
+        let entity_path: EntityPath = "/points".into();
+        let chunk = Arc::new(
+            Chunk::builder(entity_path.clone())
+                .with_component_batches(
+                    RowId::new(),
+                    TimePoint::default(),
+                    [&[MyPoint::new(1.0, 1.0), MyPoint::new(2.0, 2.0)] as _],
+                )
+                .build()
+                .unwrap(),
+        );
+        _ = store.insert_chunk(&chunk);
+
+        eprintln!("{store}");
+
+        let cache = Caches::new(&store);
+        let engine = QueryEngine {
+            store: &store,
+            cache: &cache,
+        };
+
+        let query = RangeQueryExpression {
+            entity_path_expr: "/**".into(),
+            timeline: Timeline::log_time(),
+            time_range: ResolvedTimeRange::EVERYTHING,
+            pov: ComponentColumnDescriptor::new::<MyPoint>(entity_path.clone()),
+        };
+
+        let columns = vec![
+            ColumnDescriptor::Time(TimeColumnDescriptor {
+                timeline: Timeline::log_time(),
+                datatype: Timeline::log_time().datatype(),
+            }),
+            ColumnDescriptor::Time(TimeColumnDescriptor {
+                timeline: Timeline::log_tick(),
+                datatype: Timeline::log_tick().datatype(),
+            }),
+            ColumnDescriptor::Component(ComponentColumnDescriptor::new::<MyPoint>(
+                entity_path.clone(),
+            )),
+            ColumnDescriptor::Component(ComponentColumnDescriptor::new::<Radius>(
+                entity_path.clone(),
+            )),
+            ColumnDescriptor::Component(ComponentColumnDescriptor::new::<Color>(entity_path)),
+        ];
+
+        let mut handle = engine.range(&query, Some(columns.clone()));
+
+        // Iterator API
+        {
+            let batch = handle.next_page().unwrap();
+            assert_eq!(1, batch.num_rows());
+            assert_eq!(
+                chunk.components().get(&MyPoint::name()).unwrap().to_boxed(),
+                itertools::izip!(batch.schema.fields.iter(), batch.data.iter())
+                    .find_map(
+                        |(field, array)| (field.name == MyPoint::name().short_name())
+                            .then_some(array.clone())
+                    )
+                    .unwrap()
+            );
+            assert!(itertools::izip!(columns.iter(), batch.schema.fields.iter())
+                .all(|(descr, field)| descr.to_arrow_field() == *field));
+
+            let batch = handle.next_page();
+            assert!(batch.is_none());
+        }
+
+        // Paginated API
+        {
+            let batch = handle.get(0, 1).pop().unwrap();
+            // The output should be an empty recordbatch with the right schema and empty arrays.
+            assert_eq!(1, batch.num_rows());
+            assert_eq!(
+                chunk.components().get(&MyPoint::name()).unwrap().to_boxed(),
+                itertools::izip!(batch.schema.fields.iter(), batch.data.iter())
+                    .find_map(
+                        |(field, array)| (field.name == MyPoint::name().short_name())
+                            .then_some(array.clone())
+                    )
+                    .unwrap()
+            );
+            assert!(itertools::izip!(columns.iter(), batch.schema.fields.iter())
+                .all(|(descr, field)| descr.to_arrow_field() == *field));
+
+            let _batch = handle.get(1, 1).pop().unwrap();
+
+            let batch = handle.get(2, 1).pop();
             assert!(batch.is_none());
         }
     }
