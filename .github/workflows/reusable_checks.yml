@@ -90,7 +90,7 @@ jobs:
 
       - uses: prefix-dev/setup-pixi@v0.8.1
         with:
-          pixi-version: v0.28.2
+          pixi-version: v0.29.0
 
       - name: Codegen check
         run: pixi run codegen --force --check
@@ -107,7 +107,7 @@ jobs:
 
       - uses: prefix-dev/setup-pixi@v0.8.1
         with:
-          pixi-version: v0.28.2
+          pixi-version: v0.29.0
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -146,12 +146,13 @@ jobs:
 
       - uses: prefix-dev/setup-pixi@v0.8.1
         with:
-          pixi-version: v0.28.2
+          pixi-version: v0.29.0
 
       - name: Run linter
         run: |
           # triple quoting because pixi does its own glob expansion (the need for an additional layer arose somewhere
           # between pixi 0.25.0 and 0.28.2)
+          # see: https://github.com/prefix-dev/pixi/issues/1979
           pixi run mdlint --glob ""'docs/content/**/*.md'""
           pixi run mdlint --glob ""'examples/python/*/README.md'""
           pixi run mdlint --glob ""'examples/cpp/*/README.md'""
@@ -183,7 +184,7 @@ jobs:
 
       - uses: prefix-dev/setup-pixi@v0.8.1
         with:
-          pixi-version: v0.28.2
+          pixi-version: v0.29.0
 
       - name: prettier --check
         run: pixi run misc-fmt-check

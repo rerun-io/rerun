@@ -47,7 +47,7 @@ jobs:
 
       - uses: prefix-dev/setup-pixi@v0.8.1
         with:
-          pixi-version: v0.28.2
+          pixi-version: v0.29.0
 
       - name: Python format check
         run: pixi run py-fmt-check
@@ -88,7 +88,7 @@ jobs:
 
       - uses: prefix-dev/setup-pixi@v0.8.1
         with:
-          pixi-version: v0.28.2
+          pixi-version: v0.29.0
 
       - name: Codegen check
         run: pixi run codegen --force --check
@@ -101,7 +101,7 @@ jobs:
 
       - uses: prefix-dev/setup-pixi@v0.8.1
         with:
-          pixi-version: v0.28.2
+          pixi-version: v0.29.0
 
       - name: Rust checks & tests
         run: pixi run rs-check --skip individual_crates
@@ -114,7 +114,7 @@ jobs:
 
       - uses: prefix-dev/setup-pixi@v0.8.1
         with:
-          pixi-version: v0.28.2
+          pixi-version: v0.29.0
 
       - name: Rerun lints
         run: pixi run lint-rerun
@@ -159,7 +159,7 @@ jobs:
 
       - uses: prefix-dev/setup-pixi@v0.8.1
         with:
-          pixi-version: v0.28.2
+          pixi-version: v0.29.0
           environments: cpp
 
       # TODO(emilk): make this work somehow. Right now this just results in

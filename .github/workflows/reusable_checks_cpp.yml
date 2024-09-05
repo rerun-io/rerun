@@ -68,7 +68,7 @@ jobs:
 
       - uses: prefix-dev/setup-pixi@v0.8.1
         with:
-          pixi-version: v0.28.2
+          pixi-version: v0.29.0
           environments: cpp
 
       - name: Set up Rust
