@@ -5,6 +5,7 @@ use arrow2::{
     array::{Array as ArrowArray, DictionaryArray as ArrowDictionaryArray},
     chunk::Chunk as ArrowChunk,
     datatypes::Schema as ArrowSchema,
+    Either,
 };
 use itertools::Itertools;
 
@@ -181,7 +182,7 @@ impl RangeQueryHandle<'_> {
             .cur_page
             .fetch_add(1, std::sync::atomic::Ordering::Relaxed);
 
-        self.dense_batch_at_pov(pov_chunk)
+        Some(self.dense_batch_at_pov(pov_chunk))
     }
 
     /// Partially executes the range query in order to return the specified range of rows.
@@ -262,7 +263,7 @@ impl RangeQueryHandle<'_> {
         // Repeatedly compute dense ranges until we've returned `len` rows.
         while len > 0 {
             cur_pov_chunk = cur_pov_chunk.row_sliced(offset as _, len as _);
-            results.extend(self.dense_batch_at_pov(&cur_pov_chunk));
+            results.push(self.dense_batch_at_pov(&cur_pov_chunk));
 
             offset = 0; // always start at the first row after the first chunk
             len = len.saturating_sub(cur_pov_chunk.num_rows() as u64);
@@ -293,8 +294,8 @@ impl RangeQueryHandle<'_> {
         })
     }
 
-    fn dense_batch_at_pov(&self, pov_chunk: &Chunk) -> Option<RecordBatch> {
-        let pov_time_column = pov_chunk.timelines().get(&self.query.timeline)?;
+    fn dense_batch_at_pov(&self, pov_chunk: &Chunk) -> RecordBatch {
+        let pov_time_column = pov_chunk.timelines().get(&self.query.timeline);
         let columns = self.schema();
 
         // TODO(cmc): There are more efficient, albeit infinitely more complicated ways to do this.
@@ -313,7 +314,12 @@ impl RangeQueryHandle<'_> {
                 })
                 .filter_map(|descr| {
                     let arrays = pov_time_column
-                        .times()
+                        .map_or_else(
+                            || Either::Left(std::iter::empty()),
+                            |time_column| Either::Right(time_column.times()),
+                        )
+                        .chain(std::iter::repeat(TimeInt::STATIC))
+                        .take(pov_chunk.num_rows())
                         .map(|time| {
                             let query = LatestAtQuery::new(self.query.timeline, time);
 
@@ -392,7 +398,7 @@ impl RangeQueryHandle<'_> {
                         || {
                             arrow2::array::new_null_array(
                                 descr.datatype.clone(),
-                                pov_time_column.num_rows(),
+                                pov_chunk.num_rows(),
                             )
                         },
                         |dict_array| dict_array.to_boxed(),
@@ -401,7 +407,7 @@ impl RangeQueryHandle<'_> {
                 .collect_vec()
         };
 
-        Some(RecordBatch {
+        RecordBatch {
             schema: ArrowSchema {
                 fields: columns
                     .iter()
@@ -411,7 +417,7 @@ impl RangeQueryHandle<'_> {
                 metadata: Default::default(),
             },
             data: ArrowChunk::new(packed_arrays),
-        })
+        }
     }
 }
 
