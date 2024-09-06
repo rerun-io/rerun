@@ -107,6 +107,8 @@ impl QueryEngine<'_> {
     /// Creating a handle is very cheap as it doesn't perform any kind of querying.
     ///
     /// If `columns` is specified, the schema of the result will strictly follow this specification.
+    /// [`componentcolumndescriptor::datatype`] and [`componentcolumndescriptor::is_static`] are ignored.
+    ///
     /// Any provided [`ColumnDescriptor`]s that don't match a column in the result will still be included, but the
     /// data will be null for the entire column.
     /// If `columns` is left unspecified, the schema of the returned result will correspond to what's returned by
@@ -117,6 +119,13 @@ impl QueryEngine<'_> {
     /// are still valid data-columns to include in the result. So a user could, for example, query
     /// for a range of data on the `frame` timeline, but still include the `log_time` timeline in
     /// the result.
+    //
+    // TODO(#7365): We need to stop using `ComponentColumnDescriptor` as input to the dataframe APIs.
+    // It's fundamentally flawed: there is no way to guarantee that passed-in schema will match the
+    // returned schema.
+    // E.g. what are we supposed to do if the user pass in a non-nullable datatype, and the
+    // column does not exist? Or its state only starts halfway through the time range? Then we
+    // need to insert null values but the datatype is non-nullable…
     #[inline]
     pub fn latest_at(
         &self,
@@ -131,6 +140,8 @@ impl QueryEngine<'_> {
     /// Creating a handle is very cheap as it doesn't perform any kind of querying.
     ///
     /// If `columns` is specified, the schema of the result will strictly follow this specification.
+    /// [`componentcolumndescriptor::datatype`] and [`componentcolumndescriptor::is_static`] are ignored.
+    ///
     /// Any provided [`ColumnDescriptor`]s that don't match a column in the result will still be included, but the
     /// data will be null for the entire column.
     /// If `columns` is left unspecified, the schema of the returned result will correspond to what's returned by
@@ -141,6 +152,13 @@ impl QueryEngine<'_> {
     /// are still valid data-columns to include in the result. So a user could, for example, query
     /// for a range of data on the `frame` timeline, but still include the `log_time` timeline in
     /// the result.
+    //
+    // TODO(#7365): We need to stop using `ComponentColumnDescriptor` as input to the dataframe APIs.
+    // It's fundamentally flawed: there is no way to guarantee that passed-in schema will match the
+    // returned schema.
+    // E.g. what are we supposed to do if the user pass in a non-nullable datatype, and the
+    // column does not exist? Or its state only starts halfway through the time range? Then we
+    // need to insert null values but the datatype is non-nullable…
     #[inline]
     pub fn range(
         &self,

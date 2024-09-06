@@ -212,9 +212,8 @@ impl LatestAtQueryHandle<'_> {
             schema: ArrowSchema {
                 fields: columns
                     .iter()
-                    .zip(packed_arrays.iter())
-                    .map(|(descr, arr)| descr.to_arrow_field(Some(arr.data_type().clone())))
-                    .collect(),
+                    .map(|descr| descr.to_arrow_field())
+                    .collect_vec(),
                 metadata: Default::default(),
             },
             data: ArrowChunk::new(packed_arrays),
@@ -299,9 +298,11 @@ mod tests {
 
         // The output should be an empty recordbatch with the right schema and empty arrays.
         assert_eq!(0, batch.num_rows());
-        assert!(itertools::izip!(columns.iter(), batch.schema.fields.iter())
-            .all(|(descr, field)| descr.to_arrow_field(None) == *field));
-        assert!(itertools::izip!(columns.iter(), batch.data.iter())
+        assert!(
+            itertools::izip!(handle.schema(), batch.schema.fields.iter())
+                .all(|(descr, field)| descr.to_arrow_field() == *field)
+        );
+        assert!(itertools::izip!(handle.schema(), batch.data.iter())
             .all(|(descr, array)| descr.datatype() == array.data_type()));
     }
 
@@ -370,7 +371,9 @@ mod tests {
                 )
                 .unwrap()
         );
-        assert!(itertools::izip!(columns.iter(), batch.schema.fields.iter())
-            .all(|(descr, field)| descr.to_arrow_field(None) == *field));
+        assert!(
+            itertools::izip!(handle.schema(), batch.schema.fields.iter())
+                .all(|(descr, field)| descr.to_arrow_field() == *field)
+        );
     }
 }

@@ -3,7 +3,10 @@
 use std::collections::BTreeSet;
 
 use ahash::HashSet;
-use arrow2::datatypes::{DataType as ArrowDatatype, Field as ArrowField};
+use arrow2::{
+    array::ListArray as ArrowListArray,
+    datatypes::{DataType as ArrowDatatype, Field as ArrowField},
+};
 use itertools::Itertools as _;
 
 use re_chunk::LatestAtQuery;
@@ -55,11 +58,11 @@ impl ColumnDescriptor {
     }
 
     #[inline]
-    pub fn to_arrow_field(&self, datatype: Option<ArrowDatatype>) -> ArrowField {
+    pub fn to_arrow_field(&self) -> ArrowField {
         match self {
             Self::Control(descr) => descr.to_arrow_field(),
             Self::Time(descr) => descr.to_arrow_field(),
-            Self::Component(descr) => descr.to_arrow_field(datatype),
+            Self::Component(descr) => descr.to_arrow_field(),
         }
     }
 }
@@ -260,15 +263,17 @@ impl ComponentColumnDescriptor {
             archetype_name: None,
             archetype_field_name: None,
             component_name: C::name(),
-            datatype: C::arrow_datatype(),
-            // TODO(cmc): one of the many reasons why using `ComponentColumnDescriptor` for this
-            // gets a bit weird… Good enough for now though.
+            // NOTE: The data is always a at least a list, whether it's latest-at or range.
+            // It might be wrapped further in e.g. a dict, but at the very least
+            // it's a list.
+            // TODO(#7365): user-specified datatypes have got to go.
+            datatype: ArrowListArray::<i32>::default_datatype(C::arrow_datatype()),
             is_static: false,
         }
     }
 
     #[inline]
-    pub fn to_arrow_field(&self, wrapped_datatype: Option<ArrowDatatype>) -> ArrowField {
+    pub fn to_arrow_field(&self) -> ArrowField {
         let Self {
             entity_path,
             archetype_name,
@@ -278,14 +283,9 @@ impl ComponentColumnDescriptor {
             is_static,
         } = self;
 
-        // NOTE: Only the system doing the actual packing knows the final datatype with all of
-        // its wrappers (is it a component array? is it a list? is it a dict?).
-        let datatype = wrapped_datatype.unwrap_or_else(|| datatype.clone());
-
-        // TODO(cmc): figure out who's in charge of adding the outer list layer.
         ArrowField::new(
             component_name.short_name().to_owned(),
-            datatype,
+            datatype.clone(),
             false, /* nullable */
         )
         // TODO(#6889): This needs some proper sorbetization -- I just threw these names randomly.
@@ -567,7 +567,10 @@ impl ChunkStore {
                             archetype_name: None,
                             archetype_field_name: None,
                             component_name: *component_name,
-                            datatype: datatype.clone(),
+                            // NOTE: The data is always a at least a list, whether it's latest-at or range.
+                            // It might be wrapped further in e.g. a dict, but at the very least
+                            // it's a list.
+                            datatype: ArrowListArray::<i32>::default_datatype(datatype.clone()),
                             // NOTE: This will make it so shadowed temporal data automatically gets
                             // discarded from the schema.
                             is_static: self
