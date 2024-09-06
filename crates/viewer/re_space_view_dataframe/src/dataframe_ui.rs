@@ -155,16 +155,23 @@ pub(crate) fn dataframe_ui(
                     let row_id = RowId::ZERO;
 
                     if let Some(display_record_batches) = &self.display_record_batches {
-                        let (batch_nr, batch_index) = self.batch_and_row_from_row_nr[&cell.row_nr]; // Will have been pre-fetched
-                        let batch = &display_record_batches[batch_nr];
-                        let column = &batch.columns()[cell.col_nr];
+                        if let Some((batch_nr, batch_index)) =
+                            self.batch_and_row_from_row_nr.get(&cell.row_nr).copied()
+                        {
+                            let batch = &display_record_batches[batch_nr];
+                            let column = &batch.columns()[cell.col_nr];
 
-                        if ui.is_sizing_pass() {
-                            ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Extend);
+                            if ui.is_sizing_pass() {
+                                ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Extend);
+                            } else {
+                                ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Truncate);
+                            }
+                            column.data_ui(self.ctx, ui, row_id, &latest_at_query, batch_index);
                         } else {
-                            ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Truncate);
+                            re_log::warn_once!(
+                                "Bug in egui_table: we didn't prefetch what was rendered!"
+                            );
                         }
-                        column.data_ui(self.ctx, ui, row_id, &latest_at_query, batch_index);
                     } else {
                         panic!("cell_ui called before pre-fetch");
                     }
