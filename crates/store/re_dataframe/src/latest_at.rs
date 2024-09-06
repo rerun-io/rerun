@@ -93,19 +93,9 @@ impl LatestAtQueryHandle<'_> {
     /// [`Self::schema`].
     /// Columns that do not yield any data will still be present in the results, filled with null values.
     pub fn get(&self) -> RecordBatch {
-        re_tracing::profile_function!(format!("{:?}", self.query));
+        re_tracing::profile_function!(format!("{}", self.query));
 
         let columns = self.schema();
-
-        let schema = ArrowSchema {
-            fields: columns
-                .iter()
-                .map(ColumnDescriptor::to_arrow_field)
-                .collect(),
-
-            // TODO(#6889): properly some sorbet stuff we want to get in there at some point.
-            metadata: Default::default(),
-        };
 
         let all_units: HashMap<&ComponentColumnDescriptor, UnitChunkShared> = {
             re_tracing::profile_scope!("queries");
@@ -164,6 +154,10 @@ impl LatestAtQueryHandle<'_> {
             }
         }
 
+        // If the query didn't return anything at all, we just want a properly empty Recordbatch with
+        // the right schema.
+        let null_array_length = max_time_per_timeline.get(&self.query.timeline).is_some() as usize;
+
         // NOTE: Keep in mind this must match the ordering specified by `Self::schema`.
         let packed_arrays = {
             re_tracing::profile_scope!("packing");
@@ -186,7 +180,12 @@ impl LatestAtQueryHandle<'_> {
                             .and_then(|(_, chunk)| chunk.timelines().get(&descr.timeline).cloned());
 
                         Some(time_column.map_or_else(
-                            || arrow2::array::new_null_array(descr.datatype.clone(), 1),
+                            || {
+                                arrow2::array::new_null_array(
+                                    descr.datatype.clone(),
+                                    null_array_length,
+                                )
+                            },
                             |time_column| time_column.times_array().to_boxed(),
                         ))
                     }
@@ -196,16 +195,28 @@ impl LatestAtQueryHandle<'_> {
                             .get(descr)
                             .and_then(|chunk| chunk.components().get(&descr.component_name))
                             .map_or_else(
-                                || arrow2::array::new_null_array(descr.datatype.clone(), 1),
+                                || {
+                                    arrow2::array::new_null_array(
+                                        descr.datatype.clone(),
+                                        null_array_length,
+                                    )
+                                },
                                 |list_array| list_array.to_boxed(),
                             ),
                     ),
                 })
-                .collect()
+                .collect_vec()
         };
 
         RecordBatch {
-            schema,
+            schema: ArrowSchema {
+                fields: columns
+                    .iter()
+                    .zip(packed_arrays.iter())
+                    .map(|(descr, arr)| descr.to_arrow_field(Some(arr.data_type().clone())))
+                    .collect(),
+                metadata: Default::default(),
+            },
             data: ArrowChunk::new(packed_arrays),
         }
     }
@@ -223,5 +234,143 @@ impl<'a> LatestAtQueryHandle<'a> {
                 Some(self.get())
             }
         })
+    }
+}
+
+// ---
+
+#[cfg(test)]
+mod tests {
+    use std::sync::Arc;
+
+    use re_chunk::{ArrowArray, Chunk, EntityPath, RowId, TimeInt, TimePoint, Timeline};
+    use re_chunk_store::{
+        ChunkStore, ChunkStoreConfig, ColumnDescriptor, ComponentColumnDescriptor,
+        LatestAtQueryExpression, TimeColumnDescriptor,
+    };
+    use re_log_types::{example_components::MyPoint, StoreId, StoreKind};
+    use re_query::Caches;
+    use re_types::{
+        components::{Color, Position3D, Radius},
+        Loggable,
+    };
+
+    use crate::QueryEngine;
+
+    #[test]
+    fn empty_yields_empty() {
+        let store = ChunkStore::new(
+            StoreId::random(StoreKind::Recording),
+            ChunkStoreConfig::default(),
+        );
+        let cache = Caches::new(&store);
+        let engine = QueryEngine {
+            store: &store,
+            cache: &cache,
+        };
+
+        let query = LatestAtQueryExpression {
+            entity_path_expr: "/**".into(),
+            timeline: Timeline::log_time(),
+            at: TimeInt::MAX,
+        };
+
+        let entity_path: EntityPath = "/points".into();
+        let columns = vec![
+            ColumnDescriptor::Time(TimeColumnDescriptor {
+                timeline: Timeline::log_time(),
+                datatype: Timeline::log_time().datatype(),
+            }),
+            ColumnDescriptor::Time(TimeColumnDescriptor {
+                timeline: Timeline::log_tick(),
+                datatype: Timeline::log_tick().datatype(),
+            }),
+            ColumnDescriptor::Component(ComponentColumnDescriptor::new::<Position3D>(
+                entity_path.clone(),
+            )),
+            ColumnDescriptor::Component(ComponentColumnDescriptor::new::<Radius>(
+                entity_path.clone(),
+            )),
+            ColumnDescriptor::Component(ComponentColumnDescriptor::new::<Color>(entity_path)),
+        ];
+
+        let handle = engine.latest_at(&query, Some(columns.clone()));
+        let batch = handle.get();
+
+        // The output should be an empty recordbatch with the right schema and empty arrays.
+        assert_eq!(0, batch.num_rows());
+        assert!(itertools::izip!(columns.iter(), batch.schema.fields.iter())
+            .all(|(descr, field)| descr.to_arrow_field(None) == *field));
+        assert!(itertools::izip!(columns.iter(), batch.data.iter())
+            .all(|(descr, array)| descr.datatype() == array.data_type()));
+    }
+
+    #[test]
+    fn static_does_yield() {
+        let mut store = ChunkStore::new(
+            StoreId::random(StoreKind::Recording),
+            ChunkStoreConfig::default(),
+        );
+
+        let entity_path: EntityPath = "/points".into();
+        let chunk = Arc::new(
+            Chunk::builder(entity_path.clone())
+                .with_component_batches(
+                    RowId::new(),
+                    TimePoint::default(),
+                    [&[MyPoint::new(1.0, 1.0), MyPoint::new(2.0, 2.0)] as _],
+                )
+                .build()
+                .unwrap(),
+        );
+        _ = store.insert_chunk(&chunk);
+
+        eprintln!("{store}");
+
+        let cache = Caches::new(&store);
+        let engine = QueryEngine {
+            store: &store,
+            cache: &cache,
+        };
+
+        let query = LatestAtQueryExpression {
+            entity_path_expr: "/**".into(),
+            timeline: Timeline::log_time(),
+            at: TimeInt::MAX,
+        };
+
+        let columns = vec![
+            ColumnDescriptor::Time(TimeColumnDescriptor {
+                timeline: Timeline::log_time(),
+                datatype: Timeline::log_time().datatype(),
+            }),
+            ColumnDescriptor::Time(TimeColumnDescriptor {
+                timeline: Timeline::log_tick(),
+                datatype: Timeline::log_tick().datatype(),
+            }),
+            ColumnDescriptor::Component(ComponentColumnDescriptor::new::<MyPoint>(
+                entity_path.clone(),
+            )),
+            ColumnDescriptor::Component(ComponentColumnDescriptor::new::<Radius>(
+                entity_path.clone(),
+            )),
+            ColumnDescriptor::Component(ComponentColumnDescriptor::new::<Color>(entity_path)),
+        ];
+
+        let handle = engine.latest_at(&query, Some(columns.clone()));
+        let batch = handle.get();
+
+        assert_eq!(1, batch.num_rows());
+        assert_eq!(
+            chunk.components().get(&MyPoint::name()).unwrap().to_boxed(),
+            itertools::izip!(batch.schema.fields.iter(), batch.data.iter())
+                .find_map(
+                    |(field, array)| (field.name == MyPoint::name().short_name())
+                        .then_some(array.clone())
+                )
+                .unwrap()
+        );
+        assert!(itertools::izip!(columns.iter(), batch.schema.fields.iter())
+            .all(|(descr, field)| descr.to_arrow_field(None) == *field));
     }
 }
