@@ -7,26 +7,8 @@ use re_viewer_context::ViewerContext;
 
 use crate::display_record_batch::DisplayRecordBatch;
 
-pub(crate) fn latest_at_dataframe_ui(
-    ctx: &ViewerContext<'_>,
-    ui: &mut egui::Ui,
-    query_handle: LatestAtQueryHandle<'_>,
-) {
-    re_tracing::profile_function!();
-
-    dataframe_ui(ctx, ui, &QueryHandle::LatestAt(query_handle));
-}
-pub(crate) fn range_dataframe_ui(
-    ctx: &ViewerContext<'_>,
-    ui: &mut egui::Ui,
-    query_handle: RangeQueryHandle<'_>,
-) {
-    re_tracing::profile_function!();
-
-    dataframe_ui(ctx, ui, &QueryHandle::Range(query_handle));
-}
-
-enum QueryHandle<'a> {
+/// A query handle for either a latest-at or range query.
+pub(crate) enum QueryHandle<'a> {
     LatestAt(LatestAtQueryHandle<'a>),
     Range(RangeQueryHandle<'a>),
 }
@@ -63,7 +45,24 @@ impl QueryHandle<'_> {
     }
 }
 
-fn dataframe_ui(ctx: &ViewerContext<'_>, ui: &mut egui::Ui, query_handle: &QueryHandle<'_>) {
+impl<'a> From<LatestAtQueryHandle<'a>> for QueryHandle<'a> {
+    fn from(query_handle: LatestAtQueryHandle<'a>) -> Self {
+        QueryHandle::LatestAt(query_handle)
+    }
+}
+
+impl<'a> From<RangeQueryHandle<'a>> for QueryHandle<'a> {
+    fn from(query_handle: RangeQueryHandle<'a>) -> Self {
+        QueryHandle::Range(query_handle)
+    }
+}
+
+/// Display the result of a [`QueryHandle`] in a table.
+pub(crate) fn dataframe_ui(
+    ctx: &ViewerContext<'_>,
+    ui: &mut egui::Ui,
+    query_handle: QueryHandle<'_>,
+) {
     re_tracing::profile_function!();
 
     struct MyTableDelegate<'a> {
@@ -157,7 +156,7 @@ fn dataframe_ui(ctx: &ViewerContext<'_>, ui: &mut egui::Ui, query_handle: &Query
 
     let mut table_delegate = MyTableDelegate {
         ctx,
-        query_handle,
+        query_handle: &query_handle,
         schema,
         display_record_batches: None,
         query_timeline: query_handle.timeline(),

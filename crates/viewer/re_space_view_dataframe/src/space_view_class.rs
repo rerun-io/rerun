@@ -10,7 +10,7 @@ use re_viewer_context::{
     SpaceViewSystemExecutionError, SystemExecutionOutput, ViewQuery, ViewerContext,
 };
 
-use crate::dataframe_ui::{latest_at_dataframe_ui, range_dataframe_ui};
+use crate::dataframe_ui::dataframe_ui;
 use crate::{query_kind::QueryKind, view_query::Query, visualizer_system::EmptySystem};
 
 #[derive(Default)]
@@ -151,7 +151,7 @@ mode sets the default time range to _everything_. You can override this in the s
                 //TODO(ab): specify which columns
                 let query_handle = query_engine.latest_at(&query, None);
 
-                latest_at_dataframe_ui(ctx, ui, query_handle);
+                dataframe_ui(ctx, ui, query_handle.into());
             }
             QueryKind::Range {
                 pov_entity,
@@ -176,10 +176,10 @@ mode sets the default time range to _everything_. You can override this in the s
                     },
                 };
 
-                //TODO(ab): specify which columns
+                //TODO(ab): specify which columns should be displayed or not
                 let query_handle = query_engine.range(&query, None);
 
-                range_dataframe_ui(ctx, ui, query_handle);
+                dataframe_ui(ctx, ui, query_handle.into());
             }
         }
 
