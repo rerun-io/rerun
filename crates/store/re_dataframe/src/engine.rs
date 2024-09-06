@@ -6,6 +6,10 @@ use re_query::Caches;
 
 use crate::{LatestAtQueryHandle, RangeQueryHandle};
 
+// Used all over in docstrings.
+#[allow(unused_imports)]
+use re_chunk_store::ComponentColumnDescriptor;
+
 // ---
 
 // TODO(#3741): `arrow2` has no concept of a `RecordBatch`, so for now we just use our trustworthy
@@ -107,7 +111,7 @@ impl QueryEngine<'_> {
     /// Creating a handle is very cheap as it doesn't perform any kind of querying.
     ///
     /// If `columns` is specified, the schema of the result will strictly follow this specification.
-    /// [`componentcolumndescriptor::datatype`] and [`componentcolumndescriptor::is_static`] are ignored.
+    /// [`ComponentColumnDescriptor::datatype`] and [`ComponentColumnDescriptor::is_static`] are ignored.
     ///
     /// Any provided [`ColumnDescriptor`]s that don't match a column in the result will still be included, but the
     /// data will be null for the entire column.
@@ -140,7 +144,7 @@ impl QueryEngine<'_> {
     /// Creating a handle is very cheap as it doesn't perform any kind of querying.
     ///
     /// If `columns` is specified, the schema of the result will strictly follow this specification.
-    /// [`componentcolumndescriptor::datatype`] and [`componentcolumndescriptor::is_static`] are ignored.
+    /// [`ComponentColumnDescriptor::datatype`] and [`ComponentColumnDescriptor::is_static`] are ignored.
     ///
     /// Any provided [`ColumnDescriptor`]s that don't match a column in the result will still be included, but the
     /// data will be null for the entire column.
