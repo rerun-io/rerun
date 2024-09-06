@@ -1947,7 +1947,7 @@ dependencies = [
 [[package]]
 name = "egui_table"
 version = "0.28.1"
-source = "git+https://github.com/rerun-io/egui_table.git?rev=017a15f1d1c4d8dc58617ec8ee892623da429cf5#017a15f1d1c4d8dc58617ec8ee892623da429cf5"
+source = "git+https://github.com/rerun-io/egui_table.git?rev=8104f395e671b1d359fd5cca7a1e7c80876fbc2e#8104f395e671b1d359fd5cca7a1e7c80876fbc2e"
 dependencies = [
  "egui",
  "serde",
