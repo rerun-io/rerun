@@ -1,9 +1,9 @@
-use std::collections::BTreeMap;
-
 use re_chunk_store::{ColumnDescriptor, LatestAtQuery, RowId};
 use re_dataframe::{LatestAtQueryHandle, RangeQueryHandle, RecordBatch};
-use re_log_types::{TimeInt, Timeline};
+use re_log_types::{EntityPath, TimeInt, Timeline};
 use re_viewer_context::ViewerContext;
+use std::collections::BTreeMap;
+use std::ops::Range;
 
 use crate::display_record_batch::DisplayRecordBatch;
 
@@ -69,8 +69,11 @@ pub(crate) fn dataframe_ui(
         ctx: &'a ViewerContext<'a>,
         query_handle: &'a QueryHandle<'a>,
         schema: &'a [ColumnDescriptor],
+        header_entity_paths: Vec<Option<EntityPath>>,
         display_record_batches: Option<Vec<DisplayRecordBatch>>,
         query_timeline: Timeline,
+
+        num_rows: u64,
 
         batch_and_row_from_row_nr: BTreeMap<u64, (usize, usize)>,
     }
@@ -112,13 +115,31 @@ pub(crate) fn dataframe_ui(
             egui::Frame::none()
                 .inner_margin(egui::Margin::symmetric(4.0, 0.0))
                 .show(ui, |ui| {
-                    // TODO(emilk): hierarchical row groups
-                    ui.strong(self.schema[cell.col_range.start].short_name());
+                    if cell.row_nr == 0 {
+                        if let Some(entity_path) = &self.header_entity_paths[cell.group_index] {
+                            ui.label(entity_path.to_string());
+                        }
+                    } else if cell.row_nr == 1 {
+                        ui.strong(self.schema[cell.col_range.start].short_name());
+                    } else {
+                        // this should never happen
+                        re_log::warn_once!("Unexpected header row_nr: {}", cell.row_nr);
+                    }
                 });
         }
 
         fn cell_ui(&mut self, ui: &mut egui::Ui, cell: &egui_table::CellInfo) {
             re_tracing::profile_function!();
+
+            //TODO: this should not happen!
+            if cell.row_nr >= self.num_rows {
+                re_log::warn_once!(
+                    "Unexpected row_nr: {} (table row count {})",
+                    cell.row_nr,
+                    self.num_rows
+                );
+                return;
+            }
 
             if cell.row_nr % 2 == 1 {
                 // Paint stripes
@@ -152,14 +173,18 @@ pub(crate) fn dataframe_ui(
     }
 
     let schema = query_handle.schema();
+    let (header_groups, header_entity_paths) = column_groups_for_entity(schema);
+
     let num_rows = query_handle.num_rows();
 
     let mut table_delegate = MyTableDelegate {
         ctx,
         query_handle: &query_handle,
         schema,
+        header_entity_paths,
         display_record_batches: None,
         query_timeline: query_handle.timeline(),
+        num_rows,
         batch_and_row_from_row_nr: Default::default(), // Will be filled during pre-fetch
     };
 
@@ -172,11 +197,44 @@ pub(crate) fn dataframe_ui(
         egui_table::Table {
             columns: vec![egui_table::Column::new(200.0, 0.0..=f32::INFINITY); schema.len()],
             num_sticky_cols,
-            headers: vec![egui_table::HeaderRow::new(20.0)],
+            headers: vec![
+                egui_table::HeaderRow {
+                    height: 20.0,
+                    groups: header_groups,
+                },
+                egui_table::HeaderRow::new(20.0),
+            ],
             num_rows,
             row_height: re_ui::DesignTokens::table_line_height(),
             ..Default::default()
         }
         .show(ui, &mut table_delegate);
     });
+}
+
+/// Groups column by entity paths.
+fn column_groups_for_entity(
+    columns: &[ColumnDescriptor],
+) -> (Vec<Range<usize>>, Vec<Option<EntityPath>>) {
+    if columns.is_empty() {
+        (vec![], vec![])
+    } else if columns.len() == 1 {
+        (vec![0..1], vec![columns[0].entity_path().cloned()])
+    } else {
+        let mut groups = vec![];
+        let mut entity_paths = vec![];
+        let mut start = 0;
+        let mut current_entity = columns[0].entity_path();
+        for (i, column) in columns.iter().enumerate().skip(1) {
+            if column.entity_path() != current_entity {
+                groups.push(start..i);
+                entity_paths.push(current_entity.cloned());
+                start = i;
+                current_entity = column.entity_path();
+            }
+        }
+        groups.push(start..columns.len());
+        entity_paths.push(current_entity.cloned());
+        (groups, entity_paths)
+    }
 }
