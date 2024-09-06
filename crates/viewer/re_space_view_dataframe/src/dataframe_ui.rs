@@ -76,11 +76,11 @@ pub(crate) fn dataframe_ui(
     }
 
     impl<'a> egui_table::TableDelegate for MyTableDelegate<'a> {
-        fn prefetch_rows(&mut self, row_numbers: std::ops::Range<u64>) {
+        fn prefetch_columns_and_rows(&mut self, info: &egui_table::PrefetchInfo) {
             re_tracing::profile_function!();
 
-            let start_idx = row_numbers.start;
-            let end_idx = row_numbers.end;
+            let start_idx = info.visible_rows.start;
+            let end_idx = info.visible_rows.end;
 
             if end_idx <= start_idx {
                 return;
