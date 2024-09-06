@@ -96,10 +96,20 @@ impl UiLayout {
     pub fn label(self, ui: &mut egui::Ui, text: impl Into<egui::WidgetText>) -> egui::Response {
         let mut label = egui::Label::new(text);
 
-        match self {
-            Self::List => label = label.truncate(),
-            Self::Tooltip | Self::SelectionPanelLimitHeight | Self::SelectionPanelFull => {
-                label = label.wrap();
+        // Respect set wrap_mode if already set
+        if ui.style().wrap_mode.is_none() {
+            match self {
+                Self::List => {
+                    if ui.is_sizing_pass() {
+                        // grow parent if needed - that's the point of a sizing pass
+                        label = label.extend();
+                    } else {
+                        label = label.truncate();
+                    }
+                }
+                Self::Tooltip | Self::SelectionPanelLimitHeight | Self::SelectionPanelFull => {
+                    label = label.wrap();
+                }
             }
         }
 
@@ -125,9 +135,14 @@ impl UiLayout {
 
         match self {
             Self::List => {
-                // Elide
-                layout_job.wrap.max_rows = 1;
-                layout_job.wrap.break_anywhere = true;
+                layout_job.wrap.max_rows = 1; // We must fit on one line
+                if ui.is_sizing_pass() {
+                    // grow parent if needed - that's the point of a sizing pass
+                    layout_job.wrap.max_width = f32::INFINITY;
+                } else {
+                    // Truncate
+                    layout_job.wrap.break_anywhere = true;
+                }
             }
             Self::Tooltip => {
                 layout_job.wrap.max_rows = 3;
