@@ -8,9 +8,6 @@ use crate::archetypes::EncodedImage;
 
 use super::{TensorBuffer, TensorData, TensorDimension};
 
-// Much of the following duplicates code from: `crates/re_components/src/tensor.rs`, which
-// will eventually go away as the Tensor migration is completed.
-
 // ----------------------------------------------------------------------------
 
 impl TensorData {
@@ -169,7 +166,6 @@ macro_rules! tensor_from_ndarray {
             type Error = TensorCastError;
 
             fn try_from(value: ndarray::Array<$type, D>) -> Result<Self, Self::Error> {
-                let value = value.as_standard_layout();
                 let shape = value
                     .shape()
                     .iter()
@@ -178,15 +174,27 @@ macro_rules! tensor_from_ndarray {
                         name: None,
                     })
                     .collect();
-                value
-                    .is_standard_layout()
-                    .then(|| TensorData {
-                        shape,
-                        buffer: TensorBuffer::$variant(
-                            value.to_owned().into_raw_vec_and_offset().0.into(),
-                        ),
-                    })
-                    .ok_or(TensorCastError::NotContiguousStdOrder)
+
+                let vec = if value.is_standard_layout() {
+                    let (mut vec, offset) = value.into_raw_vec_and_offset();
+                    // into_raw_vec_and_offset() guarantees that the logical element order (.iter()) matches the internal
+                    // storage order in the returned vector. Therefore, since it's in standard layout, it's contiguous in
+                    // memory and safe to assume all our data is stored starting at the offset returned
+                    if let Some(offset) = offset {
+                        vec.drain(..offset);
+                        vec
+                    } else {
+                        debug_assert!(vec.is_empty());
+                        vec
+                    }
+                } else {
+                    value.into_iter().collect::<Vec<_>>()
+                };
+
+                Ok(Self {
+                    shape,
+                    buffer: TensorBuffer::$variant(vec.into()),
+                })
             }
         }
 
@@ -313,13 +321,19 @@ impl<D: ::ndarray::Dimension> TryFrom<::ndarray::Array<half::f16, D>> for Tensor
             })
             .collect();
         if value.is_standard_layout() {
+            let (vec, offset) = value.into_raw_vec_and_offset();
+            // into_raw_vec_and_offset() guarantees that the logical element order (.iter()) matches the internal
+            // storage order in the returned vector. Therefore, since it's in standard layout, it's contiguous in
+            // memory and it's safe to assume all our data is stored starting at the offset returned
+            let vec_slice = if let Some(offset) = offset {
+                &vec[offset..]
+            } else {
+                debug_assert!(vec.is_empty());
+                &vec
+            };
             Ok(Self {
                 shape,
-                buffer: TensorBuffer::F16(
-                    bytemuck::cast_slice(value.into_raw_vec_and_offset().0.as_slice())
-                        .to_vec()
-                        .into(),
-                ),
+                buffer: TensorBuffer::F16(Vec::from(bytemuck::cast_slice(vec_slice)).into()),
             })
         } else {
             Ok(Self {
