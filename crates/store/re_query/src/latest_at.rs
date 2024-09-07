@@ -171,6 +171,25 @@ impl Caches {
 
         results
     }
+
+    /// Free up some RAM by forgetting the older parts of all timelines.
+    pub fn purge_fraction_of_ram(&mut self, fraction_to_purge: f32) {
+        re_tracing::profile_function!();
+
+        let mut caches = self.latest_at_per_cache_key.write();
+        for (_key, cache) in caches.iter_mut() {
+            let mut cache = cache.write();
+
+            let split_point =
+                ((cache.per_query_time.len() - 1) as f32 * fraction_to_purge) as usize;
+
+            if let Some(split_time) = cache.per_query_time.keys().nth(split_point).copied() {
+                cache.handle_pending_invalidation();
+                cache.pending_invalidations.clear();
+                cache.per_query_time = cache.per_query_time.split_off(&split_time);
+            }
+        }
+    }
 }
 
 // --- Results ---
