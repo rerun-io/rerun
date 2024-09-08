@@ -184,8 +184,11 @@ impl Caches {
                 (cache.per_query_time.len().saturating_sub(1) as f32 * fraction_to_purge) as usize;
 
             if let Some(split_time) = cache.per_query_time.keys().nth(split_point).copied() {
-                cache.handle_pending_invalidation();
-                cache.pending_invalidations.clear();
+                // NOTE: By not clearing the pending invalidations set, we risk invalidating a
+                // future result that need not be invalidated.
+                // That is a much better outcome that the opposite though: not invalidating a
+                // future result that in fact should have been.
+                // See `handle_pending_invalidation` for more information.
                 cache.per_query_time = cache.per_query_time.split_off(&split_time);
             }
         }
