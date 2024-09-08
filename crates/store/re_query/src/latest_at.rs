@@ -181,7 +181,7 @@ impl Caches {
             let mut cache = cache.write();
 
             let split_point =
-                ((cache.per_query_time.len() - 1) as f32 * fraction_to_purge) as usize;
+                (cache.per_query_time.len().saturating_sub(1) as f32 * fraction_to_purge) as usize;
 
             if let Some(split_time) = cache.per_query_time.keys().nth(split_point).copied() {
                 cache.handle_pending_invalidation();
