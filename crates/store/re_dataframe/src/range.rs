@@ -458,7 +458,9 @@ mod tests {
         ChunkStore, ChunkStoreConfig, ColumnDescriptor, ComponentColumnDescriptor,
         RangeQueryExpression, TimeColumnDescriptor,
     };
-    use re_log_types::{example_components::MyPoint, ResolvedTimeRange, StoreId, StoreKind};
+    use re_log_types::{
+        example_components::MyPoint, EntityPathFilter, ResolvedTimeRange, StoreId, StoreKind,
+    };
     use re_query::Caches;
     use re_types::{
         components::{Color, Position3D, Radius},
@@ -482,7 +484,7 @@ mod tests {
         let entity_path: EntityPath = "/points".into();
 
         let query = RangeQueryExpression {
-            entity_path_filter: "/**".into(),
+            entity_path_filter: EntityPathFilter::all(),
             timeline: Timeline::log_time(),
             time_range: ResolvedTimeRange::EVERYTHING,
             pov: ComponentColumnDescriptor::new::<Position3D>(entity_path.clone()),
@@ -572,7 +574,7 @@ mod tests {
         };
 
         let query = RangeQueryExpression {
-            entity_path_filter: "/**".into(),
+            entity_path_filter: EntityPathFilter::all(),
             timeline: Timeline::log_time(),
             time_range: ResolvedTimeRange::EVERYTHING,
             pov: ComponentColumnDescriptor::new::<MyPoint>(entity_path.clone()),

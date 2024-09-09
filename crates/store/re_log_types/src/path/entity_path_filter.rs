@@ -5,6 +5,16 @@ use itertools::Itertools as _;
 
 use crate::EntityPath;
 
+/// Error returned by [`EntityPathFilter::parse_strict`].
+#[derive(thiserror::Error, Debug, PartialEq, Eq)]
+pub enum EntityPathFilterParseError {
+    #[error("Path parse error: {0}")]
+    PathParseError(#[from] crate::PathParseError),
+
+    #[error("Unresolved substitution: {0}")]
+    UnresolvedSubstitution(String),
+}
+
 /// A set of substitutions for entity paths.
 #[derive(Default)]
 pub struct EntityPathSubs(pub HashMap<String, String>);
@@ -128,13 +138,19 @@ impl std::iter::Sum for EntityPathFilter {
     }
 }
 
-impl<S: AsRef<str>> From<S> for EntityPathFilter {
-    fn from(rules: S) -> Self {
-        Self::parse_forgiving(rules.as_ref(), &EntityPathSubs::default())
+// Note: it's not possible to implement that for `S: AsRef<str>` because this conflicts with some
+// blanket implementation in `core` :(
+impl TryFrom<&str> for EntityPathFilter {
+    type Error = EntityPathFilterParseError;
+
+    fn try_from(value: &str) -> Result<Self, Self::Error> {
+        Self::parse_strict(value, &EntityPathSubs::default())
     }
 }
 
 impl EntityPathFilter {
+    /// Parse an entity path filter from a string while ignore syntax errors.
+    ///
     /// Example of rules:
     ///
     /// ```diff
@@ -150,7 +166,7 @@ impl EntityPathFilter {
     ///
     /// Conflicting rules are resolved by the last rule.
     pub fn parse_forgiving(rules: &str, subst_env: &EntityPathSubs) -> Self {
-        Self::from_query_expressions(rules.split('\n'), subst_env)
+        Self::from_query_expressions_forgiving(rules.split('\n'), subst_env)
     }
 
     /// Build a filter from a list of query expressions.
@@ -161,7 +177,7 @@ impl EntityPathFilter {
     /// The rest of the expression is trimmed and treated as an entity path.
     ///
     /// Conflicting rules are resolved by the last rule.
-    pub fn from_query_expressions<'a>(
+    pub fn from_query_expressions_forgiving<'a>(
         rules: impl IntoIterator<Item = &'a str>,
         subst_env: &EntityPathSubs,
     ) -> Self {
@@ -184,6 +200,70 @@ impl EntityPathFilter {
         }
 
         filter
+    }
+
+    /// Parse an entity path filter from a string, returning an error if the syntax is invalid.
+    ///
+    /// Example of rules:
+    ///
+    /// ```diff
+    /// + /world/**
+    /// - /world/roads/**
+    /// + /world/roads/main
+    /// ```
+    ///
+    /// Each line is a rule.
+    ///
+    /// The first character should be `+` or `-`. If missing, `+` is assumed.
+    /// The rest of the line is trimmed and treated as an entity path.
+    ///
+    /// Conflicting rules are resolved by the last rule.
+    pub fn parse_strict(
+        rules: &str,
+        subst_env: &EntityPathSubs,
+    ) -> Result<Self, EntityPathFilterParseError> {
+        Self::from_query_expressions_strict(rules.split('\n'), subst_env)
+    }
+
+    /// Build a filter from a list of query expressions.
+    ///
+    /// Each item in the iterator should be a query expression.
+    ///
+    /// The first character should be `+` or `-`. If missing, `+` is assumed.
+    /// The rest of the expression is trimmed and treated as an entity path.
+    ///
+    /// Conflicting rules are resolved by the last rule.
+    pub fn from_query_expressions_strict<'a>(
+        rules: impl IntoIterator<Item = &'a str>,
+        subst_env: &EntityPathSubs,
+    ) -> Result<Self, EntityPathFilterParseError> {
+        let mut filter = Self::default();
+
+        for line in rules
+            .into_iter()
+            .map(|line| line.trim())
+            .filter(|line| !line.is_empty())
+        {
+            let (effect, path_pattern) = match line.chars().next() {
+                Some('+') => (RuleEffect::Include, &line[1..]),
+                Some('-') => (RuleEffect::Exclude, &line[1..]),
+                _ => (RuleEffect::Include, line),
+            };
+
+            let rule = EntityPathRule::parse_strict(path_pattern, subst_env)?;
+
+            filter.add_rule(effect, rule);
+        }
+
+        Ok(filter)
+    }
+
+    /// Creates a filter that accepts everything.
+    pub fn all() -> Self {
+        Self {
+            rules: std::iter::once((EntityPathRule::exact("/".into()), RuleEffect::Include))
+                .collect(),
+        }
     }
 
     /// Creates a new entity path filter that includes only a single entity.
@@ -432,6 +512,51 @@ impl EntityPathRule {
             raw_expression: format!("{path}/**",),
             path,
             include_subtree: true,
+        }
+    }
+
+    pub fn parse_strict(
+        expression: &str,
+        subst_env: &EntityPathSubs,
+    ) -> Result<Self, EntityPathFilterParseError> {
+        let raw_expression = expression.trim().to_owned();
+
+        // TODO(#5528): This is a very naive implementation of variable substitution.
+        // unclear if we want to do this here, push this down into `EntityPath::parse`,
+        // or even supported deferred evaluation on the `EntityPath` itself.
+        let mut expression_sub = raw_expression.clone();
+        for (key, value) in &subst_env.0 {
+            expression_sub = expression_sub.replace(format!("${key}").as_str(), value);
+            expression_sub = expression_sub.replace(format!("${{{key}}}").as_str(), value);
+        }
+
+        // Check for unresolved substitutions.
+        if let Some(start) = expression_sub.find('$') {
+            let rest = &expression_sub[start + 1..];
+            let end = rest.find(char::is_whitespace).unwrap_or(rest.len());
+            return Err(EntityPathFilterParseError::UnresolvedSubstitution(
+                rest[..end].to_owned(),
+            ));
+        }
+
+        if expression == "/**" {
+            Ok(Self {
+                raw_expression,
+                path: EntityPath::root(),
+                include_subtree: true,
+            })
+        } else if let Some(path) = expression_sub.strip_suffix("/**") {
+            Ok(Self {
+                raw_expression,
+                path: EntityPath::parse_strict(path)?,
+                include_subtree: true,
+            })
+        } else {
+            Ok(Self {
+                raw_expression,
+                path: EntityPath::parse_strict(&expression_sub)?,
+                include_subtree: false,
+            })
         }
     }
 

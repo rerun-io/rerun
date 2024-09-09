@@ -54,7 +54,10 @@ impl RecommendedSpaceView {
         let space_env = EntityPathSubs::new_with_origin(&origin);
         Self {
             origin,
-            query_filter: EntityPathFilter::from_query_expressions(expressions, &space_env),
+            query_filter: EntityPathFilter::from_query_expressions_forgiving(
+                expressions,
+                &space_env,
+            ),
         }
     }
 

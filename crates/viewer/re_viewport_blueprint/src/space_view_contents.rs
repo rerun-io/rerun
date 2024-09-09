@@ -118,7 +118,8 @@ impl SpaceViewContents {
         };
         let query = expressions.iter().map(|qe| qe.0.as_str());
 
-        let entity_path_filter = EntityPathFilter::from_query_expressions(query, space_env);
+        let entity_path_filter =
+            EntityPathFilter::from_query_expressions_forgiving(query, space_env);
 
         Self {
             blueprint_entity_path: property.blueprint_store_path,
