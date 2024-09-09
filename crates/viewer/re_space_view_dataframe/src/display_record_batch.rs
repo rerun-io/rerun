@@ -41,6 +41,7 @@ pub(crate) enum ComponentData {
 }
 
 impl ComponentData {
+    #[allow(clippy::borrowed_box)] // https://github.com/rust-lang/rust-clippy/issues/11940
     fn try_new(
         descriptor: &ComponentColumnDescriptor,
         column_data: &Box<dyn ArrowArray>,
@@ -75,6 +76,7 @@ impl ComponentData {
         }
     }
 
+    #[allow(clippy::too_many_arguments)]
     fn data_ui(
         &self,
         ctx: &ViewerContext<'_>,
@@ -133,6 +135,7 @@ pub(crate) enum DisplayColumn {
 }
 
 impl DisplayColumn {
+    #[allow(clippy::borrowed_box)] // https://github.com/rust-lang/rust-clippy/issues/11940
     fn try_new(
         column_schema: &ColumnDescriptor,
         column_data: &Box<dyn ArrowArray>,
@@ -143,7 +146,7 @@ impl DisplayColumn {
                     let row_ids = column_data
                         .as_any()
                         .downcast_ref::<ArrowStructArray>()
-                        .unwrap();
+                        .expect("sanity checked");
                     let [times, counters] = row_ids.values() else {
                         panic!("RowIds are corrupt -- this should be impossible (sanity checked)");
                     };
@@ -247,6 +250,36 @@ impl DisplayColumn {
                     index,
                 );
             }
+        }
+    }
+
+    /// Try to decode the row ID from the given row index.
+    ///
+    /// Succeeds only if the column is a `RowId` column.
+    pub(crate) fn try_decode_row_id(&self, row_index: usize) -> Option<RowId> {
+        match self {
+            Self::RowId {
+                row_id_times,
+                row_id_counters,
+            } => {
+                let time = row_id_times.value(row_index);
+                let counter = row_id_counters.value(row_index);
+                Some(RowId::from_u128((time as u128) << 64 | (counter as u128)))
+            }
+            _ => None,
+        }
+    }
+
+    /// Try to decode the time from the given row index.
+    ///
+    /// Succeeds only if the column is a `Timeline` column.
+    pub(crate) fn try_decode_time(&self, row_index: usize) -> Option<TimeInt> {
+        match self {
+            Self::Timeline { time_data, .. } => {
+                let timestamp = time_data.value(row_index);
+                TimeInt::try_from(timestamp).ok()
+            }
+            _ => None,
         }
     }
 }

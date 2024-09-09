@@ -274,9 +274,7 @@ impl TransportChunk {
     }
 
     #[inline]
-    pub fn all_columns<'a>(
-        &'a self,
-    ) -> impl Iterator<Item = (&ArrowField, &'a Box<dyn ArrowArray>)> + 'a {
+    pub fn all_columns(&self) -> impl Iterator<Item = (&ArrowField, &Box<dyn ArrowArray>)> + '_ {
         self.schema
             .fields
             .iter()

@@ -194,7 +194,7 @@ impl DataframeSpaceView {
             ctx.blueprint_db(),
             ctx.blueprint_query,
             Self::identifier(),
-            &re_log_types::EntityPathSubs::new_with_origin(&space_origin),
+            &re_log_types::EntityPathSubs::new_with_origin(space_origin),
         )
         .entity_path_filter
     }
