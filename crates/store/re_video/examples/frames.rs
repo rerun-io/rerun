@@ -27,16 +27,14 @@ fn main() {
     let video = std::fs::read(video_path).expect("failed to read video");
     let video = load_mp4(&video).expect("failed to load video");
 
-    println!("{}", video.segments.len());
+    println!(
+        "{} {}x{}",
+        video.segments.len(),
+        video.config.coded_width,
+        video.config.coded_height
+    );
 
-    let progress = ProgressBar::new(
-        video
-            .segments
-            .iter()
-            .map(|v| v.samples.len() as u64)
-            .sum::<u64>(),
-    )
-    .with_message("Decoding video");
+    let progress = ProgressBar::new(video.samples.len() as u64).with_message("Decoding video");
     progress.enable_steady_tick(Duration::from_millis(100));
 
     let frames = Arc::new(Mutex::new(Vec::new()));
@@ -50,15 +48,13 @@ fn main() {
     });
 
     let start = Instant::now();
-    for segment in &video.segments {
-        for sample in &segment.samples {
-            let data = video.get(sample).to_owned();
-            decoder.decode(re_video::decode::Chunk {
-                data,
-                timestamp: sample.timestamp,
-                duration: sample.duration,
-            });
-        }
+    for sample in &video.samples {
+        let data = video.get(sample).to_owned();
+        decoder.decode(re_video::decode::Chunk {
+            data,
+            timestamp: sample.timestamp,
+            duration: sample.duration,
+        });
     }
 
     drop(decoder);

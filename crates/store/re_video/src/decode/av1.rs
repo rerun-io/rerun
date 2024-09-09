@@ -5,6 +5,7 @@ use super::{Chunk, Frame};
 use crate::TimeMs;
 use crossbeam::channel::bounded;
 use crossbeam::channel::RecvError;
+use crossbeam::channel::TryRecvError;
 use crossbeam::channel::{unbounded, Receiver, Sender};
 use crossbeam::select;
 use crossbeam::sync::Parker;
@@ -17,21 +18,19 @@ pub struct Decoder {
     _thread: std::thread::JoinHandle<()>,
     unparker: Unparker,
     command_tx: Sender<Command>,
-    flush_rx: Receiver<()>,
     reset_tx: Sender<()>,
 }
 
 impl Decoder {
     pub fn new(on_output: impl Fn(Frame) + Send + Sync + 'static) -> Self {
         let (command_tx, command_rx) = unbounded();
-        let (flush_tx, flush_rx) = bounded(1);
         let (reset_tx, reset_rx) = bounded(1);
         let parker = Parker::new();
         let unparker = parker.unparker().clone();
 
         let thread = std::thread::Builder::new()
             .name("av1_decoder".into())
-            .spawn(move || decoder_thread(&command_rx, &reset_rx, &flush_tx, &parker, &on_output))
+            .spawn(move || decoder_thread(&command_rx, &reset_rx, &parker, &on_output))
             .expect("failed to spawn decoder thread");
 
         Self {
@@ -39,7 +38,6 @@ impl Decoder {
             unparker,
             command_tx,
             reset_tx,
-            flush_rx,
         }
     }
 
@@ -54,16 +52,20 @@ impl Decoder {
     /// This does not block, all chunks sent to `decode` before this point will be discarded.
     pub fn reset(&self) {
         // Ask the decoder to reset its internal state.
+        let (tx, rx) = crossbeam::channel::bounded(0);
+        self.command_tx.send(Command::Reset(tx)).ok();
         self.reset_tx.send(()).ok();
         self.unparker.unpark();
+        rx.recv().ok();
     }
 
     /// Blocks until all pending frames have been decoded.
     pub fn flush(&self) {
         // Ask the decoder to notify us once all pending frames have been decoded.
-        self.command_tx.send(Command::Flush).ok();
+        let (tx, rx) = crossbeam::channel::bounded(0);
+        self.command_tx.send(Command::Flush(tx)).ok();
         self.unparker.unpark();
-        self.flush_rx.recv().ok();
+        rx.recv().ok();
     }
 }
 
@@ -75,7 +77,8 @@ impl Drop for Decoder {
 
 enum Command {
     Chunk(Chunk),
-    Flush,
+    Flush(Sender<()>),
+    Reset(Sender<()>),
 }
 
 type OutputCallback = dyn Fn(Frame) + Send + Sync;
@@ -83,7 +86,6 @@ type OutputCallback = dyn Fn(Frame) + Send + Sync;
 fn decoder_thread(
     command_rx: &Receiver<Command>,
     reset_rx: &Receiver<()>,
-    flush_tx: &Sender<()>,
     parker: &Parker,
     on_output: &OutputCallback,
 ) {
@@ -102,6 +104,24 @@ fn decoder_thread(
                         // Reset the decoder.
                         decoder.flush();
                         drain_decoded_frames(&mut decoder);
+                        loop {
+                            match command_rx.try_recv() {
+                                // Discard chunks
+                                Ok(Command::Chunk(_)) => {}
+                                Ok(Command::Reset(done)) => {
+                                    done.try_send(()).ok();
+                                    break;
+                                }
+                                Ok(Command::Flush(done)) => {
+                                    done.try_send(()).ok();
+                                    // We have not hit a `Reset` yet
+                                    break;
+                                }
+                                Err(TryRecvError::Empty | TryRecvError::Disconnected) => {
+                                    break;
+                                }
+                            }
+                        }
                         continue;
                     }
                     Err(RecvError) => {
@@ -121,11 +141,16 @@ fn decoder_thread(
                         continue;
                     }
 
-                    Ok(Command::Flush) => {
+                    Ok(Command::Flush(done)) => {
                         // All pending frames must have already been decoded, because data sent
                         // through a channel is received in the order it was sent.
                         output_frames(&mut decoder, on_output);
-                        flush_tx.try_send(()).ok();
+                        done.try_send(()).ok();
+                        continue;
+                    }
+
+                    Ok(Command::Reset(done)) => {
+                        done.try_send(()).ok();
                         continue;
                     }
 

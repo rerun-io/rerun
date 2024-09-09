@@ -61,16 +61,20 @@ pub fn load_mp4(bytes: &[u8]) -> Result<VideoData, VideoLoadError> {
 
     let duration = TimeMs::new(video_track.duration_ms());
     let mut samples = Vec::<Sample>::new();
+    let mut segment_start = 0;
     let mut segments = Vec::<Segment>::new();
     let data = video_track.data.clone();
 
     for sample in &video_track.samples {
         if sample.is_sync && !samples.is_empty() {
+            let start = segment_start;
+            let len = samples.len() - segment_start;
             segments.push(Segment {
                 timestamp: samples[0].timestamp,
-                samples,
+                start,
+                len,
             });
-            samples = Vec::new();
+            segment_start = samples.len();
         }
 
         let timestamp = TimeMs::new(sample.timestamp_ms());
@@ -88,16 +92,20 @@ pub fn load_mp4(bytes: &[u8]) -> Result<VideoData, VideoLoadError> {
     }
 
     if !samples.is_empty() {
+        let start = segment_start;
+        let len = samples.len() - segment_start;
         segments.push(Segment {
             timestamp: samples[0].timestamp,
-            samples,
+            start,
+            len,
         });
     }
 
     Ok(VideoData {
         config,
-        data,
         duration,
         segments,
+        samples,
+        data,
     })
 }

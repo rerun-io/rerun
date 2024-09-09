@@ -18,6 +18,9 @@ pub struct VideoData {
     /// followed by any number of delta frames.
     pub segments: Vec<Segment>,
 
+    /// List of samples contained in this video.
+    pub samples: Vec<Sample>,
+
     /// This array stores all data used by samples.
     pub data: Vec<u8>,
 }
@@ -35,10 +38,8 @@ pub struct Segment {
     /// Time of the first sample in this segment, in milliseconds.
     pub timestamp: TimeMs,
 
-    /// List of samples contained in this segment.
-    /// At least one sample per segment is guaranteed,
-    /// and the first sample is always a key frame.
-    pub samples: Vec<Sample>,
+    pub start: usize,
+    pub len: usize,
 }
 
 /// A single sample in a video.
@@ -145,7 +146,7 @@ impl std::fmt::Debug for Segment {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("Segment")
             .field("timestamp", &self.timestamp)
-            .field("samples", &self.samples.len())
+            .field("samples", &self.len)
             .finish()
     }
 }
