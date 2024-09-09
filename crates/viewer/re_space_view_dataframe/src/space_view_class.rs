@@ -151,7 +151,7 @@ mode sets the default time range to _everything_. You can override this in the s
                 //TODO(ab): specify which columns
                 let query_handle = query_engine.latest_at(&query, None);
 
-                dataframe_ui(ctx, ui, query_handle.into());
+                dataframe_ui(ctx, ui, query_handle);
             }
             QueryKind::Range {
                 pov_entity,
@@ -177,11 +177,9 @@ mode sets the default time range to _everything_. You can override this in the s
                 };
 
                 //TODO(ab): specify which columns should be displayed or not
-                let query_handle = query_engine.range(&query, None);
-
-                dataframe_ui(ctx, ui, query_handle.into());
+                dataframe_ui(ctx, ui, query_engine.range(&query, None));
             }
-        }
+        };
 
         Ok(())
     }

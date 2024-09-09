@@ -1,11 +1,23 @@
-use re_chunk_store::{ColumnDescriptor, LatestAtQuery, RowId};
-use re_dataframe::{LatestAtQueryHandle, RangeQueryHandle, RecordBatch};
-use re_log_types::{EntityPath, TimeInt, Timeline};
-use re_viewer_context::ViewerContext;
 use std::collections::BTreeMap;
 use std::ops::Range;
 
-use crate::display_record_batch::DisplayRecordBatch;
+use anyhow::Context;
+
+use re_chunk_store::{ColumnDescriptor, LatestAtQuery, RowId};
+use re_dataframe::{LatestAtQueryHandle, RangeQueryHandle, RecordBatch};
+use re_log_types::{EntityPath, TimeInt, Timeline};
+use re_ui::UiExt as _;
+use re_viewer_context::ViewerContext;
+
+use crate::display_record_batch::{DisplayRecordBatch, DisplayRecordBatchError};
+
+pub(crate) fn dataframe_ui<'a>(
+    ctx: &ViewerContext<'_>,
+    ui: &mut egui::Ui,
+    query: impl Into<QueryHandle<'a>>,
+) {
+    dataframe_ui_impl(ctx, ui, query.into());
+}
 
 /// A query handle for either a latest-at or range query.
 pub(crate) enum QueryHandle<'a> {
@@ -57,142 +69,173 @@ impl<'a> From<RangeQueryHandle<'a>> for QueryHandle<'a> {
     }
 }
 
-/// Display the result of a [`QueryHandle`] in a table.
-pub(crate) fn dataframe_ui(
-    ctx: &ViewerContext<'_>,
-    ui: &mut egui::Ui,
-    query_handle: QueryHandle<'_>,
-) {
-    re_tracing::profile_function!();
+/// This structure maintains the data for displaying rows in a table.
+///
+/// Row data is stored in a bunch of [`DisplayRecordBatch`], which are created from
+/// [`RecordBatch`]s. We also maintain a mapping for each row number to the corresponding record
+/// batch and the inedex inside it.
+struct RowsDisplayData {
+    //row_ids: Vec<RowId>,
+    display_record_batches: Vec<DisplayRecordBatch>,
+    batch_and_row_from_row_nr: BTreeMap<u64, (usize, usize)>,
+}
 
-    struct MyTableDelegate<'a> {
-        ctx: &'a ViewerContext<'a>,
-        query_handle: &'a QueryHandle<'a>,
-        schema: &'a [ColumnDescriptor],
-        header_entity_paths: Vec<Option<EntityPath>>,
-        display_record_batches: Option<Vec<DisplayRecordBatch>>,
-        query_timeline: Timeline,
+impl RowsDisplayData {
+    fn try_new(
+        row_indices: &Range<u64>,
+        record_batches: Vec<RecordBatch>,
+        schema: &[ColumnDescriptor],
+    ) -> Result<Self, DisplayRecordBatchError> {
+        let display_record_batches = record_batches
+            .into_iter()
+            .map(|record_batch| DisplayRecordBatch::try_new(&record_batch, schema))
+            .collect::<Result<Vec<_>, _>>()?;
 
-        num_rows: u64,
+        let mut batch_and_row_from_row_nr = BTreeMap::new();
+        let mut offset = row_indices.start;
+        for (batch_idx, batch) in display_record_batches.iter().enumerate() {
+            let batch_len = batch.num_rows() as u64;
+            for row_idx in 0..batch_len {
+                batch_and_row_from_row_nr.insert(offset + row_idx, (batch_idx, row_idx as usize));
+            }
+            offset += batch_len;
+        }
 
-        batch_and_row_from_row_nr: BTreeMap<u64, (usize, usize)>,
+        Ok(Self {
+            //row_ids: row_indices.collect(),
+            display_record_batches,
+            batch_and_row_from_row_nr,
+        })
+    }
+}
+
+/// [`egui_table::TableDelegate`] implementation for displaying a [`QueryHandle`] in a table.
+struct DataframeTableDelegate<'a> {
+    ctx: &'a ViewerContext<'a>,
+    query_handle: &'a QueryHandle<'a>,
+    schema: &'a [ColumnDescriptor],
+    header_entity_paths: Vec<Option<EntityPath>>,
+    display_data: anyhow::Result<RowsDisplayData>,
+    //display_record_batches: Option<Vec<DisplayRecordBatch>>,
+    query_timeline: Timeline,
+
+    num_rows: u64,
+    //batch_and_row_from_row_nr: BTreeMap<u64, (usize, usize)>,
+}
+
+impl<'a> egui_table::TableDelegate for DataframeTableDelegate<'a> {
+    fn prefetch_columns_and_rows(&mut self, info: &egui_table::PrefetchInfo) {
+        re_tracing::profile_function!();
+
+        let data = RowsDisplayData::try_new(
+            &info.visible_rows,
+            self.query_handle.get(
+                info.visible_rows.start,
+                info.visible_rows.end - info.visible_rows.start,
+            ),
+            self.schema,
+        );
+
+        self.display_data = data.with_context(|| "Failed to create display data");
     }
 
-    impl<'a> egui_table::TableDelegate for MyTableDelegate<'a> {
-        fn prefetch_columns_and_rows(&mut self, info: &egui_table::PrefetchInfo) {
-            re_tracing::profile_function!();
-
-            let start_idx = info.visible_rows.start;
-            let end_idx = info.visible_rows.end;
-
-            if end_idx <= start_idx {
-                return;
-            }
-
-            let display_record_batches = self
-                .query_handle
-                .get(start_idx, end_idx - start_idx)
-                .into_iter()
-                .map(|record_batch| DisplayRecordBatch::try_new(&record_batch, self.schema))
-                .collect::<Result<Vec<_>, _>>()
-                //TODO: error handling
-                .expect("Failed to create DisplayRecordBatch");
-
-            let mut offset = start_idx;
-            for (batch_idx, batch) in display_record_batches.iter().enumerate() {
-                let batch_len = batch.num_rows() as u64;
-                for row_idx in 0..batch_len {
-                    self.batch_and_row_from_row_nr
-                        .insert(offset + row_idx, (batch_idx, row_idx as usize));
+    fn header_cell_ui(&mut self, ui: &mut egui::Ui, cell: &egui_table::HeaderCellInfo) {
+        egui::Frame::none()
+            .inner_margin(egui::Margin::symmetric(4.0, 0.0))
+            .show(ui, |ui| {
+                if cell.row_nr == 0 {
+                    if let Some(entity_path) = &self.header_entity_paths[cell.group_index] {
+                        ui.label(entity_path.to_string());
+                    }
+                } else if cell.row_nr == 1 {
+                    ui.strong(self.schema[cell.col_range.start].short_name());
+                } else {
+                    // this should never happen
+                    error_ui(ui, format!("Unexpected header row_nr: {}", cell.row_nr));
                 }
-                offset += batch_len;
-            }
+            });
+    }
 
-            self.display_record_batches = Some(display_record_batches);
+    fn cell_ui(&mut self, ui: &mut egui::Ui, cell: &egui_table::CellInfo) {
+        re_tracing::profile_function!();
+
+        if cell.row_nr % 2 == 1 {
+            // Paint stripes
+            ui.painter()
+                .rect_filled(ui.max_rect(), 0.0, ui.visuals().faint_bg_color);
         }
 
-        fn header_cell_ui(&mut self, ui: &mut egui::Ui, cell: &egui_table::HeaderCellInfo) {
-            egui::Frame::none()
-                .inner_margin(egui::Margin::symmetric(4.0, 0.0))
-                .show(ui, |ui| {
-                    if cell.row_nr == 0 {
-                        if let Some(entity_path) = &self.header_entity_paths[cell.group_index] {
-                            ui.label(entity_path.to_string());
-                        }
-                    } else if cell.row_nr == 1 {
-                        ui.strong(self.schema[cell.col_range.start].short_name());
-                    } else {
-                        // this should never happen
-                        re_log::warn_once!("Unexpected header row_nr: {}", cell.row_nr);
-                    }
-                });
-        }
-
-        fn cell_ui(&mut self, ui: &mut egui::Ui, cell: &egui_table::CellInfo) {
-            re_tracing::profile_function!();
-
-            //TODO: this should not happen!
-            if cell.row_nr >= self.num_rows {
-                re_log::warn_once!(
+        // sanity check, this should never happen
+        if cell.row_nr >= self.num_rows {
+            error_ui(
+                ui,
+                format!(
                     "Unexpected row_nr: {} (table row count {})",
-                    cell.row_nr,
-                    self.num_rows
-                );
+                    cell.row_nr, self.num_rows
+                ),
+            );
+            return;
+        }
+
+        let display_data = match &self.display_data {
+            Ok(display_data) => display_data,
+            Err(err) => {
+                error_ui(ui, format!("Error with display data: {err}"));
                 return;
             }
+        };
 
-            if cell.row_nr % 2 == 1 {
-                // Paint stripes
-                ui.painter()
-                    .rect_filled(ui.max_rect(), 0.0, ui.visuals().faint_bg_color);
-            }
+        egui::Frame::none()
+            .inner_margin(egui::Margin::symmetric(4.0, 0.0))
+            .show(ui, |ui| {
+                //TODO: wrong, we must pass the actual timestamp of the row
+                let latest_at_query = LatestAtQuery::new(self.query_timeline, TimeInt::MAX);
+                //TODO: wrong, we must pass the actual row_id (if we have it)
+                let row_id = RowId::ZERO;
 
-            egui::Frame::none()
-                .inner_margin(egui::Margin::symmetric(4.0, 0.0))
-                .show(ui, |ui| {
-                    //TODO: wrong!
-                    let latest_at_query = LatestAtQuery::new(self.query_timeline, TimeInt::MAX);
-                    let row_id = RowId::ZERO;
+                if let Some((batch_nr, batch_index)) = display_data
+                    .batch_and_row_from_row_nr
+                    .get(&cell.row_nr)
+                    .copied()
+                {
+                    let batch = &display_data.display_record_batches[batch_nr];
+                    let column = &batch.columns()[cell.col_nr];
 
-                    if let Some(display_record_batches) = &self.display_record_batches {
-                        if let Some((batch_nr, batch_index)) =
-                            self.batch_and_row_from_row_nr.get(&cell.row_nr).copied()
-                        {
-                            let batch = &display_record_batches[batch_nr];
-                            let column = &batch.columns()[cell.col_nr];
-
-                            if ui.is_sizing_pass() {
-                                ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Extend);
-                            } else {
-                                ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Truncate);
-                            }
-                            column.data_ui(self.ctx, ui, row_id, &latest_at_query, batch_index);
-                        } else {
-                            re_log::warn_once!(
-                                "Bug in egui_table: we didn't prefetch what was rendered!"
-                            );
-                        }
+                    if ui.is_sizing_pass() {
+                        ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Extend);
                     } else {
-                        panic!("cell_ui called before pre-fetch");
+                        ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Truncate);
                     }
-                });
-        }
+                    column.data_ui(self.ctx, ui, row_id, &latest_at_query, batch_index);
+                } else {
+                    error_ui(
+                        ui,
+                        "Bug in egui_table: we didn't prefetch what was rendered!",
+                    );
+                }
+            });
     }
+}
+
+/// Display the result of a [`QueryHandle`] in a table.
+fn dataframe_ui_impl(ctx: &ViewerContext<'_>, ui: &mut egui::Ui, query_handle: QueryHandle<'_>) {
+    re_tracing::profile_function!();
 
     let schema = query_handle.schema();
     let (header_groups, header_entity_paths) = column_groups_for_entity(schema);
 
     let num_rows = query_handle.num_rows();
 
-    let mut table_delegate = MyTableDelegate {
+    let mut table_delegate = DataframeTableDelegate {
         ctx,
         query_handle: &query_handle,
         schema,
         header_entity_paths,
-        display_record_batches: None,
         query_timeline: query_handle.timeline(),
         num_rows,
-        batch_and_row_from_row_nr: Default::default(), // Will be filled during pre-fetch
+        display_data: Err(anyhow::anyhow!(
+            "No row data, `fetch_columns_and_rows` not called."
+        )),
     };
 
     let num_sticky_cols = schema
@@ -244,4 +287,10 @@ fn column_groups_for_entity(
         entity_paths.push(current_entity.cloned());
         (groups, entity_paths)
     }
+}
+
+fn error_ui(ui: &mut egui::Ui, error: impl AsRef<str>) {
+    let error = error.as_ref();
+    ui.error_label(error);
+    re_log::warn_once!("{error}");
 }
