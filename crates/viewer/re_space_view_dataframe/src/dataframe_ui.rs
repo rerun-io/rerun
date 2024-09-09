@@ -13,6 +13,7 @@ use re_viewer_context::ViewerContext;
 
 use crate::display_record_batch::{DisplayRecordBatch, DisplayRecordBatchError};
 
+/// Display a dataframe table for the provided query.
 pub(crate) fn dataframe_ui<'a>(
     ctx: &ViewerContext<'_>,
     ui: &mut egui::Ui,
