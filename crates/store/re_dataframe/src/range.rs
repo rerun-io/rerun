@@ -482,7 +482,7 @@ mod tests {
         let entity_path: EntityPath = "/points".into();
 
         let query = RangeQueryExpression {
-            entity_path_expr: "/**".into(),
+            entity_path_filter: "/**".into(),
             timeline: Timeline::log_time(),
             time_range: ResolvedTimeRange::EVERYTHING,
             pov: ComponentColumnDescriptor::new::<Position3D>(entity_path.clone()),
@@ -572,7 +572,7 @@ mod tests {
         };
 
         let query = RangeQueryExpression {
-            entity_path_expr: "/**".into(),
+            entity_path_filter: "/**".into(),
             timeline: Timeline::log_time(),
             time_range: ResolvedTimeRange::EVERYTHING,
             pov: ComponentColumnDescriptor::new::<MyPoint>(entity_path.clone()),

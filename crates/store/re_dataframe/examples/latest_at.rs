@@ -20,7 +20,7 @@ fn main() -> anyhow::Result<()> {
     };
 
     let path_to_rrd = get_arg(1);
-    let entity_path_expr = args.get(2).map_or("/**", |s| s.as_str());
+    let entity_path_filter = args.get(2).map_or("/**", |s| s.as_str());
 
     let stores = ChunkStore::from_rrd_filepath(
         &ChunkStoreConfig::DEFAULT,
@@ -40,7 +40,7 @@ fn main() -> anyhow::Result<()> {
         };
 
         let query = LatestAtQueryExpression {
-            entity_path_expr: entity_path_expr.into(),
+            entity_path_filter: entity_path_filter.into(),
             timeline: Timeline::log_time(),
             at: TimeInt::MAX,
         };

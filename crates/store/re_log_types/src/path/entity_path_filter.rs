@@ -128,6 +128,12 @@ impl std::iter::Sum for EntityPathFilter {
     }
 }
 
+impl<S: AsRef<str>> From<S> for EntityPathFilter {
+    fn from(rules: S) -> Self {
+        Self::parse_forgiving(rules.as_ref(), &EntityPathSubs::default())
+    }
+}
+
 impl EntityPathFilter {
     /// Example of rules:
     ///
@@ -229,7 +235,8 @@ impl EntityPathFilter {
         None
     }
 
-    pub fn is_included(&self, path: &EntityPath) -> bool {
+    /// Does this filter include the given entity path?
+    pub fn matches(&self, path: &EntityPath) -> bool {
         let effect = self
             .most_specific_match(path)
             .unwrap_or(RuleEffect::Exclude);
@@ -240,7 +247,7 @@ impl EntityPathFilter {
     }
 
     /// Is there a rule for this exact entity path (ignoring subtree)?
-    pub fn is_exact_included(&self, entity_path: &EntityPath) -> bool {
+    pub fn matches_exactly(&self, entity_path: &EntityPath) -> bool {
         self.rules.iter().any(|(rule, effect)| {
             effect == &RuleEffect::Include && !rule.include_subtree && rule.path == *entity_path
         })
@@ -340,7 +347,7 @@ impl EntityPathFilter {
 
     /// Checks whether this results of this filter "fully contain" the results of another filter.
     ///
-    /// If this returns `true` there should not exist any [`EntityPath`] for which [`Self::is_included`]
+    /// If this returns `true` there should not exist any [`EntityPath`] for which [`Self::matches`]
     /// would return `true` and the other filter would return `false` for this filter.
     ///
     /// This check operates purely on the rule expressions and not the actual entity tree,

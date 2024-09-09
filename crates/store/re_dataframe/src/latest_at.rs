@@ -269,7 +269,7 @@ mod tests {
         };
 
         let query = LatestAtQueryExpression {
-            entity_path_expr: "/**".into(),
+            entity_path_filter: "/**".into(),
             timeline: Timeline::log_time(),
             at: TimeInt::MAX,
         };
@@ -335,7 +335,7 @@ mod tests {
         };
 
         let query = LatestAtQueryExpression {
-            entity_path_expr: "/**".into(),
+            entity_path_filter: "/**".into(),
             timeline: Timeline::log_time(),
             at: TimeInt::MAX,
         };

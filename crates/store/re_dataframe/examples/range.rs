@@ -23,7 +23,7 @@ fn main() -> anyhow::Result<()> {
 
     let path_to_rrd = get_arg(1);
     let entity_path_pov = get_arg(2).as_str();
-    let entity_path_expr = args.get(3).map_or("/**", |s| s.as_str());
+    let entity_path_filter = args.get(3).map_or("/**", |s| s.as_str());
 
     let stores = ChunkStore::from_rrd_filepath(
         &ChunkStoreConfig::DEFAULT,
@@ -43,7 +43,7 @@ fn main() -> anyhow::Result<()> {
         };
 
         let query = RangeQueryExpression {
-            entity_path_expr: entity_path_expr.into(),
+            entity_path_filter: entity_path_filter.into(),
             timeline: Timeline::log_tick(),
             time_range: ResolvedTimeRange::new(0, 30),
             pov: ComponentColumnDescriptor::new::<re_types::components::Position3D>(
