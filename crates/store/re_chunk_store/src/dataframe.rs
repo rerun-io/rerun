@@ -482,7 +482,7 @@ impl ChunkStore {
                                 archetype_name: None,
                                 archetype_field_name: None,
                                 component_name: *component_name,
-                                datatype: datatype.clone(),
+                                datatype: ArrowListArray::<i32>::default_datatype(datatype.clone()),
                                 is_static: true,
                             })
                         })
