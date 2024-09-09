@@ -20,6 +20,9 @@ pub mod util;
 #[cfg(not(target_arch = "wasm32"))]
 mod batcher;
 
+#[cfg(feature = "arrow")]
+mod arrow;
+
 pub use self::builder::{ChunkBuilder, TimeColumnBuilder};
 pub use self::chunk::{Chunk, ChunkError, ChunkResult, TimeColumn};
 pub use self::helpers::{ChunkShared, UnitChunkShared};
