@@ -124,7 +124,7 @@ struct DataframeTableDelegate<'a> {
 }
 
 impl<'a> egui_table::TableDelegate for DataframeTableDelegate<'a> {
-    fn prefetch_columns_and_rows(&mut self, info: &egui_table::PrefetchInfo) {
+    fn prepare(&mut self, info: &egui_table::PrefetchInfo) {
         re_tracing::profile_function!();
 
         let data = RowsDisplayData::try_new(
@@ -244,21 +244,28 @@ fn dataframe_ui_impl(ctx: &ViewerContext<'_>, ui: &mut egui::Ui, query_handle: Q
         .count();
 
     egui::Frame::none().inner_margin(5.0).show(ui, |ui| {
-        egui_table::Table {
-            columns: vec![egui_table::Column::new(200.0, 0.0..=f32::INFINITY); schema.len()],
-            num_sticky_cols,
-            headers: vec![
+        egui_table::Table::new()
+            .columns(
+                schema
+                    .iter()
+                    .map(|column_descr| {
+                        egui_table::Column::new(200.0)
+                            .resizable(true)
+                            .id(egui::Id::new(column_descr))
+                    })
+                    .collect::<Vec<_>>(),
+            )
+            .num_sticky_cols(num_sticky_cols)
+            .headers(vec![
                 egui_table::HeaderRow {
                     height: 20.0,
                     groups: header_groups,
                 },
                 egui_table::HeaderRow::new(20.0),
-            ],
-            num_rows,
-            row_height: re_ui::DesignTokens::table_line_height(),
-            ..Default::default()
-        }
-        .show(ui, &mut table_delegate);
+            ])
+            .num_rows(num_rows)
+            .row_height(re_ui::DesignTokens::table_line_height())
+            .show(ui, &mut table_delegate);
     });
 }
 
