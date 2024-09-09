@@ -386,14 +386,21 @@ impl EntityDb {
         re_tracing::profile_function!();
 
         assert!((0.0..=1.0).contains(&fraction_to_purge));
-        self.gc(&GarbageCollectionOptions {
+        if !self.gc(&GarbageCollectionOptions {
             target: GarbageCollectionTarget::DropAtLeastFraction(fraction_to_purge as _),
             protect_latest: 1,
             time_budget: DEFAULT_GC_TIME_BUDGET,
-        });
+        }) {
+            // If we weren't able to collect any data, then we need to GC the cache itself in order
+            // to regain some space.
+            // See <https://github.com/rerun-io/rerun/issues/7369#issuecomment-2335164098> for the
+            // complete rationale.
+            self.query_caches.purge_fraction_of_ram(fraction_to_purge);
+        }
     }
 
-    pub fn gc(&mut self, gc_options: &GarbageCollectionOptions) {
+    /// Returns `true` if anything at all was actually GC'd.
+    pub fn gc(&mut self, gc_options: &GarbageCollectionOptions) -> bool {
         re_tracing::profile_function!();
 
         let (store_events, stats_diff) = self.data_store.gc(gc_options);
@@ -405,6 +412,8 @@ impl EntityDb {
         );
 
         self.on_store_deletions(&store_events);
+
+        !store_events.is_empty()
     }
 
     /// Unconditionally drops all the data for a given [`EntityPath`] .
