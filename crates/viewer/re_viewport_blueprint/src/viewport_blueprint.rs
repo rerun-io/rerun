@@ -285,7 +285,7 @@ impl ViewportBlueprint {
                         || space_view
                             .contents
                             .entity_path_filter
-                            .is_included(&instance_path.entity_path)
+                            .matches(&instance_path.entity_path)
                 })
             }
 

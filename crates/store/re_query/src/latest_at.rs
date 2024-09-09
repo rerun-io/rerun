@@ -171,6 +171,28 @@ impl Caches {
 
         results
     }
+
+    /// Free up some RAM by forgetting the older parts of all timelines.
+    pub fn purge_fraction_of_ram(&mut self, fraction_to_purge: f32) {
+        re_tracing::profile_function!();
+
+        let mut caches = self.latest_at_per_cache_key.write();
+        for (_key, cache) in caches.iter_mut() {
+            let mut cache = cache.write();
+
+            let split_point =
+                (cache.per_query_time.len().saturating_sub(1) as f32 * fraction_to_purge) as usize;
+
+            if let Some(split_time) = cache.per_query_time.keys().nth(split_point).copied() {
+                // NOTE: By not clearing the pending invalidations set, we risk invalidating a
+                // future result that need not be invalidated.
+                // That is a much better outcome that the opposite though: not invalidating a
+                // future result that in fact should have been.
+                // See `handle_pending_invalidation` for more information.
+                cache.per_query_time = cache.per_query_time.split_off(&split_time);
+            }
+        }
+    }
 }
 
 // --- Results ---

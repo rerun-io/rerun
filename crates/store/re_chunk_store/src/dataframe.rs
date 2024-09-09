@@ -10,8 +10,8 @@ use arrow2::{
 use itertools::Itertools as _;
 
 use re_chunk::LatestAtQuery;
-use re_log_types::ResolvedTimeRange;
 use re_log_types::{EntityPath, TimeInt, Timeline};
+use re_log_types::{EntityPathFilter, ResolvedTimeRange};
 use re_types_core::{ArchetypeName, ComponentName, Loggable as _};
 
 use crate::ChunkStore;
@@ -347,10 +347,10 @@ impl From<RangeQueryExpression> for QueryExpression {
 
 impl QueryExpression {
     #[inline]
-    pub fn entity_path_expr(&self) -> &EntityPathExpression {
+    pub fn entity_path_filter(&self) -> &EntityPathFilter {
         match self {
-            Self::LatestAt(query) => &query.entity_path_expr,
-            Self::Range(query) => &query.entity_path_expr,
+            Self::LatestAt(query) => &query.entity_path_filter,
+            Self::Range(query) => &query.entity_path_filter,
         }
     }
 }
@@ -370,7 +370,7 @@ pub struct LatestAtQueryExpression {
     /// The entity path expression to query.
     ///
     /// Example: `world/camera/**`
-    pub entity_path_expr: EntityPathExpression,
+    pub entity_path_filter: EntityPathFilter,
 
     /// The timeline to query.
     ///
@@ -387,13 +387,14 @@ impl std::fmt::Display for LatestAtQueryExpression {
     #[inline]
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let Self {
-            entity_path_expr,
+            entity_path_filter,
             timeline,
             at,
         } = self;
 
         f.write_fmt(format_args!(
-            "latest state for '{entity_path_expr}' at {} on {:?}",
+            "latest state for '{}' at {} on {:?}",
+            entity_path_filter.iter_expressions().join(", "),
             timeline.typ().format_utc(*at),
             timeline.name(),
         ))
@@ -405,7 +406,7 @@ pub struct RangeQueryExpression {
     /// The entity path expression to query.
     ///
     /// Example: `world/camera/**`
-    pub entity_path_expr: EntityPathExpression,
+    pub entity_path_filter: EntityPathFilter,
 
     /// The timeline to query.
     ///
@@ -434,79 +435,19 @@ impl std::fmt::Display for RangeQueryExpression {
     #[inline]
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let Self {
-            entity_path_expr,
+            entity_path_filter,
             timeline,
             time_range,
             pov,
         } = self;
 
         f.write_fmt(format_args!(
-            "{entity_path_expr} ranging {}..={} on {:?} as seen from {pov}",
+            "{} ranging {}..={} on {:?} as seen from {pov}",
+            entity_path_filter.iter_expressions().join(", "),
             timeline.typ().format_utc(time_range.min()),
             timeline.typ().format_utc(time_range.max()),
             timeline.name(),
         ))
-    }
-}
-
-/// An expression to select one or more entities to query.
-///
-/// Example: `world/camera/**`
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
-pub struct EntityPathExpression {
-    pub path: EntityPath,
-
-    /// If true, ALSO include children and grandchildren of this path (recursive rule).
-    pub include_subtree: bool,
-}
-
-impl std::fmt::Display for EntityPathExpression {
-    #[inline]
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let Self {
-            path,
-            include_subtree,
-        } = self;
-
-        f.write_fmt(format_args!(
-            "{path}{}{}",
-            if path.is_root() { "" } else { "/" },
-            if *include_subtree { "**" } else { "" }
-        ))
-    }
-}
-
-impl EntityPathExpression {
-    #[inline]
-    pub fn matches(&self, path: &EntityPath) -> bool {
-        if self.include_subtree {
-            path.starts_with(&self.path)
-        } else {
-            path == &self.path
-        }
-    }
-}
-
-impl<S: AsRef<str>> From<S> for EntityPathExpression {
-    #[inline]
-    fn from(s: S) -> Self {
-        let s = s.as_ref();
-        if s == "/**" {
-            Self {
-                path: EntityPath::root(),
-                include_subtree: true,
-            }
-        } else if let Some(path) = s.strip_suffix("/**") {
-            Self {
-                path: EntityPath::parse_forgiving(path),
-                include_subtree: true,
-            }
-        } else {
-            Self {
-                path: EntityPath::parse_forgiving(s),
-                include_subtree: false,
-            }
-        }
     }
 }
 
@@ -621,7 +562,7 @@ impl ChunkStore {
             .into_iter()
             .filter(|descr| {
                 descr.entity_path().map_or(true, |entity_path| {
-                    query.entity_path_expr().matches(entity_path)
+                    query.entity_path_filter().matches(entity_path)
                 })
             })
             .collect_vec();

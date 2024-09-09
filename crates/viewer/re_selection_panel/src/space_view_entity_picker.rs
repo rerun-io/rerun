@@ -161,7 +161,7 @@ fn add_entities_line_ui(
 
         let is_explicitly_excluded = entity_path_filter.is_explicitly_excluded(entity_path);
         let is_explicitly_included = entity_path_filter.is_explicitly_included(entity_path);
-        let is_included = entity_path_filter.is_included(entity_path);
+        let is_included = entity_path_filter.matches(entity_path);
 
         ui.add_enabled_ui(add_info.can_add_self_or_descendant.is_compatible(), |ui| {
             let widget_text = if is_explicitly_excluded {

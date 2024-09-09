@@ -7,7 +7,7 @@ use re_chunk_store::{
     VersionPolicy,
 };
 use re_dataframe::{QueryEngine, RecordBatch};
-use re_log_types::{ResolvedTimeRange, StoreKind};
+use re_log_types::{EntityPathFilter, ResolvedTimeRange, StoreKind};
 
 fn main() -> anyhow::Result<()> {
     let args = std::env::args().collect_vec();
@@ -25,7 +25,7 @@ fn main() -> anyhow::Result<()> {
 
     let path_to_rrd = get_arg(1);
     let entity_path_pov = get_arg(2).as_str();
-    let entity_path_expr = args.get(3).map_or("/**", |s| s.as_str());
+    let entity_path_filter = EntityPathFilter::try_from(args.get(3).map_or("/**", |s| s.as_str()))?;
 
     let stores = ChunkStore::from_rrd_filepath(
         &ChunkStoreConfig::ALL_DISABLED,
@@ -45,7 +45,7 @@ fn main() -> anyhow::Result<()> {
         };
 
         let query = RangeQueryExpression {
-            entity_path_expr: entity_path_expr.into(),
+            entity_path_filter: entity_path_filter.clone(),
             timeline: Timeline::log_tick(),
             time_range: ResolvedTimeRange::new(0, 30),
             pov: ComponentColumnDescriptor::new::<re_types::components::Position3D>(

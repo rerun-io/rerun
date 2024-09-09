@@ -3,7 +3,7 @@ use itertools::Itertools as _;
 use re_chunk::{TimeInt, Timeline};
 use re_chunk_store::{ChunkStore, ChunkStoreConfig, LatestAtQueryExpression, VersionPolicy};
 use re_dataframe::QueryEngine;
-use re_log_types::StoreKind;
+use re_log_types::{EntityPathFilter, StoreKind};
 
 fn main() -> anyhow::Result<()> {
     let args = std::env::args().collect_vec();
@@ -20,7 +20,7 @@ fn main() -> anyhow::Result<()> {
     };
 
     let path_to_rrd = get_arg(1);
-    let entity_path_expr = args.get(2).map_or("/**", |s| s.as_str());
+    let entity_path_filter = EntityPathFilter::try_from(args.get(2).map_or("/**", |s| s.as_str()))?;
 
     let stores = ChunkStore::from_rrd_filepath(
         &ChunkStoreConfig::DEFAULT,
@@ -40,7 +40,7 @@ fn main() -> anyhow::Result<()> {
         };
 
         let query = LatestAtQueryExpression {
-            entity_path_expr: entity_path_expr.into(),
+            entity_path_filter: entity_path_filter.clone(),
             timeline: Timeline::log_time(),
             at: TimeInt::MAX,
         };

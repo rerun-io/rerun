@@ -252,7 +252,7 @@ mod tests {
         ChunkStore, ChunkStoreConfig, ColumnDescriptor, ComponentColumnDescriptor,
         LatestAtQueryExpression, TimeColumnDescriptor,
     };
-    use re_log_types::{example_components::MyPoint, StoreId, StoreKind};
+    use re_log_types::{example_components::MyPoint, EntityPathFilter, StoreId, StoreKind};
     use re_query::Caches;
     use re_types::{
         components::{Color, Position3D, Radius},
@@ -274,7 +274,7 @@ mod tests {
         };
 
         let query = LatestAtQueryExpression {
-            entity_path_expr: "/**".into(),
+            entity_path_filter: EntityPathFilter::all(),
             timeline: Timeline::log_time(),
             at: TimeInt::MAX,
         };
@@ -340,7 +340,7 @@ mod tests {
         };
 
         let query = LatestAtQueryExpression {
-            entity_path_expr: "/**".into(),
+            entity_path_filter: EntityPathFilter::all(),
             timeline: Timeline::log_time(),
             at: TimeInt::MAX,
         };
