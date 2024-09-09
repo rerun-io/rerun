@@ -4,7 +4,7 @@ use ahash::HashMap;
 use arrow2::{
     array::{Array as ArrowArray, DictionaryArray as ArrowDictionaryArray},
     chunk::Chunk as ArrowChunk,
-    datatypes::Schema as ArrowSchema,
+    datatypes::{DataType as ArrowDatatype, Schema as ArrowSchema},
     Either,
 };
 use itertools::Itertools;
@@ -86,6 +86,20 @@ impl RangeQueryHandle<'_> {
                     self.engine
                         .store
                         .schema_for_query(&self.query.clone().into())
+                        .into_iter()
+                        // NOTE: At least for now, range queries always return dictionaries.
+                        .map(|col| match col {
+                            ColumnDescriptor::Component(mut descr) => {
+                                descr.datatype = ArrowDatatype::Dictionary(
+                                    arrow2::datatypes::IntegerType::UInt32,
+                                    descr.datatype.into(),
+                                    true,
+                                );
+                                ColumnDescriptor::Component(descr)
+                            }
+                            _ => col,
+                        })
+                        .collect()
                 })
             };
 
@@ -162,7 +176,7 @@ impl RangeQueryHandle<'_> {
                 .fetch_add(1, std::sync::atomic::Ordering::Relaxed);
             return Some(RecordBatch {
                 schema: ArrowSchema {
-                    fields: columns.iter().map(|col| col.to_arrow_field(None)).collect(),
+                    fields: columns.iter().map(|col| col.to_arrow_field()).collect(),
                     metadata: Default::default(),
                 },
                 data: ArrowChunk::new(
@@ -211,7 +225,7 @@ impl RangeQueryHandle<'_> {
             let columns = self.schema();
             return vec![RecordBatch {
                 schema: ArrowSchema {
-                    fields: columns.iter().map(|col| col.to_arrow_field(None)).collect(),
+                    fields: columns.iter().map(|col| col.to_arrow_field()).collect(),
                     metadata: Default::default(),
                 },
                 data: ArrowChunk::new(
@@ -352,7 +366,17 @@ impl RangeQueryHandle<'_> {
 
                     let dict_array = {
                         re_tracing::profile_scope!("concat");
-                        re_chunk::util::arrays_to_dictionary(descr.datatype.clone(), &arrays)
+
+                        // Sanitize the input datatype for `arrays_to_dictionary`.
+                        let datatype = match &descr.datatype {
+                            ArrowDatatype::Dictionary(_, inner, _) => match &**inner {
+                                ArrowDatatype::List(field) => field.data_type().clone(),
+                                datatype => datatype.clone(),
+                            },
+                            ArrowDatatype::List(field) => field.data_type().clone(),
+                            datatype => datatype.clone(),
+                        };
+                        re_chunk::util::arrays_to_dictionary(datatype, &arrays)
                     };
 
                     if cfg!(debug_assertions) {
@@ -405,9 +429,8 @@ impl RangeQueryHandle<'_> {
             schema: ArrowSchema {
                 fields: columns
                     .iter()
-                    .zip(packed_arrays.iter())
-                    .map(|(descr, arr)| descr.to_arrow_field(Some(arr.data_type().clone())))
-                    .collect(),
+                    .map(|descr| descr.to_arrow_field())
+                    .collect_vec(),
                 metadata: Default::default(),
             },
             data: ArrowChunk::new(packed_arrays),
@@ -427,6 +450,8 @@ impl<'a> RangeQueryHandle<'a> {
 #[cfg(test)]
 mod tests {
     use std::sync::Arc;
+
+    use arrow2::array::DictionaryArray as ArrowDictionaryArray;
 
     use re_chunk::{ArrowArray, Chunk, EntityPath, RowId, TimePoint, Timeline};
     use re_chunk_store::{
@@ -488,9 +513,11 @@ mod tests {
             let batch = handle.next_page().unwrap();
             // The output should be an empty recordbatch with the right schema and empty arrays.
             assert_eq!(0, batch.num_rows());
-            assert!(itertools::izip!(columns.iter(), batch.schema.fields.iter())
-                .all(|(descr, field)| descr.to_arrow_field(None) == *field));
-            assert!(itertools::izip!(columns.iter(), batch.data.iter())
+            assert!(
+                itertools::izip!(handle.schema(), batch.schema.fields.iter())
+                    .all(|(descr, field)| descr.to_arrow_field() == *field)
+            );
+            assert!(itertools::izip!(handle.schema(), batch.data.iter())
                 .all(|(descr, array)| descr.datatype() == array.data_type()));
 
             let batch = handle.next_page();
@@ -502,9 +529,11 @@ mod tests {
             let batch = handle.get(0, 0).pop().unwrap();
             // The output should be an empty recordbatch with the right schema and empty arrays.
             assert_eq!(0, batch.num_rows());
-            assert!(itertools::izip!(columns.iter(), batch.schema.fields.iter())
-                .all(|(descr, field)| descr.to_arrow_field(None) == *field));
-            assert!(itertools::izip!(columns.iter(), batch.data.iter())
+            assert!(
+                itertools::izip!(handle.schema(), batch.schema.fields.iter())
+                    .all(|(descr, field)| descr.to_arrow_field() == *field)
+            );
+            assert!(itertools::izip!(handle.schema(), batch.data.iter())
                 .all(|(descr, array)| descr.datatype() == array.data_type()));
 
             let _batch = handle.get(0, 1).pop().unwrap();
@@ -576,14 +605,20 @@ mod tests {
             assert_eq!(
                 chunk.components().get(&MyPoint::name()).unwrap().to_boxed(),
                 itertools::izip!(batch.schema.fields.iter(), batch.data.iter())
-                    .find_map(
-                        |(field, array)| (field.name == MyPoint::name().short_name())
-                            .then_some(array.clone())
-                    )
+                    .find_map(|(field, array)| {
+                        (field.name == MyPoint::name().short_name()).then_some(array.clone())
+                    })
                     .unwrap()
+                    .as_any()
+                    .downcast_ref::<ArrowDictionaryArray<u32>>()
+                    .unwrap()
+                    .values()
+                    .clone()
             );
-            assert!(itertools::izip!(columns.iter(), batch.schema.fields.iter())
-                .all(|(descr, field)| descr.to_arrow_field(None) == *field));
+            assert!(
+                itertools::izip!(handle.schema(), batch.schema.fields.iter())
+                    .all(|(descr, field)| descr.to_arrow_field() == *field)
+            );
 
             let batch = handle.next_page();
             assert!(batch.is_none());
@@ -597,14 +632,20 @@ mod tests {
             assert_eq!(
                 chunk.components().get(&MyPoint::name()).unwrap().to_boxed(),
                 itertools::izip!(batch.schema.fields.iter(), batch.data.iter())
-                    .find_map(
-                        |(field, array)| (field.name == MyPoint::name().short_name())
-                            .then_some(array.clone())
-                    )
+                    .find_map(|(field, array)| {
+                        (field.name == MyPoint::name().short_name()).then_some(array.clone())
+                    })
                     .unwrap()
+                    .as_any()
+                    .downcast_ref::<ArrowDictionaryArray<u32>>()
+                    .unwrap()
+                    .values()
+                    .clone()
             );
-            assert!(itertools::izip!(columns.iter(), batch.schema.fields.iter())
-                .all(|(descr, field)| descr.to_arrow_field(None) == *field));
+            assert!(
+                itertools::izip!(handle.schema(), batch.schema.fields.iter())
+                    .all(|(descr, field)| descr.to_arrow_field() == *field)
+            );
 
             let _batch = handle.get(1, 1).pop().unwrap();
 
