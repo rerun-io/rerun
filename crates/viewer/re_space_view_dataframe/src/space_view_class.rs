@@ -1,6 +1,8 @@
 use egui::Ui;
 
-use re_log_types::{EntityPath, ResolvedTimeRange};
+use crate::dataframe_ui::dataframe_ui;
+use crate::{query_kind::QueryKind, view_query::Query, visualizer_system::EmptySystem};
+use re_log_types::{EntityPath, EntityPathFilter, ResolvedTimeRange};
 use re_space_view::view_property_ui;
 use re_types::blueprint::archetypes;
 use re_types_core::SpaceViewClassIdentifier;
@@ -9,9 +11,7 @@ use re_viewer_context::{
     SpaceViewClass, SpaceViewClassRegistryError, SpaceViewId, SpaceViewState,
     SpaceViewSystemExecutionError, SystemExecutionOutput, ViewQuery, ViewerContext,
 };
-
-use crate::dataframe_ui::dataframe_ui;
-use crate::{query_kind::QueryKind, view_query::Query, visualizer_system::EmptySystem};
+use re_viewport_blueprint::SpaceViewContents;
 
 #[derive(Default)]
 pub struct DataframeSpaceView;
@@ -139,11 +139,13 @@ mode sets the default time range to _everything_. You can override this in the s
             cache: db.query_caches(),
         };
 
+        let entity_path_filter =
+            Self::entity_path_filter(ctx, query.space_view_id, query.space_origin);
+
         match query_mode {
             QueryKind::LatestAt { time } => {
                 let query = re_chunk_store::LatestAtQueryExpression {
-                    //TODO: wrong
-                    entity_path_expr: "/**".into(),
+                    entity_path_filter,
                     timeline: *timeline,
                     at: time,
                 };
@@ -160,8 +162,7 @@ mode sets the default time range to _everything_. You can override this in the s
                 to,
             } => {
                 let query = re_chunk_store::RangeQueryExpression {
-                    //TODO: wrong
-                    entity_path_expr: "/**".into(),
+                    entity_path_filter,
                     timeline: *timeline,
                     time_range: ResolvedTimeRange::new(from, to),
                     //TODO: need a better way to create a descriptor
@@ -182,6 +183,25 @@ mode sets the default time range to _everything_. You can override this in the s
         };
 
         Ok(())
+    }
+}
+
+impl DataframeSpaceView {
+    fn entity_path_filter(
+        ctx: &ViewerContext<'_>,
+        space_view_id: SpaceViewId,
+        space_origin: &EntityPath,
+    ) -> EntityPathFilter {
+        //TODO(ab): this feels a little bit hacky but there isn't currently another way to get to
+        //the original entity path filter.
+        SpaceViewContents::from_db_or_default(
+            space_view_id,
+            ctx.blueprint_db(),
+            ctx.blueprint_query,
+            Self::identifier(),
+            &re_log_types::EntityPathSubs::new_with_origin(&space_origin),
+        )
+        .entity_path_filter
     }
 }
 
