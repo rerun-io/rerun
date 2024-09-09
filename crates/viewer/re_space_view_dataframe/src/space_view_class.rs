@@ -132,12 +132,7 @@ mode sets the default time range to _everything_. You can override this in the s
             return Ok(());
         };
 
-        let db = ctx.recording();
-        //TODO: EntityDb should have an helper
-        let query_engine = re_dataframe::QueryEngine {
-            store: db.store(),
-            cache: db.query_caches(),
-        };
+        let query_engine = ctx.recording().query_engine();
 
         let entity_path_filter =
             Self::entity_path_filter(ctx, query.space_view_id, query.space_origin);
@@ -165,13 +160,13 @@ mode sets the default time range to _everything_. You can override this in the s
                     entity_path_filter,
                     timeline: *timeline,
                     time_range: ResolvedTimeRange::new(from, to),
-                    //TODO: need a better way to create a descriptor
+                    //TODO(#7365): using ComponentColumnDescriptor to specify PoV needs to go
                     pov: re_chunk_store::ComponentColumnDescriptor {
                         entity_path: pov_entity.clone(),
                         archetype_name: None,
                         archetype_field_name: None,
                         component_name: pov_component,
-                        //TODO: wrong
+                        // this is actually ignored:
                         datatype: re_chunk_store::external::re_chunk::external::arrow2::datatypes::DataType::Null,
                         is_static: false,
                     },
