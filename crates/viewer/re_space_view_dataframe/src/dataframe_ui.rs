@@ -2,6 +2,7 @@ use std::collections::BTreeMap;
 use std::ops::Range;
 
 use anyhow::Context;
+use egui::NumExt as _;
 use itertools::Itertools;
 
 use re_chunk_store::{ColumnDescriptor, LatestAtQuery, RowId};
@@ -167,6 +168,10 @@ struct DataframeTableDelegate<'a> {
     num_rows: u64,
 }
 
+impl DataframeTableDelegate<'_> {
+    const LEFT_RIGHT_MARGIN: f32 = 4.0;
+}
+
 impl<'a> egui_table::TableDelegate for DataframeTableDelegate<'a> {
     fn prepare(&mut self, info: &egui_table::PrefetchInfo) {
         re_tracing::profile_function!();
@@ -190,7 +195,29 @@ impl<'a> egui_table::TableDelegate for DataframeTableDelegate<'a> {
             .show(ui, |ui| {
                 if cell.row_nr == 0 {
                     if let Some(entity_path) = &self.header_entity_paths[cell.group_index] {
-                        ui.label(entity_path.to_string());
+                        //TODO(ab): factor this into a helper as soon as we use it elsewhere
+                        let text = entity_path.to_string();
+                        let font_id = egui::TextStyle::Body.resolve(ui.style());
+                        let text_color = ui.visuals().text_color();
+                        let galley = ui
+                            .painter()
+                            .layout(text, font_id, text_color, f32::INFINITY);
+
+                        // Put the text leftmost in the clip rect (so it is always visible)
+                        let mut pos = egui::Align2::LEFT_CENTER
+                            .anchor_size(
+                                ui.clip_rect().shrink(Self::LEFT_RIGHT_MARGIN).left_center(),
+                                galley.size(),
+                            )
+                            .min;
+
+                        // … but not so far to the right that it doesn't fit.
+                        pos.x = pos.x.at_most(ui.max_rect().right() - galley.size().x);
+
+                        ui.put(
+                            egui::Rect::from_min_size(pos, galley.size()),
+                            egui::Label::new(galley),
+                        );
                     }
                 } else if cell.row_nr == 1 {
                     ui.strong(self.schema[cell.col_range.start].short_name());
@@ -259,7 +286,7 @@ impl<'a> egui_table::TableDelegate for DataframeTableDelegate<'a> {
         };
 
         egui::Frame::none()
-            .inner_margin(egui::Margin::symmetric(4.0, 0.0))
+            .inner_margin(egui::Margin::symmetric(Self::LEFT_RIGHT_MARGIN, 0.0))
             .show(ui, cell_ui);
     }
 }
