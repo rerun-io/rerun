@@ -210,17 +210,7 @@ impl<'a> egui_table::TableDelegate for DataframeTableDelegate<'a> {
                 .rect_filled(ui.max_rect(), 0.0, ui.visuals().faint_bg_color);
         }
 
-        // sanity check, this should never happen
-        if cell.row_nr >= self.num_rows {
-            error_ui(
-                ui,
-                format!(
-                    "Unexpected row_nr: {} (table row count {})",
-                    cell.row_nr, self.num_rows
-                ),
-            );
-            return;
-        }
+        debug_assert!(cell.row_nr < self.num_rows, "Bug in egui_table");
 
         let display_data = match &self.display_data {
             Ok(display_data) => display_data,
