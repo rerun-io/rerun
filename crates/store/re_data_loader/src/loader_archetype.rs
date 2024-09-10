@@ -222,6 +222,8 @@ fn load_video(
 
     let media_type = MediaType::guess_from_path(filepath);
 
+    // TODO(andreas): Video frame reference generation should be available as a utility from the SDK.
+
     let video = if media_type.as_ref().map(|v| v.as_str()) == Some("video/mp4") {
         match re_video::load_mp4(&contents) {
             Ok(video) => Some(video),
@@ -235,7 +237,7 @@ fn load_video(
         None
     };
 
-    // Log video time references on the `video` timeline.
+    // Log video frame references on the `video` timeline.
     let video_frame_reference_chunk = if let Some(video) = video {
         let first_timestamp = video
             .segments

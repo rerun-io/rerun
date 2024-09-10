@@ -1470,7 +1470,7 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                     is_required : true, }, ArchetypeFieldReflection { component_name :
                     "rerun.components.EntityPath".into(), display_name :
                     "Video reference", docstring_md :
-                    "Optional reference to an entity with a [`archetypes.AssetVideo`](https://rerun.io/docs/reference/types/archetypes/asset_video).\n\nIf none is specified, the video is assumed to be at the same entity.\n\n⚠\u{fe0f} **This type is experimental and may be removed in future versions**",
+                    "Optional reference to an entity with a [`archetypes.AssetVideo`](https://rerun.io/docs/reference/types/archetypes/asset_video).\n\nIf none is specified, the video is assumed to be at the same entity.\nNote that blueprint overrides on the referenced video will be ignored regardless,\nas this is always interpreted as a reference to the data store.\n\n⚠\u{fe0f} **This type is experimental and may be removed in future versions**",
                     is_required : false, },
                 ],
             },

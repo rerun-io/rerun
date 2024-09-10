@@ -32,6 +32,8 @@ namespace rerun::archetypes {
         /// Optional reference to an entity with a `archetypes::AssetVideo`.
         ///
         /// If none is specified, the video is assumed to be at the same entity.
+        /// Note that blueprint overrides on the referenced video will be ignored regardless,
+        /// as this is always interpreted as a reference to the data store.
         std::optional<rerun::components::EntityPath> video_reference;
 
       public:
@@ -51,6 +53,8 @@ namespace rerun::archetypes {
         /// Optional reference to an entity with a `archetypes::AssetVideo`.
         ///
         /// If none is specified, the video is assumed to be at the same entity.
+        /// Note that blueprint overrides on the referenced video will be ignored regardless,
+        /// as this is always interpreted as a reference to the data store.
         VideoFrameReference with_video_reference(rerun::components::EntityPath _video_reference
         ) && {
             video_reference = std::move(_video_reference);

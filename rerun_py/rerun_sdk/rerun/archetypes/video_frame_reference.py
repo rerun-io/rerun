@@ -45,6 +45,8 @@ class VideoFrameReference(Archetype):
             Optional reference to an entity with a [`archetypes.AssetVideo`][rerun.archetypes.AssetVideo].
 
             If none is specified, the video is assumed to be at the same entity.
+            Note that blueprint overrides on the referenced video will be ignored regardless,
+            as this is always interpreted as a reference to the data store.
 
         """
 
@@ -87,6 +89,8 @@ class VideoFrameReference(Archetype):
     # Optional reference to an entity with a [`archetypes.AssetVideo`][rerun.archetypes.AssetVideo].
     #
     # If none is specified, the video is assumed to be at the same entity.
+    # Note that blueprint overrides on the referenced video will be ignored regardless,
+    # as this is always interpreted as a reference to the data store.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 

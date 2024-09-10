@@ -76,6 +76,9 @@ impl VisualizerSystem for VideoFrameReferenceVisualizer {
             context_systems,
             |ctx, spatial_ctx, results| {
                 // TODO(andreas): Should ignore range queries here and only do latest-at.
+                // Not only would this simplify the code here quite a bit, it would also avoid lots of overhead.
+                // Same is true for the image visualizers in general - there seems to be no practial reason to do range queries
+                // for visualization here.
                 use re_space_view::RangeResultsExt as _;
 
                 let timeline = ctx.query.timeline();

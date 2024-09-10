@@ -21,5 +21,7 @@ table VideoFrameReference (
     /// Optional reference to an entity with a [archetypes.AssetVideo].
     ///
     /// If none is specified, the video is assumed to be at the same entity.
+    /// Note that blueprint overrides on the referenced video will be ignored regardless,
+    /// as this is always interpreted as a reference to the data store.
     video_reference: rerun.components.EntityPath ("attr.rerun.component_optional", nullable, order: 2000);
 }
