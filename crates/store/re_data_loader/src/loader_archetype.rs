@@ -270,7 +270,7 @@ fn load_video(
             })
             .collect::<Vec<_>>();
         let video_timestamp_batch = &video_timestamps as &dyn ComponentBatch;
-        let video_timestmap_list_array = video_timestamp_batch
+        let video_timestamp_list_array = video_timestamp_batch
             .to_arrow_list_array()
             .map_err(re_chunk::ChunkError::from)?;
 
@@ -280,7 +280,7 @@ fn load_video(
             ArrowListArray::<i32>::default_datatype(
                 video_frame_reference_indicator_datatype.clone(),
             ),
-            video_timestmap_list_array.offsets().clone(),
+            video_timestamp_list_array.offsets().clone(),
             Box::new(ArrowNullArray::new(
                 video_frame_reference_indicator_datatype,
                 video_timestamps.len(),
@@ -298,7 +298,7 @@ fn load_video(
                     VideoFrameReference::indicator().name(),
                     video_frame_reference_indicator_list_array,
                 ),
-                (video_timestamp_batch.name(), video_timestmap_list_array),
+                (video_timestamp_batch.name(), video_timestamp_list_array),
             ]
             .into_iter()
             .collect(),

@@ -77,7 +77,7 @@ impl VisualizerSystem for VideoFrameReferenceVisualizer {
             |ctx, spatial_ctx, results| {
                 // TODO(andreas): Should ignore range queries here and only do latest-at.
                 // Not only would this simplify the code here quite a bit, it would also avoid lots of overhead.
-                // Same is true for the image visualizers in general - there seems to be no practial reason to do range queries
+                // Same is true for the image visualizers in general - there seems to be no practical reason to do range queries
                 // for visualization here.
                 use re_space_view::RangeResultsExt as _;
 
@@ -208,7 +208,7 @@ fn textured_rect_for_video_frame(
     }
 }
 
-/// Queries a video from the datatore and caches it in the video cache.
+/// Queries a video from the datstore and caches it in the video cache.
 ///
 /// Note that this does *NOT* check the blueprint store at all.
 /// For this, we'd need a [`re_viewer_context::DataResult`] instead of merely a [`EntityPath`].
