@@ -26,5 +26,9 @@ features = ["all"]
 [features]
 
 [dependencies]
+# Rerun
+re_log.workspace = true
+
+# External
 mp4.workspace = true
 ordered-float.workspace = true

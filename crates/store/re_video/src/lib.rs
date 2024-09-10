@@ -106,7 +106,7 @@ pub enum VideoLoadError {
     InvalidSamples,
     UnsupportedMediaType(String),
     UnknownMediaType,
-    UnsupportedCodec(String),
+    UnsupportedCodec,
 }
 
 impl std::fmt::Display for VideoLoadError {
@@ -120,7 +120,7 @@ impl std::fmt::Display for VideoLoadError {
                 write!(f, "unsupported media type {type_:?}")
             }
             Self::UnknownMediaType => write!(f, "unknown media type"),
-            Self::UnsupportedCodec(codec) => write!(f, "unsupported codec {codec:?}"),
+            Self::UnsupportedCodec => write!(f, "unsupported codec"),
         }
     }
 }

@@ -16,31 +16,18 @@ pub fn load_mp4(bytes: &[u8]) -> Result<VideoData, VideoLoadError> {
         .find(|t| t.kind == TrackKind::Video)
         .ok_or_else(|| VideoLoadError::NoVideoTrack)?;
 
-    let (codec, description);
-    if let Some(::mp4::Av01Box { av1c, av1c_raw, .. }) =
-        &video_track.trak(&mp4).mdia.minf.stbl.stsd.av01
-    {
-        let profile = av1c.profile;
-        let level = av1c.level;
-        let tier = if av1c.tier == 0 { "M" } else { "H" };
-        let bit_depth = av1c.bit_depth;
-
-        codec = format!("av01.{profile}.{level:02}{tier}.{bit_depth:02}");
-        description = av1c_raw.clone();
+    let codec = video_track
+        .codec_string(&mp4)
+        .ok_or_else(|| VideoLoadError::UnsupportedCodec)?;
+    let codec = if codec.starts_with("vp08") {
+        "vp8".to_owned()
     } else {
-        // TODO(jan): support h.264, h.265, vp8, vp9
-        let stsd = &video_track.trak(&mp4).mdia.minf.stbl.stsd;
-        let codec_name = if stsd.avc1.is_some() {
-            "avc"
-        } else if stsd.hev1.is_some() {
-            "hevc"
-        } else if stsd.vp09.is_some() {
-            "vp9"
-        } else {
-            "unknown"
-        };
-        return Err(VideoLoadError::UnsupportedCodec(codec_name.into()));
-    }
+        codec
+    };
+
+    let description = video_track
+        .raw_codec_config(&mp4)
+        .ok_or_else(|| VideoLoadError::UnsupportedCodec)?;
 
     let coded_height = video_track.height;
     let coded_width = video_track.width;

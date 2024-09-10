@@ -89,6 +89,7 @@ impl VideoDecoder {
         let decoder = init_video_decoder({
             let frames = frames.clone();
             move |frame: web_sys::VideoFrame| {
+                web_sys::console::log_1(&frame);
                 frames.lock().push((
                     TimeMs::new(frame.timestamp().unwrap_or(0.0)),
                     VideoFrame(frame),
@@ -275,6 +276,7 @@ impl VideoDecoder {
             return;
         };
 
+        web_sys::console::log_1(&chunk);
         if let Err(err) = self.decoder.decode(&chunk) {
             re_log::error!("Failed to decode video chunk: {}", js_error_to_string(&err));
         }
@@ -390,6 +392,7 @@ fn js_video_decoder_config(config: &re_video::Config) -> VideoDecoderConfig {
     description.copy_from(&config.description[..]);
     js.set_description(&description);
     js.set_optimize_for_latency(true);
+    web_sys::console::log_1(&js);
     js
 }
 
