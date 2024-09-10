@@ -85,19 +85,19 @@ impl ComponentData {
         latest_at_query: &LatestAtQuery,
         entity_path: &EntityPath,
         component_name: ComponentName,
-        index: usize,
+        row_index: usize, // index within the batch column
     ) {
         let data = match self {
             Self::Null => {
                 ui.label("null");
                 return;
             }
-            Self::ListArray(list_array) => {
-                list_array.is_valid(index).then(|| list_array.value(index))
-            }
+            Self::ListArray(list_array) => list_array
+                .is_valid(row_index)
+                .then(|| list_array.value(row_index)),
             Self::DictionaryArray { dict, values } => dict
-                .is_valid(index)
-                .then(|| values.value(dict.key_value(index))),
+                .is_valid(row_index)
+                .then(|| values.value(dict.key_value(row_index))),
         };
 
         if let Some(data) = data {
