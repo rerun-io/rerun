@@ -273,6 +273,15 @@ impl TransportChunk {
             })
     }
 
+    #[inline]
+    pub fn all_columns(&self) -> impl Iterator<Item = (&ArrowField, &Box<dyn ArrowArray>)> + '_ {
+        self.schema
+            .fields
+            .iter()
+            .enumerate()
+            .filter_map(|(i, field)| self.data.columns().get(i).map(|column| (field, column)))
+    }
+
     /// Iterates all control columns present in this chunk.
     #[inline]
     pub fn controls(&self) -> impl Iterator<Item = (&ArrowField, &Box<dyn ArrowArray>)> {

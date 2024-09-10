@@ -56,6 +56,11 @@ impl<'a> LatestAtQueryHandle<'a> {
 }
 
 impl LatestAtQueryHandle<'_> {
+    /// The query expression used to instantiate this handle.
+    pub fn query(&self) -> &LatestAtQueryExpression {
+        &self.query
+    }
+
     /// All results returned by this handle will strictly follow this schema.
     ///
     /// Columns that do not yield any data will still be present in the results, filled with null values.

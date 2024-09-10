@@ -121,6 +121,13 @@ impl EntityDb {
         &self.query_caches
     }
 
+    pub fn query_engine(&self) -> re_dataframe::QueryEngine<'_> {
+        re_dataframe::QueryEngine {
+            store: self.store(),
+            cache: self.query_caches(),
+        }
+    }
+
     /// Queries for the given `component_names` using latest-at semantics.
     ///
     /// See [`re_query::LatestAtResults`] for more information about how to handle the results.
