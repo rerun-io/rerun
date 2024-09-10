@@ -43,34 +43,6 @@ permissions:
   id-token: "write"
 
 jobs:
-  py-test-docs:
-    name: Test Python Docs
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.ref || '' }}
-
-      - name: Set up Python
-        uses: actions/setup-python@v4
-        with:
-          python-version: "3.8"
-          cache: "pip"
-          cache-dependency-path: "rerun_py/requirements-doc.txt"
-
-      - name: Install Python dependencies
-        shell: bash
-        run: |
-          pip install --upgrade pip
-          pip install -r rerun_py/requirements-doc.txt
-
-      - name: Build via mkdocs
-        shell: bash
-        run: |
-          mkdocs build --strict -f rerun_py/mkdocs.yml
-
-  # ---------------------------------------------------------------------------
-
   no-codegen-changes:
     name: Check if running codegen would produce any changes
     runs-on: ubuntu-latest-16-cores
