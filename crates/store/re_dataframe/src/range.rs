@@ -91,7 +91,7 @@ impl RangeQueryHandle<'_> {
                         .map(|col| match col {
                             ColumnDescriptor::Component(mut descr) => {
                                 descr.datatype = ArrowDatatype::Dictionary(
-                                    arrow2::datatypes::IntegerType::UInt32,
+                                    arrow2::datatypes::IntegerType::Int32,
                                     descr.datatype.into(),
                                     true,
                                 );
@@ -316,7 +316,7 @@ impl RangeQueryHandle<'_> {
         // see if this ever becomes an issue before going down this road.
         //
         // TODO(cmc): Opportunities for parallelization, if it proves to be a net positive in practice.
-        let dict_arrays: HashMap<&ComponentColumnDescriptor, ArrowDictionaryArray<u32>> = {
+        let dict_arrays: HashMap<&ComponentColumnDescriptor, ArrowDictionaryArray<i32>> = {
             re_tracing::profile_scope!("queries");
 
             columns
@@ -617,7 +617,7 @@ mod tests {
                     })
                     .unwrap()
                     .as_any()
-                    .downcast_ref::<ArrowDictionaryArray<u32>>()
+                    .downcast_ref::<ArrowDictionaryArray<i32>>()
                     .unwrap()
                     .values()
                     .clone()
@@ -644,7 +644,7 @@ mod tests {
                     })
                     .unwrap()
                     .as_any()
-                    .downcast_ref::<ArrowDictionaryArray<u32>>()
+                    .downcast_ref::<ArrowDictionaryArray<i32>>()
                     .unwrap()
                     .values()
                     .clone()

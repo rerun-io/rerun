@@ -4794,6 +4794,7 @@ version = "0.19.0-alpha.1+dev"
 dependencies = [
  "ahash",
  "anyhow",
+ "arrow",
  "bytemuck",
  "criterion",
  "crossbeam",

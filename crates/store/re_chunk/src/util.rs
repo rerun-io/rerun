@@ -84,7 +84,7 @@ pub fn arrays_to_list_array(
 pub fn arrays_to_dictionary<Idx: Copy + Eq>(
     array_datatype: ArrowDatatype,
     arrays: &[Option<(Idx, &dyn ArrowArray)>],
-) -> Option<ArrowDictionaryArray<u32>> {
+) -> Option<ArrowDictionaryArray<i32>> {
     // Dedupe the input arrays based on the given primary key.
     let arrays_dense_deduped = arrays
         .iter()
@@ -96,7 +96,7 @@ pub fn arrays_to_dictionary<Idx: Copy + Eq>(
 
     // Compute the keys for the final dictionary, using that same primary key.
     let keys = {
-        let mut cur_key = 0u32;
+        let mut cur_key = 0i32;
         arrays
             .iter()
             .dedup_by_with_count(|lhs, rhs| {
@@ -140,7 +140,7 @@ pub fn arrays_to_dictionary<Idx: Copy + Eq>(
     };
 
     let datatype = ArrowDatatype::Dictionary(
-        arrow2::datatypes::IntegerType::UInt32,
+        arrow2::datatypes::IntegerType::Int32,
         std::sync::Arc::new(data.data_type().clone()),
         true, // is_sorted
     );
@@ -149,7 +149,7 @@ pub fn arrays_to_dictionary<Idx: Copy + Eq>(
     // unique values.
     ArrowDictionaryArray::try_new(
         datatype,
-        ArrowPrimitiveArray::<u32>::from(keys),
+        ArrowPrimitiveArray::<i32>::from(keys),
         data.to_boxed(),
     )
     .ok()

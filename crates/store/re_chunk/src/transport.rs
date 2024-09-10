@@ -720,7 +720,18 @@ mod tests {
 
             for _ in 0..3 {
                 let chunk_in_transport = chunk_before.to_transport()?;
-                let chunk_after = Chunk::from_transport(&chunk_in_transport)?;
+                let chunk_roundtrip;
+                #[cfg(feature = "arrow")]
+                {
+                    let chunk_in_record_batch = chunk_in_transport.try_to_arrow_record_batch()?;
+                    chunk_roundtrip =
+                        TransportChunk::from_arrow_record_batch(&chunk_in_record_batch);
+                }
+                #[cfg(not(feature = "arrow"))]
+                {
+                    chunk_roundtrip = &chunk_in_transport;
+                }
+                let chunk_after = Chunk::from_transport(&chunk_roundtrip)?;
 
                 assert_eq!(
                     chunk_in_transport.entity_path()?,
@@ -771,7 +782,14 @@ mod tests {
                 eprintln!("{chunk_in_transport}");
                 eprintln!("{chunk_after}");
 
-                assert_eq!(chunk_before, chunk_after);
+                #[cfg(not(feature = "arrow"))]
+                {
+                    // This will fail when round-tripping all the way to record-batch
+                    // the below check should always pass regardless.
+                    assert_eq!(chunk_before, &chunk_after);
+                }
+
+                assert!(chunk_before.are_equal_ignoring_extension_types(&chunk_after));
 
                 chunk_before = chunk_after;
             }
