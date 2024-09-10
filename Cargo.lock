@@ -3464,7 +3464,7 @@ dependencies = [
 [[package]]
 name = "mp4"
 version = "0.14.0"
-source = "git+https://github.com/rerun-io/mp4?rev=523ebcc71032e7022335f61d7314b89f6068208a#523ebcc71032e7022335f61d7314b89f6068208a"
+source = "git+https://github.com/rerun-io/mp4?rev=ef529032547d7f97161e95c58bd76856cb116349#ef529032547d7f97161e95c58bd76856cb116349"
 dependencies = [
  "byteorder",
  "bytes",
