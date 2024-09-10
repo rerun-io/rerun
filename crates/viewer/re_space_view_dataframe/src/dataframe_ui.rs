@@ -44,15 +44,15 @@ impl QueryHandle<'_> {
         }
     }
 
-    fn get(&self, start: u64, num_rows: u64) -> Vec<RecordBatch> {
+    fn get(&self, row_range: Range<u64>) -> Vec<RecordBatch> {
         match self {
             QueryHandle::LatestAt(query_handle) => {
                 // latest-at queries only have one row
-                debug_assert_eq!((start, num_rows), (0, 1));
+                debug_assert_eq!(row_range, 0..1);
 
                 vec![query_handle.get()]
             }
-            QueryHandle::Range(query_handle) => query_handle.get(start, num_rows),
+            QueryHandle::Range(query_handle) => query_handle.get(row_range),
         }
     }
 
@@ -178,10 +178,7 @@ impl<'a> egui_table::TableDelegate for DataframeTableDelegate<'a> {
 
         let data = RowsDisplayData::try_new(
             &info.visible_rows,
-            self.query_handle.get(
-                info.visible_rows.start,
-                info.visible_rows.end - info.visible_rows.start,
-            ),
+            self.query_handle.get(info.visible_rows.clone()),
             self.schema,
             &self.query_handle.timeline(),
         );

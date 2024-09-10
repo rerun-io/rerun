@@ -1,3 +1,4 @@
+use std::ops::Range;
 use std::sync::{atomic::AtomicU64, OnceLock};
 
 use ahash::HashMap;
@@ -219,7 +220,9 @@ impl RangeQueryHandle<'_> {
     /// This is the most performant way to iterate over the dataset.
     //
     // TODO(cmc): This could be turned into an actual lazy iterator at some point.
-    pub fn get(&self, offset: u64, mut len: u64) -> Vec<RecordBatch> {
+    pub fn get(&self, row_range: Range<u64>) -> Vec<RecordBatch> {
+        let offset = row_range.start;
+        let mut len = row_range.end.saturating_sub(row_range.start);
         re_tracing::profile_function!(format!("get({offset}, {len}, {})", self.query));
 
         let state = self.init();
@@ -533,7 +536,7 @@ mod tests {
 
         // Paginated API
         {
-            let batch = handle.get(0, 0).pop().unwrap();
+            let batch = handle.get(0..0).pop().unwrap();
             // The output should be an empty recordbatch with the right schema and empty arrays.
             assert_eq!(0, batch.num_rows());
             assert!(
@@ -543,9 +546,9 @@ mod tests {
             assert!(itertools::izip!(handle.schema(), batch.data.iter())
                 .all(|(descr, array)| descr.datatype() == array.data_type()));
 
-            let _batch = handle.get(0, 1).pop().unwrap();
+            let _batch = handle.get(0..1).pop().unwrap();
 
-            let batch = handle.get(1, 1).pop();
+            let batch = handle.get(1..2).pop();
             assert!(batch.is_none());
         }
     }
@@ -633,7 +636,7 @@ mod tests {
 
         // Paginated API
         {
-            let batch = handle.get(0, 1).pop().unwrap();
+            let batch = handle.get(0..1).pop().unwrap();
             // The output should be an empty recordbatch with the right schema and empty arrays.
             assert_eq!(1, batch.num_rows());
             assert_eq!(
@@ -654,9 +657,9 @@ mod tests {
                     .all(|(descr, field)| descr.to_arrow_field() == *field)
             );
 
-            let _batch = handle.get(1, 1).pop().unwrap();
+            let _batch = handle.get(1..2).pop().unwrap();
 
-            let batch = handle.get(2, 1).pop();
+            let batch = handle.get(2..3).pop();
             assert!(batch.is_none());
         }
     }

@@ -61,21 +61,21 @@ fn main() -> anyhow::Result<()> {
             query_handle.num_rows()
         );
 
-        let (offset, len) = (0, 4);
-        println!("offset:{offset} len:{len}");
-        concat_and_print(query_handle.get(offset, len));
+        let row_range = 0..4;
+        println!("range: {row_range:?}");
+        concat_and_print(query_handle.get(row_range));
 
-        let (offset, len) = (2, 4);
-        println!("offset:{offset} len:{len}");
-        concat_and_print(query_handle.get(offset, len));
+        let row_range = 2..6;
+        println!("range: {row_range:?}");
+        concat_and_print(query_handle.get(row_range));
 
-        let (offset, len) = (10, 5);
-        println!("offset:{offset} len:{len}");
-        concat_and_print(query_handle.get(offset, len));
+        let row_range = 10..15;
+        println!("range: {row_range:?}");
+        concat_and_print(query_handle.get(row_range));
 
-        let (offset, len) = (0, 15);
-        println!("offset:{offset} len:{len}");
-        concat_and_print(query_handle.get(offset, len));
+        let row_range = 0..15;
+        println!("range: {row_range:?}");
+        concat_and_print(query_handle.get(row_range));
     }
 
     Ok(())
