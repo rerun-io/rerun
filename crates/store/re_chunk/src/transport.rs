@@ -777,7 +777,7 @@ mod tests {
                 {
                     // This will fail when round-tripping all the way to record-batch
                     // the below check should always pass regardless.
-                    assert_eq!(chunk_before, &chunk_after);
+                    assert_eq!(chunk_before, chunk_after);
                 }
 
                 assert!(chunk_before.are_equal_ignoring_extension_types(&chunk_after));
