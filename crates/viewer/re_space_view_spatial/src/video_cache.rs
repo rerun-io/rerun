@@ -1,7 +1,7 @@
 use egui::mutex::Mutex;
 use re_entity_db::VersionedInstancePathHash;
 use re_log_types::hash::Hash64;
-use re_renderer::renderer::Video;
+use re_renderer::video::Video;
 use re_renderer::RenderContext;
 use re_types::components::MediaType;
 use re_viewer_context::Cache;

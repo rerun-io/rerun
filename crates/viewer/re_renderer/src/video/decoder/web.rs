@@ -12,8 +12,8 @@ use re_video::{TimeMs, VideoData};
 
 use super::latest_at_idx;
 use crate::{
-    renderer::video::{DecodingError, FrameDecodingResult},
     resource_managers::GpuTexture2D,
+    video::{DecodingError, FrameDecodingResult},
     RenderContext,
 };
 
