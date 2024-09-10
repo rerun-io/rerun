@@ -63,6 +63,7 @@ mod vec4d;
 mod vec4d_ext;
 mod video_time_mode;
 mod video_timestamp;
+mod video_timestamp_ext;
 mod view_coordinates;
 mod view_coordinates_ext;
 
