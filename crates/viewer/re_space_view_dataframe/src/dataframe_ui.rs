@@ -94,7 +94,7 @@ struct RowsDisplayData {
     batch_ref_from_row: BTreeMap<u64, BatchRef>,
 
     /// The index of the time column corresponding to the query timeline.
-    time_column_index: Option<usize>,
+    query_time_column_index: Option<usize>,
 
     /// The index of the time column corresponding the row IDs.
     row_id_column_index: Option<usize>,
@@ -123,7 +123,7 @@ impl RowsDisplayData {
         }
 
         // find the time column
-        let time_column_index = schema
+        let query_time_column_index = schema
             .iter()
             .find_position(|desc| match desc {
                 ColumnDescriptor::Time(time_column_desc) => {
@@ -148,7 +148,7 @@ impl RowsDisplayData {
         Ok(Self {
             display_record_batches,
             batch_ref_from_row,
-            time_column_index,
+            query_time_column_index,
             row_id_column_index,
         })
     }
@@ -239,7 +239,7 @@ impl<'a> egui_table::TableDelegate for DataframeTableDelegate<'a> {
 
                     // compute the latest at query for this row (used to display tooltips)
                     let timestamp = display_data
-                        .time_column_index
+                        .query_time_column_index
                         .and_then(|col_idx| {
                             display_data.display_record_batches[batch_idx].columns()[col_idx]
                                 .try_decode_time(row_idx)
