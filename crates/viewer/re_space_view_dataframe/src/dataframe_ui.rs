@@ -46,6 +46,9 @@ impl QueryHandle<'_> {
     fn get(&self, start: u64, num_rows: u64) -> Vec<RecordBatch> {
         match self {
             QueryHandle::LatestAt(query_handle) => {
+                // latest-at queries only have one row
+                debug_assert_eq!((start, num_rows), (0, 1));
+
                 vec![query_handle.get()]
             }
             QueryHandle::Range(query_handle) => query_handle.get(start, num_rows),
