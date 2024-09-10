@@ -70,7 +70,7 @@ impl ChunkListMode {
                                 ..
                             }
                         ),
-                        "Latest at",
+                        "Latest-at",
                     )
                     .on_hover_text("Display chunks relevant to the provided latest-at query")
                     .clicked()

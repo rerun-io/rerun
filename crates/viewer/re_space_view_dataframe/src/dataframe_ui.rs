@@ -237,7 +237,7 @@ impl<'a> egui_table::TableDelegate for DataframeTableDelegate<'a> {
                     let batch = &display_data.display_record_batches[batch_idx];
                     let column = &batch.columns()[cell.col_nr];
 
-                    // compute the latest at query for this row (used to display tooltips)
+                    // compute the latest-at query for this row (used to display tooltips)
                     let timestamp = display_data
                         .query_time_column_index
                         .and_then(|col_idx| {
