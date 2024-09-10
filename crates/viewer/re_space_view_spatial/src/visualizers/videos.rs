@@ -8,6 +8,7 @@ use re_renderer::renderer::RectangleOptions;
 use re_renderer::renderer::TextureFilterMag;
 use re_renderer::renderer::TextureFilterMin;
 use re_renderer::renderer::TexturedRect;
+use re_renderer::video::FrameDecodingResult;
 use re_renderer::RenderContext;
 use re_types::archetypes::AssetVideo;
 use re_types::components::Blob;
@@ -201,7 +202,20 @@ impl AssetVideoVisualizer {
 
             if let Some(video) = video {
                 let mut video = video.lock();
-                let texture = video.frame_at(timestamp_s);
+                let texture = match video.frame_at(timestamp_s) {
+                    FrameDecodingResult::Ready(texture) => texture,
+                    FrameDecodingResult::Pending(texture) => {
+                        ctx.viewer_ctx.egui_ctx.request_repaint();
+                        texture
+                    }
+                    FrameDecodingResult::Error(err) => {
+                        // TODO(#7373): show this error in the ui
+                        re_log::error_once!(
+                            "Failed to decode video frame for {entity_path}: {err}"
+                        );
+                        continue;
+                    }
+                };
 
                 let world_from_entity = ent_context
                     .transform_info
