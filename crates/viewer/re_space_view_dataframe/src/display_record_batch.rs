@@ -3,7 +3,7 @@
 
 use thiserror::Error;
 
-use re_chunk_store::external::re_chunk::external::arrow2::{
+use re_chunk_store::external::arrow2::{
     array::{
         Array as ArrowArray, DictionaryArray as ArrowDictionaryArray, ListArray as ArrowListArray,
         PrimitiveArray as ArrowPrimitiveArray, StructArray as ArrowStructArray,
