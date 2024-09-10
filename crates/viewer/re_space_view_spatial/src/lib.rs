@@ -44,6 +44,7 @@ use re_types::{
     archetypes,
     blueprint::components::BackgroundKind,
     components::{self, Color, ImageFormat, MediaType, Resolution},
+    static_assert_struct_has_fields,
 };
 use re_viewport_blueprint::{ViewProperty, ViewPropertyQueryError};
 
@@ -61,13 +62,8 @@ fn resolution_of_image_at(
     entity_path: &re_log_types::EntityPath,
 ) -> Option<Resolution> {
     // First check assumptions:
-    fn _check_image_has_format(image: &archetypes::Image) {
-        let _: components::ImageFormat = image.format;
-    }
-
-    fn _check_encoded_image_has_blob(image: &archetypes::EncodedImage) {
-        let _: components::Blob = image.blob;
-    }
+    static_assert_struct_has_fields!(archetypes::Image, format: components::ImageFormat);
+    static_assert_struct_has_fields!(archetypes::EncodedImage, blob: components::Blob);
 
     let db = ctx.recording();
 

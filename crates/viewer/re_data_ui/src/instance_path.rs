@@ -7,7 +7,7 @@ use re_types::{
     archetypes, components,
     datatypes::{ChannelDatatype, ColorModel},
     image::ImageKind,
-    Archetype, ComponentName, Loggable,
+    static_assert_struct_has_fields, Archetype, ComponentName, Loggable,
 };
 use re_ui::{ContextExt as _, UiExt as _};
 use re_viewer_context::{
@@ -252,20 +252,21 @@ fn preview_if_image_ui(
     component_map: &IntMap<ComponentName, UnitChunkShared>,
 ) -> Option<()> {
     // First check assumptions:
-    fn _check_image_has_buffer_format(image: &archetypes::Image) {
-        let _: components::ImageBuffer = image.buffer;
-        let _: components::ImageFormat = image.format;
-    }
-
-    fn _check_depth_image_has_buffer_format(image: &archetypes::DepthImage) {
-        let _: components::ImageBuffer = image.buffer;
-        let _: components::ImageFormat = image.format;
-    }
-
-    fn _check_segmentation_image_has_buffer_format(image: &archetypes::SegmentationImage) {
-        let _: components::ImageBuffer = image.buffer;
-        let _: components::ImageFormat = image.format;
-    }
+    static_assert_struct_has_fields!(
+        archetypes::Image,
+        buffer: components::ImageBuffer,
+        format: components::ImageFormat
+    );
+    static_assert_struct_has_fields!(
+        archetypes::DepthImage,
+        buffer: components::ImageBuffer,
+        format: components::ImageFormat
+    );
+    static_assert_struct_has_fields!(
+        archetypes::SegmentationImage,
+        buffer: components::ImageBuffer,
+        format: components::ImageFormat
+    );
 
     let image_buffer = component_map.get(&components::ImageBuffer::name())?;
     let buffer_row_id = image_buffer.row_id()?;
