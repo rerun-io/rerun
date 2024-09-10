@@ -13,7 +13,7 @@ use re_chunk_store::external::arrow2::{
 };
 use re_chunk_store::{ColumnDescriptor, ComponentColumnDescriptor, LatestAtQuery, RowId};
 use re_dataframe::RecordBatch;
-use re_log_types::{EntityPath, TimeInt, Timeline};
+use re_log_types::{EntityPath, TimeInt, TimeType, Timeline};
 use re_types::external::arrow2::datatypes::IntegerType;
 use re_types_core::ComponentName;
 use re_ui::UiExt;
@@ -219,7 +219,7 @@ impl DisplayColumn {
                     (row_id_times.value(index) as u128) << 64
                         | (row_id_counters.value(index) as u128),
                 );
-                row_id_ui(ui, &row_id);
+                row_id_ui(ctx, ui, &row_id);
             }
             Self::Timeline {
                 timeline,
@@ -320,7 +320,7 @@ impl DisplayRecordBatch {
     }
 }
 
-fn row_id_ui(ui: &mut egui::Ui, row_id: &RowId) {
+fn row_id_ui(ctx: &ViewerContext<'_>, ui: &mut egui::Ui, row_id: &RowId) {
     let s = row_id.to_string();
     let split_pos = s.char_indices().nth_back(5);
 
@@ -328,5 +328,17 @@ fn row_id_ui(ui: &mut egui::Ui, row_id: &RowId) {
         Some((pos, _)) => &s[pos..],
         None => &s,
     })
-    .on_hover_text(s);
+    .on_hover_ui(|ui| {
+        let text = format!(
+            "{}\n\nTimestamp: {}\nIncrement: {}",
+            s,
+            (row_id.nanoseconds_since_epoch() as i64)
+                .try_into()
+                .map(|t| TimeType::Time.format(TimeInt::from_nanos(t), ctx.app_options.time_zone))
+                .unwrap_or("error decoding timestamp".to_owned()),
+            row_id.inc()
+        );
+
+        ui.label(text);
+    });
 }
