@@ -181,7 +181,7 @@ impl<'a> egui_table::TableDelegate for DataframeTableDelegate<'a> {
             &self.query_handle.timeline(),
         );
 
-        self.display_data = data.with_context(|| "Failed to create display data");
+        self.display_data = data.context("Failed to create display data");
     }
 
     fn header_cell_ui(&mut self, ui: &mut egui::Ui, cell: &egui_table::HeaderCellInfo) {
