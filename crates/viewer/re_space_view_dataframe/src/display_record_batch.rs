@@ -35,7 +35,7 @@ pub(crate) enum ComponentData {
     Null,
     ListArray(ArrowListArray<i32>),
     DictionaryArray {
-        dict: ArrowDictionaryArray<u32>,
+        dict: ArrowDictionaryArray<i32>,
         values: ArrowListArray<i32>,
     },
 }
@@ -55,10 +55,10 @@ impl ComponentData {
                     .expect("sanity checked")
                     .clone(),
             )),
-            DataType::Dictionary(IntegerType::UInt32, _, _) => {
+            DataType::Dictionary(IntegerType::Int32, _, _) => {
                 let dict = column_data
                     .as_any()
-                    .downcast_ref::<ArrowDictionaryArray<u32>>()
+                    .downcast_ref::<ArrowDictionaryArray<i32>>()
                     .expect("sanity checked")
                     .clone();
                 let values = dict
