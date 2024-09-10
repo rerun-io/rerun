@@ -311,10 +311,10 @@ fn dataframe_ui_impl(ctx: &ViewerContext<'_>, ui: &mut egui::Ui, query_handle: &
             .num_sticky_cols(num_sticky_cols)
             .headers(vec![
                 egui_table::HeaderRow {
-                    height: 20.0,
+                    height: re_ui::DesignTokens::table_header_height(),
                     groups: header_groups,
                 },
-                egui_table::HeaderRow::new(20.0),
+                egui_table::HeaderRow::new(re_ui::DesignTokens::table_header_height()),
             ])
             .num_rows(num_rows)
             .row_height(re_ui::DesignTokens::table_line_height())
