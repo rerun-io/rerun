@@ -52,20 +52,20 @@ impl ComponentData {
                 column_data
                     .as_any()
                     .downcast_ref::<ArrowListArray<i32>>()
-                    .expect("sanity checked")
+                    .expect("`data_type` checked, failure is a bug in re_dataframe")
                     .clone(),
             )),
             DataType::Dictionary(IntegerType::Int32, _, _) => {
                 let dict = column_data
                     .as_any()
                     .downcast_ref::<ArrowDictionaryArray<i32>>()
-                    .expect("sanity checked")
+                    .expect("`data_type` checked, failure is a bug in re_dataframe")
                     .clone();
                 let values = dict
                     .values()
                     .as_any()
                     .downcast_ref::<ArrowListArray<i32>>()
-                    .expect("sanity checked")
+                    .expect("`data_type` checked, failure is a bug in re_dataframe")
                     .clone();
                 Ok(Self::DictionaryArray { dict, values })
             }
@@ -146,7 +146,7 @@ impl DisplayColumn {
                     let row_ids = column_data
                         .as_any()
                         .downcast_ref::<ArrowStructArray>()
-                        .expect("sanity checked");
+                        .expect("expected format for RowId, failure is a bug in re_dataframe");
                     let [times, counters] = row_ids.values() else {
                         panic!("RowIds are corrupt -- this should be impossible (sanity checked)");
                     };
@@ -155,14 +155,14 @@ impl DisplayColumn {
                     let row_id_times = times
                         .as_any()
                         .downcast_ref::<ArrowPrimitiveArray<u64>>()
-                        .expect("sanity checked")
+                        .expect("expected format for RowId, failure is a bug in re_dataframe")
                         .clone();
 
                     #[allow(clippy::unwrap_used)]
                     let row_id_counters = counters
                         .as_any()
                         .downcast_ref::<ArrowPrimitiveArray<u64>>()
-                        .expect("sanity checked")
+                        .expect("expected format for RowId, failure is a bug in re_dataframe")
                         .clone();
 
                     Ok(Self::RowId {
