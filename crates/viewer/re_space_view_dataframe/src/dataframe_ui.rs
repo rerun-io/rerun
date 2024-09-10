@@ -72,6 +72,15 @@ impl<'a> From<RangeQueryHandle<'a>> for QueryHandle<'a> {
     }
 }
 
+#[derive(Clone, Copy)]
+struct BatchRef {
+    /// Which batch?
+    batch_idx: usize,
+
+    /// Which row within the batch?
+    row_idx: usize,
+}
+
 /// This structure maintains the data for displaying rows in a table.
 ///
 /// Row data is stored in a bunch of [`DisplayRecordBatch`], which are created from
@@ -81,8 +90,8 @@ struct RowsDisplayData {
     /// The [`DisplayRecordBatch`]s to display.
     display_record_batches: Vec<DisplayRecordBatch>,
 
-    /// For each row to be displayed, the batch index and the row index with that batch.
-    batch_and_row_from_row_nr: BTreeMap<u64, (usize, usize)>,
+    /// For each row to be displayed, where can we find the data?
+    batch_ref_from_row: BTreeMap<u64, BatchRef>,
 
     /// The index of the time column corresponding to the query timeline.
     time_column_index: Option<usize>,
@@ -103,14 +112,14 @@ impl RowsDisplayData {
             .map(|record_batch| DisplayRecordBatch::try_new(&record_batch, schema))
             .collect::<Result<Vec<_>, _>>()?;
 
-        let mut batch_and_row_from_row_nr = BTreeMap::new();
+        let mut batch_ref_from_row = BTreeMap::new();
         let mut offset = row_indices.start;
         for (batch_idx, batch) in display_record_batches.iter().enumerate() {
-            let batch_len = batch.num_rows() as u64;
+            let batch_len = batch.num_rows();
             for row_idx in 0..batch_len {
-                batch_and_row_from_row_nr.insert(offset + row_idx, (batch_idx, row_idx as usize));
+                batch_ref_from_row.insert(offset + row_idx as u64, BatchRef { batch_idx, row_idx });
             }
-            offset += batch_len;
+            offset += batch_len as u64;
         }
 
         // find the time column
@@ -138,7 +147,7 @@ impl RowsDisplayData {
 
         Ok(Self {
             display_record_batches,
-            batch_and_row_from_row_nr,
+            batch_ref_from_row,
             time_column_index,
             row_id_column_index,
         })
@@ -222,29 +231,27 @@ impl<'a> egui_table::TableDelegate for DataframeTableDelegate<'a> {
         egui::Frame::none()
             .inner_margin(egui::Margin::symmetric(4.0, 0.0))
             .show(ui, |ui| {
-                if let Some((batch_nr, batch_index)) = display_data
-                    .batch_and_row_from_row_nr
-                    .get(&cell.row_nr)
-                    .copied()
+                if let Some(BatchRef { batch_idx, row_idx }) =
+                    display_data.batch_ref_from_row.get(&cell.row_nr).copied()
                 {
-                    let batch = &display_data.display_record_batches[batch_nr];
+                    let batch = &display_data.display_record_batches[batch_idx];
                     let column = &batch.columns()[cell.col_nr];
 
                     // compute the latest at query for this row (used to display tooltips)
                     let timestamp = display_data
                         .time_column_index
-                        .and_then(|index| {
-                            display_data.display_record_batches[batch_nr].columns()[index]
-                                .try_decode_time(batch_index)
+                        .and_then(|col_idx| {
+                            display_data.display_record_batches[batch_idx].columns()[col_idx]
+                                .try_decode_time(row_idx)
                         })
                         .unwrap_or(TimeInt::MAX);
                     let latest_at_query =
                         LatestAtQuery::new(self.query_handle.timeline(), timestamp);
                     let row_id = display_data
                         .row_id_column_index
-                        .and_then(|index| {
-                            display_data.display_record_batches[batch_nr].columns()[index]
-                                .try_decode_row_id(batch_index)
+                        .and_then(|col_idx| {
+                            display_data.display_record_batches[batch_idx].columns()[col_idx]
+                                .try_decode_row_id(row_idx)
                         })
                         .unwrap_or(RowId::ZERO);
 
@@ -253,7 +260,7 @@ impl<'a> egui_table::TableDelegate for DataframeTableDelegate<'a> {
                     } else {
                         ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Truncate);
                     }
-                    column.data_ui(self.ctx, ui, row_id, &latest_at_query, batch_index);
+                    column.data_ui(self.ctx, ui, row_id, &latest_at_query, row_idx);
                 } else {
                     error_ui(
                         ui,
