@@ -1,7 +1,10 @@
 #![allow(dead_code, unused_variables, clippy::unnecessary_wraps)]
 
-use crate::resource_managers::GpuTexture2D;
-use crate::RenderContext;
+use crate::{
+    renderer::video::{DecodingError, FrameDecodingResult},
+    resource_managers::GpuTexture2D,
+    RenderContext,
+};
 
 // TODO(#7298): remove `allow` once we have native video decoding
 #[allow(unused_imports)]
@@ -17,7 +20,10 @@ pub struct VideoDecoder {
 }
 
 impl VideoDecoder {
-    pub fn new(render_context: &RenderContext, data: re_video::VideoData) -> Option<Self> {
+    pub fn new(
+        render_context: &RenderContext,
+        data: re_video::VideoData,
+    ) -> Result<Self, DecodingError> {
         re_log::warn_once!("Video playback not yet available in the native viewer, try the web viewer instead. See https://github.com/rerun-io/rerun/issues/7298 for more information.");
 
         let device = render_context.device.clone();
@@ -45,7 +51,7 @@ impl VideoDecoder {
         self.data.config.coded_height as u32
     }
 
-    pub fn frame_at(&mut self, timestamp: TimeMs) -> GpuTexture2D {
-        self.zeroed_texture.clone()
+    pub fn frame_at(&mut self, timestamp: TimeMs) -> FrameDecodingResult {
+        FrameDecodingResult::Ready(self.zeroed_texture.clone())
     }
 }
