@@ -60,9 +60,9 @@ impl WebViewerSink {
         let viewer_url = format!("{http_web_viewer_url}?url={ws_server_url}");
 
         re_log::info!("Hosting a web-viewer at {viewer_url}");
-        if open_browser {
-            webbrowser::open(&viewer_url).ok();
-        }
+        // if open_browser {
+        //     webbrowser::open(&viewer_url).ok();
+        // }
 
         Ok(Self {
             open_browser,
@@ -132,9 +132,9 @@ pub fn host_web_viewer(
     }
 
     re_log::info!("Hosting a web-viewer at {viewer_url}");
-    if open_browser {
-        webbrowser::open(&viewer_url).ok();
-    }
+    // if open_browser {
+    //     webbrowser::open(&viewer_url).ok();
+    // }
 
     Ok(web_server)
 }
