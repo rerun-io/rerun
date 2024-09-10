@@ -65,6 +65,15 @@ impl ColumnDescriptor {
             Self::Component(descr) => descr.to_arrow_field(),
         }
     }
+
+    #[inline]
+    pub fn short_name(&self) -> String {
+        match self {
+            Self::Control(descr) => descr.component_name.short_name().to_owned(),
+            Self::Time(descr) => descr.timeline.name().to_string(),
+            Self::Component(descr) => descr.component_name.short_name().to_owned(),
+        }
+    }
 }
 
 /// Describes a column used to control Rerun's behavior, such as `RowId`.
@@ -72,7 +81,7 @@ impl ColumnDescriptor {
 pub struct ControlColumnDescriptor {
     /// Semantic name associated with this data.
     ///
-    /// Example: `rerun.controls.RowId`.
+    /// Example: `RowId::name()`.
     pub component_name: ComponentName,
 
     /// The Arrow datatype of the column.
