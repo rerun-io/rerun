@@ -81,7 +81,7 @@ impl ColumnDescriptor {
 pub struct ControlColumnDescriptor {
     /// Semantic name associated with this data.
     ///
-    /// Example: `rerun.controls.RowId`.
+    /// Example: `RowId::name()`.
     pub component_name: ComponentName,
 
     /// The Arrow datatype of the column.

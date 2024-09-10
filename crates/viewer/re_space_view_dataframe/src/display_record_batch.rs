@@ -15,7 +15,7 @@ use re_chunk_store::{ColumnDescriptor, ComponentColumnDescriptor, LatestAtQuery,
 use re_dataframe::RecordBatch;
 use re_log_types::{EntityPath, TimeInt, TimeType, Timeline};
 use re_types::external::arrow2::datatypes::IntegerType;
-use re_types_core::ComponentName;
+use re_types_core::{ComponentName, Loggable as _};
 use re_ui::UiExt;
 use re_viewer_context::{UiLayout, ViewerContext};
 
@@ -142,7 +142,7 @@ impl DisplayColumn {
     ) -> Result<Self, DisplayRecordBatchError> {
         match column_schema {
             ColumnDescriptor::Control(desc) => {
-                if desc.component_name == ComponentName::from("rerun.controls.RowId") {
+                if desc.component_name == RowId::name() {
                     let row_ids = column_data
                         .as_any()
                         .downcast_ref::<ArrowStructArray>()

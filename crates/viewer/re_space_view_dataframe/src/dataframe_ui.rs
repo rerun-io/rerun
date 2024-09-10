@@ -7,7 +7,7 @@ use itertools::Itertools;
 use re_chunk_store::{ColumnDescriptor, LatestAtQuery, RowId};
 use re_dataframe::{LatestAtQueryHandle, RangeQueryHandle, RecordBatch};
 use re_log_types::{EntityPath, TimeInt, Timeline};
-use re_types_core::ComponentName;
+use re_types_core::Loggable as _;
 use re_ui::UiExt as _;
 use re_viewer_context::ViewerContext;
 
@@ -141,8 +141,7 @@ impl RowsDisplayData {
             .iter()
             .find_position(|desc| match desc {
                 ColumnDescriptor::Control(control_column_desc) => {
-                    control_column_desc.component_name
-                        == ComponentName::from("rerun.controls.RowId")
+                    control_column_desc.component_name == RowId::name()
                 }
                 _ => false,
             })
