@@ -220,46 +220,47 @@ impl<'a> egui_table::TableDelegate for DataframeTableDelegate<'a> {
             }
         };
 
+        let cell_ui = |ui: &mut egui::Ui| {
+            if let Some(BatchRef { batch_idx, row_idx }) =
+                display_data.batch_ref_from_row.get(&cell.row_nr).copied()
+            {
+                let batch = &display_data.display_record_batches[batch_idx];
+                let column = &batch.columns()[cell.col_nr];
+
+                // compute the latest-at query for this row (used to display tooltips)
+                let timestamp = display_data
+                    .query_time_column_index
+                    .and_then(|col_idx| {
+                        display_data.display_record_batches[batch_idx].columns()[col_idx]
+                            .try_decode_time(row_idx)
+                    })
+                    .unwrap_or(TimeInt::MAX);
+                let latest_at_query = LatestAtQuery::new(self.query_handle.timeline(), timestamp);
+                let row_id = display_data
+                    .row_id_column_index
+                    .and_then(|col_idx| {
+                        display_data.display_record_batches[batch_idx].columns()[col_idx]
+                            .try_decode_row_id(row_idx)
+                    })
+                    .unwrap_or(RowId::ZERO);
+
+                if ui.is_sizing_pass() {
+                    ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Extend);
+                } else {
+                    ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Truncate);
+                }
+                column.data_ui(self.ctx, ui, row_id, &latest_at_query, row_idx);
+            } else {
+                error_ui(
+                    ui,
+                    "Bug in egui_table: we didn't prefetch what was rendered!",
+                );
+            }
+        };
+
         egui::Frame::none()
             .inner_margin(egui::Margin::symmetric(4.0, 0.0))
-            .show(ui, |ui| {
-                if let Some(BatchRef { batch_idx, row_idx }) =
-                    display_data.batch_ref_from_row.get(&cell.row_nr).copied()
-                {
-                    let batch = &display_data.display_record_batches[batch_idx];
-                    let column = &batch.columns()[cell.col_nr];
-
-                    // compute the latest-at query for this row (used to display tooltips)
-                    let timestamp = display_data
-                        .query_time_column_index
-                        .and_then(|col_idx| {
-                            display_data.display_record_batches[batch_idx].columns()[col_idx]
-                                .try_decode_time(row_idx)
-                        })
-                        .unwrap_or(TimeInt::MAX);
-                    let latest_at_query =
-                        LatestAtQuery::new(self.query_handle.timeline(), timestamp);
-                    let row_id = display_data
-                        .row_id_column_index
-                        .and_then(|col_idx| {
-                            display_data.display_record_batches[batch_idx].columns()[col_idx]
-                                .try_decode_row_id(row_idx)
-                        })
-                        .unwrap_or(RowId::ZERO);
-
-                    if ui.is_sizing_pass() {
-                        ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Extend);
-                    } else {
-                        ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Truncate);
-                    }
-                    column.data_ui(self.ctx, ui, row_id, &latest_at_query, row_idx);
-                } else {
-                    error_ui(
-                        ui,
-                        "Bug in egui_table: we didn't prefetch what was rendered!",
-                    );
-                }
-            });
+            .show(ui, cell_ui);
     }
 }
 
