@@ -1,8 +1,8 @@
 #![allow(dead_code, unused_variables, clippy::unnecessary_wraps)]
 
 use crate::{
-    renderer::video::{DecodingError, FrameDecodingResult},
     resource_managers::GpuTexture2D,
+    video::{DecodingError, FrameDecodingResult},
     RenderContext,
 };
 
@@ -33,7 +33,7 @@ impl VideoDecoder {
             data.config.coded_width as u32,
             data.config.coded_height as u32,
         );
-        Some(Self {
+        Ok(Self {
             data,
             zeroed_texture,
         })
