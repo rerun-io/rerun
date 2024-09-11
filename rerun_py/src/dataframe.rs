@@ -8,7 +8,8 @@ use arrow::{array::RecordBatch, pyarrow::PyArrowType};
 use pyo3::{exceptions::PyRuntimeError, prelude::*};
 use re_chunk_store::{
     ChunkStore, ChunkStoreConfig, ColumnDescriptor, ComponentColumnDescriptor,
-    ControlColumnDescriptor, RangeQueryExpression, TimeColumnDescriptor, VersionPolicy,
+    ControlColumnDescriptor, QueryExpression, RangeQueryExpression, TimeColumnDescriptor,
+    VersionPolicy,
 };
 use re_dataframe::QueryEngine;
 use re_log_types::{EntityPathFilter, ResolvedTimeRange};
@@ -156,6 +157,59 @@ impl PyDataset {
         };
 
         let query_handle = engine.range(&query, None /* columns */);
+
+        let batches: Result<Vec<_>, _> = query_handle
+            .into_iter()
+            .map(|batch| batch.try_to_arrow_record_batch())
+            .collect();
+
+        let batches = batches.map_err(|err| PyRuntimeError::new_err(err.to_string()))?;
+
+        Ok(PyArrowType(batches))
+    }
+
+    fn range_query_dict(
+        &self,
+        expr: &str,
+        pov: PyComponentColumn,
+    ) -> PyResult<PyArrowType<Vec<RecordBatch>>> {
+        // TODO(jleibs): Move this ctx into PyChunkStore?
+        let cache = re_dataframe::external::re_query::Caches::new(&self.store);
+        let engine = QueryEngine {
+            store: &self.store,
+            cache: &cache,
+        };
+
+        // TODO(jleibs): Move to arguments
+        let timeline = Timeline::log_tick();
+        let time_range = ResolvedTimeRange::EVERYTHING;
+
+        let query = RangeQueryExpression {
+            entity_path_filter: std::convert::TryInto::<EntityPathFilter>::try_into(expr)
+                .map_err(|err| PyRuntimeError::new_err(err.to_string()))?,
+            timeline,
+            time_range,
+            pov: pov.column,
+        };
+
+        let cols = self.store.schema_for_query(&(query.clone().into()));
+
+        let dict_wrapped = Some(
+            cols.into_iter()
+                .map(|col| match col {
+                    ColumnDescriptor::Component(descr) => {
+                        if descr != query.pov {
+                            ColumnDescriptor::DictionaryEncoded(descr)
+                        } else {
+                            ColumnDescriptor::Component(descr)
+                        }
+                    }
+                    _ => col,
+                })
+                .collect(),
+        );
+
+        let query_handle = engine.range(&query, dict_wrapped /* columns */);
 
         let batches: Result<Vec<_>, _> = query_handle
             .into_iter()

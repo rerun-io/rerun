@@ -43,6 +43,10 @@ class Dataset:
         """Execute a range query on the dataset."""
         return self.storage.range_query(entity_path_expr, pov)
 
+    def range_query_dict(self, entity_path_expr: str, pov: bindings.PyControlColumn) -> list[pa.RecordBatch]:
+        """Execute a range query on the dataset."""
+        return self.storage.range_query_dict(entity_path_expr, pov)
+
 
 class Archive:
     """An archive containing all the data stores in an RRD file."""
