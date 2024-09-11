@@ -31,6 +31,7 @@ from .tensor import Tensor
 from .text_document import TextDocument
 from .text_log import TextLog
 from .transform3d import Transform3D
+from .video_frame_reference import VideoFrameReference
 from .view_coordinates import ViewCoordinates
 
 __all__ = [
@@ -63,5 +64,6 @@ __all__ = [
     "TextDocument",
     "TextLog",
     "Transform3D",
+    "VideoFrameReference",
     "ViewCoordinates",
 ]

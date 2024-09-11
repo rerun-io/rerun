@@ -14,6 +14,7 @@
 #include "components/depth_meter.hpp"
 #include "components/disconnected_space.hpp"
 #include "components/draw_order.hpp"
+#include "components/entity_path.hpp"
 #include "components/fill_mode.hpp"
 #include "components/fill_ratio.hpp"
 #include "components/gamma_correction.hpp"
@@ -61,4 +62,5 @@
 #include "components/triangle_indices.hpp"
 #include "components/vector2d.hpp"
 #include "components/vector3d.hpp"
+#include "components/video_timestamp.hpp"
 #include "components/view_coordinates.hpp"

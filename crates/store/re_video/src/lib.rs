@@ -72,18 +72,26 @@ pub struct TimeMs(OrderedFloat<f64>);
 impl TimeMs {
     pub const ZERO: Self = Self(OrderedFloat(0.0));
 
+    #[inline]
     pub fn new(ms: f64) -> Self {
         Self(OrderedFloat(ms))
     }
 
+    #[inline]
     pub fn as_f64(&self) -> f64 {
         self.0.into_inner()
+    }
+
+    #[inline]
+    pub fn as_nanoseconds(self) -> i64 {
+        (self.0 * 1_000_000.0).round() as i64
     }
 }
 
 impl std::ops::Add<Self> for TimeMs {
     type Output = Self;
 
+    #[inline]
     fn add(self, rhs: Self) -> Self::Output {
         Self(self.0 + rhs.0)
     }
@@ -92,6 +100,7 @@ impl std::ops::Add<Self> for TimeMs {
 impl std::ops::Sub<Self> for TimeMs {
     type Output = Self;
 
+    #[inline]
     fn sub(self, rhs: Self) -> Self::Output {
         Self(self.0 - rhs.0)
     }
