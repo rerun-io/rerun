@@ -37,10 +37,10 @@ class VideoFrameReference(Archetype):
         Parameters
         ----------
         timestamp:
-            References the closest video frame to this time.
+            References the closest video frame to this timestamp.
 
             Note that this uses the closest video frame instead of the latest at this timestamp
-            in order to be more forgiving of rounding errors.
+            in order to be more forgiving of rounding errors for inprecise timestamp types.
         video_reference:
             Optional reference to an entity with a [`archetypes.AssetVideo`][rerun.archetypes.AssetVideo].
 
@@ -74,10 +74,10 @@ class VideoFrameReference(Archetype):
         metadata={"component": "required"},
         converter=components.VideoTimestampBatch._required,  # type: ignore[misc]
     )
-    # References the closest video frame to this time.
+    # References the closest video frame to this timestamp.
     #
     # Note that this uses the closest video frame instead of the latest at this timestamp
-    # in order to be more forgiving of rounding errors.
+    # in order to be more forgiving of rounding errors for inprecise timestamp types.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 

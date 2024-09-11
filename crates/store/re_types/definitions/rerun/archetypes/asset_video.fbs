@@ -7,7 +7,7 @@ namespace rerun.archetypes;
 /// Follow <https://github.com/rerun-io/rerun/issues/7298> for updates on the native support.
 ///
 /// In order to display a video, you need to log a [archetypes.VideoFrameReference] for each frame.
-// TODO(andreas): More docs and examples on how to use this.
+// TODO(#7368): More docs and examples on how to use this.
 table AssetVideo (
   "attr.rerun.experimental"
 ) {

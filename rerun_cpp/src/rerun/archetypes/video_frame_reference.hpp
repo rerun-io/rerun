@@ -23,10 +23,10 @@ namespace rerun::archetypes {
     ///
     /// ⚠ **This is an experimental API! It is not fully supported, and is likely to change significantly in future versions.**
     struct VideoFrameReference {
-        /// References the closest video frame to this time.
+        /// References the closest video frame to this timestamp.
         ///
         /// Note that this uses the closest video frame instead of the latest at this timestamp
-        /// in order to be more forgiving of rounding errors.
+        /// in order to be more forgiving of rounding errors for inprecise timestamp types.
         rerun::components::VideoTimestamp timestamp;
 
         /// Optional reference to an entity with a `archetypes::AssetVideo`.

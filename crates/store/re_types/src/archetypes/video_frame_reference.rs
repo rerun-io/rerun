@@ -25,10 +25,10 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 /// ⚠️ **This type is experimental and may be removed in future versions**
 #[derive(Clone, Debug)]
 pub struct VideoFrameReference {
-    /// References the closest video frame to this time.
+    /// References the closest video frame to this timestamp.
     ///
     /// Note that this uses the closest video frame instead of the latest at this timestamp
-    /// in order to be more forgiving of rounding errors.
+    /// in order to be more forgiving of rounding errors for inprecise timestamp types.
     pub timestamp: crate::components::VideoTimestamp,
 
     /// Optional reference to an entity with a [`archetypes::AssetVideo`][crate::archetypes::AssetVideo].

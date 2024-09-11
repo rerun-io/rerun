@@ -4916,6 +4916,7 @@ dependencies = [
  "once_cell",
  "parking_lot",
  "rayon",
+ "re_arrow2",
  "re_build_info",
  "re_build_tools",
  "re_chunk",
