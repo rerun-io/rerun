@@ -89,6 +89,10 @@ impl<'a> ExpandedRows<'a> {
             + row_nr as f32 * self.row_height
     }
 
+    pub(crate) fn collapse_row(&mut self, row_nr: u64) {
+        self.expand_row(row_nr, 0);
+    }
+
     pub(crate) fn expand_row(&mut self, row_nr: u64, additional_row_space: u64) {
         if additional_row_space == 0 {
             self.cache.expanded_rows.remove(&row_nr);

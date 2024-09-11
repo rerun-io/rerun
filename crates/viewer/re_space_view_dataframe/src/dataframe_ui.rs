@@ -297,6 +297,7 @@ impl<'a> egui_table::TableDelegate for DataframeTableDelegate<'a> {
                     .take(row_expansion as usize + 1);
 
                 for (sub_cell_index, instance_index) in instance_indices.enumerate() {
+                    // TODO: have an helper to split UIs that way
                     let sub_cell_rect = egui::Rect::from_min_size(
                         ui.cursor().min
                             + egui::vec2(
@@ -323,35 +324,62 @@ impl<'a> egui_table::TableDelegate for DataframeTableDelegate<'a> {
 
                         if cell_clicked {
                             if instance_count == row_expansion {
-                                self.expanded_rows.expand_row(cell.row_nr, 0);
+                                self.expanded_rows.collapse_row(cell.row_nr);
                             } else {
                                 self.expanded_rows.expand_row(cell.row_nr, instance_count);
                             }
                         }
                     } else {
-                        let has_collapse_button = if let Some(instance_index) = instance_index {
-                            instance_index < instance_count
+                        let has_collapse_button = instance_index
+                            .is_some_and(|instance_index| instance_index < instance_count);
+
+                        let remaining_instances = if sub_cell_index as u64 == row_expansion {
+                            instance_index.and_then(|instance_index| {
+                                let remaining = instance_count
+                                    .saturating_sub(instance_index)
+                                    .saturating_sub(1);
+                                if remaining > 0 {
+                                    // +1 is because the "X more…" line takes one instance spot
+                                    Some(remaining + 1)
+                                } else {
+                                    None
+                                }
+                            })
                         } else {
-                            false
+                            None
                         };
 
-                        let cell_clicked = cell_with_hover_button_ui(
-                            &mut sub_cell_ui,
-                            has_collapse_button.then_some(&re_ui::icons::COLLAPSE),
-                            |ui| {
-                                column.data_ui(
-                                    self.ctx,
-                                    ui,
-                                    row_id,
-                                    &latest_at_query,
-                                    row_idx,
-                                    instance_index,
-                                );
-                            },
-                        );
+                        if let Some(remaining_instances) = remaining_instances {
+                            let cell_clicked = cell_with_hover_button_ui(
+                                &mut sub_cell_ui,
+                                Some(&re_ui::icons::EXPAND),
+                                |ui| {
+                                    ui.label(format!("{remaining_instances} more…"));
+                                },
+                            );
 
-                        if cell_clicked {
-                            self.expanded_rows.expand_row(cell.row_nr, 0);
+                            if cell_clicked {
+                                self.expanded_rows.expand_row(cell.row_nr, instance_count);
+                            }
+                        } else {
+                            let cell_clicked = cell_with_hover_button_ui(
+                                &mut sub_cell_ui,
+                                has_collapse_button.then_some(&re_ui::icons::COLLAPSE),
+                                |ui| {
+                                    column.data_ui(
+                                        self.ctx,
+                                        ui,
+                                        row_id,
+                                        &latest_at_query,
+                                        row_idx,
+                                        instance_index,
+                                    );
+                                },
+                            );
+
+                            if cell_clicked {
+                                self.expanded_rows.collapse_row(cell.row_nr);
+                            }
                         }
                     }
                 }
