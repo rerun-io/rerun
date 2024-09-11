@@ -13,14 +13,16 @@ use re_ui::UiExt as _;
 use re_viewer_context::ViewerContext;
 
 use crate::display_record_batch::{DisplayRecordBatch, DisplayRecordBatchError};
+use crate::expanded_rows::{ExpandedRows, ExpandedRowsCache, QueryExpression};
 
 /// Display a dataframe table for the provided query.
 pub(crate) fn dataframe_ui<'a>(
     ctx: &ViewerContext<'_>,
     ui: &mut egui::Ui,
     query: impl Into<QueryHandle<'a>>,
+    expanded_rows_cache: &mut ExpandedRowsCache,
 ) {
-    dataframe_ui_impl(ctx, ui, &query.into());
+    dataframe_ui_impl(ctx, ui, &query.into(), expanded_rows_cache);
 }
 
 /// A query handle for either a latest-at or range query.
@@ -60,6 +62,13 @@ impl QueryHandle<'_> {
         match self {
             QueryHandle::LatestAt(query_handle) => query_handle.query().timeline,
             QueryHandle::Range(query_handle) => query_handle.query().timeline,
+        }
+    }
+
+    fn query_expression(&self) -> QueryExpression {
+        match self {
+            QueryHandle::LatestAt(query_handle) => query_handle.query().clone().into(),
+            QueryHandle::Range(query_handle) => query_handle.query().clone().into(),
         }
     }
 }
@@ -164,6 +173,8 @@ struct DataframeTableDelegate<'a> {
     schema: &'a [ColumnDescriptor],
     header_entity_paths: Vec<Option<EntityPath>>,
     display_data: anyhow::Result<RowsDisplayData>,
+
+    expanded_rows: ExpandedRows<'a>,
 
     num_rows: u64,
 }
@@ -276,7 +287,52 @@ impl<'a> egui_table::TableDelegate for DataframeTableDelegate<'a> {
                 } else {
                     ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Truncate);
                 }
-                column.data_ui(self.ctx, ui, row_id, &latest_at_query, row_idx);
+
+                let instance_count = column.instance_count(row_idx);
+                let row_expansion = self.expanded_rows.row_expansion(cell.row_nr);
+
+                let instance_indices = std::iter::once(None)
+                    .chain((0..instance_count).map(Option::Some))
+                    .take(row_expansion as usize + 1);
+
+                for (sub_cell_index, instance_index) in instance_indices.enumerate() {
+                    let sub_cell_rect = egui::Rect::from_min_size(
+                        ui.cursor().min
+                            + egui::vec2(
+                                0.0,
+                                sub_cell_index as f32 * re_ui::DesignTokens::table_line_height(),
+                            ),
+                        egui::vec2(
+                            ui.available_width(),
+                            re_ui::DesignTokens::table_line_height(),
+                        ),
+                    );
+
+                    let mut sub_cell_ui =
+                        ui.new_child(egui::UiBuilder::new().max_rect(sub_cell_rect));
+
+                    if instance_index == None && instance_count > 1 {
+                        if sub_cell_ui
+                            .button(format!("{instance_count} instances"))
+                            .clicked()
+                        {
+                            if instance_count == row_expansion {
+                                self.expanded_rows.expend_row(cell.row_nr, 0);
+                            } else {
+                                self.expanded_rows.expend_row(cell.row_nr, instance_count)
+                            }
+                        }
+                    } else {
+                        column.data_ui(
+                            self.ctx,
+                            &mut sub_cell_ui,
+                            row_id,
+                            &latest_at_query,
+                            row_idx,
+                            instance_index,
+                        );
+                    }
+                }
             } else {
                 error_ui(
                     ui,
@@ -289,11 +345,28 @@ impl<'a> egui_table::TableDelegate for DataframeTableDelegate<'a> {
             .inner_margin(egui::Margin::symmetric(Self::LEFT_RIGHT_MARGIN, 0.0))
             .show(ui, cell_ui);
     }
+
+    fn row_top_offset(&self, ctx: &egui::Context, table_id_salt: egui::Id, row_nr: u64) -> f32 {
+        self.expanded_rows
+            .row_top_offset(ctx, table_id_salt, row_nr)
+    }
+
+    fn default_row_height(&self) -> f32 {
+        re_ui::DesignTokens::table_line_height()
+    }
 }
 
 /// Display the result of a [`QueryHandle`] in a table.
-fn dataframe_ui_impl(ctx: &ViewerContext<'_>, ui: &mut egui::Ui, query_handle: &QueryHandle<'_>) {
+fn dataframe_ui_impl(
+    ctx: &ViewerContext<'_>,
+    ui: &mut egui::Ui,
+    query_handle: &QueryHandle<'_>,
+    expanded_rows_cache: &mut ExpandedRowsCache,
+) {
     re_tracing::profile_function!();
+
+    //TODO: actually make that unique!
+    let id = ui.id().with("__dataframe__");
 
     let schema = query_handle.schema();
     let (header_groups, header_entity_paths) = column_groups_for_entity(schema);
@@ -309,6 +382,11 @@ fn dataframe_ui_impl(ctx: &ViewerContext<'_>, ui: &mut egui::Ui, query_handle: &
         display_data: Err(anyhow::anyhow!(
             "No row data, `fetch_columns_and_rows` not called."
         )),
+        expanded_rows: ExpandedRows::new(
+            expanded_rows_cache,
+            query_handle.query_expression(),
+            re_ui::DesignTokens::table_line_height(),
+        ),
     };
 
     let num_sticky_cols = schema
@@ -318,6 +396,7 @@ fn dataframe_ui_impl(ctx: &ViewerContext<'_>, ui: &mut egui::Ui, query_handle: &
 
     egui::Frame::none().inner_margin(5.0).show(ui, |ui| {
         egui_table::Table::new()
+            .id_salt(id)
             .columns(
                 schema
                     .iter()
@@ -337,7 +416,6 @@ fn dataframe_ui_impl(ctx: &ViewerContext<'_>, ui: &mut egui::Ui, query_handle: &
                 egui_table::HeaderRow::new(re_ui::DesignTokens::table_header_height()),
             ])
             .num_rows(num_rows)
-            .row_height(re_ui::DesignTokens::table_line_height())
             .show(ui, &mut table_delegate);
     });
 }

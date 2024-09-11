@@ -76,6 +76,39 @@ impl ComponentData {
         }
     }
 
+    /// Returns the number of instances for the given row index.
+    ///
+    /// For [`Self::Null`] columns, or for invalid `row_index`, this will return 0.
+    fn instance_count(&self, row_index: usize) -> u64 {
+        match self {
+            Self::Null => 0,
+            Self::ListArray(list_array) => {
+                if list_array.is_valid(row_index) {
+                    list_array.value(row_index).len() as u64
+                } else {
+                    0
+                }
+            }
+            Self::DictionaryArray { dict, values } => {
+                if dict.is_valid(row_index) {
+                    values.value(dict.key_value(row_index)).len() as u64
+                } else {
+                    0
+                }
+            }
+        }
+    }
+
+    /// Display some data from the column.
+    ///
+    /// - Argument `row_index` is the row index within the batch column.
+    /// - Argument `instance_index` is the specific instance within the specified row. If `None`, a
+    ///   summary of all existing instances is displayed.
+    ///
+    /// # Panic
+    ///
+    /// Panics if `instance_index` is out-of-bound. Use [`Self::instance_count`] to ensure
+    /// correctness.
     #[allow(clippy::too_many_arguments)]
     fn data_ui(
         &self,
@@ -85,7 +118,8 @@ impl ComponentData {
         latest_at_query: &LatestAtQuery,
         entity_path: &EntityPath,
         component_name: ComponentName,
-        row_index: usize, // index within the batch column
+        row_index: usize,
+        instance_index: Option<u64>,
     ) {
         let data = match self {
             Self::Null => {
@@ -101,6 +135,14 @@ impl ComponentData {
         };
 
         if let Some(data) = data {
+            let data_to_display = if let Some(instance_index) = instance_index {
+                // Panics if the instance index is out of bound. This is checked in
+                // `DisplayColumn::data_ui`.
+                data.sliced(instance_index as usize, 1)
+            } else {
+                data
+            };
+
             ctx.component_ui_registry.ui_raw(
                 ctx,
                 ui,
@@ -110,7 +152,7 @@ impl ComponentData {
                 entity_path,
                 component_name,
                 Some(row_id),
-                &*data,
+                &*data_to_display,
             );
         } else {
             ui.label("-");
@@ -201,23 +243,49 @@ impl DisplayColumn {
         }
     }
 
+    pub(crate) fn instance_count(&self, row_index: usize) -> u64 {
+        match self {
+            Self::RowId { .. } | Self::Timeline { .. } => 1,
+            Self::Component { component_data, .. } => component_data.instance_count(row_index),
+        }
+    }
+
+    /// Display some data in the column.
+    ///
+    /// - Argument `row_index` is the row index within the batch column.
+    /// - Argument `instance_index` is the specific instance within the row to display. If `None`,
+    ///   a summary of all instances is displayed. If the instance is out-of-bound (aka greater than
+    ///   [`Self::instance_count`]), nothing is displayed.
     pub(crate) fn data_ui(
         &self,
         ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
         row_id: RowId,
         latest_at_query: &LatestAtQuery,
-        index: usize,
+        row_index: usize,
+        instance_index: Option<u64>,
     ) {
+        if let Some(instance_index) = instance_index {
+            if instance_index >= self.instance_count(row_index) {
+                // do not display anything for out-of-bound instance index
+                return;
+            }
+        }
+
         match self {
             Self::RowId {
                 row_id_times,
                 row_id_counters,
                 ..
             } => {
+                if instance_index.is_some() {
+                    // we only ever display the row id on the summary line
+                    return;
+                }
+
                 let row_id = RowId::from_u128(
-                    (row_id_times.value(index) as u128) << 64
-                        | (row_id_counters.value(index) as u128),
+                    (row_id_times.value(row_index) as u128) << 64
+                        | (row_id_counters.value(row_index) as u128),
                 );
                 row_id_ui(ctx, ui, &row_id);
             }
@@ -225,7 +293,12 @@ impl DisplayColumn {
                 timeline,
                 time_data,
             } => {
-                let timestamp = TimeInt::try_from(time_data.value(index));
+                if instance_index.is_some() {
+                    // we only ever display the row id on the summary line
+                    return;
+                }
+
+                let timestamp = TimeInt::try_from(time_data.value(row_index));
                 match timestamp {
                     Ok(timestamp) => {
                         ui.label(timeline.typ().format(timestamp, ctx.app_options.time_zone));
@@ -247,7 +320,8 @@ impl DisplayColumn {
                     latest_at_query,
                     entity_path,
                     *component_name,
-                    index,
+                    row_index,
+                    instance_index,
                 );
             }
         }
