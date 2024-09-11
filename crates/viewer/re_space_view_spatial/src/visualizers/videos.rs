@@ -1,8 +1,11 @@
 use egui::mutex::Mutex;
 
 use re_log_types::EntityPath;
-use re_renderer::renderer::{
-    ColormappedTexture, RectangleOptions, TextureFilterMag, TextureFilterMin, TexturedRect,
+use re_renderer::{
+    renderer::{
+        ColormappedTexture, RectangleOptions, TextureFilterMag, TextureFilterMin, TexturedRect,
+    },
+    video::{FrameDecodingResult, Video},
 };
 use re_types::{
     archetypes::{AssetVideo, VideoFrameReference},
@@ -119,13 +122,28 @@ impl VisualizerSystem for VideoFrameReferenceVisualizer {
                         VideoTimeMode::Nanoseconds => video_timestamp.video_time as f64 / 1e9,
                     };
 
-                    let (texture, video_width, video_height) = {
+                    let (texture_result, video_width, video_height) = {
                         let mut video = video.lock(); // TODO(andreas): Interior mutability for re_renderer's video would be nice.
                         (
                             video.frame_at(timestamp_in_seconds),
                             video.width(),
                             video.height(),
                         )
+                    };
+
+                    let texture = match texture_result {
+                        FrameDecodingResult::Ready(texture) => texture,
+                        FrameDecodingResult::Pending(texture) => {
+                            ctx.viewer_ctx.egui_ctx.request_repaint();
+                            texture
+                        }
+                        FrameDecodingResult::Error(err) => {
+                            // TODO(#7373): show this error in the ui
+                            re_log::error_once!(
+                                "Failed to decode video frame for {entity_path}: {err}"
+                            );
+                            continue;
+                        }
                     };
 
                     let world_from_entity =
@@ -215,7 +233,7 @@ fn textured_rect_for_video_frame(
 fn latest_at_query_video_from_datastore(
     ctx: &ViewerContext<'_>,
     entity_path: &EntityPath,
-) -> Option<std::sync::Arc<Mutex<re_renderer::renderer::Video>>> {
+) -> Option<std::sync::Arc<Mutex<Video>>> {
     let query = ctx.current_query();
 
     let results = ctx.recording().query_caches().latest_at(

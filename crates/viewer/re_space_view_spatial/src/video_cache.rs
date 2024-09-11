@@ -1,5 +1,5 @@
 use re_entity_db::VersionedInstancePathHash;
-use re_renderer::{renderer::Video, RenderContext};
+use re_renderer::{video::Video, RenderContext};
 use re_types::components::MediaType;
 use re_viewer_context::Cache;
 
