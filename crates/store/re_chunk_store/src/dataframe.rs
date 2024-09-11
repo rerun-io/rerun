@@ -37,23 +37,29 @@ pub enum ColumnDescriptor {
     Control(ControlColumnDescriptor),
     Time(TimeColumnDescriptor),
     Component(ComponentColumnDescriptor),
+    DictionaryEncoded(ComponentColumnDescriptor),
 }
 
 impl ColumnDescriptor {
     #[inline]
     pub fn entity_path(&self) -> Option<&EntityPath> {
         match self {
-            Self::Component(descr) => Some(&descr.entity_path),
             Self::Control(_) | Self::Time(_) => None,
+            Self::Component(descr) | Self::DictionaryEncoded(descr) => Some(&descr.entity_path),
         }
     }
 
     #[inline]
-    pub fn datatype(&self) -> &ArrowDatatype {
+    pub fn datatype(&self) -> ArrowDatatype {
         match self {
-            Self::Control(descr) => &descr.datatype,
-            Self::Component(descr) => &descr.datatype,
-            Self::Time(descr) => &descr.datatype,
+            Self::Control(descr) => descr.datatype.clone(),
+            Self::Time(descr) => descr.datatype.clone(),
+            Self::Component(descr) => descr.datatype.clone(),
+            Self::DictionaryEncoded(descr) => ArrowDatatype::Dictionary(
+                arrow2::datatypes::IntegerType::Int32,
+                std::sync::Arc::new(descr.datatype.clone()),
+                true,
+            ),
         }
     }
 
@@ -63,6 +69,11 @@ impl ColumnDescriptor {
             Self::Control(descr) => descr.to_arrow_field(),
             Self::Time(descr) => descr.to_arrow_field(),
             Self::Component(descr) => descr.to_arrow_field(),
+            Self::DictionaryEncoded(descr) => {
+                let mut field = descr.to_arrow_field();
+                field.data_type = self.datatype();
+                field
+            }
         }
     }
 
@@ -71,7 +82,9 @@ impl ColumnDescriptor {
         match self {
             Self::Control(descr) => descr.component_name.short_name().to_owned(),
             Self::Time(descr) => descr.timeline.name().to_string(),
-            Self::Component(descr) => descr.component_name.short_name().to_owned(),
+            Self::Component(descr) | Self::DictionaryEncoded(descr) => {
+                descr.component_name.short_name().to_owned()
+            }
         }
     }
 }
@@ -194,6 +207,10 @@ pub struct ComponentColumnDescriptor {
     pub component_name: ComponentName,
 
     /// The Arrow datatype of the column.
+    ///
+    /// This is the log-time datatype corresponding to how this data is encoded
+    /// in a chunk. Currently this will always be an [`ArrowListArray`], but as
+    /// we introduce mono-type optimization, this might be a native type instead.
     pub datatype: ArrowDatatype,
 
     /// Whether this column represents static data.
@@ -281,45 +298,47 @@ impl ComponentColumnDescriptor {
         }
     }
 
-    #[inline]
-    pub fn to_arrow_field(&self) -> ArrowField {
+    fn metadata(&self) -> arrow2::datatypes::Metadata {
         let Self {
             entity_path,
             archetype_name,
             archetype_field_name,
             component_name,
-            datatype,
+            datatype: _,
             is_static,
         } = self;
 
+        [
+            (*is_static).then_some(("sorbet.is_static".to_owned(), "yes".to_owned())),
+            Some(("sorbet.path".to_owned(), entity_path.to_string())),
+            Some((
+                "sorbet.semantic_type".to_owned(),
+                component_name.short_name().to_owned(),
+            )),
+            archetype_name.map(|name| {
+                (
+                    "sorbet.semantic_family".to_owned(),
+                    name.short_name().to_owned(),
+                )
+            }),
+            archetype_field_name
+                .as_ref()
+                .map(|name| ("sorbet.logical_type".to_owned(), name.to_owned())),
+        ]
+        .into_iter()
+        .flatten()
+        .collect()
+    }
+
+    #[inline]
+    pub fn to_arrow_field(&self) -> ArrowField {
         ArrowField::new(
-            component_name.short_name().to_owned(),
-            datatype.clone(),
-            false, /* nullable */
+            self.component_name.short_name().to_owned(),
+            self.datatype.clone(),
+            true, /* nullable */
         )
         // TODO(#6889): This needs some proper sorbetization -- I just threw these names randomly.
-        .with_metadata(
-            [
-                (*is_static).then_some(("sorbet.is_static".to_owned(), "yes".to_owned())),
-                Some(("sorbet.path".to_owned(), entity_path.to_string())),
-                Some((
-                    "sorbet.semantic_type".to_owned(),
-                    component_name.short_name().to_owned(),
-                )),
-                archetype_name.map(|name| {
-                    (
-                        "sorbet.semantic_family".to_owned(),
-                        name.short_name().to_owned(),
-                    )
-                }),
-                archetype_field_name
-                    .as_ref()
-                    .map(|name| ("sorbet.logical_type".to_owned(), name.to_owned())),
-            ]
-            .into_iter()
-            .flatten()
-            .collect(),
-        )
+        .with_metadata(self.metadata())
     }
 }
 
@@ -570,6 +589,8 @@ impl ChunkStore {
         // Then, discard any column descriptor which cannot possibly have data for the given query.
         //
         // TODO(cmc): Opportunities for parallelization, if it proves to be a net positive in practice.
+        // TODO(jleibs): This filtering actually seems incorrect. This operation should be based solely
+        // on the timeline,
         let mut filtered_out = HashSet::default();
         for column_descr in &schema {
             let ColumnDescriptor::Component(descr) = column_descr else {

@@ -7,7 +7,7 @@ use arrow2::{
 use itertools::Itertools;
 
 use re_chunk::{LatestAtQuery, TimeInt, Timeline, UnitChunkShared};
-use re_chunk_store::{ColumnDescriptor, ComponentColumnDescriptor, LatestAtQueryExpression};
+use re_chunk_store::{ColumnDescriptor, LatestAtQueryExpression};
 
 use crate::{QueryEngine, RecordBatch};
 
@@ -102,15 +102,16 @@ impl LatestAtQueryHandle<'_> {
 
         let columns = self.schema();
 
-        let all_units: HashMap<&ComponentColumnDescriptor, UnitChunkShared> = {
+        let all_units: HashMap<&ColumnDescriptor, UnitChunkShared> = {
             re_tracing::profile_scope!("queries");
 
             // TODO(cmc): Opportunities for parallelization, if it proves to be a net positive in practice.
             let query = LatestAtQuery::new(self.query.timeline, self.query.at);
             columns
                 .iter()
-                .filter_map(|descr| match descr {
-                    ColumnDescriptor::Component(descr) => {
+                .filter_map(|col| match col {
+                    ColumnDescriptor::Component(descr)
+                    | ColumnDescriptor::DictionaryEncoded(descr) => {
                         let results = self.engine.cache.latest_at(
                             self.engine.store,
                             &query,
@@ -122,7 +123,7 @@ impl LatestAtQueryHandle<'_> {
                             .components
                             .get(&descr.component_name)
                             .cloned()
-                            .map(|chunk| (descr, chunk))
+                            .map(|chunk| (col, chunk))
                     }
 
                     _ => None,
@@ -169,7 +170,7 @@ impl LatestAtQueryHandle<'_> {
 
             columns
                 .iter()
-                .filter_map(|descr| match descr {
+                .filter_map(|col| match col {
                     ColumnDescriptor::Control(_) => {
                         if cfg!(debug_assertions) {
                             unreachable!("filtered out during schema computation");
@@ -197,8 +198,31 @@ impl LatestAtQueryHandle<'_> {
 
                     ColumnDescriptor::Component(descr) => Some(
                         all_units
-                            .get(descr)
+                            .get(col)
                             .and_then(|chunk| chunk.components().get(&descr.component_name))
+                            .map_or_else(
+                                || {
+                                    arrow2::array::new_null_array(
+                                        descr.datatype.clone(),
+                                        null_array_length,
+                                    )
+                                },
+                                |list_array| list_array.to_boxed(),
+                            ),
+                    ),
+
+                    ColumnDescriptor::DictionaryEncoded(descr) => Some(
+                        all_units
+                            .get(col)
+                            .and_then(|chunk| {
+                                let indexed = chunk.index(&self.query.timeline).and_then(|index| {
+                                    chunk
+                                        .components()
+                                        .get(&descr.component_name)
+                                        .map(|array| (index, array as &dyn ArrowArray))
+                                });
+                                re_chunk::util::arrays_to_dictionary(&descr.datatype, &[indexed])
+                            })
                             .map_or_else(
                                 || {
                                     arrow2::array::new_null_array(
@@ -308,7 +332,7 @@ mod tests {
                 .all(|(descr, field)| descr.to_arrow_field() == *field)
         );
         assert!(itertools::izip!(handle.schema(), batch.data.iter())
-            .all(|(descr, array)| descr.datatype() == array.data_type()));
+            .all(|(descr, array)| &descr.datatype() == array.data_type()));
     }
 
     #[test]
