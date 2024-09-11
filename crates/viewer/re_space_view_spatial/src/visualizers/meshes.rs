@@ -1,7 +1,6 @@
 use re_chunk_store::RowId;
 use re_log_types::{hash::Hash64, Instance, TimeInt};
-use re_renderer::renderer::MeshInstance;
-use re_renderer::RenderContext;
+use re_renderer::{renderer::MeshInstance, RenderContext};
 use re_types::{
     archetypes::Mesh3D,
     components::{
