@@ -43,5 +43,7 @@ uvec4d.md linguist-generated=true
 vec2d.md linguist-generated=true
 vec3d.md linguist-generated=true
 vec4d.md linguist-generated=true
+video_time_mode.md linguist-generated=true
+video_timestamp.md linguist-generated=true
 view_coordinates.md linguist-generated=true
 visible_time_range.md linguist-generated=true

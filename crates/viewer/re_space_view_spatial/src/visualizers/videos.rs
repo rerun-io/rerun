@@ -1,51 +1,39 @@
-use glam::Vec3;
-use re_chunk_store::RowId;
-use re_chunk_store::TimeInt;
-use re_log_types::hash::Hash64;
-use re_log_types::TimeType;
-use re_renderer::renderer::ColormappedTexture;
-use re_renderer::renderer::RectangleOptions;
-use re_renderer::renderer::TextureFilterMag;
-use re_renderer::renderer::TextureFilterMin;
-use re_renderer::renderer::TexturedRect;
-use re_renderer::video::FrameDecodingResult;
-use re_renderer::RenderContext;
-use re_types::archetypes::AssetVideo;
-use re_types::components::Blob;
-use re_types::components::MediaType;
-use re_types::ArrowBuffer;
-use re_types::ArrowString;
-use re_types::Loggable as _;
-use re_viewer_context::SpaceViewClass as _;
+use egui::mutex::Mutex;
+
+use re_log_types::EntityPath;
+use re_renderer::{
+    renderer::{
+        ColormappedTexture, RectangleOptions, TextureFilterMag, TextureFilterMin, TexturedRect,
+    },
+    video::{FrameDecodingResult, Video},
+};
+use re_types::{
+    archetypes::{AssetVideo, VideoFrameReference},
+    components::{Blob, EntityPath as EntityPathReferenceComponent, MediaType, VideoTimestamp},
+    datatypes::VideoTimeMode,
+    Archetype, Loggable as _,
+};
 use re_viewer_context::{
-    ApplicableEntities, IdentifiedViewSystem, QueryContext, SpaceViewSystemExecutionError,
-    ViewContext, ViewContextCollection, ViewQuery, VisualizableEntities, VisualizableFilterContext,
-    VisualizerQueryInfo, VisualizerSystem,
+    ApplicableEntities, IdentifiedViewSystem, SpaceViewClass as _, SpaceViewSystemExecutionError,
+    ViewContext, ViewContextCollection, ViewQuery, ViewerContext, VisualizableEntities,
+    VisualizableFilterContext, VisualizerQueryInfo, VisualizerSystem,
 };
 
-use crate::video_cache::VideoCache;
-use crate::video_cache::VideoCacheKey;
-use crate::visualizers::entity_iterator::iter_buffer;
-use crate::SpatialSpaceView2D;
 use crate::{
-    contexts::SpatialSceneEntityContext, view_kind::SpatialSpaceViewKind,
-    visualizers::filter_visualizable_2d_entities,
+    video_cache::{VideoCache, VideoCacheKey},
+    view_kind::SpatialSpaceViewKind,
+    visualizers::{entity_iterator, filter_visualizable_2d_entities},
+    SpatialSpaceView2D,
 };
 
 use super::bounding_box_for_textured_rect;
 use super::{entity_iterator::process_archetype, SpatialViewVisualizerData};
 
-pub struct AssetVideoVisualizer {
+pub struct VideoFrameReferenceVisualizer {
     pub data: SpatialViewVisualizerData,
 }
 
-struct AssetVideoComponentData {
-    index: (TimeInt, RowId),
-    blob: ArrowBuffer<u8>,
-    media_type: Option<ArrowString>,
-}
-
-impl Default for AssetVideoVisualizer {
+impl Default for VideoFrameReferenceVisualizer {
     fn default() -> Self {
         Self {
             data: SpatialViewVisualizerData::new(Some(SpatialSpaceViewKind::TwoD)),
@@ -53,15 +41,15 @@ impl Default for AssetVideoVisualizer {
     }
 }
 
-impl IdentifiedViewSystem for AssetVideoVisualizer {
+impl IdentifiedViewSystem for VideoFrameReferenceVisualizer {
     fn identifier() -> re_viewer_context::ViewSystemIdentifier {
-        "Video".into()
+        "VideoFrameReference".into()
     }
 }
 
-impl VisualizerSystem for AssetVideoVisualizer {
+impl VisualizerSystem for VideoFrameReferenceVisualizer {
     fn visualizer_query_info(&self) -> VisualizerQueryInfo {
-        VisualizerQueryInfo::from_archetype::<AssetVideo>()
+        VisualizerQueryInfo::from_archetype::<VideoFrameReference>()
     }
 
     fn filter_visualizable_entities(
@@ -85,47 +73,105 @@ impl VisualizerSystem for AssetVideoVisualizer {
 
         let mut rectangles = Vec::new();
 
-        process_archetype::<Self, AssetVideo, _>(
+        process_archetype::<Self, VideoFrameReference, _>(
             ctx,
             view_query,
             context_systems,
             |ctx, spatial_ctx, results| {
+                // TODO(andreas): Should ignore range queries here and only do latest-at.
+                // Not only would this simplify the code here quite a bit, it would also avoid lots of overhead.
+                // Same is true for the image visualizers in general - there seems to be no practical reason to do range queries
+                // for visualization here.
                 use re_space_view::RangeResultsExt as _;
-                let Some(all_blob_chunks) = results.get_required_chunks(&Blob::name()) else {
-                    return Ok(());
-                };
 
                 let timeline = ctx.query.timeline();
-                let all_blobs_indexed = iter_buffer::<u8>(&all_blob_chunks, timeline, Blob::name());
-                let all_media_types = results.iter_as(timeline, MediaType::name());
+                let entity_path = ctx.target_entity_path;
 
-                let data = re_query::range_zip_1x1(all_blobs_indexed, all_media_types.string())
-                    .filter_map(|(index, blobs, media_types)| {
-                        blobs.first().map(|blob| AssetVideoComponentData {
-                            index,
-                            blob: blob.clone(),
-                            media_type: media_types
-                                .and_then(|media_types| media_types.first().cloned()),
-                        })
-                    });
-
-                let current_time_nanoseconds = match timeline.typ() {
-                    TimeType::Time => view_query.latest_at.as_f64(),
-                    // TODO(jan): scale by ticks per second
-                    #[allow(clippy::match_same_arms)]
-                    TimeType::Sequence => view_query.latest_at.as_f64(),
+                let Some(all_video_timestamp_chunks) =
+                    results.get_required_chunks(&VideoTimestamp::name())
+                else {
+                    return Ok(());
                 };
-                let current_time_seconds = current_time_nanoseconds / 1e9;
+                let all_video_references =
+                    results.iter_as(timeline, EntityPathReferenceComponent::name());
 
-                self.process_data(
-                    ctx,
-                    render_ctx,
-                    &mut rectangles,
-                    spatial_ctx,
-                    data,
-                    current_time_seconds,
-                    results.query_result_hash(),
-                );
+                for (_index, video_timestamps, video_references) in re_query::range_zip_1x1(
+                    entity_iterator::iter_component(
+                        &all_video_timestamp_chunks,
+                        timeline,
+                        VideoTimestamp::name(),
+                    ),
+                    all_video_references.string(),
+                ) {
+                    let Some(video_timestamp): Option<&VideoTimestamp> = video_timestamps.first()
+                    else {
+                        continue;
+                    };
+
+                    // Follow the reference to the video asset.
+                    let video_reference = video_references
+                        .and_then(|v| v.first().map(|e| e.as_str().into()))
+                        .unwrap_or_else(|| entity_path.clone());
+                    let Some(video) =
+                        latest_at_query_video_from_datastore(ctx.viewer_ctx, &video_reference)
+                    else {
+                        continue;
+                    };
+
+                    let timestamp_in_seconds = match video_timestamp.time_mode {
+                        VideoTimeMode::Nanoseconds => video_timestamp.video_time as f64 / 1e9,
+                    };
+
+                    let (texture_result, video_width, video_height) = {
+                        let mut video = video.lock(); // TODO(andreas): Interior mutability for re_renderer's video would be nice.
+                        (
+                            video.frame_at(timestamp_in_seconds),
+                            video.width(),
+                            video.height(),
+                        )
+                    };
+
+                    let texture = match texture_result {
+                        FrameDecodingResult::Ready(texture) => texture,
+                        FrameDecodingResult::Pending(texture) => {
+                            ctx.viewer_ctx.egui_ctx.request_repaint();
+                            texture
+                        }
+                        FrameDecodingResult::Error(err) => {
+                            // TODO(#7373): show this error in the ui
+                            re_log::error_once!(
+                                "Failed to decode video frame for {entity_path}: {err}"
+                            );
+                            continue;
+                        }
+                    };
+
+                    let world_from_entity =
+                        spatial_ctx.transform_info.single_entity_transform_required(
+                            ctx.target_entity_path,
+                            Self::identifier().as_str(),
+                        );
+                    let textured_rect = textured_rect_for_video_frame(
+                        world_from_entity,
+                        video_width,
+                        video_height,
+                        texture,
+                    );
+
+                    if spatial_ctx.space_view_class_identifier == SpatialSpaceView2D::identifier() {
+                        // Only update the bounding box if this is a 2D space view.
+                        // This is avoids a cyclic relationship where the image plane grows
+                        // the bounds which in turn influence the size of the image plane.
+                        // See: https://github.com/rerun-io/rerun/issues/3728
+                        self.data.add_bounding_box(
+                            entity_path.hash(),
+                            bounding_box_for_textured_rect(&textured_rect),
+                            world_from_entity,
+                        );
+                    }
+
+                    rectangles.push(textured_rect);
+                }
 
                 Ok(())
             },
@@ -158,93 +204,64 @@ impl VisualizerSystem for AssetVideoVisualizer {
     }
 }
 
-// NOTE: Do not put profile scopes in these methods. They are called for all entities and all
-// timestamps within a time range -- it's _a lot_.
-impl AssetVideoVisualizer {
-    #[allow(clippy::unused_self)]
-    #[allow(clippy::too_many_arguments)]
-    fn process_data(
-        &mut self,
-        ctx: &QueryContext<'_>,
-        render_ctx: &RenderContext,
-        rectangles: &mut Vec<TexturedRect>,
-        ent_context: &SpatialSceneEntityContext<'_>,
-        data: impl Iterator<Item = AssetVideoComponentData>,
-        current_time_seconds: f64,
-        query_result_hash: Hash64,
-    ) {
-        let entity_path = ctx.target_entity_path;
+fn textured_rect_for_video_frame(
+    world_from_entity: glam::Affine3A,
+    video_width: u32,
+    video_height: u32,
+    texture: re_renderer::resource_managers::GpuTexture2D,
+) -> TexturedRect {
+    TexturedRect {
+        top_left_corner_position: world_from_entity.transform_point3(glam::Vec3::ZERO),
+        // Make sure to use the video instead of texture size here,
+        // since it may be a placeholder which doesn't have the full size yet.
+        extent_u: world_from_entity.transform_vector3(glam::Vec3::X * video_width as f32),
+        extent_v: world_from_entity.transform_vector3(glam::Vec3::Y * video_height as f32),
 
-        for data in data {
-            let timestamp_s = current_time_seconds - data.index.0.as_f64() / 1e9;
-            let video = AssetVideo {
-                blob: data.blob.clone().into(),
-                media_type: data.media_type.clone().map(Into::into),
-            };
-
-            let primary_row_id = data.index.1;
-            let picking_instance_hash = re_entity_db::InstancePathHash::entity_all(entity_path);
-
-            let video = ctx.viewer_ctx.cache.entry(|c: &mut VideoCache| {
-                c.entry(
-                    &entity_path.to_string(),
-                    VideoCacheKey {
-                        versioned_instance_path_hash: picking_instance_hash
-                            .versioned(primary_row_id),
-                        query_result_hash,
-                        media_type: data.media_type.clone().map(Into::into),
-                    },
-                    &video.blob,
-                    video.media_type.as_ref().map(|v| v.as_str()),
-                    render_ctx,
-                )
-            });
-
-            if let Some(video) = video {
-                let mut video = video.lock();
-                let texture = match video.frame_at(timestamp_s) {
-                    FrameDecodingResult::Ready(texture) => texture,
-                    FrameDecodingResult::Pending(texture) => {
-                        ctx.viewer_ctx.egui_ctx.request_repaint();
-                        texture
-                    }
-                    FrameDecodingResult::Error(err) => {
-                        // TODO(#7373): show this error in the ui
-                        re_log::error_once!(
-                            "Failed to decode video frame for {entity_path}: {err}"
-                        );
-                        continue;
-                    }
-                };
-
-                let world_from_entity = ent_context
-                    .transform_info
-                    .single_entity_transform_required(ctx.target_entity_path, "Video");
-                let textured_rect = TexturedRect {
-                    top_left_corner_position: world_from_entity.transform_point3(Vec3::ZERO),
-                    extent_u: world_from_entity.transform_vector3(Vec3::X * video.width() as f32),
-                    extent_v: world_from_entity.transform_vector3(Vec3::Y * video.height() as f32),
-
-                    colormapped_texture: ColormappedTexture::from_unorm_rgba(texture),
-                    options: RectangleOptions {
-                        texture_filter_magnification: TextureFilterMag::Nearest,
-                        texture_filter_minification: TextureFilterMin::Linear,
-                        ..Default::default()
-                    },
-                };
-
-                if ent_context.space_view_class_identifier == SpatialSpaceView2D::identifier() {
-                    self.data.add_bounding_box(
-                        entity_path.hash(),
-                        bounding_box_for_textured_rect(&textured_rect),
-                        world_from_entity,
-                    );
-                }
-
-                rectangles.push(textured_rect);
-            };
-        }
+        colormapped_texture: ColormappedTexture::from_unorm_rgba(texture),
+        options: RectangleOptions {
+            texture_filter_magnification: TextureFilterMag::Nearest,
+            texture_filter_minification: TextureFilterMin::Linear,
+            ..Default::default()
+        },
     }
 }
 
-re_viewer_context::impl_component_fallback_provider!(AssetVideoVisualizer => []);
+/// Queries a video from the datstore and caches it in the video cache.
+///
+/// Note that this does *NOT* check the blueprint store at all.
+/// For this, we'd need a [`re_viewer_context::DataResult`] instead of merely a [`EntityPath`].
+fn latest_at_query_video_from_datastore(
+    ctx: &ViewerContext<'_>,
+    entity_path: &EntityPath,
+) -> Option<std::sync::Arc<Mutex<Video>>> {
+    let query = ctx.current_query();
+
+    let results = ctx.recording().query_caches().latest_at(
+        ctx.recording_store(),
+        &query,
+        entity_path,
+        AssetVideo::all_components().iter().copied(),
+    );
+
+    let blob_row_id = results.component_row_id(&Blob::name())?;
+    let blob = results.component_instance::<Blob>(0)?;
+    let media_type = results.component_instance::<MediaType>(0);
+
+    ctx.cache.entry(|c: &mut VideoCache| {
+        c.entry(
+            &entity_path.to_string(),
+            VideoCacheKey {
+                versioned_instance_path_hash: re_entity_db::InstancePathHash::entity_all(
+                    entity_path,
+                )
+                .versioned(blob_row_id),
+                media_type: media_type.clone(),
+            },
+            &blob,
+            media_type.as_ref().map(|v| v.as_str()),
+            ctx.render_ctx?,
+        )
+    })
+}
+
+re_viewer_context::impl_component_fallback_provider!(VideoFrameReferenceVisualizer => []);
