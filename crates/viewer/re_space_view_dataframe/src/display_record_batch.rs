@@ -123,7 +123,10 @@ impl ComponentData {
     ) {
         let data = match self {
             Self::Null => {
-                ui.label("null");
+                // don't repeat the null value when expanding instances
+                if instance_index.is_none() {
+                    ui.label("null");
+                }
                 return;
             }
             Self::ListArray(list_array) => list_array

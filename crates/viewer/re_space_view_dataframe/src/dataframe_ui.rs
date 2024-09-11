@@ -258,6 +258,7 @@ impl<'a> egui_table::TableDelegate for DataframeTableDelegate<'a> {
             }
         };
 
+        //TODO: this is getting wild, refactor in some functions
         let cell_ui = |ui: &mut egui::Ui| {
             if let Some(BatchRef { batch_idx, row_idx }) =
                 display_data.batch_ref_from_row.get(&cell.row_nr).copied()
@@ -311,26 +312,47 @@ impl<'a> egui_table::TableDelegate for DataframeTableDelegate<'a> {
                     let mut sub_cell_ui =
                         ui.new_child(egui::UiBuilder::new().max_rect(sub_cell_rect));
 
-                    if instance_index == None && instance_count > 1 {
-                        if sub_cell_ui
-                            .button(format!("{instance_count} instances"))
-                            .clicked()
-                        {
+                    if instance_index.is_none() && instance_count > 1 {
+                        let cell_clicked = cell_with_hover_button_ui(
+                            &mut sub_cell_ui,
+                            Some(&re_ui::icons::EXPAND),
+                            |ui| {
+                                ui.label(format!("{instance_count} instances"));
+                            },
+                        );
+
+                        if cell_clicked {
                             if instance_count == row_expansion {
-                                self.expanded_rows.expend_row(cell.row_nr, 0);
+                                self.expanded_rows.expand_row(cell.row_nr, 0);
                             } else {
-                                self.expanded_rows.expend_row(cell.row_nr, instance_count)
+                                self.expanded_rows.expand_row(cell.row_nr, instance_count);
                             }
                         }
                     } else {
-                        column.data_ui(
-                            self.ctx,
+                        let has_collapse_button = if let Some(instance_index) = instance_index {
+                            instance_index < instance_count
+                        } else {
+                            false
+                        };
+
+                        let cell_clicked = cell_with_hover_button_ui(
                             &mut sub_cell_ui,
-                            row_id,
-                            &latest_at_query,
-                            row_idx,
-                            instance_index,
+                            has_collapse_button.then_some(&re_ui::icons::COLLAPSE),
+                            |ui| {
+                                column.data_ui(
+                                    self.ctx,
+                                    ui,
+                                    row_id,
+                                    &latest_at_query,
+                                    row_idx,
+                                    instance_index,
+                                );
+                            },
                         );
+
+                        if cell_clicked {
+                            self.expanded_rows.expand_row(cell.row_nr, 0);
+                        }
                     }
                 }
             } else {
@@ -346,9 +368,8 @@ impl<'a> egui_table::TableDelegate for DataframeTableDelegate<'a> {
             .show(ui, cell_ui);
     }
 
-    fn row_top_offset(&self, ctx: &egui::Context, table_id_salt: egui::Id, row_nr: u64) -> f32 {
-        self.expanded_rows
-            .row_top_offset(ctx, table_id_salt, row_nr)
+    fn row_top_offset(&self, ctx: &egui::Context, table_id: egui::Id, row_nr: u64) -> f32 {
+        self.expanded_rows.row_top_offset(ctx, table_id, row_nr)
     }
 
     fn default_row_height(&self) -> f32 {
@@ -452,4 +473,61 @@ fn error_ui(ui: &mut egui::Ui, error: impl AsRef<str>) {
     let error = error.as_ref();
     ui.error_label(error);
     re_log::warn_once!("{error}");
+}
+
+/// Draw some cell content with an optional, right-aligned, on-hover button.
+///
+/// If no icon is provided, no button is shown. Returns true if the button was shown and the cell
+/// was clicked.
+// TODO(ab, emilk): ideally, egui::Sides should work for that, but it doesn't yet support the
+// symmetric behaviour (left variable width, right fixed width).
+fn cell_with_hover_button_ui(
+    ui: &mut egui::Ui,
+    icon: Option<&'static re_ui::Icon>,
+    cell_content: impl FnOnce(&mut egui::Ui),
+) -> bool {
+    let Some(icon) = icon else {
+        cell_content(ui);
+        return false;
+    };
+
+    let (is_hovering_cell, is_clicked) = ui.input(|i| {
+        (
+            i.pointer
+                .interact_pos()
+                .is_some_and(|pos| ui.max_rect().contains(pos)),
+            i.pointer.button_clicked(egui::PointerButton::Primary),
+        )
+    });
+
+    if is_hovering_cell {
+        let mut content_rect = ui.max_rect();
+        content_rect.max.x = (content_rect.max.x
+            - re_ui::DesignTokens::small_icon_size().x
+            - re_ui::DesignTokens::text_to_icon_padding())
+        .at_least(content_rect.min.x);
+
+        let button_rect = egui::Rect::from_x_y_ranges(
+            (content_rect.max.x + re_ui::DesignTokens::text_to_icon_padding())
+                ..=ui.max_rect().max.x,
+            ui.max_rect().y_range(),
+        );
+
+        let mut content_ui = ui.new_child(egui::UiBuilder::new().max_rect(content_rect));
+        cell_content(&mut content_ui);
+
+        let mut button_ui = ui.new_child(egui::UiBuilder::new().max_rect(button_rect));
+        button_ui.visuals_mut().widgets.hovered.weak_bg_fill = egui::Color32::TRANSPARENT;
+        button_ui.visuals_mut().widgets.active.weak_bg_fill = egui::Color32::TRANSPARENT;
+        button_ui.add(egui::Button::image(
+            icon.as_image()
+                .fit_to_exact_size(re_ui::DesignTokens::small_icon_size())
+                .tint(button_ui.visuals().widgets.hovered.text_color()),
+        ));
+
+        is_clicked
+    } else {
+        cell_content(ui);
+        false
+    }
 }

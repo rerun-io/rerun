@@ -75,24 +75,28 @@ impl<'a> ExpandedRows<'a> {
     pub(crate) fn row_top_offset(
         &self,
         ctx: &egui::Context,
-        id_salt: egui::Id,
+        table_id: egui::Id,
         row_nr: u64,
     ) -> f32 {
         self.cache
             .expanded_rows
             .range(0..row_nr)
             .map(|(expanded_row_nr, expanded)| {
-                let how_expanded = ctx.animate_bool(id_salt.with(expanded_row_nr), *expanded > 0);
+                let how_expanded = ctx.animate_bool(table_id.with(expanded_row_nr), *expanded > 0);
                 how_expanded * *expanded as f32 * self.row_height
             })
             .sum::<f32>()
             + row_nr as f32 * self.row_height
     }
 
-    pub(crate) fn expend_row(&mut self, row_nr: u64, additional_row_space: u64) {
-        self.cache
-            .expanded_rows
-            .insert(row_nr, additional_row_space);
+    pub(crate) fn expand_row(&mut self, row_nr: u64, additional_row_space: u64) {
+        if additional_row_space == 0 {
+            self.cache.expanded_rows.remove(&row_nr);
+        } else {
+            self.cache
+                .expanded_rows
+                .insert(row_nr, additional_row_space);
+        }
     }
 
     /// Return by how much row space this row is expended.
