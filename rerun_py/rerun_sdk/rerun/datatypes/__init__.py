@@ -98,6 +98,20 @@ from .uvec4d import UVec4D, UVec4DArrayLike, UVec4DBatch, UVec4DLike, UVec4DType
 from .vec2d import Vec2D, Vec2DArrayLike, Vec2DBatch, Vec2DLike, Vec2DType
 from .vec3d import Vec3D, Vec3DArrayLike, Vec3DBatch, Vec3DLike, Vec3DType
 from .vec4d import Vec4D, Vec4DArrayLike, Vec4DBatch, Vec4DLike, Vec4DType
+from .video_time_mode import (
+    VideoTimeMode,
+    VideoTimeModeArrayLike,
+    VideoTimeModeBatch,
+    VideoTimeModeLike,
+    VideoTimeModeType,
+)
+from .video_timestamp import (
+    VideoTimestamp,
+    VideoTimestampArrayLike,
+    VideoTimestampBatch,
+    VideoTimestampLike,
+    VideoTimestampType,
+)
 from .view_coordinates import (
     ViewCoordinates,
     ViewCoordinatesArrayLike,
@@ -324,6 +338,16 @@ __all__ = [
     "Vec4DBatch",
     "Vec4DLike",
     "Vec4DType",
+    "VideoTimeMode",
+    "VideoTimeModeArrayLike",
+    "VideoTimeModeBatch",
+    "VideoTimeModeLike",
+    "VideoTimeModeType",
+    "VideoTimestamp",
+    "VideoTimestampArrayLike",
+    "VideoTimestampBatch",
+    "VideoTimestampLike",
+    "VideoTimestampType",
     "ViewCoordinates",
     "ViewCoordinatesArrayLike",
     "ViewCoordinatesBatch",
