@@ -86,7 +86,7 @@ pub fn register_2d_spatial_visualizers(
     system_registry.register_visualizer::<segmentation_images::SegmentationImageVisualizer>()?;
     system_registry.register_visualizer::<transform3d_arrows::AxisLengthDetector>()?;
     system_registry.register_visualizer::<transform3d_arrows::Transform3DArrowsVisualizer>()?;
-    system_registry.register_visualizer::<videos::AssetVideoVisualizer>()?;
+    system_registry.register_visualizer::<videos::VideoFrameReferenceVisualizer>()?;
     Ok(())
 }
 
@@ -111,7 +111,7 @@ pub fn register_3d_spatial_visualizers(
     system_registry.register_visualizer::<ellipsoids::Ellipsoids3DVisualizer>()?;
     system_registry.register_visualizer::<transform3d_arrows::AxisLengthDetector>()?;
     system_registry.register_visualizer::<transform3d_arrows::Transform3DArrowsVisualizer>()?;
-    system_registry.register_visualizer::<videos::AssetVideoVisualizer>()?;
+    system_registry.register_visualizer::<videos::VideoFrameReferenceVisualizer>()?;
     Ok(())
 }
 
