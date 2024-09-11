@@ -263,7 +263,7 @@ fn load_video(
             .flat_map(|segment| {
                 segment.samples.iter().map(|s| {
                     // TODO(andreas): Use sample indices instead of timestamps once possible.
-                    re_types::components::VideoTimestamp::new_nanoseconds(
+                    re_types::components::VideoTimestamp::from_nanoseconds(
                         s.timestamp.as_nanoseconds(),
                     )
                 })

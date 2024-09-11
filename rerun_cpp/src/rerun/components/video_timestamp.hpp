@@ -6,6 +6,7 @@
 #include "../datatypes/video_timestamp.hpp"
 #include "../result.hpp"
 
+#include <chrono>
 #include <cstdint>
 #include <memory>
 
@@ -15,6 +16,39 @@ namespace rerun::components {
     /// ⚠ **This is an experimental API! It is not fully supported, and is likely to change significantly in future versions.**
     struct VideoTimestamp {
         rerun::datatypes::VideoTimestamp timestamp;
+
+      public: // START of extensions from video_timestamp_ext.cpp:
+        /// Creates a new `VideoTimestamp` component.
+        /// \param video_time Timestamp value, type defined by `time_mode`.
+        /// \param time_mode How to interpret `video_time`.
+        VideoTimestamp(int64_t video_time, rerun::datatypes::VideoTimeMode time_mode)
+            : VideoTimestamp(rerun::datatypes::VideoTimestamp{video_time, time_mode}) {}
+
+        /// Creates a new `VideoTimestamp` from time since video start.
+        /// \param time Time since video start.
+        template <typename TRep, typename TPeriod>
+        VideoTimestamp(std::chrono::duration<TRep, TPeriod> time)
+            : VideoTimestamp(
+                  std::chrono::duration_cast<std::chrono::nanoseconds>(time).count(),
+                  datatypes::VideoTimeMode::Nanoseconds
+              ) {}
+
+        /// Creates a new [`VideoTimestamp`] from seconds since video start.
+        static VideoTimestamp from_seconds(double seconds) {
+            return VideoTimestamp(std::chrono::duration<double>(seconds));
+        }
+
+        /// Creates a new [`VideoTimestamp`] from milliseconds since video start.
+        static VideoTimestamp from_milliseconds(double milliseconds) {
+            return VideoTimestamp(std::chrono::duration<double, std::milli>(milliseconds));
+        }
+
+        /// Creates a new [`VideoTimestamp`] from nanoseconds since video start.
+        static VideoTimestamp from_nanoseconds(int64_t nanoseconds) {
+            return VideoTimestamp(std::chrono::nanoseconds(nanoseconds));
+        }
+
+        // END of extensions from video_timestamp_ext.cpp, start of generated code:
 
       public:
         VideoTimestamp() = default;
