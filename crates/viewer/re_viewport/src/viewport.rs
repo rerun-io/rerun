@@ -204,9 +204,10 @@ impl<'a> Viewport<'a> {
         self.blueprint.set_maximized(maximized, ctx);
     }
 
-    pub fn on_frame_start(&mut self, ctx: &ViewerContext<'_>, view_states: &mut ViewStates) {
+    pub fn on_frame_start(&mut self, ctx: &ViewerContext<'_>) {
         re_tracing::profile_function!();
 
+        // Handle pending view screenshots:
         if let Some(render_ctx) = ctx.render_ctx {
             for space_view in self.blueprint.space_views.values() {
                 #[allow(clippy::blocks_in_conditions)]
@@ -219,12 +220,10 @@ impl<'a> Viewport<'a> {
                 )
                 .is_some()
                 {}
-
-                space_view.on_frame_start(ctx, view_states);
             }
         }
 
-        self.blueprint.on_frame_start(ctx);
+        self.blueprint.spawn_heuristic_space_views(ctx);
     }
 
     /// Process any deferred `TreeActions` and then sync to blueprint
