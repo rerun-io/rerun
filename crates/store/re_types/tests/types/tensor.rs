@@ -106,7 +106,7 @@ fn convert_tensor_to_ndarray_f32() {
 }
 
 #[test]
-fn convert_ndarray_u8_to_tensor() {
+fn convert_ndarray_f64_to_tensor() {
     let n = ndarray::array![[1., 2., 3.], [4., 5., 6.]];
     let t = TensorData::try_from(n).unwrap();
 
@@ -123,6 +123,89 @@ fn convert_ndarray_slice_to_tensor() {
     let t = TensorData::try_from(*n).unwrap();
 
     assert_eq!(t.shape(), &[TensorDimension::unnamed(2)]);
+}
+
+#[test]
+fn convert_ndarray_to_tensor_both_layouts() {
+    #[rustfmt::skip]
+    let row_major_vec = vec![
+        1, 2, 3,
+        4, 5, 6,
+        7, 8, 9
+    ];
+    #[rustfmt::skip]
+    let col_major_vec = vec![
+        1, 4, 7,
+        2, 5, 8,
+        3, 6, 9
+    ];
+
+    let shape = ndarray::Ix2(3, 3);
+
+    let row_major = ndarray::Array::from_vec(row_major_vec)
+        .into_shape_with_order((shape, ndarray::Order::RowMajor))
+        .unwrap();
+
+    let col_major = ndarray::Array::from_vec(col_major_vec)
+        .into_shape_with_order((shape, ndarray::Order::ColumnMajor))
+        .unwrap();
+
+    // make sure that the offset is in fact negative, in case ndarray behavior changes
+    let rm = row_major.clone();
+    let cm = col_major.clone();
+    let (_, rm_offset) = rm.into_raw_vec_and_offset();
+    let (_, cm_offset) = cm.into_raw_vec_and_offset();
+    assert_eq!(rm_offset.unwrap(), 0);
+    assert_eq!(cm_offset.unwrap(), 0);
+
+    let tensor_row_major = TensorData::try_from(row_major).unwrap();
+    let tensor_col_major = TensorData::try_from(col_major).unwrap();
+
+    assert_eq!(tensor_row_major, tensor_col_major);
+}
+
+#[test]
+fn convert_ndarray_to_tensor_both_layouts_nonzero_offset() {
+    #[rustfmt::skip]
+    let row_major_vec = vec![
+        1, 2, 3,
+        4, 5, 6,
+        7, 8, 9
+    ];
+    #[rustfmt::skip]
+    let col_major_vec = vec![
+        1, 4, 7,
+        2, 5, 8,
+        3, 6, 9
+    ];
+
+    let shape = ndarray::Ix2(3, 3);
+
+    let row_major = ndarray::Array::from_vec(row_major_vec)
+        .into_shape_with_order((shape, ndarray::Order::RowMajor))
+        .unwrap();
+    let row_major_nonzero_offset = row_major.slice_move(ndarray::s![1.., ..]);
+
+    let col_major = ndarray::Array::from_vec(col_major_vec)
+        .into_shape_with_order((shape, ndarray::Order::ColumnMajor))
+        .unwrap();
+    let col_major_nonzero_offset = col_major.slice_move(ndarray::s![1.., ..]);
+
+    // make sure that the offset is in fact negative, in case ndarray behavior changes
+    let rmno = row_major_nonzero_offset.clone();
+    let cmno = col_major_nonzero_offset.clone();
+    let (_, rm_offset) = rmno.into_raw_vec_and_offset();
+    let (_, cm_offset) = cmno.into_raw_vec_and_offset();
+    assert!(rm_offset.unwrap() > 0);
+    assert!(cm_offset.unwrap() > 0);
+
+    let tensor_row_major_nonzero_offset = TensorData::try_from(row_major_nonzero_offset).unwrap();
+    let tensor_col_major_nonzero_offset = TensorData::try_from(col_major_nonzero_offset).unwrap();
+
+    assert_eq!(
+        tensor_row_major_nonzero_offset,
+        tensor_col_major_nonzero_offset
+    );
 }
 
 #[test]

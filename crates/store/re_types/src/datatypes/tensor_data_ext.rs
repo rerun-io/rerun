@@ -178,8 +178,7 @@ macro_rules! tensor_from_ndarray {
                 let vec = if value.is_standard_layout() {
                     let (mut vec, offset) = value.into_raw_vec_and_offset();
                     // into_raw_vec_and_offset() guarantees that the logical element order (.iter()) matches the internal
-                    // storage order in the returned vector. Therefore, since it's in standard layout, it's contiguous in
-                    // memory and safe to assume all our data is stored starting at the offset returned
+                    // storage order in the returned vector if the array is in standard layout.
                     if let Some(offset) = offset {
                         vec.drain(..offset);
                         vec
@@ -323,8 +322,7 @@ impl<D: ::ndarray::Dimension> TryFrom<::ndarray::Array<half::f16, D>> for Tensor
         if value.is_standard_layout() {
             let (vec, offset) = value.into_raw_vec_and_offset();
             // into_raw_vec_and_offset() guarantees that the logical element order (.iter()) matches the internal
-            // storage order in the returned vector. Therefore, since it's in standard layout, it's contiguous in
-            // memory and it's safe to assume all our data is stored starting at the offset returned
+            // storage order in the returned vector if the array is in standard layout.
             let vec_slice = if let Some(offset) = offset {
                 &vec[offset..]
             } else {
