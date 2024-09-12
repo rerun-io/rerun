@@ -15,8 +15,10 @@ namespace rerun {
         /// Creates a new `VideoTimestamp` component.
         /// \param video_time Timestamp value, type defined by `time_mode`.
         /// \param time_mode How to interpret `video_time`.
-        VideoTimestamp(int64_t video_time, rerun::datatypes::VideoTimeMode time_mode)
-            : VideoTimestamp(rerun::datatypes::VideoTimestamp{video_time, time_mode}) {}
+        VideoTimestamp(int64_t video_time, rerun::datatypes::VideoTimeMode time_mode) {
+            timestamp.video_time = video_time;
+            timestamp.time_mode = time_mode;
+        }
 
         /// Creates a new `VideoTimestamp` from time since video start.
         /// \param time Time since video start.

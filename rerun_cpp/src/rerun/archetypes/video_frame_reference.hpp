@@ -62,12 +62,15 @@ namespace rerun::archetypes {
     ///         times[i] = 100ms * i;
     ///         video_timestamps[i] = rerun::components::VideoTimestamp(times[i]);
     ///     }
+    ///     auto video_frame_reference_indicators =
+    ///         rerun::ComponentColumn::from_indicators<rerun::VideoFrameReference>(
+    ///             static_cast<uint32_t>(times.size())
+    ///         );
     ///     rec.send_columns(
     ///         "video",
     ///         rerun::TimeColumn::from_times("video_time", rerun::borrow(times)),
     ///         {
-    ///             rerun::ComponentColumn::from_indicators<rerun::VideoFrameReference>(times.size())
-    ///                 .value_or_throw(),
+    ///             video_frame_reference_indicators.value_or_throw(),
     ///             rerun::ComponentColumn::from_loggable(rerun::borrow(video_timestamps)).value_or_throw(),
     ///         }
     ///     );
