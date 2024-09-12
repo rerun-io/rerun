@@ -364,73 +364,6 @@ impl DataframeTableDelegate<'_> {
     }
 }
 
-/// Display the result of a [`QueryHandle`] in a table.
-fn dataframe_ui_impl(
-    ctx: &ViewerContext<'_>,
-    ui: &mut egui::Ui,
-    query_handle: &QueryHandle<'_>,
-    expanded_rows_cache: &mut ExpandedRowsCache,
-) {
-    re_tracing::profile_function!();
-
-    // Salt everything against the query expression, as different queries may lead to entirely
-    // different tables, etc.
-    let id_salt = egui::Id::new("__dataframe__").with(query_handle.query_expression());
-
-    let schema = query_handle.schema();
-    let (header_groups, header_entity_paths) = column_groups_for_entity(schema);
-
-    let num_rows = query_handle.num_rows();
-
-    let mut table_delegate = DataframeTableDelegate {
-        ctx,
-        query_handle,
-        schema,
-        header_entity_paths,
-        num_rows,
-        display_data: Err(anyhow::anyhow!(
-            "No row data, `fetch_columns_and_rows` not called."
-        )),
-        expanded_rows: ExpandedRows::new(
-            ui.ctx().clone(),
-            ui.make_persistent_id(id_salt).with("expanded_rows"),
-            expanded_rows_cache,
-            query_handle.query_expression(),
-            re_ui::DesignTokens::table_line_height(),
-        ),
-    };
-
-    let num_sticky_cols = schema
-        .iter()
-        .take_while(|cd| matches!(cd, ColumnDescriptor::Control(_) | ColumnDescriptor::Time(_)))
-        .count();
-
-    egui::Frame::none().inner_margin(5.0).show(ui, |ui| {
-        egui_table::Table::new()
-            .id_salt(id_salt)
-            .columns(
-                schema
-                    .iter()
-                    .map(|column_descr| {
-                        egui_table::Column::new(200.0)
-                            .resizable(true)
-                            .id(egui::Id::new(column_descr))
-                    })
-                    .collect::<Vec<_>>(),
-            )
-            .num_sticky_cols(num_sticky_cols)
-            .headers(vec![
-                egui_table::HeaderRow {
-                    height: re_ui::DesignTokens::table_header_height(),
-                    groups: header_groups,
-                },
-                egui_table::HeaderRow::new(re_ui::DesignTokens::table_header_height()),
-            ])
-            .num_rows(num_rows)
-            .show(ui, &mut table_delegate);
-    });
-}
-
 /// Draw a single sub-cell in a table.
 ///
 /// This deals with the row expansion interaction and logic, as well as summarizing the data when
@@ -458,7 +391,8 @@ fn sub_cell_ui(
         /// A particular instance
         Instance,
 
-        /// There are more instances than available sub-cells, so this is a summary of how many there are left.
+        /// There are more instances than available sub-cells, so this is a summary of how many
+        /// there are left.
         MoreInstancesSummary(u64 /* remaining instances */),
 
         /// Not enough instances to fill this sub-cell.
@@ -536,6 +470,73 @@ fn sub_cell_ui(
 
         SubcellKind::Blank => { /* nothing to show */ }
     }
+}
+
+/// Display the result of a [`QueryHandle`] in a table.
+fn dataframe_ui_impl(
+    ctx: &ViewerContext<'_>,
+    ui: &mut egui::Ui,
+    query_handle: &QueryHandle<'_>,
+    expanded_rows_cache: &mut ExpandedRowsCache,
+) {
+    re_tracing::profile_function!();
+
+    // Salt everything against the query expression, as different queries may lead to entirely
+    // different tables, etc.
+    let id_salt = egui::Id::new("__dataframe__").with(query_handle.query_expression());
+
+    let schema = query_handle.schema();
+    let (header_groups, header_entity_paths) = column_groups_for_entity(schema);
+
+    let num_rows = query_handle.num_rows();
+
+    let mut table_delegate = DataframeTableDelegate {
+        ctx,
+        query_handle,
+        schema,
+        header_entity_paths,
+        num_rows,
+        display_data: Err(anyhow::anyhow!(
+            "No row data, `fetch_columns_and_rows` not called."
+        )),
+        expanded_rows: ExpandedRows::new(
+            ui.ctx().clone(),
+            ui.make_persistent_id(id_salt).with("expanded_rows"),
+            expanded_rows_cache,
+            query_handle.query_expression(),
+            re_ui::DesignTokens::table_line_height(),
+        ),
+    };
+
+    let num_sticky_cols = schema
+        .iter()
+        .take_while(|cd| matches!(cd, ColumnDescriptor::Control(_) | ColumnDescriptor::Time(_)))
+        .count();
+
+    egui::Frame::none().inner_margin(5.0).show(ui, |ui| {
+        egui_table::Table::new()
+            .id_salt(id_salt)
+            .columns(
+                schema
+                    .iter()
+                    .map(|column_descr| {
+                        egui_table::Column::new(200.0)
+                            .resizable(true)
+                            .id(egui::Id::new(column_descr))
+                    })
+                    .collect::<Vec<_>>(),
+            )
+            .num_sticky_cols(num_sticky_cols)
+            .headers(vec![
+                egui_table::HeaderRow {
+                    height: re_ui::DesignTokens::table_header_height(),
+                    groups: header_groups,
+                },
+                egui_table::HeaderRow::new(re_ui::DesignTokens::table_header_height()),
+            ])
+            .num_rows(num_rows)
+            .show(ui, &mut table_delegate);
+    });
 }
 
 /// Groups column by entity paths.
