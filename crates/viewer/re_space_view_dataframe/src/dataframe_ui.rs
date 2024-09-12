@@ -368,7 +368,6 @@ impl DataframeTableDelegate<'_> {
 ///
 /// This deals with the row expansion interaction and logic, as well as summarizing the data when
 /// necessary. The actual data drawing is delegated to the `data_content` closure.
-#[allow(clippy::too_many_arguments)]
 fn sub_cell_ui(
     ui: &mut egui::Ui,
     expanded_rows: &mut ExpandedRows<'_>,
@@ -479,11 +478,18 @@ fn dataframe_ui_impl(
 ) {
     re_tracing::profile_function!();
 
-    // Salt everything against the query expression, as different queries may lead to entirely
-    // different tables, etc.
-    let id_salt = egui::Id::new("__dataframe__").with(query_handle.query_expression());
-
     let schema = query_handle.schema();
+
+    // ID salting rationale:
+    // - The table id mainly drives column widths, so it should be stable across queries leading to
+    //   the same schema.
+    // - The row expansion is easier to invalidate since it depends on actual row data. For now, we
+    //   use the query expression as salt (but that doesn't cover all edge cases since content may
+    //   vary for a given query as data is ingested).
+    let table_id_salt = egui::Id::new("__dataframe__").with(schema);
+    let row_expansion_id_salt =
+        egui::Id::new("__dataframe__").with(query_handle.query_expression());
+
     let (header_groups, header_entity_paths) = column_groups_for_entity(schema);
 
     let num_rows = query_handle.num_rows();
@@ -499,7 +505,7 @@ fn dataframe_ui_impl(
         )),
         expanded_rows: ExpandedRows::new(
             ui.ctx().clone(),
-            ui.make_persistent_id(id_salt).with("expanded_rows"),
+            ui.make_persistent_id(row_expansion_id_salt),
             expanded_rows_cache,
             query_handle.query_expression(),
             re_ui::DesignTokens::table_line_height(),
@@ -513,7 +519,7 @@ fn dataframe_ui_impl(
 
     egui::Frame::none().inner_margin(5.0).show(ui, |ui| {
         egui_table::Table::new()
-            .id_salt(id_salt)
+            .id_salt(table_id_salt)
             .columns(
                 schema
                     .iter()
