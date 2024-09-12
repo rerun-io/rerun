@@ -804,7 +804,7 @@ impl TimeColumn {
 
         Self::new(
             None,
-            Timeline::new_sequence(name.into()),
+            Timeline::new_temporal(name.into()),
             ArrowPrimitiveArray::<i64>::from_vec(time_vec),
         )
     }
@@ -834,7 +834,7 @@ impl TimeColumn {
 
         Self::new(
             None,
-            Timeline::new_sequence(name.into()),
+            Timeline::new_temporal(name.into()),
             ArrowPrimitiveArray::<i64>::from_vec(time_vec),
         )
     }
