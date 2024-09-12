@@ -1,13 +1,13 @@
 # Log data with various numbers of instances for test purposes, e.g. UI test, joining, etc.
+# TODO(ab): move this to chunk zoo
 
 from __future__ import annotations
 
 import argparse
-import random
 import math
+import random
 
 import numpy as np
-
 import rerun as rr
 
 

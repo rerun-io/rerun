@@ -250,6 +250,11 @@ impl<'a> egui_table::TableDelegate for DataframeTableDelegate<'a> {
 
         debug_assert!(cell.row_nr < self.num_rows, "Bug in egui_table");
 
+        // best effort to get a proper column autosizing behaviour
+        if ui.is_sizing_pass() {
+            ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Extend);
+        }
+
         let display_data = match &self.display_data {
             Ok(display_data) => display_data,
             Err(err) => {
@@ -258,7 +263,7 @@ impl<'a> egui_table::TableDelegate for DataframeTableDelegate<'a> {
             }
         };
 
-        //TODO: this is getting wild, refactor in some functions
+        // TODO(ab): this is getting wild and should be refactored
         let cell_ui = |ui: &mut egui::Ui| {
             if let Some(BatchRef { batch_idx, row_idx }) =
                 display_data.batch_ref_from_row.get(&cell.row_nr).copied()
@@ -296,100 +301,85 @@ impl<'a> egui_table::TableDelegate for DataframeTableDelegate<'a> {
                     .chain((0..instance_count).map(Option::Some))
                     .take(row_expansion as usize + 1);
 
-                for (sub_cell_index, instance_index) in instance_indices.enumerate() {
-                    // TODO: have an helper to split UIs that way
-                    let sub_cell_rect = egui::Rect::from_min_size(
-                        ui.cursor().min
-                            + egui::vec2(
-                                0.0,
-                                sub_cell_index as f32 * re_ui::DesignTokens::table_line_height(),
-                            ),
-                        egui::vec2(
-                            ui.available_width(),
-                            re_ui::DesignTokens::table_line_height(),
-                        ),
-                    );
+                let sub_cell_content =
+                    |ui: &mut egui::Ui,
+                     expanded_rows: &mut ExpandedRows<'_>,
+                     sub_cell_index: usize,
+                     instance_index: Option<u64>| {
+                        if instance_index.is_none() && instance_count > 1 {
+                            let cell_clicked =
+                                cell_with_hover_button_ui(ui, Some(&re_ui::icons::EXPAND), |ui| {
+                                    ui.label(format!("{instance_count} instances"));
+                                });
 
-                    // dont draw unnecessary
-                    if !ui.max_rect().intersects(sub_cell_rect) {
-                        return;
-                    }
-
-                    let mut sub_cell_ui =
-                        ui.new_child(egui::UiBuilder::new().max_rect(sub_cell_rect));
-
-                    if instance_index.is_none() && instance_count > 1 {
-                        let cell_clicked = cell_with_hover_button_ui(
-                            &mut sub_cell_ui,
-                            Some(&re_ui::icons::EXPAND),
-                            |ui| {
-                                ui.label(format!("{instance_count} instances"));
-                            },
-                        );
-
-                        if cell_clicked {
-                            if instance_count == row_expansion {
-                                self.expanded_rows.collapse_row(cell.row_nr);
-                            } else {
-                                self.expanded_rows
-                                    .set_row_expansion(cell.row_nr, instance_count);
-                            }
-                        }
-                    } else {
-                        let has_collapse_button = instance_index
-                            .is_some_and(|instance_index| instance_index < instance_count);
-
-                        let remaining_instances = if sub_cell_index as u64 == row_expansion {
-                            instance_index.and_then(|instance_index| {
-                                let remaining = instance_count
-                                    .saturating_sub(instance_index)
-                                    .saturating_sub(1);
-                                if remaining > 0 {
-                                    // +1 is because the "X more…" line takes one instance spot
-                                    Some(remaining + 1)
+                            if cell_clicked {
+                                if instance_count == row_expansion {
+                                    expanded_rows.collapse_row(cell.row_nr);
                                 } else {
-                                    None
+                                    expanded_rows.set_row_expansion(cell.row_nr, instance_count);
                                 }
-                            })
-                        } else {
-                            None
-                        };
-
-                        if let Some(remaining_instances) = remaining_instances {
-                            let cell_clicked = cell_with_hover_button_ui(
-                                &mut sub_cell_ui,
-                                Some(&re_ui::icons::EXPAND),
-                                |ui| {
-                                    ui.label(format!("{remaining_instances} more…"));
-                                },
-                            );
-
-                            if cell_clicked {
-                                self.expanded_rows
-                                    .set_row_expansion(cell.row_nr, instance_count);
                             }
                         } else {
-                            let cell_clicked = cell_with_hover_button_ui(
-                                &mut sub_cell_ui,
-                                has_collapse_button.then_some(&re_ui::icons::COLLAPSE),
-                                |ui| {
-                                    column.data_ui(
-                                        self.ctx,
-                                        ui,
-                                        row_id,
-                                        &latest_at_query,
-                                        row_idx,
-                                        instance_index,
-                                    );
-                                },
-                            );
+                            let has_collapse_button = instance_index
+                                .is_some_and(|instance_index| instance_index < instance_count);
 
-                            if cell_clicked {
-                                self.expanded_rows.collapse_row(cell.row_nr);
+                            let remaining_instances = if sub_cell_index as u64 == row_expansion {
+                                instance_index.and_then(|instance_index| {
+                                    let remaining = instance_count
+                                        .saturating_sub(instance_index)
+                                        .saturating_sub(1);
+                                    if remaining > 0 {
+                                        // +1 is because the "X more…" line takes one instance spot
+                                        Some(remaining + 1)
+                                    } else {
+                                        None
+                                    }
+                                })
+                            } else {
+                                None
+                            };
+
+                            if let Some(remaining_instances) = remaining_instances {
+                                let cell_clicked = cell_with_hover_button_ui(
+                                    ui,
+                                    Some(&re_ui::icons::EXPAND),
+                                    |ui| {
+                                        ui.label(format!("{remaining_instances} more…"));
+                                    },
+                                );
+
+                                if cell_clicked {
+                                    expanded_rows.set_row_expansion(cell.row_nr, instance_count);
+                                }
+                            } else {
+                                let cell_clicked = cell_with_hover_button_ui(
+                                    ui,
+                                    has_collapse_button.then_some(&re_ui::icons::COLLAPSE),
+                                    |ui| {
+                                        column.data_ui(
+                                            self.ctx,
+                                            ui,
+                                            row_id,
+                                            &latest_at_query,
+                                            row_idx,
+                                            instance_index,
+                                        );
+                                    },
+                                );
+
+                                if cell_clicked {
+                                    expanded_rows.collapse_row(cell.row_nr);
+                                }
                             }
                         }
-                    }
-                }
+                    };
+
+                sub_cell_ui(
+                    ui,
+                    &mut self.expanded_rows,
+                    instance_indices,
+                    sub_cell_content,
+                );
             } else {
                 error_ui(
                     ui,
@@ -421,8 +411,9 @@ fn dataframe_ui_impl(
 ) {
     re_tracing::profile_function!();
 
-    //TODO: actually make that unique!!!
-    let id_salt = egui::Id::new("__dataframe__");
+    // Salt everything against the query expression, as different queries may lead to entirely
+    // different tables, etc.
+    let id_salt = egui::Id::new("__dataframe__").with(query_handle.query_expression());
 
     let schema = query_handle.schema();
     let (header_groups, header_entity_paths) = column_groups_for_entity(schema);
@@ -517,7 +508,7 @@ fn error_ui(ui: &mut egui::Ui, error: impl AsRef<str>) {
 /// If no icon is provided, no button is shown. Returns true if the button was shown and the cell
 /// was clicked.
 // TODO(ab, emilk): ideally, egui::Sides should work for that, but it doesn't yet support the
-// symmetric behaviour (left variable width, right fixed width).
+// symmetric behavior (left variable width, right fixed width).
 fn cell_with_hover_button_ui(
     ui: &mut egui::Ui,
     icon: Option<&'static re_ui::Icon>,
@@ -527,6 +518,12 @@ fn cell_with_hover_button_ui(
         cell_content(ui);
         return false;
     };
+
+    if ui.is_sizing_pass() {
+        // we don't need space for the icon since it only shows on hover
+        cell_content(ui);
+        return false;
+    }
 
     let (is_hovering_cell, is_clicked) = ui.input(|i| {
         (
@@ -566,5 +563,47 @@ fn cell_with_hover_button_ui(
     } else {
         cell_content(ui);
         false
+    }
+}
+
+/// Helper to draw individual rows (aka sub-cell) into an expanded cell in a table.
+///
+/// `context`: whatever mutable context is necessary for the `sub_cell_content`
+/// `sub_cell_data`: the data to be displayed in each sub-cell
+/// `sub_cell_content`: the function to draw the content of each sub-cell
+fn sub_cell_ui<I, Ctx>(
+    ui: &mut egui::Ui,
+    context: &mut Ctx,
+    sub_cell_data: impl Iterator<Item = I>,
+    sub_cell_content: impl Fn(&mut egui::Ui, &mut Ctx, usize, I),
+) {
+    for (sub_cell_index, item_data) in sub_cell_data.enumerate() {
+        let sub_cell_rect = egui::Rect::from_min_size(
+            ui.cursor().min
+                + egui::vec2(
+                    0.0,
+                    sub_cell_index as f32 * re_ui::DesignTokens::table_line_height(),
+                ),
+            egui::vec2(
+                ui.available_width(),
+                re_ui::DesignTokens::table_line_height(),
+            ),
+        );
+
+        // During animation, there may be more sub-cells than can possibly fit. If so, no point in
+        // continuing to draw them.
+        if !ui.max_rect().intersects(sub_cell_rect) {
+            return;
+        }
+
+        if !ui.is_rect_visible(sub_cell_rect) {
+            continue;
+            // TODO(ab): detect that we are below any possible screen, in which case we can stop
+            // entirely.
+        }
+
+        let mut sub_cell_ui = ui.new_child(egui::UiBuilder::new().max_rect(sub_cell_rect));
+
+        sub_cell_content(&mut sub_cell_ui, context, sub_cell_index, item_data);
     }
 }

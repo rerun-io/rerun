@@ -2,7 +2,7 @@ use std::collections::BTreeMap;
 
 use re_chunk_store::{LatestAtQueryExpression, RangeQueryExpression};
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub(crate) enum QueryExpression {
     LatestAt(re_chunk_store::LatestAtQueryExpression),
     Range(re_chunk_store::RangeQueryExpression),
@@ -96,7 +96,7 @@ impl<'a> ExpandedRows<'a> {
         }
     }
 
-    /// Implementation for [`egui_table::Table::row_top_offset`].
+    /// Implementation for [`egui_table::TableDelegate::row_top_offset`].
     pub(crate) fn row_top_offset(&self, row_nr: u64) -> f32 {
         self.cache
             .expanded_rows
