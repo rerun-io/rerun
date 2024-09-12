@@ -556,7 +556,7 @@ fn cell_with_hover_button_ui(
         button_ui.add(egui::Button::image(
             icon.as_image()
                 .fit_to_exact_size(re_ui::DesignTokens::small_icon_size())
-                .tint(button_ui.visuals().widgets.hovered.text_color()),
+                .tint(button_ui.visuals().widgets.noninteractive.text_color()),
         ));
 
         is_clicked
