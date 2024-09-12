@@ -31,6 +31,9 @@ pub(crate) enum DisplayRecordBatchError {
     UnexpectedComponentColumnDataType(String, ArrowDataType),
 }
 
+/// A single column of component data.
+///
+/// Abstracts over the different possible arrow representation of component data.
 pub(crate) enum ComponentData {
     Null,
     ListArray(ArrowListArray<i32>),
@@ -163,6 +166,7 @@ impl ComponentData {
     }
 }
 
+/// A single column of data in a record batch.
 pub(crate) enum DisplayColumn {
     RowId {
         row_id_times: ArrowPrimitiveArray<u64>,

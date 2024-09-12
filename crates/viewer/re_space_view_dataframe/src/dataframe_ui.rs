@@ -310,6 +310,11 @@ impl<'a> egui_table::TableDelegate for DataframeTableDelegate<'a> {
                         ),
                     );
 
+                    // dont draw unnecessary
+                    if !ui.max_rect().intersects(sub_cell_rect) {
+                        return;
+                    }
+
                     let mut sub_cell_ui =
                         ui.new_child(egui::UiBuilder::new().max_rect(sub_cell_rect));
 
@@ -326,7 +331,8 @@ impl<'a> egui_table::TableDelegate for DataframeTableDelegate<'a> {
                             if instance_count == row_expansion {
                                 self.expanded_rows.collapse_row(cell.row_nr);
                             } else {
-                                self.expanded_rows.expand_row(cell.row_nr, instance_count);
+                                self.expanded_rows
+                                    .set_row_expansion(cell.row_nr, instance_count);
                             }
                         }
                     } else {
@@ -359,7 +365,8 @@ impl<'a> egui_table::TableDelegate for DataframeTableDelegate<'a> {
                             );
 
                             if cell_clicked {
-                                self.expanded_rows.expand_row(cell.row_nr, instance_count);
+                                self.expanded_rows
+                                    .set_row_expansion(cell.row_nr, instance_count);
                             }
                         } else {
                             let cell_clicked = cell_with_hover_button_ui(
@@ -396,8 +403,8 @@ impl<'a> egui_table::TableDelegate for DataframeTableDelegate<'a> {
             .show(ui, cell_ui);
     }
 
-    fn row_top_offset(&self, ctx: &egui::Context, table_id: egui::Id, row_nr: u64) -> f32 {
-        self.expanded_rows.row_top_offset(ctx, table_id, row_nr)
+    fn row_top_offset(&self, _ctx: &egui::Context, _table_id: egui::Id, row_nr: u64) -> f32 {
+        self.expanded_rows.row_top_offset(row_nr)
     }
 
     fn default_row_height(&self) -> f32 {
@@ -414,8 +421,8 @@ fn dataframe_ui_impl(
 ) {
     re_tracing::profile_function!();
 
-    //TODO: actually make that unique!
-    let id = ui.id().with("__dataframe__");
+    //TODO: actually make that unique!!!
+    let id_salt = egui::Id::new("__dataframe__");
 
     let schema = query_handle.schema();
     let (header_groups, header_entity_paths) = column_groups_for_entity(schema);
@@ -432,6 +439,8 @@ fn dataframe_ui_impl(
             "No row data, `fetch_columns_and_rows` not called."
         )),
         expanded_rows: ExpandedRows::new(
+            ui.ctx().clone(),
+            ui.make_persistent_id(id_salt).with("expanded_rows"),
             expanded_rows_cache,
             query_handle.query_expression(),
             re_ui::DesignTokens::table_line_height(),
@@ -445,7 +454,7 @@ fn dataframe_ui_impl(
 
     egui::Frame::none().inner_margin(5.0).show(ui, |ui| {
         egui_table::Table::new()
-            .id_salt(id)
+            .id_salt(id_salt)
             .columns(
                 schema
                     .iter()
