@@ -308,13 +308,12 @@ impl ViewportBlueprint {
         self.set_auto_space_views(false, ctx);
     }
 
-    pub fn on_frame_start(&self, ctx: &ViewerContext<'_>) {
-        if self.auto_space_views() {
-            self.spawn_heuristic_space_views(ctx);
+    /// Spawns new space views if enabled.
+    pub fn spawn_heuristic_space_views(&self, ctx: &ViewerContext<'_>) {
+        if !self.auto_space_views() {
+            return;
         }
-    }
 
-    fn spawn_heuristic_space_views(&self, ctx: &ViewerContext<'_>) {
         re_tracing::profile_function!();
 
         for entry in ctx.space_view_class_registry.iter_registry() {
