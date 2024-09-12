@@ -11,6 +11,7 @@ from __future__ import annotations
 import argparse
 from typing import Sequence
 
+import numpy as np
 import rerun as rr
 import rerun.components as rrc
 
@@ -112,6 +113,37 @@ def specimen_archetype_without_clamp_join_semantics():
             rr.Mesh3D.indicator(),
         ],
     )
+
+
+def specimen_many_rows_with_mismatched_instance_count():
+    """Points2D across many timestamps with varying and mismatch instance counts."""
+
+    # Useful for dataframe view row expansion testing.
+
+    np.random.seed(0)
+    positions_partitions = np.random.randint(
+        3,
+        15,
+        size=100,
+    )
+    batch_size = np.sum(positions_partitions)
+
+    # Shuffle the color partitions to induce the mismatch
+    colors_partitions = positions_partitions.copy()
+    np.random.shuffle(colors_partitions)
+
+    positions = np.random.rand(batch_size, 2)
+    colors = np.random.randint(0, 255, size=(batch_size, 4))
+
+    rr.send_columns(
+        "/many_rows_with_mismatched_instance_count",
+        times(range(len(positions_partitions))),
+        [
+            rrc.Position2DBatch(positions).partition(positions_partitions),
+            rrc.ColorBatch(colors).partition(colors_partitions),
+        ],
+    )
+    rr.log_components("/many_rows_with_mismatched_instance_count", [rr.Points2D.indicator()], static=True)
 
 
 # TODO(ab): add variants (unordered, overlapping timestamps, etc.)
