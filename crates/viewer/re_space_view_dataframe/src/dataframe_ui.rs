@@ -2,7 +2,7 @@ use std::collections::BTreeMap;
 use std::ops::Range;
 
 use anyhow::Context;
-use egui::NumExt as _;
+use egui::{NumExt as _, Ui};
 use itertools::Itertools;
 
 use re_chunk_store::{ColumnDescriptor, LatestAtQuery, RowId};
@@ -255,188 +255,11 @@ impl<'a> egui_table::TableDelegate for DataframeTableDelegate<'a> {
             ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Extend);
         }
 
-        let display_data = match &self.display_data {
-            Ok(display_data) => display_data,
-            Err(err) => {
-                error_ui(ui, format!("Error with display data: {err}"));
-                return;
-            }
-        };
-
-        // TODO(ab): this is getting wild and should be refactored
-        let cell_ui = |ui: &mut egui::Ui| {
-            if let Some(BatchRef { batch_idx, row_idx }) =
-                display_data.batch_ref_from_row.get(&cell.row_nr).copied()
-            {
-                let batch = &display_data.display_record_batches[batch_idx];
-                let column = &batch.columns()[cell.col_nr];
-
-                // compute the latest-at query for this row (used to display tooltips)
-                let timestamp = display_data
-                    .query_time_column_index
-                    .and_then(|col_idx| {
-                        display_data.display_record_batches[batch_idx].columns()[col_idx]
-                            .try_decode_time(row_idx)
-                    })
-                    .unwrap_or(TimeInt::MAX);
-                let latest_at_query = LatestAtQuery::new(self.query_handle.timeline(), timestamp);
-                let row_id = display_data
-                    .row_id_column_index
-                    .and_then(|col_idx| {
-                        display_data.display_record_batches[batch_idx].columns()[col_idx]
-                            .try_decode_row_id(row_idx)
-                    })
-                    .unwrap_or(RowId::ZERO);
-
-                if ui.is_sizing_pass() {
-                    ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Extend);
-                } else {
-                    ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Truncate);
-                }
-
-                let instance_count = column.instance_count(row_idx);
-                let row_expansion = self.expanded_rows.row_expansion(cell.row_nr);
-
-                let instance_indices = std::iter::once(None)
-                    .chain((0..instance_count).map(Option::Some))
-                    .take(row_expansion as usize + 1);
-
-                let sub_cell_content =
-                    |ui: &mut egui::Ui,
-                     expanded_rows: &mut ExpandedRows<'_>,
-                     sub_cell_index: usize,
-                     instance_index: Option<u64>| {
-                        /// What kinds of sub-cells might we encounter here?
-                        enum SubcellKind {
-                            /// Summary line with content that as zero or one instances, so cannot expand.
-                            Summary,
-
-                            /// Summary line with >1 instances, so can be expanded.
-                            SummaryWithExpand,
-
-                            /// A particular instance with the corresponding index.
-                            Instance(u64 /* instance index */),
-
-                            /// There are more instances than available sub-cells, so this is a summary of how many there are left.
-                            MoreInstancesSummary(u64 /* remaining instances */),
-
-                            /// Not enough instances to fill this sub-cell.
-                            Blank,
-                        }
-
-                        // The truth table that determines what kind of sub-cell we are dealing with.
-                        let subcell_kind = match instance_index {
-                            // First row with >1 instances.
-                            None if { instance_count > 1 } => SubcellKind::SummaryWithExpand,
-
-                            // First row with 0 or 1 instances.
-                            None => SubcellKind::Summary,
-
-                            // Last sub-cell and possibly too many instances to display.
-                            Some(instance_index)
-                                if {
-                                    sub_cell_index as u64 == row_expansion
-                                        && instance_index < instance_count
-                                } =>
-                            {
-                                let remaining = instance_count
-                                    .saturating_sub(instance_index)
-                                    .saturating_sub(1);
-                                if remaining > 0 {
-                                    // +1 is because the "X more…" line takes one instance spot
-                                    SubcellKind::MoreInstancesSummary(remaining + 1)
-                                } else {
-                                    SubcellKind::Instance(instance_index)
-                                }
-                            }
-
-                            // Some sub-cell for which an instance exists.
-                            Some(instance_index) if { instance_index < instance_count } => {
-                                SubcellKind::Instance(instance_index)
-                            }
-
-                            // Some sub-cell for which no instance exists.
-                            Some(_) => SubcellKind::Blank,
-                        };
-
-                        match subcell_kind {
-                            SubcellKind::Summary => {
-                                column.data_ui(
-                                    self.ctx,
-                                    ui,
-                                    row_id,
-                                    &latest_at_query,
-                                    row_idx,
-                                    instance_index,
-                                );
-                            }
-
-                            SubcellKind::SummaryWithExpand => {
-                                let cell_clicked =
-                                    cell_with_hover_button_ui(ui, &re_ui::icons::EXPAND, |ui| {
-                                        ui.label(format!("{instance_count} instances"));
-                                    });
-
-                                if cell_clicked {
-                                    if instance_count == row_expansion {
-                                        expanded_rows.collapse_row(cell.row_nr);
-                                    } else {
-                                        expanded_rows
-                                            .set_row_expansion(cell.row_nr, instance_count);
-                                    }
-                                }
-                            }
-
-                            SubcellKind::Instance(instance_index) => {
-                                let cell_clicked =
-                                    cell_with_hover_button_ui(ui, &re_ui::icons::COLLAPSE, |ui| {
-                                        column.data_ui(
-                                            self.ctx,
-                                            ui,
-                                            row_id,
-                                            &latest_at_query,
-                                            row_idx,
-                                            Some(instance_index),
-                                        );
-                                    });
-
-                                if cell_clicked {
-                                    expanded_rows.collapse_row(cell.row_nr);
-                                }
-                            }
-
-                            SubcellKind::MoreInstancesSummary(remaining_instances) => {
-                                let cell_clicked =
-                                    cell_with_hover_button_ui(ui, &re_ui::icons::EXPAND, |ui| {
-                                        ui.label(format!("{remaining_instances} more…"));
-                                    });
-
-                                if cell_clicked {
-                                    expanded_rows.set_row_expansion(cell.row_nr, instance_count);
-                                }
-                            }
-
-                            SubcellKind::Blank => { /* nothing to show */ }
-                        }
-                    };
-
-                sub_cell_ui(
-                    ui,
-                    &mut self.expanded_rows,
-                    instance_indices,
-                    sub_cell_content,
-                );
-            } else {
-                error_ui(
-                    ui,
-                    "Bug in egui_table: we didn't prefetch what was rendered!",
-                );
-            }
-        };
-
         egui::Frame::none()
             .inner_margin(egui::Margin::symmetric(Self::LEFT_RIGHT_MARGIN, 0.0))
-            .show(ui, cell_ui);
+            .show(ui, |ui| {
+                self.cell_ui_impl(ui, cell);
+            });
     }
 
     fn row_top_offset(&self, _ctx: &egui::Context, _table_id: egui::Id, row_nr: u64) -> f32 {
@@ -445,6 +268,185 @@ impl<'a> egui_table::TableDelegate for DataframeTableDelegate<'a> {
 
     fn default_row_height(&self) -> f32 {
         re_ui::DesignTokens::table_line_height()
+    }
+}
+
+impl DataframeTableDelegate<'_> {
+    fn cell_ui_impl(&mut self, ui: &mut Ui, cell: &egui_table::CellInfo) {
+        let display_data = match &self.display_data {
+            Ok(display_data) => display_data,
+            Err(err) => {
+                error_ui(ui, format!("Error with display data: {err}"));
+                return;
+            }
+        };
+
+        let Some(BatchRef {
+            batch_idx,
+            row_idx: batch_row_idx,
+        }) = display_data.batch_ref_from_row.get(&cell.row_nr).copied()
+        else {
+            error_ui(
+                ui,
+                "Bug in egui_table: we didn't prefetch what was rendered!",
+            );
+
+            return;
+        };
+
+        let batch = &display_data.display_record_batches[batch_idx];
+        let column = &batch.columns()[cell.col_nr];
+
+        // compute the latest-at query for this row (used to display tooltips)
+        let timestamp = display_data
+            .query_time_column_index
+            .and_then(|col_idx| {
+                display_data.display_record_batches[batch_idx].columns()[col_idx]
+                    .try_decode_time(batch_row_idx)
+            })
+            .unwrap_or(TimeInt::MAX);
+        let latest_at_query = LatestAtQuery::new(self.query_handle.timeline(), timestamp);
+        let row_id = display_data
+            .row_id_column_index
+            .and_then(|col_idx| {
+                display_data.display_record_batches[batch_idx].columns()[col_idx]
+                    .try_decode_row_id(batch_row_idx)
+            })
+            .unwrap_or(RowId::ZERO);
+
+        if ui.is_sizing_pass() {
+            ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Extend);
+        } else {
+            ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Truncate);
+        }
+
+        let instance_count = column.instance_count(batch_row_idx);
+        let row_expansion = self.expanded_rows.row_expansion(cell.row_nr);
+
+        let instance_indices = std::iter::once(None)
+            .chain((0..instance_count).map(Option::Some))
+            .take(row_expansion as usize + 1);
+
+        let sub_cell_content = |ui: &mut egui::Ui,
+                                expanded_rows: &mut ExpandedRows<'_>,
+                                sub_cell_index: usize,
+                                instance_index: Option<u64>| {
+            /// What kinds of sub-cells might we encounter here?
+            enum SubcellKind {
+                /// Summary line with content that as zero or one instances, so cannot be expanded.
+                Summary,
+
+                /// Summary line with >1 instances, so can be expanded.
+                SummaryWithExpand,
+
+                /// A particular instance with the corresponding index.
+                Instance(u64 /* instance index */),
+
+                /// There are more instances than available sub-cells, so this is a summary of how many there are left.
+                MoreInstancesSummary(u64 /* remaining instances */),
+
+                /// Not enough instances to fill this sub-cell.
+                Blank,
+            }
+
+            // The truth table that determines what kind of sub-cell we are dealing with.
+            let subcell_kind = match instance_index {
+                // First row with >1 instances.
+                None if { instance_count > 1 } => SubcellKind::SummaryWithExpand,
+
+                // First row with 0 or 1 instances.
+                None => SubcellKind::Summary,
+
+                // Last sub-cell and possibly too many instances to display.
+                Some(instance_index)
+                    if {
+                        sub_cell_index as u64 == row_expansion && instance_index < instance_count
+                    } =>
+                {
+                    let remaining = instance_count
+                        .saturating_sub(instance_index)
+                        .saturating_sub(1);
+                    if remaining > 0 {
+                        // +1 is because the "X more…" line takes one instance spot
+                        SubcellKind::MoreInstancesSummary(remaining + 1)
+                    } else {
+                        SubcellKind::Instance(instance_index)
+                    }
+                }
+
+                // Some sub-cell for which an instance exists.
+                Some(instance_index) if { instance_index < instance_count } => {
+                    SubcellKind::Instance(instance_index)
+                }
+
+                // Some sub-cell for which no instance exists.
+                Some(_) => SubcellKind::Blank,
+            };
+
+            match subcell_kind {
+                SubcellKind::Summary => {
+                    column.data_ui(
+                        self.ctx,
+                        ui,
+                        row_id,
+                        &latest_at_query,
+                        batch_row_idx,
+                        instance_index,
+                    );
+                }
+
+                SubcellKind::SummaryWithExpand => {
+                    let cell_clicked = cell_with_hover_button_ui(ui, &re_ui::icons::EXPAND, |ui| {
+                        ui.label(format!("{instance_count} instances"));
+                    });
+
+                    if cell_clicked {
+                        if instance_count == row_expansion {
+                            expanded_rows.collapse_row(cell.row_nr);
+                        } else {
+                            expanded_rows.set_row_expansion(cell.row_nr, instance_count);
+                        }
+                    }
+                }
+
+                SubcellKind::Instance(instance_index) => {
+                    let cell_clicked =
+                        cell_with_hover_button_ui(ui, &re_ui::icons::COLLAPSE, |ui| {
+                            column.data_ui(
+                                self.ctx,
+                                ui,
+                                row_id,
+                                &latest_at_query,
+                                batch_row_idx,
+                                Some(instance_index),
+                            );
+                        });
+
+                    if cell_clicked {
+                        expanded_rows.collapse_row(cell.row_nr);
+                    }
+                }
+
+                SubcellKind::MoreInstancesSummary(remaining_instances) => {
+                    let cell_clicked = cell_with_hover_button_ui(ui, &re_ui::icons::EXPAND, |ui| {
+                        ui.label(format!("{remaining_instances} more…"));
+                    });
+
+                    if cell_clicked {
+                        expanded_rows.set_row_expansion(cell.row_nr, instance_count);
+                    }
+                }
+
+                SubcellKind::Blank => { /* nothing to show */ }
+            }
+        };
+
+        sub_cell_ui(
+            ui,
+            &mut self.expanded_rows,
+            instance_indices,
+            sub_cell_content,
+        );
     }
 }
 
