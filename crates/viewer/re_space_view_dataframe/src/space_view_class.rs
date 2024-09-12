@@ -1,21 +1,17 @@
 use egui::Ui;
 
-use re_chunk_store::LatestAtQuery;
-use re_log_types::{EntityPath, ResolvedTimeRange};
+use crate::dataframe_ui::dataframe_ui;
+use crate::{query_kind::QueryKind, view_query::Query, visualizer_system::EmptySystem};
+use re_log_types::{EntityPath, EntityPathFilter, ResolvedTimeRange};
 use re_space_view::view_property_ui;
-use re_types::blueprint::{archetypes, components};
+use re_types::blueprint::archetypes;
 use re_types_core::SpaceViewClassIdentifier;
 use re_ui::list_item;
 use re_viewer_context::{
     SpaceViewClass, SpaceViewClassRegistryError, SpaceViewId, SpaceViewState,
     SpaceViewSystemExecutionError, SystemExecutionOutput, ViewQuery, ViewerContext,
 };
-use re_viewport_blueprint::ViewProperty;
-
-use crate::{
-    latest_at_table::latest_at_table_ui, query_kind::QueryKind,
-    time_range_table::time_range_table_ui, view_query::Query, visualizer_system::EmptySystem,
-};
+use re_viewport_blueprint::SpaceViewContents;
 
 #[derive(Default)]
 pub struct DataframeSpaceView;
@@ -116,7 +112,7 @@ mode sets the default time range to _everything_. You can override this in the s
         &self,
         ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
-        state: &mut dyn SpaceViewState,
+        _state: &mut dyn SpaceViewState,
         query: &ViewQuery<'_>,
         _system_output: SystemExecutionOutput,
     ) -> Result<(), SpaceViewSystemExecutionError> {
@@ -136,41 +132,71 @@ mode sets the default time range to _everything_. You can override this in the s
             return Ok(());
         };
 
+        let query_engine = ctx.recording().query_engine();
+
+        let entity_path_filter =
+            Self::entity_path_filter(ctx, query.space_view_id, query.space_origin);
+
         match query_mode {
             QueryKind::LatestAt { time } => {
-                latest_at_table_ui(ctx, ui, query, &LatestAtQuery::new(*timeline, time));
+                let query = re_chunk_store::LatestAtQueryExpression {
+                    entity_path_filter,
+                    timeline: *timeline,
+                    at: time,
+                };
+
+                //TODO(ab): specify which columns
+                let query_handle = query_engine.latest_at(&query, None);
+
+                dataframe_ui(ctx, ui, query_handle);
             }
             QueryKind::Range {
-                pov_entity: _pov_entity,
-                pov_component: _pov_component,
+                pov_entity,
+                pov_component,
                 from,
                 to,
             } => {
-                //TODO(#7279): use pov entity and component
-                let time_range_table_order =
-                    ViewProperty::from_archetype::<archetypes::TimeRangeTableOrder>(
-                        ctx.blueprint_db(),
-                        ctx.blueprint_query,
-                        query.space_view_id,
-                    );
-                let sort_key = time_range_table_order
-                    .component_or_fallback::<components::SortKey>(ctx, self, state)?;
-                let sort_order = time_range_table_order
-                    .component_or_fallback::<components::SortOrder>(ctx, self, state)?;
+                let query = re_chunk_store::RangeQueryExpression {
+                    entity_path_filter,
+                    timeline: *timeline,
+                    time_range: ResolvedTimeRange::new(from, to),
+                    //TODO(#7365): using ComponentColumnDescriptor to specify PoV needs to go
+                    pov: re_chunk_store::ComponentColumnDescriptor {
+                        entity_path: pov_entity.clone(),
+                        archetype_name: None,
+                        archetype_field_name: None,
+                        component_name: pov_component,
+                        // this is actually ignored:
+                        datatype: re_chunk_store::external::arrow2::datatypes::DataType::Null,
+                        is_static: false,
+                    },
+                };
 
-                time_range_table_ui(
-                    ctx,
-                    ui,
-                    query,
-                    sort_key,
-                    sort_order,
-                    timeline,
-                    ResolvedTimeRange::new(from, to),
-                );
+                //TODO(ab): specify which columns should be displayed or not
+                dataframe_ui(ctx, ui, query_engine.range(&query, None));
             }
-        }
+        };
 
         Ok(())
+    }
+}
+
+impl DataframeSpaceView {
+    fn entity_path_filter(
+        ctx: &ViewerContext<'_>,
+        space_view_id: SpaceViewId,
+        space_origin: &EntityPath,
+    ) -> EntityPathFilter {
+        //TODO(ab): this feels a little bit hacky but there isn't currently another way to get to
+        //the original entity path filter.
+        SpaceViewContents::from_db_or_default(
+            space_view_id,
+            ctx.blueprint_db(),
+            ctx.blueprint_query,
+            Self::identifier(),
+            &re_log_types::EntityPathSubs::new_with_origin(space_origin),
+        )
+        .entity_path_filter
     }
 }
 

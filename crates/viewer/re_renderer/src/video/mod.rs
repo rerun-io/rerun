@@ -1,9 +1,53 @@
 mod decoder;
 
-use crate::resource_managers::GpuTexture2D;
-use crate::RenderContext;
-use re_video::TimeMs;
-use re_video::VideoLoadError;
+use re_video::{TimeMs, VideoLoadError};
+
+use crate::{resource_managers::GpuTexture2D, RenderContext};
+
+#[derive(thiserror::Error, Debug)]
+pub enum VideoError {
+    #[error(transparent)]
+    Load(#[from] VideoLoadError),
+
+    #[error(transparent)]
+    Init(#[from] DecodingError),
+}
+
+/// Error that can occur during frame decoding.
+// TODO(jan, andreas): These errors are for the most part specific to the web decoder right now.
+#[derive(thiserror::Error, Debug)]
+pub enum DecodingError {
+    #[error("Failed to create VideoDecoder: {0}")]
+    DecoderSetupFailure(String),
+
+    #[error("Video seems to be empty, no segments have beem found.")]
+    EmptyVideo,
+
+    #[error("The current segment is empty.")]
+    EmptySegment,
+
+    #[error("Failed to reset the decoder: {0}")]
+    ResetFailure(String),
+
+    #[error("Failed to configure the video decoder: {0}")]
+    ConfigureFailure(String),
+
+    #[error("The timestamp passed was negative.")]
+    NegativeTimestamp,
+}
+
+/// Information about the status of a frame decoding.
+pub enum FrameDecodingResult {
+    /// The requested frame got decoded and is ready to be used.
+    Ready(GpuTexture2D),
+
+    /// The returned texture is from a previous frame or a placeholder, the decoder is still decoding the requested frame.
+    Pending(GpuTexture2D),
+
+    /// The decoder encountered an error and was not able to produce a texture for the requested timestamp.
+    /// The returned texture is either a placeholder or the last successfully decoded texture.
+    Error(DecodingError),
+}
 
 /// A video file.
 ///
@@ -31,8 +75,7 @@ impl Video {
             }
             None => return Err(VideoError::Load(VideoLoadError::UnknownMediaType)),
         };
-        let decoder =
-            decoder::VideoDecoder::new(render_context, data).ok_or_else(|| VideoError::Init)?;
+        let decoder = decoder::VideoDecoder::new(render_context, data)?;
 
         Ok(Self { decoder })
     }
@@ -62,17 +105,8 @@ impl Video {
     ///
     /// This takes `&mut self` because the decoder maintains a buffer of decoded frames,
     /// which requires mutation. It is also not thread-safe by default.
-    pub fn frame_at(&mut self, timestamp_s: f64) -> GpuTexture2D {
+    pub fn frame_at(&mut self, timestamp_s: f64) -> FrameDecodingResult {
         re_tracing::profile_function!();
         self.decoder.frame_at(TimeMs::new(timestamp_s * 1e3))
     }
-}
-
-#[derive(thiserror::Error, Debug)]
-pub enum VideoError {
-    #[error("{0}")]
-    Load(#[from] VideoLoadError),
-
-    #[error("failed to initialize video decoder")]
-    Init,
 }

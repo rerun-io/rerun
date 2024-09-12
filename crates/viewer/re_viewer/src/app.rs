@@ -1240,10 +1240,11 @@ impl App {
 
         store_hub.clear_all_cloned_blueprints();
 
-        // Reset egui, but keep the style:
-        let style = egui_ctx.style();
+        // Reset egui:
         egui_ctx.memory_mut(|mem| *mem = Default::default());
-        egui_ctx.set_style((*style).clone());
+
+        // Restore style:
+        re_ui::apply_style_and_install_loaders(egui_ctx);
 
         if let Err(err) = crate::reset_viewer_persistence() {
             re_log::warn!("Failed to reset viewer: {err}");

@@ -26,6 +26,7 @@ from .colormap import Colormap, ColormapArrayLike, ColormapBatch, ColormapLike, 
 from .depth_meter import DepthMeter, DepthMeterBatch, DepthMeterType
 from .disconnected_space import DisconnectedSpace, DisconnectedSpaceBatch, DisconnectedSpaceType
 from .draw_order import DrawOrder, DrawOrderBatch, DrawOrderType
+from .entity_path import EntityPath, EntityPathBatch, EntityPathType
 from .fill_mode import FillMode, FillModeArrayLike, FillModeBatch, FillModeLike, FillModeType
 from .fill_ratio import FillRatio, FillRatioBatch, FillRatioType
 from .gamma_correction import GammaCorrection, GammaCorrectionBatch, GammaCorrectionType
@@ -89,6 +90,7 @@ from .translation3d import Translation3D, Translation3DBatch, Translation3DType
 from .triangle_indices import TriangleIndices, TriangleIndicesBatch, TriangleIndicesType
 from .vector2d import Vector2D, Vector2DBatch, Vector2DType
 from .vector3d import Vector3D, Vector3DBatch, Vector3DType
+from .video_timestamp import VideoTimestamp, VideoTimestampBatch, VideoTimestampType
 from .view_coordinates import ViewCoordinates, ViewCoordinatesBatch, ViewCoordinatesType
 
 __all__ = [
@@ -134,6 +136,9 @@ __all__ = [
     "DrawOrder",
     "DrawOrderBatch",
     "DrawOrderType",
+    "EntityPath",
+    "EntityPathBatch",
+    "EntityPathType",
     "FillMode",
     "FillModeArrayLike",
     "FillModeBatch",
@@ -287,6 +292,9 @@ __all__ = [
     "Vector3D",
     "Vector3DBatch",
     "Vector3DType",
+    "VideoTimestamp",
+    "VideoTimestampBatch",
+    "VideoTimestampType",
     "ViewCoordinates",
     "ViewCoordinatesBatch",
     "ViewCoordinatesType",

@@ -31,9 +31,6 @@ pub(crate) use compositor::CompositorDrawData;
 mod debug_overlay;
 pub use debug_overlay::{DebugOverlayDrawData, DebugOverlayError, DebugOverlayRenderer};
 
-mod video;
-pub use video::Video;
-
 pub mod gpu_data {
     pub use super::lines::gpu_data::{LineStripInfo, LineVertex};
     pub use super::point_cloud::gpu_data::PositionRadius;

@@ -1,22 +1,21 @@
-// TODO(emilk): proper error handling: pass errors to caller instead of logging them`
+use std::sync::Arc;
+
+use js_sys::{Function, Uint8Array};
+use parking_lot::Mutex;
+use wasm_bindgen::{closure::Closure, JsCast as _};
+use web_sys::{
+    EncodedVideoChunk, EncodedVideoChunkInit, EncodedVideoChunkType, VideoDecoderConfig,
+    VideoDecoderInit,
+};
+
+use re_video::{TimeMs, VideoData};
 
 use super::latest_at_idx;
-use crate::resource_managers::GpuTexture2D;
-use crate::RenderContext;
-use js_sys::Function;
-use js_sys::Uint8Array;
-use parking_lot::Mutex;
-use re_video::TimeMs;
-use re_video::VideoData;
-use std::ops::Deref;
-use std::sync::Arc;
-use wasm_bindgen::closure::Closure;
-use wasm_bindgen::JsCast as _;
-use web_sys::EncodedVideoChunk;
-use web_sys::EncodedVideoChunkInit;
-use web_sys::EncodedVideoChunkType;
-use web_sys::VideoDecoderConfig;
-use web_sys::VideoDecoderInit;
+use crate::{
+    resource_managers::GpuTexture2D,
+    video::{DecodingError, FrameDecodingResult},
+    RenderContext,
+};
 
 #[derive(Clone)]
 #[repr(transparent)]
@@ -28,7 +27,7 @@ impl Drop for VideoFrame {
     }
 }
 
-impl Deref for VideoFrame {
+impl std::ops::Deref for VideoFrame {
     type Target = web_sys::VideoFrame;
 
     #[inline]
@@ -41,7 +40,6 @@ pub struct VideoDecoder {
     data: re_video::VideoData,
     queue: Arc<wgpu::Queue>,
     texture: GpuTexture2D,
-    zeroed_texture: GpuTexture2D,
 
     decoder: web_sys::VideoDecoder,
 
@@ -83,7 +81,7 @@ impl Drop for VideoDecoder {
 }
 
 impl VideoDecoder {
-    pub fn new(render_context: &RenderContext, data: VideoData) -> Option<Self> {
+    pub fn new(render_context: &RenderContext, data: VideoData) -> Result<Self, DecodingError> {
         let frames = Arc::new(Mutex::new(Vec::with_capacity(16)));
 
         let decoder = init_video_decoder({
@@ -105,18 +103,11 @@ impl VideoDecoder {
             data.config.coded_width as u32,
             data.config.coded_height as u32,
         );
-        let zeroed_texture = super::alloc_video_frame_texture(
-            &render_context.device,
-            &render_context.gpu_resources.textures,
-            data.config.coded_width as u32,
-            data.config.coded_height as u32,
-        );
 
         let mut this = Self {
             data,
             queue,
             texture,
-            zeroed_texture,
 
             decoder,
 
@@ -127,10 +118,10 @@ impl VideoDecoder {
         };
 
         // immediately enqueue some frames, assuming playback at start
-        this.reset();
+        this.reset()?;
         let _ = this.frame_at(TimeMs::new(0.0));
 
-        Some(this)
+        Ok(this)
     }
 
     pub fn duration_ms(&self) -> f64 {
@@ -145,16 +136,15 @@ impl VideoDecoder {
         self.data.config.coded_height as u32
     }
 
-    pub fn frame_at(&mut self, timestamp: TimeMs) -> GpuTexture2D {
+    pub fn frame_at(&mut self, timestamp: TimeMs) -> FrameDecodingResult {
         if timestamp < TimeMs::ZERO {
-            return self.zeroed_texture.clone();
+            return FrameDecodingResult::Error(DecodingError::NegativeTimestamp);
         }
 
         let Some(requested_segment_idx) =
             latest_at_idx(&self.data.segments, |segment| segment.timestamp, &timestamp)
         else {
-            // This should only happen if the video is completely empty.
-            return self.zeroed_texture.clone();
+            return FrameDecodingResult::Error(DecodingError::EmptyVideo);
         };
 
         let Some(requested_sample_idx) = latest_at_idx(
@@ -163,7 +153,7 @@ impl VideoDecoder {
             &timestamp,
         ) else {
             // This should never happen, because segments are never empty.
-            return self.zeroed_texture.clone();
+            return FrameDecodingResult::Error(DecodingError::EmptySegment);
         };
 
         // Enqueue segments as needed. We maintain a buffer of 2 segments, so we can
@@ -179,12 +169,14 @@ impl VideoDecoder {
                 requested_segment_idx as isize - self.current_segment_idx as isize;
             if segment_distance == 1 {
                 // forward seek to next segment - queue up the one _after_ requested
-                self.enqueue_all(requested_segment_idx + 1);
+                self.enqueue_segment(requested_segment_idx + 1);
             } else {
                 // forward seek by N>1 OR backward seek across segments - reset
-                self.reset();
-                self.enqueue_all(requested_segment_idx);
-                self.enqueue_all(requested_segment_idx + 1);
+                if let Err(err) = self.reset() {
+                    return FrameDecodingResult::Error(err);
+                }
+                self.enqueue_segment(requested_segment_idx);
+                self.enqueue_segment(requested_segment_idx + 1);
             }
         } else if requested_sample_idx != self.current_sample_idx {
             // special case: handle seeking backwards within a single segment
@@ -192,9 +184,11 @@ impl VideoDecoder {
             // while maintaining a buffer of 2 segments
             let sample_distance = requested_sample_idx as isize - self.current_sample_idx as isize;
             if sample_distance < 0 {
-                self.reset();
-                self.enqueue_all(requested_segment_idx);
-                self.enqueue_all(requested_segment_idx + 1);
+                if let Err(err) = self.reset() {
+                    return FrameDecodingResult::Error(err);
+                }
+                self.enqueue_segment(requested_segment_idx);
+                self.enqueue_segment(requested_segment_idx + 1);
             }
         }
 
@@ -205,10 +199,10 @@ impl VideoDecoder {
 
         let Some(frame_idx) = latest_at_idx(&frames, |(t, _)| *t, &timestamp) else {
             // no buffered frames - texture will be blank
-            // not return a zeroed texture, because we may just be behind on decoding
+            // Don't return a zeroed texture, because we may just be behind on decoding
             // and showing an old frame is better than showing a blank frame,
             // because it causes "black flashes" to appear
-            return self.texture.clone();
+            return FrameDecodingResult::Pending(self.texture.clone());
         };
 
         // drain up-to (but not including) the frame idx, clearing out any frames
@@ -226,9 +220,10 @@ impl VideoDecoder {
         let frame_duration_ms = frame.duration().map(TimeMs::new).unwrap_or_default();
 
         // This handles the case when we have a buffered frame that's older than the requested timestamp.
-        // We don't want to show this frame to the user, because it's not actually the one they requested.
+        // We don't want to show this frame to the user, because it's not actually the one they requested,
+        // so instead return the last decoded frame.
         if timestamp - frame_timestamp_ms > frame_duration_ms {
-            return self.texture.clone();
+            return FrameDecodingResult::Pending(self.texture.clone());
         }
 
         if self.last_used_frame_timestamp != frame_timestamp_ms {
@@ -236,25 +231,25 @@ impl VideoDecoder {
             self.last_used_frame_timestamp = frame_timestamp_ms;
         }
 
-        self.texture.clone()
+        FrameDecodingResult::Ready(self.texture.clone())
     }
 
     /// Enqueue all samples in the given segment.
     ///
     /// Does nothing if the index is out of bounds.
-    fn enqueue_all(&self, segment_idx: usize) {
+    fn enqueue_segment(&self, segment_idx: usize) {
         let Some(segment) = self.data.segments.get(segment_idx) else {
             return;
         };
 
-        self.enqueue(&segment.samples[0], true);
+        self.enqueue_sample(&segment.samples[0], true);
         for sample in &segment.samples[1..] {
-            self.enqueue(sample, false);
+            self.enqueue_sample(sample, false);
         }
     }
 
     /// Enqueue the given sample.
-    fn enqueue(&self, sample: &re_video::Sample, is_key: bool) {
+    fn enqueue_sample(&self, sample: &re_video::Sample, is_key: bool) {
         let data = Uint8Array::from(
             &self.data.data[sample.byte_offset as usize
                 ..sample.byte_offset as usize + sample.byte_length as usize],
@@ -268,6 +263,7 @@ impl VideoDecoder {
         chunk.set_duration(sample.duration.as_f64());
         let Some(chunk) = EncodedVideoChunk::new(&chunk)
             .inspect_err(|err| {
+                // TODO(#7373): return this error once the decoder tries to return a frame for this sample. how exactly?
                 re_log::error!("failed to create video chunk: {}", js_error_to_string(err));
             })
             .ok()
@@ -276,31 +272,24 @@ impl VideoDecoder {
         };
 
         if let Err(err) = self.decoder.decode(&chunk) {
+            // TODO(#7373): return this error once the decoder tries to return a frame for this sample. how exactly?
             re_log::error!("Failed to decode video chunk: {}", js_error_to_string(&err));
         }
     }
 
     /// Reset the video decoder and discard all frames.
-    fn reset(&mut self) {
-        if let Err(err) = self.decoder.reset() {
-            re_log::error!(
-                "Failed to reset video decoder: {}",
-                js_error_to_string(&err)
-            );
-        }
-
-        if let Err(err) = self
-            .decoder
+    fn reset(&mut self) -> Result<(), DecodingError> {
+        self.decoder
+            .reset()
+            .map_err(|err| DecodingError::ResetFailure(js_error_to_string(&err)))?;
+        self.decoder
             .configure(&js_video_decoder_config(&self.data.config))
-        {
-            re_log::error!(
-                "Failed to configure video decoder: {}",
-                js_error_to_string(&err)
-            );
-        }
+            .map_err(|err| DecodingError::ConfigureFailure(js_error_to_string(&err)))?;
 
         let mut frames = self.frames.lock();
         drop(frames.drain(..));
+
+        Ok(())
     }
 }
 
@@ -315,7 +304,9 @@ fn copy_video_frame_to_texture(
         depth_or_array_layers: 1,
     };
     let source = {
-        // TODO(jan): Remove this unsafe code when https://github.com/gfx-rs/wgpu/pull/6170 ships.
+        // TODO(jan): The wgpu version we're using doesn't support `VideoFrame` yet.
+        // This got fixed in https://github.com/gfx-rs/wgpu/pull/6170 but hasn't shipped yet.
+        // So instead, we just pretend this is a `HtmlVideoElement` instead.
         // SAFETY: Depends on the fact that `wgpu` passes the object through as-is,
         // and doesn't actually inspect it in any way. The browser then does its own
         // typecheck that doesn't care what kind of image source wgpu gave it.
@@ -325,6 +316,19 @@ fn copy_video_frame_to_texture(
                 frame.clone().expect("Failed to clone the video frame"),
             )
         };
+        // Fake width & height to work around wgpu validating this as if it was a `HtmlVideoElement`.
+        // Since it thinks this is a `HtmlVideoElement`, it will want to call `videoWidth` and `videoHeight`
+        // on it to validate the size.
+        // We simply redirect `displayWidth`/`displayHeight` to `videoWidth`/`videoHeight` to make it work!
+        let display_width = js_sys::Reflect::get(&frame, &"displayWidth".into())
+            .expect("Failed to get displayWidth property from VideoFrame.");
+        js_sys::Reflect::set(&frame, &"videoWidth".into(), &display_width)
+            .expect("Failed to set videoWidth property.");
+        let display_height = js_sys::Reflect::get(&frame, &"displayHeight".into())
+            .expect("Failed to get displayHeight property from VideoFrame.");
+        js_sys::Reflect::set(&frame, &"videoHeight".into(), &display_height)
+            .expect("Failed to set videoHeight property.");
+
         wgpu_types::ImageCopyExternalImage {
             source: wgpu_types::ExternalImageSource::HTMLVideoElement(frame),
             origin: wgpu_types::Origin2d { x: 0, y: 0 },
@@ -344,11 +348,11 @@ fn copy_video_frame_to_texture(
 
 fn init_video_decoder(
     on_output: impl Fn(web_sys::VideoFrame) + 'static,
-) -> Option<web_sys::VideoDecoder> {
+) -> Result<web_sys::VideoDecoder, DecodingError> {
     let on_output = Closure::wrap(Box::new(on_output) as Box<dyn Fn(web_sys::VideoFrame)>);
     let on_error = Closure::wrap(Box::new(|err: js_sys::Error| {
+        // TODO(#7373): store this error and report during decode
         let err = std::string::ToString::to_string(&err.to_string());
-
         re_log::error!("failed to decode video: {err}");
     }) as Box<dyn Fn(js_sys::Error)>);
 
@@ -358,13 +362,8 @@ fn init_video_decoder(
     let Ok(on_error) = on_error.into_js_value().dyn_into::<Function>() else {
         unreachable!()
     };
-    let decoder = web_sys::VideoDecoder::new(&VideoDecoderInit::new(&on_error, &on_output))
-        .inspect_err(|err| {
-            re_log::error!("failed to create VideoDecoder: {}", js_error_to_string(err));
-        })
-        .ok()?;
-
-    Some(decoder)
+    web_sys::VideoDecoder::new(&VideoDecoderInit::new(&on_error, &on_output))
+        .map_err(|err| DecodingError::DecoderSetupFailure(js_error_to_string(&err)))
 }
 
 fn js_video_decoder_config(config: &re_video::Config) -> VideoDecoderConfig {

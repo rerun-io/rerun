@@ -1,0 +1,26 @@
+namespace rerun.archetypes;
+
+/// References a single video frame.
+///
+/// Used to display video frames from a [archetypes.AssetVideo].
+// TODO(#7368): More docs and examples on how to use this.
+table VideoFrameReference (
+    "attr.rerun.experimental"
+){
+    // --- Required ---
+
+    /// References the closest video frame to this timestamp.
+    ///
+    /// Note that this uses the closest video frame instead of the latest at this timestamp
+    /// in order to be more forgiving of rounding errors for inprecise timestamp types.
+    timestamp: rerun.components.VideoTimestamp ("attr.rerun.component_required", required, order: 1000);
+
+    // --- Optional ---
+
+    /// Optional reference to an entity with a [archetypes.AssetVideo].
+    ///
+    /// If none is specified, the video is assumed to be at the same entity.
+    /// Note that blueprint overrides on the referenced video will be ignored regardless,
+    /// as this is always interpreted as a reference to the data store.
+    video_reference: rerun.components.EntityPath ("attr.rerun.component_optional", nullable, order: 2000);
+}

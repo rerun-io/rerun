@@ -73,6 +73,7 @@ impl WebHandle {
             wgpu_options: crate::wgpu_options(app_options.render_backend.clone()),
             depth_buffer: 0,
             dithering: true,
+            ..Default::default()
         };
 
         self.runner

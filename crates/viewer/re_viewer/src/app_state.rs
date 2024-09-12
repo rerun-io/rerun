@@ -272,10 +272,8 @@ impl AppState {
             focused_item,
         };
 
-        // First update the viewport and thus all active space views.
-        // This may update their heuristics, so that all panels that are shown in this frame,
-        // have the latest information.
-        viewport.on_frame_start(&ctx, view_states);
+        // Update the viewport. May spawn new views and handle queued requests (like screenshots).
+        viewport.on_frame_start(&ctx);
 
         {
             re_tracing::profile_scope!("updated_query_results");

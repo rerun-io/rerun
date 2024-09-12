@@ -152,6 +152,71 @@ impl Chunk {
             }
             && *components == rhs.components
     }
+
+    /// Check for equality while ignoring possible `Extension` type information
+    ///
+    /// This is necessary because `arrow2` loses the `Extension` datatype
+    /// when deserializing back from the `arrow_schema::DataType` representation.
+    ///
+    /// In theory we could fix this, but as we're moving away from arrow2 anyways
+    /// it's unlikely worth the effort.
+    pub fn are_equal_ignoring_extension_types(&self, other: &Self) -> bool {
+        let Self {
+            id,
+            entity_path,
+            heap_size_bytes: _,
+            is_sorted,
+            row_ids,
+            timelines,
+            components,
+        } = self;
+
+        let row_ids_no_extension = arrow2::array::StructArray::new(
+            row_ids.data_type().to_logical_type().clone(),
+            row_ids.values().to_vec(),
+            row_ids.validity().cloned(),
+        );
+
+        let components_no_extension: BTreeMap<_, _> = components
+            .iter()
+            .map(|(name, arr)| {
+                let arr = arrow2::array::ListArray::new(
+                    arr.data_type().to_logical_type().clone(),
+                    arr.offsets().clone(),
+                    arr.values().clone(),
+                    arr.validity().cloned(),
+                );
+                (name, arr)
+            })
+            .collect();
+
+        let other_components_no_extension: BTreeMap<_, _> = other
+            .components
+            .iter()
+            .map(|(name, arr)| {
+                let arr = arrow2::array::ListArray::new(
+                    arr.data_type().to_logical_type().clone(),
+                    arr.offsets().clone(),
+                    arr.values().clone(),
+                    arr.validity().cloned(),
+                );
+                (name, arr)
+            })
+            .collect();
+
+        let other_row_ids_no_extension = arrow2::array::StructArray::new(
+            other.row_ids.data_type().to_logical_type().clone(),
+            other.row_ids.values().to_vec(),
+            other.row_ids.validity().cloned(),
+        );
+
+        *id == other.id
+            && *entity_path == other.entity_path
+            && *is_sorted == other.is_sorted
+            && row_ids_no_extension == other_row_ids_no_extension
+            && *timelines == other.timelines
+            && components_no_extension == other_components_no_extension
+    }
 }
 
 impl Clone for Chunk {
@@ -739,7 +804,7 @@ impl TimeColumn {
 
         Self::new(
             None,
-            Timeline::new_sequence(name.into()),
+            Timeline::new_temporal(name.into()),
             ArrowPrimitiveArray::<i64>::from_vec(time_vec),
         )
     }
@@ -769,7 +834,7 @@ impl TimeColumn {
 
         Self::new(
             None,
-            Timeline::new_sequence(name.into()),
+            Timeline::new_temporal(name.into()),
             ArrowPrimitiveArray::<i64>::from_vec(time_vec),
         )
     }

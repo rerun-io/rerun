@@ -171,8 +171,6 @@ impl ChunkUi {
                     )
                     .resizable(true)
                     .vscroll(true)
-                    //TODO(ab): remove when https://github.com/emilk/egui/pull/4817 is merged/released
-                    .max_scroll_height(f32::INFINITY)
                     .auto_shrink([false, false])
                     .striped(true);
 

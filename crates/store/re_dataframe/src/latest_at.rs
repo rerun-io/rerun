@@ -56,6 +56,11 @@ impl<'a> LatestAtQueryHandle<'a> {
 }
 
 impl LatestAtQueryHandle<'_> {
+    /// The query expression used to instantiate this handle.
+    pub fn query(&self) -> &LatestAtQueryExpression {
+        &self.query
+    }
+
     /// All results returned by this handle will strictly follow this schema.
     ///
     /// Columns that do not yield any data will still be present in the results, filled with null values.
@@ -212,9 +217,8 @@ impl LatestAtQueryHandle<'_> {
             schema: ArrowSchema {
                 fields: columns
                     .iter()
-                    .zip(packed_arrays.iter())
-                    .map(|(descr, arr)| descr.to_arrow_field(Some(arr.data_type().clone())))
-                    .collect(),
+                    .map(|descr| descr.to_arrow_field())
+                    .collect_vec(),
                 metadata: Default::default(),
             },
             data: ArrowChunk::new(packed_arrays),
@@ -248,7 +252,7 @@ mod tests {
         ChunkStore, ChunkStoreConfig, ColumnDescriptor, ComponentColumnDescriptor,
         LatestAtQueryExpression, TimeColumnDescriptor,
     };
-    use re_log_types::{example_components::MyPoint, StoreId, StoreKind};
+    use re_log_types::{example_components::MyPoint, EntityPathFilter, StoreId, StoreKind};
     use re_query::Caches;
     use re_types::{
         components::{Color, Position3D, Radius},
@@ -270,7 +274,7 @@ mod tests {
         };
 
         let query = LatestAtQueryExpression {
-            entity_path_expr: "/**".into(),
+            entity_path_filter: EntityPathFilter::all(),
             timeline: Timeline::log_time(),
             at: TimeInt::MAX,
         };
@@ -299,9 +303,11 @@ mod tests {
 
         // The output should be an empty recordbatch with the right schema and empty arrays.
         assert_eq!(0, batch.num_rows());
-        assert!(itertools::izip!(columns.iter(), batch.schema.fields.iter())
-            .all(|(descr, field)| descr.to_arrow_field(None) == *field));
-        assert!(itertools::izip!(columns.iter(), batch.data.iter())
+        assert!(
+            itertools::izip!(handle.schema(), batch.schema.fields.iter())
+                .all(|(descr, field)| descr.to_arrow_field() == *field)
+        );
+        assert!(itertools::izip!(handle.schema(), batch.data.iter())
             .all(|(descr, array)| descr.datatype() == array.data_type()));
     }
 
@@ -334,7 +340,7 @@ mod tests {
         };
 
         let query = LatestAtQueryExpression {
-            entity_path_expr: "/**".into(),
+            entity_path_filter: EntityPathFilter::all(),
             timeline: Timeline::log_time(),
             at: TimeInt::MAX,
         };
@@ -370,7 +376,9 @@ mod tests {
                 )
                 .unwrap()
         );
-        assert!(itertools::izip!(columns.iter(), batch.schema.fields.iter())
-            .all(|(descr, field)| descr.to_arrow_field(None) == *field));
+        assert!(
+            itertools::izip!(handle.schema(), batch.schema.fields.iter())
+                .all(|(descr, field)| descr.to_arrow_field() == *field)
+        );
     }
 }

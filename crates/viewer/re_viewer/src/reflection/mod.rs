@@ -343,6 +343,13 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             },
         ),
         (
+            <EntityPath as Loggable>::name(),
+            ComponentReflection {
+                docstring_md: "A path to an entity, usually to reference some data that is part of the target entity.",
+                placeholder: Some(EntityPath::default().to_arrow()?),
+            },
+        ),
+        (
             <FillMode as Loggable>::name(),
             ComponentReflection {
                 docstring_md: "How a geometric shape is drawn and colored.",
@@ -669,6 +676,13 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             ComponentReflection {
                 docstring_md: "A vector in 3D space.",
                 placeholder: Some(Vector3D::default().to_arrow()?),
+            },
+        ),
+        (
+            <VideoTimestamp as Loggable>::name(),
+            ComponentReflection {
+                docstring_md: "Timestamp inside a [`archetypes.AssetVideo`](https://rerun.io/docs/reference/types/archetypes/asset_video).\n\n⚠\u{fe0f} **This type is experimental and may be removed in future versions**",
+                placeholder: Some(VideoTimestamp::default().to_arrow()?),
             },
         ),
         (
@@ -1440,6 +1454,23 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                     "rerun.components.AxisLength".into(), display_name : "Axis length",
                     docstring_md :
                     "Visual length of the 3 axes.\n\nThe length is interpreted in the local coordinate system of the transform.\nIf the transform is scaled, the axes will be scaled accordingly.",
+                    is_required : false, },
+                ],
+            },
+        ),
+        (
+            ArchetypeName::new("rerun.archetypes.VideoFrameReference"),
+            ArchetypeReflection {
+                display_name: "Video frame reference",
+                fields: vec![
+                    ArchetypeFieldReflection { component_name :
+                    "rerun.components.VideoTimestamp".into(), display_name : "Timestamp",
+                    docstring_md :
+                    "References the closest video frame to this timestamp.\n\nNote that this uses the closest video frame instead of the latest at this timestamp\nin order to be more forgiving of rounding errors for inprecise timestamp types.\n\n⚠\u{fe0f} **This type is experimental and may be removed in future versions**",
+                    is_required : true, }, ArchetypeFieldReflection { component_name :
+                    "rerun.components.EntityPath".into(), display_name :
+                    "Video reference", docstring_md :
+                    "Optional reference to an entity with a [`archetypes.AssetVideo`](https://rerun.io/docs/reference/types/archetypes/asset_video).\n\nIf none is specified, the video is assumed to be at the same entity.\nNote that blueprint overrides on the referenced video will be ignored regardless,\nas this is always interpreted as a reference to the data store.\n\n⚠\u{fe0f} **This type is experimental and may be removed in future versions**",
                     is_required : false, },
                 ],
             },
