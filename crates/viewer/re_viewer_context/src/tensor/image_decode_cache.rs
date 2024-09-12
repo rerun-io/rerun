@@ -72,7 +72,7 @@ fn decode_image(
         if let Some(format) = image::ImageFormat::from_mime_type(media_type) {
             reader.set_format(format);
         } else {
-            re_log::warn!("Unsupported image MediaType/MIME: {media_type:?}");
+            return Err(ImageLoadError::UnsupportedMimeType(media_type.to_owned()));
         }
     }
 
