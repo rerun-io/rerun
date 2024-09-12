@@ -242,7 +242,7 @@ fn load_video(
         let first_timestamp = video
             .segments
             .first()
-            .map_or(0, |segment| segment.timestamp.as_nanoseconds());
+            .map_or(0, |segment| segment.decode_start_nanos(video.timescale));
 
         // Time column.
         let is_sorted = Some(true);
@@ -251,7 +251,7 @@ fn load_video(
                 segment
                     .samples
                     .iter()
-                    .map(|s| s.timestamp.as_nanoseconds() - first_timestamp)
+                    .map(|s| s.decode_timestamp.into_nanos(video.timescale) - first_timestamp)
             }));
 
         let time_column = re_chunk::TimeColumn::new(is_sorted, video_timeline, time_column_times);
@@ -264,7 +264,7 @@ fn load_video(
                 segment.samples.iter().map(|s| {
                     // TODO(andreas): Use sample indices instead of timestamps once possible.
                     re_types::components::VideoTimestamp::new_nanoseconds(
-                        s.timestamp.as_nanoseconds(),
+                        s.decode_timestamp.into_nanos(video.timescale),
                     )
                 })
             })

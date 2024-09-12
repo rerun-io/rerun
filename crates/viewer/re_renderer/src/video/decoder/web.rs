@@ -8,7 +8,7 @@ use web_sys::{
     VideoDecoderInit,
 };
 
-use re_video::{TimeMs, VideoData};
+use re_video::{Time, VideoData};
 
 use super::latest_at_idx;
 use crate::{
@@ -36,6 +36,11 @@ impl std::ops::Deref for VideoFrame {
     }
 }
 
+struct BufferedFrame {
+    composition_timestamp: Time,
+    frame: VideoFrame,
+}
+
 pub struct VideoDecoder {
     data: re_video::VideoData,
     queue: Arc<wgpu::Queue>,
@@ -43,8 +48,9 @@ pub struct VideoDecoder {
 
     decoder: web_sys::VideoDecoder,
 
-    frames: Arc<Mutex<Vec<(TimeMs, VideoFrame)>>>,
-    last_used_frame_timestamp: TimeMs,
+    frames: Arc<Mutex<Vec<BufferedFrame>>>,
+    decode_time_offset: Time,
+    last_used_frame_decode_timestamp: Time,
     current_segment_idx: usize,
     current_sample_idx: usize,
 }
@@ -89,7 +95,7 @@ impl VideoDecoder {
             move |frame: web_sys::VideoFrame| {
                 web_sys::console::log_1(&frame);
                 frames.lock().push((
-                    TimeMs::new(frame.timestamp().unwrap_or(0.0)),
+                    Time::new(frame.timestamp().unwrap_or(0.0) as u64),
                     VideoFrame(frame),
                 ));
             }
@@ -113,14 +119,17 @@ impl VideoDecoder {
             decoder,
 
             frames,
-            last_used_frame_timestamp: TimeMs::new(f64::MAX),
+            decode_time_offset: data.segments.first().map_or(Time::ZERO, |segment| {
+                segment.samples.first().decode_timestamp
+            }),
+            last_used_frame_decode_timestamp: Time::new(u64::MAX),
             current_segment_idx: usize::MAX,
             current_sample_idx: usize::MAX,
         };
 
         // immediately enqueue some frames, assuming playback at start
         this.reset()?;
-        let _ = this.frame_at(TimeMs::new(0.0));
+        let _ = this.frame_at(0.0);
 
         Ok(this)
     }
@@ -137,24 +146,42 @@ impl VideoDecoder {
         self.data.config.coded_height as u32
     }
 
-    pub fn frame_at(&mut self, timestamp: TimeMs) -> FrameDecodingResult {
-        if timestamp < TimeMs::ZERO {
+    pub fn frame_at(&mut self, timestamp_s: f64) -> FrameDecodingResult {
+        // TODO:
+        // - `timestamp_s` becomes _presentation timestamp_
+        // - do a binary search through samples by decode timestamp to find the segment/sample
+        // - do a linear search _backwards_ to find sample with composition timestamp
+        // - do a binary search through segments by decode timestamp of the found sample
+        // we now have the two indices and we can do the enqueue operation as usual (N, N+1)
+        //
+        // video decoder returns frames in composition timestamp order, so we can just do a
+        // binary search through buffered frames by the user-supplied timestamp to find
+        // the frame they want to see
+
+        if timestamp_s < 0.0 {
             return FrameDecodingResult::Error(DecodingError::NegativeTimestamp);
         }
 
-        let Some(requested_segment_idx) =
-            latest_at_idx(&self.data.segments, |segment| segment.timestamp, &timestamp)
-        else {
+        let timestamp = Time::from_secs(timestamp_s, self.data.timescale);
+
+        let Some(requested_segment_idx) = latest_at_idx(
+            &self.data.segments,
+            |segment| segment.samples.first().decode_timestamp,
+            &timestamp,
+        ) else {
             return FrameDecodingResult::Error(DecodingError::EmptyVideo);
         };
 
         let Some(requested_sample_idx) = latest_at_idx(
             &self.data.segments[requested_segment_idx].samples,
-            |sample| sample.timestamp,
+            |sample| sample.decode_timestamp,
             &timestamp,
         ) else {
-            // This should never happen, because segments are never empty.
-            return FrameDecodingResult::Error(DecodingError::EmptySegment);
+            // We have a valid segment, which means:
+            // - `samples.first()` is `Some`, because `samples` is a `Vec1`
+            // - `sample.decode_timestamp >= timestamp`
+            // therefore this can never happen:
+            unreachable!("empty segment");
         };
 
         // Enqueue segments as needed. We maintain a buffer of 2 segments, so we can

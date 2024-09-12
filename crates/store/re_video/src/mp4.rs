@@ -1,11 +1,10 @@
 #![allow(clippy::map_err_ignore)]
 
-use crate::TimeMs;
-
-use super::{Config, Sample, Segment, VideoData, VideoLoadError};
+use super::{Config, Sample, Segment, Time, Timescale, VideoData, VideoLoadError};
 use ::mp4;
 
 use mp4::TrackKind;
+use vec1::Vec1;
 
 pub fn load_mp4(bytes: &[u8]) -> Result<VideoData, VideoLoadError> {
     let mp4 = ::mp4::read(bytes)?;
@@ -39,45 +38,45 @@ pub fn load_mp4(bytes: &[u8]) -> Result<VideoData, VideoLoadError> {
         coded_width,
     };
 
-    let duration = TimeMs::new(video_track.duration_ms());
+    let timescale = Timescale::new(video_track.timescale);
+    let duration = Time::new(video_track.duration);
     let mut samples = Vec::<Sample>::new();
     let mut segments = Vec::<Segment>::new();
     let data = video_track.data.clone();
 
     for sample in &video_track.samples {
-        if sample.is_sync && !samples.is_empty() {
-            segments.push(Segment {
-                timestamp: samples[0].timestamp,
-                samples,
-            });
+        if sample.is_sync {
+            if let Ok(samples) = Vec1::try_from_vec(samples) {
+                segments.push(Segment { samples });
+            }
             samples = Vec::new();
         }
 
-        let timestamp = TimeMs::new(sample.timestamp_ms());
-        let duration = TimeMs::new(sample.duration_ms());
+        let decode_timestamp = Time::new(sample.decode_timestamp);
+        let composition_timestamp = Time::new(sample.composition_timestamp);
+        let duration = Time::new(sample.duration);
 
         let byte_offset = sample.offset as u32;
         let byte_length = sample.size as u32;
 
         samples.push(Sample {
-            timestamp,
+            decode_timestamp,
+            composition_timestamp,
             duration,
             byte_offset,
             byte_length,
         });
     }
 
-    if !samples.is_empty() {
-        segments.push(Segment {
-            timestamp: samples[0].timestamp,
-            samples,
-        });
+    if let Ok(samples) = Vec1::try_from_vec(samples) {
+        segments.push(Segment { samples });
     }
 
     Ok(VideoData {
         config,
-        data,
+        timescale,
         duration,
         segments,
+        data,
     })
 }

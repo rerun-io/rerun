@@ -1,6 +1,6 @@
 mod decoder;
 
-use re_video::{TimeMs, VideoLoadError};
+use re_video::VideoLoadError;
 
 use crate::{resource_managers::GpuTexture2D, RenderContext};
 
@@ -22,9 +22,6 @@ pub enum DecodingError {
 
     #[error("Video seems to be empty, no segments have beem found.")]
     EmptyVideo,
-
-    #[error("The current segment is empty.")]
-    EmptySegment,
 
     #[error("Failed to reset the decoder: {0}")]
     ResetFailure(String),
@@ -80,11 +77,6 @@ impl Video {
         Ok(Self { decoder })
     }
 
-    /// Duration of the video in milliseconds.
-    pub fn duration_ms(&self) -> f64 {
-        self.decoder.duration_ms()
-    }
-
     /// Natural width of the video.
     pub fn width(&self) -> u32 {
         self.decoder.width()
@@ -107,6 +99,6 @@ impl Video {
     /// which requires mutation. It is also not thread-safe by default.
     pub fn frame_at(&mut self, timestamp_s: f64) -> FrameDecodingResult {
         re_tracing::profile_function!();
-        self.decoder.frame_at(TimeMs::new(timestamp_s * 1e3))
+        self.decoder.frame_at(timestamp_s)
     }
 }

@@ -539,8 +539,8 @@ egui_tiles = { git = "https://github.com/rerun-io/egui_tiles", rev = "b2f5e23252
 
 # commit on `rerun-io/mp4` `main` branch
 # https://github.com/rerun-io/mp4/commit/73fab7a3a73a2d1a4ad45bd7874f970d9b486be1
-mp4 = { git = "https://github.com/rerun-io/mp4", rev = "73fab7a3a73a2d1a4ad45bd7874f970d9b486be1" }
-# mp4 = { path = "/home/jan/rerun-io/mp4" }
+# mp4 = { git = "https://github.com/rerun-io/mp4", rev = "73fab7a3a73a2d1a4ad45bd7874f970d9b486be1" }
+mp4 = { path = "/home/jan/rerun-io/mp4" }
 
 # commit on `rerun-io/re_arrow2` `main` branch
 # https://github.com/rerun-io/re_arrow2/commit/e4717d6debc6d4474ec10db8f629f823f57bad07

@@ -10,8 +10,6 @@ use crate::{
 #[allow(unused_imports)]
 use super::latest_at_idx;
 
-use re_video::TimeMs;
-
 use super::alloc_video_frame_texture;
 
 pub struct VideoDecoder {
@@ -39,10 +37,6 @@ impl VideoDecoder {
         })
     }
 
-    pub fn duration_ms(&self) -> f64 {
-        self.data.duration.as_f64()
-    }
-
     pub fn width(&self) -> u32 {
         self.data.config.coded_width as u32
     }
@@ -51,7 +45,7 @@ impl VideoDecoder {
         self.data.config.coded_height as u32
     }
 
-    pub fn frame_at(&mut self, timestamp: TimeMs) -> FrameDecodingResult {
+    pub fn frame_at(&mut self, _timestamp_s: f64) -> FrameDecodingResult {
         FrameDecodingResult::Ready(self.zeroed_texture.clone())
     }
 }

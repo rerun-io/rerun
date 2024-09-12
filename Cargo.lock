@@ -5293,6 +5293,7 @@ dependencies = [
  "tobj",
  "type-map",
  "unindent",
+ "vec1",
  "walkdir",
  "wasm-bindgen",
  "wasm-bindgen-futures",
@@ -5789,8 +5790,8 @@ name = "re_video"
 version = "0.19.0-alpha.1+dev"
 dependencies = [
  "mp4",
- "ordered-float",
  "re_log",
+ "vec1",
 ]
 
 [[package]]
