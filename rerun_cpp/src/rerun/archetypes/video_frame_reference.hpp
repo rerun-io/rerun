@@ -19,7 +19,60 @@
 namespace rerun::archetypes {
     /// **Archetype**: References a single video frame.
     ///
-    /// Used to display video frames from a `archetypes::AssetVideo`.
+    /// Used to display individual video frames from a `archetypes::AssetVideo`.
+    /// To show an entire video, a fideo frame reference for each frame of the video should be logged.
+    ///
+    /// ## Example
+    ///
+    /// ### Video with explicit frames
+    /// ![image](https://static.rerun.io/video_manual_frames/320a44e1e06b8b3a3161ecbbeae3e04d1ccb9589/full.png)
+    ///
+    /// ```cpp
+    /// #include <rerun.hpp>
+    ///
+    /// #include <iostream>
+    ///
+    /// using namespace std::chrono_literals;
+    ///
+    /// int main(int argc, char* argv[]) {
+    ///     if (argc <2) {
+    ///         // TODO(#7354): Only mp4 is supported for now.
+    ///         std::cerr <<"Usage: " <<argv[0] <<" <path_to_video.[mp4]>" <<std::endl;
+    ///         return 1;
+    ///     }
+    ///
+    ///     const auto path = argv[1];
+    ///
+    ///     const auto rec = rerun::RecordingStream("rerun_example_asset_video_manual_frames");
+    ///     rec.spawn().exit_on_failure();
+    ///
+    ///     // Log video asset which is referred to by frame references.
+    ///     // Make sure it's available on the timeline used for the frame references.
+    ///     rec.set_time_seconds("video_time", 0.0);
+    ///     rec.log("video", rerun::AssetVideo::from_file(path).value_or_throw());
+    ///
+    ///     // Send frame references for every 0.1 seconds over a total of 10 seconds.
+    ///     // Naturally, this will result in a choppy playback and only makes sense if the video is 10 seconds or longer.
+    ///     // TODO(#7368): Point to example using `send_video_frames`.
+    ///     //
+    ///     // Use `send_columns` to send all frame references in a single call.
+    ///     std::vector<std::chrono::milliseconds> times(10 * 10);
+    ///     std::vector<rerun::components::VideoTimestamp> video_timestamps(10 * 10);
+    ///     for (size_t i = 0; i <times.size(); i++) {
+    ///         times[i] = 100ms * i;
+    ///         video_timestamps[i] = rerun::components::VideoTimestamp(times[i]);
+    ///     }
+    ///     rec.send_columns(
+    ///         "video",
+    ///         rerun::TimeColumn::from_times("video_time", rerun::borrow(times)),
+    ///         {
+    ///             rerun::ComponentColumn::from_indicators<rerun::VideoFrameReference>(times.size())
+    ///                 .value_or_throw(),
+    ///             rerun::ComponentColumn::from_loggable(rerun::borrow(video_timestamps)).value_or_throw(),
+    ///         }
+    ///     );
+    /// }
+    /// ```
     ///
     /// ⚠ **This is an experimental API! It is not fully supported, and is likely to change significantly in future versions.**
     struct VideoFrameReference {
@@ -34,6 +87,10 @@ namespace rerun::archetypes {
         /// If none is specified, the video is assumed to be at the same entity.
         /// Note that blueprint overrides on the referenced video will be ignored regardless,
         /// as this is always interpreted as a reference to the data store.
+        ///
+        /// For a series of video frame references, it is recommended to specify this path only once
+        /// at the beginning of the series and then rely on latest-at query semantics to
+        /// keep the video reference active.
         std::optional<rerun::components::EntityPath> video_reference;
 
       public:
@@ -55,6 +112,10 @@ namespace rerun::archetypes {
         /// If none is specified, the video is assumed to be at the same entity.
         /// Note that blueprint overrides on the referenced video will be ignored regardless,
         /// as this is always interpreted as a reference to the data store.
+        ///
+        /// For a series of video frame references, it is recommended to specify this path only once
+        /// at the beginning of the series and then rely on latest-at query semantics to
+        /// keep the video reference active.
         VideoFrameReference with_video_reference(rerun::components::EntityPath _video_reference
         ) && {
             video_reference = std::move(_video_reference);

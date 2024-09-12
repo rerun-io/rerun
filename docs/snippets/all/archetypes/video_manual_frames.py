@@ -1,8 +1,5 @@
-"""
-Log a video asset using manually created frame references.
-
-TODO(#7298): ⚠️ Video is currently only supported in the Rerun web viewer.
-"""
+"""Log a video asset using manually created frame references."""
+# TODO(#7298): ⚠️ Video is currently only supported in the Rerun web viewer.
 
 import sys
 
