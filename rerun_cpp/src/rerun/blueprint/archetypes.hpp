@@ -13,7 +13,6 @@
 #include "blueprint/archetypes/tensor_scalar_mapping.hpp"
 #include "blueprint/archetypes/tensor_slice_selection.hpp"
 #include "blueprint/archetypes/tensor_view_fit.hpp"
-#include "blueprint/archetypes/time_range_table_order.hpp"
 #include "blueprint/archetypes/viewport_blueprint.hpp"
 #include "blueprint/archetypes/visible_time_ranges.hpp"
 #include "blueprint/archetypes/visual_bounds2d.hpp"

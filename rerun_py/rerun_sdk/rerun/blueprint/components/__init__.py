@@ -38,8 +38,6 @@ from .query_expression import QueryExpression, QueryExpressionBatch, QueryExpres
 from .query_kind import QueryKind, QueryKindArrayLike, QueryKindBatch, QueryKindLike, QueryKindType
 from .root_container import RootContainer, RootContainerBatch, RootContainerType
 from .row_share import RowShare, RowShareBatch, RowShareType
-from .sort_key import SortKey, SortKeyArrayLike, SortKeyBatch, SortKeyLike, SortKeyType
-from .sort_order import SortOrder, SortOrderArrayLike, SortOrderBatch, SortOrderLike, SortOrderType
 from .space_view_class import SpaceViewClass, SpaceViewClassBatch, SpaceViewClassType
 from .space_view_maximized import SpaceViewMaximized, SpaceViewMaximizedBatch, SpaceViewMaximizedType
 from .space_view_origin import SpaceViewOrigin, SpaceViewOriginBatch, SpaceViewOriginType
@@ -134,16 +132,6 @@ __all__ = [
     "RowShare",
     "RowShareBatch",
     "RowShareType",
-    "SortKey",
-    "SortKeyArrayLike",
-    "SortKeyBatch",
-    "SortKeyLike",
-    "SortKeyType",
-    "SortOrder",
-    "SortOrderArrayLike",
-    "SortOrderBatch",
-    "SortOrderLike",
-    "SortOrderType",
     "SpaceViewClass",
     "SpaceViewClassBatch",
     "SpaceViewClassType",
