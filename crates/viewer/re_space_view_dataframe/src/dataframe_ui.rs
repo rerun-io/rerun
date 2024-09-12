@@ -263,6 +263,8 @@ impl<'a> egui_table::TableDelegate for DataframeTableDelegate<'a> {
 impl DataframeTableDelegate<'_> {
     /// Draw the content of a cell.
     fn cell_ui_impl(&mut self, ui: &mut Ui, cell: &egui_table::CellInfo) {
+        re_tracing::profile_function!();
+
         let display_data = match &self.display_data {
             Ok(display_data) => display_data,
             Err(err) => {
@@ -319,41 +321,46 @@ impl DataframeTableDelegate<'_> {
             .chain((0..instance_count).map(Option::Some))
             .take(row_expansion as usize + 1);
 
-        // how the sub-cell is drawn
-        let sub_cell_content = |ui: &mut egui::Ui,
-                                expanded_rows: &mut ExpandedRows<'_>,
-                                sub_cell_index: usize,
-                                instance_index: Option<u64>| {
-            // This is called when data actually needs to be drawn (as opposed to summaries like
-            // "N instances" or "N more…").
-            let data_content = |ui: &mut egui::Ui| {
-                column.data_ui(
-                    self.ctx,
-                    ui,
-                    row_id,
-                    &latest_at_query,
-                    batch_row_idx,
-                    instance_index,
-                );
-            };
+        {
+            re_tracing::profile_scope!("subcells");
 
-            sub_cell_ui(
+            // how the sub-cell is drawn
+            let sub_cell_content =
+                |ui: &mut egui::Ui,
+                 expanded_rows: &mut ExpandedRows<'_>,
+                 sub_cell_index: usize,
+                 instance_index: Option<u64>| {
+                    // This is called when data actually needs to be drawn (as opposed to summaries like
+                    // "N instances" or "N more…").
+                    let data_content = |ui: &mut egui::Ui| {
+                        column.data_ui(
+                            self.ctx,
+                            ui,
+                            row_id,
+                            &latest_at_query,
+                            batch_row_idx,
+                            instance_index,
+                        );
+                    };
+
+                    sub_cell_ui(
+                        ui,
+                        expanded_rows,
+                        sub_cell_index,
+                        instance_index,
+                        instance_count,
+                        cell,
+                        data_content,
+                    );
+                };
+
+            split_ui_vertically(
                 ui,
-                expanded_rows,
-                sub_cell_index,
-                instance_index,
-                instance_count,
-                cell,
-                data_content,
+                &mut self.expanded_rows,
+                instance_indices,
+                sub_cell_content,
             );
-        };
-
-        split_ui_vertically(
-            ui,
-            &mut self.expanded_rows,
-            instance_indices,
-            sub_cell_content,
-        );
+        }
     }
 }
 
@@ -370,6 +377,8 @@ fn sub_cell_ui(
     cell: &egui_table::CellInfo,
     data_content: impl Fn(&mut egui::Ui),
 ) {
+    re_tracing::profile_function!();
+
     let row_expansion = expanded_rows.row_expansion(cell.row_nr);
 
     /// What kinds of sub-cells might we encounter here?
@@ -649,7 +658,29 @@ fn split_ui_vertically<I, Ctx>(
     sub_cell_data: impl Iterator<Item = I>,
     sub_cell_content: impl Fn(&mut egui::Ui, &mut Ctx, usize, I),
 ) {
-    for (sub_cell_index, item_data) in sub_cell_data.enumerate() {
+    re_tracing::profile_function!();
+
+    // Empirical testing shows that iterating over all instances can take multiple tens of ms
+    // when the instance count is very large (which is common). So we use the clip rectangle to
+    // determine exactly which instances are visible and iterate only over those.
+    let visible_y_range = ui.clip_rect().y_range();
+    let total_y_range = ui.max_rect().y_range();
+
+    let start_row = ((visible_y_range.min - total_y_range.min)
+        / re_ui::DesignTokens::table_line_height())
+    .at_least(0.0)
+    .floor() as usize;
+
+    let end_row = ((visible_y_range.max - total_y_range.min)
+        / re_ui::DesignTokens::table_line_height())
+    .at_least(0.0)
+    .ceil() as usize;
+
+    for (sub_cell_index, item_data) in sub_cell_data
+        .enumerate()
+        .skip(start_row)
+        .take(end_row.saturating_sub(start_row))
+    {
         let sub_cell_rect = egui::Rect::from_min_size(
             ui.cursor().min
                 + egui::vec2(
@@ -666,12 +697,6 @@ fn split_ui_vertically<I, Ctx>(
         // continuing to draw them.
         if !ui.max_rect().intersects(sub_cell_rect) {
             return;
-        }
-
-        if !ui.is_rect_visible(sub_cell_rect) {
-            continue;
-            // TODO(ab): detect that we are below any possible screen, in which case we can stop
-            // entirely.
         }
 
         let mut sub_cell_ui = ui.new_child(egui::UiBuilder::new().max_rect(sub_cell_rect));
