@@ -250,7 +250,7 @@ impl<'a> egui_table::TableDelegate for DataframeTableDelegate<'a> {
 
         debug_assert!(cell.row_nr < self.num_rows, "Bug in egui_table");
 
-        // best effort to get a proper column autosizing behaviour
+        // best effort to get a proper column auto-sizing behavior
         if ui.is_sizing_pass() {
             ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Extend);
         }
