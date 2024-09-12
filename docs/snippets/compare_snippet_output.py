@@ -136,6 +136,12 @@ def main() -> None:
 
     print("----------------------------------------------------------")
 
+    print("Downloading test assets…")
+    run(["pixi", "run", "python", "./tests/assets/download_test_assets.py"])
+    print("")
+
+    print("----------------------------------------------------------")
+
     active_languages = ["rust"]
     if not args.no_cpp:
         active_languages.append("cpp")
