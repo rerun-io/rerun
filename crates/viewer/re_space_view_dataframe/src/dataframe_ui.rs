@@ -449,9 +449,7 @@ fn sub_cell_ui(
         }
 
         SubcellKind::Instance => {
-            let cell_clicked = cell_with_hover_button_ui(ui, &re_ui::icons::COLLAPSE, |ui| {
-                data_content(ui);
-            });
+            let cell_clicked = cell_with_hover_button_ui(ui, &re_ui::icons::COLLAPSE, data_content);
 
             if cell_clicked {
                 expanded_rows.collapse_row(cell.row_nr);
