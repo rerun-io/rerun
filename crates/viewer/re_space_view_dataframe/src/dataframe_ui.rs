@@ -242,6 +242,7 @@ impl<'a> egui_table::TableDelegate for DataframeTableDelegate<'a> {
     fn cell_ui(&mut self, ui: &mut egui::Ui, cell: &egui_table::CellInfo) {
         re_tracing::profile_function!();
 
+        //TODO(ab): paint subcell as well
         if cell.row_nr % 2 == 1 {
             // Paint stripes
             ui.painter()
@@ -249,11 +250,6 @@ impl<'a> egui_table::TableDelegate for DataframeTableDelegate<'a> {
         }
 
         debug_assert!(cell.row_nr < self.num_rows, "Bug in egui_table");
-
-        // best effort to get a proper column auto-sizing behavior
-        if ui.is_sizing_pass() {
-            ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Extend);
-        }
 
         egui::Frame::none()
             .inner_margin(egui::Margin::symmetric(Self::LEFT_RIGHT_MARGIN, 0.0))
@@ -272,6 +268,7 @@ impl<'a> egui_table::TableDelegate for DataframeTableDelegate<'a> {
 }
 
 impl DataframeTableDelegate<'_> {
+    /// Draw the content of a cell.
     fn cell_ui_impl(&mut self, ui: &mut Ui, cell: &egui_table::CellInfo) {
         let display_data = match &self.display_data {
             Ok(display_data) => display_data,
@@ -298,6 +295,8 @@ impl DataframeTableDelegate<'_> {
         let column = &batch.columns()[cell.col_nr];
 
         // compute the latest-at query for this row (used to display tooltips)
+
+        // TODO(ab): this is done for every cell but really should be done only once per row
         let timestamp = display_data
             .query_time_column_index
             .and_then(|col_idx| {
@@ -327,121 +326,36 @@ impl DataframeTableDelegate<'_> {
             .chain((0..instance_count).map(Option::Some))
             .take(row_expansion as usize + 1);
 
+        // how the sub-cell is drawn
         let sub_cell_content = |ui: &mut egui::Ui,
                                 expanded_rows: &mut ExpandedRows<'_>,
                                 sub_cell_index: usize,
                                 instance_index: Option<u64>| {
-            /// What kinds of sub-cells might we encounter here?
-            enum SubcellKind {
-                /// Summary line with content that as zero or one instances, so cannot be expanded.
-                Summary,
-
-                /// Summary line with >1 instances, so can be expanded.
-                SummaryWithExpand,
-
-                /// A particular instance with the corresponding index.
-                Instance(u64 /* instance index */),
-
-                /// There are more instances than available sub-cells, so this is a summary of how many there are left.
-                MoreInstancesSummary(u64 /* remaining instances */),
-
-                /// Not enough instances to fill this sub-cell.
-                Blank,
-            }
-
-            // The truth table that determines what kind of sub-cell we are dealing with.
-            let subcell_kind = match instance_index {
-                // First row with >1 instances.
-                None if { instance_count > 1 } => SubcellKind::SummaryWithExpand,
-
-                // First row with 0 or 1 instances.
-                None => SubcellKind::Summary,
-
-                // Last sub-cell and possibly too many instances to display.
-                Some(instance_index)
-                    if {
-                        sub_cell_index as u64 == row_expansion && instance_index < instance_count
-                    } =>
-                {
-                    let remaining = instance_count
-                        .saturating_sub(instance_index)
-                        .saturating_sub(1);
-                    if remaining > 0 {
-                        // +1 is because the "X more…" line takes one instance spot
-                        SubcellKind::MoreInstancesSummary(remaining + 1)
-                    } else {
-                        SubcellKind::Instance(instance_index)
-                    }
-                }
-
-                // Some sub-cell for which an instance exists.
-                Some(instance_index) if { instance_index < instance_count } => {
-                    SubcellKind::Instance(instance_index)
-                }
-
-                // Some sub-cell for which no instance exists.
-                Some(_) => SubcellKind::Blank,
+            // This is called when data actually needs to be drawn (as opposed to summaries like
+            // "N instances" or "N more…").
+            let data_content = |ui: &mut egui::Ui| {
+                column.data_ui(
+                    self.ctx,
+                    ui,
+                    row_id,
+                    &latest_at_query,
+                    batch_row_idx,
+                    instance_index,
+                );
             };
 
-            match subcell_kind {
-                SubcellKind::Summary => {
-                    column.data_ui(
-                        self.ctx,
-                        ui,
-                        row_id,
-                        &latest_at_query,
-                        batch_row_idx,
-                        instance_index,
-                    );
-                }
-
-                SubcellKind::SummaryWithExpand => {
-                    let cell_clicked = cell_with_hover_button_ui(ui, &re_ui::icons::EXPAND, |ui| {
-                        ui.label(format!("{instance_count} instances"));
-                    });
-
-                    if cell_clicked {
-                        if instance_count == row_expansion {
-                            expanded_rows.collapse_row(cell.row_nr);
-                        } else {
-                            expanded_rows.set_row_expansion(cell.row_nr, instance_count);
-                        }
-                    }
-                }
-
-                SubcellKind::Instance(instance_index) => {
-                    let cell_clicked =
-                        cell_with_hover_button_ui(ui, &re_ui::icons::COLLAPSE, |ui| {
-                            column.data_ui(
-                                self.ctx,
-                                ui,
-                                row_id,
-                                &latest_at_query,
-                                batch_row_idx,
-                                Some(instance_index),
-                            );
-                        });
-
-                    if cell_clicked {
-                        expanded_rows.collapse_row(cell.row_nr);
-                    }
-                }
-
-                SubcellKind::MoreInstancesSummary(remaining_instances) => {
-                    let cell_clicked = cell_with_hover_button_ui(ui, &re_ui::icons::EXPAND, |ui| {
-                        ui.label(format!("{remaining_instances} more…"));
-                    });
-
-                    if cell_clicked {
-                        expanded_rows.set_row_expansion(cell.row_nr, instance_count);
-                    }
-                }
-
-                SubcellKind::Blank => { /* nothing to show */ }
-            }
+            sub_cell_ui(
+                ui,
+                expanded_rows,
+                sub_cell_index,
+                instance_index,
+                instance_count,
+                cell,
+                data_content,
+            );
         };
 
-        sub_cell_ui(
+        split_ui_vertically(
             ui,
             &mut self.expanded_rows,
             instance_indices,
@@ -515,6 +429,113 @@ fn dataframe_ui_impl(
             .num_rows(num_rows)
             .show(ui, &mut table_delegate);
     });
+}
+
+/// Draw a single sub-cell in a table.
+///
+/// This deals with the row expansion interaction and logic, as well as summarizing the data when
+/// necessary. The actual data drawing is delegated to the `data_content` closure.
+#[allow(clippy::too_many_arguments)]
+fn sub_cell_ui(
+    ui: &mut egui::Ui,
+    expanded_rows: &mut ExpandedRows<'_>,
+    sub_cell_index: usize,
+    instance_index: Option<u64>,
+    instance_count: u64,
+    cell: &egui_table::CellInfo,
+    data_content: impl Fn(&mut egui::Ui),
+) {
+    let row_expansion = expanded_rows.row_expansion(cell.row_nr);
+
+    /// What kinds of sub-cells might we encounter here?
+    enum SubcellKind {
+        /// Summary line with content that as zero or one instances, so cannot be expanded.
+        Summary,
+
+        /// Summary line with >1 instances, so can be expanded.
+        SummaryWithExpand,
+
+        /// A particular instance
+        Instance,
+
+        /// There are more instances than available sub-cells, so this is a summary of how many there are left.
+        MoreInstancesSummary(u64 /* remaining instances */),
+
+        /// Not enough instances to fill this sub-cell.
+        Blank,
+    }
+
+    // The truth table that determines what kind of sub-cell we are dealing with.
+    let subcell_kind = match instance_index {
+        // First row with >1 instances.
+        None if { instance_count > 1 } => SubcellKind::SummaryWithExpand,
+
+        // First row with 0 or 1 instances.
+        None => SubcellKind::Summary,
+
+        // Last sub-cell and possibly too many instances to display.
+        Some(instance_index)
+            if { sub_cell_index as u64 == row_expansion && instance_index < instance_count } =>
+        {
+            let remaining = instance_count
+                .saturating_sub(instance_index)
+                .saturating_sub(1);
+            if remaining > 0 {
+                // +1 is because the "X more…" line takes one instance spot
+                SubcellKind::MoreInstancesSummary(remaining + 1)
+            } else {
+                SubcellKind::Instance
+            }
+        }
+
+        // Some sub-cell for which an instance exists.
+        Some(instance_index) if { instance_index < instance_count } => SubcellKind::Instance,
+
+        // Some sub-cell for which no instance exists.
+        Some(_) => SubcellKind::Blank,
+    };
+
+    match subcell_kind {
+        SubcellKind::Summary => {
+            data_content(ui);
+        }
+
+        SubcellKind::SummaryWithExpand => {
+            let cell_clicked = cell_with_hover_button_ui(ui, &re_ui::icons::EXPAND, |ui| {
+                ui.label(format!("{instance_count} instances"));
+            });
+
+            if cell_clicked {
+                if instance_count == row_expansion {
+                    expanded_rows.collapse_row(cell.row_nr);
+                } else {
+                    expanded_rows.set_row_expansion(cell.row_nr, instance_count);
+                }
+            }
+        }
+
+        SubcellKind::Instance => {
+            let cell_clicked = cell_with_hover_button_ui(ui, &re_ui::icons::COLLAPSE, |ui| {
+                data_content(ui);
+            });
+
+            if cell_clicked {
+                expanded_rows.collapse_row(cell.row_nr);
+            }
+        }
+
+        SubcellKind::MoreInstancesSummary(remaining_instances) => {
+            let cell_clicked = cell_with_hover_button_ui(ui, &re_ui::icons::EXPAND, |ui| {
+                ui.label(format!("{remaining_instances} more…"));
+            });
+
+            if cell_clicked {
+                expanded_rows.set_row_expansion(cell.row_nr, instance_count);
+            }
+        }
+
+        SubcellKind::Blank => { /* nothing to show */ }
+    }
 }
 
 /// Groups column by entity paths.
@@ -613,7 +634,7 @@ fn cell_with_hover_button_ui(
 /// `context`: whatever mutable context is necessary for the `sub_cell_content`
 /// `sub_cell_data`: the data to be displayed in each sub-cell
 /// `sub_cell_content`: the function to draw the content of each sub-cell
-fn sub_cell_ui<I, Ctx>(
+fn split_ui_vertically<I, Ctx>(
     ui: &mut egui::Ui,
     context: &mut Ctx,
     sub_cell_data: impl Iterator<Item = I>,
