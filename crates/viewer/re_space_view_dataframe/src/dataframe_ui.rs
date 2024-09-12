@@ -13,7 +13,7 @@ use re_ui::UiExt as _;
 use re_viewer_context::ViewerContext;
 
 use crate::display_record_batch::{DisplayRecordBatch, DisplayRecordBatchError};
-use crate::expanded_rows::{ExpandedRows, ExpandedRowsCache, QueryExpression};
+use crate::expanded_rows::{ExpandedRows, ExpandedRowsCache};
 
 /// Display a dataframe table for the provided query.
 pub(crate) fn dataframe_ui<'a>(
@@ -62,13 +62,6 @@ impl QueryHandle<'_> {
         match self {
             QueryHandle::LatestAt(query_handle) => query_handle.query().timeline,
             QueryHandle::Range(query_handle) => query_handle.query().timeline,
-        }
-    }
-
-    fn query_expression(&self) -> QueryExpression {
-        match self {
-            QueryHandle::LatestAt(query_handle) => query_handle.query().clone().into(),
-            QueryHandle::Range(query_handle) => query_handle.query().clone().into(),
         }
     }
 }
@@ -480,15 +473,27 @@ fn dataframe_ui_impl(
 
     let schema = query_handle.schema();
 
-    // ID salting rationale:
-    // - The table id mainly drives column widths, so it should be stable across queries leading to
-    //   the same schema.
-    // - The row expansion is easier to invalidate since it depends on actual row data. For now, we
-    //   use the query expression as salt (but that doesn't cover all edge cases since content may
-    //   vary for a given query as data is ingested).
+    // The table id mainly drives column widths, so it should be stable across queries leading to
+    // the same schema.
     let table_id_salt = egui::Id::new("__dataframe__").with(schema);
-    let row_expansion_id_salt =
-        egui::Id::new("__dataframe__").with(query_handle.query_expression());
+
+    // It's trickier for the row expansion cache.
+    //
+    // For latest-at view, there is always a single row, so it's ok to validate the cache against
+    // the schema. This means that changing the latest-at time stamp does _not_ invalidate, which is
+    // desirable. Otherwise, it would be impossible to expand a row when tracking the time panel
+    // while it is playing.
+    //
+    // For range queries, the row layout can change drastically when the query min/max times are
+    // modified, so in that case we invalidate against the query expression. This means that the
+    // expanded-ness is reset as soon as the min/max boundaries are changed in the selection panel,
+    // which is acceptable.
+    let row_expansion_id_salt = match query_handle {
+        QueryHandle::LatestAt(_) => egui::Id::new("__dataframe_row_exp__").with(schema),
+        QueryHandle::Range(query) => egui::Id::new("__dataframe_row_exp__").with(query.query()),
+    };
+
+    //egui::Id::new("__dataframe__").with();
 
     let (header_groups, header_entity_paths) = column_groups_for_entity(schema);
 
@@ -507,7 +512,6 @@ fn dataframe_ui_impl(
             ui.ctx().clone(),
             ui.make_persistent_id(row_expansion_id_salt),
             expanded_rows_cache,
-            query_handle.query_expression(),
             re_ui::DesignTokens::table_line_height(),
         ),
     };

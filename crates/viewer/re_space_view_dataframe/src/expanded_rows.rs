@@ -1,27 +1,7 @@
 use std::collections::BTreeMap;
 
-use re_chunk_store::{LatestAtQueryExpression, RangeQueryExpression};
-
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub(crate) enum QueryExpression {
-    LatestAt(re_chunk_store::LatestAtQueryExpression),
-    Range(re_chunk_store::RangeQueryExpression),
-}
-
-impl From<re_chunk_store::LatestAtQueryExpression> for QueryExpression {
-    fn from(value: LatestAtQueryExpression) -> Self {
-        Self::LatestAt(value)
-    }
-}
-
-impl From<re_chunk_store::RangeQueryExpression> for QueryExpression {
-    fn from(value: RangeQueryExpression) -> Self {
-        Self::Range(value)
-    }
-}
-
 /// Storage for [`ExpandedRows`], which should be persisted across frames.
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone)]
 pub(crate) struct ExpandedRowsCache {
     /// Maps "table row number" to "additional expanded rows".
     ///
@@ -29,19 +9,26 @@ pub(crate) struct ExpandedRowsCache {
     /// used for instances.
     expanded_rows: BTreeMap<u64, u64>,
 
-    /// Keep track of the query for which this cache is valid.
-    // TODO(ab): is there a better invalidation strategy? This doesn't capture the fact that the
-    // returned data might vary with time (e.g. upon ingestion)
-    valid_for: Option<QueryExpression>,
+    /// ID used to invalidate the cache.
+    valid_for: egui::Id,
+}
+
+impl Default for ExpandedRowsCache {
+    fn default() -> Self {
+        Self {
+            expanded_rows: BTreeMap::default(),
+            valid_for: egui::Id::new(""),
+        }
+    }
 }
 
 impl ExpandedRowsCache {
     /// This sets the query used for cache invalidation.
     ///
     /// If the query doesn't match the cached one, the state will be reset.
-    fn set_query(&mut self, query_expression: QueryExpression) {
-        if Some(&query_expression) != self.valid_for.as_ref() {
-            self.valid_for = Some(query_expression);
+    fn validate_id(&mut self, id: egui::Id) {
+        if id != self.valid_for {
+            self.valid_for = id;
             self.expanded_rows = BTreeMap::default();
         }
     }
@@ -76,17 +63,16 @@ impl<'a> ExpandedRows<'a> {
     /// Create a new [`ExpandedRows`] instance.
     ///
     /// `egui_ctx` is used to animate the row expansion
-    /// `id` is used to store the animation state, make it persistent and unique
-    /// `query_expression` is used to invalidate the cache
+    /// `id` is used to store the animation state and invalidate the cache, make it persistent and
+    /// unique
     pub(crate) fn new(
         egui_ctx: egui::Context,
         id: egui::Id,
         cache: &'a mut ExpandedRowsCache,
-        query_expression: impl Into<QueryExpression>,
         row_height: f32,
     ) -> Self {
         // (in-)validate the cache
-        cache.set_query(query_expression.into());
+        cache.validate_id(id);
 
         Self {
             row_height,
