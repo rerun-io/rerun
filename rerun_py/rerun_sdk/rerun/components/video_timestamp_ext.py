@@ -12,7 +12,7 @@ class VideoTimestampExt:
     # Implementation note:
     # We could add an init method that deals with seconds/milliseconds/nanoseconds etc.
     # However, this would require _a lot_ of slow parameter validation on a per timestamp basis.
-    # When in actuallity, this data practifally always comes in homogenous batches.
+    # When in actuallity, this data practically always comes in homogeneous batches.
 
     @staticmethod
     def seconds(

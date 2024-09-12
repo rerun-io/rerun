@@ -3,8 +3,8 @@
 
 import sys
 
-import rerun as rr
 import numpy as np
+import rerun as rr
 
 if len(sys.argv) < 2:
     # TODO(#7354): Only mp4 is supported for now.
