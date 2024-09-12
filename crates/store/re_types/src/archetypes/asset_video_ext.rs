@@ -2,6 +2,20 @@ use crate::components::MediaType;
 
 use super::AssetVideo;
 
+/// Errors that can occur when calling [`AssetVideo::extract_frame_timestamps`].
+#[cfg(feature = "video")]
+#[derive(thiserror::Error, Debug)]
+pub enum TimeStampExtractionError {
+    #[error("Failed to determine media type from data")]
+    FailedToDetermineMediaTypeFromData,
+
+    #[error("Media type {0} is not supported.")]
+    UnsupportedMediaType(String),
+
+    #[error(transparent)]
+    VideoLoadError(#[from] re_video::VideoLoadError),
+}
+
 impl AssetVideo {
     /// Creates a new [`AssetVideo`] from the file contents at `path`.
     ///
@@ -37,5 +51,42 @@ impl AssetVideo {
             blob: contents.into(),
             media_type,
         }
+    }
+
+    /// Determines the presentation timestamps of all frames inside the video.
+    ///
+    /// Returned timestamps are guranteed to be monotonically increasing.
+    #[cfg(feature = "video")]
+    pub fn read_frame_timestamps(
+        &self,
+    ) -> Result<Vec<crate::components::VideoTimestamp>, TimeStampExtractionError> {
+        let media_type = if let Some(media_type) = self.media_type.as_ref() {
+            media_type.clone()
+        } else {
+            MediaType::guess_from_data(self.blob.as_slice())
+                .ok_or(TimeStampExtractionError::FailedToDetermineMediaTypeFromData)?
+        };
+
+        let video = if media_type == MediaType::mp4() {
+            // TODO(andreas, jan): Should not copy all the contents just to determine the samples.
+            // -> should provide a mode that doesn't do that or (even better!) only store slices into a shared buffer.
+            re_video::load_mp4(self.blob.as_slice())?
+        } else {
+            return Err(TimeStampExtractionError::UnsupportedMediaType(
+                media_type.to_string(),
+            ));
+        };
+
+        Ok(video
+            .segments
+            .iter()
+            .flat_map(|seg| {
+                seg.samples.iter().map(|sample| {
+                    crate::components::VideoTimestamp::from_nanoseconds(
+                        sample.timestamp.as_nanoseconds(),
+                    )
+                })
+            })
+            .collect())
     }
 }
