@@ -4,8 +4,8 @@ use re_log_types::EntityPath;
 use re_types::{ComponentName, SpaceViewClassIdentifier};
 
 use crate::{
-    ApplicableEntities, IndicatedEntities, PerSystemEntities, PerVisualizer, QueryRange,
-    SmallVisualizerSet, SpaceViewClassRegistryError, SpaceViewId, SpaceViewSpawnHeuristics,
+    ApplicableEntities, IndicatedEntities, PerVisualizer, QueryRange, SmallVisualizerSet,
+    SpaceViewClassRegistryError, SpaceViewId, SpaceViewSpawnHeuristics,
     SpaceViewSystemExecutionError, SpaceViewSystemRegistrator, SystemExecutionOutput, ViewQuery,
     ViewerContext, VisualizableEntities,
 };
@@ -167,19 +167,6 @@ pub trait SpaceViewClass: Send + Sync {
 
     /// Determines which space views should be spawned by default for this class.
     fn spawn_heuristics(&self, ctx: &ViewerContext<'_>) -> SpaceViewSpawnHeuristics;
-
-    /// Executed for all active space views on frame start (before any ui is drawn),
-    /// can be use for heuristic & state updates before populating the scene.
-    ///
-    /// Is only allowed to access archetypes defined by [`Self::blueprint_archetype`]
-    /// Passed entity properties are individual properties without propagated values.
-    fn on_frame_start(
-        &self,
-        _ctx: &ViewerContext<'_>,
-        _state: &mut dyn SpaceViewState,
-        _ent_paths: &PerSystemEntities,
-    ) {
-    }
 
     /// Ui shown when the user selects a space view of this class.
     fn selection_ui(

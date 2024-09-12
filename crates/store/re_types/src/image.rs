@@ -55,6 +55,10 @@ pub enum ImageLoadError {
     /// Failure to convert the loaded image to a [`crate::archetypes::Image`].
     #[error(transparent)]
     ImageConversionError(#[from] ImageConversionError),
+
+    /// The encountered MIME type is not supported for decoding images.
+    #[error("MIME type '{0}' is not supported for images")]
+    UnsupportedMimeType(String),
 }
 
 #[cfg(feature = "image")]
