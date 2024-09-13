@@ -16,14 +16,12 @@ int main(int argc, char* argv[]) {
 
     const auto path = argv[1];
 
-    const auto rec = rerun::RecordingStream("rerun_example_asset_video_manual_frames");
+    const auto rec = rerun::RecordingStream("rerun_example_asset_video_auto_frames");
     rec.spawn().exit_on_failure();
 
     // Log video asset which is referred to by frame references.
-    // Make sure it's available on the timeline used for the frame references.
-    rec.set_time_seconds("video_time", 0.0);
     auto video_asset = rerun::AssetVideo::from_file(path).value_or_throw();
-    rec.log("video", video_asset);
+    rec.log_static("video", video_asset);
 
     // Send automatically determined video frame timestamps.
     std::vector<std::chrono::nanoseconds> frame_timestamps_ns =

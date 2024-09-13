@@ -13,9 +13,8 @@ if len(sys.argv) < 2:
 rr.init("rerun_example_asset_video_auto_frames", spawn=True)
 
 # Log video asset which is referred to by frame references.
-rr.set_time_seconds("video_time", 0)  # Make sure it's available on the timeline used for the frame references.
 video_asset = rr.AssetVideo(path=sys.argv[1])
-rr.log("video", video_asset)
+rr.log("video", video_asset, static=True)
 
 # Send automatically determined video frame timestamps.
 frame_timestamps_ns = video_asset.read_frame_timestamps_ns()
