@@ -897,6 +897,14 @@ impl App {
             .frame(DesignTokens::top_panel_frame())
             .show_animated_inside(ui, self.egui_debug_panel_open, |ui| {
                 egui::ScrollArea::vertical().show(ui, |ui| {
+                    if ui
+                        .button("request_discard")
+                        .on_hover_text("Request a second layout pass. Just for testing.")
+                        .clicked()
+                    {
+                        ui.ctx().request_discard();
+                    }
+
                     egui::CollapsingHeader::new("egui settings")
                         .default_open(false)
                         .show(ui, |ui| {
