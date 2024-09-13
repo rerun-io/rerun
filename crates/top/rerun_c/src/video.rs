@@ -1,5 +1,3 @@
-use core::num;
-
 use crate::{CError, CErrorCode, CStringView};
 
 #[allow(unsafe_code)]

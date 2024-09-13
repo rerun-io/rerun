@@ -1,6 +1,7 @@
 use re_chunk::{Chunk, RowId};
 use re_log_types::{EntityPath, TimeInt, TimePoint};
 use re_types::archetypes::{AssetVideo, VideoFrameReference};
+use re_types::components::VideoTimestamp;
 use re_types::Archetype;
 use re_types::{components::MediaType, ComponentBatch};
 
@@ -221,15 +222,18 @@ fn load_video(
     let video_asset = AssetVideo::new(contents);
 
     let video_frame_reference_chunk = match video_asset.read_frame_timestamps_ns() {
-        Ok(video_timestamps) => {
+        Ok(frame_timestamps_ns) => {
             // Time column.
             let is_sorted = Some(true);
-            let time_column_times =
-                ArrowPrimitiveArray::from_values(video_timestamps.iter().map(|t| t.video_time));
+            let time_column_times = ArrowPrimitiveArray::from_slice(&frame_timestamps_ns);
             let time_column =
                 re_chunk::TimeColumn::new(is_sorted, video_timeline, time_column_times);
 
             // VideoTimestamp component column.
+            let video_timestamps = frame_timestamps_ns
+                .into_iter()
+                .map(VideoTimestamp::from_nanoseconds)
+                .collect::<Vec<_>>();
             let video_timestamp_batch = &video_timestamps as &dyn ComponentBatch;
             let video_timestamp_list_array = video_timestamp_batch
                 .to_arrow_list_array()
