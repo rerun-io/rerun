@@ -535,7 +535,7 @@ emath = { git = "https://github.com/emilk/egui.git", rev = "6b7f4312373a301a4cdf
 egui_tiles = { git = "https://github.com/rerun-io/egui_tiles", rev = "b2f5e232524deed983bcad01c05f27d0e8b89d98" } # https://github.com/rerun-io/egui_tiles/pull/78 2024-08-28
 # egui_tiles = { path = "../egui_tiles" }
 
-# egui_commonmark = { git = "https://github.com/rerun-io/egui_commonmark", rev = "63d5c8933445b9ea9088c4a50b71f4ede1f3c247" } # https://github.com/lampsitter/egui_commonmark/pull/51
+egui_commonmark = { git = "https://github.com/rerun-io/egui_commonmark", rev = "5997e897df5b2aceab9df833ee4bb293d05d9b07" } # https://github.com/lampsitter/egui_commonmark/pull/65
 
 # commit on `rerun-io/mp4` `main` branch
 # https://github.com/rerun-io/mp4/commit/ef529032547d7f97161e95c58bd76856cb116349

@@ -1879,24 +1879,22 @@ dependencies = [
 [[package]]
 name = "egui_commonmark"
 version = "0.17.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "fe88871b75bd43c52a2b44ce5b53160506e7976e239112c56728496d019cc60d"
+source = "git+https://github.com/rerun-io/egui_commonmark?rev=5997e897df5b2aceab9df833ee4bb293d05d9b07#5997e897df5b2aceab9df833ee4bb293d05d9b07"
 dependencies = [
  "egui",
  "egui_commonmark_backend",
  "egui_extras",
- "pulldown-cmark 0.11.0",
+ "pulldown-cmark 0.12.1",
 ]
 
 [[package]]
 name = "egui_commonmark_backend"
 version = "0.17.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "148edd9546feba319b16d5a5e551cda46095031ec1e6665e5871eef9ee692967"
+source = "git+https://github.com/rerun-io/egui_commonmark?rev=5997e897df5b2aceab9df833ee4bb293d05d9b07#5997e897df5b2aceab9df833ee4bb293d05d9b07"
 dependencies = [
  "egui",
  "egui_extras",
- "pulldown-cmark 0.11.0",
+ "pulldown-cmark 0.12.1",
 ]
 
 [[package]]
@@ -4515,9 +4513,9 @@ dependencies = [
 
 [[package]]
 name = "pulldown-cmark"
-version = "0.11.0"
+version = "0.12.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8746739f11d39ce5ad5c2520a9b75285310dbfe78c541ccf832d38615765aec0"
+checksum = "666f0f59e259aea2d72e6012290c09877a780935cc3c18b1ceded41f3890d59c"
 dependencies = [
  "bitflags 2.6.0",
  "memchr",
