@@ -499,8 +499,7 @@ impl<'a, 'b> egui_tiles::Behavior<SpaceViewId> for TabViewer<'a, 'b> {
             return Default::default();
         };
 
-        let (query, system_output) =
-            self.executed_systems_per_space_view.remove(view_id).unwrap_or_else(|| {
+        let (query, system_output) = self.executed_systems_per_space_view.remove(view_id).unwrap_or_else(|| {
             // The space view's systems haven't been executed.
             // This may indicate that the egui_tiles tree is not in sync
             // with the blueprint tree.
@@ -509,34 +508,34 @@ impl<'a, 'b> egui_tiles::Behavior<SpaceViewId> for TabViewer<'a, 'b> {
 
             if cfg!(debug_assertions) {
                 re_log::warn_once!(
-                "Visualizers for space view {:?} haven't been executed prior to display. This should never happen, please report a bug.",
-                space_view_blueprint.display_name_or_default()
-            );
+                    "Visualizers for space view {:?} haven't been executed prior to display. This should never happen, please report a bug.",
+                    space_view_blueprint.display_name_or_default()
+                );
             }
+
+            let ctx: &'a ViewerContext<'_> = self.ctx;
+            let view = space_view_blueprint;
+            re_tracing::profile_scope!("late-system-execute", view.class_identifier().as_str());
+
+            let query_result = ctx.lookup_query_result(view.id);
+
+            let mut per_visualizer_data_results = re_viewer_context::PerSystemDataResults::default();
+
             {
-                let ctx: &'a ViewerContext<'_> = self.ctx;
-                let view = space_view_blueprint;
-                re_tracing::profile_function!(view.class_identifier().as_str());
+                re_tracing::profile_scope!("per_system_data_results");
 
-                let query_result = ctx.lookup_query_result(view.id);
-
-                let mut per_visualizer_data_results = re_viewer_context::PerSystemDataResults::default();
-                {
-                    re_tracing::profile_scope!("per_system_data_results");
-
-                    query_result.tree.visit(&mut |node| {
-                        for system in &node.data_result.visualizers {
-                            per_visualizer_data_results
-                                .entry(*system)
-                                .or_default()
-                                .push(&node.data_result);
-                        }
-                        true
-                    });
-                }
-
-                execute_systems_for_space_view(ctx, view, latest_at, self.view_states)
+                query_result.tree.visit(&mut |node| {
+                    for system in &node.data_result.visualizers {
+                        per_visualizer_data_results
+                            .entry(*system)
+                            .or_default()
+                            .push(&node.data_result);
+                    }
+                    true
+                });
             }
+
+            execute_systems_for_space_view(ctx, view, latest_at, self.view_states)
         });
 
         let class = space_view_blueprint.class(self.ctx.space_view_class_registry);
