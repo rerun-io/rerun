@@ -27,9 +27,62 @@ namespace rerun::archetypes {
     ///
     /// In order to display a video, you need to log a `archetypes::VideoFrameReference` for each frame.
     ///
-    /// ## Example
+    /// ## Examples
     ///
-    /// ### Video with explicit frames
+    /// ### Video with automatically determined frames
+    /// ![image](https://static.rerun.io/video_manual_frames/320a44e1e06b8b3a3161ecbbeae3e04d1ccb9589/full.png)
+    ///
+    /// ```cpp
+    /// #include <rerun.hpp>
+    ///
+    /// #include <iostream>
+    ///
+    /// using namespace std::chrono_literals;
+    ///
+    /// int main(int argc, char* argv[]) {
+    ///     if (argc <2) {
+    ///         // TODO(#7354): Only mp4 is supported for now.
+    ///         std::cerr <<"Usage: " <<argv[0] <<" <path_to_video.[mp4]>" <<std::endl;
+    ///         return 1;
+    ///     }
+    ///
+    ///     const auto path = argv[1];
+    ///
+    ///     const auto rec = rerun::RecordingStream("rerun_example_asset_video_auto_frames");
+    ///     rec.spawn().exit_on_failure();
+    ///
+    ///     // Log video asset which is referred to by frame references.
+    ///     auto video_asset = rerun::AssetVideo::from_file(path).value_or_throw();
+    ///     rec.log_static("video", video_asset);
+    ///
+    ///     // Send automatically determined video frame timestamps.
+    ///     std::vector<std::chrono::nanoseconds> frame_timestamps_ns =
+    ///         video_asset.read_frame_timestamps_ns().value_or_throw();
+    ///     // Note timeline values don't have to be the same as the video timestamps.
+    ///     auto time_column =
+    ///         rerun::TimeColumn::from_times("video_time", rerun::borrow(frame_timestamps_ns));
+    ///
+    ///     std::vector<rerun::components::VideoTimestamp> video_timestamps(frame_timestamps_ns.size());
+    ///     for (size_t i = 0; i <frame_timestamps_ns.size(); i++) {
+    ///         video_timestamps[i] = rerun::components::VideoTimestamp(frame_timestamps_ns[i]);
+    ///     }
+    ///     auto video_frame_reference_indicators =
+    ///         rerun::ComponentColumn::from_indicators<rerun::VideoFrameReference>(
+    ///             static_cast<uint32_t>(video_timestamps.size())
+    ///         );
+    ///
+    ///     rec.send_columns(
+    ///         "video",
+    ///         time_column,
+    ///         {
+    ///             video_frame_reference_indicators.value_or_throw(),
+    ///             rerun::ComponentColumn::from_loggable(rerun::borrow(video_timestamps)).value_or_throw(),
+    ///         }
+    ///     );
+    /// }
+    /// ```
+    ///
+    /// ### Demonstrates manual use of video frame references
     /// ![image](https://static.rerun.io/video_manual_frames/320a44e1e06b8b3a3161ecbbeae3e04d1ccb9589/full.png)
     ///
     /// ```cpp
@@ -52,33 +105,16 @@ namespace rerun::archetypes {
     ///     rec.spawn().exit_on_failure();
     ///
     ///     // Log video asset which is referred to by frame references.
-    ///     // Make sure it's available on the timeline used for the frame references.
-    ///     rec.set_time_seconds("video_time", 0.0);
-    ///     rec.log("video", rerun::AssetVideo::from_file(path).value_or_throw());
+    ///     rec.log_static("video_asset", rerun::AssetVideo::from_file(path).value_or_throw());
     ///
-    ///     // Send frame references for every 0.1 seconds over a total of 10 seconds.
-    ///     // Naturally, this will result in a choppy playback and only makes sense if the video is 10 seconds or longer.
-    ///     // To get all frame times of a video use `rerun::AssetVideo::read_frame_timestamps_ns`.
-    ///     //
-    ///     // Use `send_columns` to send all frame references in a single call.
-    ///     std::vector<std::chrono::milliseconds> times(10 * 10);
-    ///     std::vector<rerun::components::VideoTimestamp> video_timestamps(times.size());
-    ///     for (size_t i = 0; i <times.size(); i++) {
-    ///         times[i] = 100ms * i;
-    ///         video_timestamps[i] = rerun::components::VideoTimestamp(times[i]);
-    ///     }
-    ///     auto video_frame_reference_indicators =
-    ///         rerun::ComponentColumn::from_indicators<rerun::VideoFrameReference>(
-    ///             static_cast<uint32_t>(times.size())
-    ///         );
-    ///     rec.send_columns(
-    ///         "video",
-    ///         rerun::TimeColumn::from_times("video_time", rerun::borrow(times)),
-    ///         {
-    ///             video_frame_reference_indicators.value_or_throw(),
-    ///             rerun::ComponentColumn::from_loggable(rerun::borrow(video_timestamps)).value_or_throw(),
-    ///         }
+    ///     // Create two entites, showing the same video frozen at different times.
+    ///     rec.log("frame_at_start", rerun::VideoFrameReference(0.0s).with_video_reference("video_asset"));
+    ///     rec.log(
+    ///         "frame_at_one_second",
+    ///         rerun::VideoFrameReference(1.0s).with_video_reference("video_asset")
     ///     );
+    ///
+    ///     // TODO(#5520): log blueprint once supported
     /// }
     /// ```
     ///

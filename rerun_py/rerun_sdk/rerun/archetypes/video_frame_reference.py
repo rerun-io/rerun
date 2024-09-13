@@ -28,16 +28,55 @@ class VideoFrameReference(Archetype):
 
     ⚠️ **This is an experimental API! It is not fully supported, and is likely to change significantly in future versions.**
 
-    Example
-    -------
-    ### Video with explicit frames:
+    Examples
+    --------
+    ### Video with automatically determined frames:
     ```python
     # TODO(#7298): ⚠️ Video is currently only supported in the Rerun web viewer.
 
     import sys
 
-    import numpy as np
     import rerun as rr
+
+    if len(sys.argv) < 2:
+        # TODO(#7354): Only mp4 is supported for now.
+        print(f"Usage: {sys.argv[0]} <path_to_video.[mp4]>")
+        sys.exit(1)
+
+    rr.init("rerun_example_asset_video_auto_frames", spawn=True)
+
+    # Log video asset which is referred to by frame references.
+    video_asset = rr.AssetVideo(path=sys.argv[1])
+    rr.log("video", video_asset, static=True)
+
+    # Send automatically determined video frame timestamps.
+    frame_timestamps_ns = video_asset.read_frame_timestamps_ns()
+    rr.send_columns(
+        "video",
+        # Note timeline values don't have to be the same as the video timestamps.
+        times=[rr.TimeNanosColumn("video_time", frame_timestamps_ns)],
+        components=[rr.VideoFrameReference.indicator(), rr.components.VideoTimestamp.nanoseconds(frame_timestamps_ns)],
+    )
+    ```
+    <center>
+    <picture>
+      <source media="(max-width: 480px)" srcset="https://static.rerun.io/video_manual_frames/320a44e1e06b8b3a3161ecbbeae3e04d1ccb9589/480w.png">
+      <source media="(max-width: 768px)" srcset="https://static.rerun.io/video_manual_frames/320a44e1e06b8b3a3161ecbbeae3e04d1ccb9589/768w.png">
+      <source media="(max-width: 1024px)" srcset="https://static.rerun.io/video_manual_frames/320a44e1e06b8b3a3161ecbbeae3e04d1ccb9589/1024w.png">
+      <source media="(max-width: 1200px)" srcset="https://static.rerun.io/video_manual_frames/320a44e1e06b8b3a3161ecbbeae3e04d1ccb9589/1200w.png">
+      <img src="https://static.rerun.io/video_manual_frames/320a44e1e06b8b3a3161ecbbeae3e04d1ccb9589/full.png" width="640">
+    </picture>
+    </center>
+
+    ### Demonstrates manual use of video frame references:
+    ```python
+    # TODO(#7298): ⚠️ Video is currently only supported in the Rerun web viewer.
+    # TODO(#7420): This sample doesn't render yet.
+
+    import sys
+
+    import rerun as rr
+    import rerun.blueprint as rrb
 
     if len(sys.argv) < 2:
         # TODO(#7354): Only mp4 is supported for now.
@@ -47,20 +86,31 @@ class VideoFrameReference(Archetype):
     rr.init("rerun_example_asset_video_manual_frames", spawn=True)
 
     # Log video asset which is referred to by frame references.
-    rr.set_time_seconds("video_time", 0)  # Make sure it's available on the timeline used for the frame references.
-    rr.log("video", rr.AssetVideo(path=sys.argv[1]))
+    rr.log("video_asset", rr.AssetVideo(path=sys.argv[1]), static=True)
 
-    # Send frame references for every 0.1 seconds over a total of 10 seconds.
-    # Naturally, this will result in a choppy playback and only makes sense if the video is 10 seconds or longer.
-    # To get all frame times of a video use `rr.AssetVideo.read_frame_timestamps_ns`.
-    #
-    # Use `send_columns` to send all frame references in a single call.
-    times = np.arange(0.0, 10.0, 0.1)
-    rr.send_columns(
-        "video",
-        times=[rr.TimeSecondsColumn("video_time", times)],
-        components=[rr.VideoFrameReference.indicator(), rr.components.VideoTimestamp.seconds(times)],
+    # Create two entites, showing the same video frozen at different times.
+    rr.log(
+        "frame_at_start",
+        rr.VideoFrameReference(
+            timestamp=rr.components.VideoTimestamp(seconds=0.0),
+            video_reference="video_asset",
+        ),
     )
+    rr.log(
+        "frame_at_one_second",
+        rr.VideoFrameReference(
+            timestamp=rr.components.VideoTimestamp(seconds=1.0),
+            video_reference="video_asset",
+        ),
+    )
+
+    # Send blueprint that shows two 2D views next to each other.
+    rr.send_blueprint(
+        rrb.Horizontal(rrb.Spatial2DView(origin="frame_at_start"), rrb.Spatial2DView(origin="frame_at_one_second"))
+    )
+
+
+    # TODO: doesn't show video frames right now.
     ```
     <center>
     <picture>

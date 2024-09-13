@@ -1,10 +1,11 @@
-"""Log a video asset using manually created frame references."""
+"""Manual use of individual video frame references."""
 # TODO(#7298): ⚠️ Video is currently only supported in the Rerun web viewer.
+# TODO(#7420): This sample doesn't render yet.
 
 import sys
 
-import numpy as np
 import rerun as rr
+import rerun.blueprint as rrb
 
 if len(sys.argv) < 2:
     # TODO(#7354): Only mp4 is supported for now.
@@ -14,17 +15,28 @@ if len(sys.argv) < 2:
 rr.init("rerun_example_asset_video_manual_frames", spawn=True)
 
 # Log video asset which is referred to by frame references.
-rr.set_time_seconds("video_time", 0)  # Make sure it's available on the timeline used for the frame references.
-rr.log("video", rr.AssetVideo(path=sys.argv[1]))
+rr.log("video_asset", rr.AssetVideo(path=sys.argv[1]), static=True)
 
-# Send frame references for every 0.1 seconds over a total of 10 seconds.
-# Naturally, this will result in a choppy playback and only makes sense if the video is 10 seconds or longer.
-# To get all frame times of a video use `rr.AssetVideo.read_frame_timestamps_ns`.
-#
-# Use `send_columns` to send all frame references in a single call.
-times = np.arange(0.0, 10.0, 0.1)
-rr.send_columns(
-    "video",
-    times=[rr.TimeSecondsColumn("video_time", times)],
-    components=[rr.VideoFrameReference.indicator(), rr.components.VideoTimestamp.seconds(times)],
+# Create two entites, showing the same video frozen at different times.
+rr.log(
+    "frame_at_start",
+    rr.VideoFrameReference(
+        timestamp=rr.components.VideoTimestamp(seconds=0.0),
+        video_reference="video_asset",
+    ),
 )
+rr.log(
+    "frame_at_one_second",
+    rr.VideoFrameReference(
+        timestamp=rr.components.VideoTimestamp(seconds=1.0),
+        video_reference="video_asset",
+    ),
+)
+
+# Send blueprint that shows two 2D views next to each other.
+rr.send_blueprint(
+    rrb.Horizontal(rrb.Spatial2DView(origin="frame_at_start"), rrb.Spatial2DView(origin="frame_at_one_second"))
+)
+
+
+# TODO: doesn't show video frames right now.

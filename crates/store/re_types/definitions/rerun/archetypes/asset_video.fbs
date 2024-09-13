@@ -8,8 +8,9 @@ namespace rerun.archetypes;
 ///
 /// In order to display a video, you need to log a [archetypes.VideoFrameReference] for each frame.
 ///
-/// \example archetypes/video_manual_frames title="Video with explicit frames" image="https://static.rerun.io/video_manual_frames/320a44e1e06b8b3a3161ecbbeae3e04d1ccb9589/1200w.png"
-// TODO(#7368): Example and reference to `send_video_frames` API.
+/// \example archetypes/video_auto_frames title="Video with automatically determined frames" image="https://static.rerun.io/video_manual_frames/320a44e1e06b8b3a3161ecbbeae3e04d1ccb9589/1200w.png"
+/// \example archetypes/video_manual_frames title="Demonstrates manual use of video frame references" image="https://static.rerun.io/video_manual_frames/320a44e1e06b8b3a3161ecbbeae3e04d1ccb9589/1200w.png"
+// TODO(#7420): update screenshot for manual frames example
 table AssetVideo (
   "attr.rerun.experimental"
 ) {

@@ -3,6 +3,7 @@
 mod bool;
 mod bool_ext;
 mod entity_path;
+mod entity_path_ext;
 mod float32;
 mod float32_ext;
 mod float64;

@@ -22,9 +22,21 @@ To show an entire video, a fideo frame reference for each frame of the video sho
  * 🐍 [Python API docs for `VideoFrameReference`](https://ref.rerun.io/docs/python/stable/common/archetypes#rerun.archetypes.VideoFrameReference)
  * 🦀 [Rust API docs for `VideoFrameReference`](https://docs.rs/rerun/latest/rerun/archetypes/struct.VideoFrameReference.html)
 
-## Example
+## Examples
 
-### Video with explicit frames
+### Video with automatically determined frames
+
+snippet: archetypes/video_auto_frames
+
+<picture data-inline-viewer="snippets/video_auto_frames">
+  <source media="(max-width: 480px)" srcset="https://static.rerun.io/video_manual_frames/320a44e1e06b8b3a3161ecbbeae3e04d1ccb9589/480w.png">
+  <source media="(max-width: 768px)" srcset="https://static.rerun.io/video_manual_frames/320a44e1e06b8b3a3161ecbbeae3e04d1ccb9589/768w.png">
+  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/video_manual_frames/320a44e1e06b8b3a3161ecbbeae3e04d1ccb9589/1024w.png">
+  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/video_manual_frames/320a44e1e06b8b3a3161ecbbeae3e04d1ccb9589/1200w.png">
+  <img src="https://static.rerun.io/video_manual_frames/320a44e1e06b8b3a3161ecbbeae3e04d1ccb9589/full.png">
+</picture>
+
+### Demonstrates manual use of video frame references
 
 snippet: archetypes/video_manual_frames
 
