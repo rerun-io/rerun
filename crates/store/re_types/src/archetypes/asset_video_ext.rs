@@ -2,20 +2,6 @@ use crate::components::MediaType;
 
 use super::AssetVideo;
 
-/// Errors that can occur when calling [`AssetVideo::extract_frame_timestamps`].
-#[cfg(feature = "video")]
-#[derive(thiserror::Error, Debug)]
-pub enum TimeStampExtractionError {
-    #[error("Failed to determine media type from data")]
-    FailedToDetermineMediaTypeFromData,
-
-    #[error("Media type {0} is not supported.")]
-    UnsupportedMediaType(String),
-
-    #[error(transparent)]
-    VideoLoadError(#[from] re_video::VideoLoadError),
-}
-
 impl AssetVideo {
     /// Creates a new [`AssetVideo`] from the file contents at `path`.
     ///
@@ -53,39 +39,6 @@ impl AssetVideo {
         }
     }
 
-    /// Determines the presentation timestamps of all frames inside the video, returning raw time values.
-    ///
-    /// Returned timestamps are in nanoseconds since start and are guaranteed to be monotonically increasing.
-    ///
-    /// See also [`Self::read_frame_timestamps_ns`] for values wrapped in [`crate::components::VideoTimestamp`].
-    #[cfg(feature = "video")]
-    pub fn read_frame_timestamps_ns_raw(
-        &self,
-    ) -> Result<impl Iterator<Item = i64>, TimeStampExtractionError> {
-        let media_type = if let Some(media_type) = self.media_type.as_ref() {
-            media_type.clone()
-        } else {
-            MediaType::guess_from_data(self.blob.as_slice())
-                .ok_or(TimeStampExtractionError::FailedToDetermineMediaTypeFromData)?
-        };
-
-        let video = if media_type == MediaType::mp4() {
-            // TODO(andreas, jan): Should not copy all the contents just to determine the samples.
-            // -> should provide a mode that doesn't do that or (even better!) only store slices into a shared buffer.
-            re_video::load_mp4(self.blob.as_slice())?
-        } else {
-            return Err(TimeStampExtractionError::UnsupportedMediaType(
-                media_type.to_string(),
-            ));
-        };
-
-        Ok(video.segments.into_iter().flat_map(|seg| {
-            seg.samples
-                .into_iter()
-                .map(|sample| sample.timestamp.as_nanoseconds())
-        }))
-    }
-
     /// Determines the presentation timestamps of all frames inside the video.
     ///
     /// Returned timestamps are in nanoseconds since start and are guaranteed to be monotonically increasing.
@@ -94,9 +47,13 @@ impl AssetVideo {
     #[cfg(feature = "video")]
     pub fn read_frame_timestamps_ns(
         &self,
-    ) -> Result<impl Iterator<Item = crate::components::VideoTimestamp>, TimeStampExtractionError>
-    {
-        self.read_frame_timestamps_ns_raw()
-            .map(|timestamps| timestamps.map(crate::components::VideoTimestamp::from_nanoseconds))
+    ) -> Result<Vec<crate::components::VideoTimestamp>, re_video::VideoLoadError> {
+        Ok(re_video::VideoData::load_from_bytes(
+            self.blob.as_slice(),
+            self.media_type.as_ref().map(|m| m.as_str()),
+        )?
+        .frame_timestamps_ns()
+        .map(crate::components::VideoTimestamp::from_nanoseconds)
+        .collect::<Vec<_>>())
     }
 }

@@ -222,8 +222,6 @@ fn load_video(
 
     let video_frame_reference_chunk = match video_asset.read_frame_timestamps_ns() {
         Ok(video_timestamps) => {
-            let video_timestamps = video_timestamps.collect::<Vec<_>>();
-
             // Time column.
             let is_sorted = Some(true);
             let time_column_times =

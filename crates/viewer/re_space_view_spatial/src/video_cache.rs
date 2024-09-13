@@ -33,7 +33,7 @@ impl VideoCache {
         name: &str,
         key: VideoCacheKey,
         video_data: &[u8],
-        media_type: Option<MediaType>,
+        media_type: Option<&str>,
         render_ctx: &RenderContext,
     ) -> Option<Arc<Mutex<Video>>> {
         re_tracing::profile_function!();
@@ -41,22 +41,12 @@ impl VideoCache {
         let entry = self.0.entry(key).or_insert_with(|| {
             re_log::debug!("Loading video {name:?}…");
 
-            let media_type = media_type.or(MediaType::guess_from_data(video_data));
-
-            let video = if let Some(media_type) = media_type {
-                let result = Video::load(render_ctx, media_type.as_str(), video_data);
-                match result {
-                    Ok(video) => Some(Arc::new(Mutex::new(video))),
-                    Err(err) => {
-                        re_log::warn_once!("Failed to load video {name:?}: {err}");
-                        None
-                    }
+            let video = match Video::load(render_ctx, video_data, media_type) {
+                Ok(video) => Some(Arc::new(Mutex::new(video))),
+                Err(err) => {
+                    re_log::warn_once!("Failed to load video {name:?}: {err}");
+                    None
                 }
-            } else {
-                re_log::warn_once!(
-                    "Failed to determine media type from data for video at {name:?}"
-                );
-                None
             };
 
             Entry {

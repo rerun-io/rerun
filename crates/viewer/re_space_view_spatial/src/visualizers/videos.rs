@@ -258,7 +258,7 @@ fn latest_at_query_video_from_datastore(
                 media_type: media_type.clone(),
             },
             &blob,
-            media_type,
+            media_type.as_ref().map(|m| m.as_str()),
             ctx.render_ctx?,
         )
     })
