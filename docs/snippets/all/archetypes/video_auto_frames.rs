@@ -19,20 +19,20 @@ fn main() -> anyhow::Result<()> {
     rec.log("video", &video_asset)?;
 
     // Send automatically determined video frame timestamps.
-    let video_timestamps = video_asset.read_frame_timestamps_ns()?.collect::<Vec<_>>();
+    let video_timestamps_ns = video_asset.read_frame_timestamps_ns()?.collect::<Vec<_>>();
     let time_column = TimeColumn::new_nanos(
         "video_time",
         // Note timeline values don't have to be the same as the video timestamps.
-        video_timestamps.iter().map(|ts| ts.video_time),
+        video_timestamps_ns.iter().map(|ts| ts.video_time),
     );
     let frame_reference_indicators =
         <rerun::VideoFrameReference as rerun::Archetype>::Indicator::new_array(
-            video_timestamps.len(),
+            video_timestamps_ns.len(),
         );
     rec.send_columns(
         "video",
         [time_column],
-        [&frame_reference_indicators as _, &video_timestamps as _],
+        [&frame_reference_indicators as _, &video_timestamps_ns as _],
     )?;
 
     Ok(())

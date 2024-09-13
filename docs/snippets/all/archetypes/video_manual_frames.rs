@@ -19,7 +19,7 @@ fn main() -> anyhow::Result<()> {
 
     // Send frame references for every 0.1 seconds over a total of 10 seconds.
     // Naturally, this will result in a choppy playback and only makes sense if the video is 10 seconds or longer.
-    // TODO(#7368): Point to example using `send_video_frames`.
+    // To get all frame times of a video use `rerun::AssetVideo::read_frame_timestamps_ns`.
     //
     // Use `send_columns` to send all frame references in a single call.
     let times = (0..(10 * 10)).map(|t| t as f64 * 0.1).collect::<Vec<_>>();

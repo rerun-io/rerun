@@ -42,8 +42,6 @@ impl AssetVideo {
     /// Determines the presentation timestamps of all frames inside the video.
     ///
     /// Returned timestamps are in nanoseconds since start and are guaranteed to be monotonically increasing.
-    ///
-    /// See also [`Self::read_frame_timestamps_ns_raw`] for values not wrapped in [`crate::components::VideoTimestamp`].
     #[cfg(feature = "video")]
     pub fn read_frame_timestamps_ns(
         &self,

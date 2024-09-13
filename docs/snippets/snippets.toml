@@ -191,3 +191,6 @@ quick_start = [ # These examples don't have exactly the same implementation.
 "archetypes/video_manual_frames" = [
   "$config_dir/../../tests/assets/video/Big_Buck_Bunny_1080_10s_av1.mp4",
 ]
+"archetypes/video_auto_frames" = [
+  "$config_dir/../../tests/assets/video/Big_Buck_Bunny_1080_10s_av1.mp4",
+]
