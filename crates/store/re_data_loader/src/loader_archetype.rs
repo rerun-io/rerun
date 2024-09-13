@@ -1,7 +1,6 @@
 use re_chunk::{Chunk, RowId};
 use re_log_types::{EntityPath, TimeInt, TimePoint};
 use re_types::archetypes::{AssetVideo, VideoFrameReference};
-use re_types::datatypes::VideoTimeMode;
 use re_types::Archetype;
 use re_types::{components::MediaType, ComponentBatch};
 
@@ -221,20 +220,13 @@ fn load_video(
 
     let video_asset = AssetVideo::new(contents);
 
-    let video_frame_reference_chunk = match video_asset.read_frame_timestamps() {
+    let video_frame_reference_chunk = match video_asset.read_frame_timestamps_ns() {
         Ok(video_timestamps) => {
             // Time column.
             let is_sorted = Some(true);
 
-            let time_column_times = match video_timestamps
-                .first()
-                .map_or(VideoTimeMode::Nanoseconds, |t| t.time_mode)
-            {
-                // TODO(andreas): If we add other modes, how do we statically assert that we're dealing with time here?
-                VideoTimeMode::Nanoseconds => {
-                    ArrowPrimitiveArray::from_values(video_timestamps.iter().map(|t| t.video_time))
-                }
-            };
+            let time_column_times =
+                ArrowPrimitiveArray::from_values(video_timestamps.iter().map(|t| t.video_time));
             let time_column =
                 re_chunk::TimeColumn::new(is_sorted, video_timeline, time_column_times);
 

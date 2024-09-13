@@ -55,9 +55,9 @@ impl AssetVideo {
 
     /// Determines the presentation timestamps of all frames inside the video.
     ///
-    /// Returned timestamps are guranteed to be monotonically increasing.
+    /// Returned timestamps are in nanoseconds since start and are guaranteed to be monotonically increasing.
     #[cfg(feature = "video")]
-    pub fn read_frame_timestamps(
+    pub fn read_frame_timestamps_ns(
         &self,
     ) -> Result<Vec<crate::components::VideoTimestamp>, TimeStampExtractionError> {
         let media_type = if let Some(media_type) = self.media_type.as_ref() {
