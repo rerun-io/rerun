@@ -18,10 +18,10 @@ video_asset = rr.AssetVideo(path=sys.argv[1])
 rr.log("video", video_asset)
 
 # Send automatically determined video frame timestamps.
-video_timestamps_ns = video_asset.read_frame_timestamps_ns()
+frame_timestamps_ns = video_asset.read_frame_timestamps_ns()
 rr.send_columns(
     "video",
     # Note timeline values don't have to be the same as the video timestamps.
-    times=[rr.TimeNanosColumn("video_time", video_timestamps_ns)],
-    components=[rr.VideoFrameReference.indicator(), rr.components.VideoTimestamp.nanoseconds(video_timestamps_ns)],
+    times=[rr.TimeNanosColumn("video_time", frame_timestamps_ns)],
+    components=[rr.VideoFrameReference.indicator(), rr.components.VideoTimestamp.nanoseconds(frame_timestamps_ns)],
 )

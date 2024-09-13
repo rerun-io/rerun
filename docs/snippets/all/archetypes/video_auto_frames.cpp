@@ -25,24 +25,25 @@ int main(int argc, char* argv[]) {
     auto video_asset = rerun::AssetVideo::from_file(path).value_or_throw();
     rec.log("video", video_asset);
 
-    // Send frame references for every 0.1 seconds over a total of 10 seconds.
-    // Naturally, this will result in a choppy playback and only makes sense if the video is 10 seconds or longer.
-    // TODO(#7368): Point to example using `send_video_frames`.
-    //
-    // Use `send_columns` to send all frame references in a single call.
-    std::vector<std::chrono::nanoseconds> times =
+    // Send automatically determined video frame timestamps.
+    std::vector<std::chrono::nanoseconds> frame_timestamps_ns =
         video_asset.read_frame_timestamps_ns().value_or_throw();
-    std::vector<rerun::components::VideoTimestamp> video_timestamps(times.size());
-    for (size_t i = 0; i < times.size(); i++) {
-        video_timestamps[i] = rerun::components::VideoTimestamp(times[i]);
+    // Note timeline values don't have to be the same as the video timestamps.
+    auto time_column =
+        rerun::TimeColumn::from_times("video_time", rerun::borrow(frame_timestamps_ns));
+
+    std::vector<rerun::components::VideoTimestamp> video_timestamps(frame_timestamps_ns.size());
+    for (size_t i = 0; i < frame_timestamps_ns.size(); i++) {
+        video_timestamps[i] = rerun::components::VideoTimestamp(frame_timestamps_ns[i]);
     }
     auto video_frame_reference_indicators =
         rerun::ComponentColumn::from_indicators<rerun::VideoFrameReference>(
-            static_cast<uint32_t>(times.size())
+            static_cast<uint32_t>(video_timestamps.size())
         );
+
     rec.send_columns(
         "video",
-        rerun::TimeColumn::from_times("video_time", rerun::borrow(times)),
+        time_column,
         {
             video_frame_reference_indicators.value_or_throw(),
             rerun::ComponentColumn::from_loggable(rerun::borrow(video_timestamps)).value_or_throw(),
