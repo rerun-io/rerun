@@ -53,13 +53,15 @@ impl AssetVideo {
         }
     }
 
-    /// Determines the presentation timestamps of all frames inside the video.
+    /// Determines the presentation timestamps of all frames inside the video, returning raw time values.
     ///
     /// Returned timestamps are in nanoseconds since start and are guaranteed to be monotonically increasing.
+    ///
+    /// See also [`Self::read_frame_timestamps_ns`] for values wrapped in [`crate::components::VideoTimestamp`].
     #[cfg(feature = "video")]
-    pub fn read_frame_timestamps_ns(
+    pub fn read_frame_timestamps_ns_raw(
         &self,
-    ) -> Result<Vec<crate::components::VideoTimestamp>, TimeStampExtractionError> {
+    ) -> Result<impl Iterator<Item = i64>, TimeStampExtractionError> {
         let media_type = if let Some(media_type) = self.media_type.as_ref() {
             media_type.clone()
         } else {
@@ -77,16 +79,24 @@ impl AssetVideo {
             ));
         };
 
-        Ok(video
-            .segments
-            .iter()
-            .flat_map(|seg| {
-                seg.samples.iter().map(|sample| {
-                    crate::components::VideoTimestamp::from_nanoseconds(
-                        sample.timestamp.as_nanoseconds(),
-                    )
-                })
-            })
-            .collect())
+        Ok(video.segments.into_iter().flat_map(|seg| {
+            seg.samples
+                .into_iter()
+                .map(|sample| sample.timestamp.as_nanoseconds())
+        }))
+    }
+
+    /// Determines the presentation timestamps of all frames inside the video.
+    ///
+    /// Returned timestamps are in nanoseconds since start and are guaranteed to be monotonically increasing.
+    ///
+    /// See also [`Self::read_frame_timestamps_ns_raw`] for values not wrapped in [`crate::components::VideoTimestamp`].
+    #[cfg(feature = "video")]
+    pub fn read_frame_timestamps_ns(
+        &self,
+    ) -> Result<impl Iterator<Item = crate::components::VideoTimestamp>, TimeStampExtractionError>
+    {
+        self.read_frame_timestamps_ns_raw()
+            .map(|timestamps| timestamps.map(crate::components::VideoTimestamp::from_nanoseconds))
     }
 }
