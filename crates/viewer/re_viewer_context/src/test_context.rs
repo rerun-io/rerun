@@ -50,8 +50,8 @@ impl TestContext {
         self.selection_state.on_frame_start(|_| true, None);
     }
 
-    pub fn run(&self, mut func: impl FnMut(&ViewerContext<'_>, &mut egui::Ui)) {
-        egui::__run_test_ui(|ui| {
+    pub fn run(&self, func: impl FnMut(&ViewerContext<'_>, &mut egui::Ui) + Copy) {
+        egui::__run_test_ui(move |ui| {
             re_ui::apply_style_and_install_loaders(ui.ctx());
             let blueprint_query = LatestAtQuery::latest(self.active_timeline);
             let (command_sender, _) = command_channel();
@@ -92,6 +92,7 @@ impl TestContext {
                 focused_item: &None,
             };
 
+            let mut func = func;
             func(&ctx, ui);
         });
     }
