@@ -6145,6 +6145,7 @@ dependencies = [
  "re_arrow2",
  "re_log",
  "re_sdk",
+ "re_video",
 ]
 
 [[package]]

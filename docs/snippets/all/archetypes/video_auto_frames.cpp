@@ -1,4 +1,4 @@
-// Log a video asset using manually created frame references.
+// Log a video asset using automatically determined frame references.
 // TODO(#7298): ⚠️ Video is currently only supported in the Rerun web viewer.
 
 #include <rerun.hpp>
@@ -22,17 +22,18 @@ int main(int argc, char* argv[]) {
     // Log video asset which is referred to by frame references.
     // Make sure it's available on the timeline used for the frame references.
     rec.set_time_seconds("video_time", 0.0);
-    rec.log("video", rerun::AssetVideo::from_file(path).value_or_throw());
+    auto video_asset = rerun::AssetVideo::from_file(path).value_or_throw();
+    rec.log("video", video_asset);
 
     // Send frame references for every 0.1 seconds over a total of 10 seconds.
     // Naturally, this will result in a choppy playback and only makes sense if the video is 10 seconds or longer.
-    // To get all frame times of a video use `rerun::AssetVideo::read_frame_timestamps_ns`.
+    // TODO(#7368): Point to example using `send_video_frames`.
     //
     // Use `send_columns` to send all frame references in a single call.
-    std::vector<std::chrono::milliseconds> times(10 * 10);
+    std::vector<std::chrono::nanoseconds> times =
+        video_asset.read_frame_timestamps_ns().value_or_throw();
     std::vector<rerun::components::VideoTimestamp> video_timestamps(times.size());
     for (size_t i = 0; i < times.size(); i++) {
-        times[i] = 100ms * i;
         video_timestamps[i] = rerun::components::VideoTimestamp(times[i]);
     }
     auto video_frame_reference_indicators =

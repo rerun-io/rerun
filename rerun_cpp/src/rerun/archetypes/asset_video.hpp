@@ -11,6 +11,7 @@
 #include "../indicator_component.hpp"
 #include "../result.hpp"
 
+#include <chrono>
 #include <cstdint>
 #include <filesystem>
 #include <optional>
@@ -57,7 +58,7 @@ namespace rerun::archetypes {
     ///
     ///     // Send frame references for every 0.1 seconds over a total of 10 seconds.
     ///     // Naturally, this will result in a choppy playback and only makes sense if the video is 10 seconds or longer.
-    ///     // TODO(#7368): Point to example using `send_video_frames`.
+    ///     // To get all frame times of a video use `rerun::AssetVideo::read_frame_timestamps`.
     ///     //
     ///     // Use `send_columns` to send all frame references in a single call.
     ///     std::vector<std::chrono::milliseconds> times(10 * 10);
@@ -124,6 +125,11 @@ namespace rerun::archetypes {
             asset.media_type = media_type;
             return asset;
         }
+
+        /// Determines the presentation timestamps of all frames inside the video.
+        ///
+        /// Returned timestamps are in nanoseconds since start and are guaranteed to be monotonically increasing.
+        Result<std::vector<std::chrono::nanoseconds>> read_frame_timestamps_ns() const;
 
         // END of extensions from asset_video_ext.cpp, start of generated code:
 
