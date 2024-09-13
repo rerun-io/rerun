@@ -27,7 +27,6 @@ namespace rerun::components {
         }
 
         /// Creates a new `VideoTimestamp` from time since video start.
-        /// \param time Time since video start.
         template <typename TRep, typename TPeriod>
         VideoTimestamp(std::chrono::duration<TRep, TPeriod> time)
             : VideoTimestamp(

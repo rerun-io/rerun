@@ -54,7 +54,7 @@ class VideoTimestampExt:
         Parameters
         ----------
         nanoseconds:
-            Timestamp values in milliseconds since video start.
+            Timestamp values in nanoseconds since video start.
 
         """
         nanoseconds = np.asarray(nanoseconds, dtype=np.int64)
