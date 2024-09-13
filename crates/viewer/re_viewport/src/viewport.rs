@@ -659,7 +659,7 @@ impl<'a, 'b> egui_tiles::Behavior<SpaceViewId> for TabViewer<'a, 'b> {
         &mut self,
         tiles: &egui_tiles::Tiles<SpaceViewId>,
         ui: &mut egui::Ui,
-        tile_id: egui_tiles::TileId,
+        _tile_id: egui_tiles::TileId,
         tabs: &egui_tiles::Tabs,
         _scroll_offset: &mut f32,
     ) {
@@ -703,7 +703,7 @@ impl<'a, 'b> egui_tiles::Behavior<SpaceViewId> for TabViewer<'a, 'b> {
             .class(self.ctx.space_view_class_registry)
             .help_markdown(self.ctx.egui_ctx);
         ui.help_hover_button().on_hover_ui(|ui| {
-            ui.markdown_ui(ui.id().with(tile_id), &help_markdown);
+            ui.markdown_ui(&help_markdown);
         });
     }
 

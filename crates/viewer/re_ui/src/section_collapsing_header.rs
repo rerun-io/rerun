@@ -56,7 +56,7 @@ impl<'a> SectionCollapsingHeader<'a> {
     #[inline]
     pub fn help_markdown(mut self, help: &'a str) -> Self {
         self.help = Some(Box::new(move |ui| {
-            ui.markdown_ui(egui::Id::new(help), help);
+            ui.markdown_ui(help);
         }));
         self
     }

@@ -44,7 +44,6 @@ impl TimeControlUi {
                 .on_hover_ui(|ui| {
                     list_item::list_item_scope(ui, "tooltip", |ui| {
                         ui.markdown_ui(
-                            egui::Id::new("timeline_selector_tooltip"),
                             r"
 Select timeline.
 
