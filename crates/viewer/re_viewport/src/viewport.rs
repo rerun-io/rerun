@@ -100,7 +100,7 @@ impl<'a> Viewport<'a> {
         let Viewport { blueprint, .. } = self;
 
         let is_zero_sized_viewport = ui.available_size().min_elem() <= 0.0;
-        if is_zero_sized_viewport {
+        if is_zero_sized_viewport || !ui.is_visible() {
             return;
         }
 
@@ -488,7 +488,7 @@ impl<'a, 'b> egui_tiles::Behavior<SpaceViewId> for TabViewer<'a, 'b> {
         };
 
         let is_zero_sized_viewport = ui.available_size().min_elem() <= 0.0;
-        if is_zero_sized_viewport {
+        if is_zero_sized_viewport || !ui.is_visible() {
             return Default::default();
         }
 
