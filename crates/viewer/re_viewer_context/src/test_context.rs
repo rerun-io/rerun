@@ -51,48 +51,50 @@ impl TestContext {
     }
 
     pub fn run(&self, mut func: impl FnMut(&ViewerContext<'_>, &mut egui::Ui)) {
-        egui::__run_test_ui(|ui| {
-            re_ui::apply_style_and_install_loaders(ui.ctx());
-            let blueprint_query = LatestAtQuery::latest(self.active_timeline);
-            let (command_sender, _) = command_channel();
-            let component_ui_registry = ComponentUiRegistry::new(Box::new(
-                |_ctx, _ui, _ui_layout, _query, _db, _entity_path, _row_id, _component| {},
-            ));
+        egui::__run_test_ctx(|ctx| {
+            egui::CentralPanel::default().show(ctx, |ui| {
+                re_ui::apply_style_and_install_loaders(ui.ctx());
+                let blueprint_query = LatestAtQuery::latest(self.active_timeline);
+                let (command_sender, _) = command_channel();
+                let component_ui_registry = ComponentUiRegistry::new(Box::new(
+                    |_ctx, _ui, _ui_layout, _query, _db, _entity_path, _row_id, _component| {},
+                ));
 
-            let store_context = StoreContext {
-                app_id: "rerun_test".into(),
-                blueprint: &self.blueprint_store,
-                default_blueprint: None,
-                recording: &self.recording_store,
-                bundle: &Default::default(),
-                hub: &Default::default(),
-            };
+                let store_context = StoreContext {
+                    app_id: "rerun_test".into(),
+                    blueprint: &self.blueprint_store,
+                    default_blueprint: None,
+                    recording: &self.recording_store,
+                    bundle: &Default::default(),
+                    hub: &Default::default(),
+                };
 
-            let rec_cfg = RecordingConfig::default();
-            rec_cfg.time_ctrl.write().set_timeline(self.active_timeline);
+                let rec_cfg = RecordingConfig::default();
+                rec_cfg.time_ctrl.write().set_timeline(self.active_timeline);
 
-            let egui_context = ui.ctx().clone();
-            let ctx = ViewerContext {
-                app_options: &Default::default(),
-                cache: &Default::default(),
-                reflection: &Default::default(),
-                component_ui_registry: &component_ui_registry,
-                space_view_class_registry: &self.space_view_class_registry,
-                store_context: &store_context,
-                applicable_entities_per_visualizer: &Default::default(),
-                indicated_entities_per_visualizer: &Default::default(),
-                query_results: &Default::default(),
-                rec_cfg: &rec_cfg,
-                blueprint_cfg: &Default::default(),
-                selection_state: &self.selection_state,
-                blueprint_query: &blueprint_query,
-                egui_ctx: &egui_context,
-                render_ctx: None,
-                command_sender: &command_sender,
-                focused_item: &None,
-            };
+                let egui_context = ui.ctx().clone();
+                let ctx = ViewerContext {
+                    app_options: &Default::default(),
+                    cache: &Default::default(),
+                    reflection: &Default::default(),
+                    component_ui_registry: &component_ui_registry,
+                    space_view_class_registry: &self.space_view_class_registry,
+                    store_context: &store_context,
+                    applicable_entities_per_visualizer: &Default::default(),
+                    indicated_entities_per_visualizer: &Default::default(),
+                    query_results: &Default::default(),
+                    rec_cfg: &rec_cfg,
+                    blueprint_cfg: &Default::default(),
+                    selection_state: &self.selection_state,
+                    blueprint_query: &blueprint_query,
+                    egui_ctx: &egui_context,
+                    render_ctx: None,
+                    command_sender: &command_sender,
+                    focused_item: &None,
+                };
 
-            func(&ctx, ui);
+                func(&ctx, ui);
+            });
         });
     }
 }

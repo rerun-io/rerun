@@ -388,10 +388,7 @@ impl SpaceViewClass for SpatialSpaceView3D {
                         "Scene up is unspecified".to_owned()
                     };
                 ui.label(up_description).on_hover_ui(|ui| {
-                    ui.markdown_ui(
-                        egui::Id::new("view_coordinates_tooltip"),
-                        "Set with `rerun.ViewCoordinates`.",
-                    );
+                    ui.markdown_ui("Set with `rerun.ViewCoordinates`.");
                 });
 
                 if let Some(eye) = &state.state_3d.view_eye {

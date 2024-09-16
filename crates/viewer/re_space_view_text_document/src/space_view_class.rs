@@ -157,7 +157,7 @@ Displays text from a text component, as raw text or markdown."
                                         .or_insert(egui::FontId::proportional(32.0))
                                         .size = 24.0;
 
-                                    egui_commonmark::CommonMarkViewer::new("markdown_viewer")
+                                    egui_commonmark::CommonMarkViewer::new()
                                         .max_image_width(Some(ui.available_width().floor() as _))
                                         .show(ui, &mut state.commonmark_cache, body);
                                     return;

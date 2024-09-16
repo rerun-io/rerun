@@ -173,6 +173,10 @@ impl DataframeTableDelegate<'_> {
 }
 
 impl<'a> egui_table::TableDelegate for DataframeTableDelegate<'a> {
+    fn default_row_height(&self) -> f32 {
+        re_ui::DesignTokens::table_line_height()
+    }
+
     fn prepare(&mut self, info: &egui_table::PrefetchInfo) {
         re_tracing::profile_function!();
 
@@ -337,7 +341,6 @@ fn dataframe_ui_impl(ctx: &ViewerContext<'_>, ui: &mut egui::Ui, query_handle: &
                 egui_table::HeaderRow::new(re_ui::DesignTokens::table_header_height()),
             ])
             .num_rows(num_rows)
-            .row_height(re_ui::DesignTokens::table_line_height())
             .show(ui, &mut table_delegate);
     });
 }
