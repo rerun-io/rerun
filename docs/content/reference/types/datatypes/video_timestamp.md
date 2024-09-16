@@ -6,7 +6,7 @@ title: "VideoTimestamp"
 
 ⚠️ **This is an experimental API! It is not fully supported, and is likely to change significantly in future versions.**
 
-Timestamp inside a [`archetypes.AssetVideo`](https://rerun.io/docs/reference/types/archetypes/asset_video).
+Timestamp inside a [`archetypes.AssetVideo`](https://rerun.io/docs/reference/types/archetypes/asset_video?speculative-link).
 
 ## Fields
 
@@ -14,11 +14,11 @@ Timestamp inside a [`archetypes.AssetVideo`](https://rerun.io/docs/reference/typ
 * time_mode: [`VideoTimeMode`](../datatypes/video_time_mode.md)
 
 ## API reference links
- * 🌊 [C++ API docs for `VideoTimestamp`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1datatypes_1_1VideoTimestamp.html)
- * 🐍 [Python API docs for `VideoTimestamp`](https://ref.rerun.io/docs/python/stable/common/datatypes#rerun.datatypes.VideoTimestamp)
- * 🦀 [Rust API docs for `VideoTimestamp`](https://docs.rs/rerun/latest/rerun/datatypes/struct.VideoTimestamp.html)
+ * 🌊 [C++ API docs for `VideoTimestamp`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1datatypes_1_1VideoTimestamp.html?speculative-link)
+ * 🐍 [Python API docs for `VideoTimestamp`](https://ref.rerun.io/docs/python/stable/common/datatypes?speculative-link#rerun.datatypes.VideoTimestamp)
+ * 🦀 [Rust API docs for `VideoTimestamp`](https://docs.rs/rerun/latest/rerun/datatypes/struct.VideoTimestamp.html?speculative-link)
 
 
 ## Used by
 
-* [`VideoTimestamp`](../components/video_timestamp.md)
+* [`VideoTimestamp`](../components/video_timestamp.md?speculative-link)

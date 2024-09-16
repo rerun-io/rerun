@@ -12,7 +12,7 @@ NOTE: Videos can only be viewed in the Rerun web viewer.
 Only MP4 containers with a limited number of codecs are currently supported, and not in all browsers.
 Follow <https://github.com/rerun-io/rerun/issues/7298> for updates on the native support.
 
-In order to display a video, you need to log a [`archetypes.VideoFrameReference`](https://rerun.io/docs/reference/types/archetypes/video_frame_reference) for each frame.
+In order to display a video, you need to log a [`archetypes.VideoFrameReference`](https://rerun.io/docs/reference/types/archetypes/video_frame_reference?speculative-link) for each frame.
 
 ## Components
 
@@ -21,9 +21,9 @@ In order to display a video, you need to log a [`archetypes.VideoFrameReference`
 **Recommended**: [`MediaType`](../components/media_type.md)
 
 ## API reference links
- * 🌊 [C++ API docs for `AssetVideo`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1archetypes_1_1AssetVideo.html)
- * 🐍 [Python API docs for `AssetVideo`](https://ref.rerun.io/docs/python/stable/common/archetypes#rerun.archetypes.AssetVideo)
- * 🦀 [Rust API docs for `AssetVideo`](https://docs.rs/rerun/latest/rerun/archetypes/struct.AssetVideo.html)
+ * 🌊 [C++ API docs for `AssetVideo`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1archetypes_1_1AssetVideo.html?speculative-link)
+ * 🐍 [Python API docs for `AssetVideo`](https://ref.rerun.io/docs/python/stable/common/archetypes?speculative-link#rerun.archetypes.AssetVideo)
+ * 🦀 [Rust API docs for `AssetVideo`](https://docs.rs/rerun/latest/rerun/archetypes/struct.AssetVideo.html?speculative-link)
 
 ## Example
 
