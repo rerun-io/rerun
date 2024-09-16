@@ -110,3 +110,5 @@ pub const RECORDING: Icon = icon_from_path!("../data/icons/recording.png");
 pub const BLUEPRINT: Icon = icon_from_path!("../data/icons/blueprint.png");
 
 pub const GITHUB: Icon = icon_from_path!("../data/icons/github.png");
+
+pub const VIDEO_ERROR: Icon = icon_from_path!("../data/icons/video_error.png");
