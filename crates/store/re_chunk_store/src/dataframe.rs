@@ -337,6 +337,11 @@ impl ComponentColumnDescriptor {
         }
     }
 
+    #[inline]
+    pub fn matches(&self, entity_path: &EntityPath, component_name: &ComponentName) -> bool {
+        &self.entity_path == entity_path && &self.component_name == component_name
+    }
+
     fn metadata(&self) -> arrow2::datatypes::Metadata {
         let Self {
             entity_path,
