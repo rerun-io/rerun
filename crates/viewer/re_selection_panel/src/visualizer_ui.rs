@@ -205,7 +205,10 @@ fn visualizer_components(
         let result_default = query_result.defaults.get(&component_name);
         let raw_default = non_empty_component_batch_raw(result_default, &component_name);
 
-        let raw_fallback = match visualizer.fallback_for(&query_ctx, component_name) {
+        let raw_fallback = match visualizer
+            .as_fallback_provider()
+            .fallback_for(&query_ctx, component_name)
+        {
             Ok(fallback) => fallback,
             Err(err) => {
                 re_log::warn_once!("Failed to get fallback for component {component_name}: {err}");

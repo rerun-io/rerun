@@ -80,7 +80,7 @@ impl VisualizerQueryInfo {
 ///
 /// All visualizers are expected to be able to provide a fallback value for any component they're using
 /// via the [`ComponentFallbackProvider`] trait.
-pub trait VisualizerSystem: Send + Sync + ComponentFallbackProvider + 'static {
+pub trait VisualizerSystem: Send + Sync + 'static {
     // TODO(andreas): This should be able to list out the ContextSystems it needs.
 
     /// Information about which components are queried by the visualizer.

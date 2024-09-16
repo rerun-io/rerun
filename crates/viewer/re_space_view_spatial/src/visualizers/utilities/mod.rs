@@ -1,5 +1,6 @@
 pub mod entity_iterator;
 mod labels;
+mod proc_mesh_vis;
 mod spatial_view_visualizer;
 mod textured_rect;
 
@@ -7,5 +8,6 @@ pub use labels::{
     process_labels, process_labels_2d, process_labels_3d, show_labels_fallback, LabeledBatch,
     UiLabel, UiLabelTarget,
 };
+pub(crate) use proc_mesh_vis::{ProcMeshBatch, ProcMeshVisBuffer};
 pub use spatial_view_visualizer::{iter_spatial_visualizer_data, SpatialViewVisualizerData};
 pub use textured_rect::textured_rect_from_image;

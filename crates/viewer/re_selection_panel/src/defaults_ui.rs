@@ -294,7 +294,11 @@ fn add_popup_ui(
                 .visualizer_collection
                 .get_by_identifier(viz)
                 .ok()
-                .and_then(|sys| sys.fallback_for(&query_context, component_name).ok())
+                .and_then(|sys| {
+                    sys.as_fallback_provider()
+                        .fallback_for(&query_context, component_name)
+                        .ok()
+                })
             else {
                 re_log::warn!(
                     "Could not identify an initial value for: {}",
