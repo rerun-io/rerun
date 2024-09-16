@@ -13,7 +13,6 @@ space_view_contents.py linguist-generated=true
 tensor_scalar_mapping.py linguist-generated=true
 tensor_slice_selection.py linguist-generated=true
 tensor_view_fit.py linguist-generated=true
-time_range_table_order.py linguist-generated=true
 viewport_blueprint.py linguist-generated=true
 visible_time_ranges.py linguist-generated=true
 visual_bounds2d.py linguist-generated=true

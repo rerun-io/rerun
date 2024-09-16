@@ -1,17 +1,15 @@
 use egui::Ui;
 
-use crate::dataframe_ui::dataframe_ui;
-use crate::{query_kind::QueryKind, view_query::Query, visualizer_system::EmptySystem};
 use re_log_types::{EntityPath, EntityPathFilter, ResolvedTimeRange};
-use re_space_view::view_property_ui;
-use re_types::blueprint::archetypes;
 use re_types_core::SpaceViewClassIdentifier;
-use re_ui::list_item;
 use re_viewer_context::{
     SpaceViewClass, SpaceViewClassRegistryError, SpaceViewId, SpaceViewState,
     SpaceViewSystemExecutionError, SystemExecutionOutput, ViewQuery, ViewerContext,
 };
 use re_viewport_blueprint::SpaceViewContents;
+
+use crate::dataframe_ui::dataframe_ui;
+use crate::{query_kind::QueryKind, visualizer_system::EmptySystem};
 
 #[derive(Default)]
 pub struct DataframeSpaceView;
@@ -86,26 +84,7 @@ mode sets the default time range to _everything_. You can override this in the s
         _space_origin: &EntityPath,
         space_view_id: SpaceViewId,
     ) -> Result<(), SpaceViewSystemExecutionError> {
-        crate::view_query::query_ui(ctx, ui, state, space_view_id)?;
-
-        list_item::list_item_scope(ui, "dataframe_view_selection_ui", |ui| {
-            let view_query = Query::try_from_blueprint(ctx, space_view_id)?;
-            //TODO(#7070): column order and sorting needs much love
-            ui.add_enabled_ui(
-                matches!(view_query.kind(ctx), QueryKind::Range { .. }),
-                |ui| {
-                    view_property_ui::<archetypes::TimeRangeTableOrder>(
-                        ctx,
-                        ui,
-                        space_view_id,
-                        self,
-                        state,
-                    );
-                },
-            );
-
-            Ok(())
-        })
+        crate::view_query::query_ui(ctx, ui, state, space_view_id)
     }
 
     fn ui(

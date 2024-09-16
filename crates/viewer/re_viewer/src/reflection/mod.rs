@@ -161,20 +161,6 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             },
         ),
         (
-            <SortKey as Loggable>::name(),
-            ComponentReflection {
-                docstring_md: "Primary element by which to group by in a temporal data table.",
-                placeholder: Some(SortKey::default().to_arrow()?),
-            },
-        ),
-        (
-            <SortOrder as Loggable>::name(),
-            ComponentReflection {
-                docstring_md: "Sort order for data table.",
-                placeholder: Some(SortOrder::default().to_arrow()?),
-            },
-        ),
-        (
             <SpaceViewClass as Loggable>::name(),
             ComponentReflection {
                 docstring_md: "The class identifier of view, e.g. `\"2D\"`, `\"TextLog\"`, ….",
@@ -1700,21 +1686,6 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                     "rerun.blueprint.components.ViewFit".into(), display_name :
                     "Scaling", docstring_md : "How the image is scaled to fit the view.",
                     is_required : false, },
-                ],
-            },
-        ),
-        (
-            ArchetypeName::new("rerun.blueprint.archetypes.TimeRangeTableOrder"),
-            ArchetypeReflection {
-                display_name: "Time range table order",
-                fields: vec![
-                    ArchetypeFieldReflection { component_name :
-                    "rerun.blueprint.components.SortKey".into(), display_name :
-                    "Sort key", docstring_md : "The primary sort key", is_required :
-                    false, }, ArchetypeFieldReflection { component_name :
-                    "rerun.blueprint.components.SortOrder".into(), display_name :
-                    "Sort order", docstring_md : "The sort order", is_required : false,
-                    },
                 ],
             },
         ),
