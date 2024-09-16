@@ -39,7 +39,7 @@ Use this command for building and running the viewer:
 pixi run rerun
 ```
 
-This custom cargo command is enabled by an alias located in `.cargo/config.toml`.
+It is recommended you add `target/debug` to the start of your `PATH`. That way, all examples that call `spawn` will use your latest built `rerun` binary.
 
 
 ## Running the Rust examples
