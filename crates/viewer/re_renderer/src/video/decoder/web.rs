@@ -104,7 +104,7 @@ impl VideoDecoder {
             data.config.coded_height as u32,
         );
 
-        let mut this = Self {
+        Ok(Self {
             data,
             queue,
             texture,
@@ -115,13 +115,7 @@ impl VideoDecoder {
             last_used_frame_timestamp: TimeMs::new(f64::MAX),
             current_segment_idx: usize::MAX,
             current_sample_idx: usize::MAX,
-        };
-
-        // immediately enqueue some frames, assuming playback at start
-        this.reset()?;
-        let _ = this.frame_at(TimeMs::new(0.0));
-
-        Ok(this)
+        })
     }
 
     pub fn duration_ms(&self) -> f64 {
@@ -165,13 +159,12 @@ impl VideoDecoder {
         // one would mean decoding and immediately discarding more frames than we otherwise
         // need to.
         if requested_segment_idx != self.current_segment_idx {
-            let segment_distance =
-                requested_segment_idx as isize - self.current_segment_idx as isize;
-            if segment_distance == 1 {
+            let segment_distance = requested_segment_idx.checked_sub(self.current_segment_idx);
+            if segment_distance == Some(1) {
                 // forward seek to next segment - queue up the one _after_ requested
                 self.enqueue_segment(requested_segment_idx + 1);
             } else {
-                // forward seek by N>1 OR backward seek across segments - reset
+                // Startup, forward seek by N>1, or backward seek across segments -> reset decoder
                 if let Err(err) = self.reset() {
                     return FrameDecodingResult::Error(err);
                 }
