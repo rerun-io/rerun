@@ -1,5 +1,8 @@
 use re_entity_db::VersionedInstancePathHash;
-use re_renderer::{video::Video, RenderContext};
+use re_renderer::{
+    video::{Video, VideoError},
+    RenderContext,
+};
 use re_types::components::MediaType;
 use re_viewer_context::Cache;
 
@@ -20,7 +23,9 @@ pub struct VideoCacheKey {
 
 struct Entry {
     used_this_frame: AtomicBool,
-    video: Option<Arc<Mutex<Video>>>,
+
+    /// Keeps failed loads around, so we can don't try again and again.
+    video: Arc<Result<Mutex<Video>, VideoError>>,
 }
 
 /// Caches meshes based on their [`VideoCacheKey`].
@@ -35,23 +40,16 @@ impl VideoCache {
         video_data: &[u8],
         media_type: Option<&str>,
         render_ctx: &RenderContext,
-    ) -> Option<Arc<Mutex<Video>>> {
+    ) -> Arc<Result<Mutex<Video>, VideoError>> {
         re_tracing::profile_function!();
 
         let entry = self.0.entry(key).or_insert_with(|| {
             re_log::debug!("Loading video {name:?}…");
 
-            let video = match Video::load(render_ctx, video_data, media_type) {
-                Ok(video) => Some(Arc::new(Mutex::new(video))),
-                Err(err) => {
-                    re_log::warn_once!("Failed to load video {name:?}: {err}");
-                    None
-                }
-            };
-
+            let video = Video::load(render_ctx, video_data, media_type);
             Entry {
-                used_this_frame: AtomicBool::new(false),
-                video,
+                used_this_frame: AtomicBool::new(true),
+                video: Arc::new(video.map(Mutex::new)),
             }
         });
 

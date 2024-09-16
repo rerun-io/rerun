@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 use egui::mutex::Mutex;
 
 use re_log_types::EntityPath;
@@ -5,7 +7,7 @@ use re_renderer::{
     renderer::{
         ColormappedTexture, RectangleOptions, TextureFilterMag, TextureFilterMin, TexturedRect,
     },
-    video::{FrameDecodingResult, Video},
+    video::{DecodingError, FrameDecodingResult, Video, VideoError},
 };
 use re_types::{
     archetypes::{AssetVideo, VideoFrameReference},
@@ -20,6 +22,7 @@ use re_viewer_context::{
 };
 
 use crate::{
+    contexts::SpatialSceneEntityContext,
     video_cache::{VideoCache, VideoCacheKey},
     view_kind::SpatialSpaceViewKind,
     visualizers::{entity_iterator, filter_visualizable_2d_entities},
@@ -112,65 +115,34 @@ impl VisualizerSystem for VideoFrameReferenceVisualizer {
                     let video_reference = video_references
                         .and_then(|v| v.first().map(|e| e.as_str().into()))
                         .unwrap_or_else(|| entity_path.clone());
-                    let Some(video) =
-                        latest_at_query_video_from_datastore(ctx.viewer_ctx, &video_reference)
-                    else {
-                        continue;
-                    };
 
-                    let timestamp_in_seconds = match video_timestamp.time_mode {
-                        VideoTimeMode::Nanoseconds => video_timestamp.video_time as f64 / 1e9,
-                    };
+                    let video =
+                        latest_at_query_video_from_datastore(ctx.viewer_ctx, &video_reference);
 
-                    let (texture_result, video_width, video_height) = {
-                        let mut video = video.lock(); // TODO(andreas): Interior mutability for re_renderer's video would be nice.
-                        (
-                            video.frame_at(timestamp_in_seconds),
-                            video.width(),
-                            video.height(),
-                        )
-                    };
-
-                    let texture = match texture_result {
-                        FrameDecodingResult::Ready(texture) => texture,
-                        FrameDecodingResult::Pending(texture) => {
-                            ctx.viewer_ctx.egui_ctx.request_repaint();
-                            texture
+                    match video.as_ref().map(|v| v.as_ref()) {
+                        None => {
+                            // Happens if there was no blob at the referenced path.
+                            // TODO: report this.
                         }
-                        FrameDecodingResult::Error(err) => {
-                            // TODO(#7373): show this error in the ui
-                            re_log::error_once!(
-                                "Failed to decode video frame for {entity_path}: {err}"
-                            );
-                            continue;
+
+                        Some(Ok(video)) => {
+                            match self.show_video_frame(
+                                ctx,
+                                spatial_ctx,
+                                video,
+                                video_timestamp,
+                                entity_path,
+                            ) {
+                                Ok(frame) => rectangles.push(frame),
+                                Err(err) => {
+                                    // TODO: report decode error on screen.
+                                }
+                            }
                         }
-                    };
-
-                    let world_from_entity =
-                        spatial_ctx.transform_info.single_entity_transform_required(
-                            ctx.target_entity_path,
-                            Self::identifier().as_str(),
-                        );
-                    let textured_rect = textured_rect_for_video_frame(
-                        world_from_entity,
-                        video_width,
-                        video_height,
-                        texture,
-                    );
-
-                    if spatial_ctx.space_view_class_identifier == SpatialSpaceView2D::identifier() {
-                        // Only update the bounding box if this is a 2D space view.
-                        // This is avoids a cyclic relationship where the image plane grows
-                        // the bounds which in turn influence the size of the image plane.
-                        // See: https://github.com/rerun-io/rerun/issues/3728
-                        self.data.add_bounding_box(
-                            entity_path.hash(),
-                            bounding_box_for_textured_rect(&textured_rect),
-                            world_from_entity,
-                        );
+                        Some(Err(err)) => {
+                            // TODO: report video load error to screen.
+                        }
                     }
-
-                    rectangles.push(textured_rect);
                 }
 
                 Ok(())
@@ -204,6 +176,57 @@ impl VisualizerSystem for VideoFrameReferenceVisualizer {
     }
 }
 
+impl VideoFrameReferenceVisualizer {
+    fn show_video_frame(
+        &mut self,
+        ctx: &re_viewer_context::QueryContext<'_>,
+        spatial_ctx: &SpatialSceneEntityContext<'_>,
+        video: &Mutex<Video>,
+        video_timestamp: &VideoTimestamp,
+        entity_path: &EntityPath,
+    ) -> Result<TexturedRect, DecodingError> {
+        let timestamp_in_seconds = match video_timestamp.time_mode {
+            VideoTimeMode::Nanoseconds => video_timestamp.video_time as f64 / 1e9,
+        };
+        let (texture_result, video_width, video_height) = {
+            let mut video = video.lock(); // TODO(andreas): Interior mutability for re_renderer's video would be nice.
+            (
+                video.frame_at(timestamp_in_seconds),
+                video.width(),
+                video.height(),
+            )
+        };
+        let texture = match texture_result {
+            FrameDecodingResult::Ready(texture) => texture,
+            FrameDecodingResult::Pending(texture) => {
+                ctx.viewer_ctx.egui_ctx.request_repaint();
+                texture
+            }
+            FrameDecodingResult::Error(err) => {
+                return Err(err);
+            }
+        };
+        let world_from_entity = spatial_ctx
+            .transform_info
+            .single_entity_transform_required(ctx.target_entity_path, Self::identifier().as_str());
+        let textured_rect =
+            textured_rect_for_video_frame(world_from_entity, video_width, video_height, texture);
+        if spatial_ctx.space_view_class_identifier == SpatialSpaceView2D::identifier() {
+            // Only update the bounding box if this is a 2D space view.
+            // This is avoids a cyclic relationship where the image plane grows
+            // the bounds which in turn influence the size of the image plane.
+            // See: https://github.com/rerun-io/rerun/issues/3728
+            self.data.add_bounding_box(
+                entity_path.hash(),
+                bounding_box_for_textured_rect(&textured_rect),
+                world_from_entity,
+            );
+        }
+
+        Ok(textured_rect)
+    }
+}
+
 fn textured_rect_for_video_frame(
     world_from_entity: glam::Affine3A,
     video_width: u32,
@@ -230,10 +253,14 @@ fn textured_rect_for_video_frame(
 ///
 /// Note that this does *NOT* check the blueprint store at all.
 /// For this, we'd need a [`re_viewer_context::DataResult`] instead of merely a [`EntityPath`].
+///
+/// Returns `None` if there was no blob at the referenced path.
+/// Returns `Some(Err(_))` if there was a blob but it failed to load for some reason.
+/// Errors are cached as well so loading a failed video won't occur a high cost repeatedly.
 fn latest_at_query_video_from_datastore(
     ctx: &ViewerContext<'_>,
     entity_path: &EntityPath,
-) -> Option<std::sync::Arc<Mutex<Video>>> {
+) -> Option<Arc<Result<Mutex<Video>, VideoError>>> {
     let query = ctx.current_query();
 
     let results = ctx.recording().query_caches().latest_at(
@@ -247,7 +274,9 @@ fn latest_at_query_video_from_datastore(
     let blob = results.component_instance::<Blob>(0)?;
     let media_type = results.component_instance::<MediaType>(0);
 
-    ctx.cache.entry(|c: &mut VideoCache| {
+    let render_ctx = ctx.render_ctx?;
+
+    Some(ctx.cache.entry(|c: &mut VideoCache| {
         c.entry(
             &entity_path.to_string(),
             VideoCacheKey {
@@ -259,9 +288,9 @@ fn latest_at_query_video_from_datastore(
             },
             &blob,
             media_type.as_ref().map(|m| m.as_str()),
-            ctx.render_ctx?,
+            render_ctx,
         )
-    })
+    }))
 }
 
 re_viewer_context::impl_component_fallback_provider!(VideoFrameReferenceVisualizer => []);
