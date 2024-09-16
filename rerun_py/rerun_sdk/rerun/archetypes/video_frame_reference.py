@@ -108,9 +108,6 @@ class VideoFrameReference(Archetype):
     rr.send_blueprint(
         rrb.Horizontal(rrb.Spatial2DView(origin="frame_at_start"), rrb.Spatial2DView(origin="frame_at_one_second"))
     )
-
-
-    # TODO: doesn't show video frames right now.
     ```
     <center>
     <picture>
