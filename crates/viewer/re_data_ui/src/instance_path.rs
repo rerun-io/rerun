@@ -7,7 +7,7 @@ use re_types::{
     archetypes, components,
     datatypes::{ChannelDatatype, ColorModel},
     image::ImageKind,
-    Archetype, ComponentName, Loggable,
+    static_assert_struct_has_fields, Archetype, ComponentName, Loggable,
 };
 use re_ui::{ContextExt as _, UiExt as _};
 use re_viewer_context::{
@@ -251,6 +251,23 @@ fn preview_if_image_ui(
     entity_path: &re_log_types::EntityPath,
     component_map: &IntMap<ComponentName, UnitChunkShared>,
 ) -> Option<()> {
+    // First check assumptions:
+    static_assert_struct_has_fields!(
+        archetypes::Image,
+        buffer: components::ImageBuffer,
+        format: components::ImageFormat
+    );
+    static_assert_struct_has_fields!(
+        archetypes::DepthImage,
+        buffer: components::ImageBuffer,
+        format: components::ImageFormat
+    );
+    static_assert_struct_has_fields!(
+        archetypes::SegmentationImage,
+        buffer: components::ImageBuffer,
+        format: components::ImageFormat
+    );
+
     let image_buffer = component_map.get(&components::ImageBuffer::name())?;
     let buffer_row_id = image_buffer.row_id()?;
     let image_buffer = image_buffer
