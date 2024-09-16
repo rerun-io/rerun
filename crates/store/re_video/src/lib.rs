@@ -27,7 +27,7 @@ impl VideoData {
     /// TODO(andreas, jan): This should not copy the data, but instead store slices into a shared buffer.
     /// at the very least the should be a way to extract only metadata.
     pub fn load_from_bytes(data: &[u8], media_type: Option<&str>) -> Result<Self, VideoLoadError> {
-        // Media type guessing here should be identical to to `re_types::MediaType::guess_from_data`,
+        // Media type guessing here should be identical to `re_types::MediaType::guess_from_data`,
         // but we don't want to depend on `re_types` here.
         let media_type = if let Some(media_type) = media_type {
             media_type.to_owned()
