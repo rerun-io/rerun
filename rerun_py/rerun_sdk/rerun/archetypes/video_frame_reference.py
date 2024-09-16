@@ -88,7 +88,7 @@ class VideoFrameReference(Archetype):
     # Log video asset which is referred to by frame references.
     rr.log("video_asset", rr.AssetVideo(path=sys.argv[1]), static=True)
 
-    # Create two entites, showing the same video frozen at different times.
+    # Create two entities, showing the same video frozen at different times.
     rr.log(
         "frame_at_start",
         rr.VideoFrameReference(

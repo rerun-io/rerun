@@ -107,7 +107,7 @@ namespace rerun::archetypes {
     ///     // Log video asset which is referred to by frame references.
     ///     rec.log_static("video_asset", rerun::AssetVideo::from_file(path).value_or_throw());
     ///
-    ///     // Create two entites, showing the same video frozen at different times.
+    ///     // Create two entities, showing the same video frozen at different times.
     ///     rec.log("frame_at_start", rerun::VideoFrameReference(0.0s).with_video_reference("video_asset"));
     ///     rec.log(
     ///         "frame_at_one_second",

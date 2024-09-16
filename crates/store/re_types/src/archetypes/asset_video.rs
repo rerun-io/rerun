@@ -100,17 +100,17 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 ///     // Log video asset which is referred to by frame references.
 ///     rec.log_static("video_asset", &rerun::AssetVideo::from_file_path(path)?)?;
 ///
-///     // Create two entites, showing the same video frozen at different times.
+///     // Create two entities, showing the same video frozen at different times.
 ///     rec.log(
 ///         "frame_at_start",
 ///         &rerun::VideoFrameReference::new(rerun::components::VideoTimestamp::from_seconds(0.0))
 ///             .with_video_reference("video_asset"),
-///     );
+///     )?;
 ///     rec.log(
 ///         "frame_at_one_second",
 ///         &rerun::VideoFrameReference::new(rerun::components::VideoTimestamp::from_seconds(1.0))
 ///             .with_video_reference("video_asset"),
-///     );
+///     )?;
 ///
 ///     // TODO(#5520): log blueprint once supported
 ///     Ok(())

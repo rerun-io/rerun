@@ -34,7 +34,7 @@ impl VideoData {
         } else if mp4::is_mp4(data) {
             "video/mp4".to_owned()
         } else {
-            // Technically this means that we failed to determine the media type alltogether,
+            // Technically this means that we failed to determine the media type altogether,
             // but we don't want to call it `FailedToDetermineMediaType` since the rest of Rerun has
             // access to `re_types::components::MediaType` which has a much wider range of media type detection.
             return Err(VideoLoadError::UnsupportedVideoType);
