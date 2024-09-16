@@ -68,7 +68,19 @@ namespace rerun {
         static Result<std::shared_ptr<arrow::Array>> to_arrow(
             const components::TransformMat3x3* instances, size_t num_instances
         ) {
-            return Loggable<rerun::datatypes::Mat3x3>::to_arrow(&instances->matrix, num_instances);
+            if (num_instances == 0) {
+                return Loggable<rerun::datatypes::Mat3x3>::to_arrow(nullptr, 0);
+            } else if (instances == nullptr) {
+                return rerun::Error(
+                    ErrorCode::UnexpectedNullArgument,
+                    "Passed array instances is null when num_elements> 0."
+                );
+            } else {
+                return Loggable<rerun::datatypes::Mat3x3>::to_arrow(
+                    &instances->matrix,
+                    num_instances
+                );
+            }
         }
     };
 } // namespace rerun
