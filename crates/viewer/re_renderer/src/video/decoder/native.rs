@@ -24,8 +24,6 @@ impl VideoDecoder {
         render_context: &RenderContext,
         data: re_video::VideoData,
     ) -> Result<Self, DecodingError> {
-        re_log::warn_once!("Video playback not yet available in the native viewer, try the web viewer instead. See https://github.com/rerun-io/rerun/issues/7298 for more information.");
-
         let device = render_context.device.clone();
         let zeroed_texture = alloc_video_frame_texture(
             &device,
@@ -51,7 +49,8 @@ impl VideoDecoder {
         self.data.config.coded_height as u32
     }
 
+    #[allow(clippy::unused_self)]
     pub fn frame_at(&mut self, timestamp: TimeMs) -> FrameDecodingResult {
-        FrameDecodingResult::Ready(self.zeroed_texture.clone())
+        FrameDecodingResult::Error(DecodingError::NoNativeSupport)
     }
 }

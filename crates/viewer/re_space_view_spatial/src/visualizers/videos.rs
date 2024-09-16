@@ -2,12 +2,13 @@ use std::sync::Arc;
 
 use egui::mutex::Mutex;
 
-use re_log_types::EntityPath;
+use re_log_types::{hash::Hash64, EntityPath};
 use re_renderer::{
     renderer::{
         ColormappedTexture, RectangleOptions, TextureFilterMag, TextureFilterMin, TexturedRect,
     },
-    video::{DecodingError, FrameDecodingResult, Video, VideoError},
+    resource_managers::{Texture2DCreationDesc, TextureManager2DError},
+    video::{FrameDecodingResult, Video, VideoError},
 };
 use re_types::{
     archetypes::{AssetVideo, VideoFrameReference},
@@ -29,8 +30,9 @@ use crate::{
     SpatialSpaceView2D,
 };
 
-use super::bounding_box_for_textured_rect;
-use super::{entity_iterator::process_archetype, SpatialViewVisualizerData};
+use super::{
+    entity_iterator::process_archetype, SpatialViewVisualizerData, UiLabel, UiLabelTarget,
+};
 
 pub struct VideoFrameReferenceVisualizer {
     pub data: SpatialViewVisualizerData,
@@ -111,38 +113,14 @@ impl VisualizerSystem for VideoFrameReferenceVisualizer {
                         continue;
                     };
 
-                    // Follow the reference to the video asset.
-                    let video_reference = video_references
-                        .and_then(|v| v.first().map(|e| e.as_str().into()))
-                        .unwrap_or_else(|| entity_path.clone());
-
-                    let video =
-                        latest_at_query_video_from_datastore(ctx.viewer_ctx, &video_reference);
-
-                    match video.as_ref().map(|v| v.as_ref()) {
-                        None => {
-                            // Happens if there was no blob at the referenced path.
-                            // TODO: report this.
-                        }
-
-                        Some(Ok(video)) => {
-                            match self.show_video_frame(
-                                ctx,
-                                spatial_ctx,
-                                video,
-                                video_timestamp,
-                                entity_path,
-                            ) {
-                                Ok(frame) => rectangles.push(frame),
-                                Err(err) => {
-                                    // TODO: report decode error on screen.
-                                }
-                            }
-                        }
-                        Some(Err(err)) => {
-                            // TODO: report video load error to screen.
-                        }
-                    }
+                    self.process_video_frame(
+                        ctx,
+                        spatial_ctx,
+                        video_timestamp,
+                        video_references,
+                        entity_path,
+                        &mut rectangles,
+                    );
                 }
 
                 Ok(())
@@ -177,53 +155,175 @@ impl VisualizerSystem for VideoFrameReferenceVisualizer {
 }
 
 impl VideoFrameReferenceVisualizer {
-    fn show_video_frame(
+    fn process_video_frame(
         &mut self,
         ctx: &re_viewer_context::QueryContext<'_>,
         spatial_ctx: &SpatialSceneEntityContext<'_>,
-        video: &Mutex<Video>,
         video_timestamp: &VideoTimestamp,
+        video_references: Option<Vec<re_types::ArrowString>>,
         entity_path: &EntityPath,
-    ) -> Result<TexturedRect, DecodingError> {
-        let timestamp_in_seconds = match video_timestamp.time_mode {
-            VideoTimeMode::Nanoseconds => video_timestamp.video_time as f64 / 1e9,
+        rectangles: &mut Vec<TexturedRect>,
+    ) {
+        let Some(render_ctx) = ctx.viewer_ctx.render_ctx else {
+            return;
         };
-        let (texture_result, video_width, video_height) = {
-            let mut video = video.lock(); // TODO(andreas): Interior mutability for re_renderer's video would be nice.
-            (
-                video.frame_at(timestamp_in_seconds),
-                video.width(),
-                video.height(),
-            )
-        };
-        let texture = match texture_result {
-            FrameDecodingResult::Ready(texture) => texture,
-            FrameDecodingResult::Pending(texture) => {
-                ctx.viewer_ctx.egui_ctx.request_repaint();
-                texture
-            }
-            FrameDecodingResult::Error(err) => {
-                return Err(err);
-            }
-        };
+
+        // Follow the reference to the video asset.
+        let video_reference = video_references
+            .and_then(|v| v.first().map(|e| e.as_str().into()))
+            .unwrap_or_else(|| entity_path.clone());
+        let video = latest_at_query_video_from_datastore(ctx.viewer_ctx, &video_reference);
+
         let world_from_entity = spatial_ctx
             .transform_info
             .single_entity_transform_required(ctx.target_entity_path, Self::identifier().as_str());
-        let textured_rect =
-            textured_rect_for_video_frame(world_from_entity, video_width, video_height, texture);
-        if spatial_ctx.space_view_class_identifier == SpatialSpaceView2D::identifier() {
-            // Only update the bounding box if this is a 2D space view.
-            // This is avoids a cyclic relationship where the image plane grows
-            // the bounds which in turn influence the size of the image plane.
-            // See: https://github.com/rerun-io/rerun/issues/3728
-            self.data.add_bounding_box(
-                entity_path.hash(),
-                bounding_box_for_textured_rect(&textured_rect),
-                world_from_entity,
-            );
+
+        // Note that we may or may not know the video size independently of error occurence.
+        // (if it's just a decoding error we may still know the size from the container!)
+        // In case we haven error we want to center the message in the middle, so we need some area.
+        // Note that this area is also used for the bounding box which is important for the 2D view to determine default bounds.
+        let mut video_size = glam::vec2(1280.0, 720.0);
+        let mut error_text = None;
+
+        match video.as_ref().map(|v| v.as_ref()) {
+            None => {
+                error_text = Some(format!("No video asset at {video_reference:?}"));
+            }
+
+            Some(Ok(video)) => {
+                let timestamp_in_seconds = match video_timestamp.time_mode {
+                    VideoTimeMode::Nanoseconds => video_timestamp.video_time as f64 / 1e9,
+                };
+                let (texture_result, video_width, video_height) = {
+                    let mut video = video.lock(); // TODO(andreas): Interior mutability for re_renderer's video would be nice.
+                    (
+                        video.frame_at(timestamp_in_seconds),
+                        video.width(),
+                        video.height(),
+                    )
+                };
+                video_size = glam::vec2(video_width as _, video_height as _);
+                if let Some(texture) = match texture_result {
+                    FrameDecodingResult::Ready(texture) => Some(texture),
+                    FrameDecodingResult::Pending(texture) => {
+                        ctx.viewer_ctx.egui_ctx.request_repaint();
+                        Some(texture)
+                    }
+                    FrameDecodingResult::Error(err) => {
+                        error_text = Some(err.to_string());
+                        None
+                    }
+                } {
+                    rectangles.push(textured_rect_for_video_frame(
+                        world_from_entity,
+                        video_width,
+                        video_height,
+                        texture,
+                    ));
+                }
+            }
+            Some(Err(err)) => {
+                error_text = Some(err.to_string());
+            }
         }
 
-        Ok(textured_rect)
+        if let Some(error_text) = error_text.take() {
+            match self.show_video_error(
+                render_ctx,
+                world_from_entity,
+                error_text,
+                video_size,
+                entity_path,
+            ) {
+                Ok(error_rect) => {
+                    rectangles.push(error_rect);
+                }
+                Err(err) => {
+                    re_log::error_once!("Failed to show video error icon: {err}");
+                }
+            }
+        }
+
+        if spatial_ctx.space_view_class_identifier == SpatialSpaceView2D::identifier() {
+            let bounding_box = re_math::BoundingBox::from_min_size(
+                world_from_entity.transform_point3(glam::Vec3::ZERO),
+                video_size.extend(0.0),
+            );
+            self.data
+                .add_bounding_box(entity_path.hash(), bounding_box, world_from_entity);
+        }
+    }
+
+    fn show_video_error(
+        &mut self,
+        render_ctx: &re_renderer::RenderContext,
+        world_from_entity: glam::Affine3A,
+        error_string: String,
+        video_size: glam::Vec2,
+        entity_path: &re_log_types::EntityPath,
+    ) -> Result<TexturedRect, TextureManager2DError<image::ImageError>> {
+        let video_error_texture = render_ctx
+            .texture_manager_2d
+            .get_or_try_create_with::<image::ImageError>(
+                Hash64::hash("video_error").hash64(),
+                &render_ctx.gpu_resources.textures,
+                || {
+                    let mut reader = image::io::Reader::new(std::io::Cursor::new(
+                        re_ui::icons::VIDEO_ERROR.png_bytes,
+                    ));
+                    reader.set_format(image::ImageFormat::Png);
+                    let dynamic_image = reader.decode()?;
+
+                    Ok(Texture2DCreationDesc {
+                        label: "video_error".into(),
+                        data: std::borrow::Cow::Owned(dynamic_image.to_rgba8().to_vec()),
+                        format: re_renderer::external::wgpu::TextureFormat::Rgba8UnormSrgb,
+                        width: dynamic_image.width(),
+                        height: dynamic_image.height(),
+                    })
+                },
+            )?;
+
+        // Center the icon in the middle of the video rectangle.
+        // Don't ignore translation - if the user moved the video frame, we move the error message long.
+        // But do ignore any rotation/scale on this, gets complicated to center and weird generally.
+        let video_error_rect_size = glam::vec2(
+            video_error_texture.width() as _,
+            video_error_texture.height() as _,
+        );
+        let center = glam::Vec3::from(world_from_entity.translation).truncate() + video_size * 0.5;
+        let top_left_corner_position = center - video_error_rect_size;
+
+        // Add a label that annotates a rectangle that is a bit bigger than the error icon.
+        // This makes the label track the icon better than putting it at a point.
+        let label_target_rect = egui::Rect::from_min_size(
+            egui::pos2(
+                top_left_corner_position.x - video_error_rect_size.x,
+                top_left_corner_position.y,
+            ),
+            egui::vec2(
+                video_error_rect_size.x * 3.0,
+                video_error_rect_size.y + 10.0,
+            ),
+        );
+        self.data.ui_labels.push(UiLabel {
+            text: error_string,
+            color: egui::Color32::LIGHT_RED,
+            target: UiLabelTarget::Rect(label_target_rect),
+            labeled_instance: re_entity_db::InstancePathHash::entity_all(entity_path),
+        });
+
+        Ok(TexturedRect {
+            top_left_corner_position: top_left_corner_position.extend(0.0),
+            extent_u: glam::Vec3::X * video_error_rect_size.x,
+            extent_v: glam::Vec3::Y * video_error_rect_size.y,
+            colormapped_texture: ColormappedTexture::from_unorm_rgba(video_error_texture),
+            options: RectangleOptions {
+                texture_filter_magnification: TextureFilterMag::Linear,
+                texture_filter_minification: TextureFilterMin::Linear,
+                ..Default::default()
+            },
+        })
     }
 }
 

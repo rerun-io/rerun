@@ -91,7 +91,7 @@ pub fn textured_rect_from_image(
     }
 }
 
-pub fn bounding_box_for_textured_rect(
+fn bounding_box_for_textured_rect(
     textured_rect: &renderer::TexturedRect,
 ) -> re_math::BoundingBox {
     let left_top = textured_rect.top_left_corner_position;
