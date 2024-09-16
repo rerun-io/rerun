@@ -217,6 +217,11 @@ impl MediaType {
             }
         }
     }
+
+    /// Returns `true` if this is an image media type.
+    pub fn is_image(&self) -> bool {
+        self.as_str().starts_with("image/")
+    }
 }
 
 impl std::fmt::Display for MediaType {
