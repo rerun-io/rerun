@@ -150,7 +150,10 @@ fn convert_ndarray_to_tensor_both_layouts() {
         .into_shape_with_order((shape, ndarray::Order::ColumnMajor))
         .unwrap();
 
-    // make sure that the offset is in fact negative, in case ndarray behavior changes
+    assert!(row_major.is_standard_layout());
+    assert!(!col_major.is_standard_layout());
+
+    // make sure that the offset is in fact zero, in case ndarray behavior changes
     let rm = row_major.clone();
     let cm = col_major.clone();
     let (_, rm_offset) = rm.into_raw_vec_and_offset();
@@ -184,14 +187,19 @@ fn convert_ndarray_to_tensor_both_layouts_nonzero_offset() {
     let row_major = ndarray::Array::from_vec(row_major_vec)
         .into_shape_with_order((shape, ndarray::Order::RowMajor))
         .unwrap();
+    assert!(row_major.is_standard_layout());
     let row_major_nonzero_offset = row_major.slice_move(ndarray::s![1.., ..]);
 
     let col_major = ndarray::Array::from_vec(col_major_vec)
         .into_shape_with_order((shape, ndarray::Order::ColumnMajor))
         .unwrap();
+    assert!(!col_major.is_standard_layout());
     let col_major_nonzero_offset = col_major.slice_move(ndarray::s![1.., ..]);
 
-    // make sure that the offset is in fact negative, in case ndarray behavior changes
+    assert!(row_major_nonzero_offset.is_standard_layout());
+    assert!(!col_major_nonzero_offset.is_standard_layout());
+
+    // make sure that the offset is in fact non-zero, in case ndarray behavior changes
     let rmno = row_major_nonzero_offset.clone();
     let cmno = col_major_nonzero_offset.clone();
     let (_, rm_offset) = rmno.into_raw_vec_and_offset();
