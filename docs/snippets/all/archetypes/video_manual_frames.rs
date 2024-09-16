@@ -22,12 +22,12 @@ fn main() -> anyhow::Result<()> {
         "frame_at_start",
         &rerun::VideoFrameReference::new(rerun::components::VideoTimestamp::from_seconds(0.0))
             .with_video_reference("video_asset"),
-    );
+    )?;
     rec.log(
         "frame_at_one_second",
         &rerun::VideoFrameReference::new(rerun::components::VideoTimestamp::from_seconds(1.0))
             .with_video_reference("video_asset"),
-    );
+    )?;
 
     // TODO(#5520): log blueprint once supported
     Ok(())
