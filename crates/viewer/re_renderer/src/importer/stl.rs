@@ -9,6 +9,7 @@ use crate::{
     renderer::MeshInstance,
     RenderContext,
 };
+use re_types::archetypes::Asset3D;
 
 #[derive(thiserror::Error, Debug)]
 pub enum StlImportError {
@@ -21,10 +22,19 @@ pub enum StlImportError {
 
 /// Load a [STL .stl file](https://en.wikipedia.org/wiki/STL_(file_format)) into the mesh manager.
 pub fn load_stl_from_buffer(
-    buffer: &[u8],
+    asset3d: &Asset3D,
     ctx: &RenderContext,
+    _texture_key: u64,
 ) -> Result<Vec<MeshInstance>, StlImportError> {
     re_tracing::profile_function!();
+
+    let Asset3D {
+        blob,
+        albedo_factor,
+        ..
+    } = asset3d;
+
+    let buffer = blob.as_slice();
 
     let cursor = std::io::Cursor::new(buffer);
     let StlData {
@@ -37,10 +47,10 @@ pub fn load_stl_from_buffer(
     let num_vertices = triangles.len() * 3;
 
     let material = mesh::Material {
-        label: "default material".into(),
+        label: name.clone().into(),
         index_range: 0..num_vertices as u32,
         albedo: ctx.texture_manager_2d.white_texture_unorm_handle().clone(),
-        albedo_factor: crate::Rgba::WHITE,
+        albedo_factor: albedo_factor.map_or(crate::Rgba::WHITE, |c| c.0.into()),
     };
 
     let mesh = mesh::Mesh {

@@ -6,7 +6,10 @@
 #include "../collection.hpp"
 #include "../compiler_utils.hpp"
 #include "../component_batch.hpp"
+#include "../components/albedo_factor.hpp"
 #include "../components/blob.hpp"
+#include "../components/image_buffer.hpp"
+#include "../components/image_format.hpp"
 #include "../components/media_type.hpp"
 #include "../indicator_component.hpp"
 #include "../result.hpp"
@@ -66,6 +69,20 @@ namespace rerun::archetypes {
         /// If it cannot guess, it won't be able to render the asset.
         std::optional<rerun::components::MediaType> media_type;
 
+        /// A color multiplier applied to the whole asset.
+        std::optional<rerun::components::AlbedoFactor> albedo_factor;
+
+        /// Optional albedo texture.
+        ///
+        /// Used with the `components::Texcoord2D` of the mesh.
+        ///
+        /// Currently supports only sRGB(A) textures, ignoring alpha.
+        /// (meaning that the tensor must have 3 or 4 channels and use the `u8` format)
+        std::optional<rerun::components::ImageBuffer> albedo_texture_buffer;
+
+        /// The format of the `albedo_texture_buffer`, if any.
+        std::optional<rerun::components::ImageFormat> albedo_texture_format;
+
       public:
         static constexpr const char IndicatorComponentName[] = "rerun.components.Asset3DIndicator";
 
@@ -115,6 +132,34 @@ namespace rerun::archetypes {
         /// If it cannot guess, it won't be able to render the asset.
         Asset3D with_media_type(rerun::components::MediaType _media_type) && {
             media_type = std::move(_media_type);
+            // See: https://github.com/rerun-io/rerun/issues/4027
+            RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
+        }
+
+        /// A color multiplier applied to the whole asset.
+        Asset3D with_albedo_factor(rerun::components::AlbedoFactor _albedo_factor) && {
+            albedo_factor = std::move(_albedo_factor);
+            // See: https://github.com/rerun-io/rerun/issues/4027
+            RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
+        }
+
+        /// Optional albedo texture.
+        ///
+        /// Used with the `components::Texcoord2D` of the mesh.
+        ///
+        /// Currently supports only sRGB(A) textures, ignoring alpha.
+        /// (meaning that the tensor must have 3 or 4 channels and use the `u8` format)
+        Asset3D with_albedo_texture_buffer(rerun::components::ImageBuffer _albedo_texture_buffer
+        ) && {
+            albedo_texture_buffer = std::move(_albedo_texture_buffer);
+            // See: https://github.com/rerun-io/rerun/issues/4027
+            RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
+        }
+
+        /// The format of the `albedo_texture_buffer`, if any.
+        Asset3D with_albedo_texture_format(rerun::components::ImageFormat _albedo_texture_format
+        ) && {
+            albedo_texture_format = std::move(_albedo_texture_format);
             // See: https://github.com/rerun-io/rerun/issues/4027
             RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
         }

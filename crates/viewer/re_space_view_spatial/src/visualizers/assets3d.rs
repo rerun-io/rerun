@@ -4,7 +4,7 @@ use re_renderer::renderer::MeshInstance;
 use re_renderer::RenderContext;
 use re_types::{
     archetypes::Asset3D,
-    components::{Blob, MediaType},
+    components::{AlbedoFactor, Blob, ImageBuffer, ImageFormat, MediaType},
     ArrowBuffer, ArrowString, Loggable as _,
 };
 use re_viewer_context::{
@@ -32,32 +32,31 @@ impl Default for Asset3DVisualizer {
     }
 }
 
-struct Asset3DComponentData {
+struct Asset3DComponentData<'a> {
     index: (TimeInt, RowId),
+    query_result_hash: Hash64,
 
     blob: ArrowBuffer<u8>,
     media_type: Option<ArrowString>,
+    albedo_factor: Option<&'a AlbedoFactor>,
+    albedo_buffer: Option<ImageBuffer>,
+    albedo_format: Option<ImageFormat>,
 }
 
 // NOTE: Do not put profile scopes in these methods. They are called for all entities and all
 // timestamps within a time range -- it's _a lot_.
 impl Asset3DVisualizer {
-    fn process_data(
+    fn process_data<'a>(
         &mut self,
         ctx: &QueryContext<'_>,
         render_ctx: &RenderContext,
         instances: &mut Vec<MeshInstance>,
         ent_context: &SpatialSceneEntityContext<'_>,
-        data: impl Iterator<Item = Asset3DComponentData>,
+        data: impl Iterator<Item = Asset3DComponentData<'a>>,
     ) {
         let entity_path = ctx.target_entity_path;
 
         for data in data {
-            let mesh = Asset3D {
-                blob: data.blob.clone().into(),
-                media_type: data.media_type.clone().map(Into::into),
-            };
-
             let primary_row_id = data.index.1;
             let picking_instance_hash = re_entity_db::InstancePathHash::entity_all(entity_path);
             let outline_mask_ids = ent_context.highlight.index_outline_mask(Instance::ALL);
@@ -65,15 +64,25 @@ impl Asset3DVisualizer {
             // TODO(#5974): this is subtly wrong, the key should actually be a hash of everything that got
             // cached, which includes the media type…
             let mesh = ctx.viewer_ctx.cache.entry(|c: &mut MeshCache| {
+                let key = MeshCacheKey {
+                    versioned_instance_path_hash: picking_instance_hash.versioned(primary_row_id),
+                    query_result_hash: data.query_result_hash,
+                    media_type: data.media_type.clone().map(Into::into),
+                };
+
                 c.entry(
                     &entity_path.to_string(),
-                    MeshCacheKey {
-                        versioned_instance_path_hash: picking_instance_hash
-                            .versioned(primary_row_id),
-                        query_result_hash: Hash64::ZERO,
-                        media_type: data.media_type.clone().map(Into::into),
+                    key.clone(),
+                    AnyMesh::Asset {
+                        asset: &Asset3D {
+                            blob: data.blob.clone().into(),
+                            media_type: data.media_type.clone().map(Into::into),
+                            albedo_factor: data.albedo_factor.copied(),
+                            albedo_texture_buffer: data.albedo_buffer.clone(), // shallow clone,
+                            albedo_texture_format: data.albedo_format,
+                        },
+                        texture_key: re_log_types::hash::Hash64::hash(&key).hash64(),
                     },
-                    AnyMesh::Asset(&mesh),
                     render_ctx,
                 )
             });
@@ -155,16 +164,44 @@ impl VisualizerSystem for Asset3DVisualizer {
                 let timeline = ctx.query.timeline();
                 let all_blobs_indexed = iter_buffer::<u8>(&all_blob_chunks, timeline, Blob::name());
                 let all_media_types = results.iter_as(timeline, MediaType::name());
+                let all_albedo_factors = results.iter_as(timeline, AlbedoFactor::name());
+                let all_albedo_buffers = results.iter_as(timeline, ImageBuffer::name());
+                let all_albedo_formats = results.iter_as(timeline, ImageFormat::name());
 
-                let data = re_query::range_zip_1x1(all_blobs_indexed, all_media_types.string())
-                    .filter_map(|(index, blobs, media_types)| {
+                let query_result_hash = results.query_result_hash();
+
+                let data = re_query::range_zip_1x4(
+                    all_blobs_indexed,
+                    all_media_types.string(),
+                    all_albedo_factors.primitive::<u32>(),
+                    all_albedo_buffers.component::<ImageBuffer>(),
+                    all_albedo_formats.component::<ImageFormat>(),
+                )
+                .filter_map(
+                    |(
+                        index,
+                        blobs,
+                        media_types,
+                        albedo_factors,
+                        albedo_buffers,
+                        albedo_formats,
+                    )| {
                         blobs.first().map(|blob| Asset3DComponentData {
                             index,
+                            query_result_hash,
                             blob: blob.clone(),
                             media_type: media_types
                                 .and_then(|media_types| media_types.first().cloned()),
+                            albedo_factor: albedo_factors
+                                .map_or(&[] as &[AlbedoFactor], |albedo_factors| {
+                                    bytemuck::cast_slice(albedo_factors)
+                                })
+                                .first(),
+                            albedo_buffer: albedo_buffers.unwrap_or_default().first().cloned(), // shallow clone
+                            albedo_format: albedo_formats.unwrap_or_default().first().copied(),
                         })
-                    });
+                    },
+                );
 
                 self.process_data(ctx, render_ctx, &mut instances, spatial_ctx, data);
 
