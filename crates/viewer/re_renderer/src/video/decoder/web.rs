@@ -8,7 +8,7 @@ use web_sys::{
     VideoDecoderInit,
 };
 
-use re_video::{TimeMs, VideoData};
+use re_video::TimeMs;
 
 use super::latest_at_idx;
 use crate::{
@@ -37,7 +37,7 @@ impl std::ops::Deref for VideoFrame {
 }
 
 pub struct VideoDecoder {
-    data: re_video::VideoData,
+    data: Arc<re_video::VideoData>,
     queue: Arc<wgpu::Queue>,
     texture: GpuTexture2D,
 
@@ -81,7 +81,10 @@ impl Drop for VideoDecoder {
 }
 
 impl VideoDecoder {
-    pub fn new(render_context: &RenderContext, data: VideoData) -> Result<Self, DecodingError> {
+    pub fn new(
+        render_context: &RenderContext,
+        data: Arc<re_video::VideoData>,
+    ) -> Result<Self, DecodingError> {
         let frames = Arc::new(Mutex::new(Vec::with_capacity(16)));
 
         let decoder = init_video_decoder({
