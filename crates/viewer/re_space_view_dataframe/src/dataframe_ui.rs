@@ -327,41 +327,35 @@ impl DataframeTableDelegate<'_> {
             re_tracing::profile_scope!("subcells");
 
             // how the line is drawn
-            let sub_cell_content =
-                |ui: &mut egui::Ui,
-                 expanded_rows: &mut ExpandedRows<'_>,
-                 sub_cell_index: usize,
-                 instance_index: Option<u64>| {
-                    // This is called when data actually needs to be drawn (as opposed to summaries like
-                    // "N instances" or "N more…").
-                    let data_content = |ui: &mut egui::Ui| {
-                        column.data_ui(
-                            self.ctx,
-                            ui,
-                            row_id,
-                            &latest_at_query,
-                            batch_row_idx,
-                            instance_index,
-                        );
-                    };
-
-                    sub_cell_ui(
+            let line_content = |ui: &mut egui::Ui,
+                                expanded_rows: &mut ExpandedRows<'_>,
+                                line_index: usize,
+                                instance_index: Option<u64>| {
+                // This is called when data actually needs to be drawn (as opposed to summaries like
+                // "N instances" or "N more…").
+                let data_content = |ui: &mut egui::Ui| {
+                    column.data_ui(
+                        self.ctx,
                         ui,
-                        expanded_rows,
-                        sub_cell_index,
+                        row_id,
+                        &latest_at_query,
+                        batch_row_idx,
                         instance_index,
-                        instance_count,
-                        cell,
-                        data_content,
                     );
                 };
 
-            split_ui_vertically(
-                ui,
-                &mut self.expanded_rows,
-                instance_indices,
-                sub_cell_content,
-            );
+                line_ui(
+                    ui,
+                    expanded_rows,
+                    line_index,
+                    instance_index,
+                    instance_count,
+                    cell,
+                    data_content,
+                );
+            };
+
+            split_ui_vertically(ui, &mut self.expanded_rows, instance_indices, line_content);
         }
     }
 }
@@ -370,10 +364,10 @@ impl DataframeTableDelegate<'_> {
 ///
 /// This deals with the row expansion interaction and logic, as well as summarizing the data when
 /// necessary. The actual data drawing is delegated to the `data_content` closure.
-fn sub_cell_ui(
+fn line_ui(
     ui: &mut egui::Ui,
     expanded_rows: &mut ExpandedRows<'_>,
-    sub_cell_index: usize,
+    line_index: usize,
     instance_index: Option<u64>,
     instance_count: u64,
     cell: &egui_table::CellInfo,
@@ -412,7 +406,7 @@ fn sub_cell_ui(
 
         // Last line and possibly too many instances to display.
         Some(instance_index)
-            if { sub_cell_index as u64 == row_expansion && instance_index < instance_count } =>
+            if { line_index as u64 == row_expansion && instance_index < instance_count } =>
         {
             let remaining = instance_count
                 .saturating_sub(instance_index)
