@@ -315,8 +315,10 @@ impl DataframeTableDelegate<'_> {
         }
 
         let instance_count = column.instance_count(batch_row_idx);
-        let row_expansion = self.expanded_rows.row_expansion(cell.row_nr);
+        let row_expansion = self.expanded_rows.additional_lines_for_row(cell.row_nr);
 
+        // Iterate over the lines for this cell. The initial `None` value corresponds to the summary
+        // line.
         let instance_indices = std::iter::once(None)
             .chain((0..instance_count).map(Option::Some))
             .take(row_expansion as usize + 1);
@@ -324,7 +326,7 @@ impl DataframeTableDelegate<'_> {
         {
             re_tracing::profile_scope!("subcells");
 
-            // how the sub-cell is drawn
+            // how the line is drawn
             let sub_cell_content =
                 |ui: &mut egui::Ui,
                  expanded_rows: &mut ExpandedRows<'_>,
@@ -364,7 +366,7 @@ impl DataframeTableDelegate<'_> {
     }
 }
 
-/// Draw a single sub-cell in a table.
+/// Draw a single line in a table.
 ///
 /// This deals with the row expansion interaction and logic, as well as summarizing the data when
 /// necessary. The actual data drawing is delegated to the `data_content` closure.
@@ -379,9 +381,9 @@ fn sub_cell_ui(
 ) {
     re_tracing::profile_function!();
 
-    let row_expansion = expanded_rows.row_expansion(cell.row_nr);
+    let row_expansion = expanded_rows.additional_lines_for_row(cell.row_nr);
 
-    /// What kinds of sub-cells might we encounter here?
+    /// What kinds of lines might we encounter here?
     enum SubcellKind {
         /// Summary line with content that as zero or one instances, so cannot be expanded.
         Summary,
@@ -392,15 +394,15 @@ fn sub_cell_ui(
         /// A particular instance
         Instance,
 
-        /// There are more instances than available sub-cells, so this is a summary of how many
+        /// There are more instances than available lines, so this is a summary of how many
         /// there are left.
-        MoreInstancesSummary(u64 /* remaining instances */),
+        MoreInstancesSummary { remaining_instances: u64 },
 
-        /// Not enough instances to fill this sub-cell.
+        /// Not enough instances to fill this line.
         Blank,
     }
 
-    // The truth table that determines what kind of sub-cell we are dealing with.
+    // The truth table that determines what kind of line we are dealing with.
     let subcell_kind = match instance_index {
         // First row with >1 instances.
         None if { instance_count > 1 } => SubcellKind::SummaryWithExpand,
@@ -408,7 +410,7 @@ fn sub_cell_ui(
         // First row with 0 or 1 instances.
         None => SubcellKind::Summary,
 
-        // Last sub-cell and possibly too many instances to display.
+        // Last line and possibly too many instances to display.
         Some(instance_index)
             if { sub_cell_index as u64 == row_expansion && instance_index < instance_count } =>
         {
@@ -417,16 +419,18 @@ fn sub_cell_ui(
                 .saturating_sub(1);
             if remaining > 0 {
                 // +1 is because the "X more…" line takes one instance spot
-                SubcellKind::MoreInstancesSummary(remaining + 1)
+                SubcellKind::MoreInstancesSummary {
+                    remaining_instances: remaining + 1,
+                }
             } else {
                 SubcellKind::Instance
             }
         }
 
-        // Some sub-cell for which an instance exists.
+        // Some line for which an instance exists.
         Some(instance_index) if { instance_index < instance_count } => SubcellKind::Instance,
 
-        // Some sub-cell for which no instance exists.
+        // Some line for which no instance exists.
         Some(_) => SubcellKind::Blank,
     };
 
@@ -437,14 +441,17 @@ fn sub_cell_ui(
 
         SubcellKind::SummaryWithExpand => {
             let cell_clicked = cell_with_hover_button_ui(ui, &re_ui::icons::EXPAND, |ui| {
-                ui.label(format!("{instance_count} instances"));
+                ui.label(format!(
+                    "{} instances",
+                    re_format::format_uint(instance_count)
+                ));
             });
 
             if cell_clicked {
                 if instance_count == row_expansion {
-                    expanded_rows.collapse_row(cell.row_nr);
+                    expanded_rows.remove_additional_lines_for_row(cell.row_nr);
                 } else {
-                    expanded_rows.set_row_expansion(cell.row_nr, instance_count);
+                    expanded_rows.set_additional_lines_for_row(cell.row_nr, instance_count);
                 }
             }
         }
@@ -453,17 +460,22 @@ fn sub_cell_ui(
             let cell_clicked = cell_with_hover_button_ui(ui, &re_ui::icons::COLLAPSE, data_content);
 
             if cell_clicked {
-                expanded_rows.collapse_row(cell.row_nr);
+                expanded_rows.remove_additional_lines_for_row(cell.row_nr);
             }
         }
 
-        SubcellKind::MoreInstancesSummary(remaining_instances) => {
+        SubcellKind::MoreInstancesSummary {
+            remaining_instances,
+        } => {
             let cell_clicked = cell_with_hover_button_ui(ui, &re_ui::icons::EXPAND, |ui| {
-                ui.label(format!("{remaining_instances} more…"));
+                ui.label(format!(
+                    "{} more…",
+                    re_format::format_uint(remaining_instances)
+                ));
             });
 
             if cell_clicked {
-                expanded_rows.set_row_expansion(cell.row_nr, instance_count);
+                expanded_rows.set_additional_lines_for_row(cell.row_nr, instance_count);
             }
         }
 
@@ -501,8 +513,6 @@ fn dataframe_ui_impl(
         QueryHandle::LatestAt(_) => egui::Id::new("__dataframe_row_exp__").with(schema),
         QueryHandle::Range(query) => egui::Id::new("__dataframe_row_exp__").with(query.query()),
     };
-
-    //egui::Id::new("__dataframe__").with();
 
     let (header_groups, header_entity_paths) = column_groups_for_entity(schema);
 
@@ -594,7 +604,8 @@ fn error_ui(ui: &mut egui::Ui, error: impl AsRef<str>) {
 ///
 /// Returns true if the button was clicked.
 // TODO(ab, emilk): ideally, egui::Sides should work for that, but it doesn't yet support the
-// symmetric behavior (left variable width, right fixed width).
+// asymmetric behavior (left variable width, right fixed width).
+// See https://github.com/emilk/egui/issues/5116
 fn cell_with_hover_button_ui(
     ui: &mut egui::Ui,
     icon: &'static re_ui::Icon,
@@ -606,14 +617,9 @@ fn cell_with_hover_button_ui(
         return false;
     }
 
-    let (is_hovering_cell, is_clicked) = ui.input(|i| {
-        (
-            i.pointer
-                .interact_pos()
-                .is_some_and(|pos| ui.max_rect().contains(pos)),
-            i.pointer.button_clicked(egui::PointerButton::Primary),
-        )
-    });
+    let is_hovering_cell = ui.rect_contains_pointer(ui.max_rect());
+    let is_clicked =
+        is_hovering_cell && ui.input(|i| i.pointer.button_clicked(egui::PointerButton::Primary));
 
     if is_hovering_cell {
         let mut content_rect = ui.max_rect();
@@ -647,16 +653,16 @@ fn cell_with_hover_button_ui(
     }
 }
 
-/// Helper to draw individual rows (aka sub-cell) into an expanded cell in a table.
+/// Helper to draw individual lines into an expanded cell in a table.
 ///
-/// `context`: whatever mutable context is necessary for the `sub_cell_content`
-/// `sub_cell_data`: the data to be displayed in each sub-cell
-/// `sub_cell_content`: the function to draw the content of each sub-cell
-fn split_ui_vertically<I, Ctx>(
+/// `context`: whatever mutable context is necessary for the `line_content_ui`
+/// `line_data`: the data to be displayed in each line
+/// `line_content_ui`: the function to draw the content of each line
+fn split_ui_vertically<Item, Ctx>(
     ui: &mut egui::Ui,
     context: &mut Ctx,
-    sub_cell_data: impl Iterator<Item = I>,
-    sub_cell_content: impl Fn(&mut egui::Ui, &mut Ctx, usize, I),
+    line_data: impl Iterator<Item = Item>,
+    line_content_ui: impl Fn(&mut egui::Ui, &mut Ctx, usize, Item),
 ) {
     re_tracing::profile_function!();
 
@@ -666,26 +672,25 @@ fn split_ui_vertically<I, Ctx>(
     let visible_y_range = ui.clip_rect().y_range();
     let total_y_range = ui.max_rect().y_range();
 
+    // Note: converting float to unsigned ints implicitly saturate negative values to 0
     let start_row = ((visible_y_range.min - total_y_range.min)
         / re_ui::DesignTokens::table_line_height())
-    .at_least(0.0)
     .floor() as usize;
 
     let end_row = ((visible_y_range.max - total_y_range.min)
         / re_ui::DesignTokens::table_line_height())
-    .at_least(0.0)
     .ceil() as usize;
 
-    for (sub_cell_index, item_data) in sub_cell_data
+    for (line_index, item_data) in line_data
         .enumerate()
         .skip(start_row)
         .take(end_row.saturating_sub(start_row))
     {
-        let sub_cell_rect = egui::Rect::from_min_size(
+        let line_rect = egui::Rect::from_min_size(
             ui.cursor().min
                 + egui::vec2(
                     0.0,
-                    sub_cell_index as f32 * re_ui::DesignTokens::table_line_height(),
+                    line_index as f32 * re_ui::DesignTokens::table_line_height(),
                 ),
             egui::vec2(
                 ui.available_width(),
@@ -693,14 +698,13 @@ fn split_ui_vertically<I, Ctx>(
             ),
         );
 
-        // During animation, there may be more sub-cells than can possibly fit. If so, no point in
+        // During animation, there may be more lines than can possibly fit. If so, no point in
         // continuing to draw them.
-        if !ui.max_rect().intersects(sub_cell_rect) {
+        if !ui.max_rect().intersects(line_rect) {
             return;
         }
 
-        let mut sub_cell_ui = ui.new_child(egui::UiBuilder::new().max_rect(sub_cell_rect));
-
-        sub_cell_content(&mut sub_cell_ui, context, sub_cell_index, item_data);
+        let mut line_ui = ui.new_child(egui::UiBuilder::new().max_rect(line_rect));
+        line_content_ui(&mut line_ui, context, line_index, item_data);
     }
 }

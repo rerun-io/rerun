@@ -1,11 +1,14 @@
 use std::collections::BTreeMap;
 
 /// Storage for [`ExpandedRows`], which should be persisted across frames.
+///
+/// Note: each view should store its own cache. Using a [`re_viewer_context::SpaceViewState`] is a
+/// good way to do this.
 #[derive(Debug, Clone)]
 pub(crate) struct ExpandedRowsCache {
-    /// Maps "table row number" to "additional expanded rows".
+    /// Maps "table row number" to "additional lines".
     ///
-    /// When expanded, the base space is still used for the summary, which the additional space is
+    /// When expanded, the base space is still used for the summary, while the additional lines are
     /// used for instances.
     expanded_rows: BTreeMap<u64, u64>,
 
@@ -87,10 +90,10 @@ impl<'a> ExpandedRows<'a> {
         self.cache
             .expanded_rows
             .range(0..row_nr)
-            .map(|(expanded_row_nr, expanded)| {
+            .map(|(expanded_row_nr, additional_lines)| {
                 self.egui_ctx.animate_value_with_time(
                     self.row_id(*expanded_row_nr),
-                    *expanded as f32 * self.row_height,
+                    *additional_lines as f32 * self.row_height,
                     self.egui_ctx.style().animation_time,
                 )
             })
@@ -98,15 +101,15 @@ impl<'a> ExpandedRows<'a> {
             + row_nr as f32 * self.row_height
     }
 
-    /// Return by how much row space this row is expended.
-    pub(crate) fn row_expansion(&self, row_nr: u64) -> u64 {
+    /// Return by how many additional lines this row is expended.
+    pub(crate) fn additional_lines_for_row(&self, row_nr: u64) -> u64 {
         self.cache.expanded_rows.get(&row_nr).copied().unwrap_or(0)
     }
 
     /// Set the expansion of a row.
     ///
     /// Units are in extra row heights.
-    pub(crate) fn set_row_expansion(&mut self, row_nr: u64, additional_row_space: u64) {
+    pub(crate) fn set_additional_lines_for_row(&mut self, row_nr: u64, additional_lines: u64) {
         // Note: don't delete the entry when set to 0, this breaks animation.
 
         // If this is the first time this row is expended, we must seed the corresponding animation
@@ -119,14 +122,12 @@ impl<'a> ExpandedRows<'a> {
             );
         }
 
-        self.cache
-            .expanded_rows
-            .insert(row_nr, additional_row_space);
+        self.cache.expanded_rows.insert(row_nr, additional_lines);
     }
 
     /// Collapse a row.
-    pub(crate) fn collapse_row(&mut self, row_nr: u64) {
-        self.set_row_expansion(row_nr, 0);
+    pub(crate) fn remove_additional_lines_for_row(&mut self, row_nr: u64) {
+        self.set_additional_lines_for_row(row_nr, 0);
     }
 
     #[inline]
