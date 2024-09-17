@@ -17,8 +17,7 @@ use re_types::{
 };
 use re_ui::{ContextExt, ModifiersMarkdown, MouseButtonMarkdown};
 use re_viewer_context::{
-    gpu_bridge, Item, ItemSpaceContext, SpaceViewSystemExecutionError, SystemExecutionOutput,
-    ViewQuery, ViewerContext,
+    gpu_bridge, Item, ItemSpaceContext, SpaceViewSystemExecutionError, ViewQuery, ViewerContext,
 };
 use re_viewport_blueprint::ViewProperty;
 
@@ -428,17 +427,11 @@ impl SpatialSpaceView3D {
     ) -> Result<(), SpaceViewSystemExecutionError> {
         re_tracing::profile_function!();
 
-        let SystemExecutionOutput {
-            view_systems: parts,
-            context_systems: view_ctx,
-            draw_data,
-        } = system_output;
-
-        // Wrap view systems collection in an Arc for later use in ViewContext.
-        let parts = std::sync::Arc::new(parts);
-
         let highlights = &query.highlights;
-        let space_cameras = &parts.get::<CamerasVisualizer>()?.space_cameras;
+        let space_cameras = &system_output
+            .view_systems
+            .get::<CamerasVisualizer>()?
+            .space_cameras;
         let scene_view_coordinates = ctx
             .recording()
             // Allow logging view-coordinates to `/` and have it apply to `/world` etc.
@@ -521,7 +514,7 @@ impl SpatialSpaceView3D {
 
         // Create labels now since their shapes participate are added to scene.ui for picking.
         let (label_shapes, ui_rects) = create_labels(
-            collect_ui_labels(&parts),
+            collect_ui_labels(&system_output.view_systems),
             RectTransform::from_to(rect, rect),
             &eye,
             ui,
@@ -539,8 +532,7 @@ impl SpatialSpaceView3D {
                 eye,
                 &mut view_builder,
                 state,
-                &view_ctx,
-                &parts,
+                &system_output,
                 &ui_rects,
                 query,
                 SpatialSpaceViewKind::ThreeD,
@@ -662,7 +654,7 @@ impl SpatialSpaceView3D {
             scene_view_coordinates,
         );
 
-        for draw_data in draw_data {
+        for draw_data in system_output.draw_data {
             view_builder.queue_draw(draw_data);
         }
 

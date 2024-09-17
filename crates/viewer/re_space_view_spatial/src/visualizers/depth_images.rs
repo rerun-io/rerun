@@ -1,5 +1,5 @@
 use itertools::Itertools as _;
-use nohash_hasher::IntSet;
+use nohash_hasher::IntMap;
 
 use re_entity_db::EntityPath;
 use re_log_types::EntityPathHash;
@@ -31,16 +31,18 @@ use super::{textured_rect_from_image, SpatialViewVisualizerData};
 
 pub struct DepthImageVisualizer {
     pub data: SpatialViewVisualizerData,
-    pub images: Vec<PickableTexturedRect>,
-    pub depth_cloud_entities: IntSet<EntityPathHash>,
+    pub pickable_rects: Vec<PickableTexturedRect>,
+
+    /// Expose image infos for depth clouds - we need this for picking interaction.
+    pub depth_cloud_entities: IntMap<EntityPathHash, (ImageInfo, DepthMeter)>,
 }
 
 impl Default for DepthImageVisualizer {
     fn default() -> Self {
         Self {
             data: SpatialViewVisualizerData::new(Some(SpatialSpaceViewKind::TwoD)),
-            images: Vec::new(),
-            depth_cloud_entities: IntSet::default(),
+            pickable_rects: Vec::new(),
+            depth_cloud_entities: IntMap::default(),
         }
     }
 }
@@ -101,7 +103,8 @@ impl DepthImageVisualizer {
                                 cloud.world_space_bbox(),
                                 glam::Affine3A::IDENTITY,
                             );
-                            self.depth_cloud_entities.insert(entity_path.hash());
+                            self.depth_cloud_entities
+                                .insert(entity_path.hash(), (image, depth_meter));
                             depth_clouds.push(cloud);
                             return;
                         }
@@ -121,7 +124,7 @@ impl DepthImageVisualizer {
                 "DepthImage",
                 &mut self.data,
             ) {
-                self.images.push(PickableTexturedRect {
+                self.pickable_rects.push(PickableTexturedRect {
                     ent_path: entity_path.clone(),
                     textured_rect,
                     source_data: PickableRectSourceData::Image {
@@ -322,7 +325,7 @@ impl VisualizerSystem for DepthImageVisualizer {
         }
         // TODO(wumpf): Can we avoid this copy, maybe let DrawData take an iterator?
         let rectangles = self
-            .images
+            .pickable_rects
             .iter()
             .map(|image| image.textured_rect.clone())
             .collect_vec();

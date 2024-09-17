@@ -15,8 +15,8 @@ use re_types::{
 };
 use re_ui::{ContextExt as _, ModifiersMarkdown, MouseButtonMarkdown};
 use re_viewer_context::{
-    gpu_bridge, ItemSpaceContext, SpaceViewId, SpaceViewSystemExecutionError,
-    SystemExecutionOutput, ViewQuery, ViewerContext,
+    gpu_bridge, ItemSpaceContext, SpaceViewId, SpaceViewSystemExecutionError, ViewQuery,
+    ViewerContext,
 };
 use re_viewport_blueprint::ViewProperty;
 
@@ -155,15 +155,6 @@ impl SpatialSpaceView2D {
     ) -> Result<(), SpaceViewSystemExecutionError> {
         re_tracing::profile_function!();
 
-        let SystemExecutionOutput {
-            view_systems: parts,
-            context_systems: view_ctx,
-            draw_data,
-        } = system_output;
-
-        // Wrap view systems collection in an Arc for later use in ViewContext.
-        let parts = std::sync::Arc::new(parts);
-
         if ui.available_size().min_elem() <= 0.0 {
             return Ok(());
         }
@@ -205,7 +196,7 @@ impl SpatialSpaceView2D {
 
         // Create labels now since their shapes participate are added to scene.ui for picking.
         let (label_shapes, ui_rects) = create_labels(
-            collect_ui_labels(&parts),
+            collect_ui_labels(&system_output.view_systems),
             ui_from_scene,
             &eye,
             ui,
@@ -229,15 +220,14 @@ impl SpatialSpaceView2D {
                 eye,
                 &mut view_builder,
                 state,
-                &view_ctx,
-                &parts,
+                &system_output,
                 &ui_rects,
                 query,
                 SpatialSpaceViewKind::TwoD,
             )?;
         }
 
-        for draw_data in draw_data {
+        for draw_data in system_output.draw_data {
             view_builder.queue_draw(draw_data);
         }
 

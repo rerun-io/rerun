@@ -1,24 +1,20 @@
 #![allow(clippy::manual_map)] // Annoying
 
-use std::sync::Arc;
-
 use egui::{epaint::util::OrderedFloat, text::TextWrapping, NumExt, WidgetText};
-use itertools::chain;
-use re_math::BoundingBox;
 
 use re_data_ui::{
     item_ui, show_zoomed_image_region, show_zoomed_image_region_area_outline, DataUi,
 };
 use re_format::format_f32;
 use re_log_types::Instance;
+use re_math::BoundingBox;
 use re_renderer::OutlineConfig;
-use re_space_view::{latest_at_with_blueprint_resolved_data, ScreenshotMode};
+use re_space_view::ScreenshotMode;
 use re_types::{
     archetypes::Pinhole,
     blueprint::components::VisualBounds2D,
-    components::{Colormap, DepthMeter, ImageBuffer, ImageFormat, ViewCoordinates},
+    components::{DepthMeter, ViewCoordinates},
     image::ImageKind,
-    Loggable as _,
 };
 use re_ui::{
     list_item::{list_item_scope, PropertyContent},
@@ -26,10 +22,9 @@ use re_ui::{
 };
 use re_viewer_context::{
     HoverHighlight, ImageInfo, ImageStatsCache, Item, ItemSpaceContext, SelectionHighlight,
-    SpaceViewHighlights, SpaceViewState, SpaceViewSystemExecutionError, UiLayout, ViewContext,
-    ViewContextCollection, ViewQuery, ViewerContext, VisualizerCollection,
+    SpaceViewHighlights, SpaceViewState, SpaceViewSystemExecutionError, UiLayout, ViewQuery,
+    ViewerContext,
 };
-use re_viewport_blueprint::SpaceViewBlueprint;
 
 use crate::scene_bounding_boxes::SceneBoundingBoxes;
 use crate::{
@@ -106,12 +101,16 @@ impl SpatialSpaceViewState {
 
         let view_systems = &system_output.view_systems;
 
+        self.num_non_segmentation_images_last_frame += view_systems
+            .get::<EncodedImageVisualizer>()?
+            .pickable_rects
+            .len();
         self.num_non_segmentation_images_last_frame +=
-            view_systems.get::<EncodedImageVisualizer>()?.images.len();
-        self.num_non_segmentation_images_last_frame +=
-            view_systems.get::<ImageVisualizer>()?.images.len();
-        self.num_non_segmentation_images_last_frame +=
-            view_systems.get::<DepthImageVisualizer>()?.images.len();
+            view_systems.get::<ImageVisualizer>()?.pickable_rects.len();
+        self.num_non_segmentation_images_last_frame += view_systems
+            .get::<DepthImageVisualizer>()?
+            .pickable_rects
+            .len();
 
         Ok(())
     }
@@ -342,8 +341,7 @@ pub fn picking(
     eye: Eye,
     view_builder: &mut re_renderer::view_builder::ViewBuilder,
     state: &mut SpatialSpaceViewState,
-    view_ctx: &ViewContextCollection,
-    visualizers: &Arc<VisualizerCollection>,
+    system_output: &re_viewer_context::SystemExecutionOutput,
     ui_rects: &[PickableUiRect],
     query: &ViewQuery<'_>,
     spatial_kind: SpatialSpaceViewKind,
@@ -387,39 +385,34 @@ pub fn picking(
         ctx.app_options.show_picking_debug_overlay,
     );
 
-    let annotations = view_ctx.get::<AnnotationSceneContext>()?;
+    let annotations = system_output
+        .context_systems
+        .get::<AnnotationSceneContext>()?;
 
+    let visualizers = &system_output.view_systems;
     let depth_images = visualizers.get::<DepthImageVisualizer>()?;
     let images = visualizers.get::<ImageVisualizer>()?;
     let images_encoded = visualizers.get::<EncodedImageVisualizer>()?;
     let segmentation_images = visualizers.get::<SegmentationImageVisualizer>()?;
-    let image_picking_rects = itertools::chain!(
-        &depth_images.images,
-        &images.images,
-        &images_encoded.images,
-        &segmentation_images.images,
-    );
+    let iter_image_picking_rects = || {
+        itertools::chain!(
+            &depth_images.pickable_rects,
+            &images.pickable_rects,
+            &images_encoded.pickable_rects,
+            &segmentation_images.pickable_rects,
+        )
+    };
 
     let picking_result = picking_context.pick(
         render_ctx,
         query.space_view_id.gpu_readback_id(),
         &state.previous_picking_result,
-        image_picking_rects,
+        iter_image_picking_rects(),
         ui_rects,
     );
     state.previous_picking_result = Some(picking_result.clone());
 
     let mut hovered_items = Vec::new();
-
-    // TODO(andreas): Should defaults path be always created on the fly?
-    let defaults_path = SpaceViewBlueprint::defaults_path(query.space_view_id);
-    let view_ctx = ViewContext {
-        viewer_ctx: ctx,
-        view_id: query.space_view_id,
-        view_state: state,
-        defaults_path: &defaults_path,
-        visualizer_collection: visualizers.clone(),
-    };
 
     // Depth at pointer used for projecting rays from a hovered 2D view to corresponding 3D view(s).
     // TODO(#1818): Depth at pointer only works for depth images so far.
@@ -446,40 +439,45 @@ pub fn picking(
             continue;
         }
 
-        // Special hover ui for textured rectangles and depth-point clouds:
-        let is_depth_cloud = depth_images
+        // Special hover ui for depth-point clouds and textured rectangles.
+        let picked_image = if let Some((depth_image, depth_meter)) = depth_images
             .depth_cloud_entities
-            .contains(&instance_path.entity_path.hash());
+            .get(&instance_path.entity_path.hash())
+        {
+            let coordinates = hit
+                .instance_path_hash
+                .instance
+                .to_2d_image_coordinate(depth_image.width() as _);
+            Some(PickedImageInfo {
+                image: depth_image.clone(),
+                coordinates,
+                depth_meter: Some(*depth_meter),
+            })
+        } else if hit.hit_type == PickingHitType::TexturedRect {
+            iter_image_picking_rects()
+                .find(|i| i.ent_path == instance_path.entity_path)
+                .and_then(|picked_rect| {
+                    let coordinates = hit
+                        .instance_path_hash
+                        .instance
+                        .to_2d_image_coordinate(picked_rect.pixel_width());
 
-        let picked_image = if hit.hit_type == PickingHitType::TexturedRect || is_depth_cloud {
-            if let Some(picked) = chain!(
-                depth_images.images.iter(),
-                images.images.iter(),
-                images_encoded.images.iter(),
-                segmentation_images.images.iter(),
-            )
-            .find(|i| i.ent_path == instance_path.entity_path)
-            {
-                let coordinates = hit
-                    .instance_path_hash
-                    .instance
-                    .to_2d_image_coordinate(picked.pixel_width());
-
-                if let PickableRectSourceData::Image { image, depth_meter } = &picked.source_data {
-                    Some(PickedImageInfo {
-                        image: image.clone(),
-                        coordinates,
-                        depth_meter: *depth_meter,
-                    })
-                } else {
-                    None
-                }
-            } else {
-                picked_image_from_depth_image_query(&view_ctx, data_result, hit)
-            }
+                    if let PickableRectSourceData::Image { image, depth_meter } =
+                        &picked_rect.source_data
+                    {
+                        Some(PickedImageInfo {
+                            image: image.clone(),
+                            coordinates,
+                            depth_meter: *depth_meter,
+                        })
+                    } else {
+                        None
+                    }
+                })
         } else {
             None
         };
+
         if picked_image.is_some() {
             // We don't support selecting pixels yet.
             instance_path.instance = Instance::ALL;
@@ -583,57 +581,6 @@ pub fn picking(
     ctx.select_hovered_on_click(&response, hovered_items.into_iter());
 
     Ok(response)
-}
-
-fn picked_image_from_depth_image_query(
-    view_ctx: &ViewContext<'_>,
-    data_result: &re_viewer_context::DataResult,
-    hit: &crate::picking::PickingRayHit,
-) -> Option<PickedImageInfo> {
-    let query_shadowed_defaults = false;
-    let query = view_ctx.viewer_ctx.current_query();
-    let results = latest_at_with_blueprint_resolved_data(
-        view_ctx,
-        None,
-        &query,
-        data_result,
-        [
-            ImageBuffer::name(),
-            ImageFormat::name(),
-            Colormap::name(),
-            DepthMeter::name(),
-        ],
-        query_shadowed_defaults,
-    );
-
-    // TODO(andreas): Just calling `results.get_mono::<Blob>` would be a lot more elegant.
-    // However, we're in the rare case where we really want a RowId to be able to identify the tensor for caching purposes.
-    let blob_untyped = results.get(ImageBuffer::name())?;
-    let blob = blob_untyped.component_mono::<ImageBuffer>()?.ok()?.0;
-
-    let format = results.get_mono::<ImageFormat>()?;
-    let colormap = results.get_mono::<Colormap>()?;
-    let depth_meter = results.get_mono::<DepthMeter>();
-
-    let (_, blob_row_id) = blob_untyped.index(&query.timeline())?;
-    let coordinates = hit
-        .instance_path_hash
-        .instance
-        .to_2d_image_coordinate(format.width as _);
-
-    let image = ImageInfo {
-        buffer_row_id: blob_row_id,
-        buffer: blob,
-        format: format.0,
-        kind: ImageKind::Depth,
-        colormap: Some(colormap),
-    };
-
-    Some(PickedImageInfo {
-        image,
-        coordinates,
-        depth_meter,
-    })
 }
 
 struct PickedImageInfo {

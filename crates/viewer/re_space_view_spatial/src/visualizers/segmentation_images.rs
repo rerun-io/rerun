@@ -24,14 +24,14 @@ use super::SpatialViewVisualizerData;
 
 pub struct SegmentationImageVisualizer {
     pub data: SpatialViewVisualizerData,
-    pub images: Vec<PickableTexturedRect>,
+    pub pickable_rects: Vec<PickableTexturedRect>,
 }
 
 impl Default for SegmentationImageVisualizer {
     fn default() -> Self {
         Self {
             data: SpatialViewVisualizerData::new(Some(SpatialSpaceViewKind::TwoD)),
-            images: Vec::new(),
+            pickable_rects: Vec::new(),
         }
     }
 }
@@ -135,7 +135,7 @@ impl VisualizerSystem for SegmentationImageVisualizer {
                         "SegmentationImage",
                         &mut self.data,
                     ) {
-                        self.images.push(PickableTexturedRect {
+                        self.pickable_rects.push(PickableTexturedRect {
                             ent_path: entity_path.clone(),
                             textured_rect,
                             source_data: PickableRectSourceData::Image {
@@ -157,7 +157,7 @@ impl VisualizerSystem for SegmentationImageVisualizer {
         // visualizers are executed in the order of their identifiers.
         // -> The draw order is always DepthImage then Image then SegmentationImage,
         //    which happens to be exactly what we want 🙈
-        self.images.sort_by_key(|image| {
+        self.pickable_rects.sort_by_key(|image| {
             (
                 image.textured_rect.options.depth_offset,
                 egui::emath::OrderedFloat(image.textured_rect.options.multiplicative_tint.a()),
@@ -168,7 +168,7 @@ impl VisualizerSystem for SegmentationImageVisualizer {
 
         // TODO(wumpf): Can we avoid this copy, maybe let DrawData take an iterator?
         let rectangles = self
-            .images
+            .pickable_rects
             .iter()
             .map(|image| image.textured_rect.clone())
             .collect_vec();
