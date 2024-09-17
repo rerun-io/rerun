@@ -16,6 +16,13 @@ namespace rerun::components {
     struct EntityPath {
         rerun::datatypes::EntityPath value;
 
+      public: // START of extensions from entity_path_ext.cpp:
+        EntityPath(std::string_view path_) : value(std::string(path_)) {}
+
+        EntityPath(const char* path_) : value(std::string(path_)) {}
+
+        // END of extensions from entity_path_ext.cpp, start of generated code:
+
       public:
         EntityPath() = default;
 

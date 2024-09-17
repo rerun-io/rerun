@@ -1,7 +1,11 @@
 from __future__ import annotations
 
+from typing import Any, Union
+
 import numpy as np
 import numpy.typing as npt
+
+from rerun.error_utils import catch_and_log_exceptions
 
 from .. import components, datatypes
 
@@ -9,10 +13,39 @@ from .. import components, datatypes
 class VideoTimestampExt:
     """Extension for [VideoTimestamp][rerun.components.VideoTimestamp]."""
 
-    # Implementation note:
-    # We could add an init method that deals with seconds/milliseconds/nanoseconds etc.
-    # However, this would require _a lot_ of slow parameter validation on a per timestamp basis.
-    # When in actuallity, this data practically always comes in homogeneous batches.
+    def __init__(
+        self: Any,
+        *,
+        video_time: Union[int, None] = None,
+        time_mode: Union[datatypes.VideoTimeModeLike, None] = None,
+        seconds: Union[float, None] = None,
+    ):
+        """
+        Create a new instance of the VideoTimestamp component.
+
+        Parameters
+        ----------
+        video_time:
+            Timestamp value, type defined by `time_mode`.
+        time_mode:
+            How to interpret `video_time`.
+        seconds:
+            The timestamp in seconds since the start of the video.
+            Mutually exclusive with `video_time` and `time_mode`.
+
+        """
+
+        with catch_and_log_exceptions(context=self.__class__.__name__):
+            if seconds is not None:
+                if video_time is not None or time_mode is not None:
+                    raise ValueError("Cannot specify both `seconds` and `video_time`/`time_mode`.")
+                video_time = int(seconds * 1e9)
+                time_mode = datatypes.VideoTimeMode.Nanoseconds
+
+            self.__attrs_init__(video_time=video_time, time_mode=time_mode)
+            return
+
+        self.__attrs_clear__()
 
     @staticmethod
     def seconds(

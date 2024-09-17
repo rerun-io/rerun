@@ -63,18 +63,10 @@ impl Video {
     /// - `video/mp4`
     pub fn load(
         render_context: &RenderContext,
-        media_type: Option<&str>,
         data: &[u8],
+        media_type: Option<&str>,
     ) -> Result<Self, VideoError> {
-        let data = match media_type {
-            Some("video/mp4") => re_video::load_mp4(data)?,
-            Some(media_type) => {
-                return Err(VideoError::Load(VideoLoadError::UnsupportedMediaType(
-                    media_type.to_owned(),
-                )))
-            }
-            None => return Err(VideoError::Load(VideoLoadError::UnknownMediaType)),
-        };
+        let data = re_video::VideoData::load_from_bytes(data, media_type)?;
         let decoder = decoder::VideoDecoder::new(render_context, data)?;
 
         Ok(Self { decoder })

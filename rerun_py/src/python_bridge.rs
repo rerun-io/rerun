@@ -1,6 +1,6 @@
-#![allow(clippy::needless_pass_by_value)] // A lot of arguments to #[pufunction] need to be by value
-#![allow(clippy::borrow_deref_ref)] // False positive due to #[pufunction] macro
-#![allow(unsafe_op_in_unsafe_fn)] // False positive due to #[pufunction] macro
+#![allow(clippy::needless_pass_by_value)] // A lot of arguments to #[pyfunction] need to be by value
+#![allow(clippy::borrow_deref_ref)] // False positive due to #[pyfunction] macro
+#![allow(unsafe_op_in_unsafe_fn)] // False positive due to #[pyfunction] macro
 
 use std::collections::HashMap;
 use std::io::IsTerminal as _;
@@ -168,6 +168,9 @@ fn rerun_bindings(_py: Python<'_>, m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(start_web_viewer_server, m)?)?;
     m.add_function(wrap_pyfunction!(escape_entity_path_part, m)?)?;
     m.add_function(wrap_pyfunction!(new_entity_path, m)?)?;
+
+    use crate::video::asset_video_read_frame_timestamps_ns;
+    m.add_function(wrap_pyfunction!(asset_video_read_frame_timestamps_ns, m)?)?;
 
     Ok(())
 }

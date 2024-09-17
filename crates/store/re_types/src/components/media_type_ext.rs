@@ -46,6 +46,9 @@ impl MediaType {
     /// <https://www.iana.org/assignments/media-types/model/stl>
     pub const STL: &'static str = "model/stl";
 
+    // -------------------------------------------------------
+    /// Videos:
+
     /// [MP4 video](https://en.wikipedia.org/wiki/MP4_file_format): `video/mp4`.
     ///
     /// <https://www.iana.org/assignments/media-types/video/mp4>
@@ -106,6 +109,9 @@ impl MediaType {
     pub fn stl() -> Self {
         Self(Self::STL.into())
     }
+
+    // -------------------------------------------------------
+    // Video:
 
     /// `video/mp4`
     #[inline]
@@ -245,6 +251,7 @@ fn test_media_type_extension() {
     assert_eq!(MediaType::glb().file_extension(), Some("glb"));
     assert_eq!(MediaType::gltf().file_extension(), Some("gltf"));
     assert_eq!(MediaType::jpeg().file_extension(), Some("jpg"));
+    assert_eq!(MediaType::mp4().file_extension(), Some("mp4"));
     assert_eq!(MediaType::markdown().file_extension(), Some("md"));
     assert_eq!(MediaType::plain_text().file_extension(), Some("txt"));
     assert_eq!(MediaType::png().file_extension(), Some("png"));

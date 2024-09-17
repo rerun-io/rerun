@@ -10,6 +10,7 @@ mod component_type_registry;
 mod error;
 mod ptr;
 mod recording_streams;
+mod video;
 
 use std::{
     collections::BTreeMap,
@@ -285,6 +286,9 @@ pub enum CErrorCode {
     _CategoryArrow = 0x0000_1000,
     ArrowFfiSchemaImportError,
     ArrowFfiArrayImportError,
+
+    _CategoryUtilities = 0x0001_0000,
+    VideoLoadError,
 
     Unknown = 0xFFFF_FFFF,
 }

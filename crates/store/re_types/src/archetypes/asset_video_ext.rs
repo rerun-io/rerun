@@ -38,4 +38,17 @@ impl AssetVideo {
             media_type,
         }
     }
+
+    /// Determines the presentation timestamps of all frames inside the video.
+    ///
+    /// Returned timestamps are in nanoseconds since start and are guaranteed to be monotonically increasing.
+    #[cfg(feature = "video")]
+    pub fn read_frame_timestamps_ns(&self) -> Result<Vec<i64>, re_video::VideoLoadError> {
+        Ok(re_video::VideoData::load_from_bytes(
+            self.blob.as_slice(),
+            self.media_type.as_ref().map(|m| m.as_str()),
+        )?
+        .frame_timestamps_ns()
+        .collect())
+    }
 }
