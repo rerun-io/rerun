@@ -73,6 +73,6 @@ on [Entities and Components](../../concepts/entity-component.md).
 * [`TriangleIndices`](components/triangle_indices.md): The three indices of a triangle in a triangle mesh.
 * [`Vector2D`](components/vector2d.md): A vector in 2D space.
 * [`Vector3D`](components/vector3d.md): A vector in 3D space.
-* [`VideoTimestamp`](components/video_timestamp.md): Timestamp inside a [`archetypes.AssetVideo`](https://rerun.io/docs/reference/types/archetypes/asset_video).
+* [`VideoTimestamp`](components/video_timestamp.md): Timestamp inside a [`archetypes.AssetVideo`](https://rerun.io/docs/reference/types/archetypes/asset_video?speculative-link).
 * [`ViewCoordinates`](components/view_coordinates.md): How we interpret the coordinate system of an entity/space.
 

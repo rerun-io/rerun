@@ -36,7 +36,7 @@ re_viewport_blueprint.workspace = true
 
 anyhow.workspace = true
 egui_extras.workspace = true
-egui_table = { git = "https://github.com/rerun-io/egui_table.git", rev = "0f594701d528c4a9553521cb941de1886549dc70" } # main as of 2024-09-09
+egui_table = { git = "https://github.com/rerun-io/egui_table.git", rev = "c76473b244f03a7c67fbbbff9def6fc86c1ca4ea" } # main as of 2024-09-13
 egui.workspace = true
 itertools.workspace = true
 thiserror.workspace = true

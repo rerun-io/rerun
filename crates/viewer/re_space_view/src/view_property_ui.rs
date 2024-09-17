@@ -72,7 +72,6 @@ fn view_property_ui_impl(
             ui,
             field.component_name,
             reflection.display_name,
-            name,
             field,
             &blueprint_path,
             component_results.component_row_id(&field.component_name),
@@ -90,7 +89,6 @@ fn view_property_ui_impl(
                     ui,
                     field.component_name,
                     display_name,
-                    name,
                     field,
                     &blueprint_path,
                     component_results.component_row_id(&field.component_name),
@@ -119,7 +117,6 @@ fn view_property_component_ui(
     ui: &mut egui::Ui,
     component_name: ComponentName,
     root_item_display_name: &str,
-    archetype_name: ArchetypeName,
     field: &ArchetypeFieldReflection,
     blueprint_path: &re_log_types::EntityPath,
     row_id: Option<RowId>,
@@ -173,8 +170,7 @@ fn view_property_component_ui(
     };
 
     list_item_response.on_hover_ui(|ui| {
-        let id = egui::Id::new((archetype_name, field.display_name));
-        ui.markdown_ui(id, field.docstring_md);
+        ui.markdown_ui(field.docstring_md);
     });
 }
 

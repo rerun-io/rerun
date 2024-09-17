@@ -934,7 +934,7 @@ pub trait UiExt {
     }
 
     /// Show some markdown
-    fn markdown_ui(&mut self, id: egui::Id, markdown: &str) {
+    fn markdown_ui(&mut self, markdown: &str) {
         use parking_lot::Mutex;
         use std::sync::Arc;
 
@@ -946,7 +946,7 @@ pub trait UiExt {
             .clone()
         });
 
-        egui_commonmark::CommonMarkViewer::new(id).show(ui, &mut commonmark_cache.lock(), markdown);
+        egui_commonmark::CommonMarkViewer::new().show(ui, &mut commonmark_cache.lock(), markdown);
     }
 
     /// A drop-down menu with a list of options.
