@@ -27,7 +27,7 @@ namespace rerun {
         /// Construct a result from an error, default constructing the value.
         Result(rerun::Error _error) : value(), error(std::move(_error)) {}
 
-        /// Construct a result from an arrow setatus, default constructing the value.
+        /// Construct a result from an arrow status, default constructing the value.
         Result(const arrow::Status& status) : value(), error(status) {}
 
         /// Construct a result from an arrow status, default constructing the value.
