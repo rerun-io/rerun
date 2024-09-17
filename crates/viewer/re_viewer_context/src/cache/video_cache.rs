@@ -1,10 +1,10 @@
 use crate::Cache;
-use re_entity_db::VersionedInstancePathHash;
+use re_chunk::RowId;
+use re_log_types::hash::Hash64;
 use re_renderer::{
     video::{Video, VideoError},
     RenderContext,
 };
-use re_types::components::MediaType;
 
 use egui::mutex::Mutex;
 
@@ -15,12 +15,6 @@ use std::sync::{
 
 // ----------------------------------------------------------------------------
 
-#[derive(Debug, PartialEq, Eq, Hash, Clone)]
-pub struct VideoCacheKey {
-    pub versioned_instance_path_hash: VersionedInstancePathHash,
-    pub media_type: Option<MediaType>,
-}
-
 struct Entry {
     used_this_frame: AtomicBool,
 
@@ -30,22 +24,29 @@ struct Entry {
 
 /// Caches meshes based on their [`VideoCacheKey`].
 #[derive(Default)]
-pub struct VideoCache(ahash::HashMap<VideoCacheKey, Entry>);
+pub struct VideoCache(ahash::HashMap<Hash64, Entry>);
 
 impl VideoCache {
+    /// Read in some video data and cache the result.
+    ///
+    /// The `row_id` should be the `RowId` of the blob.
+    /// NOTE: videos are never batched atm (they are mono-archetypes),
+    /// so we don't need the instance id here.
+    ///
+    /// TODO(andreas,jan): This effectively takes a full copy of the video data.
+    /// We should avoid this as much as possible, having pointers back to the raw
     pub fn entry(
         &mut self,
-        name: &str,
-        key: VideoCacheKey,
+        row_id: RowId,
         video_data: &[u8],
         media_type: Option<&str>,
         render_ctx: &RenderContext,
     ) -> Arc<Result<Mutex<Video>, VideoError>> {
         re_tracing::profile_function!();
 
-        let entry = self.0.entry(key).or_insert_with(|| {
-            re_log::debug!("Loading video {name:?}…");
+        let key = Hash64::hash((row_id, media_type));
 
+        let entry = self.0.entry(key).or_insert_with(|| {
             let video = Video::load(render_ctx, video_data, media_type);
             Entry {
                 used_this_frame: AtomicBool::new(true),

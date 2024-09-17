@@ -18,4 +18,4 @@ pub use caches::{Cache, Caches};
 pub use image_decode_cache::ImageDecodeCache;
 pub use image_stats_cache::ImageStatsCache;
 pub use tensor_stats_cache::TensorStatsCache;
-pub use video_cache::{VideoCache, VideoCacheKey};
+pub use video_cache::VideoCache;

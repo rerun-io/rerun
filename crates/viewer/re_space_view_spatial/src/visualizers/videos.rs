@@ -18,8 +18,8 @@ use re_types::{
 };
 use re_viewer_context::{
     ApplicableEntities, IdentifiedViewSystem, SpaceViewClass as _, SpaceViewSystemExecutionError,
-    VideoCache, VideoCacheKey, ViewContext, ViewContextCollection, ViewQuery, ViewerContext,
-    VisualizableEntities, VisualizableFilterContext, VisualizerQueryInfo, VisualizerSystem,
+    VideoCache, ViewContext, ViewContextCollection, ViewQuery, ViewerContext, VisualizableEntities,
+    VisualizableFilterContext, VisualizerQueryInfo, VisualizerSystem,
 };
 
 use crate::{
@@ -377,14 +377,7 @@ fn latest_at_query_video_from_datastore(
 
     Some(ctx.cache.entry(|c: &mut VideoCache| {
         c.entry(
-            &entity_path.to_string(),
-            VideoCacheKey {
-                versioned_instance_path_hash: re_entity_db::InstancePathHash::entity_all(
-                    entity_path,
-                )
-                .versioned(blob_row_id),
-                media_type: media_type.clone(),
-            },
+            blob_row_id,
             &blob,
             media_type.as_ref().map(|m| m.as_str()),
             render_ctx,

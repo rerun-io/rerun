@@ -1,10 +1,9 @@
 use re_chunk::RowId;
+use re_log_types::hash::Hash64;
 use re_types::{
     archetypes::Image,
     image::{ImageKind, ImageLoadError},
 };
-
-use egui::util::hash;
 
 use crate::{Cache, ImageInfo};
 
@@ -22,7 +21,7 @@ struct DecodedImageResult {
 /// Caches the results of decoding [`re_types::archetypes::EncodedImage`].
 #[derive(Default)]
 pub struct ImageDecodeCache {
-    cache: ahash::HashMap<u64, DecodedImageResult>,
+    cache: ahash::HashMap<Hash64, DecodedImageResult>,
     memory_used: u64,
     generation: u64,
 }
@@ -42,7 +41,7 @@ impl ImageDecodeCache {
     ) -> Result<ImageInfo, ImageLoadError> {
         re_tracing::profile_function!();
 
-        let key = hash((row_id, media_type));
+        let key = Hash64::hash((row_id, media_type));
 
         let lookup = self.cache.entry(key).or_insert_with(|| {
             let result = decode_image(row_id, image_bytes, media_type);

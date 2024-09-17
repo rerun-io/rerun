@@ -40,9 +40,7 @@ pub use annotations::{
 pub use app_options::AppOptions;
 pub use blueprint_helpers::{blueprint_timeline, blueprint_timepoint_for_writes};
 pub use blueprint_id::{BlueprintId, BlueprintIdRegistry, ContainerId, SpaceViewId};
-pub use cache::{
-    Cache, Caches, ImageDecodeCache, ImageStatsCache, TensorStatsCache, VideoCache, VideoCacheKey,
-};
+pub use cache::{Cache, Caches, ImageDecodeCache, ImageStatsCache, TensorStatsCache, VideoCache};
 pub use collapsed_id::{CollapseItem, CollapseScope, CollapsedId};
 pub use command_sender::{
     command_channel, CommandReceiver, CommandSender, SystemCommand, SystemCommandSender,
