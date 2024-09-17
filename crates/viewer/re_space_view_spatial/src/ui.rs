@@ -31,7 +31,6 @@ use re_viewer_context::{
 };
 use re_viewport_blueprint::SpaceViewBlueprint;
 
-use crate::eye::EyeMode;
 use crate::scene_bounding_boxes::SceneBoundingBoxes;
 use crate::{
     contexts::AnnotationSceneContext,
@@ -42,6 +41,7 @@ use crate::{
         SegmentationImageVisualizer, UiLabel, UiLabelTarget,
     },
 };
+use crate::{eye::EyeMode, pickable_textured_rect::PickableRectSourceData};
 
 use super::{eye::Eye, ui_3d::View3DState};
 
@@ -446,7 +446,7 @@ pub fn picking(
             continue;
         }
 
-        // Special hover ui for images and point clouds:
+        // Special hover ui for textured rectangles and depth-point clouds:
         let is_depth_cloud = depth_images
             .depth_cloud_entities
             .contains(&instance_path.entity_path.hash());
@@ -460,17 +460,20 @@ pub fn picking(
             )
             .find(|i| i.ent_path == instance_path.entity_path)
             {
-                // An actual image was picked.
                 let coordinates = hit
                     .instance_path_hash
                     .instance
-                    .to_2d_image_coordinate(picked.width());
+                    .to_2d_image_coordinate(picked.pixel_width());
 
-                Some(PickedImageInfo {
-                    image: picked.image.clone(),
-                    coordinates,
-                    depth_meter: picked.depth_meter,
-                })
+                if let PickableRectSourceData::Image { image, depth_meter } = &picked.source_data {
+                    Some(PickedImageInfo {
+                        image: image.clone(),
+                        coordinates,
+                        depth_meter: *depth_meter,
+                    })
+                } else {
+                    None
+                }
             } else {
                 picked_image_from_depth_image_query(&view_ctx, data_result, hit)
             }

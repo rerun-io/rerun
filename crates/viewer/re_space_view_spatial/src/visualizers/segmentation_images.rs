@@ -17,14 +17,14 @@ use crate::{
     ui::SpatialSpaceViewState,
     view_kind::SpatialSpaceViewKind,
     visualizers::{filter_visualizable_2d_entities, textured_rect_from_image},
-    PickableImageRect,
+    PickableRectSourceData, PickableTexturedRect,
 };
 
 use super::SpatialViewVisualizerData;
 
 pub struct SegmentationImageVisualizer {
     pub data: SpatialViewVisualizerData,
-    pub images: Vec<PickableImageRect>,
+    pub images: Vec<PickableTexturedRect>,
 }
 
 impl Default for SegmentationImageVisualizer {
@@ -135,11 +135,13 @@ impl VisualizerSystem for SegmentationImageVisualizer {
                         "SegmentationImage",
                         &mut self.data,
                     ) {
-                        self.images.push(PickableImageRect {
+                        self.images.push(PickableTexturedRect {
                             ent_path: entity_path.clone(),
-                            image,
                             textured_rect,
-                            depth_meter: None,
+                            source_data: PickableRectSourceData::Image {
+                                image,
+                                depth_meter: None,
+                            },
                         });
                     }
                 }

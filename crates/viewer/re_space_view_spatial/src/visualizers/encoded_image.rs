@@ -17,14 +17,14 @@ use crate::{
     contexts::SpatialSceneEntityContext,
     view_kind::SpatialSpaceViewKind,
     visualizers::{filter_visualizable_2d_entities, textured_rect_from_image},
-    PickableImageRect,
+    PickableRectSourceData, PickableTexturedRect,
 };
 
 use super::{entity_iterator::process_archetype, SpatialViewVisualizerData};
 
 pub struct EncodedImageVisualizer {
     pub data: SpatialViewVisualizerData,
-    pub images: Vec<PickableImageRect>,
+    pub images: Vec<PickableTexturedRect>,
 }
 
 impl Default for EncodedImageVisualizer {
@@ -208,11 +208,13 @@ impl EncodedImageVisualizer {
                 "EncodedImage",
                 &mut self.data,
             ) {
-                self.images.push(PickableImageRect {
+                self.images.push(PickableTexturedRect {
                     ent_path: entity_path.clone(),
-                    image,
                     textured_rect,
-                    depth_meter: None,
+                    source_data: PickableRectSourceData::Image {
+                        image,
+                        depth_meter: None,
+                    },
                 });
             }
         }

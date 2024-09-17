@@ -12,7 +12,7 @@ mod instance_hash_conversions;
 mod max_image_dimension_subscriber;
 mod mesh_cache;
 mod mesh_loader;
-mod pickable_image;
+mod pickable_textured_rect;
 mod picking;
 mod proc_mesh;
 mod scene_bounding_boxes;
@@ -31,7 +31,7 @@ mod visualizers;
 pub use view_2d::SpatialSpaceView2D;
 pub use view_3d::SpatialSpaceView3D;
 
-pub(crate) use pickable_image::PickableImageRect;
+pub(crate) use pickable_textured_rect::{PickableRectSourceData, PickableTexturedRect};
 
 // ---
 

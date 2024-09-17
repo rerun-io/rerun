@@ -18,14 +18,14 @@ use crate::{
     contexts::SpatialSceneEntityContext,
     view_kind::SpatialSpaceViewKind,
     visualizers::{filter_visualizable_2d_entities, textured_rect_from_image},
-    PickableImageRect,
+    PickableTexturedRect, PickableRectSourceData,
 };
 
 use super::{entity_iterator::process_archetype, SpatialViewVisualizerData};
 
 pub struct ImageVisualizer {
     pub data: SpatialViewVisualizerData,
-    pub images: Vec<PickableImageRect>,
+    pub images: Vec<PickableTexturedRect>,
 }
 
 impl Default for ImageVisualizer {
@@ -189,11 +189,13 @@ impl ImageVisualizer {
                 "Image",
                 &mut self.data,
             ) {
-                self.images.push(PickableImageRect {
+                self.images.push(PickableTexturedRect {
                     ent_path: entity_path.clone(),
-                    image,
                     textured_rect,
-                    depth_meter: None,
+                    source_data: PickableRectSourceData::Image {
+                        image,
+                        depth_meter: None,
+                    },
                 });
             }
         }

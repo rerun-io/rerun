@@ -24,14 +24,14 @@ use crate::{
     query_pinhole_legacy,
     view_kind::SpatialSpaceViewKind,
     visualizers::{filter_visualizable_2d_entities, SIZE_BOOST_IN_POINTS_FOR_POINT_OUTLINES},
-    PickableImageRect, SpatialSpaceView3D,
+    PickableRectSourceData, PickableTexturedRect, SpatialSpaceView3D,
 };
 
 use super::{textured_rect_from_image, SpatialViewVisualizerData};
 
 pub struct DepthImageVisualizer {
     pub data: SpatialViewVisualizerData,
-    pub images: Vec<PickableImageRect>,
+    pub images: Vec<PickableTexturedRect>,
     pub depth_cloud_entities: IntSet<EntityPathHash>,
 }
 
@@ -121,11 +121,13 @@ impl DepthImageVisualizer {
                 "DepthImage",
                 &mut self.data,
             ) {
-                self.images.push(PickableImageRect {
+                self.images.push(PickableTexturedRect {
                     ent_path: entity_path.clone(),
-                    image,
                     textured_rect,
-                    depth_meter: Some(depth_meter),
+                    source_data: PickableRectSourceData::Image {
+                        image,
+                        depth_meter: Some(depth_meter),
+                    },
                 });
             }
         }
