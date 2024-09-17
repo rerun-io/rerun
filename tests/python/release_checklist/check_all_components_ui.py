@@ -218,7 +218,7 @@ ALL_COMPONENTS: dict[str, TestCase] = {
     "TriangleIndicesBatch": TestCase(batch=[(0, 1, 2), (3, 4, 5), (6, 7, 8)]),
     "Vector2DBatch": TestCase(batch=[(0, 1), (2, 3), (4, 5)]),
     "Vector3DBatch": TestCase(batch=[(0, 3, 4), (1, 4, 5), (2, 5, 6)]),
-    "VideoTimestampBatch": TestCase(rr.components.VideoTimestamp(0, rr.datatypes.VideoTimeMode.Nanoseconds)),
+    "VideoTimestampBatch": TestCase(rr.components.VideoTimestamp(seconds=0.0)),
     "ViewCoordinatesBatch": TestCase(rr.components.ViewCoordinates.LBD),
     "VisualizerOverridesBatch": TestCase(disabled=True),  # no Python-based serialization
 }

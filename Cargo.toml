@@ -514,12 +514,12 @@ missing_errors_doc = "allow"
 # As a last resport, patch with a commit to our own repository.
 # ALWAYS document what PR the commit hash is part of, or when it was merged into the upstream trunk.
 
-ecolor = { git = "https://github.com/emilk/egui.git", rev = "89da356b79f7c7e11ac225e0f7c81ff953169db6" }      # egui master 2024-09-16
-eframe = { git = "https://github.com/emilk/egui.git", rev = "89da356b79f7c7e11ac225e0f7c81ff953169db6" }      # egui master 2024-09-16
-egui = { git = "https://github.com/emilk/egui.git", rev = "89da356b79f7c7e11ac225e0f7c81ff953169db6" }        # egui master 2024-09-16
-egui_extras = { git = "https://github.com/emilk/egui.git", rev = "89da356b79f7c7e11ac225e0f7c81ff953169db6" } # egui master 2024-09-16
-egui-wgpu = { git = "https://github.com/emilk/egui.git", rev = "89da356b79f7c7e11ac225e0f7c81ff953169db6" }   # egui master 2024-09-16
-emath = { git = "https://github.com/emilk/egui.git", rev = "89da356b79f7c7e11ac225e0f7c81ff953169db6" }       # egui master 2024-09-16
+ecolor = { git = "https://github.com/emilk/egui.git", rev = "1191d9fa86bcb33b57b264b0105f986005f6a6c6" }      # egui master 2024-09-17
+eframe = { git = "https://github.com/emilk/egui.git", rev = "1191d9fa86bcb33b57b264b0105f986005f6a6c6" }      # egui master 2024-09-17
+egui = { git = "https://github.com/emilk/egui.git", rev = "1191d9fa86bcb33b57b264b0105f986005f6a6c6" }        # egui master 2024-09-17
+egui_extras = { git = "https://github.com/emilk/egui.git", rev = "1191d9fa86bcb33b57b264b0105f986005f6a6c6" } # egui master 2024-09-17
+egui-wgpu = { git = "https://github.com/emilk/egui.git", rev = "1191d9fa86bcb33b57b264b0105f986005f6a6c6" }   # egui master 2024-09-17
+emath = { git = "https://github.com/emilk/egui.git", rev = "1191d9fa86bcb33b57b264b0105f986005f6a6c6" }       # egui master 2024-09-17
 
 # Useful while developing:
 # ecolor = { path = "../../egui/crates/ecolor" }

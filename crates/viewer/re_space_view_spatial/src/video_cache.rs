@@ -41,14 +41,14 @@ impl VideoCache {
         let entry = self.0.entry(key).or_insert_with(|| {
             re_log::debug!("Loading video {name:?}…");
 
-            let result = Video::load(render_ctx, media_type, video_data);
-            let video = match result {
+            let video = match Video::load(render_ctx, video_data, media_type) {
                 Ok(video) => Some(Arc::new(Mutex::new(video))),
                 Err(err) => {
                     re_log::warn_once!("Failed to load video {name:?}: {err}");
                     None
                 }
             };
+
             Entry {
                 used_this_frame: AtomicBool::new(false),
                 video,

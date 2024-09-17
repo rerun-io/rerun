@@ -1,6 +1,6 @@
 use itertools::Itertools as _;
 
-use re_space_view::HybridResults;
+use re_space_view::{diff_component_filter, HybridResults};
 use re_types::{
     archetypes::EncodedImage,
     components::{Blob, DrawOrder, MediaType, Opacity},
@@ -10,7 +10,7 @@ use re_viewer_context::{
     ApplicableEntities, IdentifiedViewSystem, ImageDecodeCache, QueryContext,
     SpaceViewSystemExecutionError, TypedComponentFallbackProvider, ViewContext,
     ViewContextCollection, ViewQuery, VisualizableEntities, VisualizableFilterContext,
-    VisualizerQueryInfo, VisualizerSystem,
+    VisualizerAdditionalApplicabilityFilter, VisualizerQueryInfo, VisualizerSystem,
 };
 
 use crate::{
@@ -42,9 +42,30 @@ impl IdentifiedViewSystem for EncodedImageVisualizer {
     }
 }
 
+struct ImageMediaTypeFilter;
+
+impl VisualizerAdditionalApplicabilityFilter for ImageMediaTypeFilter {
+    /// Marks entities only as applicable for `EncodedImage` if they have an image media type.
+    ///
+    /// Otherwise the image encoder might be suggested for other blobs like video.
+    fn update_applicability(&mut self, event: &re_chunk_store::ChunkStoreEvent) -> bool {
+        diff_component_filter(event, |media_type: &re_types::components::MediaType| {
+            media_type.is_image()
+        }) || diff_component_filter(event, |image: &re_types::components::Blob| {
+            MediaType::guess_from_data(&image.0).map_or(false, |media| media.is_image())
+        })
+    }
+}
+
 impl VisualizerSystem for EncodedImageVisualizer {
     fn visualizer_query_info(&self) -> VisualizerQueryInfo {
         VisualizerQueryInfo::from_archetype::<EncodedImage>()
+    }
+
+    fn applicability_filter(
+        &self,
+    ) -> Option<Box<dyn re_viewer_context::VisualizerAdditionalApplicabilityFilter>> {
+        Some(Box::new(ImageMediaTypeFilter))
     }
 
     fn filter_visualizable_entities(

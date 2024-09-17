@@ -40,7 +40,7 @@ pub fn edit_f32_float_raw_impl(
         let speed = (value.abs() * 0.01).at_least(0.001);
         ui.add(
             egui::DragValue::new(value)
-                .clamp_to_range(false)
+                .clamp_existing_to_range(false)
                 .range(range)
                 .speed(speed),
         )
@@ -67,7 +67,7 @@ fn edit_f32_zero_to_one_raw(ui: &mut egui::Ui, value: &mut MaybeMutRef<'_, f32>)
     if let Some(value) = value.as_mut() {
         ui.add(
             egui::DragValue::new(value)
-                .clamp_to_range(false)
+                .clamp_existing_to_range(false)
                 .range(0.0..=1.0)
                 .speed(0.005)
                 .fixed_decimals(2),

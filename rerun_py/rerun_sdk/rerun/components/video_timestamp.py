@@ -23,7 +23,7 @@ class VideoTimestamp(VideoTimestampExt, datatypes.VideoTimestamp, ComponentMixin
     """
 
     _BATCH_TYPE = None
-    # You can define your own __init__ function as a member of VideoTimestampExt in video_timestamp_ext.py
+    # __init__ can be found in video_timestamp_ext.py
 
     # Note: there are no fields here because VideoTimestamp delegates to datatypes.VideoTimestamp
     pass

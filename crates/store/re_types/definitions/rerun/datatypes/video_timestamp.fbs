@@ -1,7 +1,9 @@
 namespace rerun.datatypes;
 
 /// Specifies how to interpret the `video_time` field of a [datatypes.VideoTimestamp].
-enum VideoTimeMode: ubyte{
+enum VideoTimeMode: ubyte (
+  "attr.docs.unreleased"
+) {
     /// Invalid value. Won't show up in generated types.
     Invalid = 0,
 
@@ -13,6 +15,7 @@ enum VideoTimeMode: ubyte{
 
 /// Timestamp inside a [archetypes.AssetVideo].
 struct VideoTimestamp (
+  "attr.docs.unreleased",
   "attr.rust.derive": "Copy, PartialEq, Eq",
   "attr.rerun.experimental"
 ) {

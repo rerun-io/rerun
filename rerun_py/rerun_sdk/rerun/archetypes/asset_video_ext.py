@@ -3,6 +3,10 @@ from __future__ import annotations
 import pathlib
 from typing import Any
 
+import numpy as np
+import numpy.typing as npt
+import rerun_bindings as bindings
+
 from .. import datatypes
 from ..error_utils import catch_and_log_exceptions
 
@@ -59,3 +63,19 @@ class AssetVideoExt:
             return
 
         self.__attrs_clear__()
+
+    def read_frame_timestamps_ns(self: Any) -> npt.NDArray[np.int64]:
+        """
+        Determines the presentation timestamps of all frames inside the video.
+
+        Throws a runtime exception if the video cannot be read.
+        """
+        if self.blob is not None:
+            video_buffer = self.blob.as_arrow_array()
+        else:
+            raise RuntimeError("Asset video has no video buffer")
+
+        if self.media_type is not None:
+            media_type = self.media_type.as_arrow_array().storage[0].as_py()
+
+        return np.array(bindings.asset_video_read_frame_timestamps_ns(video_buffer, media_type), dtype=np.int64)
