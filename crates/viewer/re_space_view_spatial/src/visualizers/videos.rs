@@ -18,13 +18,12 @@ use re_types::{
 };
 use re_viewer_context::{
     ApplicableEntities, IdentifiedViewSystem, SpaceViewClass as _, SpaceViewSystemExecutionError,
-    ViewContext, ViewContextCollection, ViewQuery, ViewerContext, VisualizableEntities,
-    VisualizableFilterContext, VisualizerQueryInfo, VisualizerSystem,
+    VideoCache, VideoCacheKey, ViewContext, ViewContextCollection, ViewQuery, ViewerContext,
+    VisualizableEntities, VisualizableFilterContext, VisualizerQueryInfo, VisualizerSystem,
 };
 
 use crate::{
     contexts::SpatialSceneEntityContext,
-    video_cache::{VideoCache, VideoCacheKey},
     view_kind::SpatialSpaceViewKind,
     visualizers::{entity_iterator, filter_visualizable_2d_entities},
     SpatialSpaceView2D,

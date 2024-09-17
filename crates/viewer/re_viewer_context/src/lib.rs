@@ -6,7 +6,7 @@ mod annotations;
 mod app_options;
 mod blueprint_helpers;
 mod blueprint_id;
-mod caches;
+mod cache;
 mod collapsed_id;
 mod command_sender;
 mod component_fallbacks;
@@ -40,7 +40,9 @@ pub use annotations::{
 pub use app_options::AppOptions;
 pub use blueprint_helpers::{blueprint_timeline, blueprint_timepoint_for_writes};
 pub use blueprint_id::{BlueprintId, BlueprintIdRegistry, ContainerId, SpaceViewId};
-pub use caches::{Cache, Caches};
+pub use cache::{
+    Cache, Caches, ImageDecodeCache, ImageStatsCache, TensorStatsCache, VideoCache, VideoCacheKey,
+};
 pub use collapsed_id::{CollapseItem, CollapseScope, CollapsedId};
 pub use command_sender::{
     command_channel, CommandReceiver, CommandSender, SystemCommand, SystemCommandSender,
@@ -76,7 +78,7 @@ pub use space_view::{
 };
 pub use store_context::StoreContext;
 pub use store_hub::StoreHub;
-pub use tensor::{ImageDecodeCache, ImageStats, ImageStatsCache, TensorStats, TensorStatsCache};
+pub use tensor::{ImageStats, TensorStats};
 pub use time_control::{Looping, PlayState, TimeControl, TimeView};
 pub use time_drag_value::TimeDragValue;
 pub use typed_entity_collections::{
