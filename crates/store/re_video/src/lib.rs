@@ -1,6 +1,7 @@
 //! Video decoding library.
 //!
-//! The entry point is [`load_mp4`], which produces an instance of [`VideoData`].
+//! The entry point is [`VideoData::load_from_bytes`]
+//! which produces an instance of [`VideoData`] from any supported video container.
 
 mod mp4;
 
