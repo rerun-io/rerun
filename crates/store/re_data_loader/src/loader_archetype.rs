@@ -169,45 +169,6 @@ fn load_image(
     Ok(rows.into_iter())
 }
 
-#[derive(Clone, Copy)]
-struct ExperimentalFeature;
-
-impl re_types::AsComponents for ExperimentalFeature {
-    fn as_component_batches(&self) -> Vec<re_types::MaybeOwnedComponentBatch<'_>> {
-        vec![re_types::NamedIndicatorComponent("ExperimentalFeature".into()).to_batch()]
-    }
-}
-
-impl re_types::Loggable for ExperimentalFeature {
-    type Name = re_types::ComponentName;
-
-    fn name() -> Self::Name {
-        "rerun.components.ExperimentalFeature".into()
-    }
-
-    fn arrow_datatype() -> re_chunk::external::arrow2::datatypes::DataType {
-        re_types::datatypes::Utf8::arrow_datatype()
-    }
-
-    fn to_arrow_opt<'a>(
-        data: impl IntoIterator<Item = Option<impl Into<std::borrow::Cow<'a, Self>>>>,
-    ) -> re_types::SerializationResult<Box<dyn re_chunk::external::arrow2::array::Array>>
-    where
-        Self: 'a,
-    {
-        re_types::datatypes::Utf8::to_arrow_opt(
-            data.into_iter()
-                .map(|datum| datum.map(|_| re_types::datatypes::Utf8("This is an experimental feature that is under active development and not ready for production!".into()))),
-        )
-    }
-}
-
-impl re_types::SizeBytes for ExperimentalFeature {
-    fn heap_size_bytes(&self) -> u64 {
-        0
-    }
-}
-
 fn load_video(
     filepath: &std::path::Path,
     mut timepoint: TimePoint,
@@ -273,7 +234,6 @@ fn load_video(
     // Put video asset into its own chunk since it can be fairly large.
     let video_asset_chunk = Chunk::builder(entity_path.clone())
         .with_archetype(RowId::new(), timepoint.clone(), &video_asset)
-        .with_component_batch(RowId::new(), timepoint.clone(), &ExperimentalFeature)
         .build()?;
 
     if let Some(video_frame_reference_chunk) = video_frame_reference_chunk {
