@@ -6,8 +6,6 @@ use re_renderer::{
     RenderContext,
 };
 
-use egui::mutex::Mutex;
-
 use std::sync::{
     atomic::{AtomicBool, Ordering},
     Arc,
@@ -19,7 +17,7 @@ struct Entry {
     used_this_frame: AtomicBool,
 
     /// Keeps failed loads around, so we can don't try again and again.
-    video: Arc<Result<Mutex<Video>, VideoError>>,
+    video: Arc<Result<Video, VideoError>>,
 }
 
 /// Caches meshes based on their [`VideoCacheKey`].
@@ -41,7 +39,7 @@ impl VideoCache {
         video_data: &[u8],
         media_type: Option<&str>,
         render_ctx: &RenderContext,
-    ) -> Arc<Result<Mutex<Video>, VideoError>> {
+    ) -> Arc<Result<Video, VideoError>> {
         re_tracing::profile_function!();
 
         let key = Hash64::hash((row_id, media_type));
@@ -50,7 +48,7 @@ impl VideoCache {
             let video = Video::load(render_ctx, video_data, media_type);
             Entry {
                 used_this_frame: AtomicBool::new(true),
-                video: Arc::new(video.map(Mutex::new)),
+                video: Arc::new(video),
             }
         });
 

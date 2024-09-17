@@ -118,18 +118,6 @@ impl VideoDecoder {
         })
     }
 
-    pub fn duration_ms(&self) -> f64 {
-        self.data.duration.as_f64()
-    }
-
-    pub fn width(&self) -> u32 {
-        self.data.config.coded_width as u32
-    }
-
-    pub fn height(&self) -> u32 {
-        self.data.config.coded_height as u32
-    }
-
     pub fn frame_at(&mut self, timestamp: TimeMs) -> FrameDecodingResult {
         if timestamp < TimeMs::ZERO {
             return FrameDecodingResult::Error(DecodingError::NegativeTimestamp);

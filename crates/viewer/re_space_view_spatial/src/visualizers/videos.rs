@@ -1,7 +1,5 @@
 use std::sync::Arc;
 
-use egui::mutex::Mutex;
-
 use re_log_types::{hash::Hash64, EntityPath};
 use re_renderer::{
     renderer::{
@@ -193,16 +191,8 @@ impl VideoFrameReferenceVisualizer {
                 let timestamp_in_seconds = match video_timestamp.time_mode {
                     VideoTimeMode::Nanoseconds => video_timestamp.video_time as f64 / 1e9,
                 };
-                let (texture_result, video_width, video_height) = {
-                    let mut video = video.lock(); // TODO(andreas): Interior mutability for re_renderer's video would be nice.
-                    (
-                        video.frame_at(timestamp_in_seconds),
-                        video.width(),
-                        video.height(),
-                    )
-                };
-                video_size = glam::vec2(video_width as _, video_height as _);
-                if let Some(texture) = match texture_result {
+                video_size = glam::vec2(video.width() as _, video.height() as _);
+                if let Some(texture) = match video.frame_at(timestamp_in_seconds) {
                     FrameDecodingResult::Ready(texture) => Some(texture),
                     FrameDecodingResult::Pending(texture) => {
                         ctx.viewer_ctx.egui_ctx.request_repaint();
@@ -213,12 +203,9 @@ impl VideoFrameReferenceVisualizer {
                         None
                     }
                 } {
-                    rectangles.push(textured_rect_for_video_frame(
-                        world_from_entity,
-                        video_width,
-                        video_height,
-                        texture,
-                    ));
+                    let rect =
+                        textured_rect_for_video_frame(world_from_entity, video_size, texture);
+                    rectangles.push(rect);
                 }
             }
             Some(Err(err)) => {
@@ -328,16 +315,15 @@ impl VideoFrameReferenceVisualizer {
 
 fn textured_rect_for_video_frame(
     world_from_entity: glam::Affine3A,
-    video_width: u32,
-    video_height: u32,
+    video_size: glam::Vec2,
     texture: re_renderer::resource_managers::GpuTexture2D,
 ) -> TexturedRect {
     TexturedRect {
         top_left_corner_position: world_from_entity.transform_point3(glam::Vec3::ZERO),
         // Make sure to use the video instead of texture size here,
         // since it may be a placeholder which doesn't have the full size yet.
-        extent_u: world_from_entity.transform_vector3(glam::Vec3::X * video_width as f32),
-        extent_v: world_from_entity.transform_vector3(glam::Vec3::Y * video_height as f32),
+        extent_u: world_from_entity.transform_vector3(glam::Vec3::X * video_size.x),
+        extent_v: world_from_entity.transform_vector3(glam::Vec3::Y * video_size.y),
 
         colormapped_texture: ColormappedTexture::from_unorm_rgba(texture),
         options: RectangleOptions {
@@ -359,7 +345,7 @@ fn textured_rect_for_video_frame(
 fn latest_at_query_video_from_datastore(
     ctx: &ViewerContext<'_>,
     entity_path: &EntityPath,
-) -> Option<Arc<Result<Mutex<Video>, VideoError>>> {
+) -> Option<Arc<Result<Video, VideoError>>> {
     let query = ctx.current_query();
 
     let results = ctx.recording().query_caches().latest_at(
