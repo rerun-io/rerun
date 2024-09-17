@@ -3,6 +3,8 @@
 //! The entry point is [`load_mp4`], which produces an instance of [`VideoData`].
 
 mod mp4;
+
+use itertools::Itertools;
 use ordered_float::OrderedFloat;
 
 /// Decoded video data.
@@ -50,10 +52,13 @@ impl VideoData {
     ///
     /// Returned timestamps are in nanoseconds since start and are guaranteed to be monotonically increasing.
     pub fn frame_timestamps_ns(&self) -> impl Iterator<Item = i64> + '_ {
+        // Segments are guaranteed to be sorted among each other, but within a segment,
+        // presentation timestamps may not be sorted since this is sorted by decode timestamps.
         self.segments.iter().flat_map(|seg| {
             seg.samples
                 .iter()
                 .map(|sample| sample.timestamp.as_nanoseconds())
+                .sorted()
         })
     }
 }
