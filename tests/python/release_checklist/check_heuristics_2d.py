@@ -7,7 +7,7 @@ from uuid import uuid4
 import numpy as np
 import rerun as rr
 
-README = """
+README = """\
 # 2D Heuristics
 
 This checks whether the heuristics do the right thing with images.
@@ -21,7 +21,9 @@ This should go away when you reset.
 The four remaining space-views should be:
  - `image1` with a red square
  - `image2` with a green square
- - `image3` with a blue square and overlapping green square (rendered teal)
+ - `image3` with a green square, which when hovered shows two popups:
+    - green square
+    - blue square
  - `segmented` with a red square and overlapping green square (rendered yellow)
 """
 

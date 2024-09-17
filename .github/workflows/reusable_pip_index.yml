@@ -19,16 +19,14 @@ defaults:
   run:
     shell: bash
 
+permissions:
+  contents: "read"
+  id-token: "write"
+
 jobs:
   pr-summary:
     name: Create a Pip Index file
-
-    permissions:
-      contents: "read"
-      id-token: "write"
-
     runs-on: ubuntu-latest
-
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4

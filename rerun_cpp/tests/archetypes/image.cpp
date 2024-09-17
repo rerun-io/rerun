@@ -1,139 +1,105 @@
 #include "../error_check.hpp"
 #include "archetype_test.hpp"
 
-#include <rerun/archetypes/image.hpp>
+#include <rerun.hpp>
 using namespace rerun::archetypes;
+using namespace rerun::datatypes;
 
 #define TEST_TAG "[image][archetypes]"
 
-SCENARIO("Image archetype can be created from tensor data." TEST_TAG) {
-    GIVEN("tensor data with correct rank 2 shape") {
-        rerun::datatypes::TensorData data({3, 7}, std::vector<uint8_t>(3 * 7, 0));
-        THEN("no error occurs on image construction") {
-            auto image = check_logged_error([&] { return Image(std::move(data)); });
-
-            AND_THEN("width and height got set") {
-                CHECK(image.data.data.shape[0].name == "height");
-                CHECK(image.data.data.shape[1].name == "width");
-            }
-
-            AND_THEN("serialization succeeds") {
-                CHECK(rerun::AsComponents<decltype(image)>().serialize(image).is_ok());
-            }
-        }
-    }
-    GIVEN("tensor data with correct rank 3 shape") {
-        rerun::datatypes::TensorData data({3, 7, 3}, std::vector<uint8_t>(3 * 7 * 3, 0));
-        THEN("no error occurs on image construction") {
-            auto image = check_logged_error([&] { return Image(std::move(data)); });
-
-            AND_THEN("width, height and depth got set") {
-                CHECK(image.data.data.shape[0].name == "height");
-                CHECK(image.data.data.shape[1].name == "width");
-                CHECK(image.data.data.shape[2].name == "depth");
-            }
-
-            AND_THEN("serialization succeeds") {
-                CHECK(rerun::AsComponents<decltype(image)>().serialize(image).is_ok());
-            }
-        }
-    }
-    GIVEN("tensor data with incorrect rank 3 shape") {
-        rerun::datatypes::TensorData data({3, 7, 2}, std::vector<uint8_t>(3 * 7 * 2, 0));
-        THEN("a warning occurs on image construction") {
-            auto image = check_logged_error(
-                [&] { return Image(std::move(data)); },
-                rerun::ErrorCode::InvalidTensorDimension
-            );
-
-            AND_THEN("serialization succeeds") {
-                CHECK(rerun::AsComponents<decltype(image)>().serialize(image).is_ok());
-            }
-        }
-    }
-
-    GIVEN("tensor data with correct shape and named dimensions") {
-        rerun::datatypes::TensorData data(
-            {rerun::datatypes::TensorDimension(3, "rick"),
-             rerun::datatypes::TensorDimension(7, "morty")},
-            std::vector<uint8_t>(3 * 7, 0)
-        );
-        THEN("no error occurs on image construction") {
-            auto image = check_logged_error([&] { return Image(std::move(data)); });
-
-            AND_THEN("tensor dimensions are unchanged") {
-                CHECK(image.data.data.shape[0].name == "rick");
-                CHECK(image.data.data.shape[1].name == "morty");
-            }
-
-            AND_THEN("serialization succeeds") {
-                CHECK(rerun::AsComponents<decltype(image)>().serialize(image).is_ok());
-            }
-        }
-    }
-
-    GIVEN("tensor data with too high rank") {
-        rerun::datatypes::TensorData data(
-            {
-                {
-                    rerun::datatypes::TensorDimension(1, "tick"),
-                    rerun::datatypes::TensorDimension(2, "trick"),
-                    rerun::datatypes::TensorDimension(3, "track"),
-                    rerun::datatypes::TensorDimension(4, "dagobert"),
-                },
-            },
-            std::vector<uint8_t>(1 * 2 * 3 * 4, 0)
-        );
-        THEN("a warning occurs on image construction") {
-            auto image = check_logged_error(
-                [&] { return Image(std::move(data)); },
-                rerun::ErrorCode::InvalidTensorDimension
-            );
-
-            AND_THEN("tensor dimension names are unchanged") {
-                CHECK(image.data.data.shape[0].name == "tick");
-                CHECK(image.data.data.shape[1].name == "trick");
-                CHECK(image.data.data.shape[2].name == "track");
-                CHECK(image.data.data.shape[3].name == "dagobert");
-            }
-
-            AND_THEN("serialization succeeds") {
-                CHECK(rerun::AsComponents<decltype(image)>().serialize(image).is_ok());
-            }
-        }
-    }
-
-    GIVEN("tensor data with too low rank") {
-        rerun::datatypes::TensorData data(
-            {
-                rerun::datatypes::TensorDimension(1, "dr robotnik"),
-            },
-            std::vector<uint8_t>(1, 0)
-        );
-        THEN("a warning occurs on image construction") {
-            auto image = check_logged_error(
-                [&] { return Image(std::move(data)); },
-                rerun::ErrorCode::InvalidTensorDimension
-            );
-
-            AND_THEN("tensor dimension names are unchanged") {
-                CHECK(image.data.data.shape[0].name == "dr robotnik");
-            }
-
-            AND_THEN("serialization succeeds") {
-                CHECK(rerun::AsComponents<decltype(image)>().serialize(image).is_ok());
-            }
-        }
-    }
-
-    GIVEN("a vector of data") {
+SCENARIO("Image archetype can be created" TEST_TAG) {
+    GIVEN("simple 8bit greyscale image") {
         std::vector<uint8_t> data(10 * 10, 0);
-        THEN("no error occurs on image construction with either the vector or a data pointer") {
-            auto image_from_vector = check_logged_error([&] { return Image({10, 10}, data); });
-            auto image_from_ptr = check_logged_error([&] { return Image({10, 10}, data.data()); });
+        Image reference_image;
+        reference_image.buffer = rerun::borrow(data);
+        reference_image.format = ImageFormat({10, 10}, ColorModel::L, ChannelDatatype::U8);
 
+        THEN("no error occurs on image construction from a pointer") {
+            auto image_from_ptr = check_logged_error([&] {
+                return Image(data.data(), {10, 10}, ColorModel::L);
+            });
             AND_THEN("serialization succeeds") {
-                test_compare_archetype_serialization(image_from_ptr, image_from_vector);
+                test_compare_archetype_serialization(image_from_ptr, reference_image);
+            }
+        }
+        THEN("no error occurs on image construction from a collection") {
+            auto image_from_collection = check_logged_error([&] {
+                return Image(rerun::borrow(data), {10, 10}, ColorModel::L);
+            });
+            AND_THEN("serialization succeeds") {
+                test_compare_archetype_serialization(image_from_collection, reference_image);
+            }
+        }
+        THEN("no error occurs on image construction from the greyscale utility") {
+            auto image_from_util = check_logged_error([&] {
+                return Image::from_greyscale8(data, {10, 10});
+            });
+            AND_THEN("serialization succeeds") {
+                test_compare_archetype_serialization(image_from_util, reference_image);
+            }
+        }
+    }
+
+    GIVEN("simple 8bit RGB image") {
+        std::vector<uint8_t> data(10 * 10 * 3, 0);
+        Image reference_image;
+        reference_image.buffer = rerun::borrow(data);
+        reference_image.format = ImageFormat({10, 10}, ColorModel::RGB, ChannelDatatype::U8);
+
+        THEN("no error occurs on image construction from a pointer") {
+            auto image_from_ptr = check_logged_error([&] {
+                return Image(data.data(), {10, 10}, ColorModel::RGB);
+            });
+            AND_THEN("serialization succeeds") {
+                test_compare_archetype_serialization(image_from_ptr, reference_image);
+            }
+        }
+        THEN("no error occurs on image construction from a collection") {
+            auto image_from_collection = check_logged_error([&] {
+                return Image(rerun::borrow(data), {10, 10}, ColorModel::RGB);
+            });
+            AND_THEN("serialization succeeds") {
+                test_compare_archetype_serialization(image_from_collection, reference_image);
+            }
+        }
+        THEN("no error occurs on image construction from the rgb utility") {
+            auto image_from_util = check_logged_error([&] {
+                return Image::from_rgb24(data, {10, 10});
+            });
+            AND_THEN("serialization succeeds") {
+                test_compare_archetype_serialization(image_from_util, reference_image);
+            }
+        }
+    }
+
+    GIVEN("simple 8bit RGBA image") {
+        std::vector<uint8_t> data(10 * 10 * 4, 0);
+        Image reference_image;
+        reference_image.buffer = rerun::borrow(data);
+        reference_image.format = ImageFormat({10, 10}, ColorModel::RGBA, ChannelDatatype::U8);
+
+        THEN("no error occurs on image construction from a pointer") {
+            auto image_from_ptr = check_logged_error([&] {
+                return Image(data.data(), {10, 10}, ColorModel::RGBA);
+            });
+            AND_THEN("serialization succeeds") {
+                test_compare_archetype_serialization(image_from_ptr, reference_image);
+            }
+        }
+        THEN("no error occurs on image construction from a collection") {
+            auto image_from_collection = check_logged_error([&] {
+                return Image(rerun::borrow(data), {10, 10}, ColorModel::RGBA);
+            });
+            AND_THEN("serialization succeeds") {
+                test_compare_archetype_serialization(image_from_collection, reference_image);
+            }
+        }
+        THEN("no error occurs on image construction from the rgba utility") {
+            auto image_from_util = check_logged_error([&] {
+                return Image::from_rgba32(data, {10, 10});
+            });
+            AND_THEN("serialization succeeds") {
+                test_compare_archetype_serialization(image_from_util, reference_image);
             }
         }
     }

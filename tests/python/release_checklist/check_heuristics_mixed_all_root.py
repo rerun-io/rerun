@@ -6,7 +6,7 @@ from uuid import uuid4
 
 import rerun as rr
 
-README = """
+README = """\
 # Mixed objects Heuristics with everything directly under root
 
 This checks whether the heuristics do the right thing with mixed 2D, 3D and test data.

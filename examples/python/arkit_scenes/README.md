@@ -66,10 +66,10 @@ for i, label_info in enumerate(annotation["data"]):
         rr.Boxes3D(
             half_sizes=half_size,
             centers=centroid,
-            rotations=rr.Quaternion(xyzw=rot.as_quat()),
             labels=label,
             colors=colors[i],
         ),
+        rr.InstancePoses3D(mat3x3=mat3x3),
         timeless=True,
     )
 ```

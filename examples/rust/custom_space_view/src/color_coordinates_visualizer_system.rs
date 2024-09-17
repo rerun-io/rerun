@@ -68,12 +68,7 @@ impl VisualizerSystem for InstanceColorSystem {
                 [Color::name()],
             );
 
-            let Some(colors) = results.get(Color::name()).and_then(|results| {
-                results
-                    .to_dense::<Color>(ctx.recording().resolver())
-                    .flatten()
-                    .ok()
-            }) else {
+            let Some(colors) = results.component_batch::<Color>() else {
                 continue;
             };
 

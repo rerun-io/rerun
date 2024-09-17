@@ -30,7 +30,7 @@ class AsComponents(Protocol):
 
     Note: the `num_instances()` function is an optional part of this interface. The method does not need to be
     implemented as it is only used after checking for its existence. (There is unfortunately no way to express this
-    correctly with the Python typing system, see https://github.com/python/typing/issues/601).
+    correctly with the Python typing system, see <https://github.com/python/typing/issues/601>).
     """
 
     def as_component_batches(self) -> Iterable[ComponentBatchLike]:
@@ -267,22 +267,23 @@ class BaseBatch(Generic[T]):
         return self.pa_array
 
 
-class PartitionedComponentBatch(ComponentBatchLike):
+class ComponentColumn:
     """
-    A ComponentBatch array that has been repartitioned into multiple segments.
+    A column of components that can be sent using `send_columns`.
 
+    This is represented by a ComponentBatch array that has been repartitioned into multiple segments.
     This is useful for reinterpreting a single contiguous batch as multiple sub-batches
-    to use with the `log_temporal_batch` API.
+    to use with the [`send_columns`][rerun.send_columns] API.
     """
 
     def __init__(self, component_batch: ComponentBatchLike, lengths: npt.ArrayLike):
         """
-        Construct a new partitioned component batch.
+        Construct a new component column.
 
         Parameters
         ----------
         component_batch : ComponentBatchLike
-            The component batch to partition.
+            The component batch to partition into a column.
         lengths : npt.ArrayLike
             The lengths of the partitions.
 
@@ -318,7 +319,7 @@ class ComponentBatchMixin(ComponentBatchLike):
         """
         return self._ARROW_TYPE._TYPE_NAME  # type: ignore[attr-defined, no-any-return]
 
-    def partition(self, lengths: npt.ArrayLike) -> PartitionedComponentBatch:
+    def partition(self, lengths: npt.ArrayLike) -> ComponentColumn:
         """
         Partitions the component into multiple sub-batches. This wraps the inner arrow
         array in a `pyarrow.ListArray` where the different lists have the lengths specified.
@@ -335,7 +336,7 @@ class ComponentBatchMixin(ComponentBatchLike):
         The partitioned component.
 
         """  # noqa: D205
-        return PartitionedComponentBatch(self, lengths)
+        return ComponentColumn(self, lengths)
 
 
 class ComponentMixin(ComponentBatchLike):

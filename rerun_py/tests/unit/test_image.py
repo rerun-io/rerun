@@ -1,62 +1,65 @@
 from __future__ import annotations
 
-import io
 from typing import Any
 
 import numpy as np
 import pytest
 import rerun as rr
 import torch
-from PIL import Image as PILImage
-from rerun.datatypes import TensorBuffer, TensorData, TensorDataLike, TensorDimension
-from rerun.datatypes.tensor_data import TensorDataBatch
+from rerun.archetypes.image import Image
+from rerun.datatypes.tensor_data import TensorData
 from rerun.error_utils import RerunWarning
 
 rng = np.random.default_rng(12345)
 RANDOM_IMAGE_SOURCE = rng.uniform(0.0, 1.0, (10, 20, 3))
 
 
-IMAGE_INPUTS: list[TensorDataLike] = [
-    # Full explicit construction
-    TensorData(
-        shape=[
-            TensorDimension(10, "height"),
-            TensorDimension(20, "width"),
-            TensorDimension(3, "depth"),
-        ],
-        buffer=TensorBuffer(RANDOM_IMAGE_SOURCE),
-    ),
-    # Implicit construction from ndarray
-    RANDOM_IMAGE_SOURCE,
+IMAGE_INPUTS: list[Any] = [
+    {"image": RANDOM_IMAGE_SOURCE},
+    {"image": RANDOM_IMAGE_SOURCE, "width": 20, "height": 10},
+    {"image": RANDOM_IMAGE_SOURCE, "color_model": "RGB", "width": 20, "height": 10},
+    {"image": RANDOM_IMAGE_SOURCE, "color_model": rr.datatypes.ColorModel.RGB, "width": 20, "height": 10},
+    {
+        "bytes": RANDOM_IMAGE_SOURCE.tobytes(),
+        "color_model": "RGB",
+        "datatype": "f64",
+        "width": 20,
+        "height": 10,
+    },
+    {
+        "bytes": RANDOM_IMAGE_SOURCE.tobytes(),
+        "color_model": "RGB",
+        "datatype": rr.datatypes.ChannelDatatype.F64,
+        "width": 20,
+        "height": 10,
+    },
+    {
+        "bytes": RANDOM_IMAGE_SOURCE.tobytes(),
+        "color_model": "RGB",
+        "datatype": np.float64,
+        "width": 20,
+        "height": 10,
+    },
+    # This was allowed in 0.17
+    {"image": TensorData(array=RANDOM_IMAGE_SOURCE)},
 ]
 
-# 0 = shape
-# 1 = buffer
-CHECK_FIELDS: list[list[int]] = [
-    [0, 1],
-    [1],
-]
 
-
-def tensor_data_expected() -> Any:
-    return TensorDataBatch(IMAGE_INPUTS[0])
-
-
-def compare_images(left: Any, right: Any, check_fields: list[int]) -> None:
-    for field in check_fields:
-        assert left.as_arrow_array().storage.field(field) == right.as_arrow_array().storage.field(field)
+def image_data_expected() -> Any:
+    return Image(RANDOM_IMAGE_SOURCE, color_model="RGB", width=20, height=10)
 
 
 def test_image() -> None:
-    expected = tensor_data_expected()
+    expected = image_data_expected()
 
-    for input, check_fields in zip(IMAGE_INPUTS, CHECK_FIELDS):
-        arch = rr.Image(data=input)
+    for input in IMAGE_INPUTS:
+        arch = rr.Image(**input)
 
-        compare_images(arch.data, expected, check_fields)
+        assert arch.buffer == expected.buffer
+        assert arch.format == expected.format
 
 
-GOOD_IMAGE_INPUTS: list[TensorDataLike] = [
+GOOD_IMAGE_INPUTS: list[Any] = [
     # Mono
     rng.uniform(0.0, 1.0, (10, 20)),
     # RGB
@@ -75,7 +78,7 @@ GOOD_IMAGE_INPUTS: list[TensorDataLike] = [
     torch.rand(10, 20, 3),
 ]
 
-BAD_IMAGE_INPUTS: list[TensorDataLike] = [
+BAD_IMAGE_INPUTS: list[Any] = [
     rng.uniform(0.0, 1.0, (10,)),
     rng.uniform(0.0, 1.0, (10, 20, 2)),
     rng.uniform(0.0, 1.0, (10, 20, 5)),
@@ -103,34 +106,40 @@ def test_image_compress() -> None:
     image_data = np.asarray(rng.uniform(0, 255, (10, 20, 3)), dtype=np.uint8)
 
     compressed = rr.Image(image_data).compress(jpeg_quality=80)
-    assert type(compressed) == rr.ImageEncoded
+    assert type(compressed) is rr.EncodedImage
 
     # Mono Supported
     image_data = np.asarray(rng.uniform(0, 255, (10, 20)), dtype=np.uint8)
 
     compressed = rr.Image(image_data).compress(jpeg_quality=80)
-    assert type(compressed) == rr.ImageEncoded
+    assert type(compressed) is rr.EncodedImage
 
     # RGBA Not supported
     with pytest.warns(RerunWarning) as warnings:
         image_data = np.asarray(rng.uniform(0, 255, (10, 20, 4)), dtype=np.uint8)
-        compressed = rr.Image(data=TensorData(array=image_data)).compress(jpeg_quality=80)
+        compressed = rr.Image(image_data, "RGBA").compress(jpeg_quality=80)
 
         assert len(warnings) == 1
-        assert "Only RGB or Mono images are supported for JPEG compression" in str(warnings[0])
+        assert "Cannot JPEG compress an image of type" in str(warnings[0])
 
-        # Should still be an Image
-        assert type(compressed) == rr.Image
+        assert type(compressed) is rr.Image
 
-    bin = io.BytesIO()
-    image = PILImage.new("RGB", (300, 200), color=(0, 0, 0))
-    image.save(bin, format="jpeg")
-
-    # Jump through some hoops to make a pre-compressed image
-    img_encoded = rr.ImageEncoded(contents=bin)
-    img = rr.Image(img_encoded.data)
-
+    # 16-bit Not supported
     with pytest.warns(RerunWarning) as warnings:
-        img.compress()
+        image_data = np.asarray(rng.uniform(0, 255, (10, 20, 3)), dtype=np.uint16)
+        compressed = rr.Image(image_data).compress(jpeg_quality=80)
+
         assert len(warnings) == 1
-        assert "Image is already compressed as JPEG" in str(warnings[0])
+        assert "Cannot JPEG compress an image of datatype" in str(warnings[0])
+
+        assert type(compressed) is rr.Image
+
+    # Floating point not supported
+    with pytest.warns(RerunWarning) as warnings:
+        image_data = np.asarray(rng.uniform(0, 255, (10, 20)), dtype=np.float32)
+        compressed = rr.Image(image_data).compress(jpeg_quality=80)
+
+        assert len(warnings) == 1
+        assert "Cannot JPEG compress an image of datatype" in str(warnings[0])
+
+        assert type(compressed) is rr.Image

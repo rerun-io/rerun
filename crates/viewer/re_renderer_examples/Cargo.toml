@@ -1,0 +1,73 @@
+[package]
+name = "re_renderer_examples"
+description = "Examples for the re_renderer crate."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish = false
+
+[lints]
+workspace = true
+
+[features]
+
+[[bin]]
+name = "2d"    # NOLINT
+path = "2d.rs" # NOLINT
+
+[[bin]]
+name = "depth_cloud"
+path = "depth_cloud.rs"
+
+[[bin]]
+name = "depth_offset"
+path = "depth_offset.rs"
+
+[[bin]]
+name = "multiview"
+path = "multiview.rs"
+
+[[bin]]
+name = "outlines"
+path = "outlines.rs"
+
+[[bin]]
+name = "picking"
+path = "picking.rs"
+
+[dependencies]
+re_log = { workspace = true, features = ["setup"] }
+re_math.workspace = true
+re_renderer = { workspace = true, features = ["import-obj", "import-gltf"] }
+
+ahash.workspace = true
+anyhow.workspace = true
+bytemuck.workspace = true
+glam.workspace = true
+image = { workspace = true, default-features = false, features = ["png"] }
+itertools.workspace = true
+pollster.workspace = true
+rand = { workspace = true, features = ["std", "std_rng"] }
+web-time.workspace = true
+wgpu.workspace = true
+winit = { workspace = true, default-features = false, features = [
+  "rwh_06",
+  "x11",
+  "wayland",
+  "wayland-dlopen",
+] }
+zip = { workspace = true, default-features = false, features = ["deflate"] }
+
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+console_error_panic_hook.workspace = true
+wasm-bindgen-futures.workspace = true
+web-sys = { workspace = true, features = [
+  "Blob",
+  "Element",
+  "Location",
+  "Request",
+  "RequestInit",
+  "RequestMode",
+  "Response",
+] }

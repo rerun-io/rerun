@@ -1,89 +1,149 @@
-#include "../error.hpp"
+#if 0
+
 #include "image.hpp"
 
-#include "../collection_adapter_builtins.hpp"
+// <CODEGEN_COPY_TO_HEADER>
+#include "../image_utils.hpp"
 
-// Uncomment for better auto-complete while editing the extension.
-// #define EDIT_EXTENSION
+// </CODEGEN_COPY_TO_HEADER>
 
 namespace rerun::archetypes {
 
-#ifdef EDIT_EXTENSION
     // <CODEGEN_COPY_TO_HEADER>
 
-    /// New Image from height/width/channel and tensor buffer.
+    /// Construct an image from bytes and image format.
     ///
-    /// \param shape
-    /// Shape of the image. Calls `Error::handle()` if the shape is not rank 2 or 3.
-    /// Sets the dimension names to "height", "width" and "channel" if they are not specified.
-    /// \param buffer
-    /// The tensor buffer containing the image data.
-    explicit Image(Collection<datatypes::TensorDimension> shape, datatypes::TensorBuffer buffer)
-        : Image(datatypes::TensorData(std::move(shape), std::move(buffer))) {}
+    /// @param bytes The raw image data as bytes.
+    /// If the data does not outlive the image, use `std::move` or create the `rerun::Collection`
+    /// explicitly ahead of time with `rerun::Collection::take_ownership`.
+    /// The length of the data should be `W * H * image_format.bytes_per_pixel`.
+    /// @param format_ How the data should be interpreted.
+    Image(
+        Collection<uint8_t> bytes, components::ImageFormat format_
+    )
+        : buffer(std::move(bytes)), format(format_) {
+            if (buffer.size() != format.image_format.num_bytes()) {
+                Error(
+                    ErrorCode::InvalidTensorDimension,
+                    "Image buffer has the wrong size. Got " + std::to_string(buffer.size()) +
+                        " bytes, expected " + std::to_string(format.image_format.num_bytes())
+                )
+                    .handle();
+            }
+        }
 
-    /// New depth image from tensor data.
+    /// Construct an image from resolution, pixel format and bytes.
     ///
-    /// \param data_
-    /// The tensor buffer containing the image data.
-    /// Sets the dimension names to "height",  "width" and "channel" if they are not specified.
-    /// Calls `Error::handle()` if the shape is not rank 2 or 3.
-    explicit Image(rerun::components::TensorData data_);
+    /// @param bytes The raw image data as bytes.
+    /// If the data does not outlive the image, use `std::move` or create the `rerun::Collection`
+    /// explicitly ahead of time with `rerun::Collection::take_ownership`.
+    /// The length of the data should be `W * H * pixel_format.bytes_per_pixel`.
+    /// @param resolution The resolution of the image as {width, height}.
+    /// @param pixel_format How the data should be interpreted.
+    Image(
+        Collection<uint8_t> bytes, WidthHeight resolution,
+        datatypes::PixelFormat pixel_format
+    )
+        : Image{std::move(bytes), datatypes::ImageFormat{resolution, pixel_format}} {}
 
-    /// New image from dimensions and pointer to image data.
+    /// Construct an image from resolution, color model, channel datatype and bytes.
     ///
-    /// Type must be one of the types supported by `rerun::datatypes::TensorData`.
-    /// \param shape
-    /// Shape of the image. Calls `Error::handle()` if the shape is not rank 2 or 3.
-    /// Sets the dimension names to "height", "width" and "channel" if they are not specified.
-    /// Determines the number of elements expected to be in `data`.
-    /// \param data_
-    /// Target of the pointer must outlive the archetype.
-    template <typename TElement>
-    explicit Image(Collection<datatypes::TensorDimension> shape, const TElement* data_)
-        : Image(datatypes::TensorData(std::move(shape), data_)) {}
+    /// @param bytes The raw image data.
+    /// If the data does not outlive the image, use `std::move` or create the `rerun::Collection`
+    /// explicitly ahead of time with `rerun::Collection::take_ownership`.
+    /// The length of the data should be `W * H * datatype.bytes * color_model.num_channels`.
+    /// @param resolution The resolution of the image as {width, height}.
+    /// @param color_model The color model of the pixel data.
+    /// @param datatype Datatype of the individual channels of the color model.
+    Image(
+        Collection<uint8_t> bytes, WidthHeight resolution,
+        datatypes::ColorModel color_model, datatypes::ChannelDatatype datatype
+    )
+        : Image(std::move(bytes), datatypes::ImageFormat(resolution, color_model, datatype)) {}
+
+    /// Construct an image from resolution, color model and elements,
+    /// inferring the channel datatype from the element type.
+    ///
+    /// @param elements Pixel data as a `rerun::Collection`.
+    /// If the data does not outlive the image, use `std::move` or create the `rerun::Collection`
+    /// explicitly ahead of time with `rerun::Collection::take_ownership`.
+    /// The length of the data should be `W * H * color_model.num_channels`.
+    /// @param resolution The resolution of the image as {width, height}.
+    /// @param color_model The color model of the pixel data.
+    /// Each element in elements is interpreted as a single channel of the color model.
+    template <typename T>
+    Image(
+        Collection<T> elements, WidthHeight resolution,
+        datatypes::ColorModel color_model
+    )
+        : Image(elements.to_uint8(), resolution, color_model, get_datatype(elements.data())) {}
+
+    /// Construct an image from resolution, color model and element pointer,
+    /// inferring the channel datatype from the element type.
+    ///
+    /// @param elements The raw image data.
+    /// ⚠️ Does not take ownership of the data, the caller must ensure the data outlives the image.
+    /// The number of elements is assumed to be `W * H * color_model.num_channels`.
+    /// @param resolution The resolution of the image as {width, height}.
+    /// @param color_model The color model of the pixel data.
+    /// Each element in elements is interpreted as a single channel of the color model.
+    template <typename T>
+    Image(
+        const T* elements, WidthHeight resolution, datatypes::ColorModel color_model
+    )
+        : Image(
+              rerun::Collection<uint8_t>::borrow(
+                  reinterpret_cast<const uint8_t*>(elements),
+                  resolution.width * resolution.height * color_model_channel_count(color_model)
+              ),
+              resolution, color_model, get_datatype(elements)
+          ) {}
+
+    /// Assumes single channel greyscale/luminance with 8-bit per value.
+    ///
+    /// @param bytes Pixel data as a `rerun::Collection`.
+    /// If the data does not outlive the image, use `std::move` or create the `rerun::Collection`
+    /// explicitly ahead of time with `rerun::Collection::take_ownership`.
+    /// The length of the data should be `W * H`.
+    /// @param resolution The resolution of the image as {width, height}.
+    static Image from_greyscale8(Collection<uint8_t> bytes, WidthHeight resolution) {
+        return Image(bytes, resolution, datatypes::ColorModel::L, datatypes::ChannelDatatype::U8);
+    }
+
+    /// Assumes RGB, 8-bit per channel, packed as `RGBRGBRGB…`.
+    ///
+    /// @param bytes Pixel data as a `rerun::Collection`.
+    /// If the data does not outlive the image, use `std::move` or create the `rerun::Collection`
+    /// explicitly ahead of time with `rerun::Collection::take_ownership`.
+    /// The length of the data should be `W * H * 3`.
+    /// @param resolution The resolution of the image as {width, height}.
+    static Image from_rgb24(Collection<uint8_t> bytes, WidthHeight resolution) {
+        return Image(
+            bytes,
+            resolution,
+            datatypes::ColorModel::RGB,
+            datatypes::ChannelDatatype::U8
+        );
+    }
+
+    /// Assumes RGBA, 8-bit per channel, with separate alpha.
+    ///
+    /// @param bytes Pixel data as a `rerun::Collection`.
+    /// If the data does not outlive the image, use `std::move` or create the `rerun::Collection`
+    /// explicitly ahead of time with `rerun::Collection::take_ownership`.
+    /// The length of the data should be `W * H * 4`.
+    /// @param resolution The resolution of the image as {width, height}.
+    static Image from_rgba32(Collection<uint8_t> bytes, WidthHeight resolution) {
+        return Image(
+            bytes,
+            resolution,
+            datatypes::ColorModel::RGBA,
+            datatypes::ChannelDatatype::U8
+        );
+    }
 
     // </CODEGEN_COPY_TO_HEADER>
-#endif
 
-    Image::Image(rerun::components::TensorData data_) : data(std::move(data_)) {
-        auto& shape = data.data.shape;
-        if (shape.size() != 2 && shape.size() != 3) {
-            Error(
-                ErrorCode::InvalidTensorDimension,
-                "Image shape is expected to be either rank 2 or 3."
-            )
-                .handle();
-            return;
-        }
-        if (shape.size() == 3 && shape[2].size != 1 && shape[2].size != 3 && shape[2].size != 4) {
-            Error(
-                ErrorCode::InvalidTensorDimension,
-                "Only images with 1, 3 and 4 channels are supported."
-            )
-                .handle();
-            return;
-        }
-
-        // We want to change the dimension names if they are not specified.
-        // But rerun collections are strictly immutable, so create a new one if necessary.
-        bool overwrite_height = !shape[0].name.has_value();
-        bool overwrite_width = !shape[1].name.has_value();
-        bool overwrite_depth = shape.size() > 2 && !shape[2].name.has_value();
-
-        if (overwrite_height || overwrite_width || overwrite_depth) {
-            auto new_shape = shape.to_vector();
-
-            if (overwrite_height) {
-                new_shape[0].name = "height";
-            }
-            if (overwrite_width) {
-                new_shape[1].name = "width";
-            }
-            if (overwrite_depth) {
-                new_shape[2].name = "depth";
-            }
-
-            shape = std::move(new_shape);
-        }
-    }
 } // namespace rerun::archetypes
+
+#endif

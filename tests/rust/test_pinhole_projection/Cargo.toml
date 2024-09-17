@@ -11,7 +11,7 @@ workspace = true
 
 [dependencies]
 re_log = { workspace = true, features = ["setup"] }
-rerun = { path = "../../../crates/rerun", features = ["clap"] }
+rerun = { path = "../../../crates/top/rerun", features = ["clap"] }
 
 anyhow.workspace = true
 clap = { workspace = true, features = ["derive"] }

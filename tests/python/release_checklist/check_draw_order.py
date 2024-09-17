@@ -8,7 +8,7 @@ import numpy as np
 import rerun as rr
 import rerun.blueprint as rrb
 
-README = """
+README = """\
 # 2D Draw order
 
 This checks whether the draw order correctly determines the layering of 2D content.
@@ -17,7 +17,7 @@ This checks whether the draw order correctly determines the layering of 2D conte
 You should see a single 2D view with the following elements overdrawing each other back to front:
 - Gray background image
 - Green to red gradient image
-- Blue (slightly transparent) square
+- Blue square
 - Red line strip (zig-zagging)
 - Black Rectangle (Box2D)
 - Raster of points (visibly overlaps the rectangle!)

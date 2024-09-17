@@ -1,0 +1,18 @@
+namespace rerun.blueprint.components;
+
+/// Determines whether an image or texture should be scaled to fit the viewport.
+enum ViewFit: ubyte (
+    "attr.rerun.scope": "blueprint"
+) {
+    /// Invalid value. Won't show up in generated types.
+    Invalid = 0,
+
+    /// No scaling, pixel size will match the image's width/height dimensions in pixels.
+    Original,
+
+    /// Scale the image for the largest possible fit in the view's container.
+    Fill,
+
+    /// Scale the image for the largest possible fit in the view's container, but keep the original aspect ratio.
+    FillKeepAspectRatio(default),
+}

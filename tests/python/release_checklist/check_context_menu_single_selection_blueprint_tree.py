@@ -7,7 +7,7 @@ from uuid import uuid4
 import rerun as rr
 import rerun.blueprint as rrb
 
-README = """
+README = """\
 # Context Menu - Single Selection in the Blueprint tree
 
 - Right-click on the viewport and "Expand All"

@@ -187,9 +187,9 @@ jobs:
           service_account: ${{ secrets.GOOGLE_SERVICE_ACCOUNT }}
           targets: ${{ needs.set-config.outputs.TARGET }}
 
-      - uses: prefix-dev/setup-pixi@v0.6.0
+      - uses: prefix-dev/setup-pixi@v0.8.1
         with:
-          pixi-version: v0.23.0
+          pixi-version: v0.25.0
 
       - name: Get sha
         id: get-sha
@@ -211,7 +211,8 @@ jobs:
             --mode ${{ inputs.MODE }} \
             --target ${{ needs.set-config.outputs.TARGET }} \
             --dir commit/${{ steps.get-sha.outputs.sha }}/wheels \
-            --compat ${{ needs.set-config.outputs.COMPAT }}
+            --compat ${{ needs.set-config.outputs.COMPAT }} \
+            --upload-gcs
 
       - name: Save wheel artifact
         if: ${{ inputs.WHEEL_ARTIFACT_NAME != '' }}

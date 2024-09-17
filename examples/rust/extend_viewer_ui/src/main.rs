@@ -130,7 +130,10 @@ fn entity_ui(
     entity_path: &re_log_types::EntityPath,
 ) {
     // Each entity can have many components (e.g. position, color, radius, …):
-    if let Some(components) = entity_db.store().all_components(&timeline, entity_path) {
+    if let Some(components) = entity_db
+        .store()
+        .all_components_on_timeline(&timeline, entity_path)
+    {
         for component in components {
             ui.collapsing(component.to_string(), |ui| {
                 component_ui(ui, entity_db, timeline, entity_path, component);
@@ -156,12 +159,8 @@ fn component_ui(
         entity_path,
         [component_name],
     );
-    let component = results
-        .components
-        .get(&component_name)
-        .and_then(|result| result.raw(entity_db.resolver(), component_name));
 
-    if let Some(data) = component {
+    if let Some(data) = results.component_batch_raw(&component_name) {
         egui::ScrollArea::vertical()
             .auto_shrink([false, true])
             .show(ui, |ui| {

@@ -32,6 +32,9 @@ insecure = true
 # Maximum number of allowed retries before a link is declared dead.
 max_retries = 4
 
+# Wait time between attempts in seconds.
+retry_wait_time = 2
+
 # Comma-separated list of accepted status codes for valid links.
 accept = [
   "100..=103", # Informational codes.
@@ -60,9 +63,10 @@ exclude_path = [
   "venv",
 
   # Actually ignored files beyond .gitignore
-  "crates/re_analytics/src/event.rs",             # Contains test with malformed urls
-  "scripts/lint.py",                              # Contains url-matching regexes that aren't actual urls
+  "crates/utils/re_analytics/src/event.rs",        # Contains test with malformed urls
+  "scripts/lint.py",                               # Contains url-matching regexes that aren't actual urls
   "scripts/screenshot_compare/assets/templates/",
+  "crates/viewer/re_viewer/src/reflection/mod.rs", # Checker struggles how links from examples are escaped here. They are all checked elsewhere, so not an issue.
 ]
 
 # Exclude URLs and mail addresses from checking (supports regex).
@@ -114,7 +118,8 @@ exclude = [
   '.github/workflows/.*.yml',                                          # GitHub action workflows cause issues on CI.
   'https://9p.io/sys/doc/lexnames.html',                               # Works locally but on CI we get: `Failed: Network error: error:0A000152:SSL routines:final_renegotiate:unsafe legacy renegotiation disabled:ssl/statem/extensions.c:946:`
   'https://pixabay.com/photos/brother-sister-girl-family-boy-977170/', # Gives 403 forbidden on CI.
-  'https://stackoverflow.com/.',                                       # Stackoverflow links are no longer accessible from CI.
+  'https://stackoverflow.com/',                                        # Stackoverflow links are no longer accessible from CI.
+  'https://math.stackexchange.com/',                                   # Gives 403 forbidden on CI.
   'https://vimeo.com/',                                                # Gives 403 forbidden on CI.
   'https://www.reddit.com/',                                           # Gives 403 forbidden on CI.
   'https://www.tensorflow.org/',                                       # tensorflow.org apparently blocks CI.

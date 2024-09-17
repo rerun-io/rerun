@@ -7,42 +7,34 @@ import pytest
 import rerun as rr
 import torch
 from rerun.components import DepthMeter
-from rerun.datatypes import TensorBuffer, TensorData, TensorDataLike, TensorDimension
+from rerun.datatypes import Float32Like
 
 rng = np.random.default_rng(12345)
 RANDOM_IMAGE_SOURCE = rng.uniform(0.0, 1.0, (10, 20))
 
 
-IMAGE_INPUTS: list[TensorDataLike] = [
-    # Full explicit construction
-    TensorData(
-        shape=[
-            TensorDimension(10, "height"),
-            TensorDimension(20, "width"),
-        ],
-        buffer=TensorBuffer(RANDOM_IMAGE_SOURCE),
-    ),
-    # Implicit construction from ndarray
+IMAGE_INPUTS: list[Any] = [
+    RANDOM_IMAGE_SOURCE,
     RANDOM_IMAGE_SOURCE,
 ]
 
-METER_INPUTS: list[rr.components.DepthMeterLike] = [1000, DepthMeter(1000)]
+METER_INPUTS: list[Float32Like] = [1000, DepthMeter(1000)]
 
 
 def depth_image_expected() -> Any:
-    return rr.DepthImage(data=RANDOM_IMAGE_SOURCE, meter=1000)
+    return rr.DepthImage(RANDOM_IMAGE_SOURCE, meter=1000)
 
 
 def test_image() -> None:
     expected = depth_image_expected()
 
     for img, meter in zip(IMAGE_INPUTS, METER_INPUTS):
-        arch = rr.DepthImage(data=img, meter=meter)
+        arch = rr.DepthImage(img, meter=meter)
 
         assert arch == expected
 
 
-GOOD_IMAGE_INPUTS: list[TensorDataLike] = [
+GOOD_IMAGE_INPUTS: list[Any] = [
     # Mono
     rng.uniform(0.0, 1.0, (10, 20)),
     # Assorted Extra Dimensions
@@ -51,7 +43,7 @@ GOOD_IMAGE_INPUTS: list[TensorDataLike] = [
     torch.rand(10, 20, 1),
 ]
 
-BAD_IMAGE_INPUTS: list[TensorDataLike] = [
+BAD_IMAGE_INPUTS: list[Any] = [
     rng.uniform(0.0, 1.0, (10, 20, 3)),
     rng.uniform(0.0, 1.0, (10, 20, 4)),
     rng.uniform(0.0, 1.0, (10,)),

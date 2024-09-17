@@ -1,0 +1,23 @@
+namespace rerun.blueprint.components;
+
+
+/// The type of the background in a view.
+enum BackgroundKind: ubyte (
+    "attr.rerun.scope": "blueprint"
+) {
+    /// Invalid value. Won't show up in generated types.
+    Invalid = 0,
+
+    /// A dark gradient.
+    ///
+    /// In 3D views it changes depending on the direction of the view.
+    GradientDark (default),
+
+    /// A bright gradient.
+    ///
+    /// In 3D views it changes depending on the direction of the view.
+    GradientBright,
+
+    /// Simple uniform color.
+    SolidColor,
+}

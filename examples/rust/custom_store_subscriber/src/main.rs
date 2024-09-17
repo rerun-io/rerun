@@ -159,8 +159,8 @@ impl ChunkStoreSubscriber for TimeRangesPerEntity {
 
     fn on_events(&mut self, events: &[ChunkStoreEvent]) {
         for event in events {
-            for (timeline, time_chunk) in event.chunk.timelines() {
-                for time in time_chunk.times() {
+            for (timeline, time_column) in event.chunk.timelines() {
+                for time in time_column.times() {
                     // update counters
                     let per_timeline = self
                         .times

@@ -8,8 +8,7 @@ import pytest
 import rerun as rr
 import torch
 from rerun.components.line_strip3d import LineStrip3DArrayLike, LineStrip3DBatch
-from rerun.components.radius import RadiusArrayLike
-from rerun.datatypes import Vec3D
+from rerun.datatypes import Float32ArrayLike, Vec3D
 from rerun.datatypes.class_id import ClassIdArrayLike
 from rerun.datatypes.rgba32 import Rgba32ArrayLike
 from rerun.datatypes.utf8 import Utf8ArrayLike
@@ -82,7 +81,7 @@ def test_line_strips3d() -> None:
 
         # make Pyright happy as it's apparently not able to track typing info trough zip_longest
         strips = cast(LineStrip3DArrayLike, strips)
-        radii = cast(Optional[RadiusArrayLike], radii)
+        radii = cast(Optional[Float32ArrayLike], radii)
         colors = cast(Optional[Rgba32ArrayLike], colors)
         labels = cast(Optional[Utf8ArrayLike], labels)
         class_ids = cast(Optional[ClassIdArrayLike], class_ids)

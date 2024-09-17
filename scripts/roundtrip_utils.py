@@ -65,6 +65,10 @@ def cmake_configure(release: bool, env: dict[str, str]) -> None:
         build_type = "Release"
     # TODO(andreas): We should pixi for the prepare so we can ensure we have build tooling ready
     configure_args = [
+        "pixi",
+        "run",
+        "-e",
+        "cpp",
         "cmake",
         "-B",
         cpp_build_dir,
@@ -84,6 +88,10 @@ def cmake_build(target: str, release: bool) -> None:
         config = "Release"
 
     build_process_args = [
+        "pixi",
+        "run",
+        "-e",
+        "cpp",
         "cmake",
         "--build",
         cpp_build_dir,
@@ -98,7 +106,7 @@ def cmake_build(target: str, release: bool) -> None:
 
 
 def run_comparison(rrd0_path: str, rrd1_path: str, full_dump: bool) -> None:
-    cmd = ["rerun", "compare"]
+    cmd = ["rerun", "rrd", "compare"]
     if full_dump:
         cmd += ["--full-dump"]
     cmd += [rrd0_path, rrd1_path]

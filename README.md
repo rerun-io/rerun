@@ -54,7 +54,7 @@ rr.log("path/to/points", rr.Points3D(positions, colors=colors))
 
 ### Installing the Rerun Viewer binary
 To stream log data over the network or load our `.rrd` data files you also need the `rerun` binary.
-It can be installed with `pip install rerun-sdk` or with `cargo install rerun-cli`.
+It can be installed with `pip install rerun-sdk` or with `cargo install rerun-cli --locked`.
 Note that only the Python SDK comes bundled with the Viewer whereas C++ & Rust always rely on a separate install.
 
 You should now be able to run `rerun --help` in any terminal.
@@ -75,9 +75,9 @@ We are in active development.
 There are many features we want to add, and the API is still evolving.
 _Expect breaking changes!_
 
-Current shortcomings that we are working on:
+Some shortcomings:
 * [Multi-million point clouds are slow](https://github.com/rerun-io/rerun/issues/1136)
-* [Logging many tiny things (e.g. scalars) has a lot of overhead](https://github.com/rerun-io/rerun/issues/5967)
+* [The viewer slows down when there are too many entities](https://github.com/rerun-io/rerun/issues/7115)
 * The data you want to visualize must fit in RAM
   - See <https://www.rerun.io/docs/howto/limit-ram> for how to bound memory use.
   - We plan on having a disk-based data store some time in the future.

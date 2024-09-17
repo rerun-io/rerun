@@ -2,9 +2,8 @@ from __future__ import annotations
 
 from typing import Iterable, Optional
 
-from ..datatypes import Utf8Like
+from ..datatypes import Float32ArrayLike, Utf8Like
 from .api import Container, SpaceView
-from .components import ColumnShareArrayLike, RowShareArrayLike
 from .components.container_kind import ContainerKind
 
 
@@ -15,7 +14,7 @@ class Horizontal(Container):
         self,
         *args: Container | SpaceView,
         contents: Optional[Iterable[Container | SpaceView]] = None,
-        column_shares: Optional[ColumnShareArrayLike] = None,
+        column_shares: Optional[Float32ArrayLike] = None,
         name: Utf8Like | None = None,
     ):
         """
@@ -47,7 +46,7 @@ class Vertical(Container):
         self,
         *args: Container | SpaceView,
         contents: Optional[Iterable[Container | SpaceView]] = None,
-        row_shares: Optional[RowShareArrayLike] = None,
+        row_shares: Optional[Float32ArrayLike] = None,
         name: Utf8Like | None = None,
     ):
         """
@@ -77,8 +76,8 @@ class Grid(Container):
         self,
         *args: Container | SpaceView,
         contents: Optional[Iterable[Container | SpaceView]] = None,
-        column_shares: Optional[ColumnShareArrayLike] = None,
-        row_shares: Optional[RowShareArrayLike] = None,
+        column_shares: Optional[Float32ArrayLike] = None,
+        row_shares: Optional[Float32ArrayLike] = None,
         grid_columns: Optional[int] = None,
         name: Utf8Like | None = None,
     ):

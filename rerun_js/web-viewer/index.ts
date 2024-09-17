@@ -47,21 +47,53 @@ export type Panel = "top" | "blueprint" | "selection" | "time";
 export type PanelState = "hidden" | "collapsed" | "expanded";
 export type Backend = "webgpu" | "webgl";
 
+// NOTE: When changing these options, consider how it affects the `web-viewer-react` package:
+//       - Should this option be exposed?
+//       - Should changing this option result in the viewer being restarted?
 export interface WebViewerOptions {
+  /** Url to the example manifest. Unused if `hide_welcome_screen` is set to `true`. */
   manifest_url?: string;
+
+  /** The render backend used by the viewer. Either "webgl" or "webgpu". Prefers "webgpu". */
   render_backend?: Backend;
+
+  /** If set to `true`, hides the welcome screen, which contains our examples. Defaults to `false`. */
   hide_welcome_screen?: boolean;
+
+  /**
+   * Allow the viewer to handle fullscreen mode.
+   * This option sets canvas style so is not recommended if you are doing anything custom,
+   * or are embedding the viewer in an iframe.
+   *
+   * Defaults to `false`.
+   */
   allow_fullscreen?: boolean;
+
+  /**
+   * Enable the history feature of the viewer.
+   *
+   * This is only relevant when `hide_welcome_screen` is `false`,
+   * as it's currently only used to allow going between the welcome screen and examples.
+   *
+   * Defaults to `false`.
+   */
   enable_history?: boolean;
 
+  /** The CSS width of the canvas. */
   width?: string;
+
+  /** The CSS height of the canvas. */
   height?: string;
 }
 
 // `AppOptions` and `WebViewerOptions` must be compatible
 // otherwise we need to restructure how we pass options to the viewer
 
-/** @private */
+/**
+ * The public interface is @see {WebViewerOptions}
+ *
+ * @private
+ */
 export interface AppOptions extends WebViewerOptions {
   url?: string;
   manifest_url?: string;
@@ -143,7 +175,6 @@ export class WebViewer {
     this.#canvas = document.createElement("canvas");
     this.#canvas.style.width = options.width ?? "640px";
     this.#canvas.style.height = options.height ?? "360px";
-    this.#canvas.id = this.#id;
     parent.append(this.#canvas);
 
     // This yield appears to be necessary to ensure that the canvas is attached to the DOM
@@ -163,7 +194,7 @@ export class WebViewer {
 
     this.#handle = new WebHandle_class({ ...options, fullscreen });
     try {
-      await this.#handle.start(this.#canvas.id);
+      await this.#handle.start(this.#canvas);
     } catch (e) {
       this.stop();
       throw e;

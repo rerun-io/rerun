@@ -89,7 +89,7 @@ class FaceDetectorLogger:
     """
     Logger for the MediaPipe Face Detection solution.
 
-    https://developers.google.com/mediapipe/solutions/vision/face_detector
+    <https://developers.google.com/mediapipe/solutions/vision/face_detector>
     """
 
     MODEL_PATH: Final = (MODEL_DIR / "blaze_face_short_range.tflite").resolve()
@@ -158,7 +158,7 @@ class FaceLandmarkerLogger:
     """
     Logger for the MediaPipe Face Landmark Detection solution.
 
-    https://developers.google.com/mediapipe/solutions/vision/face_landmarker
+    <https://developers.google.com/mediapipe/solutions/vision/face_landmarker>
     """
 
     MODEL_PATH: Final = (MODEL_DIR / "face_landmarker.task").resolve()
@@ -357,15 +357,12 @@ def run_from_video_capture(vid: int | str, max_dim: int | None, max_frame_count:
                 # On some platforms it always returns zero, so we compute from the frame counter and fps
                 frame_time_nano = int(frame_idx * 1000 / fps * 1e6)
 
-            # convert to rgb
-            frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-
             # log data
             rr.set_time_sequence("frame_nr", frame_idx)
             rr.set_time_nanos("frame_time", frame_time_nano)
             detector.detect_and_log(frame, frame_time_nano)
             landmarker.detect_and_log(frame, frame_time_nano)
-            rr.log("video/image", rr.Image(frame))
+            rr.log("video/image", rr.Image(frame, color_model="BGR"))
 
     except KeyboardInterrupt:
         pass
@@ -379,12 +376,11 @@ def run_from_sample_image(path: Path, max_dim: int | None, num_faces: int) -> No
     """Run the face detector on a single image."""
     image = cv2.imread(str(path))
     image = resize_image(image, max_dim)
-    image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
     logger = FaceDetectorLogger(video_mode=False)
     landmarker = FaceLandmarkerLogger(video_mode=False, num_faces=num_faces)
     logger.detect_and_log(image, 0)
     landmarker.detect_and_log(image, 0)
-    rr.log("video/image", rr.Image(image))
+    rr.log("video/image", rr.Image(image, color_model="BGR"))
 
 
 def main() -> None:

@@ -15,3 +15,4 @@ Guides for using Rerun in more advanced ways.
  - [Extend Rerun](howto/extend)
     - [By logging custom data](howto/extend/custom-data.md)
     - [By implementing custom visualizations (Rust only)](howto/extend/extend-ui.md)
+ - [Efficiently log time series data using `send_columns`](howto/send_columns.md)

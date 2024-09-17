@@ -36,10 +36,12 @@ namespace rerun {
         _CategoryArgument = 0x0000'0010,
         UnexpectedNullArgument,
         InvalidStringArgument,
+        InvalidEnumValue,
         InvalidRecordingStreamHandle,
         InvalidSocketAddress,
         InvalidComponentTypeHandle,
         InvalidTensorDimension,
+        FileRead,
 
         // Recording stream errors
         _CategoryRecordingStream = 0x0000'0100,
@@ -48,6 +50,7 @@ namespace rerun {
         RecordingStreamSaveFailure,
         RecordingStreamStdoutFailure,
         RecordingStreamSpawnFailure,
+        RecordingStreamChunkValidationFailure,
 
         // Arrow data processing errors.
         _CategoryArrow = 0x0000'1000,

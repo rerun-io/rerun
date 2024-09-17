@@ -61,7 +61,9 @@ class BuildMode(Enum):
         return self.value
 
 
-def build_and_upload(bucket: Bucket, mode: BuildMode, gcs_dir: str, target: str, compatibility: str) -> None:
+def build_and_upload(
+    bucket: Bucket, mode: BuildMode, gcs_dir: str, target: str, compatibility: str, upload_gcs: bool
+) -> None:
     if mode is BuildMode.PYPI:
         # Only build web viewer when publishing to pypi
         run("pixi run rerun-build-web-release")
@@ -88,9 +90,10 @@ def build_and_upload(bucket: Bucket, mode: BuildMode, gcs_dir: str, target: str,
 
     pkg = os.listdir(dist)[0]
 
-    # Upload to GCS
-    print("Uploading to GCS…")
-    bucket.blob(f"{gcs_dir}/{pkg}").upload_from_filename(f"{dist}/{pkg}")
+    if upload_gcs:
+        # Upload to GCS
+        print("Uploading to GCS…")
+        bucket.blob(f"{gcs_dir}/{pkg}").upload_from_filename(f"{dist}/{pkg}")
 
 
 def main() -> None:
@@ -105,6 +108,7 @@ def main() -> None:
         type=str,
         help='The platform tag for linux, e.g. "manylinux_2_31"',
     )
+    parser.add_argument("--upload-gcs", action="store_true", default=False, help="Upload the wheel to GCS")
     args = parser.parse_args()
 
     build_and_upload(
@@ -113,6 +117,7 @@ def main() -> None:
         args.dir,
         args.target or detect_target(),
         args.compat,
+        args.upload_gcs,
     )
 
 

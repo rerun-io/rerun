@@ -162,10 +162,9 @@ def read_and_log_sparse_reconstruction(dataset_path: Path, filter_output: bool, 
         if resize:
             bgr = cv2.imread(str(image_file))
             bgr = cv2.resize(bgr, resize)
-            rgb = cv2.cvtColor(bgr, cv2.COLOR_BGR2RGB)
-            rr.log("camera/image", rr.Image(rgb).compress(jpeg_quality=75))
+            rr.log("camera/image", rr.Image(bgr, color_model="BGR").compress(jpeg_quality=75))
         else:
-            rr.log("camera/image", rr.ImageEncoded(path=dataset_path / "images" / image.name))
+            rr.log("camera/image", rr.EncodedImage(path=dataset_path / "images" / image.name))
 
         rr.log("camera/image/keypoints", rr.Points2D(visible_xys, colors=[34, 138, 167]))
 

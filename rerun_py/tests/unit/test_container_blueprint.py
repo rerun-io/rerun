@@ -5,14 +5,17 @@ from typing import Any, Optional, Sequence, cast
 
 from rerun.blueprint.archetypes.container_blueprint import ContainerBlueprint
 from rerun.blueprint.components.active_tab import ActiveTab, ActiveTabBatch
-from rerun.blueprint.components.column_share import ColumnShare, ColumnShareArrayLike, ColumnShareBatch
+from rerun.blueprint.components.column_share import ColumnShare, ColumnShareBatch
 from rerun.blueprint.components.container_kind import ContainerKind, ContainerKindBatch, ContainerKindLike
-from rerun.blueprint.components.grid_columns import GridColumns, GridColumnsBatch, GridColumnsLike
+from rerun.blueprint.components.grid_columns import GridColumns, GridColumnsBatch
 from rerun.blueprint.components.included_content import IncludedContentBatch
-from rerun.blueprint.components.row_share import RowShare, RowShareArrayLike, RowShareBatch
-from rerun.blueprint.components.visible import Visible, VisibleBatch, VisibleLike
+from rerun.blueprint.components.row_share import RowShare, RowShareBatch
+from rerun.blueprint.components.visible import Visible, VisibleBatch
 from rerun.components.name import Name, NameBatch
+from rerun.datatypes.bool import BoolLike
 from rerun.datatypes.entity_path import EntityPath, EntityPathArrayLike, EntityPathLike
+from rerun.datatypes.float32 import Float32ArrayLike
+from rerun.datatypes.uint32 import UInt32ArrayLike
 from rerun.datatypes.utf8 import Utf8Like
 
 from .common_arrays import none_empty_or_value
@@ -94,11 +97,11 @@ def test_container_blueprint() -> None:
         container_kind = cast(ContainerKindLike, container_kind)
         display_name = cast(Optional[Utf8Like], display_name)
         contents = cast(Optional[EntityPathArrayLike], contents)
-        col_shares = cast(Optional[ColumnShareArrayLike], col_shares)
-        row_shares = cast(Optional[RowShareArrayLike], row_shares)
+        col_shares = cast(Optional[Float32ArrayLike], col_shares)
+        row_shares = cast(Optional[Float32ArrayLike], row_shares)
         active_tab = cast(Optional[EntityPathLike], active_tab)
-        visible = cast(Optional[VisibleLike], visible)
-        grid_columns = cast(Optional[GridColumnsLike], grid_columns)
+        visible = cast(Optional[BoolLike], visible)
+        grid_columns = cast(Optional[UInt32ArrayLike], grid_columns)
 
         print(
             "rr.ContainerBlueprint(\n",

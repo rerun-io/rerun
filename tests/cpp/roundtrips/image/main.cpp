@@ -1,8 +1,6 @@
 // Logs an `Image` archetype for roundtrip checks.
 
-#include <rerun/archetypes/image.hpp>
-
-#include <rerun/recording_stream.hpp>
+#include <rerun.hpp>
 
 uint32_t as_uint(float f) {
     // Don't do `*reinterpret_cast<const uint32_t*>(&x)` since it breaks strict aliasing rules.
@@ -32,11 +30,14 @@ int main(int, char** argv) {
 
     // h=2 w=3 c=3 image. Red channel = x. Green channel = y. Blue channel = 128.
     {
-        auto img = rerun::datatypes::TensorData(
-            {2, 3, 3},
-            std::vector<uint8_t>{0, 0, 128, 1, 0, 128, 2, 0, 128, 0, 1, 128, 1, 1, 128, 2, 1, 128}
+        rec.log(
+            "image",
+            rerun::Image::from_rgb24(
+                std::vector<
+                    uint8_t>{0, 0, 128, 1, 0, 128, 2, 0, 128, 0, 1, 128, 1, 1, 128, 2, 1, 128},
+                {3, 2}
+            )
         );
-        rec.log("image", rerun::archetypes::Image(img));
     }
 
     // h=4, w=5 mono image. Pixel = x * y * 123.4
@@ -47,7 +48,6 @@ int main(int, char** argv) {
                 data.push_back(half_from_float(static_cast<float>(x * y) * 123.4f));
             }
         }
-        auto img = rerun::datatypes::TensorData({4, 5}, std::move(data));
-        rec.log("image_f16", rerun::archetypes::Image(img));
+        rec.log("image_f16", rerun::Image(rerun::borrow(data), {5, 4}, rerun::ColorModel::L));
     }
 }

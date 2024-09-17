@@ -27,7 +27,7 @@ The easiest way to launch the Viewer is directly from the logging API with `rr.i
 #### Web viewer
 You can try running the Viewer in a browser using `rr.serve()` in Python, or using `rerun --web-viewer mydata.rrd`.
 
-The web viewer consists of just a few small files - a thin `.html`, a `.wasm` blob, and an auto-generated `.js` bridge for the wasm. These files are served using the [`re_web_viewer_server`](https://github.com/rerun-io/rerun/tree/latest/crates/re_web_viewer_server) crate.
+The web viewer consists of just a few small files - a thin `.html`, a `.wasm` blob, and an auto-generated `.js` bridge for the wasm. These files are served using the [`re_web_viewer_server`](https://github.com/rerun-io/rerun/tree/latest/crates/viewer/re_web_viewer_server) crate.
 
 The web viewer can load `.rrd` files (just drag-drop them into the browser), or read logging data streamed over WebSockets.
 
@@ -39,7 +39,7 @@ NOTE: `.rrd` files do not yet guarantee any backwards or forwards compatibility.
 
 ## Technologies we use
 ### Apache Arrow
-[Apache Arrow](https://arrow.apache.org/) is a language-independent columnar memory format for arbitrary data. We use it to encode the log data when transmitting it over the network or storing it in an `.rrd` file. We also use it in our in-RAM data store, [`re_chunk_store`](crates/re_chunk_store/README.md).
+[Apache Arrow](https://arrow.apache.org/) is a language-independent columnar memory format for arbitrary data. We use it to encode the log data when transmitting it over the network or storing it in an `.rrd` file. We also use it in our in-RAM data store, [`re_chunk_store`](crates/store/re_chunk_store/README.md).
 
 In Rust, we use the [`arrow2` crate](https://crates.io/crates/arrow2).
 
@@ -48,7 +48,7 @@ The Rerun Viewer uses the [`wgpu`](https://github.com/gfx-rs/wgpu) graphics API.
 
 On web builds, we use WebGPU when available on the Web, but automatically fall back to a WebGL based emulation layer (with a more limited feature set).
 
-We have written our own high-level rendering crate on top of `wgpu`, called [`re_renderer`](crates/re_renderer/README.md).
+We have written our own high-level rendering crate on top of `wgpu`, called [`re_renderer`](crates/viewer/re_renderer/README.md).
 
 ### `egui`
 The GUI in the Rerun Viewer is using [`egui`](https://www.egui.rs/), a cross-platform, [immediate mode GUI](https://github.com/emilk/egui#why-immediate-mode).
@@ -88,12 +88,13 @@ Of course, this will only take us so far. In the future we plan on caching queri
 Here is an overview of the crates included in the project:
 
 <picture>
-  <img src="https://static.rerun.io/crates/ea88def8bf549cd0d3abbe85ae787cf1a4db03bc/full.png" alt="">
-  <source media="(max-width: 480px)" srcset="https://static.rerun.io/crates/ea88def8bf549cd0d3abbe85ae787cf1a4db03bc/480w.png">
-  <source media="(max-width: 768px)" srcset="https://static.rerun.io/crates/ea88def8bf549cd0d3abbe85ae787cf1a4db03bc/768w.png">
-  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/crates/ea88def8bf549cd0d3abbe85ae787cf1a4db03bc/1024w.png">
-  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/crates/ea88def8bf549cd0d3abbe85ae787cf1a4db03bc/1200w.png">
+  <img src="https://static.rerun.io/crates/4f5569b318a5b8d7b0e9ab6e34e672c58ac5c63e/full.png" alt="">
+  <source media="(max-width: 480px)" srcset="https://static.rerun.io/crates/4f5569b318a5b8d7b0e9ab6e34e672c58ac5c63e/480w.png">
+  <source media="(max-width: 768px)" srcset="https://static.rerun.io/crates/4f5569b318a5b8d7b0e9ab6e34e672c58ac5c63e/768w.png">
+  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/crates/4f5569b318a5b8d7b0e9ab6e34e672c58ac5c63e/1024w.png">
+  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/crates/4f5569b318a5b8d7b0e9ab6e34e672c58ac5c63e/1200w.png">
 </picture>
+
 
 
 <!-- !!! IMPORTANT!!!
@@ -125,22 +126,23 @@ Update instructions:
 
 ##### UI crates
 
-| Crate                       | Description                                                                                                 |
-|-----------------------------|-------------------------------------------------------------------------------------------------------------|
-| re_blueprint_tree           | The UI for the blueprint tree in the left panel.                                                            |
-| re_edit_ui                  | Provides UI editors for Rerun component data for registration with the Rerun Viewer component UI registry.  |
-| re_selection_panel          | The UI for the selection panel.                                                                             |
-| re_space_view               | Types & utilities for defining Space View classes and communicating with the Viewport.                      |
-| re_space_view_bar_chart     | A Space View that shows a single bar chart.                                                                 |
-| re_space_view_dataframe     | A Space View that shows the data contained in entities in a table.                                          |
-| re_space_view_spatial       | Space Views that show entities in a 2D or 3D spatial relationship.                                          |
-| re_space_view_tensor        | A Space View dedicated to visualizing tensors with arbitrary dimensionality.                                |
-| re_space_view_text_document | A simple Space View that shows a single text box.                                                           |
-| re_space_view_text_log      | A Space View that shows text entries in a table and scrolls with the active time.                           |
-| re_space_view_time_series   | A Space View that shows plots over Rerun timelines.                                                         |
-| re_time_panel               | The time panel of the Rerun Viewer, allowing to control the displayed timeline & time.                      |
-| re_viewer                   | The Rerun Viewer                                                                                            |
-| re_viewport                 | The central viewport panel of the Rerun viewer.                                                             |
+| Crate                       | Description                                                                                                |
+|-----------------------------|------------------------------------------------------------------------------------------------------------|
+| re_blueprint_tree           | The UI for the blueprint tree in the left panel.                                                           |
+| re_chunk_store_ui           | A chunk store browser UI.                                                                                  |
+| re_component_ui             | Provides UI editors for Rerun component data for registration with the Rerun Viewer component UI registry. |
+| re_selection_panel          | The UI for the selection panel.                                                                            |
+| re_space_view               | Types & utilities for defining Space View classes and communicating with the Viewport.                     |
+| re_space_view_bar_chart     | A Space View that shows a single bar chart.                                                                |
+| re_space_view_dataframe     | A Space View that shows the data contained in entities in a table.                                         |
+| re_space_view_spatial       | Space Views that show entities in a 2D or 3D spatial relationship.                                         |
+| re_space_view_tensor        | A Space View dedicated to visualizing tensors with arbitrary dimensionality.                               |
+| re_space_view_text_document | A simple Space View that shows a single text box.                                                          |
+| re_space_view_text_log      | A Space View that shows text entries in a table and scrolls with the active time.                          |
+| re_space_view_time_series   | A Space View that shows plots over Rerun timelines.                                                        |
+| re_time_panel               | The time panel of the Rerun Viewer, allowing to control the displayed timeline & time.                     |
+| re_viewer                   | The Rerun Viewer                                                                                           |
+| re_viewport                 | The central viewport panel of the Rerun viewer.                                                            |
 
 
 ##### UI support crates
@@ -161,6 +163,7 @@ Update instructions:
 |----------------------|--------------------------------------------------------------------------|
 | re_entity_db         | In-memory storage of Rerun entities                                      |
 | re_query             | Querying data in the re_chunk_store                                      |
+| re_dataframe         | The Rerun public data APIs.                                              |
 | re_types             | The built-in Rerun data types, component types, and archetypes.          |
 | re_types_blueprint   | The core traits and types that power Rerun's Blueprint sub-system.       |
 | re_log_encoding      | Helpers for encoding and transporting Rerun log messages                 |
@@ -204,16 +207,17 @@ Update instructions:
 |--------------------|--------------------------------------------------------------------------------------|
 | re_analytics       | Rerun's analytics SDK                                                                |
 | re_case            | Case conversions, the way Rerun likes them                                           |
-| re_log             | Helpers for setting up and doing text logging in the Rerun crates.                   |
+| re_crash_handler   | Detect panics and signals, logging them and optionally sending them to analytics.    |
 | re_error           | Helpers for handling errors.                                                         |
 | re_format          | Miscellaneous tools to format and parse numbers, durations, etc.                     |
-| re_tuid            | 128-bit Time-based Unique Identifier                                                 |
+| re_int_histogram   | A histogram with `i64` keys and `u32` counts, supporting both sparse and dense uses. |
+| re_log             | Helpers for setting up and doing text logging in the Rerun crates.                   |
+| re_memory          | Run-time memory tracking and profiling.                                              |
+| re_smart_channel   | A channel that keeps track of latency and queue length.                              |
 | re_string_interner | Yet another string interning library                                                 |
 | re_tracing         | Helpers for tracing/spans/flamegraphs and such.                                      |
-| re_crash_handler   | Detect panics and signals, logging them and optionally sending them to analytics.    |
-| re_smart_channel   | A channel that keeps track of latency and queue length.                              |
-| re_int_histogram   | A histogram with `i64` keys and `u32` counts, supporting both sparse and dense uses. |
-| re_memory          | Run-time memory tracking and profiling.                                              |
+| re_tuid            | 128-bit Time-based Unique Identifier                                                 |
+| re_video           | Video decoding library                                                               |
 
 
 

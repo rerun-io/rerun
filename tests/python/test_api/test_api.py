@@ -245,91 +245,13 @@ def run_log_cleared() -> None:
     rr.log("null_test/rect/1", rr.Boxes2D(array=[10, 5, 4, 4], array_format=rr.Box2DFormat.XYWH))
 
 
-def transforms_rigid_3d() -> None:
-    rr.set_time_seconds("sim_time", 0)
-
-    sun_to_planet_distance = 6.0
-    planet_to_moon_distance = 3.0
-    rotation_speed_planet = 2.0
-    rotation_speed_moon = 5.0
-
-    # Planetary motion is typically in the XY plane.
-    rr.log("transforms3d", rr.ViewCoordinates.RIGHT_HAND_Z_UP, static=True)
-    rr.log("transforms3d/sun", rr.ViewCoordinates.RIGHT_HAND_Z_UP, static=True)
-    rr.log("transforms3d/sun/planet", rr.ViewCoordinates.RIGHT_HAND_Z_UP, static=True)
-    rr.log("transforms3d/sun/planet/moon", rr.ViewCoordinates.RIGHT_HAND_Z_UP, static=True)
-
-    # All are in the center of their own space:
-    rr.log("transforms3d/sun", rr.Points3D([0.0, 0.0, 0.0], radii=1.0, colors=[255, 200, 10]))
-    rr.log("transforms3d/sun/planet", rr.Points3D([0.0, 0.0, 0.0], radii=0.4, colors=[40, 80, 200]))
-    rr.log("transforms3d/sun/planet/moon", rr.Points3D([0.0, 0.0, 0.0], radii=0.15, colors=[180, 180, 180]))
-
-    # "dust" around the "planet" (and inside, don't care)
-    # distribution is quadratically higher in the middle
-    radii = np.random.rand(200) * planet_to_moon_distance * 0.5
-    angles = np.random.rand(200) * math.tau
-    height = np.power(np.random.rand(200), 0.2) * 0.5 - 0.5
-    rr.log(
-        "transforms3d/sun/planet/dust",
-        rr.Points3D(
-            np.array([np.sin(angles) * radii, np.cos(angles) * radii, height]).transpose(),
-            colors=[80, 80, 80],
-            radii=0.025,
-        ),
-    )
-
-    # paths where the planet & moon move
-    angles = np.arange(0.0, 1.01, 0.01) * math.tau
-    circle = np.array([np.sin(angles), np.cos(angles), angles * 0.0]).transpose()
-    rr.log(
-        "transforms3d/sun/planet_path",
-        rr.LineStrips3D(
-            circle * sun_to_planet_distance,
-        ),
-    )
-    rr.log(
-        "transforms3d/sun/planet/moon_path",
-        rr.LineStrips3D(
-            circle * planet_to_moon_distance,
-        ),
-    )
-
-    # movement via transforms
-    for i in range(0, 6 * 120):
-        time = i / 120.0
-        rr.set_time_seconds("sim_time", time)
-
-        rr.log(
-            "transforms3d/sun/planet",
-            rr.Transform3D(
-                translation=[
-                    math.sin(time * rotation_speed_planet) * sun_to_planet_distance,
-                    math.cos(time * rotation_speed_planet) * sun_to_planet_distance,
-                    0.0,
-                ],
-                rotation=rr.RotationAxisAngle(axis=(1, 0, 0), degrees=20),
-            ),
-        )
-        rr.log(
-            "transforms3d/sun/planet/moon",
-            rr.Transform3D(
-                translation=[
-                    math.cos(time * rotation_speed_moon) * planet_to_moon_distance,
-                    math.sin(time * rotation_speed_moon) * planet_to_moon_distance,
-                    0.0,
-                ],
-                from_parent=True,
-            ),
-        )
-
-
 def run_bounding_box() -> None:
     rr.set_time_seconds("sim_time", 0)
     rr.log(
         "bbox_test/bbox",
         rr.Boxes3D(
             half_sizes=[1.0, 0.5, 0.25],
-            rotations=rr.Quaternion(xyzw=[0, 0, np.sin(np.pi / 4), np.cos(np.pi / 4)]),
+            quaternions=rr.Quaternion(xyzw=[0, 0, np.sin(np.pi / 4), np.cos(np.pi / 4)]),
             colors=[0, 255, 0],
             radii=0.01,
             labels="box/t0",
@@ -342,7 +264,7 @@ def run_bounding_box() -> None:
         rr.Boxes3D(
             centers=np.array([1.0, 0.0, 0.0]),
             half_sizes=[1.0, 0.5, 0.25],
-            rotations=rr.Quaternion(xyzw=[0, 0, np.sin(np.pi / 4), np.cos(np.pi / 4)]),
+            quaternions=rr.Quaternion(xyzw=[0, 0, np.sin(np.pi / 4), np.cos(np.pi / 4)]),
             colors=[255, 255, 0],
             radii=0.02,
             labels="box/t1",
@@ -388,10 +310,10 @@ def run_gradient_image() -> None:
     rr.log("gradient_u16_0_1020", rr.Image(im))
 
 
-def run_image_tensors() -> None:
+def run_image_datatypes() -> None:
     # Make sure you use a colorful image with alpha!
     dir_path = os.path.dirname(os.path.realpath(__file__))
-    img_path = f"{dir_path}/../../../crates/re_ui/data/logo_dark_mode.png"
+    img_path = f"{dir_path}/../../../crates/viewer/re_ui/data/logo_dark_mode.png"
     img_bgra = cv2.imread(img_path, cv2.IMREAD_UNCHANGED)
 
     img_rgba = cv2.cvtColor(img_bgra, cv2.COLOR_BGRA2RGBA)
@@ -406,7 +328,7 @@ def run_image_tensors() -> None:
         "uint16",
         "uint32",
         "uint64",
-        "int8",  # produces wrap-around when casting, producing ugly images, but clipping which is not useful as a test
+        "int8",
         "int16",
         "int32",
         "int64",
@@ -415,10 +337,17 @@ def run_image_tensors() -> None:
         "float64",
     ]
 
+    def cast_to(array, dtype):
+        if dtype == "int8":
+            # remap [0, 255] to [-128, 127]
+            return (array.astype("int16") - 128).astype("int8")
+        else:
+            return array.astype(dtype)
+
     for dtype in dtypes:
-        rr.log(f"img_rgba_{dtype}", rr.Image(img_rgba.astype(dtype)))
-        rr.log(f"img_rgb_{dtype}", rr.Image(img_rgb.astype(dtype)))
-        rr.log(f"img_gray_{dtype}", rr.Image(img_gray.astype(dtype)))
+        rr.log(f"img_rgba_{dtype}", rr.Image(cast_to(img_rgba, dtype)))
+        rr.log(f"img_rgb_{dtype}", rr.Image(cast_to(img_rgb, dtype)))
+        rr.log(f"img_gray_{dtype}", rr.Image(cast_to(img_gray, dtype)))
 
 
 def spawn_test(test: Callable[[], None], rec: rr.RecordingStream) -> None:
@@ -433,7 +362,7 @@ def main() -> None:
         "bbox": run_bounding_box,
         "extension_components": run_extension_component,
         "gradient_image": run_gradient_image,
-        "image_tensors": run_image_tensors,
+        "image_datatypes": run_image_datatypes,
         "log_cleared": run_log_cleared,
         "raw_mesh": raw_mesh,
         "rects": run_rects,
@@ -441,7 +370,6 @@ def main() -> None:
         "small_image": small_image,
         "text": run_text_logs,
         "transforms": transforms,
-        "transforms_rigid_3d": transforms_rigid_3d,
     }
 
     parser = argparse.ArgumentParser(description="Logs rich data using the Rerun SDK.")
@@ -473,7 +401,7 @@ def main() -> None:
         threads = []
         for name, test in tests.items():
             # Some tests are just a bit… too much
-            if args.test == "most" and name in ["image_tensors", "transforms"]:
+            if args.test == "most" and name in ["image_datatypes", "transforms"]:
                 continue
 
             if args.split_recordings:

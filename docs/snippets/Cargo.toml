@@ -12,7 +12,8 @@ workspace = true
 [dependencies]
 ndarray.workspace = true
 rand = { workspace = true, features = ["std", "std_rng"] }
-rerun = { path = "../../crates/rerun" }
+rand_distr = { workspace = true, features = ["std"] }
+rerun = { path = "../../crates/top/rerun" }
 
 [build-dependencies]
 itertools.workspace = true

@@ -10,7 +10,7 @@ significant benefits in terms of storage and compute.
 Some examples of batched data include points in a point cloud, bounding boxes for detected objects, tracked keypoints
 in a skeleton, or a collection of line strips.
 
-In the Python APIs, the majority of archetypes are named with the plural form, for example [`rr.Points3D`](https://ref.rerun.io/docs/python/stable/common/archetypes/#rerun.archetypes.Points3D). They accept both single elements (internally treated as an N=1 batch) or arrays corresponding to the batches.
+In the logging APIs, the majority of archetypes are named with the plural form, for example [`rr.Points3D`](https://ref.rerun.io/docs/python/stable/common/archetypes/#rerun.archetypes.Points3D). They accept both single elements (internally treated as an N=1 batch) or arrays corresponding to the batches.
 
 ## Terminology
 
@@ -38,7 +38,7 @@ When using batched entities there are a few restrictions:
 Rerun lets you choose which components in an entity you want to log at any point in time. If you don't log to a
 component, then in general it is not updated. For example, if you log a point cloud with positions and colors and then
 later log just new positions, when the Viewer displays that point cloud it will still look up the *last* colors that
-were logged (we refer to this as the *latest at* semantics).
+were logged (we refer to this as the *latest-at* semantics).
 
 This can be quite convenient since updating different components at different times puts far fewer restrictions on the
 organization of your code. It even means if a component on an entity is static, you only need to log it once.
@@ -58,3 +58,6 @@ As mentioned, Rerun has special semantics when joining batches of different size
 
 If the component on the left-side of the join (the so-called primary component) has more instances than the other, then these tail values will simply be ignored.
 On the other hand, if the component on the left-side of the join (the so-called primary component) has less instances than the other, then the last instance will be repeated across every instance left in the batch. We call this clamping, in reference to texture sampling (think `CLAMP_TO_EDGE`!).
+
+## See also
+[`send_columns`](../howto/send_columns.md) lets you efficiently send many batches of data in one log call.

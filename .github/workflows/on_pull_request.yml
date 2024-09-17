@@ -12,6 +12,8 @@ on:
       - opened
       - synchronize
 
+permissions: write-all
+
 # These jobs use fairly short names as they are a prefix in the display hierarchy
 jobs:
   checks:
@@ -20,6 +22,7 @@ jobs:
     uses: ./.github/workflows/reusable_checks.yml
     with:
       CONCURRENCY: pr-${{ github.event.pull_request.number }}
+      CHANNEL: pr
     secrets: inherit
 
   cpp-paths-filter:
@@ -136,7 +139,7 @@ jobs:
               - "**/*.rs"
               - "**/*.toml"
               - "**/yarn.lock"
-              - "crates/re_ui/data/**"
+              - "crates/viewer/re_ui/data/**"
 
   rust-checks:
     name: "Rust Checks"

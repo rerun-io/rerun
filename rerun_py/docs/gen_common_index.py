@@ -2,7 +2,7 @@
 """
 Generate an index table and rendered pages for the common APIs.
 
-NOTE: When changing anything in this file, also consider how it affects `crates/re_dev_tools/src/build_search_index/ingest/python.rs`.
+NOTE: When changing anything in this file, also consider how it affects `crates/build/re_dev_tools/src/build_search_index/ingest/python.rs`.
 
 The top-level index file should look like
 ```
@@ -92,6 +92,7 @@ SECTION_TABLE: Final[list[Section]] = [
             "spawn",
             "memory_recording",
             "notebook_show",
+            "legacy_notebook_show",
         ],
     ),
     Section(
@@ -110,6 +111,17 @@ SECTION_TABLE: Final[list[Section]] = [
             "set_time_nanos",
             "disable_timeline",
             "reset_time",
+        ],
+    ),
+    Section(
+        title="Columnar API",
+        func_list=[
+            "send_columns",
+        ],
+        class_list=[
+            "TimeNanosColumn",
+            "TimeSecondsColumn",
+            "TimeSequenceColumn",
         ],
     ),
     ################################################################################
@@ -155,15 +167,18 @@ SECTION_TABLE: Final[list[Section]] = [
         class_list=[
             "archetypes.DepthImage",
             "archetypes.Image",
-            "ImageEncoded",
+            "archetypes.EncodedImage",
             "archetypes.SegmentationImage",
         ],
         gen_page=False,
     ),
     Section(
-        title="Image Helpers",
-        class_list=["ImageEncoded"],
-        show_tables=False,
+        title="Video",
+        class_list=[
+            "archetypes.AssetVideo",
+            "archetypes.VideoFrameReference",
+        ],
+        gen_page=False,
     ),
     Section(
         title="Plotting",
@@ -183,6 +198,7 @@ SECTION_TABLE: Final[list[Section]] = [
             "archetypes.Asset3D",
             "archetypes.Boxes2D",
             "archetypes.Boxes3D",
+            "archetypes.Ellipsoids3D",
             "archetypes.LineStrips2D",
             "archetypes.LineStrips3D",
             "archetypes.Mesh3D",
@@ -207,12 +223,11 @@ SECTION_TABLE: Final[list[Section]] = [
             "archetypes.DisconnectedSpace",
             "archetypes.Pinhole",
             "archetypes.Transform3D",
+            "archetypes.InstancePoses3D",
             "archetypes.ViewCoordinates",
+            "components.Scale3D",
             "datatypes.Quaternion",
             "datatypes.RotationAxisAngle",
-            "datatypes.Scale3D",
-            "datatypes.TranslationAndMat3x3",
-            "datatypes.TranslationRotationScale3D",
         ],
         gen_page=False,
     ),
@@ -231,7 +246,11 @@ SECTION_TABLE: Final[list[Section]] = [
     Section(
         title="Interfaces",
         mod_path="rerun",
-        class_list=["AsComponents", "ComponentBatchLike"],
+        class_list=[
+            "AsComponents",
+            "ComponentBatchLike",
+            "ComponentColumn",
+        ],
         default_filters=False,
     ),
     ################################################################################

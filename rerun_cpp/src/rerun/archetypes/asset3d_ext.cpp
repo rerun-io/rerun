@@ -17,10 +17,6 @@ namespace rerun::archetypes {
 #if 0
         // <CODEGEN_COPY_TO_HEADER>
 
-        static std::optional<rerun::components::MediaType> guess_media_type(
-            const std::filesystem::path& path
-        );
-
         /// Creates a new `Asset3D` from the file contents at `path`.
         ///
         /// The `MediaType` will be guessed from the file extension.
@@ -34,7 +30,7 @@ namespace rerun::archetypes {
         /// If no `MediaType` is specified, the Rerun Viewer will try to guess one from the data
         /// at render-time. If it can't, rendering will fail with an error.
         static Asset3D from_bytes(
-            rerun::Collection<uint8_t> bytes, std::optional<rerun::components::MediaType> media_type
+            rerun::Collection<uint8_t> bytes, std::optional<rerun::components::MediaType> media_type = {}
         ) {
             // TODO(cmc): we could try and guess using magic bytes here, like rust does.
             Asset3D asset = Asset3D(std::move(bytes));
@@ -60,27 +56,7 @@ namespace rerun::archetypes {
 
         return Asset3D::from_bytes(
             Collection<uint8_t>::take_ownership(std::move(data)),
-            Asset3D::guess_media_type(path)
+            rerun::components::MediaType::guess_from_path(path)
         );
-    }
-
-    std::optional<rerun::components::MediaType> Asset3D::guess_media_type(
-        const std::filesystem::path& path
-    ) {
-        std::filesystem::path file_path(path);
-        std::string ext = file_path.extension().string();
-        std::transform(ext.begin(), ext.end(), ext.begin(), ::tolower);
-
-        if (ext == ".glb") {
-            return rerun::components::MediaType::glb();
-        } else if (ext == ".gltf") {
-            return rerun::components::MediaType::gltf();
-        } else if (ext == ".obj") {
-            return rerun::components::MediaType::obj();
-        } else if (ext == ".stl") {
-            return rerun::components::MediaType::stl();
-        } else {
-            return std::nullopt;
-        }
     }
 } // namespace rerun::archetypes

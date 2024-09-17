@@ -7,11 +7,11 @@ import rerun_bindings as bindings
 
 from .._baseclasses import AsComponents, ComponentBatchLike
 from .._spawn import _spawn_viewer
-from ..datatypes import EntityPathLike, Utf8ArrayLike, Utf8Like
+from ..datatypes import BoolLike, EntityPathLike, Float32ArrayLike, Utf8ArrayLike, Utf8Like
 from ..memory import MemoryRecording
 from ..recording_stream import RecordingStream
 from .archetypes import ContainerBlueprint, PanelBlueprint, SpaceViewBlueprint, SpaceViewContents, ViewportBlueprint
-from .components import ColumnShareArrayLike, PanelState, PanelStateLike, RowShareArrayLike, VisibleLike
+from .components import PanelState, PanelStateLike
 from .components.container_kind import ContainerKindLike
 
 SpaceViewContentsLike = Union[Utf8ArrayLike, SpaceViewContents]
@@ -41,7 +41,7 @@ class SpaceView:
         origin: EntityPathLike,
         contents: SpaceViewContentsLike,
         name: Utf8Like | None,
-        visible: VisibleLike | None = None,
+        visible: BoolLike | None = None,
         properties: dict[str, AsComponents] = {},
         defaults: list[Union[AsComponents, ComponentBatchLike]] = [],
         overrides: dict[EntityPathLike, list[ComponentBatchLike]] = {},
@@ -78,7 +78,7 @@ class SpaceView:
 
             Important note: the path must be a fully qualified entity path starting at the root. The override paths
             do not yet support `$origin` relative paths or glob expressions.
-            This will be addressed in: [https://github.com/rerun-io/rerun/issues/6673][].
+            This will be addressed in <https://github.com/rerun-io/rerun/issues/6673>.
 
         """
         self.id = uuid.uuid4()
@@ -171,8 +171,8 @@ class Container:
         *args: Container | SpaceView,
         contents: Optional[Iterable[Container | SpaceView]] = None,
         kind: ContainerKindLike,
-        column_shares: Optional[ColumnShareArrayLike] = None,
-        row_shares: Optional[RowShareArrayLike] = None,
+        column_shares: Optional[Float32ArrayLike] = None,
+        row_shares: Optional[Float32ArrayLike] = None,
         grid_columns: Optional[int] = None,
         active_tab: Optional[int | str] = None,
         name: Utf8Like | None,

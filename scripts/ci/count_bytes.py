@@ -3,7 +3,7 @@
 """
 Measure sizes of a list of files.
 
-This produces the format for use in https://github.com/benchmark-action/github-action-benchmark.
+This produces the format for use in <https://github.com/benchmark-action/github-action-benchmark>.
 
 Use the script:
     python3 scripts/ci/count_bytes.py --help

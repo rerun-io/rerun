@@ -59,7 +59,7 @@ fn run(rec: &rerun::RecordingStream) -> anyhow::Result<()> {
     rec.log_static("readme", &rerun::TextDocument::from_markdown(README))?;
 
     let colors = [rerun::Color::from_rgb(255, 0, 0)];
-    let radii = [rerun::Radius(0.1)];
+    let radii = [rerun::Radius::from(0.1)];
 
     // Only log colors and radii once.
     rec.set_time_sequence("frame_nr", 0);

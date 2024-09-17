@@ -1,0 +1,19 @@
+namespace rerun.blueprint.archetypes;
+
+
+/// Controls the visual bounds of a 2D view.
+///
+/// Everything within these bounds are guaranteed to be visible.
+/// Somethings outside of these bounds may also be visible due to letterboxing.
+///
+/// If no visual bounds are set, it will be determined automatically,
+/// based on the bounding-box of the data or other camera information present in the view.
+table VisualBounds2D (
+    "attr.rerun.scope": "blueprint",
+    "attr.rust.derive": "Copy"
+) {
+    /// Controls the visible range of a 2D view.
+    ///
+    /// Use this to control pan & zoom of the view.
+    range: rerun.blueprint.components.VisualBounds2D ("attr.rerun.component_required", order: 1000);
+}

@@ -14,7 +14,14 @@ namespace rerun::components {
     const std::shared_ptr<arrow::DataType>& indicator_arrow_datatype();
 
     /// Returns an arrow array for a single indicator component.
+    ///
+    /// This allocates a shared pointer only on the first call and returns references to the static object afterwards.
     const std::shared_ptr<arrow::Array>& indicator_arrow_array();
+
+    /// Returns an arrow array for a several indicator component.
+    ///
+    /// Unlike the parameterless version this allocates a new data type on every call.
+    std::shared_ptr<arrow::Array> indicator_arrow_array(size_t num_instances);
 
     /// Indicator component used by archetypes when converting them to component lists.
     ///
@@ -35,11 +42,16 @@ namespace rerun {
             return components::indicator_arrow_datatype();
         }
 
-        /// Creates an arrow DataCell from an array of IndicatorComponent components.
+        /// Creates an arrow ComponentBatch from an array of IndicatorComponent components.
         static Result<std::shared_ptr<arrow::Array>> to_arrow(
-            const components::IndicatorComponent<Name_>*, size_t
+            const components::IndicatorComponent<Name_>*, size_t num_instances
         ) {
-            return components::indicator_arrow_array();
+            // If possible, use the statically allocated shared pointer returned by the parameterless version.
+            if (num_instances == 1) {
+                return components::indicator_arrow_array();
+            } else {
+                return components::indicator_arrow_array(num_instances);
+            }
         }
     };
 } // namespace rerun

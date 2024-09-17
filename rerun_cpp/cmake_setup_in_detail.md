@@ -105,7 +105,7 @@ to pick up a system-version of Arrow instead of the one you built against.
 ## RERUN_C_LIB
 Path to the static Rerun C library to link against.
 
-`rerun_c` is a static library built from a [Rust crate](https://github.com/rerun-io/rerun/tree/latest/crates/rerun_c).
+`rerun_c` is a static library built from a [Rust crate](https://github.com/rerun-io/rerun/tree/latest/crates/top/rerun_c).
 It provides a minimalistic C interface that encapsulates the shared building blocks of all Rerun SDKs.
 
 By default points to where a pre-built library for the currently active platform

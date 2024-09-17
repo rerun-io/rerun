@@ -2,7 +2,7 @@
 """
 Example running ControlNet conditioned on Canny edges.
 
-Based on https://huggingface.co/docs/diffusers/using-diffusers/controlnet.
+Based on <https://huggingface.co/docs/diffusers/using-diffusers/controlnet>.
 """
 
 from __future__ import annotations

@@ -12,8 +12,30 @@ from rerun import bindings
 
 from .recording_stream import RecordingStream, get_data_recording
 
-DEFAULT_WIDTH = 950
-DEFAULT_HEIGHT = 712
+_default_width = 640
+_default_height = 480
+
+
+def set_default_size(*, width: int | None, height: int | None) -> None:
+    """
+    Set the default size for the viewer.
+
+    This will be used for any viewers created after this call.
+
+    Parameters
+    ----------
+    width : int
+        The width of the viewer in pixels.
+    height : int
+        The height of the viewer in pixels.
+
+    """
+
+    global _default_width, _default_height
+    if width is not None:
+        _default_width = width
+    if height is not None:
+        _default_height = height
 
 
 class Viewer:
@@ -26,8 +48,8 @@ class Viewer:
     def __init__(
         self,
         *,
-        width: int = DEFAULT_WIDTH,
-        height: int = DEFAULT_HEIGHT,
+        width: int | None = None,
+        height: int | None = None,
         blueprint: BlueprintLike | None = None,
         recording: RecordingStream | None = None,
     ):
@@ -74,8 +96,8 @@ class Viewer:
             self._recording.send_blueprint(blueprint)  # type: ignore[attr-defined]
 
         self._viewer = _Viewer(
-            width=width,
-            height=height,
+            width=width if width is not None else _default_width,
+            height=height if height is not None else _default_height,
         )
 
         bindings.set_callback_sink(
@@ -115,8 +137,8 @@ class Viewer:
 
 def notebook_show(
     *,
-    width: int = DEFAULT_WIDTH,
-    height: int = DEFAULT_HEIGHT,
+    width: int | None = None,
+    height: int | None = None,
     blueprint: BlueprintLike | None = None,
     recording: RecordingStream | None = None,
 ) -> None:

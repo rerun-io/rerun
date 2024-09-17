@@ -1,0 +1,23 @@
+namespace rerun.blueprint.components;
+
+
+/// The kind of a blueprint container (tabs, grid, …).
+enum ContainerKind: ubyte (
+    "attr.rerun.scope": "blueprint",
+    "attr.rust.override_crate": "re_types_blueprint"
+) {
+    /// Invalid value. Won't show up in generated types.
+    Invalid = 0,
+
+    /// Put children in separate tabs
+    Tabs,
+
+    /// Order the children left to right
+    Horizontal,
+
+    /// Order the children top to bottom
+    Vertical,
+
+    /// Organize children in a grid layout
+    Grid (default),
+}

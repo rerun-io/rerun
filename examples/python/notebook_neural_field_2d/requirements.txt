@@ -1,0 +1,11 @@
+ipython<=8.12 # ipython 8.13 or greater doesn't work with python 3.8
+jupyter
+rerun-sdk[notebook]
+torch
+
+# Lots of reported incompatibilities across recent versions for these 3 deps.
+# The following seems to be the most recent recommendations for a stable experience.
+# See e.g. https://github.com/jupyter/notebook/issues/6721
+jupyter_client<8
+pyzmq<25
+tornado<=6.3.3

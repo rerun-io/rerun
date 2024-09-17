@@ -138,7 +138,8 @@ def lint_line(
             return "It's 'GitHub', not 'github'"
 
     if re.search(r"[.a-zA-Z]  [a-zA-Z]", line):
-        return "Found double space"
+        if r"\n  " not in line:  # Allow `\n  `, which happens e.g. when markdown is embeedded in a string
+            return "Found double space"
 
     if double_the.search(line.lower()):
         return "Found 'the the'"
@@ -162,10 +163,11 @@ def lint_line(
         ):
             return "Use … instead of ..."
 
-    if re.search(r"\b2d\b", line):
-        return "we prefer '2D' over '2d'"
-    if re.search(r"\b3d\b", line):
-        return "we prefer '3D' over '3d'"
+    if "http" not in line:
+        if re.search(r"\b2d\b", line):
+            return "we prefer '2D' over '2d'"
+        if re.search(r"\b3d\b", line):
+            return "we prefer '3D' over '3d'"
 
     if "FIXME" in line:
         return "we prefer TODO over FIXME"
@@ -602,11 +604,11 @@ def test_lint_workspace_deps() -> None:
         publish = false
 
         [dependencies]
-        rerun = { path = "../../../crates/rerun", features = ["web_viewer"] }
+        rerun = { path = "../../../crates/top/rerun", features = ["web_viewer"] }
 
         anyhow = "1.0"
         clap = { version = "4.0", features = ["derive"] }
-        glam = "0.22"
+        glam = "0.28"
         """,
     ]
 
@@ -732,6 +734,29 @@ def split_words(input_string: str) -> list[str]:
     return result
 
 
+def is_emoji(s: str) -> bool:
+    """Returns true if the string contains an emoji."""
+    # Written by Copilot
+    return any(
+        0x1F600 <= ord(c) <= 0x1F64F  # Emoticons
+        or 0x1F300 <= ord(c) <= 0x1F5FF  # Miscellaneous Symbols and Pictographs
+        or 0x1F680 <= ord(c) <= 0x1F6FF  # Transport and Map Symbols
+        or 0x2600 <= ord(c) <= 0x26FF  # Miscellaneous Symbols
+        or 0x2700 <= ord(c) <= 0x27BF  # Dingbats
+        or 0xFE00 <= ord(c) <= 0xFE0F  # Variation Selectors
+        or 0x1F900 <= ord(c) <= 0x1F9FF  # Supplemental Symbols and Pictographs
+        or 0x1FA70 <= ord(c) <= 0x1FAFF  # Symbols and Pictographs Extended-A
+        for c in s
+    )
+
+
+def test_is_emoji():
+    assert not is_emoji("A")
+    assert not is_emoji("Ö")
+    assert is_emoji("😀")
+    assert is_emoji("⚠️")
+
+
 def test_split_words():
     test_cases = [
         ("hello world", ["hello", " ", "world"]),
@@ -749,9 +774,13 @@ def fix_header_casing(s: str) -> str:
     def is_acronym_or_pascal_case(s: str) -> bool:
         return sum(1 for c in s if c.isupper()) > 1
 
+    if s.startswith("["):
+        return s  # We don't handle links in headers, yet
+
     new_words: list[str] = []
     last_punctuation = None
     inline_code_block = False
+    is_first_word = True
 
     words = s.strip().split(" ")
 
@@ -759,10 +788,12 @@ def fix_header_casing(s: str) -> str:
         if word == "":
             continue
 
+        if is_emoji(word):
+            new_words.append(word)
+            continue
+
         if word.startswith("`"):
             inline_code_block = True
-        if word.endswith("`"):
-            inline_code_block = False
 
         if last_punctuation:
             word = word.capitalize()
@@ -782,13 +813,16 @@ def fix_header_casing(s: str) -> str:
                 pass  # acroym, PascalCase, code, …
             elif word.lower() in allow_capitalized_as_lower:
                 pass
-            elif i == 0:
-                # First word:
+            elif is_first_word:
                 word = word.capitalize()
             else:
                 word = word.lower()
 
+        if word.endswith("`"):
+            inline_code_block = False
+
         new_words.append((word + last_punctuation) if last_punctuation else word)
+        is_first_word = False
 
     return " ".join(new_words)
 
@@ -826,7 +860,6 @@ def lint_markdown(filepath: str, lines_in: list[str]) -> tuple[list[str], list[s
         and filepath.endswith("README.md")
         and not filepath.endswith("/examples/python/README.md")
     )
-    in_changelog = filepath.endswith("CHANGELOG.md")
     in_code_of_conduct = filepath.endswith("CODE_OF_CONDUCT.md")
 
     if in_code_of_conduct:
@@ -849,14 +882,15 @@ def lint_markdown(filepath: str, lines_in: list[str]) -> tuple[list[str], list[s
             in_metadata = False
 
         if not in_code_block:
-            # Check the casing on markdown headers
-            if not in_changelog and (m := re.match(r"(\#+ )(.*)", line)):
-                new_header = fix_header_casing(m.group(2))
-                if new_header != m.group(2):
-                    errors.append(
-                        f"{line_nr}: Markdown headers should NOT be title cased, except certain words which are always capitalized. This should be '{new_header}'."
-                    )
-                    line = m.group(1) + new_header + "\n"
+            if not in_metadata:
+                # Check the casing on markdown headers
+                if m := re.match(r"(\#+ )(.*)", line):
+                    new_header = fix_header_casing(m.group(2))
+                    if new_header != m.group(2):
+                        errors.append(
+                            f"{line_nr}: Markdown headers should NOT be title cased, except certain words which are always capitalized. This should be '{new_header}'."
+                        )
+                        line = m.group(1) + new_header + "\n"
 
             # Check the casing on `title = "…"` frontmatter
             elif m := re.match(r'title\s*\=\s*"(.*)"', line):
@@ -1094,6 +1128,7 @@ def main() -> None:
     test_lint_line()
     test_lint_vertical_spacing()
     test_lint_workspace_deps()
+    test_is_emoji()
 
     parser = argparse.ArgumentParser(description="Lint code with custom linter.")
     parser.add_argument(
@@ -1144,7 +1179,8 @@ def main() -> None:
         "./.github/workflows/reusable_checks.yml",  # zombie TODO hunting job
         "./.pytest_cache",
         "./CODE_STYLE.md",
-        "./crates/re_types_builder/src/reflection.rs",  # auto-generated
+        "./crates/build/re_types_builder/src/reflection.rs",  # auto-generated
+        "./docs/content/reference/cli.md",  # auto-generated
         "./examples/assets",
         "./examples/python/detect_and_track_objects/cache/version.txt",
         "./examples/python/objectron/objectron/proto/",  # auto-generated

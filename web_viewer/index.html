@@ -340,7 +340,7 @@
           persist: Option<bool>,
         */
         const options = {
-          url: query.get("url"),
+          url: query.getAll("url"),
           manifest_url: query.get("manifest_url"),
           render_backend: query.get("renderer"),
           hide_welcome_screen: query.has("hide_welcome_screen"),
@@ -381,7 +381,10 @@
 
         check_for_panic();
 
-        handle.start("the_canvas_id").then(on_app_started).catch(on_wasm_error);
+        handle
+          .start(document.getElementById("the_canvas_id"))
+          .then(on_app_started)
+          .catch(on_wasm_error);
       }
 
       function get_query_bool(

@@ -1,0 +1,49 @@
+namespace rerun.archetypes;
+
+
+/// A monochrome or color image.
+///
+/// See also [archetypes.DepthImage] and [archetypes.SegmentationImage].
+///
+/// The raw image data is stored as a single buffer of bytes in a [components.Blob].
+/// The meaning of these bytes is determined by the [components.ImageFormat] which specifies the resolution
+/// and the pixel format (e.g. RGB, RGBA, …).
+///
+/// The order of dimensions in the underlying [components.Blob] follows the typical
+/// row-major, interleaved-pixel image format.
+///
+/// Rerun also supports compressed images (JPEG, PNG, …), using [archetypes.EncodedImage].
+/// Compressing images can save a lot of bandwidth and memory.
+///
+/// \cpp Since the underlying [rerun::components::Blob] uses `rerun::Collection` internally,
+/// \cpp data can be passed in without a copy from raw pointers or by reference from `std::vector`/`std::array`/c-arrays.
+/// \cpp If needed, this "borrow-behavior" can be extended by defining your own `rerun::CollectionAdapter`.
+///
+/// \example archetypes/image_simple image="https://static.rerun.io/image_simple/06ba7f8582acc1ffb42a7fd0006fad7816f3e4e4/1200w.png"
+/// \example archetypes/image_send_columns title="Advanced usage of `send_columns` to send multiple images at once" image="https://static.rerun.io/image_send_columns/321455161d79e2c45d6f5a6f175d6f765f418897/1200w.png"
+table Image (
+  "attr.rust.derive": "PartialEq",
+  "attr.cpp.no_field_ctors",
+  "attr.docs.category": "Image & tensor",
+  "attr.docs.view_types": "Spatial2DView, Spatial3DView: if logged under a projection"
+) {
+  // --- Required ---
+
+  /// The raw image data.
+  buffer: rerun.components.ImageBuffer ("attr.rerun.component_required", order: 1000);
+
+  /// The format of the image.
+  format: rerun.components.ImageFormat ("attr.rerun.component_required", order: 1100);
+
+  // --- Optional ---
+
+  /// Opacity of the image, useful for layering several images.
+  ///
+  /// Defaults to 1.0 (fully opaque).
+  opacity: rerun.components.Opacity ("attr.rerun.component_optional", nullable, order: 3000);
+
+  /// An optional floating point value that specifies the 2D drawing order.
+  ///
+  /// Objects with higher values are drawn on top of those with lower values.
+  draw_order: rerun.components.DrawOrder ("attr.rerun.component_optional", nullable, order: 3100);
+}

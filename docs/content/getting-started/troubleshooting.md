@@ -63,6 +63,21 @@ Since the Mesa driver on WSL dispatches to the Windows host graphics driver, it 
 For example, [line rendering issues](https://github.com/rerun-io/rerun/issues/6749) have been observed when running from WSL with an
 outdated AMD driver on the Windows host.
 
+## `pip install` issues
+
+If you see the following when running `pip install rerun-sdk` or `pip install rerun-notebook` on a supported platform:
+
+```sh
+ERROR: Could not find a version that satisfies the requirement rerun-sdk (from versions: none)
+ERROR: No matching distribution found for rerun-sdk
+```
+
+Then this is likely because you're running a version of pip that is too old.
+You can check the version of pip with `pip --version`.
+If you're running a version of pip 20 or older, you should upgrade it with `pip install --upgrade pip`.
+⚠️ depending on your system configuration this may upgrade the pip installation aliased by `pip3` instead of `pip`.
+
+
 ## Startup issues
 
 If Rerun is having trouble starting, you can try resetting its memory with:
@@ -73,7 +88,7 @@ rerun reset
 
 ## Graphics issues
 
-<!-- This section is linked to from `crates/re_viewer/src/native.rs` -->
+<!-- This section is linked to from `crates/viewer/re_viewer/src/native.rs` -->
 
 Make sure to keep your graphics drivers updated.
 

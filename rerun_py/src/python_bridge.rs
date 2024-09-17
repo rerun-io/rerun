@@ -16,7 +16,7 @@ use pyo3::{
 use re_log::ResultExt;
 use re_log_types::LogMsg;
 use re_log_types::{BlueprintActivationCommand, EntityPathPart, StoreKind};
-use re_sdk::external::re_log_encoding::encoder::encode_as_bytes_local;
+use re_sdk::external::re_log_encoding::encoder::encode_ref_as_bytes_local;
 use re_sdk::sink::CallbackSink;
 use re_sdk::{
     sink::{BinaryStreamStorage, MemorySinkStorage},
@@ -97,7 +97,7 @@ fn global_web_viewer_server(
 
 /// The python module is called "rerun_bindings".
 #[pymodule]
-fn rerun_bindings(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
+fn rerun_bindings(_py: Python<'_>, m: &Bound<'_, PyModule>) -> PyResult<()> {
     // NOTE: We do this here because some the inner init methods don't respond too kindly to being
     // called more than once.
     re_log::setup_logging();
@@ -157,9 +157,9 @@ fn rerun_bindings(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
 
     // log any
     m.add_function(wrap_pyfunction!(log_arrow_msg, m)?)?;
-    m.add_function(wrap_pyfunction!(log_arrow_chunk, m)?)?;
     m.add_function(wrap_pyfunction!(log_file_from_path, m)?)?;
     m.add_function(wrap_pyfunction!(log_file_from_contents, m)?)?;
+    m.add_function(wrap_pyfunction!(send_arrow_chunk, m)?)?;
     m.add_function(wrap_pyfunction!(send_blueprint, m)?)?;
 
     // misc
@@ -532,7 +532,7 @@ fn send_mem_sink_as_default_blueprint(
 }
 
 #[pyfunction]
-#[pyo3(signature = (port = 9876, memory_limit = "75%".to_owned(), hide_welcome_screen = false, executable_name = "rerun".to_owned(), executable_path = None, extra_args = vec![]))]
+#[pyo3(signature = (port = 9876, memory_limit = "75%".to_owned(), hide_welcome_screen = false, executable_name = "rerun".to_owned(), executable_path = None, extra_args = vec![], extra_env = vec![]))]
 fn spawn(
     port: u16,
     memory_limit: String,
@@ -540,6 +540,7 @@ fn spawn(
     executable_name: String,
     executable_path: Option<String>,
     extra_args: Vec<String>,
+    extra_env: Vec<(String, String)>,
 ) -> PyResult<()> {
     let spawn_opts = re_sdk::SpawnOptions {
         port,
@@ -549,6 +550,7 @@ fn spawn(
         executable_name,
         executable_path,
         extra_args,
+        extra_env,
     };
 
     re_sdk::spawn(&spawn_opts).map_err(|err| PyRuntimeError::new_err(err.to_string()))
@@ -779,9 +781,9 @@ fn set_callback_sink(callback: PyObject, recording: Option<&PyRecordingStream>, 
 
     let callback = move |msgs: &[LogMsg]| {
         Python::with_gil(|py| {
-            let data = encode_as_bytes_local(msgs).ok_or_log_error()?;
-            let bytes = PyBytes::new(py, &data);
-            callback.as_ref(py).call1((bytes,)).ok_or_log_error()?;
+            let data = encode_ref_as_bytes_local(msgs.iter().map(Ok)).ok_or_log_error()?;
+            let bytes = PyBytes::new_bound(py, &data);
+            callback.bind(py).call1((bytes,)).ok_or_log_error()?;
             Some(())
         });
     };
@@ -828,7 +830,11 @@ impl PyMemorySinkStorage {
     /// Concatenate the contents of the [`MemorySinkStorage`] as bytes.
     ///
     /// Note: This will do a blocking flush before returning!
-    fn concat_as_bytes<'p>(&self, concat: Option<&Self>, py: Python<'p>) -> PyResult<&'p PyBytes> {
+    fn concat_as_bytes<'p>(
+        &self,
+        concat: Option<&Self>,
+        py: Python<'p>,
+    ) -> PyResult<Bound<'p, PyBytes>> {
         // Release the GIL in case any flushing behavior needs to cleanup a python object.
         py.allow_threads(|| {
             let concat_bytes = MemorySinkStorage::concat_memory_sinks_as_bytes(
@@ -843,7 +849,7 @@ impl PyMemorySinkStorage {
 
             concat_bytes
         })
-        .map(|bytes| PyBytes::new(py, bytes.as_slice()))
+        .map(|bytes| PyBytes::new_bound(py, bytes.as_slice()))
         .map_err(|err| PyRuntimeError::new_err(err.to_string()))
     }
 
@@ -864,7 +870,7 @@ impl PyMemorySinkStorage {
     /// Drain all messages logged to the [`MemorySinkStorage`] and return as bytes.
     ///
     /// This will do a blocking flush before returning!
-    fn drain_as_bytes<'p>(&self, py: Python<'p>) -> PyResult<&'p PyBytes> {
+    fn drain_as_bytes<'p>(&self, py: Python<'p>) -> PyResult<Bound<'p, PyBytes>> {
         // Release the GIL in case any flushing behavior needs to cleanup a python object.
         py.allow_threads(|| {
             let bytes = self.inner.drain_as_bytes();
@@ -873,7 +879,7 @@ impl PyMemorySinkStorage {
 
             bytes
         })
-        .map(|bytes| PyBytes::new(py, bytes.as_slice()))
+        .map(|bytes| PyBytes::new_bound(py, bytes.as_slice()))
         .map_err(|err| PyRuntimeError::new_err(err.to_string()))
     }
 }
@@ -890,9 +896,9 @@ impl PyBinarySinkStorage {
     ///
     /// If `flush` is `true`, the sink will be flushed before reading.
     #[pyo3(signature = (*, flush = true))]
-    fn read<'p>(&self, flush: bool, py: Python<'p>) -> &'p PyBytes {
+    fn read<'p>(&self, flush: bool, py: Python<'p>) -> Bound<'p, PyBytes> {
         // Release the GIL in case any flushing behavior needs to cleanup a python object.
-        PyBytes::new(
+        PyBytes::new_bound(
             py,
             py.allow_threads(|| {
                 if flush {
@@ -1064,7 +1070,7 @@ fn reset_time(recording: Option<&PyRecordingStream>) {
 fn log_arrow_msg(
     py: Python<'_>,
     entity_path: &str,
-    components: &PyDict,
+    components: Bound<'_, PyDict>,
     static_: bool,
     recording: Option<&PyRecordingStream>,
 ) -> PyResult<()> {
@@ -1077,7 +1083,7 @@ fn log_arrow_msg(
     // It's important that we don't hold the session lock while building our arrow component.
     // the API we call to back through pyarrow temporarily releases the GIL, which can cause
     // a deadlock.
-    let row = crate::arrow::build_row_from_components(components, &TimePoint::default())?;
+    let row = crate::arrow::build_row_from_components(&components, &TimePoint::default())?;
 
     recording.record_row(entity_path, row, !static_);
 
@@ -1086,7 +1092,7 @@ fn log_arrow_msg(
     Ok(())
 }
 
-/// Directly log an arrow chunk to the recording stream.
+/// Directly send an arrow chunk to the recording stream.
 ///
 /// Params
 /// ------
@@ -1103,11 +1109,11 @@ fn log_arrow_msg(
     components,
     recording=None,
 ))]
-fn log_arrow_chunk(
+fn send_arrow_chunk(
     py: Python<'_>,
     entity_path: &str,
-    timelines: &PyDict,
-    components: &PyDict,
+    timelines: Bound<'_, PyDict>,
+    components: Bound<'_, PyDict>,
     recording: Option<&PyRecordingStream>,
 ) -> PyResult<()> {
     let Some(recording) = get_data_recording(recording) else {
@@ -1119,9 +1125,9 @@ fn log_arrow_chunk(
     // It's important that we don't hold the session lock while building our arrow component.
     // the API we call to back through pyarrow temporarily releases the GIL, which can cause
     // a deadlock.
-    let chunk = crate::arrow::build_chunk_from_components(entity_path, timelines, components)?;
+    let chunk = crate::arrow::build_chunk_from_components(entity_path, &timelines, &components)?;
 
-    recording.record_chunk(chunk);
+    recording.send_chunk(chunk);
 
     py.allow_threads(flush_garbage_queue);
 
@@ -1302,9 +1308,10 @@ fn escape_entity_path_part(part: &str) -> String {
 }
 
 #[pyfunction]
-fn new_entity_path(parts: Vec<&str>) -> String {
-    let path = EntityPath::from(parts.into_iter().map(EntityPathPart::from).collect_vec());
-    path.to_string()
+fn new_entity_path(parts: Vec<&pyo3::types::PyString>) -> PyResult<String> {
+    let parts: PyResult<Vec<&str>> = parts.iter().map(|part| part.to_str()).collect();
+    let path = EntityPath::from(parts?.into_iter().map(EntityPathPart::from).collect_vec());
+    Ok(path.to_string())
 }
 
 // --- Helpers ---
@@ -1359,16 +1366,16 @@ fn default_store_id(py: Python<'_>, variant: StoreKind, application_id: &str) ->
 }
 
 fn authkey(py: Python<'_>) -> PyResult<Vec<u8>> {
-    let locals = PyDict::new(py);
+    let locals = PyDict::new_bound(py);
 
-    py.run(
+    py.run_bound(
         r#"
 import multiprocessing
 # authkey is the same for child and parent processes, so this is how we know we're the same
 authkey = multiprocessing.current_process().authkey
             "#,
         None,
-        Some(locals),
+        Some(&locals),
     )
     .and_then(|()| {
         locals
@@ -1378,7 +1385,8 @@ authkey = multiprocessing.current_process().authkey
     .and_then(|authkey| {
         authkey
             .downcast()
+            .cloned()
             .map_err(|err| PyRuntimeError::new_err(err.to_string()))
     })
-    .map(|authkey: &PyBytes| authkey.as_bytes().to_vec())
+    .map(|authkey: Bound<'_, PyBytes>| authkey.as_bytes().to_vec())
 }

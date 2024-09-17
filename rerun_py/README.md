@@ -68,7 +68,7 @@ pixi run py-build --release
 ```
 To build SDK & Viewer for Python (or `pixi run py-build` for a debug build) and install it in the Pixi environment.
 
-You can then run examples from the repository, either by making the Pixi shell active with `pixi shell` and then running Python or by using `pixi run`, e.g. `pixi run python examples/python/minimal/minimal.py`.
+You can then run examples from the repository, either by making the Pixi shell active with `pixi shell -e py` and then running Python or by using `pixi run -e py`, e.g. `pixi run -e py python examples/python/minimal/minimal.py`.
 
 Respectively, to build a wheel instead for manual install use:
 ```sh
@@ -83,3 +83,9 @@ Refer to [BUILD.md](../BUILD.md) for details on the various different build opti
 Prebuilt dev wheels from head of main are available at <https://github.com/rerun-io/rerun/releases/tag/prerelease>.
 
 While we try to keep the main branch usable at all times, it may be unstable occasionally. Use at your own risk.
+
+
+# Running Python unit tests
+```sh
+pixi run -e py py-build && pixi run -e py py-test
+```

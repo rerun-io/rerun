@@ -15,6 +15,10 @@ on:
         type: string
         required: true
 
+permissions:
+  contents: "read"
+  id-token: "write"
+
 jobs:
   linux-arm64:
     name: "Linux-arm64"

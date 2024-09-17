@@ -49,11 +49,14 @@ re_sdk = { workspace = true, features = ["data_loaders"] }
 re_web_viewer_server = { workspace = true, optional = true }
 re_ws_comms = { workspace = true, optional = true }
 
-arrow2 = { workspace = true, features = ["io_ipc", "io_print"] }
+arrow = { workspace = true, features = ["pyarrow"] }
+arrow2 = { workspace = true, features = ["io_ipc", "io_print", "arrow"] }
 crossbeam.workspace = true
 document-features.workspace = true
 itertools = { workspace = true }
-mimalloc = { workspace = true, features = ["local_dynamic_tls"] }
+# TODO(#5875): `mimalloc` starts leaking OS pages starting with `0.1.38`.
+# When the bug is fixed, change this back to `mimalloc = { workspace = true, …`.
+mimalloc = { version = "=0.1.37", features = ["local_dynamic_tls"] }
 once_cell.workspace = true
 parking_lot.workspace = true
 pyo3 = { workspace = true, features = ["abi3-py38"] }

@@ -7,7 +7,7 @@ from uuid import uuid4
 import numpy as np
 import rerun as rr
 
-README = """
+README = """\
 # 1D Image/Tensor/BarChart
 
 This checks the different ways 1D arrays can be visualized.

@@ -28,7 +28,7 @@ Call [`rr.spawn`](https://ref.rerun.io/docs/python/stable/common/initialization_
 [`RecordingStream::spawn`](https://docs.rs/rerun/latest/rerun/struct.RecordingStream.html#method.spawn) spawns a new Rerun Viewer process using an executable available in your PATH, then streams all the data to it via TCP. If an external Viewer was already running, `spawn` will connect to that one instead of spawning a new one.
 
 
-## Connect
+### Connect
 
 Connects to a remote Rerun Viewer and streams all the data via TCP.
 
@@ -44,7 +44,7 @@ You will need to start a stand-alone Viewer first by typing `rerun` in your term
 [`RecordingStream::connect`](https://docs.rs/rerun/latest/rerun/struct.RecordingStream.html#method.connect)
 
 
-## Serve
+### Serve
 
 This starts the web version of the Rerun Viewer in your browser, and streams data to it in real-time using WebSockets.
 
@@ -58,7 +58,7 @@ Use [`rr.serve`](https://ref.rerun.io/docs/python/stable/common/initialization_f
 [`RecordingStream::serve`](https://docs.rs/rerun/latest/rerun/struct.RecordingStream.html#method.serve)
 
 
-## Save
+### Save
 
 Streams all logging data into an `.rrd` file on disk, which can then be loaded into a stand-alone viewer.
 
@@ -76,7 +76,7 @@ Use [`rr.save`](https://ref.rerun.io/docs/python/stable/common/initialization_fu
 Use [`RecordingStream::save`](https://docs.rs/rerun/latest/rerun/struct.RecordingStream.html#method.save).
 
 
-## Standard Input/Output
+### Standard Input/Output
 
 Streams all logging data to standard output, which can then be loaded by the Rerun Viewer by streaming it from standard input.
 

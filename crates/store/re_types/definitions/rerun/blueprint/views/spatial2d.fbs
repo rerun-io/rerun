@@ -1,0 +1,23 @@
+namespace rerun.blueprint.views;
+
+/// For viewing spatial 2D data.
+///
+/// \example views/spatial2d title="Use a blueprint to customize a Spatial2DView." image="https://static.rerun.io/Spatial2DVIew/824a075e0c50ea4110eb6ddd60257f087cb2264d/1200w.png"
+table Spatial2DView (
+    "attr.rerun.view_identifier": "2D"
+) {
+    /// Configuration for the background of the view.
+    background: rerun.blueprint.archetypes.Background (order: 1000);
+
+    /// The visible parts of the scene, in the coordinate space of the scene.
+    ///
+    /// Everything within these bounds are guaranteed to be visible.
+    /// Somethings outside of these bounds may also be visible due to letterboxing.
+    visual_bounds: rerun.blueprint.archetypes.VisualBounds2D (order: 2000);
+
+    /// Configures which range on each timeline is shown by this view (unless specified differently per entity).
+    ///
+    /// If not specified, the default is to show the latest state of each component.
+    /// If a timeline is specified more than once, the first entry will be used.
+    time_ranges: rerun.blueprint.archetypes.VisibleTimeRanges (order: 10000);
+}

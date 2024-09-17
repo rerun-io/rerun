@@ -57,7 +57,7 @@ class GestureDetectorLogger:
     This class provides logging and utility functions for handling gesture recognition.
 
     For more information on MediaPipe Gesture Detection:
-    https://developers.google.com/mediapipe/solutions/vision/gesture_recognizer
+    <https://developers.google.com/mediapipe/solutions/vision/gesture_recognizer>
     """
 
     # URL to the pre-trained MediaPipe Gesture Detection model
@@ -192,10 +192,11 @@ def run_from_sample_image(path: Path | str) -> None:
     """Run the gesture recognition on a single image."""
     image = cv2.imread(str(path))
     # image = resize_image(image, max_dim)
-    show_image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
-    rr.log("media/image", rr.Image(show_image))
+    rr.log("media/image", rr.Image(image, color_model="BGR"))
+
+    detect_image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
     logger = GestureDetectorLogger(video_mode=False)
-    logger.detect_and_log(show_image, 0)
+    logger.detect_and_log(detect_image, 0)
 
 
 def run_from_video_capture(vid: int | str, max_frame_count: int | None) -> None:
@@ -236,14 +237,11 @@ def run_from_video_capture(vid: int | str, max_frame_count: int | None) -> None:
                 # On some platforms it always returns zero, so we compute from the frame counter and fps
                 frame_time_nano = int(frame_idx * 1000 / fps * 1e6)
 
-            # convert to rgb
-            frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-
             # log data
             rr.set_time_sequence("frame_nr", frame_idx)
             rr.set_time_nanos("frame_time", frame_time_nano)
             detector.detect_and_log(frame, frame_time_nano)
-            rr.log("media/video", rr.Image(frame).compress(jpeg_quality=75))
+            rr.log("media/video", rr.Image(frame, color_model="BGR").compress(jpeg_quality=75))
 
     except KeyboardInterrupt:
         pass

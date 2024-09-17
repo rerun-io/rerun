@@ -17,21 +17,12 @@ This page is meant to give an high level overview of ongoing and planned work.
 
 ## Roadmap of major feature areas
 
-### Early July 2024: release 0.17
-- Blueprint component overrides & defaults (from code & UI)
-- Redesigned selection view to make inspecting and editing visualization options easier
-- Improved experience for embedding Rerun in web pages
-- Improved notebook experience, including live visualizations from running cells
-- A lot more blueprint configurability through code (still Python only)
-
-### Near term: summer 2024
-- Time-batch API: the ability to insert large chunks of e.g. time series in a single call
-- Improved ingestion performance for large sets of small data (time series)
+### Near term: Q3 2024
 - Query API for reading back data from the SDK
 - Improved support for working directly with Arrow data and the Rerun extension types
 - A generic multimodal table view
 
-### Medium term (Q3-4 2024)
+### Medium term (Q4 2024)
 - Audio and maps support
 - Decoding h264 video in the viewer
 - Official ROS2 bridge

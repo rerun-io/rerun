@@ -91,18 +91,18 @@ On Windows you have to have a system install of Visual Studio 2022 in order to c
 
 All other dependencies are downloaded by Pixi! You can run tests with:
 ```sh
-pixi run cpp-test
+pixi run -e cpp cpp-test
 ```
 and build all C++ artifacts with:
 ```sh
-pixi run cpp-build-all
+pixi run -e cpp cpp-build-all
 ```
 
 ## Building the docs
 
 High-level documentation for Rerun can be found at [http://rerun.io/docs](http://rerun.io/docs). It is built from the separate repository [rerun-docs](https://github.com/rerun-io/rerun-docs).
 
-- 🌊 [C++ API docs](https://ref.rerun.io/docs/cpp) are built with `doxygen` and hosted on GitHub. Use `pixi run cpp-docs` to build them locally. For details on the C++ doc-system, see [Writing Docs](rerun_cpp/docs/writing_docs.md).
+- 🌊 [C++ API docs](https://ref.rerun.io/docs/cpp) are built with `doxygen` and hosted on GitHub. Use `pixi run -e cpp cpp-docs` to build them locally. For details on the C++ doc-system, see [Writing Docs](rerun_cpp/docs/writing_docs.md).
 - 🐍 [Python API docs](https://ref.rerun.io/docs/python) are built via `mkdocs` and hosted on GitHub. For details on the Python doc-system, see [Writing Docs](rerun_py/docs/writing_docs.md).
 - 🦀 [Rust API docs](https://docs.rs/rerun/) are hosted on  <https://docs.rs/rerun/>. You can build them locally with: `cargo doc --all-features --no-deps --open`.
 

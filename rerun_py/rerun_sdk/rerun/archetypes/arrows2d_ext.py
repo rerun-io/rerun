@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from .. import components, datatypes
+from .. import datatypes
 from ..error_utils import catch_and_log_exceptions
 
 
@@ -14,9 +14,11 @@ class Arrows2DExt:
         *,
         vectors: datatypes.Vec2DArrayLike,
         origins: datatypes.Vec2DArrayLike | None = None,
-        radii: components.RadiusArrayLike | None = None,
+        radii: datatypes.Float32ArrayLike | None = None,
         colors: datatypes.Rgba32ArrayLike | None = None,
         labels: datatypes.Utf8ArrayLike | None = None,
+        show_labels: datatypes.BoolLike | None = None,
+        draw_order: datatypes.Float32Like | None = None,
         class_ids: datatypes.ClassIdArrayLike | None = None,
     ) -> None:
         """
@@ -39,6 +41,12 @@ class Arrows2DExt:
             Optional colors for the points.
         labels:
             Optional text labels for the arrows.
+        show_labels:
+            Optional choice of whether the text labels should be shown by default.
+        draw_order:
+            An optional floating point value that specifies the 2D drawing order of the arrows.
+
+            Objects with higher values are drawn on top of those with lower values.
         class_ids:
             Optional class Ids for the points.
 
@@ -55,6 +63,8 @@ class Arrows2DExt:
                 radii=radii,
                 colors=colors,
                 labels=labels,
+                show_labels=show_labels,
+                draw_order=draw_order,
                 class_ids=class_ids,
             )
             return

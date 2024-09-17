@@ -4,6 +4,7 @@ from typing import Any
 
 import rerun.components as rrc
 from rerun.archetypes import ViewCoordinates
+from rerun.datatypes.view_coordinates import ViewCoordinatesArrayLike
 
 from .common_arrays import none_empty_or_value
 
@@ -16,7 +17,7 @@ def view_coordinates_expected(obj: Any) -> rrc.ViewCoordinatesBatch:
     return rrc.ViewCoordinatesBatch(expected)
 
 
-VIEW_COORDINATES_INPUTS: list[rrc.ViewCoordinatesArrayLike | None] = [
+VIEW_COORDINATES_INPUTS: list[ViewCoordinatesArrayLike | None] = [
     None,
     rrc.ViewCoordinates([
         rrc.ViewCoordinates.ViewDir.Right,

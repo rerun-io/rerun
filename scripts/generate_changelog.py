@@ -261,20 +261,37 @@ def main() -> None:
 
     print()
 
+    # NOTE: we inentionally add TODO:s with names below, which the CI will not be happy about. Hence the # NOLINT suffixes
+    print("TODO: add link to release video")  # NOLINT
+    print()
+    print("📖 Release blogpost: TODO: add link")  # NOLINT
+    print()
+    print("🧳 Migration guide: TODO: add link")  # NOLINT
+    print()
+    print("### ✨ Overview & highlights")
+    print("TODO: fill in")  # NOLINT
+    print()
+    print("### ⚠️ Breaking changes")
+    print("TODO: fill in")  # NOLINT
+    print("🧳 Migration guide: TODO: add link (yes, again)")  # NOLINT
+    print()
+    print("### 🔎 Details")
+    print()
+
     # Most interesting first:
     print_section("🪵 Log API", log_api)
     print_section("🌊 C++ API", cpp)
     print_section("🐍 Python API", python)
     print_section("🦀 Rust API", rust)
     print_section("🪳 Bug Fixes", bugs)
-    print_section("🌁 Viewer Improvements", viewer)
-    print_section("🚀 Performance Improvements", performance)
+    print_section("🌁 Viewer improvements", viewer)
+    print_section("🚀 Performance improvements", performance)
     print_section("🧑‍🏫 Examples", examples)
     print_section("📚 Docs", docs)
-    print_section("🖼 UI Improvements", ui)
+    print_section("🖼 UI improvements", ui)
     print_section("🕸️ Web", web)
-    print_section("🎨 Renderer Improvements", renderer)
-    print_section("✨ Other Enhancement", enhancement)
+    print_section("🎨 Renderer improvements", renderer)
+    print_section("✨ Other enhancement", enhancement)
     print_section("📈 Analytics", analytics)
     print_section("🗣 Merged RFCs", rfc)
     print_section("🧑‍💻 Dev-experience", dev_experience)

@@ -5,9 +5,7 @@ from typing import Any, cast
 
 import numpy.typing as npt
 
-from ..components import ViewCoordinatesLike
-from ..datatypes.mat3x3 import Mat3x3Like
-from ..datatypes.vec2d import Vec2D, Vec2DLike
+from ..datatypes import Mat3x3Like, Vec2D, Vec2DLike, ViewCoordinatesLike
 from ..error_utils import _send_warning_or_raise, catch_and_log_exceptions
 
 

@@ -1,0 +1,20 @@
+namespace rerun.blueprint.archetypes;
+
+
+// ---
+
+/// Configuration for the scalar axis of a plot.
+table ScalarAxis (
+    "attr.rerun.scope": "blueprint",
+    "attr.rust.derive": "Default"
+) {
+    // --- Optional ---
+
+    /// The range of the axis.
+    ///
+    /// If unset, the range well be automatically determined based on the queried data.
+    range: rerun.components.Range1D ("attr.rerun.component_optional", nullable, order: 2100);
+
+    /// If enabled, the Y axis range will remain locked to the specified range when zooming.
+    zoom_lock: rerun.blueprint.components.LockRangeDuringZoom ("attr.rerun.component_optional", nullable, order: 2200);
+}

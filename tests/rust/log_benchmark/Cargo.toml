@@ -10,8 +10,10 @@ publish = false
 workspace = true
 
 [dependencies]
-re_tracing = { path = "../../../crates/re_tracing", features = ["server"] }
-rerun = { path = "../../../crates/rerun" }
+re_tracing = { path = "../../../crates/utils/re_tracing", features = [
+  "server",
+] }
+rerun = { path = "../../../crates/top/rerun" }
 
 anyhow.workspace = true
 clap = { workspace = true, features = ["derive"] }

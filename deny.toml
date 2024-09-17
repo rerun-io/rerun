@@ -29,7 +29,7 @@ all-features = true
 [advisories]
 version = 2
 ignore = [
-  "RUSTSEC-2023-0081", # TODO(#5998): unmaintained crate "safemem" pulled in by "cargo-run-wasm"
+  "RUSTSEC-2023-0086", # TODO(#3741): Waiting for https://github.com/apache/arrow-rs/pull/6401
 ]
 
 
@@ -47,11 +47,11 @@ deny = [
 ]
 skip = [
   { name = "ahash" },             # Popular crate + fast release schedule = lots of crates still using old versions
+  { name = "async-channel" },     # Old version via accesskit
   { name = "async-fs" },          # Old version via accesskit
   { name = "base64" },            # Too popular
-  { name = "block2" },            # Old version via winit 0.29 -> icrate 0.0.4
   { name = "cargo_metadata" },    # Older version used by ply-rs. It's small, and it's build-time only!
-  { name = "cfg_aliases" },       # Tiny macro-only crate. Winit and other use older version than us.
+  { name = "cfg_aliases" },       # Tiny macro-only crate. wgpu/naga is using an old version
   { name = "hashbrown" },         # Old version used by polar-rs
   { name = "libloading" },        # Old version used by ash (vulkan binding), newer version used by khronos-egl
   { name = "memoffset" },         # Small crate
@@ -61,7 +61,6 @@ skip = [
   { name = "redox_syscall" },     # Plenty of versions in the wild
   { name = "spin" },              # Old version used by rusttls
   { name = "webpki-roots" },      # ureq and tungstenite are on different version 😭
-  { name = "windows" },           # Old version used by accesskit_windows, newer version used by wgpu
 ]
 skip-tree = [
   { name = "async-io" },       # Old version via rfd
@@ -71,6 +70,7 @@ skip-tree = [
   { name = "prost-build" },    # only used in objectron example
   { name = "prost-derive" },   # only used in objectron example
   { name = "toml_edit" },      # Old version via egui-winit, newer used by rustdoc-json
+  { name = "windows" },        # Old version used by accesskit_windows, newer version used by wgpu
 ]
 
 

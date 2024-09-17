@@ -42,7 +42,7 @@ rr.log(
         vertex_texcoords=vertex_texcoords,
         albedo_texture=albedo_texture,
         triangle_indices=mesh.faces,
-        mesh_material=mesh_material,
+        albedo_factor=albedo_factor,
     ),
 )
 ```

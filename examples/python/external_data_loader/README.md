@@ -24,3 +24,7 @@ Make sure the file has a shebang (`#!/usr/bin/env python3`) and is executable (`
 
 On Windows you have to install the script as an executable first and then put the executable under %PATH%.
 One way to do this is to use `pyinstaller`: `pyinstaller .\examples\python\external_data_loader\rerun-loader-python-file.py -n rerun-loader-python-file --onefile`
+
+Consider using the [`send_columns`](https://ref.rerun.io/docs/python/stable/common/columnar_api/#rerun.send_columns) API for data loaders that ingest time series data from a file.
+This can be much more efficient that the stateful `log` API as it allows bundling
+component data over time into a single call consuming a continuous block of memory.

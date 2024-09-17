@@ -1,0 +1,31 @@
+namespace rerun.components;
+
+/// Policy for aggregation of multiple scalar plot values.
+///
+/// This is used for lines in plots when the X axis distance of individual points goes below a single pixel,
+/// i.e. a single pixel covers more than one tick worth of data. It can greatly improve performance
+/// (and readability) in such situations as it prevents overdraw.
+enum AggregationPolicy: ubyte {
+    /// Invalid value. Won't show up in generated types.
+    Invalid = 0,
+
+    /// No aggregation.
+    Off,
+
+    /// Average all points in the range together.
+    Average,
+
+    /// Keep only the maximum values in the range.
+    Max,
+
+    /// Keep only the minimum values in the range.
+    Min,
+
+    /// Keep both the minimum and maximum values in the range.
+    ///
+    /// This will yield two aggregated points instead of one, effectively creating a vertical line.
+    MinMax (default),
+
+    /// Find both the minimum and maximum values in the range, then use the average of those.
+    MinMaxAverage,
+}
