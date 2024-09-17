@@ -25,7 +25,7 @@ features = ["all"]
 default = ["ecolor"]
 
 ## All features except `testing`.
-all = ["ecolor", "egui_plot", "glam", "image", "mint", "serde"]
+all = ["ecolor", "egui_plot", "glam", "image", "mint", "serde", "video"]
 
 ## Enable color conversions.
 ecolor = ["dep:ecolor"]
@@ -39,7 +39,7 @@ glam = ["dep:glam"]
 ## Integration with the [`image`](https://crates.io/crates/image/) crate, plus JPEG support.
 image = ["dep:ecolor", "dep:image"]
 
-## Conversion to/from our video format
+## Inspecting video data.
 video = ["dep:re_video"]
 
 ## Enable (de)serialization using serde.

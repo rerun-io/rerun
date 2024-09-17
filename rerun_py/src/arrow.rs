@@ -24,7 +24,10 @@ use re_sdk::{ComponentName, EntityPath, Timeline};
 /// Perform conversion between a pyarrow array to arrow2 types.
 ///
 /// `name` is the name of the Rerun component, and the name of the pyarrow `Field` (column name).
-fn array_to_rust(arrow_array: &Bound<'_, PyAny>, name: &str) -> PyResult<(Box<dyn Array>, Field)> {
+pub fn array_to_rust(
+    arrow_array: &Bound<'_, PyAny>,
+    name: &str,
+) -> PyResult<(Box<dyn Array>, Field)> {
     let py_array: PyArrowType<ArrayData> = arrow_array.extract()?;
     let arr1_array = make_array(py_array.0);
 

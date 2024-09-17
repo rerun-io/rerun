@@ -4946,7 +4946,6 @@ dependencies = [
  "re_smart_channel",
  "re_tracing",
  "re_types",
- "re_video",
  "thiserror",
  "walkdir",
 ]
@@ -5799,8 +5798,10 @@ dependencies = [
 name = "re_video"
 version = "0.19.0-alpha.1+dev"
 dependencies = [
+ "itertools 0.13.0",
  "mp4",
  "ordered-float",
+ "thiserror",
 ]
 
 [[package]]
@@ -6156,6 +6157,7 @@ dependencies = [
  "re_arrow2",
  "re_log",
  "re_sdk",
+ "re_video",
 ]
 
 [[package]]
@@ -6180,6 +6182,7 @@ dependencies = [
  "re_log_types",
  "re_memory",
  "re_sdk",
+ "re_video",
  "re_web_viewer_server",
  "re_ws_comms",
  "uuid",

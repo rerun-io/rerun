@@ -1505,7 +1505,13 @@ fn to_arrow_method(
         (
             true,
             quote! {
-                return Loggable<#forwarded_type>::to_arrow(&instances->#field_name, num_instances);
+                if (num_instances == 0) {
+                    return Loggable<#forwarded_type>::to_arrow(nullptr, 0);
+                } else if (instances == nullptr) {
+                    return rerun::Error(ErrorCode::UnexpectedNullArgument, "Passed array instances is null when num_elements > 0.");
+                } else {
+                    return Loggable<#forwarded_type>::to_arrow(&instances->#field_name, num_instances);
+                }
             },
         )
     } else {

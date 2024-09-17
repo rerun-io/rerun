@@ -90,6 +90,9 @@ namespace rerun {
                 return "model/stl";
             }
 
+            // -------------------------------------------------------
+            /// Videos:
+
             /// [MP4 video](https://en.wikipedia.org/wiki/MP4_file_format): `video/mp4`.
             ///
             /// <https://www.iana.org/assignments/media-types/video/mp4>

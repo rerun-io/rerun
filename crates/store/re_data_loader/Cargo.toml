@@ -31,8 +31,7 @@ re_log_types.workspace = true
 re_log.workspace = true
 re_smart_channel.workspace = true
 re_tracing.workspace = true
-re_types = { workspace = true, features = ["image"] }
-re_video.workspace = true
+re_types = { workspace = true, features = ["image", "video"] }
 
 ahash.workspace = true
 anyhow.workspace = true

@@ -54,10 +54,22 @@ namespace rerun {
         static Result<std::shared_ptr<arrow::Array>> to_arrow(
             const components::TensorDimensionIndexSelection* instances, size_t num_instances
         ) {
-            return Loggable<rerun::datatypes::TensorDimensionIndexSelection>::to_arrow(
-                &instances->selection,
-                num_instances
-            );
+            if (num_instances == 0) {
+                return Loggable<rerun::datatypes::TensorDimensionIndexSelection>::to_arrow(
+                    nullptr,
+                    0
+                );
+            } else if (instances == nullptr) {
+                return rerun::Error(
+                    ErrorCode::UnexpectedNullArgument,
+                    "Passed array instances is null when num_elements> 0."
+                );
+            } else {
+                return Loggable<rerun::datatypes::TensorDimensionIndexSelection>::to_arrow(
+                    &instances->selection,
+                    num_instances
+                );
+            }
         }
     };
 } // namespace rerun
