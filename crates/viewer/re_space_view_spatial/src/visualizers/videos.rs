@@ -175,7 +175,7 @@ impl VideoFrameReferenceVisualizer {
             .transform_info
             .single_entity_transform_required(ctx.target_entity_path, Self::identifier().as_str());
 
-        // Note that we may or may not know the video size independently of error occurence.
+        // Note that we may or may not know the video size independently of error occurrence.
         // (if it's just a decoding error we may still know the size from the container!)
         // In case we haven error we want to center the message in the middle, so we need some area.
         // Note that this area is also used for the bounding box which is important for the 2D view to determine default bounds.
