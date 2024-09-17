@@ -23,7 +23,7 @@ use re_ui::{
 use re_viewer_context::{
     HoverHighlight, ImageInfo, ImageStatsCache, Item, ItemSpaceContext, SelectionHighlight,
     SpaceViewHighlights, SpaceViewState, SpaceViewSystemExecutionError, UiLayout, ViewQuery,
-    ViewerContext,
+    ViewerContext, VisualizerCollection,
 };
 
 use crate::scene_bounding_boxes::SceneBoundingBoxes;
@@ -32,9 +32,10 @@ use crate::{
     picking::{PickableUiRect, PickingContext, PickingHitType, PickingResult},
     view_kind::SpatialSpaceViewKind,
     visualizers::{
-        CamerasVisualizer, DepthImageVisualizer, EncodedImageVisualizer, ImageVisualizer,
-        SegmentationImageVisualizer, UiLabel, UiLabelTarget,
+        iter_spatial_visualizer_data, CamerasVisualizer, DepthImageVisualizer, UiLabel,
+        UiLabelTarget,
     },
+    PickableTexturedRect,
 };
 use crate::{eye::EyeMode, pickable_textured_rect::PickableRectSourceData};
 
@@ -93,26 +94,25 @@ impl SpatialSpaceViewState {
         ui: &egui::Ui,
         system_output: &re_viewer_context::SystemExecutionOutput,
         space_kind: SpatialSpaceViewKind,
-    ) -> Result<(), SpaceViewSystemExecutionError> {
+    ) {
         re_tracing::profile_function!();
 
         self.bounding_boxes
             .update(ui, &system_output.view_systems, space_kind);
 
         let view_systems = &system_output.view_systems;
-
-        self.num_non_segmentation_images_last_frame += view_systems
-            .get::<EncodedImageVisualizer>()?
-            .pickable_rects
-            .len();
-        self.num_non_segmentation_images_last_frame +=
-            view_systems.get::<ImageVisualizer>()?.pickable_rects.len();
-        self.num_non_segmentation_images_last_frame += view_systems
-            .get::<DepthImageVisualizer>()?
-            .pickable_rects
-            .len();
-
-        Ok(())
+        self.num_non_segmentation_images_last_frame = iter_spatial_visualizer_data(view_systems)
+            .flat_map(|data| {
+                data.pickable_rects.iter().map(|pickable_rect| {
+                    if let PickableRectSourceData::Image { image, .. } = &pickable_rect.source_data
+                    {
+                        (image.kind != ImageKind::Segmentation) as usize
+                    } else {
+                        0
+                    }
+                })
+            })
+            .sum();
     }
 
     pub fn bounding_box_ui(&mut self, ui: &mut egui::Ui, spatial_kind: SpatialSpaceViewKind) {
@@ -389,25 +389,11 @@ pub fn picking(
         .context_systems
         .get::<AnnotationSceneContext>()?;
 
-    let visualizers = &system_output.view_systems;
-    let depth_images = visualizers.get::<DepthImageVisualizer>()?;
-    let images = visualizers.get::<ImageVisualizer>()?;
-    let images_encoded = visualizers.get::<EncodedImageVisualizer>()?;
-    let segmentation_images = visualizers.get::<SegmentationImageVisualizer>()?;
-    let iter_image_picking_rects = || {
-        itertools::chain!(
-            &depth_images.pickable_rects,
-            &images.pickable_rects,
-            &images_encoded.pickable_rects,
-            &segmentation_images.pickable_rects,
-        )
-    };
-
     let picking_result = picking_context.pick(
         render_ctx,
         query.space_view_id.gpu_readback_id(),
         &state.previous_picking_result,
-        iter_image_picking_rects(),
+        iter_pickable_rects(&system_output.view_systems),
         ui_rects,
     );
     state.previous_picking_result = Some(picking_result.clone());
@@ -419,6 +405,7 @@ pub fn picking(
     let mut depth_at_pointer = None;
     for hit in &picking_result.hits {
         let Some(mut instance_path) = hit.instance_path_hash.resolve(ctx.recording()) else {
+            // Entity no longer exists in db.
             continue;
         };
 
@@ -432,62 +419,18 @@ pub fn picking(
             .tree
             .lookup_result_by_path(&instance_path.entity_path)
         else {
-            continue; // No data result for this entity, meaning it's no longer on screen.
+            // No data result for this entity means it's no longer on screen.
+            continue;
         };
 
         if !data_result.is_interactive(ctx) {
             continue;
         }
 
-        // Special hover ui for depth-point clouds and textured rectangles.
-        let picked_image = if let Some((depth_image, depth_meter)) = depth_images
-            .depth_cloud_entities
-            .get(&instance_path.entity_path.hash())
-        {
-            let coordinates = hit
-                .instance_path_hash
-                .instance
-                .to_2d_image_coordinate(depth_image.width() as _);
-            Some(PickedImageInfo {
-                image: depth_image.clone(),
-                coordinates,
-                depth_meter: Some(*depth_meter),
-            })
-        } else if hit.hit_type == PickingHitType::TexturedRect {
-            iter_image_picking_rects()
-                .find(|i| i.ent_path == instance_path.entity_path)
-                .and_then(|picked_rect| {
-                    let coordinates = hit
-                        .instance_path_hash
-                        .instance
-                        .to_2d_image_coordinate(picked_rect.pixel_width());
-
-                    if let PickableRectSourceData::Image { image, depth_meter } =
-                        &picked_rect.source_data
-                    {
-                        Some(PickedImageInfo {
-                            image: image.clone(),
-                            coordinates,
-                            depth_meter: *depth_meter,
-                        })
-                    } else {
-                        None
-                    }
-                })
-        } else {
-            None
-        };
-
-        if picked_image.is_some() {
+        response = if let Some(picked_image) = get_image_picking_info(system_output, hit) {
             // We don't support selecting pixels yet.
             instance_path.instance = Instance::ALL;
-        }
 
-        hovered_items.push(Item::DataResult(query.space_view_id, instance_path.clone()));
-
-        response = if let Some(picked_image) = picked_image {
-            // TODO(jleibs): Querying this here feels weird. Would be nice to do this whole
-            // thing as an up-front archetype query somewhere.
             if picked_image.kind() == ImageKind::Depth {
                 if let Some(meter) = picked_image.depth_meter {
                     let [x, y] = picked_image.coordinates;
@@ -533,6 +476,8 @@ pub fn picking(
                 });
             })
         };
+
+        hovered_items.push(Item::DataResult(query.space_view_id, instance_path.clone()));
     }
 
     if hovered_items.is_empty() {
@@ -558,12 +503,14 @@ pub fn picking(
             },
             SpatialSpaceViewKind::ThreeD => {
                 let hovered_point = picking_result.space_position();
+                let cameras_visualizer_output =
+                    system_output.view_systems.get::<CamerasVisualizer>()?;
+
                 ItemSpaceContext::ThreeD {
                     space_3d: query.space_origin.clone(),
                     pos: hovered_point,
                     tracked_entity: state.state_3d.tracked_entity.clone(),
-                    point_in_space_cameras: visualizers
-                        .get::<CamerasVisualizer>()?
+                    point_in_space_cameras: cameras_visualizer_output
                         .space_cameras
                         .iter()
                         .map(|cam| {
@@ -581,6 +528,64 @@ pub fn picking(
     ctx.select_hovered_on_click(&response, hovered_items.into_iter());
 
     Ok(response)
+}
+
+fn iter_pickable_rects(
+    visualizers: &VisualizerCollection,
+) -> impl Iterator<Item = &PickableTexturedRect> {
+    iter_spatial_visualizer_data(visualizers).flat_map(|data| data.pickable_rects.iter())
+}
+
+/// If available, finds image info for a picking hit.
+fn get_image_picking_info(
+    system_output: &re_viewer_context::SystemExecutionOutput,
+    hit: &crate::picking::PickingRayHit,
+) -> Option<PickedImageInfo> {
+    let depth_visualizer_output = system_output
+        .view_systems
+        .get::<DepthImageVisualizer>()
+        .ok();
+
+    if hit.hit_type == PickingHitType::TexturedRect {
+        iter_pickable_rects(&system_output.view_systems)
+            .find(|i| i.ent_path.hash() == hit.instance_path_hash.entity_path_hash)
+            .and_then(|picked_rect| {
+                let coordinates = hit
+                    .instance_path_hash
+                    .instance
+                    .to_2d_image_coordinate(picked_rect.pixel_width());
+
+                if let PickableRectSourceData::Image { image, depth_meter } =
+                    &picked_rect.source_data
+                {
+                    Some(PickedImageInfo {
+                        image: image.clone(),
+                        coordinates,
+                        depth_meter: *depth_meter,
+                    })
+                } else {
+                    None
+                }
+            })
+    } else if let Some((depth_image, depth_meter)) =
+        depth_visualizer_output.and_then(|depth_images| {
+            depth_images
+                .depth_cloud_entities
+                .get(&hit.instance_path_hash.entity_path_hash)
+        })
+    {
+        let coordinates = hit
+            .instance_path_hash
+            .instance
+            .to_2d_image_coordinate(depth_image.width() as _);
+        Some(PickedImageInfo {
+            image: depth_image.clone(),
+            coordinates,
+            depth_meter: Some(*depth_meter),
+        })
+    } else {
+        None
+    }
 }
 
 struct PickedImageInfo {

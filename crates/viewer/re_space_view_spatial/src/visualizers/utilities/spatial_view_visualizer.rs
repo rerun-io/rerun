@@ -1,14 +1,22 @@
 use re_log_types::EntityPathHash;
 
 use super::UiLabel;
-use crate::view_kind::SpatialSpaceViewKind;
+use crate::{view_kind::SpatialSpaceViewKind, PickableTexturedRect};
 
 /// Common data struct for all spatial scene elements.
 ///
 /// Each spatial scene element is expected to fill an instance of this struct with its data.
 pub struct SpatialViewVisualizerData {
+    /// Labels that should be shown rendering egui.
     pub ui_labels: Vec<UiLabel>,
+
+    /// Bounding boxes of all visualizations that the visualizer showed.
     pub bounding_boxes: Vec<(EntityPathHash, re_math::BoundingBox)>,
+
+    /// Textured rectangles that the visualizer produced which can be interacted with.
+    pub pickable_rects: Vec<PickableTexturedRect>,
+
+    /// The view kind preferred by this visualizer (used for heuristics).
     pub preferred_view_kind: Option<SpatialSpaceViewKind>,
 }
 
@@ -17,6 +25,7 @@ impl SpatialViewVisualizerData {
         Self {
             ui_labels: Vec::new(),
             bounding_boxes: Vec::new(),
+            pickable_rects: Vec::new(),
             preferred_view_kind,
         }
     }
@@ -48,4 +57,14 @@ impl SpatialViewVisualizerData {
     pub fn as_any(&self) -> &dyn std::any::Any {
         self
     }
+}
+
+pub fn iter_spatial_visualizer_data(
+    visualizers: &re_viewer_context::VisualizerCollection,
+) -> impl Iterator<Item = &SpatialViewVisualizerData> {
+    visualizers.iter().filter_map(|visualizer| {
+        visualizer
+            .data()
+            .and_then(|data| data.downcast_ref::<SpatialViewVisualizerData>())
+    })
 }

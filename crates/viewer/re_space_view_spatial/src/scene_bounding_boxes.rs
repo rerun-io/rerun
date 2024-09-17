@@ -3,7 +3,7 @@ use nohash_hasher::IntMap;
 use re_log_types::EntityPathHash;
 use re_viewer_context::VisualizerCollection;
 
-use crate::{view_kind::SpatialSpaceViewKind, visualizers::SpatialViewVisualizerData};
+use crate::{view_kind::SpatialSpaceViewKind, visualizers::iter_spatial_visualizer_data};
 
 #[derive(Clone)]
 pub struct SceneBoundingBoxes {
@@ -42,27 +42,22 @@ impl SceneBoundingBoxes {
         self.current = re_math::BoundingBox::NOTHING;
         self.per_entity.clear();
 
-        for visualizer in visualizers.iter() {
-            if let Some(data) = visualizer
-                .data()
-                .and_then(|d| d.downcast_ref::<SpatialViewVisualizerData>())
-            {
-                // If we're in a 3D space, but the visualizer is distintivly 2D, don't count it towards the bounding box.
-                // These visualizers show up when we're on a pinhole camera plane which itself is heuristically fed by the
-                // bounding box, creating a feedback loop if we were to add it here.
-                let data_is_only_2d = data
-                    .preferred_view_kind
-                    .map_or(false, |kind| kind == SpatialSpaceViewKind::TwoD);
-                if space_kind == SpatialSpaceViewKind::ThreeD && data_is_only_2d {
-                    continue;
-                }
+        for data in iter_spatial_visualizer_data(visualizers) {
+            // If we're in a 3D space, but the visualizer is distintivly 2D, don't count it towards the bounding box.
+            // These visualizers show up when we're on a pinhole camera plane which itself is heuristically fed by the
+            // bounding box, creating a feedback loop if we were to add it here.
+            let data_is_only_2d = data
+                .preferred_view_kind
+                .map_or(false, |kind| kind == SpatialSpaceViewKind::TwoD);
+            if space_kind == SpatialSpaceViewKind::ThreeD && data_is_only_2d {
+                continue;
+            }
 
-                for (entity, bbox) in &data.bounding_boxes {
-                    self.per_entity
-                        .entry(*entity)
-                        .and_modify(|bbox_entry| *bbox_entry = bbox_entry.union(*bbox))
-                        .or_insert(*bbox);
-                }
+            for (entity, bbox) in &data.bounding_boxes {
+                self.per_entity
+                    .entry(*entity)
+                    .and_modify(|bbox_entry| *bbox_entry = bbox_entry.union(*bbox))
+                    .or_insert(*bbox);
             }
         }
 

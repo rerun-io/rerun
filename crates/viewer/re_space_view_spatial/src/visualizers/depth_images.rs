@@ -31,8 +31,6 @@ use super::{textured_rect_from_image, SpatialViewVisualizerData};
 
 pub struct DepthImageVisualizer {
     pub data: SpatialViewVisualizerData,
-    pub pickable_rects: Vec<PickableTexturedRect>,
-
     /// Expose image infos for depth clouds - we need this for picking interaction.
     pub depth_cloud_entities: IntMap<EntityPathHash, (ImageInfo, DepthMeter)>,
 }
@@ -41,7 +39,6 @@ impl Default for DepthImageVisualizer {
     fn default() -> Self {
         Self {
             data: SpatialViewVisualizerData::new(Some(SpatialSpaceViewKind::TwoD)),
-            pickable_rects: Vec::new(),
             depth_cloud_entities: IntMap::default(),
         }
     }
@@ -124,7 +121,7 @@ impl DepthImageVisualizer {
                 "DepthImage",
                 &mut self.data,
             ) {
-                self.pickable_rects.push(PickableTexturedRect {
+                self.data.pickable_rects.push(PickableTexturedRect {
                     ent_path: entity_path.clone(),
                     textured_rect,
                     source_data: PickableRectSourceData::Image {
@@ -325,6 +322,7 @@ impl VisualizerSystem for DepthImageVisualizer {
         }
         // TODO(wumpf): Can we avoid this copy, maybe let DrawData take an iterator?
         let rectangles = self
+            .data
             .pickable_rects
             .iter()
             .map(|image| image.textured_rect.clone())
