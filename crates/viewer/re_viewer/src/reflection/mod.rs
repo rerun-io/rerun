@@ -161,20 +161,6 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             },
         ),
         (
-            <SortKey as Loggable>::name(),
-            ComponentReflection {
-                docstring_md: "Primary element by which to group by in a temporal data table.",
-                placeholder: Some(SortKey::default().to_arrow()?),
-            },
-        ),
-        (
-            <SortOrder as Loggable>::name(),
-            ComponentReflection {
-                docstring_md: "Sort order for data table.",
-                placeholder: Some(SortOrder::default().to_arrow()?),
-            },
-        ),
-        (
             <SpaceViewClass as Loggable>::name(),
             ComponentReflection {
                 docstring_md: "The class identifier of view, e.g. `\"2D\"`, `\"TextLog\"`, ….",
@@ -1470,7 +1456,7 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                     is_required : true, }, ArchetypeFieldReflection { component_name :
                     "rerun.components.EntityPath".into(), display_name :
                     "Video reference", docstring_md :
-                    "Optional reference to an entity with a [`archetypes.AssetVideo`](https://rerun.io/docs/reference/types/archetypes/asset_video).\n\nIf none is specified, the video is assumed to be at the same entity.\nNote that blueprint overrides on the referenced video will be ignored regardless,\nas this is always interpreted as a reference to the data store.\n\n⚠\u{fe0f} **This type is experimental and may be removed in future versions**",
+                    "Optional reference to an entity with a [`archetypes.AssetVideo`](https://rerun.io/docs/reference/types/archetypes/asset_video).\n\nIf none is specified, the video is assumed to be at the same entity.\nNote that blueprint overrides on the referenced video will be ignored regardless,\nas this is always interpreted as a reference to the data store.\n\nFor a series of video frame references, it is recommended to specify this path only once\nat the beginning of the series and then rely on latest-at query semantics to\nkeep the video reference active.\n\n⚠\u{fe0f} **This type is experimental and may be removed in future versions**",
                     is_required : false, },
                 ],
             },
@@ -1700,21 +1686,6 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                     "rerun.blueprint.components.ViewFit".into(), display_name :
                     "Scaling", docstring_md : "How the image is scaled to fit the view.",
                     is_required : false, },
-                ],
-            },
-        ),
-        (
-            ArchetypeName::new("rerun.blueprint.archetypes.TimeRangeTableOrder"),
-            ArchetypeReflection {
-                display_name: "Time range table order",
-                fields: vec![
-                    ArchetypeFieldReflection { component_name :
-                    "rerun.blueprint.components.SortKey".into(), display_name :
-                    "Sort key", docstring_md : "The primary sort key", is_required :
-                    false, }, ArchetypeFieldReflection { component_name :
-                    "rerun.blueprint.components.SortOrder".into(), display_name :
-                    "Sort order", docstring_md : "The sort order", is_required : false,
-                    },
                 ],
             },
         ),

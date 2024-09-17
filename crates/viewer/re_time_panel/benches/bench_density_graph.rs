@@ -18,49 +18,51 @@ use re_time_panel::__bench::{
 };
 
 fn run(b: &mut Bencher<'_, WallTime>, config: DensityGraphBuilderConfig, entry: ChunkEntry) {
-    egui::__run_test_ui(|ui| {
-        let row_rect = ui.max_rect();
-        assert!(row_rect.width() > 100.0 && row_rect.height() > 100.0);
+    egui::__run_test_ctx(|ctx| {
+        egui::CentralPanel::default().show(ctx, |ui| {
+            let row_rect = ui.max_rect();
+            assert!(row_rect.width() > 100.0 && row_rect.height() > 100.0);
 
-        let mut db = EntityDb::with_store_config(
-            StoreId::from_string(StoreKind::Recording, "test".into()),
-            ChunkStoreConfig::COMPACTION_DISABLED,
-        );
-        let entity_path = re_log_types::EntityPath::parse_strict("/data").unwrap();
-        let timeline = re_log_types::Timeline::log_time();
+            let mut db = EntityDb::with_store_config(
+                StoreId::from_string(StoreKind::Recording, "test".into()),
+                ChunkStoreConfig::COMPACTION_DISABLED,
+            );
+            let entity_path = re_log_types::EntityPath::parse_strict("/data").unwrap();
+            let timeline = re_log_types::Timeline::log_time();
 
-        add_data(
-            &mut db,
-            &entity_path,
-            entry.num_chunks,
-            entry.num_rows_per_chunk,
-            entry.sorted,
-            entry.time_start_ms,
-            timeline,
-        )
-        .unwrap();
-
-        let item = TimePanelItem {
-            entity_path,
-            component_name: None,
-        };
-
-        let time_range = db
-            .time_range_for(&timeline)
-            .unwrap_or(ResolvedTimeRange::EMPTY);
-        let time_ranges_ui =
-            TimeRangesUi::new(row_rect.x_range(), time_range.into(), &[time_range]);
-
-        b.iter(|| {
-            black_box(build_density_graph(
-                ui,
-                &time_ranges_ui,
-                row_rect,
-                &db,
-                &item,
+            add_data(
+                &mut db,
+                &entity_path,
+                entry.num_chunks,
+                entry.num_rows_per_chunk,
+                entry.sorted,
+                entry.time_start_ms,
                 timeline,
-                config,
-            ));
+            )
+            .unwrap();
+
+            let item = TimePanelItem {
+                entity_path,
+                component_name: None,
+            };
+
+            let time_range = db
+                .time_range_for(&timeline)
+                .unwrap_or(ResolvedTimeRange::EMPTY);
+            let time_ranges_ui =
+                TimeRangesUi::new(row_rect.x_range(), time_range.into(), &[time_range]);
+
+            b.iter(|| {
+                black_box(build_density_graph(
+                    ui,
+                    &time_ranges_ui,
+                    row_rect,
+                    &db,
+                    &item,
+                    timeline,
+                    config,
+                ));
+            });
         });
     });
 }

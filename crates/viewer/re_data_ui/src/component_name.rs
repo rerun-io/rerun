@@ -31,9 +31,9 @@ impl DataUi for ComponentName {
                     .map(|info| info.docstring_md)
                 {
                     if ui_layout.is_selection_panel() {
-                        ui.markdown_ui(egui::Id::new((self, "full")), markdown);
+                        ui.markdown_ui(markdown);
                     } else if let Some(first_line) = markdown.lines().next() {
-                        ui.markdown_ui(egui::Id::new((self, "first_line")), first_line);
+                        ui.markdown_ui(first_line);
                     }
                 }
 

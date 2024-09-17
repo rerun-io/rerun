@@ -79,6 +79,7 @@ from .archetypes import (
     TextDocument as TextDocument,
     TextLog as TextLog,
     Transform3D as Transform3D,
+    VideoFrameReference as VideoFrameReference,
     ViewCoordinates as ViewCoordinates,
 )
 from .archetypes.boxes2d_ext import (

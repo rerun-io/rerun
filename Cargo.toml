@@ -514,12 +514,12 @@ missing_errors_doc = "allow"
 # As a last resport, patch with a commit to our own repository.
 # ALWAYS document what PR the commit hash is part of, or when it was merged into the upstream trunk.
 
-ecolor = { git = "https://github.com/emilk/egui.git", rev = "6b7f4312373a301a4cdf7d99a0d546acd34bcd66" }      # egui master 2024-09-06
-eframe = { git = "https://github.com/emilk/egui.git", rev = "6b7f4312373a301a4cdf7d99a0d546acd34bcd66" }      # egui master 2024-09-06
-egui = { git = "https://github.com/emilk/egui.git", rev = "6b7f4312373a301a4cdf7d99a0d546acd34bcd66" }        # egui master 2024-09-06
-egui_extras = { git = "https://github.com/emilk/egui.git", rev = "6b7f4312373a301a4cdf7d99a0d546acd34bcd66" } # egui master 2024-09-06
-egui-wgpu = { git = "https://github.com/emilk/egui.git", rev = "6b7f4312373a301a4cdf7d99a0d546acd34bcd66" }   # egui master 2024-09-06
-emath = { git = "https://github.com/emilk/egui.git", rev = "6b7f4312373a301a4cdf7d99a0d546acd34bcd66" }       # egui master 2024-09-06
+ecolor = { git = "https://github.com/emilk/egui.git", rev = "66076101e12eee01dec374285521b0bed4ecc40a" }      # egui master 2024-09-06
+eframe = { git = "https://github.com/emilk/egui.git", rev = "66076101e12eee01dec374285521b0bed4ecc40a" }      # egui master 2024-09-06
+egui = { git = "https://github.com/emilk/egui.git", rev = "66076101e12eee01dec374285521b0bed4ecc40a" }        # egui master 2024-09-06
+egui_extras = { git = "https://github.com/emilk/egui.git", rev = "66076101e12eee01dec374285521b0bed4ecc40a" } # egui master 2024-09-06
+egui-wgpu = { git = "https://github.com/emilk/egui.git", rev = "66076101e12eee01dec374285521b0bed4ecc40a" }   # egui master 2024-09-06
+emath = { git = "https://github.com/emilk/egui.git", rev = "66076101e12eee01dec374285521b0bed4ecc40a" }       # egui master 2024-09-06
 
 # Useful while developing:
 # ecolor = { path = "../../egui/crates/ecolor" }
@@ -535,7 +535,7 @@ emath = { git = "https://github.com/emilk/egui.git", rev = "6b7f4312373a301a4cdf
 egui_tiles = { git = "https://github.com/rerun-io/egui_tiles", rev = "b2f5e232524deed983bcad01c05f27d0e8b89d98" } # https://github.com/rerun-io/egui_tiles/pull/78 2024-08-28
 # egui_tiles = { path = "../egui_tiles" }
 
-# egui_commonmark = { git = "https://github.com/rerun-io/egui_commonmark", rev = "63d5c8933445b9ea9088c4a50b71f4ede1f3c247" } # https://github.com/lampsitter/egui_commonmark/pull/51
+egui_commonmark = { git = "https://github.com/rerun-io/egui_commonmark", rev = "7a9dc755bfa351a3796274cb8ca87129b051c084" } # https://github.com/lampsitter/egui_commonmark/pull/65
 
 # commit on `rerun-io/mp4` `main` branch
 # https://github.com/rerun-io/mp4/commit/ef529032547d7f97161e95c58bd76856cb116349

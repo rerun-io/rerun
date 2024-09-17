@@ -10,11 +10,12 @@ from .._baseclasses import (
     ComponentBatchMixin,
     ComponentMixin,
 )
+from .video_timestamp_ext import VideoTimestampExt
 
 __all__ = ["VideoTimestamp", "VideoTimestampBatch", "VideoTimestampType"]
 
 
-class VideoTimestamp(datatypes.VideoTimestamp, ComponentMixin):
+class VideoTimestamp(VideoTimestampExt, datatypes.VideoTimestamp, ComponentMixin):
     """
     **Component**: Timestamp inside a [`archetypes.AssetVideo`][rerun.archetypes.AssetVideo].
 
