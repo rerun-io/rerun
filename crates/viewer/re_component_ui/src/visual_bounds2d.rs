@@ -56,7 +56,7 @@ fn range_mut_ui(ui: &mut egui::Ui, [start, end]: &mut [f64; 2]) -> egui::Respons
     ui.horizontal_centered(|ui| {
         let response_min = ui.add(
             egui::DragValue::new(start)
-                .clamp_to_range(false)
+                .clamp_existing_to_range(false)
                 .range(f64::MIN..=*end)
                 .max_decimals(2)
                 .speed(speed),
@@ -66,7 +66,7 @@ fn range_mut_ui(ui: &mut egui::Ui, [start, end]: &mut [f64; 2]) -> egui::Respons
 
         let response_max = ui.add(
             egui::DragValue::new(end)
-                .clamp_to_range(false)
+                .clamp_existing_to_range(false)
                 .range(*start..=f64::MAX)
                 .max_decimals(2)
                 .speed(speed),
@@ -94,7 +94,7 @@ pub fn singleline_edit_visual_bounds2d(
 
         let response_width = ui.add(
             egui::DragValue::new(&mut width_edit)
-                .clamp_to_range(false)
+                .clamp_existing_to_range(false)
                 .range(0.001..=f64::MAX)
                 .max_decimals(1)
                 .speed(speed_func(width)),
@@ -102,7 +102,7 @@ pub fn singleline_edit_visual_bounds2d(
         ui.label("×");
         let response_height = ui.add(
             egui::DragValue::new(&mut height_edit)
-                .clamp_to_range(false)
+                .clamp_existing_to_range(false)
                 .range(0.001..=f64::MAX)
                 .max_decimals(1)
                 .speed(speed_func(height)),
