@@ -1,5 +1,5 @@
 use re_types::components::{Blob, MediaType};
-use re_ui::{list_item::PropertyContent, UiExt as _};
+use re_ui::{list_item::PropertyContent, UiExt};
 use re_viewer_context::UiLayout;
 
 use crate::{image::image_preview_ui, EntityDataUi};
@@ -81,7 +81,6 @@ impl EntityDataUi for Blob {
     }
 }
 
-// TODO(jan): this should NOT try to load videos as images
 #[allow(clippy::too_many_arguments)]
 pub fn blob_preview_and_save_ui(
     ctx: &re_viewer_context::ViewerContext<'_>,
@@ -93,6 +92,7 @@ pub fn blob_preview_and_save_ui(
     blob: &[u8],
     media_type: Option<&MediaType>,
 ) {
+    // Try to treat it as an image:
     let image = blob_row_id.and_then(|row_id| {
         ctx.cache
             .entry(|c: &mut re_viewer_context::ImageDecodeCache| {
@@ -100,9 +100,24 @@ pub fn blob_preview_and_save_ui(
             })
             .ok()
     });
-
     if let Some(image) = &image {
         image_preview_ui(ctx, ui, ui_layout, query, entity_path, image);
+    }
+    // Try to treat it as a video if treating it as image didn't work:
+    else if let Some(render_ctx) = ctx.render_ctx {
+        let video_result = blob_row_id.map(|row_id| {
+            ctx.cache.entry(|c: &mut re_viewer_context::VideoCache| {
+                c.entry(
+                    row_id,
+                    blob,
+                    media_type.as_ref().map(|mt| mt.as_str()),
+                    render_ctx,
+                )
+            })
+        });
+        if let Some(video_result) = &video_result {
+            show_video_blob_info(ui, ui_layout, video_result);
+        }
     }
 
     if !ui_layout.is_single_line() && ui_layout != UiLayout::Tooltip {
@@ -140,5 +155,48 @@ pub fn blob_preview_and_save_ui(
                 }
             }
         });
+    }
+}
+
+fn show_video_blob_info(
+    ui: &mut egui::Ui,
+    ui_layout: UiLayout,
+    video_result: &Result<re_renderer::video::Video, re_renderer::video::VideoError>,
+) {
+    match video_result {
+        Ok(video) => {
+            if ui_layout.is_single_line() {
+                return;
+            }
+
+            re_ui::list_item::list_item_scope(ui, "video_blob_info", |ui| {
+                ui.list_item_flat_noninteractive(re_ui::list_item::LabelContent::new(
+                    "Video properties",
+                ));
+                ui.list_item_flat_noninteractive(
+                    PropertyContent::new("Dimensions").value_text(format!(
+                        "{}x{}",
+                        video.width(),
+                        video.height()
+                    )),
+                );
+                ui.list_item_flat_noninteractive(PropertyContent::new("Duration").value_text(
+                    format!(
+                        "{}",
+                        re_log_types::Duration::from_millis(video.duration_ms() as _)
+                    ),
+                ));
+                ui.list_item_flat_noninteractive(
+                    PropertyContent::new("Codec").value_text(video.codec()),
+                );
+            });
+        }
+        Err(err) => {
+            if ui_layout.is_single_line() {
+                ui.error_label(&format!("Failed to load video: {err}"));
+            } else {
+                ui.error_label_long(&format!("Failed to load video: {err}"));
+            }
+        }
     }
 }

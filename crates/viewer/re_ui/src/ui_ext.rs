@@ -30,6 +30,21 @@ pub trait UiExt {
         response.on_hover_text(error_text)
     }
 
+    /// Shows an error label with the entire error text and copies the text to the clipboard on click.
+    ///
+    /// Use this only if you have a lot of space to spare.
+    /// Don't start the string with "Error: " since this is added automatically.
+    fn error_label_long(&mut self, error_text: &str) -> egui::Response {
+        let label = egui::Label::new(self.ui().ctx().error_text(format!("Error: {error_text}")))
+            .selectable(false)
+            .sense(egui::Sense::click());
+        let response = self.ui_mut().add(label);
+        if response.clicked() {
+            self.ui().ctx().copy_text(error_text.to_owned());
+        }
+        response
+    }
+
     fn small_icon_button(&mut self, icon: &Icon) -> egui::Response {
         let widget = self.small_icon_button_widget(icon);
         self.ui_mut().add(widget)

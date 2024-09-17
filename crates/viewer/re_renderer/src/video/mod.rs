@@ -98,6 +98,11 @@ impl Video {
         self.data.config.coded_height as u32
     }
 
+    /// The codec used to encode the video.
+    pub fn codec(&self) -> &str {
+        &self.data.config.codec
+    }
+
     /// Returns a texture with the latest frame at the given timestamp.
     ///
     /// If the timestamp is negative, a zeroed texture is returned.
