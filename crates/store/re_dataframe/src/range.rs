@@ -155,7 +155,7 @@ impl RangeQueryHandle<'_> {
     ///
     /// At best, this will be a single [`RecordBatch`] containing a "natural page" of data, following the chunk
     /// size of the pov-component. This will happen when all queried data either belongs to
-    /// the same chunk, or is requested as a [`ColumnDescriptor::DictionaryEncoded`] column.
+    /// the same chunk, or is requested using [`JoinEncoding::DictionaryEncode`].
     ///
     /// However, in the case of mixed chunks without dictionary encoding, the engine will fall
     /// back to a row-by-row approach, which can be less efficient.
@@ -217,7 +217,7 @@ impl RangeQueryHandle<'_> {
     ///
     /// At best, each [`RecordBatch`] will be a "natural page" of data, following the chunk
     /// size of the pov-component. This will happen when all queried data either belongs to
-    /// the same chunk, or is requested as a [`ColumnDescriptor::DictionaryEncoded`] column.
+    /// the same chunk, or is requested as a [`JoinEncoding::DictionaryEncode`] column.
     ///
     /// However, in the case of mixed chunks without dictionary encoding, the engine will fall
     /// back to a row-by-row approach, which can be less efficient.
