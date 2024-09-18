@@ -306,6 +306,7 @@ fn add_popup_ui(
                 );
                 return;
             };
+            let initial_data = visualizer.fallback_for(&query_context, component_name);
 
             match Chunk::builder(defaults_path.clone())
                 .with_row(

@@ -207,14 +207,7 @@ fn visualizer_components(
 
         let raw_fallback = match visualizer
             .fallback_provider()
-            .fallback_for(&query_ctx, component_name)
-        {
-            Ok(fallback) => fallback,
-            Err(err) => {
-                re_log::warn_once!("Failed to get fallback for component {component_name}: {err}");
-                continue; // TODO(andreas): Don't give up on the entire component because of this. Show an error instead.
-            }
-        };
+            .fallback_for(&query_ctx, component_name);
 
         // Determine where the final value comes from.
         // Putting this into an enum makes it easier to reason about the next steps.

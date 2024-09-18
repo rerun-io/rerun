@@ -115,7 +115,7 @@ fn generate_component_reflection(
             ComponentReflection {
                 docstring_md: #docstring_md,
 
-                placeholder: Some(#type_name::default().to_arrow()?),
+                custom_placeholder: Some(#type_name::default().to_arrow()?),
             }
         };
         quoted_pairs.push(quote! { (#quoted_name, #quoted_reflection) });

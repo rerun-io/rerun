@@ -1,10 +1,10 @@
 use nohash_hasher::IntSet;
 
-use re_chunk_store::{LatestAtQuery, RangeQuery, RowId};
+use re_chunk_store::{external::re_chunk::ArrowArray, LatestAtQuery, RangeQuery, RowId};
 use re_log_types::TimeInt;
 use re_query::LatestAtResults;
 use re_types_core::ComponentName;
-use re_viewer_context::{DataResult, ViewContext, ViewerContext};
+use re_viewer_context::{DataResult, QueryContext, ViewContext, ViewerContext};
 
 use crate::results_ext::{HybridLatestAtResults, HybridRangeResults};
 
@@ -196,9 +196,10 @@ pub trait DataResultQuery {
 
     fn best_fallback_for<'a>(
         &self,
-        ctx: &'a ViewContext<'a>,
+        query_ctx: &'a QueryContext<'a>,
+        visualizer_collection: &'a re_viewer_context::VisualizerCollection,
         component: re_types_core::ComponentName,
-    ) -> Option<&'a dyn re_viewer_context::ComponentFallbackProvider>;
+    ) -> Box<dyn ArrowArray>;
 }
 
 impl DataResultQuery for DataResult {
@@ -220,20 +221,26 @@ impl DataResultQuery for DataResult {
 
     fn best_fallback_for<'a>(
         &self,
-        ctx: &'a ViewContext<'a>,
+        query_ctx: &'a QueryContext<'a>,
+        visualizer_collection: &'a re_viewer_context::VisualizerCollection,
         component: re_types_core::ComponentName,
-    ) -> Option<&'a dyn re_viewer_context::ComponentFallbackProvider> {
+    ) -> Box<dyn ArrowArray> {
         // TODO(jleibs): This should be cached somewhere
         for vis in &self.visualizers {
-            let Ok(vis) = ctx.visualizer_collection.get_by_identifier(*vis) else {
+            let Ok(vis) = visualizer_collection.get_by_identifier(*vis) else {
                 continue;
             };
 
             if vis.visualizer_query_info().queried.contains(&component) {
-                return Some(vis.fallback_provider());
+                if let re_viewer_context::ComponentFallbackProviderResult::Value(fallback) = vis
+                    .fallback_provider()
+                    .try_provide_fallback(query_ctx, component)
+                {
+                    return fallback;
+                }
             }
         }
 
-        None
+        query_ctx.viewer_ctx.placeholder_for(component)
     }
 }

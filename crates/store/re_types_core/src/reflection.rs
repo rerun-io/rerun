@@ -1,5 +1,7 @@
 //! Run-time reflection for reading meta-data about components and archetypes.
 
+use arrow2::array::Arrow2Arrow;
+
 use crate::{ArchetypeName, ComponentName};
 
 /// A trait for code-generated enums.
@@ -51,6 +53,130 @@ impl Reflection {
     }
 }
 
+/// Computes a placeholder for a given arrow datatype.
+///
+/// See also [`ComponentReflection::custom_placeholder`].
+pub fn generic_placeholder_for_datatype(
+    datatype: &arrow2::datatypes::DataType,
+) -> Box<dyn arrow2::array::Array> {
+    use arrow2::{
+        array,
+        datatypes::{DataType, IntervalUnit},
+        types,
+    };
+
+    match datatype {
+        DataType::Null => Box::new(array::NullArray::new(datatype.clone(), 1)),
+        DataType::Boolean => Box::new(array::BooleanArray::from_slice([false])),
+        DataType::Int8 => Box::new(array::Int8Array::from_slice([0])),
+        DataType::Int16 => Box::new(array::Int16Array::from_slice([0])),
+
+        DataType::Int32
+        | DataType::Date32
+        | DataType::Time32(_)
+        | DataType::Interval(IntervalUnit::YearMonth) => {
+            // TODO(andreas): Do we have to further distinguish these types? They do share the physical type.
+            Box::new(array::Int32Array::from_slice([0]))
+        }
+        DataType::Int64
+        | DataType::Date64
+        | DataType::Timestamp(_, _)
+        | DataType::Time64(_)
+        | DataType::Duration(_) => {
+            // TODO(andreas): Do we have to further distinguish these types? They do share the physical type.
+            Box::new(array::Int64Array::from_slice([0]))
+        }
+
+        DataType::UInt8 => Box::new(array::UInt8Array::from_slice([0])),
+        DataType::UInt16 => Box::new(array::UInt16Array::from_slice([0])),
+        DataType::UInt32 => Box::new(array::UInt32Array::from_slice([0])),
+        DataType::UInt64 => Box::new(array::UInt64Array::from_slice([0])),
+        DataType::Float16 => Box::new(array::Float16Array::from_slice([types::f16::from_f32(0.0)])),
+        DataType::Float32 => Box::new(array::Float32Array::from_slice([0.0])),
+        DataType::Float64 => Box::new(array::Float64Array::from_slice([0.0])),
+
+        DataType::Interval(IntervalUnit::DayTime) => {
+            Box::new(array::DaysMsArray::from_slice([types::days_ms::new(0, 0)]))
+        }
+        DataType::Interval(IntervalUnit::MonthDayNano) => {
+            Box::new(array::MonthsDaysNsArray::from_slice([
+                types::months_days_ns::new(0, 0, 0),
+            ]))
+        }
+
+        DataType::Binary => Box::new(array::BinaryArray::<i32>::from_slice([[]])),
+        DataType::FixedSizeBinary(size) => Box::new(array::FixedSizeBinaryArray::from_iter(
+            std::iter::once(Some(vec![0; *size])),
+            *size,
+        )),
+        DataType::LargeBinary => Box::new(array::BinaryArray::<i64>::from_slice([[]])),
+        DataType::Utf8 => Box::new(array::Utf8Array::<i32>::from_slice([""])),
+        DataType::LargeUtf8 => Box::new(array::Utf8Array::<i64>::from_slice([""])),
+        DataType::List(field) => {
+            let inner = generic_placeholder_for_datatype(field.data_type());
+            let offsets = arrow2::offset::Offsets::try_from_lengths(std::iter::once(inner.len()))
+                .expect("failed to create offsets buffer");
+            Box::new(array::ListArray::<i32>::new(
+                datatype.clone(),
+                offsets.into(),
+                inner,
+                None,
+            ))
+        }
+        DataType::FixedSizeList(_field, size) => {
+            // TODO(andreas): This isn't quite right.
+            // What we actually want here is an array containing a single array of size `size`.
+            // But it's a bit tricky to build, because it doesn't look like we can't concatenate `size` many arrays.
+            Box::new(array::FixedSizeListArray::new_null(datatype.clone(), *size))
+        }
+        DataType::LargeList(field) => {
+            let inner = generic_placeholder_for_datatype(field.data_type());
+            let offsets = arrow2::offset::Offsets::try_from_lengths(std::iter::once(inner.len()))
+                .expect("failed to create offsets buffer");
+            Box::new(array::ListArray::<i64>::new(
+                datatype.clone(),
+                offsets.into(),
+                inner,
+                None,
+            ))
+        }
+        DataType::Struct(fields) => {
+            let inners = fields
+                .iter()
+                .map(|field| generic_placeholder_for_datatype(field.data_type()));
+            Box::new(array::StructArray::new(
+                datatype.clone(),
+                inners.collect(),
+                None,
+            ))
+        }
+        DataType::Union(fields, types, union_mode) => {
+            if let first_field = fields.first() {
+                let inner = generic_placeholder_for_datatype(first_field.data_type());
+                // todo: create null arrays for all other fields.
+
+                // Box::new(array::UnionArray::new(
+                //     datatype.clone(),
+                //     inners.collect(),
+                //     vec![inner]
+                //     None,
+                // ))
+            } else {
+                todo!("asdfsdfsdf");
+            }
+        }
+        DataType::Map(arc, _) => todo!(),
+        DataType::Dictionary(integer_type, arc, _) => todo!(),
+        DataType::Decimal(_, _) => Box::new(array::Int128Array::from_slice([0])),
+        DataType::Decimal256(_, _) => {
+            Box::new(array::Int256Array::from_slice([types::i256::from_words(
+                0, 0,
+            )]))
+        }
+        DataType::Extension(_, datatype, _) => generic_placeholder_for_datatype(datatype),
+    }
+}
+
 /// Runtime reflection about components.
 pub type ComponentReflectionMap = nohash_hasher::IntMap<ComponentName, ComponentReflection>;
 
@@ -60,12 +186,15 @@ pub struct ComponentReflection {
     /// Markdown docstring for the component.
     pub docstring_md: &'static str,
 
-    /// Placeholder value, used whenever no fallback was provided explicitly.
+    /// Custom placeholder value, used when not fallback was provided.
     ///
-    /// This is usually the default value of the component, serialized.
+    /// This is usually the default value of the component (if any), serialized.
     ///
-    /// This is useful as a base fallback value when displaying UI.
-    pub placeholder: Option<Box<dyn arrow2::array::Array>>,
+    /// Placeholders are useful as a base fallback value when displaying UI,
+    /// especially when it's necessary to have a starting value for edit ui.
+    /// Typically, this is only used when `FallbackProvider`s are not available.
+    /// If there's no custom placeholder, a placeholder can be derived from the arrow datatype.
+    pub custom_placeholder: Option<Box<dyn arrow2::array::Array>>,
 }
 
 /// Runtime reflection about archetypes.
