@@ -95,8 +95,15 @@ struct PyTimeColumnSelector(TimeColumnSelector);
 
 #[pymethods]
 impl PyTimeColumnSelector {
+    #[new]
+    fn new(timeline: &str) -> Self {
+        Self(TimeColumnSelector {
+            timeline: timeline.into(),
+        })
+    }
+
     fn __repr__(&self) -> String {
-        format!("Time({})", self.0.timeline.name())
+        format!("Time({})", self.0.timeline)
     }
 }
 

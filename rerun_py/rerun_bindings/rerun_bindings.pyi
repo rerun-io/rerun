@@ -34,6 +34,8 @@ class TimeColumnDescriptor:
 class TimeColumnSelector:
     """A selector for a time column."""
 
+    def __init__(self, timeline: str): ...
+
 class ComponentColumnDescriptor:
     """A column containing the component data."""
 
