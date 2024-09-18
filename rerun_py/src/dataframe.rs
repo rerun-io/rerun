@@ -79,32 +79,17 @@ impl From<ComponentColumnDescriptor> for PyComponentColumnDescriptor {
 
 #[pymethods]
 impl PyComponentColumnDescriptor {
-    fn as_dict(&self) -> PyDictionaryComponentColumnDescriptor {
-        PyDictionaryComponentColumnDescriptor(self.0.clone())
+    fn with_dictionary_encoding(&self) -> Self {
+        Self(
+            self.0
+                .clone()
+                .with_join_encoding(re_chunk_store::JoinEncoding::DictionaryEncode),
+        )
     }
 
     fn __repr__(&self) -> String {
         format!(
             "Component({}:{})",
-            self.0.entity_path,
-            self.0.component_name.short_name()
-        )
-    }
-
-    fn __eq__(&self, other: &Self) -> bool {
-        self.0 == other.0
-    }
-}
-
-#[pyclass(frozen, name = "DictionaryComponentColumnDescriptor")]
-#[derive(Clone)]
-struct PyDictionaryComponentColumnDescriptor(ComponentColumnDescriptor);
-
-#[pymethods]
-impl PyDictionaryComponentColumnDescriptor {
-    fn __repr__(&self) -> String {
-        format!(
-            "DictionaryComponent({}:{})",
             self.0.entity_path,
             self.0.component_name.short_name()
         )
@@ -123,8 +108,6 @@ enum AnyColumn {
     Time(PyTimeColumnDescriptor),
     #[pyo3(transparent, annotation = "component")]
     Component(PyComponentColumnDescriptor),
-    #[pyo3(transparent, annotation = "dctionary_component")]
-    DictionaryComponent(PyDictionaryComponentColumnDescriptor),
 }
 
 impl AnyColumn {
@@ -133,7 +116,6 @@ impl AnyColumn {
             Self::Control(col) => ColumnDescriptor::Control(col.0),
             Self::Time(col) => ColumnDescriptor::Time(col.0),
             Self::Component(col) => ColumnDescriptor::Component(col.0),
-            Self::DictionaryComponent(col) => ColumnDescriptor::DictionaryEncoded(col.0),
         }
     }
 }

@@ -3,9 +3,7 @@ from typing import Optional, Sequence, Union
 import pyarrow as pa
 from rerun._baseclasses import ComponentMixin
 
-AnyColumn = Union[
-    ControlColumnDescriptor, TimeColumnDescriptor, ComponentColumnDescriptor, DictionaryComponentColumnDescriptor
-]
+AnyColumn = Union[ControlColumnDescriptor, TimeColumnDescriptor, ComponentColumnDescriptor]
 
 class ControlColumnDescriptor:
     """A control-level column such as `RowId`."""
@@ -16,10 +14,7 @@ class TimeColumnDescriptor:
 class ComponentColumnDescriptor:
     """A column containing the component data."""
 
-    def as_dict(self) -> DictionaryComponentColumnDescriptor: ...
-
-class DictionaryComponentColumnDescriptor:
-    """A dictionary-encoded column containing the component data."""
+    def with_dictionary_encoding(self) -> ComponentColumnDescriptor: ...
 
 class Schema:
     """The schema representing all columns in a [`Dataset`][]."""
