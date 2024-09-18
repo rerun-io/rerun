@@ -20,7 +20,7 @@ struct Entry {
     video: Arc<Result<Video, VideoError>>,
 }
 
-/// Caches meshes based on their [`VideoCacheKey`].
+/// Caches meshes based on media type & row id.
 #[derive(Default)]
 pub struct VideoCache(ahash::HashMap<Hash64, Entry>);
 
