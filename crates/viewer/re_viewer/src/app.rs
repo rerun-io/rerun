@@ -1034,6 +1034,8 @@ impl App {
         let start = web_time::Instant::now();
 
         while let Some((channel_source, msg)) = self.rx.try_recv() {
+            re_log::trace!("Received a message from {channel_source:?}"); // Used by `test_ui_wakeup` test app!
+
             let msg = match msg.payload {
                 re_smart_channel::SmartMessagePayload::Msg(msg) => msg,
 

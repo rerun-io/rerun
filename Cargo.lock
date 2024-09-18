@@ -7112,6 +7112,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "test_ui_wakeup"
+version = "0.19.0-alpha.1+dev"
+dependencies = [
+ "anyhow",
+ "clap",
+ "re_log",
+ "rerun",
+]
+
+[[package]]
 name = "thiserror"
 version = "1.0.63"
 source = "registry+https://github.com/rust-lang/crates.io-index"
