@@ -181,7 +181,7 @@ pub trait SpaceViewClass: Send + Sync {
         Ok(())
     }
 
-    /// Addition UI displayed in the tab title bar, between the "maximize" and "help" buttons.
+    /// Additional UI displayed in the tab title bar, between the "maximize" and "help" buttons.
     ///
     /// Note: this is a right-to-left layout.
     fn extra_title_bar_ui(
