@@ -27,7 +27,7 @@ use crate::RowId;
 /// Because range-queries often involve repeating the same joined-in data multiple times,
 /// the strategy we choose for joining can have a significant impact on the size and memory
 /// overhead of the `RecordBatch`.
-#[derive(Debug, Default, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum JoinEncoding {
     /// Slice the `RecordBatch` to minimal overlapping sub-ranges.
     ///
@@ -401,11 +401,13 @@ impl ComponentColumnDescriptor {
 // --- Selectors ---
 
 /// Describes a column selection to return as part of a query.
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum ColumnSelector {
     Control(ControlColumnSelector),
     Time(TimeColumnSelector),
     Component(ComponentColumnSelector),
-    ArchetypeField(ArchetypeFieldColumnSelector),
+    //TODO(jleibs): Add support for archetype-based component selection.
+    //ArchetypeField(ArchetypeFieldColumnSelector),
 }
 
 impl From<ColumnDescriptor> for ColumnSelector {
@@ -418,12 +420,31 @@ impl From<ColumnDescriptor> for ColumnSelector {
     }
 }
 
+impl From<ControlColumnSelector> for ColumnSelector {
+    fn from(desc: ControlColumnSelector) -> Self {
+        Self::Control(desc)
+    }
+}
+
+impl From<TimeColumnSelector> for ColumnSelector {
+    fn from(desc: TimeColumnSelector) -> Self {
+        Self::Time(desc)
+    }
+}
+
+impl From<ComponentColumnSelector> for ColumnSelector {
+    fn from(desc: ComponentColumnSelector) -> Self {
+        Self::Component(desc)
+    }
+}
+
 /// Select a control column.
 ///
 /// The only control column currently supported is `rerun.components.RowId`.
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct ControlColumnSelector {
     /// Name of the control column.
-    component: ComponentName,
+    pub component: ComponentName,
 }
 
 impl From<ControlColumnDescriptor> for ControlColumnSelector {
@@ -435,9 +456,10 @@ impl From<ControlColumnDescriptor> for ControlColumnSelector {
 }
 
 /// Select a time column.
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct TimeColumnSelector {
     /// The name of the timeline.
-    timeline: Timeline,
+    pub timeline: Timeline,
 }
 
 impl From<TimeColumnDescriptor> for TimeColumnSelector {
@@ -454,15 +476,16 @@ impl From<TimeColumnDescriptor> for TimeColumnSelector {
 /// on the same entity, this selector may be ambiguous. In this case, the
 /// query result will return an Error if it cannot determine a single selected
 /// component.
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct ComponentColumnSelector {
     /// The path of the entity.
-    entity_path: EntityPath,
+    pub entity_path: EntityPath,
 
     /// Semantic name associated with this data.
-    component: ComponentName,
+    pub component: ComponentName,
 
     /// How to join the data into the `RecordBatch`.
-    join_encoding: JoinEncoding,
+    pub join_encoding: JoinEncoding,
 }
 
 impl From<ComponentColumnDescriptor> for ComponentColumnSelector {
@@ -475,6 +498,37 @@ impl From<ComponentColumnDescriptor> for ComponentColumnSelector {
     }
 }
 
+impl ComponentColumnSelector {
+    pub fn new<C: re_types_core::Component>(entity_path: EntityPath) -> Self {
+        Self {
+            entity_path,
+            component: C::name(),
+            join_encoding: JoinEncoding::default(),
+        }
+    }
+
+    /// Specify how the data should be joined into the `RecordBatch`.
+    #[inline]
+    pub fn with_join_encoding(mut self, join_encoding: JoinEncoding) -> Self {
+        self.join_encoding = join_encoding;
+        self
+    }
+}
+
+impl std::fmt::Display for ComponentColumnSelector {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let Self {
+            entity_path,
+            component,
+            join_encoding: _,
+        } = self;
+
+        f.write_fmt(format_args!("{entity_path}@{}", component.short_name()))
+    }
+}
+
+// TODO(jleibs): Add support for archetype-based column selection.
+/*
 /// Select a component based on its `Archetype` and field.
 pub struct ArchetypeFieldColumnSelector {
     /// The path of the entity.
@@ -489,6 +543,7 @@ pub struct ArchetypeFieldColumnSelector {
     /// How to join the data into the `RecordBatch`.
     join_encoding: JoinEncoding,
 }
+*/
 
 // --- Queries ---
 
@@ -593,7 +648,7 @@ pub struct RangeQueryExpression {
     /// multiple rows at a given timestamp.
     //
     // TODO(cmc): issue for multi-pov support
-    pub pov: ComponentColumnDescriptor,
+    pub pov: ComponentColumnSelector,
     //
     // TODO(cmc): custom join policy support
 }
@@ -712,6 +767,106 @@ impl ChunkStore {
             .collect::<BTreeSet<_>>();
 
         controls.chain(timelines).chain(components).collect()
+    }
+
+    pub fn resolve_pov_selector(&self, pov: &ComponentColumnSelector) -> ComponentColumnDescriptor {
+        let datatype = self
+            .lookup_datatype(&pov.component)
+            .cloned()
+            .unwrap_or_else(|| ArrowListArray::<i32>::default_datatype(ArrowDatatype::Null));
+
+        let is_static = self
+            .static_chunk_ids_per_entity
+            .get(&pov.entity_path)
+            .map_or(false, |per_component| {
+                per_component.contains_key(&pov.component)
+            });
+
+        // TODO(#6889): Fill `archetype_name`/`archetype_field_name` (or whatever their
+        // final name ends up being) once we generate tags.
+        ComponentColumnDescriptor {
+            entity_path: pov.entity_path.clone(),
+            archetype_name: None,
+            archetype_field_name: None,
+            component_name: pov.component,
+            store_datatype: datatype,
+            join_encoding: pov.join_encoding,
+            is_static,
+        }
+    }
+
+    pub fn resolve_selectors(
+        &self,
+        selectors: impl IntoIterator<Item = impl Into<ColumnSelector>>,
+    ) -> Vec<ColumnDescriptor> {
+        let descriptors = self.schema();
+
+        // TODO(jleibs): This could be optimized a lot by looking these up more directly.
+        // TODO(jleibs): When, if ever, should this return an error?
+        selectors
+            .into_iter()
+            .map(|selector| {
+                let selector = selector.into();
+                match selector {
+                    ColumnSelector::Control(control) => descriptors
+                        .iter()
+                        .find(|descr| match descr {
+                            ColumnDescriptor::Control(descr) => {
+                                descr.component_name == control.component
+                            }
+                            _ => false,
+                        })
+                        .cloned()
+                        .unwrap_or_else(|| {
+                            ColumnDescriptor::Control(ControlColumnDescriptor {
+                                component_name: control.component,
+                                datatype: ArrowDatatype::Null,
+                            })
+                        }),
+                    ColumnSelector::Time(time) => descriptors
+                        .iter()
+                        .find(|descr| match descr {
+                            ColumnDescriptor::Time(descr) => descr.timeline == time.timeline,
+                            _ => false,
+                        })
+                        .cloned()
+                        .unwrap_or_else(|| {
+                            ColumnDescriptor::Time(TimeColumnDescriptor {
+                                timeline: time.timeline,
+                                datatype: ArrowDatatype::Null,
+                            })
+                        }),
+                    ColumnSelector::Component(component) => descriptors
+                        .iter()
+                        .find_map(|descr| match descr {
+                            ColumnDescriptor::Component(descr) => {
+                                if descr.entity_path == component.entity_path
+                                    && descr.component_name == component.component
+                                {
+                                    Some(ColumnDescriptor::Component(
+                                        descr.clone().with_join_encoding(component.join_encoding),
+                                    ))
+                                } else {
+                                    None
+                                }
+                            }
+                            _ => None,
+                        })
+                        .clone()
+                        .unwrap_or_else(|| {
+                            ColumnDescriptor::Component(ComponentColumnDescriptor {
+                                entity_path: component.entity_path,
+                                archetype_name: None,
+                                archetype_field_name: None,
+                                component_name: component.component,
+                                store_datatype: ArrowDatatype::Null,
+                                join_encoding: component.join_encoding,
+                                is_static: false,
+                            })
+                        }),
+                }
+            })
+            .collect()
     }
 
     /// Returns the filtered schema for the given query expression.
