@@ -770,16 +770,21 @@ impl ChunkStore {
     }
 
     /// Given a [`ControlColumnSelector`], returns the corresponding [`ControlColumnDescriptor`].
+    #[allow(clippy::unused_self)]
     pub fn resolve_control_selector(
         &self,
         selector: &ControlColumnSelector,
     ) -> ControlColumnDescriptor {
-        ControlColumnDescriptor {
-            component_name: selector.component,
-            datatype: self
-                .lookup_datatype(&selector.component)
-                .cloned()
-                .unwrap_or_else(|| ArrowListArray::<i32>::default_datatype(ArrowDatatype::Null)),
+        if selector.component == RowId::name() {
+            ControlColumnDescriptor {
+                component_name: selector.component,
+                datatype: RowId::arrow_datatype(),
+            }
+        } else {
+            ControlColumnDescriptor {
+                component_name: selector.component,
+                datatype: ArrowDatatype::Null,
+            }
         }
     }
 
