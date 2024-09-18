@@ -17,11 +17,16 @@ AnyComponentColumn = Union[
     ComponentColumnSelector,
 ]
 
+ComponentLike = Union[str, type[ComponentMixin]]
+
 class ControlColumnDescriptor:
     """A control-level column such as `RowId`."""
 
 class ControlColumnSelector:
     """A selector for a control column."""
+
+    @staticmethod
+    def row_id() -> ControlColumnSelector: ...
 
 class TimeColumnDescriptor:
     """A column containing the time values for when the component data was updated."""
@@ -37,6 +42,7 @@ class ComponentColumnDescriptor:
 class ComponentColumnSelector:
     """A selector for a component column."""
 
+    def __init__(self, entity_path: str, component_type: ComponentLike): ...
     def with_dictionary_encoding(self) -> ComponentColumnSelector: ...
 
 class Schema:
@@ -45,9 +51,7 @@ class Schema:
     def control_columns(self) -> list[ControlColumnDescriptor]: ...
     def time_columns(self) -> list[TimeColumnDescriptor]: ...
     def component_columns(self) -> list[ComponentColumnDescriptor]: ...
-    def column_for(
-        self, entity_path: str, component: str | type[ComponentMixin]
-    ) -> Optional[ComponentColumnDescriptor]: ...
+    def column_for(self, entity_path: str, ComponentLike) -> Optional[ComponentColumnDescriptor]: ...
 
 class Dataset:
     """A single dataset from an RRD, representing a Recording or a Blueprint."""

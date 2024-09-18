@@ -16,7 +16,7 @@ use re_chunk_store::{
 };
 use re_dataframe::QueryEngine;
 use re_log_types::{EntityPathFilter, ResolvedTimeRange};
-use re_sdk::{EntityPath, StoreId, StoreKind, Timeline};
+use re_sdk::{EntityPath, Loggable as _, StoreId, StoreKind, Timeline};
 
 /// Register the `rerun.dataframe` module.
 pub(crate) fn register(m: &Bound<'_, PyModule>) -> PyResult<()> {
@@ -60,6 +60,13 @@ struct PyControlColumnSelector(ControlColumnSelector);
 
 #[pymethods]
 impl PyControlColumnSelector {
+    #[staticmethod]
+    fn row_id() -> Self {
+        Self(ControlColumnSelector {
+            component: re_chunk::RowId::name(),
+        })
+    }
+
     fn __repr__(&self) -> String {
         format!("Ctrl({})", self.0.component.short_name())
     }
@@ -138,6 +145,23 @@ struct PyComponentColumnSelector(ComponentColumnSelector);
 
 #[pymethods]
 impl PyComponentColumnSelector {
+    #[new]
+    fn new(entity_path: &str, component_name: ComponentLike) -> Self {
+        Self(ComponentColumnSelector {
+            entity_path: entity_path.into(),
+            component: component_name.0,
+            join_encoding: Default::default(),
+        })
+    }
+
+    fn with_dictionary_encoding(&self) -> Self {
+        Self(
+            self.0
+                .clone()
+                .with_join_encoding(re_chunk_store::JoinEncoding::DictionaryEncode),
+        )
+    }
+
     fn __repr__(&self) -> String {
         format!(
             "Component({}:{})",
@@ -188,6 +212,27 @@ impl AnyComponentColumn {
         match self {
             Self::ComponentDescriptor(desc) => desc.0.into(),
             Self::ComponentSelector(selector) => selector.0,
+        }
+    }
+}
+
+struct ComponentLike(re_sdk::ComponentName);
+
+impl FromPyObject<'_> for ComponentLike {
+    fn extract(component: &PyAny) -> PyResult<Self> {
+        if let Ok(component_str) = component.extract::<String>() {
+            Ok(Self(component_str.into()))
+        } else if let Ok(component_str) = component
+            .getattr("_BATCH_TYPE")
+            .and_then(|batch_type| batch_type.getattr("_ARROW_TYPE"))
+            .and_then(|arrow_type| arrow_type.getattr("_TYPE_NAME"))
+            .and_then(|type_name| type_name.extract::<String>())
+        {
+            Ok(Self(component_str.into()))
+        } else {
+            return Err(PyTypeError::new_err(
+                "ComponentLike input must be a string or Component class.",
+            ));
         }
     }
 }
@@ -243,34 +288,18 @@ impl PySchema {
     fn column_for(
         &self,
         entity_path: &str,
-        component: &Bound<'_, PyAny>, // str | type[ComponentMixin]
-    ) -> PyResult<Option<PyComponentColumnDescriptor>> {
+        component: ComponentLike,
+    ) -> Option<PyComponentColumnDescriptor> {
         let entity_path: EntityPath = entity_path.into();
-        let component_name: re_chunk::ComponentName;
 
-        if let Ok(component_str) = component.extract::<String>() {
-            component_name = component_str.into();
-        } else if let Ok(component_str) = component
-            .getattr("_BATCH_TYPE")
-            .and_then(|batch_type| batch_type.getattr("_ARROW_TYPE"))
-            .and_then(|arrow_type| arrow_type.getattr("_TYPE_NAME"))
-            .and_then(|type_name| type_name.extract::<String>())
-        {
-            component_name = component_str.into();
-        } else {
-            return Err(PyTypeError::new_err(
-                "Input to parameter `component` must be a string or Component class.",
-            ));
-        }
-
-        Ok(self.schema.iter().find_map(|col| {
+        self.schema.iter().find_map(|col| {
             if let ColumnDescriptor::Component(col) = col {
-                if col.matches(&entity_path, &component_name) {
+                if col.matches(&entity_path, &component.0) {
                     return Some(col.clone().into());
                 }
             }
             None
-        }))
+        })
     }
 }
 
