@@ -3,18 +3,41 @@ from typing import Optional, Sequence, Union
 import pyarrow as pa
 from rerun._baseclasses import ComponentMixin
 
-AnyColumn = Union[ControlColumnDescriptor, TimeColumnDescriptor, ComponentColumnDescriptor]
+AnyColumn = Union[
+    ControlColumnDescriptor,
+    TimeColumnDescriptor,
+    ComponentColumnDescriptor,
+    ControlColumnSelector,
+    TimeColumnSelector,
+    ComponentColumnSelector,
+]
+
+AnyComponentColumn = Union[
+    ComponentColumnDescriptor,
+    ComponentColumnSelector,
+]
 
 class ControlColumnDescriptor:
     """A control-level column such as `RowId`."""
 
+class ControlColumnSelector:
+    """A selector for a control column."""
+
 class TimeColumnDescriptor:
     """A column containing the time values for when the component data was updated."""
+
+class TimeColumnSelector:
+    """A selector for a time column."""
 
 class ComponentColumnDescriptor:
     """A column containing the component data."""
 
     def with_dictionary_encoding(self) -> ComponentColumnDescriptor: ...
+
+class ComponentColumnSelector:
+    """A selector for a component column."""
+
+    def with_dictionary_encoding(self) -> ComponentColumnSelector: ...
 
 class Schema:
     """The schema representing all columns in a [`Dataset`][]."""
@@ -33,7 +56,7 @@ class Dataset:
     def range_query(
         self,
         entity_path_expr: str,
-        pov: ComponentColumnDescriptor,
+        pov: AnyComponentColumn,
         query_columns: Sequence[AnyColumn],
     ) -> list[pa.RecordBatch]: ...
 

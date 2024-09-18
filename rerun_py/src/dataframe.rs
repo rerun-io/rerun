@@ -10,8 +10,9 @@ use pyo3::{
     prelude::*,
 };
 use re_chunk_store::{
-    ChunkStore, ChunkStoreConfig, ColumnDescriptor, ComponentColumnDescriptor,
-    ControlColumnDescriptor, RangeQueryExpression, TimeColumnDescriptor, VersionPolicy,
+    ChunkStore, ChunkStoreConfig, ColumnDescriptor, ColumnSelector, ComponentColumnDescriptor,
+    ComponentColumnSelector, ControlColumnDescriptor, ControlColumnSelector, RangeQueryExpression,
+    TimeColumnDescriptor, TimeColumnSelector, VersionPolicy,
 };
 use re_dataframe::QueryEngine;
 use re_log_types::{EntityPathFilter, ResolvedTimeRange};
@@ -24,8 +25,11 @@ pub(crate) fn register(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<PyRRDArchive>()?;
     m.add_class::<PyDataset>()?;
     m.add_class::<PyControlColumnDescriptor>()?;
+    m.add_class::<PyControlColumnSelector>()?;
     m.add_class::<PyTimeColumnDescriptor>()?;
+    m.add_class::<PyTimeColumnSelector>()?;
     m.add_class::<PyComponentColumnDescriptor>()?;
+    m.add_class::<PyComponentColumnSelector>()?;
 
     m.add_function(wrap_pyfunction!(crate::dataframe::load_archive, m)?)?;
     m.add_function(wrap_pyfunction!(crate::dataframe::load_recording, m)?)?;
@@ -50,6 +54,17 @@ impl From<ControlColumnDescriptor> for PyControlColumnDescriptor {
     }
 }
 
+#[pyclass(frozen, name = "ControlColumnSelector")]
+#[derive(Clone)]
+struct PyControlColumnSelector(ControlColumnSelector);
+
+#[pymethods]
+impl PyControlColumnSelector {
+    fn __repr__(&self) -> String {
+        format!("Ctrl({})", self.0.component.short_name())
+    }
+}
+
 #[pyclass(frozen, name = "TimeColumnDescriptor")]
 #[derive(Clone)]
 struct PyTimeColumnDescriptor(TimeColumnDescriptor);
@@ -64,6 +79,17 @@ impl PyTimeColumnDescriptor {
 impl From<TimeColumnDescriptor> for PyTimeColumnDescriptor {
     fn from(desc: TimeColumnDescriptor) -> Self {
         Self(desc)
+    }
+}
+
+#[pyclass(frozen, name = "TimeColumnSelector")]
+#[derive(Clone)]
+struct PyTimeColumnSelector(TimeColumnSelector);
+
+#[pymethods]
+impl PyTimeColumnSelector {
+    fn __repr__(&self) -> String {
+        format!("Time({})", self.0.timeline.name())
     }
 }
 
@@ -100,22 +126,68 @@ impl PyComponentColumnDescriptor {
     }
 }
 
+impl From<PyComponentColumnDescriptor> for ComponentColumnDescriptor {
+    fn from(desc: PyComponentColumnDescriptor) -> Self {
+        desc.0
+    }
+}
+
+#[pyclass(frozen, name = "ComponentColumnSelector")]
+#[derive(Clone)]
+struct PyComponentColumnSelector(ComponentColumnSelector);
+
+#[pymethods]
+impl PyComponentColumnSelector {
+    fn __repr__(&self) -> String {
+        format!(
+            "Component({}:{})",
+            self.0.entity_path,
+            self.0.component.short_name()
+        )
+    }
+}
+
 #[derive(FromPyObject)]
 enum AnyColumn {
-    #[pyo3(transparent, annotation = "control")]
-    Control(PyControlColumnDescriptor),
-    #[pyo3(transparent, annotation = "time")]
-    Time(PyTimeColumnDescriptor),
-    #[pyo3(transparent, annotation = "component")]
-    Component(PyComponentColumnDescriptor),
+    #[pyo3(transparent, annotation = "control_descriptor")]
+    ControlDescriptor(PyControlColumnDescriptor),
+    #[pyo3(transparent, annotation = "control_selector")]
+    ControlSelector(PyControlColumnSelector),
+    #[pyo3(transparent, annotation = "time_descriptor")]
+    TimeDescriptor(PyTimeColumnDescriptor),
+    #[pyo3(transparent, annotation = "time_selector")]
+    TimeSelector(PyTimeColumnSelector),
+    #[pyo3(transparent, annotation = "component_descriptor")]
+    ComponentDescriptor(PyComponentColumnDescriptor),
+    #[pyo3(transparent, annotation = "component_selector")]
+    ComponentSelector(PyComponentColumnSelector),
 }
 
 impl AnyColumn {
-    fn into_column(self) -> ColumnDescriptor {
+    fn into_selector(self) -> ColumnSelector {
         match self {
-            Self::Control(col) => ColumnDescriptor::Control(col.0),
-            Self::Time(col) => ColumnDescriptor::Time(col.0),
-            Self::Component(col) => ColumnDescriptor::Component(col.0),
+            Self::ControlDescriptor(desc) => ColumnDescriptor::Control(desc.0).into(),
+            Self::ControlSelector(selector) => selector.0.into(),
+            Self::TimeDescriptor(desc) => ColumnDescriptor::Time(desc.0).into(),
+            Self::TimeSelector(selector) => selector.0.into(),
+            Self::ComponentDescriptor(desc) => ColumnDescriptor::Component(desc.0).into(),
+            Self::ComponentSelector(selector) => selector.0.into(),
+        }
+    }
+}
+
+#[derive(FromPyObject)]
+enum AnyComponentColumn {
+    ComponentDescriptor(PyComponentColumnDescriptor),
+    #[pyo3(transparent, annotation = "component_selector")]
+    ComponentSelector(PyComponentColumnSelector),
+}
+
+impl AnyComponentColumn {
+    fn into_selector(self) -> ComponentColumnSelector {
+        match self {
+            Self::ComponentDescriptor(desc) => desc.0.into(),
+            Self::ComponentSelector(selector) => selector.0,
         }
     }
 }
@@ -219,7 +291,7 @@ impl PyDataset {
     fn range_query(
         &self,
         expr: &str,
-        pov: PyComponentColumnDescriptor,
+        pov: AnyComponentColumn,
         columns: Option<Vec<AnyColumn>>,
     ) -> PyResult<PyArrowType<Vec<RecordBatch>>> {
         // TODO(jleibs): Move this ctx into PyChunkStore?
@@ -238,10 +310,10 @@ impl PyDataset {
                 .map_err(|err| PyRuntimeError::new_err(err.to_string()))?,
             timeline,
             time_range,
-            pov: pov.0,
+            pov: pov.into_selector(),
         };
 
-        let columns = columns.map(|cols| cols.into_iter().map(|col| col.into_column()).collect());
+        let columns = columns.map(|cols| cols.into_iter().map(|col| col.into_selector()).collect());
 
         let query_handle = engine.range(&query, columns);
 
