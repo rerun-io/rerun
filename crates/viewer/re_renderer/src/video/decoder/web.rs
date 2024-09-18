@@ -243,8 +243,8 @@ impl VideoDecoder {
         } else {
             EncodedVideoChunkType::Delta
         };
-        let chunk = EncodedVideoChunkInit::new(&data, sample.timestamp.as_f64(), type_);
-        chunk.set_duration(sample.duration.as_f64());
+        let chunk = EncodedVideoChunkInit::new(&data, sample.timestamp.as_ms_f64(), type_);
+        chunk.set_duration(sample.duration.as_ms_f64());
         let Some(chunk) = EncodedVideoChunk::new(&chunk)
             .inspect_err(|err| {
                 // TODO(#7373): return this error once the decoder tries to return a frame for this sample. how exactly?

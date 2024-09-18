@@ -83,9 +83,9 @@ impl Video {
         Ok(Self { data, decoder })
     }
 
-    /// Duration of the video in milliseconds.
-    pub fn duration_ms(&self) -> f64 {
-        self.data.duration.as_f64()
+    /// Duration of the video.
+    pub fn duration(&self) -> re_video::TimeMs {
+        self.data.duration
     }
 
     /// Natural width of the video.
