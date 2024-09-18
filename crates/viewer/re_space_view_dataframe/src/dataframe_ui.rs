@@ -2,7 +2,7 @@ use std::collections::BTreeMap;
 use std::ops::Range;
 
 use anyhow::Context;
-use egui::{NumExt as _, Ui};
+use egui::NumExt as _;
 use itertools::Itertools;
 
 use re_chunk_store::{ColumnDescriptor, LatestAtQuery, RowId};
@@ -235,35 +235,7 @@ impl<'a> egui_table::TableDelegate for DataframeTableDelegate<'a> {
     fn cell_ui(&mut self, ui: &mut egui::Ui, cell: &egui_table::CellInfo) {
         re_tracing::profile_function!();
 
-        //TODO(ab): paint subcell as well
-        if cell.row_nr % 2 == 1 {
-            // Paint stripes
-            ui.painter()
-                .rect_filled(ui.max_rect(), 0.0, ui.visuals().faint_bg_color);
-        }
-
         debug_assert!(cell.row_nr < self.num_rows, "Bug in egui_table");
-
-        egui::Frame::none()
-            .inner_margin(egui::Margin::symmetric(Self::LEFT_RIGHT_MARGIN, 0.0))
-            .show(ui, |ui| {
-                self.cell_ui_impl(ui, cell);
-            });
-    }
-
-    fn row_top_offset(&self, _ctx: &egui::Context, _table_id: egui::Id, row_nr: u64) -> f32 {
-        self.expanded_rows.row_top_offset(row_nr)
-    }
-
-    fn default_row_height(&self) -> f32 {
-        re_ui::DesignTokens::table_line_height()
-    }
-}
-
-impl DataframeTableDelegate<'_> {
-    /// Draw the content of a cell.
-    fn cell_ui_impl(&mut self, ui: &mut Ui, cell: &egui_table::CellInfo) {
-        re_tracing::profile_function!();
 
         let display_data = match &self.display_data {
             Ok(display_data) => display_data,
@@ -315,22 +287,30 @@ impl DataframeTableDelegate<'_> {
         }
 
         let instance_count = column.instance_count(batch_row_idx);
-        let row_expansion = self.expanded_rows.additional_lines_for_row(cell.row_nr);
+        let additional_lines = self.expanded_rows.additional_lines_for_row(cell.row_nr);
 
-        // Iterate over the lines for this cell. The initial `None` value corresponds to the summary
-        // line.
-        let instance_indices = std::iter::once(None)
-            .chain((0..instance_count).map(Option::Some))
-            .take(row_expansion as usize + 1);
+        let is_row_odd = self.expanded_rows.is_row_odd(cell.row_nr);
+
+        // Iterate over the top line (the summary, thus the `None`), and all additional lines.
+        // Note: we must iterate over all lines regardless of the actual number of instances so that
+        // the zebra stripes are properly drawn.
+        let instance_indices = std::iter::once(None).chain((0..additional_lines).map(Option::Some));
 
         {
-            re_tracing::profile_scope!("subcells");
+            re_tracing::profile_scope!("lines");
 
             // how the line is drawn
             let line_content = |ui: &mut egui::Ui,
                                 expanded_rows: &mut ExpandedRows<'_>,
                                 line_index: usize,
                                 instance_index: Option<u64>| {
+                // Draw the alternating background color.
+                let is_line_odd = is_row_odd ^ (line_index % 2 == 1);
+                if is_line_odd {
+                    ui.painter()
+                        .rect_filled(ui.max_rect(), 0.0, ui.visuals().faint_bg_color);
+                }
+
                 // This is called when data actually needs to be drawn (as opposed to summaries like
                 // "N instances" or "N more…").
                 let data_content = |ui: &mut egui::Ui| {
@@ -344,19 +324,32 @@ impl DataframeTableDelegate<'_> {
                     );
                 };
 
-                line_ui(
-                    ui,
-                    expanded_rows,
-                    line_index,
-                    instance_index,
-                    instance_count,
-                    cell,
-                    data_content,
-                );
+                // Draw the cell content with some margin.
+                egui::Frame::none()
+                    .inner_margin(egui::Margin::symmetric(Self::LEFT_RIGHT_MARGIN, 0.0))
+                    .show(ui, |ui| {
+                        line_ui(
+                            ui,
+                            expanded_rows,
+                            line_index,
+                            instance_index,
+                            instance_count,
+                            cell,
+                            data_content,
+                        );
+                    });
             };
 
             split_ui_vertically(ui, &mut self.expanded_rows, instance_indices, line_content);
         }
+    }
+
+    fn row_top_offset(&self, _ctx: &egui::Context, _table_id: egui::Id, row_nr: u64) -> f32 {
+        self.expanded_rows.row_top_offset(row_nr)
+    }
+
+    fn default_row_height(&self) -> f32 {
+        re_ui::DesignTokens::table_line_height()
     }
 }
 
