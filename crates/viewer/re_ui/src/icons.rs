@@ -59,6 +59,7 @@ pub const MAXIMIZE: Icon = icon_from_path!("../data/icons/maximize.png");
 
 pub const COLLAPSE: Icon = icon_from_path!("../data/icons/collapse.png");
 pub const EXPAND: Icon = icon_from_path!("../data/icons/expand.png");
+pub const COLUMN_VISIBILITY: Icon = icon_from_path!("../data/icons/column_visibility.png");
 
 pub const VISIBLE: Icon = icon_from_path!("../data/icons/visible.png");
 pub const INVISIBLE: Icon = icon_from_path!("../data/icons/invisible.png");

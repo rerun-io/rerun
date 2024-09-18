@@ -1,22 +1,34 @@
-use egui::Ui;
 use std::any::Any;
+use std::collections::HashMap;
 
+use egui::Ui;
+use re_chunk_store::ColumnDescriptor;
+use re_chunk_store::ColumnDescriptor::Component;
 use re_log_types::{EntityPath, EntityPathFilter, ResolvedTimeRange};
 use re_types_core::SpaceViewClassIdentifier;
+use re_ui::UiExt as _;
 use re_viewer_context::{
     SpaceViewClass, SpaceViewClassRegistryError, SpaceViewId, SpaceViewState, SpaceViewStateExt,
     SpaceViewSystemExecutionError, SystemExecutionOutput, ViewQuery, ViewerContext,
 };
 use re_viewport_blueprint::SpaceViewContents;
 
-use crate::dataframe_ui::dataframe_ui;
-use crate::expanded_rows::ExpandedRowsCache;
-use crate::{query_kind::QueryKind, visualizer_system::EmptySystem};
+use crate::{
+    dataframe_ui::dataframe_ui, expanded_rows::ExpandedRowsCache, query_kind::QueryKind,
+    visualizer_system::EmptySystem,
+};
 
 #[derive(Default)]
 struct DataframeSpaceViewState {
     /// Cache for the expanded rows.
     expended_rows_cache: ExpandedRowsCache,
+
+    /// Schema for the current query, used by the column selection UI.
+    schema: Option<Vec<ColumnDescriptor>>,
+
+    /// Column visibility state.
+    //TODO: should it be just a set of hidden columns? Seems closer to
+    column_visibility: HashMap<ColumnDescriptor, bool>,
 }
 
 impl SpaceViewState for DataframeSpaceViewState {
@@ -105,6 +117,56 @@ mode sets the default time range to _everything_. You can override this in the s
         crate::view_query::query_ui(ctx, ui, state, space_view_id)
     }
 
+    fn extra_title_bar_ui(
+        &self,
+        _ctx: &ViewerContext<'_>,
+        ui: &mut Ui,
+        state: &mut dyn SpaceViewState,
+        _space_origin: &EntityPath,
+        _space_view_id: SpaceViewId,
+    ) -> Result<(), SpaceViewSystemExecutionError> {
+        let state = state.downcast_mut::<DataframeSpaceViewState>()?;
+
+        let column_visibility_ui = |ui: &mut egui::Ui| {
+            if let Some(schema) = &state.schema {
+                let mut current_entity = None;
+                for column in schema {
+                    let Component(component_column_descriptor) = column else {
+                        //TODO: should we handle visibility of control and time columns?
+                        continue;
+                    };
+
+                    if Some(&component_column_descriptor.entity_path) != current_entity.as_ref() {
+                        current_entity = Some(component_column_descriptor.entity_path.clone());
+                        ui.label(component_column_descriptor.entity_path.to_string());
+                    }
+
+                    let mut is_visible =
+                        state.column_visibility.get(column).copied().unwrap_or(true);
+
+                    if ui
+                        .re_checkbox(&mut is_visible, column.short_name())
+                        .changed()
+                    {
+                        state.column_visibility.insert(column.clone(), is_visible);
+                    }
+                }
+            }
+        };
+
+        ui.add_enabled_ui(state.schema.is_some(), |ui| {
+            egui::menu::menu_custom_button(
+                ui,
+                ui.small_icon_button_widget(&re_ui::icons::COLUMN_VISIBILITY),
+                |ui| {
+                    egui::ScrollArea::vertical().show(ui, column_visibility_ui);
+                },
+            );
+        });
+
+        Ok(())
+    }
+
     fn ui(
         &self,
         ctx: &ViewerContext<'_>,
@@ -143,8 +205,22 @@ mode sets the default time range to _everything_. You can override this in the s
                     at: time,
                 };
 
-                //TODO(ab): specify which columns
-                let query_handle = query_engine.latest_at(&query, None);
+                //TODO: dedup
+                let schema = query_engine.schema_for_query(&query.clone().into());
+                let columns = schema
+                    .iter()
+                    .filter(|column| {
+                        state
+                            .column_visibility
+                            .get(*column)
+                            .copied()
+                            .unwrap_or(true)
+                    })
+                    .cloned()
+                    .collect();
+                state.schema = Some(schema);
+
+                let query_handle = query_engine.latest_at(&query, Some(columns));
 
                 dataframe_ui(ctx, ui, query_handle, &mut state.expended_rows_cache);
             }
@@ -171,11 +247,25 @@ mode sets the default time range to _everything_. You can override this in the s
                     },
                 };
 
-                //TODO(ab): specify which columns should be displayed or not
+                //TODO: dedup
+                let schema = query_engine.schema_for_query(&query.clone().into());
+                let columns = schema
+                    .iter()
+                    .filter(|column| {
+                        state
+                            .column_visibility
+                            .get(*column)
+                            .copied()
+                            .unwrap_or(true)
+                    })
+                    .cloned()
+                    .collect();
+                state.schema = Some(schema);
+
                 dataframe_ui(
                     ctx,
                     ui,
-                    query_engine.range(&query, None),
+                    query_engine.range(&query, Some(columns)),
                     &mut state.expended_rows_cache,
                 );
             }
