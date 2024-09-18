@@ -655,11 +655,11 @@ mod tests {
 
         let columns = vec![
             TimeColumnSelector {
-                timeline: Timeline::log_time(),
+                timeline: *Timeline::log_time().name(),
             }
             .into(),
             TimeColumnSelector {
-                timeline: Timeline::log_tick(),
+                timeline: *Timeline::log_tick().name(),
             }
             .into(),
             ComponentColumnSelector::new::<MyPoint>(entity_path.clone()).into(),
@@ -747,11 +747,11 @@ mod tests {
 
         let columns = vec![
             TimeColumnSelector {
-                timeline: Timeline::log_time(),
+                timeline: *Timeline::log_time().name(),
             }
             .into(),
             TimeColumnSelector {
-                timeline: Timeline::log_tick(),
+                timeline: *Timeline::log_tick().name(),
             }
             .into(),
             ComponentColumnSelector::new::<MyPoint>(entity_path.clone()).into(),

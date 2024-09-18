@@ -9,7 +9,7 @@ use arrow2::{
 };
 use itertools::Itertools as _;
 
-use re_chunk::LatestAtQuery;
+use re_chunk::{LatestAtQuery, TimelineName};
 use re_log_types::{EntityPath, TimeInt, Timeline};
 use re_log_types::{EntityPathFilter, ResolvedTimeRange};
 use re_types_core::{ArchetypeName, ComponentName, Loggable as _};
@@ -459,13 +459,13 @@ impl From<ControlColumnDescriptor> for ControlColumnSelector {
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct TimeColumnSelector {
     /// The name of the timeline.
-    pub timeline: Timeline,
+    pub timeline: TimelineName,
 }
 
 impl From<TimeColumnDescriptor> for TimeColumnSelector {
     fn from(desc: TimeColumnDescriptor) -> Self {
         Self {
-            timeline: desc.timeline,
+            timeline: desc.timeline.name().clone(),
         }
     }
 }
@@ -789,11 +789,18 @@ impl ChunkStore {
     }
 
     /// Given a [`TimeColumnSelector`], returns the corresponding [`TimeColumnDescriptor`].
-    #[allow(clippy::unused_self)]
     pub fn resolve_time_selector(&self, selector: &TimeColumnSelector) -> TimeColumnDescriptor {
+        let timelines = self.all_timelines();
+
+        let timeline = timelines
+            .iter()
+            .find(|timeline| timeline.name() == &selector.timeline)
+            .copied()
+            .unwrap_or_else(|| Timeline::new_temporal(selector.timeline));
+
         TimeColumnDescriptor {
-            timeline: selector.timeline,
-            datatype: selector.timeline.datatype(),
+            timeline,
+            datatype: timeline.datatype(),
         }
     }
 
