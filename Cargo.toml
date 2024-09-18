@@ -538,8 +538,8 @@ egui_tiles = { git = "https://github.com/rerun-io/egui_tiles", rev = "b2f5e23252
 egui_commonmark = { git = "https://github.com/rerun-io/egui_commonmark", rev = "7a9dc755bfa351a3796274cb8ca87129b051c084" } # https://github.com/lampsitter/egui_commonmark/pull/65
 
 # commit on `rerun-io/mp4` `main` branch
-# https://github.com/rerun-io/mp4/commit/ef529032547d7f97161e95c58bd76856cb116349
-mp4 = { git = "https://github.com/rerun-io/mp4", rev = "ef529032547d7f97161e95c58bd76856cb116349" }
+# https://github.com/rerun-io/mp4/commit/b019fcf3ac8e1befded54728686997cc168117c8
+mp4 = { git = "https://github.com/rerun-io/mp4", rev = "b019fcf3ac8e1befded54728686997cc168117c8" }
 
 # commit on `rerun-io/re_arrow2` `main` branch
 # https://github.com/rerun-io/re_arrow2/commit/e4717d6debc6d4474ec10db8f629f823f57bad07
