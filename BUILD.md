@@ -39,8 +39,6 @@ Use this command for building and running the viewer:
 pixi run rerun
 ```
 
-It is recommended you add `target/debug` to the start of your `PATH`. That way, all examples that call `spawn` will use your latest built `rerun` binary.
-
 
 ## Running the Rust examples
 

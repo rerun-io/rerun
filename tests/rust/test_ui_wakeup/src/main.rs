@@ -4,7 +4,6 @@
 //! ## Test setup - build the viewer
 //! * `pixi run rerun-build`
 //! * `pixi run rerun-build-web`
-//! * Make sure `target/debug` is at the start of your `PATH`
 //!
 //! ## Test matrix
 //! * Run `cargo r -p test_ui_wakeup` and test:
