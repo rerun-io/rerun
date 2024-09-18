@@ -22,6 +22,47 @@ use crate::RowId;
 
 // --- Descriptors ---
 
+/// When selecting secondary component columns, specify how the joined data should be encoded.
+///
+/// Because range-queries often involve repeating the same joined-in data multiple times,
+/// the strategy we choose for joining can have a significant impact on the size and memory
+/// overhead of the `RecordBatch`.
+#[derive(Debug, Default, Clone, PartialEq, Eq, Hash)]
+pub enum JoinEncoding {
+    /// Slice the `RecordBatch` to minimal overlapping sub-ranges.
+    ///
+    /// This is the default, and should always be used for the POV component which defines
+    /// the optimal size for `RecordBatch`.
+    ///
+    /// This minimizes the need for allocation, but at the cost of `RecordBatch`es that are
+    /// almost always smaller than the optimal size. In the common worst-case, this will result
+    /// in single-row `RecordBatch`es.
+    #[default]
+    OverlappingSlice,
+
+    /// Dictionary-encode the joined column.
+    ///
+    /// Using dictionary-encoding allows any repeated data to be shared between rows,
+    /// but comes with the cost of an extra dictionary-lookup indirection.
+    ///
+    /// Note that this changes the physical type of the returned column.
+    ///
+    /// Using this encoding for complex types is incompatible with some arrow libraries.
+    DictionaryEncode,
+    //
+    // TODO(jleibs):
+    // RepeatCopy,
+    //
+    // Repeat the joined column by physically copying the data.
+    //
+    // This will always allocate a new column in the `RecordBatch`, matching the size of the
+    // POV component.
+    //
+    // This is the most expensive option, but can make working with the data more efficient,
+    // especially when the copied column is small.
+    //
+}
+
 // TODO(#6889): At some point all these descriptors needs to be interned and have handles or
 // something. And of course they need to be codegen. But we'll get there once we're back to
 // natively tagged components.
@@ -37,7 +78,6 @@ pub enum ColumnDescriptor {
     Control(ControlColumnDescriptor),
     Time(TimeColumnDescriptor),
     Component(ComponentColumnDescriptor),
-    DictionaryEncoded(ComponentColumnDescriptor),
 }
 
 impl ColumnDescriptor {
@@ -45,7 +85,7 @@ impl ColumnDescriptor {
     pub fn entity_path(&self) -> Option<&EntityPath> {
         match self {
             Self::Control(_) | Self::Time(_) => None,
-            Self::Component(descr) | Self::DictionaryEncoded(descr) => Some(&descr.entity_path),
+            Self::Component(descr) => Some(&descr.entity_path),
         }
     }
 
@@ -54,12 +94,7 @@ impl ColumnDescriptor {
         match self {
             Self::Control(descr) => descr.datatype.clone(),
             Self::Time(descr) => descr.datatype.clone(),
-            Self::Component(descr) => descr.datatype.clone(),
-            Self::DictionaryEncoded(descr) => ArrowDatatype::Dictionary(
-                arrow2::datatypes::IntegerType::Int32,
-                std::sync::Arc::new(descr.datatype.clone()),
-                true,
-            ),
+            Self::Component(descr) => descr.returned_datatype(),
         }
     }
 
@@ -69,11 +104,6 @@ impl ColumnDescriptor {
             Self::Control(descr) => descr.to_arrow_field(),
             Self::Time(descr) => descr.to_arrow_field(),
             Self::Component(descr) => descr.to_arrow_field(),
-            Self::DictionaryEncoded(descr) => {
-                let mut field = descr.to_arrow_field();
-                field.data_type = self.datatype();
-                field
-            }
         }
     }
 
@@ -82,9 +112,7 @@ impl ColumnDescriptor {
         match self {
             Self::Control(descr) => descr.component_name.short_name().to_owned(),
             Self::Time(descr) => descr.timeline.name().to_string(),
-            Self::Component(descr) | Self::DictionaryEncoded(descr) => {
-                descr.component_name.short_name().to_owned()
-            }
+            Self::Component(descr) => descr.component_name.short_name().to_owned(),
         }
     }
 }
@@ -206,12 +234,15 @@ pub struct ComponentColumnDescriptor {
     /// Example: `rerun.components.Position3D`.
     pub component_name: ComponentName,
 
-    /// The Arrow datatype of the column.
+    /// The Arrow datatype of the stored column.
     ///
     /// This is the log-time datatype corresponding to how this data is encoded
     /// in a chunk. Currently this will always be an [`ArrowListArray`], but as
     /// we introduce mono-type optimization, this might be a native type instead.
-    pub datatype: ArrowDatatype,
+    pub store_datatype: ArrowDatatype,
+
+    /// How the data will be joined into the resulting `RecordBatch`.
+    pub join_encoding: JoinEncoding,
 
     /// Whether this column represents static data.
     pub is_static: bool,
@@ -232,7 +263,8 @@ impl Ord for ComponentColumnDescriptor {
             archetype_name,
             archetype_field_name,
             component_name,
-            datatype: _,
+            join_encoding: _,
+            store_datatype: _,
             is_static: _,
         } = self;
 
@@ -251,7 +283,8 @@ impl std::fmt::Display for ComponentColumnDescriptor {
             archetype_name,
             archetype_field_name,
             component_name,
-            datatype: _,
+            join_encoding: _,
+            store_datatype: _,
             is_static,
         } = self;
 
@@ -284,16 +317,20 @@ impl std::fmt::Display for ComponentColumnDescriptor {
 impl ComponentColumnDescriptor {
     #[inline]
     pub fn new<C: re_types_core::Component>(entity_path: EntityPath) -> Self {
+        let join_encoding = JoinEncoding::default();
+
+        // NOTE: The data is always a at least a list, whether it's latest-at or range.
+        // It might be wrapped further in e.g. a dict, but at the very least
+        // it's a list.
+        let store_datatype = ArrowListArray::<i32>::default_datatype(C::arrow_datatype());
+
         Self {
             entity_path,
             archetype_name: None,
             archetype_field_name: None,
             component_name: C::name(),
-            // NOTE: The data is always a at least a list, whether it's latest-at or range.
-            // It might be wrapped further in e.g. a dict, but at the very least
-            // it's a list.
-            // TODO(#7365): user-specified datatypes have got to go.
-            datatype: ArrowListArray::<i32>::default_datatype(C::arrow_datatype()),
+            join_encoding,
+            store_datatype,
             is_static: false,
         }
     }
@@ -304,7 +341,8 @@ impl ComponentColumnDescriptor {
             archetype_name,
             archetype_field_name,
             component_name,
-            datatype: _,
+            join_encoding: _,
+            store_datatype: _,
             is_static,
         } = self;
 
@@ -331,14 +369,32 @@ impl ComponentColumnDescriptor {
     }
 
     #[inline]
+    pub fn returned_datatype(&self) -> ArrowDatatype {
+        match self.join_encoding {
+            JoinEncoding::OverlappingSlice => self.store_datatype.clone(),
+            JoinEncoding::DictionaryEncode => ArrowDatatype::Dictionary(
+                arrow2::datatypes::IntegerType::Int32,
+                std::sync::Arc::new(self.store_datatype.clone()),
+                true,
+            ),
+        }
+    }
+
+    #[inline]
     pub fn to_arrow_field(&self) -> ArrowField {
         ArrowField::new(
             self.component_name.short_name().to_owned(),
-            self.datatype.clone(),
+            self.returned_datatype(),
             true, /* nullable */
         )
         // TODO(#6889): This needs some proper sorbetization -- I just threw these names randomly.
         .with_metadata(self.metadata())
+    }
+
+    #[inline]
+    pub fn with_join_encoding(mut self, join_encoding: JoinEncoding) -> Self {
+        self.join_encoding = join_encoding;
+        self
     }
 }
 
@@ -510,7 +566,10 @@ impl ChunkStore {
                                 archetype_name: None,
                                 archetype_field_name: None,
                                 component_name: *component_name,
-                                datatype: ArrowListArray::<i32>::default_datatype(datatype.clone()),
+                                store_datatype: ArrowListArray::<i32>::default_datatype(
+                                    datatype.clone(),
+                                ),
+                                join_encoding: JoinEncoding::default(),
                                 is_static: true,
                             })
                         })
@@ -539,7 +598,10 @@ impl ChunkStore {
                             // NOTE: The data is always a at least a list, whether it's latest-at or range.
                             // It might be wrapped further in e.g. a dict, but at the very least
                             // it's a list.
-                            datatype: ArrowListArray::<i32>::default_datatype(datatype.clone()),
+                            store_datatype: ArrowListArray::<i32>::default_datatype(
+                                datatype.clone(),
+                            ),
+                            join_encoding: JoinEncoding::default(),
                             // NOTE: This will make it so shadowed temporal data automatically gets
                             // discarded from the schema.
                             is_static: self

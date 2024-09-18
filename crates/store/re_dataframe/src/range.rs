@@ -10,7 +10,9 @@ use arrow2::{
 use itertools::Itertools;
 
 use re_chunk::{Chunk, LatestAtQuery, RangeQuery, RowId, TimeInt};
-use re_chunk_store::{ColumnDescriptor, ComponentColumnDescriptor, RangeQueryExpression};
+use re_chunk_store::{
+    ColumnDescriptor, ComponentColumnDescriptor, JoinEncoding, RangeQueryExpression,
+};
 
 use crate::{QueryEngine, RecordBatch};
 
@@ -342,7 +344,10 @@ impl RangeQueryHandle<'_> {
             columns
                 .iter()
                 .filter_map(|descr| match descr {
-                    ColumnDescriptor::DictionaryEncoded(descr) => Some(descr),
+                    ColumnDescriptor::Component(descr) => match descr.join_encoding {
+                        JoinEncoding::OverlappingSlice => None,
+                        JoinEncoding::DictionaryEncode => Some(descr),
+                    },
                     _ => None,
                 })
                 .filter_map(|descr| {
@@ -390,7 +395,7 @@ impl RangeQueryHandle<'_> {
                         .collect_vec();
 
                     let dict_array =
-                        { re_chunk::util::arrays_to_dictionary(&descr.datatype, &arrays) };
+                        { re_chunk::util::arrays_to_dictionary(&descr.store_datatype, &arrays) };
 
                     if cfg!(debug_assertions) {
                         #[allow(clippy::unwrap_used)] // want to crash in dev
@@ -409,13 +414,16 @@ impl RangeQueryHandle<'_> {
             columns
                 .iter()
                 .filter_map(|descr| match descr {
-                    ColumnDescriptor::Component(descr) => {
-                        if descr != pov {
-                            Some(descr)
-                        } else {
-                            None
+                    ColumnDescriptor::Component(descr) => match descr.join_encoding {
+                        JoinEncoding::OverlappingSlice => {
+                            if descr != pov {
+                                Some(descr)
+                            } else {
+                                None
+                            }
                         }
-                    }
+                        JoinEncoding::DictionaryEncode => None,
+                    },
                     _ => None,
                 })
                 .map(|descr| {
@@ -477,36 +485,35 @@ impl RangeQueryHandle<'_> {
                             )
                         }
 
-                        ColumnDescriptor::Component(descr) => {
-                            if descr == pov {
-                                pov_chunk
-                                    .components()
-                                    .get(&descr.component_name)
-                                    .map_or_else(
-                                        || {
-                                            arrow2::array::new_null_array(
-                                                descr.datatype.clone(),
-                                                pov_chunk.num_rows(),
-                                            )
-                                        },
-                                        |arr| arr.to_boxed(),
-                                    )
-                            } else {
-                                unreachable!()
+                        ColumnDescriptor::Component(descr) => match descr.join_encoding {
+                            JoinEncoding::OverlappingSlice => {
+                                if descr == pov {
+                                    pov_chunk
+                                        .components()
+                                        .get(&descr.component_name)
+                                        .map_or_else(
+                                            || {
+                                                arrow2::array::new_null_array(
+                                                    descr.returned_datatype(),
+                                                    pov_chunk.num_rows(),
+                                                )
+                                            },
+                                            |arr| arr.to_boxed(),
+                                        )
+                                } else {
+                                    unreachable!()
+                                }
                             }
-                        }
-
-                        ColumnDescriptor::DictionaryEncoded(descr) => {
-                            dict_arrays.get(descr).map_or_else(
+                            JoinEncoding::DictionaryEncode => dict_arrays.get(descr).map_or_else(
                                 || {
                                     arrow2::array::new_null_array(
-                                        descr.datatype.clone(),
+                                        descr.returned_datatype(),
                                         pov_chunk.num_rows(),
                                     )
                                 },
                                 |dict_array| dict_array.to_boxed(),
-                            )
-                        }
+                            ),
+                        },
                     })
                     .collect_vec()
             };
@@ -535,43 +542,50 @@ impl RangeQueryHandle<'_> {
                                 )
                             }
 
-                            ColumnDescriptor::Component(descr) => {
-                                if descr == pov {
-                                    pov_chunk
-                                        .components()
-                                        .get(&descr.component_name)
-                                        .map_or_else(
-                                            || {
-                                                arrow2::array::new_null_array(
-                                                    descr.datatype.clone(),
-                                                    1,
-                                                )
-                                            },
-                                            |arr| arr.sliced(row, 1).to_boxed(),
-                                        )
-                                } else {
-                                    slice_arrays
-                                        .get(descr)
-                                        .and_then(|col| col.get(row).cloned())
-                                        .flatten()
-                                        .map_or_else(
-                                            || {
-                                                arrow2::array::new_null_array(
-                                                    descr.datatype.clone(),
-                                                    1,
-                                                )
-                                            },
-                                            |arr| arr,
-                                        )
+                            ColumnDescriptor::Component(descr) => match descr.join_encoding {
+                                JoinEncoding::OverlappingSlice => {
+                                    if descr == pov {
+                                        pov_chunk
+                                            .components()
+                                            .get(&descr.component_name)
+                                            .map_or_else(
+                                                || {
+                                                    arrow2::array::new_null_array(
+                                                        descr.returned_datatype(),
+                                                        1,
+                                                    )
+                                                },
+                                                |arr| arr.sliced(row, 1).to_boxed(),
+                                            )
+                                    } else {
+                                        slice_arrays
+                                            .get(descr)
+                                            .and_then(|col| col.get(row).cloned())
+                                            .flatten()
+                                            .map_or_else(
+                                                || {
+                                                    arrow2::array::new_null_array(
+                                                        descr.returned_datatype(),
+                                                        1,
+                                                    )
+                                                },
+                                                |arr| arr,
+                                            )
+                                    }
                                 }
-                            }
 
-                            ColumnDescriptor::DictionaryEncoded(descr) => {
-                                dict_arrays.get(descr).map_or_else(
-                                    || arrow2::array::new_null_array(descr.datatype.clone(), 1),
-                                    |dict_array| dict_array.sliced(row, 1).to_boxed(),
-                                )
-                            }
+                                JoinEncoding::DictionaryEncode => {
+                                    dict_arrays.get(descr).map_or_else(
+                                        || {
+                                            arrow2::array::new_null_array(
+                                                descr.returned_datatype(),
+                                                1,
+                                            )
+                                        },
+                                        |dict_array| dict_array.sliced(row, 1).to_boxed(),
+                                    )
+                                }
+                            },
                         })
                         .collect_vec();
 
@@ -649,9 +663,10 @@ mod tests {
             ColumnDescriptor::Component(ComponentColumnDescriptor::new::<Position3D>(
                 entity_path.clone(),
             )),
-            ColumnDescriptor::DictionaryEncoded(ComponentColumnDescriptor::new::<Radius>(
-                entity_path.clone(),
-            )),
+            ColumnDescriptor::Component(
+                ComponentColumnDescriptor::new::<Radius>(entity_path.clone())
+                    .with_join_encoding(re_chunk_store::JoinEncoding::DictionaryEncode),
+            ),
             ColumnDescriptor::Component(ComponentColumnDescriptor::new::<Color>(entity_path)),
         ];
 
@@ -743,9 +758,10 @@ mod tests {
             ColumnDescriptor::Component(ComponentColumnDescriptor::new::<MyPoint>(
                 entity_path.clone(),
             )),
-            ColumnDescriptor::DictionaryEncoded(ComponentColumnDescriptor::new::<Radius>(
-                entity_path.clone(),
-            )),
+            ColumnDescriptor::Component(
+                ComponentColumnDescriptor::new::<Radius>(entity_path.clone())
+                    .with_join_encoding(re_chunk_store::JoinEncoding::DictionaryEncode),
+            ),
             ColumnDescriptor::Component(ComponentColumnDescriptor::new::<Color>(entity_path)),
         ];
 

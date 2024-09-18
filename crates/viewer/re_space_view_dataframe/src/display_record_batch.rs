@@ -242,13 +242,11 @@ impl DisplayColumn {
                     time_data,
                 })
             }
-            ColumnDescriptor::Component(desc) | ColumnDescriptor::DictionaryEncoded(desc) => {
-                Ok(Self::Component {
-                    entity_path: desc.entity_path.clone(),
-                    component_name: desc.component_name,
-                    component_data: ComponentData::try_new(desc, column_data)?,
-                })
-            }
+            ColumnDescriptor::Component(desc) => Ok(Self::Component {
+                entity_path: desc.entity_path.clone(),
+                component_name: desc.component_name,
+                component_data: ComponentData::try_new(desc, column_data)?,
+            }),
         }
     }
 

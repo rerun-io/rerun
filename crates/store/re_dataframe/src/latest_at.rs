@@ -110,8 +110,7 @@ impl LatestAtQueryHandle<'_> {
             columns
                 .iter()
                 .filter_map(|col| match col {
-                    ColumnDescriptor::Component(descr)
-                    | ColumnDescriptor::DictionaryEncoded(descr) => {
+                    ColumnDescriptor::Component(descr) => {
                         let results = self.engine.cache.latest_at(
                             self.engine.store,
                             &query,
@@ -203,30 +202,7 @@ impl LatestAtQueryHandle<'_> {
                             .map_or_else(
                                 || {
                                     arrow2::array::new_null_array(
-                                        descr.datatype.clone(),
-                                        null_array_length,
-                                    )
-                                },
-                                |list_array| list_array.to_boxed(),
-                            ),
-                    ),
-
-                    ColumnDescriptor::DictionaryEncoded(descr) => Some(
-                        all_units
-                            .get(col)
-                            .and_then(|chunk| {
-                                let indexed = chunk.index(&self.query.timeline).and_then(|index| {
-                                    chunk
-                                        .components()
-                                        .get(&descr.component_name)
-                                        .map(|array| (index, array as &dyn ArrowArray))
-                                });
-                                re_chunk::util::arrays_to_dictionary(&descr.datatype, &[indexed])
-                            })
-                            .map_or_else(
-                                || {
-                                    arrow2::array::new_null_array(
-                                        descr.datatype.clone(),
+                                        descr.returned_datatype(),
                                         null_array_length,
                                     )
                                 },

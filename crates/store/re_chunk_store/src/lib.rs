@@ -24,8 +24,8 @@ mod subscribers;
 mod writes;
 
 pub use self::dataframe::{
-    ColumnDescriptor, ComponentColumnDescriptor, ControlColumnDescriptor, LatestAtQueryExpression,
-    QueryExpression, RangeQueryExpression, TimeColumnDescriptor,
+    ColumnDescriptor, ComponentColumnDescriptor, ControlColumnDescriptor, JoinEncoding,
+    LatestAtQueryExpression, QueryExpression, RangeQueryExpression, TimeColumnDescriptor,
 };
 pub use self::events::{ChunkStoreDiff, ChunkStoreDiffKind, ChunkStoreEvent};
 pub use self::gc::{GarbageCollectionOptions, GarbageCollectionTarget};
