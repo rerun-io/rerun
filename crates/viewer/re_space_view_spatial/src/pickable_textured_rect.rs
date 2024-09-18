@@ -10,6 +10,7 @@ pub enum PickableRectSourceData {
         image: ImageInfo,
         depth_meter: Option<DepthMeter>,
     },
+    #[allow(unused)] // TODO(#7353): wip
     Video(Arc<re_renderer::video::Video>),
 }
 
