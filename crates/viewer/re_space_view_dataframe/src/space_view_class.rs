@@ -1,17 +1,17 @@
 use std::any::Any;
-use std::collections::HashMap;
+use std::collections::HashSet;
 
 use egui::Ui;
 use re_chunk_store::ColumnDescriptor;
-use re_chunk_store::ColumnDescriptor::Component;
-use re_log_types::{EntityPath, EntityPathFilter, ResolvedTimeRange};
+use re_log_types::{EntityPath, EntityPathFilter, ResolvedTimeRange, TimelineName};
+use re_types::blueprint::{archetypes, components, datatypes};
 use re_types_core::SpaceViewClassIdentifier;
 use re_ui::UiExt as _;
 use re_viewer_context::{
     SpaceViewClass, SpaceViewClassRegistryError, SpaceViewId, SpaceViewState, SpaceViewStateExt,
     SpaceViewSystemExecutionError, SystemExecutionOutput, ViewQuery, ViewerContext,
 };
-use re_viewport_blueprint::SpaceViewContents;
+use re_viewport_blueprint::{SpaceViewContents, ViewProperty};
 
 use crate::{
     dataframe_ui::dataframe_ui, expanded_rows::ExpandedRowsCache, query_kind::QueryKind,
@@ -23,12 +23,8 @@ struct DataframeSpaceViewState {
     /// Cache for the expanded rows.
     expended_rows_cache: ExpandedRowsCache,
 
-    /// Schema for the current query, used by the column selection UI.
+    /// Schema for the current query, cached here for the column visibility UI.
     schema: Option<Vec<ColumnDescriptor>>,
-
-    /// Column visibility state.
-    //TODO: should it be just a set of hidden columns? Seems closer to
-    column_visibility: HashMap<ColumnDescriptor, bool>,
 }
 
 impl SpaceViewState for DataframeSpaceViewState {
@@ -119,52 +115,41 @@ mode sets the default time range to _everything_. You can override this in the s
 
     fn extra_title_bar_ui(
         &self,
-        _ctx: &ViewerContext<'_>,
+        ctx: &ViewerContext<'_>,
         ui: &mut Ui,
         state: &mut dyn SpaceViewState,
         _space_origin: &EntityPath,
-        _space_view_id: SpaceViewId,
+        space_view_id: SpaceViewId,
     ) -> Result<(), SpaceViewSystemExecutionError> {
         let state = state.downcast_mut::<DataframeSpaceViewState>()?;
 
-        let column_visibility_ui = |ui: &mut egui::Ui| {
-            if let Some(schema) = &state.schema {
-                let mut current_entity = None;
-                for column in schema {
-                    let Component(component_column_descriptor) = column else {
-                        //TODO: should we handle visibility of control and time columns?
-                        continue;
-                    };
+        //TODO: fix the resizing of this menu, it's all over the place
+        let result = ui
+            .add_enabled_ui(state.schema.is_some(), |ui| {
+                egui::menu::menu_custom_button(
+                    ui,
+                    ui.small_icon_button_widget(&re_ui::icons::COLUMN_VISIBILITY),
+                    |ui| {
+                        egui::ScrollArea::vertical()
+                            .show(ui, |ui| {
+                                // do nothing if we don't have a schema (might only happen during the first
+                                // frame?)
+                                if let Some(schema) = &state.schema {
+                                    column_visibility_ui(ctx, ui, space_view_id, schema)?;
+                                }
 
-                    if Some(&component_column_descriptor.entity_path) != current_entity.as_ref() {
-                        current_entity = Some(component_column_descriptor.entity_path.clone());
-                        ui.label(component_column_descriptor.entity_path.to_string());
-                    }
+                                Ok(())
+                            })
+                            .inner
+                    },
+                )
+                .inner
+            })
+            .inner;
 
-                    let mut is_visible =
-                        state.column_visibility.get(column).copied().unwrap_or(true);
-
-                    if ui
-                        .re_checkbox(&mut is_visible, column.short_name())
-                        .changed()
-                    {
-                        state.column_visibility.insert(column.clone(), is_visible);
-                    }
-                }
-            }
-        };
-
-        ui.add_enabled_ui(state.schema.is_some(), |ui| {
-            egui::menu::menu_custom_button(
-                ui,
-                ui.small_icon_button_widget(&re_ui::icons::COLUMN_VISIBILITY),
-                |ui| {
-                    egui::ScrollArea::vertical().show(ui, column_visibility_ui);
-                },
-            );
-        });
-
-        Ok(())
+        // Note: we get the `Result<(), SpaceViewSystemExecutionError>` from the inner closure only
+        // if it was actually executed.
+        result.unwrap_or(Ok(()))
     }
 
     fn ui(
@@ -177,8 +162,9 @@ mode sets the default time range to _everything_. You can override this in the s
     ) -> Result<(), SpaceViewSystemExecutionError> {
         re_tracing::profile_function!();
         let state = state.downcast_mut::<DataframeSpaceViewState>()?;
+        let space_view_id = query.space_view_id;
 
-        let view_query = super::view_query::Query::try_from_blueprint(ctx, query.space_view_id)?;
+        let view_query = super::view_query::Query::try_from_blueprint(ctx, space_view_id)?;
         let timeline_name = view_query.timeline_name(ctx);
         let query_mode = view_query.kind(ctx);
 
@@ -205,24 +191,17 @@ mode sets the default time range to _everything_. You can override this in the s
                     at: time,
                 };
 
-                //TODO: dedup
                 let schema = query_engine.schema_for_query(&query.clone().into());
-                let columns = schema
-                    .iter()
-                    .filter(|column| {
-                        state
-                            .column_visibility
-                            .get(*column)
-                            .copied()
-                            .unwrap_or(true)
-                    })
-                    .cloned()
-                    .collect();
+                let selected_columns =
+                    apply_column_visibility_to_schema(ctx, space_view_id, &timeline_name, &schema)?;
                 state.schema = Some(schema);
 
-                let query_handle = query_engine.latest_at(&query, Some(columns));
-
-                dataframe_ui(ctx, ui, query_handle, &mut state.expended_rows_cache);
+                dataframe_ui(
+                    ctx,
+                    ui,
+                    query_engine.latest_at(&query, selected_columns),
+                    &mut state.expended_rows_cache,
+                );
             }
             QueryKind::Range {
                 pov_entity,
@@ -247,25 +226,15 @@ mode sets the default time range to _everything_. You can override this in the s
                     },
                 };
 
-                //TODO: dedup
                 let schema = query_engine.schema_for_query(&query.clone().into());
-                let columns = schema
-                    .iter()
-                    .filter(|column| {
-                        state
-                            .column_visibility
-                            .get(*column)
-                            .copied()
-                            .unwrap_or(true)
-                    })
-                    .cloned()
-                    .collect();
+                let selected_columns =
+                    apply_column_visibility_to_schema(ctx, space_view_id, &timeline_name, &schema)?;
                 state.schema = Some(schema);
 
                 dataframe_ui(
                     ctx,
                     ui,
-                    query_engine.range(&query, Some(columns)),
+                    query_engine.range(&query, selected_columns),
                     &mut state.expended_rows_cache,
                 );
             }
@@ -273,6 +242,175 @@ mode sets the default time range to _everything_. You can override this in the s
 
         Ok(())
     }
+}
+
+/// Reads the blueprint configuration for column visibility, applies it to the schema, and returns
+/// a [`re_dataframe::QueryEngine`]-compatible column selection.
+fn apply_column_visibility_to_schema(
+    ctx: &ViewerContext<'_>,
+    space_view_id: SpaceViewId,
+    query_timeline_name: &TimelineName,
+    schema: &[ColumnDescriptor],
+) -> Result<Option<Vec<ColumnDescriptor>>, SpaceViewSystemExecutionError> {
+    let property = ViewProperty::from_archetype::<archetypes::DataframeVisibleColumns>(
+        ctx.blueprint_db(),
+        ctx.blueprint_query,
+        space_view_id,
+    );
+
+    let column_selection_mode = property
+        .component_or_empty::<components::ColumnSelectionMode>()?
+        .unwrap_or_default();
+
+    if column_selection_mode == components::ColumnSelectionMode::All {
+        return Ok(None);
+    }
+
+    let selected_time_columns = property
+        .component_array_or_empty::<components::TimelineName>()?
+        .into_iter()
+        .collect::<HashSet<_>>();
+
+    let selected_component_columns = property
+        .component_array_or_empty::<components::ComponentColumnSelector>()?
+        .into_iter()
+        .collect::<HashSet<_>>();
+
+    let result = schema
+        .iter()
+        .filter(|column| match column {
+            ColumnDescriptor::Control(_) => true,
+            ColumnDescriptor::Time(desc) => {
+                // we always include the query timeline column because we need it for the dataframe ui
+                desc.timeline.name() == query_timeline_name
+                    || selected_time_columns.contains(&components::TimelineName::from(
+                        desc.timeline.name().as_str(),
+                    ))
+            }
+            ColumnDescriptor::Component(desc) => {
+                let blueprint_component_descriptor: components::ComponentColumnSelector =
+                    datatypes::ComponentColumnSelector {
+                        entity_path: (&desc.entity_path).into(),
+                        component_name: desc.component_name.as_str().into(),
+                    }
+                    .into();
+
+                selected_component_columns.contains(&blueprint_component_descriptor)
+            }
+        })
+        .cloned()
+        .collect();
+
+    Ok(Some(result))
+}
+
+fn column_visibility_ui(
+    ctx: &ViewerContext<'_>,
+    ui: &mut egui::Ui,
+    space_view_id: SpaceViewId,
+    schema: &[ColumnDescriptor],
+) -> Result<(), SpaceViewSystemExecutionError> {
+    //
+    // All or selected?
+    //
+
+    let property = ViewProperty::from_archetype::<archetypes::DataframeVisibleColumns>(
+        ctx.blueprint_db(),
+        ctx.blueprint_query,
+        space_view_id,
+    );
+
+    let column_selection_mode = property
+        .component_or_empty::<components::ColumnSelectionMode>()?
+        .unwrap_or_default();
+
+    let mut new_column_visibility = column_selection_mode;
+
+    let changed = {
+        ui.re_radio_value(
+            &mut new_column_visibility,
+            components::ColumnSelectionMode::All,
+            "All",
+        )
+        .changed()
+    } || {
+        ui.re_radio_value(
+            &mut new_column_visibility,
+            components::ColumnSelectionMode::Selected,
+            "Selected",
+        )
+        .changed()
+    };
+
+    if changed {
+        property.save_blueprint_component(ctx, &new_column_visibility);
+    }
+
+    if column_selection_mode == components::ColumnSelectionMode::All {
+        return Ok(());
+    }
+
+    //
+    // Selected time columns
+    //
+
+    // let mut selected_time_columns = property
+    //     .component_array_or_empty::<components::TimelineName>()?
+    //     .into_iter()
+    //     .collect::<HashSet<_>>();
+
+    //TODO: add UI for time columns (note: the query timeline should be forced ticked)
+
+    //
+    // Selected component columns
+    //
+
+    let mut selected_component_columns = property
+        .component_array_or_empty::<components::ComponentColumnSelector>()?
+        .into_iter()
+        .collect::<HashSet<_>>();
+
+    let mut current_entity = None;
+    let mut changed = false;
+    for column in schema {
+        let ColumnDescriptor::Component(component_column_descriptor) = column else {
+            continue;
+        };
+
+        if Some(&component_column_descriptor.entity_path) != current_entity.as_ref() {
+            current_entity = Some(component_column_descriptor.entity_path.clone());
+            ui.label(component_column_descriptor.entity_path.to_string());
+        }
+
+        let blueprint_component_descriptor: components::ComponentColumnSelector =
+            datatypes::ComponentColumnSelector {
+                entity_path: (&component_column_descriptor.entity_path).into(),
+                component_name: component_column_descriptor.component_name.as_str().into(),
+            }
+            .into();
+
+        let mut is_visible = selected_component_columns.contains(&blueprint_component_descriptor);
+
+        if ui
+            .re_checkbox(&mut is_visible, column.short_name())
+            .changed()
+        {
+            changed = true;
+
+            if is_visible {
+                selected_component_columns.insert(blueprint_component_descriptor);
+            } else {
+                selected_component_columns.remove(&blueprint_component_descriptor);
+            }
+        }
+    }
+
+    if changed {
+        let selected_component_columns = selected_component_columns.into_iter().collect::<Vec<_>>();
+        property.save_blueprint_component(ctx, &selected_component_columns);
+    }
+
+    Ok(())
 }
 
 impl DataframeSpaceView {

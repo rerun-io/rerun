@@ -3,7 +3,9 @@ use super::validation::validate_component;
 use re_entity_db::EntityDb;
 pub use re_types::blueprint::components::ActiveTab;
 pub use re_types::blueprint::components::BackgroundKind;
+pub use re_types::blueprint::components::ColumnSelectionMode;
 pub use re_types::blueprint::components::ColumnShare;
+pub use re_types::blueprint::components::ComponentColumnSelector;
 pub use re_types::blueprint::components::Corner2D;
 pub use re_types::blueprint::components::IncludedContent;
 pub use re_types::blueprint::components::Interactive;
@@ -40,7 +42,9 @@ pub fn is_valid_blueprint(blueprint: &EntityDb) -> bool {
         && validate_component::<AutoLayout>(blueprint)
         && validate_component::<AutoSpaceViews>(blueprint)
         && validate_component::<BackgroundKind>(blueprint)
+        && validate_component::<ColumnSelectionMode>(blueprint)
         && validate_component::<ColumnShare>(blueprint)
+        && validate_component::<ComponentColumnSelector>(blueprint)
         && validate_component::<ContainerKind>(blueprint)
         && validate_component::<Corner2D>(blueprint)
         && validate_component::<GridColumns>(blueprint)
