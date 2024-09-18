@@ -398,6 +398,98 @@ impl ComponentColumnDescriptor {
     }
 }
 
+// --- Selectors ---
+
+/// Describes a column selection to return as part of a query.
+pub enum ColumnSelector {
+    Control(ControlColumnSelector),
+    Time(TimeColumnSelector),
+    Component(ComponentColumnSelector),
+    ArchetypeField(ArchetypeFieldColumnSelector),
+}
+
+impl From<ColumnDescriptor> for ColumnSelector {
+    fn from(desc: ColumnDescriptor) -> Self {
+        match desc {
+            ColumnDescriptor::Control(desc) => Self::Control(desc.into()),
+            ColumnDescriptor::Time(desc) => Self::Time(desc.into()),
+            ColumnDescriptor::Component(desc) => Self::Component(desc.into()),
+        }
+    }
+}
+
+/// Select a control column.
+///
+/// The only control column currently supported is `rerun.components.RowId`.
+pub struct ControlColumnSelector {
+    /// Name of the control column.
+    component: ComponentName,
+}
+
+impl From<ControlColumnDescriptor> for ControlColumnSelector {
+    fn from(desc: ControlColumnDescriptor) -> Self {
+        Self {
+            component: desc.component_name,
+        }
+    }
+}
+
+/// Select a time column.
+pub struct TimeColumnSelector {
+    /// The name of the timeline.
+    timeline: Timeline,
+}
+
+impl From<TimeColumnDescriptor> for TimeColumnSelector {
+    fn from(desc: TimeColumnDescriptor) -> Self {
+        Self {
+            timeline: desc.timeline,
+        }
+    }
+}
+
+/// Select a component based on its `EntityPath` and `ComponentName`.
+///
+/// Note, that in the future when Rerun supports duplicate tagged components
+/// on the same entity, this selector may be ambiguous. In this case, the
+/// query result will return an Error if it cannot determine a single selected
+/// component.
+pub struct ComponentColumnSelector {
+    /// The path of the entity.
+    entity_path: EntityPath,
+
+    /// Semantic name associated with this data.
+    component: ComponentName,
+
+    /// How to join the data into the `RecordBatch`.
+    join_encoding: JoinEncoding,
+}
+
+impl From<ComponentColumnDescriptor> for ComponentColumnSelector {
+    fn from(desc: ComponentColumnDescriptor) -> Self {
+        Self {
+            entity_path: desc.entity_path.clone(),
+            component: desc.component_name,
+            join_encoding: JoinEncoding::default(),
+        }
+    }
+}
+
+/// Select a component based on its `Archetype` and field.
+pub struct ArchetypeFieldColumnSelector {
+    /// The path of the entity.
+    entity_path: EntityPath,
+
+    /// Name of the `Archetype` associated with this data.
+    archetype: ArchetypeName,
+
+    /// The field within the `Archetype` associated with this data.
+    field: String,
+
+    /// How to join the data into the `RecordBatch`.
+    join_encoding: JoinEncoding,
+}
+
 // --- Queries ---
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
