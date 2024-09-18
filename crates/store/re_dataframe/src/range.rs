@@ -4,13 +4,15 @@ use ahash::HashMap;
 use arrow2::{
     array::{Array as ArrowArray, DictionaryArray as ArrowDictionaryArray},
     chunk::Chunk as ArrowChunk,
-    datatypes::{DataType as ArrowDatatype, Schema as ArrowSchema},
+    datatypes::Schema as ArrowSchema,
     Either,
 };
 use itertools::Itertools;
 
 use re_chunk::{Chunk, LatestAtQuery, RangeQuery, RowId, TimeInt};
-use re_chunk_store::{ColumnDescriptor, ComponentColumnDescriptor, RangeQueryExpression};
+use re_chunk_store::{
+    ColumnDescriptor, ComponentColumnDescriptor, JoinEncoding, RangeQueryExpression,
+};
 
 use crate::{QueryEngine, RecordBatch};
 
@@ -42,8 +44,14 @@ pub struct RangeQueryHandle<'a> {
 
 /// Internal private state. Lazily computed.
 struct RangeQuerytHandleState {
-    /// The final schema.
+    /// The columns that will be used to populate the results
     columns: Vec<ColumnDescriptor>,
+
+    /// The derived arrow schema from the columns. All returned
+    /// record batches will have this schema.
+    ///
+    /// This may include conversion to dictionary-encoded data.
+    arrow_schema: ArrowSchema,
 
     /// All the [`Chunk`]s for the active point-of-view.
     ///
@@ -86,21 +94,15 @@ impl RangeQueryHandle<'_> {
                     self.engine
                         .store
                         .schema_for_query(&self.query.clone().into())
-                        .into_iter()
-                        // NOTE: At least for now, range queries always return dictionaries.
-                        .map(|col| match col {
-                            ColumnDescriptor::Component(mut descr) => {
-                                descr.datatype = ArrowDatatype::Dictionary(
-                                    arrow2::datatypes::IntegerType::Int32,
-                                    descr.datatype.into(),
-                                    true,
-                                );
-                                ColumnDescriptor::Component(descr)
-                            }
-                            _ => col,
-                        })
-                        .collect()
                 })
+            };
+
+            let schema = ArrowSchema {
+                fields: columns
+                    .iter()
+                    .map(|descr| descr.to_arrow_field())
+                    .collect_vec(),
+                metadata: Default::default(),
             };
 
             let pov_chunks = {
@@ -127,6 +129,7 @@ impl RangeQueryHandle<'_> {
 
             RangeQuerytHandleState {
                 columns,
+                arrow_schema: schema,
                 pov_chunks,
                 cur_page: AtomicU64::new(0),
             }
@@ -147,8 +150,16 @@ impl RangeQueryHandle<'_> {
 
     /// Partially executes the range query until the next natural page of results.
     ///
-    /// Returns a single [`RecordBatch`] containing as many rows as available in the page, or
-    /// `None` if all the dataset has been returned.
+    /// Returns a vector of [`RecordBatch`]es that in total contain as many rows as available in the next
+    /// "natural page" of data from the pof component, or `None` if all the dataset has been returned.
+    ///
+    /// At best, this will be a single [`RecordBatch`] containing a "natural page" of data, following the chunk
+    /// size of the pov-component. This will happen when all queried data either belongs to
+    /// the same chunk, or is requested using [`JoinEncoding::DictionaryEncode`].
+    ///
+    /// However, in the case of mixed chunks without dictionary encoding, the engine will fall
+    /// back to a row-by-row approach, which can be less efficient.
+    ///
     /// Each cell in the result corresponds to the latest known value at that particular point in time
     /// for each respective `ColumnDescriptor`.
     ///
@@ -166,7 +177,7 @@ impl RangeQueryHandle<'_> {
     ///     // …
     /// }
     /// ```
-    pub fn next_page(&mut self) -> Option<RecordBatch> {
+    pub fn next_page(&mut self) -> Option<Vec<RecordBatch>> {
         re_tracing::profile_function!(format!("next_page({})", self.query));
 
         let state = self.init();
@@ -179,18 +190,15 @@ impl RangeQueryHandle<'_> {
             _ = state
                 .cur_page
                 .fetch_add(1, std::sync::atomic::Ordering::Relaxed);
-            return Some(RecordBatch {
-                schema: ArrowSchema {
-                    fields: columns.iter().map(|col| col.to_arrow_field()).collect(),
-                    metadata: Default::default(),
-                },
+            return Some(vec![RecordBatch {
+                schema: state.arrow_schema.clone(),
                 data: ArrowChunk::new(
                     columns
                         .iter()
                         .map(|descr| arrow2::array::new_null_array(descr.datatype().clone(), 0))
                         .collect_vec(),
                 ),
-            });
+            }]);
         }
 
         let pov_chunk = state.pov_chunks.as_ref()?.get(cur_page as usize)?;
@@ -198,14 +206,22 @@ impl RangeQueryHandle<'_> {
             .cur_page
             .fetch_add(1, std::sync::atomic::Ordering::Relaxed);
 
-        Some(self.dense_batch_at_pov(pov_chunk))
+        Some(self.dense_batch_at_pov(&self.query.pov, pov_chunk, &state.arrow_schema))
     }
 
     /// Partially executes the range query in order to return the specified range of rows.
     ///
     /// Returns a vector of [`RecordBatch`]es: as many as required to fill the specified range.
-    /// Each [`RecordBatch`] will correspond a "natural page" of data, even the first and last batch,
-    /// although they might be cut off at the edge.
+    ///
+    /// The exact size of the [`RecordBatch`]es is an implementation detail.
+    ///
+    /// At best, each [`RecordBatch`] will be a "natural page" of data, following the chunk
+    /// size of the pov-component. This will happen when all queried data either belongs to
+    /// the same chunk, or is requested as a [`JoinEncoding::DictionaryEncode`] column.
+    ///
+    /// However, in the case of mixed chunks without dictionary encoding, the engine will fall
+    /// back to a row-by-row approach, which can be less efficient.
+    ///
     /// Each cell in the result corresponds to the latest known value at that particular point in time
     /// for each respective `ColumnDescriptor`.
     ///
@@ -215,8 +231,8 @@ impl RangeQueryHandle<'_> {
     ///
     /// "Natural pages" refers to pages of data that match 1:1 to the underlying storage.
     /// The size of each page cannot be known in advance, as it depends on unspecified
-    /// implementation details.
-    /// This is the most performant way to iterate over the dataset.
+    /// implementation details. This is the most performant way to iterate over the dataset.
+    ///
     //
     // TODO(cmc): This could be turned into an actual lazy iterator at some point.
     pub fn get(&self, offset: u64, mut len: u64) -> Vec<RecordBatch> {
@@ -229,10 +245,7 @@ impl RangeQueryHandle<'_> {
         if offset == 0 && (len == 0 || state.pov_chunks.is_none()) {
             let columns = self.schema();
             return vec![RecordBatch {
-                schema: ArrowSchema {
-                    fields: columns.iter().map(|col| col.to_arrow_field()).collect(),
-                    metadata: Default::default(),
-                },
+                schema: state.arrow_schema.clone(),
                 data: ArrowChunk::new(
                     columns
                         .iter()
@@ -276,7 +289,11 @@ impl RangeQueryHandle<'_> {
         // Repeatedly compute dense ranges until we've returned `len` rows.
         while len > 0 {
             cur_pov_chunk = cur_pov_chunk.row_sliced(offset as _, len as _);
-            results.push(self.dense_batch_at_pov(&cur_pov_chunk));
+            results.extend(self.dense_batch_at_pov(
+                &self.query.pov,
+                &cur_pov_chunk,
+                &state.arrow_schema,
+            ));
 
             offset = 0; // always start at the first row after the first chunk
             len = len.saturating_sub(cur_pov_chunk.num_rows() as u64);
@@ -307,7 +324,12 @@ impl RangeQueryHandle<'_> {
         })
     }
 
-    fn dense_batch_at_pov(&self, pov_chunk: &Chunk) -> RecordBatch {
+    fn dense_batch_at_pov(
+        &self,
+        pov: &ComponentColumnDescriptor,
+        pov_chunk: &Chunk,
+        schema: &ArrowSchema,
+    ) -> Vec<RecordBatch> {
         let pov_time_column = pov_chunk.timelines().get(&self.query.timeline);
         let columns = self.schema();
 
@@ -317,12 +339,15 @@ impl RangeQueryHandle<'_> {
         //
         // TODO(cmc): Opportunities for parallelization, if it proves to be a net positive in practice.
         let dict_arrays: HashMap<&ComponentColumnDescriptor, ArrowDictionaryArray<i32>> = {
-            re_tracing::profile_scope!("queries");
+            re_tracing::profile_scope!("dict queries");
 
             columns
                 .iter()
                 .filter_map(|descr| match descr {
-                    ColumnDescriptor::Component(descr) => Some(descr),
+                    ColumnDescriptor::Component(descr) => match descr.join_encoding {
+                        JoinEncoding::OverlappingSlice => None,
+                        JoinEncoding::DictionaryEncode => Some(descr),
+                    },
                     _ => None,
                 })
                 .filter_map(|descr| {
@@ -369,20 +394,8 @@ impl RangeQueryHandle<'_> {
                         })
                         .collect_vec();
 
-                    let dict_array = {
-                        re_tracing::profile_scope!("concat");
-
-                        // Sanitize the input datatype for `arrays_to_dictionary`.
-                        let datatype = match &descr.datatype {
-                            ArrowDatatype::Dictionary(_, inner, _) => match &**inner {
-                                ArrowDatatype::List(field) => field.data_type().clone(),
-                                datatype => datatype.clone(),
-                            },
-                            ArrowDatatype::List(field) => field.data_type().clone(),
-                            datatype => datatype.clone(),
-                        };
-                        re_chunk::util::arrays_to_dictionary(datatype, &arrays)
-                    };
+                    let dict_array =
+                        { re_chunk::util::arrays_to_dictionary(&descr.store_datatype, &arrays) };
 
                     if cfg!(debug_assertions) {
                         #[allow(clippy::unwrap_used)] // want to crash in dev
@@ -395,50 +408,193 @@ impl RangeQueryHandle<'_> {
                 .collect()
         };
 
-        // NOTE: Keep in mind this must match the ordering specified by `Self::schema`.
-        let packed_arrays = {
-            re_tracing::profile_scope!("packing");
+        let slice_arrays: HashMap<&ComponentColumnDescriptor, Vec<Option<Box<dyn ArrowArray>>>> = {
+            re_tracing::profile_scope!("slice queries");
 
             columns
                 .iter()
-                .map(|descr| match descr {
-                    ColumnDescriptor::Control(_descr) => pov_chunk.row_ids_array().to_boxed(),
-
-                    ColumnDescriptor::Time(descr) => {
-                        let time_column = pov_chunk.timelines().get(&descr.timeline).cloned();
-                        time_column.map_or_else(
-                            || {
-                                arrow2::array::new_null_array(
-                                    descr.datatype.clone(),
-                                    pov_chunk.num_rows(),
-                                )
-                            },
-                            |time_column| time_column.times_array().to_boxed(),
-                        )
-                    }
-
-                    ColumnDescriptor::Component(descr) => dict_arrays.get(descr).map_or_else(
-                        || {
-                            arrow2::array::new_null_array(
-                                descr.datatype.clone(),
-                                pov_chunk.num_rows(),
-                            )
-                        },
-                        |dict_array| dict_array.to_boxed(),
-                    ),
+                .filter_map(|descr| match descr {
+                    ColumnDescriptor::Component(descr) => match descr.join_encoding {
+                        JoinEncoding::OverlappingSlice => {
+                            if descr != pov {
+                                Some(descr)
+                            } else {
+                                None
+                            }
+                        }
+                        JoinEncoding::DictionaryEncode => None,
+                    },
+                    _ => None,
                 })
-                .collect_vec()
+                .map(|descr| {
+                    let arrays = pov_time_column
+                        .map_or_else(
+                            || Either::Left(std::iter::empty()),
+                            |time_column| Either::Right(time_column.times()),
+                        )
+                        .chain(std::iter::repeat(TimeInt::STATIC))
+                        .take(pov_chunk.num_rows())
+                        .map(|time| {
+                            let query = LatestAtQuery::new(self.query.timeline, time);
+
+                            let results = self.engine.cache.latest_at(
+                                self.engine.store,
+                                &query,
+                                &descr.entity_path,
+                                [descr.component_name],
+                            );
+
+                            results
+                                .components
+                                .get(&descr.component_name)
+                                .and_then(|unit| {
+                                    unit.clone()
+                                        .into_chunk()
+                                        .components()
+                                        .get(&descr.component_name)
+                                        .map(|arr| arr.to_boxed())
+                                })
+                        })
+                        .collect_vec();
+
+                    (descr, arrays)
+                })
+                .collect()
         };
 
-        RecordBatch {
-            schema: ArrowSchema {
-                fields: columns
+        if slice_arrays.is_empty() {
+            // NOTE: Keep in mind this must match the ordering specified by `Self::schema`.
+            let packed_arrays = {
+                re_tracing::profile_scope!("packing");
+
+                columns
                     .iter()
-                    .map(|descr| descr.to_arrow_field())
-                    .collect_vec(),
-                metadata: Default::default(),
-            },
-            data: ArrowChunk::new(packed_arrays),
+                    .map(|descr| match descr {
+                        ColumnDescriptor::Control(_descr) => pov_chunk.row_ids_array().to_boxed(),
+
+                        ColumnDescriptor::Time(descr) => {
+                            let time_column = pov_chunk.timelines().get(&descr.timeline).cloned();
+                            time_column.map_or_else(
+                                || {
+                                    arrow2::array::new_null_array(
+                                        descr.datatype.clone(),
+                                        pov_chunk.num_rows(),
+                                    )
+                                },
+                                |time_column| time_column.times_array().to_boxed(),
+                            )
+                        }
+
+                        ColumnDescriptor::Component(descr) => match descr.join_encoding {
+                            JoinEncoding::OverlappingSlice => {
+                                if descr == pov {
+                                    pov_chunk
+                                        .components()
+                                        .get(&descr.component_name)
+                                        .map_or_else(
+                                            || {
+                                                arrow2::array::new_null_array(
+                                                    descr.returned_datatype(),
+                                                    pov_chunk.num_rows(),
+                                                )
+                                            },
+                                            |arr| arr.to_boxed(),
+                                        )
+                                } else {
+                                    unreachable!()
+                                }
+                            }
+                            JoinEncoding::DictionaryEncode => dict_arrays.get(descr).map_or_else(
+                                || {
+                                    arrow2::array::new_null_array(
+                                        descr.returned_datatype(),
+                                        pov_chunk.num_rows(),
+                                    )
+                                },
+                                |dict_array| dict_array.to_boxed(),
+                            ),
+                        },
+                    })
+                    .collect_vec()
+            };
+            vec![RecordBatch {
+                schema: schema.clone(),
+                data: ArrowChunk::new(packed_arrays),
+            }]
+        } else {
+            (0..pov_chunk.num_rows())
+                .map(|row| {
+                    // NOTE: Keep in mind this must match the ordering specified by `Self::schema`.
+                    let packed_arrays = columns
+                        .iter()
+                        .map(|descr| match descr {
+                            ColumnDescriptor::Control(_descr) => {
+                                pov_chunk.row_ids_array().sliced(row, 1).to_boxed()
+                            }
+
+                            ColumnDescriptor::Time(descr) => {
+                                let time_column = pov_chunk.timelines().get(&descr.timeline);
+                                time_column.map_or_else(
+                                    || arrow2::array::new_null_array(descr.datatype.clone(), 1),
+                                    |time_column| {
+                                        time_column.times_array().sliced(row, 1).to_boxed()
+                                    },
+                                )
+                            }
+
+                            ColumnDescriptor::Component(descr) => match descr.join_encoding {
+                                JoinEncoding::OverlappingSlice => {
+                                    if descr == pov {
+                                        pov_chunk
+                                            .components()
+                                            .get(&descr.component_name)
+                                            .map_or_else(
+                                                || {
+                                                    arrow2::array::new_null_array(
+                                                        descr.returned_datatype(),
+                                                        1,
+                                                    )
+                                                },
+                                                |arr| arr.sliced(row, 1).to_boxed(),
+                                            )
+                                    } else {
+                                        slice_arrays
+                                            .get(descr)
+                                            .and_then(|col| col.get(row).cloned())
+                                            .flatten()
+                                            .map_or_else(
+                                                || {
+                                                    arrow2::array::new_null_array(
+                                                        descr.returned_datatype(),
+                                                        1,
+                                                    )
+                                                },
+                                                |arr| arr,
+                                            )
+                                    }
+                                }
+
+                                JoinEncoding::DictionaryEncode => {
+                                    dict_arrays.get(descr).map_or_else(
+                                        || {
+                                            arrow2::array::new_null_array(
+                                                descr.returned_datatype(),
+                                                1,
+                                            )
+                                        },
+                                        |dict_array| dict_array.sliced(row, 1).to_boxed(),
+                                    )
+                                }
+                            },
+                        })
+                        .collect_vec();
+
+                    RecordBatch {
+                        schema: schema.clone(),
+                        data: ArrowChunk::new(packed_arrays),
+                    }
+                })
+                .collect()
         }
     }
 }
@@ -446,7 +602,7 @@ impl RangeQueryHandle<'_> {
 impl<'a> RangeQueryHandle<'a> {
     #[allow(clippy::should_implement_trait)] // we need an anonymous closure, this won't work
     pub fn into_iter(mut self) -> impl Iterator<Item = RecordBatch> + 'a {
-        std::iter::from_fn(move || self.next_page())
+        std::iter::from_fn(move || self.next_page()).flatten()
     }
 }
 
@@ -507,9 +663,10 @@ mod tests {
             ColumnDescriptor::Component(ComponentColumnDescriptor::new::<Position3D>(
                 entity_path.clone(),
             )),
-            ColumnDescriptor::Component(ComponentColumnDescriptor::new::<Radius>(
-                entity_path.clone(),
-            )),
+            ColumnDescriptor::Component(
+                ComponentColumnDescriptor::new::<Radius>(entity_path.clone())
+                    .with_join_encoding(re_chunk_store::JoinEncoding::DictionaryEncode),
+            ),
             ColumnDescriptor::Component(ComponentColumnDescriptor::new::<Color>(entity_path)),
         ];
 
@@ -517,16 +674,17 @@ mod tests {
 
         // Iterator API
         {
-            let batch = handle.next_page().unwrap();
+            let batches = handle.next_page().unwrap();
             // The output should be an empty recordbatch with the right schema and empty arrays.
-            assert_eq!(0, batch.num_rows());
-            assert!(
-                itertools::izip!(handle.schema(), batch.schema.fields.iter())
-                    .all(|(descr, field)| descr.to_arrow_field() == *field)
-            );
-            assert!(itertools::izip!(handle.schema(), batch.data.iter())
-                .all(|(descr, array)| descr.datatype() == array.data_type()));
-
+            for batch in batches {
+                assert_eq!(0, batch.num_rows());
+                assert!(
+                    itertools::izip!(handle.schema(), batch.schema.fields.iter())
+                        .all(|(descr, field)| descr.to_arrow_field() == *field)
+                );
+                assert!(itertools::izip!(handle.schema(), batch.data.iter())
+                    .all(|(descr, array)| &descr.datatype() == array.data_type()));
+            }
             let batch = handle.next_page();
             assert!(batch.is_none());
         }
@@ -541,7 +699,7 @@ mod tests {
                     .all(|(descr, field)| descr.to_arrow_field() == *field)
             );
             assert!(itertools::izip!(handle.schema(), batch.data.iter())
-                .all(|(descr, array)| descr.datatype() == array.data_type()));
+                .all(|(descr, array)| &descr.datatype() == array.data_type()));
 
             let _batch = handle.get(0, 1).pop().unwrap();
 
@@ -563,7 +721,10 @@ mod tests {
                 .with_component_batches(
                     RowId::new(),
                     TimePoint::default(),
-                    [&[MyPoint::new(1.0, 1.0), MyPoint::new(2.0, 2.0)] as _],
+                    [
+                        &[MyPoint::new(1.0, 1.0), MyPoint::new(2.0, 2.0)] as _,
+                        &[Radius(3.0.into()), Radius(4.0.into())] as _,
+                    ],
                 )
                 .build()
                 .unwrap(),
@@ -597,9 +758,10 @@ mod tests {
             ColumnDescriptor::Component(ComponentColumnDescriptor::new::<MyPoint>(
                 entity_path.clone(),
             )),
-            ColumnDescriptor::Component(ComponentColumnDescriptor::new::<Radius>(
-                entity_path.clone(),
-            )),
+            ColumnDescriptor::Component(
+                ComponentColumnDescriptor::new::<Radius>(entity_path.clone())
+                    .with_join_encoding(re_chunk_store::JoinEncoding::DictionaryEncode),
+            ),
             ColumnDescriptor::Component(ComponentColumnDescriptor::new::<Color>(entity_path)),
         ];
 
@@ -607,13 +769,27 @@ mod tests {
 
         // Iterator API
         {
-            let batch = handle.next_page().unwrap();
+            let batches = handle.next_page().unwrap();
+            let batch = batches.first().unwrap();
+
             assert_eq!(1, batch.num_rows());
+
+            // MyPoint should be a ListArray
             assert_eq!(
                 chunk.components().get(&MyPoint::name()).unwrap().to_boxed(),
                 itertools::izip!(batch.schema.fields.iter(), batch.data.iter())
                     .find_map(|(field, array)| {
                         (field.name == MyPoint::name().short_name()).then_some(array.clone())
+                    })
+                    .unwrap()
+            );
+
+            // Radius should be a DictionaryArray
+            assert_eq!(
+                chunk.components().get(&Radius::name()).unwrap().to_boxed(),
+                itertools::izip!(batch.schema.fields.iter(), batch.data.iter())
+                    .find_map(|(field, array)| {
+                        (field.name == Radius::name().short_name()).then_some(array.clone())
                     })
                     .unwrap()
                     .as_any()
@@ -622,6 +798,7 @@ mod tests {
                     .values()
                     .clone()
             );
+
             assert!(
                 itertools::izip!(handle.schema(), batch.schema.fields.iter())
                     .all(|(descr, field)| descr.to_arrow_field() == *field)
@@ -636,11 +813,23 @@ mod tests {
             let batch = handle.get(0, 1).pop().unwrap();
             // The output should be an empty recordbatch with the right schema and empty arrays.
             assert_eq!(1, batch.num_rows());
+
+            // MyPoint should be a ListArray
             assert_eq!(
                 chunk.components().get(&MyPoint::name()).unwrap().to_boxed(),
                 itertools::izip!(batch.schema.fields.iter(), batch.data.iter())
                     .find_map(|(field, array)| {
                         (field.name == MyPoint::name().short_name()).then_some(array.clone())
+                    })
+                    .unwrap()
+            );
+
+            // Radius should be a DictionaryArray
+            assert_eq!(
+                chunk.components().get(&Radius::name()).unwrap().to_boxed(),
+                itertools::izip!(batch.schema.fields.iter(), batch.data.iter())
+                    .find_map(|(field, array)| {
+                        (field.name == Radius::name().short_name()).then_some(array.clone())
                     })
                     .unwrap()
                     .as_any()
@@ -649,15 +838,16 @@ mod tests {
                     .values()
                     .clone()
             );
+
             assert!(
                 itertools::izip!(handle.schema(), batch.schema.fields.iter())
                     .all(|(descr, field)| descr.to_arrow_field() == *field)
             );
 
-            let _batch = handle.get(1, 1).pop().unwrap();
-
-            let batch = handle.get(2, 1).pop();
-            assert!(batch.is_none());
+            // TODO(jleibs): Out-of-bounds behavior isn't well defined here.
+            // Should this always include an empty record-batch, or should
+            // it be an error?
+            assert!(handle.get(1, 1).is_empty());
         }
     }
 }
