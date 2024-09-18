@@ -43,7 +43,7 @@ fn main() -> anyhow::Result<()> {
 
     println!("Now put the viewer in the background (alt-tab, minimize, put in background tab, etc");
 
-    for i in 0..usize::MAX {
+    for i in 0.. {
         println!("Sending message number {i}…");
         rec.log(
             "Text",
