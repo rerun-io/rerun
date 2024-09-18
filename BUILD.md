@@ -39,6 +39,8 @@ Use this command for building and running the viewer:
 pixi run rerun
 ```
 
+This custom cargo command is enabled by an alias located in `.cargo/config.toml`.
+
 
 ## Running the Rust examples
 
