@@ -30,13 +30,10 @@ impl VideoCache {
     /// The `row_id` should be the `RowId` of the blob.
     /// NOTE: videos are never batched atm (they are mono-archetypes),
     /// so we don't need the instance id here.
-    ///
-    /// TODO(andreas,jan): This effectively takes a full copy of the video data.
-    /// We should avoid this as much as possible, having pointers back to the raw
     pub fn entry(
         &mut self,
         row_id: RowId,
-        video_data: &[u8],
+        video_data: &re_types::datatypes::Blob,
         media_type: Option<&str>,
         render_ctx: &RenderContext,
     ) -> Arc<Result<Video, VideoError>> {

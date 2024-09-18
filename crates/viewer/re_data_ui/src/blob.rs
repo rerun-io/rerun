@@ -89,7 +89,7 @@ pub fn blob_preview_and_save_ui(
     query: &re_chunk_store::LatestAtQuery,
     entity_path: &re_log_types::EntityPath,
     blob_row_id: Option<re_chunk_store::RowId>,
-    blob: &[u8],
+    blob: &re_types::datatypes::Blob,
     media_type: Option<&MediaType>,
 ) {
     // Try to treat it as an image:
@@ -183,12 +183,14 @@ fn show_video_blob_info(
                 ui.list_item_flat_noninteractive(PropertyContent::new("Duration").value_text(
                     format!(
                         "{}",
-                        re_log_types::Duration::from_millis(video.duration_ms() as _)
+                        re_log_types::Duration::from_millis(video.duration().as_ms_f64() as _)
                     ),
                 ));
                 ui.list_item_flat_noninteractive(
                     PropertyContent::new("Codec").value_text(video.codec()),
                 );
+
+                // TODO(andreas): A mini video player at this point would be awesome!
             });
         }
         Err(err) => {
