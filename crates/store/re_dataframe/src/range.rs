@@ -73,7 +73,7 @@ impl<'a> RangeQueryHandle<'a> {
         query: RangeQueryExpression,
         user_columns: Option<Vec<ColumnDescriptor>>,
     ) -> Self {
-        let pov = engine.store.resolve_pov_selector(&query.pov);
+        let pov = engine.store.resolve_component_selector(&query.pov);
 
         Self {
             engine,

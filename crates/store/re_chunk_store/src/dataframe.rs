@@ -769,101 +769,81 @@ impl ChunkStore {
         controls.chain(timelines).chain(components).collect()
     }
 
-    pub fn resolve_pov_selector(&self, pov: &ComponentColumnSelector) -> ComponentColumnDescriptor {
+    /// Given a [`ControlColumnSelector`], returns the corresponding [`ControlColumnDescriptor`].
+    pub fn resolve_control_selector(
+        &self,
+        selector: &ControlColumnSelector,
+    ) -> ControlColumnDescriptor {
+        ControlColumnDescriptor {
+            component_name: selector.component,
+            datatype: self
+                .lookup_datatype(&selector.component)
+                .cloned()
+                .unwrap_or_else(|| ArrowListArray::<i32>::default_datatype(ArrowDatatype::Null)),
+        }
+    }
+
+    /// Given a [`TimeColumnSelector`], returns the corresponding [`TimeColumnDescriptor`].
+    #[allow(clippy::unused_self)]
+    pub fn resolve_time_selector(&self, selector: &TimeColumnSelector) -> TimeColumnDescriptor {
+        TimeColumnDescriptor {
+            timeline: selector.timeline,
+            datatype: selector.timeline.datatype(),
+        }
+    }
+
+    /// Given a [`ComponentColumnSelector`], returns the corresponding [`ComponentColumnDescriptor`].
+    ///
+    /// If the component is not found in the store, a default descriptor is returned with a null datatype.
+    pub fn resolve_component_selector(
+        &self,
+        selector: &ComponentColumnSelector,
+    ) -> ComponentColumnDescriptor {
         let datatype = self
-            .lookup_datatype(&pov.component)
+            .lookup_datatype(&selector.component)
             .cloned()
-            .unwrap_or_else(|| ArrowListArray::<i32>::default_datatype(ArrowDatatype::Null));
+            .unwrap_or_else(|| ArrowDatatype::Null);
 
         let is_static = self
             .static_chunk_ids_per_entity
-            .get(&pov.entity_path)
+            .get(&selector.entity_path)
             .map_or(false, |per_component| {
-                per_component.contains_key(&pov.component)
+                per_component.contains_key(&selector.component)
             });
 
         // TODO(#6889): Fill `archetype_name`/`archetype_field_name` (or whatever their
         // final name ends up being) once we generate tags.
         ComponentColumnDescriptor {
-            entity_path: pov.entity_path.clone(),
+            entity_path: selector.entity_path.clone(),
             archetype_name: None,
             archetype_field_name: None,
-            component_name: pov.component,
-            store_datatype: datatype,
-            join_encoding: pov.join_encoding,
+            component_name: selector.component,
+            store_datatype: ArrowListArray::<i32>::default_datatype(datatype.clone()),
+            join_encoding: selector.join_encoding,
             is_static,
         }
     }
 
+    /// Given a set of [`ColumnSelector`]s, returns the corresponding [`ColumnDescriptor`]s.
     pub fn resolve_selectors(
         &self,
         selectors: impl IntoIterator<Item = impl Into<ColumnSelector>>,
     ) -> Vec<ColumnDescriptor> {
-        let descriptors = self.schema();
-
-        // TODO(jleibs): This could be optimized a lot by looking these up more directly.
         // TODO(jleibs): When, if ever, should this return an error?
         selectors
             .into_iter()
             .map(|selector| {
                 let selector = selector.into();
                 match selector {
-                    ColumnSelector::Control(control) => descriptors
-                        .iter()
-                        .find(|descr| match descr {
-                            ColumnDescriptor::Control(descr) => {
-                                descr.component_name == control.component
-                            }
-                            _ => false,
-                        })
-                        .cloned()
-                        .unwrap_or_else(|| {
-                            ColumnDescriptor::Control(ControlColumnDescriptor {
-                                component_name: control.component,
-                                datatype: ArrowDatatype::Null,
-                            })
-                        }),
-                    ColumnSelector::Time(time) => descriptors
-                        .iter()
-                        .find(|descr| match descr {
-                            ColumnDescriptor::Time(descr) => descr.timeline == time.timeline,
-                            _ => false,
-                        })
-                        .cloned()
-                        .unwrap_or_else(|| {
-                            ColumnDescriptor::Time(TimeColumnDescriptor {
-                                timeline: time.timeline,
-                                datatype: ArrowDatatype::Null,
-                            })
-                        }),
-                    ColumnSelector::Component(component) => descriptors
-                        .iter()
-                        .find_map(|descr| match descr {
-                            ColumnDescriptor::Component(descr) => {
-                                if descr.entity_path == component.entity_path
-                                    && descr.component_name == component.component
-                                {
-                                    Some(ColumnDescriptor::Component(
-                                        descr.clone().with_join_encoding(component.join_encoding),
-                                    ))
-                                } else {
-                                    None
-                                }
-                            }
-                            _ => None,
-                        })
-                        .clone()
-                        .unwrap_or_else(|| {
-                            ColumnDescriptor::Component(ComponentColumnDescriptor {
-                                entity_path: component.entity_path,
-                                archetype_name: None,
-                                archetype_field_name: None,
-                                component_name: component.component,
-                                store_datatype: ArrowDatatype::Null,
-                                join_encoding: component.join_encoding,
-                                is_static: false,
-                            })
-                        }),
+                    ColumnSelector::Control(selector) => {
+                        ColumnDescriptor::Control(self.resolve_control_selector(&selector))
+                    }
+                    ColumnSelector::Time(selector) => {
+                        ColumnDescriptor::Time(self.resolve_time_selector(&selector))
+                    }
+                    ColumnSelector::Component(selector) => {
+                        ColumnDescriptor::Component(self.resolve_component_selector(&selector))
+                    }
                 }
             })
             .collect()
