@@ -160,6 +160,39 @@ impl<'a> ViewerContext<'a> {
             }
         }
     }
+
+    /// Returns a placeholder value for a given component, solely identified by its name.
+    ///
+    /// A placeholder is an array of the component type with a single element which takes on some default value.
+    /// It can be set as part of the reflection information, see [`ComponentReflection::custom_placeholder`].
+    /// Note that automatically generated placeholders ignore any extension types.
+    ///
+    /// This requires the component name to be known by either datastore or blueprint store and
+    /// will return a placeholder for a nulltype otherwise, logging an error.
+    /// The rationale is that to get into this situation, we need to know of a component name for which
+    /// we don't have a datatype, meaning that we can't make any statement about what data this component should represent.
+    // TODO(andreas): Are there cases where this is expected and how to handle this?
+    pub fn placeholder_for(
+        &self,
+        component: re_chunk::ComponentName,
+    ) -> Box<dyn re_chunk::ArrowArray> {
+        self.reflection.components.get(&component).and_then(|info| info.custom_placeholder.as_ref()).cloned()
+
+        .unwrap_or_else(||
+            {
+                // TODO(andreas): Is this operation common enough to cache the result? If so, here or in the reflection data?
+                // The nice thing about this would be that we could always give out references (but updating said cache wouldn't be easy in that case..)
+        let datatype = self
+        .recording_store()
+        .lookup_datatype(&component)
+        .or_else(|| self.blueprint_store().lookup_datatype(&component))
+        .unwrap_or_else(|| {
+            re_log::error_once!("Could not find datatype for component {component}. Using null array as placeholder.");
+            &re_chunk::external::arrow2::datatypes::DataType::Null
+        });
+            re_types::reflection::generic_placeholder_for_datatype(datatype)
+    })
+    }
 }
 
 // ----------------------------------------------------------------------------
