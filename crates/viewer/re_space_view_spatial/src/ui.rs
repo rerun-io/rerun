@@ -331,14 +331,12 @@ pub fn screenshot_context_menu(
     }
 }
 
-#[allow(clippy::too_many_arguments)] // TODO(andreas): Make this method sane.
+#[allow(clippy::too_many_arguments)]
 pub fn picking(
     ctx: &ViewerContext<'_>,
+    picking_context: &PickingContext,
+    ui: &egui::Ui,
     mut response: egui::Response,
-    space_from_ui: egui::emath::RectTransform,
-    ui_clip_rect: egui::Rect,
-    parent_ui: &egui::Ui,
-    eye: Eye,
     view_builder: &mut re_renderer::view_builder::ViewBuilder,
     state: &mut SpatialSpaceViewState,
     system_output: &re_viewer_context::SystemExecutionOutput,
@@ -348,25 +346,16 @@ pub fn picking(
 ) -> Result<egui::Response, SpaceViewSystemExecutionError> {
     re_tracing::profile_function!();
 
-    let Some(pointer_pos_ui) = response.hover_pos() else {
+    if ui.ctx().dragged_id().is_some() {
         state.previous_picking_result = None;
         return Ok(response);
-    };
+    }
 
     let Some(render_ctx) = ctx.render_ctx else {
         return Err(SpaceViewSystemExecutionError::NoRenderContextError);
     };
 
-    let picking_context = PickingContext::new(
-        pointer_pos_ui,
-        space_from_ui,
-        ui_clip_rect,
-        parent_ui.ctx().pixels_per_point(),
-        &eye,
-    );
-
-    let picking_rect_size =
-        PickingContext::UI_INTERACTION_RADIUS * parent_ui.ctx().pixels_per_point();
+    let picking_rect_size = PickingContext::UI_INTERACTION_RADIUS * ui.ctx().pixels_per_point();
     // Make the picking rect bigger than necessary so we can use it to counter-act delays.
     // (by the time the picking rectangle is read back, the cursor may have moved on).
     let picking_rect_size = (picking_rect_size * 2.0)
@@ -452,8 +441,7 @@ pub fn picking(
                             ui,
                             &instance_path,
                             spatial_kind,
-                            ui_clip_rect,
-                            space_from_ui,
+                            picking_context.ui_pan_and_zoom_from_ui,
                             annotations,
                             picked_image,
                         );
@@ -498,7 +486,7 @@ pub fn picking(
             SpatialSpaceViewKind::TwoD => ItemSpaceContext::TwoD {
                 space_2d: query.space_origin.clone(),
                 pos: picking_context
-                    .pointer_in_space2d
+                    .pointer_in_ui_after_pan_and_zoom
                     .extend(depth_at_pointer.unwrap_or(f32::INFINITY)),
             },
             SpatialSpaceViewKind::ThreeD => {
@@ -606,8 +594,7 @@ fn image_hover_ui(
     ui: &mut egui::Ui,
     instance_path: &re_entity_db::InstancePath,
     spatial_kind: SpatialSpaceViewKind,
-    ui_clip_rect: egui::Rect,
-    space_from_ui: egui::emath::RectTransform,
+    ui_pan_and_zoom_from_ui: egui::emath::RectTransform,
     annotations: &AnnotationSceneContext,
     picked_image_info: PickedImageInfo,
 ) {
@@ -633,10 +620,10 @@ fn image_hover_ui(
 
             show_zoomed_image_region_area_outline(
                 ui.ctx(),
-                ui_clip_rect,
+                *ui_pan_and_zoom_from_ui.from(),
                 egui::vec2(w, h),
                 [coordinates[0] as _, coordinates[1] as _],
-                space_from_ui.inverse().transform_rect(rect),
+                ui_pan_and_zoom_from_ui.inverse().transform_rect(rect),
             );
         }
 

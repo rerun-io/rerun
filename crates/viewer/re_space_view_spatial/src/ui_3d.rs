@@ -439,10 +439,10 @@ impl SpatialSpaceView3D {
             .latest_at_component_at_closest_ancestor(query.space_origin, &ctx.current_query())
             .map(|(_, _index, c)| c);
 
-        let (rect, mut response) =
+        let (ui_rect, mut response) =
             ui.allocate_at_least(ui.available_size(), egui::Sense::click_and_drag());
 
-        if !rect.is_positive() {
+        if !ui_rect.is_positive() {
             return Ok(()); // protect against problems with zero-sized views
         }
 
@@ -456,7 +456,7 @@ impl SpatialSpaceView3D {
 
         // Determine view port resolution and position.
         let resolution_in_pixel =
-            gpu_bridge::viewport_resolution_in_pixels(rect, ui.ctx().pixels_per_point());
+            gpu_bridge::viewport_resolution_in_pixels(ui_rect, ui.ctx().pixels_per_point());
         if resolution_in_pixel[0] == 0 || resolution_in_pixel[1] == 0 {
             return Ok(());
         }
@@ -515,21 +515,28 @@ impl SpatialSpaceView3D {
         // Create labels now since their shapes participate are added to scene.ui for picking.
         let (label_shapes, ui_rects) = create_labels(
             collect_ui_labels(&system_output.view_systems),
-            RectTransform::from_to(rect, rect),
+            RectTransform::from_to(ui_rect, ui_rect),
             &eye,
             ui,
             highlights,
             SpatialSpaceViewKind::ThreeD,
         );
 
-        if ui.ctx().dragged_id().is_none() {
+        if let Some(pointer_pos_ui) = response.hover_pos() {
+            // There's no panning & zooming, so this is an identiy transform.
+            let ui_pan_and_zoom_from_ui = RectTransform::from_to(ui_rect, ui_rect);
+
+            let picking_context = crate::picking::PickingContext::new(
+                pointer_pos_ui,
+                ui_pan_and_zoom_from_ui,
+                ui.ctx().pixels_per_point(),
+                &eye,
+            );
             response = picking(
                 ctx,
-                response,
-                RectTransform::from_to(rect, rect),
-                rect,
+                &picking_context,
                 ui,
-                eye,
+                response,
                 &mut view_builder,
                 state,
                 &system_output,
@@ -537,6 +544,8 @@ impl SpatialSpaceView3D {
                 query,
                 SpatialSpaceViewKind::ThreeD,
             )?;
+        } else {
+            state.previous_picking_result = None;
         }
 
         // Track focused entity if any.
@@ -674,7 +683,7 @@ impl SpatialSpaceView3D {
 
         ui.painter().add(gpu_bridge::new_renderer_callback(
             view_builder,
-            rect,
+            ui_rect,
             clear_color,
         ));
 

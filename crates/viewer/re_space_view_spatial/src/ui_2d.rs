@@ -210,14 +210,18 @@ impl SpatialSpaceView2D {
 
         let mut view_builder = ViewBuilder::new(render_ctx, target_config);
 
-        if ui.ctx().dragged_id().is_none() {
+        if let Some(pointer_pos_ui) = response.hover_pos() {
+            let picking_context = crate::picking::PickingContext::new(
+                pointer_pos_ui,
+                scene_from_ui,
+                ui.ctx().pixels_per_point(),
+                &eye,
+            );
             response = picking(
                 ctx,
-                response,
-                scene_from_ui,
-                painter.clip_rect(),
+                &picking_context,
                 ui,
-                eye,
+                response,
                 &mut view_builder,
                 state,
                 &system_output,
@@ -225,6 +229,8 @@ impl SpatialSpaceView2D {
                 query,
                 SpatialSpaceViewKind::TwoD,
             )?;
+        } else {
+            state.previous_picking_result = None;
         }
 
         for draw_data in system_output.draw_data {
