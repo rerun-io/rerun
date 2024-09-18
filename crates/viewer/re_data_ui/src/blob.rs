@@ -187,6 +187,10 @@ fn show_video_blob_info(
                     ),
                 ));
                 ui.list_item_flat_noninteractive(
+                    PropertyContent::new("Sample count")
+                        .value_text(format!("{}", video.count_samples())),
+                );
+                ui.list_item_flat_noninteractive(
                     PropertyContent::new("Codec").value_text(video.codec()),
                 );
 

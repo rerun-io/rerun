@@ -103,6 +103,11 @@ impl Video {
         &self.data.config.codec
     }
 
+    /// Counts the number of samples in the video.
+    pub fn count_samples(&self) -> usize {
+        self.data.segments.iter().map(|seg| seg.samples.len()).sum()
+    }
+
     /// Returns a texture with the latest frame at the given timestamp.
     ///
     /// If the timestamp is negative, a zeroed texture is returned.
