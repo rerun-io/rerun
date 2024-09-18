@@ -493,7 +493,7 @@ impl From<ComponentColumnDescriptor> for ComponentColumnSelector {
         Self {
             entity_path: desc.entity_path.clone(),
             component: desc.component_name,
-            join_encoding: JoinEncoding::default(),
+            join_encoding: desc.join_encoding,
         }
     }
 }
