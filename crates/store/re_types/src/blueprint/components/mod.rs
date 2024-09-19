@@ -5,6 +5,7 @@ mod background_kind;
 mod column_selection_mode;
 mod column_share;
 mod component_column_selector;
+mod component_column_selector_ext;
 mod corner2d;
 mod corner2d_ext;
 mod included_content;

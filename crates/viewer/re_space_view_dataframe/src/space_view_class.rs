@@ -4,7 +4,7 @@ use std::collections::HashSet;
 use egui::NumExt as _;
 use re_chunk_store::ColumnDescriptor;
 use re_log_types::{EntityPath, EntityPathFilter, ResolvedTimeRange, TimelineName};
-use re_types::blueprint::{archetypes, components, datatypes};
+use re_types::blueprint::{archetypes, components};
 use re_types_core::SpaceViewClassIdentifier;
 use re_ui::UiExt as _;
 use re_viewer_context::{
@@ -13,6 +13,7 @@ use re_viewer_context::{
 };
 use re_viewport_blueprint::{SpaceViewContents, ViewProperty};
 
+use crate::dataframe_ui::HideColumnAction;
 use crate::{
     dataframe_ui::dataframe_ui, expanded_rows::ExpandedRowsCache, query_kind::QueryKind,
     visualizer_system::EmptySystem,
@@ -198,7 +199,7 @@ mode sets the default time range to _everything_. You can override this in the s
         let entity_path_filter =
             Self::entity_path_filter(ctx, query.space_view_id, query.space_origin);
 
-        match query_mode {
+        let (schema, hide_column_actions) = match query_mode {
             QueryKind::LatestAt { time } => {
                 let query = re_chunk_store::LatestAtQueryExpression {
                     entity_path_filter,
@@ -209,14 +210,15 @@ mode sets the default time range to _everything_. You can override this in the s
                 let schema = query_engine.schema_for_query(&query.clone().into());
                 let selected_columns =
                     apply_column_visibility_to_schema(ctx, space_view_id, &timeline_name, &schema)?;
-                state.schema = Some(schema);
 
-                dataframe_ui(
+                let hide_column_actions = dataframe_ui(
                     ctx,
                     ui,
                     query_engine.latest_at(&query, selected_columns),
                     &mut state.expended_rows_cache,
                 );
+
+                (schema, hide_column_actions)
             }
             QueryKind::Range {
                 pov_entity,
@@ -244,16 +246,22 @@ mode sets the default time range to _everything_. You can override this in the s
                 let schema = query_engine.schema_for_query(&query.clone().into());
                 let selected_columns =
                     apply_column_visibility_to_schema(ctx, space_view_id, &timeline_name, &schema)?;
-                state.schema = Some(schema);
 
-                dataframe_ui(
+                let hide_column_actions = dataframe_ui(
                     ctx,
                     ui,
                     query_engine.range(&query, selected_columns),
                     &mut state.expended_rows_cache,
                 );
+
+                (schema, hide_column_actions)
             }
         };
+
+        handle_hide_column_actions(ctx, space_view_id, &schema, hide_column_actions)?;
+
+        // make schema accessible to the column visibility UI
+        state.schema = Some(schema);
 
         Ok(())
     }
@@ -298,17 +306,14 @@ fn apply_column_visibility_to_schema(
             ColumnDescriptor::Time(desc) => {
                 // we always include the query timeline column because we need it for the dataframe ui
                 desc.timeline.name() == query_timeline_name
-                    || selected_time_columns.contains(&components::TimelineName::from(
-                        desc.timeline.name().as_str(),
-                    ))
+                    || selected_time_columns
+                        .contains(&components::TimelineName::from_timeline(&desc.timeline))
             }
             ColumnDescriptor::Component(desc) => {
-                let blueprint_component_descriptor: components::ComponentColumnSelector =
-                    datatypes::ComponentColumnSelector {
-                        entity_path: (&desc.entity_path).into(),
-                        component_name: desc.component_name.as_str().into(),
-                    }
-                    .into();
+                let blueprint_component_descriptor = components::ComponentColumnSelector::new(
+                    &desc.entity_path,
+                    desc.component_name,
+                );
 
                 selected_component_columns.contains(&blueprint_component_descriptor)
             }
@@ -317,6 +322,89 @@ fn apply_column_visibility_to_schema(
         .collect();
 
     Ok(Some(result))
+}
+
+/// Act upon any action triggered by the dataframe UI.
+fn handle_hide_column_actions(
+    ctx: &ViewerContext<'_>,
+    space_view_id: SpaceViewId,
+    schema: &[ColumnDescriptor],
+    actions: Vec<HideColumnAction>,
+) -> Result<(), SpaceViewSystemExecutionError> {
+    if actions.is_empty() {
+        return Ok(());
+    }
+
+    let property = ViewProperty::from_archetype::<archetypes::DataframeVisibleColumns>(
+        ctx.blueprint_db(),
+        ctx.blueprint_query,
+        space_view_id,
+    );
+
+    let mut column_selection_mode = property
+        .component_or_empty::<components::ColumnSelectionMode>()?
+        .unwrap_or_default();
+
+    // We are hiding some columns, so we need to handle the switch from "All" to "Selected". When
+    // that happens, we default to selecting all time columns and all component columns.
+    let (mut selected_time_columns, mut selected_component_columns) =
+        if column_selection_mode == components::ColumnSelectionMode::All {
+            column_selection_mode = components::ColumnSelectionMode::Selected;
+            property.save_blueprint_component(ctx, &column_selection_mode);
+
+            let selected_time_columns = schema
+                .iter()
+                .filter_map(|column| match column {
+                    ColumnDescriptor::Time(desc) => {
+                        Some(components::TimelineName::from_timeline(&desc.timeline))
+                    }
+                    _ => None,
+                })
+                .collect::<Vec<_>>();
+
+            let selected_component_columns = schema
+                .iter()
+                .filter_map(|column| match column {
+                    ColumnDescriptor::Component(desc) => {
+                        Some(components::ComponentColumnSelector::new(
+                            &desc.entity_path,
+                            desc.component_name,
+                        ))
+                    }
+                    _ => None,
+                })
+                .collect::<Vec<_>>();
+
+            (selected_time_columns, selected_component_columns)
+        } else {
+            (
+                property.component_array_or_empty::<components::TimelineName>()?,
+                property.component_array_or_empty::<components::ComponentColumnSelector>()?,
+            )
+        };
+
+    for action in actions {
+        match action {
+            HideColumnAction::HideTimeColumn { timeline_name } => {
+                selected_time_columns
+                    .retain(|name| name != &components::TimelineName::from(timeline_name.as_str()));
+            }
+
+            HideColumnAction::HideComponentColumn {
+                entity_path,
+                component_name,
+            } => {
+                let blueprint_component_descriptor =
+                    components::ComponentColumnSelector::new(&entity_path, component_name);
+                selected_component_columns.retain(|desc| desc != &blueprint_component_descriptor);
+            }
+        }
+    }
+
+    property.save_blueprint_component(ctx, &selected_time_columns);
+    property.save_blueprint_component(ctx, &selected_component_columns);
+
+    Ok(())
 }
 
 fn column_visibility_ui(
@@ -384,9 +472,9 @@ fn column_visibility_ui(
         };
 
         let is_query_timeline = time_column_descriptor.timeline.name() == query_timeline_name;
-        let mut is_visible = selected_time_columns.contains(&components::TimelineName::from(
-            time_column_descriptor.timeline.name().as_str(),
-        )) || is_query_timeline;
+        let mut is_visible = selected_time_columns.contains(
+            &components::TimelineName::from_timeline(&time_column_descriptor.timeline),
+        ) || is_query_timeline;
 
         ui.add_enabled_ui(!is_query_timeline, |ui| {
             if ui
@@ -396,14 +484,12 @@ fn column_visibility_ui(
             {
                 changed = true;
 
+                let timeline_name =
+                    components::TimelineName::from_timeline(&time_column_descriptor.timeline);
                 if is_visible {
-                    selected_time_columns.insert(components::TimelineName::from(
-                        time_column_descriptor.timeline.name().as_str(),
-                    ));
+                    selected_time_columns.insert(timeline_name);
                 } else {
-                    selected_time_columns.remove(&components::TimelineName::from(
-                        time_column_descriptor.timeline.name().as_str(),
-                    ));
+                    selected_time_columns.remove(&timeline_name);
                 }
             }
         });
@@ -435,12 +521,10 @@ fn column_visibility_ui(
             ui.label(component_column_descriptor.entity_path.to_string());
         }
 
-        let blueprint_component_descriptor: components::ComponentColumnSelector =
-            datatypes::ComponentColumnSelector {
-                entity_path: (&component_column_descriptor.entity_path).into(),
-                component_name: component_column_descriptor.component_name.as_str().into(),
-            }
-            .into();
+        let blueprint_component_descriptor = components::ComponentColumnSelector::new(
+            &component_column_descriptor.entity_path,
+            component_column_descriptor.component_name,
+        );
 
         let mut is_visible = selected_component_columns.contains(&blueprint_component_descriptor);
 
