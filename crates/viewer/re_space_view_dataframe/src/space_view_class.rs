@@ -1,7 +1,7 @@
 use std::any::Any;
 use std::collections::HashSet;
 
-use egui::Ui;
+use egui::NumExt as _;
 use re_chunk_store::ColumnDescriptor;
 use re_log_types::{EntityPath, EntityPathFilter, ResolvedTimeRange, TimelineName};
 use re_types::blueprint::{archetypes, components, datatypes};
@@ -105,7 +105,7 @@ mode sets the default time range to _everything_. You can override this in the s
     fn selection_ui(
         &self,
         ctx: &ViewerContext<'_>,
-        ui: &mut Ui,
+        ui: &mut egui::Ui,
         state: &mut dyn SpaceViewState,
         _space_origin: &EntityPath,
         space_view_id: SpaceViewId,
@@ -116,20 +116,22 @@ mode sets the default time range to _everything_. You can override this in the s
     fn extra_title_bar_ui(
         &self,
         ctx: &ViewerContext<'_>,
-        ui: &mut Ui,
+        ui: &mut egui::Ui,
         state: &mut dyn SpaceViewState,
         _space_origin: &EntityPath,
         space_view_id: SpaceViewId,
     ) -> Result<(), SpaceViewSystemExecutionError> {
         let state = state.downcast_mut::<DataframeSpaceViewState>()?;
 
-        //TODO: fix the resizing of this menu, it's all over the place
         let result = ui
             .add_enabled_ui(state.schema.is_some(), |ui| {
                 egui::menu::menu_custom_button(
                     ui,
                     ui.small_icon_button_widget(&re_ui::icons::COLUMN_VISIBILITY),
                     |ui| {
+                        // This forces the menu to expand when the content grows, which happens when
+                        // switching from "All" to "Selected".
+                        ui.set_max_height(600.0.at_most(ui.ctx().screen_rect().height() * 0.9));
                         egui::ScrollArea::vertical()
                             .show(ui, |ui| {
                                 // do nothing if we don't have a schema (might only happen during the first
