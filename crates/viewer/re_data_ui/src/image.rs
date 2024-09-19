@@ -1,6 +1,6 @@
 use egui::{Color32, NumExt as _, Vec2};
 
-use re_renderer::renderer::ColormappedTexture;
+use re_renderer::{renderer::ColormappedTexture, resource_managers::GpuTexture2D};
 use re_types::{
     components::ClassId, datatypes::ColorModel, image::ImageKind, tensor_data::TensorElement,
 };
@@ -144,7 +144,7 @@ fn show_image_preview(
             minification: egui::TextureFilter::Linear,
             ..Default::default()
         },
-        debug_name,
+        debug_name.into(),
     ) {
         let color = ui.visuals().error_fg_color;
         painter.text(
@@ -173,6 +173,7 @@ fn largest_size_that_fits_in(aspect_ratio: f32, max_size: Vec2) -> Vec2 {
 // Show the surrounding pixels:
 const ZOOMED_IMAGE_TEXEL_RADIUS: isize = 10;
 
+/// Draws a border for the area zoomed in by [`show_zoomed_image_region`].
 pub fn show_zoomed_image_region_area_outline(
     egui_ctx: &egui::Context,
     ui_clip_rect: egui::Rect,
@@ -205,6 +206,29 @@ pub fn show_zoomed_image_region_area_outline(
     painter.rect_stroke(sample_rect, 0.0, (1.0, Color32::WHITE));
 }
 
+/// Identifies an image/texture interaction.
+///
+/// This is needed primarily to keep track of gpu readbacks and for debugging purposes.
+/// Therefore, this should stay roughtly stable over several frames.
+pub struct TextureInteractionId<'a> {
+    pub entity_path: &'a re_log_types::EntityPath,
+
+    /// Index of the interaction. This is important in case there's multiple interactions with the same entity.
+    /// This can happen if an entity has several images all of which are inspected at the same time.
+    /// Without this, several readbacks may get the same identifier, resulting in the wrong gpu readback values.
+    pub interaction_idx: u32,
+}
+
+impl<'a> TextureInteractionId<'a> {
+    pub fn debug_label(&self, topic: &str) -> re_renderer::DebugLabel {
+        format!("{topic}__{:?}_{}", self.entity_path, self.interaction_idx).into()
+    }
+
+    pub fn gpu_readback_id(&self) -> re_renderer::GpuReadbackIdentifier {
+        re_log_types::hash::Hash64::hash((self.entity_path, self.interaction_idx)).hash64()
+    }
+}
+
 /// `meter`: iff this is a depth map, how long is one meter?
 #[allow(clippy::too_many_arguments)]
 pub fn show_zoomed_image_region(
@@ -214,7 +238,7 @@ pub fn show_zoomed_image_region(
     image: Option<&ImageInfo>,
     annotations: &Annotations,
     meter: Option<f32>,
-    debug_name: &str,
+    interaction_id: &TextureInteractionId<'_>,
     center_texel: [isize; 2],
 ) {
     if let Err(err) = try_show_zoomed_image_region(
@@ -224,7 +248,7 @@ pub fn show_zoomed_image_region(
         texture,
         annotations,
         meter,
-        debug_name,
+        interaction_id,
         center_texel,
     ) {
         ui.error_label(&err.to_string());
@@ -240,7 +264,7 @@ fn try_show_zoomed_image_region(
     colormapped_texture: ColormappedTexture,
     annotations: &Annotations,
     meter: Option<f32>,
-    debug_name: &str,
+    interaction_id: &TextureInteractionId<'_>,
     center_texel: [isize; 2],
 ) -> anyhow::Result<()> {
     let [width, height] = colormapped_texture.texture.width_height();
@@ -271,7 +295,7 @@ fn try_show_zoomed_image_region(
             image_rect_on_screen,
             colormapped_texture.clone(),
             egui::TextureOptions::NEAREST,
-            debug_name,
+            interaction_id.debug_label("zoomed_region"),
         )?;
     }
 
@@ -290,7 +314,18 @@ fn try_show_zoomed_image_region(
         ui.vertical(|ui| {
             ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Extend);
 
-            image_pixel_value_ui(ui, image, annotations, [x as _, y as _], meter);
+            pixel_value_ui(
+                render_ctx,
+                ui,
+                interaction_id,
+                &image.map_or(
+                    PixelValueSource::GpuTexture(&colormapped_texture.texture),
+                    PixelValueSource::Image,
+                ),
+                annotations,
+                [x as _, y as _],
+                meter,
+            );
 
             // Show a big sample of the color of the middle texel:
             let (rect, _) =
@@ -307,7 +342,7 @@ fn try_show_zoomed_image_region(
                 image_rect_on_screen,
                 colormapped_texture,
                 egui::TextureOptions::NEAREST,
-                debug_name,
+                interaction_id.debug_label("single_pixel"),
             )
         })
         .inner?;
@@ -315,11 +350,29 @@ fn try_show_zoomed_image_region(
     Ok(())
 }
 
+/// How we figure out what value to show for a single pixel.
+enum PixelValueSource<'a> {
+    /// Full image information. Use this whenever reasonably possible.
+    Image(&'a ImageInfo),
+
+    /// Via a GPU texture readback.
+    ///
+    /// As of writing, use this only if...
+    /// * the texture is known to be able to read back
+    /// * the texture format is Rgba8UnormSrgb
+    /// * you don't care about alpha (since there's no 24bit textures, we assume we can just ignore it)
+    /// Note that these restrictions are not final,
+    /// but merely what covers the usecases right now with the least amount of effort.
+    GpuTexture(&'a GpuTexture2D),
+}
+
 /// Shows the value of a pixel in an image.
 /// If no image info is provided, this only shows the position of the pixel.
-fn image_pixel_value_ui(
+fn pixel_value_ui(
+    render_ctx: &re_renderer::RenderContext,
     ui: &mut egui::Ui,
-    image: Option<&ImageInfo>,
+    interaction_id: &TextureInteractionId<'_>,
+    pixel_value_source: &PixelValueSource<'_>,
     annotations: &Annotations,
     [x, y]: [u32; 2],
     meter: Option<f32>,
@@ -329,48 +382,57 @@ fn image_pixel_value_ui(
         ui.label(format!("{x}, {y}"));
         ui.end_row();
 
-        let Some(image) = image else {
-            return;
-        };
-
-        // Check for annotations on any single-channel image
-        if image.kind == ImageKind::Segmentation {
-            if let Some(raw_value) = image.get_xyc(x, y, 0) {
-                if let (ImageKind::Segmentation, Some(u16_val)) =
-                    (image.kind, raw_value.try_as_u16())
-                {
-                    ui.label("Label:");
-                    ui.label(
-                        annotations
-                            .resolved_class_description(Some(ClassId::from(u16_val)))
-                            .annotation_info()
-                            .label(None)
-                            .unwrap_or_else(|| u16_val.to_string()),
-                    );
-                    ui.end_row();
-                };
+        if let PixelValueSource::Image(image) = &pixel_value_source {
+            // Check for annotations on any single-channel image
+            if image.kind == ImageKind::Segmentation {
+                if let Some(raw_value) = image.get_xyc(x, y, 0) {
+                    if let (ImageKind::Segmentation, Some(u16_val)) =
+                        (image.kind, raw_value.try_as_u16())
+                    {
+                        ui.label("Label:");
+                        ui.label(
+                            annotations
+                                .resolved_class_description(Some(ClassId::from(u16_val)))
+                                .annotation_info()
+                                .label(None)
+                                .unwrap_or_else(|| u16_val.to_string()),
+                        );
+                        ui.end_row();
+                    };
+                }
             }
-        }
-        if let Some(meter) = meter {
-            // This is a depth map
-            if let Some(raw_value) = image.get_xyc(x, y, 0) {
-                let raw_value = raw_value.as_f64();
-                let meters = raw_value / (meter as f64);
-                ui.label("Depth:");
-                if meters < 1.0 {
-                    ui.monospace(format!("{:.1} mm", meters * 1e3));
-                } else {
-                    ui.monospace(format!("{meters:.3} m"));
+            if let Some(meter) = meter {
+                // This is a depth map
+                if let Some(raw_value) = image.get_xyc(x, y, 0) {
+                    let raw_value = raw_value.as_f64();
+                    let meters = raw_value / (meter as f64);
+                    ui.label("Depth:");
+                    if meters < 1.0 {
+                        ui.monospace(format!("{:.1} mm", meters * 1e3));
+                    } else {
+                        ui.monospace(format!("{meters:.3} m"));
+                    }
                 }
             }
         }
     });
 
-    let Some(image) = image else {
-        return;
+    let text = match pixel_value_source {
+        PixelValueSource::Image(image) => pixel_value_string_from_image(image, x, y),
+        PixelValueSource::GpuTexture(texture) => {
+            pixel_value_string_from_gpu_texture(render_ctx, texture, interaction_id, x, y)
+        }
     };
 
-    let text = match image.kind {
+    if let Some(text) = text {
+        ui.label(text);
+    } else {
+        ui.label("No Value");
+    }
+}
+
+fn pixel_value_string_from_image(image: &ImageInfo, x: u32, y: u32) -> Option<String> {
+    match image.kind {
         ImageKind::Segmentation | ImageKind::Depth => {
             image.get_xyc(x, y, 0).map(|v| format!("Val: {v}"))
         }
@@ -470,11 +532,15 @@ fn image_pixel_value_ui(
                 }
             }
         },
-    };
-
-    if let Some(text) = text {
-        ui.label(text);
-    } else {
-        ui.label("No Value");
     }
+}
+
+fn pixel_value_string_from_gpu_texture(
+    _render_ctx: &re_renderer::RenderContext,
+    _texture: &GpuTexture2D,
+    _interaction_id: &TextureInteractionId<'_>,
+    _x: u32,
+    _y: u32,
+) -> Option<String> {
+    None
 }

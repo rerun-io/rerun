@@ -350,7 +350,6 @@ fn image_hover_ui(
             None
         };
 
-        let debug_name = instance_path.to_string();
         let annotations = annotations.0.find(&instance_path.entity_path);
 
         show_zoomed_image_region(
@@ -360,7 +359,10 @@ fn image_hover_ui(
             image,
             &annotations,
             depth_meter,
-            &debug_name,
+            &re_data_ui::TextureInteractionId {
+                entity_path: &instance_path.entity_path,
+                interaction_idx: 0, // TODO: put hit number in here
+            },
             [pixel_coordinates[0] as _, pixel_coordinates[1] as _],
         );
     });

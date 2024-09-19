@@ -24,7 +24,9 @@ mod tensor;
 pub mod item_ui;
 
 pub use crate::{
-    image::{show_zoomed_image_region, show_zoomed_image_region_area_outline},
+    image::{
+        show_zoomed_image_region, show_zoomed_image_region_area_outline, TextureInteractionId,
+    },
     tensor::tensor_summary_ui_grid_contents,
 };
 pub use component::ComponentPathLatestAtResults;
