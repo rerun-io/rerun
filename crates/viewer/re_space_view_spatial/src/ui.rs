@@ -421,15 +421,13 @@ pub fn picking(
             instance_path.instance = Instance::ALL;
         }
 
-        response = if let Some(picked_image) = get_image_picking_info(system_output, hit) {
-            if picked_image.kind() == ImageKind::Depth {
-                if let Some(meter) = picked_image.depth_meter {
-                    let [x, y] = picked_image.coordinates;
-                    if let Some(raw_value) = picked_image.image.get_xyc(x, y, 0) {
-                        let raw_value = raw_value.as_f64();
-                        let depth_in_meters = raw_value / *meter.0 as f64;
-                        depth_at_pointer = Some(depth_in_meters as f32);
-                    }
+        response = if let Some(picked_pixel) = get_pixel_picking_info(system_output, hit) {
+            if let Some(meter) = picked_pixel.depth_meter {
+                let [x, y] = picked_pixel.image_pixel_coordinates;
+                if let Some(raw_value) = picked_pixel.image.get_xyc(x, y, 0) {
+                    let raw_value = raw_value.as_f64();
+                    let depth_in_meters = raw_value / *meter.0 as f64;
+                    depth_at_pointer = Some(depth_in_meters as f32);
                 }
             }
 
@@ -445,7 +443,7 @@ pub fn picking(
                             spatial_kind,
                             picking_context.camera_plane_from_ui,
                             annotations,
-                            picked_image,
+                            picked_pixel,
                         );
                     });
                 })
@@ -526,11 +524,11 @@ fn iter_pickable_rects(
     iter_spatial_visualizer_data(visualizers).flat_map(|data| data.pickable_rects.iter())
 }
 
-/// If available, finds image info for a picking hit.
-fn get_image_picking_info(
+/// If available, finds pixel info for a picking hit.
+fn get_pixel_picking_info(
     system_output: &re_viewer_context::SystemExecutionOutput,
     hit: &crate::picking::PickingRayHit,
-) -> Option<PickedImageInfo> {
+) -> Option<PickedPixelInfo> {
     let depth_visualizer_output = system_output
         .view_systems
         .get::<DepthImageVisualizer>()
@@ -548,9 +546,9 @@ fn get_image_picking_info(
                 if let PickableRectSourceData::Image { image, depth_meter } =
                     &picked_rect.source_data
                 {
-                    Some(PickedImageInfo {
+                    Some(PickedPixelInfo {
                         image: image.clone(),
-                        coordinates,
+                        image_pixel_coordinates: coordinates,
                         depth_meter: *depth_meter,
                     })
                 } else {
@@ -568,9 +566,9 @@ fn get_image_picking_info(
             .instance_path_hash
             .instance
             .to_2d_image_coordinate(depth_image.width());
-        Some(PickedImageInfo {
+        Some(PickedPixelInfo {
             image: depth_image.clone(),
-            coordinates,
+            image_pixel_coordinates: coordinates,
             depth_meter: Some(*depth_meter),
         })
     } else {
@@ -578,16 +576,10 @@ fn get_image_picking_info(
     }
 }
 
-struct PickedImageInfo {
+struct PickedPixelInfo {
     image: ImageInfo,
-    coordinates: [u32; 2],
+    image_pixel_coordinates: [u32; 2],
     depth_meter: Option<DepthMeter>,
-}
-
-impl PickedImageInfo {
-    pub fn kind(&self) -> ImageKind {
-        self.image.kind
-    }
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -598,13 +590,13 @@ fn image_hover_ui(
     spatial_kind: SpatialSpaceViewKind,
     ui_pan_and_zoom_from_ui: egui::emath::RectTransform,
     annotations: &AnnotationSceneContext,
-    picked_image_info: PickedImageInfo,
+    picked_pixel_info: PickedPixelInfo,
 ) {
-    let PickedImageInfo {
+    let PickedPixelInfo {
         image,
-        coordinates,
+        image_pixel_coordinates: coordinates,
         depth_meter,
-    } = picked_image_info;
+    } = picked_pixel_info;
 
     let depth_meter = depth_meter.map(|d| *d.0);
 
