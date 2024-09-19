@@ -488,8 +488,13 @@ fn dataframe_ui_impl(
     let schema = query_handle.schema();
 
     // The table id mainly drives column widths, so it should be stable across queries leading to
-    // the same schema.
-    let table_id_salt = egui::Id::new("__dataframe__").with(schema);
+    // the same schema. However, changing the PoV typically leads to large changes of actual content
+    // (e.g., jump from one row to many). Since that can affect the optimal column width, we include
+    // the PoV in the salt.
+    let mut table_id_salt = egui::Id::new("__dataframe__").with(schema);
+    if let QueryHandle::Range(range_query_handle) = query_handle {
+        table_id_salt = table_id_salt.with(&range_query_handle.query().pov);
+    }
 
     // It's trickier for the row expansion cache.
     //
