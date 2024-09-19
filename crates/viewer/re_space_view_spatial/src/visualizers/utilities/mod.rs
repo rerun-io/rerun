@@ -7,5 +7,5 @@ pub use labels::{
     process_labels, process_labels_2d, process_labels_3d, show_labels_fallback, LabeledBatch,
     UiLabel, UiLabelTarget,
 };
-pub use spatial_view_visualizer::SpatialViewVisualizerData;
+pub use spatial_view_visualizer::{iter_spatial_visualizer_data, SpatialViewVisualizerData};
 pub use textured_rect::textured_rect_from_image;

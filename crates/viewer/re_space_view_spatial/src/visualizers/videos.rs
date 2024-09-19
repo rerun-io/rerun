@@ -5,7 +5,7 @@ use re_renderer::{
     renderer::{
         ColormappedTexture, RectangleOptions, TextureFilterMag, TextureFilterMin, TexturedRect,
     },
-    resource_managers::{Texture2DCreationDesc, TextureManager2DError},
+    resource_managers::Texture2DCreationDesc,
     video::{FrameDecodingResult, Video, VideoError},
 };
 use re_types::{
@@ -24,7 +24,7 @@ use crate::{
     contexts::SpatialSceneEntityContext,
     view_kind::SpatialSpaceViewKind,
     visualizers::{entity_iterator, filter_visualizable_2d_entities},
-    SpatialSpaceView2D,
+    PickableRectSourceData, PickableTexturedRect, SpatialSpaceView2D,
 };
 
 use super::{
@@ -73,8 +73,6 @@ impl VisualizerSystem for VideoFrameReferenceVisualizer {
             return Err(SpaceViewSystemExecutionError::NoRenderContextError);
         };
 
-        let mut rectangles = Vec::new();
-
         process_archetype::<Self, VideoFrameReference, _>(
             ctx,
             view_query,
@@ -116,7 +114,6 @@ impl VisualizerSystem for VideoFrameReferenceVisualizer {
                         video_timestamp,
                         video_references,
                         entity_path,
-                        &mut rectangles,
                     );
                 }
 
@@ -124,18 +121,10 @@ impl VisualizerSystem for VideoFrameReferenceVisualizer {
             },
         )?;
 
-        let mut draw_data_list = Vec::new();
-
-        match re_renderer::renderer::RectangleDrawData::new(render_ctx, &rectangles) {
-            Ok(draw_data) => {
-                draw_data_list.push(draw_data.into());
-            }
-            Err(err) => {
-                re_log::error_once!("Failed to create rectangle draw data from images: {err}");
-            }
-        }
-
-        Ok(draw_data_list)
+        Ok(vec![PickableTexturedRect::to_draw_data(
+            render_ctx,
+            &self.data.pickable_rects,
+        )?])
     }
 
     fn data(&self) -> Option<&dyn std::any::Any> {
@@ -159,7 +148,6 @@ impl VideoFrameReferenceVisualizer {
         video_timestamp: &VideoTimestamp,
         video_references: Option<Vec<re_types::ArrowString>>,
         entity_path: &EntityPath,
-        rectangles: &mut Vec<TexturedRect>,
     ) {
         let Some(render_ctx) = ctx.viewer_ctx.render_ctx else {
             return;
@@ -179,19 +167,25 @@ impl VideoFrameReferenceVisualizer {
         // (if it's just a decoding error we may still know the size from the container!)
         // In case we haven error we want to center the message in the middle, so we need some area.
         // Note that this area is also used for the bounding box which is important for the 2D view to determine default bounds.
-        let mut video_size = glam::vec2(1280.0, 720.0);
-        let mut error_text = None;
+        let mut video_resolution = glam::vec2(1280.0, 720.0);
 
         match video.as_ref().map(|v| v.as_ref()) {
             None => {
-                error_text = Some(format!("No video asset at {video_reference:?}"));
+                self.show_video_error(
+                    render_ctx,
+                    spatial_ctx,
+                    world_from_entity,
+                    format!("No video asset at {video_reference:?}"),
+                    video_resolution,
+                    entity_path,
+                );
             }
 
             Some(Ok(video)) => {
                 let timestamp_in_seconds = match video_timestamp.time_mode {
                     VideoTimeMode::Nanoseconds => video_timestamp.video_time as f64 / 1e9,
                 };
-                video_size = glam::vec2(video.width() as _, video.height() as _);
+                video_resolution = glam::vec2(video.width() as _, video.height() as _);
                 if let Some(texture) = match video.frame_at(timestamp_in_seconds) {
                     FrameDecodingResult::Ready(texture) => Some(texture),
                     FrameDecodingResult::Pending(texture) => {
@@ -199,41 +193,57 @@ impl VideoFrameReferenceVisualizer {
                         Some(texture)
                     }
                     FrameDecodingResult::Error(err) => {
-                        error_text = Some(err.to_string());
+                        self.show_video_error(
+                            render_ctx,
+                            spatial_ctx,
+                            world_from_entity,
+                            err.to_string(),
+                            video_resolution,
+                            entity_path,
+                        );
                         None
                     }
                 } {
-                    let rect =
-                        textured_rect_for_video_frame(world_from_entity, video_size, texture);
-                    rectangles.push(rect);
+                    let textured_rect = TexturedRect {
+                        top_left_corner_position: world_from_entity
+                            .transform_point3(glam::Vec3::ZERO),
+                        // Make sure to use the video instead of texture size here,
+                        // since it may be a placeholder which doesn't have the full size yet.
+                        extent_u: world_from_entity
+                            .transform_vector3(glam::Vec3::X * video_resolution.x),
+                        extent_v: world_from_entity
+                            .transform_vector3(glam::Vec3::Y * video_resolution.y),
+                        colormapped_texture: ColormappedTexture::from_unorm_rgba(texture),
+                        options: RectangleOptions {
+                            texture_filter_magnification: TextureFilterMag::Nearest,
+                            texture_filter_minification: TextureFilterMin::Linear,
+                            outline_mask: spatial_ctx.highlight.overall,
+                            ..Default::default()
+                        },
+                    };
+                    self.data.pickable_rects.push(PickableTexturedRect {
+                        ent_path: entity_path.clone(),
+                        textured_rect,
+                        source_data: PickableRectSourceData::Video,
+                    });
                 }
             }
             Some(Err(err)) => {
-                error_text = Some(err.to_string());
-            }
-        }
-
-        if let Some(error_text) = error_text.take() {
-            match self.show_video_error(
-                render_ctx,
-                world_from_entity,
-                error_text,
-                video_size,
-                entity_path,
-            ) {
-                Ok(error_rect) => {
-                    rectangles.push(error_rect);
-                }
-                Err(err) => {
-                    re_log::error_once!("Failed to show video error icon: {err}");
-                }
+                self.show_video_error(
+                    render_ctx,
+                    spatial_ctx,
+                    world_from_entity,
+                    err.to_string(),
+                    video_resolution,
+                    entity_path,
+                );
             }
         }
 
         if spatial_ctx.space_view_class_identifier == SpatialSpaceView2D::identifier() {
             let bounding_box = re_math::BoundingBox::from_min_size(
                 world_from_entity.transform_point3(glam::Vec3::ZERO),
-                video_size.extend(0.0),
+                video_resolution.extend(0.0),
             );
             self.data
                 .add_bounding_box(entity_path.hash(), bounding_box, world_from_entity);
@@ -243,12 +253,13 @@ impl VideoFrameReferenceVisualizer {
     fn show_video_error(
         &mut self,
         render_ctx: &re_renderer::RenderContext,
+        spatial_ctx: &SpatialSceneEntityContext<'_>,
         world_from_entity: glam::Affine3A,
         error_string: String,
         video_size: glam::Vec2,
-        entity_path: &re_log_types::EntityPath,
-    ) -> Result<TexturedRect, TextureManager2DError<image::ImageError>> {
-        let video_error_texture = render_ctx
+        entity_path: &EntityPath,
+    ) {
+        let video_error_texture_result = render_ctx
             .texture_manager_2d
             .get_or_try_create_with::<image::ImageError>(
                 Hash64::hash("video_error").hash64(),
@@ -268,7 +279,13 @@ impl VideoFrameReferenceVisualizer {
                         height: dynamic_image.height(),
                     })
                 },
-            )?;
+            );
+
+        let Ok(video_error_texture) = video_error_texture_result.inspect_err(|err| {
+            re_log::error_once!("Failed to show video error icon: {err}");
+        }) else {
+            return; // We failed at failing…
+        };
 
         // Center the icon in the middle of the video rectangle.
         // Don't ignore translation - if the user moved the video frame, we move the error message long.
@@ -299,7 +316,7 @@ impl VideoFrameReferenceVisualizer {
             labeled_instance: re_entity_db::InstancePathHash::entity_all(entity_path),
         });
 
-        Ok(TexturedRect {
+        let error_rect = TexturedRect {
             top_left_corner_position: top_left_corner_position.extend(0.0),
             extent_u: glam::Vec3::X * video_error_rect_size.x,
             extent_v: glam::Vec3::Y * video_error_rect_size.y,
@@ -307,30 +324,16 @@ impl VideoFrameReferenceVisualizer {
             options: RectangleOptions {
                 texture_filter_magnification: TextureFilterMag::Linear,
                 texture_filter_minification: TextureFilterMin::Linear,
+                outline_mask: spatial_ctx.highlight.overall,
                 ..Default::default()
             },
-        })
-    }
-}
+        };
 
-fn textured_rect_for_video_frame(
-    world_from_entity: glam::Affine3A,
-    video_size: glam::Vec2,
-    texture: re_renderer::resource_managers::GpuTexture2D,
-) -> TexturedRect {
-    TexturedRect {
-        top_left_corner_position: world_from_entity.transform_point3(glam::Vec3::ZERO),
-        // Make sure to use the video instead of texture size here,
-        // since it may be a placeholder which doesn't have the full size yet.
-        extent_u: world_from_entity.transform_vector3(glam::Vec3::X * video_size.x),
-        extent_v: world_from_entity.transform_vector3(glam::Vec3::Y * video_size.y),
-
-        colormapped_texture: ColormappedTexture::from_unorm_rgba(texture),
-        options: RectangleOptions {
-            texture_filter_magnification: TextureFilterMag::Nearest,
-            texture_filter_minification: TextureFilterMin::Linear,
-            ..Default::default()
-        },
+        self.data.pickable_rects.push(PickableTexturedRect {
+            ent_path: entity_path.clone(),
+            textured_rect: error_rect,
+            source_data: PickableRectSourceData::ErrorPlaceholder,
+        });
     }
 }
 
