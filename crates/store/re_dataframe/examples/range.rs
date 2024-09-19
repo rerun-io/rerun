@@ -1,7 +1,7 @@
 use itertools::Itertools as _;
 
 use re_chunk_store::{
-    ChunkStore, ChunkStoreConfig, ComponentColumnDescriptor, RangeQueryExpression, Timeline,
+    ChunkStore, ChunkStoreConfig, ComponentColumnSelector, RangeQueryExpression, Timeline,
     VersionPolicy,
 };
 use re_dataframe::QueryEngine;
@@ -46,7 +46,7 @@ fn main() -> anyhow::Result<()> {
             entity_path_filter: entity_path_filter.clone(),
             timeline: Timeline::log_tick(),
             time_range: ResolvedTimeRange::new(0, 30),
-            pov: ComponentColumnDescriptor::new::<re_types::components::Position3D>(
+            pov: ComponentColumnSelector::new::<re_types::components::Position3D>(
                 entity_path_pov.into(),
             ),
         };
