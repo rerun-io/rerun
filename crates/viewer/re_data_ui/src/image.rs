@@ -290,9 +290,7 @@ fn try_show_zoomed_image_region(
         ui.vertical(|ui| {
             ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Extend);
 
-            if let Some(image) = image {
-                image_pixel_value_ui(ui, image, annotations, [x as _, y as _], meter);
-            }
+            image_pixel_value_ui(ui, image, annotations, [x as _, y as _], meter);
 
             // Show a big sample of the color of the middle texel:
             let (rect, _) =
@@ -317,9 +315,11 @@ fn try_show_zoomed_image_region(
     Ok(())
 }
 
+/// Shows the value of a pixel in an image.
+/// If no image info is provided, this only shows the position of the pixel.
 fn image_pixel_value_ui(
     ui: &mut egui::Ui,
-    image: &ImageInfo,
+    image: Option<&ImageInfo>,
     annotations: &Annotations,
     [x, y]: [u32; 2],
     meter: Option<f32>,
@@ -328,6 +328,10 @@ fn image_pixel_value_ui(
         ui.label("Position:");
         ui.label(format!("{x}, {y}"));
         ui.end_row();
+
+        let Some(image) = image else {
+            return;
+        };
 
         // Check for annotations on any single-channel image
         if image.kind == ImageKind::Segmentation {
@@ -361,6 +365,10 @@ fn image_pixel_value_ui(
             }
         }
     });
+
+    let Some(image) = image else {
+        return;
+    };
 
     let text = match image.kind {
         ImageKind::Segmentation | ImageKind::Depth => {
