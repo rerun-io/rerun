@@ -33,6 +33,9 @@ pub struct RangeQueryHandle<'a> {
     /// The original query expression used to instantiate this handle.
     pub(crate) query: RangeQueryExpression,
 
+    /// The point-of-view that this query is executed from.
+    pub(crate) pov: ComponentColumnDescriptor,
+
     /// The user-specified schema that describes any data returned through this handle, if any.
     pub(crate) user_columns: Option<Vec<ColumnDescriptor>>,
 
@@ -70,9 +73,12 @@ impl<'a> RangeQueryHandle<'a> {
         query: RangeQueryExpression,
         user_columns: Option<Vec<ColumnDescriptor>>,
     ) -> Self {
+        let pov = engine.store.resolve_component_selector(&query.pov);
+
         Self {
             engine,
             query,
+            pov,
             user_columns,
             state: Default::default(),
         }
@@ -115,15 +121,15 @@ impl RangeQueryHandle<'_> {
                 let results = self.engine.cache.range(
                     self.engine.store,
                     &query,
-                    &self.query.pov.entity_path,
-                    [self.query.pov.component_name],
+                    &self.pov.entity_path,
+                    [self.pov.component_name],
                 );
 
                 results
                     .components
                     .into_iter()
                     .find_map(|(component_name, chunks)| {
-                        (component_name == self.query.pov.component_name).then_some(chunks)
+                        (component_name == self.pov.component_name).then_some(chunks)
                     })
             };
 
@@ -206,7 +212,7 @@ impl RangeQueryHandle<'_> {
             .cur_page
             .fetch_add(1, std::sync::atomic::Ordering::Relaxed);
 
-        Some(self.dense_batch_at_pov(&self.query.pov, pov_chunk, &state.arrow_schema))
+        Some(self.dense_batch_at_pov(&self.pov, pov_chunk, &state.arrow_schema))
     }
 
     /// Partially executes the range query in order to return the specified range of rows.
@@ -289,11 +295,7 @@ impl RangeQueryHandle<'_> {
         // Repeatedly compute dense ranges until we've returned `len` rows.
         while len > 0 {
             cur_pov_chunk = cur_pov_chunk.row_sliced(offset as _, len as _);
-            results.extend(self.dense_batch_at_pov(
-                &self.query.pov,
-                &cur_pov_chunk,
-                &state.arrow_schema,
-            ));
+            results.extend(self.dense_batch_at_pov(&self.pov, &cur_pov_chunk, &state.arrow_schema));
 
             offset = 0; // always start at the first row after the first chunk
             len = len.saturating_sub(cur_pov_chunk.num_rows() as u64);
@@ -616,8 +618,8 @@ mod tests {
 
     use re_chunk::{ArrowArray, Chunk, EntityPath, RowId, TimePoint, Timeline};
     use re_chunk_store::{
-        ChunkStore, ChunkStoreConfig, ColumnDescriptor, ComponentColumnDescriptor,
-        RangeQueryExpression, TimeColumnDescriptor,
+        ChunkStore, ChunkStoreConfig, ComponentColumnSelector, RangeQueryExpression,
+        TimeColumnSelector,
     };
     use re_log_types::{
         example_components::MyPoint, EntityPathFilter, ResolvedTimeRange, StoreId, StoreKind,
@@ -648,26 +650,23 @@ mod tests {
             entity_path_filter: EntityPathFilter::all(),
             timeline: Timeline::log_time(),
             time_range: ResolvedTimeRange::EVERYTHING,
-            pov: ComponentColumnDescriptor::new::<Position3D>(entity_path.clone()),
+            pov: ComponentColumnSelector::new::<Position3D>(entity_path.clone()),
         };
 
         let columns = vec![
-            ColumnDescriptor::Time(TimeColumnDescriptor {
-                timeline: Timeline::log_time(),
-                datatype: Timeline::log_time().datatype(),
-            }),
-            ColumnDescriptor::Time(TimeColumnDescriptor {
-                timeline: Timeline::log_tick(),
-                datatype: Timeline::log_tick().datatype(),
-            }),
-            ColumnDescriptor::Component(ComponentColumnDescriptor::new::<Position3D>(
-                entity_path.clone(),
-            )),
-            ColumnDescriptor::Component(
-                ComponentColumnDescriptor::new::<Radius>(entity_path.clone())
-                    .with_join_encoding(re_chunk_store::JoinEncoding::DictionaryEncode),
-            ),
-            ColumnDescriptor::Component(ComponentColumnDescriptor::new::<Color>(entity_path)),
+            TimeColumnSelector {
+                timeline: *Timeline::log_time().name(),
+            }
+            .into(),
+            TimeColumnSelector {
+                timeline: *Timeline::log_tick().name(),
+            }
+            .into(),
+            ComponentColumnSelector::new::<MyPoint>(entity_path.clone()).into(),
+            ComponentColumnSelector::new::<Radius>(entity_path.clone())
+                .with_join_encoding(re_chunk_store::JoinEncoding::DictionaryEncode)
+                .into(),
+            ComponentColumnSelector::new::<Color>(entity_path).into(),
         ];
 
         let mut handle = engine.range(&query, Some(columns.clone()));
@@ -743,29 +742,26 @@ mod tests {
             entity_path_filter: EntityPathFilter::all(),
             timeline: Timeline::log_time(),
             time_range: ResolvedTimeRange::EVERYTHING,
-            pov: ComponentColumnDescriptor::new::<MyPoint>(entity_path.clone()),
+            pov: ComponentColumnSelector::new::<MyPoint>(entity_path.clone()),
         };
 
         let columns = vec![
-            ColumnDescriptor::Time(TimeColumnDescriptor {
-                timeline: Timeline::log_time(),
-                datatype: Timeline::log_time().datatype(),
-            }),
-            ColumnDescriptor::Time(TimeColumnDescriptor {
-                timeline: Timeline::log_tick(),
-                datatype: Timeline::log_tick().datatype(),
-            }),
-            ColumnDescriptor::Component(ComponentColumnDescriptor::new::<MyPoint>(
-                entity_path.clone(),
-            )),
-            ColumnDescriptor::Component(
-                ComponentColumnDescriptor::new::<Radius>(entity_path.clone())
-                    .with_join_encoding(re_chunk_store::JoinEncoding::DictionaryEncode),
-            ),
-            ColumnDescriptor::Component(ComponentColumnDescriptor::new::<Color>(entity_path)),
+            TimeColumnSelector {
+                timeline: *Timeline::log_time().name(),
+            }
+            .into(),
+            TimeColumnSelector {
+                timeline: *Timeline::log_tick().name(),
+            }
+            .into(),
+            ComponentColumnSelector::new::<MyPoint>(entity_path.clone()).into(),
+            ComponentColumnSelector::new::<Radius>(entity_path.clone())
+                .with_join_encoding(re_chunk_store::JoinEncoding::DictionaryEncode)
+                .into(),
+            ComponentColumnSelector::new::<Color>(entity_path).into(),
         ];
 
-        let mut handle = engine.range(&query, Some(columns.clone()));
+        let mut handle = engine.range(&query, Some(columns));
 
         // Iterator API
         {

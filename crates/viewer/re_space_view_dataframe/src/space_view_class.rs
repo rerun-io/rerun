@@ -159,15 +159,10 @@ mode sets the default time range to _everything_. You can override this in the s
                     timeline: *timeline,
                     time_range: ResolvedTimeRange::new(from, to),
                     //TODO(#7365): using ComponentColumnDescriptor to specify PoV needs to go
-                    pov: re_chunk_store::ComponentColumnDescriptor {
+                    pov: re_chunk_store::ComponentColumnSelector {
                         entity_path: pov_entity.clone(),
-                        archetype_name: None,
-                        archetype_field_name: None,
-                        component_name: pov_component,
-                        // this is actually ignored:
-                        store_datatype: re_chunk_store::external::arrow2::datatypes::DataType::Null,
+                        component: pov_component,
                         join_encoding: Default::default(),
-                        is_static: false,
                     },
                 };
 

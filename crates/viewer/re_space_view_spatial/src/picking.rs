@@ -6,7 +6,7 @@ use re_entity_db::InstancePathHash;
 use re_log_types::Instance;
 use re_renderer::PickingLayerProcessor;
 
-use crate::PickableImageRect;
+use crate::PickableTexturedRect;
 use crate::{eye::Eye, instance_hash_conversions::instance_path_hash_from_picking_layer_id};
 
 #[derive(Clone, PartialEq, Eq)]
@@ -67,10 +67,17 @@ pub struct PickingContext {
     /// Cursor position on the renderer canvas in pixels.
     pub pointer_in_pixel: glam::Vec2,
 
-    /// Cursor position in the 2D space coordinate system.
+    /// Cursor position in the UI coordinates after panning & zooming.
     ///
-    /// For 3D spaces this is equal to the cursor position in pixel coordinate system.
-    pub pointer_in_space2d: glam::Vec2,
+    /// As of writing, for 3D spaces this is equal to [Self::pointer_in_ui],
+    /// since we don't allow panning & zooming after perspective projection.
+    pub pointer_in_camera_plane: glam::Vec2,
+
+    /// Transforms ui coordinates to "ui-camera-plane-coordinates"
+    /// Ui camera plane coordinates are ui coordinates that have been panned and zoomed.
+    ///
+    /// See also [`Self::pointer_in_camera_plane`].
+    pub camera_plane_from_ui: egui::emath::RectTransform,
 
     /// The picking ray used. Given in the coordinates of the space the picking is performed in.
     pub ray_in_world: re_math::Ray3,
@@ -83,22 +90,26 @@ impl PickingContext {
     /// Note that this needs to be scaled when zooming is applied by the virtual->visible ui rect transform.
     pub const UI_INTERACTION_RADIUS: f32 = 5.0;
 
+    /// Creates a new [`PickingContext`] for executing picking operations and providing
+    /// information about the picking ray & general circumstances.
     pub fn new(
         pointer_in_ui: egui::Pos2,
-        space2d_from_ui: egui::emath::RectTransform,
-        ui_clip_rect: egui::Rect,
+        camera_plane_from_ui: egui::emath::RectTransform,
         pixels_per_point: f32,
         eye: &Eye,
     ) -> Self {
-        let pointer_in_space2d = space2d_from_ui.transform_pos(pointer_in_ui);
-        let pointer_in_space2d = glam::vec2(pointer_in_space2d.x, pointer_in_space2d.y);
-        let pointer_in_pixel = (pointer_in_ui - ui_clip_rect.left_top()) * pixels_per_point;
+        let pointer_in_camera_plane = camera_plane_from_ui.transform_pos(pointer_in_ui);
+        let pointer_in_camera_plane =
+            glam::vec2(pointer_in_camera_plane.x, pointer_in_camera_plane.y);
+        let pointer_in_pixel =
+            (pointer_in_ui - camera_plane_from_ui.from().left_top()) * pixels_per_point;
 
         Self {
-            pointer_in_space2d,
+            pointer_in_camera_plane,
             pointer_in_pixel: glam::vec2(pointer_in_pixel.x, pointer_in_pixel.y),
             pointer_in_ui: glam::vec2(pointer_in_ui.x, pointer_in_ui.y),
-            ray_in_world: eye.picking_ray(*space2d_from_ui.to(), pointer_in_space2d),
+            camera_plane_from_ui,
+            ray_in_world: eye.picking_ray(*camera_plane_from_ui.to(), pointer_in_camera_plane),
         }
     }
 
@@ -108,7 +119,7 @@ impl PickingContext {
         render_ctx: &re_renderer::RenderContext,
         gpu_readback_identifier: re_renderer::GpuReadbackIdentifier,
         previous_picking_result: &Option<PickingResult>,
-        images: impl Iterator<Item = &'a PickableImageRect>,
+        images: impl Iterator<Item = &'a PickableTexturedRect>,
         ui_rects: &[PickableUiRect],
     ) -> PickingResult {
         re_tracing::profile_function!();
@@ -243,7 +254,7 @@ fn picking_gpu(
 
 fn picking_textured_rects<'a>(
     context: &PickingContext,
-    images: impl Iterator<Item = &'a PickableImageRect>,
+    images: impl Iterator<Item = &'a PickableTexturedRect>,
 ) -> Vec<PickingRayHit> {
     re_tracing::profile_function!();
 
@@ -307,7 +318,10 @@ fn picking_ui_rects(
 ) -> Option<PickingRayHit> {
     re_tracing::profile_function!();
 
-    let egui_pos = egui::pos2(context.pointer_in_space2d.x, context.pointer_in_space2d.y);
+    let egui_pos = egui::pos2(
+        context.pointer_in_camera_plane.x,
+        context.pointer_in_camera_plane.y,
+    );
     for ui_rect in ui_rects {
         if ui_rect.rect.contains(egui_pos) {
             // Handle only a single ui rectangle (exit right away, ignore potential overlaps)
