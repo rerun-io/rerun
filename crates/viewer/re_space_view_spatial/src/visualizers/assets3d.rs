@@ -4,7 +4,7 @@ use re_renderer::renderer::MeshInstance;
 use re_renderer::RenderContext;
 use re_types::{
     archetypes::Asset3D,
-    components::{AlbedoFactor, Blob, ImageBuffer, ImageFormat, MediaType},
+    components::{AlbedoFactor, Blob, MediaType},
     ArrowBuffer, ArrowString, Loggable as _,
 };
 use re_viewer_context::{
@@ -39,8 +39,6 @@ struct Asset3DComponentData<'a> {
     blob: ArrowBuffer<u8>,
     media_type: Option<ArrowString>,
     albedo_factor: Option<&'a AlbedoFactor>,
-    albedo_buffer: Option<ImageBuffer>,
-    albedo_format: Option<ImageFormat>,
 }
 
 // NOTE: Do not put profile scopes in these methods. They are called for all entities and all
@@ -78,8 +76,6 @@ impl Asset3DVisualizer {
                             blob: data.blob.clone().into(),
                             media_type: data.media_type.clone().map(Into::into),
                             albedo_factor: data.albedo_factor.copied(),
-                            albedo_texture_buffer: data.albedo_buffer.clone(), // shallow clone,
-                            albedo_texture_format: data.albedo_format,
                         },
                         texture_key: re_log_types::hash::Hash64::hash(&key).hash64(),
                     },
@@ -165,43 +161,28 @@ impl VisualizerSystem for Asset3DVisualizer {
                 let all_blobs_indexed = iter_buffer::<u8>(&all_blob_chunks, timeline, Blob::name());
                 let all_media_types = results.iter_as(timeline, MediaType::name());
                 let all_albedo_factors = results.iter_as(timeline, AlbedoFactor::name());
-                let all_albedo_buffers = results.iter_as(timeline, ImageBuffer::name());
-                let all_albedo_formats = results.iter_as(timeline, ImageFormat::name());
 
                 let query_result_hash = results.query_result_hash();
 
-                let data = re_query::range_zip_1x4(
+                let data = re_query::range_zip_1x2(
                     all_blobs_indexed,
                     all_media_types.string(),
                     all_albedo_factors.primitive::<u32>(),
-                    all_albedo_buffers.component::<ImageBuffer>(),
-                    all_albedo_formats.component::<ImageFormat>(),
                 )
-                .filter_map(
-                    |(
+                .filter_map(|(index, blobs, media_types, albedo_factors)| {
+                    blobs.first().map(|blob| Asset3DComponentData {
                         index,
-                        blobs,
-                        media_types,
-                        albedo_factors,
-                        albedo_buffers,
-                        albedo_formats,
-                    )| {
-                        blobs.first().map(|blob| Asset3DComponentData {
-                            index,
-                            query_result_hash,
-                            blob: blob.clone(),
-                            media_type: media_types
-                                .and_then(|media_types| media_types.first().cloned()),
-                            albedo_factor: albedo_factors
-                                .map_or(&[] as &[AlbedoFactor], |albedo_factors| {
-                                    bytemuck::cast_slice(albedo_factors)
-                                })
-                                .first(),
-                            albedo_buffer: albedo_buffers.unwrap_or_default().first().cloned(), // shallow clone
-                            albedo_format: albedo_formats.unwrap_or_default().first().copied(),
-                        })
-                    },
-                );
+                        query_result_hash,
+                        blob: blob.clone(),
+                        media_type: media_types
+                            .and_then(|media_types| media_types.first().cloned()),
+                        albedo_factor: albedo_factors
+                            .map_or(&[] as &[AlbedoFactor], |albedo_factors| {
+                                bytemuck::cast_slice(albedo_factors)
+                            })
+                            .first(),
+                    })
+                });
 
                 self.process_data(ctx, render_ctx, &mut instances, spatial_ctx, data);
 

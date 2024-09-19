@@ -73,17 +73,6 @@ pub struct Asset3D {
 
     /// A color multiplier applied to the whole asset.
     pub albedo_factor: Option<crate::components::AlbedoFactor>,
-
-    /// Optional albedo texture.
-    ///
-    /// Used with the [`components::Texcoord2D`][crate::components::Texcoord2D] of the mesh.
-    ///
-    /// Currently supports only sRGB(A) textures, ignoring alpha.
-    /// (meaning that the tensor must have 3 or 4 channels and use the `u8` format)
-    pub albedo_texture_buffer: Option<crate::components::ImageBuffer>,
-
-    /// The format of the `albedo_texture_buffer`, if any.
-    pub albedo_texture_format: Option<crate::components::ImageFormat>,
 }
 
 impl ::re_types_core::SizeBytes for Asset3D {
@@ -92,8 +81,6 @@ impl ::re_types_core::SizeBytes for Asset3D {
         self.blob.heap_size_bytes()
             + self.media_type.heap_size_bytes()
             + self.albedo_factor.heap_size_bytes()
-            + self.albedo_texture_buffer.heap_size_bytes()
-            + self.albedo_texture_format.heap_size_bytes()
     }
 
     #[inline]
@@ -101,8 +88,6 @@ impl ::re_types_core::SizeBytes for Asset3D {
         <crate::components::Blob>::is_pod()
             && <Option<crate::components::MediaType>>::is_pod()
             && <Option<crate::components::AlbedoFactor>>::is_pod()
-            && <Option<crate::components::ImageBuffer>>::is_pod()
-            && <Option<crate::components::ImageFormat>>::is_pod()
     }
 }
 
@@ -117,30 +102,22 @@ static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 2usize]> =
         ]
     });
 
-static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 3usize]> =
-    once_cell::sync::Lazy::new(|| {
-        [
-            "rerun.components.AlbedoFactor".into(),
-            "rerun.components.ImageBuffer".into(),
-            "rerun.components.ImageFormat".into(),
-        ]
-    });
+static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 1usize]> =
+    once_cell::sync::Lazy::new(|| ["rerun.components.AlbedoFactor".into()]);
 
-static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 6usize]> =
+static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 4usize]> =
     once_cell::sync::Lazy::new(|| {
         [
             "rerun.components.Blob".into(),
             "rerun.components.MediaType".into(),
             "rerun.components.Asset3DIndicator".into(),
             "rerun.components.AlbedoFactor".into(),
-            "rerun.components.ImageBuffer".into(),
-            "rerun.components.ImageFormat".into(),
         ]
     });
 
 impl Asset3D {
-    /// The total number of components in the archetype: 1 required, 2 recommended, 3 optional
-    pub const NUM_COMPONENTS: usize = 6usize;
+    /// The total number of components in the archetype: 1 required, 2 recommended, 1 optional
+    pub const NUM_COMPONENTS: usize = 4usize;
 }
 
 /// Indicator component for the [`Asset3D`] [`::re_types_core::Archetype`]
@@ -227,32 +204,10 @@ impl ::re_types_core::Archetype for Asset3D {
         } else {
             None
         };
-        let albedo_texture_buffer =
-            if let Some(array) = arrays_by_name.get("rerun.components.ImageBuffer") {
-                <crate::components::ImageBuffer>::from_arrow_opt(&**array)
-                    .with_context("rerun.archetypes.Asset3D#albedo_texture_buffer")?
-                    .into_iter()
-                    .next()
-                    .flatten()
-            } else {
-                None
-            };
-        let albedo_texture_format =
-            if let Some(array) = arrays_by_name.get("rerun.components.ImageFormat") {
-                <crate::components::ImageFormat>::from_arrow_opt(&**array)
-                    .with_context("rerun.archetypes.Asset3D#albedo_texture_format")?
-                    .into_iter()
-                    .next()
-                    .flatten()
-            } else {
-                None
-            };
         Ok(Self {
             blob,
             media_type,
             albedo_factor,
-            albedo_texture_buffer,
-            albedo_texture_format,
         })
     }
 }
@@ -268,12 +223,6 @@ impl ::re_types_core::AsComponents for Asset3D {
                 .as_ref()
                 .map(|comp| (comp as &dyn ComponentBatch).into()),
             self.albedo_factor
-                .as_ref()
-                .map(|comp| (comp as &dyn ComponentBatch).into()),
-            self.albedo_texture_buffer
-                .as_ref()
-                .map(|comp| (comp as &dyn ComponentBatch).into()),
-            self.albedo_texture_format
                 .as_ref()
                 .map(|comp| (comp as &dyn ComponentBatch).into()),
         ]
@@ -293,8 +242,6 @@ impl Asset3D {
             blob: blob.into(),
             media_type: None,
             albedo_factor: None,
-            albedo_texture_buffer: None,
-            albedo_texture_format: None,
         }
     }
 
@@ -321,31 +268,6 @@ impl Asset3D {
         albedo_factor: impl Into<crate::components::AlbedoFactor>,
     ) -> Self {
         self.albedo_factor = Some(albedo_factor.into());
-        self
-    }
-
-    /// Optional albedo texture.
-    ///
-    /// Used with the [`components::Texcoord2D`][crate::components::Texcoord2D] of the mesh.
-    ///
-    /// Currently supports only sRGB(A) textures, ignoring alpha.
-    /// (meaning that the tensor must have 3 or 4 channels and use the `u8` format)
-    #[inline]
-    pub fn with_albedo_texture_buffer(
-        mut self,
-        albedo_texture_buffer: impl Into<crate::components::ImageBuffer>,
-    ) -> Self {
-        self.albedo_texture_buffer = Some(albedo_texture_buffer.into());
-        self
-    }
-
-    /// The format of the `albedo_texture_buffer`, if any.
-    #[inline]
-    pub fn with_albedo_texture_format(
-        mut self,
-        albedo_texture_format: impl Into<crate::components::ImageFormat>,
-    ) -> Self {
-        self.albedo_texture_format = Some(albedo_texture_format.into());
         self
     }
 }

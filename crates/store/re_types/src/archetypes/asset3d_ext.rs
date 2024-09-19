@@ -1,6 +1,4 @@
-use crate::components::{self, MediaType};
-
-use crate::archetypes;
+use crate::components::MediaType;
 
 use super::Asset3D;
 
@@ -38,25 +36,6 @@ impl Asset3D {
             blob: contents.into(),
             media_type,
             albedo_factor: None,
-            albedo_texture_buffer: None,
-            albedo_texture_format: None,
         }
-    }
-
-    /// Use this image as the albedo texture.
-    pub fn with_albedo_texture_image(self, image: impl Into<archetypes::Image>) -> Self {
-        let image = image.into();
-        self.with_albedo_texture_format(image.format)
-            .with_albedo_texture_buffer(image.buffer)
-    }
-
-    /// Use this image as the albedo texture.
-    pub fn with_albedo_texture(
-        self,
-        image_format: impl Into<components::ImageFormat>,
-        image_buffer: impl Into<components::ImageBuffer>,
-    ) -> Self {
-        self.with_albedo_texture_format(image_format)
-            .with_albedo_texture_buffer(image_buffer)
     }
 }

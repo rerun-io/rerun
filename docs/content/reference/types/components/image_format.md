@@ -17,7 +17,6 @@ The metadata describing the contents of a [`components.ImageBuffer`](https://rer
 
 ## Used by
 
-* [`Asset3D`](../archetypes/asset3d.md)
 * [`DepthImage`](../archetypes/depth_image.md)
 * [`Image`](../archetypes/image.md)
 * [`Mesh3D`](../archetypes/mesh3d.md)

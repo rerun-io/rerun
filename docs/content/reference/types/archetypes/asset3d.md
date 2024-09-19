@@ -16,7 +16,7 @@ an instance of the mesh will be drawn for each transform.
 
 **Recommended**: [`MediaType`](../components/media_type.md)
 
-**Optional**: [`AlbedoFactor`](../components/albedo_factor.md), [`ImageBuffer`](../components/image_buffer.md), [`ImageFormat`](../components/image_format.md)
+**Optional**: [`AlbedoFactor`](../components/albedo_factor.md)
 
 ## Shown in
 * [Spatial3DView](../views/spatial3d_view.md)
