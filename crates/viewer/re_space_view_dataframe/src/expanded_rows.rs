@@ -101,6 +101,21 @@ impl<'a> ExpandedRows<'a> {
             + row_nr as f32 * self.row_height
     }
 
+    /// Returns whether the first line of the specified row is odd.
+    ///
+    /// This depends on how many additional lines the rows before have.
+    pub(crate) fn is_row_odd(&self, row_nr: u64) -> bool {
+        let total_lines = self
+            .cache
+            .expanded_rows
+            .range(0..row_nr)
+            .map(|(_, additional_lines)| *additional_lines)
+            .sum::<u64>()
+            + row_nr;
+
+        total_lines % 2 == 1
+    }
+
     /// Return by how many additional lines this row is expended.
     pub(crate) fn additional_lines_for_row(&self, row_nr: u64) -> u64 {
         self.cache.expanded_rows.get(&row_nr).copied().unwrap_or(0)

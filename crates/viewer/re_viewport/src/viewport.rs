@@ -535,7 +535,8 @@ impl<'a, 'b> egui_tiles::Behavior<SpaceViewId> for TabViewer<'a, 'b> {
                 });
             }
 
-            execute_systems_for_space_view(ctx, view, latest_at, self.view_states)
+            let class = space_view_blueprint.class(self.ctx.space_view_class_registry);
+            execute_systems_for_space_view(ctx, view, latest_at, self.view_states.get_mut_or_create(*view_id, class))
         });
 
         let class = space_view_blueprint.class(self.ctx.space_view_class_registry);

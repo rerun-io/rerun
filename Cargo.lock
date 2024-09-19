@@ -3484,7 +3484,7 @@ dependencies = [
 [[package]]
 name = "mp4"
 version = "0.14.0"
-source = "git+https://github.com/rerun-io/mp4?rev=ef529032547d7f97161e95c58bd76856cb116349#ef529032547d7f97161e95c58bd76856cb116349"
+source = "git+https://github.com/rerun-io/mp4?rev=b019fcf3ac8e1befded54728686997cc168117c8#b019fcf3ac8e1befded54728686997cc168117c8"
 dependencies = [
  "byteorder",
  "bytes",
@@ -7108,6 +7108,16 @@ name = "test_send_columns"
 version = "0.19.0-alpha.1+dev"
 dependencies = [
  "re_chunk",
+ "rerun",
+]
+
+[[package]]
+name = "test_ui_wakeup"
+version = "0.19.0-alpha.1+dev"
+dependencies = [
+ "anyhow",
+ "clap",
+ "re_log",
  "rerun",
 ]
 

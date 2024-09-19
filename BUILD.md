@@ -50,6 +50,9 @@ All Rust examples are set up as separate executables, so they can be run by spec
 cargo run -p dna
 ```
 
+They will either connect to an already running rerun viewer, or spawn a new one.
+In debug builds, it will spawn `target/debug/rerun` if it exists, otherwise look for `rerun` on `PATH`.
+
 
 ## Building and installing the Rerun Python SDK
 

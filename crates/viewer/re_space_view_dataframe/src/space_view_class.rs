@@ -165,7 +165,8 @@ mode sets the default time range to _everything_. You can override this in the s
                         archetype_field_name: None,
                         component_name: pov_component,
                         // this is actually ignored:
-                        datatype: re_chunk_store::external::arrow2::datatypes::DataType::Null,
+                        store_datatype: re_chunk_store::external::arrow2::datatypes::DataType::Null,
+                        join_encoding: Default::default(),
                         is_static: false,
                     },
                 };
