@@ -766,6 +766,14 @@ impl App {
                 }
             }
 
+            #[cfg(debug_assertions)]
+            UICommand::ResetEguiMemory => {
+                egui_ctx.memory_mut(|mem| *mem = Default::default());
+
+                // re-apply style, which is lost when resetting memory
+                re_ui::apply_style_and_install_loaders(egui_ctx);
+            }
+
             #[cfg(target_arch = "wasm32")]
             UICommand::CopyDirectLink => {
                 self.run_copy_direct_link_command(store_context);
