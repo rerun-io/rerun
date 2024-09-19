@@ -132,12 +132,25 @@ mode sets the default time range to _everything_. You can override this in the s
                         // This forces the menu to expand when the content grows, which happens when
                         // switching from "All" to "Selected".
                         ui.set_max_height(600.0.at_most(ui.ctx().screen_rect().height() * 0.9));
+                        ui.set_max_height(400.0.at_most(ui.ctx().screen_rect().width() * 0.9));
                         egui::ScrollArea::vertical()
                             .show(ui, |ui| {
                                 // do nothing if we don't have a schema (might only happen during the first
                                 // frame?)
                                 if let Some(schema) = &state.schema {
-                                    column_visibility_ui(ctx, ui, space_view_id, schema)?;
+                                    let view_query = super::view_query::Query::try_from_blueprint(
+                                        ctx,
+                                        space_view_id,
+                                    )?;
+                                    let query_timeline_name = view_query.timeline_name(ctx);
+
+                                    column_visibility_ui(
+                                        ctx,
+                                        ui,
+                                        space_view_id,
+                                        schema,
+                                        &query_timeline_name,
+                                    )?;
                                 }
 
                                 Ok(())
@@ -311,6 +324,7 @@ fn column_visibility_ui(
     ui: &mut egui::Ui,
     space_view_id: SpaceViewId,
     schema: &[ColumnDescriptor],
+    query_timeline_name: &TimelineName,
 ) -> Result<(), SpaceViewSystemExecutionError> {
     //
     // All or selected?
@@ -356,12 +370,49 @@ fn column_visibility_ui(
     // Selected time columns
     //
 
-    // let mut selected_time_columns = property
-    //     .component_array_or_empty::<components::TimelineName>()?
-    //     .into_iter()
-    //     .collect::<HashSet<_>>();
+    let mut selected_time_columns = property
+        .component_array_or_empty::<components::TimelineName>()?
+        .into_iter()
+        .collect::<HashSet<_>>();
 
-    //TODO: add UI for time columns (note: the query timeline should be forced ticked)
+    ui.label("Timelines");
+
+    let mut changed = false;
+    for column in schema {
+        let ColumnDescriptor::Time(time_column_descriptor) = column else {
+            continue;
+        };
+
+        let is_query_timeline = time_column_descriptor.timeline.name() == query_timeline_name;
+        let mut is_visible = selected_time_columns.contains(&components::TimelineName::from(
+            time_column_descriptor.timeline.name().as_str(),
+        )) || is_query_timeline;
+
+        ui.add_enabled_ui(!is_query_timeline, |ui| {
+            if ui
+                .re_checkbox(&mut is_visible, column.short_name())
+                .on_disabled_hover_text("The query timeline must always be visible")
+                .changed()
+            {
+                changed = true;
+
+                if is_visible {
+                    selected_time_columns.insert(components::TimelineName::from(
+                        time_column_descriptor.timeline.name().as_str(),
+                    ));
+                } else {
+                    selected_time_columns.remove(&components::TimelineName::from(
+                        time_column_descriptor.timeline.name().as_str(),
+                    ));
+                }
+            }
+        });
+    }
+
+    if changed {
+        let selected_time_columns = selected_time_columns.into_iter().collect::<Vec<_>>();
+        property.save_blueprint_component(ctx, &selected_time_columns);
+    }
 
     //
     // Selected component columns

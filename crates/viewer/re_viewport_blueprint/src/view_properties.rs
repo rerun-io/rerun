@@ -118,14 +118,6 @@ impl<'a> ViewProperty<'a> {
             .map(|v| v.and_then(|v| v.into_iter().next()))
     }
 
-    /// Get a single component or None, not using any fallbacks.
-    #[inline]
-    pub fn component_or_empty_dbg<C: re_types::Component + std::fmt::Debug>(
-        &self,
-    ) -> Result<Option<C>, DeserializationError> {
-        dbg!(self.component_array()).map(|v| v.and_then(|v| v.into_iter().next()))
-    }
-
     /// Get the component array for a given type, not using any fallbacks.
     pub fn component_array<C: re_types::Component>(
         &self,
