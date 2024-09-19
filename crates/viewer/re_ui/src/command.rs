@@ -236,7 +236,7 @@ impl UICommand {
             ),
 
             #[cfg(debug_assertions)]
-            UICommand::ResetEguiMemory => (
+            Self::ResetEguiMemory => (
                 "Reset egui memory",
                 "Reset egui memory, useful for debugging UI code.",
             ),
