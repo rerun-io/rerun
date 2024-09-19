@@ -14,6 +14,7 @@ mod mesh_cache;
 mod mesh_loader;
 mod pickable_textured_rect;
 mod picking;
+mod picking_ui;
 mod proc_mesh;
 mod scene_bounding_boxes;
 mod space_camera_3d;
