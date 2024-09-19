@@ -1,7 +1,7 @@
 use std::borrow::Cow;
 
 /// Utility for dealing with buffers containing raw 2D texture data.
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct Texture2DBufferInfo {
     /// How many bytes per row contain actual data.
     pub bytes_per_row_unpadded: u32,

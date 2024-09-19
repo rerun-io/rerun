@@ -1,5 +1,5 @@
 use re_data_ui::item_ui;
-use re_renderer::{renderer::ColormappedTexture, resource_managers::GpuTexture2D};
+use re_renderer::{external::wgpu, renderer::ColormappedTexture, resource_managers::GpuTexture2D};
 use re_types::{datatypes::ColorModel, image::ImageKind, tensor_data::TensorElement};
 use re_ui::UiExt as _;
 use re_viewer_context::{gpu_bridge, Annotations, ImageInfo, ViewQuery, ViewerContext};
@@ -366,27 +366,19 @@ fn pixel_value_ui(
     }
 }
 
-fn pixel_value_string_from_image(image: &ImageInfo, x: u32, y: u32) -> Option<String> {
-    match image.kind {
-        ImageKind::Segmentation | ImageKind::Depth => {
-            image.get_xyc(x, y, 0).map(|v| format!("Val: {v}"))
-        }
+fn format_pixel_value(
+    image_kind: ImageKind,
+    color_model: ColorModel,
+    elements: &[TensorElement],
+) -> Option<String> {
+    match image_kind {
+        ImageKind::Segmentation | ImageKind::Depth => elements.first().map(|v| format!("Val: {v}")),
 
-        ImageKind::Color => match image.color_model() {
-            ColorModel::L => image.get_xyc(x, y, 0).map(|v| format!("L: {v}")),
+        ImageKind::Color => match color_model {
+            ColorModel::L => elements.first().map(|v| format!("L: {v}")),
 
             ColorModel::RGB => {
-                if let Some([r, g, b]) = {
-                    if let [Some(r), Some(g), Some(b)] = [
-                        image.get_xyc(x, y, 0),
-                        image.get_xyc(x, y, 1),
-                        image.get_xyc(x, y, 2),
-                    ] {
-                        Some([r, g, b])
-                    } else {
-                        None
-                    }
-                } {
+                if let [r, g, b] = elements {
                     match (r, g, b) {
                         (TensorElement::U8(r), TensorElement::U8(g), TensorElement::U8(b)) => {
                             Some(format!("R: {r}, G: {g}, B: {b}, #{r:02X}{g:02X}{b:02X}"))
@@ -399,12 +391,7 @@ fn pixel_value_string_from_image(image: &ImageInfo, x: u32, y: u32) -> Option<St
             }
 
             ColorModel::RGBA => {
-                if let (Some(r), Some(g), Some(b), Some(a)) = (
-                    image.get_xyc(x, y, 0),
-                    image.get_xyc(x, y, 1),
-                    image.get_xyc(x, y, 2),
-                    image.get_xyc(x, y, 3),
-                ) {
+                if let [r, g, b, a] = elements {
                     match (r, g, b, a) {
                         (
                             TensorElement::U8(r),
@@ -422,17 +409,7 @@ fn pixel_value_string_from_image(image: &ImageInfo, x: u32, y: u32) -> Option<St
             }
 
             ColorModel::BGR => {
-                if let Some([b, g, r]) = {
-                    if let [Some(b), Some(g), Some(r)] = [
-                        image.get_xyc(x, y, 0),
-                        image.get_xyc(x, y, 1),
-                        image.get_xyc(x, y, 2),
-                    ] {
-                        Some([r, g, b])
-                    } else {
-                        None
-                    }
-                } {
+                if let [b, g, r] = elements {
                     match (b, g, r) {
                         (TensorElement::U8(b), TensorElement::U8(g), TensorElement::U8(r)) => {
                             Some(format!("B: {b}, G: {g}, R: {r}, #{b:02X}{g:02X}{r:02X}"))
@@ -445,12 +422,7 @@ fn pixel_value_string_from_image(image: &ImageInfo, x: u32, y: u32) -> Option<St
             }
 
             ColorModel::BGRA => {
-                if let (Some(b), Some(g), Some(r), Some(a)) = (
-                    image.get_xyc(x, y, 0),
-                    image.get_xyc(x, y, 1),
-                    image.get_xyc(x, y, 2),
-                    image.get_xyc(x, y, 3),
-                ) {
+                if let [b, g, r, a] = elements {
                     match (b, g, r, a) {
                         (
                             TensorElement::U8(b),
@@ -470,6 +442,53 @@ fn pixel_value_string_from_image(image: &ImageInfo, x: u32, y: u32) -> Option<St
     }
 }
 
+fn pixel_value_string_from_image(image: &ImageInfo, x: u32, y: u32) -> Option<String> {
+    match image.kind {
+        ImageKind::Segmentation | ImageKind::Depth => format_pixel_value(
+            image.kind,
+            image.color_model(),
+            image.get_xyc(x, y, 0).as_slice(),
+        ),
+
+        ImageKind::Color => match image.color_model() {
+            ColorModel::L => format_pixel_value(
+                image.kind,
+                image.color_model(),
+                image.get_xyc(x, y, 0).as_slice(),
+            ),
+
+            ColorModel::BGR | ColorModel::RGB => format_pixel_value(
+                image.kind,
+                image.color_model(),
+                &[
+                    image.get_xyc(x, y, 0)?,
+                    image.get_xyc(x, y, 1)?,
+                    image.get_xyc(x, y, 2)?,
+                ],
+            ),
+
+            ColorModel::BGRA | ColorModel::RGBA => format_pixel_value(
+                image.kind,
+                image.color_model(),
+                &[
+                    image.get_xyc(x, y, 0)?,
+                    image.get_xyc(x, y, 1)?,
+                    image.get_xyc(x, y, 2)?,
+                    image.get_xyc(x, y, 3)?,
+                ],
+            ),
+        },
+    }
+}
+
+struct TextureReadbackUserdata {
+    /// Rect on the texture that was read back.
+    readback_rect: re_renderer::RectInt,
+
+    /// Info about the buffer we're reading back.
+    buffer_info: re_renderer::Texture2DBufferInfo,
+}
+
 fn pixel_value_string_from_gpu_texture(
     render_ctx: &re_renderer::RenderContext,
     texture: &GpuTexture2D,
@@ -477,5 +496,113 @@ fn pixel_value_string_from_gpu_texture(
     x: u32,
     y: u32,
 ) -> Option<String> {
-    None
+    // TODO(andreas): Should parts of this be a utility in re_renderer?
+    // Note that before this was implemented the readback belt was private to `re_renderer` because it is fairly advanced in its usage.
+
+    // Only support Rgb8Unorm textures for now.
+    // We could support more here but that needs more handling code and it doesn't look like we have to right now.
+    if texture.format() != wgpu::TextureFormat::Rgba8Unorm {
+        return None;
+    }
+
+    let readback_id = interaction_id.gpu_readback_id();
+    let pixel_pos = glam::IVec2::new(x as i32, y as i32);
+
+    let mut readback_belt = render_ctx.gpu_readback_belt.lock();
+
+    // First check if we have a result ready to read.
+    // Keep in mind that copy operation may have required row-padding, use `buffer_info` to get the right values.
+    let mut readback_result_rgb = None;
+    readback_belt.readback_data::<TextureReadbackUserdata>(readback_id, |data, userdata| {
+        debug_assert!(data.len() == userdata.buffer_info.buffer_size_padded as usize);
+
+        // Try to find the pixel at the mouse position.
+        // If our position isn't available, just clamp to the edge of the area.
+        let data_pos = (pixel_pos - userdata.readback_rect.min())
+            .clamp(
+                glam::IVec2::ZERO,
+                // Exclusive the size of the area we're reading back.
+                userdata.readback_rect.extent.as_ivec2() - glam::IVec2::ONE,
+            )
+            .as_uvec2();
+        let start_index =
+            (data_pos.x * 4 + userdata.buffer_info.bytes_per_row_padded * data_pos.y) as usize;
+
+        readback_result_rgb = Some([
+            data[start_index],
+            data[start_index + 1],
+            data[start_index + 2],
+        ]);
+    });
+
+    // Then enqueue a new readback.
+    //
+    // It's quite hard to figure out when we no longer have to do this. The criteria would be roughly:
+    // * mouse has not moved
+    // * since the mouse moved last time we received the result
+    // * the result we received is still about the exact same texture _content_
+    //      * if it is a video the exact same texture may show a different frame by now
+    // So instead we err on the safe side and keep requesting readbacks & frames.
+    // TODO: request frames
+
+    // Read back a region of a few pixels. Criteria:
+    // * moving the mouse doesn't typically immediately end up in a different region, important since readback has a delay
+    // * we don't go overboard and read back a ton of data
+    // * copy operation doesn't induce a lot of padding overhead due to row padding requirements
+    const READBACK_RECT_SIZE: i32 = 64;
+
+    let resolution = glam::UVec2::from_array(texture.width_height()).as_ivec2();
+    let readback_rect_min = (pixel_pos - glam::IVec2::splat(READBACK_RECT_SIZE / 2))
+        .clamp(glam::IVec2::ZERO, resolution);
+    let readback_rect_max = (pixel_pos + glam::IVec2::splat(READBACK_RECT_SIZE / 2))
+        .clamp(glam::IVec2::ZERO, resolution);
+    let readback_rect_size = readback_rect_max - readback_rect_min;
+
+    if readback_rect_size.x <= 0 || readback_rect_size.y <= 0 {
+        return None;
+    }
+    let readback_area_size = readback_rect_size.as_uvec2();
+    let readback_rect = re_renderer::RectInt {
+        min: readback_rect_min,
+        extent: readback_area_size,
+    };
+
+    let buffer_info =
+        re_renderer::Texture2DBufferInfo::new(texture.format(), readback_rect.wgpu_extent());
+
+    let mut readback_buffer = readback_belt.allocate(
+        &render_ctx.device,
+        &render_ctx.gpu_resources.buffers,
+        buffer_info.buffer_size_padded,
+        readback_id,
+        Box::new(TextureReadbackUserdata {
+            readback_rect,
+            buffer_info,
+        }),
+    );
+
+    {
+        let mut encoder = render_ctx.active_frame.before_view_builder_encoder.lock();
+        if let Err(err) = readback_buffer.read_texture2d(
+            encoder.get(),
+            wgpu::ImageCopyTexture {
+                texture: &texture.texture,
+                mip_level: 0,
+                origin: readback_rect.wgpu_origin(),
+                aspect: wgpu::TextureAspect::All,
+            },
+            readback_rect.wgpu_extent(),
+        ) {
+            re_log::error_once!("Failed to read back texture: {err}");
+        }
+    }
+
+    readback_result_rgb.and_then(|rgb| {
+        let rgb = [
+            TensorElement::U8(rgb[0]),
+            TensorElement::U8(rgb[1]),
+            TensorElement::U8(rgb[2]),
+        ];
+        format_pixel_value(ImageKind::Color, ColorModel::RGB, &rgb)
+    })
 }
