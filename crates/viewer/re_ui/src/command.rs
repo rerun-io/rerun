@@ -78,6 +78,9 @@ pub enum UICommand {
     #[cfg(not(target_arch = "wasm32"))]
     PrintPrimaryCache,
 
+    #[cfg(debug_assertions)]
+    ResetEguiMemory,
+
     #[cfg(target_arch = "wasm32")]
     CopyDirectLink,
 
@@ -232,6 +235,11 @@ impl UICommand {
                 "Prints the state of the entire primary cache to the console and clipboard. WARNING: this may be A LOT of text.",
             ),
 
+            #[cfg(debug_assertions)]
+            Self::ResetEguiMemory => (
+                "Reset egui memory",
+                "Reset egui memory, useful for debugging UI code.",
+            ),
 
             #[cfg(target_arch = "wasm32")]
             Self::CopyDirectLink => (
@@ -339,6 +347,9 @@ impl UICommand {
             Self::ClearPrimaryCache => None,
             #[cfg(not(target_arch = "wasm32"))]
             Self::PrintPrimaryCache => None,
+
+            #[cfg(debug_assertions)]
+            Self::ResetEguiMemory => None,
 
             #[cfg(target_arch = "wasm32")]
             Self::CopyDirectLink => None,
