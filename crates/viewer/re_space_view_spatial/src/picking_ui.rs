@@ -1,10 +1,7 @@
 use egui::NumExt as _;
 
-use re_data_ui::{
-    item_ui, show_zoomed_image_region, show_zoomed_image_region_area_outline, DataUi as _,
-};
+use re_data_ui::{item_ui, DataUi as _};
 use re_log_types::Instance;
-use re_renderer::renderer::ColormappedTexture;
 use re_ui::{
     list_item::{list_item_scope, PropertyContent},
     UiExt as _,
@@ -17,6 +14,7 @@ use re_viewer_context::{
 use crate::{
     contexts::AnnotationSceneContext,
     picking::{PickableUiRect, PickingContext, PickingHitType},
+    picking_ui_pixel::{image_hover_ui, PickedPixelInfo},
     ui::SpatialSpaceViewState,
     view_kind::SpatialSpaceViewKind,
     visualizers::{iter_spatial_visualizer_data, CamerasVisualizer, DepthImageVisualizer},
@@ -277,95 +275,6 @@ fn get_pixel_picking_info(
     } else {
         None
     }
-}
-
-struct PickedPixelInfo {
-    source_data: PickableRectSourceData,
-    texture: ColormappedTexture,
-    pixel_coordinates: [u32; 2],
-}
-
-#[allow(clippy::too_many_arguments)]
-fn image_hover_ui(
-    ctx: &ViewerContext<'_>,
-    ui: &mut egui::Ui,
-    instance_path: &re_entity_db::InstancePath,
-    query: &ViewQuery<'_>,
-    spatial_kind: SpatialSpaceViewKind,
-    ui_pan_and_zoom_from_ui: egui::emath::RectTransform,
-    annotations: &AnnotationSceneContext,
-    picked_pixel_info: PickedPixelInfo,
-) {
-    let Some(render_ctx) = ctx.render_ctx else {
-        return;
-    };
-
-    let PickedPixelInfo {
-        source_data,
-        texture,
-        pixel_coordinates,
-    } = picked_pixel_info;
-
-    let depth_meter = match &source_data {
-        PickableRectSourceData::Image { depth_meter, .. } => *depth_meter,
-        PickableRectSourceData::Video { .. } => None,
-        PickableRectSourceData::ErrorPlaceholder => {
-            // No point in zooming into an error placeholder!
-            return;
-        }
-    };
-
-    let depth_meter = depth_meter.map(|d| *d.0);
-
-    item_ui::instance_path_button(
-        ctx,
-        &query.latest_at_query(),
-        ctx.recording(),
-        ui,
-        Some(query.space_view_id),
-        instance_path,
-    );
-
-    ui.add_space(8.0);
-
-    ui.horizontal(|ui| {
-        let [w, h] = texture.width_height();
-        let (w, h) = (w as f32, h as f32);
-
-        if spatial_kind == SpatialSpaceViewKind::TwoD {
-            let rect = egui::Rect::from_min_size(egui::Pos2::ZERO, egui::vec2(w, h));
-
-            show_zoomed_image_region_area_outline(
-                ui.ctx(),
-                *ui_pan_and_zoom_from_ui.from(),
-                egui::vec2(w, h),
-                [pixel_coordinates[0] as _, pixel_coordinates[1] as _],
-                ui_pan_and_zoom_from_ui.inverse().transform_rect(rect),
-            );
-        }
-
-        let image = if let PickableRectSourceData::Image { image, .. } = &source_data {
-            Some(image)
-        } else {
-            None
-        };
-
-        let annotations = annotations.0.find(&instance_path.entity_path);
-
-        show_zoomed_image_region(
-            render_ctx,
-            ui,
-            texture,
-            image,
-            &annotations,
-            depth_meter,
-            &re_data_ui::TextureInteractionId {
-                entity_path: &instance_path.entity_path,
-                interaction_idx: 0, // TODO: put hit number in here
-            },
-            [pixel_coordinates[0] as _, pixel_coordinates[1] as _],
-        );
-    });
 }
 
 fn hit_ui(ui: &mut egui::Ui, hit: &crate::picking::PickingRayHit) {
