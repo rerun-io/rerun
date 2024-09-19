@@ -671,7 +671,8 @@ impl<'a, 'b> egui_tiles::Behavior<SpaceViewId> for TabViewer<'a, 'b> {
         };
         let space_view_id = *space_view_id;
 
-        let Some(space_view) = self.viewport_blueprint.space_views.get(&space_view_id) else {
+        let Some(space_view_blueprint) = self.viewport_blueprint.space_views.get(&space_view_id)
+        else {
             return;
         };
         let num_space_views = tiles.tiles().filter(|tile| tile.is_pane()).count();
@@ -699,9 +700,29 @@ impl<'a, 'b> egui_tiles::Behavior<SpaceViewId> for TabViewer<'a, 'b> {
             }
         }
 
-        let help_markdown = space_view
-            .class(self.ctx.space_view_class_registry)
-            .help_markdown(self.ctx.egui_ctx);
+        let space_view_class = space_view_blueprint.class(self.ctx.space_view_class_registry);
+
+        // give the view a chance to display some extra UI in the top bar.
+        let view_state = self
+            .view_states
+            .get_mut_or_create(space_view_id, space_view_class);
+        space_view_class
+            .extra_title_bar_ui(
+                self.ctx,
+                ui,
+                view_state,
+                &space_view_blueprint.space_origin,
+                space_view_id,
+            )
+            .unwrap_or_else(|err| {
+                re_log::error!(
+                    "Error in view title bar UI (class: {}, display name: {}): {err}",
+                    space_view_blueprint.class_identifier(),
+                    space_view_class.display_name(),
+                );
+            });
+
+        let help_markdown = space_view_class.help_markdown(self.ctx.egui_ctx);
         ui.help_hover_button().on_hover_ui(|ui| {
             ui.markdown_ui(&help_markdown);
         });
