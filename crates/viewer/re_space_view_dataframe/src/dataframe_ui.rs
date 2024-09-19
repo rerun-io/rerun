@@ -194,6 +194,12 @@ impl<'a> egui_table::TableDelegate for DataframeTableDelegate<'a> {
     }
 
     fn header_cell_ui(&mut self, ui: &mut egui::Ui, cell: &egui_table::HeaderCellInfo) {
+        if ui.is_sizing_pass() {
+            ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Extend);
+        } else {
+            ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Truncate);
+        }
+
         egui::Frame::none()
             .inner_margin(egui::Margin::symmetric(4.0, 0.0))
             .show(ui, |ui| {
