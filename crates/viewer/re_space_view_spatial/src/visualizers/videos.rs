@@ -284,7 +284,7 @@ impl VideoFrameReferenceVisualizer {
         let Ok(video_error_texture) = video_error_texture_result.inspect_err(|err| {
             re_log::error_once!("Failed to show video error icon: {err}");
         }) else {
-            return; // We failed at failing...
+            return; // We failed at failing…
         };
 
         // Center the icon in the middle of the video rectangle.

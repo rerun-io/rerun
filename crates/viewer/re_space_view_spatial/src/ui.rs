@@ -443,7 +443,7 @@ pub fn picking(
                             ui,
                             &instance_path,
                             spatial_kind,
-                            picking_context.ui_pan_and_zoom_from_ui,
+                            picking_context.camera_plane_from_ui,
                             annotations,
                             picked_image,
                         );
@@ -488,7 +488,7 @@ pub fn picking(
             SpatialSpaceViewKind::TwoD => ItemSpaceContext::TwoD {
                 space_2d: query.space_origin.clone(),
                 pos: picking_context
-                    .pointer_in_ui_after_pan_and_zoom
+                    .pointer_in_camera_plane
                     .extend(depth_at_pointer.unwrap_or(f32::INFINITY)),
             },
             SpatialSpaceViewKind::ThreeD => {

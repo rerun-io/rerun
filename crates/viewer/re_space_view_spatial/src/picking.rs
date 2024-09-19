@@ -69,16 +69,15 @@ pub struct PickingContext {
 
     /// Cursor position in the UI coordinates after panning & zooming.
     ///
-    /// Note that for 2D spaces these are the final 2D space coordinates.
-    ///
     /// As of writing, for 3D spaces this is equal to [Self::pointer_in_ui],
     /// since we don't allow panning & zooming after perspective projection.
-    pub pointer_in_ui_after_pan_and_zoom: glam::Vec2,
+    pub pointer_in_camera_plane: glam::Vec2,
 
-    /// Apply pan & zoom to ui coordinates.
+    /// Transforms ui coordinates to "ui-camera-plane-coordinates"
+    /// Ui camera plane coordinates are ui coordinates that have been panned and zoomed.
     ///
-    /// See also [`Self::pointer_in_ui_after_pan_and_zoom`].
-    pub ui_pan_and_zoom_from_ui: egui::emath::RectTransform,
+    /// See also [`Self::pointer_in_camera_plane`].
+    pub camera_plane_from_ui: egui::emath::RectTransform,
 
     /// The picking ray used. Given in the coordinates of the space the picking is performed in.
     pub ray_in_world: re_math::Ray3,
@@ -95,27 +94,22 @@ impl PickingContext {
     /// information about the picking ray & general circumstances.
     pub fn new(
         pointer_in_ui: egui::Pos2,
-        ui_pan_and_zoom_from_ui: egui::emath::RectTransform,
+        camera_plane_from_ui: egui::emath::RectTransform,
         pixels_per_point: f32,
         eye: &Eye,
     ) -> Self {
-        let pointer_in_ui_after_pan_and_zoom = ui_pan_and_zoom_from_ui.transform_pos(pointer_in_ui);
-        let pointer_in_ui_after_pan_and_zoom = glam::vec2(
-            pointer_in_ui_after_pan_and_zoom.x,
-            pointer_in_ui_after_pan_and_zoom.y,
-        );
+        let pointer_in_camera_plane = camera_plane_from_ui.transform_pos(pointer_in_ui);
+        let pointer_in_camera_plane =
+            glam::vec2(pointer_in_camera_plane.x, pointer_in_camera_plane.y);
         let pointer_in_pixel =
-            (pointer_in_ui - ui_pan_and_zoom_from_ui.from().left_top()) * pixels_per_point;
+            (pointer_in_ui - camera_plane_from_ui.from().left_top()) * pixels_per_point;
 
         Self {
-            pointer_in_ui_after_pan_and_zoom,
+            pointer_in_camera_plane,
             pointer_in_pixel: glam::vec2(pointer_in_pixel.x, pointer_in_pixel.y),
             pointer_in_ui: glam::vec2(pointer_in_ui.x, pointer_in_ui.y),
-            ui_pan_and_zoom_from_ui,
-            ray_in_world: eye.picking_ray(
-                *ui_pan_and_zoom_from_ui.to(),
-                pointer_in_ui_after_pan_and_zoom,
-            ),
+            camera_plane_from_ui,
+            ray_in_world: eye.picking_ray(*camera_plane_from_ui.to(), pointer_in_camera_plane),
         }
     }
 
@@ -325,8 +319,8 @@ fn picking_ui_rects(
     re_tracing::profile_function!();
 
     let egui_pos = egui::pos2(
-        context.pointer_in_ui_after_pan_and_zoom.x,
-        context.pointer_in_ui_after_pan_and_zoom.y,
+        context.pointer_in_camera_plane.x,
+        context.pointer_in_camera_plane.y,
     );
     for ui_rect in ui_rects {
         if ui_rect.rect.contains(egui_pos) {
