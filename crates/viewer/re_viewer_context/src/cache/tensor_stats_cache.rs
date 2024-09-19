@@ -1,8 +1,8 @@
 use re_chunk::RowId;
 use re_types::datatypes::TensorData;
 
-use super::TensorStats;
 use crate::Cache;
+use crate::TensorStats;
 
 /// Caches tensor stats using a [`RowId`], i.e. a specific instance of
 /// a `TensorData` component

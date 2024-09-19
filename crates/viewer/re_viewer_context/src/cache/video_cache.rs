@@ -1,9 +1,10 @@
-use re_entity_db::VersionedInstancePathHash;
-use re_renderer::{video::Video, RenderContext};
-use re_types::components::MediaType;
-use re_viewer_context::Cache;
-
-use egui::mutex::Mutex;
+use crate::Cache;
+use re_chunk::RowId;
+use re_log_types::hash::Hash64;
+use re_renderer::{
+    video::{Video, VideoError},
+    RenderContext,
+};
 
 use std::sync::{
     atomic::{AtomicBool, Ordering},
@@ -12,46 +13,39 @@ use std::sync::{
 
 // ----------------------------------------------------------------------------
 
-#[derive(Debug, PartialEq, Eq, Hash, Clone)]
-pub struct VideoCacheKey {
-    pub versioned_instance_path_hash: VersionedInstancePathHash,
-    pub media_type: Option<MediaType>,
-}
-
 struct Entry {
     used_this_frame: AtomicBool,
-    video: Option<Arc<Mutex<Video>>>,
+
+    /// Keeps failed loads around, so we can don't try again and again.
+    video: Arc<Result<Video, VideoError>>,
 }
 
-/// Caches meshes based on their [`VideoCacheKey`].
+/// Caches meshes based on media type & row id.
 #[derive(Default)]
-pub struct VideoCache(ahash::HashMap<VideoCacheKey, Entry>);
+pub struct VideoCache(ahash::HashMap<Hash64, Entry>);
 
 impl VideoCache {
+    /// Read in some video data and cache the result.
+    ///
+    /// The `row_id` should be the `RowId` of the blob.
+    /// NOTE: videos are never batched atm (they are mono-archetypes),
+    /// so we don't need the instance id here.
     pub fn entry(
         &mut self,
-        name: &str,
-        key: VideoCacheKey,
-        video_data: &[u8],
+        row_id: RowId,
+        video_data: &re_types::datatypes::Blob,
         media_type: Option<&str>,
         render_ctx: &RenderContext,
-    ) -> Option<Arc<Mutex<Video>>> {
+    ) -> Arc<Result<Video, VideoError>> {
         re_tracing::profile_function!();
 
+        let key = Hash64::hash((row_id, media_type));
+
         let entry = self.0.entry(key).or_insert_with(|| {
-            re_log::debug!("Loading video {name:?}…");
-
-            let video = match Video::load(render_ctx, video_data, media_type) {
-                Ok(video) => Some(Arc::new(Mutex::new(video))),
-                Err(err) => {
-                    re_log::warn_once!("Failed to load video {name:?}: {err}");
-                    None
-                }
-            };
-
+            let video = Video::load(render_ctx, video_data, media_type);
             Entry {
-                used_this_frame: AtomicBool::new(false),
-                video,
+                used_this_frame: AtomicBool::new(true),
+                video: Arc::new(video),
             }
         });
 

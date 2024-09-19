@@ -1,8 +1,6 @@
 use egui::util::hash;
 
-use crate::{Cache, ImageInfo};
-
-use super::ImageStats;
+use crate::{Cache, ImageInfo, ImageStats};
 
 // Caches image stats using a [`RowId`]
 #[derive(Default)]

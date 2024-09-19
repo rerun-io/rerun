@@ -5504,6 +5504,7 @@ dependencies = [
  "egui",
  "glam",
  "hexasphere",
+ "image",
  "itertools 0.13.0",
  "mimalloc",
  "nohash-hasher",

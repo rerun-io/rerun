@@ -8,7 +8,7 @@ use web_sys::{
     VideoDecoderInit,
 };
 
-use re_video::{TimeMs, VideoData};
+use re_video::TimeMs;
 
 use super::latest_at_idx;
 use crate::{
@@ -37,7 +37,7 @@ impl std::ops::Deref for VideoFrame {
 }
 
 pub struct VideoDecoder {
-    data: re_video::VideoData,
+    data: Arc<re_video::VideoData>,
     queue: Arc<wgpu::Queue>,
     texture: GpuTexture2D,
 
@@ -81,7 +81,10 @@ impl Drop for VideoDecoder {
 }
 
 impl VideoDecoder {
-    pub fn new(render_context: &RenderContext, data: VideoData) -> Result<Self, DecodingError> {
+    pub fn new(
+        render_context: &RenderContext,
+        data: Arc<re_video::VideoData>,
+    ) -> Result<Self, DecodingError> {
         let frames = Arc::new(Mutex::new(Vec::with_capacity(16)));
 
         let decoder = init_video_decoder({
@@ -116,18 +119,6 @@ impl VideoDecoder {
             current_segment_idx: usize::MAX,
             current_sample_idx: usize::MAX,
         })
-    }
-
-    pub fn duration_ms(&self) -> f64 {
-        self.data.duration.as_f64()
-    }
-
-    pub fn width(&self) -> u32 {
-        self.data.config.coded_width as u32
-    }
-
-    pub fn height(&self) -> u32 {
-        self.data.config.coded_height as u32
     }
 
     pub fn frame_at(&mut self, timestamp: TimeMs) -> FrameDecodingResult {
@@ -252,8 +243,8 @@ impl VideoDecoder {
         } else {
             EncodedVideoChunkType::Delta
         };
-        let chunk = EncodedVideoChunkInit::new(&data, sample.timestamp.as_f64(), type_);
-        chunk.set_duration(sample.duration.as_f64());
+        let chunk = EncodedVideoChunkInit::new(&data, sample.timestamp.as_ms_f64(), type_);
+        chunk.set_duration(sample.duration.as_ms_f64());
         let Some(chunk) = EncodedVideoChunk::new(&chunk)
             .inspect_err(|err| {
                 // TODO(#7373): return this error once the decoder tries to return a frame for this sample. how exactly?

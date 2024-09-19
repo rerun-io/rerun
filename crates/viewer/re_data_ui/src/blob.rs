@@ -1,5 +1,5 @@
 use re_types::components::{Blob, MediaType};
-use re_ui::{list_item::PropertyContent, UiExt as _};
+use re_ui::{list_item::PropertyContent, UiExt};
 use re_viewer_context::UiLayout;
 
 use crate::{image::image_preview_ui, EntityDataUi};
@@ -81,7 +81,6 @@ impl EntityDataUi for Blob {
     }
 }
 
-// TODO(jan): this should NOT try to load videos as images
 #[allow(clippy::too_many_arguments)]
 pub fn blob_preview_and_save_ui(
     ctx: &re_viewer_context::ViewerContext<'_>,
@@ -90,9 +89,10 @@ pub fn blob_preview_and_save_ui(
     query: &re_chunk_store::LatestAtQuery,
     entity_path: &re_log_types::EntityPath,
     blob_row_id: Option<re_chunk_store::RowId>,
-    blob: &[u8],
+    blob: &re_types::datatypes::Blob,
     media_type: Option<&MediaType>,
 ) {
+    // Try to treat it as an image:
     let image = blob_row_id.and_then(|row_id| {
         ctx.cache
             .entry(|c: &mut re_viewer_context::ImageDecodeCache| {
@@ -100,9 +100,24 @@ pub fn blob_preview_and_save_ui(
             })
             .ok()
     });
-
     if let Some(image) = &image {
         image_preview_ui(ctx, ui, ui_layout, query, entity_path, image);
+    }
+    // Try to treat it as a video if treating it as image didn't work:
+    else if let Some(render_ctx) = ctx.render_ctx {
+        let video_result = blob_row_id.map(|row_id| {
+            ctx.cache.entry(|c: &mut re_viewer_context::VideoCache| {
+                c.entry(
+                    row_id,
+                    blob,
+                    media_type.as_ref().map(|mt| mt.as_str()),
+                    render_ctx,
+                )
+            })
+        });
+        if let Some(video_result) = &video_result {
+            show_video_blob_info(ui, ui_layout, video_result);
+        }
     }
 
     if !ui_layout.is_single_line() && ui_layout != UiLayout::Tooltip {
@@ -140,5 +155,58 @@ pub fn blob_preview_and_save_ui(
                 }
             }
         });
+    }
+}
+
+fn show_video_blob_info(
+    ui: &mut egui::Ui,
+    ui_layout: UiLayout,
+    video_result: &Result<re_renderer::video::Video, re_renderer::video::VideoError>,
+) {
+    match video_result {
+        Ok(video) => {
+            if ui_layout.is_single_line() {
+                return;
+            }
+
+            re_ui::list_item::list_item_scope(ui, "video_blob_info", |ui| {
+                ui.list_item_flat_noninteractive(re_ui::list_item::LabelContent::new(
+                    "Video properties",
+                ));
+                ui.list_item_flat_noninteractive(
+                    PropertyContent::new("Dimensions").value_text(format!(
+                        "{}x{}",
+                        video.width(),
+                        video.height()
+                    )),
+                );
+                ui.list_item_flat_noninteractive(PropertyContent::new("Duration").value_text(
+                    format!(
+                        "{}",
+                        re_log_types::Duration::from_millis(video.duration().as_ms_f64() as _)
+                    ),
+                ));
+                // Some people may think that num_frames / duration = fps, but that's not true, videos may have variable frame rate.
+                // At the same time, we don't want to overload users with video codec/container specific stuff that they have to understand,
+                // and for all intents and purposes one sample = one frame.
+                // So the compromise is that we truthfully show the number of *samples* here and don't talk about frames.
+                ui.list_item_flat_noninteractive(
+                    PropertyContent::new("Sample count")
+                        .value_text(format!("{}", video.count_samples())),
+                );
+                ui.list_item_flat_noninteractive(
+                    PropertyContent::new("Codec").value_text(video.codec()),
+                );
+
+                // TODO(andreas): A mini video player at this point would be awesome!
+            });
+        }
+        Err(err) => {
+            if ui_layout.is_single_line() {
+                ui.error_label(&format!("Failed to load video: {err}"));
+            } else {
+                ui.error_label_long(&format!("Failed to load video: {err}"));
+            }
+        }
     }
 }

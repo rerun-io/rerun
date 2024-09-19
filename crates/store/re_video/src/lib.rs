@@ -58,7 +58,7 @@ impl VideoData {
         self.segments.iter().flat_map(|seg| {
             seg.samples
                 .iter()
-                .map(|sample| sample.timestamp.as_nanoseconds())
+                .map(|sample| sample.timestamp.as_nanos())
                 .sorted()
         })
     }
@@ -120,12 +120,12 @@ impl TimeMs {
     }
 
     #[inline]
-    pub fn as_f64(&self) -> f64 {
+    pub fn as_ms_f64(&self) -> f64 {
         self.0.into_inner()
     }
 
     #[inline]
-    pub fn as_nanoseconds(self) -> i64 {
+    pub fn as_nanos(self) -> i64 {
         (self.0 * 1_000_000.0).round() as i64
     }
 }
