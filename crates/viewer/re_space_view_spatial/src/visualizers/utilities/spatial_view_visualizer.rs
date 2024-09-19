@@ -7,7 +7,7 @@ use crate::{view_kind::SpatialSpaceViewKind, PickableTexturedRect};
 ///
 /// Each spatial scene element is expected to fill an instance of this struct with its data.
 pub struct SpatialViewVisualizerData {
-    /// Labels that should be shown rendering egui.
+    /// Labels that should be shown using egui.
     pub ui_labels: Vec<UiLabel>,
 
     /// Bounding boxes of all visualizations that the visualizer showed.
