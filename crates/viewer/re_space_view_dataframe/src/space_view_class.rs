@@ -2,7 +2,7 @@ use std::any::Any;
 use std::collections::HashSet;
 
 use egui::NumExt as _;
-use re_chunk_store::ColumnDescriptor;
+use re_chunk_store::{ColumnDescriptor, ColumnSelector};
 use re_log_types::{EntityPath, EntityPathFilter, ResolvedTimeRange, TimelineName};
 use re_types::blueprint::{archetypes, components};
 use re_types_core::SpaceViewClassIdentifier;
@@ -231,15 +231,10 @@ mode sets the default time range to _everything_. You can override this in the s
                     timeline: *timeline,
                     time_range: ResolvedTimeRange::new(from, to),
                     //TODO(#7365): using ComponentColumnDescriptor to specify PoV needs to go
-                    pov: re_chunk_store::ComponentColumnDescriptor {
+                    pov: re_chunk_store::ComponentColumnSelector {
                         entity_path: pov_entity.clone(),
-                        archetype_name: None,
-                        archetype_field_name: None,
-                        component_name: pov_component,
-                        // this is actually ignored:
-                        store_datatype: re_chunk_store::external::arrow2::datatypes::DataType::Null,
+                        component: pov_component,
                         join_encoding: Default::default(),
-                        is_static: false,
                     },
                 };
 
@@ -274,7 +269,7 @@ fn apply_column_visibility_to_schema(
     space_view_id: SpaceViewId,
     query_timeline_name: &TimelineName,
     schema: &[ColumnDescriptor],
-) -> Result<Option<Vec<ColumnDescriptor>>, SpaceViewSystemExecutionError> {
+) -> Result<Option<Vec<ColumnSelector>>, SpaceViewSystemExecutionError> {
     let property = ViewProperty::from_archetype::<archetypes::DataframeVisibleColumns>(
         ctx.blueprint_db(),
         ctx.blueprint_query,
@@ -319,6 +314,7 @@ fn apply_column_visibility_to_schema(
             }
         })
         .cloned()
+        .map(ColumnSelector::from)
         .collect();
 
     Ok(Some(result))

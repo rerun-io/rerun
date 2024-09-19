@@ -1,6 +1,7 @@
 use re_chunk::TransportChunk;
 use re_chunk_store::{
-    ChunkStore, ColumnDescriptor, LatestAtQueryExpression, QueryExpression, RangeQueryExpression,
+    ChunkStore, ColumnDescriptor, ColumnSelector, LatestAtQueryExpression, QueryExpression,
+    RangeQueryExpression,
 };
 use re_query::Caches;
 
@@ -98,7 +99,7 @@ impl QueryEngine<'_> {
     pub fn query(
         &self,
         query: &QueryExpression,
-        columns: Option<Vec<ColumnDescriptor>>,
+        columns: Option<Vec<ColumnSelector>>,
     ) -> QueryHandle<'_> {
         match query {
             QueryExpression::LatestAt(query) => self.latest_at(query, columns).into(),
@@ -133,8 +134,9 @@ impl QueryEngine<'_> {
     pub fn latest_at(
         &self,
         query: &LatestAtQueryExpression,
-        columns: Option<Vec<ColumnDescriptor>>,
+        columns: Option<Vec<ColumnSelector>>,
     ) -> LatestAtQueryHandle<'_> {
+        let columns = columns.map(|selectors| self.store.resolve_selectors(selectors));
         LatestAtQueryHandle::new(self, query.clone(), columns)
     }
 
@@ -165,8 +167,9 @@ impl QueryEngine<'_> {
     pub fn range(
         &self,
         query: &RangeQueryExpression,
-        columns: Option<Vec<ColumnDescriptor>>,
+        columns: Option<Vec<ColumnSelector>>,
     ) -> RangeQueryHandle<'_> {
+        let columns = columns.map(|selectors| self.store.resolve_selectors(selectors));
         RangeQueryHandle::new(self, query.clone(), columns)
     }
 }

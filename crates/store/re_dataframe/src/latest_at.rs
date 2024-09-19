@@ -249,13 +249,13 @@ mod tests {
 
     use re_chunk::{ArrowArray, Chunk, EntityPath, RowId, TimeInt, TimePoint, Timeline};
     use re_chunk_store::{
-        ChunkStore, ChunkStoreConfig, ColumnDescriptor, ComponentColumnDescriptor,
-        LatestAtQueryExpression, TimeColumnDescriptor,
+        ChunkStore, ChunkStoreConfig, ComponentColumnSelector, LatestAtQueryExpression,
+        TimeColumnSelector,
     };
     use re_log_types::{example_components::MyPoint, EntityPathFilter, StoreId, StoreKind};
     use re_query::Caches;
     use re_types::{
-        components::{Color, Position3D, Radius},
+        components::{Color, Radius},
         Loggable,
     };
 
@@ -281,24 +281,20 @@ mod tests {
 
         let entity_path: EntityPath = "/points".into();
         let columns = vec![
-            ColumnDescriptor::Time(TimeColumnDescriptor {
-                timeline: Timeline::log_time(),
-                datatype: Timeline::log_time().datatype(),
-            }),
-            ColumnDescriptor::Time(TimeColumnDescriptor {
-                timeline: Timeline::log_tick(),
-                datatype: Timeline::log_tick().datatype(),
-            }),
-            ColumnDescriptor::Component(ComponentColumnDescriptor::new::<Position3D>(
-                entity_path.clone(),
-            )),
-            ColumnDescriptor::Component(ComponentColumnDescriptor::new::<Radius>(
-                entity_path.clone(),
-            )),
-            ColumnDescriptor::Component(ComponentColumnDescriptor::new::<Color>(entity_path)),
+            TimeColumnSelector {
+                timeline: *Timeline::log_time().name(),
+            }
+            .into(),
+            TimeColumnSelector {
+                timeline: *Timeline::log_tick().name(),
+            }
+            .into(),
+            ComponentColumnSelector::new::<MyPoint>(entity_path.clone()).into(),
+            ComponentColumnSelector::new::<Radius>(entity_path.clone()).into(),
+            ComponentColumnSelector::new::<Color>(entity_path).into(),
         ];
 
-        let handle = engine.latest_at(&query, Some(columns.clone()));
+        let handle = engine.latest_at(&query, Some(columns));
         let batch = handle.get();
 
         // The output should be an empty recordbatch with the right schema and empty arrays.
@@ -346,24 +342,20 @@ mod tests {
         };
 
         let columns = vec![
-            ColumnDescriptor::Time(TimeColumnDescriptor {
-                timeline: Timeline::log_time(),
-                datatype: Timeline::log_time().datatype(),
-            }),
-            ColumnDescriptor::Time(TimeColumnDescriptor {
-                timeline: Timeline::log_tick(),
-                datatype: Timeline::log_tick().datatype(),
-            }),
-            ColumnDescriptor::Component(ComponentColumnDescriptor::new::<MyPoint>(
-                entity_path.clone(),
-            )),
-            ColumnDescriptor::Component(ComponentColumnDescriptor::new::<Radius>(
-                entity_path.clone(),
-            )),
-            ColumnDescriptor::Component(ComponentColumnDescriptor::new::<Color>(entity_path)),
+            TimeColumnSelector {
+                timeline: *Timeline::log_time().name(),
+            }
+            .into(),
+            TimeColumnSelector {
+                timeline: *Timeline::log_tick().name(),
+            }
+            .into(),
+            ComponentColumnSelector::new::<MyPoint>(entity_path.clone()).into(),
+            ComponentColumnSelector::new::<Radius>(entity_path.clone()).into(),
+            ComponentColumnSelector::new::<Color>(entity_path).into(),
         ];
 
-        let handle = engine.latest_at(&query, Some(columns.clone()));
+        let handle = engine.latest_at(&query, Some(columns));
         let batch = handle.get();
 
         assert_eq!(1, batch.num_rows());

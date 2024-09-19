@@ -9,7 +9,7 @@ use arrow2::{
 };
 use itertools::Itertools as _;
 
-use re_chunk::LatestAtQuery;
+use re_chunk::{LatestAtQuery, TimelineName};
 use re_log_types::{EntityPath, TimeInt, Timeline};
 use re_log_types::{EntityPathFilter, ResolvedTimeRange};
 use re_types_core::{ArchetypeName, ComponentName, Loggable as _};
@@ -27,7 +27,7 @@ use crate::RowId;
 /// Because range-queries often involve repeating the same joined-in data multiple times,
 /// the strategy we choose for joining can have a significant impact on the size and memory
 /// overhead of the `RecordBatch`.
-#[derive(Debug, Default, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum JoinEncoding {
     /// Slice the `RecordBatch` to minimal overlapping sub-ranges.
     ///
@@ -398,6 +398,181 @@ impl ComponentColumnDescriptor {
     }
 }
 
+// --- Selectors ---
+
+/// Describes a column selection to return as part of a query.
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub enum ColumnSelector {
+    Control(ControlColumnSelector),
+    Time(TimeColumnSelector),
+    Component(ComponentColumnSelector),
+    //TODO(jleibs): Add support for archetype-based component selection.
+    //ArchetypeField(ArchetypeFieldColumnSelector),
+}
+
+impl From<ColumnDescriptor> for ColumnSelector {
+    #[inline]
+    fn from(desc: ColumnDescriptor) -> Self {
+        match desc {
+            ColumnDescriptor::Control(desc) => Self::Control(desc.into()),
+            ColumnDescriptor::Time(desc) => Self::Time(desc.into()),
+            ColumnDescriptor::Component(desc) => Self::Component(desc.into()),
+        }
+    }
+}
+
+impl From<ControlColumnSelector> for ColumnSelector {
+    #[inline]
+    fn from(desc: ControlColumnSelector) -> Self {
+        Self::Control(desc)
+    }
+}
+
+impl From<TimeColumnSelector> for ColumnSelector {
+    #[inline]
+    fn from(desc: TimeColumnSelector) -> Self {
+        Self::Time(desc)
+    }
+}
+
+impl From<ComponentColumnSelector> for ColumnSelector {
+    #[inline]
+    fn from(desc: ComponentColumnSelector) -> Self {
+        Self::Component(desc)
+    }
+}
+
+/// Select a control column.
+///
+/// The only control column currently supported is `rerun.components.RowId`.
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct ControlColumnSelector {
+    /// Name of the control column.
+    pub component: ComponentName,
+}
+
+impl ControlColumnSelector {
+    #[inline]
+    pub fn row_id() -> Self {
+        Self {
+            component: RowId::name(),
+        }
+    }
+}
+
+impl From<ControlColumnDescriptor> for ControlColumnSelector {
+    #[inline]
+    fn from(desc: ControlColumnDescriptor) -> Self {
+        Self {
+            component: desc.component_name,
+        }
+    }
+}
+
+/// Select a time column.
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct TimeColumnSelector {
+    /// The name of the timeline.
+    pub timeline: TimelineName,
+}
+
+impl From<TimeColumnDescriptor> for TimeColumnSelector {
+    #[inline]
+    fn from(desc: TimeColumnDescriptor) -> Self {
+        Self {
+            timeline: *desc.timeline.name(),
+        }
+    }
+}
+
+/// Select a component based on its `EntityPath` and `ComponentName`.
+///
+/// Note, that in the future when Rerun supports duplicate tagged components
+/// on the same entity, this selector may be ambiguous. In this case, the
+/// query result will return an Error if it cannot determine a single selected
+/// component.
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct ComponentColumnSelector {
+    /// The path of the entity.
+    pub entity_path: EntityPath,
+
+    /// Semantic name associated with this data.
+    pub component: ComponentName,
+
+    /// How to join the data into the `RecordBatch`.
+    pub join_encoding: JoinEncoding,
+}
+
+impl From<ComponentColumnDescriptor> for ComponentColumnSelector {
+    #[inline]
+    fn from(desc: ComponentColumnDescriptor) -> Self {
+        Self {
+            entity_path: desc.entity_path.clone(),
+            component: desc.component_name,
+            join_encoding: desc.join_encoding,
+        }
+    }
+}
+
+impl ComponentColumnSelector {
+    /// Select a component of a given type, based on its  [`EntityPath`]
+    #[inline]
+    pub fn new<C: re_types_core::Component>(entity_path: EntityPath) -> Self {
+        Self {
+            entity_path,
+            component: C::name(),
+            join_encoding: JoinEncoding::default(),
+        }
+    }
+
+    /// Select a component based on its [`EntityPath`] and [`ComponentName`].
+    #[inline]
+    pub fn new_for_component_name(entity_path: EntityPath, component: ComponentName) -> Self {
+        Self {
+            entity_path,
+            component,
+            join_encoding: JoinEncoding::default(),
+        }
+    }
+
+    /// Specify how the data should be joined into the `RecordBatch`.
+    #[inline]
+    pub fn with_join_encoding(mut self, join_encoding: JoinEncoding) -> Self {
+        self.join_encoding = join_encoding;
+        self
+    }
+}
+
+impl std::fmt::Display for ComponentColumnSelector {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let Self {
+            entity_path,
+            component,
+            join_encoding: _,
+        } = self;
+
+        f.write_fmt(format_args!("{entity_path}@{}", component.short_name()))
+    }
+}
+
+// TODO(jleibs): Add support for archetype-based column selection.
+/*
+/// Select a component based on its `Archetype` and field.
+pub struct ArchetypeFieldColumnSelector {
+    /// The path of the entity.
+    entity_path: EntityPath,
+
+    /// Name of the `Archetype` associated with this data.
+    archetype: ArchetypeName,
+
+    /// The field within the `Archetype` associated with this data.
+    field: String,
+
+    /// How to join the data into the `RecordBatch`.
+    join_encoding: JoinEncoding,
+}
+*/
+
 // --- Queries ---
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -501,7 +676,7 @@ pub struct RangeQueryExpression {
     /// multiple rows at a given timestamp.
     //
     // TODO(cmc): issue for multi-pov support
-    pub pov: ComponentColumnDescriptor,
+    pub pov: ComponentColumnSelector,
     //
     // TODO(cmc): custom join policy support
 }
@@ -620,6 +795,98 @@ impl ChunkStore {
             .collect::<BTreeSet<_>>();
 
         controls.chain(timelines).chain(components).collect()
+    }
+
+    /// Given a [`ControlColumnSelector`], returns the corresponding [`ControlColumnDescriptor`].
+    #[allow(clippy::unused_self)]
+    pub fn resolve_control_selector(
+        &self,
+        selector: &ControlColumnSelector,
+    ) -> ControlColumnDescriptor {
+        if selector.component == RowId::name() {
+            ControlColumnDescriptor {
+                component_name: selector.component,
+                datatype: RowId::arrow_datatype(),
+            }
+        } else {
+            ControlColumnDescriptor {
+                component_name: selector.component,
+                datatype: ArrowDatatype::Null,
+            }
+        }
+    }
+
+    /// Given a [`TimeColumnSelector`], returns the corresponding [`TimeColumnDescriptor`].
+    pub fn resolve_time_selector(&self, selector: &TimeColumnSelector) -> TimeColumnDescriptor {
+        let timelines = self.all_timelines();
+
+        let timeline = timelines
+            .iter()
+            .find(|timeline| timeline.name() == &selector.timeline)
+            .copied()
+            .unwrap_or_else(|| Timeline::new_temporal(selector.timeline));
+
+        TimeColumnDescriptor {
+            timeline,
+            datatype: timeline.datatype(),
+        }
+    }
+
+    /// Given a [`ComponentColumnSelector`], returns the corresponding [`ComponentColumnDescriptor`].
+    ///
+    /// If the component is not found in the store, a default descriptor is returned with a null datatype.
+    pub fn resolve_component_selector(
+        &self,
+        selector: &ComponentColumnSelector,
+    ) -> ComponentColumnDescriptor {
+        let datatype = self
+            .lookup_datatype(&selector.component)
+            .cloned()
+            .unwrap_or_else(|| ArrowDatatype::Null);
+
+        let is_static = self
+            .static_chunk_ids_per_entity
+            .get(&selector.entity_path)
+            .map_or(false, |per_component| {
+                per_component.contains_key(&selector.component)
+            });
+
+        // TODO(#6889): Fill `archetype_name`/`archetype_field_name` (or whatever their
+        // final name ends up being) once we generate tags.
+        ComponentColumnDescriptor {
+            entity_path: selector.entity_path.clone(),
+            archetype_name: None,
+            archetype_field_name: None,
+            component_name: selector.component,
+            store_datatype: ArrowListArray::<i32>::default_datatype(datatype.clone()),
+            join_encoding: selector.join_encoding,
+            is_static,
+        }
+    }
+
+    /// Given a set of [`ColumnSelector`]s, returns the corresponding [`ColumnDescriptor`]s.
+    pub fn resolve_selectors(
+        &self,
+        selectors: impl IntoIterator<Item = impl Into<ColumnSelector>>,
+    ) -> Vec<ColumnDescriptor> {
+        // TODO(jleibs): When, if ever, should this return an error?
+        selectors
+            .into_iter()
+            .map(|selector| {
+                let selector = selector.into();
+                match selector {
+                    ColumnSelector::Control(selector) => {
+                        ColumnDescriptor::Control(self.resolve_control_selector(&selector))
+                    }
+                    ColumnSelector::Time(selector) => {
+                        ColumnDescriptor::Time(self.resolve_time_selector(&selector))
+                    }
+                    ColumnSelector::Component(selector) => {
+                        ColumnDescriptor::Component(self.resolve_component_selector(&selector))
+                    }
+                }
+            })
+            .collect()
     }
 
     /// Returns the filtered schema for the given query expression.
