@@ -668,21 +668,18 @@ fn split_ui_vertically<Item, Ctx>(
         / re_ui::DesignTokens::table_line_height())
     .ceil() as usize;
 
+    let ui_left_top = ui.cursor().min;
+    let width = ui.available_width();
+
     for (line_index, item_data) in line_data
         .enumerate()
         .skip(start_row)
         .take(end_row.saturating_sub(start_row))
     {
         let line_rect = egui::Rect::from_min_size(
-            ui.cursor().min
-                + egui::vec2(
-                    0.0,
-                    line_index as f32 * re_ui::DesignTokens::table_line_height(),
-                ),
-            egui::vec2(
-                ui.available_width(),
-                re_ui::DesignTokens::table_line_height(),
-            ),
+            ui_left_top
+                + egui::Vec2::DOWN * (line_index as f32 * re_ui::DesignTokens::table_line_height()),
+            egui::vec2(width, re_ui::DesignTokens::table_line_height()),
         );
 
         // During animation, there may be more lines than can possibly fit. If so, no point in
@@ -691,7 +688,8 @@ fn split_ui_vertically<Item, Ctx>(
             return;
         }
 
-        let mut line_ui = ui.new_child(egui::UiBuilder::new().max_rect(line_rect));
-        line_content_ui(&mut line_ui, context, line_index, item_data);
+        ui.scope_builder(egui::UiBuilder::new().max_rect(line_rect), |ui| {
+            line_content_ui(ui, context, line_index, item_data);
+        });
     }
 }
