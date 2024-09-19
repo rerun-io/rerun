@@ -15,7 +15,7 @@ use re_chunk_store::{
     TimeColumnDescriptor, TimeColumnSelector, VersionPolicy,
 };
 use re_dataframe::QueryEngine;
-use re_log_types::{EntityPathFilter, ResolvedTimeRange};
+use re_log_types::{EntityPathFilter, ResolvedTimeRange, TimeType};
 use re_sdk::{EntityPath, Loggable as _, StoreId, StoreKind, Timeline};
 
 /// Register the `rerun.dataframe` module.
@@ -30,6 +30,7 @@ pub(crate) fn register(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<PyTimeColumnSelector>()?;
     m.add_class::<PyComponentColumnDescriptor>()?;
     m.add_class::<PyComponentColumnSelector>()?;
+    m.add_class::<PyTimeRange>()?;
 
     m.add_function(wrap_pyfunction!(crate::dataframe::load_archive, m)?)?;
     m.add_function(wrap_pyfunction!(crate::dataframe::load_recording, m)?)?;
@@ -310,6 +311,79 @@ impl PySchema {
     }
 }
 
+#[pyclass(frozen, name = "TimeRange")]
+#[derive(Clone)]
+pub struct PyTimeRange {
+    time_type: Option<TimeType>,
+    range: ResolvedTimeRange,
+}
+
+#[pymethods]
+impl PyTimeRange {
+    #[staticmethod]
+    fn everything() -> Self {
+        let time_type = None;
+        let range = ResolvedTimeRange::EVERYTHING;
+
+        Self { time_type, range }
+    }
+
+    #[staticmethod]
+    fn seconds(from: f64, to: f64) -> Self {
+        let time_type = Some(TimeType::Time);
+
+        let from = re_sdk::Time::from_seconds_since_epoch(from);
+        let to = re_sdk::Time::from_seconds_since_epoch(to);
+
+        let range = ResolvedTimeRange::new(from, to);
+
+        Self { time_type, range }
+    }
+
+    #[staticmethod]
+    fn nanos(from: i64, to: i64) -> Self {
+        let time_type = Some(TimeType::Time);
+
+        let from = re_sdk::Time::from_ns_since_epoch(from);
+        let to = re_sdk::Time::from_ns_since_epoch(to);
+
+        let range = ResolvedTimeRange::new(from, to);
+
+        Self { time_type, range }
+    }
+
+    #[staticmethod]
+    fn sequence(from: i64, to: i64) -> Self {
+        let time_type = Some(TimeType::Sequence);
+
+        let from = if let Ok(seq) = re_chunk::TimeInt::try_from(from) {
+            seq
+        } else {
+            re_log::error!(
+                illegal_value = from,
+                new_value = re_chunk::TimeInt::MIN.as_i64(),
+                "set_time_sequence() called with illegal value - clamped to minimum legal value"
+            );
+            re_chunk::TimeInt::MIN
+        };
+
+        let to = if let Ok(seq) = re_chunk::TimeInt::try_from(to) {
+            seq
+        } else {
+            re_log::error!(
+                illegal_value = to,
+                new_value = re_chunk::TimeInt::MAX.as_i64(),
+                "set_time_sequence() called with illegal value - clamped to maximum legal value"
+            );
+            re_chunk::TimeInt::MAX
+        };
+
+        let range = ResolvedTimeRange::new(from, to);
+
+        Self { time_type, range }
+    }
+}
+
 #[pyclass(frozen, name = "Dataset")]
 #[derive(Clone)]
 pub struct PyDataset {
@@ -327,6 +401,8 @@ impl PyDataset {
     fn range_query(
         &self,
         expr: &str,
+        timeline: &str,
+        time_range: PyTimeRange,
         pov: AnyComponentColumn,
         columns: Option<Vec<AnyColumn>>,
     ) -> PyResult<PyArrowType<Vec<RecordBatch>>> {
@@ -337,15 +413,23 @@ impl PyDataset {
             cache: &cache,
         };
 
-        // TODO(jleibs): Move to arguments
-        let timeline = Timeline::log_tick();
-        let time_range = ResolvedTimeRange::EVERYTHING;
+        let timeline = if let Some(time_type) = time_range.time_type {
+            Timeline::new(timeline, time_type)
+        } else {
+            // Look up the type of the timeline
+            let selector = TimeColumnSelector {
+                timeline: timeline.into(),
+            };
+            let resolved = self.store.resolve_time_selector(&selector);
+
+            resolved.timeline
+        };
 
         let query = RangeQueryExpression {
             entity_path_filter: std::convert::TryInto::<EntityPathFilter>::try_into(expr)
                 .map_err(|err| PyRuntimeError::new_err(err.to_string()))?,
             timeline,
-            time_range,
+            time_range: time_range.range,
             pov: pov.into_selector(),
         };
 

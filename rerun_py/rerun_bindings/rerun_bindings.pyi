@@ -55,6 +55,18 @@ class Schema:
     def component_columns(self) -> list[ComponentColumnDescriptor]: ...
     def column_for(self, entity_path: str, ComponentLike) -> Optional[ComponentColumnDescriptor]: ...
 
+class TimeRange:
+    """A time range with a start and end time."""
+
+    @staticmethod
+    def everything() -> TimeRange: ...
+    @staticmethod
+    def seconds(start: float, end: float) -> TimeRange: ...
+    @staticmethod
+    def nanos(start: int, end: int) -> TimeRange: ...
+    @staticmethod
+    def sequence(start: int, end: int) -> TimeRange: ...
+
 class Dataset:
     """A single dataset from an RRD, representing a Recording or a Blueprint."""
 
@@ -62,6 +74,8 @@ class Dataset:
     def range_query(
         self,
         entity_path_expr: str,
+        timeline: str,
+        time_range: TimeRange,
         pov: AnyComponentColumn,
         query_columns: Sequence[AnyColumn],
     ) -> list[pa.RecordBatch]: ...

@@ -10,6 +10,7 @@ from rerun_bindings import (
     Schema as Schema,
     TimeColumnDescriptor as TimeColumnDescriptor,
     TimeColumnSelector as TimeColumnSelector,
+    TimeRange as TimeRange,
     load_archive as load_archive,
     load_recording as load_recording,
 )
