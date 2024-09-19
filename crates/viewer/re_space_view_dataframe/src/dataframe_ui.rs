@@ -194,6 +194,12 @@ impl<'a> egui_table::TableDelegate for DataframeTableDelegate<'a> {
     }
 
     fn header_cell_ui(&mut self, ui: &mut egui::Ui, cell: &egui_table::HeaderCellInfo) {
+        if ui.is_sizing_pass() {
+            ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Extend);
+        } else {
+            ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Truncate);
+        }
+
         egui::Frame::none()
             .inner_margin(egui::Margin::symmetric(4.0, 0.0))
             .show(ui, |ui| {
@@ -482,8 +488,13 @@ fn dataframe_ui_impl(
     let schema = query_handle.schema();
 
     // The table id mainly drives column widths, so it should be stable across queries leading to
-    // the same schema.
-    let table_id_salt = egui::Id::new("__dataframe__").with(schema);
+    // the same schema. However, changing the PoV typically leads to large changes of actual content
+    // (e.g., jump from one row to many). Since that can affect the optimal column width, we include
+    // the PoV in the salt.
+    let mut table_id_salt = egui::Id::new("__dataframe__").with(schema);
+    if let QueryHandle::Range(range_query_handle) = query_handle {
+        table_id_salt = table_id_salt.with(&range_query_handle.query().pov);
+    }
 
     // It's trickier for the row expansion cache.
     //
@@ -659,14 +670,15 @@ fn split_ui_vertically<Item, Ctx>(
     let visible_y_range = ui.clip_rect().y_range();
     let total_y_range = ui.max_rect().y_range();
 
-    // Note: converting float to unsigned ints implicitly saturate negative values to 0
-    let start_row = ((visible_y_range.min - total_y_range.min)
-        / re_ui::DesignTokens::table_line_height())
-    .floor() as usize;
+    let line_height = re_ui::DesignTokens::table_line_height();
 
-    let end_row = ((visible_y_range.max - total_y_range.min)
-        / re_ui::DesignTokens::table_line_height())
-    .ceil() as usize;
+    // Note: converting float to unsigned ints implicitly saturate negative values to 0
+    let start_row = ((visible_y_range.min - total_y_range.min) / line_height).floor() as usize;
+
+    let end_row = ((visible_y_range.max - total_y_range.min) / line_height).ceil() as usize;
+
+    let ui_left_top = ui.cursor().min;
+    let row_size = egui::vec2(ui.available_width(), line_height);
 
     for (line_index, item_data) in line_data
         .enumerate()
@@ -674,15 +686,8 @@ fn split_ui_vertically<Item, Ctx>(
         .take(end_row.saturating_sub(start_row))
     {
         let line_rect = egui::Rect::from_min_size(
-            ui.cursor().min
-                + egui::vec2(
-                    0.0,
-                    line_index as f32 * re_ui::DesignTokens::table_line_height(),
-                ),
-            egui::vec2(
-                ui.available_width(),
-                re_ui::DesignTokens::table_line_height(),
-            ),
+            ui_left_top + egui::Vec2::DOWN * (line_index as f32 * line_height),
+            row_size,
         );
 
         // During animation, there may be more lines than can possibly fit. If so, no point in
@@ -691,7 +696,8 @@ fn split_ui_vertically<Item, Ctx>(
             return;
         }
 
-        let mut line_ui = ui.new_child(egui::UiBuilder::new().max_rect(line_rect));
-        line_content_ui(&mut line_ui, context, line_index, item_data);
+        ui.scope_builder(egui::UiBuilder::new().max_rect(line_rect), |ui| {
+            line_content_ui(ui, context, line_index, item_data);
+        });
     }
 }
