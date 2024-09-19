@@ -186,6 +186,10 @@ fn show_video_blob_info(
                         re_log_types::Duration::from_millis(video.duration().as_ms_f64() as _)
                     ),
                 ));
+                // Some people may think that num_frames / duration = fps, but that's not true, videos may have variable frame rate.
+                // At the same time, we don't want to overload users with video codec/container specific stuff that they have to understand,
+                // and for all intents and purposes one sample = one frame.
+                // So the compromise is that we truthfully show the number of *samples* here and don't talk about frames.
                 ui.list_item_flat_noninteractive(
                     PropertyContent::new("Sample count")
                         .value_text(format!("{}", video.count_samples())),
