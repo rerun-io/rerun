@@ -543,7 +543,7 @@ fn get_image_picking_info(
                 let coordinates = hit
                     .instance_path_hash
                     .instance
-                    .to_2d_image_coordinate(picked_rect.pixel_width());
+                    .to_2d_image_coordinate(picked_rect.resolution()[0]);
 
                 if let PickableRectSourceData::Image { image, depth_meter } =
                     &picked_rect.source_data
@@ -567,7 +567,7 @@ fn get_image_picking_info(
         let coordinates = hit
             .instance_path_hash
             .instance
-            .to_2d_image_coordinate(depth_image.width() as _);
+            .to_2d_image_coordinate(depth_image.width());
         Some(PickedImageInfo {
             image: depth_image.clone(),
             coordinates,

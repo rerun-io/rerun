@@ -167,7 +167,7 @@ impl VideoFrameReferenceVisualizer {
         // (if it's just a decoding error we may still know the size from the container!)
         // In case we haven error we want to center the message in the middle, so we need some area.
         // Note that this area is also used for the bounding box which is important for the 2D view to determine default bounds.
-        let mut video_size = glam::vec2(1280.0, 720.0);
+        let mut video_resolution = glam::vec2(1280.0, 720.0);
 
         match video.as_ref().map(|v| v.as_ref()) {
             None => {
@@ -176,7 +176,7 @@ impl VideoFrameReferenceVisualizer {
                     spatial_ctx,
                     world_from_entity,
                     format!("No video asset at {video_reference:?}"),
-                    video_size,
+                    video_resolution,
                     entity_path,
                 );
             }
@@ -185,7 +185,7 @@ impl VideoFrameReferenceVisualizer {
                 let timestamp_in_seconds = match video_timestamp.time_mode {
                     VideoTimeMode::Nanoseconds => video_timestamp.video_time as f64 / 1e9,
                 };
-                video_size = glam::vec2(video.width() as _, video.height() as _);
+                video_resolution = glam::vec2(video.width() as _, video.height() as _);
                 if let Some(texture) = match video.frame_at(timestamp_in_seconds) {
                     FrameDecodingResult::Ready(texture) => Some(texture),
                     FrameDecodingResult::Pending(texture) => {
@@ -198,7 +198,7 @@ impl VideoFrameReferenceVisualizer {
                             spatial_ctx,
                             world_from_entity,
                             err.to_string(),
-                            video_size,
+                            video_resolution,
                             entity_path,
                         );
                         None
@@ -209,8 +209,10 @@ impl VideoFrameReferenceVisualizer {
                             .transform_point3(glam::Vec3::ZERO),
                         // Make sure to use the video instead of texture size here,
                         // since it may be a placeholder which doesn't have the full size yet.
-                        extent_u: world_from_entity.transform_vector3(glam::Vec3::X * video_size.x),
-                        extent_v: world_from_entity.transform_vector3(glam::Vec3::Y * video_size.y),
+                        extent_u: world_from_entity
+                            .transform_vector3(glam::Vec3::X * video_resolution.x),
+                        extent_v: world_from_entity
+                            .transform_vector3(glam::Vec3::Y * video_resolution.y),
                         colormapped_texture: ColormappedTexture::from_unorm_rgba(texture),
                         options: RectangleOptions {
                             texture_filter_magnification: TextureFilterMag::Nearest,
@@ -222,9 +224,7 @@ impl VideoFrameReferenceVisualizer {
                     self.data.pickable_rects.push(PickableTexturedRect {
                         ent_path: entity_path.clone(),
                         textured_rect,
-                        source_data: PickableRectSourceData::Video {
-                            resolution: video_size,
-                        },
+                        source_data: PickableRectSourceData::Video,
                     });
                 }
             }
@@ -234,7 +234,7 @@ impl VideoFrameReferenceVisualizer {
                     spatial_ctx,
                     world_from_entity,
                     err.to_string(),
-                    video_size,
+                    video_resolution,
                     entity_path,
                 );
             }
@@ -243,7 +243,7 @@ impl VideoFrameReferenceVisualizer {
         if spatial_ctx.space_view_class_identifier == SpatialSpaceView2D::identifier() {
             let bounding_box = re_math::BoundingBox::from_min_size(
                 world_from_entity.transform_point3(glam::Vec3::ZERO),
-                video_size.extend(0.0),
+                video_resolution.extend(0.0),
             );
             self.data
                 .add_bounding_box(entity_path.hash(), bounding_box, world_from_entity);
@@ -334,9 +334,7 @@ impl VideoFrameReferenceVisualizer {
         self.data.pickable_rects.push(PickableTexturedRect {
             ent_path: entity_path.clone(),
             textured_rect: error_rect,
-            source_data: PickableRectSourceData::ErrorPlaceholder {
-                resolution: video_error_rect_size,
-            },
+            source_data: PickableRectSourceData::ErrorPlaceholder,
         });
     }
 }

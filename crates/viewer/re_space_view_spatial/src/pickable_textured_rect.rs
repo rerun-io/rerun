@@ -11,16 +11,10 @@ pub enum PickableRectSourceData {
     },
 
     /// The rectangle is a frame in a video.
-    Video {
-        // TODO(andreas): add more information here for picking hover etc.
-        resolution: glam::Vec2,
-    },
+    Video,
 
     /// The rectangle represents an error icon.
-    ErrorPlaceholder {
-        // TODO(andreas): add more information here for picking hover etc.
-        resolution: glam::Vec2,
-    },
+    ErrorPlaceholder,
 }
 
 /// Image rectangle that can be picked in the view.
@@ -36,13 +30,9 @@ pub struct PickableTexturedRect {
 }
 
 impl PickableTexturedRect {
-    /// How wide the rectangle is in pixels.
-    pub fn pixel_width(&self) -> u64 {
-        match &self.source_data {
-            PickableRectSourceData::Image { image, .. } => image.width() as u64,
-            PickableRectSourceData::Video { resolution }
-            | PickableRectSourceData::ErrorPlaceholder { resolution } => resolution.x as u64,
-        }
+    /// Resolution of the underlying texture.
+    pub fn resolution(&self) -> [u32; 2] {
+        self.textured_rect.colormapped_texture.width_height()
     }
 
     pub fn to_draw_data(
