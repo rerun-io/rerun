@@ -4,14 +4,14 @@ use re_data_ui::{
     item_ui, show_zoomed_image_region, show_zoomed_image_region_area_outline, DataUi as _,
 };
 use re_log_types::Instance;
-use re_types::components::DepthMeter;
+use re_renderer::renderer::ColormappedTexture;
 use re_ui::{
     list_item::{list_item_scope, PropertyContent},
     UiExt as _,
 };
 use re_viewer_context::{
-    ImageInfo, ImageStatsCache, Item, ItemSpaceContext, SpaceViewSystemExecutionError, UiLayout,
-    ViewQuery, ViewerContext, VisualizerCollection,
+    ImageStatsCache, Item, ItemSpaceContext, SpaceViewSystemExecutionError, UiLayout, ViewQuery,
+    ViewerContext, VisualizerCollection,
 };
 
 use crate::{
@@ -114,9 +114,13 @@ pub fn picking(
         }
 
         response = if let Some(picked_pixel) = get_pixel_picking_info(system_output, hit) {
-            if let Some(meter) = picked_pixel.depth_meter {
-                let [x, y] = picked_pixel.image_pixel_coordinates;
-                if let Some(raw_value) = picked_pixel.image.get_xyc(x, y, 0) {
+            if let PickableRectSourceData::Image {
+                depth_meter: Some(meter),
+                image,
+            } = &picked_pixel.source_data
+            {
+                let [x, y] = picked_pixel.pixel_coordinates;
+                if let Some(raw_value) = image.get_xyc(x, y, 0) {
                     let raw_value = raw_value.as_f64();
                     let depth_in_meters = raw_value / *meter.0 as f64;
                     depth_at_pointer = Some(depth_in_meters as f32);
@@ -217,6 +221,8 @@ fn iter_pickable_rects(
 }
 
 /// If available, finds pixel info for a picking hit.
+///
+/// Returns `None` for error placeholder since we generally don't want to zoom into those.
 fn get_pixel_picking_info(
     system_output: &re_viewer_context::SystemExecutionOutput,
     hit: &crate::picking::PickingRayHit,
@@ -230,38 +236,42 @@ fn get_pixel_picking_info(
         iter_pickable_rects(&system_output.view_systems)
             .find(|i| i.ent_path.hash() == hit.instance_path_hash.entity_path_hash)
             .and_then(|picked_rect| {
-                let coordinates = hit
+                if matches!(
+                    picked_rect.source_data,
+                    PickableRectSourceData::ErrorPlaceholder
+                ) {
+                    return None;
+                }
+
+                let pixel_coordinates = hit
                     .instance_path_hash
                     .instance
                     .to_2d_image_coordinate(picked_rect.resolution()[0]);
 
-                if let PickableRectSourceData::Image { image, depth_meter } =
-                    &picked_rect.source_data
-                {
-                    Some(PickedPixelInfo {
-                        image: image.clone(),
-                        image_pixel_coordinates: coordinates,
-                        depth_meter: *depth_meter,
-                    })
-                } else {
-                    None
-                }
+                Some(PickedPixelInfo {
+                    source_data: picked_rect.source_data.clone(),
+                    texture: picked_rect.textured_rect.colormapped_texture.clone(),
+                    pixel_coordinates,
+                })
             })
-    } else if let Some((depth_image, depth_meter)) =
+    } else if let Some((depth_image, depth_meter, texture)) =
         depth_visualizer_output.and_then(|depth_images| {
             depth_images
                 .depth_cloud_entities
                 .get(&hit.instance_path_hash.entity_path_hash)
         })
     {
-        let coordinates = hit
+        let pixel_coordinates = hit
             .instance_path_hash
             .instance
             .to_2d_image_coordinate(depth_image.width());
         Some(PickedPixelInfo {
-            image: depth_image.clone(),
-            image_pixel_coordinates: coordinates,
-            depth_meter: Some(*depth_meter),
+            source_data: PickableRectSourceData::Image {
+                image: depth_image.clone(),
+                depth_meter: Some(*depth_meter),
+            },
+            texture: texture.clone(),
+            pixel_coordinates,
         })
     } else {
         None
@@ -269,9 +279,9 @@ fn get_pixel_picking_info(
 }
 
 struct PickedPixelInfo {
-    image: ImageInfo,
-    image_pixel_coordinates: [u32; 2],
-    depth_meter: Option<DepthMeter>,
+    source_data: PickableRectSourceData,
+    texture: ColormappedTexture,
+    pixel_coordinates: [u32; 2],
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -285,20 +295,28 @@ fn image_hover_ui(
     picked_pixel_info: PickedPixelInfo,
 ) {
     let PickedPixelInfo {
-        image,
-        image_pixel_coordinates: coordinates,
-        depth_meter,
+        source_data,
+        texture,
+        pixel_coordinates,
     } = picked_pixel_info;
+
+    let depth_meter = match &source_data {
+        PickableRectSourceData::Image { depth_meter, .. } => *depth_meter,
+        PickableRectSourceData::Video { .. } => None,
+        PickableRectSourceData::ErrorPlaceholder => {
+            // No point in zooming into an error placeholder!
+            return;
+        }
+    };
 
     let depth_meter = depth_meter.map(|d| *d.0);
 
     ui.label(instance_path.to_string());
 
-    let (w, h) = (image.format.width as u64, image.format.height as u64);
-
     ui.add_space(8.0);
 
     ui.horizontal(|ui| {
+        let [w, h] = texture.width_height();
         let (w, h) = (w as f32, h as f32);
 
         if spatial_kind == SpatialSpaceViewKind::TwoD {
@@ -308,27 +326,28 @@ fn image_hover_ui(
                 ui.ctx(),
                 *ui_pan_and_zoom_from_ui.from(),
                 egui::vec2(w, h),
-                [coordinates[0] as _, coordinates[1] as _],
+                [pixel_coordinates[0] as _, pixel_coordinates[1] as _],
                 ui_pan_and_zoom_from_ui.inverse().transform_rect(rect),
             );
         }
 
-        let tensor_name = instance_path.to_string();
+        if let PickableRectSourceData::Image { image, .. } = &source_data {
+            let debug_name = instance_path.to_string();
+            let annotations = annotations.0.find(&instance_path.entity_path);
+            let tensor_stats = ctx.cache.entry(|c: &mut ImageStatsCache| c.entry(image));
 
-        let annotations = annotations.0.find(&instance_path.entity_path);
-
-        let tensor_stats = ctx.cache.entry(|c: &mut ImageStatsCache| c.entry(&image));
-        if let Some(render_ctx) = ctx.render_ctx {
-            show_zoomed_image_region(
-                render_ctx,
-                ui,
-                &image,
-                &tensor_stats,
-                &annotations,
-                depth_meter,
-                &tensor_name,
-                [coordinates[0] as _, coordinates[1] as _],
-            );
+            if let Some(render_ctx) = ctx.render_ctx {
+                show_zoomed_image_region(
+                    render_ctx,
+                    ui,
+                    image,
+                    &tensor_stats,
+                    &annotations,
+                    depth_meter,
+                    &debug_name,
+                    [pixel_coordinates[0] as _, pixel_coordinates[1] as _],
+                );
+            }
         }
     });
 }

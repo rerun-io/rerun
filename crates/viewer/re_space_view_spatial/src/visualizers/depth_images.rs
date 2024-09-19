@@ -2,7 +2,7 @@ use nohash_hasher::IntMap;
 
 use re_entity_db::EntityPath;
 use re_log_types::EntityPathHash;
-use re_renderer::renderer::{DepthCloud, DepthClouds};
+use re_renderer::renderer::{ColormappedTexture, DepthCloud, DepthClouds};
 use re_types::{
     archetypes::DepthImage,
     components::{
@@ -12,10 +12,10 @@ use re_types::{
     Loggable as _,
 };
 use re_viewer_context::{
-    gpu_bridge::colormap_to_re_renderer, ApplicableEntities, IdentifiedViewSystem, ImageInfo,
-    ImageStatsCache, QueryContext, SpaceViewClass, SpaceViewSystemExecutionError,
-    TypedComponentFallbackProvider, ViewContext, ViewContextCollection, ViewQuery,
-    VisualizableEntities, VisualizableFilterContext, VisualizerQueryInfo, VisualizerSystem,
+    ApplicableEntities, IdentifiedViewSystem, ImageInfo, QueryContext, SpaceViewClass,
+    SpaceViewSystemExecutionError, TypedComponentFallbackProvider, ViewContext,
+    ViewContextCollection, ViewQuery, VisualizableEntities, VisualizableFilterContext,
+    VisualizerQueryInfo, VisualizerSystem,
 };
 
 use crate::{
@@ -32,7 +32,7 @@ pub struct DepthImageVisualizer {
     pub data: SpatialViewVisualizerData,
 
     /// Expose image infos for depth clouds - we need this for picking interaction.
-    pub depth_cloud_entities: IntMap<EntityPathHash, (ImageInfo, DepthMeter)>,
+    pub depth_cloud_entities: IntMap<EntityPathHash, (ImageInfo, DepthMeter, ColormappedTexture)>,
 }
 
 impl Default for DepthImageVisualizer {
@@ -78,6 +78,22 @@ impl DepthImageVisualizer {
             // All depth images must have a colormap:
             image.colormap = Some(image.colormap.unwrap_or_else(|| self.fallback_for(ctx)));
 
+            // First try to create a textured rect for this image.
+            // Even if we end up only showing a depth cloud,
+            // we still need most of this for ui interaction which still shows the image!
+            let Some(textured_rect) = textured_rect_from_image(
+                ctx.viewer_ctx,
+                entity_path,
+                ent_context,
+                &image,
+                re_renderer::Rgba::WHITE,
+                "DepthImage",
+                &mut self.data,
+            ) else {
+                // If we can't create a textured rect from this, we don't have to bother with clouds either.
+                return;
+            };
+
             if is_3d_view {
                 if let Some(twod_in_threed_info) = &ent_context.transform_info.twod_in_threed_info {
                     let fill_ratio = fill_ratio.unwrap_or_default();
@@ -88,11 +104,11 @@ impl DepthImageVisualizer {
                     match Self::process_entity_view_as_depth_cloud(
                         ctx,
                         ent_context,
-                        &image,
                         entity_path,
                         twod_in_threed_info,
                         depth_meter,
                         fill_ratio,
+                        &textured_rect.colormapped_texture,
                     ) {
                         Ok(cloud) => {
                             self.data.add_bounding_box(
@@ -100,9 +116,13 @@ impl DepthImageVisualizer {
                                 cloud.world_space_bbox(),
                                 glam::Affine3A::IDENTITY,
                             );
-                            self.depth_cloud_entities
-                                .insert(entity_path.hash(), (image, depth_meter));
+                            self.depth_cloud_entities.insert(
+                                entity_path.hash(),
+                                (image, depth_meter, textured_rect.colormapped_texture),
+                            );
                             depth_clouds.push(cloud);
+
+                            // Skip creating a textured rect.
                             return;
                         }
                         Err(err) => {
@@ -112,35 +132,25 @@ impl DepthImageVisualizer {
                 };
             }
 
-            if let Some(textured_rect) = textured_rect_from_image(
-                ctx.viewer_ctx,
-                entity_path,
-                ent_context,
-                &image,
-                re_renderer::Rgba::WHITE,
-                "DepthImage",
-                &mut self.data,
-            ) {
-                self.data.pickable_rects.push(PickableTexturedRect {
-                    ent_path: entity_path.clone(),
-                    textured_rect,
-                    source_data: PickableRectSourceData::Image {
-                        image,
-                        depth_meter: Some(depth_meter),
-                    },
-                });
-            }
+            self.data.pickable_rects.push(PickableTexturedRect {
+                ent_path: entity_path.clone(),
+                textured_rect,
+                source_data: PickableRectSourceData::Image {
+                    image,
+                    depth_meter: Some(depth_meter),
+                },
+            });
         }
     }
 
     fn process_entity_view_as_depth_cloud(
         ctx: &QueryContext<'_>,
         ent_context: &SpatialSceneEntityContext<'_>,
-        image: &ImageInfo,
         ent_path: &EntityPath,
         twod_in_threed_info: &TwoDInThreeDTransformInfo,
         depth_meter: DepthMeter,
         radius_scale: FillRatio,
+        depth_texture: &ColormappedTexture,
     ) -> anyhow::Result<DepthCloud> {
         re_tracing::profile_function!();
 
@@ -165,32 +175,14 @@ impl DepthImageVisualizer {
                     .from_rdf(),
             );
 
-        let dimensions = glam::UVec2::new(image.width(), image.height());
-
-        let debug_name = ent_path.to_string();
-        let tensor_stats = ctx
-            .viewer_ctx
-            .cache
-            .entry(|c: &mut ImageStatsCache| c.entry(image));
-
-        let Some(render_ctx) = ctx.viewer_ctx.render_ctx else {
-            anyhow::bail!("No render context available for depth cloud creation");
-        };
-
-        let depth_texture = re_viewer_context::gpu_bridge::image_to_gpu(
-            render_ctx,
-            &debug_name,
-            image,
-            &tensor_stats,
-            &ent_context.annotations,
-        )?;
+        let dimensions = glam::UVec2::from_array(depth_texture.texture.width_height());
 
         let world_depth_from_texture_depth = 1.0 / *depth_meter.0;
 
         // We want point radius to be defined in a scale where the radius of a point
         // is a factor of the diameter of a pixel projected at that distance.
         let fov_y = intrinsics.fov_y().unwrap_or(1.0);
-        let pixel_width_from_depth = (0.5 * fov_y).tan() / (0.5 * image.height() as f32);
+        let pixel_width_from_depth = (0.5 * fov_y).tan() / (0.5 * dimensions.y as f32);
         let point_radius_from_world_depth = *radius_scale.0 * pixel_width_from_depth;
 
         Ok(DepthCloud {
@@ -200,10 +192,11 @@ impl DepthImageVisualizer {
             point_radius_from_world_depth,
             max_depth_in_world: world_depth_from_texture_depth * depth_texture.range[1],
             depth_dimensions: dimensions,
-            depth_texture: depth_texture.texture,
-            colormap: colormap_to_re_renderer(
-                image.colormap.expect("We should have set this earlier"),
-            ),
+            depth_texture: depth_texture.texture.clone(),
+            colormap: match depth_texture.color_mapper {
+                re_renderer::renderer::ColorMapper::Function(colormap) => colormap,
+                _ => re_renderer::Colormap::Grayscale,
+            },
             outline_mask_id: ent_context.highlight.overall,
             picking_object_id: re_renderer::PickingLayerObjectId(ent_path.hash64()),
         })

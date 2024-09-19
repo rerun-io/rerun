@@ -3,6 +3,7 @@ use re_renderer::{renderer::TexturedRect, QueueableDrawData};
 use re_types::components::DepthMeter;
 use re_viewer_context::{ImageInfo, SpaceViewSystemExecutionError};
 
+#[derive(Clone)]
 pub enum PickableRectSourceData {
     /// The rectangle is an image with pixel data, potentially some depth meta information.
     Image {
