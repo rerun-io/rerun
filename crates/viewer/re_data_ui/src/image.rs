@@ -4,9 +4,10 @@ use re_renderer::renderer::ColormappedTexture;
 use re_types::{
     components::ClassId, datatypes::ColorModel, image::ImageKind, tensor_data::TensorElement,
 };
+use re_ui::UiExt;
 use re_viewer_context::{
     gpu_bridge::{self, image_to_gpu},
-    Annotations, ImageInfo, ImageStats, ImageStatsCache, UiLayout, ViewerContext,
+    Annotations, ImageInfo, ImageStatsCache, UiLayout, ViewerContext,
 };
 
 /// Show a button letting the user copy the image
@@ -209,22 +210,13 @@ pub fn show_zoomed_image_region_area_outline(
 pub fn show_zoomed_image_region(
     render_ctx: &re_renderer::RenderContext,
     ui: &mut egui::Ui,
-    image: &ImageInfo,
-    image_stats: &ImageStats,
+    texture: ColormappedTexture,
+    image: Option<&ImageInfo>,
     annotations: &Annotations,
     meter: Option<f32>,
     debug_name: &str,
     center_texel: [isize; 2],
 ) {
-    let texture =
-        match gpu_bridge::image_to_gpu(render_ctx, debug_name, image, image_stats, annotations) {
-            Ok(texture) => texture,
-            Err(err) => {
-                ui.label(format!("Error: {err}"));
-                return;
-            }
-        };
-
     if let Err(err) = try_show_zoomed_image_region(
         render_ctx,
         ui,
@@ -235,7 +227,7 @@ pub fn show_zoomed_image_region(
         debug_name,
         center_texel,
     ) {
-        ui.label(format!("Error: {err}"));
+        ui.error_label(&err.to_string());
     }
 }
 
@@ -244,14 +236,14 @@ pub fn show_zoomed_image_region(
 fn try_show_zoomed_image_region(
     render_ctx: &re_renderer::RenderContext,
     ui: &mut egui::Ui,
-    image: &ImageInfo,
-    texture: ColormappedTexture,
+    image: Option<&ImageInfo>,
+    colormapped_texture: ColormappedTexture,
     annotations: &Annotations,
     meter: Option<f32>,
     debug_name: &str,
     center_texel: [isize; 2],
 ) -> anyhow::Result<()> {
-    let (width, height) = (image.width(), image.height());
+    let [width, height] = colormapped_texture.texture.width_height();
 
     const POINTS_PER_TEXEL: f32 = 5.0;
     let size = Vec2::splat(((ZOOMED_IMAGE_TEXEL_RADIUS * 2 + 1) as f32) * POINTS_PER_TEXEL);
@@ -277,7 +269,7 @@ fn try_show_zoomed_image_region(
             render_ctx,
             &painter.with_clip_rect(zoom_rect),
             image_rect_on_screen,
-            texture.clone(),
+            colormapped_texture.clone(),
             egui::TextureOptions::NEAREST,
             debug_name,
         )?;
@@ -298,7 +290,9 @@ fn try_show_zoomed_image_region(
         ui.vertical(|ui| {
             ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Extend);
 
-            image_pixel_value_ui(ui, image, annotations, [x as _, y as _], meter);
+            if let Some(image) = image {
+                image_pixel_value_ui(ui, image, annotations, [x as _, y as _], meter);
+            }
 
             // Show a big sample of the color of the middle texel:
             let (rect, _) =
@@ -313,7 +307,7 @@ fn try_show_zoomed_image_region(
                 render_ctx,
                 &ui.painter().with_clip_rect(rect),
                 image_rect_on_screen,
-                texture,
+                colormapped_texture,
                 egui::TextureOptions::NEAREST,
                 debug_name,
             )

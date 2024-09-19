@@ -10,8 +10,8 @@ use re_ui::{
     UiExt as _,
 };
 use re_viewer_context::{
-    ImageStatsCache, Item, ItemSpaceContext, SpaceViewSystemExecutionError, UiLayout, ViewQuery,
-    ViewerContext, VisualizerCollection,
+    Item, ItemSpaceContext, SpaceViewSystemExecutionError, UiLayout, ViewQuery, ViewerContext,
+    VisualizerCollection,
 };
 
 use crate::{
@@ -294,6 +294,10 @@ fn image_hover_ui(
     annotations: &AnnotationSceneContext,
     picked_pixel_info: PickedPixelInfo,
 ) {
+    let Some(render_ctx) = ctx.render_ctx else {
+        return;
+    };
+
     let PickedPixelInfo {
         source_data,
         texture,
@@ -331,24 +335,25 @@ fn image_hover_ui(
             );
         }
 
-        if let PickableRectSourceData::Image { image, .. } = &source_data {
-            let debug_name = instance_path.to_string();
-            let annotations = annotations.0.find(&instance_path.entity_path);
-            let tensor_stats = ctx.cache.entry(|c: &mut ImageStatsCache| c.entry(image));
+        let image = if let PickableRectSourceData::Image { image, .. } = &source_data {
+            Some(image)
+        } else {
+            None
+        };
 
-            if let Some(render_ctx) = ctx.render_ctx {
-                show_zoomed_image_region(
-                    render_ctx,
-                    ui,
-                    image,
-                    &tensor_stats,
-                    &annotations,
-                    depth_meter,
-                    &debug_name,
-                    [pixel_coordinates[0] as _, pixel_coordinates[1] as _],
-                );
-            }
-        }
+        let debug_name = instance_path.to_string();
+        let annotations = annotations.0.find(&instance_path.entity_path);
+
+        show_zoomed_image_region(
+            render_ctx,
+            ui,
+            texture,
+            image,
+            &annotations,
+            depth_meter,
+            &debug_name,
+            [pixel_coordinates[0] as _, pixel_coordinates[1] as _],
+        );
     });
 }
 
