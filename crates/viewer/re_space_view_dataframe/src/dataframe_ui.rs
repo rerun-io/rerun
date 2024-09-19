@@ -13,14 +13,16 @@ use re_ui::UiExt as _;
 use re_viewer_context::ViewerContext;
 
 use crate::display_record_batch::{DisplayRecordBatch, DisplayRecordBatchError};
+use crate::expanded_rows::{ExpandedRows, ExpandedRowsCache};
 
 /// Display a dataframe table for the provided query.
 pub(crate) fn dataframe_ui<'a>(
     ctx: &ViewerContext<'_>,
     ui: &mut egui::Ui,
     query: impl Into<QueryHandle<'a>>,
+    expanded_rows_cache: &mut ExpandedRowsCache,
 ) {
-    dataframe_ui_impl(ctx, ui, &query.into());
+    dataframe_ui_impl(ctx, ui, &query.into(), expanded_rows_cache);
 }
 
 /// A query handle for either a latest-at or range query.
@@ -165,6 +167,8 @@ struct DataframeTableDelegate<'a> {
     header_entity_paths: Vec<Option<EntityPath>>,
     display_data: anyhow::Result<RowsDisplayData>,
 
+    expanded_rows: ExpandedRows<'a>,
+
     num_rows: u64,
 }
 
@@ -173,10 +177,6 @@ impl DataframeTableDelegate<'_> {
 }
 
 impl<'a> egui_table::TableDelegate for DataframeTableDelegate<'a> {
-    fn default_row_height(&self) -> f32 {
-        re_ui::DesignTokens::table_line_height()
-    }
-
     fn prepare(&mut self, info: &egui_table::PrefetchInfo) {
         re_tracing::profile_function!();
 
@@ -235,12 +235,6 @@ impl<'a> egui_table::TableDelegate for DataframeTableDelegate<'a> {
     fn cell_ui(&mut self, ui: &mut egui::Ui, cell: &egui_table::CellInfo) {
         re_tracing::profile_function!();
 
-        if cell.row_nr % 2 == 1 {
-            // Paint stripes
-            ui.painter()
-                .rect_filled(ui.max_rect(), 0.0, ui.visuals().faint_bg_color);
-        }
-
         debug_assert!(cell.row_nr < self.num_rows, "Bug in egui_table");
 
         let display_data = match &self.display_data {
@@ -251,55 +245,262 @@ impl<'a> egui_table::TableDelegate for DataframeTableDelegate<'a> {
             }
         };
 
-        let cell_ui = |ui: &mut egui::Ui| {
-            if let Some(BatchRef { batch_idx, row_idx }) =
-                display_data.batch_ref_from_row.get(&cell.row_nr).copied()
-            {
-                let batch = &display_data.display_record_batches[batch_idx];
-                let column = &batch.columns()[cell.col_nr];
+        let Some(BatchRef {
+            batch_idx,
+            row_idx: batch_row_idx,
+        }) = display_data.batch_ref_from_row.get(&cell.row_nr).copied()
+        else {
+            error_ui(
+                ui,
+                "Bug in egui_table: we didn't prefetch what was rendered!",
+            );
 
-                // compute the latest-at query for this row (used to display tooltips)
-                let timestamp = display_data
-                    .query_time_column_index
-                    .and_then(|col_idx| {
-                        display_data.display_record_batches[batch_idx].columns()[col_idx]
-                            .try_decode_time(row_idx)
-                    })
-                    .unwrap_or(TimeInt::MAX);
-                let latest_at_query = LatestAtQuery::new(self.query_handle.timeline(), timestamp);
-                let row_id = display_data
-                    .row_id_column_index
-                    .and_then(|col_idx| {
-                        display_data.display_record_batches[batch_idx].columns()[col_idx]
-                            .try_decode_row_id(row_idx)
-                    })
-                    .unwrap_or(RowId::ZERO);
-
-                if ui.is_sizing_pass() {
-                    ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Extend);
-                } else {
-                    ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Truncate);
-                }
-                column.data_ui(self.ctx, ui, row_id, &latest_at_query, row_idx);
-            } else {
-                error_ui(
-                    ui,
-                    "Bug in egui_table: we didn't prefetch what was rendered!",
-                );
-            }
+            return;
         };
 
-        egui::Frame::none()
-            .inner_margin(egui::Margin::symmetric(Self::LEFT_RIGHT_MARGIN, 0.0))
-            .show(ui, cell_ui);
+        let batch = &display_data.display_record_batches[batch_idx];
+        let column = &batch.columns()[cell.col_nr];
+
+        // compute the latest-at query for this row (used to display tooltips)
+
+        // TODO(ab): this is done for every cell but really should be done only once per row
+        let timestamp = display_data
+            .query_time_column_index
+            .and_then(|col_idx| {
+                display_data.display_record_batches[batch_idx].columns()[col_idx]
+                    .try_decode_time(batch_row_idx)
+            })
+            .unwrap_or(TimeInt::MAX);
+        let latest_at_query = LatestAtQuery::new(self.query_handle.timeline(), timestamp);
+        let row_id = display_data
+            .row_id_column_index
+            .and_then(|col_idx| {
+                display_data.display_record_batches[batch_idx].columns()[col_idx]
+                    .try_decode_row_id(batch_row_idx)
+            })
+            .unwrap_or(RowId::ZERO);
+
+        if ui.is_sizing_pass() {
+            ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Extend);
+        } else {
+            ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Truncate);
+        }
+
+        let instance_count = column.instance_count(batch_row_idx);
+        let additional_lines = self.expanded_rows.additional_lines_for_row(cell.row_nr);
+
+        let is_row_odd = self.expanded_rows.is_row_odd(cell.row_nr);
+
+        // Iterate over the top line (the summary, thus the `None`), and all additional lines.
+        // Note: we must iterate over all lines regardless of the actual number of instances so that
+        // the zebra stripes are properly drawn.
+        let instance_indices = std::iter::once(None).chain((0..additional_lines).map(Option::Some));
+
+        {
+            re_tracing::profile_scope!("lines");
+
+            // how the line is drawn
+            let line_content = |ui: &mut egui::Ui,
+                                expanded_rows: &mut ExpandedRows<'_>,
+                                line_index: usize,
+                                instance_index: Option<u64>| {
+                // Draw the alternating background color.
+                let is_line_odd = is_row_odd ^ (line_index % 2 == 1);
+                if is_line_odd {
+                    ui.painter()
+                        .rect_filled(ui.max_rect(), 0.0, ui.visuals().faint_bg_color);
+                }
+
+                // This is called when data actually needs to be drawn (as opposed to summaries like
+                // "N instances" or "N more…").
+                let data_content = |ui: &mut egui::Ui| {
+                    column.data_ui(
+                        self.ctx,
+                        ui,
+                        row_id,
+                        &latest_at_query,
+                        batch_row_idx,
+                        instance_index,
+                    );
+                };
+
+                // Draw the cell content with some margin.
+                egui::Frame::none()
+                    .inner_margin(egui::Margin::symmetric(Self::LEFT_RIGHT_MARGIN, 0.0))
+                    .show(ui, |ui| {
+                        line_ui(
+                            ui,
+                            expanded_rows,
+                            line_index,
+                            instance_index,
+                            instance_count,
+                            cell,
+                            data_content,
+                        );
+                    });
+            };
+
+            split_ui_vertically(ui, &mut self.expanded_rows, instance_indices, line_content);
+        }
+    }
+
+    fn row_top_offset(&self, _ctx: &egui::Context, _table_id: egui::Id, row_nr: u64) -> f32 {
+        self.expanded_rows.row_top_offset(row_nr)
+    }
+
+    fn default_row_height(&self) -> f32 {
+        re_ui::DesignTokens::table_line_height()
+    }
+}
+
+/// Draw a single line in a table.
+///
+/// This deals with the row expansion interaction and logic, as well as summarizing the data when
+/// necessary. The actual data drawing is delegated to the `data_content` closure.
+fn line_ui(
+    ui: &mut egui::Ui,
+    expanded_rows: &mut ExpandedRows<'_>,
+    line_index: usize,
+    instance_index: Option<u64>,
+    instance_count: u64,
+    cell: &egui_table::CellInfo,
+    data_content: impl Fn(&mut egui::Ui),
+) {
+    re_tracing::profile_function!();
+
+    let row_expansion = expanded_rows.additional_lines_for_row(cell.row_nr);
+
+    /// What kinds of lines might we encounter here?
+    enum SubcellKind {
+        /// Summary line with content that as zero or one instances, so cannot be expanded.
+        Summary,
+
+        /// Summary line with >1 instances, so can be expanded.
+        SummaryWithExpand,
+
+        /// A particular instance
+        Instance,
+
+        /// There are more instances than available lines, so this is a summary of how many
+        /// there are left.
+        MoreInstancesSummary { remaining_instances: u64 },
+
+        /// Not enough instances to fill this line.
+        Blank,
+    }
+
+    // The truth table that determines what kind of line we are dealing with.
+    let subcell_kind = match instance_index {
+        // First row with >1 instances.
+        None if { instance_count > 1 } => SubcellKind::SummaryWithExpand,
+
+        // First row with 0 or 1 instances.
+        None => SubcellKind::Summary,
+
+        // Last line and possibly too many instances to display.
+        Some(instance_index)
+            if { line_index as u64 == row_expansion && instance_index < instance_count } =>
+        {
+            let remaining = instance_count
+                .saturating_sub(instance_index)
+                .saturating_sub(1);
+            if remaining > 0 {
+                // +1 is because the "X more…" line takes one instance spot
+                SubcellKind::MoreInstancesSummary {
+                    remaining_instances: remaining + 1,
+                }
+            } else {
+                SubcellKind::Instance
+            }
+        }
+
+        // Some line for which an instance exists.
+        Some(instance_index) if { instance_index < instance_count } => SubcellKind::Instance,
+
+        // Some line for which no instance exists.
+        Some(_) => SubcellKind::Blank,
+    };
+
+    match subcell_kind {
+        SubcellKind::Summary => {
+            data_content(ui);
+        }
+
+        SubcellKind::SummaryWithExpand => {
+            let cell_clicked = cell_with_hover_button_ui(ui, &re_ui::icons::EXPAND, |ui| {
+                ui.label(format!(
+                    "{} instances",
+                    re_format::format_uint(instance_count)
+                ));
+            });
+
+            if cell_clicked {
+                if instance_count == row_expansion {
+                    expanded_rows.remove_additional_lines_for_row(cell.row_nr);
+                } else {
+                    expanded_rows.set_additional_lines_for_row(cell.row_nr, instance_count);
+                }
+            }
+        }
+
+        SubcellKind::Instance => {
+            let cell_clicked = cell_with_hover_button_ui(ui, &re_ui::icons::COLLAPSE, data_content);
+
+            if cell_clicked {
+                expanded_rows.remove_additional_lines_for_row(cell.row_nr);
+            }
+        }
+
+        SubcellKind::MoreInstancesSummary {
+            remaining_instances,
+        } => {
+            let cell_clicked = cell_with_hover_button_ui(ui, &re_ui::icons::EXPAND, |ui| {
+                ui.label(format!(
+                    "{} more…",
+                    re_format::format_uint(remaining_instances)
+                ));
+            });
+
+            if cell_clicked {
+                expanded_rows.set_additional_lines_for_row(cell.row_nr, instance_count);
+            }
+        }
+
+        SubcellKind::Blank => { /* nothing to show */ }
     }
 }
 
 /// Display the result of a [`QueryHandle`] in a table.
-fn dataframe_ui_impl(ctx: &ViewerContext<'_>, ui: &mut egui::Ui, query_handle: &QueryHandle<'_>) {
+fn dataframe_ui_impl(
+    ctx: &ViewerContext<'_>,
+    ui: &mut egui::Ui,
+    query_handle: &QueryHandle<'_>,
+    expanded_rows_cache: &mut ExpandedRowsCache,
+) {
     re_tracing::profile_function!();
 
     let schema = query_handle.schema();
+
+    // The table id mainly drives column widths, so it should be stable across queries leading to
+    // the same schema.
+    let table_id_salt = egui::Id::new("__dataframe__").with(schema);
+
+    // It's trickier for the row expansion cache.
+    //
+    // For latest-at view, there is always a single row, so it's ok to validate the cache against
+    // the schema. This means that changing the latest-at time stamp does _not_ invalidate, which is
+    // desirable. Otherwise, it would be impossible to expand a row when tracking the time panel
+    // while it is playing.
+    //
+    // For range queries, the row layout can change drastically when the query min/max times are
+    // modified, so in that case we invalidate against the query expression. This means that the
+    // expanded-ness is reset as soon as the min/max boundaries are changed in the selection panel,
+    // which is acceptable.
+    let row_expansion_id_salt = match query_handle {
+        QueryHandle::LatestAt(_) => egui::Id::new("__dataframe_row_exp__").with(schema),
+        QueryHandle::Range(query) => egui::Id::new("__dataframe_row_exp__").with(query.query()),
+    };
+
     let (header_groups, header_entity_paths) = column_groups_for_entity(schema);
 
     let num_rows = query_handle.num_rows();
@@ -313,6 +514,12 @@ fn dataframe_ui_impl(ctx: &ViewerContext<'_>, ui: &mut egui::Ui, query_handle: &
         display_data: Err(anyhow::anyhow!(
             "No row data, `fetch_columns_and_rows` not called."
         )),
+        expanded_rows: ExpandedRows::new(
+            ui.ctx().clone(),
+            ui.make_persistent_id(row_expansion_id_salt),
+            expanded_rows_cache,
+            re_ui::DesignTokens::table_line_height(),
+        ),
     };
 
     let num_sticky_cols = schema
@@ -322,6 +529,7 @@ fn dataframe_ui_impl(ctx: &ViewerContext<'_>, ui: &mut egui::Ui, query_handle: &
 
     egui::Frame::none().inner_margin(5.0).show(ui, |ui| {
         egui_table::Table::new()
+            .id_salt(table_id_salt)
             .columns(
                 schema
                     .iter()
@@ -377,4 +585,113 @@ fn error_ui(ui: &mut egui::Ui, error: impl AsRef<str>) {
     let error = error.as_ref();
     ui.error_label(error);
     re_log::warn_once!("{error}");
+}
+
+/// Draw some cell content with an optional, right-aligned, on-hover button.
+///
+/// Returns true if the button was clicked.
+// TODO(ab, emilk): ideally, egui::Sides should work for that, but it doesn't yet support the
+// asymmetric behavior (left variable width, right fixed width).
+// See https://github.com/emilk/egui/issues/5116
+fn cell_with_hover_button_ui(
+    ui: &mut egui::Ui,
+    icon: &'static re_ui::Icon,
+    cell_content: impl FnOnce(&mut egui::Ui),
+) -> bool {
+    if ui.is_sizing_pass() {
+        // we don't need space for the icon since it only shows on hover
+        cell_content(ui);
+        return false;
+    }
+
+    let is_hovering_cell = ui.rect_contains_pointer(ui.max_rect());
+    let is_clicked =
+        is_hovering_cell && ui.input(|i| i.pointer.button_clicked(egui::PointerButton::Primary));
+
+    if is_hovering_cell {
+        let mut content_rect = ui.max_rect();
+        content_rect.max.x = (content_rect.max.x
+            - re_ui::DesignTokens::small_icon_size().x
+            - re_ui::DesignTokens::text_to_icon_padding())
+        .at_least(content_rect.min.x);
+
+        let button_rect = egui::Rect::from_x_y_ranges(
+            (content_rect.max.x + re_ui::DesignTokens::text_to_icon_padding())
+                ..=ui.max_rect().max.x,
+            ui.max_rect().y_range(),
+        );
+
+        let mut content_ui = ui.new_child(egui::UiBuilder::new().max_rect(content_rect));
+        cell_content(&mut content_ui);
+
+        let mut button_ui = ui.new_child(egui::UiBuilder::new().max_rect(button_rect));
+        button_ui.visuals_mut().widgets.hovered.weak_bg_fill = egui::Color32::TRANSPARENT;
+        button_ui.visuals_mut().widgets.active.weak_bg_fill = egui::Color32::TRANSPARENT;
+        button_ui.add(egui::Button::image(
+            icon.as_image()
+                .fit_to_exact_size(re_ui::DesignTokens::small_icon_size())
+                .tint(button_ui.visuals().widgets.noninteractive.text_color()),
+        ));
+
+        is_clicked
+    } else {
+        cell_content(ui);
+        false
+    }
+}
+
+/// Helper to draw individual lines into an expanded cell in a table.
+///
+/// `context`: whatever mutable context is necessary for the `line_content_ui`
+/// `line_data`: the data to be displayed in each line
+/// `line_content_ui`: the function to draw the content of each line
+fn split_ui_vertically<Item, Ctx>(
+    ui: &mut egui::Ui,
+    context: &mut Ctx,
+    line_data: impl Iterator<Item = Item>,
+    line_content_ui: impl Fn(&mut egui::Ui, &mut Ctx, usize, Item),
+) {
+    re_tracing::profile_function!();
+
+    // Empirical testing shows that iterating over all instances can take multiple tens of ms
+    // when the instance count is very large (which is common). So we use the clip rectangle to
+    // determine exactly which instances are visible and iterate only over those.
+    let visible_y_range = ui.clip_rect().y_range();
+    let total_y_range = ui.max_rect().y_range();
+
+    // Note: converting float to unsigned ints implicitly saturate negative values to 0
+    let start_row = ((visible_y_range.min - total_y_range.min)
+        / re_ui::DesignTokens::table_line_height())
+    .floor() as usize;
+
+    let end_row = ((visible_y_range.max - total_y_range.min)
+        / re_ui::DesignTokens::table_line_height())
+    .ceil() as usize;
+
+    for (line_index, item_data) in line_data
+        .enumerate()
+        .skip(start_row)
+        .take(end_row.saturating_sub(start_row))
+    {
+        let line_rect = egui::Rect::from_min_size(
+            ui.cursor().min
+                + egui::vec2(
+                    0.0,
+                    line_index as f32 * re_ui::DesignTokens::table_line_height(),
+                ),
+            egui::vec2(
+                ui.available_width(),
+                re_ui::DesignTokens::table_line_height(),
+            ),
+        );
+
+        // During animation, there may be more lines than can possibly fit. If so, no point in
+        // continuing to draw them.
+        if !ui.max_rect().intersects(line_rect) {
+            return;
+        }
+
+        let mut line_ui = ui.new_child(egui::UiBuilder::new().max_rect(line_rect));
+        line_content_ui(&mut line_ui, context, line_index, item_data);
+    }
 }

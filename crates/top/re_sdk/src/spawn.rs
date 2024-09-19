@@ -87,6 +87,15 @@ impl SpawnOptions {
             return path.to_owned();
         }
 
+        #[cfg(debug_assertions)]
+        {
+            let local_build_path = format!("target/debug/{RERUN_BINARY}");
+            if std::fs::metadata(&local_build_path).is_ok() {
+                re_log::info!("Spawning the locally built rerun at {local_build_path}");
+                return local_build_path;
+            }
+        }
+
         self.executable_name.clone()
     }
 }

@@ -15,14 +15,14 @@ pub fn edit_range1d(
 
         let response_min = ui.add(
             egui::DragValue::new(min)
-                .clamp_to_range(false)
+                .clamp_existing_to_range(false)
                 .range(f64::NEG_INFINITY..=*max)
                 .speed(speed),
         );
         ui.label("-");
         let response_max = ui.add(
             egui::DragValue::new(max)
-                .clamp_to_range(false)
+                .clamp_existing_to_range(false)
                 .range(*min..=f64::INFINITY)
                 .speed(speed),
         );

@@ -111,7 +111,6 @@ impl QueryEngine<'_> {
     /// Creating a handle is very cheap as it doesn't perform any kind of querying.
     ///
     /// If `columns` is specified, the schema of the result will strictly follow this specification.
-    /// [`ComponentColumnDescriptor::datatype`] and [`ComponentColumnDescriptor::is_static`] are ignored.
     ///
     /// Any provided [`ColumnDescriptor`]s that don't match a column in the result will still be included, but the
     /// data will be null for the entire column.
@@ -144,7 +143,6 @@ impl QueryEngine<'_> {
     /// Creating a handle is very cheap as it doesn't perform any kind of querying.
     ///
     /// If `columns` is specified, the schema of the result will strictly follow this specification.
-    /// [`ComponentColumnDescriptor::datatype`] and [`ComponentColumnDescriptor::is_static`] are ignored.
     ///
     /// Any provided [`ColumnDescriptor`]s that don't match a column in the result will still be included, but the
     /// data will be null for the entire column.

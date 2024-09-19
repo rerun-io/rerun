@@ -82,7 +82,7 @@ pub fn arrays_to_list_array(
 // TODO(cmc): A possible improvement would be to pick the smallest key datatype possible based
 // on the cardinality of the input arrays.
 pub fn arrays_to_dictionary<Idx: Copy + Eq>(
-    array_datatype: ArrowDatatype,
+    array_datatype: &ArrowDatatype,
     arrays: &[Option<(Idx, &dyn ArrowArray)>],
 ) -> Option<ArrowDictionaryArray<i32>> {
     // Dedupe the input arrays based on the given primary key.
@@ -115,33 +115,29 @@ pub fn arrays_to_dictionary<Idx: Copy + Eq>(
     };
 
     // Concatenate the underlying data as usual, except only the _unique_ values!
+    // We still need the underlying data to be a list-array, so the dictionary's keys can index
+    // into this list-array.
     let data = if arrays_dense_deduped.is_empty() {
         arrow2::array::new_empty_array(array_datatype.clone())
     } else {
-        arrow2::compute::concatenate::concatenate(&arrays_dense_deduped)
+        let values = arrow2::compute::concatenate::concatenate(&arrays_dense_deduped)
             .map_err(|err| {
                 re_log::warn_once!("failed to concatenate arrays: {err}");
                 err
             })
-            .ok()?
-    };
-
-    // We still need the underlying data to be a list-array, so the dictionary's keys can index
-    // into this list-array.
-    let data = {
-        let datatype = ArrowListArray::<i32>::default_datatype(array_datatype);
+            .ok()?;
 
         #[allow(clippy::unwrap_used)] // yes, these are indeed lengths
         let offsets =
             ArrowOffsets::try_from_lengths(arrays_dense_deduped.iter().map(|array| array.len()))
                 .unwrap();
 
-        ArrowListArray::<i32>::new(datatype, offsets.into(), data, None)
+        ArrowListArray::<i32>::new(array_datatype.clone(), offsets.into(), values, None).to_boxed()
     };
 
     let datatype = ArrowDatatype::Dictionary(
         arrow2::datatypes::IntegerType::Int32,
-        std::sync::Arc::new(data.data_type().clone()),
+        std::sync::Arc::new(array_datatype.clone()),
         true, // is_sorted
     );
 
