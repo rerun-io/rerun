@@ -411,6 +411,7 @@ pub enum ColumnSelector {
 }
 
 impl From<ColumnDescriptor> for ColumnSelector {
+    #[inline]
     fn from(desc: ColumnDescriptor) -> Self {
         match desc {
             ColumnDescriptor::Control(desc) => Self::Control(desc.into()),
@@ -421,18 +422,21 @@ impl From<ColumnDescriptor> for ColumnSelector {
 }
 
 impl From<ControlColumnSelector> for ColumnSelector {
+    #[inline]
     fn from(desc: ControlColumnSelector) -> Self {
         Self::Control(desc)
     }
 }
 
 impl From<TimeColumnSelector> for ColumnSelector {
+    #[inline]
     fn from(desc: TimeColumnSelector) -> Self {
         Self::Time(desc)
     }
 }
 
 impl From<ComponentColumnSelector> for ColumnSelector {
+    #[inline]
     fn from(desc: ComponentColumnSelector) -> Self {
         Self::Component(desc)
     }
@@ -447,7 +451,17 @@ pub struct ControlColumnSelector {
     pub component: ComponentName,
 }
 
+impl ControlColumnSelector {
+    #[inline]
+    pub fn row_id() -> Self {
+        Self {
+            component: RowId::name(),
+        }
+    }
+}
+
 impl From<ControlColumnDescriptor> for ControlColumnSelector {
+    #[inline]
     fn from(desc: ControlColumnDescriptor) -> Self {
         Self {
             component: desc.component_name,
@@ -463,9 +477,10 @@ pub struct TimeColumnSelector {
 }
 
 impl From<TimeColumnDescriptor> for TimeColumnSelector {
+    #[inline]
     fn from(desc: TimeColumnDescriptor) -> Self {
         Self {
-            timeline: desc.timeline.name().clone(),
+            timeline: *desc.timeline.name(),
         }
     }
 }
@@ -489,6 +504,7 @@ pub struct ComponentColumnSelector {
 }
 
 impl From<ComponentColumnDescriptor> for ComponentColumnSelector {
+    #[inline]
     fn from(desc: ComponentColumnDescriptor) -> Self {
         Self {
             entity_path: desc.entity_path.clone(),
@@ -499,10 +515,22 @@ impl From<ComponentColumnDescriptor> for ComponentColumnSelector {
 }
 
 impl ComponentColumnSelector {
+    /// Select a component of a given type, based on its  [`EntityPath`]
+    #[inline]
     pub fn new<C: re_types_core::Component>(entity_path: EntityPath) -> Self {
         Self {
             entity_path,
             component: C::name(),
+            join_encoding: JoinEncoding::default(),
+        }
+    }
+
+    /// Select a component based on its [`EntityPath`] and [`ComponentName`].
+    #[inline]
+    pub fn new_for_component_name(entity_path: EntityPath, component: ComponentName) -> Self {
+        Self {
+            entity_path,
+            component,
             join_encoding: JoinEncoding::default(),
         }
     }
