@@ -715,7 +715,7 @@ impl<'a, 'b> egui_tiles::Behavior<SpaceViewId> for TabViewer<'a, 'b> {
             )
             .unwrap_or_else(|err| {
                 re_log::error!(
-                    "Error in space view UI (class: {}, display name: {}): {err}",
+                    "Error in view title bar UI (class: {}, display name: {}): {err}",
                     space_view_blueprint.class_identifier(),
                     space_view_class.display_name(),
                 );
