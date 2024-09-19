@@ -136,6 +136,7 @@ pub fn picking(
                             ctx,
                             ui,
                             &instance_path,
+                            query,
                             spatial_kind,
                             picking_context.camera_plane_from_ui,
                             annotations,
@@ -289,6 +290,7 @@ fn image_hover_ui(
     ctx: &ViewerContext<'_>,
     ui: &mut egui::Ui,
     instance_path: &re_entity_db::InstancePath,
+    query: &ViewQuery<'_>,
     spatial_kind: SpatialSpaceViewKind,
     ui_pan_and_zoom_from_ui: egui::emath::RectTransform,
     annotations: &AnnotationSceneContext,
@@ -315,7 +317,14 @@ fn image_hover_ui(
 
     let depth_meter = depth_meter.map(|d| *d.0);
 
-    ui.label(instance_path.to_string());
+    item_ui::instance_path_button(
+        ctx,
+        &query.latest_at_query(),
+        ctx.recording(),
+        ui,
+        Some(query.space_view_id),
+        instance_path,
+    );
 
     ui.add_space(8.0);
 
