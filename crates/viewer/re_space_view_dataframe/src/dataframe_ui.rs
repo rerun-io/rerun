@@ -41,6 +41,9 @@ impl QueryHandle<'_> {
 
     fn num_rows(&self) -> u64 {
         match self {
+            // TODO(#7449): this is in general wrong! However, there is currently no way to know
+            // if the number of row is 0 or 1. For now, we silently accept in the delegate when it
+            // turns out to be 0.
             QueryHandle::LatestAt(_) => 1,
             QueryHandle::Range(query_handle) => query_handle.num_rows(),
         }
@@ -78,7 +81,7 @@ impl<'a> From<RangeQueryHandle<'a>> for QueryHandle<'a> {
     }
 }
 
-#[derive(Clone, Copy)]
+#[derive(Debug, Clone, Copy)]
 struct BatchRef {
     /// Which batch?
     batch_idx: usize,
@@ -92,6 +95,7 @@ struct BatchRef {
 /// Row data is stored in a bunch of [`DisplayRecordBatch`], which are created from
 /// [`RecordBatch`]s. We also maintain a mapping for each row number to the corresponding record
 /// batch and the index inside it.
+#[derive(Debug)]
 struct RowsDisplayData {
     /// The [`DisplayRecordBatch`]s to display.
     display_record_batches: Vec<DisplayRecordBatch>,
@@ -169,6 +173,11 @@ struct DataframeTableDelegate<'a> {
 
     expanded_rows: ExpandedRows<'a>,
 
+    // Track the cases where latest-at returns 0 rows instead of the expected 1 row, so that we
+    // can silence the error.
+    // TODO(#7449): this can be removed when `LatestAtQueryHandle` is able to report the row count.
+    latest_at_query_returns_no_rows: bool,
+
     num_rows: u64,
 }
 
@@ -189,6 +198,15 @@ impl<'a> egui_table::TableDelegate for DataframeTableDelegate<'a> {
             self.schema,
             &self.query_handle.timeline(),
         );
+
+        // TODO(#7449): this can be removed when `LatestAtQueryHandle` is able to report the row count.
+        self.latest_at_query_returns_no_rows = if let Ok(display_data) = &data {
+            matches!(self.query_handle, QueryHandle::LatestAt(_))
+                && display_data.display_record_batches.len() == 1
+                && display_data.display_record_batches[0].num_rows() == 0
+        } else {
+            false
+        };
 
         self.display_data = data.context("Failed to create display data");
     }
@@ -256,10 +274,14 @@ impl<'a> egui_table::TableDelegate for DataframeTableDelegate<'a> {
             row_idx: batch_row_idx,
         }) = display_data.batch_ref_from_row.get(&cell.row_nr).copied()
         else {
-            error_ui(
-                ui,
-                "Bug in egui_table: we didn't prefetch what was rendered!",
-            );
+            // TODO(#7449): this check can be removed when `LatestAtQueryHandle` is able to report
+            // the row count.
+            if !self.latest_at_query_returns_no_rows {
+                error_ui(
+                    ui,
+                    "Bug in egui_table: we didn't prefetch what was rendered!",
+                );
+            }
 
             return;
         };
@@ -531,6 +553,7 @@ fn dataframe_ui_impl(
             expanded_rows_cache,
             re_ui::DesignTokens::table_line_height(),
         ),
+        latest_at_query_returns_no_rows: false,
     };
 
     let num_sticky_cols = schema
