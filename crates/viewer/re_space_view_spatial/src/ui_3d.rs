@@ -523,7 +523,7 @@ impl SpatialSpaceView3D {
         );
 
         if let Some(pointer_pos_ui) = response.hover_pos() {
-            // There's no panning & zooming, so this is an identiy transform.
+            // There's no panning & zooming, so this is an identity transform.
             let ui_pan_and_zoom_from_ui = RectTransform::from_to(ui_rect, ui_rect);
 
             let picking_context = crate::picking::PickingContext::new(

@@ -416,10 +416,12 @@ pub fn picking(
             continue;
         }
 
-        response = if let Some(picked_image) = get_image_picking_info(system_output, hit) {
+        if hit.hit_type == PickingHitType::TexturedRect {
             // We don't support selecting pixels yet.
             instance_path.instance = Instance::ALL;
+        }
 
+        response = if let Some(picked_image) = get_image_picking_info(system_output, hit) {
             if picked_image.kind() == ImageKind::Depth {
                 if let Some(meter) = picked_image.depth_meter {
                     let [x, y] = picked_image.coordinates;

@@ -1,5 +1,3 @@
-use itertools::Itertools as _;
-
 use re_space_view::{diff_component_filter, HybridResults};
 use re_types::{
     archetypes::EncodedImage,
@@ -109,25 +107,10 @@ impl VisualizerSystem for EncodedImageVisualizer {
             )
         });
 
-        let mut draw_data_list = Vec::new();
-
-        // TODO(wumpf): Can we avoid this copy, maybe let DrawData take an iterator?
-        let rectangles = self
-            .data
-            .pickable_rects
-            .iter()
-            .map(|image| image.textured_rect.clone())
-            .collect_vec();
-        match re_renderer::renderer::RectangleDrawData::new(render_ctx, &rectangles) {
-            Ok(draw_data) => {
-                draw_data_list.push(draw_data.into());
-            }
-            Err(err) => {
-                re_log::error_once!("Failed to create rectangle draw data from images: {err}");
-            }
-        }
-
-        Ok(draw_data_list)
+        Ok(vec![PickableTexturedRect::to_draw_data(
+            render_ctx,
+            &self.data.pickable_rects,
+        )?])
     }
 
     fn data(&self) -> Option<&dyn std::any::Any> {

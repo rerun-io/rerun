@@ -1,4 +1,3 @@
-use itertools::Itertools as _;
 use nohash_hasher::IntMap;
 
 use re_entity_db::EntityPath;
@@ -31,6 +30,7 @@ use super::{textured_rect_from_image, SpatialViewVisualizerData};
 
 pub struct DepthImageVisualizer {
     pub data: SpatialViewVisualizerData,
+
     /// Expose image infos for depth clouds - we need this for picking interaction.
     pub depth_cloud_entities: IntMap<EntityPathHash, (ImageInfo, DepthMeter)>,
 }
@@ -320,21 +320,11 @@ impl VisualizerSystem for DepthImageVisualizer {
                 );
             }
         }
-        // TODO(wumpf): Can we avoid this copy, maybe let DrawData take an iterator?
-        let rectangles = self
-            .data
-            .pickable_rects
-            .iter()
-            .map(|image| image.textured_rect.clone())
-            .collect_vec();
-        match re_renderer::renderer::RectangleDrawData::new(render_ctx, &rectangles) {
-            Ok(draw_data) => {
-                draw_data_list.push(draw_data.into());
-            }
-            Err(err) => {
-                re_log::error_once!("Failed to create rectangle draw data from images: {err}");
-            }
-        }
+
+        draw_data_list.push(PickableTexturedRect::to_draw_data(
+            render_ctx,
+            &self.data.pickable_rects,
+        )?);
 
         Ok(draw_data_list)
     }
