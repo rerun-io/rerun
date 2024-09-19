@@ -1,17 +1,33 @@
 use egui::Ui;
+use std::any::Any;
 
-use crate::dataframe_ui::dataframe_ui;
-use crate::{query_kind::QueryKind, view_query::Query, visualizer_system::EmptySystem};
 use re_log_types::{EntityPath, EntityPathFilter, ResolvedTimeRange};
-use re_space_view::view_property_ui;
-use re_types::blueprint::archetypes;
 use re_types_core::SpaceViewClassIdentifier;
-use re_ui::list_item;
 use re_viewer_context::{
-    SpaceViewClass, SpaceViewClassRegistryError, SpaceViewId, SpaceViewState,
+    SpaceViewClass, SpaceViewClassRegistryError, SpaceViewId, SpaceViewState, SpaceViewStateExt,
     SpaceViewSystemExecutionError, SystemExecutionOutput, ViewQuery, ViewerContext,
 };
 use re_viewport_blueprint::SpaceViewContents;
+
+use crate::dataframe_ui::dataframe_ui;
+use crate::expanded_rows::ExpandedRowsCache;
+use crate::{query_kind::QueryKind, visualizer_system::EmptySystem};
+
+#[derive(Default)]
+struct DataframeSpaceViewState {
+    /// Cache for the expanded rows.
+    expended_rows_cache: ExpandedRowsCache,
+}
+
+impl SpaceViewState for DataframeSpaceViewState {
+    fn as_any(&self) -> &dyn Any {
+        self
+    }
+
+    fn as_any_mut(&mut self) -> &mut dyn Any {
+        self
+    }
+}
 
 #[derive(Default)]
 pub struct DataframeSpaceView;
@@ -59,7 +75,7 @@ mode sets the default time range to _everything_. You can override this in the s
     }
 
     fn new_state(&self) -> Box<dyn SpaceViewState> {
-        Box::<()>::default()
+        Box::<DataframeSpaceViewState>::default()
     }
 
     fn preferred_tile_aspect_ratio(&self, _state: &dyn SpaceViewState) -> Option<f32> {
@@ -86,37 +102,19 @@ mode sets the default time range to _everything_. You can override this in the s
         _space_origin: &EntityPath,
         space_view_id: SpaceViewId,
     ) -> Result<(), SpaceViewSystemExecutionError> {
-        crate::view_query::query_ui(ctx, ui, state, space_view_id)?;
-
-        list_item::list_item_scope(ui, "dataframe_view_selection_ui", |ui| {
-            let view_query = Query::try_from_blueprint(ctx, space_view_id)?;
-            //TODO(#7070): column order and sorting needs much love
-            ui.add_enabled_ui(
-                matches!(view_query.kind(ctx), QueryKind::Range { .. }),
-                |ui| {
-                    view_property_ui::<archetypes::TimeRangeTableOrder>(
-                        ctx,
-                        ui,
-                        space_view_id,
-                        self,
-                        state,
-                    );
-                },
-            );
-
-            Ok(())
-        })
+        crate::view_query::query_ui(ctx, ui, state, space_view_id)
     }
 
     fn ui(
         &self,
         ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
-        _state: &mut dyn SpaceViewState,
+        state: &mut dyn SpaceViewState,
         query: &ViewQuery<'_>,
         _system_output: SystemExecutionOutput,
     ) -> Result<(), SpaceViewSystemExecutionError> {
         re_tracing::profile_function!();
+        let state = state.downcast_mut::<DataframeSpaceViewState>()?;
 
         let view_query = super::view_query::Query::try_from_blueprint(ctx, query.space_view_id)?;
         let timeline_name = view_query.timeline_name(ctx);
@@ -148,7 +146,7 @@ mode sets the default time range to _everything_. You can override this in the s
                 //TODO(ab): specify which columns
                 let query_handle = query_engine.latest_at(&query, None);
 
-                dataframe_ui(ctx, ui, query_handle);
+                dataframe_ui(ctx, ui, query_handle, &mut state.expended_rows_cache);
             }
             QueryKind::Range {
                 pov_entity,
@@ -167,13 +165,19 @@ mode sets the default time range to _everything_. You can override this in the s
                         archetype_field_name: None,
                         component_name: pov_component,
                         // this is actually ignored:
-                        datatype: re_chunk_store::external::arrow2::datatypes::DataType::Null,
+                        store_datatype: re_chunk_store::external::arrow2::datatypes::DataType::Null,
+                        join_encoding: Default::default(),
                         is_static: false,
                     },
                 };
 
                 //TODO(ab): specify which columns should be displayed or not
-                dataframe_ui(ctx, ui, query_engine.range(&query, None));
+                dataframe_ui(
+                    ctx,
+                    ui,
+                    query_engine.range(&query, None),
+                    &mut state.expended_rows_cache,
+                );
             }
         };
 

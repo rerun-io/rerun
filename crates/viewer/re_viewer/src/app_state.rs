@@ -272,6 +272,10 @@ impl AppState {
             focused_item,
         };
 
+        // We move the time at the very start of the frame,
+        // so that we always show the latest data when we're in "follow" mode.
+        move_time(&ctx, recording, rx);
+
         // Update the viewport. May spawn new views and handle queued requests (like screenshots).
         viewport.on_frame_start(&ctx);
 
@@ -466,41 +470,6 @@ impl AppState {
         // Process deferred layout operations and apply updates back to blueprint
         viewport.update_and_sync_tile_tree_to_blueprint(&ctx);
 
-        {
-            // We move the time at the very end of the frame,
-            // so we have one frame to see the first data before we move the time.
-            let dt = ui.ctx().input(|i| i.stable_dt);
-
-            // Are we still connected to the data source for the current store?
-            let more_data_is_coming = if let Some(store_source) = &recording.data_source {
-                rx.sources().iter().any(|s| s.as_ref() == store_source)
-            } else {
-                false
-            };
-
-            let recording_needs_repaint = ctx.rec_cfg.time_ctrl.write().update(
-                recording.times_per_timeline(),
-                dt,
-                more_data_is_coming,
-            );
-
-            let blueprint_needs_repaint = if ctx.app_options.inspect_blueprint_timeline {
-                ctx.blueprint_cfg.time_ctrl.write().update(
-                    ctx.store_context.blueprint.times_per_timeline(),
-                    dt,
-                    more_data_is_coming,
-                )
-            } else {
-                re_viewer_context::NeedsRepaint::No
-            };
-
-            if recording_needs_repaint == re_viewer_context::NeedsRepaint::Yes
-                || blueprint_needs_repaint == re_viewer_context::NeedsRepaint::Yes
-            {
-                ui.ctx().request_repaint();
-            }
-        }
-
         if WATERMARK {
             ui.ctx().paint_watermark();
         }
@@ -534,6 +503,39 @@ impl AppState {
         } else {
             LatestAtQuery::latest(blueprint_timeline())
         }
+    }
+}
+
+fn move_time(ctx: &ViewerContext<'_>, recording: &EntityDb, rx: &ReceiveSet<LogMsg>) {
+    let dt = ctx.egui_ctx.input(|i| i.stable_dt);
+
+    // Are we still connected to the data source for the current store?
+    let more_data_is_coming = if let Some(store_source) = &recording.data_source {
+        rx.sources().iter().any(|s| s.as_ref() == store_source)
+    } else {
+        false
+    };
+
+    let recording_needs_repaint = ctx.rec_cfg.time_ctrl.write().update(
+        recording.times_per_timeline(),
+        dt,
+        more_data_is_coming,
+    );
+
+    let blueprint_needs_repaint = if ctx.app_options.inspect_blueprint_timeline {
+        ctx.blueprint_cfg.time_ctrl.write().update(
+            ctx.store_context.blueprint.times_per_timeline(),
+            dt,
+            more_data_is_coming,
+        )
+    } else {
+        re_viewer_context::NeedsRepaint::No
+    };
+
+    if recording_needs_repaint == re_viewer_context::NeedsRepaint::Yes
+        || blueprint_needs_repaint == re_viewer_context::NeedsRepaint::Yes
+    {
+        ctx.egui_ctx.request_repaint();
     }
 }
 

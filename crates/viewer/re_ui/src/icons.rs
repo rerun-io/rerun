@@ -57,6 +57,9 @@ pub const LEFT_PANEL_TOGGLE: Icon = icon_from_path!("../data/icons/left_panel_to
 pub const MINIMIZE: Icon = icon_from_path!("../data/icons/minimize.png");
 pub const MAXIMIZE: Icon = icon_from_path!("../data/icons/maximize.png");
 
+pub const COLLAPSE: Icon = icon_from_path!("../data/icons/collapse.png");
+pub const EXPAND: Icon = icon_from_path!("../data/icons/expand.png");
+
 pub const VISIBLE: Icon = icon_from_path!("../data/icons/visible.png");
 pub const INVISIBLE: Icon = icon_from_path!("../data/icons/invisible.png");
 
@@ -110,3 +113,5 @@ pub const RECORDING: Icon = icon_from_path!("../data/icons/recording.png");
 pub const BLUEPRINT: Icon = icon_from_path!("../data/icons/blueprint.png");
 
 pub const GITHUB: Icon = icon_from_path!("../data/icons/github.png");
+
+pub const VIDEO_ERROR: Icon = icon_from_path!("../data/icons/video_error.png");

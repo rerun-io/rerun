@@ -40,10 +40,7 @@ fn edit_view_enum_impl<EnumT: re_types_core::reflection::Enum>(
             });
 
         combobox_response.response = combobox_response.response.on_hover_ui(|ui| {
-            ui.markdown_ui(
-                ui.id().with(prev_selected_value),
-                prev_selected_value.docstring_md(),
-            );
+            ui.markdown_ui(prev_selected_value.docstring_md());
         });
 
         response_with_changes_of_inner(combobox_response)
@@ -59,6 +56,6 @@ fn variant_ui<EnumT: re_types_core::reflection::Enum>(
 ) -> egui::Response {
     ui.selectable_value(current_value, variant, variant.to_string())
         .on_hover_ui(|ui| {
-            ui.markdown_ui(ui.id().with(variant), variant.docstring_md());
+            ui.markdown_ui(variant.docstring_md());
         })
 }

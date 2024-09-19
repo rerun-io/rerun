@@ -100,7 +100,7 @@ impl<'a> Viewport<'a> {
         let Viewport { blueprint, .. } = self;
 
         let is_zero_sized_viewport = ui.available_size().min_elem() <= 0.0;
-        if is_zero_sized_viewport {
+        if is_zero_sized_viewport || !ui.is_visible() {
             return;
         }
 
@@ -488,7 +488,7 @@ impl<'a, 'b> egui_tiles::Behavior<SpaceViewId> for TabViewer<'a, 'b> {
         };
 
         let is_zero_sized_viewport = ui.available_size().min_elem() <= 0.0;
-        if is_zero_sized_viewport {
+        if is_zero_sized_viewport || !ui.is_visible() {
             return Default::default();
         }
 
@@ -499,8 +499,7 @@ impl<'a, 'b> egui_tiles::Behavior<SpaceViewId> for TabViewer<'a, 'b> {
             return Default::default();
         };
 
-        let (query, system_output) =
-            self.executed_systems_per_space_view.remove(view_id).unwrap_or_else(|| {
+        let (query, system_output) = self.executed_systems_per_space_view.remove(view_id).unwrap_or_else(|| {
             // The space view's systems haven't been executed.
             // This may indicate that the egui_tiles tree is not in sync
             // with the blueprint tree.
@@ -509,34 +508,35 @@ impl<'a, 'b> egui_tiles::Behavior<SpaceViewId> for TabViewer<'a, 'b> {
 
             if cfg!(debug_assertions) {
                 re_log::warn_once!(
-                "Visualizers for space view {:?} haven't been executed prior to display. This should never happen, please report a bug.",
-                space_view_blueprint.display_name_or_default()
-            );
+                    "Visualizers for space view {:?} haven't been executed prior to display. This should never happen, please report a bug.",
+                    space_view_blueprint.display_name_or_default()
+                );
             }
+
+            let ctx: &'a ViewerContext<'_> = self.ctx;
+            let view = space_view_blueprint;
+            re_tracing::profile_scope!("late-system-execute", view.class_identifier().as_str());
+
+            let query_result = ctx.lookup_query_result(view.id);
+
+            let mut per_visualizer_data_results = re_viewer_context::PerSystemDataResults::default();
+
             {
-                let ctx: &'a ViewerContext<'_> = self.ctx;
-                let view = space_view_blueprint;
-                re_tracing::profile_function!(view.class_identifier().as_str());
+                re_tracing::profile_scope!("per_system_data_results");
 
-                let query_result = ctx.lookup_query_result(view.id);
-
-                let mut per_visualizer_data_results = re_viewer_context::PerSystemDataResults::default();
-                {
-                    re_tracing::profile_scope!("per_system_data_results");
-
-                    query_result.tree.visit(&mut |node| {
-                        for system in &node.data_result.visualizers {
-                            per_visualizer_data_results
-                                .entry(*system)
-                                .or_default()
-                                .push(&node.data_result);
-                        }
-                        true
-                    });
-                }
-
-                execute_systems_for_space_view(ctx, view, latest_at, self.view_states)
+                query_result.tree.visit(&mut |node| {
+                    for system in &node.data_result.visualizers {
+                        per_visualizer_data_results
+                            .entry(*system)
+                            .or_default()
+                            .push(&node.data_result);
+                    }
+                    true
+                });
             }
+
+            let class = space_view_blueprint.class(self.ctx.space_view_class_registry);
+            execute_systems_for_space_view(ctx, view, latest_at, self.view_states.get_mut_or_create(*view_id, class))
         });
 
         let class = space_view_blueprint.class(self.ctx.space_view_class_registry);
@@ -659,7 +659,7 @@ impl<'a, 'b> egui_tiles::Behavior<SpaceViewId> for TabViewer<'a, 'b> {
         &mut self,
         tiles: &egui_tiles::Tiles<SpaceViewId>,
         ui: &mut egui::Ui,
-        tile_id: egui_tiles::TileId,
+        _tile_id: egui_tiles::TileId,
         tabs: &egui_tiles::Tabs,
         _scroll_offset: &mut f32,
     ) {
@@ -671,7 +671,8 @@ impl<'a, 'b> egui_tiles::Behavior<SpaceViewId> for TabViewer<'a, 'b> {
         };
         let space_view_id = *space_view_id;
 
-        let Some(space_view) = self.viewport_blueprint.space_views.get(&space_view_id) else {
+        let Some(space_view_blueprint) = self.viewport_blueprint.space_views.get(&space_view_id)
+        else {
             return;
         };
         let num_space_views = tiles.tiles().filter(|tile| tile.is_pane()).count();
@@ -699,11 +700,31 @@ impl<'a, 'b> egui_tiles::Behavior<SpaceViewId> for TabViewer<'a, 'b> {
             }
         }
 
-        let help_markdown = space_view
-            .class(self.ctx.space_view_class_registry)
-            .help_markdown(self.ctx.egui_ctx);
+        let space_view_class = space_view_blueprint.class(self.ctx.space_view_class_registry);
+
+        // give the view a chance to display some extra UI in the top bar.
+        let view_state = self
+            .view_states
+            .get_mut_or_create(space_view_id, space_view_class);
+        space_view_class
+            .extra_title_bar_ui(
+                self.ctx,
+                ui,
+                view_state,
+                &space_view_blueprint.space_origin,
+                space_view_id,
+            )
+            .unwrap_or_else(|err| {
+                re_log::error!(
+                    "Error in view title bar UI (class: {}, display name: {}): {err}",
+                    space_view_blueprint.class_identifier(),
+                    space_view_class.display_name(),
+                );
+            });
+
+        let help_markdown = space_view_class.help_markdown(self.ctx.egui_ctx);
         ui.help_hover_button().on_hover_ui(|ui| {
-            ui.markdown_ui(ui.id().with(tile_id), &help_markdown);
+            ui.markdown_ui(&help_markdown);
         });
     }
 

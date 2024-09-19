@@ -47,6 +47,9 @@ bytemuck.workspace = true
 egui = { workspace = true, features = ["serde"] }
 glam.workspace = true
 hexasphere.workspace = true
+image = { workspace = true, features = [
+  "png",
+] } # For loading images/icons for the gui into textures.
 itertools.workspace = true
 nohash-hasher.workspace = true
 once_cell.workspace = true

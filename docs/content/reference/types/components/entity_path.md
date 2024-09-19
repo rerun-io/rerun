@@ -10,11 +10,11 @@ A path to an entity, usually to reference some data that is part of the target e
 * value: [`EntityPath`](../datatypes/entity_path.md)
 
 ## API reference links
- * 🌊 [C++ API docs for `EntityPath`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1components_1_1EntityPath.html)
- * 🐍 [Python API docs for `EntityPath`](https://ref.rerun.io/docs/python/stable/common/components#rerun.components.EntityPath)
- * 🦀 [Rust API docs for `EntityPath`](https://docs.rs/rerun/latest/rerun/components/struct.EntityPath.html)
+ * 🌊 [C++ API docs for `EntityPath`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1components_1_1EntityPath.html?speculative-link)
+ * 🐍 [Python API docs for `EntityPath`](https://ref.rerun.io/docs/python/stable/common/components?speculative-link#rerun.components.EntityPath)
+ * 🦀 [Rust API docs for `EntityPath`](https://docs.rs/rerun/latest/rerun/components/struct.EntityPath.html?speculative-link)
 
 
 ## Used by
 
-* [`VideoFrameReference`](../archetypes/video_frame_reference.md)
+* [`VideoFrameReference`](../archetypes/video_frame_reference.md?speculative-link)

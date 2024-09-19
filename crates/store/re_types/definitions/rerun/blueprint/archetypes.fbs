@@ -11,7 +11,6 @@ include "./archetypes/space_view_contents.fbs";
 include "./archetypes/tensor_scalar_mapping.fbs";
 include "./archetypes/tensor_slice_selection.fbs";
 include "./archetypes/tensor_view_fit.fbs";
-include "./archetypes/time_range_table_order.fbs";
 include "./archetypes/viewport_blueprint.fbs";
 include "./archetypes/visible_time_ranges.fbs";
 include "./archetypes/visual_bounds2d.fbs";

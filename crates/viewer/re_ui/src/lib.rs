@@ -91,7 +91,7 @@ pub fn apply_style_and_install_loaders(egui_ctx: &egui::Context) {
     );
 
     egui_ctx.options_mut(|o| {
-        o.follow_system_theme = false;
+        o.theme_preference = egui::ThemePreference::Dark;
         o.fallback_theme = egui::Theme::Dark;
     });
 

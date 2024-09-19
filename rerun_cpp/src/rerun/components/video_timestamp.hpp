@@ -6,6 +6,7 @@
 #include "../datatypes/video_timestamp.hpp"
 #include "../result.hpp"
 
+#include <chrono>
 #include <cstdint>
 #include <memory>
 
@@ -15,6 +16,40 @@ namespace rerun::components {
     /// ⚠ **This is an experimental API! It is not fully supported, and is likely to change significantly in future versions.**
     struct VideoTimestamp {
         rerun::datatypes::VideoTimestamp timestamp;
+
+      public: // START of extensions from video_timestamp_ext.cpp:
+        /// Creates a new `VideoTimestamp` component.
+        /// \param video_time Timestamp value, type defined by `time_mode`.
+        /// \param time_mode How to interpret `video_time`.
+        VideoTimestamp(int64_t video_time, rerun::datatypes::VideoTimeMode time_mode) {
+            timestamp.video_time = video_time;
+            timestamp.time_mode = time_mode;
+        }
+
+        /// Creates a new `VideoTimestamp` from time since video start.
+        template <typename TRep, typename TPeriod>
+        VideoTimestamp(std::chrono::duration<TRep, TPeriod> time)
+            : VideoTimestamp(
+                  std::chrono::duration_cast<std::chrono::nanoseconds>(time).count(),
+                  datatypes::VideoTimeMode::Nanoseconds
+              ) {}
+
+        /// Creates a new [`VideoTimestamp`] from seconds since video start.
+        static VideoTimestamp from_seconds(double seconds) {
+            return VideoTimestamp(std::chrono::duration<double>(seconds));
+        }
+
+        /// Creates a new [`VideoTimestamp`] from milliseconds since video start.
+        static VideoTimestamp from_milliseconds(double milliseconds) {
+            return VideoTimestamp(std::chrono::duration<double, std::milli>(milliseconds));
+        }
+
+        /// Creates a new [`VideoTimestamp`] from nanoseconds since video start.
+        static VideoTimestamp from_nanoseconds(int64_t nanoseconds) {
+            return VideoTimestamp(std::chrono::nanoseconds(nanoseconds));
+        }
+
+        // END of extensions from video_timestamp_ext.cpp, start of generated code:
 
       public:
         VideoTimestamp() = default;
@@ -50,10 +85,19 @@ namespace rerun {
         static Result<std::shared_ptr<arrow::Array>> to_arrow(
             const components::VideoTimestamp* instances, size_t num_instances
         ) {
-            return Loggable<rerun::datatypes::VideoTimestamp>::to_arrow(
-                &instances->timestamp,
-                num_instances
-            );
+            if (num_instances == 0) {
+                return Loggable<rerun::datatypes::VideoTimestamp>::to_arrow(nullptr, 0);
+            } else if (instances == nullptr) {
+                return rerun::Error(
+                    ErrorCode::UnexpectedNullArgument,
+                    "Passed array instances is null when num_elements> 0."
+                );
+            } else {
+                return Loggable<rerun::datatypes::VideoTimestamp>::to_arrow(
+                    &instances->timestamp,
+                    num_instances
+                );
+            }
         }
     };
 } // namespace rerun

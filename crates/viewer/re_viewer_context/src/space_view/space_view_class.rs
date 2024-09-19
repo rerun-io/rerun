@@ -1,4 +1,5 @@
 use nohash_hasher::IntSet;
+
 use re_entity_db::EntityDb;
 use re_log_types::EntityPath;
 use re_types::{ComponentName, SpaceViewClassIdentifier};
@@ -170,6 +171,20 @@ pub trait SpaceViewClass: Send + Sync {
 
     /// Ui shown when the user selects a space view of this class.
     fn selection_ui(
+        &self,
+        _ctx: &ViewerContext<'_>,
+        _ui: &mut egui::Ui,
+        _state: &mut dyn SpaceViewState,
+        _space_origin: &EntityPath,
+        _space_view_id: SpaceViewId,
+    ) -> Result<(), SpaceViewSystemExecutionError> {
+        Ok(())
+    }
+
+    /// Additional UI displayed in the tab title bar, between the "maximize" and "help" buttons.
+    ///
+    /// Note: this is a right-to-left layout.
+    fn extra_title_bar_ui(
         &self,
         _ctx: &ViewerContext<'_>,
         _ui: &mut egui::Ui,

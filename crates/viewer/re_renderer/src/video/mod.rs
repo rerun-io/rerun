@@ -1,5 +1,8 @@
 mod decoder;
 
+use parking_lot::Mutex;
+use std::sync::Arc;
+
 use re_video::{TimeMs, VideoLoadError};
 
 use crate::{resource_managers::GpuTexture2D, RenderContext};
@@ -17,6 +20,10 @@ pub enum VideoError {
 // TODO(jan, andreas): These errors are for the most part specific to the web decoder right now.
 #[derive(thiserror::Error, Debug)]
 pub enum DecodingError {
+    // TODO(#7298): Native support.
+    #[error("Video playback not yet available in the native viewer. Try the web viewer instead.")]
+    NoNativeSupport,
+
     #[error("Failed to create VideoDecoder: {0}")]
     DecoderSetupFailure(String),
 
@@ -49,11 +56,15 @@ pub enum FrameDecodingResult {
     Error(DecodingError),
 }
 
-/// A video file.
+/// Video data + decoder(s).
 ///
 /// Supports asynchronously decoding video into GPU textures via [`Video::frame_at`].
 pub struct Video {
-    decoder: decoder::VideoDecoder,
+    data: Arc<re_video::VideoData>,
+
+    // TODO(#7420): Support several tracks of video decoders.
+    // TODO(andreas): Create lazily.
+    decoder: Mutex<decoder::VideoDecoder>,
 }
 
 impl Video {
@@ -63,36 +74,38 @@ impl Video {
     /// - `video/mp4`
     pub fn load(
         render_context: &RenderContext,
-        media_type: Option<&str>,
         data: &[u8],
+        media_type: Option<&str>,
     ) -> Result<Self, VideoError> {
-        let data = match media_type {
-            Some("video/mp4") => re_video::load_mp4(data)?,
-            Some(media_type) => {
-                return Err(VideoError::Load(VideoLoadError::UnsupportedMediaType(
-                    media_type.to_owned(),
-                )))
-            }
-            None => return Err(VideoError::Load(VideoLoadError::UnknownMediaType)),
-        };
-        let decoder = decoder::VideoDecoder::new(render_context, data)?;
+        let data = Arc::new(re_video::VideoData::load_from_bytes(data, media_type)?);
+        let decoder = Mutex::new(decoder::VideoDecoder::new(render_context, data.clone())?);
 
-        Ok(Self { decoder })
+        Ok(Self { data, decoder })
     }
 
-    /// Duration of the video in milliseconds.
-    pub fn duration_ms(&self) -> f64 {
-        self.decoder.duration_ms()
+    /// Duration of the video.
+    pub fn duration(&self) -> re_video::TimeMs {
+        self.data.duration
     }
 
     /// Natural width of the video.
     pub fn width(&self) -> u32 {
-        self.decoder.width()
+        self.data.config.coded_width as u32
     }
 
     /// Natural height of the video.
     pub fn height(&self) -> u32 {
-        self.decoder.height()
+        self.data.config.coded_height as u32
+    }
+
+    /// The codec used to encode the video.
+    pub fn codec(&self) -> &str {
+        &self.data.config.codec
+    }
+
+    /// Counts the number of samples in the video.
+    pub fn count_samples(&self) -> usize {
+        self.data.segments.iter().map(|seg| seg.samples.len()).sum()
     }
 
     /// Returns a texture with the latest frame at the given timestamp.
@@ -102,11 +115,8 @@ impl Video {
     /// This API is _asynchronous_, meaning that the decoder may not yet have decoded the frame
     /// at the given timestamp. If the frame is not yet available, the returned texture will be
     /// empty.
-    ///
-    /// This takes `&mut self` because the decoder maintains a buffer of decoded frames,
-    /// which requires mutation. It is also not thread-safe by default.
-    pub fn frame_at(&mut self, timestamp_s: f64) -> FrameDecodingResult {
+    pub fn frame_at(&self, timestamp_s: f64) -> FrameDecodingResult {
         re_tracing::profile_function!();
-        self.decoder.frame_at(TimeMs::new(timestamp_s * 1e3))
+        self.decoder.lock().frame_at(TimeMs::new(timestamp_s * 1e3))
     }
 }

@@ -766,6 +766,14 @@ impl App {
                 }
             }
 
+            #[cfg(debug_assertions)]
+            UICommand::ResetEguiMemory => {
+                egui_ctx.memory_mut(|mem| *mem = Default::default());
+
+                // re-apply style, which is lost when resetting memory
+                re_ui::apply_style_and_install_loaders(egui_ctx);
+            }
+
             #[cfg(target_arch = "wasm32")]
             UICommand::CopyDirectLink => {
                 self.run_copy_direct_link_command(store_context);
@@ -897,6 +905,14 @@ impl App {
             .frame(DesignTokens::top_panel_frame())
             .show_animated_inside(ui, self.egui_debug_panel_open, |ui| {
                 egui::ScrollArea::vertical().show(ui, |ui| {
+                    if ui
+                        .button("request_discard")
+                        .on_hover_text("Request a second layout pass. Just for testing.")
+                        .clicked()
+                    {
+                        ui.ctx().request_discard();
+                    }
+
                     egui::CollapsingHeader::new("egui settings")
                         .default_open(false)
                         .show(ui, |ui| {
@@ -1026,6 +1042,8 @@ impl App {
         let start = web_time::Instant::now();
 
         while let Some((channel_source, msg)) = self.rx.try_recv() {
+            re_log::trace!("Received a message from {channel_source:?}"); // Used by `test_ui_wakeup` test app!
+
             let msg = match msg.payload {
                 re_smart_channel::SmartMessagePayload::Msg(msg) => msg,
 

@@ -8,7 +8,7 @@ use web_sys::{
     VideoDecoderInit,
 };
 
-use re_video::{TimeMs, VideoData};
+use re_video::TimeMs;
 
 use super::latest_at_idx;
 use crate::{
@@ -37,7 +37,7 @@ impl std::ops::Deref for VideoFrame {
 }
 
 pub struct VideoDecoder {
-    data: re_video::VideoData,
+    data: Arc<re_video::VideoData>,
     queue: Arc<wgpu::Queue>,
     texture: GpuTexture2D,
 
@@ -81,7 +81,10 @@ impl Drop for VideoDecoder {
 }
 
 impl VideoDecoder {
-    pub fn new(render_context: &RenderContext, data: VideoData) -> Result<Self, DecodingError> {
+    pub fn new(
+        render_context: &RenderContext,
+        data: Arc<re_video::VideoData>,
+    ) -> Result<Self, DecodingError> {
         let frames = Arc::new(Mutex::new(Vec::with_capacity(16)));
 
         let decoder = init_video_decoder({
@@ -104,7 +107,7 @@ impl VideoDecoder {
             data.config.coded_height as u32,
         );
 
-        let mut this = Self {
+        Ok(Self {
             data,
             queue,
             texture,
@@ -115,25 +118,7 @@ impl VideoDecoder {
             last_used_frame_timestamp: TimeMs::new(f64::MAX),
             current_segment_idx: usize::MAX,
             current_sample_idx: usize::MAX,
-        };
-
-        // immediately enqueue some frames, assuming playback at start
-        this.reset()?;
-        let _ = this.frame_at(TimeMs::new(0.0));
-
-        Ok(this)
-    }
-
-    pub fn duration_ms(&self) -> f64 {
-        self.data.duration.as_f64()
-    }
-
-    pub fn width(&self) -> u32 {
-        self.data.config.coded_width as u32
-    }
-
-    pub fn height(&self) -> u32 {
-        self.data.config.coded_height as u32
+        })
     }
 
     pub fn frame_at(&mut self, timestamp: TimeMs) -> FrameDecodingResult {
@@ -165,13 +150,12 @@ impl VideoDecoder {
         // one would mean decoding and immediately discarding more frames than we otherwise
         // need to.
         if requested_segment_idx != self.current_segment_idx {
-            let segment_distance =
-                requested_segment_idx as isize - self.current_segment_idx as isize;
-            if segment_distance == 1 {
+            let segment_distance = requested_segment_idx.checked_sub(self.current_segment_idx);
+            if segment_distance == Some(1) {
                 // forward seek to next segment - queue up the one _after_ requested
                 self.enqueue_segment(requested_segment_idx + 1);
             } else {
-                // forward seek by N>1 OR backward seek across segments - reset
+                // Startup, forward seek by N>1, or backward seek across segments -> reset decoder
                 if let Err(err) = self.reset() {
                     return FrameDecodingResult::Error(err);
                 }
@@ -259,8 +243,8 @@ impl VideoDecoder {
         } else {
             EncodedVideoChunkType::Delta
         };
-        let chunk = EncodedVideoChunkInit::new(&data, sample.timestamp.as_f64(), type_);
-        chunk.set_duration(sample.duration.as_f64());
+        let chunk = EncodedVideoChunkInit::new(&data, sample.timestamp.as_ms_f64(), type_);
+        chunk.set_duration(sample.duration.as_ms_f64());
         let Some(chunk) = EncodedVideoChunk::new(&chunk)
             .inspect_err(|err| {
                 // TODO(#7373): return this error once the decoder tries to return a frame for this sample. how exactly?

@@ -10,6 +10,13 @@ use crate::mesh_loader::LoadedMesh;
 
 // ----------------------------------------------------------------------------
 
+/// Key used for caching [`LoadedMesh`]es.
+///
+/// Note that this is more complex than most other caches,
+/// since the cache key is not only used for mesh file blobs,
+/// but also for manually logged meshes.
+// TODO(andreas): Maybe these should be different concerns?
+// Blobs need costly unpacking/reading/parsing, regular meshes don't.
 #[derive(Debug, PartialEq, Eq, Hash, Clone)]
 pub struct MeshCacheKey {
     pub versioned_instance_path_hash: VersionedInstancePathHash,

@@ -181,11 +181,21 @@ quick_start = [ # These examples don't have exactly the same implementation.
   "py",
   "rust",
 ]
-
+"archetypes/video_auto_frames" = [ # This mixes `log` and `send_columns`. Since `log` is suspect to delays by the batcher, this test gets flaky.
+  "cpp",
+  "py",
+  "rust",
+]
 
 # `$config_dir` will be replaced with the absolute path of `docs/snippets`.
 # Note that the snippet comparison tool will automatically run `/tests/assets/download_test_assets.py` before running the snippets.
 [extra_args]
 "archetypes/asset3d_simple" = ["$config_dir/../../tests/assets/cube.glb"]
 "archetypes/asset3d_out_of_tree" = ["$config_dir/../../tests/assets/cube.glb"]
-"archetypes/video_simple" = ["$config_dir/../../tests/assets/empty.mp4"]
+"archetypes/video_auto_frames" = [
+  "$config_dir/../../tests/assets/video/Big_Buck_Bunny_1080_10s_av1.mp4",
+]
+# TODO(#7420): This sample doesn't render yet. Once it does it would be nice to have a video that looks significantly different after 1s.
+"archetypes/video_manual_frames" = [
+  "$config_dir/../../tests/assets/video/Big_Buck_Bunny_1080_10s_av1.mp4",
+]

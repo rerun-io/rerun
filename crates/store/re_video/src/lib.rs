@@ -1,9 +1,11 @@
 //! Video decoding library.
 //!
-//! The entry point is [`load_mp4`], which produces an instance of [`VideoData`].
+//! The entry point is [`VideoData::load_from_bytes`]
+//! which produces an instance of [`VideoData`] from any supported video container.
 
 mod mp4;
-pub use mp4::load_mp4;
+
+use itertools::Itertools;
 use ordered_float::OrderedFloat;
 
 /// Decoded video data.
@@ -20,6 +22,46 @@ pub struct VideoData {
 
     /// This array stores all data used by samples.
     pub data: Vec<u8>,
+}
+
+impl VideoData {
+    /// Loads a video from the given data.
+    ///
+    /// TODO(andreas, jan): This should not copy the data, but instead store slices into a shared buffer.
+    /// at the very least the should be a way to extract only metadata.
+    pub fn load_from_bytes(data: &[u8], media_type: Option<&str>) -> Result<Self, VideoLoadError> {
+        // Media type guessing here should be identical to `re_types::MediaType::guess_from_data`,
+        // but we don't want to depend on `re_types` here.
+        let media_type = if let Some(media_type) = media_type {
+            media_type.to_owned()
+        } else if mp4::is_mp4(data) {
+            "video/mp4".to_owned()
+        } else {
+            // Technically this means that we failed to determine the media type altogether,
+            // but we don't want to call it `FailedToDetermineMediaType` since the rest of Rerun has
+            // access to `re_types::components::MediaType` which has a much wider range of media type detection.
+            return Err(VideoLoadError::UnsupportedVideoType);
+        };
+
+        match media_type.as_str() {
+            "video/mp4" => mp4::load_mp4(data),
+            media_type => Err(VideoLoadError::UnsupportedMediaType(media_type.to_owned())),
+        }
+    }
+
+    /// Determines the presentation timestamps of all frames inside a video, returning raw time values.
+    ///
+    /// Returned timestamps are in nanoseconds since start and are guaranteed to be monotonically increasing.
+    pub fn frame_timestamps_ns(&self) -> impl Iterator<Item = i64> + '_ {
+        // Segments are guaranteed to be sorted among each other, but within a segment,
+        // presentation timestamps may not be sorted since this is sorted by decode timestamps.
+        self.segments.iter().flat_map(|seg| {
+            seg.samples
+                .iter()
+                .map(|sample| sample.timestamp.as_nanos())
+                .sorted()
+        })
+    }
 }
 
 /// A segment of a video.
@@ -78,12 +120,12 @@ impl TimeMs {
     }
 
     #[inline]
-    pub fn as_f64(&self) -> f64 {
+    pub fn as_ms_f64(&self) -> f64 {
         self.0.into_inner()
     }
 
     #[inline]
-    pub fn as_nanoseconds(self) -> i64 {
+    pub fn as_nanos(self) -> i64 {
         (self.0 * 1_000_000.0).round() as i64
     }
 }
@@ -107,39 +149,28 @@ impl std::ops::Sub<Self> for TimeMs {
 }
 
 /// Errors that can occur when loading a video.
-#[derive(Debug)]
+#[derive(thiserror::Error, Debug)]
 pub enum VideoLoadError {
-    ParseMp4(::mp4::Error),
+    #[error("Failed to determine media type from data: {0}")]
+    ParseMp4(#[from] ::mp4::Error),
+
+    #[error("Video file has no video tracks")]
     NoVideoTrack,
+
+    #[error("Video file track config is invalid")]
     InvalidConfigFormat,
+
+    #[error("Video file has invalid sample entries")]
     InvalidSamples,
+
+    #[error("Video file has unsupported media type {0}")]
     UnsupportedMediaType(String),
-    UnknownMediaType,
+
+    #[error("Video file has unsupported format")]
+    UnsupportedVideoType,
+
+    #[error("Video file has unsupported codec {0}")]
     UnsupportedCodec(String),
-}
-
-impl std::fmt::Display for VideoLoadError {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Self::ParseMp4(err) => write!(f, "failed to parse video: {err}"),
-            Self::NoVideoTrack => write!(f, "video file has no video tracks"),
-            Self::InvalidConfigFormat => write!(f, "video file track config is invalid"),
-            Self::InvalidSamples => write!(f, "video file has invalid sample entries"),
-            Self::UnsupportedMediaType(type_) => {
-                write!(f, "unsupported media type {type_:?}")
-            }
-            Self::UnknownMediaType => write!(f, "unknown media type"),
-            Self::UnsupportedCodec(codec) => write!(f, "unsupported codec {codec:?}"),
-        }
-    }
-}
-
-impl std::error::Error for VideoLoadError {}
-
-impl From<::mp4::Error> for VideoLoadError {
-    fn from(value: ::mp4::Error) -> Self {
-        Self::ParseMp4(value)
-    }
 }
 
 impl std::fmt::Debug for VideoData {
