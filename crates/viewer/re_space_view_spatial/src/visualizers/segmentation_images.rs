@@ -1,5 +1,3 @@
-use itertools::Itertools as _;
-
 use re_types::{
     archetypes::SegmentationImage,
     components::{DrawOrder, ImageBuffer, ImageFormat, Opacity},
@@ -17,21 +15,19 @@ use crate::{
     ui::SpatialSpaceViewState,
     view_kind::SpatialSpaceViewKind,
     visualizers::{filter_visualizable_2d_entities, textured_rect_from_image},
-    PickableImageRect,
+    PickableRectSourceData, PickableTexturedRect,
 };
 
 use super::SpatialViewVisualizerData;
 
 pub struct SegmentationImageVisualizer {
     pub data: SpatialViewVisualizerData,
-    pub images: Vec<PickableImageRect>,
 }
 
 impl Default for SegmentationImageVisualizer {
     fn default() -> Self {
         Self {
             data: SpatialViewVisualizerData::new(Some(SpatialSpaceViewKind::TwoD)),
-            images: Vec::new(),
         }
     }
 }
@@ -135,11 +131,13 @@ impl VisualizerSystem for SegmentationImageVisualizer {
                         "SegmentationImage",
                         &mut self.data,
                     ) {
-                        self.images.push(PickableImageRect {
+                        self.data.pickable_rects.push(PickableTexturedRect {
                             ent_path: entity_path.clone(),
-                            image,
                             textured_rect,
-                            depth_meter: None,
+                            source_data: PickableRectSourceData::Image {
+                                image,
+                                depth_meter: None,
+                            },
                         });
                     }
                 }
@@ -155,31 +153,17 @@ impl VisualizerSystem for SegmentationImageVisualizer {
         // visualizers are executed in the order of their identifiers.
         // -> The draw order is always DepthImage then Image then SegmentationImage,
         //    which happens to be exactly what we want 🙈
-        self.images.sort_by_key(|image| {
+        self.data.pickable_rects.sort_by_key(|image| {
             (
                 image.textured_rect.options.depth_offset,
                 egui::emath::OrderedFloat(image.textured_rect.options.multiplicative_tint.a()),
             )
         });
 
-        let mut draw_data_list = Vec::new();
-
-        // TODO(wumpf): Can we avoid this copy, maybe let DrawData take an iterator?
-        let rectangles = self
-            .images
-            .iter()
-            .map(|image| image.textured_rect.clone())
-            .collect_vec();
-        match re_renderer::renderer::RectangleDrawData::new(render_ctx, &rectangles) {
-            Ok(draw_data) => {
-                draw_data_list.push(draw_data.into());
-            }
-            Err(err) => {
-                re_log::error_once!("Failed to create rectangle draw data from images: {err}");
-            }
-        }
-
-        Ok(draw_data_list)
+        Ok(vec![PickableTexturedRect::to_draw_data(
+            render_ctx,
+            &self.data.pickable_rects,
+        )?])
     }
 
     fn data(&self) -> Option<&dyn std::any::Any> {

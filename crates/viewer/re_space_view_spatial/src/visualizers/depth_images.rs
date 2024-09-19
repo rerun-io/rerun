@@ -1,5 +1,4 @@
-use itertools::Itertools as _;
-use nohash_hasher::IntSet;
+use nohash_hasher::IntMap;
 
 use re_entity_db::EntityPath;
 use re_log_types::EntityPathHash;
@@ -24,23 +23,23 @@ use crate::{
     query_pinhole_legacy,
     view_kind::SpatialSpaceViewKind,
     visualizers::{filter_visualizable_2d_entities, SIZE_BOOST_IN_POINTS_FOR_POINT_OUTLINES},
-    PickableImageRect, SpatialSpaceView3D,
+    PickableRectSourceData, PickableTexturedRect, SpatialSpaceView3D,
 };
 
 use super::{textured_rect_from_image, SpatialViewVisualizerData};
 
 pub struct DepthImageVisualizer {
     pub data: SpatialViewVisualizerData,
-    pub images: Vec<PickableImageRect>,
-    pub depth_cloud_entities: IntSet<EntityPathHash>,
+
+    /// Expose image infos for depth clouds - we need this for picking interaction.
+    pub depth_cloud_entities: IntMap<EntityPathHash, (ImageInfo, DepthMeter)>,
 }
 
 impl Default for DepthImageVisualizer {
     fn default() -> Self {
         Self {
             data: SpatialViewVisualizerData::new(Some(SpatialSpaceViewKind::TwoD)),
-            images: Vec::new(),
-            depth_cloud_entities: IntSet::default(),
+            depth_cloud_entities: IntMap::default(),
         }
     }
 }
@@ -101,7 +100,8 @@ impl DepthImageVisualizer {
                                 cloud.world_space_bbox(),
                                 glam::Affine3A::IDENTITY,
                             );
-                            self.depth_cloud_entities.insert(entity_path.hash());
+                            self.depth_cloud_entities
+                                .insert(entity_path.hash(), (image, depth_meter));
                             depth_clouds.push(cloud);
                             return;
                         }
@@ -121,11 +121,13 @@ impl DepthImageVisualizer {
                 "DepthImage",
                 &mut self.data,
             ) {
-                self.images.push(PickableImageRect {
+                self.data.pickable_rects.push(PickableTexturedRect {
                     ent_path: entity_path.clone(),
-                    image,
                     textured_rect,
-                    depth_meter: Some(depth_meter),
+                    source_data: PickableRectSourceData::Image {
+                        image,
+                        depth_meter: Some(depth_meter),
+                    },
                 });
             }
         }
@@ -318,20 +320,11 @@ impl VisualizerSystem for DepthImageVisualizer {
                 );
             }
         }
-        // TODO(wumpf): Can we avoid this copy, maybe let DrawData take an iterator?
-        let rectangles = self
-            .images
-            .iter()
-            .map(|image| image.textured_rect.clone())
-            .collect_vec();
-        match re_renderer::renderer::RectangleDrawData::new(render_ctx, &rectangles) {
-            Ok(draw_data) => {
-                draw_data_list.push(draw_data.into());
-            }
-            Err(err) => {
-                re_log::error_once!("Failed to create rectangle draw data from images: {err}");
-            }
-        }
+
+        draw_data_list.push(PickableTexturedRect::to_draw_data(
+            render_ctx,
+            &self.data.pickable_rects,
+        )?);
 
         Ok(draw_data_list)
     }
