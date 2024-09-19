@@ -6,7 +6,7 @@ impl super::ComponentColumnSelector {
     pub fn new(entity_path: &EntityPath, component_name: ComponentName) -> Self {
         crate::blueprint::datatypes::ComponentColumnSelector {
             entity_path: entity_path.into(),
-            component_name: component_name.as_str().into(),
+            component: component_name.as_str().into(),
         }
         .into()
     }

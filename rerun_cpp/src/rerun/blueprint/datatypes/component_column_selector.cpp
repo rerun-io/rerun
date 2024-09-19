@@ -20,11 +20,7 @@ namespace rerun {
                 Loggable<rerun::datatypes::EntityPath>::arrow_datatype(),
                 false
             ),
-            arrow::field(
-                "component_name",
-                Loggable<rerun::datatypes::Utf8>::arrow_datatype(),
-                false
-            ),
+            arrow::field("component", Loggable<rerun::datatypes::Utf8>::arrow_datatype(), false),
         });
         return datatype;
     }
@@ -83,7 +79,7 @@ namespace rerun {
             for (size_t elem_idx = 0; elem_idx < num_elements; elem_idx += 1) {
                 RR_RETURN_NOT_OK(Loggable<rerun::datatypes::Utf8>::fill_arrow_array_builder(
                     field_builder,
-                    &elements[elem_idx].component_name,
+                    &elements[elem_idx].component,
                     1
                 ));
             }

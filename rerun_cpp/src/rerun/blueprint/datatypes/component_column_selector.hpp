@@ -23,7 +23,7 @@ namespace rerun::blueprint::datatypes {
         rerun::datatypes::EntityPath entity_path;
 
         /// The name of the component.
-        rerun::datatypes::Utf8 component_name;
+        rerun::datatypes::Utf8 component;
 
       public:
         ComponentColumnSelector() = default;

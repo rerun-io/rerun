@@ -12,7 +12,9 @@ table ComponentColumnSelector (
   entity_path: rerun.datatypes.EntityPath (order: 100);
 
   /// The name of the component.
-  component_name: rerun.datatypes.Utf8 (order: 200);
+  // NOTE: this field cannot be named `component_name`, because it would then clash with
+  // `ComponentMixin.component_name()` in the Python API.
+  component: rerun.datatypes.Utf8 (order: 200);
 
-  //TODO(ab, jleibs): many more fields to come.
+  //TODO(ab, jleibs): many more fields to come (archetype, etc.)
 }

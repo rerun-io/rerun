@@ -25,13 +25,13 @@ pub struct ComponentColumnSelector {
     pub entity_path: crate::datatypes::EntityPath,
 
     /// The name of the component.
-    pub component_name: crate::datatypes::Utf8,
+    pub component: crate::datatypes::Utf8,
 }
 
 impl ::re_types_core::SizeBytes for ComponentColumnSelector {
     #[inline]
     fn heap_size_bytes(&self) -> u64 {
-        self.entity_path.heap_size_bytes() + self.component_name.heap_size_bytes()
+        self.entity_path.heap_size_bytes() + self.component.heap_size_bytes()
     }
 
     #[inline]
@@ -61,7 +61,7 @@ impl ::re_types_core::Loggable for ComponentColumnSelector {
                 false,
             ),
             Field::new(
-                "component_name",
+                "component",
                 <crate::datatypes::Utf8>::arrow_datatype(),
                 false,
             ),
@@ -130,37 +130,37 @@ impl ::re_types_core::Loggable for ComponentColumnSelector {
                         }
                     },
                     {
-                        let (somes, component_name): (Vec<_>, Vec<_>) = data
+                        let (somes, component): (Vec<_>, Vec<_>) = data
                             .iter()
                             .map(|datum| {
-                                let datum =
-                                    datum.as_ref().map(|datum| datum.component_name.clone());
+                                let datum = datum.as_ref().map(|datum| datum.component.clone());
                                 (datum.is_some(), datum)
                             })
                             .unzip();
-                        let component_name_bitmap: Option<arrow2::bitmap::Bitmap> = {
+                        let component_bitmap: Option<arrow2::bitmap::Bitmap> = {
                             let any_nones = somes.iter().any(|some| !*some);
                             any_nones.then(|| somes.into())
                         };
                         {
                             let offsets = arrow2::offset::Offsets::<i32>::try_from_lengths(
-                                component_name.iter().map(|opt| {
+                                component.iter().map(|opt| {
                                     opt.as_ref().map(|datum| datum.0.len()).unwrap_or_default()
                                 }),
                             )?
                             .into();
-                            let inner_data: arrow2::buffer::Buffer<u8> = component_name
+                            let inner_data: arrow2::buffer::Buffer<u8> = component
                                 .into_iter()
                                 .flatten()
                                 .flat_map(|datum| datum.0 .0)
                                 .collect();
+
                             #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
                             unsafe {
                                 Utf8Array::<i32>::new_unchecked(
                                     DataType::Utf8,
                                     offsets,
                                     inner_data,
-                                    component_name_bitmap,
+                                    component_bitmap,
                                 )
                             }
                             .boxed()
@@ -261,15 +261,15 @@ impl ::re_types_core::Loggable for ComponentColumnSelector {
                         .into_iter()
                     }
                 };
-                let component_name = {
-                    if !arrays_by_name.contains_key("component_name") {
+                let component = {
+                    if !arrays_by_name.contains_key("component") {
                         return Err(DeserializationError::missing_struct_field(
                             Self::arrow_datatype(),
-                            "component_name",
+                            "component",
                         ))
                         .with_context("rerun.blueprint.datatypes.ComponentColumnSelector");
                     }
-                    let arrow_data = &**arrays_by_name["component_name"];
+                    let arrow_data = &**arrays_by_name["component"];
                     {
                         let arrow_data = arrow_data
                             .as_any()
@@ -280,7 +280,7 @@ impl ::re_types_core::Loggable for ComponentColumnSelector {
                                 DeserializationError::datatype_mismatch(expected, actual)
                             })
                             .with_context(
-                                "rerun.blueprint.datatypes.ComponentColumnSelector#component_name",
+                                "rerun.blueprint.datatypes.ComponentColumnSelector#component",
                             )?;
                         let arrow_data_buf = arrow_data.values();
                         let offsets = arrow_data.offsets();
@@ -315,33 +315,34 @@ impl ::re_types_core::Loggable for ComponentColumnSelector {
                         })
                         .collect::<DeserializationResult<Vec<Option<_>>>>()
                         .with_context(
-                            "rerun.blueprint.datatypes.ComponentColumnSelector#component_name",
+                            "rerun.blueprint.datatypes.ComponentColumnSelector#component",
                         )?
                         .into_iter()
                     }
                 };
                 arrow2::bitmap::utils::ZipValidity::new_with_validity(
-                        ::itertools::izip!(entity_path, component_name),
-                        arrow_data.validity(),
-                    )
-                    .map(|opt| {
-                        opt
-                            .map(|(entity_path, component_name)| Ok(Self {
-                                entity_path: entity_path
-                                    .ok_or_else(DeserializationError::missing_data)
-                                    .with_context(
-                                        "rerun.blueprint.datatypes.ComponentColumnSelector#entity_path",
-                                    )?,
-                                component_name: component_name
-                                    .ok_or_else(DeserializationError::missing_data)
-                                    .with_context(
-                                        "rerun.blueprint.datatypes.ComponentColumnSelector#component_name",
-                                    )?,
-                            }))
-                            .transpose()
+                    ::itertools::izip!(entity_path, component),
+                    arrow_data.validity(),
+                )
+                .map(|opt| {
+                    opt.map(|(entity_path, component)| {
+                        Ok(Self {
+                            entity_path: entity_path
+                                .ok_or_else(DeserializationError::missing_data)
+                                .with_context(
+                                    "rerun.blueprint.datatypes.ComponentColumnSelector#entity_path",
+                                )?,
+                            component: component
+                                .ok_or_else(DeserializationError::missing_data)
+                                .with_context(
+                                    "rerun.blueprint.datatypes.ComponentColumnSelector#component",
+                                )?,
+                        })
                     })
-                    .collect::<DeserializationResult<Vec<_>>>()
-                    .with_context("rerun.blueprint.datatypes.ComponentColumnSelector")?
+                    .transpose()
+                })
+                .collect::<DeserializationResult<Vec<_>>>()
+                .with_context("rerun.blueprint.datatypes.ComponentColumnSelector")?
             }
         })
     }

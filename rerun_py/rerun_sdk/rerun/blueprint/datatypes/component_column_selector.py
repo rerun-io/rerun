@@ -34,9 +34,7 @@ def _component_column_selector__entity_path__special_field_converter_override(
         return datatypes.EntityPath(x)
 
 
-def _component_column_selector__component_name__special_field_converter_override(
-    x: datatypes.Utf8Like,
-) -> datatypes.Utf8:
+def _component_column_selector__component__special_field_converter_override(x: datatypes.Utf8Like) -> datatypes.Utf8:
     if isinstance(x, datatypes.Utf8):
         return x
     else:
@@ -47,7 +45,7 @@ def _component_column_selector__component_name__special_field_converter_override
 class ComponentColumnSelector:
     """**Datatype**: Describe a component column to be selected in the dataframe view."""
 
-    def __init__(self: Any, entity_path: datatypes.EntityPathLike, component_name: datatypes.Utf8Like):
+    def __init__(self: Any, entity_path: datatypes.EntityPathLike, component: datatypes.Utf8Like):
         """
         Create a new instance of the ComponentColumnSelector datatype.
 
@@ -55,13 +53,13 @@ class ComponentColumnSelector:
         ----------
         entity_path:
             The entity path for this component.
-        component_name:
+        component:
             The name of the component.
 
         """
 
         # You can define your own __init__ function as a member of ComponentColumnSelectorExt in component_column_selector_ext.py
-        self.__attrs_init__(entity_path=entity_path, component_name=component_name)
+        self.__attrs_init__(entity_path=entity_path, component=component)
 
     entity_path: datatypes.EntityPath = field(
         converter=_component_column_selector__entity_path__special_field_converter_override
@@ -70,9 +68,7 @@ class ComponentColumnSelector:
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 
-    component_name: datatypes.Utf8 = field(
-        converter=_component_column_selector__component_name__special_field_converter_override
-    )
+    component: datatypes.Utf8 = field(converter=_component_column_selector__component__special_field_converter_override)
     # The name of the component.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
@@ -93,7 +89,7 @@ class ComponentColumnSelectorType(BaseExtensionType):
             self,
             pa.struct([
                 pa.field("entity_path", pa.utf8(), nullable=False, metadata={}),
-                pa.field("component_name", pa.utf8(), nullable=False, metadata={}),
+                pa.field("component", pa.utf8(), nullable=False, metadata={}),
             ]),
             self._TYPE_NAME,
         )
@@ -112,7 +108,7 @@ class ComponentColumnSelectorBatch(BaseBatch[ComponentColumnSelectorArrayLike]):
         return pa.StructArray.from_arrays(
             [
                 EntityPathBatch([x.entity_path for x in data]).as_arrow_array().storage,  # type: ignore[misc, arg-type]
-                Utf8Batch([x.component_name for x in data]).as_arrow_array().storage,  # type: ignore[misc, arg-type]
+                Utf8Batch([x.component for x in data]).as_arrow_array().storage,  # type: ignore[misc, arg-type]
             ],
             fields=list(data_type),
         )
