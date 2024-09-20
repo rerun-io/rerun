@@ -4944,6 +4944,7 @@ dependencies = [
  "ahash",
  "anyhow",
  "image",
+ "notify",
  "once_cell",
  "parking_lot",
  "rayon",

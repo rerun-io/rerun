@@ -1,4 +1,13 @@
+use std::{
+    io::Read,
+    path::Path,
+    sync::mpsc::{channel, Receiver},
+};
+
+use notify::{Event, EventKind, RecommendedWatcher, RecursiveMode, Watcher};
 use re_log_encoding::decoder::Decoder;
+
+use crate::DataLoaderError;
 
 // ---
 
@@ -36,22 +45,48 @@ impl crate::DataLoader for RrdLoader {
         );
 
         let version_policy = re_log_encoding::decoder::VersionPolicy::Warn;
-        let file = std::fs::File::open(&filepath)
-            .with_context(|| format!("Failed to open file {filepath:?}"))?;
-        let file = std::io::BufReader::new(file);
 
-        let decoder = re_log_encoding::decoder::Decoder::new(version_policy, file)?;
+        match extension.as_str() {
+            "rbl" => {
+                let file = std::fs::File::open(&filepath)
+                    .with_context(|| format!("Failed to open file {filepath:?}"))?;
+                let file = std::io::BufReader::new(file);
 
-        // NOTE: This is IO bound, it must run on a dedicated thread, not the shared rayon thread pool.
-        std::thread::Builder::new()
-            .name(format!("decode_and_stream({filepath:?})"))
-            .spawn({
-                let filepath = filepath.clone();
-                move || {
-                    decode_and_stream(&filepath, &tx, decoder);
-                }
-            })
-            .with_context(|| format!("Failed to open spawn IO thread for {filepath:?}"))?;
+                let decoder = Decoder::new(version_policy, file)?;
+
+                // NOTE: This is IO bound, it must run on a dedicated thread, not the shared rayon thread pool.
+                std::thread::Builder::new()
+                    .name(format!("decode_and_stream({filepath:?})"))
+                    .spawn({
+                        let filepath = filepath.clone();
+                        move || {
+                            decode_and_stream(&filepath, &tx, decoder);
+                        }
+                    })
+                    .with_context(|| format!("Failed to open spawn IO thread for {filepath:?}"))?;
+            }
+            "rrd" => {
+                // for .rrd files we retry reading despite reaching EOF to support live (writer) streaming
+                // TODO (#4056) instead of indefinitely retrying and keeping the file open we should introduce
+                //  a new "eof marker" message header in the encoding and handle it accordingly in the Decoder.
+                let retryable_reader = RetryableFileReader::new(&filepath).with_context(|| {
+                    format!("failed to create retryable file reader for {filepath:?}")
+                })?;
+                let decoder = Decoder::new(version_policy, retryable_reader)?;
+
+                // NOTE: This is IO bound, it must run on a dedicated thread, not the shared rayon thread pool.
+                std::thread::Builder::new()
+                    .name(format!("decode_and_stream({filepath:?})"))
+                    .spawn({
+                        let filepath = filepath.clone();
+                        move || {
+                            decode_and_stream(&filepath, &tx, decoder);
+                        }
+                    })
+                    .with_context(|| format!("Failed to open spawn IO thread for {filepath:?}"))?;
+            }
+            _ => unreachable!(),
+        }
 
         Ok(())
     }
@@ -107,6 +142,72 @@ fn decode_and_stream<R: std::io::Read>(
         };
         if tx.send(msg.into()).is_err() {
             break; // The other end has decided to hang up, not our problem.
+        }
+    }
+}
+
+// Retryable file reader that keeps retrying to read more data despite
+// reading zero bytes or reaching EOF.
+struct RetryableFileReader {
+    reader: std::io::BufReader<std::fs::File>,
+    rx: Receiver<notify::Result<Event>>,
+    #[allow(dead_code)]
+    watcher: RecommendedWatcher,
+}
+
+impl RetryableFileReader {
+    fn new(filepath: &Path) -> Result<Self, DataLoaderError> {
+        use anyhow::Context as _;
+
+        let file = std::fs::File::open(filepath)
+            .with_context(|| format!("Failed to open file {filepath:?}"))?;
+        let reader = std::io::BufReader::new(file);
+
+        let (tx, rx) = channel();
+        let mut watcher = notify::recommended_watcher(tx)
+            .with_context(|| format!("failed to create file watcher for {filepath:?}"))?;
+
+        watcher
+            .watch(filepath, RecursiveMode::NonRecursive)
+            .with_context(|| format!("failed to to watch file changes on {filepath:?}"))?;
+
+        Ok(Self {
+            reader,
+            rx,
+            watcher,
+        })
+    }
+}
+
+impl Read for RetryableFileReader {
+    fn read(&mut self, buf: &mut [u8]) -> std::io::Result<usize> {
+        loop {
+            match self.reader.read(buf) {
+                Ok(0) => match self.rx.recv() {
+                    Ok(Ok(event)) => match event.kind {
+                        EventKind::Remove(_) => {
+                            return Err(std::io::Error::new(
+                                std::io::ErrorKind::NotFound,
+                                "file removed",
+                            ))
+                        }
+                        _ => continue,
+                    },
+                    Ok(Err(e)) => {
+                        return Err(std::io::Error::new(std::io::ErrorKind::Other, e));
+                    }
+                    Err(e) => {
+                        return Err(std::io::Error::new(std::io::ErrorKind::Other, e));
+                    }
+                },
+                Ok(n) => {
+                    return Ok(n);
+                }
+                Err(err) => match err.kind() {
+                    std::io::ErrorKind::Interrupted => continue,
+                    _ => return Err(err),
+                },
+            }
         }
     }
 }
