@@ -99,7 +99,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 ///
 ///     // Split up the image data into several components referencing the underlying data.
 ///     let image_size_in_bytes = width * height * 3;
-///     let blob = rerun::datatypes::Blob::from(images.into_raw_vec());
+///     let blob = rerun::datatypes::Blob::from(images.into_raw_vec_and_offset().0);
 ///     let image_column = times
 ///         .iter()
 ///         .map(|&t| {
