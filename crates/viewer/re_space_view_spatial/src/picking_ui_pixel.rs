@@ -15,7 +15,7 @@ pub struct PickedPixelInfo {
 }
 
 #[allow(clippy::too_many_arguments)]
-pub fn image_hover_ui(
+pub fn textured_rect_hover_ui(
     ctx: &ViewerContext<'_>,
     ui: &mut egui::Ui,
     instance_path: &re_entity_db::InstancePath,
@@ -24,6 +24,7 @@ pub fn image_hover_ui(
     ui_pan_and_zoom_from_ui: egui::emath::RectTransform,
     annotations: &AnnotationSceneContext,
     picked_pixel_info: PickedPixelInfo,
+    hover_overlay_index: u32,
 ) {
     let Some(render_ctx) = ctx.render_ctx else {
         return;
@@ -90,7 +91,7 @@ pub fn image_hover_ui(
             depth_meter,
             &TextureInteractionId {
                 entity_path: &instance_path.entity_path,
-                interaction_idx: 0, // TODO: put hit number in here
+                interaction_idx: hover_overlay_index,
             },
             [pixel_coordinates[0] as _, pixel_coordinates[1] as _],
         );

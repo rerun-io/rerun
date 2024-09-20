@@ -14,7 +14,7 @@ use re_viewer_context::{
 use crate::{
     contexts::AnnotationSceneContext,
     picking::{PickableUiRect, PickingContext, PickingHitType},
-    picking_ui_pixel::{image_hover_ui, PickedPixelInfo},
+    picking_ui_pixel::{textured_rect_hover_ui, PickedPixelInfo},
     ui::SpatialSpaceViewState,
     view_kind::SpatialSpaceViewKind,
     visualizers::{iter_spatial_visualizer_data, CamerasVisualizer, DepthImageVisualizer},
@@ -82,7 +82,7 @@ pub fn picking(
     // Depth at pointer used for projecting rays from a hovered 2D view to corresponding 3D view(s).
     // TODO(#1818): Depth at pointer only works for depth images so far.
     let mut depth_at_pointer = None;
-    for hit in &picking_result.hits {
+    for (hit_idx, hit) in picking_result.hits.iter().enumerate() {
         let Some(mut instance_path) = hit.instance_path_hash.resolve(ctx.recording()) else {
             // Entity no longer exists in db.
             continue;
@@ -130,7 +130,7 @@ pub fn picking(
                 .on_hover_ui_at_pointer(|ui| {
                     ui.set_max_width(320.0);
                     ui.vertical(|ui| {
-                        image_hover_ui(
+                        textured_rect_hover_ui(
                             ctx,
                             ui,
                             &instance_path,
@@ -139,6 +139,7 @@ pub fn picking(
                             picking_context.camera_plane_from_ui,
                             annotations,
                             picked_pixel,
+                            hit_idx as _,
                         );
                     });
                 })
