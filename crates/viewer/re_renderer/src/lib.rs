@@ -88,6 +88,7 @@ pub use self::file_server::FileServer;
 pub use ecolor::{Color32, Hsva, Rgba};
 
 pub mod external {
+    pub use re_video;
     pub use wgpu;
 }
 

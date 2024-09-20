@@ -527,7 +527,7 @@ pub struct ActiveFrameContext {
     /// This counter is part of the `content timeline` and may be arbitrarily
     /// behind both of the `device timeline` and `queue timeline`.
     /// See <https://www.w3.org/TR/webgpu/#programming-model-timelines>
-    frame_index: u64,
+    pub frame_index: u64,
 
     /// Top level device error scope, created at startup and closed & reopened on every frame.
     ///
