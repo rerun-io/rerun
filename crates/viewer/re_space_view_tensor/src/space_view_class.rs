@@ -424,7 +424,7 @@ pub fn selected_tensor_slice<'a, T: Copy>(
         // This is important for above width/height conversion to work since this assumes at least 2 dimensions.
         tensor
             .view()
-            .into_shape(ndarray::IxDyn(&[tensor.len(), 1]))
+            .into_shape_with_order(ndarray::IxDyn(&[tensor.len(), 1]))
             .unwrap()
     } else {
         tensor.view()
