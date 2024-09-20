@@ -430,8 +430,6 @@ impl ChunkStore {
         entity_path: &EntityPath,
         component_name: ComponentName,
     ) -> Vec<Arc<Chunk>> {
-        re_tracing::profile_function!(format!("{query:?}"));
-
         self.query_id.fetch_add(1, Ordering::Relaxed);
 
         // Reminder: if a chunk has been indexed for a given component, then it must contain at
@@ -510,8 +508,6 @@ impl ChunkStore {
         query: &LatestAtQuery,
         temporal_chunk_ids_per_time: &ChunkIdSetPerTime,
     ) -> Option<Vec<Arc<Chunk>>> {
-        re_tracing::profile_function!();
-
         let upper_bound = temporal_chunk_ids_per_time
             .per_start_time
             .range(..=query.at())

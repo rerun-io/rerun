@@ -649,8 +649,6 @@ impl LatestAtCache {
         entity_path: &EntityPath,
         component_name: ComponentName,
     ) -> Option<UnitChunkShared> {
-        re_tracing::profile_scope!("latest_at", format!("{component_name} @ {query:?}"));
-
         debug_assert_eq!(query.timeline(), self.cache_key.timeline);
 
         let Self {
