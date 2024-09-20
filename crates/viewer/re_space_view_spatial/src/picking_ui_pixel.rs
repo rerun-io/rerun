@@ -356,7 +356,7 @@ fn pixel_value_ui(
     let text = match pixel_value_source {
         PixelValueSource::Image(image) => pixel_value_string_from_image(image, x, y),
         PixelValueSource::GpuTexture(texture) => {
-            pixel_value_string_from_gpu_texture(render_ctx, texture, interaction_id, x, y)
+            pixel_value_string_from_gpu_texture(ui.ctx(), render_ctx, texture, interaction_id, x, y)
         }
     };
 
@@ -491,6 +491,7 @@ struct TextureReadbackUserdata {
 }
 
 fn pixel_value_string_from_gpu_texture(
+    ui_ctx: &egui::Context,
     render_ctx: &re_renderer::RenderContext,
     texture: &GpuTexture2D,
     interaction_id: &TextureInteractionId<'_>,
@@ -544,7 +545,7 @@ fn pixel_value_string_from_gpu_texture(
     // * the result we received is still about the exact same texture _content_
     //      * if it is a video the exact same texture may show a different frame by now
     // So instead we err on the safe side and keep requesting readbacks & frames.
-    // TODO: request frames
+    ui_ctx.request_repaint();
 
     // Read back a region of a few pixels. Criteria:
     // * moving the mouse doesn't typically immediately end up in a different region, important since readback has a delay
