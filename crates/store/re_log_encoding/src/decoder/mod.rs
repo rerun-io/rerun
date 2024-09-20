@@ -138,6 +138,10 @@ pub fn read_options(
 enum Reader<R: std::io::Read> {
     Raw(R),
     Buffered(std::io::BufReader<R>),
+    BufferedFile {
+        filepath: std::path::PathBuf,
+        reader: std::io::BufReader<std::fs::File>,
+    },
 }
 
 impl<R: std::io::Read> std::io::Read for Reader<R> {
@@ -146,6 +150,17 @@ impl<R: std::io::Read> std::io::Read for Reader<R> {
         match self {
             Self::Raw(read) => read.read(buf),
             Self::Buffered(read) => read.read(buf),
+            Self::BufferedFile { filepath, reader } => {
+                loop {
+                    let num_bytes = reader.read(buf)?;
+
+                    if num_bytes == 0 {
+                        // TODO: check if we have reached the end of the file
+                    } else {
+                        return Ok(num_bytes);
+                    }
+                }
+            }
         }
     }
 }
@@ -159,6 +174,36 @@ pub struct Decoder<R: std::io::Read> {
 
     /// The size in bytes of the data that has been decoded up to now.
     size_bytes: u64,
+}
+
+impl Decoder<std::fs::File> {
+    pub fn new_file(
+        version_policy: VersionPolicy,
+        filepath: std::path::PathBuf,
+        file: std::fs::File,
+    ) -> Result<Self, DecodeError> {
+        re_tracing::profile_function!();
+
+        let mut read = Reader::BufferedFile {
+            filepath,
+            reader: std::io::BufReader::new(file),
+        };
+
+        let mut data = [0_u8; FileHeader::SIZE];
+        read.read_exact(&mut data).map_err(DecodeError::Read)?;
+
+        let (version, options) = read_options(version_policy, &data)?;
+        let compression = options.compression;
+
+        Ok(Self {
+            version,
+            compression,
+            read,
+            uncompressed: vec![],
+            compressed: vec![],
+            size_bytes: FileHeader::SIZE as _,
+        })
+    }
 }
 
 impl<R: std::io::Read> Decoder<R> {
@@ -249,6 +294,7 @@ impl<R: std::io::Read> Decoder<R> {
     fn peek_file_header(&mut self) -> bool {
         match &mut self.read {
             Reader::Raw(_) => false,
+
             Reader::Buffered(read) => {
                 if read.fill_buf().map_err(DecodeError::Read).is_err() {
                     return false;
@@ -256,6 +302,19 @@ impl<R: std::io::Read> Decoder<R> {
 
                 let mut read = std::io::Cursor::new(read.buffer());
                 if FileHeader::decode(&mut read).is_err() {
+                    return false;
+                }
+
+                true
+            }
+
+            Reader::BufferedFile { reader, .. } => {
+                if reader.fill_buf().map_err(DecodeError::Read).is_err() {
+                    return false;
+                }
+
+                let mut reader = std::io::Cursor::new(reader.buffer());
+                if FileHeader::decode(&mut reader).is_err() {
                     return false;
                 }
 

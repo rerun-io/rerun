@@ -38,9 +38,9 @@ impl crate::DataLoader for RrdLoader {
         let version_policy = re_log_encoding::decoder::VersionPolicy::Warn;
         let file = std::fs::File::open(&filepath)
             .with_context(|| format!("Failed to open file {filepath:?}"))?;
-        let file = std::io::BufReader::new(file);
 
-        let decoder = re_log_encoding::decoder::Decoder::new(version_policy, file)?;
+        let decoder =
+            re_log_encoding::decoder::Decoder::new_file(version_policy, filepath.clone(), file)?;
 
         // NOTE: This is IO bound, it must run on a dedicated thread, not the shared rayon thread pool.
         std::thread::Builder::new()
@@ -106,7 +106,10 @@ fn decode_and_stream<R: std::io::Read>(
             }
         };
         if tx.send(msg.into()).is_err() {
-            break; // The other end has decided to hang up, not our problem.
+            re_log::debug!("Aborting read from {filepath:?}: receiver hung up");
+            return; // The other end has decided to hang up, not our problem.
         }
     }
+
+    re_log::debug!("Finished reading {filepath:?}");
 }
