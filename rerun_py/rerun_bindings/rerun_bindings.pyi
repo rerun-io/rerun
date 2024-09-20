@@ -1,23 +1,8 @@
-from typing import Optional, Sequence, Union
+from typing import Optional, Sequence
 
 import pyarrow as pa
-from rerun._baseclasses import ComponentMixin
 
-AnyColumn = Union[
-    ControlColumnDescriptor,
-    TimeColumnDescriptor,
-    ComponentColumnDescriptor,
-    ControlColumnSelector,
-    TimeColumnSelector,
-    ComponentColumnSelector,
-]
-
-AnyComponentColumn = Union[
-    ComponentColumnDescriptor,
-    ComponentColumnSelector,
-]
-
-ComponentLike = Union[str, type[ComponentMixin]]
+from .types import AnyColumn, AnyComponentColumn, ComponentLike
 
 class ControlColumnDescriptor:
     """A control-level column such as `RowId`."""
@@ -44,7 +29,7 @@ class ComponentColumnDescriptor:
 class ComponentColumnSelector:
     """A selector for a component column."""
 
-    def __init__(self, entity_path: str, component_type: ComponentLike): ...
+    def __new__(cls, entity_path: str, component_type: ComponentLike): ...
     def with_dictionary_encoding(self) -> ComponentColumnSelector: ...
 
 class Schema:
@@ -53,7 +38,7 @@ class Schema:
     def control_columns(self) -> list[ControlColumnDescriptor]: ...
     def time_columns(self) -> list[TimeColumnDescriptor]: ...
     def component_columns(self) -> list[ComponentColumnDescriptor]: ...
-    def column_for(self, entity_path: str, ComponentLike) -> Optional[ComponentColumnDescriptor]: ...
+    def column_for(self, entity_path: str, component: ComponentLike) -> Optional[ComponentColumnDescriptor]: ...
 
 class TimeRange:
     """A time range with a start and end time."""

@@ -14,3 +14,8 @@ from rerun_bindings import (
     load_archive as load_archive,
     load_recording as load_recording,
 )
+from rerun_bindings.types import (
+    AnyColumn as AnyColumn,
+    AnyComponentColumn as AnyComponentColumn,
+    ComponentLike as ComponentLike,
+)
