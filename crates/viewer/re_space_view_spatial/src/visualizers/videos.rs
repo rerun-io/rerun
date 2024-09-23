@@ -12,7 +12,6 @@ use re_renderer::{
 use re_types::{
     archetypes::{AssetVideo, VideoFrameReference},
     components::{Blob, EntityPath as EntityPathReferenceComponent, MediaType, VideoTimestamp},
-    datatypes::VideoTimeMode,
     Archetype, Loggable as _,
 };
 use re_viewer_context::{
@@ -190,12 +189,10 @@ impl VideoFrameReferenceVisualizer {
             }
 
             Some(Ok(video)) => {
-                let timestamp_in_seconds = match video_timestamp.time_mode {
-                    VideoTimeMode::Nanoseconds => video_timestamp.video_time as f64 / 1e9,
-                };
                 video_resolution = glam::vec2(video.width() as _, video.height() as _);
                 if let Some(texture) =
-                    match video.frame_at(render_ctx, decode_stream_id, timestamp_in_seconds) {
+                    match video.frame_at(render_ctx, decode_stream_id, video_timestamp.as_seconds())
+                    {
                         FrameDecodingResult::Ready(texture) => Some(texture),
                         FrameDecodingResult::Pending(texture) => {
                             ctx.viewer_ctx.egui_ctx.request_repaint();

@@ -8,7 +8,8 @@ title: "VideoTimestamp"
 
 Presentation timestamp within a [`archetypes.AssetVideo`](https://rerun.io/docs/reference/types/archetypes/asset_video?speculative-link).
 
-Specified in ns. Presentation time stamps are typically measured as time since video start.
+Specified in nanoseconds.
+Presentation timestamps are typically measured as time since video start.
 
 ## Fields
 

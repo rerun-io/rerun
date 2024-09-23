@@ -22,11 +22,12 @@ namespace arrow {
 namespace rerun::datatypes {
     /// **Datatype**: Presentation timestamp within a `archetypes::AssetVideo`.
     ///
-    /// Specified in ns. Presentation time stamps are typically measured as time since video start.
+    /// Specified in nanoseconds.
+    /// Presentation timestamps are typically measured as time since video start.
     ///
     /// ⚠ **This is an experimental API! It is not fully supported, and is likely to change significantly in future versions.**
     struct VideoTimestamp {
-        /// Timestamp value in nanoseconds.
+        /// Presentation timestamp value in nanoseconds.
         int64_t timestamp_ns;
 
       public:

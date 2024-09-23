@@ -31,7 +31,8 @@ class VideoTimestamp:
     """
     **Datatype**: Presentation timestamp within a [`archetypes.AssetVideo`][rerun.archetypes.AssetVideo].
 
-    Specified in ns. Presentation time stamps are typically measured as time since video start.
+    Specified in nanoseconds.
+    Presentation timestamps are typically measured as time since video start.
 
     ⚠️ **This is an experimental API! It is not fully supported, and is likely to change significantly in future versions.**
     """
@@ -43,7 +44,7 @@ class VideoTimestamp:
         Parameters
         ----------
         timestamp_ns:
-            Timestamp value in nanoseconds.
+            Presentation timestamp value in nanoseconds.
 
         """
 
@@ -51,7 +52,7 @@ class VideoTimestamp:
         self.__attrs_init__(timestamp_ns=timestamp_ns)
 
     timestamp_ns: int = field(converter=int)
-    # Timestamp value in nanoseconds.
+    # Presentation timestamp value in nanoseconds.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 

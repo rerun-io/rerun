@@ -2,7 +2,8 @@ namespace rerun.datatypes;
 
 /// Presentation timestamp within a [archetypes.AssetVideo].
 ///
-/// Specified in ns. Presentation time stamps are typically measured as time since video start.
+/// Specified in nanoseconds.
+/// Presentation timestamps are typically measured as time since video start.
 struct VideoTimestamp (
   "attr.rerun.experimental",
   "attr.arrow.transparent",
@@ -10,6 +11,6 @@ struct VideoTimestamp (
   "attr.rust.derive": "Default, Copy, PartialEq, Eq, PartialOrd, Ord",
   "attr.rust.tuple_struct"
 ) {
-    /// Timestamp value in nanoseconds.
+    /// Presentation timestamp value in nanoseconds.
     timestamp_ns: long (order: 100);
 }

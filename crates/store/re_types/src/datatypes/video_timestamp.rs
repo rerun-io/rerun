@@ -20,12 +20,13 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Datatype**: Presentation timestamp within a [`archetypes::AssetVideo`][crate::archetypes::AssetVideo].
 ///
-/// Specified in ns. Presentation time stamps are typically measured as time since video start.
+/// Specified in nanoseconds.
+/// Presentation timestamps are typically measured as time since video start.
 ///
 /// ⚠️ **This type is experimental and may be removed in future versions**
 #[derive(Clone, Debug, Default, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub struct VideoTimestamp(
-    /// Timestamp value in nanoseconds.
+    /// Presentation timestamp value in nanoseconds.
     pub i64,
 );
 
