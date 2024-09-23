@@ -28,7 +28,7 @@ class VideoTimestampExt:
             Presentation timestamp in nanoseconds.
             Mutually exclusive with `seconds`.
         seconds:
-            The presentation timestamp in seconds.
+            Presentation timestamp in seconds.
             Mutually exclusive with `nanoseconds`.
 
         """
