@@ -223,7 +223,8 @@ pub enum VideoLoadError {
     #[error("Video file has unsupported format")]
     UnsupportedVideoType,
 
-    #[error("Video track uses unsupported codec \"{0}\"")]
+    // `FourCC`'s debug impl doesn't quote the result
+    #[error("Video track uses unsupported codec \"{0}\"")] // NOLINT
     UnsupportedCodec(re_mp4::FourCC),
 }
 
