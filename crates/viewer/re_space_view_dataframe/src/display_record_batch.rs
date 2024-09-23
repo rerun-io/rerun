@@ -34,6 +34,7 @@ pub(crate) enum DisplayRecordBatchError {
 /// A single column of component data.
 ///
 /// Abstracts over the different possible arrow representation of component data.
+#[derive(Debug)]
 pub(crate) enum ComponentData {
     Null,
     ListArray(ArrowListArray<i32>),
@@ -167,6 +168,7 @@ impl ComponentData {
 }
 
 /// A single column of data in a record batch.
+#[derive(Debug)]
 pub(crate) enum DisplayColumn {
     RowId {
         row_id_times: ArrowPrimitiveArray<u64>,
@@ -365,6 +367,7 @@ impl DisplayColumn {
     }
 }
 
+#[derive(Debug)]
 pub(crate) struct DisplayRecordBatch {
     num_rows: usize,
     columns: Vec<DisplayColumn>,

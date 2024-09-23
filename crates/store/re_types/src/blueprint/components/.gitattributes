@@ -3,7 +3,9 @@
 .gitattributes linguist-generated=true
 active_tab.rs linguist-generated=true
 background_kind.rs linguist-generated=true
+column_selection_mode.rs linguist-generated=true
 column_share.rs linguist-generated=true
+component_column_selector.rs linguist-generated=true
 corner2d.rs linguist-generated=true
 included_content.rs linguist-generated=true
 interactive.rs linguist-generated=true

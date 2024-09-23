@@ -2,7 +2,10 @@
 
 mod active_tab;
 mod background_kind;
+mod column_selection_mode;
 mod column_share;
+mod component_column_selector;
+mod component_column_selector_ext;
 mod corner2d;
 mod corner2d_ext;
 mod included_content;
@@ -37,7 +40,9 @@ mod visual_bounds2d_ext;
 
 pub use self::active_tab::ActiveTab;
 pub use self::background_kind::BackgroundKind;
+pub use self::column_selection_mode::ColumnSelectionMode;
 pub use self::column_share::ColumnShare;
+pub use self::component_column_selector::ComponentColumnSelector;
 pub use self::corner2d::Corner2D;
 pub use self::included_content::IncludedContent;
 pub use self::interactive::Interactive;

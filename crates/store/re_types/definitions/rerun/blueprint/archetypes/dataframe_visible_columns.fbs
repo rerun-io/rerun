@@ -1,0 +1,18 @@
+namespace rerun.blueprint.archetypes;
+
+
+/// Which columns should be displayed by the dataframe view.
+table DataframeVisibleColumns (
+    "attr.rerun.scope": "blueprint"
+) {
+    // --- Optional ---
+
+    /// Are all column selected, or only those specified by the user?
+    selection_mode: rerun.blueprint.components.ColumnSelectionMode ("attr.rerun.component_optional", nullable, order: 100);
+
+    /// The time columns to include (if mode is set to "Selected").
+    time_columns: [rerun.blueprint.components.TimelineName] ("attr.rerun.component_optional", nullable, order: 200);
+
+    /// The component columns to include (if mode is set to "Selected").
+    component_columns: [rerun.blueprint.components.ComponentColumnSelector] ("attr.rerun.component_optional", nullable, order: 300);
+}

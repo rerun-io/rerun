@@ -7,13 +7,25 @@ use itertools::Itertools;
 
 use re_chunk_store::{ColumnDescriptor, LatestAtQuery, RowId};
 use re_dataframe::{LatestAtQueryHandle, RangeQueryHandle, RecordBatch};
-use re_log_types::{EntityPath, TimeInt, Timeline};
-use re_types_core::Loggable as _;
+use re_log_types::{EntityPath, TimeInt, Timeline, TimelineName};
+use re_types_core::{ComponentName, Loggable as _};
 use re_ui::UiExt as _;
 use re_viewer_context::ViewerContext;
 
 use crate::display_record_batch::{DisplayRecordBatch, DisplayRecordBatchError};
 use crate::expanded_rows::{ExpandedRows, ExpandedRowsCache};
+
+/// Ui actions triggered by the dataframe UI to be handled by the calling code.
+pub(crate) enum HideColumnAction {
+    HideTimeColumn {
+        timeline_name: TimelineName,
+    },
+
+    HideComponentColumn {
+        entity_path: EntityPath,
+        component_name: ComponentName,
+    },
+}
 
 /// Display a dataframe table for the provided query.
 pub(crate) fn dataframe_ui<'a>(
@@ -21,8 +33,8 @@ pub(crate) fn dataframe_ui<'a>(
     ui: &mut egui::Ui,
     query: impl Into<QueryHandle<'a>>,
     expanded_rows_cache: &mut ExpandedRowsCache,
-) {
-    dataframe_ui_impl(ctx, ui, &query.into(), expanded_rows_cache);
+) -> Vec<HideColumnAction> {
+    dataframe_ui_impl(ctx, ui, &query.into(), expanded_rows_cache)
 }
 
 /// A query handle for either a latest-at or range query.
@@ -41,6 +53,9 @@ impl QueryHandle<'_> {
 
     fn num_rows(&self) -> u64 {
         match self {
+            // TODO(#7449): this is in general wrong! However, there is currently no way to know
+            // if the number of row is 0 or 1. For now, we silently accept in the delegate when it
+            // turns out to be 0.
             QueryHandle::LatestAt(_) => 1,
             QueryHandle::Range(query_handle) => query_handle.num_rows(),
         }
@@ -78,7 +93,7 @@ impl<'a> From<RangeQueryHandle<'a>> for QueryHandle<'a> {
     }
 }
 
-#[derive(Clone, Copy)]
+#[derive(Debug, Clone, Copy)]
 struct BatchRef {
     /// Which batch?
     batch_idx: usize,
@@ -92,6 +107,7 @@ struct BatchRef {
 /// Row data is stored in a bunch of [`DisplayRecordBatch`], which are created from
 /// [`RecordBatch`]s. We also maintain a mapping for each row number to the corresponding record
 /// batch and the index inside it.
+#[derive(Debug)]
 struct RowsDisplayData {
     /// The [`DisplayRecordBatch`]s to display.
     display_record_batches: Vec<DisplayRecordBatch>,
@@ -157,6 +173,10 @@ impl RowsDisplayData {
             row_id_column_index,
         })
     }
+
+    fn num_rows(&self) -> u64 {
+        self.batch_ref_from_row.len() as u64
+    }
 }
 
 /// [`egui_table::TableDelegate`] implementation for displaying a [`QueryHandle`] in a table.
@@ -169,7 +189,14 @@ struct DataframeTableDelegate<'a> {
 
     expanded_rows: ExpandedRows<'a>,
 
+    // Track the cases where latest-at returns 0 rows instead of the expected 1 row, so that we
+    // can silence the error.
+    // TODO(#7449): this can be removed when `LatestAtQueryHandle` is able to report the row count.
+    latest_at_query_returns_no_rows: bool,
+
     num_rows: u64,
+
+    hide_column_actions: Vec<HideColumnAction>,
 }
 
 impl DataframeTableDelegate<'_> {
@@ -189,6 +216,13 @@ impl<'a> egui_table::TableDelegate for DataframeTableDelegate<'a> {
             self.schema,
             &self.query_handle.timeline(),
         );
+
+        // TODO(#7449): this can be removed when `LatestAtQueryHandle` is able to report the row count.
+        self.latest_at_query_returns_no_rows = if let Ok(display_data) = &data {
+            matches!(self.query_handle, QueryHandle::LatestAt(_)) && display_data.num_rows() == 0
+        } else {
+            false
+        };
 
         self.display_data = data.context("Failed to create display data");
     }
@@ -230,7 +264,40 @@ impl<'a> egui_table::TableDelegate for DataframeTableDelegate<'a> {
                         );
                     }
                 } else if cell.row_nr == 1 {
-                    ui.strong(self.schema[cell.col_range.start].short_name());
+                    let column = &self.schema[cell.col_range.start];
+
+                    // if this column can actually be hidden, then that's the corresponding action
+                    let hide_action = match column {
+                        ColumnDescriptor::Control(_) => None,
+                        ColumnDescriptor::Time(desc) => (desc.timeline
+                            != self.query_handle.timeline())
+                        .then(|| HideColumnAction::HideTimeColumn {
+                            timeline_name: *desc.timeline.name(),
+                        }),
+                        ColumnDescriptor::Component(desc) => {
+                            Some(HideColumnAction::HideComponentColumn {
+                                entity_path: desc.entity_path.clone(),
+                                component_name: desc.component_name,
+                            })
+                        }
+                    };
+
+                    if let Some(hide_action) = hide_action {
+                        let cell_clicked = cell_with_hover_button_ui(
+                            ui,
+                            &re_ui::icons::VISIBLE,
+                            CellStyle::Header,
+                            |ui| {
+                                ui.strong(column.short_name());
+                            },
+                        );
+
+                        if cell_clicked {
+                            self.hide_column_actions.push(hide_action);
+                        }
+                    } else {
+                        ui.strong(column.short_name());
+                    }
                 } else {
                     // this should never happen
                     error_ui(ui, format!("Unexpected header row_nr: {}", cell.row_nr));
@@ -256,10 +323,14 @@ impl<'a> egui_table::TableDelegate for DataframeTableDelegate<'a> {
             row_idx: batch_row_idx,
         }) = display_data.batch_ref_from_row.get(&cell.row_nr).copied()
         else {
-            error_ui(
-                ui,
-                "Bug in egui_table: we didn't prefetch what was rendered!",
-            );
+            // TODO(#7449): this check can be removed when `LatestAtQueryHandle` is able to report
+            // the row count.
+            if !self.latest_at_query_returns_no_rows {
+                error_ui(
+                    ui,
+                    "Bug in egui_table: we didn't prefetch what was rendered!",
+                );
+            }
 
             return;
         };
@@ -433,12 +504,17 @@ fn line_ui(
         }
 
         SubcellKind::SummaryWithExpand => {
-            let cell_clicked = cell_with_hover_button_ui(ui, &re_ui::icons::EXPAND, |ui| {
-                ui.label(format!(
-                    "{} instances",
-                    re_format::format_uint(instance_count)
-                ));
-            });
+            let cell_clicked = cell_with_hover_button_ui(
+                ui,
+                &re_ui::icons::EXPAND,
+                CellStyle::InstanceData,
+                |ui| {
+                    ui.label(format!(
+                        "{} instances",
+                        re_format::format_uint(instance_count)
+                    ));
+                },
+            );
 
             if cell_clicked {
                 if instance_count == row_expansion {
@@ -450,7 +526,12 @@ fn line_ui(
         }
 
         SubcellKind::Instance => {
-            let cell_clicked = cell_with_hover_button_ui(ui, &re_ui::icons::COLLAPSE, data_content);
+            let cell_clicked = cell_with_hover_button_ui(
+                ui,
+                &re_ui::icons::COLLAPSE,
+                CellStyle::InstanceData,
+                data_content,
+            );
 
             if cell_clicked {
                 expanded_rows.remove_additional_lines_for_row(cell.row_nr);
@@ -460,12 +541,17 @@ fn line_ui(
         SubcellKind::MoreInstancesSummary {
             remaining_instances,
         } => {
-            let cell_clicked = cell_with_hover_button_ui(ui, &re_ui::icons::EXPAND, |ui| {
-                ui.label(format!(
-                    "{} more…",
-                    re_format::format_uint(remaining_instances)
-                ));
-            });
+            let cell_clicked = cell_with_hover_button_ui(
+                ui,
+                &re_ui::icons::EXPAND,
+                CellStyle::InstanceData,
+                |ui| {
+                    ui.label(format!(
+                        "{} more…",
+                        re_format::format_uint(remaining_instances)
+                    ));
+                },
+            );
 
             if cell_clicked {
                 expanded_rows.set_additional_lines_for_row(cell.row_nr, instance_count);
@@ -482,7 +568,7 @@ fn dataframe_ui_impl(
     ui: &mut egui::Ui,
     query_handle: &QueryHandle<'_>,
     expanded_rows_cache: &mut ExpandedRowsCache,
-) {
+) -> Vec<HideColumnAction> {
     re_tracing::profile_function!();
 
     let schema = query_handle.schema();
@@ -531,6 +617,8 @@ fn dataframe_ui_impl(
             expanded_rows_cache,
             re_ui::DesignTokens::table_line_height(),
         ),
+        latest_at_query_returns_no_rows: false,
+        hide_column_actions: vec![],
     };
 
     let num_sticky_cols = schema
@@ -562,6 +650,8 @@ fn dataframe_ui_impl(
             .num_rows(num_rows)
             .show(ui, &mut table_delegate);
     });
+
+    table_delegate.hide_column_actions
 }
 
 /// Groups column by entity paths.
@@ -598,15 +688,27 @@ fn error_ui(ui: &mut egui::Ui, error: impl AsRef<str>) {
     re_log::warn_once!("{error}");
 }
 
-/// Draw some cell content with an optional, right-aligned, on-hover button.
+/// Style for [`cell_with_hover_button_ui`].
+#[derive(Debug, Clone, Copy)]
+enum CellStyle {
+    /// Icon is brighter but must be directly clicked.
+    Header,
+
+    /// Icon is dimmer but can be clicked from anywhere in the cell.
+    InstanceData,
+}
+
+/// Draw some cell content with a right-aligned, on-hover button.
 ///
-/// Returns true if the button was clicked.
+/// The button is only displayed when the cell is hovered. Returns true if the button was clicked.
+/// Both the visuals and the click behavior is affected by the `style`.
 // TODO(ab, emilk): ideally, egui::Sides should work for that, but it doesn't yet support the
 // asymmetric behavior (left variable width, right fixed width).
 // See https://github.com/emilk/egui/issues/5116
 fn cell_with_hover_button_ui(
     ui: &mut egui::Ui,
     icon: &'static re_ui::Icon,
+    style: CellStyle,
     cell_content: impl FnOnce(&mut egui::Ui),
 ) -> bool {
     if ui.is_sizing_pass() {
@@ -616,8 +718,6 @@ fn cell_with_hover_button_ui(
     }
 
     let is_hovering_cell = ui.rect_contains_pointer(ui.max_rect());
-    let is_clicked =
-        is_hovering_cell && ui.input(|i| i.pointer.button_clicked(egui::PointerButton::Primary));
 
     if is_hovering_cell {
         let mut content_rect = ui.max_rect();
@@ -635,16 +735,29 @@ fn cell_with_hover_button_ui(
         let mut content_ui = ui.new_child(egui::UiBuilder::new().max_rect(content_rect));
         cell_content(&mut content_ui);
 
+        let button_tint = match style {
+            CellStyle::Header => ui.visuals().widgets.active.text_color(),
+            CellStyle::InstanceData => ui.visuals().widgets.noninteractive.text_color(),
+        };
+
         let mut button_ui = ui.new_child(egui::UiBuilder::new().max_rect(button_rect));
         button_ui.visuals_mut().widgets.hovered.weak_bg_fill = egui::Color32::TRANSPARENT;
         button_ui.visuals_mut().widgets.active.weak_bg_fill = egui::Color32::TRANSPARENT;
         button_ui.add(egui::Button::image(
             icon.as_image()
                 .fit_to_exact_size(re_ui::DesignTokens::small_icon_size())
-                .tint(button_ui.visuals().widgets.noninteractive.text_color()),
+                .tint(button_tint),
         ));
 
-        is_clicked
+        let click_happened = ui.input(|i| i.pointer.button_clicked(egui::PointerButton::Primary));
+
+        // was this click relevant?
+        match style {
+            CellStyle::Header => {
+                click_happened && button_ui.rect_contains_pointer(button_ui.max_rect())
+            }
+            CellStyle::InstanceData => click_happened,
+        }
     } else {
         cell_content(ui);
         false

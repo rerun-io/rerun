@@ -12,7 +12,19 @@ from .background_kind import (
     BackgroundKindLike,
     BackgroundKindType,
 )
+from .column_selection_mode import (
+    ColumnSelectionMode,
+    ColumnSelectionModeArrayLike,
+    ColumnSelectionModeBatch,
+    ColumnSelectionModeLike,
+    ColumnSelectionModeType,
+)
 from .column_share import ColumnShare, ColumnShareBatch, ColumnShareType
+from .component_column_selector import (
+    ComponentColumnSelector,
+    ComponentColumnSelectorBatch,
+    ComponentColumnSelectorType,
+)
 from .container_kind import (
     ContainerKind,
     ContainerKindArrayLike,
@@ -80,9 +92,17 @@ __all__ = [
     "BackgroundKindBatch",
     "BackgroundKindLike",
     "BackgroundKindType",
+    "ColumnSelectionMode",
+    "ColumnSelectionModeArrayLike",
+    "ColumnSelectionModeBatch",
+    "ColumnSelectionModeLike",
+    "ColumnSelectionModeType",
     "ColumnShare",
     "ColumnShareBatch",
     "ColumnShareType",
+    "ComponentColumnSelector",
+    "ComponentColumnSelectorBatch",
+    "ComponentColumnSelectorType",
     "ContainerKind",
     "ContainerKindArrayLike",
     "ContainerKindBatch",
