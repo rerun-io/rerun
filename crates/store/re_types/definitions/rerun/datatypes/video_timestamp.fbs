@@ -1,27 +1,15 @@
 namespace rerun.datatypes;
 
-/// Specifies how to interpret the `video_time` field of a [datatypes.VideoTimestamp].
-enum VideoTimeMode: ubyte (
-  "attr.docs.unreleased"
-) {
-    /// Invalid value. Won't show up in generated types.
-    Invalid = 0,
-
-    /// Presentation timestamp in nanoseconds since the beginning of the video.
-    Nanoseconds = 1 (default),
-
-    // Future values: FrameNr
-}
-
-/// Timestamp inside a [archetypes.AssetVideo].
+/// Presentation timestamp within a [archetypes.AssetVideo].
+///
+/// Specified in ns. Presentation time stamps are typically measured as time since video start.
 struct VideoTimestamp (
+  "attr.rerun.experimental",
+  "attr.arrow.transparent",
   "attr.docs.unreleased",
-  "attr.rust.derive": "Copy, PartialEq, Eq",
-  "attr.rerun.experimental"
+  "attr.rust.derive": "Default, Copy, PartialEq, Eq, PartialOrd, Ord",
+  "attr.rust.tuple_struct"
 ) {
-    /// Timestamp value, type defined by `time_mode`.
-    video_time: long (order: 100);
-
-    /// How to interpret `video_time`.
-    time_mode: VideoTimeMode (order: 200);
+    /// Timestamp value in nanoseconds.
+    timestamp_ns: long (order: 100);
 }

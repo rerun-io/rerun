@@ -61,6 +61,13 @@ namespace rerun::components {
             return *this;
         }
 
+        VideoTimestamp(int64_t timestamp_ns_) : timestamp(timestamp_ns_) {}
+
+        VideoTimestamp& operator=(int64_t timestamp_ns_) {
+            timestamp = timestamp_ns_;
+            return *this;
+        }
+
         /// Cast to the underlying VideoTimestamp datatype
         operator rerun::datatypes::VideoTimestamp() const {
             return timestamp;

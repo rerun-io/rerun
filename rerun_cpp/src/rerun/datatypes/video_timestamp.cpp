@@ -3,8 +3,6 @@
 
 #include "video_timestamp.hpp"
 
-#include "video_time_mode.hpp"
-
 #include <arrow/builder.h>
 #include <arrow/type_fwd.h>
 
@@ -12,14 +10,7 @@ namespace rerun::datatypes {}
 
 namespace rerun {
     const std::shared_ptr<arrow::DataType>& Loggable<datatypes::VideoTimestamp>::arrow_datatype() {
-        static const auto datatype = arrow::struct_({
-            arrow::field("video_time", arrow::int64(), false),
-            arrow::field(
-                "time_mode",
-                Loggable<rerun::datatypes::VideoTimeMode>::arrow_datatype(),
-                false
-            ),
-        });
+        static const auto datatype = arrow::int64();
         return datatype;
     }
 
@@ -33,7 +24,7 @@ namespace rerun {
         ARROW_ASSIGN_OR_RAISE(auto builder, arrow::MakeBuilder(datatype, pool))
         if (instances && num_instances > 0) {
             RR_RETURN_NOT_OK(Loggable<datatypes::VideoTimestamp>::fill_arrow_array_builder(
-                static_cast<arrow::StructBuilder*>(builder.get()),
+                static_cast<arrow::Int64Builder*>(builder.get()),
                 instances,
                 num_instances
             ));
@@ -44,8 +35,7 @@ namespace rerun {
     }
 
     rerun::Error Loggable<datatypes::VideoTimestamp>::fill_arrow_array_builder(
-        arrow::StructBuilder* builder, const datatypes::VideoTimestamp* elements,
-        size_t num_elements
+        arrow::Int64Builder* builder, const datatypes::VideoTimestamp* elements, size_t num_elements
     ) {
         if (builder == nullptr) {
             return rerun::Error(ErrorCode::UnexpectedNullArgument, "Passed array builder is null.");
@@ -57,27 +47,10 @@ namespace rerun {
             );
         }
 
-        {
-            auto field_builder = static_cast<arrow::Int64Builder*>(builder->field_builder(0));
-            ARROW_RETURN_NOT_OK(field_builder->Reserve(static_cast<int64_t>(num_elements)));
-            for (size_t elem_idx = 0; elem_idx < num_elements; elem_idx += 1) {
-                ARROW_RETURN_NOT_OK(field_builder->Append(elements[elem_idx].video_time));
-            }
-        }
-        {
-            auto field_builder = static_cast<arrow::UInt8Builder*>(builder->field_builder(1));
-            ARROW_RETURN_NOT_OK(field_builder->Reserve(static_cast<int64_t>(num_elements)));
-            for (size_t elem_idx = 0; elem_idx < num_elements; elem_idx += 1) {
-                RR_RETURN_NOT_OK(
-                    Loggable<rerun::datatypes::VideoTimeMode>::fill_arrow_array_builder(
-                        field_builder,
-                        &elements[elem_idx].time_mode,
-                        1
-                    )
-                );
-            }
-        }
-        ARROW_RETURN_NOT_OK(builder->AppendValues(static_cast<int64_t>(num_elements), nullptr));
+        static_assert(sizeof(*elements) == sizeof(elements->timestamp_ns));
+        ARROW_RETURN_NOT_OK(
+            builder->AppendValues(&elements->timestamp_ns, static_cast<int64_t>(num_elements))
+        );
 
         return Error::ok();
     }

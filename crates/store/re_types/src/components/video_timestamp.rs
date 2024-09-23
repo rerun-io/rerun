@@ -104,4 +104,13 @@ impl ::re_types_core::Loggable for VideoTimestamp {
         crate::datatypes::VideoTimestamp::from_arrow_opt(arrow_data)
             .map(|v| v.into_iter().map(|v| v.map(Self)).collect())
     }
+
+    #[inline]
+    fn from_arrow(arrow_data: &dyn arrow2::array::Array) -> DeserializationResult<Vec<Self>>
+    where
+        Self: Sized,
+    {
+        crate::datatypes::VideoTimestamp::from_arrow(arrow_data)
+            .map(|v| v.into_iter().map(Self).collect())
+    }
 }
