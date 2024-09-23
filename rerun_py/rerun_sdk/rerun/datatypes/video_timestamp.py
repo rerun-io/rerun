@@ -5,7 +5,7 @@
 
 from __future__ import annotations
 
-from typing import Any, Sequence, Union
+from typing import TYPE_CHECKING, Any, Sequence, Union
 
 import numpy as np
 import numpy.typing as npt
@@ -67,7 +67,11 @@ class VideoTimestamp:
         return hash(self.timestamp_ns)
 
 
-VideoTimestampLike = VideoTimestamp
+if TYPE_CHECKING:
+    VideoTimestampLike = Union[VideoTimestamp, int]
+else:
+    VideoTimestampLike = Any
+
 VideoTimestampArrayLike = Union[
     VideoTimestamp,
     Sequence[VideoTimestampLike],
@@ -86,12 +90,5 @@ class VideoTimestampBatch(BaseBatch[VideoTimestampArrayLike]):
 
     @staticmethod
     def _native_to_pa_array(data: VideoTimestampArrayLike, data_type: pa.DataType) -> pa.Array:
-        if isinstance(data, VideoTimestamp):
-            data = [data]
-
-        return pa.StructArray.from_arrays(
-            [
-                pa.array(np.asarray([x.timestamp_ns for x in data], dtype=np.int64)),
-            ],
-            fields=list(data_type),
-        )
+        array = np.asarray(data, dtype=np.int64).flatten()
+        return pa.array(array, type=data_type)
