@@ -48,15 +48,14 @@ impl LoadedMesh {
         let bytes = asset3d.blob.as_slice();
 
         let mesh_instances = match media_type.as_str() {
-            MediaType::GLTF | MediaType::GLB => re_renderer::importer::gltf::load_gltf_from_buffer(
-                &name,
-                bytes,
-                render_ctx,
-            )?,
+            MediaType::GLTF | MediaType::GLB => {
+                re_renderer::importer::gltf::load_gltf_from_buffer(&name, bytes, render_ctx)?
+            }
             MediaType::OBJ => re_renderer::importer::obj::load_obj_from_buffer(
                 bytes,
                 render_ctx,
-                asset3d.albedo_factor,
+                &asset3d.vertex_colors,
+                &asset3d.albedo_factor,
             )?,
             MediaType::STL => {
                 re_renderer::importer::stl::load_stl_from_buffer(asset3d, render_ctx, texture_key)?

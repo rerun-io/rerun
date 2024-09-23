@@ -12,10 +12,15 @@ fn roundtrip() {
     let expected = Asset3D {
         blob: Blob(BYTES.to_vec().into()),
         media_type: Some(MediaType(Utf8(MediaType::GLTF.into()))),
+        vertex_colors: Some(vec![
+            Rgba32::from_unmultiplied_rgba(0xAA, 0x00, 0x00, 0xCC).into(), //
+            Rgba32::from_unmultiplied_rgba(0x00, 0xBB, 0x00, 0xDD).into(),
+        ]),
         albedo_factor: Some(Rgba32::from_unmultiplied_rgba(0xEE, 0x11, 0x22, 0x33).into()),
     };
 
     let arch = Asset3D::from_file_contents(BYTES.to_vec(), Some(MediaType::gltf()))
+        .with_vertex_colors([0xAA0000CC, 0x00BB00DD])
         .with_albedo_factor(0xEE112233);
     similar_asserts::assert_eq!(expected, arch);
 

@@ -8,6 +8,7 @@
 #include "../component_batch.hpp"
 #include "../components/albedo_factor.hpp"
 #include "../components/blob.hpp"
+#include "../components/color.hpp"
 #include "../components/media_type.hpp"
 #include "../indicator_component.hpp"
 #include "../result.hpp"
@@ -67,6 +68,9 @@ namespace rerun::archetypes {
         /// If it cannot guess, it won't be able to render the asset.
         std::optional<rerun::components::MediaType> media_type;
 
+        /// An optional color for each vertex.
+        std::optional<Collection<rerun::components::Color>> vertex_colors;
+
         /// A color multiplier applied to the whole asset.
         std::optional<rerun::components::AlbedoFactor> albedo_factor;
 
@@ -119,6 +123,13 @@ namespace rerun::archetypes {
         /// If it cannot guess, it won't be able to render the asset.
         Asset3D with_media_type(rerun::components::MediaType _media_type) && {
             media_type = std::move(_media_type);
+            // See: https://github.com/rerun-io/rerun/issues/4027
+            RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
+        }
+
+        /// An optional color for each vertex.
+        Asset3D with_vertex_colors(Collection<rerun::components::Color> _vertex_colors) && {
+            vertex_colors = std::move(_vertex_colors);
             // See: https://github.com/rerun-io/rerun/issues/4027
             RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
         }

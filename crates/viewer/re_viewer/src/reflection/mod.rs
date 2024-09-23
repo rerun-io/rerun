@@ -802,6 +802,9 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                     docstring_md :
                     "The Media Type of the asset.\n\nSupported values:\n* `model/gltf-binary`\n* `model/gltf+json`\n* `model/obj` (.mtl material files are not supported yet, references are silently ignored)\n* `model/stl`\n\nIf omitted, the viewer will try to guess from the data blob.\nIf it cannot guess, it won't be able to render the asset.",
                     is_required : false, }, ArchetypeFieldReflection { component_name :
+                    "rerun.components.Color".into(), display_name : "Vertex colors",
+                    docstring_md : "An optional color for each vertex.", is_required :
+                    false, }, ArchetypeFieldReflection { component_name :
                     "rerun.components.AlbedoFactor".into(), display_name :
                     "Albedo factor", docstring_md :
                     "A color multiplier applied to the whole asset.", is_required :

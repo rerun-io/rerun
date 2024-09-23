@@ -16,6 +16,7 @@ class Asset3DExt:
         path: str | pathlib.Path | None = None,
         contents: datatypes.BlobLike | None = None,
         media_type: datatypes.Utf8Like | None = None,
+        vertex_colors: datatypes.Rgba32ArrayLike | None = None,
         albedo_factor: datatypes.Rgba32Like | None = None,
     ):
         """
@@ -43,6 +44,9 @@ class Asset3DExt:
             If omitted, it will be guessed from the `path` (if any),
             or the viewer will try to guess from the contents (magic header).
             If the media type cannot be guessed, the viewer won't be able to render the asset.
+
+        vertex_colors:
+            An optional color for each vertex.
         albedo_factor:
             Optional color multiplier for the whole mesh
 
@@ -61,7 +65,9 @@ class Asset3DExt:
                 if media_type is None:
                     media_type = MediaType.guess_from_path(path)
 
-            self.__attrs_init__(blob=blob, media_type=media_type, albedo_factor=albedo_factor)
+            self.__attrs_init__(
+                blob=blob, media_type=media_type, vertex_colors=vertex_colors, albedo_factor=albedo_factor
+            )
             return
 
         self.__attrs_clear__()

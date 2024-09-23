@@ -4,7 +4,7 @@ use re_renderer::renderer::MeshInstance;
 use re_renderer::RenderContext;
 use re_types::{
     archetypes::Asset3D,
-    components::{AlbedoFactor, Blob, MediaType},
+    components::{AlbedoFactor, Blob, Color, MediaType},
     ArrowBuffer, ArrowString, Loggable as _,
 };
 use re_viewer_context::{
@@ -38,6 +38,7 @@ struct Asset3DComponentData<'a> {
 
     blob: ArrowBuffer<u8>,
     media_type: Option<ArrowString>,
+    vertex_colors: &'a [Color],
     albedo_factor: Option<&'a AlbedoFactor>,
 }
 
@@ -75,6 +76,7 @@ impl Asset3DVisualizer {
                         asset: &Asset3D {
                             blob: data.blob.clone().into(),
                             media_type: data.media_type.clone().map(Into::into),
+                            vertex_colors: Some(data.vertex_colors.to_vec()),
                             albedo_factor: data.albedo_factor.copied(),
                         },
                         texture_key: re_log_types::hash::Hash64::hash(&key).hash64(),
@@ -160,29 +162,35 @@ impl VisualizerSystem for Asset3DVisualizer {
                 let timeline = ctx.query.timeline();
                 let all_blobs_indexed = iter_buffer::<u8>(&all_blob_chunks, timeline, Blob::name());
                 let all_media_types = results.iter_as(timeline, MediaType::name());
+                let all_vertex_colors = results.iter_as(timeline, Color::name());
                 let all_albedo_factors = results.iter_as(timeline, AlbedoFactor::name());
 
                 let query_result_hash = results.query_result_hash();
 
-                let data = re_query::range_zip_1x2(
+                let data = re_query::range_zip_1x3(
                     all_blobs_indexed,
                     all_media_types.string(),
+                    all_vertex_colors.primitive::<u32>(),
                     all_albedo_factors.primitive::<u32>(),
                 )
-                .filter_map(|(index, blobs, media_types, albedo_factors)| {
-                    blobs.first().map(|blob| Asset3DComponentData {
-                        index,
-                        query_result_hash,
-                        blob: blob.clone(),
-                        media_type: media_types
-                            .and_then(|media_types| media_types.first().cloned()),
-                        albedo_factor: albedo_factors
-                            .map_or(&[] as &[AlbedoFactor], |albedo_factors| {
-                                bytemuck::cast_slice(albedo_factors)
-                            })
-                            .first(),
-                    })
-                });
+                .filter_map(
+                    |(index, blobs, media_types, vertex_colors, albedo_factors)| {
+                        blobs.first().map(|blob| Asset3DComponentData {
+                            index,
+                            query_result_hash,
+                            blob: blob.clone(),
+                            media_type: media_types
+                                .and_then(|media_types| media_types.first().cloned()),
+                            vertex_colors: vertex_colors
+                                .map_or(&[], |vertex_colors| bytemuck::cast_slice(vertex_colors)),
+                            albedo_factor: albedo_factors
+                                .map_or(&[] as &[AlbedoFactor], |albedo_factors| {
+                                    bytemuck::cast_slice(albedo_factors)
+                                })
+                                .first(),
+                        })
+                    },
+                );
 
                 self.process_data(ctx, render_ctx, &mut instances, spatial_ctx, data);
 
