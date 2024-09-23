@@ -22,7 +22,7 @@ use re_viewport_blueprint::ViewProperty;
 
 use super::{
     eye::Eye,
-    ui::{create_labels, picking, screenshot_context_menu},
+    ui::{create_labels, screenshot_context_menu},
 };
 use crate::{
     query_pinhole_legacy,
@@ -217,7 +217,7 @@ impl SpatialSpaceView2D {
                 ui.ctx().pixels_per_point(),
                 &eye,
             );
-            response = picking(
+            response = crate::picking_ui::picking(
                 ctx,
                 &picking_context,
                 ui,

@@ -24,7 +24,7 @@ use re_viewport_blueprint::ViewProperty;
 use crate::{
     scene_bounding_boxes::SceneBoundingBoxes,
     space_camera_3d::SpaceCamera3D,
-    ui::{create_labels, outline_config, picking, screenshot_context_menu, SpatialSpaceViewState},
+    ui::{create_labels, outline_config, screenshot_context_menu, SpatialSpaceViewState},
     view_kind::SpatialSpaceViewKind,
     visualizers::{
         collect_ui_labels, image_view_coordinates, CamerasVisualizer,
@@ -532,7 +532,7 @@ impl SpatialSpaceView3D {
                 ui.ctx().pixels_per_point(),
                 &eye,
             );
-            response = picking(
+            response = crate::picking_ui::picking(
                 ctx,
                 &picking_context,
                 ui,

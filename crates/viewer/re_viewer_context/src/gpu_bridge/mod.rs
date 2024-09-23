@@ -124,7 +124,7 @@ pub fn render_image(
     image_rect_on_screen: egui::Rect,
     colormapped_texture: ColormappedTexture,
     texture_options: egui::TextureOptions,
-    debug_name: &str,
+    debug_name: re_renderer::DebugLabel,
 ) -> anyhow::Result<()> {
     re_tracing::profile_function!();
 
@@ -175,7 +175,7 @@ pub fn render_image(
     let top_left_position = glam::vec2(camera_position_space.x, camera_position_space.y);
 
     let target_config = re_renderer::view_builder::TargetConfiguration {
-        name: debug_name.into(),
+        name: debug_name,
         resolution_in_pixel,
         view_from_world: re_math::IsoTransform::from_translation(-top_left_position.extend(0.0)),
         projection_from_view: re_renderer::view_builder::Projection::Orthographic {

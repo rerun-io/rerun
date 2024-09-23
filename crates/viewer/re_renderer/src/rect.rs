@@ -32,6 +32,25 @@ impl RectInt {
     }
 
     #[inline]
+    pub fn min(self) -> glam::IVec2 {
+        self.min
+    }
+
+    #[inline]
+    pub fn max(self) -> glam::IVec2 {
+        self.min + self.extent.as_ivec2()
+    }
+
+    #[inline]
+    pub fn wgpu_origin(self) -> wgpu::Origin3d {
+        wgpu::Origin3d {
+            x: self.min.x as u32,
+            y: self.min.y as u32,
+            z: 0,
+        }
+    }
+
+    #[inline]
     pub fn wgpu_extent(self) -> wgpu::Extent3d {
         wgpu::Extent3d {
             width: self.extent.x,

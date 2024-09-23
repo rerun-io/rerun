@@ -21,6 +21,9 @@ struct PendingReadbackRange {
 pub enum GpuReadbackError {
     #[error("Texture format {0:?} is not supported for readback.")]
     UnsupportedTextureFormatForReadback(wgpu::TextureFormat),
+
+    #[error("Texture or buffer does not have the required copy-source usage flag.")]
+    MissingSrcCopyUsage,
 }
 
 /// A reserved slice for GPU readback.
@@ -63,10 +66,14 @@ impl GpuReadbackBuffer {
         sources_and_extents: &[(wgpu::ImageCopyTexture<'_>, wgpu::Extent3d)],
     ) -> Result<(), GpuReadbackError> {
         for (source, copy_extents) in sources_and_extents {
+            let src_texture = source.texture;
+            if !src_texture.usage().contains(wgpu::TextureUsages::COPY_SRC) {
+                return Err(GpuReadbackError::MissingSrcCopyUsage);
+            }
+
             let start_offset = wgpu::util::align_to(
                 self.range_in_chunk.start,
-                source
-                    .texture
+                src_texture
                     .format()
                     .block_copy_size(Some(source.aspect))
                     .ok_or(GpuReadbackError::UnsupportedTextureFormatForReadback(
@@ -74,7 +81,7 @@ impl GpuReadbackBuffer {
                     ))? as u64,
             );
 
-            let buffer_info = Texture2DBufferInfo::new(source.texture.format(), *copy_extents);
+            let buffer_info = Texture2DBufferInfo::new(src_texture.format(), *copy_extents);
 
             // Validate that stay within the slice (wgpu can't fully know our intention here, so we have to check).
             debug_assert!(

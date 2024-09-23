@@ -376,14 +376,13 @@ impl TensorSpaceView {
             wrap_mode: egui::TextureWrapMode::ClampToEdge,
         };
 
-        let debug_name = "tensor_slice";
         gpu_bridge::render_image(
             render_ctx,
             &painter,
             image_rect,
             colormapped_texture,
             texture_options,
-            debug_name,
+            re_renderer::DebugLabel::from("tensor_slice"),
         )?;
 
         Ok((response, painter, image_rect))
