@@ -66,9 +66,8 @@ impl crate::DataLoader for RrdLoader {
                     .with_context(|| format!("Failed to open spawn IO thread for {filepath:?}"))?;
             }
             "rrd" => {
-                // for .rrd files we retry reading despite reaching EOF to support live (writer) streaming
-                // TODO (#4056) instead of indefinitely retrying and keeping the file open we should introduce
-                //  a new "eof marker" message header in the encoding and handle it accordingly in the Decoder.
+                // For .rrd files we retry reading despite reaching EOF to support live (writer) streaming.
+                // Decoder will give up when it sees end of file marker (i.e. end-of-stream message header)
                 let retryable_reader = RetryableFileReader::new(&filepath).with_context(|| {
                     format!("failed to create retryable file reader for {filepath:?}")
                 })?;

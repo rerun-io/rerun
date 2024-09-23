@@ -116,31 +116,42 @@ impl StreamDecoder {
                 }
             }
             State::Message(header) => {
-                if let Some(bytes) = self.chunks.try_read(header.compressed_len as usize) {
-                    let bytes = match self.compression {
-                        Compression::Off => bytes,
-                        Compression::LZ4 => {
-                            self.uncompressed
-                                .resize(header.uncompressed_len as usize, 0);
-                            lz4_flex::block::decompress_into(bytes, &mut self.uncompressed)
-                                .map_err(DecodeError::Lz4)?;
-                            &self.uncompressed
+                match header {
+                    MessageHeader::Data {
+                        compressed_len,
+                        uncompressed_len,
+                    } => {
+                        if let Some(bytes) = self.chunks.try_read(compressed_len as usize) {
+                            let bytes = match self.compression {
+                                Compression::Off => bytes,
+                                Compression::LZ4 => {
+                                    self.uncompressed
+                                        .resize(uncompressed_len as usize, 0);
+                                    lz4_flex::block::decompress_into(bytes, &mut self.uncompressed)
+                                        .map_err(DecodeError::Lz4)?;
+                                    &self.uncompressed
+                                }
+                            };
+
+                            // read the message from the uncompressed bytes
+                            let message = rmp_serde::from_slice(bytes).map_err(DecodeError::MsgPack)?;
+
+                            self.state = State::MessageHeader;
+
+                            return if let re_log_types::LogMsg::SetStoreInfo(mut msg) = message {
+                                // Propagate the protocol version from the header into the `StoreInfo` so that all
+                                // parts of the app can easily access it.
+                                msg.info.store_version = self.version;
+                                Ok(Some(re_log_types::LogMsg::SetStoreInfo(msg)))
+                            } else {
+                                Ok(Some(message))
+                            };
                         }
-                    };
-
-                    // read the message from the uncompressed bytes
-                    let message = rmp_serde::from_slice(bytes).map_err(DecodeError::MsgPack)?;
-
-                    self.state = State::MessageHeader;
-
-                    return if let re_log_types::LogMsg::SetStoreInfo(mut msg) = message {
-                        // Propagate the protocol version from the header into the `StoreInfo` so that all
-                        // parts of the app can easily access it.
-                        msg.info.store_version = self.version;
-                        Ok(Some(re_log_types::LogMsg::SetStoreInfo(msg)))
-                    } else {
-                        Ok(Some(message))
-                    };
+                    },
+                    MessageHeader::EndOfStream => {
+                        self.state = State::MessageHeader;
+                        return Ok(None);
+                    }
                 }
             }
         }

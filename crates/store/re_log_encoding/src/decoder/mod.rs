@@ -302,7 +302,17 @@ impl<R: std::io::Read> Iterator for Decoder<R> {
         };
         self.size_bytes += MessageHeader::SIZE as u64;
 
-        let uncompressed_len = header.uncompressed_len as usize;
+        let (uncompressed_len, compressed_len) = match header {
+            MessageHeader::Data {
+                compressed_len,
+                uncompressed_len,
+            } => (uncompressed_len as usize, compressed_len as usize),
+            MessageHeader::EndOfStream => {
+                re_log::info!("Reached end of stream");
+                return None;
+            },
+        };
+
         self.uncompressed
             .resize(self.uncompressed.len().max(uncompressed_len), 0);
 
@@ -319,7 +329,6 @@ impl<R: std::io::Read> Iterator for Decoder<R> {
             }
 
             Compression::LZ4 => {
-                let compressed_len = header.compressed_len as usize;
                 self.compressed
                     .resize(self.compressed.len().max(compressed_len), 0);
 
