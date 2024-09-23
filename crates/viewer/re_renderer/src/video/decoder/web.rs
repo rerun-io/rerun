@@ -272,7 +272,7 @@ impl VideoDecoder {
         let Some(chunk) = EncodedVideoChunk::new(&chunk)
             .inspect_err(|err| {
                 // TODO(#7373): return this error once the decoder tries to return a frame for this sample. how exactly?
-                re_log::error!("failed to create video chunk: {}", js_error_to_string(err));
+                re_log::error_once!("failed to create video chunk: {}", js_error_to_string(err));
             })
             .ok()
         else {
@@ -281,7 +281,7 @@ impl VideoDecoder {
 
         if let Err(err) = self.decoder.decode(&chunk) {
             // TODO(#7373): return this error once the decoder tries to return a frame for this sample. how exactly?
-            re_log::error!("Failed to decode video chunk: {}", js_error_to_string(&err));
+            re_log::error_once!("Failed to decode video chunk: {}", js_error_to_string(&err));
         }
     }
 

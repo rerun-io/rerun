@@ -83,29 +83,22 @@ impl Video {
         Ok(Self { data, decoder })
     }
 
-    /// Duration of the video, in milliseconds.
-    pub fn duration_ms(&self) -> f64 {
-        self.data.duration.into_millis(self.data.timescale)
+    /// The video data
+    #[inline]
+    pub fn data(&self) -> &Arc<re_video::VideoData> {
+        &self.data
     }
 
     /// Natural width of the video.
+    #[inline]
     pub fn width(&self) -> u32 {
-        self.data.config.coded_width as u32
+        self.data.width()
     }
 
     /// Natural height of the video.
+    #[inline]
     pub fn height(&self) -> u32 {
-        self.data.config.coded_height as u32
-    }
-
-    /// The codec used to encode the video.
-    pub fn codec(&self) -> &str {
-        &self.data.config.codec
-    }
-
-    /// The number of samples in the video.
-    pub fn num_samples(&self) -> usize {
-        self.data.samples.len()
+        self.data.height()
     }
 
     /// Returns a texture with the latest frame at the given timestamp.
