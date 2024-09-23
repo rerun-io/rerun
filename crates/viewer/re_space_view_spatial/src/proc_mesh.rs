@@ -119,8 +119,6 @@ impl WireframeCache {
 }
 
 impl Cache for WireframeCache {
-    fn begin_frame(&mut self) {}
-
     fn purge_memory(&mut self) {
         self.0.clear();
     }
@@ -250,8 +248,6 @@ impl SolidCache {
 }
 
 impl Cache for SolidCache {
-    fn begin_frame(&mut self) {}
-
     fn purge_memory(&mut self) {
         self.0.clear();
     }

@@ -54,9 +54,12 @@ impl VideoCache {
 }
 
 impl Cache for VideoCache {
-    fn begin_frame(&mut self) {
+    fn begin_frame(&mut self, renderer_active_frame_idx: u64) {
         for v in self.0.values() {
             v.used_this_frame.store(false, Ordering::Release);
+            if let Ok(video) = v.video.as_ref() {
+                video.purge_unused_decoders(renderer_active_frame_idx);
+            }
         }
     }
 

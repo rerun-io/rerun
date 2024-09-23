@@ -22,8 +22,6 @@ impl TensorStatsCache {
 }
 
 impl Cache for TensorStatsCache {
-    fn begin_frame(&mut self) {}
-
     fn purge_memory(&mut self) {
         // Purging the tensor stats is not worth it - these are very small objects!
     }

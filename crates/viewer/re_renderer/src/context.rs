@@ -475,6 +475,11 @@ This means, either a call to RenderContext::before_submit was omitted, or the pr
     pub(crate) fn read_lock_renderers(&self) -> RwLockReadGuard<'_, Renderers> {
         self.renderers.read()
     }
+
+    /// Returns the global frame index of the active frame.
+    pub fn active_frame_idx(&self) -> u64 {
+        self.active_frame.frame_index
+    }
 }
 
 pub struct FrameGlobalCommandEncoder(Option<wgpu::CommandEncoder>);

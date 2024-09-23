@@ -81,6 +81,7 @@ unsafe impl Sync for VideoFrame {}
 
 impl Drop for VideoDecoder {
     fn drop(&mut self) {
+        re_log::debug!("Dropping VideoDecoder");
         if let Err(err) = self.decoder.close() {
             re_log::warn!(
                 "Error when closing video decoder: {}",

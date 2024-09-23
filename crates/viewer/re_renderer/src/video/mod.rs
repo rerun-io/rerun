@@ -119,7 +119,7 @@ impl Video {
     ) -> FrameDecodingResult {
         re_tracing::profile_function!();
 
-        let global_frame_idx = render_context.active_frame.frame_index;
+        let global_frame_idx = render_context.active_frame_idx();
 
         // We could protect this hashmap by a RwLock and the individual decoders by a Mutex.
         // However, dealing with the RwLock efficiently is complicated:
@@ -144,19 +144,19 @@ impl Video {
             }
         };
 
-        decoder_entry.frame_index = render_context.active_frame.frame_index;
+        decoder_entry.frame_index = render_context.active_frame_idx();
         decoder_entry.decoder.frame_at(render_context, timestamp_s)
     }
 
     /// Removes all decoders that have been unused in the last frame.
-    pub fn purge_unused_decoders(&self, global_frame_index: u64) {
-        if global_frame_index == 0 {
+    ///
+    /// Decoders are very memory intensive, so they should be cleaned up as soon they're no longer neede.
+    pub fn purge_unused_decoders(&self, active_frame_idx: u64) {
+        if active_frame_idx == 0 {
             return;
         }
 
-        // TODO: nobody calls this so far
-
         let mut decoders = self.decoders.lock();
-        decoders.retain(|_, decoder| decoder.frame_index < global_frame_index - 1);
+        decoders.retain(|_, decoder| decoder.frame_index >= active_frame_idx - 1);
     }
 }

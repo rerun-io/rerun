@@ -9,10 +9,10 @@ pub struct Caches(Mutex<HashMap<TypeId, Box<dyn Cache>>>);
 
 impl Caches {
     /// Call once per frame to potentially flush the cache(s).
-    pub fn begin_frame(&self) {
+    pub fn begin_frame(&self, renderer_active_frame_idx: u64) {
         re_tracing::profile_function!();
         for cache in self.0.lock().values_mut() {
-            cache.begin_frame();
+            cache.begin_frame(renderer_active_frame_idx);
         }
     }
 
@@ -43,7 +43,7 @@ impl Caches {
 /// A cache for memoizing things in order to speed up immediate mode UI & other immediate mode style things.
 pub trait Cache: std::any::Any + Send + Sync {
     /// Called once per frame to potentially flush the cache.
-    fn begin_frame(&mut self);
+    fn begin_frame(&mut self, _renderer_active_frame_idx: u64) {}
 
     /// Attempt to free up memory.
     fn purge_memory(&mut self);
