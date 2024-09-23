@@ -38,7 +38,11 @@ impl VideoDecoder {
     }
 
     #[allow(clippy::unused_self)]
-    pub fn frame_at(&mut self, timestamp_s: f64) -> FrameDecodingResult {
+    pub fn frame_at(
+        &mut self,
+        _render_ctx: &RenderContext,
+        _timestamp_s: f64,
+    ) -> FrameDecodingResult {
         FrameDecodingResult::Error(DecodingError::NoNativeSupport)
     }
 }

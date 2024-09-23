@@ -1,3 +1,4 @@
+use re_renderer::external::re_video::VideoLoadError;
 use re_types::components::{Blob, MediaType};
 use re_ui::{list_item::PropertyContent, UiExt};
 use re_viewer_context::UiLayout;
@@ -104,15 +105,10 @@ pub fn blob_preview_and_save_ui(
         image_preview_ui(ctx, ui, ui_layout, query, entity_path, image);
     }
     // Try to treat it as a video if treating it as image didn't work:
-    else if let Some(render_ctx) = ctx.render_ctx {
+    else {
         let video_result = blob_row_id.map(|row_id| {
             ctx.cache.entry(|c: &mut re_viewer_context::VideoCache| {
-                c.entry(
-                    row_id,
-                    blob,
-                    media_type.as_ref().map(|mt| mt.as_str()),
-                    render_ctx,
-                )
+                c.entry(row_id, blob, media_type.as_ref().map(|mt| mt.as_str()))
             })
         });
         if let Some(video_result) = &video_result {
@@ -161,7 +157,7 @@ pub fn blob_preview_and_save_ui(
 fn show_video_blob_info(
     ui: &mut egui::Ui,
     ui_layout: UiLayout,
-    video_result: &Result<re_renderer::video::Video, re_renderer::video::VideoError>,
+    video_result: &Result<re_renderer::video::Video, VideoLoadError>,
 ) {
     match video_result {
         Ok(video) => {

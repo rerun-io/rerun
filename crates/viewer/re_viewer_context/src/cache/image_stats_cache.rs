@@ -17,8 +17,6 @@ impl ImageStatsCache {
 }
 
 impl Cache for ImageStatsCache {
-    fn begin_frame(&mut self) {}
-
     fn purge_memory(&mut self) {
         // Purging the image stats is not worth it - these are very small objects!
     }

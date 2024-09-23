@@ -1587,7 +1587,21 @@ impl eframe::App for App {
 
         self.purge_memory_if_needed(&mut store_hub);
 
-        self.state.cache.begin_frame();
+        {
+            // TODO(andreas): store the re_renderer somewhere else.
+            let egui_renderer = {
+                let render_state = frame.wgpu_render_state().unwrap();
+                &mut render_state.renderer.read()
+            };
+            let render_ctx = egui_renderer
+                .callback_resources
+                .get::<re_renderer::RenderContext>()
+                .unwrap();
+
+            // We haven't called `begin_frame` at this point, so pretend we did and add one to the active frame index.
+            let renderer_active_frame_idx = render_ctx.active_frame_idx().wrapping_add(1);
+            self.state.cache.begin_frame(renderer_active_frame_idx);
+        }
 
         self.show_text_logs_as_notifications();
         self.receive_messages(&mut store_hub, egui_ctx);

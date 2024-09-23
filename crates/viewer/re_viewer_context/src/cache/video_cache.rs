@@ -1,10 +1,7 @@
 use crate::Cache;
 use re_chunk::RowId;
 use re_log_types::hash::Hash64;
-use re_renderer::{
-    video::{Video, VideoError},
-    RenderContext,
-};
+use re_renderer::{external::re_video::VideoLoadError, video::Video};
 
 use std::sync::{
     atomic::{AtomicBool, Ordering},
@@ -17,7 +14,7 @@ struct Entry {
     used_this_frame: AtomicBool,
 
     /// Keeps failed loads around, so we can don't try again and again.
-    video: Arc<Result<Video, VideoError>>,
+    video: Arc<Result<Video, VideoLoadError>>,
 }
 
 /// Caches meshes based on media type & row id.
@@ -35,14 +32,13 @@ impl VideoCache {
         row_id: RowId,
         video_data: &re_types::datatypes::Blob,
         media_type: Option<&str>,
-        render_ctx: &RenderContext,
-    ) -> Arc<Result<Video, VideoError>> {
+    ) -> Arc<Result<Video, VideoLoadError>> {
         re_tracing::profile_function!();
 
         let key = Hash64::hash((row_id, media_type));
 
         let entry = self.0.entry(key).or_insert_with(|| {
-            let video = Video::load(render_ctx, video_data, media_type);
+            let video = Video::load(video_data, media_type);
             Entry {
                 used_this_frame: AtomicBool::new(true),
                 video: Arc::new(video),
@@ -58,9 +54,12 @@ impl VideoCache {
 }
 
 impl Cache for VideoCache {
-    fn begin_frame(&mut self) {
+    fn begin_frame(&mut self, renderer_active_frame_idx: u64) {
         for v in self.0.values() {
             v.used_this_frame.store(false, Ordering::Release);
+            if let Ok(video) = v.video.as_ref() {
+                video.purge_unused_decoders(renderer_active_frame_idx);
+            }
         }
     }
 

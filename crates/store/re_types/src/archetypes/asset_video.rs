@@ -102,13 +102,13 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 ///
 ///     // Create two entities, showing the same video frozen at different times.
 ///     rec.log(
-///         "frame_at_start",
-///         &rerun::VideoFrameReference::new(rerun::components::VideoTimestamp::from_seconds(0.0))
+///         "frame_1s",
+///         &rerun::VideoFrameReference::new(rerun::components::VideoTimestamp::from_seconds(1.0))
 ///             .with_video_reference("video_asset"),
 ///     )?;
 ///     rec.log(
-///         "frame_at_one_second",
-///         &rerun::VideoFrameReference::new(rerun::components::VideoTimestamp::from_seconds(1.0))
+///         "frame_2s",
+///         &rerun::VideoFrameReference::new(rerun::components::VideoTimestamp::from_seconds(2.0))
 ///             .with_video_reference("video_asset"),
 ///     )?;
 ///
@@ -118,11 +118,11 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 /// ```
 /// <center>
 /// <picture>
-///   <source media="(max-width: 480px)" srcset="https://static.rerun.io/video_manual_frames/320a44e1e06b8b3a3161ecbbeae3e04d1ccb9589/480w.png">
-///   <source media="(max-width: 768px)" srcset="https://static.rerun.io/video_manual_frames/320a44e1e06b8b3a3161ecbbeae3e04d1ccb9589/768w.png">
-///   <source media="(max-width: 1024px)" srcset="https://static.rerun.io/video_manual_frames/320a44e1e06b8b3a3161ecbbeae3e04d1ccb9589/1024w.png">
-///   <source media="(max-width: 1200px)" srcset="https://static.rerun.io/video_manual_frames/320a44e1e06b8b3a3161ecbbeae3e04d1ccb9589/1200w.png">
-///   <img src="https://static.rerun.io/video_manual_frames/320a44e1e06b8b3a3161ecbbeae3e04d1ccb9589/full.png" width="640">
+///   <source media="(max-width: 480px)" srcset="https://static.rerun.io/video_manual_frames/9f41c00f84a98cc3f26875fba7c1d2fa2bad7151/480w.png">
+///   <source media="(max-width: 768px)" srcset="https://static.rerun.io/video_manual_frames/9f41c00f84a98cc3f26875fba7c1d2fa2bad7151/768w.png">
+///   <source media="(max-width: 1024px)" srcset="https://static.rerun.io/video_manual_frames/9f41c00f84a98cc3f26875fba7c1d2fa2bad7151/1024w.png">
+///   <source media="(max-width: 1200px)" srcset="https://static.rerun.io/video_manual_frames/9f41c00f84a98cc3f26875fba7c1d2fa2bad7151/1200w.png">
+///   <img src="https://static.rerun.io/video_manual_frames/9f41c00f84a98cc3f26875fba7c1d2fa2bad7151/full.png" width="640">
 /// </picture>
 /// </center>
 #[derive(Clone, Debug)]

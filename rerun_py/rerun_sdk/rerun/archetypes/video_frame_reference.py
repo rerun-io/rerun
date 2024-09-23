@@ -71,7 +71,6 @@ class VideoFrameReference(Archetype):
     ### Demonstrates manual use of video frame references:
     ```python
     # TODO(#7298): ⚠️ Video is currently only supported in the Rerun web viewer.
-    # TODO(#7420): This sample doesn't render yet.
 
     import sys
 
@@ -90,32 +89,30 @@ class VideoFrameReference(Archetype):
 
     # Create two entities, showing the same video frozen at different times.
     rr.log(
-        "frame_at_start",
-        rr.VideoFrameReference(
-            timestamp=rr.components.VideoTimestamp(seconds=0.0),
-            video_reference="video_asset",
-        ),
-    )
-    rr.log(
-        "frame_at_one_second",
+        "frame_1s",
         rr.VideoFrameReference(
             timestamp=rr.components.VideoTimestamp(seconds=1.0),
             video_reference="video_asset",
         ),
     )
+    rr.log(
+        "frame_2s",
+        rr.VideoFrameReference(
+            timestamp=rr.components.VideoTimestamp(seconds=2.0),
+            video_reference="video_asset",
+        ),
+    )
 
     # Send blueprint that shows two 2D views next to each other.
-    rr.send_blueprint(
-        rrb.Horizontal(rrb.Spatial2DView(origin="frame_at_start"), rrb.Spatial2DView(origin="frame_at_one_second"))
-    )
+    rr.send_blueprint(rrb.Horizontal(rrb.Spatial2DView(origin="frame_1s"), rrb.Spatial2DView(origin="frame_2s")))
     ```
     <center>
     <picture>
-      <source media="(max-width: 480px)" srcset="https://static.rerun.io/video_manual_frames/320a44e1e06b8b3a3161ecbbeae3e04d1ccb9589/480w.png">
-      <source media="(max-width: 768px)" srcset="https://static.rerun.io/video_manual_frames/320a44e1e06b8b3a3161ecbbeae3e04d1ccb9589/768w.png">
-      <source media="(max-width: 1024px)" srcset="https://static.rerun.io/video_manual_frames/320a44e1e06b8b3a3161ecbbeae3e04d1ccb9589/1024w.png">
-      <source media="(max-width: 1200px)" srcset="https://static.rerun.io/video_manual_frames/320a44e1e06b8b3a3161ecbbeae3e04d1ccb9589/1200w.png">
-      <img src="https://static.rerun.io/video_manual_frames/320a44e1e06b8b3a3161ecbbeae3e04d1ccb9589/full.png" width="640">
+      <source media="(max-width: 480px)" srcset="https://static.rerun.io/video_manual_frames/9f41c00f84a98cc3f26875fba7c1d2fa2bad7151/480w.png">
+      <source media="(max-width: 768px)" srcset="https://static.rerun.io/video_manual_frames/9f41c00f84a98cc3f26875fba7c1d2fa2bad7151/768w.png">
+      <source media="(max-width: 1024px)" srcset="https://static.rerun.io/video_manual_frames/9f41c00f84a98cc3f26875fba7c1d2fa2bad7151/1024w.png">
+      <source media="(max-width: 1200px)" srcset="https://static.rerun.io/video_manual_frames/9f41c00f84a98cc3f26875fba7c1d2fa2bad7151/1200w.png">
+      <img src="https://static.rerun.io/video_manual_frames/9f41c00f84a98cc3f26875fba7c1d2fa2bad7151/full.png" width="640">
     </picture>
     </center>
 
