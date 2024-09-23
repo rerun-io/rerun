@@ -10,6 +10,7 @@ use std::{collections::BTreeMap, ops::Range};
 use itertools::Itertools;
 
 pub use re_mp4::TrackKind;
+
 pub type TrackId = u64;
 
 /// Decoded video data.
