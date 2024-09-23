@@ -1,6 +1,5 @@
 // Log a video asset using manually created frame references.
 // TODO(#7298): ⚠️ Video is currently only supported in the Rerun web viewer.
-// TODO(#7420): This sample doesn't render yet.
 
 #include <rerun.hpp>
 
@@ -24,10 +23,13 @@ int main(int argc, char* argv[]) {
     rec.log_static("video_asset", rerun::AssetVideo::from_file(path).value_or_throw());
 
     // Create two entities, showing the same video frozen at different times.
-    rec.log("frame_at_start", rerun::VideoFrameReference(0.0s).with_video_reference("video_asset"));
     rec.log(
         "frame_at_one_second",
         rerun::VideoFrameReference(1.0s).with_video_reference("video_asset")
+    );
+    rec.log(
+        "frame_at_two_second",
+        rerun::VideoFrameReference(2.0s).with_video_reference("video_asset")
     );
 
     // TODO(#5520): log blueprint once supported

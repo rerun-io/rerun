@@ -14,7 +14,9 @@ from typing import Final
 import requests
 import tqdm
 
-test_assets = ["video/Big_Buck_Bunny_1080_10s_av1.mp4"]
+test_assets = [
+    "video/Big_Buck_Bunny_1080_10s_av1.mp4" "video/Sintel_1080_10s_av1.mp4",
+]
 
 test_asset_base_url = "https://storage.googleapis.com/rerun-test-assets/"
 

@@ -150,7 +150,7 @@ impl Video {
 
     /// Removes all decoders that have been unused in the last frame.
     ///
-    /// Decoders are very memory intensive, so they should be cleaned up as soon they're no longer neede.
+    /// Decoders are very memory intensive, so they should be cleaned up as soon they're no longer needed.
     pub fn purge_unused_decoders(&self, active_frame_idx: u64) {
         if active_frame_idx == 0 {
             return;

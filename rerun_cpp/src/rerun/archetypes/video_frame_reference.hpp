@@ -78,7 +78,7 @@ namespace rerun::archetypes {
     /// ```
     ///
     /// ### Demonstrates manual use of video frame references
-    /// ![image](https://static.rerun.io/video_manual_frames/320a44e1e06b8b3a3161ecbbeae3e04d1ccb9589/full.png)
+    /// ![image](https://static.rerun.io/video_manual_frames/9f41c00f84a98cc3f26875fba7c1d2fa2bad7151/full.png)
     ///
     /// ```cpp
     /// #include <rerun.hpp>
@@ -103,10 +103,13 @@ namespace rerun::archetypes {
     ///     rec.log_static("video_asset", rerun::AssetVideo::from_file(path).value_or_throw());
     ///
     ///     // Create two entities, showing the same video frozen at different times.
-    ///     rec.log("frame_at_start", rerun::VideoFrameReference(0.0s).with_video_reference("video_asset"));
     ///     rec.log(
     ///         "frame_at_one_second",
     ///         rerun::VideoFrameReference(1.0s).with_video_reference("video_asset")
+    ///     );
+    ///     rec.log(
+    ///         "frame_at_two_second",
+    ///         rerun::VideoFrameReference(2.0s).with_video_reference("video_asset")
     ///     );
     ///
     ///     // TODO(#5520): log blueprint once supported

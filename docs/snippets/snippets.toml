@@ -195,7 +195,6 @@ quick_start = [ # These examples don't have exactly the same implementation.
 "archetypes/video_auto_frames" = [
   "$config_dir/../../tests/assets/video/Big_Buck_Bunny_1080_10s_av1.mp4",
 ]
-# TODO(#7420): This sample doesn't render yet. Once it does it would be nice to have a video that looks significantly different after 1s.
 "archetypes/video_manual_frames" = [
-  "$config_dir/../../tests/assets/video/Big_Buck_Bunny_1080_10s_av1.mp4",
+  "$config_dir/../../tests/assets/video/Sintel_1080_10s_av1.mp4",
 ]

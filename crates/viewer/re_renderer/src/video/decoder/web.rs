@@ -145,7 +145,7 @@ impl VideoDecoder {
         render_ctx: &RenderContext,
         timestamp_s: f64,
     ) -> FrameDecodingResult {
-        let result = self.decode_frame_at(timestamp_s);
+        let result = self.frame_at_internal(timestamp_s);
         match &result {
             FrameDecodingResult::Ready(_) => {
                 self.error_on_last_frame_at = false;
@@ -168,7 +168,7 @@ impl VideoDecoder {
         result
     }
 
-    fn decode_frame_at(&mut self, timestamp_s: f64) -> FrameDecodingResult {
+    fn frame_at_internal(&mut self, timestamp_s: f64) -> FrameDecodingResult {
         if timestamp_s < 0.0 {
             return FrameDecodingResult::Error(DecodingError::NegativeTimestamp);
         }

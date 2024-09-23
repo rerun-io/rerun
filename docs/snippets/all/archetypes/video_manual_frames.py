@@ -1,6 +1,5 @@
 """Manual use of individual video frame references."""
 # TODO(#7298): ⚠️ Video is currently only supported in the Rerun web viewer.
-# TODO(#7420): This sample doesn't render yet.
 
 import sys
 
@@ -19,21 +18,21 @@ rr.log("video_asset", rr.AssetVideo(path=sys.argv[1]), static=True)
 
 # Create two entities, showing the same video frozen at different times.
 rr.log(
-    "frame_at_start",
-    rr.VideoFrameReference(
-        timestamp=rr.components.VideoTimestamp(seconds=0.0),
-        video_reference="video_asset",
-    ),
-)
-rr.log(
     "frame_at_one_second",
     rr.VideoFrameReference(
         timestamp=rr.components.VideoTimestamp(seconds=1.0),
         video_reference="video_asset",
     ),
 )
+rr.log(
+    "frame_at_two_second",
+    rr.VideoFrameReference(
+        timestamp=rr.components.VideoTimestamp(seconds=2.0),
+        video_reference="video_asset",
+    ),
+)
 
 # Send blueprint that shows two 2D views next to each other.
 rr.send_blueprint(
-    rrb.Horizontal(rrb.Spatial2DView(origin="frame_at_start"), rrb.Spatial2DView(origin="frame_at_one_second"))
+    rrb.Horizontal(rrb.Spatial2DView(origin="frame_at_one_second"), rrb.Spatial2DView(origin="frame_at_two_second"))
 )
