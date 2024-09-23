@@ -52,7 +52,9 @@ pub enum FrameDecodingResult {
 ///
 /// A single video may use several decoders at a time to simultaneously decode frames at different timestamps.
 /// The id does not need to be globally unique, just unique enough to distinguish streams of the same video.
-pub type VideoDecodingStreamId = u64;
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+
+pub struct VideoDecodingStreamId(pub u64);
 
 struct DecoderEntry {
     decoder: decoder::VideoDecoder,

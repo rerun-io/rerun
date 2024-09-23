@@ -157,8 +157,9 @@ impl VideoFrameReferenceVisualizer {
             return;
         };
 
-        let decode_stream_id: re_renderer::video::VideoDecodingStreamId =
-            Hash64::hash((entity_path.hash(), view_id)).hash64();
+        let decode_stream_id = re_renderer::video::VideoDecodingStreamId(
+            Hash64::hash((entity_path.hash(), view_id)).hash64(),
+        );
 
         // Follow the reference to the video asset.
         let video_reference = video_references
