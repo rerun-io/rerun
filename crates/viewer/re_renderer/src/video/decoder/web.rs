@@ -2,13 +2,12 @@ use std::sync::Arc;
 
 use js_sys::{Function, Uint8Array};
 use parking_lot::Mutex;
+use re_video::Time;
 use wasm_bindgen::{closure::Closure, JsCast as _};
 use web_sys::{
     EncodedVideoChunk, EncodedVideoChunkInit, EncodedVideoChunkType, VideoDecoderConfig,
     VideoDecoderInit,
 };
-
-use re_video::TimeMs;
 
 use super::latest_at_idx;
 use crate::{
@@ -36,6 +35,15 @@ impl std::ops::Deref for VideoFrame {
     }
 }
 
+struct BufferedFrame {
+    /// Time at which the frame appears in the video stream.
+    composition_timestamp: Time,
+
+    duration: Time,
+
+    inner: VideoFrame,
+}
+
 pub struct VideoDecoder {
     data: Arc<re_video::VideoData>,
     queue: Arc<wgpu::Queue>,
@@ -43,8 +51,8 @@ pub struct VideoDecoder {
 
     decoder: web_sys::VideoDecoder,
 
-    frames: Arc<Mutex<Vec<(TimeMs, VideoFrame)>>>,
-    last_used_frame_timestamp: TimeMs,
+    frames: Arc<Mutex<Vec<BufferedFrame>>>,
+    last_used_frame_timestamp: Time,
     current_segment_idx: usize,
     current_sample_idx: usize,
 }
@@ -86,14 +94,20 @@ impl VideoDecoder {
         data: Arc<re_video::VideoData>,
     ) -> Result<Self, DecodingError> {
         let frames = Arc::new(Mutex::new(Vec::with_capacity(16)));
+        let timescale = data.timescale;
 
         let decoder = init_video_decoder({
             let frames = frames.clone();
             move |frame: web_sys::VideoFrame| {
-                frames.lock().push((
-                    TimeMs::new(frame.timestamp().unwrap_or(0.0)),
-                    VideoFrame(frame),
-                ));
+                let composition_timestamp =
+                    Time::from_micros(frame.timestamp().unwrap_or(0.0), timescale);
+                let duration = Time::from_micros(frame.duration().unwrap_or(0.0), timescale);
+                let frame = VideoFrame(frame);
+                frames.lock().push(BufferedFrame {
+                    composition_timestamp,
+                    duration,
+                    inner: frame,
+                });
             }
         })?;
 
@@ -115,26 +129,29 @@ impl VideoDecoder {
             decoder,
 
             frames,
-            last_used_frame_timestamp: TimeMs::new(f64::MAX),
+            last_used_frame_timestamp: Time::new(u64::MAX),
             current_segment_idx: usize::MAX,
             current_sample_idx: usize::MAX,
         })
     }
 
-    pub fn frame_at(&mut self, timestamp: TimeMs) -> FrameDecodingResult {
-        if timestamp < TimeMs::ZERO {
+    pub fn frame_at(&mut self, timestamp_s: f64) -> FrameDecodingResult {
+        if timestamp_s < 0.0 {
             return FrameDecodingResult::Error(DecodingError::NegativeTimestamp);
         }
+        let timescale = self.data.timescale;
+        let timestamp = Time::from_secs(timestamp_s, timescale);
 
         let Some(requested_segment_idx) =
-            latest_at_idx(&self.data.segments, |segment| segment.timestamp, &timestamp)
+            latest_at_idx(&self.data.segments, |segment| segment.start, &timestamp)
         else {
             return FrameDecodingResult::Error(DecodingError::EmptyVideo);
         };
+        let requested_segment = &self.data.segments[requested_segment_idx];
 
         let Some(requested_sample_idx) = latest_at_idx(
-            &self.data.segments[requested_segment_idx].samples,
-            |sample| sample.timestamp,
+            &self.data.samples[requested_segment.range()],
+            |sample| sample.decode_timestamp,
             &timestamp,
         ) else {
             // This should never happen, because segments are never empty.
@@ -181,7 +198,9 @@ impl VideoDecoder {
 
         let mut frames = self.frames.lock();
 
-        let Some(frame_idx) = latest_at_idx(&frames, |(t, _)| *t, &timestamp) else {
+        let Some(frame_idx) =
+            latest_at_idx(&frames, |frame| frame.composition_timestamp, &timestamp)
+        else {
             // no buffered frames - texture will be blank
             // Don't return a zeroed texture, because we may just be behind on decoding
             // and showing an old frame is better than showing a blank frame,
@@ -195,24 +214,21 @@ impl VideoDecoder {
 
         // after draining all old frames, the next frame will be at index 0
         let frame_idx = 0;
-        let (_, frame) = &frames[frame_idx];
+        let frame = &frames[frame_idx];
 
-        // https://w3c.github.io/webcodecs/#output-videoframes 1. 1. states:
-        //   Let timestamp and duration be the timestamp and duration from the EncodedVideoChunk associated with output.
-        // we always provide both, so they should always be available
-        let frame_timestamp_ms = frame.timestamp().map(TimeMs::new).unwrap_or_default();
-        let frame_duration_ms = frame.duration().map(TimeMs::new).unwrap_or_default();
+        let frame_timestamp_ms = frame.composition_timestamp.into_millis(timescale);
+        let frame_duration_ms = frame.duration.into_millis(timescale);
 
         // This handles the case when we have a buffered frame that's older than the requested timestamp.
         // We don't want to show this frame to the user, because it's not actually the one they requested,
         // so instead return the last decoded frame.
-        if timestamp - frame_timestamp_ms > frame_duration_ms {
+        if timestamp.into_millis(timescale) - frame_timestamp_ms > frame_duration_ms {
             return FrameDecodingResult::Pending(self.texture.clone());
         }
 
-        if self.last_used_frame_timestamp != frame_timestamp_ms {
-            copy_video_frame_to_texture(&self.queue, frame, &self.texture.texture);
-            self.last_used_frame_timestamp = frame_timestamp_ms;
+        if self.last_used_frame_timestamp != frame.composition_timestamp {
+            self.last_used_frame_timestamp = frame.composition_timestamp;
+            copy_video_frame_to_texture(&self.queue, &frame.inner, &self.texture.texture);
         }
 
         FrameDecodingResult::Ready(self.texture.clone())
@@ -226,8 +242,11 @@ impl VideoDecoder {
             return;
         };
 
-        self.enqueue_sample(&segment.samples[0], true);
-        for sample in &segment.samples[1..] {
+        let samples = &self.data.samples[segment.range()];
+
+        // The first sample in a segment is always a key frame:
+        self.enqueue_sample(&samples[0], true);
+        for sample in &samples[1..] {
             self.enqueue_sample(sample, false);
         }
     }
@@ -243,8 +262,13 @@ impl VideoDecoder {
         } else {
             EncodedVideoChunkType::Delta
         };
-        let chunk = EncodedVideoChunkInit::new(&data, sample.timestamp.as_ms_f64(), type_);
-        chunk.set_duration(sample.duration.as_ms_f64());
+        // TODO(jan): use `composition_timestamp` instead
+        let chunk = EncodedVideoChunkInit::new(
+            &data,
+            sample.decode_timestamp.into_micros(self.data.timescale),
+            type_,
+        );
+        chunk.set_duration(sample.duration.into_micros(self.data.timescale));
         let Some(chunk) = EncodedVideoChunk::new(&chunk)
             .inspect_err(|err| {
                 // TODO(#7373): return this error once the decoder tries to return a frame for this sample. how exactly?

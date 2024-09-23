@@ -5,20 +5,32 @@
 
 mod mp4;
 
+use std::ops::Range;
+
 use itertools::Itertools;
-use ordered_float::OrderedFloat;
 
 /// Decoded video data.
 #[derive(Clone)]
 pub struct VideoData {
     pub config: Config,
 
-    /// Duration of the video, in milliseconds.
-    pub duration: TimeMs,
+    /// How many time units are there per second.
+    pub timescale: Timescale,
+
+    /// Duration of the video, in time units.
+    pub duration: Time,
 
     /// We split video into segments, each beginning with a key frame,
     /// followed by any number of delta frames.
     pub segments: Vec<Segment>,
+
+    /// Samples contain the byte offsets into `data` for each frame.
+    ///
+    /// This list is sorted in ascending order of decode timestamps.
+    ///
+    /// Samples must be decoded in decode-timestamp order,
+    /// and should be presented in composition-timestamp order.
+    pub samples: Vec<Sample>,
 
     /// This array stores all data used by samples.
     pub data: Vec<u8>,
@@ -56,9 +68,9 @@ impl VideoData {
         // Segments are guaranteed to be sorted among each other, but within a segment,
         // presentation timestamps may not be sorted since this is sorted by decode timestamps.
         self.segments.iter().flat_map(|seg| {
-            seg.samples
+            self.samples[seg.range()]
                 .iter()
-                .map(|sample| sample.timestamp.as_nanos())
+                .map(|sample| sample.composition_timestamp.into_nanos(self.timescale))
                 .sorted()
         })
     }
@@ -67,23 +79,36 @@ impl VideoData {
 /// A segment of a video.
 #[derive(Clone)]
 pub struct Segment {
-    /// Time of the first sample in this segment, in milliseconds.
-    pub timestamp: TimeMs,
+    /// Decode timestamp of the first sample in this segment, in time units.
+    pub start: Time,
 
-    /// List of samples contained in this segment.
-    /// At least one sample per segment is guaranteed,
-    /// and the first sample is always a key frame.
-    pub samples: Vec<Sample>,
+    /// Range of samples contained in this segment.
+    pub sample_range: Range<u32>,
+}
+
+impl Segment {
+    /// The segment's `sample_range` mapped to `usize` for slicing.
+    pub fn range(&self) -> Range<usize> {
+        Range {
+            start: self.sample_range.start as usize,
+            end: self.sample_range.end as usize,
+        }
+    }
 }
 
 /// A single sample in a video.
 #[derive(Debug, Clone)]
 pub struct Sample {
-    /// Time at which this sample appears, in milliseconds.
-    pub timestamp: TimeMs,
+    /// Time at which this sample appears in the decoded bitstream, in time units.
+    pub decode_timestamp: Time,
 
-    /// Duration of the sample, in milliseconds.
-    pub duration: TimeMs,
+    /// Time at which this sample appears in the frame stream, in time units.
+    ///
+    /// `composition >= decode`
+    pub composition_timestamp: Time,
+
+    /// Duration of the sample, in time units.
+    pub duration: Time,
 
     /// Offset into [`VideoData::data`]
     pub byte_offset: u32,
@@ -108,43 +133,72 @@ pub struct Config {
     pub coded_width: u16,
 }
 
-#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
-pub struct TimeMs(OrderedFloat<f64>);
+/// A value in time units.
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct Time(u64);
 
-impl TimeMs {
-    pub const ZERO: Self = Self(OrderedFloat(0.0));
+impl Time {
+    pub const ZERO: Self = Self(0);
 
+    /// Create a new value in _time units_.
+    ///
+    /// ⚠️ Don't use this for regular timestamps in seconds/milliseconds/etc.,
+    /// use the proper constructors for those instead!
+    /// This only exists for cases where you already have a value expressed in time units,
+    /// such as those received from the `WebCodecs` APIs.
     #[inline]
-    pub fn new(ms: f64) -> Self {
-        Self(OrderedFloat(ms))
+    pub fn new(v: u64) -> Self {
+        Self(v)
     }
 
     #[inline]
-    pub fn as_ms_f64(&self) -> f64 {
-        self.0.into_inner()
+    pub fn from_secs(v: f64, timescale: Timescale) -> Self {
+        Self((v * timescale.0 as f64).round() as u64)
     }
 
     #[inline]
-    pub fn as_nanos(self) -> i64 {
-        (self.0 * 1_000_000.0).round() as i64
+    pub fn from_millis(v: f64, timescale: Timescale) -> Self {
+        Self::from_secs(v / 1e3, timescale)
+    }
+
+    #[inline]
+    pub fn from_micros(v: f64, timescale: Timescale) -> Self {
+        Self::from_secs(v / 1e6, timescale)
+    }
+
+    #[inline]
+    pub fn from_nanos(v: i64, timescale: Timescale) -> Self {
+        Self::from_secs(v as f64 / 1e9, timescale)
+    }
+
+    #[inline]
+    pub fn into_secs(self, timescale: Timescale) -> f64 {
+        self.0 as f64 / timescale.0 as f64
+    }
+
+    #[inline]
+    pub fn into_millis(self, timescale: Timescale) -> f64 {
+        self.into_secs(timescale) * 1e3
+    }
+
+    #[inline]
+    pub fn into_micros(self, timescale: Timescale) -> f64 {
+        self.into_secs(timescale) * 1e6
+    }
+
+    #[inline]
+    pub fn into_nanos(self, timescale: Timescale) -> i64 {
+        (self.into_secs(timescale) * 1e9).round() as i64
     }
 }
 
-impl std::ops::Add<Self> for TimeMs {
-    type Output = Self;
+/// The number of time units per second.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct Timescale(u64);
 
-    #[inline]
-    fn add(self, rhs: Self) -> Self::Output {
-        Self(self.0 + rhs.0)
-    }
-}
-
-impl std::ops::Sub<Self> for TimeMs {
-    type Output = Self;
-
-    #[inline]
-    fn sub(self, rhs: Self) -> Self::Output {
-        Self(self.0 - rhs.0)
+impl Timescale {
+    pub(crate) fn new(v: u64) -> Self {
+        Self(v)
     }
 }
 
@@ -152,7 +206,7 @@ impl std::ops::Sub<Self> for TimeMs {
 #[derive(thiserror::Error, Debug)]
 pub enum VideoLoadError {
     #[error("Failed to determine media type from data: {0}")]
-    ParseMp4(#[from] ::mp4::Error),
+    ParseMp4(#[from] re_mp4::Error),
 
     #[error("Video file has no video tracks")]
     NoVideoTrack,
@@ -169,8 +223,9 @@ pub enum VideoLoadError {
     #[error("Video file has unsupported format")]
     UnsupportedVideoType,
 
-    #[error("Video file has unsupported codec {0}")]
-    UnsupportedCodec(String),
+    // `FourCC`'s debug impl doesn't quote the result
+    #[error("Video track uses unsupported codec \"{0}\"")] // NOLINT
+    UnsupportedCodec(re_mp4::FourCC),
 }
 
 impl std::fmt::Debug for VideoData {
@@ -187,8 +242,8 @@ impl std::fmt::Debug for VideoData {
 impl std::fmt::Debug for Segment {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("Segment")
-            .field("timestamp", &self.timestamp)
-            .field("samples", &self.samples.len())
+            .field("timestamp", &self.start)
+            .field("samples", &self.sample_range.len())
             .finish()
     }
 }

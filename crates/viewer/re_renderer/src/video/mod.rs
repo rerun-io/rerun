@@ -3,7 +3,7 @@ mod decoder;
 use parking_lot::Mutex;
 use std::sync::Arc;
 
-use re_video::{TimeMs, VideoLoadError};
+use re_video::VideoLoadError;
 
 use crate::{resource_managers::GpuTexture2D, RenderContext};
 
@@ -83,9 +83,9 @@ impl Video {
         Ok(Self { data, decoder })
     }
 
-    /// Duration of the video.
-    pub fn duration(&self) -> re_video::TimeMs {
-        self.data.duration
+    /// Duration of the video, in milliseconds.
+    pub fn duration_ms(&self) -> f64 {
+        self.data.duration.into_millis(self.data.timescale)
     }
 
     /// Natural width of the video.
@@ -103,9 +103,9 @@ impl Video {
         &self.data.config.codec
     }
 
-    /// Counts the number of samples in the video.
-    pub fn count_samples(&self) -> usize {
-        self.data.segments.iter().map(|seg| seg.samples.len()).sum()
+    /// The number of samples in the video.
+    pub fn num_samples(&self) -> usize {
+        self.data.samples.len()
     }
 
     /// Returns a texture with the latest frame at the given timestamp.
@@ -117,6 +117,6 @@ impl Video {
     /// empty.
     pub fn frame_at(&self, timestamp_s: f64) -> FrameDecodingResult {
         re_tracing::profile_function!();
-        self.decoder.lock().frame_at(TimeMs::new(timestamp_s * 1e3))
+        self.decoder.lock().frame_at(timestamp_s)
     }
 }

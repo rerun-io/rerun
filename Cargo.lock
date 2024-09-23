@@ -3482,19 +3482,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "mp4"
-version = "0.14.0"
-source = "git+https://github.com/rerun-io/mp4?rev=b019fcf3ac8e1befded54728686997cc168117c8#b019fcf3ac8e1befded54728686997cc168117c8"
-dependencies = [
- "byteorder",
- "bytes",
- "num-rational",
- "serde",
- "serde_json",
- "thiserror",
-]
-
-[[package]]
 name = "multimap"
 version = "0.10.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -5240,6 +5227,20 @@ dependencies = [
 ]
 
 [[package]]
+name = "re_mp4"
+version = "0.1.0"
+source = "git+https://github.com/rerun-io/re_mp4?rev=b2c39c374ed33c6e377dc368d6eba3fe051c61e3#b2c39c374ed33c6e377dc368d6eba3fe051c61e3"
+dependencies = [
+ "byteorder",
+ "bytes",
+ "log",
+ "num-rational",
+ "serde",
+ "serde_json",
+ "thiserror",
+]
+
+[[package]]
 name = "re_query"
 version = "0.19.0-alpha.1+dev"
 dependencies = [
@@ -5811,8 +5812,7 @@ name = "re_video"
 version = "0.19.0-alpha.1+dev"
 dependencies = [
  "itertools 0.13.0",
- "mp4",
- "ordered-float",
+ "re_mp4",
  "thiserror",
 ]
 
