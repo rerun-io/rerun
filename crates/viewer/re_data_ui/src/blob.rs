@@ -169,6 +169,8 @@ fn show_video_blob_info(
                 return;
             }
 
+            let data = video.data();
+
             re_ui::list_item::list_item_scope(ui, "video_blob_info", |ui| {
                 ui.list_item_flat_noninteractive(re_ui::list_item::LabelContent::new(
                     "Video properties",
@@ -176,14 +178,14 @@ fn show_video_blob_info(
                 ui.list_item_flat_noninteractive(
                     PropertyContent::new("Dimensions").value_text(format!(
                         "{}x{}",
-                        video.width(),
-                        video.height()
+                        data.width(),
+                        data.height()
                     )),
                 );
                 ui.list_item_flat_noninteractive(PropertyContent::new("Duration").value_text(
                     format!(
                         "{}",
-                        re_log_types::Duration::from_millis(video.duration_ms() as i64)
+                        re_log_types::Duration::from_millis(data.duration_ms() as i64)
                     ),
                 ));
                 // Some people may think that num_frames / duration = fps, but that's not true, videos may have variable frame rate.
@@ -192,11 +194,26 @@ fn show_video_blob_info(
                 // So the compromise is that we truthfully show the number of *samples* here and don't talk about frames.
                 ui.list_item_flat_noninteractive(
                     PropertyContent::new("Sample count")
-                        .value_text(format!("{}", video.num_samples())),
+                        .value_text(format!("{}", data.num_samples())),
                 );
                 ui.list_item_flat_noninteractive(
-                    PropertyContent::new("Codec").value_text(video.codec()),
+                    PropertyContent::new("Codec").value_text(data.codec()),
                 );
+
+                ui.list_item_collapsible_noninteractive_label("MP4 tracks", true, |ui| {
+                    for (track_id, track_kind) in &data.mp4_tracks {
+                        let track_kind_string = match track_kind {
+                            Some(re_video::TrackKind::Audio) => "audio",
+                            Some(re_video::TrackKind::Subtitle) => "subtitle",
+                            Some(re_video::TrackKind::Video) => "video",
+                            None => "unknown",
+                        };
+                        ui.list_item_flat_noninteractive(
+                            PropertyContent::new(format!("Track {track_id}"))
+                                .value_text(track_kind_string),
+                        );
+                    }
+                });
 
                 // TODO(andreas): A mini video player at this point would be awesome!
             });

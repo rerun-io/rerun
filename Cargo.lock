@@ -4990,6 +4990,7 @@ dependencies = [
  "re_types_blueprint",
  "re_types_core",
  "re_ui",
+ "re_video",
  "re_viewer_context",
  "unindent",
 ]

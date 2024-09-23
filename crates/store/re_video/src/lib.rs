@@ -5,9 +5,12 @@
 
 mod mp4;
 
-use std::ops::Range;
+use std::{collections::BTreeMap, ops::Range};
 
 use itertools::Itertools;
+
+pub use re_mp4::TrackKind;
+pub type TrackId = u64;
 
 /// Decoded video data.
 #[derive(Clone)]
@@ -34,6 +37,11 @@ pub struct VideoData {
 
     /// This array stores all data used by samples.
     pub data: Vec<u8>,
+
+    /// All the tracks in the mp4; not just the video track.
+    ///
+    /// Can be nice to show in a UI.
+    pub mp4_tracks: BTreeMap<TrackId, Option<TrackKind>>,
 }
 
 impl VideoData {
@@ -59,6 +67,36 @@ impl VideoData {
             "video/mp4" => mp4::load_mp4(data),
             media_type => Err(VideoLoadError::UnsupportedMediaType(media_type.to_owned())),
         }
+    }
+
+    /// Duration of the video, in milliseconds.
+    #[inline]
+    pub fn duration_ms(&self) -> f64 {
+        self.duration.into_millis(self.timescale)
+    }
+
+    /// Natural width of the video.
+    #[inline]
+    pub fn width(&self) -> u32 {
+        self.config.coded_width as u32
+    }
+
+    /// Natural height of the video.
+    #[inline]
+    pub fn height(&self) -> u32 {
+        self.config.coded_height as u32
+    }
+
+    /// The codec used to encode the video.
+    #[inline]
+    pub fn codec(&self) -> &str {
+        &self.config.codec
+    }
+
+    /// The number of samples in the video.
+    #[inline]
+    pub fn num_samples(&self) -> usize {
+        self.samples.len()
     }
 
     /// Determines the presentation timestamps of all frames inside a video, returning raw time values.
