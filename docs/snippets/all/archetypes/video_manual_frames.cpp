@@ -23,14 +23,8 @@ int main(int argc, char* argv[]) {
     rec.log_static("video_asset", rerun::AssetVideo::from_file(path).value_or_throw());
 
     // Create two entities, showing the same video frozen at different times.
-    rec.log(
-        "frame_at_one_second",
-        rerun::VideoFrameReference(1.0s).with_video_reference("video_asset")
-    );
-    rec.log(
-        "frame_at_two_second",
-        rerun::VideoFrameReference(2.0s).with_video_reference("video_asset")
-    );
+    rec.log("frame_1s", rerun::VideoFrameReference(1.0s).with_video_reference("video_asset"));
+    rec.log("frame_2s", rerun::VideoFrameReference(2.0s).with_video_reference("video_asset"));
 
     // TODO(#5520): log blueprint once supported
 }

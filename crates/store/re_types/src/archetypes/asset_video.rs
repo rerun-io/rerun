@@ -102,12 +102,12 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 ///
 ///     // Create two entities, showing the same video frozen at different times.
 ///     rec.log(
-///         "frame_at_one_second",
+///         "frame_1s",
 ///         &rerun::VideoFrameReference::new(rerun::components::VideoTimestamp::from_seconds(1.0))
 ///             .with_video_reference("video_asset"),
 ///     )?;
 ///     rec.log(
-///         "frame_at_two_second",
+///         "frame_2s",
 ///         &rerun::VideoFrameReference::new(rerun::components::VideoTimestamp::from_seconds(2.0))
 ///             .with_video_reference("video_asset"),
 ///     )?;
