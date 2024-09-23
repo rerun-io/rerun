@@ -417,7 +417,7 @@ fn column_visibility_ui(
                 "All",
             )
             .changed()
-        } || {
+        } | {
             ui.re_radio_value(
                 &mut column_selection_mode,
                 components::ColumnSelectionMode::Selected,

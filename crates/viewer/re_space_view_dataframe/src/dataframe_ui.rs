@@ -173,6 +173,10 @@ impl RowsDisplayData {
             row_id_column_index,
         })
     }
+
+    fn num_rows(&self) -> u64 {
+        self.batch_ref_from_row.len() as u64
+    }
 }
 
 /// [`egui_table::TableDelegate`] implementation for displaying a [`QueryHandle`] in a table.
@@ -215,9 +219,7 @@ impl<'a> egui_table::TableDelegate for DataframeTableDelegate<'a> {
 
         // TODO(#7449): this can be removed when `LatestAtQueryHandle` is able to report the row count.
         self.latest_at_query_returns_no_rows = if let Ok(display_data) = &data {
-            matches!(self.query_handle, QueryHandle::LatestAt(_))
-                && display_data.display_record_batches.len() == 1
-                && display_data.display_record_batches[0].num_rows() == 0
+            matches!(self.query_handle, QueryHandle::LatestAt(_)) && display_data.num_rows() == 0
         } else {
             false
         };
