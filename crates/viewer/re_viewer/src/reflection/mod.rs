@@ -371,6 +371,20 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             },
         ),
         (
+            <GraphEdge as Loggable>::name(),
+            ComponentReflection {
+                docstring_md: "An edge in a graph connecting two nodes.\n\nDepending on the context this could represent a directed or undirected edge.",
+                placeholder: Some(GraphEdge::default().to_arrow()?),
+            },
+        ),
+        (
+            <GraphNodeId as Loggable>::name(),
+            ComponentReflection {
+                docstring_md: "A 32-bit ID representing a node in a graph.",
+                placeholder: Some(GraphNodeId::default().to_arrow()?),
+            },
+        ),
+        (
             <HalfSize2D as Loggable>::name(),
             ComponentReflection {
                 docstring_md: "Half-size (radius) of a 2D box.\n\nMeasured in its local coordinate system.\n\nThe box extends both in negative and positive direction along each axis.\nNegative sizes indicate that the box is flipped along the respective axis, but this has no effect on how it is displayed.",
@@ -1054,6 +1068,61 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                     "rerun.components.DrawOrder".into(), display_name : "Draw order",
                     docstring_md :
                     "An optional floating point value that specifies the 2D drawing order.\n\nObjects with higher values are drawn on top of those with lower values.",
+                    is_required : false, },
+                ],
+            },
+        ),
+        (
+            ArchetypeName::new("rerun.archetypes.GraphEdges"),
+            ArchetypeReflection {
+                display_name: "Graph edges",
+                fields: vec![
+                    ArchetypeFieldReflection { component_name :
+                    "rerun.components.GraphEdge".into(), display_name : "Edges",
+                    docstring_md : "A list of node IDs.", is_required : true, },
+                    ArchetypeFieldReflection { component_name : "rerun.components.Color"
+                    .into(), display_name : "Colors", docstring_md :
+                    "Optional colors for the boxes.", is_required : false, },
+                    ArchetypeFieldReflection { component_name : "rerun.components.Text"
+                    .into(), display_name : "Labels", docstring_md :
+                    "Optional text labels for the node.", is_required : false, },
+                    ArchetypeFieldReflection { component_name :
+                    "rerun.components.ShowLabels".into(), display_name : "Show labels",
+                    docstring_md :
+                    "Optional choice of whether the text labels should be shown by default.",
+                    is_required : false, }, ArchetypeFieldReflection { component_name :
+                    "rerun.components.ClassId".into(), display_name : "Class ids",
+                    docstring_md :
+                    "Optional [`components.ClassId`](https://rerun.io/docs/reference/types/components/class_id)s for the boxes.\n\nThe [`components.ClassId`](https://rerun.io/docs/reference/types/components/class_id) provides colors and labels if not specified explicitly.",
+                    is_required : false, },
+                ],
+            },
+        ),
+        (
+            ArchetypeName::new("rerun.archetypes.GraphNodes"),
+            ArchetypeReflection {
+                display_name: "Graph nodes",
+                fields: vec![
+                    ArchetypeFieldReflection { component_name :
+                    "rerun.components.GraphNodeId".into(), display_name : "Node ids",
+                    docstring_md : "A list of node IDs.", is_required : true, },
+                    ArchetypeFieldReflection { component_name : "rerun.components.Text"
+                    .into(), display_name : "Labels", docstring_md :
+                    "Optional text labels for the node.", is_required : false, },
+                    ArchetypeFieldReflection { component_name : "rerun.components.Color"
+                    .into(), display_name : "Colors", docstring_md :
+                    "Optional colors for the boxes.", is_required : false, },
+                    ArchetypeFieldReflection { component_name :
+                    "rerun.components.Position2D".into(), display_name : "Centers",
+                    docstring_md : "Optional center positions of the nodes.", is_required
+                    : false, }, ArchetypeFieldReflection { component_name :
+                    "rerun.components.ShowLabels".into(), display_name : "Show labels",
+                    docstring_md :
+                    "Optional choice of whether the text labels should be shown by default.",
+                    is_required : false, }, ArchetypeFieldReflection { component_name :
+                    "rerun.components.ClassId".into(), display_name : "Class ids",
+                    docstring_md :
+                    "Optional [`components.ClassId`](https://rerun.io/docs/reference/types/components/class_id)s for the boxes.\n\nThe [`components.ClassId`](https://rerun.io/docs/reference/types/components/class_id) provides colors and labels if not specified explicitly.",
                     is_required : false, },
                 ],
             },

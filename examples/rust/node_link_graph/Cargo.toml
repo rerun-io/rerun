@@ -1,0 +1,17 @@
+[package]
+name = "node_link_graph"
+version = "0.19.0-alpha.1+dev"
+edition = "2021"
+rust-version = "1.76"
+license = "MIT OR Apache-2.0"
+publish = false
+
+[dependencies]
+rerun = { path = "../../../crates/top/rerun", features = [
+  "clap",
+] }
+
+anyhow = "1.0"
+clap = { version = "4.0", features = ["derive"] }
+glam = "0.28"
+

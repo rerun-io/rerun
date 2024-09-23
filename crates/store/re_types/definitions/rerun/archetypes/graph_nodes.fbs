@@ -1,0 +1,36 @@
+namespace rerun.archetypes;
+
+// ---
+
+/// A list of nodes in a graph with optional labels, colors, etc.
+table GraphNodes (
+  "attr.rust.derive": "PartialEq",
+  "attr.docs.category": "Graph",
+  "attr.docs.view_types": "Graph View"
+) {
+  // --- Required ---
+
+  /// A list of node IDs.
+  node_ids: [rerun.components.GraphNodeId] ("attr.rerun.component_required", order: 1000);
+
+  // --- Recommended ---
+
+  /// Optional text labels for the node.
+  labels: [rerun.components.Text] ("attr.rerun.component_optional", nullable, order: 2000);
+
+  // --- Optional ---
+
+  /// Optional colors for the boxes.
+  colors: [rerun.components.Color] ("attr.rerun.component_recommended", nullable, order: 2100);
+
+  /// Optional center positions of the nodes.
+  centers: [rerun.components.Position2D] ("attr.rerun.component_recommended", nullable, order: 3000);
+
+  /// Optional choice of whether the text labels should be shown by default.
+  show_labels: rerun.components.ShowLabels ("attr.rerun.component_optional", nullable, order: 3050);
+
+  /// Optional [components.ClassId]s for the boxes.
+  ///
+  /// The [components.ClassId] provides colors and labels if not specified explicitly.
+  class_ids: [rerun.components.ClassId] ("attr.rerun.component_optional", nullable, order: 3200);
+}

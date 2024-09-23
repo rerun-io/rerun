@@ -19,6 +19,7 @@ Data types are the lowest layer of the data model hierarchy. They are re-usable 
 * [`EntityPath`](datatypes/entity_path.md): A path to an entity in the `ChunkStore`.
 * [`Float32`](datatypes/float32.md): A single-precision 32-bit IEEE 754 floating point number.
 * [`Float64`](datatypes/float64.md): A double-precision 64-bit IEEE 754 floating point number.
+* [`GraphNodeId`](datatypes/graph_node_id.md): A 32-bit ID representing a node in a graph.
 * [`ImageFormat`](datatypes/image_format.md): The metadata describing the contents of a [`components.ImageBuffer`](https://rerun.io/docs/reference/types/components/image_buffer).
 * [`KeypointId`](datatypes/keypoint_id.md): A 16-bit ID representing a type of semantic keypoint within a class.
 * [`KeypointPair`](datatypes/keypoint_pair.md): A connection between two [`datatypes.KeypointId`](https://rerun.io/docs/reference/types/datatypes/keypoint_id)s.

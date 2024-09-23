@@ -2726,6 +2726,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "graph_view"
+version = "0.0.0"
+dependencies = [
+ "mimalloc",
+ "re_crash_handler",
+ "re_sdk_comms",
+ "re_viewer",
+]
+
+[[package]]
 name = "half"
 version = "1.8.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3670,6 +3680,16 @@ dependencies = [
  "libc",
  "memoffset 0.7.1",
  "static_assertions",
+]
+
+[[package]]
+name = "node_link_graph"
+version = "0.19.0-alpha.1+dev"
+dependencies = [
+ "anyhow",
+ "clap",
+ "glam",
+ "rerun",
 ]
 
 [[package]]

@@ -38,6 +38,7 @@ from .color_model import ColorModel, ColorModelArrayLike, ColorModelBatch, Color
 from .entity_path import EntityPath, EntityPathArrayLike, EntityPathBatch, EntityPathLike, EntityPathType
 from .float32 import Float32, Float32ArrayLike, Float32Batch, Float32Like, Float32Type
 from .float64 import Float64, Float64ArrayLike, Float64Batch, Float64Like, Float64Type
+from .graph_node_id import GraphNodeId, GraphNodeIdArrayLike, GraphNodeIdBatch, GraphNodeIdLike, GraphNodeIdType
 from .image_format import ImageFormat, ImageFormatArrayLike, ImageFormatBatch, ImageFormatLike, ImageFormatType
 from .keypoint_id import KeypointId, KeypointIdArrayLike, KeypointIdBatch, KeypointIdLike, KeypointIdType
 from .keypoint_pair import KeypointPair, KeypointPairArrayLike, KeypointPairBatch, KeypointPairLike, KeypointPairType
@@ -181,6 +182,11 @@ __all__ = [
     "Float64Batch",
     "Float64Like",
     "Float64Type",
+    "GraphNodeId",
+    "GraphNodeIdArrayLike",
+    "GraphNodeIdBatch",
+    "GraphNodeIdLike",
+    "GraphNodeIdType",
     "ImageFormat",
     "ImageFormatArrayLike",
     "ImageFormatBatch",
