@@ -17,6 +17,7 @@ mod resolution;
 mod response_utils;
 mod timeline;
 mod transforms;
+mod video_timestamp;
 mod view_coordinates;
 mod visual_bounds2d;
 
@@ -135,6 +136,8 @@ pub fn create_component_ui_registry() -> re_viewer_context::ComponentUiRegistry 
     line_strip::register_linestrip_component_ui(&mut registry);
 
     registry.add_singleline_edit_or_view(entity_path::edit_or_view_entity_path);
+
+    registry.add_singleline_edit_or_view(video_timestamp::edit_or_view_entity_path);
 
     registry
 }
