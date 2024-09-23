@@ -183,7 +183,7 @@ fn show_video_blob_info(
                 ui.list_item_flat_noninteractive(PropertyContent::new("Duration").value_text(
                     format!(
                         "{}",
-                        re_log_types::Duration::from_millis(video.duration().as_ms_f64() as _)
+                        re_log_types::Duration::from_millis(video.duration() as i64)
                     ),
                 ));
                 // Some people may think that num_frames / duration = fps, but that's not true, videos may have variable frame rate.
@@ -192,7 +192,7 @@ fn show_video_blob_info(
                 // So the compromise is that we truthfully show the number of *samples* here and don't talk about frames.
                 ui.list_item_flat_noninteractive(
                     PropertyContent::new("Sample count")
-                        .value_text(format!("{}", video.count_samples())),
+                        .value_text(format!("{}", video.num_samples())),
                 );
                 ui.list_item_flat_noninteractive(
                     PropertyContent::new("Codec").value_text(video.codec()),

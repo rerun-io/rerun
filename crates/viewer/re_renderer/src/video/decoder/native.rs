@@ -12,8 +12,6 @@ use crate::{
 #[allow(unused_imports)]
 use super::latest_at_idx;
 
-use re_video::TimeMs;
-
 use super::alloc_video_frame_texture;
 
 pub struct VideoDecoder {
@@ -40,7 +38,7 @@ impl VideoDecoder {
     }
 
     #[allow(clippy::unused_self)]
-    pub fn frame_at(&mut self, timestamp: TimeMs) -> FrameDecodingResult {
+    pub fn frame_at(&mut self, timestamp_s: f64) -> FrameDecodingResult {
         FrameDecodingResult::Error(DecodingError::NoNativeSupport)
     }
 }

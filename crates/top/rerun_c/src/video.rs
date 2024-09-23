@@ -39,7 +39,7 @@ pub extern "C" fn rr_video_asset_read_frame_timestamps_ns(
     // TODO(andreas): Producing this iterator isn't super expensive, but an ExactSizeIterator would be good to avoid
     // the somewhat brittle size-oracle here!
     // (note that since we create a slice from the allocation, this won't be able to go out of bound even if this value is too small)
-    let num_timestamps = video.segments.iter().map(|s| s.samples.len()).sum();
+    let num_timestamps = video.samples.len();
     let timestamps_ns_memory = alloc_func(alloc_context, num_timestamps as u32);
     let timestamps_ns =
         unsafe { std::slice::from_raw_parts_mut(timestamps_ns_memory, num_timestamps) };

@@ -27,6 +27,5 @@ features = ["all"]
 
 [dependencies]
 itertools.workspace = true
-mp4.workspace = true
-ordered-float.workspace = true
+re_mp4.workspace = true
 thiserror.workspace = true
