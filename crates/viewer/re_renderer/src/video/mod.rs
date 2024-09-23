@@ -84,7 +84,7 @@ impl Video {
     }
 
     /// Duration of the video, in milliseconds.
-    pub fn duration(&self) -> f64 {
+    pub fn duration_ms(&self) -> f64 {
         self.data.duration.into_millis(self.data.timescale)
     }
 

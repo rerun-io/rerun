@@ -183,7 +183,7 @@ fn show_video_blob_info(
                 ui.list_item_flat_noninteractive(PropertyContent::new("Duration").value_text(
                     format!(
                         "{}",
-                        re_log_types::Duration::from_millis(video.duration() as i64)
+                        re_log_types::Duration::from_millis(video.duration_ms() as i64)
                     ),
                 ));
                 // Some people may think that num_frames / duration = fps, but that's not true, videos may have variable frame rate.
