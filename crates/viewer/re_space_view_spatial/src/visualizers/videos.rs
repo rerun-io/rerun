@@ -11,14 +11,14 @@ use re_renderer::{
 };
 use re_types::{
     archetypes::{AssetVideo, VideoFrameReference},
-    components::{Blob, EntityPath as EntityPathReferenceComponent, MediaType, VideoTimestamp},
+    components::{Blob, MediaType, VideoTimestamp},
     Archetype, Loggable as _,
 };
 use re_viewer_context::{
     ApplicableEntities, IdentifiedViewSystem, SpaceViewClass as _, SpaceViewId,
-    SpaceViewSystemExecutionError, VideoCache, ViewContext, ViewContextCollection, ViewQuery,
-    ViewerContext, VisualizableEntities, VisualizableFilterContext, VisualizerQueryInfo,
-    VisualizerSystem,
+    SpaceViewSystemExecutionError, TypedComponentFallbackProvider, VideoCache, ViewContext,
+    ViewContextCollection, ViewQuery, ViewerContext, VisualizableEntities,
+    VisualizableFilterContext, VisualizerQueryInfo, VisualizerSystem,
 };
 
 use crate::{
@@ -94,7 +94,7 @@ impl VisualizerSystem for VideoFrameReferenceVisualizer {
                     return Ok(());
                 };
                 let all_video_references =
-                    results.iter_as(timeline, EntityPathReferenceComponent::name());
+                    results.iter_as(timeline, re_types::components::EntityPath::name());
 
                 for (_index, video_timestamps, video_references) in re_query::range_zip_1x1(
                     entity_iterator::iter_component(
@@ -161,9 +161,9 @@ impl VideoFrameReferenceVisualizer {
         );
 
         // Follow the reference to the video asset.
-        let video_reference = video_references
+        let video_reference: EntityPath = video_references
             .and_then(|v| v.first().map(|e| e.as_str().into()))
-            .unwrap_or_else(|| entity_path.clone());
+            .unwrap_or_else(|| self.fallback_for(ctx).as_str().into());
         let video = latest_at_query_video_from_datastore(ctx.viewer_ctx, &video_reference);
 
         let world_from_entity = spatial_ctx
@@ -374,4 +374,15 @@ fn latest_at_query_video_from_datastore(
     }))
 }
 
-re_viewer_context::impl_component_fallback_provider!(VideoFrameReferenceVisualizer => []);
+impl TypedComponentFallbackProvider<re_types::components::EntityPath>
+    for VideoFrameReferenceVisualizer
+{
+    fn fallback_for(
+        &self,
+        ctx: &re_viewer_context::QueryContext<'_>,
+    ) -> re_types::components::EntityPath {
+        ctx.target_entity_path.to_string().into()
+    }
+}
+
+re_viewer_context::impl_component_fallback_provider!(VideoFrameReferenceVisualizer => [re_types::components::EntityPath]);
