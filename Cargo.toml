@@ -539,7 +539,7 @@ egui_commonmark = { git = "https://github.com/rerun-io/egui_commonmark", rev = "
 
 # commit on `rerun-io/mp4` `jan/fixes` branch: https://github.com/rerun-io/re_mp4/tree/jan/fixes
 # https://github.com/rerun-io/mp4/commit/643ad62044907c5ca1423299986896a06a7d79a2
-re_mp4 = { git = "https://github.com/rerun-io/mp4", rev = "643ad62044907c5ca1423299986896a06a7d79a2" }
+re_mp4 = { git = "https://github.com/rerun-io/re_mp4", rev = "643ad62044907c5ca1423299986896a06a7d79a2" }
 
 # commit on `rerun-io/re_arrow2` `main` branch
 # https://github.com/rerun-io/re_arrow2/commit/e4717d6debc6d4474ec10db8f629f823f57bad07
