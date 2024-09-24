@@ -1,5 +1,5 @@
 """
-A collection of delightfully unique chunk specimens, for science!.
+A collection of delightfully unique chunk specimens, for science.
 
 IMPORTANT: the viewer should be set with `RERUN_CHUNK_MAX_BYTES=0` to disable the compactor.
 
@@ -16,7 +16,7 @@ import rerun as rr
 import rerun.components as rrc
 
 
-def times(t: int | Sequence[int], *args: int) -> list[rr.TimeSequenceColumn]:
+def frame_times(t: int | Sequence[int], *args: int) -> list[rr.TimeSequenceColumn]:
     if isinstance(t, int):
         t = [t]
     else:
@@ -26,8 +26,8 @@ def times(t: int | Sequence[int], *args: int) -> list[rr.TimeSequenceColumn]:
     return [rr.TimeSequenceColumn("frame", t)]
 
 
-rr.init("rerun_example_chunk_zoo")
-rr.connect()
+def set_frame_time(t: int) -> None:
+    rr.set_time_sequence("frame", t)
 
 
 def specimen_two_rows_span_two_chunks():
@@ -35,14 +35,14 @@ def specimen_two_rows_span_two_chunks():
 
     rr.send_columns(
         "/rows_span_two_chunks",
-        times(0, 2),
+        frame_times(0, 2),
         [
             rrc.Position2DBatch([(0, 1), (2, 3)]),
         ],
     )
     rr.send_columns(
         "/rows_span_two_chunks",
-        times(0, 2),
+        frame_times(0, 2),
         [
             rrc.RadiusBatch([10, 11]),
         ],
@@ -54,14 +54,14 @@ def specimen_two_rows_span_two_chunks_sparse():
 
     rr.send_columns(
         "/rows_span_two_chunks_sparse",
-        times(0, 2, 3),
+        frame_times(0, 2, 3),
         [
             rrc.Position2DBatch([(0, 1), (2, 3), (4, 5)]),
         ],
     )
     rr.send_columns(
         "/rows_span_two_chunks_sparse",
-        times(0, 2, 4),
+        frame_times(0, 2, 4),
         [
             rrc.RadiusBatch([10, 11, 12]),
         ],
@@ -72,7 +72,7 @@ def specimen_archetype_with_clamp_join_semantics():
     """Single row of an archetype with clamp join semantics (Points2D)."""
     rr.send_columns(
         "/archetype_with_clamp_join_semantics",
-        times(0),
+        frame_times(0),
         [
             rrc.Position2DBatch([(i, i) for i in range(10)]).partition([10]),
             rrc.RadiusBatch([2]),
@@ -81,11 +81,29 @@ def specimen_archetype_with_clamp_join_semantics():
     )
 
 
+def specimen_archetype_with_latest_at_semantics():
+    """Archetype spread over a multi-row chunk and two single-row chunks, with latest-at semantics."""
+    rr.send_columns(
+        "/archetype_chunk_with_latest_at_semantics",
+        frame_times(range(10)),
+        [
+            rrc.Position2DBatch([(i, i) for i in range(10)]),
+            rrc.ClassIdBatch(range(10)),
+        ],
+    )
+
+    set_frame_time(0)
+    rr.log_components("/archetype_chunk_with_latest_at_semantics", [rr.Points2D.indicator()])
+
+    set_frame_time(5)
+    rr.log_components("/archetype_chunk_with_latest_at_semantics", [rrc.RadiusBatch(2)])
+
+
 def specimen_archetype_with_clamp_join_semantics_two_chunks():
     """Single row of an archetype with clamp join semantics (Points2D), across two chunks."""
     rr.send_columns(
         "/archetype_with_clamp_join_semantics_two_batches",
-        times(0),
+        frame_times(0),
         [
             rrc.Position2DBatch([(i, i) for i in range(10)]).partition([10]),
         ],
@@ -93,7 +111,7 @@ def specimen_archetype_with_clamp_join_semantics_two_chunks():
 
     rr.send_columns(
         "/archetype_with_clamp_join_semantics_two_batches",
-        times(0),
+        frame_times(0),
         [
             rrc.RadiusBatch([2]),
             rr.Points2D.indicator(),
@@ -105,7 +123,7 @@ def specimen_archetype_without_clamp_join_semantics():
     """Single row of an archetype without clamp join semantics (Mesh3D)."""
     rr.send_columns(
         "/archetype_without_clamp_join_semantics",
-        times(0),
+        frame_times(0),
         [
             rrc.Position3DBatch([(0, 0, 0), (0, 1, 0), (1, 1, 0), (1, 0, 0)]).partition([4]),
             rrc.TriangleIndicesBatch([(0, 1, 2), (0, 2, 3)]).partition([2]),
@@ -137,7 +155,7 @@ def specimen_many_rows_with_mismatched_instance_count():
 
     rr.send_columns(
         "/many_rows_with_mismatched_instance_count",
-        times(range(len(positions_partitions))),
+        frame_times(range(len(positions_partitions))),
         [
             rrc.Position2DBatch(positions).partition(positions_partitions),
             rrc.ColorBatch(colors).partition(colors_partitions),
@@ -151,18 +169,36 @@ def specimen_scalars_interlaced_in_two_chunks():
     """Scalar column stored in two chunks, with interlaced timestamps."""
     rr.send_columns(
         "/scalars_interlaced_in_two_chunks",
-        times(0, 2, 5, 6, 8),
+        frame_times(0, 2, 5, 6, 8),
         [
             rrc.ScalarBatch([0, 2, 5, 6, 8]),
         ],
     )
     rr.send_columns(
         "/scalars_interlaced_in_two_chunks",
-        times(1, 3, 7),
+        frame_times(1, 3, 7),
         [
             rrc.ScalarBatch([1, 3, 7]),
         ],
     )
+
+
+def specimen_archetype_chunk_with_clear():
+    """Archetype spread on multi-row and single-row chunks, with a `Clear` in the middle."""
+    rr.send_columns(
+        "/archetype_chunk_with_clear",
+        frame_times(range(10)),
+        [
+            rrc.Position2DBatch([(i, i) for i in range(10)]),
+            rrc.ClassIdBatch(range(10)),
+        ],
+    )
+
+    set_frame_time(0)
+    rr.log_components("/archetype_chunk_with_clear", [rr.Points2D.indicator(), rrc.RadiusBatch(2)])
+
+    set_frame_time(5)
+    rr.log("/archetype_chunk_with_clear", rr.Clear(recursive=False))
 
 
 def main():
