@@ -1,5 +1,5 @@
 """
-A collection of delightfully unique chunk specimens, for science!.
+A collection of delightfully unique chunk specimens, for science!
 
 IMPORTANT: the viewer should be set with `RERUN_CHUNK_MAX_BYTES=0` to disable the compactor.
 
