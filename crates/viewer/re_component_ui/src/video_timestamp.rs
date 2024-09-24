@@ -26,6 +26,8 @@ pub(crate) fn edit_or_view_entity_path(
     } else {
         ui.label(format_timestamp_seconds(timestamp_seconds))
     }
+    // Show the exact timestamp always in the hover text.
+    .on_hover_text(format!("{}ns", re_format::format_int(timestamp.as_nanos())))
 }
 
 fn format_timestamp_seconds(timestamp_seconds: f64) -> String {
