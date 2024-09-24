@@ -14,4 +14,6 @@ struct VideoTimestamp (
 ) {
     /// Presentation timestamp value in nanoseconds.
     timestamp_ns: long (order: 100);
+    // Implementation note:
+    // Keeping this to nanoseconds makes the timestamp more consistent to our other timestamp values!
 }
