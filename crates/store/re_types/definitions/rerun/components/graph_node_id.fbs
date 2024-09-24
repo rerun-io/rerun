@@ -4,7 +4,7 @@ namespace rerun.components;
 
 /// A 32-bit ID representing a node in a graph.
 //
-// TODO: Why do we need `Default` here?
+// TODO(grtlr): Why do we need `Default` here?
 struct GraphNodeId (
   "attr.arrow.transparent",
   "attr.python.aliases": "int",

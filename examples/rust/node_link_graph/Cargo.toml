@@ -7,11 +7,8 @@ license = "MIT OR Apache-2.0"
 publish = false
 
 [dependencies]
-rerun = { path = "../../../crates/top/rerun", features = [
-  "clap",
-] }
+rerun = { path = "../../../crates/top/rerun", features = ["clap"] }
 
 anyhow = "1.0"
 clap = { version = "4.0", features = ["derive"] }
 glam = "0.28"
-

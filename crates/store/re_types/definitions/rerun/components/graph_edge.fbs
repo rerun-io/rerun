@@ -6,7 +6,7 @@ namespace rerun.components;
 ///
 /// Depending on the context this could represent a directed or undirected edge.
 //
-// TODO: Why do we need `Default` here?
+// TODO(grtlr): Why do we need `Default` here?
 struct GraphEdge (
   "attr.arrow.transparent",
   "attr.python.aliases": "Tuple(int, int)",

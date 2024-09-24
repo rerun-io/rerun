@@ -1,15 +1,10 @@
-use std::string;
-
 use re_viewer::external::{
-    egui,
-    re_log::external::log,
-    re_log_types::{EntityPath, Instance},
+    re_log_types::EntityPath,
     re_renderer,
     re_types::{
         self,
-        archetypes::GraphNodes,
-        components::{Color, GraphEdge, GraphNodeId, Text},
-        ComponentName, Loggable as _,
+        components::{GraphEdge, GraphNodeId},
+        Loggable as _,
     },
     re_viewer_context::{
         self, IdentifiedViewSystem, SpaceViewSystemExecutionError, ViewContext,
@@ -64,7 +59,7 @@ impl VisualizerSystem for GraphNodeSystem {
             );
 
             if let Some(node_ids) = results.component_batch::<GraphNodeId>() {
-                log::debug!("Node ids: {:?}", node_ids);
+                // log::debug!("Node ids: {:?}", node_ids);
 
                 self.nodes.push((
                     data_result.entity_path.clone(),
@@ -79,20 +74,16 @@ impl VisualizerSystem for GraphNodeSystem {
             }
 
             if let Some(edges) = results.component_batch::<GraphEdge>() {
-                log::debug!("Edges: {:?}", edges);
+                // log::debug!("Edges: {:?}", edges);
 
                 self.edges.push((
                     data_result.entity_path.clone(),
                     edges
                         .iter()
-                        .map(|&edge | EdgeWithInstance {
-                            edge,
-                            label: None,
-                        })
+                        .map(|&edge| EdgeWithInstance { edge, label: None })
                         .collect(),
                 ));
             }
-
         }
 
         // We're not using `re_renderer` here, so return an empty vector.

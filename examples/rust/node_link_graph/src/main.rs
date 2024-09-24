@@ -35,14 +35,14 @@ fn main() -> anyhow::Result<()> {
 
 fn run(rec: &rerun::RecordingStream, args: &Args) -> anyhow::Result<()> {
     rec.set_time_sequence("frame", 0);
-    rec.log(
+    _ = rec.log(
         "graph",
         &rerun::GraphNodes::new([1, 2, 3]).with_labels(["a", "b", "c"]),
     );
-    rec.log(
+    _ = rec.log(
         "graph",
         &rerun::GraphEdges::new([
-            // TODO: Provide a nicer way to create these.
+            // TODO(grtlr): Provide a nicer way to create these.
             [GraphNodeId(1), GraphNodeId(2)],
             [GraphNodeId(2), GraphNodeId(3)],
             [GraphNodeId(1), GraphNodeId(3)],
@@ -50,11 +50,11 @@ fn run(rec: &rerun::RecordingStream, args: &Args) -> anyhow::Result<()> {
     );
 
     rec.set_time_sequence("frame", 1);
-    rec.log(
+    _ = rec.log(
         "graph/level-1",
         &rerun::GraphNodes::new([4, 5, 6]).with_labels(["d", "e", "f"]),
     );
-    rec.log(
+    _ = rec.log(
         "graph/level-1",
         &rerun::GraphEdges::new([
             [GraphNodeId(3), GraphNodeId(4)],

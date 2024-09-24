@@ -1,56 +1,42 @@
+use egui_graphs::SettingsInteraction;
 use re_viewer::external::{
-    egui::{self, Label},
-    re_data_ui::{item_ui, DataUi},
-    re_entity_db::InstancePath,
+    egui::{self, Label, Stroke},
     re_log_types::EntityPath,
     re_types::SpaceViewClassIdentifier,
     re_ui,
     re_viewer_context::{
-        HoverHighlight, IdentifiedViewSystem as _, Item, SelectionHighlight, SpaceViewClass,
-        SpaceViewClassLayoutPriority, SpaceViewClassRegistryError, SpaceViewId,
-        SpaceViewSpawnHeuristics, SpaceViewState, SpaceViewStateExt as _,
-        SpaceViewSystemExecutionError, SpaceViewSystemRegistrator, SystemExecutionOutput, UiLayout,
-        ViewQuery, ViewerContext,
+        IdentifiedViewSystem as _, SpaceViewClass, SpaceViewClassLayoutPriority,
+        SpaceViewClassRegistryError, SpaceViewId, SpaceViewSpawnHeuristics, SpaceViewState,
+        SpaceViewStateExt as _, SpaceViewSystemExecutionError, SpaceViewSystemRegistrator,
+        SystemExecutionOutput, ViewQuery, ViewerContext,
     },
 };
 
-use crate::graph_visualizer_system::{GraphNodeSystem, NodeIdWithInstance};
-
-// /// The different modes for displaying color coordinates in the custom space view.
-// #[derive(Default, Debug, PartialEq, Clone, Copy)]
-// enum ColorCoordinatesMode {
-//     #[default]
-//     Hs,
-//     Hv,
-//     Rg,
-// }
-
-// impl ColorCoordinatesMode {
-//     pub const ALL: [ColorCoordinatesMode; 3] = [
-//         ColorCoordinatesMode::Hs,
-//         ColorCoordinatesMode::Hv,
-//         ColorCoordinatesMode::Rg,
-//     ];
-// }
-
-// impl std::fmt::Display for ColorCoordinatesMode {
-//     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-//         match self {
-//             ColorCoordinatesMode::Hs => "Hue/Saturation".fmt(f),
-//             ColorCoordinatesMode::Hv => "Hue/Value".fmt(f),
-//             ColorCoordinatesMode::Rg => "Red/Green".fmt(f),
-//         }
-//     }
-// }
+use crate::graph_visualizer_system::GraphNodeSystem;
 
 /// Space view state for the custom space view.
 ///
 /// This state is preserved between frames, but not across Viewer sessions.
-#[derive(Default)]
 pub struct GraphSpaceViewState {
-    // TODO(wumpf, jleibs): This should be part of the Blueprint so that it is serialized out.
-    //                      but right now there is no way of doing that.
-    // mode: ColorCoordinatesMode,
+    graph: egui_graphs::Graph<(), ()>,
+}
+
+impl Default for GraphSpaceViewState {
+    fn default() -> Self {
+        let mut g = petgraph::stable_graph::StableGraph::new();
+
+        let a = g.add_node(());
+        let b = g.add_node(());
+        let c = g.add_node(());
+
+        g.add_edge(a, b, ());
+        g.add_edge(b, c, ());
+        g.add_edge(c, a, ());
+
+        Self {
+            graph: egui_graphs::Graph::from(&g),
+        }
+    }
 }
 
 impl SpaceViewState for GraphSpaceViewState {
@@ -125,12 +111,12 @@ impl SpaceViewClass for GraphSpaceView {
     fn selection_ui(
         &self,
         _ctx: &ViewerContext<'_>,
-        ui: &mut egui::Ui,
+        _ui: &mut egui::Ui,
         state: &mut dyn SpaceViewState,
         _space_origin: &EntityPath,
         _space_view_id: SpaceViewId,
     ) -> Result<(), SpaceViewSystemExecutionError> {
-        let state = state.downcast_mut::<GraphSpaceViewState>()?;
+        let _state = state.downcast_mut::<GraphSpaceViewState>()?;
 
         // ui.horizontal(|ui| {
         //     ui.label("Coordinates mode");
@@ -151,15 +137,30 @@ impl SpaceViewClass for GraphSpaceView {
     /// This is called with freshly created & executed context & part systems.
     fn ui(
         &self,
-        ctx: &ViewerContext<'_>,
+        _ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
         state: &mut dyn SpaceViewState,
-
-        query: &ViewQuery<'_>,
+        _query: &ViewQuery<'_>,
         system_output: SystemExecutionOutput,
     ) -> Result<(), SpaceViewSystemExecutionError> {
         let graph_nodes = system_output.view_systems.get::<GraphNodeSystem>()?;
         let state = state.downcast_mut::<GraphSpaceViewState>()?;
+
+        let interaction_settings = &SettingsInteraction::new()
+            .with_dragging_enabled(true)
+            .with_node_clicking_enabled(true)
+            .with_node_selection_enabled(true)
+            .with_node_selection_multi_enabled(true)
+            .with_edge_clicking_enabled(true)
+            .with_edge_selection_enabled(true)
+            .with_edge_selection_multi_enabled(true);
+
+        let navigation_settings =
+            &egui_graphs::SettingsNavigation::new().with_fit_to_screen_enabled(true);
+
+        let mut graph_view = egui_graphs::GraphView::new(&mut state.graph)
+            .with_interactions(interaction_settings)
+            .with_navigations(navigation_settings);
 
         egui::Frame {
             inner_margin: re_ui::DesignTokens::view_padding().into(),
@@ -172,14 +173,23 @@ impl SpaceViewClass for GraphSpaceView {
                         let text = egui::RichText::new(entity.to_owned());
                         ui.add(Label::new(text));
                         for n in nodes {
-                            let text = egui::RichText::new(format!("{:?}", n.node_id.0.0));
+                            let text = egui::RichText::new(format!("{:?}", n.node_id.0 .0));
                             ui.add(Label::new(text));
                         }
                     }
                 })
-            })
-            .response
+            });
+
+            egui::Frame::none()
+                .stroke(Stroke {
+                    width: 1.0,
+                    color: egui::Color32::RED,
+                })
+                .show(ui, |ui| {
+                    ui.add(&mut graph_view);
+                });
         });
+
         Ok(())
     }
 }

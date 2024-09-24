@@ -1993,6 +1993,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "egui_graphs"
+version = "0.21.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1908479c6946869bd37be4948545fef74b1a5a86c60e9e693c19e0987839f8d5"
+dependencies = [
+ "egui",
+ "petgraph",
+ "rand",
+ "serde",
+]
+
+[[package]]
 name = "egui_plot"
 version = "0.29.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2729,7 +2741,9 @@ dependencies = [
 name = "graph_view"
 version = "0.0.0"
 dependencies = [
+ "egui_graphs",
  "mimalloc",
+ "petgraph",
  "re_crash_handler",
  "re_sdk_comms",
  "re_viewer",
@@ -4255,12 +4269,12 @@ checksum = "478c572c3d73181ff3c2539045f6eb99e5491218eae919370993b890cdbdd98e"
 
 [[package]]
 name = "petgraph"
-version = "0.6.3"
+version = "0.6.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4dd7d28ee937e54fe3080c91faa1c3a46c06de6252988a7f4592ba2310ef22a4"
+checksum = "b4c5cc86750666a3ed20bdaf5ca2a0344f9c67674cae0515bec2da16fbaa47db"
 dependencies = [
  "fixedbitset",
- "indexmap 1.9.3",
+ "indexmap 2.1.0",
 ]
 
 [[package]]

@@ -22,3 +22,6 @@ re_sdk_comms = { path = "../../../crates/store/re_sdk_comms", features = [
 
 # mimalloc is a much faster allocator:
 mimalloc = "0.1"
+
+petgraph = "0.6.5"
+egui_graphs = { version = "0.21.1", features = ["egui_persistence"] }
