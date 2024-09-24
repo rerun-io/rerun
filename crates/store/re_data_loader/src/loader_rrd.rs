@@ -1,13 +1,6 @@
-use std::{
-    io::Read,
-    path::Path,
-    sync::mpsc::{channel, Receiver},
-};
+use std::{io::Read, sync::mpsc::Receiver};
 
-use notify::{Event, EventKind, RecommendedWatcher, RecursiveMode, Watcher};
 use re_log_encoding::decoder::Decoder;
-
-use crate::DataLoaderError;
 
 // ---
 
@@ -153,21 +146,22 @@ fn decode_and_stream<R: std::io::Read>(
 // reading zero bytes or reaching EOF.
 struct RetryableFileReader {
     reader: std::io::BufReader<std::fs::File>,
-    rx: Receiver<notify::Result<Event>>,
+    rx: Receiver<notify::Result<notify::Event>>,
     #[allow(dead_code)]
-    watcher: RecommendedWatcher,
+    watcher: notify::RecommendedWatcher,
 }
 
 impl RetryableFileReader {
     #[cfg(not(target_arch = "wasm32"))]
-    fn new(filepath: &Path) -> Result<Self, DataLoaderError> {
+    fn new(filepath: &std::path::Path) -> Result<Self, crate::DataLoaderError> {
         use anyhow::Context as _;
+        use notify::{RecursiveMode, Watcher};
 
         let file = std::fs::File::open(filepath)
             .with_context(|| format!("Failed to open file {filepath:?}"))?;
         let reader = std::io::BufReader::new(file);
 
-        let (tx, rx) = channel();
+        let (tx, rx) = std::sync::mpsc::channel();
         let mut watcher = notify::recommended_watcher(tx)
             .with_context(|| format!("failed to create file watcher for {filepath:?}"))?;
 
@@ -202,10 +196,10 @@ impl Read for RetryableFileReader {
 
 impl RetryableFileReader {
     fn block_until_file_changes(&self) -> std::io::Result<usize> {
-        #[cfg(not(target_arch = "wasm32"))]
+        #[allow(clippy::disallowed_methods)]
         match self.rx.recv() {
             Ok(Ok(event)) => match event.kind {
-                EventKind::Remove(_) => Err(std::io::Error::new(
+                notify::EventKind::Remove(_) => Err(std::io::Error::new(
                     std::io::ErrorKind::NotFound,
                     "file removed",
                 )),
