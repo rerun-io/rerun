@@ -125,8 +125,7 @@ impl StreamDecoder {
                             let bytes = match self.compression {
                                 Compression::Off => bytes,
                                 Compression::LZ4 => {
-                                    self.uncompressed
-                                        .resize(uncompressed_len as usize, 0);
+                                    self.uncompressed.resize(uncompressed_len as usize, 0);
                                     lz4_flex::block::decompress_into(bytes, &mut self.uncompressed)
                                         .map_err(DecodeError::Lz4)?;
                                     &self.uncompressed
@@ -134,7 +133,8 @@ impl StreamDecoder {
                             };
 
                             // read the message from the uncompressed bytes
-                            let message = rmp_serde::from_slice(bytes).map_err(DecodeError::MsgPack)?;
+                            let message =
+                                rmp_serde::from_slice(bytes).map_err(DecodeError::MsgPack)?;
 
                             self.state = State::MessageHeader;
 
@@ -147,7 +147,7 @@ impl StreamDecoder {
                                 Ok(Some(message))
                             };
                         }
-                    },
+                    }
                     MessageHeader::EndOfStream => {
                         // We've reached the end of the stream, but there might be concatenated streams
                         // hence we set the state as if we are about to see another new stream
@@ -355,7 +355,10 @@ mod tests {
     fn two_concatenated_streams() {
         let (input1, data1) = test_data(EncodingOptions::UNCOMPRESSED, 16);
         let (input2, data2) = test_data(EncodingOptions::UNCOMPRESSED, 16);
-        let input = input1.into_iter().chain(input2.into_iter()).collect::<Vec<_>>();
+        let input = input1
+            .into_iter()
+            .chain(input2.into_iter())
+            .collect::<Vec<_>>();
 
         let mut decoder = StreamDecoder::new(VersionPolicy::Error);
 
@@ -365,9 +368,7 @@ mod tests {
         decoder.push_chunk(data2);
 
         let decoded_messages: Vec<_> = (0..32)
-            .map(|_| {
-                assert_message_ok!(decoder.try_read())
-            })
+            .map(|_| assert_message_ok!(decoder.try_read()))
             .collect();
 
         assert_eq!(input, decoded_messages);
