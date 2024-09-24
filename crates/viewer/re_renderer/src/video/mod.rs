@@ -10,7 +10,7 @@ use crate::{resource_managers::GpuTexture2D, RenderContext};
 
 /// Error that can occur during frame decoding.
 // TODO(jan, andreas): These errors are for the most part specific to the web decoder right now.
-#[derive(thiserror::Error, Debug)]
+#[derive(thiserror::Error, Debug, Clone)]
 pub enum DecodingError {
     // TODO(#7298): Native support.
     #[error("Video playback not yet available in the native viewer. Try the web viewer instead.")]
@@ -30,6 +30,18 @@ pub enum DecodingError {
 
     #[error("Failed to configure the video decoder: {0}")]
     ConfigureFailure(String),
+
+    // e.g. unsupported codec
+    #[error("Failed to create video chunk: {0}")]
+    CreateChunk(String),
+
+    // e.g. unsupported codec
+    #[error("Failed to decode video chunk: {0}")]
+    DecodeChunk(String),
+
+    // e.g. unsupported codec
+    #[error("Failed to decode video: {0}")]
+    Decoding(String),
 
     #[error("The timestamp passed was negative.")]
     NegativeTimestamp,
