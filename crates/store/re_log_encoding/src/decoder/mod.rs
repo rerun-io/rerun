@@ -375,12 +375,7 @@ impl<R: std::io::Read> Iterator for Decoder<R> {
 
 #[cfg(all(feature = "decoder", feature = "encoder"))]
 mod tests {
-    use std::io::Cursor;
-
-    use crate::decoder::{DecodeError, VersionPolicy};
-    use crate::decoder::{Decoder, LogMsg};
-    use crate::encoder::Encoder;
-    use crate::{Compression, EncodingOptions, Serializer};
+    use super::*;
     use re_build_info::CrateVersion;
     use re_chunk::RowId;
     use re_log_types::{
@@ -405,7 +400,7 @@ mod tests {
         })
     }
 
-    #[test]
+#[test]
     fn test_encode_decode() {
         let rrd_version = CrateVersion::LOCAL;
 
@@ -453,19 +448,24 @@ mod tests {
             let mut data = vec![];
 
             // write "2 files" i.e. 2 streams that end with end-of-stream marker
-            let messages = vec![fake_log_message(), fake_log_message(), fake_log_message(), fake_log_message()];
+            let messages = vec![
+                fake_log_message(),
+                fake_log_message(),
+                fake_log_message(),
+                fake_log_message(),
+            ];
 
             // (2 encoders as each encoder writes a file header)
-            let writer = Cursor::new(&mut data);
-            let mut encoder1 = Encoder::new(CrateVersion::LOCAL, options, writer).unwrap();
+            let writer = std::io::Cursor::new(&mut data);
+            let mut encoder1 = crate::encoder::Encoder::new(CrateVersion::LOCAL, options, writer).unwrap();
             encoder1.append(&messages[0]).unwrap();
             encoder1.append(&messages[1]).unwrap();
             encoder1.finish().unwrap();
 
             let written = data.len() as u64;
-            let mut writer = Cursor::new(&mut data);
+            let mut writer = std::io::Cursor::new(&mut data);
             writer.set_position(written);
-            let mut encoder2 = Encoder::new(CrateVersion::LOCAL, options, writer).unwrap();
+            let mut encoder2 = crate::encoder::Encoder::new(CrateVersion::LOCAL, options, writer).unwrap();
 
             encoder2.append(&messages[2]).unwrap();
             encoder2.append(&messages[3]).unwrap();
