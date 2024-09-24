@@ -302,7 +302,7 @@ impl VideoFrameReferenceVisualizer {
             video_error_texture.height() as _,
         );
         let center = glam::Vec3::from(world_from_entity.translation).truncate() + video_size * 0.5;
-        let top_left_corner_position = center - video_error_rect_size;
+        let top_left_corner_position = center - video_error_rect_size * 0.5;
 
         // Add a label that annotates a rectangle that is a bit bigger than the error icon.
         // This makes the label track the icon better than putting it at a point.
