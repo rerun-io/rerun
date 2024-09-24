@@ -1,5 +1,5 @@
 use re_renderer::{external::re_video::VideoLoadError, video::FrameDecodingResult};
-use re_types::components::{Blob, MediaType};
+use re_types::components::{Blob, MediaType, VideoTimestamp};
 use re_ui::{list_item::PropertyContent, UiExt};
 use re_viewer_context::UiLayout;
 
@@ -44,6 +44,7 @@ impl EntityDataUi for Blob {
                     row_id,
                     self,
                     media_type.as_ref(),
+                    None,
                 );
             });
         } else {
@@ -54,30 +55,35 @@ impl EntityDataUi for Blob {
                 format!("{all_digits_size_string} ({compact_size_string})")
             };
 
-            ui.list_item_flat_noninteractive(PropertyContent::new("Size").value_text(size_string));
-
-            if let Some(media_type) = &media_type {
+            re_ui::list_item::list_item_scope(ui, "blob_info", |ui| {
                 ui.list_item_flat_noninteractive(
-                    PropertyContent::new("Media type").value_text(media_type.as_str()),
-                )
-                .on_hover_text("Media type (MIME) based on magic header bytes");
-            } else {
-                ui.list_item_flat_noninteractive(
-                    PropertyContent::new("Media type").value_text("?"),
-                )
-                .on_hover_text("Failed to detect media type (Mime) from magic header bytes");
-            }
+                    PropertyContent::new("Size").value_text(size_string),
+                );
 
-            blob_preview_and_save_ui(
-                ctx,
-                ui,
-                ui_layout,
-                query,
-                entity_path,
-                row_id,
-                self,
-                media_type.as_ref(),
-            );
+                if let Some(media_type) = &media_type {
+                    ui.list_item_flat_noninteractive(
+                        PropertyContent::new("Media type").value_text(media_type.as_str()),
+                    )
+                    .on_hover_text("Media type (MIME) based on magic header bytes");
+                } else {
+                    ui.list_item_flat_noninteractive(
+                        PropertyContent::new("Media type").value_text("?"),
+                    )
+                    .on_hover_text("Failed to detect media type (Mime) from magic header bytes");
+                }
+
+                blob_preview_and_save_ui(
+                    ctx,
+                    ui,
+                    ui_layout,
+                    query,
+                    entity_path,
+                    row_id,
+                    self,
+                    media_type.as_ref(),
+                    None,
+                );
+            });
         }
     }
 }
@@ -92,6 +98,7 @@ pub fn blob_preview_and_save_ui(
     blob_row_id: Option<re_chunk_store::RowId>,
     blob: &re_types::datatypes::Blob,
     media_type: Option<&MediaType>,
+    video_timestamp: Option<VideoTimestamp>,
 ) {
     // Try to treat it as an image:
     let image = blob_row_id.and_then(|row_id| {
@@ -109,7 +116,13 @@ pub fn blob_preview_and_save_ui(
         let video_result = ctx.cache.entry(|c: &mut re_viewer_context::VideoCache| {
             c.entry(blob_row_id, blob, media_type.as_ref().map(|mt| mt.as_str()))
         });
-        show_video_blob_info(ctx.render_ctx, ui, ui_layout, &video_result);
+        show_video_blob_info(
+            ctx.render_ctx,
+            ui,
+            ui_layout,
+            &video_result,
+            video_timestamp,
+        );
     }
 
     if !ui_layout.is_single_line() && ui_layout != UiLayout::Tooltip {
@@ -155,6 +168,7 @@ fn show_video_blob_info(
     ui: &mut egui::Ui,
     ui_layout: UiLayout,
     video_result: &Result<re_renderer::video::Video, VideoLoadError>,
+    video_timestamp: Option<VideoTimestamp>,
 ) {
     match video_result {
         Ok(video) => {
@@ -165,9 +179,6 @@ fn show_video_blob_info(
             let data = video.data();
 
             re_ui::list_item::list_item_scope(ui, "video_blob_info", |ui| {
-                ui.list_item_flat_noninteractive(re_ui::list_item::LabelContent::new(
-                    "Video properties",
-                ));
                 ui.list_item_flat_noninteractive(
                     PropertyContent::new("Dimensions").value_text(format!(
                         "{}x{}",
@@ -193,29 +204,35 @@ fn show_video_blob_info(
                     PropertyContent::new("Codec").value_text(data.codec()),
                 );
 
-                ui.list_item_collapsible_noninteractive_label("MP4 tracks", true, |ui| {
-                    for (track_id, track_kind) in &data.mp4_tracks {
-                        let track_kind_string = match track_kind {
-                            Some(re_video::TrackKind::Audio) => "audio",
-                            Some(re_video::TrackKind::Subtitle) => "subtitle",
-                            Some(re_video::TrackKind::Video) => "video",
-                            None => "unknown",
-                        };
-                        ui.list_item_flat_noninteractive(
-                            PropertyContent::new(format!("Track {track_id}"))
-                                .value_text(track_kind_string),
-                        );
-                    }
-                });
+                if ui_layout != UiLayout::Tooltip {
+                    ui.list_item_collapsible_noninteractive_label("MP4 tracks", true, |ui| {
+                        for (track_id, track_kind) in &data.mp4_tracks {
+                            let track_kind_string = match track_kind {
+                                Some(re_video::TrackKind::Audio) => "audio",
+                                Some(re_video::TrackKind::Subtitle) => "subtitle",
+                                Some(re_video::TrackKind::Video) => "video",
+                                None => "unknown",
+                            };
+                            ui.list_item_flat_noninteractive(
+                                PropertyContent::new(format!("Track {track_id}"))
+                                    .value_text(track_kind_string),
+                            );
+                        }
+                    });
+                }
 
                 if let Some(render_ctx) = render_ctx {
                     // Show a mini-player for the video:
 
-                    // TODO(emilk): Some time controls would be nice,
-                    // but the point here is not to have a nice viewer,
-                    // but to show the user what they have selected
-                    let timestamp_in_seconds = ui.input(|i| i.time) % video.data().duration_sec();
-                    ui.ctx().request_repaint(); // TODO(emilk): schedule a repaint just in time for the next frame of video
+                    let timestamp_in_seconds = if let Some(video_timestamp) = video_timestamp {
+                        video_timestamp.as_seconds()
+                    } else {
+                        // TODO(emilk): Some time controls would be nice,
+                        // but the point here is not to have a nice viewer,
+                        // but to show the user what they have selected
+                        ui.ctx().request_repaint(); // TODO(emilk): schedule a repaint just in time for the next frame of video
+                        ui.input(|i| i.time) % video.data().duration_sec()
+                    };
 
                     let decode_stream_id = re_renderer::video::VideoDecodingStreamId(
                         egui::Id::new("video_miniplayer").value(),
@@ -223,11 +240,15 @@ fn show_video_blob_info(
 
                     if let Some(texture) =
                         match video.frame_at(render_ctx, decode_stream_id, timestamp_in_seconds) {
-                            FrameDecodingResult::Ready(texture)
-                            | FrameDecodingResult::Pending(texture) => Some(texture),
+                            FrameDecodingResult::Ready(texture) => Some(texture),
+
+                            FrameDecodingResult::Pending(texture) => {
+                                ui.ctx().request_repaint();
+                                Some(texture)
+                            }
 
                             FrameDecodingResult::Error(err) => {
-                                ui.error_label(&err.to_string());
+                                ui.error_label_long(&err.to_string());
                                 None
                             }
                         }

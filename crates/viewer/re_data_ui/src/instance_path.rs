@@ -443,6 +443,10 @@ fn preview_if_blob_ui(
         .get(&components::MediaType::name())
         .and_then(|unit| unit.component_mono::<components::MediaType>()?.ok());
 
+    let video_timestamp = component_map
+        .get(&components::VideoTimestamp::name())
+        .and_then(|unit| unit.component_mono::<components::VideoTimestamp>()?.ok());
+
     blob_preview_and_save_ui(
         ctx,
         ui,
@@ -452,6 +456,7 @@ fn preview_if_blob_ui(
         blob_row_id,
         &blob,
         media_type.as_ref(),
+        video_timestamp,
     );
 
     Some(())
