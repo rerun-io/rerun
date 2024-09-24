@@ -226,7 +226,12 @@ fn try_get_or_create_albedo_texture(
         colormap: None,
     };
 
-    if re_viewer_context::gpu_bridge::required_shader_decode(albedo_texture_format).is_some() {
+    if re_viewer_context::gpu_bridge::required_shader_decode(
+        render_ctx.device_caps(),
+        albedo_texture_format,
+    )
+    .is_some()
+    {
         re_log::warn_once!("Mesh can't yet handle encoded image formats like NV12 & YUY2 or BGR(A) formats without a channel type other than U8. Ignoring the texture at {name:?}.");
         return None;
     }
@@ -234,7 +239,11 @@ fn try_get_or_create_albedo_texture(
     let texture =
         re_viewer_context::gpu_bridge::get_or_create_texture(render_ctx, texture_key, || {
             let debug_name = "mesh albedo texture";
-            texture_creation_desc_from_color_image(&image_info, debug_name)
+            texture_creation_desc_from_color_image(
+                render_ctx.device_caps(),
+                &image_info,
+                debug_name,
+            )
         });
 
     match texture {
