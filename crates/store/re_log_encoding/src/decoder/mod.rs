@@ -373,7 +373,7 @@ impl<R: std::io::Read> Iterator for Decoder<R> {
 
 // ----------------------------------------------------------------------------
 
-#[cfg(all(feature = "decoder", feature = "encoder"))]
+#[cfg(all(test, feature = "decoder", feature = "encoder"))]
 mod tests {
     use super::*;
     use re_build_info::CrateVersion;
@@ -400,7 +400,7 @@ mod tests {
         })
     }
 
-#[test]
+    #[test]
     fn test_encode_decode() {
         let rrd_version = CrateVersion::LOCAL;
 
@@ -457,7 +457,8 @@ mod tests {
 
             // (2 encoders as each encoder writes a file header)
             let writer = std::io::Cursor::new(&mut data);
-            let mut encoder1 = crate::encoder::Encoder::new(CrateVersion::LOCAL, options, writer).unwrap();
+            let mut encoder1 =
+                crate::encoder::Encoder::new(CrateVersion::LOCAL, options, writer).unwrap();
             encoder1.append(&messages[0]).unwrap();
             encoder1.append(&messages[1]).unwrap();
             encoder1.finish().unwrap();
@@ -465,7 +466,8 @@ mod tests {
             let written = data.len() as u64;
             let mut writer = std::io::Cursor::new(&mut data);
             writer.set_position(written);
-            let mut encoder2 = crate::encoder::Encoder::new(CrateVersion::LOCAL, options, writer).unwrap();
+            let mut encoder2 =
+                crate::encoder::Encoder::new(CrateVersion::LOCAL, options, writer).unwrap();
 
             encoder2.append(&messages[2]).unwrap();
             encoder2.append(&messages[3]).unwrap();
