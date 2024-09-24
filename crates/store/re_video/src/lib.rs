@@ -70,6 +70,12 @@ impl VideoData {
         }
     }
 
+    /// Duration of the video, in seconds.
+    #[inline]
+    pub fn duration_sec(&self) -> f64 {
+        self.duration.into_secs(self.timescale)
+    }
+
     /// Duration of the video, in milliseconds.
     #[inline]
     pub fn duration_ms(&self) -> f64 {
