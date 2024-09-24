@@ -101,13 +101,14 @@ getrandom = { workspace = true, features = [
 js-sys = { workspace = true }
 wasm-bindgen-futures.workspace = true
 web-sys = { workspace = true, features = [
+  "DomException",
   "EncodedVideoChunk",
   "EncodedVideoChunkInit",
   "EncodedVideoChunkType",
-  "VideoFrame",
   "VideoDecoder",
   "VideoDecoderConfig",
   "VideoDecoderInit",
+  "VideoFrame",
 ] }
 wasm-bindgen = { workspace = true }
 

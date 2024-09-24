@@ -116,6 +116,8 @@ fn ui_from_scene(
     } else if bounds != updated_bounds {
         bounds_property.save_blueprint_component(ctx, &updated_bounds);
     }
+    // Update stored bounds on the state, so visualizers see an up-to-date value.
+    view_state.visual_bounds_2d = Some(bounds);
 
     RectTransform::from_to(letterboxed_bounds, response.rect)
 }
