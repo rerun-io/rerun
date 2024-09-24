@@ -4958,6 +4958,7 @@ dependencies = [
  "re_smart_channel",
  "re_tracing",
  "re_types",
+ "tempfile",
  "thiserror",
  "walkdir",
 ]

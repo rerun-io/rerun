@@ -149,8 +149,10 @@ impl StreamDecoder {
                         }
                     },
                     MessageHeader::EndOfStream => {
-                        self.state = State::MessageHeader;
-                        return Ok(None);
+                        // We've reached the end of the stream, but there might be concatenated streams
+                        // hence we set the state as if we are about to see another new stream
+                        self.state = State::StreamHeader;
+                        return self.try_read();
                     }
                 }
             }
@@ -277,6 +279,8 @@ mod tests {
             encoder.append(message).unwrap();
         }
 
+        encoder.finish().unwrap();
+
         (messages, buffer)
     }
 
@@ -342,6 +346,28 @@ mod tests {
 
         let decoded_messages: Vec<_> = (0..16)
             .map(|_| assert_message_ok!(decoder.try_read()))
+            .collect();
+
+        assert_eq!(input, decoded_messages);
+    }
+
+    #[test]
+    fn two_concatenated_streams() {
+        let (input1, data1) = test_data(EncodingOptions::UNCOMPRESSED, 16);
+        let (input2, data2) = test_data(EncodingOptions::UNCOMPRESSED, 16);
+        let input = input1.into_iter().chain(input2.into_iter()).collect::<Vec<_>>();
+
+        let mut decoder = StreamDecoder::new(VersionPolicy::Error);
+
+        assert_message_incomplete!(decoder.try_read());
+
+        decoder.push_chunk(data1);
+        decoder.push_chunk(data2);
+
+        let decoded_messages: Vec<_> = (0..32)
+            .map(|_| {
+                assert_message_ok!(decoder.try_read())
+            })
             .collect();
 
         assert_eq!(input, decoded_messages);

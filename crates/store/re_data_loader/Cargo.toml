@@ -26,7 +26,7 @@ default = []
 [dependencies]
 re_build_info.workspace = true
 re_chunk.workspace = true
-re_log_encoding = { workspace = true, features = ["decoder"] }
+re_log_encoding = { workspace = true, features = ["decoder", "encoder"] }
 re_log_types.workspace = true
 re_log.workspace = true
 re_smart_channel.workspace = true
@@ -37,10 +37,11 @@ ahash.workspace = true
 anyhow.workspace = true
 arrow2.workspace = true
 image.workspace = true
-once_cell.workspace = true
 notify.workspace = true
+once_cell.workspace = true
 parking_lot.workspace = true
 rayon.workspace = true
+tempfile.workspace = true
 thiserror.workspace = true
 walkdir.workspace = true
 
