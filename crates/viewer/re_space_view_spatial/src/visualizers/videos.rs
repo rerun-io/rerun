@@ -23,6 +23,7 @@ use re_viewer_context::{
 
 use crate::{
     contexts::SpatialSceneEntityContext,
+    ui::SpatialSpaceViewState,
     view_kind::SpatialSpaceViewKind,
     visualizers::{entity_iterator, filter_visualizable_2d_entities},
     PickableRectSourceData, PickableTexturedRect, SpatialSpaceView2D,
@@ -179,7 +180,7 @@ impl VideoFrameReferenceVisualizer {
         match video.as_ref().map(|v| v.as_ref()) {
             None => {
                 self.show_video_error(
-                    render_ctx,
+                    ctx,
                     spatial_ctx,
                     world_from_entity,
                     format!("No video asset at {video_reference:?}"),
@@ -200,7 +201,7 @@ impl VideoFrameReferenceVisualizer {
                         }
                         FrameDecodingResult::Error(err) => {
                             self.show_video_error(
-                                render_ctx,
+                                ctx,
                                 spatial_ctx,
                                 world_from_entity,
                                 err.to_string(),
@@ -237,7 +238,7 @@ impl VideoFrameReferenceVisualizer {
             }
             Some(Err(err)) => {
                 self.show_video_error(
-                    render_ctx,
+                    ctx,
                     spatial_ctx,
                     world_from_entity,
                     err.to_string(),
@@ -259,13 +260,17 @@ impl VideoFrameReferenceVisualizer {
 
     fn show_video_error(
         &mut self,
-        render_ctx: &re_renderer::RenderContext,
+        ctx: &re_viewer_context::QueryContext<'_>,
         spatial_ctx: &SpatialSceneEntityContext<'_>,
         world_from_entity: glam::Affine3A,
         error_string: String,
         video_size: glam::Vec2,
         entity_path: &EntityPath,
     ) {
+        let Some(render_ctx) = ctx.viewer_ctx.render_ctx else {
+            return;
+        };
+
         let video_error_texture_result = render_ctx
             .texture_manager_2d
             .get_or_try_create_with::<image::ImageError>(
@@ -295,12 +300,31 @@ impl VideoFrameReferenceVisualizer {
         };
 
         // Center the icon in the middle of the video rectangle.
-        // Don't ignore translation - if the user moved the video frame, we move the error message long.
+        // Don't ignore translation - if the user moved the video frame, we move the error message along.
         // But do ignore any rotation/scale on this, gets complicated to center and weird generally.
-        let video_error_rect_size = glam::vec2(
+        let mut video_error_rect_size = glam::vec2(
             video_error_texture.width() as _,
             video_error_texture.height() as _,
         );
+        // If we're in a 2D view, make the error rect take a fixed amount of view space.
+        // This makes it look a lot nicer for very small & very large videos.
+        if let Some(state) = ctx
+            .view_state
+            .as_any()
+            .downcast_ref::<SpatialSpaceViewState>()
+        {
+            if let Some(bounds) = state.visual_bounds_2d {
+                // Aim for 1/8 of the larger visual bounds axis.
+                let max_extent = bounds.x_range.abs_len().max(bounds.y_range.abs_len()) as f32;
+                if max_extent > 0.0 {
+                    let video_error_rect_aspect = video_error_rect_size.x / video_error_rect_size.y;
+                    let extent_x = max_extent / 8.0;
+                    let extent_y = extent_x / video_error_rect_aspect;
+                    video_error_rect_size = glam::vec2(extent_x, extent_y);
+                }
+            }
+        }
+
         let center = glam::Vec3::from(world_from_entity.translation).truncate() + video_size * 0.5;
         let top_left_corner_position = center - video_error_rect_size * 0.5;
 
@@ -311,10 +335,7 @@ impl VideoFrameReferenceVisualizer {
                 top_left_corner_position.x - video_error_rect_size.x,
                 top_left_corner_position.y,
             ),
-            egui::vec2(
-                video_error_rect_size.x * 3.0,
-                video_error_rect_size.y + 10.0,
-            ),
+            egui::vec2(video_error_rect_size.x * 3.0, video_error_rect_size.y),
         );
         self.data.ui_labels.push(UiLabel {
             text: error_string,
