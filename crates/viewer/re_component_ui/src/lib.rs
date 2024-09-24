@@ -5,6 +5,7 @@
 
 mod color;
 mod datatype_uis;
+mod entity_path;
 mod fallback_ui;
 mod image_format;
 mod line_strip;
@@ -16,6 +17,7 @@ mod resolution;
 mod response_utils;
 mod timeline;
 mod transforms;
+mod video_timestamp;
 mod view_coordinates;
 mod visual_bounds2d;
 
@@ -132,6 +134,10 @@ pub fn create_component_ui_registry() -> re_viewer_context::ComponentUiRegistry 
     registry.add_multiline_edit_or_view(pinhole::multiline_view_pinhole);
 
     line_strip::register_linestrip_component_ui(&mut registry);
+
+    registry.add_singleline_edit_or_view(entity_path::edit_or_view_entity_path);
+
+    registry.add_singleline_edit_or_view(video_timestamp::edit_or_view_timestamp);
 
     registry
 }
