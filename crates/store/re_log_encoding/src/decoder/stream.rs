@@ -355,10 +355,7 @@ mod tests {
     fn two_concatenated_streams() {
         let (input1, data1) = test_data(EncodingOptions::UNCOMPRESSED, 16);
         let (input2, data2) = test_data(EncodingOptions::UNCOMPRESSED, 16);
-        let input = input1
-            .into_iter()
-            .chain(input2.into_iter())
-            .collect::<Vec<_>>();
+        let input = input1.into_iter().chain(input2).collect::<Vec<_>>();
 
         let mut decoder = StreamDecoder::new(VersionPolicy::Error);
 

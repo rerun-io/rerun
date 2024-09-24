@@ -270,23 +270,22 @@ mod tests {
 
         // we should be able to read 5 messages that we wrote
         let decoded_messages = (0..5)
-            .map(|_| {
-                let msg = decoder.next().unwrap().unwrap();
-                msg
-            })
+            .map(|_| decoder.next().unwrap().unwrap())
             .collect::<Vec<_>>();
         assert_eq!(messages, decoded_messages);
 
         // as we're using retryable reader, we should be able to read more messages that we're now going to append
-        let decoder_handle = thread::spawn(move || {
-            let mut remaining = Vec::new();
-            for msg in decoder {
-                let msg = msg.unwrap();
-                remaining.push(msg);
-            }
+        let decoder_handle = std::thread::Builder::new()
+            .name("background decoder")
+            .spawn(move || {
+                let mut remaining = Vec::new();
+                for msg in decoder {
+                    let msg = msg.unwrap();
+                    remaining.push(msg);
+                }
 
-            remaining
-        });
+                remaining
+            });
 
         // append more messages to the file
         let more_messages = (0..100).map(|_| new_message()).collect::<Vec<_>>();
