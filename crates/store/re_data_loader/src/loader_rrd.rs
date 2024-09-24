@@ -172,7 +172,7 @@ impl RetryableFileReader {
 
         watcher
             .watch(filepath, RecursiveMode::NonRecursive)
-            .with_context(|| format!("failed to to watch file changes on {filepath:?}"))?;
+            .with_context(|| format!("failed to watch file changes on {filepath:?}"))?;
 
         Ok(Self {
             reader,
@@ -209,8 +209,8 @@ impl RetryableFileReader {
                 )),
                 _ => Ok(0),
             },
-            Ok(Err(e)) => Err(std::io::Error::new(std::io::ErrorKind::Other, e)),
-            Err(e) => Err(std::io::Error::new(std::io::ErrorKind::Other, e)),
+            Ok(Err(err)) => Err(std::io::Error::new(std::io::ErrorKind::Other, err)),
+            Err(err) => Err(std::io::Error::new(std::io::ErrorKind::Other, err)),
         }
     }
 }
