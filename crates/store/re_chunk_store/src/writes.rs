@@ -1,10 +1,10 @@
 use std::{collections::BTreeSet, sync::Arc};
 
-use ahash::HashMap;
+use ahash::{HashMap, HashSet, HashSetExt};
 use arrow2::array::{Array as _, ListArray as ArrowListArray};
 use itertools::Itertools as _;
 
-use re_chunk::{Chunk, EntityPath, RowId};
+use re_chunk::{Chunk, ComponentName, EntityPath, RowId};
 use re_types_core::SizeBytes;
 
 use crate::{
@@ -57,6 +57,7 @@ impl ChunkStore {
 
             let row_id_range_per_component = chunk.row_id_range_per_component();
 
+            let mut overwritten_chunks = HashSet::new();
             for (&component_name, list_array) in chunk.components() {
                 let is_empty = list_array
                     .validity()
@@ -79,16 +80,24 @@ impl ChunkStore {
                         // NOTE: When attempting to overwrite static data, the chunk with the most
                         // recent data within -- according to RowId -- wins.
 
-                        let cur_row_id_max = self.chunks_per_chunk_id.get(cur_chunk_id).map_or(
-                            RowId::ZERO,
-                            |chunk| {
+                        let (cur_row_id_min, cur_row_id_max) = self
+                            .chunks_per_chunk_id
+                            .get(cur_chunk_id)
+                            .map_or((RowId::ZERO, RowId::ZERO), |chunk| {
                                 chunk
                                     .row_id_range_per_component()
                                     .get(&component_name)
-                                    .map_or(RowId::ZERO, |(_, row_id_max)| *row_id_max)
-                            },
-                        );
+                                    .map_or(
+                                        (RowId::ZERO, RowId::ZERO),
+                                        |(row_id_min, row_id_max)| (*row_id_min, *row_id_max),
+                                    )
+                            });
                         if *row_id_max > cur_row_id_max {
+                            overwritten_chunks.insert((
+                                component_name,
+                                *cur_chunk_id,
+                                cur_row_id_min,
+                            ));
                             *cur_chunk_id = chunk.id();
                         }
                     })
@@ -96,6 +105,90 @@ impl ChunkStore {
             }
 
             self.static_chunks_stats += ChunkStoreChunkStats::from_chunk(chunk);
+
+            // TODO: this makes sense because we are guaranteed that a chunk cannot cover multiple
+            // entity paths.
+            if let Some(mut per_component) = self
+                .static_chunk_ids_per_entity
+                .get_mut(chunk.entity_path())
+            {
+                use std::{
+                    collections::{btree_map::Entry as BTreeMapEntry, BTreeSet},
+                    time::Duration,
+                };
+
+                for (component_name, chunk_id, row_id_min) in overwritten_chunks {
+                    eprintln!("???");
+
+                    // if let BTreeMapEntry::Occupied(entry) = per_component.entry(component_name) {
+                    //     if *entry.get() == chunk_id {
+                    //         eprintln!("AAA");
+                    //         entry.remove_entry();
+                    //     }
+                    // }
+
+                    let l1 = per_component.len();
+                    per_component.retain(|k, v| *v != chunk_id);
+                    let l2 = per_component.len();
+
+                    // if per_component.values().any(|id| *id == chunk_id) {
+                    // if l1 != l2 {
+                    eprintln!("BBB");
+
+                    // TODO: does it make sense for this assertion to possibly fail?
+                    let was_removed = self.chunks_per_chunk_id.remove(&chunk_id);
+                    // assert!(was_removed.is_some());
+                    let was_removed = self.chunk_ids_per_min_row_id.remove(&row_id_min);
+                    // assert!(was_removed.is_some());
+
+                    // TODO: stats and event
+                    // }
+                }
+
+                // // TODO: do this in a sane way.
+                // per_component.retain(|k, v| k != component_name || v != chunk_id);
+                // // if let Some(xxx) = per_component.get_mut(&component_name) {
+                // //     if xxx == chunk_id {}
+                // // }
+                // // per_component.remove(chunk_id);
+                //
+                // // let was_removed = self.static_chunk_ids_per_entity.remove(key)
+                // let was_removed = self.chunks_per_chunk_id.remove(chunk_id);
+                // // TODO: so this is absolutely not temporal in fact
+                // // assert!(was_removed.is_some());
+                // let was_removed = self.temporal_chunk_ids_per_min_row_id.remove(row_id_min);
+                // // assert!(was_removed.is_some());
+            }
+
+            // TODO: touching the stats is dangerous here, or is it?
+            // We know that this chunk cannot possibly impact another entity. so we actually just
+            // have to check ourselves.
+
+            // TODO: this chunkid can actually be used by any entity at this point...
+            #[cfg(TODO)]
+            for (component_name, chunk_id) in dbg!(overwritten_chunk_ids) {
+                // let entry = self.static_chunk_ids_per_entity.entry(chunk.entity_path());
+
+                use std::{
+                    collections::{btree_map::Entry as BTreeMapEntry, BTreeSet},
+                    time::Duration,
+                };
+
+                if let BTreeMapEntry::Occupied(mut per_component) = self
+                    .static_chunk_ids_per_entity
+                    .entry(chunk.entity_path().clone())
+                {
+                    if let BTreeMapEntry::Occupied(mut per_component) =
+                        per_component.get_mut().entry(component_name)
+                    {
+                        per_component.get_mut().remove(&component_name);
+                    }
+
+                    if per_component.get().is_empty() {
+                        per_component.remove_entry();
+                    }
+                }
+            }
 
             (
                 Arc::clone(chunk),
