@@ -6,12 +6,14 @@ title: "VideoTimestamp"
 
 ⚠️ **This is an experimental API! It is not fully supported, and is likely to change significantly in future versions.**
 
-Timestamp inside a [`archetypes.AssetVideo`](https://rerun.io/docs/reference/types/archetypes/asset_video?speculative-link).
+Presentation timestamp within a [`archetypes.AssetVideo`](https://rerun.io/docs/reference/types/archetypes/asset_video?speculative-link).
+
+Specified in nanoseconds.
+Presentation timestamps are typically measured as time since video start.
 
 ## Fields
 
-* video_time: `i64`
-* time_mode: [`VideoTimeMode`](../datatypes/video_time_mode.md)
+* timestamp_ns: `i64`
 
 ## API reference links
  * 🌊 [C++ API docs for `VideoTimestamp`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1datatypes_1_1VideoTimestamp.html?speculative-link)

@@ -4,30 +4,41 @@
 #pragma once
 
 #include "../result.hpp"
-#include "video_time_mode.hpp"
 
 #include <cstdint>
 #include <memory>
 
 namespace arrow {
+    /// \private
+    template <typename T>
+    class NumericBuilder;
+
     class Array;
     class DataType;
-    class StructBuilder;
+    class Int64Type;
+    using Int64Builder = NumericBuilder<Int64Type>;
 } // namespace arrow
 
 namespace rerun::datatypes {
-    /// **Datatype**: Timestamp inside a `archetypes::AssetVideo`.
+    /// **Datatype**: Presentation timestamp within a `archetypes::AssetVideo`.
+    ///
+    /// Specified in nanoseconds.
+    /// Presentation timestamps are typically measured as time since video start.
     ///
     /// ⚠ **This is an experimental API! It is not fully supported, and is likely to change significantly in future versions.**
     struct VideoTimestamp {
-        /// Timestamp value, type defined by `time_mode`.
-        int64_t video_time;
-
-        /// How to interpret `video_time`.
-        rerun::datatypes::VideoTimeMode time_mode;
+        /// Presentation timestamp value in nanoseconds.
+        int64_t timestamp_ns;
 
       public:
         VideoTimestamp() = default;
+
+        VideoTimestamp(int64_t timestamp_ns_) : timestamp_ns(timestamp_ns_) {}
+
+        VideoTimestamp& operator=(int64_t timestamp_ns_) {
+            timestamp_ns = timestamp_ns_;
+            return *this;
+        }
     };
 } // namespace rerun::datatypes
 
@@ -50,7 +61,7 @@ namespace rerun {
 
         /// Fills an arrow array builder with an array of this type.
         static rerun::Error fill_arrow_array_builder(
-            arrow::StructBuilder* builder, const datatypes::VideoTimestamp* elements,
+            arrow::Int64Builder* builder, const datatypes::VideoTimestamp* elements,
             size_t num_elements
         );
     };

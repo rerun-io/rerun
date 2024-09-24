@@ -49,8 +49,7 @@ Data types are the lowest layer of the data model hierarchy. They are re-usable 
 * [`Vec2D`](datatypes/vec2d.md): A vector in 2D space.
 * [`Vec3D`](datatypes/vec3d.md): A vector in 3D space.
 * [`Vec4D`](datatypes/vec4d.md): A vector in 4D space.
-* [`VideoTimeMode`](datatypes/video_time_mode.md): Specifies how to interpret the `video_time` field of a [`datatypes.VideoTimestamp`](https://rerun.io/docs/reference/types/datatypes/video_timestamp?speculative-link).
-* [`VideoTimestamp`](datatypes/video_timestamp.md): Timestamp inside a [`archetypes.AssetVideo`](https://rerun.io/docs/reference/types/archetypes/asset_video?speculative-link).
+* [`VideoTimestamp`](datatypes/video_timestamp.md): Presentation timestamp within a [`archetypes.AssetVideo`](https://rerun.io/docs/reference/types/archetypes/asset_video?speculative-link).
 * [`ViewCoordinates`](datatypes/view_coordinates.md): How we interpret the coordinate system of an entity/space.
 * [`VisibleTimeRange`](datatypes/visible_time_range.md): Visible time range bounds for a specific timeline.
 
