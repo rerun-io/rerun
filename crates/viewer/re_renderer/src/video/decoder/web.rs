@@ -52,6 +52,8 @@ pub struct VideoDecoder {
     decoder: web_sys::VideoDecoder,
 
     frames: Arc<Mutex<Vec<BufferedFrame>>>,
+    decode_error: Arc<Mutex<Option<DecodingError>>>,
+
     last_used_frame_timestamp: Time,
     current_segment_idx: usize,
     current_sample_idx: usize,
@@ -97,22 +99,34 @@ impl VideoDecoder {
         data: Arc<re_video::VideoData>,
     ) -> Result<Self, DecodingError> {
         let frames = Arc::new(Mutex::new(Vec::with_capacity(16)));
+        let decode_error = Arc::new(Mutex::new(None));
+
         let timescale = data.timescale;
 
-        let decoder = init_video_decoder({
-            let frames = frames.clone();
-            move |frame: web_sys::VideoFrame| {
-                let composition_timestamp =
-                    Time::from_micros(frame.timestamp().unwrap_or(0.0), timescale);
-                let duration = Time::from_micros(frame.duration().unwrap_or(0.0), timescale);
-                let frame = VideoFrame(frame);
-                frames.lock().push(BufferedFrame {
-                    composition_timestamp,
-                    duration,
-                    inner: frame,
-                });
-            }
-        })?;
+        let decoder = init_video_decoder(
+            {
+                let frames = frames.clone();
+                let decode_error = decode_error.clone();
+                move |frame: web_sys::VideoFrame| {
+                    let composition_timestamp =
+                        Time::from_micros(frame.timestamp().unwrap_or(0.0), timescale);
+                    let duration = Time::from_micros(frame.duration().unwrap_or(0.0), timescale);
+                    let frame = VideoFrame(frame);
+                    frames.lock().push(BufferedFrame {
+                        composition_timestamp,
+                        duration,
+                        inner: frame,
+                    });
+                    *decode_error.lock() = None;
+                }
+            },
+            {
+                let decode_error = decode_error.clone();
+                move |err| {
+                    *decode_error.lock() = Some(DecodingError::Decoding(err));
+                }
+            },
+        )?;
 
         let queue = render_context.queue.clone();
 
@@ -132,6 +146,8 @@ impl VideoDecoder {
             decoder,
 
             frames,
+            decode_error,
+
             last_used_frame_timestamp: Time::new(u64::MAX),
             current_segment_idx: usize::MAX,
             current_sample_idx: usize::MAX,
@@ -145,6 +161,10 @@ impl VideoDecoder {
         render_ctx: &RenderContext,
         timestamp_s: f64,
     ) -> FrameDecodingResult {
+        if let Some(error) = self.decode_error.lock().clone() {
+            return FrameDecodingResult::Error(error);
+        }
+
         let result = self.frame_at_internal(timestamp_s);
         match &result {
             FrameDecodingResult::Ready(_) => {
@@ -328,8 +348,8 @@ impl VideoDecoder {
         chunk.set_duration(sample.duration.into_micros(self.data.timescale));
         let Some(chunk) = EncodedVideoChunk::new(&chunk)
             .inspect_err(|err| {
-                // TODO(#7373): return this error once the decoder tries to return a frame for this sample. how exactly?
-                re_log::error_once!("failed to create video chunk: {}", js_error_to_string(err));
+                *self.decode_error.lock() =
+                    Some(DecodingError::CreateChunk(js_error_to_string(err)));
             })
             .ok()
         else {
@@ -337,8 +357,7 @@ impl VideoDecoder {
         };
 
         if let Err(err) = self.decoder.decode(&chunk) {
-            // TODO(#7373): return this error once the decoder tries to return a frame for this sample. how exactly?
-            re_log::error_once!("Failed to decode video chunk: {}", js_error_to_string(&err));
+            *self.decode_error.lock() = Some(DecodingError::DecodeChunk(js_error_to_string(&err)));
         }
     }
 
@@ -413,13 +432,15 @@ fn copy_video_frame_to_texture(
 
 fn init_video_decoder(
     on_output: impl Fn(web_sys::VideoFrame) + 'static,
+    on_error: impl Fn(String) + 'static,
 ) -> Result<web_sys::VideoDecoder, DecodingError> {
     let on_output = Closure::wrap(Box::new(on_output) as Box<dyn Fn(web_sys::VideoFrame)>);
-    let on_error = Closure::wrap(Box::new(|err: js_sys::Error| {
-        // TODO(#7373): store this error and report during decode
-        let err = std::string::ToString::to_string(&err.to_string());
-        re_log::error!("failed to decode video: {err}");
-    }) as Box<dyn Fn(js_sys::Error)>);
+
+    let on_error =
+        Closure::wrap(
+            Box::new(move |err: js_sys::Error| on_error(js_error_to_string(&err)))
+                as Box<dyn Fn(js_sys::Error)>,
+        );
 
     let Ok(on_output) = on_output.into_js_value().dyn_into::<Function>() else {
         unreachable!()
