@@ -473,14 +473,14 @@ mod tests {
             encoder2.append(&messages[3]).unwrap();
             encoder2.finish().unwrap();
 
-            let mut decoder = Decoder::new_concatenated(
+            let decoder = Decoder::new_concatenated(
                 VersionPolicy::Error,
                 std::io::BufReader::new(data.as_slice()),
             )
             .unwrap();
 
             let mut decoded_messages = vec![];
-            while let Some(msg) = decoder.next() {
+            for msg in decoder {
                 decoded_messages.push(msg.unwrap());
             }
 

@@ -202,7 +202,7 @@ ndarray = "0.16"
 ndarray-rand = "0.15"
 never = "0.1"
 nohash-hasher = "0.2"
-notify = {version = "6.1.1", features = ["macos_kqueue"]}
+notify = { version = "6.1.1", features = ["macos_kqueue"] }
 num-derive = "0.4"
 num-traits = "0.2"
 once_cell = "1.17" # No lazy_static - use `std::sync::OnceLock` or `once_cell` instead

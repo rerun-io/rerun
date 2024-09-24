@@ -1,13 +1,6 @@
-use std::{
-    io::Read,
-    path::Path,
-    sync::mpsc::{channel, Receiver},
-};
+use std::{io::Read, sync::mpsc::Receiver};
 
-use notify::{Event, EventKind, RecommendedWatcher, RecursiveMode, Watcher};
 use re_log_encoding::decoder::Decoder;
-
-use crate::DataLoaderError;
 
 // ---
 
@@ -153,26 +146,28 @@ fn decode_and_stream<R: std::io::Read>(
 // reading zero bytes or reaching EOF.
 struct RetryableFileReader {
     reader: std::io::BufReader<std::fs::File>,
-    rx: Receiver<notify::Result<Event>>,
+    rx: Receiver<notify::Result<notify::Event>>,
     #[allow(dead_code)]
-    watcher: RecommendedWatcher,
+    watcher: notify::RecommendedWatcher,
 }
 
 impl RetryableFileReader {
-    fn new(filepath: &Path) -> Result<Self, DataLoaderError> {
+    #[cfg(not(target_arch = "wasm32"))]
+    fn new(filepath: &std::path::Path) -> Result<Self, crate::DataLoaderError> {
         use anyhow::Context as _;
+        use notify::{RecursiveMode, Watcher};
 
         let file = std::fs::File::open(filepath)
             .with_context(|| format!("Failed to open file {filepath:?}"))?;
         let reader = std::io::BufReader::new(file);
 
-        let (tx, rx) = channel();
+        let (tx, rx) = std::sync::mpsc::channel();
         let mut watcher = notify::recommended_watcher(tx)
             .with_context(|| format!("failed to create file watcher for {filepath:?}"))?;
 
         watcher
             .watch(filepath, RecursiveMode::NonRecursive)
-            .with_context(|| format!("failed to to watch file changes on {filepath:?}"))?;
+            .with_context(|| format!("failed to watch file changes on {filepath:?}"))?;
 
         Ok(Self {
             reader,
@@ -201,24 +196,23 @@ impl Read for RetryableFileReader {
 
 impl RetryableFileReader {
     fn block_until_file_changes(&self) -> std::io::Result<usize> {
+        #[allow(clippy::disallowed_methods)]
         match self.rx.recv() {
             Ok(Ok(event)) => match event.kind {
-                EventKind::Remove(_) => Err(std::io::Error::new(
+                notify::EventKind::Remove(_) => Err(std::io::Error::new(
                     std::io::ErrorKind::NotFound,
                     "file removed",
                 )),
                 _ => Ok(0),
             },
-            Ok(Err(e)) => Err(std::io::Error::new(std::io::ErrorKind::Other, e)),
-            Err(e) => Err(std::io::Error::new(std::io::ErrorKind::Other, e)),
+            Ok(Err(err)) => Err(std::io::Error::new(std::io::ErrorKind::Other, err)),
+            Err(err) => Err(std::io::Error::new(std::io::ErrorKind::Other, err)),
         }
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use std::thread;
-
     use re_build_info::CrateVersion;
     use re_chunk::RowId;
     use re_log_encoding::{decoder, encoder::Encoder};
@@ -270,23 +264,23 @@ mod tests {
 
         // we should be able to read 5 messages that we wrote
         let decoded_messages = (0..5)
-            .map(|_| {
-                let msg = decoder.next().unwrap().unwrap();
-                msg
-            })
+            .map(|_| decoder.next().unwrap().unwrap())
             .collect::<Vec<_>>();
         assert_eq!(messages, decoded_messages);
 
         // as we're using retryable reader, we should be able to read more messages that we're now going to append
-        let decoder_handle = thread::spawn(move || {
-            let mut remaining = Vec::new();
-            for msg in decoder {
-                let msg = msg.unwrap();
-                remaining.push(msg);
-            }
+        let decoder_handle = std::thread::Builder::new()
+            .name("background decoder".into())
+            .spawn(move || {
+                let mut remaining = Vec::new();
+                for msg in decoder {
+                    let msg = msg.unwrap();
+                    remaining.push(msg);
+                }
 
-            remaining
-        });
+                remaining
+            })
+            .unwrap();
 
         // append more messages to the file
         let more_messages = (0..100).map(|_| new_message()).collect::<Vec<_>>();
