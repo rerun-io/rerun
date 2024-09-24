@@ -217,8 +217,6 @@ impl RetryableFileReader {
 
 #[cfg(test)]
 mod tests {
-    use std::thread;
-
     use re_build_info::CrateVersion;
     use re_chunk::RowId;
     use re_log_encoding::{decoder, encoder::Encoder};
@@ -276,7 +274,7 @@ mod tests {
 
         // as we're using retryable reader, we should be able to read more messages that we're now going to append
         let decoder_handle = std::thread::Builder::new()
-            .name("background decoder")
+            .name("background decoder".into())
             .spawn(move || {
                 let mut remaining = Vec::new();
                 for msg in decoder {
@@ -285,7 +283,8 @@ mod tests {
                 }
 
                 remaining
-            });
+            })
+            .unwrap();
 
         // append more messages to the file
         let more_messages = (0..100).map(|_| new_message()).collect::<Vec<_>>();
