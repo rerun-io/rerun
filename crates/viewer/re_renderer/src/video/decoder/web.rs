@@ -85,6 +85,15 @@ impl Drop for VideoDecoder {
     fn drop(&mut self) {
         re_log::debug!("Dropping VideoDecoder");
         if let Err(err) = self.decoder.close() {
+            if let Some(dom_exception) = err.dyn_ref::<web_sys::DomException>() {
+                if dom_exception.code() == web_sys::DomException::INVALID_STATE_ERR
+                    && self.decode_error.lock().is_some()
+                {
+                    // Invalid state error after a decode error may happen, ignore it!
+                    return;
+                }
+            }
+
             re_log::warn!(
                 "Error when closing video decoder: {}",
                 js_error_to_string(&err)
