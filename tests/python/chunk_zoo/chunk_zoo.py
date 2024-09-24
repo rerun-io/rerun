@@ -82,7 +82,7 @@ def specimen_archetype_with_clamp_join_semantics():
 
 
 def specimen_archetype_with_latest_at_semantics():
-    """Archetype across spread over a multi-row chunk and two single-row chunks, with latest-at semantics."""
+    """Archetype spread over a multi-row chunk and two single-row chunks, with latest-at semantics."""
     rr.send_columns(
         "/archetype_chunk_with_latest_at_semantics",
         frame_times(range(10)),
