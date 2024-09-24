@@ -209,12 +209,17 @@ fn show_video_blob_info(
                 });
 
                 if let Some(render_ctx) = render_ctx {
-                    // Show a mini-player:
-                    let decode_stream_id = re_renderer::video::VideoDecodingStreamId(42); // TODO
+                    // Show a mini-player for the video:
 
-                    // TODO: time controls
+                    // TODO(emilk): Some time controls would be nice,
+                    // but the point here is not to have a nice viewer,
+                    // but to show the user what they have selected
                     let timestamp_in_seconds = ui.input(|i| i.time) % video.data().duration_sec();
-                    ui.ctx().request_repaint();
+                    ui.ctx().request_repaint(); // TODO(emilk): schedule a repaint just in time for the next frame of video
+
+                    let decode_stream_id = re_renderer::video::VideoDecodingStreamId(
+                        egui::Id::new("video_miniplayer").value(),
+                    );
 
                     if let Some(texture) =
                         match video.frame_at(render_ctx, decode_stream_id, timestamp_in_seconds) {

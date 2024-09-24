@@ -63,12 +63,12 @@ pub fn texture_preview_ui(
             |ui| {
                 ui.set_min_size(preview_size);
 
-                match show_image_preview(render_ctx, ui, texture.clone(), &debug_name, preview_size)
+                match show_image_preview(render_ctx, ui, texture.clone(), debug_name, preview_size)
                 {
                     Ok(response) => response.on_hover_ui(|ui| {
                         // Show larger image on hover.
                         let hover_size = Vec2::splat(400.0);
-                        show_image_preview(render_ctx, ui, texture, &debug_name, hover_size).ok();
+                        show_image_preview(render_ctx, ui, texture, debug_name, hover_size).ok();
                     }),
                     Err((response, err)) => response.on_hover_text(err.to_string()),
                 }
@@ -85,7 +85,7 @@ pub fn texture_preview_ui(
                 .clamp(ui.available_width())
                 .at_most(16.0 * texture.texture.width().max(texture.texture.height()) as f32),
         );
-        show_image_preview(render_ctx, ui, texture, &debug_name, preview_size).unwrap_or_else(
+        show_image_preview(render_ctx, ui, texture, debug_name, preview_size).unwrap_or_else(
             |(response, err)| {
                 re_log::warn_once!("Failed to show texture {debug_name}: {err}");
                 response
