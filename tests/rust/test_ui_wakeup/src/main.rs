@@ -13,6 +13,8 @@
 //!   * The viewer wakes up when browser is alt-tabbed away
 //!   * Switch to a different browser tab, send a few messages, switch back. The messages should be there
 //!     (this is not a conclusive test, as the messages might have been received on tab select)
+//! * Run `cargo r -p test_ui_wakeup -- --save stream.rrd` and in another terminal start the viewer with `pixi run rerun stream.rrd` and test:
+//!  * The viewer is updated on every new message (every ENTER press)
 
 use std::io::Read as _;
 

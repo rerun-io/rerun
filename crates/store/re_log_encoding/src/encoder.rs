@@ -90,7 +90,7 @@ impl<W: std::io::Write> Encoder<W> {
 
         match self.compression {
             Compression::Off => {
-                MessageHeader {
+                MessageHeader::Data {
                     uncompressed_len: self.uncompressed.len() as u32,
                     compressed_len: self.uncompressed.len() as u32,
                 }
@@ -107,7 +107,7 @@ impl<W: std::io::Write> Encoder<W> {
                 let compressed_len =
                     lz4_flex::block::compress_into(&self.uncompressed, &mut self.compressed)
                         .map_err(EncodeError::Lz4)?;
-                MessageHeader {
+                MessageHeader::Data {
                     uncompressed_len: self.uncompressed.len() as u32,
                     compressed_len: compressed_len as u32,
                 }
@@ -118,6 +118,11 @@ impl<W: std::io::Write> Encoder<W> {
                     .map_err(EncodeError::Write)
             }
         }
+    }
+
+    pub fn finish(&mut self) -> Result<(), EncodeError> {
+        MessageHeader::EndOfStream.encode(&mut self.write)?;
+        Ok(())
     }
 
     pub fn flush_blocking(&mut self) -> std::io::Result<()> {

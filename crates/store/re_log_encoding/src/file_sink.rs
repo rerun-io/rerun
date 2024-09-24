@@ -157,6 +157,10 @@ fn spawn_and_stream<W: std::io::Write + Send + 'static>(
                         }
                     }
                 }
+                if let Err(err) = encoder.finish() {
+                    re_log::error!("Failed to end log stream for {target}: {err}");
+                    return;
+                }
                 re_log::debug!("Log stream written to {target}");
             }
         })
