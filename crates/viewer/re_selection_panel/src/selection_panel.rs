@@ -974,6 +974,11 @@ fn container_top_level_properties(
     };
 
     ui.list_item_flat_noninteractive(PropertyContent::new("Name").value_fn(|ui, _| {
+        ui.spacing_mut().text_edit_width = ui
+            .spacing_mut()
+            .text_edit_width
+            .at_least(ui.available_width());
+
         let mut name = container.display_name.clone().unwrap_or_default();
         ui.add(egui::TextEdit::singleline(&mut name));
         container.set_display_name(ctx, if name.is_empty() { None } else { Some(name) });
