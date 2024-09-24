@@ -55,31 +55,35 @@ impl EntityDataUi for Blob {
                 format!("{all_digits_size_string} ({compact_size_string})")
             };
 
-            ui.list_item_flat_noninteractive(PropertyContent::new("Size").value_text(size_string));
-
-            if let Some(media_type) = &media_type {
+            re_ui::list_item::list_item_scope(ui, "blob_info", |ui| {
                 ui.list_item_flat_noninteractive(
-                    PropertyContent::new("Media type").value_text(media_type.as_str()),
-                )
-                .on_hover_text("Media type (MIME) based on magic header bytes");
-            } else {
-                ui.list_item_flat_noninteractive(
-                    PropertyContent::new("Media type").value_text("?"),
-                )
-                .on_hover_text("Failed to detect media type (Mime) from magic header bytes");
-            }
+                    PropertyContent::new("Size").value_text(size_string),
+                );
 
-            blob_preview_and_save_ui(
-                ctx,
-                ui,
-                ui_layout,
-                query,
-                entity_path,
-                row_id,
-                self,
-                media_type.as_ref(),
+                if let Some(media_type) = &media_type {
+                    ui.list_item_flat_noninteractive(
+                        PropertyContent::new("Media type").value_text(media_type.as_str()),
+                    )
+                    .on_hover_text("Media type (MIME) based on magic header bytes");
+                } else {
+                    ui.list_item_flat_noninteractive(
+                        PropertyContent::new("Media type").value_text("?"),
+                    )
+                    .on_hover_text("Failed to detect media type (Mime) from magic header bytes");
+                }
+
+                blob_preview_and_save_ui(
+                    ctx,
+                    ui,
+                    ui_layout,
+                    query,
+                    entity_path,
+                    row_id,
+                    self,
+                    media_type.as_ref(),
                     None,
-            );
+                );
+            });
         }
     }
 }
@@ -175,9 +179,6 @@ fn show_video_blob_info(
             let data = video.data();
 
             re_ui::list_item::list_item_scope(ui, "video_blob_info", |ui| {
-                ui.list_item_flat_noninteractive(re_ui::list_item::LabelContent::new(
-                    "Video properties",
-                ));
                 ui.list_item_flat_noninteractive(
                     PropertyContent::new("Dimensions").value_text(format!(
                         "{}x{}",
@@ -203,20 +204,22 @@ fn show_video_blob_info(
                     PropertyContent::new("Codec").value_text(data.codec()),
                 );
 
-                ui.list_item_collapsible_noninteractive_label("MP4 tracks", true, |ui| {
-                    for (track_id, track_kind) in &data.mp4_tracks {
-                        let track_kind_string = match track_kind {
-                            Some(re_video::TrackKind::Audio) => "audio",
-                            Some(re_video::TrackKind::Subtitle) => "subtitle",
-                            Some(re_video::TrackKind::Video) => "video",
-                            None => "unknown",
-                        };
-                        ui.list_item_flat_noninteractive(
-                            PropertyContent::new(format!("Track {track_id}"))
-                                .value_text(track_kind_string),
-                        );
-                    }
-                });
+                if ui_layout != UiLayout::Tooltip {
+                    ui.list_item_collapsible_noninteractive_label("MP4 tracks", true, |ui| {
+                        for (track_id, track_kind) in &data.mp4_tracks {
+                            let track_kind_string = match track_kind {
+                                Some(re_video::TrackKind::Audio) => "audio",
+                                Some(re_video::TrackKind::Subtitle) => "subtitle",
+                                Some(re_video::TrackKind::Video) => "video",
+                                None => "unknown",
+                            };
+                            ui.list_item_flat_noninteractive(
+                                PropertyContent::new(format!("Track {track_id}"))
+                                    .value_text(track_kind_string),
+                            );
+                        }
+                    });
+                }
 
                 if let Some(render_ctx) = render_ctx {
                     // Show a mini-player for the video:
@@ -224,10 +227,10 @@ fn show_video_blob_info(
                     let timestamp_in_seconds = if let Some(video_timestamp) = video_timestamp {
                         video_timestamp.as_seconds()
                     } else {
-                    // TODO(emilk): Some time controls would be nice,
-                    // but the point here is not to have a nice viewer,
-                    // but to show the user what they have selected
-                    ui.ctx().request_repaint(); // TODO(emilk): schedule a repaint just in time for the next frame of video
+                        // TODO(emilk): Some time controls would be nice,
+                        // but the point here is not to have a nice viewer,
+                        // but to show the user what they have selected
+                        ui.ctx().request_repaint(); // TODO(emilk): schedule a repaint just in time for the next frame of video
                         ui.input(|i| i.time) % video.data().duration_sec()
                     };
 
@@ -245,7 +248,7 @@ fn show_video_blob_info(
                             }
 
                             FrameDecodingResult::Error(err) => {
-                                ui.error_label(&err.to_string());
+                                ui.error_label_long(&err.to_string());
                                 None
                             }
                         }
