@@ -43,33 +43,32 @@ pub fn image_preview_ui(
     let annotations = crate::annotations(ctx, query, entity_path);
     let debug_name = entity_path.to_string();
     let texture = image_to_gpu(render_ctx, &debug_name, image, &image_stats, &annotations).ok()?;
-    texture_preview_ui(render_ctx, ui, ui_layout, entity_path, texture);
+    texture_preview_ui(render_ctx, ui, ui_layout, &debug_name, texture);
     Some(())
 }
 
 /// Show the given texture with an appropriate size.
-fn texture_preview_ui(
+pub fn texture_preview_ui(
     render_ctx: &re_renderer::RenderContext,
     ui: &mut egui::Ui,
     ui_layout: UiLayout,
-    entity_path: &re_log_types::EntityPath,
+    debug_name: &str,
     texture: ColormappedTexture,
 ) {
     if ui_layout.is_single_line() {
         let preview_size = Vec2::splat(ui.available_height());
-        let debug_name = entity_path.to_string();
         ui.allocate_ui_with_layout(
             preview_size,
             egui::Layout::centered_and_justified(egui::Direction::TopDown),
             |ui| {
                 ui.set_min_size(preview_size);
 
-                match show_image_preview(render_ctx, ui, texture.clone(), &debug_name, preview_size)
+                match show_image_preview(render_ctx, ui, texture.clone(), debug_name, preview_size)
                 {
                     Ok(response) => response.on_hover_ui(|ui| {
                         // Show larger image on hover.
                         let hover_size = Vec2::splat(400.0);
-                        show_image_preview(render_ctx, ui, texture, &debug_name, hover_size).ok();
+                        show_image_preview(render_ctx, ui, texture, debug_name, hover_size).ok();
                     }),
                     Err((response, err)) => response.on_hover_text(err.to_string()),
                 }
@@ -86,10 +85,9 @@ fn texture_preview_ui(
                 .clamp(ui.available_width())
                 .at_most(16.0 * texture.texture.width().max(texture.texture.height()) as f32),
         );
-        let debug_name = entity_path.to_string();
-        show_image_preview(render_ctx, ui, texture, &debug_name, preview_size).unwrap_or_else(
+        show_image_preview(render_ctx, ui, texture, debug_name, preview_size).unwrap_or_else(
             |(response, err)| {
-                re_log::warn_once!("Failed to show texture {entity_path}: {err}");
+                re_log::warn_once!("Failed to show texture {debug_name}: {err}");
                 response
             },
         );

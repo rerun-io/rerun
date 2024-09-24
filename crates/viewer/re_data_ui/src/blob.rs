@@ -1,4 +1,4 @@
-use re_renderer::external::re_video::VideoLoadError;
+use re_renderer::{external::re_video::VideoLoadError, video::FrameDecodingResult};
 use re_types::components::{Blob, MediaType};
 use re_ui::{list_item::PropertyContent, UiExt};
 use re_viewer_context::UiLayout;
@@ -105,15 +105,11 @@ pub fn blob_preview_and_save_ui(
         image_preview_ui(ctx, ui, ui_layout, query, entity_path, image);
     }
     // Try to treat it as a video if treating it as image didn't work:
-    else {
-        let video_result = blob_row_id.map(|row_id| {
-            ctx.cache.entry(|c: &mut re_viewer_context::VideoCache| {
-                c.entry(row_id, blob, media_type.as_ref().map(|mt| mt.as_str()))
-            })
+    else if let Some(blob_row_id) = blob_row_id {
+        let video_result = ctx.cache.entry(|c: &mut re_viewer_context::VideoCache| {
+            c.entry(blob_row_id, blob, media_type.as_ref().map(|mt| mt.as_str()))
         });
-        if let Some(video_result) = &video_result {
-            show_video_blob_info(ui, ui_layout, video_result);
-        }
+        show_video_blob_info(ctx.render_ctx, ui, ui_layout, &video_result);
     }
 
     if !ui_layout.is_single_line() && ui_layout != UiLayout::Tooltip {
@@ -155,6 +151,7 @@ pub fn blob_preview_and_save_ui(
 }
 
 fn show_video_blob_info(
+    render_ctx: Option<&re_renderer::RenderContext>,
     ui: &mut egui::Ui,
     ui_layout: UiLayout,
     video_result: &Result<re_renderer::video::Video, VideoLoadError>,
@@ -211,7 +208,39 @@ fn show_video_blob_info(
                     }
                 });
 
-                // TODO(andreas): A mini video player at this point would be awesome!
+                if let Some(render_ctx) = render_ctx {
+                    // Show a mini-player for the video:
+
+                    // TODO(emilk): Some time controls would be nice,
+                    // but the point here is not to have a nice viewer,
+                    // but to show the user what they have selected
+                    let timestamp_in_seconds = ui.input(|i| i.time) % video.data().duration_sec();
+                    ui.ctx().request_repaint(); // TODO(emilk): schedule a repaint just in time for the next frame of video
+
+                    let decode_stream_id = re_renderer::video::VideoDecodingStreamId(
+                        egui::Id::new("video_miniplayer").value(),
+                    );
+
+                    if let Some(texture) =
+                        match video.frame_at(render_ctx, decode_stream_id, timestamp_in_seconds) {
+                            FrameDecodingResult::Ready(texture)
+                            | FrameDecodingResult::Pending(texture) => Some(texture),
+
+                            FrameDecodingResult::Error(err) => {
+                                ui.error_label(&err.to_string());
+                                None
+                            }
+                        }
+                    {
+                        crate::image::texture_preview_ui(
+                            render_ctx,
+                            ui,
+                            ui_layout,
+                            "video_preview",
+                            re_renderer::renderer::ColormappedTexture::from_unorm_rgba(texture),
+                        );
+                    }
+                }
             });
         }
         Err(err) => {

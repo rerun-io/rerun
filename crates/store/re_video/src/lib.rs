@@ -9,9 +9,7 @@ use std::{collections::BTreeMap, ops::Range};
 
 use itertools::Itertools;
 
-pub use re_mp4::TrackKind;
-
-pub type TrackId = u64;
+pub use re_mp4::{TrackId, TrackKind};
 
 /// Decoded video data.
 #[derive(Clone)]
@@ -68,6 +66,12 @@ impl VideoData {
             "video/mp4" => mp4::load_mp4(data),
             media_type => Err(VideoLoadError::UnsupportedMediaType(media_type.to_owned())),
         }
+    }
+
+    /// Duration of the video, in seconds.
+    #[inline]
+    pub fn duration_sec(&self) -> f64 {
+        self.duration.into_secs(self.timescale)
     }
 
     /// Duration of the video, in milliseconds.
