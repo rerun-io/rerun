@@ -159,7 +159,7 @@ struct RetryableFileReader {
 }
 
 impl RetryableFileReader {
-    #[allow(dead_code)]
+    #[cfg(not(target_arch = "wasm32"))]
     fn new(filepath: &Path) -> Result<Self, DataLoaderError> {
         use anyhow::Context as _;
 
@@ -202,7 +202,7 @@ impl Read for RetryableFileReader {
 
 impl RetryableFileReader {
     fn block_until_file_changes(&self) -> std::io::Result<usize> {
-        #[allow(clippy::disallowed_methods)]
+        #[cfg(not(target_arch = "wasm32"))]
         match self.rx.recv() {
             Ok(Ok(event)) => match event.kind {
                 EventKind::Remove(_) => Err(std::io::Error::new(
