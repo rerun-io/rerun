@@ -103,30 +103,29 @@ impl VideoDecoder {
 
         let timescale = data.timescale;
 
-        let decoder = init_video_decoder(
-            {
-                let frames = frames.clone();
-                let decode_error = decode_error.clone();
-                move |frame: web_sys::VideoFrame| {
-                    let composition_timestamp =
-                        Time::from_micros(frame.timestamp().unwrap_or(0.0), timescale);
-                    let duration = Time::from_micros(frame.duration().unwrap_or(0.0), timescale);
-                    let frame = VideoFrame(frame);
-                    frames.lock().push(BufferedFrame {
-                        composition_timestamp,
-                        duration,
-                        inner: frame,
-                    });
-                    *decode_error.lock() = None;
-                }
-            },
-            {
-                let decode_error = decode_error.clone();
-                move |err| {
-                    *decode_error.lock() = Some(DecodingError::Decoding(err));
-                }
-            },
-        )?;
+        let on_frame = {
+            let frames = frames.clone();
+            let decode_error = decode_error.clone();
+            move |frame: web_sys::VideoFrame| {
+                let composition_timestamp =
+                    Time::from_micros(frame.timestamp().unwrap_or(0.0), timescale);
+                let duration = Time::from_micros(frame.duration().unwrap_or(0.0), timescale);
+                let frame = VideoFrame(frame);
+                frames.lock().push(BufferedFrame {
+                    composition_timestamp,
+                    duration,
+                    inner: frame,
+                });
+                *decode_error.lock() = None; // clear error on success
+            }
+        };
+        let on_error = {
+            let decode_error = decode_error.clone();
+            move |err| {
+                *decode_error.lock() = Some(DecodingError::Decoding(err));
+            }
+        };
+        let decoder = init_video_decoder(on_frame, on_error)?;
 
         let queue = render_context.queue.clone();
 
@@ -162,6 +161,10 @@ impl VideoDecoder {
         timestamp_s: f64,
     ) -> FrameDecodingResult {
         if let Some(error) = self.decode_error.lock().clone() {
+            // TODO(emilk): if there is a decoding error in one segment or sample,
+            // then we currently never try decoding any more samples because of this early-out here.
+            // We should fix this, and test it with a video that has some broken segments/samples
+            // in the middle, but then are fine again.
             return FrameDecodingResult::Error(error);
         }
 
