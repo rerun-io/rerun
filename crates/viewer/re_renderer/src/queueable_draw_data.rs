@@ -19,10 +19,10 @@ pub enum QueueableDrawDataError {
 
 type DrawFn = dyn for<'a, 'b> Fn(
         &Renderers,
-        &'b GpuRenderPipelinePoolAccessor<'b>,
+        &GpuRenderPipelinePoolAccessor<'a>,
         DrawPhase,
-        &'a mut wgpu::RenderPass<'b>,
-        &'b dyn std::any::Any,
+        &mut wgpu::RenderPass<'b>,
+        &dyn std::any::Any,
     ) -> Result<(), QueueableDrawDataError>
     + Sync
     + Send;

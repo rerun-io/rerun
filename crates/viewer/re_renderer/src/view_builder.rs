@@ -481,12 +481,12 @@ impl ViewBuilder {
         self.setup.resolution_in_pixel
     }
 
-    fn draw_phase<'a>(
-        &'a self,
+    fn draw_phase(
+        &self,
         renderers: &Renderers,
-        render_pipelines: &'a GpuRenderPipelinePoolAccessor<'a>,
+        render_pipelines: &GpuRenderPipelinePoolAccessor<'_>,
         phase: DrawPhase,
-        pass: &mut wgpu::RenderPass<'a>,
+        pass: &mut wgpu::RenderPass<'_>,
     ) {
         re_tracing::profile_function!();
 
@@ -764,18 +764,14 @@ impl ViewBuilder {
     ///
     /// The bound surface(s) on the `RenderPass` are expected to be the same format as specified on `Context` creation.
     /// `screen_position` specifies where on the output pass the view is placed.
-    pub fn composite<'a>(
-        &'a self,
-        ctx: &RenderContext,
-        render_pipelines: &'a GpuRenderPipelinePoolAccessor<'a>,
-        pass: &mut wgpu::RenderPass<'a>,
-    ) {
+    pub fn composite(&self, ctx: &RenderContext, pass: &mut wgpu::RenderPass<'_>) {
         re_tracing::profile_function!();
 
         pass.set_bind_group(0, &self.setup.bind_group_0, &[]);
+
         self.draw_phase(
             &ctx.read_lock_renderers(),
-            render_pipelines,
+            &ctx.gpu_resources.render_pipelines.resources(),
             DrawPhase::Compositing,
             pass,
         );

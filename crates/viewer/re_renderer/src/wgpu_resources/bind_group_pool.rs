@@ -9,7 +9,6 @@ use super::{
     buffer_pool::{GpuBuffer, GpuBufferHandle, GpuBufferPool},
     dynamic_resource_pool::{DynamicResource, DynamicResourcePool, DynamicResourcesDesc},
     sampler_pool::{GpuSamplerHandle, GpuSamplerPool},
-    static_resource_pool::StaticResourcePoolAccessor as _,
     texture_pool::{GpuTexture, GpuTextureHandle, GpuTexturePool},
     WgpuResourcePools,
 };
