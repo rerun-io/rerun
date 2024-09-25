@@ -107,7 +107,7 @@ impl VideoDecoder {
         render_context: &RenderContext,
         data: Arc<re_video::VideoData>,
     ) -> Result<Self, DecodingError> {
-        re_log::debug!("{:?}", data.samples);
+        re_log::debug!("{:?}", data.segments);
 
         let frames = Arc::new(Mutex::new(Vec::with_capacity(16)));
         let decode_error = Arc::new(Mutex::new(None));
@@ -118,7 +118,7 @@ impl VideoDecoder {
             let frames = frames.clone();
             let decode_error = decode_error.clone();
             move |frame: web_sys::VideoFrame| {
-                web_sys::console::log_1(&frame);
+                //  web_sys::console::log_1(&frame);
                 let composition_timestamp =
                     Time::from_micros(frame.timestamp().unwrap_or(0.0), timescale);
                 let duration = Time::from_micros(frame.duration().unwrap_or(0.0), timescale);
@@ -209,14 +209,14 @@ impl VideoDecoder {
         }
         let presentation_timestamp = Time::from_secs(presentation_timestamp_s, self.data.timescale);
 
-        if let Err(err) = self.enqueue_requested_segments2(presentation_timestamp) {
+        if let Err(err) = self.enqueue_requested_segments(presentation_timestamp) {
             return FrameDecodingResult::Error(err);
         }
 
         self.try_present_frame(presentation_timestamp)
     }
 
-    fn enqueue_requested_segments2(
+    fn enqueue_requested_segments(
         &mut self,
         presentation_timestamp: Time,
     ) -> Result<(), DecodingError> {
@@ -297,65 +297,6 @@ impl VideoDecoder {
         // At this point, we have the requested segments enqueued. They will be output
         // in _composition timestamp_ order, so presenting the frame is a binary search
         // through the frame buffer as usual.
-
-        self.current_segment_idx = requested_segment_idx;
-        self.current_sample_idx = requested_sample_idx;
-
-        Ok(())
-    }
-
-    fn enqueue_requested_segments(
-        &mut self,
-        presentation_timestamp: Time,
-    ) -> Result<(), DecodingError> {
-        let Some(requested_segment_idx) = latest_at_idx(
-            &self.data.segments,
-            |segment| segment.start,
-            &presentation_timestamp,
-        ) else {
-            return Err(DecodingError::EmptyVideo);
-        };
-        let requested_segment = &self.data.segments[requested_segment_idx];
-
-        let Some(requested_sample_idx) = latest_at_idx(
-            &self.data.samples[requested_segment.range()],
-            |sample| sample.decode_timestamp,
-            &presentation_timestamp,
-        ) else {
-            // This should never happen, because segments are never empty.
-            return Err(DecodingError::EmptySegment);
-        };
-
-        // Enqueue segments as needed. We maintain a buffer of 2 segments, so we can
-        // always smoothly transition to the next segment.
-        // We can always start decoding from any segment, because segments always begin
-        // with a keyframe.
-        // Backward seeks or seeks across many segments trigger a reset of the decoder,
-        // because decoding all the samples between the previous sample and the requested
-        // one would mean decoding and immediately discarding more frames than we otherwise
-        // need to.
-        if requested_segment_idx != self.current_segment_idx {
-            let segment_distance = requested_segment_idx.checked_sub(self.current_segment_idx);
-            if segment_distance == Some(1) {
-                // forward seek to next segment - queue up the one _after_ requested
-                self.enqueue_segment(requested_segment_idx + 1);
-            } else {
-                // Startup, forward seek by N>1, or backward seek across segments -> reset decoder
-                self.reset()?;
-                self.enqueue_segment(requested_segment_idx);
-                self.enqueue_segment(requested_segment_idx + 1);
-            }
-        } else if requested_sample_idx != self.current_sample_idx {
-            // special case: handle seeking backwards within a single segment
-            // this is super inefficient, but it's the only way to handle it
-            // while maintaining a buffer of 2 segments
-            let sample_distance = requested_sample_idx as isize - self.current_sample_idx as isize;
-            if sample_distance < 0 {
-                self.reset()?;
-                self.enqueue_segment(requested_segment_idx);
-                self.enqueue_segment(requested_segment_idx + 1);
-            }
-        }
 
         self.current_segment_idx = requested_segment_idx;
         self.current_sample_idx = requested_sample_idx;
@@ -476,7 +417,7 @@ impl VideoDecoder {
             return;
         };
 
-        web_sys::console::log_1(&chunk);
+        //      web_sys::console::log_1(&chunk);
         if let Err(err) = self.decoder.decode(&chunk) {
             *self.decode_error.lock() = Some(DecodingError::DecodeChunk(js_error_to_string(&err)));
         }
@@ -484,6 +425,8 @@ impl VideoDecoder {
 
     /// Reset the video decoder and discard all frames.
     fn reset(&mut self) -> Result<(), DecodingError> {
+        re_log::debug!("resetting video decoder");
+
         self.decoder
             .reset()
             .map_err(|err| DecodingError::ResetFailure(js_error_to_string(&err)))?;
@@ -503,6 +446,8 @@ fn copy_video_frame_to_texture(
     frame: &web_sys::VideoFrame,
     texture: &wgpu::Texture,
 ) {
+    web_sys::console::log_1(&frame);
+
     let size = wgpu::Extent3d {
         width: frame.display_width(),
         height: frame.display_height(),
