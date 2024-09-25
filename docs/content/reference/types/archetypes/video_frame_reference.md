@@ -19,6 +19,9 @@ See <https://rerun.io/docs/concepts/video?speculative-link> for details of what 
 
 **Optional**: [`EntityPath`](../components/entity_path.md)
 
+## Shown in
+* [DataframeView](../views/dataframe_view.md)
+
 ## API reference links
  * 🌊 [C++ API docs for `VideoFrameReference`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1archetypes_1_1VideoFrameReference.html?speculative-link)
  * 🐍 [Python API docs for `VideoFrameReference`](https://ref.rerun.io/docs/python/stable/common/archetypes?speculative-link#rerun.archetypes.VideoFrameReference)

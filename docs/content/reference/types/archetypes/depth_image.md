@@ -16,6 +16,7 @@ Each pixel corresponds to a depth value in units specified by [`components.Depth
 ## Shown in
 * [Spatial2DView](../views/spatial2d_view.md)
 * [Spatial3DView](../views/spatial3d_view.md) (if logged under a projection)
+* [DataframeView](../views/dataframe_view.md)
 
 ## API reference links
  * 🌊 [C++ API docs for `DepthImage`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1archetypes_1_1DepthImage.html)
