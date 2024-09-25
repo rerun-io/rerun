@@ -480,6 +480,11 @@ This means, either a call to RenderContext::before_submit was omitted, or the pr
     pub fn active_frame_idx(&self) -> u64 {
         self.active_frame.frame_index
     }
+
+    /// Returns the device's capabilities.
+    pub fn device_caps(&self) -> &DeviceCaps {
+        &self.config.device_caps
+    }
 }
 
 pub struct FrameGlobalCommandEncoder(Option<wgpu::CommandEncoder>);
