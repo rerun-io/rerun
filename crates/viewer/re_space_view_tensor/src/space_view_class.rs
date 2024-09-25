@@ -598,7 +598,7 @@ fn selectors_ui(
     ui: &mut egui::Ui,
     shape: &[TensorDimension],
     slice_selection: &TensorSliceSelection,
-    slice_property: &ViewProperty<'_>,
+    slice_property: &ViewProperty,
 ) {
     let Some(slider) = &slice_selection.slider else {
         return;
