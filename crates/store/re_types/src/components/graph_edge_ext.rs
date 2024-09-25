@@ -5,7 +5,7 @@ use crate::datatypes::{GraphEdge, GraphNodeId};
 impl super::GraphEdge {
     /// Creates a new edge between two nodes.
     pub fn new(source: impl Into<GraphNodeId>, target: impl Into<GraphNodeId>) -> Self {
-        Self(GraphEdge{
+        Self(GraphEdge {
             source: source.into(),
             target: target.into(),
             ..Default::default()
