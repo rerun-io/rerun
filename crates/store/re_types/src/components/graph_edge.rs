@@ -21,22 +21,10 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 /// **Component**: An edge in a graph connecting two nodes.
 ///
 /// Depending on the context this could represent a directed or undirected edge.
-#[derive(
-    Clone,
-    Debug,
-    Copy,
-    Default,
-    PartialEq,
-    Eq,
-    PartialOrd,
-    Ord,
-    Hash,
-    bytemuck::Pod,
-    bytemuck::Zeroable,
-)]
+#[derive(Clone, Debug, Default, PartialEq, Eq, PartialOrd, Ord)]
 #[repr(transparent)]
 #[cfg_attr(feature = "serde", derive(::serde::Serialize, ::serde::Deserialize))]
-pub struct GraphEdge(pub [crate::datatypes::GraphNodeId; 2usize]);
+pub struct GraphEdge(pub Vec<crate::datatypes::GraphEdge>);
 
 impl ::re_types_core::SizeBytes for GraphEdge {
     #[inline]
@@ -46,36 +34,13 @@ impl ::re_types_core::SizeBytes for GraphEdge {
 
     #[inline]
     fn is_pod() -> bool {
-        <[crate::datatypes::GraphNodeId; 2usize]>::is_pod()
+        <Vec<crate::datatypes::GraphEdge>>::is_pod()
     }
 }
 
-impl<T: Into<[crate::datatypes::GraphNodeId; 2usize]>> From<T> for GraphEdge {
+impl<I: Into<crate::datatypes::GraphEdge>, T: IntoIterator<Item = I>> From<T> for GraphEdge {
     fn from(v: T) -> Self {
-        Self(v.into())
-    }
-}
-
-impl std::borrow::Borrow<[crate::datatypes::GraphNodeId; 2usize]> for GraphEdge {
-    #[inline]
-    fn borrow(&self) -> &[crate::datatypes::GraphNodeId; 2usize] {
-        &self.0
-    }
-}
-
-impl std::ops::Deref for GraphEdge {
-    type Target = [crate::datatypes::GraphNodeId; 2usize];
-
-    #[inline]
-    fn deref(&self) -> &[crate::datatypes::GraphNodeId; 2usize] {
-        &self.0
-    }
-}
-
-impl std::ops::DerefMut for GraphEdge {
-    #[inline]
-    fn deref_mut(&mut self) -> &mut [crate::datatypes::GraphNodeId; 2usize] {
-        &mut self.0
+        Self(v.into_iter().map(|v| v.into()).collect())
     }
 }
 
@@ -93,14 +58,11 @@ impl ::re_types_core::Loggable for GraphEdge {
     fn arrow_datatype() -> arrow2::datatypes::DataType {
         #![allow(clippy::wildcard_imports)]
         use arrow2::datatypes::*;
-        DataType::FixedSizeList(
-            std::sync::Arc::new(Field::new(
-                "item",
-                <crate::datatypes::GraphNodeId>::arrow_datatype(),
-                false,
-            )),
-            2usize,
-        )
+        DataType::List(std::sync::Arc::new(Field::new(
+            "item",
+            <crate::datatypes::GraphEdge>::arrow_datatype(),
+            false,
+        )))
     }
 
     fn to_arrow_opt<'a>(
@@ -127,34 +89,25 @@ impl ::re_types_core::Loggable for GraphEdge {
             };
             {
                 use arrow2::{buffer::Buffer, offset::OffsetsBuffer};
-                let data0_inner_data: Vec<_> = data0
-                    .into_iter()
-                    .flat_map(|v| match v {
-                        Some(v) => itertools::Either::Left(v.into_iter()),
-                        None => itertools::Either::Right(
-                            std::iter::repeat(Default::default()).take(2usize),
-                        ),
-                    })
-                    .collect();
-                let data0_inner_bitmap: Option<arrow2::bitmap::Bitmap> =
-                    data0_bitmap.as_ref().map(|bitmap| {
-                        bitmap
-                            .iter()
-                            .map(|b| std::iter::repeat(b).take(2usize))
-                            .flatten()
-                            .collect::<Vec<_>>()
-                            .into()
-                    });
-                FixedSizeListArray::new(
+                let offsets = arrow2::offset::Offsets::<i32>::try_from_lengths(
+                    data0
+                        .iter()
+                        .map(|opt| opt.as_ref().map_or(0, |datum| datum.len())),
+                )?
+                .into();
+                let data0_inner_data: Vec<_> = data0.into_iter().flatten().flatten().collect();
+                let data0_inner_bitmap: Option<arrow2::bitmap::Bitmap> = None;
+                ListArray::try_new(
                     Self::arrow_datatype(),
-                    PrimitiveArray::new(
-                        DataType::UInt32,
-                        data0_inner_data.into_iter().map(|datum| datum.0).collect(),
-                        data0_inner_bitmap,
-                    )
-                    .boxed(),
+                    offsets,
+                    {
+                        _ = data0_inner_bitmap;
+                        crate::datatypes::GraphEdge::to_arrow_opt(
+                            data0_inner_data.into_iter().map(Some),
+                        )?
+                    },
                     data0_bitmap,
-                )
+                )?
                 .boxed()
             }
         })
@@ -172,7 +125,7 @@ impl ::re_types_core::Loggable for GraphEdge {
         Ok({
             let arrow_data = arrow_data
                 .as_any()
-                .downcast_ref::<arrow2::array::FixedSizeListArray>()
+                .downcast_ref::<arrow2::array::ListArray<i32>>()
                 .ok_or_else(|| {
                     let expected = Self::arrow_datatype();
                     let actual = arrow_data.data_type().clone();
@@ -182,32 +135,22 @@ impl ::re_types_core::Loggable for GraphEdge {
             if arrow_data.is_empty() {
                 Vec::new()
             } else {
-                let offsets = (0..)
-                    .step_by(2usize)
-                    .zip((2usize..).step_by(2usize).take(arrow_data.len()));
                 let arrow_data_inner = {
                     let arrow_data_inner = &**arrow_data.values();
-                    arrow_data_inner
-                        .as_any()
-                        .downcast_ref::<UInt32Array>()
-                        .ok_or_else(|| {
-                            let expected = DataType::UInt32;
-                            let actual = arrow_data_inner.data_type().clone();
-                            DeserializationError::datatype_mismatch(expected, actual)
-                        })
+                    crate::datatypes::GraphEdge::from_arrow_opt(arrow_data_inner)
                         .with_context("rerun.components.GraphEdge#edge")?
                         .into_iter()
-                        .map(|opt| opt.copied())
-                        .map(|res_or_opt| res_or_opt.map(crate::datatypes::GraphNodeId))
                         .collect::<Vec<_>>()
                 };
+                let offsets = arrow_data.offsets();
                 arrow2::bitmap::utils::ZipValidity::new_with_validity(
-                    offsets,
+                    offsets.iter().zip(offsets.lengths()),
                     arrow_data.validity(),
                 )
                 .map(|elem| {
-                    elem.map(|(start, end): (usize, usize)| {
-                        debug_assert!(end - start == 2usize);
+                    elem.map(|(start, len)| {
+                        let start = *start as usize;
+                        let end = start + len;
                         if end > arrow_data_inner.len() {
                             return Err(DeserializationError::offset_slice_oob(
                                 (start, end),
@@ -217,11 +160,12 @@ impl ::re_types_core::Loggable for GraphEdge {
 
                         #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
                         let data = unsafe { arrow_data_inner.get_unchecked(start..end) };
-                        let data = data.iter().cloned().map(Option::unwrap_or_default);
-
-                        // NOTE: Unwrapping cannot fail: the length must be correct.
-                        #[allow(clippy::unwrap_used)]
-                        Ok(array_init::from_iter(data).unwrap())
+                        let data = data
+                            .iter()
+                            .cloned()
+                            .map(Option::unwrap_or_default)
+                            .collect();
+                        Ok(data)
                     })
                     .transpose()
                 })
@@ -234,57 +178,5 @@ impl ::re_types_core::Loggable for GraphEdge {
         .collect::<DeserializationResult<Vec<Option<_>>>>()
         .with_context("rerun.components.GraphEdge#edge")
         .with_context("rerun.components.GraphEdge")?)
-    }
-
-    #[inline]
-    fn from_arrow(arrow_data: &dyn arrow2::array::Array) -> DeserializationResult<Vec<Self>>
-    where
-        Self: Sized,
-    {
-        #![allow(clippy::wildcard_imports)]
-        use ::re_types_core::{Loggable as _, ResultExt as _};
-        use arrow2::{array::*, buffer::*, datatypes::*};
-        if let Some(validity) = arrow_data.validity() {
-            if validity.unset_bits() != 0 {
-                return Err(DeserializationError::missing_data());
-            }
-        }
-        Ok({
-            let slice = {
-                let arrow_data = arrow_data
-                    .as_any()
-                    .downcast_ref::<arrow2::array::FixedSizeListArray>()
-                    .ok_or_else(|| {
-                        let expected = DataType::FixedSizeList(
-                            std::sync::Arc::new(Field::new(
-                                "item",
-                                <crate::datatypes::GraphNodeId>::arrow_datatype(),
-                                false,
-                            )),
-                            2usize,
-                        );
-                        let actual = arrow_data.data_type().clone();
-                        DeserializationError::datatype_mismatch(expected, actual)
-                    })
-                    .with_context("rerun.components.GraphEdge#edge")?;
-                let arrow_data_inner = &**arrow_data.values();
-                bytemuck::cast_slice::<_, [_; 2usize]>(
-                    arrow_data_inner
-                        .as_any()
-                        .downcast_ref::<UInt32Array>()
-                        .ok_or_else(|| {
-                            let expected = DataType::UInt32;
-                            let actual = arrow_data_inner.data_type().clone();
-                            DeserializationError::datatype_mismatch(expected, actual)
-                        })
-                        .with_context("rerun.components.GraphEdge#edge")?
-                        .values()
-                        .as_slice(),
-                )
-            };
-            {
-                slice.iter().copied().map(Self).collect::<Vec<_>>()
-            }
-        })
     }
 }

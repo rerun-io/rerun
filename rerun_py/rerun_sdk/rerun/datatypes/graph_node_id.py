@@ -7,8 +7,6 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any, Sequence, Union
 
-import numpy as np
-import numpy.typing as npt
 import pyarrow as pa
 from attrs import define, field
 
@@ -30,32 +28,28 @@ class GraphNodeId:
         # You can define your own __init__ function as a member of GraphNodeIdExt in graph_node_id_ext.py
         self.__attrs_init__(id=id)
 
-    id: int = field(converter=int)
+    id: str = field(converter=str)
 
-    def __array__(self, dtype: npt.DTypeLike = None) -> npt.NDArray[Any]:
-        # You can define your own __array__ function as a member of GraphNodeIdExt in graph_node_id_ext.py
-        return np.asarray(self.id, dtype=dtype)
-
-    def __int__(self) -> int:
-        return int(self.id)
+    def __str__(self) -> str:
+        return str(self.id)
 
     def __hash__(self) -> int:
         return hash(self.id)
 
 
 if TYPE_CHECKING:
-    GraphNodeIdLike = Union[GraphNodeId, int]
+    GraphNodeIdLike = Union[GraphNodeId, str]
 else:
     GraphNodeIdLike = Any
 
-GraphNodeIdArrayLike = Union[GraphNodeId, Sequence[GraphNodeIdLike], int, npt.ArrayLike]
+GraphNodeIdArrayLike = Union[GraphNodeId, Sequence[GraphNodeIdLike], Sequence[str]]
 
 
 class GraphNodeIdType(BaseExtensionType):
     _TYPE_NAME: str = "rerun.datatypes.GraphNodeId"
 
     def __init__(self) -> None:
-        pa.ExtensionType.__init__(self, pa.uint32(), self._TYPE_NAME)
+        pa.ExtensionType.__init__(self, pa.utf8(), self._TYPE_NAME)
 
 
 class GraphNodeIdBatch(BaseBatch[GraphNodeIdArrayLike]):
@@ -63,5 +57,11 @@ class GraphNodeIdBatch(BaseBatch[GraphNodeIdArrayLike]):
 
     @staticmethod
     def _native_to_pa_array(data: GraphNodeIdArrayLike, data_type: pa.DataType) -> pa.Array:
-        array = np.asarray(data, dtype=np.uint32).flatten()
+        if isinstance(data, str):
+            array = [data]
+        elif isinstance(data, Sequence):
+            array = [str(datum) for datum in data]
+        else:
+            array = [str(data)]
+
         return pa.array(array, type=data_type)

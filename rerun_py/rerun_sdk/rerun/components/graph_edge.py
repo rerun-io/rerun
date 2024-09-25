@@ -5,7 +5,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Sequence, Tuple, Union
+from typing import Any, Sequence, Union
 
 import pyarrow as pa
 from attrs import define, field
@@ -37,14 +37,10 @@ class GraphEdge(ComponentMixin):
         # You can define your own __init__ function as a member of GraphEdgeExt in graph_edge_ext.py
         self.__attrs_init__(edge=edge)
 
-    edge: list[datatypes.GraphNodeId] = field()
+    edge: list[datatypes.GraphEdge] = field()
 
 
-if TYPE_CHECKING:
-    GraphEdgeLike = Union[GraphEdge, Tuple(int, int)]
-else:
-    GraphEdgeLike = Any
-
+GraphEdgeLike = GraphEdge
 GraphEdgeArrayLike = Union[
     GraphEdge,
     Sequence[GraphEdgeLike],
@@ -56,7 +52,21 @@ class GraphEdgeType(BaseExtensionType):
 
     def __init__(self) -> None:
         pa.ExtensionType.__init__(
-            self, pa.list_(pa.field("item", pa.uint32(), nullable=False, metadata={}), 2), self._TYPE_NAME
+            self,
+            pa.list_(
+                pa.field(
+                    "item",
+                    pa.struct([
+                        pa.field("source", pa.utf8(), nullable=False, metadata={}),
+                        pa.field("dest", pa.utf8(), nullable=False, metadata={}),
+                        pa.field("source_entity", pa.utf8(), nullable=True, metadata={}),
+                        pa.field("dest_entity", pa.utf8(), nullable=True, metadata={}),
+                    ]),
+                    nullable=False,
+                    metadata={},
+                )
+            ),
+            self._TYPE_NAME,
         )
 
 

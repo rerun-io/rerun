@@ -5,10 +5,11 @@
 //!  cargo run -p minimal_options -- --help
 //! ```
 
-use rerun::datatypes::GraphNodeId;
 use rerun::external::re_log;
+use rerun::{components, datatypes, EntityPath};
 
 use rerun::demo_util::grid;
+use rerun::{GraphEdges, GraphNodes};
 
 #[derive(Debug, clap::Parser)]
 #[clap(author, version, about)]
@@ -33,35 +34,46 @@ fn main() -> anyhow::Result<()> {
     run(&rec, &args)
 }
 
-fn run(rec: &rerun::RecordingStream, args: &Args) -> anyhow::Result<()> {
+fn run(rec: &rerun::RecordingStream, _args: &Args) -> anyhow::Result<()> {
     rec.set_time_sequence("frame", 0);
-    _ = rec.log(
-        "graph",
-        &rerun::GraphNodes::new([1, 2, 3]).with_labels(["a", "b", "c"]),
-    );
-    _ = rec.log(
-        "graph",
-        &rerun::GraphEdges::new([
-            // TODO(grtlr): Provide a nicer way to create these.
-            [GraphNodeId(1), GraphNodeId(2)],
-            [GraphNodeId(2), GraphNodeId(3)],
-            [GraphNodeId(1), GraphNodeId(3)],
-        ]),
-    );
+    rec.log("kitchen/objects", &GraphNodes::new(["sink", "fridge"]))?;
+    rec.log("kitchen/areas", &GraphNodes::new(["area0", "area1"]))?;
+    rec.log(
+        "kitchen/areas",
+        &GraphEdges::new([components::GraphEdge::new("area0", "area1")]),
+    )?;
 
     rec.set_time_sequence("frame", 1);
-    _ = rec.log(
-        "graph/level-1",
-        &rerun::GraphNodes::new([4, 5, 6]).with_labels(["d", "e", "f"]),
-    );
-    _ = rec.log(
-        "graph/level-1",
-        &rerun::GraphEdges::new([
-            [GraphNodeId(3), GraphNodeId(4)],
-            [GraphNodeId(4), GraphNodeId(5)],
-            [GraphNodeId(5), GraphNodeId(6)],
+    rec.log("hallway/areas", &GraphNodes::new(["area0"]))?;
+
+    rec.set_time_sequence("frame", 2);
+    rec.log("living/objects", &GraphNodes::new(["table"]))?;
+    rec.log(
+        "living/areas",
+        &GraphNodes::new(["area0", "area1", "area2"]),
+    )?;
+    rec.log(
+        "living/areas",
+        &GraphEdges::new([
+            components::GraphEdge::new("area0", "area1"),
+            components::GraphEdge::new("area0", "area2"),
+            components::GraphEdge::new("area1", "area2"),
         ]),
-    );
+    )?;
+
+    rec.log(
+        "doors",
+        &GraphEdges::new([components::GraphEdge::new_global(
+            (
+                datatypes::EntityPath::from("kitchen/areas"),
+                datatypes::GraphNodeId::from("area1"),
+            ),
+            (
+                datatypes::EntityPath::from("kitchen/areas"),
+                datatypes::GraphNodeId::from("area1"),
+            ),
+        )]),
+    )?;
 
     Ok(())
 }

@@ -19,19 +19,7 @@ use ::re_types_core::{ComponentBatch, MaybeOwnedComponentBatch};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Component**: A 32-bit ID representing a node in a graph.
-#[derive(
-    Clone,
-    Debug,
-    Copy,
-    Default,
-    PartialEq,
-    Eq,
-    PartialOrd,
-    Ord,
-    Hash,
-    bytemuck::Pod,
-    bytemuck::Zeroable,
-)]
+#[derive(Clone, Debug, Default, PartialEq, Eq, PartialOrd, Ord)]
 #[repr(transparent)]
 #[cfg_attr(feature = "serde", derive(::serde::Serialize, ::serde::Deserialize))]
 pub struct GraphNodeId(pub crate::datatypes::GraphNodeId);
@@ -114,13 +102,5 @@ impl ::re_types_core::Loggable for GraphNodeId {
     {
         crate::datatypes::GraphNodeId::from_arrow_opt(arrow_data)
             .map(|v| v.into_iter().map(|v| v.map(Self)).collect())
-    }
-
-    #[inline]
-    fn from_arrow(arrow_data: &dyn arrow2::array::Array) -> DeserializationResult<Vec<Self>>
-    where
-        Self: Sized,
-    {
-        crate::datatypes::GraphNodeId::from_arrow(arrow_data).map(bytemuck::cast_vec)
     }
 }

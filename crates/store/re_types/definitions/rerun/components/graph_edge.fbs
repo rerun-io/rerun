@@ -5,15 +5,11 @@ namespace rerun.components;
 /// An edge in a graph connecting two nodes.
 ///
 /// Depending on the context this could represent a directed or undirected edge.
-//
-// TODO(grtlr): Why do we need `Default` here?
-struct GraphEdge (
-  "attr.arrow.transparent",
-  "attr.python.aliases": "Tuple(int, int)",
-  "attr.rust.derive": "Copy, Default, PartialEq, Eq, PartialOrd, Ord, Hash, bytemuck::Pod, bytemuck::Zeroable",
+table GraphEdge (
+  "attr.rust.derive": "Default, PartialEq, Eq, PartialOrd, Ord",
   "attr.rust.repr": "transparent",
   "attr.rust.custom_clause":
     'cfg_attr(feature = "serde", derive(::serde::Serialize, ::serde::Deserialize))'
 ) {
-  edge: [rerun.datatypes.GraphNodeId: 2] (order: 100);
+  edge: [rerun.datatypes.GraphEdge] (order: 100);
 }

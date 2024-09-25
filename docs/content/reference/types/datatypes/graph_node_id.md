@@ -7,7 +7,7 @@ A 32-bit ID representing a node in a graph.
 
 ## Fields
 
-* id: `u32`
+* id: `string`
 
 ## API reference links
  * 🌊 [C++ API docs for `GraphNodeId`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1datatypes_1_1GraphNodeId.html)
@@ -17,5 +17,5 @@ A 32-bit ID representing a node in a graph.
 
 ## Used by
 
-* [`GraphEdge`](../components/graph_edge.md)
+* [`GraphEdge`](../datatypes/graph_edge.md)
 * [`GraphNodeId`](../components/graph_node_id.md)

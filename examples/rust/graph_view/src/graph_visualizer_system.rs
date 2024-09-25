@@ -1,4 +1,5 @@
 use re_viewer::external::{
+    re_log::external::log,
     re_log_types::EntityPath,
     re_renderer,
     re_types::{
@@ -40,7 +41,14 @@ impl IdentifiedViewSystem for GraphNodeSystem {
 
 impl VisualizerSystem for GraphNodeSystem {
     fn visualizer_query_info(&self) -> VisualizerQueryInfo {
-        VisualizerQueryInfo::from_archetype::<re_types::archetypes::GraphNodes>()
+        use re_types::Archetype;
+        let mut info = VisualizerQueryInfo::from_archetype::<re_types::archetypes::GraphNodes>();
+        info.indicators.insert(
+            re_types::archetypes::GraphEdges::indicator()
+                .name()
+                .to_owned(),
+        );
+        info
     }
 
     /// Populates the scene part with data from the store.
@@ -50,6 +58,7 @@ impl VisualizerSystem for GraphNodeSystem {
         query: &ViewQuery<'_>,
         _context_systems: &ViewContextCollection,
     ) -> Result<Vec<re_renderer::QueueableDrawData>, SpaceViewSystemExecutionError> {
+        log::debug!("Called execute");
         for data_result in query.iter_visible_data_results(ctx, Self::identifier()) {
             let results = ctx.recording().query_caches().latest_at(
                 ctx.recording_store(),
@@ -65,8 +74,8 @@ impl VisualizerSystem for GraphNodeSystem {
                     data_result.entity_path.clone(),
                     node_ids
                         .iter()
-                        .map(|&node_id| NodeIdWithInstance {
-                            node_id,
+                        .map(|node_id| NodeIdWithInstance {
+                            node_id: node_id.to_owned(),
                             label: None,
                         })
                         .collect(),
@@ -80,7 +89,10 @@ impl VisualizerSystem for GraphNodeSystem {
                     data_result.entity_path.clone(),
                     edges
                         .iter()
-                        .map(|&edge| EdgeWithInstance { edge, label: None })
+                        .map(|edge| EdgeWithInstance {
+                            edge: edge.to_owned(),
+                            label: None,
+                        })
                         .collect(),
                 ));
             }

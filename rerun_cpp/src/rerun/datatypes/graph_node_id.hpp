@@ -7,30 +7,27 @@
 
 #include <cstdint>
 #include <memory>
+#include <string>
+#include <utility>
 
 namespace arrow {
-    /// \private
-    template <typename T>
-    class NumericBuilder;
-
     class Array;
     class DataType;
-    class UInt32Type;
-    using UInt32Builder = NumericBuilder<UInt32Type>;
+    class StringBuilder;
 } // namespace arrow
 
 namespace rerun::datatypes {
     /// **Datatype**: A 32-bit ID representing a node in a graph.
     struct GraphNodeId {
-        uint32_t id;
+        std::string id;
 
       public:
         GraphNodeId() = default;
 
-        GraphNodeId(uint32_t id_) : id(id_) {}
+        GraphNodeId(std::string id_) : id(std::move(id_)) {}
 
-        GraphNodeId& operator=(uint32_t id_) {
-            id = id_;
+        GraphNodeId& operator=(std::string id_) {
+            id = std::move(id_);
             return *this;
         }
     };
@@ -55,7 +52,7 @@ namespace rerun {
 
         /// Fills an arrow array builder with an array of this type.
         static rerun::Error fill_arrow_array_builder(
-            arrow::UInt32Builder* builder, const datatypes::GraphNodeId* elements,
+            arrow::StringBuilder* builder, const datatypes::GraphNodeId* elements,
             size_t num_elements
         );
     };

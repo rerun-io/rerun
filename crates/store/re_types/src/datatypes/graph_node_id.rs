@@ -19,22 +19,10 @@ use ::re_types_core::{ComponentBatch, MaybeOwnedComponentBatch};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Datatype**: A 32-bit ID representing a node in a graph.
-#[derive(
-    Clone,
-    Debug,
-    Copy,
-    Default,
-    PartialEq,
-    Eq,
-    PartialOrd,
-    Ord,
-    Hash,
-    bytemuck::Pod,
-    bytemuck::Zeroable,
-)]
+#[derive(Clone, Debug, Default, PartialEq, Eq, PartialOrd, Ord, Hash)]
 #[repr(transparent)]
 #[cfg_attr(feature = "serde", derive(::serde::Serialize, ::serde::Deserialize))]
-pub struct GraphNodeId(pub u32);
+pub struct GraphNodeId(pub ::re_types_core::ArrowString);
 
 impl ::re_types_core::SizeBytes for GraphNodeId {
     #[inline]
@@ -44,18 +32,18 @@ impl ::re_types_core::SizeBytes for GraphNodeId {
 
     #[inline]
     fn is_pod() -> bool {
-        <u32>::is_pod()
+        <::re_types_core::ArrowString>::is_pod()
     }
 }
 
-impl From<u32> for GraphNodeId {
+impl From<::re_types_core::ArrowString> for GraphNodeId {
     #[inline]
-    fn from(id: u32) -> Self {
+    fn from(id: ::re_types_core::ArrowString) -> Self {
         Self(id)
     }
 }
 
-impl From<GraphNodeId> for u32 {
+impl From<GraphNodeId> for ::re_types_core::ArrowString {
     #[inline]
     fn from(value: GraphNodeId) -> Self {
         value.0
@@ -76,7 +64,7 @@ impl ::re_types_core::Loggable for GraphNodeId {
     fn arrow_datatype() -> arrow2::datatypes::DataType {
         #![allow(clippy::wildcard_imports)]
         use arrow2::datatypes::*;
-        DataType::UInt32
+        DataType::Utf8
     }
 
     fn to_arrow_opt<'a>(
@@ -101,12 +89,27 @@ impl ::re_types_core::Loggable for GraphNodeId {
                 let any_nones = somes.iter().any(|some| !*some);
                 any_nones.then(|| somes.into())
             };
-            PrimitiveArray::new(
-                Self::arrow_datatype(),
-                data0.into_iter().map(|v| v.unwrap_or_default()).collect(),
-                data0_bitmap,
-            )
-            .boxed()
+            {
+                let offsets = arrow2::offset::Offsets::<i32>::try_from_lengths(
+                    data0
+                        .iter()
+                        .map(|opt| opt.as_ref().map(|datum| datum.len()).unwrap_or_default()),
+                )?
+                .into();
+                let inner_data: arrow2::buffer::Buffer<u8> =
+                    data0.into_iter().flatten().flat_map(|s| s.0).collect();
+
+                #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
+                unsafe {
+                    Utf8Array::<i32>::new_unchecked(
+                        Self::arrow_datatype(),
+                        offsets,
+                        inner_data,
+                        data0_bitmap,
+                    )
+                }
+                .boxed()
+            }
         })
     }
 
@@ -119,52 +122,50 @@ impl ::re_types_core::Loggable for GraphNodeId {
         #![allow(clippy::wildcard_imports)]
         use ::re_types_core::{Loggable as _, ResultExt as _};
         use arrow2::{array::*, buffer::*, datatypes::*};
-        Ok(arrow_data
-            .as_any()
-            .downcast_ref::<UInt32Array>()
-            .ok_or_else(|| {
-                let expected = Self::arrow_datatype();
-                let actual = arrow_data.data_type().clone();
-                DeserializationError::datatype_mismatch(expected, actual)
-            })
-            .with_context("rerun.datatypes.GraphNodeId#id")?
-            .into_iter()
-            .map(|opt| opt.copied())
-            .map(|v| v.ok_or_else(DeserializationError::missing_data))
-            .map(|res| res.map(|v| Some(Self(v))))
-            .collect::<DeserializationResult<Vec<Option<_>>>>()
-            .with_context("rerun.datatypes.GraphNodeId#id")
-            .with_context("rerun.datatypes.GraphNodeId")?)
-    }
-
-    #[inline]
-    fn from_arrow(arrow_data: &dyn arrow2::array::Array) -> DeserializationResult<Vec<Self>>
-    where
-        Self: Sized,
-    {
-        #![allow(clippy::wildcard_imports)]
-        use ::re_types_core::{Loggable as _, ResultExt as _};
-        use arrow2::{array::*, buffer::*, datatypes::*};
-        if let Some(validity) = arrow_data.validity() {
-            if validity.unset_bits() != 0 {
-                return Err(DeserializationError::missing_data());
-            }
-        }
         Ok({
-            let slice = arrow_data
+            let arrow_data = arrow_data
                 .as_any()
-                .downcast_ref::<UInt32Array>()
+                .downcast_ref::<arrow2::array::Utf8Array<i32>>()
                 .ok_or_else(|| {
-                    let expected = DataType::UInt32;
+                    let expected = Self::arrow_datatype();
                     let actual = arrow_data.data_type().clone();
                     DeserializationError::datatype_mismatch(expected, actual)
                 })
-                .with_context("rerun.datatypes.GraphNodeId#id")?
-                .values()
-                .as_slice();
-            {
-                slice.iter().copied().map(Self).collect::<Vec<_>>()
-            }
-        })
+                .with_context("rerun.datatypes.GraphNodeId#id")?;
+            let arrow_data_buf = arrow_data.values();
+            let offsets = arrow_data.offsets();
+            arrow2::bitmap::utils::ZipValidity::new_with_validity(
+                offsets.iter().zip(offsets.lengths()),
+                arrow_data.validity(),
+            )
+            .map(|elem| {
+                elem.map(|(start, len)| {
+                    let start = *start as usize;
+                    let end = start + len;
+                    if end > arrow_data_buf.len() {
+                        return Err(DeserializationError::offset_slice_oob(
+                            (start, end),
+                            arrow_data_buf.len(),
+                        ));
+                    }
+
+                    #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
+                    let data = unsafe { arrow_data_buf.clone().sliced_unchecked(start, len) };
+                    Ok(data)
+                })
+                .transpose()
+            })
+            .map(|res_or_opt| {
+                res_or_opt.map(|res_or_opt| res_or_opt.map(|v| ::re_types_core::ArrowString(v)))
+            })
+            .collect::<DeserializationResult<Vec<Option<_>>>>()
+            .with_context("rerun.datatypes.GraphNodeId#id")?
+            .into_iter()
+        }
+        .map(|v| v.ok_or_else(DeserializationError::missing_data))
+        .map(|res| res.map(|v| Some(Self(v))))
+        .collect::<DeserializationResult<Vec<Option<_>>>>()
+        .with_context("rerun.datatypes.GraphNodeId#id")
+        .with_context("rerun.datatypes.GraphNodeId")?)
     }
 }

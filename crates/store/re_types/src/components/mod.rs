@@ -25,6 +25,7 @@ mod fill_ratio_ext;
 mod gamma_correction;
 mod gamma_correction_ext;
 mod graph_edge;
+mod graph_edge_ext;
 mod graph_node_id;
 mod half_size2d;
 mod half_size2d_ext;

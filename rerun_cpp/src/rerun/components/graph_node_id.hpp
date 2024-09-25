@@ -8,6 +8,8 @@
 
 #include <cstdint>
 #include <memory>
+#include <string>
+#include <utility>
 
 namespace rerun::components {
     /// **Component**: A 32-bit ID representing a node in a graph.
@@ -17,17 +19,17 @@ namespace rerun::components {
       public:
         GraphNodeId() = default;
 
-        GraphNodeId(rerun::datatypes::GraphNodeId id_) : id(id_) {}
+        GraphNodeId(rerun::datatypes::GraphNodeId id_) : id(std::move(id_)) {}
 
         GraphNodeId& operator=(rerun::datatypes::GraphNodeId id_) {
-            id = id_;
+            id = std::move(id_);
             return *this;
         }
 
-        GraphNodeId(uint32_t id_) : id(id_) {}
+        GraphNodeId(std::string id_) : id(std::move(id_)) {}
 
-        GraphNodeId& operator=(uint32_t id_) {
-            id = id_;
+        GraphNodeId& operator=(std::string id_) {
+            id = std::move(id_);
             return *this;
         }
 

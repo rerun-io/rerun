@@ -9,7 +9,7 @@ Depending on the context this could represent a directed or undirected edge.
 
 ## Fields
 
-* edge: 2x [`GraphNodeId`](../datatypes/graph_node_id.md)
+* edge: list of [`GraphEdge`](../datatypes/graph_edge.md)
 
 ## API reference links
  * 🌊 [C++ API docs for `GraphEdge`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1components_1_1GraphEdge.html)

@@ -1,6 +1,7 @@
 use egui_graphs::SettingsInteraction;
 use re_viewer::external::{
     egui::{self, Label, Stroke},
+    re_log::external::log,
     re_log_types::EntityPath,
     re_types::SpaceViewClassIdentifier,
     re_ui,
@@ -80,6 +81,7 @@ impl SpaceViewClass for GraphSpaceView {
     }
 
     fn new_state(&self) -> Box<dyn SpaceViewState> {
+        log::debug!("Creating new GraphSpaceViewState");
         Box::<GraphSpaceViewState>::default()
     }
 

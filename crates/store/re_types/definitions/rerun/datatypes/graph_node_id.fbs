@@ -1,17 +1,15 @@
 namespace rerun.datatypes;
 
-// ---
-
 /// A 32-bit ID representing a node in a graph.
-struct GraphNodeId (
+table GraphNodeId (
   "attr.arrow.transparent",
-  "attr.python.aliases": "int",
-  "attr.python.array_aliases": "int, npt.ArrayLike",
-  "attr.rust.derive": "Copy, Default, PartialEq, Eq, PartialOrd, Ord, Hash, bytemuck::Pod, bytemuck::Zeroable",
+  "attr.python.aliases": "str",
+  "attr.python.array_aliases": "Sequence[str]",
+  "attr.rust.derive": "Default, PartialEq, Eq, PartialOrd, Ord, Hash",
   "attr.rust.repr": "transparent",
   "attr.rust.tuple_struct",
   "attr.rust.custom_clause":
     'cfg_attr(feature = "serde", derive(::serde::Serialize, ::serde::Deserialize))'
 ) {
-  id: uint (order: 100);
+  id: string (order: 100);
 }

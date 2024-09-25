@@ -3,17 +3,18 @@
 
 #pragma once
 
-#include "../datatypes/graph_node_id.hpp"
+#include "../collection.hpp"
+#include "../datatypes/graph_edge.hpp"
 #include "../result.hpp"
 
-#include <array>
 #include <cstdint>
 #include <memory>
+#include <utility>
 
 namespace arrow {
     class Array;
     class DataType;
-    class FixedSizeListBuilder;
+    class ListBuilder;
 } // namespace arrow
 
 namespace rerun::components {
@@ -21,15 +22,15 @@ namespace rerun::components {
     ///
     /// Depending on the context this could represent a directed or undirected edge.
     struct GraphEdge {
-        std::array<rerun::datatypes::GraphNodeId, 2> edge;
+        rerun::Collection<rerun::datatypes::GraphEdge> edge;
 
       public:
         GraphEdge() = default;
 
-        GraphEdge(std::array<rerun::datatypes::GraphNodeId, 2> edge_) : edge(edge_) {}
+        GraphEdge(rerun::Collection<rerun::datatypes::GraphEdge> edge_) : edge(std::move(edge_)) {}
 
-        GraphEdge& operator=(std::array<rerun::datatypes::GraphNodeId, 2> edge_) {
-            edge = edge_;
+        GraphEdge& operator=(rerun::Collection<rerun::datatypes::GraphEdge> edge_) {
+            edge = std::move(edge_);
             return *this;
         }
     };
@@ -54,8 +55,7 @@ namespace rerun {
 
         /// Fills an arrow array builder with an array of this type.
         static rerun::Error fill_arrow_array_builder(
-            arrow::FixedSizeListBuilder* builder, const components::GraphEdge* elements,
-            size_t num_elements
+            arrow::ListBuilder* builder, const components::GraphEdge* elements, size_t num_elements
         );
     };
 } // namespace rerun
