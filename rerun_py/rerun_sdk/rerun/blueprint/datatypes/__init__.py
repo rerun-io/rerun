@@ -16,6 +16,14 @@ from .latest_at_query import (
     LatestAtQueryLike,
     LatestAtQueryType,
 )
+from .range_filter import RangeFilter, RangeFilterArrayLike, RangeFilterBatch, RangeFilterLike, RangeFilterType
+from .selected_columns import (
+    SelectedColumns,
+    SelectedColumnsArrayLike,
+    SelectedColumnsBatch,
+    SelectedColumnsLike,
+    SelectedColumnsType,
+)
 from .tensor_dimension_index_slider import (
     TensorDimensionIndexSlider,
     TensorDimensionIndexSliderArrayLike,
@@ -43,6 +51,16 @@ __all__ = [
     "LatestAtQueryBatch",
     "LatestAtQueryLike",
     "LatestAtQueryType",
+    "RangeFilter",
+    "RangeFilterArrayLike",
+    "RangeFilterBatch",
+    "RangeFilterLike",
+    "RangeFilterType",
+    "SelectedColumns",
+    "SelectedColumnsArrayLike",
+    "SelectedColumnsBatch",
+    "SelectedColumnsLike",
+    "SelectedColumnsType",
     "TensorDimensionIndexSlider",
     "TensorDimensionIndexSliderArrayLike",
     "TensorDimensionIndexSliderBatch",

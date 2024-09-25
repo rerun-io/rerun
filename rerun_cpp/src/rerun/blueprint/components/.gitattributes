@@ -2,6 +2,7 @@
 
 .gitattributes linguist-generated=true
 active_tab.hpp linguist-generated=true
+apply_latest_at.hpp linguist-generated=true
 auto_layout.hpp linguist-generated=true
 auto_space_views.hpp linguist-generated=true
 background_kind.cpp linguist-generated=true
@@ -26,8 +27,10 @@ panel_state.hpp linguist-generated=true
 query_expression.hpp linguist-generated=true
 query_kind.cpp linguist-generated=true
 query_kind.hpp linguist-generated=true
+range_filter.hpp linguist-generated=true
 root_container.hpp linguist-generated=true
 row_share.hpp linguist-generated=true
+selected_columns.hpp linguist-generated=true
 space_view_class.hpp linguist-generated=true
 space_view_maximized.hpp linguist-generated=true
 space_view_origin.hpp linguist-generated=true

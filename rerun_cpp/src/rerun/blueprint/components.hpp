@@ -3,6 +3,7 @@
 #pragma once
 
 #include "blueprint/components/active_tab.hpp"
+#include "blueprint/components/apply_latest_at.hpp"
 #include "blueprint/components/auto_layout.hpp"
 #include "blueprint/components/auto_space_views.hpp"
 #include "blueprint/components/background_kind.hpp"
@@ -20,8 +21,10 @@
 #include "blueprint/components/panel_state.hpp"
 #include "blueprint/components/query_expression.hpp"
 #include "blueprint/components/query_kind.hpp"
+#include "blueprint/components/range_filter.hpp"
 #include "blueprint/components/root_container.hpp"
 #include "blueprint/components/row_share.hpp"
+#include "blueprint/components/selected_columns.hpp"
 #include "blueprint/components/space_view_class.hpp"
 #include "blueprint/components/space_view_maximized.hpp"
 #include "blueprint/components/space_view_origin.hpp"

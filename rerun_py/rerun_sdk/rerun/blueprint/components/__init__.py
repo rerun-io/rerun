@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from .active_tab import ActiveTab, ActiveTabBatch, ActiveTabType
+from .apply_latest_at import ApplyLatestAt, ApplyLatestAtBatch, ApplyLatestAtType
 from .auto_layout import AutoLayout, AutoLayoutBatch, AutoLayoutType
 from .auto_space_views import AutoSpaceViews, AutoSpaceViewsBatch, AutoSpaceViewsType
 from .background_kind import (
@@ -48,8 +49,10 @@ from .lock_range_during_zoom import LockRangeDuringZoom, LockRangeDuringZoomBatc
 from .panel_state import PanelState, PanelStateArrayLike, PanelStateBatch, PanelStateLike, PanelStateType
 from .query_expression import QueryExpression, QueryExpressionBatch, QueryExpressionType
 from .query_kind import QueryKind, QueryKindArrayLike, QueryKindBatch, QueryKindLike, QueryKindType
+from .range_filter import RangeFilter, RangeFilterBatch, RangeFilterType
 from .root_container import RootContainer, RootContainerBatch, RootContainerType
 from .row_share import RowShare, RowShareBatch, RowShareType
+from .selected_columns import SelectedColumns, SelectedColumnsBatch, SelectedColumnsType
 from .space_view_class import SpaceViewClass, SpaceViewClassBatch, SpaceViewClassType
 from .space_view_maximized import SpaceViewMaximized, SpaceViewMaximizedBatch, SpaceViewMaximizedType
 from .space_view_origin import SpaceViewOrigin, SpaceViewOriginBatch, SpaceViewOriginType
@@ -81,6 +84,9 @@ __all__ = [
     "ActiveTab",
     "ActiveTabBatch",
     "ActiveTabType",
+    "ApplyLatestAt",
+    "ApplyLatestAtBatch",
+    "ApplyLatestAtType",
     "AutoLayout",
     "AutoLayoutBatch",
     "AutoLayoutType",
@@ -146,12 +152,18 @@ __all__ = [
     "QueryKindBatch",
     "QueryKindLike",
     "QueryKindType",
+    "RangeFilter",
+    "RangeFilterBatch",
+    "RangeFilterType",
     "RootContainer",
     "RootContainerBatch",
     "RootContainerType",
     "RowShare",
     "RowShareBatch",
     "RowShareType",
+    "SelectedColumns",
+    "SelectedColumnsBatch",
+    "SelectedColumnsType",
     "SpaceViewClass",
     "SpaceViewClassBatch",
     "SpaceViewClassType",

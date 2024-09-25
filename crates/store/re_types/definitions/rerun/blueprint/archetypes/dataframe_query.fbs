@@ -25,6 +25,7 @@ namespace rerun.blueprint.archetypes;
 // --
 
 /// The query for the dataframe view.
+//TODO(ab): replace by DataframeQueryV2 when ready
 table DataframeQuery (
     "attr.rerun.scope": "blueprint"
 ) {
@@ -47,5 +48,36 @@ table DataframeQuery (
     ///
     /// Note: configuration as saved on a per-timeline basis.
     time_range_queries: rerun.blueprint.components.TimeRangeQueries ("attr.rerun.component_optional", nullable,order: 500);
+}
+
+
+
+/// The query for the dataframe view.
+table DataframeQueryV2 (
+    "attr.rerun.scope": "blueprint"
+) {
+    // --- Optional ---
+
+    /// The timeline for this query.
+    ///
+    /// If unset, the time panel's timeline is used and stored.
+    timeline: rerun.blueprint.components.TimelineName ("attr.rerun.component_optional", nullable, order: 100);
+
+    /// If set, a range filter is applied.
+    ///
+    /// Note: will be unset as soon as `timeline` is changed.
+    //TODO(ab): should this use the list-with-timelines trick?
+    range_filter: rerun.blueprint.components.RangeFilter ("attr.rerun.component_optional", nullable, order: 200);
+
+    /// If set, an event filter is aplied.
+    ///
+    /// Note: only valid if the entity/component exists on `timeline`.
+    event_filter: rerun.blueprint.components.ComponentColumnSelector ("attr.rerun.component_optional", nullable, order: 300);
+
+    /// Should empty cells be filled with latest-at queries?
+    apply_latest_at: rerun.blueprint.components.ApplyLatestAt ("attr.rerun.component_optional", nullable, order: 400);
+
+    /// Selected columns. If unset, all columns are selected.
+    selected_columns: rerun.blueprint.components.SelectedColumns ("attr.rerun.component_optional", nullable, order: 500);
 }
 

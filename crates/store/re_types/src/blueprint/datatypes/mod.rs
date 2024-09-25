@@ -3,11 +3,16 @@
 mod component_column_selector;
 mod latest_at_query;
 mod latest_at_query_ext;
+mod range_filter;
+mod range_filter_ext;
+mod selected_columns;
 mod tensor_dimension_index_slider;
 mod time_range_query;
 mod time_range_query_ext;
 
 pub use self::component_column_selector::ComponentColumnSelector;
 pub use self::latest_at_query::LatestAtQuery;
+pub use self::range_filter::RangeFilter;
+pub use self::selected_columns::SelectedColumns;
 pub use self::tensor_dimension_index_slider::TensorDimensionIndexSlider;
 pub use self::time_range_query::TimeRangeQuery;

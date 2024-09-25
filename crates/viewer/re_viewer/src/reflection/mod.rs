@@ -42,6 +42,13 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             },
         ),
         (
+            <ApplyLatestAt as Loggable>::name(),
+            ComponentReflection {
+                docstring_md: "Whether empty cells in a dataframe should be filled with a latest-at query.",
+                placeholder: Some(ApplyLatestAt::default().to_arrow()?),
+            },
+        ),
+        (
             <AutoLayout as Loggable>::name(),
             ComponentReflection {
                 docstring_md: "Whether the viewport layout is determined automatically.",
@@ -161,6 +168,13 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             },
         ),
         (
+            <RangeFilter as Loggable>::name(),
+            ComponentReflection {
+                docstring_md: "Describe a component column to be selected in the dataframe view.",
+                placeholder: Some(RangeFilter::default().to_arrow()?),
+            },
+        ),
+        (
             <RootContainer as Loggable>::name(),
             ComponentReflection {
                 docstring_md: "The container that sits at the root of a viewport.",
@@ -172,6 +186,13 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             ComponentReflection {
                 docstring_md: "The layout share of a row in the container.",
                 placeholder: Some(RowShare::default().to_arrow()?),
+            },
+        ),
+        (
+            <SelectedColumns as Loggable>::name(),
+            ComponentReflection {
+                docstring_md: "Describe a component column to be selected in the dataframe view.",
+                placeholder: Some(SelectedColumns::default().to_arrow()?),
             },
         ),
         (
@@ -1578,6 +1599,35 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                     "Time range queries", docstring_md :
                     "Configuration for the time range queries.\n\nNote: configuration as saved on a per-timeline basis.",
                     is_required : false, },
+                ],
+            },
+        ),
+        (
+            ArchetypeName::new("rerun.blueprint.archetypes.DataframeQueryV2"),
+            ArchetypeReflection {
+                display_name: "Dataframe query v2",
+                fields: vec![
+                    ArchetypeFieldReflection { component_name :
+                    "rerun.blueprint.components.TimelineName".into(), display_name :
+                    "Timeline", docstring_md :
+                    "The timeline for this query.\n\nIf unset, the time panel's timeline is used and stored.",
+                    is_required : false, }, ArchetypeFieldReflection { component_name :
+                    "rerun.blueprint.components.RangeFilter".into(), display_name :
+                    "Range filter", docstring_md :
+                    "If set, a range filter is applied.\n\nNote: will be unset as soon as `timeline` is changed.",
+                    is_required : false, }, ArchetypeFieldReflection { component_name :
+                    "rerun.blueprint.components.ComponentColumnSelector".into(),
+                    display_name : "Event filter", docstring_md :
+                    "If set, an event filter is aplied.\n\nNote: only valid if the entity/component exists on `timeline`.",
+                    is_required : false, }, ArchetypeFieldReflection { component_name :
+                    "rerun.blueprint.components.ApplyLatestAt".into(), display_name :
+                    "Apply latest at", docstring_md :
+                    "Should empty cells be filled with latest-at queries?", is_required :
+                    false, }, ArchetypeFieldReflection { component_name :
+                    "rerun.blueprint.components.SelectedColumns".into(), display_name :
+                    "Selected columns", docstring_md :
+                    "Selected columns. If unset, all columns are selected.", is_required
+                    : false, },
                 ],
             },
         ),
