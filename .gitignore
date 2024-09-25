@@ -58,7 +58,6 @@ wheels
 # Screenshot comparison build
 /compare_screenshot
 
-.nox/
 *.rrd
 
 /meilisearch

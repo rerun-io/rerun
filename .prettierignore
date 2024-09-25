@@ -8,7 +8,6 @@ web_viewer/re_viewer.js
 crates/viewer/re_web_viewer_server/web_viewer/re_viewer.js
 
 .pixi
-/.nox
 /build
 /compare_screenshot
 **/target
