@@ -122,7 +122,7 @@ impl Video {
         &self,
         render_context: &RenderContext,
         decoder_stream_id: VideoDecodingStreamId,
-        timestamp_s: f64,
+        presentation_timestamp_s: f64,
     ) -> FrameDecodingResult {
         re_tracing::profile_function!();
 
@@ -152,7 +152,9 @@ impl Video {
         };
 
         decoder_entry.frame_index = render_context.active_frame_idx();
-        decoder_entry.decoder.frame_at(render_context, timestamp_s)
+        decoder_entry
+            .decoder
+            .frame_at(render_context, presentation_timestamp_s)
     }
 
     /// Removes all decoders that have been unused in the last frame.

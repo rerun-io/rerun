@@ -41,7 +41,7 @@ impl VideoDecoder {
     pub fn frame_at(
         &mut self,
         _render_ctx: &RenderContext,
-        _timestamp_s: f64,
+        _presentation_timestamp_s: f64,
     ) -> FrameDecodingResult {
         FrameDecodingResult::Error(DecodingError::NoNativeSupport)
     }
