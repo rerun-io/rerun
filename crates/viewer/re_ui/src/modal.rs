@@ -9,9 +9,10 @@ use egui::NumExt;
 /// Usage:
 /// ```
 /// # use re_ui::modal::{Modal, ModalHandler};
-/// let mut modal_handler = ModalHandler::default();
 ///
 /// # egui::__run_test_ui(|ui| {
+/// let mut modal_handler = ModalHandler::default();
+///
 /// if ui.button("Open").clicked() {
 ///     modal_handler.open();
 /// }
