@@ -66,6 +66,7 @@ impl TestContext {
                     default_blueprint: None,
                     recording: &self.recording_store,
                     bundle: &Default::default(),
+                    caches: &Default::default(),
                     hub: &Default::default(),
                 };
 

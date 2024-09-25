@@ -616,6 +616,7 @@ mod tests {
             default_blueprint: None,
             recording: &recording,
             bundle: &Default::default(),
+            caches: &Default::default(),
             hub: &StoreHub::test_hub(),
         };
 

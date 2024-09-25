@@ -1,4 +1,4 @@
-use ahash::{HashMap, HashMapExt};
+use ahash::{HashMap, HashMapExt, HashSet};
 
 use anyhow::Context as _;
 use itertools::Itertools as _;
@@ -8,7 +8,7 @@ use re_entity_db::{EntityDb, StoreBundle};
 use re_log_types::{ApplicationId, StoreId, StoreKind};
 use re_query::CachesStats;
 
-use crate::StoreContext;
+use crate::{Caches, StoreContext};
 
 /// Interface for accessing all blueprints and recordings
 ///
@@ -41,6 +41,9 @@ pub struct StoreHub {
     default_blueprint_by_app_id: HashMap<ApplicationId, StoreId>,
     active_blueprint_by_app_id: HashMap<ApplicationId, StoreId>,
     store_bundle: StoreBundle,
+
+    /// Things that need caching.
+    caches_per_recording: HashMap<StoreId, Caches>,
 
     /// The [`ChunkStoreGeneration`] from when the [`EntityDb`] was last saved
     blueprint_last_save: HashMap<StoreId, ChunkStoreGeneration>,
@@ -137,6 +140,7 @@ impl StoreHub {
             active_blueprint_by_app_id: Default::default(),
             store_bundle,
 
+            caches_per_recording: Default::default(),
             blueprint_last_save: Default::default(),
             blueprint_last_gc: Default::default(),
         }
@@ -158,6 +162,8 @@ impl StoreHub {
     pub fn read_context(&mut self) -> Option<StoreContext<'_>> {
         static EMPTY_ENTITY_DB: once_cell::sync::Lazy<EntityDb> =
             once_cell::sync::Lazy::new(|| EntityDb::new(re_log_types::StoreId::empty_recording()));
+        static EMPTY_CACHES: once_cell::sync::Lazy<Caches> =
+            once_cell::sync::Lazy::new(Default::default);
 
         // If we have an app-id, then use it to look up the blueprint.
         let app_id = self.active_application_id.clone()?;
@@ -211,12 +217,15 @@ impl StoreHub {
             self.active_rec_id = None;
         }
 
+        let caches = self.active_caches();
+
         Some(StoreContext {
             app_id,
             blueprint: active_blueprint,
             default_blueprint,
             recording: recording.unwrap_or(&EMPTY_ENTITY_DB),
             bundle: &self.store_bundle,
+            caches: caches.unwrap_or(&EMPTY_CACHES),
             hub: self,
         })
     }
@@ -238,6 +247,7 @@ impl StoreHub {
     }
 
     pub fn remove(&mut self, store_id: &StoreId) {
+        _ = self.caches_per_recording.remove(store_id);
         let removed_store = self.store_bundle.remove(store_id);
 
         let Some(removed_store) = removed_store else {
@@ -296,8 +306,18 @@ impl StoreHub {
     /// Remove all open recordings and applications, and go to the welcome page.
     pub fn clear_recordings(&mut self) {
         // Keep only the welcome screen:
-        self.store_bundle
-            .retain(|db| db.app_id() == Some(&Self::welcome_screen_app_id()));
+        let mut store_ids_retained = HashSet::default();
+        self.store_bundle.retain(|db| {
+            if db.app_id() == Some(&Self::welcome_screen_app_id()) {
+                store_ids_retained.insert(db.store_id().clone());
+                true
+            } else {
+                false
+            }
+        });
+        self.caches_per_recording
+            .retain(|store_id, _| store_ids_retained.contains(store_id));
+
         self.active_rec_id = None;
         self.active_application_id = Some(Self::welcome_screen_app_id());
     }
@@ -342,7 +362,17 @@ impl StoreHub {
             re_log::warn!("Failed to save blueprints: {err}");
         }
 
-        self.store_bundle.retain(|db| db.app_id() != Some(app_id));
+        let mut store_ids_removed = HashSet::default();
+        self.store_bundle.retain(|db| {
+            if db.app_id() == Some(app_id) {
+                store_ids_removed.insert(db.store_id().clone());
+                false
+            } else {
+                true
+            }
+        });
+        self.caches_per_recording
+            .retain(|store_id, _| !store_ids_removed.contains(store_id));
 
         if self.active_application_id.as_ref() == Some(app_id) {
             self.active_application_id = None;
@@ -375,6 +405,24 @@ impl StoreHub {
             .and_then(|id| self.store_bundle.get(id))
     }
 
+    /// Directly access the [`Caches`] for the active recording.
+    ///
+    /// This returns `None` only if there is no active recording: the cache itself is always
+    /// present if there's an active recording.
+    #[inline]
+    pub fn active_caches(&self) -> Option<&Caches> {
+        self.active_rec_id.as_ref().and_then(|store_id| {
+            let caches = self.caches_per_recording.get(store_id);
+
+            debug_assert!(
+                caches.is_some(),
+                "active recordings should always have associated caches",
+            );
+
+            caches
+        })
+    }
+
     /// Change the active/visible recording id.
     ///
     /// This will also change the application-id to match the newly active recording.
@@ -392,7 +440,10 @@ impl StoreHub {
             self.set_active_app(app_id);
         }
 
-        self.active_rec_id = Some(recording_id);
+        self.active_rec_id = Some(recording_id.clone());
+
+        // Make sure the active recording has associated caches, always.
+        _ = self.caches_per_recording.entry(recording_id).or_default();
     }
 
     /// Activate a recording by its [`StoreId`].
@@ -552,6 +603,10 @@ impl StoreHub {
             return;
         };
 
+        if let Some(caches) = self.caches_per_recording.get_mut(&store_id) {
+            caches.purge_memory();
+        }
+
         let store_bundle = &mut self.store_bundle;
 
         let Some(entity_db) = store_bundle.get_mut(&store_id) else {
@@ -633,6 +688,15 @@ impl StoreHub {
 
                 self.blueprint_last_gc
                     .insert(blueprint_id.clone(), blueprint.generation());
+            }
+        }
+    }
+
+    /// See `re_viewer_context::Cache::begin_frame`.
+    pub fn begin_frame(&mut self, renderer_active_frame_idx: u64) {
+        if let Some(store_id) = self.active_recording_id().cloned() {
+            if let Some(caches) = self.caches_per_recording.get_mut(&store_id) {
+                caches.begin_frame(renderer_active_frame_idx);
             }
         }
     }
