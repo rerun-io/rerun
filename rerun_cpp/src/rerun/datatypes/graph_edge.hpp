@@ -20,19 +20,19 @@ namespace arrow {
 namespace rerun::datatypes {
     /// **Datatype**: Represents an edge in a graph connecting two nodes (possible in different entities).
     ///
-    /// If `source_entity` or `dest_entity` is left out then the node id is assumed to be within the current entity.
+    /// If `source_entity` or `target_entity` is left out then the node id is assumed to be within the current entity.
     struct GraphEdge {
         /// The id of the source node.
         rerun::datatypes::GraphNodeId source;
 
         /// The id of the target node.
-        rerun::datatypes::GraphNodeId dest;
+        rerun::datatypes::GraphNodeId target;
 
         /// The entity path of the source node.
         std::optional<rerun::datatypes::EntityPath> source_entity;
 
         /// The entity path of the target node.
-        std::optional<rerun::datatypes::EntityPath> dest_entity;
+        std::optional<rerun::datatypes::EntityPath> target_entity;
 
       public:
         GraphEdge() = default;

@@ -20,7 +20,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Datatype**: Represents an edge in a graph connecting two nodes (possible in different entities).
 ///
-/// If `source_entity` or `dest_entity` is left out then the node id is assumed to be within the current entity.
+/// If `source_entity` or `target_entity` is left out then the node id is assumed to be within the current entity.
 #[derive(Clone, Debug, Default, PartialEq, Eq, PartialOrd, Ord)]
 #[cfg_attr(feature = "serde", derive(::serde::Serialize, ::serde::Deserialize))]
 pub struct GraphEdge {
@@ -28,22 +28,22 @@ pub struct GraphEdge {
     pub source: crate::datatypes::GraphNodeId,
 
     /// The id of the target node.
-    pub dest: crate::datatypes::GraphNodeId,
+    pub target: crate::datatypes::GraphNodeId,
 
     /// The entity path of the source node.
     pub source_entity: Option<crate::datatypes::EntityPath>,
 
     /// The entity path of the target node.
-    pub dest_entity: Option<crate::datatypes::EntityPath>,
+    pub target_entity: Option<crate::datatypes::EntityPath>,
 }
 
 impl ::re_types_core::SizeBytes for GraphEdge {
     #[inline]
     fn heap_size_bytes(&self) -> u64 {
         self.source.heap_size_bytes()
-            + self.dest.heap_size_bytes()
+            + self.target.heap_size_bytes()
             + self.source_entity.heap_size_bytes()
-            + self.dest_entity.heap_size_bytes()
+            + self.target_entity.heap_size_bytes()
     }
 
     #[inline]
@@ -76,7 +76,7 @@ impl ::re_types_core::Loggable for GraphEdge {
                 false,
             ),
             Field::new(
-                "dest",
+                "target",
                 <crate::datatypes::GraphNodeId>::arrow_datatype(),
                 false,
             ),
@@ -86,7 +86,7 @@ impl ::re_types_core::Loggable for GraphEdge {
                 true,
             ),
             Field::new(
-                "dest_entity",
+                "target_entity",
                 <crate::datatypes::EntityPath>::arrow_datatype(),
                 true,
             ),
@@ -155,25 +155,25 @@ impl ::re_types_core::Loggable for GraphEdge {
                         }
                     },
                     {
-                        let (somes, dest): (Vec<_>, Vec<_>) = data
+                        let (somes, target): (Vec<_>, Vec<_>) = data
                             .iter()
                             .map(|datum| {
-                                let datum = datum.as_ref().map(|datum| datum.dest.clone());
+                                let datum = datum.as_ref().map(|datum| datum.target.clone());
                                 (datum.is_some(), datum)
                             })
                             .unzip();
-                        let dest_bitmap: Option<arrow2::bitmap::Bitmap> = {
+                        let target_bitmap: Option<arrow2::bitmap::Bitmap> = {
                             let any_nones = somes.iter().any(|some| !*some);
                             any_nones.then(|| somes.into())
                         };
                         {
                             let offsets = arrow2::offset::Offsets::<i32>::try_from_lengths(
-                                dest.iter().map(|opt| {
+                                target.iter().map(|opt| {
                                     opt.as_ref().map(|datum| datum.0.len()).unwrap_or_default()
                                 }),
                             )?
                             .into();
-                            let inner_data: arrow2::buffer::Buffer<u8> = dest
+                            let inner_data: arrow2::buffer::Buffer<u8> = target
                                 .into_iter()
                                 .flatten()
                                 .flat_map(|datum| datum.0 .0)
@@ -185,7 +185,7 @@ impl ::re_types_core::Loggable for GraphEdge {
                                     DataType::Utf8,
                                     offsets,
                                     inner_data,
-                                    dest_bitmap,
+                                    target_bitmap,
                                 )
                             }
                             .boxed()
@@ -231,40 +231,39 @@ impl ::re_types_core::Loggable for GraphEdge {
                         }
                     },
                     {
-                        let (somes, dest_entity): (Vec<_>, Vec<_>) = data
+                        let (somes, target_entity): (Vec<_>, Vec<_>) = data
                             .iter()
                             .map(|datum| {
                                 let datum = datum
                                     .as_ref()
-                                    .map(|datum| datum.dest_entity.clone())
+                                    .map(|datum| datum.target_entity.clone())
                                     .flatten();
                                 (datum.is_some(), datum)
                             })
                             .unzip();
-                        let dest_entity_bitmap: Option<arrow2::bitmap::Bitmap> = {
+                        let target_entity_bitmap: Option<arrow2::bitmap::Bitmap> = {
                             let any_nones = somes.iter().any(|some| !*some);
                             any_nones.then(|| somes.into())
                         };
                         {
                             let offsets = arrow2::offset::Offsets::<i32>::try_from_lengths(
-                                dest_entity.iter().map(|opt| {
+                                target_entity.iter().map(|opt| {
                                     opt.as_ref().map(|datum| datum.0.len()).unwrap_or_default()
                                 }),
                             )?
                             .into();
-                            let inner_data: arrow2::buffer::Buffer<u8> = dest_entity
+                            let inner_data: arrow2::buffer::Buffer<u8> = target_entity
                                 .into_iter()
                                 .flatten()
                                 .flat_map(|datum| datum.0 .0)
                                 .collect();
-
                             #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
                             unsafe {
                                 Utf8Array::<i32>::new_unchecked(
                                     DataType::Utf8,
                                     offsets,
                                     inner_data,
-                                    dest_entity_bitmap,
+                                    target_entity_bitmap,
                                 )
                             }
                             .boxed()
@@ -361,15 +360,15 @@ impl ::re_types_core::Loggable for GraphEdge {
                         .into_iter()
                     }
                 };
-                let dest = {
-                    if !arrays_by_name.contains_key("dest") {
+                let target = {
+                    if !arrays_by_name.contains_key("target") {
                         return Err(DeserializationError::missing_struct_field(
                             Self::arrow_datatype(),
-                            "dest",
+                            "target",
                         ))
                         .with_context("rerun.datatypes.GraphEdge");
                     }
-                    let arrow_data = &**arrays_by_name["dest"];
+                    let arrow_data = &**arrays_by_name["target"];
                     {
                         let arrow_data = arrow_data
                             .as_any()
@@ -379,7 +378,7 @@ impl ::re_types_core::Loggable for GraphEdge {
                                 let actual = arrow_data.data_type().clone();
                                 DeserializationError::datatype_mismatch(expected, actual)
                             })
-                            .with_context("rerun.datatypes.GraphEdge#dest")?;
+                            .with_context("rerun.datatypes.GraphEdge#target")?;
                         let arrow_data_buf = arrow_data.values();
                         let offsets = arrow_data.offsets();
                         arrow2::bitmap::utils::ZipValidity::new_with_validity(
@@ -412,7 +411,7 @@ impl ::re_types_core::Loggable for GraphEdge {
                             })
                         })
                         .collect::<DeserializationResult<Vec<Option<_>>>>()
-                        .with_context("rerun.datatypes.GraphEdge#dest")?
+                        .with_context("rerun.datatypes.GraphEdge#target")?
                         .into_iter()
                     }
                 };
@@ -471,15 +470,15 @@ impl ::re_types_core::Loggable for GraphEdge {
                         .into_iter()
                     }
                 };
-                let dest_entity = {
-                    if !arrays_by_name.contains_key("dest_entity") {
+                let target_entity = {
+                    if !arrays_by_name.contains_key("target_entity") {
                         return Err(DeserializationError::missing_struct_field(
                             Self::arrow_datatype(),
-                            "dest_entity",
+                            "target_entity",
                         ))
                         .with_context("rerun.datatypes.GraphEdge");
                     }
-                    let arrow_data = &**arrays_by_name["dest_entity"];
+                    let arrow_data = &**arrays_by_name["target_entity"];
                     {
                         let arrow_data = arrow_data
                             .as_any()
@@ -489,7 +488,7 @@ impl ::re_types_core::Loggable for GraphEdge {
                                 let actual = arrow_data.data_type().clone();
                                 DeserializationError::datatype_mismatch(expected, actual)
                             })
-                            .with_context("rerun.datatypes.GraphEdge#dest_entity")?;
+                            .with_context("rerun.datatypes.GraphEdge#target_entity")?;
                         let arrow_data_buf = arrow_data.values();
                         let offsets = arrow_data.offsets();
                         arrow2::bitmap::utils::ZipValidity::new_with_validity(
@@ -522,25 +521,25 @@ impl ::re_types_core::Loggable for GraphEdge {
                             })
                         })
                         .collect::<DeserializationResult<Vec<Option<_>>>>()
-                        .with_context("rerun.datatypes.GraphEdge#dest_entity")?
+                        .with_context("rerun.datatypes.GraphEdge#target_entity")?
                         .into_iter()
                     }
                 };
                 arrow2::bitmap::utils::ZipValidity::new_with_validity(
-                    ::itertools::izip!(source, dest, source_entity, dest_entity),
+                    ::itertools::izip!(source, target, source_entity, target_entity),
                     arrow_data.validity(),
                 )
                 .map(|opt| {
-                    opt.map(|(source, dest, source_entity, dest_entity)| {
+                    opt.map(|(source, target, source_entity, target_entity)| {
                         Ok(Self {
                             source: source
                                 .ok_or_else(DeserializationError::missing_data)
                                 .with_context("rerun.datatypes.GraphEdge#source")?,
-                            dest: dest
+                            target: target
                                 .ok_or_else(DeserializationError::missing_data)
-                                .with_context("rerun.datatypes.GraphEdge#dest")?,
+                                .with_context("rerun.datatypes.GraphEdge#target")?,
                             source_entity,
-                            dest_entity,
+                            target_entity,
                         })
                     })
                     .transpose()

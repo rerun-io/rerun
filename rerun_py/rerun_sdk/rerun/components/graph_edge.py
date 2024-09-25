@@ -5,24 +5,16 @@
 
 from __future__ import annotations
 
-from typing import Any, Sequence, Union
-
-import pyarrow as pa
-from attrs import define, field
-
 from .. import datatypes
 from .._baseclasses import (
-    BaseBatch,
-    BaseExtensionType,
     ComponentBatchMixin,
     ComponentMixin,
 )
 
-__all__ = ["GraphEdge", "GraphEdgeArrayLike", "GraphEdgeBatch", "GraphEdgeLike", "GraphEdgeType"]
+__all__ = ["GraphEdge", "GraphEdgeBatch", "GraphEdgeType"]
 
 
-@define(init=False)
-class GraphEdge(ComponentMixin):
+class GraphEdge(datatypes.GraphEdge, ComponentMixin):
     """
     **Component**: An edge in a graph connecting two nodes.
 
@@ -30,54 +22,18 @@ class GraphEdge(ComponentMixin):
     """
 
     _BATCH_TYPE = None
+    # You can define your own __init__ function as a member of GraphEdgeExt in graph_edge_ext.py
 
-    def __init__(self: Any, edge: GraphEdgeLike):
-        """Create a new instance of the GraphEdge component."""
-
-        # You can define your own __init__ function as a member of GraphEdgeExt in graph_edge_ext.py
-        self.__attrs_init__(edge=edge)
-
-    edge: list[datatypes.GraphEdge] = field()
+    # Note: there are no fields here because GraphEdge delegates to datatypes.GraphEdge
+    pass
 
 
-GraphEdgeLike = GraphEdge
-GraphEdgeArrayLike = Union[
-    GraphEdge,
-    Sequence[GraphEdgeLike],
-]
-
-
-class GraphEdgeType(BaseExtensionType):
+class GraphEdgeType(datatypes.GraphEdgeType):
     _TYPE_NAME: str = "rerun.components.GraphEdge"
 
-    def __init__(self) -> None:
-        pa.ExtensionType.__init__(
-            self,
-            pa.list_(
-                pa.field(
-                    "item",
-                    pa.struct([
-                        pa.field("source", pa.utf8(), nullable=False, metadata={}),
-                        pa.field("dest", pa.utf8(), nullable=False, metadata={}),
-                        pa.field("source_entity", pa.utf8(), nullable=True, metadata={}),
-                        pa.field("dest_entity", pa.utf8(), nullable=True, metadata={}),
-                    ]),
-                    nullable=False,
-                    metadata={},
-                )
-            ),
-            self._TYPE_NAME,
-        )
 
-
-class GraphEdgeBatch(BaseBatch[GraphEdgeArrayLike], ComponentBatchMixin):
+class GraphEdgeBatch(datatypes.GraphEdgeBatch, ComponentBatchMixin):
     _ARROW_TYPE = GraphEdgeType()
-
-    @staticmethod
-    def _native_to_pa_array(data: GraphEdgeArrayLike, data_type: pa.DataType) -> pa.Array:
-        raise NotImplementedError(
-            "Arrow serialization of GraphEdge not implemented: We lack codegen for arrow-serialization of general structs"
-        )  # You need to implement native_to_pa_array_override in graph_edge_ext.py
 
 
 # This is patched in late to avoid circular dependencies.

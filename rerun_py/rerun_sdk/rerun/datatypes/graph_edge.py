@@ -26,7 +26,7 @@ def _graph_edge__source__special_field_converter_override(x: datatypes.GraphNode
         return datatypes.GraphNodeId(x)
 
 
-def _graph_edge__dest__special_field_converter_override(x: datatypes.GraphNodeIdLike) -> datatypes.GraphNodeId:
+def _graph_edge__target__special_field_converter_override(x: datatypes.GraphNodeIdLike) -> datatypes.GraphNodeId:
     if isinstance(x, datatypes.GraphNodeId):
         return x
     else:
@@ -44,7 +44,7 @@ def _graph_edge__source_entity__special_field_converter_override(
         return datatypes.EntityPath(x)
 
 
-def _graph_edge__dest_entity__special_field_converter_override(
+def _graph_edge__target_entity__special_field_converter_override(
     x: datatypes.EntityPathLike | None,
 ) -> datatypes.EntityPath | None:
     if x is None:
@@ -60,15 +60,15 @@ class GraphEdge:
     """
     **Datatype**: Represents an edge in a graph connecting two nodes (possible in different entities).
 
-    If `source_entity` or `dest_entity` is left out then the node id is assumed to be within the current entity.
+    If `source_entity` or `target_entity` is left out then the node id is assumed to be within the current entity.
     """
 
     def __init__(
         self: Any,
         source: datatypes.GraphNodeIdLike,
-        dest: datatypes.GraphNodeIdLike,
+        target: datatypes.GraphNodeIdLike,
         source_entity: datatypes.EntityPathLike | None = None,
-        dest_entity: datatypes.EntityPathLike | None = None,
+        target_entity: datatypes.EntityPathLike | None = None,
     ):
         """
         Create a new instance of the GraphEdge datatype.
@@ -77,24 +77,24 @@ class GraphEdge:
         ----------
         source:
             The id of the source node.
-        dest:
+        target:
             The id of the target node.
         source_entity:
             The entity path of the source node.
-        dest_entity:
+        target_entity:
             The entity path of the target node.
 
         """
 
         # You can define your own __init__ function as a member of GraphEdgeExt in graph_edge_ext.py
-        self.__attrs_init__(source=source, dest=dest, source_entity=source_entity, dest_entity=dest_entity)
+        self.__attrs_init__(source=source, target=target, source_entity=source_entity, target_entity=target_entity)
 
     source: datatypes.GraphNodeId = field(converter=_graph_edge__source__special_field_converter_override)
     # The id of the source node.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 
-    dest: datatypes.GraphNodeId = field(converter=_graph_edge__dest__special_field_converter_override)
+    target: datatypes.GraphNodeId = field(converter=_graph_edge__target__special_field_converter_override)
     # The id of the target node.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
@@ -106,8 +106,8 @@ class GraphEdge:
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 
-    dest_entity: datatypes.EntityPath | None = field(
-        default=None, converter=_graph_edge__dest_entity__special_field_converter_override
+    target_entity: datatypes.EntityPath | None = field(
+        default=None, converter=_graph_edge__target_entity__special_field_converter_override
     )
     # The entity path of the target node.
     #
@@ -129,9 +129,9 @@ class GraphEdgeType(BaseExtensionType):
             self,
             pa.struct([
                 pa.field("source", pa.utf8(), nullable=False, metadata={}),
-                pa.field("dest", pa.utf8(), nullable=False, metadata={}),
+                pa.field("target", pa.utf8(), nullable=False, metadata={}),
                 pa.field("source_entity", pa.utf8(), nullable=True, metadata={}),
-                pa.field("dest_entity", pa.utf8(), nullable=True, metadata={}),
+                pa.field("target_entity", pa.utf8(), nullable=True, metadata={}),
             ]),
             self._TYPE_NAME,
         )
@@ -150,9 +150,9 @@ class GraphEdgeBatch(BaseBatch[GraphEdgeArrayLike]):
         return pa.StructArray.from_arrays(
             [
                 GraphNodeIdBatch([x.source for x in data]).as_arrow_array().storage,  # type: ignore[misc, arg-type]
-                GraphNodeIdBatch([x.dest for x in data]).as_arrow_array().storage,  # type: ignore[misc, arg-type]
+                GraphNodeIdBatch([x.target for x in data]).as_arrow_array().storage,  # type: ignore[misc, arg-type]
                 EntityPathBatch([x.source_entity for x in data]).as_arrow_array().storage,  # type: ignore[misc, arg-type]
-                EntityPathBatch([x.dest_entity for x in data]).as_arrow_array().storage,  # type: ignore[misc, arg-type]
+                EntityPathBatch([x.target_entity for x in data]).as_arrow_array().storage,  # type: ignore[misc, arg-type]
             ],
             fields=list(data_type),
         )

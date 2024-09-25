@@ -19,14 +19,18 @@ namespace rerun {
                 Loggable<rerun::datatypes::GraphNodeId>::arrow_datatype(),
                 false
             ),
-            arrow::field("dest", Loggable<rerun::datatypes::GraphNodeId>::arrow_datatype(), false),
+            arrow::field(
+                "target",
+                Loggable<rerun::datatypes::GraphNodeId>::arrow_datatype(),
+                false
+            ),
             arrow::field(
                 "source_entity",
                 Loggable<rerun::datatypes::EntityPath>::arrow_datatype(),
                 true
             ),
             arrow::field(
-                "dest_entity",
+                "target_entity",
                 Loggable<rerun::datatypes::EntityPath>::arrow_datatype(),
                 true
             ),
@@ -84,7 +88,7 @@ namespace rerun {
             for (size_t elem_idx = 0; elem_idx < num_elements; elem_idx += 1) {
                 RR_RETURN_NOT_OK(Loggable<rerun::datatypes::GraphNodeId>::fill_arrow_array_builder(
                     field_builder,
-                    &elements[elem_idx].dest,
+                    &elements[elem_idx].target,
                     1
                 ));
             }
@@ -112,11 +116,11 @@ namespace rerun {
             ARROW_RETURN_NOT_OK(field_builder->Reserve(static_cast<int64_t>(num_elements)));
             for (size_t elem_idx = 0; elem_idx < num_elements; elem_idx += 1) {
                 const auto& element = elements[elem_idx];
-                if (element.dest_entity.has_value()) {
+                if (element.target_entity.has_value()) {
                     RR_RETURN_NOT_OK(
                         Loggable<rerun::datatypes::EntityPath>::fill_arrow_array_builder(
                             field_builder,
-                            &element.dest_entity.value(),
+                            &element.target_entity.value(),
                             1
                         )
                     );

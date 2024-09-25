@@ -24,7 +24,7 @@ class GraphEdges(Archetype):
 
     def __init__(
         self: Any,
-        edges: components.GraphEdgeArrayLike,
+        edges: datatypes.GraphEdgeArrayLike,
         *,
         colors: datatypes.Rgba32ArrayLike | None = None,
         labels: datatypes.Utf8ArrayLike | None = None,

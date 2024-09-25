@@ -1,6 +1,5 @@
-use egui_graphs::SettingsInteraction;
 use re_viewer::external::{
-    egui::{self, Label, Stroke},
+    egui::{self, Label},
     re_log::external::log,
     re_log_types::EntityPath,
     re_types::SpaceViewClassIdentifier,
@@ -13,32 +12,14 @@ use re_viewer::external::{
     },
 };
 
-use crate::graph_visualizer_system::GraphNodeSystem;
+use crate::edge_visualizer_system::GraphEdgeSystem;
+use crate::node_visualizer_system::GraphNodeSystem;
 
 /// Space view state for the custom space view.
 ///
 /// This state is preserved between frames, but not across Viewer sessions.
-pub struct GraphSpaceViewState {
-    graph: egui_graphs::Graph<(), ()>,
-}
-
-impl Default for GraphSpaceViewState {
-    fn default() -> Self {
-        let mut g = petgraph::stable_graph::StableGraph::new();
-
-        let a = g.add_node(());
-        let b = g.add_node(());
-        let c = g.add_node(());
-
-        g.add_edge(a, b, ());
-        g.add_edge(b, c, ());
-        g.add_edge(c, a, ());
-
-        Self {
-            graph: egui_graphs::Graph::from(&g),
-        }
-    }
-}
+#[derive(Default)]
+pub struct GraphSpaceViewState;
 
 impl SpaceViewState for GraphSpaceViewState {
     fn as_any(&self) -> &dyn std::any::Any {
@@ -77,7 +58,8 @@ impl SpaceViewClass for GraphSpaceView {
         &self,
         system_registry: &mut SpaceViewSystemRegistrator<'_>,
     ) -> Result<(), SpaceViewClassRegistryError> {
-        system_registry.register_visualizer::<GraphNodeSystem>()
+        system_registry.register_visualizer::<GraphNodeSystem>()?;
+        system_registry.register_visualizer::<GraphEdgeSystem>()
     }
 
     fn new_state(&self) -> Box<dyn SpaceViewState> {
@@ -145,24 +127,9 @@ impl SpaceViewClass for GraphSpaceView {
         _query: &ViewQuery<'_>,
         system_output: SystemExecutionOutput,
     ) -> Result<(), SpaceViewSystemExecutionError> {
-        let graph_nodes = system_output.view_systems.get::<GraphNodeSystem>()?;
+        let node_system = system_output.view_systems.get::<GraphNodeSystem>()?;
+        let edge_system = system_output.view_systems.get::<GraphEdgeSystem>()?;
         let state = state.downcast_mut::<GraphSpaceViewState>()?;
-
-        let interaction_settings = &SettingsInteraction::new()
-            .with_dragging_enabled(true)
-            .with_node_clicking_enabled(true)
-            .with_node_selection_enabled(true)
-            .with_node_selection_multi_enabled(true)
-            .with_edge_clicking_enabled(true)
-            .with_edge_selection_enabled(true)
-            .with_edge_selection_multi_enabled(true);
-
-        let navigation_settings =
-            &egui_graphs::SettingsNavigation::new().with_fit_to_screen_enabled(true);
-
-        let mut graph_view = egui_graphs::GraphView::new(&mut state.graph)
-            .with_interactions(interaction_settings)
-            .with_navigations(navigation_settings);
 
         egui::Frame {
             inner_margin: re_ui::DesignTokens::view_padding().into(),
@@ -171,25 +138,36 @@ impl SpaceViewClass for GraphSpaceView {
         .show(ui, |ui| {
             ui.with_layout(egui::Layout::top_down(egui::Align::LEFT), |ui| {
                 egui::ScrollArea::both().show(ui, |ui| {
-                    for (entity, nodes) in graph_nodes.nodes.iter() {
-                        let text = egui::RichText::new(entity.to_owned());
-                        ui.add(Label::new(text));
-                        for n in nodes {
-                            let text = egui::RichText::new(format!("{:?}", n.node_id.0 .0));
+                    ui.label(egui::RichText::new("Nodes").underline());
+
+                    for nodes in node_system.nodes.iter() {
+                        for n in nodes.nodes_batch.iter() {
+                            let text = egui::RichText::new(format!(
+                                "{}: {}",
+                                nodes.entity_path.to_owned(),
+                                n.0
+                            ));
+                            ui.add(Label::new(text));
+                        }
+                    }
+
+                    ui.label(egui::RichText::new("Edges").underline());
+
+                    for (entity, edges) in edge_system.edges.iter() {
+                        for e in edges {
+                            let text = egui::RichText::new(format!(
+                                "{}: {:?}:{} -> {:?}:{}",
+                                entity.to_owned(),
+                                e.edge.0.source_entity.clone().map(EntityPath::from),
+                                e.edge.0.source,
+                                e.edge.0.target_entity.clone().map(EntityPath::from),
+                                e.edge.0.target
+                            ));
                             ui.add(Label::new(text));
                         }
                     }
                 })
             });
-
-            egui::Frame::none()
-                .stroke(Stroke {
-                    width: 1.0,
-                    color: egui::Color32::RED,
-                })
-                .show(ui, |ui| {
-                    ui.add(&mut graph_view);
-                });
         });
 
         Ok(())

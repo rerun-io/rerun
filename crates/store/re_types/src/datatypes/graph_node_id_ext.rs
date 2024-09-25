@@ -3,3 +3,9 @@ impl std::convert::From<&str> for super::GraphNodeId {
         Self(s.into())
     }
 }
+
+impl std::fmt::Display for super::GraphNodeId {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.0)
+    }
+}

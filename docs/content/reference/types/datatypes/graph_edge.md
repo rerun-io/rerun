@@ -5,14 +5,14 @@ title: "GraphEdge"
 
 Represents an edge in a graph connecting two nodes (possible in different entities).
 
-If `source_entity` or `dest_entity` is left out then the node id is assumed to be within the current entity.
+If `source_entity` or `target_entity` is left out then the node id is assumed to be within the current entity.
 
 ## Fields
 
 * source: [`GraphNodeId`](../datatypes/graph_node_id.md)
-* dest: [`GraphNodeId`](../datatypes/graph_node_id.md)
+* target: [`GraphNodeId`](../datatypes/graph_node_id.md)
 * source_entity: [`EntityPath`](../datatypes/entity_path.md)
-* dest_entity: [`EntityPath`](../datatypes/entity_path.md)
+* target_entity: [`EntityPath`](../datatypes/entity_path.md)
 
 ## API reference links
  * 🌊 [C++ API docs for `GraphEdge`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1datatypes_1_1GraphEdge.html)

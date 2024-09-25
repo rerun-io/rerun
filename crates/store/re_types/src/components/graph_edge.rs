@@ -24,7 +24,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 #[derive(Clone, Debug, Default, PartialEq, Eq, PartialOrd, Ord)]
 #[repr(transparent)]
 #[cfg_attr(feature = "serde", derive(::serde::Serialize, ::serde::Deserialize))]
-pub struct GraphEdge(pub Vec<crate::datatypes::GraphEdge>);
+pub struct GraphEdge(pub crate::datatypes::GraphEdge);
 
 impl ::re_types_core::SizeBytes for GraphEdge {
     #[inline]
@@ -34,13 +34,36 @@ impl ::re_types_core::SizeBytes for GraphEdge {
 
     #[inline]
     fn is_pod() -> bool {
-        <Vec<crate::datatypes::GraphEdge>>::is_pod()
+        <crate::datatypes::GraphEdge>::is_pod()
     }
 }
 
-impl<I: Into<crate::datatypes::GraphEdge>, T: IntoIterator<Item = I>> From<T> for GraphEdge {
+impl<T: Into<crate::datatypes::GraphEdge>> From<T> for GraphEdge {
     fn from(v: T) -> Self {
-        Self(v.into_iter().map(|v| v.into()).collect())
+        Self(v.into())
+    }
+}
+
+impl std::borrow::Borrow<crate::datatypes::GraphEdge> for GraphEdge {
+    #[inline]
+    fn borrow(&self) -> &crate::datatypes::GraphEdge {
+        &self.0
+    }
+}
+
+impl std::ops::Deref for GraphEdge {
+    type Target = crate::datatypes::GraphEdge;
+
+    #[inline]
+    fn deref(&self) -> &crate::datatypes::GraphEdge {
+        &self.0
+    }
+}
+
+impl std::ops::DerefMut for GraphEdge {
+    #[inline]
+    fn deref_mut(&mut self) -> &mut crate::datatypes::GraphEdge {
+        &mut self.0
     }
 }
 
@@ -56,13 +79,7 @@ impl ::re_types_core::Loggable for GraphEdge {
 
     #[inline]
     fn arrow_datatype() -> arrow2::datatypes::DataType {
-        #![allow(clippy::wildcard_imports)]
-        use arrow2::datatypes::*;
-        DataType::List(std::sync::Arc::new(Field::new(
-            "item",
-            <crate::datatypes::GraphEdge>::arrow_datatype(),
-            false,
-        )))
+        crate::datatypes::GraphEdge::arrow_datatype()
     }
 
     fn to_arrow_opt<'a>(
@@ -71,46 +88,12 @@ impl ::re_types_core::Loggable for GraphEdge {
     where
         Self: Clone + 'a,
     {
-        #![allow(clippy::wildcard_imports)]
-        use ::re_types_core::{Loggable as _, ResultExt as _};
-        use arrow2::{array::*, datatypes::*};
-        Ok({
-            let (somes, data0): (Vec<_>, Vec<_>) = data
-                .into_iter()
-                .map(|datum| {
-                    let datum: Option<::std::borrow::Cow<'a, Self>> = datum.map(Into::into);
-                    let datum = datum.map(|datum| datum.into_owned().0);
-                    (datum.is_some(), datum)
-                })
-                .unzip();
-            let data0_bitmap: Option<arrow2::bitmap::Bitmap> = {
-                let any_nones = somes.iter().any(|some| !*some);
-                any_nones.then(|| somes.into())
-            };
-            {
-                use arrow2::{buffer::Buffer, offset::OffsetsBuffer};
-                let offsets = arrow2::offset::Offsets::<i32>::try_from_lengths(
-                    data0
-                        .iter()
-                        .map(|opt| opt.as_ref().map_or(0, |datum| datum.len())),
-                )?
-                .into();
-                let data0_inner_data: Vec<_> = data0.into_iter().flatten().flatten().collect();
-                let data0_inner_bitmap: Option<arrow2::bitmap::Bitmap> = None;
-                ListArray::try_new(
-                    Self::arrow_datatype(),
-                    offsets,
-                    {
-                        _ = data0_inner_bitmap;
-                        crate::datatypes::GraphEdge::to_arrow_opt(
-                            data0_inner_data.into_iter().map(Some),
-                        )?
-                    },
-                    data0_bitmap,
-                )?
-                .boxed()
-            }
-        })
+        crate::datatypes::GraphEdge::to_arrow_opt(data.into_iter().map(|datum| {
+            datum.map(|datum| match datum.into() {
+                ::std::borrow::Cow::Borrowed(datum) => ::std::borrow::Cow::Borrowed(&datum.0),
+                ::std::borrow::Cow::Owned(datum) => ::std::borrow::Cow::Owned(datum.0),
+            })
+        }))
     }
 
     fn from_arrow_opt(
@@ -119,64 +102,7 @@ impl ::re_types_core::Loggable for GraphEdge {
     where
         Self: Sized,
     {
-        #![allow(clippy::wildcard_imports)]
-        use ::re_types_core::{Loggable as _, ResultExt as _};
-        use arrow2::{array::*, buffer::*, datatypes::*};
-        Ok({
-            let arrow_data = arrow_data
-                .as_any()
-                .downcast_ref::<arrow2::array::ListArray<i32>>()
-                .ok_or_else(|| {
-                    let expected = Self::arrow_datatype();
-                    let actual = arrow_data.data_type().clone();
-                    DeserializationError::datatype_mismatch(expected, actual)
-                })
-                .with_context("rerun.components.GraphEdge#edge")?;
-            if arrow_data.is_empty() {
-                Vec::new()
-            } else {
-                let arrow_data_inner = {
-                    let arrow_data_inner = &**arrow_data.values();
-                    crate::datatypes::GraphEdge::from_arrow_opt(arrow_data_inner)
-                        .with_context("rerun.components.GraphEdge#edge")?
-                        .into_iter()
-                        .collect::<Vec<_>>()
-                };
-                let offsets = arrow_data.offsets();
-                arrow2::bitmap::utils::ZipValidity::new_with_validity(
-                    offsets.iter().zip(offsets.lengths()),
-                    arrow_data.validity(),
-                )
-                .map(|elem| {
-                    elem.map(|(start, len)| {
-                        let start = *start as usize;
-                        let end = start + len;
-                        if end > arrow_data_inner.len() {
-                            return Err(DeserializationError::offset_slice_oob(
-                                (start, end),
-                                arrow_data_inner.len(),
-                            ));
-                        }
-
-                        #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
-                        let data = unsafe { arrow_data_inner.get_unchecked(start..end) };
-                        let data = data
-                            .iter()
-                            .cloned()
-                            .map(Option::unwrap_or_default)
-                            .collect();
-                        Ok(data)
-                    })
-                    .transpose()
-                })
-                .collect::<DeserializationResult<Vec<Option<_>>>>()?
-            }
-            .into_iter()
-        }
-        .map(|v| v.ok_or_else(DeserializationError::missing_data))
-        .map(|res| res.map(|v| Some(Self(v))))
-        .collect::<DeserializationResult<Vec<Option<_>>>>()
-        .with_context("rerun.components.GraphEdge#edge")
-        .with_context("rerun.components.GraphEdge")?)
+        crate::datatypes::GraphEdge::from_arrow_opt(arrow_data)
+            .map(|v| v.into_iter().map(|v| v.map(Self)).collect())
     }
 }

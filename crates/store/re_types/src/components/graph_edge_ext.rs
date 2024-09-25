@@ -1,28 +1,26 @@
-// TODO(grtlr): improve these convenience methods
-
 use re_types_core::datatypes::EntityPath;
 
 use crate::datatypes::{GraphEdge, GraphNodeId};
 
 impl super::GraphEdge {
-    pub fn new(source: impl Into<GraphNodeId>, dest: impl Into<GraphNodeId>) -> Self {
-        Self(vec![GraphEdge {
+    /// Creates a new edge between two nodes.
+    pub fn new(source: impl Into<GraphNodeId>, target: impl Into<GraphNodeId>) -> Self {
+        Self(GraphEdge{
             source: source.into(),
-            dest: dest.into(),
-            source_entity: None,
-            dest_entity: None,
-        }])
+            target: target.into(),
+            ..Default::default()
+        })
     }
 
-    pub fn new_global(
-        (source_entity, source): (impl Into<EntityPath>, impl Into<GraphNodeId>),
-        (dest_entity, dest): (impl Into<EntityPath>, impl Into<GraphNodeId>),
-    ) -> Self {
-        Self(vec![GraphEdge {
-            source_entity: Some(source_entity.into()),
-            source: source.into(),
-            dest_entity: Some(dest_entity.into()),
-            dest: dest.into(),
-        }])
+    /// Specifies the entity in which the edge originates.
+    pub fn with_source_in(mut self, path: impl Into<EntityPath>) -> Self {
+        self.0.source_entity = Some(path.into());
+        self
+    }
+
+    /// Specifies the entity in which the edge terminates.
+    pub fn with_target_in(mut self, path: impl Into<EntityPath>) -> Self {
+        self.0.target_entity = Some(path.into());
+        self
     }
 }

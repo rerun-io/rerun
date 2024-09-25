@@ -30,7 +30,7 @@ from .entity_path import EntityPath, EntityPathBatch, EntityPathType
 from .fill_mode import FillMode, FillModeArrayLike, FillModeBatch, FillModeLike, FillModeType
 from .fill_ratio import FillRatio, FillRatioBatch, FillRatioType
 from .gamma_correction import GammaCorrection, GammaCorrectionBatch, GammaCorrectionType
-from .graph_edge import GraphEdge, GraphEdgeArrayLike, GraphEdgeBatch, GraphEdgeLike, GraphEdgeType
+from .graph_edge import GraphEdge, GraphEdgeBatch, GraphEdgeType
 from .graph_node_id import GraphNodeId, GraphNodeIdBatch, GraphNodeIdType
 from .half_size2d import HalfSize2D, HalfSize2DBatch, HalfSize2DType
 from .half_size3d import HalfSize3D, HalfSize3DBatch, HalfSize3DType
@@ -154,9 +154,7 @@ __all__ = [
     "GammaCorrectionBatch",
     "GammaCorrectionType",
     "GraphEdge",
-    "GraphEdgeArrayLike",
     "GraphEdgeBatch",
-    "GraphEdgeLike",
     "GraphEdgeType",
     "GraphNodeId",
     "GraphNodeIdBatch",

@@ -1,5 +1,4 @@
 use re_viewer::external::{
-    re_log::external::log,
     re_log_types::EntityPath,
     re_renderer,
     re_types::{
@@ -14,17 +13,10 @@ use re_viewer::external::{
     },
 };
 
-/// Our space view consist of single part which holds a list of egui colors for each entity path.
 #[derive(Default)]
-pub struct GraphNodeSystem {
-    pub nodes: Vec<(EntityPath, Vec<NodeIdWithInstance>)>,
+pub struct GraphEdgeSystem {
     pub edges: Vec<(EntityPath, Vec<EdgeWithInstance>)>,
-}
-
-pub struct NodeIdWithInstance {
-    pub node_id: GraphNodeId,
-    // pub instance: Instance,
-    pub label: Option<String>,
+    pub globals: Vec<(EntityPath, Vec<EdgeWithInstance>)>,
 }
 
 pub struct EdgeWithInstance {
@@ -33,22 +25,15 @@ pub struct EdgeWithInstance {
     pub label: Option<String>,
 }
 
-impl IdentifiedViewSystem for GraphNodeSystem {
+impl IdentifiedViewSystem for GraphEdgeSystem {
     fn identifier() -> ViewSystemIdentifier {
-        "Graph Nodes".into()
+        "GraphEdges".into()
     }
 }
 
-impl VisualizerSystem for GraphNodeSystem {
+impl VisualizerSystem for GraphEdgeSystem {
     fn visualizer_query_info(&self) -> VisualizerQueryInfo {
-        use re_types::Archetype;
-        let mut info = VisualizerQueryInfo::from_archetype::<re_types::archetypes::GraphNodes>();
-        info.indicators.insert(
-            re_types::archetypes::GraphEdges::indicator()
-                .name()
-                .to_owned(),
-        );
-        info
+        VisualizerQueryInfo::from_archetype::<re_types::archetypes::GraphEdges>()
     }
 
     /// Populates the scene part with data from the store.
@@ -58,29 +43,13 @@ impl VisualizerSystem for GraphNodeSystem {
         query: &ViewQuery<'_>,
         _context_systems: &ViewContextCollection,
     ) -> Result<Vec<re_renderer::QueueableDrawData>, SpaceViewSystemExecutionError> {
-        log::debug!("Called execute");
         for data_result in query.iter_visible_data_results(ctx, Self::identifier()) {
             let results = ctx.recording().query_caches().latest_at(
                 ctx.recording_store(),
                 &ctx.current_query(),
                 &data_result.entity_path,
-                [GraphNodeId::name(), GraphEdge::name()],
+                [GraphEdge::name()],
             );
-
-            if let Some(node_ids) = results.component_batch::<GraphNodeId>() {
-                // log::debug!("Node ids: {:?}", node_ids);
-
-                self.nodes.push((
-                    data_result.entity_path.clone(),
-                    node_ids
-                        .iter()
-                        .map(|node_id| NodeIdWithInstance {
-                            node_id: node_id.to_owned(),
-                            label: None,
-                        })
-                        .collect(),
-                ));
-            }
 
             if let Some(edges) = results.component_batch::<GraphEdge>() {
                 // log::debug!("Edges: {:?}", edges);
@@ -112,4 +81,4 @@ impl VisualizerSystem for GraphNodeSystem {
     }
 }
 
-re_viewer_context::impl_component_fallback_provider!(GraphNodeSystem => []);
+re_viewer_context::impl_component_fallback_provider!(GraphEdgeSystem => []);

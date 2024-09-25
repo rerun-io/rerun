@@ -3,7 +3,6 @@
 
 #pragma once
 
-#include "../collection.hpp"
 #include "../datatypes/graph_edge.hpp"
 #include "../result.hpp"
 
@@ -11,34 +10,32 @@
 #include <memory>
 #include <utility>
 
-namespace arrow {
-    class Array;
-    class DataType;
-    class ListBuilder;
-} // namespace arrow
-
 namespace rerun::components {
     /// **Component**: An edge in a graph connecting two nodes.
     ///
     /// Depending on the context this could represent a directed or undirected edge.
     struct GraphEdge {
-        rerun::Collection<rerun::datatypes::GraphEdge> edge;
+        rerun::datatypes::GraphEdge edge;
 
       public:
         GraphEdge() = default;
 
-        GraphEdge(rerun::Collection<rerun::datatypes::GraphEdge> edge_) : edge(std::move(edge_)) {}
+        GraphEdge(rerun::datatypes::GraphEdge edge_) : edge(std::move(edge_)) {}
 
-        GraphEdge& operator=(rerun::Collection<rerun::datatypes::GraphEdge> edge_) {
+        GraphEdge& operator=(rerun::datatypes::GraphEdge edge_) {
             edge = std::move(edge_);
             return *this;
+        }
+
+        /// Cast to the underlying GraphEdge datatype
+        operator rerun::datatypes::GraphEdge() const {
+            return edge;
         }
     };
 } // namespace rerun::components
 
 namespace rerun {
-    template <typename T>
-    struct Loggable;
+    static_assert(sizeof(rerun::datatypes::GraphEdge) == sizeof(components::GraphEdge));
 
     /// \private
     template <>
@@ -46,16 +43,27 @@ namespace rerun {
         static constexpr const char Name[] = "rerun.components.GraphEdge";
 
         /// Returns the arrow data type this type corresponds to.
-        static const std::shared_ptr<arrow::DataType>& arrow_datatype();
+        static const std::shared_ptr<arrow::DataType>& arrow_datatype() {
+            return Loggable<rerun::datatypes::GraphEdge>::arrow_datatype();
+        }
 
         /// Serializes an array of `rerun::components::GraphEdge` into an arrow array.
         static Result<std::shared_ptr<arrow::Array>> to_arrow(
             const components::GraphEdge* instances, size_t num_instances
-        );
-
-        /// Fills an arrow array builder with an array of this type.
-        static rerun::Error fill_arrow_array_builder(
-            arrow::ListBuilder* builder, const components::GraphEdge* elements, size_t num_elements
-        );
+        ) {
+            if (num_instances == 0) {
+                return Loggable<rerun::datatypes::GraphEdge>::to_arrow(nullptr, 0);
+            } else if (instances == nullptr) {
+                return rerun::Error(
+                    ErrorCode::UnexpectedNullArgument,
+                    "Passed array instances is null when num_elements> 0."
+                );
+            } else {
+                return Loggable<rerun::datatypes::GraphEdge>::to_arrow(
+                    &instances->edge,
+                    num_instances
+                );
+            }
+        }
     };
 } // namespace rerun

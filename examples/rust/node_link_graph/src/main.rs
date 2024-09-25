@@ -5,10 +5,9 @@
 //!  cargo run -p minimal_options -- --help
 //! ```
 
+use rerun::components::GraphEdge;
 use rerun::external::re_log;
-use rerun::{components, datatypes, EntityPath};
 
-use rerun::demo_util::grid;
 use rerun::{GraphEdges, GraphNodes};
 
 #[derive(Debug, clap::Parser)]
@@ -38,10 +37,7 @@ fn run(rec: &rerun::RecordingStream, _args: &Args) -> anyhow::Result<()> {
     rec.set_time_sequence("frame", 0);
     rec.log("kitchen/objects", &GraphNodes::new(["sink", "fridge"]))?;
     rec.log("kitchen/areas", &GraphNodes::new(["area0", "area1"]))?;
-    rec.log(
-        "kitchen/areas",
-        &GraphEdges::new([components::GraphEdge::new("area0", "area1")]),
-    )?;
+    rec.log("kitchen/areas", &GraphEdges::new([("area0", "area1")]))?;
 
     rec.set_time_sequence("frame", 1);
     rec.log("hallway/areas", &GraphNodes::new(["area0"]))?;
@@ -54,25 +50,19 @@ fn run(rec: &rerun::RecordingStream, _args: &Args) -> anyhow::Result<()> {
     )?;
     rec.log(
         "living/areas",
-        &GraphEdges::new([
-            components::GraphEdge::new("area0", "area1"),
-            components::GraphEdge::new("area0", "area2"),
-            components::GraphEdge::new("area1", "area2"),
-        ]),
+        &GraphEdges::new([("area0", "area1"), ("area0", "area2"), ("area1", "area2")]),
     )?;
 
     rec.log(
         "doors",
-        &GraphEdges::new([components::GraphEdge::new_global(
-            (
-                datatypes::EntityPath::from("kitchen/areas"),
-                datatypes::GraphNodeId::from("area1"),
-            ),
-            (
-                datatypes::EntityPath::from("kitchen/areas"),
-                datatypes::GraphNodeId::from("area1"),
-            ),
-        )]),
+        &GraphEdges::new([
+            GraphEdge::new("area1", "area0")
+                .with_source_in("kitchen/areas")
+                .with_target_in("hallway/areas"),
+            GraphEdge::new("area1", "area2")
+                .with_source_in("hallway/areas")
+                .with_target_in("living/areas"),
+        ]),
     )?;
 
     Ok(())
