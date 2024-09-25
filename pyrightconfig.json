@@ -2,26 +2,20 @@
   "extraPaths": [
     "rerun_py/rerun_sdk"
   ],
-
   "exclude": [
     "**/node_modules",
     "**/__pycache__",
     "target*",
     "venv*",
-    ".nox",
     ".pixi",
     "build"
   ],
-
   "ignore": [
     "rerun_py/rerun"
   ],
-
   "defineConstant": {
     "DEBUG": true
   },
-
   "venv": "venv",
-
   "reportPrivateImportUsage": false
 }
