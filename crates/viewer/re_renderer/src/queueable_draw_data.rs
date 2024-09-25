@@ -17,11 +17,11 @@ pub enum QueueableDrawDataError {
     UnexpectedDrawDataType(&'static str),
 }
 
-type DrawFn = dyn for<'a, 'b> Fn(
+type DrawFn = dyn for<'pipelines, 'encoder> Fn(
         &Renderers,
-        &GpuRenderPipelinePoolAccessor<'a>,
+        &GpuRenderPipelinePoolAccessor<'pipelines>,
         DrawPhase,
-        &mut wgpu::RenderPass<'b>,
+        &mut wgpu::RenderPass<'encoder>,
         &dyn std::any::Any,
     ) -> Result<(), QueueableDrawDataError>
     + Sync
