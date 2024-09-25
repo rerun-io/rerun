@@ -910,7 +910,7 @@ impl App {
                         .on_hover_text("Request a second layout pass. Just for testing.")
                         .clicked()
                     {
-                        ui.ctx().request_discard();
+                        ui.ctx().request_discard("testing");
                     }
 
                     egui::CollapsingHeader::new("egui settings")

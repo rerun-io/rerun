@@ -69,11 +69,11 @@ impl Renderer for TestTriangle {
         Self { render_pipeline }
     }
 
-    fn draw<'a>(
+    fn draw(
         &self,
-        render_pipelines: &'a GpuRenderPipelinePoolAccessor<'a>,
+        render_pipelines: &GpuRenderPipelinePoolAccessor<'_>,
         _phase: DrawPhase,
-        pass: &mut wgpu::RenderPass<'a>,
+        pass: &mut wgpu::RenderPass<'_>,
         _draw_data: &TestTriangleDrawData,
     ) -> Result<(), DrawError> {
         let pipeline = render_pipelines.get(self.render_pipeline)?;

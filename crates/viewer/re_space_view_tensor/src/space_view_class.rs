@@ -374,6 +374,7 @@ impl TensorSpaceView {
             },
             minification: egui::TextureFilter::Linear, // TODO(andreas): allow for mipmapping based filter
             wrap_mode: egui::TextureWrapMode::ClampToEdge,
+            mipmap_mode: None,
         };
 
         gpu_bridge::render_image(
