@@ -19,7 +19,11 @@ for t in range(0, int(math.pi * 4 * 100.0)):
 blueprint = rrb.Blueprint(
     rrb.DataframeView(
         origin="/trig",
-        # TODO(#6896): add an interesting query here
+        # TODO(#6896): improve `DataframeQueryV2` API and showcase more features
+        query=rrb.archetypes.DataframeQueryV2(
+            timeline="t",
+            range_filter=rrb.components.RangeFilter(start=rr.TimeInt(seconds=0), end=rr.TimeInt(seconds=20)),
+        ),
     ),
 )
 

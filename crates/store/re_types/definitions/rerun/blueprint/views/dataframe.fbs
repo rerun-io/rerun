@@ -8,6 +8,5 @@ table DataframeView (
     "attr.rerun.view_identifier": "Dataframe"
 ) {
     /// Query of the dataframe.
-    //TODO(#6896): this will be enabled in a later PR in the chain
-    //query: rerun.blueprint.archetypes.DataframeQueryV2 (order: 1000);
+    query: rerun.blueprint.archetypes.DataframeQueryV2 (order: 1000);
 }

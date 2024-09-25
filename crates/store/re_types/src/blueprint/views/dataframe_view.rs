@@ -20,17 +20,49 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **View**: A view to display any data in a tabular form.
 #[derive(Clone, Debug)]
-pub struct DataframeView {}
+pub struct DataframeView {
+    /// Query of the dataframe.
+    pub query: crate::blueprint::archetypes::DataframeQueryV2,
+}
 
 impl ::re_types_core::SizeBytes for DataframeView {
     #[inline]
     fn heap_size_bytes(&self) -> u64 {
-        0
+        self.query.heap_size_bytes()
     }
 
     #[inline]
     fn is_pod() -> bool {
-        true
+        <crate::blueprint::archetypes::DataframeQueryV2>::is_pod()
+    }
+}
+
+impl<T: Into<crate::blueprint::archetypes::DataframeQueryV2>> From<T> for DataframeView {
+    fn from(v: T) -> Self {
+        Self { query: v.into() }
+    }
+}
+
+impl std::borrow::Borrow<crate::blueprint::archetypes::DataframeQueryV2> for DataframeView {
+    #[inline]
+    fn borrow(&self) -> &crate::blueprint::archetypes::DataframeQueryV2 {
+        &self.query
+    }
+}
+
+impl std::ops::Deref for DataframeView {
+    type Target = crate::blueprint::archetypes::DataframeQueryV2;
+
+    #[inline]
+    fn deref(&self) -> &crate::blueprint::archetypes::DataframeQueryV2 {
+        &self.query
+    }
+}
+
+impl std::ops::DerefMut for DataframeView {
+    #[inline]
+    fn deref_mut(&mut self) -> &mut crate::blueprint::archetypes::DataframeQueryV2 {
+        &mut self.query
     }
 }
 
