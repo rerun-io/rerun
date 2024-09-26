@@ -240,7 +240,7 @@ impl VideoDecoder {
 
         // 2. Search _backwards_, starting at `decode_sample_idx`, looking for
         //    the first sample where `sample.composition_timestamp <= presentation_timestamp`.
-        //    This is the sample the user requested.
+        //    This is the sample which when decoded will be presented at the timestamp the user requested.
         let Some(requested_sample_idx) = self.data.samples[..=decode_sample_idx]
             .iter()
             .rposition(|sample| sample.composition_timestamp <= presentation_timestamp)
