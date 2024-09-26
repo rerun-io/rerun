@@ -2,6 +2,7 @@ use std::any::{Any, TypeId};
 
 use ahash::HashMap;
 use parking_lot::Mutex;
+use re_chunk_store::ChunkStoreEvent;
 
 /// Does memoization of different objects for the immediate mode UI.
 #[derive(Default)]
@@ -23,6 +24,17 @@ impl Caches {
         re_tracing::profile_function!();
         for cache in self.0.lock().values_mut() {
             cache.purge_memory();
+        }
+    }
+
+    /// React to the chunk store's changelog, if needed.
+    ///
+    /// Useful to e.g. invalidate unreachable data.
+    pub fn on_store_events(&self, events: &[ChunkStoreEvent]) {
+        re_tracing::profile_function!();
+
+        for cache in self.0.lock().values_mut() {
+            cache.on_store_events(events);
         }
     }
 
@@ -51,6 +63,13 @@ pub trait Cache: std::any::Any + Send + Sync {
 
     /// Attempt to free up memory.
     fn purge_memory(&mut self);
+
+    /// React to the chunk store's changelog, if needed.
+    ///
+    /// Useful to e.g. invalidate unreachable data.
+    fn on_store_events(&mut self, events: &[ChunkStoreEvent]) {
+        _ = events;
+    }
 
     // TODO(andreas): Track bytes used for each cache and show in the memory panel!
     //fn bytes_used(&self) -> usize;
