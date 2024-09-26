@@ -8,10 +8,9 @@ use re_smart_channel::ReceiveSet;
 use re_types::blueprint::components::PanelState;
 use re_ui::ContextExt as _;
 use re_viewer_context::{
-    blueprint_timeline, AppOptions, ApplicationSelectionState, Caches, CommandSender,
-    ComponentUiRegistry, PlayState, RecordingConfig, SpaceViewClassExt as _,
-    SpaceViewClassRegistry, StoreContext, StoreHub, SystemCommandSender as _, ViewStates,
-    ViewerContext,
+    blueprint_timeline, AppOptions, ApplicationSelectionState, CommandSender, ComponentUiRegistry,
+    PlayState, RecordingConfig, SpaceViewClassExt as _, SpaceViewClassRegistry, StoreContext,
+    StoreHub, SystemCommandSender as _, ViewStates, ViewerContext,
 };
 use re_viewport::Viewport;
 use re_viewport_blueprint::ui::add_space_view_or_container_modal_ui;
@@ -27,10 +26,6 @@ const WATERMARK: bool = false; // Nice for recording media material
 pub struct AppState {
     /// Global options for the whole viewer.
     pub(crate) app_options: AppOptions,
-
-    /// Things that need caching.
-    #[serde(skip)]
-    pub(crate) cache: Caches,
 
     /// Configuration for the current recording (found in [`EntityDb`]).
     recording_configs: HashMap<StoreId, RecordingConfig>,
@@ -73,7 +68,6 @@ impl Default for AppState {
     fn default() -> Self {
         Self {
             app_options: Default::default(),
-            cache: Default::default(),
             recording_configs: Default::default(),
             blueprint_cfg: Default::default(),
             selection_panel: Default::default(),
@@ -149,7 +143,6 @@ impl AppState {
 
         let Self {
             app_options,
-            cache,
             recording_configs,
             blueprint_cfg,
             selection_panel,
@@ -254,7 +247,7 @@ impl AppState {
         let egui_ctx = ui.ctx().clone();
         let ctx = ViewerContext {
             app_options,
-            cache,
+            cache: store_context.caches,
             space_view_class_registry,
             reflection,
             component_ui_registry,
@@ -321,7 +314,7 @@ impl AppState {
         // but it's just a bunch of refs so not really that big of a deal in practice.
         let ctx = ViewerContext {
             app_options,
-            cache,
+            cache: store_context.caches,
             space_view_class_registry,
             reflection,
             component_ui_registry,

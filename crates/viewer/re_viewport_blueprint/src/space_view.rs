@@ -770,6 +770,7 @@ mod tests {
             default_blueprint: None,
             recording: &test_ctx.recording_store,
             bundle: &Default::default(),
+            caches: &Default::default(),
             hub: &re_viewer_context::StoreHub::test_hub(),
         };
 

@@ -51,7 +51,7 @@ impl DragDropAddress {
         &self,
         ctx: &ViewerContext<'_>,
         slice_selection: &TensorSliceSelection,
-        slice_property: &ViewProperty<'_>,
+        slice_property: &ViewProperty,
         new_selection: Option<TensorDimensionIndexSelection>,
     ) {
         match self {
@@ -148,7 +148,7 @@ pub fn dimension_mapping_ui(
     ui: &mut egui::Ui,
     shape: &[TensorDimension],
     slice_selection: &TensorSliceSelection,
-    slice_property: &ViewProperty<'_>,
+    slice_property: &ViewProperty,
 ) {
     let mut drag_source = DragDropAddress::None; // Drag this…
     let mut drop_target = DragDropAddress::None; // …onto this.

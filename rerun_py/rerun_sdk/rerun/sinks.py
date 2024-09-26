@@ -82,6 +82,10 @@ def save(
 
     Call this _before_ you log any data!
 
+    The Rerun Viewer is able to read continuously from the resulting rrd file while it is being written.
+    However, depending on your OS and configuration, changes may not be immediately visible due to file caching.
+    This is a common issue on Windows and (to a lesser extent) on MacOS.
+
     Parameters
     ----------
     path:

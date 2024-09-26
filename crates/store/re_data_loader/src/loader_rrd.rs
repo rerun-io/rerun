@@ -219,14 +219,32 @@ mod tests {
     use re_log_types::{
         ApplicationId, LogMsg, SetStoreInfo, StoreId, StoreInfo, StoreKind, StoreSource, Time,
     };
-    use tempfile::NamedTempFile;
 
     use super::*;
 
+    struct DeleteOnDrop {
+        path: std::path::PathBuf,
+    }
+
+    impl Drop for DeleteOnDrop {
+        fn drop(&mut self) {
+            std::fs::remove_file(&self.path).ok();
+        }
+    }
+
     #[test]
     fn test_loading_with_retryable_reader() {
-        let rrd_file = NamedTempFile::new().unwrap();
-        let rrd_file_path = rrd_file.path().to_owned();
+        // We can't use `tempfile` here since it deletes the file on drop and we want to keep it around for a bit longer.
+        let rrd_file_path = std::path::PathBuf::from("testfile.rrd");
+        let rrd_file_delete_guard = DeleteOnDrop {
+            path: rrd_file_path.clone(),
+        };
+        std::fs::remove_file(&rrd_file_path).ok(); // Remove the file just in case a previous test crashes hard.
+        let rrd_file = std::fs::OpenOptions::new()
+            .create(true)
+            .write(true)
+            .open(rrd_file_path.to_str().unwrap())
+            .unwrap();
 
         let mut encoder = Encoder::new(
             re_build_info::CrateVersion::LOCAL,
@@ -258,6 +276,7 @@ mod tests {
         for m in &messages {
             encoder.append(m).expect("failed to append message");
         }
+        encoder.flush_blocking().expect("failed to flush messages");
 
         let reader = RetryableFileReader::new(&rrd_file_path).unwrap();
         let mut decoder = Decoder::new(decoder::VersionPolicy::Warn, reader).unwrap();
@@ -287,11 +306,19 @@ mod tests {
         for m in &more_messages {
             encoder.append(m).unwrap();
         }
-        // close the stream to stop the decoder reading, otherwise with retryable reader we'd be waiting indefinitely
-        encoder.finish().unwrap();
+        // Close the encoder and thus the file to make sure that file is actually written out.
+        // Otherwise we can't we be sure that the filewatcher will ever see those changes.
+        // A simple flush works sometimes, but is not as reliably as closing the file since the OS may still cache the data.
+        // (in fact we can't be sure that close is enough either, but it's the best we can do)
+        // Note that this test is not entirely representative of the real usecase of having reader and writer on
+        // different processes, since file read/write visibility across processes may behave differently.
+        encoder.finish().expect("failed to finish encoder");
+        drop(encoder);
 
         let remaining_messages = decoder_handle.join().unwrap();
-
         assert_eq!(more_messages, remaining_messages);
+
+        // Drop explicitly to make sure that rustc doesn't drop it earlier.
+        drop(rrd_file_delete_guard);
     }
 }

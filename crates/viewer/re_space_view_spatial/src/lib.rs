@@ -157,7 +157,7 @@ fn query_pinhole_legacy(
 
 pub(crate) fn configure_background(
     ctx: &ViewerContext<'_>,
-    background: &ViewProperty<'_>,
+    background: &ViewProperty,
     render_ctx: &RenderContext,
     view_system: &dyn re_viewer_context::ComponentFallbackProvider,
     state: &dyn re_viewer_context::SpaceViewState,

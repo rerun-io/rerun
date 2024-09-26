@@ -69,12 +69,12 @@ pub trait Renderer {
     // TODO(andreas): Some Renderers need to create their own passes, need something like this for that.
 
     /// Called once per phase given by [`Renderer::participated_phases`].
-    fn draw<'a>(
+    fn draw(
         &self,
-        render_pipelines: &'a GpuRenderPipelinePoolAccessor<'a>,
+        render_pipelines: &GpuRenderPipelinePoolAccessor<'_>,
         phase: DrawPhase,
-        pass: &mut wgpu::RenderPass<'a>,
-        draw_data: &'a Self::RendererDrawData,
+        pass: &mut wgpu::RenderPass<'_>,
+        draw_data: &Self::RendererDrawData,
     ) -> Result<(), DrawError>;
 
     /// Combination of flags indicating in which phases [`Renderer::draw`] should be called.

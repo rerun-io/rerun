@@ -290,7 +290,7 @@ impl VisualizerSystem for Arrows3DVisualizer {
         self
     }
 
-    fn as_fallback_provider(&self) -> &dyn re_viewer_context::ComponentFallbackProvider {
+    fn fallback_provider(&self) -> &dyn re_viewer_context::ComponentFallbackProvider {
         self
     }
 }

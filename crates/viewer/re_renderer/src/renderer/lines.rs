@@ -744,12 +744,12 @@ impl Renderer for LineRenderer {
         }
     }
 
-    fn draw<'a>(
+    fn draw(
         &self,
-        render_pipelines: &'a GpuRenderPipelinePoolAccessor<'a>,
+        render_pipelines: &GpuRenderPipelinePoolAccessor<'_>,
         phase: DrawPhase,
-        pass: &mut wgpu::RenderPass<'a>,
-        draw_data: &'a Self::RendererDrawData,
+        pass: &mut wgpu::RenderPass<'_>,
+        draw_data: &Self::RendererDrawData,
     ) -> Result<(), DrawError> {
         let (pipeline_handle, bind_group_all_lines) = match phase {
             DrawPhase::OutlineMask => (

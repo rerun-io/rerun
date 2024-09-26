@@ -91,6 +91,10 @@ impl App {
                 debug_menu_options_ui(ui, &mut self.state.app_options, &self.command_sender);
 
                 ui.label("egui debug options:");
+                ui.weak(format!(
+                    "pixels_per_point: {:?}",
+                    ui.ctx().pixels_per_point()
+                ));
                 egui_debug_options_ui(ui);
             });
 
