@@ -43,6 +43,6 @@ impl VideoDecoder {
         _render_ctx: &RenderContext,
         _presentation_timestamp_s: f64,
     ) -> FrameDecodingResult {
-        FrameDecodingResult::Error(DecodingError::NoNativeSupport)
+        Err(DecodingError::NoNativeSupport)
     }
 }
