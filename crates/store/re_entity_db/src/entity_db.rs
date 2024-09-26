@@ -361,6 +361,11 @@ impl EntityDb {
             self.query_caches.on_events(&store_events);
             self.tree.on_store_additions(&store_events);
 
+            // It is possible for writes to trigger deletions: specifically in the case of
+            // overwritten static data leading to dangling chunks.
+            self.tree
+                .on_store_deletions(&self.data_store, &store_events);
+
             // We inform the stats last, since it measures e2e latency.
             self.stats.on_events(&store_events);
         }
