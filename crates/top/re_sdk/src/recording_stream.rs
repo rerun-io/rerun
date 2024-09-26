@@ -349,6 +349,10 @@ impl RecordingStreamBuilder {
     /// Creates a new [`RecordingStream`] that is pre-configured to stream the data through to an
     /// RRD file on disk.
     ///
+    /// The Rerun Viewer is able to read continuously from the resulting rrd file while it is being written.
+    /// However, depending on your OS and configuration, changes may not be immediately visible due to file caching.
+    /// This is a common issue on Windows and (to a lesser extent) on MacOS.
+    ///
     /// ## Example
     ///
     /// ```no_run
