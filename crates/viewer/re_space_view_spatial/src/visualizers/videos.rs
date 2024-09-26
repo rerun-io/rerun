@@ -7,7 +7,7 @@ use re_renderer::{
         ColormappedTexture, RectangleOptions, TextureFilterMag, TextureFilterMin, TexturedRect,
     },
     resource_managers::Texture2DCreationDesc,
-    video::{VideoFrameTexture, Video},
+    video::{Video, VideoFrameTexture},
 };
 use re_types::{
     archetypes::{AssetVideo, VideoFrameReference},
