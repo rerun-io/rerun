@@ -217,7 +217,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Set up ghp-import
-        run: pixi run -e cpp pip install ghp-import
+        run: pixi run -e cpp pip install --break-system-package ghp-import
 
         # TODO(andreas): Do we need this?
       # - name: Patch in a redirect page
