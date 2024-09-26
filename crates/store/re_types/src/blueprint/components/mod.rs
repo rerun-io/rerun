@@ -21,6 +21,7 @@ mod panel_state_ext;
 mod query_expression;
 mod query_kind;
 mod range_filter;
+mod range_filter_ext;
 mod row_share;
 mod selected_columns;
 mod space_view_class;

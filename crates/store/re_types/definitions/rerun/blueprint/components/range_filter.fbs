@@ -5,7 +5,7 @@ namespace rerun.blueprint.components;
 //TODO(ab, jleibs): this probably needs reunification with whatever structure the data out API uses.
 table RangeFilter (
   "attr.arrow.transparent",
-  "attr.rust.derive": "Default, PartialEq, Eq",
+  "attr.rust.derive": "PartialEq, Eq",
   "attr.rust.repr": "transparent",
   "attr.rerun.scope": "blueprint"
 ) {
