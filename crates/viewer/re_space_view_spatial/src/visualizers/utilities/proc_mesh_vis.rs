@@ -176,26 +176,6 @@ where
             );
 
             match fill_mode {
-                FillMode::MajorWireframe | FillMode::DenseWireframe
-                    if proc_mesh_key == ProcMeshKey::Cube =>
-                {
-                    // TODO(kpreid): Does this special case for cubes have any value?
-                    let strip_builder = line_batch
-                        .add_box_outline_from_transform(world_from_instance)
-                        .color(color)
-                        .radius(radius)
-                        .picking_instance_id(PickingLayerInstanceId(instance_index as _));
-
-                    if let Some(outline_mask_ids) = ent_context
-                        .highlight
-                        .instances
-                        .get(&Instance::from(instance_index as u64))
-                    {
-                        // Not using ent_context.highlight.index_outline_mask() because
-                        // that's already handled when the builder was created.
-                        strip_builder.outline_mask_ids(*outline_mask_ids);
-                    }
-                }
                 FillMode::MajorWireframe | FillMode::DenseWireframe => {
                     let Some(wireframe_mesh) = query_context.viewer_ctx.cache.entry(
                         |c: &mut proc_mesh::WireframeCache| c.entry(proc_mesh_key, self.render_ctx),
