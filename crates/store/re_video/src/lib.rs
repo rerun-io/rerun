@@ -56,15 +56,18 @@ impl VideoData {
         } else if mp4::is_mp4(data) {
             "video/mp4".to_owned()
         } else {
-            // Technically this means that we failed to determine the media type altogether,
-            // but we don't want to call it `FailedToDetermineMediaType` since the rest of Rerun has
-            // access to `re_types::components::MediaType` which has a much wider range of media type detection.
-            return Err(VideoLoadError::UnsupportedVideoType);
+            return Err(VideoLoadError::UnrecognizedVideoFormat);
         };
 
         match media_type.as_str() {
             "video/mp4" => mp4::load_mp4(data),
-            media_type => Err(VideoLoadError::UnsupportedMediaType(media_type.to_owned())),
+            media_type => {
+                if media_type.starts_with("video/") {
+                    Err(VideoLoadError::UnsupportedMediaType(media_type.to_owned()))
+                } else {
+                    Err(VideoLoadError::MediaTypeIsNotAVideo(media_type.to_owned()))
+                }
+            }
         }
     }
 
@@ -260,11 +263,14 @@ pub enum VideoLoadError {
     #[error("Video file has invalid sample entries")]
     InvalidSamples,
 
+    #[error("The media type of the blob is not a video: {0}")]
+    MediaTypeIsNotAVideo(String),
+
     #[error("Video file has unsupported media type {0}")]
     UnsupportedMediaType(String),
 
     #[error("Video file has unsupported format")]
-    UnsupportedVideoType,
+    UnrecognizedVideoFormat,
 
     // `FourCC`'s debug impl doesn't quote the result
     #[error("Video track uses unsupported codec \"{0}\"")] // NOLINT

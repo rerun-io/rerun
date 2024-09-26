@@ -441,7 +441,8 @@ fn preview_if_blob_ui(
     let blob = blob.component_mono::<components::Blob>()?.ok()?;
     let media_type = component_map
         .get(&components::MediaType::name())
-        .and_then(|unit| unit.component_mono::<components::MediaType>()?.ok());
+        .and_then(|unit| unit.component_mono::<components::MediaType>()?.ok())
+        .or_else(|| components::MediaType::guess_from_data(&blob));
 
     let video_timestamp = component_map
         .get(&components::VideoTimestamp::name())

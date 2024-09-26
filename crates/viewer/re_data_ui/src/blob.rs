@@ -116,12 +116,14 @@ pub fn blob_preview_and_save_ui(
         let video_result = ctx.cache.entry(|c: &mut re_viewer_context::VideoCache| {
             c.entry(blob_row_id, blob, media_type.as_ref().map(|mt| mt.as_str()))
         });
+
         show_video_blob_info(
             ctx.render_ctx,
             ui,
             ui_layout,
             &video_result,
             video_timestamp,
+            media_type,
         );
     }
 
@@ -169,6 +171,7 @@ fn show_video_blob_info(
     ui_layout: UiLayout,
     video_result: &Result<re_renderer::video::Video, VideoLoadError>,
     video_timestamp: Option<VideoTimestamp>,
+    media_type: Option<&MediaType>,
 ) {
     match video_result {
         Ok(video) => {
@@ -264,7 +267,19 @@ fn show_video_blob_info(
                 }
             });
         }
+        Err(VideoLoadError::MediaTypeIsNotAVideo(_)) => {
+            // Don't show an error if this wasn't a video in the first place.
+            // Unfortunately we can't easily detect here if the Blob was _supposed_ to be a video, for that we'd need tagged components!
+            // (User may have confidently logged a non-video format as Video, we should tell them that!)
+        }
         Err(err) => {
+            if media_type.is_none() && matches!(err, VideoLoadError::UnrecognizedVideoFormat) {
+                // If we couldn't detect the media type and the loader didn't know the format,
+                // we can't show an error for unrecognized formats since maybe this wasn't a video to begin with.
+                // See also `MediaTypeIsNotAVideo` case above.
+                return;
+            }
+
             if ui_layout.is_single_line() {
                 ui.error_label(&format!("Failed to load video: {err}"));
             } else {
