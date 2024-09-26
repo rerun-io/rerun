@@ -230,7 +230,7 @@ impl DataResultQuery for DataResult {
             };
 
             if vis.visualizer_query_info().queried.contains(&component) {
-                return Some(vis.as_fallback_provider());
+                return Some(vis.fallback_provider());
             }
         }
 
