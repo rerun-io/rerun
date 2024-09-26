@@ -304,13 +304,18 @@ impl VideoDecoder {
         let frames = &mut decoder_output.frames;
 
         let Some(frame_idx) = latest_at_idx(
-            &frames,
+            frames,
             |frame| frame.composition_timestamp,
             &presentation_timestamp,
         ) else {
             // No buffered frames - texture will be blank.
 
             // Might this be due to an error?
+            ///
+            // We only care about decoding errors when we don't find the requested frame,
+            // since we want to keep playing the video fine even if parts of it are broken.
+            // That said, practically we reset the decoder and thus all frames upon error,
+            // so it doesn't make a lot of difference.
             if let Some(last_decoding_error) = decoder_output.last_decoding_error.clone() {
                 if decoder_output.time_when_entering_error_state.elapsed()
                     >= DECODING_ERROR_REPORTING_DELAY
