@@ -1,8 +1,13 @@
+use ahash::{HashMap, HashSet};
+
+use itertools::Either;
 use re_chunk::RowId;
+use re_chunk_store::ChunkStoreEvent;
 use re_log_types::hash::Hash64;
 use re_types::{
     archetypes::Image,
     image::{ImageKind, ImageLoadError},
+    Loggable as _,
 };
 
 use crate::{Cache, ImageInfo};
@@ -21,7 +26,7 @@ struct DecodedImageResult {
 /// Caches the results of decoding [`re_types::archetypes::EncodedImage`].
 #[derive(Default)]
 pub struct ImageDecodeCache {
-    cache: ahash::HashMap<Hash64, DecodedImageResult>,
+    cache: HashMap<RowId, HashMap<Hash64, DecodedImageResult>>,
     memory_used: u64,
     generation: u64,
 }
@@ -35,31 +40,36 @@ impl ImageDecodeCache {
     /// so we don't need the instance id here.
     pub fn entry(
         &mut self,
-        row_id: RowId,
+        blob_row_id: RowId,
         image_bytes: &[u8],
         media_type: Option<&str>,
     ) -> Result<ImageInfo, ImageLoadError> {
         re_tracing::profile_function!();
 
-        let key = Hash64::hash((row_id, media_type));
+        let inner_key = Hash64::hash(media_type);
 
-        let lookup = self.cache.entry(key).or_insert_with(|| {
-            let result = decode_image(row_id, image_bytes, media_type);
-            let memory_used = result.as_ref().map_or(0, |image| image.buffer.len() as u64);
-            self.memory_used += memory_used;
-            DecodedImageResult {
-                result,
-                memory_used,
-                last_use_generation: 0,
-            }
-        });
+        let lookup = self
+            .cache
+            .entry(blob_row_id)
+            .or_default()
+            .entry(inner_key)
+            .or_insert_with(|| {
+                let result = decode_image(blob_row_id, image_bytes, media_type);
+                let memory_used = result.as_ref().map_or(0, |image| image.buffer.len() as u64);
+                self.memory_used += memory_used;
+                DecodedImageResult {
+                    result,
+                    memory_used,
+                    last_use_generation: 0,
+                }
+            });
         lookup.last_use_generation = self.generation;
         lookup.result.clone()
     }
 }
 
 fn decode_image(
-    row_id: RowId,
+    blob_row_id: RowId,
     image_bytes: &[u8],
     media_type: Option<&str>,
 ) -> Result<ImageInfo, ImageLoadError> {
@@ -89,7 +99,7 @@ fn decode_image(
     let Image { buffer, format, .. } = image_arch;
 
     Ok(ImageInfo {
-        buffer_row_id: row_id,
+        buffer_row_id: blob_row_id,
         buffer: buffer.0,
         format: format.0,
         kind: ImageKind::Color,
@@ -122,12 +132,16 @@ impl Cache for ImageDecodeCache {
 
         let before = self.memory_used;
 
-        self.cache.retain(|_, ci| {
-            let retain = ci.last_use_generation == self.generation;
-            if !retain {
-                self.memory_used -= ci.memory_used;
-            }
-            retain
+        self.cache.retain(|_row_id, per_key| {
+            per_key.retain(|_, ci| {
+                let retain = ci.last_use_generation == self.generation;
+                if !retain {
+                    self.memory_used -= ci.memory_used;
+                }
+                retain
+            });
+
+            !per_key.is_empty()
         });
 
         re_log::trace!(
@@ -135,6 +149,32 @@ impl Cache for ImageDecodeCache {
             before as f64 / 1e9,
             self.memory_used as f64 / 1e9,
         );
+    }
+
+    fn on_store_events(&mut self, events: &[ChunkStoreEvent]) {
+        re_tracing::profile_function!();
+
+        let row_ids_removed: HashSet<RowId> = events
+            .iter()
+            .flat_map(|event| {
+                let is_deletion = || event.kind == re_chunk_store::ChunkStoreDiffKind::Deletion;
+                let contains_image_blob = || {
+                    event
+                        .chunk
+                        .components()
+                        .contains_key(&re_types::components::Blob::name())
+                };
+
+                if is_deletion() && contains_image_blob() {
+                    Either::Left(event.chunk.row_ids())
+                } else {
+                    Either::Right(std::iter::empty())
+                }
+            })
+            .collect();
+
+        self.cache
+            .retain(|row_id, _per_key| !row_ids_removed.contains(row_id));
     }
 
     fn as_any_mut(&mut self) -> &mut dyn std::any::Any {
