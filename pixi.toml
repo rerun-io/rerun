@@ -471,6 +471,9 @@ cxx-compiler = "1.6.0.*"
 [feature.cpp.target.win-64.dependencies]
 vs2022_win-64 = "19.37.32822"
 
+[feature.cpp.pypi-dependencies]
+ghp-import = "==2.1.0"  # for CI documentation handling
+
 # PYTHON DEV ENVIRONMENT
 [feature.python-dev]
 platforms = ["linux-64", "linux-aarch64", "osx-arm64", "osx-64", "win-64"]
