@@ -199,19 +199,6 @@ impl VideoDecoder {
     ) -> Result<(), DecodingError> {
         re_tracing::profile_function!();
 
-        // Check for decoding errors that may have been set asynchronously and reset if it's a new error.
-        {
-            let decoder_output = self.decoder_output.lock();
-            if decoder_output.last_decoding_error.is_some()
-                && !decoder_output.reset_since_last_reported_error
-            {
-                // For each new (!) error after entering the error state, we reset the decoder.
-                // This way, it might later recover from the error as we progress in the video.
-                drop(decoder_output);
-                self.reset()?;
-            }
-        };
-
         // Some terminology:
         //   - presentation timestamp = composition timestamp
         //     = the time at which the frame should be shown
@@ -255,6 +242,21 @@ impl VideoDecoder {
 
         // 4. Enqueue segments as needed.
         //
+        // First, check for decoding errors that may have been set asynchronously and reset if it's a new error.
+        {
+            let decoder_output = self.decoder_output.lock();
+            if decoder_output.last_decoding_error.is_some()
+                && !decoder_output.reset_since_last_reported_error
+            {
+                // For each new (!) error after entering the error state, we reset the decoder.
+                // This way, it might later recover from the error as we progress in the video.
+                //
+                // By resetting the current segment/sample indices, the frame enqueued code below
+                // is forced to reset the decoder.
+                self.current_segment_idx = usize::MAX;
+                self.current_sample_idx = usize::MAX;
+            }
+        };
         // We maintain a buffer of 2 segments, so we can always smoothly transition to the next segment.
         // We can always start decoding from any segment, because segments always begin with a keyframe.
         //
