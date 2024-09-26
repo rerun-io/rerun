@@ -1,7 +1,11 @@
 use std::any::{Any, TypeId};
 
-use ahash::HashMap;
+use ahash::{HashMap, HashSet};
+use itertools::Itertools;
 use parking_lot::Mutex;
+use re_chunk::RowId;
+use re_chunk_store::{ChunkStore, ChunkStoreEvent};
+use re_types::Archetype;
 
 /// Does memoization of different objects for the immediate mode UI.
 #[derive(Default)]
@@ -23,6 +27,55 @@ impl Caches {
         re_tracing::profile_function!();
         for cache in self.0.lock().values_mut() {
             cache.purge_memory();
+        }
+    }
+
+    /// React to the chunk store's changelog, if needed.
+    ///
+    /// Useful to e.g. invalidate unreachable data.
+    ///
+    /// NOTE: at the moment, only deletion events are forwarded.
+    //
+    // TODO: usually this takes a chunkstore -- we dont take one in this case because it happens to
+    // make our lives easier at the moment.
+    pub fn on_store_events(&self, events: &[ChunkStoreEvent]) {
+        re_tracing::profile_function!();
+
+        re_tracing::profile_function!();
+
+        // TODO:
+        // * static overwrite
+        // * deletion
+
+        for event in events {
+            let is_deletion = || event.kind == re_chunk_store::ChunkStoreDiffKind::Deletion;
+            let is_static = || event.is_static();
+            let contains_encoded_image = || {
+                event
+                    .chunk
+                    .components()
+                    .contains_key(&re_types::archetypes::EncodedImage::indicator().name())
+            };
+
+            // TODO: explain static overwrite
+            // TODO: explain deletion
+            if is_deletion() || (is_static() && contains_encoded_image()) {
+                eprintln!("coucuo");
+
+                // event.chunk.row_ids()
+            }
+        }
+
+        // let mut caches = self.0.lock();
+        // let mut caches = caches.values_mut().collect_vec();
+        // for cache in &mut caches {
+        //     // cache.purge_memory();
+        //     // cache.remove_entry(row_id)
+        // }
+
+        for cache in self.0.lock().values_mut() {
+            cache.on_store_events(events);
+            // cache.remove_entries(&row_ids_removed);
         }
     }
 
@@ -51,6 +104,20 @@ pub trait Cache: std::any::Any + Send + Sync {
 
     /// Attempt to free up memory.
     fn purge_memory(&mut self);
+
+    /// React to the chunk store's changelog, if needed.
+    ///
+    /// Useful to e.g. invalidate unreachable data.
+    ///
+    /// NOTE: at the moment, only deletion events are forwarded.
+    fn on_store_events(&mut self, events: &[ChunkStoreEvent]) {
+        _ = events;
+    }
+
+    // TODO: explain why this is a better approach.
+    fn remove_entries(&mut self, row_ids_removed: HashSet<RowId>) {
+        //
+    }
 
     // TODO(andreas): Track bytes used for each cache and show in the memory panel!
     //fn bytes_used(&self) -> usize;

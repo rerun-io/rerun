@@ -1,11 +1,13 @@
 use re_chunk::RowId;
+use re_chunk_store::{ChunkStore, ChunkStoreDiffKind, ChunkStoreEvent};
 use re_log_types::hash::Hash64;
 use re_types::{
     archetypes::Image,
     image::{ImageKind, ImageLoadError},
+    Archetype,
 };
 
-use crate::{Cache, ImageInfo};
+use crate::{contents_name_style, Cache, ImageInfo};
 
 struct DecodedImageResult {
     /// Cached `Result` from decoding the image
@@ -135,6 +137,44 @@ impl Cache for ImageDecodeCache {
             before as f64 / 1e9,
             self.memory_used as f64 / 1e9,
         );
+    }
+
+    #[cfg(TODO)]
+    fn on_store_events(&mut self, events: &[ChunkStoreEvent]) {
+        re_tracing::profile_function!();
+
+        // TODO:
+        // * static overwrite
+        // * deletion
+
+        let row_ids_removed = events.iter().filter_map(|event| {
+            // We only care about `EncodedImage`s.
+            let contains_encoded_image = || {
+                event
+                    .chunk
+                    .components()
+                    .contains_key(&re_types::archetypes::EncodedImage::indicator().name())
+            };
+
+            // Any deletion is relevant: we want to invalidate asap.
+            let is_deletion = || event.kind == re_chunk_store::ChunkStoreDiffKind::Deletion;
+
+            // TODO: and this is when I realize that we don't care about non-deletion events in
+            // reality, because the static overwrite should have fired a deletion event to being
+            // with.
+
+            // TODO: how do we know which one is the old one though?
+            // New static data.
+            let is_static_overwrite =
+                || event.kind == re_chunk_store::ChunkStoreDiffKind::Addition && chunk.is_static();
+
+            // TODO: explain static overwrite
+            // TODO: explain deletion
+            // if is_deletion() || (is_static_overwrite() && contains_encoded_image()) {
+            //     eprintln!("coucuo");
+            //     // event.chunk.row_ids()
+            // }
+        });
     }
 
     fn as_any_mut(&mut self) -> &mut dyn std::any::Any {
