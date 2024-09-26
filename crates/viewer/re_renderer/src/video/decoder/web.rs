@@ -107,8 +107,6 @@ impl VideoDecoder {
         render_context: &RenderContext,
         data: Arc<re_video::VideoData>,
     ) -> Result<Self, DecodingError> {
-        re_log::debug!("{:?}", data.segments);
-
         let frames = Arc::new(Mutex::new(Vec::with_capacity(16)));
         let decode_error = Arc::new(Mutex::new(None));
 
@@ -118,7 +116,6 @@ impl VideoDecoder {
             let frames = frames.clone();
             let decode_error = decode_error.clone();
             move |frame: web_sys::VideoFrame| {
-                //  web_sys::console::log_1(&frame);
                 let composition_timestamp =
                     Time::from_micros(frame.timestamp().unwrap_or(0.0), timescale);
                 let duration = Time::from_micros(frame.duration().unwrap_or(0.0), timescale);
@@ -260,8 +257,6 @@ impl VideoDecoder {
         ) else {
             return Err(DecodingError::EmptyVideo);
         };
-
-        re_log::debug!("decode={decode_sample_idx} segment={requested_segment_idx} sample={requested_sample_idx}");
 
         // 4. Enqueue segments as needed.
         //
@@ -417,7 +412,6 @@ impl VideoDecoder {
             return;
         };
 
-        //      web_sys::console::log_1(&chunk);
         if let Err(err) = self.decoder.decode(&chunk) {
             *self.decode_error.lock() = Some(DecodingError::DecodeChunk(js_error_to_string(&err)));
         }
@@ -446,8 +440,6 @@ fn copy_video_frame_to_texture(
     frame: &web_sys::VideoFrame,
     texture: &wgpu::Texture,
 ) {
-    web_sys::console::log_1(&frame);
-
     let size = wgpu::Extent3d {
         width: frame.display_width(),
         height: frame.display_height(),
