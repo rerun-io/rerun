@@ -1232,7 +1232,6 @@ impl App {
                 );
             }
             store_hub.purge_fraction_of_ram(fraction_to_purge);
-            self.state.cache.purge_memory();
 
             let mem_use_after = MemoryUse::capture();
 
@@ -1600,7 +1599,7 @@ impl eframe::App for App {
 
             // We haven't called `begin_frame` at this point, so pretend we did and add one to the active frame index.
             let renderer_active_frame_idx = render_ctx.active_frame_idx().wrapping_add(1);
-            self.state.cache.begin_frame(renderer_active_frame_idx);
+            store_hub.begin_frame(renderer_active_frame_idx);
         }
 
         self.show_text_logs_as_notifications();

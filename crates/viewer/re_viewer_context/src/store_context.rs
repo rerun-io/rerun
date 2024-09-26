@@ -1,7 +1,7 @@
 use re_entity_db::{EntityDb, StoreBundle};
 use re_log_types::{ApplicationId, StoreId};
 
-use crate::StoreHub;
+use crate::{Caches, StoreHub};
 
 /// The current Blueprint and Recording being displayed by the viewer
 pub struct StoreContext<'a> {
@@ -23,6 +23,9 @@ pub struct StoreContext<'a> {
     ///
     /// This is the same bundle as is in [`Self::hub`], but extracted for ease-of-access.
     pub bundle: &'a StoreBundle,
+
+    /// Things that need caching.
+    pub caches: &'a Caches,
 
     /// The store hub, which keeps track of all the default and active blueprints, among other things.
     pub hub: &'a StoreHub,
