@@ -174,6 +174,9 @@ namespace rerun {
 
         /// Stream all log-data to a given `.rrd` file.
         ///
+        /// The Rerun Viewer is able to read continuously from the resulting rrd file while it is being written.
+        /// However, depending on your OS and configuration, changes may not be immediately visible due to file caching.
+        ///
         /// This function returns immediately.
         Error save(std::string_view path) const;
 
