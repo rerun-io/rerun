@@ -47,17 +47,15 @@ pub enum DecodingError {
     NegativeTimestamp,
 }
 
+pub type FrameDecodingResult = Result<VideoFrameTexture, DecodingError>;
+
 /// Information about the status of a frame decoding.
-pub enum FrameDecodingResult {
+pub enum VideoFrameTexture {
     /// The requested frame got decoded and is ready to be used.
     Ready(GpuTexture2D),
 
     /// The returned texture is from a previous frame or a placeholder, the decoder is still decoding the requested frame.
     Pending(GpuTexture2D),
-
-    /// The decoder encountered an error and was not able to produce a texture for the requested timestamp.
-    /// The returned texture is either a placeholder or the last successfully decoded texture.
-    Error(DecodingError),
 }
 
 /// Identifier for an independent video decoding stream.
@@ -137,13 +135,7 @@ impl Video {
         let decoder_entry = match decoders.entry(decoder_stream_id) {
             Entry::Occupied(occupied_entry) => occupied_entry.into_mut(),
             Entry::Vacant(vacant_entry) => {
-                let new_decoder =
-                    match decoder::VideoDecoder::new(render_context, self.data.clone()) {
-                        Ok(decoder) => decoder,
-                        Err(err) => {
-                            return FrameDecodingResult::Error(err);
-                        }
-                    };
+                let new_decoder = decoder::VideoDecoder::new(render_context, self.data.clone())?;
                 vacant_entry.insert(DecoderEntry {
                     decoder: new_decoder,
                     frame_index: global_frame_idx,

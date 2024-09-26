@@ -1,18 +1,19 @@
-use std::sync::Arc;
+use std::{sync::Arc, time::Duration};
 
 use js_sys::{Function, Uint8Array};
 use parking_lot::Mutex;
-use re_video::Time;
+use re_video::{Time, Timescale};
 use wasm_bindgen::{closure::Closure, JsCast as _};
 use web_sys::{
     EncodedVideoChunk, EncodedVideoChunkInit, EncodedVideoChunkType, VideoDecoderConfig,
     VideoDecoderInit,
 };
+use web_time::Instant;
 
 use super::latest_at_idx;
 use crate::{
     resource_managers::GpuTexture2D,
-    video::{DecodingError, FrameDecodingResult},
+    video::{DecodingError, FrameDecodingResult, VideoFrameTexture},
     DebugLabel, RenderContext,
 };
 
@@ -44,6 +45,22 @@ struct BufferedFrame {
     inner: VideoFrame,
 }
 
+struct DecoderOutput {
+    frames: Vec<BufferedFrame>,
+
+    last_decoding_error: Option<DecodingError>,
+
+    /// Whether we reset the decoder since the last time an error was reported.
+    reset_since_last_reported_error: bool,
+
+    /// Time at which point `last_decoding_error` changed from `None` to `Some`.
+    time_when_entering_error_state: Instant,
+}
+
+/// Delaying error reports (and showing last-good images meanwhile) allows us to skip over
+/// transient errors without flickering.
+const DECODING_ERROR_REPORTING_DELAY: Duration = Duration::from_millis(400);
+
 pub struct VideoDecoder {
     data: Arc<re_video::VideoData>,
     queue: Arc<wgpu::Queue>,
@@ -51,8 +68,7 @@ pub struct VideoDecoder {
 
     decoder: web_sys::VideoDecoder,
 
-    frames: Arc<Mutex<Vec<BufferedFrame>>>,
-    decode_error: Arc<Mutex<Option<DecodingError>>>,
+    decoder_output: Arc<Mutex<DecoderOutput>>,
 
     last_used_frame_timestamp: Time,
     current_segment_idx: usize,
@@ -87,7 +103,7 @@ impl Drop for VideoDecoder {
         if let Err(err) = self.decoder.close() {
             if let Some(dom_exception) = err.dyn_ref::<web_sys::DomException>() {
                 if dom_exception.code() == web_sys::DomException::INVALID_STATE_ERR
-                    && self.decode_error.lock().is_some()
+                    && self.decoder_output.lock().last_decoding_error.is_some()
                 {
                     // Invalid state error after a decode error may happen, ignore it!
                     return;
@@ -107,35 +123,13 @@ impl VideoDecoder {
         render_context: &RenderContext,
         data: Arc<re_video::VideoData>,
     ) -> Result<Self, DecodingError> {
-        let frames = Arc::new(Mutex::new(Vec::with_capacity(16)));
-        let decode_error = Arc::new(Mutex::new(None));
-
-        let timescale = data.timescale;
-
-        let on_frame = {
-            let frames = frames.clone();
-            let decode_error = decode_error.clone();
-            move |frame: web_sys::VideoFrame| {
-                let composition_timestamp =
-                    Time::from_micros(frame.timestamp().unwrap_or(0.0), timescale);
-                let duration = Time::from_micros(frame.duration().unwrap_or(0.0), timescale);
-                let frame = VideoFrame(frame);
-                frames.lock().push(BufferedFrame {
-                    composition_timestamp,
-                    duration,
-                    inner: frame,
-                });
-                *decode_error.lock() = None; // clear error on success
-            }
-        };
-        let on_error = {
-            let decode_error = decode_error.clone();
-            move |err| {
-                *decode_error.lock() = Some(DecodingError::Decoding(err));
-            }
-        };
-        let decoder = init_video_decoder(on_frame, on_error)?;
-
+        let decoder_output = Arc::new(Mutex::new(DecoderOutput {
+            frames: Vec::new(),
+            last_decoding_error: None,
+            reset_since_last_reported_error: false,
+            time_when_entering_error_state: Instant::now(),
+        }));
+        let decoder = init_video_decoder(&decoder_output, data.timescale)?;
         let queue = render_context.queue.clone();
 
         // NOTE: both textures are assumed to be rgba8unorm
@@ -152,9 +146,7 @@ impl VideoDecoder {
             texture,
 
             decoder,
-
-            frames,
-            decode_error,
+            decoder_output,
 
             last_used_frame_timestamp: Time::new(u64::MAX),
             current_segment_idx: usize::MAX,
@@ -169,20 +161,12 @@ impl VideoDecoder {
         render_ctx: &RenderContext,
         presentation_timestamp_s: f64,
     ) -> FrameDecodingResult {
-        if let Some(error) = self.decode_error.lock().clone() {
-            // TODO(emilk): if there is a decoding error in one segment or sample,
-            // then we currently never try decoding any more samples because of this early-out here.
-            // We should fix this, and test it with a video that has some broken segments/samples
-            // in the middle, but then are fine again.
-            return FrameDecodingResult::Error(error);
-        }
-
         let result = self.frame_at_internal(presentation_timestamp_s);
         match &result {
-            FrameDecodingResult::Ready(_) => {
+            Ok(VideoFrameTexture::Ready(_)) => {
                 self.error_on_last_frame_at = false;
             }
-            FrameDecodingResult::Pending(_) => {
+            Ok(VideoFrameTexture::Pending(_)) => {
                 if self.error_on_last_frame_at {
                     // If we switched from error to pending, clear the texture.
                     // This is important to avoid flickering, in particular when switching from
@@ -193,7 +177,7 @@ impl VideoDecoder {
 
                 self.error_on_last_frame_at = false;
             }
-            FrameDecodingResult::Error(_) => {
+            Err(_) => {
                 self.error_on_last_frame_at = true;
             }
         }
@@ -202,14 +186,10 @@ impl VideoDecoder {
 
     fn frame_at_internal(&mut self, presentation_timestamp_s: f64) -> FrameDecodingResult {
         if presentation_timestamp_s < 0.0 {
-            return FrameDecodingResult::Error(DecodingError::NegativeTimestamp);
+            return Err(DecodingError::NegativeTimestamp);
         }
         let presentation_timestamp = Time::from_secs(presentation_timestamp_s, self.data.timescale);
-
-        if let Err(err) = self.enqueue_requested_segments(presentation_timestamp) {
-            return FrameDecodingResult::Error(err);
-        }
-
+        self.enqueue_requested_segments(presentation_timestamp)?;
         self.try_present_frame(presentation_timestamp)
     }
 
@@ -217,6 +197,8 @@ impl VideoDecoder {
         &mut self,
         presentation_timestamp: Time,
     ) -> Result<(), DecodingError> {
+        re_tracing::profile_function!();
+
         // Some terminology:
         //   - presentation timestamp = composition timestamp
         //     = the time at which the frame should be shown
@@ -260,6 +242,21 @@ impl VideoDecoder {
 
         // 4. Enqueue segments as needed.
         //
+        // First, check for decoding errors that may have been set asynchronously and reset if it's a new error.
+        {
+            let decoder_output = self.decoder_output.lock();
+            if decoder_output.last_decoding_error.is_some()
+                && !decoder_output.reset_since_last_reported_error
+            {
+                // For each new (!) error after entering the error state, we reset the decoder.
+                // This way, it might later recover from the error as we progress in the video.
+                //
+                // By resetting the current segment/sample indices, the frame enqueued code below
+                // is forced to reset the decoder.
+                self.current_segment_idx = usize::MAX;
+                self.current_sample_idx = usize::MAX;
+            }
+        };
         // We maintain a buffer of 2 segments, so we can always smoothly transition to the next segment.
         // We can always start decoding from any segment, because segments always begin with a keyframe.
         //
@@ -270,12 +267,12 @@ impl VideoDecoder {
             let segment_distance = requested_segment_idx.checked_sub(self.current_segment_idx);
             if segment_distance == Some(1) {
                 // forward seek to next segment - queue up the one _after_ requested
-                self.enqueue_segment(requested_segment_idx + 1);
+                self.enqueue_segment(requested_segment_idx + 1)?;
             } else {
                 // Startup, forward seek by N>1, or backward seek across segments -> reset decoder
                 self.reset()?;
-                self.enqueue_segment(requested_segment_idx);
-                self.enqueue_segment(requested_segment_idx + 1);
+                self.enqueue_segment(requested_segment_idx)?;
+                self.enqueue_segment(requested_segment_idx + 1)?;
             }
         } else if requested_sample_idx != self.current_sample_idx {
             // special case: handle seeking backwards within a single segment
@@ -284,8 +281,8 @@ impl VideoDecoder {
             let sample_distance = requested_sample_idx as isize - self.current_sample_idx as isize;
             if sample_distance < 0 {
                 self.reset()?;
-                self.enqueue_segment(requested_segment_idx);
-                self.enqueue_segment(requested_segment_idx + 1);
+                self.enqueue_segment(requested_segment_idx)?;
+                self.enqueue_segment(requested_segment_idx + 1)?;
             }
         }
 
@@ -300,20 +297,42 @@ impl VideoDecoder {
     }
 
     fn try_present_frame(&mut self, presentation_timestamp: Time) -> FrameDecodingResult {
+        re_tracing::profile_function!();
+
+        let mut decoder_output = self.decoder_output.lock();
+
         let timescale = self.data.timescale;
 
-        let mut frames = self.frames.lock();
+        let frames = &mut decoder_output.frames;
 
         let Some(frame_idx) = latest_at_idx(
-            &frames,
+            frames,
             |frame| frame.composition_timestamp,
             &presentation_timestamp,
         ) else {
-            // no buffered frames - texture will be blank
+            // No buffered frames - texture will be blank.
+
+            // Might this be due to an error?
+            //
+            // We only care about decoding errors when we don't find the requested frame,
+            // since we want to keep playing the video fine even if parts of it are broken.
+            // That said, practically we reset the decoder and thus all frames upon error,
+            // so it doesn't make a lot of difference.
+            if let Some(last_decoding_error) = decoder_output.last_decoding_error.clone() {
+                if decoder_output.time_when_entering_error_state.elapsed()
+                    >= DECODING_ERROR_REPORTING_DELAY
+                {
+                    // Report the error only if we have been in an error state for a certain amount of time.
+                    // Don't immediately report the error, since we might immediately recover from it.
+                    // Otherwise, this would cause aggressive flickering!
+                    return Err(last_decoding_error);
+                }
+            }
+
             // Don't return a zeroed texture, because we may just be behind on decoding
             // and showing an old frame is better than showing a blank frame,
             // because it causes "black flashes" to appear
-            return FrameDecodingResult::Pending(self.texture.clone());
+            return Ok(VideoFrameTexture::Pending(self.texture.clone()));
         };
 
         // drain up-to (but not including) the frame idx, clearing out any frames
@@ -331,7 +350,7 @@ impl VideoDecoder {
         // We don't want to show this frame to the user, because it's not actually the one they requested,
         // so instead return the last decoded frame.
         if presentation_timestamp.into_millis(timescale) - frame_timestamp_ms > frame_duration_ms {
-            return FrameDecodingResult::Pending(self.texture.clone());
+            return Ok(VideoFrameTexture::Pending(self.texture.clone()));
         }
 
         if self.last_used_frame_timestamp != frame.composition_timestamp {
@@ -339,7 +358,7 @@ impl VideoDecoder {
             copy_video_frame_to_texture(&self.queue, &frame.inner, &self.texture.texture);
         }
 
-        FrameDecodingResult::Ready(self.texture.clone())
+        Ok(VideoFrameTexture::Ready(self.texture.clone()))
     }
 
     /// Clears the texture that is shown on pending to black.
@@ -369,22 +388,24 @@ impl VideoDecoder {
     /// Enqueue all samples in the given segment.
     ///
     /// Does nothing if the index is out of bounds.
-    fn enqueue_segment(&self, segment_idx: usize) {
+    fn enqueue_segment(&self, segment_idx: usize) -> Result<(), DecodingError> {
         let Some(segment) = self.data.segments.get(segment_idx) else {
-            return;
+            return Ok(());
         };
 
         let samples = &self.data.samples[segment.range()];
 
         // The first sample in a segment is always a key frame:
-        self.enqueue_sample(&samples[0], true);
+        self.enqueue_sample(&samples[0], true)?;
         for sample in &samples[1..] {
-            self.enqueue_sample(sample, false);
+            self.enqueue_sample(sample, false)?;
         }
+
+        Ok(())
     }
 
     /// Enqueue the given sample.
-    fn enqueue_sample(&self, sample: &re_video::Sample, is_key: bool) {
+    fn enqueue_sample(&self, sample: &re_video::Sample, is_key: bool) -> Result<(), DecodingError> {
         let data = Uint8Array::from(
             &self.data.data[sample.byte_offset as usize
                 ..sample.byte_offset as usize + sample.byte_length as usize],
@@ -402,34 +423,35 @@ impl VideoDecoder {
             type_,
         );
         chunk.set_duration(sample.duration.into_micros(self.data.timescale));
-        let Some(chunk) = EncodedVideoChunk::new(&chunk)
-            .inspect_err(|err| {
-                *self.decode_error.lock() =
-                    Some(DecodingError::CreateChunk(js_error_to_string(err)));
-            })
-            .ok()
-        else {
-            return;
-        };
-
-        if let Err(err) = self.decoder.decode(&chunk) {
-            *self.decode_error.lock() = Some(DecodingError::DecodeChunk(js_error_to_string(&err)));
-        }
+        let chunk = EncodedVideoChunk::new(&chunk)
+            .map_err(|err| DecodingError::CreateChunk(js_error_to_string(&err)))?;
+        self.decoder
+            .decode(&chunk)
+            .map_err(|err| DecodingError::DecodeChunk(js_error_to_string(&err)))
     }
 
     /// Reset the video decoder and discard all frames.
     fn reset(&mut self) -> Result<(), DecodingError> {
-        re_log::debug!("resetting video decoder");
+        re_log::debug!("Resetting video decoder.");
+        if let Err(_err) = self.decoder.reset() {
+            // At least on Firefox, it can happen that reset on a previous error fails.
+            // In that case, start over completely and try again!
+            re_log::debug!("Video decoder reset failed, recreating decoder.");
+            self.decoder = init_video_decoder(&self.decoder_output, self.data.timescale)?;
+        };
 
-        self.decoder
-            .reset()
-            .map_err(|err| DecodingError::ResetFailure(js_error_to_string(&err)))?;
         self.decoder
             .configure(&js_video_decoder_config(&self.data.config))
             .map_err(|err| DecodingError::ConfigureFailure(js_error_to_string(&err)))?;
 
-        let mut frames = self.frames.lock();
-        drop(frames.drain(..));
+        {
+            let mut decoder_output = self.decoder_output.lock();
+            decoder_output.reset_since_last_reported_error = true;
+            drop(decoder_output.frames.drain(..));
+        }
+
+        self.current_segment_idx = usize::MAX;
+        self.current_sample_idx = usize::MAX;
 
         Ok(())
     }
@@ -489,16 +511,42 @@ fn copy_video_frame_to_texture(
 }
 
 fn init_video_decoder(
-    on_output: impl Fn(web_sys::VideoFrame) + 'static,
-    on_error: impl Fn(String) + 'static,
+    decoder_output: &Arc<Mutex<DecoderOutput>>,
+    timescale: Timescale,
 ) -> Result<web_sys::VideoDecoder, DecodingError> {
-    let on_output = Closure::wrap(Box::new(on_output) as Box<dyn Fn(web_sys::VideoFrame)>);
+    let on_output = {
+        let decoder_output = decoder_output.clone();
+        Closure::wrap(Box::new(move |frame: web_sys::VideoFrame| {
+            let composition_timestamp =
+                Time::from_micros(frame.timestamp().unwrap_or(0.0), timescale);
+            let duration = Time::from_micros(frame.duration().unwrap_or(0.0), timescale);
+            let frame = VideoFrame(frame);
 
-    let on_error =
-        Closure::wrap(
-            Box::new(move |err: js_sys::Error| on_error(js_error_to_string(&err)))
-                as Box<dyn Fn(js_sys::Error)>,
-        );
+            let mut output = decoder_output.lock();
+            output.frames.push(BufferedFrame {
+                composition_timestamp,
+                duration,
+                inner: frame,
+            });
+
+            // We successfully decoded a frame, reset the error state.
+            output.last_decoding_error = None;
+        }) as Box<dyn Fn(web_sys::VideoFrame)>)
+    };
+
+    let on_error = {
+        let decoder_output = decoder_output.clone();
+        Closure::wrap(Box::new(move |err: js_sys::Error| {
+            let err = js_error_to_string(&err);
+
+            let mut output = decoder_output.lock();
+            if output.last_decoding_error.is_none() {
+                output.time_when_entering_error_state = Instant::now();
+            }
+            output.last_decoding_error = Some(DecodingError::Decoding(err));
+            output.reset_since_last_reported_error = false;
+        }) as Box<dyn Fn(js_sys::Error)>)
+    };
 
     let Ok(on_output) = on_output.into_js_value().dyn_into::<Function>() else {
         unreachable!()
