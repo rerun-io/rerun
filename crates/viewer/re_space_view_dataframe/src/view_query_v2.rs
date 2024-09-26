@@ -136,6 +136,18 @@ impl QueryV2 {
         self.query_property
             .save_blueprint_component(ctx, &component);
     }
+
+    pub(crate) fn latest_at(&self) -> Result<bool, SpaceViewSystemExecutionError> {
+        Ok(self
+            .query_property
+            .component_or_empty::<components::ApplyLatestAt>()?
+            .map_or(false, |comp| *comp.0))
+    }
+
+    pub(crate) fn set_latest_at(&self, ctx: &ViewerContext<'_>, latest_at: bool) {
+        self.query_property
+            .save_blueprint_component(ctx, &components::ApplyLatestAt(latest_at.into()));
+    }
 }
 
 // UI
@@ -150,8 +162,12 @@ impl QueryV2 {
         let timeline = self.timeline(ctx)?;
 
         self.timeline_ui(ctx, ui, &timeline)?;
+        ui.separator();
         self.filter_range_ui(ctx, ui, &timeline)?;
+        ui.separator();
         self.filter_event_ui(ctx, ui, &timeline, space_view_id)?;
+        ui.separator();
+        self.latest_at_ui(ctx, ui)?;
 
         Ok(())
     }
@@ -388,6 +404,29 @@ impl QueryV2 {
 
         if original_event_column.as_ref() != Some(&event_column) {
             self.set_filter_event_column(ctx, event_column);
+        }
+
+        Ok(())
+    }
+
+    fn latest_at_ui(
+        &self,
+        ctx: &ViewerContext<'_>,
+        ui: &mut egui::Ui,
+    ) -> Result<(), SpaceViewSystemExecutionError> {
+        ui.label("Empty cells:");
+
+        let mut latest_at = self.latest_at()?;
+        let changed = {
+            ui.re_radio_value(&mut latest_at, false, "Leave empty")
+                .changed()
+        } | {
+            ui.re_radio_value(&mut latest_at, true, "Fill with latest-at values")
+                .changed()
+        };
+
+        if changed {
+            self.set_latest_at(ctx, latest_at);
         }
 
         Ok(())
