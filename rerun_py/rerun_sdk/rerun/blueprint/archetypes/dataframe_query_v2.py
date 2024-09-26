@@ -28,7 +28,8 @@ class DataframeQueryV2(Archetype):
         *,
         timeline: datatypes.Utf8Like | None = None,
         range_filter: blueprint_datatypes.RangeFilterLike | None = None,
-        event_filter: blueprint_datatypes.ComponentColumnSelectorLike | None = None,
+        filter_by_event_active: datatypes.BoolLike | None = None,
+        filter_by_event_column: blueprint_datatypes.ComponentColumnSelectorLike | None = None,
         apply_latest_at: datatypes.BoolLike | None = None,
         selected_columns: blueprint_datatypes.SelectedColumnsLike | None = None,
     ):
@@ -45,8 +46,10 @@ class DataframeQueryV2(Archetype):
             If set, a range filter is applied.
 
             Note: will be unset as soon as `timeline` is changed.
-        event_filter:
-            If set, an event filter is aplied.
+        filter_by_event_active:
+            Whether the filter by event feature is active.
+        filter_by_event_column:
+            The column used when the filter by event feature is used.
 
             Note: only valid if the entity/component exists on `timeline`.
         apply_latest_at:
@@ -61,7 +64,8 @@ class DataframeQueryV2(Archetype):
             self.__attrs_init__(
                 timeline=timeline,
                 range_filter=range_filter,
-                event_filter=event_filter,
+                filter_by_event_active=filter_by_event_active,
+                filter_by_event_column=filter_by_event_column,
                 apply_latest_at=apply_latest_at,
                 selected_columns=selected_columns,
             )
@@ -73,7 +77,8 @@ class DataframeQueryV2(Archetype):
         self.__attrs_init__(
             timeline=None,  # type: ignore[arg-type]
             range_filter=None,  # type: ignore[arg-type]
-            event_filter=None,  # type: ignore[arg-type]
+            filter_by_event_active=None,  # type: ignore[arg-type]
+            filter_by_event_column=None,  # type: ignore[arg-type]
             apply_latest_at=None,  # type: ignore[arg-type]
             selected_columns=None,  # type: ignore[arg-type]
         )
@@ -107,12 +112,21 @@ class DataframeQueryV2(Archetype):
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 
-    event_filter: blueprint_components.ComponentColumnSelectorBatch | None = field(
+    filter_by_event_active: blueprint_components.FilterByEventActiveBatch | None = field(
+        metadata={"component": "optional"},
+        default=None,
+        converter=blueprint_components.FilterByEventActiveBatch._optional,  # type: ignore[misc]
+    )
+    # Whether the filter by event feature is active.
+    #
+    # (Docstring intentionally commented out to hide this field from the docs)
+
+    filter_by_event_column: blueprint_components.ComponentColumnSelectorBatch | None = field(
         metadata={"component": "optional"},
         default=None,
         converter=blueprint_components.ComponentColumnSelectorBatch._optional,  # type: ignore[misc]
     )
-    # If set, an event filter is aplied.
+    # The column used when the filter by event feature is used.
     #
     # Note: only valid if the entity/component exists on `timeline`.
     #

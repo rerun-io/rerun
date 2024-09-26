@@ -69,15 +69,19 @@ table DataframeQueryV2 (
     //TODO(ab): should this use the list-with-timelines trick?
     range_filter: rerun.blueprint.components.RangeFilter ("attr.rerun.component_optional", nullable, order: 200);
 
-    /// If set, an event filter is aplied.
+    /// Whether the filter by event feature is active.
+    // Note: we use an explicit field here such that the filter column is not lost when the filter is deactivated.
+    filter_by_event_active: rerun.blueprint.components.FilterByEventActive ("attr.rerun.component_optional", nullable, order: 300);
+
+    /// The column used when the filter by event feature is used.
     ///
     /// Note: only valid if the entity/component exists on `timeline`.
-    event_filter: rerun.blueprint.components.ComponentColumnSelector ("attr.rerun.component_optional", nullable, order: 300);
+    filter_by_event_column: rerun.blueprint.components.ComponentColumnSelector ("attr.rerun.component_optional", nullable, order: 400);
 
     /// Should empty cells be filled with latest-at queries?
-    apply_latest_at: rerun.blueprint.components.ApplyLatestAt ("attr.rerun.component_optional", nullable, order: 400);
+    apply_latest_at: rerun.blueprint.components.ApplyLatestAt ("attr.rerun.component_optional", nullable, order: 500);
 
     /// Selected columns. If unset, all columns are selected.
-    selected_columns: rerun.blueprint.components.SelectedColumns ("attr.rerun.component_optional", nullable, order: 500);
+    selected_columns: rerun.blueprint.components.SelectedColumns ("attr.rerun.component_optional", nullable, order: 600);
 }
 

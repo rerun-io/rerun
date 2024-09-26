@@ -12,7 +12,8 @@ Query of the dataframe.
 
 * `timeline`: The timeline for this query.
 * `range_filter`: If set, a range filter is applied.
-* `event_filter`: If set, an event filter is aplied.
+* `filter_by_event_active`: Whether the filter by event feature is active.
+* `filter_by_event_column`: The column used when the filter by event feature is used.
 * `apply_latest_at`: Should empty cells be filled with latest-at queries?
 * `selected_columns`: Selected columns. If unset, all columns are selected.
 

@@ -105,6 +105,13 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             },
         ),
         (
+            <FilterByEventActive as Loggable>::name(),
+            ComponentReflection {
+                docstring_md: "Whether the filter by event feature of the dataframe view is active.",
+                placeholder: Some(FilterByEventActive::default().to_arrow()?),
+            },
+        ),
+        (
             <GridColumns as Loggable>::name(),
             ComponentReflection {
                 docstring_md: "How many columns a grid container should have.",
@@ -1616,9 +1623,13 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                     "Range filter", docstring_md :
                     "If set, a range filter is applied.\n\nNote: will be unset as soon as `timeline` is changed.",
                     is_required : false, }, ArchetypeFieldReflection { component_name :
+                    "rerun.blueprint.components.FilterByEventActive".into(), display_name
+                    : "Filter by event active", docstring_md :
+                    "Whether the filter by event feature is active.", is_required :
+                    false, }, ArchetypeFieldReflection { component_name :
                     "rerun.blueprint.components.ComponentColumnSelector".into(),
-                    display_name : "Event filter", docstring_md :
-                    "If set, an event filter is aplied.\n\nNote: only valid if the entity/component exists on `timeline`.",
+                    display_name : "Filter by event column", docstring_md :
+                    "The column used when the filter by event feature is used.\n\nNote: only valid if the entity/component exists on `timeline`.",
                     is_required : false, }, ArchetypeFieldReflection { component_name :
                     "rerun.blueprint.components.ApplyLatestAt".into(), display_name :
                     "Apply latest at", docstring_md :

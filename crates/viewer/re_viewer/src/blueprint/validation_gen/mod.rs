@@ -8,6 +8,7 @@ pub use re_types::blueprint::components::ColumnSelectionMode;
 pub use re_types::blueprint::components::ColumnShare;
 pub use re_types::blueprint::components::ComponentColumnSelector;
 pub use re_types::blueprint::components::Corner2D;
+pub use re_types::blueprint::components::FilterByEventActive;
 pub use re_types::blueprint::components::IncludedContent;
 pub use re_types::blueprint::components::Interactive;
 pub use re_types::blueprint::components::LatestAtQueries;
@@ -51,6 +52,7 @@ pub fn is_valid_blueprint(blueprint: &EntityDb) -> bool {
         && validate_component::<ComponentColumnSelector>(blueprint)
         && validate_component::<ContainerKind>(blueprint)
         && validate_component::<Corner2D>(blueprint)
+        && validate_component::<FilterByEventActive>(blueprint)
         && validate_component::<GridColumns>(blueprint)
         && validate_component::<IncludedContent>(blueprint)
         && validate_component::<IncludedSpaceView>(blueprint)

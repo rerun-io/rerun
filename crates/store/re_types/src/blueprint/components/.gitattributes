@@ -8,6 +8,7 @@ column_selection_mode.rs linguist-generated=true
 column_share.rs linguist-generated=true
 component_column_selector.rs linguist-generated=true
 corner2d.rs linguist-generated=true
+filter_by_event_active.rs linguist-generated=true
 included_content.rs linguist-generated=true
 interactive.rs linguist-generated=true
 latest_at_queries.rs linguist-generated=true

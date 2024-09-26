@@ -15,7 +15,7 @@ namespace rerun {
         ) {
         using namespace blueprint::archetypes;
         std::vector<ComponentBatch> cells;
-        cells.reserve(6);
+        cells.reserve(7);
 
         if (archetype.timeline.has_value()) {
             auto result = ComponentBatch::from_loggable(archetype.timeline.value());
@@ -27,8 +27,13 @@ namespace rerun {
             RR_RETURN_NOT_OK(result.error);
             cells.push_back(std::move(result.value));
         }
-        if (archetype.event_filter.has_value()) {
-            auto result = ComponentBatch::from_loggable(archetype.event_filter.value());
+        if (archetype.filter_by_event_active.has_value()) {
+            auto result = ComponentBatch::from_loggable(archetype.filter_by_event_active.value());
+            RR_RETURN_NOT_OK(result.error);
+            cells.push_back(std::move(result.value));
+        }
+        if (archetype.filter_by_event_column.has_value()) {
+            auto result = ComponentBatch::from_loggable(archetype.filter_by_event_column.value());
             RR_RETURN_NOT_OK(result.error);
             cells.push_back(std::move(result.value));
         }

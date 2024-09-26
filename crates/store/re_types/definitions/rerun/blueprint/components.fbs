@@ -10,6 +10,7 @@ include "./components/column_share.fbs";
 include "./components/component_column_selector.fbs";
 include "./components/container_kind.fbs";
 include "./components/corner_2d.fbs";
+include "./components/filter_by_event_active.fbs";
 include "./components/grid_columns.fbs";
 include "./components/included_content.fbs";
 include "./components/included_space_view.fbs";

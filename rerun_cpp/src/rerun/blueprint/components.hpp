@@ -12,6 +12,7 @@
 #include "blueprint/components/component_column_selector.hpp"
 #include "blueprint/components/container_kind.hpp"
 #include "blueprint/components/corner2d.hpp"
+#include "blueprint/components/filter_by_event_active.hpp"
 #include "blueprint/components/grid_columns.hpp"
 #include "blueprint/components/included_content.hpp"
 #include "blueprint/components/included_space_view.hpp"

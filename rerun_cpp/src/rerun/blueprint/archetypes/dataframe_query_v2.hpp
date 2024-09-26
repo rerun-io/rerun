@@ -5,6 +5,7 @@
 
 #include "../../blueprint/components/apply_latest_at.hpp"
 #include "../../blueprint/components/component_column_selector.hpp"
+#include "../../blueprint/components/filter_by_event_active.hpp"
 #include "../../blueprint/components/range_filter.hpp"
 #include "../../blueprint/components/selected_columns.hpp"
 #include "../../blueprint/components/timeline_name.hpp"
@@ -32,10 +33,13 @@ namespace rerun::blueprint::archetypes {
         /// Note: will be unset as soon as `timeline` is changed.
         std::optional<rerun::blueprint::components::RangeFilter> range_filter;
 
-        /// If set, an event filter is aplied.
+        /// Whether the filter by event feature is active.
+        std::optional<rerun::blueprint::components::FilterByEventActive> filter_by_event_active;
+
+        /// The column used when the filter by event feature is used.
         ///
         /// Note: only valid if the entity/component exists on `timeline`.
-        std::optional<rerun::blueprint::components::ComponentColumnSelector> event_filter;
+        std::optional<rerun::blueprint::components::ComponentColumnSelector> filter_by_event_column;
 
         /// Should empty cells be filled with latest-at queries?
         std::optional<rerun::blueprint::components::ApplyLatestAt> apply_latest_at;
@@ -73,13 +77,22 @@ namespace rerun::blueprint::archetypes {
             RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
         }
 
-        /// If set, an event filter is aplied.
+        /// Whether the filter by event feature is active.
+        DataframeQueryV2 with_filter_by_event_active(
+            rerun::blueprint::components::FilterByEventActive _filter_by_event_active
+        ) && {
+            filter_by_event_active = std::move(_filter_by_event_active);
+            // See: https://github.com/rerun-io/rerun/issues/4027
+            RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
+        }
+
+        /// The column used when the filter by event feature is used.
         ///
         /// Note: only valid if the entity/component exists on `timeline`.
-        DataframeQueryV2 with_event_filter(
-            rerun::blueprint::components::ComponentColumnSelector _event_filter
+        DataframeQueryV2 with_filter_by_event_column(
+            rerun::blueprint::components::ComponentColumnSelector _filter_by_event_column
         ) && {
-            event_filter = std::move(_event_filter);
+            filter_by_event_column = std::move(_filter_by_event_column);
             // See: https://github.com/rerun-io/rerun/issues/4027
             RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
         }

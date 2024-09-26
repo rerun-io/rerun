@@ -31,10 +31,13 @@ pub struct DataframeQueryV2 {
     /// Note: will be unset as soon as `timeline` is changed.
     pub range_filter: Option<crate::blueprint::components::RangeFilter>,
 
-    /// If set, an event filter is aplied.
+    /// Whether the filter by event feature is active.
+    pub filter_by_event_active: Option<crate::blueprint::components::FilterByEventActive>,
+
+    /// The column used when the filter by event feature is used.
     ///
     /// Note: only valid if the entity/component exists on `timeline`.
-    pub event_filter: Option<crate::blueprint::components::ComponentColumnSelector>,
+    pub filter_by_event_column: Option<crate::blueprint::components::ComponentColumnSelector>,
 
     /// Should empty cells be filled with latest-at queries?
     pub apply_latest_at: Option<crate::blueprint::components::ApplyLatestAt>,
@@ -48,7 +51,8 @@ impl ::re_types_core::SizeBytes for DataframeQueryV2 {
     fn heap_size_bytes(&self) -> u64 {
         self.timeline.heap_size_bytes()
             + self.range_filter.heap_size_bytes()
-            + self.event_filter.heap_size_bytes()
+            + self.filter_by_event_active.heap_size_bytes()
+            + self.filter_by_event_column.heap_size_bytes()
             + self.apply_latest_at.heap_size_bytes()
             + self.selected_columns.heap_size_bytes()
     }
@@ -57,6 +61,7 @@ impl ::re_types_core::SizeBytes for DataframeQueryV2 {
     fn is_pod() -> bool {
         <Option<crate::blueprint::components::TimelineName>>::is_pod()
             && <Option<crate::blueprint::components::RangeFilter>>::is_pod()
+            && <Option<crate::blueprint::components::FilterByEventActive>>::is_pod()
             && <Option<crate::blueprint::components::ComponentColumnSelector>>::is_pod()
             && <Option<crate::blueprint::components::ApplyLatestAt>>::is_pod()
             && <Option<crate::blueprint::components::SelectedColumns>>::is_pod()
@@ -69,23 +74,25 @@ static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 0usize]> =
 static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 1usize]> =
     once_cell::sync::Lazy::new(|| ["rerun.blueprint.components.DataframeQueryV2Indicator".into()]);
 
-static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 5usize]> =
+static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 6usize]> =
     once_cell::sync::Lazy::new(|| {
         [
             "rerun.blueprint.components.TimelineName".into(),
             "rerun.blueprint.components.RangeFilter".into(),
+            "rerun.blueprint.components.FilterByEventActive".into(),
             "rerun.blueprint.components.ComponentColumnSelector".into(),
             "rerun.blueprint.components.ApplyLatestAt".into(),
             "rerun.blueprint.components.SelectedColumns".into(),
         ]
     });
 
-static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 6usize]> =
+static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 7usize]> =
     once_cell::sync::Lazy::new(|| {
         [
             "rerun.blueprint.components.DataframeQueryV2Indicator".into(),
             "rerun.blueprint.components.TimelineName".into(),
             "rerun.blueprint.components.RangeFilter".into(),
+            "rerun.blueprint.components.FilterByEventActive".into(),
             "rerun.blueprint.components.ComponentColumnSelector".into(),
             "rerun.blueprint.components.ApplyLatestAt".into(),
             "rerun.blueprint.components.SelectedColumns".into(),
@@ -93,8 +100,8 @@ static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 6usize]> =
     });
 
 impl DataframeQueryV2 {
-    /// The total number of components in the archetype: 0 required, 1 recommended, 5 optional
-    pub const NUM_COMPONENTS: usize = 6usize;
+    /// The total number of components in the archetype: 0 required, 1 recommended, 6 optional
+    pub const NUM_COMPONENTS: usize = 7usize;
 }
 
 /// Indicator component for the [`DataframeQueryV2`] [`::re_types_core::Archetype`]
@@ -169,11 +176,22 @@ impl ::re_types_core::Archetype for DataframeQueryV2 {
             } else {
                 None
             };
-        let event_filter = if let Some(array) =
+        let filter_by_event_active = if let Some(array) =
+            arrays_by_name.get("rerun.blueprint.components.FilterByEventActive")
+        {
+            <crate::blueprint::components::FilterByEventActive>::from_arrow_opt(&**array)
+                .with_context("rerun.blueprint.archetypes.DataframeQueryV2#filter_by_event_active")?
+                .into_iter()
+                .next()
+                .flatten()
+        } else {
+            None
+        };
+        let filter_by_event_column = if let Some(array) =
             arrays_by_name.get("rerun.blueprint.components.ComponentColumnSelector")
         {
             <crate::blueprint::components::ComponentColumnSelector>::from_arrow_opt(&**array)
-                .with_context("rerun.blueprint.archetypes.DataframeQueryV2#event_filter")?
+                .with_context("rerun.blueprint.archetypes.DataframeQueryV2#filter_by_event_column")?
                 .into_iter()
                 .next()
                 .flatten()
@@ -203,7 +221,8 @@ impl ::re_types_core::Archetype for DataframeQueryV2 {
         Ok(Self {
             timeline,
             range_filter,
-            event_filter,
+            filter_by_event_active,
+            filter_by_event_column,
             apply_latest_at,
             selected_columns,
         })
@@ -222,7 +241,10 @@ impl ::re_types_core::AsComponents for DataframeQueryV2 {
             self.range_filter
                 .as_ref()
                 .map(|comp| (comp as &dyn ComponentBatch).into()),
-            self.event_filter
+            self.filter_by_event_active
+                .as_ref()
+                .map(|comp| (comp as &dyn ComponentBatch).into()),
+            self.filter_by_event_column
                 .as_ref()
                 .map(|comp| (comp as &dyn ComponentBatch).into()),
             self.apply_latest_at
@@ -247,7 +269,8 @@ impl DataframeQueryV2 {
         Self {
             timeline: None,
             range_filter: None,
-            event_filter: None,
+            filter_by_event_active: None,
+            filter_by_event_column: None,
             apply_latest_at: None,
             selected_columns: None,
         }
@@ -277,15 +300,25 @@ impl DataframeQueryV2 {
         self
     }
 
-    /// If set, an event filter is aplied.
+    /// Whether the filter by event feature is active.
+    #[inline]
+    pub fn with_filter_by_event_active(
+        mut self,
+        filter_by_event_active: impl Into<crate::blueprint::components::FilterByEventActive>,
+    ) -> Self {
+        self.filter_by_event_active = Some(filter_by_event_active.into());
+        self
+    }
+
+    /// The column used when the filter by event feature is used.
     ///
     /// Note: only valid if the entity/component exists on `timeline`.
     #[inline]
-    pub fn with_event_filter(
+    pub fn with_filter_by_event_column(
         mut self,
-        event_filter: impl Into<crate::blueprint::components::ComponentColumnSelector>,
+        filter_by_event_column: impl Into<crate::blueprint::components::ComponentColumnSelector>,
     ) -> Self {
-        self.event_filter = Some(event_filter.into());
+        self.filter_by_event_column = Some(filter_by_event_column.into());
         self
     }
 
