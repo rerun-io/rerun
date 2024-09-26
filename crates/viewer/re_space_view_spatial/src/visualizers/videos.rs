@@ -7,7 +7,7 @@ use re_renderer::{
         ColormappedTexture, RectangleOptions, TextureFilterMag, TextureFilterMin, TexturedRect,
     },
     resource_managers::Texture2DCreationDesc,
-    video::{DecodedFrame, Video},
+    video::{VideoFrameTexture, Video},
 };
 use re_types::{
     archetypes::{AssetVideo, VideoFrameReference},
@@ -194,8 +194,8 @@ impl VideoFrameReferenceVisualizer {
                 if let Some(texture) =
                     match video.frame_at(render_ctx, decode_stream_id, video_timestamp.as_seconds())
                     {
-                        Ok(DecodedFrame::Ready(texture)) => Some(texture),
-                        Ok(DecodedFrame::Pending(texture)) => {
+                        Ok(VideoFrameTexture::Ready(texture)) => Some(texture),
+                        Ok(VideoFrameTexture::Pending(texture)) => {
                             ctx.viewer_ctx.egui_ctx.request_repaint();
                             Some(texture)
                         }

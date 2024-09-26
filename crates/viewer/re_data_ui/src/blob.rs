@@ -1,4 +1,4 @@
-use re_renderer::{external::re_video::VideoLoadError, video::DecodedFrame};
+use re_renderer::{external::re_video::VideoLoadError, video::VideoFrameTexture};
 use re_types::components::{Blob, MediaType, VideoTimestamp};
 use re_ui::{list_item::PropertyContent, UiExt};
 use re_viewer_context::UiLayout;
@@ -240,9 +240,9 @@ fn show_video_blob_info(
 
                     if let Some(texture) =
                         match video.frame_at(render_ctx, decode_stream_id, timestamp_in_seconds) {
-                            Ok(DecodedFrame::Ready(texture)) => Some(texture),
+                            Ok(VideoFrameTexture::Ready(texture)) => Some(texture),
 
-                            Ok(DecodedFrame::Pending(texture)) => {
+                            Ok(VideoFrameTexture::Pending(texture)) => {
                                 ui.ctx().request_repaint();
                                 Some(texture)
                             }

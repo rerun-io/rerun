@@ -47,10 +47,10 @@ pub enum DecodingError {
     NegativeTimestamp,
 }
 
-pub type FrameDecodingResult = Result<DecodedFrame, DecodingError>;
+pub type FrameDecodingResult = Result<VideoFrameTexture, DecodingError>;
 
 /// Information about the status of a frame decoding.
-pub enum DecodedFrame {
+pub enum VideoFrameTexture {
     /// The requested frame got decoded and is ready to be used.
     Ready(GpuTexture2D),
 

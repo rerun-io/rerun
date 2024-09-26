@@ -13,7 +13,7 @@ use web_time::Instant;
 use super::latest_at_idx;
 use crate::{
     resource_managers::GpuTexture2D,
-    video::{DecodedFrame, DecodingError, FrameDecodingResult},
+    video::{DecodingError, FrameDecodingResult, VideoFrameTexture},
     DebugLabel, RenderContext,
 };
 
@@ -163,10 +163,10 @@ impl VideoDecoder {
     ) -> FrameDecodingResult {
         let result = self.frame_at_internal(presentation_timestamp_s);
         match &result {
-            Ok(DecodedFrame::Ready(_)) => {
+            Ok(VideoFrameTexture::Ready(_)) => {
                 self.error_on_last_frame_at = false;
             }
-            Ok(DecodedFrame::Pending(_)) => {
+            Ok(VideoFrameTexture::Pending(_)) => {
                 if self.error_on_last_frame_at {
                     // If we switched from error to pending, clear the texture.
                     // This is important to avoid flickering, in particular when switching from
@@ -311,7 +311,7 @@ impl VideoDecoder {
             // No buffered frames - texture will be blank.
 
             // Might this be due to an error?
-            ///
+            //
             // We only care about decoding errors when we don't find the requested frame,
             // since we want to keep playing the video fine even if parts of it are broken.
             // That said, practically we reset the decoder and thus all frames upon error,
@@ -330,7 +330,7 @@ impl VideoDecoder {
             // Don't return a zeroed texture, because we may just be behind on decoding
             // and showing an old frame is better than showing a blank frame,
             // because it causes "black flashes" to appear
-            return Ok(DecodedFrame::Pending(self.texture.clone()));
+            return Ok(VideoFrameTexture::Pending(self.texture.clone()));
         };
 
         // drain up-to (but not including) the frame idx, clearing out any frames
@@ -348,7 +348,7 @@ impl VideoDecoder {
         // We don't want to show this frame to the user, because it's not actually the one they requested,
         // so instead return the last decoded frame.
         if presentation_timestamp.into_millis(timescale) - frame_timestamp_ms > frame_duration_ms {
-            return Ok(DecodedFrame::Pending(self.texture.clone()));
+            return Ok(VideoFrameTexture::Pending(self.texture.clone()));
         }
 
         if self.last_used_frame_timestamp != frame.composition_timestamp {
@@ -356,7 +356,7 @@ impl VideoDecoder {
             copy_video_frame_to_texture(&self.queue, &frame.inner, &self.texture.texture);
         }
 
-        Ok(DecodedFrame::Ready(self.texture.clone()))
+        Ok(VideoFrameTexture::Ready(self.texture.clone()))
     }
 
     /// Clears the texture that is shown on pending to black.
