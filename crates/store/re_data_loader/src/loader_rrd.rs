@@ -225,6 +225,7 @@ mod tests {
     struct DeleteOnDrop {
         path: std::path::PathBuf,
     }
+
     impl Drop for DeleteOnDrop {
         fn drop(&mut self) {
             std::fs::remove_file(&self.path).ok();
@@ -305,7 +306,7 @@ mod tests {
         for m in &more_messages {
             encoder.append(m).unwrap();
         }
-        // Close the encoder and thus the file to make sure that file file is actually written out.
+        // Close the encoder and thus the file to make sure that file is actually written out.
         // Otherwise we can't we be sure that the filewatcher will ever see those changes.
         // A simple flush works sometimes, but is not as reliably as closing the file since the OS may still cache the data.
         // (in fact we can't be sure that close is enough either, but it's the best we can do)
