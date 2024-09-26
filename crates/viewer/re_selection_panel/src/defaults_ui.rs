@@ -138,7 +138,7 @@ fn active_default_ui(
                         component_name,
                         row_id,
                         Some(&*component_array),
-                        visualizer.as_fallback_provider(),
+                        visualizer.fallback_provider(),
                     );
                 };
 
@@ -295,7 +295,7 @@ fn add_popup_ui(
                 .get_by_identifier(viz)
                 .ok()
                 .and_then(|sys| {
-                    sys.as_fallback_provider()
+                    sys.fallback_provider()
                         .fallback_for(&query_context, component_name)
                         .ok()
                 })

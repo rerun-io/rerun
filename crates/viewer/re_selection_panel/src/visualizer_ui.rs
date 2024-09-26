@@ -206,7 +206,7 @@ fn visualizer_components(
         let raw_default = non_empty_component_batch_raw(result_default, &component_name);
 
         let raw_fallback = match visualizer
-            .as_fallback_provider()
+            .fallback_provider()
             .fallback_for(&query_ctx, component_name)
         {
             Ok(fallback) => fallback,

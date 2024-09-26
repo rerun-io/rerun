@@ -16,7 +16,7 @@ use crate::{contexts::SpatialSceneEntityContext, proc_mesh, view_kind::SpatialSp
 
 use super::{
     filter_visualizable_3d_entities,
-    utilities::{ProcMeshBatch, ProcMeshVisBuffer},
+    utilities::{ProcMeshBatch, ProcMeshDrawableBuilder},
     SpatialViewVisualizerData,
 };
 
@@ -36,7 +36,7 @@ impl Default for Ellipsoids3DVisualizer {
 // timestamps within a time range -- it's _a lot_.
 impl Ellipsoids3DVisualizer {
     fn process_data<'a>(
-        pmvb: &mut ProcMeshVisBuffer<'_, Fallback>,
+        builder: &mut ProcMeshDrawableBuilder<'_, Fallback>,
         query_context: &QueryContext<'_>,
         ent_context: &SpatialSceneEntityContext<'_>,
         batches: impl Iterator<Item = Ellipsoids3DComponentData<'a>>,
@@ -57,7 +57,7 @@ impl Ellipsoids3DVisualizer {
                 },
             };
 
-            pmvb.add_batch(
+            builder.add_batch(
                 query_context,
                 ent_context,
                 glam::Affine3A::IDENTITY,
@@ -127,8 +127,13 @@ impl VisualizerSystem for Ellipsoids3DVisualizer {
             return Err(SpaceViewSystemExecutionError::NoRenderContextError);
         };
 
-        let mut pmvb =
-            ProcMeshVisBuffer::new(&mut self.0, render_ctx, view_query, "ellipsoids", &Fallback);
+        let mut builder = ProcMeshDrawableBuilder::new(
+            &mut self.0,
+            render_ctx,
+            view_query,
+            "ellipsoids",
+            &Fallback,
+        );
 
         use super::entity_iterator::{iter_primitive_array, process_archetype};
         process_archetype::<Self, Ellipsoids3D, _>(
@@ -215,13 +220,13 @@ impl VisualizerSystem for Ellipsoids3DVisualizer {
                     },
                 );
 
-                Self::process_data(&mut pmvb, ctx, spatial_ctx, data)?;
+                Self::process_data(&mut builder, ctx, spatial_ctx, data)?;
 
                 Ok(())
             },
         )?;
 
-        pmvb.into_draw_data()
+        builder.into_draw_data()
     }
 
     fn data(&self) -> Option<&dyn std::any::Any> {
@@ -232,7 +237,7 @@ impl VisualizerSystem for Ellipsoids3DVisualizer {
         self
     }
 
-    fn as_fallback_provider(&self) -> &dyn re_viewer_context::ComponentFallbackProvider {
+    fn fallback_provider(&self) -> &dyn re_viewer_context::ComponentFallbackProvider {
         &Fallback
     }
 }

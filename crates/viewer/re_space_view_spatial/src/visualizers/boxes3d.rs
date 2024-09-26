@@ -16,7 +16,7 @@ use crate::{contexts::SpatialSceneEntityContext, proc_mesh, view_kind::SpatialSp
 
 use super::{
     filter_visualizable_3d_entities,
-    utilities::{ProcMeshBatch, ProcMeshVisBuffer},
+    utilities::{ProcMeshBatch, ProcMeshDrawableBuilder},
     SpatialViewVisualizerData,
 };
 
@@ -36,7 +36,7 @@ impl Default for Boxes3DVisualizer {
 // timestamps within a time range -- it's _a lot_.
 impl Boxes3DVisualizer {
     fn process_data<'a>(
-        pmvb: &mut ProcMeshVisBuffer<'_, Fallback>,
+        builder: &mut ProcMeshDrawableBuilder<'_, Fallback>,
         query_context: &QueryContext<'_>,
         ent_context: &SpatialSceneEntityContext<'_>,
         batches: impl Iterator<Item = Boxes3DComponentData<'a>>,
@@ -50,7 +50,7 @@ impl Boxes3DVisualizer {
         let constant_instance_transform = glam::Affine3A::from_scale(glam::Vec3::splat(2.0));
 
         for batch in batches {
-            pmvb.add_batch(
+            builder.add_batch(
                 query_context,
                 ent_context,
                 constant_instance_transform,
@@ -120,8 +120,8 @@ impl VisualizerSystem for Boxes3DVisualizer {
             return Err(SpaceViewSystemExecutionError::NoRenderContextError);
         };
 
-        let mut pmvb =
-            ProcMeshVisBuffer::new(&mut self.0, render_ctx, view_query, "boxes3d", &Fallback);
+        let mut builder =
+            ProcMeshDrawableBuilder::new(&mut self.0, render_ctx, view_query, "boxes3d", &Fallback);
 
         use super::entity_iterator::{iter_primitive_array, process_archetype};
         process_archetype::<Self, Boxes3D, _>(
@@ -170,8 +170,8 @@ impl VisualizerSystem for Boxes3DVisualizer {
                 match fill_mode {
                     FillMode::DenseWireframe | FillMode::MajorWireframe => {
                         // Each box consists of 12 independent lines with 2 vertices each.
-                        pmvb.line_builder.reserve_strips(num_boxes * 12)?;
-                        pmvb.line_builder.reserve_vertices(num_boxes * 12 * 2)?;
+                        builder.line_builder.reserve_strips(num_boxes * 12)?;
+                        builder.line_builder.reserve_vertices(num_boxes * 12 * 2)?;
                     }
                     FillMode::Solid => {
                         // No lines.
@@ -214,13 +214,13 @@ impl VisualizerSystem for Boxes3DVisualizer {
                     },
                 );
 
-                Self::process_data(&mut pmvb, ctx, spatial_ctx, data)?;
+                Self::process_data(&mut builder, ctx, spatial_ctx, data)?;
 
                 Ok(())
             },
         )?;
 
-        pmvb.into_draw_data()
+        builder.into_draw_data()
     }
 
     fn data(&self) -> Option<&dyn std::any::Any> {
@@ -231,7 +231,7 @@ impl VisualizerSystem for Boxes3DVisualizer {
         self
     }
 
-    fn as_fallback_provider(&self) -> &dyn re_viewer_context::ComponentFallbackProvider {
+    fn fallback_provider(&self) -> &dyn re_viewer_context::ComponentFallbackProvider {
         &Fallback
     }
 }

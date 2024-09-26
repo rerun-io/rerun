@@ -22,7 +22,7 @@ use re_viewer_context::VisualizerSystem;
 
 /// To be used within the scope of a single [`VisualizerSystem::execute()`] call
 /// when the visualizer wishes to draw batches of [`ProcMeshKey`] meshes.
-pub(crate) struct ProcMeshVisBuffer<'ctx, Fb> {
+pub struct ProcMeshDrawableBuilder<'ctx, Fb> {
     /// Bounding box and label info here will be updated by the drawn batches.
     pub data: &'ctx mut SpatialViewVisualizerData,
     pub fallback: &'ctx Fb,
@@ -46,7 +46,7 @@ pub(crate) struct ProcMeshVisBuffer<'ctx, Fb> {
 /// TODO(#7026): Document how the number of instances is derived from this data.
 ///
 /// [batch]: https://rerun.io/docs/concepts/batches
-pub(crate) struct ProcMeshBatch<'a, IMesh, IFill> {
+pub struct ProcMeshBatch<'a, IMesh, IFill> {
     pub half_sizes: &'a [components::HalfSize3D],
 
     /// Iterator of meshes. Must be at least as long as `half_sizes`.
@@ -63,7 +63,7 @@ pub(crate) struct ProcMeshBatch<'a, IMesh, IFill> {
     pub class_ids: &'a [components::ClassId],
 }
 
-impl<'ctx, Fb> ProcMeshVisBuffer<'ctx, Fb>
+impl<'ctx, Fb> ProcMeshDrawableBuilder<'ctx, Fb>
 where
     Fb: TypedComponentFallbackProvider<components::ShowLabels>
         + TypedComponentFallbackProvider<components::Color>,
@@ -78,7 +78,7 @@ where
         let mut line_builder = LineDrawableBuilder::new(render_ctx);
         line_builder.radius_boost_in_ui_points_for_outlines(SIZE_BOOST_IN_POINTS_FOR_LINE_OUTLINES);
 
-        ProcMeshVisBuffer {
+        ProcMeshDrawableBuilder {
             data,
             fallback,
             line_builder,
