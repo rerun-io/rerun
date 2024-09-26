@@ -41,7 +41,7 @@ pub struct ProcMeshDrawableBuilder<'ctx, Fb> {
 }
 
 /// A [batch] of instances to draw. This struct is just arguments to
-/// [`ProcMeshVisBuffer::add_batch`].
+/// [`ProcMeshDrawableBuilder::add_batch()`].
 ///
 /// TODO(#7026): Document how the number of instances is derived from this data.
 ///
