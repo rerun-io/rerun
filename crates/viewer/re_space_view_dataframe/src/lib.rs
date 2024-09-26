@@ -8,6 +8,7 @@ mod expanded_rows;
 mod query_kind;
 mod space_view_class;
 mod view_query;
+mod view_query_v2;
 mod visualizer_system;
 
 pub use space_view_class::DataframeSpaceView;
