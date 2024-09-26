@@ -120,7 +120,7 @@ impl VideoData {
 }
 
 /// A segment of a video.
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 pub struct Segment {
     /// Decode timestamp of the first sample in this segment, in time units.
     pub start: Time,
@@ -275,18 +275,14 @@ impl std::fmt::Debug for VideoData {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("Video")
             .field("config", &self.config)
+            .field("timescale", &self.timescale)
             .field("duration", &self.duration)
             .field("segments", &self.segments)
+            .field(
+                "samples",
+                &self.samples.iter().enumerate().collect::<Vec<_>>(),
+            )
             .field("data", &self.data.len())
-            .finish()
-    }
-}
-
-impl std::fmt::Debug for Segment {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("Segment")
-            .field("timestamp", &self.start)
-            .field("samples", &self.sample_range.len())
             .finish()
     }
 }

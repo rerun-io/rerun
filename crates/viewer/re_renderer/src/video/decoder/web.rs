@@ -167,7 +167,7 @@ impl VideoDecoder {
     pub fn frame_at(
         &mut self,
         render_ctx: &RenderContext,
-        timestamp_s: f64,
+        presentation_timestamp_s: f64,
     ) -> FrameDecodingResult {
         if let Some(error) = self.decode_error.lock().clone() {
             // TODO(emilk): if there is a decoding error in one segment or sample,
@@ -177,7 +177,7 @@ impl VideoDecoder {
             return FrameDecodingResult::Error(error);
         }
 
-        let result = self.frame_at_internal(timestamp_s);
+        let result = self.frame_at_internal(presentation_timestamp_s);
         match &result {
             FrameDecodingResult::Ready(_) => {
                 self.error_on_last_frame_at = false;
@@ -200,37 +200,72 @@ impl VideoDecoder {
         result
     }
 
-    fn frame_at_internal(&mut self, timestamp_s: f64) -> FrameDecodingResult {
-        if timestamp_s < 0.0 {
+    fn frame_at_internal(&mut self, presentation_timestamp_s: f64) -> FrameDecodingResult {
+        if presentation_timestamp_s < 0.0 {
             return FrameDecodingResult::Error(DecodingError::NegativeTimestamp);
         }
-        let timescale = self.data.timescale;
-        let timestamp = Time::from_secs(timestamp_s, timescale);
+        let presentation_timestamp = Time::from_secs(presentation_timestamp_s, self.data.timescale);
 
-        let Some(requested_segment_idx) =
-            latest_at_idx(&self.data.segments, |segment| segment.start, &timestamp)
-        else {
-            return FrameDecodingResult::Error(DecodingError::EmptyVideo);
-        };
-        let requested_segment = &self.data.segments[requested_segment_idx];
+        if let Err(err) = self.enqueue_requested_segments(presentation_timestamp) {
+            return FrameDecodingResult::Error(err);
+        }
 
-        let Some(requested_sample_idx) = latest_at_idx(
-            &self.data.samples[requested_segment.range()],
+        self.try_present_frame(presentation_timestamp)
+    }
+
+    fn enqueue_requested_segments(
+        &mut self,
+        presentation_timestamp: Time,
+    ) -> Result<(), DecodingError> {
+        // Some terminology:
+        //   - presentation timestamp = composition timestamp
+        //     = the time at which the frame should be shown
+        //   - decode timestamp
+        //     = determines the decoding order of samples
+        //
+        // Note: `composition >= decode` for any given sample.
+        //       For some codecs, the two timestamps are the same.
+        // We must enqueue samples in decode order, but show them in composition order.
+
+        // 1. Find the latest sample where `decode_timestamp <= presentation_timestamp`.
+        //    Because `composition >= decode`, we never have to look further ahead in the
+        //    video than this.
+        let Some(decode_sample_idx) = latest_at_idx(
+            &self.data.samples,
             |sample| sample.decode_timestamp,
-            &timestamp,
+            &presentation_timestamp,
         ) else {
-            // This should never happen, because segments are never empty.
-            return FrameDecodingResult::Error(DecodingError::EmptySegment);
+            return Err(DecodingError::EmptyVideo);
         };
 
-        // Enqueue segments as needed. We maintain a buffer of 2 segments, so we can
-        // always smoothly transition to the next segment.
-        // We can always start decoding from any segment, because segments always begin
-        // with a keyframe.
+        // 2. Search _backwards_, starting at `decode_sample_idx`, looking for
+        //    the first sample where `sample.composition_timestamp <= presentation_timestamp`.
+        //    This is the sample which when decoded will be presented at the timestamp the user requested.
+        let Some(requested_sample_idx) = self.data.samples[..=decode_sample_idx]
+            .iter()
+            .rposition(|sample| sample.composition_timestamp <= presentation_timestamp)
+        else {
+            return Err(DecodingError::EmptyVideo);
+        };
+
+        // 3. Do a binary search through segments by the decode timestamp of the found sample
+        //    to find the segment that contains the sample.
+        let Some(requested_segment_idx) = latest_at_idx(
+            &self.data.segments,
+            |segment| segment.start,
+            &self.data.samples[requested_sample_idx].decode_timestamp,
+        ) else {
+            return Err(DecodingError::EmptyVideo);
+        };
+
+        // 4. Enqueue segments as needed.
+        //
+        // We maintain a buffer of 2 segments, so we can always smoothly transition to the next segment.
+        // We can always start decoding from any segment, because segments always begin with a keyframe.
+        //
         // Backward seeks or seeks across many segments trigger a reset of the decoder,
         // because decoding all the samples between the previous sample and the requested
-        // one would mean decoding and immediately discarding more frames than we otherwise
-        // need to.
+        // one would mean decoding and immediately discarding more frames than we need.
         if requested_segment_idx != self.current_segment_idx {
             let segment_distance = requested_segment_idx.checked_sub(self.current_segment_idx);
             if segment_distance == Some(1) {
@@ -238,9 +273,7 @@ impl VideoDecoder {
                 self.enqueue_segment(requested_segment_idx + 1);
             } else {
                 // Startup, forward seek by N>1, or backward seek across segments -> reset decoder
-                if let Err(err) = self.reset() {
-                    return FrameDecodingResult::Error(err);
-                }
+                self.reset()?;
                 self.enqueue_segment(requested_segment_idx);
                 self.enqueue_segment(requested_segment_idx + 1);
             }
@@ -250,22 +283,32 @@ impl VideoDecoder {
             // while maintaining a buffer of 2 segments
             let sample_distance = requested_sample_idx as isize - self.current_sample_idx as isize;
             if sample_distance < 0 {
-                if let Err(err) = self.reset() {
-                    return FrameDecodingResult::Error(err);
-                }
+                self.reset()?;
                 self.enqueue_segment(requested_segment_idx);
                 self.enqueue_segment(requested_segment_idx + 1);
             }
         }
 
+        // At this point, we have the requested segments enqueued. They will be output
+        // in _composition timestamp_ order, so presenting the frame is a binary search
+        // through the frame buffer as usual.
+
         self.current_segment_idx = requested_segment_idx;
         self.current_sample_idx = requested_sample_idx;
 
+        Ok(())
+    }
+
+    fn try_present_frame(&mut self, presentation_timestamp: Time) -> FrameDecodingResult {
+        let timescale = self.data.timescale;
+
         let mut frames = self.frames.lock();
 
-        let Some(frame_idx) =
-            latest_at_idx(&frames, |frame| frame.composition_timestamp, &timestamp)
-        else {
+        let Some(frame_idx) = latest_at_idx(
+            &frames,
+            |frame| frame.composition_timestamp,
+            &presentation_timestamp,
+        ) else {
             // no buffered frames - texture will be blank
             // Don't return a zeroed texture, because we may just be behind on decoding
             // and showing an old frame is better than showing a blank frame,
@@ -287,7 +330,7 @@ impl VideoDecoder {
         // This handles the case when we have a buffered frame that's older than the requested timestamp.
         // We don't want to show this frame to the user, because it's not actually the one they requested,
         // so instead return the last decoded frame.
-        if timestamp.into_millis(timescale) - frame_timestamp_ms > frame_duration_ms {
+        if presentation_timestamp.into_millis(timescale) - frame_timestamp_ms > frame_duration_ms {
             return FrameDecodingResult::Pending(self.texture.clone());
         }
 
@@ -351,10 +394,11 @@ impl VideoDecoder {
         } else {
             EncodedVideoChunkType::Delta
         };
-        // TODO(jan): use `composition_timestamp` instead
         let chunk = EncodedVideoChunkInit::new(
             &data,
-            sample.decode_timestamp.into_micros(self.data.timescale),
+            sample
+                .composition_timestamp
+                .into_micros(self.data.timescale),
             type_,
         );
         chunk.set_duration(sample.duration.into_micros(self.data.timescale));
@@ -375,6 +419,8 @@ impl VideoDecoder {
 
     /// Reset the video decoder and discard all frames.
     fn reset(&mut self) -> Result<(), DecodingError> {
+        re_log::debug!("resetting video decoder");
+
         self.decoder
             .reset()
             .map_err(|err| DecodingError::ResetFailure(js_error_to_string(&err)))?;
