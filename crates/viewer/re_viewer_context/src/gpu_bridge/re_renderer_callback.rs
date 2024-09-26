@@ -48,39 +48,11 @@ impl egui_wgpu::CallbackTrait for ReRendererCallback {
         }
     }
 
-    fn finish_prepare(
+    fn paint(
         &self,
-        _device: &wgpu::Device,
-        _queue: &wgpu::Queue,
-        _egui_encoder: &mut wgpu::CommandEncoder,
-        callback_resources: &mut egui_wgpu::CallbackResources,
-    ) -> Vec<wgpu::CommandBuffer> {
-        let Some(ctx) = callback_resources.get_mut::<re_renderer::RenderContext>() else {
-            re_log::error_once!(
-                "Failed to execute egui prepare callback. No render context available."
-            );
-            return Vec::new();
-        };
-
-        // We don't own the render pass that renders the egui ui.
-        // But we *still* need to somehow ensure that all resources used in callbacks drawing to it,
-        // are longer lived than the pass itself.
-        // This is a bit of a conundrum since we can't store a lock guard in the callback resources.
-        // So instead, we work around this by moving the render pipelines out of their lock!
-        // TODO(gfx-rs/wgpu#1453): Future wgpu versions will lift this restriction and will allow us to remove this workaround.
-        if ctx.active_frame.pinned_render_pipelines.is_none() {
-            let render_pipelines = ctx.gpu_resources.render_pipelines.take_resources();
-            ctx.active_frame.pinned_render_pipelines = Some(render_pipelines);
-        }
-
-        Vec::new()
-    }
-
-    fn paint<'a>(
-        &'a self,
         _info: egui::PaintCallbackInfo,
-        render_pass: &mut wgpu::RenderPass<'a>,
-        paint_callback_resources: &'a egui_wgpu::CallbackResources,
+        render_pass: &mut wgpu::RenderPass<'static>,
+        paint_callback_resources: &egui_wgpu::CallbackResources,
     ) {
         let Some(ctx) = paint_callback_resources.get::<re_renderer::RenderContext>() else {
             // TODO(#4433): Shouldn't show up like this.
@@ -89,15 +61,6 @@ impl egui_wgpu::CallbackTrait for ReRendererCallback {
             );
             return;
         };
-        let Some(render_pipelines) = ctx.active_frame.pinned_render_pipelines.as_ref() else {
-            // TODO(#4433): Shouldn't show up like this.
-            re_log::error_once!(
-                "Failed to execute egui draw callback. Render pipelines weren't transferred out of the pool first."
-            );
-            return;
-        };
-
-        self.view_builder
-            .composite(ctx, render_pipelines, render_pass);
+        self.view_builder.composite(ctx, render_pass);
     }
 }

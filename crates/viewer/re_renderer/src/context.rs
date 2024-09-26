@@ -13,7 +13,7 @@ use crate::{
     global_bindings::GlobalBindings,
     renderer::Renderer,
     resource_managers::{MeshManager, TextureManager2D},
-    wgpu_resources::{GpuRenderPipelinePoolMoveAccessor, WgpuResourcePools},
+    wgpu_resources::WgpuResourcePools,
     FileServer, RecommendedFileResolver,
 };
 
@@ -224,7 +224,6 @@ impl RenderContext {
 
         let active_frame = ActiveFrameContext {
             before_view_builder_encoder: Mutex::new(FrameGlobalCommandEncoder::new(&device)),
-            pinned_render_pipelines: None,
             frame_index: STARTUP_FRAME_IDX,
             top_level_error_scope,
         };
@@ -341,13 +340,6 @@ This means, either a call to RenderContext::before_submit was omitted, or the pr
         // Map all read staging buffers.
         self.gpu_readback_belt.get_mut().after_queue_submit();
 
-        // Give back moved render pipelines to the pool if any were moved out.
-        if let Some(moved_render_pipelines) = self.active_frame.pinned_render_pipelines.take() {
-            self.gpu_resources
-                .render_pipelines
-                .return_resources(moved_render_pipelines);
-        }
-
         // Close previous' frame error scope.
         if let Some(top_level_error_scope) = self.active_frame.top_level_error_scope.take() {
             let frame_index_for_uncaptured_errors = self.frame_index_for_uncaptured_errors.clone();
@@ -373,7 +365,6 @@ This means, either a call to RenderContext::before_submit was omitted, or the pr
         // New active frame!
         self.active_frame = ActiveFrameContext {
             before_view_builder_encoder: Mutex::new(FrameGlobalCommandEncoder::new(&self.device)),
-            pinned_render_pipelines: None,
             frame_index: self.active_frame.frame_index.wrapping_add(1),
             top_level_error_scope: Some(WgpuErrorScope::start(&self.device)),
         };
@@ -480,6 +471,11 @@ This means, either a call to RenderContext::before_submit was omitted, or the pr
     pub fn active_frame_idx(&self) -> u64 {
         self.active_frame.frame_index
     }
+
+    /// Returns the device's capabilities.
+    pub fn device_caps(&self) -> &DeviceCaps {
+        &self.config.device_caps
+    }
 }
 
 pub struct FrameGlobalCommandEncoder(Option<wgpu::CommandEncoder>);
@@ -518,13 +514,6 @@ pub struct ActiveFrameContext {
     /// This should be used for any gpu copy operation outside of a renderer or view builder.
     /// (i.e. typically in [`crate::renderer::DrawData`] creation!)
     pub before_view_builder_encoder: Mutex<FrameGlobalCommandEncoder>,
-
-    /// Render pipelines that were moved out of the resource pool.
-    ///
-    /// Will be moved back to the resource pool at the start of the frame.
-    /// This is needed for accessing the render pipelines without keeping a reference
-    /// to the resource pool lock during the lifetime of a render pass.
-    pub pinned_render_pipelines: Option<GpuRenderPipelinePoolMoveAccessor>,
 
     /// Index of this frame. Is incremented for every render frame.
     ///

@@ -7,6 +7,7 @@ use egui::{util::hash, Rangef};
 use wgpu::TextureFormat;
 
 use re_renderer::{
+    config::DeviceCaps,
     pad_rgb_to_rgba,
     renderer::{ColorMapper, ColormappedTexture, ShaderDecoding},
     resource_managers::Texture2DCreationDesc,
@@ -81,13 +82,13 @@ fn color_image_to_gpu(
     let image_format = image.format;
 
     let texture_handle = get_or_create_texture(render_ctx, texture_key, || {
-        texture_creation_desc_from_color_image(image, debug_name)
+        texture_creation_desc_from_color_image(render_ctx.device_caps(), image, debug_name)
     })
     .map_err(|err| anyhow::anyhow!("{err}"))?;
 
     let texture_format = texture_handle.format();
 
-    let shader_decoding = required_shader_decode(&image_format);
+    let shader_decoding = required_shader_decode(render_ctx.device_caps(), &image_format);
 
     // TODO(emilk): let the user specify the color space.
     let decode_srgb = texture_format == TextureFormat::Rgba8Unorm
@@ -213,18 +214,26 @@ fn image_decode_srgb_gamma_heuristic(
 /// Determines if and how the shader needs to decode the image.
 ///
 /// Assumes creation as done by [`texture_creation_desc_from_color_image`].
-pub fn required_shader_decode(image_format: &ImageFormat) -> Option<ShaderDecoding> {
+pub fn required_shader_decode(
+    device_caps: &DeviceCaps,
+    image_format: &ImageFormat,
+) -> Option<ShaderDecoding> {
+    let color_model = image_format.color_model();
     match image_format.pixel_format {
         Some(PixelFormat::NV12) => Some(ShaderDecoding::Nv12),
         Some(PixelFormat::YUY2) => Some(ShaderDecoding::Yuy2),
         None => {
-            if image_format.datatype() == ChannelDatatype::U8 {
+            if color_model == ColorModel::BGR || color_model == ColorModel::BGRA {
                 // U8 can be converted to RGBA without the shader's help since there's a format for it.
-                None
+                if image_format.datatype() == ChannelDatatype::U8
+                    && device_caps.support_bgra_textures()
+                {
+                    None
+                } else {
+                    Some(ShaderDecoding::Bgr)
+                }
             } else {
-                let color_model = image_format.color_model();
-                (color_model == ColorModel::BGR || color_model == ColorModel::BGRA)
-                    .then_some(ShaderDecoding::Bgr)
+                None
             }
         }
     }
@@ -239,6 +248,7 @@ pub fn required_shader_decode(image_format: &ImageFormat) -> Option<ShaderDecodi
 /// which would allow us to virtually extend over wgpu's texture formats.
 /// This would allow us to seamlessly support e.g. NV12 on meshes without the mesh shader having to be updated.
 pub fn texture_creation_desc_from_color_image<'a>(
+    device_caps: &DeviceCaps,
     image: &'a ImageInfo,
     debug_name: &'a str,
 ) -> Texture2DCreationDesc<'a> {
@@ -284,7 +294,7 @@ pub fn texture_creation_desc_from_color_image<'a>(
                 (cast_slice_to_cow(&image.buffer), TextureFormat::Rgba8Unorm)
             }
 
-            // Make use of wgpu's BGR(A)8 formats.
+            // Make use of wgpu's BGR(A)8 formats if possible.
             //
             // From the pov of our on-the-fly decoding textured rect shader this is just a strange special case
             // given that it already has to deal with other BGR(A) formats.
@@ -297,12 +307,24 @@ pub fn texture_creation_desc_from_color_image<'a>(
             // and caches the result alongside with the source data)
             //
             // See also [`required_shader_decode`] which lists this case as a format that does not need to be decoded.
-            (ColorModel::BGR, ChannelDatatype::U8) => (
-                pad_rgb_to_rgba(&image.buffer, u8::MAX).into(),
-                TextureFormat::Bgra8Unorm,
-            ),
+            (ColorModel::BGR, ChannelDatatype::U8) => {
+                let padded_data = pad_rgb_to_rgba(&image.buffer, u8::MAX).into();
+                let texture_format = if required_shader_decode(device_caps, &image.format).is_some()
+                {
+                    TextureFormat::Rgba8Unorm
+                } else {
+                    TextureFormat::Bgra8Unorm
+                };
+                (padded_data, texture_format)
+            }
             (ColorModel::BGRA, ChannelDatatype::U8) => {
-                (cast_slice_to_cow(&image.buffer), TextureFormat::Bgra8Unorm)
+                let texture_format = if required_shader_decode(device_caps, &image.format).is_some()
+                {
+                    TextureFormat::Rgba8Unorm
+                } else {
+                    TextureFormat::Bgra8Unorm
+                };
+                (cast_slice_to_cow(&image.buffer), texture_format)
             }
 
             _ => {

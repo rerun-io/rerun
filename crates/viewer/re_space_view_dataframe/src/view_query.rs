@@ -229,7 +229,7 @@ fn override_ui(
     ui: &mut egui::Ui,
     state: &dyn SpaceViewState,
     space_view_id: SpaceViewId,
-    property: &ViewProperty<'_>,
+    property: &ViewProperty,
 ) -> Result<(), SpaceViewSystemExecutionError> {
     ui.add_space(4.0);
     egui::Grid::new("dataframe_view_query_ui")

@@ -374,6 +374,7 @@ impl TensorSpaceView {
             },
             minification: egui::TextureFilter::Linear, // TODO(andreas): allow for mipmapping based filter
             wrap_mode: egui::TextureWrapMode::ClampToEdge,
+            mipmap_mode: None,
         };
 
         gpu_bridge::render_image(
@@ -597,7 +598,7 @@ fn selectors_ui(
     ui: &mut egui::Ui,
     shape: &[TensorDimension],
     slice_selection: &TensorSliceSelection,
-    slice_property: &ViewProperty<'_>,
+    slice_property: &ViewProperty,
 ) {
     let Some(slider) = &slice_selection.slider else {
         return;
