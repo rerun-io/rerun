@@ -2729,6 +2729,8 @@ dependencies = [
 name = "graph_view"
 version = "0.0.0"
 dependencies = [
+ "bytemuck",
+ "itertools 0.13.0",
  "mimalloc",
  "petgraph",
  "re_crash_handler",

@@ -21,7 +21,6 @@ pub struct GraphEdgeSystem {
 
 pub struct EdgeWithInstance {
     pub edge: GraphEdge,
-    // pub instance: Instance,
     pub label: Option<String>,
 }
 

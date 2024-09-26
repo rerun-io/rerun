@@ -4,7 +4,7 @@ namespace rerun.archetypes;
 
 /// A list of nodes in a graph with optional labels, colors, etc.
 table GraphEdges (
-  "attr.rust.derive": "PartialEq",
+  "attr.rust.derive": "PartialEq, Eq",
   "attr.docs.category": "Graph",
   "attr.docs.view_types": "Graph View"
 ) {

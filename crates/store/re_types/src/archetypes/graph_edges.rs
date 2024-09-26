@@ -19,7 +19,7 @@ use ::re_types_core::{ComponentBatch, MaybeOwnedComponentBatch};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Archetype**: A list of nodes in a graph with optional labels, colors, etc.
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct GraphEdges {
     /// A list of node IDs.
     pub edges: Vec<crate::components::GraphEdge>,

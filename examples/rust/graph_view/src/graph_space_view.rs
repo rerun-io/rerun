@@ -13,7 +13,7 @@ use re_viewer::external::{
 };
 
 use crate::edge_visualizer_system::GraphEdgeSystem;
-use crate::node_visualizer_system::GraphNodeSystem;
+use crate::node_visualizer_system::GraphNodeVisualizer;
 
 /// Space view state for the custom space view.
 ///
@@ -58,7 +58,7 @@ impl SpaceViewClass for GraphSpaceView {
         &self,
         system_registry: &mut SpaceViewSystemRegistrator<'_>,
     ) -> Result<(), SpaceViewClassRegistryError> {
-        system_registry.register_visualizer::<GraphNodeSystem>()?;
+        system_registry.register_visualizer::<GraphNodeVisualizer>()?;
         system_registry.register_visualizer::<GraphEdgeSystem>()
     }
 
@@ -80,7 +80,7 @@ impl SpaceViewClass for GraphSpaceView {
         // By default spawn a single view at the root if there's anything the visualizer is applicable to.
         if ctx
             .applicable_entities_per_visualizer
-            .get(&GraphNodeSystem::identifier())
+            .get(&GraphNodeVisualizer::identifier())
             .map_or(true, |entities| entities.is_empty())
         {
             SpaceViewSpawnHeuristics::default()
@@ -127,8 +127,9 @@ impl SpaceViewClass for GraphSpaceView {
         _query: &ViewQuery<'_>,
         system_output: SystemExecutionOutput,
     ) -> Result<(), SpaceViewSystemExecutionError> {
-        let node_system = system_output.view_systems.get::<GraphNodeSystem>()?;
+        let node_system = system_output.view_systems.get::<GraphNodeVisualizer>()?;
         let edge_system = system_output.view_systems.get::<GraphEdgeSystem>()?;
+
         let state = state.downcast_mut::<GraphSpaceViewState>()?;
 
         egui::Frame {
@@ -140,14 +141,22 @@ impl SpaceViewClass for GraphSpaceView {
                 egui::ScrollArea::both().show(ui, |ui| {
                     ui.label(egui::RichText::new("Nodes").underline());
 
-                    for nodes in node_system.nodes.iter() {
-                        for n in nodes.nodes_batch.iter() {
+                    for data in node_system.data.iter() {
+                        for (node_id, maybe_color) in data.nodes.iter() {
                             let text = egui::RichText::new(format!(
                                 "{}: {}",
-                                nodes.entity_path.to_owned(),
-                                n.0
+                                data.entity_path.to_owned(),
+                                node_id.0
                             ));
-                            ui.add(Label::new(text));
+
+                            if let Some(color) = maybe_color {
+                                let c = egui::Color32::from(color.0);
+                                ui.add(Label::new(
+                                    text.color(c)),
+                                );
+                            } else {
+                                ui.add(Label::new(text));
+                            }
                         }
                     }
 
