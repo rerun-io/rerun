@@ -391,7 +391,12 @@ fn latest_at_query_video_from_datastore(
     let media_type = results.component_instance::<MediaType>(0);
 
     Some(ctx.cache.entry(|c: &mut VideoCache| {
-        c.entry(blob_row_id, &blob, media_type.as_ref().map(|m| m.as_str()))
+        c.entry(
+            blob_row_id,
+            &blob,
+            media_type.as_ref().map(|m| m.as_str()),
+            ctx.app_options.video_decoder_hw_accelleration,
+        )
     }))
 }
 

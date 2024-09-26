@@ -77,6 +77,31 @@ struct DecoderEntry {
 pub struct Video {
     data: Arc<re_video::VideoData>,
     decoders: Mutex<HashMap<VideoDecodingStreamId, DecoderEntry>>,
+    decode_hw_acceleration: DecodeHardwareAcceleration,
+}
+
+/// How the the video should be decoded.
+///
+/// Depending on the decoder backend, these settings are merely hints and may be ignored.
+/// However, they can be useful in some situations to work around issues.
+///
+/// On the web this directly corresponds to
+/// <https://www.w3.org/TR/webcodecs/#hardware-acceleration>
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, serde::Deserialize, serde::Serialize)]
+pub enum DecodeHardwareAcceleration {
+    /// May use hardware acceleration if available and compatible with the codec.
+    #[default]
+    NoPreference,
+
+    /// Should use a software decoder even if hardware acceleration is available.
+    ///
+    /// If no software decoder is present, this may cause decoding to fail.
+    PreferSoftware,
+
+    /// Should use a hardware decoder.
+    ///
+    /// If no hardware decoder is present, this may cause decoding to fail.
+    PreferHardware,
 }
 
 impl Video {
@@ -84,11 +109,19 @@ impl Video {
     ///
     /// Currently supports the following media types:
     /// - `video/mp4`
-    pub fn load(data: &[u8], media_type: Option<&str>) -> Result<Self, VideoLoadError> {
+    pub fn load(
+        data: &[u8],
+        media_type: Option<&str>,
+        decode_hw_acceleration: DecodeHardwareAcceleration,
+    ) -> Result<Self, VideoLoadError> {
         let data = Arc::new(re_video::VideoData::load_from_bytes(data, media_type)?);
         let decoders = Mutex::new(HashMap::default());
 
-        Ok(Self { data, decoders })
+        Ok(Self {
+            data,
+            decoders,
+            decode_hw_acceleration,
+        })
     }
 
     /// The video data
@@ -135,7 +168,11 @@ impl Video {
         let decoder_entry = match decoders.entry(decoder_stream_id) {
             Entry::Occupied(occupied_entry) => occupied_entry.into_mut(),
             Entry::Vacant(vacant_entry) => {
-                let new_decoder = decoder::VideoDecoder::new(render_context, self.data.clone())?;
+                let new_decoder = decoder::VideoDecoder::new(
+                    render_context,
+                    self.data.clone(),
+                    self.decode_hw_acceleration,
+                )?;
                 vacant_entry.insert(DecoderEntry {
                     decoder: new_decoder,
                     frame_index: global_frame_idx,

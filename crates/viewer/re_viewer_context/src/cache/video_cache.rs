@@ -1,7 +1,10 @@
 use crate::Cache;
 use re_chunk::RowId;
 use re_log_types::hash::Hash64;
-use re_renderer::{external::re_video::VideoLoadError, video::Video};
+use re_renderer::{
+    external::re_video::VideoLoadError,
+    video::{DecodeHardwareAcceleration, Video},
+};
 
 use std::sync::{
     atomic::{AtomicBool, Ordering},
@@ -32,13 +35,14 @@ impl VideoCache {
         row_id: RowId,
         video_data: &re_types::datatypes::Blob,
         media_type: Option<&str>,
+        hw_acceleration: DecodeHardwareAcceleration,
     ) -> Arc<Result<Video, VideoLoadError>> {
         re_tracing::profile_function!();
 
         let key = Hash64::hash((row_id, media_type));
 
         let entry = self.0.entry(key).or_insert_with(|| {
-            let video = Video::load(video_data, media_type);
+            let video = Video::load(video_data, media_type, hw_acceleration);
             Entry {
                 used_this_frame: AtomicBool::new(true),
                 video: Arc::new(video),
