@@ -242,22 +242,36 @@ fn show_video_blob_info(
 
                     match video.frame_at(render_ctx, decode_stream_id, timestamp_in_seconds) {
                         Ok(frame) => {
+                            let is_pending;
                             let texture = match frame {
-                                VideoFrameTexture::Ready(texture) => texture,
+                                VideoFrameTexture::Ready(texture) => {
+                                    is_pending = false;
+                                    texture
+                                }
 
                                 VideoFrameTexture::Pending(placeholder) => {
+                                    is_pending = true;
                                     ui.ctx().request_repaint();
                                     placeholder
                                 }
                             };
 
-                            crate::image::texture_preview_ui(
+                            let response = crate::image::texture_preview_ui(
                                 render_ctx,
                                 ui,
                                 ui_layout,
                                 "video_preview",
                                 re_renderer::renderer::ColormappedTexture::from_unorm_rgba(texture),
                             );
+
+                            if is_pending {
+                                // Shrink slightly:
+                                let smaller_rect = egui::Rect::from_center_size(
+                                    response.rect.center(),
+                                    0.75 * response.rect.size(),
+                                );
+                                egui::Spinner::new().paint_at(ui, smaller_rect);
+                            }
                         }
 
                         Err(err) => {
