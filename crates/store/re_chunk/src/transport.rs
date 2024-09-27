@@ -731,7 +731,7 @@ mod tests {
                 {
                     chunk_roundtrip = &chunk_in_transport;
                 }
-                let chunk_after = Chunk::from_transport(&chunk_roundtrip)?;
+                let chunk_after = Chunk::from_transport(chunk_roundtrip)?;
 
                 assert_eq!(
                     chunk_in_transport.entity_path()?,

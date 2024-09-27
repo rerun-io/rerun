@@ -1,6 +1,6 @@
 use itertools::Itertools;
 use re_chunk_store::RowId;
-use re_renderer::{resource_managers::ResourceLifeTime, RenderContext, Rgba32Unmul};
+use re_renderer::{mesh::GpuMesh, RenderContext, Rgba32Unmul};
 use re_types::{
     archetypes::{Asset3D, Mesh3D},
     components::MediaType,
@@ -43,17 +43,10 @@ impl LoadedMesh {
         re_tracing::profile_function!();
 
         let mesh_instances = match media_type.as_str() {
-            MediaType::GLTF | MediaType::GLB => re_renderer::importer::gltf::load_gltf_from_buffer(
-                &name,
-                bytes,
-                ResourceLifeTime::LongLived,
-                render_ctx,
-            )?,
-            MediaType::OBJ => re_renderer::importer::obj::load_obj_from_buffer(
-                bytes,
-                ResourceLifeTime::LongLived,
-                render_ctx,
-            )?,
+            MediaType::GLTF | MediaType::GLB => {
+                re_renderer::importer::gltf::load_gltf_from_buffer(&name, bytes, render_ctx)?
+            }
+            MediaType::OBJ => re_renderer::importer::obj::load_obj_from_buffer(bytes, render_ctx)?,
             MediaType::STL => re_renderer::importer::stl::load_stl_from_buffer(bytes, render_ctx)?,
             _ => anyhow::bail!("{media_type} files are not supported"),
         };
@@ -179,14 +172,9 @@ impl LoadedMesh {
             }],
         };
 
-        let mesh_instances = vec![re_renderer::renderer::MeshInstance {
-            gpu_mesh: render_ctx.mesh_manager.write().create(
-                render_ctx,
-                &mesh,
-                ResourceLifeTime::LongLived,
-            )?,
-            ..Default::default()
-        }];
+        let mesh_instances = vec![re_renderer::renderer::MeshInstance::new(
+            std::sync::Arc::new(GpuMesh::new(render_ctx, &mesh)?),
+        )];
 
         Ok(Self {
             name,

@@ -186,7 +186,7 @@ impl framework::Example for Picking {
                 } else {
                     Color32::TRANSPARENT
                 },
-                ..Default::default()
+                outline_mask_ids: Default::default(),
             })
             .collect_vec();
 
