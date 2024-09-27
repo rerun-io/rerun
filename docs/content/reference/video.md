@@ -41,5 +41,33 @@ Overall, we recommend using Chrome or another Chromium-based browser, as it seem
 
 When choosing codec, we recommend [AV1](https://developer.mozilla.org/en-US/docs/Web/Media/Formats/Video_codecs#av1), as that seems to have the best overall playback support. Since AV1 is patent-free, it is also likely the first codec we will support in the native viewer.
 
+For decoding video in the Web Viewer, we use the [WebCodecs API](https://developer.mozilla.org/en-US/docs/Web/API/WebCodecs_API).
+This API enables us to take advantage of the browser's hardware accelerated video decoding capabilities.
+It is implemented by all modern browsers, but with varying levels of support for different codecs, and varying levels of quality.
+
+With that in mind, here are the browsers which we have tested and verified to work:
+
+|            | Linux  | macOS | Windows |
+| ---------- | ------ | ----- | ------- |
+| Firefox    | ✅[^2] | ✅    | ✅      |
+| Chrome[^1] | ✅     | ✅    | ✅      |
+| Safari     |        | ✅    |         |
+
+When it comes to codecs, we aim to support any codec which the browser supports, but
+we currently cannot guarantee that all of them will work. For more information about
+which codecs are supported by which browser, see [Video codecs on MDN](https://developer.mozilla.org/en-US/docs/Web/Media/Formats/Video_codecs#codec_details).
+
+At the moment, we test the following codecs:
+
+|       | Linux | macOS | Windows |
+| ----- | ----- | ----- | ------- |
+| AV1   | ✅    | 🚧\*  | ✅      |
+| H.264 | ✅    | ✅    | ✅      |
+
+* AV1 on macOS is only supported on [Apple Silicon devices with AV1 hardware decoding support](https://webkit.org/blog/14445/webkit-features-in-safari-17-0/).
+
+[^1]: Any Chromium-based browser should work, but we don't test all of them.
+[^2]: Firefox on Linux has been observed to [stutter when playing back H.264 video](https://github.com/rerun-io/rerun/issues/7532)
+
 ## Links
 * [Web video codec guide, by Mozilla](https://developer.mozilla.org/en-US/docs/Web/Media/Formats/Video_codecs)
