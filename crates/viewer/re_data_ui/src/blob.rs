@@ -237,31 +237,46 @@ fn show_video_blob_info(
                     };
 
                     let decode_stream_id = re_renderer::video::VideoDecodingStreamId(
-                        egui::Id::new("video_miniplayer").value(),
+                        ui.id().with("video_player").value(),
                     );
 
-                    if let Some(texture) =
-                        match video.frame_at(render_ctx, decode_stream_id, timestamp_in_seconds) {
-                            Ok(VideoFrameTexture::Ready(texture)) => Some(texture),
+                    match video.frame_at(render_ctx, decode_stream_id, timestamp_in_seconds) {
+                        Ok(frame) => {
+                            let is_pending;
+                            let texture = match frame {
+                                VideoFrameTexture::Ready(texture) => {
+                                    is_pending = false;
+                                    texture
+                                }
 
-                            Ok(VideoFrameTexture::Pending(texture)) => {
-                                ui.ctx().request_repaint();
-                                Some(texture)
-                            }
+                                VideoFrameTexture::Pending(placeholder) => {
+                                    is_pending = true;
+                                    ui.ctx().request_repaint();
+                                    placeholder
+                                }
+                            };
 
-                            Err(err) => {
-                                ui.error_label_long(&err.to_string());
-                                None
+                            let response = crate::image::texture_preview_ui(
+                                render_ctx,
+                                ui,
+                                ui_layout,
+                                "video_preview",
+                                re_renderer::renderer::ColormappedTexture::from_unorm_rgba(texture),
+                            );
+
+                            if is_pending {
+                                // Shrink slightly:
+                                let smaller_rect = egui::Rect::from_center_size(
+                                    response.rect.center(),
+                                    0.75 * response.rect.size(),
+                                );
+                                egui::Spinner::new().paint_at(ui, smaller_rect);
                             }
                         }
-                    {
-                        crate::image::texture_preview_ui(
-                            render_ctx,
-                            ui,
-                            ui_layout,
-                            "video_preview",
-                            re_renderer::renderer::ColormappedTexture::from_unorm_rgba(texture),
-                        );
+
+                        Err(err) => {
+                            ui.error_label_long(&err.to_string());
+                        }
                     }
                 }
             });
