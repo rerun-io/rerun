@@ -3,7 +3,7 @@ use nohash_hasher::IntMap;
 use re_log_types::EntityPathHash;
 use re_viewer_context::VisualizerCollection;
 
-use crate::{view_kind::SpatialSpaceViewKind, visualizers::iter_spatial_visualizer_data};
+use crate::{view_kind::SpatialSpaceViewKind, visualizers::SpatialViewVisualizerData};
 
 #[derive(Clone)]
 pub struct SceneBoundingBoxes {
@@ -42,7 +42,7 @@ impl SceneBoundingBoxes {
         self.current = re_math::BoundingBox::NOTHING;
         self.per_entity.clear();
 
-        for data in iter_spatial_visualizer_data(visualizers) {
+        for data in visualizers.iter_visualizer_data::<SpatialViewVisualizerData>() {
             // If we're in a 3D space, but the visualizer is distintivly 2D, don't count it towards the bounding box.
             // These visualizers show up when we're on a pinhole camera plane which itself is heuristically fed by the
             // bounding box, creating a feedback loop if we were to add it here.

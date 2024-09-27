@@ -174,4 +174,15 @@ impl VisualizerCollection {
     ) -> impl Iterator<Item = (ViewSystemIdentifier, &dyn VisualizerSystem)> {
         self.systems.iter().map(|s| (*s.0, s.1.as_ref()))
     }
+
+    /// Iterate over all visualizer data that can be downcast to the given type.
+    pub fn iter_visualizer_data<SpecificData: 'static>(
+        &self,
+    ) -> impl Iterator<Item = &'_ SpecificData> {
+        self.iter().filter_map(|visualizer| {
+            visualizer
+                .data()
+                .and_then(|data| data.downcast_ref::<SpecificData>())
+        })
+    }
 }

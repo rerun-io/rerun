@@ -62,13 +62,3 @@ impl SpatialViewVisualizerData {
         self
     }
 }
-
-pub fn iter_spatial_visualizer_data(
-    visualizers: &re_viewer_context::VisualizerCollection,
-) -> impl Iterator<Item = &SpatialViewVisualizerData> {
-    visualizers.iter().filter_map(|visualizer| {
-        visualizer
-            .data()
-            .and_then(|data| data.downcast_ref::<SpatialViewVisualizerData>())
-    })
-}

@@ -19,7 +19,7 @@ use crate::{
     picking::{PickableUiRect, PickingResult},
     scene_bounding_boxes::SceneBoundingBoxes,
     view_kind::SpatialSpaceViewKind,
-    visualizers::{iter_spatial_visualizer_data, UiLabel, UiLabelTarget},
+    visualizers::{SpatialViewVisualizerData, UiLabel, UiLabelTarget},
 };
 
 use super::{eye::Eye, ui_3d::View3DState};
@@ -84,7 +84,8 @@ impl SpatialSpaceViewState {
             .update(ui, &system_output.view_systems, space_kind);
 
         let view_systems = &system_output.view_systems;
-        self.num_non_segmentation_images_last_frame = iter_spatial_visualizer_data(view_systems)
+        self.num_non_segmentation_images_last_frame = view_systems
+            .iter_visualizer_data::<SpatialViewVisualizerData>()
             .flat_map(|data| {
                 data.pickable_rects.iter().map(|pickable_rect| {
                     if let PickableRectSourceData::Image { image, .. } = &pickable_rect.source_data
@@ -273,7 +274,7 @@ pub fn paint_loading_spinners(
     ui_from_scene: egui::emath::RectTransform,
     visualizers: &re_viewer_context::VisualizerCollection,
 ) {
-    for data in crate::visualizers::iter_spatial_visualizer_data(visualizers) {
+    for data in visualizers.iter_visualizer_data::<SpatialViewVisualizerData>() {
         for &rect_in_scene in &data.loading_rects {
             let rect_in_ui = ui_from_scene.transform_rect(rect_in_scene);
 

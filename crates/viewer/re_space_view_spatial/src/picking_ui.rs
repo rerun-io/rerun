@@ -17,7 +17,7 @@ use crate::{
     picking_ui_pixel::{textured_rect_hover_ui, PickedPixelInfo},
     ui::SpatialSpaceViewState,
     view_kind::SpatialSpaceViewKind,
-    visualizers::{iter_spatial_visualizer_data, CamerasVisualizer, DepthImageVisualizer},
+    visualizers::{CamerasVisualizer, DepthImageVisualizer, SpatialViewVisualizerData},
     PickableRectSourceData, PickableTexturedRect,
 };
 
@@ -217,7 +217,9 @@ pub fn picking(
 fn iter_pickable_rects(
     visualizers: &VisualizerCollection,
 ) -> impl Iterator<Item = &PickableTexturedRect> {
-    iter_spatial_visualizer_data(visualizers).flat_map(|data| data.pickable_rects.iter())
+    visualizers
+        .iter_visualizer_data::<SpatialViewVisualizerData>()
+        .flat_map(|data| data.pickable_rects.iter())
 }
 
 /// If available, finds pixel info for a picking hit.
