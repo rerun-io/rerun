@@ -5,6 +5,7 @@ use re_chunk_store::{ColumnDescriptor, ColumnSelector};
 use re_log_types::{EntityPath, EntityPathFilter, ResolvedTimeRange, TimelineName};
 use re_types::blueprint::{archetypes, components};
 use re_types_core::SpaceViewClassIdentifier;
+use re_ui::modal::ModalHandler;
 use re_ui::UiExt as _;
 use re_viewer_context::{
     SpaceViewClass, SpaceViewClassRegistryError, SpaceViewId, SpaceViewState, SpaceViewStateExt,
@@ -25,6 +26,9 @@ struct DataframeSpaceViewState {
 
     /// Schema for the current query, cached here for the column visibility UI.
     schema: Option<Vec<ColumnDescriptor>>,
+
+    /// Modal dialog for column visibility.
+    column_visibility_modal: ModalHandler,
 }
 
 impl SpaceViewState for DataframeSpaceViewState {
@@ -121,7 +125,13 @@ mode sets the default time range to _everything_. You can override this in the s
             // for the user to click the menu anyway.
             return Ok(());
         };
-        view_query.selection_panel_ui(ctx, ui, space_view_id, schema)
+        view_query.selection_panel_ui(
+            ctx,
+            ui,
+            space_view_id,
+            schema,
+            &mut state.column_visibility_modal,
+        )
     }
 
     fn extra_title_bar_ui(

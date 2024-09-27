@@ -1,10 +1,11 @@
-use std::collections::BTreeSet;
+use std::collections::{BTreeSet, HashSet};
 
-use re_chunk_store::ColumnDescriptor;
+use re_chunk_store::{ColumnDescriptor, ColumnSelector};
 use re_log_types::{
     EntityPath, ResolvedTimeRange, TimeInt, TimeType, TimeZone, Timeline, TimelineName,
 };
 use re_types_core::{ComponentName, ComponentNameSet};
+use re_ui::modal::{Modal, ModalHandler};
 use re_ui::{list_item, UiExt};
 use re_viewer_context::{SpaceViewId, SpaceViewSystemExecutionError, TimeDragValue, ViewerContext};
 
@@ -165,21 +166,6 @@ impl QueryV2 {
             .or_else(|| all_entities.iter().next().cloned())
             .unwrap_or_else(|| EntityPath::from("/"));
 
-        ui.add_enabled_ui(filter_by_event_active, |ui| {
-            ui.list_item_flat_noninteractive(list_item::PropertyContent::new("Entity").value_fn(
-                |ui, _| {
-                    egui::ComboBox::new("pov_entity", "")
-                        .selected_text(event_entity.to_string())
-                        .show_ui(ui, |ui| {
-                            for entity in all_entities {
-                                let label = entity.to_string();
-                                ui.selectable_value(&mut event_entity, entity, label);
-                            }
-                        });
-                },
-            ));
-        });
-
         //
         // Event component
         //
@@ -218,7 +204,26 @@ impl QueryV2 {
             .or_else(|| suggested_components().first().copied())
             .unwrap_or_else(|| ComponentName::from("-"));
 
+        //
+        // UI for event entity and component
+        //
+
         ui.add_enabled_ui(filter_by_event_active, |ui| {
+            ui.spacing_mut().item_spacing.y = 0.0;
+
+            ui.list_item_flat_noninteractive(list_item::PropertyContent::new("Entity").value_fn(
+                |ui, _| {
+                    egui::ComboBox::new("pov_entity", "")
+                        .selected_text(event_entity.to_string())
+                        .show_ui(ui, |ui| {
+                            for entity in all_entities {
+                                let label = entity.to_string();
+                                ui.selectable_value(&mut event_entity, entity, label);
+                            }
+                        });
+                },
+            ));
+
             ui.list_item_flat_noninteractive(
                 list_item::PropertyContent::new("Component").value_fn(|ui, _| {
                     egui::ComboBox::new("pov_component", "")
@@ -255,7 +260,130 @@ impl QueryV2 {
         ui: &mut egui::Ui,
         timeline: &Timeline,
         schema: &[ColumnDescriptor],
+        column_visibility_modal_handler: &mut ModalHandler,
     ) -> Result<(), SpaceViewSystemExecutionError> {
+        // Gather our selected columns.
+        let selected_columns: HashSet<_> = self
+            .apply_column_visibility_to_schema(ctx, schema)?
+            .map(|columns| columns.into_iter().collect())
+            .unwrap_or_else(|| schema.iter().cloned().map(Into::into).collect());
+
+        let visible_count = selected_columns.len();
+        let hidden_count = schema.len() - visible_count;
+
+        ui.label("Columns:");
+
+        let visible_count_label = format!("{visible_count} visible, {} hidden", hidden_count);
+        ui.label(&visible_count_label);
+
+        if ui.button("edit").clicked() {
+            column_visibility_modal_handler.open();
+        }
+
+        let mut new_selected_columns = selected_columns.clone();
+        column_visibility_modal_handler.ui(
+            ui.ctx(),
+            || Modal::new("Column visibility"),
+            |ui, _| {
+                //
+                // Summary toggle
+                //
+
+                let indeterminate = visible_count != 0 && hidden_count != 0;
+                let mut all_enabled = hidden_count == 0;
+
+                if ui
+                    .checkbox_indeterminate(&mut all_enabled, visible_count_label, indeterminate)
+                    .changed()
+                {
+                    if all_enabled {
+                        self.select_all_columns(ctx);
+                    } else {
+                        self.unselect_all_columns(ctx);
+                    }
+                }
+
+                //
+                // Time columns
+                //
+
+                let mut first = true;
+                for column in schema {
+                    let ColumnDescriptor::Time(time_column_descriptor) = column else {
+                        continue;
+                    };
+
+                    if first {
+                        ui.label("Timelines");
+                        first = false;
+                    }
+
+                    let column_selector: ColumnSelector = column.clone().into();
+
+                    let is_query_timeline =
+                        time_column_descriptor.timeline.name() == timeline.name();
+                    let is_enabled = !is_query_timeline;
+                    let mut is_visible =
+                        is_query_timeline || selected_columns.contains(&column_selector);
+
+                    ui.add_enabled_ui(is_enabled, |ui| {
+                        if ui
+                            .re_checkbox(&mut is_visible, column.short_name())
+                            .on_disabled_hover_text("The query timeline must always be visible")
+                            .changed()
+                        {
+                            if is_visible {
+                                new_selected_columns.insert(column_selector);
+                            } else {
+                                new_selected_columns.remove(&column_selector);
+                            }
+                        }
+                    });
+                }
+
+                //
+                // Component columns
+                //
+
+                let mut current_entity = None;
+                for column in schema {
+                    let ColumnDescriptor::Component(component_column_descriptor) = column else {
+                        continue;
+                    };
+
+                    if Some(&component_column_descriptor.entity_path) != current_entity.as_ref() {
+                        current_entity = Some(component_column_descriptor.entity_path.clone());
+                        ui.label(component_column_descriptor.entity_path.to_string());
+                    }
+
+                    let column_selector: ColumnSelector = column.clone().into();
+                    let mut is_visible = selected_columns.contains(&column_selector);
+
+                    if ui
+                        .re_checkbox(&mut is_visible, column.short_name())
+                        .changed()
+                    {
+                        if is_visible {
+                            new_selected_columns.insert(column_selector);
+                        } else {
+                            new_selected_columns.remove(&column_selector);
+                        }
+                    }
+                }
+            },
+        );
+
+        // save changes of column visibility
+        if new_selected_columns != selected_columns {
+            if new_selected_columns.len() == schema.len() {
+                // length match is a guaranteed match because the `selected_columns` sets are built
+                // from filtering out the scheme
+                self.select_all_columns(ctx);
+            } else {
+                self.select_columns(ctx, new_selected_columns);
+            }
+        }
+
         Ok(())
     }
 

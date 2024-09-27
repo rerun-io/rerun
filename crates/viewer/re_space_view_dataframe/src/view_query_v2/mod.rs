@@ -5,6 +5,7 @@ use re_chunk_store::ColumnDescriptor;
 use re_log_types::EntityPath;
 use re_types::blueprint::archetypes;
 use re_types_core::ComponentName;
+use re_ui::modal::ModalHandler;
 use re_viewer_context::{SpaceViewId, SpaceViewSystemExecutionError, ViewerContext};
 use re_viewport_blueprint::ViewProperty;
 
@@ -43,6 +44,7 @@ impl QueryV2 {
         ui: &mut egui::Ui,
         space_view_id: SpaceViewId,
         schema: &[ColumnDescriptor],
+        column_visibility_modal_handler: &mut ModalHandler,
     ) -> Result<(), SpaceViewSystemExecutionError> {
         let timeline = self.timeline(ctx)?;
 
@@ -52,7 +54,7 @@ impl QueryV2 {
         ui.separator();
         self.filter_event_ui(ctx, ui, &timeline, space_view_id)?;
         ui.separator();
-        self.column_visibility_ui(ctx, ui, &timeline, schema)?;
+        self.column_visibility_ui(ctx, ui, &timeline, schema, column_visibility_modal_handler)?;
         ui.separator();
         self.latest_at_ui(ctx, ui)?;
 
