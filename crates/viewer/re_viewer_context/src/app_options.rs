@@ -37,7 +37,7 @@ pub struct AppOptions {
     pub time_zone: TimeZone,
 
     /// Hardware acceleration settings for video decoding.
-    pub video_decoder_hw_accelleration: re_renderer::video::DecodeHardwareAcceleration,
+    pub video_decoder_hw_acceleration: re_renderer::video::DecodeHardwareAcceleration,
 }
 
 impl Default for AppOptions {
@@ -65,7 +65,7 @@ impl Default for AppOptions {
 
             time_zone: TimeZone::Utc,
 
-            video_decoder_hw_accelleration: Default::default(),
+            video_decoder_hw_acceleration: Default::default(),
         }
     }
 }

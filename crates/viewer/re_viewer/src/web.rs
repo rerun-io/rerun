@@ -316,6 +316,7 @@ pub struct AppOptions {
     url: Option<StringOrStringArray>,
     manifest_url: Option<String>,
     render_backend: Option<String>,
+    video_decoder: Option<String>,
     hide_welcome_screen: Option<bool>,
     panel_state_overrides: Option<PanelStateOverrides>,
     fullscreen: Option<FullscreenOptions>,
@@ -363,6 +364,15 @@ fn create_app(
         url: cc.integration_info.web_info.location.url.clone(),
     };
     let enable_history = app_options.enable_history.unwrap_or(false);
+
+    let video_decoder_hw_acceleration = app_options.video_decoder.and_then(|s| match s.parse() {
+        Err(()) => {
+            re_log::warn_once!("Failed to parse --video-decoder value: {s}. Ignoring.");
+            None
+        }
+        Ok(hw_accell) => Some(hw_accell),
+    });
+
     let startup_options = crate::StartupOptions {
         memory_limit: re_memory::MemoryLimit {
             // On wasm32 we only have 4GB of memory to play around with.
@@ -372,10 +382,12 @@ fn create_app(
         persist_state: app_options.persist.unwrap_or(true),
         is_in_notebook: app_options.notebook.unwrap_or(false),
         expect_data_soon: None,
-        force_wgpu_backend: None,
+        force_wgpu_backend: app_options.render_backend.clone(),
+        video_decoder_hw_acceleration,
         hide_welcome_screen: app_options.hide_welcome_screen.unwrap_or(false),
         fullscreen_options: app_options.fullscreen.clone(),
         panel_state_overrides: app_options.panel_state_overrides.unwrap_or_default().into(),
+
         enable_history,
     };
     crate::customize_eframe_and_setup_renderer(cc)?;

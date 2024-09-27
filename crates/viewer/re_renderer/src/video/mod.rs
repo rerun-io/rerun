@@ -80,7 +80,7 @@ pub struct Video {
     decode_hw_acceleration: DecodeHardwareAcceleration,
 }
 
-/// How the the video should be decoded.
+/// How the video should be decoded.
 ///
 /// Depending on the decoder backend, these settings are merely hints and may be ignored.
 /// However, they can be useful in some situations to work around issues.
@@ -110,6 +110,19 @@ impl std::fmt::Display for DecodeHardwareAcceleration {
             Self::Auto => write!(f, "Auto"),
             Self::PreferSoftware => write!(f, "Prefer software"),
             Self::PreferHardware => write!(f, "Prefer hardware"),
+        }
+    }
+}
+
+impl std::str::FromStr for DecodeHardwareAcceleration {
+    type Err = ();
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s.trim().to_lowercase().replace('-', "_").as_str() {
+            "auto" => Ok(Self::Auto),
+            "prefer_software" | "software" => Ok(Self::PreferSoftware),
+            "prefer_hardware" | "hardware" => Ok(Self::PreferHardware),
+            _ => Err(()),
         }
     }
 }

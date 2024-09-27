@@ -426,7 +426,7 @@ impl StoreHub {
     /// Flushes all caches of a given cache type.
     ///
     /// This will remove (and subsequently recreate upon use) all caches of a given type
-    /// accross *all* recordings.
+    /// across *all* recordings.
     pub fn flush_cache_type(&self, cache_type: std::any::TypeId) {
         for cache in self.caches_per_recording.values() {
             cache.remove_cache(cache_type);

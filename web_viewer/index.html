@@ -1,4 +1,4 @@
-<!doctype html>
+<!DOCTYPE html>
 <!-- Rerun SDK-bundled web viewer. -->
 <html>
   <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
@@ -332,6 +332,7 @@
           url: Option<StringOrStringArray>,
           manifest_url: Option<String>,
           render_backend: Option<String>,
+          video_decoder: Option<String>,
           hide_welcome_screen: Option<bool>,
           panel_state_overrides: Option<PanelStateOverrides>,
           fullscreen: Option<FullscreenOptions>,
@@ -343,6 +344,7 @@
           url: query.getAll("url"),
           manifest_url: query.get("manifest_url"),
           render_backend: query.get("renderer"),
+          video_decoder: query.get("video_decoder"),
           hide_welcome_screen: query.has("hide_welcome_screen"),
           // panel_state_overrides: undefined,
           // fullscreen: undefined,

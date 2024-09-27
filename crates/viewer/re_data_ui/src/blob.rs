@@ -118,7 +118,7 @@ pub fn blob_preview_and_save_ui(
                 blob_row_id,
                 blob,
                 media_type.as_ref().map(|mt| mt.as_str()),
-                ctx.app_options.video_decoder_hw_accelleration,
+                ctx.app_options.video_decoder_hw_acceleration,
             )
         });
 

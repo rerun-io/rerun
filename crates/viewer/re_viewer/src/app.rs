@@ -73,6 +73,12 @@ pub struct StartupOptions {
     /// Forces wgpu backend to use the specified graphics API, e.g. `webgl` or `webgpu`.
     pub force_wgpu_backend: Option<String>,
 
+    /// Overwrites hardware acceleration option for video decoding.
+    ///
+    /// By default uses the last provided setting, which is `auto` if never configured.
+    /// This also can be changed in the viewer's option menu.
+    pub video_decoder_hw_acceleration: Option<re_renderer::video::DecodeHardwareAcceleration>,
+
     /// Fullscreen is handled by JS on web.
     ///
     /// This holds some callbacks which we use to communicate
@@ -120,6 +126,7 @@ impl Default for StartupOptions {
 
             expect_data_soon: None,
             force_wgpu_backend: None,
+            video_decoder_hw_acceleration: None,
 
             #[cfg(target_arch = "wasm32")]
             fullscreen_options: Default::default(),
@@ -224,7 +231,7 @@ impl App {
             );
         }
 
-        let state: AppState = if startup_options.persist_state {
+        let mut state: AppState = if startup_options.persist_state {
             storage
                 .and_then(|storage| {
                     // This re-implements: `eframe::get_value` so we can customize the warning message.
@@ -244,6 +251,11 @@ impl App {
         } else {
             AppState::default()
         };
+
+        if let Some(video_decoder_hw_acceleration) = startup_options.video_decoder_hw_acceleration
+        {
+            state.app_options.video_decoder_hw_acceleration = video_decoder_hw_acceleration;
+        }
 
         let mut space_view_class_registry = SpaceViewClassRegistry::default();
         if let Err(err) = populate_space_view_class_registry_with_builtin(

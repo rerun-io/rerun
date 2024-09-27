@@ -327,11 +327,11 @@ fn options_menu_ui(
     {
         use re_renderer::video::DecodeHardwareAcceleration;
 
-        let hardware_acceleration = &mut app_options.video_decoder_hw_accelleration;
+        let hardware_acceleration = &mut app_options.video_decoder_hw_acceleration;
 
         ui.horizontal(|ui| {
             ui.label("Video Decoder:");
-            let response = egui::ComboBox::from_id_salt("video_decoder_hw_accelleration")
+            let response = egui::ComboBox::from_id_salt("video_decoder_hw_acceleration")
                 .selected_text(format!("{hardware_acceleration}"))
                 .show_ui(ui, |ui| {
                     ui.selectable_value(
