@@ -14,7 +14,7 @@ namespace rerun {
     ) {
         using namespace archetypes;
         std::vector<ComponentBatch> cells;
-        cells.reserve(7);
+        cells.reserve(8);
 
         {
             auto result = ComponentBatch::from_loggable(archetype.buffer);
@@ -23,6 +23,11 @@ namespace rerun {
         }
         {
             auto result = ComponentBatch::from_loggable(archetype.format);
+            RR_RETURN_NOT_OK(result.error);
+            cells.push_back(std::move(result.value));
+        }
+        if (archetype.depth_display_range.has_value()) {
+            auto result = ComponentBatch::from_loggable(archetype.depth_display_range.value());
             RR_RETURN_NOT_OK(result.error);
             cells.push_back(std::move(result.value));
         }

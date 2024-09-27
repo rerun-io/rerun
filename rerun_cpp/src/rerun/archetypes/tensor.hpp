@@ -4,12 +4,15 @@
 #pragma once
 
 #include "../collection.hpp"
+#include "../compiler_utils.hpp"
 #include "../component_batch.hpp"
+#include "../components/range1d.hpp"
 #include "../components/tensor_data.hpp"
 #include "../indicator_component.hpp"
 #include "../result.hpp"
 
 #include <cstdint>
+#include <optional>
 #include <utility>
 #include <vector>
 
@@ -53,6 +56,19 @@ namespace rerun::archetypes {
         /// The tensor data
         rerun::components::TensorData data;
 
+        /// The range of values that should be displayed.
+        ///
+        /// This is typically the expected range of valid values.
+        /// Everything outside of the range is clamped to the range.
+        /// Any colormap applied for display, will map this range.
+        ///
+        /// If not specified, the range will be automatically be determined from the data.
+        /// Note that the Viewer may try to guess a wider range than the minimum/maximum of values
+        /// in the contents of the tensor.
+        /// E.g. if all values are positive, some bigger than 1.0 and all smaller than 255.0,
+        /// the Viewer will conclude that the data likely came from an 8bit image, thus assuming a range of 0-255.
+        std::optional<rerun::components::Range1D> value_display_range;
+
       public:
         static constexpr const char IndicatorComponentName[] = "rerun.components.TensorIndicator";
 
@@ -90,6 +106,23 @@ namespace rerun::archetypes {
         Tensor(Tensor&& other) = default;
 
         explicit Tensor(rerun::components::TensorData _data) : data(std::move(_data)) {}
+
+        /// The range of values that should be displayed.
+        ///
+        /// This is typically the expected range of valid values.
+        /// Everything outside of the range is clamped to the range.
+        /// Any colormap applied for display, will map this range.
+        ///
+        /// If not specified, the range will be automatically be determined from the data.
+        /// Note that the Viewer may try to guess a wider range than the minimum/maximum of values
+        /// in the contents of the tensor.
+        /// E.g. if all values are positive, some bigger than 1.0 and all smaller than 255.0,
+        /// the Viewer will conclude that the data likely came from an 8bit image, thus assuming a range of 0-255.
+        Tensor with_value_display_range(rerun::components::Range1D _value_display_range) && {
+            value_display_range = std::move(_value_display_range);
+            // See: https://github.com/rerun-io/rerun/issues/4027
+            RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
+        }
     };
 
 } // namespace rerun::archetypes

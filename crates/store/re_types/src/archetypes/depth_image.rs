@@ -72,6 +72,19 @@ pub struct DepthImage {
     /// The format of the image.
     pub format: crate::components::ImageFormat,
 
+    /// The expected range of depth values.
+    ///
+    /// This is typically the expected range of valid values.
+    /// Everything outside of the range is clamped to the range.
+    /// Any colormap applied for display, will map this range.
+    ///
+    /// If not specified, the range will be automatically be determined from the data.
+    /// Note that the Viewer may try to guess a wider range than the minimum/maximum of values
+    /// in the contents of the depth image.
+    /// E.g. if all values are positive, some bigger than 1.0 and all smaller than 255.0,
+    /// the Viewer will conclude that the data likely came from an 8bit image, thus assuming a range of 0-255.
+    pub depth_display_range: Option<crate::components::Range1D>,
+
     /// An optional floating point value that specifies how long a meter is in the native depth units.
     ///
     /// For instance: with uint16, perhaps meter=1000 which would mean you have millimeter precision
@@ -106,6 +119,7 @@ impl ::re_types_core::SizeBytes for DepthImage {
     fn heap_size_bytes(&self) -> u64 {
         self.buffer.heap_size_bytes()
             + self.format.heap_size_bytes()
+            + self.depth_display_range.heap_size_bytes()
             + self.meter.heap_size_bytes()
             + self.colormap.heap_size_bytes()
             + self.point_fill_ratio.heap_size_bytes()
@@ -116,6 +130,7 @@ impl ::re_types_core::SizeBytes for DepthImage {
     fn is_pod() -> bool {
         <crate::components::ImageBuffer>::is_pod()
             && <crate::components::ImageFormat>::is_pod()
+            && <Option<crate::components::Range1D>>::is_pod()
             && <Option<crate::components::DepthMeter>>::is_pod()
             && <Option<crate::components::Colormap>>::is_pod()
             && <Option<crate::components::FillRatio>>::is_pod()
@@ -134,9 +149,10 @@ static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 2usize]> =
 static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 1usize]> =
     once_cell::sync::Lazy::new(|| ["rerun.components.DepthImageIndicator".into()]);
 
-static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 4usize]> =
+static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 5usize]> =
     once_cell::sync::Lazy::new(|| {
         [
+            "rerun.components.Range1D".into(),
             "rerun.components.DepthMeter".into(),
             "rerun.components.Colormap".into(),
             "rerun.components.FillRatio".into(),
@@ -144,12 +160,13 @@ static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 4usize]> =
         ]
     });
 
-static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 7usize]> =
+static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 8usize]> =
     once_cell::sync::Lazy::new(|| {
         [
             "rerun.components.ImageBuffer".into(),
             "rerun.components.ImageFormat".into(),
             "rerun.components.DepthImageIndicator".into(),
+            "rerun.components.Range1D".into(),
             "rerun.components.DepthMeter".into(),
             "rerun.components.Colormap".into(),
             "rerun.components.FillRatio".into(),
@@ -158,8 +175,8 @@ static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 7usize]> =
     });
 
 impl DepthImage {
-    /// The total number of components in the archetype: 2 required, 1 recommended, 4 optional
-    pub const NUM_COMPONENTS: usize = 7usize;
+    /// The total number of components in the archetype: 2 required, 1 recommended, 5 optional
+    pub const NUM_COMPONENTS: usize = 8usize;
 }
 
 /// Indicator component for the [`DepthImage`] [`::re_types_core::Archetype`]
@@ -240,6 +257,16 @@ impl ::re_types_core::Archetype for DepthImage {
                 .ok_or_else(DeserializationError::missing_data)
                 .with_context("rerun.archetypes.DepthImage#format")?
         };
+        let depth_display_range =
+            if let Some(array) = arrays_by_name.get("rerun.components.Range1D") {
+                <crate::components::Range1D>::from_arrow_opt(&**array)
+                    .with_context("rerun.archetypes.DepthImage#depth_display_range")?
+                    .into_iter()
+                    .next()
+                    .flatten()
+            } else {
+                None
+            };
         let meter = if let Some(array) = arrays_by_name.get("rerun.components.DepthMeter") {
             <crate::components::DepthMeter>::from_arrow_opt(&**array)
                 .with_context("rerun.archetypes.DepthImage#meter")?
@@ -280,6 +307,7 @@ impl ::re_types_core::Archetype for DepthImage {
         Ok(Self {
             buffer,
             format,
+            depth_display_range,
             meter,
             colormap,
             point_fill_ratio,
@@ -296,6 +324,9 @@ impl ::re_types_core::AsComponents for DepthImage {
             Some(Self::indicator()),
             Some((&self.buffer as &dyn ComponentBatch).into()),
             Some((&self.format as &dyn ComponentBatch).into()),
+            self.depth_display_range
+                .as_ref()
+                .map(|comp| (comp as &dyn ComponentBatch).into()),
             self.meter
                 .as_ref()
                 .map(|comp| (comp as &dyn ComponentBatch).into()),
@@ -327,11 +358,32 @@ impl DepthImage {
         Self {
             buffer: buffer.into(),
             format: format.into(),
+            depth_display_range: None,
             meter: None,
             colormap: None,
             point_fill_ratio: None,
             draw_order: None,
         }
+    }
+
+    /// The expected range of depth values.
+    ///
+    /// This is typically the expected range of valid values.
+    /// Everything outside of the range is clamped to the range.
+    /// Any colormap applied for display, will map this range.
+    ///
+    /// If not specified, the range will be automatically be determined from the data.
+    /// Note that the Viewer may try to guess a wider range than the minimum/maximum of values
+    /// in the contents of the depth image.
+    /// E.g. if all values are positive, some bigger than 1.0 and all smaller than 255.0,
+    /// the Viewer will conclude that the data likely came from an 8bit image, thus assuming a range of 0-255.
+    #[inline]
+    pub fn with_depth_display_range(
+        mut self,
+        depth_display_range: impl Into<crate::components::Range1D>,
+    ) -> Self {
+        self.depth_display_range = Some(depth_display_range.into());
+        self
     }
 
     /// An optional floating point value that specifies how long a meter is in the native depth units.

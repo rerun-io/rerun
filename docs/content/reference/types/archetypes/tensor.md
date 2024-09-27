@@ -9,6 +9,8 @@ An N-dimensional array of numbers.
 
 **Required**: [`TensorData`](../components/tensor_data.md)
 
+**Optional**: [`Range1D`](../components/range1d.md)
+
 ## Shown in
 * [TensorView](../views/tensor_view.md)
 * [BarChartView](../views/bar_chart_view.md) (for 1D tensors)

@@ -15,3 +15,7 @@ A 1D range, specifying a lower and upper bound.
  * 🦀 [Rust API docs for `Range1D`](https://docs.rs/rerun/latest/rerun/components/struct.Range1D.html)
 
 
+## Used by
+
+* [`DepthImage`](../archetypes/depth_image.md)
+* [`Tensor`](../archetypes/tensor.md)

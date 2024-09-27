@@ -12,6 +12,7 @@
 #include "../components/fill_ratio.hpp"
 #include "../components/image_buffer.hpp"
 #include "../components/image_format.hpp"
+#include "../components/range1d.hpp"
 #include "../image_utils.hpp"
 #include "../indicator_component.hpp"
 #include "../result.hpp"
@@ -26,7 +27,7 @@ namespace rerun::archetypes {
     ///
     /// Each pixel corresponds to a depth value in units specified by `components::DepthMeter`.
     ///
-    /// Since the underlying `rerun::datatypes::TensorData` uses `rerun::Collection` internally,
+    /// Since the underlying `rerun::datatypes::ImageBuffer` uses `rerun::Collection` internally,
     /// data can be passed in without a copy from raw pointers or by reference from `std::vector`/`std::array`/c-arrays.
     /// If needed, this "borrow-behavior" can be extended by defining your own `rerun::CollectionAdapter`.
     ///
@@ -79,6 +80,19 @@ namespace rerun::archetypes {
 
         /// The format of the image.
         rerun::components::ImageFormat format;
+
+        /// The expected range of depth values.
+        ///
+        /// This is typically the expected range of valid values.
+        /// Everything outside of the range is clamped to the range.
+        /// Any colormap applied for display, will map this range.
+        ///
+        /// If not specified, the range will be automatically be determined from the data.
+        /// Note that the Viewer may try to guess a wider range than the minimum/maximum of values
+        /// in the contents of the depth image.
+        /// E.g. if all values are positive, some bigger than 1.0 and all smaller than 255.0,
+        /// the Viewer will conclude that the data likely came from an 8bit image, thus assuming a range of 0-255.
+        std::optional<rerun::components::Range1D> depth_display_range;
 
         /// An optional floating point value that specifies how long a meter is in the native depth units.
         ///
@@ -178,6 +192,23 @@ namespace rerun::archetypes {
       public:
         DepthImage() = default;
         DepthImage(DepthImage&& other) = default;
+
+        /// The expected range of depth values.
+        ///
+        /// This is typically the expected range of valid values.
+        /// Everything outside of the range is clamped to the range.
+        /// Any colormap applied for display, will map this range.
+        ///
+        /// If not specified, the range will be automatically be determined from the data.
+        /// Note that the Viewer may try to guess a wider range than the minimum/maximum of values
+        /// in the contents of the depth image.
+        /// E.g. if all values are positive, some bigger than 1.0 and all smaller than 255.0,
+        /// the Viewer will conclude that the data likely came from an 8bit image, thus assuming a range of 0-255.
+        DepthImage with_depth_display_range(rerun::components::Range1D _depth_display_range) && {
+            depth_display_range = std::move(_depth_display_range);
+            // See: https://github.com/rerun-io/rerun/issues/4027
+            RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
+        }
 
         /// An optional floating point value that specifies how long a meter is in the native depth units.
         ///

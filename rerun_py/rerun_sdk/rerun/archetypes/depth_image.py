@@ -68,6 +68,7 @@ class DepthImage(DepthImageExt, Archetype):
         self.__attrs_init__(
             buffer=None,  # type: ignore[arg-type]
             format=None,  # type: ignore[arg-type]
+            depth_display_range=None,  # type: ignore[arg-type]
             meter=None,  # type: ignore[arg-type]
             colormap=None,  # type: ignore[arg-type]
             point_fill_ratio=None,  # type: ignore[arg-type]
@@ -94,6 +95,25 @@ class DepthImage(DepthImageExt, Archetype):
         converter=components.ImageFormatBatch._required,  # type: ignore[misc]
     )
     # The format of the image.
+    #
+    # (Docstring intentionally commented out to hide this field from the docs)
+
+    depth_display_range: components.Range1DBatch | None = field(
+        metadata={"component": "optional"},
+        default=None,
+        converter=components.Range1DBatch._optional,  # type: ignore[misc]
+    )
+    # The expected range of depth values.
+    #
+    # This is typically the expected range of valid values.
+    # Everything outside of the range is clamped to the range.
+    # Any colormap applied for display, will map this range.
+    #
+    # If not specified, the range will be automatically be determined from the data.
+    # Note that the Viewer may try to guess a wider range than the minimum/maximum of values
+    # in the contents of the depth image.
+    # E.g. if all values are positive, some bigger than 1.0 and all smaller than 255.0,
+    # the Viewer will conclude that the data likely came from an 8bit image, thus assuming a range of 0-255.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 

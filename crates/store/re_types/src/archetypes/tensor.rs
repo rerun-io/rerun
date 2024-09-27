@@ -52,17 +52,30 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 pub struct Tensor {
     /// The tensor data
     pub data: crate::components::TensorData,
+
+    /// The range of values that should be displayed.
+    ///
+    /// This is typically the expected range of valid values.
+    /// Everything outside of the range is clamped to the range.
+    /// Any colormap applied for display, will map this range.
+    ///
+    /// If not specified, the range will be automatically be determined from the data.
+    /// Note that the Viewer may try to guess a wider range than the minimum/maximum of values
+    /// in the contents of the tensor.
+    /// E.g. if all values are positive, some bigger than 1.0 and all smaller than 255.0,
+    /// the Viewer will conclude that the data likely came from an 8bit image, thus assuming a range of 0-255.
+    pub value_display_range: Option<crate::components::Range1D>,
 }
 
 impl ::re_types_core::SizeBytes for Tensor {
     #[inline]
     fn heap_size_bytes(&self) -> u64 {
-        self.data.heap_size_bytes()
+        self.data.heap_size_bytes() + self.value_display_range.heap_size_bytes()
     }
 
     #[inline]
     fn is_pod() -> bool {
-        <crate::components::TensorData>::is_pod()
+        <crate::components::TensorData>::is_pod() && <Option<crate::components::Range1D>>::is_pod()
     }
 }
 
@@ -72,20 +85,21 @@ static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 1usize]> =
 static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 1usize]> =
     once_cell::sync::Lazy::new(|| ["rerun.components.TensorIndicator".into()]);
 
-static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 0usize]> =
-    once_cell::sync::Lazy::new(|| []);
+static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 1usize]> =
+    once_cell::sync::Lazy::new(|| ["rerun.components.Range1D".into()]);
 
-static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 2usize]> =
+static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 3usize]> =
     once_cell::sync::Lazy::new(|| {
         [
             "rerun.components.TensorData".into(),
             "rerun.components.TensorIndicator".into(),
+            "rerun.components.Range1D".into(),
         ]
     });
 
 impl Tensor {
-    /// The total number of components in the archetype: 1 required, 1 recommended, 0 optional
-    pub const NUM_COMPONENTS: usize = 2usize;
+    /// The total number of components in the archetype: 1 required, 1 recommended, 1 optional
+    pub const NUM_COMPONENTS: usize = 3usize;
 }
 
 /// Indicator component for the [`Tensor`] [`::re_types_core::Archetype`]
@@ -153,7 +167,20 @@ impl ::re_types_core::Archetype for Tensor {
                 .ok_or_else(DeserializationError::missing_data)
                 .with_context("rerun.archetypes.Tensor#data")?
         };
-        Ok(Self { data })
+        let value_display_range =
+            if let Some(array) = arrays_by_name.get("rerun.components.Range1D") {
+                <crate::components::Range1D>::from_arrow_opt(&**array)
+                    .with_context("rerun.archetypes.Tensor#value_display_range")?
+                    .into_iter()
+                    .next()
+                    .flatten()
+            } else {
+                None
+            };
+        Ok(Self {
+            data,
+            value_display_range,
+        })
     }
 }
 
@@ -164,6 +191,9 @@ impl ::re_types_core::AsComponents for Tensor {
         [
             Some(Self::indicator()),
             Some((&self.data as &dyn ComponentBatch).into()),
+            self.value_display_range
+                .as_ref()
+                .map(|comp| (comp as &dyn ComponentBatch).into()),
         ]
         .into_iter()
         .flatten()
@@ -177,6 +207,29 @@ impl Tensor {
     /// Create a new `Tensor`.
     #[inline]
     pub fn new(data: impl Into<crate::components::TensorData>) -> Self {
-        Self { data: data.into() }
+        Self {
+            data: data.into(),
+            value_display_range: None,
+        }
+    }
+
+    /// The range of values that should be displayed.
+    ///
+    /// This is typically the expected range of valid values.
+    /// Everything outside of the range is clamped to the range.
+    /// Any colormap applied for display, will map this range.
+    ///
+    /// If not specified, the range will be automatically be determined from the data.
+    /// Note that the Viewer may try to guess a wider range than the minimum/maximum of values
+    /// in the contents of the tensor.
+    /// E.g. if all values are positive, some bigger than 1.0 and all smaller than 255.0,
+    /// the Viewer will conclude that the data likely came from an 8bit image, thus assuming a range of 0-255.
+    #[inline]
+    pub fn with_value_display_range(
+        mut self,
+        value_display_range: impl Into<crate::components::Range1D>,
+    ) -> Self {
+        self.value_display_range = Some(value_display_range.into());
+        self
     }
 }

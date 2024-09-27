@@ -46,6 +46,9 @@ class TensorScalarMapping(Archetype):
             Raises the normalized values to the power of this value before mapping to color.
             Acts like an inverse brightness. Defaults to 1.0.
 
+            The final value for display is set as:
+            `colormap( (value - data_display_range.min) ** gamma / (data_display_range.max - data_display_range.min) ** gamma )`
+
         """
 
         # You can define your own __init__ function as a member of TensorScalarMappingExt in tensor_scalar_mapping_ext.py
@@ -98,6 +101,9 @@ class TensorScalarMapping(Archetype):
     #
     # Raises the normalized values to the power of this value before mapping to color.
     # Acts like an inverse brightness. Defaults to 1.0.
+    #
+    # The final value for display is set as:
+    # `colormap( (value - data_display_range.min) ** gamma / (data_display_range.max - data_display_range.min) ** gamma )`
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 
