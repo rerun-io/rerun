@@ -28,6 +28,13 @@ pub use utilities::{
     UiLabel, UiLabelTarget,
 };
 
+/// Shows a loading animation in a spatial view
+#[derive(Clone, Copy, Debug)]
+pub struct LoadingSpinner {
+    pub center: glam::Vec3,
+    pub diameter: f32,
+}
+
 // ---
 
 use ahash::HashMap;

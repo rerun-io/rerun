@@ -272,14 +272,44 @@ pub fn create_labels(
 pub fn paint_loading_spinners(
     ui: &egui::Ui,
     ui_from_scene: egui::emath::RectTransform,
+    eye3d: &Eye,
     visualizers: &re_viewer_context::VisualizerCollection,
 ) {
-    for data in visualizers.iter_visualizer_data::<SpatialViewVisualizerData>() {
-        for &rect_in_scene in &data.loading_rects {
-            let rect_in_ui = ui_from_scene.transform_rect(rect_in_scene);
+    use glam::Vec3Swizzles as _;
+    use glam::Vec4Swizzles as _;
 
-            // Shrink slightly:
-            let rect = egui::Rect::from_center_size(rect_in_ui.center(), 0.75 * rect_in_ui.size());
+    let ui_from_world_3d = eye3d.ui_from_world(*ui_from_scene.to());
+
+    for data in visualizers.iter_visualizer_data::<SpatialViewVisualizerData>() {
+        for &crate::visualizers::LoadingSpinner { center, diameter } in &data.loading_spinners {
+            // Transform to ui coordinates:
+            let center_unprojected = ui_from_world_3d * center.extend(1.0);
+            if center_unprojected.w < 0.0 {
+                continue; // behind camera eye
+            }
+            let center_in_ui: glam::Vec2 = center_unprojected.xy() / center_unprojected.w;
+
+
+            // Estimate projected diameter.
+            // Doing this properly requires thinking through a bunch of math, so we do the simple thing instead:
+            let mut diameter_in_ui: f32 = 0.0;
+            for axis in [glam::Vec3::X, glam::Vec3::Y, glam::Vec3::Z] {
+                let axis_diameter = center_in_ui.distance(
+                    ui_from_world_3d
+                        .project_point3(center + diameter * axis)
+                        .xy(),
+                );
+                diameter_in_ui = diameter_in_ui.max(axis_diameter);
+            }
+
+            diameter_in_ui *= 0.5; // shrink a bit
+
+            let rect = egui::Rect::from_center_size(
+                egui::pos2(center_in_ui.x, center_in_ui.y),
+                egui::Vec2::splat(diameter_in_ui),
+            );
+
+            let rect = ui_from_scene.transform_rect(rect); // For 2D views
 
             egui::Spinner::new().paint_at(ui, rect);
         }
