@@ -1,5 +1,5 @@
 use re_viewer::external::{
-    egui::{self, Label},
+    egui::{self, Color32, Label},
     re_log::external::log,
     re_log_types::EntityPath,
     re_types::SpaceViewClassIdentifier,
@@ -12,7 +12,7 @@ use re_viewer::external::{
     },
 };
 
-use crate::edge_visualizer_system::GraphEdgeSystem;
+use crate::edge_visualizer_system::GraphEdgeVisualizer;
 use crate::node_visualizer_system::GraphNodeVisualizer;
 
 /// Space view state for the custom space view.
@@ -59,7 +59,7 @@ impl SpaceViewClass for GraphSpaceView {
         system_registry: &mut SpaceViewSystemRegistrator<'_>,
     ) -> Result<(), SpaceViewClassRegistryError> {
         system_registry.register_visualizer::<GraphNodeVisualizer>()?;
-        system_registry.register_visualizer::<GraphEdgeSystem>()
+        system_registry.register_visualizer::<GraphEdgeVisualizer>()
     }
 
     fn new_state(&self) -> Box<dyn SpaceViewState> {
@@ -128,9 +128,9 @@ impl SpaceViewClass for GraphSpaceView {
         system_output: SystemExecutionOutput,
     ) -> Result<(), SpaceViewSystemExecutionError> {
         let node_system = system_output.view_systems.get::<GraphNodeVisualizer>()?;
-        let edge_system = system_output.view_systems.get::<GraphEdgeSystem>()?;
+        let edge_system = system_output.view_systems.get::<GraphEdgeVisualizer>()?;
 
-        let state = state.downcast_mut::<GraphSpaceViewState>()?;
+        let _state = state.downcast_mut::<GraphSpaceViewState>()?;
 
         egui::Frame {
             inner_margin: re_ui::DesignTokens::view_padding().into(),
@@ -142,7 +142,7 @@ impl SpaceViewClass for GraphSpaceView {
                     ui.label(egui::RichText::new("Nodes").underline());
 
                     for data in node_system.data.iter() {
-                        for (node_id, maybe_color) in data.nodes.iter() {
+                        for (node_id, maybe_color) in data.nodes() {
                             let text = egui::RichText::new(format!(
                                 "{}: {}",
                                 data.entity_path.to_owned(),
@@ -150,10 +150,8 @@ impl SpaceViewClass for GraphSpaceView {
                             ));
 
                             if let Some(color) = maybe_color {
-                                let c = egui::Color32::from(color.0);
-                                ui.add(Label::new(
-                                    text.color(c)),
-                                );
+                                let c = Color32::from(color.0);
+                                ui.add(Label::new(text.color(c)));
                             } else {
                                 ui.add(Label::new(text));
                             }
@@ -162,17 +160,23 @@ impl SpaceViewClass for GraphSpaceView {
 
                     ui.label(egui::RichText::new("Edges").underline());
 
-                    for (entity, edges) in edge_system.edges.iter() {
-                        for e in edges {
+                    for data in edge_system.data.iter() {
+                        for (edge, maybe_color) in data.edges() {
                             let text = egui::RichText::new(format!(
                                 "{}: {:?}:{} -> {:?}:{}",
-                                entity.to_owned(),
-                                e.edge.0.source_entity.clone().map(EntityPath::from),
-                                e.edge.0.source,
-                                e.edge.0.target_entity.clone().map(EntityPath::from),
-                                e.edge.0.target
+                                data.entity_path,
+                                edge.0.source_entity.clone().map(EntityPath::from),
+                                edge.0.source,
+                                edge.0.target_entity.clone().map(EntityPath::from),
+                                edge.0.target
                             ));
-                            ui.add(Label::new(text));
+
+                            if let Some(color) = maybe_color {
+                                let c = Color32::from(color.0);
+                                ui.add(Label::new(text.color(c)));
+                            } else {
+                                ui.add(Label::new(text));
+                            }
                         }
                     }
                 })

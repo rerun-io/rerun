@@ -35,7 +35,11 @@ fn main() -> anyhow::Result<()> {
 
 fn run(rec: &rerun::RecordingStream, _args: &Args) -> anyhow::Result<()> {
     rec.set_time_sequence("frame", 0);
-    rec.log("kitchen/objects", &GraphNodes::new(["sink", "fridge"]).with_colors([Color::from_rgb(255, 0, 0), Color::from_rgb(255, 255, 0)]))?;
+    rec.log(
+        "kitchen/objects",
+        &GraphNodes::new(["sink", "fridge"])
+            .with_colors([Color::from_rgb(255, 0, 0), Color::from_rgb(255, 255, 0)]),
+    )?;
     rec.log("kitchen/areas", &GraphNodes::new(["area0", "area1"]))?;
     rec.log("kitchen/areas", &GraphEdges::new([("area0", "area1")]))?;
 

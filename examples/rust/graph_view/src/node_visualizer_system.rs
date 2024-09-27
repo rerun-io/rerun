@@ -1,14 +1,10 @@
 use re_viewer::external::{
-    re_chunk::LatestAtQuery,
+    re_chunk::{ChunkComponentIterItem, LatestAtQuery},
     re_log_types::EntityPath,
-    re_query, re_renderer,
+    re_query::{clamped_zip_1x1, range_zip_1x1},
+    re_renderer,
     re_space_view::{DataResultQuery, RangeResultsExt},
-    re_types::{
-        self,
-        archetypes::GraphNodes,
-        components::{self, Color, GraphNodeId},
-        Loggable as _,
-    },
+    re_types::{self, archetypes, components, Loggable as _},
     re_viewer_context::{
         self, IdentifiedViewSystem, SpaceViewSystemExecutionError, ViewContext,
         ViewContextCollection, ViewQuery, ViewSystemIdentifier, VisualizerQueryInfo,
@@ -19,12 +15,25 @@ use re_viewer::external::{
 /// Our space view consist of single part which holds a list of egui colors for each entity path.
 #[derive(Default)]
 pub struct GraphNodeVisualizer {
-    pub data: Vec<GraphViewVisualizerData>,
+    pub(crate) data: Vec<GraphNodeVisualizerData>,
 }
 
-pub struct GraphViewVisualizerData {
-    pub entity_path: EntityPath,
-    pub nodes: Vec<(GraphNodeId, Option<Color>)>,
+pub struct GraphNodeVisualizerData {
+    pub(crate) entity_path: EntityPath,
+    pub(crate) node_ids: ChunkComponentIterItem<components::GraphNodeId>,
+    pub(crate) colors: ChunkComponentIterItem<components::Color>,
+}
+
+impl GraphNodeVisualizerData {
+    pub(crate) fn nodes(
+        &self,
+    ) -> impl Iterator<Item = (&components::GraphNodeId, Option<&components::Color>)> {
+        clamped_zip_1x1(
+            self.node_ids.iter(),
+            self.colors.iter().map(Option::Some),
+            Option::<&components::Color>::default,
+        )
+    }
 }
 
 impl IdentifiedViewSystem for GraphNodeVisualizer {
@@ -33,70 +42,42 @@ impl IdentifiedViewSystem for GraphNodeVisualizer {
     }
 }
 
-impl GraphNodeVisualizer {
-    fn process_data(
-        &mut self,
-        entity_path: &EntityPath,
-        data: impl Iterator<Item = Vec<(GraphNodeId, Option<Color>)>>,
-    ) {
-        for nodes in data {
-            self.data.push(GraphViewVisualizerData {
-                entity_path: entity_path.to_owned(),
-                nodes,
-            });
-        }
-    }
-}
-
 impl VisualizerSystem for GraphNodeVisualizer {
     fn visualizer_query_info(&self) -> VisualizerQueryInfo {
-        VisualizerQueryInfo::from_archetype::<GraphNodes>()
+        VisualizerQueryInfo::from_archetype::<archetypes::GraphNodes>()
     }
 
     /// Populates the scene part with data from the store.
     fn execute(
         &mut self,
         ctx: &ViewContext<'_>,
-        view_query: &ViewQuery<'_>,
+        query: &ViewQuery<'_>,
         _context_systems: &ViewContextCollection,
     ) -> Result<Vec<re_renderer::QueueableDrawData>, SpaceViewSystemExecutionError> {
-        let timeline_query = LatestAtQuery::new(view_query.timeline, view_query.latest_at);
+        let timeline_query = LatestAtQuery::new(query.timeline, query.latest_at);
 
-        for data_result in view_query.iter_visible_data_results(ctx, Self::identifier()) {
+        for data_result in query.iter_visible_data_results(ctx, Self::identifier()) {
             let results = data_result
-                .latest_at_with_blueprint_resolved_data::<GraphNodes>(ctx, &timeline_query);
+                .latest_at_with_blueprint_resolved_data::<archetypes::GraphNodes>(
+                    ctx,
+                    &timeline_query,
+                );
 
-            let Some(all_node_ids) = results.get_required_chunks(&components::GraphNodeId::name())
-            else {
-                continue;
-            };
+            let all_indexed_nodes = results.iter_as(query.timeline, components::GraphEdge::name());
+            let all_colors = results.iter_as(query.timeline, components::Color::name());
 
-            let all_nodes_indexed = all_node_ids.iter().flat_map(move |chunk| {
-                itertools::izip!(
-                    chunk.iter_component_indices(
-                        &view_query.timeline,
-                        &components::GraphNodeId::name()
-                    ),
-                    chunk.iter_component::<components::GraphNodeId>()
-                )
-            });
-            let all_colors = results.iter_as(view_query.timeline, components::Color::name());
-
-            let data = re_query::range_zip_1x1(
-                all_nodes_indexed,
+            let data = range_zip_1x1(
+                all_indexed_nodes.component::<components::GraphNodeId>(),
                 all_colors.component::<components::Color>(),
-            )
-            .map(|(_index, node_ids, colors)| {
-                // TODO: Use an iterator here:
-                re_query::clamped_zip_1x1(
-                    node_ids.iter().cloned(),
-                    colors.unwrap_or_default().iter().map(|&c| Some(c)),
-                    Option::<Color>::default,
-                )
-                .collect::<Vec<_>>()
-            });
+            );
 
-            self.process_data(&data_result.entity_path, data);
+            for (_index, node_ids, colors) in data {
+                self.data.push(GraphNodeVisualizerData {
+                    entity_path: data_result.entity_path.clone(),
+                    node_ids,
+                    colors: colors.unwrap_or_default(),
+                });
+            }
         }
 
         // We're not using `re_renderer` here, so return an empty vector.
