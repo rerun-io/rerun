@@ -2,6 +2,7 @@
 
 use re_viewer::external::{re_log, re_memory};
 
+mod common;
 mod edge_visualizer_system;
 mod graph_space_view;
 mod node_visualizer_system;

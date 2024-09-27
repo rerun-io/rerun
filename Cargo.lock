@@ -2734,6 +2734,7 @@ dependencies = [
  "mimalloc",
  "petgraph",
  "re_crash_handler",
+ "re_log_types",
  "re_sdk_comms",
  "re_viewer",
 ]

@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use re_viewer::external::{
     egui::{self, Color32, Label},
     re_log::external::log,
@@ -12,14 +14,23 @@ use re_viewer::external::{
     },
 };
 
-use crate::edge_visualizer_system::GraphEdgeVisualizer;
 use crate::node_visualizer_system::GraphNodeVisualizer;
+use crate::{common::QualifiedNode, edge_visualizer_system::GraphEdgeVisualizer};
+
+// We need to differentiate between regular nodes and nodes that belong to a different entity hierarchy.
+enum NodeKind {
+    Regular,
+    Dummy,
+}
 
 /// Space view state for the custom space view.
 ///
 /// This state is preserved between frames, but not across Viewer sessions.
 #[derive(Default)]
-pub struct GraphSpaceViewState;
+pub struct GraphSpaceViewState {
+    graph: petgraph::stable_graph::StableGraph<NodeKind, ()>,
+    node_to_index: HashMap<QualifiedNode, petgraph::stable_graph::NodeIndex>,
+}
 
 impl SpaceViewState for GraphSpaceViewState {
     fn as_any(&self) -> &dyn std::any::Any {
@@ -130,7 +141,32 @@ impl SpaceViewClass for GraphSpaceView {
         let node_system = system_output.view_systems.get::<GraphNodeVisualizer>()?;
         let edge_system = system_output.view_systems.get::<GraphEdgeVisualizer>()?;
 
-        let _state = state.downcast_mut::<GraphSpaceViewState>()?;
+        let state = state.downcast_mut::<GraphSpaceViewState>()?;
+
+        // TODO(grtlr): Once we settle on a design, we should update the graph instead of constructing it from scratch.
+        state.graph.clear();
+        state.node_to_index.clear();
+
+        for data in node_system.data.iter() {
+            for (node_id, _) in data.nodes() {
+                let node_index = state.graph.add_node(NodeKind::Regular);
+                state.node_to_index.insert(node_id, node_index);
+            }
+        }
+
+        for data in edge_system.data.iter() {
+            for (edge, _) in data.edges() {
+                let source_index = *state
+                    .node_to_index
+                    .entry(edge.source)
+                    .or_insert(state.graph.add_node(NodeKind::Dummy));
+                let target_index = *state
+                    .node_to_index
+                    .entry(edge.target)
+                    .or_insert(state.graph.add_node(NodeKind::Dummy));
+                state.graph.add_edge(source_index, target_index, ());
+            }
+        }
 
         egui::Frame {
             inner_margin: re_ui::DesignTokens::view_padding().into(),
@@ -142,11 +178,10 @@ impl SpaceViewClass for GraphSpaceView {
                     ui.label(egui::RichText::new("Nodes").underline());
 
                     for data in node_system.data.iter() {
-                        for (node_id, maybe_color) in data.nodes() {
+                        for (node, maybe_color) in data.nodes() {
                             let text = egui::RichText::new(format!(
                                 "{}: {}",
-                                data.entity_path.to_owned(),
-                                node_id.0
+                                node.entity_path, node.node_id,
                             ));
 
                             if let Some(color) = maybe_color {
@@ -165,10 +200,10 @@ impl SpaceViewClass for GraphSpaceView {
                             let text = egui::RichText::new(format!(
                                 "{}: {:?}:{} -> {:?}:{}",
                                 data.entity_path,
-                                edge.0.source_entity.clone().map(EntityPath::from),
-                                edge.0.source,
-                                edge.0.target_entity.clone().map(EntityPath::from),
-                                edge.0.target
+                                edge.source.entity_path,
+                                edge.source.node_id,
+                                edge.target.entity_path,
+                                edge.target.node_id,
                             ));
 
                             if let Some(color) = maybe_color {

@@ -1,6 +1,5 @@
 use re_viewer::external::{
     re_chunk::{ChunkComponentIterItem, LatestAtQuery},
-    re_log_types::EntityPath,
     re_query::{clamped_zip_1x1, range_zip_1x1},
     re_renderer,
     re_space_view::{DataResultQuery, RangeResultsExt},
@@ -12,23 +11,41 @@ use re_viewer::external::{
     },
 };
 
+use crate::common::{QualifiedEdge, QualifiedNode};
+
 #[derive(Default)]
 pub struct GraphEdgeVisualizer {
     pub(crate) data: Vec<GraphEdgeVisualizerData>,
 }
 
-pub struct GraphEdgeVisualizerData {
-    pub(crate) entity_path: EntityPath,
-    pub(crate) edges: ChunkComponentIterItem<components::GraphEdge>,
-    pub(crate) colors: ChunkComponentIterItem<components::Color>,
+pub(crate) struct GraphEdgeVisualizerData {
+    pub entity_path: re_log_types::EntityPath,
+    pub edges: ChunkComponentIterItem<components::GraphEdge>,
+    pub colors: ChunkComponentIterItem<components::Color>,
 }
 
 impl GraphEdgeVisualizerData {
     pub(crate) fn edges(
         &self,
-    ) -> impl Iterator<Item = (&components::GraphEdge, Option<&components::Color>)> {
+    ) -> impl Iterator<Item = (QualifiedEdge, Option<&components::Color>)> {
         clamped_zip_1x1(
-            self.edges.iter(),
+            // TODO(grtlr): Avoid all this cloning!
+            self.edges.iter().map(|e| QualifiedEdge {
+                source: QualifiedNode {
+                    entity_path: e
+                        .source_entity
+                        .clone()
+                        .map_or(self.entity_path.clone(), From::from),
+                    node_id: e.source.clone(),
+                },
+                target: QualifiedNode {
+                    entity_path: e
+                        .target_entity
+                        .clone()
+                        .map_or(self.entity_path.clone(), From::from),
+                    node_id: e.target.clone(),
+                },
+            }),
             self.colors.iter().map(Option::Some),
             Option::<&components::Color>::default,
         )

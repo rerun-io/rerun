@@ -12,6 +12,8 @@ use re_viewer::external::{
     },
 };
 
+use crate::common::QualifiedNode;
+
 /// Our space view consist of single part which holds a list of egui colors for each entity path.
 #[derive(Default)]
 pub struct GraphNodeVisualizer {
@@ -27,9 +29,12 @@ pub struct GraphNodeVisualizerData {
 impl GraphNodeVisualizerData {
     pub(crate) fn nodes(
         &self,
-    ) -> impl Iterator<Item = (&components::GraphNodeId, Option<&components::Color>)> {
+    ) -> impl Iterator<Item = (QualifiedNode, Option<&components::Color>)> {
         clamped_zip_1x1(
-            self.node_ids.iter(),
+            self.node_ids.iter().map(|node_id| QualifiedNode {
+                entity_path: self.entity_path.clone(),
+                node_id: node_id.0.clone(),
+            }),
             self.colors.iter().map(Option::Some),
             Option::<&components::Color>::default,
         )
@@ -63,7 +68,8 @@ impl VisualizerSystem for GraphNodeVisualizer {
                     &timeline_query,
                 );
 
-            let all_indexed_nodes = results.iter_as(query.timeline, components::GraphNodeId::name());
+            let all_indexed_nodes =
+                results.iter_as(query.timeline, components::GraphNodeId::name());
             let all_colors = results.iter_as(query.timeline, components::Color::name());
 
             let data = range_zip_1x1(
