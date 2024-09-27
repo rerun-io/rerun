@@ -33,7 +33,7 @@ impl QueryV2 {
         let save_timeline = timeline.is_none();
         let timeline = timeline.unwrap_or_else(|| *ctx.rec_cfg.time_ctrl.read().timeline());
         if save_timeline {
-            self.set_timeline_name(ctx, timeline.name());
+            self.save_timeline_name(ctx, timeline.name());
         }
 
         Ok(timeline)
@@ -43,7 +43,7 @@ impl QueryV2 {
     ///
     /// Note: this resets the range filter timestamps to -inf/+inf as any other value might be
     /// invalidated.
-    pub(super) fn set_timeline_name(&self, ctx: &ViewerContext<'_>, timeline_name: &TimelineName) {
+    pub(super) fn save_timeline_name(&self, ctx: &ViewerContext<'_>, timeline_name: &TimelineName) {
         self.query_property
             .save_blueprint_component(ctx, &components::TimelineName::from(timeline_name.as_str()));
 
@@ -61,7 +61,7 @@ impl QueryV2 {
             .unwrap_or((TimeInt::MIN, TimeInt::MAX)))
     }
 
-    pub(super) fn set_range_filter(&self, ctx: &ViewerContext<'_>, start: TimeInt, end: TimeInt) {
+    pub(super) fn save_range_filter(&self, ctx: &ViewerContext<'_>, start: TimeInt, end: TimeInt) {
         if (start, end) == (TimeInt::MIN, TimeInt::MAX) {
             self.query_property
                 .clear_blueprint_component::<components::RangeFilter>(ctx);
@@ -78,7 +78,7 @@ impl QueryV2 {
             .map_or(false, |comp| *comp.0))
     }
 
-    pub(super) fn set_filter_by_event_active(&self, ctx: &ViewerContext<'_>, active: bool) {
+    pub(super) fn save_filter_by_event_active(&self, ctx: &ViewerContext<'_>, active: bool) {
         self.query_property
             .save_blueprint_component(ctx, &components::FilterByEventActive(active.into()));
     }
@@ -102,7 +102,7 @@ impl QueryV2 {
             }))
     }
 
-    pub(super) fn set_filter_event_column(
+    pub(super) fn save_filter_event_column(
         &self,
         ctx: &ViewerContext<'_>,
         event_column: EventColumn,
@@ -118,30 +118,23 @@ impl QueryV2 {
             .save_blueprint_component(ctx, &component);
     }
 
-    pub(crate) fn latest_at(&self) -> Result<bool, SpaceViewSystemExecutionError> {
+    pub(crate) fn latest_at_enabled(&self) -> Result<bool, SpaceViewSystemExecutionError> {
         Ok(self
             .query_property
             .component_or_empty::<components::ApplyLatestAt>()?
             .map_or(false, |comp| *comp.0))
     }
 
-    pub(crate) fn set_latest_at(&self, ctx: &ViewerContext<'_>, latest_at: bool) {
+    pub(crate) fn save_latest_at_enabled(&self, ctx: &ViewerContext<'_>, enabled: bool) {
         self.query_property
-            .save_blueprint_component(ctx, &components::ApplyLatestAt(latest_at.into()));
+            .save_blueprint_component(ctx, &components::ApplyLatestAt(enabled.into()));
     }
 
-    /// Returns the currently selected columns.
-    ///
-    /// `None` means all columns are selected.
-    fn selected_columns(
+    pub(super) fn save_selected_columns(
         &self,
-    ) -> Result<Option<components::SelectedColumns>, SpaceViewSystemExecutionError> {
-        Ok(self
-            .query_property
-            .component_or_empty::<components::SelectedColumns>()?)
-    }
-
-    pub(super) fn select_columns(&self, ctx: &ViewerContext<'_>, columns: HashSet<ColumnSelector>) {
+        ctx: &ViewerContext<'_>,
+        columns: impl IntoIterator<Item = ColumnSelector>,
+    ) {
         let mut selected_columns = datatypes::SelectedColumns::default();
         for column in columns {
             match column {
@@ -166,12 +159,12 @@ impl QueryV2 {
             .save_blueprint_component(ctx, &components::SelectedColumns(selected_columns));
     }
 
-    pub(super) fn select_all_columns(&self, ctx: &ViewerContext<'_>) {
+    pub(super) fn save_all_columns_selected(&self, ctx: &ViewerContext<'_>) {
         self.query_property
             .clear_blueprint_component::<components::SelectedColumns>(ctx);
     }
 
-    pub(super) fn unselect_all_columns(&self, ctx: &ViewerContext<'_>) {
+    pub(super) fn save_all_columns_unselected(&self, ctx: &ViewerContext<'_>) {
         self.query_property
             .save_blueprint_component(ctx, &components::SelectedColumns::default());
     }
@@ -182,7 +175,9 @@ impl QueryV2 {
         ctx: &ViewerContext<'_>,
         schema: &[ColumnDescriptor],
     ) -> Result<Option<Vec<ColumnSelector>>, SpaceViewSystemExecutionError> {
-        let selected_columns = self.selected_columns()?;
+        let selected_columns = self
+            .query_property
+            .component_or_empty::<components::SelectedColumns>()?;
 
         // no selected columns means all columns are visible
         let Some(datatypes::SelectedColumns {
@@ -231,62 +226,39 @@ impl QueryV2 {
         schema: &[ColumnDescriptor],
         actions: Vec<HideColumnAction>,
     ) -> Result<(), SpaceViewSystemExecutionError> {
-        // We are hiding some columns, so if the `SelectedColumns` component is not set (aka all
-        // columns are visible), we need to create a fully populated version of it.
-        let mut selected_columns =
-            self.selected_columns()?
-                .map(|comp| comp.0)
-                .unwrap_or_else(|| {
-                    let mut selected_columns = datatypes::SelectedColumns::default();
-                    for column in schema {
-                        match column {
-                            ColumnDescriptor::Control(_) => {}
-                            ColumnDescriptor::Time(desc) => {
-                                selected_columns
-                                    .time_columns
-                                    .push(desc.timeline.name().as_str().into());
-                            }
-                            ColumnDescriptor::Component(desc) => {
-                                let blueprint_component_descriptor =
-                                    datatypes::ComponentColumnSelector::new(
-                                        &desc.entity_path,
-                                        desc.component_name,
-                                    );
+        if actions.is_empty() {
+            return Ok(());
+        }
 
-                                selected_columns
-                                    .component_columns
-                                    .push(blueprint_component_descriptor);
-                            }
-                        }
-                    }
-
-                    selected_columns
-                });
+        let mut selected_columns: Vec<_> = self
+            .apply_column_visibility_to_schema(ctx, schema)?
+            .map(|columns| columns.into_iter().collect())
+            .unwrap_or_else(|| schema.iter().cloned().map(Into::into).collect());
 
         for action in actions {
             match action {
                 HideColumnAction::HideTimeColumn { timeline_name } => {
-                    selected_columns
-                        .time_columns
-                        .retain(|name| name != &timeline_name.as_str().into());
+                    selected_columns.retain(|column| match column {
+                        ColumnSelector::Time(desc) => desc.timeline != timeline_name,
+                        _ => true,
+                    });
                 }
 
                 HideColumnAction::HideComponentColumn {
                     entity_path,
                     component_name,
                 } => {
-                    let blueprint_component_descriptor =
-                        datatypes::ComponentColumnSelector::new(&entity_path, component_name);
-
-                    selected_columns
-                        .component_columns
-                        .retain(|desc| desc != &blueprint_component_descriptor);
+                    selected_columns.retain(|column| match column {
+                        ColumnSelector::Component(desc) => {
+                            desc.entity_path != entity_path || desc.component != component_name
+                        }
+                        _ => true,
+                    });
                 }
             }
         }
 
-        self.query_property
-            .save_blueprint_component(ctx, &components::SelectedColumns(selected_columns));
+        self.save_selected_columns(ctx, selected_columns);
 
         Ok(())
     }

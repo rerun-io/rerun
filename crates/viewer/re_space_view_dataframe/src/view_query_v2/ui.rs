@@ -27,7 +27,7 @@ impl QueryV2 {
                 ui.grid_left_hand_label("Timeline");
 
                 if edit_timeline_name(ctx, ui, &mut timeline_name).changed() {
-                    self.set_timeline_name(ctx, &timeline_name);
+                    self.save_timeline_name(ctx, &timeline_name);
                 }
 
                 Ok(())
@@ -112,7 +112,7 @@ impl QueryV2 {
         });
 
         if changed {
-            self.set_range_filter(ctx, start, end);
+            self.save_range_filter(ctx, start, end);
         }
 
         if should_display_time_range {
@@ -152,7 +152,7 @@ impl QueryV2 {
             .re_checkbox(&mut filter_by_event_active, "Filter by event from:")
             .changed()
         {
-            self.set_filter_by_event_active(ctx, filter_by_event_active);
+            self.save_filter_by_event_active(ctx, filter_by_event_active);
         }
 
         //
@@ -248,7 +248,7 @@ impl QueryV2 {
         };
 
         if original_event_column.as_ref() != Some(&event_column) {
-            self.set_filter_event_column(ctx, event_column);
+            self.save_filter_event_column(ctx, event_column);
         }
 
         Ok(())
@@ -303,9 +303,9 @@ impl QueryV2 {
                 .changed()
             {
                 if all_enabled {
-                    self.select_all_columns(ctx);
+                    self.save_all_columns_selected(ctx);
                 } else {
-                    self.unselect_all_columns(ctx);
+                    self.save_all_columns_unselected(ctx);
                 }
             }
 
@@ -428,9 +428,9 @@ impl QueryV2 {
             if new_selected_columns.len() == schema.len() {
                 // length match is a guaranteed match because the `selected_columns` sets are built
                 // from filtering out the scheme
-                self.select_all_columns(ctx);
+                self.save_all_columns_selected(ctx);
             } else {
-                self.select_columns(ctx, new_selected_columns);
+                self.save_selected_columns(ctx, new_selected_columns);
             }
         }
 
@@ -444,7 +444,7 @@ impl QueryV2 {
     ) -> Result<(), SpaceViewSystemExecutionError> {
         ui.label("Empty cells:");
 
-        let mut latest_at = self.latest_at()?;
+        let mut latest_at = self.latest_at_enabled()?;
         let changed = {
             ui.re_radio_value(&mut latest_at, false, "Leave empty")
                 .changed()
@@ -454,7 +454,7 @@ impl QueryV2 {
         };
 
         if changed {
-            self.set_latest_at(ctx, latest_at);
+            self.save_latest_at_enabled(ctx, latest_at);
         }
 
         Ok(())
