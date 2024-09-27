@@ -88,8 +88,6 @@ impl VisualizerSystem for GraphNodeVisualizer {
             }
         }
 
-        // We're not using `re_renderer` here, so return an empty vector.
-        // If you want to draw additional primitives here, you can emit re_renderer draw data here directly.
         Ok(Vec::new())
     }
 

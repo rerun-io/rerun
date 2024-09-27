@@ -1,13 +1,18 @@
 use std::collections::HashMap;
 
+use re_log_types::Instance;
 use re_viewer::external::{
-    egui::{self, Color32, Label},
+    egui::{self, emath::TSTransform, Color32, Label, RichText, TextWrapMode},
     re_log::external::log,
     re_log_types::EntityPath,
-    re_types::SpaceViewClassIdentifier,
+    re_types::{components, SpaceViewClassIdentifier},
     re_ui,
     re_viewer_context::{
-        HoverHighlight, IdentifiedViewSystem as _, SelectionHighlight, SpaceViewClass, SpaceViewClassLayoutPriority, SpaceViewClassRegistryError, SpaceViewId, SpaceViewSpawnHeuristics, SpaceViewState, SpaceViewStateExt as _, SpaceViewSystemExecutionError, SpaceViewSystemRegistrator, SystemExecutionOutput, ViewQuery, ViewerContext
+        HoverHighlight, IdentifiedViewSystem as _, OptionalSpaceViewEntityHighlight,
+        SelectionHighlight, SpaceViewClass, SpaceViewClassLayoutPriority,
+        SpaceViewClassRegistryError, SpaceViewId, SpaceViewSpawnHeuristics, SpaceViewState,
+        SpaceViewStateExt as _, SpaceViewSystemExecutionError, SpaceViewSystemRegistrator,
+        SystemExecutionOutput, ViewQuery, ViewerContext,
     },
 };
 
@@ -20,6 +25,34 @@ enum NodeKind {
     Dummy,
 }
 
+fn draw_node(
+    ui: &mut egui::Ui,
+    ent_highlight: OptionalSpaceViewEntityHighlight,
+    node: QualifiedNode,
+    instance: Instance,
+    maybe_color: Option<&components::Color>,
+) -> egui::Response {
+    let highlight = ent_highlight.index_highlight(instance);
+
+    let hcolor = match (
+        highlight.hover,
+        highlight.selection != SelectionHighlight::None,
+    ) {
+        (HoverHighlight::None, false) => egui::Color32::BLACK,
+        (HoverHighlight::None, true) => ui.style().visuals.selection.bg_fill,
+        (HoverHighlight::Hovered, ..) => ui.style().visuals.widgets.hovered.bg_fill,
+    };
+
+    let text = egui::RichText::new(format!("{}: {}", node.entity_path, node.node_id,));
+
+    if let Some(color) = maybe_color {
+        let c = Color32::from(color.0);
+        ui.button(text.color(c).background_color(hcolor))
+    } else {
+        ui.button(text.background_color(hcolor))
+    }
+}
+
 /// Space view state for the custom space view.
 ///
 /// This state is preserved between frames, but not across Viewer sessions.
@@ -27,6 +60,8 @@ enum NodeKind {
 pub struct GraphSpaceViewState {
     graph: petgraph::stable_graph::StableGraph<NodeKind, ()>,
     node_to_index: HashMap<QualifiedNode, petgraph::stable_graph::NodeIndex>,
+    // graph viewer
+    transform: TSTransform,
 }
 
 impl SpaceViewState for GraphSpaceViewState {
@@ -165,80 +200,134 @@ impl SpaceViewClass for GraphSpaceView {
             }
         }
 
-        egui::Frame {
-            inner_margin: re_ui::DesignTokens::view_padding().into(),
-            ..egui::Frame::default()
-        }
-        .show(ui, |ui| {
-            ui.with_layout(egui::Layout::top_down(egui::Align::LEFT), |ui| {
-                egui::ScrollArea::both().show(ui, |ui| {
-                    ui.label(egui::RichText::new("Nodes").underline());
+        // egui::Frame {
+        //     inner_margin: re_ui::DesignTokens::view_padding().into(),
+        //     ..egui::Frame::default()
+        // }
+        // .show(ui, |ui| {
+        //     ui.with_layout(egui::Layout::top_down(egui::Align::LEFT), |ui| {
+        //         egui::ScrollArea::both().show(ui, |ui| {
+        //             ui.label(egui::RichText::new("Nodes").underline());
 
-                    for data in node_system.data.iter() {
-                        let ent_highlight = query.highlights.entity_highlight(data.entity_path.hash());
+        //             for data in node_system.data.iter() {
+        //                 let ent_highlight =
+        //                     query.highlights.entity_highlight(data.entity_path.hash());
 
-                        for (node, instance, maybe_color) in data.nodes() {
-                            let highlight = ent_highlight.index_highlight(instance);
+        //                 for (node, instance, maybe_color) in data.nodes() {
+        //                     // draw node
+        //                 }
+        //             }
 
-                            let hcolor = match (
-                                highlight.hover,
-                                highlight.selection != SelectionHighlight::None,
-                            ) {
-                                (HoverHighlight::None, false) => egui::Color32::BLACK,
-                                (HoverHighlight::None, true) => ui.style().visuals.selection.bg_fill,
-                                (HoverHighlight::Hovered, ..) => ui.style().visuals.widgets.hovered.bg_fill,
-                            };
+        //             ui.label(egui::RichText::new("Edges").underline());
 
-                            let text = egui::RichText::new(format!(
-                                "{}: {}",
-                                node.entity_path, node.node_id,
-                            ));
+        //             for data in edge_system.data.iter() {
+        //                 let ent_highlight =
+        //                     query.highlights.entity_highlight(data.entity_path.hash());
+        //                 for (edge, instance, maybe_color) in data.edges() {
+        //                     let highlight = ent_highlight.index_highlight(instance);
 
-                            if let Some(color) = maybe_color {
-                                let c = Color32::from(color.0);
-                                ui.add(Label::new(text.color(c).background_color(hcolor)));
-                            } else {
-                                ui.add(Label::new(text.background_color(hcolor)));
-                            }
-                        }
-                    }
+        //                     let hcolor = match (
+        //                         highlight.hover,
+        //                         highlight.selection != SelectionHighlight::None,
+        //                     ) {
+        //                         (HoverHighlight::None, false) => egui::Color32::BLACK,
+        //                         (HoverHighlight::None, true) => {
+        //                             ui.style().visuals.selection.bg_fill
+        //                         }
+        //                         (HoverHighlight::Hovered, ..) => {
+        //                             ui.style().visuals.widgets.hovered.bg_fill
+        //                         }
+        //                     };
 
-                    ui.label(egui::RichText::new("Edges").underline());
+        //                     let text = egui::RichText::new(format!(
+        //                         "{}: {:?}:{} -> {:?}:{}",
+        //                         data.entity_path,
+        //                         edge.source.entity_path,
+        //                         edge.source.node_id,
+        //                         edge.target.entity_path,
+        //                         edge.target.node_id,
+        //                     ));
 
-                    for data in edge_system.data.iter() {
-                        let ent_highlight = query.highlights.entity_highlight(data.entity_path.hash());
-                        for (edge, instance, maybe_color) in data.edges() {
-                            let highlight = ent_highlight.index_highlight(instance);
+        //                     if let Some(color) = maybe_color {
+        //                         let c = Color32::from(color.0);
+        //                         ui.add(Label::new(text.color(c).background_color(hcolor)));
+        //                     } else {
+        //                         ui.add(Label::new(text.background_color(hcolor)));
+        //                     }
+        //                 }
+        //             }
+        //         })
+        //     });
+        // });
 
-                            let hcolor = match (
-                                highlight.hover,
-                                highlight.selection != SelectionHighlight::None,
-                            ) {
-                                (HoverHighlight::None, false) => egui::Color32::BLACK,
-                                (HoverHighlight::None, true) => ui.style().visuals.selection.bg_fill,
-                                (HoverHighlight::Hovered, ..) => ui.style().visuals.widgets.hovered.bg_fill,
-                            };
+        let data = node_system.data.iter().flat_map(|data| {
+            let ent_highlight = query.highlights.entity_highlight(data.entity_path.hash());
 
-                            let text = egui::RichText::new(format!(
-                                "{}: {:?}:{} -> {:?}:{}",
-                                data.entity_path,
-                                edge.source.entity_path,
-                                edge.source.node_id,
-                                edge.target.entity_path,
-                                edge.target.node_id,
-                            ));
-
-                            if let Some(color) = maybe_color {
-                                let c = Color32::from(color.0);
-                                ui.add(Label::new(text.color(c).background_color(hcolor)));
-                            } else {
-                                ui.add(Label::new(text.background_color(hcolor)));
-                            }
-                        }
-                    }
-                })
-            });
+            data.nodes().map(move |(node, instance, maybe_color)| {
+                move |ui: &mut egui::Ui| draw_node(ui, ent_highlight, node, instance, maybe_color)
+            })
         });
+
+        // Graph viewer
+        let (id, rect) = ui.allocate_space(ui.available_size());
+        let response = ui.interact(rect, id, egui::Sense::click_and_drag());
+
+        // Allow dragging the background as well.
+        if response.dragged() {
+            state.transform.translation += response.drag_delta();
+        }
+
+        // Plot-like reset
+        if response.double_clicked() {
+            state.transform = TSTransform::default();
+        }
+
+        let transform =
+            TSTransform::from_translation(ui.min_rect().left_top().to_vec2()) * state.transform;
+
+        if let Some(pointer) = ui.ctx().input(|i| i.pointer.hover_pos()) {
+            // Note: doesn't catch zooming / panning if a button in this PanZoom container is hovered.
+            if response.hovered() {
+                let pointer_in_layer = transform.inverse() * pointer;
+                let zoom_delta = ui.ctx().input(|i| i.zoom_delta());
+                let pan_delta = ui.ctx().input(|i| i.smooth_scroll_delta);
+
+                // Zoom in on pointer:
+                state.transform = state.transform
+                    * TSTransform::from_translation(pointer_in_layer.to_vec2())
+                    * TSTransform::from_scaling(zoom_delta)
+                    * TSTransform::from_translation(-pointer_in_layer.to_vec2());
+
+                // Pan:
+                state.transform = TSTransform::from_translation(pan_delta) * state.transform;
+            }
+        }
+
+        let positions = (0..).map(|i| egui::Pos2::new(0.0, 0.0 + i as f32 * 20.0));
+
+        for (i, (pos, callback)) in positions.into_iter().zip(data).enumerate() {
+            let window_layer = ui.layer_id();
+            let id = egui::Area::new(id.with(("subarea", i)))
+                .default_pos(pos)
+                .order(egui::Order::Middle)
+                .constrain(false)
+                .show(ui.ctx(), |ui| {
+                    ui.set_clip_rect(transform.inverse() * rect);
+                    egui::Frame::default()
+                        .rounding(egui::Rounding::same(4.0))
+                        .inner_margin(egui::Margin::same(8.0))
+                        .stroke(ui.ctx().style().visuals.window_stroke)
+                        .fill(ui.style().visuals.panel_fill)
+                        .show(ui, |ui| {
+                            ui.style_mut().wrap_mode = Some(TextWrapMode::Extend);
+                            callback(ui)
+                        });
+                })
+                .response
+                .layer_id;
+            ui.ctx().set_transform_layer(id, transform);
+            ui.ctx().set_sublayer(window_layer, id);
+        }
 
         Ok(())
     }
