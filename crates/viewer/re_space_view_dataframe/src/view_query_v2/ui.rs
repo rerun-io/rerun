@@ -273,7 +273,7 @@ impl QueryV2 {
 
         ui.label("Columns:");
 
-        let visible_count_label = format!("{visible_count} visible, {} hidden", hidden_count);
+        let visible_count_label = format!("{visible_count} visible, {hidden_count} hidden");
         ui.list_item_flat_noninteractive(
             list_item::LabelContent::new(&visible_count_label)
                 .always_show_buttons(true)

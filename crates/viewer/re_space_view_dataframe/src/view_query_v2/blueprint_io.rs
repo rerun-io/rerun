@@ -1,12 +1,12 @@
 use std::collections::HashSet;
 
+use crate::dataframe_ui::HideColumnAction;
+use crate::view_query_v2::{EventColumn, QueryV2};
 use re_chunk_store::{ColumnDescriptor, ColumnSelector};
 use re_log_types::{EntityPath, TimeInt, TimelineName};
 use re_types::blueprint::{components, datatypes};
 use re_types_core::ComponentName;
 use re_viewer_context::{SpaceViewSystemExecutionError, ViewerContext};
-
-use crate::view_query_v2::{EventColumn, QueryV2};
 
 // Accessors wrapping reads/writes to the blueprint store.
 impl QueryV2 {
@@ -178,6 +178,7 @@ impl QueryV2 {
             .save_blueprint_component(ctx, &components::SelectedColumns::default());
     }
 
+    /// Given a schema, list the columns that should be visible, according to the blueprint.
     pub(crate) fn apply_column_visibility_to_schema(
         &self,
         ctx: &ViewerContext<'_>,
@@ -224,5 +225,72 @@ impl QueryV2 {
             .collect();
 
         Ok(Some(result))
+    }
+
+    pub(crate) fn handle_hide_column_actions(
+        &self,
+        ctx: &ViewerContext<'_>,
+        schema: &[ColumnDescriptor],
+        actions: Vec<HideColumnAction>,
+    ) -> Result<(), SpaceViewSystemExecutionError> {
+        // We are hiding some columns, so if the `SelectedColumns` component is not set (aka all
+        // columns are visible), we need to create a fully populated version of it.
+        let mut selected_columns =
+            self.selected_columns()?
+                .map(|comp| comp.0)
+                .unwrap_or_else(|| {
+                    let mut selected_columns = datatypes::SelectedColumns::default();
+                    for column in schema {
+                        match column {
+                            ColumnDescriptor::Control(_) => {}
+                            ColumnDescriptor::Time(desc) => {
+                                selected_columns
+                                    .time_columns
+                                    .push(desc.timeline.name().as_str().into());
+                            }
+                            ColumnDescriptor::Component(desc) => {
+                                let blueprint_component_descriptor =
+                                    datatypes::ComponentColumnSelector {
+                                        entity_path: (&desc.entity_path).into(),
+                                        component: desc.component_name.as_str().into(),
+                                    };
+
+                                selected_columns
+                                    .component_columns
+                                    .push(blueprint_component_descriptor);
+                            }
+                        }
+                    }
+
+                    selected_columns
+                });
+
+        for action in actions {
+            match action {
+                HideColumnAction::HideTimeColumn { timeline_name } => {
+                    selected_columns
+                        .time_columns
+                        .retain(|name| name != &timeline_name.as_str().into());
+                }
+
+                HideColumnAction::HideComponentColumn {
+                    entity_path,
+                    component_name,
+                } => {
+                    let blueprint_component_descriptor = datatypes::ComponentColumnSelector {
+                        entity_path: (&entity_path).into(),
+                        component: component_name.as_str().into(),
+                    };
+                    selected_columns
+                        .component_columns
+                        .retain(|desc| desc != &blueprint_component_descriptor);
+                }
+            }
+        }
+
+        self.query_property
+            .save_blueprint_component(ctx, &components::SelectedColumns(selected_columns));
+
+        Ok(())
     }
 }
