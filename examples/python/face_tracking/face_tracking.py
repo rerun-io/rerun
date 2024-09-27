@@ -20,6 +20,17 @@ import rerun.blueprint as rrb
 import tqdm
 from mediapipe.tasks.python import vision
 
+# If set, log everything as static.
+#
+# Generally, the Viewer accumulates data until its set memory budget at which point it will
+# remove the oldest data from the recording (see https://rerun.io/docs/howto/limit-ram)
+# By instead logging data as static, no data will be accumulated over time since previous
+# data is overwritten.
+# Naturally, the drawback of this is that there's no history of previous data sent to the viewer,
+# as well as no timestamps, making the Viewer's timeline effectively inactive.
+global ALL_STATIC
+ALL_STATIC: bool = False
+
 EXAMPLE_DIR: Final = Path(os.path.dirname(__file__))
 DATASET_DIR: Final = EXAMPLE_DIR / "dataset"
 MODEL_DIR: Final = EXAMPLE_DIR / "model"
@@ -110,7 +121,9 @@ class FaceDetectorLogger:
         )
         self._options = vision.FaceDetectorOptions(
             base_options=self._base_options,
-            running_mode=mp.tasks.vision.RunningMode.VIDEO if self._video_mode else mp.tasks.vision.RunningMode.IMAGE,
+            running_mode=mp.tasks.vision.RunningMode.VIDEO
+            if self._video_mode
+            else mp.tasks.vision.RunningMode.IMAGE,
         )
         self._detector = vision.FaceDetector.create_from_options(self._options)
 
@@ -118,7 +131,8 @@ class FaceDetectorLogger:
         rr.log(
             "video/detector",
             rr.ClassDescription(
-                info=rr.AnnotationInfo(id=0), keypoint_connections=[(0, 1), (1, 2), (2, 0), (2, 3), (0, 4), (1, 5)]
+                info=rr.AnnotationInfo(id=0),
+                keypoint_connections=[(0, 1), (1, 2), (2, 0), (2, 3), (0, 4), (1, 5)],
             ),
             static=True,
         )
@@ -132,7 +146,7 @@ class FaceDetectorLogger:
             if self._video_mode
             else self._detector.detect(image)
         )
-        rr.log("video/detector/faces", rr.Clear(recursive=True))
+        rr.log("video/detector/faces", rr.Clear(recursive=True), static=ALL_STATIC)
         for i, detection in enumerate(detection_result.detections):
             # log bounding box
             bbox = detection.bounding_box
@@ -142,16 +156,23 @@ class FaceDetectorLogger:
             rr.log(
                 f"video/detector/faces/{i}/bbox",
                 rr.Boxes2D(
-                    array=[bbox.origin_x, bbox.origin_y, bbox.width, bbox.height], array_format=rr.Box2DFormat.XYWH
+                    array=[bbox.origin_x, bbox.origin_y, bbox.width, bbox.height],
+                    array_format=rr.Box2DFormat.XYWH,
                 ),
                 rr.AnyValues(index=index, score=score),
+                static=ALL_STATIC,
             )
 
             # MediaPipe's keypoints are normalized to [0, 1], so we need to scale them to get pixel coordinates.
             pts = [
-                (math.floor(keypoint.x * width), math.floor(keypoint.y * height)) for keypoint in detection.keypoints
+                (math.floor(keypoint.x * width), math.floor(keypoint.y * height))
+                for keypoint in detection.keypoints
             ]
-            rr.log(f"video/detector/faces/{i}/keypoints", rr.Points2D(pts, radii=3, keypoint_ids=list(range(6))))
+            rr.log(
+                f"video/detector/faces/{i}/keypoints",
+                rr.Points2D(pts, radii=3, keypoint_ids=list(range(6))),
+                static=ALL_STATIC,
+            )
 
 
 class FaceLandmarkerLogger:
@@ -181,7 +202,9 @@ class FaceLandmarkerLogger:
             base_options=self._base_options,
             output_face_blendshapes=True,
             num_faces=num_faces,
-            running_mode=mp.tasks.vision.RunningMode.VIDEO if self._video_mode else mp.tasks.vision.RunningMode.IMAGE,
+            running_mode=mp.tasks.vision.RunningMode.VIDEO
+            if self._video_mode
+            else mp.tasks.vision.RunningMode.IMAGE,
         )
         self._detector = vision.FaceLandmarker.create_from_options(self._options)
 
@@ -203,7 +226,9 @@ class FaceLandmarkerLogger:
             mp.solutions.face_mesh.FACEMESH_NOSE,
         ]
 
-        self._class_ids = [0] * mp.solutions.face_mesh.FACEMESH_NUM_LANDMARKS_WITH_IRISES
+        self._class_ids = [
+            0
+        ] * mp.solutions.face_mesh.FACEMESH_NUM_LANDMARKS_WITH_IRISES
         class_descriptions = []
         for i, klass in enumerate(classes):
             # MediaPipe only provides connections for class, not actual class per keypoint. So we have to extract the
@@ -223,7 +248,9 @@ class FaceLandmarkerLogger:
                 )
             )
 
-        rr.log("video/landmarker", rr.AnnotationContext(class_descriptions), static=True)
+        rr.log(
+            "video/landmarker", rr.AnnotationContext(class_descriptions), static=True
+        )
         rr.log("reconstruction", rr.AnnotationContext(class_descriptions), static=True)
 
         # properly align the 3D face in the viewer
@@ -246,26 +273,43 @@ class FaceLandmarkerLogger:
             except StopIteration:
                 return True
 
-        if is_empty(zip(detection_result.face_landmarks, detection_result.face_blendshapes)):
-            rr.log("video/landmarker/faces", rr.Clear(recursive=True))
-            rr.log("reconstruction/faces", rr.Clear(recursive=True))
-            rr.log("blendshapes", rr.Clear(recursive=True))
+        if is_empty(
+            zip(detection_result.face_landmarks, detection_result.face_blendshapes)
+        ):
+            rr.log(
+                "video/landmarker/faces", rr.Clear(recursive=True), static=ALL_STATIC
+            )
+            rr.log("reconstruction/faces", rr.Clear(recursive=True), static=ALL_STATIC)
+            rr.log("blendshapes", rr.Clear(recursive=True), static=ALL_STATIC)
 
         for i, (landmark, blendshapes) in enumerate(
             zip(detection_result.face_landmarks, detection_result.face_blendshapes)
         ):
             if len(landmark) == 0 or len(blendshapes) == 0:
-                rr.log(f"video/landmarker/faces/{i}/landmarks", rr.Clear(recursive=True))
-                rr.log(f"reconstruction/faces/{i}", rr.Clear(recursive=True))
-                rr.log(f"blendshapes/{i}", rr.Clear(recursive=True))
+                rr.log(
+                    f"video/landmarker/faces/{i}/landmarks",
+                    rr.Clear(recursive=True),
+                    static=ALL_STATIC,
+                )
+                rr.log(
+                    f"reconstruction/faces/{i}",
+                    rr.Clear(recursive=True),
+                    static=ALL_STATIC,
+                )
+                rr.log(f"blendshapes/{i}", rr.Clear(recursive=True), static=ALL_STATIC)
                 continue
 
             # MediaPipe's keypoints are normalized to [0, 1], so we need to scale them to get pixel coordinates.
-            pts = [(math.floor(lm.x * width), math.floor(lm.y * height)) for lm in landmark]
+            pts = [
+                (math.floor(lm.x * width), math.floor(lm.y * height)) for lm in landmark
+            ]
             keypoint_ids = list(range(len(landmark)))
             rr.log(
                 f"video/landmarker/faces/{i}/landmarks",
-                rr.Points2D(pts, radii=3, keypoint_ids=keypoint_ids, class_ids=self._class_ids),
+                rr.Points2D(
+                    pts, radii=3, keypoint_ids=keypoint_ids, class_ids=self._class_ids
+                ),
+                static=ALL_STATIC,
             )
 
             rr.log(
@@ -275,11 +319,16 @@ class FaceLandmarkerLogger:
                     keypoint_ids=keypoint_ids,
                     class_ids=self._class_ids,
                 ),
+                static=ALL_STATIC,
             )
 
             for blendshape in blendshapes:
                 if blendshape.category_name in BLENDSHAPES_CATEGORIES:
-                    rr.log(f"blendshapes/{i}/{blendshape.category_name}", rr.Scalar(blendshape.score))
+                    # NOTE(cmc): That one we still log as temporal, otherwise it's really meh.
+                    rr.log(
+                        f"blendshapes/{i}/{blendshape.category_name}",
+                        rr.Scalar(blendshape.score),
+                    )
 
 
 # ========================================================================================
@@ -312,7 +361,9 @@ def resize_image(image: cv2.typing.MatLike, max_dim: int | None) -> cv2.typing.M
     return image
 
 
-def run_from_video_capture(vid: int | str, max_dim: int | None, max_frame_count: int | None, num_faces: int) -> None:
+def run_from_video_capture(
+    vid: int | str, max_dim: int | None, max_frame_count: int | None, num_faces: int
+) -> None:
     """
     Run the face detector on a video stream.
 
@@ -337,7 +388,9 @@ def run_from_video_capture(vid: int | str, max_dim: int | None, max_frame_count:
 
     print("Capturing video stream. Press ctrl-c to stop.")
     try:
-        it: Iterable[int] = itertools.count() if max_frame_count is None else range(max_frame_count)
+        it: Iterable[int] = (
+            itertools.count() if max_frame_count is None else range(max_frame_count)
+        )
 
         for frame_idx in tqdm.tqdm(it, desc="Processing frames"):
             # Capture frame-by-frame
@@ -362,7 +415,11 @@ def run_from_video_capture(vid: int | str, max_dim: int | None, max_frame_count:
             rr.set_time_nanos("frame_time", frame_time_nano)
             detector.detect_and_log(frame, frame_time_nano)
             landmarker.detect_and_log(frame, frame_time_nano)
-            rr.log("video/image", rr.Image(frame, color_model="BGR"))
+            rr.log(
+                "video/image",
+                rr.Image(frame, color_model="BGR"),
+                static=ALL_STATIC,
+            )
 
     except KeyboardInterrupt:
         pass
@@ -380,14 +437,20 @@ def run_from_sample_image(path: Path, max_dim: int | None, num_faces: int) -> No
     landmarker = FaceLandmarkerLogger(video_mode=False, num_faces=num_faces)
     logger.detect_and_log(image, 0)
     landmarker.detect_and_log(image, 0)
-    rr.log("video/image", rr.Image(image, color_model="BGR"))
+    rr.log(
+        "video/image",
+        rr.Image(image, color_model="BGR"),
+        static=ALL_STATIC,
+    )
 
 
 def main() -> None:
     logging.getLogger().addHandler(logging.StreamHandler())
     logging.getLogger().setLevel("INFO")
 
-    parser = argparse.ArgumentParser(description="Uses the MediaPipe Face Detection to track a human pose in video.")
+    parser = argparse.ArgumentParser(
+        description="Uses the MediaPipe Face Detection to track a human pose in video."
+    )
     parser.add_argument(
         "--demo-image",
         action="store_true",
@@ -400,7 +463,10 @@ def main() -> None:
     )
     parser.add_argument("--video", type=Path, help="Run on the provided video file.")
     parser.add_argument(
-        "--camera", type=int, default=0, help="Run from the camera stream (parameter is the camera ID, usually 0)"
+        "--camera",
+        type=int,
+        default=0,
+        help="Run from the camera stream (parameter is the camera ID, usually 0)",
     )
     parser.add_argument(
         "--max-frame",
@@ -420,6 +486,9 @@ def main() -> None:
             "Max number of faces detected by the landmark model "
             "(temporal smoothing is applied only for a value of 1)."
         ),
+    )
+    parser.add_argument(
+        "--static", action="store_true", help="If set, logs everything as static"
     )
 
     rr.script_add_args(parser)
@@ -450,6 +519,9 @@ def main() -> None:
         ),
     )
 
+    global ALL_STATIC
+    ALL_STATIC = args.static
+
     if args.demo_image:
         if not SAMPLE_IMAGE_PATH.exists():
             download_file(SAMPLE_IMAGE_URL, SAMPLE_IMAGE_PATH)
@@ -458,9 +530,13 @@ def main() -> None:
     elif args.image is not None:
         run_from_sample_image(args.image, args.max_dim, args.num_faces)
     elif args.video is not None:
-        run_from_video_capture(str(args.video), args.max_dim, args.max_frame, args.num_faces)
+        run_from_video_capture(
+            str(args.video), args.max_dim, args.max_frame, args.num_faces
+        )
     else:
-        run_from_video_capture(args.camera, args.max_dim, args.max_frame, args.num_faces)
+        run_from_video_capture(
+            args.camera, args.max_dim, args.max_frame, args.num_faces
+        )
 
     rr.script_teardown(args)
 
