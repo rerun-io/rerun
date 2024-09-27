@@ -15,6 +15,9 @@ def log_checks(args: argparse.Namespace) -> None:
     modules = [basename(f)[:-3] for f in modules if isfile(f) and basename(f).startswith("check_")]
 
     for module in modules:
+        if args.skip_checks_with_assets and "check_video" in module:
+            continue
+
         m = importlib.import_module(module)
         m.run(args)
 
@@ -26,6 +29,11 @@ def log_readme() -> None:
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Interactive release checklist")
+    parser.add_argument(
+        "--skip-checks-with-assets",
+        action="store_true",
+        help="Skip checks that require downloading test assets",
+    )
     rr.script_add_args(parser)
     args = parser.parse_args()
 
