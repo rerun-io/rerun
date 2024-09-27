@@ -237,7 +237,7 @@ fn show_video_blob_info(
                     };
 
                     let decode_stream_id = re_renderer::video::VideoDecodingStreamId(
-                        egui::Id::new("video_miniplayer").value(),
+                        ui.id().with("video_player").value(),
                     );
 
                     match video.frame_at(render_ctx, decode_stream_id, timestamp_in_seconds) {
