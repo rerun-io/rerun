@@ -18,7 +18,7 @@ use crate::{
     allocator::create_and_fill_uniform_buffer_batch,
     draw_phases::{DrawPhase, OutlineMaskProcessor},
     include_shader_module,
-    resource_managers::{GpuTexture2D, ResourceManagerError},
+    resource_managers::GpuTexture2D,
     view_builder::ViewBuilder,
     wgpu_resources::{
         BindGroupDesc, BindGroupEntry, BindGroupLayoutDesc, GpuBindGroup, GpuBindGroupLayoutHandle,
@@ -223,9 +223,6 @@ impl DrawData for DepthCloudDrawData {
 pub enum DepthCloudDrawDataError {
     #[error("Texture format not supported: {0:?} - use float or integer textures instead.")]
     TextureFormatNotSupported(wgpu::TextureFormat),
-
-    #[error(transparent)]
-    ResourceManagerError(#[from] ResourceManagerError),
 }
 
 impl DepthCloudDrawData {
