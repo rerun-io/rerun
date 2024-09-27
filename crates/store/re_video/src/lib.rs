@@ -56,16 +56,22 @@ impl VideoData {
         } else if mp4::is_mp4(data) {
             "video/mp4".to_owned()
         } else {
-            return Err(VideoLoadError::UnrecognizedVideoFormat);
+            return Err(VideoLoadError::UnrecognizedVideoFormat {
+                provided_media_type: media_type.map(|m| m.to_owned()),
+            });
         };
 
         match media_type.as_str() {
             "video/mp4" => mp4::load_mp4(data),
             media_type => {
                 if media_type.starts_with("video/") {
-                    Err(VideoLoadError::UnsupportedMediaType(media_type.to_owned()))
+                    Err(VideoLoadError::UnsupportedMediaType {
+                        provided_or_detected_media_type: media_type.to_owned(),
+                    })
                 } else {
-                    Err(VideoLoadError::MediaTypeIsNotAVideo(media_type.to_owned()))
+                    Err(VideoLoadError::MediaTypeIsNotAVideo {
+                        provided_or_detected_media_type: media_type.to_owned(),
+                    })
                 }
             }
         }
@@ -263,14 +269,19 @@ pub enum VideoLoadError {
     #[error("Video file has invalid sample entries")]
     InvalidSamples,
 
-    #[error("The media type of the blob is not a video: {0}")]
-    MediaTypeIsNotAVideo(String),
+    #[error("The media type of the blob is not a video: {provided_or_detected_media_type}")]
+    MediaTypeIsNotAVideo {
+        provided_or_detected_media_type: String,
+    },
 
-    #[error("Video file has unsupported media type {0}")]
-    UnsupportedMediaType(String),
+    #[error("Video file has unsupported media type {provided_or_detected_media_type}")]
+    UnsupportedMediaType {
+        provided_or_detected_media_type: String,
+    },
 
+    // Technically this is a "failed to detect" case, but the only formats we detect as of writing are the ones we support.
     #[error("Video file has unsupported format")]
-    UnrecognizedVideoFormat,
+    UnrecognizedVideoFormat { provided_media_type: Option<String> },
 
     // `FourCC`'s debug impl doesn't quote the result
     #[error("Video track uses unsupported codec \"{0}\"")] // NOLINT

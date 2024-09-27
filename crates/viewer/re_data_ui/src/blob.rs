@@ -123,7 +123,6 @@ pub fn blob_preview_and_save_ui(
             ui_layout,
             &video_result,
             video_timestamp,
-            media_type,
         );
     }
 
@@ -171,8 +170,8 @@ fn show_video_blob_info(
     ui_layout: UiLayout,
     video_result: &Result<re_renderer::video::Video, VideoLoadError>,
     video_timestamp: Option<VideoTimestamp>,
-    media_type: Option<&MediaType>,
 ) {
+    #[allow(clippy::match_same_arms)]
     match video_result {
         Ok(video) => {
             if ui_layout.is_single_line() {
@@ -267,19 +266,19 @@ fn show_video_blob_info(
                 }
             });
         }
-        Err(VideoLoadError::MediaTypeIsNotAVideo(_)) => {
+        Err(VideoLoadError::MediaTypeIsNotAVideo { .. }) => {
             // Don't show an error if this wasn't a video in the first place.
             // Unfortunately we can't easily detect here if the Blob was _supposed_ to be a video, for that we'd need tagged components!
             // (User may have confidently logged a non-video format as Video, we should tell them that!)
         }
+        Err(VideoLoadError::UnrecognizedVideoFormat {
+            provided_media_type: None,
+        }) => {
+            // If we couldn't detect the media type and the loader didn't know the format,
+            // we can't show an error for unrecognized formats since maybe this wasn't a video to begin with.
+            // See also `MediaTypeIsNotAVideo` case above.
+        }
         Err(err) => {
-            if media_type.is_none() && matches!(err, VideoLoadError::UnrecognizedVideoFormat) {
-                // If we couldn't detect the media type and the loader didn't know the format,
-                // we can't show an error for unrecognized formats since maybe this wasn't a video to begin with.
-                // See also `MediaTypeIsNotAVideo` case above.
-                return;
-            }
-
             if ui_layout.is_single_line() {
                 ui.error_label(&format!("Failed to load video: {err}"));
             } else {
