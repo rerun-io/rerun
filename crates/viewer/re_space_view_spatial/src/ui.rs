@@ -281,7 +281,12 @@ pub fn paint_loading_spinners(
     let ui_from_world_3d = eye3d.ui_from_world(*ui_from_scene.to());
 
     for data in visualizers.iter_visualizer_data::<SpatialViewVisualizerData>() {
-        for &crate::visualizers::LoadingSpinner { center, diameter } in &data.loading_spinners {
+        for &crate::visualizers::LoadingSpinner {
+            center,
+            half_extent_u,
+            half_extent_v,
+        } in &data.loading_spinners
+        {
             // Transform to ui coordinates:
             let center_unprojected = ui_from_world_3d * center.extend(1.0);
             if center_unprojected.w < 0.0 {
@@ -289,27 +294,26 @@ pub fn paint_loading_spinners(
             }
             let center_in_ui: glam::Vec2 = center_unprojected.xy() / center_unprojected.w;
 
+            let mut radius_in_ui: f32 = f32::INFINITY;
 
-            // Estimate projected diameter.
-            // Doing this properly requires thinking through a bunch of math, so we do the simple thing instead:
-            let mut diameter_in_ui: f32 = 0.0;
-            for axis in [glam::Vec3::X, glam::Vec3::Y, glam::Vec3::Z] {
-                let axis_diameter = center_in_ui.distance(
-                    ui_from_world_3d
-                        .project_point3(center + diameter * axis)
-                        .xy(),
-                );
-                diameter_in_ui = diameter_in_ui.max(axis_diameter);
+            // Estimate the radius so we are unlikely to exceed the projected box:
+            for radius_vec in [half_extent_u, -half_extent_u, half_extent_v, -half_extent_v] {
+                let axis_radius = center_in_ui
+                    .distance(ui_from_world_3d.project_point3(center + radius_vec).xy());
+                radius_in_ui = radius_in_ui.min(axis_radius);
             }
 
-            diameter_in_ui *= 0.5; // shrink a bit
+            radius_in_ui *= 0.75; // Shrink a bit
+
+            let max_radius = 0.5 * ui_from_scene.from().size().min_elem();
+            radius_in_ui = radius_in_ui.min(max_radius);
 
             let rect = egui::Rect::from_center_size(
                 egui::pos2(center_in_ui.x, center_in_ui.y),
-                egui::Vec2::splat(diameter_in_ui),
+                egui::Vec2::splat(2.0 * radius_in_ui),
             );
 
-            let rect = ui_from_scene.transform_rect(rect); // For 2D views
+            let rect = ui_from_scene.transform_rect(rect);
 
             egui::Spinner::new().paint_at(ui, rect);
         }

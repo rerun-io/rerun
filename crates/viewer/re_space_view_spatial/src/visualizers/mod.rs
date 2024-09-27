@@ -28,11 +28,18 @@ pub use utilities::{
     UiLabel, UiLabelTarget,
 };
 
-/// Shows a loading animation in a spatial view
+/// Shows a loading animation in a spatial view.
+///
+/// Represents a 2D rectangle, oriented somewhere in scene coordinates.
 #[derive(Clone, Copy, Debug)]
 pub struct LoadingSpinner {
     pub center: glam::Vec3,
-    pub diameter: f32,
+
+    /// The "radius" along one local axis.
+    pub half_extent_u: glam::Vec3,
+
+    /// The "radius" along the other local axis.
+    pub half_extent_v: glam::Vec3,
 }
 
 // ---

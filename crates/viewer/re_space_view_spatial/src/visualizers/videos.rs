@@ -209,7 +209,8 @@ impl VideoFrameReferenceVisualizer {
                                 // Show loading rectangle:
                                 self.data.loading_spinners.push(LoadingSpinner {
                                     center: top_left_corner_position + 0.5 * (extent_u + extent_v),
-                                    diameter: (extent_u + extent_v).max_element(),
+                                    half_extent_u: 0.5 * extent_u,
+                                    half_extent_v: 0.5 * extent_v,
                                 });
 
                                 // Keep polling for the decoded result:
