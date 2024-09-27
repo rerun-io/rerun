@@ -268,6 +268,23 @@ pub fn create_labels(
     (label_shapes, ui_rects)
 }
 
+pub fn paint_loading_spinners(
+    ui: &egui::Ui,
+    ui_from_scene: egui::emath::RectTransform,
+    visualizers: &re_viewer_context::VisualizerCollection,
+) {
+    for data in crate::visualizers::iter_spatial_visualizer_data(visualizers) {
+        for &rect_in_scene in &data.loading_rects {
+            let rect_in_ui = ui_from_scene.transform_rect(rect_in_scene);
+
+            // Shrink slightly:
+            let rect = egui::Rect::from_center_size(rect_in_ui.center(), 0.75 * rect_in_ui.size());
+
+            egui::Spinner::new().paint_at(ui, rect);
+        }
+    }
+}
+
 pub fn outline_config(gui_ctx: &egui::Context) -> OutlineConfig {
     // Use the exact same colors we have in the ui!
     let hover_outline = gui_ctx.hover_stroke();
