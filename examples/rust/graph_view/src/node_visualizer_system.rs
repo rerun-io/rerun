@@ -63,7 +63,7 @@ impl VisualizerSystem for GraphNodeVisualizer {
                     &timeline_query,
                 );
 
-            let all_indexed_nodes = results.iter_as(query.timeline, components::GraphEdge::name());
+            let all_indexed_nodes = results.iter_as(query.timeline, components::GraphNodeId::name());
             let all_colors = results.iter_as(query.timeline, components::Color::name());
 
             let data = range_zip_1x1(
