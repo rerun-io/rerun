@@ -1,7 +1,8 @@
+use re_log_types::Instance;
 use re_viewer::external::{
     re_chunk::{ChunkComponentIterItem, LatestAtQuery},
     re_log_types::EntityPath,
-    re_query::{clamped_zip_1x1, range_zip_1x1},
+    re_query::{clamped_zip_2x1, range_zip_1x1},
     re_renderer,
     re_space_view::{DataResultQuery, RangeResultsExt},
     re_types::{self, archetypes, components, Loggable as _},
@@ -29,12 +30,13 @@ pub struct GraphNodeVisualizerData {
 impl GraphNodeVisualizerData {
     pub(crate) fn nodes(
         &self,
-    ) -> impl Iterator<Item = (QualifiedNode, Option<&components::Color>)> {
-        clamped_zip_1x1(
+    ) -> impl Iterator<Item = (QualifiedNode, Instance, Option<&components::Color>)> {
+        clamped_zip_2x1(
             self.node_ids.iter().map(|node_id| QualifiedNode {
                 entity_path: self.entity_path.clone(),
                 node_id: node_id.0.clone(),
             }),
+            (0..).map(Instance::from),
             self.colors.iter().map(Option::Some),
             Option::<&components::Color>::default,
         )

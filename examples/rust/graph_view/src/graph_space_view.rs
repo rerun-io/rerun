@@ -7,10 +7,7 @@ use re_viewer::external::{
     re_types::SpaceViewClassIdentifier,
     re_ui,
     re_viewer_context::{
-        IdentifiedViewSystem as _, SpaceViewClass, SpaceViewClassLayoutPriority,
-        SpaceViewClassRegistryError, SpaceViewId, SpaceViewSpawnHeuristics, SpaceViewState,
-        SpaceViewStateExt as _, SpaceViewSystemExecutionError, SpaceViewSystemRegistrator,
-        SystemExecutionOutput, ViewQuery, ViewerContext,
+        HoverHighlight, IdentifiedViewSystem as _, SelectionHighlight, SpaceViewClass, SpaceViewClassLayoutPriority, SpaceViewClassRegistryError, SpaceViewId, SpaceViewSpawnHeuristics, SpaceViewState, SpaceViewStateExt as _, SpaceViewSystemExecutionError, SpaceViewSystemRegistrator, SystemExecutionOutput, ViewQuery, ViewerContext
     },
 };
 
@@ -135,7 +132,7 @@ impl SpaceViewClass for GraphSpaceView {
         _ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
         state: &mut dyn SpaceViewState,
-        _query: &ViewQuery<'_>,
+        query: &ViewQuery<'_>,
         system_output: SystemExecutionOutput,
     ) -> Result<(), SpaceViewSystemExecutionError> {
         let node_system = system_output.view_systems.get::<GraphNodeVisualizer>()?;
@@ -148,14 +145,14 @@ impl SpaceViewClass for GraphSpaceView {
         state.node_to_index.clear();
 
         for data in node_system.data.iter() {
-            for (node_id, _) in data.nodes() {
+            for (node_id, _, _) in data.nodes() {
                 let node_index = state.graph.add_node(NodeKind::Regular);
                 state.node_to_index.insert(node_id, node_index);
             }
         }
 
         for data in edge_system.data.iter() {
-            for (edge, _) in data.edges() {
+            for (edge, _, _) in data.edges() {
                 let source_index = *state
                     .node_to_index
                     .entry(edge.source)
@@ -178,7 +175,20 @@ impl SpaceViewClass for GraphSpaceView {
                     ui.label(egui::RichText::new("Nodes").underline());
 
                     for data in node_system.data.iter() {
-                        for (node, maybe_color) in data.nodes() {
+                        let ent_highlight = query.highlights.entity_highlight(data.entity_path.hash());
+
+                        for (node, instance, maybe_color) in data.nodes() {
+                            let highlight = ent_highlight.index_highlight(instance);
+
+                            let hcolor = match (
+                                highlight.hover,
+                                highlight.selection != SelectionHighlight::None,
+                            ) {
+                                (HoverHighlight::None, false) => egui::Color32::BLACK,
+                                (HoverHighlight::None, true) => ui.style().visuals.selection.bg_fill,
+                                (HoverHighlight::Hovered, ..) => ui.style().visuals.widgets.hovered.bg_fill,
+                            };
+
                             let text = egui::RichText::new(format!(
                                 "{}: {}",
                                 node.entity_path, node.node_id,
@@ -186,9 +196,9 @@ impl SpaceViewClass for GraphSpaceView {
 
                             if let Some(color) = maybe_color {
                                 let c = Color32::from(color.0);
-                                ui.add(Label::new(text.color(c)));
+                                ui.add(Label::new(text.color(c).background_color(hcolor)));
                             } else {
-                                ui.add(Label::new(text));
+                                ui.add(Label::new(text.background_color(hcolor)));
                             }
                         }
                     }
@@ -196,7 +206,19 @@ impl SpaceViewClass for GraphSpaceView {
                     ui.label(egui::RichText::new("Edges").underline());
 
                     for data in edge_system.data.iter() {
-                        for (edge, maybe_color) in data.edges() {
+                        let ent_highlight = query.highlights.entity_highlight(data.entity_path.hash());
+                        for (edge, instance, maybe_color) in data.edges() {
+                            let highlight = ent_highlight.index_highlight(instance);
+
+                            let hcolor = match (
+                                highlight.hover,
+                                highlight.selection != SelectionHighlight::None,
+                            ) {
+                                (HoverHighlight::None, false) => egui::Color32::BLACK,
+                                (HoverHighlight::None, true) => ui.style().visuals.selection.bg_fill,
+                                (HoverHighlight::Hovered, ..) => ui.style().visuals.widgets.hovered.bg_fill,
+                            };
+
                             let text = egui::RichText::new(format!(
                                 "{}: {:?}:{} -> {:?}:{}",
                                 data.entity_path,
@@ -208,9 +230,9 @@ impl SpaceViewClass for GraphSpaceView {
 
                             if let Some(color) = maybe_color {
                                 let c = Color32::from(color.0);
-                                ui.add(Label::new(text.color(c)));
+                                ui.add(Label::new(text.color(c).background_color(hcolor)));
                             } else {
-                                ui.add(Label::new(text));
+                                ui.add(Label::new(text.background_color(hcolor)));
                             }
                         }
                     }

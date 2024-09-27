@@ -1,6 +1,7 @@
+use re_log_types::Instance;
 use re_viewer::external::{
     re_chunk::{ChunkComponentIterItem, LatestAtQuery},
-    re_query::{clamped_zip_1x1, range_zip_1x1},
+    re_query::{clamped_zip_2x1, range_zip_1x1},
     re_renderer,
     re_space_view::{DataResultQuery, RangeResultsExt},
     re_types::{self, archetypes, components, Loggable as _},
@@ -27,8 +28,8 @@ pub(crate) struct GraphEdgeVisualizerData {
 impl GraphEdgeVisualizerData {
     pub(crate) fn edges(
         &self,
-    ) -> impl Iterator<Item = (QualifiedEdge, Option<&components::Color>)> {
-        clamped_zip_1x1(
+    ) -> impl Iterator<Item = (QualifiedEdge, Instance, Option<&components::Color>)> {
+        clamped_zip_2x1(
             // TODO(grtlr): Avoid all this cloning!
             self.edges.iter().map(|e| QualifiedEdge {
                 source: QualifiedNode {
@@ -46,6 +47,7 @@ impl GraphEdgeVisualizerData {
                     node_id: e.target.clone(),
                 },
             }),
+            (0..).map(Instance::from),
             self.colors.iter().map(Option::Some),
             Option::<&components::Color>::default,
         )
