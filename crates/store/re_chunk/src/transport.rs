@@ -720,18 +720,15 @@ mod tests {
 
             for _ in 0..3 {
                 let chunk_in_transport = chunk_before.to_transport()?;
-                let chunk_roundtrip;
                 #[cfg(feature = "arrow")]
-                {
+                let chunk_after = {
                     let chunk_in_record_batch = chunk_in_transport.try_to_arrow_record_batch()?;
-                    chunk_roundtrip =
+                    let chunk_roundtrip =
                         TransportChunk::from_arrow_record_batch(&chunk_in_record_batch);
-                }
+                    Chunk::from_transport(&chunk_roundtrip)?
+                };
                 #[cfg(not(feature = "arrow"))]
-                {
-                    chunk_roundtrip = &chunk_in_transport;
-                }
-                let chunk_after = Chunk::from_transport(chunk_roundtrip)?;
+                let chunk_after = { Chunk::from_transport(&chunk_in_transport)? };
 
                 assert_eq!(
                     chunk_in_transport.entity_path()?,
