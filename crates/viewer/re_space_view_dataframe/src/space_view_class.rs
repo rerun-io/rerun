@@ -26,9 +26,6 @@ struct DataframeSpaceViewState {
 
     /// Schema for the current query, cached here for the column visibility UI.
     schema: Option<Vec<ColumnDescriptor>>,
-
-    /// Modal dialog for column visibility.
-    column_visibility_modal: ModalHandler,
 }
 
 impl SpaceViewState for DataframeSpaceViewState {
@@ -125,13 +122,7 @@ mode sets the default time range to _everything_. You can override this in the s
             // for the user to click the menu anyway.
             return Ok(());
         };
-        view_query.selection_panel_ui(
-            ctx,
-            ui,
-            space_view_id,
-            schema,
-            &mut state.column_visibility_modal,
-        )
+        view_query.selection_panel_ui(ctx, ui, space_view_id, schema)
     }
 
     fn extra_title_bar_ui(

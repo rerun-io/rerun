@@ -5,7 +5,6 @@ use re_log_types::{
     EntityPath, ResolvedTimeRange, TimeInt, TimeType, TimeZone, Timeline, TimelineName,
 };
 use re_types_core::{ComponentName, ComponentNameSet};
-use re_ui::modal::{Modal, ModalHandler};
 use re_ui::{list_item, UiExt};
 use re_viewer_context::{SpaceViewId, SpaceViewSystemExecutionError, TimeDragValue, ViewerContext};
 
@@ -260,7 +259,6 @@ impl QueryV2 {
         ui: &mut egui::Ui,
         timeline: &Timeline,
         schema: &[ColumnDescriptor],
-        column_visibility_modal_handler: &mut ModalHandler,
     ) -> Result<(), SpaceViewSystemExecutionError> {
         // Gather our selected columns.
         let selected_columns: HashSet<_> = self
@@ -270,23 +268,7 @@ impl QueryV2 {
 
         let visible_count = selected_columns.len();
         let hidden_count = schema.len() - visible_count;
-
-        ui.label("Columns:");
-
         let visible_count_label = format!("{visible_count} visible, {hidden_count} hidden");
-        ui.list_item_flat_noninteractive(
-            list_item::LabelContent::new(&visible_count_label)
-                .always_show_buttons(true)
-                .with_buttons(|ui| {
-                    let resp = ui.small_icon_button(&re_ui::icons::EDIT);
-
-                    if resp.clicked() {
-                        column_visibility_modal_handler.open();
-                    }
-
-                    resp
-                }),
-        );
 
         let mut new_selected_columns = selected_columns.clone();
 
@@ -299,7 +281,7 @@ impl QueryV2 {
             let mut all_enabled = hidden_count == 0;
 
             if ui
-                .checkbox_indeterminate(&mut all_enabled, visible_count_label, indeterminate)
+                .checkbox_indeterminate(&mut all_enabled, &visible_count_label, indeterminate)
                 .changed()
             {
                 if all_enabled {
@@ -413,15 +395,15 @@ impl QueryV2 {
             }
         };
 
-        column_visibility_modal_handler.ui(
-            ui.ctx(),
-            || Modal::new("Column visibility"),
+        ui.list_item_flat_noninteractive(list_item::PropertyContent::new("Columns").value_fn(
             |ui, _| {
-                egui::ScrollArea::vertical()
-                    .auto_shrink([false, false])
-                    .show(ui, modal_ui)
+                egui::menu::menu_button(ui, &visible_count_label, |ui| {
+                    egui::ScrollArea::vertical()
+                        .auto_shrink([false, false])
+                        .show(ui, modal_ui)
+                });
             },
-        );
+        ));
 
         // save changes of column visibility
         if new_selected_columns != selected_columns {
