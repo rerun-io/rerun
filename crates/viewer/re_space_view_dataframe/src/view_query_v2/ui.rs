@@ -1,178 +1,18 @@
 use std::collections::BTreeSet;
 
+use re_chunk_store::ColumnDescriptor;
 use re_log_types::{
     EntityPath, ResolvedTimeRange, TimeInt, TimeType, TimeZone, Timeline, TimelineName,
 };
-use re_types::blueprint::{archetypes, components, datatypes};
 use re_types_core::{ComponentName, ComponentNameSet};
 use re_ui::{list_item, UiExt};
 use re_viewer_context::{SpaceViewId, SpaceViewSystemExecutionError, TimeDragValue, ViewerContext};
-use re_viewport_blueprint::ViewProperty;
 
-/// Struct to hold the point-of-view column used for the filter by event.
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub(crate) struct EventColumn {
-    pub(crate) entity_path: EntityPath,
-    pub(crate) component_name: ComponentName,
-}
+use crate::view_query_v2::{EventColumn, QueryV2};
 
-/// Wrapper over the `DataframeQueryV2` blueprint archetype that can also display some UI.
-pub(crate) struct QueryV2 {
-    query_property: ViewProperty,
-}
-
-// Ctor and accessors
+// UI implementation
 impl QueryV2 {
-    pub(crate) fn from_blueprint(ctx: &ViewerContext<'_>, space_view_id: SpaceViewId) -> Self {
-        Self {
-            query_property: ViewProperty::from_archetype::<archetypes::DataframeQueryV2>(
-                ctx.blueprint_db(),
-                ctx.blueprint_query,
-                space_view_id,
-            ),
-        }
-    }
-
-    /// Get the query timeline.
-    ///
-    /// This tries to read the timeline name from the blueprint. If missing or invalid, the current
-    /// timeline is used and saved back to the blueprint.
-    pub(crate) fn timeline(
-        &self,
-        ctx: &ViewerContext<'_>,
-    ) -> Result<re_log_types::Timeline, SpaceViewSystemExecutionError> {
-        // read the timeline and make sure it actually exists
-        let timeline = self
-            .query_property
-            .component_or_empty::<components::TimelineName>()?
-            .and_then(|name| {
-                ctx.recording()
-                    .timelines()
-                    .find(|timeline| timeline.name() == &TimelineName::from(name.as_str()))
-                    .copied()
-            });
-
-        // if the timeline is unset, we "freeze" it to the current time panel timeline
-        let save_timeline = timeline.is_none();
-        let timeline = timeline.unwrap_or_else(|| *ctx.rec_cfg.time_ctrl.read().timeline());
-        if save_timeline {
-            self.set_timeline_name(ctx, timeline.name());
-        }
-
-        Ok(timeline)
-    }
-
-    /// Save the timeline to the one specified.
-    ///
-    /// Note: this resets the range filter timestamps to -inf/+inf as any other value might be
-    /// invalidated.
-    fn set_timeline_name(&self, ctx: &ViewerContext<'_>, timeline_name: &TimelineName) {
-        self.query_property
-            .save_blueprint_component(ctx, &components::TimelineName::from(timeline_name.as_str()));
-
-        // clearing the range filter is equivalent to setting it to the default -inf/+inf
-        self.query_property
-            .clear_blueprint_component::<components::RangeFilter>(ctx);
-    }
-
-    pub(crate) fn range_filter(&self) -> Result<(TimeInt, TimeInt), SpaceViewSystemExecutionError> {
-        #[allow(clippy::map_unwrap_or)]
-        Ok(self
-            .query_property
-            .component_or_empty::<components::RangeFilter>()?
-            .map(|range_filter| (range_filter.start.into(), range_filter.end.into()))
-            .unwrap_or((TimeInt::MIN, TimeInt::MAX)))
-    }
-
-    fn set_range_filter(&self, ctx: &ViewerContext<'_>, start: TimeInt, end: TimeInt) {
-        if (start, end) == (TimeInt::MIN, TimeInt::MAX) {
-            self.query_property
-                .clear_blueprint_component::<components::RangeFilter>(ctx);
-        } else {
-            self.query_property
-                .save_blueprint_component(ctx, &components::RangeFilter::new(start, end));
-        }
-    }
-
-    pub(crate) fn filter_by_event_active(&self) -> Result<bool, SpaceViewSystemExecutionError> {
-        Ok(self
-            .query_property
-            .component_or_empty::<components::FilterByEventActive>()?
-            .map_or(false, |comp| *comp.0))
-    }
-
-    fn set_filter_by_event_active(&self, ctx: &ViewerContext<'_>, active: bool) {
-        self.query_property
-            .save_blueprint_component(ctx, &components::FilterByEventActive(active.into()));
-    }
-
-    pub(crate) fn filter_event_column(
-        &self,
-    ) -> Result<Option<EventColumn>, SpaceViewSystemExecutionError> {
-        Ok(self
-            .query_property
-            .component_or_empty::<components::ComponentColumnSelector>()?
-            .map(|comp| {
-                let components::ComponentColumnSelector(datatypes::ComponentColumnSelector {
-                    entity_path,
-                    component,
-                }) = comp;
-
-                EventColumn {
-                    entity_path: EntityPath::from(entity_path.as_str()),
-                    component_name: ComponentName::from(component.as_str()),
-                }
-            }))
-    }
-
-    fn set_filter_event_column(&self, ctx: &ViewerContext<'_>, event_column: EventColumn) {
-        let EventColumn {
-            entity_path,
-            component_name,
-        } = event_column;
-
-        let component = components::ComponentColumnSelector::new(&entity_path, component_name);
-
-        self.query_property
-            .save_blueprint_component(ctx, &component);
-    }
-
-    pub(crate) fn latest_at(&self) -> Result<bool, SpaceViewSystemExecutionError> {
-        Ok(self
-            .query_property
-            .component_or_empty::<components::ApplyLatestAt>()?
-            .map_or(false, |comp| *comp.0))
-    }
-
-    pub(crate) fn set_latest_at(&self, ctx: &ViewerContext<'_>, latest_at: bool) {
-        self.query_property
-            .save_blueprint_component(ctx, &components::ApplyLatestAt(latest_at.into()));
-    }
-}
-
-// UI
-impl QueryV2 {
-    /// Display the selection panel ui for this query.
-    pub(crate) fn selection_panel_ui(
-        &self,
-        ctx: &ViewerContext<'_>,
-        ui: &mut egui::Ui,
-        space_view_id: SpaceViewId,
-    ) -> Result<(), SpaceViewSystemExecutionError> {
-        let timeline = self.timeline(ctx)?;
-
-        self.timeline_ui(ctx, ui, &timeline)?;
-        ui.separator();
-        self.filter_range_ui(ctx, ui, &timeline)?;
-        ui.separator();
-        self.filter_event_ui(ctx, ui, &timeline, space_view_id)?;
-        ui.separator();
-        self.latest_at_ui(ctx, ui)?;
-
-        Ok(())
-    }
-
-    fn timeline_ui(
+    pub(super) fn timeline_ui(
         &self,
         ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
@@ -194,7 +34,7 @@ impl QueryV2 {
             .inner
     }
 
-    fn filter_range_ui(
+    pub(super) fn filter_range_ui(
         &self,
         ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
@@ -284,7 +124,7 @@ impl QueryV2 {
         Ok(())
     }
 
-    fn filter_event_ui(
+    pub(super) fn filter_event_ui(
         &self,
         ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
@@ -409,7 +249,17 @@ impl QueryV2 {
         Ok(())
     }
 
-    fn latest_at_ui(
+    pub(super) fn column_visibility_ui(
+        &self,
+        ctx: &ViewerContext<'_>,
+        ui: &mut egui::Ui,
+        timeline: &Timeline,
+        schema: &[ColumnDescriptor],
+    ) -> Result<(), SpaceViewSystemExecutionError> {
+        Ok(())
+    }
+
+    pub(super) fn latest_at_ui(
         &self,
         ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,

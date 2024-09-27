@@ -114,8 +114,14 @@ mode sets the default time range to _everything_. You can override this in the s
 
         //TODO(ab): just display the UI for now, this has no effect on the view itself yet.
         ui.separator();
+        let state = state.downcast_mut::<DataframeSpaceViewState>()?;
         let view_query = view_query_v2::QueryV2::from_blueprint(ctx, space_view_id);
-        view_query.selection_panel_ui(ctx, ui, space_view_id)
+        let Some(schema) = &state.schema else {
+            // Shouldn't happen, except maybe on the first frame, which is too early
+            // for the user to click the menu anyway.
+            return Ok(());
+        };
+        view_query.selection_panel_ui(ctx, ui, space_view_id, schema)
     }
 
     fn extra_title_bar_ui(
