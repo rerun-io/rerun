@@ -2,11 +2,9 @@ from __future__ import annotations
 
 import os
 from argparse import Namespace
-from io import BytesIO
 from uuid import uuid4
 
 import rerun as rr
-import rerun.blueprint as rrb
 
 README = """\
 # Video support
