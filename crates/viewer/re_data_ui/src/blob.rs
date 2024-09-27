@@ -240,28 +240,29 @@ fn show_video_blob_info(
                         egui::Id::new("video_miniplayer").value(),
                     );
 
-                    if let Some(texture) =
-                        match video.frame_at(render_ctx, decode_stream_id, timestamp_in_seconds) {
-                            Ok(VideoFrameTexture::Ready(texture)) => Some(texture),
+                    match video.frame_at(render_ctx, decode_stream_id, timestamp_in_seconds) {
+                        Ok(frame) => {
+                            let texture = match frame {
+                                VideoFrameTexture::Ready(texture) => texture,
 
-                            Ok(VideoFrameTexture::Pending(texture)) => {
-                                ui.ctx().request_repaint();
-                                Some(texture)
-                            }
+                                VideoFrameTexture::Pending(placeholder) => {
+                                    ui.ctx().request_repaint();
+                                    placeholder
+                                }
+                            };
 
-                            Err(err) => {
-                                ui.error_label_long(&err.to_string());
-                                None
-                            }
+                            crate::image::texture_preview_ui(
+                                render_ctx,
+                                ui,
+                                ui_layout,
+                                "video_preview",
+                                re_renderer::renderer::ColormappedTexture::from_unorm_rgba(texture),
+                            );
                         }
-                    {
-                        crate::image::texture_preview_ui(
-                            render_ctx,
-                            ui,
-                            ui_layout,
-                            "video_preview",
-                            re_renderer::renderer::ColormappedTexture::from_unorm_rgba(texture),
-                        );
+
+                        Err(err) => {
+                            ui.error_label_long(&err.to_string());
+                        }
                     }
                 }
             });
