@@ -1,5 +1,9 @@
 use std::any::Any;
 
+use crate::{
+    dataframe_ui::dataframe_ui, expanded_rows::ExpandedRowsCache, query_kind::QueryKind,
+    view_query_v2, visualizer_system::EmptySystem,
+};
 use re_chunk_store::ColumnDescriptor;
 use re_log_types::{EntityPath, EntityPathFilter, ResolvedTimeRange};
 use re_types_core::SpaceViewClassIdentifier;
@@ -8,11 +12,7 @@ use re_viewer_context::{
     SpaceViewClass, SpaceViewClassRegistryError, SpaceViewId, SpaceViewState, SpaceViewStateExt,
     SpaceViewSystemExecutionError, SystemExecutionOutput, ViewQuery, ViewerContext,
 };
-
-use crate::{
-    dataframe_ui::dataframe_ui, expanded_rows::ExpandedRowsCache, query_kind::QueryKind,
-    view_query_v2, visualizer_system::EmptySystem,
-};
+use re_viewport_blueprint::SpaceViewContents;
 
 #[derive(Default)]
 struct DataframeSpaceViewState {

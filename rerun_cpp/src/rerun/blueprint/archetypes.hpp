@@ -6,7 +6,6 @@
 #include "blueprint/archetypes/container_blueprint.hpp"
 #include "blueprint/archetypes/dataframe_query.hpp"
 #include "blueprint/archetypes/dataframe_query_v2.hpp"
-#include "blueprint/archetypes/dataframe_visible_columns.hpp"
 #include "blueprint/archetypes/panel_blueprint.hpp"
 #include "blueprint/archetypes/plot_legend.hpp"
 #include "blueprint/archetypes/scalar_axis.hpp"

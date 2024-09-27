@@ -70,13 +70,6 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             },
         ),
         (
-            <ColumnSelectionMode as Loggable>::name(),
-            ComponentReflection {
-                docstring_md: "How are columns selected in the dataframe view?",
-                placeholder: Some(ColumnSelectionMode::default().to_arrow()?),
-            },
-        ),
-        (
             <ColumnShare as Loggable>::name(),
             ComponentReflection {
                 docstring_md: "The layout share of a column in the container.",
@@ -1635,27 +1628,6 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                     "Select", docstring_md :
                     "Selected columns. If unset, all columns are selected.", is_required
                     : false, },
-                ],
-            },
-        ),
-        (
-            ArchetypeName::new("rerun.blueprint.archetypes.DataframeVisibleColumns"),
-            ArchetypeReflection {
-                display_name: "Dataframe visible columns",
-                fields: vec![
-                    ArchetypeFieldReflection { component_name :
-                    "rerun.blueprint.components.ColumnSelectionMode".into(), display_name
-                    : "Selection mode", docstring_md :
-                    "Are all column selected, or only those specified by the user?",
-                    is_required : false, }, ArchetypeFieldReflection { component_name :
-                    "rerun.blueprint.components.TimelineName".into(), display_name :
-                    "Time columns", docstring_md :
-                    "The time columns to include (if mode is set to \"Selected\").",
-                    is_required : false, }, ArchetypeFieldReflection { component_name :
-                    "rerun.blueprint.components.ComponentColumnSelector".into(),
-                    display_name : "Component columns", docstring_md :
-                    "The component columns to include (if mode is set to \"Selected\").",
-                    is_required : false, },
                 ],
             },
         ),
