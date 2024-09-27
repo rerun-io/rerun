@@ -1691,7 +1691,7 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                     false, }, ArchetypeFieldReflection { component_name :
                     "rerun.components.GammaCorrection".into(), display_name : "Gamma",
                     docstring_md :
-                    "Gamma exponent applied to normalized values before mapping to color.\n\nRaises the normalized values to the power of this value before mapping to color.\nActs like an inverse brightness. Defaults to 1.0.\n\nThe final value for display is set as:\ncolormap( (value - data_display_range.min) ** gamma / (data_display_range.max - data_display_range.min) ** gamma )",
+                    "Gamma exponent applied to normalized values before mapping to color.\n\nRaises the normalized values to the power of this value before mapping to color.\nActs like an inverse brightness. Defaults to 1.0.\n\nThe final value for display is set as:\n`colormap( (value - data_display_range.min) ** gamma / (data_display_range.max - data_display_range.min) ** gamma )`",
                     is_required : false, },
                 ],
             },

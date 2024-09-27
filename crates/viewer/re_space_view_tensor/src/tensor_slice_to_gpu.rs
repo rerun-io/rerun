@@ -9,10 +9,7 @@ use re_types::{
     datatypes::TensorData,
     tensor_data::{TensorCastError, TensorDataType},
 };
-use re_viewer_context::{
-    gpu_bridge::{self, colormap_to_re_renderer, tensor_data_range_heuristic, RangeError},
-    TensorStats,
-};
+use re_viewer_context::gpu_bridge::{self, colormap_to_re_renderer, RangeError};
 
 use crate::space_view_class::selected_tensor_slice;
 
@@ -32,15 +29,13 @@ pub fn colormapped_texture(
     render_ctx: &re_renderer::RenderContext,
     tensor_data_row_id: RowId,
     tensor: &TensorData,
-    tensor_stats: &TensorStats,
     slice_selection: &TensorSliceSelection,
+    range: [f32; 2],
     colormap: Colormap,
     gamma: GammaCorrection,
 ) -> Result<ColormappedTexture, TextureManager2DError<TensorUploadError>> {
     re_tracing::profile_function!();
 
-    let range = tensor_data_range_heuristic(tensor_stats, tensor.dtype())
-        .map_err(|err| TextureManager2DError::DataCreation(err.into()))?;
     let texture =
         upload_texture_slice_to_gpu(render_ctx, tensor_data_row_id, tensor, slice_selection)?;
 
