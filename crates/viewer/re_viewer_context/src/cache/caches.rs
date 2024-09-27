@@ -40,6 +40,11 @@ impl Caches {
             .downcast_mut::<C>()
             .expect("Downcast failed, this indicates a bug in how `Caches` adds new cache types."))
     }
+
+    /// Removes a cache of a given type, effectively flushing it.
+    pub fn remove_cache(&self, cache_type: TypeId) {
+        self.0.lock().remove(&cache_type);
+    }
 }
 
 /// A cache for memoizing things in order to speed up immediate mode UI & other immediate mode style things.

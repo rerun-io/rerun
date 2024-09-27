@@ -4,7 +4,7 @@ use egui::NumExt as _;
 
 use re_log_types::TimeZone;
 use re_ui::{UICommand, UiExt as _};
-use re_viewer_context::{StoreContext, SystemCommand, SystemCommandSender};
+use re_viewer_context::{StoreContext, SystemCommand, SystemCommandSender, VideoCache};
 
 use crate::App;
 
@@ -323,6 +323,40 @@ fn options_menu_ui(
         &mut app_options.include_welcome_screen_button_in_recordings_panel,
         "Show 'Welcome screen' button",
     );
+
+    {
+        use re_renderer::video::DecodeHardwareAcceleration;
+
+        let hardware_acceleration = &mut app_options.video_decoder_hw_accelleration;
+
+        ui.horizontal(|ui| {
+            ui.label("Video Decoder:");
+            let response = egui::ComboBox::from_id_salt("video_decoder_hw_accelleration")
+                .selected_text(format!("{hardware_acceleration}"))
+                .show_ui(ui, |ui| {
+                    ui.selectable_value(
+                        hardware_acceleration,
+                        DecodeHardwareAcceleration::Auto,
+                        format!("{}", DecodeHardwareAcceleration::Auto),
+                    ) | ui.selectable_value(
+                        hardware_acceleration,
+                        DecodeHardwareAcceleration::PreferSoftware,
+                        format!("{}", DecodeHardwareAcceleration::PreferSoftware),
+                    ) | ui.selectable_value(
+                        hardware_acceleration,
+                        DecodeHardwareAcceleration::PreferHardware,
+                        format!("{}", DecodeHardwareAcceleration::PreferHardware),
+                    )
+                });
+
+            if response.inner.map_or(false, |inner| inner.changed()) {
+                // Video caches store video decoders that need to be recreated now with the right settings.
+                command_sender.send_system(SystemCommand::FlushViewerCacheType(
+                    std::any::TypeId::of::<VideoCache>(),
+                ));
+            }
+        });
+    }
 
     {
         ui.add_space(SPACING);

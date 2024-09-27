@@ -576,7 +576,7 @@ fn js_video_decoder_config(
     js.set_optimize_for_latency(true);
 
     match hw_acceleration {
-        DecodeHardwareAcceleration::NoPreference => {
+        DecodeHardwareAcceleration::Auto => {
             js.set_hardware_acceleration(web_sys::HardwareAcceleration::NoPreference);
         }
         DecodeHardwareAcceleration::PreferSoftware => {

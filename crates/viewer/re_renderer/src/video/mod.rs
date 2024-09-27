@@ -91,7 +91,7 @@ pub struct Video {
 pub enum DecodeHardwareAcceleration {
     /// May use hardware acceleration if available and compatible with the codec.
     #[default]
-    NoPreference,
+    Auto,
 
     /// Should use a software decoder even if hardware acceleration is available.
     ///
@@ -102,6 +102,16 @@ pub enum DecodeHardwareAcceleration {
     ///
     /// If no hardware decoder is present, this may cause decoding to fail.
     PreferHardware,
+}
+
+impl std::fmt::Display for DecodeHardwareAcceleration {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Auto => write!(f, "Auto"),
+            Self::PreferSoftware => write!(f, "Prefer software"),
+            Self::PreferHardware => write!(f, "Prefer hardware"),
+        }
+    }
 }
 
 impl Video {

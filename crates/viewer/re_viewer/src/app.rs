@@ -557,6 +557,10 @@ impl App {
                     re_log::error!("Failed to save file: {err}");
                 }
             }
+
+            SystemCommand::FlushViewerCacheType(cache_type) => {
+                store_hub.flush_cache_type(cache_type);
+            }
         }
     }
 
