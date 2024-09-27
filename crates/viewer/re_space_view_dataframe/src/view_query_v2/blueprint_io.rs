@@ -152,10 +152,8 @@ impl QueryV2 {
                         .push(desc.timeline.as_str().into());
                 }
                 ColumnSelector::Component(desc) => {
-                    let blueprint_component_descriptor = datatypes::ComponentColumnSelector {
-                        entity_path: (&desc.entity_path).into(),
-                        component: desc.component.as_str().into(),
-                    };
+                    let blueprint_component_descriptor =
+                        datatypes::ComponentColumnSelector::new(&desc.entity_path, desc.component);
 
                     selected_columns
                         .component_columns
@@ -250,10 +248,10 @@ impl QueryV2 {
                             }
                             ColumnDescriptor::Component(desc) => {
                                 let blueprint_component_descriptor =
-                                    datatypes::ComponentColumnSelector {
-                                        entity_path: (&desc.entity_path).into(),
-                                        component: desc.component_name.as_str().into(),
-                                    };
+                                    datatypes::ComponentColumnSelector::new(
+                                        &desc.entity_path,
+                                        desc.component_name,
+                                    );
 
                                 selected_columns
                                     .component_columns
@@ -277,10 +275,9 @@ impl QueryV2 {
                     entity_path,
                     component_name,
                 } => {
-                    let blueprint_component_descriptor = datatypes::ComponentColumnSelector {
-                        entity_path: (&entity_path).into(),
-                        component: component_name.as_str().into(),
-                    };
+                    let blueprint_component_descriptor =
+                        datatypes::ComponentColumnSelector::new(&entity_path, component_name);
+
                     selected_columns
                         .component_columns
                         .retain(|desc| desc != &blueprint_component_descriptor);
