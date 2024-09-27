@@ -116,6 +116,7 @@ pub fn blob_preview_and_save_ui(
         let video_result = ctx.cache.entry(|c: &mut re_viewer_context::VideoCache| {
             c.entry(blob_row_id, blob, media_type.as_ref().map(|mt| mt.as_str()))
         });
+
         show_video_blob_info(
             ctx.render_ctx,
             ui,
@@ -170,6 +171,7 @@ fn show_video_blob_info(
     video_result: &Result<re_renderer::video::Video, VideoLoadError>,
     video_timestamp: Option<VideoTimestamp>,
 ) {
+    #[allow(clippy::match_same_arms)]
     match video_result {
         Ok(video) => {
             if ui_layout.is_single_line() {
@@ -263,6 +265,18 @@ fn show_video_blob_info(
                     }
                 }
             });
+        }
+        Err(VideoLoadError::MediaTypeIsNotAVideo { .. }) => {
+            // Don't show an error if this wasn't a video in the first place.
+            // Unfortunately we can't easily detect here if the Blob was _supposed_ to be a video, for that we'd need tagged components!
+            // (User may have confidently logged a non-video format as Video, we should tell them that!)
+        }
+        Err(VideoLoadError::UnrecognizedVideoFormat {
+            provided_media_type: None,
+        }) => {
+            // If we couldn't detect the media type and the loader didn't know the format,
+            // we can't show an error for unrecognized formats since maybe this wasn't a video to begin with.
+            // See also `MediaTypeIsNotAVideo` case above.
         }
         Err(err) => {
             if ui_layout.is_single_line() {
