@@ -292,25 +292,25 @@ pub fn paint_loading_spinners(
             if center_unprojected.w < 0.0 {
                 continue; // behind camera eye
             }
-            let center_in_ui: glam::Vec2 = center_unprojected.xy() / center_unprojected.w;
+            let center_in_scene: glam::Vec2 = center_unprojected.xy() / center_unprojected.w;
 
-            let mut radius_in_ui: f32 = f32::INFINITY;
+            let mut radius_in_scene = f32::INFINITY;
 
             // Estimate the radius so we are unlikely to exceed the projected box:
             for radius_vec in [half_extent_u, -half_extent_u, half_extent_v, -half_extent_v] {
-                let axis_radius = center_in_ui
+                let axis_radius = center_in_scene
                     .distance(ui_from_world_3d.project_point3(center + radius_vec).xy());
-                radius_in_ui = radius_in_ui.min(axis_radius);
+                radius_in_scene = radius_in_scene.min(axis_radius);
             }
 
-            radius_in_ui *= 0.75; // Shrink a bit
+            radius_in_scene *= 0.75; // Shrink a bit
 
             let max_radius = 0.5 * ui_from_scene.from().size().min_elem();
-            radius_in_ui = radius_in_ui.min(max_radius);
+            radius_in_scene = radius_in_scene.min(max_radius);
 
             let rect = egui::Rect::from_center_size(
-                egui::pos2(center_in_ui.x, center_in_ui.y),
-                egui::Vec2::splat(2.0 * radius_in_ui),
+                egui::pos2(center_in_scene.x, center_in_scene.y),
+                egui::Vec2::splat(2.0 * radius_in_scene),
             );
 
             let rect = ui_from_scene.transform_rect(rect);
