@@ -274,93 +274,102 @@ impl QueryV2 {
         ui.label("Columns:");
 
         let visible_count_label = format!("{visible_count} visible, {} hidden", hidden_count);
-        ui.label(&visible_count_label);
+        ui.list_item_flat_noninteractive(
+            list_item::LabelContent::new(&visible_count_label)
+                .always_show_buttons(true)
+                .with_buttons(|ui| {
+                    let resp = ui.small_icon_button(&re_ui::icons::EDIT);
 
-        if ui.button("edit").clicked() {
-            column_visibility_modal_handler.open();
-        }
+                    if resp.clicked() {
+                        column_visibility_modal_handler.open();
+                    }
+
+                    resp
+                }),
+        );
 
         let mut new_selected_columns = selected_columns.clone();
-        column_visibility_modal_handler.ui(
-            ui.ctx(),
-            || Modal::new("Column visibility"),
-            |ui, _| {
-                //
-                // Summary toggle
-                //
 
-                let indeterminate = visible_count != 0 && hidden_count != 0;
-                let mut all_enabled = hidden_count == 0;
+        let modal_ui = |ui: &mut egui::Ui| {
+            //
+            // Summary toggle
+            //
 
-                if ui
-                    .checkbox_indeterminate(&mut all_enabled, visible_count_label, indeterminate)
-                    .changed()
-                {
-                    if all_enabled {
-                        self.select_all_columns(ctx);
-                    } else {
-                        self.unselect_all_columns(ctx);
-                    }
+            let indeterminate = visible_count != 0 && hidden_count != 0;
+            let mut all_enabled = hidden_count == 0;
+
+            if ui
+                .checkbox_indeterminate(&mut all_enabled, visible_count_label, indeterminate)
+                .changed()
+            {
+                if all_enabled {
+                    self.select_all_columns(ctx);
+                } else {
+                    self.unselect_all_columns(ctx);
+                }
+            }
+
+            ui.add_space(12.0);
+
+            //
+            // Control columns (always selected)
+            //
+
+            let mut first = true;
+            for column in schema {
+                let ColumnDescriptor::Control(_) = column else {
+                    continue;
+                };
+
+                if first {
+                    ui.label("Control");
+                    first = false;
                 }
 
-                //
-                // Time columns
-                //
+                // Control columns are always shown because:
+                // - now it's just `RowId`
+                // - the dataframe UI requires the `RowId` column to be present (for tooltips)
+                let is_enabled = false;
+                let mut is_visible = true;
 
-                let mut first = true;
-                for column in schema {
-                    let ColumnDescriptor::Time(time_column_descriptor) = column else {
-                        continue;
-                    };
-
-                    if first {
-                        ui.label("Timelines");
-                        first = false;
-                    }
-
-                    let column_selector: ColumnSelector = column.clone().into();
-
-                    let is_query_timeline =
-                        time_column_descriptor.timeline.name() == timeline.name();
-                    let is_enabled = !is_query_timeline;
-                    let mut is_visible =
-                        is_query_timeline || selected_columns.contains(&column_selector);
-
-                    ui.add_enabled_ui(is_enabled, |ui| {
-                        if ui
-                            .re_checkbox(&mut is_visible, column.short_name())
-                            .on_disabled_hover_text("The query timeline must always be visible")
-                            .changed()
-                        {
-                            if is_visible {
-                                new_selected_columns.insert(column_selector);
-                            } else {
-                                new_selected_columns.remove(&column_selector);
-                            }
-                        }
-                    });
-                }
-
-                //
-                // Component columns
-                //
-
-                let mut current_entity = None;
-                for column in schema {
-                    let ColumnDescriptor::Component(component_column_descriptor) = column else {
-                        continue;
-                    };
-
-                    if Some(&component_column_descriptor.entity_path) != current_entity.as_ref() {
-                        current_entity = Some(component_column_descriptor.entity_path.clone());
-                        ui.label(component_column_descriptor.entity_path.to_string());
-                    }
-
-                    let column_selector: ColumnSelector = column.clone().into();
-                    let mut is_visible = selected_columns.contains(&column_selector);
-
+                ui.add_enabled_ui(is_enabled, |ui| {
                     if ui
                         .re_checkbox(&mut is_visible, column.short_name())
+                        .on_disabled_hover_text("The query timeline must always be visible")
+                        .changed()
+                    { /* cannot happen for now */ }
+                });
+            }
+
+            //
+            // Time columns
+            //
+
+            let mut first = true;
+            for column in schema {
+                let ColumnDescriptor::Time(time_column_descriptor) = column else {
+                    continue;
+                };
+
+                if first {
+                    ui.add_space(6.0);
+                    ui.label("Timelines");
+                    first = false;
+                }
+
+                let column_selector: ColumnSelector = column.clone().into();
+
+                // The query timeline is always active because it's necessary for the dataframe ui
+                // (for tooltips).
+                let is_query_timeline = time_column_descriptor.timeline.name() == timeline.name();
+                let is_enabled = !is_query_timeline;
+                let mut is_visible =
+                    is_query_timeline || selected_columns.contains(&column_selector);
+
+                ui.add_enabled_ui(is_enabled, |ui| {
+                    if ui
+                        .re_checkbox(&mut is_visible, column.short_name())
+                        .on_disabled_hover_text("The query timeline must always be visible")
                         .changed()
                     {
                         if is_visible {
@@ -369,7 +378,48 @@ impl QueryV2 {
                             new_selected_columns.remove(&column_selector);
                         }
                     }
+                });
+            }
+
+            //
+            // Component columns
+            //
+
+            let mut current_entity = None;
+            for column in schema {
+                let ColumnDescriptor::Component(component_column_descriptor) = column else {
+                    continue;
+                };
+
+                if Some(&component_column_descriptor.entity_path) != current_entity.as_ref() {
+                    current_entity = Some(component_column_descriptor.entity_path.clone());
+                    ui.add_space(6.0);
+                    ui.label(component_column_descriptor.entity_path.to_string());
                 }
+
+                let column_selector: ColumnSelector = column.clone().into();
+                let mut is_visible = selected_columns.contains(&column_selector);
+
+                if ui
+                    .re_checkbox(&mut is_visible, column.short_name())
+                    .changed()
+                {
+                    if is_visible {
+                        new_selected_columns.insert(column_selector);
+                    } else {
+                        new_selected_columns.remove(&column_selector);
+                    }
+                }
+            }
+        };
+
+        column_visibility_modal_handler.ui(
+            ui.ctx(),
+            || Modal::new("Column visibility"),
+            |ui, _| {
+                egui::ScrollArea::vertical()
+                    .auto_shrink([false, false])
+                    .show(ui, modal_ui)
             },
         );
 
