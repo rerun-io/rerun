@@ -17,7 +17,10 @@ mod reflection;
 mod saving;
 mod screenshotter;
 mod ui;
+mod undo;
 mod viewer_analytics;
+
+pub use undo::BlueprintUndoState;
 
 /// Auto-generated blueprint-related types.
 ///
