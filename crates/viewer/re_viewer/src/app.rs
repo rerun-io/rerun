@@ -15,11 +15,11 @@ use re_viewer_context::{
     SystemCommandSender,
 };
 
-use crate::app_blueprint::PanelStateOverrides;
 use crate::{
     app_blueprint::AppBlueprint, app_state::WelcomeScreenState, background_tasks::BackgroundTasks,
     AppState,
 };
+use crate::{app_blueprint::PanelStateOverrides, BlueprintUndoState};
 
 // ----------------------------------------------------------------------------
 
@@ -520,7 +520,8 @@ impl App {
                 if self.state.app_options.inspect_blueprint_timeline {
                     // We may we viewing a historical blueprint, and doing an edit based on that.
                     // We therefor throw away everything after the currently viewed time (like an undo)
-                    let last_kept_event_time = self.state.blueprint_query_for_viewer().at();
+                    let last_kept_event_time =
+                        self.state.blueprint_query_for_viewer(blueprint_db).at();
                     let first_dropped_event_time = last_kept_event_time.inc();
                     blueprint_db.drop_time_range(
                         &re_viewer_context::blueprint_timeline(),
@@ -529,6 +530,14 @@ impl App {
                             re_chunk::TimeInt::MAX,
                         ),
                     );
+                } else {
+                    let undo_state = self
+                        .state
+                        .blueprint_undo_state
+                        .entry(blueprint_id)
+                        .or_default();
+
+                    undo_state.clear_redo(blueprint_db);
                 }
 
                 for chunk in updates {
@@ -544,6 +553,23 @@ impl App {
                 let mut time_ctrl = self.state.blueprint_cfg.time_ctrl.write();
                 time_ctrl.set_play_state(blueprint_db.times_per_timeline(), PlayState::Following);
             }
+            SystemCommand::UndoBlueprint { blueprint_id } => {
+                let blueprint_db = store_hub.entity_db_mut(&blueprint_id);
+                self.state
+                    .blueprint_undo_state
+                    .entry(blueprint_id)
+                    .or_default()
+                    .undo(blueprint_db);
+            }
+            SystemCommand::RedoBlueprint { blueprint_id } => {
+                let blueprint_db = store_hub.entity_db_mut(&blueprint_id);
+                self.state
+                    .blueprint_undo_state
+                    .entry(blueprint_id)
+                    .or_default()
+                    .redo(blueprint_db);
+            }
+
             SystemCommand::DropEntity(blueprint_id, entity_path) => {
                 let blueprint_db = store_hub.entity_db_mut(&blueprint_id);
                 blueprint_db.drop_entity_path_recursive(&entity_path);
@@ -708,6 +734,21 @@ impl App {
             UICommand::CloseAllRecordings => {
                 self.command_sender
                     .send_system(SystemCommand::CloseAllRecordings);
+            }
+
+            UICommand::Undo => {
+                if let Some(store_context) = store_context {
+                    let blueprint_id = store_context.blueprint.store_id().clone();
+                    self.command_sender
+                        .send_system(SystemCommand::UndoBlueprint { blueprint_id });
+                }
+            }
+            UICommand::Redo => {
+                if let Some(store_context) = store_context {
+                    let blueprint_id = store_context.blueprint.store_id().clone();
+                    self.command_sender
+                        .send_system(SystemCommand::RedoBlueprint { blueprint_id });
+                }
             }
 
             #[cfg(not(target_arch = "wasm32"))]
@@ -1821,9 +1862,17 @@ impl eframe::App for App {
         {
             let store_context = store_hub.read_context();
 
+            let blueprint_query = store_context.as_ref().map_or(
+                BlueprintUndoState::default_query(),
+                |store_context| {
+                    self.state
+                        .blueprint_query_for_viewer(store_context.blueprint)
+                },
+            );
+
             let app_blueprint = AppBlueprint::new(
                 store_context.as_ref(),
-                &self.state.blueprint_query_for_viewer(),
+                &blueprint_query,
                 egui_ctx,
                 self.panel_state_overrides_active
                     .then_some(self.panel_state_overrides),

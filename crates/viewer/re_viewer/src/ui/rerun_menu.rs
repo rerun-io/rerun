@@ -42,6 +42,9 @@ impl App {
 
         ui.add_space(SPACING);
 
+        UICommand::Undo.menu_button_ui(ui, &self.command_sender); // TODO(emilk): only enabled if there is something to undo
+        UICommand::Redo.menu_button_ui(ui, &self.command_sender); // TODO(emilk): only enabled if there is something to redo
+
         UICommand::ToggleCommandPalette.menu_button_ui(ui, &self.command_sender);
 
         ui.add_space(SPACING);
