@@ -49,6 +49,13 @@ pub enum SystemCommand {
     /// is both modified and changed in the same frame.
     UpdateBlueprint(StoreId, Vec<Chunk>),
 
+    UndoBlueprint {
+        blueprint_id: StoreId,
+    },
+    RedoBlueprint {
+        blueprint_id: StoreId,
+    },
+
     /// Drop a specific entity from a store.
     ///
     /// Also drops all recursive children.
