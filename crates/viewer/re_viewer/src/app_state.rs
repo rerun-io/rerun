@@ -157,6 +157,9 @@ impl AppState {
             focused_item,
         } = self;
 
+        // check state early, before the UI has a chance to close these popups
+        let is_any_popup_open = ui.memory(|m| m.any_popup_open());
+
         // Some of the mutations APIs of `ViewportBlueprints` are recorded as `Viewport::TreeAction`
         // and must be applied by `Viewport` at the end of the frame. We use a temporary channel for
         // this, which gives us interior mutability (only a shared reference of `ViewportBlueprint`
@@ -467,10 +470,7 @@ impl AppState {
         check_for_clicked_hyperlinks(&egui_ctx, ctx.selection_state);
 
         // Deselect on ESC. Must happen after all other UI code to let them capture ESC if needed.
-        if ui.input(|i| i.key_pressed(egui::Key::Escape))
-            && !ui.ctx().is_context_menu_open()
-            && !ui.memory(|m| m.any_popup_open())
-        {
+        if ui.input(|i| i.key_pressed(egui::Key::Escape)) && !is_any_popup_open {
             selection_state.clear_selection();
         }
 
