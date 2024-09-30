@@ -1,0 +1,143 @@
+syntax = "proto3";
+
+package rerun.storage.v0;
+
+service StorageNode {
+    rpc ListRecordings(ListRecordingsRequest) returns (ListRecordingsResponse) {}
+    rpc Query(QueryRequest) returns (stream QueryResponse) {}
+    rpc GetRecordingMetadata(RecordingId) returns (RecordingMetadata) {}
+    // TODO (zehiko) add registration of recordings if indeed this is the path
+    // we're going to take
+}
+
+// ----------- Common ------------
+
+// unique recording identifier
+message RecordingId {
+    string id = 1;
+}
+
+// ----------- GetRecordingMetadata request and response ------------
+
+message GetRecordingMetadataRequest {
+    RecordingId recording_id = 1;
+}
+
+message RecordingMetadata {
+    Schema schema = 1;
+    TimeRange time_range = 2;
+}
+
+message Schema {
+    // arrow IPC serialized schema
+    bytes arrow_schema = 1;
+}
+
+// ----------- Query request and response ------------
+
+message QueryRequest {
+    // unique identifier of the recording
+    RecordingId recording_id = 1;
+    // query to execute
+    Query query = 2;
+}
+
+message Query {
+    // database view defined by entity paths and components
+    ViewContents view_contents = 1;
+    // filtering index
+    Index index = 2;
+    // PoV (filtering) component
+    ComponentColumnDescriptor pov_component = 5;
+    // how are null values filled in the response
+    SparseFillStrategy sparse_fill_strategy = 7;
+}
+
+message QueryResponse {
+    // one or more record batches (encoding TBD)
+    repeated bytes record_batches = 1;
+}
+
+enum RecordingType {
+    RRD = 0;
+}
+
+message Index {
+    oneof index_filter {
+        TimeFilter time = 1;
+    }
+}
+
+message TimeFilter {
+    Timeline timeline = 1;
+    TimeRange time_range = 2;
+    repeated TimeInt time_points = 3;
+    repeated TimeInt sample_points = 4;
+}
+
+enum Component {
+    SCALAR = 0;
+    IMAGE = 1;
+    // ... TODO(zehiko) add all component types if this is ok way to represent them
+}
+
+message ViewContentsPart {
+    string path = 1;
+    repeated Component components = 2;
+}
+
+message ViewContents {
+    repeated ViewContentsPart contents = 1;
+}
+
+enum TimelineType {
+    TIME = 0;
+    SEQUENCE = 1;
+}
+
+message Timeline {
+    string name = 1;
+    TimelineType typ = 2;
+}
+
+message TimeRange {
+    int64 start = 1;
+    int64 end = 2;
+}
+
+message TimeInt {
+    int64 time = 1;
+}
+
+message EntityPath {
+    string path = 1;
+}
+
+message ComponentColumnDescriptor {
+    EntityPath entity_path = 1;
+    Component component = 2;
+    bool resolve_latest_at = 3;
+    // TODO - join encoding
+}
+
+enum SparseFillStrategy {
+    NONE = 0;
+    LATEST_AL_GLOBAL = 1;
+}
+
+
+// ------------ List recordings requests and response ------------
+
+message ListRecordingsRequest {}
+
+message ListRecordingsResponse {
+    repeated RecordingInfo recordings = 1;
+}
+
+message RecordingInfo {
+    RecordingId id = 1;
+    string description = 2;
+    string storage_url = 3;
+    uint64 size_bytes = 4;
+    RecordingType typ = 5;
+}
