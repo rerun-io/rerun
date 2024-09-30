@@ -15,14 +15,18 @@ for t in range(0, int(math.pi * 4 * 100.0)):
     rr.log("trig/sin", rr.Scalar(math.sin(float(t) / 100.0)))
     rr.log("trig/cos", rr.Scalar(math.cos(float(t) / 100.0)))
 
+    # some sparse data
+    if t % 5 == 0:
+        rr.log("trig/sin_sparse", rr.Scalar(math.sin(float(t) / 100.0)))
+
 # Create a Dataframe View
 blueprint = rrb.Blueprint(
     rrb.DataframeView(
         origin="/trig",
-        # TODO(#6896): improve `DataframeQueryV2` API and showcase more features
         query=rrb.archetypes.DataframeQueryV2(
             timeline="t",
-            range_filter=rrb.components.RangeFilter(start=rr.TimeInt(seconds=0), end=rr.TimeInt(seconds=20)),
+            filter_by_range=(rr.TimeInt(seconds=0), rr.TimeInt(seconds=20)),
+            apply_latest_at=True,
         ),
     ),
 )

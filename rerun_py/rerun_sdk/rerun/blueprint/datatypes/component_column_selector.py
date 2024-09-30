@@ -5,7 +5,7 @@
 
 from __future__ import annotations
 
-from typing import Any, Sequence, Union
+from typing import TYPE_CHECKING, Any, Sequence, Union
 
 import pyarrow as pa
 from attrs import define, field
@@ -74,7 +74,11 @@ class ComponentColumnSelector:
     # (Docstring intentionally commented out to hide this field from the docs)
 
 
-ComponentColumnSelectorLike = ComponentColumnSelector
+if TYPE_CHECKING:
+    ComponentColumnSelectorLike = Union[ComponentColumnSelector, str]
+else:
+    ComponentColumnSelectorLike = Any
+
 ComponentColumnSelectorArrayLike = Union[
     ComponentColumnSelector,
     Sequence[ComponentColumnSelectorLike],
