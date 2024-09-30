@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import itertools
 from typing import Any
 
 import numpy as np
@@ -25,13 +26,17 @@ def depth_image_expected() -> Any:
     return rr.DepthImage(RANDOM_IMAGE_SOURCE, meter=1000)
 
 
-def test_image() -> None:
-    expected = depth_image_expected()
+def test_depth_image() -> None:
+    ranges = [None, [0.0, 1.0], 1000, 1000]
 
-    for img, meter in zip(IMAGE_INPUTS, METER_INPUTS):
-        arch = rr.DepthImage(img, meter=meter)
+    for img, meter, depth_range in itertools.zip_longest(IMAGE_INPUTS, METER_INPUTS, ranges):
+        if img is None:
+            img = IMAGE_INPUTS[0]
 
-        assert arch == expected
+        print(f"rr.DepthImage(\n" f"    {img}\n" f"    meter={meter!r}\n" f"    depth_range={depth_range!r}\n" f")")
+        arch = rr.DepthImage(img, meter=meter, depth_range=depth_range)
+
+        assert arch == rr.DepthImage(RANDOM_IMAGE_SOURCE, meter=1000, depth_range=range)
 
 
 GOOD_IMAGE_INPUTS: list[Any] = [
