@@ -6,8 +6,7 @@ service StorageNode {
     rpc ListRecordings(ListRecordingsRequest) returns (ListRecordingsResponse) {}
     rpc Query(QueryRequest) returns (stream QueryResponse) {}
     rpc GetRecordingMetadata(RecordingId) returns (RecordingMetadata) {}
-    // TODO (zehiko) add registration of recordings if indeed this is the path
-    // we're going to take
+    rpc RegisterRecording(RegisterRecordingRequest) returns (RecordingId) {}
 }
 
 // ----------- Common ------------
@@ -17,7 +16,19 @@ message RecordingId {
     string id = 1;
 }
 
-// ----------- GetRecordingMetadata request and response ------------
+// ---------------- RegisterRecording ------------------
+
+message RegisterRecordingRequest {
+    string description = 1;
+    string storage_url = 2;
+    RecordingType typ = 4;
+}
+
+message RegisterRecordingResponse {
+    RecordingId recording_id = 1;
+}
+
+// ---------------- GetRecordingMetadata  -----------------
 
 message GetRecordingMetadataRequest {
     RecordingId recording_id = 1;
@@ -33,7 +44,7 @@ message Schema {
     bytes arrow_schema = 1;
 }
 
-// ----------- Query request and response ------------
+// ---------------- Query -----------------
 
 message QueryRequest {
     // unique identifier of the recording
@@ -121,7 +132,7 @@ enum SparseFillStrategy {
     LATEST_AL_GLOBAL = 1;
 }
 
-// ------------ List recordings requests and response ------------
+// ----------------- ListRecordings -----------------
 
 message ListRecordingsRequest {}
 
