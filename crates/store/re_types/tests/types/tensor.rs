@@ -26,7 +26,7 @@ fn tensor_roundtrip() {
             buffer: TensorBuffer::U8(vec![1, 2, 3, 4, 5, 6].into()),
         }
         .into(),
-        value_display_range: None,
+        value_range: None,
     }];
 
     let all_arch_serialized = [Tensor::try_from(ndarray::array![[1u8, 2, 3], [4, 5, 6]])

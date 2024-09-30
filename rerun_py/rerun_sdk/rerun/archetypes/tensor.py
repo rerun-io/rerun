@@ -57,7 +57,7 @@ class Tensor(TensorExt, Archetype):
         """Convenience method for calling `__attrs_init__` with all `None`s."""
         self.__attrs_init__(
             data=None,  # type: ignore[arg-type]
-            value_display_range=None,  # type: ignore[arg-type]
+            value_range=None,  # type: ignore[arg-type]
         )
 
     @classmethod
@@ -75,15 +75,15 @@ class Tensor(TensorExt, Archetype):
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 
-    value_display_range: components.Range1DBatch | None = field(
+    value_range: components.Range1DBatch | None = field(
         metadata={"component": "optional"},
         default=None,
         converter=components.Range1DBatch._optional,  # type: ignore[misc]
     )
-    # The range of values that should be displayed.
+    # The expected range of values.
     #
     # This is typically the expected range of valid values.
-    # Everything outside of the range is clamped to the range.
+    # Everything outside of the range is clamped to the range for the purpose of colormpaping.
     # Any colormap applied for display, will map this range.
     #
     # If not specified, the range will be automatically be determined from the data.

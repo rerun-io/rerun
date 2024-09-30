@@ -26,7 +26,7 @@ fn depth_image_roundtrip() {
         draw_order: None,
         colormap: None,
         point_fill_ratio: None,
-        depth_display_range: None,
+        depth_range: None,
     }];
 
     let all_arch_serialized = [

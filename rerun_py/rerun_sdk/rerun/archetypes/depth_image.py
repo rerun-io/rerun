@@ -68,7 +68,7 @@ class DepthImage(DepthImageExt, Archetype):
         self.__attrs_init__(
             buffer=None,  # type: ignore[arg-type]
             format=None,  # type: ignore[arg-type]
-            depth_display_range=None,  # type: ignore[arg-type]
+            depth_range=None,  # type: ignore[arg-type]
             meter=None,  # type: ignore[arg-type]
             colormap=None,  # type: ignore[arg-type]
             point_fill_ratio=None,  # type: ignore[arg-type]
@@ -98,7 +98,7 @@ class DepthImage(DepthImageExt, Archetype):
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 
-    depth_display_range: components.Range1DBatch | None = field(
+    depth_range: components.Range1DBatch | None = field(
         metadata={"component": "optional"},
         default=None,
         converter=components.Range1DBatch._optional,  # type: ignore[misc]
@@ -106,8 +106,8 @@ class DepthImage(DepthImageExt, Archetype):
     # The expected range of depth values.
     #
     # This is typically the expected range of valid values.
-    # Everything outside of the range is clamped to the range.
-    # Any colormap applied for display, will map this range.
+    # Everything outside of the range is clamped to the range for the purpose of colormpaping.
+    # Note that point clouds generated from this image will still display all points, regardless of this range.
     #
     # If not specified, the range will be automatically be determined from the data.
     # Note that the Viewer may try to guess a wider range than the minimum/maximum of values

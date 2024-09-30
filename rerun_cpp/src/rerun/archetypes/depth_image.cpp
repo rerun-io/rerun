@@ -26,8 +26,8 @@ namespace rerun {
             RR_RETURN_NOT_OK(result.error);
             cells.push_back(std::move(result.value));
         }
-        if (archetype.depth_display_range.has_value()) {
-            auto result = ComponentBatch::from_loggable(archetype.depth_display_range.value());
+        if (archetype.depth_range.has_value()) {
+            auto result = ComponentBatch::from_loggable(archetype.depth_range.value());
             RR_RETURN_NOT_OK(result.error);
             cells.push_back(std::move(result.value));
         }

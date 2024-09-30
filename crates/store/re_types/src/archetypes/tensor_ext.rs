@@ -18,7 +18,7 @@ impl Tensor {
 
         Ok(Self {
             data: data.into(),
-            value_display_range: None,
+            value_range: None,
         })
     }
 
@@ -53,7 +53,7 @@ impl Tensor {
                 buffer: self.data.0.buffer,
             }
             .into(),
-            value_display_range: None,
+            value_range: None,
         }
     }
 }
@@ -68,7 +68,7 @@ impl Tensor {
     ) -> Result<Self, crate::tensor_data::TensorImageLoadError> {
         TensorData::from_image(image).map(|data| Self {
             data: data.into(),
-            value_display_range: None,
+            value_range: None,
         })
     }
 
@@ -80,7 +80,7 @@ impl Tensor {
     ) -> Result<Self, crate::tensor_data::TensorImageLoadError> {
         TensorData::from_dynamic_image(image).map(|data| Self {
             data: data.into(),
-            value_display_range: None,
+            value_range: None,
         })
     }
 }
