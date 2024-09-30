@@ -36,7 +36,7 @@ def test_depth_image() -> None:
         print(f"rr.DepthImage(\n" f"    {img}\n" f"    meter={meter!r}\n" f"    depth_range={depth_range!r}\n" f")")
         arch = rr.DepthImage(img, meter=meter, depth_range=depth_range)
 
-        assert arch == rr.DepthImage(RANDOM_IMAGE_SOURCE, meter=1000, depth_range=range)
+        assert arch == rr.DepthImage(RANDOM_IMAGE_SOURCE, meter=1000, depth_range=depth_range)
 
 
 GOOD_IMAGE_INPUTS: list[Any] = [

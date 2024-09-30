@@ -119,8 +119,10 @@ def log_volumetric_sdf(voxvol: npt.NDArray[np.float32]) -> None:
     names = ["width", "height", "depth"]
     # Use a symmetric value range, so that the `cyantoyellow` colormap centers around zero.
     # Either positive or negative range might be quite small, so don't exceed 1.5x of either.
-    negative_range = max(0.0, abs(np.min(voxvol)))
-    positive_range = max(0.0, abs(np.max(voxvol)))
+    min_val = cast(float, np.min(voxvol))
+    max_val = cast(float, np.max(voxvol))
+    negative_range = max(0.0, abs(min_val))
+    positive_range = max(0.0, abs(max_val))
     range = max(min(positive_range, negative_range * 1.5), min(negative_range, positive_range * 1.5))
     rr.log("tensor", rr.Tensor(voxvol, dim_names=names, value_range=[-range, range]))
 
