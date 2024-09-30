@@ -52,7 +52,7 @@ table DepthImage (
   /// in the contents of the depth image.
   /// E.g. if all values are positive, some bigger than 1.0 and all smaller than 255.0,
   /// the Viewer will conclude that the data likely came from an 8bit image, thus assuming a range of 0-255.
-  depth_range: rerun.components.Range1D ("attr.rerun.component_optional", nullable, order: 2000);
+  depth_range: rerun.components.Range1D ("attr.rerun.component_optional", nullable, order: 3300);
 
   /// Scale the radii of the points in the point cloud generated from this image.
   ///
@@ -61,10 +61,10 @@ table DepthImage (
   /// A fill ratio of 0.5 means that each point touches the edge of its neighbor if it has the same depth.
   ///
   /// TODO(#6744): This applies only to 3D views!
-  point_fill_ratio: rerun.components.FillRatio ("attr.rerun.component_optional", nullable, order: 3300);
+  point_fill_ratio: rerun.components.FillRatio ("attr.rerun.component_optional", nullable, order: 3400);
 
   /// An optional floating point value that specifies the 2D drawing order, used only if the depth image is shown as a 2D image.
   ///
   /// Objects with higher values are drawn on top of those with lower values.
-  draw_order: rerun.components.DrawOrder ("attr.rerun.component_optional", nullable, order: 3400);
+  draw_order: rerun.components.DrawOrder ("attr.rerun.component_optional", nullable, order: 3500);
 }

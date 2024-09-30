@@ -5,6 +5,8 @@ from typing import TYPE_CHECKING, Any, Union
 import numpy as np
 import numpy.typing as npt
 
+from rerun.datatypes.range1d import Range1DLike
+
 from ..components import Colormap, ImageFormat
 from ..datatypes import ChannelDatatype, Float32Like
 
@@ -45,7 +47,57 @@ class DepthImageExt:
         *,
         meter: Float32Like | None = None,
         colormap: Colormap | None = None,
+        depth_range: Range1DLike | None = None,
+        point_fill_ratio: Float32Like | None = None,
+        draw_order: Float32Like | None = None,
     ):
+        """
+        Create a new instance of the DepthImage archetype.
+
+        Parameters
+        ----------
+        image:
+            A numpy array or tensor with the depth image data.
+            Leading and trailing unit-dimensions are ignored, so that
+            `1x480x640x1` is treated as a `480x640`.
+        meter:
+            An optional floating point value that specifies how long a meter is in the native depth units.
+
+            For instance: with uint16, perhaps meter=1000 which would mean you have millimeter precision
+            and a range of up to ~65 meters (2^16 / 1000).
+
+            Note that the only effect on 2D views is the physical depth values shown when hovering the image.
+            In 3D views on the other hand, this affects where the points of the point cloud are placed.
+        colormap:
+            Colormap to use for rendering the depth image.
+
+            If not set, the depth image will be rendered using the Turbo colormap.
+        depth_range:
+            The expected range of depth values.
+
+            This is typically the expected range of valid values.
+            Everything outside of the range is clamped to the range for the purpose of colormpaping.
+            Note that point clouds generated from this image will still display all points, regardless of this range.
+
+            If not specified, the range will be automatically be determined from the data.
+            Note that the Viewer may try to guess a wider range than the minimum/maximum of values
+            in the contents of the depth image.
+            E.g. if all values are positive, some bigger than 1.0 and all smaller than 255.0,
+            the Viewer will conclude that the data likely came from an 8bit image, thus assuming a range of 0-255.
+        point_fill_ratio:
+            Scale the radii of the points in the point cloud generated from this image.
+
+            A fill ratio of 1.0 (the default) means that each point is as big as to touch the center of its neighbor
+            if it is at the same depth, leaving no gaps.
+            A fill ratio of 0.5 means that each point touches the edge of its neighbor if it has the same depth.
+
+            TODO(#6744): This applies only to 3D views!
+        draw_order:
+            An optional floating point value that specifies the 2D drawing order, used only if the depth image is shown as a 2D image.
+
+            Objects with higher values are drawn on top of those with lower values.
+
+        """
         image = _to_numpy(image)
 
         shape = image.shape
@@ -74,4 +126,7 @@ class DepthImageExt:
             ),
             meter=meter,
             colormap=colormap,
+            depth_range=depth_range,
+            point_fill_ratio=point_fill_ratio,
+            draw_order=draw_order,
         )

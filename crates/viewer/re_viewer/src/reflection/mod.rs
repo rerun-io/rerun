@@ -944,10 +944,6 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                     "rerun.components.ImageFormat".into(), display_name : "Format",
                     docstring_md : "The format of the image.", is_required : true, },
                     ArchetypeFieldReflection { component_name :
-                    "rerun.components.Range1D".into(), display_name : "Depth range",
-                    docstring_md :
-                    "The expected range of depth values.\n\nThis is typically the expected range of valid values.\nEverything outside of the range is clamped to the range for the purpose of colormpaping.\nNote that point clouds generated from this image will still display all points, regardless of this range.\n\nIf not specified, the range will be automatically be determined from the data.\nNote that the Viewer may try to guess a wider range than the minimum/maximum of values\nin the contents of the depth image.\nE.g. if all values are positive, some bigger than 1.0 and all smaller than 255.0,\nthe Viewer will conclude that the data likely came from an 8bit image, thus assuming a range of 0-255.",
-                    is_required : false, }, ArchetypeFieldReflection { component_name :
                     "rerun.components.DepthMeter".into(), display_name : "Meter",
                     docstring_md :
                     "An optional floating point value that specifies how long a meter is in the native depth units.\n\nFor instance: with uint16, perhaps meter=1000 which would mean you have millimeter precision\nand a range of up to ~65 meters (2^16 / 1000).\n\nNote that the only effect on 2D views is the physical depth values shown when hovering the image.\nIn 3D views on the other hand, this affects where the points of the point cloud are placed.",
@@ -955,6 +951,10 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                     "rerun.components.Colormap".into(), display_name : "Colormap",
                     docstring_md :
                     "Colormap to use for rendering the depth image.\n\nIf not set, the depth image will be rendered using the Turbo colormap.",
+                    is_required : false, }, ArchetypeFieldReflection { component_name :
+                    "rerun.components.Range1D".into(), display_name : "Depth range",
+                    docstring_md :
+                    "The expected range of depth values.\n\nThis is typically the expected range of valid values.\nEverything outside of the range is clamped to the range for the purpose of colormpaping.\nNote that point clouds generated from this image will still display all points, regardless of this range.\n\nIf not specified, the range will be automatically be determined from the data.\nNote that the Viewer may try to guess a wider range than the minimum/maximum of values\nin the contents of the depth image.\nE.g. if all values are positive, some bigger than 1.0 and all smaller than 255.0,\nthe Viewer will conclude that the data likely came from an 8bit image, thus assuming a range of 0-255.",
                     is_required : false, }, ArchetypeFieldReflection { component_name :
                     "rerun.components.FillRatio".into(), display_name :
                     "Point fill ratio", docstring_md :
