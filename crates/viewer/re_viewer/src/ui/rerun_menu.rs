@@ -4,7 +4,7 @@ use egui::NumExt as _;
 
 use re_log_types::TimeZone;
 use re_ui::{UICommand, UiExt as _};
-use re_viewer_context::{StoreContext, SystemCommand, SystemCommandSender, VideoCache};
+use re_viewer_context::{StoreContext, SystemCommand, SystemCommandSender};
 
 use crate::App;
 
@@ -331,7 +331,7 @@ fn options_menu_ui(
 
         ui.horizontal(|ui| {
             ui.label("Video Decoder:");
-            let response = egui::ComboBox::from_id_salt("video_decoder_hw_acceleration")
+            egui::ComboBox::from_id_salt("video_decoder_hw_acceleration")
                 .selected_text(format!("{hardware_acceleration}"))
                 .show_ui(ui, |ui| {
                     ui.selectable_value(
@@ -348,13 +348,7 @@ fn options_menu_ui(
                         format!("{}", DecodeHardwareAcceleration::PreferHardware),
                     )
                 });
-
-            if response.inner.map_or(false, |inner| inner.changed()) {
-                // Video caches store video decoders that need to be recreated now with the right settings.
-                command_sender.send_system(SystemCommand::FlushViewerCacheType(
-                    std::any::TypeId::of::<VideoCache>(),
-                ));
-            }
+            // Note that the setting is part of the video's cache key, so if it changes the cache entries outdate automatically.
         });
     }
 

@@ -252,8 +252,7 @@ impl App {
             AppState::default()
         };
 
-        if let Some(video_decoder_hw_acceleration) = startup_options.video_decoder_hw_acceleration
-        {
+        if let Some(video_decoder_hw_acceleration) = startup_options.video_decoder_hw_acceleration {
             state.app_options.video_decoder_hw_acceleration = video_decoder_hw_acceleration;
         }
 
@@ -568,10 +567,6 @@ impl App {
                 if let Err(err) = self.background_tasks.spawn_file_saver(file_saver) {
                     re_log::error!("Failed to save file: {err}");
                 }
-            }
-
-            SystemCommand::FlushViewerCacheType(cache_type) => {
-                store_hub.flush_cache_type(cache_type);
             }
         }
     }

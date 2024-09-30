@@ -44,7 +44,7 @@ impl VideoCache {
     ) -> Arc<Result<Video, VideoLoadError>> {
         re_tracing::profile_function!();
 
-        let inner_key = Hash64::hash(media_type);
+        let inner_key = Hash64::hash((media_type, hw_acceleration));
 
         let entry = self
             .0

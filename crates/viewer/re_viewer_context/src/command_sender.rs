@@ -84,9 +84,6 @@ pub enum SystemCommand {
     /// Add a task, run on a background thread, that saves something to disk.
     #[cfg(not(target_arch = "wasm32"))]
     FileSaver(Box<dyn FnOnce() -> anyhow::Result<std::path::PathBuf> + Send + 'static>),
-
-    /// Recreates all viewer caches of a given type.
-    FlushViewerCacheType(std::any::TypeId),
 }
 
 /// Interface for sending [`SystemCommand`] messages.
