@@ -22,6 +22,8 @@ This is also very simple to do, and the Python logging SDK has built-in support 
 Finally, you can encode the images as a video file, and log it using `AssetVideo`.
 This gives the best compression ratio, reducing file sizes and bandwidth requirements.
 
+snippet: archetypes/video_auto_frames
+
 ## `AssetVideo` limitations
 Video support is new in Rerun, and has several limitations:
 
