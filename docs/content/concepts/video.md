@@ -1,9 +1,8 @@
 ---
-title: Video
+title: Video in Rerun
 order: 2000
 ---
 
-## Video in Rerun
 A stream of images (like those produced by a camera) can be logged to Rerun in several different ways:
 
 * Uncompressed, as many [`Image`](../reference/types/archetypes/image.md)s
