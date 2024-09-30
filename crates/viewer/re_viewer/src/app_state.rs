@@ -202,10 +202,6 @@ impl AppState {
             )),
         );
 
-        if ui.input(|i| i.key_pressed(egui::Key::Escape)) {
-            selection_state.clear_selection();
-        }
-
         let applicable_entities_per_visualizer = space_view_class_registry
             .applicable_entities_for_visualizer_systems(recording.store_id());
         let indicated_entities_per_visualizer =
@@ -469,6 +465,14 @@ impl AppState {
 
         // This must run after any ui code, or other code that tells egui to open an url:
         check_for_clicked_hyperlinks(&egui_ctx, ctx.selection_state);
+
+        // Deselect on ESC. Must happen after all other UI code to let them capture ESC if needed.
+        if ui.input(|i| i.key_pressed(egui::Key::Escape))
+            && !ui.ctx().is_context_menu_open()
+            && !ui.memory(|m| m.any_popup_open())
+        {
+            selection_state.clear_selection();
+        }
 
         // Reset the focused item.
         *focused_item = None;
