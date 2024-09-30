@@ -117,7 +117,12 @@ def log_sampled_sdf(points: npt.NDArray[np.float32], sdf: npt.NDArray[np.float32
 
 def log_volumetric_sdf(voxvol: npt.NDArray[np.float32]) -> None:
     names = ["width", "height", "depth"]
-    rr.log("tensor", rr.Tensor(voxvol, dim_names=names))
+    # Use a symmetric value range, so that the `cyantoyellow` colormap centers around zero.
+    # Either positive or negative range might be quite small, so don't exceed 1.5x of either.
+    negative_range = max(0.0, abs(np.min(voxvol)))
+    positive_range = max(0.0, abs(np.max(voxvol)))
+    range = max(min(positive_range, negative_range * 1.5), min(negative_range, positive_range * 1.5))
+    rr.log("tensor", rr.Tensor(voxvol, dim_names=names, value_range=[-range, range]))
 
 
 @log_timing_decorator("global/log_mesh", "DEBUG")  # type: ignore[misc]
@@ -197,7 +202,14 @@ def main() -> None:
             rrb.Vertical(
                 rrb.Horizontal(
                     rrb.Spatial3DView(name="Input Mesh", origin="/world/mesh"),
-                    rrb.TensorView(name="SDF", origin="/tensor"),
+                    rrb.TensorView(
+                        # The cyan to yellow colormap changes its color at the mid point of its range.
+                        # By combining this with a the `value_range` parameter on the tensor,
+                        # we can visualizer negative & positive values effectively.
+                        name="SDF",
+                        origin="/tensor",
+                        scalar_mapping=rrb.TensorScalarMapping(colormap="cyantoyellow"),
+                    ),
                 ),
                 rrb.TextLogView(name="Execution Log"),
             ),
