@@ -82,17 +82,19 @@ impl DepthImageVisualizer {
 
             // All depth images must have a colormap:
             let colormap = colormap.unwrap_or_else(|| self.fallback_for(ctx));
-            let value_range = value_range.unwrap_or_else(|| {
-                // Don't use fallback provider since it has to query information we already have.
-                let image_stats = ctx
-                    .viewer_ctx
-                    .cache
-                    .entry(|c: &mut ImageStatsCache| c.entry(&image));
-                default_depth_image_value_range(&image_stats)
-            });
+            let value_range = value_range
+                .map(|r| [r[0] as f32, r[1] as f32])
+                .unwrap_or_else(|| {
+                    // Don't use fallback provider since it has to query information we already have.
+                    let image_stats = ctx
+                        .viewer_ctx
+                        .cache
+                        .entry(|c: &mut ImageStatsCache| c.entry(&image));
+                    default_depth_image_value_range(&image_stats)
+                });
             let colormap_with_range = ColormapWithMappingRange {
                 colormap,
-                value_range: [value_range[0] as f32, value_range[1] as f32],
+                value_range,
             };
 
             // First try to create a textured rect for this image.
@@ -203,13 +205,17 @@ impl DepthImageVisualizer {
         let pixel_width_from_depth = (0.5 * fov_y).tan() / (0.5 * dimensions.y as f32);
         let point_radius_from_world_depth = *radius_scale.0 * pixel_width_from_depth;
 
+        let min_max_depth_in_world = [
+            world_depth_from_texture_depth * depth_texture.range[0],
+            world_depth_from_texture_depth * depth_texture.range[1],
+        ];
+
         Ok(DepthCloud {
             world_from_rdf,
             depth_camera_intrinsics: intrinsics.image_from_camera.0.into(),
             world_depth_from_texture_depth,
             point_radius_from_world_depth,
-            // TODO: this colormapping works differently
-            max_depth_in_world: world_depth_from_texture_depth * depth_texture.range[1],
+            min_max_depth_in_world,
             depth_dimensions: dimensions,
             depth_texture: depth_texture.texture.clone(),
             colormap: match depth_texture.color_mapper {
@@ -357,11 +363,8 @@ impl VisualizerSystem for DepthImageVisualizer {
     }
 }
 
-pub fn default_depth_image_value_range(image_stats: &ImageStats) -> [f64; 2] {
-    image_stats
-        .finite_range
-        .map(|r| [r.0, r.1])
-        .unwrap_or([f64::MIN, f64::MAX]) // Subsequently clamped to the range of the datatype. TODO: fix this higher level
+pub fn default_depth_image_value_range(image_stats: &ImageStats) -> [f32; 2] {
+    ColormapWithMappingRange::default_for_depth_images(image_stats).value_range
 }
 
 impl TypedComponentFallbackProvider<DrawOrder> for DepthImageVisualizer {
@@ -394,11 +397,12 @@ impl TypedComponentFallbackProvider<Range1D> for DepthImageVisualizer {
                     .viewer_ctx
                     .cache
                     .entry(|c: &mut ImageStatsCache| c.entry(&image));
-                return default_depth_image_value_range(&tensor_stats).into();
+                let default_range = default_depth_image_value_range(&tensor_stats);
+                return [default_range[0] as f64, default_range[1] as f64].into();
             }
         }
 
-        [f64::MIN, f64::MAX].into()
+        [0.0, f64::MAX].into()
     }
 }
 

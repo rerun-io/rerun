@@ -22,10 +22,11 @@ impl ColormapWithMappingRange {
     pub const DEFAULT_DEPTH_COLORMAP: Colormap = Colormap::Turbo;
 
     pub fn default_for_depth_images(image_stats: &crate::ImageStats) -> Self {
+        // Use 0.0 as default minimum depth value, even if it doesn't show up in the data.
         let value_range = image_stats
             .finite_range
-            .map(|r| [r.0 as _, r.1 as _])
-            .unwrap_or([f32::MIN, f32::MAX]); // Subsequently clamped to the range of the datatype. TODO: fix this higher level
+            .map(|r| [0.0, r.1 as _])
+            .unwrap_or([0.0, f32::MAX]); // Subsequently clamped to the range of the datatype. TODO: fix this higher level
         Self {
             colormap: Self::DEFAULT_DEPTH_COLORMAP,
             value_range,
