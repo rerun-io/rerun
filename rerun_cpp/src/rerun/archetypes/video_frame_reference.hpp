@@ -22,6 +22,8 @@ namespace rerun::archetypes {
     /// Used to display individual video frames from a `archetypes::AssetVideo`.
     /// To show an entire video, a fideo frame reference for each frame of the video should be logged.
     ///
+    /// See <https://rerun.io/docs/concepts/video?speculative-link> for details of what is and isn't supported.
+    ///
     /// ## Examples
     ///
     /// ### Video with automatically determined frames
