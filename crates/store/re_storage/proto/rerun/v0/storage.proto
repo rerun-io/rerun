@@ -58,10 +58,6 @@ message QueryResponse {
     repeated bytes record_batches = 1;
 }
 
-enum RecordingType {
-    RRD = 0;
-}
-
 message Index {
     oneof index_filter {
         TimeFilter time = 1;
@@ -125,7 +121,6 @@ enum SparseFillStrategy {
     LATEST_AL_GLOBAL = 1;
 }
 
-
 // ------------ List recordings requests and response ------------
 
 message ListRecordingsRequest {}
@@ -140,4 +135,8 @@ message RecordingInfo {
     string storage_url = 3;
     uint64 size_bytes = 4;
     RecordingType typ = 5;
+}
+
+enum RecordingType {
+    RRD = 0;
 }
