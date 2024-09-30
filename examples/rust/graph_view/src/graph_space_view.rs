@@ -293,8 +293,8 @@ impl SpaceViewClass for GraphSpaceView {
             state.screen_to_world = TSTransform::default();
         }
 
-        let transform =
-            TSTransform::from_translation(ui.min_rect().left_top().to_vec2()) * state.screen_to_world;
+        let transform = TSTransform::from_translation(ui.min_rect().left_top().to_vec2())
+            * state.screen_to_world;
 
         if let Some(pointer) = ui.ctx().input(|i| i.pointer.hover_pos()) {
             // Note: doesn't catch zooming / panning if a button in this PanZoom container is hovered.
@@ -310,7 +310,8 @@ impl SpaceViewClass for GraphSpaceView {
                     * TSTransform::from_translation(-pointer_in_world.to_vec2());
 
                 // Pan:
-                state.screen_to_world = TSTransform::from_translation(pan_delta) * state.screen_to_world;
+                state.screen_to_world =
+                    TSTransform::from_translation(pan_delta) * state.screen_to_world;
             }
         }
 
@@ -339,7 +340,8 @@ impl SpaceViewClass for GraphSpaceView {
 
             if response.dragged() {
                 if let Some(pos) = state.node_positions.get_mut(&node) {
-                    let world_translation = state.screen_to_world * TSTransform::from_translation(response.drag_delta());
+                    let world_translation = state.screen_to_world
+                        * TSTransform::from_translation(response.drag_delta());
                     *pos = world_translation * *pos;
                 }
             }
@@ -359,6 +361,17 @@ impl SpaceViewClass for GraphSpaceView {
                     state.node_positions.get(&edge.source),
                     state.node_positions.get(&edge.target),
                 ) {
+                    let highlight = ent_highlight.index_highlight(instance);
+
+                    let hcolor = match (
+                        highlight.hover,
+                        highlight.selection != SelectionHighlight::None,
+                    ) {
+                        (HoverHighlight::None, false) => ui.style().visuals.text_color(),
+                        (HoverHighlight::None, true) => ui.style().visuals.selection.bg_fill,
+                        (HoverHighlight::Hovered, ..) => ui.style().visuals.widgets.hovered.bg_fill,
+                    };
+
                     let response = egui::Area::new(id.with((edge, i)))
                         .current_pos(*source_pos)
                         .order(egui::Order::Middle)
@@ -369,20 +382,19 @@ impl SpaceViewClass for GraphSpaceView {
                                 let painter = ui.painter();
                                 painter.line_segment(
                                     [*source_pos, *target_pos],
-                                    egui::Stroke::new(2.0, egui::Color32::WHITE),
+                                    egui::Stroke::new(2.0, hcolor),
                                 );
                             });
 
                             // log::debug!("Line: {} {}", source_pos, target_pos);
-                        }).response;
+                        })
+                        .response;
 
-                        let id = response.layer_id;
+                    let id = response.layer_id;
 
-                        ui.ctx().set_transform_layer(id, transform);
-                        ui.ctx().set_sublayer(window_layer, id);
+                    ui.ctx().set_transform_layer(id, transform);
+                    ui.ctx().set_sublayer(window_layer, id);
                 }
-
-
             }
         }
 

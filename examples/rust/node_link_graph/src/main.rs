@@ -63,7 +63,7 @@ fn run(rec: &rerun::RecordingStream, _args: &Args) -> anyhow::Result<()> {
             GraphEdge::new("area1", "area0")
                 .with_source_in("kitchen/areas")
                 .with_target_in("hallway/areas"),
-            GraphEdge::new("area1", "area2")
+            GraphEdge::new("area0", "area2")
                 .with_source_in("hallway/areas")
                 .with_target_in("living/areas"),
         ]),
