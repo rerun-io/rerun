@@ -62,12 +62,12 @@ which codecs are supported by which browser, see [Video codecs on MDN](https://d
 
 At the moment, we test the following codecs:
 
-|       | Linux | macOS | Windows |
-| ----- | ----- | ----- | ------- |
-| AV1   | ✅    | 🚧\*  | ✅      |
-| H.264 | ✅    | ✅    | ✅      |
+|       | Linux | macOS   | Windows |
+| ----- | ----- | ------- | ------- |
+| AV1   | ✅    | 🚧[^3]  | ✅      |
+| H.264 | ✅    | ✅      | ✅      |
 
-* AV1 on macOS is only supported on [Apple Silicon devices with AV1 hardware decoding support](https://webkit.org/blog/14445/webkit-features-in-safari-17-0/).
+[^3]: AV1 on macOS is only supported on [Apple Silicon devices with AV1 hardware decoding support](https://webkit.org/blog/14445/webkit-features-in-safari-17-0/).
 
 ## Links
 * [Web video codec guide, by Mozilla](https://developer.mozilla.org/en-US/docs/Web/Media/Formats/Video_codecs)
