@@ -617,13 +617,14 @@ fn run_impl(
     let startup_options = {
         re_tracing::profile_scope!("StartupOptions");
 
-        let video_decoder_hw_acceleration = args.video_decoder.and_then(|s| match s.parse() {
-            Err(()) => {
-                re_log::warn_once!("Failed to parse --video-decoder value: {s}. Ignoring.");
-                None
-            }
-            Ok(hw_accell) => Some(hw_accell),
-        });
+        let video_decoder_hw_acceleration =
+            args.video_decoder.as_ref().and_then(|s| match s.parse() {
+                Err(()) => {
+                    re_log::warn_once!("Failed to parse --video-decoder value: {s}. Ignoring.");
+                    None
+                }
+                Ok(hw_accell) => Some(hw_accell),
+            });
 
         re_viewer::StartupOptions {
             hide_welcome_screen: args.hide_welcome_screen,
