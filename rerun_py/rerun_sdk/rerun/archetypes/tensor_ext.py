@@ -17,6 +17,7 @@ class TensorExt:
         data: TensorDataLike | TensorLike | None = None,
         *,
         dim_names: Sequence[str | None] | None = None,
+        value_range: Sequence[float] | None = None,
     ):
         """
         Construct a `Tensor` archetype.
@@ -37,6 +38,10 @@ class TensorExt:
             A TensorData object, or type that can be converted to a numpy array.
         dim_names: Sequence[str] | None
             The names of the tensor dimensions when generating the shape from an array.
+        value_range: Sequence[float] | None
+            The range of values to use for colormapping.
+
+            If not specified, the range will be automatically be determined from the data.
 
         """
         from ..datatypes import TensorData
@@ -47,7 +52,7 @@ class TensorExt:
             elif dim_names is not None:
                 data = TensorData(buffer=data.buffer, dim_names=dim_names)
 
-            self.__attrs_init__(data=data)
+            self.__attrs_init__(data=data, value_range=value_range)
             return
 
         self.__attrs_clear__()
