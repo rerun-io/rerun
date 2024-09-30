@@ -218,6 +218,7 @@ impl SpaceViewClass for GraphSpaceView {
 
         for data in node_system.data.iter() {
             let ent_highlight = query.highlights.entity_highlight(data.entity_path.hash());
+            let mut entity_rect: Option<Rect> = None;
 
             for (i, (node, instance, maybe_color, maybe_label)) in data.nodes().enumerate() {
                 let area_id = id.with((node.clone(), i));
@@ -277,6 +278,8 @@ impl SpaceViewClass for GraphSpaceView {
                     })
                     .response;
 
+                entity_rect =
+                    entity_rect.map_or(Some(response.rect), |r| Some(r.union(response.rect)));
                 state.node_positions.insert(node.clone(), response.rect);
 
                 let id = response.layer_id;
@@ -285,6 +288,33 @@ impl SpaceViewClass for GraphSpaceView {
                 ui.ctx().set_sublayer(window_layer, id);
 
                 // ui.interact(response.rect, area_id, egui::Sense::click());
+            }
+
+            let entity_path = data.entity_path.clone();
+            if let Some(entity_rect) = entity_rect {
+                let response = egui::Area::new(id.with(entity_path.clone()))
+                    .current_pos(entity_rect.min)
+                    .order(egui::Order::Background)
+                    .show(ui.ctx(), |ui| {
+                        ui.set_clip_rect(transform.inverse() * rect);
+                        egui::Frame::default()
+                            .rounding(egui::Rounding::same(4.0))
+                            .inner_margin(egui::Margin::same(8.0))
+                            .stroke(egui::Stroke::new(
+                                1.0,
+                                ui.ctx().style().visuals.text_color(),
+                            ))
+                            .fill(ui.style().visuals.faint_bg_color)
+                            .show(ui, |ui| {
+                                ui.label(format!("{}", entity_path));
+                                ui.allocate_exact_size(entity_rect.size(), egui::Sense::hover())
+                            });
+                    })
+                    .response;
+
+                let layer_id = response.layer_id;
+                ui.ctx().set_transform_layer(layer_id, transform);
+                ui.ctx().set_sublayer(window_layer, layer_id);
             }
         }
 
