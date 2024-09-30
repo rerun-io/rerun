@@ -10,8 +10,8 @@ A 16bit unsigned integer.
 * value: `u16`
 
 ## API reference links
- * 🌊 [C++ API docs for `UInt16`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1datatypes_1_1UInt16.html)
- * 🐍 [Python API docs for `UInt16`](https://ref.rerun.io/docs/python/stable/common/datatypes#rerun.datatypes.UInt16)
- * 🦀 [Rust API docs for `UInt16`](https://docs.rs/rerun/latest/rerun/datatypes/struct.UInt16.html)
+ * 🌊 [C++ API docs for `UInt16`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1datatypes_1_1UInt16.html?speculative-link)
+ * 🐍 [Python API docs for `UInt16`](https://ref.rerun.io/docs/python/stable/common/datatypes?speculative-link#rerun.datatypes.UInt16)
+ * 🦀 [Rust API docs for `UInt16`](https://docs.rs/rerun/latest/rerun/datatypes/struct.UInt16.html?speculative-link)
 
 

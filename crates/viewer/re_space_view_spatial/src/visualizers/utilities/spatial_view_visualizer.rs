@@ -7,6 +7,9 @@ use crate::{view_kind::SpatialSpaceViewKind, PickableTexturedRect};
 ///
 /// Each spatial scene element is expected to fill an instance of this struct with its data.
 pub struct SpatialViewVisualizerData {
+    /// Loading icons/spinners shown using egui, in world/scene coordinates.
+    pub loading_rects: Vec<egui::Rect>,
+
     /// Labels that should be shown using egui.
     pub ui_labels: Vec<UiLabel>,
 
@@ -23,9 +26,10 @@ pub struct SpatialViewVisualizerData {
 impl SpatialViewVisualizerData {
     pub fn new(preferred_view_kind: Option<SpatialSpaceViewKind>) -> Self {
         Self {
-            ui_labels: Vec::new(),
-            bounding_boxes: Vec::new(),
-            pickable_rects: Vec::new(),
+            loading_rects: Default::default(),
+            ui_labels: Default::default(),
+            bounding_boxes: Default::default(),
+            pickable_rects: Default::default(),
             preferred_view_kind,
         }
     }
@@ -57,14 +61,4 @@ impl SpatialViewVisualizerData {
     pub fn as_any(&self) -> &dyn std::any::Any {
         self
     }
-}
-
-pub fn iter_spatial_visualizer_data(
-    visualizers: &re_viewer_context::VisualizerCollection,
-) -> impl Iterator<Item = &SpatialViewVisualizerData> {
-    visualizers.iter().filter_map(|visualizer| {
-        visualizer
-            .data()
-            .and_then(|data| data.downcast_ref::<SpatialViewVisualizerData>())
-    })
 }

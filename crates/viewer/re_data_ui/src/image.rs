@@ -54,7 +54,7 @@ pub fn texture_preview_ui(
     ui_layout: UiLayout,
     debug_name: &str,
     texture: ColormappedTexture,
-) {
+) -> egui::Response {
     if ui_layout.is_single_line() {
         let preview_size = Vec2::splat(ui.available_height());
         ui.allocate_ui_with_layout(
@@ -73,7 +73,8 @@ pub fn texture_preview_ui(
                     Err((response, err)) => response.on_hover_text(err.to_string()),
                 }
             },
-        );
+        )
+        .inner
     } else {
         let size_range = if ui_layout == UiLayout::Tooltip {
             egui::Rangef::new(64.0, 128.0)
@@ -90,7 +91,7 @@ pub fn texture_preview_ui(
                 re_log::warn_once!("Failed to show texture {debug_name}: {err}");
                 response
             },
-        );
+        )
     }
 }
 

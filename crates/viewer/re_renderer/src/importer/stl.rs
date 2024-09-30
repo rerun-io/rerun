@@ -1,8 +1,14 @@
+use std::sync::Arc;
+
 use itertools::Itertools;
 use smallvec::smallvec;
 use tinystl::StlData;
 
-use crate::{mesh, renderer::MeshInstance, resource_managers::ResourceLifeTime, RenderContext};
+use crate::{
+    mesh::{self, GpuMesh},
+    renderer::MeshInstance,
+    RenderContext,
+};
 
 #[derive(thiserror::Error, Debug)]
 pub enum StlImportError {
@@ -11,9 +17,6 @@ pub enum StlImportError {
 
     #[error(transparent)]
     MeshError(#[from] mesh::MeshError),
-
-    #[error(transparent)]
-    ResourceManagerError(#[from] crate::resource_managers::ResourceManagerError),
 }
 
 /// Load a [STL .stl file](https://en.wikipedia.org/wiki/STL_(file_format)) into the mesh manager.
@@ -67,14 +70,8 @@ pub fn load_stl_from_buffer(
 
     mesh.sanity_check()?;
 
-    let gpu_mesh = ctx
-        .mesh_manager
-        .write()
-        .create(ctx, &mesh, ResourceLifeTime::LongLived)?;
-
-    Ok(vec![MeshInstance {
-        gpu_mesh,
-        mesh: Some(std::sync::Arc::new(mesh)),
-        ..Default::default()
-    }])
+    Ok(vec![MeshInstance::new_with_cpu_mesh(
+        Arc::new(GpuMesh::new(ctx, &mesh)?),
+        Some(Arc::new(mesh)),
+    )])
 }

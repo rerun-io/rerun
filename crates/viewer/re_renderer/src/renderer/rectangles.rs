@@ -18,7 +18,7 @@ use crate::{
     depth_offset::DepthOffset,
     draw_phases::{DrawPhase, OutlineMaskProcessor},
     include_shader_module,
-    resource_managers::{GpuTexture2D, ResourceManagerError},
+    resource_managers::GpuTexture2D,
     view_builder::ViewBuilder,
     wgpu_resources::{
         BindGroupDesc, BindGroupEntry, BindGroupLayoutDesc, GpuBindGroup, GpuBindGroupLayoutHandle,
@@ -205,9 +205,6 @@ impl Default for RectangleOptions {
 
 #[derive(thiserror::Error, Debug)]
 pub enum RectangleError {
-    #[error(transparent)]
-    ResourceManagerError(#[from] ResourceManagerError),
-
     #[error("Texture required special features: {0:?}")]
     SpecialFeatures(wgpu::Features),
 

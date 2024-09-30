@@ -12,14 +12,13 @@ use crate::{
     draw_phases::{DrawPhase, OutlineMaskProcessor},
     include_shader_module,
     mesh::{gpu_data::MaterialUniformBuffer, mesh_vertices, GpuMesh, Mesh},
-    resource_managers::{GpuMeshHandle, ResourceHandle, ResourceManagerError},
     view_builder::ViewBuilder,
     wgpu_resources::{
         BindGroupLayoutDesc, BufferDesc, GpuBindGroupLayoutHandle, GpuBuffer,
         GpuRenderPipelineHandle, GpuRenderPipelinePoolAccessor, PipelineLayoutDesc,
         RenderPipelineDesc,
     },
-    Color32, OutlineMaskPreference, PickingLayerId, PickingLayerProcessor,
+    Color32, CpuWriteGpuReadError, OutlineMaskPreference, PickingLayerId, PickingLayerProcessor,
 };
 
 use super::{DrawData, DrawError, RenderContext, Renderer};
@@ -89,7 +88,7 @@ mod gpu_data {
 
 #[derive(Clone)]
 struct MeshBatch {
-    mesh: GpuMesh,
+    mesh: Arc<GpuMesh>,
 
     count: u32,
 
@@ -112,8 +111,8 @@ impl DrawData for MeshDrawData {
 }
 
 pub struct MeshInstance {
-    /// Gpu mesh this instance refers to.
-    pub gpu_mesh: GpuMeshHandle,
+    /// Gpu mesh used by this instance
+    pub gpu_mesh: Arc<GpuMesh>,
 
     /// Optional cpu representation of the mesh, not needed for rendering.
     pub mesh: Option<Arc<Mesh>>,
@@ -132,11 +131,17 @@ pub struct MeshInstance {
     pub picking_layer_id: PickingLayerId,
 }
 
-impl Default for MeshInstance {
-    fn default() -> Self {
+impl MeshInstance {
+    /// Creates a new instance of a mesh with all fields set to default except for required ones.
+    pub fn new(gpu_mesh: Arc<GpuMesh>) -> Self {
+        Self::new_with_cpu_mesh(gpu_mesh, None)
+    }
+
+    /// Creates a new instance of a mesh with gpu and optional cpu mesh.
+    pub fn new_with_cpu_mesh(gpu_mesh: Arc<GpuMesh>, cpu_mesh: Option<Arc<Mesh>>) -> Self {
         Self {
-            gpu_mesh: GpuMeshHandle::Invalid,
-            mesh: None,
+            gpu_mesh,
+            mesh: cpu_mesh,
             world_from_mesh: glam::Affine3A::IDENTITY,
             additive_tint: Color32::TRANSPARENT,
             outline_mask_ids: OutlineMaskPreference::NONE,
@@ -154,7 +159,7 @@ impl MeshDrawData {
     pub fn new(
         ctx: &RenderContext,
         instances: &[MeshInstance],
-    ) -> Result<Self, ResourceManagerError> {
+    ) -> Result<Self, CpuWriteGpuReadError> {
         re_tracing::profile_function!();
 
         let _mesh_renderer = ctx.renderer::<MeshRenderer>();
@@ -183,12 +188,12 @@ impl MeshDrawData {
 
         let mut instances_by_mesh: HashMap<_, Vec<_>> = HashMap::new();
         for instance in instances {
-            if !matches!(instance.gpu_mesh, ResourceHandle::Invalid) {
-                instances_by_mesh
-                    .entry(&instance.gpu_mesh)
-                    .or_insert_with(|| Vec::with_capacity(instances.len()))
-                    .push(instance);
-            }
+            instances_by_mesh
+                // Use pointer equality, this is enough to determine if two instances use the same mesh.
+                // (different mesh allocations have different gpu buffers internally, so they are by this definition not equal)
+                .entry(Arc::as_ptr(&instance.gpu_mesh))
+                .or_insert_with(|| Vec::with_capacity(instances.len()))
+                .push(instance);
         }
 
         let mut batches = Vec::new();
@@ -202,9 +207,8 @@ impl MeshDrawData {
                 instances.len(),
             )?;
 
-            let mesh_manager = ctx.mesh_manager.read();
             let mut num_processed_instances = 0;
-            for (mesh, mut instances) in instances_by_mesh {
+            for (_mesh_ptr, mut instances) in instances_by_mesh {
                 let mut count = 0;
                 let mut count_with_outlines = 0;
 
@@ -215,7 +219,12 @@ impl MeshDrawData {
                         .cmp(&b.outline_mask_ids.is_none())
                 });
 
+                let mut mesh = None;
                 for instance in instances {
+                    if mesh.is_none() {
+                        mesh = Some(instance.gpu_mesh.clone());
+                    }
+
                     count += 1;
                     count_with_outlines += instance.outline_mask_ids.is_some() as u32;
 
@@ -248,14 +257,13 @@ impl MeshDrawData {
                 }
                 num_processed_instances += count;
 
-                // We resolve the meshes here already, so the actual draw call doesn't need to
-                // know about the MeshManager.
-                let mesh = mesh_manager.get(mesh)?;
-                batches.push(MeshBatch {
-                    mesh: mesh.clone(),
-                    count: count as _,
-                    count_with_outlines,
-                });
+                if let Some(mesh) = mesh {
+                    batches.push(MeshBatch {
+                        mesh,
+                        count: count as _,
+                        count_with_outlines,
+                    });
+                }
             }
             assert_eq!(num_processed_instances, instances.len());
             instance_buffer_staging.copy_to_buffer(

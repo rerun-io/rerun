@@ -13,7 +13,7 @@ use re_types::{
 /// It has enough information to render the image on the screen.
 #[derive(Clone)]
 pub struct ImageInfo {
-    /// The row id that contaoned the blob.
+    /// The row id that contained the blob.
     ///
     /// Can be used instead of hashing [`Self::buffer`].
     pub buffer_row_id: RowId,

@@ -286,7 +286,10 @@ impl SpatialSpaceView2D {
             ));
         }
 
-        // Add egui driven labels on top of re_renderer content.
+        // Add egui-rendered spinners/loaders on top of re_renderer content:
+        crate::ui::paint_loading_spinners(ui, ui_from_scene, &system_output.view_systems);
+
+        // Add egui-rendered labels on top of everything else:
         painter.extend(label_shapes);
 
         Ok(())

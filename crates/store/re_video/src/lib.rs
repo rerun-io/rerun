@@ -56,15 +56,24 @@ impl VideoData {
         } else if mp4::is_mp4(data) {
             "video/mp4".to_owned()
         } else {
-            // Technically this means that we failed to determine the media type altogether,
-            // but we don't want to call it `FailedToDetermineMediaType` since the rest of Rerun has
-            // access to `re_types::components::MediaType` which has a much wider range of media type detection.
-            return Err(VideoLoadError::UnsupportedVideoType);
+            return Err(VideoLoadError::UnrecognizedVideoFormat {
+                provided_media_type: media_type.map(|m| m.to_owned()),
+            });
         };
 
         match media_type.as_str() {
             "video/mp4" => mp4::load_mp4(data),
-            media_type => Err(VideoLoadError::UnsupportedMediaType(media_type.to_owned())),
+            media_type => {
+                if media_type.starts_with("video/") {
+                    Err(VideoLoadError::UnsupportedMediaType {
+                        provided_or_detected_media_type: media_type.to_owned(),
+                    })
+                } else {
+                    Err(VideoLoadError::MediaTypeIsNotAVideo {
+                        provided_or_detected_media_type: media_type.to_owned(),
+                    })
+                }
+            }
         }
     }
 
@@ -260,11 +269,19 @@ pub enum VideoLoadError {
     #[error("Video file has invalid sample entries")]
     InvalidSamples,
 
-    #[error("Video file has unsupported media type {0}")]
-    UnsupportedMediaType(String),
+    #[error("The media type of the blob is not a video: {provided_or_detected_media_type}")]
+    MediaTypeIsNotAVideo {
+        provided_or_detected_media_type: String,
+    },
 
+    #[error("Video file has unsupported media type {provided_or_detected_media_type}")]
+    UnsupportedMediaType {
+        provided_or_detected_media_type: String,
+    },
+
+    // Technically this is a "failed to detect" case, but the only formats we detect as of writing are the ones we support.
     #[error("Video file has unsupported format")]
-    UnsupportedVideoType,
+    UnrecognizedVideoFormat { provided_media_type: Option<String> },
 
     // `FourCC`'s debug impl doesn't quote the result
     #[error("Video track uses unsupported codec \"{0}\"")] // NOLINT

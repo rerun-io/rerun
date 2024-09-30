@@ -6,12 +6,9 @@ use itertools::Itertools;
 use smallvec::SmallVec;
 
 use crate::{
-    mesh::{Material, Mesh, MeshError},
+    mesh::{GpuMesh, Material, Mesh, MeshError},
     renderer::MeshInstance,
-    resource_managers::{
-        GpuMeshHandle, GpuTexture2D, ResourceLifeTime, ResourceManagerError, Texture2DCreationDesc,
-        TextureManager2D,
-    },
+    resource_managers::{GpuTexture2D, Texture2DCreationDesc, TextureManager2D},
     RenderContext, Rgba32Unmul,
 };
 
@@ -19,9 +16,6 @@ use crate::{
 pub enum GltfImportError {
     #[error(transparent)]
     GltfLoading(#[from] gltf::Error),
-
-    #[error(transparent)]
-    ResourceManager(#[from] ResourceManagerError),
 
     #[error(transparent)]
     MeshError(#[from] MeshError),
@@ -46,7 +40,6 @@ pub enum GltfImportError {
 pub fn load_gltf_from_buffer(
     mesh_name: &str,
     buffer: &[u8],
-    lifetime: ResourceLifeTime,
     ctx: &RenderContext,
 ) -> Result<Vec<MeshInstance>, GltfImportError> {
     re_tracing::profile_function!();
@@ -125,10 +118,7 @@ pub fn load_gltf_from_buffer(
         let re_mesh = import_mesh(mesh, &buffers, &images_as_textures, &ctx.texture_manager_2d)?;
         meshes.insert(
             mesh.index(),
-            (
-                ctx.mesh_manager.write().create(ctx, &re_mesh, lifetime)?,
-                Arc::new(re_mesh),
-            ),
+            (Arc::new(GpuMesh::new(ctx, &re_mesh)?), Arc::new(re_mesh)),
         );
     }
 
@@ -312,7 +302,7 @@ fn gather_instances_recursive(
     instances: &mut Vec<MeshInstance>,
     node: &gltf::Node<'_>,
     transform: &glam::Affine3A,
-    meshes: &HashMap<usize, (GpuMeshHandle, Arc<Mesh>)>,
+    meshes: &HashMap<usize, (Arc<GpuMesh>, Arc<Mesh>)>,
 ) {
     let (scale, rotation, translation) = match node.transform() {
         gltf::scene::Transform::Matrix { matrix } => {
@@ -341,12 +331,10 @@ fn gather_instances_recursive(
 
     if let Some(mesh) = node.mesh() {
         if let Some((gpu_mesh, mesh)) = meshes.get(&mesh.index()) {
-            instances.push(MeshInstance {
-                gpu_mesh: gpu_mesh.clone(),
-                mesh: Some(mesh.clone()),
-                world_from_mesh: transform,
-                ..Default::default()
-            });
+            let mut gpu_mesh =
+                MeshInstance::new_with_cpu_mesh(gpu_mesh.clone(), Some(mesh.clone()));
+            gpu_mesh.world_from_mesh = transform;
+            instances.push(gpu_mesh);
         }
     }
 }

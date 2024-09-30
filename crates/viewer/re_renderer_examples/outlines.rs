@@ -7,7 +7,7 @@ use itertools::Itertools;
 use re_renderer::{
     renderer::MeshInstance,
     view_builder::{Projection, TargetConfiguration, ViewBuilder},
-    OutlineConfig, OutlineMaskPreference,
+    Color32, OutlineConfig, OutlineMaskPreference,
 };
 use winit::event::ElementState;
 
@@ -118,7 +118,8 @@ impl framework::Example for Outlines {
                             props.position,
                         ) * instance.world_from_mesh,
                         outline_mask_ids: props.outline_mask_ids,
-                        ..Default::default()
+                        picking_layer_id: Default::default(),
+                        additive_tint: Color32::TRANSPARENT,
                     })
             })
             .collect_vec();
