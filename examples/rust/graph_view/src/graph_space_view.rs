@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, hash::Hash};
 
 use re_log_types::Instance;
 use re_viewer::external::{
@@ -21,8 +21,8 @@ use crate::{common::QualifiedNode, edge_visualizer_system::GraphEdgeVisualizer};
 
 // We need to differentiate between regular nodes and nodes that belong to a different entity hierarchy.
 enum NodeKind {
-    Regular,
-    Dummy,
+    Regular(QualifiedNode),
+    Dummy(QualifiedNode),
 }
 
 fn draw_node(
@@ -62,6 +62,8 @@ pub struct GraphSpaceViewState {
     node_to_index: HashMap<QualifiedNode, petgraph::stable_graph::NodeIndex>,
     // graph viewer
     transform: TSTransform,
+    dragging: Option<QualifiedNode>,
+    node_positions: HashMap<QualifiedNode, egui::Pos2>,
 }
 
 impl SpaceViewState for GraphSpaceViewState {
@@ -181,7 +183,7 @@ impl SpaceViewClass for GraphSpaceView {
 
         for data in node_system.data.iter() {
             for (node_id, _, _) in data.nodes() {
-                let node_index = state.graph.add_node(NodeKind::Regular);
+                let node_index = state.graph.add_node(NodeKind::Regular(node_id.clone()));
                 state.node_to_index.insert(node_id, node_index);
             }
         }
@@ -190,12 +192,12 @@ impl SpaceViewClass for GraphSpaceView {
             for (edge, _, _) in data.edges() {
                 let source_index = *state
                     .node_to_index
-                    .entry(edge.source)
-                    .or_insert(state.graph.add_node(NodeKind::Dummy));
+                    .entry(edge.source.clone())
+                    .or_insert(state.graph.add_node(NodeKind::Dummy(edge.source)));
                 let target_index = *state
                     .node_to_index
-                    .entry(edge.target)
-                    .or_insert(state.graph.add_node(NodeKind::Dummy));
+                    .entry(edge.target.clone())
+                    .or_insert(state.graph.add_node(NodeKind::Dummy(edge.target)));
                 state.graph.add_edge(source_index, target_index, ());
             }
         }
@@ -260,11 +262,13 @@ impl SpaceViewClass for GraphSpaceView {
         //     });
         // });
 
-        let data = node_system.data.iter().flat_map(|data| {
+        let node_data = node_system.data.iter().flat_map(|data| {
             let ent_highlight = query.highlights.entity_highlight(data.entity_path.hash());
 
             data.nodes().map(move |(node, instance, maybe_color)| {
-                move |ui: &mut egui::Ui| draw_node(ui, ent_highlight, node, instance, maybe_color)
+                (node.clone(), move |ui: &mut egui::Ui| {
+                    draw_node(ui, ent_highlight, node, instance, maybe_color)
+                })
             })
         });
 
@@ -305,9 +309,9 @@ impl SpaceViewClass for GraphSpaceView {
 
         let positions = (0..).map(|i| egui::Pos2::new(0.0, 0.0 + i as f32 * 20.0));
 
-        for (i, (pos, callback)) in positions.into_iter().zip(data).enumerate() {
+        for (i, (pos, (node, callback))) in positions.into_iter().zip(node_data).enumerate() {
             let window_layer = ui.layer_id();
-            let id = egui::Area::new(id.with(("subarea", i)))
+            let response = egui::Area::new(id.with(("node", i)))
                 .default_pos(pos)
                 .order(egui::Order::Middle)
                 .constrain(false)
@@ -323,10 +327,41 @@ impl SpaceViewClass for GraphSpaceView {
                             callback(ui)
                         });
                 })
-                .response
-                .layer_id;
+                .response;
+
+            let id = response.layer_id;
+            state.node_positions.insert(node, pos);
             ui.ctx().set_transform_layer(id, transform);
             ui.ctx().set_sublayer(window_layer, id);
+        }
+
+        for data in edge_system.data.iter() {
+            let ent_highlight = query.highlights.entity_highlight(data.entity_path.hash());
+
+            for (i, (edge, instance, color)) in data.edges().enumerate() {
+                // TODO(grtlr): This does not handle dummy nodes correctly.
+                if let (Some(source_pos), Some(target_pos)) = (
+                    state.node_positions.get(&edge.source),
+                    state.node_positions.get(&edge.target),
+                ) {
+                    let window_layer = ui.layer_id();
+                    let response = egui::Area::new(id.with(("edge", i)))
+                        .default_pos(egui::Pos2::new(100., 100.))
+                        .order(egui::Order::Middle)
+                        .constrain(false)
+                        .show(ui.ctx(), |ui| {
+                            ui.set_clip_rect(transform.inverse() * rect);
+                            let painter = ui.painter();
+                            painter.line_segment(
+                                [*source_pos, *target_pos],
+                                egui::Stroke::new(2.0, egui::Color32::WHITE),
+                            )
+                        })
+                        .response;
+
+                    log::debug!("Line: {} {}", source_pos, target_pos);
+                }
+            }
         }
 
         Ok(())

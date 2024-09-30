@@ -1,6 +1,6 @@
 use re_viewer::external::re_types::datatypes;
 
-#[derive(PartialEq, Eq, Hash)]
+#[derive(Clone, PartialEq, Eq, Hash)]
 pub(crate) struct QualifiedNode {
     pub entity_path: re_log_types::EntityPath,
     pub node_id: datatypes::GraphNodeId,
