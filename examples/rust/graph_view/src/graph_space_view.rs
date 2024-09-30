@@ -5,7 +5,7 @@ use re_viewer::external::{
     egui::{self, emath::TSTransform, Color32, Label, RichText, TextWrapMode},
     re_log::external::log,
     re_log_types::EntityPath,
-    re_types::{components, SpaceViewClassIdentifier},
+    re_types::{components, ArrowString, SpaceViewClassIdentifier},
     re_ui,
     re_viewer_context::{
         HoverHighlight, IdentifiedViewSystem as _, OptionalSpaceViewEntityHighlight,
@@ -25,12 +25,14 @@ enum NodeKind {
     Dummy(QualifiedNode),
 }
 
+// TODO(grtlr): use node instance here.
 fn draw_node(
     ui: &mut egui::Ui,
     ent_highlight: OptionalSpaceViewEntityHighlight,
     node: QualifiedNode,
     instance: Instance,
     maybe_color: Option<&components::Color>,
+    maybe_label: Option<&ArrowString>,
 ) -> egui::Response {
     let highlight = ent_highlight.index_highlight(instance);
 
@@ -43,7 +45,11 @@ fn draw_node(
         (HoverHighlight::Hovered, ..) => ui.style().visuals.widgets.hovered.bg_fill,
     };
 
-    let text = egui::RichText::new(format!("{}: {}", node.entity_path, node.node_id,));
+    let text = if let Some(label) = maybe_label {
+        egui::RichText::new(format!("{}", label))
+    } else {
+        egui::RichText::new(format!("{}:{}", node.entity_path, node.node_id,))
+    };
 
     if let Some(color) = maybe_color {
         let c = Color32::from(color.0);
@@ -182,7 +188,7 @@ impl SpaceViewClass for GraphSpaceView {
         state.node_to_index.clear();
 
         for data in node_system.data.iter() {
-            for (node_id, _, _) in data.nodes() {
+            for (node_id, _, _, _) in data.nodes() {
                 let node_index = state.graph.add_node(NodeKind::Regular(node_id.clone()));
                 state.node_to_index.insert(node_id, node_index);
             }
@@ -265,11 +271,12 @@ impl SpaceViewClass for GraphSpaceView {
         let node_data = node_system.data.iter().flat_map(|data| {
             let ent_highlight = query.highlights.entity_highlight(data.entity_path.hash());
 
-            data.nodes().map(move |(node, instance, maybe_color)| {
-                (node.clone(), move |ui: &mut egui::Ui| {
-                    draw_node(ui, ent_highlight, node, instance, maybe_color)
+            data.nodes()
+                .map(move |(node, instance, maybe_color, maybe_label)| {
+                    (node.clone(), move |ui: &mut egui::Ui| {
+                        draw_node(ui, ent_highlight, node, instance, maybe_color, maybe_label)
+                    })
                 })
-            })
         });
 
         // Graph viewer
