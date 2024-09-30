@@ -35,7 +35,7 @@ Video support is new in Rerun, and has several limitations:
 As of writing, playback of `AssetVideo` is only supported on the web viewer.
 Native video playback is coming, and can be tracked [in this GitHub issue](https://github.com/rerun-io/rerun/issues/7298).
 
-Video playback is done using the browsers own video decoder, so the supported codecs depends on your browser.
+Video playback is done using the browser's own video decoder, so the supported codecs depend on your browser.
 
 Overall, we recommend using Chrome or another Chromium-based browser, as it seem to have the best video support as of writing.
 
