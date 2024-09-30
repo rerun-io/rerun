@@ -3,18 +3,21 @@ use glam::Vec3;
 use re_log_types::EntityPath;
 use re_renderer::renderer;
 use re_viewer_context::{
-    gpu_bridge, ImageInfo, ImageStatsCache, SpaceViewClass as _, ViewerContext,
+    gpu_bridge, ColormapWithMappingRange, ImageInfo, ImageStatsCache, SpaceViewClass as _,
+    ViewerContext,
 };
 
 use crate::{contexts::SpatialSceneEntityContext, SpatialSpaceView2D};
 
 use super::SpatialViewVisualizerData;
 
+#[allow(clippy::too_many_arguments)]
 pub fn textured_rect_from_image(
     ctx: &ViewerContext<'_>,
     ent_path: &EntityPath,
     ent_context: &SpatialSceneEntityContext<'_>,
     image: &ImageInfo,
+    colormap: Option<&ColormapWithMappingRange>,
     multiplicative_tint: egui::Rgba,
     visualizer_name: &'static str,
     visualizer_data: &mut SpatialViewVisualizerData,
@@ -30,6 +33,7 @@ pub fn textured_rect_from_image(
         image,
         &tensor_stats,
         &ent_context.annotations,
+        colormap,
     ) {
         Ok(colormapped_texture) => {
             // TODO(emilk): let users pick texture filtering.

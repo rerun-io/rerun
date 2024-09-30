@@ -109,7 +109,8 @@ pub fn blob_preview_and_save_ui(
             .ok()
     });
     if let Some(image) = &image {
-        image_preview_ui(ctx, ui, ui_layout, query, entity_path, image);
+        let colormap = None; // TODO(andreas): Rely on default here for now.
+        image_preview_ui(ctx, ui, ui_layout, query, entity_path, image, colormap);
     }
     // Try to treat it as a video if treating it as image didn't work:
     else if let Some(blob_row_id) = blob_row_id {

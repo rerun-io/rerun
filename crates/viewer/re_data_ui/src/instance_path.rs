@@ -11,8 +11,8 @@ use re_types::{
 };
 use re_ui::{ContextExt as _, UiExt as _};
 use re_viewer_context::{
-    gpu_bridge::image_data_range_heuristic, HoverHighlight, ImageInfo, ImageStatsCache, Item,
-    UiLayout, ViewerContext,
+    gpu_bridge::image_data_range_heuristic, ColormapWithMappingRange, HoverHighlight, ImageInfo,
+    ImageStatsCache, Item, UiLayout, ViewerContext,
 };
 
 use crate::{blob::blob_preview_and_save_ui, image::image_preview_ui};
@@ -287,6 +287,14 @@ fn preview_if_image_ui(
         ImageKind::Color
     };
 
+    let image = ImageInfo {
+        buffer_row_id,
+        buffer: image_buffer.0,
+        format: image_format.0,
+        kind,
+    };
+    let image_stats = ctx.cache.entry(|c: &mut ImageStatsCache| c.entry(&image));
+
     let colormap = component_map
         .get(&components::Colormap::name())
         .and_then(|colormap| {
@@ -296,22 +304,40 @@ fn preview_if_image_ui(
                 .ok()
                 .flatten()
         });
-
-    let image = ImageInfo {
-        buffer_row_id,
-        buffer: image_buffer.0,
-        format: image_format.0,
-        kind,
+    let value_range = component_map
+        .get(&components::Range1D::name()) // TODO: new component?
+        .and_then(|colormap| {
+            colormap
+                .component_mono::<components::Range1D>()
+                .transpose()
+                .ok()
+                .flatten()
+        });
+    let colormap_with_range = colormap.map(|colormap| ColormapWithMappingRange {
         colormap,
-    };
+        value_range: value_range
+            .map(|r| [r.start() as _, r.end() as _])
+            .unwrap_or_else(|| {
+                image_stats
+                    .finite_range
+                    .map(|r| [r.0 as _, r.1 as _])
+                    .unwrap_or([f32::MIN, f32::MAX])
+            }),
+    });
 
-    image_preview_ui(ctx, ui, ui_layout, query, entity_path, &image);
+    image_preview_ui(
+        ctx,
+        ui,
+        ui_layout,
+        query,
+        entity_path,
+        &image,
+        colormap_with_range.as_ref(),
+    );
 
     if ui_layout.is_single_line() || ui_layout == UiLayout::Tooltip {
         return Some(()); // no more ui
     }
-
-    let image_stats = ctx.cache.entry(|c: &mut ImageStatsCache| c.entry(&image));
 
     if let Ok(data_range) = image_data_range_heuristic(&image_stats, &image.format) {
         ui.horizontal(|ui| {

@@ -5,11 +5,14 @@ use re_renderer::{
 };
 use re_types::{
     blueprint::archetypes::TensorSliceSelection,
-    components::{Colormap, GammaCorrection},
+    components::GammaCorrection,
     datatypes::TensorData,
     tensor_data::{TensorCastError, TensorDataType},
 };
-use re_viewer_context::gpu_bridge::{self, colormap_to_re_renderer, RangeError};
+use re_viewer_context::{
+    gpu_bridge::{self, colormap_to_re_renderer, RangeError},
+    ColormapWithMappingRange,
+};
 
 use crate::space_view_class::selected_tensor_slice;
 
@@ -30,8 +33,7 @@ pub fn colormapped_texture(
     tensor_data_row_id: RowId,
     tensor: &TensorData,
     slice_selection: &TensorSliceSelection,
-    range: [f32; 2],
-    colormap: Colormap,
+    colormap: &ColormapWithMappingRange,
     gamma: GammaCorrection,
 ) -> Result<ColormappedTexture, TextureManager2DError<TensorUploadError>> {
     re_tracing::profile_function!();
@@ -41,12 +43,12 @@ pub fn colormapped_texture(
 
     Ok(ColormappedTexture {
         texture,
-        range,
+        range: colormap.value_range,
         decode_srgb: false,
         multiply_rgb_with_alpha: false,
         gamma: *gamma.0,
         color_mapper: re_renderer::renderer::ColorMapper::Function(colormap_to_re_renderer(
-            colormap,
+            colormap.colormap,
         )),
         shader_decoding: None,
     })

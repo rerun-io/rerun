@@ -51,7 +51,7 @@ pub use component_fallbacks::{
 };
 pub use component_ui_registry::{ComponentUiRegistry, ComponentUiTypes, UiLayout};
 pub use contents::{blueprint_id_to_tile_id, Contents, ContentsName};
-pub use image_info::ImageInfo;
+pub use image_info::{ColormapWithMappingRange, ImageInfo};
 pub use item::Item;
 pub use maybe_mut_ref::MaybeMutRef;
 pub use query_context::{

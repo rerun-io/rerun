@@ -15,6 +15,7 @@ pub struct TensorStats {
     ///
     /// `None` if there are no finite values at all.
     pub finite_range: Option<(f64, f64)>,
+    // TODO: clamp to datarange limits and remove clamp_range_to_finite_datatype_range
 }
 
 impl TensorStats {

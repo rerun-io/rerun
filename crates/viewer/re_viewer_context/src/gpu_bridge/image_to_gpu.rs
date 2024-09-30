@@ -13,11 +13,14 @@ use re_renderer::{
     resource_managers::Texture2DCreationDesc,
     RenderContext,
 };
-use re_types::components::{ClassId, Colormap};
+use re_types::components::ClassId;
 use re_types::datatypes::{ChannelDatatype, ColorModel, ImageFormat, PixelFormat};
 use re_types::image::ImageKind;
 
-use crate::{gpu_bridge::colormap::colormap_to_re_renderer, Annotations, ImageInfo, ImageStats};
+use crate::{
+    gpu_bridge::colormap::colormap_to_re_renderer, image_info::ColormapWithMappingRange,
+    Annotations, ImageInfo, ImageStats,
+};
 
 use super::{get_or_create_texture, RangeError};
 
@@ -34,19 +37,19 @@ fn generate_texture_key(image: &ImageInfo) -> u64 {
 
         format,
         kind,
-
-        colormap: _, // No need to upload new texture when this changes
     } = image;
 
     hash((blob_row_id, format, kind))
 }
 
+/// `colormap` is currently only used for depth images.
 pub fn image_to_gpu(
     render_ctx: &RenderContext,
     debug_name: &str,
     image: &ImageInfo,
     image_stats: &ImageStats,
     annotations: &Annotations,
+    colormap: Option<&ColormapWithMappingRange>,
 ) -> anyhow::Result<ColormappedTexture> {
     re_tracing::profile_function!();
 
@@ -56,9 +59,14 @@ pub fn image_to_gpu(
         ImageKind::Color => {
             color_image_to_gpu(render_ctx, debug_name, texture_key, image, image_stats)
         }
-        ImageKind::Depth => {
-            depth_image_to_gpu(render_ctx, debug_name, texture_key, image, image_stats)
-        }
+        ImageKind::Depth => depth_image_to_gpu(
+            render_ctx,
+            debug_name,
+            texture_key,
+            image,
+            image_stats,
+            colormap,
+        ),
         ImageKind::Segmentation => segmentation_image_to_gpu(
             render_ctx,
             debug_name,
@@ -354,6 +362,7 @@ fn depth_image_to_gpu(
     texture_key: u64,
     image: &ImageInfo,
     image_stats: &ImageStats,
+    colormap_with_range: Option<&ColormapWithMappingRange>,
 ) -> anyhow::Result<ColormappedTexture> {
     re_tracing::profile_function!();
 
@@ -370,7 +379,13 @@ fn depth_image_to_gpu(
 
     let datatype = image.format.datatype();
 
-    let range = data_range(image_stats, datatype);
+    let ColormapWithMappingRange {
+        mut value_range,
+        colormap,
+    } = colormap_with_range
+        .cloned()
+        .unwrap_or_else(|| ColormapWithMappingRange::default_for_depth_images(image_stats));
+    value_range = clamp_range_to_finite_datatype_range(value_range, datatype);
 
     let texture = get_or_create_texture(render_ctx, texture_key, || {
         general_texture_creation_desc_from_image(debug_name, image, ColorModel::L, datatype)
@@ -379,13 +394,11 @@ fn depth_image_to_gpu(
 
     Ok(ColormappedTexture {
         texture,
-        range,
+        range: value_range,
         decode_srgb: false,
         multiply_rgb_with_alpha: false,
         gamma: 1.0,
-        color_mapper: ColorMapper::Function(colormap_to_re_renderer(
-            image.colormap.unwrap_or(Colormap::Turbo),
-        )),
+        color_mapper: ColorMapper::Function(colormap_to_re_renderer(colormap)),
         shader_decoding: None,
     })
 }
@@ -467,18 +480,20 @@ fn segmentation_image_to_gpu(
     })
 }
 
-fn data_range(image_stats: &ImageStats, datatype: ChannelDatatype) -> [f32; 2] {
+/// Given a value range, clamps it to the range of possible values for the given datatype
+/// staying within a finite range.
+fn clamp_range_to_finite_datatype_range(
+    value_range: [f32; 2],
+    datatype: ChannelDatatype,
+) -> [f32; 2] {
     let default_min = 0.0;
     let default_max = if datatype.is_float() {
         1.0
     } else {
-        datatype.max_value()
+        datatype.max_value() as f32
     };
 
-    let range = image_stats
-        .finite_range
-        .unwrap_or((default_min, default_max));
-    let (mut min, mut max) = range;
+    let [mut min, mut max] = value_range;
 
     if !min.is_finite() {
         min = default_min;
@@ -492,7 +507,7 @@ fn data_range(image_stats: &ImageStats, datatype: ChannelDatatype) -> [f32; 2] {
         max = default_max;
     }
 
-    [min as f32, max as f32]
+    [min, max]
 }
 
 /// Uploads the image to a texture in a format that closely resembled the input.

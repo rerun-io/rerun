@@ -211,7 +211,6 @@ fn try_get_or_create_albedo_texture(
         buffer: albedo_texture_buffer.0.clone(),
         format: albedo_texture_format.0,
         kind: re_types::image::ImageKind::Color,
-        colormap: None,
     };
 
     if re_viewer_context::gpu_bridge::required_shader_decode(

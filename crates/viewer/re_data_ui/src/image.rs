@@ -3,7 +3,7 @@ use egui::{NumExt as _, Vec2};
 use re_renderer::renderer::ColormappedTexture;
 use re_viewer_context::{
     gpu_bridge::{self, image_to_gpu},
-    ImageInfo, ImageStatsCache, UiLayout, ViewerContext,
+    ColormapWithMappingRange, ImageInfo, ImageStatsCache, UiLayout, ViewerContext,
 };
 
 /// Show a button letting the user copy the image
@@ -37,12 +37,21 @@ pub fn image_preview_ui(
     query: &re_chunk_store::LatestAtQuery,
     entity_path: &re_log_types::EntityPath,
     image: &ImageInfo,
+    colormap_with_range: Option<&ColormapWithMappingRange>,
 ) -> Option<()> {
     let render_ctx = ctx.render_ctx?;
     let image_stats = ctx.cache.entry(|c: &mut ImageStatsCache| c.entry(image));
     let annotations = crate::annotations(ctx, query, entity_path);
     let debug_name = entity_path.to_string();
-    let texture = image_to_gpu(render_ctx, &debug_name, image, &image_stats, &annotations).ok()?;
+    let texture = image_to_gpu(
+        render_ctx,
+        &debug_name,
+        image,
+        &image_stats,
+        &annotations,
+        colormap_with_range,
+    )
+    .ok()?;
     texture_preview_ui(render_ctx, ui, ui_layout, &debug_name, texture);
     Some(())
 }

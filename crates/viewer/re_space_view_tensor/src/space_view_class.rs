@@ -15,9 +15,9 @@ use re_types::{
 };
 use re_ui::{list_item, ContextExt as _, UiExt as _};
 use re_viewer_context::{
-    gpu_bridge, ApplicableEntities, IdentifiedViewSystem as _, IndicatedEntities, PerVisualizer,
-    SpaceViewClass, SpaceViewClassRegistryError, SpaceViewId, SpaceViewState,
-    SpaceViewStateExt as _, SpaceViewSystemExecutionError, TensorStatsCache,
+    gpu_bridge, ApplicableEntities, ColormapWithMappingRange, IdentifiedViewSystem as _,
+    IndicatedEntities, PerVisualizer, SpaceViewClass, SpaceViewClassRegistryError, SpaceViewId,
+    SpaceViewState, SpaceViewStateExt as _, SpaceViewSystemExecutionError, TensorStatsCache,
     TypedComponentFallbackProvider, ViewQuery, ViewerContext, VisualizableEntities,
 };
 use re_viewport_blueprint::ViewProperty;
@@ -341,14 +341,16 @@ impl TensorSpaceView {
         let Some(render_ctx) = ctx.render_ctx else {
             return Err(anyhow::Error::msg("No render context available."));
         };
-
+        let colormap = ColormapWithMappingRange {
+            colormap,
+            value_range: [data_range.start() as f32, data_range.end() as f32],
+        };
         let colormapped_texture = super::tensor_slice_to_gpu::colormapped_texture(
             render_ctx,
             *tensor_row_id,
             tensor,
             slice_selection,
-            [data_range.start() as f32, data_range.end() as f32],
-            colormap,
+            &colormap,
             gamma,
         )?;
         let [width, height] = colormapped_texture.width_height();
