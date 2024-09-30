@@ -332,20 +332,20 @@ fn options_menu_ui(
         ui.horizontal(|ui| {
             ui.label("Video Decoder:");
             egui::ComboBox::from_id_salt("video_decoder_hw_acceleration")
-                .selected_text(format!("{hardware_acceleration}"))
+                .selected_text(hardware_acceleration.to_string())
                 .show_ui(ui, |ui| {
                     ui.selectable_value(
                         hardware_acceleration,
                         DecodeHardwareAcceleration::Auto,
-                        format!("{}", DecodeHardwareAcceleration::Auto),
+                        DecodeHardwareAcceleration::Auto.to_string(),
                     ) | ui.selectable_value(
                         hardware_acceleration,
                         DecodeHardwareAcceleration::PreferSoftware,
-                        format!("{}", DecodeHardwareAcceleration::PreferSoftware),
+                        DecodeHardwareAcceleration::PreferSoftware.to_string(),
                     ) | ui.selectable_value(
                         hardware_acceleration,
                         DecodeHardwareAcceleration::PreferHardware,
-                        format!("{}", DecodeHardwareAcceleration::PreferHardware),
+                        DecodeHardwareAcceleration::PreferHardware.to_string(),
                     )
                 });
             // Note that the setting is part of the video's cache key, so if it changes the cache entries outdate automatically.
