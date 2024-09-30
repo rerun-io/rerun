@@ -1,6 +1,6 @@
 ---
 title: Video in Rerun
-order: 2000
+order: 400
 ---
 
 A stream of images (like those produced by a camera) can be logged to Rerun in several different ways:
