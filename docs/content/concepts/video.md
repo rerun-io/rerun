@@ -70,7 +70,7 @@ At the moment, we test the following codecs:
 | AV1   | ✅    | 🚧[^4]  | ✅      |
 | H.264 | ✅    | ✅      | ✅      |
 
-[^4]: AV1 on macOS is only supported on [Apple Silicon devices with AV1 hardware decoding support](https://webkit.org/blog/14445/webkit-features-in-safari-17-0/).
+[^4]: Safari/WebKit does not support AV1 decoding except on [Apple Silicon devices with hardware support](https://webkit.org/blog/14445/webkit-features-in-safari-17-0/). Chromium and Firefox use software fallbacks, but at the moment Safari rejects the video entirely.
 
 ## Links
 * [Web video codec guide, by Mozilla](https://developer.mozilla.org/en-US/docs/Web/Media/Formats/Video_codecs)
