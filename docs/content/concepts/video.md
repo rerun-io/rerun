@@ -37,7 +37,7 @@ Native video playback is coming, and can be tracked [in this GitHub issue](https
 
 Video playback is done using the browser's own video decoder, so the supported codecs depend on your browser.
 
-Overall, we recommend using Chrome or another Chromium-based browser, as it seem to have the best video support as of writing.
+Overall, we recommend using Chrome or another Chromium-based browser, as it seems to have the best video support as of writing.
 
 When choosing codec, we recommend [AV1](https://developer.mozilla.org/en-US/docs/Web/Media/Formats/Video_codecs#av1), as that seems to have the best overall playback support. Since AV1 is patent-free, it is also likely the first codec we will support in the native viewer.
 
