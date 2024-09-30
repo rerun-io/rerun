@@ -329,8 +329,8 @@ impl SpaceViewClass for GraphSpaceView {
                     egui::Frame::default()
                         .rounding(egui::Rounding::same(4.0))
                         .inner_margin(egui::Margin::same(8.0))
-                        .stroke(ui.ctx().style().visuals.window_stroke)
-                        .fill(ui.style().visuals.panel_fill)
+                        .stroke(egui::Stroke::new(1.0, ui.ctx().style().visuals.text_color()))
+                        .fill(ui.style().visuals.faint_bg_color)
                         .show(ui, |ui| {
                             ui.style_mut().wrap_mode = Some(TextWrapMode::Extend);
                             callback(ui)
