@@ -8,7 +8,7 @@ use re_smart_channel::{ReceiveSet, Receiver, SmartMessagePayload};
 use crate::{commands::RrdCommands, CallSource};
 
 #[cfg(feature = "web_viewer")]
-use re_sdk::web_viewer::host_web_viewer;
+use re_sdk::web_viewer::WebViewerConfig;
 #[cfg(feature = "web_viewer")]
 use re_web_viewer_server::WebViewerServerPort;
 #[cfg(feature = "server")]
@@ -680,14 +680,16 @@ fn run_impl(
             if let DataSource::WebSocketAddr(rerun_server_ws_url) = data_sources[0].clone() {
                 // Special case! We are connecting a web-viewer to a web-socket address.
                 // Instead of piping, just host a web-viewer that connects to the web-socket directly:
-                host_web_viewer(
-                    &args.bind,
-                    args.web_viewer_port,
-                    args.renderer,
-                    args.video_decoder,
-                    true,
-                    &rerun_server_ws_url,
-                )?
+
+                WebViewerConfig {
+                    bind_ip: args.bind,
+                    web_port: args.web_viewer_port,
+                    source_url: Some(rerun_server_ws_url),
+                    force_wgpu_backend: args.renderer,
+                    video_decoder: args.video_decoder,
+                    open_browser: true,
+                }
+                .host_web_viewer()?
                 .block();
 
                 return Ok(());
@@ -755,14 +757,15 @@ fn run_impl(
                 let open_browser = args.web_viewer;
 
                 // This is the server that serves the Wasm+HTML:
-                host_web_viewer(
-                    &args.bind,
-                    args.web_viewer_port,
-                    args.renderer,
-                    args.video_decoder,
+                WebViewerConfig {
+                    bind_ip: args.bind,
+                    web_port: args.web_viewer_port,
+                    source_url: Some(_ws_server.server_url()),
+                    force_wgpu_backend: args.renderer,
+                    video_decoder: args.video_decoder,
                     open_browser,
-                    &_ws_server.server_url(),
-                )?
+                }
+                .host_web_viewer()?
                 .block(); // dropping should stop the server
             }
 
