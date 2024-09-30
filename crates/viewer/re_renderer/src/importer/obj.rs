@@ -3,9 +3,8 @@ use std::sync::Arc;
 use smallvec::smallvec;
 
 use crate::{
-    mesh::{Material, Mesh, MeshError},
+    mesh::{GpuMesh, Material, Mesh, MeshError},
     renderer::MeshInstance,
-    resource_managers::{ResourceLifeTime, ResourceManagerError},
     RenderContext, Rgba32Unmul,
 };
 
@@ -16,16 +15,12 @@ pub enum ObjImportError {
 
     #[error(transparent)]
     Mesh(#[from] MeshError),
-
-    #[error(transparent)]
-    ResourceManager(#[from] ResourceManagerError),
 }
 
 /// Load a [Wavefront .obj file](https://en.wikipedia.org/wiki/Wavefront_.obj_file)
 /// into the mesh & texture manager.
 pub fn load_obj_from_buffer(
     buffer: &[u8],
-    lifetime: ResourceLifeTime,
     ctx: &RenderContext,
 ) -> Result<Vec<MeshInstance>, ObjImportError> {
     re_tracing::profile_function!();
@@ -108,13 +103,10 @@ pub fn load_obj_from_buffer(
 
             mesh.sanity_check()?;
 
-            let gpu_mesh = ctx.mesh_manager.write().create(ctx, &mesh, lifetime)?;
-
-            Ok(MeshInstance {
-                gpu_mesh,
-                mesh: Some(Arc::new(mesh)),
-                ..Default::default()
-            })
+            Ok(MeshInstance::new_with_cpu_mesh(
+                Arc::new(GpuMesh::new(ctx, &mesh)?),
+                Some(Arc::new(mesh)),
+            ))
         })
         .collect()
 }

@@ -9,5 +9,5 @@ pub use labels::{
     UiLabel, UiLabelTarget,
 };
 pub use proc_mesh_vis::{ProcMeshBatch, ProcMeshDrawableBuilder};
-pub use spatial_view_visualizer::{iter_spatial_visualizer_data, SpatialViewVisualizerData};
+pub use spatial_view_visualizer::SpatialViewVisualizerData;
 pub use textured_rect::textured_rect_from_image;

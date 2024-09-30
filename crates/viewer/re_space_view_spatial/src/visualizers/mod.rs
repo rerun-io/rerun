@@ -24,8 +24,8 @@ pub use cameras::CamerasVisualizer;
 pub use depth_images::DepthImageVisualizer;
 pub use transform3d_arrows::{add_axis_arrows, AxisLengthDetector, Transform3DArrowsVisualizer};
 pub use utilities::{
-    entity_iterator, iter_spatial_visualizer_data, process_labels_3d, textured_rect_from_image,
-    SpatialViewVisualizerData, UiLabel, UiLabelTarget,
+    entity_iterator, process_labels_3d, textured_rect_from_image, SpatialViewVisualizerData,
+    UiLabel, UiLabelTarget,
 };
 
 // ---
@@ -129,7 +129,8 @@ pub fn visualizers_processing_draw_order() -> impl Iterator<Item = ViewSystemIde
 }
 
 pub fn collect_ui_labels(visualizers: &VisualizerCollection) -> Vec<UiLabel> {
-    iter_spatial_visualizer_data(visualizers)
+    visualizers
+        .iter_visualizer_data::<SpatialViewVisualizerData>()
         .flat_map(|data| data.ui_labels.iter().cloned())
         .collect()
 }

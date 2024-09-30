@@ -191,49 +191,67 @@ impl VideoFrameReferenceVisualizer {
 
             Some(Ok(video)) => {
                 video_resolution = glam::vec2(video.width() as _, video.height() as _);
-                if let Some(texture) =
-                    match video.frame_at(render_ctx, decode_stream_id, video_timestamp.as_seconds())
-                    {
-                        Ok(VideoFrameTexture::Ready(texture)) => Some(texture),
-                        Ok(VideoFrameTexture::Pending(texture)) => {
-                            ctx.viewer_ctx.egui_ctx.request_repaint();
-                            Some(texture)
-                        }
-                        Err(err) => {
-                            self.show_video_error(
-                                ctx,
-                                spatial_ctx,
-                                world_from_entity,
-                                err.to_string(),
-                                video_resolution,
-                                entity_path,
-                            );
-                            None
-                        }
-                    }
-                {
-                    let textured_rect = TexturedRect {
-                        top_left_corner_position: world_from_entity
-                            .transform_point3(glam::Vec3::ZERO),
+
+                match video.frame_at(render_ctx, decode_stream_id, video_timestamp.as_seconds()) {
+                    Ok(frame) => {
                         // Make sure to use the video instead of texture size here,
-                        // since it may be a placeholder which doesn't have the full size yet.
-                        extent_u: world_from_entity
-                            .transform_vector3(glam::Vec3::X * video_resolution.x),
-                        extent_v: world_from_entity
-                            .transform_vector3(glam::Vec3::Y * video_resolution.y),
-                        colormapped_texture: ColormappedTexture::from_unorm_rgba(texture),
-                        options: RectangleOptions {
-                            texture_filter_magnification: TextureFilterMag::Nearest,
-                            texture_filter_minification: TextureFilterMin::Linear,
-                            outline_mask: spatial_ctx.highlight.overall,
-                            ..Default::default()
-                        },
-                    };
-                    self.data.pickable_rects.push(PickableTexturedRect {
-                        ent_path: entity_path.clone(),
-                        textured_rect,
-                        source_data: PickableRectSourceData::Video,
-                    });
+                        // since the texture may be a placeholder which doesn't have the full size yet.
+                        let top_left_corner_position =
+                            world_from_entity.transform_point3(glam::Vec3::ZERO);
+                        let extent_u =
+                            world_from_entity.transform_vector3(glam::Vec3::X * video_resolution.x);
+                        let extent_v =
+                            world_from_entity.transform_vector3(glam::Vec3::Y * video_resolution.y);
+
+                        let texture = match frame {
+                            VideoFrameTexture::Ready(texture) => texture,
+                            VideoFrameTexture::Pending(placeholder) => {
+                                // Show loading rectangle:
+                                let min = top_left_corner_position;
+                                let max = top_left_corner_position + extent_u + extent_v;
+                                let center = 0.5 * (min + max);
+                                let diameter = (max - min).truncate().abs().min_element();
+                                self.data.loading_rects.push(egui::Rect::from_center_size(
+                                    egui::pos2(center.x, center.y),
+                                    egui::Vec2::splat(diameter),
+                                ));
+
+                                // Keep polling for the decoded result:
+                                ctx.viewer_ctx.egui_ctx.request_repaint();
+
+                                placeholder
+                            }
+                        };
+
+                        let textured_rect = TexturedRect {
+                            top_left_corner_position,
+                            extent_u,
+                            extent_v,
+                            colormapped_texture: ColormappedTexture::from_unorm_rgba(texture),
+                            options: RectangleOptions {
+                                texture_filter_magnification: TextureFilterMag::Nearest,
+                                texture_filter_minification: TextureFilterMin::Linear,
+                                outline_mask: spatial_ctx.highlight.overall,
+                                ..Default::default()
+                            },
+                        };
+                        self.data.pickable_rects.push(PickableTexturedRect {
+                            ent_path: entity_path.clone(),
+                            textured_rect,
+                            source_data: PickableRectSourceData::Video,
+                        });
+                    }
+
+                    Err(err) => {
+                        self.show_video_error(
+                            ctx,
+                            spatial_ctx,
+                            world_from_entity,
+                            err.to_string(),
+                            video_resolution,
+                            entity_path,
+                        );
+                    }
                 }
             }
             Some(Err(err)) => {

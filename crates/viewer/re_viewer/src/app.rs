@@ -521,7 +521,7 @@ impl App {
                     let blueprint_db = store_hub.entity_db_mut(&blueprint_id);
                     for chunk in updates {
                         match blueprint_db.add_chunk(&Arc::new(chunk)) {
-                            Ok(()) => {}
+                            Ok(_store_events) => {}
                             Err(err) => {
                                 re_log::warn_once!("Failed to store blueprint delta: {err}");
                             }
@@ -1102,15 +1102,30 @@ impl App {
                 re_log::warn_once!("Loading a blueprint {store_id} that is active. See https://github.com/rerun-io/rerun/issues/5514 for details.");
             }
 
-            let entity_db = store_hub.entity_db_mut(store_id);
+            // TODO(cmc): we have to keep grabbing and releasing entity_db because everything references
+            // everything and some of it is mutable and some not… it's really not pretty, but it
+            // does the job for now.
 
-            if entity_db.data_source.is_none() {
-                entity_db.data_source = Some((*channel_source).clone());
+            {
+                let entity_db = store_hub.entity_db_mut(store_id);
+                if entity_db.data_source.is_none() {
+                    entity_db.data_source = Some((*channel_source).clone());
+                }
             }
 
-            if let Err(err) = entity_db.add(&msg) {
-                re_log::error_once!("Failed to add incoming msg: {err}");
-            };
+            match store_hub.entity_db_mut(store_id).add(&msg) {
+                Ok(store_events) => {
+                    if let Some(caches) = store_hub.active_caches() {
+                        caches.on_store_events(&store_events);
+                    }
+                }
+
+                Err(err) => {
+                    re_log::error_once!("Failed to add incoming msg: {err}");
+                }
+            }
+
+            let entity_db = store_hub.entity_db_mut(store_id);
 
             match &msg {
                 LogMsg::SetStoreInfo(_) => {

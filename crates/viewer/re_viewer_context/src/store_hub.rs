@@ -627,8 +627,12 @@ impl StoreHub {
         };
 
         let store_size_before = entity_db.store().stats().total().total_size_bytes;
-        entity_db.purge_fraction_of_ram(fraction_to_purge);
+        let store_events = entity_db.purge_fraction_of_ram(fraction_to_purge);
         let store_size_after = entity_db.store().stats().total().total_size_bytes;
+
+        if let Some(caches) = self.caches_per_recording.get_mut(&store_id) {
+            caches.on_store_events(&store_events);
+        }
 
         // No point keeping an empty recording around.
         if entity_db.is_empty() {
@@ -694,7 +698,11 @@ impl StoreHub {
 
                 // TODO(jleibs): Decide a better tuning for this. Would like to save a
                 // reasonable amount of history, or incremental snapshots.
-                blueprint.gc_everything_but_the_latest_row_on_non_default_timelines();
+                let store_events =
+                    blueprint.gc_everything_but_the_latest_row_on_non_default_timelines();
+                if let Some(caches) = self.caches_per_recording.get_mut(blueprint_id) {
+                    caches.on_store_events(&store_events);
+                }
 
                 self.blueprint_last_gc
                     .insert(blueprint_id.clone(), blueprint.generation());

@@ -64,11 +64,12 @@ pub use selection_state::{
     ItemSpaceContext, SelectionHighlight,
 };
 pub use space_view::{
-    DataResult, IdentifiedViewSystem, OverridePath, PerSystemDataResults, PerSystemEntities,
-    PropertyOverrides, RecommendedSpaceView, SmallVisualizerSet, SpaceViewClass, SpaceViewClassExt,
-    SpaceViewClassLayoutPriority, SpaceViewClassRegistry, SpaceViewClassRegistryError,
-    SpaceViewEntityHighlight, SpaceViewHighlights, SpaceViewOutlineMasks, SpaceViewSpawnHeuristics,
-    SpaceViewState, SpaceViewStateExt, SpaceViewSystemExecutionError, SpaceViewSystemRegistrator,
+    DataResult, IdentifiedViewSystem, OptionalSpaceViewEntityHighlight, OverridePath,
+    PerSystemDataResults, PerSystemEntities, PropertyOverrides, RecommendedSpaceView,
+    SmallVisualizerSet, SpaceViewClass, SpaceViewClassExt, SpaceViewClassLayoutPriority,
+    SpaceViewClassRegistry, SpaceViewClassRegistryError, SpaceViewEntityHighlight,
+    SpaceViewHighlights, SpaceViewOutlineMasks, SpaceViewSpawnHeuristics, SpaceViewState,
+    SpaceViewStateExt, SpaceViewSystemExecutionError, SpaceViewSystemRegistrator,
     SystemExecutionOutput, ViewContext, ViewContextCollection, ViewContextSystem, ViewQuery,
     ViewStates, ViewSystemIdentifier, VisualizableFilterContext,
     VisualizerAdditionalApplicabilityFilter, VisualizerCollection, VisualizerQueryInfo,

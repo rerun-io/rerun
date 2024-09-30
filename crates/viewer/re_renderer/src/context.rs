@@ -12,7 +12,7 @@ use crate::{
     error_handling::{ErrorTracker, WgpuErrorScope},
     global_bindings::GlobalBindings,
     renderer::Renderer,
-    resource_managers::{MeshManager, TextureManager2D},
+    resource_managers::TextureManager2D,
     wgpu_resources::WgpuResourcePools,
     FileServer, RecommendedFileResolver,
 };
@@ -71,7 +71,6 @@ pub struct RenderContext {
     renderers: RwLock<Renderers>,
     pub(crate) resolver: RecommendedFileResolver,
 
-    pub mesh_manager: RwLock<MeshManager>,
     pub texture_manager_2d: TextureManager2D,
     pub(crate) cpu_write_gpu_read_belt: Mutex<CpuWriteGpuReadBelt>,
     pub gpu_readback_belt: Mutex<GpuReadbackBelt>,
@@ -218,7 +217,6 @@ impl RenderContext {
         }
 
         let resolver = crate::new_recommended_file_resolver();
-        let mesh_manager = RwLock::new(MeshManager::new());
         let texture_manager_2d =
             TextureManager2D::new(device.clone(), queue.clone(), &gpu_resources.textures);
 
@@ -260,7 +258,6 @@ impl RenderContext {
             }),
             resolver,
             top_level_error_tracker,
-            mesh_manager,
             texture_manager_2d,
             cpu_write_gpu_read_belt,
             gpu_readback_belt,
@@ -378,7 +375,6 @@ This means, either a call to RenderContext::before_submit was omitted, or the pr
             re_log::debug!(?modified_paths, "got some filesystem events");
         }
 
-        self.mesh_manager.get_mut().begin_frame(frame_index);
         self.texture_manager_2d.begin_frame(frame_index);
         self.gpu_readback_belt.get_mut().begin_frame(frame_index);
 

@@ -687,7 +687,14 @@ impl SpatialSpaceView3D {
             clear_color,
         ));
 
-        // Add egui driven labels on top of re_renderer content.
+        // Add egui-rendered spinners/loaders on top of re_renderer content:
+        crate::ui::paint_loading_spinners(
+            ui,
+            RectTransform::from_to(ui_rect, ui_rect),
+            &system_output.view_systems,
+        );
+
+        // Add egui-rendered labels on top of everything else:
         let painter = ui.painter().with_clip_rect(ui.max_rect());
         painter.extend(label_shapes);
 
