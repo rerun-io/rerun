@@ -50,10 +50,11 @@ With that in mind, here are the browsers which we have tested and verified to wo
 |            | Linux  | macOS | Windows |
 | ---------- | ------ | ----- | ------- |
 | Firefox    | ✅[^1] | ✅    | ✅      |
-| Chrome[^2] | ✅     | ✅    | ✅      |
+| Chrome[^2] | ✅     | ✅    | ✅[^3]  |
 | Safari     |        | ✅    |         |
 
 [^1]: Firefox on Linux has been observed to [stutter when playing back H.264 video](https://github.com/rerun-io/rerun/issues/7532)
+[^3]: Chrome on Windows has also been observed to stutter when playing back H.264 video. It can be mitigated by [using software rendering](https://rerun.io/docs/getting-started/troubleshooting#video-stuttering)
 [^2]: Any Chromium-based browser should work, but we don't test all of them.
 
 When it comes to codecs, we aim to support any codec which the browser supports, but
@@ -64,10 +65,10 @@ At the moment, we test the following codecs:
 
 |       | Linux | macOS   | Windows |
 | ----- | ----- | ------- | ------- |
-| AV1   | ✅    | 🚧[^3]  | ✅      |
+| AV1   | ✅    | 🚧[^4]  | ✅      |
 | H.264 | ✅    | ✅      | ✅      |
 
-[^3]: AV1 on macOS is only supported on [Apple Silicon devices with AV1 hardware decoding support](https://webkit.org/blog/14445/webkit-features-in-safari-17-0/).
+[^4]: AV1 on macOS is only supported on [Apple Silicon devices with AV1 hardware decoding support](https://webkit.org/blog/14445/webkit-features-in-safari-17-0/).
 
 ## Links
 * [Web video codec guide, by Mozilla](https://developer.mozilla.org/en-US/docs/Web/Media/Formats/Video_codecs)
