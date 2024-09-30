@@ -25,11 +25,11 @@ This gives the best compression ratio, reducing file sizes and bandwidth require
 ## `AssetVideo` limitations
 Video support is new in Rerun, and has several limitations:
 
-* Video playback only works in the web viewer
+* [#7298](https://github.com/rerun-io/rerun/issues/7298): Video playback only works in the web viewer
+* [#7354](https://github.com/rerun-io/rerun/issues/7354): Only the MP4 container format is supported
+* [#5181](https://github.com/rerun-io/rerun/issues/5181): There is no audio support
 * There is no video encoder in the Rerun SDK, so you need to create the video file yourself
-* Only the MP4 container format is supported
 * Only a limited sets of codecs are supported (see below)
-* There is no audio support
 
 ## Web viewer support
 As of writing, playback of `AssetVideo` is only supported on the web viewer.
