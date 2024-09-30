@@ -24,7 +24,7 @@ class VideoFrameReference(Archetype):
     **Archetype**: References a single video frame.
 
     Used to display individual video frames from a [`archetypes.AssetVideo`][rerun.archetypes.AssetVideo].
-    To show an entire video, a fideo frame reference for each frame of the video should be logged.
+    To show an entire video, a video frame reference for each frame of the video should be logged.
 
     See <https://rerun.io/docs/concepts/video?speculative-link> for details of what is and isn't supported.
 
