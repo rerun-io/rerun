@@ -64,7 +64,7 @@ pub struct Tensor {
     /// in the contents of the tensor.
     /// E.g. if all values are positive, some bigger than 1.0 and all smaller than 255.0,
     /// the Viewer will conclude that the data likely came from an 8bit image, thus assuming a range of 0-255.
-    pub value_range: Option<crate::components::Range1D>,
+    pub value_range: Option<crate::components::ValueRange>,
 }
 
 impl ::re_types_core::SizeBytes for Tensor {
@@ -75,7 +75,8 @@ impl ::re_types_core::SizeBytes for Tensor {
 
     #[inline]
     fn is_pod() -> bool {
-        <crate::components::TensorData>::is_pod() && <Option<crate::components::Range1D>>::is_pod()
+        <crate::components::TensorData>::is_pod()
+            && <Option<crate::components::ValueRange>>::is_pod()
     }
 }
 
@@ -86,14 +87,14 @@ static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 1usize]> =
     once_cell::sync::Lazy::new(|| ["rerun.components.TensorIndicator".into()]);
 
 static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 1usize]> =
-    once_cell::sync::Lazy::new(|| ["rerun.components.Range1D".into()]);
+    once_cell::sync::Lazy::new(|| ["rerun.components.ValueRange".into()]);
 
 static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 3usize]> =
     once_cell::sync::Lazy::new(|| {
         [
             "rerun.components.TensorData".into(),
             "rerun.components.TensorIndicator".into(),
-            "rerun.components.Range1D".into(),
+            "rerun.components.ValueRange".into(),
         ]
     });
 
@@ -167,8 +168,8 @@ impl ::re_types_core::Archetype for Tensor {
                 .ok_or_else(DeserializationError::missing_data)
                 .with_context("rerun.archetypes.Tensor#data")?
         };
-        let value_range = if let Some(array) = arrays_by_name.get("rerun.components.Range1D") {
-            <crate::components::Range1D>::from_arrow_opt(&**array)
+        let value_range = if let Some(array) = arrays_by_name.get("rerun.components.ValueRange") {
+            <crate::components::ValueRange>::from_arrow_opt(&**array)
                 .with_context("rerun.archetypes.Tensor#value_range")?
                 .into_iter()
                 .next()
@@ -221,7 +222,10 @@ impl Tensor {
     /// E.g. if all values are positive, some bigger than 1.0 and all smaller than 255.0,
     /// the Viewer will conclude that the data likely came from an 8bit image, thus assuming a range of 0-255.
     #[inline]
-    pub fn with_value_range(mut self, value_range: impl Into<crate::components::Range1D>) -> Self {
+    pub fn with_value_range(
+        mut self,
+        value_range: impl Into<crate::components::ValueRange>,
+    ) -> Self {
         self.value_range = Some(value_range.into());
         self
     }

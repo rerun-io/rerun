@@ -6,8 +6,8 @@
 #include "../collection.hpp"
 #include "../compiler_utils.hpp"
 #include "../component_batch.hpp"
-#include "../components/range1d.hpp"
 #include "../components/tensor_data.hpp"
+#include "../components/value_range.hpp"
 #include "../indicator_component.hpp"
 #include "../result.hpp"
 
@@ -67,7 +67,7 @@ namespace rerun::archetypes {
         /// in the contents of the tensor.
         /// E.g. if all values are positive, some bigger than 1.0 and all smaller than 255.0,
         /// the Viewer will conclude that the data likely came from an 8bit image, thus assuming a range of 0-255.
-        std::optional<rerun::components::Range1D> value_range;
+        std::optional<rerun::components::ValueRange> value_range;
 
       public:
         static constexpr const char IndicatorComponentName[] = "rerun.components.TensorIndicator";
@@ -118,7 +118,7 @@ namespace rerun::archetypes {
         /// in the contents of the tensor.
         /// E.g. if all values are positive, some bigger than 1.0 and all smaller than 255.0,
         /// the Viewer will conclude that the data likely came from an 8bit image, thus assuming a range of 0-255.
-        Tensor with_value_range(rerun::components::Range1D _value_range) && {
+        Tensor with_value_range(rerun::components::ValueRange _value_range) && {
             value_range = std::move(_value_range);
             // See: https://github.com/rerun-io/rerun/issues/4027
             RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)

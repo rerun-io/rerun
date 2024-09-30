@@ -665,6 +665,13 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             },
         ),
         (
+            <ValueRange as Loggable>::name(),
+            ComponentReflection {
+                docstring_md: "Range of expected or valid values, specifying a lower and upper bound.",
+                placeholder: Some(ValueRange::default().to_arrow()?),
+            },
+        ),
+        (
             <Vector2D as Loggable>::name(),
             ComponentReflection {
                 docstring_md: "A vector in 2D space.",
@@ -952,7 +959,7 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                     docstring_md :
                     "Colormap to use for rendering the depth image.\n\nIf not set, the depth image will be rendered using the Turbo colormap.",
                     is_required : false, }, ArchetypeFieldReflection { component_name :
-                    "rerun.components.Range1D".into(), display_name : "Depth range",
+                    "rerun.components.ValueRange".into(), display_name : "Depth range",
                     docstring_md :
                     "The expected range of depth values.\n\nThis is typically the expected range of valid values.\nEverything outside of the range is clamped to the range for the purpose of colormpaping.\nNote that point clouds generated from this image will still display all points, regardless of this range.\n\nIf not specified, the range will be automatically be determined from the data.\nNote that the Viewer may try to guess a wider range than the minimum/maximum of values\nin the contents of the depth image.\nE.g. if all values are positive, some bigger than 1.0 and all smaller than 255.0,\nthe Viewer will conclude that the data likely came from an 8bit image, thus assuming a range of 0-255.",
                     is_required : false, }, ArchetypeFieldReflection { component_name :
@@ -1393,7 +1400,7 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                     "rerun.components.TensorData".into(), display_name : "Data",
                     docstring_md : "The tensor data", is_required : true, },
                     ArchetypeFieldReflection { component_name :
-                    "rerun.components.Range1D".into(), display_name : "Value range",
+                    "rerun.components.ValueRange".into(), display_name : "Value range",
                     docstring_md :
                     "The expected range of values.\n\nThis is typically the expected range of valid values.\nEverything outside of the range is clamped to the range for the purpose of colormpaping.\nAny colormap applied for display, will map this range.\n\nIf not specified, the range will be automatically be determined from the data.\nNote that the Viewer may try to guess a wider range than the minimum/maximum of values\nin the contents of the tensor.\nE.g. if all values are positive, some bigger than 1.0 and all smaller than 255.0,\nthe Viewer will conclude that the data likely came from an 8bit image, thus assuming a range of 0-255.",
                     is_required : false, },

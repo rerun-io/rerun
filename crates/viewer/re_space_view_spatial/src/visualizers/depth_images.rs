@@ -6,7 +6,7 @@ use re_renderer::renderer::{ColormappedTexture, DepthCloud, DepthClouds};
 use re_types::{
     archetypes::DepthImage,
     components::{
-        self, Colormap, DepthMeter, DrawOrder, FillRatio, ImageBuffer, ImageFormat, Range1D,
+        self, Colormap, DepthMeter, DrawOrder, FillRatio, ImageBuffer, ImageFormat, ValueRange,
         ViewCoordinates,
     },
     image::ImageKind,
@@ -286,7 +286,7 @@ impl VisualizerSystem for DepthImageVisualizer {
                     ImageFormat::name(),
                 );
                 let all_colormaps = results.iter_as(timeline, Colormap::name());
-                let all_value_ranges = results.iter_as(timeline, Range1D::name());
+                let all_value_ranges = results.iter_as(timeline, ValueRange::name());
                 let all_depth_meters = results.iter_as(timeline, DepthMeter::name());
                 let all_fill_ratios = results.iter_as(timeline, FillRatio::name());
 
@@ -369,11 +369,11 @@ impl TypedComponentFallbackProvider<DrawOrder> for DepthImageVisualizer {
     }
 }
 
-impl TypedComponentFallbackProvider<Range1D> for DepthImageVisualizer {
+impl TypedComponentFallbackProvider<ValueRange> for DepthImageVisualizer {
     fn fallback_for(
         &self,
         ctx: &re_viewer_context::QueryContext<'_>,
-    ) -> re_types::components::Range1D {
+    ) -> re_types::components::ValueRange {
         if let Some(((_time, buffer_row_id), image_buffer)) = ctx
             .recording()
             .latest_at_component::<ImageBuffer>(ctx.target_entity_path, ctx.query)
@@ -418,7 +418,7 @@ impl TypedComponentFallbackProvider<DepthMeter> for DepthImageVisualizer {
     }
 }
 
-re_viewer_context::impl_component_fallback_provider!(DepthImageVisualizer => [Colormap, Range1D, DepthMeter, DrawOrder]);
+re_viewer_context::impl_component_fallback_provider!(DepthImageVisualizer => [Colormap, ValueRange, DepthMeter, DrawOrder]);
 
 fn first_copied<T: Copy>(slice: Option<&[T]>) -> Option<T> {
     slice.and_then(|element| element.first()).copied()

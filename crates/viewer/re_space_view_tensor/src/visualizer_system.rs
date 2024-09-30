@@ -2,7 +2,7 @@ use re_chunk_store::{LatestAtQuery, RowId};
 use re_space_view::{latest_at_with_blueprint_resolved_data, RangeResultsExt};
 use re_types::{
     archetypes::Tensor,
-    components::{Range1D, TensorData},
+    components::{TensorData, ValueRange},
     Loggable as _,
 };
 use re_viewer_context::{
@@ -15,7 +15,7 @@ use re_viewer_context::{
 pub struct TensorView {
     pub tensor_row_id: RowId,
     pub tensor: TensorData,
-    pub data_range: Range1D,
+    pub data_range: ValueRange,
 }
 
 #[derive(Default)]
@@ -52,7 +52,7 @@ impl VisualizerSystem for TensorSystem {
                 annotations,
                 &timeline_query,
                 data_result,
-                [TensorData::name(), Range1D::name()].into_iter(),
+                [TensorData::name(), ValueRange::name()].into_iter(),
                 query_shadowed_defaults,
             );
 
@@ -66,10 +66,10 @@ impl VisualizerSystem for TensorSystem {
                     .iter_component_indices(&timeline, &TensorData::name())
                     .zip(chunk.iter_component::<TensorData>())
             });
-            let all_ranges = results.iter_as(timeline, Range1D::name());
+            let all_ranges = results.iter_as(timeline, ValueRange::name());
 
             for ((_, tensor_row_id), tensors, data_ranges) in
-                re_query::range_zip_1x1(all_tensors_indexed, all_ranges.component::<Range1D>())
+                re_query::range_zip_1x1(all_tensors_indexed, all_ranges.component::<ValueRange>())
             {
                 let Some(tensor) = tensors.first() else {
                     continue;
@@ -108,13 +108,13 @@ impl VisualizerSystem for TensorSystem {
 pub fn tensor_data_range_heuristic(
     tensor_stats: &TensorStats,
     data_type: re_types::tensor_data::TensorDataType,
-) -> Range1D {
+) -> ValueRange {
     let (min, max) = tensor_stats.finite_range;
 
     // Apply heuristic for ranges that are typically expected depending on the data type and the finite (!) range.
     // (we ignore NaN/Inf values heres, since they are usually there by accident!)
     #[allow(clippy::tuple_array_conversions)]
-    Range1D::from(if data_type.is_float() && 0.0 <= min && max <= 1.0 {
+    ValueRange::from(if data_type.is_float() && 0.0 <= min && max <= 1.0 {
         // Float values that are all between 0 and 1, assume that this is the range.
         [0.0, 1.0]
     } else if 0.0 <= min && max <= 255.0 {
@@ -130,11 +130,11 @@ pub fn tensor_data_range_heuristic(
     })
 }
 
-impl TypedComponentFallbackProvider<re_types::components::Range1D> for TensorSystem {
+impl TypedComponentFallbackProvider<re_types::components::ValueRange> for TensorSystem {
     fn fallback_for(
         &self,
         ctx: &re_viewer_context::QueryContext<'_>,
-    ) -> re_types::components::Range1D {
+    ) -> re_types::components::ValueRange {
         if let Some(((_time, row_id), tensor)) = ctx
             .recording()
             .latest_at_component::<TensorData>(ctx.target_entity_path, ctx.query)
@@ -145,9 +145,9 @@ impl TypedComponentFallbackProvider<re_types::components::Range1D> for TensorSys
                 .entry(|c: &mut TensorStatsCache| c.entry(row_id, &tensor));
             tensor_data_range_heuristic(&tensor_stats, tensor.dtype())
         } else {
-            Range1D::new(0.0, 1.0)
+            ValueRange::new(0.0, 1.0)
         }
     }
 }
 
-re_viewer_context::impl_component_fallback_provider!(TensorSystem => [re_types::components::Range1D]);
+re_viewer_context::impl_component_fallback_provider!(TensorSystem => [re_types::components::ValueRange]);

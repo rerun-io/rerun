@@ -1,9 +1,9 @@
 use crate::datatypes;
 use std::fmt::Display;
 
-use super::Range1D;
+use super::ValueRange;
 
-impl Range1D {
+impl ValueRange {
     /// Create a new range.
     #[inline]
     pub fn new(start: f64, end: f64) -> Self {
@@ -35,13 +35,13 @@ impl Range1D {
     }
 }
 
-impl Display for Range1D {
+impl Display for ValueRange {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "[{}, {}]", self.start(), self.end(),)
     }
 }
 
-impl Default for Range1D {
+impl Default for ValueRange {
     #[inline]
     fn default() -> Self {
         Self::new(0.0, 1.0)

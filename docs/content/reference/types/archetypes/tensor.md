@@ -9,7 +9,7 @@ An N-dimensional array of numbers.
 
 **Required**: [`TensorData`](../components/tensor_data.md)
 
-**Optional**: [`Range1D`](../components/range1d.md)
+**Optional**: [`ValueRange`](../components/value_range.md)
 
 ## Shown in
 * [TensorView](../views/tensor_view.md)

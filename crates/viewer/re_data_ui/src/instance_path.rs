@@ -306,10 +306,10 @@ fn preview_if_image_ui(
                 .flatten()
         });
     let value_range = component_map
-        .get(&components::Range1D::name()) // TODO: new component?
+        .get(&components::Range1D::name())
         .and_then(|colormap| {
             colormap
-                .component_mono::<components::Range1D>()
+                .component_mono::<components::ValueRange>()
                 .transpose()
                 .ok()
                 .flatten()

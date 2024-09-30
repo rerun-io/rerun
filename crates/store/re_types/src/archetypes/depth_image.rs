@@ -97,7 +97,7 @@ pub struct DepthImage {
     /// in the contents of the depth image.
     /// E.g. if all values are positive, some bigger than 1.0 and all smaller than 255.0,
     /// the Viewer will conclude that the data likely came from an 8bit image, thus assuming a range of 0-255.
-    pub depth_range: Option<crate::components::Range1D>,
+    pub depth_range: Option<crate::components::ValueRange>,
 
     /// Scale the radii of the points in the point cloud generated from this image.
     ///
@@ -132,7 +132,7 @@ impl ::re_types_core::SizeBytes for DepthImage {
             && <crate::components::ImageFormat>::is_pod()
             && <Option<crate::components::DepthMeter>>::is_pod()
             && <Option<crate::components::Colormap>>::is_pod()
-            && <Option<crate::components::Range1D>>::is_pod()
+            && <Option<crate::components::ValueRange>>::is_pod()
             && <Option<crate::components::FillRatio>>::is_pod()
             && <Option<crate::components::DrawOrder>>::is_pod()
     }
@@ -154,7 +154,7 @@ static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 5usize]> =
         [
             "rerun.components.DepthMeter".into(),
             "rerun.components.Colormap".into(),
-            "rerun.components.Range1D".into(),
+            "rerun.components.ValueRange".into(),
             "rerun.components.FillRatio".into(),
             "rerun.components.DrawOrder".into(),
         ]
@@ -168,7 +168,7 @@ static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 8usize]> =
             "rerun.components.DepthImageIndicator".into(),
             "rerun.components.DepthMeter".into(),
             "rerun.components.Colormap".into(),
-            "rerun.components.Range1D".into(),
+            "rerun.components.ValueRange".into(),
             "rerun.components.FillRatio".into(),
             "rerun.components.DrawOrder".into(),
         ]
@@ -275,8 +275,8 @@ impl ::re_types_core::Archetype for DepthImage {
         } else {
             None
         };
-        let depth_range = if let Some(array) = arrays_by_name.get("rerun.components.Range1D") {
-            <crate::components::Range1D>::from_arrow_opt(&**array)
+        let depth_range = if let Some(array) = arrays_by_name.get("rerun.components.ValueRange") {
+            <crate::components::ValueRange>::from_arrow_opt(&**array)
                 .with_context("rerun.archetypes.DepthImage#depth_range")?
                 .into_iter()
                 .next()
@@ -399,7 +399,10 @@ impl DepthImage {
     /// E.g. if all values are positive, some bigger than 1.0 and all smaller than 255.0,
     /// the Viewer will conclude that the data likely came from an 8bit image, thus assuming a range of 0-255.
     #[inline]
-    pub fn with_depth_range(mut self, depth_range: impl Into<crate::components::Range1D>) -> Self {
+    pub fn with_depth_range(
+        mut self,
+        depth_range: impl Into<crate::components::ValueRange>,
+    ) -> Self {
         self.depth_range = Some(depth_range.into());
         self
     }

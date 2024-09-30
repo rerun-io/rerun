@@ -12,7 +12,7 @@
 #include "../components/fill_ratio.hpp"
 #include "../components/image_buffer.hpp"
 #include "../components/image_format.hpp"
-#include "../components/range1d.hpp"
+#include "../components/value_range.hpp"
 #include "../image_utils.hpp"
 #include "../indicator_component.hpp"
 #include "../result.hpp"
@@ -106,7 +106,7 @@ namespace rerun::archetypes {
         /// in the contents of the depth image.
         /// E.g. if all values are positive, some bigger than 1.0 and all smaller than 255.0,
         /// the Viewer will conclude that the data likely came from an 8bit image, thus assuming a range of 0-255.
-        std::optional<rerun::components::Range1D> depth_range;
+        std::optional<rerun::components::ValueRange> depth_range;
 
         /// Scale the radii of the points in the point cloud generated from this image.
         ///
@@ -226,7 +226,7 @@ namespace rerun::archetypes {
         /// in the contents of the depth image.
         /// E.g. if all values are positive, some bigger than 1.0 and all smaller than 255.0,
         /// the Viewer will conclude that the data likely came from an 8bit image, thus assuming a range of 0-255.
-        DepthImage with_depth_range(rerun::components::Range1D _depth_range) && {
+        DepthImage with_depth_range(rerun::components::ValueRange _depth_range) && {
             depth_range = std::move(_depth_range);
             // See: https://github.com/rerun-io/rerun/issues/4027
             RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
