@@ -1,13 +1,20 @@
 from __future__ import annotations
 
+from typing import TYPE_CHECKING, Any, Sequence
+
+import pyarrow as pa
+
 from ... import datatypes
+
+if TYPE_CHECKING:
+    from .component_column_selector import ComponentColumnSelectorArrayLike
 
 
 class ComponentColumnSelectorExt:
-    """Extension for [ComponentColumnSelector][rerun.blueprint.components.ComponentColumnSelector]."""
+    """Extension for [ComponentColumnSelector][rerun.blueprint.datatypes.ComponentColumnSelector]."""
 
     def __init__(
-        self,
+        self: Any,
         spec: str | None = None,
         *,
         entity_path: datatypes.EntityPathLike | None = None,
@@ -37,7 +44,30 @@ class ComponentColumnSelectorExt:
             if entity_path is None or component is None:
                 raise ValueError("Both `entity_path` and `component` must be provided.")
 
-        super().__init__(entity_path=entity_path, component=component)
+        self.__attrs_init__(entity_path=entity_path, component=component)
+
+    # Override needed to address the `str` case.
+    @staticmethod
+    def native_to_pa_array_override(input_data: ComponentColumnSelectorArrayLike, data_type: pa.DataType) -> pa.Array:
+        from ...components import EntityPathBatch
+        from ...datatypes import Utf8Batch
+        from .component_column_selector import ComponentColumnSelector
+
+        if isinstance(input_data, ComponentColumnSelector):
+            data: Sequence[ComponentColumnSelector] = [input_data]
+        else:
+            data = [
+                item if isinstance(item, ComponentColumnSelector) else ComponentColumnSelector(item)
+                for item in input_data
+            ]
+
+        return pa.StructArray.from_arrays(
+            [
+                EntityPathBatch([x.entity_path for x in data]).as_arrow_array().storage,  # type: ignore[misc, arg-type]
+                Utf8Batch([x.component for x in data]).as_arrow_array().storage,  # type: ignore[misc, arg-type]
+            ],
+            fields=list(data_type),
+        )
 
 
 def _parse_spec(spec: str) -> tuple[datatypes.EntityPath, datatypes.Utf8]:

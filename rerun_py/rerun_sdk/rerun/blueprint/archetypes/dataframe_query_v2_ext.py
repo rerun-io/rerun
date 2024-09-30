@@ -52,7 +52,11 @@ class DataframeQueryV2Ext:
             filter_by_event_column = None
         else:
             filter_by_event_active = True
-            filter_by_event_column = blueprint_components.ComponentColumnSelector(filter_by_event)
+            if isinstance(filter_by_event, str):
+                column = blueprint_datatypes.ComponentColumnSelector(spec=filter_by_event)
+            else:
+                column = filter_by_event
+            filter_by_event_column = column
 
         with catch_and_log_exceptions(context=self.__class__.__name__):
             self.__attrs_init__(
