@@ -2,10 +2,17 @@ use std::{collections::HashMap, hash::Hash};
 
 use re_log_types::Instance;
 use re_viewer::external::{
-    egui::{self, emath::TSTransform, emath::Vec2, Color32, Label, RichText, TextWrapMode},
+    egui::{
+        self,
+        emath::{TSTransform, Vec2},
+        Color32, Label, Rect, RichText, TextWrapMode,
+    },
     re_log::external::log,
     re_log_types::EntityPath,
-    re_types::{components, ArrowString, SpaceViewClassIdentifier},
+    re_types::{
+        components::{self, PoseRotationAxisAngle},
+        ArrowString, SpaceViewClassIdentifier,
+    },
     re_ui,
     re_viewer_context::{
         HoverHighlight, IdentifiedViewSystem as _, OptionalSpaceViewEntityHighlight,
@@ -70,7 +77,8 @@ pub struct GraphSpaceViewState {
     screen_to_world: TSTransform,
     dragging: Option<QualifiedNode>,
     /// Positions of the nodes in world space.
-    node_positions: HashMap<QualifiedNode, egui::Pos2>,
+    // We currently store position and size, but should maybe store the actual rectangle in the future.
+    node_positions: HashMap<QualifiedNode, egui::Rect>,
 }
 
 impl SpaceViewState for GraphSpaceViewState {
@@ -321,7 +329,7 @@ impl SpaceViewClass for GraphSpaceView {
 
         for (i, (init_pos, (node, callback))) in positions.into_iter().zip(node_data).enumerate() {
             let response = egui::Area::new(id.with(("node", i)))
-                .current_pos(*state.node_positions.entry(node.clone()).or_insert(init_pos))
+                .current_pos(state.node_positions.get(&node).map_or(init_pos, |r| r.min))
                 .order(egui::Order::Middle)
                 .constrain(false)
                 .show(ui.ctx(), |ui| {
@@ -329,7 +337,10 @@ impl SpaceViewClass for GraphSpaceView {
                     egui::Frame::default()
                         .rounding(egui::Rounding::same(4.0))
                         .inner_margin(egui::Margin::same(8.0))
-                        .stroke(egui::Stroke::new(1.0, ui.ctx().style().visuals.text_color()))
+                        .stroke(egui::Stroke::new(
+                            1.0,
+                            ui.ctx().style().visuals.text_color(),
+                        ))
                         .fill(ui.style().visuals.faint_bg_color)
                         .show(ui, |ui| {
                             ui.style_mut().wrap_mode = Some(TextWrapMode::Extend);
@@ -338,16 +349,8 @@ impl SpaceViewClass for GraphSpaceView {
                 })
                 .response;
 
-            if response.dragged() {
-                if let Some(pos) = state.node_positions.get_mut(&node) {
-                    let world_translation = state.screen_to_world
-                        * TSTransform::from_translation(response.drag_delta());
-                    *pos = world_translation * *pos;
-                }
-            }
-
+            state.node_positions.insert(node.clone(), response.rect);
             let id = response.layer_id;
-
             ui.ctx().set_transform_layer(id, transform);
             ui.ctx().set_sublayer(window_layer, id);
         }
@@ -373,7 +376,7 @@ impl SpaceViewClass for GraphSpaceView {
                     };
 
                     let response = egui::Area::new(id.with((edge, i)))
-                        .current_pos(*source_pos)
+                        .current_pos(source_pos.center())
                         .order(egui::Order::Middle)
                         .constrain(false)
                         .show(ui.ctx(), |ui| {
@@ -381,7 +384,7 @@ impl SpaceViewClass for GraphSpaceView {
                             egui::Frame::default().show(ui, |ui| {
                                 let painter = ui.painter();
                                 painter.line_segment(
-                                    [*source_pos, *target_pos],
+                                    [source_pos.center(), target_pos.center()],
                                     egui::Stroke::new(2.0, hcolor),
                                 );
                             });
