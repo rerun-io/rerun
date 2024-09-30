@@ -54,9 +54,9 @@ With that in mind, here are the browsers which we have tested and verified to wo
 | Chrome[^2] | ✅     | ✅    | ✅[^3]  |
 | Safari     |        | ✅    |         |
 
-[^1]: Firefox on Linux has been observed to [stutter when playing back H.264 video](https://github.com/rerun-io/rerun/issues/7532)
+[^1]: Firefox on Linux has been observed to [stutter when playing back H.264 video](https://github.com/rerun-io/rerun/issues/7532).
 [^2]: Any Chromium-based browser should work, but we don't test all of them.
-[^3]: Chrome on Windows has also been observed to stutter when playing back H.264 video. It can be mitigated by [using software rendering](https://rerun.io/docs/getting-started/troubleshooting#video-stuttering)
+[^3]: Chrome on Windows has also been observed to stutter on playback. It can be mitigated by [using software decoding](https://rerun.io/docs/getting-started/troubleshooting#video-stuttering).
 
 When it comes to codecs, we aim to support any codec which the browser supports, but
 we currently cannot guarantee that all of them will work. For more information about
