@@ -2,7 +2,7 @@ use std::{collections::HashMap, hash::Hash};
 
 use re_log_types::Instance;
 use re_viewer::external::{
-    egui::{self, emath::TSTransform, Color32, Label, RichText, TextWrapMode},
+    egui::{self, emath::TSTransform, emath::Vec2, Color32, Label, RichText, TextWrapMode},
     re_log::external::log,
     re_log_types::EntityPath,
     re_types::{components, ArrowString, SpaceViewClassIdentifier},
@@ -67,8 +67,9 @@ pub struct GraphSpaceViewState {
     graph: petgraph::stable_graph::StableGraph<NodeKind, ()>,
     node_to_index: HashMap<QualifiedNode, petgraph::stable_graph::NodeIndex>,
     // graph viewer
-    transform: TSTransform,
+    screen_to_world: TSTransform,
     dragging: Option<QualifiedNode>,
+    /// Positions of the nodes in world space.
     node_positions: HashMap<QualifiedNode, egui::Pos2>,
 }
 
@@ -114,7 +115,6 @@ impl SpaceViewClass for GraphSpaceView {
     }
 
     fn new_state(&self) -> Box<dyn SpaceViewState> {
-        log::debug!("Creating new GraphSpaceViewState");
         Box::<GraphSpaceViewState>::default()
     }
 
@@ -285,41 +285,42 @@ impl SpaceViewClass for GraphSpaceView {
 
         // Allow dragging the background as well.
         if response.dragged() {
-            state.transform.translation += response.drag_delta();
+            state.screen_to_world.translation += response.drag_delta();
         }
 
         // Plot-like reset
         if response.double_clicked() {
-            state.transform = TSTransform::default();
+            state.screen_to_world = TSTransform::default();
         }
 
         let transform =
-            TSTransform::from_translation(ui.min_rect().left_top().to_vec2()) * state.transform;
+            TSTransform::from_translation(ui.min_rect().left_top().to_vec2()) * state.screen_to_world;
 
         if let Some(pointer) = ui.ctx().input(|i| i.pointer.hover_pos()) {
             // Note: doesn't catch zooming / panning if a button in this PanZoom container is hovered.
             if response.hovered() {
-                let pointer_in_layer = transform.inverse() * pointer;
+                let pointer_in_world = transform.inverse() * pointer;
                 let zoom_delta = ui.ctx().input(|i| i.zoom_delta());
                 let pan_delta = ui.ctx().input(|i| i.smooth_scroll_delta);
 
                 // Zoom in on pointer:
-                state.transform = state.transform
-                    * TSTransform::from_translation(pointer_in_layer.to_vec2())
+                state.screen_to_world = state.screen_to_world
+                    * TSTransform::from_translation(pointer_in_world.to_vec2())
                     * TSTransform::from_scaling(zoom_delta)
-                    * TSTransform::from_translation(-pointer_in_layer.to_vec2());
+                    * TSTransform::from_translation(-pointer_in_world.to_vec2());
 
                 // Pan:
-                state.transform = TSTransform::from_translation(pan_delta) * state.transform;
+                state.screen_to_world = TSTransform::from_translation(pan_delta) * state.screen_to_world;
             }
         }
 
-        let positions = (0..).map(|i| egui::Pos2::new(0.0, 0.0 + i as f32 * 20.0));
+        // initial layout
+        let positions = (0..).map(|i| egui::Pos2::new(0.0, 0.0 + i as f32 * 30.0));
+        let window_layer = ui.layer_id();
 
-        for (i, (pos, (node, callback))) in positions.into_iter().zip(node_data).enumerate() {
-            let window_layer = ui.layer_id();
+        for (i, (init_pos, (node, callback))) in positions.into_iter().zip(node_data).enumerate() {
             let response = egui::Area::new(id.with(("node", i)))
-                .default_pos(pos)
+                .current_pos(*state.node_positions.entry(node.clone()).or_insert(init_pos))
                 .order(egui::Order::Middle)
                 .constrain(false)
                 .show(ui.ctx(), |ui| {
@@ -336,8 +337,15 @@ impl SpaceViewClass for GraphSpaceView {
                 })
                 .response;
 
+            if response.dragged() {
+                if let Some(pos) = state.node_positions.get_mut(&node) {
+                    let world_translation = state.screen_to_world * TSTransform::from_translation(response.drag_delta());
+                    *pos = world_translation * *pos;
+                }
+            }
+
             let id = response.layer_id;
-            state.node_positions.insert(node, pos);
+
             ui.ctx().set_transform_layer(id, transform);
             ui.ctx().set_sublayer(window_layer, id);
         }
@@ -351,23 +359,30 @@ impl SpaceViewClass for GraphSpaceView {
                     state.node_positions.get(&edge.source),
                     state.node_positions.get(&edge.target),
                 ) {
-                    let window_layer = ui.layer_id();
-                    let response = egui::Area::new(id.with(("edge", i)))
-                        .default_pos(egui::Pos2::new(100., 100.))
+                    let response = egui::Area::new(id.with((edge, i)))
+                        .current_pos(*source_pos)
                         .order(egui::Order::Middle)
                         .constrain(false)
                         .show(ui.ctx(), |ui| {
-                            ui.set_clip_rect(transform.inverse() * rect);
-                            let painter = ui.painter();
-                            painter.line_segment(
-                                [*source_pos, *target_pos],
-                                egui::Stroke::new(2.0, egui::Color32::WHITE),
-                            )
-                        })
-                        .response;
+                            // TODO(grtlr): reintroduce clipping: `ui.set_clip_rect(transform.inverse() * rect);`
+                            egui::Frame::default().show(ui, |ui| {
+                                let painter = ui.painter();
+                                painter.line_segment(
+                                    [*source_pos, *target_pos],
+                                    egui::Stroke::new(2.0, egui::Color32::WHITE),
+                                );
+                            });
 
-                    log::debug!("Line: {} {}", source_pos, target_pos);
+                            // log::debug!("Line: {} {}", source_pos, target_pos);
+                        }).response;
+
+                        let id = response.layer_id;
+
+                        ui.ctx().set_transform_layer(id, transform);
+                        ui.ctx().set_sublayer(window_layer, id);
                 }
+
+
             }
         }
 
