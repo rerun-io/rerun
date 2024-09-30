@@ -109,11 +109,7 @@ pub fn tensor_data_range_heuristic(
     tensor_stats: &TensorStats,
     data_type: re_types::tensor_data::TensorDataType,
 ) -> Range1D {
-    let Some((min, max)) = tensor_stats.finite_range else {
-        // No finite range is available.
-        // Ideally we'd be forwarding this as an error. But we don't have a way to get this out & propagated in a meaningful way.
-        return Range1D::new(0.0, 1.0);
-    };
+    let (min, max) = tensor_stats.finite_range;
 
     // Apply heuristic for ranges that are typically expected depending on the data type and the finite (!) range.
     // (we ignore NaN/Inf values heres, since they are usually there by accident!)

@@ -13,10 +13,10 @@ use re_types::{
     Loggable as _,
 };
 use re_viewer_context::{
-    ApplicableEntities, ColormapWithMappingRange, IdentifiedViewSystem, ImageInfo, ImageStats,
-    ImageStatsCache, QueryContext, SpaceViewClass, SpaceViewSystemExecutionError,
-    TypedComponentFallbackProvider, ViewContext, ViewContextCollection, ViewQuery,
-    VisualizableEntities, VisualizableFilterContext, VisualizerQueryInfo, VisualizerSystem,
+    ApplicableEntities, ColormapWithMappingRange, IdentifiedViewSystem, ImageInfo, ImageStatsCache,
+    QueryContext, SpaceViewClass, SpaceViewSystemExecutionError, TypedComponentFallbackProvider,
+    ViewContext, ViewContextCollection, ViewQuery, VisualizableEntities, VisualizableFilterContext,
+    VisualizerQueryInfo, VisualizerSystem,
 };
 
 use crate::{
@@ -90,7 +90,7 @@ impl DepthImageVisualizer {
                         .viewer_ctx
                         .cache
                         .entry(|c: &mut ImageStatsCache| c.entry(&image));
-                    default_depth_image_value_range(&image_stats)
+                    ColormapWithMappingRange::default_range_for_depth_images(&image_stats)
                 });
             let colormap_with_range = ColormapWithMappingRange {
                 colormap,
@@ -363,10 +363,6 @@ impl VisualizerSystem for DepthImageVisualizer {
     }
 }
 
-pub fn default_depth_image_value_range(image_stats: &ImageStats) -> [f32; 2] {
-    ColormapWithMappingRange::default_for_depth_images(image_stats).value_range
-}
-
 impl TypedComponentFallbackProvider<DrawOrder> for DepthImageVisualizer {
     fn fallback_for(&self, _ctx: &QueryContext<'_>) -> DrawOrder {
         DrawOrder::DEFAULT_DEPTH_IMAGE
@@ -382,7 +378,7 @@ impl TypedComponentFallbackProvider<Range1D> for DepthImageVisualizer {
             .recording()
             .latest_at_component::<ImageBuffer>(ctx.target_entity_path, ctx.query)
         {
-            // TODO(andreas): What about overrides on this one?
+            // TODO(andreas): What about overrides on the image format?
             if let Some((_, format)) = ctx
                 .recording()
                 .latest_at_component::<ImageFormat>(ctx.target_entity_path, ctx.query)
@@ -393,11 +389,10 @@ impl TypedComponentFallbackProvider<Range1D> for DepthImageVisualizer {
                     format: format.0,
                     kind: ImageKind::Depth,
                 };
-                let tensor_stats = ctx
-                    .viewer_ctx
-                    .cache
-                    .entry(|c: &mut ImageStatsCache| c.entry(&image));
-                let default_range = default_depth_image_value_range(&tensor_stats);
+                let cache = ctx.viewer_ctx.cache;
+                let image_stats = cache.entry(|c: &mut ImageStatsCache| c.entry(&image));
+                let default_range =
+                    ColormapWithMappingRange::default_range_for_depth_images(&image_stats);
                 return [default_range[0] as f64, default_range[1] as f64].into();
             }
         }

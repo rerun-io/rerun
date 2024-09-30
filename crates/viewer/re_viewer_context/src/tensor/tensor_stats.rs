@@ -13,9 +13,9 @@ pub struct TensorStats {
 
     /// Like `range`, but ignoring all `NaN`/inf values.
     ///
-    /// `None` if there are no finite values at all.
-    pub finite_range: Option<(f64, f64)>,
-    // TODO: clamp to datarange limits and remove clamp_range_to_finite_datatype_range
+    /// If no finite values are present, this takes the maximum finite range
+    /// of the underlying data type.
+    pub finite_range: (f64, f64),
 }
 
 impl TensorStats {
@@ -133,7 +133,7 @@ impl TensorStats {
                 // Empty tensor
                 return Self {
                     range: None,
-                    finite_range: None,
+                    finite_range: max_finite_range_for_datatype(tensor.dtype()),
                 };
             }
         }
@@ -173,11 +173,30 @@ impl TensorStats {
                     None
                 }
             })
-        };
+        }
+        .unwrap_or_else(|| max_finite_range_for_datatype(tensor.dtype()));
 
         Self {
             range,
             finite_range,
         }
+    }
+}
+
+fn max_finite_range_for_datatype(datatype: TensorDataType) -> (f64, f64) {
+    match datatype {
+        TensorDataType::U8 => (u8::MIN as f64, u8::MAX as f64),
+        TensorDataType::U16 => (u16::MIN as f64, u16::MAX as f64),
+        TensorDataType::U32 => (u32::MIN as f64, u32::MAX as f64),
+        TensorDataType::U64 => (u64::MIN as f64, u64::MAX as f64),
+
+        TensorDataType::I8 => (i8::MIN as f64, i8::MAX as f64),
+        TensorDataType::I16 => (i16::MIN as f64, i16::MAX as f64),
+        TensorDataType::I32 => (i32::MIN as f64, i32::MAX as f64),
+        TensorDataType::I64 => (i64::MIN as f64, i64::MAX as f64),
+
+        TensorDataType::F16 => (f16::MIN.to_f64(), f16::MAX.to_f64()),
+        TensorDataType::F32 => (f32::MIN as f64, f32::MAX as f64),
+        TensorDataType::F64 => (f64::MIN, f64::MAX),
     }
 }

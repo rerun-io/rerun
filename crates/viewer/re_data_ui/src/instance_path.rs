@@ -1,3 +1,4 @@
+use egui::Rangef;
 use nohash_hasher::IntMap;
 
 use re_chunk_store::UnitChunkShared;
@@ -318,10 +319,12 @@ fn preview_if_image_ui(
         value_range: value_range
             .map(|r| [r.start() as _, r.end() as _])
             .unwrap_or_else(|| {
-                image_stats
-                    .finite_range
-                    .map(|r| [r.0 as _, r.1 as _])
-                    .unwrap_or([f32::MIN, f32::MAX])
+                if kind == ImageKind::Depth {
+                    ColormapWithMappingRange::default_range_for_depth_images(&image_stats)
+                } else {
+                    let (min, max) = image_stats.finite_range;
+                    [min as _, max as _]
+                }
             }),
     });
 
@@ -339,14 +342,16 @@ fn preview_if_image_ui(
         return Some(()); // no more ui
     }
 
-    if let Ok(data_range) = image_data_range_heuristic(&image_stats, &image.format) {
-        ui.horizontal(|ui| {
-            image_download_button_ui(ctx, ui, entity_path, &image, data_range);
+    let data_range = value_range.map_or_else(
+        || image_data_range_heuristic(&image_stats, &image.format),
+        |r| Rangef::new(r.start() as _, r.end() as _),
+    );
+    ui.horizontal(|ui| {
+        image_download_button_ui(ctx, ui, entity_path, &image, data_range);
 
-            #[cfg(not(target_arch = "wasm32"))]
-            crate::image::copy_image_button_ui(ui, &image, data_range);
-        });
-    }
+        #[cfg(not(target_arch = "wasm32"))]
+        crate::image::copy_image_button_ui(ui, &image, data_range);
+    });
 
     // TODO(emilk): we should really support histograms for all types of images
     if image.format.pixel_format.is_none()

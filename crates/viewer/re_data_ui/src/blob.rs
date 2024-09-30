@@ -154,12 +154,11 @@ pub fn blob_preview_and_save_ui(
                 let image_stats = ctx
                     .cache
                     .entry(|c: &mut re_viewer_context::ImageStatsCache| c.entry(&image));
-                if let Ok(data_range) = re_viewer_context::gpu_bridge::image_data_range_heuristic(
+                let data_range = re_viewer_context::gpu_bridge::image_data_range_heuristic(
                     &image_stats,
                     &image.format,
-                ) {
-                    crate::image::copy_image_button_ui(ui, &image, data_range);
-                }
+                );
+                crate::image::copy_image_button_ui(ui, &image, data_range);
             }
         });
     }

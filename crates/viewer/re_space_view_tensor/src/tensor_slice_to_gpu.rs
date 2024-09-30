@@ -10,7 +10,7 @@ use re_types::{
     tensor_data::{TensorCastError, TensorDataType},
 };
 use re_viewer_context::{
-    gpu_bridge::{self, colormap_to_re_renderer, RangeError},
+    gpu_bridge::{self, colormap_to_re_renderer},
     ColormapWithMappingRange,
 };
 
@@ -23,9 +23,6 @@ pub enum TensorUploadError {
 
     #[error("Expected a 2D slice")]
     Not2D,
-
-    #[error(transparent)]
-    RangeError(#[from] RangeError),
 }
 
 pub fn colormapped_texture(
