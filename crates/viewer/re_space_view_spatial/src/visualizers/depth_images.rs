@@ -391,8 +391,7 @@ impl TypedComponentFallbackProvider<ValueRange> for DepthImageVisualizer {
                 };
                 let cache = ctx.viewer_ctx.cache;
                 let image_stats = cache.entry(|c: &mut ImageStatsCache| c.entry(&image));
-                let default_range =
-                    ColormapWithRange::default_range_for_depth_images(&image_stats);
+                let default_range = ColormapWithRange::default_range_for_depth_images(&image_stats);
                 return [default_range[0] as f64, default_range[1] as f64].into();
             }
         }
