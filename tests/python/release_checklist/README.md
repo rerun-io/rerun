@@ -9,11 +9,6 @@ _**⚠ Make sure to clean your blueprints if you want to start from a clean slat
 pixi run rerun reset
 ```
 
-Start with downloading the assets needed by some of the tests:
-```
-pixi run python tests/assets/download_test_assets.py
-```
-
 Run the testlist with:
 ```
 pixi run -e examples python tests/python/release_checklist/main.py

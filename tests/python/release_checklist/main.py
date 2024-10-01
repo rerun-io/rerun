@@ -2,22 +2,21 @@
 from __future__ import annotations
 
 import argparse
+import glob
+import importlib
+import subprocess
+import sys
 from os.path import basename, dirname, isfile, join
+from pathlib import Path
 
 import rerun as rr
 
 
 def log_checks(args: argparse.Namespace) -> None:
-    import glob
-    import importlib
-
     modules = glob.glob(join(dirname(__file__), "*.py"))
     modules = [basename(f)[:-3] for f in modules if isfile(f) and basename(f).startswith("check_")]
 
     for module in modules:
-        if args.skip_checks_with_assets and "check_video" in module:
-            continue
-
         m = importlib.import_module(module)
         m.run(args)
 
@@ -29,13 +28,14 @@ def log_readme() -> None:
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Interactive release checklist")
-    parser.add_argument(
-        "--skip-checks-with-assets",
-        action="store_true",
-        help="Skip checks that require downloading test assets",
-    )
     rr.script_add_args(parser)
     args = parser.parse_args()
+
+    # Download test assets:
+    download_test_assest_path = (
+        Path(__file__).parent.parent.parent.joinpath("assets/download_test_assets.py").absolute()
+    )
+    subprocess.run([sys.executable, download_test_assest_path])
 
     log_checks(args)
 
