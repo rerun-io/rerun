@@ -3,7 +3,7 @@ use glam::Vec3;
 use re_log_types::EntityPath;
 use re_renderer::renderer;
 use re_viewer_context::{
-    gpu_bridge, ColormapWithMappingRange, ImageInfo, ImageStatsCache, SpaceViewClass as _,
+    gpu_bridge, ColormapWithRange, ImageInfo, ImageStatsCache, SpaceViewClass as _,
     ViewerContext,
 };
 
@@ -17,7 +17,7 @@ pub fn textured_rect_from_image(
     ent_path: &EntityPath,
     ent_context: &SpatialSceneEntityContext<'_>,
     image: &ImageInfo,
-    colormap: Option<&ColormapWithMappingRange>,
+    colormap: Option<&ColormapWithRange>,
     multiplicative_tint: egui::Rgba,
     visualizer_name: &'static str,
     visualizer_data: &mut SpatialViewVisualizerData,

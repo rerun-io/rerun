@@ -13,7 +13,7 @@ use re_types::{
     Loggable as _,
 };
 use re_viewer_context::{
-    ApplicableEntities, ColormapWithMappingRange, IdentifiedViewSystem, ImageInfo, ImageStatsCache,
+    ApplicableEntities, ColormapWithRange, IdentifiedViewSystem, ImageInfo, ImageStatsCache,
     QueryContext, SpaceViewClass, SpaceViewSystemExecutionError, TypedComponentFallbackProvider,
     ViewContext, ViewContextCollection, ViewQuery, VisualizableEntities, VisualizableFilterContext,
     VisualizerQueryInfo, VisualizerSystem,
@@ -90,9 +90,9 @@ impl DepthImageVisualizer {
                         .viewer_ctx
                         .cache
                         .entry(|c: &mut ImageStatsCache| c.entry(&image));
-                    ColormapWithMappingRange::default_range_for_depth_images(&image_stats)
+                    ColormapWithRange::default_range_for_depth_images(&image_stats)
                 });
-            let colormap_with_range = ColormapWithMappingRange {
+            let colormap_with_range = ColormapWithRange {
                 colormap,
                 value_range,
             };
@@ -392,7 +392,7 @@ impl TypedComponentFallbackProvider<ValueRange> for DepthImageVisualizer {
                 let cache = ctx.viewer_ctx.cache;
                 let image_stats = cache.entry(|c: &mut ImageStatsCache| c.entry(&image));
                 let default_range =
-                    ColormapWithMappingRange::default_range_for_depth_images(&image_stats);
+                    ColormapWithRange::default_range_for_depth_images(&image_stats);
                 return [default_range[0] as f64, default_range[1] as f64].into();
             }
         }
@@ -403,7 +403,7 @@ impl TypedComponentFallbackProvider<ValueRange> for DepthImageVisualizer {
 
 impl TypedComponentFallbackProvider<Colormap> for DepthImageVisualizer {
     fn fallback_for(&self, _ctx: &re_viewer_context::QueryContext<'_>) -> Colormap {
-        ColormapWithMappingRange::DEFAULT_DEPTH_COLORMAP
+        ColormapWithRange::DEFAULT_DEPTH_COLORMAP
     }
 }
 

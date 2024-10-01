@@ -11,7 +11,7 @@ use re_types::{
 };
 use re_viewer_context::{
     gpu_bridge::{self, colormap_to_re_renderer},
-    ColormapWithMappingRange,
+    ColormapWithRange,
 };
 
 use crate::space_view_class::selected_tensor_slice;
@@ -30,7 +30,7 @@ pub fn colormapped_texture(
     tensor_data_row_id: RowId,
     tensor: &TensorData,
     slice_selection: &TensorSliceSelection,
-    colormap: &ColormapWithMappingRange,
+    colormap: &ColormapWithRange,
     gamma: GammaCorrection,
 ) -> Result<ColormappedTexture, TextureManager2DError<TensorUploadError>> {
     re_tracing::profile_function!();

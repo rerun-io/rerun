@@ -15,7 +15,7 @@ use re_types::{
 };
 use re_ui::{list_item, ContextExt as _, UiExt as _};
 use re_viewer_context::{
-    gpu_bridge, ApplicableEntities, ColormapWithMappingRange, IdentifiedViewSystem as _,
+    gpu_bridge, ApplicableEntities, ColormapWithRange, IdentifiedViewSystem as _,
     IndicatedEntities, PerVisualizer, SpaceViewClass, SpaceViewClassRegistryError, SpaceViewId,
     SpaceViewState, SpaceViewStateExt as _, SpaceViewSystemExecutionError, TensorStatsCache,
     TypedComponentFallbackProvider, ViewQuery, ViewerContext, VisualizableEntities,
@@ -341,7 +341,7 @@ impl TensorSpaceView {
         let Some(render_ctx) = ctx.render_ctx else {
             return Err(anyhow::Error::msg("No render context available."));
         };
-        let colormap = ColormapWithMappingRange {
+        let colormap = ColormapWithRange {
             colormap,
             value_range: [data_range.start() as f32, data_range.end() as f32],
         };

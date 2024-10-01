@@ -12,7 +12,7 @@ use re_types::{
 };
 use re_ui::{ContextExt as _, UiExt as _};
 use re_viewer_context::{
-    gpu_bridge::image_data_range_heuristic, ColormapWithMappingRange, HoverHighlight, ImageInfo,
+    gpu_bridge::image_data_range_heuristic, ColormapWithRange, HoverHighlight, ImageInfo,
     ImageStatsCache, Item, UiLayout, ViewerContext,
 };
 
@@ -314,13 +314,13 @@ fn preview_if_image_ui(
                 .ok()
                 .flatten()
         });
-    let colormap_with_range = colormap.map(|colormap| ColormapWithMappingRange {
+    let colormap_with_range = colormap.map(|colormap| ColormapWithRange {
         colormap,
         value_range: value_range
             .map(|r| [r.start() as _, r.end() as _])
             .unwrap_or_else(|| {
                 if kind == ImageKind::Depth {
-                    ColormapWithMappingRange::default_range_for_depth_images(&image_stats)
+                    ColormapWithRange::default_range_for_depth_images(&image_stats)
                 } else {
                     let (min, max) = image_stats.finite_range;
                     [min as _, max as _]

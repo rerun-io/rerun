@@ -18,8 +18,8 @@ use re_types::datatypes::{ChannelDatatype, ColorModel, ImageFormat, PixelFormat}
 use re_types::image::ImageKind;
 
 use crate::{
-    gpu_bridge::colormap::colormap_to_re_renderer, image_info::ColormapWithMappingRange,
-    Annotations, ImageInfo, ImageStats,
+    gpu_bridge::colormap::colormap_to_re_renderer, image_info::ColormapWithRange, Annotations,
+    ImageInfo, ImageStats,
 };
 
 use super::get_or_create_texture;
@@ -49,7 +49,7 @@ pub fn image_to_gpu(
     image: &ImageInfo,
     image_stats: &ImageStats,
     annotations: &Annotations,
-    colormap: Option<&ColormapWithMappingRange>,
+    colormap: Option<&ColormapWithRange>,
 ) -> anyhow::Result<ColormappedTexture> {
     re_tracing::profile_function!();
 
@@ -354,7 +354,7 @@ fn depth_image_to_gpu(
     texture_key: u64,
     image: &ImageInfo,
     image_stats: &ImageStats,
-    colormap_with_range: Option<&ColormapWithMappingRange>,
+    colormap_with_range: Option<&ColormapWithRange>,
 ) -> anyhow::Result<ColormappedTexture> {
     re_tracing::profile_function!();
 
@@ -371,12 +371,12 @@ fn depth_image_to_gpu(
 
     let datatype = image.format.datatype();
 
-    let ColormapWithMappingRange {
+    let ColormapWithRange {
         value_range,
         colormap,
     } = colormap_with_range
         .cloned()
-        .unwrap_or_else(|| ColormapWithMappingRange::default_for_depth_images(image_stats));
+        .unwrap_or_else(|| ColormapWithRange::default_for_depth_images(image_stats));
 
     let texture = get_or_create_texture(render_ctx, texture_key, || {
         general_texture_creation_desc_from_image(debug_name, image, ColorModel::L, datatype)

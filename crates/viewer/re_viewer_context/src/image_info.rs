@@ -13,12 +13,12 @@ use re_types::{
 /// The range is used to linearly re-map the image values to a normalized range (of 0-1)
 /// to which the colormap is applied.
 #[derive(Clone)]
-pub struct ColormapWithMappingRange {
+pub struct ColormapWithRange {
     pub colormap: Colormap,
     pub value_range: [f32; 2],
 }
 
-impl ColormapWithMappingRange {
+impl ColormapWithRange {
     pub const DEFAULT_DEPTH_COLORMAP: Colormap = Colormap::Turbo;
 
     pub fn default_range_for_depth_images(image_stats: &crate::ImageStats) -> [f32; 2] {
