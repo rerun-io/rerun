@@ -211,7 +211,7 @@ struct LineStripBatch {
 }
 
 /// A line drawing operation. Encompasses several lines, each consisting of a list of positions.
-/// Expected to be recrated every frame.
+/// Expected to be recreated every frame.
 #[derive(Clone)]
 pub struct LineDrawData {
     bind_group_all_lines: Option<GpuBindGroup>,

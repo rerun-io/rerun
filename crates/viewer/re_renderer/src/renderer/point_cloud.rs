@@ -102,7 +102,7 @@ struct PointCloudBatch {
 }
 
 /// A point cloud drawing operation.
-/// Expected to be recrated every frame.
+/// Expected to be recreated every frame.
 #[derive(Clone)]
 pub struct PointCloudDrawData {
     bind_group_all_points: Option<GpuBindGroup>,
