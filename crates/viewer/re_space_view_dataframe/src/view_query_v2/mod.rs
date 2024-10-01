@@ -2,18 +2,9 @@ mod blueprint_io;
 mod ui;
 
 use re_chunk_store::ColumnDescriptor;
-use re_log_types::EntityPath;
 use re_types::blueprint::archetypes;
-use re_types_core::ComponentName;
 use re_viewer_context::{SpaceViewId, SpaceViewSystemExecutionError, ViewerContext};
 use re_viewport_blueprint::ViewProperty;
-
-/// Struct to hold the point-of-view column used for the filter by event.
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub(crate) struct EventColumn {
-    pub(crate) entity_path: EntityPath,
-    pub(crate) component_name: ComponentName,
-}
 
 /// Wrapper over the `DataframeQueryV2` blueprint archetype that can also display some UI.
 pub(crate) struct QueryV2 {

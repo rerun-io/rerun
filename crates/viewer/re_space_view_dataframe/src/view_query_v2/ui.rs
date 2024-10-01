@@ -4,11 +4,12 @@ use re_chunk_store::{ColumnDescriptor, ColumnSelector};
 use re_log_types::{
     EntityPath, ResolvedTimeRange, TimeInt, TimeType, TimeZone, Timeline, TimelineName,
 };
+use re_types::blueprint::components;
 use re_types_core::{ComponentName, ComponentNameSet};
 use re_ui::{list_item, UiExt};
 use re_viewer_context::{SpaceViewId, SpaceViewSystemExecutionError, TimeDragValue, ViewerContext};
 
-use crate::view_query_v2::{EventColumn, QueryV2};
+use crate::view_query_v2::QueryV2;
 
 // UI implementation
 impl QueryV2 {
@@ -135,24 +136,24 @@ impl QueryV2 {
         // Read stuff
         //
 
-        let mut filter_by_event_active = self.filter_by_event_active()?;
+        let original_filter_by_event = self.filter_by_event()?;
 
-        let original_event_column = self.filter_event_column()?;
-        let (event_entity, event_component) =
-            original_event_column.clone().map_or((None, None), |col| {
-                (Some(col.entity_path), Some(col.component_name))
-            });
+        let (mut active, event_entity, event_component) = original_filter_by_event
+            .as_ref()
+            .map(|filter| {
+                (
+                    filter.active(),
+                    Some(filter.entity_path()),
+                    Some(filter.component_name()),
+                )
+            })
+            .unwrap_or((false, None, None));
 
         //
         // Filter active?
         //
 
-        if ui
-            .re_checkbox(&mut filter_by_event_active, "Filter by event from:")
-            .changed()
-        {
-            self.save_filter_by_event_active(ctx, filter_by_event_active);
-        }
+        ui.re_checkbox(&mut active, "Filter by event from:");
 
         //
         // Event entity
@@ -207,7 +208,7 @@ impl QueryV2 {
         // UI for event entity and component
         //
 
-        ui.add_enabled_ui(filter_by_event_active, |ui| {
+        ui.add_enabled_ui(active, |ui| {
             ui.spacing_mut().item_spacing.y = 0.0;
 
             ui.list_item_flat_noninteractive(list_item::PropertyContent::new("Entity").value_fn(
@@ -241,13 +242,11 @@ impl QueryV2 {
         // Save event if changed
         //
 
-        let event_column = EventColumn {
-            entity_path: event_entity,
-            component_name: event_component,
-        };
+        let filter_by_event =
+            components::FilterByEvent::new(active, &event_entity, event_component);
 
-        if original_event_column.as_ref() != Some(&event_column) {
-            self.save_filter_event_column(ctx, event_column);
+        if original_filter_by_event.as_ref() != Some(&filter_by_event) {
+            self.save_filter_by_event(ctx, &filter_by_event);
         }
 
         Ok(())
