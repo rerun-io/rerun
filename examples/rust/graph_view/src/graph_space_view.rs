@@ -299,15 +299,14 @@ impl SpaceViewClass for GraphSpaceView {
                         ui.set_clip_rect(transform.inverse() * rect);
                         egui::Frame::default()
                             .rounding(egui::Rounding::same(4.0))
-                            .inner_margin(egui::Margin::same(8.0))
                             .stroke(egui::Stroke::new(
                                 1.0,
                                 ui.ctx().style().visuals.text_color(),
                             ))
                             .fill(ui.style().visuals.faint_bg_color)
                             .show(ui, |ui| {
-                                ui.label(format!("{}", entity_path));
-                                ui.allocate_exact_size(entity_rect.size(), egui::Sense::hover())
+                                ui.allocate_exact_size(entity_rect.size(), egui::Sense::hover());
+                                ui.label(format!("{}", entity_path))
                             });
                     })
                     .response;
