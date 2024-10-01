@@ -107,31 +107,31 @@ ewebsock = "0.6.0"
 re_math = "0.20.0"
 
 # egui-crates:
-ecolor = "0.29.0"
-eframe = { version = "0.29.0", default-features = false, features = [
+ecolor = "0.29.1"
+eframe = { version = "0.29.1", default-features = false, features = [
   "accesskit",
   "default_fonts",
   "puffin",
   "wayland",
   "x11",
 ] }
-egui = { version = "0.29.0", features = [
+egui = { version = "0.29.1", features = [
   "callstack",
   "log",
   "puffin",
   "rayon",
 ] }
 egui_commonmark = { version = "0.18", default-features = false }
-egui_extras = { version = "0.29.0", features = [
+egui_extras = { version = "0.29.1", features = [
   "http",
   "image",
   "puffin",
   "serde",
 ] }
 egui_plot = "0.29.0"
-egui_tiles = "0.10.0"
-egui-wgpu = "0.29.0"
-emath = "0.29.0"
+egui_tiles = "0.10.1"
+egui-wgpu = "0.29.1"
+emath = "0.29.1"
 
 # All of our direct external dependencies should be found here:
 ahash = "0.8"
