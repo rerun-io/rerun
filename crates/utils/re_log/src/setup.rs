@@ -1,6 +1,6 @@
 //! Function to setup logging in binaries and web apps.
 
-/// Automatically does the right thing dependending on target environment (native vs. web).
+/// Automatically does the right thing depending on target environment (native vs. web).
 ///
 /// Directs [`log`] calls to stderr on native.
 pub fn setup_logging() {

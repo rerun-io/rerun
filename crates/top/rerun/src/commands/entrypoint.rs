@@ -231,6 +231,28 @@ If no arguments are given, a server will be hosted which a Rerun SDK can connect
     #[clap(long)]
     renderer: Option<String>,
 
+    /// Overwrites hardware acceleration option for video decoding.
+    ///
+    /// By default uses the last provided setting, which is `auto` if never configured.
+    ///
+    /// Depending on the decoder backend, these settings are merely hints and may be ignored.
+    /// However, they can be useful in some situations to work around issues.
+    ///
+    /// Possible values:
+    ///
+    /// * `auto`
+    /// May use hardware acceleration if available and compatible with the codec.
+    ///
+    /// * `prefer_software`
+    /// Should use a software decoder even if hardware acceleration is available.
+    /// If no software decoder is present, this may cause decoding to fail.
+    ///
+    /// * `prefer_hardware`
+    /// Should use a hardware decoder.
+    /// If no hardware decoder is present, this may cause decoding to fail.
+    #[clap(long, verbatim_doc_comment)]
+    video_decoder: Option<String>,
+
     // ----------------------------------------------------------------------------
     // Debug-options:
     /// Ingest data and then quit once the goodbye message has been received.
@@ -594,6 +616,16 @@ fn run_impl(
     #[cfg(feature = "native_viewer")]
     let startup_options = {
         re_tracing::profile_scope!("StartupOptions");
+
+        let video_decoder_hw_acceleration =
+            args.video_decoder.as_ref().and_then(|s| match s.parse() {
+                Err(()) => {
+                    re_log::warn_once!("Failed to parse --video-decoder value: {s}. Ignoring.");
+                    None
+                }
+                Ok(hw_accell) => Some(hw_accell),
+            });
+
         re_viewer::StartupOptions {
             hide_welcome_screen: args.hide_welcome_screen,
             memory_limit: re_memory::MemoryLimit::parse(&args.memory_limit)
@@ -614,7 +646,8 @@ fn run_impl(
             } else {
                 None
             },
-            force_wgpu_backend: None,
+            force_wgpu_backend: args.renderer.clone(),
+            video_decoder_hw_acceleration,
 
             panel_state_overrides: Default::default(),
         }
@@ -651,6 +684,7 @@ fn run_impl(
                     &args.bind,
                     args.web_viewer_port,
                     args.renderer,
+                    args.video_decoder,
                     true,
                     &rerun_server_ws_url,
                 )?
@@ -725,6 +759,7 @@ fn run_impl(
                     &args.bind,
                     args.web_viewer_port,
                     args.renderer,
+                    args.video_decoder,
                     open_browser,
                     &_ws_server.server_url(),
                 )?

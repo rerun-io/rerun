@@ -114,7 +114,12 @@ pub fn blob_preview_and_save_ui(
     // Try to treat it as a video if treating it as image didn't work:
     else if let Some(blob_row_id) = blob_row_id {
         let video_result = ctx.cache.entry(|c: &mut re_viewer_context::VideoCache| {
-            c.entry(blob_row_id, blob, media_type.as_ref().map(|mt| mt.as_str()))
+            c.entry(
+                blob_row_id,
+                blob,
+                media_type.as_ref().map(|mt| mt.as_str()),
+                ctx.app_options.video_decoder_hw_acceleration,
+            )
         });
 
         show_video_blob_info(

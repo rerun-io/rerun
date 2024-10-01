@@ -13,7 +13,7 @@ use web_time::Instant;
 use super::latest_at_idx;
 use crate::{
     resource_managers::GpuTexture2D,
-    video::{DecodingError, FrameDecodingResult, VideoFrameTexture},
+    video::{DecodeHardwareAcceleration, DecodingError, FrameDecodingResult, VideoFrameTexture},
     DebugLabel, RenderContext,
 };
 
@@ -67,8 +67,8 @@ pub struct VideoDecoder {
     texture: GpuTexture2D,
 
     decoder: web_sys::VideoDecoder,
-
     decoder_output: Arc<Mutex<DecoderOutput>>,
+    hw_acceleration: DecodeHardwareAcceleration,
 
     last_used_frame_timestamp: Time,
     current_segment_idx: usize,
@@ -122,6 +122,7 @@ impl VideoDecoder {
     pub fn new(
         render_context: &RenderContext,
         data: Arc<re_video::VideoData>,
+        hw_acceleration: DecodeHardwareAcceleration,
     ) -> Result<Self, DecodingError> {
         let decoder_output = Arc::new(Mutex::new(DecoderOutput {
             frames: Vec::new(),
@@ -147,6 +148,7 @@ impl VideoDecoder {
 
             decoder,
             decoder_output,
+            hw_acceleration,
 
             last_used_frame_timestamp: Time::new(u64::MAX),
             current_segment_idx: usize::MAX,
@@ -441,7 +443,10 @@ impl VideoDecoder {
         };
 
         self.decoder
-            .configure(&js_video_decoder_config(&self.data.config))
+            .configure(&js_video_decoder_config(
+                &self.data.config,
+                self.hw_acceleration,
+            ))
             .map_err(|err| DecodingError::ConfigureFailure(js_error_to_string(&err)))?;
 
         {
@@ -558,7 +563,10 @@ fn init_video_decoder(
         .map_err(|err| DecodingError::DecoderSetupFailure(js_error_to_string(&err)))
 }
 
-fn js_video_decoder_config(config: &re_video::Config) -> VideoDecoderConfig {
+fn js_video_decoder_config(
+    config: &re_video::Config,
+    hw_acceleration: DecodeHardwareAcceleration,
+) -> VideoDecoderConfig {
     let js = VideoDecoderConfig::new(&config.codec);
     js.set_coded_width(config.coded_width as u32);
     js.set_coded_height(config.coded_height as u32);
@@ -566,6 +574,19 @@ fn js_video_decoder_config(config: &re_video::Config) -> VideoDecoderConfig {
     description.copy_from(&config.description[..]);
     js.set_description(&description);
     js.set_optimize_for_latency(true);
+
+    match hw_acceleration {
+        DecodeHardwareAcceleration::Auto => {
+            js.set_hardware_acceleration(web_sys::HardwareAcceleration::NoPreference);
+        }
+        DecodeHardwareAcceleration::PreferSoftware => {
+            js.set_hardware_acceleration(web_sys::HardwareAcceleration::PreferSoftware);
+        }
+        DecodeHardwareAcceleration::PreferHardware => {
+            js.set_hardware_acceleration(web_sys::HardwareAcceleration::PreferHardware);
+        }
+    }
+
     js
 }
 

@@ -120,6 +120,7 @@ pub fn host_web_viewer(
     bind_ip: &str,
     web_port: WebViewerServerPort,
     force_wgpu_backend: Option<String>,
+    video_decoder: Option<String>,
     open_browser: bool,
     source_url: &str,
 ) -> anyhow::Result<WebViewerServer> {
@@ -129,6 +130,9 @@ pub fn host_web_viewer(
     let mut viewer_url = format!("{http_web_viewer_url}?url={source_url}");
     if let Some(force_graphics) = force_wgpu_backend {
         viewer_url = format!("{viewer_url}&renderer={force_graphics}");
+    }
+    if let Some(video_decoder) = video_decoder {
+        viewer_url = format!("{viewer_url}&video_decoder={video_decoder}");
     }
 
     re_log::info!("Hosting a web-viewer at {viewer_url}");

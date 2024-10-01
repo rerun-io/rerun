@@ -4,7 +4,7 @@ use std::sync::Arc;
 
 use crate::{
     resource_managers::GpuTexture2D,
-    video::{DecodingError, FrameDecodingResult},
+    video::{DecodeHardwareAcceleration, DecodingError, FrameDecodingResult},
     RenderContext,
 };
 
@@ -23,6 +23,7 @@ impl VideoDecoder {
     pub fn new(
         render_context: &RenderContext,
         data: Arc<re_video::VideoData>,
+        _hw_acceleration: DecodeHardwareAcceleration,
     ) -> Result<Self, DecodingError> {
         let device = render_context.device.clone();
         let zeroed_texture = alloc_video_frame_texture(

@@ -164,7 +164,8 @@ impl Modal {
     ) -> ModalResponse<R> {
         Self::dim_background(ctx);
 
-        let mut open = ctx.input(|i| !i.key_pressed(egui::Key::Escape));
+        // We consume such as to avoid the top-level deselect-on-ESC behavior.
+        let mut open = ctx.input_mut(|i| !i.consume_key(egui::Modifiers::NONE, egui::Key::Escape));
 
         let screen_height = ctx.screen_rect().height();
         let modal_vertical_margins = (75.0).at_most(screen_height * 0.1);

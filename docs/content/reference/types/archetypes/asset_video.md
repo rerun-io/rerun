@@ -10,9 +10,10 @@ A video binary.
 
 NOTE: Videos can only be viewed in the Rerun web viewer.
 Only MP4 containers with a limited number of codecs are currently supported, and not in all browsers.
-Follow <https://github.com/rerun-io/rerun/issues/7298> for updates on the native support.
 
-In order to display a video, you need to log a [`archetypes.VideoFrameReference`](https://rerun.io/docs/reference/types/archetypes/video_frame_reference?speculative-link) for each frame.
+See <https://rerun.io/docs/concepts/video?speculative-link> for details of what is and isn't supported.
+
+In order to display a video, you also need to log a [`archetypes.VideoFrameReference`](https://rerun.io/docs/reference/types/archetypes/video_frame_reference?speculative-link) for each frame.
 
 ## Components
 
