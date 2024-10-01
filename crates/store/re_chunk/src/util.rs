@@ -283,7 +283,6 @@ pub fn pad_list_array_front(
 /// Applies a [filter] kernel to the given `array`.
 ///
 /// Note: a `filter` kernel _copies_ the data in order to make the resulting arrays contiguous in memory.
-/// If all you need is _a view_ of some specific indices, check out [`take_array`] instead.
 ///
 /// Takes care of up- and down-casting the data back and forth on behalf of the caller.
 ///
@@ -304,15 +303,17 @@ pub fn filter_array<A: ArrowArray + Clone>(array: &A, filter: &ArrowBooleanArray
 
 /// Applies a [take] kernel to the given `array`.
 ///
-/// Note: a `take` kernel merely _slices_ the data: it does not copy it nor allocate and as such the
-/// the resulting arrays are _not_ contiguous in memory.
-/// If you need contiguous memory, check out [`filter_array`] instead.
+/// Note: a `take` kernel _copies_ the data in order to make the resulting arrays contiguous in memory.
 ///
 /// Takes care of up- and down-casting the data back and forth on behalf of the caller.
 ///
 /// [take]: arrow2::compute::take::take
 //
-// TODO(cmc): Testing shows that arrow2 is duplicating all the data (??). We have to fix this asap.
+// TODO(cmc): in an ideal world, a `take` kernel should merely _slice_ the data and avoid any allocations/copies
+// where possible (e.g. list-arrays).
+// That is not possible with vanilla `ListArray`s since they don't expose any way to encode optional lengths,
+// in addition to offsets.
+// For internal stuff, we could perhaps provide a custom implementation that returns a `DictionaryArray` instead?
 pub fn take_array<A: ArrowArray + Clone, O: arrow2::types::Index>(
     array: &A,
     indices: &ArrowPrimitiveArray<O>,

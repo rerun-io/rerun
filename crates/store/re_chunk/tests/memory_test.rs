@@ -126,7 +126,8 @@ fn filter_does_allocate() {
 }
 
 #[test]
-// TODO(cmc): Testing shows that arrow2 is duplicating all the data (??). We have to fix this asap.
+// TODO(cmc): That's the end goal, but it is simply impossible with `ListArray`'s encoding.
+//            See `Chunk::take_array`'s doc-comment for more information.
 #[should_panic = "assertion failed: untaken_size_bytes > taken_size_bytes * 10"]
 fn take_does_not_allocate() {
     re_log::setup_logging();
