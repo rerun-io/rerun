@@ -101,6 +101,15 @@ impl DeviceCaps {
         }
     }
 
+    pub fn support_bgra_textures(&self) -> bool {
+        match self.tier {
+            // TODO(wgpu#3583): Incorrectly reported by wgpu right now.
+            // GLES2 does not support BGRA textures!
+            DeviceTier::Gles => false,
+            DeviceTier::FullWebGpuSupport => true,
+        }
+    }
+
     /// Picks the highest possible tier for a given adapter.
     ///
     /// Note that it is always possible to pick a lower tier!

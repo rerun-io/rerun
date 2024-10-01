@@ -18,7 +18,10 @@ mod view_states;
 mod visualizer_entity_subscriber;
 mod visualizer_system;
 
-pub use highlights::{SpaceViewEntityHighlight, SpaceViewHighlights, SpaceViewOutlineMasks};
+pub use highlights::{
+    OptionalSpaceViewEntityHighlight, SpaceViewEntityHighlight, SpaceViewHighlights,
+    SpaceViewOutlineMasks,
+};
 pub use named_system::{IdentifiedViewSystem, PerSystemEntities, ViewSystemIdentifier};
 pub use space_view_class::{
     SpaceViewClass, SpaceViewClassExt, SpaceViewClassLayoutPriority, SpaceViewState,

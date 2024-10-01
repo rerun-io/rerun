@@ -104,7 +104,7 @@ jobs:
           pixi-version: v0.25.0
 
       - name: Rust checks & tests
-        run: pixi run rs-check --skip individual_crates
+        run: pixi run rs-check --skip individual_crates docs_slow
 
   misc-rerun-lints:
     name: Rerun lints

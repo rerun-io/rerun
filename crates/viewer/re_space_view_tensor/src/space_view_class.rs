@@ -374,16 +374,16 @@ impl TensorSpaceView {
             },
             minification: egui::TextureFilter::Linear, // TODO(andreas): allow for mipmapping based filter
             wrap_mode: egui::TextureWrapMode::ClampToEdge,
+            mipmap_mode: None,
         };
 
-        let debug_name = "tensor_slice";
         gpu_bridge::render_image(
             render_ctx,
             &painter,
             image_rect,
             colormapped_texture,
             texture_options,
-            debug_name,
+            re_renderer::DebugLabel::from("tensor_slice"),
         )?;
 
         Ok((response, painter, image_rect))
@@ -424,7 +424,7 @@ pub fn selected_tensor_slice<'a, T: Copy>(
         // This is important for above width/height conversion to work since this assumes at least 2 dimensions.
         tensor
             .view()
-            .into_shape(ndarray::IxDyn(&[tensor.len(), 1]))
+            .into_shape_with_order(ndarray::IxDyn(&[tensor.len(), 1]))
             .unwrap()
     } else {
         tensor.view()
@@ -598,7 +598,7 @@ fn selectors_ui(
     ui: &mut egui::Ui,
     shape: &[TensorDimension],
     slice_selection: &TensorSliceSelection,
-    slice_property: &ViewProperty<'_>,
+    slice_property: &ViewProperty,
 ) {
     let Some(slider) = &slice_selection.slider else {
         return;

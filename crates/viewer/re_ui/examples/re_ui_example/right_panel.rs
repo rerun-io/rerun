@@ -84,7 +84,7 @@ impl RightPanel {
         });
 
         egui::ScrollArea::both()
-            .id_source("example_right_panel")
+            .id_salt("example_right_panel")
             .auto_shrink([false, true])
             .show(ui, |ui| {
                 ui.panel_content(|ui| {
@@ -151,6 +151,26 @@ impl RightPanel {
                                 egui::Stroke::NONE,
                             );
                         }),
+                );
+
+                ui.list_item().show_hierarchical(
+                    ui,
+                    list_item::LabelContent::new("Fake radio button").with_icon_fn(
+                        |ui, rect, _visuals| {
+                            let mut ui = ui.new_child(egui::UiBuilder::new().max_rect(rect));
+                            ui.re_radio_value(&mut self.boolean, true, "");
+                        },
+                    ),
+                );
+
+                ui.list_item().show_hierarchical(
+                    ui,
+                    list_item::LabelContent::new("Fake radio button").with_icon_fn(
+                        |ui, rect, _visuals| {
+                            let mut ui = ui.new_child(egui::UiBuilder::new().max_rect(rect));
+                            ui.re_radio_value(&mut self.boolean, false, "");
+                        },
+                    ),
                 );
 
                 ui.list_item()

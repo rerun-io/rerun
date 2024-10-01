@@ -17,15 +17,14 @@ use re_types::{
 };
 use re_ui::{ContextExt, ModifiersMarkdown, MouseButtonMarkdown};
 use re_viewer_context::{
-    gpu_bridge, Item, ItemSpaceContext, SpaceViewSystemExecutionError, SystemExecutionOutput,
-    ViewQuery, ViewerContext,
+    gpu_bridge, Item, ItemSpaceContext, SpaceViewSystemExecutionError, ViewQuery, ViewerContext,
 };
 use re_viewport_blueprint::ViewProperty;
 
 use crate::{
     scene_bounding_boxes::SceneBoundingBoxes,
     space_camera_3d::SpaceCamera3D,
-    ui::{create_labels, outline_config, picking, screenshot_context_menu, SpatialSpaceViewState},
+    ui::{create_labels, outline_config, screenshot_context_menu, SpatialSpaceViewState},
     view_kind::SpatialSpaceViewKind,
     visualizers::{
         collect_ui_labels, image_view_coordinates, CamerasVisualizer,
@@ -428,17 +427,11 @@ impl SpatialSpaceView3D {
     ) -> Result<(), SpaceViewSystemExecutionError> {
         re_tracing::profile_function!();
 
-        let SystemExecutionOutput {
-            view_systems: parts,
-            context_systems: view_ctx,
-            draw_data,
-        } = system_output;
-
-        // Wrap view systems collection in an Arc for later use in ViewContext.
-        let parts = std::sync::Arc::new(parts);
-
         let highlights = &query.highlights;
-        let space_cameras = &parts.get::<CamerasVisualizer>()?.space_cameras;
+        let space_cameras = &system_output
+            .view_systems
+            .get::<CamerasVisualizer>()?
+            .space_cameras;
         let scene_view_coordinates = ctx
             .recording()
             // Allow logging view-coordinates to `/` and have it apply to `/world` etc.
@@ -446,10 +439,10 @@ impl SpatialSpaceView3D {
             .latest_at_component_at_closest_ancestor(query.space_origin, &ctx.current_query())
             .map(|(_, _index, c)| c);
 
-        let (rect, mut response) =
+        let (ui_rect, mut response) =
             ui.allocate_at_least(ui.available_size(), egui::Sense::click_and_drag());
 
-        if !rect.is_positive() {
+        if !ui_rect.is_positive() {
             return Ok(()); // protect against problems with zero-sized views
         }
 
@@ -463,7 +456,7 @@ impl SpatialSpaceView3D {
 
         // Determine view port resolution and position.
         let resolution_in_pixel =
-            gpu_bridge::viewport_resolution_in_pixels(rect, ui.ctx().pixels_per_point());
+            gpu_bridge::viewport_resolution_in_pixels(ui_rect, ui.ctx().pixels_per_point());
         if resolution_in_pixel[0] == 0 || resolution_in_pixel[1] == 0 {
             return Ok(());
         }
@@ -521,30 +514,38 @@ impl SpatialSpaceView3D {
 
         // Create labels now since their shapes participate are added to scene.ui for picking.
         let (label_shapes, ui_rects) = create_labels(
-            collect_ui_labels(&parts),
-            RectTransform::from_to(rect, rect),
+            collect_ui_labels(&system_output.view_systems),
+            RectTransform::from_to(ui_rect, ui_rect),
             &eye,
             ui,
             highlights,
             SpatialSpaceViewKind::ThreeD,
         );
 
-        if ui.ctx().dragged_id().is_none() {
-            response = picking(
+        if let Some(pointer_pos_ui) = response.hover_pos() {
+            // There's no panning & zooming, so this is an identity transform.
+            let ui_pan_and_zoom_from_ui = RectTransform::from_to(ui_rect, ui_rect);
+
+            let picking_context = crate::picking::PickingContext::new(
+                pointer_pos_ui,
+                ui_pan_and_zoom_from_ui,
+                ui.ctx().pixels_per_point(),
+                &eye,
+            );
+            response = crate::picking_ui::picking(
                 ctx,
-                response,
-                RectTransform::from_to(rect, rect),
-                rect,
+                &picking_context,
                 ui,
-                eye,
+                response,
                 &mut view_builder,
                 state,
-                &view_ctx,
-                &parts,
+                &system_output,
                 &ui_rects,
                 query,
                 SpatialSpaceViewKind::ThreeD,
             )?;
+        } else {
+            state.previous_picking_result = None;
         }
 
         // Track focused entity if any.
@@ -662,7 +663,7 @@ impl SpatialSpaceView3D {
             scene_view_coordinates,
         );
 
-        for draw_data in draw_data {
+        for draw_data in system_output.draw_data {
             view_builder.queue_draw(draw_data);
         }
 
@@ -682,11 +683,19 @@ impl SpatialSpaceView3D {
 
         ui.painter().add(gpu_bridge::new_renderer_callback(
             view_builder,
-            rect,
+            ui_rect,
             clear_color,
         ));
 
-        // Add egui driven labels on top of re_renderer content.
+        // Add egui-rendered spinners/loaders on top of re_renderer content:
+        crate::ui::paint_loading_spinners(
+            ui,
+            RectTransform::from_to(ui_rect, ui_rect),
+            &eye,
+            &system_output.view_systems,
+        );
+
+        // Add egui-rendered labels on top of everything else:
         let painter = ui.painter().with_clip_rect(ui.max_rect());
         painter.extend(label_shapes);
 

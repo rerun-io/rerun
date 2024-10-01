@@ -291,7 +291,7 @@ enum {
     RR_ERROR_CODE_INVALID_COMPONENT_TYPE_HANDLE,
 
     // Recording stream errors
-    _RR_ERROR_CODE_CATEGORY_RECORDING_STREAM = 0x000000100,
+    _RR_ERROR_CODE_CATEGORY_RECORDING_STREAM = 0x00000100,
     RR_ERROR_CODE_RECORDING_STREAM_RUNTIME_FAILURE,
     RR_ERROR_CODE_RECORDING_STREAM_CREATION_FAILURE,
     RR_ERROR_CODE_RECORDING_STREAM_SAVE_FAILURE,
@@ -300,9 +300,13 @@ enum {
     RR_ERROR_CODE_RECORDING_STREAM_CHUNK_VALIDATION_FAILURE,
 
     // Arrow data processing errors.
-    _RR_ERROR_CODE_CATEGORY_ARROW = 0x000001000,
+    _RR_ERROR_CODE_CATEGORY_ARROW = 0x00001000,
     RR_ERROR_CODE_ARROW_FFI_SCHEMA_IMPORT_ERROR,
     RR_ERROR_CODE_ARROW_FFI_ARRAY_IMPORT_ERROR,
+
+    // Utility errors.
+    _RR_ERROR_CODE_CATEGORY_UTILITIES = 0x00010000,
+    RR_ERROR_CODE_VIDEO_LOAD_ERROR,
 
     // Generic errors.
     RR_ERROR_CODE_UNKNOWN,
@@ -544,6 +548,26 @@ extern void rr_recording_stream_send_columns(
     const rr_time_column* time_columns, uint32_t num_time_columns,                //
     const rr_component_column* component_columns, uint32_t num_component_columns, //
     rr_error* error
+);
+
+// ----------------------------------------------------------------------------
+// Other utilities
+
+/// Allocation method for `rr_video_asset_read_frame_timestamps_ns`.
+typedef int64_t* (*rr_alloc_timestamps)(void* alloc_context, uint32_t num_timestamps);
+
+/// Determines the presentation timestamps of all frames inside the video.
+///
+/// Returned timestamps are in nanoseconds since start and are guaranteed to be monotonically increasing.
+///
+/// \param media_type
+/// If not specified (null or empty string), the media type will be guessed from the data.
+/// \param alloc_func
+/// Function used to allocate memory for the returned timestamps.
+/// Guaranteed to be called exactly once with the `alloc_context` pointer as argument.
+extern int64_t* rr_video_asset_read_frame_timestamps_ns(
+    const uint8_t* video_bytes, uint64_t video_bytes_len, rr_string media_type, void* alloc_context,
+    rr_alloc_timestamps alloc_timestamps, rr_error* error
 );
 
 // ----------------------------------------------------------------------------

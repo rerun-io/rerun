@@ -25,7 +25,7 @@ impl TimeControlUi {
             ui.visuals_mut().widgets.hovered.expansion = 0.0;
             ui.visuals_mut().widgets.open.expansion = 0.0;
 
-            egui::ComboBox::from_id_source("timeline")
+            egui::ComboBox::from_id_salt("timeline")
                 .selected_text(time_control.timeline().name().as_str())
                 .show_ui(ui, |ui| {
                     for timeline in times_per_timeline.timelines() {
@@ -44,7 +44,6 @@ impl TimeControlUi {
                 .on_hover_ui(|ui| {
                     list_item::list_item_scope(ui, "tooltip", |ui| {
                         ui.markdown_ui(
-                            egui::Id::new("timeline_selector_tooltip"),
                             r"
 Select timeline.
 

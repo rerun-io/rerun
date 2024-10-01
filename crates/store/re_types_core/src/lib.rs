@@ -144,3 +144,50 @@ pub mod external {
     pub use arrow2;
     pub use re_tuid;
 }
+
+/// Useful macro for staticlly asserting that a `struct` contains some specific fields.
+///
+/// In particular, this is useful to statcially check that an archetype
+/// has a specific component.
+///
+///  ```
+/// # #[macro_use] extern crate re_types_core;
+/// struct Data {
+///     x: f32,
+///     y: String,
+///     z: u32,
+/// }
+///
+/// static_assert_struct_has_fields!(Data, x: f32, y: String);
+/// ```
+///
+/// This will fail to compile because the type is wrong:
+///
+/// ```compile_fail
+/// # #[macro_use] extern crate re_types_core;
+/// struct Data {
+///     x: f32,
+/// }
+///
+/// static_assert_struct_has_fields!(Data, x: u32);
+/// ```
+///
+/// This will fail to compile because the field is missing:
+///
+/// ```compile_fail
+/// # #[macro_use] extern crate re_types_core;
+/// struct Data {
+///     x: f32,
+/// }
+///
+/// static_assert_struct_has_fields!(Data, nosuch: f32);
+/// ```
+///
+#[macro_export]
+macro_rules! static_assert_struct_has_fields {
+    ($strct:ty, $($field:ident: $field_typ:ty),+) => {
+        const _: fn(&$strct) = |s: &$strct| {
+            $(let _: &$field_typ = &s.$field;)+
+        };
+    }
+}

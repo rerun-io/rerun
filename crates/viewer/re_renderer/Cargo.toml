@@ -98,18 +98,21 @@ notify.workspace = true
 getrandom = { workspace = true, features = [
   "js",
 ] } # getrandom needs the `js` feature to be enabled. It is dragged in indirectly.
-js-sys = { workspace = true }
+js-sys.workspace = true
 wasm-bindgen-futures.workspace = true
+web-time.workspace = true
 web-sys = { workspace = true, features = [
+  "DomException",
   "EncodedVideoChunk",
   "EncodedVideoChunkInit",
   "EncodedVideoChunkType",
-  "VideoFrame",
+  "HardwareAcceleration",
   "VideoDecoder",
   "VideoDecoderConfig",
   "VideoDecoderInit",
+  "VideoFrame",
 ] }
-wasm-bindgen = { workspace = true }
+wasm-bindgen.workspace = true
 
 
 [dev-dependencies]

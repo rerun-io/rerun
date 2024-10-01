@@ -7,10 +7,11 @@ use std::sync::Arc;
 use glam::{uvec3, vec3, Vec3, Vec3A};
 use hexasphere::BaseShape;
 use itertools::Itertools as _;
+use re_renderer::mesh::GpuMesh;
+use re_renderer::mesh::MeshError;
 use smallvec::smallvec;
 
 use re_renderer::mesh;
-use re_renderer::resource_managers::{GpuMeshHandle, ResourceManagerError};
 use re_renderer::RenderContext;
 use re_viewer_context::Cache;
 
@@ -77,13 +78,13 @@ pub struct WireframeMesh {
 /// which is to be drawn as triangles rather than lines.
 ///
 /// This type is cheap to clone.
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub struct SolidMesh {
     pub bbox: re_math::BoundingBox,
 
     /// Mesh to render. Note that its colors are set to black, so that the
     /// `MeshInstance::additive_tint` can be used to set the color per instance.
-    pub gpu_mesh: GpuMeshHandle,
+    pub gpu_mesh: Arc<GpuMesh>,
 }
 
 // ----------------------------------------------------------------------------
@@ -119,8 +120,6 @@ impl WireframeCache {
 }
 
 impl Cache for WireframeCache {
-    fn begin_frame(&mut self) {}
-
     fn purge_memory(&mut self) {
         self.0.clear();
     }
@@ -250,8 +249,6 @@ impl SolidCache {
 }
 
 impl Cache for SolidCache {
-    fn begin_frame(&mut self) {}
-
     fn purge_memory(&mut self) {
         self.0.clear();
     }
@@ -262,10 +259,7 @@ impl Cache for SolidCache {
 }
 
 /// Generate a solid triangle mesh without caching.
-fn generate_solid(
-    key: &ProcMeshKey,
-    render_ctx: &RenderContext,
-) -> Result<SolidMesh, ResourceManagerError> {
+fn generate_solid(key: &ProcMeshKey, render_ctx: &RenderContext) -> Result<SolidMesh, MeshError> {
     re_tracing::profile_function!();
 
     let mesh: mesh::Mesh = match *key {
@@ -335,15 +329,9 @@ fn generate_solid(
 
     mesh.sanity_check()?;
 
-    let gpu_mesh = render_ctx.mesh_manager.write().create(
-        render_ctx,
-        &mesh,
-        re_renderer::resource_managers::ResourceLifeTime::LongLived,
-    )?;
-
     Ok(SolidMesh {
         bbox: key.simple_bounding_box(),
-        gpu_mesh,
+        gpu_mesh: Arc::new(GpuMesh::new(render_ctx, &mesh)?),
     })
 }
 

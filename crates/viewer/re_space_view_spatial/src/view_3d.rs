@@ -388,10 +388,7 @@ impl SpaceViewClass for SpatialSpaceView3D {
                         "Scene up is unspecified".to_owned()
                     };
                 ui.label(up_description).on_hover_ui(|ui| {
-                    ui.markdown_ui(
-                        egui::Id::new("view_coordinates_tooltip"),
-                        "Set with `rerun.ViewCoordinates`.",
-                    );
+                    ui.markdown_ui("Set with `rerun.ViewCoordinates`.");
                 });
 
                 if let Some(eye) = &state.state_3d.view_eye {
@@ -437,7 +434,7 @@ impl SpaceViewClass for SpatialSpaceView3D {
         re_tracing::profile_function!();
 
         let state = state.downcast_mut::<SpatialSpaceViewState>()?;
-        state.update_frame_statistics(ui, &system_output, SpatialSpaceViewKind::ThreeD)?;
+        state.update_frame_statistics(ui, &system_output, SpatialSpaceViewKind::ThreeD);
 
         self.view_3d(ctx, ui, state, query, system_output)
     }

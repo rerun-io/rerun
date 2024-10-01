@@ -6,11 +6,9 @@ use smallvec::{smallvec, SmallVec};
 use crate::{
     allocator::create_and_fill_uniform_buffer_batch,
     debug_label::DebugLabel,
-    resource_managers::{GpuTexture2D, ResourceManagerError},
-    wgpu_resources::{
-        BindGroupDesc, BindGroupEntry, BufferDesc, GpuBindGroup, GpuBindGroupLayoutHandle,
-        GpuBuffer,
-    },
+    renderer::MeshRenderer,
+    resource_managers::GpuTexture2D,
+    wgpu_resources::{BindGroupDesc, BindGroupEntry, BufferDesc, GpuBindGroup, GpuBuffer},
     RenderContext, Rgba32Unmul,
 };
 
@@ -150,6 +148,9 @@ pub enum MeshError {
 
     #[error("Index {index} was out of bounds for {num_pos} vertex positions")]
     IndexOutOfBounds { num_pos: usize, index: u32 },
+
+    #[error(transparent)]
+    CpuWriteGpuReadError(#[from] crate::allocator::CpuWriteGpuReadError),
 }
 
 #[derive(Clone)]
@@ -168,7 +169,7 @@ pub struct Material {
 }
 
 #[derive(Clone)]
-pub(crate) struct GpuMesh {
+pub struct GpuMesh {
     // It would be desirable to put both vertex and index buffer into the same buffer, BUT
     // WebGL doesn't allow us to do so! (see https://github.com/gfx-rs/wgpu/pull/3157)
     pub index_buffer: GpuBuffer,
@@ -188,7 +189,7 @@ pub(crate) struct GpuMesh {
 }
 
 #[derive(Clone)]
-pub(crate) struct GpuMaterial {
+pub struct GpuMaterial {
     /// Index range within the owning [`Mesh`] that should be rendered with this material.
     pub index_range: Range<u32>,
 
@@ -209,11 +210,7 @@ pub(crate) mod gpu_data {
 
 impl GpuMesh {
     // TODO(andreas): Take read-only context here and make uploads happen on staging belt.
-    pub fn new(
-        ctx: &RenderContext,
-        mesh_bind_group_layout: GpuBindGroupLayoutHandle,
-        data: &Mesh,
-    ) -> Result<Self, ResourceManagerError> {
+    pub fn new(ctx: &RenderContext, data: &Mesh) -> Result<Self, MeshError> {
         re_tracing::profile_function!();
 
         data.sanity_check()?;
@@ -304,6 +301,10 @@ impl GpuMesh {
             );
 
             let mut materials = SmallVec::with_capacity(data.materials.len());
+
+            // The bind group layout must be in sync with the mesh renderer.
+            let mesh_bind_group_layout = ctx.renderer::<MeshRenderer>().bind_group_layout;
+
             for (material, uniform_buffer_binding) in data
                 .materials
                 .iter()

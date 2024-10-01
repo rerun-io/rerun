@@ -15,14 +15,14 @@ use re_types::{
 };
 use re_ui::{ContextExt as _, ModifiersMarkdown, MouseButtonMarkdown};
 use re_viewer_context::{
-    gpu_bridge, ItemSpaceContext, SpaceViewId, SpaceViewSystemExecutionError,
-    SystemExecutionOutput, ViewQuery, ViewerContext,
+    gpu_bridge, ItemSpaceContext, SpaceViewId, SpaceViewSystemExecutionError, ViewQuery,
+    ViewerContext,
 };
 use re_viewport_blueprint::ViewProperty;
 
 use super::{
     eye::Eye,
-    ui::{create_labels, picking, screenshot_context_menu},
+    ui::{create_labels, screenshot_context_menu},
 };
 use crate::{
     query_pinhole_legacy,
@@ -116,6 +116,8 @@ fn ui_from_scene(
     } else if bounds != updated_bounds {
         bounds_property.save_blueprint_component(ctx, &updated_bounds);
     }
+    // Update stored bounds on the state, so visualizers see an up-to-date value.
+    view_state.visual_bounds_2d = Some(bounds);
 
     RectTransform::from_to(letterboxed_bounds, response.rect)
 }
@@ -154,15 +156,6 @@ impl SpatialSpaceView2D {
         system_output: re_viewer_context::SystemExecutionOutput,
     ) -> Result<(), SpaceViewSystemExecutionError> {
         re_tracing::profile_function!();
-
-        let SystemExecutionOutput {
-            view_systems: parts,
-            context_systems: view_ctx,
-            draw_data,
-        } = system_output;
-
-        // Wrap view systems collection in an Arc for later use in ViewContext.
-        let parts = std::sync::Arc::new(parts);
 
         if ui.available_size().min_elem() <= 0.0 {
             return Ok(());
@@ -205,7 +198,7 @@ impl SpatialSpaceView2D {
 
         // Create labels now since their shapes participate are added to scene.ui for picking.
         let (label_shapes, ui_rects) = create_labels(
-            collect_ui_labels(&parts),
+            collect_ui_labels(&system_output.view_systems),
             ui_from_scene,
             &eye,
             ui,
@@ -219,25 +212,30 @@ impl SpatialSpaceView2D {
 
         let mut view_builder = ViewBuilder::new(render_ctx, target_config);
 
-        if ui.ctx().dragged_id().is_none() {
-            response = picking(
-                ctx,
-                response,
+        if let Some(pointer_pos_ui) = response.hover_pos() {
+            let picking_context = crate::picking::PickingContext::new(
+                pointer_pos_ui,
                 scene_from_ui,
-                painter.clip_rect(),
+                ui.ctx().pixels_per_point(),
+                &eye,
+            );
+            response = crate::picking_ui::picking(
+                ctx,
+                &picking_context,
                 ui,
-                eye,
+                response,
                 &mut view_builder,
                 state,
-                &view_ctx,
-                &parts,
+                &system_output,
                 &ui_rects,
                 query,
                 SpatialSpaceViewKind::TwoD,
             )?;
+        } else {
+            state.previous_picking_result = None;
         }
 
-        for draw_data in draw_data {
+        for draw_data in system_output.draw_data {
             view_builder.queue_draw(draw_data);
         }
 
@@ -288,7 +286,10 @@ impl SpatialSpaceView2D {
             ));
         }
 
-        // Add egui driven labels on top of re_renderer content.
+        // Add egui-rendered spinners/loaders on top of re_renderer content:
+        crate::ui::paint_loading_spinners(ui, ui_from_scene, &eye, &system_output.view_systems);
+
+        // Add egui-rendered labels on top of everything else:
         painter.extend(label_shapes);
 
         Ok(())

@@ -192,7 +192,7 @@ jobs:
       - name: Render benchmark result
         if: github.ref == 'refs/heads/main'
         run: |
-          python3 -m pip install google-cloud-storage==2.9.0
+          python3 -m pip install --break-system-packages google-cloud-storage==2.9.0
           scripts/ci/render_bench.py sizes \
             --after $(date -d"180 days ago" +%Y-%m-%d) \
             --output "gs://rerun-builds/graphs"

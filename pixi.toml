@@ -318,7 +318,6 @@ py-plot-dashboard = { cmd = "python tests/python/plot_dashboard_stress/main.py",
 
 
 # Run the Python tests.
-# Don't call this on CI - use `nox` to run tests on all supported Python versions instead.
 py-test = { cmd = "python -m pytest -vv rerun_py/tests/unit", depends_on = [
   "py-build",
 ] }
@@ -442,7 +441,6 @@ typos = ">=1.16.20"
 cryptography = "==38.0.4"        # For `upload_image.py`
 google-cloud-storage = "==2.9.0" # For `upload_image.py`
 hatch = "==1.12.0"               # For `rerun_notebook`
-nox = ">=2024.3.2"               # The conda-forge package is (wrongly) tagged as platform-specific
 Pillow = "==10.0.0"              # For `thumbnails.py`
 pygithub = "==1.59.0"            # Among others for `generate_pr_summary.py`, `sync_release_assets.py`, `update_pr_body.py`.
 requests = ">=2.31,<3"           # For `thumbnails.py` & `upload_image.py`
@@ -473,6 +471,9 @@ cxx-compiler = "1.6.0.*"
 
 [feature.cpp.target.win-64.dependencies]
 vs2022_win-64 = "19.37.32822"
+
+[feature.cpp.pypi-dependencies]
+ghp-import = "==2.1.0" # for CI documentation handling
 
 # PYTHON DEV ENVIRONMENT
 [feature.python-dev]
@@ -559,6 +560,7 @@ controlnet = { path = "examples/python/controlnet", editable = true }
 detect_and_track_objects = { path = "examples/python/detect_and_track_objects", editable = true }
 dicom_mri = { path = "examples/python/dicom_mri", editable = true }
 dna = { path = "examples/python/dna", editable = true }
+drone_lidar = { path = "examples/python/drone_lidar", editable = true }
 incremental_logging = { path = "examples/python/incremental_logging", editable = true }
 lidar = { path = "examples/python/lidar", editable = true }
 live_camera_edge_detection = { path = "examples/python/live_camera_edge_detection", editable = true }

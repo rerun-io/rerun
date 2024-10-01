@@ -5,7 +5,7 @@ use std::sync::Arc;
 use arrow2::datatypes::DataType as ArrowDataType;
 use nohash_hasher::IntMap;
 
-use re_chunk::{Chunk, ChunkId, RowId};
+use re_chunk::{Chunk, ChunkId, RowId, TransportChunk};
 use re_log_types::{EntityPath, StoreId, TimeInt, Timeline};
 use re_types_core::ComponentName;
 
@@ -435,6 +435,10 @@ impl std::fmt::Display for ChunkStore {
 // ---
 
 impl ChunkStore {
+    /// Instantiate a new empty `ChunkStore` with the given [`ChunkStoreConfig`].
+    ///
+    /// See also:
+    /// * [`ChunkStore::from_rrd_filepath`]
     #[inline]
     pub fn new(id: StoreId, config: ChunkStoreConfig) -> Self {
         Self {
@@ -498,5 +502,69 @@ impl ChunkStore {
     #[inline]
     pub fn lookup_datatype(&self, component_name: &ComponentName) -> Option<&ArrowDataType> {
         self.type_registry.get(component_name)
+    }
+}
+
+// ---
+
+impl ChunkStore {
+    /// Instantiate a new `ChunkStore` with the given [`ChunkStoreConfig`].
+    ///
+    /// The store will be prefilled using the data at the specified path.
+    ///
+    /// See also:
+    /// * [`ChunkStore::new`]
+    pub fn from_rrd_filepath(
+        store_config: &ChunkStoreConfig,
+        path_to_rrd: impl AsRef<std::path::Path>,
+        version_policy: crate::VersionPolicy,
+    ) -> anyhow::Result<BTreeMap<StoreId, Self>> {
+        let path_to_rrd = path_to_rrd.as_ref();
+
+        re_tracing::profile_function!(path_to_rrd.to_string_lossy());
+
+        use anyhow::Context as _;
+
+        let mut stores = BTreeMap::new();
+
+        let rrd_file = std::fs::File::open(path_to_rrd)
+            .with_context(|| format!("couldn't open {path_to_rrd:?}"))?;
+
+        let mut decoder = re_log_encoding::decoder::Decoder::new(version_policy, rrd_file)
+            .with_context(|| format!("couldn't decode {path_to_rrd:?}"))?;
+
+        // TODO(cmc): offload the decoding to a background thread.
+        for res in &mut decoder {
+            let msg = res.with_context(|| format!("couldn't decode message {path_to_rrd:?} "))?;
+            match msg {
+                re_log_types::LogMsg::SetStoreInfo(info) => {
+                    stores
+                        .entry(info.info.store_id.clone())
+                        .or_insert_with(|| Self::new(info.info.store_id, store_config.clone()));
+                }
+
+                re_log_types::LogMsg::ArrowMsg(store_id, msg) => {
+                    let Some(store) = stores.get_mut(&store_id) else {
+                        anyhow::bail!("unknown store ID: {store_id}");
+                    };
+
+                    let transport = TransportChunk {
+                        schema: msg.schema.clone(),
+                        data: msg.chunk.clone(),
+                    };
+
+                    let chunk = Chunk::from_transport(&transport)
+                        .with_context(|| format!("couldn't decode chunk {path_to_rrd:?} "))?;
+
+                    store
+                        .insert_chunk(&Arc::new(chunk))
+                        .with_context(|| format!("couldn't insert chunk {path_to_rrd:?} "))?;
+                }
+
+                re_log_types::LogMsg::BlueprintActivationCommand(_) => {}
+            }
+        }
+
+        Ok(stores)
     }
 }

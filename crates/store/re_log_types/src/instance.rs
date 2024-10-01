@@ -63,8 +63,11 @@ impl Instance {
 
     /// Retrieves 2D image coordinates (x, y) encoded in an instance key
     #[inline]
-    pub fn to_2d_image_coordinate(self, image_width: u64) -> [u32; 2] {
-        [(self.0 % image_width) as u32, (self.0 / image_width) as u32]
+    pub fn to_2d_image_coordinate(self, image_width: u32) -> [u32; 2] {
+        [
+            (self.0 % image_width as u64) as u32,
+            (self.0 / image_width as u64) as u32,
+        ]
     }
 }
 

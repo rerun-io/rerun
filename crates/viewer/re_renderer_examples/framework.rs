@@ -255,9 +255,6 @@ impl<E: Example + 'static> Application<E> {
                         });
 
                 {
-                    // Lock render pipelines for the lifetime of the composite pass.
-                    let render_pipelines = self.re_ctx.gpu_resources.render_pipelines.resources();
-
                     let mut composite_pass =
                         composite_cmd_encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
                             label: None,
@@ -283,11 +280,9 @@ impl<E: Example + 'static> Application<E> {
                             0.0,
                             1.0,
                         );
-                        draw_result.view_builder.composite(
-                            &self.re_ctx,
-                            &render_pipelines,
-                            &mut composite_pass,
-                        );
+                        draw_result
+                            .view_builder
+                            .composite(&self.re_ctx, &mut composite_pass);
                     }
                 };
 
@@ -337,12 +332,7 @@ pub fn load_rerun_mesh(re_ctx: &RenderContext) -> Vec<re_renderer::renderer::Mes
     let mut zipped_obj = zip.by_name("rerun.obj").unwrap();
     let mut obj_data = Vec::new();
     std::io::Read::read_to_end(&mut zipped_obj, &mut obj_data).unwrap();
-    re_renderer::importer::obj::load_obj_from_buffer(
-        &obj_data,
-        re_renderer::resource_managers::ResourceLifeTime::LongLived,
-        re_ctx,
-    )
-    .unwrap()
+    re_renderer::importer::obj::load_obj_from_buffer(&obj_data, re_ctx).unwrap()
 }
 
 struct WrapApp<E: Example + 'static> {

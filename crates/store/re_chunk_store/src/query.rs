@@ -430,9 +430,8 @@ impl ChunkStore {
         entity_path: &EntityPath,
         component_name: ComponentName,
     ) -> Vec<Arc<Chunk>> {
-        re_tracing::profile_function!(format!("{query:?}"));
-
-        self.query_id.fetch_add(1, Ordering::Relaxed);
+        // Don't do a profile scope here, this can have a lot of overhead when executing many small queries.
+        //re_tracing::profile_function!(format!("{query:?}"));
 
         // Reminder: if a chunk has been indexed for a given component, then it must contain at
         // least one non-null value for that column.
@@ -510,7 +509,8 @@ impl ChunkStore {
         query: &LatestAtQuery,
         temporal_chunk_ids_per_time: &ChunkIdSetPerTime,
     ) -> Option<Vec<Arc<Chunk>>> {
-        re_tracing::profile_function!();
+        // Don't do a profile scope here, this can have a lot of overhead when executing many small queries.
+        //re_tracing::profile_function!();
 
         let upper_bound = temporal_chunk_ids_per_time
             .per_start_time

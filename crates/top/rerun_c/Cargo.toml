@@ -36,6 +36,7 @@ test = false
 [dependencies]
 re_log = { workspace = true, features = ["setup"] }
 re_sdk = { workspace = true, features = ["data_loaders"] }
+re_video.workspace = true
 
 ahash.workspace = true
 arrow2.workspace = true

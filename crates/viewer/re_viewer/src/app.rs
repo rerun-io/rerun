@@ -73,6 +73,12 @@ pub struct StartupOptions {
     /// Forces wgpu backend to use the specified graphics API, e.g. `webgl` or `webgpu`.
     pub force_wgpu_backend: Option<String>,
 
+    /// Overwrites hardware acceleration option for video decoding.
+    ///
+    /// By default uses the last provided setting, which is `auto` if never configured.
+    /// This also can be changed in the viewer's option menu.
+    pub video_decoder_hw_acceleration: Option<re_renderer::video::DecodeHardwareAcceleration>,
+
     /// Fullscreen is handled by JS on web.
     ///
     /// This holds some callbacks which we use to communicate
@@ -120,6 +126,7 @@ impl Default for StartupOptions {
 
             expect_data_soon: None,
             force_wgpu_backend: None,
+            video_decoder_hw_acceleration: None,
 
             #[cfg(target_arch = "wasm32")]
             fullscreen_options: Default::default(),
@@ -224,7 +231,7 @@ impl App {
             );
         }
 
-        let state: AppState = if startup_options.persist_state {
+        let mut state: AppState = if startup_options.persist_state {
             storage
                 .and_then(|storage| {
                     // This re-implements: `eframe::get_value` so we can customize the warning message.
@@ -244,6 +251,10 @@ impl App {
         } else {
             AppState::default()
         };
+
+        if let Some(video_decoder_hw_acceleration) = startup_options.video_decoder_hw_acceleration {
+            state.app_options.video_decoder_hw_acceleration = video_decoder_hw_acceleration;
+        }
 
         let mut space_view_class_registry = SpaceViewClassRegistry::default();
         if let Err(err) = populate_space_view_class_registry_with_builtin(
@@ -509,7 +520,7 @@ impl App {
                     let blueprint_db = store_hub.entity_db_mut(&blueprint_id);
                     for chunk in updates {
                         match blueprint_db.add_chunk(&Arc::new(chunk)) {
-                            Ok(()) => {}
+                            Ok(_store_events) => {}
                             Err(err) => {
                                 re_log::warn_once!("Failed to store blueprint delta: {err}");
                             }
@@ -766,6 +777,14 @@ impl App {
                 }
             }
 
+            #[cfg(debug_assertions)]
+            UICommand::ResetEguiMemory => {
+                egui_ctx.memory_mut(|mem| *mem = Default::default());
+
+                // re-apply style, which is lost when resetting memory
+                re_ui::apply_style_and_install_loaders(egui_ctx);
+            }
+
             #[cfg(target_arch = "wasm32")]
             UICommand::CopyDirectLink => {
                 self.run_copy_direct_link_command(store_context);
@@ -897,6 +916,14 @@ impl App {
             .frame(DesignTokens::top_panel_frame())
             .show_animated_inside(ui, self.egui_debug_panel_open, |ui| {
                 egui::ScrollArea::vertical().show(ui, |ui| {
+                    if ui
+                        .button("request_discard")
+                        .on_hover_text("Request a second layout pass. Just for testing.")
+                        .clicked()
+                    {
+                        ui.ctx().request_discard("testing");
+                    }
+
                     egui::CollapsingHeader::new("egui settings")
                         .default_open(false)
                         .show(ui, |ui| {
@@ -1026,6 +1053,8 @@ impl App {
         let start = web_time::Instant::now();
 
         while let Some((channel_source, msg)) = self.rx.try_recv() {
+            re_log::trace!("Received a message from {channel_source:?}"); // Used by `test_ui_wakeup` test app!
+
             let msg = match msg.payload {
                 re_smart_channel::SmartMessagePayload::Msg(msg) => msg,
 
@@ -1068,15 +1097,30 @@ impl App {
                 re_log::warn_once!("Loading a blueprint {store_id} that is active. See https://github.com/rerun-io/rerun/issues/5514 for details.");
             }
 
-            let entity_db = store_hub.entity_db_mut(store_id);
+            // TODO(cmc): we have to keep grabbing and releasing entity_db because everything references
+            // everything and some of it is mutable and some not… it's really not pretty, but it
+            // does the job for now.
 
-            if entity_db.data_source.is_none() {
-                entity_db.data_source = Some((*channel_source).clone());
+            {
+                let entity_db = store_hub.entity_db_mut(store_id);
+                if entity_db.data_source.is_none() {
+                    entity_db.data_source = Some((*channel_source).clone());
+                }
             }
 
-            if let Err(err) = entity_db.add(&msg) {
-                re_log::error_once!("Failed to add incoming msg: {err}");
-            };
+            match store_hub.entity_db_mut(store_id).add(&msg) {
+                Ok(store_events) => {
+                    if let Some(caches) = store_hub.active_caches() {
+                        caches.on_store_events(&store_events);
+                    }
+                }
+
+                Err(err) => {
+                    re_log::error_once!("Failed to add incoming msg: {err}");
+                }
+            }
+
+            let entity_db = store_hub.entity_db_mut(store_id);
 
             match &msg {
                 LogMsg::SetStoreInfo(_) => {
@@ -1214,7 +1258,6 @@ impl App {
                 );
             }
             store_hub.purge_fraction_of_ram(fraction_to_purge);
-            self.state.cache.purge_memory();
 
             let mem_use_after = MemoryUse::capture();
 
@@ -1240,10 +1283,11 @@ impl App {
 
         store_hub.clear_all_cloned_blueprints();
 
-        // Reset egui, but keep the style:
-        let style = egui_ctx.style();
+        // Reset egui:
         egui_ctx.memory_mut(|mem| *mem = Default::default());
-        egui_ctx.set_style((*style).clone());
+
+        // Restore style:
+        re_ui::apply_style_and_install_loaders(egui_ctx);
 
         if let Err(err) = crate::reset_viewer_persistence() {
             re_log::warn!("Failed to reset viewer: {err}");
@@ -1568,7 +1612,21 @@ impl eframe::App for App {
 
         self.purge_memory_if_needed(&mut store_hub);
 
-        self.state.cache.begin_frame();
+        {
+            // TODO(andreas): store the re_renderer somewhere else.
+            let egui_renderer = {
+                let render_state = frame.wgpu_render_state().unwrap();
+                &mut render_state.renderer.read()
+            };
+            let render_ctx = egui_renderer
+                .callback_resources
+                .get::<re_renderer::RenderContext>()
+                .unwrap();
+
+            // We haven't called `begin_frame` at this point, so pretend we did and add one to the active frame index.
+            let renderer_active_frame_idx = render_ctx.active_frame_idx().wrapping_add(1);
+            store_hub.begin_frame(renderer_active_frame_idx);
+        }
 
         self.show_text_logs_as_notifications();
         self.receive_messages(&mut store_hub, egui_ctx);

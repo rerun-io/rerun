@@ -22,14 +22,25 @@ mod videos;
 
 pub use cameras::CamerasVisualizer;
 pub use depth_images::DepthImageVisualizer;
-pub use encoded_image::EncodedImageVisualizer;
-pub use images::ImageVisualizer;
-pub use segmentation_images::SegmentationImageVisualizer;
 pub use transform3d_arrows::{add_axis_arrows, AxisLengthDetector, Transform3DArrowsVisualizer};
 pub use utilities::{
-    bounding_box_for_textured_rect, entity_iterator, process_labels_3d, textured_rect_from_image,
-    SpatialViewVisualizerData, UiLabel, UiLabelTarget,
+    entity_iterator, process_labels_3d, textured_rect_from_image, SpatialViewVisualizerData,
+    UiLabel, UiLabelTarget,
 };
+
+/// Shows a loading animation in a spatial view.
+///
+/// Represents a 2D rectangle, oriented somewhere in scene coordinates.
+#[derive(Clone, Copy, Debug)]
+pub struct LoadingSpinner {
+    pub center: glam::Vec3,
+
+    /// The "radius" along one local axis.
+    pub half_extent_u: glam::Vec3,
+
+    /// The "radius" along the other local axis.
+    pub half_extent_v: glam::Vec3,
+}
 
 // ---
 
@@ -86,7 +97,7 @@ pub fn register_2d_spatial_visualizers(
     system_registry.register_visualizer::<segmentation_images::SegmentationImageVisualizer>()?;
     system_registry.register_visualizer::<transform3d_arrows::AxisLengthDetector>()?;
     system_registry.register_visualizer::<transform3d_arrows::Transform3DArrowsVisualizer>()?;
-    system_registry.register_visualizer::<videos::AssetVideoVisualizer>()?;
+    system_registry.register_visualizer::<videos::VideoFrameReferenceVisualizer>()?;
     Ok(())
 }
 
@@ -111,7 +122,7 @@ pub fn register_3d_spatial_visualizers(
     system_registry.register_visualizer::<ellipsoids::Ellipsoids3DVisualizer>()?;
     system_registry.register_visualizer::<transform3d_arrows::AxisLengthDetector>()?;
     system_registry.register_visualizer::<transform3d_arrows::Transform3DArrowsVisualizer>()?;
-    system_registry.register_visualizer::<videos::AssetVideoVisualizer>()?;
+    system_registry.register_visualizer::<videos::VideoFrameReferenceVisualizer>()?;
     Ok(())
 }
 
@@ -132,16 +143,10 @@ pub fn visualizers_processing_draw_order() -> impl Iterator<Item = ViewSystemIde
 }
 
 pub fn collect_ui_labels(visualizers: &VisualizerCollection) -> Vec<UiLabel> {
-    let mut ui_labels = Vec::new();
-    for visualizer in visualizers.iter() {
-        if let Some(data) = visualizer
-            .data()
-            .and_then(|d| d.downcast_ref::<SpatialViewVisualizerData>())
-        {
-            ui_labels.extend(data.ui_labels.iter().cloned());
-        }
-    }
-    ui_labels
+    visualizers
+        .iter_visualizer_data::<SpatialViewVisualizerData>()
+        .flat_map(|data| data.ui_labels.iter().cloned())
+        .collect()
 }
 
 /// Process [`Color`] components using annotations and default colors.

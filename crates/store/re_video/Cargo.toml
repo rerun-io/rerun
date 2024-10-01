@@ -27,13 +27,16 @@ features = ["all"]
 
 [dependencies]
 crossbeam.workspace = true
-mp4.workspace = true
+itertools.workspace = true
 ordered-float.workspace = true
 parking_lot.workspace = true
+re_mp4.workspace = true
+thiserror.workspace = true
 
 # If this package fails to build, install `nasm` locally, or build through `pixi`.
 # dav1d = { path = "/home/jan/rerun-io/dav1d-rs", package = "dav1d" }
 dav1d = { git = "https://github.com/rerun-io/rav1d-rs" }
+# dav1d = { path = "../../../../rav1d-rs", package = "dav1d" }
 
 [dev-dependencies]
 indicatif.workspace = true

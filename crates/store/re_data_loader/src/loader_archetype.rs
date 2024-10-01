@@ -1,7 +1,12 @@
 use re_chunk::{Chunk, RowId};
-use re_log_types::NonMinI64;
 use re_log_types::{EntityPath, TimeInt, TimePoint};
-use re_types::components::MediaType;
+use re_types::archetypes::{AssetVideo, VideoFrameReference};
+use re_types::components::VideoTimestamp;
+use re_types::Archetype;
+use re_types::{components::MediaType, ComponentBatch};
+
+use arrow2::array::PrimitiveArray as ArrowPrimitiveArray;
+use arrow2::Either;
 
 use crate::{DataLoader, DataLoaderError, LoadedData};
 
@@ -164,86 +169,6 @@ fn load_image(
     Ok(rows.into_iter())
 }
 
-/// TODO(#7272): fix this
-/// Used to expand the timeline when logging a video, so that the video can be played back.
-#[derive(Clone, Copy)]
-struct VideoTick(re_types::datatypes::Float64);
-
-impl re_types::AsComponents for VideoTick {
-    fn as_component_batches(&self) -> Vec<re_types::MaybeOwnedComponentBatch<'_>> {
-        vec![re_types::NamedIndicatorComponent("VideoTick".into()).to_batch()]
-    }
-}
-
-impl re_types::Loggable for VideoTick {
-    type Name = re_types::ComponentName;
-
-    fn name() -> Self::Name {
-        "rerun.components.VideoTick".into()
-    }
-
-    fn arrow_datatype() -> re_chunk::external::arrow2::datatypes::DataType {
-        re_types::datatypes::Float64::arrow_datatype()
-    }
-
-    fn to_arrow_opt<'a>(
-        data: impl IntoIterator<Item = Option<impl Into<std::borrow::Cow<'a, Self>>>>,
-    ) -> re_types::SerializationResult<Box<dyn re_chunk::external::arrow2::array::Array>>
-    where
-        Self: 'a,
-    {
-        re_types::datatypes::Float64::to_arrow_opt(
-            data.into_iter()
-                .map(|datum| datum.map(|datum| datum.into().0)),
-        )
-    }
-}
-
-impl re_types::SizeBytes for VideoTick {
-    fn heap_size_bytes(&self) -> u64 {
-        0
-    }
-}
-
-#[derive(Clone, Copy)]
-struct ExperimentalFeature;
-
-impl re_types::AsComponents for ExperimentalFeature {
-    fn as_component_batches(&self) -> Vec<re_types::MaybeOwnedComponentBatch<'_>> {
-        vec![re_types::NamedIndicatorComponent("ExperimentalFeature".into()).to_batch()]
-    }
-}
-
-impl re_types::Loggable for ExperimentalFeature {
-    type Name = re_types::ComponentName;
-
-    fn name() -> Self::Name {
-        "rerun.components.ExperimentalFeature".into()
-    }
-
-    fn arrow_datatype() -> re_chunk::external::arrow2::datatypes::DataType {
-        re_types::datatypes::Utf8::arrow_datatype()
-    }
-
-    fn to_arrow_opt<'a>(
-        data: impl IntoIterator<Item = Option<impl Into<std::borrow::Cow<'a, Self>>>>,
-    ) -> re_types::SerializationResult<Box<dyn re_chunk::external::arrow2::array::Array>>
-    where
-        Self: 'a,
-    {
-        re_types::datatypes::Utf8::to_arrow_opt(
-            data.into_iter()
-                .map(|datum| datum.map(|_| re_types::datatypes::Utf8("This is an experimental feature that is under active development and not ready for production!".into()))),
-        )
-    }
-}
-
-impl re_types::SizeBytes for ExperimentalFeature {
-    fn heap_size_bytes(&self) -> u64 {
-        0
-    }
-}
-
 fn load_video(
     filepath: &std::path::Path,
     mut timepoint: TimePoint,
@@ -252,51 +177,73 @@ fn load_video(
 ) -> Result<impl ExactSizeIterator<Item = Chunk>, DataLoaderError> {
     re_tracing::profile_function!();
 
-    timepoint.insert(
-        re_log_types::Timeline::new_temporal("video"),
-        re_log_types::TimeInt::new_temporal(0),
-    );
+    let video_timeline = re_log_types::Timeline::new_temporal("video");
+    timepoint.insert(video_timeline, re_log_types::TimeInt::new_temporal(0));
 
-    let media_type = MediaType::guess_from_path(filepath);
+    let video_asset = AssetVideo::new(contents);
 
-    let duration_s = match media_type.as_ref().map(|v| v.as_str()) {
-        Some("video/mp4") => re_video::demux::mp4::load_mp4(&contents)
-            .ok()
-            .map(|v| v.duration.as_f64() / 1_000.0),
-        _ => None,
+    let video_frame_reference_chunk = match video_asset.read_frame_timestamps_ns() {
+        Ok(frame_timestamps_ns) => {
+            // Time column.
+            let is_sorted = Some(true);
+            let time_column_times = ArrowPrimitiveArray::from_slice(&frame_timestamps_ns);
+            let time_column =
+                re_chunk::TimeColumn::new(is_sorted, video_timeline, time_column_times);
+
+            // VideoTimestamp component column.
+            let video_timestamps = frame_timestamps_ns
+                .into_iter()
+                .map(VideoTimestamp::from_nanoseconds)
+                .collect::<Vec<_>>();
+            let video_timestamp_batch = &video_timestamps as &dyn ComponentBatch;
+            let video_timestamp_list_array = video_timestamp_batch
+                .to_arrow_list_array()
+                .map_err(re_chunk::ChunkError::from)?;
+
+            // Indicator column.
+            let video_frame_reference_indicators =
+                <VideoFrameReference as Archetype>::Indicator::new_array(video_timestamps.len());
+            let video_frame_reference_indicators_list_array = video_frame_reference_indicators
+                .to_arrow_list_array()
+                .map_err(re_chunk::ChunkError::from)?;
+
+            Some(Chunk::from_auto_row_ids(
+                re_chunk::ChunkId::new(),
+                entity_path.clone(),
+                std::iter::once((video_timeline, time_column)).collect(),
+                [
+                    (
+                        VideoFrameReference::indicator().name(),
+                        video_frame_reference_indicators_list_array,
+                    ),
+                    (video_timestamp_batch.name(), video_timestamp_list_array),
+                ]
+                .into_iter()
+                .collect(),
+            )?)
+        }
+
+        Err(err) => {
+            re_log::warn_once!(
+                "Failed to read frame timestamps from video asset {filepath:?}: {err}"
+            );
+            None
+        }
+    };
+
+    // Put video asset into its own chunk since it can be fairly large.
+    let video_asset_chunk = Chunk::builder(entity_path.clone())
+        .with_archetype(RowId::new(), timepoint.clone(), &video_asset)
+        .build()?;
+
+    if let Some(video_frame_reference_chunk) = video_frame_reference_chunk {
+        Ok(Either::Left(
+            [video_asset_chunk, video_frame_reference_chunk].into_iter(),
+        ))
+    } else {
+        // Still log the video asset, but don't include video frames.
+        Ok(Either::Right(std::iter::once(video_asset_chunk)))
     }
-    .unwrap_or(100.0)
-    .ceil() as i64;
-
-    let mut rows = vec![Chunk::builder(entity_path.clone())
-        .with_archetype(
-            RowId::new(),
-            timepoint.clone(),
-            &re_types::archetypes::AssetVideo::from_file_contents(contents, media_type),
-        )
-        .with_component_batch(RowId::new(), timepoint.clone(), &ExperimentalFeature)
-        .build()?];
-
-    for i in 0..duration_s {
-        // We need some breadcrumbs of timepoints because the video doesn't have a duration yet.
-        // TODO(#7272): fix this
-        timepoint.insert(
-            re_log_types::Timeline::new_temporal("video"),
-            re_log_types::TimeInt::from_seconds(NonMinI64::new(i).expect("i > i64::MIN")),
-        );
-
-        rows.push(
-            Chunk::builder(entity_path.clone())
-                .with_component_batch(
-                    RowId::new(),
-                    timepoint.clone(),
-                    &VideoTick(re_types::datatypes::Float64(i as f64)),
-                )
-                .build()?,
-        );
-    }
-
-    Ok(rows.into_iter())
 }
 
 fn load_mesh(

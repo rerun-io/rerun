@@ -1,46 +1,25 @@
-#![allow(clippy::manual_map)] // Annoying
-
-use std::sync::Arc;
-
 use egui::{epaint::util::OrderedFloat, text::TextWrapping, NumExt, WidgetText};
-use itertools::chain;
-use re_math::BoundingBox;
 
-use re_data_ui::{
-    item_ui, show_zoomed_image_region, show_zoomed_image_region_area_outline, DataUi,
-};
 use re_format::format_f32;
-use re_log_types::Instance;
+use re_math::BoundingBox;
 use re_renderer::OutlineConfig;
-use re_space_view::{latest_at_with_blueprint_resolved_data, ScreenshotMode};
+use re_space_view::ScreenshotMode;
 use re_types::{
-    archetypes::Pinhole,
-    blueprint::components::VisualBounds2D,
-    components::{Colormap, DepthMeter, ImageBuffer, ImageFormat, ViewCoordinates},
+    archetypes::Pinhole, blueprint::components::VisualBounds2D, components::ViewCoordinates,
     image::ImageKind,
-    Loggable as _,
 };
-use re_ui::{
-    list_item::{list_item_scope, PropertyContent},
-    ContextExt as _, UiExt as _,
-};
+use re_ui::{ContextExt as _, UiExt as _};
 use re_viewer_context::{
-    HoverHighlight, ImageInfo, ImageStatsCache, Item, ItemSpaceContext, SelectionHighlight,
-    SpaceViewHighlights, SpaceViewState, SpaceViewSystemExecutionError, UiLayout, ViewContext,
-    ViewContextCollection, ViewQuery, ViewerContext, VisualizerCollection,
+    HoverHighlight, SelectionHighlight, SpaceViewHighlights, SpaceViewState, ViewerContext,
 };
-use re_viewport_blueprint::SpaceViewBlueprint;
 
-use crate::eye::EyeMode;
-use crate::scene_bounding_boxes::SceneBoundingBoxes;
 use crate::{
-    contexts::AnnotationSceneContext,
-    picking::{PickableUiRect, PickingContext, PickingHitType, PickingResult},
+    eye::EyeMode,
+    pickable_textured_rect::PickableRectSourceData,
+    picking::{PickableUiRect, PickingResult},
+    scene_bounding_boxes::SceneBoundingBoxes,
     view_kind::SpatialSpaceViewKind,
-    visualizers::{
-        CamerasVisualizer, DepthImageVisualizer, EncodedImageVisualizer, ImageVisualizer,
-        SegmentationImageVisualizer, UiLabel, UiLabelTarget,
-    },
+    visualizers::{SpatialViewVisualizerData, UiLabel, UiLabelTarget},
 };
 
 use super::{eye::Eye, ui_3d::View3DState};
@@ -98,22 +77,26 @@ impl SpatialSpaceViewState {
         ui: &egui::Ui,
         system_output: &re_viewer_context::SystemExecutionOutput,
         space_kind: SpatialSpaceViewKind,
-    ) -> Result<(), SpaceViewSystemExecutionError> {
+    ) {
         re_tracing::profile_function!();
 
         self.bounding_boxes
             .update(ui, &system_output.view_systems, space_kind);
 
         let view_systems = &system_output.view_systems;
-
-        self.num_non_segmentation_images_last_frame +=
-            view_systems.get::<EncodedImageVisualizer>()?.images.len();
-        self.num_non_segmentation_images_last_frame +=
-            view_systems.get::<ImageVisualizer>()?.images.len();
-        self.num_non_segmentation_images_last_frame +=
-            view_systems.get::<DepthImageVisualizer>()?.images.len();
-
-        Ok(())
+        self.num_non_segmentation_images_last_frame = view_systems
+            .iter_visualizer_data::<SpatialViewVisualizerData>()
+            .flat_map(|data| {
+                data.pickable_rects.iter().map(|pickable_rect| {
+                    if let PickableRectSourceData::Image { image, .. } = &pickable_rect.source_data
+                    {
+                        (image.kind != ImageKind::Segmentation) as usize
+                    } else {
+                        0
+                    }
+                })
+            })
+            .sum();
     }
 
     pub fn bounding_box_ui(&mut self, ui: &mut egui::Ui, spatial_kind: SpatialSpaceViewKind) {
@@ -286,6 +269,57 @@ pub fn create_labels(
     (label_shapes, ui_rects)
 }
 
+pub fn paint_loading_spinners(
+    ui: &egui::Ui,
+    ui_from_scene: egui::emath::RectTransform,
+    eye3d: &Eye,
+    visualizers: &re_viewer_context::VisualizerCollection,
+) {
+    use glam::Vec3Swizzles as _;
+    use glam::Vec4Swizzles as _;
+
+    let ui_from_world_3d = eye3d.ui_from_world(*ui_from_scene.to());
+
+    for data in visualizers.iter_visualizer_data::<SpatialViewVisualizerData>() {
+        for &crate::visualizers::LoadingSpinner {
+            center,
+            half_extent_u,
+            half_extent_v,
+        } in &data.loading_spinners
+        {
+            // Transform to ui coordinates:
+            let center_unprojected = ui_from_world_3d * center.extend(1.0);
+            if center_unprojected.w < 0.0 {
+                continue; // behind camera eye
+            }
+            let center_in_scene: glam::Vec2 = center_unprojected.xy() / center_unprojected.w;
+
+            let mut radius_in_scene = f32::INFINITY;
+
+            // Estimate the radius so we are unlikely to exceed the projected box:
+            for radius_vec in [half_extent_u, -half_extent_u, half_extent_v, -half_extent_v] {
+                let axis_radius = center_in_scene
+                    .distance(ui_from_world_3d.project_point3(center + radius_vec).xy());
+                radius_in_scene = radius_in_scene.min(axis_radius);
+            }
+
+            radius_in_scene *= 0.75; // Shrink a bit
+
+            let max_radius = 0.5 * ui_from_scene.from().size().min_elem();
+            radius_in_scene = radius_in_scene.min(max_radius);
+
+            let rect = egui::Rect::from_center_size(
+                egui::pos2(center_in_scene.x, center_in_scene.y),
+                egui::Vec2::splat(2.0 * radius_in_scene),
+            );
+
+            let rect = ui_from_scene.transform_rect(rect);
+
+            egui::Spinner::new().paint_at(ui, rect);
+        }
+    }
+}
+
 pub fn outline_config(gui_ctx: &egui::Context) -> OutlineConfig {
     // Use the exact same colors we have in the ui!
     let hover_outline = gui_ctx.hover_stroke();
@@ -329,390 +363,6 @@ pub fn screenshot_context_menu(
     #[cfg(target_arch = "wasm32")]
     {
         None
-    }
-}
-
-#[allow(clippy::too_many_arguments)] // TODO(andreas): Make this method sane.
-pub fn picking(
-    ctx: &ViewerContext<'_>,
-    mut response: egui::Response,
-    space_from_ui: egui::emath::RectTransform,
-    ui_clip_rect: egui::Rect,
-    parent_ui: &egui::Ui,
-    eye: Eye,
-    view_builder: &mut re_renderer::view_builder::ViewBuilder,
-    state: &mut SpatialSpaceViewState,
-    view_ctx: &ViewContextCollection,
-    visualizers: &Arc<VisualizerCollection>,
-    ui_rects: &[PickableUiRect],
-    query: &ViewQuery<'_>,
-    spatial_kind: SpatialSpaceViewKind,
-) -> Result<egui::Response, SpaceViewSystemExecutionError> {
-    re_tracing::profile_function!();
-
-    let Some(pointer_pos_ui) = response.hover_pos() else {
-        state.previous_picking_result = None;
-        return Ok(response);
-    };
-
-    let Some(render_ctx) = ctx.render_ctx else {
-        return Err(SpaceViewSystemExecutionError::NoRenderContextError);
-    };
-
-    let picking_context = PickingContext::new(
-        pointer_pos_ui,
-        space_from_ui,
-        ui_clip_rect,
-        parent_ui.ctx().pixels_per_point(),
-        &eye,
-    );
-
-    let picking_rect_size =
-        PickingContext::UI_INTERACTION_RADIUS * parent_ui.ctx().pixels_per_point();
-    // Make the picking rect bigger than necessary so we can use it to counter-act delays.
-    // (by the time the picking rectangle is read back, the cursor may have moved on).
-    let picking_rect_size = (picking_rect_size * 2.0)
-        .ceil()
-        .at_least(8.0)
-        .at_most(128.0) as u32;
-
-    let _ = view_builder.schedule_picking_rect(
-        render_ctx,
-        re_renderer::RectInt::from_middle_and_extent(
-            picking_context.pointer_in_pixel.as_ivec2(),
-            glam::uvec2(picking_rect_size, picking_rect_size),
-        ),
-        query.space_view_id.gpu_readback_id(),
-        (),
-        ctx.app_options.show_picking_debug_overlay,
-    );
-
-    let annotations = view_ctx.get::<AnnotationSceneContext>()?;
-
-    let depth_images = visualizers.get::<DepthImageVisualizer>()?;
-    let images = visualizers.get::<ImageVisualizer>()?;
-    let images_encoded = visualizers.get::<EncodedImageVisualizer>()?;
-    let segmentation_images = visualizers.get::<SegmentationImageVisualizer>()?;
-    let image_picking_rects = itertools::chain!(
-        &depth_images.images,
-        &images.images,
-        &images_encoded.images,
-        &segmentation_images.images,
-    );
-
-    let picking_result = picking_context.pick(
-        render_ctx,
-        query.space_view_id.gpu_readback_id(),
-        &state.previous_picking_result,
-        image_picking_rects,
-        ui_rects,
-    );
-    state.previous_picking_result = Some(picking_result.clone());
-
-    let mut hovered_items = Vec::new();
-
-    // TODO(andreas): Should defaults path be always created on the fly?
-    let defaults_path = SpaceViewBlueprint::defaults_path(query.space_view_id);
-    let view_ctx = ViewContext {
-        viewer_ctx: ctx,
-        view_id: query.space_view_id,
-        view_state: state,
-        defaults_path: &defaults_path,
-        visualizer_collection: visualizers.clone(),
-    };
-
-    // Depth at pointer used for projecting rays from a hovered 2D view to corresponding 3D view(s).
-    // TODO(#1818): Depth at pointer only works for depth images so far.
-    let mut depth_at_pointer = None;
-    for hit in &picking_result.hits {
-        let Some(mut instance_path) = hit.instance_path_hash.resolve(ctx.recording()) else {
-            continue;
-        };
-
-        if response.double_clicked() {
-            // Select entire entity on double-click:
-            instance_path.instance = Instance::ALL;
-        }
-
-        let query_result = ctx.lookup_query_result(query.space_view_id);
-        let Some(data_result) = query_result
-            .tree
-            .lookup_result_by_path(&instance_path.entity_path)
-        else {
-            continue; // No data result for this entity, meaning it's no longer on screen.
-        };
-
-        if !data_result.is_interactive(ctx) {
-            continue;
-        }
-
-        // Special hover ui for images and point clouds:
-        let is_depth_cloud = depth_images
-            .depth_cloud_entities
-            .contains(&instance_path.entity_path.hash());
-
-        let picked_image = if hit.hit_type == PickingHitType::TexturedRect || is_depth_cloud {
-            if let Some(picked) = chain!(
-                depth_images.images.iter(),
-                images.images.iter(),
-                images_encoded.images.iter(),
-                segmentation_images.images.iter(),
-            )
-            .find(|i| i.ent_path == instance_path.entity_path)
-            {
-                // An actual image was picked.
-                let coordinates = hit
-                    .instance_path_hash
-                    .instance
-                    .to_2d_image_coordinate(picked.width());
-
-                Some(PickedImageInfo {
-                    image: picked.image.clone(),
-                    coordinates,
-                    depth_meter: picked.depth_meter,
-                })
-            } else {
-                picked_image_from_depth_image_query(&view_ctx, data_result, hit)
-            }
-        } else {
-            None
-        };
-        if picked_image.is_some() {
-            // We don't support selecting pixels yet.
-            instance_path.instance = Instance::ALL;
-        }
-
-        hovered_items.push(Item::DataResult(query.space_view_id, instance_path.clone()));
-
-        response = if let Some(picked_image) = picked_image {
-            // TODO(jleibs): Querying this here feels weird. Would be nice to do this whole
-            // thing as an up-front archetype query somewhere.
-            if picked_image.kind() == ImageKind::Depth {
-                if let Some(meter) = picked_image.depth_meter {
-                    let [x, y] = picked_image.coordinates;
-                    if let Some(raw_value) = picked_image.image.get_xyc(x, y, 0) {
-                        let raw_value = raw_value.as_f64();
-                        let depth_in_meters = raw_value / *meter.0 as f64;
-                        depth_at_pointer = Some(depth_in_meters as f32);
-                    }
-                }
-            }
-
-            response
-                .on_hover_cursor(egui::CursorIcon::Crosshair)
-                .on_hover_ui_at_pointer(|ui| {
-                    ui.set_max_width(320.0);
-                    ui.vertical(|ui| {
-                        image_hover_ui(
-                            ctx,
-                            ui,
-                            &instance_path,
-                            spatial_kind,
-                            ui_clip_rect,
-                            space_from_ui,
-                            annotations,
-                            picked_image,
-                        );
-                    });
-                })
-        } else {
-            // Hover ui for everything else
-            response.on_hover_ui_at_pointer(|ui| {
-                list_item_scope(ui, "spatial_hover", |ui| {
-                    hit_ui(ui, hit);
-                    item_ui::instance_path_button(
-                        ctx,
-                        &query.latest_at_query(),
-                        ctx.recording(),
-                        ui,
-                        Some(query.space_view_id),
-                        &instance_path,
-                    );
-                    instance_path.data_ui_recording(ctx, ui, UiLayout::Tooltip);
-                });
-            })
-        };
-    }
-
-    if hovered_items.is_empty() {
-        // If we hover nothing, we are hovering the space-view itself.
-        hovered_items.push(Item::SpaceView(query.space_view_id));
-    }
-
-    // Associate the hovered space with the first item in the hovered item list.
-    // If we were to add several, space views might render unnecessary additional hints.
-    // TODO(andreas): Should there be context if no item is hovered at all? There's no usecase for that today it seems.
-    let mut hovered_items = hovered_items
-        .into_iter()
-        .map(|item| (item, None))
-        .collect::<Vec<_>>();
-
-    if let Some((_, context)) = hovered_items.first_mut() {
-        *context = Some(match spatial_kind {
-            SpatialSpaceViewKind::TwoD => ItemSpaceContext::TwoD {
-                space_2d: query.space_origin.clone(),
-                pos: picking_context
-                    .pointer_in_space2d
-                    .extend(depth_at_pointer.unwrap_or(f32::INFINITY)),
-            },
-            SpatialSpaceViewKind::ThreeD => {
-                let hovered_point = picking_result.space_position();
-                ItemSpaceContext::ThreeD {
-                    space_3d: query.space_origin.clone(),
-                    pos: hovered_point,
-                    tracked_entity: state.state_3d.tracked_entity.clone(),
-                    point_in_space_cameras: visualizers
-                        .get::<CamerasVisualizer>()?
-                        .space_cameras
-                        .iter()
-                        .map(|cam| {
-                            (
-                                cam.ent_path.clone(),
-                                hovered_point.and_then(|pos| cam.project_onto_2d(pos)),
-                            )
-                        })
-                        .collect(),
-                }
-            }
-        });
-    };
-
-    ctx.select_hovered_on_click(&response, hovered_items.into_iter());
-
-    Ok(response)
-}
-
-fn picked_image_from_depth_image_query(
-    view_ctx: &ViewContext<'_>,
-    data_result: &re_viewer_context::DataResult,
-    hit: &crate::picking::PickingRayHit,
-) -> Option<PickedImageInfo> {
-    let query_shadowed_defaults = false;
-    let query = view_ctx.viewer_ctx.current_query();
-    let results = latest_at_with_blueprint_resolved_data(
-        view_ctx,
-        None,
-        &query,
-        data_result,
-        [
-            ImageBuffer::name(),
-            ImageFormat::name(),
-            Colormap::name(),
-            DepthMeter::name(),
-        ],
-        query_shadowed_defaults,
-    );
-
-    // TODO(andreas): Just calling `results.get_mono::<Blob>` would be a lot more elegant.
-    // However, we're in the rare case where we really want a RowId to be able to identify the tensor for caching purposes.
-    let blob_untyped = results.get(ImageBuffer::name())?;
-    let blob = blob_untyped.component_mono::<ImageBuffer>()?.ok()?.0;
-
-    let format = results.get_mono::<ImageFormat>()?;
-    let colormap = results.get_mono::<Colormap>()?;
-    let depth_meter = results.get_mono::<DepthMeter>();
-
-    let (_, blob_row_id) = blob_untyped.index(&query.timeline())?;
-    let coordinates = hit
-        .instance_path_hash
-        .instance
-        .to_2d_image_coordinate(format.width as _);
-
-    let image = ImageInfo {
-        buffer_row_id: blob_row_id,
-        buffer: blob,
-        format: format.0,
-        kind: ImageKind::Depth,
-        colormap: Some(colormap),
-    };
-
-    Some(PickedImageInfo {
-        image,
-        coordinates,
-        depth_meter,
-    })
-}
-
-struct PickedImageInfo {
-    image: ImageInfo,
-    coordinates: [u32; 2],
-    depth_meter: Option<DepthMeter>,
-}
-
-impl PickedImageInfo {
-    pub fn kind(&self) -> ImageKind {
-        self.image.kind
-    }
-}
-
-#[allow(clippy::too_many_arguments)]
-fn image_hover_ui(
-    ctx: &ViewerContext<'_>,
-    ui: &mut egui::Ui,
-    instance_path: &re_entity_db::InstancePath,
-    spatial_kind: SpatialSpaceViewKind,
-    ui_clip_rect: egui::Rect,
-    space_from_ui: egui::emath::RectTransform,
-    annotations: &AnnotationSceneContext,
-    picked_image_info: PickedImageInfo,
-) {
-    let PickedImageInfo {
-        image,
-        coordinates,
-        depth_meter,
-    } = picked_image_info;
-
-    let depth_meter = depth_meter.map(|d| *d.0);
-
-    ui.label(instance_path.to_string());
-
-    let (w, h) = (image.format.width as u64, image.format.height as u64);
-
-    ui.add_space(8.0);
-
-    ui.horizontal(|ui| {
-        let (w, h) = (w as f32, h as f32);
-
-        if spatial_kind == SpatialSpaceViewKind::TwoD {
-            let rect = egui::Rect::from_min_size(egui::Pos2::ZERO, egui::vec2(w, h));
-
-            show_zoomed_image_region_area_outline(
-                ui.ctx(),
-                ui_clip_rect,
-                egui::vec2(w, h),
-                [coordinates[0] as _, coordinates[1] as _],
-                space_from_ui.inverse().transform_rect(rect),
-            );
-        }
-
-        let tensor_name = instance_path.to_string();
-
-        let annotations = annotations.0.find(&instance_path.entity_path);
-
-        let tensor_stats = ctx.cache.entry(|c: &mut ImageStatsCache| c.entry(&image));
-        if let Some(render_ctx) = ctx.render_ctx {
-            show_zoomed_image_region(
-                render_ctx,
-                ui,
-                &image,
-                &tensor_stats,
-                &annotations,
-                depth_meter,
-                &tensor_name,
-                [coordinates[0] as _, coordinates[1] as _],
-            );
-        }
-    });
-}
-
-fn hit_ui(ui: &mut egui::Ui, hit: &crate::picking::PickingRayHit) {
-    if hit.hit_type == PickingHitType::GpuPickingResult {
-        let glam::Vec3 { x, y, z } = hit.space_position;
-        ui.list_item_flat_noninteractive(PropertyContent::new("Hover position").value_fn(
-            |ui, _| {
-                ui.add(egui::Label::new(format!("[{x:.5}, {y:.5}, {z:.5}]")).extend());
-            },
-        ));
     }
 }
 

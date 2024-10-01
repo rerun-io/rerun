@@ -6,11 +6,14 @@ title: "AssetVideo"
 
 ⚠️ **This is an experimental API! It is not fully supported, and is likely to change significantly in future versions.**
 
-A video file.
+A video binary.
 
 NOTE: Videos can only be viewed in the Rerun web viewer.
-Only MP4 and AV1 is currently supported, and not in all browsers.
-Follow <https://github.com/rerun-io/rerun/issues/7298> for updates on the native support.
+Only MP4 containers with a limited number of codecs are currently supported, and not in all browsers.
+
+See <https://rerun.io/docs/concepts/video?speculative-link> for details of what is and isn't supported.
+
+In order to display a video, you also need to log a [`archetypes.VideoFrameReference`](https://rerun.io/docs/reference/types/archetypes/video_frame_reference?speculative-link) for each frame.
 
 ## Components
 
@@ -19,7 +22,33 @@ Follow <https://github.com/rerun-io/rerun/issues/7298> for updates on the native
 **Recommended**: [`MediaType`](../components/media_type.md)
 
 ## API reference links
- * 🌊 [C++ API docs for `AssetVideo`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1archetypes_1_1AssetVideo.html)
- * 🐍 [Python API docs for `AssetVideo`](https://ref.rerun.io/docs/python/stable/common/archetypes#rerun.archetypes.AssetVideo)
- * 🦀 [Rust API docs for `AssetVideo`](https://docs.rs/rerun/latest/rerun/archetypes/struct.AssetVideo.html)
+ * 🌊 [C++ API docs for `AssetVideo`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1archetypes_1_1AssetVideo.html?speculative-link)
+ * 🐍 [Python API docs for `AssetVideo`](https://ref.rerun.io/docs/python/stable/common/archetypes?speculative-link#rerun.archetypes.AssetVideo)
+ * 🦀 [Rust API docs for `AssetVideo`](https://docs.rs/rerun/latest/rerun/archetypes/struct.AssetVideo.html?speculative-link)
+
+## Examples
+
+### Video with automatically determined frames
+
+snippet: archetypes/video_auto_frames
+
+<picture data-inline-viewer="snippets/video_auto_frames">
+  <source media="(max-width: 480px)" srcset="https://static.rerun.io/video_manual_frames/320a44e1e06b8b3a3161ecbbeae3e04d1ccb9589/480w.png">
+  <source media="(max-width: 768px)" srcset="https://static.rerun.io/video_manual_frames/320a44e1e06b8b3a3161ecbbeae3e04d1ccb9589/768w.png">
+  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/video_manual_frames/320a44e1e06b8b3a3161ecbbeae3e04d1ccb9589/1024w.png">
+  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/video_manual_frames/320a44e1e06b8b3a3161ecbbeae3e04d1ccb9589/1200w.png">
+  <img src="https://static.rerun.io/video_manual_frames/320a44e1e06b8b3a3161ecbbeae3e04d1ccb9589/full.png">
+</picture>
+
+### Demonstrates manual use of video frame references
+
+snippet: archetypes/video_manual_frames
+
+<picture data-inline-viewer="snippets/video_manual_frames">
+  <source media="(max-width: 480px)" srcset="https://static.rerun.io/video_manual_frames/9f41c00f84a98cc3f26875fba7c1d2fa2bad7151/480w.png">
+  <source media="(max-width: 768px)" srcset="https://static.rerun.io/video_manual_frames/9f41c00f84a98cc3f26875fba7c1d2fa2bad7151/768w.png">
+  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/video_manual_frames/9f41c00f84a98cc3f26875fba7c1d2fa2bad7151/1024w.png">
+  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/video_manual_frames/9f41c00f84a98cc3f26875fba7c1d2fa2bad7151/1200w.png">
+  <img src="https://static.rerun.io/video_manual_frames/9f41c00f84a98cc3f26875fba7c1d2fa2bad7151/full.png">
+</picture>
 

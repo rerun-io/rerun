@@ -118,7 +118,8 @@ impl SpaceViewContents {
         };
         let query = expressions.iter().map(|qe| qe.0.as_str());
 
-        let entity_path_filter = EntityPathFilter::from_query_expressions(query, space_env);
+        let entity_path_filter =
+            EntityPathFilter::from_query_expressions_forgiving(query, space_env);
 
         Self {
             blueprint_entity_path: property.blueprint_store_path,
@@ -301,7 +302,7 @@ impl<'a> QueryExpressionEvaluator<'a> {
 
         let entity_path = &tree.path;
 
-        let matches_filter = self.entity_path_filter.is_included(entity_path);
+        let matches_filter = self.entity_path_filter.matches(entity_path);
         *num_matching_entities += matches_filter as usize;
 
         // This list will be updated below during `update_overrides_recursive` by calling `choose_default_visualizers`
@@ -332,7 +333,7 @@ impl<'a> QueryExpressionEvaluator<'a> {
         // Ignore empty nodes.
         // Since we recurse downwards, this prunes any branches that don't have anything to contribute to the scene
         // and aren't directly included.
-        let exact_included = self.entity_path_filter.is_exact_included(entity_path);
+        let exact_included = self.entity_path_filter.matches_exactly(entity_path);
         if exact_included || !children.is_empty() || !visualizers.is_empty() {
             Some(data_results.insert(DataResultNode {
                 data_result: DataResult {
@@ -615,6 +616,7 @@ mod tests {
             default_blueprint: None,
             recording: &recording,
             bundle: &Default::default(),
+            caches: &Default::default(),
             hub: &StoreHub::test_hub(),
         };
 

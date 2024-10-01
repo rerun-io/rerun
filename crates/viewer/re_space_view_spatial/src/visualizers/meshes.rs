@@ -1,7 +1,6 @@
 use re_chunk_store::RowId;
 use re_log_types::{hash::Hash64, Instance, TimeInt};
-use re_renderer::renderer::MeshInstance;
-use re_renderer::RenderContext;
+use re_renderer::{renderer::MeshInstance, RenderContext};
 use re_types::{
     archetypes::Mesh3D,
     components::{
@@ -129,12 +128,13 @@ impl Mesh3DVisualizer {
 
                         MeshInstance {
                             gpu_mesh: mesh_instance.gpu_mesh.clone(),
+                            mesh: None,
                             world_from_mesh,
                             outline_mask_ids,
                             picking_layer_id: picking_layer_id_from_instance_path_hash(
                                 picking_instance_hash,
                             ),
-                            ..Default::default()
+                            additive_tint: re_renderer::Color32::TRANSPARENT,
                         }
                     }));
 
@@ -281,7 +281,7 @@ impl VisualizerSystem for Mesh3DVisualizer {
         self
     }
 
-    fn as_fallback_provider(&self) -> &dyn re_viewer_context::ComponentFallbackProvider {
+    fn fallback_provider(&self) -> &dyn re_viewer_context::ComponentFallbackProvider {
         self
     }
 }

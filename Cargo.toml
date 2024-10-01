@@ -44,6 +44,7 @@ re_chunk = { path = "crates/store/re_chunk", version = "=0.19.0-alpha.1", defaul
 re_chunk_store = { path = "crates/store/re_chunk_store", version = "=0.19.0-alpha.1", default-features = false }
 re_data_loader = { path = "crates/store/re_data_loader", version = "=0.19.0-alpha.1", default-features = false }
 re_data_source = { path = "crates/store/re_data_source", version = "=0.19.0-alpha.1", default-features = false }
+re_dataframe = { path = "crates/store/re_dataframe", version = "=0.19.0-alpha.1", default-features = false }
 re_entity_db = { path = "crates/store/re_entity_db", version = "=0.19.0-alpha.1", default-features = false }
 re_format_arrow = { path = "crates/store/re_format_arrow", version = "=0.19.0-alpha.1", default-features = false }
 re_log_encoding = { path = "crates/store/re_log_encoding", version = "=0.19.0-alpha.1", default-features = false }
@@ -106,31 +107,31 @@ ewebsock = "0.6.0"
 re_math = "0.20.0"
 
 # egui-crates:
-ecolor = "0.28.1"
-eframe = { version = "0.28.1", default-features = false, features = [
+ecolor = "0.29.1"
+eframe = { version = "0.29.1", default-features = false, features = [
   "accesskit",
   "default_fonts",
   "puffin",
   "wayland",
   "x11",
 ] }
-egui = { version = "0.28.1", features = [
+egui = { version = "0.29.1", features = [
   "callstack",
   "log",
   "puffin",
   "rayon",
 ] }
-egui_commonmark = { version = "0.17", default-features = false }
-egui_extras = { version = "0.28.1", features = [
+egui_commonmark = { version = "0.18", default-features = false }
+egui_extras = { version = "0.29.1", features = [
   "http",
   "image",
   "puffin",
   "serde",
 ] }
-egui_plot = "0.28.1"
-egui_tiles = "0.9.1"
-egui-wgpu = "0.28.1"
-emath = "0.28.1"
+egui_plot = "0.29.0"
+egui_tiles = "0.10.1"
+egui-wgpu = "0.29.1"
+emath = "0.29.1"
 
 # All of our direct external dependencies should be found here:
 ahash = "0.8"
@@ -165,7 +166,7 @@ document-features = "0.2.8"
 ehttp = "0.5.0"
 enumset = "1.0.12"
 env_logger = { version = "0.10", default-features = false }
-fixed = { version = "<1.28", default-features = false } # 1.28+ is MSRV 1.79+
+fixed = { version = "<1.28", default-features = false }            # 1.28+ is MSRV 1.79+
 flatbuffers = "23.0"
 futures-channel = "0.3"
 futures-util = { version = "0.3", default-features = false }
@@ -177,9 +178,9 @@ half = "2.3.1"
 hexasphere = "14.1.0"
 image = { version = "0.25", default-features = false }
 indent = "0.1"
-indexmap = "2.1" # Version chosen to align with other dependencies
-indicatif = "0.17.7" # Progress bar
-infer = "0.15" # infer MIME type by checking the magic number signaturefer MIME type by checking the magic number signature
+indexmap = "2.1"                                                   # Version chosen to align with other dependencies
+indicatif = "0.17.7"                                               # Progress bar
+infer = "0.15"                                                     # infer MIME type by checking the magic number signaturefer MIME type by checking the magic number signature
 insta = "1.23"
 itertools = "0.13"
 js-sys = "0.3"
@@ -189,16 +190,19 @@ log = "0.4"
 log-once = "0.4"
 lz4_flex = "0.11"
 memory-stats = "1.1"
-mimalloc = "=0.1.37" # TODO(#5875): `mimalloc` starts leaking OS pages starting with `0.1.38`.
+# TODO(#5875): `mimalloc` starts leaking OS pages starting with `0.1.38`.
+# This version is not pinned to avoid creating version requirement conflicts,
+# but other packages pin it to exactly "=0.1.37"
+mimalloc = "0.1.37"
 mime_guess2 = "2.0" # infer MIME type by file extension, and map mime to file extension
 mint = "0.5.9"
-mp4 = "0.14.0"
+re_mp4 = "0.1.0"
 natord = "1.0.9"
-ndarray = "0.15"
-ndarray-rand = "0.14"
+ndarray = "0.16"
+ndarray-rand = "0.15"
 never = "0.1"
 nohash-hasher = "0.2"
-notify = "6.0"
+notify = { version = "6.1.1", features = ["macos_kqueue"] }
 num-derive = "0.4"
 num-traits = "0.2"
 once_cell = "1.17" # No lazy_static - use `std::sync::OnceLock` or `once_cell` instead
@@ -264,8 +268,11 @@ uuid = "1.1"
 vec1 = "1.8"
 walkdir = "2.0"
 # NOTE: `rerun_js/web-viewer/build-wasm.mjs` is HIGHLY sensitive to changes in `wasm-bindgen`.
-#       Whenever updating `wasm-bindgen`, make sure that the build script still works.
-wasm-bindgen = "=0.2.93"
+#       Whenever updating `wasm-bindgen`, update this and the narrower dependency specifications in
+#       `crates/viewer/re_viewer/Cargo.toml`, and make sure that the build script still works.
+#       Do not make this an `=` dependency, because that may break Rust users’ builds when a newer
+#       version is released, even if they are not building the web viewer.
+wasm-bindgen = "0.2.93"
 wasm-bindgen-cli-support = "=0.2.93"
 wasm-bindgen-futures = "0.4.33"
 web-sys = "0.3"
@@ -421,7 +428,6 @@ manual_ok_or = "warn"
 manual_string_new = "warn"
 map_err_ignore = "warn"
 map_flatten = "warn"
-map_unwrap_or = "warn"
 match_on_vec_items = "warn"
 match_same_arms = "warn"
 match_wild_err_arm = "warn"
@@ -492,6 +498,7 @@ zero_sized_map_values = "warn"
 #self_named_module_files = "warn"
 
 manual_range_contains = "allow" # this one is just worse imho
+map_unwrap_or = "allow"         # so is this one
 ref_patterns = "allow"          # It's nice to avoid ref pattern, but there are some situations that are hard (impossible?) to express without.
 
 # TODO(emilk): enable more of these lints:
@@ -507,12 +514,12 @@ missing_errors_doc = "allow"
 # As a last resport, patch with a commit to our own repository.
 # ALWAYS document what PR the commit hash is part of, or when it was merged into the upstream trunk.
 
-ecolor = { git = "https://github.com/emilk/egui.git", rev = "edea5a40b9ed9531734e6e3b0f6c3b413b820381" }      # egui master 2024-09-01
-eframe = { git = "https://github.com/emilk/egui.git", rev = "edea5a40b9ed9531734e6e3b0f6c3b413b820381" }      # egui master 2024-09-01
-egui = { git = "https://github.com/emilk/egui.git", rev = "edea5a40b9ed9531734e6e3b0f6c3b413b820381" }        # egui master 2024-09-01
-egui_extras = { git = "https://github.com/emilk/egui.git", rev = "edea5a40b9ed9531734e6e3b0f6c3b413b820381" } # egui master 2024-09-01
-egui-wgpu = { git = "https://github.com/emilk/egui.git", rev = "edea5a40b9ed9531734e6e3b0f6c3b413b820381" }   # egui master 2024-09-01
-emath = { git = "https://github.com/emilk/egui.git", rev = "edea5a40b9ed9531734e6e3b0f6c3b413b820381" }       # egui master 2024-09-01
+# ecolor = { git = "https://github.com/emilk/egui.git", rev = "f97f85089df5e936999d5b7280e2e93e2958fac8" }      # egui master 2024-09-25
+# eframe = { git = "https://github.com/emilk/egui.git", rev = "f97f85089df5e936999d5b7280e2e93e2958fac8" }      # egui master 2024-09-25
+# egui = { git = "https://github.com/emilk/egui.git", rev = "f97f85089df5e936999d5b7280e2e93e2958fac8" }        # egui master 2024-09-25
+# egui_extras = { git = "https://github.com/emilk/egui.git", rev = "f97f85089df5e936999d5b7280e2e93e2958fac8" } # egui master 2024-09-25
+# egui-wgpu = { git = "https://github.com/emilk/egui.git", rev = "f97f85089df5e936999d5b7280e2e93e2958fac8" }   # egui master 2024-09-25
+# emath = { git = "https://github.com/emilk/egui.git", rev = "f97f85089df5e936999d5b7280e2e93e2958fac8" }       # egui master 2024-09-25
 
 # Useful while developing:
 # ecolor = { path = "../../egui/crates/ecolor" }
@@ -525,14 +532,14 @@ emath = { git = "https://github.com/emilk/egui.git", rev = "edea5a40b9ed9531734e
 # egui_plot = { git = "https://github.com/emilk/egui_plot.git", rev = "1f6ae49a5f6bf43a869c215dea0d3028be8d742a" }
 # egui_plot = { path = "../../egui_plot/egui_plot" }
 
-egui_tiles = { git = "https://github.com/rerun-io/egui_tiles", rev = "b2f5e232524deed983bcad01c05f27d0e8b89d98" } # https://github.com/rerun-io/egui_tiles/pull/78 2024-08-28
+# egui_tiles = { git = "https://github.com/rerun-io/egui_tiles", rev = "b2f5e232524deed983bcad01c05f27d0e8b89d98" } # https://github.com/rerun-io/egui_tiles/pull/78 2024-08-28
 # egui_tiles = { path = "../egui_tiles" }
 
-# egui_commonmark = { git = "https://github.com/rerun-io/egui_commonmark", rev = "63d5c8933445b9ea9088c4a50b71f4ede1f3c247" } # https://github.com/lampsitter/egui_commonmark/pull/51
+# egui_commonmark = { git = "https://github.com/rerun-io/egui_commonmark", rev = "7a9dc755bfa351a3796274cb8ca87129b051c084" } # https://github.com/lampsitter/egui_commonmark/pull/65
 
-# commit on `rerun-io/mp4` `main` branch
-# https://github.com/rerun-io/mp4/commit/523ebcc71032e7022335f61d7314b89f6068208a
-mp4 = { git = "https://github.com/rerun-io/mp4", rev = "523ebcc71032e7022335f61d7314b89f6068208a" }
+# commit on `rerun-io/mp4` `master` branch: https://github.com/rerun-io/re_mp4/tree/master
+# https://github.com/rerun-io/mp4/commit/3236c76f9228cf6ab0b2bfb1b8f9ffcde975ea05
+re_mp4 = { git = "https://github.com/rerun-io/re_mp4", rev = "3236c76f9228cf6ab0b2bfb1b8f9ffcde975ea05" }
 
 # commit on `rerun-io/re_arrow2` `main` branch
 # https://github.com/rerun-io/re_arrow2/commit/e4717d6debc6d4474ec10db8f629f823f57bad07

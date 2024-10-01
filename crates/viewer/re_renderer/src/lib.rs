@@ -16,6 +16,7 @@ pub mod mesh;
 pub mod renderer;
 pub mod resource_managers;
 pub mod texture_info;
+pub mod video;
 pub mod view_builder;
 
 mod allocator;
@@ -62,6 +63,7 @@ pub use point_cloud_builder::{PointCloudBatchBuilder, PointCloudBuilder};
 pub use queueable_draw_data::QueueableDrawData;
 pub use rect::{RectF32, RectInt};
 pub use size::Size;
+pub use texture_info::Texture2DBufferInfo;
 pub use transform::RectTransform;
 pub use view_builder::ViewBuilder;
 pub use wgpu_resources::WgpuResourcePoolStatistics;
@@ -86,6 +88,7 @@ pub use self::file_server::FileServer;
 pub use ecolor::{Color32, Hsva, Rgba};
 
 pub mod external {
+    pub use re_video;
     pub use wgpu;
 }
 

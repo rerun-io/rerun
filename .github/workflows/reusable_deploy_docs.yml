@@ -216,9 +216,6 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Set up ghp-import
-        run: pip install ghp-import
-
         # TODO(andreas): Do we need this?
       # - name: Patch in a redirect page
       #   shell: bash
@@ -231,9 +228,9 @@ jobs:
         if: ${{ inputs.RELEASE_VERSION }}
         run: |
           git fetch
-          python3 -m ghp_import -n -p -x docs/cpp/${{ inputs.RELEASE_VERSION }} rerun_cpp/docs/html/ -m "Update the C++ docs (versioned)"
+          pixi run -e cpp python -m ghp_import -n -p -x docs/cpp/${{ inputs.RELEASE_VERSION }} rerun_cpp/docs/html/ -m "Update the C++ docs (versioned)"
 
       - name: Deploy the docs (named)
         run: |
           git fetch
-          python3 -m ghp_import -n -p -x docs/cpp/${{ inputs.CPP_DOCS_VERSION_NAME }} rerun_cpp/docs/html/ -m "Update the C++ docs"
+          pixi run -e cpp python -m ghp_import -n -p -x docs/cpp/${{ inputs.CPP_DOCS_VERSION_NAME }} rerun_cpp/docs/html/ -m "Update the C++ docs"

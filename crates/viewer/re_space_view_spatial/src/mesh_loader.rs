@@ -1,6 +1,6 @@
 use itertools::Itertools;
 use re_chunk_store::RowId;
-use re_renderer::{resource_managers::ResourceLifeTime, RenderContext, Rgba32Unmul};
+use re_renderer::{mesh::GpuMesh, RenderContext, Rgba32Unmul};
 use re_types::{
     archetypes::{Asset3D, Mesh3D},
     components::MediaType,
@@ -43,17 +43,10 @@ impl LoadedMesh {
         re_tracing::profile_function!();
 
         let mesh_instances = match media_type.as_str() {
-            MediaType::GLTF | MediaType::GLB => re_renderer::importer::gltf::load_gltf_from_buffer(
-                &name,
-                bytes,
-                ResourceLifeTime::LongLived,
-                render_ctx,
-            )?,
-            MediaType::OBJ => re_renderer::importer::obj::load_obj_from_buffer(
-                bytes,
-                ResourceLifeTime::LongLived,
-                render_ctx,
-            )?,
+            MediaType::GLTF | MediaType::GLB => {
+                re_renderer::importer::gltf::load_gltf_from_buffer(&name, bytes, render_ctx)?
+            }
+            MediaType::OBJ => re_renderer::importer::obj::load_obj_from_buffer(bytes, render_ctx)?,
             MediaType::STL => re_renderer::importer::stl::load_stl_from_buffer(bytes, render_ctx)?,
             _ => anyhow::bail!("{media_type} files are not supported"),
         };
@@ -179,14 +172,9 @@ impl LoadedMesh {
             }],
         };
 
-        let mesh_instances = vec![re_renderer::renderer::MeshInstance {
-            gpu_mesh: render_ctx.mesh_manager.write().create(
-                render_ctx,
-                &mesh,
-                ResourceLifeTime::LongLived,
-            )?,
-            ..Default::default()
-        }];
+        let mesh_instances = vec![re_renderer::renderer::MeshInstance::new(
+            std::sync::Arc::new(GpuMesh::new(render_ctx, &mesh)?),
+        )];
 
         Ok(Self {
             name,
@@ -226,7 +214,12 @@ fn try_get_or_create_albedo_texture(
         colormap: None,
     };
 
-    if re_viewer_context::gpu_bridge::required_shader_decode(albedo_texture_format).is_some() {
+    if re_viewer_context::gpu_bridge::required_shader_decode(
+        render_ctx.device_caps(),
+        albedo_texture_format,
+    )
+    .is_some()
+    {
         re_log::warn_once!("Mesh can't yet handle encoded image formats like NV12 & YUY2 or BGR(A) formats without a channel type other than U8. Ignoring the texture at {name:?}.");
         return None;
     }
@@ -234,7 +227,11 @@ fn try_get_or_create_albedo_texture(
     let texture =
         re_viewer_context::gpu_bridge::get_or_create_texture(render_ctx, texture_key, || {
             let debug_name = "mesh albedo texture";
-            texture_creation_desc_from_color_image(&image_info, debug_name)
+            texture_creation_desc_from_color_image(
+                render_ctx.device_caps(),
+                &image_info,
+                debug_name,
+            )
         });
 
     match texture {

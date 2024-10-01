@@ -15,3 +15,6 @@ A path to an entity in the `ChunkStore`.
  * 🦀 [Rust API docs for `EntityPath`](https://docs.rs/rerun/latest/rerun/datatypes/struct.EntityPath.html)
 
 
+## Used by
+
+* [`EntityPath`](../components/entity_path.md?speculative-link)

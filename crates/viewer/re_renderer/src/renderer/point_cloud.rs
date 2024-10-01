@@ -102,7 +102,7 @@ struct PointCloudBatch {
 }
 
 /// A point cloud drawing operation.
-/// Expected to be recrated every frame.
+/// Expected to be recreated every frame.
 #[derive(Clone)]
 pub struct PointCloudDrawData {
     bind_group_all_points: Option<GpuBindGroup>,
@@ -571,12 +571,12 @@ impl Renderer for PointCloudRenderer {
         }
     }
 
-    fn draw<'a>(
+    fn draw(
         &self,
-        render_pipelines: &'a GpuRenderPipelinePoolAccessor<'a>,
+        render_pipelines: &GpuRenderPipelinePoolAccessor<'_>,
         phase: DrawPhase,
-        pass: &mut wgpu::RenderPass<'a>,
-        draw_data: &'a Self::RendererDrawData,
+        pass: &mut wgpu::RenderPass<'_>,
+        draw_data: &Self::RendererDrawData,
     ) -> Result<(), DrawError> {
         let (pipeline_handle, bind_group_all_points) = match phase {
             DrawPhase::OutlineMask => (

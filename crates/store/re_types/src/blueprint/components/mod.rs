@@ -2,7 +2,10 @@
 
 mod active_tab;
 mod background_kind;
+mod column_selection_mode;
 mod column_share;
+mod component_column_selector;
+mod component_column_selector_ext;
 mod corner2d;
 mod corner2d_ext;
 mod included_content;
@@ -16,8 +19,6 @@ mod panel_state_ext;
 mod query_expression;
 mod query_kind;
 mod row_share;
-mod sort_key;
-mod sort_order;
 mod space_view_class;
 mod space_view_class_ext;
 mod space_view_origin;
@@ -39,7 +40,9 @@ mod visual_bounds2d_ext;
 
 pub use self::active_tab::ActiveTab;
 pub use self::background_kind::BackgroundKind;
+pub use self::column_selection_mode::ColumnSelectionMode;
 pub use self::column_share::ColumnShare;
+pub use self::component_column_selector::ComponentColumnSelector;
 pub use self::corner2d::Corner2D;
 pub use self::included_content::IncludedContent;
 pub use self::interactive::Interactive;
@@ -49,8 +52,6 @@ pub use self::panel_state::PanelState;
 pub use self::query_expression::QueryExpression;
 pub use self::query_kind::QueryKind;
 pub use self::row_share::RowShare;
-pub use self::sort_key::SortKey;
-pub use self::sort_order::SortOrder;
 pub use self::space_view_class::SpaceViewClass;
 pub use self::space_view_origin::SpaceViewOrigin;
 pub use self::tensor_dimension_index_slider::TensorDimensionIndexSlider;

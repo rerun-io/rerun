@@ -25,6 +25,7 @@ on [Entities and Components](../../concepts/entity-component.md).
 * [`DepthMeter`](components/depth_meter.md): The world->depth map scaling factor.
 * [`DisconnectedSpace`](components/disconnected_space.md): Spatially disconnect this entity from its parent.
 * [`DrawOrder`](components/draw_order.md): Draw order of 2D elements. Higher values are drawn on top of lower values.
+* [`EntityPath`](components/entity_path.md): A path to an entity, usually to reference some data that is part of the target entity.
 * [`FillMode`](components/fill_mode.md): How a geometric shape is drawn and colored.
 * [`FillRatio`](components/fill_ratio.md): How much a primitive fills out the available space.
 * [`GammaCorrection`](components/gamma_correction.md): A gamma correction value to be used with a scalar value or color.
@@ -72,5 +73,6 @@ on [Entities and Components](../../concepts/entity-component.md).
 * [`TriangleIndices`](components/triangle_indices.md): The three indices of a triangle in a triangle mesh.
 * [`Vector2D`](components/vector2d.md): A vector in 2D space.
 * [`Vector3D`](components/vector3d.md): A vector in 3D space.
+* [`VideoTimestamp`](components/video_timestamp.md): Timestamp inside a [`archetypes.AssetVideo`](https://rerun.io/docs/reference/types/archetypes/asset_video?speculative-link).
 * [`ViewCoordinates`](components/view_coordinates.md): How we interpret the coordinate system of an entity/space.
 

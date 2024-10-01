@@ -5,7 +5,6 @@ use std::sync::Weak;
 use std::sync::{atomic::AtomicI64, Arc};
 
 use ahash::HashMap;
-use arrow2::offset::Offsets;
 use crossbeam::channel::{Receiver, Sender};
 use itertools::Either;
 use parking_lot::Mutex;
@@ -349,6 +348,10 @@ impl RecordingStreamBuilder {
 
     /// Creates a new [`RecordingStream`] that is pre-configured to stream the data through to an
     /// RRD file on disk.
+    ///
+    /// The Rerun Viewer is able to read continuously from the resulting rrd file while it is being written.
+    /// However, depending on your OS and configuration, changes may not be immediately visible due to file caching.
+    /// This is a common issue on Windows and (to a lesser extent) on `MacOS`.
     ///
     /// ## Example
     ///
@@ -921,27 +924,7 @@ impl RecordingStream {
 
         let components: Result<Vec<_>, ChunkError> = components
             .into_iter()
-            .map(|batch| {
-                let array = batch.to_arrow()?;
-
-                let offsets = Offsets::try_from_lengths(std::iter::repeat(1).take(array.len()))
-                    .map_err(|err| ChunkError::Malformed {
-                        reason: format!("Failed to create offsets: {err}"),
-                    })?;
-                let data_type = ArrowListArray::<i32>::default_datatype(array.data_type().clone());
-
-                let array = ArrowListArray::<i32>::try_new(
-                    data_type,
-                    offsets.into(),
-                    array.to_boxed(),
-                    None,
-                )
-                .map_err(|err| ChunkError::Malformed {
-                    reason: format!("Failed to wrap in List array: {err}"),
-                })?;
-
-                Ok((batch.name(), array))
-            })
+            .map(|batch| Ok((batch.name(), batch.to_arrow_list_array()?)))
             .collect();
 
         let components: BTreeMap<ComponentName, ArrowListArray<i32>> =

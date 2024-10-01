@@ -8,10 +8,9 @@ use re_smart_channel::ReceiveSet;
 use re_types::blueprint::components::PanelState;
 use re_ui::ContextExt as _;
 use re_viewer_context::{
-    blueprint_timeline, AppOptions, ApplicationSelectionState, Caches, CommandSender,
-    ComponentUiRegistry, PlayState, RecordingConfig, SpaceViewClassExt as _,
-    SpaceViewClassRegistry, StoreContext, StoreHub, SystemCommandSender as _, ViewStates,
-    ViewerContext,
+    blueprint_timeline, AppOptions, ApplicationSelectionState, CommandSender, ComponentUiRegistry,
+    PlayState, RecordingConfig, SpaceViewClassExt as _, SpaceViewClassRegistry, StoreContext,
+    StoreHub, SystemCommandSender as _, ViewStates, ViewerContext,
 };
 use re_viewport::Viewport;
 use re_viewport_blueprint::ui::add_space_view_or_container_modal_ui;
@@ -27,10 +26,6 @@ const WATERMARK: bool = false; // Nice for recording media material
 pub struct AppState {
     /// Global options for the whole viewer.
     pub(crate) app_options: AppOptions,
-
-    /// Things that need caching.
-    #[serde(skip)]
-    pub(crate) cache: Caches,
 
     /// Configuration for the current recording (found in [`EntityDb`]).
     recording_configs: HashMap<StoreId, RecordingConfig>,
@@ -73,7 +68,6 @@ impl Default for AppState {
     fn default() -> Self {
         Self {
             app_options: Default::default(),
-            cache: Default::default(),
             recording_configs: Default::default(),
             blueprint_cfg: Default::default(),
             selection_panel: Default::default(),
@@ -149,7 +143,6 @@ impl AppState {
 
         let Self {
             app_options,
-            cache,
             recording_configs,
             blueprint_cfg,
             selection_panel,
@@ -163,6 +156,9 @@ impl AppState {
             selection_state,
             focused_item,
         } = self;
+
+        // check state early, before the UI has a chance to close these popups
+        let is_any_popup_open = ui.memory(|m| m.any_popup_open());
 
         // Some of the mutations APIs of `ViewportBlueprints` are recorded as `Viewport::TreeAction`
         // and must be applied by `Viewport` at the end of the frame. We use a temporary channel for
@@ -209,10 +205,6 @@ impl AppState {
             )),
         );
 
-        if ui.input(|i| i.key_pressed(egui::Key::Escape)) {
-            selection_state.clear_selection();
-        }
-
         let applicable_entities_per_visualizer = space_view_class_registry
             .applicable_entities_for_visualizer_systems(recording.store_id());
         let indicated_entities_per_visualizer =
@@ -254,7 +246,7 @@ impl AppState {
         let egui_ctx = ui.ctx().clone();
         let ctx = ViewerContext {
             app_options,
-            cache,
+            cache: store_context.caches,
             space_view_class_registry,
             reflection,
             component_ui_registry,
@@ -272,10 +264,12 @@ impl AppState {
             focused_item,
         };
 
-        // First update the viewport and thus all active space views.
-        // This may update their heuristics, so that all panels that are shown in this frame,
-        // have the latest information.
-        viewport.on_frame_start(&ctx, view_states);
+        // We move the time at the very start of the frame,
+        // so that we always show the latest data when we're in "follow" mode.
+        move_time(&ctx, recording, rx);
+
+        // Update the viewport. May spawn new views and handle queued requests (like screenshots).
+        viewport.on_frame_start(&ctx);
 
         {
             re_tracing::profile_scope!("updated_query_results");
@@ -319,7 +313,7 @@ impl AppState {
         // but it's just a bunch of refs so not really that big of a deal in practice.
         let ctx = ViewerContext {
             app_options,
-            cache,
+            cache: store_context.caches,
             space_view_class_registry,
             reflection,
             component_ui_registry,
@@ -468,47 +462,17 @@ impl AppState {
         // Process deferred layout operations and apply updates back to blueprint
         viewport.update_and_sync_tile_tree_to_blueprint(&ctx);
 
-        {
-            // We move the time at the very end of the frame,
-            // so we have one frame to see the first data before we move the time.
-            let dt = ui.ctx().input(|i| i.stable_dt);
-
-            // Are we still connected to the data source for the current store?
-            let more_data_is_coming = if let Some(store_source) = &recording.data_source {
-                rx.sources().iter().any(|s| s.as_ref() == store_source)
-            } else {
-                false
-            };
-
-            let recording_needs_repaint = ctx.rec_cfg.time_ctrl.write().update(
-                recording.times_per_timeline(),
-                dt,
-                more_data_is_coming,
-            );
-
-            let blueprint_needs_repaint = if ctx.app_options.inspect_blueprint_timeline {
-                ctx.blueprint_cfg.time_ctrl.write().update(
-                    ctx.store_context.blueprint.times_per_timeline(),
-                    dt,
-                    more_data_is_coming,
-                )
-            } else {
-                re_viewer_context::NeedsRepaint::No
-            };
-
-            if recording_needs_repaint == re_viewer_context::NeedsRepaint::Yes
-                || blueprint_needs_repaint == re_viewer_context::NeedsRepaint::Yes
-            {
-                ui.ctx().request_repaint();
-            }
-        }
-
         if WATERMARK {
             ui.ctx().paint_watermark();
         }
 
         // This must run after any ui code, or other code that tells egui to open an url:
         check_for_clicked_hyperlinks(&egui_ctx, ctx.selection_state);
+
+        // Deselect on ESC. Must happen after all other UI code to let them capture ESC if needed.
+        if ui.input(|i| i.key_pressed(egui::Key::Escape)) && !is_any_popup_open {
+            selection_state.clear_selection();
+        }
 
         // Reset the focused item.
         *focused_item = None;
@@ -536,6 +500,39 @@ impl AppState {
         } else {
             LatestAtQuery::latest(blueprint_timeline())
         }
+    }
+}
+
+fn move_time(ctx: &ViewerContext<'_>, recording: &EntityDb, rx: &ReceiveSet<LogMsg>) {
+    let dt = ctx.egui_ctx.input(|i| i.stable_dt);
+
+    // Are we still connected to the data source for the current store?
+    let more_data_is_coming = if let Some(store_source) = &recording.data_source {
+        rx.sources().iter().any(|s| s.as_ref() == store_source)
+    } else {
+        false
+    };
+
+    let recording_needs_repaint = ctx.rec_cfg.time_ctrl.write().update(
+        recording.times_per_timeline(),
+        dt,
+        more_data_is_coming,
+    );
+
+    let blueprint_needs_repaint = if ctx.app_options.inspect_blueprint_timeline {
+        ctx.blueprint_cfg.time_ctrl.write().update(
+            ctx.store_context.blueprint.times_per_timeline(),
+            dt,
+            more_data_is_coming,
+        )
+    } else {
+        re_viewer_context::NeedsRepaint::No
+    };
+
+    if recording_needs_repaint == re_viewer_context::NeedsRepaint::Yes
+        || blueprint_needs_repaint == re_viewer_context::NeedsRepaint::Yes
+    {
+        ctx.egui_ctx.request_repaint();
     }
 }
 

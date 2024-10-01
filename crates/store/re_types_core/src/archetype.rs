@@ -194,6 +194,18 @@ impl<A: Archetype> GenericIndicatorComponent<A> {
     pub const DEFAULT: Self = Self {
         _phantom: std::marker::PhantomData::<A>,
     };
+
+    /// Create an array of indicator components of this type with the given length.
+    ///
+    /// This can be useful when sending columns of indicators with
+    /// `rerun::RecordingStream::send_columns`.
+    #[inline]
+    pub fn new_array(len: usize) -> GenericIndicatorComponentArray<A> {
+        GenericIndicatorComponentArray {
+            len,
+            _phantom: std::marker::PhantomData::<A>,
+        }
+    }
 }
 
 impl<A: Archetype> Default for GenericIndicatorComponent<A> {
@@ -220,6 +232,37 @@ impl<A: Archetype> crate::LoggableBatch for GenericIndicatorComponent<A> {
 }
 
 impl<A: Archetype> crate::ComponentBatch for GenericIndicatorComponent<A> {}
+
+/// A generic [indicator component] array of a given length.
+///
+/// This can be useful when sending columns of indicators with
+/// `rerun::RecordingStream::send_columns`.
+///
+/// To create this type, call [`GenericIndicatorComponent::new_array`].
+///
+/// [indicator component]: [`Archetype::Indicator`]
+#[derive(Debug, Clone, Copy)]
+pub struct GenericIndicatorComponentArray<A: Archetype> {
+    len: usize,
+    _phantom: std::marker::PhantomData<A>,
+}
+
+impl<A: Archetype> crate::LoggableBatch for GenericIndicatorComponentArray<A> {
+    type Name = ComponentName;
+
+    #[inline]
+    fn name(&self) -> Self::Name {
+        GenericIndicatorComponent::<A>::DEFAULT.name()
+    }
+
+    #[inline]
+    fn to_arrow(&self) -> SerializationResult<Box<dyn arrow2::array::Array>> {
+        let datatype = arrow2::datatypes::DataType::Null;
+        Ok(arrow2::array::NullArray::new(datatype, self.len).boxed())
+    }
+}
+
+impl<A: Archetype> crate::ComponentBatch for GenericIndicatorComponentArray<A> {}
 
 // ---
 

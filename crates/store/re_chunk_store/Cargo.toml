@@ -31,12 +31,14 @@ deadlock_detection = ["parking_lot/deadlock_detection"]
 re_chunk.workspace = true
 re_format.workspace = true
 re_log = { workspace = true, features = ["setup"] }
+re_log_encoding = { workspace = true, features = ["decoder"] }
 re_log_types.workspace = true
 re_tracing.workspace = true
 re_types_core.workspace = true
 
 # External dependencies:
 ahash.workspace = true
+anyhow.workspace = true
 arrow2 = { workspace = true, features = ["compute_concatenate"] }
 document-features.workspace = true
 indent.workspace = true

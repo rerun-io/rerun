@@ -1,7 +1,7 @@
 use itertools::Itertools;
 
-use re_chunk_store::external::re_chunk::external::arrow2;
-use re_chunk_store::external::re_chunk::external::arrow2::array::Utf8Array;
+use re_chunk_store::external::arrow2;
+use re_chunk_store::external::arrow2::array::Utf8Array;
 use re_types::SizeBytes as _;
 use re_ui::UiExt;
 

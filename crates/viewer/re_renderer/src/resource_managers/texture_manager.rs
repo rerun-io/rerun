@@ -11,8 +11,6 @@ use crate::{
 /// Handle to a 2D resource.
 ///
 /// Currently, this is solely a more strongly typed regular gpu texture handle.
-/// Since all textures have "long lived" behavior (no temp allocation, alive until unused),
-/// there is no difference as with buffer reliant data like meshes or most contents of draw-data.
 #[derive(Clone)]
 pub struct GpuTexture2D(GpuTexture);
 
@@ -166,9 +164,6 @@ impl From<TextureManager2DError<never::Never>> for TextureCreationError {
 ///
 /// Has intertior mutability.
 pub struct TextureManager2D {
-    // Long lived/short lived doesn't make sense for textures since we don't yet know a way to
-    // optimize for short lived textures as we do with buffer data.
-    //manager: ResourceManager<Texture2DHandleInner, GpuTextureHandleStrong>,
     white_texture_unorm: GpuTexture2D,
     zeroed_texture_float: GpuTexture2D,
     zeroed_texture_depth: GpuTexture2D,

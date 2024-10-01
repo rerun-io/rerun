@@ -1,11 +1,12 @@
 use nohash_hasher::IntSet;
+
 use re_entity_db::EntityDb;
 use re_log_types::EntityPath;
 use re_types::{ComponentName, SpaceViewClassIdentifier};
 
 use crate::{
-    ApplicableEntities, IndicatedEntities, PerSystemEntities, PerVisualizer, QueryRange,
-    SmallVisualizerSet, SpaceViewClassRegistryError, SpaceViewId, SpaceViewSpawnHeuristics,
+    ApplicableEntities, IndicatedEntities, PerVisualizer, QueryRange, SmallVisualizerSet,
+    SpaceViewClassRegistryError, SpaceViewId, SpaceViewSpawnHeuristics,
     SpaceViewSystemExecutionError, SpaceViewSystemRegistrator, SystemExecutionOutput, ViewQuery,
     ViewerContext, VisualizableEntities,
 };
@@ -41,9 +42,9 @@ impl VisualizableFilterContext for () {
 /// Each Space View in the viewer's viewport has a single class assigned immutable at its creation time.
 /// The class defines all aspects of its behavior.
 /// It determines which entities are queried, how they are rendered, and how the user can interact with them.
-///
-/// TODO(andreas): Consider formulating a space view instance context object that is passed to all
-/// methods that operate on concrete space views as opposed to be about general information on the class.
+//
+// TODO(andreas): Consider formulating a space view instance context object that is passed to all
+// methods that operate on concrete space views as opposed to be about general information on the class.
 pub trait SpaceViewClass: Send + Sync {
     /// Identifier string of this space view class.
     ///
@@ -168,21 +169,22 @@ pub trait SpaceViewClass: Send + Sync {
     /// Determines which space views should be spawned by default for this class.
     fn spawn_heuristics(&self, ctx: &ViewerContext<'_>) -> SpaceViewSpawnHeuristics;
 
-    /// Executed for all active space views on frame start (before any ui is drawn),
-    /// can be use for heuristic & state updates before populating the scene.
-    ///
-    /// Is only allowed to access archetypes defined by [`Self::blueprint_archetype`]
-    /// Passed entity properties are individual properties without propagated values.
-    fn on_frame_start(
-        &self,
-        _ctx: &ViewerContext<'_>,
-        _state: &mut dyn SpaceViewState,
-        _ent_paths: &PerSystemEntities,
-    ) {
-    }
-
     /// Ui shown when the user selects a space view of this class.
     fn selection_ui(
+        &self,
+        _ctx: &ViewerContext<'_>,
+        _ui: &mut egui::Ui,
+        _state: &mut dyn SpaceViewState,
+        _space_origin: &EntityPath,
+        _space_view_id: SpaceViewId,
+    ) -> Result<(), SpaceViewSystemExecutionError> {
+        Ok(())
+    }
+
+    /// Additional UI displayed in the tab title bar, between the "maximize" and "help" buttons.
+    ///
+    /// Note: this is a right-to-left layout.
+    fn extra_title_bar_ui(
         &self,
         _ctx: &ViewerContext<'_>,
         _ui: &mut egui::Ui,

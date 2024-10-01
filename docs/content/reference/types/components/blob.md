@@ -18,5 +18,5 @@ A binary blob of data.
 ## Used by
 
 * [`Asset3D`](../archetypes/asset3d.md)
-* [`AssetVideo`](../archetypes/asset_video.md)
+* [`AssetVideo`](../archetypes/asset_video.md?speculative-link)
 * [`EncodedImage`](../archetypes/encoded_image.md)

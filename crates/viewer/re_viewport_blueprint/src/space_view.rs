@@ -18,9 +18,9 @@ use re_types::{
 };
 use re_types_core::Archetype as _;
 use re_viewer_context::{
-    ContentsName, PerSystemEntities, QueryRange, RecommendedSpaceView, SpaceViewClass,
-    SpaceViewClassRegistry, SpaceViewId, SpaceViewState, StoreContext, SystemCommand,
-    SystemCommandSender as _, ViewContext, ViewStates, ViewerContext, VisualizerCollection,
+    ContentsName, QueryRange, RecommendedSpaceView, SpaceViewClass, SpaceViewClassRegistry,
+    SpaceViewId, SpaceViewState, StoreContext, SystemCommand, SystemCommandSender as _,
+    ViewContext, ViewStates, ViewerContext, VisualizerCollection,
 };
 
 use crate::{SpaceViewContents, ViewProperty};
@@ -355,29 +355,6 @@ impl SpaceViewBlueprint {
         space_view_class_registry: &'a re_viewer_context::SpaceViewClassRegistry,
     ) -> &'a dyn SpaceViewClass {
         space_view_class_registry.get_class_or_log_error(self.class_identifier)
-    }
-
-    pub fn on_frame_start(&self, ctx: &ViewerContext<'_>, view_states: &mut ViewStates) {
-        let query_result = ctx.lookup_query_result(self.id).clone();
-
-        let mut per_system_entities = PerSystemEntities::default();
-        {
-            re_tracing::profile_scope!("per_system_data_results");
-
-            query_result.tree.visit(&mut |node| {
-                for system in &node.data_result.visualizers {
-                    per_system_entities
-                        .entry(*system)
-                        .or_default()
-                        .insert(node.data_result.entity_path.clone());
-                }
-                true
-            });
-        }
-
-        let class = self.class(ctx.space_view_class_registry);
-        let view_state = view_states.get_mut_or_create(self.id, class);
-        class.on_frame_start(ctx, view_state, &per_system_entities);
     }
 
     #[inline]
@@ -793,6 +770,7 @@ mod tests {
             default_blueprint: None,
             recording: &test_ctx.recording_store,
             bundle: &Default::default(),
+            caches: &Default::default(),
             hub: &re_viewer_context::StoreHub::test_hub(),
         };
 

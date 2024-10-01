@@ -1,5 +1,7 @@
 use crate::{Component, ComponentName, Loggable, SerializationResult};
 
+use arrow2::array::ListArray as ArrowListArray;
+
 #[allow(unused_imports)] // used in docstrings
 use crate::Archetype;
 
@@ -32,7 +34,17 @@ pub trait LoggableBatch {
 ///
 /// Any [`LoggableBatch`] with a [`Loggable::Name`] set to [`ComponentName`] automatically
 /// implements [`ComponentBatch`].
-pub trait ComponentBatch: LoggableBatch<Name = ComponentName> {}
+pub trait ComponentBatch: LoggableBatch<Name = ComponentName> {
+    /// Serializes the batch into an Arrow list array with a single component per list.
+    fn to_arrow_list_array(&self) -> SerializationResult<ArrowListArray<i32>> {
+        let array = self.to_arrow()?;
+        let offsets =
+            arrow2::offset::Offsets::try_from_lengths(std::iter::repeat(1).take(array.len()))?;
+        let data_type = ArrowListArray::<i32>::default_datatype(array.data_type().clone());
+        ArrowListArray::<i32>::try_new(data_type, offsets.into(), array.to_boxed(), None)
+            .map_err(|err| err.into())
+    }
+}
 
 /// Holds either an owned [`ComponentBatch`] that lives on heap, or a reference to one.
 ///

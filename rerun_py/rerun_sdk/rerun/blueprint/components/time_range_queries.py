@@ -64,6 +64,8 @@ class TimeRangeQueriesType(BaseExtensionType):
                     "item",
                     pa.struct([
                         pa.field("timeline", pa.utf8(), nullable=False, metadata={}),
+                        pa.field("pov_entity", pa.utf8(), nullable=False, metadata={}),
+                        pa.field("pov_component", pa.utf8(), nullable=False, metadata={}),
                         pa.field("start", pa.int64(), nullable=False, metadata={}),
                         pa.field("end", pa.int64(), nullable=False, metadata={}),
                     ]),

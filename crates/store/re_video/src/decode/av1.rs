@@ -1,18 +1,15 @@
 //! AV1 support.
 
-use super::PixelFormat;
-use super::{Chunk, Frame};
-use crate::TimeMs;
-use crossbeam::channel::bounded;
-use crossbeam::channel::RecvError;
-use crossbeam::channel::TryRecvError;
-use crossbeam::channel::{unbounded, Receiver, Sender};
-use crossbeam::select;
-use crossbeam::sync::Parker;
-use crossbeam::sync::Unparker;
-use dav1d::PixelLayout;
-use dav1d::PlanarImageComponent;
 use std::time::Duration;
+
+use crossbeam::{
+    channel::{bounded, unbounded, Receiver, RecvError, Sender, TryRecvError},
+    select,
+    sync::{Parker, Unparker},
+};
+use dav1d::{PixelLayout, PlanarImageComponent};
+
+use super::{Chunk, Frame, PixelFormat, TimeMs};
 
 pub struct Decoder {
     _thread: std::thread::JoinHandle<()>,

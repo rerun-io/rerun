@@ -30,6 +30,20 @@ pub trait UiExt {
         response.on_hover_text(error_text)
     }
 
+    /// Shows an error label with the entire error text and copies the text to the clipboard on click.
+    ///
+    /// Use this only if you have a lot of space to spare.
+    fn error_label_long(&mut self, error_text: &str) -> egui::Response {
+        let label = egui::Label::new(self.ui().ctx().error_text(error_text))
+            .selectable(true)
+            .sense(egui::Sense::click());
+        let response = self.ui_mut().add(label).on_hover_text("Click to copy.");
+        if response.clicked() {
+            self.ui().ctx().copy_text(error_text.to_owned());
+        }
+        response
+    }
+
     fn small_icon_button(&mut self, icon: &Icon) -> egui::Response {
         let widget = self.small_icon_button_widget(icon);
         self.ui_mut().add(widget)
@@ -765,7 +779,7 @@ pub trait UiExt {
     /// The `add_contents` closure is executed in the context of a vertical layout.
     fn center<R>(
         &mut self,
-        id_source: impl Hash,
+        id_salt: impl Hash,
         add_contents: impl FnOnce(&mut egui::Ui) -> R,
     ) -> R {
         // Strategy:
@@ -779,7 +793,7 @@ pub trait UiExt {
         struct TextSize(egui::Vec2);
 
         let ui = self.ui_mut();
-        let id = ui.make_persistent_id(id_source);
+        let id = ui.make_persistent_id(id_salt);
 
         let text_size: Option<TextSize> = ui.data(|reader| reader.get_temp(id));
 
@@ -934,7 +948,7 @@ pub trait UiExt {
     }
 
     /// Show some markdown
-    fn markdown_ui(&mut self, id: egui::Id, markdown: &str) {
+    fn markdown_ui(&mut self, markdown: &str) {
         use parking_lot::Mutex;
         use std::sync::Arc;
 
@@ -946,7 +960,7 @@ pub trait UiExt {
             .clone()
         });
 
-        egui_commonmark::CommonMarkViewer::new(id).show(ui, &mut commonmark_cache.lock(), markdown);
+        egui_commonmark::CommonMarkViewer::new().show(ui, &mut commonmark_cache.lock(), markdown);
     }
 
     /// A drop-down menu with a list of options.
@@ -956,12 +970,12 @@ pub trait UiExt {
     /// Use this instead of using [`egui::ComboBox`] directly.
     fn drop_down_menu(
         &mut self,
-        id_source: impl std::hash::Hash,
+        id_salt: impl std::hash::Hash,
         selected_text: String,
         content: impl FnOnce(&mut egui::Ui),
     ) {
         // TODO(emilk): make the button itself a `ListItem2`
-        egui::ComboBox::from_id_source(id_source)
+        egui::ComboBox::from_id_salt(id_salt)
             .selected_text(selected_text)
             .show_ui(self.ui_mut(), |ui| {
                 list_item::list_item_scope(ui, "inner_scope", |ui| {

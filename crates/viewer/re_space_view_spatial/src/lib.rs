@@ -12,8 +12,10 @@ mod instance_hash_conversions;
 mod max_image_dimension_subscriber;
 mod mesh_cache;
 mod mesh_loader;
-mod pickable_image;
+mod pickable_textured_rect;
 mod picking;
+mod picking_ui;
+mod picking_ui_pixel;
 mod proc_mesh;
 mod scene_bounding_boxes;
 mod space_camera_3d;
@@ -22,7 +24,6 @@ mod transform_component_tracker;
 mod ui;
 mod ui_2d;
 mod ui_3d;
-mod video_cache;
 mod view_2d;
 mod view_2d_properties;
 mod view_3d;
@@ -32,7 +33,7 @@ mod visualizers;
 pub use view_2d::SpatialSpaceView2D;
 pub use view_3d::SpatialSpaceView3D;
 
-pub(crate) use pickable_image::PickableImageRect;
+pub(crate) use pickable_textured_rect::{PickableRectSourceData, PickableTexturedRect};
 
 // ---
 
@@ -40,8 +41,12 @@ use re_space_view::DataResultQuery as _;
 use re_viewer_context::{ImageDecodeCache, ViewContext, ViewerContext};
 
 use re_renderer::RenderContext;
-use re_types::components::{Color, MediaType, Resolution};
-use re_types::{blueprint::components::BackgroundKind, components::ImageFormat};
+use re_types::{
+    archetypes,
+    blueprint::components::BackgroundKind,
+    components::{self, Color, ImageFormat, MediaType, Resolution},
+    static_assert_struct_has_fields,
+};
 use re_viewport_blueprint::{ViewProperty, ViewPropertyQueryError};
 
 mod view_kind {
@@ -57,6 +62,10 @@ fn resolution_of_image_at(
     query: &re_chunk_store::LatestAtQuery,
     entity_path: &re_log_types::EntityPath,
 ) -> Option<Resolution> {
+    // First check assumptions:
+    static_assert_struct_has_fields!(archetypes::Image, format: components::ImageFormat);
+    static_assert_struct_has_fields!(archetypes::EncodedImage, blob: components::Blob);
+
     let db = ctx.recording();
 
     if let Some((_, image_format)) = db.latest_at_component::<ImageFormat>(entity_path, query) {
@@ -148,7 +157,7 @@ fn query_pinhole_legacy(
 
 pub(crate) fn configure_background(
     ctx: &ViewerContext<'_>,
-    background: &ViewProperty<'_>,
+    background: &ViewProperty,
     render_ctx: &RenderContext,
     view_system: &dyn re_viewer_context::ComponentFallbackProvider,
     state: &dyn re_viewer_context::SpaceViewState,

@@ -63,7 +63,7 @@ fn colormap_preview_ui(
         rect,
         colormapped_texture,
         egui::TextureOptions::LINEAR,
-        &debug_name,
+        debug_name.into(),
     )?;
 
     Ok(response)
@@ -123,7 +123,7 @@ pub fn colormap_edit_or_view_ui(
             response
         };
 
-        let mut inner_response = egui::ComboBox::from_id_source("color map select")
+        let mut inner_response = egui::ComboBox::from_id_salt("color map select")
             .selected_text(selected_text)
             .show_ui(ui, |ui| {
                 list_item::list_item_scope(ui, "inner_scope", content_ui)

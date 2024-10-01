@@ -302,7 +302,23 @@ impl<R: std::io::Read> Iterator for Decoder<R> {
         };
         self.size_bytes += MessageHeader::SIZE as u64;
 
-        let uncompressed_len = header.uncompressed_len as usize;
+        let (uncompressed_len, compressed_len) = match header {
+            MessageHeader::Data {
+                compressed_len,
+                uncompressed_len,
+            } => (uncompressed_len as usize, compressed_len as usize),
+            MessageHeader::EndOfStream => {
+                // we might have a concatenated stream, so we peek beyond end of file marker to see
+                if self.peek_file_header() {
+                    re_log::debug!("Reached end of stream, but it seems we have a concatenated file, continuing");
+                    return self.next();
+                }
+
+                re_log::debug!("Reached end of stream, iterator complete");
+                return None;
+            }
+        };
+
         self.uncompressed
             .resize(self.uncompressed.len().max(uncompressed_len), 0);
 
@@ -319,7 +335,6 @@ impl<R: std::io::Read> Iterator for Decoder<R> {
             }
 
             Compression::LZ4 => {
-                let compressed_len = header.compressed_len as usize;
                 self.compressed
                     .resize(self.compressed.len().max(compressed_len), 0);
 
@@ -358,53 +373,118 @@ impl<R: std::io::Read> Iterator for Decoder<R> {
 
 // ----------------------------------------------------------------------------
 
-#[cfg(all(feature = "decoder", feature = "encoder"))]
-#[test]
-fn test_encode_decode() {
+#[cfg(all(test, feature = "decoder", feature = "encoder"))]
+mod tests {
+    use super::*;
+    use re_build_info::CrateVersion;
     use re_chunk::RowId;
     use re_log_types::{
-        ApplicationId, LogMsg, SetStoreInfo, StoreId, StoreInfo, StoreKind, StoreSource, Time,
+        ApplicationId, SetStoreInfo, StoreId, StoreInfo, StoreKind, StoreSource, Time,
     };
 
-    let rrd_version = CrateVersion::LOCAL;
-
-    let messages = vec![LogMsg::SetStoreInfo(SetStoreInfo {
-        row_id: *RowId::new(),
-        info: StoreInfo {
-            application_id: ApplicationId("test".to_owned()),
-            store_id: StoreId::random(StoreKind::Recording),
-            cloned_from: None,
-            is_official_example: true,
-            started: Time::now(),
-            store_source: StoreSource::RustSdk {
-                rustc_version: String::new(),
-                llvm_version: String::new(),
+    fn fake_log_message() -> LogMsg {
+        LogMsg::SetStoreInfo(SetStoreInfo {
+            row_id: *RowId::new(),
+            info: StoreInfo {
+                application_id: ApplicationId("test".to_owned()),
+                store_id: StoreId::random(StoreKind::Recording),
+                cloned_from: None,
+                is_official_example: true,
+                started: Time::now(),
+                store_source: StoreSource::RustSdk {
+                    rustc_version: String::new(),
+                    llvm_version: String::new(),
+                },
+                store_version: Some(CrateVersion::LOCAL),
             },
-            store_version: Some(rrd_version),
-        },
-    })];
+        })
+    }
 
-    let options = [
-        EncodingOptions {
-            compression: Compression::Off,
-            serializer: Serializer::MsgPack,
-        },
-        EncodingOptions {
-            compression: Compression::LZ4,
-            serializer: Serializer::MsgPack,
-        },
-    ];
+    #[test]
+    fn test_encode_decode() {
+        let rrd_version = CrateVersion::LOCAL;
 
-    for options in options {
-        let mut file = vec![];
-        crate::encoder::encode_ref(rrd_version, options, messages.iter().map(Ok), &mut file)
+        let messages = vec![fake_log_message()];
+
+        let options = [
+            EncodingOptions {
+                compression: Compression::Off,
+                serializer: Serializer::MsgPack,
+            },
+            EncodingOptions {
+                compression: Compression::LZ4,
+                serializer: Serializer::MsgPack,
+            },
+        ];
+
+        for options in options {
+            let mut file = vec![];
+            crate::encoder::encode_ref(rrd_version, options, messages.iter().map(Ok), &mut file)
+                .unwrap();
+
+            let decoded_messages = Decoder::new(VersionPolicy::Error, &mut file.as_slice())
+                .unwrap()
+                .collect::<Result<Vec<LogMsg>, DecodeError>>()
+                .unwrap();
+
+            assert_eq!(messages, decoded_messages);
+        }
+    }
+
+    #[test]
+    fn test_concatenated_streams() {
+        let options = [
+            EncodingOptions {
+                compression: Compression::Off,
+                serializer: Serializer::MsgPack,
+            },
+            EncodingOptions {
+                compression: Compression::LZ4,
+                serializer: Serializer::MsgPack,
+            },
+        ];
+
+        for options in options {
+            let mut data = vec![];
+
+            // write "2 files" i.e. 2 streams that end with end-of-stream marker
+            let messages = vec![
+                fake_log_message(),
+                fake_log_message(),
+                fake_log_message(),
+                fake_log_message(),
+            ];
+
+            // (2 encoders as each encoder writes a file header)
+            let writer = std::io::Cursor::new(&mut data);
+            let mut encoder1 =
+                crate::encoder::Encoder::new(CrateVersion::LOCAL, options, writer).unwrap();
+            encoder1.append(&messages[0]).unwrap();
+            encoder1.append(&messages[1]).unwrap();
+            encoder1.finish().unwrap();
+
+            let written = data.len() as u64;
+            let mut writer = std::io::Cursor::new(&mut data);
+            writer.set_position(written);
+            let mut encoder2 =
+                crate::encoder::Encoder::new(CrateVersion::LOCAL, options, writer).unwrap();
+
+            encoder2.append(&messages[2]).unwrap();
+            encoder2.append(&messages[3]).unwrap();
+            encoder2.finish().unwrap();
+
+            let decoder = Decoder::new_concatenated(
+                VersionPolicy::Error,
+                std::io::BufReader::new(data.as_slice()),
+            )
             .unwrap();
 
-        let decoded_messages = Decoder::new(VersionPolicy::Error, &mut file.as_slice())
-            .unwrap()
-            .collect::<Result<Vec<LogMsg>, DecodeError>>()
-            .unwrap();
+            let mut decoded_messages = vec![];
+            for msg in decoder {
+                decoded_messages.push(msg.unwrap());
+            }
 
-        assert_eq!(messages, decoded_messages);
+            assert_eq!(messages, decoded_messages);
+        }
     }
 }
