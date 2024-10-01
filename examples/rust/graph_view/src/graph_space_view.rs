@@ -74,6 +74,7 @@ pub struct GraphSpaceViewState {
     node_to_index: HashMap<QualifiedNode, petgraph::stable_graph::NodeIndex>,
     // graph viewer
     screen_to_world: TSTransform,
+
     /// Positions of the nodes in world space.
     layout: Option<HashMap<QualifiedNode, egui::Rect>>,
 }
@@ -188,11 +189,7 @@ impl SpaceViewClass for GraphSpaceView {
             ctx.request_discard("measuring node sizes");
             log::debug!("Will discard: {:?}", ctx.will_discard());
             ui.horizontal(|ui| {
-                for node in node_system
-                    .data
-                    .iter()
-                    .flat_map(|d| d.nodes())
-                {
+                for node in node_system.data.iter().flat_map(|d| d.nodes()) {
                     let response = node.draw(ui, InteractionHighlight::default());
                     layout.insert(node.node_id, response.rect);
                 }
