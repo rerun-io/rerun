@@ -1714,6 +1714,7 @@ checksum = "7e962a19be5cfc3f3bf6dd8f61eb50107f356ad6270fbb3ed41476571db78be5"
 [[package]]
 name = "dav1d"
 version = "0.10.3"
+source = "git+https://github.com/rerun-io/rav1d-rs#ffb30df91a4fcf0af4e6cf44a9a373265aba02c1"
 dependencies = [
  "av-data",
  "bitflags 2.6.0",
@@ -4703,6 +4704,7 @@ dependencies = [
 [[package]]
 name = "rav1d"
 version = "1.0.0"
+source = "git+https://github.com/rerun-io/rav1d-rs#ffb30df91a4fcf0af4e6cf44a9a373265aba02c1"
 dependencies = [
  "assert_matches",
  "atomig",
