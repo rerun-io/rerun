@@ -6,7 +6,7 @@ service StorageNode {
     rpc ListRecordings(ListRecordingsRequest) returns (ListRecordingsResponse) {}
     rpc Query(QueryRequest) returns (stream QueryResponse) {}
     rpc GetRecordingMetadata(RecordingId) returns (RecordingMetadata) {}
-    rpc RegisterRecording(RegisterRecordingRequest) returns (RecordingId) {}
+    rpc RegisterRecording(RegisterRecordingRequest) returns (RegisterRecordingResponse) {}
 }
 
 // ----------- Common ------------
