@@ -2,6 +2,7 @@ use std::collections::HashMap;
 
 use re_viewer::external::{
     egui::{self, emath::TSTransform, Rect, TextWrapMode},
+    re_log::external::log,
     re_log_types::EntityPath,
     re_types::SpaceViewClassIdentifier,
     re_ui,
@@ -54,7 +55,6 @@ impl<'a> NodeInstance<'a> {
             .fill(ui.style().visuals.faint_bg_color)
             .show(ui, |ui| {
                 ui.style_mut().wrap_mode = Some(TextWrapMode::Extend);
-
                 if let Some(color) = self.color {
                     ui.button(self.text().color(color))
                 } else {
@@ -75,7 +75,7 @@ pub struct GraphSpaceViewState {
     // graph viewer
     screen_to_world: TSTransform,
     /// Positions of the nodes in world space.
-    node_positions: HashMap<QualifiedNode, egui::Rect>,
+    layout: Option<HashMap<QualifiedNode, egui::Rect>>,
 }
 
 impl SpaceViewState for GraphSpaceViewState {
@@ -181,6 +181,26 @@ impl SpaceViewClass for GraphSpaceView {
 
         let state = state.downcast_mut::<GraphSpaceViewState>()?;
 
+        let Some(layout) = &mut state.layout else {
+            let mut layout = HashMap::new();
+            let ctx = ui.ctx();
+            log::debug!("Will discard: {:?}", ctx.will_discard());
+            ctx.request_discard("measuring node sizes");
+            log::debug!("Will discard: {:?}", ctx.will_discard());
+            ui.horizontal(|ui| {
+                for node in node_system
+                    .data
+                    .iter()
+                    .flat_map(|d| d.nodes())
+                {
+                    let response = node.draw(ui, InteractionHighlight::default());
+                    layout.insert(node.node_id, response.rect);
+                }
+            });
+            state.layout = Some(layout);
+            return Ok(());
+        };
+
         // TODO(grtlr): Once we settle on a design, we should update the graph instead of constructing it from scratch.
         state.graph.clear();
         state.node_to_index.clear();
@@ -245,7 +265,7 @@ impl SpaceViewClass for GraphSpaceView {
         }
 
         // initial layout
-        let mut positions = (0..).map(|i| egui::Pos2::new(0.0, 0.0 + i as f32 * 30.0));
+
         let window_layer = ui.layer_id();
 
         for data in node_system.data.iter() {
@@ -255,10 +275,10 @@ impl SpaceViewClass for GraphSpaceView {
             for node in data.nodes() {
                 let response = egui::Area::new(id.with((node.node_id.clone(), node.instance)))
                     .current_pos(
-                        state
-                            .node_positions
+                        layout
                             .get(&node.node_id)
-                            .map_or(positions.next().unwrap(), |r| r.min),
+                            .expect("missing layout information for node")
+                            .min,
                     )
                     .order(egui::Order::Middle)
                     .constrain(false)
@@ -271,9 +291,7 @@ impl SpaceViewClass for GraphSpaceView {
 
                 entity_rect =
                     entity_rect.map_or(Some(response.rect), |r| Some(r.union(response.rect)));
-                state
-                    .node_positions
-                    .insert(node.node_id.clone(), response.rect);
+                layout.insert(node.node_id.clone(), response.rect);
 
                 let id = response.layer_id;
 
@@ -315,10 +333,9 @@ impl SpaceViewClass for GraphSpaceView {
 
             for (i, (edge, instance, color)) in data.edges().enumerate() {
                 // TODO(grtlr): This does not handle dummy nodes correctly.
-                if let (Some(source_pos), Some(target_pos)) = (
-                    state.node_positions.get(&edge.source),
-                    state.node_positions.get(&edge.target),
-                ) {
+                if let (Some(source_pos), Some(target_pos)) =
+                    (layout.get(&edge.source), layout.get(&edge.target))
+                {
                     let highlight = ent_highlight.index_highlight(instance);
 
                     let hcolor = match (
