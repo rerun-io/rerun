@@ -106,7 +106,9 @@ impl WireframeCache {
         self.0
             .entry(key)
             .or_insert_with(|| {
-                re_log::debug!("Generating mesh {key:?}…");
+                re_tracing::profile_scope!("proc_mesh::WireframeCache(miss)", format!("{key:?}"));
+
+                re_log::debug!("Generating wireframe mesh {key:?}…");
 
                 let mesh = generate_wireframe(&key, render_ctx);
 
@@ -231,7 +233,9 @@ impl SolidCache {
         self.0
             .entry(key)
             .or_insert_with(|| {
-                re_log::debug!("Generating mesh {key:?}…");
+                re_tracing::profile_scope!("proc_mesh::SolidCache(miss)", format!("{key:?}"));
+
+                re_log::debug!("Generating solid mesh {key:?}…");
 
                 match generate_solid(&key, render_ctx) {
                     Ok(mesh) => Some(mesh),
