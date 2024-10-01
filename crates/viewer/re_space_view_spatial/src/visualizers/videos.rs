@@ -25,7 +25,7 @@ use crate::{
     contexts::SpatialSceneEntityContext,
     ui::SpatialSpaceViewState,
     view_kind::SpatialSpaceViewKind,
-    visualizers::{entity_iterator, filter_visualizable_2d_entities},
+    visualizers::{entity_iterator, filter_visualizable_2d_entities, LoadingSpinner},
     PickableRectSourceData, PickableTexturedRect, SpatialSpaceView2D,
 };
 
@@ -207,14 +207,11 @@ impl VideoFrameReferenceVisualizer {
                             VideoFrameTexture::Ready(texture) => texture,
                             VideoFrameTexture::Pending(placeholder) => {
                                 // Show loading rectangle:
-                                let min = top_left_corner_position;
-                                let max = top_left_corner_position + extent_u + extent_v;
-                                let center = 0.5 * (min + max);
-                                let diameter = (max - min).truncate().abs().min_element();
-                                self.data.loading_rects.push(egui::Rect::from_center_size(
-                                    egui::pos2(center.x, center.y),
-                                    egui::Vec2::splat(diameter),
-                                ));
+                                self.data.loading_spinners.push(LoadingSpinner {
+                                    center: top_left_corner_position + 0.5 * (extent_u + extent_v),
+                                    half_extent_u: 0.5 * extent_u,
+                                    half_extent_v: 0.5 * extent_v,
+                                });
 
                                 // Keep polling for the decoded result:
                                 ctx.viewer_ctx.egui_ctx.request_repaint();

@@ -434,7 +434,7 @@ impl VideoDecoder {
 
     /// Reset the video decoder and discard all frames.
     fn reset(&mut self) -> Result<(), DecodingError> {
-        re_log::debug!("Resetting video decoder.");
+        re_log::trace!("Resetting video decoder.");
         if let Err(_err) = self.decoder.reset() {
             // At least on Firefox, it can happen that reset on a previous error fails.
             // In that case, start over completely and try again!

@@ -691,6 +691,7 @@ impl SpatialSpaceView3D {
         crate::ui::paint_loading_spinners(
             ui,
             RectTransform::from_to(ui_rect, ui_rect),
+            &eye,
             &system_output.view_systems,
         );
 
