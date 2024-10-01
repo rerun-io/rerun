@@ -435,6 +435,84 @@ impl Chunk {
                 .collect(),
         }
     }
+
+    /// Removes duplicate rows from sections of consecutive identical indices.
+    ///
+    /// * If the [`Chunk`] is sorted on that index, all remaining indices will be unique.
+    /// * If the [`Chunk`] has been densified on a specific column, the resulting chunk will
+    ///   effectively contain the latest value of that column for each given index value.
+    ///
+    /// If this is a temporal chunk and `timeline` isn't present in it, this method is a no-op.
+    ///
+    /// This does _not_ obey `RowId`-ordering semantics (or any other kind of semantics for that
+    /// matter) -- it merely respects how the chunk is currently laid out: no more, no less.
+    /// Sort the chunk according to the semantics you're looking for before calling this method.
+    //
+    // TODO(cmc): `Timeline` should really be `Index`.
+    #[inline]
+    pub fn deduped_latest_on_index(&self, index: &Timeline) -> Self {
+        re_tracing::profile_function!();
+
+        if self.is_empty() {
+            return self.clone();
+        }
+
+        if self.is_static() {
+            return self.row_sliced(self.num_rows().saturating_sub(1), 1);
+        }
+
+        let Some(time_column) = self.timelines.get(index) else {
+            return self.clone();
+        };
+
+        let indices = {
+            let mut i = 0;
+            let indices = time_column
+                .times_raw()
+                .iter()
+                .copied()
+                .dedup_with_count()
+                .map(|(count, _time)| {
+                    i += count;
+                    i.saturating_sub(1) as i32
+                })
+                .collect_vec();
+            ArrowPrimitiveArray::<i32>::from_vec(indices)
+        };
+
+        let chunk = Self {
+            id: self.id,
+            entity_path: self.entity_path.clone(),
+            heap_size_bytes: Default::default(),
+            is_sorted: self.is_sorted,
+            row_ids: crate::util::take_array(&self.row_ids, &indices),
+            timelines: self
+                .timelines
+                .iter()
+                .map(|(&timeline, time_column)| (timeline, time_column.taken(&indices)))
+                .collect(),
+            components: self
+                .components
+                .iter()
+                .map(|(&component_name, list_array)| {
+                    let filtered = crate::util::take_array(list_array, &indices);
+                    (component_name, filtered)
+                })
+                .collect(),
+        };
+
+        #[cfg(debug_assertions)]
+        #[allow(clippy::unwrap_used)] // debug-only
+        {
+            assert!(
+                chunk.is_sorted,
+                "We can only decimate sorted chunks, and decimation doesn't impact ordering.",
+            );
+            chunk.sanity_check().unwrap();
+        }
+
+        chunk
+    }
 }
 
 impl TimeColumn {
@@ -517,7 +595,9 @@ impl TimeColumn {
         )
     }
 
-    /// Runs a filter compute kernel on the time data with the specified `mask`.
+    /// Runs a [filter] compute kernel on the time data with the specified `mask`.
+    ///
+    /// [filter]: arrow2::compute::filter::filter
     #[inline]
     pub(crate) fn filtered(&self, filter: &ArrowBooleanArray) -> Self {
         let Self {
@@ -552,13 +632,35 @@ impl TimeColumn {
             crate::util::filter_array(times, filter),
         )
     }
+
+    /// Runs a [take] compute kernel on the time data with the specified `indices`.
+    ///
+    /// [take]: arrow2::compute::take::take
+    #[inline]
+    pub(crate) fn taken<O: arrow2::types::Index>(&self, indices: &ArrowPrimitiveArray<O>) -> Self {
+        let Self {
+            timeline,
+            times,
+            is_sorted,
+            time_range: _,
+        } = self;
+
+        Self::new(
+            Some(*is_sorted),
+            *timeline,
+            crate::util::take_array(times, indices),
+        )
+    }
 }
 
 // ---
 
 #[cfg(test)]
 mod tests {
-    use re_log_types::example_components::{MyColor, MyLabel, MyPoint};
+    use re_log_types::{
+        example_components::{MyColor, MyLabel, MyPoint},
+        TimePoint,
+    };
     use re_types_core::{ComponentBatch, Loggable};
 
     use crate::{Chunk, RowId, Timeline};
@@ -680,6 +782,271 @@ mod tests {
                 expected.and_then(|expected| re_types_core::LoggableBatch::to_arrow(expected).ok());
             eprintln!("{component_name} @ {row_id}");
             similar_asserts::assert_eq!(expected, chunk.cell(*row_id, component_name));
+        }
+
+        Ok(())
+    }
+
+    #[test]
+    fn dedupe_temporal() -> anyhow::Result<()> {
+        let entity_path = "my/entity";
+
+        let row_id1 = RowId::new();
+        let row_id2 = RowId::new();
+        let row_id3 = RowId::new();
+        let row_id4 = RowId::new();
+        let row_id5 = RowId::new();
+
+        let timepoint1 = [
+            (Timeline::log_time(), 1000),
+            (Timeline::new_sequence("frame"), 1),
+        ];
+        let timepoint2 = [
+            (Timeline::log_time(), 1032),
+            (Timeline::new_sequence("frame"), 1),
+        ];
+        let timepoint3 = [
+            (Timeline::log_time(), 1064),
+            (Timeline::new_sequence("frame"), 1),
+        ];
+        let timepoint4 = [
+            (Timeline::log_time(), 1096),
+            (Timeline::new_sequence("frame"), 2),
+        ];
+        let timepoint5 = [
+            (Timeline::log_time(), 1128),
+            (Timeline::new_sequence("frame"), 2),
+        ];
+
+        let points1 = &[MyPoint::new(1.0, 1.0), MyPoint::new(2.0, 2.0)];
+        let points3 = &[MyPoint::new(6.0, 7.0)];
+
+        let colors4 = &[MyColor::from_rgb(1, 1, 1)];
+        let colors5 = &[MyColor::from_rgb(2, 2, 2), MyColor::from_rgb(3, 3, 3)];
+
+        let labels1 = &[MyLabel("a".into())];
+        let labels2 = &[MyLabel("b".into())];
+        let labels3 = &[MyLabel("c".into())];
+        let labels4 = &[MyLabel("d".into())];
+        let labels5 = &[MyLabel("e".into())];
+
+        let chunk = Chunk::builder(entity_path.into())
+            .with_sparse_component_batches(
+                row_id1,
+                timepoint1,
+                [
+                    (MyPoint::name(), Some(points1 as _)),
+                    (MyColor::name(), None),
+                    (MyLabel::name(), Some(labels1 as _)),
+                ],
+            )
+            .with_sparse_component_batches(
+                row_id2,
+                timepoint2,
+                [
+                    (MyPoint::name(), None),
+                    (MyColor::name(), None),
+                    (MyLabel::name(), Some(labels2 as _)),
+                ],
+            )
+            .with_sparse_component_batches(
+                row_id3,
+                timepoint3,
+                [
+                    (MyPoint::name(), Some(points3 as _)),
+                    (MyColor::name(), None),
+                    (MyLabel::name(), Some(labels3 as _)),
+                ],
+            )
+            .with_sparse_component_batches(
+                row_id4,
+                timepoint4,
+                [
+                    (MyPoint::name(), None),
+                    (MyColor::name(), Some(colors4 as _)),
+                    (MyLabel::name(), Some(labels4 as _)),
+                ],
+            )
+            .with_sparse_component_batches(
+                row_id5,
+                timepoint5,
+                [
+                    (MyPoint::name(), None),
+                    (MyColor::name(), Some(colors5 as _)),
+                    (MyLabel::name(), Some(labels5 as _)),
+                ],
+            )
+            .build()?;
+
+        eprintln!("chunk:\n{chunk}");
+
+        {
+            let got = chunk.deduped_latest_on_index(&Timeline::new_sequence("frame"));
+            eprintln!("got:\n{got}");
+            assert_eq!(2, got.num_rows());
+
+            let expectations: &[(_, _, Option<&dyn ComponentBatch>)] = &[
+                (row_id3, MyPoint::name(), Some(points3 as _)),
+                (row_id3, MyColor::name(), None),
+                (row_id3, MyLabel::name(), Some(labels3 as _)),
+                //
+                (row_id5, MyPoint::name(), None),
+                (row_id5, MyColor::name(), Some(colors5 as _)),
+                (row_id5, MyLabel::name(), Some(labels5 as _)),
+            ];
+
+            for (row_id, component_name, expected) in expectations {
+                let expected = expected
+                    .and_then(|expected| re_types_core::LoggableBatch::to_arrow(expected).ok());
+                eprintln!("{component_name} @ {row_id}");
+                similar_asserts::assert_eq!(expected, chunk.cell(*row_id, component_name));
+            }
+        }
+
+        {
+            let got = chunk.deduped_latest_on_index(&Timeline::log_time());
+            eprintln!("got:\n{got}");
+            assert_eq!(5, got.num_rows());
+
+            let expectations: &[(_, _, Option<&dyn ComponentBatch>)] = &[
+                (row_id1, MyPoint::name(), Some(points1 as _)),
+                (row_id1, MyColor::name(), None),
+                (row_id1, MyLabel::name(), Some(labels1 as _)),
+                (row_id2, MyPoint::name(), None),
+                (row_id2, MyColor::name(), None),
+                (row_id2, MyLabel::name(), Some(labels2 as _)),
+                (row_id3, MyPoint::name(), Some(points3 as _)),
+                (row_id3, MyColor::name(), None),
+                (row_id3, MyLabel::name(), Some(labels3 as _)),
+                (row_id4, MyPoint::name(), None),
+                (row_id4, MyColor::name(), Some(colors4 as _)),
+                (row_id4, MyLabel::name(), Some(labels4 as _)),
+                (row_id5, MyPoint::name(), None),
+                (row_id5, MyColor::name(), Some(colors5 as _)),
+                (row_id5, MyLabel::name(), Some(labels5 as _)),
+            ];
+
+            for (row_id, component_name, expected) in expectations {
+                let expected = expected
+                    .and_then(|expected| re_types_core::LoggableBatch::to_arrow(expected).ok());
+                eprintln!("{component_name} @ {row_id}");
+                similar_asserts::assert_eq!(expected, chunk.cell(*row_id, component_name));
+            }
+        }
+
+        Ok(())
+    }
+
+    #[test]
+    fn dedupe_static() -> anyhow::Result<()> {
+        let entity_path = "my/entity";
+
+        let row_id1 = RowId::new();
+        let row_id2 = RowId::new();
+        let row_id3 = RowId::new();
+        let row_id4 = RowId::new();
+        let row_id5 = RowId::new();
+
+        let timepoint_static = TimePoint::default();
+
+        let points1 = &[MyPoint::new(1.0, 1.0), MyPoint::new(2.0, 2.0)];
+        let points3 = &[MyPoint::new(6.0, 7.0)];
+
+        let colors4 = &[MyColor::from_rgb(1, 1, 1)];
+        let colors5 = &[MyColor::from_rgb(2, 2, 2), MyColor::from_rgb(3, 3, 3)];
+
+        let labels1 = &[MyLabel("a".into())];
+        let labels2 = &[MyLabel("b".into())];
+        let labels3 = &[MyLabel("c".into())];
+        let labels4 = &[MyLabel("d".into())];
+        let labels5 = &[MyLabel("e".into())];
+
+        let chunk = Chunk::builder(entity_path.into())
+            .with_sparse_component_batches(
+                row_id1,
+                timepoint_static.clone(),
+                [
+                    (MyPoint::name(), Some(points1 as _)),
+                    (MyColor::name(), None),
+                    (MyLabel::name(), Some(labels1 as _)),
+                ],
+            )
+            .with_sparse_component_batches(
+                row_id2,
+                timepoint_static.clone(),
+                [
+                    (MyPoint::name(), None),
+                    (MyColor::name(), None),
+                    (MyLabel::name(), Some(labels2 as _)),
+                ],
+            )
+            .with_sparse_component_batches(
+                row_id3,
+                timepoint_static.clone(),
+                [
+                    (MyPoint::name(), Some(points3 as _)),
+                    (MyColor::name(), None),
+                    (MyLabel::name(), Some(labels3 as _)),
+                ],
+            )
+            .with_sparse_component_batches(
+                row_id4,
+                timepoint_static.clone(),
+                [
+                    (MyPoint::name(), None),
+                    (MyColor::name(), Some(colors4 as _)),
+                    (MyLabel::name(), Some(labels4 as _)),
+                ],
+            )
+            .with_sparse_component_batches(
+                row_id5,
+                timepoint_static.clone(),
+                [
+                    (MyPoint::name(), None),
+                    (MyColor::name(), Some(colors5 as _)),
+                    (MyLabel::name(), Some(labels5 as _)),
+                ],
+            )
+            .build()?;
+
+        eprintln!("chunk:\n{chunk}");
+
+        {
+            let got = chunk.deduped_latest_on_index(&Timeline::new_sequence("frame"));
+            eprintln!("got:\n{got}");
+            assert_eq!(1, got.num_rows());
+
+            let expectations: &[(_, _, Option<&dyn ComponentBatch>)] = &[
+                (row_id5, MyPoint::name(), None),
+                (row_id5, MyColor::name(), Some(colors5 as _)),
+                (row_id5, MyLabel::name(), Some(labels5 as _)),
+            ];
+
+            for (row_id, component_name, expected) in expectations {
+                let expected = expected
+                    .and_then(|expected| re_types_core::LoggableBatch::to_arrow(expected).ok());
+                eprintln!("{component_name} @ {row_id}");
+                similar_asserts::assert_eq!(expected, chunk.cell(*row_id, component_name));
+            }
+        }
+
+        {
+            let got = chunk.deduped_latest_on_index(&Timeline::log_time());
+            eprintln!("got:\n{got}");
+            assert_eq!(1, got.num_rows());
+
+            let expectations: &[(_, _, Option<&dyn ComponentBatch>)] = &[
+                (row_id5, MyPoint::name(), None),
+                (row_id5, MyColor::name(), Some(colors5 as _)),
+                (row_id5, MyLabel::name(), Some(labels5 as _)),
+            ];
+
+            for (row_id, component_name, expected) in expectations {
+                let expected = expected
+                    .and_then(|expected| re_types_core::LoggableBatch::to_arrow(expected).ok());
+                eprintln!("{component_name} @ {row_id}");
+                similar_asserts::assert_eq!(expected, chunk.cell(*row_id, component_name));
+            }
         }
 
         Ok(())
