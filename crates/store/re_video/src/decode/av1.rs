@@ -50,6 +50,7 @@ impl Decoder {
     ///
     /// This does not block, all chunks sent to `decode` before this point will be discarded.
     pub fn reset(&self) {
+        re_tracing::profile_function!();
         // Ask the decoder to reset its internal state.
         let (tx, rx) = crossbeam::channel::bounded(0);
         self.command_tx.send(Command::Reset(tx)).ok();
@@ -60,6 +61,7 @@ impl Decoder {
 
     /// Blocks until all pending frames have been decoded.
     pub fn flush(&self) {
+        re_tracing::profile_function!();
         // Ask the decoder to notify us once all pending frames have been decoded.
         let (tx, rx) = crossbeam::channel::bounded(0);
         self.command_tx.send(Command::Flush(tx)).ok();
@@ -172,6 +174,8 @@ fn decoder_thread(
 }
 
 fn submit_chunk(decoder: &mut dav1d::Decoder, chunk: Chunk) {
+    re_tracing::profile_function!();
+
     // always attempt to send pending data first
     // this does nothing if there is no pending data,
     // and is required if a call to `send_data` previously
@@ -270,6 +274,8 @@ fn rgba_from_yuv(y: u8, u: u8, v: u8) -> [u8; 4] {
 }
 
 fn i400_to_rgba(picture: &dav1d::Picture) -> Vec<u8> {
+    re_tracing::profile_function!();
+
     let width = picture.width() as usize;
     let height = picture.height() as usize;
     let y_plane = picture.plane(PlanarImageComponent::Y);
@@ -294,6 +300,8 @@ fn i400_to_rgba(picture: &dav1d::Picture) -> Vec<u8> {
 }
 
 fn i420_to_rgba(picture: &dav1d::Picture) -> Vec<u8> {
+    re_tracing::profile_function!();
+
     let width = picture.width() as usize;
     let height = picture.height() as usize;
     let y_plane = picture.plane(PlanarImageComponent::Y);
@@ -323,6 +331,8 @@ fn i420_to_rgba(picture: &dav1d::Picture) -> Vec<u8> {
 }
 
 fn i422_to_rgba(picture: &dav1d::Picture) -> Vec<u8> {
+    re_tracing::profile_function!();
+
     let width = picture.width() as usize;
     let height = picture.height() as usize;
     let y_plane = picture.plane(PlanarImageComponent::Y);
@@ -352,6 +362,8 @@ fn i422_to_rgba(picture: &dav1d::Picture) -> Vec<u8> {
 }
 
 fn i444_to_rgba(picture: &dav1d::Picture) -> Vec<u8> {
+    re_tracing::profile_function!();
+
     let width = picture.width() as usize;
     let height = picture.height() as usize;
     let y_plane = picture.plane(PlanarImageComponent::Y);

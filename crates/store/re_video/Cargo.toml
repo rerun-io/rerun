@@ -26,6 +26,8 @@ features = ["all"]
 [features]
 
 [dependencies]
+re_tracing.workspace = true
+
 crossbeam.workspace = true
 itertools.workspace = true
 ordered-float.workspace = true
