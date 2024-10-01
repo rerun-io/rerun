@@ -101,11 +101,11 @@ namespace rerun::archetypes {
         /// Everything outside of the range is clamped to the range for the purpose of colormpaping.
         /// Note that point clouds generated from this image will still display all points, regardless of this range.
         ///
-        /// If not specified, the range will be automatically be determined from the data.
+        /// If not specified, the range will be automatically estimated from the data.
         /// Note that the Viewer may try to guess a wider range than the minimum/maximum of values
         /// in the contents of the depth image.
         /// E.g. if all values are positive, some bigger than 1.0 and all smaller than 255.0,
-        /// the Viewer will conclude that the data likely came from an 8bit image, thus assuming a range of 0-255.
+        /// the Viewer will guess that the data likely came from an 8bit image, thus assuming a range of 0-255.
         std::optional<rerun::components::ValueRange> depth_range;
 
         /// Scale the radii of the points in the point cloud generated from this image.
@@ -221,11 +221,11 @@ namespace rerun::archetypes {
         /// Everything outside of the range is clamped to the range for the purpose of colormpaping.
         /// Note that point clouds generated from this image will still display all points, regardless of this range.
         ///
-        /// If not specified, the range will be automatically be determined from the data.
+        /// If not specified, the range will be automatically estimated from the data.
         /// Note that the Viewer may try to guess a wider range than the minimum/maximum of values
         /// in the contents of the depth image.
         /// E.g. if all values are positive, some bigger than 1.0 and all smaller than 255.0,
-        /// the Viewer will conclude that the data likely came from an 8bit image, thus assuming a range of 0-255.
+        /// the Viewer will guess that the data likely came from an 8bit image, thus assuming a range of 0-255.
         DepthImage with_depth_range(rerun::components::ValueRange _depth_range) && {
             depth_range = std::move(_depth_range);
             // See: https://github.com/rerun-io/rerun/issues/4027

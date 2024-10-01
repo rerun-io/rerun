@@ -47,7 +47,7 @@ class TensorScalarMapping(Archetype):
             Acts like an inverse brightness. Defaults to 1.0.
 
             The final value for display is set as:
-            `colormap( (value - data_display_range.min) ** gamma / (data_display_range.max - data_display_range.min) ** gamma )`
+            `colormap( ((value - data_display_range.min) / (data_display_range.max - data_display_range.min)) ** gamma )`
 
         """
 
@@ -103,7 +103,7 @@ class TensorScalarMapping(Archetype):
     # Acts like an inverse brightness. Defaults to 1.0.
     #
     # The final value for display is set as:
-    # `colormap( (value - data_display_range.min) ** gamma / (data_display_range.max - data_display_range.min) ** gamma )`
+    # `colormap( ((value - data_display_range.min) / (data_display_range.max - data_display_range.min)) ** gamma )`
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 

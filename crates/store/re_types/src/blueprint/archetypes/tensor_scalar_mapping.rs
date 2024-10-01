@@ -35,7 +35,7 @@ pub struct TensorScalarMapping {
     /// Acts like an inverse brightness. Defaults to 1.0.
     ///
     /// The final value for display is set as:
-    /// `colormap( (value - data_display_range.min) ** gamma / (data_display_range.max - data_display_range.min) ** gamma )`
+    /// `colormap( ((value - data_display_range.min) / (data_display_range.max - data_display_range.min)) ** gamma )`
     pub gamma: Option<crate::components::GammaCorrection>,
 }
 
@@ -236,7 +236,7 @@ impl TensorScalarMapping {
     /// Acts like an inverse brightness. Defaults to 1.0.
     ///
     /// The final value for display is set as:
-    /// `colormap( (value - data_display_range.min) ** gamma / (data_display_range.max - data_display_range.min) ** gamma )`
+    /// `colormap( ((value - data_display_range.min) / (data_display_range.max - data_display_range.min)) ** gamma )`
     #[inline]
     pub fn with_gamma(mut self, gamma: impl Into<crate::components::GammaCorrection>) -> Self {
         self.gamma = Some(gamma.into());

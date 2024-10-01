@@ -961,7 +961,7 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                     is_required : false, }, ArchetypeFieldReflection { component_name :
                     "rerun.components.ValueRange".into(), display_name : "Depth range",
                     docstring_md :
-                    "The expected range of depth values.\n\nThis is typically the expected range of valid values.\nEverything outside of the range is clamped to the range for the purpose of colormpaping.\nNote that point clouds generated from this image will still display all points, regardless of this range.\n\nIf not specified, the range will be automatically be determined from the data.\nNote that the Viewer may try to guess a wider range than the minimum/maximum of values\nin the contents of the depth image.\nE.g. if all values are positive, some bigger than 1.0 and all smaller than 255.0,\nthe Viewer will conclude that the data likely came from an 8bit image, thus assuming a range of 0-255.",
+                    "The expected range of depth values.\n\nThis is typically the expected range of valid values.\nEverything outside of the range is clamped to the range for the purpose of colormpaping.\nNote that point clouds generated from this image will still display all points, regardless of this range.\n\nIf not specified, the range will be automatically estimated from the data.\nNote that the Viewer may try to guess a wider range than the minimum/maximum of values\nin the contents of the depth image.\nE.g. if all values are positive, some bigger than 1.0 and all smaller than 255.0,\nthe Viewer will guess that the data likely came from an 8bit image, thus assuming a range of 0-255.",
                     is_required : false, }, ArchetypeFieldReflection { component_name :
                     "rerun.components.FillRatio".into(), display_name :
                     "Point fill ratio", docstring_md :
@@ -1402,7 +1402,7 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                     ArchetypeFieldReflection { component_name :
                     "rerun.components.ValueRange".into(), display_name : "Value range",
                     docstring_md :
-                    "The expected range of values.\n\nThis is typically the expected range of valid values.\nEverything outside of the range is clamped to the range for the purpose of colormpaping.\nAny colormap applied for display, will map this range.\n\nIf not specified, the range will be automatically be determined from the data.\nNote that the Viewer may try to guess a wider range than the minimum/maximum of values\nin the contents of the tensor.\nE.g. if all values are positive, some bigger than 1.0 and all smaller than 255.0,\nthe Viewer will conclude that the data likely came from an 8bit image, thus assuming a range of 0-255.",
+                    "The expected range of values.\n\nThis is typically the expected range of valid values.\nEverything outside of the range is clamped to the range for the purpose of colormpaping.\nAny colormap applied for display, will map this range.\n\nIf not specified, the range will be automatically estimated from the data.\nNote that the Viewer may try to guess a wider range than the minimum/maximum of values\nin the contents of the tensor.\nE.g. if all values are positive, some bigger than 1.0 and all smaller than 255.0,\nthe Viewer will guess that the data likely came from an 8bit image, thus assuming a range of 0-255.",
                     is_required : false, },
                 ],
             },
@@ -1698,7 +1698,7 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                     false, }, ArchetypeFieldReflection { component_name :
                     "rerun.components.GammaCorrection".into(), display_name : "Gamma",
                     docstring_md :
-                    "Gamma exponent applied to normalized values before mapping to color.\n\nRaises the normalized values to the power of this value before mapping to color.\nActs like an inverse brightness. Defaults to 1.0.\n\nThe final value for display is set as:\n`colormap( (value - data_display_range.min) ** gamma / (data_display_range.max - data_display_range.min) ** gamma )`",
+                    "Gamma exponent applied to normalized values before mapping to color.\n\nRaises the normalized values to the power of this value before mapping to color.\nActs like an inverse brightness. Defaults to 1.0.\n\nThe final value for display is set as:\n`colormap( ((value - data_display_range.min) / (data_display_range.max - data_display_range.min)) ** gamma )`",
                     is_required : false, },
                 ],
             },

@@ -19,6 +19,6 @@ table TensorScalarMapping (
     /// Acts like an inverse brightness. Defaults to 1.0.
     ///
     /// The final value for display is set as:
-    /// `colormap( (value - data_display_range.min) ** gamma / (data_display_range.max - data_display_range.min) ** gamma )`
+    /// `colormap( ((value - data_display_range.min) / (data_display_range.max - data_display_range.min)) ** gamma )`
     gamma: rerun.components.GammaCorrection ("attr.rerun.component_optional", nullable, order: 1200);
 }
