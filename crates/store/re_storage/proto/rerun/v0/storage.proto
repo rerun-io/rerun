@@ -5,7 +5,7 @@ package rerun.storage.v0;
 service StorageNode {
     rpc ListRecordings(ListRecordingsRequest) returns (ListRecordingsResponse) {}
     rpc Query(QueryRequest) returns (stream QueryResponse) {}
-    rpc GetRecordingMetadata(RecordingId) returns (RecordingMetadata) {}
+    rpc GetRecordingMetadata(GetRecordingMetadataRequest) returns (GetRecordingMetadataResponse) {}
     rpc RegisterRecording(RegisterRecordingRequest) returns (RegisterRecordingResponse) {}
 }
 
@@ -32,6 +32,10 @@ message RegisterRecordingResponse {
 
 message GetRecordingMetadataRequest {
     RecordingId recording_id = 1;
+}
+
+message GetRecordingMetadataResponse {
+    RecordingMetadata metadata = 1;
 }
 
 message RecordingMetadata {
