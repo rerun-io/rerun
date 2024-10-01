@@ -11,7 +11,7 @@ Each pixel corresponds to a depth value in units specified by [`components.Depth
 
 **Required**: [`ImageBuffer`](../components/image_buffer.md), [`ImageFormat`](../components/image_format.md)
 
-**Optional**: [`DepthMeter`](../components/depth_meter.md), [`Colormap`](../components/colormap.md), [`FillRatio`](../components/fill_ratio.md), [`DrawOrder`](../components/draw_order.md)
+**Optional**: [`DepthMeter`](../components/depth_meter.md), [`Colormap`](../components/colormap.md), [`ValueRange`](../components/value_range.md), [`FillRatio`](../components/fill_ratio.md), [`DrawOrder`](../components/draw_order.md)
 
 ## Shown in
 * [Spatial2DView](../views/spatial2d_view.md)

@@ -16,7 +16,10 @@ impl Tensor {
     pub fn try_from<T: TryInto<TensorData>>(data: T) -> Result<Self, T::Error> {
         let data: TensorData = data.try_into()?;
 
-        Ok(Self { data: data.into() })
+        Ok(Self {
+            data: data.into(),
+            value_range: None,
+        })
     }
 
     /// Update the `names` of the contained [`TensorData`] dimensions.
@@ -50,6 +53,7 @@ impl Tensor {
                 buffer: self.data.0.buffer,
             }
             .into(),
+            value_range: None,
         }
     }
 }
@@ -62,7 +66,10 @@ impl Tensor {
     pub fn from_image(
         image: impl Into<image::DynamicImage>,
     ) -> Result<Self, crate::tensor_data::TensorImageLoadError> {
-        TensorData::from_image(image).map(|data| Self { data: data.into() })
+        TensorData::from_image(image).map(|data| Self {
+            data: data.into(),
+            value_range: None,
+        })
     }
 
     /// Construct a tensor from [`image::DynamicImage`].
@@ -71,7 +78,10 @@ impl Tensor {
     pub fn from_dynamic_image(
         image: image::DynamicImage,
     ) -> Result<Self, crate::tensor_data::TensorImageLoadError> {
-        TensorData::from_dynamic_image(image).map(|data| Self { data: data.into() })
+        TensorData::from_dynamic_image(image).map(|data| Self {
+            data: data.into(),
+            value_range: None,
+        })
     }
 }
 

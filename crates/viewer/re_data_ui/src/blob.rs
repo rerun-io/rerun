@@ -109,7 +109,8 @@ pub fn blob_preview_and_save_ui(
             .ok()
     });
     if let Some(image) = &image {
-        image_preview_ui(ctx, ui, ui_layout, query, entity_path, image);
+        let colormap = None; // TODO(andreas): Rely on default here for now.
+        image_preview_ui(ctx, ui, ui_layout, query, entity_path, image, colormap);
     }
     // Try to treat it as a video if treating it as image didn't work:
     else if let Some(blob_row_id) = blob_row_id {
@@ -158,12 +159,11 @@ pub fn blob_preview_and_save_ui(
                 let image_stats = ctx
                     .cache
                     .entry(|c: &mut re_viewer_context::ImageStatsCache| c.entry(&image));
-                if let Ok(data_range) = re_viewer_context::gpu_bridge::image_data_range_heuristic(
+                let data_range = re_viewer_context::gpu_bridge::image_data_range_heuristic(
                     &image_stats,
                     &image.format,
-                ) {
-                    crate::image::copy_image_button_ui(ui, &image, data_range);
-                }
+                );
+                crate::image::copy_image_button_ui(ui, &image, data_range);
             }
         });
     }

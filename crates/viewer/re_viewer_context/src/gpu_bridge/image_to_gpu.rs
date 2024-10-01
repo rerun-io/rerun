@@ -13,13 +13,16 @@ use re_renderer::{
     resource_managers::Texture2DCreationDesc,
     RenderContext,
 };
-use re_types::components::{ClassId, Colormap};
+use re_types::components::ClassId;
 use re_types::datatypes::{ChannelDatatype, ColorModel, ImageFormat, PixelFormat};
 use re_types::image::ImageKind;
 
-use crate::{gpu_bridge::colormap::colormap_to_re_renderer, Annotations, ImageInfo, ImageStats};
+use crate::{
+    gpu_bridge::colormap::colormap_to_re_renderer, image_info::ColormapWithRange, Annotations,
+    ImageInfo, ImageStats,
+};
 
-use super::{get_or_create_texture, RangeError};
+use super::get_or_create_texture;
 
 // ----------------------------------------------------------------------------
 
@@ -34,19 +37,19 @@ fn generate_texture_key(image: &ImageInfo) -> u64 {
 
         format,
         kind,
-
-        colormap: _, // No need to upload new texture when this changes
     } = image;
 
     hash((blob_row_id, format, kind))
 }
 
+/// `colormap` is currently only used for depth images.
 pub fn image_to_gpu(
     render_ctx: &RenderContext,
     debug_name: &str,
     image: &ImageInfo,
     image_stats: &ImageStats,
     annotations: &Annotations,
+    colormap: Option<&ColormapWithRange>,
 ) -> anyhow::Result<ColormappedTexture> {
     re_tracing::profile_function!();
 
@@ -56,9 +59,14 @@ pub fn image_to_gpu(
         ImageKind::Color => {
             color_image_to_gpu(render_ctx, debug_name, texture_key, image, image_stats)
         }
-        ImageKind::Depth => {
-            depth_image_to_gpu(render_ctx, debug_name, texture_key, image, image_stats)
-        }
+        ImageKind::Depth => depth_image_to_gpu(
+            render_ctx,
+            debug_name,
+            texture_key,
+            image,
+            image_stats,
+            colormap,
+        ),
         ImageKind::Segmentation => segmentation_image_to_gpu(
             render_ctx,
             debug_name,
@@ -92,25 +100,23 @@ fn color_image_to_gpu(
 
     // TODO(emilk): let the user specify the color space.
     let decode_srgb = texture_format == TextureFormat::Rgba8Unorm
-        || image_decode_srgb_gamma_heuristic(image_stats, image_format)?;
+        || image_decode_srgb_gamma_heuristic(image_stats, image_format);
 
     // Special casing for normalized textures used above:
     let range = if matches!(
         texture_format,
         TextureFormat::R8Unorm | TextureFormat::Rgba8Unorm | TextureFormat::Bgra8Unorm
     ) {
-        [0.0, 1.0]
+        emath::Rangef::new(0.0, 1.0)
     } else if texture_format == TextureFormat::R8Snorm {
-        [-1.0, 1.0]
+        emath::Rangef::new(-1.0, 1.0)
     } else if let Some(shader_decoding) = shader_decoding {
         match shader_decoding {
-            ShaderDecoding::Nv12 | ShaderDecoding::Yuy2 => [0.0, 1.0],
-            ShaderDecoding::Bgr => image_data_range_heuristic(image_stats, &image_format)
-                .map(|range| [range.min, range.max])?,
+            ShaderDecoding::Nv12 | ShaderDecoding::Yuy2 => emath::Rangef::new(0.0, 1.0),
+            ShaderDecoding::Bgr => image_data_range_heuristic(image_stats, &image_format),
         }
     } else {
         image_data_range_heuristic(image_stats, &image_format)
-            .map(|range| [range.min, range.max])?
     };
 
     let color_mapper = if let Some(shader_decoding) = shader_decoding {
@@ -148,7 +154,7 @@ fn color_image_to_gpu(
 
     Ok(ColormappedTexture {
         texture: texture_handle,
-        range,
+        range: [range.min, range.max],
         decode_srgb,
         multiply_rgb_with_alpha,
         gamma,
@@ -158,12 +164,9 @@ fn color_image_to_gpu(
 }
 
 /// Get a valid, finite range for the gpu to use.
-// TODO(#2341): The range should be determined by a `DataRange` component. In absence this, heuristics apply.
-pub fn image_data_range_heuristic(
-    image_stats: &ImageStats,
-    image_format: &ImageFormat,
-) -> Result<Rangef, RangeError> {
-    let (min, max) = image_stats.finite_range.ok_or(RangeError::MissingRange)?;
+// TODO(#4624): The range should be determined by a `DataRange` component. In absence this, heuristics apply.
+pub fn image_data_range_heuristic(image_stats: &ImageStats, image_format: &ImageFormat) -> Rangef {
+    let (min, max) = image_stats.finite_range;
 
     let min = min as f32;
     let max = max as f32;
@@ -172,41 +175,38 @@ pub fn image_data_range_heuristic(
     // (we ignore NaN/Inf values heres, since they are usually there by accident!)
     if image_format.is_float() && 0.0 <= min && max <= 1.0 {
         // Float values that are all between 0 and 1, assume that this is the range.
-        Ok(Rangef::new(0.0, 1.0))
+        Rangef::new(0.0, 1.0)
     } else if 0.0 <= min && max <= 255.0 {
         // If all values are between 0 and 255, assume this is the range.
         // (This is very common, independent of the data type)
-        Ok(Rangef::new(0.0, 255.0))
+        Rangef::new(0.0, 255.0)
     } else if min == max {
         // uniform range. This can explode the colormapping, so let's map all colors to the middle:
-        Ok(Rangef::new(min - 1.0, max + 1.0))
+        Rangef::new(min - 1.0, max + 1.0)
     } else {
         // Use range as is if nothing matches.
-        Ok(Rangef::new(min, max))
+        Rangef::new(min, max)
     }
 }
 
 /// Return whether an image should be assumed to be encoded in sRGB color space ("gamma space", no EOTF applied).
-fn image_decode_srgb_gamma_heuristic(
-    image_stats: &ImageStats,
-    image_format: ImageFormat,
-) -> Result<bool, RangeError> {
+fn image_decode_srgb_gamma_heuristic(image_stats: &ImageStats, image_format: ImageFormat) -> bool {
     if let Some(pixel_format) = image_format.pixel_format {
         match pixel_format {
-            PixelFormat::NV12 | PixelFormat::YUY2 => Ok(true),
+            PixelFormat::NV12 | PixelFormat::YUY2 => true,
         }
     } else {
-        let (min, max) = image_stats.finite_range.ok_or(RangeError::MissingRange)?;
+        let (min, max) = image_stats.finite_range;
 
         #[allow(clippy::if_same_then_else)]
         if 0.0 <= min && max <= 255.0 {
             // If the range is suspiciously reminding us of a "regular image", assume sRGB.
-            Ok(true)
+            true
         } else if image_format.datatype().is_float() && 0.0 <= min && max <= 1.0 {
             // Floating point images between 0 and 1 are often sRGB as well.
-            Ok(true)
+            true
         } else {
-            Ok(false)
+            false
         }
     }
 }
@@ -354,6 +354,7 @@ fn depth_image_to_gpu(
     texture_key: u64,
     image: &ImageInfo,
     image_stats: &ImageStats,
+    colormap_with_range: Option<&ColormapWithRange>,
 ) -> anyhow::Result<ColormappedTexture> {
     re_tracing::profile_function!();
 
@@ -370,7 +371,12 @@ fn depth_image_to_gpu(
 
     let datatype = image.format.datatype();
 
-    let range = data_range(image_stats, datatype);
+    let ColormapWithRange {
+        value_range,
+        colormap,
+    } = colormap_with_range
+        .cloned()
+        .unwrap_or_else(|| ColormapWithRange::default_for_depth_images(image_stats));
 
     let texture = get_or_create_texture(render_ctx, texture_key, || {
         general_texture_creation_desc_from_image(debug_name, image, ColorModel::L, datatype)
@@ -379,13 +385,11 @@ fn depth_image_to_gpu(
 
     Ok(ColormappedTexture {
         texture,
-        range,
+        range: value_range,
         decode_srgb: false,
         multiply_rgb_with_alpha: false,
         gamma: 1.0,
-        color_mapper: ColorMapper::Function(colormap_to_re_renderer(
-            image.colormap.unwrap_or(Colormap::Turbo),
-        )),
+        color_mapper: ColorMapper::Function(colormap_to_re_renderer(colormap)),
         shader_decoding: None,
     })
 }
@@ -465,34 +469,6 @@ fn segmentation_image_to_gpu(
         color_mapper: ColorMapper::Texture(colormap_texture_handle),
         shader_decoding: None,
     })
-}
-
-fn data_range(image_stats: &ImageStats, datatype: ChannelDatatype) -> [f32; 2] {
-    let default_min = 0.0;
-    let default_max = if datatype.is_float() {
-        1.0
-    } else {
-        datatype.max_value()
-    };
-
-    let range = image_stats
-        .finite_range
-        .unwrap_or((default_min, default_max));
-    let (mut min, mut max) = range;
-
-    if !min.is_finite() {
-        min = default_min;
-    }
-    if !max.is_finite() {
-        max = default_max;
-    }
-
-    if max <= min {
-        min = default_min;
-        max = default_max;
-    }
-
-    [min as f32, max as f32]
 }
 
 /// Uploads the image to a texture in a format that closely resembled the input.

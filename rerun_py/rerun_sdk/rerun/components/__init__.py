@@ -88,6 +88,7 @@ from .transform_relation import (
 )
 from .translation3d import Translation3D, Translation3DBatch, Translation3DType
 from .triangle_indices import TriangleIndices, TriangleIndicesBatch, TriangleIndicesType
+from .value_range import ValueRange, ValueRangeBatch, ValueRangeType
 from .vector2d import Vector2D, Vector2DBatch, Vector2DType
 from .vector3d import Vector3D, Vector3DBatch, Vector3DType
 from .video_timestamp import VideoTimestamp, VideoTimestampBatch, VideoTimestampType
@@ -286,6 +287,9 @@ __all__ = [
     "TriangleIndices",
     "TriangleIndicesBatch",
     "TriangleIndicesType",
+    "ValueRange",
+    "ValueRangeBatch",
+    "ValueRangeType",
     "Vector2D",
     "Vector2DBatch",
     "Vector2DType",

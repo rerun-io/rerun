@@ -57,6 +57,7 @@ class Tensor(TensorExt, Archetype):
         """Convenience method for calling `__attrs_init__` with all `None`s."""
         self.__attrs_init__(
             data=None,  # type: ignore[arg-type]
+            value_range=None,  # type: ignore[arg-type]
         )
 
     @classmethod
@@ -71,6 +72,25 @@ class Tensor(TensorExt, Archetype):
         converter=components.TensorDataBatch._required,  # type: ignore[misc]
     )
     # The tensor data
+    #
+    # (Docstring intentionally commented out to hide this field from the docs)
+
+    value_range: components.ValueRangeBatch | None = field(
+        metadata={"component": "optional"},
+        default=None,
+        converter=components.ValueRangeBatch._optional,  # type: ignore[misc]
+    )
+    # The expected range of values.
+    #
+    # This is typically the expected range of valid values.
+    # Everything outside of the range is clamped to the range for the purpose of colormpaping.
+    # Any colormap applied for display, will map this range.
+    #
+    # If not specified, the range will be automatically estimated from the data.
+    # Note that the Viewer may try to guess a wider range than the minimum/maximum of values
+    # in the contents of the tensor.
+    # E.g. if all values are positive, some bigger than 1.0 and all smaller than 255.0,
+    # the Viewer will guess that the data likely came from an 8bit image, thus assuming a range of 0-255.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 

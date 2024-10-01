@@ -13,8 +13,9 @@ pub struct TensorStats {
 
     /// Like `range`, but ignoring all `NaN`/inf values.
     ///
-    /// `None` if there are no finite values at all.
-    pub finite_range: Option<(f64, f64)>,
+    /// If no finite values are present, this takes the maximum finite range
+    /// of the underlying data type.
+    pub finite_range: (f64, f64),
 }
 
 impl TensorStats {
@@ -132,7 +133,7 @@ impl TensorStats {
                 // Empty tensor
                 return Self {
                     range: None,
-                    finite_range: None,
+                    finite_range: (tensor.dtype().min_value(), tensor.dtype().max_value()),
                 };
             }
         }
@@ -172,7 +173,8 @@ impl TensorStats {
                     None
                 }
             })
-        };
+        }
+        .unwrap_or_else(|| (tensor.dtype().min_value(), tensor.dtype().max_value()));
 
         Self {
             range,
