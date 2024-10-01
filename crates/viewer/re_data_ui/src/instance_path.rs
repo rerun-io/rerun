@@ -298,22 +298,10 @@ fn preview_if_image_ui(
 
     let colormap = component_map
         .get(&components::Colormap::name())
-        .and_then(|colormap| {
-            colormap
-                .component_mono::<components::Colormap>()
-                .transpose()
-                .ok()
-                .flatten()
-        });
+        .and_then(|colormap| colormap.component_mono::<components::Colormap>()?.ok());
     let value_range = component_map
         .get(&components::Range1D::name())
-        .and_then(|colormap| {
-            colormap
-                .component_mono::<components::ValueRange>()
-                .transpose()
-                .ok()
-                .flatten()
-        });
+        .and_then(|colormap| colormap.component_mono::<components::ValueRange>()?.ok());
     let colormap_with_range = colormap.map(|colormap| ColormapWithRange {
         colormap,
         value_range: value_range
