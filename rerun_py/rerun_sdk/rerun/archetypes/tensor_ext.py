@@ -43,7 +43,7 @@ class TensorExt:
         value_range: Sequence[float] | None
             The range of values to use for colormapping.
 
-            If not specified, the range will be automatically be determined from the data.
+            If not specified, the range will be estimated from the data.
 
         """
         from ..datatypes import TensorData

@@ -121,8 +121,8 @@ def log_volumetric_sdf(voxvol: npt.NDArray[np.float32]) -> None:
     # Either positive or negative range might be quite small, so don't exceed 1.5x of either.
     min_val = cast(float, np.min(voxvol))
     max_val = cast(float, np.max(voxvol))
-    negative_range = max(0.0, abs(min_val))
-    positive_range = max(0.0, abs(max_val))
+    negative_range = max(abs(min_val))
+    positive_range = max(abs(max_val))
     range = max(min(positive_range, negative_range * 1.5), min(negative_range, positive_range * 1.5))
     rr.log("tensor", rr.Tensor(voxvol, dim_names=names, value_range=[-range, range]))
 
@@ -207,7 +207,7 @@ def main() -> None:
                     rrb.TensorView(
                         # The cyan to yellow colormap changes its color at the mid point of its range.
                         # By combining this with a the `value_range` parameter on the tensor,
-                        # we can visualizer negative & positive values effectively.
+                        # we can visualize negative & positive values effectively.
                         name="SDF",
                         origin="/tensor",
                         scalar_mapping=rrb.TensorScalarMapping(colormap="cyantoyellow"),
