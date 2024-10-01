@@ -1,10 +1,10 @@
 //! Video decoding library.
 
-pub mod decode;
-pub mod demux;
+mod decode;
+mod demux;
 
-pub use decode::{av1, Frame};
-pub use demux::{VideoData, VideoLoadError};
+pub use decode::{av1, Chunk, Frame, PixelFormat};
+pub use demux::{Sample, VideoData, VideoLoadError};
 pub use re_mp4::{TrackId, TrackKind};
 
 use ordered_float::OrderedFloat;
@@ -26,10 +26,11 @@ impl TimeMs {
 
 /// A value in time units.
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct Time(u64);
+pub struct Time(u64); // TODO: i64
 
 impl Time {
     pub const ZERO: Self = Self(0);
+    pub const MAX: Self = Self(u64::MAX);
 
     /// Create a new value in _time units_.
     ///
@@ -80,6 +81,15 @@ impl Time {
     #[inline]
     pub fn into_nanos(self, timescale: Timescale) -> i64 {
         (self.into_secs(timescale) * 1e9).round() as i64
+    }
+}
+
+impl std::ops::Sub for Time {
+    type Output = Self;
+
+    #[inline]
+    fn sub(self, rhs: Self) -> Self::Output {
+        Self(self.0.saturating_sub(rhs.0))
     }
 }
 

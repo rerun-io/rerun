@@ -150,7 +150,7 @@ impl VideoDecoder {
             decoder_output,
             hw_acceleration,
 
-            last_used_frame_timestamp: Time::new(u64::MAX),
+            last_used_frame_timestamp: Time::MAX,
             current_segment_idx: usize::MAX,
             current_sample_idx: usize::MAX,
 

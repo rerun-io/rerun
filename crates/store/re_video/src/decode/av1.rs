@@ -9,7 +9,9 @@ use crossbeam::{
 };
 use dav1d::{PixelLayout, PlanarImageComponent};
 
-use super::{Chunk, Frame, PixelFormat, TimeMs};
+use crate::Time;
+
+use super::{Chunk, Frame, PixelFormat};
 
 pub struct Decoder {
     _thread: std::thread::JoinHandle<()>,
@@ -379,12 +381,10 @@ fn i444_to_rgba(picture: &dav1d::Picture) -> Vec<u8> {
     rgba
 }
 
-// We need to convert between `TimeMs` and `i64` because `dav1d` uses `i64` for timestamps.
-fn time_to_i64(time: TimeMs) -> i64 {
-    // multiply by 1000 to lose less precision
-    (time.as_f64() * 1000.0) as i64
+fn time_to_i64(time: Time) -> i64 {
+    time.0 as _ // TODO: what is the timescale of dav1d?
 }
 
-fn i64_to_time(i64: i64) -> TimeMs {
-    TimeMs::new(i64 as f64 / 1000.0)
+fn i64_to_time(i64: i64) -> Time {
+    Time::new(i64 as _) // TODO: what is the timescale of dav1d?
 }

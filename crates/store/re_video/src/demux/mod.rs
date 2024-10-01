@@ -156,11 +156,13 @@ impl Segment {
 #[derive(Debug, Clone)]
 pub struct Sample {
     /// Time at which this sample appears in the decoded bitstream, in time units.
+    ///
+    /// `decode_timestamp <= composition_timestamp`
     pub decode_timestamp: Time,
 
     /// Time at which this sample appears in the frame stream, in time units.
     ///
-    /// `composition >= decode`
+    /// `decode_timestamp <= composition_timestamp`
     pub composition_timestamp: Time,
 
     /// Duration of the sample, in time units.

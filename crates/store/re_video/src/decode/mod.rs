@@ -2,12 +2,12 @@
 
 pub mod av1;
 
-use crate::TimeMs;
+use crate::Time;
 
 pub struct Chunk {
     pub data: Vec<u8>,
-    pub timestamp: TimeMs,
-    pub duration: TimeMs,
+    pub timestamp: Time,
+    pub duration: Time,
 }
 
 pub struct Frame {
@@ -15,8 +15,8 @@ pub struct Frame {
     pub width: u32,
     pub height: u32,
     pub format: PixelFormat,
-    pub timestamp: TimeMs,
-    pub duration: TimeMs,
+    pub timestamp: Time,
+    pub duration: Time,
 }
 
 pub enum PixelFormat {
