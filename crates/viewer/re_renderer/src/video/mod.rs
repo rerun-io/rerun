@@ -12,10 +12,6 @@ use crate::{resource_managers::GpuTexture2D, RenderContext};
 // TODO(jan, andreas): These errors are for the most part specific to the web decoder right now.
 #[derive(thiserror::Error, Debug, Clone)]
 pub enum DecodingError {
-    // TODO(#7298): Native support.
-    #[error("Video playback not yet available in the native viewer. Try the web viewer instead.")]
-    NoNativeSupport,
-
     #[error("Failed to create VideoDecoder: {0}")]
     DecoderSetupFailure(String),
 

@@ -3,6 +3,7 @@
 pub mod decode;
 pub mod demux;
 
+pub use decode::{av1, Frame};
 pub use demux::{VideoData, VideoLoadError};
 pub use re_mp4::{TrackId, TrackKind};
 
