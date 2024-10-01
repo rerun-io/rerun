@@ -26,6 +26,7 @@ features = ["all"]
 [features]
 
 [dependencies]
+re_log.workspace = true
 re_tracing.workspace = true
 
 crossbeam.workspace = true

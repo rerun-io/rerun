@@ -5929,6 +5929,7 @@ dependencies = [
  "itertools 0.13.0",
  "ordered-float",
  "parking_lot",
+ "re_log",
  "re_mp4",
  "re_tracing",
  "thiserror",

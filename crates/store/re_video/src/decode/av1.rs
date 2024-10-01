@@ -29,7 +29,10 @@ impl Decoder {
 
         let thread = std::thread::Builder::new()
             .name("av1_decoder".into())
-            .spawn(move || decoder_thread(&command_rx, &reset_rx, &parker, &on_output))
+            .spawn(move || {
+                decoder_thread(&command_rx, &reset_rx, &parker, &on_output);
+                re_log::debug!("Closing decoder thread");
+            })
             .expect("failed to spawn decoder thread");
 
         Self {
@@ -185,7 +188,7 @@ fn submit_chunk(decoder: &mut dav1d::Decoder, chunk: Chunk) {
         Err(err) if err.is_again() => {}
         Err(err) => {
             // Something went wrong
-            panic!("Failed to decode frame: {err}");
+            panic!("Failed to decode frame: {err}"); // TODO: handle errors
         }
     }
 
@@ -199,7 +202,7 @@ fn submit_chunk(decoder: &mut dav1d::Decoder, chunk: Chunk) {
         Err(err) if err.is_again() => {}
         Err(err) => {
             // Something went wrong
-            panic!("Failed to decode frame: {err}");
+            panic!("Failed to decode frame: {err}"); // TODO: handle errors
         }
     };
 }
@@ -239,7 +242,7 @@ fn output_frames(decoder: &mut dav1d::Decoder, on_output: &OutputCallback) {
                 break;
             }
             Err(err) => {
-                panic!("Failed to decode frame: {err}");
+                panic!("Failed to decode frame: {err}"); // TODO: handle errors
             }
         }
     }
