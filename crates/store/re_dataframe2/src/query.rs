@@ -83,7 +83,7 @@ struct QueryHandleState {
     /// to the query.
     ///
     /// The atomic counter is used as a cursor which keeps track of our current position within
-    /// each invidivual chunk.
+    /// each individual chunk.
     /// Because chunks are allowed to overlap, we might need to rebound between two or more chunks
     /// during our iteration.
     ///
@@ -475,7 +475,7 @@ impl QueryHandle<'_> {
         // We are stitching a bunch of unrelated cells together in order to create the final row
         // that is being returned.
         //
-        // For this reason, we can only guarantee that the index being explicitely queried for
+        // For this reason, we can only guarantee that the index being explicitly queried for
         // (`QueryExpression2::filtered_index`) will match for all these cells.
         //
         // When it comes to other indices that the caller might have asked for, it is possible that
