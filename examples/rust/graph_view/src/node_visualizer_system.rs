@@ -1,5 +1,6 @@
 use re_log_types::Instance;
 use re_viewer::external::{
+    egui::Color32,
     re_chunk::{ChunkComponentIterItem, LatestAtQuery},
     re_log_types::EntityPath,
     re_query::{clamped_zip_2x2, range_zip_1x3},
@@ -21,33 +22,32 @@ pub struct GraphNodeVisualizer {
     pub(crate) data: Vec<GraphNodeVisualizerData>,
 }
 
-pub struct GraphNodeVisualizerData {
+pub(crate) struct GraphNodeVisualizerData {
     pub(crate) entity_path: EntityPath,
-    pub(crate) node_ids: ChunkComponentIterItem<components::GraphNodeId>,
+    node_ids: ChunkComponentIterItem<components::GraphNodeId>,
 
     // Clamped
-    pub(crate) colors: ChunkComponentIterItem<components::Color>,
-    pub(crate) labels: Vec<ArrowString>,
+    colors: ChunkComponentIterItem<components::Color>,
+    labels: Vec<ArrowString>,
 
     // Non-repeated
-    pub(crate) show_labels: Option<components::ShowLabels>,
+    show_labels: Option<components::ShowLabels>,
+}
+
+pub(crate) struct NodeInstance<'a> {
+    pub node_id: QualifiedNode,
+    pub entity_path: &'a EntityPath,
+    pub instance: Instance,
+    pub label: Option<&'a ArrowString>,
+    pub color: Option<Color32>,
 }
 
 impl GraphNodeVisualizerData {
-    pub(crate) fn nodes(
-        &self,
-    ) -> impl Iterator<
-        Item = (
-            QualifiedNode,
-            Instance,
-            Option<&components::Color>,
-            Option<&ArrowString>,
-        ),
-    > {
+    pub(crate) fn nodes(&self) -> impl Iterator<Item = NodeInstance> {
         // TODO(grtlr): create proper node instance!
         clamped_zip_2x2(
             self.node_ids.iter().map(|node_id| QualifiedNode {
-                entity_path: self.entity_path.clone(),
+                entity_hash: self.entity_path.hash(),
                 node_id: node_id.0.clone(),
             }),
             (0..).map(Instance::from),
@@ -62,6 +62,13 @@ impl GraphNodeVisualizerData {
             }),
             Option::<&ArrowString>::default,
         )
+        .map(|(node_id, instance, color, label)| NodeInstance {
+            node_id,
+            entity_path: &self.entity_path,
+            instance,
+            color: color.map(|c| Color32::from(c.0)),
+            label,
+        })
     }
 }
 

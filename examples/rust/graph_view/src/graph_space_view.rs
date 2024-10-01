@@ -1,36 +1,68 @@
-use std::{collections::HashMap, hash::Hash};
+use std::collections::HashMap;
 
-use re_log_types::Instance;
 use re_viewer::external::{
-    egui::{
-        self,
-        emath::{TSTransform, Vec2},
-        Color32, Label, Rect, RichText, TextWrapMode,
-    },
-    re_entity_db::InstancePath,
-    re_log::external::log,
+    egui::{self, emath::TSTransform, Rect, TextWrapMode},
     re_log_types::EntityPath,
-    re_types::{
-        components::{self, PoseRotationAxisAngle},
-        ArrowString, SpaceViewClassIdentifier,
-    },
+    re_types::SpaceViewClassIdentifier,
     re_ui,
     re_viewer_context::{
-        HoverHighlight, IdentifiedViewSystem as _, OptionalSpaceViewEntityHighlight,
-        SelectionHighlight, SpaceViewClass, SpaceViewClassLayoutPriority,
-        SpaceViewClassRegistryError, SpaceViewId, SpaceViewSpawnHeuristics, SpaceViewState,
-        SpaceViewStateExt as _, SpaceViewSystemExecutionError, SpaceViewSystemRegistrator,
-        SystemExecutionOutput, ViewQuery, ViewerContext,
+        HoverHighlight, IdentifiedViewSystem as _, InteractionHighlight, SelectionHighlight,
+        SpaceViewClass, SpaceViewClassLayoutPriority, SpaceViewClassRegistryError, SpaceViewId,
+        SpaceViewSpawnHeuristics, SpaceViewState, SpaceViewStateExt as _,
+        SpaceViewSystemExecutionError, SpaceViewSystemRegistrator, SystemExecutionOutput,
+        ViewQuery, ViewerContext,
     },
 };
 
-use crate::node_visualizer_system::GraphNodeVisualizer;
+use crate::node_visualizer_system::{GraphNodeVisualizer, NodeInstance};
 use crate::{common::QualifiedNode, edge_visualizer_system::GraphEdgeVisualizer};
 
 // We need to differentiate between regular nodes and nodes that belong to a different entity hierarchy.
 enum NodeKind {
     Regular(QualifiedNode),
     Dummy(QualifiedNode),
+}
+
+impl<'a> NodeInstance<'a> {
+    fn text(&self) -> egui::RichText {
+        self.label.map_or(
+            egui::RichText::new(format!("{}@{}", self.node_id.node_id, self.entity_path)),
+            |label| egui::RichText::new(label.to_string()),
+        )
+    }
+
+    fn draw(&self, ui: &mut egui::Ui, highlight: InteractionHighlight) -> egui::Response {
+        let hcolor = match (
+            highlight.hover,
+            highlight.selection != SelectionHighlight::None,
+        ) {
+            (HoverHighlight::None, false) => ui.style().visuals.text_color(),
+            (HoverHighlight::None, true) => ui.style().visuals.selection.bg_fill,
+            (HoverHighlight::Hovered, ..) => ui.style().visuals.widgets.hovered.bg_fill,
+        };
+
+        egui::Frame::default()
+            .rounding(egui::Rounding::same(4.0))
+            .stroke(egui::Stroke::new(
+                1.0,
+                if highlight.selection == SelectionHighlight::Selection {
+                    ui.style().visuals.selection.bg_fill
+                } else {
+                    ui.ctx().style().visuals.text_color()
+                },
+            ))
+            .fill(ui.style().visuals.faint_bg_color)
+            .show(ui, |ui| {
+                ui.style_mut().wrap_mode = Some(TextWrapMode::Extend);
+
+                if let Some(color) = self.color {
+                    ui.button(self.text().color(color))
+                } else {
+                    ui.button(self.text())
+                }
+            })
+            .response
+    }
 }
 
 /// Space view state for the custom space view.
@@ -42,9 +74,7 @@ pub struct GraphSpaceViewState {
     node_to_index: HashMap<QualifiedNode, petgraph::stable_graph::NodeIndex>,
     // graph viewer
     screen_to_world: TSTransform,
-    dragging: Option<QualifiedNode>,
     /// Positions of the nodes in world space.
-    // We currently store position and size, but should maybe store the actual rectangle in the future.
     node_positions: HashMap<QualifiedNode, egui::Rect>,
 }
 
@@ -156,9 +186,11 @@ impl SpaceViewClass for GraphSpaceView {
         state.node_to_index.clear();
 
         for data in node_system.data.iter() {
-            for (node_id, _, _, _) in data.nodes() {
-                let node_index = state.graph.add_node(NodeKind::Regular(node_id.clone()));
-                state.node_to_index.insert(node_id, node_index);
+            for instance in data.nodes() {
+                let node_index = state
+                    .graph
+                    .add_node(NodeKind::Regular(instance.node_id.clone()));
+                state.node_to_index.insert(instance.node_id, node_index);
             }
         }
 
@@ -220,67 +252,28 @@ impl SpaceViewClass for GraphSpaceView {
             let ent_highlight = query.highlights.entity_highlight(data.entity_path.hash());
             let mut entity_rect: Option<Rect> = None;
 
-            for (i, (node, instance, maybe_color, maybe_label)) in data.nodes().enumerate() {
-                let area_id = id.with((node.clone(), i));
-                let response = egui::Area::new(area_id)
+            for node in data.nodes() {
+                let response = egui::Area::new(id.with((node.node_id.clone(), node.instance)))
                     .current_pos(
                         state
                             .node_positions
-                            .get(&node)
+                            .get(&node.node_id)
                             .map_or(positions.next().unwrap(), |r| r.min),
                     )
                     .order(egui::Order::Middle)
                     .constrain(false)
                     .show(ui.ctx(), |ui| {
+                        let highlight = ent_highlight.index_highlight(node.instance);
                         ui.set_clip_rect(transform.inverse() * rect);
-                        egui::Frame::default()
-                            .rounding(egui::Rounding::same(4.0))
-                            .inner_margin(egui::Margin::same(8.0))
-                            .stroke(egui::Stroke::new(
-                                1.0,
-                                ui.ctx().style().visuals.text_color(),
-                            ))
-                            .fill(ui.style().visuals.faint_bg_color)
-                            .show(ui, |ui| {
-                                ui.style_mut().wrap_mode = Some(TextWrapMode::Extend);
-
-                                let highlight = ent_highlight.index_highlight(instance);
-
-                                let hcolor = match (
-                                    highlight.hover,
-                                    highlight.selection != SelectionHighlight::None,
-                                ) {
-                                    (HoverHighlight::None, false) => egui::Color32::BLACK,
-                                    (HoverHighlight::None, true) => {
-                                        ui.style().visuals.selection.bg_fill
-                                    }
-                                    (HoverHighlight::Hovered, ..) => {
-                                        ui.style().visuals.widgets.hovered.bg_fill
-                                    }
-                                };
-
-                                let text = if let Some(label) = maybe_label {
-                                    egui::RichText::new(format!("{}", label))
-                                } else {
-                                    egui::RichText::new(format!(
-                                        "{}:{}",
-                                        node.entity_path, node.node_id,
-                                    ))
-                                };
-
-                                if let Some(color) = maybe_color {
-                                    let c = Color32::from(color.0);
-                                    ui.button(text.color(c).background_color(hcolor))
-                                } else {
-                                    ui.button(text.background_color(hcolor))
-                                }
-                            });
+                        node.draw(ui, highlight)
                     })
                     .response;
 
                 entity_rect =
                     entity_rect.map_or(Some(response.rect), |r| Some(r.union(response.rect)));
-                state.node_positions.insert(node.clone(), response.rect);
+                state
+                    .node_positions
+                    .insert(node.node_id.clone(), response.rect);
 
                 let id = response.layer_id;
 
@@ -293,7 +286,7 @@ impl SpaceViewClass for GraphSpaceView {
             let entity_path = data.entity_path.clone();
             if let Some(entity_rect) = entity_rect {
                 let response = egui::Area::new(id.with(entity_path.clone()))
-                    .current_pos(entity_rect.min)
+                    .fixed_pos(entity_rect.min)
                     .order(egui::Order::Background)
                     .show(ui.ctx(), |ui| {
                         ui.set_clip_rect(transform.inverse() * rect);

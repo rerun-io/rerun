@@ -4,13 +4,13 @@ use re_viewer::external::re_types::datatypes;
 
 #[derive(Clone, PartialEq, Eq, Hash)]
 pub(crate) struct QualifiedNode {
-    pub entity_path: re_log_types::EntityPath,
+    pub entity_hash: re_log_types::EntityPathHash,
     pub node_id: datatypes::GraphNodeId,
 }
 
 impl std::fmt::Debug for QualifiedNode {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}@{}", self.node_id, self.entity_path)
+        write!(f, "{}@{:?}", self.node_id, self.entity_hash)
     }
 }
 

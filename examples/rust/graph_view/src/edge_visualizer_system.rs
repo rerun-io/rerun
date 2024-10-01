@@ -21,8 +21,8 @@ pub struct GraphEdgeVisualizer {
 
 pub(crate) struct GraphEdgeVisualizerData {
     pub entity_path: re_log_types::EntityPath,
-    pub edges: ChunkComponentIterItem<components::GraphEdge>,
-    pub colors: ChunkComponentIterItem<components::Color>,
+    edges: ChunkComponentIterItem<components::GraphEdge>,
+    colors: ChunkComponentIterItem<components::Color>,
 }
 
 impl GraphEdgeVisualizerData {
@@ -30,20 +30,13 @@ impl GraphEdgeVisualizerData {
         &self,
     ) -> impl Iterator<Item = (QualifiedEdge, Instance, Option<&components::Color>)> {
         clamped_zip_2x1(
-            // TODO(grtlr): Avoid all this cloning!
             self.edges.iter().map(|e| QualifiedEdge {
                 source: QualifiedNode {
-                    entity_path: e
-                        .source_entity
-                        .clone()
-                        .map_or(self.entity_path.clone(), From::from),
+                    entity_hash: e.source_entity_hash().unwrap_or(self.entity_path.hash()),
                     node_id: e.source.clone(),
                 },
                 target: QualifiedNode {
-                    entity_path: e
-                        .target_entity
-                        .clone()
-                        .map_or(self.entity_path.clone(), From::from),
+                    entity_hash: e.target_entity_hash().unwrap_or(self.entity_path.hash()),
                     node_id: e.target.clone(),
                 },
             }),
