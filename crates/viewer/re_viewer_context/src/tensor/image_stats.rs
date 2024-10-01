@@ -151,7 +151,7 @@ impl ImageStats {
             // Empty image
             return Self {
                 range: None,
-                finite_range: max_finite_range_for_datatype(datatype),
+                finite_range: (datatype.min_value(), datatype.max_value()),
             };
         }
 
@@ -178,7 +178,7 @@ impl ImageStats {
             if finite_range.0.is_finite() && finite_range.1.is_finite() {
                 finite_range
             } else {
-                max_finite_range_for_datatype(datatype)
+                (datatype.min_value(), datatype.max_value())
             }
         };
 
@@ -186,23 +186,5 @@ impl ImageStats {
             range: Some(range),
             finite_range,
         }
-    }
-}
-
-fn max_finite_range_for_datatype(datatype: ChannelDatatype) -> (f64, f64) {
-    match datatype {
-        ChannelDatatype::U8 => (u8::MIN as f64, u8::MAX as f64),
-        ChannelDatatype::U16 => (u16::MIN as f64, u16::MAX as f64),
-        ChannelDatatype::U32 => (u32::MIN as f64, u32::MAX as f64),
-        ChannelDatatype::U64 => (u64::MIN as f64, u64::MAX as f64),
-
-        ChannelDatatype::I8 => (i8::MIN as f64, i8::MAX as f64),
-        ChannelDatatype::I16 => (i16::MIN as f64, i16::MAX as f64),
-        ChannelDatatype::I32 => (i32::MIN as f64, i32::MAX as f64),
-        ChannelDatatype::I64 => (i64::MIN as f64, i64::MAX as f64),
-
-        ChannelDatatype::F16 => (f16::MIN.to_f64(), f16::MAX.to_f64()),
-        ChannelDatatype::F32 => (f32::MIN as f64, f32::MAX as f64),
-        ChannelDatatype::F64 => (f64::MIN, f64::MAX),
     }
 }
