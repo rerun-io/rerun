@@ -39,6 +39,8 @@ class ComponentColumnSelectorExt:
         if spec is not None:
             if entity_path is not None or component is not None:
                 raise ValueError("Either `spec` or both `entity_path` and `component` must be provided.")
+            if not isinstance(spec, str):
+                raise ValueError(f"Unexpected input value (`spec` must be a string): {spec}")
             entity_path, component = _parse_spec(spec)
         else:
             if entity_path is None or component is None:

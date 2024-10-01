@@ -14,7 +14,9 @@ class DataframeQueryV2Ext:
         self: Any,
         *,
         timeline: datatypes.Utf8Like | None = None,
-        filter_by_range: tuple[datatypes.TimeInt, datatypes.TimeInt] | blueprint_datatypes.RangeFilterLike | None,
+        filter_by_range: tuple[datatypes.TimeInt, datatypes.TimeInt]
+        | blueprint_datatypes.RangeFilterLike
+        | None = None,
         filter_by_event: blueprint_datatypes.ComponentColumnSelectorLike | None = None,
         apply_latest_at: bool = False,
         selected_columns: list[blueprint_datatypes.ComponentColumnSelectorLike | datatypes.Utf8Like | str]
