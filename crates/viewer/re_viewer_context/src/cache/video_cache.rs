@@ -4,15 +4,17 @@ use std::sync::{
 };
 
 use ahash::{HashMap, HashSet};
-
 use itertools::Either;
+
+use crate::Cache;
 use re_chunk::RowId;
 use re_chunk_store::ChunkStoreEvent;
 use re_log_types::hash::Hash64;
-use re_renderer::{external::re_video::VideoLoadError, video::Video};
+use re_renderer::{
+    external::re_video::VideoLoadError,
+    video::{DecodeHardwareAcceleration, Video},
+};
 use re_types::Loggable as _;
-
-use crate::Cache;
 
 // ----------------------------------------------------------------------------
 
@@ -38,10 +40,11 @@ impl VideoCache {
         blob_row_id: RowId,
         video_data: &re_types::datatypes::Blob,
         media_type: Option<&str>,
+        hw_acceleration: DecodeHardwareAcceleration,
     ) -> Arc<Result<Video, VideoLoadError>> {
         re_tracing::profile_function!();
 
-        let inner_key = Hash64::hash(media_type);
+        let inner_key = Hash64::hash((media_type, hw_acceleration));
 
         let entry = self
             .0
@@ -49,7 +52,7 @@ impl VideoCache {
             .or_default()
             .entry(inner_key)
             .or_insert_with(|| {
-                let video = Video::load(video_data, media_type);
+                let video = Video::load(video_data, media_type, hw_acceleration);
                 Entry {
                     used_this_frame: AtomicBool::new(true),
                     video: Arc::new(video),

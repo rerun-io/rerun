@@ -325,6 +325,34 @@ fn options_menu_ui(
     );
 
     {
+        use re_renderer::video::DecodeHardwareAcceleration;
+
+        let hardware_acceleration = &mut app_options.video_decoder_hw_acceleration;
+
+        ui.horizontal(|ui| {
+            ui.label("Video Decoder:");
+            egui::ComboBox::from_id_salt("video_decoder_hw_acceleration")
+                .selected_text(hardware_acceleration.to_string())
+                .show_ui(ui, |ui| {
+                    ui.selectable_value(
+                        hardware_acceleration,
+                        DecodeHardwareAcceleration::Auto,
+                        DecodeHardwareAcceleration::Auto.to_string(),
+                    ) | ui.selectable_value(
+                        hardware_acceleration,
+                        DecodeHardwareAcceleration::PreferSoftware,
+                        DecodeHardwareAcceleration::PreferSoftware.to_string(),
+                    ) | ui.selectable_value(
+                        hardware_acceleration,
+                        DecodeHardwareAcceleration::PreferHardware,
+                        DecodeHardwareAcceleration::PreferHardware.to_string(),
+                    )
+                });
+            // Note that the setting is part of the video's cache key, so if it changes the cache entries outdate automatically.
+        });
+    }
+
+    {
         ui.add_space(SPACING);
         ui.label("Experimental features:");
         experimental_feature_ui(command_sender, ui, app_options);
