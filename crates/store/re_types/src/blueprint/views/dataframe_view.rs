@@ -19,6 +19,8 @@ use ::re_types_core::{ComponentBatch, MaybeOwnedComponentBatch};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **View**: A view to display any data in a tabular form.
+///
+/// Any data from the store can be shown, using a flexibly, user-configurable query.
 #[derive(Clone, Debug)]
 pub struct DataframeView {
     /// Query of the dataframe.

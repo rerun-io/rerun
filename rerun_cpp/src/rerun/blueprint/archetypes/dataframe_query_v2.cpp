@@ -15,25 +15,20 @@ namespace rerun {
         ) {
         using namespace blueprint::archetypes;
         std::vector<ComponentBatch> cells;
-        cells.reserve(7);
+        cells.reserve(6);
 
         if (archetype.timeline.has_value()) {
             auto result = ComponentBatch::from_loggable(archetype.timeline.value());
             RR_RETURN_NOT_OK(result.error);
             cells.push_back(std::move(result.value));
         }
-        if (archetype.range_filter.has_value()) {
-            auto result = ComponentBatch::from_loggable(archetype.range_filter.value());
+        if (archetype.filter_by_range.has_value()) {
+            auto result = ComponentBatch::from_loggable(archetype.filter_by_range.value());
             RR_RETURN_NOT_OK(result.error);
             cells.push_back(std::move(result.value));
         }
-        if (archetype.filter_by_event_active.has_value()) {
-            auto result = ComponentBatch::from_loggable(archetype.filter_by_event_active.value());
-            RR_RETURN_NOT_OK(result.error);
-            cells.push_back(std::move(result.value));
-        }
-        if (archetype.filter_by_event_column.has_value()) {
-            auto result = ComponentBatch::from_loggable(archetype.filter_by_event_column.value());
+        if (archetype.filter_by_event.has_value()) {
+            auto result = ComponentBatch::from_loggable(archetype.filter_by_event.value());
             RR_RETURN_NOT_OK(result.error);
             cells.push_back(std::move(result.value));
         }
@@ -42,8 +37,8 @@ namespace rerun {
             RR_RETURN_NOT_OK(result.error);
             cells.push_back(std::move(result.value));
         }
-        if (archetype.selected_columns.has_value()) {
-            auto result = ComponentBatch::from_loggable(archetype.selected_columns.value());
+        if (archetype.select.has_value()) {
+            auto result = ComponentBatch::from_loggable(archetype.select.value());
             RR_RETURN_NOT_OK(result.error);
             cells.push_back(std::move(result.value));
         }

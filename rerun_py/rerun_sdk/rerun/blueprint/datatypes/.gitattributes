@@ -3,8 +3,9 @@
 .gitattributes linguist-generated=true
 __init__.py linguist-generated=true
 component_column_selector.py linguist-generated=true
+filter_by_event.py linguist-generated=true
+filter_by_range.py linguist-generated=true
 latest_at_query.py linguist-generated=true
-range_filter.py linguist-generated=true
 selected_columns.py linguist-generated=true
 tensor_dimension_index_slider.py linguist-generated=true
 time_range_query.py linguist-generated=true

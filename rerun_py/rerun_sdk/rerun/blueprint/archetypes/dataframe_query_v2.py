@@ -76,11 +76,10 @@ class DataframeQueryV2(Archetype):
         """Convenience method for calling `__attrs_init__` with all `None`s."""
         self.__attrs_init__(
             timeline=None,  # type: ignore[arg-type]
-            range_filter=None,  # type: ignore[arg-type]
-            filter_by_event_active=None,  # type: ignore[arg-type]
-            filter_by_event_column=None,  # type: ignore[arg-type]
+            filter_by_range=None,  # type: ignore[arg-type]
+            filter_by_event=None,  # type: ignore[arg-type]
             apply_latest_at=None,  # type: ignore[arg-type]
-            selected_columns=None,  # type: ignore[arg-type]
+            select=None,  # type: ignore[arg-type]
         )
 
     @classmethod
@@ -97,38 +96,27 @@ class DataframeQueryV2(Archetype):
     )
     # The timeline for this query.
     #
-    # If unset, the time panel's timeline is used and stored.
+    # If unset, the timeline currently active on the time panel is used.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 
-    range_filter: blueprint_components.RangeFilterBatch | None = field(
+    filter_by_range: blueprint_components.FilterByRangeBatch | None = field(
         metadata={"component": "optional"},
         default=None,
-        converter=blueprint_components.RangeFilterBatch._optional,  # type: ignore[misc]
+        converter=blueprint_components.FilterByRangeBatch._optional,  # type: ignore[misc]
     )
-    # If set, a range filter is applied.
+    # If provided, only rows whose timestamp is within this range will be shown.
     #
     # Note: will be unset as soon as `timeline` is changed.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 
-    filter_by_event_active: blueprint_components.FilterByEventActiveBatch | None = field(
+    filter_by_event: blueprint_components.FilterByEventBatch | None = field(
         metadata={"component": "optional"},
         default=None,
-        converter=blueprint_components.FilterByEventActiveBatch._optional,  # type: ignore[misc]
+        converter=blueprint_components.FilterByEventBatch._optional,  # type: ignore[misc]
     )
-    # Whether the filter by event feature is active.
-    #
-    # (Docstring intentionally commented out to hide this field from the docs)
-
-    filter_by_event_column: blueprint_components.ComponentColumnSelectorBatch | None = field(
-        metadata={"component": "optional"},
-        default=None,
-        converter=blueprint_components.ComponentColumnSelectorBatch._optional,  # type: ignore[misc]
-    )
-    # The column used when the filter by event feature is used.
-    #
-    # Note: only valid if the entity/component exists on `timeline`.
+    # If provided, only show rows which contains a logged event for the specified component.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 
@@ -141,7 +129,7 @@ class DataframeQueryV2(Archetype):
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 
-    selected_columns: blueprint_components.SelectedColumnsBatch | None = field(
+    select: blueprint_components.SelectedColumnsBatch | None = field(
         metadata={"component": "optional"},
         default=None,
         converter=blueprint_components.SelectedColumnsBatch._optional,  # type: ignore[misc]

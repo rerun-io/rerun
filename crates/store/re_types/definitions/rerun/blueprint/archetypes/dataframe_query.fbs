@@ -60,28 +60,21 @@ table DataframeQueryV2 (
 
     /// The timeline for this query.
     ///
-    /// If unset, the time panel's timeline is used and stored.
+    /// If unset, the timeline currently active on the time panel is used.
     timeline: rerun.blueprint.components.TimelineName ("attr.rerun.component_optional", nullable, order: 100);
 
-    /// If set, a range filter is applied.
+    /// If provided, only rows whose timestamp is within this range will be shown.
     ///
     /// Note: will be unset as soon as `timeline` is changed.
-    //TODO(ab): should this use the list-with-timelines trick?
-    range_filter: rerun.blueprint.components.RangeFilter ("attr.rerun.component_optional", nullable, order: 200);
+    filter_by_range: rerun.blueprint.components.FilterByRange ("attr.rerun.component_optional", nullable, order: 200);
 
-    /// Whether the filter by event feature is active.
-    // Note: we use an explicit field here such that the filter column is not lost when the filter is deactivated.
-    filter_by_event_active: rerun.blueprint.components.FilterByEventActive ("attr.rerun.component_optional", nullable, order: 300);
-
-    /// The column used when the filter by event feature is used.
-    ///
-    /// Note: only valid if the entity/component exists on `timeline`.
-    filter_by_event_column: rerun.blueprint.components.ComponentColumnSelector ("attr.rerun.component_optional", nullable, order: 400);
+    /// If provided, only show rows which contains a logged event for the specified component.
+    filter_by_event: rerun.blueprint.components.FilterByEvent ("attr.rerun.component_optional", nullable, order: 300);
 
     /// Should empty cells be filled with latest-at queries?
-    apply_latest_at: rerun.blueprint.components.ApplyLatestAt ("attr.rerun.component_optional", nullable, order: 500);
+    apply_latest_at: rerun.blueprint.components.ApplyLatestAt ("attr.rerun.component_optional", nullable, order: 400);
 
     /// Selected columns. If unset, all columns are selected.
-    selected_columns: rerun.blueprint.components.SelectedColumns ("attr.rerun.component_optional", nullable, order: 600);
+    select: rerun.blueprint.components.SelectedColumns ("attr.rerun.component_optional", nullable, order: 500);
 }
 

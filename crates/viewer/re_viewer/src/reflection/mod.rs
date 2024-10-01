@@ -105,10 +105,17 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             },
         ),
         (
-            <FilterByEventActive as Loggable>::name(),
+            <FilterByEvent as Loggable>::name(),
             ComponentReflection {
-                docstring_md: "Whether the filter by event feature of the dataframe view is active.",
-                placeholder: Some(FilterByEventActive::default().to_arrow()?),
+                docstring_md: "Configuration for the filter-by-event feature of the dataframe view.",
+                placeholder: Some(FilterByEvent::default().to_arrow()?),
+            },
+        ),
+        (
+            <FilterByRange as Loggable>::name(),
+            ComponentReflection {
+                docstring_md: "Configuration for a filter-by-range feature of the dataframe view.",
+                placeholder: Some(FilterByRange::default().to_arrow()?),
             },
         ),
         (
@@ -172,13 +179,6 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             ComponentReflection {
                 docstring_md: "The kind of query displayed by the dataframe view",
                 placeholder: Some(QueryKind::default().to_arrow()?),
-            },
-        ),
-        (
-            <RangeFilter as Loggable>::name(),
-            ComponentReflection {
-                docstring_md: "Describe a component column to be selected in the dataframe view.",
-                placeholder: Some(RangeFilter::default().to_arrow()?),
             },
         ),
         (
@@ -1617,26 +1617,22 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                     ArchetypeFieldReflection { component_name :
                     "rerun.blueprint.components.TimelineName".into(), display_name :
                     "Timeline", docstring_md :
-                    "The timeline for this query.\n\nIf unset, the time panel's timeline is used and stored.",
+                    "The timeline for this query.\n\nIf unset, the timeline currently active on the time panel is used.",
                     is_required : false, }, ArchetypeFieldReflection { component_name :
-                    "rerun.blueprint.components.RangeFilter".into(), display_name :
-                    "Range filter", docstring_md :
-                    "If set, a range filter is applied.\n\nNote: will be unset as soon as `timeline` is changed.",
+                    "rerun.blueprint.components.FilterByRange".into(), display_name :
+                    "Filter by range", docstring_md :
+                    "If provided, only rows whose timestamp is within this range will be shown.\n\nNote: will be unset as soon as `timeline` is changed.",
                     is_required : false, }, ArchetypeFieldReflection { component_name :
-                    "rerun.blueprint.components.FilterByEventActive".into(), display_name
-                    : "Filter by event active", docstring_md :
-                    "Whether the filter by event feature is active.", is_required :
-                    false, }, ArchetypeFieldReflection { component_name :
-                    "rerun.blueprint.components.ComponentColumnSelector".into(),
-                    display_name : "Filter by event column", docstring_md :
-                    "The column used when the filter by event feature is used.\n\nNote: only valid if the entity/component exists on `timeline`.",
+                    "rerun.blueprint.components.FilterByEvent".into(), display_name :
+                    "Filter by event", docstring_md :
+                    "If provided, only show rows which contains a logged event for the specified component.",
                     is_required : false, }, ArchetypeFieldReflection { component_name :
                     "rerun.blueprint.components.ApplyLatestAt".into(), display_name :
                     "Apply latest at", docstring_md :
                     "Should empty cells be filled with latest-at queries?", is_required :
                     false, }, ArchetypeFieldReflection { component_name :
                     "rerun.blueprint.components.SelectedColumns".into(), display_name :
-                    "Selected columns", docstring_md :
+                    "Select", docstring_md :
                     "Selected columns. If unset, all columns are selected.", is_required
                     : false, },
                 ],

@@ -8,7 +8,8 @@ pub use re_types::blueprint::components::ColumnSelectionMode;
 pub use re_types::blueprint::components::ColumnShare;
 pub use re_types::blueprint::components::ComponentColumnSelector;
 pub use re_types::blueprint::components::Corner2D;
-pub use re_types::blueprint::components::FilterByEventActive;
+pub use re_types::blueprint::components::FilterByEvent;
+pub use re_types::blueprint::components::FilterByRange;
 pub use re_types::blueprint::components::IncludedContent;
 pub use re_types::blueprint::components::Interactive;
 pub use re_types::blueprint::components::LatestAtQueries;
@@ -16,7 +17,6 @@ pub use re_types::blueprint::components::LockRangeDuringZoom;
 pub use re_types::blueprint::components::PanelState;
 pub use re_types::blueprint::components::QueryExpression;
 pub use re_types::blueprint::components::QueryKind;
-pub use re_types::blueprint::components::RangeFilter;
 pub use re_types::blueprint::components::RowShare;
 pub use re_types::blueprint::components::SelectedColumns;
 pub use re_types::blueprint::components::SpaceViewClass;
@@ -52,7 +52,8 @@ pub fn is_valid_blueprint(blueprint: &EntityDb) -> bool {
         && validate_component::<ComponentColumnSelector>(blueprint)
         && validate_component::<ContainerKind>(blueprint)
         && validate_component::<Corner2D>(blueprint)
-        && validate_component::<FilterByEventActive>(blueprint)
+        && validate_component::<FilterByEvent>(blueprint)
+        && validate_component::<FilterByRange>(blueprint)
         && validate_component::<GridColumns>(blueprint)
         && validate_component::<IncludedContent>(blueprint)
         && validate_component::<IncludedSpaceView>(blueprint)
@@ -62,7 +63,6 @@ pub fn is_valid_blueprint(blueprint: &EntityDb) -> bool {
         && validate_component::<PanelState>(blueprint)
         && validate_component::<QueryExpression>(blueprint)
         && validate_component::<QueryKind>(blueprint)
-        && validate_component::<RangeFilter>(blueprint)
         && validate_component::<RootContainer>(blueprint)
         && validate_component::<RowShare>(blueprint)
         && validate_component::<SelectedColumns>(blueprint)

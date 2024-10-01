@@ -19,6 +19,8 @@ class DataframeView(SpaceView):
     """
     **View**: A view to display any data in a tabular form.
 
+    Any data from the store can be shown, using a flexibly, user-configurable query.
+
     Example
     -------
     ### Use a blueprint to customize a DataframeView.:

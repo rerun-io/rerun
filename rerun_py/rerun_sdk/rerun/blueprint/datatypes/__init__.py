@@ -9,6 +9,20 @@ from .component_column_selector import (
     ComponentColumnSelectorLike,
     ComponentColumnSelectorType,
 )
+from .filter_by_event import (
+    FilterByEvent,
+    FilterByEventArrayLike,
+    FilterByEventBatch,
+    FilterByEventLike,
+    FilterByEventType,
+)
+from .filter_by_range import (
+    FilterByRange,
+    FilterByRangeArrayLike,
+    FilterByRangeBatch,
+    FilterByRangeLike,
+    FilterByRangeType,
+)
 from .latest_at_query import (
     LatestAtQuery,
     LatestAtQueryArrayLike,
@@ -16,7 +30,6 @@ from .latest_at_query import (
     LatestAtQueryLike,
     LatestAtQueryType,
 )
-from .range_filter import RangeFilter, RangeFilterArrayLike, RangeFilterBatch, RangeFilterLike, RangeFilterType
 from .selected_columns import (
     SelectedColumns,
     SelectedColumnsArrayLike,
@@ -46,16 +59,21 @@ __all__ = [
     "ComponentColumnSelectorBatch",
     "ComponentColumnSelectorLike",
     "ComponentColumnSelectorType",
+    "FilterByEvent",
+    "FilterByEventArrayLike",
+    "FilterByEventBatch",
+    "FilterByEventLike",
+    "FilterByEventType",
+    "FilterByRange",
+    "FilterByRangeArrayLike",
+    "FilterByRangeBatch",
+    "FilterByRangeLike",
+    "FilterByRangeType",
     "LatestAtQuery",
     "LatestAtQueryArrayLike",
     "LatestAtQueryBatch",
     "LatestAtQueryLike",
     "LatestAtQueryType",
-    "RangeFilter",
-    "RangeFilterArrayLike",
-    "RangeFilterBatch",
-    "RangeFilterLike",
-    "RangeFilterType",
     "SelectedColumns",
     "SelectedColumnsArrayLike",
     "SelectedColumnsBatch",

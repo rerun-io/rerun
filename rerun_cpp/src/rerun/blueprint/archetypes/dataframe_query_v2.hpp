@@ -4,9 +4,8 @@
 #pragma once
 
 #include "../../blueprint/components/apply_latest_at.hpp"
-#include "../../blueprint/components/component_column_selector.hpp"
-#include "../../blueprint/components/filter_by_event_active.hpp"
-#include "../../blueprint/components/range_filter.hpp"
+#include "../../blueprint/components/filter_by_event.hpp"
+#include "../../blueprint/components/filter_by_range.hpp"
 #include "../../blueprint/components/selected_columns.hpp"
 #include "../../blueprint/components/timeline_name.hpp"
 #include "../../collection.hpp"
@@ -25,27 +24,22 @@ namespace rerun::blueprint::archetypes {
     struct DataframeQueryV2 {
         /// The timeline for this query.
         ///
-        /// If unset, the time panel's timeline is used and stored.
+        /// If unset, the timeline currently active on the time panel is used.
         std::optional<rerun::blueprint::components::TimelineName> timeline;
 
-        /// If set, a range filter is applied.
+        /// If provided, only rows whose timestamp is within this range will be shown.
         ///
         /// Note: will be unset as soon as `timeline` is changed.
-        std::optional<rerun::blueprint::components::RangeFilter> range_filter;
+        std::optional<rerun::blueprint::components::FilterByRange> filter_by_range;
 
-        /// Whether the filter by event feature is active.
-        std::optional<rerun::blueprint::components::FilterByEventActive> filter_by_event_active;
-
-        /// The column used when the filter by event feature is used.
-        ///
-        /// Note: only valid if the entity/component exists on `timeline`.
-        std::optional<rerun::blueprint::components::ComponentColumnSelector> filter_by_event_column;
+        /// If provided, only show rows which contains a logged event for the specified component.
+        std::optional<rerun::blueprint::components::FilterByEvent> filter_by_event;
 
         /// Should empty cells be filled with latest-at queries?
         std::optional<rerun::blueprint::components::ApplyLatestAt> apply_latest_at;
 
         /// Selected columns. If unset, all columns are selected.
-        std::optional<rerun::blueprint::components::SelectedColumns> selected_columns;
+        std::optional<rerun::blueprint::components::SelectedColumns> select;
 
       public:
         static constexpr const char IndicatorComponentName[] =
@@ -60,39 +54,29 @@ namespace rerun::blueprint::archetypes {
 
         /// The timeline for this query.
         ///
-        /// If unset, the time panel's timeline is used and stored.
+        /// If unset, the timeline currently active on the time panel is used.
         DataframeQueryV2 with_timeline(rerun::blueprint::components::TimelineName _timeline) && {
             timeline = std::move(_timeline);
             // See: https://github.com/rerun-io/rerun/issues/4027
             RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
         }
 
-        /// If set, a range filter is applied.
+        /// If provided, only rows whose timestamp is within this range will be shown.
         ///
         /// Note: will be unset as soon as `timeline` is changed.
-        DataframeQueryV2 with_range_filter(rerun::blueprint::components::RangeFilter _range_filter
+        DataframeQueryV2 with_filter_by_range(
+            rerun::blueprint::components::FilterByRange _filter_by_range
         ) && {
-            range_filter = std::move(_range_filter);
+            filter_by_range = std::move(_filter_by_range);
             // See: https://github.com/rerun-io/rerun/issues/4027
             RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
         }
 
-        /// Whether the filter by event feature is active.
-        DataframeQueryV2 with_filter_by_event_active(
-            rerun::blueprint::components::FilterByEventActive _filter_by_event_active
+        /// If provided, only show rows which contains a logged event for the specified component.
+        DataframeQueryV2 with_filter_by_event(
+            rerun::blueprint::components::FilterByEvent _filter_by_event
         ) && {
-            filter_by_event_active = std::move(_filter_by_event_active);
-            // See: https://github.com/rerun-io/rerun/issues/4027
-            RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
-        }
-
-        /// The column used when the filter by event feature is used.
-        ///
-        /// Note: only valid if the entity/component exists on `timeline`.
-        DataframeQueryV2 with_filter_by_event_column(
-            rerun::blueprint::components::ComponentColumnSelector _filter_by_event_column
-        ) && {
-            filter_by_event_column = std::move(_filter_by_event_column);
+            filter_by_event = std::move(_filter_by_event);
             // See: https://github.com/rerun-io/rerun/issues/4027
             RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
         }
@@ -107,10 +91,8 @@ namespace rerun::blueprint::archetypes {
         }
 
         /// Selected columns. If unset, all columns are selected.
-        DataframeQueryV2 with_selected_columns(
-            rerun::blueprint::components::SelectedColumns _selected_columns
-        ) && {
-            selected_columns = std::move(_selected_columns);
+        DataframeQueryV2 with_select(rerun::blueprint::components::SelectedColumns _select) && {
+            select = std::move(_select);
             // See: https://github.com/rerun-io/rerun/issues/4027
             RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
         }

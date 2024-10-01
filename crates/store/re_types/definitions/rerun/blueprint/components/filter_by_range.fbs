@@ -1,13 +1,13 @@
 
 namespace rerun.blueprint.components;
 
-/// Describe a component column to be selected in the dataframe view.
+/// Configuration for a filter-by-range feature of the dataframe view.
 //TODO(ab, jleibs): this probably needs reunification with whatever structure the data out API uses.
-table RangeFilter (
+table FilterByRange (
   "attr.arrow.transparent",
   "attr.rust.derive": "PartialEq, Eq",
   "attr.rust.repr": "transparent",
   "attr.rerun.scope": "blueprint"
 ) {
-    selected_columns: rerun.blueprint.datatypes.RangeFilter (order: 100);
+    range: rerun.blueprint.datatypes.FilterByRange (order: 100);
 }

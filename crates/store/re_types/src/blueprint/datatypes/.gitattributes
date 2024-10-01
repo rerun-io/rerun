@@ -2,9 +2,10 @@
 
 .gitattributes linguist-generated=true
 component_column_selector.rs linguist-generated=true
+filter_by_event.rs linguist-generated=true
+filter_by_range.rs linguist-generated=true
 latest_at_query.rs linguist-generated=true
 mod.rs linguist-generated=true
-range_filter.rs linguist-generated=true
 selected_columns.rs linguist-generated=true
 tensor_dimension_index_slider.rs linguist-generated=true
 time_range_query.rs linguist-generated=true

@@ -34,7 +34,8 @@ from .container_kind import (
     ContainerKindType,
 )
 from .corner2d import Corner2D, Corner2DArrayLike, Corner2DBatch, Corner2DLike, Corner2DType
-from .filter_by_event_active import FilterByEventActive, FilterByEventActiveBatch, FilterByEventActiveType
+from .filter_by_event import FilterByEvent, FilterByEventBatch, FilterByEventType
+from .filter_by_range import FilterByRange, FilterByRangeBatch, FilterByRangeType
 from .grid_columns import GridColumns, GridColumnsBatch, GridColumnsType
 from .included_content import IncludedContent, IncludedContentBatch, IncludedContentType
 from .included_space_view import IncludedSpaceView, IncludedSpaceViewBatch, IncludedSpaceViewType
@@ -50,7 +51,6 @@ from .lock_range_during_zoom import LockRangeDuringZoom, LockRangeDuringZoomBatc
 from .panel_state import PanelState, PanelStateArrayLike, PanelStateBatch, PanelStateLike, PanelStateType
 from .query_expression import QueryExpression, QueryExpressionBatch, QueryExpressionType
 from .query_kind import QueryKind, QueryKindArrayLike, QueryKindBatch, QueryKindLike, QueryKindType
-from .range_filter import RangeFilter, RangeFilterBatch, RangeFilterType
 from .root_container import RootContainer, RootContainerBatch, RootContainerType
 from .row_share import RowShare, RowShareBatch, RowShareType
 from .selected_columns import SelectedColumns, SelectedColumnsBatch, SelectedColumnsType
@@ -120,9 +120,12 @@ __all__ = [
     "Corner2DBatch",
     "Corner2DLike",
     "Corner2DType",
-    "FilterByEventActive",
-    "FilterByEventActiveBatch",
-    "FilterByEventActiveType",
+    "FilterByEvent",
+    "FilterByEventBatch",
+    "FilterByEventType",
+    "FilterByRange",
+    "FilterByRangeBatch",
+    "FilterByRangeType",
     "GridColumns",
     "GridColumnsBatch",
     "GridColumnsType",
@@ -156,9 +159,6 @@ __all__ = [
     "QueryKindBatch",
     "QueryKindLike",
     "QueryKindType",
-    "RangeFilter",
-    "RangeFilterBatch",
-    "RangeFilterType",
     "RootContainer",
     "RootContainerBatch",
     "RootContainerType",

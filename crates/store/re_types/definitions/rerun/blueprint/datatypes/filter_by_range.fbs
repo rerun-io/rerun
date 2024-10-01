@@ -1,9 +1,8 @@
 namespace rerun.blueprint.datatypes;
 
 
-/// Range filter for a dataframe query.
-// Has to be a table because flatbuffer doesn't support strings in structs.
-table RangeFilter (
+/// Configuration for the filter-by-range feature of the dataframe view.
+table FilterByRange (
   "attr.rust.derive": "PartialEq, Eq",
   "attr.rerun.scope": "blueprint"
 ) {
