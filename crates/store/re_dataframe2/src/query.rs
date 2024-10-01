@@ -37,6 +37,7 @@ use crate::{QueryEngine, RecordBatch};
 // * [ ] configurable cache bypass
 // * [ ] allocate null arrays once
 // * [ ] take kernel duplicates all memory
+// * [ ] dedupe-latest without allocs/copies
 
 /// A handle to a dataframe query, ready to be executed.
 ///
