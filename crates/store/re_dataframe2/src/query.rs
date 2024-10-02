@@ -3,14 +3,13 @@ use std::sync::{
     OnceLock,
 };
 
-use ahash::HashMap;
 use arrow2::{
     array::Array as ArrowArray, chunk::Chunk as ArrowChunk, datatypes::Schema as ArrowSchema,
 };
 use itertools::Itertools as _;
 
 use nohash_hasher::IntMap;
-use re_chunk::{Chunk, ComponentName, RangeQuery, RowId, TimeInt, Timeline};
+use re_chunk::{Chunk, RangeQuery, RowId, TimeInt, Timeline};
 use re_chunk_store::{
     ColumnDescriptor, ColumnSelector, ComponentColumnDescriptor, ComponentColumnSelector,
     ControlColumnDescriptor, ControlColumnSelector, JoinEncoding, QueryExpression2,
@@ -70,8 +69,11 @@ struct QueryHandleState {
     ///
     /// Columns that do not yield any data will still be present in the results, filled with null values.
     ///
+    /// The extra `usize` is the index in [`QueryHandleState::view_contents`] that this selection
+    /// points to.
+    ///
     /// See also [`QueryHandleState::arrow_schema`].
-    selected_contents: Vec<ColumnDescriptor>,
+    selected_contents: Vec<(usize, ColumnDescriptor)>,
 
     /// The Arrow schema that corresponds to the `selected_contents`.
     ///
@@ -88,8 +90,13 @@ struct QueryHandleState {
     /// Because chunks are allowed to overlap, we might need to rebound between two or more chunks
     /// during our iteration.
     ///
+    /// This vector's entries correspond to those in [`QueryHandleState::view_contents`].
+    /// Note: time and column entries don't have chunks -- inner vectors will be empty.
+    ///
     /// [latest-deduped]: [`Chunk::deduped_latest_on_index`]
-    chunks: HashMap<ComponentName, Vec<(AtomicU64, Chunk)>>,
+    //
+    // NOTE: Reminder: we have to query everything in the _view_, irrelevant of the current selection.
+    view_chunks: Vec<Vec<(AtomicU64, Chunk)>>,
 
     /// Tracks the current row index: the position of the iterator. For [`QueryHandle::next_row`].
     ///
@@ -141,7 +148,7 @@ impl QueryHandle<'_> {
             //
             // The caller might have selected columns that do not exist in the view: they should
             // still appear in the results.
-            let selected_contents = if let Some(selection) = self.query.selection.as_ref() {
+            let selected_contents: Vec<(_, _)> = if let Some(selection) = self.query.selection.as_ref() {
                  selection
                     .iter()
                     .map(|column| {
@@ -151,18 +158,18 @@ impl QueryHandle<'_> {
 
                                 view_contents
                                     .iter()
-                                    .filter_map(|view_column| match view_column {
-                                        ColumnDescriptor::Control(view_descr) => Some(view_descr),
+                                    .enumerate()
+                                    .filter_map(|(idx, view_column)| match view_column {
+                                        ColumnDescriptor::Control(view_descr) => Some((idx, view_descr)),
                                         _ => None,
                                     })
-                                    .find(|view_descr| view_descr.component_name == *selected_component_name)
-                                    .cloned()
+                                    .find(|(_idx, view_descr)| view_descr.component_name == *selected_component_name)
                                     .map_or_else(
-                                        || ColumnDescriptor::Control(ControlColumnDescriptor {
+                                        || (usize::MAX, ColumnDescriptor::Control(ControlColumnDescriptor {
                                             component_name: *selected_component_name,
                                             datatype: arrow2::datatypes::DataType::Null,
-                                        }),
-                                        ColumnDescriptor::Control,
+                                        })),
+                                        |(idx, view_descr)| (idx, ColumnDescriptor::Control(view_descr.clone()))
                                     )
                             },
 
@@ -171,20 +178,20 @@ impl QueryHandle<'_> {
 
                                 view_contents
                                     .iter()
-                                    .filter_map(|view_column| match view_column {
-                                        ColumnDescriptor::Time(view_descr) => Some(view_descr),
+                                    .enumerate()
+                                    .filter_map(|(idx, view_column)| match view_column {
+                                        ColumnDescriptor::Time(view_descr) => Some((idx, view_descr)),
                                         _ => None,
                                     })
-                                    .find(|view_descr| *view_descr.timeline.name() == *selected_timeline)
-                                    .cloned()
+                                    .find(|(_idx, view_descr)| *view_descr.timeline.name() == *selected_timeline)
                                     .map_or_else(
-                                        || ColumnDescriptor::Time(TimeColumnDescriptor {
+                                        || (usize::MAX, ColumnDescriptor::Time(TimeColumnDescriptor {
                                             // TODO(cmc): I picked a sequence here because I have to pick something.
                                             // It doesn't matter, only the name will remain in the Arrow schema anyhow.
                                             timeline: Timeline::new_sequence(*selected_timeline),
                                             datatype: arrow2::datatypes::DataType::Null,
-                                        }),
-                                        ColumnDescriptor::Time,
+                                        })),
+                                        |(idx, view_descr)| (idx, ColumnDescriptor::Time(view_descr.clone()))
                                     )
                             },
 
@@ -197,17 +204,17 @@ impl QueryHandle<'_> {
 
                                 view_contents
                                     .iter()
-                                    .filter_map(|view_column| match view_column {
-                                        ColumnDescriptor::Component(view_descr) => Some(view_descr),
+                                    .enumerate()
+                                    .filter_map(|(idx, view_column)| match view_column {
+                                        ColumnDescriptor::Component(view_descr) => Some((idx, view_descr)),
                                         _ => None,
                                     })
-                                    .find(|view_descr| {
+                                    .find(|(_idx, view_descr)| {
                                         view_descr.entity_path == *selected_entity_path
                                         && view_descr.component_name == *selected_component_name
                                     })
-                                    .cloned()
                                     .map_or_else(
-                                        || ColumnDescriptor::Component(ComponentColumnDescriptor {
+                                        || (usize::MAX, ColumnDescriptor::Component(ComponentColumnDescriptor {
                                             entity_path: selected_entity_path.clone(),
                                             archetype_name: None,
                                             archetype_field_name: None,
@@ -215,14 +222,15 @@ impl QueryHandle<'_> {
                                             store_datatype: arrow2::datatypes::DataType::Null,
                                             join_encoding: JoinEncoding::default(),
                                             is_static: false,
-                                        }),
-                                        ColumnDescriptor::Component,
+                                        })),
+                                        |(idx, view_descr)| (idx, ColumnDescriptor::Component(view_descr.clone()))
                                     )
                             },
                         }
-                    }).collect_vec()
+                    })
+                    .collect_vec()
             } else {
-                view_contents.clone()
+                view_contents.clone().into_iter().enumerate().collect()
             };
 
             // 3. Compute the Arrow schema of the selected components.
@@ -232,13 +240,13 @@ impl QueryHandle<'_> {
                 ArrowSchema {
                     fields: selected_contents
                         .iter()
-                        .map(|descr| descr.to_arrow_field())
+                        .map(|(_, descr)| descr.to_arrow_field())
                         .collect_vec(),
                     metadata: Default::default(),
                 };
 
             // 4. Perform the query and keep track of all the relevant chunks.
-            let chunks = {
+            let view_chunks = {
                 let index_range = self
                     .query
                     .filtered_index_range
@@ -248,13 +256,12 @@ impl QueryHandle<'_> {
                     .keep_extra_timelines(true) // we want all the timelines we can get!
                     .keep_extra_components(false);
 
-                selected_contents
+                view_contents
                     .iter()
-                    .filter_map(|column| match column {
-                        ColumnDescriptor::Control(_) | ColumnDescriptor::Time(_) => None,
-                        ColumnDescriptor::Component(column) => Some(column),
-                    })
-                    .filter_map(|column| {
+                    .map(|selected_column| match selected_column {
+                        ColumnDescriptor::Control(_) | ColumnDescriptor::Time(_) => Vec::new(),
+
+                        ColumnDescriptor::Component(column) => {
                         // NOTE: Keep in mind that the range APIs natively make sure that we will
                         // either get a bunch of relevant _static_ chunks, or a bunch of relevant
                         // _temporal_ chunks, but never both.
@@ -277,7 +284,7 @@ impl QueryHandle<'_> {
                             .components
                             .into_iter()
                             .next()
-                            .map(|(component_name, chunks)| {
+                            .map(|(_component_name, chunks)| {
                                 let chunks = chunks
                                     .into_iter()
                                     .map(|chunk| {
@@ -295,12 +302,14 @@ impl QueryHandle<'_> {
 
                                         let chunk = chunk.deduped_latest_on_index(&self.query.filtered_index);
 
-
                                         (AtomicU64::default(), chunk)
                                     })
                                     .collect_vec();
-                                (component_name, chunks)
+
+                                chunks
                             })
+                            .unwrap_or_default()
+                        },
                     })
                     .collect()
             };
@@ -309,7 +318,7 @@ impl QueryHandle<'_> {
                 view_contents,
                 selected_contents,
                 arrow_schema,
-                chunks,
+                view_chunks,
                 cur_row: AtomicU64::new(0),
             }
         })
@@ -327,10 +336,12 @@ impl QueryHandle<'_> {
         &self.init().view_contents
     }
 
-    /// The Arrow schema that corresponds to the `selected_contents`.
+    /// Describes the columns that make up this selection.
     ///
-    /// All returned rows will have this schema.
-    pub fn selected_contents(&self) -> &[ColumnDescriptor] {
+    /// The extra `usize` is the index in [`Self::view_contents`] that this selection points to.
+    ///
+    /// See [`QueryExpression2::selection`].
+    pub fn selected_contents(&self) -> &[(usize, ColumnDescriptor)] {
         &self.init().selected_contents
     }
 
@@ -391,12 +402,21 @@ impl QueryHandle<'_> {
 
         let _cur_row = state.cur_row.fetch_add(1, Ordering::Relaxed);
 
-        // First, we need to find, among all the chunks available in the current view contents,
+        // First, we need to find, among all the chunks available for the current view contents,
         // what is their index value for the current row?
-        let mut streaming_state_per_component: IntMap<ComponentName, StreamingJoinState<'_>> =
-            IntMap::default();
-        for (component_name, chunks) in &state.chunks {
-            for (cur_cursor, cur_chunk) in chunks {
+        //
+        // NOTE: Non-component columns don't have a streaming state, hence the optional layer.
+        let mut view_streaming_state: Vec<Option<StreamingJoinState<'_>>> =
+            // NOTE: cannot use vec![], it has limitations with non-cloneable options.
+            // vec![None; state.view_chunks.len()];
+            std::iter::repeat(())
+                .map(|_| None)
+                .take(state.view_chunks.len())
+                .collect();
+        for (view_column_idx, view_chunks) in state.view_chunks.iter().enumerate() {
+            let streaming_state = &mut view_streaming_state[view_column_idx];
+
+            for (cur_cursor, cur_chunk) in view_chunks {
                 // NOTE: Too soon to increment the cursor, we cannot know yet which chunks will or
                 // will not be part of the current row.
                 let cursor_value = cur_cursor.load(Ordering::Relaxed) as usize;
@@ -422,55 +442,58 @@ impl QueryHandle<'_> {
                     continue;
                 };
 
-                streaming_state_per_component
-                    .entry(*component_name)
-                    .and_modify(|streaming_state| {
-                        let StreamingJoinState {
-                            chunk,
-                            cursor,
-                            index_value,
-                            row_id,
-                        } = streaming_state;
+                if let Some(streaming_state) = streaming_state.as_mut() {
+                    let StreamingJoinState {
+                        chunk,
+                        cursor,
+                        index_value,
+                        row_id,
+                    } = streaming_state;
 
-                        let cur_chunk_has_smaller_index_value = cur_index_value < *index_value;
-                        // If these two chunks overlap and share the index value of the current
-                        // iteration, we shall pick the row with the most recent row-id.
-                        let cur_chunk_has_equal_index_but_higher_rowid =
-                            cur_index_value == *index_value && cur_row_id > *row_id;
+                    let cur_chunk_has_smaller_index_value = cur_index_value < *index_value;
+                    // If these two chunks overlap and share the index value of the current
+                    // iteration, we shall pick the row with the most recent row-id.
+                    let cur_chunk_has_equal_index_but_higher_rowid =
+                        cur_index_value == *index_value && cur_row_id > *row_id;
 
-                        if cur_chunk_has_smaller_index_value
-                            || cur_chunk_has_equal_index_but_higher_rowid
-                        {
-                            *chunk = chunk;
-                            *cursor = cursor;
-                            *index_value = cur_index_value;
-                            *row_id = cur_row_id;
-                        }
-                    })
-                    .or_insert_with(|| StreamingJoinState {
+                    if cur_chunk_has_smaller_index_value
+                        || cur_chunk_has_equal_index_but_higher_rowid
+                    {
+                        *chunk = chunk;
+                        *cursor = cursor;
+                        *index_value = cur_index_value;
+                        *row_id = cur_row_id;
+                    }
+                } else {
+                    *streaming_state = Some(StreamingJoinState {
                         chunk: cur_chunk,
                         cursor: cur_cursor,
                         index_value: cur_index_value,
                         row_id: cur_row_id,
                     });
+                };
             }
         }
 
         // What's the index value we're looking for at the current iteration?
-        let cur_index_value = streaming_state_per_component
-            .values()
+        let cur_index_value = view_streaming_state
+            .iter()
+            .flatten()
             // NOTE: We're purposefully ignoring RowId-related semantics here: we just want to know
             // the value we're looking for on the "main" index (dedupe semantics).
             .min_by_key(|streaming_state| streaming_state.index_value)
             .map(|streaming_state| streaming_state.index_value)?;
 
-        streaming_state_per_component.retain(|_component_name, streaming_state| {
-            streaming_state.index_value == cur_index_value
-        });
+        for streaming_state in &mut view_streaming_state {
+            if streaming_state.as_ref().map(|s| s.index_value) != Some(cur_index_value) {
+                *streaming_state = None;
+            }
+        }
 
         // The most recent chunk in the current iteration, according to RowId semantics.
-        let cur_most_recent_chunk = streaming_state_per_component
-            .values()
+        let cur_most_recent_row = view_streaming_state
+            .iter()
+            .flatten()
             .max_by_key(|streaming_state| streaming_state.row_id)?;
 
         // We are stitching a bunch of unrelated cells together in order to create the final row
@@ -495,13 +518,13 @@ impl QueryHandle<'_> {
             // Unless we are currently iterating over a static row, then we know for sure that the
             // timeline being used as `filtered_index` is A) present and B) has for value `cur_index_value`.
             if cur_index_value != TimeInt::STATIC {
-                let slice = cur_most_recent_chunk
+                let slice = cur_most_recent_row
                     .chunk
                     .timelines()
                     .get(&self.query.filtered_index)
                     .map(|time_column| {
                         time_column.times_array().sliced(
-                            cur_most_recent_chunk.cursor.load(Ordering::Relaxed) as usize,
+                            cur_most_recent_row.cursor.load(Ordering::Relaxed) as usize,
                             1,
                         )
                     });
@@ -517,8 +540,9 @@ impl QueryHandle<'_> {
                 }
             }
 
-            streaming_state_per_component
-                .values()
+            view_streaming_state
+                .iter()
+                .flatten()
                 .flat_map(|streaming_state| {
                     streaming_state
                         .chunk
@@ -555,24 +579,34 @@ impl QueryHandle<'_> {
                 });
         }
 
-        let sliced_arrays: IntMap<_, _> = streaming_state_per_component
+        // NOTE: Non-component entries have no data to slice, hence the optional layer.
+        //
+        // TODO(cmc): no point in slicing arrays that are not selected.
+        let view_sliced_arrays: Vec<Option<_>> = view_streaming_state
             .iter()
-            .filter_map(|(component_name, streaming_state)| {
-                let cursor = streaming_state.cursor.fetch_add(1, Ordering::Relaxed);
+            .map(|streaming_state| {
+                streaming_state.as_ref().and_then(|streaming_state| {
+                    let cursor = streaming_state.cursor.fetch_add(1, Ordering::Relaxed);
 
-                let list_array = streaming_state
-                    .chunk
-                    .components()
-                    .get(component_name)
-                    .map(|list_array| list_array.sliced(cursor as usize, 1));
+                    debug_assert!(
+                        streaming_state.chunk.components().len() <= 1,
+                        "cannot possibly get more than one component with this query"
+                    );
 
-                debug_assert!(
-                    list_array.is_some(),
-                    "This must exist or the chunk wouldn't have been sliced to start with."
-                );
+                    let list_array = streaming_state
+                        .chunk
+                        .components()
+                        .first_key_value()
+                        .map(|(_, list_array)| list_array.sliced(cursor as usize, 1));
 
-                // NOTE: This cannot possibly return None, see assert above.
-                list_array.map(|list_array| (*component_name, list_array))
+                    debug_assert!(
+                        list_array.is_some(),
+                        "This must exist or the chunk wouldn't have been sliced to start with."
+                    );
+
+                    // NOTE: This cannot possibly return None, see assert above.
+                    list_array
+                })
             })
             .collect();
 
@@ -580,11 +614,11 @@ impl QueryHandle<'_> {
         // null-arrays ahead of time, and just return a pointer to those in the failure
         // case here.
         let arrays = state
-            .view_contents
+            .selected_contents
             .iter()
-            .map(|column| match column {
-                ColumnDescriptor::Control(_) => cur_most_recent_chunk.chunk.row_ids_array().sliced(
-                    cur_most_recent_chunk
+            .map(|(view_idx, column)| match column {
+                ColumnDescriptor::Control(_) => cur_most_recent_row.chunk.row_ids_array().sliced(
+                    cur_most_recent_row
                         .cursor
                         .load(Ordering::Relaxed)
                         // NOTE: We did the cursor increments while computing the final sliced arrays,
@@ -600,12 +634,11 @@ impl QueryHandle<'_> {
                     )
                 }
 
-                ColumnDescriptor::Component(descr) => {
-                    sliced_arrays.get(&descr.component_name).map_or_else(
-                        || arrow2::array::new_null_array(column.datatype(), 1),
-                        |list_array| list_array.clone(),
-                    )
-                }
+                ColumnDescriptor::Component(_descr) => view_sliced_arrays
+                    .get(*view_idx)
+                    .cloned()
+                    .flatten()
+                    .unwrap_or_else(|| arrow2::array::new_null_array(column.datatype(), 1)),
             })
             .collect_vec();
 
