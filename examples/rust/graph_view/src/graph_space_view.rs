@@ -2,8 +2,7 @@ use fdg_sim::{ForceGraph, ForceGraphHelper, Simulation, SimulationParameters};
 use std::collections::HashMap;
 
 use re_viewer::external::{
-    arrow2::compute,
-    egui::{self, emath::TSTransform, Rect, TextWrapMode},
+    egui::{self, emath::TSTransform, TextWrapMode},
     re_log::external::log,
     re_log_types::EntityPath,
     re_types::SpaceViewClassIdentifier,
@@ -172,7 +171,7 @@ impl<'a> NodeInstance<'a> {
 /// This state is preserved between frames, but not across Viewer sessions.
 #[derive(Default)]
 pub struct GraphSpaceViewState {
-    screen_to_world: TSTransform,
+    world_to_view: TSTransform,
 
     /// Positions of the nodes in world space.
     layout: Option<HashMap<QualifiedNode, egui::Rect>>,
@@ -280,7 +279,8 @@ impl SpaceViewClass for GraphSpaceView {
         let edge_system = system_output.view_systems.get::<GraphEdgeVisualizer>()?;
 
         let state = state.downcast_mut::<GraphSpaceViewState>()?;
-        let (id, rect) = ui.allocate_space(ui.available_size());
+        let (id, view_rect_in_window) = ui.allocate_space(ui.available_size());
+        log::debug!("Created view rect: {:?}", view_rect_in_window);
 
         let Some(layout) = &mut state.layout else {
             let node_sizes =
@@ -295,8 +295,10 @@ impl SpaceViewClass for GraphSpaceView {
             );
 
             if let Some(bounding_box) = bounding_rect_from_iter(layout.values()) {
-                state.screen_to_world =
-                    fit_bounding_rect_to_screen(bounding_box.scale_from_center(1.05), rect.size());
+                state.world_to_view = fit_bounding_rect_to_screen(
+                    bounding_box.scale_from_center(1.05),
+                    view_rect_in_window.size(),
+                );
             }
 
             state.layout = Some(layout);
@@ -304,15 +306,15 @@ impl SpaceViewClass for GraphSpaceView {
             return Ok(());
         };
 
-        let response = ui.interact(rect, id, egui::Sense::click_and_drag());
+        let response = ui.interact(view_rect_in_window, id, egui::Sense::click_and_drag());
 
         // Allow dragging the background as well.
         if response.dragged() {
-            state.screen_to_world.translation += response.drag_delta();
+            state.world_to_view.translation += response.drag_delta();
         }
 
-        let transform = TSTransform::from_translation(ui.min_rect().left_top().to_vec2())
-            * state.screen_to_world;
+        let view_to_window = TSTransform::from_translation(ui.min_rect().left_top().to_vec2());
+        let world_to_window = view_to_window * state.world_to_view;
 
         #[cfg(debug_assertions)]
         if response.double_clicked() {
@@ -320,7 +322,7 @@ impl SpaceViewClass for GraphSpaceView {
                 log::debug!(
                     "Clicked! Screen: {:?}, World: {:?}",
                     screen,
-                    transform.inverse() * screen
+                    world_to_window.inverse() * screen
                 );
             }
         }
@@ -328,19 +330,19 @@ impl SpaceViewClass for GraphSpaceView {
         if let Some(pointer) = ui.ctx().input(|i| i.pointer.hover_pos()) {
             // Note: doesn't catch zooming / panning if a button in this PanZoom container is hovered.
             if response.hovered() {
-                let pointer_in_world = transform.inverse() * pointer;
+                let pointer_in_world = world_to_window.inverse() * pointer;
                 let zoom_delta = ui.ctx().input(|i| i.zoom_delta());
                 let pan_delta = ui.ctx().input(|i| i.smooth_scroll_delta);
 
                 // Zoom in on pointer:
-                state.screen_to_world = state.screen_to_world
+                state.world_to_view = state.world_to_view
                     * TSTransform::from_translation(pointer_in_world.to_vec2())
                     * TSTransform::from_scaling(zoom_delta)
                     * TSTransform::from_translation(-pointer_in_world.to_vec2());
 
                 // Pan:
-                state.screen_to_world =
-                    TSTransform::from_translation(pan_delta) * state.screen_to_world;
+                state.world_to_view =
+                    TSTransform::from_translation(pan_delta) * state.world_to_view;
             }
         }
 
@@ -350,18 +352,21 @@ impl SpaceViewClass for GraphSpaceView {
 
         #[cfg(debug_assertions)]
         {
-            log::debug!("Displaying coordinate system");
-            // paint coordinate system at the world origin
-            let origin = transform * egui::Pos2::new(0.0, 0.0);
-            let x_axis = transform * egui::Pos2::new(100.0, 0.0);
-            let y_axis = transform * egui::Pos2::new(0.0, 100.0);
+            let debug_id = egui::LayerId::new(egui::Order::Debug, id.with("debug_layer"));
+            ui.ctx().set_transform_layer(debug_id, world_to_window);
 
             // Paint the coordinate system.
             let painter = egui::Painter::new(
                 ui.ctx().clone(),
-                window_layer,
-                /* transform.inverse() * */ rect,
+                debug_id,
+                world_to_window.inverse() * view_rect_in_window,
             );
+
+            // paint coordinate system at the world origin
+            let origin = egui::Pos2::new(0.0, 0.0);
+            let x_axis = egui::Pos2::new(100.0, 0.0);
+            let y_axis = egui::Pos2::new(0.0, 100.0);
+
             painter.line_segment([origin, x_axis], egui::Stroke::new(1.0, egui::Color32::RED));
             painter.line_segment(
                 [origin, y_axis],
@@ -372,7 +377,7 @@ impl SpaceViewClass for GraphSpaceView {
                 log::debug!("Node bounding box: {:?}", bounding_box);
 
                 painter.rect(
-                    transform * bounding_box,
+                    bounding_box,
                     0.0,
                     egui::Color32::from_rgba_unmultiplied(255, 0, 255, 32),
                     egui::Stroke::new(1.0, egui::Color32::from_rgb(255, 0, 255)),
@@ -382,8 +387,6 @@ impl SpaceViewClass for GraphSpaceView {
 
         for data in node_system.data.iter() {
             let ent_highlight = query.highlights.entity_highlight(data.entity_path.hash());
-            let mut entity_rect: Option<Rect> = None;
-
             for node in data.nodes() {
                 let current_extent = layout
                     .get(&node.node_id)
@@ -394,30 +397,31 @@ impl SpaceViewClass for GraphSpaceView {
                     .constrain(false)
                     .show(ui.ctx(), |ui| {
                         let highlight = ent_highlight.index_highlight(node.instance);
-                        ui.set_clip_rect(transform.inverse() * rect);
+                        ui.set_clip_rect(world_to_window.inverse() * view_rect_in_window);
                         node.draw(ui, highlight)
                     })
                     .response;
 
-                entity_rect =
-                    entity_rect.map_or(Some(response.rect), |r| Some(r.union(response.rect)));
                 layout.insert(node.node_id.clone(), response.rect);
 
                 let id = response.layer_id;
 
-                ui.ctx().set_transform_layer(id, transform);
+                ui.ctx().set_transform_layer(id, world_to_window);
                 ui.ctx().set_sublayer(window_layer, id);
 
                 // ui.interact(response.rect, area_id, egui::Sense::click());
             }
 
+            // TODO(grtlr): Explain `unwrap`
+            let entity_rect =
+                bounding_rect_from_iter(data.nodes().map(|r| layout.get(&r.node_id).unwrap()));
             let entity_path = data.entity_path.clone();
             if let Some(entity_rect) = entity_rect {
                 let response = egui::Area::new(id.with(entity_path.clone()))
                     .fixed_pos(entity_rect.min)
                     .order(egui::Order::Background)
                     .show(ui.ctx(), |ui| {
-                        ui.set_clip_rect(transform.inverse() * rect);
+                        ui.set_clip_rect(world_to_window.inverse() * view_rect_in_window);
                         egui::Frame::default()
                             .rounding(egui::Rounding::same(4.0))
                             .stroke(egui::Stroke::new(
@@ -433,7 +437,7 @@ impl SpaceViewClass for GraphSpaceView {
                     .response;
 
                 let layer_id = response.layer_id;
-                ui.ctx().set_transform_layer(layer_id, transform);
+                ui.ctx().set_transform_layer(layer_id, world_to_window);
                 ui.ctx().set_sublayer(window_layer, layer_id);
             }
         }
@@ -462,7 +466,7 @@ impl SpaceViewClass for GraphSpaceView {
                         .order(egui::Order::Middle)
                         .constrain(false)
                         .show(ui.ctx(), |ui| {
-                            ui.set_clip_rect(transform.inverse() * rect);
+                            ui.set_clip_rect(world_to_window.inverse() * view_rect_in_window);
                             egui::Frame::default().show(ui, |ui| {
                                 let painter = ui.painter();
                                 painter.line_segment(
@@ -477,7 +481,7 @@ impl SpaceViewClass for GraphSpaceView {
 
                     let id = response.layer_id;
 
-                    ui.ctx().set_transform_layer(id, transform);
+                    ui.ctx().set_transform_layer(id, world_to_window);
                     ui.ctx().set_sublayer(window_layer, id);
                 }
             }
