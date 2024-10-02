@@ -1,8 +1,8 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Iterable, Sequence, TypeVar
-
 import itertools
+from typing import TYPE_CHECKING, Any, Iterable, Sequence
+
 import pyarrow as pa
 
 from ... import datatypes

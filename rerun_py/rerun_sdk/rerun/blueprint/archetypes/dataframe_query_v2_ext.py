@@ -15,12 +15,11 @@ class DataframeQueryV2Ext:
         *,
         timeline: datatypes.Utf8Like | None = None,
         filter_by_range: tuple[datatypes.TimeInt, datatypes.TimeInt]
-        | blueprint_datatypes.RangeFilterLike
+        | blueprint_datatypes.FilterByRangeLike
         | None = None,
         filter_by_event: blueprint_datatypes.ComponentColumnSelectorLike | None = None,
         apply_latest_at: bool = False,
-        selected_columns: list[blueprint_datatypes.ComponentColumnSelectorLike | datatypes.Utf8Like | str]
-        | None = None,
+        select: list[blueprint_datatypes.ComponentColumnSelectorLike | datatypes.Utf8Like | str] | None = None,
     ):
         """
         Create a new instance of the DataframeQueryV2 archetype.
@@ -40,34 +39,32 @@ class DataframeQueryV2Ext:
         apply_latest_at:
             Should empty cells be filled with latest-at queries?
 
-        selected_columns:
+        select:
             Selected columns. If unset, all columns are selected.
 
         """
 
         if isinstance(filter_by_range, tuple):
             start, end = filter_by_range
-            filter_by_range = blueprint_components.RangeFilter(start, end)
+            filter_by_range = blueprint_components.FilterByRange(start, end)
 
-        if filter_by_event is None:
-            filter_by_event_active = None
-            filter_by_event_column = None
-        else:
-            filter_by_event_active = True
+        if filter_by_event is not None:
             if isinstance(filter_by_event, str):
                 column = blueprint_datatypes.ComponentColumnSelector(spec=filter_by_event)
             else:
                 column = filter_by_event
-            filter_by_event_column = column
+
+            new_filter_by_event = blueprint_components.FilterByEvent(active=True, column=column)
+        else:
+            new_filter_by_event = None
 
         with catch_and_log_exceptions(context=self.__class__.__name__):
             self.__attrs_init__(
                 timeline=timeline,
-                range_filter=filter_by_range,
-                filter_by_event_active=filter_by_event_active,
-                filter_by_event_column=filter_by_event_column,
+                filter_by_range=filter_by_range,
+                filter_by_event=new_filter_by_event,
                 apply_latest_at=apply_latest_at,
-                selected_columns=selected_columns,
+                select=select,
             )
             return
         self.__attrs_clear__()

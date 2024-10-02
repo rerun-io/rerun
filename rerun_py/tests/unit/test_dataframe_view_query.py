@@ -128,25 +128,26 @@ def test_dataframe_query_property() -> None:
         filter_by_range=(TimeInt(seq=1), TimeInt(seq=10)),
         filter_by_event="/entity/path:ComponentName",
         apply_latest_at=True,
-        selected_columns=[
+        select=[
             "t",
             "/entity/path:ComponentName",
         ],
     )
 
     assert query.timeline == blueprint_components.TimelineNameBatch("frame")
-    assert query.range_filter == blueprint_components.RangeFilterBatch(
-        blueprint_components.RangeFilter(rr.datatypes.TimeInt(seq=1), rr.datatypes.TimeInt(seq=10))
+    assert query.filter_by_range == blueprint_components.FilterByRangeBatch(
+        blueprint_components.FilterByRange(rr.datatypes.TimeInt(seq=1), rr.datatypes.TimeInt(seq=10))
     )
-    assert query.filter_by_event_active == blueprint_components.FilterByEventActiveBatch(
-        blueprint_components.FilterByEventActive(True)
+    assert query.filter_by_event == blueprint_components.FilterByEventBatch(
+        blueprint_components.FilterByEvent(
+            active=True,
+            column=blueprint_components.ComponentColumnSelector(entity_path="/entity/path", component="ComponentName"),
+        )
     )
-    assert query.filter_by_event_column == blueprint_components.ComponentColumnSelectorBatch(
-        blueprint_components.ComponentColumnSelector(entity_path="/entity/path", component="ComponentName")
-    )
+
     assert query.apply_latest_at == blueprint_components.ApplyLatestAtBatch(blueprint_components.ApplyLatestAt(True))
 
-    assert query.selected_columns == blueprint_components.SelectedColumnsBatch(
+    assert query.select == blueprint_components.SelectedColumnsBatch(
         blueprint_components.SelectedColumns([
             datatypes.Utf8("t"),
             blueprint_components.ComponentColumnSelector(entity_path="/entity/path", component="ComponentName"),
@@ -157,28 +158,28 @@ def test_dataframe_query_property() -> None:
 def test_dataframe_query_property_explicit() -> None:
     query = DataframeQueryV2(
         timeline=blueprint_components.TimelineName("frame"),
-        filter_by_range=blueprint_components.RangeFilter(start=TimeInt(seq=1), end=TimeInt(seq=10)),
+        filter_by_range=blueprint_components.FilterByRange(start=TimeInt(seq=1), end=TimeInt(seq=10)),
         filter_by_event=blueprint_components.ComponentColumnSelector(
             entity_path="/entity/path", component="ComponentName"
         ),
-        selected_columns=[
+        select=[
             datatypes.Utf8("frame"),
             blueprint_components.ComponentColumnSelector("/world/robot:Position3D"),
         ],
     )
 
     assert query.timeline == blueprint_components.TimelineNameBatch("frame")
-    assert query.range_filter == blueprint_components.RangeFilterBatch(
-        blueprint_components.RangeFilter(rr.datatypes.TimeInt(seq=1), rr.datatypes.TimeInt(seq=10))
+    assert query.filter_by_range == blueprint_components.FilterByRangeBatch(
+        blueprint_components.FilterByRange(rr.datatypes.TimeInt(seq=1), rr.datatypes.TimeInt(seq=10))
     )
-    assert query.filter_by_event_active == blueprint_components.FilterByEventActiveBatch(
-        blueprint_components.FilterByEventActive(True)
-    )
-    assert query.filter_by_event_column == blueprint_components.ComponentColumnSelectorBatch(
-        blueprint_components.ComponentColumnSelector(entity_path="/entity/path", component="ComponentName")
+    assert query.filter_by_event == blueprint_components.FilterByEventBatch(
+        blueprint_components.FilterByEvent(
+            active=True,
+            column=blueprint_components.ComponentColumnSelector(entity_path="/entity/path", component="ComponentName"),
+        )
     )
 
-    assert query.selected_columns == blueprint_components.SelectedColumnsBatch(
+    assert query.select == blueprint_components.SelectedColumnsBatch(
         blueprint_components.SelectedColumns([
             datatypes.Utf8("frame"),
             blueprint_components.ComponentColumnSelector(entity_path="/world/robot", component="Position3D"),
