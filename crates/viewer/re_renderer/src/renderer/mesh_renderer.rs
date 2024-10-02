@@ -131,6 +131,20 @@ pub struct MeshInstance {
     pub picking_layer_id: PickingLayerId,
 }
 
+impl Clone for MeshInstance {
+    #[inline]
+    fn clone(&self) -> Self {
+        Self {
+            gpu_mesh: self.gpu_mesh.clone(),
+            mesh: self.mesh.clone(),
+            world_from_mesh: self.world_from_mesh,
+            additive_tint: self.additive_tint,
+            outline_mask_ids: self.outline_mask_ids,
+            picking_layer_id: self.picking_layer_id,
+        }
+    }
+}
+
 impl MeshInstance {
     /// Creates a new instance of a mesh with all fields set to default except for required ones.
     pub fn new(gpu_mesh: Arc<GpuMesh>) -> Self {

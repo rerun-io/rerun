@@ -31,7 +31,6 @@ pub fn load_stl_from_buffer(
     let Asset3D {
         blob,
         vertex_colors,
-        albedo_factor,
         ..
     } = asset3d;
 
@@ -65,7 +64,7 @@ pub fn load_stl_from_buffer(
         label: name.clone().into(),
         index_range: 0..num_vertices as u32,
         albedo: ctx.texture_manager_2d.white_texture_unorm_handle().clone(),
-        albedo_factor: albedo_factor.map_or(crate::Rgba::WHITE, |c| c.0.into()),
+        albedo_factor: crate::Rgba::WHITE,
     };
 
     let mesh = mesh::Mesh {
