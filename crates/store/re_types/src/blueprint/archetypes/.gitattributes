@@ -2,7 +2,6 @@
 
 .gitattributes linguist-generated=true
 background.rs linguist-generated=true
-dataframe_query.rs linguist-generated=true
 dataframe_query_v2.rs linguist-generated=true
 mod.rs linguist-generated=true
 plot_legend.rs linguist-generated=true

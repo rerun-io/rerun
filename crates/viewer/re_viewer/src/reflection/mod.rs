@@ -140,13 +140,6 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             },
         ),
         (
-            <LatestAtQueries as Loggable>::name(),
-            ComponentReflection {
-                docstring_md: "Configuration for latest-at queries.\n\nNote: configuration as saved on a per-timeline basis.",
-                placeholder: Some(LatestAtQueries::default().to_arrow()?),
-            },
-        ),
-        (
             <LockRangeDuringZoom as Loggable>::name(),
             ComponentReflection {
                 docstring_md: "Indicate whether the range should be locked when zooming in on the data.\n\nDefault is `false`, i.e. zoom will change the visualized range.",
@@ -165,13 +158,6 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             ComponentReflection {
                 docstring_md: "An individual query expression used to filter a set of [`datatypes.EntityPath`](https://rerun.io/docs/reference/types/datatypes/entity_path)s.\n\nEach expression is either an inclusion or an exclusion expression.\nInclusions start with an optional `+` and exclusions must start with a `-`.\n\nMultiple expressions are combined together as part of `SpaceViewContents`.\n\nThe `/**` suffix matches the whole subtree, i.e. self and any child, recursively\n(`/world/**` matches both `/world` and `/world/car/driver`).\nOther uses of `*` are not (yet) supported.",
                 placeholder: Some(QueryExpression::default().to_arrow()?),
-            },
-        ),
-        (
-            <QueryKind as Loggable>::name(),
-            ComponentReflection {
-                docstring_md: "The kind of query displayed by the dataframe view",
-                placeholder: Some(QueryKind::default().to_arrow()?),
             },
         ),
         (
@@ -221,13 +207,6 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             ComponentReflection {
                 docstring_md: "Show a slider for the index of some dimension of a slider.",
                 placeholder: Some(TensorDimensionIndexSlider::default().to_arrow()?),
-            },
-        ),
-        (
-            <TimeRangeQueries as Loggable>::name(),
-            ComponentReflection {
-                docstring_md: "Configuration for time range queries.\n\nNote: configuration as saved on a per-timeline basis.",
-                placeholder: Some(TimeRangeQueries::default().to_arrow()?),
             },
         ),
         (
@@ -1574,30 +1553,6 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                     "rerun.blueprint.components.GridColumns".into(), display_name :
                     "Grid columns", docstring_md :
                     "How many columns this grid should have.\n\nIf unset, the grid layout will be auto.\n\nIgnored for `Horizontal`/`Vertical` containers.",
-                    is_required : false, },
-                ],
-            },
-        ),
-        (
-            ArchetypeName::new("rerun.blueprint.archetypes.DataframeQuery"),
-            ArchetypeReflection {
-                display_name: "Dataframe query",
-                fields: vec![
-                    ArchetypeFieldReflection { component_name :
-                    "rerun.blueprint.components.TimelineName".into(), display_name :
-                    "Timeline", docstring_md :
-                    "The timeline for this query.\n\nIf unset, use the time panel's timeline and a latest-at query, ignoring all other components of this archetype.",
-                    is_required : false, }, ArchetypeFieldReflection { component_name :
-                    "rerun.blueprint.components.QueryKind".into(), display_name : "Kind",
-                    docstring_md : "Kind of query: latest-at or range.", is_required :
-                    false, }, ArchetypeFieldReflection { component_name :
-                    "rerun.blueprint.components.LatestAtQueries".into(), display_name :
-                    "Latest at queries", docstring_md :
-                    "Configuration for latest-at queries.\n\nNote: configuration as saved on a per-timeline basis.",
-                    is_required : false, }, ArchetypeFieldReflection { component_name :
-                    "rerun.blueprint.components.TimeRangeQueries".into(), display_name :
-                    "Time range queries", docstring_md :
-                    "Configuration for the time range queries.\n\nNote: configuration as saved on a per-timeline basis.",
                     is_required : false, },
                 ],
             },

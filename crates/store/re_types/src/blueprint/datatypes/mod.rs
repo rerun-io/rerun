@@ -4,17 +4,11 @@ mod component_column_selector;
 mod component_column_selector_ext;
 mod filter_by_event;
 mod filter_by_range;
-mod latest_at_query;
-mod latest_at_query_ext;
 mod selected_columns;
 mod tensor_dimension_index_slider;
-mod time_range_query;
-mod time_range_query_ext;
 
 pub use self::component_column_selector::ComponentColumnSelector;
 pub use self::filter_by_event::FilterByEvent;
 pub use self::filter_by_range::FilterByRange;
-pub use self::latest_at_query::LatestAtQuery;
 pub use self::selected_columns::SelectedColumns;
 pub use self::tensor_dimension_index_slider::TensorDimensionIndexSlider;
-pub use self::time_range_query::TimeRangeQuery;

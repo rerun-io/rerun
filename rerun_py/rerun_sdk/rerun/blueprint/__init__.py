@@ -29,7 +29,6 @@ from .api import (
 )
 from .archetypes import (
     Background as Background,
-    DataframeQuery as DataframeQuery,
     PlotLegend as PlotLegend,
     ScalarAxis as ScalarAxis,
     TensorScalarMapping as TensorScalarMapping,
@@ -41,8 +40,6 @@ from .components import (
     BackgroundKind as BackgroundKind,
     Corner2D as Corner2D,
     LockRangeDuringZoom as LockRangeDuringZoom,
-    QueryKind as QueryKind,
-    TimeRangeQueries as TimeRangeQueries,
     VisibleTimeRange as VisibleTimeRange,
     VisualizerOverrides as VisualizerOverrides,
 )

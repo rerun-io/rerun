@@ -4,7 +4,6 @@
 
 #include "blueprint/archetypes/background.hpp"
 #include "blueprint/archetypes/container_blueprint.hpp"
-#include "blueprint/archetypes/dataframe_query.hpp"
 #include "blueprint/archetypes/dataframe_query_v2.hpp"
 #include "blueprint/archetypes/panel_blueprint.hpp"
 #include "blueprint/archetypes/plot_legend.hpp"
