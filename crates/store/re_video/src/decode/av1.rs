@@ -106,6 +106,7 @@ fn decoder_thread(
                 match reset {
                     Ok(_) => {
                         // Reset the decoder.
+                        re_log::debug!("Received reset");
                         decoder.flush();
                         drain_decoded_frames(&mut decoder);
                         loop {
@@ -129,6 +130,7 @@ fn decoder_thread(
                         continue;
                     }
                     Err(RecvError) => {
+                        re_log::debug!("RecvError");
                         // Channel disconnected, this only happens if the decoder is dropped.
                         decoder.flush();
                         output_frames(&mut decoder, on_output);
@@ -146,6 +148,7 @@ fn decoder_thread(
                     }
 
                     Ok(Command::Flush(done)) => {
+                        re_log::debug!("Command::Flush");
                         // All pending frames must have already been decoded, because data sent
                         // through a channel is received in the order it was sent.
                         output_frames(&mut decoder, on_output);
@@ -154,11 +157,13 @@ fn decoder_thread(
                     }
 
                     Ok(Command::Reset(done)) => {
+                        re_log::debug!("Command::Reset");
                         done.try_send(()).ok();
                         continue;
                     }
 
                     Err(RecvError) => {
+                        re_log::debug!("RecvError");
                         // Channel disconnected, this only happens if the decoder is dropped.
                         decoder.flush();
                         output_frames(&mut decoder, on_output);
@@ -178,6 +183,7 @@ fn decoder_thread(
 
 fn submit_chunk(decoder: &mut dav1d::Decoder, chunk: Chunk) {
     re_tracing::profile_function!();
+    re_log::debug!("submit_chunk {:?}", chunk.timestamp);
 
     // always attempt to send pending data first
     // this does nothing if there is no pending data,

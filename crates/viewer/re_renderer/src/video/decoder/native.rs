@@ -37,6 +37,9 @@ impl VideoDecoder {
         data: Arc<re_video::VideoData>,
         _hw_acceleration: DecodeHardwareAcceleration,
     ) -> Result<Self, DecodingError> {
+        re_tracing::profile_function!();
+
+        re_log::debug!("Initializing native video decoder…");
         let frames = Arc::new(Mutex::new(Vec::new()));
 
         // TODO: check that data is av1, and return error elsewise
@@ -44,6 +47,7 @@ impl VideoDecoder {
         let decoder = re_video::av1::Decoder::new({
             let frames = frames.clone();
             move |frame: re_video::Frame| {
+                re_log::debug!("Decoded frame at {:?}", frame.timestamp);
                 frames.lock().push(frame);
             }
         });
@@ -154,6 +158,14 @@ impl VideoDecoder {
 
         let mut frames = self.frames.lock();
 
+        if !frames.is_empty() {
+            re_log::debug_once!(
+                "Looking for frame timestamp {presentation_timestamp:?} among frames {:?} - {:?}",
+                frames.first().unwrap().timestamp,
+                frames.last().unwrap().timestamp
+            );
+        }
+
         let Some(frame_idx) =
             latest_at_idx(&frames, |frame| frame.timestamp, &presentation_timestamp)
         else {
@@ -182,7 +194,7 @@ impl VideoDecoder {
 
         if self.last_used_frame_timestamp != frame.timestamp {
             self.last_used_frame_timestamp = frame.timestamp;
-            copy_video_frame_to_texture(&self.queue, frame, &self.texture.texture)?
+            copy_video_frame_to_texture(&self.queue, frame, &self.texture.texture)?;
         }
 
         Ok(VideoFrameTexture::Ready(self.texture.clone()))

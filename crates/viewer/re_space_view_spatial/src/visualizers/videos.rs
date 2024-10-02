@@ -153,6 +153,8 @@ impl VideoFrameReferenceVisualizer {
         entity_path: &EntityPath,
         view_id: SpaceViewId,
     ) {
+        re_tracing::profile_function!();
+
         let Some(render_ctx) = ctx.viewer_ctx.render_ctx else {
             return;
         };
