@@ -2,6 +2,7 @@ use fdg_sim::{ForceGraph, ForceGraphHelper, Simulation, SimulationParameters};
 use std::collections::HashMap;
 
 use re_viewer::external::{
+    arrow2::compute,
     egui::{self, emath::TSTransform, Rect, TextWrapMode},
     re_log::external::log,
     re_log_types::EntityPath,
@@ -16,12 +17,78 @@ use re_viewer::external::{
     },
 };
 
-use crate::node_visualizer_system::{GraphNodeVisualizer, NodeInstance};
+use crate::{
+    common::QualifiedEdge,
+    node_visualizer_system::{GraphNodeVisualizer, NodeInstance},
+};
 use crate::{common::QualifiedNode, edge_visualizer_system::GraphEdgeVisualizer};
+
+fn measure_node_sizes<'a>(
+    ui: &mut egui::Ui,
+    nodes: impl Iterator<Item = NodeInstance<'a>>,
+) -> Vec<(QualifiedNode, egui::Vec2)> {
+    let mut sizes = Vec::new();
+    let ctx = ui.ctx();
+    ctx.request_discard("measuring node sizes");
+    ui.horizontal(|ui| {
+        for node in nodes {
+            let response = node.draw(ui, InteractionHighlight::default());
+            sizes.push((node.node_id.clone(), response.rect.size()));
+        }
+    });
+    sizes
+}
+
+fn compute_layout(
+    nodes: impl Iterator<Item = (QualifiedNode, egui::Vec2)>,
+    edges: impl Iterator<Item = QualifiedEdge>,
+) -> HashMap<QualifiedNode, egui::Rect> {
+    let mut node_to_index = HashMap::new();
+    let mut graph: ForceGraph<NodeKind, ()> = ForceGraph::default();
+
+    // TODO(grtlr): `fdg` does not account for node sizes out of the box.
+    for (node_id, size) in nodes {
+        let ix = graph.add_force_node(
+            node_id.to_string(),
+            NodeKind::Regular(node_id.clone(), size),
+        );
+        node_to_index.insert(node_id, ix);
+    }
+
+    for QualifiedEdge { source, target } in edges {
+        let source_ix = *node_to_index
+            .entry(source.clone())
+            .or_insert(graph.add_force_node(source.to_string(), NodeKind::Dummy(source)));
+        let target_ix = *node_to_index
+            .entry(target.clone())
+            .or_insert(graph.add_force_node(target.to_string(), NodeKind::Dummy(target)));
+        graph.add_edge(source_ix, target_ix, ());
+    }
+
+    // create a simulation from the graph
+    let mut simulation = Simulation::from_graph(graph, SimulationParameters::default());
+
+    for frame in 0..1000 {
+        simulation.update(0.035);
+    }
+
+    simulation
+        .get_graph()
+        .node_weights()
+        .filter_map(|node| match &node.data {
+            NodeKind::Regular(node_id, size) => {
+                let center = egui::Pos2::new(node.location.x, node.location.y);
+                let rect = egui::Rect::from_center_size(center, *size);
+                Some((node_id.clone(), rect))
+            }
+            NodeKind::Dummy(_) => None,
+        })
+        .collect()
+}
 
 // We need to differentiate between regular nodes and nodes that belong to a different entity hierarchy.
 enum NodeKind {
-    Regular(QualifiedNode),
+    Regular(QualifiedNode, egui::Vec2),
     Dummy(QualifiedNode),
 }
 
@@ -181,62 +248,17 @@ impl SpaceViewClass for GraphSpaceView {
         let state = state.downcast_mut::<GraphSpaceViewState>()?;
 
         let Some(layout) = &mut state.layout else {
-            let mut layout = HashMap::new();
-            let ctx = ui.ctx();
-            log::debug!("Will discard: {:?}", ctx.will_discard());
-            ctx.request_discard("measuring node sizes");
-            log::debug!("Will discard: {:?}", ctx.will_discard());
-            ui.horizontal(|ui| {
-                for node in node_system.data.iter().flat_map(|d| d.nodes()) {
-                    let response = node.draw(ui, InteractionHighlight::default());
-                    layout.insert(node.node_id, response.rect);
-                }
-            });
+            let node_sizes =
+                measure_node_sizes(ui, node_system.data.iter().flat_map(|d| d.nodes()));
+
+            let layout = compute_layout(
+                node_sizes.into_iter(),
+                edge_system
+                    .data
+                    .iter()
+                    .flat_map(|d| d.edges().map(|(edge, _, _)| edge)),
+            );
             state.layout = Some(layout);
-
-            let mut node_to_index = HashMap::new();
-            let mut graph: ForceGraph<(), ()> = ForceGraph::default();
-
-            for data in node_system.data.iter() {
-                for node in data.nodes() {
-                    let node_index = graph.add_force_node(format!("{:?}", node.node_id), ());
-                    node_to_index.insert(node.node_id, node_index);
-                }
-            }
-
-            for data in edge_system.data.iter() {
-                for (edge, _, _) in data.edges() {
-                    let source_index = *node_to_index
-                        .entry(edge.source.clone())
-                        .or_insert(graph.add_force_node(format!("{:?}", edge.source), ()));
-                    let target_index = *node_to_index
-                        .entry(edge.target.clone())
-                        .or_insert(graph.add_force_node(format!("{:?}", edge.target), ()));
-                    graph.add_edge(source_index, target_index, ());
-                }
-            }
-
-            // create a simulation from the graph
-            let mut simulation = Simulation::from_graph(graph, SimulationParameters::default());
-
-            for frame in 0..1000 {
-                simulation.update(0.035);
-            }
-
-            if let Some(layout) = state.layout.as_mut() {
-                for (node_id, rect) in layout.iter_mut() {
-                    if let Some(n) = node_to_index.get(node_id) {
-                     if let Some(nn) = simulation.get_graph().node_weight(*n) {
-                         let new_center = egui::Pos2::new(nn.location.x, nn.location.y);
-                         *rect = Rect::from_center_size(new_center, rect.size());
-                     }
-                    }
-                     // let node = simulation.get_graph().get_node(node_index);
-                     // println!("{:?} {:?}", node, node.location);
-                 }
-                 println!("-----------------------");
-            }
-
 
             return Ok(());
         };
