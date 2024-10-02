@@ -7,7 +7,6 @@ use crate::{
 use re_chunk_store::ColumnDescriptor;
 use re_log_types::{EntityPath, EntityPathFilter, ResolvedTimeRange};
 use re_types_core::SpaceViewClassIdentifier;
-use re_ui::UiExt as _;
 use re_viewer_context::{
     SpaceViewClass, SpaceViewClassRegistryError, SpaceViewId, SpaceViewState, SpaceViewStateExt,
     SpaceViewSystemExecutionError, SystemExecutionOutput, ViewQuery, ViewerContext,
