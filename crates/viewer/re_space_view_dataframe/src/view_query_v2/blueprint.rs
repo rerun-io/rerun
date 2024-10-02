@@ -3,7 +3,7 @@ use std::collections::HashSet;
 use crate::dataframe_ui::HideColumnAction;
 use crate::view_query_v2::QueryV2;
 use re_chunk_store::{ColumnDescriptor, ColumnSelector};
-use re_log_types::{TimeInt, TimelineName};
+use re_log_types::{EntityPath, TimeInt, TimelineName};
 use re_types::blueprint::{components, datatypes};
 use re_viewer_context::{SpaceViewSystemExecutionError, ViewerContext};
 
