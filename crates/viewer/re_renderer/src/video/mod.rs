@@ -27,20 +27,24 @@ pub enum DecodingError {
     #[error("Failed to configure the video decoder: {0}")]
     ConfigureFailure(String),
 
-    // e.g. unsupported codec
+    /// e.g. unsupported codec
     #[error("Failed to create video chunk: {0}")]
     CreateChunk(String),
 
-    // e.g. unsupported codec
+    /// e.g. unsupported codec
     #[error("Failed to decode video chunk: {0}")]
     DecodeChunk(String),
 
-    // e.g. unsupported codec
+    /// e.g. unsupported codec
     #[error("Failed to decode video: {0}")]
     Decoding(String),
 
     #[error("The timestamp passed was negative.")]
     NegativeTimestamp,
+
+    /// e.g. bad mp4, or bug in mp4 parse
+    #[error("Bad data.")]
+    BadData,
 }
 
 pub type FrameDecodingResult = Result<VideoFrameTexture, DecodingError>;
