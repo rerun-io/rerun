@@ -350,7 +350,8 @@ impl SpaceViewClass for GraphSpaceView {
 
         let window_layer = ui.layer_id();
 
-        #[cfg(debug_assertions)]
+        //#[cfg(debug_assertions)]
+        #[cfg(any())]
         {
             let debug_id = egui::LayerId::new(egui::Order::Debug, id.with("debug_layer"));
             ui.ctx().set_transform_layer(debug_id, world_to_window);
@@ -381,6 +382,9 @@ impl SpaceViewClass for GraphSpaceView {
 
         for data in node_system.data.iter() {
             let ent_highlight = query.highlights.entity_highlight(data.entity_path.hash());
+            // We keep track of the size of the current entity.
+            let mut entity_rect: Option<egui::Rect> = None;
+
             for node in data.nodes() {
                 let current_extent = layout
                     .get(&node.node_id)
@@ -397,42 +401,37 @@ impl SpaceViewClass for GraphSpaceView {
                     .response;
 
                 layout.insert(node.node_id.clone(), response.rect);
+                entity_rect =
+                    entity_rect.map_or(Some(response.rect), |e| Some(e.union(response.rect)));
 
                 let id = response.layer_id;
-
                 ui.ctx().set_transform_layer(id, world_to_window);
                 ui.ctx().set_sublayer(window_layer, id);
-
-                // ui.interact(response.rect, area_id, egui::Sense::click());
             }
 
-            // TODO(grtlr): Explain `unwrap`
-            let entity_rect =
-                bounding_rect_from_iter(data.nodes().map(|r| layout.get(&r.node_id).unwrap()));
             let entity_path = data.entity_path.clone();
             if let Some(entity_rect) = entity_rect {
-                let response = egui::Area::new(id.with(entity_path.clone()))
-                    .fixed_pos(entity_rect.min)
-                    .order(egui::Order::Background)
-                    .show(ui.ctx(), |ui| {
-                        ui.set_clip_rect(clip_rect_world);
-                        egui::Frame::default()
-                            .rounding(egui::Rounding::same(4.0))
-                            .stroke(egui::Stroke::new(
-                                1.0,
-                                ui.ctx().style().visuals.text_color(),
-                            ))
-                            .fill(ui.style().visuals.faint_bg_color)
-                            .show(ui, |ui| {
-                                ui.allocate_exact_size(entity_rect.size(), egui::Sense::hover());
-                                ui.label(format!("{}", entity_path))
-                            });
-                    })
-                    .response;
+                let entity_id = egui::LayerId::new(
+                    egui::Order::Background,
+                    id.with(("debug", entity_path.hash())),
+                );
+                ui.ctx().set_transform_layer(entity_id, world_to_window);
+                let painter = egui::Painter::new(ui.ctx().clone(), entity_id, clip_rect_world);
 
-                let layer_id = response.layer_id;
-                ui.ctx().set_transform_layer(layer_id, world_to_window);
-                ui.ctx().set_sublayer(window_layer, layer_id);
+                let padded = entity_rect.expand(5.0);
+                painter.rect(
+                    padded,
+                    4.0,
+                    egui::Color32::TRANSPARENT,
+                    egui::Stroke::new(1.0, ui.ctx().style().visuals.text_color()),
+                );
+                painter.text(
+                    padded.left_top(),
+                    egui::Align2::LEFT_BOTTOM,
+                    entity_path.to_string(),
+                    egui::FontId::default(),
+                    ui.ctx().style().visuals.text_color(),
+                );
             }
         }
 

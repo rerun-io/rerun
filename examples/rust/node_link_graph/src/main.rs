@@ -78,6 +78,9 @@ fn run(rec: &rerun::RecordingStream, _args: &Args) -> anyhow::Result<()> {
             GraphEdge::new("area1", "fridge")
                 .with_source_in("kitchen/areas")
                 .with_target_in("kitchen/objects"),
+                GraphEdge::new("area1", "table")
+                .with_source_in("living/areas")
+                .with_target_in("living/objects"),
         ]),
     )?;
 
