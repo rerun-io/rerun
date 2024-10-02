@@ -748,7 +748,7 @@ impl std::fmt::Display for SparseFillStrategy {
 ///
 // TODO(cmc): we need to be able to build that easily in a command-line context, otherwise it's just
 // very annoying. E.g. `--with /world/points:[rr.Position3D, rr.Radius] --with /cam:[rr.Pinhole]`.
-pub type ViewContents = BTreeMap<EntityPath, Option<BTreeSet<ComponentName>>>;
+pub type ViewContentsSelector = BTreeMap<EntityPath, Option<BTreeSet<ComponentName>>>;
 
 // TODO(cmc): Ultimately, this shouldn't be hardcoded to `Timeline`, but to a generic `I: Index`.
 //            `Index` in this case should also be implemented on tuples (`(I1, I2, ...)`).
@@ -801,7 +801,7 @@ pub struct QueryExpression2 {
     ///   "metrics": [rr.Scalar]
     /// }
     /// ```
-    pub view_contents: Option<ViewContents>,
+    pub view_contents: Option<ViewContentsSelector>,
 
     /// The index used to filter out _rows_ from the view contents.
     ///
@@ -1151,6 +1151,33 @@ impl ChunkStore {
         schema
             .into_iter()
             .filter(|descr| !filtered_out.contains(descr))
+            .collect()
+    }
+
+    /// Returns the filtered schema for the given [`ViewContentsSelector`].
+    ///
+    /// The order of the columns is guaranteed to be in a specific order:
+    /// * first, the control columns in lexical order (`RowId`);
+    /// * second, the time columns in lexical order (`frame_nr`, `log_time`, ...);
+    /// * third, the component columns in lexical order (`Color`, `Radius, ...`).
+    pub fn schema_for_view_contents(
+        &self,
+        view_contents: &ViewContentsSelector,
+    ) -> Vec<ColumnDescriptor> {
+        re_tracing::profile_function!();
+
+        self.schema()
+            .into_iter()
+            .filter(|column| match column {
+                ColumnDescriptor::Control(_) | ColumnDescriptor::Time(_) => true,
+                ColumnDescriptor::Component(column) => view_contents
+                    .get(&column.entity_path)
+                    .map_or(false, |components| {
+                        components.as_ref().map_or(true, |components| {
+                            components.contains(&column.component_name)
+                        })
+                    }),
+            })
             .collect()
     }
 }

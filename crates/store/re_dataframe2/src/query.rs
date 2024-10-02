@@ -125,21 +125,7 @@ impl QueryHandle<'_> {
 
             // 1. Compute the schema of the view contents.
             let view_contents = if let Some(view_contents) = self.query.view_contents.as_ref() {
-                self.engine
-                    .store
-                    .schema()
-                    .into_iter()
-                    .filter(|column| match column {
-                        ColumnDescriptor::Control(_) | ColumnDescriptor::Time(_) => true,
-                        ColumnDescriptor::Component(column) => view_contents
-                            .get(&column.entity_path)
-                            .map_or(false, |components| {
-                                components.as_ref().map_or(true, |components| {
-                                    components.contains(&column.component_name)
-                                })
-                            }),
-                    })
-                    .collect_vec()
+                self.engine.store.schema_for_view_contents(view_contents)
             } else {
                 self.engine.store.schema()
             };

@@ -1,5 +1,7 @@
 use re_chunk::{EntityPath, TransportChunk};
-use re_chunk_store::{ChunkStore, ColumnDescriptor, QueryExpression, QueryExpression2};
+use re_chunk_store::{
+    ChunkStore, ColumnDescriptor, QueryExpression, QueryExpression2, ViewContentsSelector,
+};
 use re_log_types::EntityPathFilter;
 use re_query::Caches;
 
@@ -64,6 +66,14 @@ impl QueryEngine<'_> {
     #[inline]
     pub fn schema_for_query(&self, query: &QueryExpression) -> Vec<ColumnDescriptor> {
         self.store.schema_for_query(query)
+    }
+
+    #[inline]
+    pub fn schema_for_view_contents(
+        &self,
+        view_contents: &ViewContentsSelector,
+    ) -> Vec<ColumnDescriptor> {
+        self.store.schema_for_view_contents(view_contents)
     }
 
     /// Starts a new query by instantiating a [`QueryHandle`].
