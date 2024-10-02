@@ -109,7 +109,7 @@ fn fit_bounding_rect_to_screen(
     let scale_y = available_size.y / bounding_rect.height();
 
     // Use the smaller of the two scales to ensure the whole rectangle fits on the screen.
-    let scale = scale_x.min(scale_y);
+    let scale = scale_x.min(scale_y).min(1.0);
 
     // Compute the translation to center the bounding rect in the screen.
     let center_screen = egui::Pos2::new(available_size.x / 2.0, available_size.y / 2.0);
