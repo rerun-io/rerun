@@ -1,7 +1,7 @@
 use std::any::Any;
 
 use crate::{
-    dataframe_ui::dataframe_ui, expanded_rows::ExpandedRowsCache, view_query_v2,
+    dataframe_ui::dataframe_ui, expanded_rows::ExpandedRowsCache, view_query,
     visualizer_system::EmptySystem,
 };
 use re_chunk_store::{ColumnDescriptor, ComponentColumnSelector, SparseFillStrategy};
@@ -105,7 +105,7 @@ mode sets the default time range to _everything_. You can override this in the s
         space_view_id: SpaceViewId,
     ) -> Result<(), SpaceViewSystemExecutionError> {
         let state = state.downcast_mut::<DataframeSpaceViewState>()?;
-        let view_query = view_query_v2::QueryV2::from_blueprint(ctx, space_view_id);
+        let view_query = view_query::Query::from_blueprint(ctx, space_view_id);
         let Some(schema) = &state.schema else {
             // Shouldn't happen, except maybe on the first frame, which is too early
             // for the user to click the menu anyway.
@@ -125,7 +125,7 @@ mode sets the default time range to _everything_. You can override this in the s
         re_tracing::profile_function!();
 
         let state = state.downcast_mut::<DataframeSpaceViewState>()?;
-        let view_query = view_query_v2::QueryV2::from_blueprint(ctx, query.space_view_id);
+        let view_query = view_query::Query::from_blueprint(ctx, query.space_view_id);
 
         let query_engine = re_dataframe2::QueryEngine {
             store: ctx.recording().store(),

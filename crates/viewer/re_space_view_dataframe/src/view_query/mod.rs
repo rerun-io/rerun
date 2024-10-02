@@ -7,11 +7,11 @@ use re_viewer_context::{SpaceViewId, SpaceViewSystemExecutionError, ViewerContex
 use re_viewport_blueprint::ViewProperty;
 
 /// Wrapper over the `DataframeQuery` blueprint archetype that can also display some UI.
-pub(crate) struct QueryV2 {
+pub(crate) struct Query {
     query_property: ViewProperty,
 }
 
-impl QueryV2 {
+impl Query {
     /// Create a query object from the blueprint store.
     ///
     /// See the `blueprint_io` module for more related accessors.

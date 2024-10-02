@@ -1,14 +1,14 @@
 use std::collections::HashSet;
 
 use crate::dataframe_ui::HideColumnAction;
-use crate::view_query_v2::QueryV2;
+use crate::view_query::Query;
 use re_chunk_store::{ColumnDescriptor, ColumnSelector};
 use re_log_types::{EntityPath, ResolvedTimeRange, TimelineName};
 use re_types::blueprint::{components, datatypes};
 use re_viewer_context::{SpaceViewSystemExecutionError, ViewerContext};
 
 // Accessors wrapping reads/writes to the blueprint store.
-impl QueryV2 {
+impl Query {
     /// Get the query timeline.
     ///
     /// This tries to read the timeline name from the blueprint. If missing or invalid, the current
