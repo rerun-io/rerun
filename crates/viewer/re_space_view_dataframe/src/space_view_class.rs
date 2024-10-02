@@ -5,7 +5,6 @@ use re_chunk_store::{ColumnDescriptor, ColumnSelector};
 use re_log_types::{EntityPath, EntityPathFilter, ResolvedTimeRange, TimelineName};
 use re_types::blueprint::{archetypes, components};
 use re_types_core::SpaceViewClassIdentifier;
-use re_ui::modal::ModalHandler;
 use re_ui::UiExt as _;
 use re_viewer_context::{
     SpaceViewClass, SpaceViewClassRegistryError, SpaceViewId, SpaceViewState, SpaceViewStateExt,
