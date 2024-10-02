@@ -86,7 +86,10 @@ pub fn load_mp4(bytes: &[u8]) -> Result<VideoData, VideoLoadError> {
 
 fn unknown_codec_fourcc(mp4: &re_mp4::Mp4, track: &re_mp4::Track) -> re_mp4::FourCC {
     let stsd = &track.trak(mp4).mdia.minf.stbl.stsd;
-    stsd.unknown.first().copied().unwrap_or_default()
+    match &stsd.contents {
+        re_mp4::StsdBoxContent::Unknown(four_cc) => *four_cc,
+        _ => Default::default(),
+    }
 }
 
 /// Returns whether a buffer is MP4 video data.
