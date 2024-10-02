@@ -52,7 +52,7 @@ pub struct CpuWriteGpuReadBuffer<T: bytemuck::Pod + Send + Sync> {
     /// In actuality it is tied to the lifetime of [`chunk_buffer`](#structfield.chunk_buffer)!
     write_view: wgpu::BufferViewMut<'static>,
 
-    /// Range in T elements in write_view that haven't been written yet.
+    /// Range in T elements in `write_view` that haven't been written yet.
     unwritten_element_range: std::ops::Range<usize>,
 
     chunk_buffer: GpuBuffer,
@@ -438,7 +438,7 @@ pub struct CpuWriteGpuReadBelt {
 
     /// When closed chunks are mapped again, the map callback sends them here.
     ///
-    /// Note that we shouldn't use SyncSender since this can block the Sender if a buffer is full,
+    /// Note that we shouldn't use `SyncSender` since this can block the `Sender` if a buffer is full,
     /// which means that in a single threaded situation (Web!) we might deadlock.
     sender: mpsc::Sender<Chunk>,
 

@@ -284,7 +284,7 @@ impl ObjectKind {
 /// an enum.
 #[derive(Debug, Clone)]
 pub struct Object {
-    /// Utf8Path of the associated fbs definition in the Flatbuffers hierarchy, e.g. `//rerun/components/point2d.fbs`.
+    /// `Utf8Path` of the associated fbs definition in the Flatbuffers hierarchy, e.g. `//rerun/components/point2d.fbs`.
     pub virtpath: String,
 
     /// Absolute filepath of the associated fbs definition.
@@ -296,7 +296,7 @@ pub struct Object {
     /// Fully-qualified package name of the object, e.g. `rerun.components`.
     pub pkg_name: String,
 
-    /// PascalCase name of the object type, e.g. `Position2D`.
+    /// `PascalCase` name of the object type, e.g. `Position2D`.
     pub name: String,
 
     /// The object's multiple layers of documentation.
@@ -650,7 +650,7 @@ pub enum ObjectClass {
 /// union value.
 #[derive(Debug, Clone)]
 pub struct ObjectField {
-    /// Utf8Path of the associated fbs definition in the Flatbuffers hierarchy, e.g. `//rerun/components/point2d.fbs`.
+    /// `Utf8Path` of the associated fbs definition in the Flatbuffers hierarchy, e.g. `//rerun/components/point2d.fbs`.
     pub virtpath: String,
 
     /// Absolute filepath of the associated fbs definition.

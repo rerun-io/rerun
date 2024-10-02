@@ -50,7 +50,7 @@ pub struct View3DState {
     /// If this is a camera, it takes over the camera pose, otherwise follows the entity.
     pub tracked_entity: Option<EntityPath>,
 
-    /// Eye pose just before we started following an entity [Self::tracked_entity].
+    /// Eye pose just before we started following an entity [`Self::tracked_entity`].
     camera_before_tracked_entity: Option<Eye>,
 
     eye_interpolation: Option<EyeInterpolation>,
