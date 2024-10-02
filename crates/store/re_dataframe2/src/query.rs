@@ -3,6 +3,7 @@ use std::sync::{
     OnceLock,
 };
 
+use ahash::HashSet;
 use arrow2::{
     array::Array as ArrowArray, chunk::Chunk as ArrowChunk, datatypes::Schema as ArrowSchema,
 };
@@ -334,6 +335,31 @@ impl QueryHandle<'_> {
     /// Columns that do not yield any data will still be present in the results, filled with null values.
     pub fn schema(&self) -> &ArrowSchema {
         &self.init().arrow_schema
+    }
+
+    /// How many rows of data will be returned?
+    ///
+    /// The number of rows depends and only depends on the _view contents_.
+    /// The _selected contents_ has no influence on this value.
+    //
+    // TODO(cmc): implement this properly, cache the result, etc.
+    pub fn num_rows(&self) -> u64 {
+        let all_unique_timestamps: HashSet<TimeInt> = self
+            .init()
+            .view_chunks
+            .iter()
+            .flat_map(|chunks| {
+                chunks.iter().filter_map(|(_cursor, chunk)| {
+                    chunk
+                        .timelines()
+                        .get(&self.query.filtered_index)
+                        .map(|time_column| time_column.times())
+                })
+            })
+            .flatten()
+            .collect();
+
+        all_unique_timestamps.len() as _
     }
 
     /// Returns the next row's worth of data.
