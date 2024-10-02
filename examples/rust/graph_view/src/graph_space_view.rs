@@ -86,6 +86,40 @@ fn compute_layout(
         .collect()
 }
 
+fn bounding_rect_from_iter<'a>(rects: impl Iterator<Item = &'a egui::Rect>) -> Option<egui::Rect> {
+    // Start with `None` and gradually expand the bounding box.
+    let mut bounding_rect: Option<egui::Rect> = None;
+
+    for rect in rects {
+        bounding_rect = match bounding_rect {
+            Some(bounding) => Some(bounding.union(*rect)),
+            None => Some(*rect),
+        };
+    }
+
+    bounding_rect
+}
+
+fn fit_bounding_rect_to_screen(
+    bounding_rect: egui::Rect,
+    available_size: egui::Vec2,
+) -> TSTransform {
+    // Compute the scale factor to fit the bounding rectangle into the available screen size.
+    let scale_x = available_size.x / bounding_rect.width();
+    let scale_y = available_size.y / bounding_rect.height();
+
+    // Use the smaller of the two scales to ensure the whole rectangle fits on the screen.
+    let scale = scale_x.min(scale_y);
+
+    // Compute the translation to center the bounding rect in the screen.
+    let center_screen = egui::Pos2::new(available_size.x / 2.0, available_size.y / 2.0);
+    let center_world = bounding_rect.center().to_vec2();
+
+    // Set the transformation to scale and then translate to center.
+    TSTransform::from_translation(center_screen.to_vec2() - center_world * scale)
+        * TSTransform::from_scaling(scale)
+}
+
 // We need to differentiate between regular nodes and nodes that belong to a different entity hierarchy.
 enum NodeKind {
     Regular(QualifiedNode, egui::Vec2),
@@ -246,6 +280,7 @@ impl SpaceViewClass for GraphSpaceView {
         let edge_system = system_output.view_systems.get::<GraphEdgeVisualizer>()?;
 
         let state = state.downcast_mut::<GraphSpaceViewState>()?;
+        let (id, rect) = ui.allocate_space(ui.available_size());
 
         let Some(layout) = &mut state.layout else {
             let node_sizes =
@@ -258,13 +293,16 @@ impl SpaceViewClass for GraphSpaceView {
                     .iter()
                     .flat_map(|d| d.edges().map(|(edge, _, _)| edge)),
             );
+
+            if let Some(bbox) = bounding_rect_from_iter(layout.values()) {
+                state.screen_to_world = fit_bounding_rect_to_screen(bbox, rect.size());
+            }
+
             state.layout = Some(layout);
 
             return Ok(());
         };
 
-        // Graph viewer
-        let (id, rect) = ui.allocate_space(ui.available_size());
         let response = ui.interact(rect, id, egui::Sense::click_and_drag());
 
         // Allow dragging the background as well.
