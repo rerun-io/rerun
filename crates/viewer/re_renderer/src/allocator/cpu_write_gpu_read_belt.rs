@@ -123,15 +123,31 @@ where
     #[inline]
     pub fn extend(
         &mut self,
-        mut elements: impl Iterator<Item = T>,
+        mut elements: impl ExactSizeIterator<Item = T>,
     ) -> Result<usize, CpuWriteGpuReadError> {
         re_tracing::profile_function!();
 
         // TODO(emilk): optimize the extend function.
         // Right now it is 3-4x faster to collect to a vec first, which is crazy.
-        if true {
-            let vec = elements.collect::<Vec<_>>();
-            self.extend_from_slice(&vec)?;
+        // Still, we use the slow path for single-elements, otherwise we hit some weird compiler bug,
+        // resulting us hitting a debug-assertion in `vec.as_slice()`.
+        // See https://github.com/rerun-io/rerun/pull/7563 for more
+        let i_want_to_crash_in_debug_builds = false;
+        if 1 < elements.len() || i_want_to_crash_in_debug_builds {
+            let vec: Vec<T> = elements.collect();
+
+            #[allow(clippy::dbg_macro)]
+            if i_want_to_crash_in_debug_builds {
+                dbg!(std::any::type_name::<T>());
+                dbg!(std::mem::size_of::<T>());
+                dbg!(std::mem::align_of::<T>());
+                dbg!(vec.len());
+                dbg!(vec.as_ptr());
+                dbg!(vec.as_ptr() as usize % std::mem::align_of::<T>());
+                dbg!(vec.as_slice().len());
+            }
+
+            self.extend_from_slice(vec.as_slice())?;
             Ok(vec.len())
         } else {
             let num_written_before = self.num_written();
