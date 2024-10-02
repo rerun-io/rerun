@@ -52,6 +52,7 @@ anyhow.workspace = true
 arrow2 = { workspace = true, features = [
   "compute_concatenate",
   "compute_filter",
+  "compute_take",
 ] }
 bytemuck.workspace = true
 document-features.workspace = true
