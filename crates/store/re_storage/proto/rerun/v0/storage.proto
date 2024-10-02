@@ -11,7 +11,7 @@ service StorageNode {
 
 // ----------- Common ------------
 
-// unique recording identifier
+// unique recording identifier. At this point in time it is the same id as the ChunkStore's StoreId
 message RecordingId {
     string id = 1;
 }
@@ -21,7 +21,7 @@ message RecordingId {
 message RegisterRecordingRequest {
     string description = 1;
     string storage_url = 2;
-    RecordingType typ = 4;
+    RecordingType typ = 3;
 }
 
 message RegisterRecordingResponse {
@@ -98,9 +98,9 @@ message IndexColumnSelector {
 
 // This goes away or becomes FilteredIndexRange which is an optional field
 message FilteredIndexRange {
-    TimeRange time_range = 2;
-    repeated TimeInt time_points = 3;
-    repeated TimeInt sample_points = 4;
+    TimeRange time_range = 1;
+    repeated TimeInt time_points = 2;
+    repeated TimeInt sample_points = 3;
 }
 
 message ViewContentsPart {
