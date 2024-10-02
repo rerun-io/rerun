@@ -6,7 +6,7 @@ use egui::NumExt as _;
 use itertools::Itertools;
 
 use re_chunk_store::{ColumnDescriptor, LatestAtQuery, RowId};
-use re_dataframe::{LatestAtQueryHandle, RangeQueryHandle, RecordBatch};
+use re_dataframe2::QueryHandle;
 use re_log_types::{EntityPath, TimeInt, Timeline, TimelineName};
 use re_types_core::{ComponentName, Loggable as _};
 use re_ui::UiExt as _;
@@ -31,67 +31,67 @@ pub(crate) enum HideColumnAction {
 pub(crate) fn dataframe_ui<'a>(
     ctx: &ViewerContext<'_>,
     ui: &mut egui::Ui,
-    query: impl Into<QueryHandle<'a>>,
+    query: re_dataframe2::QueryHandle,
     expanded_rows_cache: &mut ExpandedRowsCache,
 ) -> Vec<HideColumnAction> {
-    dataframe_ui_impl(ctx, ui, &query.into(), expanded_rows_cache)
+    dataframe_ui_impl(ctx, ui, &query, expanded_rows_cache)
 }
 
-/// A query handle for either a latest-at or range query.
-pub(crate) enum QueryHandle<'a> {
-    LatestAt(LatestAtQueryHandle<'a>),
-    Range(RangeQueryHandle<'a>),
-}
-
-impl QueryHandle<'_> {
-    fn schema(&self) -> &[ColumnDescriptor] {
-        match self {
-            QueryHandle::LatestAt(query_handle) => query_handle.schema(),
-            QueryHandle::Range(query_handle) => query_handle.schema(),
-        }
-    }
-
-    fn num_rows(&self) -> u64 {
-        match self {
-            // TODO(#7449): this is in general wrong! However, there is currently no way to know
-            // if the number of row is 0 or 1. For now, we silently accept in the delegate when it
-            // turns out to be 0.
-            QueryHandle::LatestAt(_) => 1,
-            QueryHandle::Range(query_handle) => query_handle.num_rows(),
-        }
-    }
-
-    fn get(&self, start: u64, num_rows: u64) -> Vec<RecordBatch> {
-        match self {
-            QueryHandle::LatestAt(query_handle) => {
-                // latest-at queries only have one row
-                debug_assert_eq!((start, num_rows), (0, 1));
-
-                vec![query_handle.get()]
-            }
-            QueryHandle::Range(query_handle) => query_handle.get(start, num_rows),
-        }
-    }
-
-    fn timeline(&self) -> Timeline {
-        match self {
-            QueryHandle::LatestAt(query_handle) => query_handle.query().timeline,
-            QueryHandle::Range(query_handle) => query_handle.query().timeline,
-        }
-    }
-}
-
-impl<'a> From<LatestAtQueryHandle<'a>> for QueryHandle<'a> {
-    fn from(query_handle: LatestAtQueryHandle<'a>) -> Self {
-        QueryHandle::LatestAt(query_handle)
-    }
-}
-
-impl<'a> From<RangeQueryHandle<'a>> for QueryHandle<'a> {
-    fn from(query_handle: RangeQueryHandle<'a>) -> Self {
-        QueryHandle::Range(query_handle)
-    }
-}
+// /// A query handle for either a latest-at or range query.
+// pub(crate) enum QueryHandle<'a> {
+//     LatestAt(LatestAtQueryHandle<'a>),
+//     Range(RangeQueryHandle<'a>),
+// }
+//
+// impl QueryHandle<'_> {
+//     fn schema(&self) -> &[ColumnDescriptor] {
+//         match self {
+//             QueryHandle::LatestAt(query_handle) => query_handle.schema(),
+//             QueryHandle::Range(query_handle) => query_handle.schema(),
+//         }
+//     }
+//
+//     fn num_rows(&self) -> u64 {
+//         match self {
+//             // TODO(#7449): this is in general wrong! However, there is currently no way to know
+//             // if the number of row is 0 or 1. For now, we silently accept in the delegate when it
+//             // turns out to be 0.
+//             QueryHandle::LatestAt(_) => 1,
+//             QueryHandle::Range(query_handle) => query_handle.num_rows(),
+//         }
+//     }
+//
+//     fn get(&self, start: u64, num_rows: u64) -> Vec<RecordBatch> {
+//         match self {
+//             QueryHandle::LatestAt(query_handle) => {
+//                 // latest-at queries only have one row
+//                 debug_assert_eq!((start, num_rows), (0, 1));
+//
+//                 vec![query_handle.get()]
+//             }
+//             QueryHandle::Range(query_handle) => query_handle.get(start, num_rows),
+//         }
+//     }
+//
+//     fn timeline(&self) -> Timeline {
+//         match self {
+//             QueryHandle::LatestAt(query_handle) => query_handle.query().timeline,
+//             QueryHandle::Range(query_handle) => query_handle.query().timeline,
+//         }
+//     }
+// }
+//
+// impl<'a> From<LatestAtQueryHandle<'a>> for QueryHandle<'a> {
+//     fn from(query_handle: LatestAtQueryHandle<'a>) -> Self {
+//         QueryHandle::LatestAt(query_handle)
+//     }
+// }
+//
+// impl<'a> From<RangeQueryHandle<'a>> for QueryHandle<'a> {
+//     fn from(query_handle: RangeQueryHandle<'a>) -> Self {
+//         QueryHandle::Range(query_handle)
+//     }
+// }
 
 #[derive(Debug, Clone, Copy)]
 struct BatchRef {
@@ -125,7 +125,7 @@ struct RowsDisplayData {
 impl RowsDisplayData {
     fn try_new(
         row_indices: &Range<u64>,
-        record_batches: Vec<RecordBatch>,
+        record_batches: Vec<re_dataframe2::RecordBatch>,
         schema: &[ColumnDescriptor],
         query_timeline: &Timeline,
     ) -> Result<Self, DisplayRecordBatchError> {
@@ -189,11 +189,10 @@ struct DataframeTableDelegate<'a> {
 
     expanded_rows: ExpandedRows<'a>,
 
-    // Track the cases where latest-at returns 0 rows instead of the expected 1 row, so that we
-    // can silence the error.
-    // TODO(#7449): this can be removed when `LatestAtQueryHandle` is able to report the row count.
-    latest_at_query_returns_no_rows: bool,
-
+    // // Track the cases where latest-at returns 0 rows instead of the expected 1 row, so that we
+    // // can silence the error.
+    // // TODO(#7449): this can be removed when `LatestAtQueryHandle` is able to report the row count.
+    // latest_at_query_returns_no_rows: bool,
     num_rows: u64,
 
     hide_column_actions: Vec<HideColumnAction>,
@@ -207,22 +206,22 @@ impl<'a> egui_table::TableDelegate for DataframeTableDelegate<'a> {
     fn prepare(&mut self, info: &egui_table::PrefetchInfo) {
         re_tracing::profile_function!();
 
-        let data = RowsDisplayData::try_new(
-            &info.visible_rows,
-            self.query_handle.get(
-                info.visible_rows.start,
-                info.visible_rows.end - info.visible_rows.start,
-            ),
-            self.schema,
-            &self.query_handle.timeline(),
-        );
+        let timeline = self.query_handle.query().filtered_index;
+
+        //TODO: use next_row
+        let data = std::iter::from_fn(|| self.query_handle.next_row_batch())
+            .skip(info.visible_rows.start as usize)
+            .take((info.visible_rows.end - info.visible_rows.start) as usize)
+            .collect();
+
+        let data = RowsDisplayData::try_new(&info.visible_rows, data, self.schema, &timeline);
 
         // TODO(#7449): this can be removed when `LatestAtQueryHandle` is able to report the row count.
-        self.latest_at_query_returns_no_rows = if let Ok(display_data) = &data {
-            matches!(self.query_handle, QueryHandle::LatestAt(_)) && display_data.num_rows() == 0
-        } else {
-            false
-        };
+        // self.latest_at_query_returns_no_rows = if let Ok(display_data) = &data {
+        //     matches!(self.query_handle, QueryHandle::LatestAt(_)) && display_data.num_rows() == 0
+        // } else {
+        //     false
+        // };
 
         self.display_data = data.context("Failed to create display data");
     }
@@ -270,10 +269,10 @@ impl<'a> egui_table::TableDelegate for DataframeTableDelegate<'a> {
                     let hide_action = match column {
                         ColumnDescriptor::Control(_) => None,
                         ColumnDescriptor::Time(desc) => (desc.timeline
-                            != self.query_handle.timeline())
-                        .then(|| HideColumnAction::HideTimeColumn {
-                            timeline_name: *desc.timeline.name(),
-                        }),
+                            != self.query_handle.query().filtered_index)
+                            .then(|| HideColumnAction::HideTimeColumn {
+                                timeline_name: *desc.timeline.name(),
+                            }),
                         ColumnDescriptor::Component(desc) => {
                             Some(HideColumnAction::HideComponentColumn {
                                 entity_path: desc.entity_path.clone(),
@@ -323,14 +322,10 @@ impl<'a> egui_table::TableDelegate for DataframeTableDelegate<'a> {
             row_idx: batch_row_idx,
         }) = display_data.batch_ref_from_row.get(&cell.row_nr).copied()
         else {
-            // TODO(#7449): this check can be removed when `LatestAtQueryHandle` is able to report
-            // the row count.
-            if !self.latest_at_query_returns_no_rows {
-                error_ui(
-                    ui,
-                    "Bug in egui_table: we didn't prefetch what was rendered!",
-                );
-            }
+            error_ui(
+                ui,
+                "Bug in egui_table: we didn't prefetch what was rendered!",
+            );
 
             return;
         };
@@ -348,7 +343,8 @@ impl<'a> egui_table::TableDelegate for DataframeTableDelegate<'a> {
                     .try_decode_time(batch_row_idx)
             })
             .unwrap_or(TimeInt::MAX);
-        let latest_at_query = LatestAtQuery::new(self.query_handle.timeline(), timestamp);
+        let latest_at_query =
+            LatestAtQuery::new(self.query_handle.query().filtered_index, timestamp);
         let row_id = display_data
             .row_id_column_index
             .and_then(|col_idx| {
@@ -566,21 +562,26 @@ fn line_ui(
 fn dataframe_ui_impl(
     ctx: &ViewerContext<'_>,
     ui: &mut egui::Ui,
-    query_handle: &QueryHandle<'_>,
+    query_handle: &re_dataframe2::QueryHandle,
     expanded_rows_cache: &mut ExpandedRowsCache,
 ) -> Vec<HideColumnAction> {
     re_tracing::profile_function!();
 
-    let schema = query_handle.schema();
+    let schema = query_handle
+        .selected_contents()
+        .iter()
+        .map(|(_, desc)| desc.clone())
+        .collect::<Vec<_>>();
 
     // The table id mainly drives column widths, so it should be stable across queries leading to
     // the same schema. However, changing the PoV typically leads to large changes of actual content
     // (e.g., jump from one row to many). Since that can affect the optimal column width, we include
     // the PoV in the salt.
-    let mut table_id_salt = egui::Id::new("__dataframe__").with(schema);
-    if let QueryHandle::Range(range_query_handle) = query_handle {
-        table_id_salt = table_id_salt.with(&range_query_handle.query().pov);
-    }
+    let mut table_id_salt = egui::Id::new("__dataframe__").with(&schema);
+    //TODO fix that mess
+    // if let QueryHandle::Range(range_query_handle) = query_handle {
+    //     table_id_salt = table_id_salt.with(&range_query_handle.query().pov);
+    // }
 
     // It's trickier for the row expansion cache.
     //
@@ -593,19 +594,22 @@ fn dataframe_ui_impl(
     // modified, so in that case we invalidate against the query expression. This means that the
     // expanded-ness is reset as soon as the min/max boundaries are changed in the selection panel,
     // which is acceptable.
-    let row_expansion_id_salt = match query_handle {
-        QueryHandle::LatestAt(_) => egui::Id::new("__dataframe_row_exp__").with(schema),
-        QueryHandle::Range(query) => egui::Id::new("__dataframe_row_exp__").with(query.query()),
-    };
 
-    let (header_groups, header_entity_paths) = column_groups_for_entity(schema);
+    let row_expansion_id_salt = table_id_salt;
+    //TODO fix that mess
+    // let row_expansion_id_salt = match query_handle {
+    //     QueryHandle::LatestAt(_) => egui::Id::new("__dataframe_row_exp__").with(schema),
+    //     QueryHandle::Range(query) => egui::Id::new("__dataframe_row_exp__").with(query.query()),
+    // };
+
+    let (header_groups, header_entity_paths) = column_groups_for_entity(&schema);
 
     let num_rows = query_handle.num_rows();
 
     let mut table_delegate = DataframeTableDelegate {
         ctx,
         query_handle,
-        schema,
+        schema: &schema,
         header_entity_paths,
         num_rows,
         display_data: Err(anyhow::anyhow!(
@@ -617,7 +621,6 @@ fn dataframe_ui_impl(
             expanded_rows_cache,
             re_ui::DesignTokens::table_line_height(),
         ),
-        latest_at_query_returns_no_rows: false,
         hide_column_actions: vec![],
     };
 

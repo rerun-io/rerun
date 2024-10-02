@@ -12,7 +12,7 @@ use re_chunk_store::external::arrow2::{
     datatypes::DataType as ArrowDataType,
 };
 use re_chunk_store::{ColumnDescriptor, ComponentColumnDescriptor, LatestAtQuery, RowId};
-use re_dataframe::RecordBatch;
+use re_dataframe2::RecordBatch;
 use re_log_types::{EntityPath, TimeInt, TimeType, Timeline};
 use re_types::external::arrow2::datatypes::IntegerType;
 use re_types_core::{ComponentName, Loggable as _};

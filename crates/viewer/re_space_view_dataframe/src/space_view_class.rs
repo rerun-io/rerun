@@ -4,7 +4,7 @@ use crate::{
     dataframe_ui::dataframe_ui, expanded_rows::ExpandedRowsCache, query_kind::QueryKind,
     view_query_v2, visualizer_system::EmptySystem,
 };
-use re_chunk_store::ColumnDescriptor;
+use re_chunk_store::{ColumnDescriptor, ComponentColumnSelector, SparseFillStrategy};
 use re_log_types::{EntityPath, EntityPathFilter, ResolvedTimeRange};
 use re_types_core::SpaceViewClassIdentifier;
 use re_viewer_context::{
@@ -145,67 +145,111 @@ mode sets the default time range to _everything_. You can override this in the s
             return Ok(());
         };
 
-        let query_engine = ctx.recording().query_engine();
+        let view_contents = query
+            .iter_all_entities()
+            .map(|entity| (entity.clone(), None))
+            .collect();
 
-        let entity_path_filter =
-            Self::entity_path_filter(ctx, query.space_view_id, query.space_origin);
+        //let query_engine = ctx.recording().query_engine();
+        let query_engine = re_dataframe2::QueryEngine {
+            store: ctx.recording().store(),
+            cache: ctx.recording().query_caches(),
+        };
+
+        // let entity_path_filter =
+        //     Self::entity_path_filter(ctx, query.space_view_id, query.space_origin);
 
         // use the new query for column visibility
         let query_v2 = view_query_v2::QueryV2::from_blueprint(ctx, query.space_view_id);
 
-        let (schema, hide_column_actions) = match query_mode {
-            QueryKind::LatestAt { time } => {
-                let query = re_chunk_store::LatestAtQueryExpression {
-                    entity_path_filter,
-                    timeline: *timeline,
-                    at: time,
-                };
+        let range = query_v2.range_filter()?;
+        let pov = query_v2.filter_by_event()?.map(|filter| {
+            ComponentColumnSelector::new_for_component_name(
+                filter.entity_path(),
+                filter.component_name(),
+            )
+        });
 
-                let schema = query_engine.schema_for_query(&query.clone().into());
-                let selected_columns =
-                    query_v2.apply_column_visibility_to_view_columns(ctx, &schema)?;
-
-                let hide_column_actions = dataframe_ui(
-                    ctx,
-                    ui,
-                    query_engine.latest_at(&query, selected_columns),
-                    &mut state.expended_rows_cache,
-                );
-
-                (schema, hide_column_actions)
-            }
-            QueryKind::Range {
-                pov_entity,
-                pov_component,
-                from,
-                to,
-            } => {
-                let query = re_chunk_store::RangeQueryExpression {
-                    entity_path_filter,
-                    timeline: *timeline,
-                    time_range: ResolvedTimeRange::new(from, to),
-                    //TODO(#7365): using ComponentColumnDescriptor to specify PoV needs to go
-                    pov: re_chunk_store::ComponentColumnSelector {
-                        entity_path: pov_entity.clone(),
-                        component: pov_component,
-                        join_encoding: Default::default(),
-                    },
-                };
-
-                let schema = query_engine.schema_for_query(&query.clone().into());
-                let selected_columns =
-                    query_v2.apply_column_visibility_to_view_columns(ctx, &schema)?;
-
-                let hide_column_actions = dataframe_ui(
-                    ctx,
-                    ui,
-                    query_engine.range(&query, selected_columns),
-                    &mut state.expended_rows_cache,
-                );
-
-                (schema, hide_column_actions)
-            }
+        let sparse_fill_strategy = if query_v2.latest_at_enabled()? {
+            SparseFillStrategy::LatestAtGlobal
+        } else {
+            SparseFillStrategy::None
         };
+
+        let schema = query_engine.schema_for_view_contents(&view_contents);
+        let selection = query_v2.apply_column_visibility_to_view_columns(ctx, &schema)?;
+
+        let dataframe_query = re_chunk_store::QueryExpression2 {
+            view_contents: Some(view_contents),
+            filtered_index: *timeline,
+            filtered_index_range: Some(ResolvedTimeRange::new(range.0, range.1)),
+            filtered_index_values: None,
+            sampled_index_values: None,
+            filtered_point_of_view: pov,
+            sparse_fill_strategy,
+            selection,
+        };
+
+        //let schema = query_engine.schema_for_query(&dataframe_query);
+
+        let query_handle = query_engine.query(dataframe_query);
+
+        let hide_column_actions =
+            dataframe_ui(ctx, ui, query_handle, &mut state.expended_rows_cache);
+
+        //let schema = data.schema_for_query(&dataframe_query);
+
+        // let (schema, hide_column_actions) = match query_mode {
+        //     QueryKind::LatestAt { time } => {
+        //         let query = re_chunk_store::LatestAtQueryExpression {
+        //             entity_path_filter,
+        //             timeline: *timeline,
+        //             at: time,
+        //         };
+        //
+        //         let schema = query_engine.schema_for_query(&query.clone().into());
+        //         let selected_columns = query_v2.apply_column_visibility_to_schema(ctx, &schema)?;
+        //
+        //         let hide_column_actions = dataframe_ui(
+        //             ctx,
+        //             ui,
+        //             query_engine.latest_at(&query, selected_columns),
+        //             &mut state.expended_rows_cache,
+        //         );
+        //
+        //         (schema, hide_column_actions)
+        //     }
+        //     QueryKind::Range {
+        //         pov_entity,
+        //         pov_component,
+        //         from,
+        //         to,
+        //     } => {
+        //         let query = re_chunk_store::RangeQueryExpression {
+        //             entity_path_filter,
+        //             timeline: *timeline,
+        //             time_range: ResolvedTimeRange::new(from, to),
+        //             //TODO(#7365): using ComponentColumnDescriptor to specify PoV needs to go
+        //             pov: re_chunk_store::ComponentColumnSelector {
+        //                 entity_path: pov_entity.clone(),
+        //                 component: pov_component,
+        //                 join_encoding: Default::default(),
+        //             },
+        //         };
+        //
+        //         let schema = query_engine.schema_for_query(&query.clone().into());
+        //         let selected_columns = query_v2.apply_column_visibility_to_schema(ctx, &schema)?;
+        //
+        //         let hide_column_actions = dataframe_ui(
+        //             ctx,
+        //             ui,
+        //             query_engine.range(&query, selected_columns),
+        //             &mut state.expended_rows_cache,
+        //         );
+        //
+        //         (schema, hide_column_actions)
+        //     }
+        // };
 
         query_v2.handle_hide_column_actions(ctx, &schema, hide_column_actions)?;
 
