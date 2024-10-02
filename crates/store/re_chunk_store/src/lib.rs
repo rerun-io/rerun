@@ -27,7 +27,7 @@ pub use self::dataframe::{
     ColumnDescriptor, ColumnSelector, ComponentColumnDescriptor, ComponentColumnSelector,
     ControlColumnDescriptor, ControlColumnSelector, Index, IndexRange, IndexValue, JoinEncoding,
     LatestAtQueryExpression, QueryExpression, QueryExpression2, RangeQueryExpression,
-    SparseFillStrategy, TimeColumnDescriptor, TimeColumnSelector,
+    SparseFillStrategy, TimeColumnDescriptor, TimeColumnSelector, ViewContentsSelector,
 };
 pub use self::events::{ChunkStoreDiff, ChunkStoreDiffKind, ChunkStoreEvent};
 pub use self::gc::{GarbageCollectionOptions, GarbageCollectionTarget};
