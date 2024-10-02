@@ -242,7 +242,7 @@ mod tests {
         };
         std::fs::remove_file(&rrd_file_path).ok(); // Remove the file just in case a previous test crashes hard.
         let rrd_file = std::fs::OpenOptions::new()
-            .create(true)
+            .create_new(true)
             .write(true)
             .open(rrd_file_path.to_str().unwrap())
             .unwrap();
