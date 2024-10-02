@@ -4,8 +4,8 @@ on:
   workflow_dispatch:
   schedule:
     # https://docs.github.com/en/actions/using-workflows/events-that-trigger-workflows#schedule
-    # 12:15 UTC, every day
-    - cron: "15 12 * * *"
+    # 3am UTC, so 4am-5am CET and evening in east time, basically after everyone's day.
+    - cron: "15 3 * * *"
 
 defaults:
   run:
