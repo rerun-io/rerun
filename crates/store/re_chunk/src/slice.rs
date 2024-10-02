@@ -438,7 +438,7 @@ impl Chunk {
 
     /// Removes duplicate rows from sections of consecutive identical indices.
     ///
-    /// * If the [`Chunk`] is sorted on that index, all remaining indices will be unique.
+    /// * If the [`Chunk`] is sorted on that index, the remaining values in the index column will be unique.
     /// * If the [`Chunk`] has been densified on a specific column, the resulting chunk will
     ///   effectively contain the latest value of that column for each given index value.
     ///
