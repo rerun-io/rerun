@@ -11,10 +11,10 @@ use pyo3::{
 };
 use re_chunk_store::{
     ChunkStore, ChunkStoreConfig, ColumnDescriptor, ColumnSelector, ComponentColumnDescriptor,
-    ComponentColumnSelector, ControlColumnDescriptor, ControlColumnSelector, RangeQueryExpression,
-    TimeColumnDescriptor, TimeColumnSelector, VersionPolicy,
+    ComponentColumnSelector, ControlColumnDescriptor, ControlColumnSelector, QueryExpression2,
+    SparseFillStrategy, TimeColumnDescriptor, TimeColumnSelector, VersionPolicy,
 };
-use re_dataframe::QueryEngine;
+use re_dataframe2::QueryEngine;
 use re_log_types::{EntityPathFilter, ResolvedTimeRange, TimeType};
 use re_sdk::{EntityPath, Loggable as _, StoreId, StoreKind, Timeline};
 
@@ -216,6 +216,7 @@ enum AnyComponentColumn {
 }
 
 impl AnyComponentColumn {
+    #[allow(dead_code)]
     fn into_selector(self) -> ComponentColumnSelector {
         match self {
             Self::ComponentDescriptor(desc) => desc.0.into(),
@@ -398,16 +399,16 @@ impl PyDataset {
         }
     }
 
-    fn range_query(
+    fn query(
         &self,
         expr: &str,
         timeline: &str,
         time_range: PyTimeRange,
-        pov: AnyComponentColumn,
         columns: Option<Vec<AnyColumn>>,
     ) -> PyResult<PyArrowType<Vec<RecordBatch>>> {
         // TODO(jleibs): Move this ctx into PyChunkStore?
-        let cache = re_dataframe::external::re_query::Caches::new(&self.store);
+        let cache = re_dataframe2::external::re_query::Caches::new(&self.store);
+
         let engine = QueryEngine {
             store: &self.store,
             cache: &cache,
@@ -425,20 +426,30 @@ impl PyDataset {
             resolved.timeline
         };
 
-        let query = RangeQueryExpression {
-            entity_path_filter: std::convert::TryInto::<EntityPathFilter>::try_into(expr)
-                .map_err(|err| PyRuntimeError::new_err(err.to_string()))?,
-            timeline,
-            time_range: time_range.range,
-            pov: pov.into_selector(),
+        let path_filter = EntityPathFilter::parse_strict(expr, &Default::default())
+            .map_err(|err| PyValueError::new_err(err.to_string()))?;
+
+        let contents = engine
+            .iter_entity_paths(&path_filter)
+            .map(|p| (p, None))
+            .collect();
+
+        let query = QueryExpression2 {
+            view_contents: Some(contents),
+            filtered_index: timeline,
+            filtered_index_range: Some(time_range.range),
+            filtered_index_values: None,
+            sampled_index_values: None,
+            filtered_point_of_view: None,
+            sparse_fill_strategy: SparseFillStrategy::None,
+            selection: columns
+                .map(|cols| cols.into_iter().map(|col| col.into_selector()).collect()),
         };
 
-        let columns = columns.map(|cols| cols.into_iter().map(|col| col.into_selector()).collect());
-
-        let query_handle = engine.range(&query, columns);
+        let query_handle = engine.query(query);
 
         let batches: Result<Vec<_>, _> = query_handle
-            .into_iter()
+            .into_batch_iter()
             .map(|batch| batch.try_to_arrow_record_batch())
             .collect();
 

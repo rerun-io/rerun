@@ -193,12 +193,13 @@ impl Ord for TimeColumnDescriptor {
 
 impl TimeColumnDescriptor {
     #[inline]
+    // Time column must be nullable since static data doesn't have a time.
     pub fn to_arrow_field(&self) -> ArrowField {
         let Self { timeline, datatype } = self;
         ArrowField::new(
             timeline.name().to_string(),
             datatype.clone(),
-            false, /* nullable */
+            true, /* nullable */
         )
     }
 }

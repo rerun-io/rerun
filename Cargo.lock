@@ -6236,7 +6236,7 @@ dependencies = [
  "re_build_tools",
  "re_chunk",
  "re_chunk_store",
- "re_dataframe",
+ "re_dataframe2",
  "re_entity_db",
  "re_log",
  "re_log_encoding",

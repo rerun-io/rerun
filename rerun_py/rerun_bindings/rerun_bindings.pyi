@@ -2,7 +2,7 @@ from typing import Optional, Sequence
 
 import pyarrow as pa
 
-from .types import AnyColumn, AnyComponentColumn, ComponentLike
+from .types import AnyColumn, ComponentLike
 
 class ControlColumnDescriptor:
     """A control-level column such as `RowId`."""
@@ -56,12 +56,11 @@ class Dataset:
     """A single dataset from an RRD, representing a Recording or a Blueprint."""
 
     def schema(self) -> Schema: ...
-    def range_query(
+    def query(
         self,
         entity_path_expr: str,
         timeline: str,
         time_range: TimeRange,
-        pov: AnyComponentColumn,
         query_columns: Sequence[AnyColumn],
     ) -> list[pa.RecordBatch]: ...
 
