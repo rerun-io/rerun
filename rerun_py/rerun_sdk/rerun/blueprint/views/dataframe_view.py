@@ -40,7 +40,7 @@ class DataframeView(SpaceView):
 
         # some sparse data
         if t % 5 == 0:
-            rr.log("trig/sin_sparse", rr.Scalar(math.sin(float(t) / 100.0)))
+            rr.log("trig/tan_sparse", rr.Scalar(math.tan(float(t) / 100.0)))
 
     # Create a Dataframe View
     blueprint = rrb.Blueprint(
@@ -49,8 +49,8 @@ class DataframeView(SpaceView):
             query=rrb.archetypes.DataframeQueryV2(
                 timeline="t",
                 filter_by_range=(rr.TimeInt(seconds=0), rr.TimeInt(seconds=20)),
-                apply_latest_at=True,
-                selected_columns=["t", "log_tick", "/trig/sin:Scalar", "/trig/cos:Scalar", "/trig/sin_sparse:Scalar"],
+                filter_by_event="/trig/tan_sparse:Scalar",
+                select=["t", "log_tick", "/trig/sin:Scalar", "/trig/cos:Scalar", "/trig/tan_sparse:Scalar"],
             ),
         ),
     )
