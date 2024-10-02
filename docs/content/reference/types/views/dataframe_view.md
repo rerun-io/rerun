@@ -19,7 +19,7 @@ Query of the dataframe.
 * `select`: Selected columns. If unset, all columns are selected.
 
 ## API reference links
- * 🐍 [Python API docs for `DataframeView`](https://ref.rerun.io/docs/python/stable/common/blueprint_views#rerun.blueprint.views.DataframeView)
+ * 🐍 [Python API docs for `DataframeView`](https://ref.rerun.io/docs/python/stable/common/blueprint_views?speculative-link#rerun.blueprint.views.DataframeView)
 
 ## Example
 
