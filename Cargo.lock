@@ -2328,6 +2328,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "fdg-sim"
+version = "0.9.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "2417e237094dfd115a4aa11b2a3dc6cda45e8d36572a7862ba9a48402f7441a3"
+dependencies = [
+ "glam 0.21.3",
+ "hashlink",
+ "petgraph",
+ "quad-rand",
+]
+
+[[package]]
 name = "filetime"
 version = "0.2.23"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2587,6 +2599,12 @@ dependencies = [
 
 [[package]]
 name = "glam"
+version = "0.21.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "518faa5064866338b013ff9b2350dc318e14cc4fcd6cb8206d7e7c9886c98815"
+
+[[package]]
+name = "glam"
 version = "0.28.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "779ae4bf7e8421cf91c0b3b64e7e8b40b862fba4d393f59150042de7c4965a94"
@@ -2730,7 +2748,7 @@ name = "graph_view"
 version = "0.0.0"
 dependencies = [
  "bytemuck",
- "itertools 0.13.0",
+ "fdg-sim",
  "mimalloc",
  "petgraph",
  "re_crash_handler",
@@ -2778,6 +2796,15 @@ dependencies = [
  "ahash",
  "allocator-api2",
  "serde",
+]
+
+[[package]]
+name = "hashlink"
+version = "0.8.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e8094feaf31ff591f651a2664fb9cfd92bba7a60ce3197265e9482ebe753c8f7"
+dependencies = [
+ "hashbrown 0.14.5",
 ]
 
 [[package]]
@@ -2838,7 +2865,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "344d5bf5d6b6da1020fcfd4014d44e0cc695356c603db9c774b30bd6d385ad2b"
 dependencies = [
  "constgebra",
- "glam",
+ "glam 0.28.0",
 ]
 
 [[package]]
@@ -3374,7 +3401,7 @@ version = "0.19.0-alpha.1+dev"
 dependencies = [
  "anyhow",
  "clap",
- "glam",
+ "glam 0.28.0",
  "re_tracing",
  "rerun",
 ]
@@ -3521,7 +3548,7 @@ version = "0.19.0-alpha.1+dev"
 dependencies = [
  "anyhow",
  "clap",
- "glam",
+ "glam 0.28.0",
  "rerun",
 ]
 
@@ -3692,7 +3719,7 @@ version = "0.19.0-alpha.1+dev"
 dependencies = [
  "anyhow",
  "clap",
- "glam",
+ "glam 0.28.0",
  "rerun",
 ]
 
@@ -4117,7 +4144,7 @@ version = "0.19.0-alpha.1+dev"
 dependencies = [
  "anyhow",
  "clap",
- "glam",
+ "glam 0.28.0",
  "prost",
  "prost-build",
  "protoc-prebuilt",
@@ -4692,6 +4719,12 @@ dependencies = [
  "quote",
  "syn 2.0.48",
 ]
+
+[[package]]
+name = "quad-rand"
+version = "0.2.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b76f1009795ca44bb5aaae8fd3f18953e209259c33d9b059b1f53d58ab7511db"
 
 [[package]]
 name = "quick-xml"
@@ -5325,7 +5358,7 @@ version = "0.20.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "999db5029a2879efeddb538f2e486aabf33adf7a0b3708c6df5c1cae13b3af49"
 dependencies = [
- "glam",
+ "glam 0.28.0",
  "serde",
 ]
 
@@ -5411,7 +5444,7 @@ dependencies = [
  "ecolor",
  "enumset",
  "getrandom",
- "glam",
+ "glam 0.28.0",
  "gltf",
  "half 2.3.1",
  "itertools 0.13.0",
@@ -5456,7 +5489,7 @@ dependencies = [
  "anyhow",
  "bytemuck",
  "console_error_panic_hook",
- "glam",
+ "glam 0.28.0",
  "image",
  "itertools 0.13.0",
  "pollster",
@@ -5634,7 +5667,7 @@ dependencies = [
  "bytemuck",
  "criterion",
  "egui",
- "glam",
+ "glam 0.28.0",
  "hexasphere",
  "image",
  "itertools 0.13.0",
@@ -5814,7 +5847,7 @@ dependencies = [
  "ecolor",
  "egui_plot",
  "emath",
- "glam",
+ "glam 0.28.0",
  "half 2.3.1",
  "image",
  "infer",
@@ -6033,7 +6066,7 @@ dependencies = [
  "egui_extras",
  "egui_tiles",
  "emath",
- "glam",
+ "glam 0.28.0",
  "half 2.3.1",
  "image",
  "indexmap 2.1.0",
@@ -6077,7 +6110,7 @@ dependencies = [
  "ahash",
  "egui",
  "egui_tiles",
- "glam",
+ "glam 0.28.0",
  "image",
  "itertools 0.13.0",
  "nohash-hasher",
@@ -7210,7 +7243,7 @@ version = "0.19.0-alpha.1+dev"
 dependencies = [
  "anyhow",
  "clap",
- "glam",
+ "glam 0.28.0",
  "itertools 0.13.0",
  "ndarray",
  "ndarray-rand",

@@ -69,5 +69,17 @@ fn run(rec: &rerun::RecordingStream, _args: &Args) -> anyhow::Result<()> {
         ]),
     )?;
 
+    rec.log(
+        "reachable",
+        &GraphEdges::new([
+            GraphEdge::new("area0", "sink")
+                .with_source_in("kitchen/areas")
+                .with_target_in("kitchen/objects"),
+            GraphEdge::new("area1", "fridge")
+                .with_source_in("kitchen/areas")
+                .with_target_in("kitchen/objects"),
+        ]),
+    )?;
+
     Ok(())
 }

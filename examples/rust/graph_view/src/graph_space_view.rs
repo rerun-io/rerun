@@ -1,3 +1,4 @@
+use fdg_sim::{ForceGraph, ForceGraphHelper, Simulation, SimulationParameters};
 use std::collections::HashMap;
 
 use re_viewer::external::{
@@ -70,9 +71,6 @@ impl<'a> NodeInstance<'a> {
 /// This state is preserved between frames, but not across Viewer sessions.
 #[derive(Default)]
 pub struct GraphSpaceViewState {
-    graph: petgraph::stable_graph::StableGraph<NodeKind, ()>,
-    node_to_index: HashMap<QualifiedNode, petgraph::stable_graph::NodeIndex>,
-    // graph viewer
     screen_to_world: TSTransform,
 
     /// Positions of the nodes in world space.
@@ -195,35 +193,53 @@ impl SpaceViewClass for GraphSpaceView {
                 }
             });
             state.layout = Some(layout);
+
+            let mut node_to_index = HashMap::new();
+            let mut graph: ForceGraph<(), ()> = ForceGraph::default();
+
+            for data in node_system.data.iter() {
+                for node in data.nodes() {
+                    let node_index = graph.add_force_node(format!("{:?}", node.node_id), ());
+                    node_to_index.insert(node.node_id, node_index);
+                }
+            }
+
+            for data in edge_system.data.iter() {
+                for (edge, _, _) in data.edges() {
+                    let source_index = *node_to_index
+                        .entry(edge.source.clone())
+                        .or_insert(graph.add_force_node(format!("{:?}", edge.source), ()));
+                    let target_index = *node_to_index
+                        .entry(edge.target.clone())
+                        .or_insert(graph.add_force_node(format!("{:?}", edge.target), ()));
+                    graph.add_edge(source_index, target_index, ());
+                }
+            }
+
+            // create a simulation from the graph
+            let mut simulation = Simulation::from_graph(graph, SimulationParameters::default());
+
+            for frame in 0..1000 {
+                simulation.update(0.035);
+            }
+
+            if let Some(layout) = state.layout.as_mut() {
+                for (node_id, rect) in layout.iter_mut() {
+                    if let Some(n) = node_to_index.get(node_id) {
+                     if let Some(nn) = simulation.get_graph().node_weight(*n) {
+                         let new_center = egui::Pos2::new(nn.location.x, nn.location.y);
+                         *rect = Rect::from_center_size(new_center, rect.size());
+                     }
+                    }
+                     // let node = simulation.get_graph().get_node(node_index);
+                     // println!("{:?} {:?}", node, node.location);
+                 }
+                 println!("-----------------------");
+            }
+
+
             return Ok(());
         };
-
-        // TODO(grtlr): Once we settle on a design, we should update the graph instead of constructing it from scratch.
-        state.graph.clear();
-        state.node_to_index.clear();
-
-        for data in node_system.data.iter() {
-            for instance in data.nodes() {
-                let node_index = state
-                    .graph
-                    .add_node(NodeKind::Regular(instance.node_id.clone()));
-                state.node_to_index.insert(instance.node_id, node_index);
-            }
-        }
-
-        for data in edge_system.data.iter() {
-            for (edge, _, _) in data.edges() {
-                let source_index = *state
-                    .node_to_index
-                    .entry(edge.source.clone())
-                    .or_insert(state.graph.add_node(NodeKind::Dummy(edge.source)));
-                let target_index = *state
-                    .node_to_index
-                    .entry(edge.target.clone())
-                    .or_insert(state.graph.add_node(NodeKind::Dummy(edge.target)));
-                state.graph.add_edge(source_index, target_index, ());
-            }
-        }
 
         // Graph viewer
         let (id, rect) = ui.allocate_space(ui.available_size());
@@ -349,7 +365,7 @@ impl SpaceViewClass for GraphSpaceView {
                         .order(egui::Order::Middle)
                         .constrain(false)
                         .show(ui.ctx(), |ui| {
-                            // TODO(grtlr): reintroduce clipping: `ui.set_clip_rect(transform.inverse() * rect);`
+                            ui.set_clip_rect(transform.inverse() * rect);
                             egui::Frame::default().show(ui, |ui| {
                                 let painter = ui.painter();
                                 painter.line_segment(

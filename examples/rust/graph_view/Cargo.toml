@@ -25,5 +25,5 @@ re_sdk_comms = { path = "../../../crates/store/re_sdk_comms", features = [
 mimalloc = "0.1"
 
 petgraph = "0.6"
-itertools = "0.13"
 bytemuck = "1.18"
+fdg-sim = "0.9"
