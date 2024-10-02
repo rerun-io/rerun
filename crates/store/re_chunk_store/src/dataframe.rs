@@ -815,7 +815,7 @@ pub struct QueryExpression2 {
 
     /// The range of index values used to filter out _rows_ from the view contents.
     ///
-    /// Only rows where at least 1 column contains non-null data within that range will be kept in
+    /// Only rows where at least 1 of the view-contents contains non-null data within that range will be kept in
     /// the final dataset.
     ///
     /// This is ignored if [QueryExpression2::`sampled_index_values`] is set.
