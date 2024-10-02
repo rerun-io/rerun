@@ -27,11 +27,10 @@ class DataframeQueryV2(Archetype):
         self: Any,
         *,
         timeline: datatypes.Utf8Like | None = None,
-        range_filter: blueprint_datatypes.RangeFilterLike | None = None,
-        filter_by_event_active: datatypes.BoolLike | None = None,
-        filter_by_event_column: blueprint_datatypes.ComponentColumnSelectorLike | None = None,
+        filter_by_range: blueprint_datatypes.FilterByRangeLike | None = None,
+        filter_by_event: blueprint_datatypes.FilterByEventLike | None = None,
         apply_latest_at: datatypes.BoolLike | None = None,
-        selected_columns: blueprint_datatypes.SelectedColumnsLike | None = None,
+        select: blueprint_datatypes.SelectedColumnsLike | None = None,
     ):
         """
         Create a new instance of the DataframeQueryV2 archetype.
@@ -41,20 +40,16 @@ class DataframeQueryV2(Archetype):
         timeline:
             The timeline for this query.
 
-            If unset, the time panel's timeline is used and stored.
-        range_filter:
-            If set, a range filter is applied.
+            If unset, the timeline currently active on the time panel is used.
+        filter_by_range:
+            If provided, only rows whose timestamp is within this range will be shown.
 
             Note: will be unset as soon as `timeline` is changed.
-        filter_by_event_active:
-            Whether the filter by event feature is active.
-        filter_by_event_column:
-            The column used when the filter by event feature is used.
-
-            Note: only valid if the entity/component exists on `timeline`.
+        filter_by_event:
+            If provided, only show rows which contains a logged event for the specified component.
         apply_latest_at:
             Should empty cells be filled with latest-at queries?
-        selected_columns:
+        select:
             Selected columns. If unset, all columns are selected.
 
         """
@@ -63,11 +58,10 @@ class DataframeQueryV2(Archetype):
         with catch_and_log_exceptions(context=self.__class__.__name__):
             self.__attrs_init__(
                 timeline=timeline,
-                range_filter=range_filter,
-                filter_by_event_active=filter_by_event_active,
-                filter_by_event_column=filter_by_event_column,
+                filter_by_range=filter_by_range,
+                filter_by_event=filter_by_event,
                 apply_latest_at=apply_latest_at,
-                selected_columns=selected_columns,
+                select=select,
             )
             return
         self.__attrs_clear__()
