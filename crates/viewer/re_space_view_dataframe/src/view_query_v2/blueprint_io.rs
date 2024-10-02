@@ -189,6 +189,7 @@ impl QueryV2 {
         Ok(Some(result))
     }
 
+    #[allow(dead_code)] //TODO(ab): used in next PR
     pub(crate) fn handle_hide_column_actions(
         &self,
         ctx: &ViewerContext<'_>,
