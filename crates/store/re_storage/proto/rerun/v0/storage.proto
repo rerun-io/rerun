@@ -21,6 +21,7 @@ message RecordingId {
 message RegisterRecordingRequest {
     string description = 1;
     string storage_url = 2;
+    // TODO should this be auto-discoverable?
     RecordingType typ = 3;
 }
 
@@ -44,8 +45,10 @@ message GetRecordingMetadataResponse {
 }
 
 message RecordingMetadata {
-    Schema schema = 1;
-    TimeRange time_range = 2;
+    RecordingId id = 1;
+    Schema schema = 2;
+    // for now Timeline is a string (same as with the query definition)
+    map<string, TimeRange> timelines = 3;
 }
 
 message Schema {
