@@ -285,7 +285,7 @@ impl QueryHandle<'_> {
                             .into_iter()
                             .next()
                             .map(|(_component_name, chunks)| {
-                                let chunks = chunks
+                                chunks
                                     .into_iter()
                                     .map(|chunk| {
                                         // NOTE: Keep in mind that the range APIs would have already taken care
@@ -304,9 +304,7 @@ impl QueryHandle<'_> {
 
                                         (AtomicU64::default(), chunk)
                                     })
-                                    .collect_vec();
-
-                                chunks
+                                    .collect_vec()
                             })
                             .unwrap_or_default()
                         },
