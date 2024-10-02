@@ -848,6 +848,7 @@ pub struct QueryExpression2 {
     /// and [`QueryExpression2::filtered_index_values`].
     ///
     /// Example: `[TimeInt(12), TimeInt(14)]`.
+    TODO(jleibs): We need an alternative name for sampled.
     pub sampled_index_values: Option<Vec<IndexValue>>,
 
     /// TODO(cmc): NOT IMPLEMENTED.
