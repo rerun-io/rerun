@@ -88,6 +88,27 @@ pub struct EntityPathRule {
     pub include_subtree: bool,
 }
 
+impl From<EntityPath> for EntityPathRule {
+    #[inline]
+    fn from(entity_path: EntityPath) -> Self {
+        Self::exact(entity_path)
+    }
+}
+
+impl std::hash::Hash for EntityPathRule {
+    #[inline]
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        let Self {
+            raw_expression: _,
+            path,
+            include_subtree,
+        } = self;
+
+        std::hash::Hash::hash(path, state);
+        std::hash::Hash::hash(include_subtree, state);
+    }
+}
+
 impl std::fmt::Display for EntityPathRule {
     #[inline]
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
