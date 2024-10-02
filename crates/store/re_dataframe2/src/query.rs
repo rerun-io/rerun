@@ -121,129 +121,171 @@ impl QueryHandle<'_> {
     ///
     /// It is important that query handles stay cheap to create.
     fn init(&self) -> &QueryHandleState {
-        self.state.get_or_init(|| {
-            re_tracing::profile_scope!("init");
+        self.state.get_or_init(|| self.init_())
+    }
 
-            // 1. Compute the schema of the view contents.
-            let view_contents = if let Some(view_contents) = self.query.view_contents.as_ref() {
-                self.engine.store.schema_for_view_contents(view_contents)
-            } else {
-                self.engine.store.schema()
-            };
+    // NOTE: This is split in its own method otherwise it completely breaks `rustfmt`.
+    fn init_(&self) -> QueryHandleState {
+        re_tracing::profile_scope!("init");
 
-            // 2. Compute the schema of the selected contents.
-            //
-            // The caller might have selected columns that do not exist in the view: they should
-            // still appear in the results.
-            let selected_contents: Vec<(_, _)> = if let Some(selection) = self.query.selection.as_ref() {
-                 selection
-                    .iter()
-                    .map(|column| {
-                        match column {
-                            ColumnSelector::Control(selected_column) => {
-                                let ControlColumnSelector { component: selected_component_name } = selected_column;
+        // 1. Compute the schema of the view contents.
+        let view_contents = if let Some(view_contents) = self.query.view_contents.as_ref() {
+            self.engine.store.schema_for_view_contents(view_contents)
+        } else {
+            self.engine.store.schema()
+        };
 
-                                view_contents
-                                    .iter()
-                                    .enumerate()
-                                    .filter_map(|(idx, view_column)| match view_column {
-                                        ColumnDescriptor::Control(view_descr) => Some((idx, view_descr)),
-                                        _ => None,
-                                    })
-                                    .find(|(_idx, view_descr)| view_descr.component_name == *selected_component_name)
-                                    .map_or_else(
-                                        || (usize::MAX, ColumnDescriptor::Control(ControlColumnDescriptor {
-                                            component_name: *selected_component_name,
-                                            datatype: arrow2::datatypes::DataType::Null,
-                                        })),
-                                        |(idx, view_descr)| (idx, ColumnDescriptor::Control(view_descr.clone()))
-                                    )
-                            },
+        // 2. Compute the schema of the selected contents.
+        //
+        // The caller might have selected columns that do not exist in the view: they should
+        // still appear in the results.
+        let selected_contents: Vec<(_, _)> = if let Some(selection) = self.query.selection.as_ref()
+        {
+            selection
+                .iter()
+                .map(|column| {
+                    match column {
+                        ColumnSelector::Control(selected_column) => {
+                            let ControlColumnSelector {
+                                component: selected_component_name,
+                            } = selected_column;
 
-                            ColumnSelector::Time(selected_column) => {
-                                let TimeColumnSelector { timeline: selected_timeline } = selected_column;
-
-                                view_contents
-                                    .iter()
-                                    .enumerate()
-                                    .filter_map(|(idx, view_column)| match view_column {
-                                        ColumnDescriptor::Time(view_descr) => Some((idx, view_descr)),
-                                        _ => None,
-                                    })
-                                    .find(|(_idx, view_descr)| *view_descr.timeline.name() == *selected_timeline)
-                                    .map_or_else(
-                                        || (usize::MAX, ColumnDescriptor::Time(TimeColumnDescriptor {
-                                            // TODO(cmc): I picked a sequence here because I have to pick something.
-                                            // It doesn't matter, only the name will remain in the Arrow schema anyhow.
-                                            timeline: Timeline::new_sequence(*selected_timeline),
-                                            datatype: arrow2::datatypes::DataType::Null,
-                                        })),
-                                        |(idx, view_descr)| (idx, ColumnDescriptor::Time(view_descr.clone()))
-                                    )
-                            },
-
-                            ColumnSelector::Component(selected_column) => {
-                                let ComponentColumnSelector {
-                                    entity_path: selected_entity_path,
-                                    component: selected_component_name,
-                                    join_encoding: _
-                                } = selected_column;
-
-                                view_contents
-                                    .iter()
-                                    .enumerate()
-                                    .filter_map(|(idx, view_column)| match view_column {
-                                        ColumnDescriptor::Component(view_descr) => Some((idx, view_descr)),
-                                        _ => None,
-                                    })
-                                    .find(|(_idx, view_descr)| {
-                                        view_descr.entity_path == *selected_entity_path
-                                        && view_descr.component_name == *selected_component_name
-                                    })
-                                    .map_or_else(
-                                        || (usize::MAX, ColumnDescriptor::Component(ComponentColumnDescriptor {
-                                            entity_path: selected_entity_path.clone(),
-                                            archetype_name: None,
-                                            archetype_field_name: None,
-                                            component_name: *selected_component_name,
-                                            store_datatype: arrow2::datatypes::DataType::Null,
-                                            join_encoding: JoinEncoding::default(),
-                                            is_static: false,
-                                        })),
-                                        |(idx, view_descr)| (idx, ColumnDescriptor::Component(view_descr.clone()))
-                                    )
-                            },
+                            view_contents
+                                .iter()
+                                .enumerate()
+                                .filter_map(|(idx, view_column)| match view_column {
+                                    ColumnDescriptor::Control(view_descr) => {
+                                        Some((idx, view_descr))
+                                    }
+                                    _ => None,
+                                })
+                                .find(|(_idx, view_descr)| {
+                                    view_descr.component_name == *selected_component_name
+                                })
+                                .map_or_else(
+                                    || {
+                                        (
+                                            usize::MAX,
+                                            ColumnDescriptor::Control(ControlColumnDescriptor {
+                                                component_name: *selected_component_name,
+                                                datatype: arrow2::datatypes::DataType::Null,
+                                            }),
+                                        )
+                                    },
+                                    |(idx, view_descr)| {
+                                        (idx, ColumnDescriptor::Control(view_descr.clone()))
+                                    },
+                                )
                         }
-                    })
-                    .collect_vec()
-            } else {
-                view_contents.clone().into_iter().enumerate().collect()
-            };
 
-            // 3. Compute the Arrow schema of the selected components.
-            //
-            // Every result returned using this `QueryHandle` will match this schema exactly.
-            let arrow_schema =
-                ArrowSchema {
-                    fields: selected_contents
-                        .iter()
-                        .map(|(_, descr)| descr.to_arrow_field())
-                        .collect_vec(),
-                    metadata: Default::default(),
-                };
+                        ColumnSelector::Time(selected_column) => {
+                            let TimeColumnSelector {
+                                timeline: selected_timeline,
+                            } = selected_column;
 
-            // 4. Perform the query and keep track of all the relevant chunks.
-            let view_chunks = {
-                let index_range = self
-                    .query
-                    .filtered_index_range
-                    .unwrap_or(ResolvedTimeRange::EVERYTHING);
+                            view_contents
+                                .iter()
+                                .enumerate()
+                                .filter_map(|(idx, view_column)| match view_column {
+                                    ColumnDescriptor::Time(view_descr) => Some((idx, view_descr)),
+                                    _ => None,
+                                })
+                                .find(|(_idx, view_descr)| {
+                                    *view_descr.timeline.name() == *selected_timeline
+                                })
+                                .map_or_else(
+                                    || {
+                                        (
+                                            usize::MAX,
+                                            ColumnDescriptor::Time(TimeColumnDescriptor {
+                                                // TODO(cmc): I picked a sequence here because I have to pick something.
+                                                // It doesn't matter, only the name will remain in the Arrow schema anyhow.
+                                                timeline: Timeline::new_sequence(
+                                                    *selected_timeline,
+                                                ),
+                                                datatype: arrow2::datatypes::DataType::Null,
+                                            }),
+                                        )
+                                    },
+                                    |(idx, view_descr)| {
+                                        (idx, ColumnDescriptor::Time(view_descr.clone()))
+                                    },
+                                )
+                        }
 
-                let query = RangeQuery::new(self.query.filtered_index, index_range)
-                    .keep_extra_timelines(true) // we want all the timelines we can get!
-                    .keep_extra_components(false);
+                        ColumnSelector::Component(selected_column) => {
+                            let ComponentColumnSelector {
+                                entity_path: selected_entity_path,
+                                component: selected_component_name,
+                                join_encoding: _,
+                            } = selected_column;
 
-                view_contents
+                            view_contents
+                                .iter()
+                                .enumerate()
+                                .filter_map(|(idx, view_column)| match view_column {
+                                    ColumnDescriptor::Component(view_descr) => {
+                                        Some((idx, view_descr))
+                                    }
+                                    _ => None,
+                                })
+                                .find(|(_idx, view_descr)| {
+                                    view_descr.entity_path == *selected_entity_path
+                                        && view_descr.component_name == *selected_component_name
+                                })
+                                .map_or_else(
+                                    || {
+                                        (
+                                            usize::MAX,
+                                            ColumnDescriptor::Component(
+                                                ComponentColumnDescriptor {
+                                                    entity_path: selected_entity_path.clone(),
+                                                    archetype_name: None,
+                                                    archetype_field_name: None,
+                                                    component_name: *selected_component_name,
+                                                    store_datatype:
+                                                        arrow2::datatypes::DataType::Null,
+                                                    join_encoding: JoinEncoding::default(),
+                                                    is_static: false,
+                                                },
+                                            ),
+                                        )
+                                    },
+                                    |(idx, view_descr)| {
+                                        (idx, ColumnDescriptor::Component(view_descr.clone()))
+                                    },
+                                )
+                        }
+                    }
+                })
+                .collect_vec()
+        } else {
+            view_contents.clone().into_iter().enumerate().collect()
+        };
+
+        // 3. Compute the Arrow schema of the selected components.
+        //
+        // Every result returned using this `QueryHandle` will match this schema exactly.
+        let arrow_schema = ArrowSchema {
+            fields: selected_contents
+                .iter()
+                .map(|(_, descr)| descr.to_arrow_field())
+                .collect_vec(),
+            metadata: Default::default(),
+        };
+
+        // 4. Perform the query and keep track of all the relevant chunks.
+        let view_chunks = {
+            let index_range = self
+                .query
+                .filtered_index_range
+                .unwrap_or(ResolvedTimeRange::EVERYTHING);
+
+            let query = RangeQuery::new(self.query.filtered_index, index_range)
+                .keep_extra_timelines(true) // we want all the timelines we can get!
+                .keep_extra_components(false);
+
+            view_contents
                     .iter()
                     .map(|selected_column| match selected_column {
                         ColumnDescriptor::Control(_) | ColumnDescriptor::Time(_) => Vec::new(),
@@ -297,16 +339,15 @@ impl QueryHandle<'_> {
                         },
                     })
                     .collect()
-            };
+        };
 
-            QueryHandleState {
-                view_contents,
-                selected_contents,
-                arrow_schema,
-                view_chunks,
-                cur_row: AtomicU64::new(0),
-            }
-        })
+        QueryHandleState {
+            view_contents,
+            selected_contents,
+            arrow_schema,
+            view_chunks,
+            cur_row: AtomicU64::new(0),
+        }
     }
 
     /// The query used to instantiate this handle.
