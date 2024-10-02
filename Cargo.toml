@@ -307,6 +307,10 @@ zip = { version = "0.6", default-features = false }
 # Our dev profile has some optimizations turned on, as well as debug assertions.
 [profile.dev]
 opt-level = 1 # Make debug builds run faster
+[profile.dev.package.re_video]
+opt-level = 2 # Speed up CPU-side chroma-upsampling (TODO(#7298): move to GPU)
+[profile.dev.package.wgpu]
+opt-level = 2 # Speed up copying video textures
 
 # panic = "abort" leads to better optimizations and smaller binaries (and is the default in Wasm anyways),
 # but it also means backtraces don't work with the `backtrace` library (https://github.com/rust-lang/backtrace-rs/issues/397).
