@@ -294,8 +294,9 @@ impl SpaceViewClass for GraphSpaceView {
                     .flat_map(|d| d.edges().map(|(edge, _, _)| edge)),
             );
 
-            if let Some(bbox) = bounding_rect_from_iter(layout.values()) {
-                state.screen_to_world = fit_bounding_rect_to_screen(bbox, rect.size());
+            if let Some(bounding_box) = bounding_rect_from_iter(layout.values()) {
+                state.screen_to_world =
+                    fit_bounding_rect_to_screen(bounding_box.scale_from_center(1.05), rect.size());
             }
 
             state.layout = Some(layout);
@@ -310,13 +311,19 @@ impl SpaceViewClass for GraphSpaceView {
             state.screen_to_world.translation += response.drag_delta();
         }
 
-        // Plot-like reset
-        if response.double_clicked() {
-            state.screen_to_world = TSTransform::default();
-        }
-
         let transform = TSTransform::from_translation(ui.min_rect().left_top().to_vec2())
             * state.screen_to_world;
+
+        #[cfg(debug_assertions)]
+        if response.double_clicked() {
+            if let Some(screen) = response.interact_pointer_pos() {
+                log::debug!(
+                    "Clicked! Screen: {:?}, World: {:?}",
+                    screen,
+                    transform.inverse() * screen
+                );
+            }
+        }
 
         if let Some(pointer) = ui.ctx().input(|i| i.pointer.hover_pos()) {
             // Note: doesn't catch zooming / panning if a button in this PanZoom container is hovered.
@@ -341,18 +348,48 @@ impl SpaceViewClass for GraphSpaceView {
 
         let window_layer = ui.layer_id();
 
+        #[cfg(debug_assertions)]
+        {
+            log::debug!("Displaying coordinate system");
+            // paint coordinate system at the world origin
+            let origin = transform * egui::Pos2::new(0.0, 0.0);
+            let x_axis = transform * egui::Pos2::new(100.0, 0.0);
+            let y_axis = transform * egui::Pos2::new(0.0, 100.0);
+
+            // Paint the coordinate system.
+            let painter = egui::Painter::new(
+                ui.ctx().clone(),
+                window_layer,
+                /* transform.inverse() * */ rect,
+            );
+            painter.line_segment([origin, x_axis], egui::Stroke::new(1.0, egui::Color32::RED));
+            painter.line_segment(
+                [origin, y_axis],
+                egui::Stroke::new(2.0, egui::Color32::GREEN),
+            );
+
+            if let Some(bounding_box) = bounding_rect_from_iter(layout.values()) {
+                log::debug!("Node bounding box: {:?}", bounding_box);
+
+                painter.rect(
+                    transform * bounding_box,
+                    0.0,
+                    egui::Color32::from_rgba_unmultiplied(255, 0, 255, 32),
+                    egui::Stroke::new(1.0, egui::Color32::from_rgb(255, 0, 255)),
+                );
+            }
+        }
+
         for data in node_system.data.iter() {
             let ent_highlight = query.highlights.entity_highlight(data.entity_path.hash());
             let mut entity_rect: Option<Rect> = None;
 
             for node in data.nodes() {
+                let current_extent = layout
+                    .get(&node.node_id)
+                    .expect("missing layout information for node");
                 let response = egui::Area::new(id.with((node.node_id.clone(), node.instance)))
-                    .current_pos(
-                        layout
-                            .get(&node.node_id)
-                            .expect("missing layout information for node")
-                            .min,
-                    )
+                    .current_pos(current_extent.min)
                     .order(egui::Order::Middle)
                     .constrain(false)
                     .show(ui.ctx(), |ui| {
