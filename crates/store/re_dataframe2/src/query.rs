@@ -390,7 +390,7 @@ impl QueryHandle<'_> {
     /// ```
     //
     // TODO(cmc): better/actual pagination
-    pub fn next_row(&mut self) -> Option<Vec<Box<dyn ArrowArray>>> {
+    pub fn next_row(&self) -> Option<Vec<Box<dyn ArrowArray>>> {
         re_tracing::profile_function!();
 
         /// Temporary state used to resolve the streaming join for the current iteration.
@@ -664,7 +664,7 @@ impl QueryHandle<'_> {
     ///
     /// See [`Self::next_row`] for more information.
     #[inline]
-    pub fn next_row_batch(&mut self) -> Option<RecordBatch> {
+    pub fn next_row_batch(&self) -> Option<RecordBatch> {
         Some(RecordBatch {
             schema: self.schema().clone(),
             data: ArrowChunk::new(self.next_row()?),
@@ -675,13 +675,13 @@ impl QueryHandle<'_> {
 impl<'a> QueryHandle<'a> {
     /// Returns an iterator backed by [`Self::next_row`].
     #[allow(clippy::should_implement_trait)] // we need an anonymous closure, this won't work
-    pub fn into_iter(mut self) -> impl Iterator<Item = Vec<Box<dyn ArrowArray>>> + 'a {
+    pub fn into_iter(self) -> impl Iterator<Item = Vec<Box<dyn ArrowArray>>> + 'a {
         std::iter::from_fn(move || self.next_row())
     }
 
     /// Returns an iterator backed by [`Self::next_row_batch`].
     #[allow(clippy::should_implement_trait)] // we need an anonymous closure, this won't work
-    pub fn into_batch_iter(mut self) -> impl Iterator<Item = RecordBatch> + 'a {
+    pub fn into_batch_iter(self) -> impl Iterator<Item = RecordBatch> + 'a {
         std::iter::from_fn(move || self.next_row_batch())
     }
 }
