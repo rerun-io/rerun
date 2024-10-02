@@ -498,6 +498,7 @@ zero_sized_map_values = "warn"
 # Disabled waiting on https://github.com/rust-lang/rust-clippy/issues/9602
 #self_named_module_files = "warn"
 
+assigning_clones = "allow"      # Too much for too little
 manual_range_contains = "allow" # this one is just worse imho
 map_unwrap_or = "allow"         # so is this one
 ref_patterns = "allow"          # It's nice to avoid ref pattern, but there are some situations that are hard (impossible?) to express without.

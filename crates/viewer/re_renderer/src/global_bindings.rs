@@ -35,11 +35,11 @@ pub struct FrameUniformBuffer {
     /// I.e. the UI zoom factor
     pub pixels_per_point: f32,
 
-    /// (tan(fov_y / 2) * aspect_ratio, tan(fov_y /2)), i.e. half ratio of screen dimension to screen distance in x & y.
+    /// `(tan(fov_y / 2) * aspect_ratio, tan(fov_y /2))`, i.e. half ratio of screen dimension to screen distance in x & y.
     /// Both values are set to f32max for orthographic projection
     pub tan_half_fov: wgpu_buffer_types::Vec2RowPadded,
 
-    /// re_renderer defined device tier.
+    /// `re_renderer` defined device tier.
     pub device_tier: wgpu_buffer_types::U32RowPadded,
 }
 

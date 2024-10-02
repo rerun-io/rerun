@@ -111,7 +111,7 @@ impl std::ops::Deref for ActiveTimeline {
 #[derive(serde::Deserialize, serde::Serialize, Clone, PartialEq)]
 #[serde(default)]
 pub struct TimeControl {
-    /// Name of the timeline (e.g. "log_time").
+    /// Name of the timeline (e.g. `log_time`).
     timeline: ActiveTimeline,
 
     states: BTreeMap<Timeline, TimeState>,

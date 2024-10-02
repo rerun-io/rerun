@@ -187,7 +187,7 @@ If no arguments are given, a server will be hosted which a Rerun SDK can connect
 
     /// Start the viewer in the browser (instead of locally).
     ///
-    /// Requires Rerun to have been compiled with the 'web_viewer' feature.
+    /// Requires Rerun to have been compiled with the `web_viewer` feature.
     ///
     /// This implies `--serve`.
     #[clap(long)]

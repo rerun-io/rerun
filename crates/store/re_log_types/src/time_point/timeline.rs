@@ -20,7 +20,7 @@ impl Default for TimelineName {
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 pub struct Timeline {
-    /// Name of the timeline (e.g. "log_time").
+    /// Name of the timeline (e.g. `log_time`).
     name: TimelineName,
 
     /// Sequence or time?

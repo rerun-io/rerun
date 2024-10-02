@@ -246,8 +246,7 @@ impl TransportChunk {
     pub fn is_sorted(&self) -> bool {
         self.schema
             .metadata
-            .get(Self::CHUNK_METADATA_MARKER_IS_SORTED_BY_ROW_ID)
-            .is_some()
+            .contains_key(Self::CHUNK_METADATA_MARKER_IS_SORTED_BY_ROW_ID)
     }
 
     /// Iterates all columns of the specified `kind`.
@@ -531,8 +530,7 @@ impl Chunk {
 
                 let is_sorted = field
                     .metadata
-                    .get(TransportChunk::FIELD_METADATA_MARKER_IS_SORTED_BY_TIME)
-                    .is_some();
+                    .contains_key(TransportChunk::FIELD_METADATA_MARKER_IS_SORTED_BY_TIME);
 
                 let time_column = TimeColumn::new(
                     is_sorted.then_some(true),

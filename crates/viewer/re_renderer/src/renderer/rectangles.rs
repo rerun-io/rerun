@@ -52,8 +52,7 @@ pub enum ShaderDecoding {
     Nv12,
     Yuy2,
 
-    /// BGR(A)->RGB(A) conversion is done in the shader.
-    /// (as opposed to doing it via ``)
+    /// Do BGR(A)->RGB(A) conversion is in the shader.
     Bgr,
 }
 
