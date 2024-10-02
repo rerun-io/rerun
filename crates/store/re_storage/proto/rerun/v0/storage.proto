@@ -75,9 +75,6 @@ message Query {
     repeated ColumnSelector column_selector = 5;
     // how are null values filled in the response
     SparseFillStrategy sparse_fill_strategy = 6;
-    // TODO missing column selector (selection field from QueryExpression)
-    // Index (FilteredIndex) should be of type IndexColumnSelector
-    // but for starters we should go an implement a query where you only define Timeline name!
 }
 
 message QueryResponse {
