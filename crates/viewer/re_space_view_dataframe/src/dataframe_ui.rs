@@ -28,70 +28,103 @@ pub(crate) enum HideColumnAction {
 }
 
 /// Display a dataframe table for the provided query.
-pub(crate) fn dataframe_ui<'a>(
+pub(crate) fn dataframe_ui(
     ctx: &ViewerContext<'_>,
     ui: &mut egui::Ui,
-    query: re_dataframe2::QueryHandle,
+    query_handle: &re_dataframe2::QueryHandle<'_>,
     expanded_rows_cache: &mut ExpandedRowsCache,
 ) -> Vec<HideColumnAction> {
-    dataframe_ui_impl(ctx, ui, &query, expanded_rows_cache)
-}
+    re_tracing::profile_function!();
 
-// /// A query handle for either a latest-at or range query.
-// pub(crate) enum QueryHandle<'a> {
-//     LatestAt(LatestAtQueryHandle<'a>),
-//     Range(RangeQueryHandle<'a>),
-// }
-//
-// impl QueryHandle<'_> {
-//     fn schema(&self) -> &[ColumnDescriptor] {
-//         match self {
-//             QueryHandle::LatestAt(query_handle) => query_handle.schema(),
-//             QueryHandle::Range(query_handle) => query_handle.schema(),
-//         }
-//     }
-//
-//     fn num_rows(&self) -> u64 {
-//         match self {
-//             // TODO(#7449): this is in general wrong! However, there is currently no way to know
-//             // if the number of row is 0 or 1. For now, we silently accept in the delegate when it
-//             // turns out to be 0.
-//             QueryHandle::LatestAt(_) => 1,
-//             QueryHandle::Range(query_handle) => query_handle.num_rows(),
-//         }
-//     }
-//
-//     fn get(&self, start: u64, num_rows: u64) -> Vec<RecordBatch> {
-//         match self {
-//             QueryHandle::LatestAt(query_handle) => {
-//                 // latest-at queries only have one row
-//                 debug_assert_eq!((start, num_rows), (0, 1));
-//
-//                 vec![query_handle.get()]
-//             }
-//             QueryHandle::Range(query_handle) => query_handle.get(start, num_rows),
-//         }
-//     }
-//
-//     fn timeline(&self) -> Timeline {
-//         match self {
-//             QueryHandle::LatestAt(query_handle) => query_handle.query().timeline,
-//             QueryHandle::Range(query_handle) => query_handle.query().timeline,
-//         }
-//     }
-// }
-//
-// impl<'a> From<LatestAtQueryHandle<'a>> for QueryHandle<'a> {
-//     fn from(query_handle: LatestAtQueryHandle<'a>) -> Self {
-//         QueryHandle::LatestAt(query_handle)
-//     }
-// }
-//
-// impl<'a> From<RangeQueryHandle<'a>> for QueryHandle<'a> {
-//     fn from(query_handle: RangeQueryHandle<'a>) -> Self {
-//         QueryHandle::Range(query_handle)
-//     }
-// }
+    let schema = query_handle
+        .selected_contents()
+        .iter()
+        .map(|(_, desc)| desc.clone())
+        .collect::<Vec<_>>();
+
+    // The table id mainly drives column widths, so it should be stable across queries leading to
+    // the same schema. However, changing the PoV typically leads to large changes of actual content
+    // (e.g., jump from one row to many). Since that can affect the optimal column width, we include
+    // the PoV in the salt.
+    let mut table_id_salt = egui::Id::new("__dataframe__").with(&schema);
+    //TODO fix that mess
+    // if let QueryHandle::Range(range_query_handle) = query_handle {
+    //     table_id_salt = table_id_salt.with(&range_query_handle.query().pov);
+    // }
+
+    // It's trickier for the row expansion cache.
+    //
+    // For latest-at view, there is always a single row, so it's ok to validate the cache against
+    // the schema. This means that changing the latest-at time stamp does _not_ invalidate, which is
+    // desirable. Otherwise, it would be impossible to expand a row when tracking the time panel
+    // while it is playing.
+    //
+    // For range queries, the row layout can change drastically when the query min/max times are
+    // modified, so in that case we invalidate against the query expression. This means that the
+    // expanded-ness is reset as soon as the min/max boundaries are changed in the selection panel,
+    // which is acceptable.
+
+    let row_expansion_id_salt = table_id_salt;
+    //TODO fix that mess
+    // let row_expansion_id_salt = match query_handle {
+    //     QueryHandle::LatestAt(_) => egui::Id::new("__dataframe_row_exp__").with(schema),
+    //     QueryHandle::Range(query) => egui::Id::new("__dataframe_row_exp__").with(query.query()),
+    // };
+
+    let (header_groups, header_entity_paths) = column_groups_for_entity(&schema);
+
+    let num_rows = query_handle.num_rows();
+
+    let mut table_delegate = DataframeTableDelegate {
+        ctx,
+        query_handle,
+        schema: &schema,
+        header_entity_paths,
+        num_rows,
+        display_data: Err(anyhow::anyhow!(
+            "No row data, `fetch_columns_and_rows` not called."
+        )),
+        expanded_rows: ExpandedRows::new(
+            ui.ctx().clone(),
+            ui.make_persistent_id(row_expansion_id_salt),
+            expanded_rows_cache,
+            re_ui::DesignTokens::table_line_height(),
+        ),
+        hide_column_actions: vec![],
+    };
+
+    let num_sticky_cols = schema
+        .iter()
+        .take_while(|cd| matches!(cd, ColumnDescriptor::Control(_) | ColumnDescriptor::Time(_)))
+        .count();
+
+    egui::Frame::none().inner_margin(5.0).show(ui, |ui| {
+        egui_table::Table::new()
+            .id_salt(table_id_salt)
+            .columns(
+                schema
+                    .iter()
+                    .map(|column_descr| {
+                        egui_table::Column::new(200.0)
+                            .resizable(true)
+                            .id(egui::Id::new(column_descr))
+                    })
+                    .collect::<Vec<_>>(),
+            )
+            .num_sticky_cols(num_sticky_cols)
+            .headers(vec![
+                egui_table::HeaderRow {
+                    height: re_ui::DesignTokens::table_header_height(),
+                    groups: header_groups,
+                },
+                egui_table::HeaderRow::new(re_ui::DesignTokens::table_header_height()),
+            ])
+            .num_rows(num_rows)
+            .show(ui, &mut table_delegate);
+    });
+
+    table_delegate.hide_column_actions
+}
 
 #[derive(Debug, Clone, Copy)]
 struct BatchRef {
@@ -556,105 +589,6 @@ fn line_ui(
 
         SubcellKind::Blank => { /* nothing to show */ }
     }
-}
-
-/// Display the result of a [`QueryHandle`] in a table.
-fn dataframe_ui_impl(
-    ctx: &ViewerContext<'_>,
-    ui: &mut egui::Ui,
-    query_handle: &re_dataframe2::QueryHandle,
-    expanded_rows_cache: &mut ExpandedRowsCache,
-) -> Vec<HideColumnAction> {
-    re_tracing::profile_function!();
-
-    let schema = query_handle
-        .selected_contents()
-        .iter()
-        .map(|(_, desc)| desc.clone())
-        .collect::<Vec<_>>();
-
-    // The table id mainly drives column widths, so it should be stable across queries leading to
-    // the same schema. However, changing the PoV typically leads to large changes of actual content
-    // (e.g., jump from one row to many). Since that can affect the optimal column width, we include
-    // the PoV in the salt.
-    let mut table_id_salt = egui::Id::new("__dataframe__").with(&schema);
-    //TODO fix that mess
-    // if let QueryHandle::Range(range_query_handle) = query_handle {
-    //     table_id_salt = table_id_salt.with(&range_query_handle.query().pov);
-    // }
-
-    // It's trickier for the row expansion cache.
-    //
-    // For latest-at view, there is always a single row, so it's ok to validate the cache against
-    // the schema. This means that changing the latest-at time stamp does _not_ invalidate, which is
-    // desirable. Otherwise, it would be impossible to expand a row when tracking the time panel
-    // while it is playing.
-    //
-    // For range queries, the row layout can change drastically when the query min/max times are
-    // modified, so in that case we invalidate against the query expression. This means that the
-    // expanded-ness is reset as soon as the min/max boundaries are changed in the selection panel,
-    // which is acceptable.
-
-    let row_expansion_id_salt = table_id_salt;
-    //TODO fix that mess
-    // let row_expansion_id_salt = match query_handle {
-    //     QueryHandle::LatestAt(_) => egui::Id::new("__dataframe_row_exp__").with(schema),
-    //     QueryHandle::Range(query) => egui::Id::new("__dataframe_row_exp__").with(query.query()),
-    // };
-
-    let (header_groups, header_entity_paths) = column_groups_for_entity(&schema);
-
-    let num_rows = query_handle.num_rows();
-
-    let mut table_delegate = DataframeTableDelegate {
-        ctx,
-        query_handle,
-        schema: &schema,
-        header_entity_paths,
-        num_rows,
-        display_data: Err(anyhow::anyhow!(
-            "No row data, `fetch_columns_and_rows` not called."
-        )),
-        expanded_rows: ExpandedRows::new(
-            ui.ctx().clone(),
-            ui.make_persistent_id(row_expansion_id_salt),
-            expanded_rows_cache,
-            re_ui::DesignTokens::table_line_height(),
-        ),
-        hide_column_actions: vec![],
-    };
-
-    let num_sticky_cols = schema
-        .iter()
-        .take_while(|cd| matches!(cd, ColumnDescriptor::Control(_) | ColumnDescriptor::Time(_)))
-        .count();
-
-    egui::Frame::none().inner_margin(5.0).show(ui, |ui| {
-        egui_table::Table::new()
-            .id_salt(table_id_salt)
-            .columns(
-                schema
-                    .iter()
-                    .map(|column_descr| {
-                        egui_table::Column::new(200.0)
-                            .resizable(true)
-                            .id(egui::Id::new(column_descr))
-                    })
-                    .collect::<Vec<_>>(),
-            )
-            .num_sticky_cols(num_sticky_cols)
-            .headers(vec![
-                egui_table::HeaderRow {
-                    height: re_ui::DesignTokens::table_header_height(),
-                    groups: header_groups,
-                },
-                egui_table::HeaderRow::new(re_ui::DesignTokens::table_header_height()),
-            ])
-            .num_rows(num_rows)
-            .show(ui, &mut table_delegate);
-    });
-
-    table_delegate.hide_column_actions
 }
 
 /// Groups column by entity paths.
