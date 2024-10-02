@@ -3,7 +3,7 @@
 use super::{Config, Sample, Segment, Time, Timescale, VideoData, VideoLoadError};
 
 pub fn load_mp4(bytes: &[u8]) -> Result<VideoData, VideoLoadError> {
-    let mp4 = re_mp4::read(bytes)?;
+    let mp4 = re_mp4::Mp4::read_bytes(bytes)?;
 
     let mp4_tracks = mp4.tracks().iter().map(|(k, t)| (*k, t.kind)).collect();
 

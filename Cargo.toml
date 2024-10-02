@@ -550,7 +550,7 @@ missing_errors_doc = "allow"
 
 # commit on `rerun-io/mp4` `master` branch: https://github.com/rerun-io/re_mp4/tree/master
 # https://github.com/rerun-io/mp4/commit/3236c76f9228cf6ab0b2bfb1b8f9ffcde975ea05
-re_mp4 = { git = "https://github.com/rerun-io/re_mp4", rev = "2ea1296f6aa1242ee0395aaf866516072ed0e7fa" }
+re_mp4 = { git = "https://github.com/rerun-io/re_mp4", rev = "4705e85f62ddb47c32d9c091d8f0662068211bc8" }
 
 # commit on `rerun-io/re_arrow2` `main` branch
 # https://github.com/rerun-io/re_arrow2/commit/e4717d6debc6d4474ec10db8f629f823f57bad07
