@@ -279,8 +279,7 @@ impl SpaceViewClass for GraphSpaceView {
         let edge_system = system_output.view_systems.get::<GraphEdgeVisualizer>()?;
 
         let state = state.downcast_mut::<GraphSpaceViewState>()?;
-        let (id, view_rect_in_window) = ui.allocate_space(ui.available_size());
-        log::debug!("Created view rect: {:?}", view_rect_in_window);
+        let (id, clip_rect_window) = ui.allocate_space(ui.available_size());
 
         let Some(layout) = &mut state.layout else {
             let node_sizes =
@@ -297,7 +296,7 @@ impl SpaceViewClass for GraphSpaceView {
             if let Some(bounding_box) = bounding_rect_from_iter(layout.values()) {
                 state.world_to_view = fit_bounding_rect_to_screen(
                     bounding_box.scale_from_center(1.05),
-                    view_rect_in_window.size(),
+                    clip_rect_window.size(),
                 );
             }
 
@@ -306,7 +305,7 @@ impl SpaceViewClass for GraphSpaceView {
             return Ok(());
         };
 
-        let response = ui.interact(view_rect_in_window, id, egui::Sense::click_and_drag());
+        let response = ui.interact(clip_rect_window, id, egui::Sense::click_and_drag());
 
         // Allow dragging the background as well.
         if response.dragged() {
@@ -318,11 +317,12 @@ impl SpaceViewClass for GraphSpaceView {
 
         #[cfg(debug_assertions)]
         if response.double_clicked() {
-            if let Some(screen) = response.interact_pointer_pos() {
+            if let Some(window) = response.interact_pointer_pos() {
                 log::debug!(
-                    "Clicked! Screen: {:?}, World: {:?}",
-                    screen,
-                    world_to_window.inverse() * screen
+                    "Click event! Window: {:?}, View: {:?} World: {:?}",
+                    window,
+                    view_to_window.inverse() * window,
+                    world_to_window.inverse() * window,
                 );
             }
         }
@@ -346,7 +346,7 @@ impl SpaceViewClass for GraphSpaceView {
             }
         }
 
-        // initial layout
+        let clip_rect_world = world_to_window.inverse() * clip_rect_window;
 
         let window_layer = ui.layer_id();
 
@@ -356,11 +356,7 @@ impl SpaceViewClass for GraphSpaceView {
             ui.ctx().set_transform_layer(debug_id, world_to_window);
 
             // Paint the coordinate system.
-            let painter = egui::Painter::new(
-                ui.ctx().clone(),
-                debug_id,
-                world_to_window.inverse() * view_rect_in_window,
-            );
+            let painter = egui::Painter::new(ui.ctx().clone(), debug_id, clip_rect_world);
 
             // paint coordinate system at the world origin
             let origin = egui::Pos2::new(0.0, 0.0);
@@ -374,8 +370,6 @@ impl SpaceViewClass for GraphSpaceView {
             );
 
             if let Some(bounding_box) = bounding_rect_from_iter(layout.values()) {
-                log::debug!("Node bounding box: {:?}", bounding_box);
-
                 painter.rect(
                     bounding_box,
                     0.0,
@@ -397,7 +391,7 @@ impl SpaceViewClass for GraphSpaceView {
                     .constrain(false)
                     .show(ui.ctx(), |ui| {
                         let highlight = ent_highlight.index_highlight(node.instance);
-                        ui.set_clip_rect(world_to_window.inverse() * view_rect_in_window);
+                        ui.set_clip_rect(clip_rect_world);
                         node.draw(ui, highlight)
                     })
                     .response;
@@ -421,7 +415,7 @@ impl SpaceViewClass for GraphSpaceView {
                     .fixed_pos(entity_rect.min)
                     .order(egui::Order::Background)
                     .show(ui.ctx(), |ui| {
-                        ui.set_clip_rect(world_to_window.inverse() * view_rect_in_window);
+                        ui.set_clip_rect(clip_rect_world);
                         egui::Frame::default()
                             .rounding(egui::Rounding::same(4.0))
                             .stroke(egui::Stroke::new(
@@ -466,7 +460,7 @@ impl SpaceViewClass for GraphSpaceView {
                         .order(egui::Order::Middle)
                         .constrain(false)
                         .show(ui.ctx(), |ui| {
-                            ui.set_clip_rect(world_to_window.inverse() * view_rect_in_window);
+                            ui.set_clip_rect(world_to_window.inverse() * clip_rect_window);
                             egui::Frame::default().show(ui, |ui| {
                                 let painter = ui.painter();
                                 painter.line_segment(
