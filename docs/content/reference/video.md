@@ -46,7 +46,7 @@ For decoding video in the Web Viewer, we use the [WebCodecs API](https://develop
 This API enables us to take advantage of the browser's hardware accelerated video decoding capabilities.
 It is implemented by all modern browsers, but with varying levels of support for different codecs, and varying levels of quality.
 
-With that in mind, here are the browsers which we have tested and verified to work:
+With that in mind, here are the browsers which we have tested and verified to generally work:
 
 |            | Linux  | macOS | Windows |
 | ---------- | ------ | ----- | ------- |
@@ -64,11 +64,11 @@ which codecs are supported by which browser, see [Video codecs on MDN](https://d
 
 At the moment, we test the following codecs:
 
-|           | Linux | macOS    | Windows |
-| ----------| ----- | -------- | ------- |
-| AV1       | ✅    | 🚧[^4]  | ✅      |
-| H.264     | ✅    | ✅      | ✅      |
-| H.265[^5] |       | ✅[^6]  |         |
+|           | Linux Firefox | Linux Chrome | macOS Firefox | macOS Chrome | macOS Safari | Windows Firefox | Windows Chrome |
+| --------- | ------------- | ------------ | ------------- | ------------ | ------------ | --------------- | -------------- |
+| AV1       | ✅            | ✅           | ✅           | ✅           | 🚧[^4]       | ✅             | ✅            |
+| H.264     | ✅            | ✅           | ✅           | ✅           | ✅           | ✅             | ✅            |
+| H.265     | ❌            | ❓           | ❌           | ✅           | 🚧[^6]       | ❌             | ❓            |
  
 [^4]: Safari/WebKit does not support AV1 decoding except on [Apple Silicon devices with hardware support](https://webkit.org/blog/14445/webkit-features-in-safari-17-0/).
 [^5]: Firefox does not support H.265 decoding on any platform.
