@@ -65,11 +65,11 @@ class SelectedColumnsExt:
         if isinstance(input_data, SelectedColumns):
             data = [input_data]
         else:
-            # if we're a sequence, chances are we the input of a single SelectedColumn...
+            # if we're a sequence, chances are we the input of a single SelectedColumns…
             try:
                 data = [SelectedColumns(input_data)]  # type: ignore[arg-type]
             except ValueError:
-                # ... but it could be that we're a sequence of SelectedColumns/inputs to SelectedColumns
+                # …but it could be that we're a sequence of SelectedColumns/inputs to SelectedColumns
                 data = [d if isinstance(d, SelectedColumns) else SelectedColumns(d) for d in input_data]
 
         time_columns = pa.ListArray.from_arrays(
