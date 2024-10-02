@@ -3,7 +3,9 @@
 use itertools::Itertools;
 
 use re_chunk::TimeInt;
-use re_chunk_store::{ChunkStore, ChunkStoreConfig, QueryExpression2, Timeline, VersionPolicy};
+use re_chunk_store::{
+    ChunkStore, ChunkStoreConfig, QueryExpression2, SparseFillStrategy, Timeline, VersionPolicy,
+};
 use re_dataframe2::{QueryCache, QueryEngine};
 use re_log_types::{EntityPathFilter, ResolvedTimeRange, StoreKind};
 
@@ -32,6 +34,7 @@ fn main() -> anyhow::Result<()> {
     let entity_path_filter = EntityPathFilter::try_from(args.get(5).map_or("/**", |s| s.as_str()))?;
 
     // TODO(cmc): We need to take a selector, not a Timeline.
+    // TODO(cmc): actually let's just add helpers to find the timeline one's looking for?
     let timeline = match timeline_name {
         "log_time" => Timeline::new_temporal(timeline_name),
         "log_tick" => Timeline::new_sequence(timeline_name),
@@ -65,6 +68,7 @@ fn main() -> anyhow::Result<()> {
                 .collect(),
         );
         query.filtered_index_range = Some(ResolvedTimeRange::new(time_from, time_to));
+        query.sparse_fill_strategy = SparseFillStrategy::LatestAtGlobal;
         eprintln!("{query:#?}:");
 
         let query_handle = query_engine.query(query.clone());

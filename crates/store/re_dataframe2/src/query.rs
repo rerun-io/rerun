@@ -7,10 +7,10 @@ use ahash::HashSet;
 use arrow2::{
     array::Array as ArrowArray, chunk::Chunk as ArrowChunk, datatypes::Schema as ArrowSchema,
 };
-use itertools::Itertools as _;
+use itertools::Itertools;
 
 use nohash_hasher::IntMap;
-use re_chunk::{Chunk, RangeQuery, RowId, TimeInt, Timeline};
+use re_chunk::{Chunk, RangeQuery, RowId, TimeInt, Timeline, UnitChunkShared};
 use re_chunk_store::{
     ColumnDescriptor, ColumnSelector, ComponentColumnDescriptor, ComponentColumnSelector,
     ControlColumnDescriptor, ControlColumnSelector, JoinEncoding, QueryExpression2,
@@ -27,10 +27,10 @@ use crate::{QueryEngine, RecordBatch};
 // * [x] custom selection
 // * [x] support for overlaps (slow)
 // * [x] pagination (any solution, even a slow one)
+// * [x] latestat sparse-filling
 // * [ ] overlaps (less dumb)
 // * [ ] selector-based `filtered_index`
 // * [ ] clears
-// * [ ] latestat sparse-filling
 // * [ ] pagination (fast)
 // * [ ] pov support
 // * [ ] sampling support
@@ -636,6 +636,8 @@ impl QueryHandle<'_> {
         let view_sliced_arrays: Vec<Option<_>> = view_streaming_state
             .iter()
             .map(|streaming_state| {
+                // NOTE: Reminder: the only reason the streaming state could be `None` here is
+                // because this column does not have data for the current index value (i.e. `null`).
                 streaming_state.as_ref().and_then(|streaming_state| {
                     let cursor = streaming_state.cursor.fetch_add(1, Ordering::Relaxed);
 
@@ -664,35 +666,149 @@ impl QueryHandle<'_> {
         // TODO(cmc): It would likely be worth it to allocate all these possible
         // null-arrays ahead of time, and just return a pointer to those in the failure
         // case here.
-        let arrays = state
-            .selected_contents
-            .iter()
-            .map(|(view_idx, column)| match column {
-                ColumnDescriptor::Control(_) => cur_most_recent_row.chunk.row_ids_array().sliced(
-                    cur_most_recent_row
-                        .cursor
-                        .load(Ordering::Relaxed)
-                        // NOTE: We did the cursor increments while computing the final sliced arrays,
-                        // so we need to go back one tick for this.
-                        .saturating_sub(1) as usize,
-                    1,
-                ),
 
-                ColumnDescriptor::Time(descr) => {
-                    max_value_per_index.remove(&descr.timeline).map_or_else(
-                        || arrow2::array::new_null_array(column.datatype(), 1),
-                        |(_time, time_sliced)| time_sliced,
-                    )
+        // TODO: explain the two-pass process.
+
+        let mut arrays: Vec<Option<Box<dyn ArrowArray>>> =
+            vec![None; state.selected_contents.len()];
+
+        state.selected_contents.iter().enumerate().for_each(
+            |(selected_idx, (view_idx, column))| match column {
+                ColumnDescriptor::Control(_) | ColumnDescriptor::Time(_) => {}
+
+                ColumnDescriptor::Component(descr) => {
+                    let list_array = view_sliced_arrays.get(*view_idx).cloned();
+                    let column_exists = list_array.is_some();
+
+                    if !column_exists {
+                        arrays[selected_idx] =
+                            Some(arrow2::array::new_null_array(column.datatype(), 1));
+                        return;
+                    }
+
+                    arrays[selected_idx] = if let Some(list_array) = list_array.flatten() {
+                        Some(list_array)
+                    } else {
+                        // The streaming state itself is missing, i.e. there is no value for this
+                        // column at the current index value.
+
+                        match self.query.sparse_fill_strategy {
+                            re_chunk_store::SparseFillStrategy::None => {
+                                eprintln!("early exit -- missing without fill");
+                                Some(arrow2::array::new_null_array(column.datatype(), 1))
+                            }
+
+                            // NOTE: While it would be very tempting to resolve the latest-at state
+                            // of the entire view contents at `filtered_index_range.start - 1` once
+                            // during queryhandle initialization, and then bootstrap off of that, that
+                            // would effectively close the door to efficient pagination forever, since
+                            // we'd have to iterate over all the pages to compute the right latest-at
+                            // value at t+n (i.e. no random access possible).
+                            // Therefore, it is better to simply do this the "dumb" way.
+                            //
+                            // TODO(cmc): Still, as always, this can be made faster and smarter at
+                            // the cost of some extra complexity (e.g. caching the result across
+                            // consecutive nulls etc). Later.
+                            re_chunk_store::SparseFillStrategy::LatestAtGlobal => {
+                                let query = re_chunk::LatestAtQuery::new(
+                                    self.query.filtered_index,
+                                    cur_index_value,
+                                );
+
+                                let results = self.engine.cache.latest_at(
+                                    self.engine.store,
+                                    &query,
+                                    &descr.entity_path,
+                                    [descr.component_name],
+                                );
+
+                                let array = results
+                                    .components
+                                    .get(&descr.component_name)
+                                    .and_then(|unit| {
+                                        // TODO: holy that's ugly.
+                                        unit.timelines()
+                                            .values()
+                                            // TODO: cannot possibly beat this one
+                                            .filter(|time_column| {
+                                                *time_column.timeline() != self.query.filtered_index
+                                            })
+                                            // NOTE: Cannot fail, just want to stay away from unwraps.
+                                            .flat_map(|time_column| {
+                                                time_column
+                                                    .times_raw()
+                                                    .iter()
+                                                    .copied()
+                                                    .map(TimeInt::new_temporal)
+                                                    .map(|time| {
+                                                        (
+                                                            *time_column.timeline(),
+                                                            (
+                                                                time,
+                                                                time_column
+                                                                    .times_array()
+                                                                    .sliced(0, 1),
+                                                            ),
+                                                        )
+                                                    })
+                                            })
+                                            .for_each(|(timeline, (time, time_sliced))| {
+                                                max_value_per_index
+                                                    .entry(timeline)
+                                                    .and_modify(|(max_time, max_time_sliced)| {
+                                                        if time > *max_time {
+                                                            *max_time = time;
+                                                            *max_time_sliced = time_sliced.clone();
+                                                        }
+                                                    })
+                                                    .or_insert((time, time_sliced));
+                                            });
+
+                                        unit.components()
+                                            .get(&descr.component_name)
+                                            .map(|list_array| list_array.to_boxed())
+                                    })
+                                    .unwrap_or_else(|| {
+                                        arrow2::array::new_null_array(column.datatype(), 1)
+                                    });
+
+                                Some(array)
+                            }
+                        }
+                    };
+                }
+            },
+        );
+
+        state.selected_contents.iter().enumerate().for_each(
+            |(selected_idx, (_view_idx, column))| match column {
+                ColumnDescriptor::Control(_) => {
+                    arrays[selected_idx] = Some(
+                        cur_most_recent_row.chunk.row_ids_array().sliced(
+                            cur_most_recent_row
+                                .cursor
+                                .load(Ordering::Relaxed)
+                                // NOTE: We did the cursor increments while computing the final sliced arrays,
+                                // so we need to go back one tick for this.
+                                .saturating_sub(1) as usize,
+                            1,
+                        ),
+                    );
                 }
 
-                ColumnDescriptor::Component(_descr) => view_sliced_arrays
-                    .get(*view_idx)
-                    .cloned()
-                    .flatten()
-                    .unwrap_or_else(|| arrow2::array::new_null_array(column.datatype(), 1)),
-            })
-            .collect_vec();
+                ColumnDescriptor::Time(descr) => {
+                    arrays[selected_idx] =
+                        Some(max_value_per_index.remove(&descr.timeline).map_or_else(
+                            || arrow2::array::new_null_array(column.datatype(), 1),
+                            |(_time, time_sliced)| time_sliced,
+                        ));
+                }
 
+                ColumnDescriptor::Component(_) => {}
+            },
+        );
+
+        let arrays = arrays.into_iter().flatten().collect_vec();
         debug_assert_eq!(state.arrow_schema.fields.len(), arrays.len());
 
         Some(arrays)
@@ -724,5 +840,250 @@ impl<'a> QueryHandle<'a> {
     #[allow(clippy::should_implement_trait)] // we need an anonymous closure, this won't work
     pub fn into_batch_iter(self) -> impl Iterator<Item = RecordBatch> + 'a {
         std::iter::from_fn(move || self.next_row_batch())
+    }
+}
+
+// ---
+
+#[cfg(test)]
+mod tests {
+    use std::sync::Arc;
+
+    use re_chunk::{Chunk, ChunkId, RowId, TimePoint};
+    use re_chunk_store::{
+        ChunkStore, ChunkStoreConfig, LatestAtQuery, RangeQuery, ResolvedTimeRange, TimeInt,
+    };
+    use re_log_types::{
+        build_frame_nr,
+        example_components::{MyColor, MyIndex, MyPoint},
+        EntityPath, TimeType, Timeline,
+    };
+    use re_types_core::{ComponentName, Loggable as _};
+
+    use crate::QueryCache;
+
+    use super::*;
+
+    // TODO(cmc): at least one basic test for every feature in `QueryExpression2`.
+    // In no particular order:
+    // * [x] filtered_index
+    // * [ ] view_contents
+    // * [ ] filtered_index_range
+    // * [ ] filtered_index_values
+    // * [ ] sampled_index_values
+    // * [ ] filtered_point_of_view
+    // * [ ] sparse_fill_strategy
+    // * [ ] selection
+
+    #[test]
+    fn query_filtered_index() -> anyhow::Result<()> {
+        re_log::setup_logging();
+
+        let store = create_nasty_store()?;
+        eprintln!("{store}");
+        let query_cache = QueryCache::new(&store);
+        let query_engine = QueryEngine {
+            store: &store,
+            cache: &query_cache,
+        };
+
+        let timeline = Timeline::new_sequence("frame_nr");
+        let mut query = QueryExpression2::new(timeline);
+        eprintln!("{query:#?}:");
+
+        let query_handle = query_engine.query(query.clone());
+        let dataframe =
+            concatenate_record_batches(&query_handle.into_batch_iter().collect_vec()).unwrap();
+        eprintln!("{dataframe}");
+
+        Ok(())
+    }
+
+    /// Returns a very nasty [`ChunkStore`] with all kinds of partial updates, chunk overlaps,
+    /// repeated timestamps, duplicated chunks, etc.
+    fn create_nasty_store() -> anyhow::Result<ChunkStore> {
+        let mut store = ChunkStore::new(
+            re_log_types::StoreId::random(re_log_types::StoreKind::Recording),
+            ChunkStoreConfig::COMPACTION_DISABLED,
+        );
+
+        let entity_path = EntityPath::from("this/that");
+
+        let frame0 = TimeInt::new_temporal(0);
+        let frame1 = TimeInt::new_temporal(1);
+        let frame2 = TimeInt::new_temporal(2);
+        let frame3 = TimeInt::new_temporal(3);
+        let frame4 = TimeInt::new_temporal(4);
+        let frame5 = TimeInt::new_temporal(5);
+        let frame6 = TimeInt::new_temporal(6);
+        let frame7 = TimeInt::new_temporal(7);
+        let frame8 = TimeInt::new_temporal(8);
+
+        let points1 = MyPoint::from_iter(0..1);
+        let points2 = MyPoint::from_iter(1..2);
+        let points3 = MyPoint::from_iter(2..3);
+        let points4 = MyPoint::from_iter(3..4);
+        let points5 = MyPoint::from_iter(4..5);
+        let points6 = MyPoint::from_iter(5..6);
+        let points7_1 = MyPoint::from_iter(6..7);
+        let points7_2 = MyPoint::from_iter(7..8);
+        let points7_3 = MyPoint::from_iter(8..9);
+
+        let colors3 = MyColor::from_iter(2..3);
+        let colors4 = MyColor::from_iter(3..4);
+        let colors5 = MyColor::from_iter(4..5);
+        let colors7 = MyColor::from_iter(6..7);
+
+        let row_id1_1 = RowId::new();
+        let row_id1_3 = RowId::new();
+        let row_id1_5 = RowId::new();
+        let row_id1_7_1 = RowId::new();
+        let row_id1_7_2 = RowId::new();
+        let row_id1_7_3 = RowId::new();
+        let chunk1 = Chunk::builder(entity_path.clone())
+            .with_sparse_component_batches(
+                row_id1_1,
+                [build_frame_nr(frame1)],
+                [
+                    (MyPoint::name(), Some(&points1 as _)),
+                    (MyColor::name(), None),
+                ],
+            )
+            .with_sparse_component_batches(
+                row_id1_3,
+                [build_frame_nr(frame3)],
+                [
+                    (MyPoint::name(), Some(&points3 as _)),
+                    (MyColor::name(), Some(&colors3 as _)),
+                ],
+            )
+            .with_sparse_component_batches(
+                row_id1_5,
+                [build_frame_nr(frame5)],
+                [
+                    (MyPoint::name(), Some(&points5 as _)),
+                    (MyColor::name(), None),
+                ],
+            )
+            .with_sparse_component_batches(
+                row_id1_7_1,
+                [build_frame_nr(frame7)],
+                [(MyPoint::name(), Some(&points7_1 as _))],
+            )
+            .with_sparse_component_batches(
+                row_id1_7_2,
+                [build_frame_nr(frame7)],
+                [(MyPoint::name(), Some(&points7_2 as _))],
+            )
+            .with_sparse_component_batches(
+                row_id1_7_3,
+                [build_frame_nr(frame7)],
+                [(MyPoint::name(), Some(&points7_3 as _))],
+            )
+            .build()?;
+
+        let chunk1 = Arc::new(chunk1);
+        store.insert_chunk(&chunk1)?;
+        store.insert_chunk(&chunk1)?; // x2 !
+
+        let row_id2_2 = RowId::new();
+        let row_id2_3 = RowId::new();
+        let row_id2_4 = RowId::new();
+        let chunk2 = Chunk::builder(entity_path.clone())
+            .with_sparse_component_batches(
+                row_id2_2,
+                [build_frame_nr(frame2)],
+                [(MyPoint::name(), Some(&points2 as _))],
+            )
+            .with_sparse_component_batches(
+                row_id2_3,
+                [build_frame_nr(frame3)],
+                [
+                    (MyPoint::name(), Some(&points3 as _)),
+                    (MyColor::name(), Some(&colors3 as _)),
+                ],
+            )
+            .with_sparse_component_batches(
+                row_id2_4,
+                [build_frame_nr(frame4)],
+                [(MyPoint::name(), Some(&points4 as _))],
+            )
+            .build()?;
+
+        let chunk2 = Arc::new(chunk2);
+        store.insert_chunk(&chunk2)?;
+
+        let row_id3_2 = RowId::new();
+        let row_id3_4 = RowId::new();
+        let row_id3_6 = RowId::new();
+        let chunk3 = Chunk::builder(entity_path.clone())
+            .with_sparse_component_batches(
+                row_id3_2,
+                [build_frame_nr(frame2)],
+                [(MyPoint::name(), Some(&points2 as _))],
+            )
+            .with_sparse_component_batches(
+                row_id3_4,
+                [build_frame_nr(frame4)],
+                [(MyPoint::name(), Some(&points4 as _))],
+            )
+            .with_sparse_component_batches(
+                row_id3_6,
+                [build_frame_nr(frame6)],
+                [(MyPoint::name(), Some(&points6 as _))],
+            )
+            .build()?;
+
+        let chunk3 = Arc::new(chunk3);
+        store.insert_chunk(&chunk3)?;
+
+        let row_id4_4 = RowId::new();
+        let row_id4_5 = RowId::new();
+        let row_id4_7 = RowId::new();
+        let chunk4 = Chunk::builder(entity_path.clone())
+            .with_sparse_component_batches(
+                row_id4_4,
+                [build_frame_nr(frame4)],
+                [(MyColor::name(), Some(&colors4 as _))],
+            )
+            .with_sparse_component_batches(
+                row_id4_5,
+                [build_frame_nr(frame5)],
+                [(MyColor::name(), Some(&colors5 as _))],
+            )
+            .with_sparse_component_batches(
+                row_id4_7,
+                [build_frame_nr(frame7)],
+                [(MyColor::name(), Some(&colors7 as _))],
+            )
+            .build()?;
+
+        let chunk4 = Arc::new(chunk4);
+        store.insert_chunk(&chunk4)?;
+
+        Ok(store)
+    }
+
+    fn concatenate_record_batches(batches: &[RecordBatch]) -> Option<RecordBatch> {
+        assert!(batches.iter().map(|batch| &batch.schema).all_equal());
+
+        let first = batches.first()?;
+
+        let mut arrays = Vec::new();
+        for (i, field) in first.schema.fields.iter().enumerate() {
+            let array = arrow2::compute::concatenate::concatenate(
+                &batches
+                    .iter()
+                    .map(|batch| &*batch.data[i] as &dyn ArrowArray)
+                    .collect_vec(),
+            )
+            .unwrap();
+            arrays.push(array);
+        }
+
+        Some(RecordBatch {
+            schema: first.schema.clone(),
+            data: ArrowChunk::new(arrays),
+        })
     }
 }

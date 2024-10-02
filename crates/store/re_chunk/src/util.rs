@@ -5,6 +5,7 @@ use arrow2::{
         PrimitiveArray as ArrowPrimitiveArray,
     },
     bitmap::Bitmap as ArrowBitmap,
+    chunk::Chunk as ArrowChunk,
     datatypes::DataType as ArrowDatatype,
     offset::Offsets as ArrowOffsets,
 };
