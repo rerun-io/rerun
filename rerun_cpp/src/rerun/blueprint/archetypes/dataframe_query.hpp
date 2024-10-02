@@ -21,7 +21,7 @@
 
 namespace rerun::blueprint::archetypes {
     /// **Archetype**: The query for the dataframe view.
-    struct DataframeQueryV2 {
+    struct DataframeQuery {
         /// The timeline for this query.
         ///
         /// If unset, the timeline currently active on the time panel is used.
@@ -43,19 +43,19 @@ namespace rerun::blueprint::archetypes {
 
       public:
         static constexpr const char IndicatorComponentName[] =
-            "rerun.blueprint.components.DataframeQueryV2Indicator";
+            "rerun.blueprint.components.DataframeQueryIndicator";
 
         /// Indicator component, used to identify the archetype when converting to a list of components.
         using IndicatorComponent = rerun::components::IndicatorComponent<IndicatorComponentName>;
 
       public:
-        DataframeQueryV2() = default;
-        DataframeQueryV2(DataframeQueryV2&& other) = default;
+        DataframeQuery() = default;
+        DataframeQuery(DataframeQuery&& other) = default;
 
         /// The timeline for this query.
         ///
         /// If unset, the timeline currently active on the time panel is used.
-        DataframeQueryV2 with_timeline(rerun::blueprint::components::TimelineName _timeline) && {
+        DataframeQuery with_timeline(rerun::blueprint::components::TimelineName _timeline) && {
             timeline = std::move(_timeline);
             // See: https://github.com/rerun-io/rerun/issues/4027
             RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
@@ -64,7 +64,7 @@ namespace rerun::blueprint::archetypes {
         /// If provided, only rows whose timestamp is within this range will be shown.
         ///
         /// Note: will be unset as soon as `timeline` is changed.
-        DataframeQueryV2 with_filter_by_range(
+        DataframeQuery with_filter_by_range(
             rerun::blueprint::components::FilterByRange _filter_by_range
         ) && {
             filter_by_range = std::move(_filter_by_range);
@@ -73,7 +73,7 @@ namespace rerun::blueprint::archetypes {
         }
 
         /// If provided, only show rows which contains a logged event for the specified component.
-        DataframeQueryV2 with_filter_by_event(
+        DataframeQuery with_filter_by_event(
             rerun::blueprint::components::FilterByEvent _filter_by_event
         ) && {
             filter_by_event = std::move(_filter_by_event);
@@ -82,7 +82,7 @@ namespace rerun::blueprint::archetypes {
         }
 
         /// Should empty cells be filled with latest-at queries?
-        DataframeQueryV2 with_apply_latest_at(
+        DataframeQuery with_apply_latest_at(
             rerun::blueprint::components::ApplyLatestAt _apply_latest_at
         ) && {
             apply_latest_at = std::move(_apply_latest_at);
@@ -91,7 +91,7 @@ namespace rerun::blueprint::archetypes {
         }
 
         /// Selected columns. If unset, all columns are selected.
-        DataframeQueryV2 with_select(rerun::blueprint::components::SelectedColumns _select) && {
+        DataframeQuery with_select(rerun::blueprint::components::SelectedColumns _select) && {
             select = std::move(_select);
             // See: https://github.com/rerun-io/rerun/issues/4027
             RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
@@ -107,10 +107,10 @@ namespace rerun {
 
     /// \private
     template <>
-    struct AsComponents<blueprint::archetypes::DataframeQueryV2> {
+    struct AsComponents<blueprint::archetypes::DataframeQuery> {
         /// Serialize all set component batches.
         static Result<std::vector<ComponentBatch>> serialize(
-            const blueprint::archetypes::DataframeQueryV2& archetype
+            const blueprint::archetypes::DataframeQuery& archetype
         );
     };
 } // namespace rerun

@@ -2,7 +2,7 @@ namespace rerun.blueprint.archetypes;
 
 
 /// The query for the dataframe view.
-table DataframeQueryV2 (
+table DataframeQuery (
     "attr.rerun.scope": "blueprint"
 ) {
     // --- Optional ---

@@ -21,7 +21,7 @@ for t in range(0, int(math.pi * 4 * 100.0)):
 blueprint = rrb.Blueprint(
     rrb.DataframeView(
         origin="/trig",
-        query=rrb.archetypes.DataframeQueryV2(
+        query=rrb.archetypes.DataframeQuery(
             timeline="t",
             filter_by_range=(rr.TimeInt(seconds=0), rr.TimeInt(seconds=20)),
             filter_by_event="/trig/tan_sparse:Scalar",

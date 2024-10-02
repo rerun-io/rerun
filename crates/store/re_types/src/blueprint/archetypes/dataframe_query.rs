@@ -20,7 +20,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Archetype**: The query for the dataframe view.
 #[derive(Clone, Debug)]
-pub struct DataframeQueryV2 {
+pub struct DataframeQuery {
     /// The timeline for this query.
     ///
     /// If unset, the timeline currently active on the time panel is used.
@@ -41,7 +41,7 @@ pub struct DataframeQueryV2 {
     pub select: Option<crate::blueprint::components::SelectedColumns>,
 }
 
-impl ::re_types_core::SizeBytes for DataframeQueryV2 {
+impl ::re_types_core::SizeBytes for DataframeQuery {
     #[inline]
     fn heap_size_bytes(&self) -> u64 {
         self.timeline.heap_size_bytes()
@@ -65,7 +65,7 @@ static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 0usize]> =
     once_cell::sync::Lazy::new(|| []);
 
 static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 1usize]> =
-    once_cell::sync::Lazy::new(|| ["rerun.blueprint.components.DataframeQueryV2Indicator".into()]);
+    once_cell::sync::Lazy::new(|| ["rerun.blueprint.components.DataframeQueryIndicator".into()]);
 
 static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 5usize]> =
     once_cell::sync::Lazy::new(|| {
@@ -81,7 +81,7 @@ static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 5usize]> =
 static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 6usize]> =
     once_cell::sync::Lazy::new(|| {
         [
-            "rerun.blueprint.components.DataframeQueryV2Indicator".into(),
+            "rerun.blueprint.components.DataframeQueryIndicator".into(),
             "rerun.blueprint.components.TimelineName".into(),
             "rerun.blueprint.components.FilterByRange".into(),
             "rerun.blueprint.components.FilterByEvent".into(),
@@ -90,30 +90,30 @@ static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 6usize]> =
         ]
     });
 
-impl DataframeQueryV2 {
+impl DataframeQuery {
     /// The total number of components in the archetype: 0 required, 1 recommended, 5 optional
     pub const NUM_COMPONENTS: usize = 6usize;
 }
 
-/// Indicator component for the [`DataframeQueryV2`] [`::re_types_core::Archetype`]
-pub type DataframeQueryV2Indicator = ::re_types_core::GenericIndicatorComponent<DataframeQueryV2>;
+/// Indicator component for the [`DataframeQuery`] [`::re_types_core::Archetype`]
+pub type DataframeQueryIndicator = ::re_types_core::GenericIndicatorComponent<DataframeQuery>;
 
-impl ::re_types_core::Archetype for DataframeQueryV2 {
-    type Indicator = DataframeQueryV2Indicator;
+impl ::re_types_core::Archetype for DataframeQuery {
+    type Indicator = DataframeQueryIndicator;
 
     #[inline]
     fn name() -> ::re_types_core::ArchetypeName {
-        "rerun.blueprint.archetypes.DataframeQueryV2".into()
+        "rerun.blueprint.archetypes.DataframeQuery".into()
     }
 
     #[inline]
     fn display_name() -> &'static str {
-        "Dataframe query v2"
+        "Dataframe query"
     }
 
     #[inline]
     fn indicator() -> MaybeOwnedComponentBatch<'static> {
-        static INDICATOR: DataframeQueryV2Indicator = DataframeQueryV2Indicator::DEFAULT;
+        static INDICATOR: DataframeQueryIndicator = DataframeQueryIndicator::DEFAULT;
         MaybeOwnedComponentBatch::Ref(&INDICATOR)
     }
 
@@ -150,7 +150,7 @@ impl ::re_types_core::Archetype for DataframeQueryV2 {
         let timeline =
             if let Some(array) = arrays_by_name.get("rerun.blueprint.components.TimelineName") {
                 <crate::blueprint::components::TimelineName>::from_arrow_opt(&**array)
-                    .with_context("rerun.blueprint.archetypes.DataframeQueryV2#timeline")?
+                    .with_context("rerun.blueprint.archetypes.DataframeQuery#timeline")?
                     .into_iter()
                     .next()
                     .flatten()
@@ -160,7 +160,7 @@ impl ::re_types_core::Archetype for DataframeQueryV2 {
         let filter_by_range =
             if let Some(array) = arrays_by_name.get("rerun.blueprint.components.FilterByRange") {
                 <crate::blueprint::components::FilterByRange>::from_arrow_opt(&**array)
-                    .with_context("rerun.blueprint.archetypes.DataframeQueryV2#filter_by_range")?
+                    .with_context("rerun.blueprint.archetypes.DataframeQuery#filter_by_range")?
                     .into_iter()
                     .next()
                     .flatten()
@@ -170,7 +170,7 @@ impl ::re_types_core::Archetype for DataframeQueryV2 {
         let filter_by_event =
             if let Some(array) = arrays_by_name.get("rerun.blueprint.components.FilterByEvent") {
                 <crate::blueprint::components::FilterByEvent>::from_arrow_opt(&**array)
-                    .with_context("rerun.blueprint.archetypes.DataframeQueryV2#filter_by_event")?
+                    .with_context("rerun.blueprint.archetypes.DataframeQuery#filter_by_event")?
                     .into_iter()
                     .next()
                     .flatten()
@@ -180,7 +180,7 @@ impl ::re_types_core::Archetype for DataframeQueryV2 {
         let apply_latest_at =
             if let Some(array) = arrays_by_name.get("rerun.blueprint.components.ApplyLatestAt") {
                 <crate::blueprint::components::ApplyLatestAt>::from_arrow_opt(&**array)
-                    .with_context("rerun.blueprint.archetypes.DataframeQueryV2#apply_latest_at")?
+                    .with_context("rerun.blueprint.archetypes.DataframeQuery#apply_latest_at")?
                     .into_iter()
                     .next()
                     .flatten()
@@ -190,7 +190,7 @@ impl ::re_types_core::Archetype for DataframeQueryV2 {
         let select =
             if let Some(array) = arrays_by_name.get("rerun.blueprint.components.SelectedColumns") {
                 <crate::blueprint::components::SelectedColumns>::from_arrow_opt(&**array)
-                    .with_context("rerun.blueprint.archetypes.DataframeQueryV2#select")?
+                    .with_context("rerun.blueprint.archetypes.DataframeQuery#select")?
                     .into_iter()
                     .next()
                     .flatten()
@@ -207,7 +207,7 @@ impl ::re_types_core::Archetype for DataframeQueryV2 {
     }
 }
 
-impl ::re_types_core::AsComponents for DataframeQueryV2 {
+impl ::re_types_core::AsComponents for DataframeQuery {
     fn as_component_batches(&self) -> Vec<MaybeOwnedComponentBatch<'_>> {
         re_tracing::profile_function!();
         use ::re_types_core::Archetype as _;
@@ -235,10 +235,10 @@ impl ::re_types_core::AsComponents for DataframeQueryV2 {
     }
 }
 
-impl ::re_types_core::ArchetypeReflectionMarker for DataframeQueryV2 {}
+impl ::re_types_core::ArchetypeReflectionMarker for DataframeQuery {}
 
-impl DataframeQueryV2 {
-    /// Create a new `DataframeQueryV2`.
+impl DataframeQuery {
+    /// Create a new `DataframeQuery`.
     #[inline]
     pub fn new() -> Self {
         Self {

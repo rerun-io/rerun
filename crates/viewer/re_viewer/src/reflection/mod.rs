@@ -1558,9 +1558,9 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
             },
         ),
         (
-            ArchetypeName::new("rerun.blueprint.archetypes.DataframeQueryV2"),
+            ArchetypeName::new("rerun.blueprint.archetypes.DataframeQuery"),
             ArchetypeReflection {
-                display_name: "Dataframe query v2",
+                display_name: "Dataframe query",
                 fields: vec![
                     ArchetypeFieldReflection { component_name :
                     "rerun.blueprint.components.TimelineName".into(), display_name :

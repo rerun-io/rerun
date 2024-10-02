@@ -6,7 +6,7 @@ use re_types::blueprint::archetypes;
 use re_viewer_context::{SpaceViewId, SpaceViewSystemExecutionError, ViewerContext};
 use re_viewport_blueprint::ViewProperty;
 
-/// Wrapper over the `DataframeQueryV2` blueprint archetype that can also display some UI.
+/// Wrapper over the `DataframeQuery` blueprint archetype that can also display some UI.
 pub(crate) struct QueryV2 {
     query_property: ViewProperty,
 }
@@ -17,7 +17,7 @@ impl QueryV2 {
     /// See the `blueprint_io` module for more related accessors.
     pub(crate) fn from_blueprint(ctx: &ViewerContext<'_>, space_view_id: SpaceViewId) -> Self {
         Self {
-            query_property: ViewProperty::from_archetype::<archetypes::DataframeQueryV2>(
+            query_property: ViewProperty::from_archetype::<archetypes::DataframeQuery>(
                 ctx.blueprint_db(),
                 ctx.blueprint_query,
                 space_view_id,

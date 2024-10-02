@@ -10,5 +10,5 @@ table DataframeView (
     "attr.rerun.view_identifier": "Dataframe"
 ) {
     /// Query of the dataframe.
-    query: rerun.blueprint.archetypes.DataframeQueryV2 (order: 1000);
+    query: rerun.blueprint.archetypes.DataframeQuery (order: 1000);
 }

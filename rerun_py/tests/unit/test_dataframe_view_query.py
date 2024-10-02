@@ -4,7 +4,7 @@ import pytest
 import rerun as rr
 import rerun.blueprint.components as blueprint_components
 from rerun import TimeInt, datatypes
-from rerun.blueprint.archetypes import DataframeQueryV2
+from rerun.blueprint.archetypes import DataframeQuery
 
 
 def test_component_column_selector_explicit() -> None:
@@ -123,7 +123,7 @@ def test_selected_columns_batch_multiple() -> None:
 
 
 def test_dataframe_query_property() -> None:
-    query = DataframeQueryV2(
+    query = DataframeQuery(
         timeline="frame",
         filter_by_range=(TimeInt(seq=1), TimeInt(seq=10)),
         filter_by_event="/entity/path:ComponentName",
@@ -156,7 +156,7 @@ def test_dataframe_query_property() -> None:
 
 
 def test_dataframe_query_property_explicit() -> None:
-    query = DataframeQueryV2(
+    query = DataframeQuery(
         timeline=blueprint_components.TimelineName("frame"),
         filter_by_range=blueprint_components.FilterByRange(start=TimeInt(seq=1), end=TimeInt(seq=10)),
         filter_by_event=blueprint_components.ComponentColumnSelector(

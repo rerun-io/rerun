@@ -46,7 +46,7 @@ class DataframeView(SpaceView):
     blueprint = rrb.Blueprint(
         rrb.DataframeView(
             origin="/trig",
-            query=rrb.archetypes.DataframeQueryV2(
+            query=rrb.archetypes.DataframeQuery(
                 timeline="t",
                 filter_by_range=(rr.TimeInt(seconds=0), rr.TimeInt(seconds=20)),
                 filter_by_event="/trig/tan_sparse:Scalar",
@@ -69,7 +69,7 @@ class DataframeView(SpaceView):
         visible: datatypes.BoolLike | None = None,
         defaults: list[Union[AsComponents, ComponentBatchLike]] = [],
         overrides: dict[EntityPathLike, list[ComponentBatchLike]] = {},
-        query: blueprint_archetypes.DataframeQueryV2 | None = None,
+        query: blueprint_archetypes.DataframeQuery | None = None,
     ) -> None:
         """
         Construct a blueprint for a new DataframeView view.
@@ -107,9 +107,9 @@ class DataframeView(SpaceView):
 
         properties: dict[str, AsComponents] = {}
         if query is not None:
-            if not isinstance(query, blueprint_archetypes.DataframeQueryV2):
-                query = blueprint_archetypes.DataframeQueryV2(query)
-            properties["DataframeQueryV2"] = query
+            if not isinstance(query, blueprint_archetypes.DataframeQuery):
+                query = blueprint_archetypes.DataframeQuery(query)
+            properties["DataframeQuery"] = query
 
         super().__init__(
             class_identifier="Dataframe",
