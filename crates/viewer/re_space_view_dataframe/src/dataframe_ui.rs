@@ -5,6 +5,7 @@ use anyhow::Context;
 use egui::NumExt as _;
 use itertools::Itertools;
 
+use re_chunk_store::external::re_chunk::ArrowArray;
 use re_chunk_store::{ColumnDescriptor, LatestAtQuery, RowId};
 use re_dataframe2::QueryHandle;
 use re_log_types::{EntityPath, TimeInt, Timeline, TimelineName};
@@ -43,33 +44,16 @@ pub(crate) fn dataframe_ui(
         .collect::<Vec<_>>();
 
     // The table id mainly drives column widths, so it should be stable across queries leading to
-    // the same schema. However, changing the PoV typically leads to large changes of actual content
-    // (e.g., jump from one row to many). Since that can affect the optimal column width, we include
-    // the PoV in the salt.
-    let mut table_id_salt = egui::Id::new("__dataframe__").with(&schema);
-    //TODO fix that mess
-    // if let QueryHandle::Range(range_query_handle) = query_handle {
-    //     table_id_salt = table_id_salt.with(&range_query_handle.query().pov);
-    // }
+    // the same schema. However, changing the PoV typically leads to large changes of actual
+    // content. Since that can affect the optimal column width, we include the PoV in the salt.
+    let table_id_salt = egui::Id::new("__dataframe__")
+        .with(&schema)
+        .with(&query_handle.query().filtered_point_of_view);
 
-    // It's trickier for the row expansion cache.
-    //
-    // For latest-at view, there is always a single row, so it's ok to validate the cache against
-    // the schema. This means that changing the latest-at time stamp does _not_ invalidate, which is
-    // desirable. Otherwise, it would be impossible to expand a row when tracking the time panel
-    // while it is playing.
-    //
-    // For range queries, the row layout can change drastically when the query min/max times are
-    // modified, so in that case we invalidate against the query expression. This means that the
-    // expanded-ness is reset as soon as the min/max boundaries are changed in the selection panel,
-    // which is acceptable.
-
-    let row_expansion_id_salt = table_id_salt;
-    //TODO fix that mess
-    // let row_expansion_id_salt = match query_handle {
-    //     QueryHandle::LatestAt(_) => egui::Id::new("__dataframe_row_exp__").with(schema),
-    //     QueryHandle::Range(query) => egui::Id::new("__dataframe_row_exp__").with(query.query()),
-    // };
+    // For the row expansion cache, we invalidate more aggressively for now.
+    let row_expansion_id_salt = egui::Id::new("__dataframe_row_exp__")
+        .with(&schema)
+        .with(query_handle.query());
 
     let (header_groups, header_entity_paths) = column_groups_for_entity(&schema);
 
@@ -158,13 +142,13 @@ struct RowsDisplayData {
 impl RowsDisplayData {
     fn try_new(
         row_indices: &Range<u64>,
-        record_batches: Vec<re_dataframe2::RecordBatch>,
+        row_data: Vec<Vec<Box<dyn ArrowArray>>>,
         schema: &[ColumnDescriptor],
         query_timeline: &Timeline,
     ) -> Result<Self, DisplayRecordBatchError> {
-        let display_record_batches = record_batches
+        let display_record_batches = row_data
             .into_iter()
-            .map(|record_batch| DisplayRecordBatch::try_new(&record_batch, schema))
+            .map(|data| DisplayRecordBatch::try_new(&data, schema))
             .collect::<Result<Vec<_>, _>>()?;
 
         let mut batch_ref_from_row = BTreeMap::new();
@@ -222,12 +206,7 @@ struct DataframeTableDelegate<'a> {
 
     expanded_rows: ExpandedRows<'a>,
 
-    // // Track the cases where latest-at returns 0 rows instead of the expected 1 row, so that we
-    // // can silence the error.
-    // // TODO(#7449): this can be removed when `LatestAtQueryHandle` is able to report the row count.
-    // latest_at_query_returns_no_rows: bool,
     num_rows: u64,
-
     hide_column_actions: Vec<HideColumnAction>,
 }
 
@@ -241,20 +220,13 @@ impl<'a> egui_table::TableDelegate for DataframeTableDelegate<'a> {
 
         let timeline = self.query_handle.query().filtered_index;
 
-        //TODO: use next_row
-        let data = std::iter::from_fn(|| self.query_handle.next_row_batch())
+        //TODO(ab, cmc): we probably need a better way to run a paginated query.
+        let data = std::iter::from_fn(|| self.query_handle.next_row())
             .skip(info.visible_rows.start as usize)
             .take((info.visible_rows.end - info.visible_rows.start) as usize)
             .collect();
 
         let data = RowsDisplayData::try_new(&info.visible_rows, data, self.schema, &timeline);
-
-        // TODO(#7449): this can be removed when `LatestAtQueryHandle` is able to report the row count.
-        // self.latest_at_query_returns_no_rows = if let Ok(display_data) = &data {
-        //     matches!(self.query_handle, QueryHandle::LatestAt(_)) && display_data.num_rows() == 0
-        // } else {
-        //     false
-        // };
 
         self.display_data = data.context("Failed to create display data");
     }
