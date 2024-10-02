@@ -44,7 +44,6 @@ pub(crate) struct NodeInstance<'a> {
 
 impl GraphNodeVisualizerData {
     pub(crate) fn nodes(&self) -> impl Iterator<Item = NodeInstance> {
-        // TODO(grtlr): create proper node instance!
         clamped_zip_2x2(
             self.node_ids.iter().map(|node_id| QualifiedNode {
                 entity_hash: self.entity_path.hash(),

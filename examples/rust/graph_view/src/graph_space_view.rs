@@ -18,6 +18,7 @@ use re_viewer::external::{
 
 use crate::{
     common::QualifiedEdge,
+    edge_visualizer_system::EdgeInstance,
     node_visualizer_system::{GraphNodeVisualizer, NodeInstance},
 };
 use crate::{common::QualifiedNode, edge_visualizer_system::GraphEdgeVisualizer};
@@ -290,7 +291,7 @@ impl SpaceViewClass for GraphSpaceView {
                 edge_system
                     .data
                     .iter()
-                    .flat_map(|d| d.edges().map(|(edge, _, _)| edge)),
+                    .flat_map(|d| d.edges().map(|e| e.edge)),
             );
 
             if let Some(bounding_box) = bounding_rect_from_iter(layout.values()) {
@@ -438,7 +439,13 @@ impl SpaceViewClass for GraphSpaceView {
         for data in edge_system.data.iter() {
             let ent_highlight = query.highlights.entity_highlight(data.entity_path.hash());
 
-            for (i, (edge, instance, color)) in data.edges().enumerate() {
+            for EdgeInstance {
+                edge,
+                instance,
+                color,
+                ..
+            } in data.edges()
+            {
                 // TODO(grtlr): This does not handle dummy nodes correctly.
                 if let (Some(source_pos), Some(target_pos)) =
                     (layout.get(&edge.source), layout.get(&edge.target))
@@ -449,26 +456,35 @@ impl SpaceViewClass for GraphSpaceView {
                         highlight.hover,
                         highlight.selection != SelectionHighlight::None,
                     ) {
-                        (HoverHighlight::None, false) => ui.style().visuals.text_color(),
-                        (HoverHighlight::None, true) => ui.style().visuals.selection.bg_fill,
-                        (HoverHighlight::Hovered, ..) => ui.style().visuals.widgets.hovered.bg_fill,
+                        (HoverHighlight::None, false) => None,
+                        (HoverHighlight::None, true) => Some(ui.style().visuals.selection.bg_fill),
+                        (HoverHighlight::Hovered, ..) => {
+                            Some(ui.style().visuals.widgets.hovered.bg_fill)
+                        }
                     };
 
-                    let response = egui::Area::new(id.with((edge, i)))
+                    let response = egui::Area::new(id.with((edge, instance)))
                         .current_pos(source_pos.center())
-                        .order(egui::Order::Middle)
+                        .order(egui::Order::Background)
                         .constrain(false)
                         .show(ui.ctx(), |ui| {
                             ui.set_clip_rect(world_to_window.inverse() * clip_rect_window);
                             egui::Frame::default().show(ui, |ui| {
                                 let painter = ui.painter();
+                                if let Some(hcolor) = hcolor {
+                                    painter.line_segment(
+                                        [source_pos.center(), target_pos.center()],
+                                        egui::Stroke::new(4.0, hcolor),
+                                    );
+                                }
                                 painter.line_segment(
                                     [source_pos.center(), target_pos.center()],
-                                    egui::Stroke::new(2.0, hcolor),
+                                    egui::Stroke::new(
+                                        1.0,
+                                        color.unwrap_or(ui.style().visuals.text_color()),
+                                    ),
                                 );
                             });
-
-                            // log::debug!("Line: {} {}", source_pos, target_pos);
                         })
                         .response;
 

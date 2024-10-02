@@ -1,5 +1,6 @@
 use re_log_types::Instance;
 use re_viewer::external::{
+    egui::Color32,
     re_chunk::{ChunkComponentIterItem, LatestAtQuery},
     re_query::{clamped_zip_2x1, range_zip_1x1},
     re_renderer,
@@ -25,10 +26,15 @@ pub(crate) struct GraphEdgeVisualizerData {
     colors: ChunkComponentIterItem<components::Color>,
 }
 
+pub(crate) struct EdgeInstance<'a> {
+    pub edge: QualifiedEdge,
+    pub entity_path: &'a re_log_types::EntityPath,
+    pub instance: Instance,
+    pub color: Option<Color32>,
+}
+
 impl GraphEdgeVisualizerData {
-    pub(crate) fn edges(
-        &self,
-    ) -> impl Iterator<Item = (QualifiedEdge, Instance, Option<&components::Color>)> {
+    pub(crate) fn edges(&self) -> impl Iterator<Item = EdgeInstance> {
         clamped_zip_2x1(
             self.edges.iter().map(|e| QualifiedEdge {
                 source: QualifiedNode {
@@ -44,6 +50,12 @@ impl GraphEdgeVisualizerData {
             self.colors.iter().map(Option::Some),
             Option::<&components::Color>::default,
         )
+        .map(|(edge, instance, color)| EdgeInstance {
+            edge,
+            entity_path: &self.entity_path,
+            instance,
+            color: color.map(|c| Color32::from(c.0)),
+        })
     }
 }
 
