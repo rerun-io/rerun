@@ -190,10 +190,6 @@ impl RowsDisplayData {
             row_id_column_index,
         })
     }
-
-    fn num_rows(&self) -> u64 {
-        self.batch_ref_from_row.len() as u64
-    }
 }
 
 /// [`egui_table::TableDelegate`] implementation for displaying a [`QueryHandle`] in a table.
