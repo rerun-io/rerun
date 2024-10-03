@@ -191,24 +191,6 @@ pub struct Config {
     pub coded_width: u16,
 }
 
-#[derive(Debug, Clone, Copy)]
-pub enum Codec {
-    /// AV1
-    Av01,
-
-    /// H.264
-    Avc1,
-
-    /// H.265
-    Hevc,
-
-    /// VP8
-    Vp08,
-
-    /// VP9
-    Vp09,
-}
-
 /// Errors that can occur when loading a video.
 #[derive(thiserror::Error, Debug)]
 pub enum VideoLoadError {
