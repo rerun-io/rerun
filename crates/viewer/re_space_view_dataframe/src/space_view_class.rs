@@ -17,8 +17,8 @@ struct DataframeSpaceViewState {
     /// Cache for the expanded rows.
     expended_rows_cache: ExpandedRowsCache,
 
-    /// Schema for the current query, cached here for the column visibility UI.
-    schema: Option<Vec<ColumnDescriptor>>,
+    /// List of view columns for the current query, cached here for the column visibility UI.
+    view_columns: Option<Vec<ColumnDescriptor>>,
 }
 
 impl SpaceViewState for DataframeSpaceViewState {
@@ -106,12 +106,12 @@ mode sets the default time range to _everything_. You can override this in the s
     ) -> Result<(), SpaceViewSystemExecutionError> {
         let state = state.downcast_mut::<DataframeSpaceViewState>()?;
         let view_query = view_query::Query::from_blueprint(ctx, space_view_id);
-        let Some(schema) = &state.schema else {
+        let Some(view_columns) = &state.view_columns else {
             // Shouldn't happen, except maybe on the first frame, which is too early
             // for the user to click the menu anyway.
             return Ok(());
         };
-        view_query.selection_panel_ui(ctx, ui, space_view_id, schema)
+        view_query.selection_panel_ui(ctx, ui, space_view_id, view_columns)
     }
 
     fn ui(
@@ -150,8 +150,9 @@ mode sets the default time range to _everything_. You can override this in the s
             SparseFillStrategy::None
         };
 
-        let schema = query_engine.schema_for_view_contents(&view_contents);
-        let selection = view_query.apply_column_visibility_to_view_columns(ctx, &schema)?;
+        let view_columns = query_engine.schema_for_view_contents(&view_contents);
+        let selected_columns =
+            view_query.apply_column_visibility_to_view_columns(ctx, &view_columns)?;
 
         let dataframe_query = re_chunk_store::QueryExpression2 {
             view_contents: Some(view_contents),
@@ -159,7 +160,7 @@ mode sets the default time range to _everything_. You can override this in the s
             filtered_index_range: Some(view_query.filter_by_range()?),
             filtered_point_of_view,
             sparse_fill_strategy,
-            selection,
+            selection: selected_columns,
 
             // not yet unsupported by the dataframe view
             filtered_index_values: None,
@@ -171,9 +172,9 @@ mode sets the default time range to _everything_. You can override this in the s
         let hide_column_actions =
             dataframe_ui(ctx, ui, &query_handle, &mut state.expended_rows_cache);
 
-        view_query.handle_hide_column_actions(ctx, &schema, hide_column_actions)?;
+        view_query.handle_hide_column_actions(ctx, &view_columns, hide_column_actions)?;
 
-        state.schema = Some(schema);
+        state.view_columns = Some(view_columns);
         Ok(())
     }
 }

@@ -37,32 +37,33 @@ pub(crate) fn dataframe_ui(
 ) -> Vec<HideColumnAction> {
     re_tracing::profile_function!();
 
-    let schema = query_handle
+    let selected_columns = query_handle
         .selected_contents()
         .iter()
         .map(|(_, desc)| desc.clone())
         .collect::<Vec<_>>();
 
     // The table id mainly drives column widths, so it should be stable across queries leading to
-    // the same schema. However, changing the PoV typically leads to large changes of actual
-    // content. Since that can affect the optimal column width, we include the PoV in the salt.
+    // the same set of selected columns. However, changing the PoV typically leads to large changes
+    // of actual content. Since that can affect the optimal column width, we include the PoV in the
+    // salt.
     let table_id_salt = egui::Id::new("__dataframe__")
-        .with(&schema)
+        .with(&selected_columns)
         .with(&query_handle.query().filtered_point_of_view);
 
     // For the row expansion cache, we invalidate more aggressively for now.
     let row_expansion_id_salt = egui::Id::new("__dataframe_row_exp__")
-        .with(&schema)
+        .with(&selected_columns)
         .with(query_handle.query());
 
-    let (header_groups, header_entity_paths) = column_groups_for_entity(&schema);
+    let (header_groups, header_entity_paths) = column_groups_for_entity(&selected_columns);
 
     let num_rows = query_handle.num_rows();
 
     let mut table_delegate = DataframeTableDelegate {
         ctx,
         query_handle,
-        schema: &schema,
+        selected_columns: &selected_columns,
         header_entity_paths,
         num_rows,
         display_data: Err(anyhow::anyhow!(
@@ -77,7 +78,7 @@ pub(crate) fn dataframe_ui(
         hide_column_actions: vec![],
     };
 
-    let num_sticky_cols = schema
+    let num_sticky_cols = selected_columns
         .iter()
         .take_while(|cd| matches!(cd, ColumnDescriptor::Control(_) | ColumnDescriptor::Time(_)))
         .count();
@@ -86,7 +87,7 @@ pub(crate) fn dataframe_ui(
         egui_table::Table::new()
             .id_salt(table_id_salt)
             .columns(
-                schema
+                selected_columns
                     .iter()
                     .map(|column_descr| {
                         egui_table::Column::new(200.0)
@@ -143,12 +144,12 @@ impl RowsDisplayData {
     fn try_new(
         row_indices: &Range<u64>,
         row_data: Vec<Vec<Box<dyn ArrowArray>>>,
-        schema: &[ColumnDescriptor],
+        selected_columns: &[ColumnDescriptor],
         query_timeline: &Timeline,
     ) -> Result<Self, DisplayRecordBatchError> {
         let display_record_batches = row_data
             .into_iter()
-            .map(|data| DisplayRecordBatch::try_new(&data, schema))
+            .map(|data| DisplayRecordBatch::try_new(&data, selected_columns))
             .collect::<Result<Vec<_>, _>>()?;
 
         let mut batch_ref_from_row = BTreeMap::new();
@@ -162,7 +163,7 @@ impl RowsDisplayData {
         }
 
         // find the time column
-        let query_time_column_index = schema
+        let query_time_column_index = selected_columns
             .iter()
             .find_position(|desc| match desc {
                 ColumnDescriptor::Time(time_column_desc) => {
@@ -173,7 +174,7 @@ impl RowsDisplayData {
             .map(|(pos, _)| pos);
 
         // find the row id column
-        let row_id_column_index = schema
+        let row_id_column_index = selected_columns
             .iter()
             .find_position(|desc| match desc {
                 ColumnDescriptor::Control(control_column_desc) => {
@@ -196,7 +197,7 @@ impl RowsDisplayData {
 struct DataframeTableDelegate<'a> {
     ctx: &'a ViewerContext<'a>,
     query_handle: &'a QueryHandle<'a>,
-    schema: &'a [ColumnDescriptor],
+    selected_columns: &'a [ColumnDescriptor],
     header_entity_paths: Vec<Option<EntityPath>>,
     display_data: anyhow::Result<RowsDisplayData>,
 
@@ -222,7 +223,8 @@ impl<'a> egui_table::TableDelegate for DataframeTableDelegate<'a> {
             .take((info.visible_rows.end - info.visible_rows.start) as usize)
             .collect();
 
-        let data = RowsDisplayData::try_new(&info.visible_rows, data, self.schema, &timeline);
+        let data =
+            RowsDisplayData::try_new(&info.visible_rows, data, self.selected_columns, &timeline);
 
         self.display_data = data.context("Failed to create display data");
     }
@@ -264,7 +266,7 @@ impl<'a> egui_table::TableDelegate for DataframeTableDelegate<'a> {
                         );
                     }
                 } else if cell.row_nr == 1 {
-                    let column = &self.schema[cell.col_range.start];
+                    let column = &self.selected_columns[cell.col_range.start];
 
                     // if this column can actually be hidden, then that's the corresponding action
                     let hide_action = match column {
