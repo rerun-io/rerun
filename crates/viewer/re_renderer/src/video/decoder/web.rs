@@ -10,12 +10,13 @@ use web_sys::{
 };
 use web_time::Instant;
 
-use super::latest_at_idx;
 use crate::{
     resource_managers::GpuTexture2D,
     video::{DecodeHardwareAcceleration, DecodingError, FrameDecodingResult, VideoFrameTexture},
     DebugLabel, RenderContext,
 };
+
+use super::{latest_at_idx, VideoDecoder};
 
 #[derive(Clone)]
 #[repr(transparent)]
@@ -61,7 +62,7 @@ struct DecoderOutput {
 /// transient errors without flickering.
 const DECODING_ERROR_REPORTING_DELAY: Duration = Duration::from_millis(400);
 
-pub struct VideoDecoder {
+pub struct WebVideoDecoder {
     data: Arc<re_video::VideoData>,
     queue: Arc<wgpu::Queue>,
     texture: GpuTexture2D,
@@ -83,11 +84,11 @@ pub struct VideoDecoder {
 #[allow(unsafe_code)]
 // Clippy did not recognize a safety comment on these impls no matter what I tried:
 #[allow(clippy::undocumented_unsafe_blocks)]
-unsafe impl Send for VideoDecoder {}
+unsafe impl Send for WebVideoDecoder {}
 
 #[allow(unsafe_code)]
 #[allow(clippy::undocumented_unsafe_blocks)]
-unsafe impl Sync for VideoDecoder {}
+unsafe impl Sync for WebVideoDecoder {}
 
 #[allow(unsafe_code)]
 #[allow(clippy::undocumented_unsafe_blocks)]
@@ -97,9 +98,9 @@ unsafe impl Send for VideoFrame {}
 #[allow(clippy::undocumented_unsafe_blocks)]
 unsafe impl Sync for VideoFrame {}
 
-impl Drop for VideoDecoder {
+impl Drop for WebVideoDecoder {
     fn drop(&mut self) {
-        re_log::debug!("Dropping VideoDecoder");
+        re_log::debug!("Dropping WebVideoDecoder");
         if let Err(err) = self.decoder.close() {
             if let Some(dom_exception) = err.dyn_ref::<web_sys::DomException>() {
                 if dom_exception.code() == web_sys::DomException::INVALID_STATE_ERR
@@ -118,7 +119,7 @@ impl Drop for VideoDecoder {
     }
 }
 
-impl VideoDecoder {
+impl WebVideoDecoder {
     pub fn new(
         render_context: &RenderContext,
         data: Arc<re_video::VideoData>,
@@ -157,8 +158,10 @@ impl VideoDecoder {
             error_on_last_frame_at: false,
         })
     }
+}
 
-    pub fn frame_at(
+impl VideoDecoder for WebVideoDecoder {
+    fn frame_at(
         &mut self,
         render_ctx: &RenderContext,
         presentation_timestamp_s: f64,
@@ -185,7 +188,9 @@ impl VideoDecoder {
         }
         result
     }
+}
 
+impl WebVideoDecoder {
     fn frame_at_internal(&mut self, presentation_timestamp_s: f64) -> FrameDecodingResult {
         if presentation_timestamp_s < 0.0 {
             return Err(DecodingError::NegativeTimestamp);

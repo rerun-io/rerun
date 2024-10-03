@@ -3,8 +3,6 @@
 include "./datatypes/component_column_selector.fbs";
 include "./datatypes/filter_by_event.fbs";
 include "./datatypes/filter_by_range.fbs";
-include "./datatypes/latest_at_query.fbs";
 include "./datatypes/selected_columns.fbs";
 include "./datatypes/tensor_dimension_index_slider.fbs";
-include "./datatypes/time_range_query.fbs";
 include "./datatypes/utf8_list.fbs";

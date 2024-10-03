@@ -5,6 +5,7 @@ namespace rerun.blueprint.datatypes;
 //TODO(ab, jleibs): this probably needs reunification with whatever structure the data out API uses.
 // Has to be a table because flatbuffer doesn't support strings in structs.
 table ComponentColumnSelector (
+  "attr.python.aliases": "str",
   "attr.rust.derive": "Default, PartialEq, Eq, Hash",
   "attr.rerun.scope": "blueprint"
 ) {

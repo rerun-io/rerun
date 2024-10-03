@@ -4,7 +4,6 @@ use re_entity_db::EntityDb;
 pub use re_types::blueprint::components::ActiveTab;
 pub use re_types::blueprint::components::ApplyLatestAt;
 pub use re_types::blueprint::components::BackgroundKind;
-pub use re_types::blueprint::components::ColumnSelectionMode;
 pub use re_types::blueprint::components::ColumnShare;
 pub use re_types::blueprint::components::ComponentColumnSelector;
 pub use re_types::blueprint::components::Corner2D;
@@ -12,17 +11,14 @@ pub use re_types::blueprint::components::FilterByEvent;
 pub use re_types::blueprint::components::FilterByRange;
 pub use re_types::blueprint::components::IncludedContent;
 pub use re_types::blueprint::components::Interactive;
-pub use re_types::blueprint::components::LatestAtQueries;
 pub use re_types::blueprint::components::LockRangeDuringZoom;
 pub use re_types::blueprint::components::PanelState;
 pub use re_types::blueprint::components::QueryExpression;
-pub use re_types::blueprint::components::QueryKind;
 pub use re_types::blueprint::components::RowShare;
 pub use re_types::blueprint::components::SelectedColumns;
 pub use re_types::blueprint::components::SpaceViewClass;
 pub use re_types::blueprint::components::SpaceViewOrigin;
 pub use re_types::blueprint::components::TensorDimensionIndexSlider;
-pub use re_types::blueprint::components::TimeRangeQueries;
 pub use re_types::blueprint::components::TimelineName;
 pub use re_types::blueprint::components::ViewFit;
 pub use re_types::blueprint::components::ViewerRecommendationHash;
@@ -47,7 +43,6 @@ pub fn is_valid_blueprint(blueprint: &EntityDb) -> bool {
         && validate_component::<AutoLayout>(blueprint)
         && validate_component::<AutoSpaceViews>(blueprint)
         && validate_component::<BackgroundKind>(blueprint)
-        && validate_component::<ColumnSelectionMode>(blueprint)
         && validate_component::<ColumnShare>(blueprint)
         && validate_component::<ComponentColumnSelector>(blueprint)
         && validate_component::<ContainerKind>(blueprint)
@@ -58,11 +53,9 @@ pub fn is_valid_blueprint(blueprint: &EntityDb) -> bool {
         && validate_component::<IncludedContent>(blueprint)
         && validate_component::<IncludedSpaceView>(blueprint)
         && validate_component::<Interactive>(blueprint)
-        && validate_component::<LatestAtQueries>(blueprint)
         && validate_component::<LockRangeDuringZoom>(blueprint)
         && validate_component::<PanelState>(blueprint)
         && validate_component::<QueryExpression>(blueprint)
-        && validate_component::<QueryKind>(blueprint)
         && validate_component::<RootContainer>(blueprint)
         && validate_component::<RowShare>(blueprint)
         && validate_component::<SelectedColumns>(blueprint)
@@ -70,7 +63,6 @@ pub fn is_valid_blueprint(blueprint: &EntityDb) -> bool {
         && validate_component::<SpaceViewMaximized>(blueprint)
         && validate_component::<SpaceViewOrigin>(blueprint)
         && validate_component::<TensorDimensionIndexSlider>(blueprint)
-        && validate_component::<TimeRangeQueries>(blueprint)
         && validate_component::<TimelineName>(blueprint)
         && validate_component::<ViewFit>(blueprint)
         && validate_component::<ViewerRecommendationHash>(blueprint)

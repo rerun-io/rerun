@@ -13,13 +13,6 @@ from .background_kind import (
     BackgroundKindLike,
     BackgroundKindType,
 )
-from .column_selection_mode import (
-    ColumnSelectionMode,
-    ColumnSelectionModeArrayLike,
-    ColumnSelectionModeBatch,
-    ColumnSelectionModeLike,
-    ColumnSelectionModeType,
-)
 from .column_share import ColumnShare, ColumnShareBatch, ColumnShareType
 from .component_column_selector import (
     ComponentColumnSelector,
@@ -40,17 +33,9 @@ from .grid_columns import GridColumns, GridColumnsBatch, GridColumnsType
 from .included_content import IncludedContent, IncludedContentBatch, IncludedContentType
 from .included_space_view import IncludedSpaceView, IncludedSpaceViewBatch, IncludedSpaceViewType
 from .interactive import Interactive, InteractiveBatch, InteractiveType
-from .latest_at_queries import (
-    LatestAtQueries,
-    LatestAtQueriesArrayLike,
-    LatestAtQueriesBatch,
-    LatestAtQueriesLike,
-    LatestAtQueriesType,
-)
 from .lock_range_during_zoom import LockRangeDuringZoom, LockRangeDuringZoomBatch, LockRangeDuringZoomType
 from .panel_state import PanelState, PanelStateArrayLike, PanelStateBatch, PanelStateLike, PanelStateType
 from .query_expression import QueryExpression, QueryExpressionBatch, QueryExpressionType
-from .query_kind import QueryKind, QueryKindArrayLike, QueryKindBatch, QueryKindLike, QueryKindType
 from .root_container import RootContainer, RootContainerBatch, RootContainerType
 from .row_share import RowShare, RowShareBatch, RowShareType
 from .selected_columns import SelectedColumns, SelectedColumnsBatch, SelectedColumnsType
@@ -61,13 +46,6 @@ from .tensor_dimension_index_slider import (
     TensorDimensionIndexSlider,
     TensorDimensionIndexSliderBatch,
     TensorDimensionIndexSliderType,
-)
-from .time_range_queries import (
-    TimeRangeQueries,
-    TimeRangeQueriesArrayLike,
-    TimeRangeQueriesBatch,
-    TimeRangeQueriesLike,
-    TimeRangeQueriesType,
 )
 from .timeline_name import TimelineName, TimelineNameBatch, TimelineNameType
 from .view_fit import ViewFit, ViewFitArrayLike, ViewFitBatch, ViewFitLike, ViewFitType
@@ -99,11 +77,6 @@ __all__ = [
     "BackgroundKindBatch",
     "BackgroundKindLike",
     "BackgroundKindType",
-    "ColumnSelectionMode",
-    "ColumnSelectionModeArrayLike",
-    "ColumnSelectionModeBatch",
-    "ColumnSelectionModeLike",
-    "ColumnSelectionModeType",
     "ColumnShare",
     "ColumnShareBatch",
     "ColumnShareType",
@@ -138,11 +111,6 @@ __all__ = [
     "Interactive",
     "InteractiveBatch",
     "InteractiveType",
-    "LatestAtQueries",
-    "LatestAtQueriesArrayLike",
-    "LatestAtQueriesBatch",
-    "LatestAtQueriesLike",
-    "LatestAtQueriesType",
     "LockRangeDuringZoom",
     "LockRangeDuringZoomBatch",
     "LockRangeDuringZoomType",
@@ -154,11 +122,6 @@ __all__ = [
     "QueryExpression",
     "QueryExpressionBatch",
     "QueryExpressionType",
-    "QueryKind",
-    "QueryKindArrayLike",
-    "QueryKindBatch",
-    "QueryKindLike",
-    "QueryKindType",
     "RootContainer",
     "RootContainerBatch",
     "RootContainerType",
@@ -180,11 +143,6 @@ __all__ = [
     "TensorDimensionIndexSlider",
     "TensorDimensionIndexSliderBatch",
     "TensorDimensionIndexSliderType",
-    "TimeRangeQueries",
-    "TimeRangeQueriesArrayLike",
-    "TimeRangeQueriesBatch",
-    "TimeRangeQueriesLike",
-    "TimeRangeQueriesType",
     "TimelineName",
     "TimelineNameBatch",
     "TimelineNameType",

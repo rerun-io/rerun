@@ -24,7 +24,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 #[derive(Clone, Debug)]
 pub struct DataframeView {
     /// Query of the dataframe.
-    pub query: crate::blueprint::archetypes::DataframeQueryV2,
+    pub query: crate::blueprint::archetypes::DataframeQuery,
 }
 
 impl ::re_types_core::SizeBytes for DataframeView {
@@ -35,35 +35,35 @@ impl ::re_types_core::SizeBytes for DataframeView {
 
     #[inline]
     fn is_pod() -> bool {
-        <crate::blueprint::archetypes::DataframeQueryV2>::is_pod()
+        <crate::blueprint::archetypes::DataframeQuery>::is_pod()
     }
 }
 
-impl<T: Into<crate::blueprint::archetypes::DataframeQueryV2>> From<T> for DataframeView {
+impl<T: Into<crate::blueprint::archetypes::DataframeQuery>> From<T> for DataframeView {
     fn from(v: T) -> Self {
         Self { query: v.into() }
     }
 }
 
-impl std::borrow::Borrow<crate::blueprint::archetypes::DataframeQueryV2> for DataframeView {
+impl std::borrow::Borrow<crate::blueprint::archetypes::DataframeQuery> for DataframeView {
     #[inline]
-    fn borrow(&self) -> &crate::blueprint::archetypes::DataframeQueryV2 {
+    fn borrow(&self) -> &crate::blueprint::archetypes::DataframeQuery {
         &self.query
     }
 }
 
 impl std::ops::Deref for DataframeView {
-    type Target = crate::blueprint::archetypes::DataframeQueryV2;
+    type Target = crate::blueprint::archetypes::DataframeQuery;
 
     #[inline]
-    fn deref(&self) -> &crate::blueprint::archetypes::DataframeQueryV2 {
+    fn deref(&self) -> &crate::blueprint::archetypes::DataframeQuery {
         &self.query
     }
 }
 
 impl std::ops::DerefMut for DataframeView {
     #[inline]
-    fn deref_mut(&mut self) -> &mut crate::blueprint::archetypes::DataframeQueryV2 {
+    fn deref_mut(&mut self) -> &mut crate::blueprint::archetypes::DataframeQuery {
         &mut self.query
     }
 }

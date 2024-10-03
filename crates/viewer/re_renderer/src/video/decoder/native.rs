@@ -1,12 +1,14 @@
+// TODO(#7298): decode on native
+
 #![allow(dead_code, unused_variables, clippy::unnecessary_wraps)]
 
 use std::sync::Arc;
 
 use crate::{
     resource_managers::GpuTexture2D,
-    video::{DecodeHardwareAcceleration, DecodingError, VideoFrameTexture},
+    video::{DecodingError, FrameDecodingResult, VideoFrameTexture},
+    RenderContext,
 };
-use crate::{video::FrameDecodingResult, RenderContext};
 
 // TODO(#7298): remove `allow` once we have native video decoding
 #[allow(unused_imports)]
@@ -15,10 +17,10 @@ use super::latest_at_idx;
 use parking_lot::Mutex;
 use re_video::{Frame, Time};
 
-use super::alloc_video_frame_texture;
+use super::{alloc_video_frame_texture, VideoDecoder};
 
 /// Native AV1 decoder
-pub struct VideoDecoder {
+pub struct Av1VideoDecoder {
     data: Arc<re_video::VideoData>,
     queue: Arc<wgpu::Queue>,
     texture: GpuTexture2D,
@@ -31,69 +33,8 @@ pub struct VideoDecoder {
     current_sample_idx: usize,
 }
 
-impl VideoDecoder {
-    pub fn new(
-        render_context: &RenderContext,
-        data: Arc<re_video::VideoData>,
-        _hw_acceleration: DecodeHardwareAcceleration,
-    ) -> Result<Self, DecodingError> {
-        re_tracing::profile_function!();
-
-        re_log::debug!("Initializing native video decoder…");
-        let frames = Arc::new(Mutex::new(Vec::new()));
-
-        // TODO: check that data is av1, and return error elsewise
-        // TEMP: assuming `av1`, because `re_video` demuxer will panic if it's not
-        let decoder = re_video::av1::Decoder::new({
-            let frames = frames.clone();
-            move |frame: re_video::Frame| {
-                re_log::debug!("Decoded frame at {:?}", frame.timestamp);
-                frames.lock().push(frame);
-            }
-        });
-
-        let queue = render_context.queue.clone();
-
-        let texture = super::alloc_video_frame_texture(
-            &render_context.device,
-            &render_context.gpu_resources.textures,
-            data.config.coded_width as u32,
-            data.config.coded_height as u32,
-        );
-        let zeroed_texture = alloc_video_frame_texture(
-            &render_context.device,
-            &render_context.gpu_resources.textures,
-            data.config.coded_width as u32,
-            data.config.coded_height as u32,
-        );
-
-        Ok(Self {
-            data,
-            queue,
-            texture,
-            zeroed_texture,
-            decoder,
-
-            frames,
-            last_used_frame_timestamp: Time::MAX,
-            current_segment_idx: usize::MAX,
-            current_sample_idx: usize::MAX,
-        })
-    }
-
-    pub fn duration_ms(&self) -> f64 {
-        self.data.duration_sec()
-    }
-
-    pub fn width(&self) -> u32 {
-        self.data.config.coded_width as u32
-    }
-
-    pub fn height(&self) -> u32 {
-        self.data.config.coded_height as u32
-    }
-
-    pub fn frame_at(
+impl VideoDecoder for Av1VideoDecoder {
+    fn frame_at(
         &mut self,
         render_ctx: &RenderContext,
         presentation_timestamp_s: f64,
@@ -198,6 +139,68 @@ impl VideoDecoder {
         }
 
         Ok(VideoFrameTexture::Ready(self.texture.clone()))
+    }
+}
+
+impl Av1VideoDecoder {
+    pub fn new(
+        render_context: &RenderContext,
+        data: Arc<re_video::VideoData>,
+    ) -> Result<Self, DecodingError> {
+        re_tracing::profile_function!();
+
+        re_log::debug!("Initializing native video decoder…");
+        let frames = Arc::new(Mutex::new(Vec::new()));
+
+        // TODO: check that data is av1, and return error elsewise
+        // TEMP: assuming `av1`, because `re_video` demuxer will panic if it's not
+        let decoder = re_video::av1::Decoder::new({
+            let frames = frames.clone();
+            move |frame: re_video::Frame| {
+                re_log::debug!("Decoded frame at {:?}", frame.timestamp);
+                frames.lock().push(frame);
+            }
+        });
+
+        let queue = render_context.queue.clone();
+
+        let texture = super::alloc_video_frame_texture(
+            &render_context.device,
+            &render_context.gpu_resources.textures,
+            data.config.coded_width as u32,
+            data.config.coded_height as u32,
+        );
+        let zeroed_texture = alloc_video_frame_texture(
+            &render_context.device,
+            &render_context.gpu_resources.textures,
+            data.config.coded_width as u32,
+            data.config.coded_height as u32,
+        );
+
+        Ok(Self {
+            data,
+            queue,
+            texture,
+            zeroed_texture,
+            decoder,
+
+            frames,
+            last_used_frame_timestamp: Time::MAX,
+            current_segment_idx: usize::MAX,
+            current_sample_idx: usize::MAX,
+        })
+    }
+
+    pub fn duration_ms(&self) -> f64 {
+        self.data.duration_sec()
+    }
+
+    pub fn width(&self) -> u32 {
+        self.data.config.coded_width as u32
+    }
+
+    pub fn height(&self) -> u32 {
+        self.data.config.coded_height as u32
     }
 
     /// Enqueue all samples in the given segment.

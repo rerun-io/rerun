@@ -70,13 +70,6 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             },
         ),
         (
-            <ColumnSelectionMode as Loggable>::name(),
-            ComponentReflection {
-                docstring_md: "How are columns selected in the dataframe view?",
-                placeholder: Some(ColumnSelectionMode::default().to_arrow()?),
-            },
-        ),
-        (
             <ColumnShare as Loggable>::name(),
             ComponentReflection {
                 docstring_md: "The layout share of a column in the container.",
@@ -147,13 +140,6 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             },
         ),
         (
-            <LatestAtQueries as Loggable>::name(),
-            ComponentReflection {
-                docstring_md: "Configuration for latest-at queries.\n\nNote: configuration as saved on a per-timeline basis.",
-                placeholder: Some(LatestAtQueries::default().to_arrow()?),
-            },
-        ),
-        (
             <LockRangeDuringZoom as Loggable>::name(),
             ComponentReflection {
                 docstring_md: "Indicate whether the range should be locked when zooming in on the data.\n\nDefault is `false`, i.e. zoom will change the visualized range.",
@@ -172,13 +158,6 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             ComponentReflection {
                 docstring_md: "An individual query expression used to filter a set of [`datatypes.EntityPath`](https://rerun.io/docs/reference/types/datatypes/entity_path)s.\n\nEach expression is either an inclusion or an exclusion expression.\nInclusions start with an optional `+` and exclusions must start with a `-`.\n\nMultiple expressions are combined together as part of `SpaceViewContents`.\n\nThe `/**` suffix matches the whole subtree, i.e. self and any child, recursively\n(`/world/**` matches both `/world` and `/world/car/driver`).\nOther uses of `*` are not (yet) supported.",
                 placeholder: Some(QueryExpression::default().to_arrow()?),
-            },
-        ),
-        (
-            <QueryKind as Loggable>::name(),
-            ComponentReflection {
-                docstring_md: "The kind of query displayed by the dataframe view",
-                placeholder: Some(QueryKind::default().to_arrow()?),
             },
         ),
         (
@@ -228,13 +207,6 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             ComponentReflection {
                 docstring_md: "Show a slider for the index of some dimension of a slider.",
                 placeholder: Some(TensorDimensionIndexSlider::default().to_arrow()?),
-            },
-        ),
-        (
-            <TimeRangeQueries as Loggable>::name(),
-            ComponentReflection {
-                docstring_md: "Configuration for time range queries.\n\nNote: configuration as saved on a per-timeline basis.",
-                placeholder: Some(TimeRangeQueries::default().to_arrow()?),
             },
         ),
         (
@@ -1593,30 +1565,6 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                     ArchetypeFieldReflection { component_name :
                     "rerun.blueprint.components.TimelineName".into(), display_name :
                     "Timeline", docstring_md :
-                    "The timeline for this query.\n\nIf unset, use the time panel's timeline and a latest-at query, ignoring all other components of this archetype.",
-                    is_required : false, }, ArchetypeFieldReflection { component_name :
-                    "rerun.blueprint.components.QueryKind".into(), display_name : "Kind",
-                    docstring_md : "Kind of query: latest-at or range.", is_required :
-                    false, }, ArchetypeFieldReflection { component_name :
-                    "rerun.blueprint.components.LatestAtQueries".into(), display_name :
-                    "Latest at queries", docstring_md :
-                    "Configuration for latest-at queries.\n\nNote: configuration as saved on a per-timeline basis.",
-                    is_required : false, }, ArchetypeFieldReflection { component_name :
-                    "rerun.blueprint.components.TimeRangeQueries".into(), display_name :
-                    "Time range queries", docstring_md :
-                    "Configuration for the time range queries.\n\nNote: configuration as saved on a per-timeline basis.",
-                    is_required : false, },
-                ],
-            },
-        ),
-        (
-            ArchetypeName::new("rerun.blueprint.archetypes.DataframeQueryV2"),
-            ArchetypeReflection {
-                display_name: "Dataframe query v2",
-                fields: vec![
-                    ArchetypeFieldReflection { component_name :
-                    "rerun.blueprint.components.TimelineName".into(), display_name :
-                    "Timeline", docstring_md :
                     "The timeline for this query.\n\nIf unset, the timeline currently active on the time panel is used.",
                     is_required : false, }, ArchetypeFieldReflection { component_name :
                     "rerun.blueprint.components.FilterByRange".into(), display_name :
@@ -1635,27 +1583,6 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                     "Select", docstring_md :
                     "Selected columns. If unset, all columns are selected.", is_required
                     : false, },
-                ],
-            },
-        ),
-        (
-            ArchetypeName::new("rerun.blueprint.archetypes.DataframeVisibleColumns"),
-            ArchetypeReflection {
-                display_name: "Dataframe visible columns",
-                fields: vec![
-                    ArchetypeFieldReflection { component_name :
-                    "rerun.blueprint.components.ColumnSelectionMode".into(), display_name
-                    : "Selection mode", docstring_md :
-                    "Are all column selected, or only those specified by the user?",
-                    is_required : false, }, ArchetypeFieldReflection { component_name :
-                    "rerun.blueprint.components.TimelineName".into(), display_name :
-                    "Time columns", docstring_md :
-                    "The time columns to include (if mode is set to \"Selected\").",
-                    is_required : false, }, ArchetypeFieldReflection { component_name :
-                    "rerun.blueprint.components.ComponentColumnSelector".into(),
-                    display_name : "Component columns", docstring_md :
-                    "The component columns to include (if mode is set to \"Selected\").",
-                    is_required : false, },
                 ],
             },
         ),

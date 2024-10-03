@@ -9,10 +9,10 @@ use re_types_core::{ComponentName, ComponentNameSet};
 use re_ui::{list_item, UiExt};
 use re_viewer_context::{SpaceViewId, SpaceViewSystemExecutionError, TimeDragValue, ViewerContext};
 
-use crate::view_query_v2::QueryV2;
+use crate::view_query::Query;
 
 // UI implementation
-impl QueryV2 {
+impl Query {
     pub(super) fn timeline_ui(
         &self,
         ctx: &ViewerContext<'_>,
@@ -49,7 +49,8 @@ impl QueryV2 {
         };
 
         ui.label("Filter rows by time range:");
-        let (mut start, mut end) = self.range_filter()?;
+        let range = self.filter_by_range()?;
+        let (mut start, mut end) = (range.min(), range.max());
 
         let mut changed = false;
         let mut should_display_time_range = false;
@@ -112,7 +113,7 @@ impl QueryV2 {
         });
 
         if changed {
-            self.save_range_filter(ctx, start, end);
+            self.save_filter_by_range(ctx, ResolvedTimeRange::new(start, end));
         }
 
         if should_display_time_range {

@@ -33,21 +33,24 @@ class DataframeView(SpaceView):
     rr.init("rerun_example_dataframe", spawn=True)
 
     # Log some data.
-    rr.log("trig/sin", rr.SeriesLine(color=[255, 0, 0], name="sin(0.01t)"), static=True)
-    rr.log("trig/cos", rr.SeriesLine(color=[0, 255, 0], name="cos(0.01t)"), static=True)
     for t in range(0, int(math.pi * 4 * 100.0)):
         rr.set_time_seconds("t", t)
         rr.log("trig/sin", rr.Scalar(math.sin(float(t) / 100.0)))
         rr.log("trig/cos", rr.Scalar(math.cos(float(t) / 100.0)))
 
+        # some sparse data
+        if t % 5 == 0:
+            rr.log("trig/tan_sparse", rr.Scalar(math.tan(float(t) / 100.0)))
+
     # Create a Dataframe View
     blueprint = rrb.Blueprint(
         rrb.DataframeView(
             origin="/trig",
-            # TODO(#6896): improve `DataframeQueryV2` API and showcase more features
-            query=rrb.archetypes.DataframeQueryV2(
+            query=rrb.archetypes.DataframeQuery(
                 timeline="t",
-                range_filter=rrb.components.RangeFilter(start=rr.TimeInt(seconds=0), end=rr.TimeInt(seconds=20)),
+                filter_by_range=(rr.TimeInt(seconds=0), rr.TimeInt(seconds=20)),
+                filter_by_event="/trig/tan_sparse:Scalar",
+                select=["t", "log_tick", "/trig/sin:Scalar", "/trig/cos:Scalar", "/trig/tan_sparse:Scalar"],
             ),
         ),
     )
@@ -66,7 +69,7 @@ class DataframeView(SpaceView):
         visible: datatypes.BoolLike | None = None,
         defaults: list[Union[AsComponents, ComponentBatchLike]] = [],
         overrides: dict[EntityPathLike, list[ComponentBatchLike]] = {},
-        query: blueprint_archetypes.DataframeQueryV2 | None = None,
+        query: blueprint_archetypes.DataframeQuery | None = None,
     ) -> None:
         """
         Construct a blueprint for a new DataframeView view.
@@ -104,9 +107,9 @@ class DataframeView(SpaceView):
 
         properties: dict[str, AsComponents] = {}
         if query is not None:
-            if not isinstance(query, blueprint_archetypes.DataframeQueryV2):
-                query = blueprint_archetypes.DataframeQueryV2(query)
-            properties["DataframeQueryV2"] = query
+            if not isinstance(query, blueprint_archetypes.DataframeQuery):
+                query = blueprint_archetypes.DataframeQuery(query)
+            properties["DataframeQuery"] = query
 
         super().__init__(
             class_identifier="Dataframe",

@@ -1,59 +1,8 @@
 namespace rerun.blueprint.archetypes;
 
 
-// Rationale behind the present data modelling:
-// - Avoid using `union` at all cost.
-// - An explicit "mode" enum maps well with a UI toggle and API parameter, and enabled a hard disambiguation when
-//   settings are present for both the latest-at and range modes.
-// - Timestamps are hard-invalidated by a change of timeline. So we keep them on a per-timeline basis.
-
-// TODO(#7067): add visible components (maybe in another archetype?)
-// TODO(#7072): add (optional) PoV components
-// Note: component list should be modelled as:
-//     component PovComponents {
-//        datatype ComponentNames {
-//            value: [string];
-//        }
-//     }
-//
-// Motivation:
-// - Chances are high that the user prefers to have their pov components _not_ invalidated by a changeof timeline.
-// - That is even though a component might _technically_ be soft-invalidated by a change of timeline (e.g. if it was
-//   not logged on that particular timeline). But we have to deal regardless with potentially invalid component, so this
-//   doesn't change the story much.
-
-// --
-
 /// The query for the dataframe view.
-//TODO(ab): replace by DataframeQueryV2 when ready
 table DataframeQuery (
-    "attr.rerun.scope": "blueprint"
-) {
-    // --- Optional ---
-
-    /// The timeline for this query.
-    ///
-    /// If unset, use the time panel's timeline and a latest-at query, ignoring all other components of this archetype.
-    timeline: rerun.blueprint.components.TimelineName ("attr.rerun.component_optional", nullable, order: 100);
-
-    /// Kind of query: latest-at or range.
-    kind: rerun.blueprint.components.QueryKind ("attr.rerun.component_optional", nullable,order: 200);
-
-    /// Configuration for latest-at queries.
-    ///
-    /// Note: configuration as saved on a per-timeline basis.
-    latest_at_queries: rerun.blueprint.components.LatestAtQueries ("attr.rerun.component_optional", nullable,order: 400);
-
-    /// Configuration for the time range queries.
-    ///
-    /// Note: configuration as saved on a per-timeline basis.
-    time_range_queries: rerun.blueprint.components.TimeRangeQueries ("attr.rerun.component_optional", nullable,order: 500);
-}
-
-
-
-/// The query for the dataframe view.
-table DataframeQueryV2 (
     "attr.rerun.scope": "blueprint"
 ) {
     // --- Optional ---
