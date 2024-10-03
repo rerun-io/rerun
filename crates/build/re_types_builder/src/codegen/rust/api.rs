@@ -975,6 +975,7 @@ fn quote_trait_impls_for_datatype_or_component(
                 // re_tracing::profile_function!();
 
                 #![allow(clippy::wildcard_imports)]
+                #![allow(clippy::manual_is_variant_and)]
                 use arrow2::{datatypes::*, array::*};
                 use ::re_types_core::{Loggable as _, ResultExt as _};
 
