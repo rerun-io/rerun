@@ -18,8 +18,6 @@ use crate::visualizer_system::{TextDocumentEntry, TextDocumentSystem};
 pub struct TextDocumentSpaceViewState {
     monospace: bool,
     word_wrap: bool,
-
-    #[cfg(feature = "markdown")]
     commonmark_cache: egui_commonmark::CommonMarkCache,
 }
 
@@ -28,8 +26,6 @@ impl Default for TextDocumentSpaceViewState {
         Self {
             monospace: false,
             word_wrap: true,
-
-            #[cfg(feature = "markdown")]
             commonmark_cache: Default::default(),
         }
     }
@@ -145,27 +141,20 @@ Displays text from a text component, as raw text or markdown."
                             let TextDocumentEntry { body, media_type } =
                                 &text_document.text_entries[0];
 
-                            #[cfg(feature = "markdown")]
-                            {
-                                if media_type == &re_types::components::MediaType::markdown() {
-                                    re_tracing::profile_scope!("egui_commonmark");
+                            if media_type == &re_types::components::MediaType::markdown() {
+                                re_tracing::profile_scope!("egui_commonmark");
 
-                                    // Make sure headers are big:
-                                    ui.style_mut()
-                                        .text_styles
-                                        .entry(egui::TextStyle::Heading)
-                                        .or_insert(egui::FontId::proportional(32.0))
-                                        .size = 24.0;
+                                // Make sure headers are big:
+                                ui.style_mut()
+                                    .text_styles
+                                    .entry(egui::TextStyle::Heading)
+                                    .or_insert(egui::FontId::proportional(32.0))
+                                    .size = 24.0;
 
-                                    egui_commonmark::CommonMarkViewer::new()
-                                        .max_image_width(Some(ui.available_width().floor() as _))
-                                        .show(ui, &mut state.commonmark_cache, body);
-                                    return;
-                                }
-                            }
-                            #[cfg(not(feature = "markdown"))]
-                            {
-                                _ = media_type;
+                                egui_commonmark::CommonMarkViewer::new()
+                                    .max_image_width(Some(ui.available_width().floor() as _))
+                                    .show(ui, &mut state.commonmark_cache, body);
+                                return;
                             }
 
                             let mut text = egui::RichText::new(body.as_str());

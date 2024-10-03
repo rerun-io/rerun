@@ -19,9 +19,7 @@ workspace = true
 all-features = true
 
 [features]
-default = ["markdown"]
-## Show `text/markdown` as Markdown.
-markdown = ["dep:egui_commonmark"]
+default = []
 
 [dependencies]
 re_chunk_store.workspace = true
@@ -33,10 +31,4 @@ re_ui.workspace = true
 re_viewer_context.workspace = true
 
 egui.workspace = true
-
-# Optional dependencies:
-
-# egui_commonmark is a 3rd party crate.
-# By making it an optional dependency we can easily drop it if we need to,
-# e.g. if a new version isn't released quickly enough after an egui release.
-egui_commonmark = { workspace = true, optional = true, default-features = false }
+egui_commonmark.workspace = true
