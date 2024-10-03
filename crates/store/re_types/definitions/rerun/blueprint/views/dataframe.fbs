@@ -2,12 +2,13 @@ namespace rerun.blueprint.views;
 
 /// A view to display any data in a tabular form.
 ///
+/// Any data from the store can be shown, using a flexibly, user-configurable query.
+///
 /// \example views/dataframe title="Use a blueprint to customize a DataframeView."
 //TODO(#6896): add a thumbnail when the example becomes interesting
 table DataframeView (
     "attr.rerun.view_identifier": "Dataframe"
 ) {
     /// Query of the dataframe.
-    //TODO(#6896): this will be enabled in a later PR in the chain
-    //query: rerun.blueprint.archetypes.DataframeQueryV2 (order: 1000);
+    query: rerun.blueprint.archetypes.DataframeQueryV2 (order: 1000);
 }

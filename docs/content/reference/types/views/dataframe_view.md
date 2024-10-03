@@ -5,6 +5,18 @@ title: "DataframeView"
 
 A view to display any data in a tabular form.
 
+Any data from the store can be shown, using a flexibly, user-configurable query.
+
+## Properties
+
+### `query`
+Query of the dataframe.
+
+* `timeline`: The timeline for this query.
+* `filter_by_range`: If provided, only rows whose timestamp is within this range will be shown.
+* `filter_by_event`: If provided, only show rows which contains a logged event for the specified component.
+* `apply_latest_at`: Should empty cells be filled with latest-at queries?
+* `select`: Selected columns. If unset, all columns are selected.
 
 ## API reference links
  * 🐍 [Python API docs for `DataframeView`](https://ref.rerun.io/docs/python/stable/common/blueprint_views#rerun.blueprint.views.DataframeView)

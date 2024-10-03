@@ -2,6 +2,7 @@
 
 mod background;
 mod dataframe_query;
+mod dataframe_query_v2;
 mod dataframe_visible_columns;
 mod plot_legend;
 mod scalar_axis;
@@ -16,6 +17,7 @@ mod visual_bounds2d;
 
 pub use self::background::Background;
 pub use self::dataframe_query::DataframeQuery;
+pub use self::dataframe_query_v2::DataframeQueryV2;
 pub use self::dataframe_visible_columns::DataframeVisibleColumns;
 pub use self::plot_legend::PlotLegend;
 pub use self::scalar_axis::ScalarAxis;

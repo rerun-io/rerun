@@ -11,12 +11,15 @@ __all__ = ["DataframeView"]
 from ... import datatypes
 from ..._baseclasses import AsComponents, ComponentBatchLike
 from ...datatypes import EntityPathLike, Utf8Like
+from .. import archetypes as blueprint_archetypes
 from ..api import SpaceView, SpaceViewContentsLike
 
 
 class DataframeView(SpaceView):
     """
     **View**: A view to display any data in a tabular form.
+
+    Any data from the store can be shown, using a flexibly, user-configurable query.
 
     Example
     -------
@@ -41,7 +44,11 @@ class DataframeView(SpaceView):
     blueprint = rrb.Blueprint(
         rrb.DataframeView(
             origin="/trig",
-            # TODO(#6896): add an interesting query here
+            # TODO(#6896): improve `DataframeQueryV2` API and showcase more features
+            query=rrb.archetypes.DataframeQueryV2(
+                timeline="t",
+                range_filter=rrb.components.RangeFilter(start=rr.TimeInt(seconds=0), end=rr.TimeInt(seconds=20)),
+            ),
         ),
     )
 
@@ -59,6 +66,7 @@ class DataframeView(SpaceView):
         visible: datatypes.BoolLike | None = None,
         defaults: list[Union[AsComponents, ComponentBatchLike]] = [],
         overrides: dict[EntityPathLike, list[ComponentBatchLike]] = {},
+        query: blueprint_archetypes.DataframeQueryV2 | None = None,
     ) -> None:
         """
         Construct a blueprint for a new DataframeView view.
@@ -89,10 +97,17 @@ class DataframeView(SpaceView):
             Important note: the path must be a fully qualified entity path starting at the root. The override paths
             do not yet support `$origin` relative paths or glob expressions.
             This will be addressed in <https://github.com/rerun-io/rerun/issues/6673>.
+        query:
+            Query of the dataframe.
 
         """
 
         properties: dict[str, AsComponents] = {}
+        if query is not None:
+            if not isinstance(query, blueprint_archetypes.DataframeQueryV2):
+                query = blueprint_archetypes.DataframeQueryV2(query)
+            properties["DataframeQueryV2"] = query
+
         super().__init__(
             class_identifier="Dataframe",
             origin=origin,

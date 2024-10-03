@@ -1,0 +1,13 @@
+
+namespace rerun.blueprint.components;
+
+/// Describe a component column to be selected in the dataframe view.
+//TODO(ab, jleibs): this probably needs reunification with whatever structure the data out API uses.
+table SelectedColumns (
+  "attr.arrow.transparent",
+  "attr.rust.derive": "Default, PartialEq, Eq",
+  "attr.rust.repr": "transparent",
+  "attr.rerun.scope": "blueprint"
+) {
+    selected_columns: rerun.blueprint.datatypes.SelectedColumns (order: 100);
+}
