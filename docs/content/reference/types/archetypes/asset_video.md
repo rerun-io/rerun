@@ -21,6 +21,9 @@ In order to display a video, you also need to log a [`archetypes.VideoFrameRefer
 
 **Recommended**: [`MediaType`](../components/media_type.md)
 
+## Shown in
+* [DataframeView](../views/dataframe_view.md)
+
 ## API reference links
  * 🌊 [C++ API docs for `AssetVideo`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1archetypes_1_1AssetVideo.html?speculative-link)
  * 🐍 [Python API docs for `AssetVideo`](https://ref.rerun.io/docs/python/stable/common/archetypes?speculative-link#rerun.archetypes.AssetVideo)
