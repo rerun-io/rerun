@@ -691,7 +691,7 @@ impl QueryHandle<'_> {
         //
         // NOTE: This is trickier than it looks: cursors need to be incremented not only for chunks
         // that were used to return data during the current iteration, but also chunks that
-        // _attempted_ to return data and were pre-empted for one reason or another (overlap,
+        // _attempted_ to return data and were preempted for one reason or another (overlap,
         // intra-timestamp tie-break, etc).
         for view_chunks in &state.view_chunks {
             for (cur_cursor, cur_chunk) in view_chunks {
