@@ -162,7 +162,8 @@ mode sets the default time range to _everything_. You can override this in the s
                 };
 
                 let schema = query_engine.schema_for_query(&query.clone().into());
-                let selected_columns = query_v2.apply_column_visibility_to_schema(ctx, &schema)?;
+                let selected_columns =
+                    query_v2.apply_column_visibility_to_view_columns(ctx, &schema)?;
 
                 let hide_column_actions = dataframe_ui(
                     ctx,
@@ -192,7 +193,8 @@ mode sets the default time range to _everything_. You can override this in the s
                 };
 
                 let schema = query_engine.schema_for_query(&query.clone().into());
-                let selected_columns = query_v2.apply_column_visibility_to_schema(ctx, &schema)?;
+                let selected_columns =
+                    query_v2.apply_column_visibility_to_view_columns(ctx, &schema)?;
 
                 let hide_column_actions = dataframe_ui(
                     ctx,
