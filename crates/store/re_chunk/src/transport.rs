@@ -30,7 +30,7 @@ use crate::{Chunk, ChunkError, ChunkId, ChunkResult, RowId, TimeColumn};
 /// This means we have to be very careful when checking the validity of the data: slipping corrupt
 /// data into the store could silently break all the index search logic (e.g. think of a chunk
 /// claiming to be sorted while it is in fact not).
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct TransportChunk {
     /// The schema of the dataframe, and all chunk-level and field-level metadata.
     ///

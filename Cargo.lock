@@ -5061,7 +5061,9 @@ dependencies = [
  "re_types",
  "re_types_core",
  "seq-macro",
+ "similar-asserts",
  "thiserror",
+ "unindent",
 ]
 
 [[package]]
