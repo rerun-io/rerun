@@ -76,6 +76,7 @@ impl ::re_types_core::Loggable for Angle {
         Self: Clone + 'a,
     {
         #![allow(clippy::wildcard_imports)]
+        #![allow(clippy::manual_is_variant_and)]
         use ::re_types_core::{Loggable as _, ResultExt as _};
         use arrow2::{array::*, datatypes::*};
         Ok({
