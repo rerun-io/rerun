@@ -129,15 +129,18 @@ where
 
         // TODO(emilk): optimize the extend function.
         // Right now it is 3-4x faster to collect to a vec first, which is crazy.
-        // Still, we use the slow path for single-elements, otherwise we hit some weird compiler bug,
-        // resulting us hitting a debug-assertion in `vec.as_slice()`.
-        // See https://github.com/rerun-io/rerun/pull/7563 for more
-        let i_want_to_crash_in_debug_builds = false;
-        if 1 < elements.len() || i_want_to_crash_in_debug_builds {
+        //
+        // Mimalloc can't align types larger than 64 bytes now and will silently ignore it.
+        // https://github.com/purpleprotocol/mimalloc_rust/issues/128
+        // Therefore, large alignments won't work with collect.
+        let pretend_mimalloc_aligns_correctly = false;
+        if elements.len() > 1
+            && (pretend_mimalloc_aligns_correctly || std::mem::align_of::<T>() <= 64)
+        {
             let vec: Vec<T> = elements.collect();
 
             #[allow(clippy::dbg_macro)]
-            if i_want_to_crash_in_debug_builds {
+            if pretend_mimalloc_aligns_correctly {
                 dbg!(std::any::type_name::<T>());
                 dbg!(std::mem::size_of::<T>());
                 dbg!(std::mem::align_of::<T>());
@@ -506,6 +509,8 @@ impl CpuWriteGpuReadBelt {
     }
 
     /// Allocates a cpu writable buffer for `num_elements` instances of type `T`.
+    ///
+    /// The buffer will be aligned to T's alignment, but no less than [`Self::MIN_OFFSET_ALIGNMENT`].
     pub fn allocate<T: bytemuck::Pod + Send + Sync>(
         &mut self,
         device: &wgpu::Device,

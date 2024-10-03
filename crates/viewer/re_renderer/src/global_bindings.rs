@@ -13,7 +13,7 @@ use smallvec::smallvec;
 ///
 /// Contains information that is constant for a single frame like camera.
 /// (does not contain information that is special to a particular renderer)
-#[repr(C, align(256))]
+#[repr(C)]
 #[derive(Clone, Copy, Zeroable, Pod)]
 pub struct FrameUniformBuffer {
     pub view_from_world: wgpu_buffer_types::Mat4x3,

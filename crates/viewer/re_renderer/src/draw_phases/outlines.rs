@@ -138,7 +138,7 @@ mod gpu_data {
     use crate::wgpu_buffer_types;
 
     /// Keep in sync with `jumpflooding_step.wgsl`
-    #[repr(C, align(256))]
+    #[repr(C)]
     #[derive(Clone, Copy, bytemuck::Pod, bytemuck::Zeroable)]
     pub struct JumpfloodingStepUniformBuffer {
         pub step_width: wgpu_buffer_types::U32RowPadded,

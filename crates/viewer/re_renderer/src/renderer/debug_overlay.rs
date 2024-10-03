@@ -28,7 +28,7 @@ mod gpu_data {
     }
 
     /// Keep in sync with `debug_overlay.wgsl`
-    #[repr(C, align(256))]
+    #[repr(C)]
     #[derive(Clone, Copy, bytemuck::Pod, bytemuck::Zeroable)]
     pub struct DebugOverlayUniformBuffer {
         pub screen_resolution: wgpu_buffer_types::Vec2,
