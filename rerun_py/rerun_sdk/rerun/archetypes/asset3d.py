@@ -62,7 +62,6 @@ class Asset3D(Asset3DExt, Archetype):
         self.__attrs_init__(
             blob=None,  # type: ignore[arg-type]
             media_type=None,  # type: ignore[arg-type]
-            vertex_colors=None,  # type: ignore[arg-type]
             albedo_factor=None,  # type: ignore[arg-type]
         )
 
@@ -96,15 +95,6 @@ class Asset3D(Asset3DExt, Archetype):
     #
     # If omitted, the viewer will try to guess from the data blob.
     # If it cannot guess, it won't be able to render the asset.
-    #
-    # (Docstring intentionally commented out to hide this field from the docs)
-
-    vertex_colors: components.ColorBatch | None = field(
-        metadata={"component": "optional"},
-        default=None,
-        converter=components.ColorBatch._optional,  # type: ignore[misc]
-    )
-    # An optional color for each vertex.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 

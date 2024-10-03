@@ -14,7 +14,7 @@ namespace rerun {
     ) {
         using namespace archetypes;
         std::vector<ComponentBatch> cells;
-        cells.reserve(5);
+        cells.reserve(4);
 
         {
             auto result = ComponentBatch::from_loggable(archetype.blob);
@@ -23,11 +23,6 @@ namespace rerun {
         }
         if (archetype.media_type.has_value()) {
             auto result = ComponentBatch::from_loggable(archetype.media_type.value());
-            RR_RETURN_NOT_OK(result.error);
-            cells.push_back(std::move(result.value));
-        }
-        if (archetype.vertex_colors.has_value()) {
-            auto result = ComponentBatch::from_loggable(archetype.vertex_colors.value());
             RR_RETURN_NOT_OK(result.error);
             cells.push_back(std::move(result.value));
         }

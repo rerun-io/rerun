@@ -5320,7 +5320,6 @@ dependencies = [
  "re_log",
  "re_math",
  "re_tracing",
- "re_types",
  "re_video",
  "serde",
  "slotmap",

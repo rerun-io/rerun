@@ -1,6 +1,5 @@
 use std::sync::Arc;
 
-use re_types::components::Color;
 use smallvec::smallvec;
 
 use crate::{
@@ -8,8 +7,6 @@ use crate::{
     renderer::MeshInstance,
     RenderContext, Rgba32Unmul,
 };
-
-use super::stl::clamped_vec_or_empty_color;
 
 #[derive(thiserror::Error, Debug)]
 pub enum ObjImportError {
@@ -25,7 +22,6 @@ pub enum ObjImportError {
 pub fn load_obj_from_buffer(
     buffer: &[u8],
     ctx: &RenderContext,
-    vertex_colors: &Option<Vec<Color>>,
 ) -> Result<Vec<MeshInstance>, ObjImportError> {
     re_tracing::profile_function!();
 
@@ -58,19 +54,19 @@ pub fn load_obj_from_buffer(
                 .map(|p| glam::uvec3(p[0], p[1], p[2]))
                 .collect();
 
-            let num_positions = vertex_positions.len();
-
-            let vertex_colors = if let Some(vertex_colors) = vertex_colors {
-                let vertex_colors_arr =
-                    clamped_vec_or_empty_color(vertex_colors.as_slice(), vertex_positions.len());
-                re_tracing::profile_scope!("copy_colors");
-                vertex_colors_arr
-                    .iter()
-                    .map(|c| Rgba32Unmul::from_rgba_unmul_array(c.to_array()))
-                    .collect()
-            } else {
-                vec![Rgba32Unmul::WHITE; num_positions]
-            };
+            let mut vertex_colors: Vec<Rgba32Unmul> = mesh
+                .vertex_color
+                .chunks_exact(3)
+                .map(|c| {
+                    Rgba32Unmul::from_rgb(
+                        // It is not specified if the color is in linear or gamma space, but gamma seems a safe bet.
+                        (c[0] * 255.0).round() as u8,
+                        (c[1] * 255.0).round() as u8,
+                        (c[2] * 255.0).round() as u8,
+                    )
+                })
+                .collect();
+            vertex_colors.resize(vertex_positions.len(), Rgba32Unmul::WHITE);
 
             let mut vertex_normals: Vec<glam::Vec3> = mesh
                 .normals

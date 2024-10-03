@@ -36,9 +36,6 @@ table Asset3D (
 
   // --- Optional ---
 
-  /// An optional color for each vertex.
-  vertex_colors: [rerun.components.Color] ("attr.rerun.component_optional", nullable, order: 3100);
-
   /// A color multiplier applied to the whole asset.
-  albedo_factor: rerun.components.AlbedoFactor ("attr.rerun.component_optional", nullable, order: 3200);
+  albedo_factor: rerun.components.AlbedoFactor ("attr.rerun.component_optional", nullable, order: 3100);
 }

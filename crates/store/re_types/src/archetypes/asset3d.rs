@@ -71,10 +71,10 @@ pub struct Asset3D {
     /// If it cannot guess, it won't be able to render the asset.
     pub media_type: Option<crate::components::MediaType>,
 
-    /// An optional color for each vertex.
-    pub vertex_colors: Option<Vec<crate::components::Color>>,
-
     /// A color multiplier applied to the whole asset.
+    ///
+    /// For mesh who already have albedo_factor in materials,
+    /// it will be overwritten by actual albedo_factor of Asset3D (if specified).
     pub albedo_factor: Option<crate::components::AlbedoFactor>,
 }
 
@@ -83,7 +83,6 @@ impl ::re_types_core::SizeBytes for Asset3D {
     fn heap_size_bytes(&self) -> u64 {
         self.blob.heap_size_bytes()
             + self.media_type.heap_size_bytes()
-            + self.vertex_colors.heap_size_bytes()
             + self.albedo_factor.heap_size_bytes()
     }
 
@@ -91,7 +90,6 @@ impl ::re_types_core::SizeBytes for Asset3D {
     fn is_pod() -> bool {
         <crate::components::Blob>::is_pod()
             && <Option<crate::components::MediaType>>::is_pod()
-            && <Option<Vec<crate::components::Color>>>::is_pod()
             && <Option<crate::components::AlbedoFactor>>::is_pod()
     }
 }
@@ -107,28 +105,22 @@ static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 2usize]> =
         ]
     });
 
-static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 2usize]> =
-    once_cell::sync::Lazy::new(|| {
-        [
-            "rerun.components.Color".into(),
-            "rerun.components.AlbedoFactor".into(),
-        ]
-    });
+static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 1usize]> =
+    once_cell::sync::Lazy::new(|| ["rerun.components.AlbedoFactor".into()]);
 
-static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 5usize]> =
+static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 4usize]> =
     once_cell::sync::Lazy::new(|| {
         [
             "rerun.components.Blob".into(),
             "rerun.components.MediaType".into(),
             "rerun.components.Asset3DIndicator".into(),
-            "rerun.components.Color".into(),
             "rerun.components.AlbedoFactor".into(),
         ]
     });
 
 impl Asset3D {
-    /// The total number of components in the archetype: 1 required, 2 recommended, 2 optional
-    pub const NUM_COMPONENTS: usize = 5usize;
+    /// The total number of components in the archetype: 1 required, 2 recommended, 1 optional
+    pub const NUM_COMPONENTS: usize = 4usize;
 }
 
 /// Indicator component for the [`Asset3D`] [`::re_types_core::Archetype`]
@@ -205,18 +197,6 @@ impl ::re_types_core::Archetype for Asset3D {
         } else {
             None
         };
-        let vertex_colors = if let Some(array) = arrays_by_name.get("rerun.components.Color") {
-            Some({
-                <crate::components::Color>::from_arrow_opt(&**array)
-                    .with_context("rerun.archetypes.Asset3D#vertex_colors")?
-                    .into_iter()
-                    .map(|v| v.ok_or_else(DeserializationError::missing_data))
-                    .collect::<DeserializationResult<Vec<_>>>()
-                    .with_context("rerun.archetypes.Asset3D#vertex_colors")?
-            })
-        } else {
-            None
-        };
         let albedo_factor = if let Some(array) = arrays_by_name.get("rerun.components.AlbedoFactor")
         {
             <crate::components::AlbedoFactor>::from_arrow_opt(&**array)
@@ -230,7 +210,6 @@ impl ::re_types_core::Archetype for Asset3D {
         Ok(Self {
             blob,
             media_type,
-            vertex_colors,
             albedo_factor,
         })
     }
@@ -246,9 +225,6 @@ impl ::re_types_core::AsComponents for Asset3D {
             self.media_type
                 .as_ref()
                 .map(|comp| (comp as &dyn ComponentBatch).into()),
-            self.vertex_colors
-                .as_ref()
-                .map(|comp_batch| (comp_batch as &dyn ComponentBatch).into()),
             self.albedo_factor
                 .as_ref()
                 .map(|comp| (comp as &dyn ComponentBatch).into()),
@@ -268,7 +244,6 @@ impl Asset3D {
         Self {
             blob: blob.into(),
             media_type: None,
-            vertex_colors: None,
             albedo_factor: None,
         }
     }
@@ -286,16 +261,6 @@ impl Asset3D {
     #[inline]
     pub fn with_media_type(mut self, media_type: impl Into<crate::components::MediaType>) -> Self {
         self.media_type = Some(media_type.into());
-        self
-    }
-
-    /// An optional color for each vertex.
-    #[inline]
-    pub fn with_vertex_colors(
-        mut self,
-        vertex_colors: impl IntoIterator<Item = impl Into<crate::components::Color>>,
-    ) -> Self {
-        self.vertex_colors = Some(vertex_colors.into_iter().map(Into::into).collect());
         self
     }
 
