@@ -5,12 +5,11 @@ from rerun_bindings import (
     ComponentColumnSelector as ComponentColumnSelector,
     ControlColumnDescriptor as ControlColumnDescriptor,
     ControlColumnSelector as ControlColumnSelector,
-    Dataset as Dataset,
+    Recording as Recording,
     RRDArchive as RRDArchive,
     Schema as Schema,
     TimeColumnDescriptor as TimeColumnDescriptor,
     TimeColumnSelector as TimeColumnSelector,
-    TimeRange as TimeRange,
     load_archive as load_archive,
     load_recording as load_recording,
 )

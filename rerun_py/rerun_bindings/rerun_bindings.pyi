@@ -2,7 +2,7 @@ from typing import Optional, Sequence
 
 import pyarrow as pa
 
-from .types import AnyColumn, ComponentLike
+from .types import AnyColumn, ComponentLike, ViewContentsLike
 
 class ControlColumnDescriptor:
     """A control-level column such as `RowId`."""
@@ -40,37 +40,27 @@ class Schema:
     def component_columns(self) -> list[ComponentColumnDescriptor]: ...
     def column_for(self, entity_path: str, component: ComponentLike) -> Optional[ComponentColumnDescriptor]: ...
 
-class TimeRange:
-    """A time range with a start and end time."""
+class RecordingView:
+    """A view of a recording on a timeline, containing a specific set of entities and components."""
 
-    @staticmethod
-    def everything() -> TimeRange: ...
-    @staticmethod
-    def seconds(start: float, end: float) -> TimeRange: ...
-    @staticmethod
-    def nanos(start: int, end: int) -> TimeRange: ...
-    @staticmethod
-    def sequence(start: int, end: int) -> TimeRange: ...
+    def filter_range_sequence(self, start: int, end: int) -> RecordingView: ...
+    def filter_range_seconds(self, start: float, end: float) -> RecordingView: ...
+    def filter_range_nanos(self, start: int, end: int) -> RecordingView: ...
+    def select(self, columns: Sequence[AnyColumn]) -> list[pa.RecordBatch]: ...
 
-class Dataset:
-    """A single dataset from an RRD, representing a Recording or a Blueprint."""
+class Recording:
+    """A single recording."""
 
     def schema(self) -> Schema: ...
-    def query(
-        self,
-        entity_path_expr: str,
-        timeline: str,
-        time_range: TimeRange,
-        query_columns: Sequence[AnyColumn],
-    ) -> list[pa.RecordBatch]: ...
+    def view(self, timeline: str, contents: ViewContentsLike) -> RecordingView: ...
 
 class RRDArchive:
     """An archive loaded from an RRD, typically containing 1 or more recordings or blueprints."""
 
     def num_recordings(self) -> int: ...
-    def all_recordings(self) -> list[Dataset]: ...
+    def all_recordings(self) -> list[Recording]: ...
 
-def load_recording(filename: str) -> Dataset:
+def load_recording(filename: str) -> Recording:
     """
     Load a single recording from an RRD.
 

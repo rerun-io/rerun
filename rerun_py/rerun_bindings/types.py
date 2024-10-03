@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, TypeAlias, Union
+from typing import TYPE_CHECKING, Sequence, TypeAlias, Union
 
 if TYPE_CHECKING:
     from rerun._baseclasses import ComponentMixin
@@ -29,4 +29,9 @@ AnyColumn: TypeAlias = Union[
 AnyComponentColumn: TypeAlias = Union[
     "ComponentColumnDescriptor",
     "ComponentColumnSelector",
+]
+
+ViewContentsLike: TypeAlias = Union[
+    str,
+    dict[str, Union[AnyColumn, Sequence[ComponentLike]]],
 ]

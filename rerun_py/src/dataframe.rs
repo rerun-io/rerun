@@ -2,35 +2,38 @@
 #![allow(clippy::borrow_deref_ref)] // False positive due to #[pyfunction] macro
 #![allow(unsafe_op_in_unsafe_fn)] // False positive due to #[pyfunction] macro
 
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 
 use arrow::{array::RecordBatch, pyarrow::PyArrowType};
 use pyo3::{
     exceptions::{PyRuntimeError, PyTypeError, PyValueError},
     prelude::*,
+    types::PyDict,
 };
+
 use re_chunk_store::{
     ChunkStore, ChunkStoreConfig, ColumnDescriptor, ColumnSelector, ComponentColumnDescriptor,
     ComponentColumnSelector, ControlColumnDescriptor, ControlColumnSelector, QueryExpression2,
     SparseFillStrategy, TimeColumnDescriptor, TimeColumnSelector, VersionPolicy,
+    ViewContentsSelector,
 };
 use re_dataframe2::QueryEngine;
 use re_log_types::{EntityPathFilter, ResolvedTimeRange, TimeType};
-use re_sdk::{EntityPath, Loggable as _, StoreId, StoreKind, Timeline};
+use re_sdk::{ComponentName, EntityPath, Loggable as _, StoreId, StoreKind};
 
 /// Register the `rerun.dataframe` module.
 pub(crate) fn register(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<PySchema>()?;
 
     m.add_class::<PyRRDArchive>()?;
-    m.add_class::<PyDataset>()?;
+    m.add_class::<PyRecording>()?;
     m.add_class::<PyControlColumnDescriptor>()?;
     m.add_class::<PyControlColumnSelector>()?;
     m.add_class::<PyTimeColumnDescriptor>()?;
     m.add_class::<PyTimeColumnSelector>()?;
     m.add_class::<PyComponentColumnDescriptor>()?;
     m.add_class::<PyComponentColumnSelector>()?;
-    m.add_class::<PyTimeRange>()?;
+    m.add_class::<PyRecordingView>()?;
 
     m.add_function(wrap_pyfunction!(crate::dataframe::load_archive, m)?)?;
     m.add_function(wrap_pyfunction!(crate::dataframe::load_recording, m)?)?;
@@ -38,6 +41,7 @@ pub(crate) fn register(m: &Bound<'_, PyModule>) -> PyResult<()> {
     Ok(())
 }
 
+/// Python binding for [`ControlColumnDescriptor`]`
 #[pyclass(frozen, name = "ControlColumnDescriptor")]
 #[derive(Clone)]
 struct PyControlColumnDescriptor(ControlColumnDescriptor);
@@ -55,6 +59,7 @@ impl From<ControlColumnDescriptor> for PyControlColumnDescriptor {
     }
 }
 
+/// Python binding for [`ControlColumnSelector`]`
 #[pyclass(frozen, name = "ControlColumnSelector")]
 #[derive(Clone)]
 struct PyControlColumnSelector(ControlColumnSelector);
@@ -73,6 +78,7 @@ impl PyControlColumnSelector {
     }
 }
 
+/// Python binding for [`TimeColumnDescriptor`]`
 #[pyclass(frozen, name = "TimeColumnDescriptor")]
 #[derive(Clone)]
 struct PyTimeColumnDescriptor(TimeColumnDescriptor);
@@ -90,6 +96,7 @@ impl From<TimeColumnDescriptor> for PyTimeColumnDescriptor {
     }
 }
 
+/// Python binding for [`TimeColumnSelector`]`
 #[pyclass(frozen, name = "TimeColumnSelector")]
 #[derive(Clone)]
 struct PyTimeColumnSelector(TimeColumnSelector);
@@ -107,6 +114,8 @@ impl PyTimeColumnSelector {
         format!("Time({})", self.0.timeline)
     }
 }
+
+/// Python binding for [`ComponentColumnDescriptor`]`
 
 #[pyclass(frozen, name = "ComponentColumnDescriptor")]
 #[derive(Clone)]
@@ -147,6 +156,7 @@ impl From<PyComponentColumnDescriptor> for ComponentColumnDescriptor {
     }
 }
 
+/// Python binding for [`ComponentColumnSelector`]`
 #[pyclass(frozen, name = "ComponentColumnSelector")]
 #[derive(Clone)]
 struct PyComponentColumnSelector(ComponentColumnSelector);
@@ -179,6 +189,7 @@ impl PyComponentColumnSelector {
     }
 }
 
+/// Python binding for [`AnyColumn`] type-alias.
 #[derive(FromPyObject)]
 enum AnyColumn {
     #[pyo3(transparent, annotation = "control_descriptor")]
@@ -312,141 +323,38 @@ impl PySchema {
     }
 }
 
-#[pyclass(frozen, name = "TimeRange")]
+#[pyclass(name = "Recording")]
+pub struct PyRecording {
+    store: ChunkStore,
+    cache: re_dataframe2::external::re_query::Caches,
+}
+
+#[pyclass(name = "RecordingView")]
 #[derive(Clone)]
-pub struct PyTimeRange {
-    time_type: Option<TimeType>,
-    range: ResolvedTimeRange,
+pub struct PyRecordingView {
+    recording: Py<PyRecording>,
+
+    query_expression: QueryExpression2,
 }
 
+/// A view of a recording on a timeline, containing a specific set of entities and components.
+///
+/// Can only be created by calling `view(...)` on a `Recording`.
 #[pymethods]
-impl PyTimeRange {
-    #[staticmethod]
-    fn everything() -> Self {
-        let time_type = None;
-        let range = ResolvedTimeRange::EVERYTHING;
-
-        Self { time_type, range }
-    }
-
-    #[staticmethod]
-    fn seconds(from: f64, to: f64) -> Self {
-        let time_type = Some(TimeType::Time);
-
-        let from = re_sdk::Time::from_seconds_since_epoch(from);
-        let to = re_sdk::Time::from_seconds_since_epoch(to);
-
-        let range = ResolvedTimeRange::new(from, to);
-
-        Self { time_type, range }
-    }
-
-    #[staticmethod]
-    fn nanos(from: i64, to: i64) -> Self {
-        let time_type = Some(TimeType::Time);
-
-        let from = re_sdk::Time::from_ns_since_epoch(from);
-        let to = re_sdk::Time::from_ns_since_epoch(to);
-
-        let range = ResolvedTimeRange::new(from, to);
-
-        Self { time_type, range }
-    }
-
-    #[staticmethod]
-    fn sequence(from: i64, to: i64) -> Self {
-        let time_type = Some(TimeType::Sequence);
-
-        let from = if let Ok(seq) = re_chunk::TimeInt::try_from(from) {
-            seq
-        } else {
-            re_log::error!(
-                illegal_value = from,
-                new_value = re_chunk::TimeInt::MIN.as_i64(),
-                "set_time_sequence() called with illegal value - clamped to minimum legal value"
-            );
-            re_chunk::TimeInt::MIN
-        };
-
-        let to = if let Ok(seq) = re_chunk::TimeInt::try_from(to) {
-            seq
-        } else {
-            re_log::error!(
-                illegal_value = to,
-                new_value = re_chunk::TimeInt::MAX.as_i64(),
-                "set_time_sequence() called with illegal value - clamped to maximum legal value"
-            );
-            re_chunk::TimeInt::MAX
-        };
-
-        let range = ResolvedTimeRange::new(from, to);
-
-        Self { time_type, range }
-    }
-}
-
-#[pyclass(frozen, name = "Dataset")]
-#[derive(Clone)]
-pub struct PyDataset {
-    pub store: ChunkStore,
-}
-
-#[pymethods]
-impl PyDataset {
-    fn schema(&self) -> PySchema {
-        PySchema {
-            schema: self.store.schema(),
-        }
-    }
-
-    fn query(
+impl PyRecordingView {
+    fn select(
         &self,
-        expr: &str,
-        timeline: &str,
-        time_range: PyTimeRange,
+        py: Python<'_>,
         columns: Option<Vec<AnyColumn>>,
     ) -> PyResult<PyArrowType<Vec<RecordBatch>>> {
-        // TODO(jleibs): Move this ctx into PyChunkStore?
-        let cache = re_dataframe2::external::re_query::Caches::new(&self.store);
+        let borrowed = self.recording.borrow(py);
+        let engine = borrowed.engine();
 
-        let engine = QueryEngine {
-            store: &self.store,
-            cache: &cache,
-        };
+        let mut query_expression = self.query_expression.clone();
+        query_expression.selection =
+            columns.map(|cols| cols.into_iter().map(|col| col.into_selector()).collect());
 
-        let timeline = if let Some(time_type) = time_range.time_type {
-            Timeline::new(timeline, time_type)
-        } else {
-            // Look up the type of the timeline
-            let selector = TimeColumnSelector {
-                timeline: timeline.into(),
-            };
-            let resolved = self.store.resolve_time_selector(&selector);
-
-            resolved.timeline
-        };
-
-        let path_filter = EntityPathFilter::parse_strict(expr, &Default::default())
-            .map_err(|err| PyValueError::new_err(err.to_string()))?;
-
-        let contents = engine
-            .iter_entity_paths(&path_filter)
-            .map(|p| (p, None))
-            .collect();
-
-        let query = QueryExpression2 {
-            view_contents: Some(contents),
-            filtered_index: timeline,
-            filtered_index_range: Some(time_range.range),
-            filtered_index_values: None,
-            sampled_index_values: None,
-            filtered_point_of_view: None,
-            sparse_fill_strategy: SparseFillStrategy::None,
-            selection: columns
-                .map(|cols| cols.into_iter().map(|col| col.into_selector()).collect()),
-        };
-
-        let query_handle = engine.query(query);
+        let query_handle = engine.query(query_expression);
 
         let batches: Result<Vec<_>, _> = query_handle
             .into_batch_iter()
@@ -456,6 +364,210 @@ impl PyDataset {
         let batches = batches.map_err(|err| PyRuntimeError::new_err(err.to_string()))?;
 
         Ok(PyArrowType(batches))
+    }
+
+    fn filter_range_sequence(&self, start: i64, end: i64) -> PyResult<Self> {
+        if self.query_expression.filtered_index.typ() != TimeType::Sequence {
+            return Err(PyValueError::new_err(format!(
+                "Timeline for {} is not a sequence.",
+                self.query_expression.filtered_index.name()
+            )));
+        }
+
+        let start = if let Ok(seq) = re_chunk::TimeInt::try_from(start) {
+            seq
+        } else {
+            re_log::error!(
+                illegal_value = start,
+                new_value = re_chunk::TimeInt::MIN.as_i64(),
+                "set_time_sequence() called with illegal value - clamped to minimum legal value"
+            );
+            re_chunk::TimeInt::MIN
+        };
+
+        let end = if let Ok(seq) = re_chunk::TimeInt::try_from(end) {
+            seq
+        } else {
+            re_log::error!(
+                illegal_value = end,
+                new_value = re_chunk::TimeInt::MAX.as_i64(),
+                "set_time_sequence() called with illegal value - clamped to maximum legal value"
+            );
+            re_chunk::TimeInt::MAX
+        };
+
+        let resolved = ResolvedTimeRange::new(start, end);
+
+        let mut query_expression = self.query_expression.clone();
+        query_expression.filtered_index_range = Some(resolved);
+
+        Ok(Self {
+            recording: self.recording.clone(),
+            query_expression,
+        })
+    }
+
+    fn filter_range_seconds(&self, start: f64, end: f64) -> PyResult<Self> {
+        if self.query_expression.filtered_index.typ() != TimeType::Time {
+            return Err(PyValueError::new_err(format!(
+                "Timeline for {} is not temporal.",
+                self.query_expression.filtered_index.name()
+            )));
+        }
+
+        let start = re_sdk::Time::from_seconds_since_epoch(start);
+        let end = re_sdk::Time::from_seconds_since_epoch(end);
+
+        let resolved = ResolvedTimeRange::new(start, end);
+
+        let mut query_expression = self.query_expression.clone();
+        query_expression.filtered_index_range = Some(resolved);
+
+        Ok(Self {
+            recording: self.recording.clone(),
+            query_expression,
+        })
+    }
+
+    fn filter_range_nanos(&self, start: i64, end: i64) -> PyResult<Self> {
+        if self.query_expression.filtered_index.typ() != TimeType::Time {
+            return Err(PyValueError::new_err(format!(
+                "Timeline for {} is not temporal.",
+                self.query_expression.filtered_index.name()
+            )));
+        }
+
+        let start = re_sdk::Time::from_ns_since_epoch(start);
+        let end = re_sdk::Time::from_ns_since_epoch(end);
+
+        let resolved = ResolvedTimeRange::new(start, end);
+
+        let mut query_expression = self.query_expression.clone();
+        query_expression.filtered_index_range = Some(resolved);
+
+        Ok(Self {
+            recording: self.recording.clone(),
+            query_expression,
+        })
+    }
+}
+
+impl PyRecording {
+    fn engine(&self) -> QueryEngine<'_> {
+        QueryEngine {
+            store: &self.store,
+            cache: &self.cache,
+        }
+    }
+
+    /// Convert a `ViewContentsLike` into a `ViewContentsSelector`.
+    ///
+    /// ```python
+    /// ViewContentsLike = Union[str, Dict[str, Union[ComponentLike, Sequence[ComponentLike]]]]
+    /// ```
+    ///
+    /// We cant do this with the norma `FromPyObject` mechanisms because we want access to the
+    /// `QueryEngine` to resolve the entity paths.
+    fn extract_contents_expr(
+        &self,
+        expr: Bound<'_, PyAny>,
+    ) -> PyResult<re_chunk_store::ViewContentsSelector> {
+        let engine = self.engine();
+
+        if let Ok(expr) = expr.extract::<String>() {
+            // `str`
+
+            let path_filter = EntityPathFilter::parse_strict(&expr, &Default::default())
+                .map_err(|err| PyValueError::new_err(err.to_string()))?;
+
+            let contents = engine
+                .iter_entity_paths(&path_filter)
+                .map(|p| (p, None))
+                .collect();
+
+            Ok(contents)
+        } else if let Ok(dict) = expr.downcast::<PyDict>() {
+            // `Union[ComponentLike, Sequence[ComponentLike]]]`
+
+            let mut contents = ViewContentsSelector::default();
+            for (key, value) in dict {
+                let key = key.extract::<String>()?;
+
+                let path_filter = EntityPathFilter::parse_strict(&key, &Default::default())
+                    .map_err(|err| PyValueError::new_err(err.to_string()))?;
+
+                let components: BTreeSet<ComponentName> =
+                    if let Ok(component) = value.extract::<ComponentLike>() {
+                        std::iter::once(component.0).collect()
+                    } else if let Ok(components) = value.extract::<Vec<ComponentLike>>() {
+                        components.into_iter().map(|c| c.0).collect()
+                    } else {
+                        return Err(PyTypeError::new_err(
+                            "ViewContentsLike input must be a string or a list of strings.",
+                        ));
+                    };
+
+                contents.append(
+                    &mut engine
+                        .iter_entity_paths(&path_filter)
+                        .map(|p| (p, Some(components.clone())))
+                        .collect(),
+                );
+            }
+
+            Ok(contents)
+        } else {
+            return Err(PyTypeError::new_err("ViewContentsLike input must be..."));
+        }
+    }
+}
+
+#[pymethods]
+impl PyRecording {
+    fn schema(&self) -> PySchema {
+        PySchema {
+            schema: self.store.schema(),
+        }
+    }
+
+    #[pyo3(signature = (
+        *,
+        timeline,
+        contents
+    ))]
+    fn view(
+        slf: Bound<'_, Self>,
+        timeline: &str,
+        contents: Bound<'_, PyAny>,
+    ) -> PyResult<PyRecordingView> {
+        let borrowed_self = slf.borrow();
+
+        // Look up the type of the timelin
+        let selector = TimeColumnSelector {
+            timeline: timeline.into(),
+        };
+
+        let timeline = borrowed_self.store.resolve_time_selector(&selector);
+
+        let contents = borrowed_self.extract_contents_expr(contents)?;
+
+        let query = QueryExpression2 {
+            view_contents: Some(contents),
+            filtered_index: timeline.timeline,
+            filtered_index_range: None,
+            filtered_index_values: None,
+            sampled_index_values: None,
+            filtered_point_of_view: None,
+            sparse_fill_strategy: SparseFillStrategy::None,
+            selection: None,
+        };
+
+        let recording = slf.unbind();
+
+        Ok(PyRecordingView {
+            recording,
+            query_expression: query,
+        })
     }
 }
 
@@ -475,19 +587,23 @@ impl PyRRDArchive {
     }
 
     // TODO(jleibs): This could probably return an iterator
-    fn all_recordings(&self) -> Vec<PyDataset> {
+    fn all_recordings(&self) -> Vec<PyRecording> {
         self.datasets
             .iter()
             .filter(|(id, _)| matches!(id.kind, StoreKind::Recording))
-            .map(|(_, store)| PyDataset {
-                store: store.clone(),
+            .map(|(_, store)| {
+                let cache = re_dataframe2::external::re_query::Caches::new(store);
+                PyRecording {
+                    store: store.clone(),
+                    cache,
+                }
             })
             .collect()
     }
 }
 
 #[pyfunction]
-pub fn load_recording(path_to_rrd: String) -> PyResult<PyDataset> {
+pub fn load_recording(path_to_rrd: String) -> PyResult<PyRecording> {
     let archive = load_archive(path_to_rrd)?;
 
     let num_recordings = archive.num_recordings();
