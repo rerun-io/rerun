@@ -1,17 +1,52 @@
 #[cfg(target_arch = "wasm32")]
 mod web;
-#[cfg(target_arch = "wasm32")]
-pub use web::VideoDecoder;
 
-// TODO(#7298): decode on native
 #[cfg(not(target_arch = "wasm32"))]
 mod native;
-#[cfg(not(target_arch = "wasm32"))]
-pub use native::VideoDecoder;
+use crate::{
+    resource_managers::GpuTexture2D,
+    wgpu_resources::{GpuTexturePool, TextureDesc},
+    RenderContext,
+};
 
-use crate::resource_managers::GpuTexture2D;
-use crate::wgpu_resources::GpuTexturePool;
-use crate::wgpu_resources::TextureDesc;
+use std::sync::Arc;
+
+use super::{DecodeHardwareAcceleration, DecodingError, FrameDecodingResult};
+
+/// Decode video to a texture.
+///
+/// If you want to sample multiple points in a video simultaneously, use multiple decoders.
+pub trait VideoDecoder: 'static + Send {
+    /// Get the video frame at the given time stamp.
+    ///
+    /// This will seek in the video if needed.
+    /// If you want to sample multiple points in a video simultaneously, use multiple decoders.
+    fn frame_at(
+        &mut self,
+        render_ctx: &RenderContext,
+        presentation_timestamp_s: f64,
+    ) -> FrameDecodingResult;
+}
+
+#[cfg(target_arch = "wasm32")]
+pub fn new_video_decoder(
+    render_context: &RenderContext,
+    data: Arc<re_video::VideoData>,
+    hw_acceleration: DecodeHardwareAcceleration,
+) -> Result<Box<dyn VideoDecoder>, DecodingError> {
+    let decoder = web::WebVideoDecoder::new(render_context, data, hw_acceleration)?;
+    Ok(Box::new(decoder))
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+pub fn new_video_decoder(
+    render_context: &RenderContext,
+    data: Arc<re_video::VideoData>,
+    _hw_acceleration: DecodeHardwareAcceleration,
+) -> Result<Box<dyn VideoDecoder>, DecodingError> {
+    let decoder = native::NoNativeVideoDecoder::new(render_context, data)?;
+    Ok(Box::new(decoder))
+}
 
 fn alloc_video_frame_texture(
     device: &wgpu::Device,

@@ -67,7 +67,7 @@ pub enum VideoFrameTexture {
 pub struct VideoDecodingStreamId(pub u64);
 
 struct DecoderEntry {
-    decoder: decoder::VideoDecoder,
+    decoder: Box<dyn decoder::VideoDecoder>,
     frame_index: u64,
 }
 
@@ -192,7 +192,7 @@ impl Video {
         let decoder_entry = match decoders.entry(decoder_stream_id) {
             Entry::Occupied(occupied_entry) => occupied_entry.into_mut(),
             Entry::Vacant(vacant_entry) => {
-                let new_decoder = decoder::VideoDecoder::new(
+                let new_decoder = decoder::new_video_decoder(
                     render_context,
                     self.data.clone(),
                     self.decode_hw_acceleration,
