@@ -1,7 +1,7 @@
 //! Video decoding library.
 
-mod decode;
-mod demux;
+pub mod decode;
+pub mod demux;
 
 pub use decode::{Chunk, Frame, PixelFormat};
 pub use demux::{Config, Sample, VideoData, VideoLoadError};
