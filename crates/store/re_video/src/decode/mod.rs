@@ -1,5 +1,6 @@
 //! Video frame decoding.
 
+#[cfg(feature = "av1")]
 pub mod av1;
 
 use crate::Time;

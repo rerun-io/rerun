@@ -3,9 +3,12 @@
 mod decode;
 mod demux;
 
-pub use decode::{av1, Chunk, Frame, PixelFormat};
+pub use decode::{Chunk, Frame, PixelFormat};
 pub use demux::{Sample, VideoData, VideoLoadError};
 pub use re_mp4::{TrackId, TrackKind};
+
+#[cfg(feature = "av1")]
+pub use decode::av1;
 
 use ordered_float::OrderedFloat;
 

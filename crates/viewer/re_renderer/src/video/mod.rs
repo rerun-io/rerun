@@ -45,6 +45,9 @@ pub enum DecodingError {
     /// e.g. bad mp4, or bug in mp4 parse
     #[error("Bad data.")]
     BadData,
+
+    #[error("No native video support. Try compiling rerun with the `video_av1` feature flag")]
+    NoNativeSupport,
 }
 
 pub type FrameDecodingResult = Result<VideoFrameTexture, DecodingError>;

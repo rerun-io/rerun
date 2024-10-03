@@ -2,7 +2,12 @@
 mod web;
 
 #[cfg(not(target_arch = "wasm32"))]
-mod native;
+mod no_native_decoder;
+
+#[cfg(feature = "video_av1")]
+#[cfg(not(target_arch = "wasm32"))]
+mod native_av1;
+
 use crate::{
     resource_managers::GpuTexture2D,
     wgpu_resources::{GpuTexturePool, TextureDesc},
@@ -28,26 +33,27 @@ pub trait VideoDecoder: 'static + Send {
     ) -> FrameDecodingResult;
 }
 
-#[cfg(target_arch = "wasm32")]
-pub fn new_video_decoder(
-    render_context: &RenderContext,
-    data: Arc<re_video::VideoData>,
-    hw_acceleration: DecodeHardwareAcceleration,
-) -> Result<Box<dyn VideoDecoder>, DecodingError> {
-    let decoder = web::WebVideoDecoder::new(render_context, data, hw_acceleration)?;
-    Ok(Box::new(decoder))
-}
-
-#[cfg(not(target_arch = "wasm32"))]
 pub fn new_video_decoder(
     render_context: &RenderContext,
     data: Arc<re_video::VideoData>,
     _hw_acceleration: DecodeHardwareAcceleration,
 ) -> Result<Box<dyn VideoDecoder>, DecodingError> {
-    let decoder = native::Av1VideoDecoder::new(render_context, data)?;
+    #![allow(unused, clippy::unnecessary_wraps, clippy::needless_pass_by_value)] // only for some feature flags
+
+    cfg_if::cfg_if! {
+        if #[cfg(target_arch = "wasm32")] {
+            let decoder = web::WebVideoDecoder::new(render_context, data, hw_acceleration)?;
+        } else if #[cfg(feature = "video_av1")] {
+            let decoder = native_av1::Av1VideoDecoder::new(render_context, data)?;
+        } else {
+            let decoder = no_native_decoder::NoNativeVideoDecoder::default();
+        }
+    };
+
     Ok(Box::new(decoder))
 }
 
+#[allow(unused)] // For some feature flags
 fn alloc_video_frame_texture(
     device: &wgpu::Device,
     pool: &GpuTexturePool,
@@ -86,6 +92,7 @@ fn alloc_video_frame_texture(
 /// - The index of `needle` in `v`, if it exists
 /// - The index of the first element in `v` that is lesser than `needle`, if it exists
 /// - `None`, if `v` is empty OR `needle` is greater than all elements in `v`
+#[allow(unused)] // For some feature flags
 fn latest_at_idx<T, K: Ord>(v: &[T], key: impl Fn(&T) -> K, needle: &K) -> Option<usize> {
     if v.is_empty() {
         return None;

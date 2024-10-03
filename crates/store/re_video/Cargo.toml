@@ -24,6 +24,11 @@ no-default-features = true
 features = ["all"]
 
 [features]
+default = []
+
+## Opt-in to native AV1 decoding.
+## You need to install [nasm](https://nasm.us/) to compile with this feature.
+av1 = ["dep:dav1d"]
 
 [dependencies]
 re_log.workspace = true
@@ -36,9 +41,10 @@ parking_lot.workspace = true
 re_mp4.workspace = true
 thiserror.workspace = true
 
+# Native dependencies:
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 # If this package fails to build, install `nasm` locally, or build through `pixi`.
-dav1d = { git = "https://github.com/rerun-io/rav1d-rs" }
-# dav1d = { path = "../../../../rav1d-rs", package = "dav1d" }
+dav1d = { git = "https://github.com/rerun-io/rav1d-rs", optional = true } # TODO: clean up this fork. https://github.com/rerun-io/rerun/issues/7575
 
 [dev-dependencies]
 indicatif.workspace = true
