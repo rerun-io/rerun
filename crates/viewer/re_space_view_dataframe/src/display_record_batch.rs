@@ -1,5 +1,5 @@
-//! Intermediate data structures to make `re_datastore`'s schemas and [`RecordBatch`]s more amenable
-//! to displaying in a table.
+//! Intermediate data structures to make `re_datastore`'s schemas and row data more amenable to
+//! displaying in a table.
 
 use thiserror::Error;
 
@@ -12,7 +12,6 @@ use re_chunk_store::external::arrow2::{
     datatypes::DataType as ArrowDataType,
 };
 use re_chunk_store::{ColumnDescriptor, ComponentColumnDescriptor, LatestAtQuery, RowId};
-use re_dataframe::RecordBatch;
 use re_log_types::{EntityPath, TimeInt, TimeType, Timeline};
 use re_types::external::arrow2::datatypes::IntegerType;
 use re_types_core::{ComponentName, Loggable as _};
@@ -378,19 +377,19 @@ impl DisplayRecordBatch {
     ///
     /// The columns in the record batch must match the schema. This is guaranteed by `re_datastore`.
     pub(crate) fn try_new(
-        record_batch: &RecordBatch,
+        row_data: &Vec<Box<dyn ArrowArray>>,
         schema: &[ColumnDescriptor],
     ) -> Result<Self, DisplayRecordBatchError> {
+        let num_rows = row_data.first().map(|arr| arr.len()).unwrap_or(0);
+
         let columns: Result<Vec<_>, _> = schema
             .iter()
-            .zip(record_batch.all_columns())
-            .map(|(column_schema, (_, column_data))| {
-                DisplayColumn::try_new(column_schema, column_data)
-            })
+            .zip(row_data)
+            .map(|(column_schema, column_data)| DisplayColumn::try_new(column_schema, column_data))
             .collect();
 
         Ok(Self {
-            num_rows: record_batch.num_rows(),
+            num_rows,
             columns: columns?,
         })
     }

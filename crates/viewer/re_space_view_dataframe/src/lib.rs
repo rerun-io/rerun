@@ -5,9 +5,7 @@
 mod dataframe_ui;
 mod display_record_batch;
 mod expanded_rows;
-mod query_kind;
 mod space_view_class;
-mod view_query;
 mod view_query_v2;
 mod visualizer_system;
 

@@ -3,7 +3,7 @@ use std::collections::HashSet;
 use crate::dataframe_ui::HideColumnAction;
 use crate::view_query_v2::QueryV2;
 use re_chunk_store::{ColumnDescriptor, ColumnSelector};
-use re_log_types::{EntityPath, TimeInt, TimelineName};
+use re_log_types::{EntityPath, ResolvedTimeRange, TimelineName};
 use re_types::blueprint::{components, datatypes};
 use re_viewer_context::{SpaceViewSystemExecutionError, ViewerContext};
 
@@ -51,22 +51,26 @@ impl QueryV2 {
             .clear_blueprint_component::<components::FilterByRange>(ctx);
     }
 
-    pub(crate) fn range_filter(&self) -> Result<(TimeInt, TimeInt), SpaceViewSystemExecutionError> {
+    pub(crate) fn filter_by_range(
+        &self,
+    ) -> Result<ResolvedTimeRange, SpaceViewSystemExecutionError> {
         #[allow(clippy::map_unwrap_or)]
         Ok(self
             .query_property
             .component_or_empty::<components::FilterByRange>()?
-            .map(|range_filter| (range_filter.start.into(), range_filter.end.into()))
-            .unwrap_or((TimeInt::MIN, TimeInt::MAX)))
+            .map(|range_filter| (ResolvedTimeRange::new(range_filter.start, range_filter.end)))
+            .unwrap_or(ResolvedTimeRange::EVERYTHING))
     }
 
-    pub(super) fn save_range_filter(&self, ctx: &ViewerContext<'_>, start: TimeInt, end: TimeInt) {
-        if (start, end) == (TimeInt::MIN, TimeInt::MAX) {
+    pub(super) fn save_filter_by_range(&self, ctx: &ViewerContext<'_>, range: ResolvedTimeRange) {
+        if range == ResolvedTimeRange::EVERYTHING {
             self.query_property
                 .clear_blueprint_component::<components::FilterByRange>(ctx);
         } else {
-            self.query_property
-                .save_blueprint_component(ctx, &components::FilterByRange::new(start, end));
+            self.query_property.save_blueprint_component(
+                ctx,
+                &components::FilterByRange::new(range.min(), range.max()),
+            );
         }
     }
 

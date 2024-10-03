@@ -1,17 +1,16 @@
 use std::any::Any;
 
 use crate::{
-    dataframe_ui::dataframe_ui, expanded_rows::ExpandedRowsCache, query_kind::QueryKind,
-    view_query_v2, visualizer_system::EmptySystem,
+    dataframe_ui::dataframe_ui, expanded_rows::ExpandedRowsCache, view_query_v2,
+    visualizer_system::EmptySystem,
 };
-use re_chunk_store::ColumnDescriptor;
-use re_log_types::{EntityPath, EntityPathFilter, ResolvedTimeRange};
+use re_chunk_store::{ColumnDescriptor, ComponentColumnSelector, SparseFillStrategy};
+use re_log_types::EntityPath;
 use re_types_core::SpaceViewClassIdentifier;
 use re_viewer_context::{
     SpaceViewClass, SpaceViewClassRegistryError, SpaceViewId, SpaceViewState, SpaceViewStateExt,
     SpaceViewSystemExecutionError, SystemExecutionOutput, ViewQuery, ViewerContext,
 };
-use re_viewport_blueprint::SpaceViewContents;
 
 #[derive(Default)]
 struct DataframeSpaceViewState {
@@ -105,10 +104,6 @@ mode sets the default time range to _everything_. You can override this in the s
         _space_origin: &EntityPath,
         space_view_id: SpaceViewId,
     ) -> Result<(), SpaceViewSystemExecutionError> {
-        crate::view_query::query_ui(ctx, ui, state, space_view_id)?;
-
-        //TODO(ab): just display the UI for now, this has no effect on the view itself yet.
-        ui.separator();
         let state = state.downcast_mut::<DataframeSpaceViewState>()?;
         let view_query = view_query_v2::QueryV2::from_blueprint(ctx, space_view_id);
         let Some(schema) = &state.schema else {
@@ -128,110 +123,58 @@ mode sets the default time range to _everything_. You can override this in the s
         _system_output: SystemExecutionOutput,
     ) -> Result<(), SpaceViewSystemExecutionError> {
         re_tracing::profile_function!();
+
         let state = state.downcast_mut::<DataframeSpaceViewState>()?;
-        let space_view_id = query.space_view_id;
+        let view_query = view_query_v2::QueryV2::from_blueprint(ctx, query.space_view_id);
 
-        let view_query = super::view_query::Query::try_from_blueprint(ctx, space_view_id)?;
-        let timeline_name = view_query.timeline_name(ctx);
-        let query_mode = view_query.kind(ctx);
-
-        let Some(timeline) = ctx
-            .recording()
-            .timelines()
-            .find(|t| t.name() == &timeline_name)
-        else {
-            re_log::warn_once!("Could not find timeline {:?}.", timeline_name.as_str());
-            //TODO(ab): we should have an error for that
-            return Ok(());
+        let query_engine = re_dataframe2::QueryEngine {
+            store: ctx.recording().store(),
+            cache: ctx.recording().query_caches(),
         };
 
-        let query_engine = ctx.recording().query_engine();
+        let view_contents = query
+            .iter_all_entities()
+            .map(|entity| (entity.clone(), None))
+            .collect();
 
-        let entity_path_filter =
-            Self::entity_path_filter(ctx, query.space_view_id, query.space_origin);
+        let filtered_point_of_view = view_query.filter_by_event()?.map(|filter| {
+            ComponentColumnSelector::new_for_component_name(
+                filter.entity_path(),
+                filter.component_name(),
+            )
+        });
 
-        // use the new query for column visibility
-        let query_v2 = view_query_v2::QueryV2::from_blueprint(ctx, query.space_view_id);
-
-        let (schema, hide_column_actions) = match query_mode {
-            QueryKind::LatestAt { time } => {
-                let query = re_chunk_store::LatestAtQueryExpression {
-                    entity_path_filter,
-                    timeline: *timeline,
-                    at: time,
-                };
-
-                let schema = query_engine.schema_for_query(&query.clone().into());
-                let selected_columns =
-                    query_v2.apply_column_visibility_to_view_columns(ctx, &schema)?;
-
-                let hide_column_actions = dataframe_ui(
-                    ctx,
-                    ui,
-                    query_engine.latest_at(&query, selected_columns),
-                    &mut state.expended_rows_cache,
-                );
-
-                (schema, hide_column_actions)
-            }
-            QueryKind::Range {
-                pov_entity,
-                pov_component,
-                from,
-                to,
-            } => {
-                let query = re_chunk_store::RangeQueryExpression {
-                    entity_path_filter,
-                    timeline: *timeline,
-                    time_range: ResolvedTimeRange::new(from, to),
-                    //TODO(#7365): using ComponentColumnDescriptor to specify PoV needs to go
-                    pov: re_chunk_store::ComponentColumnSelector {
-                        entity_path: pov_entity.clone(),
-                        component: pov_component,
-                        join_encoding: Default::default(),
-                    },
-                };
-
-                let schema = query_engine.schema_for_query(&query.clone().into());
-                let selected_columns =
-                    query_v2.apply_column_visibility_to_view_columns(ctx, &schema)?;
-
-                let hide_column_actions = dataframe_ui(
-                    ctx,
-                    ui,
-                    query_engine.range(&query, selected_columns),
-                    &mut state.expended_rows_cache,
-                );
-
-                (schema, hide_column_actions)
-            }
+        let sparse_fill_strategy = if view_query.latest_at_enabled()? {
+            SparseFillStrategy::LatestAtGlobal
+        } else {
+            SparseFillStrategy::None
         };
 
-        query_v2.handle_hide_column_actions(ctx, &schema, hide_column_actions)?;
+        let schema = query_engine.schema_for_view_contents(&view_contents);
+        let selection = view_query.apply_column_visibility_to_view_columns(ctx, &schema)?;
 
-        // make schema accessible to the column visibility UI
+        let dataframe_query = re_chunk_store::QueryExpression2 {
+            view_contents: Some(view_contents),
+            filtered_index: view_query.timeline(ctx)?,
+            filtered_index_range: Some(view_query.filter_by_range()?),
+            filtered_point_of_view,
+            sparse_fill_strategy,
+            selection,
+
+            // not yet unsupported by the dataframe view
+            filtered_index_values: None,
+            sampled_index_values: None,
+        };
+
+        let query_handle = query_engine.query(dataframe_query);
+
+        let hide_column_actions =
+            dataframe_ui(ctx, ui, &query_handle, &mut state.expended_rows_cache);
+
+        view_query.handle_hide_column_actions(ctx, &schema, hide_column_actions)?;
+
         state.schema = Some(schema);
-
         Ok(())
-    }
-}
-
-impl DataframeSpaceView {
-    fn entity_path_filter(
-        ctx: &ViewerContext<'_>,
-        space_view_id: SpaceViewId,
-        space_origin: &EntityPath,
-    ) -> EntityPathFilter {
-        //TODO(ab): this feels a little bit hacky but there isn't currently another way to get to
-        //the original entity path filter.
-        SpaceViewContents::from_db_or_default(
-            space_view_id,
-            ctx.blueprint_db(),
-            ctx.blueprint_query,
-            Self::identifier(),
-            &re_log_types::EntityPathSubs::new_with_origin(space_origin),
-        )
-        .entity_path_filter
     }
 }
 
