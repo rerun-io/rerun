@@ -44,7 +44,7 @@ impl QueryV2 {
         let time_drag_value = if let Some(times) = ctx.recording().time_histogram(timeline) {
             TimeDragValue::from_time_histogram(times)
         } else {
-            // This should never happen because `timeline` is guaranteed to be valid by `Self::timeline()`
+            debug_assert!(false, "This should never happen because `timeline` is guaranteed to be valid by `Self::timeline()`");
             TimeDragValue::from_time_range(0..=0)
         };
 
@@ -257,16 +257,16 @@ impl QueryV2 {
         ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
         timeline: &Timeline,
-        schema: &[ColumnDescriptor],
+        view_columns: &[ColumnDescriptor],
     ) -> Result<(), SpaceViewSystemExecutionError> {
         // Gather our selected columns.
         let selected_columns: HashSet<_> = self
-            .apply_column_visibility_to_schema(ctx, schema)?
+            .apply_column_visibility_to_view_columns(ctx, view_columns)?
             .map(|columns| columns.into_iter().collect())
-            .unwrap_or_else(|| schema.iter().cloned().map(Into::into).collect());
+            .unwrap_or_else(|| view_columns.iter().cloned().map(Into::into).collect());
 
         let visible_count = selected_columns.len();
-        let hidden_count = schema.len() - visible_count;
+        let hidden_count = view_columns.len() - visible_count;
         let visible_count_label = format!("{visible_count} visible, {hidden_count} hidden");
 
         let mut new_selected_columns = selected_columns.clone();
@@ -297,7 +297,7 @@ impl QueryV2 {
             //
 
             let mut first = true;
-            for column in schema {
+            for column in view_columns {
                 let ColumnDescriptor::Control(_) = column else {
                     continue;
                 };
@@ -327,7 +327,7 @@ impl QueryV2 {
             //
 
             let mut first = true;
-            for column in schema {
+            for column in view_columns {
                 let ColumnDescriptor::Time(time_column_descriptor) = column else {
                     continue;
                 };
@@ -367,7 +367,7 @@ impl QueryV2 {
             //
 
             let mut current_entity = None;
-            for column in schema {
+            for column in view_columns {
                 let ColumnDescriptor::Component(component_column_descriptor) = column else {
                     continue;
                 };
@@ -406,9 +406,9 @@ impl QueryV2 {
 
         // save changes of column visibility
         if new_selected_columns != selected_columns {
-            if new_selected_columns.len() == schema.len() {
+            if new_selected_columns.len() == view_columns.len() {
                 // length match is a guaranteed match because the `selected_columns` sets are built
-                // from filtering out the scheme
+                // from filtering out the view columns
                 self.save_all_columns_selected(ctx);
             } else {
                 self.save_selected_columns(ctx, new_selected_columns);

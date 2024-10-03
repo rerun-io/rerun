@@ -138,11 +138,17 @@ impl QueryV2 {
             .save_blueprint_component(ctx, &components::SelectedColumns::default());
     }
 
-    /// Given a schema, list the columns that should be visible, according to the blueprint.
-    pub(crate) fn apply_column_visibility_to_schema(
+    /// Given some view columns, list the columns that should be visible (aka "selected columns"),
+    /// according to the blueprint.
+    ///
+    /// This operates by filtering the view columns based on the blueprint specified columns.
+    ///
+    /// Returns `Ok(None)` if all columns should be displayed (aka a column selection isn't provided
+    /// in the blueprint).
+    pub(crate) fn apply_column_visibility_to_view_columns(
         &self,
         ctx: &ViewerContext<'_>,
-        schema: &[ColumnDescriptor],
+        view_columns: &[ColumnDescriptor],
     ) -> Result<Option<Vec<ColumnSelector>>, SpaceViewSystemExecutionError> {
         let selected_columns = self
             .query_property
@@ -154,6 +160,7 @@ impl QueryV2 {
             component_columns,
         }) = selected_columns.as_deref()
         else {
+            // select all columns
             return Ok(None);
         };
 
@@ -164,7 +171,7 @@ impl QueryV2 {
         let selected_component_columns = component_columns.iter().cloned().collect::<HashSet<_>>();
 
         let query_timeline_name = *self.timeline(ctx)?.name();
-        let result = schema
+        let result = view_columns
             .iter()
             .filter(|column| match column {
                 ColumnDescriptor::Control(_) => true,
@@ -193,7 +200,7 @@ impl QueryV2 {
     pub(crate) fn handle_hide_column_actions(
         &self,
         ctx: &ViewerContext<'_>,
-        schema: &[ColumnDescriptor],
+        view_columns: &[ColumnDescriptor],
         actions: Vec<HideColumnAction>,
     ) -> Result<(), SpaceViewSystemExecutionError> {
         if actions.is_empty() {
@@ -201,9 +208,9 @@ impl QueryV2 {
         }
 
         let mut selected_columns: Vec<_> = self
-            .apply_column_visibility_to_schema(ctx, schema)?
+            .apply_column_visibility_to_view_columns(ctx, view_columns)?
             .map(|columns| columns.into_iter().collect())
-            .unwrap_or_else(|| schema.iter().cloned().map(Into::into).collect());
+            .unwrap_or_else(|| view_columns.iter().cloned().map(Into::into).collect());
 
         for action in actions {
             match action {

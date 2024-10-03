@@ -1,4 +1,4 @@
-mod blueprint_io;
+mod blueprint;
 mod ui;
 
 use re_chunk_store::ColumnDescriptor;
@@ -33,7 +33,7 @@ impl QueryV2 {
         ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
         space_view_id: SpaceViewId,
-        schema: &[ColumnDescriptor],
+        view_columns: &[ColumnDescriptor],
     ) -> Result<(), SpaceViewSystemExecutionError> {
         let timeline = self.timeline(ctx)?;
 
@@ -43,7 +43,7 @@ impl QueryV2 {
         ui.separator();
         self.filter_event_ui(ctx, ui, &timeline, space_view_id)?;
         ui.separator();
-        self.column_visibility_ui(ctx, ui, &timeline, schema)?;
+        self.column_visibility_ui(ctx, ui, &timeline, view_columns)?;
         ui.separator();
         self.latest_at_ui(ctx, ui)?;
 
