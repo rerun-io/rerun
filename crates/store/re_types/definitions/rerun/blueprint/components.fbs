@@ -5,7 +5,6 @@ include "./components/apply_latest_at.fbs";
 include "./components/auto_layout.fbs";
 include "./components/auto_space_views.fbs";
 include "./components/background_kind.fbs";
-include "./components/column_selection_mode.fbs";
 include "./components/column_share.fbs";
 include "./components/component_column_selector.fbs";
 include "./components/container_kind.fbs";
