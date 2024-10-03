@@ -72,12 +72,16 @@ message Query {
     IndexColumnSelector index = 2;
     // Optional specific range for the index selector
     FilteredIndexRange index_range = 3;
+    // Optional specific values for the index selector
+    FilteredIndexValues index_values = 4;
+    // Optional sampled values for the index selector
+    SampledIndexValues sampled_index_values = 5;
     // PoV (filtering) component
-    ComponentColumnDescriptor pov_component = 4;
+    ComponentColumnDescriptor pov_component = 6;
     // which columns to include in the response
-    repeated ColumnSelector column_selector = 5;
+    repeated ColumnSelector column_selector = 7;
     // how are null values filled in the response
-    SparseFillStrategy sparse_fill_strategy = 6;
+    SparseFillStrategy sparse_fill_strategy = 8;
 }
 
 message QueryResponse {
@@ -87,8 +91,9 @@ message QueryResponse {
 
 message ColumnSelector {
     oneof selector_type {
-        ControlColumnDescriptor control_column = 1;
-        ComponentColumnDescriptor component_column = 2;
+        ControlColumnSelector control_column = 1;
+        ComponentColumnSelector component_column = 2;
+        TimeColumnSelector time_column = 3;
     }
 }
 
@@ -102,8 +107,14 @@ message IndexColumnSelector {
 // This goes away or becomes FilteredIndexRange which is an optional field
 message FilteredIndexRange {
     TimeRange time_range = 1;
-    repeated TimeInt time_points = 2;
-    repeated TimeInt sample_points = 3;
+}
+
+message FilteredIndexValues {
+    repeated TimeInt time_points = 1;
+}
+
+message SampledIndexValues {
+    repeated TimeInt sample_points = 1;
 }
 
 message ViewContentsPart {
@@ -144,6 +155,21 @@ message ComponentColumnDescriptor {
     string component = 2;
     bool resolve_latest_at = 3;
     // TODO - join encoding
+}
+
+message ControlColumnSelector {
+    string component_name = 1;
+}
+
+message TimeColumnSelector {
+    string timeline_name = 1;
+}
+
+message ComponentColumnSelector {
+    EntityPath entity_path = 1;
+    // component name needs to be a string as user can define their own component
+    string component = 2;
+    // TODO join encoding
 }
 
 enum SparseFillStrategy {

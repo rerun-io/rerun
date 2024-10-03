@@ -13,6 +13,7 @@ version.workspace = true
 
 [dependencies]
 re_log_types.workspace = true
+re_dataframe2.workspace = true
 prost = "0.13.3"
 # TODO (zehiko) remove specific version requirement once we migrate to rust 1.78+
 tonic = "=0.12.1"

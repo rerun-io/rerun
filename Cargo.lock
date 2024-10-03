@@ -5907,6 +5907,7 @@ name = "re_storage"
 version = "0.19.0-alpha.1+dev"
 dependencies = [
  "prost 0.13.3",
+ "re_dataframe2",
  "re_log_types",
  "tonic",
  "tonic-build",
