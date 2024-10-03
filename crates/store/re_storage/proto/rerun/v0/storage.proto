@@ -79,7 +79,10 @@ message Query {
     // PoV (filtering) component
     ComponentColumnDescriptor pov_component = 6;
     // which columns to include in the response
-    repeated ColumnSelector column_selector = 7;
+    // Note - added one more layer of indiraction just to have Option<Vec<ColumnSelector>>
+    // as we do in the query expression. We can remove that but we need to be careful how the
+    // conversion is made
+    ColumnSelection column_selection = 7;
     // how are null values filled in the response
     SparseFillStrategy sparse_fill_strategy = 8;
 }
@@ -87,6 +90,10 @@ message Query {
 message QueryResponse {
     // one or more record batches (encoding TBD). We might not need the list (repeated)
     repeated bytes record_batches = 1;
+}
+
+message ColumnSelection {
+    repeated ColumnSelector columns = 1;
 }
 
 message ColumnSelector {

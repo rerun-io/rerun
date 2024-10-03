@@ -30,13 +30,9 @@ impl From<Query> for re_dataframe2::external::re_chunk_store::QueryExpression2 {
             filtered_point_of_view: None, // TODO implement
             sparse_fill_strategy:
                 re_dataframe2::external::re_chunk_store::SparseFillStrategy::default(), // TODO implement,
-            selection: Some(
-                value
-                    .column_selector
-                    .into_iter()
-                    .map(|s| s.into())
-                    .collect::<Vec<_>>(),
-            ),
+            selection: value
+                .column_selection
+                .map(|cs| cs.columns.into_iter().map(|c| c.into()).collect()),
         }
     }
 }
