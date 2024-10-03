@@ -144,7 +144,7 @@ where
                 dbg!(vec.len());
                 dbg!(vec.as_ptr());
                 dbg!(vec.as_ptr() as usize % std::mem::align_of::<T>());
-                dbg!(vec.as_slice().len());
+                debug_assert_eq!(vec.as_ptr() as usize % std::mem::align_of::<T>(), 0, "Vec::collect collects into unaligned memory!");
             }
 
             self.extend_from_slice(vec.as_slice())?;
