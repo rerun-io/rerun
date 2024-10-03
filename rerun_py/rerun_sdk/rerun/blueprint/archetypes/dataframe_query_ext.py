@@ -7,8 +7,8 @@ from ...blueprint import components as blueprint_components, datatypes as bluepr
 from ...error_utils import catch_and_log_exceptions
 
 
-class DataframeQueryV2Ext:
-    """Extension for [DataframeQueryV2][rerun.blueprint.archetypes.DataframeQueryV2]."""
+class DataframeQueryExt:
+    """Extension for [DataframeQuery][rerun.blueprint.archetypes.DataframeQuery]."""
 
     def __init__(
         self: Any,
@@ -22,7 +22,7 @@ class DataframeQueryV2Ext:
         select: list[blueprint_datatypes.ComponentColumnSelectorLike | datatypes.Utf8Like | str] | None = None,
     ):
         """
-        Create a new instance of the DataframeQueryV2 archetype.
+        Create a new instance of the DataframeQuery archetype.
 
         Parameters
         ----------

@@ -9,10 +9,10 @@ use re_types_core::{ComponentName, ComponentNameSet};
 use re_ui::{list_item, UiExt};
 use re_viewer_context::{SpaceViewId, SpaceViewSystemExecutionError, TimeDragValue, ViewerContext};
 
-use crate::view_query_v2::QueryV2;
+use crate::view_query::Query;
 
 // UI implementation
-impl QueryV2 {
+impl Query {
     pub(super) fn timeline_ui(
         &self,
         ctx: &ViewerContext<'_>,

@@ -1,5 +1,5 @@
-//! Intermediate data structures to make `re_datastore`'s schemas and row data more amenable to
-//! displaying in a table.
+//! Intermediate data structures to make `re_datastore`'s row data more amenable to displaying in a
+//! table.
 
 use thiserror::Error;
 
@@ -187,10 +187,10 @@ pub(crate) enum DisplayColumn {
 impl DisplayColumn {
     #[allow(clippy::borrowed_box)] // https://github.com/rust-lang/rust-clippy/issues/11940
     fn try_new(
-        column_schema: &ColumnDescriptor,
+        column_descriptor: &ColumnDescriptor,
         column_data: &Box<dyn ArrowArray>,
     ) -> Result<Self, DisplayRecordBatchError> {
-        match column_schema {
+        match column_descriptor {
             ColumnDescriptor::Control(desc) => {
                 if desc.component_name == RowId::name() {
                     let row_ids = column_data
@@ -373,19 +373,22 @@ pub(crate) struct DisplayRecordBatch {
 }
 
 impl DisplayRecordBatch {
-    /// Create a new `DisplayRecordBatch` from a `RecordBatch` and its schema.
+    /// Create a new `DisplayRecordBatch` from a `RecordBatch` and its list of selected columns.
     ///
-    /// The columns in the record batch must match the schema. This is guaranteed by `re_datastore`.
+    /// The columns in the record batch must match the selected columns. This is guaranteed by
+    /// `re_datastore`.
     pub(crate) fn try_new(
         row_data: &Vec<Box<dyn ArrowArray>>,
-        schema: &[ColumnDescriptor],
+        selected_columns: &[ColumnDescriptor],
     ) -> Result<Self, DisplayRecordBatchError> {
         let num_rows = row_data.first().map(|arr| arr.len()).unwrap_or(0);
 
-        let columns: Result<Vec<_>, _> = schema
+        let columns: Result<Vec<_>, _> = selected_columns
             .iter()
             .zip(row_data)
-            .map(|(column_schema, column_data)| DisplayColumn::try_new(column_schema, column_data))
+            .map(|(column_descriptor, column_data)| {
+                DisplayColumn::try_new(column_descriptor, column_data)
+            })
             .collect();
 
         Ok(Self {
