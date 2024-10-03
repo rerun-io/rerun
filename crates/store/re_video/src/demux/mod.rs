@@ -13,7 +13,7 @@ use itertools::Itertools as _;
 
 use super::{Time, Timescale};
 
-use crate::{TrackId, TrackKind};
+use crate::{Chunk, TrackId, TrackKind};
 
 /// Decoded video data.
 #[derive(Clone)]
@@ -129,6 +129,24 @@ impl VideoData {
                 .map(|sample| sample.composition_timestamp.into_nanos(self.timescale))
                 .sorted()
         })
+    }
+
+    /// Returns `None` if the sample is invalid/out-of-range.
+    pub fn get(&self, sample: &Sample) -> Option<Chunk> {
+        let byte_offset = sample.byte_offset as usize;
+        let byte_length = sample.byte_length as usize;
+
+        if self.data.len() < byte_offset + byte_length {
+            None
+        } else {
+            let data = &self.data[byte_offset..byte_offset + byte_length];
+
+            Some(Chunk {
+                data: data.to_vec(),
+                timestamp: sample.decode_timestamp,
+                duration: sample.duration,
+            })
+        }
     }
 }
 

@@ -224,23 +224,8 @@ impl Av1VideoDecoder {
 
     /// Enqueue the given sample.
     fn enqueue_sample(&self, sample: &re_video::Sample, is_key: bool) -> Result<(), DecodingError> {
-        let byte_offset = sample.byte_offset as usize;
-        let byte_length = sample.byte_length as usize;
-
-        if self.data.data.len() < byte_offset + byte_length {
-            return Err(DecodingError::BadData);
-        }
-
-        let data = &self.data.data[byte_offset..byte_offset + byte_length];
-
-        let chunk = re_video::Chunk {
-            data: data.to_vec(),
-            timestamp: sample.decode_timestamp,
-            duration: sample.duration,
-        };
-
+        let chunk = self.data.get(sample).ok_or(DecodingError::BadData)?;
         self.decoder.decode(chunk);
-
         Ok(())
     }
 
