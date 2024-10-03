@@ -1,5 +1,5 @@
-//! Intermediate data structures to make `re_datastore`'s schemas and [`RecordBatch`]s more amenable
-//! to displaying in a table.
+//! Intermediate data structures to make `re_datastore`'s schemas and row data more amenable to
+//! displaying in a table.
 
 use thiserror::Error;
 

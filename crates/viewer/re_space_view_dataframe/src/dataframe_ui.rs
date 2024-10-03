@@ -121,9 +121,9 @@ struct BatchRef {
 
 /// This structure maintains the data for displaying rows in a table.
 ///
-/// Row data is stored in a bunch of [`DisplayRecordBatch`], which are created from
-/// [`RecordBatch`]s. We also maintain a mapping for each row number to the corresponding record
-/// batch and the index inside it.
+/// Row data is stored in a bunch of [`DisplayRecordBatch`], which are created from the rows
+/// returned by the query. We also maintain a mapping for each row number to the corresponding
+/// display record batch and the index inside it.
 #[derive(Debug)]
 struct RowsDisplayData {
     /// The [`DisplayRecordBatch`]s to display.
