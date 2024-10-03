@@ -40,13 +40,15 @@ Video playback is done using the browser's own video decoder, so the supported c
 
 Overall, we recommend using Chrome or another Chromium-based browser, as it seems to have the best video support as of writing.
 
-When choosing a codec, we recommend [AV1](https://developer.mozilla.org/en-US/docs/Web/Media/Formats/Video_codecs#av1), as that seems to have the best overall playback support. Since AV1 is patent-free, it is also likely the first codec we will support in the native viewer.
+When choosing a codec, we recommend [AV1](https://developer.mozilla.org/en-US/docs/Web/Media/Formats/Video_codecs#av1),
+as it seems to have the best overall playback support while also having very high compression quality.
+Since AV1 is patent-free, it is also likely the first codec we will support in the native viewer.
 
 For decoding video in the Web Viewer, we use the [WebCodecs API](https://developer.mozilla.org/en-US/docs/Web/API/WebCodecs_API).
 This API enables us to take advantage of the browser's hardware accelerated video decoding capabilities.
 It is implemented by all modern browsers, but with varying levels of support for different codecs, and varying levels of quality.
 
-With that in mind, here are the browsers which we have tested and verified to work:
+With that in mind, here are the browsers which we have tested and verified to generally work:
 
 |            | Linux  | macOS | Windows |
 | ---------- | ------ | ----- | ------- |
@@ -64,12 +66,16 @@ which codecs are supported by which browser, see [Video codecs on MDN](https://d
 
 At the moment, we test the following codecs:
 
-|       | Linux | macOS   | Windows |
-| ----- | ----- | ------- | ------- |
-| AV1   | ✅    | 🚧[^4]  | ✅      |
-| H.264 | ✅    | ✅      | ✅      |
+|            | Linux Firefox | Linux Chrome | macOS Firefox | macOS Chrome | macOS Safari | Windows Firefox | Windows Chrome |
+| ---------- | ------------- | ------------ | ------------- | ------------ | ------------ | --------------- | -------------- |
+| AV1        | ✅            | ✅           | ✅           | ✅           | 🚧[^4]        | ✅               | ✅             |
+| H.264/avc  | ✅            | ✅           | ✅           | ✅           | ✅            | ✅               | ✅             |
+| H.265/hevc | ❌            | ❌           | ❌           | ✅           | 🚧[^6]        | ❌               | 🚧[^7]         |
 
 [^4]: Safari/WebKit does not support AV1 decoding except on [Apple Silicon devices with hardware support](https://webkit.org/blog/14445/webkit-features-in-safari-17-0/).
+[^5]: Firefox does not support H.265 decoding on any platform.
+[^6]: Safari/WebKit has been observed suttering when playing `hvc1` but working fine with `hevc1`. Despite support being advertised Safari 16.5 has been observed not support H.265 decoding.
+[^7]: Only supported if hardware encoding is available. Therefore always affected by Windows stuttering issues, see [^3].
 
 ## Links
 * [Web video codec guide, by Mozilla](https://developer.mozilla.org/en-US/docs/Web/Media/Formats/Video_codecs)
