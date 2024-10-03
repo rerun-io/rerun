@@ -7,7 +7,7 @@ use ahash::HashSet;
 use arrow2::{
     array::Array as ArrowArray, chunk::Chunk as ArrowChunk, datatypes::Schema as ArrowSchema,
 };
-use itertools::Itertools as _;
+use itertools::Itertools;
 
 use nohash_hasher::IntMap;
 use re_chunk::{Chunk, RangeQuery, RowId, TimeInt, Timeline};
@@ -385,6 +385,8 @@ impl QueryHandle<'_> {
     //
     // TODO(cmc): implement this properly, cache the result, etc.
     pub fn num_rows(&self) -> u64 {
+        re_tracing::profile_function!();
+
         let all_unique_timestamps: HashSet<TimeInt> = self
             .init()
             .view_chunks
@@ -435,12 +437,13 @@ impl QueryHandle<'_> {
         re_tracing::profile_function!();
 
         /// Temporary state used to resolve the streaming join for the current iteration.
+        #[derive(Debug)]
         struct StreamingJoinState<'a> {
             /// Which `Chunk` is this?
             chunk: &'a Chunk,
 
             /// How far are we into this `Chunk`?
-            cursor: &'a AtomicU64,
+            cursor: u64,
 
             /// What's the index value at the current cursor?
             index_value: TimeInt,
@@ -470,25 +473,14 @@ impl QueryHandle<'_> {
             for (cur_cursor, cur_chunk) in view_chunks {
                 // NOTE: Too soon to increment the cursor, we cannot know yet which chunks will or
                 // will not be part of the current row.
-                let cursor_value = cur_cursor.load(Ordering::Relaxed) as usize;
+                let cur_cursor_value = cur_cursor.load(Ordering::Relaxed);
 
                 // TODO(cmc): This can easily be optimized by looking ahead and breaking as soon as chunks
                 // stop overlapping.
 
-                let Some(cur_row_id) = cur_chunk.row_ids().nth(cursor_value) else {
-                    continue;
-                };
-
-                let Some(cur_index_value) = cur_chunk
-                    .timelines()
-                    .get(&self.query.filtered_index)
-                    .map_or(Some(TimeInt::STATIC), |time_column| {
-                        time_column
-                            .times_raw()
-                            .get(cursor_value)
-                            .copied()
-                            .map(TimeInt::new_temporal)
-                    })
+                let Some((cur_index_value, cur_row_id)) = cur_chunk
+                    .iter_indices(&self.query.filtered_index)
+                    .nth(cur_cursor_value as _)
                 else {
                     continue;
                 };
@@ -510,15 +502,15 @@ impl QueryHandle<'_> {
                     if cur_chunk_has_smaller_index_value
                         || cur_chunk_has_equal_index_but_higher_rowid
                     {
-                        *chunk = chunk;
-                        *cursor = cursor;
+                        *chunk = cur_chunk;
+                        *cursor = cur_cursor_value;
                         *index_value = cur_index_value;
                         *row_id = cur_row_id;
                     }
                 } else {
                     *streaming_state = Some(StreamingJoinState {
                         chunk: cur_chunk,
-                        cursor: cur_cursor,
+                        cursor: cur_cursor_value,
                         index_value: cur_index_value,
                         row_id: cur_row_id,
                     });
@@ -574,10 +566,9 @@ impl QueryHandle<'_> {
                     .timelines()
                     .get(&self.query.filtered_index)
                     .map(|time_column| {
-                        time_column.times_array().sliced(
-                            cur_most_recent_row.cursor.load(Ordering::Relaxed) as usize,
-                            1,
-                        )
+                        time_column
+                            .times_array()
+                            .sliced(cur_most_recent_row.cursor as usize, 1)
                     });
 
                 debug_assert!(
@@ -603,7 +594,7 @@ impl QueryHandle<'_> {
                         .filter(|time_column| *time_column.timeline() != self.query.filtered_index)
                         // NOTE: Cannot fail, just want to stay away from unwraps.
                         .filter_map(|time_column| {
-                            let cursor = streaming_state.cursor.load(Ordering::Relaxed) as usize;
+                            let cursor = streaming_state.cursor as usize;
                             time_column
                                 .times_raw()
                                 .get(cursor)
@@ -636,8 +627,10 @@ impl QueryHandle<'_> {
         let view_sliced_arrays: Vec<Option<_>> = view_streaming_state
             .iter()
             .map(|streaming_state| {
+                // NOTE: Reminder: the only reason the streaming state could be `None` here is
+                // because this column does not have data for the current index value (i.e. `null`).
                 streaming_state.as_ref().and_then(|streaming_state| {
-                    let cursor = streaming_state.cursor.fetch_add(1, Ordering::Relaxed);
+                    let cursor = streaming_state.cursor;
 
                     debug_assert!(
                         streaming_state.chunk.components().len() <= 1,
@@ -664,24 +657,25 @@ impl QueryHandle<'_> {
         // TODO(cmc): It would likely be worth it to allocate all these possible
         // null-arrays ahead of time, and just return a pointer to those in the failure
         // case here.
-        let arrays = state
+        let selected_arrays = state
             .selected_contents
             .iter()
             .map(|(view_idx, column)| match column {
-                ColumnDescriptor::Control(_) => cur_most_recent_row.chunk.row_ids_array().sliced(
-                    cur_most_recent_row
-                        .cursor
-                        .load(Ordering::Relaxed)
-                        // NOTE: We did the cursor increments while computing the final sliced arrays,
-                        // so we need to go back one tick for this.
-                        .saturating_sub(1) as usize,
-                    1,
-                ),
+                ColumnDescriptor::Control(descr) => {
+                    if descr.component_name == "rerun.controls.RowId" {
+                        cur_most_recent_row
+                            .chunk
+                            .row_ids_array()
+                            .sliced(cur_most_recent_row.cursor as usize, 1)
+                    } else {
+                        arrow2::array::new_null_array(column.datatype(), 1)
+                    }
+                }
 
                 ColumnDescriptor::Time(descr) => {
-                    max_value_per_index.remove(&descr.timeline).map_or_else(
+                    max_value_per_index.get(&descr.timeline).map_or_else(
                         || arrow2::array::new_null_array(column.datatype(), 1),
-                        |(_time, time_sliced)| time_sliced,
+                        |(_time, time_sliced)| time_sliced.clone(),
                     )
                 }
 
@@ -693,9 +687,28 @@ impl QueryHandle<'_> {
             })
             .collect_vec();
 
-        debug_assert_eq!(state.arrow_schema.fields.len(), arrays.len());
+        // We now need to increment cursors.
+        //
+        // NOTE: This is trickier than it looks: cursors need to be incremented not only for chunks
+        // that were used to return data during the current iteration, but also chunks that
+        // _attempted_ to return data and were pre-empted for one reason or another (overlap,
+        // intra-timestamp tie-break, etc).
+        for view_chunks in &state.view_chunks {
+            for (cur_cursor, cur_chunk) in view_chunks {
+                if let Some((index_value, _row_id)) = cur_chunk
+                    .iter_indices(&self.query.filtered_index)
+                    .nth(cur_cursor.load(Ordering::Relaxed) as _)
+                {
+                    if cur_index_value == index_value {
+                        cur_cursor.fetch_add(1, Ordering::Relaxed);
+                    }
+                };
+            }
+        }
 
-        Some(arrays)
+        debug_assert_eq!(state.arrow_schema.fields.len(), selected_arrays.len());
+
+        Some(selected_arrays)
     }
 
     /// Calls [`Self::next_row`] and wraps the result in a [`RecordBatch`].
