@@ -69,7 +69,7 @@ pub mod gpu_data {
     static_assertions::assert_eq_size!(PositionRadius, glam::Vec4);
 
     /// Uniform buffer that changes once per draw data rendering.
-    #[repr(C, align(256))]
+    #[repr(C)]
     #[derive(Clone, Copy, bytemuck::Pod, bytemuck::Zeroable)]
     pub struct DrawDataUniformBuffer {
         pub radius_boost_in_ui_points: wgpu_buffer_types::F32RowPadded,
@@ -77,7 +77,7 @@ pub mod gpu_data {
     }
 
     /// Uniform buffer that changes for every batch of points.
-    #[repr(C, align(256))]
+    #[repr(C)]
     #[derive(Clone, Copy, bytemuck::Pod, bytemuck::Zeroable)]
     pub struct BatchUniformBuffer {
         pub world_from_obj: wgpu_buffer_types::Mat4,

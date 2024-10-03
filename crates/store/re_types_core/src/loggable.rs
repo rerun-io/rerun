@@ -136,6 +136,8 @@ impl ComponentName {
             short_name
         } else if let Some(short_name) = full_name.strip_prefix("rerun.components.") {
             short_name
+        } else if let Some(short_name) = full_name.strip_prefix("rerun.controls.") {
+            short_name
         } else if let Some(short_name) = full_name.strip_prefix("rerun.") {
             short_name
         } else {

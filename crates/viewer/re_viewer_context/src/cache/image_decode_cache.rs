@@ -103,7 +103,6 @@ fn decode_image(
         buffer: buffer.0,
         format: format.0,
         kind: ImageKind::Color,
-        colormap: None,
     })
 }
 

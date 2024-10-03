@@ -170,10 +170,7 @@ fn spawn_and_stream<W: std::io::Write + Send + 'static>(
 impl fmt::Debug for FileSink {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("FileSink")
-            .field(
-                "path",
-                &self.path.as_ref().cloned().unwrap_or("stdout".into()),
-            )
+            .field("path", &self.path.clone().unwrap_or("stdout".into()))
             .finish_non_exhaustive()
     }
 }

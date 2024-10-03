@@ -42,6 +42,13 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             },
         ),
         (
+            <ApplyLatestAt as Loggable>::name(),
+            ComponentReflection {
+                docstring_md: "Whether empty cells in a dataframe should be filled with a latest-at query.",
+                placeholder: Some(ApplyLatestAt::default().to_arrow()?),
+            },
+        ),
+        (
             <AutoLayout as Loggable>::name(),
             ComponentReflection {
                 docstring_md: "Whether the viewport layout is determined automatically.",
@@ -95,6 +102,20 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             ComponentReflection {
                 docstring_md: "One of four 2D corners, typically used to align objects.",
                 placeholder: Some(Corner2D::default().to_arrow()?),
+            },
+        ),
+        (
+            <FilterByEvent as Loggable>::name(),
+            ComponentReflection {
+                docstring_md: "Configuration for the filter-by-event feature of the dataframe view.",
+                placeholder: Some(FilterByEvent::default().to_arrow()?),
+            },
+        ),
+        (
+            <FilterByRange as Loggable>::name(),
+            ComponentReflection {
+                docstring_md: "Configuration for a filter-by-range feature of the dataframe view.",
+                placeholder: Some(FilterByRange::default().to_arrow()?),
             },
         ),
         (
@@ -172,6 +193,13 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             ComponentReflection {
                 docstring_md: "The layout share of a row in the container.",
                 placeholder: Some(RowShare::default().to_arrow()?),
+            },
+        ),
+        (
+            <SelectedColumns as Loggable>::name(),
+            ComponentReflection {
+                docstring_md: "Describe a component column to be selected in the dataframe view.",
+                placeholder: Some(SelectedColumns::default().to_arrow()?),
             },
         ),
         (
@@ -665,6 +693,13 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             },
         ),
         (
+            <ValueRange as Loggable>::name(),
+            ComponentReflection {
+                docstring_md: "Range of expected or valid values, specifying a lower and upper bound.",
+                placeholder: Some(ValueRange::default().to_arrow()?),
+            },
+        ),
+        (
             <Vector2D as Loggable>::name(),
             ComponentReflection {
                 docstring_md: "A vector in 2D space.",
@@ -951,6 +986,10 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                     "rerun.components.Colormap".into(), display_name : "Colormap",
                     docstring_md :
                     "Colormap to use for rendering the depth image.\n\nIf not set, the depth image will be rendered using the Turbo colormap.",
+                    is_required : false, }, ArchetypeFieldReflection { component_name :
+                    "rerun.components.ValueRange".into(), display_name : "Depth range",
+                    docstring_md :
+                    "The expected range of depth values.\n\nThis is typically the expected range of valid values.\nEverything outside of the range is clamped to the range for the purpose of colormpaping.\nNote that point clouds generated from this image will still display all points, regardless of this range.\n\nIf not specified, the range will be automatically estimated from the data.\nNote that the Viewer may try to guess a wider range than the minimum/maximum of values\nin the contents of the depth image.\nE.g. if all values are positive, some bigger than 1.0 and all smaller than 255.0,\nthe Viewer will guess that the data likely came from an 8bit image, thus assuming a range of 0-255.",
                     is_required : false, }, ArchetypeFieldReflection { component_name :
                     "rerun.components.FillRatio".into(), display_name :
                     "Point fill ratio", docstring_md :
@@ -1388,6 +1427,11 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                     ArchetypeFieldReflection { component_name :
                     "rerun.components.TensorData".into(), display_name : "Data",
                     docstring_md : "The tensor data", is_required : true, },
+                    ArchetypeFieldReflection { component_name :
+                    "rerun.components.ValueRange".into(), display_name : "Value range",
+                    docstring_md :
+                    "The expected range of values.\n\nThis is typically the expected range of valid values.\nEverything outside of the range is clamped to the range for the purpose of colormpaping.\nAny colormap applied for display, will map this range.\n\nIf not specified, the range will be automatically estimated from the data.\nNote that the Viewer may try to guess a wider range than the minimum/maximum of values\nin the contents of the tensor.\nE.g. if all values are positive, some bigger than 1.0 and all smaller than 255.0,\nthe Viewer will guess that the data likely came from an 8bit image, thus assuming a range of 0-255.",
+                    is_required : false, },
                 ],
             },
         ),
@@ -1566,6 +1610,35 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
             },
         ),
         (
+            ArchetypeName::new("rerun.blueprint.archetypes.DataframeQueryV2"),
+            ArchetypeReflection {
+                display_name: "Dataframe query v2",
+                fields: vec![
+                    ArchetypeFieldReflection { component_name :
+                    "rerun.blueprint.components.TimelineName".into(), display_name :
+                    "Timeline", docstring_md :
+                    "The timeline for this query.\n\nIf unset, the timeline currently active on the time panel is used.",
+                    is_required : false, }, ArchetypeFieldReflection { component_name :
+                    "rerun.blueprint.components.FilterByRange".into(), display_name :
+                    "Filter by range", docstring_md :
+                    "If provided, only rows whose timestamp is within this range will be shown.\n\nNote: will be unset as soon as `timeline` is changed.",
+                    is_required : false, }, ArchetypeFieldReflection { component_name :
+                    "rerun.blueprint.components.FilterByEvent".into(), display_name :
+                    "Filter by event", docstring_md :
+                    "If provided, only show rows which contains a logged event for the specified component.",
+                    is_required : false, }, ArchetypeFieldReflection { component_name :
+                    "rerun.blueprint.components.ApplyLatestAt".into(), display_name :
+                    "Apply latest at", docstring_md :
+                    "Should empty cells be filled with latest-at queries?", is_required :
+                    false, }, ArchetypeFieldReflection { component_name :
+                    "rerun.blueprint.components.SelectedColumns".into(), display_name :
+                    "Select", docstring_md :
+                    "Selected columns. If unset, all columns are selected.", is_required
+                    : false, },
+                ],
+            },
+        ),
+        (
             ArchetypeName::new("rerun.blueprint.archetypes.DataframeVisibleColumns"),
             ArchetypeReflection {
                 display_name: "Dataframe visible columns",
@@ -1682,7 +1755,7 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                     false, }, ArchetypeFieldReflection { component_name :
                     "rerun.components.GammaCorrection".into(), display_name : "Gamma",
                     docstring_md :
-                    "Gamma exponent applied to normalized values before mapping to color.\n\nRaises the normalized values to the power of this value before mapping to color.\nActs like an inverse brightness. Defaults to 1.0.",
+                    "Gamma exponent applied to normalized values before mapping to color.\n\nRaises the normalized values to the power of this value before mapping to color.\nActs like an inverse brightness. Defaults to 1.0.\n\nThe final value for display is set as:\n`colormap( ((value - data_display_range.min) / (data_display_range.max - data_display_range.min)) ** gamma )`",
                     is_required : false, },
                 ],
             },

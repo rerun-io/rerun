@@ -1,6 +1,6 @@
 //! All the APIs used specifically for `re_dataframe`.
 
-use std::collections::BTreeSet;
+use std::collections::{BTreeMap, BTreeSet};
 
 use ahash::HashSet;
 use arrow2::{
@@ -242,6 +242,8 @@ pub struct ComponentColumnDescriptor {
     pub store_datatype: ArrowDatatype,
 
     /// How the data will be joined into the resulting `RecordBatch`.
+    //
+    // TODO(cmc): remove with the old re_dataframe.
     pub join_encoding: JoinEncoding,
 
     /// Whether this column represents static data.
@@ -445,9 +447,13 @@ impl From<ComponentColumnSelector> for ColumnSelector {
 /// Select a control column.
 ///
 /// The only control column currently supported is `rerun.components.RowId`.
+//
+// TODO(cmc): `RowId` shouldnt be a control column at this point, it should be yet another index.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct ControlColumnSelector {
     /// Name of the control column.
+    //
+    // TODO(cmc): this should be `component_name`.
     pub component: ComponentName,
 }
 
@@ -470,6 +476,9 @@ impl From<ControlColumnDescriptor> for ControlColumnSelector {
 }
 
 /// Select a time column.
+//
+// TODO(cmc): This shouldn't be specific to time, this should be an `IndexColumnSelector` or smth.
+// Particularly unfortunate that this one already leaks into the public API…
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct TimeColumnSelector {
     /// The name of the timeline.
@@ -497,9 +506,13 @@ pub struct ComponentColumnSelector {
     pub entity_path: EntityPath,
 
     /// Semantic name associated with this data.
+    //
+    // TODO(cmc): this should be `component_name`.
     pub component: ComponentName,
 
     /// How to join the data into the `RecordBatch`.
+    //
+    // TODO(cmc): remove once old `re_dataframe` is gone.
     pub join_encoding: JoinEncoding,
 }
 
@@ -698,6 +711,192 @@ impl std::fmt::Display for RangeQueryExpression {
             timeline.typ().format_utc(time_range.max()),
             timeline.name(),
         ))
+    }
+}
+
+// --- Queries v2 ---
+
+/// Specifies how null values should be filled in the returned dataframe.
+#[derive(Default, Debug, Clone, PartialEq, Eq, Hash)]
+pub enum SparseFillStrategy {
+    /// No sparse filling. Nulls stay nulls.
+    #[default]
+    None,
+
+    /// Fill null values using global-scope latest-at semantics.
+    ///
+    /// The latest-at semantics are applied on the entire dataset as opposed to just the current
+    /// view contents: it is possible to end up with values from outside the view!
+    LatestAtGlobal,
+    //
+    // TODO(cmc): `LatestAtView`?
+}
+
+impl std::fmt::Display for SparseFillStrategy {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::None => f.write_str("none"),
+            Self::LatestAtGlobal => f.write_str("latest-at (global)"),
+        }
+    }
+}
+
+/// The view contents specify which subset of the database (i.e., which columns) the query runs on,
+/// expressed as a set of [`EntityPath`]s and their associated [`ComponentName`]s.
+///
+/// Setting an entity's components to `None` means: everything.
+///
+// TODO(cmc): we need to be able to build that easily in a command-line context, otherwise it's just
+// very annoying. E.g. `--with /world/points:[rr.Position3D, rr.Radius] --with /cam:[rr.Pinhole]`.
+pub type ViewContentsSelector = BTreeMap<EntityPath, Option<BTreeSet<ComponentName>>>;
+
+// TODO(cmc): Ultimately, this shouldn't be hardcoded to `Timeline`, but to a generic `I: Index`.
+//            `Index` in this case should also be implemented on tuples (`(I1, I2, ...)`).
+pub type Index = Timeline;
+
+// TODO(cmc): Ultimately, this shouldn't be hardcoded to `TimeInt`, but to a generic `I: Index`.
+//            `Index` in this case should also be implemented on tuples (`(I1, I2, ...)`).
+pub type IndexValue = TimeInt;
+
+// TODO(cmc): Ultimately, this shouldn't be hardcoded to `ResolvedTimeRange`, but to a generic `I: Index`.
+//            `Index` in this case should also be implemented on tuples (`(I1, I2, ...)`).
+pub type IndexRange = ResolvedTimeRange;
+
+/// Describes a complete query for Rerun's dataframe API.
+///
+/// ## Terminology: view vs. selection vs. filtering vs. sampling
+///
+/// * The view contents specify which subset of the database (i.e., which columns) the query runs on,
+///   expressed as a set of [`EntityPath`]s and their associated [`ComponentName`]s.
+///
+/// * The filters filter out _rows_ of data from the view contents.
+///   A filter cannot possibly introduce new rows, it can only remove existing ones from the view contents.
+///
+/// * The samplers sample _rows_ of data from the view contents at user-specified values.
+///   Samplers don't necessarily return existing rows: they might introduce new ones if the sampled value
+///   isn't present in the view contents in the first place.
+///
+/// * The selection applies last and samples _columns_ of data from the filtered/sampled view contents.
+///   Selecting a column that isn't present in the view contents results in an empty column in the
+///   final dataframe (null array).
+///
+/// A very rough mental model, in SQL terms:
+/// ```text
+/// SELECT <Self::selection> FROM <Self::view_contents> WHERE <Self::filtered_*>
+/// ```
+//
+// TODO(cmc): ideally we'd like this to be the same type as the one used in the blueprint, possibly?
+// TODO(cmc): Get rid of all re_dataframe (as opposed to re_dataframe2) stuff and rename this.
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct QueryExpression2 {
+    /// The subset of the database that the query will run on: a set of [`EntityPath`]s and their
+    /// associated [`ComponentName`]s.
+    ///
+    /// Defaults to `None`, which means: everything.
+    ///
+    /// Example (pseudo-code):
+    /// ```text
+    /// view_contents = {
+    ///   "world/points": [rr.Position3D, rr.Radius],
+    ///   "metrics": [rr.Scalar]
+    /// }
+    /// ```
+    pub view_contents: Option<ViewContentsSelector>,
+
+    /// The index used to filter out _rows_ from the view contents.
+    ///
+    /// Only rows where at least 1 column contains non-null data at that index will be kept in the
+    /// final dataset.
+    ///
+    /// Example: `Timeline("frame")`.
+    //
+    // TODO(cmc): this has to be a selector otherwise this is a horrible UX.
+    pub filtered_index: Timeline,
+
+    /// The range of index values used to filter out _rows_ from the view contents.
+    ///
+    /// Only rows where at least 1 of the view-contents contains non-null data within that range will be kept in
+    /// the final dataset.
+    ///
+    /// This is ignored if [`QueryExpression2::sampled_index_values`] is set.
+    ///
+    /// Example: `ResolvedTimeRange(10, 20)`.
+    pub filtered_index_range: Option<IndexRange>,
+
+    /// TODO(cmc): NOT IMPLEMENTED.
+    ///
+    /// The specific index values used to filter out _rows_ from the view contents.
+    ///
+    /// Only rows where at least 1 column contains non-null data at these specific values will be kept
+    /// in the final dataset.
+    ///
+    /// This is ignored if [`QueryExpression2::sampled_index_values`] is set.
+    ///
+    /// Example: `[TimeInt(12), TimeInt(14)]`.
+    pub filtered_index_values: Option<BTreeSet<IndexValue>>,
+
+    /// TODO(cmc): NOT IMPLEMENTED.
+    ///
+    /// The specific index values used to sample _rows_ from the view contents.
+    ///
+    /// The final dataset will contain one row per sampled index value, regardless of whether data
+    /// existed for that index value in the view contents.
+    ///
+    /// The order of the samples will be respected in the final result.
+    ///
+    /// If [`QueryExpression2::sampled_index_values`] is set, it overrides both [`QueryExpression2::filtered_index_range`]
+    /// and [`QueryExpression2::filtered_index_values`].
+    ///
+    /// Example: `[TimeInt(12), TimeInt(14)]`.
+    //
+    // TODO(jleibs): We need an alternative name for sampled.
+    pub sampled_index_values: Option<Vec<IndexValue>>,
+
+    /// TODO(cmc): NOT IMPLEMENTED.
+    ///
+    /// The component column used to filter out _rows_ from the view contents.
+    ///
+    /// Only rows where this column contains non-null data be kept in the final dataset.
+    ///
+    /// Example: `ComponentColumnSelector("rerun.components.Position3D")`.
+    //
+    // TODO(cmc): multi-pov support
+    pub filtered_point_of_view: Option<ComponentColumnSelector>,
+
+    /// TODO(cmc): NOT IMPLEMENTED.
+    ///
+    /// Specifies how null values should be filled in the returned dataframe.
+    ///
+    /// Defaults to [`SparseFillStrategy::None`].
+    pub sparse_fill_strategy: SparseFillStrategy,
+
+    /// The specific _columns_ to sample from the final view contents.
+    ///
+    /// The order of the samples will be respected in the final result.
+    ///
+    /// Defaults to `None`, which means: everything.
+    ///
+    /// Example: `[ColumnSelector(Time("log_time")), ColumnSelector(Component("rerun.components.Position3D"))]`.
+    //
+    // TODO(cmc): the selection has to be on the QueryHandle, otherwise it's hell to use.
+    pub selection: Option<Vec<ColumnSelector>>,
+}
+
+impl QueryExpression2 {
+    #[inline]
+    pub fn new(index: impl Into<Timeline>) -> Self {
+        let index = index.into();
+
+        Self {
+            view_contents: None,
+            filtered_index: index,
+            filtered_index_range: None,
+            filtered_index_values: None,
+            sampled_index_values: None,
+            filtered_point_of_view: None,
+            sparse_fill_strategy: SparseFillStrategy::None,
+            selection: None,
+        }
     }
 }
 
@@ -952,6 +1151,33 @@ impl ChunkStore {
         schema
             .into_iter()
             .filter(|descr| !filtered_out.contains(descr))
+            .collect()
+    }
+
+    /// Returns the filtered schema for the given [`ViewContentsSelector`].
+    ///
+    /// The order of the columns is guaranteed to be in a specific order:
+    /// * first, the control columns in lexical order (`RowId`);
+    /// * second, the time columns in lexical order (`frame_nr`, `log_time`, ...);
+    /// * third, the component columns in lexical order (`Color`, `Radius, ...`).
+    pub fn schema_for_view_contents(
+        &self,
+        view_contents: &ViewContentsSelector,
+    ) -> Vec<ColumnDescriptor> {
+        re_tracing::profile_function!();
+
+        self.schema()
+            .into_iter()
+            .filter(|column| match column {
+                ColumnDescriptor::Control(_) | ColumnDescriptor::Time(_) => true,
+                ColumnDescriptor::Component(column) => view_contents
+                    .get(&column.entity_path)
+                    .map_or(false, |components| {
+                        components.as_ref().map_or(true, |components| {
+                            components.contains(&column.component_name)
+                        })
+                    }),
+            })
             .collect()
     }
 }

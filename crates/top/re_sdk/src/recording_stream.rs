@@ -1922,7 +1922,7 @@ impl ThreadInfo {
     fn with<R>(f: impl FnOnce(&mut Self) -> R) -> R {
         use std::cell::RefCell;
         thread_local! {
-            static THREAD_INFO: RefCell<Option<ThreadInfo>> = RefCell::new(None);
+            static THREAD_INFO: RefCell<Option<ThreadInfo>> = const { RefCell::new(None) };
         }
 
         THREAD_INFO.with(|thread_info| {

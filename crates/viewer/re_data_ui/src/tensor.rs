@@ -133,10 +133,11 @@ pub fn tensor_summary_ui_grid_contents(
         ui.end_row();
     }
     // Show finite range only if it is different from the actual range.
-    if let (true, Some((min, max))) = (range != finite_range, finite_range) {
+    if range != &Some(*finite_range) {
         ui.label("Finite data range").on_hover_text(
             "The finite values (ignoring all NaN & -Inf/+Inf) of the tensor range within these bounds"
         );
+        let (min, max) = finite_range;
         ui.monospace(format!(
             "[{} - {}]",
             re_format::format_f64(*min),

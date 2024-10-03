@@ -5,6 +5,7 @@ from __future__ import annotations
 from .background import Background
 from .container_blueprint import ContainerBlueprint
 from .dataframe_query import DataframeQuery
+from .dataframe_query_v2 import DataframeQueryV2
 from .dataframe_visible_columns import DataframeVisibleColumns
 from .panel_blueprint import PanelBlueprint
 from .plot_legend import PlotLegend
@@ -22,6 +23,7 @@ __all__ = [
     "Background",
     "ContainerBlueprint",
     "DataframeQuery",
+    "DataframeQueryV2",
     "DataframeVisibleColumns",
     "PanelBlueprint",
     "PlotLegend",

@@ -106,41 +106,107 @@ impl Drop for WebViewerSink {
 
 // ----------------------------------------------------------------------------
 
-/// Helper to spawn an instance of the [`WebViewerServer`].
-/// This serves the HTTP+Wasm+JS files that make up the web-viewer.
-///
-/// Optionally opens a browser with the web-viewer and connects to the provided `target_url`.
-/// This url could be a hosted RRD file or a `ws://` url to a running [`re_ws_comms::RerunServer`].
-///
-/// Note: this does not include the websocket server.
-///
-/// - `force_wgpu_backend` is an optional string to force a specific backend, either `webgl` or `webgpu`.
+/// Helper to spawn an instance of the [`WebViewerServer`] and configure a webviewer url.
 #[cfg(feature = "web_viewer")]
-pub fn host_web_viewer(
-    bind_ip: &str,
-    web_port: WebViewerServerPort,
-    force_wgpu_backend: Option<String>,
-    video_decoder: Option<String>,
-    open_browser: bool,
-    source_url: &str,
-) -> anyhow::Result<WebViewerServer> {
-    let web_server = WebViewerServer::new(bind_ip, web_port)?;
-    let http_web_viewer_url = web_server.server_url();
+pub struct WebViewerConfig {
+    /// Ip to which the http server is bound.
+    ///
+    /// Defaults to 0.0.0.0
+    pub bind_ip: String,
 
-    let mut viewer_url = format!("{http_web_viewer_url}?url={source_url}");
-    if let Some(force_graphics) = force_wgpu_backend {
-        viewer_url = format!("{viewer_url}&renderer={force_graphics}");
-    }
-    if let Some(video_decoder) = video_decoder {
-        viewer_url = format!("{viewer_url}&video_decoder={video_decoder}");
-    }
+    /// The port to which the webviewer should bind.
+    ///
+    /// Defaults to [`WebViewerServerPort::AUTO`].
+    pub web_port: WebViewerServerPort,
 
-    re_log::info!("Hosting a web-viewer at {viewer_url}");
-    if open_browser {
-        webbrowser::open(&viewer_url).ok();
-    }
+    /// The url from which a spawned webviewer should source
+    ///
+    /// This url could be a hosted RRD file or a `ws://` url to a running [`re_ws_comms::RerunServer`].
+    /// Has no effect if [`Self::open_browser`] is false.
+    pub source_url: Option<String>,
 
-    Ok(web_server)
+    /// If set, adjusts the browser url to force a specific backend, either `webgl` or `webgpu`.
+    ///
+    /// Has no effect if [`Self::open_browser`] is false.
+    pub force_wgpu_backend: Option<String>,
+
+    /// If set, adjusts the browser url to set the video decoder setting, either `auto`, `prefer_software` or `prefer_hardware`.
+    ///
+    /// Has no effect if [`Self::open_browser`] is false.
+    pub video_decoder: Option<String>,
+
+    /// If set to `true`, opens the default browser after hosting the webviewer.
+    ///
+    /// Defaults to `true`.
+    pub open_browser: bool,
+}
+
+#[cfg(feature = "web_viewer")]
+impl Default for WebViewerConfig {
+    fn default() -> Self {
+        Self {
+            bind_ip: "0.0.0.0".to_owned(),
+            web_port: WebViewerServerPort::AUTO,
+            source_url: None,
+            force_wgpu_backend: None,
+            video_decoder: None,
+            open_browser: true,
+        }
+    }
+}
+
+#[cfg(feature = "web_viewer")]
+impl WebViewerConfig {
+    /// Helper to spawn an instance of the [`WebViewerServer`].
+    /// This serves the HTTP+Wasm+JS files that make up the web-viewer.
+    ///
+    /// The server will immediately start listening for incoming connections
+    /// and stop doing so when the returned [`WebViewerServer`] is dropped.
+    ///
+    /// Note: this does not include the websocket server.
+    pub fn host_web_viewer(self) -> Result<WebViewerServer, WebViewerServerError> {
+        let Self {
+            bind_ip,
+            source_url,
+            web_port,
+            force_wgpu_backend,
+            video_decoder,
+            open_browser,
+        } = self;
+
+        let web_server = WebViewerServer::new(&bind_ip, web_port)?;
+        let http_web_viewer_url = web_server.server_url();
+
+        let mut viewer_url = http_web_viewer_url;
+
+        let mut first_arg = true;
+        let mut append_argument = |arg| {
+            let arg_delimiter = if first_arg {
+                first_arg = false;
+                "?"
+            } else {
+                "&"
+            };
+            viewer_url = format!("{viewer_url}{arg_delimiter}{arg}");
+        };
+
+        if let Some(source_url) = source_url {
+            append_argument(format!("url={source_url}"));
+        }
+        if let Some(force_graphics) = force_wgpu_backend {
+            append_argument(format!("renderer={force_graphics}"));
+        }
+        if let Some(video_decoder) = video_decoder {
+            append_argument(format!("video_decoder={video_decoder}"));
+        }
+
+        re_log::info!("Hosting a web-viewer at {viewer_url}");
+        if open_browser {
+            webbrowser::open(&viewer_url).ok();
+        }
+
+        Ok(web_server)
+    }
 }
 
 // ----------------------------------------------------------------------------

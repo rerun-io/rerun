@@ -999,9 +999,9 @@ checksum = "e1e5f035d16fc623ae5f74981db80a439803888314e3a555fd6f04acd51a3205"
 
 [[package]]
 name = "bytemuck"
-version = "1.13.1"
+version = "1.18.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "17febce684fd15d89027105661fec94afb475cb995fbc59d2865198446ba2eea"
+checksum = "94bbb0ad554ad961ddc5da507a12a29b14e4ae5bda06b19f575a3e6079d2e2ae"
 dependencies = [
  "bytemuck_derive",
 ]
@@ -4754,9 +4754,9 @@ dependencies = [
 
 [[package]]
 name = "raw-cpuid"
-version = "11.1.0"
+version = "11.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "cb9ee317cfe3fbd54b36a511efc1edd42e216903c9cd575e686dd68a2ba90d8d"
+checksum = "1ab240315c661615f2ee9f0f2cd32d5a7343a84d5ebcccb99d46e6637565e7b0"
 dependencies = [
  "bitflags 2.6.0",
 ]
@@ -5107,6 +5107,33 @@ dependencies = [
 
 [[package]]
 name = "re_dataframe"
+version = "0.19.0-alpha.1+dev"
+dependencies = [
+ "ahash",
+ "anyhow",
+ "backtrace",
+ "indent",
+ "itertools 0.13.0",
+ "nohash-hasher",
+ "parking_lot",
+ "paste",
+ "re_arrow2",
+ "re_chunk",
+ "re_chunk_store",
+ "re_error",
+ "re_format",
+ "re_log",
+ "re_log_types",
+ "re_query",
+ "re_tracing",
+ "re_types",
+ "re_types_core",
+ "seq-macro",
+ "thiserror",
+]
+
+[[package]]
+name = "re_dataframe2"
 version = "0.19.0-alpha.1+dev"
 dependencies = [
  "ahash",
@@ -5667,6 +5694,7 @@ dependencies = [
  "re_chunk_store",
  "re_data_ui",
  "re_log_types",
+ "re_query",
  "re_renderer",
  "re_space_view",
  "re_tracing",

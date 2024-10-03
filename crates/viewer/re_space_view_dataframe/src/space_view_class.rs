@@ -15,7 +15,7 @@ use re_viewport_blueprint::{SpaceViewContents, ViewProperty};
 use crate::dataframe_ui::HideColumnAction;
 use crate::{
     dataframe_ui::dataframe_ui, expanded_rows::ExpandedRowsCache, query_kind::QueryKind,
-    visualizer_system::EmptySystem,
+    view_query_v2, visualizer_system::EmptySystem,
 };
 
 #[derive(Default)]
@@ -110,7 +110,18 @@ mode sets the default time range to _everything_. You can override this in the s
         _space_origin: &EntityPath,
         space_view_id: SpaceViewId,
     ) -> Result<(), SpaceViewSystemExecutionError> {
-        crate::view_query::query_ui(ctx, ui, state, space_view_id)
+        crate::view_query::query_ui(ctx, ui, state, space_view_id)?;
+
+        //TODO(ab): just display the UI for now, this has no effect on the view itself yet.
+        ui.separator();
+        let state = state.downcast_mut::<DataframeSpaceViewState>()?;
+        let view_query = view_query_v2::QueryV2::from_blueprint(ctx, space_view_id);
+        let Some(schema) = &state.schema else {
+            // Shouldn't happen, except maybe on the first frame, which is too early
+            // for the user to click the menu anyway.
+            return Ok(());
+        };
+        view_query.selection_panel_ui(ctx, ui, space_view_id, schema)
     }
 
     fn extra_title_bar_ui(

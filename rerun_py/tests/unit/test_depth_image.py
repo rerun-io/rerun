@@ -1,13 +1,14 @@
 from __future__ import annotations
 
+import itertools
 from typing import Any
 
 import numpy as np
 import pytest
 import rerun as rr
 import torch
-from rerun.components import DepthMeter
-from rerun.datatypes import Float32Like
+from rerun.components import DepthMeter, ImageFormat
+from rerun.datatypes import ChannelDatatype, Float32Like
 
 rng = np.random.default_rng(12345)
 RANDOM_IMAGE_SOURCE = rng.uniform(0.0, 1.0, (10, 20))
@@ -25,13 +26,32 @@ def depth_image_expected() -> Any:
     return rr.DepthImage(RANDOM_IMAGE_SOURCE, meter=1000)
 
 
-def test_image() -> None:
-    expected = depth_image_expected()
+def test_depth_image() -> None:
+    ranges = [None, [0.0, 1.0], (1000, 1000)]
 
-    for img, meter in zip(IMAGE_INPUTS, METER_INPUTS):
-        arch = rr.DepthImage(img, meter=meter)
+    for img, meter, depth_range in itertools.zip_longest(IMAGE_INPUTS, METER_INPUTS, ranges):
+        if img is None:
+            img = IMAGE_INPUTS[0]
 
-        assert arch == expected
+        print(
+            f"rr.DepthImage(\n"  #
+            f"    {img}\n"
+            f"    meter={meter!r}\n"
+            f"    depth_range={depth_range!r}\n"
+            f")"
+        )
+        arch = rr.DepthImage(img, meter=meter, depth_range=depth_range)
+
+        assert arch.buffer == rr.components.ImageBufferBatch._optional(img.tobytes())
+        assert arch.format == rr.components.ImageFormatBatch._optional(
+            ImageFormat(
+                width=img.shape[1],
+                height=img.shape[0],
+                channel_datatype=ChannelDatatype.from_np_dtype(img.dtype),
+            )
+        )
+        assert arch.meter == rr.components.DepthMeterBatch._optional(meter)
+        assert arch.depth_range == rr.components.ValueRangeBatch._optional(depth_range)
 
 
 GOOD_IMAGE_INPUTS: list[Any] = [

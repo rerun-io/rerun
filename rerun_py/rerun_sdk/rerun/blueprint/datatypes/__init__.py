@@ -9,12 +9,33 @@ from .component_column_selector import (
     ComponentColumnSelectorLike,
     ComponentColumnSelectorType,
 )
+from .filter_by_event import (
+    FilterByEvent,
+    FilterByEventArrayLike,
+    FilterByEventBatch,
+    FilterByEventLike,
+    FilterByEventType,
+)
+from .filter_by_range import (
+    FilterByRange,
+    FilterByRangeArrayLike,
+    FilterByRangeBatch,
+    FilterByRangeLike,
+    FilterByRangeType,
+)
 from .latest_at_query import (
     LatestAtQuery,
     LatestAtQueryArrayLike,
     LatestAtQueryBatch,
     LatestAtQueryLike,
     LatestAtQueryType,
+)
+from .selected_columns import (
+    SelectedColumns,
+    SelectedColumnsArrayLike,
+    SelectedColumnsBatch,
+    SelectedColumnsLike,
+    SelectedColumnsType,
 )
 from .tensor_dimension_index_slider import (
     TensorDimensionIndexSlider,
@@ -38,11 +59,26 @@ __all__ = [
     "ComponentColumnSelectorBatch",
     "ComponentColumnSelectorLike",
     "ComponentColumnSelectorType",
+    "FilterByEvent",
+    "FilterByEventArrayLike",
+    "FilterByEventBatch",
+    "FilterByEventLike",
+    "FilterByEventType",
+    "FilterByRange",
+    "FilterByRangeArrayLike",
+    "FilterByRangeBatch",
+    "FilterByRangeLike",
+    "FilterByRangeType",
     "LatestAtQuery",
     "LatestAtQueryArrayLike",
     "LatestAtQueryBatch",
     "LatestAtQueryLike",
     "LatestAtQueryType",
+    "SelectedColumns",
+    "SelectedColumnsArrayLike",
+    "SelectedColumnsBatch",
+    "SelectedColumnsLike",
+    "SelectedColumnsType",
     "TensorDimensionIndexSlider",
     "TensorDimensionIndexSliderArrayLike",
     "TensorDimensionIndexSliderBatch",

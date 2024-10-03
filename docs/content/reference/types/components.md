@@ -71,6 +71,7 @@ on [Entities and Components](../../concepts/entity-component.md).
 * [`TransformRelation`](components/transform_relation.md): Specifies relation a spatial transform describes.
 * [`Translation3D`](components/translation3d.md): A translation vector in 3D space.
 * [`TriangleIndices`](components/triangle_indices.md): The three indices of a triangle in a triangle mesh.
+* [`ValueRange`](components/value_range.md): Range of expected or valid values, specifying a lower and upper bound.
 * [`Vector2D`](components/vector2d.md): A vector in 2D space.
 * [`Vector3D`](components/vector3d.md): A vector in 3D space.
 * [`VideoTimestamp`](components/video_timestamp.md): Timestamp inside a [`archetypes.AssetVideo`](https://rerun.io/docs/reference/types/archetypes/asset_video?speculative-link).
