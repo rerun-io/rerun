@@ -6,7 +6,7 @@
 # -----------------------------------------------------------------------------
 # Section identical to the main clippy.toml:
 
-msrv = "1.76"
+msrv = "1.79"
 
 allow-unwrap-in-tests = true
 
@@ -62,6 +62,8 @@ doc-valid-idents = [
   "GLTF",
   "iOS",
   "macOS",
+  "MessagePack",
+  "MiMalloc",
   "NaN",
   "OBJ",
   "OpenGL",
@@ -69,6 +71,7 @@ doc-valid-idents = [
   "sRGB",
   "sRGBA",
   "WebGL",
+  "WebGPU",
   "WebSocket",
   "WebSockets",
 ]

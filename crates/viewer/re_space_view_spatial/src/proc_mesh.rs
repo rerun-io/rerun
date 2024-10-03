@@ -62,8 +62,10 @@ impl ProcMeshKey {
 /// which is to be drawn as lines rather than triangles.
 #[derive(Debug)]
 pub struct WireframeMesh {
+    #[allow(unused)]
     pub bbox: re_math::BoundingBox,
 
+    #[allow(unused)]
     pub vertex_count: usize,
 
     /// Collection of line strips making up the wireframe.
@@ -80,6 +82,7 @@ pub struct WireframeMesh {
 /// This type is cheap to clone.
 #[derive(Clone)]
 pub struct SolidMesh {
+    #[allow(unused)]
     pub bbox: re_math::BoundingBox,
 
     /// Mesh to render. Note that its colors are set to black, so that the

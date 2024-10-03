@@ -818,7 +818,7 @@ pub struct QueryExpression2 {
     /// Only rows where at least 1 of the view-contents contains non-null data within that range will be kept in
     /// the final dataset.
     ///
-    /// This is ignored if [QueryExpression2::`sampled_index_values`] is set.
+    /// This is ignored if [`QueryExpression2::sampled_index_values`] is set.
     ///
     /// Example: `ResolvedTimeRange(10, 20)`.
     pub filtered_index_range: Option<IndexRange>,
@@ -830,7 +830,7 @@ pub struct QueryExpression2 {
     /// Only rows where at least 1 column contains non-null data at these specific values will be kept
     /// in the final dataset.
     ///
-    /// This is ignored if [QueryExpression2::`sampled_index_values`] is set.
+    /// This is ignored if [`QueryExpression2::sampled_index_values`] is set.
     ///
     /// Example: `[TimeInt(12), TimeInt(14)]`.
     pub filtered_index_values: Option<BTreeSet<IndexValue>>,
@@ -844,7 +844,7 @@ pub struct QueryExpression2 {
     ///
     /// The order of the samples will be respected in the final result.
     ///
-    /// If [QueryExpression2::`sampled_index_values`] is set, it overrides both [`QueryExpression2::filtered_index_range`]
+    /// If [`QueryExpression2::sampled_index_values`] is set, it overrides both [`QueryExpression2::filtered_index_range`]
     /// and [`QueryExpression2::filtered_index_values`].
     ///
     /// Example: `[TimeInt(12), TimeInt(14)]`.

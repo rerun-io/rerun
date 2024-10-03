@@ -249,8 +249,7 @@ mod tests {
                     .or_default() += delta_chunks;
 
                 for (component_name, list_array) in event.chunk.components() {
-                    let delta =
-                        event.delta() * list_array.iter().filter(Option::is_some).count() as i64;
+                    let delta = event.delta() * list_array.iter().flatten().count() as i64;
                     *self.component_names.entry(*component_name).or_default() += delta;
                 }
 

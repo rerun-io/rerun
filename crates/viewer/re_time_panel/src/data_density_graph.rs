@@ -90,7 +90,7 @@ impl DataDensityGraphPainter {
 
 pub struct DensityGraph {
     /// Number of datapoints per bucket.
-    /// 0 == min_x, n-1 == max_x.
+    /// `0 == min_x, n-1 == max_x`.
     buckets: Vec<f32>,
     min_x: f32,
     max_x: f32,

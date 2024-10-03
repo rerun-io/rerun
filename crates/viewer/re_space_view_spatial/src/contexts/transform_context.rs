@@ -135,7 +135,7 @@ pub struct TransformContext {
     /// All unreachable descendant paths of `reference_path`.
     unreachable_descendants: Vec<(EntityPath, UnreachableTransformReason)>,
 
-    /// The first parent of reference_path that is no longer reachable.
+    /// The first parent of `reference_path` that is no longer reachable.
     first_unreachable_parent: Option<(EntityPath, UnreachableTransformReason)>,
 }
 

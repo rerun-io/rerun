@@ -200,7 +200,7 @@ pub(crate) mod gpu_data {
     use crate::wgpu_buffer_types;
 
     /// Keep in sync with [`MaterialUniformBuffer`] in `instanced_mesh.wgsl`
-    #[repr(C, align(256))]
+    #[repr(C)]
     #[derive(Clone, Copy, bytemuck::Pod, bytemuck::Zeroable)]
     pub struct MaterialUniformBuffer {
         pub albedo_factor: wgpu_buffer_types::Vec4,

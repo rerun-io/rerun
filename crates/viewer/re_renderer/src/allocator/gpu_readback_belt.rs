@@ -146,7 +146,7 @@ struct Chunk {
     /// All ranges that are currently in use, i.e. there is a GPU write to it scheduled.
     ranges_in_use: Vec<PendingReadbackRange>,
 
-    /// Last frame this chunk was received, i.e. the last time a map_async action operation finished with it.
+    /// Last frame this chunk was received, i.e. the last time a `map_async` action operation finished with it.
     last_received_frame_index: u64,
 }
 

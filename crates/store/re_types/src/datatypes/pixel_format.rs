@@ -32,7 +32,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 #[derive(Clone, Copy, Debug, Hash, PartialEq, Eq, Default)]
 #[repr(u8)]
 pub enum PixelFormat {
-    /// NV12 (aka Y_UV12) is a YUV 4:2:0 chroma downsampled format with 12 bits per pixel and 8 bits per channel.
+    /// `NV12` (aka `Y_UV12`) is a YUV 4:2:0 chroma downsampled format with 12 bits per pixel and 8 bits per channel.
     ///
     /// First comes entire image in Y in one plane,
     /// followed by a plane with interleaved lines ordered as U0, V0, U1, V1, etc.
@@ -40,7 +40,7 @@ pub enum PixelFormat {
     #[allow(clippy::upper_case_acronyms)]
     NV12 = 26,
 
-    /// YUY2 (aka YUYV or YUYV16), is a YUV 4:2:2 chroma downsampled format with 16 bits per pixel and 8 bits per channel.
+    /// `YUY2` (aka `YUYV` or `YUYV16`), is a YUV 4:2:2 chroma downsampled format with 16 bits per pixel and 8 bits per channel.
     ///
     /// The order of the channels is Y0, U0, Y1, V0, all in the same plane.
     #[allow(clippy::upper_case_acronyms)]
@@ -57,10 +57,10 @@ impl ::re_types_core::reflection::Enum for PixelFormat {
     fn docstring_md(self) -> &'static str {
         match self {
             Self::NV12 => {
-                "NV12 (aka Y_UV12) is a YUV 4:2:0 chroma downsampled format with 12 bits per pixel and 8 bits per channel.\n\nFirst comes entire image in Y in one plane,\nfollowed by a plane with interleaved lines ordered as U0, V0, U1, V1, etc."
+                "`NV12` (aka `Y_UV12`) is a YUV 4:2:0 chroma downsampled format with 12 bits per pixel and 8 bits per channel.\n\nFirst comes entire image in Y in one plane,\nfollowed by a plane with interleaved lines ordered as U0, V0, U1, V1, etc."
             }
             Self::YUY2 => {
-                "YUY2 (aka YUYV or YUYV16), is a YUV 4:2:2 chroma downsampled format with 16 bits per pixel and 8 bits per channel.\n\nThe order of the channels is Y0, U0, Y1, V0, all in the same plane."
+                "`YUY2` (aka `YUYV` or `YUYV16`), is a YUV 4:2:2 chroma downsampled format with 16 bits per pixel and 8 bits per channel.\n\nThe order of the channels is Y0, U0, Y1, V0, all in the same plane."
             }
         }
     }

@@ -1,5 +1,3 @@
-use std::{io::Read, sync::mpsc::Receiver};
-
 use re_log_encoding::decoder::Decoder;
 
 // ---
@@ -144,15 +142,16 @@ fn decode_and_stream<R: std::io::Read>(
 
 // Retryable file reader that keeps retrying to read more data despite
 // reading zero bytes or reaching EOF.
+#[cfg(not(target_arch = "wasm32"))]
 struct RetryableFileReader {
     reader: std::io::BufReader<std::fs::File>,
-    rx: Receiver<notify::Result<notify::Event>>,
+    rx: std::sync::mpsc::Receiver<notify::Result<notify::Event>>,
     #[allow(dead_code)]
     watcher: notify::RecommendedWatcher,
 }
 
+#[cfg(not(target_arch = "wasm32"))]
 impl RetryableFileReader {
-    #[cfg(not(target_arch = "wasm32"))]
     fn new(filepath: &std::path::Path) -> Result<Self, crate::DataLoaderError> {
         use anyhow::Context as _;
         use notify::{RecursiveMode, Watcher};
@@ -177,7 +176,8 @@ impl RetryableFileReader {
     }
 }
 
-impl Read for RetryableFileReader {
+#[cfg(not(target_arch = "wasm32"))]
+impl std::io::Read for RetryableFileReader {
     fn read(&mut self, buf: &mut [u8]) -> std::io::Result<usize> {
         loop {
             match self.reader.read(buf) {
@@ -194,6 +194,7 @@ impl Read for RetryableFileReader {
     }
 }
 
+#[cfg(not(target_arch = "wasm32"))]
 impl RetryableFileReader {
     fn block_until_file_changes(&self) -> std::io::Result<usize> {
         #[allow(clippy::disallowed_methods)]
@@ -241,7 +242,7 @@ mod tests {
         };
         std::fs::remove_file(&rrd_file_path).ok(); // Remove the file just in case a previous test crashes hard.
         let rrd_file = std::fs::OpenOptions::new()
-            .create(true)
+            .create_new(true)
             .write(true)
             .open(rrd_file_path.to_str().unwrap())
             .unwrap();
