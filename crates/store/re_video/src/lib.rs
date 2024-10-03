@@ -4,7 +4,7 @@ mod decode;
 mod demux;
 
 pub use decode::{Chunk, Frame, PixelFormat};
-pub use demux::{Sample, VideoData, VideoLoadError};
+pub use demux::{Config, Sample, VideoData, VideoLoadError};
 pub use re_mp4::{TrackId, TrackKind};
 
 #[cfg(feature = "av1")]

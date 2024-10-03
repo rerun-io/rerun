@@ -36,7 +36,7 @@ pub trait VideoDecoder: 'static + Send {
 pub fn new_video_decoder(
     render_context: &RenderContext,
     data: Arc<re_video::VideoData>,
-    _hw_acceleration: DecodeHardwareAcceleration,
+    hw_acceleration: DecodeHardwareAcceleration,
 ) -> Result<Box<dyn VideoDecoder>, DecodingError> {
     #![allow(unused, clippy::unnecessary_wraps, clippy::needless_pass_by_value)] // only for some feature flags
 
