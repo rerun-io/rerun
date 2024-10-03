@@ -66,11 +66,11 @@ which codecs are supported by which browser, see [Video codecs on MDN](https://d
 
 At the moment, we test the following codecs:
 
-|           | Linux Firefox | Linux Chrome | macOS Firefox | macOS Chrome | macOS Safari | Windows Firefox | Windows Chrome |
-| --------- | ------------- | ------------ | ------------- | ------------ | ------------ | --------------- | -------------- |
-| AV1       | ✅            | ✅           | ✅           | ✅           | 🚧[^4]        | ✅               | ✅            |
-| H.264     | ✅            | ✅           | ✅           | ✅           | ✅            | ✅               | ✅            |
-| H.265     | ❌            | 🚧[^6]       | ❌           | ✅           | 🚧[^6]        | ❌               | 🚧[^7]        |
+|            | Linux Firefox | Linux Chrome | macOS Firefox | macOS Chrome | macOS Safari | Windows Firefox | Windows Chrome |
+| ---------- | ------------- | ------------ | ------------- | ------------ | ------------ | --------------- | -------------- |
+| AV1        | ✅            | ✅           | ✅           | ✅           | 🚧[^4]        | ✅               | ✅             |
+| H.264/avc  | ✅            | ✅           | ✅           | ✅           | ✅            | ✅               | ✅             |
+| H.265/hevc | ❌            | ❌           | ❌           | ✅           | 🚧[^6]        | ❌               | 🚧[^7]         |
 
 [^4]: Safari/WebKit does not support AV1 decoding except on [Apple Silicon devices with hardware support](https://webkit.org/blog/14445/webkit-features-in-safari-17-0/).
 [^5]: Firefox does not support H.265 decoding on any platform.
