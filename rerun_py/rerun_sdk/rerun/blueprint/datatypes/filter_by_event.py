@@ -5,7 +5,7 @@
 
 from __future__ import annotations
 
-from typing import Any, Sequence, Union
+from typing import TYPE_CHECKING, Any, Sequence, Union
 
 import pyarrow as pa
 from attrs import define, field
@@ -16,6 +16,7 @@ from ..._baseclasses import (
     BaseExtensionType,
 )
 from ...blueprint import datatypes as blueprint_datatypes
+from .filter_by_event_ext import FilterByEventExt
 
 __all__ = ["FilterByEvent", "FilterByEventArrayLike", "FilterByEventBatch", "FilterByEventLike", "FilterByEventType"]
 
@@ -28,7 +29,7 @@ def _filter_by_event__active__special_field_converter_override(x: datatypes.Bool
 
 
 @define(init=False)
-class FilterByEvent:
+class FilterByEvent(FilterByEventExt):
     """**Datatype**: Configuration for the filter by event feature of the dataframe view."""
 
     def __init__(self: Any, active: datatypes.BoolLike, column: blueprint_datatypes.ComponentColumnSelectorLike):
@@ -58,7 +59,11 @@ class FilterByEvent:
     # (Docstring intentionally commented out to hide this field from the docs)
 
 
-FilterByEventLike = FilterByEvent
+if TYPE_CHECKING:
+    FilterByEventLike = Union[FilterByEvent, blueprint_datatypes.ComponentColumnSelectorLike]
+else:
+    FilterByEventLike = Any
+
 FilterByEventArrayLike = Union[
     FilterByEvent,
     Sequence[FilterByEventLike],
@@ -92,16 +97,4 @@ class FilterByEventBatch(BaseBatch[FilterByEventArrayLike]):
 
     @staticmethod
     def _native_to_pa_array(data: FilterByEventArrayLike, data_type: pa.DataType) -> pa.Array:
-        from rerun.blueprint.datatypes import ComponentColumnSelectorBatch
-        from rerun.datatypes import BoolBatch
-
-        if isinstance(data, FilterByEvent):
-            data = [data]
-
-        return pa.StructArray.from_arrays(
-            [
-                BoolBatch([x.active for x in data]).as_arrow_array().storage,  # type: ignore[misc, arg-type]
-                ComponentColumnSelectorBatch([x.column for x in data]).as_arrow_array().storage,  # type: ignore[misc, arg-type]
-            ],
-            fields=list(data_type),
-        )
+        return FilterByEventExt.native_to_pa_array_override(data, data_type)

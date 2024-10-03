@@ -3,7 +3,7 @@ use std::collections::HashSet;
 use crate::dataframe_ui::HideColumnAction;
 use crate::view_query_v2::QueryV2;
 use re_chunk_store::{ColumnDescriptor, ColumnSelector};
-use re_log_types::{TimeInt, TimelineName};
+use re_log_types::{EntityPath, TimeInt, TimelineName};
 use re_types::blueprint::{components, datatypes};
 use re_viewer_context::{SpaceViewSystemExecutionError, ViewerContext};
 
@@ -168,7 +168,15 @@ impl QueryV2 {
             .iter()
             .map(|timeline_name| timeline_name.as_str().into())
             .collect();
-        let selected_component_columns = component_columns.iter().cloned().collect::<HashSet<_>>();
+        let selected_component_columns = component_columns
+            .iter()
+            .map(|selector| {
+                (
+                    EntityPath::from(selector.entity_path.as_str()),
+                    selector.component.as_str(),
+                )
+            })
+            .collect::<HashSet<_>>();
 
         let query_timeline_name = *self.timeline(ctx)?.name();
         let result = view_columns
@@ -181,12 +189,16 @@ impl QueryV2 {
                         || selected_time_columns.contains(desc.timeline.name())
                 }
                 ColumnDescriptor::Component(desc) => {
-                    let blueprint_component_descriptor = components::ComponentColumnSelector::new(
-                        &desc.entity_path,
-                        desc.component_name,
-                    );
-
-                    selected_component_columns.contains(&blueprint_component_descriptor)
+                    // Check against both the full name and short name, as the user might have used
+                    // the latter in the blueprint API.
+                    //
+                    // TODO(ab): this means that if the user chooses `"/foo/bar:Scalar"`, it will
+                    // select both `rerun.components.Scalar` and `Scalar`, should both of these
+                    // exist.
+                    selected_component_columns
+                        .contains(&(desc.entity_path.clone(), desc.component_name.full_name()))
+                        || selected_component_columns
+                            .contains(&(desc.entity_path.clone(), desc.component_name.short_name()))
                 }
             })
             .cloned()

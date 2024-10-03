@@ -5,66 +5,22 @@
 
 from __future__ import annotations
 
-from typing import Any
-
 from attrs import define, field
 
-from ... import datatypes
 from ..._baseclasses import (
     Archetype,
 )
-from ...blueprint import components as blueprint_components, datatypes as blueprint_datatypes
-from ...error_utils import catch_and_log_exceptions
+from ...blueprint import components as blueprint_components
+from .dataframe_query_v2_ext import DataframeQueryV2Ext
 
 __all__ = ["DataframeQueryV2"]
 
 
 @define(str=False, repr=False, init=False)
-class DataframeQueryV2(Archetype):
+class DataframeQueryV2(DataframeQueryV2Ext, Archetype):
     """**Archetype**: The query for the dataframe view."""
 
-    def __init__(
-        self: Any,
-        *,
-        timeline: datatypes.Utf8Like | None = None,
-        filter_by_range: blueprint_datatypes.FilterByRangeLike | None = None,
-        filter_by_event: blueprint_datatypes.FilterByEventLike | None = None,
-        apply_latest_at: datatypes.BoolLike | None = None,
-        select: blueprint_datatypes.SelectedColumnsLike | None = None,
-    ):
-        """
-        Create a new instance of the DataframeQueryV2 archetype.
-
-        Parameters
-        ----------
-        timeline:
-            The timeline for this query.
-
-            If unset, the timeline currently active on the time panel is used.
-        filter_by_range:
-            If provided, only rows whose timestamp is within this range will be shown.
-
-            Note: will be unset as soon as `timeline` is changed.
-        filter_by_event:
-            If provided, only show rows which contains a logged event for the specified component.
-        apply_latest_at:
-            Should empty cells be filled with latest-at queries?
-        select:
-            Selected columns. If unset, all columns are selected.
-
-        """
-
-        # You can define your own __init__ function as a member of DataframeQueryV2Ext in dataframe_query_v2_ext.py
-        with catch_and_log_exceptions(context=self.__class__.__name__):
-            self.__attrs_init__(
-                timeline=timeline,
-                filter_by_range=filter_by_range,
-                filter_by_event=filter_by_event,
-                apply_latest_at=apply_latest_at,
-                select=select,
-            )
-            return
-        self.__attrs_clear__()
+    # __init__ can be found in dataframe_query_v2_ext.py
 
     def __attrs_clear__(self) -> None:
         """Convenience method for calling `__attrs_init__` with all `None`s."""

@@ -5,7 +5,7 @@
 
 from __future__ import annotations
 
-from typing import Any, Sequence, Union
+from typing import TYPE_CHECKING, Any, Sequence, Union
 
 import pyarrow as pa
 from attrs import define, field
@@ -15,6 +15,7 @@ from ..._baseclasses import (
     BaseBatch,
     BaseExtensionType,
 )
+from .component_column_selector_ext import ComponentColumnSelectorExt
 
 __all__ = [
     "ComponentColumnSelector",
@@ -42,24 +43,10 @@ def _component_column_selector__component__special_field_converter_override(x: d
 
 
 @define(init=False)
-class ComponentColumnSelector:
+class ComponentColumnSelector(ComponentColumnSelectorExt):
     """**Datatype**: Describe a component column to be selected in the dataframe view."""
 
-    def __init__(self: Any, entity_path: datatypes.EntityPathLike, component: datatypes.Utf8Like):
-        """
-        Create a new instance of the ComponentColumnSelector datatype.
-
-        Parameters
-        ----------
-        entity_path:
-            The entity path for this component.
-        component:
-            The name of the component.
-
-        """
-
-        # You can define your own __init__ function as a member of ComponentColumnSelectorExt in component_column_selector_ext.py
-        self.__attrs_init__(entity_path=entity_path, component=component)
+    # __init__ can be found in component_column_selector_ext.py
 
     entity_path: datatypes.EntityPath = field(
         converter=_component_column_selector__entity_path__special_field_converter_override
@@ -74,7 +61,11 @@ class ComponentColumnSelector:
     # (Docstring intentionally commented out to hide this field from the docs)
 
 
-ComponentColumnSelectorLike = ComponentColumnSelector
+if TYPE_CHECKING:
+    ComponentColumnSelectorLike = Union[ComponentColumnSelector, str]
+else:
+    ComponentColumnSelectorLike = Any
+
 ComponentColumnSelectorArrayLike = Union[
     ComponentColumnSelector,
     Sequence[ComponentColumnSelectorLike],
@@ -100,15 +91,4 @@ class ComponentColumnSelectorBatch(BaseBatch[ComponentColumnSelectorArrayLike]):
 
     @staticmethod
     def _native_to_pa_array(data: ComponentColumnSelectorArrayLike, data_type: pa.DataType) -> pa.Array:
-        from rerun.datatypes import EntityPathBatch, Utf8Batch
-
-        if isinstance(data, ComponentColumnSelector):
-            data = [data]
-
-        return pa.StructArray.from_arrays(
-            [
-                EntityPathBatch([x.entity_path for x in data]).as_arrow_array().storage,  # type: ignore[misc, arg-type]
-                Utf8Batch([x.component for x in data]).as_arrow_array().storage,  # type: ignore[misc, arg-type]
-            ],
-            fields=list(data_type),
-        )
+        return ComponentColumnSelectorExt.native_to_pa_array_override(data, data_type)
