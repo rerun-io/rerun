@@ -14,8 +14,9 @@ pub struct ImageStats {
 
     /// Like `range`, but ignoring all `NaN`/inf values.
     ///
-    /// `None` if there are no finite values at all.
-    pub finite_range: Option<(f64, f64)>,
+    /// If no finite values are present, this takes the maximum finite range
+    /// of the underlying data type.
+    pub finite_range: (f64, f64),
 }
 
 impl ImageStats {
@@ -124,7 +125,7 @@ impl ImageStats {
                 // We do the lazy thing here:
                 return Self {
                     range: Some((0.0, 255.0)),
-                    finite_range: Some((0.0, 255.0)),
+                    finite_range: (0.0, 255.0),
                 };
             }
             None => image.format.datatype(),
@@ -150,13 +151,13 @@ impl ImageStats {
             // Empty image
             return Self {
                 range: None,
-                finite_range: None,
+                finite_range: (datatype.min_value(), datatype.max_value()),
             };
         }
 
         let finite_range = if range.0.is_finite() && range.1.is_finite() {
             // Already finite
-            Some(range)
+            range
         } else {
             let finite_range = match datatype {
                 ChannelDatatype::U8
@@ -175,9 +176,9 @@ impl ImageStats {
 
             // Ensure it actually is finite:
             if finite_range.0.is_finite() && finite_range.1.is_finite() {
-                Some(finite_range)
+                finite_range
             } else {
-                None
+                (datatype.min_value(), datatype.max_value())
             }
         };
 

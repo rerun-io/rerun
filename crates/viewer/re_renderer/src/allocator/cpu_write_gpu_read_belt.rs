@@ -52,7 +52,7 @@ pub struct CpuWriteGpuReadBuffer<T: bytemuck::Pod + Send + Sync> {
     /// In actuality it is tied to the lifetime of [`chunk_buffer`](#structfield.chunk_buffer)!
     write_view: wgpu::BufferViewMut<'static>,
 
-    /// Range in T elements in write_view that haven't been written yet.
+    /// Range in T elements in `write_view` that haven't been written yet.
     unwritten_element_range: std::ops::Range<usize>,
 
     chunk_buffer: GpuBuffer,
@@ -123,15 +123,36 @@ where
     #[inline]
     pub fn extend(
         &mut self,
-        mut elements: impl Iterator<Item = T>,
+        mut elements: impl ExactSizeIterator<Item = T>,
     ) -> Result<usize, CpuWriteGpuReadError> {
         re_tracing::profile_function!();
 
         // TODO(emilk): optimize the extend function.
         // Right now it is 3-4x faster to collect to a vec first, which is crazy.
-        if true {
-            let vec = elements.collect::<Vec<_>>();
-            self.extend_from_slice(&vec)?;
+        //
+        // Mimalloc can't align types larger than 64 bytes now and will silently ignore it.
+        // https://github.com/purpleprotocol/mimalloc_rust/issues/128
+        // Therefore, large alignments won't work with collect.
+        let pretend_mimalloc_aligns_correctly = false;
+        if std::mem::align_of::<T>() <= 64 || pretend_mimalloc_aligns_correctly {
+            let vec: Vec<T> = elements.collect();
+
+            #[allow(clippy::dbg_macro)]
+            if pretend_mimalloc_aligns_correctly {
+                dbg!(std::any::type_name::<T>());
+                dbg!(std::mem::size_of::<T>());
+                dbg!(std::mem::align_of::<T>());
+                dbg!(vec.len());
+                dbg!(vec.as_ptr());
+                dbg!(vec.as_ptr() as usize % std::mem::align_of::<T>());
+            }
+            debug_assert_eq!(
+                vec.as_ptr() as usize % std::mem::align_of::<T>(),
+                0,
+                "Vec::collect collects into unaligned memory!"
+            );
+
+            self.extend_from_slice(vec.as_slice())?;
             Ok(vec.len())
         } else {
             let num_written_before = self.num_written();
@@ -422,7 +443,7 @@ pub struct CpuWriteGpuReadBelt {
 
     /// When closed chunks are mapped again, the map callback sends them here.
     ///
-    /// Note that we shouldn't use SyncSender since this can block the Sender if a buffer is full,
+    /// Note that we shouldn't use `SyncSender` since this can block the `Sender` if a buffer is full,
     /// which means that in a single threaded situation (Web!) we might deadlock.
     sender: mpsc::Sender<Chunk>,
 
@@ -486,6 +507,8 @@ impl CpuWriteGpuReadBelt {
     }
 
     /// Allocates a cpu writable buffer for `num_elements` instances of type `T`.
+    ///
+    /// The buffer will be aligned to T's alignment, but no less than [`Self::MIN_OFFSET_ALIGNMENT`].
     pub fn allocate<T: bytemuck::Pod + Send + Sync>(
         &mut self,
         device: &wgpu::Device,

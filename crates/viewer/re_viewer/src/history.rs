@@ -262,6 +262,7 @@ pub trait HistoryExt: private::Sealed {
     fn push_entry(&self, entry: HistoryEntry) -> Result<(), JsValue>;
 
     /// Replace the latest entry.
+    #[allow(unused)]
     fn replace_entry(&self, entry: HistoryEntry) -> Result<(), JsValue>;
 
     /// Get the latest entry.

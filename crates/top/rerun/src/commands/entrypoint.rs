@@ -8,7 +8,7 @@ use re_smart_channel::{ReceiveSet, Receiver, SmartMessagePayload};
 use crate::{commands::RrdCommands, CallSource};
 
 #[cfg(feature = "web_viewer")]
-use re_sdk::web_viewer::host_web_viewer;
+use re_sdk::web_viewer::WebViewerConfig;
 #[cfg(feature = "web_viewer")]
 use re_web_viewer_server::WebViewerServerPort;
 #[cfg(feature = "server")]
@@ -187,7 +187,7 @@ If no arguments are given, a server will be hosted which a Rerun SDK can connect
 
     /// Start the viewer in the browser (instead of locally).
     ///
-    /// Requires Rerun to have been compiled with the 'web_viewer' feature.
+    /// Requires Rerun to have been compiled with the `web_viewer` feature.
     ///
     /// This implies `--serve`.
     #[clap(long)]
@@ -230,6 +230,28 @@ If no arguments are given, a server will be hosted which a Rerun SDK can connect
     // GL could be enabled on MacOS via `angle` but given prior issues with ANGLE this seems to be a bad idea!
     #[clap(long)]
     renderer: Option<String>,
+
+    /// Overwrites hardware acceleration option for video decoding.
+    ///
+    /// By default uses the last provided setting, which is `auto` if never configured.
+    ///
+    /// Depending on the decoder backend, these settings are merely hints and may be ignored.
+    /// However, they can be useful in some situations to work around issues.
+    ///
+    /// Possible values:
+    ///
+    /// * `auto`
+    /// May use hardware acceleration if available and compatible with the codec.
+    ///
+    /// * `prefer_software`
+    /// Should use a software decoder even if hardware acceleration is available.
+    /// If no software decoder is present, this may cause decoding to fail.
+    ///
+    /// * `prefer_hardware`
+    /// Should use a hardware decoder.
+    /// If no hardware decoder is present, this may cause decoding to fail.
+    #[clap(long, verbatim_doc_comment)]
+    video_decoder: Option<String>,
 
     // ----------------------------------------------------------------------------
     // Debug-options:
@@ -594,6 +616,16 @@ fn run_impl(
     #[cfg(feature = "native_viewer")]
     let startup_options = {
         re_tracing::profile_scope!("StartupOptions");
+
+        let video_decoder_hw_acceleration =
+            args.video_decoder.as_ref().and_then(|s| match s.parse() {
+                Err(()) => {
+                    re_log::warn_once!("Failed to parse --video-decoder value: {s}. Ignoring.");
+                    None
+                }
+                Ok(hw_accell) => Some(hw_accell),
+            });
+
         re_viewer::StartupOptions {
             hide_welcome_screen: args.hide_welcome_screen,
             memory_limit: re_memory::MemoryLimit::parse(&args.memory_limit)
@@ -614,7 +646,8 @@ fn run_impl(
             } else {
                 None
             },
-            force_wgpu_backend: None,
+            force_wgpu_backend: args.renderer.clone(),
+            video_decoder_hw_acceleration,
 
             panel_state_overrides: Default::default(),
         }
@@ -647,13 +680,16 @@ fn run_impl(
             if let DataSource::WebSocketAddr(rerun_server_ws_url) = data_sources[0].clone() {
                 // Special case! We are connecting a web-viewer to a web-socket address.
                 // Instead of piping, just host a web-viewer that connects to the web-socket directly:
-                host_web_viewer(
-                    &args.bind,
-                    args.web_viewer_port,
-                    args.renderer,
-                    true,
-                    &rerun_server_ws_url,
-                )?
+
+                WebViewerConfig {
+                    bind_ip: args.bind,
+                    web_port: args.web_viewer_port,
+                    source_url: Some(rerun_server_ws_url),
+                    force_wgpu_backend: args.renderer,
+                    video_decoder: args.video_decoder,
+                    open_browser: true,
+                }
+                .host_web_viewer()?
                 .block();
 
                 return Ok(());
@@ -721,13 +757,15 @@ fn run_impl(
                 let open_browser = args.web_viewer;
 
                 // This is the server that serves the Wasm+HTML:
-                host_web_viewer(
-                    &args.bind,
-                    args.web_viewer_port,
-                    args.renderer,
+                WebViewerConfig {
+                    bind_ip: args.bind,
+                    web_port: args.web_viewer_port,
+                    source_url: Some(_ws_server.server_url()),
+                    force_wgpu_backend: args.renderer,
+                    video_decoder: args.video_decoder,
                     open_browser,
-                    &_ws_server.server_url(),
-                )?
+                }
+                .host_web_viewer()?
                 .block(); // dropping should stop the server
             }
 

@@ -32,6 +32,9 @@ namespace rerun::blueprint::archetypes {
         ///
         /// Raises the normalized values to the power of this value before mapping to color.
         /// Acts like an inverse brightness. Defaults to 1.0.
+        ///
+        /// The final value for display is set as:
+        /// `colormap( ((value - data_display_range.min) / (data_display_range.max - data_display_range.min)) ** gamma )`
         std::optional<rerun::components::GammaCorrection> gamma;
 
       public:
@@ -65,6 +68,9 @@ namespace rerun::blueprint::archetypes {
         ///
         /// Raises the normalized values to the power of this value before mapping to color.
         /// Acts like an inverse brightness. Defaults to 1.0.
+        ///
+        /// The final value for display is set as:
+        /// `colormap( ((value - data_display_range.min) / (data_display_range.max - data_display_range.min)) ** gamma )`
         TensorScalarMapping with_gamma(rerun::components::GammaCorrection _gamma) && {
             gamma = std::move(_gamma);
             // See: https://github.com/rerun-io/rerun/issues/4027

@@ -161,7 +161,7 @@ impl LatestAtQueryHandle<'_> {
 
         // If the query didn't return anything at all, we just want a properly empty Recordbatch with
         // the right schema.
-        let null_array_length = max_time_per_timeline.get(&self.query.timeline).is_some() as usize;
+        let null_array_length = max_time_per_timeline.contains_key(&self.query.timeline) as usize;
 
         // NOTE: Keep in mind this must match the ordering specified by `Self::schema`.
         let packed_arrays = {

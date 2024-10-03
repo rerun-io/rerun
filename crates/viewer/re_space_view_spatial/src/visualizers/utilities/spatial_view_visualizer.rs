@@ -1,14 +1,14 @@
 use re_log_types::EntityPathHash;
 
 use super::UiLabel;
-use crate::{view_kind::SpatialSpaceViewKind, PickableTexturedRect};
+use crate::{view_kind::SpatialSpaceViewKind, visualizers::LoadingSpinner, PickableTexturedRect};
 
 /// Common data struct for all spatial scene elements.
 ///
 /// Each spatial scene element is expected to fill an instance of this struct with its data.
 pub struct SpatialViewVisualizerData {
     /// Loading icons/spinners shown using egui, in world/scene coordinates.
-    pub loading_rects: Vec<egui::Rect>,
+    pub loading_spinners: Vec<LoadingSpinner>,
 
     /// Labels that should be shown using egui.
     pub ui_labels: Vec<UiLabel>,
@@ -26,7 +26,7 @@ pub struct SpatialViewVisualizerData {
 impl SpatialViewVisualizerData {
     pub fn new(preferred_view_kind: Option<SpatialSpaceViewKind>) -> Self {
         Self {
-            loading_rects: Default::default(),
+            loading_spinners: Default::default(),
             ui_labels: Default::default(),
             bounding_boxes: Default::default(),
             pickable_rects: Default::default(),

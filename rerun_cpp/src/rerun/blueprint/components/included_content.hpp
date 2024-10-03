@@ -14,7 +14,7 @@
 namespace rerun::blueprint::components {
     /// **Component**: All the contents in the container.
     struct IncludedContent {
-        /// List of the contents by EntityPath.
+        /// List of the contents by `datatypes::EntityPath`.
         ///
         /// This must be a path in the blueprint store.
         /// Typically structure as `<blueprint_registry>/<uuid>`.

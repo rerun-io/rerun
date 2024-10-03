@@ -46,6 +46,7 @@ function randomId(): string {
 export type Panel = "top" | "blueprint" | "selection" | "time";
 export type PanelState = "hidden" | "collapsed" | "expanded";
 export type Backend = "webgpu" | "webgl";
+export type VideoDecoder = "auto" | "prefer_software" | "prefer_hardware";
 
 // NOTE: When changing these options, consider how it affects the `web-viewer-react` package:
 //       - Should this option be exposed?
@@ -56,6 +57,9 @@ export interface WebViewerOptions {
 
   /** The render backend used by the viewer. Either "webgl" or "webgpu". Prefers "webgpu". */
   render_backend?: Backend;
+
+  /** Video decoder config used by the viewer. Either "auto", "prefer_software" or "prefer_hardware". */
+  video_decoder?: VideoDecoder;
 
   /** If set to `true`, hides the welcome screen, which contains our examples. Defaults to `false`. */
   hide_welcome_screen?: boolean;
@@ -97,6 +101,7 @@ export interface WebViewerOptions {
 export interface AppOptions extends WebViewerOptions {
   url?: string;
   manifest_url?: string;
+  video_decoder?: VideoDecoder,
   render_backend?: Backend;
   hide_welcome_screen?: boolean;
   panel_state_overrides?: Partial<{

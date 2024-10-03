@@ -258,7 +258,7 @@ mod tests {
     }
 
     thread_local! {
-        static DROP_COUNTER: Cell<usize> = Cell::new(0);
+        static DROP_COUNTER: Cell<usize> = const { Cell::new(0) };
     }
 
     #[derive(Debug)]

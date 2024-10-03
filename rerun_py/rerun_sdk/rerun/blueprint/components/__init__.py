@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from .active_tab import ActiveTab, ActiveTabBatch, ActiveTabType
+from .apply_latest_at import ApplyLatestAt, ApplyLatestAtBatch, ApplyLatestAtType
 from .auto_layout import AutoLayout, AutoLayoutBatch, AutoLayoutType
 from .auto_space_views import AutoSpaceViews, AutoSpaceViewsBatch, AutoSpaceViewsType
 from .background_kind import (
@@ -11,13 +12,6 @@ from .background_kind import (
     BackgroundKindBatch,
     BackgroundKindLike,
     BackgroundKindType,
-)
-from .column_selection_mode import (
-    ColumnSelectionMode,
-    ColumnSelectionModeArrayLike,
-    ColumnSelectionModeBatch,
-    ColumnSelectionModeLike,
-    ColumnSelectionModeType,
 )
 from .column_share import ColumnShare, ColumnShareBatch, ColumnShareType
 from .component_column_selector import (
@@ -33,6 +27,8 @@ from .container_kind import (
     ContainerKindType,
 )
 from .corner2d import Corner2D, Corner2DArrayLike, Corner2DBatch, Corner2DLike, Corner2DType
+from .filter_by_event import FilterByEvent, FilterByEventBatch, FilterByEventType
+from .filter_by_range import FilterByRange, FilterByRangeBatch, FilterByRangeType
 from .grid_columns import GridColumns, GridColumnsBatch, GridColumnsType
 from .included_content import IncludedContent, IncludedContentBatch, IncludedContentType
 from .included_space_view import IncludedSpaceView, IncludedSpaceViewBatch, IncludedSpaceViewType
@@ -50,6 +46,7 @@ from .query_expression import QueryExpression, QueryExpressionBatch, QueryExpres
 from .query_kind import QueryKind, QueryKindArrayLike, QueryKindBatch, QueryKindLike, QueryKindType
 from .root_container import RootContainer, RootContainerBatch, RootContainerType
 from .row_share import RowShare, RowShareBatch, RowShareType
+from .selected_columns import SelectedColumns, SelectedColumnsBatch, SelectedColumnsType
 from .space_view_class import SpaceViewClass, SpaceViewClassBatch, SpaceViewClassType
 from .space_view_maximized import SpaceViewMaximized, SpaceViewMaximizedBatch, SpaceViewMaximizedType
 from .space_view_origin import SpaceViewOrigin, SpaceViewOriginBatch, SpaceViewOriginType
@@ -81,6 +78,9 @@ __all__ = [
     "ActiveTab",
     "ActiveTabBatch",
     "ActiveTabType",
+    "ApplyLatestAt",
+    "ApplyLatestAtBatch",
+    "ApplyLatestAtType",
     "AutoLayout",
     "AutoLayoutBatch",
     "AutoLayoutType",
@@ -92,11 +92,6 @@ __all__ = [
     "BackgroundKindBatch",
     "BackgroundKindLike",
     "BackgroundKindType",
-    "ColumnSelectionMode",
-    "ColumnSelectionModeArrayLike",
-    "ColumnSelectionModeBatch",
-    "ColumnSelectionModeLike",
-    "ColumnSelectionModeType",
     "ColumnShare",
     "ColumnShareBatch",
     "ColumnShareType",
@@ -113,6 +108,12 @@ __all__ = [
     "Corner2DBatch",
     "Corner2DLike",
     "Corner2DType",
+    "FilterByEvent",
+    "FilterByEventBatch",
+    "FilterByEventType",
+    "FilterByRange",
+    "FilterByRangeBatch",
+    "FilterByRangeType",
     "GridColumns",
     "GridColumnsBatch",
     "GridColumnsType",
@@ -152,6 +153,9 @@ __all__ = [
     "RowShare",
     "RowShareBatch",
     "RowShareType",
+    "SelectedColumns",
+    "SelectedColumnsBatch",
+    "SelectedColumnsType",
     "SpaceViewClass",
     "SpaceViewClassBatch",
     "SpaceViewClassType",

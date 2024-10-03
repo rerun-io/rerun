@@ -1,3 +1,5 @@
+// TODO(#7298): decode on native
+
 #![allow(dead_code, unused_variables, clippy::unnecessary_wraps)]
 
 use std::sync::Arc;
@@ -12,14 +14,15 @@ use crate::{
 #[allow(unused_imports)]
 use super::latest_at_idx;
 
-use super::alloc_video_frame_texture;
+use super::{alloc_video_frame_texture, VideoDecoder};
 
-pub struct VideoDecoder {
+/// A [`VideoDecoder`] that always fails.
+pub struct NoNativeVideoDecoder {
     data: Arc<re_video::VideoData>,
     zeroed_texture: GpuTexture2D,
 }
 
-impl VideoDecoder {
+impl NoNativeVideoDecoder {
     pub fn new(
         render_context: &RenderContext,
         data: Arc<re_video::VideoData>,
@@ -36,9 +39,11 @@ impl VideoDecoder {
             zeroed_texture,
         })
     }
+}
 
+impl VideoDecoder for NoNativeVideoDecoder {
     #[allow(clippy::unused_self)]
-    pub fn frame_at(
+    fn frame_at(
         &mut self,
         _render_ctx: &RenderContext,
         _presentation_timestamp_s: f64,

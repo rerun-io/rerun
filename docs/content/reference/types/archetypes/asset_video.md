@@ -10,15 +10,19 @@ A video binary.
 
 NOTE: Videos can only be viewed in the Rerun web viewer.
 Only MP4 containers with a limited number of codecs are currently supported, and not in all browsers.
-Follow <https://github.com/rerun-io/rerun/issues/7298> for updates on the native support.
 
-In order to display a video, you need to log a [`archetypes.VideoFrameReference`](https://rerun.io/docs/reference/types/archetypes/video_frame_reference?speculative-link) for each frame.
+See <https://rerun.io/docs/concepts/video?speculative-link> for details of what is and isn't supported.
+
+In order to display a video, you also need to log a [`archetypes.VideoFrameReference`](https://rerun.io/docs/reference/types/archetypes/video_frame_reference?speculative-link) for each frame.
 
 ## Components
 
 **Required**: [`Blob`](../components/blob.md)
 
 **Recommended**: [`MediaType`](../components/media_type.md)
+
+## Shown in
+* [DataframeView](../views/dataframe_view.md)
 
 ## API reference links
  * 🌊 [C++ API docs for `AssetVideo`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1archetypes_1_1AssetVideo.html?speculative-link)

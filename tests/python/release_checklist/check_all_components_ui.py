@@ -216,6 +216,7 @@ ALL_COMPONENTS: dict[str, TestCase] = {
     ),
     "Translation3DBatch": TestCase(batch=[(1, 2, 3), (4, 5, 6), (7, 8, 9)]),
     "TriangleIndicesBatch": TestCase(batch=[(0, 1, 2), (3, 4, 5), (6, 7, 8)]),
+    "ValueRangeBatch": TestCase((0, 5)),
     "Vector2DBatch": TestCase(batch=[(0, 1), (2, 3), (4, 5)]),
     "Vector3DBatch": TestCase(batch=[(0, 3, 4), (1, 4, 5), (2, 5, 6)]),
     "VideoTimestampBatch": TestCase(rr.components.VideoTimestamp(seconds=0.0)),

@@ -178,7 +178,7 @@ pub mod gpu_data {
     }
 
     /// Uniform buffer that changes once per draw data rendering.
-    #[repr(C, align(256))]
+    #[repr(C)]
     #[derive(Clone, Copy, bytemuck::Pod, bytemuck::Zeroable)]
     pub struct DrawDataUniformBuffer {
         pub radius_boost_in_ui_points: wgpu_buffer_types::F32RowPadded,
@@ -186,7 +186,7 @@ pub mod gpu_data {
     }
 
     /// Uniform buffer that changes for every batch of line strips.
-    #[repr(C, align(256))]
+    #[repr(C)]
     #[derive(Clone, Copy, bytemuck::Pod, bytemuck::Zeroable)]
     pub struct BatchUniformBuffer {
         pub world_from_obj: wgpu_buffer_types::Mat4,
@@ -211,7 +211,7 @@ struct LineStripBatch {
 }
 
 /// A line drawing operation. Encompasses several lines, each consisting of a list of positions.
-/// Expected to be recrated every frame.
+/// Expected to be recreated every frame.
 #[derive(Clone)]
 pub struct LineDrawData {
     bind_group_all_lines: Option<GpuBindGroup>,

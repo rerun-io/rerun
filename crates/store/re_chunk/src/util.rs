@@ -280,14 +280,46 @@ pub fn pad_list_array_front(
     ArrowListArray::new(datatype, offsets.into(), values, Some(validity))
 }
 
-/// Applies a filter kernel to the given `array`.
+/// Applies a [filter] kernel to the given `array`.
+///
+/// Note: a `filter` kernel _copies_ the data in order to make the resulting arrays contiguous in memory.
 ///
 /// Takes care of up- and down-casting the data back and forth on behalf of the caller.
+///
+/// [filter]: arrow2::compute::filter::filter
 pub fn filter_array<A: ArrowArray + Clone>(array: &A, filter: &ArrowBooleanArray) -> A {
     debug_assert!(filter.validity().is_none()); // just for good measure
 
     #[allow(clippy::unwrap_used)]
     arrow2::compute::filter::filter(array, filter)
+        // Unwrap: this literally cannot fail.
+        .unwrap()
+        .as_any()
+        .downcast_ref::<A>()
+        // Unwrap: that's initial type that we got.
+        .unwrap()
+        .clone()
+}
+
+/// Applies a [take] kernel to the given `array`.
+///
+/// Note: a `take` kernel _copies_ the data in order to make the resulting arrays contiguous in memory.
+///
+/// Takes care of up- and down-casting the data back and forth on behalf of the caller.
+///
+/// [take]: arrow2::compute::take::take
+//
+// TODO(cmc): in an ideal world, a `take` kernel should merely _slice_ the data and avoid any allocations/copies
+// where possible (e.g. list-arrays).
+// That is not possible with vanilla `ListArray`s since they don't expose any way to encode optional lengths,
+// in addition to offsets.
+// For internal stuff, we could perhaps provide a custom implementation that returns a `DictionaryArray` instead?
+pub fn take_array<A: ArrowArray + Clone, O: arrow2::types::Index>(
+    array: &A,
+    indices: &ArrowPrimitiveArray<O>,
+) -> A {
+    #[allow(clippy::unwrap_used)]
+    arrow2::compute::take::take(array, indices)
         // Unwrap: this literally cannot fail.
         .unwrap()
         .as_any()

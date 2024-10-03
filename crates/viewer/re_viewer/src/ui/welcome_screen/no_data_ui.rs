@@ -2,9 +2,6 @@ use egui::Ui;
 
 use re_ui::UiExt as _;
 
-#[derive(Debug, Default, Clone, Copy)]
-struct TextSize(egui::Vec2);
-
 /// Show a minimal welcome section.
 pub fn no_data_ui(ui: &mut egui::Ui) {
     ui.center("no_data_ui_contents", |ui| {

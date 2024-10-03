@@ -12,6 +12,8 @@ use crate::{
     ATTR_DOCS_VIEW_TYPES,
 };
 
+pub const DATAFRAME_VIEW_FQNAME: &str = "rerun.blueprint.views.DataframeView";
+
 macro_rules! putln {
     ($o:ident) => ( writeln!($o).ok() );
     ($o:ident, $($tt:tt)*) => ( writeln!($o, $($tt)*).ok() );
@@ -574,9 +576,10 @@ fn write_archetype_fields(
         putln!(page, "**Optional**: {}", optional.join(", "));
     }
 
+    putln!(page);
+    putln!(page, "## Shown in");
+
     if let Some(view_types) = view_per_archetype.get(&object.fqname) {
-        putln!(page);
-        putln!(page, "## Shown in");
         for ViewReference {
             view_name,
             explanation,
@@ -592,6 +595,9 @@ fn write_archetype_fields(
             putln!(page);
         }
     }
+
+    // Special case for dataframe view: it can display anything.
+    putln!(page, "* [DataframeView](../views/dataframe_view.md)");
 }
 
 fn write_visualized_archetypes(
@@ -614,7 +620,7 @@ fn write_visualized_archetypes(
         }
     }
 
-    if archetype_fqnames.is_empty() {
+    if archetype_fqnames.is_empty() && view.fqname != DATAFRAME_VIEW_FQNAME {
         reporter.error(&view.virtpath, &view.fqname, "No archetypes use this view.");
         return;
     }
@@ -624,18 +630,24 @@ fn write_visualized_archetypes(
 
     putln!(page, "## Visualized archetypes");
     putln!(page);
-    for (fqname, explanation) in archetype_fqnames {
-        let object = &objects[&fqname];
-        page.push_str(&format!(
-            "* [`{}`](../{}/{}.md)",
-            object.name,
-            object.kind.plural_snake_case(),
-            object.snake_case_name()
-        ));
-        if let Some(explanation) = explanation {
-            page.push_str(&format!(" ({explanation})"));
+
+    // special case for dataframe view
+    if view.fqname == DATAFRAME_VIEW_FQNAME {
+        putln!(page, "Any data can be displayed by the Dataframe view.");
+    } else {
+        for (fqname, explanation) in archetype_fqnames {
+            let object = &objects[&fqname];
+            page.push_str(&format!(
+                "* [`{}`](../{}/{}.md)",
+                object.name,
+                object.kind.plural_snake_case(),
+                object.snake_case_name()
+            ));
+            if let Some(explanation) = explanation {
+                page.push_str(&format!(" ({explanation})"));
+            }
+            putln!(page);
         }
-        putln!(page);
     }
     putln!(page);
 }

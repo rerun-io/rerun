@@ -151,7 +151,6 @@ impl ImageVisualizer {
                     buffer: buffer.clone().into(),
                     format: first_copied(formats.as_deref())?.0,
                     kind: ImageKind::Color,
-                    colormap: None,
                 },
                 opacity: first_copied(opacities).map(Into::into),
             })
@@ -161,12 +160,14 @@ impl ImageVisualizer {
             let opacity = opacity.unwrap_or_else(|| self.fallback_for(ctx));
             let multiplicative_tint =
                 re_renderer::Rgba::from_white_alpha(opacity.0.clamp(0.0, 1.0));
+            let colormap = None;
 
             if let Some(textured_rect) = textured_rect_from_image(
                 ctx.viewer_ctx,
                 entity_path,
                 spatial_ctx,
                 &image,
+                colormap,
                 multiplicative_tint,
                 "Image",
                 &mut self.data,

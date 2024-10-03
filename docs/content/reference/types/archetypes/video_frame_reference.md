@@ -9,13 +9,18 @@ title: "VideoFrameReference"
 References a single video frame.
 
 Used to display individual video frames from a [`archetypes.AssetVideo`](https://rerun.io/docs/reference/types/archetypes/asset_video?speculative-link).
-To show an entire video, a fideo frame reference for each frame of the video should be logged.
+To show an entire video, a video frame reference for each frame of the video should be logged.
+
+See <https://rerun.io/docs/concepts/video?speculative-link> for details of what is and isn't supported.
 
 ## Components
 
 **Required**: [`VideoTimestamp`](../components/video_timestamp.md)
 
 **Optional**: [`EntityPath`](../components/entity_path.md)
+
+## Shown in
+* [DataframeView](../views/dataframe_view.md)
 
 ## API reference links
  * 🌊 [C++ API docs for `VideoFrameReference`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1archetypes_1_1VideoFrameReference.html?speculative-link)

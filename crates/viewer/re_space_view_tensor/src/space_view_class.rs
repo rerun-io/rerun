@@ -2,7 +2,6 @@ use egui::{epaint::TextShape, Align2, NumExt as _, Vec2};
 use ndarray::Axis;
 use re_space_view::{suggest_space_view_for_each_entity, view_property_ui};
 
-use re_chunk_store::RowId;
 use re_data_ui::tensor_summary_ui_grid_contents;
 use re_log_types::EntityPath;
 use re_types::{
@@ -16,16 +15,17 @@ use re_types::{
 };
 use re_ui::{list_item, ContextExt as _, UiExt as _};
 use re_viewer_context::{
-    gpu_bridge, ApplicableEntities, IdentifiedViewSystem as _, IndicatedEntities, PerVisualizer,
-    SpaceViewClass, SpaceViewClassRegistryError, SpaceViewId, SpaceViewState,
-    SpaceViewStateExt as _, SpaceViewSystemExecutionError, TensorStatsCache,
+    gpu_bridge, ApplicableEntities, ColormapWithRange, IdentifiedViewSystem as _,
+    IndicatedEntities, PerVisualizer, SpaceViewClass, SpaceViewClassRegistryError, SpaceViewId,
+    SpaceViewState, SpaceViewStateExt as _, SpaceViewSystemExecutionError, TensorStatsCache,
     TypedComponentFallbackProvider, ViewQuery, ViewerContext, VisualizableEntities,
 };
 use re_viewport_blueprint::ViewProperty;
 
 use crate::{
     dimension_mapping::load_tensor_slice_selection_and_make_valid,
-    tensor_dimension_mapper::dimension_mapping_ui, visualizer_system::TensorSystem,
+    tensor_dimension_mapper::dimension_mapping_ui,
+    visualizer_system::{TensorSystem, TensorView},
 };
 
 #[derive(Default)]
@@ -37,7 +37,7 @@ type ViewType = re_types::blueprint::views::TensorView;
 pub struct ViewTensorState {
     /// Last viewed tensor, copied each frame.
     /// Used for the selection view.
-    tensor: Option<(RowId, TensorData)>,
+    tensor: Option<TensorView>,
 }
 
 impl SpaceViewState for ViewTensorState {
@@ -125,10 +125,15 @@ Note: select the space view to configure which dimensions are shown."
 
         // TODO(andreas): Listitemify
         ui.selection_grid("tensor_selection_ui").show(ui, |ui| {
-            if let Some((tensor_data_row_id, tensor)) = &state.tensor {
+            if let Some(TensorView {
+                tensor,
+                tensor_row_id,
+                ..
+            }) = &state.tensor
+            {
                 let tensor_stats = ctx
                     .cache
-                    .entry(|c: &mut TensorStatsCache| c.entry(*tensor_data_row_id, tensor));
+                    .entry(|c: &mut TensorStatsCache| c.entry(*tensor_row_id, tensor));
 
                 tensor_summary_ui_grid_contents(ui, tensor, &tensor_stats);
             }
@@ -140,7 +145,7 @@ Note: select the space view to configure which dimensions are shown."
         });
 
         // TODO(#6075): Listitemify
-        if let Some((_, tensor)) = &state.tensor {
+        if let Some(TensorView { tensor, .. }) = &state.tensor {
             let slice_property = ViewProperty::from_archetype::<TensorSliceSelection>(
                 ctx.blueprint_db(),
                 ctx.blueprint_query,
@@ -213,9 +218,9 @@ Note: select the space view to configure which dimensions are shown."
                     tensors.len()
                 ));
             });
-        } else if let Some((tensor_data_row_id, tensor)) = tensors.first() {
-            state.tensor = Some((*tensor_data_row_id, tensor.0.clone()));
-            self.view_tensor(ctx, ui, state, query.space_view_id, tensor)?;
+        } else if let Some(tensor_view) = tensors.first() {
+            state.tensor = Some(tensor_view.clone());
+            self.view_tensor(ctx, ui, state, query.space_view_id, &tensor_view.tensor)?;
         } else {
             ui.centered_and_justified(|ui| ui.label("(empty)"));
         }
@@ -314,9 +319,14 @@ impl TensorSpaceView {
     ) -> anyhow::Result<(egui::Response, egui::Painter, egui::Rect)> {
         re_tracing::profile_function!();
 
-        let Some((tensor_data_row_id, tensor)) = state.tensor.as_ref() else {
+        let Some(tensor_view) = state.tensor.as_ref() else {
             anyhow::bail!("No tensor data available.");
         };
+        let TensorView {
+            tensor_row_id,
+            tensor,
+            data_range,
+        } = &tensor_view;
 
         let scalar_mapping = ViewProperty::from_archetype::<TensorScalarMapping>(
             ctx.blueprint_db(),
@@ -331,17 +341,16 @@ impl TensorSpaceView {
         let Some(render_ctx) = ctx.render_ctx else {
             return Err(anyhow::Error::msg("No render context available."));
         };
-
-        let tensor_stats = ctx
-            .cache
-            .entry(|c: &mut TensorStatsCache| c.entry(*tensor_data_row_id, tensor));
+        let colormap = ColormapWithRange {
+            colormap,
+            value_range: [data_range.start() as f32, data_range.end() as f32],
+        };
         let colormapped_texture = super::tensor_slice_to_gpu::colormapped_texture(
             render_ctx,
-            *tensor_data_row_id,
+            *tensor_row_id,
             tensor,
-            &tensor_stats,
             slice_selection,
-            colormap,
+            &colormap,
             gamma,
         )?;
         let [width, height] = colormapped_texture.width_height();

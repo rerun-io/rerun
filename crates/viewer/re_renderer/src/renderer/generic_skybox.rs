@@ -28,7 +28,7 @@ pub enum GenericSkyboxType {
 mod gpu_data {
     use crate::wgpu_buffer_types;
 
-    #[repr(C, align(256))]
+    #[repr(C)]
     #[derive(Clone, Copy, bytemuck::Pod, bytemuck::Zeroable)]
     pub struct UniformBuffer {
         pub background_type: wgpu_buffer_types::U32RowPadded,

@@ -5,13 +5,13 @@ use re_renderer::{
 };
 use re_types::{
     blueprint::archetypes::TensorSliceSelection,
-    components::{Colormap, GammaCorrection},
+    components::GammaCorrection,
     datatypes::TensorData,
     tensor_data::{TensorCastError, TensorDataType},
 };
 use re_viewer_context::{
-    gpu_bridge::{self, colormap_to_re_renderer, tensor_data_range_heuristic, RangeError},
-    TensorStats,
+    gpu_bridge::{self, colormap_to_re_renderer},
+    ColormapWithRange,
 };
 
 use crate::space_view_class::selected_tensor_slice;
@@ -23,35 +23,29 @@ pub enum TensorUploadError {
 
     #[error("Expected a 2D slice")]
     Not2D,
-
-    #[error(transparent)]
-    RangeError(#[from] RangeError),
 }
 
 pub fn colormapped_texture(
     render_ctx: &re_renderer::RenderContext,
     tensor_data_row_id: RowId,
     tensor: &TensorData,
-    tensor_stats: &TensorStats,
     slice_selection: &TensorSliceSelection,
-    colormap: Colormap,
+    colormap: &ColormapWithRange,
     gamma: GammaCorrection,
 ) -> Result<ColormappedTexture, TextureManager2DError<TensorUploadError>> {
     re_tracing::profile_function!();
 
-    let range = tensor_data_range_heuristic(tensor_stats, tensor.dtype())
-        .map_err(|err| TextureManager2DError::DataCreation(err.into()))?;
     let texture =
         upload_texture_slice_to_gpu(render_ctx, tensor_data_row_id, tensor, slice_selection)?;
 
     Ok(ColormappedTexture {
         texture,
-        range,
+        range: colormap.value_range,
         decode_srgb: false,
         multiply_rgb_with_alpha: false,
         gamma: *gamma.0,
         color_mapper: re_renderer::renderer::ColorMapper::Function(colormap_to_re_renderer(
-            colormap,
+            colormap.colormap,
         )),
         shader_decoding: None,
     })

@@ -20,6 +20,7 @@ Make sure that this archetype is logged at or above the origin entity path of yo
 
 ## Shown in
 * [Spatial3DView](../views/spatial3d_view.md)
+* [DataframeView](../views/dataframe_view.md)
 
 ## API reference links
  * 🌊 [C++ API docs for `ViewCoordinates`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1archetypes_1_1ViewCoordinates.html)

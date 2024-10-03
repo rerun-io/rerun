@@ -19,3 +19,4 @@ A 1D range, specifying a lower and upper bound.
 
 * [`Range1D`](../components/range1d.md)
 * [`Range2D`](../datatypes/range2d.md)
+* [`ValueRange`](../components/value_range.md)

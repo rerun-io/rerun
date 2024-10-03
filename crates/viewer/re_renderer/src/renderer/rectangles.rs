@@ -52,8 +52,7 @@ pub enum ShaderDecoding {
     Nv12,
     Yuy2,
 
-    /// BGR(A)->RGB(A) conversion is done in the shader.
-    /// (as opposed to doing it via ``)
+    /// Do BGR(A)->RGB(A) conversion is in the shader.
     Bgr,
 }
 
@@ -250,7 +249,7 @@ mod gpu_data {
     const FILTER_NEAREST: u32 = 1;
     const FILTER_BILINEAR: u32 = 2;
 
-    #[repr(C, align(256))]
+    #[repr(C)]
     #[derive(Clone, Copy, bytemuck::Pod, bytemuck::Zeroable)]
     pub struct UniformBuffer {
         top_left_corner_position: wgpu_buffer_types::Vec3Unpadded,

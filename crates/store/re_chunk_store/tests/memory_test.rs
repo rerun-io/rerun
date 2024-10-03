@@ -11,7 +11,7 @@ use std::sync::{
 static LIVE_BYTES_GLOBAL: AtomicUsize = AtomicUsize::new(0);
 
 thread_local! {
-    static LIVE_BYTES_IN_THREAD: AtomicUsize = AtomicUsize::new(0);
+    static LIVE_BYTES_IN_THREAD: AtomicUsize = const { AtomicUsize::new(0) };
 }
 
 pub struct TrackingAllocator {

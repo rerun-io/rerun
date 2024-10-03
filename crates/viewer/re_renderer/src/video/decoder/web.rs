@@ -10,12 +10,13 @@ use web_sys::{
 };
 use web_time::Instant;
 
-use super::latest_at_idx;
 use crate::{
     resource_managers::GpuTexture2D,
-    video::{DecodingError, FrameDecodingResult, VideoFrameTexture},
+    video::{DecodeHardwareAcceleration, DecodingError, FrameDecodingResult, VideoFrameTexture},
     DebugLabel, RenderContext,
 };
+
+use super::{latest_at_idx, VideoDecoder};
 
 #[derive(Clone)]
 #[repr(transparent)]
@@ -61,14 +62,14 @@ struct DecoderOutput {
 /// transient errors without flickering.
 const DECODING_ERROR_REPORTING_DELAY: Duration = Duration::from_millis(400);
 
-pub struct VideoDecoder {
+pub struct WebVideoDecoder {
     data: Arc<re_video::VideoData>,
     queue: Arc<wgpu::Queue>,
     texture: GpuTexture2D,
 
     decoder: web_sys::VideoDecoder,
-
     decoder_output: Arc<Mutex<DecoderOutput>>,
+    hw_acceleration: DecodeHardwareAcceleration,
 
     last_used_frame_timestamp: Time,
     current_segment_idx: usize,
@@ -83,11 +84,11 @@ pub struct VideoDecoder {
 #[allow(unsafe_code)]
 // Clippy did not recognize a safety comment on these impls no matter what I tried:
 #[allow(clippy::undocumented_unsafe_blocks)]
-unsafe impl Send for VideoDecoder {}
+unsafe impl Send for WebVideoDecoder {}
 
 #[allow(unsafe_code)]
 #[allow(clippy::undocumented_unsafe_blocks)]
-unsafe impl Sync for VideoDecoder {}
+unsafe impl Sync for WebVideoDecoder {}
 
 #[allow(unsafe_code)]
 #[allow(clippy::undocumented_unsafe_blocks)]
@@ -97,9 +98,9 @@ unsafe impl Send for VideoFrame {}
 #[allow(clippy::undocumented_unsafe_blocks)]
 unsafe impl Sync for VideoFrame {}
 
-impl Drop for VideoDecoder {
+impl Drop for WebVideoDecoder {
     fn drop(&mut self) {
-        re_log::debug!("Dropping VideoDecoder");
+        re_log::debug!("Dropping WebVideoDecoder");
         if let Err(err) = self.decoder.close() {
             if let Some(dom_exception) = err.dyn_ref::<web_sys::DomException>() {
                 if dom_exception.code() == web_sys::DomException::INVALID_STATE_ERR
@@ -118,10 +119,11 @@ impl Drop for VideoDecoder {
     }
 }
 
-impl VideoDecoder {
+impl WebVideoDecoder {
     pub fn new(
         render_context: &RenderContext,
         data: Arc<re_video::VideoData>,
+        hw_acceleration: DecodeHardwareAcceleration,
     ) -> Result<Self, DecodingError> {
         let decoder_output = Arc::new(Mutex::new(DecoderOutput {
             frames: Vec::new(),
@@ -147,6 +149,7 @@ impl VideoDecoder {
 
             decoder,
             decoder_output,
+            hw_acceleration,
 
             last_used_frame_timestamp: Time::new(u64::MAX),
             current_segment_idx: usize::MAX,
@@ -155,8 +158,10 @@ impl VideoDecoder {
             error_on_last_frame_at: false,
         })
     }
+}
 
-    pub fn frame_at(
+impl VideoDecoder for WebVideoDecoder {
+    fn frame_at(
         &mut self,
         render_ctx: &RenderContext,
         presentation_timestamp_s: f64,
@@ -183,7 +188,9 @@ impl VideoDecoder {
         }
         result
     }
+}
 
+impl WebVideoDecoder {
     fn frame_at_internal(&mut self, presentation_timestamp_s: f64) -> FrameDecodingResult {
         if presentation_timestamp_s < 0.0 {
             return Err(DecodingError::NegativeTimestamp);
@@ -432,7 +439,7 @@ impl VideoDecoder {
 
     /// Reset the video decoder and discard all frames.
     fn reset(&mut self) -> Result<(), DecodingError> {
-        re_log::debug!("Resetting video decoder.");
+        re_log::trace!("Resetting video decoder.");
         if let Err(_err) = self.decoder.reset() {
             // At least on Firefox, it can happen that reset on a previous error fails.
             // In that case, start over completely and try again!
@@ -441,7 +448,10 @@ impl VideoDecoder {
         };
 
         self.decoder
-            .configure(&js_video_decoder_config(&self.data.config))
+            .configure(&js_video_decoder_config(
+                &self.data.config,
+                self.hw_acceleration,
+            ))
             .map_err(|err| DecodingError::ConfigureFailure(js_error_to_string(&err)))?;
 
         {
@@ -558,7 +568,10 @@ fn init_video_decoder(
         .map_err(|err| DecodingError::DecoderSetupFailure(js_error_to_string(&err)))
 }
 
-fn js_video_decoder_config(config: &re_video::Config) -> VideoDecoderConfig {
+fn js_video_decoder_config(
+    config: &re_video::Config,
+    hw_acceleration: DecodeHardwareAcceleration,
+) -> VideoDecoderConfig {
     let js = VideoDecoderConfig::new(&config.codec);
     js.set_coded_width(config.coded_width as u32);
     js.set_coded_height(config.coded_height as u32);
@@ -566,6 +579,19 @@ fn js_video_decoder_config(config: &re_video::Config) -> VideoDecoderConfig {
     description.copy_from(&config.description[..]);
     js.set_description(&description);
     js.set_optimize_for_latency(true);
+
+    match hw_acceleration {
+        DecodeHardwareAcceleration::Auto => {
+            js.set_hardware_acceleration(web_sys::HardwareAcceleration::NoPreference);
+        }
+        DecodeHardwareAcceleration::PreferSoftware => {
+            js.set_hardware_acceleration(web_sys::HardwareAcceleration::PreferSoftware);
+        }
+        DecodeHardwareAcceleration::PreferHardware => {
+            js.set_hardware_acceleration(web_sys::HardwareAcceleration::PreferHardware);
+        }
+    }
+
     js
 }
 

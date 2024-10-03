@@ -25,62 +25,26 @@ use re_renderer::{
 
 // ----------------------------------------------------------------------------
 
-/// Errors that can happen when supplying a tensor range to the GPU.
-#[derive(thiserror::Error, Debug, PartialEq, Eq)]
-pub enum RangeError {
-    /// This is weird. Should only happen with JPEGs, and those should have been decoded already
-    #[error("Missing a range.")]
-    MissingRange,
-}
-
-/// Get a valid, finite range for the gpu to use.
-pub fn tensor_data_range_heuristic(
-    tensor_stats: &TensorStats,
-    data_type: re_types::tensor_data::TensorDataType,
-) -> Result<[f32; 2], RangeError> {
-    let (min, max) = tensor_stats.finite_range.ok_or(RangeError::MissingRange)?;
-
-    let min = min as f32;
-    let max = max as f32;
-
-    // Apply heuristic for ranges that are typically expected depending on the data type and the finite (!) range.
-    // (we ignore NaN/Inf values heres, since they are usually there by accident!)
-    if data_type.is_float() && 0.0 <= min && max <= 1.0 {
-        // Float values that are all between 0 and 1, assume that this is the range.
-        Ok([0.0, 1.0])
-    } else if 0.0 <= min && max <= 255.0 {
-        // If all values are between 0 and 255, assume this is the range.
-        // (This is very common, independent of the data type)
-        Ok([0.0, 255.0])
-    } else if min == max {
-        // uniform range. This can explode the colormapping, so let's map all colors to the middle:
-        Ok([min - 1.0, max + 1.0])
-    } else {
-        // Use range as is if nothing matches.
-        Ok([min, max])
-    }
-}
-
 /// Return whether a tensor should be assumed to be encoded in sRGB color space ("gamma space", no EOTF applied).
 pub fn tensor_decode_srgb_gamma_heuristic(
     tensor_stats: &TensorStats,
     data_type: re_types::tensor_data::TensorDataType,
     channels: u32,
-) -> Result<bool, RangeError> {
+) -> bool {
     if matches!(channels, 1 | 3 | 4) {
-        let (min, max) = tensor_stats.finite_range.ok_or(RangeError::MissingRange)?;
+        let (min, max) = tensor_stats.finite_range;
         #[allow(clippy::if_same_then_else)]
         if 0.0 <= min && max <= 255.0 {
             // If the range is suspiciously reminding us of a "regular image", assume sRGB.
-            Ok(true)
+            true
         } else if data_type.is_float() && 0.0 <= min && max <= 1.0 {
             // Floating point images between 0 and 1 are often sRGB as well.
-            Ok(true)
+            true
         } else {
-            Ok(false)
+            false
         }
     } else {
-        Ok(false)
+        false
     }
 }
 

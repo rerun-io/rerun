@@ -129,6 +129,7 @@ impl ExamplesManifest {
 #[derive(serde::Deserialize)]
 pub struct ExampleCategory {
     /// Used to sort categories in the `rerun.io/examples` navbar.
+    #[allow(unused)]
     pub order: u64,
 
     /// `snake_case` name.

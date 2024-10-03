@@ -167,7 +167,7 @@ impl ResolvedAnnotationInfo {
         } else {
             self.annotation_info
                 .as_ref()
-                .and_then(|info| info.label.as_ref().cloned())
+                .and_then(|info| info.label.clone())
         }
     }
 }
