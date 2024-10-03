@@ -60,7 +60,7 @@ class FilterByEvent(FilterByEventExt):
 
 
 if TYPE_CHECKING:
-    FilterByEventLike = Union[FilterByEvent, str, blueprint_datatypes.ComponentColumnSelector]
+    FilterByEventLike = Union[FilterByEvent, blueprint_datatypes.ComponentColumnSelectorLike]
 else:
     FilterByEventLike = Any
 
