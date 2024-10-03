@@ -804,8 +804,8 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                     is_required : false, }, ArchetypeFieldReflection { component_name :
                     "rerun.components.AlbedoFactor".into(), display_name :
                     "Albedo factor", docstring_md :
-                    "A color multiplier applied to the whole asset.", is_required :
-                    false, },
+                    "A color multiplier applied to the whole asset.\n\nFor mesh who already have albedo_factor in materials,\nit will be overwritten by actual albedo_factor of Asset3D (if specified).",
+                    is_required : false, },
                 ],
             },
         ),

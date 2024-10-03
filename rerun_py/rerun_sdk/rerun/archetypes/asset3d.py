@@ -105,6 +105,9 @@ class Asset3D(Asset3DExt, Archetype):
     )
     # A color multiplier applied to the whole asset.
     #
+    # For mesh who already have albedo_factor in materials,
+    # it will be overwritten by actual albedo_factor of Asset3D (if specified).
+    #
     # (Docstring intentionally commented out to hide this field from the docs)
 
     __str__ = Archetype.__str__
