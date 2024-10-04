@@ -99,6 +99,13 @@ struct QueryHandleState {
     // NOTE: Reminder: we have to query everything in the _view_, irrelevant of the current selection.
     view_chunks: Vec<Vec<(AtomicU64, Chunk)>>,
 
+    /// The index in `view_chunks` where the POV chunks are stored.
+    ///
+    /// * If set to `None`, then the caller didn't request a POV at all.
+    /// * If set to `Some(usize::MAX)`, then a POV was requested but couldn't be found in the view.
+    /// * Otherwise, points to the chunks that should be used to drive the iteration.
+    view_pov_chunks_idx: Option<usize>,
+
     /// Tracks the current row index: the position of the iterator. For [`QueryHandle::next_row`].
     ///
     /// This represents the number of rows that the caller has iterated on: it is completely
@@ -275,6 +282,11 @@ impl QueryHandle<'_> {
         };
 
         // 4. Perform the query and keep track of all the relevant chunks.
+        let mut view_pov_chunks_idx = self
+            .query
+            .filtered_point_of_view
+            .as_ref()
+            .map(|_| usize::MAX);
         let view_chunks = {
             let index_range = self
                 .query
@@ -286,11 +298,12 @@ impl QueryHandle<'_> {
                 .keep_extra_components(false);
 
             view_contents
-                    .iter()
-                    .map(|selected_column| match selected_column {
-                        ColumnDescriptor::Control(_) | ColumnDescriptor::Time(_) => Vec::new(),
+                .iter()
+                .enumerate()
+                .map(|(idx, selected_column)| match selected_column {
+                    ColumnDescriptor::Control(_) | ColumnDescriptor::Time(_) => Vec::new(),
 
-                        ColumnDescriptor::Component(column) => {
+                    ColumnDescriptor::Component(column) => {
                         // NOTE: Keep in mind that the range APIs natively make sure that we will
                         // either get a bunch of relevant _static_ chunks, or a bunch of relevant
                         // _temporal_ chunks, but never both.
@@ -309,7 +322,7 @@ impl QueryHandle<'_> {
                             "cannot possibly get more than one component with this query"
                         );
 
-                        results
+                        let chunks = results
                             .components
                             .into_iter()
                             .next()
@@ -335,10 +348,18 @@ impl QueryHandle<'_> {
                                     })
                                     .collect_vec()
                             })
-                            .unwrap_or_default()
+                            .unwrap_or_default();
+
+                            if let Some(pov) = self.query.filtered_point_of_view.as_ref() {
+                                if pov.entity_path == column.entity_path && pov.component == column.component_name {
+                                    view_pov_chunks_idx = Some(idx);
+                                }
+                            }
+
+                            chunks
                         },
                     })
-                    .collect()
+                .collect()
         };
 
         QueryHandleState {
@@ -346,6 +367,7 @@ impl QueryHandle<'_> {
             selected_contents,
             arrow_schema,
             view_chunks,
+            view_pov_chunks_idx,
             cur_row: AtomicU64::new(0),
         }
     }
@@ -519,13 +541,23 @@ impl QueryHandle<'_> {
         }
 
         // What's the index value we're looking for at the current iteration?
-        let cur_index_value = view_streaming_state
-            .iter()
-            .flatten()
-            // NOTE: We're purposefully ignoring RowId-related semantics here: we just want to know
-            // the value we're looking for on the "main" index (dedupe semantics).
-            .min_by_key(|streaming_state| streaming_state.index_value)
-            .map(|streaming_state| streaming_state.index_value)?;
+        let cur_index_value = if let Some(view_pov_chunks_idx) = state.view_pov_chunks_idx {
+            // If we do have a set point-of-view, then the current iteration corresponds to the
+            // next available index value across all PoV chunks.
+            view_streaming_state
+                .get(view_pov_chunks_idx)
+                .and_then(|streaming_state| streaming_state.as_ref().map(|s| s.index_value))?
+        } else {
+            // If we do not have a set point-of-view, then the current iteration corresponds to the
+            // smallest available index value across all available chunks.
+            view_streaming_state
+                .iter()
+                .flatten()
+                // NOTE: We're purposefully ignoring RowId-related semantics here: we just want to know
+                // the value we're looking for on the "main" index (dedupe semantics).
+                .min_by_key(|streaming_state| streaming_state.index_value)
+                .map(|streaming_state| streaming_state.index_value)?
+        };
 
         if let Some(filtered_index_values) = self.query.filtered_index_values.as_ref() {
             if !filtered_index_values.contains(&cur_index_value) {
