@@ -259,7 +259,7 @@ fn output_frames(decoder: &mut dav1d::Decoder, on_output: &OutputCallback) {
     loop {
         match decoder.get_picture() {
             Ok(picture) => {
-                output_picture(picture, on_output);
+                output_picture(&picture, on_output);
             }
             Err(err) if err.is_again() => {
                 // Not enough data yet
@@ -272,7 +272,7 @@ fn output_frames(decoder: &mut dav1d::Decoder, on_output: &OutputCallback) {
     }
 }
 
-fn output_picture(picture: rav1d::Picture, on_output: &(dyn Fn(Result<Frame>) + Send + Sync)) {
+fn output_picture(picture: &rav1d::Picture, on_output: &(dyn Fn(Result<Frame>) + Send + Sync)) {
     // TODO(jan): support other parameters?
     // What do these even do:
     // - matrix_coefficients
