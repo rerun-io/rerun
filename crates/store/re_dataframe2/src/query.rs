@@ -775,9 +775,9 @@ mod tests {
     // In no particular order:
     // * [x] filtered_index
     // * [x] filtered_index_range
+    // * [x] filtered_index_values
     // * [x] view_contents
     // * [x] selection
-    // * [ ] filtered_index_values
     // * [ ] sampled_index_values
     // * [ ] filtered_point_of_view
     // * [ ] sparse_fill_strategy
@@ -867,6 +867,57 @@ mod tests {
                 ListArray[None, [2], [3], [4], None],
                 ListArray[[c], None, None, None, None],
                 ListArray[None, [{x: 2, y: 2}], [{x: 3, y: 3}], [{x: 4, y: 4}], [{x: 5, y: 5}]],
+            ]\
+            ",
+        );
+
+        similar_asserts::assert_eq!(expected, got);
+
+        Ok(())
+    }
+
+    #[test]
+    fn filtered_index_values() -> anyhow::Result<()> {
+        re_log::setup_logging();
+
+        let store = create_nasty_store()?;
+        eprintln!("{store}");
+        let query_cache = QueryCache::new(&store);
+        let query_engine = QueryEngine {
+            store: &store,
+            cache: &query_cache,
+        };
+
+        let timeline = Timeline::new_sequence("frame_nr");
+        let mut query = QueryExpression2::new(timeline);
+        query.filtered_index_values = Some(
+            [0, 3, 6, 9]
+                .into_iter()
+                .map(TimeInt::new_temporal)
+                .chain(std::iter::once(TimeInt::STATIC))
+                .collect(),
+        );
+        eprintln!("{query:#?}:");
+
+        let query_handle = query_engine.query(query.clone());
+        let dataframe = concatenate_record_batches(
+            query_handle.schema().clone(),
+            &query_handle.into_batch_iter().collect_vec(),
+        );
+        eprintln!("{dataframe}");
+
+        let got = format!(
+            "{:#?}",
+            dataframe.data.iter().skip(1 /* RowId */).collect_vec()
+        );
+        let expected = unindent::unindent(
+            "\
+            [
+                Int64[None, 3, 6],
+                Timestamp(Nanosecond, None)[None, None, None],
+                ListArray[None, [2], None],
+                ListArray[[c], None, None],
+                ListArray[None, [{x: 2, y: 2}], [{x: 5, y: 5}]],
             ]\
             ",
         );
