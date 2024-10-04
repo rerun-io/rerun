@@ -5959,6 +5959,7 @@ dependencies = [
  "re_log",
  "re_mp4",
  "re_tracing",
+ "re_video",
  "thiserror",
 ]
 

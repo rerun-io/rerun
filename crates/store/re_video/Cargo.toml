@@ -53,6 +53,8 @@ dav1d = { git = "https://github.com/rerun-io/rav1d", branch = "emilk/dav1d-inter
 
 [dev-dependencies]
 indicatif.workspace = true
+re_video = { workspace=true, features=["av1"] } # For the `frames` example
+
 
 [[example]]
 name = "frames"
