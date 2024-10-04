@@ -527,6 +527,13 @@ impl QueryHandle<'_> {
             .min_by_key(|streaming_state| streaming_state.index_value)
             .map(|streaming_state| streaming_state.index_value)?;
 
+        if let Some(filtered_index_values) = self.query.filtered_index_values.as_ref() {
+            if !filtered_index_values.contains(&cur_index_value) {
+                self.increment_cursors_at_index_value(cur_index_value);
+                return self.next_row();
+            }
+        }
+
         for streaming_state in &mut view_streaming_state {
             if streaming_state.as_ref().map(|s| s.index_value) != Some(cur_index_value) {
                 *streaming_state = None;
