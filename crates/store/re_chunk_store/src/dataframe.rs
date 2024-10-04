@@ -829,8 +829,6 @@ pub struct QueryExpression2 {
     /// Example: `ResolvedTimeRange(10, 20)`.
     pub filtered_index_range: Option<IndexRange>,
 
-    /// TODO(cmc): NOT IMPLEMENTED.
-    ///
     /// The specific index values used to filter out _rows_ from the view contents.
     ///
     /// Only rows where at least 1 column contains non-null data at these specific values will be kept
@@ -858,8 +856,6 @@ pub struct QueryExpression2 {
     // TODO(jleibs): We need an alternative name for sampled.
     pub sampled_index_values: Option<Vec<IndexValue>>,
 
-    /// TODO(cmc): NOT IMPLEMENTED.
-    ///
     /// The component column used to filter out _rows_ from the view contents.
     ///
     /// Only rows where this column contains non-null data be kept in the final dataset.

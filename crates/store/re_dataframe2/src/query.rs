@@ -27,13 +27,13 @@ use crate::{QueryEngine, RecordBatch};
 // * [x] custom selection
 // * [x] support for overlaps (slow)
 // * [x] pagination (any solution, even a slow one)
+// * [x] pov support
+// * [ ] latestat sparse-filling
+// * [ ] sampling support
 // * [ ] overlaps (less dumb)
 // * [ ] selector-based `filtered_index`
 // * [ ] clears
-// * [ ] latestat sparse-filling
 // * [ ] pagination (fast)
-// * [ ] pov support
-// * [ ] sampling support
 // * [ ] configurable cache bypass
 // * [ ] allocate null arrays once
 // * [ ] take kernel duplicates all memory
