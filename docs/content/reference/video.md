@@ -58,7 +58,7 @@ With that in mind, here are the browsers which we have tested and verified to ge
 
 [^1]: Firefox on Linux has been observed to [stutter when playing back H.264 video](https://github.com/rerun-io/rerun/issues/7532).
 [^2]: Any Chromium-based browser should work, but we don't test all of them.
-[^3]: Chrome on Windows has also been observed to stutter on playback. It can be mitigated by [using software decoding](https://rerun.io/docs/getting-started/troubleshooting#video-stuttering).
+[^3]: Chrome on Windows has been observed to stutter on playback. It can be mitigated by [using software decoding](https://rerun.io/docs/getting-started/troubleshooting#video-stuttering), but this may lead to high memory usage. See also https://github.com/rerun-io/rerun/issues/7595.
 
 When it comes to codecs, we aim to support any codec which the browser supports, but
 we currently cannot guarantee that all of them will work. For more information about
@@ -76,6 +76,8 @@ At the moment, we test the following codecs:
 [^5]: Firefox does not support H.265 decoding on any platform.
 [^6]: Safari/WebKit has been observed suttering when playing `hvc1` but working fine with `hevc1`. Despite support being advertised Safari 16.5 has been observed not support H.265 decoding.
 [^7]: Only supported if hardware encoding is available. Therefore always affected by Windows stuttering issues, see [^3].
+
+TODO((#7594)[https://github.com/rerun-io/rerun/issues/7594]): HDR video is generally not supported at this point.
 
 ## Links
 * [Web video codec guide, by Mozilla](https://developer.mozilla.org/en-US/docs/Web/Media/Formats/Video_codecs)
