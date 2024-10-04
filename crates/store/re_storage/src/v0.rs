@@ -49,7 +49,7 @@ impl From<ViewContents> for re_dataframe2::external::re_chunk_store::ViewContent
                     .into_iter()
                     .map(|c| ComponentName::new(&c))
                     .collect::<BTreeSet<_>>();
-                (entity_path, Some(column_selector))
+                (entity_path, None)
             })
             .collect::<Self>()
     }
