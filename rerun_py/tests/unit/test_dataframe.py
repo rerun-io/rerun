@@ -7,7 +7,7 @@ import rerun as rr
 
 
 class TestDataframe:
-    def setup_method(self):
+    def setup_method(self) -> None:
         rr.init("rerun_example_test_recording")
 
         rr.log("points", rr.Points3D([[1, 2, 3], [4, 5, 6], [7, 8, 9]]))
@@ -84,7 +84,8 @@ class TestDataframe:
         for expr in bad_content_expressions:
             view = self.recording.view(index="log_time", contents=expr)
             batches = view.select()
-            print(batches)
+
+            # row, log_time, log_tick
             table = pa.Table.from_batches(batches, batches.schema)
             assert table.num_columns == 3
             assert table.num_rows == 0
