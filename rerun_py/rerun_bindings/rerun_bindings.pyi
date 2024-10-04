@@ -13,11 +13,11 @@ class ControlColumnSelector:
     @staticmethod
     def row_id() -> ControlColumnSelector: ...
 
-class TimeColumnDescriptor:
-    """A column containing the time values for when the component data was updated."""
+class IndexColumnDescriptor:
+    """A column containing the index values for when the component data was updated."""
 
-class TimeColumnSelector:
-    """A selector for a time column."""
+class IndexColumnSelector:
+    """A selector for an index column."""
 
     def __init__(self, timeline: str): ...
 
@@ -36,7 +36,7 @@ class Schema:
     """The schema representing all columns in a [`Dataset`][]."""
 
     def control_columns(self) -> list[ControlColumnDescriptor]: ...
-    def time_columns(self) -> list[TimeColumnDescriptor]: ...
+    def index_columns(self) -> list[IndexColumnDescriptor]: ...
     def component_columns(self) -> list[ComponentColumnDescriptor]: ...
     def column_for(self, entity_path: str, component: ComponentLike) -> Optional[ComponentColumnDescriptor]: ...
 

@@ -29,8 +29,8 @@ pub(crate) fn register(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<PyRecording>()?;
     m.add_class::<PyControlColumnDescriptor>()?;
     m.add_class::<PyControlColumnSelector>()?;
-    m.add_class::<PyTimeColumnDescriptor>()?;
-    m.add_class::<PyTimeColumnSelector>()?;
+    m.add_class::<PyIndexColumnDescriptor>()?;
+    m.add_class::<PyIndexColumnSelector>()?;
     m.add_class::<PyComponentColumnDescriptor>()?;
     m.add_class::<PyComponentColumnSelector>()?;
     m.add_class::<PyRecordingView>()?;
@@ -81,16 +81,16 @@ impl PyControlColumnSelector {
 /// Python binding for [`TimeColumnDescriptor`]
 #[pyclass(frozen, name = "TimeColumnDescriptor")]
 #[derive(Clone)]
-struct PyTimeColumnDescriptor(TimeColumnDescriptor);
+struct PyIndexColumnDescriptor(TimeColumnDescriptor);
 
 #[pymethods]
-impl PyTimeColumnDescriptor {
+impl PyIndexColumnDescriptor {
     fn __repr__(&self) -> String {
         format!("Time({})", self.0.timeline.name())
     }
 }
 
-impl From<TimeColumnDescriptor> for PyTimeColumnDescriptor {
+impl From<TimeColumnDescriptor> for PyIndexColumnDescriptor {
     fn from(desc: TimeColumnDescriptor) -> Self {
         Self(desc)
     }
@@ -99,10 +99,10 @@ impl From<TimeColumnDescriptor> for PyTimeColumnDescriptor {
 /// Python binding for [`TimeColumnSelector`]
 #[pyclass(frozen, name = "TimeColumnSelector")]
 #[derive(Clone)]
-struct PyTimeColumnSelector(TimeColumnSelector);
+struct PyIndexColumnSelector(TimeColumnSelector);
 
 #[pymethods]
-impl PyTimeColumnSelector {
+impl PyIndexColumnSelector {
     #[new]
     fn new(timeline: &str) -> Self {
         Self(TimeColumnSelector {
@@ -197,9 +197,9 @@ enum AnyColumn {
     #[pyo3(transparent, annotation = "control_selector")]
     ControlSelector(PyControlColumnSelector),
     #[pyo3(transparent, annotation = "time_descriptor")]
-    TimeDescriptor(PyTimeColumnDescriptor),
+    TimeDescriptor(PyIndexColumnDescriptor),
     #[pyo3(transparent, annotation = "time_selector")]
-    TimeSelector(PyTimeColumnSelector),
+    TimeSelector(PyIndexColumnSelector),
     #[pyo3(transparent, annotation = "component_descriptor")]
     ComponentDescriptor(PyComponentColumnDescriptor),
     #[pyo3(transparent, annotation = "component_selector")]
@@ -279,7 +279,7 @@ impl PySchema {
             .collect()
     }
 
-    fn time_columns(&self) -> Vec<PyTimeColumnDescriptor> {
+    fn index_columns(&self) -> Vec<PyIndexColumnDescriptor> {
         self.schema
             .iter()
             .filter_map(|column| {
