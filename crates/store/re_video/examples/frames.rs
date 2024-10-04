@@ -1,16 +1,17 @@
 #![allow(clippy::unwrap_used)]
 
+use std::{
+    fs::{File, OpenOptions},
+    io::Write as _,
+    path::{Path, PathBuf},
+    sync::Arc,
+    time::{Duration, Instant},
+};
+
 use indicatif::ProgressBar;
 use parking_lot::Mutex;
+
 use re_video::demux::mp4::load_mp4;
-use std::fs::File;
-use std::fs::OpenOptions;
-use std::io::Write as _;
-use std::path::Path;
-use std::path::PathBuf;
-use std::sync::Arc;
-use std::time::Duration;
-use std::time::Instant;
 
 fn main() {
     // frames <video.mp4>
