@@ -218,7 +218,7 @@ impl VideoDecoder for Av1VideoDecoder {
         }
 
         let Some(frame_idx) =
-            latest_at_idx(&frames, |frame| frame.timestamp, &presentation_timestamp)
+            latest_at_idx(frames, |frame| frame.timestamp, &presentation_timestamp)
         else {
             // No buffered frames - texture will be blank.
 

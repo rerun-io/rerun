@@ -282,10 +282,10 @@ fn output_picture(picture: &rav1d::Picture, on_output: &(dyn Fn(Result<Frame>) +
 
     let frame = Frame {
         data: match picture.pixel_layout() {
-            PixelLayout::I400 => i400_to_rgba(&picture),
-            PixelLayout::I420 => i420_to_rgba(&picture),
-            PixelLayout::I422 => i422_to_rgba(&picture),
-            PixelLayout::I444 => i444_to_rgba(&picture),
+            PixelLayout::I400 => i400_to_rgba(picture),
+            PixelLayout::I420 => i420_to_rgba(picture),
+            PixelLayout::I422 => i422_to_rgba(picture),
+            PixelLayout::I444 => i444_to_rgba(picture),
         },
         width: picture.width(),
         height: picture.height(),
