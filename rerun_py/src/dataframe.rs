@@ -41,7 +41,7 @@ pub(crate) fn register(m: &Bound<'_, PyModule>) -> PyResult<()> {
     Ok(())
 }
 
-/// Python binding for [`ControlColumnDescriptor`]`
+/// Python binding for [`ControlColumnDescriptor`]
 #[pyclass(frozen, name = "ControlColumnDescriptor")]
 #[derive(Clone)]
 struct PyControlColumnDescriptor(ControlColumnDescriptor);
@@ -59,7 +59,7 @@ impl From<ControlColumnDescriptor> for PyControlColumnDescriptor {
     }
 }
 
-/// Python binding for [`ControlColumnSelector`]`
+/// Python binding for [`ControlColumnSelector`]
 #[pyclass(frozen, name = "ControlColumnSelector")]
 #[derive(Clone)]
 struct PyControlColumnSelector(ControlColumnSelector);
@@ -78,7 +78,7 @@ impl PyControlColumnSelector {
     }
 }
 
-/// Python binding for [`TimeColumnDescriptor`]`
+/// Python binding for [`TimeColumnDescriptor`]
 #[pyclass(frozen, name = "TimeColumnDescriptor")]
 #[derive(Clone)]
 struct PyTimeColumnDescriptor(TimeColumnDescriptor);
@@ -96,7 +96,7 @@ impl From<TimeColumnDescriptor> for PyTimeColumnDescriptor {
     }
 }
 
-/// Python binding for [`TimeColumnSelector`]`
+/// Python binding for [`TimeColumnSelector`]
 #[pyclass(frozen, name = "TimeColumnSelector")]
 #[derive(Clone)]
 struct PyTimeColumnSelector(TimeColumnSelector);
@@ -115,7 +115,7 @@ impl PyTimeColumnSelector {
     }
 }
 
-/// Python binding for [`ComponentColumnDescriptor`]`
+/// Python binding for [`ComponentColumnDescriptor`]
 
 #[pyclass(frozen, name = "ComponentColumnDescriptor")]
 #[derive(Clone)]
@@ -156,7 +156,7 @@ impl From<PyComponentColumnDescriptor> for ComponentColumnDescriptor {
     }
 }
 
-/// Python binding for [`ComponentColumnSelector`]`
+/// Python binding for [`ComponentColumnSelector`]
 #[pyclass(frozen, name = "ComponentColumnSelector")]
 #[derive(Clone)]
 struct PyComponentColumnSelector(ComponentColumnSelector);
