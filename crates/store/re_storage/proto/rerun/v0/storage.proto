@@ -79,7 +79,7 @@ message Query {
     // PoV (filtering) component
     ComponentColumnDescriptor pov_component = 6;
     // which columns to include in the response
-    // Note - added one more layer of indiraction to ensure this field is optional,
+    // Note - added one more layer of indiraction to ensure the field is optional,
     // same as in the query expression. We can't have both 'repeated' and 'optional' field labels.
     ColumnSelection column_selection = 7;
     // how are null values filled in the response
@@ -87,8 +87,8 @@ message Query {
 }
 
 message QueryResponse {
-    // one or more record batches (encoding TBD). We might not need the list (repeated)
-    repeated bytes record_batches = 1;
+    // single record batches (encoding TBD - TODO).
+    bytes record_batches = 1;
 }
 
 message ColumnSelection {
@@ -110,7 +110,6 @@ message IndexColumnSelector {
     string name = 1;
 }
 
-// This goes away or becomes FilteredIndexRange which is an optional field
 message FilteredIndexRange {
     TimeRange time_range = 1;
 }
@@ -137,11 +136,6 @@ message ComponentsSet {
     repeated string values = 1;
 }
 
-enum TimelineType {
-    TIME = 0;
-    SEQUENCE = 1;
-}
-
 message TimeRange {
     int64 start = 1;
     int64 end = 2;
@@ -164,11 +158,11 @@ message ComponentColumnDescriptor {
     // component name needs to be a string as user can define their own component
     string component = 2;
     bool resolve_latest_at = 3;
-    // TODO - join encoding
+    // TODO - do we need join encoding?
 }
 
 message ControlColumnSelector {
-    string component_name = 1;
+    string component = 1;
 }
 
 message TimeColumnSelector {
@@ -179,7 +173,7 @@ message ComponentColumnSelector {
     EntityPath entity_path = 1;
     // component name needs to be a string as user can define their own component
     string component = 2;
-    // TODO join encoding
+    // TODO do we need join encoding?
 }
 
 enum SparseFillStrategy {

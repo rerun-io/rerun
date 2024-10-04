@@ -5,7 +5,7 @@ use re_dataframe2::external::re_chunk::ComponentName;
 
 tonic::include_proto!("rerun.storage.v0");
 
-// ==== below are all necessary conversions from internal rerun types to protobuf types =====
+// ==== below are all necessary transforms from internal rerun types to protobuf types =====
 
 impl From<re_log_types::ResolvedTimeRange> for TimeRange {
     fn from(rtr: re_log_types::ResolvedTimeRange) -> Self {
@@ -21,8 +21,9 @@ impl From<Query> for re_dataframe2::external::re_chunk_store::QueryExpression2 {
         Self {
             view_contents: value.view_contents.map(|vc| vc.into()),
             // FIXME we need a consistent way on both sides to deal with the fact
-            // prost generates Option<> for all nested fields
+            // prost generates Option<> for all nested fields, but some are required
             // See https://github.com/tokio-rs/prost/issues/223
+            // We could do this at the client layer where we ensure required fields are set
             filtered_index: value.index.unwrap().into(),
             filtered_index_range: value.index_range.map(|ir| ir.into()),
             filtered_index_values: None,  // TODO implement
@@ -43,6 +44,7 @@ impl From<ViewContents> for re_dataframe2::external::re_chunk_store::ViewContent
             .contents
             .into_iter()
             .map(|part| {
+                // FIXME option unwrap
                 let entity_path = Into::<re_log_types::EntityPath>::into(part.path.unwrap());
                 let column_selector = part.components.map(|cs| {
                     cs.values
@@ -64,12 +66,13 @@ impl From<EntityPath> for re_log_types::EntityPath {
 
 impl From<IndexColumnSelector> for re_log_types::Timeline {
     fn from(value: IndexColumnSelector) -> Self {
+        #![allow(clippy::match_same_arms)]
         let timeline = match value.name.as_str() {
-            "log_time" => re_log_types::Timeline::new_temporal(value.name),
-            "log_tick" => re_log_types::Timeline::new_sequence(value.name),
-            "frame" => re_log_types::Timeline::new_sequence(value.name),
-            "frame_nr" => re_log_types::Timeline::new_sequence(value.name),
-            _ => re_log_types::Timeline::new_temporal(value.name),
+            "log_time" => Self::new_temporal(value.name),
+            "log_tick" => Self::new_sequence(value.name),
+            "frame" => Self::new_sequence(value.name),
+            "frame_nr" => Self::new_sequence(value.name),
+            _ => Self::new_temporal(value.name),
         };
 
         timeline
@@ -79,6 +82,7 @@ impl From<IndexColumnSelector> for re_log_types::Timeline {
 impl From<FilteredIndexRange> for re_dataframe2::external::re_chunk_store::IndexRange {
     fn from(value: FilteredIndexRange) -> Self {
         Self::new(
+            // FIXME option unwrap
             value.time_range.unwrap().start,
             value.time_range.unwrap().end,
         )
@@ -87,10 +91,11 @@ impl From<FilteredIndexRange> for re_dataframe2::external::re_chunk_store::Index
 
 impl From<ColumnSelector> for re_dataframe2::external::re_chunk_store::ColumnSelector {
     fn from(value: ColumnSelector) -> Self {
+        // FIXME option unwraps
         match value.selector_type.unwrap() {
             column_selector::SelectorType::ControlColumn(control_column_selector) => {
                 re_dataframe2::external::re_chunk_store::ControlColumnSelector {
-                    component: ComponentName::new(&control_column_selector.component_name),
+                    component: ComponentName::new(&control_column_selector.component),
                 }
                 .into()
             }
