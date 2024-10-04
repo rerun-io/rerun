@@ -97,7 +97,9 @@ impl Decoder {
 impl Drop for Decoder {
     fn drop(&mut self) {
         re_tracing::profile_function!();
-        self.flush();
+        // TODO: maybe set a "close asap" flag instead?
+        self.reset(); // ignore enqueued commands
+        self.flush(); // wait for thread to stop
     }
 }
 
@@ -216,7 +218,6 @@ fn decoder_thread(
 
 fn submit_chunk(decoder: &mut dav1d::Decoder, chunk: Chunk, on_output: &OutputCallback) {
     re_tracing::profile_function!();
-    re_log::debug!("submit_chunk {:?}", chunk.timestamp);
 
     {
         re_tracing::profile_scope!("send_pending_data");

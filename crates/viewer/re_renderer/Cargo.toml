@@ -81,6 +81,7 @@ smallvec.workspace = true
 static_assertions.workspace = true
 thiserror.workspace = true
 type-map.workspace = true
+web-time.workspace = true
 wgpu.workspace = true
 wgpu-core.workspace = true                                           # Needed for error handling when wgpu-core implemented backend is used.
 wgpu-types.workspace = true
@@ -104,7 +105,6 @@ getrandom = { workspace = true, features = [
 ] } # getrandom needs the `js` feature to be enabled. It is dragged in indirectly.
 js-sys.workspace = true
 wasm-bindgen-futures.workspace = true
-web-time.workspace = true
 web-sys = { workspace = true, features = [
   "DomException",
   "EncodedVideoChunk",

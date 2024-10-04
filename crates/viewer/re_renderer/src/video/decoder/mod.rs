@@ -14,9 +14,13 @@ use crate::{
     RenderContext,
 };
 
-use std::sync::Arc;
+use std::{sync::Arc, time::Duration};
 
 use super::{DecodeHardwareAcceleration, DecodingError, FrameDecodingResult};
+
+/// Delaying error reports (and showing last-good images meanwhile) allows us to skip over
+/// transient errors without flickering.
+pub const DECODING_ERROR_REPORTING_DELAY: Duration = Duration::from_millis(400);
 
 /// Decode video to a texture.
 ///

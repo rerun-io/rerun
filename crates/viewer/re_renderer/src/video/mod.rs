@@ -1,8 +1,9 @@
 mod decoder;
 
+use std::{collections::hash_map::Entry, sync::Arc};
+
 use ahash::HashMap;
 use parking_lot::Mutex;
-use std::{collections::hash_map::Entry, sync::Arc};
 
 use re_video::VideoLoadError;
 

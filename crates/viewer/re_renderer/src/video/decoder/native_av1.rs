@@ -14,10 +14,35 @@ use crate::{
 #[allow(unused_imports)]
 use super::latest_at_idx;
 
-use parking_lot::Mutex;
 use re_video::{Frame, Time};
 
-use super::{alloc_video_frame_texture, VideoDecoder};
+use parking_lot::Mutex;
+use web_time::Instant;
+
+use super::{alloc_video_frame_texture, VideoDecoder, DECODING_ERROR_REPORTING_DELAY};
+
+struct DecoderOutput {
+    frames: Vec<Frame>,
+
+    last_decoding_error: Option<DecodingError>,
+
+    /// Whether we reset the decoder since the last time an error was reported.
+    reset_since_last_reported_error: bool,
+
+    /// Time at which point `last_decoding_error` changed from `None` to `Some`.
+    time_when_entering_error_state: Instant,
+}
+
+impl Default for DecoderOutput {
+    fn default() -> Self {
+        Self {
+            frames: Vec::new(),
+            last_decoding_error: None,
+            reset_since_last_reported_error: false,
+            time_when_entering_error_state: Instant::now(),
+        }
+    }
+}
 
 /// Native AV1 decoder
 pub struct Av1VideoDecoder {
@@ -27,10 +52,73 @@ pub struct Av1VideoDecoder {
     zeroed_texture: GpuTexture2D,
     decoder: re_video::av1::Decoder,
 
-    frames: Arc<Mutex<Vec<Frame>>>,
+    decoder_output: Arc<Mutex<DecoderOutput>>,
+
     last_used_frame_timestamp: Time,
     current_segment_idx: usize,
     current_sample_idx: usize,
+}
+
+impl Av1VideoDecoder {
+    pub fn new(
+        render_context: &RenderContext,
+        data: Arc<re_video::VideoData>,
+    ) -> Result<Self, DecodingError> {
+        re_tracing::profile_function!();
+
+        re_log::debug!("Initializing native video decoder…");
+        let decoder_output = Arc::new(Mutex::new(DecoderOutput::default()));
+
+        // TODO: check that data is av1, and return error elsewise
+        // TEMP: assuming `av1`, because `re_video` demuxer will panic if it's not
+        let decoder = re_video::av1::Decoder::new({
+            let decoder_output = decoder_output.clone();
+            move |frame: re_video::av1::Result<Frame>| match frame {
+                Ok(frame) => {
+                    re_log::trace!("Decoded frame at {:?}", frame.timestamp);
+                    let mut output = decoder_output.lock();
+                    output.frames.push(frame);
+                    // We successfully decoded a frame, reset the error state.
+                    output.last_decoding_error = None;
+                }
+                Err(err) => {
+                    let mut output = decoder_output.lock();
+                    if output.last_decoding_error.is_none() {
+                        output.time_when_entering_error_state = Instant::now();
+                    }
+                    output.last_decoding_error = Some(DecodingError::Decoding(err.to_string()));
+                    output.reset_since_last_reported_error = false;
+                }
+            }
+        });
+
+        let queue = render_context.queue.clone();
+
+        let texture = super::alloc_video_frame_texture(
+            &render_context.device,
+            &render_context.gpu_resources.textures,
+            data.config.coded_width as u32,
+            data.config.coded_height as u32,
+        );
+        let zeroed_texture = alloc_video_frame_texture(
+            &render_context.device,
+            &render_context.gpu_resources.textures,
+            data.config.coded_width as u32,
+            data.config.coded_height as u32,
+        );
+
+        Ok(Self {
+            data,
+            queue,
+            texture,
+            zeroed_texture,
+            decoder,
+            decoder_output,
+            last_used_frame_timestamp: Time::MAX,
+            current_segment_idx: usize::MAX,
+            current_sample_idx: usize::MAX,
+        })
+    }
 }
 
 impl VideoDecoder for Av1VideoDecoder {
@@ -62,7 +150,24 @@ impl VideoDecoder for Av1VideoDecoder {
             return Err(DecodingError::EmptyVideo);
         };
 
-        // Enqueue segments as needed. We maintain a buffer of 2 segments, so we can
+        // Enqueue segments as needed.
+        //
+        // First, check for decoding errors that may have been set asynchronously and reset if it's a new error.
+        {
+            let decoder_output = self.decoder_output.lock();
+            if decoder_output.last_decoding_error.is_some()
+                && !decoder_output.reset_since_last_reported_error
+            {
+                // For each new (!) error after entering the error state, we reset the decoder.
+                // This way, it might later recover from the error as we progress in the video.
+                //
+                // By resetting the current segment/sample indices, the frame enqueued code below
+                // is forced to reset the decoder.
+                self.current_segment_idx = usize::MAX;
+                self.current_sample_idx = usize::MAX;
+            }
+        };
+        // We maintain a buffer of 2 segments, so we can
         // always smoothly transition to the next segment.
         // We can always start decoding from any segment, because segments always begin
         // with a keyframe.
@@ -97,10 +202,11 @@ impl VideoDecoder for Av1VideoDecoder {
         self.current_segment_idx = requested_segment_idx;
         self.current_sample_idx = requested_sample_idx;
 
-        let mut frames = self.frames.lock();
+        let mut decoder_output = self.decoder_output.lock();
+        let frames = &mut decoder_output.frames;
 
         if !frames.is_empty() {
-            re_log::debug_once!(
+            re_log::trace_once!(
                 "Looking for frame timestamp {presentation_timestamp:?} among frames {:?} - {:?}",
                 frames.first().unwrap().timestamp,
                 frames.last().unwrap().timestamp
@@ -111,6 +217,23 @@ impl VideoDecoder for Av1VideoDecoder {
             latest_at_idx(&frames, |frame| frame.timestamp, &presentation_timestamp)
         else {
             // No buffered frames - texture will be blank.
+
+            // Might this be due to an error?
+            //
+            // We only care about decoding errors when we don't find the requested frame,
+            // since we want to keep playing the video fine even if parts of it are broken.
+            // That said, practically we reset the decoder and thus all frames upon error,
+            // so it doesn't make a lot of difference.
+            if let Some(last_decoding_error) = &decoder_output.last_decoding_error {
+                if decoder_output.time_when_entering_error_state.elapsed()
+                    >= DECODING_ERROR_REPORTING_DELAY
+                {
+                    // Report the error only if we have been in an error state for a certain amount of time.
+                    // Don't immediately report the error, since we might immediately recover from it.
+                    // Otherwise, this would cause aggressive flickering!
+                    return Err(last_decoding_error.clone());
+                }
+            }
 
             // Don't return a zeroed texture, because we may just be behind on decoding
             // and showing an old frame is better than showing a blank frame,
@@ -143,61 +266,6 @@ impl VideoDecoder for Av1VideoDecoder {
 }
 
 impl Av1VideoDecoder {
-    pub fn new(
-        render_context: &RenderContext,
-        data: Arc<re_video::VideoData>,
-    ) -> Result<Self, DecodingError> {
-        re_tracing::profile_function!();
-
-        re_log::debug!("Initializing native video decoder…");
-        let frames = Arc::new(Mutex::new(Vec::new()));
-
-        // TODO: check that data is av1, and return error elsewise
-        // TEMP: assuming `av1`, because `re_video` demuxer will panic if it's not
-        let decoder = re_video::av1::Decoder::new({
-            let frames = frames.clone();
-            move |frame: re_video::av1::Result<Frame>| match frame {
-                Ok(frame) => {
-                    re_log::debug!("Decoded frame at {:?}", frame.timestamp);
-                    frames.lock().push(frame);
-                }
-                Err(err) => {
-                    re_log::warn_once!("Failed to decode video: {err}");
-                    // TODO: store error and show user
-                    // TODO: reset
-                }
-            }
-        });
-
-        let queue = render_context.queue.clone();
-
-        let texture = super::alloc_video_frame_texture(
-            &render_context.device,
-            &render_context.gpu_resources.textures,
-            data.config.coded_width as u32,
-            data.config.coded_height as u32,
-        );
-        let zeroed_texture = alloc_video_frame_texture(
-            &render_context.device,
-            &render_context.gpu_resources.textures,
-            data.config.coded_width as u32,
-            data.config.coded_height as u32,
-        );
-
-        Ok(Self {
-            data,
-            queue,
-            texture,
-            zeroed_texture,
-            decoder,
-
-            frames,
-            last_used_frame_timestamp: Time::MAX,
-            current_segment_idx: usize::MAX,
-            current_sample_idx: usize::MAX,
-        })
-    }
-
     pub fn duration_ms(&self) -> f64 {
         self.data.duration_sec()
     }
@@ -238,10 +306,15 @@ impl Av1VideoDecoder {
 
     /// Reset the video decoder and discard all frames.
     fn reset(&mut self) {
+        re_log::debug!("Resetting AV1 decoder");
         self.decoder.reset();
 
-        let mut frames = self.frames.lock();
-        drop(frames.drain(..));
+        let mut decoder_output = self.decoder_output.lock();
+        decoder_output.reset_since_last_reported_error = true;
+        decoder_output.frames.clear();
+
+        self.current_segment_idx = usize::MAX;
+        self.current_sample_idx = usize::MAX;
     }
 }
 
