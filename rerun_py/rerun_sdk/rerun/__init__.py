@@ -19,6 +19,7 @@ import rerun_bindings as bindings  # type: ignore[attr-defined]
 
 from . import (
     blueprint as blueprint,
+    dataframe as dataframe,
     experimental as experimental,
     notebook as notebook,
 )
