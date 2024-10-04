@@ -86,7 +86,7 @@ struct PyIndexColumnDescriptor(TimeColumnDescriptor);
 #[pymethods]
 impl PyIndexColumnDescriptor {
     fn __repr__(&self) -> String {
-        format!("Time({})", self.0.timeline.name())
+        format!("Index(timeline:{})", self.0.timeline.name())
     }
 }
 
@@ -104,14 +104,14 @@ struct PyIndexColumnSelector(TimeColumnSelector);
 #[pymethods]
 impl PyIndexColumnSelector {
     #[new]
-    fn new(timeline: &str) -> Self {
+    fn new(index: &str) -> Self {
         Self(TimeColumnSelector {
-            timeline: timeline.into(),
+            timeline: index.into(),
         })
     }
 
     fn __repr__(&self) -> String {
-        format!("Time({})", self.0.timeline)
+        format!("Index(timeline:{})", self.0.timeline)
     }
 }
 
@@ -337,9 +337,16 @@ pub struct PyRecordingView {
     query_expression: QueryExpression2,
 }
 
-/// A view of a recording on a timeline, containing a specific set of entities and components.
+/// A view of a recording restricted to a given index, containing a specific set of entities and components.
 ///
 /// Can only be created by calling `view(...)` on a `Recording`.
+///
+/// The only type of index currently supported is the name of a timeline.
+///
+/// The view will only contain a single row for each unique value of the index. If the same entity / component pair
+/// was logged to a given index multiple times, only the most recent row will be included in the view, as determined
+/// by the `row_id` column. This will generally be the last value logged, as row_ids are guaranteed to be monotonically
+/// increasing when data is sent from a single process.
 #[pymethods]
 impl PyRecordingView {
     fn select(
@@ -369,7 +376,7 @@ impl PyRecordingView {
     fn filter_range_sequence(&self, start: i64, end: i64) -> PyResult<Self> {
         if self.query_expression.filtered_index.typ() != TimeType::Sequence {
             return Err(PyValueError::new_err(format!(
-                "Timeline for {} is not a sequence.",
+                "Index for {} is not a sequence.",
                 self.query_expression.filtered_index.name()
             )));
         }
@@ -410,7 +417,7 @@ impl PyRecordingView {
     fn filter_range_seconds(&self, start: f64, end: f64) -> PyResult<Self> {
         if self.query_expression.filtered_index.typ() != TimeType::Time {
             return Err(PyValueError::new_err(format!(
-                "Timeline for {} is not temporal.",
+                "Index for {} is not temporal.",
                 self.query_expression.filtered_index.name()
             )));
         }
@@ -432,7 +439,7 @@ impl PyRecordingView {
     fn filter_range_nanos(&self, start: i64, end: i64) -> PyResult<Self> {
         if self.query_expression.filtered_index.typ() != TimeType::Time {
             return Err(PyValueError::new_err(format!(
-                "Timeline for {} is not temporal.",
+                "Index for {} is not temporal.",
                 self.query_expression.filtered_index.name()
             )));
         }
@@ -532,19 +539,19 @@ impl PyRecording {
 
     #[pyo3(signature = (
         *,
-        timeline,
+        index,
         contents
     ))]
     fn view(
         slf: Bound<'_, Self>,
-        timeline: &str,
+        index: &str,
         contents: Bound<'_, PyAny>,
     ) -> PyResult<PyRecordingView> {
         let borrowed_self = slf.borrow();
 
         // Look up the type of the timelin
         let selector = TimeColumnSelector {
-            timeline: timeline.into(),
+            timeline: index.into(),
         };
 
         let timeline = borrowed_self.store.resolve_time_selector(&selector);

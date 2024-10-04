@@ -33,7 +33,7 @@ class ComponentColumnSelector:
     def with_dictionary_encoding(self) -> ComponentColumnSelector: ...
 
 class Schema:
-    """The schema representing all columns in a [`Dataset`][]."""
+    """The schema representing all columns in a [`Recording`][]."""
 
     def control_columns(self) -> list[ControlColumnDescriptor]: ...
     def index_columns(self) -> list[IndexColumnDescriptor]: ...
@@ -41,11 +41,31 @@ class Schema:
     def column_for(self, entity_path: str, component: ComponentLike) -> Optional[ComponentColumnDescriptor]: ...
 
 class RecordingView:
-    """A view of a recording on a timeline, containing a specific set of entities and components."""
+    """
+    A view of a recording restricted to a given index, containing a specific set of entities and components.
 
-    def filter_range_sequence(self, start: int, end: int) -> RecordingView: ...
-    def filter_range_seconds(self, start: float, end: float) -> RecordingView: ...
-    def filter_range_nanos(self, start: int, end: int) -> RecordingView: ...
+    Can only be created by calling `view(...)` on a `Recording`.
+
+    The only type of index currently supported is the name of a timeline.
+
+    The view will only contain a single row for each unique value of the index. If the same entity / component pair
+    was logged to a given index multiple times, only the most recent row will be included in the view, as determined
+    by the `row_id` column. This will generally be the last value logged, as row_ids are guaranteed to be monotonically
+    increasing when data is sent from a single process.
+    """
+
+    def filter_range_sequence(self, start: int, end: int) -> RecordingView:
+        """Filter the view to only include data between the given index sequence numbers."""
+        ...
+
+    def filter_range_seconds(self, start: float, end: float) -> RecordingView:
+        """Filter the view to only include data between the given index time values."""
+        ...
+
+    def filter_range_nanos(self, start: int, end: int) -> RecordingView:
+        """Filter the view to only include data between the given index time values."""
+        ...
+
     def select(self, columns: Sequence[AnyColumn]) -> list[pa.RecordBatch]: ...
 
 class Recording:
