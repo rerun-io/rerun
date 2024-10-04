@@ -23,6 +23,7 @@ pub struct Decoder {
 
 impl Decoder {
     pub fn new(on_output: impl Fn(Frame) + Send + Sync + 'static) -> Self {
+        re_tracing::profile_function!();
         let (command_tx, command_rx) = unbounded();
         let (reset_tx, reset_rx) = bounded(1);
         let parker = Parker::new();
@@ -46,6 +47,7 @@ impl Decoder {
 
     /// Submits a single frame for decoding.
     pub fn decode(&self, chunk: Chunk) {
+        re_tracing::profile_function!();
         self.command_tx.send(Command::Chunk(chunk)).ok();
         self.unparker.unpark();
     }
@@ -88,18 +90,23 @@ enum Command {
 
 type OutputCallback = dyn Fn(Frame) + Send + Sync;
 
+fn create_decoder() -> Result<dav1d::Decoder, dav1d::Error> {
+    re_tracing::profile_function!();
+
+    let mut settings = dav1d::Settings::new();
+    settings.set_strict_std_compliance(false);
+    settings.set_max_frame_delay(1);
+
+    dav1d::Decoder::with_settings(&settings)
+}
+
 fn decoder_thread(
     command_rx: &Receiver<Command>,
     reset_rx: &Receiver<()>,
     parker: &Parker,
     on_output: &OutputCallback,
 ) {
-    let mut settings = dav1d::Settings::new();
-    settings.set_strict_std_compliance(false);
-    settings.set_max_frame_delay(1);
-
-    let mut decoder =
-        dav1d::Decoder::with_settings(&settings).expect("failed to initialize dav1d::Decoder");
+    let mut decoder = create_decoder().expect("failed to initialize dav1d::Decoder"); // TODO: error handling
 
     loop {
         select! {
@@ -216,7 +223,7 @@ fn submit_chunk(decoder: &mut dav1d::Decoder, chunk: Chunk) {
 
 fn drain_decoded_frames(decoder: &mut dav1d::Decoder) {
     while let Ok(picture) = decoder.get_picture() {
-        let _ = picture;
+        _ = picture;
     }
 }
 
@@ -224,25 +231,7 @@ fn output_frames(decoder: &mut dav1d::Decoder, on_output: &OutputCallback) {
     loop {
         match decoder.get_picture() {
             Ok(picture) => {
-                let data = match picture.pixel_layout() {
-                    PixelLayout::I400 => i400_to_rgba(&picture),
-                    PixelLayout::I420 => i420_to_rgba(&picture),
-                    PixelLayout::I422 => i422_to_rgba(&picture),
-                    PixelLayout::I444 => i444_to_rgba(&picture),
-                };
-                let width = picture.width();
-                let height = picture.height();
-                let timestamp = i64_to_time(picture.timestamp().unwrap_or(0));
-                let duration = i64_to_time(picture.duration());
-
-                on_output(Frame {
-                    data,
-                    width,
-                    height,
-                    format: PixelFormat::Rgba8Unorm,
-                    timestamp,
-                    duration,
-                });
+                output_picture(picture, on_output);
             }
             Err(err) if err.is_again() => {
                 // Not enough data yet
@@ -255,12 +244,28 @@ fn output_frames(decoder: &mut dav1d::Decoder, on_output: &OutputCallback) {
     }
 }
 
-// TODO(jan): support other parameters?
-// What do these even do:
-// - matrix_coefficients
-// - color_range
-// - color_primaries
-// - transfer_characteristics
+fn output_picture(picture: rav1d::Picture, on_output: &(dyn Fn(Frame) + Send + Sync)) {
+    // TODO(jan): support other parameters?
+    // What do these even do:
+    // - matrix_coefficients
+    // - color_range
+    // - color_primaries
+    // - transfer_characteristics
+
+    on_output(Frame {
+        data: match picture.pixel_layout() {
+            PixelLayout::I400 => i400_to_rgba(&picture),
+            PixelLayout::I420 => i420_to_rgba(&picture),
+            PixelLayout::I422 => i422_to_rgba(&picture),
+            PixelLayout::I444 => i444_to_rgba(&picture),
+        },
+        width: picture.width(),
+        height: picture.height(),
+        format: PixelFormat::Rgba8Unorm,
+        timestamp: i64_to_time(picture.timestamp().unwrap_or(0)),
+        duration: i64_to_time(picture.duration()),
+    });
+}
 
 fn rgba_from_yuv(y: u8, u: u8, v: u8) -> [u8; 4] {
     let (y, u, v) = (f32::from(y), f32::from(u), f32::from(v));
