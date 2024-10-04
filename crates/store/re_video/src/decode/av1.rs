@@ -238,8 +238,8 @@ fn submit_chunk(decoder: &mut dav1d::Decoder, chunk: Chunk, on_output: &OutputCa
     match decoder.send_data(
         chunk.data,
         None,
-        Some(time_to_i64(chunk.timestamp)),
-        Some(time_to_i64(chunk.duration)),
+        Some(chunk.timestamp.0),
+        Some(chunk.duration.0),
     ) {
         Ok(()) => {}
         Err(err) if err.is_again() => {}
@@ -290,8 +290,8 @@ fn output_picture(picture: rav1d::Picture, on_output: &(dyn Fn(Result<Frame>) + 
         width: picture.width(),
         height: picture.height(),
         format: PixelFormat::Rgba8Unorm,
-        timestamp: i64_to_time(picture.timestamp().unwrap_or(0)),
-        duration: i64_to_time(picture.duration()),
+        timestamp: Time(picture.timestamp().unwrap_or(0)),
+        duration: Time(picture.duration()),
     };
     on_output(Ok(frame));
 }
@@ -435,12 +435,4 @@ fn i444_to_rgba(picture: &dav1d::Picture) -> Vec<u8> {
     }
 
     rgba
-}
-
-fn time_to_i64(time: Time) -> i64 {
-    time.0 as _ // TODO: what is the timescale of dav1d?
-}
-
-fn i64_to_time(i64: i64) -> Time {
-    Time::new(i64 as _) // TODO: what is the timescale of dav1d?
 }
