@@ -1,3 +1,5 @@
+//! Decodes an mp4 with AV1 in it to a folder of images.
+
 #![allow(clippy::unwrap_used)]
 
 use std::{
