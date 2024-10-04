@@ -502,9 +502,9 @@ impl PyRecording {
 
             let mut contents = ViewContentsSelector::default();
             for (key, value) in dict {
-                let key = key.extract::<String>().map_err(|_| {
+                let key = key.extract::<String>().map_err(|_err| {
                     PyTypeError::new_err(
-                        "Could not interpret `contents` as a ViewContentsLike. Keys must be strings.",
+                        format!("Could not interpret `contents` as a ViewContentsLike. Key: {key} is not a path expression."),
                     )
                 })?;
 
@@ -522,7 +522,7 @@ impl PyRecording {
                     components.into_iter().map(|c| c.0).collect()
                 } else {
                     return Err(PyTypeError::new_err(
-                            "Could not interpret `contents` as a ViewContentsLike. Values must be ComponentLike or Sequence[ComponentLike].",
+                            format!("Could not interpret `contents` as a ViewContentsLike. Value: {value} is not a ComponentLike or Sequence[ComponentLike]."),
                         ));
                 };
 
