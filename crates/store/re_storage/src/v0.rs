@@ -44,12 +44,13 @@ impl From<ViewContents> for re_dataframe2::external::re_chunk_store::ViewContent
             .into_iter()
             .map(|part| {
                 let entity_path = Into::<re_log_types::EntityPath>::into(part.path.unwrap());
-                let column_selector = part
-                    .components
-                    .into_iter()
-                    .map(|c| ComponentName::new(&c))
-                    .collect::<BTreeSet<_>>();
-                (entity_path, None)
+                let column_selector = part.components.map(|cs| {
+                    cs.values
+                        .into_iter()
+                        .map(|c| ComponentName::new(&c))
+                        .collect::<BTreeSet<_>>()
+                });
+                (entity_path, column_selector)
             })
             .collect::<Self>()
     }
@@ -57,7 +58,7 @@ impl From<ViewContents> for re_dataframe2::external::re_chunk_store::ViewContent
 
 impl From<EntityPath> for re_log_types::EntityPath {
     fn from(value: EntityPath) -> Self {
-        Self::from_single_string(value.path)
+        Self::from(value.path)
     }
 }
 
