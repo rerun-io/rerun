@@ -66,10 +66,15 @@ impl Av1VideoDecoder {
     ) -> Result<Self, DecodingError> {
         re_tracing::profile_function!();
 
+        if !data.config.is_av1() {
+            return Err(DecodingError::UnsupportedCodec {
+                codec: data.config.codec.clone(),
+            });
+        }
+
         re_log::debug!("Initializing native video decoder…");
         let decoder_output = Arc::new(Mutex::new(DecoderOutput::default()));
 
-        // TODO: check that data.config.codec is av1, and return error elsewise
         let decoder = re_video::av1::Decoder::new({
             let decoder_output = decoder_output.clone();
             move |frame: re_video::av1::Result<Frame>| match frame {

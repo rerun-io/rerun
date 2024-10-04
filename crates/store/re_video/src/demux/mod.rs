@@ -197,6 +197,8 @@ pub struct Sample {
 #[derive(Debug, Clone)]
 pub struct Config {
     /// String used to identify the codec and some of its configuration.
+    ///
+    /// e.g. "av01.0.05M.08" (AV1)
     pub codec: String,
 
     /// Codec-specific configuration.
@@ -207,6 +209,12 @@ pub struct Config {
 
     /// Natural width of the video.
     pub coded_width: u16,
+}
+
+impl Config {
+    pub fn is_av1(&self) -> bool {
+        self.codec.starts_with("av01")
+    }
 }
 
 /// Errors that can occur when loading a video.
