@@ -6209,6 +6209,7 @@ name = "rerun_c"
 version = "0.19.0-alpha.1+dev"
 dependencies = [
  "ahash",
+ "infer",
  "once_cell",
  "parking_lot",
  "re_arrow2",
@@ -6224,6 +6225,7 @@ dependencies = [
  "arrow",
  "crossbeam",
  "document-features",
+ "infer",
  "itertools 0.13.0",
  "mimalloc",
  "once_cell",

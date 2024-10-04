@@ -55,6 +55,7 @@ arrow2 = { workspace = true, features = ["io_ipc", "io_print", "arrow"] }
 crossbeam.workspace = true
 document-features.workspace = true
 itertools = { workspace = true }
+infer.workspace = true
 # TODO(#5875): `mimalloc` starts leaking OS pages starting with `0.1.38`.
 # When the bug is fixed, change this back to `mimalloc = { workspace = true, …`.
 mimalloc = { version = "=0.1.37", features = ["local_dynamic_tls"] }
