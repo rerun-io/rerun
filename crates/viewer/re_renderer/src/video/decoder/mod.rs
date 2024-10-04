@@ -20,6 +20,7 @@ use super::{DecodeHardwareAcceleration, DecodingError, FrameDecodingResult};
 
 /// Delaying error reports (and showing last-good images meanwhile) allows us to skip over
 /// transient errors without flickering.
+#[allow(unused)]
 pub const DECODING_ERROR_REPORTING_DELAY: Duration = Duration::from_millis(400);
 
 /// Decode video to a texture.
