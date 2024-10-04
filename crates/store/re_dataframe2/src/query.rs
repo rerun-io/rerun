@@ -820,6 +820,10 @@ mod tests {
     // * [x] filtered_point_of_view
     // * [ ] sampled_index_values
     // * [ ] sparse_fill_strategy
+    //
+    // In addition to those, some much needed extras:
+    // * [ ] timelines returned with selection=none
+    // * [ ] clears
 
     // TODO(cmc): At some point I'd like to stress multi-entity queries too, but that feels less
     // urgent considering how things are implemented (each entity lives in its own index, so it's
