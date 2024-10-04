@@ -17,7 +17,7 @@ use re_video::{Frame, Time};
 use parking_lot::Mutex;
 use web_time::Instant;
 
-use super::{alloc_video_frame_texture, VideoDecoder, DECODING_ERROR_REPORTING_DELAY};
+use super::{VideoDecoder, DECODING_ERROR_REPORTING_DELAY};
 
 struct DecoderOutput {
     frames: Vec<Frame>,
