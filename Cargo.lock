@@ -1712,17 +1712,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7e962a19be5cfc3f3bf6dd8f61eb50107f356ad6270fbb3ed41476571db78be5"
 
 [[package]]
-name = "dav1d"
-version = "0.10.3"
-source = "git+https://github.com/rerun-io/rav1d-rs#ffb30df91a4fcf0af4e6cf44a9a373265aba02c1"
-dependencies = [
- "av-data",
- "bitflags 2.6.0",
- "rav1d",
- "static_assertions",
-]
-
-[[package]]
 name = "deranged"
 version = "0.3.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4735,10 +4724,11 @@ dependencies = [
 [[package]]
 name = "rav1d"
 version = "1.0.0"
-source = "git+https://github.com/rerun-io/rav1d-rs#ffb30df91a4fcf0af4e6cf44a9a373265aba02c1"
+source = "git+https://github.com/rerun-io/rav1d?branch=emilk/dav1d-interface#c653a54999db41919d9992c67ed46f8f2393e934"
 dependencies = [
  "assert_matches",
  "atomig",
+ "av-data",
  "bitflags 2.6.0",
  "cc",
  "cfg-if",
@@ -4747,6 +4737,7 @@ dependencies = [
  "parking_lot",
  "paste",
  "raw-cpuid",
+ "static_assertions",
  "strum",
  "to_method",
  "zerocopy",
@@ -5952,11 +5943,11 @@ name = "re_video"
 version = "0.19.0-alpha.1+dev"
 dependencies = [
  "crossbeam",
- "dav1d",
  "indicatif",
  "itertools 0.13.0",
  "ordered-float",
  "parking_lot",
+ "rav1d",
  "re_log",
  "re_mp4",
  "re_tracing",
