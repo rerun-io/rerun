@@ -156,9 +156,16 @@ impl Av1VideoDecoder {
         // TEMP: assuming `av1`, because `re_video` demuxer will panic if it's not
         let decoder = re_video::av1::Decoder::new({
             let frames = frames.clone();
-            move |frame: re_video::Frame| {
-                re_log::debug!("Decoded frame at {:?}", frame.timestamp);
-                frames.lock().push(frame);
+            move |frame: re_video::av1::Result<Frame>| match frame {
+                Ok(frame) => {
+                    re_log::debug!("Decoded frame at {:?}", frame.timestamp);
+                    frames.lock().push(frame);
+                }
+                Err(err) => {
+                    re_log::warn_once!("Failed to decode video: {err}");
+                    // TODO: store error and show user
+                    // TODO: reset
+                }
             }
         });
 

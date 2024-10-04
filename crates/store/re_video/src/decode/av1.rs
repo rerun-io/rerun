@@ -14,15 +14,33 @@ use crate::Time;
 
 use super::{Chunk, Frame, PixelFormat};
 
+#[derive(thiserror::Error, Debug)]
+pub enum Error {
+    /// An error occrurred during initialization of the decoder.
+    ///
+    /// No further output will come.
+    #[error("Error initializing decoder: {0}")]
+    Initialization(dav1d::Error),
+
+    #[error("Decoding error: {0}")]
+    Dav1d(dav1d::Error),
+}
+
+pub type Result<T = (), E = Error> = std::result::Result<T, E>;
+
 pub struct Decoder {
     _thread: std::thread::JoinHandle<()>,
     unparker: Unparker,
+
+    /// Normal command stream
     command_tx: Sender<Command>,
+
+    /// Fast-track to reset and ignore all command in the normal command stream.
     reset_tx: Sender<()>,
 }
 
 impl Decoder {
-    pub fn new(on_output: impl Fn(Frame) + Send + Sync + 'static) -> Self {
+    pub fn new(on_output: impl Fn(Result<Frame>) + Send + Sync + 'static) -> Self {
         re_tracing::profile_function!();
         let (command_tx, command_rx) = unbounded();
         let (reset_tx, reset_rx) = bounded(1);
@@ -88,7 +106,7 @@ enum Command {
     Reset(Sender<()>),
 }
 
-type OutputCallback = dyn Fn(Frame) + Send + Sync;
+type OutputCallback = dyn Fn(Result<Frame>) + Send + Sync;
 
 fn create_decoder() -> Result<dav1d::Decoder, dav1d::Error> {
     re_tracing::profile_function!();
@@ -106,7 +124,13 @@ fn decoder_thread(
     parker: &Parker,
     on_output: &OutputCallback,
 ) {
-    let mut decoder = create_decoder().expect("failed to initialize dav1d::Decoder"); // TODO: error handling
+    let mut decoder = match create_decoder() {
+        Err(err) => {
+            on_output(Err(Error::Initialization(err)));
+            return;
+        }
+        Ok(decoder) => decoder,
+    };
 
     loop {
         select! {
@@ -150,7 +174,7 @@ fn decoder_thread(
             recv(command_rx) -> command => {
                 match command {
                     Ok(Command::Chunk(chunk)) => {
-                        submit_chunk(&mut decoder, chunk);
+                        submit_chunk(&mut decoder, chunk, on_output);
                         output_frames(&mut decoder, on_output);
                         continue;
                     }
@@ -189,7 +213,7 @@ fn decoder_thread(
     }
 }
 
-fn submit_chunk(decoder: &mut dav1d::Decoder, chunk: Chunk) {
+fn submit_chunk(decoder: &mut dav1d::Decoder, chunk: Chunk, on_output: &OutputCallback) {
     re_tracing::profile_function!();
     re_log::debug!("submit_chunk {:?}", chunk.timestamp);
 
@@ -201,8 +225,7 @@ fn submit_chunk(decoder: &mut dav1d::Decoder, chunk: Chunk) {
         Ok(()) => {}
         Err(err) if err.is_again() => {}
         Err(err) => {
-            // Something went wrong
-            panic!("Failed to decode frame: {err}"); // TODO: handle errors
+            on_output(Err(Error::Dav1d(err)));
         }
     }
 
@@ -215,8 +238,7 @@ fn submit_chunk(decoder: &mut dav1d::Decoder, chunk: Chunk) {
         Ok(()) => {}
         Err(err) if err.is_again() => {}
         Err(err) => {
-            // Something went wrong
-            panic!("Failed to decode frame: {err}"); // TODO: handle errors
+            on_output(Err(Error::Dav1d(err)));
         }
     };
 }
@@ -238,13 +260,13 @@ fn output_frames(decoder: &mut dav1d::Decoder, on_output: &OutputCallback) {
                 break;
             }
             Err(err) => {
-                panic!("Failed to decode frame: {err}"); // TODO: handle errors
+                on_output(Err(Error::Dav1d(err)));
             }
         }
     }
 }
 
-fn output_picture(picture: rav1d::Picture, on_output: &(dyn Fn(Frame) + Send + Sync)) {
+fn output_picture(picture: rav1d::Picture, on_output: &(dyn Fn(Result<Frame>) + Send + Sync)) {
     // TODO(jan): support other parameters?
     // What do these even do:
     // - matrix_coefficients
@@ -252,7 +274,7 @@ fn output_picture(picture: rav1d::Picture, on_output: &(dyn Fn(Frame) + Send + S
     // - color_primaries
     // - transfer_characteristics
 
-    on_output(Frame {
+    let frame = Frame {
         data: match picture.pixel_layout() {
             PixelLayout::I400 => i400_to_rgba(&picture),
             PixelLayout::I420 => i420_to_rgba(&picture),
@@ -264,7 +286,8 @@ fn output_picture(picture: rav1d::Picture, on_output: &(dyn Fn(Frame) + Send + S
         format: PixelFormat::Rgba8Unorm,
         timestamp: i64_to_time(picture.timestamp().unwrap_or(0)),
         duration: i64_to_time(picture.duration()),
-    });
+    };
+    on_output(Ok(frame));
 }
 
 fn rgba_from_yuv(y: u8, u: u8, v: u8) -> [u8; 4] {
