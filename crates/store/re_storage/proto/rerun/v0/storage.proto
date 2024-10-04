@@ -6,7 +6,8 @@ service StorageNode {
     rpc ListRecordings(ListRecordingsRequest) returns (ListRecordingsResponse) {}
     rpc Query(QueryRequest) returns (stream QueryResponse) {}
     rpc GetRecordingMetadata(GetRecordingMetadataRequest) returns (GetRecordingMetadataResponse) {}
-    rpc RegisterRecording(RegisterRecordingRequest) returns (RegisterRecordingResponse) {}
+    // TODO (zehiko) - should this be singular recording registration? Currently we can have 1 rrd => many recordings
+    rpc RegisterRecordings(RegisterRecordingsRequest) returns (RegisterRecordingsResponse) {}
 }
 
 // ----------- Common ------------
@@ -18,20 +19,19 @@ message RecordingId {
 
 // ---------------- RegisterRecording ------------------
 
-message RegisterRecordingRequest {
+message RegisterRecordingsRequest {
     string description = 1;
     string storage_url = 2;
     // TODO should this be auto-discoverable?
     RecordingType typ = 3;
 }
 
-message RegisterRecordingResponse {
-    RecordingId recording_id = 1;
+message RegisterRecordingsResponse {
     // Note: this implies we read the record (for example go through entire .rrd file
     // chunk by chunk) and extract the metadata. So we might want to 1/ not do this i.e.
     // only do it as part of explicit GetMetadata request or 2/ do it if Request has "include_metadata=true"
     // or 3/ do it always
-    RecordingMetadata metadata = 2;
+    repeated RecordingMetadata metadata = 2;
 }
 
 // ---------------- GetRecordingMetadata  -----------------
