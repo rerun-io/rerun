@@ -45,7 +45,7 @@ thiserror.workspace = true
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 # If this package fails to build, install `nasm` locally, or build through `pixi`.
 # See https://github.com/rerun-io/rav1d/pull/1
-rav1d = { git = "https://github.com/rerun-io/rav1d", branch = "emilk/dav1d-interface",  optional = true } # TODO(#7588): publish this fork
+rav1d = { git = "https://github.com/rerun-io/rav1d", branch = "emilk/dav1d-interface", optional = true } # TODO(#7588): publish this fork
 
 [dev-dependencies]
 indicatif.workspace = true

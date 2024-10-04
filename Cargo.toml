@@ -311,7 +311,7 @@ opt-level = 1 # Make debug builds run faster
 [profile.dev.package.re_video]
 opt-level = 2 # Speed up CPU-side chroma-upsampling (TODO(#7298): move to GPU)
 [profile.dev.package.rav1d]
-opt-level = 2 # Speed up AV1 video decoding. TODO: doesn't work?
+opt-level = 2 # Speed up AV1 video decoding. TODO(emilk): this doesn't seem to work
 [profile.dev.package.wgpu]
 opt-level = 2 # Speed up copying video textures
 
