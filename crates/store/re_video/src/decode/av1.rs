@@ -80,7 +80,7 @@ impl Decoder {
         self.command_tx.send(Command::Reset(tx)).ok();
         self.reset_tx.send(()).ok();
         self.unparker.unpark();
-        rx.recv().ok();
+        _ = rx; // Do not block
     }
 
     /// Blocks until all pending frames have been decoded.
@@ -96,6 +96,7 @@ impl Decoder {
 
 impl Drop for Decoder {
     fn drop(&mut self) {
+        re_tracing::profile_function!();
         self.flush();
     }
 }
@@ -217,18 +218,22 @@ fn submit_chunk(decoder: &mut dav1d::Decoder, chunk: Chunk, on_output: &OutputCa
     re_tracing::profile_function!();
     re_log::debug!("submit_chunk {:?}", chunk.timestamp);
 
-    // always attempt to send pending data first
-    // this does nothing if there is no pending data,
-    // and is required if a call to `send_data` previously
-    // returned `EAGAIN`
-    match decoder.send_pending_data() {
-        Ok(()) => {}
-        Err(err) if err.is_again() => {}
-        Err(err) => {
-            on_output(Err(Error::Dav1d(err)));
+    {
+        re_tracing::profile_scope!("send_pending_data");
+        // always attempt to send pending data first
+        // this does nothing if there is no pending data,
+        // and is required if a call to `send_data` previously
+        // returned `EAGAIN`
+        match decoder.send_pending_data() {
+            Ok(()) => {}
+            Err(err) if err.is_again() => {}
+            Err(err) => {
+                on_output(Err(Error::Dav1d(err)));
+            }
         }
     }
 
+    re_tracing::profile_scope!("send_data");
     match decoder.send_data(
         chunk.data,
         None,

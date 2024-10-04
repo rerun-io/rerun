@@ -310,6 +310,8 @@ zip = { version = "0.6", default-features = false }
 opt-level = 1 # Make debug builds run faster
 [profile.dev.package.re_video]
 opt-level = 2 # Speed up CPU-side chroma-upsampling (TODO(#7298): move to GPU)
+[profile.dev.package.rav1d]
+opt-level = 2 # Speed up AV1 video decoding. TODO: doesn't work?
 [profile.dev.package.wgpu]
 opt-level = 2 # Speed up copying video textures
 
