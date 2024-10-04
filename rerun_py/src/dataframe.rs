@@ -8,7 +8,7 @@ use arrow::{array::RecordBatch, pyarrow::PyArrowType};
 use pyo3::{
     exceptions::{PyRuntimeError, PyTypeError, PyValueError},
     prelude::*,
-    types::PyDict,
+    types::{PyDict, PyTuple},
 };
 
 use re_chunk_store::{
@@ -349,15 +349,35 @@ pub struct PyRecordingView {
 /// increasing when data is sent from a single process.
 #[pymethods]
 impl PyRecordingView {
+    #[pyo3(signature = (
+        *args,
+        columns = None
+    ))]
     fn select(
         &self,
         py: Python<'_>,
+        args: &Bound<'_, PyTuple>,
         columns: Option<Vec<AnyColumn>>,
     ) -> PyResult<PyArrowType<Vec<RecordBatch>>> {
         let borrowed = self.recording.borrow(py);
         let engine = borrowed.engine();
 
         let mut query_expression = self.query_expression.clone();
+
+        // Coerce the arguments into a list of `ColumnSelector`s
+        let args: Vec<AnyColumn> = args
+            .iter()
+            .map(|arg| arg.extract::<AnyColumn>())
+            .collect::<PyResult<_>>()?;
+
+        if columns.is_some() && !args.is_empty() {
+            return Err(PyValueError::new_err(
+                "Cannot specify both `columns` and `args` in `select`.",
+            ));
+        }
+
+        let columns = columns.or_else(|| if !args.is_empty() { Some(args) } else { None });
+
         query_expression.selection =
             columns.map(|cols| cols.into_iter().map(|col| col.into_selector()).collect());
 
