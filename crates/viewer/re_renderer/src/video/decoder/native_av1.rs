@@ -66,6 +66,7 @@ impl Av1VideoDecoder {
         data: Arc<re_video::VideoData>,
     ) -> Result<Self, DecodingError> {
         re_tracing::profile_function!();
+        let full_debug_name = format!("{debug_name}, codec: {}", data.config.codec);
 
         if !data.config.is_av1() {
             return Err(DecodingError::UnsupportedCodec {
@@ -78,6 +79,7 @@ impl Av1VideoDecoder {
 
         let on_output = {
             let decoder_output = decoder_output.clone();
+            let full_debug_name = full_debug_name.clone();
             move |frame: re_video::av1::Result<Frame>| match frame {
                 Ok(frame) => {
                     re_log::trace!("Decoded frame at {:?}", frame.timestamp);
@@ -87,6 +89,7 @@ impl Av1VideoDecoder {
                     output.last_decoding_error = None;
                 }
                 Err(err) => {
+                    re_log::warn_once!("Error during decoding of {full_debug_name}: {err}");
                     let mut output = decoder_output.lock();
                     if output.last_decoding_error.is_none() {
                         output.time_when_entering_error_state = Instant::now();
@@ -96,7 +99,6 @@ impl Av1VideoDecoder {
                 }
             }
         };
-        let full_debug_name = format!("{debug_name}, codec: {}", data.config.codec);
         let decoder = re_video::av1::Decoder::new(full_debug_name, on_output);
 
         let queue = render_context.queue.clone();
