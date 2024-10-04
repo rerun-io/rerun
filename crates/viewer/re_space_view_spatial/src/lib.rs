@@ -83,9 +83,9 @@ fn resolution_of_image_at(
             .latest_at_component::<MediaType>(entity_path, query)
             .map(|(_, c)| c);
 
-        let image = ctx.cache.entry(|c: &mut ImageDecodeCache| {
-            c.entry(row_id, &blob, media_type.as_ref().map(|mt| mt.as_str()))
-        });
+        let image = ctx
+            .cache
+            .entry(|c: &mut ImageDecodeCache| c.entry(row_id, &blob, media_type.as_ref()));
 
         if let Ok(image) = image {
             return Some(Resolution::from([

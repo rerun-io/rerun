@@ -103,9 +103,7 @@ pub fn blob_preview_and_save_ui(
     // Try to treat it as an image:
     let image = blob_row_id.and_then(|row_id| {
         ctx.cache
-            .entry(|c: &mut re_viewer_context::ImageDecodeCache| {
-                c.entry(row_id, blob, media_type.as_ref().map(|mt| mt.as_str()))
-            })
+            .entry(|c: &mut re_viewer_context::ImageDecodeCache| c.entry(row_id, blob, media_type))
             .ok()
     });
     if let Some(image) = &image {
@@ -118,7 +116,7 @@ pub fn blob_preview_and_save_ui(
             c.entry(
                 blob_row_id,
                 blob,
-                media_type.as_ref().map(|mt| mt.as_str()),
+                media_type,
                 ctx.app_options.video_decoder_hw_acceleration,
             )
         });
@@ -286,15 +284,13 @@ fn show_video_blob_info(
                 }
             });
         }
-        Err(VideoLoadError::MediaTypeIsNotAVideo { .. }) => {
+        Err(VideoLoadError::MimeTypeIsNotAVideo { .. }) => {
             // Don't show an error if this wasn't a video in the first place.
             // Unfortunately we can't easily detect here if the Blob was _supposed_ to be a video, for that we'd need tagged components!
             // (User may have confidently logged a non-video format as Video, we should tell them that!)
         }
-        Err(VideoLoadError::UnrecognizedVideoFormat {
-            provided_media_type: None,
-        }) => {
-            // If we couldn't detect the media type and the loader didn't know the format,
+        Err(VideoLoadError::UnrecognizedMimeType) => {
+            // If we couldn't detect the media type,
             // we can't show an error for unrecognized formats since maybe this wasn't a video to begin with.
             // See also `MediaTypeIsNotAVideo` case above.
         }
