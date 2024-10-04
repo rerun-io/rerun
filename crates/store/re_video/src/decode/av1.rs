@@ -97,7 +97,7 @@ impl Decoder {
 impl Drop for Decoder {
     fn drop(&mut self) {
         re_tracing::profile_function!();
-        // TODO: maybe set a "close asap" flag instead?
+        // TODO(emilk): maybe set a "close asap" flag instead?
         self.reset(); // ignore enqueued commands
         self.flush(); // wait for thread to stop
     }
