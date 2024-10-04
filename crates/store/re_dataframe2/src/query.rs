@@ -785,8 +785,8 @@ mod tests {
     // * [x] filtered_index_values
     // * [x] view_contents
     // * [x] selection
+    // * [x] filtered_point_of_view
     // * [ ] sampled_index_values
-    // * [ ] filtered_point_of_view
     // * [ ] sparse_fill_strategy
 
     // TODO(cmc): At some point I'd like to stress multi-entity queries too, but that feels less
@@ -930,6 +930,148 @@ mod tests {
         );
 
         similar_asserts::assert_eq!(expected, got);
+
+        Ok(())
+    }
+
+    #[test]
+    fn filtered_point_of_view() -> anyhow::Result<()> {
+        re_log::setup_logging();
+
+        let store = create_nasty_store()?;
+        eprintln!("{store}");
+        let query_cache = QueryCache::new(&store);
+        let query_engine = QueryEngine {
+            store: &store,
+            cache: &query_cache,
+        };
+
+        let timeline = Timeline::new_sequence("frame_nr");
+        let entity_path: EntityPath = "this/that".into();
+
+        // non-existing entity
+        {
+            let mut query = QueryExpression2::new(timeline);
+            query.filtered_point_of_view = Some(ComponentColumnSelector {
+                entity_path: "no/such/entity".into(),
+                component: MyPoint::name(),
+                join_encoding: Default::default(),
+            });
+            eprintln!("{query:#?}:");
+
+            let query_handle = query_engine.query(query.clone());
+            let dataframe = concatenate_record_batches(
+                query_handle.schema().clone(),
+                &query_handle.into_batch_iter().collect_vec(),
+            );
+            eprintln!("{dataframe}");
+
+            let got = format!(
+                "{:#?}",
+                dataframe.data.iter().skip(1 /* RowId */).collect_vec()
+            );
+            let expected = "[]";
+
+            similar_asserts::assert_eq!(expected, got);
+        }
+
+        // non-existing component
+        {
+            let mut query = QueryExpression2::new(timeline);
+            query.filtered_point_of_view = Some(ComponentColumnSelector {
+                entity_path: entity_path.clone(),
+                component: "AComponentColumnThatDoesntExist".into(),
+                join_encoding: Default::default(),
+            });
+            eprintln!("{query:#?}:");
+
+            let query_handle = query_engine.query(query.clone());
+            let dataframe = concatenate_record_batches(
+                query_handle.schema().clone(),
+                &query_handle.into_batch_iter().collect_vec(),
+            );
+            eprintln!("{dataframe}");
+
+            let got = format!(
+                "{:#?}",
+                dataframe.data.iter().skip(1 /* RowId */).collect_vec()
+            );
+            let expected = "[]";
+
+            similar_asserts::assert_eq!(expected, got);
+        }
+
+        // MyPoint
+        {
+            let mut query = QueryExpression2::new(timeline);
+            query.filtered_point_of_view = Some(ComponentColumnSelector {
+                entity_path: entity_path.clone(),
+                component: MyPoint::name(),
+                join_encoding: Default::default(),
+            });
+            eprintln!("{query:#?}:");
+
+            let query_handle = query_engine.query(query.clone());
+            let dataframe = concatenate_record_batches(
+                query_handle.schema().clone(),
+                &query_handle.into_batch_iter().collect_vec(),
+            );
+            eprintln!("{dataframe}");
+
+            let got = format!(
+                "{:#?}",
+                dataframe.data.iter().skip(1 /* RowId */).collect_vec()
+            );
+            let expected = unindent::unindent(
+                "\
+                [
+                    Int64[1, 2, 3, 4, 5, 6, 7],
+                    Timestamp(Nanosecond, None)[1970-01-01 00:00:00.000000001, None, None, None, 1970-01-01 00:00:00.000000005, None, 1970-01-01 00:00:00.000000007],
+                    ListArray[None, None, [2], [3], [4], None, [6]],
+                    ListArray[None, None, None, None, None, None, None],
+                    ListArray[[{x: 0, y: 0}], [{x: 1, y: 1}], [{x: 2, y: 2}], [{x: 3, y: 3}], [{x: 4, y: 4}], [{x: 5, y: 5}], [{x: 8, y: 8}]],
+                ]\
+                "
+            );
+
+            similar_asserts::assert_eq!(expected, got);
+        }
+
+        // MyColor
+        {
+            let mut query = QueryExpression2::new(timeline);
+            query.filtered_point_of_view = Some(ComponentColumnSelector {
+                entity_path: entity_path.clone(),
+                component: MyColor::name(),
+                join_encoding: Default::default(),
+            });
+            eprintln!("{query:#?}:");
+
+            let query_handle = query_engine.query(query.clone());
+            let dataframe = concatenate_record_batches(
+                query_handle.schema().clone(),
+                &query_handle.into_batch_iter().collect_vec(),
+            );
+            eprintln!("{dataframe}");
+
+            let got = format!(
+                "{:#?}",
+                dataframe.data.iter().skip(1 /* RowId */).collect_vec()
+            );
+            let expected = unindent::unindent(
+                "\
+                [
+                    Int64[3, 4, 5, 7],
+                    Timestamp(Nanosecond, None)[None, None, None, None],
+                    ListArray[[2], [3], [4], [6]],
+                    ListArray[None, None, None, None],
+                    ListArray[None, None, None, None],
+                ]\
+                ",
+            );
+
+            similar_asserts::assert_eq!(expected, got);
+        }
 
         Ok(())
     }
