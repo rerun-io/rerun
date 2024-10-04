@@ -68,13 +68,15 @@ fn main() {
 
     let width = num_digits(frames.len());
     for (i, frame) in frames.iter().enumerate() {
-        let mut file = OpenOptions::new()
-            .write(true)
-            .create(true)
-            .truncate(true)
-            .open(output_dir.join(format!("{i:0width$}.ppm")))
-            .expect("failed to open file");
-        write_binary_ppm(&mut file, frame.width, frame.height, &frame.data);
+        if let Ok(frame) = frame {
+            let mut file = OpenOptions::new()
+                .write(true)
+                .create(true)
+                .truncate(true)
+                .open(output_dir.join(format!("{i:0width$}.ppm")))
+                .expect("failed to open file");
+            write_binary_ppm(&mut file, frame.width, frame.height, &frame.data);
+        }
     }
 }
 
