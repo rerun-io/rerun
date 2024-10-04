@@ -338,9 +338,12 @@ fn copy_video_frame_to_texture(
     };
 
     let width_blocks = frame.width / format.block_dimensions().0;
+
+    #[allow(clippy::unwrap_used)] // block_copy_size can only fail for weird comressed formats
     let block_size = format
         .block_copy_size(Some(wgpu::TextureAspect::All))
-        .unwrap(); // TODO: error handling
+        .unwrap();
+
     let bytes_per_row_unaligned = width_blocks * block_size;
 
     re_tracing::profile_scope!("write_texture");
