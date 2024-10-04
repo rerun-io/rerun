@@ -1,5 +1,3 @@
-// TODO(#7298): decode on native
-
 #![allow(dead_code, unused_variables, clippy::unnecessary_wraps)]
 
 use std::sync::Arc;
