@@ -1135,7 +1135,7 @@ mod tests {
         let entity_path: EntityPath = "this/that".into();
         let timeline = Timeline::new_sequence("frame_nr");
 
-        // only components (+ duplication)
+        // only components
         {
             let mut query = QueryExpression2::new(timeline);
             query.view_contents = Some(
