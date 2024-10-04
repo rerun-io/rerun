@@ -87,8 +87,8 @@ message Query {
 }
 
 message QueryResponse {
-    // single record batches (encoding TBD - TODO).
-    bytes record_batches = 1;
+    // single record batch (encoding TBD - TODO).
+    bytes record_batch = 1;
 }
 
 message ColumnSelection {
