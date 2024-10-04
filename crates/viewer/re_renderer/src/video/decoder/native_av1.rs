@@ -49,7 +49,6 @@ pub struct Av1VideoDecoder {
     data: Arc<re_video::VideoData>,
     queue: Arc<wgpu::Queue>,
     texture: GpuTexture2D,
-    zeroed_texture: GpuTexture2D,
     decoder: re_video::av1::Decoder,
 
     decoder_output: Arc<Mutex<DecoderOutput>>,
@@ -109,18 +108,11 @@ impl Av1VideoDecoder {
             data.config.coded_width as u32,
             data.config.coded_height as u32,
         );
-        let zeroed_texture = alloc_video_frame_texture(
-            &render_context.device,
-            &render_context.gpu_resources.textures,
-            data.config.coded_width as u32,
-            data.config.coded_height as u32,
-        );
 
         Ok(Self {
             data,
             queue,
             texture,
-            zeroed_texture,
             decoder,
             decoder_output,
             last_used_frame_timestamp: Time::MAX,
