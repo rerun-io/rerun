@@ -339,7 +339,7 @@ fn copy_video_frame_to_texture(
 
     let width_blocks = frame.width / format.block_dimensions().0;
 
-    #[allow(clippy::unwrap_used)] // block_copy_size can only fail for weird comressed formats
+    #[allow(clippy::unwrap_used)] // block_copy_size can only fail for weird compressed formats
     let block_size = format
         .block_copy_size(Some(wgpu::TextureAspect::All))
         .unwrap();
