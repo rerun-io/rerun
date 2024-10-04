@@ -1,9 +1,15 @@
 //! AV1 support.
 
-use std::time::Duration;
+use std::{
+    sync::{
+        atomic::{AtomicBool, Ordering},
+        Arc,
+    },
+    time::Duration,
+};
 
 use crossbeam::{
-    channel::{bounded, unbounded, Receiver, RecvError, Sender, TryRecvError},
+    channel::{unbounded, Receiver, RecvError, Sender, TryRecvError},
     select,
     sync::{Parker, Unparker},
 };
@@ -32,6 +38,9 @@ pub struct Decoder {
     _thread: std::thread::JoinHandle<()>,
     unparker: Unparker,
 
+    /// Set when it is time to die
+    should_stop: Arc<AtomicBool>,
+
     /// Normal command stream
     command_tx: Sender<Command>,
 
@@ -46,22 +55,27 @@ impl Decoder {
     ) -> Self {
         re_tracing::profile_function!();
         let (command_tx, command_rx) = unbounded();
-        let (reset_tx, reset_rx) = bounded(1);
+        let (reset_tx, reset_rx) = unbounded();
         let parker = Parker::new();
         let unparker = parker.unparker().clone();
+        let should_stop = Arc::new(AtomicBool::new(false));
 
         let thread = std::thread::Builder::new()
             .name("av1_decoder".into())
-            .spawn(move || {
-                econtext::econtext_data!("Video", debug_name);
-                decoder_thread(&command_rx, &reset_rx, &parker, &on_output);
-                re_log::debug!("Closing decoder thread");
+            .spawn({
+                let should_stop = should_stop.clone();
+                move || {
+                    econtext::econtext_data!("Video", debug_name.clone());
+                    decoder_thread(&should_stop, &command_rx, &reset_rx, &parker, &on_output);
+                    re_log::debug!("Closing decoder thread for {debug_name}");
+                }
             })
             .expect("failed to spawn decoder thread");
 
         Self {
             _thread: thread,
             unparker,
+            should_stop,
             command_tx,
             reset_tx,
         }
@@ -101,9 +115,8 @@ impl Decoder {
 impl Drop for Decoder {
     fn drop(&mut self) {
         re_tracing::profile_function!();
-        // TODO(emilk): maybe set a "close asap" flag instead?
-        self.reset(); // ignore enqueued commands
-        self.flush(); // wait for thread to stop
+        self.should_stop.store(true, Ordering::Release);
+        self.unparker.unpark();
     }
 }
 
@@ -126,6 +139,7 @@ fn create_decoder() -> Result<dav1d::Decoder, dav1d::Error> {
 }
 
 fn decoder_thread(
+    should_stop: &AtomicBool,
     command_rx: &Receiver<Command>,
     reset_rx: &Receiver<()>,
     parker: &Parker,
@@ -139,16 +153,19 @@ fn decoder_thread(
         Ok(decoder) => decoder,
     };
 
-    loop {
+    while !should_stop.load(Ordering::Acquire) {
         select! {
             recv(reset_rx) -> reset => {
+                if should_stop.load(Ordering::Acquire) {
+                    return;
+                }
                 match reset {
                     Ok(_) => {
                         // Reset the decoder.
                         re_log::debug!("Received reset");
                         decoder.flush();
                         drain_decoded_frames(&mut decoder);
-                        loop {
+                        while !should_stop.load(Ordering::Acquire) {
                             match command_rx.try_recv() {
                                 // Discard chunks
                                 Ok(Command::Chunk(_)) => {}
@@ -172,17 +189,20 @@ fn decoder_thread(
                         re_log::debug!("RecvError");
                         // Channel disconnected, this only happens if the decoder is dropped.
                         decoder.flush();
-                        output_frames(&mut decoder, on_output);
+                        output_frames(should_stop, &mut decoder, on_output);
                         break;
                     }
                 }
             }
 
             recv(command_rx) -> command => {
+                if should_stop.load(Ordering::Acquire) {
+                    return;
+                }
                 match command {
                     Ok(Command::Chunk(chunk)) => {
                         submit_chunk(&mut decoder, chunk, on_output);
-                        output_frames(&mut decoder, on_output);
+                        output_frames(should_stop, &mut decoder, on_output);
                         continue;
                     }
 
@@ -190,7 +210,7 @@ fn decoder_thread(
                         re_log::debug!("Command::Flush");
                         // All pending frames must have already been decoded, because data sent
                         // through a channel is received in the order it was sent.
-                        output_frames(&mut decoder, on_output);
+                        output_frames(should_stop, &mut decoder, on_output);
                         done.try_send(()).ok();
                         continue;
                     }
@@ -205,7 +225,7 @@ fn decoder_thread(
                         re_log::debug!("RecvError");
                         // Channel disconnected, this only happens if the decoder is dropped.
                         decoder.flush();
-                        output_frames(&mut decoder, on_output);
+                        output_frames(should_stop, &mut decoder, on_output);
                         break;
                     }
                 }
@@ -260,8 +280,12 @@ fn drain_decoded_frames(decoder: &mut dav1d::Decoder) {
     }
 }
 
-fn output_frames(decoder: &mut dav1d::Decoder, on_output: &OutputCallback) {
-    loop {
+fn output_frames(
+    should_stop: &AtomicBool,
+    decoder: &mut dav1d::Decoder,
+    on_output: &OutputCallback,
+) {
+    while !should_stop.load(Ordering::Acquire) {
         match {
             econtext::econtext!("get_picture");
             decoder.get_picture()
@@ -280,7 +304,7 @@ fn output_frames(decoder: &mut dav1d::Decoder, on_output: &OutputCallback) {
     }
 }
 
-fn output_picture(picture: &rav1d::Picture, on_output: &(dyn Fn(Result<Frame>) + Send + Sync)) {
+fn output_picture(picture: &dav1d::Picture, on_output: &(dyn Fn(Result<Frame>) + Send + Sync)) {
     // TODO(jan): support other parameters?
     // What do these even do:
     // - matrix_coefficients
