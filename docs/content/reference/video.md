@@ -77,7 +77,7 @@ At the moment, we test the following codecs:
 [^6]: Safari/WebKit has been observed suttering when playing `hvc1` but working fine with `hevc1`. Despite support being advertised Safari 16.5 has been observed not support H.265 decoding.
 [^7]: Only supported if hardware encoding is available. Therefore always affected by Windows stuttering issues, see [^3].
 
-TODO((#7594)[https://github.com/rerun-io/rerun/issues/7594]): HDR video is generally not supported at this point.
+(TODO(#7594))[https://github.com/rerun-io/rerun/issues/7594]: HDR video is generally not supported at this point.
 
 ## Links
 * [Web video codec guide, by Mozilla](https://developer.mozilla.org/en-US/docs/Web/Media/Formats/Video_codecs)
