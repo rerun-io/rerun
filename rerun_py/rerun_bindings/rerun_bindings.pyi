@@ -84,7 +84,7 @@ def load_recording(filename: str) -> Recording:
     """
     Load a single recording from an RRD.
 
-    Will raise a `ValueError` if the file does not contain a single recording.
+    Will raise a `ValueError` if the file does not contain exactly one recording.
 
     Parameters
     ----------

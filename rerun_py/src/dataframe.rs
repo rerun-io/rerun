@@ -257,10 +257,10 @@ impl FromPyObject<'_> for ComponentLike {
     }
 }
 
+// TODO(jleibs): Maybe this whole thing moves to the View/Recording
 #[pyclass(frozen, name = "Schema")]
 #[derive(Clone)]
 pub struct PySchema {
-    // TODO(jleibs): This gets replaced with the new schema object
     pub schema: Vec<ColumnDescriptor>,
 }
 
@@ -326,7 +326,7 @@ impl PySchema {
 #[pyclass(name = "Recording")]
 pub struct PyRecording {
     store: ChunkStore,
-    cache: re_dataframe2::external::re_query::Caches,
+    cache: re_dataframe2::QueryCache,
 }
 
 #[pyclass(name = "RecordingView")]
@@ -469,11 +469,11 @@ impl PyRecording {
 
     /// Convert a `ViewContentsLike` into a `ViewContentsSelector`.
     ///
-    /// ```python
+    /// ```pytholn
     /// ViewContentsLike = Union[str, Dict[str, Union[ComponentLike, Sequence[ComponentLike]]]]
     /// ```
     ///
-    /// We cant do this with the norma `FromPyObject` mechanisms because we want access to the
+    /// We cant do this with the normal `FromPyObject` mechanisms because we want access to the
     /// `QueryEngine` to resolve the entity paths.
     fn extract_contents_expr(
         &self,
@@ -484,8 +484,12 @@ impl PyRecording {
         if let Ok(expr) = expr.extract::<String>() {
             // `str`
 
-            let path_filter = EntityPathFilter::parse_strict(&expr, &Default::default())
-                .map_err(|err| PyValueError::new_err(err.to_string()))?;
+            let path_filter =
+                EntityPathFilter::parse_strict(&expr, &Default::default()).map_err(|err| {
+                    PyValueError::new_err(format!(
+                        "Could not interpret `contents` as a ViewContentsLike. Failed to parse {expr}: {err}.",
+                    ))
+                })?;
 
             let contents = engine
                 .iter_entity_paths(&path_filter)
@@ -498,21 +502,29 @@ impl PyRecording {
 
             let mut contents = ViewContentsSelector::default();
             for (key, value) in dict {
-                let key = key.extract::<String>()?;
+                let key = key.extract::<String>().map_err(|_| {
+                    PyTypeError::new_err(
+                        "Could not interpret `contents` as a ViewContentsLike. Keys must be strings.",
+                    )
+                })?;
 
-                let path_filter = EntityPathFilter::parse_strict(&key, &Default::default())
-                    .map_err(|err| PyValueError::new_err(err.to_string()))?;
+                let path_filter = EntityPathFilter::parse_strict(&key, &Default::default()).map_err(|err| {
+                    PyValueError::new_err(format!(
+                        "Could not interpret `contents` as a ViewContentsLike. Failed to parse {key}: {err}.",
+                    ))
+                })?;
 
-                let components: BTreeSet<ComponentName> =
-                    if let Ok(component) = value.extract::<ComponentLike>() {
-                        std::iter::once(component.0).collect()
-                    } else if let Ok(components) = value.extract::<Vec<ComponentLike>>() {
-                        components.into_iter().map(|c| c.0).collect()
-                    } else {
-                        return Err(PyTypeError::new_err(
-                            "ViewContentsLike input must be a string or a list of strings.",
+                let components: BTreeSet<ComponentName> = if let Ok(component) =
+                    value.extract::<ComponentLike>()
+                {
+                    std::iter::once(component.0).collect()
+                } else if let Ok(components) = value.extract::<Vec<ComponentLike>>() {
+                    components.into_iter().map(|c| c.0).collect()
+                } else {
+                    return Err(PyTypeError::new_err(
+                            "Could not interpret `contents` as a ViewContentsLike. Values must be ComponentLike or Sequence[ComponentLike].",
                         ));
-                    };
+                };
 
                 contents.append(
                     &mut engine
@@ -524,7 +536,9 @@ impl PyRecording {
 
             Ok(contents)
         } else {
-            return Err(PyTypeError::new_err("ViewContentsLike input must be..."));
+            return Err(PyTypeError::new_err(
+                "Could not interpret `contents` as a ViewContentsLike. Top-level type must be a string or a dictionary.",
+            ));
         }
     }
 }
@@ -549,7 +563,7 @@ impl PyRecording {
     ) -> PyResult<PyRecordingView> {
         let borrowed_self = slf.borrow();
 
-        // Look up the type of the timelin
+        // Look up the type of the timeline
         let selector = TimeColumnSelector {
             timeline: index.into(),
         };
