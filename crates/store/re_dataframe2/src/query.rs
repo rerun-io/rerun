@@ -13,7 +13,7 @@ use nohash_hasher::IntMap;
 use re_chunk::{Chunk, RangeQuery, RowId, TimeInt, Timeline};
 use re_chunk_store::{
     ColumnDescriptor, ColumnSelector, ComponentColumnDescriptor, ComponentColumnSelector,
-    ControlColumnDescriptor, ControlColumnSelector, JoinEncoding, QueryExpression2,
+    ControlColumnDescriptor, ControlColumnSelector, IndexValue, JoinEncoding, QueryExpression2,
     TimeColumnDescriptor, TimeColumnSelector,
 };
 use re_log_types::ResolvedTimeRange;
@@ -687,24 +687,7 @@ impl QueryHandle<'_> {
             })
             .collect_vec();
 
-        // We now need to increment cursors.
-        //
-        // NOTE: This is trickier than it looks: cursors need to be incremented not only for chunks
-        // that were used to return data during the current iteration, but also chunks that
-        // _attempted_ to return data and were preempted for one reason or another (overlap,
-        // intra-timestamp tie-break, etc).
-        for view_chunks in &state.view_chunks {
-            for (cur_cursor, cur_chunk) in view_chunks {
-                if let Some((index_value, _row_id)) = cur_chunk
-                    .iter_indices(&self.query.filtered_index)
-                    .nth(cur_cursor.load(Ordering::Relaxed) as _)
-                {
-                    if cur_index_value == index_value {
-                        cur_cursor.fetch_add(1, Ordering::Relaxed);
-                    }
-                };
-            }
-        }
+        self.increment_cursors_at_index_value(cur_index_value);
 
         debug_assert_eq!(state.arrow_schema.fields.len(), selected_arrays.len());
 
@@ -723,6 +706,28 @@ impl QueryHandle<'_> {
             schema: self.schema().clone(),
             data: ArrowChunk::new(self.next_row()?),
         })
+    }
+
+    /// Increment cursors for iteration corresponding to `cur_index_value`.
+    //
+    // NOTE: This is trickier than it looks: cursors need to be incremented not only for chunks
+    // that were used to return data during the current iteration, but also chunks that
+    // _attempted_ to return data and were preempted for one reason or another (overlap,
+    // intra-timestamp tie-break, etc).
+    fn increment_cursors_at_index_value(&self, cur_index_value: IndexValue) {
+        let state = self.init();
+        for view_chunks in &state.view_chunks {
+            for (cur_cursor, cur_chunk) in view_chunks {
+                if let Some((index_value, _row_id)) = cur_chunk
+                    .iter_indices(&self.query.filtered_index)
+                    .nth(cur_cursor.load(Ordering::Relaxed) as _)
+                {
+                    if cur_index_value == index_value {
+                        cur_cursor.fetch_add(1, Ordering::Relaxed);
+                    }
+                };
+            }
+        }
     }
 }
 
