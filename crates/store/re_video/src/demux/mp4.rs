@@ -33,7 +33,7 @@ pub fn load_mp4(bytes: &[u8]) -> Result<VideoData, VideoLoadError> {
     };
 
     let timescale = Timescale::new(track.timescale);
-    let duration = Time::new(track.duration);
+    let duration = Time::new(track.duration as i64);
     let mut samples = Vec::<Sample>::new();
     let mut segments = Vec::<Segment>::new();
     let mut segment_sample_start_index = 0;
@@ -50,9 +50,9 @@ pub fn load_mp4(bytes: &[u8]) -> Result<VideoData, VideoLoadError> {
             segment_sample_start_index = samples.len();
         }
 
-        let decode_timestamp = Time::new(sample.decode_timestamp);
-        let composition_timestamp = Time::new(sample.composition_timestamp);
-        let duration = Time::new(sample.duration);
+        let decode_timestamp = Time::new(sample.decode_timestamp as i64);
+        let composition_timestamp = Time::new(sample.composition_timestamp as i64);
+        let duration = Time::new(sample.duration as i64);
 
         let byte_offset = sample.offset as u32;
         let byte_length = sample.size as u32;

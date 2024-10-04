@@ -29,11 +29,11 @@ impl TimeMs {
 
 /// A value in time units.
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct Time(u64); // TODO: i64
+pub struct Time(i64);
 
 impl Time {
     pub const ZERO: Self = Self(0);
-    pub const MAX: Self = Self(u64::MAX);
+    pub const MAX: Self = Self(i64::MAX);
 
     /// Create a new value in _time units_.
     ///
@@ -42,13 +42,13 @@ impl Time {
     /// This only exists for cases where you already have a value expressed in time units,
     /// such as those received from the `WebCodecs` APIs.
     #[inline]
-    pub fn new(v: u64) -> Self {
+    pub fn new(v: i64) -> Self {
         Self(v)
     }
 
     #[inline]
     pub fn from_secs(v: f64, timescale: Timescale) -> Self {
-        Self((v * timescale.0 as f64).round() as u64)
+        Self((v * timescale.0 as f64).round() as i64)
     }
 
     #[inline]
