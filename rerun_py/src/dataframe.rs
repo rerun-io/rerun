@@ -4,7 +4,10 @@
 
 use std::collections::{BTreeMap, BTreeSet};
 
-use arrow::{array::RecordBatch, pyarrow::PyArrowType};
+use arrow::{
+    array::{RecordBatchIterator, RecordBatchReader},
+    pyarrow::PyArrowType,
+};
 use pyo3::{
     exceptions::{PyRuntimeError, PyTypeError, PyValueError},
     prelude::*,
@@ -358,7 +361,7 @@ impl PyRecordingView {
         py: Python<'_>,
         args: &Bound<'_, PyTuple>,
         columns: Option<Vec<AnyColumn>>,
-    ) -> PyResult<PyArrowType<Vec<RecordBatch>>> {
+    ) -> PyResult<PyArrowType<Box<dyn RecordBatchReader + Send>>> {
         let borrowed = self.recording.borrow(py);
         let engine = borrowed.engine();
 
@@ -383,14 +386,29 @@ impl PyRecordingView {
 
         let query_handle = engine.query(query_expression);
 
-        let batches: Result<Vec<_>, _> = query_handle
+        let schema = query_handle.schema();
+        let fields: Vec<arrow::datatypes::Field> =
+            schema.fields.iter().map(|f| f.clone().into()).collect();
+        let metadata = schema.metadata.clone().into_iter().collect();
+        let schema = arrow::datatypes::Schema::new(fields).with_metadata(metadata);
+
+        // TODO(jleibs): Need to keep the engine alive
+        /*
+        let reader = RecordBatchIterator::new(
+            query_handle
+                .into_batch_iter()
+                .map(|batch| batch.try_to_arrow_record_batch()),
+            std::sync::Arc::new(schema),
+        );
+        */
+        let batches = query_handle
             .into_batch_iter()
             .map(|batch| batch.try_to_arrow_record_batch())
-            .collect();
+            .collect::<Vec<_>>();
 
-        let batches = batches.map_err(|err| PyRuntimeError::new_err(err.to_string()))?;
+        let reader = RecordBatchIterator::new(batches.into_iter(), std::sync::Arc::new(schema));
 
-        Ok(PyArrowType(batches))
+        Ok(PyArrowType(Box::new(reader)))
     }
 
     fn filter_range_sequence(&self, start: i64, end: i64) -> PyResult<Self> {

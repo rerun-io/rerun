@@ -24,7 +24,7 @@ class TestDataframe:
         view = self.recording.view(index="log_time", contents="points")
 
         batches = view.select()
-        table = pa.Table.from_batches(batches)
+        table = pa.Table.from_batches(batches, batches.schema)
 
         # row, log_time, log_tick, indicator, points, colors
         assert table.num_columns == 6
@@ -35,7 +35,7 @@ class TestDataframe:
         pos = rr.dataframe.ComponentColumnSelector("points", rr.components.Position3D)
         batches = view.select(pos)
 
-        table = pa.Table.from_batches(batches)
+        table = pa.Table.from_batches(batches, batches.schema)
         # points
         assert table.num_columns == 1
         assert table.num_rows == 2
@@ -70,7 +70,7 @@ class TestDataframe:
         for expr in good_content_expressions:
             view = self.recording.view(index="log_time", contents=expr)
             batches = view.select()
-            table = pa.Table.from_batches(batches)
+            table = pa.Table.from_batches(batches, batches.schema)
 
             # row, log_time, log_tick, points
             assert table.num_columns == 4
@@ -84,4 +84,7 @@ class TestDataframe:
         for expr in bad_content_expressions:
             view = self.recording.view(index="log_time", contents=expr)
             batches = view.select()
-            assert len(batches) == 0
+            print(batches)
+            table = pa.Table.from_batches(batches, batches.schema)
+            assert table.num_columns == 3
+            assert table.num_rows == 0
