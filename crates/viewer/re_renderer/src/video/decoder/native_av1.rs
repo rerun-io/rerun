@@ -69,8 +69,7 @@ impl Av1VideoDecoder {
         re_log::debug!("Initializing native video decoder…");
         let decoder_output = Arc::new(Mutex::new(DecoderOutput::default()));
 
-        // TODO: check that data is av1, and return error elsewise
-        // TEMP: assuming `av1`, because `re_video` demuxer will panic if it's not
+        // TODO: check that data.config.codec is av1, and return error elsewise
         let decoder = re_video::av1::Decoder::new({
             let decoder_output = decoder_output.clone();
             move |frame: re_video::av1::Result<Frame>| match frame {
@@ -336,7 +335,7 @@ fn copy_video_frame_to_texture(
     let width_blocks = frame.width / format.block_dimensions().0;
     let block_size = format
         .block_copy_size(Some(wgpu::TextureAspect::All))
-        .unwrap(); // TODO
+        .unwrap(); // TODO: error handling
     let bytes_per_row_unaligned = width_blocks * block_size;
 
     re_tracing::profile_scope!("write_texture");
