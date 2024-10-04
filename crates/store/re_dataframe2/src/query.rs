@@ -818,8 +818,8 @@ mod tests {
     // * [x] view_contents
     // * [x] selection
     // * [x] filtered_point_of_view
+    // * [x] sparse_fill_strategy
     // * [ ] sampled_index_values
-    // * [ ] sparse_fill_strategy
     //
     // In addition to those, some much needed extras:
     // * [ ] timelines returned with selection=none
@@ -864,6 +864,51 @@ mod tests {
                 Timestamp(Nanosecond, None)[None, 1970-01-01 00:00:00.000000001, None, None, None, 1970-01-01 00:00:00.000000005, None, 1970-01-01 00:00:00.000000007],
                 ListArray[None, None, None, [2], [3], [4], None, [6]],
                 ListArray[[c], None, None, None, None, None, None, None],
+                ListArray[None, [{x: 0, y: 0}], [{x: 1, y: 1}], [{x: 2, y: 2}], [{x: 3, y: 3}], [{x: 4, y: 4}], [{x: 5, y: 5}], [{x: 8, y: 8}]],
+            ]\
+            "
+        );
+
+        similar_asserts::assert_eq!(expected, got);
+
+        Ok(())
+    }
+
+    #[test]
+    fn sparse_fill_strategy_latestatglobal() -> anyhow::Result<()> {
+        re_log::setup_logging();
+
+        let store = create_nasty_store()?;
+        eprintln!("{store}");
+        let query_cache = QueryCache::new(&store);
+        let query_engine = QueryEngine {
+            store: &store,
+            cache: &query_cache,
+        };
+
+        let timeline = Timeline::new_sequence("frame_nr");
+        let mut query = QueryExpression2::new(timeline);
+        query.sparse_fill_strategy = SparseFillStrategy::LatestAtGlobal;
+        eprintln!("{query:#?}:");
+
+        let query_handle = query_engine.query(query.clone());
+        let dataframe = concatenate_record_batches(
+            query_handle.schema().clone(),
+            &query_handle.into_batch_iter().collect_vec(),
+        );
+        eprintln!("{dataframe}");
+
+        let got = format!(
+            "{:#?}",
+            dataframe.data.iter().skip(1 /* RowId */).collect_vec()
+        );
+        let expected = unindent::unindent(
+            "\
+            [
+                Int64[None, 1, 2, 3, 4, 5, 6, 7],
+                Timestamp(Nanosecond, None)[None, 1970-01-01 00:00:00.000000001, None, None, None, 1970-01-01 00:00:00.000000005, None, 1970-01-01 00:00:00.000000007],
+                ListArray[None, None, None, [2], [3], [4], [4], [6]],
+                ListArray[[c], [c], [c], [c], [c], [c], [c], [c]],
                 ListArray[None, [{x: 0, y: 0}], [{x: 1, y: 1}], [{x: 2, y: 2}], [{x: 3, y: 3}], [{x: 4, y: 4}], [{x: 5, y: 5}], [{x: 8, y: 8}]],
             ]\
             "
