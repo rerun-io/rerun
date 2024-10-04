@@ -28,7 +28,7 @@ default = []
 
 ## Opt-in to native AV1 decoding.
 ## You need to install [nasm](https://nasm.us/) to compile with this feature.
-av1 = ["dep:dav1d"]
+av1 = ["dep:rav1d"]
 
 [dependencies]
 re_log.workspace = true
@@ -44,7 +44,7 @@ thiserror.workspace = true
 # Native dependencies:
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 # If this package fails to build, install `nasm` locally, or build through `pixi`.
-dav1d = { git = "https://github.com/rerun-io/rav1d", branch = "emilk/dav1d-interface", package = "rav1d", optional = true } # TODO: publish this fork
+rav1d = { git = "https://github.com/rerun-io/rav1d", branch = "emilk/dav1d-interface",  optional = true } # TODO: publish this fork
 
 [dev-dependencies]
 indicatif.workspace = true

@@ -4724,7 +4724,7 @@ dependencies = [
 [[package]]
 name = "rav1d"
 version = "1.0.0"
-source = "git+https://github.com/rerun-io/rav1d?branch=emilk/dav1d-interface#c653a54999db41919d9992c67ed46f8f2393e934"
+source = "git+https://github.com/rerun-io/rav1d?branch=emilk/dav1d-interface#6f12e3fe8eada6e362306ec853c8147a74d7475b"
 dependencies = [
  "assert_matches",
  "atomig",

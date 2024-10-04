@@ -8,6 +8,7 @@ use crossbeam::{
     sync::{Parker, Unparker},
 };
 use dav1d::{PixelLayout, PlanarImageComponent};
+use rav1d::dav1d;
 
 use crate::Time;
 
