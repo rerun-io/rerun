@@ -85,6 +85,7 @@ struct DecoderEntry {
 ///
 /// Supports asynchronously decoding video into GPU textures via [`Video::frame_at`].
 pub struct Video {
+    debug_name: String,
     data: Arc<re_video::VideoData>,
     decoders: Mutex<HashMap<VideoDecodingStreamId, DecoderEntry>>,
     decode_hw_acceleration: DecodeHardwareAcceleration,
@@ -144,6 +145,7 @@ impl Video {
     /// Currently supports the following media types:
     /// - `video/mp4`
     pub fn load(
+        debug_name: String,
         data: &[u8],
         media_type: Option<&str>,
         decode_hw_acceleration: DecodeHardwareAcceleration,
@@ -152,6 +154,7 @@ impl Video {
         let decoders = Mutex::new(HashMap::default());
 
         Ok(Self {
+            debug_name,
             data,
             decoders,
             decode_hw_acceleration,
@@ -203,6 +206,7 @@ impl Video {
             Entry::Occupied(occupied_entry) => occupied_entry.into_mut(),
             Entry::Vacant(vacant_entry) => {
                 let new_decoder = decoder::new_video_decoder(
+                    self.debug_name.clone(),
                     render_context,
                     self.data.clone(),
                     self.decode_hw_acceleration,

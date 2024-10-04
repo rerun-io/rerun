@@ -40,7 +40,10 @@ pub struct Decoder {
 }
 
 impl Decoder {
-    pub fn new(on_output: impl Fn(Result<Frame>) + Send + Sync + 'static) -> Self {
+    pub fn new(
+        debug_name: String,
+        on_output: impl Fn(Result<Frame>) + Send + Sync + 'static,
+    ) -> Self {
         re_tracing::profile_function!();
         let (command_tx, command_rx) = unbounded();
         let (reset_tx, reset_rx) = bounded(1);
@@ -50,6 +53,7 @@ impl Decoder {
         let thread = std::thread::Builder::new()
             .name("av1_decoder".into())
             .spawn(move || {
+                econtext::econtext_data!("Video", debug_name);
                 decoder_thread(&command_rx, &reset_rx, &parker, &on_output);
                 re_log::debug!("Closing decoder thread");
             })
@@ -218,6 +222,7 @@ fn decoder_thread(
 
 fn submit_chunk(decoder: &mut dav1d::Decoder, chunk: Chunk, on_output: &OutputCallback) {
     re_tracing::profile_function!();
+    econtext::econtext_function_data!(format!("chunk timestamp: {:?}", chunk.timestamp));
 
     {
         re_tracing::profile_scope!("send_pending_data");
@@ -257,7 +262,10 @@ fn drain_decoded_frames(decoder: &mut dav1d::Decoder) {
 
 fn output_frames(decoder: &mut dav1d::Decoder, on_output: &OutputCallback) {
     loop {
-        match decoder.get_picture() {
+        match {
+            econtext::econtext!("get_picture");
+            decoder.get_picture()
+        } {
             Ok(picture) => {
                 output_picture(&picture, on_output);
             }

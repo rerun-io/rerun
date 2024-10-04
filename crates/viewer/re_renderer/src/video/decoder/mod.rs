@@ -39,6 +39,7 @@ pub trait VideoDecoder: 'static + Send {
 }
 
 pub fn new_video_decoder(
+    debug_name: String,
     render_context: &RenderContext,
     data: Arc<re_video::VideoData>,
     hw_acceleration: DecodeHardwareAcceleration,
@@ -49,7 +50,7 @@ pub fn new_video_decoder(
         if #[cfg(target_arch = "wasm32")] {
             let decoder = web::WebVideoDecoder::new(render_context, data, hw_acceleration)?;
         } else if #[cfg(feature = "video_av1")] {
-            let decoder = native_av1::Av1VideoDecoder::new(render_context, data)?;
+            let decoder = native_av1::Av1VideoDecoder::new(debug_name, render_context, data)?;
         } else {
             let decoder = no_native_decoder::NoNativeVideoDecoder::default();
         }

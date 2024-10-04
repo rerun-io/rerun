@@ -37,6 +37,7 @@ impl VideoCache {
     /// so we don't need the instance id here.
     pub fn entry(
         &mut self,
+        debug_name: String,
         blob_row_id: RowId,
         video_data: &re_types::datatypes::Blob,
         media_type: Option<&str>,
@@ -52,7 +53,7 @@ impl VideoCache {
             .or_default()
             .entry(inner_key)
             .or_insert_with(|| {
-                let video = Video::load(video_data, media_type, hw_acceleration);
+                let video = Video::load(debug_name, video_data, media_type, hw_acceleration);
                 Entry {
                     used_this_frame: AtomicBool::new(true),
                     video: Arc::new(video),

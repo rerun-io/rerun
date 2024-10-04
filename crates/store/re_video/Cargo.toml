@@ -35,6 +35,7 @@ re_log.workspace = true
 re_tracing.workspace = true
 
 crossbeam.workspace = true
+econtext.workspace = true
 itertools.workspace = true
 ordered-float.workspace = true
 parking_lot.workspace = true

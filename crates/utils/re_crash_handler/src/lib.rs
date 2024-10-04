@@ -57,6 +57,8 @@ fn install_panic_hook(_build_info: BuildInfo) {
             (*previous_panic_hook)(panic_info);
         }
 
+        econtext::print_econtext(); // Print additional error context, if any
+
         eprintln!(
             "\n\
             Troubleshooting Rerun: https://www.rerun.io/docs/getting-started/troubleshooting \n\
@@ -163,6 +165,8 @@ fn install_signal_handler(build_info: BuildInfo) {
         let callstack = callstack();
         write_to_stderr(&callstack);
         write_to_stderr("\n");
+
+        econtext::print_econtext(); // Print additional error context, if any
 
         // Let's print the important stuff _again_ so it is visible at the bottom of the users terminal:
         write_to_stderr("\n");

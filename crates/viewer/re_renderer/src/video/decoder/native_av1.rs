@@ -61,6 +61,7 @@ pub struct Av1VideoDecoder {
 
 impl Av1VideoDecoder {
     pub fn new(
+        debug_name: String,
         render_context: &RenderContext,
         data: Arc<re_video::VideoData>,
     ) -> Result<Self, DecodingError> {
@@ -75,7 +76,7 @@ impl Av1VideoDecoder {
         re_log::debug!("Initializing native video decoder…");
         let decoder_output = Arc::new(Mutex::new(DecoderOutput::default()));
 
-        let decoder = re_video::av1::Decoder::new({
+        let on_output = {
             let decoder_output = decoder_output.clone();
             move |frame: re_video::av1::Result<Frame>| match frame {
                 Ok(frame) => {
@@ -94,7 +95,9 @@ impl Av1VideoDecoder {
                     output.reset_since_last_reported_error = false;
                 }
             }
-        });
+        };
+        let full_debug_name = format!("{debug_name}, codec: {}", data.config.codec);
+        let decoder = re_video::av1::Decoder::new(full_debug_name, on_output);
 
         let queue = render_context.queue.clone();
 
