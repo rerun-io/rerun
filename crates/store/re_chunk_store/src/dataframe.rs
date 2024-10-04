@@ -733,7 +733,7 @@ pub struct QueryExpression2 {
     /// Only rows where at least 1 of the view-contents contains non-null data within that range will be kept in
     /// the final dataset.
     ///
-    /// This is ignored if [`QueryExpression2::sampled_index_values`] is set.
+    /// This is ignored if [`QueryExpression2::using_index_values`] is set.
     ///
     /// Example: `ResolvedTimeRange(10, 20)`.
     pub filtered_index_range: Option<IndexRange>,
@@ -743,7 +743,7 @@ pub struct QueryExpression2 {
     /// Only rows where at least 1 column contains non-null data at these specific values will be kept
     /// in the final dataset.
     ///
-    /// This is ignored if [`QueryExpression2::sampled_index_values`] is set.
+    /// This is ignored if [`QueryExpression2::using_index_values`] is set.
     ///
     /// Example: `[TimeInt(12), TimeInt(14)]`.
     pub filtered_index_values: Option<BTreeSet<IndexValue>>,
@@ -757,13 +757,11 @@ pub struct QueryExpression2 {
     ///
     /// The order of the samples will be respected in the final result.
     ///
-    /// If [`QueryExpression2::sampled_index_values`] is set, it overrides both [`QueryExpression2::filtered_index_range`]
+    /// If [`QueryExpression2::using_index_values`] is set, it overrides both [`QueryExpression2::filtered_index_range`]
     /// and [`QueryExpression2::filtered_index_values`].
     ///
     /// Example: `[TimeInt(12), TimeInt(14)]`.
-    //
-    // TODO(jleibs): We need an alternative name for sampled.
-    pub sampled_index_values: Option<Vec<IndexValue>>,
+    pub using_index_values: Option<Vec<IndexValue>>,
 
     /// The component column used to filter out _rows_ from the view contents.
     ///
@@ -774,8 +772,6 @@ pub struct QueryExpression2 {
     // TODO(cmc): multi-pov support
     pub filtered_point_of_view: Option<ComponentColumnSelector>,
 
-    /// TODO(cmc): NOT IMPLEMENTED.
-    ///
     /// Specifies how null values should be filled in the returned dataframe.
     ///
     /// Defaults to [`SparseFillStrategy::None`].
@@ -803,7 +799,7 @@ impl QueryExpression2 {
             filtered_index: index,
             filtered_index_range: None,
             filtered_index_values: None,
-            sampled_index_values: None,
+            using_index_values: None,
             filtered_point_of_view: None,
             sparse_fill_strategy: SparseFillStrategy::None,
             selection: None,

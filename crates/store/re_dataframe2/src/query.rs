@@ -881,7 +881,7 @@ mod tests {
     // * [x] selection
     // * [x] filtered_point_of_view
     // * [x] sparse_fill_strategy
-    // * [ ] sampled_index_values
+    // * [ ] using_index_values
     //
     // In addition to those, some much needed extras:
     // * [ ] timelines returned with selection=none

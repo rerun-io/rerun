@@ -556,7 +556,7 @@ impl PyRecording {
             filtered_index: timeline.timeline,
             filtered_index_range: None,
             filtered_index_values: None,
-            sampled_index_values: None,
+            using_index_values: None,
             filtered_point_of_view: None,
             sparse_fill_strategy: SparseFillStrategy::None,
             selection: None,
