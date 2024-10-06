@@ -111,6 +111,9 @@ impl Chunk {
     /// The underlying arrow data will be copied and shuffled in memory in order to make it contiguous.
     ///
     /// This is a no-op if the underlying timeline is already sorted appropriately (happy path).
+    ///
+    /// WARNING: the returned chunk has the same old [`crate::ChunkId`]! Change it with [`Self::with_id`].
+    #[must_use]
     pub fn sorted_by_timeline_if_unsorted(&self, timeline: &Timeline) -> Self {
         let mut chunk = self.clone();
 
