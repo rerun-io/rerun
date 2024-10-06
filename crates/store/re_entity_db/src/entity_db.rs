@@ -438,6 +438,19 @@ impl EntityDb {
         store_events
     }
 
+    /// Drop all events in the given time range from the given timeline.
+    ///
+    /// Used to implement undo (erase the last event from the blueprint db).
+    pub fn drop_time_range(
+        &mut self,
+        timeline: &Timeline,
+        drop_range: ResolvedTimeRange,
+    ) -> Vec<ChunkStoreEvent> {
+        let store_events = self.data_store.drop_time_range(timeline, drop_range);
+        self.on_store_deletions(&store_events);
+        store_events
+    }
+
     /// Unconditionally drops all the data for a given [`EntityPath`] .
     ///
     /// This is _not_ recursive. Children of this entity will not be affected.
