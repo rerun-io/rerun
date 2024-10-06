@@ -116,6 +116,14 @@ impl PartialEq for Chunk {
 }
 
 impl Chunk {
+    /// Returns a version of us with a new id
+    #[must_use]
+    #[inline]
+    pub fn with_id(mut self, id: ChunkId) -> Self {
+        self.id = id;
+        self
+    }
+
     /// Returns `true` is two [`Chunk`]s are similar, although not byte-for-byte equal.
     ///
     /// In particular, this ignores chunks and row IDs, as well as temporal timestamps.
