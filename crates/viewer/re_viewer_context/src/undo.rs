@@ -6,6 +6,11 @@ use re_log_types::ResolvedTimeRange;
 
 use crate::blueprint_timeline;
 
+/// Max number of undo points.
+///
+/// TODO(emilk): decide based on how much memory the blueprint uses instead.
+const MAX_UNDOS: usize = 100;
+
 /// We store the entire edit history of a blueprint in its store.
 ///
 /// When undoing, we move back time, and redoing move it forward.
@@ -36,6 +41,11 @@ impl BlueprintUndoState {
     #[inline]
     pub fn default_query() -> LatestAtQuery {
         LatestAtQuery::latest(blueprint_timeline())
+    }
+
+    /// How far back in time can we undo?
+    pub fn oldest_undo_point(&self) -> Option<TimeInt> {
+        self.inflection_points.first().copied()
     }
 
     pub fn blueprint_query(&self) -> LatestAtQuery {
@@ -98,6 +108,15 @@ impl BlueprintUndoState {
         // and disregard those, in case we miss something in `is_interacting`.
         // Note that this on its own won't enough though - if you drag a slider,
         // then you don't want an undo-point each time you pause the mouse - only on mouse-up!
+
+        // Don't store too many undo-points:
+        while let Some(first) = self.inflection_points.first().copied() {
+            if MAX_UNDOS < self.inflection_points.len() {
+                self.inflection_points.remove(&first);
+            } else {
+                break;
+            }
+        }
     }
 }
 
