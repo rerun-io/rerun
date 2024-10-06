@@ -22,7 +22,7 @@ use crate::{Error, TimesPerTimeline};
 // ----------------------------------------------------------------------------
 
 /// See [`GarbageCollectionOptions::time_budget`].
-const DEFAULT_GC_TIME_BUDGET: std::time::Duration = std::time::Duration::from_micros(3500); // empirical
+pub const DEFAULT_GC_TIME_BUDGET: std::time::Duration = std::time::Duration::from_micros(3500); // empirical
 
 // ----------------------------------------------------------------------------
 
@@ -408,19 +408,6 @@ impl EntityDb {
         self.set_store_info = Some(store_info);
     }
 
-    pub fn gc_everything_but_the_latest_row_on_non_default_timelines(
-        &mut self,
-    ) -> Vec<ChunkStoreEvent> {
-        re_tracing::profile_function!();
-
-        self.gc(&GarbageCollectionOptions {
-            target: GarbageCollectionTarget::Everything,
-            protect_latest: 1,
-            time_budget: DEFAULT_GC_TIME_BUDGET,
-            protected_time_ranges: Default::default(), // TODO(#3135): Use this for undo buffer
-        })
-    }
-
     /// Free up some RAM by forgetting the older parts of all timelines.
     pub fn purge_fraction_of_ram(&mut self, fraction_to_purge: f32) -> Vec<ChunkStoreEvent> {
         re_tracing::profile_function!();
@@ -454,7 +441,7 @@ impl EntityDb {
         store_events
     }
 
-    pub(crate) fn gc(&mut self, gc_options: &GarbageCollectionOptions) -> Vec<ChunkStoreEvent> {
+    pub fn gc(&mut self, gc_options: &GarbageCollectionOptions) -> Vec<ChunkStoreEvent> {
         re_tracing::profile_function!();
 
         let mut engine = self.storage_engine.write();

@@ -1707,7 +1707,7 @@ impl eframe::App for App {
         // TODO(#2579): implement web-storage for blueprints as well
         if let Some(hub) = &mut self.store_hub {
             if self.state.app_options.blueprint_gc {
-                hub.gc_blueprints();
+                hub.gc_blueprints(&self.state.blueprint_undo_state);
             }
 
             if let Err(err) = hub.save_app_blueprints() {
@@ -1835,7 +1835,7 @@ impl eframe::App for App {
         self.receive_messages(&mut store_hub, egui_ctx);
 
         if self.app_options().blueprint_gc {
-            store_hub.gc_blueprints();
+            store_hub.gc_blueprints(&self.state.blueprint_undo_state);
         }
 
         store_hub.purge_empty();

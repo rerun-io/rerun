@@ -3,12 +3,15 @@ use ahash::{HashMap, HashMapExt, HashSet};
 use anyhow::Context as _;
 use itertools::Itertools as _;
 
-use re_chunk_store::{ChunkStoreConfig, ChunkStoreGeneration, ChunkStoreStats};
+use re_chunk_store::{
+    ChunkStoreConfig, ChunkStoreGeneration, ChunkStoreStats, GarbageCollectionOptions,
+    GarbageCollectionTarget,
+};
 use re_entity_db::{EntityDb, StoreBundle};
-use re_log_types::{ApplicationId, StoreId, StoreKind};
+use re_log_types::{ApplicationId, ResolvedTimeRange, StoreId, StoreKind};
 use re_query::CachesStats;
 
-use crate::{Caches, StoreContext};
+use crate::{BlueprintUndoState, Caches, StoreContext};
 
 /// Interface for accessing all blueprints and recordings
 ///
@@ -683,7 +686,7 @@ impl StoreHub {
         });
     }
 
-    pub fn gc_blueprints(&mut self) {
+    pub fn gc_blueprints(&mut self, undo_state: &HashMap<StoreId, BlueprintUndoState>) {
         re_tracing::profile_function!();
 
         for blueprint_id in self
@@ -696,10 +699,23 @@ impl StoreHub {
                     continue; // no change since last gc
                 }
 
-                // TODO(jleibs): Decide a better tuning for this. Would like to save a
-                // reasonable amount of history, or incremental snapshots.
-                let store_events =
-                    blueprint.gc_everything_but_the_latest_row_on_non_default_timelines();
+                let mut protected_time_ranges = ahash::HashMap::default();
+                if let Some(undo) = undo_state.get(blueprint_id) {
+                    if let Some(time) = undo.oldest_undo_point() {
+                        // Save everything that we could want to undo to:
+                        protected_time_ranges.insert(
+                            crate::blueprint_timeline(),
+                            ResolvedTimeRange::new(time, re_chunk::TimeInt::MAX),
+                        );
+                    }
+                }
+
+                let store_events = blueprint.gc(&GarbageCollectionOptions {
+                    target: GarbageCollectionTarget::Everything,
+                    protect_latest: 0,
+                    time_budget: re_entity_db::DEFAULT_GC_TIME_BUDGET,
+                    protected_time_ranges,
+                });
                 if let Some(caches) = self.caches_per_recording.get_mut(blueprint_id) {
                     caches.on_store_events(&store_events);
                 }
