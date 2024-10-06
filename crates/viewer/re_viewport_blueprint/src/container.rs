@@ -348,15 +348,6 @@ impl ContainerBlueprint {
         }
     }
 
-    /// Clears the blueprint component for this container.
-    // TODO(jleibs): Should this be a recursive clear?
-    pub fn clear(&self, ctx: &ViewerContext<'_>) {
-        ctx.command_sender.send_system(SystemCommand::DropEntity(
-            ctx.store_context.blueprint.store_id().clone(),
-            self.entity_path(),
-        ));
-    }
-
     pub fn to_tile(&self) -> egui_tiles::Tile<SpaceViewId> {
         let children = self
             .contents
