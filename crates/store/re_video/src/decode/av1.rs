@@ -169,8 +169,9 @@ fn decoder_thread(
                         drain_decoded_frames(&mut decoder);
                         while !should_stop.load(Ordering::Acquire) {
                             match command_rx.try_recv() {
+                                Ok(Command::Chunk(_)) => {
                                     // Discard chunks
-                                Ok(Command::Chunk(_)) => {}
+                                }
                                 Ok(Command::Reset(done)) => {
                                     done.try_send(()).ok();
                                     break;
@@ -178,7 +179,6 @@ fn decoder_thread(
                                 Ok(Command::Flush(done)) => {
                                     done.try_send(()).ok();
                                     // We have not hit a `Reset` yet
-                                    break;
                                 }
                                 Err(TryRecvError::Empty | TryRecvError::Disconnected) => {
                                     break;
