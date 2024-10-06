@@ -8,16 +8,18 @@ use re_smart_channel::ReceiveSet;
 use re_types::blueprint::components::PanelState;
 use re_ui::ContextExt as _;
 use re_viewer_context::{
-    AppOptions, ApplicationSelectionState, CommandSender, ComponentUiRegistry, PlayState,
-    RecordingConfig, SpaceViewClassExt as _, SpaceViewClassRegistry, StoreContext, StoreHub,
-    SystemCommandSender as _, ViewStates, ViewerContext,
+    AppOptions, ApplicationSelectionState, BlueprintUndoState, CommandSender, ComponentUiRegistry,
+    PlayState, RecordingConfig, SpaceViewClassExt as _, SpaceViewClassRegistry, StoreContext,
+    StoreHub, SystemCommandSender as _, ViewStates, ViewerContext,
 };
 use re_viewport::Viewport;
 use re_viewport_blueprint::ui::add_space_view_or_container_modal_ui;
 use re_viewport_blueprint::ViewportBlueprint;
 
-use crate::ui::{recordings_panel_ui, settings_screen_ui};
-use crate::{app_blueprint::AppBlueprint, undo::BlueprintUndoState};
+use crate::{
+    app_blueprint::AppBlueprint,
+    ui::{recordings_panel_ui, settings_screen_ui},
+};
 
 const WATERMARK: bool = false; // Nice for recording media material
 
