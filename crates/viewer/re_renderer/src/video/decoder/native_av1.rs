@@ -280,26 +280,18 @@ impl Av1VideoDecoder {
     /// Enqueue all samples in the given segment.
     ///
     /// Does nothing if the index is out of bounds.
-    fn enqueue_segment(&self, segment_idx: usize) -> Result<(), DecodingError> {
+    fn enqueue_segment(&mut self, segment_idx: usize) -> Result<(), DecodingError> {
         let Some(segment) = self.data.segments.get(segment_idx) else {
             return Ok(());
         };
 
         let samples = &self.data.samples[segment.range()];
 
-        // The first sample in a segment is always a key frame:
-        self.enqueue_sample(&samples[0], true)?;
-        for sample in &samples[1..] {
-            self.enqueue_sample(sample, false)?;
+        for sample in samples {
+            let chunk = self.data.get(sample).ok_or(DecodingError::BadData)?;
+            self.decoder.decode(chunk);
         }
 
-        Ok(())
-    }
-
-    /// Enqueue the given sample.
-    fn enqueue_sample(&self, sample: &re_video::Sample, is_key: bool) -> Result<(), DecodingError> {
-        let chunk = self.data.get(sample).ok_or(DecodingError::BadData)?;
-        self.decoder.decode(chunk);
         Ok(())
     }
 

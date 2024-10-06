@@ -33,6 +33,7 @@ pub enum Error {
 
 pub type Result<T = (), E = Error> = std::result::Result<T, E>;
 
+/// AV1 software decoder.
 pub struct Decoder {
     _thread: std::thread::JoinHandle<()>,
     unparker: Unparker,
@@ -80,7 +81,8 @@ impl Decoder {
         }
     }
 
-    pub fn decode(&self, chunk: Chunk) {
+    // NOTE: The interface is all `&mut self` to avoid certain types of races.
+    pub fn decode(&mut self, chunk: Chunk) {
         re_tracing::profile_function!();
         self.command_tx.send(Command::Chunk(chunk)).ok();
         self.unparker.unpark();
@@ -89,7 +91,8 @@ impl Decoder {
     /// Resets the decoder.
     ///
     /// This does not block, all chunks sent to `decode` before this point will be discarded.
-    pub fn reset(&self) {
+    // NOTE: The interface is all `&mut self` to avoid certain types of races.
+    pub fn reset(&mut self) {
         re_tracing::profile_function!();
         // Ask the decoder to reset its internal state.
         let (tx, rx) = crossbeam::channel::bounded(0);
@@ -100,7 +103,8 @@ impl Decoder {
     }
 
     /// Blocks until all pending frames have been decoded.
-    pub fn flush(&self) {
+    // NOTE: The interface is all `&mut self` to avoid certain types of races.
+    pub fn flush(&mut self) {
         re_tracing::profile_function!();
         // Ask the decoder to notify us once all pending frames have been decoded.
         let (tx, rx) = crossbeam::channel::bounded(0);
@@ -165,7 +169,7 @@ fn decoder_thread(
                         drain_decoded_frames(&mut decoder);
                         while !should_stop.load(Ordering::Acquire) {
                             match command_rx.try_recv() {
-                                // Discard chunks
+                                    // Discard chunks
                                 Ok(Command::Chunk(_)) => {}
                                 Ok(Command::Reset(done)) => {
                                     done.try_send(()).ok();
