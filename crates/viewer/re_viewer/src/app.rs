@@ -10,16 +10,16 @@ use re_ui::{toasts, DesignTokens, UICommand, UICommandSender};
 use re_viewer_context::{
     command_channel,
     store_hub::{BlueprintPersistence, StoreHub, StoreHubStats},
-    AppOptions, CommandReceiver, CommandSender, ComponentUiRegistry, PlayState, SpaceViewClass,
-    SpaceViewClassRegistry, SpaceViewClassRegistryError, StoreContext, SystemCommand,
-    SystemCommandSender,
+    AppOptions, BlueprintUndoState, CommandReceiver, CommandSender, ComponentUiRegistry, PlayState,
+    SpaceViewClass, SpaceViewClassRegistry, SpaceViewClassRegistryError, StoreContext,
+    SystemCommand, SystemCommandSender,
 };
 
+use crate::app_blueprint::PanelStateOverrides;
 use crate::{
     app_blueprint::AppBlueprint, app_state::WelcomeScreenState, background_tasks::BackgroundTasks,
     AppState,
 };
-use crate::{app_blueprint::PanelStateOverrides, BlueprintUndoState};
 
 // ----------------------------------------------------------------------------
 
