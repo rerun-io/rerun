@@ -91,6 +91,8 @@ impl ViewportBlueprint {
             past_viewer_recommendations: results.component_batch(),
         };
 
+        // This visits all space views that ever has been, which is likely more than exist now.
+        // TODO(emilk): optimize this by starting at the root and only visit reachable space viewa.
         let all_space_view_ids: Vec<SpaceViewId> = blueprint_db
             .tree()
             .children
@@ -204,11 +206,6 @@ impl ViewportBlueprint {
 
     pub fn remove_space_view(&self, space_view_id: &SpaceViewId, ctx: &ViewerContext<'_>) {
         self.mark_user_interaction(ctx);
-
-        // Remove the space view from the store
-        if let Some(space_view) = self.space_views.get(space_view_id) {
-            space_view.clear(ctx);
-        }
 
         // If the space-view was maximized, clean it up
         if self.maximized == Some(*space_view_id) {
@@ -867,15 +864,6 @@ impl ViewportBlueprint {
                     let container_id = ContainerId::random();
                     contents_from_tile_id.insert(*tile_id, Contents::Container(container_id));
                 }
-            }
-        }
-
-        // Clear any existing container blueprints that aren't referenced
-        // by any tiles.
-        for (container_id, container) in &self.containers {
-            let tile_id = blueprint_id_to_tile_id(container_id);
-            if tree.tiles.get(tile_id).is_none() {
-                container.clear(ctx);
             }
         }
 
