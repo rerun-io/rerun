@@ -297,7 +297,6 @@ impl Av1VideoDecoder {
 
     /// Reset the video decoder and discard all frames.
     fn reset(&mut self) {
-        re_log::debug!("Resetting AV1 decoder");
         self.decoder.reset();
 
         let mut decoder_output = self.decoder_output.lock();

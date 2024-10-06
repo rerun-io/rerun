@@ -1,18 +1,11 @@
 //! AV1 support.
 
-use std::{
-    sync::{
-        atomic::{AtomicBool, Ordering},
-        Arc,
-    },
-    time::Duration,
+use std::sync::{
+    atomic::{AtomicBool, AtomicU64, Ordering},
+    Arc,
 };
 
-use crossbeam::{
-    channel::{unbounded, Receiver, RecvError, Sender, TryRecvError},
-    select,
-    sync::{Parker, Unparker},
-};
+use crossbeam::channel::{unbounded, Receiver, Sender};
 use dav1d::{PixelLayout, PlanarImageComponent};
 
 use crate::Time;
@@ -33,19 +26,42 @@ pub enum Error {
 
 pub type Result<T = (), E = Error> = std::result::Result<T, E>;
 
-/// AV1 software decoder.
-pub struct Decoder {
-    _thread: std::thread::JoinHandle<()>,
-    unparker: Unparker,
+enum Command {
+    Chunk(Chunk),
+    Flush { on_done: Sender<()> },
+    Reset,
+    Stop,
+}
 
+#[derive(Clone)]
+struct Comms {
     /// Set when it is time to die
     should_stop: Arc<AtomicBool>,
 
-    /// Normal command stream
+    /// Incremented on each call to [`Decoder::reset`].
+    /// Decremented each time the decoder thread receives [`Command::Reset`].
+    num_outstanding_resets: Arc<AtomicU64>,
+}
+
+impl Default for Comms {
+    fn default() -> Self {
+        Self {
+            should_stop: Arc::new(AtomicBool::new(false)),
+            num_outstanding_resets: Arc::new(AtomicU64::new(0)),
+        }
+    }
+}
+
+/// AV1 software decoder.
+pub struct Decoder {
+    /// Where the decoding happens
+    _thread: std::thread::JoinHandle<()>,
+
+    /// Commands sent to the decoder thread.
     command_tx: Sender<Command>,
 
-    /// Fast-track to reset and ignore all command in the normal command stream.
-    reset_tx: Sender<()>,
+    /// Instant communication to the decoder thread (circumventing the command queue).
+    comms: Comms,
 }
 
 impl Decoder {
@@ -55,18 +71,15 @@ impl Decoder {
     ) -> Self {
         re_tracing::profile_function!();
         let (command_tx, command_rx) = unbounded();
-        let (reset_tx, reset_rx) = unbounded();
-        let parker = Parker::new();
-        let unparker = parker.unparker().clone();
-        let should_stop = Arc::new(AtomicBool::new(false));
+        let comms = Comms::default();
 
         let thread = std::thread::Builder::new()
             .name("av1_decoder".into())
             .spawn({
-                let should_stop = should_stop.clone();
+                let comms = comms.clone();
                 move || {
                     econtext::econtext_data!("Video", debug_name.clone());
-                    decoder_thread(&should_stop, &command_rx, &reset_rx, &parker, &on_output);
+                    decoder_thread(&comms, &command_rx, &on_output);
                     re_log::debug!("Closing decoder thread for {debug_name}");
                 }
             })
@@ -74,10 +87,8 @@ impl Decoder {
 
         Self {
             _thread: thread,
-            unparker,
-            should_stop,
             command_tx,
-            reset_tx,
+            comms,
         }
     }
 
@@ -85,7 +96,6 @@ impl Decoder {
     pub fn decode(&mut self, chunk: Chunk) {
         re_tracing::profile_function!();
         self.command_tx.send(Command::Chunk(chunk)).ok();
-        self.unparker.unpark();
     }
 
     /// Resets the decoder.
@@ -94,22 +104,18 @@ impl Decoder {
     // NOTE: The interface is all `&mut self` to avoid certain types of races.
     pub fn reset(&mut self) {
         re_tracing::profile_function!();
-        // Ask the decoder to reset its internal state.
-        let (tx, rx) = crossbeam::channel::bounded(0);
-        self.command_tx.send(Command::Reset(tx)).ok();
-        self.reset_tx.send(()).ok();
-        self.unparker.unpark();
-        _ = rx; // Do not block
+        self.comms
+            .num_outstanding_resets
+            .fetch_add(1, Ordering::SeqCst);
+        self.command_tx.send(Command::Reset).ok();
     }
 
     /// Blocks until all pending frames have been decoded.
     // NOTE: The interface is all `&mut self` to avoid certain types of races.
     pub fn flush(&mut self) {
         re_tracing::profile_function!();
-        // Ask the decoder to notify us once all pending frames have been decoded.
         let (tx, rx) = crossbeam::channel::bounded(0);
-        self.command_tx.send(Command::Flush(tx)).ok();
-        self.unparker.unpark();
+        self.command_tx.send(Command::Flush { on_done: tx }).ok();
         rx.recv().ok();
     }
 }
@@ -117,15 +123,10 @@ impl Decoder {
 impl Drop for Decoder {
     fn drop(&mut self) {
         re_tracing::profile_function!();
-        self.should_stop.store(true, Ordering::Release);
-        self.unparker.unpark();
+        self.comms.should_stop.store(true, Ordering::SeqCst);
+        self.command_tx.send(Command::Stop).ok();
+        // NOTE: we don't block here. The decoder thread will finish soon enough.
     }
-}
-
-enum Command {
-    Chunk(Chunk),
-    Flush(Sender<()>),
-    Reset(Sender<()>),
 }
 
 type OutputCallback = dyn Fn(Result<Frame>) + Send + Sync;
@@ -140,13 +141,7 @@ fn create_decoder() -> Result<dav1d::Decoder, dav1d::Error> {
     dav1d::Decoder::with_settings(&settings)
 }
 
-fn decoder_thread(
-    should_stop: &AtomicBool,
-    command_rx: &Receiver<Command>,
-    reset_rx: &Receiver<()>,
-    parker: &Parker,
-    on_output: &OutputCallback,
-) {
+fn decoder_thread(comms: &Comms, command_rx: &Receiver<Command>, on_output: &OutputCallback) {
     let mut decoder = match create_decoder() {
         Err(err) => {
             on_output(Err(Error::Initialization(err)));
@@ -155,91 +150,42 @@ fn decoder_thread(
         Ok(decoder) => decoder,
     };
 
-    while !should_stop.load(Ordering::Acquire) {
-        select! {
-            recv(reset_rx) -> reset => {
-                if should_stop.load(Ordering::Acquire) {
-                    return;
-                }
-                match reset {
-                    Ok(_) => {
-                        // Reset the decoder.
-                        re_log::debug!("Received reset");
-                        decoder.flush();
-                        drain_decoded_frames(&mut decoder);
-                        while !should_stop.load(Ordering::Acquire) {
-                            match command_rx.try_recv() {
-                                Ok(Command::Chunk(_)) => {
-                                    // Discard chunks
-                                }
-                                Ok(Command::Reset(done)) => {
-                                    done.try_send(()).ok();
-                                    break;
-                                }
-                                Ok(Command::Flush(done)) => {
-                                    done.try_send(()).ok();
-                                    // We have not hit a `Reset` yet
-                                }
-                                Err(TryRecvError::Empty | TryRecvError::Disconnected) => {
-                                    break;
-                                }
-                            }
-                        }
-                        continue;
-                    }
-                    Err(RecvError) => {
-                        re_log::debug!("RecvError");
-                        // Channel disconnected, this only happens if the decoder is dropped.
-                        decoder.flush();
-                        output_frames(should_stop, &mut decoder, on_output);
-                        break;
-                    }
+    while let Ok(command) = command_rx.recv() {
+        if comms.should_stop.load(Ordering::SeqCst) {
+            re_log::debug!("Should stop");
+            return;
+        }
+
+        // If we're waiting for a reset we should ignore all other commands until we receive it.
+        let has_outstanding_reset = 0 < comms.num_outstanding_resets.load(Ordering::SeqCst);
+
+        match command {
+            Command::Chunk(chunk) => {
+                if !has_outstanding_reset {
+                    submit_chunk(&mut decoder, chunk, on_output);
+                    output_frames(&comms.should_stop, &mut decoder, on_output);
                 }
             }
-
-            recv(command_rx) -> command => {
-                if should_stop.load(Ordering::Acquire) {
-                    return;
+            Command::Flush { on_done } => {
+                if !has_outstanding_reset {
+                    // TODO(emilk): can there really be outstanding frames here?
+                    output_frames(&comms.should_stop, &mut decoder, on_output);
                 }
-                match command {
-                    Ok(Command::Chunk(chunk)) => {
-                        submit_chunk(&mut decoder, chunk, on_output);
-                        output_frames(should_stop, &mut decoder, on_output);
-                        continue;
-                    }
-
-                    Ok(Command::Flush(done)) => {
-                        re_log::debug!("Command::Flush");
-                        // All pending frames must have already been decoded, because data sent
-                        // through a channel is received in the order it was sent.
-                        output_frames(should_stop, &mut decoder, on_output);
-                        done.try_send(()).ok();
-                        continue;
-                    }
-
-                    Ok(Command::Reset(done)) => {
-                        re_log::debug!("Command::Reset");
-                        done.try_send(()).ok();
-                        continue;
-                    }
-
-                    Err(RecvError) => {
-                        re_log::debug!("RecvError");
-                        // Channel disconnected, this only happens if the decoder is dropped.
-                        decoder.flush();
-                        output_frames(should_stop, &mut decoder, on_output);
-                        break;
-                    }
-                }
+                on_done.send(()).ok();
             }
-
-            default => {
-                // No samples left in the queue
-                parker.park_timeout(Duration::from_millis(100));
-                continue;
+            Command::Reset => {
+                decoder.flush();
+                drain_decoded_frames(&mut decoder);
+                comms.num_outstanding_resets.fetch_sub(1, Ordering::SeqCst);
+            }
+            Command::Stop => {
+                re_log::debug!("Stop");
+                return;
             }
         }
     }
+
+    re_log::debug!("Disconnected");
 }
 
 fn submit_chunk(decoder: &mut dav1d::Decoder, chunk: Chunk, on_output: &OutputCallback) {
@@ -277,6 +223,7 @@ fn submit_chunk(decoder: &mut dav1d::Decoder, chunk: Chunk, on_output: &OutputCa
 }
 
 fn drain_decoded_frames(decoder: &mut dav1d::Decoder) {
+    re_tracing::profile_function!();
     while let Ok(picture) = decoder.get_picture() {
         _ = picture;
     }
@@ -287,7 +234,8 @@ fn output_frames(
     decoder: &mut dav1d::Decoder,
     on_output: &OutputCallback,
 ) {
-    while !should_stop.load(Ordering::Acquire) {
+    re_tracing::profile_function!();
+    while !should_stop.load(Ordering::SeqCst) {
         match {
             econtext::econtext!("get_picture");
             decoder.get_picture()
