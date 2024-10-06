@@ -3,7 +3,8 @@ use std::collections::BTreeSet;
 use re_chunk::{LatestAtQuery, TimeInt};
 use re_entity_db::EntityDb;
 use re_log_types::ResolvedTimeRange;
-use re_viewer_context::blueprint_timeline;
+
+use crate::blueprint_timeline;
 
 /// We store the entire edit history of a blueprint in its store.
 ///
