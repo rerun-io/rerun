@@ -206,7 +206,7 @@ impl Video {
             Entry::Occupied(occupied_entry) => occupied_entry.into_mut(),
             Entry::Vacant(vacant_entry) => {
                 let new_decoder = decoder::new_video_decoder(
-                    self.debug_name.clone(),
+                    &self.debug_name,
                     render_context,
                     self.data.clone(),
                     self.decode_hw_acceleration,

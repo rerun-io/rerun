@@ -58,7 +58,7 @@ pub struct Av1VideoDecoder {
 
 impl Av1VideoDecoder {
     pub fn new(
-        debug_name: String,
+        debug_name: &str,
         render_context: &RenderContext,
         data: Arc<re_video::VideoData>,
     ) -> Result<Self, DecodingError> {

@@ -142,6 +142,8 @@ fn create_decoder() -> Result<dav1d::Decoder, dav1d::Error> {
 }
 
 fn decoder_thread(comms: &Comms, command_rx: &Receiver<Command>, on_output: &OutputCallback) {
+    #![allow(clippy::debug_assert_with_mut_call)]
+
     let mut decoder = match create_decoder() {
         Err(err) => {
             on_output(Err(Error::Initialization(err)));
@@ -163,19 +165,22 @@ fn decoder_thread(comms: &Comms, command_rx: &Receiver<Command>, on_output: &Out
             Command::Chunk(chunk) => {
                 if !has_outstanding_reset {
                     submit_chunk(&mut decoder, chunk, on_output);
-                    output_frames(&comms.should_stop, &mut decoder, on_output);
+                    // NOTE: in all video's I've tested, there is one frame per chunk
+                    let _num_frames = output_frames(&comms.should_stop, &mut decoder, on_output);
                 }
             }
             Command::Flush { on_done } => {
-                if !has_outstanding_reset {
-                    // TODO(emilk): can there really be outstanding frames here?
-                    output_frames(&comms.should_stop, &mut decoder, on_output);
-                }
+                debug_assert!(matches!(decoder.get_picture(), Err(dav1d::Error::Again)),
+                    "There should be no pending pictures, since we output them directly after submitting a chunk.");
+
                 on_done.send(()).ok();
             }
             Command::Reset => {
                 decoder.flush();
-                drain_decoded_frames(&mut decoder);
+
+                debug_assert!(matches!(decoder.get_picture(), Err(dav1d::Error::Again)),
+                    "There should be no pending pictures, since we output them directly after submitting a chunk.");
+
                 comms.num_outstanding_resets.fetch_sub(1, Ordering::SeqCst);
             }
             Command::Stop => {
@@ -192,21 +197,6 @@ fn submit_chunk(decoder: &mut dav1d::Decoder, chunk: Chunk, on_output: &OutputCa
     re_tracing::profile_function!();
     econtext::econtext_function_data!(format!("chunk timestamp: {:?}", chunk.timestamp));
 
-    {
-        re_tracing::profile_scope!("send_pending_data");
-        // always attempt to send pending data first
-        // this does nothing if there is no pending data,
-        // and is required if a call to `send_data` previously
-        // returned `EAGAIN`
-        match decoder.send_pending_data() {
-            Ok(()) => {}
-            Err(err) if err.is_again() => {}
-            Err(err) => {
-                on_output(Err(Error::Dav1d(err)));
-            }
-        }
-    }
-
     re_tracing::profile_scope!("send_data");
     match decoder.send_data(
         chunk.data,
@@ -215,36 +205,33 @@ fn submit_chunk(decoder: &mut dav1d::Decoder, chunk: Chunk, on_output: &OutputCa
         Some(chunk.duration.0),
     ) {
         Ok(()) => {}
-        Err(err) if err.is_again() => {}
         Err(err) => {
+            debug_assert!(err != dav1d::Error::Again, "Bug in AV1 decoder: send_data returned `Error::Again`. This shouldn't happen, since we process all images in a chunk right away");
             on_output(Err(Error::Dav1d(err)));
         }
     };
 }
 
-fn drain_decoded_frames(decoder: &mut dav1d::Decoder) {
-    re_tracing::profile_function!();
-    while let Ok(picture) = decoder.get_picture() {
-        _ = picture;
-    }
-}
-
+/// Returns the number of new frames.
 fn output_frames(
     should_stop: &AtomicBool,
     decoder: &mut dav1d::Decoder,
     on_output: &OutputCallback,
-) {
+) -> usize {
     re_tracing::profile_function!();
+    let mut count = 0;
     while !should_stop.load(Ordering::SeqCst) {
-        match {
+        let picture = {
             econtext::econtext!("get_picture");
             decoder.get_picture()
-        } {
+        };
+        match picture {
             Ok(picture) => {
                 output_picture(&picture, on_output);
+                count += 1;
             }
-            Err(err) if err.is_again() => {
-                // Not enough data yet
+            Err(dav1d::Error::Again) => {
+                // We need to submit more chunks to get more pictures
                 break;
             }
             Err(err) => {
@@ -252,6 +239,7 @@ fn output_frames(
             }
         }
     }
+    count
 }
 
 fn output_picture(picture: &dav1d::Picture, on_output: &(dyn Fn(Result<Frame>) + Send + Sync)) {

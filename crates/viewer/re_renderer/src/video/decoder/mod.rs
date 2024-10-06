@@ -39,7 +39,7 @@ pub trait VideoDecoder: 'static + Send {
 }
 
 pub fn new_video_decoder(
-    debug_name: String,
+    debug_name: &str,
     render_context: &RenderContext,
     data: Arc<re_video::VideoData>,
     hw_acceleration: DecodeHardwareAcceleration,
