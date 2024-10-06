@@ -80,7 +80,6 @@ impl Decoder {
         }
     }
 
-    /// Submits a single frame for decoding.
     pub fn decode(&self, chunk: Chunk) {
         re_tracing::profile_function!();
         self.command_tx.send(Command::Chunk(chunk)).ok();
