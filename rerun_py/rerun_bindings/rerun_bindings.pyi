@@ -4,15 +4,6 @@ import pyarrow as pa
 
 from .types import AnyColumn, ComponentLike, ViewContentsLike
 
-class ControlColumnDescriptor:
-    """A control-level column such as `RowId`."""
-
-class ControlColumnSelector:
-    """A selector for a control column."""
-
-    @staticmethod
-    def row_id() -> ControlColumnSelector: ...
-
 class IndexColumnDescriptor:
     """A column containing the index values for when the component data was updated."""
 
@@ -35,7 +26,6 @@ class ComponentColumnSelector:
 class Schema:
     """The schema representing all columns in a [`Recording`][]."""
 
-    def control_columns(self) -> list[ControlColumnDescriptor]: ...
     def index_columns(self) -> list[IndexColumnDescriptor]: ...
     def component_columns(self) -> list[ComponentColumnDescriptor]: ...
     def column_for(self, entity_path: str, component: ComponentLike) -> Optional[ComponentColumnDescriptor]: ...

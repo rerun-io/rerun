@@ -3,8 +3,6 @@ from __future__ import annotations
 from rerun_bindings import (
     ComponentColumnDescriptor as ComponentColumnDescriptor,
     ComponentColumnSelector as ComponentColumnSelector,
-    ControlColumnDescriptor as ControlColumnDescriptor,
-    ControlColumnSelector as ControlColumnSelector,
     Recording as Recording,
     RRDArchive as RRDArchive,
     Schema as Schema,

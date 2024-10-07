@@ -8,20 +8,15 @@ if TYPE_CHECKING:
     from .rerun_bindings import (
         ComponentColumnDescriptor as ComponentColumnDescriptor,
         ComponentColumnSelector as ComponentColumnSelector,
-        ControlColumnDescriptor as ControlColumnDescriptor,
-        ControlColumnSelector as ControlColumnSelector,
         TimeColumnDescriptor as TimeColumnDescriptor,
         TimeColumnSelector as TimeColumnSelector,
     )
 
-
 ComponentLike: TypeAlias = Union[str, type["ComponentMixin"]]
 
 AnyColumn: TypeAlias = Union[
-    "ControlColumnDescriptor",
     "TimeColumnDescriptor",
     "ComponentColumnDescriptor",
-    "ControlColumnSelector",
     "TimeColumnSelector",
     "ComponentColumnSelector",
 ]
