@@ -6,6 +6,7 @@ use std::sync::{
 use ahash::HashSet;
 use arrow2::{
     array::Array as ArrowArray, chunk::Chunk as ArrowChunk, datatypes::Schema as ArrowSchema,
+    Either,
 };
 use itertools::Itertools;
 
@@ -376,22 +377,44 @@ impl QueryHandle<'_> {
     pub fn num_rows(&self) -> u64 {
         re_tracing::profile_function!();
 
-        let all_unique_timestamps: HashSet<TimeInt> = self
-            .init()
-            .view_chunks
-            .iter()
+        let state = self.init();
+
+        let mut view_chunks = state.view_chunks.iter();
+        let view_chunks = if let Some(view_pov_chunks_idx) = state.view_pov_chunks_idx {
+            Either::Left(view_chunks.nth(view_pov_chunks_idx).into_iter())
+        } else {
+            Either::Right(view_chunks)
+        };
+
+        let mut all_unique_timestamps: HashSet<TimeInt> = view_chunks
             .flat_map(|chunks| {
                 chunks.iter().filter_map(|(_cursor, chunk)| {
-                    chunk
-                        .timelines()
-                        .get(&self.query.filtered_index)
-                        .map(|time_column| time_column.times())
+                    if chunk.is_static() {
+                        Some(Either::Left(std::iter::once(TimeInt::STATIC)))
+                    } else {
+                        chunk
+                            .timelines()
+                            .get(&self.query.filtered_index)
+                            .map(|time_column| Either::Right(time_column.times()))
+                    }
                 })
             })
             .flatten()
             .collect();
 
-        all_unique_timestamps.len() as _
+        if let Some(filtered_index_values) = self.query.filtered_index_values.as_ref() {
+            all_unique_timestamps.retain(|time| filtered_index_values.contains(time));
+        }
+
+        let num_rows = all_unique_timestamps.len() as _;
+
+        if cfg!(debug_assertions) {
+            let expected_num_rows =
+                self.engine.query(self.query.clone()).into_iter().count() as u64;
+            assert_eq!(expected_num_rows, num_rows);
+        }
+
+        num_rows
     }
 
     /// Returns the next row's worth of data.
@@ -886,6 +909,10 @@ mod tests {
         eprintln!("{query:#?}:");
 
         let query_handle = query_engine.query(query.clone());
+        assert_eq!(
+            query_engine.query(query.clone()).into_iter().count() as u64,
+            query_handle.num_rows()
+        );
         let dataframe = concatenate_record_batches(
             query_handle.schema().clone(),
             &query_handle.into_batch_iter().collect_vec(),
@@ -928,6 +955,10 @@ mod tests {
         eprintln!("{query:#?}:");
 
         let query_handle = query_engine.query(query.clone());
+        assert_eq!(
+            query_engine.query(query.clone()).into_iter().count() as u64,
+            query_handle.num_rows()
+        );
         let dataframe = concatenate_record_batches(
             query_handle.schema().clone(),
             &query_handle.into_batch_iter().collect_vec(),
@@ -970,6 +1001,10 @@ mod tests {
         eprintln!("{query:#?}:");
 
         let query_handle = query_engine.query(query.clone());
+        assert_eq!(
+            query_engine.query(query.clone()).into_iter().count() as u64,
+            query_handle.num_rows()
+        );
         let dataframe = concatenate_record_batches(
             query_handle.schema().clone(),
             &query_handle.into_batch_iter().collect_vec(),
@@ -1018,6 +1053,10 @@ mod tests {
         eprintln!("{query:#?}:");
 
         let query_handle = query_engine.query(query.clone());
+        assert_eq!(
+            query_engine.query(query.clone()).into_iter().count() as u64,
+            query_handle.num_rows()
+        );
         let dataframe = concatenate_record_batches(
             query_handle.schema().clone(),
             &query_handle.into_batch_iter().collect_vec(),
@@ -1068,6 +1107,10 @@ mod tests {
             eprintln!("{query:#?}:");
 
             let query_handle = query_engine.query(query.clone());
+            assert_eq!(
+                query_engine.query(query.clone()).into_iter().count() as u64,
+                query_handle.num_rows()
+            );
             let dataframe = concatenate_record_batches(
                 query_handle.schema().clone(),
                 &query_handle.into_batch_iter().collect_vec(),
@@ -1091,6 +1134,10 @@ mod tests {
             eprintln!("{query:#?}:");
 
             let query_handle = query_engine.query(query.clone());
+            assert_eq!(
+                query_engine.query(query.clone()).into_iter().count() as u64,
+                query_handle.num_rows()
+            );
             let dataframe = concatenate_record_batches(
                 query_handle.schema().clone(),
                 &query_handle.into_batch_iter().collect_vec(),
@@ -1114,6 +1161,10 @@ mod tests {
             eprintln!("{query:#?}:");
 
             let query_handle = query_engine.query(query.clone());
+            assert_eq!(
+                query_engine.query(query.clone()).into_iter().count() as u64,
+                query_handle.num_rows()
+            );
             let dataframe = concatenate_record_batches(
                 query_handle.schema().clone(),
                 &query_handle.into_batch_iter().collect_vec(),
@@ -1147,6 +1198,10 @@ mod tests {
             eprintln!("{query:#?}:");
 
             let query_handle = query_engine.query(query.clone());
+            assert_eq!(
+                query_engine.query(query.clone()).into_iter().count() as u64,
+                query_handle.num_rows()
+            );
             let dataframe = concatenate_record_batches(
                 query_handle.schema().clone(),
                 &query_handle.into_batch_iter().collect_vec(),
@@ -1198,6 +1253,10 @@ mod tests {
             eprintln!("{query:#?}:");
 
             let query_handle = query_engine.query(query.clone());
+            assert_eq!(
+                query_engine.query(query.clone()).into_iter().count() as u64,
+                query_handle.num_rows()
+            );
             let dataframe = concatenate_record_batches(
                 query_handle.schema().clone(),
                 &query_handle.into_batch_iter().collect_vec(),
@@ -1231,6 +1290,10 @@ mod tests {
             eprintln!("{query:#?}:");
 
             let query_handle = query_engine.query(query.clone());
+            assert_eq!(
+                query_engine.query(query.clone()).into_iter().count() as u64,
+                query_handle.num_rows()
+            );
             let dataframe = concatenate_record_batches(
                 query_handle.schema().clone(),
                 &query_handle.into_batch_iter().collect_vec(),
@@ -1277,6 +1340,10 @@ mod tests {
             eprintln!("{query:#?}:");
 
             let query_handle = query_engine.query(query.clone());
+            assert_eq!(
+                query_engine.query(query.clone()).into_iter().count() as u64,
+                query_handle.num_rows()
+            );
             let dataframe = concatenate_record_batches(
                 query_handle.schema().clone(),
                 &query_handle.into_batch_iter().collect_vec(),
@@ -1306,6 +1373,10 @@ mod tests {
             eprintln!("{query:#?}:");
 
             let query_handle = query_engine.query(query.clone());
+            assert_eq!(
+                query_engine.query(query.clone()).into_iter().count() as u64,
+                query_handle.num_rows()
+            );
             let dataframe = concatenate_record_batches(
                 query_handle.schema().clone(),
                 &query_handle.into_batch_iter().collect_vec(),
@@ -1354,6 +1425,10 @@ mod tests {
             eprintln!("{query:#?}:");
 
             let query_handle = query_engine.query(query.clone());
+            assert_eq!(
+                query_engine.query(query.clone()).into_iter().count() as u64,
+                query_handle.num_rows()
+            );
             let dataframe = concatenate_record_batches(
                 query_handle.schema().clone(),
                 &query_handle.into_batch_iter().collect_vec(),
@@ -1434,6 +1509,10 @@ mod tests {
             eprintln!("{query:#?}:");
 
             let query_handle = query_engine.query(query.clone());
+            assert_eq!(
+                query_engine.query(query.clone()).into_iter().count() as u64,
+                query_handle.num_rows()
+            );
             let dataframe = concatenate_record_batches(
                 query_handle.schema().clone(),
                 &query_handle.into_batch_iter().collect_vec(),

@@ -79,7 +79,8 @@ impl Query {
     ) -> Result<Option<components::FilterByEvent>, SpaceViewSystemExecutionError> {
         Ok(self
             .query_property
-            .component_or_empty::<components::FilterByEvent>()?)
+            .component_or_empty::<components::FilterByEvent>()?
+            .filter(|filter_by_event| filter_by_event.active()))
     }
 
     pub(super) fn save_filter_by_event(
