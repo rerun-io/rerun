@@ -153,6 +153,8 @@ impl VideoFrameReferenceVisualizer {
         entity_path: &EntityPath,
         view_id: SpaceViewId,
     ) {
+        re_tracing::profile_function!();
+
         let Some(render_ctx) = ctx.viewer_ctx.render_ctx else {
             return;
         };
@@ -406,7 +408,9 @@ fn latest_at_query_video_from_datastore(
     let media_type = results.component_instance::<MediaType>(0);
 
     Some(ctx.cache.entry(|c: &mut VideoCache| {
+        let debug_name = entity_path.to_string();
         c.entry(
+            debug_name,
             blob_row_id,
             &blob,
             media_type.as_ref(),

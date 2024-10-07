@@ -133,8 +133,8 @@ where
         // Mimalloc can't align types larger than 64 bytes now and will silently ignore it.
         // https://github.com/purpleprotocol/mimalloc_rust/issues/128
         // Therefore, large alignments won't work with collect.
-        let pretend_mimalloc_aligns_correctly = false;
-        if std::mem::align_of::<T>() <= 64 || pretend_mimalloc_aligns_correctly {
+        let pretend_mimalloc_aligns_correctly = false; // TODO(#5875): update mimalloc
+        if std::mem::align_of::<T>() <= 32 || pretend_mimalloc_aligns_correctly {
             let vec: Vec<T> = elements.collect();
 
             #[allow(clippy::dbg_macro)]

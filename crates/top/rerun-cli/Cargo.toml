@@ -43,6 +43,10 @@ default = ["native_viewer", "web_viewer"]
 ## This adds a lot of extra dependencies, so only enable this feature if you need it!
 native_viewer = ["rerun/native_viewer"]
 
+## Support for native AV1 video decoding.
+## You need to install [nasm](https://nasm.us/) to compile with this feature.
+video_av1 = ["rerun/video_av1"]
+
 ## Support serving a web viewer over HTTP.
 ##
 ## Enabling this inflates the binary size quite a bit, since it embeds the viewer wasm.

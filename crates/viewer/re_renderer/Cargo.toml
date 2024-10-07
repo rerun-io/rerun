@@ -35,6 +35,10 @@ default = ["import-obj", "import-gltf", "import-stl"]
 ## Support for Arrow datatypes for end-to-end zero-copy.
 arrow = ["dep:arrow2"]
 
+## Support for native AV1 video decoding.
+## You need to install [nasm](https://nasm.us/) to compile with this feature.
+video_av1 = ["re_video/av1"]
+
 ## Support importing .obj files
 import-obj = ["dep:tobj"]
 
@@ -77,6 +81,7 @@ smallvec.workspace = true
 static_assertions.workspace = true
 thiserror.workspace = true
 type-map.workspace = true
+web-time.workspace = true
 wgpu.workspace = true
 wgpu-core.workspace = true                                           # Needed for error handling when wgpu-core implemented backend is used.
 wgpu-types.workspace = true
@@ -100,7 +105,6 @@ getrandom = { workspace = true, features = [
 ] } # getrandom needs the `js` feature to be enabled. It is dragged in indirectly.
 js-sys.workspace = true
 wasm-bindgen-futures.workspace = true
-web-time.workspace = true
 web-sys = { workspace = true, features = [
   "DomException",
   "EncodedVideoChunk",

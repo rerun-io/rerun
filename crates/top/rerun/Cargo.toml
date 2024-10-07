@@ -94,6 +94,10 @@ server = ["re_sdk_comms?/server"]
 ## Embed the Rerun SDK & built-in types and re-export all of their public symbols.
 sdk = ["dep:re_sdk", "dep:re_types"]
 
+## Support for native AV1 video decoding.
+## You need to install [nasm](https://nasm.us/) to compile with this feature.
+video_av1 = ["re_viewer?/video_av1"]
+
 ## Support serving a web viewer over HTTP.
 ##
 ## Enabling this inflates the binary size quite a bit, since it embeds the viewer wasm.

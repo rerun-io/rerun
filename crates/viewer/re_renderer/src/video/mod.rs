@@ -1,8 +1,9 @@
 mod decoder;
 
+use std::{collections::hash_map::Entry, sync::Arc};
+
 use ahash::HashMap;
 use parking_lot::Mutex;
-use std::{collections::hash_map::Entry, sync::Arc};
 
 use re_video::VideoLoadError;
 
@@ -12,10 +13,6 @@ use crate::{resource_managers::GpuTexture2D, RenderContext};
 // TODO(jan, andreas): These errors are for the most part specific to the web decoder right now.
 #[derive(thiserror::Error, Debug, Clone)]
 pub enum DecodingError {
-    // TODO(#7298): Native support.
-    #[error("Video playback not yet available in the native viewer. Try the web viewer instead.")]
-    NoNativeSupport,
-
     #[error("Failed to create VideoDecoder: {0}")]
     DecoderSetupFailure(String),
 
@@ -31,20 +28,38 @@ pub enum DecodingError {
     #[error("Failed to configure the video decoder: {0}")]
     ConfigureFailure(String),
 
-    // e.g. unsupported codec
+    /// e.g. unsupported codec
     #[error("Failed to create video chunk: {0}")]
     CreateChunk(String),
 
-    // e.g. unsupported codec
+    /// e.g. unsupported codec
     #[error("Failed to decode video chunk: {0}")]
     DecodeChunk(String),
 
-    // e.g. unsupported codec
+    /// e.g. unsupported codec
     #[error("Failed to decode video: {0}")]
     Decoding(String),
 
     #[error("The timestamp passed was negative.")]
     NegativeTimestamp,
+
+    /// e.g. bad mp4, or bug in mp4 parse
+    #[error("Bad data.")]
+    BadData,
+
+    #[cfg(not(target_arch = "wasm32"))]
+    #[error("No native video support. Try compiling rerun with the `video_av1` feature flag")]
+    NoNativeSupport,
+
+    #[cfg(not(target_arch = "wasm32"))]
+    #[cfg(feature = "video_av1")]
+    #[error("Unsupported codec: {codec:?}. Only AV1 is currently supported on native.")]
+    UnsupportedCodec { codec: String },
+
+    #[cfg(not(target_arch = "wasm32"))]
+    #[cfg(feature = "video_av1")]
+    #[error("Video decoding not supported in native debug builds.")]
+    NoNativeDebug,
 }
 
 pub type FrameDecodingResult = Result<VideoFrameTexture, DecodingError>;
@@ -75,6 +90,7 @@ struct DecoderEntry {
 ///
 /// Supports asynchronously decoding video into GPU textures via [`Video::frame_at`].
 pub struct Video {
+    debug_name: String,
     data: Arc<re_video::VideoData>,
     decoders: Mutex<HashMap<VideoDecodingStreamId, DecoderEntry>>,
     decode_hw_acceleration: DecodeHardwareAcceleration,
@@ -134,6 +150,7 @@ impl Video {
     /// Currently supports the following media types:
     /// - `video/mp4`
     pub fn load(
+        debug_name: String,
         data: &[u8],
         media_type: &str,
         decode_hw_acceleration: DecodeHardwareAcceleration,
@@ -142,6 +159,7 @@ impl Video {
         let decoders = Mutex::new(HashMap::default());
 
         Ok(Self {
+            debug_name,
             data,
             decoders,
             decode_hw_acceleration,
@@ -193,6 +211,7 @@ impl Video {
             Entry::Occupied(occupied_entry) => occupied_entry.into_mut(),
             Entry::Vacant(vacant_entry) => {
                 let new_decoder = decoder::new_video_decoder(
+                    &self.debug_name,
                     render_context,
                     self.data.clone(),
                     self.decode_hw_acceleration,

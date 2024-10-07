@@ -1,4 +1,4 @@
-use std::{sync::Arc, time::Duration};
+use std::sync::Arc;
 
 use js_sys::{Function, Uint8Array};
 use parking_lot::Mutex;
@@ -16,7 +16,7 @@ use crate::{
     DebugLabel, RenderContext,
 };
 
-use super::{latest_at_idx, VideoDecoder};
+use super::{latest_at_idx, VideoDecoder, DECODING_ERROR_REPORTING_DELAY};
 
 #[derive(Clone)]
 #[repr(transparent)]
@@ -57,10 +57,6 @@ struct DecoderOutput {
     /// Time at which point `last_decoding_error` changed from `None` to `Some`.
     time_when_entering_error_state: Instant,
 }
-
-/// Delaying error reports (and showing last-good images meanwhile) allows us to skip over
-/// transient errors without flickering.
-const DECODING_ERROR_REPORTING_DELAY: Duration = Duration::from_millis(400);
 
 pub struct WebVideoDecoder {
     data: Arc<re_video::VideoData>,
@@ -151,7 +147,7 @@ impl WebVideoDecoder {
             decoder_output,
             hw_acceleration,
 
-            last_used_frame_timestamp: Time::new(u64::MAX),
+            last_used_frame_timestamp: Time::MAX,
             current_segment_idx: usize::MAX,
             current_sample_idx: usize::MAX,
 
@@ -325,14 +321,14 @@ impl WebVideoDecoder {
             // since we want to keep playing the video fine even if parts of it are broken.
             // That said, practically we reset the decoder and thus all frames upon error,
             // so it doesn't make a lot of difference.
-            if let Some(last_decoding_error) = decoder_output.last_decoding_error.clone() {
+            if let Some(last_decoding_error) = &decoder_output.last_decoding_error {
                 if decoder_output.time_when_entering_error_state.elapsed()
                     >= DECODING_ERROR_REPORTING_DELAY
                 {
                     // Report the error only if we have been in an error state for a certain amount of time.
                     // Don't immediately report the error, since we might immediately recover from it.
                     // Otherwise, this would cause aggressive flickering!
-                    return Err(last_decoding_error);
+                    return Err(last_decoding_error.clone());
                 }
             }
 
@@ -457,7 +453,7 @@ impl WebVideoDecoder {
         {
             let mut decoder_output = self.decoder_output.lock();
             decoder_output.reset_since_last_reported_error = true;
-            drop(decoder_output.frames.drain(..));
+            decoder_output.frames.clear();
         }
 
         self.current_segment_idx = usize::MAX;

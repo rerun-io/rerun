@@ -122,18 +122,18 @@ man = "cargo --quiet run --package rerun-cli --all-features -- man > docs/conten
 # Compile and run the rerun viewer.
 #
 # You can also give an argument for what to view (e.g. an .rrd file).
-rerun = "cargo run --package rerun-cli --no-default-features --features native_viewer --"
+rerun = "cargo run --package rerun-cli --no-default-features --features native_viewer,video_av1 --"
 
 # Compile `rerun-cli` without the web-viewer.
-rerun-build = "cargo build --package rerun-cli --no-default-features --features native_viewer"
+rerun-build = "cargo build --package rerun-cli --no-default-features --features native_viewer,video_av1"
 
 # Compile `rerun-cli` without the web-viewer.
-rerun-build-release = "cargo build --package rerun-cli --release --no-default-features --features native_viewer"
+rerun-build-release = "cargo build --package rerun-cli --release --no-default-features --features native_viewer,video_av1"
 
 # Compile and run the rerun viewer with --release.
 #
 # You can also give an argument for what to view (e.g. an .rrd file).
-rerun-release = "cargo run --package rerun-cli --no-default-features --features native_viewer --release --"
+rerun-release = "cargo run --package rerun-cli --no-default-features --features native_viewer,video_av1 --release --"
 
 # Compile and run the web-viewer via rerun-cli.
 #
@@ -420,6 +420,7 @@ gitignore-parser = ">=0.1.9"
 gitpython = ">=3.1.40"
 jinja2 = ">=3.1.3,<3.2"           # For `update_pr_bodies.py`, `generate_pr_summary.py`, `build_screenshot_compare.py` and other utilities that build websites.
 mypy = "1.8.0"
+nasm = ">=2.16"                   # Required by https://github.com/memorysafety/rav1d for native video support
 ninja = "1.11.1"
 numpy = ">=1.23,<2"
 prettier = "3.2.5.*"
