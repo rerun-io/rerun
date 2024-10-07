@@ -87,13 +87,6 @@ pub enum SystemCommand {
     FileSaver(Box<dyn FnOnce() -> anyhow::Result<std::path::PathBuf> + Send + 'static>),
 }
 
-impl std::fmt::Debug for SystemCommand {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        // just print the variant name as all content is not `Debug`
-        <Self as std::fmt::Display>::fmt(self, f)
-    }
-}
-
 /// Interface for sending [`SystemCommand`] messages.
 pub trait SystemCommandSender {
     fn send_system(&self, command: SystemCommand);

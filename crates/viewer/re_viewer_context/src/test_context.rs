@@ -126,8 +126,8 @@ impl TestContext {
     ///Best-effort attempt to meaningfully handle some of the system commands.
     pub fn handle_system_command(&mut self) {
         while let Some(command) = self.command_receiver.recv_system() {
-            eprintln!("Handling system command: {command:#?}");
-
+            let mut handled: bool = true;
+            let command_name = command.to_string();
             match command {
                 SystemCommand::UpdateBlueprint(store_id, chunks) => {
                     assert_eq!(&store_id, self.blueprint_store.store_id());
@@ -162,14 +162,19 @@ impl TestContext {
                 | SystemCommand::ActivateRecording(_)
                 | SystemCommand::CloseStore(_)
                 | SystemCommand::CloseAllRecordings
-                | SystemCommand::EnableExperimentalDataframeSpaceView(_) => {}
+                | SystemCommand::EnableExperimentalDataframeSpaceView(_) => handled = false,
 
                 #[cfg(debug_assertions)]
-                SystemCommand::EnableInspectBlueprintTimeline(_) => {}
+                SystemCommand::EnableInspectBlueprintTimeline(_) => handled = false,
 
                 #[cfg(not(target_arch = "wasm32"))]
-                SystemCommand::FileSaver(_) => {}
+                SystemCommand::FileSaver(_) => handled = false,
             }
+
+            eprintln!(
+                "{} system command: {command_name}",
+                if handled { "Handled" } else { "Ignored" }
+            );
         }
     }
 }
