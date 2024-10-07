@@ -923,8 +923,8 @@ mod tests {
         let expected = unindent::unindent(
             "\
             [
-                Int64[None, 1, 2, 3, 4, 5, 6, 7],
-                Timestamp(Nanosecond, None)[None, 1970-01-01 00:00:00.000000001, None, None, None, 1970-01-01 00:00:00.000000005, None, 1970-01-01 00:00:00.000000007],
+                Int64[None, 10, 20, 30, 40, 50, 60, 70],
+                Timestamp(Nanosecond, None)[None, 1970-01-01 00:00:00.000000010, None, None, None, 1970-01-01 00:00:00.000000050, None, 1970-01-01 00:00:00.000000070],
                 ListArray[None, None, None, [2], [3], [4], None, [6]],
                 ListArray[[c], None, None, None, None, None, None, None],
                 ListArray[None, [{x: 0, y: 0}], [{x: 1, y: 1}], [{x: 2, y: 2}], [{x: 3, y: 3}], [{x: 4, y: 4}], [{x: 5, y: 5}], [{x: 8, y: 8}]],
@@ -969,8 +969,8 @@ mod tests {
         let expected = unindent::unindent(
             "\
             [
-                Int64[None, 1, 2, 3, 4, 5, 6, 7],
-                Timestamp(Nanosecond, None)[None, 1970-01-01 00:00:00.000000001, None, None, None, 1970-01-01 00:00:00.000000005, None, 1970-01-01 00:00:00.000000007],
+                Int64[None, 10, 20, 30, 40, 50, 60, 70],
+                Timestamp(Nanosecond, None)[None, 1970-01-01 00:00:00.000000010, None, None, None, 1970-01-01 00:00:00.000000050, None, 1970-01-01 00:00:00.000000070],
                 ListArray[None, None, None, [2], [3], [4], [4], [6]],
                 ListArray[[c], [c], [c], [c], [c], [c], [c], [c]],
                 ListArray[None, [{x: 0, y: 0}], [{x: 1, y: 1}], [{x: 2, y: 2}], [{x: 3, y: 3}], [{x: 4, y: 4}], [{x: 5, y: 5}], [{x: 8, y: 8}]],
@@ -997,7 +997,7 @@ mod tests {
 
         let timeline = Timeline::new_sequence("frame_nr");
         let mut query = QueryExpression2::new(timeline);
-        query.filtered_index_range = Some(ResolvedTimeRange::new(3, 6));
+        query.filtered_index_range = Some(ResolvedTimeRange::new(30, 60));
         eprintln!("{query:#?}:");
 
         let query_handle = query_engine.query(query.clone());
@@ -1015,8 +1015,8 @@ mod tests {
         let expected = unindent::unindent(
             "\
             [
-                Int64[None, 3, 4, 5, 6],
-                Timestamp(Nanosecond, None)[None, None, None, 1970-01-01 00:00:00.000000005, None],
+                Int64[None, 30, 40, 50, 60],
+                Timestamp(Nanosecond, None)[None, None, None, 1970-01-01 00:00:00.000000050, None],
                 ListArray[None, [2], [3], [4], None],
                 ListArray[[c], None, None, None, None],
                 ListArray[None, [{x: 2, y: 2}], [{x: 3, y: 3}], [{x: 4, y: 4}], [{x: 5, y: 5}]],
@@ -1044,7 +1044,7 @@ mod tests {
         let timeline = Timeline::new_sequence("frame_nr");
         let mut query = QueryExpression2::new(timeline);
         query.filtered_index_values = Some(
-            [0, 3, 6, 9]
+            [0, 30, 60, 90]
                 .into_iter()
                 .map(TimeInt::new_temporal)
                 .chain(std::iter::once(TimeInt::STATIC))
@@ -1067,7 +1067,7 @@ mod tests {
         let expected = unindent::unindent(
             "\
             [
-                Int64[None, 3, 6],
+                Int64[None, 30, 60],
                 Timestamp(Nanosecond, None)[None, None, None],
                 ListArray[None, [2], None],
                 ListArray[[c], None, None],
@@ -1175,8 +1175,8 @@ mod tests {
             let expected = unindent::unindent(
                 "\
                 [
-                    Int64[1, 2, 3, 4, 5, 6, 7],
-                    Timestamp(Nanosecond, None)[1970-01-01 00:00:00.000000001, None, None, None, 1970-01-01 00:00:00.000000005, None, 1970-01-01 00:00:00.000000007],
+                    Int64[10, 20, 30, 40, 50, 60, 70],
+                    Timestamp(Nanosecond, None)[1970-01-01 00:00:00.000000010, None, None, None, 1970-01-01 00:00:00.000000050, None, 1970-01-01 00:00:00.000000070],
                     ListArray[None, None, [2], [3], [4], None, [6]],
                     ListArray[None, None, None, None, None, None, None],
                     ListArray[[{x: 0, y: 0}], [{x: 1, y: 1}], [{x: 2, y: 2}], [{x: 3, y: 3}], [{x: 4, y: 4}], [{x: 5, y: 5}], [{x: 8, y: 8}]],
@@ -1212,7 +1212,7 @@ mod tests {
             let expected = unindent::unindent(
                 "\
                 [
-                    Int64[3, 4, 5, 7],
+                    Int64[30, 40, 50, 70],
                     Timestamp(Nanosecond, None)[None, None, None, None],
                     ListArray[[2], [3], [4], [6]],
                     ListArray[None, None, None, None],
@@ -1304,7 +1304,7 @@ mod tests {
             let expected = unindent::unindent(
                 "\
                 [
-                    Int64[None, 3, 4, 5, 7],
+                    Int64[None, 30, 40, 50, 70],
                     Timestamp(Nanosecond, None)[None, None, None, None, None],
                     ListArray[None, [2], [3], [4], [6]],
                     ListArray[[c], None, None, None, None],
@@ -1387,8 +1387,8 @@ mod tests {
             let expected = unindent::unindent(
                 "\
                 [
-                    Int64[None, 1, 2, 3, 4, 5, 6, 7],
-                    Int64[None, 1, 2, 3, 4, 5, 6, 7],
+                    Int64[None, 10, 20, 30, 40, 50, 60, 70],
+                    Int64[None, 10, 20, 30, 40, 50, 60, 70],
                     NullArray(8),
                 ]\
                 ",
@@ -1523,7 +1523,7 @@ mod tests {
             let expected = unindent::unindent(
                 "\
                 [
-                    Int64[None, 3, 4, 5, 7],
+                    Int64[None, 30, 40, 50, 70],
                     Timestamp(Nanosecond, None)[None, None, None, None, None],
                     NullArray(5),
                     NullArray(5),
@@ -1549,13 +1549,13 @@ mod tests {
 
         let entity_path = EntityPath::from("this/that");
 
-        let frame1 = TimeInt::new_temporal(1);
-        let frame2 = TimeInt::new_temporal(2);
-        let frame3 = TimeInt::new_temporal(3);
-        let frame4 = TimeInt::new_temporal(4);
-        let frame5 = TimeInt::new_temporal(5);
-        let frame6 = TimeInt::new_temporal(6);
-        let frame7 = TimeInt::new_temporal(7);
+        let frame1 = TimeInt::new_temporal(10);
+        let frame2 = TimeInt::new_temporal(20);
+        let frame3 = TimeInt::new_temporal(30);
+        let frame4 = TimeInt::new_temporal(40);
+        let frame5 = TimeInt::new_temporal(50);
+        let frame6 = TimeInt::new_temporal(60);
+        let frame7 = TimeInt::new_temporal(70);
 
         let points1 = MyPoint::from_iter(0..1);
         let points2 = MyPoint::from_iter(1..2);
