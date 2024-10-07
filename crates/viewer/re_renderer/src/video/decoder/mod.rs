@@ -50,7 +50,11 @@ pub fn new_video_decoder(
         if #[cfg(target_arch = "wasm32")] {
             let decoder = web::WebVideoDecoder::new(render_context, data, hw_acceleration)?;
         } else if #[cfg(feature = "video_av1")] {
-            let decoder = native_av1::Av1VideoDecoder::new(debug_name, render_context, data)?;
+            let decoder = if cfg!(debug_assertions) {
+                return Err(DecodingError::NoNativeDebug); // because debug builds of rav1d are so slow
+            } else {
+                native_av1::Av1VideoDecoder::new(debug_name, render_context, data)?
+            };
         } else {
             let decoder = no_native_decoder::NoNativeVideoDecoder::default();
         }

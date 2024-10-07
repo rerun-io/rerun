@@ -55,6 +55,11 @@ pub enum DecodingError {
     #[cfg(feature = "video_av1")]
     #[error("Unsupported codec: {codec:?}. Only AV1 is currently supported on native.")]
     UnsupportedCodec { codec: String },
+
+    #[cfg(not(target_arch = "wasm32"))]
+    #[cfg(feature = "video_av1")]
+    #[error("Video decoding not supported in native debug builds.")]
+    NoNativeDebug,
 }
 
 pub type FrameDecodingResult = Result<VideoFrameTexture, DecodingError>;
