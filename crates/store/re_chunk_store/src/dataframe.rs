@@ -748,12 +748,12 @@ pub struct QueryExpression2 {
     /// Example: `[TimeInt(12), TimeInt(14)]`.
     pub filtered_index_values: Option<BTreeSet<IndexValue>>,
 
-    /// TODO(cmc): NOT IMPLEMENTED.
-    ///
     /// The specific index values used to sample _rows_ from the view contents.
     ///
     /// The final dataset will contain one row per sampled index value, regardless of whether data
     /// existed for that index value in the view contents.
+    /// The semantics of the query are consistent with all other settings: the results will be
+    /// sorted on the `filtered_index`, and only contain unique index values.
     ///
     /// The order of the samples will be respected in the final result.
     ///
@@ -761,7 +761,7 @@ pub struct QueryExpression2 {
     /// and [`QueryExpression2::filtered_index_values`].
     ///
     /// Example: `[TimeInt(12), TimeInt(14)]`.
-    pub using_index_values: Option<Vec<IndexValue>>,
+    pub using_index_values: Option<BTreeSet<IndexValue>>,
 
     /// The component column used to filter out _rows_ from the view contents.
     ///
