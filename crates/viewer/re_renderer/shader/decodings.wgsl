@@ -53,6 +53,9 @@ fn rgb_from_yuv(yuv: vec3f) -> vec3f {
     let v = (yuv.z - 128.0) / 224.0;
 
     // BT.601 (aka. SDTV, aka. Rec.601). wiki: https://en.wikipedia.org/wiki/YCbCr#ITU-R_BT.601_conversion
+    // Also note according to https://en.wikipedia.org/wiki/SRGB#sYCC_extended-gamut_transformation
+    // > Although the RGB color primaries are based on BT.709,
+    // > the equations for transformation from sRGB to sYCC and vice versa are based on BT.601.
     let r = y + 1.402 * v;
     let g = y - 0.344 * u - 0.714 * v;
     let b = y + 1.772 * u;
