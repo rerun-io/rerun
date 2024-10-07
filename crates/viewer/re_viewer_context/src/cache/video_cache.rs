@@ -14,7 +14,7 @@ use re_renderer::{
     external::re_video::VideoLoadError,
     video::{DecodeHardwareAcceleration, Video},
 };
-use re_types::Loggable as _;
+use re_types::{components::MediaType, Loggable as _};
 
 // ----------------------------------------------------------------------------
 
@@ -40,12 +40,22 @@ impl VideoCache {
         debug_name: String,
         blob_row_id: RowId,
         video_data: &re_types::datatypes::Blob,
-        media_type: Option<&str>,
+        media_type: Option<&MediaType>,
         hw_acceleration: DecodeHardwareAcceleration,
     ) -> Arc<Result<Video, VideoLoadError>> {
         re_tracing::profile_function!();
 
-        let inner_key = Hash64::hash((media_type, hw_acceleration));
+        // In order to avoid loading the same video multiple times with
+        // known and unknown media type, we have to resolve the media type before
+        // loading & building the cache key.
+        let Some(media_type) = media_type
+            .cloned()
+            .or_else(|| MediaType::guess_from_data(video_data))
+        else {
+            return Arc::new(Err(VideoLoadError::UnrecognizedMimeType));
+        };
+
+        let inner_key = Hash64::hash((media_type.as_str(), hw_acceleration));
 
         let entry = self
             .0
@@ -53,7 +63,8 @@ impl VideoCache {
             .or_default()
             .entry(inner_key)
             .or_insert_with(|| {
-                let video = Video::load(debug_name, video_data, media_type, hw_acceleration);
+                let video =
+                    Video::load(debug_name, video_data, media_type.as_str(), hw_acceleration);
                 Entry {
                     used_this_frame: AtomicBool::new(true),
                     video: Arc::new(video),
@@ -70,6 +81,13 @@ impl VideoCache {
 
 impl Cache for VideoCache {
     fn begin_frame(&mut self, renderer_active_frame_idx: u64) {
+        // Clean up unused video data.
+        self.0.retain(|_row_id, per_key| {
+            per_key.retain(|_, v| v.used_this_frame.load(Ordering::Acquire));
+            !per_key.is_empty()
+        });
+
+        // Of the remaining video data, remove all unused decoders.
         for per_key in self.0.values() {
             for v in per_key.values() {
                 v.used_this_frame.store(false, Ordering::Release);
@@ -81,10 +99,13 @@ impl Cache for VideoCache {
     }
 
     fn purge_memory(&mut self) {
-        self.0.retain(|_row_id, per_key| {
-            per_key.retain(|_, v| v.used_this_frame.load(Ordering::Acquire));
-            !per_key.is_empty()
-        });
+        // We aggressively purge all unused video data every frame.
+        // The expectation here is that parsing video data is fairly fast,
+        // since decoding happens separately.
+        //
+        // As of writing, in a debug wasm build with Chrome loading a 600MiB 1h video
+        // this assumption holds up fine: There is a (sufferable) delay,
+        // but it's almost entirely due to the decoder trying to retrieve a frame.
     }
 
     fn on_store_events(&mut self, events: &[ChunkStoreEvent]) {

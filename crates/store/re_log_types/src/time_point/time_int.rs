@@ -118,6 +118,7 @@ impl TimeInt {
 
     /// Always returns [`Self::STATIC`] for [`Self::STATIC`].
     #[inline]
+    #[must_use]
     pub fn inc(&self) -> Self {
         match self.0 {
             Some(t) => Self::new_temporal(t.get().saturating_add(1)),
@@ -127,6 +128,7 @@ impl TimeInt {
 
     /// Always returns [`Self::STATIC`] for [`Self::STATIC`].
     #[inline]
+    #[must_use]
     pub fn dec(&self) -> Self {
         match self.0 {
             Some(t) => Self::new_temporal(t.get().saturating_sub(1)),

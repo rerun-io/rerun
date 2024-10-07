@@ -413,7 +413,7 @@ fn latest_at_query_video_from_datastore(
             debug_name,
             blob_row_id,
             &blob,
-            media_type.as_ref().map(|m| m.as_str()),
+            media_type.as_ref(),
             ctx.app_options.video_decoder_hw_acceleration,
         )
     }))

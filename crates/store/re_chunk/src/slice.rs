@@ -61,6 +61,9 @@ impl Chunk {
     /// This cannot fail nor panic: `index` and `len` will be capped so that they cannot
     /// run out of bounds.
     /// This can result in an empty [`Chunk`] being returned if the slice is completely OOB.
+    ///
+    /// WARNING: the returned chunk has the same old [`crate::ChunkId`]! Change it with [`Self::with_id`].
+    #[must_use]
     #[inline]
     pub fn row_sliced(&self, index: usize, len: usize) -> Self {
         re_tracing::profile_function!();
@@ -144,6 +147,9 @@ impl Chunk {
     ///
     /// If `timeline` is not found within the [`Chunk`], the end result will be the same as the
     /// current chunk but without any timeline column.
+    ///
+    /// WARNING: the returned chunk has the same old [`crate::ChunkId`]! Change it with [`Self::with_id`].
+    #[must_use]
     #[inline]
     pub fn timeline_sliced(&self, timeline: Timeline) -> Self {
         let Self {
@@ -184,6 +190,9 @@ impl Chunk {
     ///
     /// If `component_name` is not found within the [`Chunk`], the end result will be the same as the
     /// current chunk but without any component column.
+    ///
+    /// WARNING: the returned chunk has the same old [`crate::ChunkId`]! Change it with [`Self::with_id`].
+    #[must_use]
     #[inline]
     pub fn component_sliced(&self, component_name: ComponentName) -> Self {
         let Self {
@@ -224,6 +233,9 @@ impl Chunk {
     ///
     /// If none of the selected timelines exist in the [`Chunk`], the end result will be the same as the
     /// current chunk but without any timeline column.
+    ///
+    /// WARNING: the returned chunk has the same old [`crate::ChunkId`]! Change it with [`Self::with_id`].
+    #[must_use]
     #[inline]
     pub fn timelines_sliced(&self, timelines_to_keep: &IntSet<Timeline>) -> Self {
         let Self {
@@ -264,6 +276,9 @@ impl Chunk {
     ///
     /// If none of the `component_names` exist in the [`Chunk`], the end result will be the same as the
     /// current chunk but without any component column.
+    ///
+    /// WARNING: the returned chunk has the same old [`crate::ChunkId`]! Change it with [`Self::with_id`].
+    #[must_use]
     #[inline]
     pub fn components_sliced(&self, component_names: &IntSet<ComponentName>) -> Self {
         let Self {
@@ -306,6 +321,9 @@ impl Chunk {
     ///
     /// If `component_name` doesn't exist in this [`Chunk`], or if it is already dense, this method
     /// is a no-op.
+    ///
+    /// WARNING: the returned chunk has the same old [`crate::ChunkId`]! Change it with [`Self::with_id`].
+    #[must_use]
     #[inline]
     pub fn densified(&self, component_name_pov: ComponentName) -> Self {
         let Self {
@@ -400,6 +418,9 @@ impl Chunk {
     /// Empties the [`Chunk`] vertically.
     ///
     /// The result is a new [`Chunk`] with the same columns but zero rows.
+    ///
+    /// WARNING: the returned chunk has the same old [`crate::ChunkId`]! Change it with [`Self::with_id`].
+    #[must_use]
     #[inline]
     pub fn emptied(&self) -> Self {
         let Self {

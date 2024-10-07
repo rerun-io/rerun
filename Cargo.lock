@@ -5154,7 +5154,9 @@ dependencies = [
  "re_types",
  "re_types_core",
  "seq-macro",
+ "similar-asserts",
  "thiserror",
+ "unindent",
 ]
 
 [[package]]
@@ -6311,6 +6313,7 @@ name = "rerun_c"
 version = "0.19.0-alpha.1+dev"
 dependencies = [
  "ahash",
+ "infer",
  "once_cell",
  "parking_lot",
  "re_arrow2",
@@ -6326,6 +6329,7 @@ dependencies = [
  "arrow",
  "crossbeam",
  "document-features",
+ "infer",
  "itertools 0.13.0",
  "mimalloc",
  "once_cell",
@@ -6337,10 +6341,15 @@ dependencies = [
  "re_build_info",
  "re_build_tools",
  "re_chunk",
+ "re_chunk_store",
+ "re_dataframe2",
+ "re_entity_db",
  "re_log",
+ "re_log_encoding",
  "re_log_types",
  "re_memory",
  "re_sdk",
+ "re_types",
  "re_video",
  "re_web_viewer_server",
  "re_ws_comms",

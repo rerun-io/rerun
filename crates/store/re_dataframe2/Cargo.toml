@@ -50,3 +50,6 @@ thiserror.workspace = true
 
 [dev-dependencies]
 re_types.workspace = true
+
+similar-asserts.workspace = true
+unindent.workspace = true

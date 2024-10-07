@@ -152,7 +152,7 @@ impl Video {
     pub fn load(
         debug_name: String,
         data: &[u8],
-        media_type: Option<&str>,
+        media_type: &str,
         decode_hw_acceleration: DecodeHardwareAcceleration,
     ) -> Result<Self, VideoLoadError> {
         let data = Arc::new(re_video::VideoData::load_from_bytes(data, media_type)?);

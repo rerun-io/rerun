@@ -59,6 +59,10 @@ pub enum ImageLoadError {
     /// The encountered MIME type is not supported for decoding images.
     #[error("MIME type '{0}' is not supported for images")]
     UnsupportedMimeType(String),
+
+    /// Failed to read the MIME type from inspecting the image data blob.
+    #[error("Could not detect MIME type from the image contents")]
+    UnrecognizedMimeType,
 }
 
 #[cfg(feature = "image")]

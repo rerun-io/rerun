@@ -193,12 +193,13 @@ impl Ord for TimeColumnDescriptor {
 
 impl TimeColumnDescriptor {
     #[inline]
+    // Time column must be nullable since static data doesn't have a time.
     pub fn to_arrow_field(&self) -> ArrowField {
         let Self { timeline, datatype } = self;
         ArrowField::new(
             timeline.name().to_string(),
             datatype.clone(),
-            false, /* nullable */
+            true, /* nullable */
         )
     }
 }
@@ -335,6 +336,11 @@ impl ComponentColumnDescriptor {
             store_datatype,
             is_static: false,
         }
+    }
+
+    #[inline]
+    pub fn matches(&self, entity_path: &EntityPath, component_name: &ComponentName) -> bool {
+        &self.entity_path == entity_path && &self.component_name == component_name
     }
 
     fn metadata(&self) -> arrow2::datatypes::Metadata {
@@ -823,8 +829,6 @@ pub struct QueryExpression2 {
     /// Example: `ResolvedTimeRange(10, 20)`.
     pub filtered_index_range: Option<IndexRange>,
 
-    /// TODO(cmc): NOT IMPLEMENTED.
-    ///
     /// The specific index values used to filter out _rows_ from the view contents.
     ///
     /// Only rows where at least 1 column contains non-null data at these specific values will be kept
@@ -852,8 +856,6 @@ pub struct QueryExpression2 {
     // TODO(jleibs): We need an alternative name for sampled.
     pub sampled_index_values: Option<Vec<IndexValue>>,
 
-    /// TODO(cmc): NOT IMPLEMENTED.
-    ///
     /// The component column used to filter out _rows_ from the view contents.
     ///
     /// Only rows where this column contains non-null data be kept in the final dataset.
