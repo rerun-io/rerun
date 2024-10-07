@@ -12,7 +12,7 @@ use itertools::Itertools as _;
 use re_chunk::{LatestAtQuery, TimelineName};
 use re_log_types::{EntityPath, TimeInt, Timeline};
 use re_log_types::{EntityPathFilter, ResolvedTimeRange};
-use re_types_core::{ArchetypeName, ComponentName, Loggable as _};
+use re_types_core::{ArchetypeName, ComponentName};
 
 use crate::ChunkStore;
 
@@ -70,12 +70,10 @@ pub enum JoinEncoding {
 // Describes any kind of column.
 //
 // See:
-// * [`ControlColumnDescriptor`]
 // * [`TimeColumnDescriptor`]
 // * [`ComponentColumnDescriptor`]
 #[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub enum ColumnDescriptor {
-    Control(ControlColumnDescriptor),
     Time(TimeColumnDescriptor),
     Component(ComponentColumnDescriptor),
 }
@@ -84,7 +82,7 @@ impl ColumnDescriptor {
     #[inline]
     pub fn entity_path(&self) -> Option<&EntityPath> {
         match self {
-            Self::Control(_) | Self::Time(_) => None,
+            Self::Time(_) => None,
             Self::Component(descr) => Some(&descr.entity_path),
         }
     }
@@ -92,7 +90,6 @@ impl ColumnDescriptor {
     #[inline]
     pub fn datatype(&self) -> ArrowDatatype {
         match self {
-            Self::Control(descr) => descr.datatype.clone(),
             Self::Time(descr) => descr.datatype.clone(),
             Self::Component(descr) => descr.returned_datatype(),
         }
@@ -101,7 +98,6 @@ impl ColumnDescriptor {
     #[inline]
     pub fn to_arrow_field(&self) -> ArrowField {
         match self {
-            Self::Control(descr) => descr.to_arrow_field(),
             Self::Time(descr) => descr.to_arrow_field(),
             Self::Component(descr) => descr.to_arrow_field(),
         }
@@ -110,56 +106,9 @@ impl ColumnDescriptor {
     #[inline]
     pub fn short_name(&self) -> String {
         match self {
-            Self::Control(descr) => descr.component_name.short_name().to_owned(),
             Self::Time(descr) => descr.timeline.name().to_string(),
             Self::Component(descr) => descr.component_name.short_name().to_owned(),
         }
-    }
-}
-
-/// Describes a column used to control Rerun's behavior, such as `RowId`.
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct ControlColumnDescriptor {
-    /// Semantic name associated with this data.
-    ///
-    /// Example: `RowId::name()`.
-    pub component_name: ComponentName,
-
-    /// The Arrow datatype of the column.
-    pub datatype: ArrowDatatype,
-}
-
-impl PartialOrd for ControlColumnDescriptor {
-    #[inline]
-    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
-        Some(self.cmp(other))
-    }
-}
-
-impl Ord for ControlColumnDescriptor {
-    #[inline]
-    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
-        let Self {
-            component_name,
-            datatype: _,
-        } = self;
-        component_name.cmp(&other.component_name)
-    }
-}
-
-impl ControlColumnDescriptor {
-    #[inline]
-    pub fn to_arrow_field(&self) -> ArrowField {
-        let Self {
-            component_name,
-            datatype,
-        } = self;
-
-        ArrowField::new(
-            component_name.to_string(),
-            datatype.clone(),
-            false, /* nullable */
-        )
     }
 }
 
@@ -411,7 +360,6 @@ impl ComponentColumnDescriptor {
 /// Describes a column selection to return as part of a query.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum ColumnSelector {
-    Control(ControlColumnSelector),
     Time(TimeColumnSelector),
     Component(ComponentColumnSelector),
     //TODO(jleibs): Add support for archetype-based component selection.
@@ -422,17 +370,9 @@ impl From<ColumnDescriptor> for ColumnSelector {
     #[inline]
     fn from(desc: ColumnDescriptor) -> Self {
         match desc {
-            ColumnDescriptor::Control(desc) => Self::Control(desc.into()),
             ColumnDescriptor::Time(desc) => Self::Time(desc.into()),
             ColumnDescriptor::Component(desc) => Self::Component(desc.into()),
         }
-    }
-}
-
-impl From<ControlColumnSelector> for ColumnSelector {
-    #[inline]
-    fn from(desc: ControlColumnSelector) -> Self {
-        Self::Control(desc)
     }
 }
 
@@ -447,37 +387,6 @@ impl From<ComponentColumnSelector> for ColumnSelector {
     #[inline]
     fn from(desc: ComponentColumnSelector) -> Self {
         Self::Component(desc)
-    }
-}
-
-/// Select a control column.
-///
-/// The only control column currently supported is `rerun.components.RowId`.
-//
-// TODO(cmc): `RowId` shouldnt be a control column at this point, it should be yet another index.
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct ControlColumnSelector {
-    /// Name of the control column.
-    //
-    // TODO(cmc): this should be `component_name`.
-    pub component: ComponentName,
-}
-
-impl ControlColumnSelector {
-    #[inline]
-    pub fn row_id() -> Self {
-        Self {
-            component: RowId::name(),
-        }
-    }
-}
-
-impl From<ControlColumnDescriptor> for ControlColumnSelector {
-    #[inline]
-    fn from(desc: ControlColumnDescriptor) -> Self {
-        Self {
-            component: desc.component_name,
-        }
     }
 }
 
@@ -917,11 +826,6 @@ impl ChunkStore {
     pub fn schema(&self) -> Vec<ColumnDescriptor> {
         re_tracing::profile_function!();
 
-        let controls = std::iter::once(ColumnDescriptor::Control(ControlColumnDescriptor {
-            component_name: RowId::name(),
-            datatype: RowId::arrow_datatype(),
-        }));
-
         let timelines = self.all_timelines().into_iter().map(|timeline| {
             ColumnDescriptor::Time(TimeColumnDescriptor {
                 timeline,
@@ -995,26 +899,7 @@ impl ChunkStore {
             .chain(temporal_components)
             .collect::<BTreeSet<_>>();
 
-        controls.chain(timelines).chain(components).collect()
-    }
-
-    /// Given a [`ControlColumnSelector`], returns the corresponding [`ControlColumnDescriptor`].
-    #[allow(clippy::unused_self)]
-    pub fn resolve_control_selector(
-        &self,
-        selector: &ControlColumnSelector,
-    ) -> ControlColumnDescriptor {
-        if selector.component == RowId::name() {
-            ControlColumnDescriptor {
-                component_name: selector.component,
-                datatype: RowId::arrow_datatype(),
-            }
-        } else {
-            ControlColumnDescriptor {
-                component_name: selector.component,
-                datatype: ArrowDatatype::Null,
-            }
-        }
+        timelines.chain(components).collect()
     }
 
     /// Given a [`TimeColumnSelector`], returns the corresponding [`TimeColumnDescriptor`].
@@ -1076,12 +961,10 @@ impl ChunkStore {
             .map(|selector| {
                 let selector = selector.into();
                 match selector {
-                    ColumnSelector::Control(selector) => {
-                        ColumnDescriptor::Control(self.resolve_control_selector(&selector))
-                    }
                     ColumnSelector::Time(selector) => {
                         ColumnDescriptor::Time(self.resolve_time_selector(&selector))
                     }
+
                     ColumnSelector::Component(selector) => {
                         ColumnDescriptor::Component(self.resolve_component_selector(&selector))
                     }
@@ -1171,7 +1054,7 @@ impl ChunkStore {
         self.schema()
             .into_iter()
             .filter(|column| match column {
-                ColumnDescriptor::Control(_) | ColumnDescriptor::Time(_) => true,
+                ColumnDescriptor::Time(_) => true,
                 ColumnDescriptor::Component(column) => view_contents
                     .get(&column.entity_path)
                     .map_or(false, |components| {
