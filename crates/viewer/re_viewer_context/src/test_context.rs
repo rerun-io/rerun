@@ -123,7 +123,7 @@ impl TestContext {
         self.handle_system_command();
     }
 
-    ///Best-effort attempt to meaningfully handle some of the system commands.
+    /// Best-effort attempt to meaningfully handle some of the system commands.
     pub fn handle_system_command(&mut self) {
         while let Some(command) = self.command_receiver.recv_system() {
             let mut handled = true;
