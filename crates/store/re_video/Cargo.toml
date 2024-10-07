@@ -47,9 +47,13 @@ thiserror.workspace = true
 
 # If this package fails to build, install `nasm` locally, or build through `pixi`.
 # See https://github.com/rerun-io/rav1d/pull/1
-dav1d = { git = "https://github.com/rerun-io/rav1d", branch = "emilk/dav1d-interface", package = "rav1d", optional = true } # TODO(#7588): publish this fork
+# TODO(#7588): publish this fork of rav1d
+dav1d = { git = "https://github.com/rerun-io/rav1d", branch = "emilk/dav1d-interface", package = "rav1d", optional = true, default-features = false, features = [
+  # We opt-out of wasm features so we don't need  `nasm` installed. It's still pretty fast.
+  "bitdepth_8",
+] }
 
-# dav1d = { version = "0.10.3",  optional = true } # Requires more things to build, but is fast in debug builds. Useful for development.
+# dav1d = { version = "0.10.3",  optional = true } # Requires separate install of `dav1d` library. Fast in debug builds. Useful for development.
 
 [dev-dependencies]
 indicatif.workspace = true
