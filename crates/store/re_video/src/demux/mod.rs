@@ -52,28 +52,16 @@ impl VideoData {
     ///
     /// TODO(andreas, jan): This should not copy the data, but instead store slices into a shared buffer.
     /// at the very least the should be a way to extract only metadata.
-    pub fn load_from_bytes(data: &[u8], media_type: Option<&str>) -> Result<Self, VideoLoadError> {
-        // Media type guessing here should be identical to `re_types::MediaType::guess_from_data`,
-        // but we don't want to depend on `re_types` here.
-        let media_type = if let Some(media_type) = media_type {
-            media_type.to_owned()
-        } else if mp4::is_mp4(data) {
-            "video/mp4".to_owned()
-        } else {
-            return Err(VideoLoadError::UnrecognizedVideoFormat {
-                provided_media_type: media_type.map(|m| m.to_owned()),
-            });
-        };
-
-        match media_type.as_str() {
+    pub fn load_from_bytes(data: &[u8], media_type: &str) -> Result<Self, VideoLoadError> {
+        match media_type {
             "video/mp4" => mp4::load_mp4(data),
             media_type => {
                 if media_type.starts_with("video/") {
-                    Err(VideoLoadError::UnsupportedMediaType {
+                    Err(VideoLoadError::UnsupportedMimeType {
                         provided_or_detected_media_type: media_type.to_owned(),
                     })
                 } else {
-                    Err(VideoLoadError::MediaTypeIsNotAVideo {
+                    Err(VideoLoadError::MimeTypeIsNotAVideo {
                         provided_or_detected_media_type: media_type.to_owned(),
                     })
                 }
@@ -233,18 +221,18 @@ pub enum VideoLoadError {
     InvalidSamples,
 
     #[error("The media type of the blob is not a video: {provided_or_detected_media_type}")]
-    MediaTypeIsNotAVideo {
+    MimeTypeIsNotAVideo {
         provided_or_detected_media_type: String,
     },
 
-    #[error("Video file has unsupported media type {provided_or_detected_media_type}")]
-    UnsupportedMediaType {
+    #[error("MIME type '{provided_or_detected_media_type}' is not supported for videos")]
+    UnsupportedMimeType {
         provided_or_detected_media_type: String,
     },
 
-    // Technically this is a "failed to detect" case, but the only formats we detect as of writing are the ones we support.
-    #[error("Video file has unsupported format")]
-    UnrecognizedVideoFormat { provided_media_type: Option<String> },
+    /// Not used in `re_video` itself, but useful for media type detection ahead of calling [`VideoData::load_from_bytes`].
+    #[error("Could not detect MIME type from the video contents")]
+    UnrecognizedMimeType,
 
     // `FourCC`'s debug impl doesn't quote the result
     #[error("Video track uses unsupported codec \"{0}\"")] // NOLINT
