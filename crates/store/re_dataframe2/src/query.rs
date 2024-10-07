@@ -386,7 +386,7 @@ impl QueryHandle<'_> {
             Either::Right(view_chunks)
         };
 
-        let all_unique_timestamps: HashSet<TimeInt> = view_chunks
+        let mut all_unique_timestamps: HashSet<TimeInt> = view_chunks
             .flat_map(|chunks| {
                 chunks.iter().filter_map(|(_cursor, chunk)| {
                     if chunk.is_static() {
@@ -401,6 +401,10 @@ impl QueryHandle<'_> {
             })
             .flatten()
             .collect();
+
+        if let Some(filtered_index_values) = self.query.filtered_index_values.as_ref() {
+            all_unique_timestamps.retain(|time| filtered_index_values.contains(time));
+        }
 
         all_unique_timestamps.len() as _
     }
