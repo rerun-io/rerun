@@ -5,21 +5,19 @@
 
 from __future__ import annotations
 
-from typing import Any
-
 from attrs import define, field
 
-from .. import components, datatypes
+from .. import components
 from .._baseclasses import (
     Archetype,
 )
-from ..error_utils import catch_and_log_exceptions
+from .capsules3d_ext import Capsules3DExt
 
 __all__ = ["Capsules3D"]
 
 
 @define(str=False, repr=False, init=False)
-class Capsules3D(Archetype):
+class Capsules3D(Capsules3DExt, Archetype):
     """
     **Archetype**: 3D capsules; cylinders with hemispherical caps.
 
@@ -29,71 +27,7 @@ class Capsules3D(Archetype):
     instances.
     """
 
-    def __init__(
-        self: Any,
-        lengths: datatypes.Float32ArrayLike,
-        radii: datatypes.Float32ArrayLike,
-        *,
-        translations: datatypes.Vec3DArrayLike | None = None,
-        rotation_axis_angles: datatypes.RotationAxisAngleArrayLike | None = None,
-        quaternions: datatypes.QuaternionArrayLike | None = None,
-        colors: datatypes.Rgba32ArrayLike | None = None,
-        labels: datatypes.Utf8ArrayLike | None = None,
-        show_labels: datatypes.BoolLike | None = None,
-        class_ids: datatypes.ClassIdArrayLike | None = None,
-    ):
-        """
-        Create a new instance of the Capsules3D archetype.
-
-        Parameters
-        ----------
-        lengths:
-            The shape of the capsule defined as the length of the line between its endpoints.
-        radii:
-            Radius of the capsules.
-        translations:
-            Optional translations of the capsules.
-
-            If not specified, one end of each capsule will be at (0, 0, 0).
-            Note that this uses a [`components.PoseTranslation3D`][rerun.components.PoseTranslation3D] which is also used by [`archetypes.InstancePoses3D`][rerun.archetypes.InstancePoses3D].
-        rotation_axis_angles:
-            Rotations via axis + angle.
-
-            If no rotation is specified, the capsules align with the +Z axis of the local coordinate system.
-            Note that this uses a [`components.PoseRotationAxisAngle`][rerun.components.PoseRotationAxisAngle] which is also used by [`archetypes.InstancePoses3D`][rerun.archetypes.InstancePoses3D].
-        quaternions:
-            Rotations via quaternion.
-
-            If no rotation is specified, the capsules align with the +Z axis of the local coordinate system.
-            Note that this uses a [`components.PoseRotationQuat`][rerun.components.PoseRotationQuat] which is also used by [`archetypes.InstancePoses3D`][rerun.archetypes.InstancePoses3D].
-        colors:
-            Optional colors for the capsules.
-        labels:
-            Optional text labels for the capsules, which will be located at their centers.
-        show_labels:
-            Optional choice of whether the text labels should be shown by default.
-        class_ids:
-            Optional class ID for the ellipsoids.
-
-            The class ID provides colors and labels if not specified explicitly.
-
-        """
-
-        # You can define your own __init__ function as a member of Capsules3DExt in capsules3d_ext.py
-        with catch_and_log_exceptions(context=self.__class__.__name__):
-            self.__attrs_init__(
-                lengths=lengths,
-                radii=radii,
-                translations=translations,
-                rotation_axis_angles=rotation_axis_angles,
-                quaternions=quaternions,
-                colors=colors,
-                labels=labels,
-                show_labels=show_labels,
-                class_ids=class_ids,
-            )
-            return
-        self.__attrs_clear__()
+    # __init__ can be found in capsules3d_ext.py
 
     def __attrs_clear__(self) -> None:
         """Convenience method for calling `__attrs_init__` with all `None`s."""

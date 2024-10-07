@@ -25,7 +25,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             .with_rotation_axis_angles((0..5).map(|i| {
                 rerun::RotationAxisAngle::new(
                     [1.0, 0.0, 0.0],
-                    rerun::Angle::from_degrees(i as f32 * -18.0),
+                    rerun::Angle::from_degrees(i as f32 * -22.5),
                 )
             })),
     )?;

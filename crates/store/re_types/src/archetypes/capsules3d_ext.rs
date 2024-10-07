@@ -1,5 +1,3 @@
-use itertools::Itertools as _; // for .multiunzip()
-
 use crate::components;
 
 use super::Capsules3D;
@@ -18,11 +16,14 @@ impl Capsules3D {
     }
 
     /// Creates a new [`Capsules3D`] where each capsule extends between the given pairs of points.
+    #[cfg(feature = "glam")]
     pub fn from_endpoints_and_radii(
         start_points: impl IntoIterator<Item = impl Into<components::Position3D>>,
         end_points: impl IntoIterator<Item = impl Into<components::Position3D>>,
         radii: impl IntoIterator<Item = f32>,
     ) -> Self {
+        use itertools::Itertools as _; // for .multiunzip()
+
         let (lengths, translations, quaternions): (
             Vec<components::Length>,
             Vec<components::PoseTranslation3D>,
