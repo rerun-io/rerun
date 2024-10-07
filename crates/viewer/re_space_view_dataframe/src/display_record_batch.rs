@@ -11,7 +11,7 @@ use re_chunk_store::external::arrow2::{
     datatypes::DataType,
     datatypes::DataType as ArrowDataType,
 };
-use re_chunk_store::{ColumnDescriptor, ComponentColumnDescriptor, LatestAtQuery, RowId};
+use re_chunk_store::{ColumnDescriptor, ComponentColumnDescriptor, LatestAtQuery};
 use re_log_types::{EntityPath, TimeInt, Timeline};
 use re_types::external::arrow2::datatypes::IntegerType;
 use re_types_core::ComponentName;
@@ -114,7 +114,6 @@ impl ComponentData {
         &self,
         ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
-        row_id: RowId,
         latest_at_query: &LatestAtQuery,
         entity_path: &EntityPath,
         component_name: ComponentName,
@@ -154,7 +153,7 @@ impl ComponentData {
                 ctx.recording(),
                 entity_path,
                 component_name,
-                Some(row_id),
+                None,
                 &*data_to_display,
             );
         } else {
@@ -227,7 +226,6 @@ impl DisplayColumn {
         &self,
         ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
-        row_id: RowId,
         latest_at_query: &LatestAtQuery,
         row_index: usize,
         instance_index: Option<u64>,
@@ -267,7 +265,6 @@ impl DisplayColumn {
                 component_data.data_ui(
                     ctx,
                     ui,
-                    row_id,
                     latest_at_query,
                     entity_path,
                     *component_name,

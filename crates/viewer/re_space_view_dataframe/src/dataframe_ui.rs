@@ -6,7 +6,7 @@ use egui::NumExt as _;
 use itertools::Itertools;
 
 use re_chunk_store::external::re_chunk::ArrowArray;
-use re_chunk_store::{ColumnDescriptor, LatestAtQuery, RowId};
+use re_chunk_store::{ColumnDescriptor, LatestAtQuery};
 use re_dataframe2::QueryHandle;
 use re_log_types::{EntityPath, TimeInt, Timeline, TimelineName};
 use re_types_core::ComponentName;
@@ -371,7 +371,6 @@ impl<'a> egui_table::TableDelegate for DataframeTableDelegate<'a> {
                     column.data_ui(
                         self.ctx,
                         ui,
-                        RowId::ZERO,
                         &latest_at_query,
                         batch_row_idx,
                         instance_index,
