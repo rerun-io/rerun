@@ -1,6 +1,7 @@
 //! Video frame decoding.
 
 #[cfg(feature = "av1")]
+#[cfg(not(target_arch = "wasm32"))]
 pub mod av1;
 
 use crate::Time;
