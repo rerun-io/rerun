@@ -255,3 +255,28 @@ impl Query {
         Ok(())
     }
 }
+
+#[cfg(test)]
+mod test {
+    use super::Query;
+    use re_viewer_context::test_context::TestContext;
+    use re_viewer_context::SpaceViewId;
+
+    /// Simple test to demo round-trip testing using [`TestContext::run_and_handle_system_commands`].
+    #[test]
+    fn test_latest_at_enabled() {
+        let mut test_context = TestContext::default();
+
+        let view_id = SpaceViewId::random();
+
+        test_context.run_and_handle_system_commands(|ctx, _| {
+            let query = Query::from_blueprint(ctx, view_id);
+            query.save_latest_at_enabled(ctx, true);
+        });
+
+        test_context.run(|ctx, _| {
+            let query = Query::from_blueprint(ctx, view_id);
+            assert!(query.latest_at_enabled().unwrap());
+        });
+    }
+}
