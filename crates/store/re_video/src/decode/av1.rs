@@ -104,9 +104,13 @@ impl Decoder {
     // NOTE: The interface is all `&mut self` to avoid certain types of races.
     pub fn reset(&mut self) {
         re_tracing::profile_function!();
+
+        // Increment resets first…
         self.comms
             .num_outstanding_resets
-            .fetch_add(1, Ordering::SeqCst);
+            .fetch_add(1, Ordering::Release);
+
+        // …so it is visible on the decoder thread when it gets the `Reset` command.
         self.command_tx.send(Command::Reset).ok();
     }
 
@@ -123,8 +127,13 @@ impl Decoder {
 impl Drop for Decoder {
     fn drop(&mut self) {
         re_tracing::profile_function!();
-        self.comms.should_stop.store(true, Ordering::SeqCst);
+
+        // Set `should_stop` first…
+        self.comms.should_stop.store(true, Ordering::Release);
+
+        // …so it is visible on the decoder thread when it gets the `Stop` command.
         self.command_tx.send(Command::Stop).ok();
+
         // NOTE: we don't block here. The decoder thread will finish soon enough.
     }
 }
@@ -153,13 +162,13 @@ fn decoder_thread(comms: &Comms, command_rx: &Receiver<Command>, on_output: &Out
     };
 
     while let Ok(command) = command_rx.recv() {
-        if comms.should_stop.load(Ordering::SeqCst) {
+        if comms.should_stop.load(Ordering::Acquire) {
             re_log::debug!("Should stop");
             return;
         }
 
         // If we're waiting for a reset we should ignore all other commands until we receive it.
-        let has_outstanding_reset = 0 < comms.num_outstanding_resets.load(Ordering::SeqCst);
+        let has_outstanding_reset = 0 < comms.num_outstanding_resets.load(Ordering::Acquire);
 
         match command {
             Command::Chunk(chunk) => {
@@ -181,7 +190,7 @@ fn decoder_thread(comms: &Comms, command_rx: &Receiver<Command>, on_output: &Out
                 debug_assert!(matches!(decoder.get_picture(), Err(dav1d::Error::Again)),
                     "There should be no pending pictures, since we output them directly after submitting a chunk.");
 
-                comms.num_outstanding_resets.fetch_sub(1, Ordering::SeqCst);
+                comms.num_outstanding_resets.fetch_sub(1, Ordering::Release);
             }
             Command::Stop => {
                 re_log::debug!("Stop");
