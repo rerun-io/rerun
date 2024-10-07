@@ -406,7 +406,15 @@ impl QueryHandle<'_> {
             all_unique_timestamps.retain(|time| filtered_index_values.contains(time));
         }
 
-        all_unique_timestamps.len() as _
+        let num_rows = all_unique_timestamps.len() as _;
+
+        if cfg!(debug_assertions) {
+            let expected_num_rows =
+                self.engine.query(self.query.clone()).into_iter().count() as u64;
+            assert_eq!(expected_num_rows, num_rows);
+        }
+
+        num_rows
     }
 
     /// Returns the next row's worth of data.
