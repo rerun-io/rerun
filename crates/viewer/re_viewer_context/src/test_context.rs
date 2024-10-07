@@ -114,7 +114,7 @@ impl TestContext {
     }
 
     /// Run the given function with a [`ViewerContext`] produced by the [`Self`] and handle any
-    /// system commands issued during execution (see [`handle_commands`]).
+    /// system commands issued during execution (see [`handle_system_command`]).
     pub fn run_and_handle_system_commands(
         &mut self,
         func: impl FnMut(&ViewerContext<'_>, &mut egui::Ui),
@@ -127,7 +127,7 @@ impl TestContext {
     pub fn handle_system_command(&mut self) {
         while let Some(command) = self.command_receiver.recv_system() {
             let mut handled = true;
-            let command_name = command.to_string();
+            let command_name = format!("{command:?}");
             match command {
                 SystemCommand::UpdateBlueprint(store_id, chunks) => {
                     assert_eq!(&store_id, self.blueprint_store.store_id());
@@ -172,7 +172,7 @@ impl TestContext {
             }
 
             eprintln!(
-                "{} system command: {command_name}",
+                "{} system command: {command_name:?}",
                 if handled { "Handled" } else { "Ignored" }
             );
         }
