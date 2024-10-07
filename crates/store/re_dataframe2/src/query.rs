@@ -5,10 +5,13 @@ use std::sync::{
 
 use ahash::HashSet;
 use arrow2::{
-    array::Array as ArrowArray, chunk::Chunk as ArrowChunk, datatypes::Schema as ArrowSchema,
+    array::{Array as ArrowArray, PrimitiveArray as ArrowPrimitiveArray},
+    chunk::Chunk as ArrowChunk,
+    datatypes::Schema as ArrowSchema,
     Either,
 };
 use itertools::Itertools;
+use parking_lot::Mutex;
 
 use nohash_hasher::IntMap;
 use re_chunk::{Chunk, RangeQuery, RowId, TimeInt, Timeline, UnitChunkShared};
@@ -30,10 +33,10 @@ use crate::{QueryEngine, RecordBatch};
 // * [x] pagination (any solution, even a slow one)
 // * [x] pov support
 // * [x] latestat sparse-filling
-// * [ ] sampling support
+// * [x] sampling support
+// * [ ] clears
 // * [ ] overlaps (less dumb)
 // * [ ] selector-based `filtered_index`
-// * [ ] clears
 // * [ ] pagination (fast)
 // * [ ] configurable cache bypass
 // * [ ] allocate null arrays once
@@ -106,6 +109,11 @@ struct QueryHandleState {
     /// * If set to `Some(usize::MAX)`, then a POV was requested but couldn't be found in the view.
     /// * Otherwise, points to the chunks that should be used to drive the iteration.
     view_pov_chunks_idx: Option<usize>,
+
+    /// The stack of index values left to sample.
+    ///
+    /// Stored in reverse order, i.e. `pop()` is the next sample to retrieve.
+    using_index_values_stack: Mutex<Option<Vec<IndexValue>>>,
 
     /// Tracks the current row index: the position of the iterator. For [`QueryHandle::next_row`].
     ///
@@ -249,6 +257,12 @@ impl QueryHandle<'_> {
             metadata: Default::default(),
         };
 
+        let using_index_values_stack = self
+            .query
+            .using_index_values
+            .as_ref()
+            .map(|values| values.iter().rev().copied().collect_vec());
+
         // 4. Perform the query and keep track of all the relevant chunks.
         let mut view_pov_chunks_idx = self
             .query
@@ -256,10 +270,19 @@ impl QueryHandle<'_> {
             .as_ref()
             .map(|_| usize::MAX);
         let view_chunks = {
-            let index_range = self
-                .query
-                .filtered_index_range
-                .unwrap_or(ResolvedTimeRange::EVERYTHING);
+            let index_range =
+                if let Some(using_index_values_stack) = using_index_values_stack.as_ref() {
+                    using_index_values_stack
+                        .last() // reminder: it's reversed (stack)
+                        .and_then(|start| using_index_values_stack.first().map(|end| (start, end)))
+                        .map_or(ResolvedTimeRange::EMPTY, |(start, end)| {
+                            ResolvedTimeRange::new(*start, *end)
+                        })
+                } else {
+                    self.query
+                        .filtered_index_range
+                        .unwrap_or(ResolvedTimeRange::EVERYTHING)
+                };
 
             let query = RangeQuery::new(self.query.filtered_index, index_range)
                 .keep_extra_timelines(true) // we want all the timelines we can get!
@@ -336,6 +359,7 @@ impl QueryHandle<'_> {
             arrow_schema,
             view_chunks,
             view_pov_chunks_idx,
+            using_index_values_stack: Mutex::new(using_index_values_stack),
             cur_row: AtomicU64::new(0),
         }
     }
@@ -545,12 +569,14 @@ impl QueryHandle<'_> {
         }
 
         // What's the index value we're looking for at the current iteration?
-        let cur_index_value = if let Some(view_pov_chunks_idx) = state.view_pov_chunks_idx {
+        //
+        // `None` if we ran out of chunks.
+        let mut cur_index_value = if let Some(view_pov_chunks_idx) = state.view_pov_chunks_idx {
             // If we do have a set point-of-view, then the current iteration corresponds to the
             // next available index value across all PoV chunks.
             view_streaming_state
                 .get(view_pov_chunks_idx)
-                .and_then(|streaming_state| streaming_state.as_ref().map(|s| s.index_value))?
+                .and_then(|streaming_state| streaming_state.as_ref().map(|s| s.index_value))
         } else {
             // If we do not have a set point-of-view, then the current iteration corresponds to the
             // smallest available index value across all available chunks.
@@ -560,13 +586,64 @@ impl QueryHandle<'_> {
                 // NOTE: We're purposefully ignoring RowId-related semantics here: we just want to know
                 // the value we're looking for on the "main" index (dedupe semantics).
                 .min_by_key(|streaming_state| streaming_state.index_value)
-                .map(|streaming_state| streaming_state.index_value)?
+                .map(|streaming_state| streaming_state.index_value)
         };
 
-        if let Some(filtered_index_values) = self.query.filtered_index_values.as_ref() {
-            if !filtered_index_values.contains(&cur_index_value) {
-                self.increment_cursors_at_index_value(cur_index_value);
-                return self.next_row();
+        // What's the next sample we're interested in, if any?
+        //
+        // `None` iif the query isn't sampled. Short-circuits if the query is sampled but has run out of samples.
+        let sampled_index_value =
+            if let Some(using_index_values) = state.using_index_values_stack.lock().as_mut() {
+                // NOTE: Look closely -- this short-circuits is there are no more samples in the vec.
+                Some(using_index_values.last().copied()?)
+            } else {
+                None
+            };
+
+        if let Some(sampled_index_value) = sampled_index_value {
+            if let Some(cur_index_value) = cur_index_value {
+                // If the current natural index value is smaller than the next sampled index value, then we need
+                // to skip the current row.
+                if sampled_index_value > cur_index_value {
+                    self.increment_cursors_at_index_value(cur_index_value);
+                    return self.next_row();
+                }
+            }
+
+            // If the current natural index value is equal to the current sample, then we should
+            // return the current row as usual.
+            //
+            // If the current natural index value is greater than the current sample, or if we wan out of
+            // natural indices altogether, then we should return whatever data is available for the
+            // current row (which might be all 'nulls').
+            //
+            // Either way, we can pop the sample from the stack, and use that as index value.
+
+            // These unwraps cannot fail since we the only way to get here is for `state.using_index_values`
+            // to exist and be non-empty.
+            #[allow(clippy::unwrap_used)]
+            {
+                cur_index_value = Some(
+                    state
+                        .using_index_values_stack
+                        .lock()
+                        .as_mut()
+                        .unwrap()
+                        .pop()
+                        .unwrap(),
+                );
+            }
+        }
+
+        let cur_index_value = cur_index_value?;
+
+        // `filtered_index_values` & `using_index_values` are exclusive.
+        if sampled_index_value.is_none() {
+            if let Some(filtered_index_values) = self.query.filtered_index_values.as_ref() {
+                if !filtered_index_values.contains(&cur_index_value) {
+                    self.increment_cursors_at_index_value(cur_index_value);
+                    return self.next_row();
+                }
             }
         }
 
@@ -684,6 +761,22 @@ impl QueryHandle<'_> {
                         })
                         .or_insert((time, time_sliced));
                 });
+
+            if let Some(sampled_index_value) = sampled_index_value {
+                if !sampled_index_value.is_static() {
+                    // The sampled index value (if temporal) should be the one returned for the
+                    // queried index, no matter what.
+                    max_value_per_index.insert(
+                        self.query.filtered_index,
+                        (
+                            sampled_index_value,
+                            ArrowPrimitiveArray::<i64>::from_vec(vec![cur_index_value.as_i64()])
+                                .to(self.query.filtered_index.datatype())
+                                .to_boxed(),
+                        ),
+                    );
+                }
+            }
         }
 
         // NOTE: Non-component entries have no data to slice, hence the optional layer.
@@ -846,11 +939,12 @@ mod tests {
     // * [x] selection
     // * [x] filtered_point_of_view
     // * [x] sparse_fill_strategy
-    // * [ ] using_index_values
+    // * [x] using_index_values
     //
     // In addition to those, some much needed extras:
     // * [ ] timelines returned with selection=none
     // * [ ] clears
+    // * [ ] num_rows
 
     // TODO(cmc): At some point I'd like to stress multi-entity queries too, but that feels less
     // urgent considering how things are implemented (each entity lives in its own index, so it's
