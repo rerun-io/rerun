@@ -2,17 +2,13 @@
 
 use std::sync::Arc;
 
-use crate::{resource_managers::GpuTexture2D, video::DecodingError, RenderContext};
-
-// TODO(#7298): remove `allow` once we have native video decoding
-#[allow(unused_imports)]
-use super::latest_at_idx;
-
 use re_video::{Chunk, Frame, Time};
 
 use parking_lot::Mutex;
 
-use super::{LatestAtResult, TimedDecodingError, VideoChunkDecoder};
+use crate::{resource_managers::GpuTexture2D, video::DecodingError, RenderContext};
+
+use super::{latest_at_idx, LatestAtResult, TimedDecodingError, VideoChunkDecoder};
 
 struct DecoderOutput {
     frames: Vec<Frame>,

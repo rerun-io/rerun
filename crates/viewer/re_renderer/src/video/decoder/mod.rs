@@ -109,7 +109,7 @@ impl VideoDecoder {
 
         cfg_if::cfg_if! {
             if #[cfg(target_arch = "wasm32")] {
-                let decoder = web::WebVideoDecoder::new(render_ctx, data, hw_acceleration)?;
+                let decoder = web::WebVideoDecoder::new(data.clone(), hw_acceleration)?;
                 return Ok(Self::from_chunk_decoder(render_ctx, data, decoder));
             } else if #[cfg(feature = "video_av1")] {
                 if !data.config.is_av1() {
