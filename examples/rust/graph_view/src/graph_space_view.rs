@@ -2,18 +2,9 @@ use fdg_sim::{ForceGraph, ForceGraphHelper, Simulation, SimulationParameters};
 use std::collections::HashMap;
 
 use re_viewer::external::{
-    egui::{self, emath::TSTransform, TextWrapMode},
-    re_log::external::log,
-    re_log_types::EntityPath,
-    re_types::SpaceViewClassIdentifier,
-    re_ui,
-    re_viewer_context::{
-        HoverHighlight, IdentifiedViewSystem as _, InteractionHighlight, SelectionHighlight,
-        SpaceViewClass, SpaceViewClassLayoutPriority, SpaceViewClassRegistryError, SpaceViewId,
-        SpaceViewSpawnHeuristics, SpaceViewState, SpaceViewStateExt as _,
-        SpaceViewSystemExecutionError, SpaceViewSystemRegistrator, SystemExecutionOutput,
-        ViewQuery, ViewerContext,
-    },
+    egui::{self, emath::TSTransform, TextWrapMode}, re_entity_db::InstancePath, re_log::external::log, re_log_types::EntityPath, re_types::SpaceViewClassIdentifier, re_ui, re_viewer_context::{
+        HoverHighlight, IdentifiedViewSystem as _, InteractionHighlight, Item, SelectionHighlight, SpaceViewClass, SpaceViewClassLayoutPriority, SpaceViewClassRegistryError, SpaceViewId, SpaceViewSpawnHeuristics, SpaceViewState, SpaceViewStateExt as _, SpaceViewSystemExecutionError, SpaceViewSystemRegistrator, SystemExecutionOutput, ViewQuery, ViewerContext
+    }
 };
 
 use crate::{
@@ -144,23 +135,26 @@ impl<'a> NodeInstance<'a> {
             (HoverHighlight::Hovered, ..) => ui.style().visuals.widgets.hovered.bg_fill,
         };
 
+        let bg = match highlight.hover {
+            HoverHighlight::None => ui.style().visuals.widgets.noninteractive.bg_fill,
+            HoverHighlight::Hovered => ui.style().visuals.widgets.hovered.bg_fill,
+        };
+        // ui.style().visuals.faint_bg_color
+
         egui::Frame::default()
             .rounding(egui::Rounding::same(4.0))
             .stroke(egui::Stroke::new(
                 1.0,
-                if highlight.selection == SelectionHighlight::Selection {
-                    ui.style().visuals.selection.bg_fill
-                } else {
-                    ui.ctx().style().visuals.text_color()
-                },
+                ui.style().visuals.text_color(),
             ))
-            .fill(ui.style().visuals.faint_bg_color)
+            .inner_margin(egui::Vec2::new(6.0, 4.0))
+            .fill(bg)
             .show(ui, |ui| {
                 ui.style_mut().wrap_mode = Some(TextWrapMode::Extend);
                 if let Some(color) = self.color {
-                    ui.button(self.text().color(color))
+                    ui.add(egui::Button::new(self.text().color(color)));
                 } else {
-                    ui.button(self.text())
+                    ui.add(egui::Button::new(self.text()));
                 }
             })
             .response
@@ -250,7 +244,7 @@ impl SpaceViewClass for GraphSpaceView {
     /// In this sample we show a combo box to select the color coordinates mode.
     fn selection_ui(
         &self,
-        _ctx: &ViewerContext<'_>,
+        ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
         state: &mut dyn SpaceViewState,
         _space_origin: &EntityPath,
@@ -270,7 +264,7 @@ impl SpaceViewClass for GraphSpaceView {
     /// This is called with freshly created & executed context & part systems.
     fn ui(
         &self,
-        _ctx: &ViewerContext<'_>,
+        ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
         state: &mut dyn SpaceViewState,
         query: &ViewQuery<'_>,
@@ -401,6 +395,10 @@ impl SpaceViewClass for GraphSpaceView {
                     })
                     .response;
 
+                    let instance = InstancePath::instance(node.entity_path.clone(), node.instance);
+                    ctx.select_hovered_on_click(&response, Item::DataResult(query.space_view_id, instance));
+
+
                 layout.insert(node.node_id.clone(), response.rect);
                 entity_rect =
                     entity_rect.map_or(Some(response.rect), |e| Some(e.union(response.rect)));
@@ -419,20 +417,29 @@ impl SpaceViewClass for GraphSpaceView {
                 ui.ctx().set_transform_layer(entity_id, world_to_window);
                 let painter = egui::Painter::new(ui.ctx().clone(), entity_id, clip_rect_world);
 
-                let padded = entity_rect.expand(5.0);
+                let padded = entity_rect.expand(10.0);
+                let tc = ui.ctx().style().visuals.text_color();
                 painter.rect(
                     padded,
-                    4.0,
-                    egui::Color32::TRANSPARENT,
-                    egui::Stroke::new(1.0, ui.ctx().style().visuals.text_color()),
+                    ui.style().visuals.window_rounding,
+                    egui::Color32::from_rgba_unmultiplied(tc.r(), tc.g(), tc.b(), 4),
+                    egui::Stroke::NONE,
                 );
-                painter.text(
-                    padded.left_top(),
-                    egui::Align2::LEFT_BOTTOM,
-                    entity_path.to_string(),
-                    egui::FontId::default(),
-                    ui.ctx().style().visuals.text_color(),
-                );
+                if (query
+                    .highlights
+                    .entity_outline_mask(entity_path.hash())
+                    .overall
+                    .is_some())
+                {
+                    // TODO(grtlr): text should be presented in window space.
+                    painter.text(
+                        padded.left_top(),
+                        egui::Align2::LEFT_BOTTOM,
+                        entity_path.to_string(),
+                        egui::FontId::default(),
+                        ui.ctx().style().visuals.text_color(),
+                    );
+                }
             }
         }
 
