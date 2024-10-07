@@ -31,7 +31,6 @@ mod file_resolver;
 mod file_server;
 mod file_system;
 mod global_bindings;
-mod image_data_to_texture;
 mod line_drawable_builder;
 mod point_cloud_builder;
 mod queueable_draw_data;

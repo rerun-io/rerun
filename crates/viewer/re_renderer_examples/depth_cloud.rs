@@ -26,7 +26,7 @@ use re_renderer::{
         ColormappedTexture, DepthCloud, DepthCloudDrawData, DepthClouds, DrawData,
         GenericSkyboxDrawData, RectangleDrawData, RectangleOptions, TexturedRect,
     },
-    resource_managers::{GpuTexture2D, Texture2DCreationDesc},
+    resource_managers::{GpuTexture2D, ImageDataDesc},
     view_builder::{self, Projection, ViewBuilder},
     Color32, LineDrawableBuilder, PointCloudBuilder, Rgba, Size,
 };
@@ -417,11 +417,11 @@ impl DepthTexture {
             .texture_manager_2d
             .get_or_create(
                 hash(&label),
-                &re_ctx.gpu_resources.textures,
-                Texture2DCreationDesc {
+                re_ctx,
+                ImageDataDesc {
                     label: label.into(),
                     data: bytemuck::cast_slice(&data).into(),
-                    format: wgpu::TextureFormat::R32Float,
+                    format: wgpu::TextureFormat::R32Float.into(),
                     width: dimensions.x,
                     height: dimensions.y,
                 },
@@ -460,11 +460,11 @@ impl AlbedoTexture {
             .texture_manager_2d
             .get_or_create(
                 hash(&label),
-                &re_ctx.gpu_resources.textures,
-                Texture2DCreationDesc {
+                re_ctx,
+                ImageDataDesc {
                     label: label.into(),
                     data: bytemuck::cast_slice(&rgba8).into(),
-                    format: wgpu::TextureFormat::Rgba8UnormSrgb,
+                    format: wgpu::TextureFormat::Rgba8UnormSrgb.into(),
                     width: dimensions.x,
                     height: dimensions.y,
                 },

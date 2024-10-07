@@ -1,7 +1,7 @@
 use re_chunk_store::RowId;
 use re_renderer::{
     renderer::ColormappedTexture,
-    resource_managers::{GpuTexture2D, Texture2DCreationDesc, TextureManager2DError},
+    resource_managers::{GpuTexture2D, ImageDataDesc, TextureManager2DError},
 };
 use re_types::{
     blueprint::archetypes::TensorSliceSelection,
@@ -67,7 +67,7 @@ fn upload_texture_slice_to_gpu(
 fn texture_desc_from_tensor(
     tensor: &TensorData,
     slice_selection: &TensorSliceSelection,
-) -> Result<Texture2DCreationDesc<'static>, TensorUploadError> {
+) -> Result<ImageDataDesc<'static>, TensorUploadError> {
     use wgpu::TextureFormat;
     re_tracing::profile_function!();
 
@@ -142,7 +142,7 @@ fn to_texture_desc<From: Copy, To: bytemuck::Pod>(
     slice_selection: &TensorSliceSelection,
     format: wgpu::TextureFormat,
     caster: impl Fn(From) -> To,
-) -> Result<Texture2DCreationDesc<'static>, TensorUploadError> {
+) -> Result<ImageDataDesc<'static>, TensorUploadError> {
     re_tracing::profile_function!();
 
     use ndarray::Dimension as _;
@@ -167,10 +167,10 @@ fn to_texture_desc<From: Copy, To: bytemuck::Pod>(
     }
 
     re_tracing::profile_scope!("pod_collect_to_vec");
-    Ok(Texture2DCreationDesc {
+    Ok(ImageDataDesc {
         label: "tensor_slice".into(),
         data: bytemuck::pod_collect_to_vec(&pixels).into(),
-        format,
+        format: format.into(),
         width: width as u32,
         height: height as u32,
     })

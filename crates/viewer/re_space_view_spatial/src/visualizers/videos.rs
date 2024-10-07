@@ -6,7 +6,7 @@ use re_renderer::{
     renderer::{
         ColormappedTexture, RectangleOptions, TextureFilterMag, TextureFilterMin, TexturedRect,
     },
-    resource_managers::Texture2DCreationDesc,
+    resource_managers::ImageDataDesc,
     video::{Video, VideoFrameTexture},
 };
 use re_types::{
@@ -293,7 +293,7 @@ impl VideoFrameReferenceVisualizer {
             .texture_manager_2d
             .get_or_try_create_with::<image::ImageError>(
                 Hash64::hash("video_error").hash64(),
-                &render_ctx.gpu_resources.textures,
+                render_ctx,
                 || {
                     let mut reader = image::io::Reader::new(std::io::Cursor::new(
                         re_ui::icons::VIDEO_ERROR.png_bytes,
@@ -301,10 +301,10 @@ impl VideoFrameReferenceVisualizer {
                     reader.set_format(image::ImageFormat::Png);
                     let dynamic_image = reader.decode()?;
 
-                    Ok(Texture2DCreationDesc {
+                    Ok(ImageDataDesc {
                         label: "video_error".into(),
                         data: std::borrow::Cow::Owned(dynamic_image.to_rgba8().to_vec()),
-                        format: re_renderer::external::wgpu::TextureFormat::Rgba8UnormSrgb,
+                        format: re_renderer::external::wgpu::TextureFormat::Rgba8UnormSrgb.into(),
                         width: dynamic_image.width(),
                         height: dynamic_image.height(),
                     })

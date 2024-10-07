@@ -34,10 +34,10 @@ fn colormap_preview_ui(
             })
             .collect();
 
-        re_renderer::resource_managers::Texture2DCreationDesc {
+        re_renderer::resource_managers::ImageDataDesc {
             label: "horizontal_gradient".into(),
             data: data.into(),
-            format: wgpu::TextureFormat::R16Float,
+            format: wgpu::TextureFormat::R16Float.into(),
             width,
             height,
         }

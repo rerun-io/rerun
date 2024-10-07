@@ -10,7 +10,7 @@ use re_renderer::{
     config::DeviceCaps,
     pad_rgb_to_rgba,
     renderer::{ColorMapper, ColormappedTexture, ShaderDecoding},
-    resource_managers::Texture2DCreationDesc,
+    resource_managers::{ColorSpace, ImageDataDesc, SourceImageDataFormat},
     RenderContext,
 };
 use re_types::components::ClassId;
@@ -251,48 +251,41 @@ pub fn texture_creation_desc_from_color_image<'a>(
     device_caps: &DeviceCaps,
     image: &'a ImageInfo,
     debug_name: &'a str,
-) -> Texture2DCreationDesc<'a> {
+) -> ImageDataDesc<'a> {
     re_tracing::profile_function!();
 
-    if let Some(pixel_format) = image.format.pixel_format {
-        match pixel_format {
-            PixelFormat::NV12 => {
-                // Decoded in the shader, see [`required_shader_decode`].
-                return Texture2DCreationDesc {
-                    label: debug_name.into(),
-                    data: cast_slice_to_cow(image.buffer.as_slice()),
-                    format: TextureFormat::R8Uint,
-                    width: image.width(),
-                    height: image.height() + image.height() / 2, // !
-                };
-            }
+    // TODO(andreas): This should all be handled by re_renderer!
 
-            PixelFormat::YUY2 => {
-                // Decoded in the shader, see [`required_shader_decode`].
-                return Texture2DCreationDesc {
-                    label: debug_name.into(),
-                    data: cast_slice_to_cow(image.buffer.as_slice()),
-                    format: TextureFormat::R8Uint,
-                    width: 2 * image.width(), // !
-                    height: image.height(),
-                };
-            }
+    let (data, format) = if let Some(pixel_format) = image.format.pixel_format {
+        match pixel_format {
+            // Using Bt.601 here for historical reasons.
+            // TODO(andreas): Expose this. It's probably still the better default (for instance that's what jpeg still uses),
+            // but should confirm & back that up!
+            PixelFormat::NV12 => (
+                cast_slice_to_cow(image.buffer.as_slice()),
+                SourceImageDataFormat::Y_UV12(ColorSpace::Bt601),
+            ),
+            PixelFormat::YUY2 => (
+                cast_slice_to_cow(image.buffer.as_slice()),
+                SourceImageDataFormat::YUYV16(ColorSpace::Bt601),
+            ),
         }
     } else {
         let color_model = image.format.color_model();
         let datatype = image.format.datatype();
 
-        let (data, format) = match (color_model, datatype) {
+        match (color_model, datatype) {
             // sRGB(A) handling is done by `ColormappedTexture`.
             // Why not use `Rgba8UnormSrgb`? Because premul must happen _before_ sRGB decode, so we can't
             // use a "Srgb-aware" texture like `Rgba8UnormSrgb` for RGBA.
             (ColorModel::RGB, ChannelDatatype::U8) => (
                 pad_rgb_to_rgba(&image.buffer, u8::MAX).into(),
-                TextureFormat::Rgba8Unorm,
+                SourceImageDataFormat::WgpuCompatible(TextureFormat::Rgba8Unorm),
             ),
-            (ColorModel::RGBA, ChannelDatatype::U8) => {
-                (cast_slice_to_cow(&image.buffer), TextureFormat::Rgba8Unorm)
-            }
+            (ColorModel::RGBA, ChannelDatatype::U8) => (
+                cast_slice_to_cow(&image.buffer),
+                SourceImageDataFormat::WgpuCompatible(TextureFormat::Rgba8Unorm),
+            ),
 
             // Make use of wgpu's BGR(A)8 formats if possible.
             //
@@ -315,7 +308,10 @@ pub fn texture_creation_desc_from_color_image<'a>(
                 } else {
                     TextureFormat::Bgra8Unorm
                 };
-                (padded_data, texture_format)
+                (
+                    padded_data,
+                    SourceImageDataFormat::WgpuCompatible(texture_format),
+                )
             }
             (ColorModel::BGRA, ChannelDatatype::U8) => {
                 let texture_format = if required_shader_decode(device_caps, &image.format).is_some()
@@ -324,7 +320,10 @@ pub fn texture_creation_desc_from_color_image<'a>(
                 } else {
                     TextureFormat::Bgra8Unorm
                 };
-                (cast_slice_to_cow(&image.buffer), texture_format)
+                (
+                    cast_slice_to_cow(&image.buffer),
+                    SourceImageDataFormat::WgpuCompatible(texture_format),
+                )
             }
 
             _ => {
@@ -336,15 +335,15 @@ pub fn texture_creation_desc_from_color_image<'a>(
                     datatype,
                 );
             }
-        };
-
-        Texture2DCreationDesc {
-            label: debug_name.into(),
-            data,
-            format,
-            width: image.width(),
-            height: image.height(),
         }
+    };
+
+    ImageDataDesc {
+        label: debug_name.into(),
+        data,
+        format,
+        width: image.width(),
+        height: image.height(),
     }
 }
 
@@ -445,10 +444,10 @@ fn segmentation_image_to_gpu(
             })
             .collect();
 
-        Texture2DCreationDesc {
+        ImageDataDesc {
             label: "class_id_colormap".into(),
             data: data.into(),
-            format: TextureFormat::Rgba8UnormSrgb,
+            format: SourceImageDataFormat::WgpuCompatible(TextureFormat::Rgba8UnormSrgb),
             width: colormap_width as u32,
             height: colormap_height as u32,
         }
@@ -478,7 +477,7 @@ fn general_texture_creation_desc_from_image<'a>(
     image: &'a ImageInfo,
     color_model: ColorModel,
     datatype: ChannelDatatype,
-) -> Texture2DCreationDesc<'a> {
+) -> ImageDataDesc<'a> {
     re_tracing::profile_function!();
 
     let width = image.width();
@@ -590,10 +589,10 @@ fn general_texture_creation_desc_from_image<'a>(
         }
     };
 
-    Texture2DCreationDesc {
+    ImageDataDesc {
         label: debug_name.into(),
         data,
-        format,
+        format: SourceImageDataFormat::WgpuCompatible(format),
         width,
         height,
     }
