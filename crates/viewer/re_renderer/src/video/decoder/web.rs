@@ -192,6 +192,8 @@ impl WebVideoDecoder {
             return Err(DecodingError::NegativeTimestamp);
         }
         let presentation_timestamp = Time::from_secs(presentation_timestamp_s, self.data.timescale);
+        let presentation_timestamp = presentation_timestamp.min(self.data.duration); // Don't seek past the end of the video.
+
         self.enqueue_requested_segments(presentation_timestamp)?;
         self.try_present_frame(presentation_timestamp)
     }
@@ -304,8 +306,6 @@ impl WebVideoDecoder {
 
         let mut decoder_output = self.decoder_output.lock();
 
-        let timescale = self.data.timescale;
-
         let frames = &mut decoder_output.frames;
 
         let Some(frame_idx) = latest_at_idx(
@@ -346,13 +346,10 @@ impl WebVideoDecoder {
         let frame_idx = 0;
         let frame = &frames[frame_idx];
 
-        let frame_timestamp_ms = frame.composition_timestamp.into_millis(timescale);
-        let frame_duration_ms = frame.duration.into_millis(timescale);
-
         // This handles the case when we have a buffered frame that's older than the requested timestamp.
         // We don't want to show this frame to the user, because it's not actually the one they requested,
         // so instead return the last decoded frame.
-        if presentation_timestamp.into_millis(timescale) - frame_timestamp_ms > frame_duration_ms {
+        if presentation_timestamp - frame.composition_timestamp > frame.duration {
             return Ok(VideoFrameTexture::Pending(self.texture.clone()));
         }
 
