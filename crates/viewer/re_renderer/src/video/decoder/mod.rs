@@ -40,6 +40,22 @@ impl TimedDecodingError {
     }
 }
 
+#[allow(unused)] // Unused for certain build flags
+#[must_use]
+enum LatestAtResult {
+    /// We have no buffered frames
+    /// (perhaps because we are new, or due to a recent reset, or error)
+    NoFrames,
+
+    /// The texture has up-to-date contents.
+    UpToDate,
+
+    /// The texture is outdated by this much.
+    ///
+    /// This is measured in "video-time'
+    OutdatedBy(Time),
+}
+
 /// Decode video to a texture.
 ///
 /// If you want to sample multiple points in a video simultaneously, use multiple decoders.
@@ -47,12 +63,16 @@ trait VideoChunkDecoder: 'static + Send {
     /// Start decoding the given chunk.
     fn decode(&mut self, chunk: Chunk, is_keyframe: bool) -> Result<(), DecodingError>;
 
-    /// Get the latest decoded frame at the given time,
-    /// and drop all earlier frames to save memory.
+    /// Get the latest decoded frame at the given time
+    /// and copy it to the given texture.
+    ///
+    /// Drop all earlier frames to save memory.
     fn latest_at(
         &mut self,
+        render_ctx: &RenderContext,
+        texture: &GpuTexture2D,
         presentation_timestamp: Time,
-    ) -> Result<VideoFrameTexture, DecodingError>;
+    ) -> Result<LatestAtResult, DecodingError>;
 
     /// Reset the video decoder and discard all frames.
     fn reset(&mut self) -> Result<(), DecodingError>;
@@ -67,6 +87,7 @@ trait VideoChunkDecoder: 'static + Send {
 pub struct VideoDecoder {
     data: Arc<re_video::VideoData>,
     chunk_decoder: Box<dyn VideoChunkDecoder>,
+    texture: GpuTexture2D,
 
     current_segment_idx: usize,
     current_sample_idx: usize,
@@ -77,22 +98,30 @@ pub struct VideoDecoder {
 impl VideoDecoder {
     pub fn new(
         debug_name: &str,
-        render_context: &RenderContext,
+        render_ctx: &RenderContext,
         data: Arc<re_video::VideoData>,
         hw_acceleration: DecodeHardwareAcceleration,
     ) -> Result<Self, DecodingError> {
         #![allow(unused, clippy::unnecessary_wraps, clippy::needless_pass_by_value)] // only for some feature flags
 
+        let debug_name = format!("{debug_name}, codec: {}", data.config.codec);
+
         cfg_if::cfg_if! {
             if #[cfg(target_arch = "wasm32")] {
-                let decoder = web::WebVideoDecoder::new(render_context, data, hw_acceleration)?;
-                return Ok(Self::from_decoder(data, decoder));
+                let decoder = web::WebVideoDecoder::new(render_ctx, data, hw_acceleration)?;
+                return Ok(Self::from_chunk_decoder(render_ctx, data, decoder));
             } else if #[cfg(feature = "video_av1")] {
+                if !data.config.is_av1() {
+                    return Err(DecodingError::UnsupportedCodec {
+                        codec: data.config.codec.clone(),
+                    });
+                }
+
                 if cfg!(debug_assertions) {
                     return Err(DecodingError::NoNativeDebug); // because debug builds of rav1d are so slow
                 } else {
-                    let decoder = native_av1::Av1VideoDecoder::new(debug_name, render_context, data.clone())?;
-                    return Ok(Self::from_chunk_decoder(data, decoder));
+                    let decoder = native_av1::Av1VideoDecoder::new(debug_name)?;
+                    return Ok(Self::from_chunk_decoder(render_ctx, data, decoder));
                 };
             } else {
                 Err(DecodingError::NoNativeSupport)
@@ -102,12 +131,21 @@ impl VideoDecoder {
 
     #[allow(unused)] // Unused for certain build flags
     fn from_chunk_decoder(
+        render_ctx: &RenderContext,
         data: Arc<re_video::VideoData>,
         chunk_decoder: impl VideoChunkDecoder,
     ) -> Self {
+        let texture = alloc_video_frame_texture(
+            &render_ctx.device,
+            &render_ctx.gpu_resources.textures,
+            data.config.coded_width as u32,
+            data.config.coded_height as u32,
+        );
+
         Self {
             data,
             chunk_decoder: Box::new(chunk_decoder),
+            texture,
 
             current_segment_idx: usize::MAX,
             current_sample_idx: usize::MAX,
@@ -219,7 +257,39 @@ impl VideoDecoder {
         self.current_segment_idx = requested_segment_idx;
         self.current_sample_idx = requested_sample_idx;
 
-        self.chunk_decoder.latest_at(presentation_timestamp)
+        match self
+            .chunk_decoder
+            .latest_at(render_ctx, &self.texture, presentation_timestamp)?
+        {
+            LatestAtResult::NoFrames => {
+                // No buffered frames
+
+                // Might this be due to an error?
+                //
+                // We only care about decoding errors when we don't find the requested frame,
+                // since we want to keep playing the video fine even if parts of it are broken.
+                // That said, practically we reset the decoder and thus all frames upon error,
+                // so it doesn't make a lot of difference.
+                if let Some(timed_error) = &self.error {
+                    if timed_error.time_of_first_error.elapsed() >= DECODING_ERROR_REPORTING_DELAY {
+                        // Report the error only if we have been in an error state for a certain amount of time.
+                        // Don't immediately report the error, since we might immediately recover from it.
+                        // Otherwise, this would cause aggressive flickering!
+                        return Err(timed_error.latest_error.clone());
+                    }
+                }
+
+                // Don't return a zeroed texture, because we may just be behind on decoding
+                // and showing an old frame is better than showing a blank frame,
+                // because it causes "black flashes" to appear
+                Ok(VideoFrameTexture::Pending(self.texture.clone()))
+            }
+            LatestAtResult::UpToDate => Ok(VideoFrameTexture::Ready(self.texture.clone())),
+            LatestAtResult::OutdatedBy(duration) => {
+                // TODO: report how far outdated the texture is, so user can decide wether or not to show a loading icon.
+                Ok(VideoFrameTexture::Pending(self.texture.clone()))
+            }
+        }
     }
 
     /// Enqueue all samples in the given segment.
