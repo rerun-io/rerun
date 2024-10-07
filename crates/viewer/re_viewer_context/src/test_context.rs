@@ -1,13 +1,14 @@
-use crate::{
-    blueprint_timeline, command_channel, ApplicationSelectionState, CommandReceiver, CommandSender,
-    ComponentUiRegistry, RecordingConfig, SpaceViewClassRegistry, StoreContext, SystemCommand,
-    ViewerContext,
-};
 use std::sync::Arc;
 
 use re_chunk_store::LatestAtQuery;
 use re_entity_db::EntityDb;
 use re_log_types::{StoreId, StoreKind, Timeline};
+
+use crate::{
+    blueprint_timeline, command_channel, ApplicationSelectionState, CommandReceiver, CommandSender,
+    ComponentUiRegistry, RecordingConfig, SpaceViewClassRegistry, StoreContext, SystemCommand,
+    ViewerContext,
+};
 
 /// Harness to execute code that rely on [`crate::ViewerContext`].
 ///
