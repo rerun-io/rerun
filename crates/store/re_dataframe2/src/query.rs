@@ -13,8 +13,8 @@ use nohash_hasher::IntMap;
 use re_chunk::{Chunk, RangeQuery, RowId, TimeInt, Timeline, UnitChunkShared};
 use re_chunk_store::{
     ColumnDescriptor, ColumnSelector, ComponentColumnDescriptor, ComponentColumnSelector,
-    ControlColumnDescriptor, ControlColumnSelector, IndexValue, JoinEncoding, QueryExpression2,
-    SparseFillStrategy, TimeColumnDescriptor, TimeColumnSelector,
+    IndexValue, JoinEncoding, QueryExpression2, SparseFillStrategy, TimeColumnDescriptor,
+    TimeColumnSelector,
 };
 use re_log_types::ResolvedTimeRange;
 
@@ -152,39 +152,6 @@ impl QueryHandle<'_> {
                 .iter()
                 .map(|column| {
                     match column {
-                        ColumnSelector::Control(selected_column) => {
-                            let ControlColumnSelector {
-                                component: selected_component_name,
-                            } = selected_column;
-
-                            view_contents
-                                .iter()
-                                .enumerate()
-                                .filter_map(|(idx, view_column)| match view_column {
-                                    ColumnDescriptor::Control(view_descr) => {
-                                        Some((idx, view_descr))
-                                    }
-                                    _ => None,
-                                })
-                                .find(|(_idx, view_descr)| {
-                                    view_descr.component_name == *selected_component_name
-                                })
-                                .map_or_else(
-                                    || {
-                                        (
-                                            usize::MAX,
-                                            ColumnDescriptor::Control(ControlColumnDescriptor {
-                                                component_name: *selected_component_name,
-                                                datatype: arrow2::datatypes::DataType::Null,
-                                            }),
-                                        )
-                                    },
-                                    |(idx, view_descr)| {
-                                        (idx, ColumnDescriptor::Control(view_descr.clone()))
-                                    },
-                                )
-                        }
-
                         ColumnSelector::Time(selected_column) => {
                             let TimeColumnSelector {
                                 timeline: selected_timeline,
@@ -195,7 +162,7 @@ impl QueryHandle<'_> {
                                 .enumerate()
                                 .filter_map(|(idx, view_column)| match view_column {
                                     ColumnDescriptor::Time(view_descr) => Some((idx, view_descr)),
-                                    _ => None,
+                                    ColumnDescriptor::Component(_) => None,
                                 })
                                 .find(|(_idx, view_descr)| {
                                     *view_descr.timeline.name() == *selected_timeline
@@ -234,7 +201,7 @@ impl QueryHandle<'_> {
                                     ColumnDescriptor::Component(view_descr) => {
                                         Some((idx, view_descr))
                                     }
-                                    _ => None,
+                                    ColumnDescriptor::Time(_) => None,
                                 })
                                 .find(|(_idx, view_descr)| {
                                     view_descr.entity_path == *selected_entity_path
@@ -301,7 +268,7 @@ impl QueryHandle<'_> {
                 .iter()
                 .enumerate()
                 .map(|(idx, selected_column)| match selected_column {
-                    ColumnDescriptor::Control(_) | ColumnDescriptor::Time(_) => Vec::new(),
+                     ColumnDescriptor::Time(_) => Vec::new(),
 
                     ColumnDescriptor::Component(column) => {
                         // NOTE: Keep in mind that the range APIs natively make sure that we will
@@ -758,7 +725,7 @@ impl QueryHandle<'_> {
                         StreamingJoinState::Retrofilled(unit) => {
                             let component_name = state.view_contents.get(view_idx).and_then(|col| match col {
                                 ColumnDescriptor::Component(descr) => Some(descr.component_name),
-                                _ => None,
+                                ColumnDescriptor::Time(_) => None,
                             })?;
                             unit.components().get(&component_name).map(|list_array| list_array.to_boxed())
                         }
@@ -783,17 +750,6 @@ impl QueryHandle<'_> {
             .selected_contents
             .iter()
             .map(|(view_idx, column)| match column {
-                ColumnDescriptor::Control(descr) => {
-                    if descr.component_name == "rerun.controls.RowId" {
-                        cur_most_recent_row
-                            .chunk
-                            .row_ids_array()
-                            .sliced(cur_most_recent_row.cursor as usize, 1)
-                    } else {
-                        arrow2::array::new_null_array(column.datatype(), 1)
-                    }
-                }
-
                 ColumnDescriptor::Time(descr) => {
                     max_value_per_index.get(&descr.timeline).map_or_else(
                         || arrow2::array::new_null_array(column.datatype(), 1),
@@ -936,10 +892,7 @@ mod tests {
         );
         eprintln!("{dataframe}");
 
-        let got = format!(
-            "{:#?}",
-            dataframe.data.iter().skip(1 /* RowId */).collect_vec()
-        );
+        let got = format!("{:#?}", dataframe.data.iter().collect_vec());
         let expected = unindent::unindent(
             "\
             [
@@ -981,10 +934,7 @@ mod tests {
         );
         eprintln!("{dataframe}");
 
-        let got = format!(
-            "{:#?}",
-            dataframe.data.iter().skip(1 /* RowId */).collect_vec()
-        );
+        let got = format!("{:#?}", dataframe.data.iter().collect_vec());
         let expected = unindent::unindent(
             "\
             [
@@ -1026,10 +976,7 @@ mod tests {
         );
         eprintln!("{dataframe}");
 
-        let got = format!(
-            "{:#?}",
-            dataframe.data.iter().skip(1 /* RowId */).collect_vec()
-        );
+        let got = format!("{:#?}", dataframe.data.iter().collect_vec());
         let expected = unindent::unindent(
             "\
             [
@@ -1077,10 +1024,7 @@ mod tests {
         );
         eprintln!("{dataframe}");
 
-        let got = format!(
-            "{:#?}",
-            dataframe.data.iter().skip(1 /* RowId */).collect_vec()
-        );
+        let got = format!("{:#?}", dataframe.data.iter().collect_vec());
         let expected = unindent::unindent(
             "\
             [
@@ -1130,10 +1074,7 @@ mod tests {
             );
             eprintln!("{dataframe}");
 
-            let got = format!(
-                "{:#?}",
-                dataframe.data.iter().skip(1 /* RowId */).collect_vec()
-            );
+            let got = format!("{:#?}", dataframe.data.iter().collect_vec());
             let expected = "[]";
 
             similar_asserts::assert_eq!(expected, got);
@@ -1156,10 +1097,7 @@ mod tests {
             );
             eprintln!("{dataframe}");
 
-            let got = format!(
-                "{:#?}",
-                dataframe.data.iter().skip(1 /* RowId */).collect_vec()
-            );
+            let got = format!("{:#?}", dataframe.data.iter().collect_vec());
             let expected = "[]";
 
             similar_asserts::assert_eq!(expected, got);
@@ -1182,10 +1120,7 @@ mod tests {
             );
             eprintln!("{dataframe}");
 
-            let got = format!(
-                "{:#?}",
-                dataframe.data.iter().skip(1 /* RowId */).collect_vec()
-            );
+            let got = format!("{:#?}", dataframe.data.iter().collect_vec());
             let expected = unindent::unindent(
                 "\
                 [
@@ -1218,10 +1153,7 @@ mod tests {
             );
             eprintln!("{dataframe}");
 
-            let got = format!(
-                "{:#?}",
-                dataframe.data.iter().skip(1 /* RowId */).collect_vec()
-            );
+            let got = format!("{:#?}", dataframe.data.iter().collect_vec());
             let expected = unindent::unindent(
                 "\
                 [
@@ -1272,10 +1204,7 @@ mod tests {
             );
             eprintln!("{dataframe}");
 
-            let got = format!(
-                "{:#?}",
-                dataframe.data.iter().skip(1 /* RowId */).collect_vec()
-            );
+            let got = format!("{:#?}", dataframe.data.iter().collect_vec());
             let expected = "[]";
 
             similar_asserts::assert_eq!(expected, got);
@@ -1308,10 +1237,7 @@ mod tests {
             );
             eprintln!("{dataframe}");
 
-            let got = format!(
-                "{:#?}",
-                dataframe.data.iter().skip(1 /* RowId */).collect_vec()
-            );
+            let got = format!("{:#?}", dataframe.data.iter().collect_vec());
             let expected = unindent::unindent(
                 "\
                 [
@@ -1357,47 +1283,8 @@ mod tests {
             );
             eprintln!("{dataframe}");
 
-            let got = format!(
-                "{:#?}",
-                dataframe.data.iter().skip(1 /* RowId */).collect_vec()
-            );
+            let got = format!("{:#?}", dataframe.data.iter().collect_vec());
             let expected = "[]";
-
-            similar_asserts::assert_eq!(expected, got);
-        }
-
-        // only controls
-        {
-            let mut query = QueryExpression2::new(timeline);
-            query.selection = Some(vec![
-                ColumnSelector::Control(ControlColumnSelector {
-                    component: "rerun.controls.RowId".into(),
-                }),
-                ColumnSelector::Control(ControlColumnSelector {
-                    component: "AControlColumnThatDoesntExist".into(),
-                }),
-            ]);
-            eprintln!("{query:#?}:");
-
-            let query_handle = query_engine.query(query.clone());
-            let dataframe = concatenate_record_batches(
-                query_handle.schema().clone(),
-                &query_handle.into_batch_iter().collect_vec(),
-            );
-            eprintln!("{dataframe}");
-
-            let got = format!(
-                "{:#?}",
-                // NOTE: comparing the rowids themselves is gonna be way too annoying.
-                dataframe.data.iter().skip(1 /* RowId */).collect_vec()
-            );
-            let expected = unindent::unindent(
-                "\
-                [
-                    NullArray(8),
-                ]\
-                ",
-            );
 
             similar_asserts::assert_eq!(expected, got);
         }
