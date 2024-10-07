@@ -15,6 +15,7 @@
 //!
 
 mod dataframe;
+mod drop_time_range;
 mod events;
 mod gc;
 mod query;

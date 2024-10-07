@@ -116,6 +116,18 @@ impl PartialEq for Chunk {
 }
 
 impl Chunk {
+    /// Returns a version of us with a new [`ChunkId`].
+    ///
+    /// Reminder:
+    /// * The returned [`Chunk`] will re-use the exact same [`RowId`]s as `self`.
+    /// * Duplicated [`RowId`]s in the `ChunkStore` is undefined behavior.
+    #[must_use]
+    #[inline]
+    pub fn with_id(mut self, id: ChunkId) -> Self {
+        self.id = id;
+        self
+    }
+
     /// Returns `true` is two [`Chunk`]s are similar, although not byte-for-byte equal.
     ///
     /// In particular, this ignores chunks and row IDs, as well as temporal timestamps.
