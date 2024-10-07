@@ -139,6 +139,7 @@ impl VideoData {
 }
 
 /// A segment of a video.
+// TODO(emilk): rename `GroupOfPictures` (GOP): https://en.wikipedia.org/wiki/Group_of_pictures
 #[derive(Debug, Clone)]
 pub struct Segment {
     /// Decode timestamp of the first sample in this segment, in time units.

@@ -12,48 +12,35 @@ use crate::{
 #[allow(unused_imports)]
 use super::latest_at_idx;
 
-use re_video::{Frame, Time};
+use re_video::{Chunk, Frame, Time};
 
 use parking_lot::Mutex;
-use web_time::Instant;
 
-use super::{VideoDecoder, DECODING_ERROR_REPORTING_DELAY};
+use super::{TimedDecodingError, VideoChunkDecoder, DECODING_ERROR_REPORTING_DELAY};
 
 struct DecoderOutput {
     frames: Vec<Frame>,
 
-    last_decoding_error: Option<DecodingError>,
-
-    /// Whether we reset the decoder since the last time an error was reported.
-    reset_since_last_reported_error: bool,
-
-    /// Time at which point `last_decoding_error` changed from `None` to `Some`.
-    time_when_entering_error_state: Instant,
+    /// Set on error; reset on success.
+    error: Option<TimedDecodingError>,
 }
 
 impl Default for DecoderOutput {
     fn default() -> Self {
         Self {
             frames: Vec::new(),
-            last_decoding_error: None,
-            reset_since_last_reported_error: false,
-            time_when_entering_error_state: Instant::now(),
+            error: None,
         }
     }
 }
 
 /// Native AV1 decoder
 pub struct Av1VideoDecoder {
-    data: Arc<re_video::VideoData>,
     queue: Arc<wgpu::Queue>,
     texture: GpuTexture2D,
     decoder: re_video::av1::Decoder,
-
     decoder_output: Arc<Mutex<DecoderOutput>>,
-
     last_used_frame_timestamp: Time,
-    current_segment_idx: usize,
-    current_sample_idx: usize,
 }
 
 impl Av1VideoDecoder {
@@ -82,17 +69,17 @@ impl Av1VideoDecoder {
                     re_log::trace!("Decoded frame at {:?}", frame.timestamp);
                     let mut output = decoder_output.lock();
                     output.frames.push(frame);
-                    // We successfully decoded a frame, reset the error state.
-                    output.last_decoding_error = None;
+                    output.error = None; // We successfully decoded a frame, reset the error state.
                 }
                 Err(err) => {
                     re_log::warn_once!("Error during decoding of {full_debug_name}: {err}");
+                    let err = DecodingError::Decoding(err.to_string());
                     let mut output = decoder_output.lock();
-                    if output.last_decoding_error.is_none() {
-                        output.time_when_entering_error_state = Instant::now();
+                    if let Some(error) = &mut output.error {
+                        error.latest_error = err;
+                    } else {
+                        output.error = Some(TimedDecodingError::new(err));
                     }
-                    output.last_decoding_error = Some(DecodingError::Decoding(err.to_string()));
-                    output.reset_since_last_reported_error = false;
                 }
             }
         };
@@ -108,110 +95,27 @@ impl Av1VideoDecoder {
         );
 
         Ok(Self {
-            data,
             queue,
             texture,
             decoder,
             decoder_output,
             last_used_frame_timestamp: Time::MAX,
-            current_segment_idx: usize::MAX,
-            current_sample_idx: usize::MAX,
         })
     }
 }
 
-impl VideoDecoder for Av1VideoDecoder {
-    fn frame_at(
-        &mut self,
-        render_ctx: &RenderContext,
-        presentation_timestamp_s: f64,
-    ) -> FrameDecodingResult {
-        re_tracing::profile_function!();
+impl VideoChunkDecoder for Av1VideoDecoder {
+    /// Start decoding the given chunk.
+    fn decode(&mut self, chunk: Chunk, is_keyframe: bool) -> Result<(), DecodingError> {
+        self.decoder.decode(chunk);
+        Ok(())
+    }
 
-        if presentation_timestamp_s < 0.0 {
-            return Err(DecodingError::NegativeTimestamp);
-        }
-        let presentation_timestamp = Time::from_secs(presentation_timestamp_s, self.data.timescale);
-        let presentation_timestamp = presentation_timestamp.min(self.data.duration); // Don't seek past the end of the video.
-
-        let Some(requested_segment_idx) = latest_at_idx(
-            &self.data.segments,
-            |segment| segment.start,
-            &presentation_timestamp,
-        ) else {
-            return Err(DecodingError::EmptyVideo);
-        };
-
-        let Some(requested_sample_idx) = latest_at_idx(
-            &self.data.samples,
-            |sample| sample.decode_timestamp,
-            &presentation_timestamp,
-        ) else {
-            return Err(DecodingError::EmptyVideo);
-        };
-
-        // Enqueue segments as needed.
-        //
-        // First, check for decoding errors that may have been set asynchronously and reset if it's a new error.
-        {
-            let decoder_output = self.decoder_output.lock();
-            if decoder_output.last_decoding_error.is_some()
-                && !decoder_output.reset_since_last_reported_error
-            {
-                // For each new (!) error after entering the error state, we reset the decoder.
-                // This way, it might later recover from the error as we progress in the video.
-                //
-                // By resetting the current segment/sample indices, the frame enqueued code below
-                // is forced to reset the decoder.
-                self.current_segment_idx = usize::MAX;
-                self.current_sample_idx = usize::MAX;
-            }
-        };
-        // We maintain a buffer of 2 segments, so we can
-        // always smoothly transition to the next segment.
-        // We can always start decoding from any segment, because segments always begin
-        // with a keyframe.
-        // Backward seeks or seeks across many segments trigger a reset of the decoder,
-        // because decoding all the samples between the previous sample and the requested
-        // one would mean decoding and immediately discarding more frames than we otherwise
-        // need to.
-        if requested_segment_idx != self.current_segment_idx {
-            let segment_distance =
-                requested_segment_idx as isize - self.current_segment_idx as isize;
-            if segment_distance == 1 {
-                // forward seek to next segment - queue up the one _after_ requested
-                self.enqueue_segment(requested_segment_idx + 1)?;
-            } else {
-                // forward seek by N>1 OR backward seek across segments - reset
-                self.reset();
-                self.enqueue_segment(requested_segment_idx)?;
-                self.enqueue_segment(requested_segment_idx + 1)?;
-            }
-        } else if requested_sample_idx != self.current_sample_idx {
-            // special case: handle seeking backwards within a single segment
-            // this is super inefficient, but it's the only way to handle it
-            // while maintaining a buffer of 2 segments
-            let sample_distance = requested_sample_idx as isize - self.current_sample_idx as isize;
-            if sample_distance < 0 {
-                self.reset();
-                self.enqueue_segment(requested_segment_idx)?;
-                self.enqueue_segment(requested_segment_idx + 1)?;
-            }
-        }
-
-        self.current_segment_idx = requested_segment_idx;
-        self.current_sample_idx = requested_sample_idx;
-
+    /// Get the latest decoded frame at the given time,
+    /// and drop all earlier frames to save memory.
+    fn latest_at(&mut self, presentation_timestamp: Time) -> FrameDecodingResult {
         let mut decoder_output = self.decoder_output.lock();
         let frames = &mut decoder_output.frames;
-
-        if !frames.is_empty() {
-            re_log::trace_once!(
-                "Looking for frame timestamp {presentation_timestamp:?} among frames {:?} - {:?}",
-                frames.first().unwrap().timestamp,
-                frames.last().unwrap().timestamp
-            );
-        }
 
         let Some(frame_idx) =
             latest_at_idx(frames, |frame| frame.timestamp, &presentation_timestamp)
@@ -224,14 +128,12 @@ impl VideoDecoder for Av1VideoDecoder {
             // since we want to keep playing the video fine even if parts of it are broken.
             // That said, practically we reset the decoder and thus all frames upon error,
             // so it doesn't make a lot of difference.
-            if let Some(last_decoding_error) = &decoder_output.last_decoding_error {
-                if decoder_output.time_when_entering_error_state.elapsed()
-                    >= DECODING_ERROR_REPORTING_DELAY
-                {
+            if let Some(timed_error) = &decoder_output.error {
+                if timed_error.time_of_first_error.elapsed() >= DECODING_ERROR_REPORTING_DELAY {
                     // Report the error only if we have been in an error state for a certain amount of time.
                     // Don't immediately report the error, since we might immediately recover from it.
                     // Otherwise, this would cause aggressive flickering!
-                    return Err(last_decoding_error.clone());
+                    return Err(timed_error.latest_error.clone());
                 }
             }
 
@@ -263,49 +165,21 @@ impl VideoDecoder for Av1VideoDecoder {
 
         Ok(VideoFrameTexture::Ready(self.texture.clone()))
     }
-}
 
-impl Av1VideoDecoder {
-    pub fn duration_ms(&self) -> f64 {
-        self.data.duration_sec()
-    }
+    /// Reset the video decoder and discard all frames.
+    fn reset(&mut self) -> Result<(), DecodingError> {
+        self.decoder.reset();
 
-    pub fn width(&self) -> u32 {
-        self.data.config.coded_width as u32
-    }
-
-    pub fn height(&self) -> u32 {
-        self.data.config.coded_height as u32
-    }
-
-    /// Enqueue all samples in the given segment.
-    ///
-    /// Does nothing if the index is out of bounds.
-    fn enqueue_segment(&mut self, segment_idx: usize) -> Result<(), DecodingError> {
-        let Some(segment) = self.data.segments.get(segment_idx) else {
-            return Ok(());
-        };
-
-        let samples = &self.data.samples[segment.range()];
-
-        for sample in samples {
-            let chunk = self.data.get(sample).ok_or(DecodingError::BadData)?;
-            self.decoder.decode(chunk);
-        }
+        let mut decoder_output = self.decoder_output.lock();
+        decoder_output.error = None;
+        decoder_output.frames.clear();
 
         Ok(())
     }
 
-    /// Reset the video decoder and discard all frames.
-    fn reset(&mut self) {
-        self.decoder.reset();
-
-        let mut decoder_output = self.decoder_output.lock();
-        decoder_output.reset_since_last_reported_error = true;
-        decoder_output.frames.clear();
-
-        self.current_segment_idx = usize::MAX;
-        self.current_sample_idx = usize::MAX;
+    /// Return and clear the latest error that happened during decoding.
+    fn take_error(&mut self) -> Option<TimedDecodingError> {
+        self.decoder_output.lock().error.take()
     }
 }
 
