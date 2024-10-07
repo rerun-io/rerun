@@ -114,7 +114,7 @@ impl TestContext {
     }
 
     /// Run the given function with a [`ViewerContext`] produced by the [`Self`] and handle any
-    /// system commands issued during execution (see [`handle_system_command`]).
+    /// system commands issued during execution (see [`Self::handle_system_command`]).
     pub fn run_and_handle_system_commands(
         &mut self,
         func: impl FnMut(&ViewerContext<'_>, &mut egui::Ui),
