@@ -591,7 +591,7 @@ impl QueryHandle<'_> {
 
         // What's the next sample we're interested in, if any?
         //
-        // `None` iif the query isn't sampled. Short-circuits if the query is sampled but has run out of samples.
+        // `None` iff the query isn't sampled. Short-circuits if the query is sampled but has run out of samples.
         let sampled_index_value =
             if let Some(using_index_values) = state.using_index_values_stack.lock().as_mut() {
                 // NOTE: Look closely -- this short-circuits is there are no more samples in the vec.
