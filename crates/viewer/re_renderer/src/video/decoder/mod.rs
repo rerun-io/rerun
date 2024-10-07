@@ -93,6 +93,7 @@ pub struct VideoDecoder {
     current_sample_idx: usize,
 
     error: Option<TimedDecodingError>,
+    error_on_last_frame_at: bool,
 }
 
 impl VideoDecoder {
@@ -151,6 +152,7 @@ impl VideoDecoder {
             current_sample_idx: usize::MAX,
 
             error: None,
+            error_on_last_frame_at: false,
         }
     }
 
@@ -159,6 +161,34 @@ impl VideoDecoder {
     /// This will seek in the video if needed.
     /// If you want to sample multiple points in a video simultaneously, use multiple decoders.
     pub fn frame_at(
+        &mut self,
+        render_ctx: &RenderContext,
+        presentation_timestamp_s: f64,
+    ) -> Result<VideoFrameTexture, DecodingError> {
+        let result = self.frame_at_internal(render_ctx, presentation_timestamp_s);
+        match &result {
+            Ok(VideoFrameTexture::Ready(_)) => {
+                self.error_on_last_frame_at = false;
+            }
+            Ok(VideoFrameTexture::Pending(_)) => {
+                if self.error_on_last_frame_at {
+                    // If we switched from error to pending, clear the texture.
+                    // This is important to avoid flickering, in particular when switching from
+                    // benign errors like DecodingError::NegativeTimestamp.
+                    // If we don't do this, we see the last valid texture which can look really weird.
+                    clear_texture(render_ctx, &self.texture);
+                }
+
+                self.error_on_last_frame_at = false;
+            }
+            Err(_) => {
+                self.error_on_last_frame_at = true;
+            }
+        }
+        result
+    }
+
+    fn frame_at_internal(
         &mut self,
         render_ctx: &RenderContext,
         presentation_timestamp_s: f64,
@@ -286,7 +316,7 @@ impl VideoDecoder {
             }
             LatestAtResult::UpToDate => Ok(VideoFrameTexture::Ready(self.texture.clone())),
             LatestAtResult::OutdatedBy(duration) => {
-                // TODO: report how far outdated the texture is, so user can decide wether or not to show a loading icon.
+                // TODO: report how far outdated the texture is, so user can decide whether or not to show a loading icon.
                 Ok(VideoFrameTexture::Pending(self.texture.clone()))
             }
         }
@@ -354,6 +384,30 @@ fn alloc_video_frame_texture(
     };
 
     texture
+}
+
+/// Clears the texture that is shown on pending to black.
+fn clear_texture(render_ctx: &RenderContext, texture: &GpuTexture2D) {
+    // Clear texture is a native only feature, so let's not do that.
+    // before_view_builder_encoder.clear_texture(texture, subresource_range);
+
+    // But our target is also a render target, so just create a dummy renderpass with clear.
+    let mut before_view_builder_encoder =
+        render_ctx.active_frame.before_view_builder_encoder.lock();
+    let _ = before_view_builder_encoder
+        .get()
+        .begin_render_pass(&wgpu::RenderPassDescriptor {
+            label: crate::DebugLabel::from("clear_video_texture").get(),
+            color_attachments: &[Some(wgpu::RenderPassColorAttachment {
+                view: &texture.default_view,
+                resolve_target: None,
+                ops: wgpu::Operations::<wgpu::Color> {
+                    load: wgpu::LoadOp::Clear(wgpu::Color::BLACK),
+                    store: wgpu::StoreOp::Store,
+                },
+            })],
+            ..Default::default()
+        });
 }
 
 /// Returns the index of:
