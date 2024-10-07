@@ -6,6 +6,7 @@ use std::sync::{
 use ahash::HashSet;
 use arrow2::{
     array::Array as ArrowArray, chunk::Chunk as ArrowChunk, datatypes::Schema as ArrowSchema,
+    Either,
 };
 use itertools::Itertools;
 
@@ -382,10 +383,14 @@ impl QueryHandle<'_> {
             .iter()
             .flat_map(|chunks| {
                 chunks.iter().filter_map(|(_cursor, chunk)| {
-                    chunk
-                        .timelines()
-                        .get(&self.query.filtered_index)
-                        .map(|time_column| time_column.times())
+                    if chunk.is_static() {
+                        Some(Either::Left(std::iter::once(TimeInt::STATIC)))
+                    } else {
+                        chunk
+                            .timelines()
+                            .get(&self.query.filtered_index)
+                            .map(|time_column| Either::Right(time_column.times()))
+                    }
                 })
             })
             .flatten()
