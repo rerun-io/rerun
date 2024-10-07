@@ -126,7 +126,7 @@ impl TestContext {
     ///Best-effort attempt to meaningfully handle some of the system commands.
     pub fn handle_system_command(&mut self) {
         while let Some(command) = self.command_receiver.recv_system() {
-            let mut handled: bool = true;
+            let mut handled = true;
             let command_name = command.to_string();
             match command {
                 SystemCommand::UpdateBlueprint(store_id, chunks) => {
