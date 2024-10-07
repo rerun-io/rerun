@@ -77,9 +77,6 @@ impl LatestAtQueryHandle<'_> {
                             .schema_for_query(&self.query.clone().into())
                     })
                     .into_iter()
-                    // NOTE: We drop `RowId`, as it doesn't make any sense in a compound row like the
-                    // one we are returning.
-                    .filter(|descr| !matches!(descr, ColumnDescriptor::Control(_)))
                     .collect()
             };
 
@@ -125,7 +122,7 @@ impl LatestAtQueryHandle<'_> {
                             .map(|chunk| (col, chunk))
                     }
 
-                    _ => None,
+                    ColumnDescriptor::Time(_) => None,
                 })
                 .collect()
         };
@@ -138,7 +135,7 @@ impl LatestAtQueryHandle<'_> {
                 .iter()
                 .filter_map(|descr| match descr {
                     ColumnDescriptor::Time(descr) => Some(descr.timeline),
-                    _ => None,
+                    ColumnDescriptor::Component(_) => None,
                 })
                 .collect_vec();
 
@@ -169,22 +166,13 @@ impl LatestAtQueryHandle<'_> {
 
             columns
                 .iter()
-                .filter_map(|col| match col {
-                    ColumnDescriptor::Control(_) => {
-                        if cfg!(debug_assertions) {
-                            unreachable!("filtered out during schema computation");
-                        } else {
-                            // NOTE: Technically cannot ever happen, but I'd rather that than an uwnrap.
-                            None
-                        }
-                    }
-
+                .map(|col| match col {
                     ColumnDescriptor::Time(descr) => {
                         let time_column = max_time_per_timeline
                             .remove(&descr.timeline)
                             .and_then(|(_, chunk)| chunk.timelines().get(&descr.timeline).cloned());
 
-                        Some(time_column.map_or_else(
+                        time_column.map_or_else(
                             || {
                                 arrow2::array::new_null_array(
                                     descr.datatype.clone(),
@@ -192,23 +180,21 @@ impl LatestAtQueryHandle<'_> {
                                 )
                             },
                             |time_column| time_column.times_array().to_boxed(),
-                        ))
+                        )
                     }
 
-                    ColumnDescriptor::Component(descr) => Some(
-                        all_units
-                            .get(col)
-                            .and_then(|chunk| chunk.components().get(&descr.component_name))
-                            .map_or_else(
-                                || {
-                                    arrow2::array::new_null_array(
-                                        descr.returned_datatype(),
-                                        null_array_length,
-                                    )
-                                },
-                                |list_array| list_array.to_boxed(),
-                            ),
-                    ),
+                    ColumnDescriptor::Component(descr) => all_units
+                        .get(col)
+                        .and_then(|chunk| chunk.components().get(&descr.component_name))
+                        .map_or_else(
+                            || {
+                                arrow2::array::new_null_array(
+                                    descr.returned_datatype(),
+                                    null_array_length,
+                                )
+                            },
+                            |list_array| list_array.to_boxed(),
+                        ),
                 })
                 .collect_vec()
         };
