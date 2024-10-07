@@ -2,57 +2,68 @@ use fdg_sim::{ForceGraph, ForceGraphHelper, Simulation, SimulationParameters};
 use std::collections::HashMap;
 
 use re_viewer::external::{
-    egui::{self, emath::TSTransform, TextWrapMode}, re_entity_db::InstancePath, re_log::external::log, re_log_types::EntityPath, re_types::SpaceViewClassIdentifier, re_ui, re_viewer_context::{
-        HoverHighlight, IdentifiedViewSystem as _, InteractionHighlight, Item, SelectionHighlight, SpaceViewClass, SpaceViewClassLayoutPriority, SpaceViewClassRegistryError, SpaceViewId, SpaceViewSpawnHeuristics, SpaceViewState, SpaceViewStateExt as _, SpaceViewSystemExecutionError, SpaceViewSystemRegistrator, SystemExecutionOutput, ViewQuery, ViewerContext
-    }
+    egui::{self, emath::TSTransform, TextWrapMode},
+    re_entity_db::InstancePath,
+    re_log::external::log,
+    re_log_types::EntityPath,
+    re_types::{datatypes, SpaceViewClassIdentifier},
+    re_ui,
+    re_viewer_context::{
+        HoverHighlight, IdentifiedViewSystem as _, InteractionHighlight, Item, SelectionHighlight,
+        SpaceViewClass, SpaceViewClassLayoutPriority, SpaceViewClassRegistryError, SpaceViewId,
+        SpaceViewSpawnHeuristics, SpaceViewState, SpaceViewStateExt as _,
+        SpaceViewSystemExecutionError, SpaceViewSystemRegistrator, SystemExecutionOutput,
+        ViewQuery, ViewerContext,
+    },
 };
 
 use crate::{
-    common::QualifiedEdge,
-    edge_visualizer_system::EdgeInstance,
+    edge_undirected_visualizer_system::EdgeInstance,
     node_visualizer_system::{GraphNodeVisualizer, NodeInstance},
 };
-use crate::{common::QualifiedNode, edge_visualizer_system::GraphEdgeVisualizer};
+use crate::{edge_undirected_visualizer_system::EdgeUndirectedVisualizer, types::NodeLocation};
 
 fn measure_node_sizes<'a>(
     ui: &mut egui::Ui,
     nodes: impl Iterator<Item = NodeInstance<'a>>,
-) -> Vec<(QualifiedNode, egui::Vec2)> {
+) -> Vec<(NodeLocation, egui::Vec2)> {
     let mut sizes = Vec::new();
     let ctx = ui.ctx();
     ctx.request_discard("measuring node sizes");
     ui.horizontal(|ui| {
         for node in nodes {
             let response = node.draw(ui, InteractionHighlight::default());
-            sizes.push((node.node_id.clone(), response.rect.size()));
+            sizes.push((node.location.clone(), response.rect.size()));
         }
     });
     sizes
 }
 
-fn compute_layout(
-    nodes: impl Iterator<Item = (QualifiedNode, egui::Vec2)>,
-    edges: impl Iterator<Item = QualifiedEdge>,
-) -> HashMap<QualifiedNode, egui::Rect> {
+fn compute_layout<'a>(
+    nodes: impl Iterator<Item = (NodeLocation, egui::Vec2)>,
+    edges: impl Iterator<Item = &'a datatypes::GraphEdge>,
+) -> HashMap<NodeLocation, egui::Rect> {
     let mut node_to_index = HashMap::new();
     let mut graph: ForceGraph<NodeKind, ()> = ForceGraph::default();
 
     // TODO(grtlr): `fdg` does not account for node sizes out of the box.
     for (node_id, size) in nodes {
         let ix = graph.add_force_node(
-            node_id.to_string(),
+            format!("{:?}", node_id),
             NodeKind::Regular(node_id.clone(), size),
         );
         node_to_index.insert(node_id, ix);
     }
 
-    for QualifiedEdge { source, target } in edges {
-        let source_ix = *node_to_index
-            .entry(source.clone())
-            .or_insert(graph.add_force_node(source.to_string(), NodeKind::Dummy(source)));
-        let target_ix = *node_to_index
-            .entry(target.clone())
-            .or_insert(graph.add_force_node(target.to_string(), NodeKind::Dummy(target)));
+    for datatypes::GraphEdge { source, target } in edges {
+        let source = NodeLocation::from(source.clone());
+        let target = NodeLocation::from(target.clone());
+        let source_ix = *node_to_index.entry(source.clone()).or_insert(
+            graph.add_force_node(format!("{:?}", source), NodeKind::Dummy(source.clone())),
+        );
+        let target_ix = *node_to_index.entry(target.clone()).or_insert(
+            graph.add_force_node(format!("{:?}", target), NodeKind::Dummy(target.clone())),
+        );
         graph.add_edge(source_ix, target_ix, ());
     }
 
@@ -113,14 +124,14 @@ fn fit_bounding_rect_to_screen(
 
 // We need to differentiate between regular nodes and nodes that belong to a different entity hierarchy.
 enum NodeKind {
-    Regular(QualifiedNode, egui::Vec2),
-    Dummy(QualifiedNode),
+    Regular(NodeLocation, egui::Vec2),
+    Dummy(NodeLocation),
 }
 
 impl<'a> NodeInstance<'a> {
     fn text(&self) -> egui::RichText {
         self.label.map_or(
-            egui::RichText::new(format!("{}@{}", self.node_id.node_id, self.entity_path)),
+            egui::RichText::new(self.location.node_id.to_string()),
             |label| egui::RichText::new(label.to_string()),
         )
     }
@@ -143,10 +154,7 @@ impl<'a> NodeInstance<'a> {
 
         egui::Frame::default()
             .rounding(egui::Rounding::same(4.0))
-            .stroke(egui::Stroke::new(
-                1.0,
-                ui.style().visuals.text_color(),
-            ))
+            .stroke(egui::Stroke::new(1.0, ui.style().visuals.text_color()))
             .inner_margin(egui::Vec2::new(6.0, 4.0))
             .fill(bg)
             .show(ui, |ui| {
@@ -169,7 +177,7 @@ pub struct GraphSpaceViewState {
     world_to_view: TSTransform,
 
     /// Positions of the nodes in world space.
-    layout: Option<HashMap<QualifiedNode, egui::Rect>>,
+    layout: Option<HashMap<NodeLocation, egui::Rect>>,
 }
 
 impl SpaceViewState for GraphSpaceViewState {
@@ -210,7 +218,7 @@ impl SpaceViewClass for GraphSpaceView {
         system_registry: &mut SpaceViewSystemRegistrator<'_>,
     ) -> Result<(), SpaceViewClassRegistryError> {
         system_registry.register_visualizer::<GraphNodeVisualizer>()?;
-        system_registry.register_visualizer::<GraphEdgeVisualizer>()
+        system_registry.register_visualizer::<EdgeUndirectedVisualizer>()
     }
 
     fn new_state(&self) -> Box<dyn SpaceViewState> {
@@ -271,7 +279,9 @@ impl SpaceViewClass for GraphSpaceView {
         system_output: SystemExecutionOutput,
     ) -> Result<(), SpaceViewSystemExecutionError> {
         let node_system = system_output.view_systems.get::<GraphNodeVisualizer>()?;
-        let edge_system = system_output.view_systems.get::<GraphEdgeVisualizer>()?;
+        let edge_system = system_output
+            .view_systems
+            .get::<EdgeUndirectedVisualizer>()?;
 
         let state = state.downcast_mut::<GraphSpaceViewState>()?;
         let (id, clip_rect_window) = ui.allocate_space(ui.available_size());
@@ -285,7 +295,7 @@ impl SpaceViewClass for GraphSpaceView {
                 edge_system
                     .data
                     .iter()
-                    .flat_map(|d| d.edges().map(|e| e.edge)),
+                    .flat_map(|d| d.edges().map(|e| &e.edge.0)),
             );
 
             if let Some(bounding_box) = bounding_rect_from_iter(layout.values()) {
@@ -382,9 +392,9 @@ impl SpaceViewClass for GraphSpaceView {
 
             for node in data.nodes() {
                 let current_extent = layout
-                    .get(&node.node_id)
+                    .get(&node.location)
                     .expect("missing layout information for node");
-                let response = egui::Area::new(id.with((node.node_id.clone(), node.instance)))
+                let response = egui::Area::new(id.with((node.location.clone(), node.instance)))
                     .current_pos(current_extent.min)
                     .order(egui::Order::Middle)
                     .constrain(false)
@@ -395,11 +405,13 @@ impl SpaceViewClass for GraphSpaceView {
                     })
                     .response;
 
-                    let instance = InstancePath::instance(node.entity_path.clone(), node.instance);
-                    ctx.select_hovered_on_click(&response, Item::DataResult(query.space_view_id, instance));
+                let instance = InstancePath::instance(data.entity_path.clone(), node.instance);
+                ctx.select_hovered_on_click(
+                    &response,
+                    Item::DataResult(query.space_view_id, instance),
+                );
 
-
-                layout.insert(node.node_id.clone(), response.rect);
+                layout.insert(node.location.clone(), response.rect);
                 entity_rect =
                     entity_rect.map_or(Some(response.rect), |e| Some(e.union(response.rect)));
 
@@ -455,7 +467,7 @@ impl SpaceViewClass for GraphSpaceView {
             {
                 // TODO(grtlr): This does not handle dummy nodes correctly.
                 if let (Some(source_pos), Some(target_pos)) =
-                    (layout.get(&edge.source), layout.get(&edge.target))
+                    (layout.get(&edge.0.source.clone().into()), layout.get(&edge.0.target.clone().into()))
                 {
                     let highlight = ent_highlight.index_highlight(instance);
 
@@ -470,7 +482,7 @@ impl SpaceViewClass for GraphSpaceView {
                         }
                     };
 
-                    let response = egui::Area::new(id.with((edge, instance)))
+                    let response = egui::Area::new(id.with((data.entity_path.hash(), instance)))
                         .current_pos(source_pos.center())
                         .order(egui::Order::Background)
                         .constrain(false)

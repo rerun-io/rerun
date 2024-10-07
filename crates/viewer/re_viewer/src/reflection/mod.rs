@@ -371,10 +371,17 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             },
         ),
         (
-            <GraphEdge as Loggable>::name(),
+            <GraphEdgeDirected as Loggable>::name(),
             ComponentReflection {
-                docstring_md: "An edge in a graph connecting two nodes.\n\nDepending on the context this could represent a directed or undirected edge.",
-                placeholder: Some(GraphEdge::default().to_arrow()?),
+                docstring_md: "An undirected edge in a graph connecting two nodes.",
+                placeholder: Some(GraphEdgeDirected::default().to_arrow()?),
+            },
+        ),
+        (
+            <GraphEdgeUndirected as Loggable>::name(),
+            ComponentReflection {
+                docstring_md: "An undirected edge in a graph connecting two nodes.",
+                placeholder: Some(GraphEdgeUndirected::default().to_arrow()?),
             },
         ),
         (
@@ -1078,8 +1085,8 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                 display_name: "Graph edges",
                 fields: vec![
                     ArchetypeFieldReflection { component_name :
-                    "rerun.components.GraphEdge".into(), display_name : "Edges",
-                    docstring_md : "A list of node IDs.", is_required : true, },
+                    "rerun.components.GraphEdgeUndirected".into(), display_name :
+                    "Edges", docstring_md : "A list of node IDs.", is_required : true, },
                     ArchetypeFieldReflection { component_name : "rerun.components.Color"
                     .into(), display_name : "Colors", docstring_md :
                     "Optional colors for the boxes.", is_required : false, },

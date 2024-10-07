@@ -7,7 +7,7 @@ A list of nodes in a graph with optional labels, colors, etc.
 
 ## Components
 
-**Required**: [`GraphEdge`](../components/graph_edge.md)
+**Required**: [`GraphEdgeUndirected`](../components/graph_edge_undirected.md)
 
 **Recommended**: [`Color`](../components/color.md)
 

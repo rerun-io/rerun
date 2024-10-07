@@ -13,39 +13,28 @@ use re_viewer::external::{
     },
 };
 
-use crate::common::{QualifiedEdge, QualifiedNode};
-
 #[derive(Default)]
-pub struct GraphEdgeVisualizer {
-    pub(crate) data: Vec<GraphEdgeVisualizerData>,
+pub struct EdgeUndirectedVisualizer {
+    pub(crate) data: Vec<EdgeUndirectedVisualizerData>,
 }
 
-pub(crate) struct GraphEdgeVisualizerData {
+pub(crate) struct EdgeUndirectedVisualizerData {
     pub entity_path: re_log_types::EntityPath,
-    edges: ChunkComponentIterItem<components::GraphEdge>,
+    edges: ChunkComponentIterItem<components::GraphEdgeUndirected>,
     colors: ChunkComponentIterItem<components::Color>,
 }
 
 pub(crate) struct EdgeInstance<'a> {
-    pub edge: QualifiedEdge,
+    pub edge: &'a components::GraphEdgeUndirected,
     pub entity_path: &'a re_log_types::EntityPath,
     pub instance: Instance,
     pub color: Option<Color32>,
 }
 
-impl GraphEdgeVisualizerData {
+impl EdgeUndirectedVisualizerData {
     pub(crate) fn edges(&self) -> impl Iterator<Item = EdgeInstance> {
         clamped_zip_2x1(
-            self.edges.iter().map(|e| QualifiedEdge {
-                source: QualifiedNode {
-                    entity_hash: e.source_entity_hash().unwrap_or(self.entity_path.hash()),
-                    node_id: e.source.clone(),
-                },
-                target: QualifiedNode {
-                    entity_hash: e.target_entity_hash().unwrap_or(self.entity_path.hash()),
-                    node_id: e.target.clone(),
-                },
-            }),
+            self.edges.iter(),
             (0..).map(Instance::from),
             self.colors.iter().map(Option::Some),
             Option::<&components::Color>::default,
@@ -59,13 +48,13 @@ impl GraphEdgeVisualizerData {
     }
 }
 
-impl IdentifiedViewSystem for GraphEdgeVisualizer {
+impl IdentifiedViewSystem for EdgeUndirectedVisualizer {
     fn identifier() -> ViewSystemIdentifier {
-        "GraphEdges".into()
+        "GraphEdgesUndirected".into()
     }
 }
 
-impl VisualizerSystem for GraphEdgeVisualizer {
+impl VisualizerSystem for EdgeUndirectedVisualizer {
     fn visualizer_query_info(&self) -> VisualizerQueryInfo {
         VisualizerQueryInfo::from_archetype::<archetypes::GraphEdges>()
     }
@@ -86,16 +75,16 @@ impl VisualizerSystem for GraphEdgeVisualizer {
                     &timeline_query,
                 );
 
-            let all_indexed_edges = results.iter_as(query.timeline, components::GraphEdge::name());
+            let all_indexed_edges = results.iter_as(query.timeline, components::GraphEdgeUndirected::name());
             let all_colors = results.iter_as(query.timeline, components::Color::name());
 
             let data = range_zip_1x1(
-                all_indexed_edges.component::<components::GraphEdge>(),
+                all_indexed_edges.component::<components::GraphEdgeUndirected>(),
                 all_colors.component::<components::Color>(),
             );
 
             for (_index, edges, colors) in data {
-                self.data.push(GraphEdgeVisualizerData {
+                self.data.push(EdgeUndirectedVisualizerData {
                     entity_path: data_result.entity_path.clone(),
                     edges,
                     colors: colors.unwrap_or_default(),
@@ -117,4 +106,4 @@ impl VisualizerSystem for GraphEdgeVisualizer {
     }
 }
 
-re_viewer_context::impl_component_fallback_provider!(GraphEdgeVisualizer => []);
+re_viewer_context::impl_component_fallback_provider!(EdgeUndirectedVisualizer => []);

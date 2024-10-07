@@ -13,6 +13,7 @@ include "./datatypes/entity_path.fbs";
 include "./datatypes/float32.fbs";
 include "./datatypes/float64.fbs";
 include "./datatypes/graph_edge.fbs";
+include "./datatypes/graph_location.fbs";
 include "./datatypes/graph_node_id.fbs";
 include "./datatypes/image_format.fbs";
 include "./datatypes/keypoint_id.fbs";

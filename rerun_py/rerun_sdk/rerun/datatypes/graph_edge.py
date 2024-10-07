@@ -19,57 +19,11 @@ from .._baseclasses import (
 __all__ = ["GraphEdge", "GraphEdgeArrayLike", "GraphEdgeBatch", "GraphEdgeLike", "GraphEdgeType"]
 
 
-def _graph_edge__source__special_field_converter_override(x: datatypes.GraphNodeIdLike) -> datatypes.GraphNodeId:
-    if isinstance(x, datatypes.GraphNodeId):
-        return x
-    else:
-        return datatypes.GraphNodeId(x)
-
-
-def _graph_edge__target__special_field_converter_override(x: datatypes.GraphNodeIdLike) -> datatypes.GraphNodeId:
-    if isinstance(x, datatypes.GraphNodeId):
-        return x
-    else:
-        return datatypes.GraphNodeId(x)
-
-
-def _graph_edge__source_entity__special_field_converter_override(
-    x: datatypes.EntityPathLike | None,
-) -> datatypes.EntityPath | None:
-    if x is None:
-        return None
-    elif isinstance(x, datatypes.EntityPath):
-        return x
-    else:
-        return datatypes.EntityPath(x)
-
-
-def _graph_edge__target_entity__special_field_converter_override(
-    x: datatypes.EntityPathLike | None,
-) -> datatypes.EntityPath | None:
-    if x is None:
-        return None
-    elif isinstance(x, datatypes.EntityPath):
-        return x
-    else:
-        return datatypes.EntityPath(x)
-
-
 @define(init=False)
 class GraphEdge:
-    """
-    **Datatype**: Represents an edge in a graph connecting two nodes (possible in different entities).
+    """**Datatype**: Represents an edge in a graph connecting two nodes (possibly in different entities)."""
 
-    If `source_entity` or `target_entity` is left out then the node id is assumed to be within the current entity.
-    """
-
-    def __init__(
-        self: Any,
-        source: datatypes.GraphNodeIdLike,
-        target: datatypes.GraphNodeIdLike,
-        source_entity: datatypes.EntityPathLike | None = None,
-        target_entity: datatypes.EntityPathLike | None = None,
-    ):
+    def __init__(self: Any, source: datatypes.GraphLocationLike, target: datatypes.GraphLocationLike):
         """
         Create a new instance of the GraphEdge datatype.
 
@@ -79,37 +33,19 @@ class GraphEdge:
             The id of the source node.
         target:
             The id of the target node.
-        source_entity:
-            The entity path of the source node.
-        target_entity:
-            The entity path of the target node.
 
         """
 
         # You can define your own __init__ function as a member of GraphEdgeExt in graph_edge_ext.py
-        self.__attrs_init__(source=source, target=target, source_entity=source_entity, target_entity=target_entity)
+        self.__attrs_init__(source=source, target=target)
 
-    source: datatypes.GraphNodeId = field(converter=_graph_edge__source__special_field_converter_override)
+    source: datatypes.GraphLocation = field()
     # The id of the source node.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 
-    target: datatypes.GraphNodeId = field(converter=_graph_edge__target__special_field_converter_override)
+    target: datatypes.GraphLocation = field()
     # The id of the target node.
-    #
-    # (Docstring intentionally commented out to hide this field from the docs)
-
-    source_entity: datatypes.EntityPath | None = field(
-        default=None, converter=_graph_edge__source_entity__special_field_converter_override
-    )
-    # The entity path of the source node.
-    #
-    # (Docstring intentionally commented out to hide this field from the docs)
-
-    target_entity: datatypes.EntityPath | None = field(
-        default=None, converter=_graph_edge__target_entity__special_field_converter_override
-    )
-    # The entity path of the target node.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 
@@ -128,10 +64,24 @@ class GraphEdgeType(BaseExtensionType):
         pa.ExtensionType.__init__(
             self,
             pa.struct([
-                pa.field("source", pa.utf8(), nullable=False, metadata={}),
-                pa.field("target", pa.utf8(), nullable=False, metadata={}),
-                pa.field("source_entity", pa.utf8(), nullable=True, metadata={}),
-                pa.field("target_entity", pa.utf8(), nullable=True, metadata={}),
+                pa.field(
+                    "source",
+                    pa.struct([
+                        pa.field("entity_path", pa.utf8(), nullable=False, metadata={}),
+                        pa.field("node_id", pa.utf8(), nullable=False, metadata={}),
+                    ]),
+                    nullable=False,
+                    metadata={},
+                ),
+                pa.field(
+                    "target",
+                    pa.struct([
+                        pa.field("entity_path", pa.utf8(), nullable=False, metadata={}),
+                        pa.field("node_id", pa.utf8(), nullable=False, metadata={}),
+                    ]),
+                    nullable=False,
+                    metadata={},
+                ),
             ]),
             self._TYPE_NAME,
         )
@@ -142,17 +92,15 @@ class GraphEdgeBatch(BaseBatch[GraphEdgeArrayLike]):
 
     @staticmethod
     def _native_to_pa_array(data: GraphEdgeArrayLike, data_type: pa.DataType) -> pa.Array:
-        from rerun.datatypes import EntityPathBatch, GraphNodeIdBatch
+        from rerun.datatypes import GraphLocationBatch
 
         if isinstance(data, GraphEdge):
             data = [data]
 
         return pa.StructArray.from_arrays(
             [
-                GraphNodeIdBatch([x.source for x in data]).as_arrow_array().storage,  # type: ignore[misc, arg-type]
-                GraphNodeIdBatch([x.target for x in data]).as_arrow_array().storage,  # type: ignore[misc, arg-type]
-                EntityPathBatch([x.source_entity for x in data]).as_arrow_array().storage,  # type: ignore[misc, arg-type]
-                EntityPathBatch([x.target_entity for x in data]).as_arrow_array().storage,  # type: ignore[misc, arg-type]
+                GraphLocationBatch([x.source for x in data]).as_arrow_array().storage,  # type: ignore[misc, arg-type]
+                GraphLocationBatch([x.target for x in data]).as_arrow_array().storage,  # type: ignore[misc, arg-type]
             ],
             fields=list(data_type),
         )

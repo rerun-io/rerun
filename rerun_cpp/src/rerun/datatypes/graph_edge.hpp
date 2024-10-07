@@ -4,12 +4,10 @@
 #pragma once
 
 #include "../result.hpp"
-#include "entity_path.hpp"
-#include "graph_node_id.hpp"
+#include "graph_location.hpp"
 
 #include <cstdint>
 #include <memory>
-#include <optional>
 
 namespace arrow {
     class Array;
@@ -18,21 +16,13 @@ namespace arrow {
 } // namespace arrow
 
 namespace rerun::datatypes {
-    /// **Datatype**: Represents an edge in a graph connecting two nodes (possible in different entities).
-    ///
-    /// If `source_entity` or `target_entity` is left out then the node id is assumed to be within the current entity.
+    /// **Datatype**: Represents an edge in a graph connecting two nodes (possibly in different entities).
     struct GraphEdge {
         /// The id of the source node.
-        rerun::datatypes::GraphNodeId source;
+        rerun::datatypes::GraphLocation source;
 
         /// The id of the target node.
-        rerun::datatypes::GraphNodeId target;
-
-        /// The entity path of the source node.
-        std::optional<rerun::datatypes::EntityPath> source_entity;
-
-        /// The entity path of the target node.
-        std::optional<rerun::datatypes::EntityPath> target_entity;
+        rerun::datatypes::GraphLocation target;
 
       public:
         GraphEdge() = default;

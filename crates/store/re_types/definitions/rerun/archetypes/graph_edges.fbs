@@ -11,7 +11,7 @@ table GraphEdges (
   // --- Required ---
 
   /// A list of node IDs.
-  edges: [rerun.components.GraphEdge] ("attr.rerun.component_required", order: 1000);
+  edges: [rerun.components.GraphEdgeUndirected] ("attr.rerun.component_required", order: 1000);
 
 
   // --- Optional ---

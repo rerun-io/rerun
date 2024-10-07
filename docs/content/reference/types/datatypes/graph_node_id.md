@@ -17,5 +17,5 @@ A 32-bit ID representing a node in a graph.
 
 ## Used by
 
-* [`GraphEdge`](../datatypes/graph_edge.md)
+* [`GraphLocation`](../datatypes/graph_location.md)
 * [`GraphNodeId`](../components/graph_node_id.md)

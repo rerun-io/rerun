@@ -15,6 +15,7 @@ entity_path.py linguist-generated=true
 float32.py linguist-generated=true
 float64.py linguist-generated=true
 graph_edge.py linguist-generated=true
+graph_location.py linguist-generated=true
 graph_node_id.py linguist-generated=true
 image_format.py linguist-generated=true
 keypoint_id.py linguist-generated=true

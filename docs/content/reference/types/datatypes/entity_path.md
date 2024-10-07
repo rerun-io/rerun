@@ -18,4 +18,4 @@ A path to an entity in the `ChunkStore`.
 ## Used by
 
 * [`EntityPath`](../components/entity_path.md?speculative-link)
-* [`GraphEdge`](../datatypes/graph_edge.md)
+* [`GraphLocation`](../datatypes/graph_location.md)

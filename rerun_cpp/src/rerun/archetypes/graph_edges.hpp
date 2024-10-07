@@ -8,7 +8,7 @@
 #include "../component_batch.hpp"
 #include "../components/class_id.hpp"
 #include "../components/color.hpp"
-#include "../components/graph_edge.hpp"
+#include "../components/graph_edge_undirected.hpp"
 #include "../components/show_labels.hpp"
 #include "../components/text.hpp"
 #include "../indicator_component.hpp"
@@ -23,7 +23,7 @@ namespace rerun::archetypes {
     /// **Archetype**: A list of nodes in a graph with optional labels, colors, etc.
     struct GraphEdges {
         /// A list of node IDs.
-        Collection<rerun::components::GraphEdge> edges;
+        Collection<rerun::components::GraphEdgeUndirected> edges;
 
         /// Optional colors for the boxes.
         std::optional<Collection<rerun::components::Color>> colors;
@@ -50,7 +50,7 @@ namespace rerun::archetypes {
         GraphEdges() = default;
         GraphEdges(GraphEdges&& other) = default;
 
-        explicit GraphEdges(Collection<rerun::components::GraphEdge> _edges)
+        explicit GraphEdges(Collection<rerun::components::GraphEdgeUndirected> _edges)
             : edges(std::move(_edges)) {}
 
         /// Optional colors for the boxes.

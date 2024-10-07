@@ -22,7 +22,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct GraphEdges {
     /// A list of node IDs.
-    pub edges: Vec<crate::components::GraphEdge>,
+    pub edges: Vec<crate::components::GraphEdgeUndirected>,
 
     /// Optional colors for the boxes.
     pub colors: Option<Vec<crate::components::Color>>,
@@ -51,7 +51,7 @@ impl ::re_types_core::SizeBytes for GraphEdges {
 
     #[inline]
     fn is_pod() -> bool {
-        <Vec<crate::components::GraphEdge>>::is_pod()
+        <Vec<crate::components::GraphEdgeUndirected>>::is_pod()
             && <Option<Vec<crate::components::Color>>>::is_pod()
             && <Option<Vec<crate::components::Text>>>::is_pod()
             && <Option<crate::components::ShowLabels>>::is_pod()
@@ -60,7 +60,7 @@ impl ::re_types_core::SizeBytes for GraphEdges {
 }
 
 static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 1usize]> =
-    once_cell::sync::Lazy::new(|| ["rerun.components.GraphEdge".into()]);
+    once_cell::sync::Lazy::new(|| ["rerun.components.GraphEdgeUndirected".into()]);
 
 static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 2usize]> =
     once_cell::sync::Lazy::new(|| {
@@ -82,7 +82,7 @@ static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 3usize]> =
 static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 6usize]> =
     once_cell::sync::Lazy::new(|| {
         [
-            "rerun.components.GraphEdge".into(),
+            "rerun.components.GraphEdgeUndirected".into(),
             "rerun.components.Color".into(),
             "rerun.components.GraphEdgesIndicator".into(),
             "rerun.components.Text".into(),
@@ -150,10 +150,10 @@ impl ::re_types_core::Archetype for GraphEdges {
             .collect();
         let edges = {
             let array = arrays_by_name
-                .get("rerun.components.GraphEdge")
+                .get("rerun.components.GraphEdgeUndirected")
                 .ok_or_else(DeserializationError::missing_data)
                 .with_context("rerun.archetypes.GraphEdges#edges")?;
-            <crate::components::GraphEdge>::from_arrow_opt(&**array)
+            <crate::components::GraphEdgeUndirected>::from_arrow_opt(&**array)
                 .with_context("rerun.archetypes.GraphEdges#edges")?
                 .into_iter()
                 .map(|v| v.ok_or_else(DeserializationError::missing_data))
@@ -246,7 +246,9 @@ impl ::re_types_core::ArchetypeReflectionMarker for GraphEdges {}
 impl GraphEdges {
     /// Create a new `GraphEdges`.
     #[inline]
-    pub fn new(edges: impl IntoIterator<Item = impl Into<crate::components::GraphEdge>>) -> Self {
+    pub fn new(
+        edges: impl IntoIterator<Item = impl Into<crate::components::GraphEdgeUndirected>>,
+    ) -> Self {
         Self {
             edges: edges.into_iter().map(Into::into).collect(),
             colors: None,

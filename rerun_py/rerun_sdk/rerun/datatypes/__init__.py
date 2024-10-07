@@ -39,6 +39,13 @@ from .entity_path import EntityPath, EntityPathArrayLike, EntityPathBatch, Entit
 from .float32 import Float32, Float32ArrayLike, Float32Batch, Float32Like, Float32Type
 from .float64 import Float64, Float64ArrayLike, Float64Batch, Float64Like, Float64Type
 from .graph_edge import GraphEdge, GraphEdgeArrayLike, GraphEdgeBatch, GraphEdgeLike, GraphEdgeType
+from .graph_location import (
+    GraphLocation,
+    GraphLocationArrayLike,
+    GraphLocationBatch,
+    GraphLocationLike,
+    GraphLocationType,
+)
 from .graph_node_id import GraphNodeId, GraphNodeIdArrayLike, GraphNodeIdBatch, GraphNodeIdLike, GraphNodeIdType
 from .image_format import ImageFormat, ImageFormatArrayLike, ImageFormatBatch, ImageFormatLike, ImageFormatType
 from .keypoint_id import KeypointId, KeypointIdArrayLike, KeypointIdBatch, KeypointIdLike, KeypointIdType
@@ -188,6 +195,11 @@ __all__ = [
     "GraphEdgeBatch",
     "GraphEdgeLike",
     "GraphEdgeType",
+    "GraphLocation",
+    "GraphLocationArrayLike",
+    "GraphLocationBatch",
+    "GraphLocationLike",
+    "GraphLocationType",
     "GraphNodeId",
     "GraphNodeIdArrayLike",
     "GraphNodeIdBatch",

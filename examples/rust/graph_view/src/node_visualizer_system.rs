@@ -6,7 +6,11 @@ use re_viewer::external::{
     re_query::{clamped_zip_2x2, range_zip_1x3},
     re_renderer,
     re_space_view::{DataResultQuery, RangeResultsExt},
-    re_types::{self, archetypes, components, ArrowString, Loggable as _},
+    re_types::{
+        self, archetypes,
+        components::{self},
+        datatypes, ArrowString, Loggable as _,
+    },
     re_viewer_context::{
         self, IdentifiedViewSystem, SpaceViewSystemExecutionError, ViewContext,
         ViewContextCollection, ViewQuery, ViewSystemIdentifier, VisualizerQueryInfo,
@@ -14,7 +18,7 @@ use re_viewer::external::{
     },
 };
 
-use crate::common::QualifiedNode;
+use crate::types::NodeLocation;
 
 /// Our space view consist of single part which holds a list of egui colors for each entity path.
 #[derive(Default)]
@@ -35,8 +39,7 @@ pub(crate) struct GraphNodeVisualizerData {
 }
 
 pub(crate) struct NodeInstance<'a> {
-    pub node_id: QualifiedNode,
-    pub entity_path: &'a EntityPath,
+    pub location: NodeLocation,
     pub instance: Instance,
     pub label: Option<&'a ArrowString>,
     pub color: Option<Color32>,
@@ -44,11 +47,9 @@ pub(crate) struct NodeInstance<'a> {
 
 impl GraphNodeVisualizerData {
     pub(crate) fn nodes(&self) -> impl Iterator<Item = NodeInstance> {
+        let entity_hash = self.entity_path.hash();
         clamped_zip_2x2(
-            self.node_ids.iter().map(|node_id| QualifiedNode {
-                entity_hash: self.entity_path.hash(),
-                node_id: node_id.0.clone(),
-            }),
+            self.node_ids.iter(),
             (0..).map(Instance::from),
             self.colors.iter().map(Option::Some),
             Option::<&components::Color>::default,
@@ -61,9 +62,11 @@ impl GraphNodeVisualizerData {
             }),
             Option::<&ArrowString>::default,
         )
-        .map(|(node_id, instance, color, label)| NodeInstance {
-            node_id,
-            entity_path: &self.entity_path,
+        .map(move |(node_id, instance, color, label)| NodeInstance {
+            location: NodeLocation {
+                entity_hash,
+                node_id: node_id.0.clone(),
+            },
             instance,
             color: color.map(|c| Color32::from(c.0)),
             label,

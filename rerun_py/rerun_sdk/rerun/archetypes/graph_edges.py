@@ -74,9 +74,9 @@ class GraphEdges(Archetype):
         inst.__attrs_clear__()
         return inst
 
-    edges: components.GraphEdgeBatch = field(
+    edges: components.GraphEdgeUndirectedBatch = field(
         metadata={"component": "required"},
-        converter=components.GraphEdgeBatch._required,  # type: ignore[misc]
+        converter=components.GraphEdgeUndirectedBatch._required,  # type: ignore[misc]
     )
     # A list of node IDs.
     #

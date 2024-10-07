@@ -1,26 +1,16 @@
-include "entity_path.fbs";
-include "graph_node_id.fbs";
+include "graph_location.fbs";
 
 namespace rerun.datatypes;
 
-/// Represents an edge in a graph connecting two nodes (possible in different entities).
-///
-/// If `source_entity` or `target_entity` is left out then the node id is assumed to be within the current entity.
+/// Represents an edge in a graph connecting two nodes (possibly in different entities).
 table GraphEdge (
     "attr.rust.derive": "Default, PartialEq, Eq, PartialOrd, Ord",
     "attr.rust.custom_clause":
         'cfg_attr(feature = "serde", derive(::serde::Serialize, ::serde::Deserialize))'
 ) {
   /// The id of the source node.
-  source: rerun.datatypes.GraphNodeId (order: 100);
+  source: rerun.datatypes.GraphLocation (order: 100);
 
   /// The id of the target node.
-  target: rerun.datatypes.GraphNodeId (order: 200);
-
-  /// The entity path of the source node.
-  // TODO(grtlr): Consider making this a separate datatype that has its own component.
-  source_entity: rerun.datatypes.EntityPath (order: 300, nullable);
-
-  /// The entity path of the target node.
-  target_entity: rerun.datatypes.EntityPath (order: 400, nullable);
+  target: rerun.datatypes.GraphLocation (order: 200);
 }
