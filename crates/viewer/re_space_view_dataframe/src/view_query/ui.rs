@@ -137,7 +137,7 @@ impl Query {
         // Read stuff
         //
 
-        let original_filter_by_event = self.filter_by_event()?;
+        let original_filter_by_event = self.filter_by_event_raw()?;
 
         let (mut active, event_entity, event_component) = original_filter_by_event
             .as_ref()
