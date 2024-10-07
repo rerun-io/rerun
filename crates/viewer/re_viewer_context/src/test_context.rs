@@ -1,7 +1,9 @@
 use crate::{
-    command_channel, ApplicationSelectionState, ComponentUiRegistry, RecordingConfig,
-    SpaceViewClassRegistry, StoreContext, ViewerContext,
+    blueprint_timeline, command_channel, ApplicationSelectionState, CommandReceiver, CommandSender,
+    ComponentUiRegistry, RecordingConfig, SpaceViewClassRegistry, StoreContext, SystemCommand,
+    ViewerContext,
 };
+use std::sync::Arc;
 
 use re_chunk_store::LatestAtQuery;
 use re_entity_db::EntityDb;
@@ -25,6 +27,9 @@ pub struct TestContext {
     pub space_view_class_registry: SpaceViewClassRegistry,
     pub selection_state: ApplicationSelectionState,
     pub active_timeline: Timeline,
+
+    command_sender: CommandSender,
+    command_receiver: CommandReceiver,
 }
 
 impl Default for TestContext {
@@ -32,12 +37,16 @@ impl Default for TestContext {
         let recording_store = EntityDb::new(StoreId::random(StoreKind::Recording));
         let blueprint_store = EntityDb::new(StoreId::random(StoreKind::Blueprint));
         let active_timeline = Timeline::new("time", re_log_types::TimeType::Time);
+
+        let (command_sender, command_receiver) = command_channel();
         Self {
             recording_store,
             blueprint_store,
             space_view_class_registry: Default::default(),
             selection_state: Default::default(),
             active_timeline,
+            command_sender,
+            command_receiver,
         }
     }
 }
@@ -50,12 +59,16 @@ impl TestContext {
         self.selection_state.on_frame_start(|_| true, None);
     }
 
+    /// Run the given function with a [`ViewerContext`] produced by the [`Self`].
+    ///
+    /// Note: there is a possibility that the closure will be called more than once, see
+    /// [`egui::Context::run`].
     pub fn run(&self, mut func: impl FnMut(&ViewerContext<'_>, &mut egui::Ui)) {
         egui::__run_test_ctx(|ctx| {
             egui::CentralPanel::default().show(ctx, |ui| {
                 re_ui::apply_style_and_install_loaders(ui.ctx());
-                let blueprint_query = LatestAtQuery::latest(self.active_timeline);
-                let (command_sender, _) = command_channel();
+                let blueprint_query = LatestAtQuery::latest(blueprint_timeline());
+
                 let component_ui_registry = ComponentUiRegistry::new(Box::new(
                     |_ctx, _ui, _ui_layout, _query, _db, _entity_path, _row_id, _component| {},
                 ));
@@ -90,13 +103,71 @@ impl TestContext {
                     blueprint_query: &blueprint_query,
                     egui_ctx: &egui_context,
                     render_ctx: None,
-                    command_sender: &command_sender,
+                    command_sender: &self.command_sender,
                     focused_item: &None,
                 };
 
                 func(&ctx, ui);
             });
         });
+    }
+
+    /// Run the given function with a [`ViewerContext`] produced by the [`Self`] and handle any
+    /// system commands issued during execution (see [`handle_commands`]).
+    pub fn run_and_handle_system_commands(
+        &mut self,
+        func: impl FnMut(&ViewerContext<'_>, &mut egui::Ui),
+    ) {
+        self.run(func);
+        self.handle_system_command();
+    }
+
+    ///Best-effort attempt to meaningfully handle some of the system commands.
+    pub fn handle_system_command(&mut self) {
+        while let Some(command) = self.command_receiver.recv_system() {
+            match command {
+                SystemCommand::UpdateBlueprint(store_id, chunks) => {
+                    assert_eq!(&store_id, self.blueprint_store.store_id());
+
+                    for chunk in chunks {
+                        self.blueprint_store
+                            .add_chunk(&Arc::new(chunk))
+                            .expect("Updating the blueprint chunk store failed");
+                    }
+                }
+
+                SystemCommand::DropEntity(store_id, entity_path) => {
+                    assert_eq!(&store_id, self.blueprint_store.store_id());
+                    self.blueprint_store
+                        .drop_entity_path_recursive(&entity_path);
+                }
+
+                SystemCommand::SetSelection(item) => {
+                    self.selection_state.set_selection(item);
+                }
+
+                // not implemented
+                SystemCommand::SetFocus(_)
+                | SystemCommand::ActivateApp(_)
+                | SystemCommand::CloseApp(_)
+                | SystemCommand::LoadDataSource(_)
+                | SystemCommand::ClearSourceAndItsStores(_)
+                | SystemCommand::AddReceiver(_)
+                | SystemCommand::ResetViewer
+                | SystemCommand::ClearActiveBlueprint
+                | SystemCommand::ClearAndGenerateBlueprint
+                | SystemCommand::ActivateRecording(_)
+                | SystemCommand::CloseStore(_)
+                | SystemCommand::CloseAllRecordings
+                | SystemCommand::EnableExperimentalDataframeSpaceView(_) => {}
+
+                #[cfg(debug_assertions)]
+                SystemCommand::EnableInspectBlueprintTimeline(_) => {}
+
+                #[cfg(not(target_arch = "wasm32"))]
+                SystemCommand::FileSaver(_) => {}
+            }
+        }
     }
 }
 
