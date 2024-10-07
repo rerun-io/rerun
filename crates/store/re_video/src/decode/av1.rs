@@ -143,8 +143,13 @@ type OutputCallback = dyn Fn(Result<Frame>) + Send + Sync;
 fn create_decoder() -> Result<dav1d::Decoder, dav1d::Error> {
     re_tracing::profile_function!();
 
+    // See https://videolan.videolan.me/dav1d/structDav1dSettings.html for settings docs
     let mut settings = dav1d::Settings::new();
+
+    // Prioritize delivering video frames, not error messages.
     settings.set_strict_std_compliance(false);
+
+    // Set to 1 for low-latency decoding.
     settings.set_max_frame_delay(1);
 
     dav1d::Decoder::with_settings(&settings)
