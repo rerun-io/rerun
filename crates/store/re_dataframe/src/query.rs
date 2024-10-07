@@ -34,10 +34,10 @@ use crate::{QueryEngine, RecordBatch};
 // * [x] pov support
 // * [x] latestat sparse-filling
 // * [x] sampling support
-// * [ ] clears
+// * [x] clears
+// * [ ] pagination (fast)
 // * [ ] overlaps (less dumb)
 // * [ ] selector-based `filtered_index`
-// * [ ] pagination (fast)
 // * [ ] configurable cache bypass
 // * [ ] allocate null arrays once
 // * [ ] take kernel duplicates all memory
@@ -157,91 +157,7 @@ impl QueryHandle<'_> {
         // still appear in the results.
         let selected_contents: Vec<(_, _)> = if let Some(selection) = self.query.selection.as_ref()
         {
-            selection
-                .iter()
-                .map(|column| {
-                    match column {
-                        ColumnSelector::Time(selected_column) => {
-                            let TimeColumnSelector {
-                                timeline: selected_timeline,
-                            } = selected_column;
-
-                            view_contents
-                                .iter()
-                                .enumerate()
-                                .filter_map(|(idx, view_column)| match view_column {
-                                    ColumnDescriptor::Time(view_descr) => Some((idx, view_descr)),
-                                    ColumnDescriptor::Component(_) => None,
-                                })
-                                .find(|(_idx, view_descr)| {
-                                    *view_descr.timeline.name() == *selected_timeline
-                                })
-                                .map_or_else(
-                                    || {
-                                        (
-                                            usize::MAX,
-                                            ColumnDescriptor::Time(TimeColumnDescriptor {
-                                                // TODO(cmc): I picked a sequence here because I have to pick something.
-                                                // It doesn't matter, only the name will remain in the Arrow schema anyhow.
-                                                timeline: Timeline::new_sequence(
-                                                    *selected_timeline,
-                                                ),
-                                                datatype: arrow2::datatypes::DataType::Null,
-                                            }),
-                                        )
-                                    },
-                                    |(idx, view_descr)| {
-                                        (idx, ColumnDescriptor::Time(view_descr.clone()))
-                                    },
-                                )
-                        }
-
-                        ColumnSelector::Component(selected_column) => {
-                            let ComponentColumnSelector {
-                                entity_path: selected_entity_path,
-                                component: selected_component_name,
-                                join_encoding: _,
-                            } = selected_column;
-
-                            view_contents
-                                .iter()
-                                .enumerate()
-                                .filter_map(|(idx, view_column)| match view_column {
-                                    ColumnDescriptor::Component(view_descr) => {
-                                        Some((idx, view_descr))
-                                    }
-                                    ColumnDescriptor::Time(_) => None,
-                                })
-                                .find(|(_idx, view_descr)| {
-                                    view_descr.entity_path == *selected_entity_path
-                                        && view_descr.component_name == *selected_component_name
-                                })
-                                .map_or_else(
-                                    || {
-                                        (
-                                            usize::MAX,
-                                            ColumnDescriptor::Component(
-                                                ComponentColumnDescriptor {
-                                                    entity_path: selected_entity_path.clone(),
-                                                    archetype_name: None,
-                                                    archetype_field_name: None,
-                                                    component_name: *selected_component_name,
-                                                    store_datatype:
-                                                        arrow2::datatypes::DataType::Null,
-                                                    join_encoding: JoinEncoding::default(),
-                                                    is_static: false,
-                                                },
-                                            ),
-                                        )
-                                    },
-                                    |(idx, view_descr)| {
-                                        (idx, ColumnDescriptor::Component(view_descr.clone()))
-                                    },
-                                )
-                        }
-                    }
-                })
-                .collect_vec()
+            self.compute_user_selection(&view_contents, selection)
         } else {
             view_contents.clone().into_iter().enumerate().collect()
         };
@@ -264,12 +180,7 @@ impl QueryHandle<'_> {
             .map(|values| values.iter().rev().copied().collect_vec());
 
         // 4. Perform the query and keep track of all the relevant chunks.
-        let mut view_pov_chunks_idx = self
-            .query
-            .filtered_point_of_view
-            .as_ref()
-            .map(|_| usize::MAX);
-        let view_chunks = {
+        let query = {
             let index_range =
                 if let Some(using_index_values_stack) = using_index_values_stack.as_ref() {
                     using_index_values_stack
@@ -284,11 +195,121 @@ impl QueryHandle<'_> {
                         .unwrap_or(ResolvedTimeRange::EVERYTHING)
                 };
 
-            let query = RangeQuery::new(self.query.filtered_index, index_range)
+            RangeQuery::new(self.query.filtered_index, index_range)
                 .keep_extra_timelines(true) // we want all the timelines we can get!
-                .keep_extra_components(false);
+                .keep_extra_components(false)
+        };
+        let (view_pov_chunks_idx, view_chunks) = self.fetch_view_chunks(&query, &view_contents);
 
-            view_contents
+        QueryHandleState {
+            view_contents,
+            selected_contents,
+            arrow_schema,
+            view_chunks,
+            view_pov_chunks_idx,
+            using_index_values_stack: Mutex::new(using_index_values_stack),
+            cur_row: AtomicU64::new(0),
+        }
+    }
+
+    #[allow(clippy::unused_self)]
+    fn compute_user_selection(
+        &self,
+        view_contents: &[ColumnDescriptor],
+        selection: &[ColumnSelector],
+    ) -> Vec<(usize, ColumnDescriptor)> {
+        selection
+            .iter()
+            .map(|column| {
+                match column {
+                    ColumnSelector::Time(selected_column) => {
+                        let TimeColumnSelector {
+                            timeline: selected_timeline,
+                        } = selected_column;
+
+                        view_contents
+                            .iter()
+                            .enumerate()
+                            .filter_map(|(idx, view_column)| match view_column {
+                                ColumnDescriptor::Time(view_descr) => Some((idx, view_descr)),
+                                ColumnDescriptor::Component(_) => None,
+                            })
+                            .find(|(_idx, view_descr)| {
+                                *view_descr.timeline.name() == *selected_timeline
+                            })
+                            .map_or_else(
+                                || {
+                                    (
+                                        usize::MAX,
+                                        ColumnDescriptor::Time(TimeColumnDescriptor {
+                                            // TODO(cmc): I picked a sequence here because I have to pick something.
+                                            // It doesn't matter, only the name will remain in the Arrow schema anyhow.
+                                            timeline: Timeline::new_sequence(*selected_timeline),
+                                            datatype: arrow2::datatypes::DataType::Null,
+                                        }),
+                                    )
+                                },
+                                |(idx, view_descr)| {
+                                    (idx, ColumnDescriptor::Time(view_descr.clone()))
+                                },
+                            )
+                    }
+
+                    ColumnSelector::Component(selected_column) => {
+                        let ComponentColumnSelector {
+                            entity_path: selected_entity_path,
+                            component: selected_component_name,
+                            join_encoding: _,
+                        } = selected_column;
+
+                        view_contents
+                            .iter()
+                            .enumerate()
+                            .filter_map(|(idx, view_column)| match view_column {
+                                ColumnDescriptor::Component(view_descr) => Some((idx, view_descr)),
+                                ColumnDescriptor::Time(_) => None,
+                            })
+                            .find(|(_idx, view_descr)| {
+                                view_descr.entity_path == *selected_entity_path
+                                    && view_descr.component_name == *selected_component_name
+                            })
+                            .map_or_else(
+                                || {
+                                    (
+                                        usize::MAX,
+                                        ColumnDescriptor::Component(ComponentColumnDescriptor {
+                                            entity_path: selected_entity_path.clone(),
+                                            archetype_name: None,
+                                            archetype_field_name: None,
+                                            component_name: *selected_component_name,
+                                            store_datatype: arrow2::datatypes::DataType::Null,
+                                            join_encoding: JoinEncoding::default(),
+                                            is_static: false,
+                                        }),
+                                    )
+                                },
+                                |(idx, view_descr)| {
+                                    (idx, ColumnDescriptor::Component(view_descr.clone()))
+                                },
+                            )
+                    }
+                }
+            })
+            .collect_vec()
+    }
+
+    fn fetch_view_chunks(
+        &self,
+        query: &RangeQuery,
+        view_contents: &[ColumnDescriptor],
+    ) -> (Option<usize>, Vec<Vec<(AtomicU64, Chunk)>>) {
+        let mut view_pov_chunks_idx = self
+            .query
+            .filtered_point_of_view
+            .as_ref()
+            .map(|_| usize::MAX);
+
+        let view_chunks = view_contents
                 .iter()
                 .enumerate()
                 .map(|(idx, selected_column)| match selected_column {
@@ -350,18 +371,9 @@ impl QueryHandle<'_> {
                             chunks
                         },
                     })
-                .collect()
-        };
+                .collect();
 
-        QueryHandleState {
-            view_contents,
-            selected_contents,
-            arrow_schema,
-            view_chunks,
-            view_pov_chunks_idx,
-            using_index_values_stack: Mutex::new(using_index_values_stack),
-            cur_row: AtomicU64::new(0),
-        }
+        (view_pov_chunks_idx, view_chunks)
     }
 
     /// The query used to instantiate this handle.
@@ -942,9 +954,10 @@ mod tests {
     // * [x] using_index_values
     //
     // In addition to those, some much needed extras:
+    // * [x] num_rows
+    // * [x] clears
     // * [ ] timelines returned with selection=none
-    // * [ ] clears
-    // * [ ] num_rows
+    // * [ ] pagination
 
     // TODO(cmc): At some point I'd like to stress multi-entity queries too, but that feels less
     // urgent considering how things are implemented (each entity lives in its own index, so it's
