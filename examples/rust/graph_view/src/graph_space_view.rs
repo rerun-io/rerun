@@ -17,23 +17,23 @@ use re_viewer::external::{
     },
 };
 
+use crate::{edge_undirected_visualizer_system::EdgeUndirectedVisualizer, types::NodeLocation};
 use crate::{
-    edge_undirected_visualizer_system::EdgeInstance,
+    edge_undirected_visualizer_system::{self, EdgeInstance},
     node_visualizer_system::{GraphNodeVisualizer, NodeInstance},
 };
-use crate::{edge_undirected_visualizer_system::EdgeUndirectedVisualizer, types::NodeLocation};
 
 fn measure_node_sizes<'a>(
     ui: &mut egui::Ui,
     nodes: impl Iterator<Item = NodeInstance<'a>>,
-) -> Vec<(NodeLocation, egui::Vec2)> {
-    let mut sizes = Vec::new();
+) -> HashMap<NodeLocation, egui::Vec2> {
+    let mut sizes = HashMap::new();
     let ctx = ui.ctx();
     ctx.request_discard("measuring node sizes");
     ui.horizontal(|ui| {
         for node in nodes {
             let response = node.draw(ui, InteractionHighlight::default());
-            sizes.push((node.location.clone(), response.rect.size()));
+            sizes.insert(node.location.clone(), response.rect.size());
         }
     });
     sizes
@@ -41,7 +41,7 @@ fn measure_node_sizes<'a>(
 
 fn compute_layout<'a>(
     nodes: impl Iterator<Item = (NodeLocation, egui::Vec2)>,
-    edges: impl Iterator<Item = &'a datatypes::GraphEdge>,
+    edges: impl Iterator<Item = (NodeLocation, NodeLocation)>,
 ) -> HashMap<NodeLocation, egui::Rect> {
     let mut node_to_index = HashMap::new();
     let mut graph: ForceGraph<NodeKind, ()> = ForceGraph::default();
@@ -55,9 +55,7 @@ fn compute_layout<'a>(
         node_to_index.insert(node_id, ix);
     }
 
-    for datatypes::GraphEdge { source, target } in edges {
-        let source = NodeLocation::from(source.clone());
-        let target = NodeLocation::from(target.clone());
+    for (source, target) in edges {
         let source_ix = *node_to_index.entry(source.clone()).or_insert(
             graph.add_force_node(format!("{:?}", source), NodeKind::Dummy(source.clone())),
         );
@@ -126,6 +124,24 @@ fn fit_bounding_rect_to_screen(
 enum NodeKind {
     Regular(NodeLocation, egui::Vec2),
     Dummy(NodeLocation),
+}
+
+fn draw_dummy(
+    ui: &mut egui::Ui,
+    entity_path: EntityPath,
+    node_id: datatypes::GraphNodeId,
+) -> egui::Response {
+    let text = egui::RichText::new(format!("{}@{}", node_id, entity_path));
+    egui::Frame::default()
+        .rounding(egui::Rounding::same(4.0))
+        .stroke(egui::Stroke::new(1.0, ui.style().visuals.text_color()))
+        .inner_margin(egui::Vec2::new(6.0, 4.0))
+        .fill(egui::Color32::RED)
+        .show(ui, |ui| {
+            ui.style_mut().wrap_mode = Some(TextWrapMode::Extend);
+            ui.add(egui::Button::new(text))
+        })
+        .response
 }
 
 impl<'a> NodeInstance<'a> {
@@ -287,7 +303,7 @@ impl SpaceViewClass for GraphSpaceView {
         let (id, clip_rect_window) = ui.allocate_space(ui.available_size());
 
         let Some(layout) = &mut state.layout else {
-            let node_sizes =
+            let mut node_sizes =
                 measure_node_sizes(ui, node_system.data.iter().flat_map(|d| d.nodes()));
 
             let layout = compute_layout(
@@ -295,7 +311,7 @@ impl SpaceViewClass for GraphSpaceView {
                 edge_system
                     .data
                     .iter()
-                    .flat_map(|d| d.edges().map(|e| &e.edge.0)),
+                    .flat_map(|d| d.edges().map(|e| (e.source, e.target))),
             );
 
             if let Some(bounding_box) = bounding_rect_from_iter(layout.values()) {
@@ -459,15 +475,15 @@ impl SpaceViewClass for GraphSpaceView {
             let ent_highlight = query.highlights.entity_highlight(data.entity_path.hash());
 
             for EdgeInstance {
-                edge,
+                source,
+                target,
                 instance,
                 color,
                 ..
             } in data.edges()
             {
-                // TODO(grtlr): This does not handle dummy nodes correctly.
                 if let (Some(source_pos), Some(target_pos)) =
-                    (layout.get(&edge.0.source.clone().into()), layout.get(&edge.0.target.clone().into()))
+                    (layout.get(&source), layout.get(&target))
                 {
                     let highlight = ent_highlight.index_highlight(instance);
 
@@ -511,6 +527,12 @@ impl SpaceViewClass for GraphSpaceView {
 
                     ui.ctx().set_transform_layer(id, world_to_window);
                     ui.ctx().set_sublayer(window_layer, id);
+                } else {
+                    log::warn!(
+                        "Missing layout information for edge: {:?} -> {:?}",
+                        source,
+                        target
+                    );
                 }
             }
         }

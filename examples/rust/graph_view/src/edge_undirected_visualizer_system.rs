@@ -13,6 +13,8 @@ use re_viewer::external::{
     },
 };
 
+use crate::types::NodeLocation;
+
 #[derive(Default)]
 pub struct EdgeUndirectedVisualizer {
     pub(crate) data: Vec<EdgeUndirectedVisualizerData>,
@@ -25,7 +27,8 @@ pub(crate) struct EdgeUndirectedVisualizerData {
 }
 
 pub(crate) struct EdgeInstance<'a> {
-    pub edge: &'a components::GraphEdgeUndirected,
+    pub source: NodeLocation,
+    pub target: NodeLocation,
     pub entity_path: &'a re_log_types::EntityPath,
     pub instance: Instance,
     pub color: Option<Color32>,
@@ -40,7 +43,8 @@ impl EdgeUndirectedVisualizerData {
             Option::<&components::Color>::default,
         )
         .map(|(edge, instance, color)| EdgeInstance {
-            edge,
+            source: edge.source.clone().into(),
+            target: edge.target.clone().into(),
             entity_path: &self.entity_path,
             instance,
             color: color.map(|c| Color32::from(c.0)),
