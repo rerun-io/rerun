@@ -17,7 +17,7 @@ use crate::{
     RenderContext,
 };
 
-use super::{DecodeHardwareAcceleration, DecodingError, FrameDecodingResult};
+use super::{DecodeHardwareAcceleration, DecodingError, VideoFrameTexture};
 
 /// Delaying error reports (and showing last-good images meanwhile) allows us to skip over
 /// transient errors without flickering.
@@ -49,7 +49,10 @@ trait VideoChunkDecoder: 'static + Send {
 
     /// Get the latest decoded frame at the given time,
     /// and drop all earlier frames to save memory.
-    fn latest_at(&mut self, presentation_timestamp: Time) -> FrameDecodingResult;
+    fn latest_at(
+        &mut self,
+        presentation_timestamp: Time,
+    ) -> Result<VideoFrameTexture, DecodingError>;
 
     /// Reset the video decoder and discard all frames.
     fn reset(&mut self) -> Result<(), DecodingError>;
@@ -121,8 +124,18 @@ impl VideoDecoder {
         &mut self,
         render_ctx: &RenderContext,
         presentation_timestamp_s: f64,
-    ) -> FrameDecodingResult {
+    ) -> Result<VideoFrameTexture, DecodingError> {
         re_tracing::profile_function!();
+
+        // Some terminology:
+        //   - presentation timestamp = composition timestamp
+        //     = the time at which the frame should be shown
+        //   - decode timestamp
+        //     = determines the decoding order of samples
+        //
+        // Note: `composition >= decode` for any given sample.
+        //       For some codecs, the two timestamps are the same.
+        // We must enqueue samples in decode order, but show them in composition order.
 
         if presentation_timestamp_s < 0.0 {
             return Err(DecodingError::NegativeTimestamp);
@@ -130,15 +143,10 @@ impl VideoDecoder {
         let presentation_timestamp = Time::from_secs(presentation_timestamp_s, self.data.timescale);
         let presentation_timestamp = presentation_timestamp.min(self.data.duration); // Don't seek past the end of the video.
 
-        let Some(requested_segment_idx) = latest_at_idx(
-            &self.data.segments,
-            |segment| segment.start,
-            &presentation_timestamp,
-        ) else {
-            return Err(DecodingError::EmptyVideo);
-        };
-
-        let Some(requested_sample_idx) = latest_at_idx(
+        // 1. Find the latest sample where `decode_timestamp <= presentation_timestamp`.
+        //    Because `composition >= decode`, we never have to look further ahead in the
+        //    video than this.
+        let Some(decode_sample_idx) = latest_at_idx(
             &self.data.samples,
             |sample| sample.decode_timestamp,
             &presentation_timestamp,
@@ -146,8 +154,28 @@ impl VideoDecoder {
             return Err(DecodingError::EmptyVideo);
         };
 
-        // Enqueue segments as needed.
-        //
+        // 2. Search _backwards_, starting at `decode_sample_idx`, looking for
+        //    the first sample where `sample.composition_timestamp <= presentation_timestamp`.
+        //    This is the sample which when decoded will be presented at the timestamp the user requested.
+        let Some(requested_sample_idx) = self.data.samples[..=decode_sample_idx]
+            .iter()
+            .rposition(|sample| sample.composition_timestamp <= presentation_timestamp)
+        else {
+            return Err(DecodingError::EmptyVideo);
+        };
+
+        // 3. Do a binary search through segments by the decode timestamp of the found sample
+        //    to find the segment that contains the sample.
+        let Some(requested_segment_idx) = latest_at_idx(
+            &self.data.segments,
+            |segment| segment.start,
+            &self.data.samples[requested_sample_idx].decode_timestamp,
+        ) else {
+            return Err(DecodingError::EmptyVideo);
+        };
+
+        // 4. Enqueue segments as needed.
+
         // First, check for decoding errors that may have been set asynchronously and reset if it's a new error.
         if let Some(error) = self.chunk_decoder.take_error() {
             // For each new (!) error after entering the error state, we reset the decoder.
@@ -160,14 +188,13 @@ impl VideoDecoder {
 
             self.error = Some(error);
         }
-        // We maintain a buffer of 2 segments, so we can
-        // always smoothly transition to the next segment.
-        // We can always start decoding from any segment, because segments always begin
-        // with a keyframe.
+
+        // We maintain a buffer of 2 segments, so we can always smoothly transition to the next segment.
+        // We can always start decoding from any segment, because segments always begin with a keyframe.
+        //
         // Backward seeks or seeks across many segments trigger a reset of the decoder,
         // because decoding all the samples between the previous sample and the requested
-        // one would mean decoding and immediately discarding more frames than we otherwise
-        // need to.
+        // one would mean decoding and immediately discarding more frames than we need.
         if requested_segment_idx != self.current_segment_idx {
             if self.current_segment_idx.saturating_add(1) == requested_segment_idx {
                 // forward seek to next segment - queue up the one _after_ requested
