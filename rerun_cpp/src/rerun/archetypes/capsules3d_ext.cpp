@@ -18,8 +18,7 @@ namespace rerun {
         //
         // TODO(andreas): This should not take an std::vector.
         static Capsules3D from_lengths_and_radii(
-            const std::vector<float>& lengths,
-            const std::vector<float>& radii
+            const std::vector<float>& lengths, const std::vector<float>& radii
         );
 
         /* TODO(kpreid): This should exist for parity with Rust, but actually implementing this
@@ -39,8 +38,7 @@ namespace rerun {
         // </CODEGEN_COPY_TO_HEADER>
 #endif
         Capsules3D Capsules3D::from_lengths_and_radii(
-            const std::vector<float>& lengths,
-            const std::vector<float>& radii
+            const std::vector<float>& lengths, const std::vector<float>& radii
         ) {
             Capsules3D capsules;
             capsules.lengths = std::move(lengths);

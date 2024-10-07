@@ -28,22 +28,10 @@ int main() {
             })
             .with_rotation_axis_angles({
                 rerun::RotationAxisAngle(),
-                rerun::RotationAxisAngle(
-                    {1.0f, 0.0f, 0.0f},
-                    rerun::Angle::degrees(-22.5)
-                ),
-                rerun::RotationAxisAngle(
-                    {1.0f, 0.0f, 0.0f},
-                    rerun::Angle::degrees(-45.0)
-                ),
-                rerun::RotationAxisAngle(
-                    {1.0f, 0.0f, 0.0f},
-                    rerun::Angle::degrees(-67.5)
-                ),
-                rerun::RotationAxisAngle(
-                    {1.0f, 0.0f, 0.0f},
-                    rerun::Angle::degrees(-90.0)
-                ),
+                rerun::RotationAxisAngle({1.0f, 0.0f, 0.0f}, rerun::Angle::degrees(-22.5)),
+                rerun::RotationAxisAngle({1.0f, 0.0f, 0.0f}, rerun::Angle::degrees(-45.0)),
+                rerun::RotationAxisAngle({1.0f, 0.0f, 0.0f}, rerun::Angle::degrees(-67.5)),
+                rerun::RotationAxisAngle({1.0f, 0.0f, 0.0f}, rerun::Angle::degrees(-90.0)),
             })
     );
 }
