@@ -294,36 +294,6 @@ impl Query {
             ui.add_space(12.0);
 
             //
-            // Control columns (always selected)
-            //
-
-            let mut first = true;
-            for column in view_columns {
-                let ColumnDescriptor::Control(_) = column else {
-                    continue;
-                };
-
-                if first {
-                    ui.label("Control");
-                    first = false;
-                }
-
-                // Control columns are always shown because:
-                // - now it's just `RowId`
-                // - the dataframe UI requires the `RowId` column to be present (for tooltips)
-                let is_enabled = false;
-                let mut is_visible = true;
-
-                ui.add_enabled_ui(is_enabled, |ui| {
-                    if ui
-                        .re_checkbox(&mut is_visible, column.short_name())
-                        .on_disabled_hover_text("The query timeline must always be visible")
-                        .changed()
-                    { /* cannot happen for now */ }
-                });
-            }
-
-            //
             // Time columns
             //
 

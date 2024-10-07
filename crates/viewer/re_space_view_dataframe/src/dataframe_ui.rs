@@ -9,7 +9,7 @@ use re_chunk_store::external::re_chunk::ArrowArray;
 use re_chunk_store::{ColumnDescriptor, LatestAtQuery, RowId};
 use re_dataframe2::QueryHandle;
 use re_log_types::{EntityPath, TimeInt, Timeline, TimelineName};
-use re_types_core::{ComponentName, Loggable as _};
+use re_types_core::ComponentName;
 use re_ui::UiExt as _;
 use re_viewer_context::ViewerContext;
 
@@ -80,7 +80,7 @@ pub(crate) fn dataframe_ui(
 
     let num_sticky_cols = selected_columns
         .iter()
-        .take_while(|cd| matches!(cd, ColumnDescriptor::Control(_) | ColumnDescriptor::Time(_)))
+        .take_while(|cd| matches!(cd, ColumnDescriptor::Time(_)))
         .count();
 
     egui::Frame::none().inner_margin(5.0).show(ui, |ui| {
@@ -135,9 +135,6 @@ struct RowsDisplayData {
 
     /// The index of the time column corresponding to the query timeline.
     query_time_column_index: Option<usize>,
-
-    /// The index of the time column corresponding the row IDs.
-    row_id_column_index: Option<usize>,
 }
 
 impl RowsDisplayData {
@@ -169,18 +166,7 @@ impl RowsDisplayData {
                 ColumnDescriptor::Time(time_column_desc) => {
                     &time_column_desc.timeline == query_timeline
                 }
-                _ => false,
-            })
-            .map(|(pos, _)| pos);
-
-        // find the row id column
-        let row_id_column_index = selected_columns
-            .iter()
-            .find_position(|desc| match desc {
-                ColumnDescriptor::Control(control_column_desc) => {
-                    control_column_desc.component_name == RowId::name()
-                }
-                _ => false,
+                ColumnDescriptor::Component(_) => false,
             })
             .map(|(pos, _)| pos);
 
@@ -188,7 +174,6 @@ impl RowsDisplayData {
             display_record_batches,
             batch_ref_from_row,
             query_time_column_index,
-            row_id_column_index,
         })
     }
 }
@@ -270,12 +255,12 @@ impl<'a> egui_table::TableDelegate for DataframeTableDelegate<'a> {
 
                     // if this column can actually be hidden, then that's the corresponding action
                     let hide_action = match column {
-                        ColumnDescriptor::Control(_) => None,
                         ColumnDescriptor::Time(desc) => (desc.timeline
                             != self.query_handle.query().filtered_index)
                             .then(|| HideColumnAction::HideTimeColumn {
                                 timeline_name: *desc.timeline.name(),
                             }),
+
                         ColumnDescriptor::Component(desc) => {
                             Some(HideColumnAction::HideComponentColumn {
                                 entity_path: desc.entity_path.clone(),
@@ -348,13 +333,6 @@ impl<'a> egui_table::TableDelegate for DataframeTableDelegate<'a> {
             .unwrap_or(TimeInt::MAX);
         let latest_at_query =
             LatestAtQuery::new(self.query_handle.query().filtered_index, timestamp);
-        let row_id = display_data
-            .row_id_column_index
-            .and_then(|col_idx| {
-                display_data.display_record_batches[batch_idx].columns()[col_idx]
-                    .try_decode_row_id(batch_row_idx)
-            })
-            .unwrap_or(RowId::ZERO);
 
         if ui.is_sizing_pass() {
             ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Extend);
@@ -393,7 +371,7 @@ impl<'a> egui_table::TableDelegate for DataframeTableDelegate<'a> {
                     column.data_ui(
                         self.ctx,
                         ui,
-                        row_id,
+                        RowId::ZERO,
                         &latest_at_query,
                         batch_row_idx,
                         instance_index,
