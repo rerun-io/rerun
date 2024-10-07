@@ -13,13 +13,12 @@ use pyo3::{
 
 use re_chunk_store::{
     ChunkStore, ChunkStoreConfig, ColumnDescriptor, ColumnSelector, ComponentColumnDescriptor,
-    ComponentColumnSelector, ControlColumnDescriptor, ControlColumnSelector, QueryExpression2,
-    SparseFillStrategy, TimeColumnDescriptor, TimeColumnSelector, VersionPolicy,
-    ViewContentsSelector,
+    ComponentColumnSelector, QueryExpression2, SparseFillStrategy, TimeColumnDescriptor,
+    TimeColumnSelector, VersionPolicy, ViewContentsSelector,
 };
 use re_dataframe2::QueryEngine;
 use re_log_types::{EntityPathFilter, ResolvedTimeRange, TimeType};
-use re_sdk::{ComponentName, EntityPath, Loggable as _, StoreId, StoreKind};
+use re_sdk::{ComponentName, EntityPath, StoreId, StoreKind};
 
 /// Register the `rerun.dataframe` module.
 pub(crate) fn register(m: &Bound<'_, PyModule>) -> PyResult<()> {
@@ -27,8 +26,6 @@ pub(crate) fn register(m: &Bound<'_, PyModule>) -> PyResult<()> {
 
     m.add_class::<PyRRDArchive>()?;
     m.add_class::<PyRecording>()?;
-    m.add_class::<PyControlColumnDescriptor>()?;
-    m.add_class::<PyControlColumnSelector>()?;
     m.add_class::<PyIndexColumnDescriptor>()?;
     m.add_class::<PyIndexColumnSelector>()?;
     m.add_class::<PyComponentColumnDescriptor>()?;
@@ -39,43 +36,6 @@ pub(crate) fn register(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(crate::dataframe::load_recording, m)?)?;
 
     Ok(())
-}
-
-/// Python binding for [`ControlColumnDescriptor`]
-#[pyclass(frozen, name = "ControlColumnDescriptor")]
-#[derive(Clone)]
-struct PyControlColumnDescriptor(ControlColumnDescriptor);
-
-#[pymethods]
-impl PyControlColumnDescriptor {
-    fn __repr__(&self) -> String {
-        format!("Ctrl({})", self.0.component_name.short_name())
-    }
-}
-
-impl From<ControlColumnDescriptor> for PyControlColumnDescriptor {
-    fn from(desc: ControlColumnDescriptor) -> Self {
-        Self(desc)
-    }
-}
-
-/// Python binding for [`ControlColumnSelector`]
-#[pyclass(frozen, name = "ControlColumnSelector")]
-#[derive(Clone)]
-struct PyControlColumnSelector(ControlColumnSelector);
-
-#[pymethods]
-impl PyControlColumnSelector {
-    #[staticmethod]
-    fn row_id() -> Self {
-        Self(ControlColumnSelector {
-            component: re_chunk::RowId::name(),
-        })
-    }
-
-    fn __repr__(&self) -> String {
-        format!("Ctrl({})", self.0.component.short_name())
-    }
 }
 
 /// Python binding for [`TimeColumnDescriptor`]
@@ -192,10 +152,6 @@ impl PyComponentColumnSelector {
 /// Python binding for [`AnyColumn`] type-alias.
 #[derive(FromPyObject)]
 enum AnyColumn {
-    #[pyo3(transparent, annotation = "control_descriptor")]
-    ControlDescriptor(PyControlColumnDescriptor),
-    #[pyo3(transparent, annotation = "control_selector")]
-    ControlSelector(PyControlColumnSelector),
     #[pyo3(transparent, annotation = "time_descriptor")]
     TimeDescriptor(PyIndexColumnDescriptor),
     #[pyo3(transparent, annotation = "time_selector")]
@@ -209,8 +165,6 @@ enum AnyColumn {
 impl AnyColumn {
     fn into_selector(self) -> ColumnSelector {
         match self {
-            Self::ControlDescriptor(desc) => ColumnDescriptor::Control(desc.0).into(),
-            Self::ControlSelector(selector) => selector.0.into(),
             Self::TimeDescriptor(desc) => ColumnDescriptor::Time(desc.0).into(),
             Self::TimeSelector(selector) => selector.0.into(),
             Self::ComponentDescriptor(desc) => ColumnDescriptor::Component(desc.0).into(),
@@ -266,19 +220,6 @@ pub struct PySchema {
 
 #[pymethods]
 impl PySchema {
-    fn control_columns(&self) -> Vec<PyControlColumnDescriptor> {
-        self.schema
-            .iter()
-            .filter_map(|column| {
-                if let ColumnDescriptor::Control(col) = column {
-                    Some(col.clone().into())
-                } else {
-                    None
-                }
-            })
-            .collect()
-    }
-
     fn index_columns(&self) -> Vec<PyIndexColumnDescriptor> {
         self.schema
             .iter()
