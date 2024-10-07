@@ -377,10 +377,16 @@ impl QueryHandle<'_> {
     pub fn num_rows(&self) -> u64 {
         re_tracing::profile_function!();
 
-        let all_unique_timestamps: HashSet<TimeInt> = self
-            .init()
-            .view_chunks
-            .iter()
+        let state = self.init();
+
+        let mut view_chunks = state.view_chunks.iter();
+        let view_chunks = if let Some(view_pov_chunks_idx) = state.view_pov_chunks_idx {
+            Either::Left(view_chunks.nth(view_pov_chunks_idx).into_iter())
+        } else {
+            Either::Right(view_chunks)
+        };
+
+        let all_unique_timestamps: HashSet<TimeInt> = view_chunks
             .flat_map(|chunks| {
                 chunks.iter().filter_map(|(_cursor, chunk)| {
                     if chunk.is_static() {
