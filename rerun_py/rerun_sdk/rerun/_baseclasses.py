@@ -348,6 +348,15 @@ class ComponentMixin(ComponentBatchLike):
     The class using the mixin must define the `_BATCH_TYPE` field, which should be a subclass of `BaseBatch`.
     """
 
+    @classmethod
+    def arrow_type(cls) -> pa.DataType:
+        """
+        The pyarrow type of this batch.
+
+        Part of the `ComponentBatchLike` logging interface.
+        """
+        return cls._BATCH_TYPE._ARROW_TYPE.storage_type  # type: ignore[attr-defined, no-any-return]
+
     def component_name(self) -> str:
         """
         The name of the component.
