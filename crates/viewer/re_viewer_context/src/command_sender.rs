@@ -89,7 +89,7 @@ pub enum SystemCommand {
 
 impl std::fmt::Debug for SystemCommand {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        // not call variant contents can be made `Debug`, so we only output the variant name
+        // not all variant contents can be made `Debug`, so we only output the variant name
         f.write_str(self.into())
     }
 }
