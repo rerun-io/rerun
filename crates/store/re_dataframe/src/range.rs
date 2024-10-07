@@ -350,7 +350,7 @@ impl RangeQueryHandle<'_> {
                         JoinEncoding::OverlappingSlice => None,
                         JoinEncoding::DictionaryEncode => Some(descr),
                     },
-                    _ => None,
+                    ColumnDescriptor::Time(_) => None,
                 })
                 .filter_map(|descr| {
                     let arrays = pov_time_column
@@ -426,7 +426,7 @@ impl RangeQueryHandle<'_> {
                         }
                         JoinEncoding::DictionaryEncode => None,
                     },
-                    _ => None,
+                    ColumnDescriptor::Time(_) => None,
                 })
                 .map(|descr| {
                     let arrays = pov_time_column
@@ -472,8 +472,6 @@ impl RangeQueryHandle<'_> {
                 columns
                     .iter()
                     .map(|descr| match descr {
-                        ColumnDescriptor::Control(_descr) => pov_chunk.row_ids_array().to_boxed(),
-
                         ColumnDescriptor::Time(descr) => {
                             let time_column = pov_chunk.timelines().get(&descr.timeline).cloned();
                             time_column.map_or_else(
@@ -530,10 +528,6 @@ impl RangeQueryHandle<'_> {
                     let packed_arrays = columns
                         .iter()
                         .map(|descr| match descr {
-                            ColumnDescriptor::Control(_descr) => {
-                                pov_chunk.row_ids_array().sliced(row, 1).to_boxed()
-                            }
-
                             ColumnDescriptor::Time(descr) => {
                                 let time_column = pov_chunk.timelines().get(&descr.timeline);
                                 time_column.map_or_else(

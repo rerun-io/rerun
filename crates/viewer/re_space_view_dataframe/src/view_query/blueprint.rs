@@ -111,12 +111,12 @@ impl Query {
         let mut selected_columns = datatypes::SelectedColumns::default();
         for column in columns {
             match column {
-                ColumnSelector::Control(_) => {}
                 ColumnSelector::Time(desc) => {
                     selected_columns
                         .time_columns
                         .push(desc.timeline.as_str().into());
                 }
+
                 ColumnSelector::Component(desc) => {
                     let blueprint_component_descriptor =
                         datatypes::ComponentColumnSelector::new(&desc.entity_path, desc.component);
@@ -186,12 +186,12 @@ impl Query {
         let result = view_columns
             .iter()
             .filter(|column| match column {
-                ColumnDescriptor::Control(_) => true,
                 ColumnDescriptor::Time(desc) => {
                     // we always include the query timeline column because we need it for the dataframe ui
                     desc.timeline.name() == &query_timeline_name
                         || selected_time_columns.contains(desc.timeline.name())
                 }
+
                 ColumnDescriptor::Component(desc) => {
                     // Check against both the full name and short name, as the user might have used
                     // the latter in the blueprint API.
@@ -232,7 +232,7 @@ impl Query {
                 HideColumnAction::HideTimeColumn { timeline_name } => {
                     selected_columns.retain(|column| match column {
                         ColumnSelector::Time(desc) => desc.timeline != timeline_name,
-                        _ => true,
+                        ColumnSelector::Component(_) => true,
                     });
                 }
 
@@ -244,7 +244,7 @@ impl Query {
                         ColumnSelector::Component(desc) => {
                             desc.entity_path != entity_path || desc.component != component_name
                         }
-                        _ => true,
+                        ColumnSelector::Time(_) => true,
                     });
                 }
             }
