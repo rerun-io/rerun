@@ -69,6 +69,13 @@ impl VideoCache {
 
 impl Cache for VideoCache {
     fn begin_frame(&mut self, renderer_active_frame_idx: u64) {
+        // Clean up unused video data.
+        self.0.retain(|_row_id, per_key| {
+            per_key.retain(|_, v| v.used_this_frame.load(Ordering::Acquire));
+            !per_key.is_empty()
+        });
+
+        // Of the remaining video data, remove all unused decoders.
         for per_key in self.0.values() {
             for v in per_key.values() {
                 v.used_this_frame.store(false, Ordering::Release);
@@ -80,10 +87,13 @@ impl Cache for VideoCache {
     }
 
     fn purge_memory(&mut self) {
-        self.0.retain(|_row_id, per_key| {
-            per_key.retain(|_, v| v.used_this_frame.load(Ordering::Acquire));
-            !per_key.is_empty()
-        });
+        // We aggressively purge all unused video data every frame.
+        // The expectation here is that parsing video data is fairly fast,
+        // since decoding happens separately.
+        //
+        // As of writing, in a debug wasm build with Chrome loading a 600MiB 1h video
+        // this assumption holds up fine: There is a (sufferable) delay,
+        // but it's almost entirely due to the decoder trying to retrieve a frame.
     }
 
     fn on_store_events(&mut self, events: &[ChunkStoreEvent]) {
