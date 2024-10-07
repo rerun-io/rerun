@@ -626,15 +626,6 @@ impl QueryHandle<'_> {
             }
         }
 
-        // The most recent chunk in the current iteration, according to RowId semantics.
-        let cur_most_recent_row = view_streaming_state
-            .iter()
-            .filter_map(|streaming_state| match streaming_state {
-                Some(StreamingJoinState::StreamingJoinState(s)) => Some(s),
-                _ => None,
-            })
-            .max_by_key(|streaming_state| streaming_state.row_id)?;
-
         // We are stitching a bunch of unrelated cells together in order to create the final row
         // that is being returned.
         //
@@ -654,30 +645,6 @@ impl QueryHandle<'_> {
         // * etc
         let mut max_value_per_index = IntMap::default();
         {
-            // Unless we are currently iterating over a static row, then we know for sure that the
-            // timeline being used as `filtered_index` is A) present and B) has for value `cur_index_value`.
-            if cur_index_value != TimeInt::STATIC {
-                let slice = cur_most_recent_row
-                    .chunk
-                    .timelines()
-                    .get(&self.query.filtered_index)
-                    .map(|time_column| {
-                        time_column
-                            .times_array()
-                            .sliced(cur_most_recent_row.cursor as usize, 1)
-                    });
-
-                debug_assert!(
-                    slice.is_some(),
-                    "Timeline must exist, otherwise the query engine would have never returned that chunk in the first place",
-                );
-
-                // NOTE: Cannot fail, just want to stay away from unwraps.
-                if let Some(slice) = slice {
-                    max_value_per_index.insert(self.query.filtered_index, (cur_index_value, slice));
-                }
-            }
-
             view_streaming_state
                 .iter()
                 .flatten()
@@ -687,8 +654,6 @@ impl QueryHandle<'_> {
                         StreamingJoinState::Retrofilled(unit) => unit.timelines(),
                     }
                     .values()
-                    // NOTE: Already took care of that one above.
-                    .filter(|time_column| *time_column.timeline() != self.query.filtered_index)
                     // NOTE: Cannot fail, just want to stay away from unwraps.
                     .filter_map(move |time_column| {
                         let cursor = match streaming_state {
