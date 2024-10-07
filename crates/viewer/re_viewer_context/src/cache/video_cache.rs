@@ -14,7 +14,7 @@ use re_renderer::{
     external::re_video::VideoLoadError,
     video::{DecodeHardwareAcceleration, Video},
 };
-use re_types::Loggable as _;
+use re_types::{components::MediaType, Loggable as _};
 
 // ----------------------------------------------------------------------------
 
@@ -39,12 +39,22 @@ impl VideoCache {
         &mut self,
         blob_row_id: RowId,
         video_data: &re_types::datatypes::Blob,
-        media_type: Option<&str>,
+        media_type: Option<&MediaType>,
         hw_acceleration: DecodeHardwareAcceleration,
     ) -> Arc<Result<Video, VideoLoadError>> {
         re_tracing::profile_function!();
 
-        let inner_key = Hash64::hash((media_type, hw_acceleration));
+        // In order to avoid loading the same video multiple times with
+        // known and unknown media type, we have to resolve the media type before
+        // loading & building the cache key.
+        let Some(media_type) = media_type
+            .cloned()
+            .or_else(|| MediaType::guess_from_data(video_data))
+        else {
+            return Arc::new(Err(VideoLoadError::UnrecognizedMimeType));
+        };
+
+        let inner_key = Hash64::hash((media_type.as_str(), hw_acceleration));
 
         let entry = self
             .0
@@ -52,7 +62,7 @@ impl VideoCache {
             .or_default()
             .entry(inner_key)
             .or_insert_with(|| {
-                let video = Video::load(video_data, media_type, hw_acceleration);
+                let video = Video::load(video_data, media_type.as_str(), hw_acceleration);
                 Entry {
                     used_this_frame: AtomicBool::new(true),
                     video: Arc::new(video),
