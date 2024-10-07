@@ -8,6 +8,7 @@ use re_ui::{UICommand, UICommandSender};
 
 /// Commands used by internal system components
 // TODO(jleibs): Is there a better crate for this?
+#[derive(strum_macros::Display)]
 pub enum SystemCommand {
     /// Make this the active application.
     ActivateApp(re_log_types::ApplicationId),
@@ -84,6 +85,13 @@ pub enum SystemCommand {
     /// Add a task, run on a background thread, that saves something to disk.
     #[cfg(not(target_arch = "wasm32"))]
     FileSaver(Box<dyn FnOnce() -> anyhow::Result<std::path::PathBuf> + Send + 'static>),
+}
+
+impl std::fmt::Debug for SystemCommand {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        // just print the variant name as all content is not `Debug`
+        <Self as std::fmt::Display>::fmt(self, f)
+    }
 }
 
 /// Interface for sending [`SystemCommand`] messages.

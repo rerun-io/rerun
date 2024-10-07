@@ -125,6 +125,8 @@ impl TestContext {
     ///Best-effort attempt to meaningfully handle some of the system commands.
     pub fn handle_system_command(&mut self) {
         while let Some(command) = self.command_receiver.recv_system() {
+            eprintln!("Handling system command: {command:#?}");
+
             match command {
                 SystemCommand::UpdateBlueprint(store_id, chunks) => {
                     assert_eq!(&store_id, self.blueprint_store.store_id());

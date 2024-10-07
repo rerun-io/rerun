@@ -5982,6 +5982,7 @@ dependencies = [
  "serde",
  "slotmap",
  "smallvec",
+ "strum_macros",
  "thiserror",
  "uuid",
  "wasm-bindgen-futures",
