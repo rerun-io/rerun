@@ -193,12 +193,10 @@ fn show_video_blob_info(
                         data.height()
                     )),
                 );
-                ui.list_item_flat_noninteractive(PropertyContent::new("Duration").value_text(
-                    format!(
-                        "{}",
-                        re_log_types::Duration::from_millis(data.duration_ms() as i64)
-                    ),
-                ));
+                ui.list_item_flat_noninteractive(
+                    PropertyContent::new("Duration")
+                        .value_text(format!("{}", re_log_types::Duration::from(data.duration()))),
+                );
                 // Some people may think that num_frames / duration = fps, but that's not true, videos may have variable frame rate.
                 // At the same time, we don't want to overload users with video codec/container specific stuff that they have to understand,
                 // and for all intents and purposes one sample = one frame.
@@ -238,7 +236,7 @@ fn show_video_blob_info(
                         // but the point here is not to have a nice viewer,
                         // but to show the user what they have selected
                         ui.ctx().request_repaint(); // TODO(emilk): schedule a repaint just in time for the next frame of video
-                        ui.input(|i| i.time) % video.data().duration_sec()
+                        ui.input(|i| i.time) % video.data().duration().as_secs_f64()
                     };
 
                     let decode_stream_id = re_renderer::video::VideoDecodingStreamId(

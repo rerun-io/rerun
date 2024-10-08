@@ -70,16 +70,10 @@ impl VideoData {
         }
     }
 
-    /// Duration of the video, in seconds.
+    /// Length of the video.
     #[inline]
-    pub fn duration_sec(&self) -> f64 {
-        self.duration.into_secs(self.timescale)
-    }
-
-    /// Duration of the video, in milliseconds.
-    #[inline]
-    pub fn duration_ms(&self) -> f64 {
-        self.duration.into_millis(self.timescale)
+    pub fn duration(&self) -> std::time::Duration {
+        std::time::Duration::from_nanos(self.duration.into_nanos(self.timescale) as _)
     }
 
     /// Natural width of the video.
