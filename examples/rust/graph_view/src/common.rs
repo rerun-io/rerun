@@ -22,7 +22,7 @@ impl From<GraphLocation> for NodeLocation {
     }
 }
 
-impl std::fmt::Debug for NodeLocation {
+impl std::fmt::Display for NodeLocation {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{}@{:?}", self.node_id, self.entity_hash)
     }

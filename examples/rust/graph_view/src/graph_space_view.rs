@@ -61,53 +61,6 @@ fn measure_node_sizes<'a>(
     sizes
 }
 
-fn compute_layout(
-    nodes: impl Iterator<Item = (NodeLocation, egui::Vec2)>,
-    edges: impl Iterator<Item = (NodeLocation, NodeLocation)>,
-) -> HashMap<NodeLocation, egui::Rect> {
-    let mut node_to_index = HashMap::new();
-    let mut graph: ForceGraph<NodeKind, ()> = ForceGraph::default();
-
-    // TODO(grtlr): `fdg` does not account for node sizes out of the box.
-    for (node_id, size) in nodes {
-        let ix = graph.add_force_node(
-            format!("{:?}", node_id),
-            NodeKind::Regular(node_id.clone(), size),
-        );
-        node_to_index.insert(node_id, ix);
-    }
-
-    for (source, target) in edges {
-        let source_ix = *node_to_index.entry(source.clone()).or_insert(
-            graph.add_force_node(format!("{:?}", source), NodeKind::Dummy(source.clone())),
-        );
-        let target_ix = *node_to_index.entry(target.clone()).or_insert(
-            graph.add_force_node(format!("{:?}", target), NodeKind::Dummy(target.clone())),
-        );
-        graph.add_edge(source_ix, target_ix, ());
-    }
-
-    // create a simulation from the graph
-    let mut simulation = Simulation::from_graph(graph, SimulationParameters::default());
-
-    for frame in 0..1000 {
-        simulation.update(0.035);
-    }
-
-    simulation
-        .get_graph()
-        .node_weights()
-        .filter_map(|node| match &node.data {
-            NodeKind::Regular(node_id, size) => {
-                let center = egui::Pos2::new(node.location.x, node.location.y);
-                let rect = egui::Rect::from_center_size(center, *size);
-                Some((node_id.clone(), rect))
-            }
-            NodeKind::Dummy(_) => None,
-        })
-        .collect()
-}
-
 fn bounding_rect_from_iter<'a>(rects: impl Iterator<Item = &'a egui::Rect>) -> Option<egui::Rect> {
     // Start with `None` and gradually expand the bounding box.
     let mut bounding_rect: Option<egui::Rect> = None;
@@ -140,12 +93,6 @@ fn fit_bounding_rect_to_screen(
     // Set the transformation to scale and then translate to center.
     TSTransform::from_translation(center_screen.to_vec2() - center_world * scale)
         * TSTransform::from_scaling(scale)
-}
-
-// We need to differentiate between regular nodes and nodes that belong to a different entity hierarchy.
-enum NodeKind {
-    Regular(NodeLocation, egui::Vec2),
-    Dummy(NodeLocation),
 }
 
 fn draw_dummy(
@@ -345,13 +292,13 @@ impl SpaceViewClass for GraphSpaceView {
             //     }
             // }
 
-            let layout = compute_layout(
+            let layout = crate::layout::compute_layout(
                 node_sizes.into_iter(),
                 edge_system
                     .data
                     .iter()
                     .flat_map(|d| d.edges().map(|e| (e.source, e.target))),
-            );
+            )?;
 
             if let Some(bounding_box) = bounding_rect_from_iter(layout.values()) {
                 state.world_to_view = fit_bounding_rect_to_screen(
@@ -476,6 +423,7 @@ impl SpaceViewClass for GraphSpaceView {
             }
 
             let entity_path = data.entity_path.clone();
+
             if let Some(entity_rect) = entity_rect {
                 let entity_id = egui::LayerId::new(
                     egui::Order::Background,
@@ -593,11 +541,7 @@ impl SpaceViewClass for GraphSpaceView {
                     ui.ctx().set_transform_layer(id, world_to_window);
                     ui.ctx().set_sublayer(window_layer, id);
                 } else {
-                    log::warn!(
-                        "Missing layout information for edge: {:?} -> {:?}",
-                        source,
-                        target
-                    );
+                    log::warn!("Missing layout information for edge: {source} -> {target}",);
                 }
             }
         }
