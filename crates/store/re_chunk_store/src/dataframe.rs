@@ -340,7 +340,11 @@ impl ComponentColumnDescriptor {
     #[inline]
     pub fn to_arrow_field(&self) -> ArrowField {
         ArrowField::new(
-            self.component_name.short_name().to_owned(),
+            format!(
+                "{}:{}",
+                self.entity_path,
+                self.component_name.short_name().to_owned()
+            ),
             self.returned_datatype(),
             true, /* nullable */
         )
