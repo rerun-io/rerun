@@ -1,5 +1,11 @@
+use std::collections::HashSet;
+
 use re_log_types::{EntityPath, EntityPathHash};
 use re_viewer::external::re_types::datatypes::{GraphLocation, GraphNodeId};
+
+use crate::{
+    edge_undirected_visualizer_system::EdgeInstance, node_visualizer_system::NodeInstance,
+};
 
 #[derive(Clone, PartialEq, Eq, Hash)]
 pub(crate) struct NodeLocation {

@@ -1,5 +1,5 @@
 use fdg_sim::{ForceGraph, ForceGraphHelper, Simulation, SimulationParameters};
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
 use re_viewer::external::{
     egui::{self, emath::TSTransform, TextWrapMode},
@@ -17,15 +17,37 @@ use re_viewer::external::{
     },
 };
 
-use crate::{edge_undirected_visualizer_system::EdgeUndirectedVisualizer, types::NodeLocation};
+use crate::{
+    common::NodeLocation,
+    edge_undirected_visualizer_system::EdgeUndirectedVisualizer,
+    graph::{Graph, Node},
+};
 use crate::{
     edge_undirected_visualizer_system::{self, EdgeInstance},
     node_visualizer_system::{GraphNodeVisualizer, NodeInstance},
 };
 
+impl<'a> Node<'a> {
+    fn draw(&self, ui: &mut egui::Ui, highlight: InteractionHighlight) -> egui::Response {
+        match self {
+        Node::Regular(node) => node.draw(ui, highlight),
+        Node::Dummy(location, entity_path) => {
+                draw_dummy(ui, (*entity_path).clone(), location.node_id.clone())
+            }
+        }
+    }
+
+    fn location(&self) -> NodeLocation {
+        match self {
+            Node::Regular(node) => node.location.clone(),
+            Node::Dummy(location, _) => location.clone(),
+        }
+    }
+}
+
 fn measure_node_sizes<'a>(
     ui: &mut egui::Ui,
-    nodes: impl Iterator<Item = NodeInstance<'a>>,
+    nodes: impl Iterator<Item = Node<'a>>,
 ) -> HashMap<NodeLocation, egui::Vec2> {
     let mut sizes = HashMap::new();
     let ctx = ui.ctx();
@@ -33,13 +55,13 @@ fn measure_node_sizes<'a>(
     ui.horizontal(|ui| {
         for node in nodes {
             let response = node.draw(ui, InteractionHighlight::default());
-            sizes.insert(node.location.clone(), response.rect.size());
+            sizes.insert(node.location(), response.rect.size());
         }
     });
     sizes
 }
 
-fn compute_layout<'a>(
+fn compute_layout(
     nodes: impl Iterator<Item = (NodeLocation, egui::Vec2)>,
     edges: impl Iterator<Item = (NodeLocation, NodeLocation)>,
 ) -> HashMap<NodeLocation, egui::Rect> {
@@ -303,8 +325,21 @@ impl SpaceViewClass for GraphSpaceView {
         let (id, clip_rect_window) = ui.allocate_space(ui.available_size());
 
         let Some(layout) = &mut state.layout else {
-            let mut node_sizes =
-                measure_node_sizes(ui, node_system.data.iter().flat_map(|d| d.nodes()));
+            let graph = Graph::new(
+                node_system.data.iter().flat_map(|d| d.nodes()),
+                edge_system.data.iter().flat_map(|d| d.edges()),
+            );
+
+            let mut node_sizes = measure_node_sizes(ui, graph.nodes());
+
+            // for data in edge_system.data.iter().flat_map(|d| d.edges()) {
+            //     if !node_sizes.contains_key(&data.source) {
+            //         node_sizes.insert(data.source.clone(), egui::Vec2::new(42.0, 42.0));
+            //     }
+            //     if !node_sizes.contains_key(&data.target) {
+            //         node_sizes.insert(data.target.clone(), egui::Vec2::new(42.0, 42.0));
+            //     }
+            // }
 
             let layout = compute_layout(
                 node_sizes.into_iter(),
@@ -469,6 +504,32 @@ impl SpaceViewClass for GraphSpaceView {
                     );
                 }
             }
+        }
+
+        let graph = Graph::new(
+            node_system.data.iter().flat_map(|d| d.nodes()),
+            edge_system.data.iter().flat_map(|d| d.edges()),
+        );
+
+        for dummy in graph.dummy_nodes() {
+            let current_extent = layout
+                .get(&dummy.0)
+                .expect("missing layout information for dummy node");
+            let response = egui::Area::new(id.with(dummy.0.clone()))
+                .current_pos(current_extent.min)
+                .order(egui::Order::Middle)
+                .constrain(false)
+                .show(ui.ctx(), |ui| {
+                    ui.set_clip_rect(clip_rect_world);
+                    draw_dummy(ui, dummy.1.clone(), dummy.0.node_id.clone())
+                })
+                .response;
+
+            layout.insert(dummy.0.clone(), response.rect);
+
+            let id = response.layer_id;
+            ui.ctx().set_transform_layer(id, world_to_window);
+            ui.ctx().set_sublayer(window_layer, id);
         }
 
         for data in edge_system.data.iter() {

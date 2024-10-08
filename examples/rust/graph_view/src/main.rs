@@ -5,7 +5,8 @@ use re_viewer::external::{re_log, re_memory};
 mod edge_undirected_visualizer_system;
 mod graph_space_view;
 mod node_visualizer_system;
-mod types;
+mod common;
+mod graph;
 
 // By using `re_memory::AccountingAllocator` Rerun can keep track of exactly how much memory it is using,
 // and prune the data store when it goes above a certain limit.

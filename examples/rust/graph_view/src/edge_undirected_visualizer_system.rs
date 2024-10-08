@@ -13,7 +13,7 @@ use re_viewer::external::{
     },
 };
 
-use crate::types::NodeLocation;
+use crate::common::NodeLocation;
 
 #[derive(Default)]
 pub struct EdgeUndirectedVisualizer {

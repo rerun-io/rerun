@@ -1,3 +1,5 @@
+use std::collections::HashSet;
+
 use re_log_types::Instance;
 use re_viewer::external::{
     egui::Color32,
@@ -18,7 +20,7 @@ use re_viewer::external::{
     },
 };
 
-use crate::types::NodeLocation;
+use crate::common::NodeLocation;
 
 /// Our space view consist of single part which holds a list of egui colors for each entity path.
 #[derive(Default)]
