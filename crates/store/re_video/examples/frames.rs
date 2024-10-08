@@ -38,36 +38,9 @@ fn main() {
         video.config.coded_height
     );
 
-    let mut decoder = create_decoder(&video);
+    let mut decoder = re_video::decode::new_decoder(&video).expect("Failed to create decoder");
 
     write_video_frames(&video, decoder.as_mut(), &output_dir);
-}
-
-fn create_decoder(video: &VideoData) -> Box<dyn SyncDecoder> {
-    match &video.config.stsd.contents {
-        re_mp4::StsdBoxContent::Av01(av01_box) => {
-            println!("Decoding AV1…");
-            Box::new(
-                re_video::decode::av1::SyncDav1dDecoder::new()
-                    .expect("Failed to start AV1 decoder"),
-            )
-        }
-
-        re_mp4::StsdBoxContent::Avc1(avc1_box) => {
-            println!("Decoding H.264…");
-            Box::new(
-                re_video::decode::ffmpeg::FfmpegCliH264Decoder::new(
-                    avc1_box.clone(),
-                    video.timescale,
-                )
-                .expect("Failed to start H.264 decoder"),
-            )
-        }
-
-        _ => {
-            panic!("Unsupported codec: {}", video.human_readable_codec_string());
-        }
-    }
 }
 
 fn write_video_frames(

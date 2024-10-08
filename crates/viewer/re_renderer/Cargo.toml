@@ -35,6 +35,13 @@ default = ["import-obj", "import-gltf", "import-stl"]
 ## Support for Arrow datatypes for end-to-end zero-copy.
 arrow = ["dep:arrow2"]
 
+<<<<<<< HEAD
+=======
+## Support for native AV1 video decoding.
+## You need to install [nasm](https://nasm.us/) to compile with this feature.
+video_av1 = ["re_video/av1"] # TODO: remove
+
+>>>>>>> 4ced5f84a4 (Actual H.264 video playback inside of Rerun viewer)
 ## Support importing .obj files
 import-obj = ["dep:tobj"]
 
