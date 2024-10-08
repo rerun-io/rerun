@@ -1,210 +1,52 @@
 //! AV1 support.
 
-use std::sync::{
-    atomic::{AtomicBool, AtomicU64, Ordering},
-    Arc,
-};
+use std::sync::atomic::{AtomicBool, Ordering};
 
-use crossbeam::channel::{unbounded, Receiver, Sender};
 use dav1d::{PixelLayout, PlanarImageComponent};
 
 use crate::Time;
 
-use super::{Chunk, Frame, PixelFormat};
+use super::{Chunk, Error, Frame, OutputCallback, PixelFormat, Result, SyncDecoder};
 
-#[derive(thiserror::Error, Debug)]
-pub enum Error {
-    /// An error occrurred during initialization of the decoder.
-    ///
-    /// No further output will come.
-    #[error("Error initializing decoder: {0}")]
-    Initialization(dav1d::Error),
-
-    #[error("Decoding error: {0}")]
-    Dav1d(dav1d::Error),
+pub struct SyncDav1dDecoder {
+    decoder: dav1d::Decoder,
 }
 
-pub type Result<T = (), E = Error> = std::result::Result<T, E>;
-
-enum Command {
-    Chunk(Chunk),
-    Flush { on_done: Sender<()> },
-    Reset,
-    Stop,
-}
-
-#[derive(Clone)]
-struct Comms {
-    /// Set when it is time to die
-    should_stop: Arc<AtomicBool>,
-
-    /// Incremented on each call to [`Decoder::reset`].
-    /// Decremented each time the decoder thread receives [`Command::Reset`].
-    num_outstanding_resets: Arc<AtomicU64>,
-}
-
-impl Default for Comms {
-    fn default() -> Self {
-        Self {
-            should_stop: Arc::new(AtomicBool::new(false)),
-            num_outstanding_resets: Arc::new(AtomicU64::new(0)),
-        }
-    }
-}
-
-/// AV1 software decoder.
-pub struct Decoder {
-    /// Where the decoding happens
-    _thread: std::thread::JoinHandle<()>,
-
-    /// Commands sent to the decoder thread.
-    command_tx: Sender<Command>,
-
-    /// Instant communication to the decoder thread (circumventing the command queue).
-    comms: Comms,
-}
-
-impl Decoder {
-    pub fn new(
-        debug_name: String,
-        on_output: impl Fn(Result<Frame>) + Send + Sync + 'static,
-    ) -> Self {
-        re_tracing::profile_function!();
-        let (command_tx, command_rx) = unbounded();
-        let comms = Comms::default();
-
-        let thread = std::thread::Builder::new()
-            .name("av1_decoder".into())
-            .spawn({
-                let comms = comms.clone();
-                move || {
-                    econtext::econtext_data!("Video", debug_name.clone());
-                    decoder_thread(&comms, &command_rx, &on_output);
-                    re_log::debug!("Closing decoder thread for {debug_name}");
-                }
-            })
-            .expect("failed to spawn decoder thread");
-
-        Self {
-            _thread: thread,
-            command_tx,
-            comms,
-        }
-    }
-
-    // NOTE: The interface is all `&mut self` to avoid certain types of races.
-    pub fn decode(&mut self, chunk: Chunk) {
-        re_tracing::profile_function!();
-        self.command_tx.send(Command::Chunk(chunk)).ok();
-    }
-
-    /// Resets the decoder.
-    ///
-    /// This does not block, all chunks sent to `decode` before this point will be discarded.
-    // NOTE: The interface is all `&mut self` to avoid certain types of races.
-    pub fn reset(&mut self) {
+impl SyncDav1dDecoder {
+    pub fn new() -> Result<Self> {
         re_tracing::profile_function!();
 
-        // Increment resets first…
-        self.comms
-            .num_outstanding_resets
-            .fetch_add(1, Ordering::Release);
+        // See https://videolan.videolan.me/dav1d/structDav1dSettings.html for settings docs
+        let mut settings = dav1d::Settings::new();
 
-        // …so it is visible on the decoder thread when it gets the `Reset` command.
-        self.command_tx.send(Command::Reset).ok();
+        // Prioritize delivering video frames, not error messages.
+        settings.set_strict_std_compliance(false);
+
+        // Set to 1 for low-latency decoding.
+        settings.set_max_frame_delay(1);
+
+        let decoder = dav1d::Decoder::with_settings(&settings)?;
+
+        Ok(Self { decoder })
     }
+}
 
-    /// Blocks until all pending frames have been decoded.
-    // NOTE: The interface is all `&mut self` to avoid certain types of races.
-    pub fn flush(&mut self) {
+impl SyncDecoder for SyncDav1dDecoder {
+    fn submit_chunk(&mut self, should_stop: &AtomicBool, chunk: Chunk, on_output: &OutputCallback) {
         re_tracing::profile_function!();
-        let (tx, rx) = crossbeam::channel::bounded(0);
-        self.command_tx.send(Command::Flush { on_done: tx }).ok();
-        rx.recv().ok();
+        submit_chunk(&mut self.decoder, chunk, on_output);
+        output_frames(should_stop, &mut self.decoder, on_output);
     }
-}
 
-impl Drop for Decoder {
-    fn drop(&mut self) {
+    /// Clear and reset everything
+    fn reset(&mut self) {
         re_tracing::profile_function!();
 
-        // Set `should_stop` first…
-        self.comms.should_stop.store(true, Ordering::Release);
+        self.decoder.flush();
 
-        // …so it is visible on the decoder thread when it gets the `Stop` command.
-        self.command_tx.send(Command::Stop).ok();
-
-        // NOTE: we don't block here. The decoder thread will finish soon enough.
+        debug_assert!(matches!(self.decoder.get_picture(), Err(dav1d::Error::Again)),
+            "There should be no pending pictures, since we output them directly after submitting a chunk.");
     }
-}
-
-type OutputCallback = dyn Fn(Result<Frame>) + Send + Sync;
-
-fn create_decoder() -> Result<dav1d::Decoder, dav1d::Error> {
-    re_tracing::profile_function!();
-
-    // See https://videolan.videolan.me/dav1d/structDav1dSettings.html for settings docs
-    let mut settings = dav1d::Settings::new();
-
-    // Prioritize delivering video frames, not error messages.
-    settings.set_strict_std_compliance(false);
-
-    // Set to 1 for low-latency decoding.
-    settings.set_max_frame_delay(1);
-
-    dav1d::Decoder::with_settings(&settings)
-}
-
-fn decoder_thread(comms: &Comms, command_rx: &Receiver<Command>, on_output: &OutputCallback) {
-    #![allow(clippy::debug_assert_with_mut_call)]
-
-    let mut decoder = match create_decoder() {
-        Err(err) => {
-            on_output(Err(Error::Initialization(err)));
-            return;
-        }
-        Ok(decoder) => decoder,
-    };
-
-    while let Ok(command) = command_rx.recv() {
-        if comms.should_stop.load(Ordering::Acquire) {
-            re_log::debug!("Should stop");
-            return;
-        }
-
-        // If we're waiting for a reset we should ignore all other commands until we receive it.
-        let has_outstanding_reset = 0 < comms.num_outstanding_resets.load(Ordering::Acquire);
-
-        match command {
-            Command::Chunk(chunk) => {
-                if !has_outstanding_reset {
-                    submit_chunk(&mut decoder, chunk, on_output);
-                    // NOTE: in all video's I've tested, there is one frame per chunk
-                    let _num_frames = output_frames(&comms.should_stop, &mut decoder, on_output);
-                }
-            }
-            Command::Flush { on_done } => {
-                debug_assert!(matches!(decoder.get_picture(), Err(dav1d::Error::Again)),
-                    "There should be no pending pictures, since we output them directly after submitting a chunk.");
-
-                on_done.send(()).ok();
-            }
-            Command::Reset => {
-                decoder.flush();
-
-                debug_assert!(matches!(decoder.get_picture(), Err(dav1d::Error::Again)),
-                    "There should be no pending pictures, since we output them directly after submitting a chunk.");
-
-                comms.num_outstanding_resets.fetch_sub(1, Ordering::Release);
-            }
-            Command::Stop => {
-                re_log::debug!("Stop");
-                return;
-            }
-        }
-    }
-
-    re_log::debug!("Disconnected");
 }
 
 fn submit_chunk(decoder: &mut dav1d::Decoder, chunk: Chunk, on_output: &OutputCallback) {

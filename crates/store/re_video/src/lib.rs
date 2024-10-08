@@ -7,10 +7,6 @@ pub use decode::{Chunk, Frame, PixelFormat};
 pub use demux::{Config, Sample, VideoData, VideoLoadError};
 pub use re_mp4::{TrackId, TrackKind};
 
-#[cfg(feature = "av1")]
-#[cfg(not(target_arch = "wasm32"))]
-pub use decode::av1;
-
 use ordered_float::OrderedFloat;
 
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
