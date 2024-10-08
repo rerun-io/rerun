@@ -223,7 +223,6 @@ impl GraphSpaceViewState {
     pub fn debug_ui(&mut self, ui: &mut egui::Ui) {
         ui.re_checkbox(&mut self.show_debug, "Show debug information")
             .on_hover_text("Shows debug information for the current graph");
-
         ui.end_row();
     }
 }

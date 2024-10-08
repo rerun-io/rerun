@@ -45,7 +45,7 @@ pub(crate) enum Node<'a> {
     Dummy(NodeLocation, &'a EntityPath),
 }
 
-fn edges_to_iter(edge: EdgeInstance) -> impl Iterator<Item = (NodeLocation, &EntityPath)> {
+fn edges_to_iter(edge: EdgeInstance) -> impl Iterator<Item = (NodeLocation, & EntityPath)> {
     let source = (edge.source, edge.source_entity_path);
     let target = (edge.target, edge.target_entity_path);
     std::iter::once(source.clone()).chain(std::iter::once(target))
