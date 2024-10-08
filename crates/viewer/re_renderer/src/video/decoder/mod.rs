@@ -330,8 +330,8 @@ impl VideoDecoder {
             presentation_timestamp,
         );
 
-        if let Err(error) = result {
-            if error == DecodingError::EmptyBuffer {
+        if let Err(err) = result {
+            if err == DecodingError::EmptyBuffer {
                 // No buffered frames
 
                 // Might this be due to an error?
@@ -354,7 +354,7 @@ impl VideoDecoder {
                 // because it causes "black flashes" to appear
                 Ok(())
             } else {
-                Err(error)
+                Err(err)
             }
         } else {
             Ok(())
