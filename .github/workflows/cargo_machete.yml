@@ -1,6 +1,11 @@
 name: Cargo Machete
 
-on: [push, pull_request]
+on:
+  push:
+    branches:
+      - "main"
+  pull_request:
+    types: [ opened, synchronize ]
 
 jobs:
   cargo-machete:
