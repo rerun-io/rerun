@@ -44,13 +44,11 @@ re_build_info.workspace = true
 re_chunk = { workspace = true, features = ["arrow"] }
 re_chunk_store = { workspace = true }
 re_dataframe2 = { workspace = true }
-re_entity_db = { workspace = true }
 re_log = { workspace = true, features = ["setup"] }
 re_log_encoding = { workspace = true }
 re_log_types.workspace = true
 re_memory.workspace = true
 re_sdk = { workspace = true, features = ["data_loaders"] }
-re_types = { workspace = true }
 re_video.workspace = true
 re_web_viewer_server = { workspace = true, optional = true }
 re_ws_comms = { workspace = true, optional = true }
