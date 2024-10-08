@@ -1,5 +1,4 @@
-use fdg_sim::{ForceGraph, ForceGraphHelper, Simulation, SimulationParameters};
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 
 use re_viewer::external::{
     egui::{self, emath::TSTransform, TextWrapMode},

@@ -8,8 +8,8 @@ use crate::error::Error;
 type NodeInfo<N> = (N, egui::Vec2);
 
 pub fn compute_layout<N>(
-    nodes: impl Iterator<Item = (N, egui::Vec2)>,
-    edges: impl Iterator<Item = (N, N)>,
+    nodes: impl IntoIterator<Item = (N, egui::Vec2)>,
+    edges: impl IntoIterator<Item = (N, N)>,
 ) -> Result<HashMap<N, egui::Rect>, Error>
 where
     N: Clone + Eq + ToString + std::hash::Hash,
