@@ -54,7 +54,8 @@ impl VideoData {
     /// at the very least the should be a way to extract only metadata.
     pub fn load_from_bytes(data: &[u8], media_type: &str) -> Result<Self, VideoLoadError> {
         match media_type {
-            "video/mp4" => mp4::load_mp4(data),
+            "video/mp4" => Self::load_mp4(data),
+
             media_type => {
                 if media_type.starts_with("video/") {
                     Err(VideoLoadError::UnsupportedMimeType {
