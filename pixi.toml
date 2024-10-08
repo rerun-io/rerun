@@ -305,6 +305,8 @@ py-build = "pixi run -e py py-build-common"
 # Dedicated alias for building the python bindings in release mode for the `py` environment.
 py-build-release = "pixi run -e py py-build-common-release"
 
+check-py-signatures = "python scripts/ci/check_python_signatures.py"
+
 # Helper alias to run the python interpreter in the context of the python environment
 rrpy = "python"
 
