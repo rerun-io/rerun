@@ -482,6 +482,7 @@ impl ChunkStore {
 
         let Self {
             id,
+            info: _,
             config: _,
             type_registry: _,
             chunks_per_chunk_id,
