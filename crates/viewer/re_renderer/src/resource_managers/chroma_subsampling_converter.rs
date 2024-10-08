@@ -189,7 +189,7 @@ impl ChromaSubsamplingConversionTask {
     ) -> Result<GpuTexture, DrawError> {
         // TODO(andreas): Does this have to be on the global view encoder?
         // If this ever becomes a problem we could easily schedule this to another encoder as long as
-        // we gurantee that the conversion is enqueued before the resulting texture is used.
+        // we guarantee that the conversion is enqueued before the resulting texture is used.
         // Given that we already have this neatly encapsulated work package this would be quite easy to do!
         let mut encoder = ctx.active_frame.before_view_builder_encoder.lock();
         let mut pass = encoder

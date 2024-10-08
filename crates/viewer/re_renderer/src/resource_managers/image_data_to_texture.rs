@@ -11,7 +11,7 @@ use crate::{
 ///
 /// This applies both to YUV and RGB formats, but if not specified otherwise
 /// we assume BT.709 primaries for all RGB(A) 8bits per channel content (details below on [`ColorSpace::Bt709`]).
-/// Since with YUV content the color space is often less clear, we always explicitely
+/// Since with YUV content the color space is often less clear, we always explicitly
 /// specify it.
 ///
 /// Ffmpeg's documentation has a short & good overview of these relationships:
@@ -189,7 +189,7 @@ impl<'a> ImageDataDesc<'a> {
 ///
 /// Schedules render passes to convert the data to a samplable textures if needed.
 ///
-/// Generally, we currently do *not* sRGB converting formats like [`wgpu::TextureFormat::Rgba8UnormSrgb`] in order to...
+/// Generally, we currently do *not* use sRGB converting formats like [`wgpu::TextureFormat::Rgba8UnormSrgb`] in order to…
 /// * have the same shader code path for high precision formats (e.g. an f16 texture that _still_ encodes sRGB data)
 /// * handle alpha pre-multiply on the fly (needs to happen before sRGB decode to linear)
 ///
