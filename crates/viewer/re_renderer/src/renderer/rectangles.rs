@@ -49,9 +49,6 @@ pub enum TextureFilterMin {
 /// Describes how the color information is encoded in the texture.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum ShaderDecoding {
-    Nv12,
-    Yuy2,
-
     /// Do BGR(A)->RGB(A) conversion is in the shader.
     Bgr,
 }
@@ -145,17 +142,7 @@ impl ColormappedTexture {
     }
 
     pub fn width_height(&self) -> [u32; 2] {
-        match self.shader_decoding {
-            Some(ShaderDecoding::Nv12) => {
-                let [width, height] = self.texture.width_height();
-                [width, height * 2 / 3]
-            }
-            Some(ShaderDecoding::Yuy2) => {
-                let [width, height] = self.texture.width_height();
-                [width / 2, height]
-            }
-            Some(ShaderDecoding::Bgr) | None => self.texture.width_height(),
-        }
+        self.texture.width_height()
     }
 }
 
@@ -237,8 +224,6 @@ mod gpu_data {
     const SAMPLE_TYPE_FLOAT: u32 = 1;
     const SAMPLE_TYPE_SINT: u32 = 2;
     const SAMPLE_TYPE_UINT: u32 = 3;
-    const SAMPLE_TYPE_NV12: u32 = 4;
-    const SAMPLE_TYPE_YUY2: u32 = 5;
 
     // How do we do colormapping?
     const COLOR_MAPPER_OFF_GRAYSCALE: u32 = 1;
@@ -318,15 +303,7 @@ mod gpu_data {
             let sample_type = match texture_format.sample_type(None, None) {
                 Some(wgpu::TextureSampleType::Float { .. }) => SAMPLE_TYPE_FLOAT,
                 Some(wgpu::TextureSampleType::Sint) => SAMPLE_TYPE_SINT,
-                Some(wgpu::TextureSampleType::Uint) => {
-                    if shader_decoding == &Some(super::ShaderDecoding::Nv12) {
-                        SAMPLE_TYPE_NV12
-                    } else if shader_decoding == &Some(super::ShaderDecoding::Yuy2) {
-                        SAMPLE_TYPE_YUY2
-                    } else {
-                        SAMPLE_TYPE_UINT
-                    }
-                }
+                Some(wgpu::TextureSampleType::Uint) => SAMPLE_TYPE_UINT,
                 _ => {
                     return Err(RectangleError::TextureFormatNotSupported(texture_format));
                 }

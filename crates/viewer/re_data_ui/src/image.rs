@@ -120,7 +120,7 @@ fn show_image_preview(
     desired_size: egui::Vec2,
 ) -> Result<egui::Response, (egui::Response, anyhow::Error)> {
     fn texture_size(colormapped_texture: &ColormappedTexture) -> Vec2 {
-        let [w, h] = colormapped_texture.width_height();
+        let [w, h] = colormapped_texture.texture.width_height();
         egui::vec2(w as f32, h as f32)
     }
 

@@ -353,7 +353,7 @@ impl TensorSpaceView {
             &colormap,
             gamma,
         )?;
-        let [width, height] = colormapped_texture.width_height();
+        let [width, height] = colormapped_texture.texture.width_height();
 
         let view_fit: ViewFit = ViewProperty::from_archetype::<TensorViewFit>(
             ctx.blueprint_db(),
