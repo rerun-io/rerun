@@ -26,6 +26,12 @@ pub fn init() {
     }
 
     {
+        let virtpath = Path::new("shader/conversions/chroma_subsampling_converter.wgsl");
+        let content = include_str!("../shader/conversions/chroma_subsampling_converter.wgsl").into();
+        fs.create_file(virtpath, content).unwrap();
+    }
+
+    {
         let virtpath = Path::new("shader/copy_texture.wgsl");
         let content = include_str!("../shader/copy_texture.wgsl").into();
         fs.create_file(virtpath, content).unwrap();

@@ -1,4 +1,8 @@
+use super::chroma_subsampling_converter::{
+    ChromaSubsamplingConversionTask, ChromaSubsamplingPixelFormat,
+};
 use crate::{
+    renderer::DrawError,
     wgpu_resources::{GpuTexture, TextureDesc},
     DebugLabel, RenderContext, Texture2DBufferInfo,
 };
@@ -17,7 +21,7 @@ pub enum ColorSpace {
     /// BT.601 (aka. SDTV, aka. Rec.601)
     ///
     /// Wiki: <https://en.wikipedia.org/wiki/YCbCr#ITU-R_BT.601_conversion/>
-    Bt601,
+    Bt601 = 0,
 
     /// BT.709 (aka. HDTV, aka. Rec.709)
     ///
@@ -30,7 +34,7 @@ pub enum ColorSpace {
     /// but for all other purposes they are the same.
     /// (The only reason for us to convert to optical units ("linear" instead of "gamma") is for
     /// lighting & tonemapping where we typically start out with an sRGB image!)
-    Bt709,
+    Bt709 = 2,
     //
     // Not yet supported. These vary a lot more from the other two!
     //
@@ -111,6 +115,9 @@ pub enum ImageDataToTextureError {
         format: wgpu::TextureFormat,
     },
 
+    #[error("Gpu based conversion for {label:?} did not succeed: {err}")]
+    GpuBasedConversionError { label: DebugLabel, err: DrawError },
+
     // TODO(andreas): As we stop using `wgpu::TextureFormat` for input, this should become obsolete.
     #[error("Unsupported texture format {0:?}")]
     UnsupportedTextureFormat(wgpu::TextureFormat),
@@ -166,8 +173,12 @@ impl<'a> ImageDataDesc<'a> {
                         .ok_or(ImageDataToTextureError::UnsupportedTextureFormat(*format))?
                         as usize
             }
-            SourceImageDataFormat::Y_UV12(_) => 12 * num_pixels / 8,
-            SourceImageDataFormat::YUYV16(_) => 16 * num_pixels / 8,
+            SourceImageDataFormat::Y_UV12(_) => {
+                ChromaSubsamplingPixelFormat::Y_UV12.expected_data_buffer_size(*width, *height)
+            }
+            SourceImageDataFormat::YUYV16(_) => {
+                ChromaSubsamplingPixelFormat::YUYV16.expected_data_buffer_size(*width, *height)
+            }
         };
 
         // TODO(andreas): Nv12 needs height divisible by 2?
@@ -196,12 +207,12 @@ impl<'a> ImageDataDesc<'a> {
 /// Buffer->Texture copies have restrictions on row padding, so any approach where we first
 /// allocate gpu readable memory and hand it to the user would make the API a lot more complicated.
 pub fn transfer_image_data_to_texture(
-    render_ctx: &RenderContext,
+    ctx: &RenderContext,
     image_data: ImageDataDesc<'_>,
 ) -> Result<GpuTexture, ImageDataToTextureError> {
     re_tracing::profile_function!();
 
-    image_data.validate(&render_ctx.device.limits())?;
+    image_data.validate(&ctx.device.limits())?;
 
     let ImageDataDesc {
         label,
@@ -213,39 +224,34 @@ pub fn transfer_image_data_to_texture(
 
     // Determine size of the texture the image data is uploaded into.
     // Reminder: We can't use raw buffers because of WebGL compatibility.
-    let (data_texture_width, data_texture_height, data_texture_format) = match source_format {
-        SourceImageDataFormat::WgpuCompatible(format) => (width, height, format),
-
+    let (data_texture_width, data_texture_height) = match source_format {
+        SourceImageDataFormat::WgpuCompatible(_) => (width, height),
         SourceImageDataFormat::Y_UV12(_) => {
-            (width, height + height / 2, wgpu::TextureFormat::R8Uint)
+            ChromaSubsamplingPixelFormat::Y_UV12.expected_data_width_height(width, height)
         }
-        SourceImageDataFormat::YUYV16(_) => (width * 2, height, wgpu::TextureFormat::R8Uint),
+        SourceImageDataFormat::YUYV16(_) => {
+            ChromaSubsamplingPixelFormat::YUYV16.expected_data_width_height(width, height)
+        }
     };
-
-    // Determine whether this format needs a conversion step.
-    // If false, the data_texture is already the final output.
-    #[allow(clippy::match_same_arms)]
-    let needs_conversion = match source_format {
-        SourceImageDataFormat::WgpuCompatible(_) => false,
-        SourceImageDataFormat::Y_UV12(_) => true,
-        SourceImageDataFormat::YUYV16(_) => true,
+    let data_texture_format = match source_format {
+        SourceImageDataFormat::WgpuCompatible(format) => format,
+        SourceImageDataFormat::Y_UV12(_) => {
+            ChromaSubsamplingPixelFormat::Y_UV12.expected_data_texture_format()
+        }
+        SourceImageDataFormat::YUYV16(_) => {
+            ChromaSubsamplingPixelFormat::YUYV16.expected_data_texture_format()
+        }
     };
 
     // Allocate gpu belt data and upload it.
-    let data_texture_label = if needs_conversion {
-        format!("{label}_source_data").into()
-    } else {
-        label
+    let data_texture_label = match source_format {
+        SourceImageDataFormat::WgpuCompatible(_) => label.clone(),
+        SourceImageDataFormat::Y_UV12(_) | SourceImageDataFormat::YUYV16(_) => {
+            format!("{label}_source_data").into()
+        }
     };
-    let data_texture_usage = if needs_conversion {
-        wgpu::TextureUsages::TEXTURE_BINDING
-            | wgpu::TextureUsages::COPY_DST
-            | wgpu::TextureUsages::RENDER_ATTACHMENT
-    } else {
-        wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::COPY_DST
-    };
-    let data_texture = render_ctx.gpu_resources.textures.alloc(
-        &render_ctx.device,
+    let data_texture = ctx.gpu_resources.textures.alloc(
+        &ctx.device,
         &TextureDesc {
             label: data_texture_label,
             size: wgpu::Extent3d {
@@ -257,22 +263,43 @@ pub fn transfer_image_data_to_texture(
             sample_count: 1,
             dimension: wgpu::TextureDimension::D2,
             format: data_texture_format,
-            usage: data_texture_usage,
+            usage: wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::COPY_DST,
         },
     );
-    copy_data_to_texture(render_ctx, &data_texture, data.as_ref())?;
+    copy_data_to_texture(ctx, &data_texture, data.as_ref())?;
 
-    if !needs_conversion {
-        return Ok(data_texture);
-    }
+    // Build a converter task, feeding in the raw data.
+    let converter_task = match source_format {
+        SourceImageDataFormat::WgpuCompatible(_) => {
+            // No further conversion needed, we're done here!
+            return Ok(data_texture);
+        }
+        SourceImageDataFormat::Y_UV12(color_space) | SourceImageDataFormat::YUYV16(color_space) => {
+            let chroma_format = match source_format {
+                SourceImageDataFormat::WgpuCompatible(_) => unreachable!(),
+                SourceImageDataFormat::Y_UV12(_) => ChromaSubsamplingPixelFormat::Y_UV12,
+                SourceImageDataFormat::YUYV16(_) => ChromaSubsamplingPixelFormat::YUYV16,
+            };
+            ChromaSubsamplingConversionTask::new(
+                ctx,
+                chroma_format,
+                color_space,
+                data_texture,
+                label.clone(),
+                width,
+                height,
+            )
+        }
+    };
 
-    // TODO: if needed, schedule render pass with fragment shader to convert data
-    // -> this may need render pipelines & bind layouts.
-    //    -> Just use `ctx.renderer` in order to encapsulate the necessary data for different conversion steps.
-    //       Bit of a missuse but should work & scale (!) just fine.
+    // Once there's different gpu based conversions, we should probably trait-ify this so we can keep the basic steps.
+    // Note that we execute the task right away, but the way things are set up (by means of using the `Renderer` framework)
+    // it would be fairly easy to schedule this differently!
+    let output_texture = converter_task
+        .convert_input_data_to_texture(ctx)
+        .map_err(|err| ImageDataToTextureError::GpuBasedConversionError { label, err })?;
 
-    // TODO:
-    Ok(data_texture)
+    Ok(output_texture)
 }
 
 fn copy_data_to_texture(
