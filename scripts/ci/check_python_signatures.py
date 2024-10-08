@@ -1,4 +1,4 @@
-"""Compares the signatures in in `rerun_bindings.pyi` with the actual runtime signatures in `rerun_bindings.so`."""
+"""Compares the signatures in `rerun_bindings.pyi` with the actual runtime signatures in `rerun_bindings.so`."""
 
 from __future__ import annotations
 
@@ -12,7 +12,7 @@ from typing import Any
 
 import parso
 
-TotalSigature = dict[str, Signature | dict[str, Signature]]
+TotalSignature = dict[str, Signature | dict[str, Signature]]
 
 
 def parse_function_signature(node: Any) -> Signature:
@@ -51,12 +51,12 @@ def parse_function_signature(node: Any) -> Signature:
     return Signature(parameters=params)
 
 
-def load_stub_signatures(pyi_file: Path) -> TotalSigature:
+def load_stub_signatures(pyi_file: Path) -> TotalSignature:
     """Use parso to parse the .pyi file and convert function and class signatures into inspect.Signature objects."""
     pyi_code = Path(pyi_file).read_text()
     tree = parso.parse(pyi_code)
 
-    signatures: TotalSigature = {}
+    signatures: TotalSignature = {}
 
     for node in tree.children:
         if node.type == "funcdef":
@@ -80,11 +80,11 @@ def load_stub_signatures(pyi_file: Path) -> TotalSigature:
     return signatures
 
 
-def load_runtime_signatures(module_name: str) -> TotalSigature:
+def load_runtime_signatures(module_name: str) -> TotalSignature:
     """Use inspect to extract runtime signatures for both functions and classes."""
     module = importlib.import_module(module_name)
 
-    signatures: TotalSigature = {}
+    signatures: TotalSignature = {}
 
     # Get top-level functions and classes
     for name, obj in inspect.getmembers(module):
@@ -99,7 +99,7 @@ def load_runtime_signatures(module_name: str) -> TotalSigature:
                 # Need special handling for __init__ methods because pyo3 doesn't expose them as functions
                 # Instead we use the __text_signature__ attribute from the class
                 if method_name == "__init__" and obj.__text_signature__ is not None:
-                    sig = "def __init__" + obj.__text_signature__ + ": ..."
+                    sig = "def __init__" + obj.__text_signature__ + ": ..."  # NOLINT
                     parsed = parso.parse(sig).children[0]
                     class_def[method_name] = parse_function_signature(parsed)
                     continue
@@ -112,7 +112,7 @@ def load_runtime_signatures(module_name: str) -> TotalSigature:
     return signatures
 
 
-def compare_signatures(stub_signatures: TotalSigature, runtime_signatures: TotalSigature) -> int:
+def compare_signatures(stub_signatures: TotalSignature, runtime_signatures: TotalSignature) -> int:
     """Compare stub signatures with runtime signatures."""
 
     result = 0
@@ -130,7 +130,7 @@ def compare_signatures(stub_signatures: TotalSigature, runtime_signatures: Total
                 for method_name, stub_method_signature in stub_signature.items():
                     runtime_method_signature = runtime_class_signature.get(method_name)
                     if runtime_method_signature != stub_method_signature:
-                        print(f"{name}.{method_name}(...) signature mismatch:")
+                        print(f"{name}.{method_name}(…) signature mismatch:")
                         print(f"    Stub: {stub_method_signature}")
                         print(f"    Runtime: {runtime_method_signature}")
                         result += 1
@@ -143,7 +143,7 @@ def compare_signatures(stub_signatures: TotalSigature, runtime_signatures: Total
                 # Handle top-level functions
                 runtime_signature = runtime_signatures.get(name)
                 if runtime_signature != stub_signature:
-                    print(f"{name}(...) signature mismatch:")
+                    print(f"{name}(…) signature mismatch:")
                     print(f"  Stub: {stub_signature}")
                     print(f"  Runtime: {runtime_signature}")
                     result += 1
