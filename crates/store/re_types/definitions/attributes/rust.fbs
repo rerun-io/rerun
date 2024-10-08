@@ -41,3 +41,9 @@ attribute "attr.rust.new_pub_crate";
 /// an object of kind `Blueprint` with `attr.rust.override_crate=re_viewport`, the final
 /// object will be generated in `re_viewport/src/blueprint`.
 attribute "attr.rust.override_crate";
+
+/// No reflection placeholder value will be generated for this component.
+///
+/// This enables the component to not `impl Default`. The drawback is that this may result in a
+/// `ComponentFallbackError::MissingPlaceholderValue` error when using this component with the fallback system.
+attribute "attr.rust.no_placeholder";
