@@ -193,6 +193,11 @@ fn show_video_blob_info(
                         data.height()
                     )),
                 );
+                if let Some(bit_depth) = data.config.stsd.contents.bit_depth() {
+                    ui.list_item_flat_noninteractive(
+                        PropertyContent::new("Bit depth").value_text(bit_depth.to_string()),
+                    );
+                }
                 ui.list_item_flat_noninteractive(
                     PropertyContent::new("Duration")
                         .value_text(format!("{}", re_log_types::Duration::from(data.duration()))),

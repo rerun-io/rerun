@@ -115,6 +115,15 @@ impl VideoDecoder {
             data.human_readable_codec_string()
         );
 
+        if let Some(bit_depth) = data.config.stsd.contents.bit_depth() {
+            #[allow(clippy::comparison_chain)]
+            if bit_depth < 8 {
+                re_log::warn!("{debug_name} has unusual bit_depth of {bit_depth}");
+            } else if 8 < bit_depth {
+                re_log::warn!("{debug_name}: HDR videos not supported. See https://github.com/rerun-io/rerun/issues/7594 for more.");
+            }
+        }
+
         cfg_if::cfg_if! {
             if #[cfg(target_arch = "wasm32")] {
                 let decoder = web::WebVideoDecoder::new(data.clone(), hw_acceleration)?;
