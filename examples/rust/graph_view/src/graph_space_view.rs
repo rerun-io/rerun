@@ -6,7 +6,7 @@ use re_viewer::external::{
     re_log::external::log,
     re_log_types::EntityPath,
     re_types::{datatypes, SpaceViewClassIdentifier},
-    re_ui,
+    re_ui::{self, UiExt},
     re_viewer_context::{
         HoverHighlight, IdentifiedViewSystem as _, InteractionHighlight, Item, SelectionHighlight,
         SpaceViewClass, SpaceViewClassLayoutPriority, SpaceViewClassRegistryError, SpaceViewId,
@@ -17,67 +17,16 @@ use re_viewer::external::{
 };
 
 use crate::{
-    common::NodeLocation, edge_undirected_visualizer_system::EdgeUndirectedVisualizer, error::Error, graph::{Graph, Node}, ui
+    common::NodeLocation,
+    edge_undirected_visualizer_system::EdgeUndirectedVisualizer,
+    error::Error,
+    graph::{Graph, Node},
+    ui::{self, GraphSpaceViewState},
 };
 use crate::{
     edge_undirected_visualizer_system::{self, EdgeInstance},
     node_visualizer_system::{GraphNodeVisualizer, NodeInstance},
 };
-
-fn bounding_rect_from_iter<'a>(rects: impl Iterator<Item = &'a egui::Rect>) -> Option<egui::Rect> {
-    // Start with `None` and gradually expand the bounding box.
-    let mut bounding_rect: Option<egui::Rect> = None;
-
-    for rect in rects {
-        bounding_rect = match bounding_rect {
-            Some(bounding) => Some(bounding.union(*rect)),
-            None => Some(*rect),
-        };
-    }
-
-    bounding_rect
-}
-
-fn fit_bounding_rect_to_screen(
-    bounding_rect: egui::Rect,
-    available_size: egui::Vec2,
-) -> TSTransform {
-    // Compute the scale factor to fit the bounding rectangle into the available screen size.
-    let scale_x = available_size.x / bounding_rect.width();
-    let scale_y = available_size.y / bounding_rect.height();
-
-    // Use the smaller of the two scales to ensure the whole rectangle fits on the screen.
-    let scale = scale_x.min(scale_y).min(1.0);
-
-    // Compute the translation to center the bounding rect in the screen.
-    let center_screen = egui::Pos2::new(available_size.x / 2.0, available_size.y / 2.0);
-    let center_world = bounding_rect.center().to_vec2();
-
-    // Set the transformation to scale and then translate to center.
-    TSTransform::from_translation(center_screen.to_vec2() - center_world * scale)
-        * TSTransform::from_scaling(scale)
-}
-
-/// Space view state for the custom space view.
-///
-/// This state is preserved between frames, but not across Viewer sessions.
-#[derive(Default)]
-pub struct GraphSpaceViewState {
-    world_to_view: TSTransform,
-
-    /// Positions of the nodes in world space.
-    layout: Option<HashMap<NodeLocation, egui::Rect>>,
-}
-
-impl SpaceViewState for GraphSpaceViewState {
-    fn as_any(&self) -> &dyn std::any::Any {
-        self
-    }
-
-    fn as_any_mut(&mut self) -> &mut dyn std::any::Any {
-        self
-    }
-}
 
 #[derive(Default)]
 pub struct GraphSpaceView;
@@ -147,10 +96,11 @@ impl SpaceViewClass for GraphSpaceView {
         _space_origin: &EntityPath,
         _space_view_id: SpaceViewId,
     ) -> Result<(), SpaceViewSystemExecutionError> {
-        let _state = state.downcast_mut::<GraphSpaceViewState>()?;
+        let state = state.downcast_mut::<GraphSpaceViewState>()?;
 
-        ui.horizontal(|ui| {
-            ui.label("HEEEEELLLLLLOOOOO");
+        ui.selection_grid("graph_settings_ui").show(ui, |ui| {
+            state.bounding_box_ui(ui);
+            state.debug_ui(ui);
         });
 
         Ok(())
@@ -191,8 +141,8 @@ impl SpaceViewClass for GraphSpaceView {
                     .flat_map(|d| d.edges().map(|e| (e.source, e.target))),
             )?;
 
-            if let Some(bounding_box) = bounding_rect_from_iter(layout.values()) {
-                state.world_to_view = fit_bounding_rect_to_screen(
+            if let Some(bounding_box) = ui::bounding_rect_from_iter(layout.values()) {
+                state.fit_to_screen(
                     bounding_box.scale_from_center(1.05),
                     clip_rect_window.size(),
                 );
@@ -248,9 +198,7 @@ impl SpaceViewClass for GraphSpaceView {
 
         let window_layer = ui.layer_id();
 
-        //#[cfg(debug_assertions)]
-        #[cfg(any())]
-        {
+        if state.show_debug {
             let debug_id = egui::LayerId::new(egui::Order::Debug, id.with("debug_layer"));
             ui.ctx().set_transform_layer(debug_id, world_to_window);
 
@@ -268,11 +216,11 @@ impl SpaceViewClass for GraphSpaceView {
                 egui::Stroke::new(2.0, egui::Color32::GREEN),
             );
 
-            if let Some(bounding_box) = bounding_rect_from_iter(layout.values()) {
+            if let Some(bounding_box) = ui::bounding_rect_from_iter(layout.values()) {
                 painter.rect(
                     bounding_box,
                     0.0,
-                    egui::Color32::from_rgba_unmultiplied(255, 0, 255, 32),
+                    egui::Color32::from_rgba_unmultiplied(255, 0, 255, 8),
                     egui::Stroke::new(1.0, egui::Color32::from_rgb(255, 0, 255)),
                 );
             }
