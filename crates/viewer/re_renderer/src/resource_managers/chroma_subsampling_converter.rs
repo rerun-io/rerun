@@ -90,10 +90,12 @@ mod gpu_data {
     pub struct UniformBuffer {
         /// Uses [`super::ChromaSubsamplingPixelFormat`].
         pub format: u32,
+
         /// Uses [`super::ColorPrimaries`].
         pub primaries: u32,
 
-        pub _padding: [u32; 2],
+        pub target_texture_size: [u32; 2],
+
         pub _end_padding: [wgpu_buffer_types::PaddingRow; 16 - 1],
     }
 }
@@ -155,8 +157,8 @@ impl ChromaSubsamplingConversionTask {
             gpu_data::UniformBuffer {
                 format: format as _,
                 primaries: primaries as _,
+                target_texture_size: [output_width, output_height],
 
-                _padding: Default::default(),
                 _end_padding: Default::default(),
             },
         );
