@@ -569,6 +569,10 @@ impl PyRecording {
             query_expression: query,
         })
     }
+
+    fn recording_id(&self) -> String {
+        self.store.id().as_str().to_owned()
+    }
 }
 
 #[pyclass(frozen, name = "RRDArchive")]
