@@ -224,3 +224,6 @@ jobs:
         # --no-py-build because rerun-sdk is already built and installed
         # --no-asset-download because we already downloaded the assets
         run: pixi run -e wheel-test-min RUST_LOG=debug python docs/snippets/compare_snippet_output.py --target ${{ needs.set-config.outputs.TARGET }} --no-py-build --no-cpp-build --no-asset-download
+
+      - name: Check the python library signatures
+        run: pixi run check-py-signatures
