@@ -603,7 +603,7 @@ impl PyRRDArchive {
 }
 
 #[pyfunction]
-pub fn load_recording(path_to_rrd: String) -> PyResult<PyRecording> {
+pub fn load_recording(path_to_rrd: std::path::PathBuf) -> PyResult<PyRecording> {
     let archive = load_archive(path_to_rrd)?;
 
     let num_recordings = archive.num_recordings();
@@ -624,7 +624,7 @@ pub fn load_recording(path_to_rrd: String) -> PyResult<PyRecording> {
 }
 
 #[pyfunction]
-pub fn load_archive(path_to_rrd: String) -> PyResult<PyRRDArchive> {
+pub fn load_archive(path_to_rrd: std::path::PathBuf) -> PyResult<PyRRDArchive> {
     let stores =
         ChunkStore::from_rrd_filepath(&ChunkStoreConfig::DEFAULT, path_to_rrd, VersionPolicy::Warn)
             .map_err(|err| PyRuntimeError::new_err(err.to_string()))?;

@@ -1,9 +1,42 @@
 from __future__ import annotations
 
+import pathlib
 import tempfile
 
 import pyarrow as pa
 import rerun as rr
+
+
+def test_load_recording() -> None:
+    with tempfile.TemporaryDirectory() as tmpdir:
+        rrd = tmpdir + "/tmp.rrd"
+
+        rr.init("rerun_example_test_recording")
+        rr.set_time_sequence("my_index", 1)
+        rr.log("log", rr.TextLog("Hello"))
+        rr.save(rrd)
+
+        recording = rr.dataframe.load_recording(rrd)
+        assert recording is not None
+
+        view = recording.view(index="my_index", contents="/**")
+        batches = view.select()
+        table = pa.Table.from_batches(batches, batches.schema)
+
+        # my_index, log_time, log_tick, indicator, text
+        assert table.num_columns == 5
+        assert table.num_rows == 1
+
+        recording = rr.dataframe.load_recording(pathlib.Path(tmpdir) / "tmp.rrd")
+        assert recording is not None
+
+        view = recording.view(index="my_index", contents="/**")
+        batches = view.select()
+        table = pa.Table.from_batches(batches, batches.schema)
+
+        # my_index, log_time, log_tick, indicator, text
+        assert table.num_columns == 5
+        assert table.num_rows == 1
 
 
 class TestDataframe:
