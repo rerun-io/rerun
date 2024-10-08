@@ -13,6 +13,9 @@ use crate::{resource_managers::GpuTexture2D, RenderContext};
 // TODO(jan, andreas): These errors are for the most part specific to the web decoder right now.
 #[derive(thiserror::Error, Debug, Clone, PartialEq, Eq)]
 pub enum DecodingError {
+    #[error("Failed to start decoder")]
+    StartDecoder(String),
+
     #[error("The decoder is lagging behind")]
     EmptyBuffer,
 

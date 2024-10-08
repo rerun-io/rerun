@@ -4,7 +4,36 @@
 #[cfg(not(target_arch = "wasm32"))]
 pub mod av1;
 
+pub mod async_decoder;
+
+use std::sync::atomic::AtomicBool;
+
 use crate::Time;
+
+pub use async_decoder::AsyncDecoder;
+
+#[derive(thiserror::Error, Debug)]
+pub enum Error {
+    #[cfg(feature = "av1")]
+    #[cfg(not(target_arch = "wasm32"))]
+    #[error("dav1d: {0}")]
+    Dav1d(#[from] dav1d::Error),
+}
+
+pub type Result<T = (), E = Error> = std::result::Result<T, E>;
+
+pub type OutputCallback = dyn Fn(Result<Frame>) + Send + Sync;
+
+/// Blocking decoder of video chunks.
+pub trait SyncDecoder {
+    /// Submit some work and read the results.
+    ///
+    /// Stop early if `should_stop` is `true` or turns `true`.
+    fn submit_chunk(&mut self, should_stop: &AtomicBool, chunk: Chunk, on_output: &OutputCallback);
+
+    /// Clear and reset everything
+    fn reset(&mut self) {}
+}
 
 /// One chunk of encoded video data; usually one frame.
 pub struct Chunk {

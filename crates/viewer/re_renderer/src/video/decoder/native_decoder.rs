@@ -18,14 +18,17 @@ struct DecoderOutput {
     error: Option<TimedDecodingError>,
 }
 
-/// Native AV1 decoder
-pub struct Av1VideoDecoder {
-    decoder: re_video::av1::Decoder,
+/// Native video decoder
+pub struct NativeDecoder {
+    decoder: re_video::decode::AsyncDecoder,
     decoder_output: Arc<Mutex<DecoderOutput>>,
 }
 
-impl Av1VideoDecoder {
-    pub fn new(debug_name: String) -> Result<Self, DecodingError> {
+impl NativeDecoder {
+    pub fn new(
+        debug_name: String,
+        sync_decoder: Box<dyn re_video::decode::SyncDecoder + Send>,
+    ) -> Result<Self, DecodingError> {
         re_tracing::profile_function!();
 
         let decoder_output = Arc::new(Mutex::new(DecoderOutput::default()));
@@ -33,7 +36,7 @@ impl Av1VideoDecoder {
         let on_output = {
             let decoder_output = decoder_output.clone();
             let debug_name = debug_name.clone();
-            move |frame: re_video::av1::Result<Frame>| match frame {
+            move |frame: re_video::decode::Result<Frame>| match frame {
                 Ok(frame) => {
                     re_log::trace!("Decoded frame at {:?}", frame.timestamp);
                     let mut output = decoder_output.lock();
@@ -52,7 +55,8 @@ impl Av1VideoDecoder {
                 }
             }
         };
-        let decoder = re_video::av1::Decoder::new(debug_name, on_output);
+
+        let decoder = re_video::decode::AsyncDecoder::new(debug_name, sync_decoder, on_output);
 
         Ok(Self {
             decoder,
@@ -61,7 +65,7 @@ impl Av1VideoDecoder {
     }
 }
 
-impl VideoChunkDecoder for Av1VideoDecoder {
+impl VideoChunkDecoder for NativeDecoder {
     /// Start decoding the given chunk.
     fn decode(&mut self, chunk: Chunk, _is_keyframe: bool) -> Result<(), DecodingError> {
         self.decoder.decode(chunk);

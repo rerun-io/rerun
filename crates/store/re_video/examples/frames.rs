@@ -38,14 +38,15 @@ fn main() {
     progress.enable_steady_tick(Duration::from_millis(100));
 
     let frames = Arc::new(Mutex::new(Vec::new()));
-    let mut decoder = re_video::decode::av1::Decoder::new("debug_name".to_owned(), {
-        let frames = frames.clone();
-        let progress = progress.clone();
-        move |frame| {
-            progress.inc(1);
-            frames.lock().push(frame);
-        }
-    });
+    let mut decoder =
+        re_video::decode::async_decoder::AsyncDecoder::new("debug_name".to_owned(), {
+            let frames = frames.clone();
+            let progress = progress.clone();
+            move |frame| {
+                progress.inc(1);
+                frames.lock().push(frame);
+            }
+        });
 
     let start = Instant::now();
     for sample in &video.samples {
