@@ -5,7 +5,7 @@ mod web;
 #[cfg(not(target_arch = "wasm32"))]
 mod native_av1;
 
-use std::{sync::Arc, time::Duration};
+use std::{ops::Range, sync::Arc, time::Duration};
 
 use web_time::Instant;
 
@@ -43,19 +43,12 @@ impl TimedDecodingError {
     }
 }
 
-#[allow(unused)] // Unused for certain build flags
-#[must_use]
-enum LatestAtResult {
-    /// We have no buffered frames
-    /// (perhaps because we are new, or due to a recent reset, or error)
-    NoFrames,
+/// A texture of a specific video frame.
+struct VideoTexture {
+    pub texture: GpuTexture2D,
 
-    /// The texture is the correct one, and at this time
-    NewFrame { timestamp: Time, duration: Time },
-
-    /// We don't have the up-to-date texture.
-    /// Please wait, and maybe show the previous one while you wait.
-    Pending,
+    /// What part of the video this video frame covers.
+    pub time_range: Range<Time>,
 }
 
 /// Decode video to a texture.
@@ -69,12 +62,15 @@ trait VideoChunkDecoder: 'static + Send {
     /// and copy it to the given texture.
     ///
     /// Drop all earlier frames to save memory.
-    fn latest_at(
+    ///
+    /// Returns [`DecodingError::EmptyBuffer`] if the internal buffer is empty,
+    /// which it is just after startup or after a call to [`Self::reset`].
+    fn update_video_texture(
         &mut self,
         render_ctx: &RenderContext,
-        texture: &GpuTexture2D,
+        video_texture: &mut VideoTexture,
         presentation_timestamp: Time,
-    ) -> Result<LatestAtResult, DecodingError>;
+    ) -> Result<(), DecodingError>;
 
     /// Reset the video decoder and discard all frames.
     fn reset(&mut self) -> Result<(), DecodingError>;
@@ -83,19 +79,14 @@ trait VideoChunkDecoder: 'static + Send {
     fn take_error(&mut self) -> Option<TimedDecodingError>;
 }
 
-struct ActiveFrame {
-    texture: GpuTexture2D,
-    timestamp: Time,
-    duration: Time,
-}
-
 /// Decode video to a texture.
 ///
 /// If you want to sample multiple points in a video simultaneously, use multiple decoders.
 pub struct VideoDecoder {
     data: Arc<re_video::VideoData>,
     chunk_decoder: Box<dyn VideoChunkDecoder>,
-    frame: ActiveFrame,
+
+    video_texture: VideoTexture,
 
     current_gop_idx: usize,
     current_sample_idx: usize,
@@ -157,16 +148,14 @@ impl VideoDecoder {
             data.config.coded_height as u32,
         );
 
-        let frame = ActiveFrame {
-            texture,
-            timestamp: Time::MAX,
-            duration: Time::ZERO,
-        };
-
         Self {
             data,
             chunk_decoder: Box::new(chunk_decoder),
-            frame,
+
+            video_texture: VideoTexture {
+                texture,
+                time_range: Time::MAX..Time::MAX,
+            },
 
             current_gop_idx: usize::MAX,
             current_sample_idx: usize::MAX,
@@ -195,8 +184,10 @@ impl VideoDecoder {
 
         match result {
             Ok(()) => {
-                let is_active_frame = self.frame.timestamp <= presentation_timestamp
-                    && presentation_timestamp <= self.frame.timestamp + self.frame.duration;
+                let is_active_frame = self
+                    .video_texture
+                    .time_range
+                    .contains(&presentation_timestamp);
 
                 let is_pending = !is_active_frame;
                 if is_pending && self.error_on_last_frame_at {
@@ -204,27 +195,20 @@ impl VideoDecoder {
                     // This is important to avoid flickering, in particular when switching from
                     // benign errors like DecodingError::NegativeTimestamp.
                     // If we don't do this, we see the last valid texture which can look really weird.
-                    clear_texture(render_ctx, &self.frame.texture);
-                    self.frame.timestamp = Time::MAX;
-                    self.frame.duration = Time::ZERO;
+                    clear_texture(render_ctx, &self.video_texture.texture);
+                    self.video_texture.time_range = Time::MAX..Time::MAX;
                 }
 
                 self.error_on_last_frame_at = false;
 
-                let show_spinner = if is_active_frame {
-                    false
+                let show_spinner = if presentation_timestamp < self.video_texture.time_range.start {
+                    // We're seeking backwards and somehow forgot to reset.
+                    true
+                } else if presentation_timestamp < self.video_texture.time_range.end {
+                    false // it is an active frame
                 } else {
-                    // How outdated is the current frame?
-                    // If only outdated by a little bit, we report it as being up to date,
-                    // just to avoid showing an annoying spinner if the decoder has a small hickup.
-
-                    let how_outdated =
-                        presentation_timestamp - self.frame.timestamp + self.frame.duration;
-                    if how_outdated < Time::ZERO {
-                        // We have stored a frame from the future.
-                        // We're seeking backwards and soemhow forgot to reset.
-                        true // show spinner
-                    } else if how_outdated.into_secs(self.data.timescale)
+                    let how_outdated = presentation_timestamp - self.video_texture.time_range.end;
+                    if how_outdated.into_secs(self.data.timescale)
                         < DECODING_GRACE_DELAY.as_secs_f64()
                     {
                         false // Just outdated by a little bit - show no spinner
@@ -234,7 +218,7 @@ impl VideoDecoder {
                 };
 
                 Ok(VideoFrameTexture {
-                    texture: self.frame.texture.clone(),
+                    texture: self.video_texture.texture.clone(),
                     is_pending,
                     show_spinner,
                 })
@@ -340,12 +324,14 @@ impl VideoDecoder {
         self.current_gop_idx = requested_gop_idx;
         self.current_sample_idx = requested_sample_idx;
 
-        match self.chunk_decoder.latest_at(
+        let result = self.chunk_decoder.update_video_texture(
             render_ctx,
-            &self.frame.texture,
+            &mut self.video_texture,
             presentation_timestamp,
-        )? {
-            LatestAtResult::NoFrames => {
+        );
+
+        if let Err(error) = result {
+            if error == DecodingError::EmptyBuffer {
                 // No buffered frames
 
                 // Might this be due to an error?
@@ -355,7 +341,7 @@ impl VideoDecoder {
                 // That said, practically we reset the decoder and thus all frames upon error,
                 // so it doesn't make a lot of difference.
                 if let Some(timed_error) = &self.error {
-                    if timed_error.time_of_first_error.elapsed() >= DECODING_GRACE_DELAY {
+                    if DECODING_GRACE_DELAY <= timed_error.time_of_first_error.elapsed() {
                         // Report the error only if we have been in an error state for a certain amount of time.
                         // Don't immediately report the error, since we might immediately recover from it.
                         // Otherwise, this would cause aggressive flickering!
@@ -367,16 +353,11 @@ impl VideoDecoder {
                 // and showing an old frame is better than showing a blank frame,
                 // because it causes "black flashes" to appear
                 Ok(())
+            } else {
+                Err(error)
             }
-            LatestAtResult::NewFrame {
-                timestamp,
-                duration,
-            } => {
-                self.frame.timestamp = timestamp;
-                self.frame.duration = duration;
-                Ok(())
-            }
-            LatestAtResult::Pending => Ok(()),
+        } else {
+            Ok(())
         }
     }
 

@@ -6,9 +6,9 @@ use re_video::{Chunk, Frame, Time};
 
 use parking_lot::Mutex;
 
-use crate::{resource_managers::GpuTexture2D, video::DecodingError, RenderContext};
+use crate::{video::DecodingError, RenderContext};
 
-use super::{latest_at_idx, LatestAtResult, TimedDecodingError, VideoChunkDecoder};
+use super::{latest_at_idx, TimedDecodingError, VideoChunkDecoder, VideoTexture};
 
 #[derive(Default)]
 struct DecoderOutput {
@@ -22,7 +22,6 @@ struct DecoderOutput {
 pub struct Av1VideoDecoder {
     decoder: re_video::av1::Decoder,
     decoder_output: Arc<Mutex<DecoderOutput>>,
-    last_used_frame_timestamp: Time,
 }
 
 impl Av1VideoDecoder {
@@ -58,35 +57,30 @@ impl Av1VideoDecoder {
         Ok(Self {
             decoder,
             decoder_output,
-            last_used_frame_timestamp: Time::MAX,
         })
     }
 }
 
 impl VideoChunkDecoder for Av1VideoDecoder {
     /// Start decoding the given chunk.
-    fn decode(&mut self, chunk: Chunk, is_keyframe: bool) -> Result<(), DecodingError> {
+    fn decode(&mut self, chunk: Chunk, _is_keyframe: bool) -> Result<(), DecodingError> {
         self.decoder.decode(chunk);
         Ok(())
     }
 
-    /// Get the latest decoded frame at the given time
-    /// and copy it to the given texture.
-    ///
-    /// Drop all earlier frames to save memory.
-    fn latest_at(
+    fn update_video_texture(
         &mut self,
         render_ctx: &RenderContext,
-        texture: &GpuTexture2D,
+        video_texture: &mut VideoTexture,
         presentation_timestamp: Time,
-    ) -> Result<LatestAtResult, DecodingError> {
+    ) -> Result<(), DecodingError> {
         let mut decoder_output = self.decoder_output.lock();
         let frames = &mut decoder_output.frames;
 
         let Some(frame_idx) =
             latest_at_idx(frames, |frame| frame.timestamp, &presentation_timestamp)
         else {
-            return Ok(LatestAtResult::NoFrames);
+            return Err(DecodingError::EmptyBuffer);
         };
 
         // drain up-to (but not including) the frame idx, clearing out any frames
@@ -97,25 +91,16 @@ impl VideoChunkDecoder for Av1VideoDecoder {
         let frame_idx = 0;
         let frame = &frames[frame_idx];
 
-        let is_frame_active = frame.timestamp <= presentation_timestamp
-            && presentation_timestamp <= frame.timestamp + frame.duration;
+        let frame_time_range = frame.timestamp..frame.timestamp + frame.duration;
 
-        if is_frame_active {
-            if self.last_used_frame_timestamp != frame.timestamp {
-                self.last_used_frame_timestamp = frame.timestamp;
-                copy_video_frame_to_texture(&render_ctx.queue, frame, &texture.texture)?;
-            }
-
-            Ok(LatestAtResult::NewFrame {
-                timestamp: frame.timestamp,
-                duration: frame.duration,
-            })
-        } else {
-            // This handles the case when we have a buffered frame that's older than the requested timestamp.
-            // We don't want to show this frame to the user, because it's not actually the one they requested,
-            // so instead return the last decoded frame.
-            Ok(LatestAtResult::Pending)
+        if frame_time_range.contains(&presentation_timestamp)
+            && video_texture.time_range != frame_time_range
+        {
+            copy_video_frame_to_texture(&render_ctx.queue, frame, &video_texture.texture.texture)?;
+            video_texture.time_range = frame_time_range;
         }
+
+        Ok(())
     }
 
     /// Reset the video decoder and discard all frames.

@@ -11,8 +11,11 @@ use crate::{resource_managers::GpuTexture2D, RenderContext};
 
 /// Error that can occur during frame decoding.
 // TODO(jan, andreas): These errors are for the most part specific to the web decoder right now.
-#[derive(thiserror::Error, Debug, Clone)]
+#[derive(thiserror::Error, Debug, Clone, PartialEq, Eq)]
 pub enum DecodingError {
+    #[error("The decoder is lagging behind")]
+    EmptyBuffer,
+
     #[error("Failed to create VideoDecoder: {0}")]
     DecoderSetupFailure(String),
 

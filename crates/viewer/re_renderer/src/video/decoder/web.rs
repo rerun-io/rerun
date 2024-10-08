@@ -2,32 +2,32 @@ use std::sync::Arc;
 
 use js_sys::{Function, Uint8Array};
 use parking_lot::Mutex;
-use re_video::{Time, Timescale};
 use wasm_bindgen::{closure::Closure, JsCast as _};
 use web_sys::{
     EncodedVideoChunk, EncodedVideoChunkInit, EncodedVideoChunkType, VideoDecoderConfig,
     VideoDecoderInit,
 };
 
+use re_video::{Time, Timescale};
+
 use crate::{
-    resource_managers::GpuTexture2D,
     video::{DecodeHardwareAcceleration, DecodingError},
     RenderContext,
 };
 
-use super::{latest_at_idx, LatestAtResult, TimedDecodingError, VideoChunkDecoder};
+use super::{latest_at_idx, TimedDecodingError, VideoChunkDecoder, VideoTexture};
 
 #[derive(Clone)]
 #[repr(transparent)]
-struct VideoFrame(web_sys::VideoFrame);
+struct WebVideoFrame(web_sys::VideoFrame);
 
-impl Drop for VideoFrame {
+impl Drop for WebVideoFrame {
     fn drop(&mut self) {
         self.0.close();
     }
 }
 
-impl std::ops::Deref for VideoFrame {
+impl std::ops::Deref for WebVideoFrame {
     type Target = web_sys::VideoFrame;
 
     #[inline]
@@ -42,7 +42,7 @@ struct BufferedFrame {
 
     duration: Time,
 
-    inner: VideoFrame,
+    inner: WebVideoFrame,
 }
 
 struct DecoderOutput {
@@ -57,7 +57,6 @@ pub struct WebVideoDecoder {
     decoder: web_sys::VideoDecoder,
     decoder_output: Arc<Mutex<DecoderOutput>>,
     hw_acceleration: DecodeHardwareAcceleration,
-    last_used_frame_timestamp: Time,
 }
 
 // SAFETY: There is no way to access the same JS object from different OS threads
@@ -74,11 +73,11 @@ unsafe impl Sync for WebVideoDecoder {}
 
 #[allow(unsafe_code)]
 #[allow(clippy::undocumented_unsafe_blocks)]
-unsafe impl Send for VideoFrame {}
+unsafe impl Send for WebVideoFrame {}
 
 #[allow(unsafe_code)]
 #[allow(clippy::undocumented_unsafe_blocks)]
-unsafe impl Sync for VideoFrame {}
+unsafe impl Sync for WebVideoFrame {}
 
 impl Drop for WebVideoDecoder {
     fn drop(&mut self) {
@@ -117,7 +116,6 @@ impl WebVideoDecoder {
             decoder,
             decoder_output,
             hw_acceleration,
-            last_used_frame_timestamp: Time::MAX,
         })
     }
 }
@@ -148,16 +146,12 @@ impl VideoChunkDecoder for WebVideoDecoder {
             .map_err(|err| DecodingError::DecodeChunk(js_error_to_string(&err)))
     }
 
-    /// Get the latest decoded frame at the given time
-    /// and copy it to the given texture.
-    ///
-    /// Drop all earlier frames to save memory.
-    fn latest_at(
+    fn update_video_texture(
         &mut self,
         render_ctx: &RenderContext,
-        texture: &GpuTexture2D,
+        video_texture: &mut VideoTexture,
         presentation_timestamp: Time,
-    ) -> Result<LatestAtResult, DecodingError> {
+    ) -> Result<(), DecodingError> {
         let mut decoder_output = self.decoder_output.lock();
 
         let frames = &mut decoder_output.frames;
@@ -167,7 +161,7 @@ impl VideoChunkDecoder for WebVideoDecoder {
             |frame| frame.composition_timestamp,
             &presentation_timestamp,
         ) else {
-            return Ok(LatestAtResult::NoFrames);
+            return Err(DecodingError::EmptyBuffer);
         };
 
         // drain up-to (but not including) the frame idx, clearing out any frames
@@ -178,25 +172,21 @@ impl VideoChunkDecoder for WebVideoDecoder {
         let frame_idx = 0;
         let frame = &frames[frame_idx];
 
-        let is_frame_active = frame.composition_timestamp <= presentation_timestamp
-            && presentation_timestamp <= frame.composition_timestamp + frame.duration;
+        let frame_time_range =
+            frame.composition_timestamp..frame.composition_timestamp + frame.duration;
 
-        if is_frame_active {
-            if self.last_used_frame_timestamp != frame.composition_timestamp {
-                self.last_used_frame_timestamp = frame.composition_timestamp;
-                copy_video_frame_to_texture(&render_ctx.queue, &frame.inner, &texture.texture);
-            }
-
-            Ok(LatestAtResult::NewFrame {
-                timestamp: frame.composition_timestamp,
-                duration: frame.duration,
-            })
-        } else {
-            // This handles the case when we have a buffered frame that's older than the requested timestamp.
-            // We don't want to show this frame to the user, because it's not actually the one they requested,
-            // so instead return the last decoded frame.
-            Ok(LatestAtResult::Pending)
+        if frame_time_range.contains(&presentation_timestamp)
+            && video_texture.time_range != frame_time_range
+        {
+            copy_video_frame_to_texture(
+                &render_ctx.queue,
+                &frame.inner,
+                &video_texture.texture.texture,
+            );
+            video_texture.time_range = frame_time_range;
         }
+
+        Ok(())
     }
 
     /// Reset the video decoder and discard all frames.
@@ -295,7 +285,7 @@ fn init_video_decoder(
             let composition_timestamp =
                 Time::from_micros(frame.timestamp().unwrap_or(0.0), timescale);
             let duration = Time::from_micros(frame.duration().unwrap_or(0.0), timescale);
-            let frame = VideoFrame(frame);
+            let frame = WebVideoFrame(frame);
 
             let mut output = decoder_output.lock();
             output.frames.push(BufferedFrame {
