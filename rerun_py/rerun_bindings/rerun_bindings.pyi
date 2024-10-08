@@ -1,3 +1,4 @@
+import os
 from typing import Optional, Sequence
 
 import pyarrow as pa
@@ -70,7 +71,7 @@ class RRDArchive:
     def num_recordings(self) -> int: ...
     def all_recordings(self) -> list[Recording]: ...
 
-def load_recording(filename: str) -> Recording:
+def load_recording(filename: str | os.PathLike) -> Recording:
     """
     Load a single recording from an RRD.
 
@@ -84,7 +85,7 @@ def load_recording(filename: str) -> Recording:
     """
     ...
 
-def load_archive(filename: str) -> RRDArchive:
+def load_archive(filename: str | os.PathLike) -> RRDArchive:
     """
     Load a rerun archive file from disk.
 
