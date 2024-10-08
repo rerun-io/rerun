@@ -16,9 +16,8 @@ impl VideoData {
             .find(|t| t.kind == Some(re_mp4::TrackKind::Video))
             .ok_or_else(|| VideoLoadError::NoVideoTrack)?;
 
-        let codec = track
-            .codec_string(&mp4)
-            .ok_or_else(|| VideoLoadError::UnsupportedCodec(unknown_codec_fourcc(&mp4, track)))?;
+        let stsd = track.trak(&mp4).mdia.minf.stbl.stsd.clone();
+
         let description = track
             .raw_codec_config(&mp4)
             .ok_or_else(|| VideoLoadError::UnsupportedCodec(unknown_codec_fourcc(&mp4, track)))?;
@@ -27,7 +26,7 @@ impl VideoData {
         let coded_width = track.width;
 
         let config = Config {
-            codec,
+            stsd,
             description,
             coded_height,
             coded_width,

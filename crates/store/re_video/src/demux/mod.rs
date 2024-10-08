@@ -90,8 +90,40 @@ impl VideoData {
 
     /// The codec used to encode the video.
     #[inline]
-    pub fn codec(&self) -> &str {
-        &self.config.codec
+    pub fn human_readable_codec_string(&self) -> String {
+        let mut string = self.config.stsd.contents.codec_string().unwrap_or_default();
+
+        match &self.config.stsd.contents {
+            re_mp4::StsdBoxContent::Av01 { .. } => {
+                string += " (AV1)";
+            }
+            re_mp4::StsdBoxContent::Avc1 { .. } => {
+                string += " (H.264)";
+            }
+            re_mp4::StsdBoxContent::Hvc1 { .. } => {
+                string += " (H.265 HVC1)";
+            }
+            re_mp4::StsdBoxContent::Hev1 { .. } => {
+                string += " (H.265 HEV1)";
+            }
+            re_mp4::StsdBoxContent::Vp08 { .. } => {
+                string += " (VP8)";
+            }
+            re_mp4::StsdBoxContent::Vp09 { .. } => {
+                string += " (VP9)";
+            }
+            re_mp4::StsdBoxContent::Mp4a { .. } => {
+                string += " (AAC)";
+            }
+            re_mp4::StsdBoxContent::Tx3g { .. } => {
+                string += " (TTXT)";
+            }
+            re_mp4::StsdBoxContent::Unknown(four_cc) => {
+                string += &format!(" ({four_cc})");
+            }
+        }
+
+        string
     }
 
     /// The number of samples in the video.
@@ -185,10 +217,8 @@ pub struct Sample {
 /// Configuration of a video.
 #[derive(Debug, Clone)]
 pub struct Config {
-    /// String used to identify the codec and some of its configuration.
-    ///
-    /// e.g. "av01.0.05M.08" (AV1)
-    pub codec: String,
+    /// Contains info about the codec, bit depth, etc.
+    pub stsd: re_mp4::StsdBox,
 
     /// Codec-specific configuration.
     pub description: Vec<u8>,
@@ -202,7 +232,7 @@ pub struct Config {
 
 impl Config {
     pub fn is_av1(&self) -> bool {
-        self.codec.starts_with("av01")
+        matches!(self.stsd.contents, re_mp4::StsdBoxContent::Av01 { .. })
     }
 }
 

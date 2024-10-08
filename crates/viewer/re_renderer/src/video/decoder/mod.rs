@@ -110,7 +110,10 @@ impl VideoDecoder {
             unused
         )]
 
-        let debug_name = format!("{debug_name}, codec: {}", data.config.codec);
+        let debug_name = format!(
+            "{debug_name}, codec: {}",
+            data.human_readable_codec_string()
+        );
 
         cfg_if::cfg_if! {
             if #[cfg(target_arch = "wasm32")] {
@@ -119,7 +122,7 @@ impl VideoDecoder {
             } else if #[cfg(feature = "video_av1")] {
                 if !data.config.is_av1() {
                     return Err(DecodingError::UnsupportedCodec {
-                        codec: data.config.codec.clone(),
+                        codec: data.human_readable_codec_string(),
                     });
                 }
 

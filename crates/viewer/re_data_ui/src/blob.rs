@@ -206,7 +206,7 @@ fn show_video_blob_info(
                         .value_text(re_format::format_uint(data.num_samples())),
                 );
                 ui.list_item_flat_noninteractive(
-                    PropertyContent::new("Codec").value_text(data.codec()),
+                    PropertyContent::new("Codec").value_text(data.human_readable_codec_string()),
                 );
 
                 if ui_layout != UiLayout::Tooltip {
