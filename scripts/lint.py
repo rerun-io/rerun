@@ -1177,6 +1177,7 @@ def main() -> None:
 
     exclude_paths = (
         "./.github/workflows/reusable_checks.yml",  # zombie TODO hunting job
+        "./.nox",
         "./.pytest_cache",
         "./CODE_STYLE.md",
         "./crates/build/re_types_builder/src/reflection.rs",  # auto-generated
