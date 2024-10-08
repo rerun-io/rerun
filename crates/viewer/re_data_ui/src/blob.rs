@@ -246,21 +246,11 @@ fn show_video_blob_info(
                     );
 
                     match video.frame_at(render_ctx, decode_stream_id, timestamp_in_seconds) {
-                        Ok(frame) => {
-                            let is_pending;
-                            let texture = match frame {
-                                VideoFrameTexture::Ready(texture) => {
-                                    is_pending = false;
-                                    texture
-                                }
-
-                                VideoFrameTexture::Pending(placeholder) => {
-                                    is_pending = true;
-                                    ui.ctx().request_repaint();
-                                    placeholder
-                                }
-                            };
-
+                        Ok(VideoFrameTexture {
+                            texture,
+                            is_pending,
+                            show_spinner,
+                        }) => {
                             let response = crate::image::texture_preview_ui(
                                 render_ctx,
                                 ui,
@@ -270,6 +260,10 @@ fn show_video_blob_info(
                             );
 
                             if is_pending {
+                                ui.ctx().request_repaint(); // Keep polling for an up-to-date texture
+                            }
+
+                            if show_spinner {
                                 // Shrink slightly:
                                 let smaller_rect = egui::Rect::from_center_size(
                                     response.rect.center(),

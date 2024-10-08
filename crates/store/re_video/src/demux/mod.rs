@@ -1,6 +1,6 @@
 //! Video demultiplexing.
 //!
-//! Parses a video file into a raw [`VideoData`] struct, which contains basic metadata and a list of [`Segment`]s.
+//! Parses a video file into a raw [`VideoData`] struct, which contains basic metadata and a list of [`GroupOfPictures`]s.
 //!
 //! The entry point is [`VideoData::load_from_bytes`]
 //! which produces an instance of [`VideoData`] from any supported video container.
@@ -26,9 +26,9 @@ pub struct VideoData {
     /// Duration of the video, in time units.
     pub duration: Time,
 
-    /// We split video into segments, each beginning with a key frame,
+    /// We split video into GOPs, each beginning with a key frame,
     /// followed by any number of delta frames.
-    pub segments: Vec<Segment>,
+    pub gops: Vec<GroupOfPictures>,
 
     /// Samples contain the byte offsets into `data` for each frame.
     ///
@@ -54,7 +54,8 @@ impl VideoData {
     /// at the very least the should be a way to extract only metadata.
     pub fn load_from_bytes(data: &[u8], media_type: &str) -> Result<Self, VideoLoadError> {
         match media_type {
-            "video/mp4" => mp4::load_mp4(data),
+            "video/mp4" => Self::load_mp4(data),
+
             media_type => {
                 if media_type.starts_with("video/") {
                     Err(VideoLoadError::UnsupportedMimeType {
@@ -111,7 +112,7 @@ impl VideoData {
     pub fn frame_timestamps_ns(&self) -> impl Iterator<Item = i64> + '_ {
         // Segments are guaranteed to be sorted among each other, but within a segment,
         // presentation timestamps may not be sorted since this is sorted by decode timestamps.
-        self.segments.iter().flat_map(|seg| {
+        self.gops.iter().flat_map(|seg| {
             self.samples[seg.range()]
                 .iter()
                 .map(|sample| sample.composition_timestamp.into_nanos(self.timescale))
@@ -138,18 +139,20 @@ impl VideoData {
     }
 }
 
-/// A segment of a video.
+/// A Group of Pictures (GOP) always starts with an I-frame, followed by delta-frames.
+///
+/// See <https://en.wikipedia.org/wiki/Group_of_pictures> for more.
 #[derive(Debug, Clone)]
-pub struct Segment {
-    /// Decode timestamp of the first sample in this segment, in time units.
+pub struct GroupOfPictures {
+    /// Decode timestamp of the first sample in this GOP, in time units.
     pub start: Time,
 
-    /// Range of samples contained in this segment.
+    /// Range of samples contained in this GOP.
     pub sample_range: Range<u32>,
 }
 
-impl Segment {
-    /// The segment's `sample_range` mapped to `usize` for slicing.
+impl GroupOfPictures {
+    /// The GOP's `sample_range` mapped to `usize` for slicing.
     pub fn range(&self) -> Range<usize> {
         Range {
             start: self.sample_range.start as usize,
@@ -163,10 +166,14 @@ impl Segment {
 pub struct Sample {
     /// Time at which this sample appears in the decoded bitstream, in time units.
     ///
+    /// Samples should be decoded in this order.
+    ///
     /// `decode_timestamp <= composition_timestamp`
     pub decode_timestamp: Time,
 
     /// Time at which this sample appears in the frame stream, in time units.
+    ///
+    /// The frame should be shown at this time.
     ///
     /// `decode_timestamp <= composition_timestamp`
     pub composition_timestamp: Time,
@@ -245,7 +252,7 @@ impl std::fmt::Debug for VideoData {
             .field("config", &self.config)
             .field("timescale", &self.timescale)
             .field("duration", &self.duration)
-            .field("segments", &self.segments)
+            .field("gops", &self.gops)
             .field(
                 "samples",
                 &self.samples.iter().enumerate().collect::<Vec<_>>(),

@@ -13,8 +13,6 @@ use std::{
 use indicatif::ProgressBar;
 use parking_lot::Mutex;
 
-use re_video::demux::mp4::load_mp4;
-
 fn main() {
     // frames <video.mp4>
     let args: Vec<_> = std::env::args().collect();
@@ -27,11 +25,11 @@ fn main() {
     println!("Decoding {video_path}");
 
     let video = std::fs::read(video_path).expect("failed to read video");
-    let video = load_mp4(&video).expect("failed to load video");
+    let video = re_video::VideoData::load_mp4(&video).expect("failed to load video");
 
     println!(
         "{} {}x{}",
-        video.segments.len(),
+        video.gops.len(),
         video.config.coded_width,
         video.config.coded_height
     );

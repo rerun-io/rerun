@@ -88,6 +88,15 @@ impl Time {
     }
 }
 
+impl std::ops::Add for Time {
+    type Output = Self;
+
+    #[inline]
+    fn add(self, rhs: Self) -> Self::Output {
+        Self(self.0.saturating_add(rhs.0))
+    }
+}
+
 impl std::ops::Sub for Time {
     type Output = Self;
 
