@@ -60,5 +60,6 @@ pub struct Frame {
 }
 
 pub enum PixelFormat {
+    Rgb8Unorm,
     Rgba8Unorm,
 }
