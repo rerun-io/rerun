@@ -154,16 +154,19 @@ fn draw_dummy(
     node_id: datatypes::GraphNodeId,
 ) -> egui::Response {
     let text = egui::RichText::new(format!("{}@{}", node_id, entity_path));
-    egui::Frame::default()
-        .rounding(egui::Rounding::same(4.0))
-        .stroke(egui::Stroke::new(1.0, ui.style().visuals.text_color()))
-        .inner_margin(egui::Vec2::new(6.0, 4.0))
-        .fill(egui::Color32::RED)
-        .show(ui, |ui| {
-            ui.style_mut().wrap_mode = Some(TextWrapMode::Extend);
-            ui.add(egui::Button::new(text))
-        })
-        .response
+    ui.style_mut().wrap_mode = Some(TextWrapMode::Extend);
+    ui.add(egui::Button::new(text))
+    // ui.label(text)
+    // egui::Frame::default()
+    //     .rounding(egui::Rounding::same(4.0))
+    //     .stroke(egui::Stroke::new(1.0, ui.style().visuals.text_color()))
+    //     .inner_margin(egui::Vec2::new(6.0, 4.0))
+    //     .fill(egui::Color32::RED)
+    //     .show(ui, |ui| {
+    //         ui.style_mut().wrap_mode = Some(TextWrapMode::Extend);
+    //         ui.add(egui::Button::new(text))
+    //     })
+    //     .response
 }
 
 impl<'a> NodeInstance<'a> {
