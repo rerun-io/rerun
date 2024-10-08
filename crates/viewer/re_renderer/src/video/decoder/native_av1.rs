@@ -10,20 +10,12 @@ use crate::{resource_managers::GpuTexture2D, video::DecodingError, RenderContext
 
 use super::{latest_at_idx, LatestAtResult, TimedDecodingError, VideoChunkDecoder};
 
+#[derive(Default)]
 struct DecoderOutput {
     frames: Vec<Frame>,
 
     /// Set on error; reset on success.
     error: Option<TimedDecodingError>,
-}
-
-impl Default for DecoderOutput {
-    fn default() -> Self {
-        Self {
-            frames: Vec::new(),
-            error: None,
-        }
-    }
 }
 
 /// Native AV1 decoder

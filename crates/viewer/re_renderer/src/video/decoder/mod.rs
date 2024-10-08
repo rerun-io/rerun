@@ -111,7 +111,13 @@ impl VideoDecoder {
         data: Arc<re_video::VideoData>,
         hw_acceleration: DecodeHardwareAcceleration,
     ) -> Result<Self, DecodingError> {
-        #![allow(unused, clippy::unnecessary_wraps, clippy::needless_pass_by_value)] // only for some feature flags
+        // We need these allows due to `cfg_if`
+        #![allow(
+            clippy::needless_pass_by_value,
+            clippy::needless_return,
+            clippy::unnecessary_wraps,
+            unused
+        )]
 
         let debug_name = format!("{debug_name}, codec: {}", data.config.codec);
 
@@ -133,7 +139,7 @@ impl VideoDecoder {
                     return Ok(Self::from_chunk_decoder(render_ctx, data, decoder));
                 };
             } else {
-                Err(DecodingError::NoNativeSupport)
+                return Err(DecodingError::NoNativeSupport);
             }
         }
     }
