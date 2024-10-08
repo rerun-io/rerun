@@ -41,7 +41,7 @@ pub(crate) fn register(m: &Bound<'_, PyModule>) -> PyResult<()> {
     Ok(())
 }
 
-/// Python binding for [`IndexColumnDescriptor`]
+/// Python binding for `IndexColumnDescriptor`
 #[pyclass(frozen, name = "IndexColumnDescriptor")]
 #[derive(Clone)]
 struct PyIndexColumnDescriptor(TimeColumnDescriptor);
@@ -59,7 +59,7 @@ impl From<TimeColumnDescriptor> for PyIndexColumnDescriptor {
     }
 }
 
-/// Python binding for [`IndexColumnSelector`]
+/// Python binding for `IndexColumnSelector`
 #[pyclass(frozen, name = "IndexColumnSelector")]
 #[derive(Clone)]
 struct PyIndexColumnSelector(TimeColumnSelector);
