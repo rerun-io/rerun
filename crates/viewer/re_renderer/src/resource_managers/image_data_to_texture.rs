@@ -7,7 +7,7 @@ use crate::{
     DebugLabel, RenderContext, Texture2DBufferInfo,
 };
 
-/// Type of color space a given image is in.
+/// Type of color primaries a given image is in.
 ///
 /// This applies both to YUV and RGB formats, but if not specified otherwise
 /// we assume BT.709 primaries for all RGB(A) 8bits per channel content (details below on [`ColorSpace::Bt709`]).
@@ -16,8 +16,10 @@ use crate::{
 ///
 /// Ffmpeg's documentation has a short & good overview of these relationships:
 /// <https://trac.ffmpeg.org/wiki/colorspace#WhatiscolorspaceWhyshouldwecare/>
+///
+/// Values need to be kept in sync with `chroma_subsampling_converter.wgsl`
 #[derive(Clone, Copy, Debug)]
-pub enum ColorSpace {
+pub enum ColorPrimaries {
     /// BT.601 (aka. SDTV, aka. Rec.601)
     ///
     /// Wiki: <https://en.wikipedia.org/wiki/YCbCr#ITU-R_BT.601_conversion/>
@@ -70,12 +72,12 @@ pub enum SourceImageDataFormat {
     ///
     /// First comes entire image in Y in one plane,
     /// followed by a plane with interleaved lines ordered as U0, V0, U1, V1, etc.
-    Y_UV12(ColorSpace),
+    Y_UV12(ColorPrimaries),
 
     /// `YUYV16` (aka `YUYV` or `YUV2`), is a YUV 4:2:2 chroma downsampled format with 16 bits per pixel and 8 bits per channel.
     ///
     /// The order of the channels is Y0, U0, Y1, V0, all in the same plane.
-    YUYV16(ColorSpace),
+    YUYV16(ColorPrimaries),
 }
 
 impl From<wgpu::TextureFormat> for SourceImageDataFormat {
@@ -274,7 +276,7 @@ pub fn transfer_image_data_to_texture(
             // No further conversion needed, we're done here!
             return Ok(data_texture);
         }
-        SourceImageDataFormat::Y_UV12(color_space) | SourceImageDataFormat::YUYV16(color_space) => {
+        SourceImageDataFormat::Y_UV12(primaries) | SourceImageDataFormat::YUYV16(primaries) => {
             let chroma_format = match source_format {
                 SourceImageDataFormat::WgpuCompatible(_) => unreachable!(),
                 SourceImageDataFormat::Y_UV12(_) => ChromaSubsamplingPixelFormat::Y_UV12,
@@ -283,9 +285,9 @@ pub fn transfer_image_data_to_texture(
             ChromaSubsamplingConversionTask::new(
                 ctx,
                 chroma_format,
-                color_space,
-                data_texture,
-                label.clone(),
+                primaries,
+                &data_texture,
+                &label,
                 width,
                 height,
             )

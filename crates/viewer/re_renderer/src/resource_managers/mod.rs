@@ -11,6 +11,6 @@ mod image_data_to_texture;
 mod texture_manager;
 
 pub use image_data_to_texture::{
-    ColorSpace, ImageDataDesc, ImageDataToTextureError, SourceImageDataFormat,
+    ColorPrimaries, ImageDataDesc, ImageDataToTextureError, SourceImageDataFormat,
 };
 pub use texture_manager::{GpuTexture2D, TextureManager2D, TextureManager2DError};
