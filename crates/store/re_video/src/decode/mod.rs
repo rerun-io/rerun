@@ -4,13 +4,15 @@
 #[cfg(not(target_arch = "wasm32"))]
 pub mod av1;
 
+#[cfg(not(target_arch = "wasm32"))]
 pub mod async_decoder;
+
+#[cfg(not(target_arch = "wasm32"))]
+pub use async_decoder::AsyncDecoder;
 
 use std::sync::atomic::AtomicBool;
 
 use crate::Time;
-
-pub use async_decoder::AsyncDecoder;
 
 #[derive(thiserror::Error, Debug)]
 pub enum Error {
