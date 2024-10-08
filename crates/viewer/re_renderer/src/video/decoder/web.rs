@@ -326,7 +326,7 @@ fn js_video_decoder_config(
     config: &re_video::Config,
     hw_acceleration: DecodeHardwareAcceleration,
 ) -> VideoDecoderConfig {
-    let js = VideoDecoderConfig::new(&config.codec);
+    let js = VideoDecoderConfig::new(&config.stsd.contents.codec_string().unwrap_or_default());
     js.set_coded_width(config.coded_width as u32);
     js.set_coded_height(config.coded_height as u32);
     let description = Uint8Array::new_with_length(config.description.len() as u32);
