@@ -2328,6 +2328,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "ffmpeg-sidecar"
+version = "1.1.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "4bd1e249e0ceeb0f5c9f84a3c6941c3bde3ebc2815f4b94531a7e806af61c4c0"
+dependencies = [
+ "anyhow",
+]
+
+[[package]]
 name = "filetime"
 version = "0.2.23"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -5910,6 +5919,7 @@ version = "0.19.0-alpha.1+dev"
 dependencies = [
  "crossbeam",
  "econtext",
+ "ffmpeg-sidecar",
  "indicatif",
  "itertools 0.13.0",
  "parking_lot",

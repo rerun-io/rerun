@@ -10,6 +10,10 @@ pub mod async_decoder;
 #[cfg(not(target_arch = "wasm32"))]
 pub use async_decoder::AsyncDecoder;
 
+#[cfg(feature = "ffmpeg")]
+#[cfg(not(target_arch = "wasm32"))]
+pub mod ffmpeg;
+
 use std::sync::atomic::AtomicBool;
 
 use crate::Time;

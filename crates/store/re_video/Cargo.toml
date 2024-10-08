@@ -23,11 +23,15 @@ all-features = false
 no-default-features = true
 features = ["all"]
 
+
 [features]
-default = ["av1"]
+default = ["av1", "ffmpeg"]
 
 ## Native AV1 decoding.
 av1 = ["dep:dav1d"]
+
+## Decode H.264 using ffmpeg over CLI.
+ffmpeg = ["dep:ffmpeg-sidecar"]
 
 ## Enable faster native video decoding with assembly.
 ## You need to install [nasm](https://nasm.us/) to compile with this feature.
@@ -57,9 +61,12 @@ dav1d = { git = "https://github.com/rerun-io/rav1d", branch = "emilk/dav1d-inter
 
 # dav1d = { version = "0.10.3",  optional = true } # Requires separate install of `dav1d` library. Fast in debug builds. Useful for development.
 
+ffmpeg-sidecar = { workspace = true, optional = true }
+
 [dev-dependencies]
+# For the `frames` example:
 indicatif.workspace = true
-re_video = { workspace = true, features = ["av1"] } # For the `frames` example
+re_video = { workspace = true, features = ["av1", "ffmpeg"] }
 
 
 [[example]]
