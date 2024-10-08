@@ -1,0 +1,21 @@
+[package]
+name = "re_storage_types"
+authors.workspace = true
+edition.workspace = true
+homepage.workspace = true
+include.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+version.workspace = true
+
+[dependencies]
+re_log_types.workspace = true
+re_dataframe2.workspace = true
+
+# External
+tonic.workspace = true
+prost.workspace = true
+
+[lints]
+workspace = true

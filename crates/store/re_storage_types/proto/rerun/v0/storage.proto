@@ -1,0 +1,202 @@
+syntax = "proto3";
+
+package rerun.storage.v0;
+
+service StorageNode {
+    rpc ListRecordings(ListRecordingsRequest) returns (ListRecordingsResponse) {}
+    rpc Query(QueryRequest) returns (stream QueryResponse) {}
+    rpc GetRecordingMetadata(GetRecordingMetadataRequest) returns (GetRecordingMetadataResponse) {}
+    // TODO (zehiko) - should this be singular recording registration? Currently we can have 1 rrd => many recordings
+    rpc RegisterRecordings(RegisterRecordingsRequest) returns (RegisterRecordingsResponse) {}
+}
+
+// ----------- Common ------------
+
+// unique recording identifier. At this point in time it is the same id as the ChunkStore's StoreId
+message RecordingId {
+    string id = 1;
+}
+
+// ---------------- RegisterRecording ------------------
+
+message RegisterRecordingsRequest {
+    string description = 1;
+    string storage_url = 2;
+    // TODO should this be auto-discoverable?
+    RecordingType typ = 3;
+}
+
+message RegisterRecordingsResponse {
+    // Note: this implies we read the record (for example go through entire .rrd file
+    // chunk by chunk) and extract the metadata. So we might want to 1/ not do this i.e.
+    // only do it as part of explicit GetMetadata request or 2/ do it if Request has "include_metadata=true"
+    // or 3/ do it always
+    repeated RecordingMetadata metadata = 2;
+}
+
+// ---------------- GetRecordingMetadata  -----------------
+
+message GetRecordingMetadataRequest {
+    RecordingId recording_id = 1;
+}
+
+message GetRecordingMetadataResponse {
+    RecordingMetadata metadata = 1;
+}
+
+message RecordingMetadata {
+    RecordingId id = 1;
+    Schema schema = 2;
+    // for now Timeline is a string (same as with the query definition)
+    map<string, TimeRange> timelines = 3;
+}
+
+message Schema {
+    // arrow IPC serialized schema
+    bytes arrow_schema = 1;
+}
+
+// ---------------- Query -----------------
+
+message QueryRequest {
+    // unique identifier of the recording
+    RecordingId recording_id = 1;
+    // query to execute
+    Query query = 2;
+}
+
+message Query {
+    // database view defined by entity paths and components
+    ViewContents view_contents = 1;
+    // filtering index (just a string i.e. a name of the timeline for starters)
+    IndexColumnSelector index = 2;
+    // Optional specific range for the index selector
+    FilteredIndexRange index_range = 3;
+    // Optional specific values for the index selector
+    FilteredIndexValues index_values = 4;
+    // Optional sampled values for the index selector
+    SampledIndexValues sampled_index_values = 5;
+    // PoV (filtering) component
+    ComponentColumnDescriptor pov_component = 6;
+    // which columns to include in the response
+    // Note - added one more layer of indiraction to ensure the field is optional,
+    // same as in the query expression. We can't have both 'repeated' and 'optional' field labels.
+    ColumnSelection column_selection = 7;
+    // how are null values filled in the response
+    SparseFillStrategy sparse_fill_strategy = 8;
+}
+
+message QueryResponse {
+    // single record batch (encoding TBD - TODO).
+    bytes record_batch = 1;
+}
+
+message ColumnSelection {
+    repeated ColumnSelector columns = 1;
+}
+
+message ColumnSelector {
+    oneof selector_type {
+        ControlColumnSelector control_column = 1;
+        ComponentColumnSelector component_column = 2;
+        TimeColumnSelector time_column = 3;
+    }
+}
+
+message IndexColumnSelector {
+    // this is for example "log_tick" and we will need to figure out a way to convert that
+    // to Timeline on the server side. For now we only support timeline related columns, in
+    // the future we might support other columns as well.
+    string name = 1;
+}
+
+message FilteredIndexRange {
+    TimeRange time_range = 1;
+}
+
+message FilteredIndexValues {
+    repeated TimeInt time_points = 1;
+}
+
+message SampledIndexValues {
+    repeated TimeInt sample_points = 1;
+}
+
+message ViewContents {
+    repeated ViewContentsPart contents = 1;
+}
+
+message ViewContentsPart {
+    EntityPath path = 1;
+    ComponentsSet components = 2;
+}
+
+message ComponentsSet {
+    // component name needs to be a string as user can define their own component
+    repeated string values = 1;
+}
+
+message TimeRange {
+    int64 start = 1;
+    int64 end = 2;
+}
+
+message TimeInt {
+    int64 time = 1;
+}
+
+message EntityPath {
+    string path = 1;
+}
+
+message ControlColumnDescriptor {
+    string name = 1;
+}
+
+message ComponentColumnDescriptor {
+    EntityPath entity_path = 1;
+    // component name needs to be a string as user can define their own component
+    string component = 2;
+    bool resolve_latest_at = 3;
+    // TODO - do we need join encoding?
+}
+
+message ControlColumnSelector {
+    string component = 1;
+}
+
+message TimeColumnSelector {
+    string timeline_name = 1;
+}
+
+message ComponentColumnSelector {
+    EntityPath entity_path = 1;
+    // component name needs to be a string as user can define their own component
+    string component = 2;
+    // TODO do we need join encoding?
+}
+
+enum SparseFillStrategy {
+    NONE = 0;
+    LATEST_AL_GLOBAL = 1;
+}
+
+// ----------------- ListRecordings -----------------
+
+message ListRecordingsRequest {}
+
+message ListRecordingsResponse {
+    repeated RecordingInfo recordings = 1;
+}
+
+message RecordingInfo {
+    RecordingId id = 1;
+    string description = 2;
+    string storage_url = 3;
+    uint64 size_bytes = 4;
+    RecordingType typ = 5;
+}
+
+enum RecordingType {
+    RRD = 0;
+}
