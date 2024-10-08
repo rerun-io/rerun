@@ -1,4 +1,4 @@
-use re_log_types::Instance;
+use re_log_types::{external::re_types_core::datatypes, Instance};
 use re_viewer::external::{
     egui::Color32,
     re_chunk::{ChunkComponentIterItem, LatestAtQuery},
@@ -29,6 +29,8 @@ pub(crate) struct EdgeUndirectedVisualizerData {
 pub(crate) struct EdgeInstance<'a> {
     pub source: NodeLocation,
     pub target: NodeLocation,
+    pub source_entity_path: &'a datatypes::EntityPath,
+    pub target_entity_path: &'a datatypes::EntityPath,
     pub entity_path: &'a re_log_types::EntityPath,
     pub instance: Instance,
     pub color: Option<Color32>,
@@ -45,6 +47,8 @@ impl EdgeUndirectedVisualizerData {
         .map(|(edge, instance, color)| EdgeInstance {
             source: edge.source.clone().into(),
             target: edge.target.clone().into(),
+            source_entity_path: &edge.0.source.entity_path,
+            target_entity_path: &edge.0.target.entity_path,
             entity_path: &self.entity_path,
             instance,
             color: color.map(|c| Color32::from(c.0)),

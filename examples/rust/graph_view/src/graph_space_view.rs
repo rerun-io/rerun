@@ -150,10 +150,12 @@ enum NodeKind {
 
 fn draw_dummy(
     ui: &mut egui::Ui,
-    entity_path: EntityPath,
+    entity_path: datatypes::EntityPath,
     node_id: datatypes::GraphNodeId,
 ) -> egui::Response {
-    let text = egui::RichText::new(format!("{}@{}", node_id, entity_path));
+    let text = egui::RichText::new(format!("{} @ {}", node_id, entity_path.0)).color(
+        ui.style().visuals.widgets.noninteractive.text_color(),
+    );
     ui.style_mut().wrap_mode = Some(TextWrapMode::Extend);
     ui.add(egui::Button::new(text))
     // ui.label(text)

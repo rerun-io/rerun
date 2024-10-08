@@ -36,7 +36,7 @@ fn main() -> anyhow::Result<()> {
 fn run(rec: &rerun::RecordingStream, _args: &Args) -> anyhow::Result<()> {
     rec.set_time_sequence("frame", 0);
     rec.log(
-        "kitchen/nodes",
+        "kitchen/objects",
         &GraphNodes::new(["sink", "fridge"])
             .with_colors([Color::from_rgb(255, 0, 0), Color::from_rgb(255, 255, 0)]),
     )?;
@@ -51,7 +51,7 @@ fn run(rec: &rerun::RecordingStream, _args: &Args) -> anyhow::Result<()> {
     rec.log("hallway/nodes", &GraphNodes::new(["area0"]))?;
 
     rec.set_time_sequence("frame", 2);
-    rec.log("living/nodes", &GraphNodes::new(["table"]))?;
+    rec.log("living/objects", &GraphNodes::new(["table"]))?;
     rec.log(
         "living/nodes",
         &GraphNodes::new(["area0", "area1", "area2"]),
@@ -76,9 +76,9 @@ fn run(rec: &rerun::RecordingStream, _args: &Args) -> anyhow::Result<()> {
     rec.log(
         "edges",
         &GraphEdges::new([
-            ("kitchen/nodes", "area0", "sink"),
-            ("kitchen/nodes", "area1", "fridge"),
-            ("living/nodes", "area1", "table"),
+            (("kitchen/nodes", "area0"), ("kitchen/objects", "sink")),
+            (("kitchen/nodes", "area1"), ("kitchen/objects", "fridge")),
+            (("living/nodes", "area1"), ("living/objects", "table")),
         ]),
     )?;
 

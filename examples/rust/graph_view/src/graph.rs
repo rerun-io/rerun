@@ -1,7 +1,6 @@
 use std::collections::HashSet;
 
-use re_log_types::EntityPath;
-use re_viewer::external::re_log::external::log;
+use re_log_types::{external::re_types_core::datatypes::EntityPath};
 
 use crate::{
     common::NodeLocation, edge_undirected_visualizer_system::EdgeInstance,
@@ -49,8 +48,8 @@ pub(crate) enum Node<'a> {
 fn edges_to_iter<'a>(
     edge: EdgeInstance<'a>,
 ) -> impl Iterator<Item = (NodeLocation, &'a EntityPath)> {
-    let source = (edge.source, edge.entity_path);
-    let target = (edge.target, edge.entity_path);
+    let source = (edge.source, edge.source_entity_path);
+    let target = (edge.target, edge.target_entity_path);
     std::iter::once(source.clone()).chain(std::iter::once(target))
 }
 
