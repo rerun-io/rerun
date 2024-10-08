@@ -11,7 +11,7 @@ class IndexColumnDescriptor:
 class IndexColumnSelector:
     """A selector for an index column."""
 
-    def __init__(self, timeline: str): ...
+    def __new__(cls, index: str): ...
 
 class ComponentColumnDescriptor:
     """A column containing the component data."""
