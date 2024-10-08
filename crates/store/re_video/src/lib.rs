@@ -11,23 +11,6 @@ pub use re_mp4::{TrackId, TrackKind};
 #[cfg(not(target_arch = "wasm32"))]
 pub use decode::av1;
 
-use ordered_float::OrderedFloat;
-
-#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
-pub struct TimeMs(OrderedFloat<f64>);
-
-impl TimeMs {
-    #[inline]
-    pub fn new(v: f64) -> Self {
-        Self(OrderedFloat(v))
-    }
-
-    #[inline]
-    pub fn as_f64(&self) -> f64 {
-        self.0.into_inner()
-    }
-}
-
 /// A value in time units.
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct Time(i64);
