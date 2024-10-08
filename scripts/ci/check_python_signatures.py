@@ -1,4 +1,9 @@
-"""Compares the signatures in `rerun_bindings.pyi` with the actual runtime signatures in `rerun_bindings.so`."""
+"""
+Compares the signatures in `rerun_bindings.pyi` with the actual runtime signatures in `rerun_bindings.so`.
+
+This does not check that the type annotations match. However, it does ensure that the number of arguments,
+the argument names, and whether the arguments are required or have defaults match between the stub and runtime.
+"""
 
 from __future__ import annotations
 
