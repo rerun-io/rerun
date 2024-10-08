@@ -61,8 +61,12 @@ impl ChromaSubsamplingPixelFormat {
 
     pub fn expected_data_texture_format(&self) -> wgpu::TextureFormat {
         // TODO(andreas): How to deal with higher precision formats here?
-        // If done right that should be easy to drop in.
-        // TODO(andreas): Are we set on integer formats here, does this actually make sense?
+        //
+        // Our shader currently works with 8 bit integer formats here since while
+        // _technically_ YUV formats have nothing to do with concrete bit depth,
+        // practically there's underlying expectation for 8 bits per channel
+        // as long as the data is Bt.709 or Bt.601.
+        // In other words: The conversions implementations we have today expect 0-255 as the value range.
 
         #[allow(clippy::match_same_arms)]
         match self {
