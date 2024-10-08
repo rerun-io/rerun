@@ -106,7 +106,7 @@ egui-wgpu.workspace = true
 egui.workspace = true
 ehttp.workspace = true
 image = { workspace = true, default-features = false, features = ["png"] }
-itertools = { workspace = true }
+itertools.workspace = true
 parking_lot.workspace = true
 poll-promise = { workspace = true, features = ["web"] }
 rfd.workspace = true
@@ -115,7 +115,6 @@ serde = { workspace = true, features = ["derive"] }
 serde_json.workspace = true
 serde-wasm-bindgen.workspace = true
 thiserror.workspace = true
-time = { workspace = true, features = ["formatting"] }
 web-time.workspace = true
 wgpu.workspace = true
 
