@@ -27,7 +27,7 @@ pub struct GraphNodeVisualizer {
 }
 
 pub(crate) struct GraphNodeVisualizerData {
-    entity_path: EntityPath,
+    pub entity_path: EntityPath,
     node_ids: ChunkComponentIterItem<components::GraphNodeId>,
 
     // Clamped
