@@ -1,5 +1,5 @@
 [package]
-name = "re_storage"
+name = "re_storage_types_builder"
 authors.workspace = true
 edition.workspace = true
 homepage.workspace = true
@@ -12,15 +12,15 @@ version.workspace = true
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-re_log_types.workspace = true
 re_dataframe2.workspace = true
-prost = "0.13.3"
-# TODO (zehiko) remove specific version requirement once we migrate to rust 1.78+
-tonic = "=0.12.1"
+re_log = { workspace = true, features = ["setup"] }
+re_log_types.workspace = true
+re_tracing = { workspace = true, features = ["server"] }
 
-[build-dependencies]
-tonic-build = "=0.12.1"
-
+# External
+camino.workspace = true
+tonic.workspace = true
+tonic-build.workspace = true
 
 [lints]
 workspace = true

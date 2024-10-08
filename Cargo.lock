@@ -5312,6 +5312,7 @@ dependencies = [
  "rayon",
  "re_build_tools",
  "re_format",
+ "re_storage_types",
  "roxmltree",
  "rustdoc-json",
  "rustdoc-types",
@@ -5903,12 +5904,24 @@ dependencies = [
 ]
 
 [[package]]
-name = "re_storage"
+name = "re_storage_types"
 version = "0.19.0-alpha.1+dev"
 dependencies = [
  "prost 0.13.3",
  "re_dataframe2",
  "re_log_types",
+ "tonic",
+]
+
+[[package]]
+name = "re_storage_types_builder"
+version = "0.19.0-alpha.1+dev"
+dependencies = [
+ "camino",
+ "re_dataframe2",
+ "re_log",
+ "re_log_types",
+ "re_tracing",
  "tonic",
  "tonic-build",
 ]
@@ -7684,9 +7697,9 @@ dependencies = [
 
 [[package]]
 name = "tonic"
-version = "0.12.1"
+version = "0.12.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "38659f4a91aba8598d27821589f5db7dddd94601e7a01b1e485a50e5484c7401"
+checksum = "877c5b330756d856ffcc4553ab34a5684481ade925ecc54bcd1bf02b1d0d4d52"
 dependencies = [
  "async-stream",
  "async-trait",
@@ -7714,13 +7727,14 @@ dependencies = [
 
 [[package]]
 name = "tonic-build"
-version = "0.12.1"
+version = "0.12.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "568392c5a2bd0020723e3f387891176aabafe36fd9fcd074ad309dfa0c8eb964"
+checksum = "9557ce109ea773b399c9b9e5dca39294110b74f1f342cb347a80d1fce8c26a11"
 dependencies = [
  "prettyplease",
  "proc-macro2",
  "prost-build 0.13.3",
+ "prost-types 0.13.3",
  "quote",
  "syn 2.0.48",
 ]
