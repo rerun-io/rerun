@@ -181,6 +181,19 @@ pub fn new_decoder(
             }
         }
 
+        #[cfg(with_ffmpeg)]
+        re_mp4::StsdBoxContent::Avc1(avc1_box) => {
+            re_log::trace!("Decoding H.264…");
+            return Ok(Box::new(async_decoder_wrapper::AsyncDecoderWrapper::new(
+                debug_name.to_owned(),
+                Box::new(ffmpeg::FfmpegCliH264Decoder::new(
+                    avc1_box.clone(),
+                    video.timescale,
+                )?),
+                on_output,
+            )));
+        }
+
         _ => Err(Error::UnsupportedCodec(video.human_readable_codec_string())),
     }
 }
