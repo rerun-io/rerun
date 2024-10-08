@@ -311,8 +311,7 @@ fn init_video_decoder(
     let on_error = {
         let decoder_output = decoder_output.clone();
         Closure::wrap(Box::new(move |err: js_sys::Error| {
-            let err = js_error_to_string(&err);
-            let err = DecodingError::Decoding(err.to_string());
+            let err = DecodingError::Decoding(js_error_to_string(&err));
 
             let mut output = decoder_output.lock();
             if let Some(error) = &mut output.error {
