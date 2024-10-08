@@ -163,11 +163,11 @@ def compare_signatures(stub_signatures: TotalSignature, runtime_signatures: Tota
 
 
 def main() -> int:
-    # Assuming your module is called `my_module` and your stub file is `my_module.pyi`
-    # def test_validate_bindings():
+    # load the stub file
     path_to_stub = Path(__file__).parent / ".." / ".." / "rerun_py" / "rerun_bindings" / "rerun_bindings.pyi"
     stub_signatures = load_stub_signatures(path_to_stub)
 
+    # load the runtime signatures
     runtime_signatures = load_runtime_signatures("rerun_bindings")
 
     sys.exit(compare_signatures(stub_signatures, runtime_signatures))
