@@ -19,7 +19,7 @@ struct Comms {
     /// Set when it is time to die
     should_stop: Arc<AtomicBool>,
 
-    /// Incremented on each call to [`Decoder::reset`].
+    /// Incremented on each call to [`AsyncDecoder::reset`].
     /// Decremented each time the decoder thread receives [`Command::Reset`].
     num_outstanding_resets: Arc<AtomicU64>,
 }
