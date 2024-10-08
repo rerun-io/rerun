@@ -47,13 +47,12 @@ enum LatestAtResult {
     /// (perhaps because we are new, or due to a recent reset, or error)
     NoFrames,
 
-    /// The texture has up-to-date contents.
-    UpToDate,
+    /// The texture is the correct one, and at this time
+    NewFrame { timestamp: Time, duration: Time },
 
-    /// The texture is outdated by this much.
-    ///
-    /// This is measured in "video-time'
-    OutdatedBy(Time),
+    /// We don't have the up-to-date texture.
+    /// Please wait, and maybe show the previous one while you wait.
+    Pending,
 }
 
 /// Decode video to a texture.
@@ -81,13 +80,19 @@ trait VideoChunkDecoder: 'static + Send {
     fn take_error(&mut self) -> Option<TimedDecodingError>;
 }
 
+struct ActiveFrame {
+    texture: GpuTexture2D,
+    timestamp: Time,
+    duration: Time,
+}
+
 /// Decode video to a texture.
 ///
 /// If you want to sample multiple points in a video simultaneously, use multiple decoders.
 pub struct VideoDecoder {
     data: Arc<re_video::VideoData>,
     chunk_decoder: Box<dyn VideoChunkDecoder>,
-    texture: GpuTexture2D,
+    frame: ActiveFrame,
 
     current_segment_idx: usize,
     current_sample_idx: usize,
@@ -143,10 +148,16 @@ impl VideoDecoder {
             data.config.coded_height as u32,
         );
 
+        let frame = ActiveFrame {
+            texture,
+            timestamp: Time::MAX,
+            duration: Time::ZERO,
+        };
+
         Self {
             data,
             chunk_decoder: Box::new(chunk_decoder),
-            texture,
+            frame,
 
             current_segment_idx: usize::MAX,
             current_sample_idx: usize::MAX,
@@ -165,34 +176,50 @@ impl VideoDecoder {
         render_ctx: &RenderContext,
         presentation_timestamp_s: f64,
     ) -> Result<VideoFrameTexture, DecodingError> {
-        let result = self.frame_at_internal(render_ctx, presentation_timestamp_s);
-        match &result {
-            Ok(VideoFrameTexture::Ready(_)) => {
-                self.error_on_last_frame_at = false;
-            }
-            Ok(VideoFrameTexture::Pending(_)) => {
-                if self.error_on_last_frame_at {
+        if presentation_timestamp_s < 0.0 {
+            return Err(DecodingError::NegativeTimestamp);
+        }
+        let presentation_timestamp = Time::from_secs(presentation_timestamp_s, self.data.timescale);
+        let presentation_timestamp = presentation_timestamp.min(self.data.duration); // Don't seek past the end of the video.
+
+        let result = self.frame_at_internal(render_ctx, presentation_timestamp);
+
+        match result {
+            Ok(()) => {
+                let is_active_frame = self.frame.timestamp <= presentation_timestamp
+                    && presentation_timestamp <= self.frame.timestamp + self.frame.duration;
+
+                let is_pending = !is_active_frame;
+                if is_pending && self.error_on_last_frame_at {
                     // If we switched from error to pending, clear the texture.
                     // This is important to avoid flickering, in particular when switching from
                     // benign errors like DecodingError::NegativeTimestamp.
                     // If we don't do this, we see the last valid texture which can look really weird.
-                    clear_texture(render_ctx, &self.texture);
+                    clear_texture(render_ctx, &self.frame.texture);
                 }
 
                 self.error_on_last_frame_at = false;
+
+                if is_active_frame {
+                    Ok(VideoFrameTexture::Ready(self.frame.texture.clone()))
+                } else {
+                    // TODO(emilk): only report pending if outdated by more than 500ms or so
+                    Ok(VideoFrameTexture::Pending(self.frame.texture.clone()))
+                }
             }
-            Err(_) => {
+
+            Err(err) => {
                 self.error_on_last_frame_at = true;
+                Err(err)
             }
         }
-        result
     }
 
     fn frame_at_internal(
         &mut self,
         render_ctx: &RenderContext,
-        presentation_timestamp_s: f64,
-    ) -> Result<VideoFrameTexture, DecodingError> {
+        presentation_timestamp: Time,
+    ) -> Result<(), DecodingError> {
         re_tracing::profile_function!();
 
         // Some terminology:
@@ -201,18 +228,12 @@ impl VideoDecoder {
         //   - decode timestamp
         //     = determines the decoding order of samples
         //
-        // Note: `composition >= decode` for any given sample.
+        // Note: `decode <= composition` for any given sample.
         //       For some codecs, the two timestamps are the same.
         // We must enqueue samples in decode order, but show them in composition order.
 
-        if presentation_timestamp_s < 0.0 {
-            return Err(DecodingError::NegativeTimestamp);
-        }
-        let presentation_timestamp = Time::from_secs(presentation_timestamp_s, self.data.timescale);
-        let presentation_timestamp = presentation_timestamp.min(self.data.duration); // Don't seek past the end of the video.
-
         // 1. Find the latest sample where `decode_timestamp <= presentation_timestamp`.
-        //    Because `composition >= decode`, we never have to look further ahead in the
+        //    Because `decode <= composition`, we never have to look further ahead in the
         //    video than this.
         let Some(decode_sample_idx) = latest_at_idx(
             &self.data.samples,
@@ -287,10 +308,11 @@ impl VideoDecoder {
         self.current_segment_idx = requested_segment_idx;
         self.current_sample_idx = requested_sample_idx;
 
-        match self
-            .chunk_decoder
-            .latest_at(render_ctx, &self.texture, presentation_timestamp)?
-        {
+        match self.chunk_decoder.latest_at(
+            render_ctx,
+            &self.frame.texture,
+            presentation_timestamp,
+        )? {
             LatestAtResult::NoFrames => {
                 // No buffered frames
 
@@ -312,13 +334,17 @@ impl VideoDecoder {
                 // Don't return a zeroed texture, because we may just be behind on decoding
                 // and showing an old frame is better than showing a blank frame,
                 // because it causes "black flashes" to appear
-                Ok(VideoFrameTexture::Pending(self.texture.clone()))
+                Ok(())
             }
-            LatestAtResult::UpToDate => Ok(VideoFrameTexture::Ready(self.texture.clone())),
-            LatestAtResult::OutdatedBy(duration) => {
-                // TODO: report how far outdated the texture is, so user can decide whether or not to show a loading icon.
-                Ok(VideoFrameTexture::Pending(self.texture.clone()))
+            LatestAtResult::NewFrame {
+                timestamp,
+                duration,
+            } => {
+                self.frame.timestamp = timestamp;
+                self.frame.duration = duration;
+                Ok(())
             }
+            LatestAtResult::Pending => Ok(()),
         }
     }
 

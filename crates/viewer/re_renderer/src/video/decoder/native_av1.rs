@@ -105,20 +105,25 @@ impl VideoChunkDecoder for Av1VideoDecoder {
         let frame_idx = 0;
         let frame = &frames[frame_idx];
 
-        // This handles the case when we have a buffered frame that's older than the requested timestamp.
-        // We don't want to show this frame to the user, because it's not actually the one they requested,
-        // so instead return the last decoded frame.
-        if presentation_timestamp - frame.timestamp > frame.duration {
-            let outdated_by = presentation_timestamp - frame.timestamp - frame.duration;
-            return Ok(LatestAtResult::OutdatedBy(outdated_by));
-        }
+        let is_frame_active = frame.timestamp <= presentation_timestamp
+            && presentation_timestamp <= frame.timestamp + frame.duration;
 
-        if self.last_used_frame_timestamp != frame.timestamp {
-            self.last_used_frame_timestamp = frame.timestamp;
-            copy_video_frame_to_texture(&render_ctx.queue, frame, &texture.texture)?;
-        }
+        if is_frame_active {
+            if self.last_used_frame_timestamp != frame.timestamp {
+                self.last_used_frame_timestamp = frame.timestamp;
+                copy_video_frame_to_texture(&render_ctx.queue, frame, &texture.texture)?;
+            }
 
-        Ok(LatestAtResult::UpToDate)
+            Ok(LatestAtResult::NewFrame {
+                timestamp: frame.timestamp,
+                duration: frame.duration,
+            })
+        } else {
+            // This handles the case when we have a buffered frame that's older than the requested timestamp.
+            // We don't want to show this frame to the user, because it's not actually the one they requested,
+            // so instead return the last decoded frame.
+            Ok(LatestAtResult::Pending)
+        }
     }
 
     /// Reset the video decoder and discard all frames.

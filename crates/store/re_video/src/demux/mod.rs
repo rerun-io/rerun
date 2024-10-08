@@ -164,10 +164,14 @@ impl Segment {
 pub struct Sample {
     /// Time at which this sample appears in the decoded bitstream, in time units.
     ///
+    /// Samples should be decoded in this order.
+    ///
     /// `decode_timestamp <= composition_timestamp`
     pub decode_timestamp: Time,
 
     /// Time at which this sample appears in the frame stream, in time units.
+    ///
+    /// The frame should be shown at this time.
     ///
     /// `decode_timestamp <= composition_timestamp`
     pub composition_timestamp: Time,
