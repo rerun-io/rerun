@@ -63,21 +63,13 @@ pub enum SourceImageDataFormat {
     ///                 what's appropriate & available for a given device.
     WgpuCompatible(wgpu::TextureFormat),
 
+    /// YUV (== `YCbCr`) formats, typically using chroma downsampling.
+    Yuv {
+        format: ChromaSubsamplingPixelFormat,
+        primaries: ColorPrimaries,
+    },
+    //
     // TODO(andreas): Add rgb (3 channels!) formats.
-
-    // -----------------------------------------------------------
-    // Chroma downsampled formats, using YCbCr format.
-    // -----------------------------------------------------------
-    /// `Y_UV12` (aka `NV12`) is a YUV 4:2:0 chroma downsampled format with 12 bits per pixel and 8 bits per channel.
-    ///
-    /// First comes entire image in Y in one plane,
-    /// followed by a plane with interleaved lines ordered as U0, V0, U1, V1, etc.
-    Y_UV12(ColorPrimaries),
-
-    /// `YUYV16` (aka `YUYV` or `YUV2`), is a YUV 4:2:2 chroma downsampled format with 16 bits per pixel and 8 bits per channel.
-    ///
-    /// The order of the channels is Y0, U0, Y1, V0, all in the same plane.
-    YUYV16(ColorPrimaries),
 }
 
 impl From<wgpu::TextureFormat> for SourceImageDataFormat {
@@ -175,11 +167,8 @@ impl<'a> ImageDataDesc<'a> {
                         .ok_or(ImageDataToTextureError::UnsupportedTextureFormat(*format))?
                         as usize
             }
-            SourceImageDataFormat::Y_UV12(_) => {
-                ChromaSubsamplingPixelFormat::Y_UV12.expected_data_buffer_size(*width, *height)
-            }
-            SourceImageDataFormat::YUYV16(_) => {
-                ChromaSubsamplingPixelFormat::YUYV16.expected_data_buffer_size(*width, *height)
+            SourceImageDataFormat::Yuv { format, .. } => {
+                format.expected_data_buffer_size(*width, *height)
             }
         };
 
@@ -228,29 +217,19 @@ pub fn transfer_image_data_to_texture(
     // Reminder: We can't use raw buffers because of WebGL compatibility.
     let (data_texture_width, data_texture_height) = match source_format {
         SourceImageDataFormat::WgpuCompatible(_) => (width, height),
-        SourceImageDataFormat::Y_UV12(_) => {
-            ChromaSubsamplingPixelFormat::Y_UV12.expected_data_width_height(width, height)
-        }
-        SourceImageDataFormat::YUYV16(_) => {
-            ChromaSubsamplingPixelFormat::YUYV16.expected_data_width_height(width, height)
+        SourceImageDataFormat::Yuv { format, .. } => {
+            format.expected_data_width_height(width, height)
         }
     };
     let data_texture_format = match source_format {
         SourceImageDataFormat::WgpuCompatible(format) => format,
-        SourceImageDataFormat::Y_UV12(_) => {
-            ChromaSubsamplingPixelFormat::Y_UV12.expected_data_texture_format()
-        }
-        SourceImageDataFormat::YUYV16(_) => {
-            ChromaSubsamplingPixelFormat::YUYV16.expected_data_texture_format()
-        }
+        SourceImageDataFormat::Yuv { format, .. } => format.expected_data_texture_format(),
     };
 
     // Allocate gpu belt data and upload it.
     let data_texture_label = match source_format {
         SourceImageDataFormat::WgpuCompatible(_) => label.clone(),
-        SourceImageDataFormat::Y_UV12(_) | SourceImageDataFormat::YUYV16(_) => {
-            format!("{label}_source_data").into()
-        }
+        SourceImageDataFormat::Yuv { .. } => format!("{label}_source_data").into(),
     };
     let data_texture = ctx.gpu_resources.textures.alloc(
         &ctx.device,
@@ -276,22 +255,15 @@ pub fn transfer_image_data_to_texture(
             // No further conversion needed, we're done here!
             return Ok(data_texture);
         }
-        SourceImageDataFormat::Y_UV12(primaries) | SourceImageDataFormat::YUYV16(primaries) => {
-            let chroma_format = match source_format {
-                SourceImageDataFormat::WgpuCompatible(_) => unreachable!(),
-                SourceImageDataFormat::Y_UV12(_) => ChromaSubsamplingPixelFormat::Y_UV12,
-                SourceImageDataFormat::YUYV16(_) => ChromaSubsamplingPixelFormat::YUYV16,
-            };
-            ChromaSubsamplingConversionTask::new(
-                ctx,
-                chroma_format,
-                primaries,
-                &data_texture,
-                &label,
-                width,
-                height,
-            )
-        }
+        SourceImageDataFormat::Yuv { format, primaries } => ChromaSubsamplingConversionTask::new(
+            ctx,
+            format,
+            primaries,
+            &data_texture,
+            &label,
+            width,
+            height,
+        ),
     };
 
     // Once there's different gpu based conversions, we should probably trait-ify this so we can keep the basic steps.

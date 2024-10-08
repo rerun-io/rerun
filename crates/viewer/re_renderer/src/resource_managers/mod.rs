@@ -10,6 +10,7 @@ mod chroma_subsampling_converter;
 mod image_data_to_texture;
 mod texture_manager;
 
+pub use chroma_subsampling_converter::ChromaSubsamplingPixelFormat;
 pub use image_data_to_texture::{
     ColorPrimaries, ImageDataDesc, ImageDataToTextureError, SourceImageDataFormat,
 };

@@ -10,7 +10,9 @@ use re_renderer::{
     config::DeviceCaps,
     pad_rgb_to_rgba,
     renderer::{ColorMapper, ColormappedTexture, ShaderDecoding},
-    resource_managers::{ColorPrimaries, ImageDataDesc, SourceImageDataFormat},
+    resource_managers::{
+        ChromaSubsamplingPixelFormat, ColorPrimaries, ImageDataDesc, SourceImageDataFormat,
+    },
     RenderContext,
 };
 use re_types::components::ClassId;
@@ -253,11 +255,17 @@ pub fn texture_creation_desc_from_color_image<'a>(
             // but should confirm & back that up!
             PixelFormat::NV12 => (
                 cast_slice_to_cow(image.buffer.as_slice()),
-                SourceImageDataFormat::Y_UV12(ColorPrimaries::Bt601),
+                SourceImageDataFormat::Yuv {
+                    format: ChromaSubsamplingPixelFormat::Y_UV12,
+                    primaries: ColorPrimaries::Bt601,
+                },
             ),
             PixelFormat::YUY2 => (
                 cast_slice_to_cow(image.buffer.as_slice()),
-                SourceImageDataFormat::YUYV16(ColorPrimaries::Bt601),
+                SourceImageDataFormat::Yuv {
+                    format: ChromaSubsamplingPixelFormat::YUYV16,
+                    primaries: ColorPrimaries::Bt601,
+                },
             ),
         }
     } else {

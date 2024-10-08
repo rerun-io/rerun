@@ -15,16 +15,16 @@ use super::ColorPrimaries;
 
 /// Supported chroma subsampling input formats.
 ///
-/// This is strongly correlated with the chroma formats in [`super::SourceImageDataFormat`], but has to have
-/// stable indices for use in the a uniform buffer.
-/// -> Keep in sync with `chroma_subsampling_converter.wgsl`
+/// Keep indices in sync with `chroma_subsampling_converter.wgsl`
 #[allow(non_camel_case_types)]
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Debug)]
 pub enum ChromaSubsamplingPixelFormat {
     /// 4:2:0 subsampling with a separate Y plane, followed by a UV plane.
     ///
     /// Expects single channel texture format.
-    /// Texture layout:
+    ///
+    /// First comes entire image in Y in one plane,
+    /// followed by a plane with interleaved lines ordered as U0, V0, U1, V1, etc.
     ///
     ///          width
     ///          __________
@@ -40,7 +40,7 @@ pub enum ChromaSubsamplingPixelFormat {
     ///
     /// Expects single channel texture format.
     ///
-    /// Texture layout:
+    /// The order of the channels is Y0, U0, Y1, V0, all in the same plane.
     ///
     ///             width * 2
     ///        __________________
