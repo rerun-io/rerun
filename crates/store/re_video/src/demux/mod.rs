@@ -91,39 +91,23 @@ impl VideoData {
     /// The codec used to encode the video.
     #[inline]
     pub fn human_readable_codec_string(&self) -> String {
-        let mut string = self.config.stsd.contents.codec_string().unwrap_or_default();
+        let human_readable = match &self.config.stsd.contents {
+            re_mp4::StsdBoxContent::Av01(_) => "AV1",
+            re_mp4::StsdBoxContent::Avc1(_) => "H.264",
+            re_mp4::StsdBoxContent::Hvc1(_) => "H.265 HVC1",
+            re_mp4::StsdBoxContent::Hev1(_) => "H.265 HEV1",
+            re_mp4::StsdBoxContent::Vp08(_) => "VP8",
+            re_mp4::StsdBoxContent::Vp09(_) => "VP9",
+            re_mp4::StsdBoxContent::Mp4a(_) => "AAC",
+            re_mp4::StsdBoxContent::Tx3g(_) => "TTXT",
+            re_mp4::StsdBoxContent::Unknown(_) => "Unknown",
+        };
 
-        match &self.config.stsd.contents {
-            re_mp4::StsdBoxContent::Av01 { .. } => {
-                string += " (AV1)";
-            }
-            re_mp4::StsdBoxContent::Avc1 { .. } => {
-                string += " (H.264)";
-            }
-            re_mp4::StsdBoxContent::Hvc1 { .. } => {
-                string += " (H.265 HVC1)";
-            }
-            re_mp4::StsdBoxContent::Hev1 { .. } => {
-                string += " (H.265 HEV1)";
-            }
-            re_mp4::StsdBoxContent::Vp08 { .. } => {
-                string += " (VP8)";
-            }
-            re_mp4::StsdBoxContent::Vp09 { .. } => {
-                string += " (VP9)";
-            }
-            re_mp4::StsdBoxContent::Mp4a { .. } => {
-                string += " (AAC)";
-            }
-            re_mp4::StsdBoxContent::Tx3g { .. } => {
-                string += " (TTXT)";
-            }
-            re_mp4::StsdBoxContent::Unknown(four_cc) => {
-                string += &format!(" ({four_cc})");
-            }
+        if let Some(codec) = self.config.stsd.contents.codec_string() {
+            format!("{human_readable} ({codec})")
+        } else {
+            human_readable.to_owned()
         }
-
-        string
     }
 
     /// The number of samples in the video.
