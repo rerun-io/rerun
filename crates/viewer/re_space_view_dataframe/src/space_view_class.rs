@@ -157,7 +157,7 @@ mode sets the default time range to _everything_. You can override this in the s
 
             // not yet unsupported by the dataframe view
             filtered_index_values: None,
-            sampled_index_values: None,
+            using_index_values: None,
         };
 
         let query_handle = query_engine.query(dataframe_query);

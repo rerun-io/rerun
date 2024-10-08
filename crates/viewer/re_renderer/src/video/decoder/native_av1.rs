@@ -132,6 +132,7 @@ impl VideoDecoder for Av1VideoDecoder {
             return Err(DecodingError::NegativeTimestamp);
         }
         let presentation_timestamp = Time::from_secs(presentation_timestamp_s, self.data.timescale);
+        let presentation_timestamp = presentation_timestamp.min(self.data.duration); // Don't seek past the end of the video.
 
         let Some(requested_segment_idx) = latest_at_idx(
             &self.data.segments,

@@ -26,8 +26,8 @@ class TestDataframe:
         batches = view.select()
         table = pa.Table.from_batches(batches, batches.schema)
 
-        # row, log_time, log_tick, indicator, points, colors
-        assert table.num_columns == 6
+        # log_time, log_tick, indicator, points, colors
+        assert table.num_columns == 5
         assert table.num_rows == 2
 
     def test_select_column(self) -> None:
@@ -72,8 +72,8 @@ class TestDataframe:
             batches = view.select()
             table = pa.Table.from_batches(batches, batches.schema)
 
-            # row, log_time, log_tick, points
-            assert table.num_columns == 4
+            # log_time, log_tick, points
+            assert table.num_columns == 3
             assert table.num_rows == 2
 
         bad_content_expressions = [
@@ -85,7 +85,7 @@ class TestDataframe:
             view = self.recording.view(index="log_time", contents=expr)
             batches = view.select()
 
-            # row, log_time, log_tick
+            # log_time, log_tick
             table = pa.Table.from_batches(batches, batches.schema)
-            assert table.num_columns == 3
+            assert table.num_columns == 2
             assert table.num_rows == 0
