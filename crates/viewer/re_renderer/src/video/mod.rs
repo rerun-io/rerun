@@ -65,12 +65,15 @@ pub enum DecodingError {
 pub type FrameDecodingResult = Result<VideoFrameTexture, DecodingError>;
 
 /// Information about the status of a frame decoding.
-pub enum VideoFrameTexture {
-    /// The requested frame got decoded and is ready to be used.
-    Ready(GpuTexture2D),
+pub struct VideoFrameTexture {
+    /// The texture to show.
+    pub texture: GpuTexture2D,
 
-    /// The returned texture is from a previous frame or a placeholder, the decoder is still decoding the requested frame.
-    Pending(GpuTexture2D),
+    /// If true, the texture is outdated. Keep polling for a fresh one.
+    pub is_pending: bool,
+
+    /// If true, this texture is so out-dated that it should have a loading spinner on top of it.
+    pub show_spinner: bool,
 }
 
 /// Identifier for an independent video decoding stream.

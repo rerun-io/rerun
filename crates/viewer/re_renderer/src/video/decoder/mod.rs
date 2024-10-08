@@ -233,12 +233,11 @@ impl VideoDecoder {
                     }
                 };
 
-                let texture = self.frame.texture.clone();
-                if show_spinner {
-                    Ok(VideoFrameTexture::Pending(texture))
-                } else {
-                    Ok(VideoFrameTexture::Ready(texture))
-                }
+                Ok(VideoFrameTexture {
+                    texture: self.frame.texture.clone(),
+                    is_pending,
+                    show_spinner,
+                })
             }
 
             Err(err) => {

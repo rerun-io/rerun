@@ -195,7 +195,11 @@ impl VideoFrameReferenceVisualizer {
                 video_resolution = glam::vec2(video.width() as _, video.height() as _);
 
                 match video.frame_at(render_ctx, decode_stream_id, video_timestamp.as_seconds()) {
-                    Ok(frame) => {
+                    Ok(VideoFrameTexture {
+                        texture,
+                        is_pending,
+                        show_spinner,
+                    }) => {
                         // Make sure to use the video instead of texture size here,
                         // since the texture may be a placeholder which doesn't have the full size yet.
                         let top_left_corner_position =
@@ -205,22 +209,19 @@ impl VideoFrameReferenceVisualizer {
                         let extent_v =
                             world_from_entity.transform_vector3(glam::Vec3::Y * video_resolution.y);
 
-                        let texture = match frame {
-                            VideoFrameTexture::Ready(texture) => texture,
-                            VideoFrameTexture::Pending(placeholder) => {
-                                // Show loading rectangle:
-                                self.data.loading_spinners.push(LoadingSpinner {
-                                    center: top_left_corner_position + 0.5 * (extent_u + extent_v),
-                                    half_extent_u: 0.5 * extent_u,
-                                    half_extent_v: 0.5 * extent_v,
-                                });
+                        if is_pending {
+                            // Keep polling for a fresh texture
+                            ctx.viewer_ctx.egui_ctx.request_repaint();
+                        }
 
-                                // Keep polling for the decoded result:
-                                ctx.viewer_ctx.egui_ctx.request_repaint();
-
-                                placeholder
-                            }
-                        };
+                        if show_spinner {
+                            // Show loading rectangle:
+                            self.data.loading_spinners.push(LoadingSpinner {
+                                center: top_left_corner_position + 0.5 * (extent_u + extent_v),
+                                half_extent_u: 0.5 * extent_u,
+                                half_extent_v: 0.5 * extent_v,
+                            });
+                        }
 
                         let textured_rect = TexturedRect {
                             top_left_corner_position,
