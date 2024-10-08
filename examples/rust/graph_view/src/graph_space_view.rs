@@ -1,31 +1,23 @@
-use std::collections::HashMap;
-
 use re_viewer::external::{
-    egui::{self, emath::TSTransform, TextWrapMode},
+    egui::{self, emath::TSTransform},
     re_entity_db::InstancePath,
     re_log::external::log,
     re_log_types::EntityPath,
-    re_types::{datatypes, SpaceViewClassIdentifier},
+    re_types::SpaceViewClassIdentifier,
     re_ui::{self, UiExt},
     re_viewer_context::{
-        HoverHighlight, IdentifiedViewSystem as _, InteractionHighlight, Item, SelectionHighlight,
-        SpaceViewClass, SpaceViewClassLayoutPriority, SpaceViewClassRegistryError, SpaceViewId,
-        SpaceViewSpawnHeuristics, SpaceViewState, SpaceViewStateExt as _,
-        SpaceViewSystemExecutionError, SpaceViewSystemRegistrator, SystemExecutionOutput,
-        ViewQuery, ViewerContext,
+        IdentifiedViewSystem as _, Item, SpaceViewClass, SpaceViewClassLayoutPriority,
+        SpaceViewClassRegistryError, SpaceViewId, SpaceViewSpawnHeuristics, SpaceViewState,
+        SpaceViewStateExt as _, SpaceViewSystemExecutionError, SpaceViewSystemRegistrator,
+        SystemExecutionOutput, ViewQuery, ViewerContext,
     },
 };
 
 use crate::{
-    common::NodeLocation,
-    edge_undirected_visualizer_system::EdgeUndirectedVisualizer,
     error::Error,
-    graph::{Graph, Node},
+    graph::Graph,
     ui::{self, GraphSpaceViewState},
-};
-use crate::{
-    edge_undirected_visualizer_system::{self, EdgeInstance},
-    node_visualizer_system::{GraphNodeVisualizer, NodeInstance},
+    visualizers::{edges_undirected::EdgeUndirectedVisualizer, nodes::GraphNodeVisualizer},
 };
 
 #[derive(Default)]
@@ -90,7 +82,7 @@ impl SpaceViewClass for GraphSpaceView {
     /// In this sample we show a combo box to select the color coordinates mode.
     fn selection_ui(
         &self,
-        ctx: &ViewerContext<'_>,
+        _ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
         state: &mut dyn SpaceViewState,
         _space_origin: &EntityPath,

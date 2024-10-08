@@ -1,5 +1,3 @@
-use std::collections::HashSet;
-
 use re_log_types::Instance;
 use re_viewer::external::{
     egui::Color32,
@@ -11,7 +9,7 @@ use re_viewer::external::{
     re_types::{
         self, archetypes,
         components::{self},
-        datatypes, ArrowString, Loggable as _,
+        ArrowString, Loggable as _,
     },
     re_viewer_context::{
         self, IdentifiedViewSystem, SpaceViewSystemExecutionError, ViewContext,

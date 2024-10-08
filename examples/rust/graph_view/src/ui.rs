@@ -12,11 +12,11 @@ use re_viewer::external::{
     },
 };
 
-use crate::{common::NodeLocation, graph::Node, node_visualizer_system::NodeInstance};
+use crate::{common::NodeLocation, graph::Node, visualizers::nodes::NodeInstance};
 
-pub fn draw_node<'a>(
+pub fn draw_node(
     ui: &mut egui::Ui,
-    node: &NodeInstance<'a>,
+    node: &NodeInstance,
     highlight: InteractionHighlight,
 ) -> egui::Response {
     let hcolor = match (
@@ -171,12 +171,12 @@ pub(crate) struct GraphSpaceViewState {
 }
 
 pub fn bounding_rect_from_iter<'a>(
-    rects: impl Iterator<Item = &'a egui::Rect>,
+    rectangles: impl Iterator<Item = &'a egui::Rect>,
 ) -> Option<egui::Rect> {
     // Start with `None` and gradually expand the bounding box.
     let mut bounding_rect: Option<egui::Rect> = None;
 
-    for rect in rects {
+    for rect in rectangles {
         bounding_rect = match bounding_rect {
             Some(bounding) => Some(bounding.union(*rect)),
             None => Some(*rect),

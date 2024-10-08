@@ -3,8 +3,8 @@ use std::collections::HashSet;
 use re_log_types::external::re_types_core::datatypes::EntityPath;
 
 use crate::{
-    common::NodeLocation, edge_undirected_visualizer_system::EdgeInstance,
-    node_visualizer_system::NodeInstance,
+    common::NodeLocation,
+    visualizers::{edges_undirected::EdgeInstance, nodes::NodeInstance},
 };
 
 pub(crate) struct Graph<'a, N, E>
@@ -45,9 +45,7 @@ pub(crate) enum Node<'a> {
     Dummy(NodeLocation, &'a EntityPath),
 }
 
-fn edges_to_iter<'a>(
-    edge: EdgeInstance<'a>,
-) -> impl Iterator<Item = (NodeLocation, &'a EntityPath)> {
+fn edges_to_iter(edge: EdgeInstance) -> impl Iterator<Item = (NodeLocation, &EntityPath)> {
     let source = (edge.source, edge.source_entity_path);
     let target = (edge.target, edge.target_entity_path);
     std::iter::once(source.clone()).chain(std::iter::once(target))

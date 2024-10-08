@@ -6,10 +6,9 @@ mod error;
 mod common;
 mod layout;
 mod ui;
-mod edge_undirected_visualizer_system;
+mod visualizers;
 mod graph;
 mod graph_space_view;
-mod node_visualizer_system;
 
 // By using `re_memory::AccountingAllocator` Rerun can keep track of exactly how much memory it is using,
 // and prune the data store when it goes above a certain limit.

@@ -17,16 +17,16 @@ use crate::common::NodeLocation;
 
 #[derive(Default)]
 pub struct EdgeUndirectedVisualizer {
-    pub(crate) data: Vec<EdgeUndirectedVisualizerData>,
+    pub data: Vec<EdgeUndirectedVisualizerData>,
 }
 
-pub(crate) struct EdgeUndirectedVisualizerData {
+pub struct EdgeUndirectedVisualizerData {
     pub entity_path: re_log_types::EntityPath,
     edges: ChunkComponentIterItem<components::GraphEdgeUndirected>,
     colors: ChunkComponentIterItem<components::Color>,
 }
 
-pub(crate) struct EdgeInstance<'a> {
+pub struct EdgeInstance<'a> {
     pub source: NodeLocation,
     pub target: NodeLocation,
     pub source_entity_path: &'a datatypes::EntityPath,
@@ -37,7 +37,7 @@ pub(crate) struct EdgeInstance<'a> {
 }
 
 impl EdgeUndirectedVisualizerData {
-    pub(crate) fn edges(&self) -> impl Iterator<Item = EdgeInstance> {
+    pub fn edges(&self) -> impl Iterator<Item = EdgeInstance> {
         clamped_zip_2x1(
             self.edges.iter(),
             (0..).map(Instance::from),
