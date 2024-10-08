@@ -337,6 +337,10 @@ impl Config {
     pub fn is_av1(&self) -> bool {
         matches!(self.stsd.contents, re_mp4::StsdBoxContent::Av01 { .. })
     }
+
+    pub fn is_h264(&self) -> bool {
+        matches!(self.stsd.contents, re_mp4::StsdBoxContent::Avc1 { .. })
+    }
 }
 
 /// Errors that can occur when loading a video.

@@ -77,10 +77,13 @@
 //! supporting HDR content at which point more properties will be important!
 //!
 
-#[cfg(with_dav1d)]
+#[cfg(any(with_dav1d, with_ffmpeg))]
 mod async_decoder_wrapper;
 #[cfg(with_dav1d)]
 mod av1;
+
+#[cfg(with_ffmpeg)]
+pub mod ffmpeg;
 
 #[cfg(target_arch = "wasm32")]
 mod webcodecs;
