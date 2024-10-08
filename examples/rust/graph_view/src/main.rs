@@ -5,6 +5,7 @@ use re_viewer::external::{re_log, re_memory};
 mod error;
 mod common;
 mod layout;
+mod ui;
 mod edge_undirected_visualizer_system;
 mod graph;
 mod graph_space_view;

@@ -17,48 +17,12 @@ use re_viewer::external::{
 };
 
 use crate::{
-    common::NodeLocation,
-    edge_undirected_visualizer_system::EdgeUndirectedVisualizer,
-    graph::{Graph, Node},
+    common::NodeLocation, edge_undirected_visualizer_system::EdgeUndirectedVisualizer, error::Error, graph::{Graph, Node}, ui
 };
 use crate::{
     edge_undirected_visualizer_system::{self, EdgeInstance},
     node_visualizer_system::{GraphNodeVisualizer, NodeInstance},
 };
-
-impl<'a> Node<'a> {
-    fn draw(&self, ui: &mut egui::Ui, highlight: InteractionHighlight) -> egui::Response {
-        match self {
-            Node::Regular(node) => node.draw(ui, highlight),
-            Node::Dummy(location, entity_path) => {
-                draw_dummy(ui, (*entity_path).clone(), location.node_id.clone())
-            }
-        }
-    }
-
-    fn location(&self) -> NodeLocation {
-        match self {
-            Node::Regular(node) => node.location.clone(),
-            Node::Dummy(location, _) => location.clone(),
-        }
-    }
-}
-
-fn measure_node_sizes<'a>(
-    ui: &mut egui::Ui,
-    nodes: impl Iterator<Item = Node<'a>>,
-) -> HashMap<NodeLocation, egui::Vec2> {
-    let mut sizes = HashMap::new();
-    let ctx = ui.ctx();
-    ctx.request_discard("measuring node sizes");
-    ui.horizontal(|ui| {
-        for node in nodes {
-            let response = node.draw(ui, InteractionHighlight::default());
-            sizes.insert(node.location(), response.rect.size());
-        }
-    });
-    sizes
-}
 
 fn bounding_rect_from_iter<'a>(rects: impl Iterator<Item = &'a egui::Rect>) -> Option<egui::Rect> {
     // Start with `None` and gradually expand the bounding box.
@@ -92,69 +56,6 @@ fn fit_bounding_rect_to_screen(
     // Set the transformation to scale and then translate to center.
     TSTransform::from_translation(center_screen.to_vec2() - center_world * scale)
         * TSTransform::from_scaling(scale)
-}
-
-fn draw_dummy(
-    ui: &mut egui::Ui,
-    entity_path: datatypes::EntityPath,
-    node_id: datatypes::GraphNodeId,
-) -> egui::Response {
-    let text = egui::RichText::new(format!("{} @ {}", node_id, entity_path.0))
-        .color(ui.style().visuals.widgets.noninteractive.text_color());
-    ui.style_mut().wrap_mode = Some(TextWrapMode::Extend);
-    ui.add(egui::Button::new(text))
-    // ui.label(text)
-    // egui::Frame::default()
-    //     .rounding(egui::Rounding::same(4.0))
-    //     .stroke(egui::Stroke::new(1.0, ui.style().visuals.text_color()))
-    //     .inner_margin(egui::Vec2::new(6.0, 4.0))
-    //     .fill(egui::Color32::RED)
-    //     .show(ui, |ui| {
-    //         ui.style_mut().wrap_mode = Some(TextWrapMode::Extend);
-    //         ui.add(egui::Button::new(text))
-    //     })
-    //     .response
-}
-
-impl<'a> NodeInstance<'a> {
-    fn text(&self) -> egui::RichText {
-        self.label.map_or(
-            egui::RichText::new(self.location.node_id.to_string()),
-            |label| egui::RichText::new(label.to_string()),
-        )
-    }
-
-    fn draw(&self, ui: &mut egui::Ui, highlight: InteractionHighlight) -> egui::Response {
-        let hcolor = match (
-            highlight.hover,
-            highlight.selection != SelectionHighlight::None,
-        ) {
-            (HoverHighlight::None, false) => ui.style().visuals.text_color(),
-            (HoverHighlight::None, true) => ui.style().visuals.selection.bg_fill,
-            (HoverHighlight::Hovered, ..) => ui.style().visuals.widgets.hovered.bg_fill,
-        };
-
-        let bg = match highlight.hover {
-            HoverHighlight::None => ui.style().visuals.widgets.noninteractive.bg_fill,
-            HoverHighlight::Hovered => ui.style().visuals.widgets.hovered.bg_fill,
-        };
-        // ui.style().visuals.faint_bg_color
-
-        egui::Frame::default()
-            .rounding(egui::Rounding::same(4.0))
-            .stroke(egui::Stroke::new(1.0, ui.style().visuals.text_color()))
-            .inner_margin(egui::Vec2::new(6.0, 4.0))
-            .fill(bg)
-            .show(ui, |ui| {
-                ui.style_mut().wrap_mode = Some(TextWrapMode::Extend);
-                if let Some(color) = self.color {
-                    ui.add(egui::Button::new(self.text().color(color)));
-                } else {
-                    ui.add(egui::Button::new(self.text()));
-                }
-            })
-            .response
-    }
 }
 
 /// Space view state for the custom space view.
@@ -280,16 +181,7 @@ impl SpaceViewClass for GraphSpaceView {
                 edge_system.data.iter().flat_map(|d| d.edges()),
             );
 
-            let mut node_sizes = measure_node_sizes(ui, graph.nodes());
-
-            // for data in edge_system.data.iter().flat_map(|d| d.edges()) {
-            //     if !node_sizes.contains_key(&data.source) {
-            //         node_sizes.insert(data.source.clone(), egui::Vec2::new(42.0, 42.0));
-            //     }
-            //     if !node_sizes.contains_key(&data.target) {
-            //         node_sizes.insert(data.target.clone(), egui::Vec2::new(42.0, 42.0));
-            //     }
-            // }
+            let node_sizes = ui::measure_node_sizes(ui, graph.nodes());
 
             let layout = crate::layout::compute_layout(
                 node_sizes.into_iter(),
@@ -402,7 +294,7 @@ impl SpaceViewClass for GraphSpaceView {
                     .show(ui.ctx(), |ui| {
                         let highlight = ent_highlight.index_highlight(node.instance);
                         ui.set_clip_rect(clip_rect_world);
-                        node.draw(ui, highlight)
+                        ui::draw_node(ui, &node, highlight)
                     })
                     .response;
 
@@ -429,31 +321,14 @@ impl SpaceViewClass for GraphSpaceView {
                     id.with(("debug", entity_path.hash())),
                 );
                 ui.ctx().set_transform_layer(entity_id, world_to_window);
-                let painter = egui::Painter::new(ui.ctx().clone(), entity_id, clip_rect_world);
-
-                let padded = entity_rect.expand(10.0);
-                let tc = ui.ctx().style().visuals.text_color();
-                painter.rect(
-                    padded,
-                    ui.style().visuals.window_rounding,
-                    egui::Color32::from_rgba_unmultiplied(tc.r(), tc.g(), tc.b(), 4),
-                    egui::Stroke::NONE,
+                ui::draw_entity(
+                    ui,
+                    clip_rect_world,
+                    entity_id,
+                    entity_rect,
+                    &entity_path,
+                    &query.highlights,
                 );
-                if (query
-                    .highlights
-                    .entity_outline_mask(entity_path.hash())
-                    .overall
-                    .is_some())
-                {
-                    // TODO(grtlr): text should be presented in window space.
-                    painter.text(
-                        padded.left_top(),
-                        egui::Align2::LEFT_BOTTOM,
-                        entity_path.to_string(),
-                        egui::FontId::default(),
-                        ui.ctx().style().visuals.text_color(),
-                    );
-                }
             }
         }
 
@@ -472,7 +347,7 @@ impl SpaceViewClass for GraphSpaceView {
                 .constrain(false)
                 .show(ui.ctx(), |ui| {
                     ui.set_clip_rect(clip_rect_world);
-                    draw_dummy(ui, dummy.1.clone(), dummy.0.node_id.clone())
+                    ui::draw_dummy(ui, dummy.1, &dummy.0.node_id)
                 })
                 .response;
 
@@ -486,62 +361,34 @@ impl SpaceViewClass for GraphSpaceView {
         for data in edge_system.data.iter() {
             let ent_highlight = query.highlights.entity_highlight(data.entity_path.hash());
 
-            for EdgeInstance {
-                source,
-                target,
-                instance,
-                color,
-                ..
-            } in data.edges()
-            {
-                if let (Some(source_pos), Some(target_pos)) =
-                    (layout.get(&source), layout.get(&target))
-                {
-                    let highlight = ent_highlight.index_highlight(instance);
+            for edge in data.edges() {
+                let source_pos = layout
+                    .get(&edge.source)
+                    .ok_or_else(|| Error::EdgeUnknownNode(edge.source.to_string()))?;
+                let target_pos = layout
+                    .get(&edge.target)
+                    .ok_or_else(|| Error::EdgeUnknownNode(edge.target.to_string()))?;
 
-                    let hcolor = match (
-                        highlight.hover,
-                        highlight.selection != SelectionHighlight::None,
-                    ) {
-                        (HoverHighlight::None, false) => None,
-                        (HoverHighlight::None, true) => Some(ui.style().visuals.selection.bg_fill),
-                        (HoverHighlight::Hovered, ..) => {
-                            Some(ui.style().visuals.widgets.hovered.bg_fill)
-                        }
-                    };
+                let response = egui::Area::new(id.with((data.entity_path.hash(), edge.instance)))
+                    .current_pos(source_pos.center())
+                    .order(egui::Order::Background)
+                    .constrain(false)
+                    .show(ui.ctx(), |ui| {
+                        ui.set_clip_rect(world_to_window.inverse() * clip_rect_window);
+                        ui::draw_edge(
+                            ui,
+                            edge.color,
+                            source_pos,
+                            target_pos,
+                            ent_highlight.index_highlight(edge.instance),
+                        );
+                    })
+                    .response;
 
-                    let response = egui::Area::new(id.with((data.entity_path.hash(), instance)))
-                        .current_pos(source_pos.center())
-                        .order(egui::Order::Background)
-                        .constrain(false)
-                        .show(ui.ctx(), |ui| {
-                            ui.set_clip_rect(world_to_window.inverse() * clip_rect_window);
-                            egui::Frame::default().show(ui, |ui| {
-                                let painter = ui.painter();
-                                if let Some(hcolor) = hcolor {
-                                    painter.line_segment(
-                                        [source_pos.center(), target_pos.center()],
-                                        egui::Stroke::new(4.0, hcolor),
-                                    );
-                                }
-                                painter.line_segment(
-                                    [source_pos.center(), target_pos.center()],
-                                    egui::Stroke::new(
-                                        1.0,
-                                        color.unwrap_or(ui.style().visuals.text_color()),
-                                    ),
-                                );
-                            });
-                        })
-                        .response;
+                let id = response.layer_id;
 
-                    let id = response.layer_id;
-
-                    ui.ctx().set_transform_layer(id, world_to_window);
-                    ui.ctx().set_sublayer(window_layer, id);
-                } else {
-                    log::warn!("Missing layout information for edge: {source} -> {target}",);
-                }
+                ui.ctx().set_transform_layer(id, world_to_window);
+                ui.ctx().set_sublayer(window_layer, id);
             }
         }
 
