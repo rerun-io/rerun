@@ -19,10 +19,13 @@ use crate::{
 
 use super::{DecodeHardwareAcceleration, DecodingError, VideoFrameTexture};
 
+/// Ignore hickups lasting shorter than this.
+///
 /// Delaying error reports (and showing last-good images meanwhile) allows us to skip over
 /// transient errors without flickering.
-#[allow(unused)] // Unused for certain build flags
-pub const DECODING_ERROR_REPORTING_DELAY: Duration = Duration::from_millis(400);
+///
+/// Same with showing a spinner: if we show it too fast, it is annoying.
+const DECODING_GRACE_DELAY: Duration = Duration::from_millis(400);
 
 #[allow(unused)] // Unused for certain build flags
 struct TimedDecodingError {
@@ -196,15 +199,39 @@ impl VideoDecoder {
                     // benign errors like DecodingError::NegativeTimestamp.
                     // If we don't do this, we see the last valid texture which can look really weird.
                     clear_texture(render_ctx, &self.frame.texture);
+                    self.frame.timestamp = Time::MAX;
+                    self.frame.duration = Time::ZERO;
                 }
 
                 self.error_on_last_frame_at = false;
 
-                if is_active_frame {
-                    Ok(VideoFrameTexture::Ready(self.frame.texture.clone()))
+                let show_spinner = if is_active_frame {
+                    false
                 } else {
-                    // TODO(emilk): only report pending if outdated by more than 500ms or so
-                    Ok(VideoFrameTexture::Pending(self.frame.texture.clone()))
+                    // How outdated is the current frame?
+                    // If only outdated by a little bit, we report it as being up to date,
+                    // just to avoid showing an annoying spinner if the decoder has a small hickup.
+
+                    let how_outdated =
+                        presentation_timestamp - self.frame.timestamp + self.frame.duration;
+                    if how_outdated < Time::ZERO {
+                        // We have stored a frame from the future.
+                        // We're seeking backwards and soemhow forgot to reset.
+                        true // show spinner
+                    } else if how_outdated.into_secs(self.data.timescale)
+                        < DECODING_GRACE_DELAY.as_secs_f64()
+                    {
+                        false // Just outdated by a little bit - show no spinner
+                    } else {
+                        true // Very old frame - show spinner
+                    }
+                };
+
+                let texture = self.frame.texture.clone();
+                if show_spinner {
+                    Ok(VideoFrameTexture::Pending(texture))
+                } else {
+                    Ok(VideoFrameTexture::Ready(texture))
                 }
             }
 
@@ -323,7 +350,7 @@ impl VideoDecoder {
                 // That said, practically we reset the decoder and thus all frames upon error,
                 // so it doesn't make a lot of difference.
                 if let Some(timed_error) = &self.error {
-                    if timed_error.time_of_first_error.elapsed() >= DECODING_ERROR_REPORTING_DELAY {
+                    if timed_error.time_of_first_error.elapsed() >= DECODING_GRACE_DELAY {
                         // Report the error only if we have been in an error state for a certain amount of time.
                         // Don't immediately report the error, since we might immediately recover from it.
                         // Otherwise, this would cause aggressive flickering!
