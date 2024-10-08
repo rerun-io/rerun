@@ -569,6 +569,22 @@ impl PyRecording {
             query_expression: query,
         })
     }
+
+    fn recording_id(&self) -> String {
+        self.store.id().as_str().to_owned()
+    }
+
+    fn application_id(&self) -> PyResult<String> {
+        Ok(self
+            .store
+            .info()
+            .ok_or(PyValueError::new_err(
+                "Recording is missing application id.",
+            ))?
+            .application_id
+            .as_str()
+            .to_owned())
+    }
 }
 
 #[pyclass(frozen, name = "RRDArchive")]

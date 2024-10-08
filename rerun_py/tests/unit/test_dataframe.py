@@ -2,9 +2,13 @@ from __future__ import annotations
 
 import pathlib
 import tempfile
+import uuid
 
 import pyarrow as pa
 import rerun as rr
+
+APP_ID = "rerun_example_test_recording"
+RECORDING_ID = uuid.uuid4()
 
 
 def test_load_recording() -> None:
@@ -41,7 +45,7 @@ def test_load_recording() -> None:
 
 class TestDataframe:
     def setup_method(self) -> None:
-        rr.init("rerun_example_test_recording")
+        rr.init(APP_ID, recording_id=RECORDING_ID)
 
         rr.set_time_sequence("my_index", 1)
         rr.log("points", rr.Points3D([[1, 2, 3], [4, 5, 6], [7, 8, 9]]))
@@ -54,6 +58,10 @@ class TestDataframe:
             rr.save(rrd)
 
             self.recording = rr.dataframe.load_recording(rrd)
+
+    def test_recording_info(self) -> None:
+        assert self.recording.application_id() == APP_ID
+        assert self.recording.recording_id() == str(RECORDING_ID)
 
     def test_full_view(self) -> None:
         view = self.recording.view(index="my_index", contents="points")
