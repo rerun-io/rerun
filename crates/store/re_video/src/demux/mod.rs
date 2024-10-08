@@ -1,6 +1,6 @@
 //! Video demultiplexing.
 //!
-//! Parses a video file into a raw [`VideoData`] struct, which contains basic metadata and a list of [`Segment`]s.
+//! Parses a video file into a raw [`VideoData`] struct, which contains basic metadata and a list of [`GroupOfPicture`]s.
 //!
 //! The entry point is [`VideoData::load_from_bytes`]
 //! which produces an instance of [`VideoData`] from any supported video container.
