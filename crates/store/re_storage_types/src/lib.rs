@@ -7,13 +7,6 @@
 #![allow(clippy::manual_is_variant_and)]
 
 pub mod v0 {
-
-    // Some archetypes (e.g. `Clear`) are so fundamental and used everywhere that we want
-    // them to be exposed by `re_types_core` directly; that way we don't force a dependency on the
-    // `re_types` behemoth just so one can use one of these fundamental types.
-    //
-    // To do so, re-inject `re_types_core`'s archetypes into our own module.
-
     #[path = "../v0/rerun.storage.v0.rs"]
     mod _v0;
 
@@ -36,17 +29,17 @@ pub mod v0 {
         fn from(value: Query) -> Self {
             Self {
                 view_contents: value.view_contents.map(|vc| vc.into()),
-                // FIXME we need a consistent way on both sides to deal with the fact
+                // TODO(zehiko) we need a consistent way on both sides to deal with the fact
                 // prost generates Option<> for all nested fields, but some are required
                 // See https://github.com/tokio-rs/prost/issues/223
                 // We could do this at the client layer where we ensure required fields are set
                 filtered_index: value.index.unwrap().into(),
                 filtered_index_range: value.index_range.map(|ir| ir.into()),
-                filtered_index_values: None,  // TODO implement
-                sampled_index_values: None,   // TODO implement
-                filtered_point_of_view: None, // TODO implement
+                filtered_index_values: None,  // TODO(zehiko)  implement
+                using_index_values: None,     // TODO(zehiko)  implement
+                filtered_point_of_view: None, // TODO(zehiko)  implement
                 sparse_fill_strategy:
-                    re_dataframe2::external::re_chunk_store::SparseFillStrategy::default(), // TODO implement,
+                    re_dataframe2::external::re_chunk_store::SparseFillStrategy::default(), // TODO(zehiko)  implement,
                 selection: value
                     .column_selection
                     .map(|cs| cs.columns.into_iter().map(|c| c.into()).collect()),
@@ -60,7 +53,7 @@ pub mod v0 {
                 .contents
                 .into_iter()
                 .map(|part| {
-                    // FIXME option unwrap
+                    // TODO(zehiko) option unwrap
                     let entity_path = Into::<re_log_types::EntityPath>::into(part.path.unwrap());
                     let column_selector = part.components.map(|cs| {
                         cs.values
@@ -98,7 +91,7 @@ pub mod v0 {
     impl From<FilteredIndexRange> for re_dataframe2::external::re_chunk_store::IndexRange {
         fn from(value: FilteredIndexRange) -> Self {
             Self::new(
-                // FIXME option unwrap
+                // TODO(zehiko) option unwrap
                 value.time_range.unwrap().start,
                 value.time_range.unwrap().end,
             )
@@ -107,16 +100,8 @@ pub mod v0 {
 
     impl From<ColumnSelector> for re_dataframe2::external::re_chunk_store::ColumnSelector {
         fn from(value: ColumnSelector) -> Self {
-            // FIXME option unwraps
+            // TODO(zehiko)  option unwraps
             match value.selector_type.unwrap() {
-                column_selector::SelectorType::ControlColumn(control_column_selector) => {
-                    re_dataframe2::external::re_chunk_store::ControlColumnSelector {
-                        component: re_dataframe2::external::re_chunk::ComponentName::new(
-                            &control_column_selector.component,
-                        ),
-                    }
-                    .into()
-                }
                 column_selector::SelectorType::ComponentColumn(component_column_selector) => {
                     re_dataframe2::external::re_chunk_store::ComponentColumnSelector {
                         entity_path: Into::<re_log_types::EntityPath>::into(
@@ -126,7 +111,7 @@ pub mod v0 {
                             &component_column_selector.component,
                         ),
                         join_encoding:
-                            re_dataframe2::external::re_chunk_store::JoinEncoding::default(), // TODO implement
+                            re_dataframe2::external::re_chunk_store::JoinEncoding::default(), // TODO(zehiko) implement
                     }
                     .into()
                 }

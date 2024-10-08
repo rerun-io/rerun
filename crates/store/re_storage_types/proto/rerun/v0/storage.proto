@@ -97,7 +97,6 @@ message ColumnSelection {
 
 message ColumnSelector {
     oneof selector_type {
-        ControlColumnSelector control_column = 1;
         ComponentColumnSelector component_column = 2;
         TimeColumnSelector time_column = 3;
     }
@@ -149,20 +148,12 @@ message EntityPath {
     string path = 1;
 }
 
-message ControlColumnDescriptor {
-    string name = 1;
-}
-
 message ComponentColumnDescriptor {
     EntityPath entity_path = 1;
     // component name needs to be a string as user can define their own component
     string component = 2;
     bool resolve_latest_at = 3;
     // TODO - do we need join encoding?
-}
-
-message ControlColumnSelector {
-    string component = 1;
 }
 
 message TimeColumnSelector {
