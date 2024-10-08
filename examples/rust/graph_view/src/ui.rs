@@ -85,10 +85,10 @@ pub fn draw_entity(
         egui::Stroke::NONE,
     );
 
-    if (highlights
+    if highlights
         .entity_outline_mask(entity_path.hash())
         .overall
-        .is_some())
+        .is_some()
     {
         // TODO(grtlr): text should be presented in window space.
         painter.text(

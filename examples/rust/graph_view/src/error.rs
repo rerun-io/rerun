@@ -4,7 +4,6 @@ use re_viewer::external::re_viewer_context::SpaceViewSystemExecutionError;
 pub enum Error {
     #[error("edge has unknown node: {0}")]
     EdgeUnknownNode(String),
-
 }
 
 impl From<Error> for SpaceViewSystemExecutionError {
