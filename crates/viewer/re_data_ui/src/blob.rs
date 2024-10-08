@@ -203,7 +203,7 @@ fn show_video_blob_info(
                 // So the compromise is that we truthfully show the number of *samples* here and don't talk about frames.
                 ui.list_item_flat_noninteractive(
                     PropertyContent::new("Sample count")
-                        .value_text(format!("{}", data.num_samples())),
+                        .value_text(re_format::format_uint(data.num_samples())),
                 );
                 ui.list_item_flat_noninteractive(
                     PropertyContent::new("Codec").value_text(data.codec()),
