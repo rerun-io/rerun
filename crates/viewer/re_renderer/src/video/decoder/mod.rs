@@ -97,7 +97,7 @@ pub struct VideoDecoder {
     chunk_decoder: Box<dyn VideoChunkDecoder>,
     frame: ActiveFrame,
 
-    current_segment_idx: usize,
+    current_gop_idx: usize,
     current_sample_idx: usize,
 
     error: Option<TimedDecodingError>,
@@ -168,7 +168,7 @@ impl VideoDecoder {
             chunk_decoder: Box::new(chunk_decoder),
             frame,
 
-            current_segment_idx: usize::MAX,
+            current_gop_idx: usize::MAX,
             current_sample_idx: usize::MAX,
 
             error: None,
@@ -286,59 +286,59 @@ impl VideoDecoder {
             return Err(DecodingError::EmptyVideo);
         };
 
-        // 3. Do a binary search through segments by the decode timestamp of the found sample
-        //    to find the segment that contains the sample.
-        let Some(requested_segment_idx) = latest_at_idx(
-            &self.data.segments,
-            |segment| segment.start,
+        // 3. Do a binary search through GOPs by the decode timestamp of the found sample
+        //    to find the GOP that contains the sample.
+        let Some(requested_gop_idx) = latest_at_idx(
+            &self.data.gops,
+            |gop| gop.start,
             &self.data.samples[requested_sample_idx].decode_timestamp,
         ) else {
             return Err(DecodingError::EmptyVideo);
         };
 
-        // 4. Enqueue segments as needed.
+        // 4. Enqueue GOPs as needed.
 
         // First, check for decoding errors that may have been set asynchronously and reset if it's a new error.
         if let Some(error) = self.chunk_decoder.take_error() {
             // For each new (!) error after entering the error state, we reset the decoder.
             // This way, it might later recover from the error as we progress in the video.
             //
-            // By resetting the current segment/sample indices, the frame enqueued code below
+            // By resetting the current GOP/sample indices, the frame enqueued code below
             // is forced to reset the decoder.
-            self.current_segment_idx = usize::MAX;
+            self.current_gop_idx = usize::MAX;
             self.current_sample_idx = usize::MAX;
 
             self.error = Some(error);
         }
 
-        // We maintain a buffer of 2 segments, so we can always smoothly transition to the next segment.
-        // We can always start decoding from any segment, because segments always begin with a keyframe.
+        // We maintain a buffer of 2 GOPs, so we can always smoothly transition to the next GOP.
+        // We can always start decoding from any GOP, because GOPs always begin with a keyframe.
         //
-        // Backward seeks or seeks across many segments trigger a reset of the decoder,
+        // Backward seeks or seeks across many GOPs trigger a reset of the decoder,
         // because decoding all the samples between the previous sample and the requested
         // one would mean decoding and immediately discarding more frames than we need.
-        if requested_segment_idx != self.current_segment_idx {
-            if self.current_segment_idx.saturating_add(1) == requested_segment_idx {
-                // forward seek to next segment - queue up the one _after_ requested
-                self.enqueue_segment(requested_segment_idx + 1)?;
+        if requested_gop_idx != self.current_gop_idx {
+            if self.current_gop_idx.saturating_add(1) == requested_gop_idx {
+                // forward seek to next GOP - queue up the one _after_ requested
+                self.enqueue_gop(requested_gop_idx + 1)?;
             } else {
-                // forward seek by N>1 OR backward seek across segments - reset
+                // forward seek by N>1 OR backward seek across GOPs - reset
                 self.reset()?;
-                self.enqueue_segment(requested_segment_idx)?;
-                self.enqueue_segment(requested_segment_idx + 1)?;
+                self.enqueue_gop(requested_gop_idx)?;
+                self.enqueue_gop(requested_gop_idx + 1)?;
             }
         } else if requested_sample_idx != self.current_sample_idx {
-            // special case: handle seeking backwards within a single segment
+            // special case: handle seeking backwards within a single GOP
             // this is super inefficient, but it's the only way to handle it
-            // while maintaining a buffer of only 2 segments
+            // while maintaining a buffer of only 2 GOPs
             if requested_sample_idx < self.current_sample_idx {
                 self.reset()?;
-                self.enqueue_segment(requested_segment_idx)?;
-                self.enqueue_segment(requested_segment_idx + 1)?;
+                self.enqueue_gop(requested_gop_idx)?;
+                self.enqueue_gop(requested_gop_idx + 1)?;
             }
         }
 
-        self.current_segment_idx = requested_segment_idx;
+        self.current_gop_idx = requested_gop_idx;
         self.current_sample_idx = requested_sample_idx;
 
         match self.chunk_decoder.latest_at(
@@ -381,15 +381,15 @@ impl VideoDecoder {
         }
     }
 
-    /// Enqueue all samples in the given segment.
+    /// Enqueue all samples in the given GOP.
     ///
     /// Does nothing if the index is out of bounds.
-    fn enqueue_segment(&mut self, segment_idx: usize) -> Result<(), DecodingError> {
-        let Some(segment) = self.data.segments.get(segment_idx) else {
+    fn enqueue_gop(&mut self, gop_idx: usize) -> Result<(), DecodingError> {
+        let Some(gop) = self.data.gops.get(gop_idx) else {
             return Ok(());
         };
 
-        let samples = &self.data.samples[segment.range()];
+        let samples = &self.data.samples[gop.range()];
 
         for (i, sample) in samples.iter().enumerate() {
             let chunk = self.data.get(sample).ok_or(DecodingError::BadData)?;
@@ -404,7 +404,7 @@ impl VideoDecoder {
     fn reset(&mut self) -> Result<(), DecodingError> {
         self.chunk_decoder.reset()?;
         self.error = None;
-        self.current_segment_idx = usize::MAX;
+        self.current_gop_idx = usize::MAX;
         self.current_sample_idx = usize::MAX;
         Ok(())
     }

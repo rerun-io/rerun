@@ -26,9 +26,9 @@ pub struct VideoData {
     /// Duration of the video, in time units.
     pub duration: Time,
 
-    /// We split video into segments, each beginning with a key frame,
+    /// We split video into GOPs, each beginning with a key frame,
     /// followed by any number of delta frames.
-    pub segments: Vec<Segment>,
+    pub gops: Vec<GroupOfPictures>,
 
     /// Samples contain the byte offsets into `data` for each frame.
     ///
@@ -111,7 +111,7 @@ impl VideoData {
     pub fn frame_timestamps_ns(&self) -> impl Iterator<Item = i64> + '_ {
         // Segments are guaranteed to be sorted among each other, but within a segment,
         // presentation timestamps may not be sorted since this is sorted by decode timestamps.
-        self.segments.iter().flat_map(|seg| {
+        self.gops.iter().flat_map(|seg| {
             self.samples[seg.range()]
                 .iter()
                 .map(|sample| sample.composition_timestamp.into_nanos(self.timescale))
@@ -138,19 +138,20 @@ impl VideoData {
     }
 }
 
-/// A segment of a video.
-// TODO(emilk): rename `GroupOfPictures` (GOP): https://en.wikipedia.org/wiki/Group_of_pictures
+/// A Group of Pictures (GOP) always starts with an I-frame, followed by delta-frames.
+///
+/// See <https://en.wikipedia.org/wiki/Group_of_pictures> for more.
 #[derive(Debug, Clone)]
-pub struct Segment {
-    /// Decode timestamp of the first sample in this segment, in time units.
+pub struct GroupOfPictures {
+    /// Decode timestamp of the first sample in this GOP, in time units.
     pub start: Time,
 
-    /// Range of samples contained in this segment.
+    /// Range of samples contained in this GOP.
     pub sample_range: Range<u32>,
 }
 
-impl Segment {
-    /// The segment's `sample_range` mapped to `usize` for slicing.
+impl GroupOfPictures {
+    /// The GOP's `sample_range` mapped to `usize` for slicing.
     pub fn range(&self) -> Range<usize> {
         Range {
             start: self.sample_range.start as usize,
@@ -250,7 +251,7 @@ impl std::fmt::Debug for VideoData {
             .field("config", &self.config)
             .field("timescale", &self.timescale)
             .field("duration", &self.duration)
-            .field("segments", &self.segments)
+            .field("gops", &self.gops)
             .field(
                 "samples",
                 &self.samples.iter().enumerate().collect::<Vec<_>>(),

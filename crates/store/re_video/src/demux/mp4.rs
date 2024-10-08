@@ -1,6 +1,6 @@
 #![allow(clippy::map_err_ignore)]
 
-use super::{Config, Sample, Segment, VideoData, VideoLoadError};
+use super::{Config, GroupOfPictures, Sample, VideoData, VideoLoadError};
 
 use crate::{Time, Timescale};
 
@@ -35,19 +35,19 @@ pub fn load_mp4(bytes: &[u8]) -> Result<VideoData, VideoLoadError> {
     let timescale = Timescale::new(track.timescale);
     let duration = Time::new(track.duration as i64);
     let mut samples = Vec::<Sample>::new();
-    let mut segments = Vec::<Segment>::new();
-    let mut segment_sample_start_index = 0;
+    let mut gops = Vec::<GroupOfPictures>::new();
+    let mut gop_sample_start_index = 0;
     let data = track.data.clone();
 
     for sample in &track.samples {
         if sample.is_sync && !samples.is_empty() {
-            let start = samples[segment_sample_start_index].decode_timestamp;
-            let sample_range = segment_sample_start_index as u32..samples.len() as u32;
-            segments.push(Segment {
+            let start = samples[gop_sample_start_index].decode_timestamp;
+            let sample_range = gop_sample_start_index as u32..samples.len() as u32;
+            gops.push(GroupOfPictures {
                 start,
                 sample_range,
             });
-            segment_sample_start_index = samples.len();
+            gop_sample_start_index = samples.len();
         }
 
         let decode_timestamp = Time::new(sample.decode_timestamp as i64);
@@ -67,9 +67,9 @@ pub fn load_mp4(bytes: &[u8]) -> Result<VideoData, VideoLoadError> {
     }
 
     if !samples.is_empty() {
-        let start = samples[segment_sample_start_index].decode_timestamp;
-        let sample_range = segment_sample_start_index as u32..samples.len() as u32;
-        segments.push(Segment {
+        let start = samples[gop_sample_start_index].decode_timestamp;
+        let sample_range = gop_sample_start_index as u32..samples.len() as u32;
+        gops.push(GroupOfPictures {
             start,
             sample_range,
         });
@@ -79,7 +79,7 @@ pub fn load_mp4(bytes: &[u8]) -> Result<VideoData, VideoLoadError> {
         config,
         timescale,
         duration,
-        segments,
+        gops,
         samples,
         data,
         mp4_tracks,

@@ -31,7 +31,7 @@ fn main() {
 
     println!(
         "{} {}x{}",
-        video.segments.len(),
+        video.gops.len(),
         video.config.coded_width,
         video.config.coded_height
     );
