@@ -1,6 +1,6 @@
 use std::collections::HashSet;
 
-use re_log_types::{external::re_types_core::datatypes::EntityPath};
+use re_log_types::external::re_types_core::datatypes::EntityPath;
 
 use crate::{
     common::NodeLocation, edge_undirected_visualizer_system::EdgeInstance,

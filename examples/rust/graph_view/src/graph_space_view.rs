@@ -30,8 +30,8 @@ use crate::{
 impl<'a> Node<'a> {
     fn draw(&self, ui: &mut egui::Ui, highlight: InteractionHighlight) -> egui::Response {
         match self {
-        Node::Regular(node) => node.draw(ui, highlight),
-        Node::Dummy(location, entity_path) => {
+            Node::Regular(node) => node.draw(ui, highlight),
+            Node::Dummy(location, entity_path) => {
                 draw_dummy(ui, (*entity_path).clone(), location.node_id.clone())
             }
         }
@@ -153,9 +153,8 @@ fn draw_dummy(
     entity_path: datatypes::EntityPath,
     node_id: datatypes::GraphNodeId,
 ) -> egui::Response {
-    let text = egui::RichText::new(format!("{} @ {}", node_id, entity_path.0)).color(
-        ui.style().visuals.widgets.noninteractive.text_color(),
-    );
+    let text = egui::RichText::new(format!("{} @ {}", node_id, entity_path.0))
+        .color(ui.style().visuals.widgets.noninteractive.text_color());
     ui.style_mut().wrap_mode = Some(TextWrapMode::Extend);
     ui.add(egui::Button::new(text))
     // ui.label(text)
