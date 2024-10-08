@@ -110,7 +110,19 @@ impl VideoDecoder {
             unused
         )]
 
-        let debug_name = format!("{debug_name}, codec: {}", data.config.codec);
+        let debug_name = format!(
+            "{debug_name}, codec: {}",
+            data.human_readable_codec_string()
+        );
+
+        if let Some(bit_depth) = data.config.stsd.contents.bit_depth() {
+            #[allow(clippy::comparison_chain)]
+            if bit_depth < 8 {
+                re_log::warn_once!("{debug_name} has unusual bit_depth of {bit_depth}");
+            } else if 8 < bit_depth {
+                re_log::warn_once!("{debug_name}: HDR videos not supported. See https://github.com/rerun-io/rerun/issues/7594 for more.");
+            }
+        }
 
         cfg_if::cfg_if! {
             if #[cfg(target_arch = "wasm32")] {
@@ -119,7 +131,7 @@ impl VideoDecoder {
             } else if #[cfg(feature = "video_av1")] {
                 if !data.config.is_av1() {
                     return Err(DecodingError::UnsupportedCodec {
-                        codec: data.config.codec.clone(),
+                        codec: data.human_readable_codec_string(),
                     });
                 }
 

@@ -67,6 +67,12 @@ impl Time {
         Self::from_secs(v as f64 / 1e9, timescale)
     }
 
+    /// Convert to a duration
+    #[inline]
+    pub fn duration(self, timescale: Timescale) -> std::time::Duration {
+        std::time::Duration::from_nanos(self.into_nanos(timescale) as _)
+    }
+
     #[inline]
     pub fn into_secs(self, timescale: Timescale) -> f64 {
         self.0 as f64 / timescale.0 as f64

@@ -70,16 +70,10 @@ impl VideoData {
         }
     }
 
-    /// Duration of the video, in seconds.
+    /// Length of the video.
     #[inline]
-    pub fn duration_sec(&self) -> f64 {
-        self.duration.into_secs(self.timescale)
-    }
-
-    /// Duration of the video, in milliseconds.
-    #[inline]
-    pub fn duration_ms(&self) -> f64 {
-        self.duration.into_millis(self.timescale)
+    pub fn duration(&self) -> std::time::Duration {
+        std::time::Duration::from_nanos(self.duration.into_nanos(self.timescale) as _)
     }
 
     /// Natural width of the video.
@@ -96,8 +90,24 @@ impl VideoData {
 
     /// The codec used to encode the video.
     #[inline]
-    pub fn codec(&self) -> &str {
-        &self.config.codec
+    pub fn human_readable_codec_string(&self) -> String {
+        let human_readable = match &self.config.stsd.contents {
+            re_mp4::StsdBoxContent::Av01(_) => "AV1",
+            re_mp4::StsdBoxContent::Avc1(_) => "H.264",
+            re_mp4::StsdBoxContent::Hvc1(_) => "H.265 HVC1",
+            re_mp4::StsdBoxContent::Hev1(_) => "H.265 HEV1",
+            re_mp4::StsdBoxContent::Vp08(_) => "VP8",
+            re_mp4::StsdBoxContent::Vp09(_) => "VP9",
+            re_mp4::StsdBoxContent::Mp4a(_) => "AAC",
+            re_mp4::StsdBoxContent::Tx3g(_) => "TTXT",
+            re_mp4::StsdBoxContent::Unknown(_) => "Unknown",
+        };
+
+        if let Some(codec) = self.config.stsd.contents.codec_string() {
+            format!("{human_readable} ({codec})")
+        } else {
+            human_readable.to_owned()
+        }
     }
 
     /// The number of samples in the video.
@@ -191,10 +201,8 @@ pub struct Sample {
 /// Configuration of a video.
 #[derive(Debug, Clone)]
 pub struct Config {
-    /// String used to identify the codec and some of its configuration.
-    ///
-    /// e.g. "av01.0.05M.08" (AV1)
-    pub codec: String,
+    /// Contains info about the codec, bit depth, etc.
+    pub stsd: re_mp4::StsdBox,
 
     /// Codec-specific configuration.
     pub description: Vec<u8>,
@@ -208,7 +216,7 @@ pub struct Config {
 
 impl Config {
     pub fn is_av1(&self) -> bool {
-        self.codec.starts_with("av01")
+        matches!(self.stsd.contents, re_mp4::StsdBoxContent::Av01 { .. })
     }
 }
 
