@@ -2,7 +2,7 @@ use std::collections::HashSet;
 
 use crate::dataframe_ui::HideColumnAction;
 use crate::view_query::Query;
-use re_chunk_store::{ColumnDescriptor, ColumnSelector};
+use re_chunk_store::{ColumnDescriptor, ColumnSelector, ComponentColumnSelector};
 use re_log_types::{EntityPath, ResolvedTimeRange, TimelineName};
 use re_types::blueprint::{components, datatypes};
 use re_viewer_context::{SpaceViewSystemExecutionError, ViewerContext};
@@ -74,13 +74,28 @@ impl Query {
         }
     }
 
+    /// Get the point of view column for the filter-by-event feature, if active.
     pub(crate) fn filter_by_event(
+        &self,
+    ) -> Result<Option<ComponentColumnSelector>, SpaceViewSystemExecutionError> {
+        Ok(self
+            .filter_by_event_raw()?
+            .filter(|filter_by_event| filter_by_event.active())
+            .map(|filter| {
+                ComponentColumnSelector::new_for_component_name(
+                    filter.entity_path(),
+                    filter.component_name(),
+                )
+            }))
+    }
+
+    /// Get the raw [`components::FilterByEvent`] struct (for ui purposes).
+    pub(super) fn filter_by_event_raw(
         &self,
     ) -> Result<Option<components::FilterByEvent>, SpaceViewSystemExecutionError> {
         Ok(self
             .query_property
-            .component_or_empty::<components::FilterByEvent>()?
-            .filter(|filter_by_event| filter_by_event.active()))
+            .component_or_empty::<components::FilterByEvent>()?)
     }
 
     pub(super) fn save_filter_by_event(

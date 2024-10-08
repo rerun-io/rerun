@@ -4,7 +4,7 @@ use crate::{
     dataframe_ui::dataframe_ui, expanded_rows::ExpandedRowsCache, view_query,
     visualizer_system::EmptySystem,
 };
-use re_chunk_store::{ColumnDescriptor, ComponentColumnSelector, SparseFillStrategy};
+use re_chunk_store::{ColumnDescriptor, SparseFillStrategy};
 use re_log_types::EntityPath;
 use re_types_core::SpaceViewClassIdentifier;
 use re_viewer_context::{
@@ -137,13 +137,6 @@ mode sets the default time range to _everything_. You can override this in the s
             .map(|entity| (entity.clone(), None))
             .collect();
 
-        let filtered_point_of_view = view_query.filter_by_event()?.map(|filter| {
-            ComponentColumnSelector::new_for_component_name(
-                filter.entity_path(),
-                filter.component_name(),
-            )
-        });
-
         let sparse_fill_strategy = if view_query.latest_at_enabled()? {
             SparseFillStrategy::LatestAtGlobal
         } else {
@@ -158,7 +151,7 @@ mode sets the default time range to _everything_. You can override this in the s
             view_contents: Some(view_contents),
             filtered_index: view_query.timeline(ctx)?,
             filtered_index_range: Some(view_query.filter_by_range()?),
-            filtered_point_of_view,
+            filtered_point_of_view: view_query.filter_by_event()?,
             sparse_fill_strategy,
             selection: selected_columns,
 
