@@ -300,9 +300,13 @@ fn copy_data_to_texture(
     )?;
 
     if buffer_info.buffer_size_padded as usize == data.len() {
+        re_tracing::profile_scope!("bulk_copy");
+
         // Fast path: Just copy the data over as-is.
         gpu_read_buffer.extend_from_slice(data)?;
     } else {
+        re_tracing::profile_scope!("row_by_row_copy");
+
         // Copy row by row in order to jump over padding bytes.
         let bytes_per_row_unpadded = buffer_info.bytes_per_row_unpadded as usize;
         let num_padding_bytes_per_row =
