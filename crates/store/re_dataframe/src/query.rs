@@ -254,10 +254,12 @@ impl QueryHandle<'_> {
 
                     // The chunks were sorted that way before, and it needs to stay that way after.
                     chunks.sort_by_key(|(_cursor, chunk)| {
+                        // NOTE: The chunk has been densified already: its global time range is the same as
+                        // the time range for the specific component of interest.
                         chunk
-                            .time_range_per_component()
+                            .timelines()
                             .get(&self.query.filtered_index)
-                            .and_then(|per_component| per_component.get(&descr.component_name))
+                            .map(|time_column| time_column.time_range())
                             .map_or(TimeInt::STATIC, |time_range| time_range.min())
                     });
                 }
