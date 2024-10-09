@@ -6,10 +6,10 @@ use arrow2::{
     array::ListArray as ArrowListArray,
     datatypes::{DataType as ArrowDatatype, Field as ArrowField},
 };
+use nohash_hasher::IntSet;
 
 use re_chunk::TimelineName;
-use re_log_types::ResolvedTimeRange;
-use re_log_types::{EntityPath, TimeInt, Timeline};
+use re_log_types::{EntityPath, ResolvedTimeRange, TimeInt, Timeline};
 use re_types_core::{ArchetypeName, ComponentName};
 
 use crate::ChunkStore;
@@ -765,12 +765,22 @@ impl ChunkStore {
                 })
             });
 
+        use re_types_core::Archetype as _;
+        let clear_related_components: IntSet<ComponentName> =
+            re_types_core::archetypes::Clear::all_components()
+                .iter()
+                .copied()
+                .collect();
+
         let components = static_components
             .chain(temporal_components)
             .filter(|col| match col {
                 ColumnDescriptor::Time(_) => true,
                 ColumnDescriptor::Component(descr) => {
-                    !descr.component_name.is_indicator_component()
+                    let is_indicator = descr.component_name.is_indicator_component();
+                    // Tombstones are not exposed to end users -- only their _effect_.
+                    let is_tombstone = clear_related_components.contains(&descr.component_name);
+                    !is_indicator && !is_tombstone
                 }
             })
             .collect::<BTreeSet<_>>();
