@@ -213,7 +213,7 @@ impl<'py> IndexLike<'py> {
                 let array = make_array(array.0.clone());
 
                 let int_array = array.as_any().downcast_ref::<Int64Array>().ok_or_else(|| {
-                    PyTypeError::new_err("Expected an array of integers for index values.")
+                    PyTypeError::new_err("pyarrow.Array for IndexLike must be of type int64.")
                 })?;
 
                 let values: BTreeSet<re_chunk_store::TimeInt> = int_array
@@ -257,7 +257,7 @@ impl<'py> IndexLike<'py> {
                         let int_array =
                             array.as_any().downcast_ref::<Int64Array>().ok_or_else(|| {
                                 PyTypeError::new_err(
-                                    "Expected an array of integers for index values.",
+                                    "pyarrow.Array for IndexLike must be of type int64.",
                                 )
                             })?;
 

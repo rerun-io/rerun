@@ -5,6 +5,7 @@ import tempfile
 import uuid
 
 import pyarrow as pa
+import pytest
 import rerun as rr
 
 APP_ID = "rerun_example_test_recording"
@@ -152,14 +153,14 @@ class TestDataframe:
 
         assert table3 == table2
 
-        ## Manually create a pyarrow array with no matches
+        # Manually create a pyarrow array with no matches
         view4 = view.filter_index_values(pa.array([8], type=pa.int64()))
         batches = view4.select()
         table4 = pa.Table.from_batches(batches, batches.schema)
 
         assert table4.num_rows == 0
 
-        ## Manually create a chunked array with 1 match
+        # Manually create a chunked array with 1 match
         manual_chunked_selection = pa.chunked_array([
             pa.array([2], type=pa.int64()),
             pa.array([3, 7, 8], type=pa.int64()),
@@ -176,6 +177,16 @@ class TestDataframe:
         table5 = pa.Table.from_batches(batches, batches.schema)
 
         assert table5.num_rows == 1
+
+        # Exceptions
+        with pytest.raises(ValueError):
+            view.filter_index_values(pa.array([8, 8], type=pa.int64()))
+
+        with pytest.raises(TypeError):
+            view.filter_index_values("1")
+
+        with pytest.raises(TypeError):
+            view.filter_index_values(pa.array([1.0, 2.0], type=pa.float64()))
 
     def test_view_syntax(self) -> None:
         good_content_expressions = [
