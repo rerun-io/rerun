@@ -15,11 +15,11 @@ use super::ColorPrimaries;
 
 /// Supported chroma subsampling input formats.
 ///
-/// We use `YUV`/`YCbCr`/`YPbPr` interchangably and usually just call it `YUV`.
+/// We use `YUV`/`YCbCr`/`YPbPr` interchangeably and usually just call it `YUV`.
 ///
 /// According to this [source](https://www.retrosix.wiki/yuv-vs-ycbcr-vs-rgb-color-space/):
 /// * `YUV` is an analog signal
-/// * `YCbCr` is scaled and offseted version of YUV, used in digital signals (we denote this as "limited range YUV")
+/// * `YCbCr` is scaled and offsetted version of YUV, used in digital signals (we denote this as "limited range YUV")
 /// * `YPbPr` is the physical component cabel to transmit `YCbCr`
 /// Actual use in the wild seems to be all over the place.
 /// For instance `OpenCV` uses `YCbCr` when talking about the full range and YUV when talking about

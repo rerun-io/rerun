@@ -256,7 +256,7 @@ pub fn texture_creation_desc_from_color_image<'a>(
         let format = match pixel_format {
             // For historical reasons, using Bt.709 for fully planar formats and Bt.601 for others.
             //
-            // TODO(andreas): Investigate if there's underlying expecation for some of these (for instance I suspect that NV12 is "usually" BT601).
+            // TODO(andreas): Investigate if there's underlying expectation for some of these (for instance I suspect that NV12 is "usually" BT601).
             // TODO(andreas): Expose color primaries. It's probably still the better default (for instance that's what jpeg still uses),
             // but should confirm & back that up!
             //
