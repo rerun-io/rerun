@@ -33,16 +33,74 @@ namespace rerun::datatypes {
     /// For more compressed image formats, see `archetypes::EncodedImage`.
     enum class PixelFormat : uint8_t {
 
-        /// `NV12` (aka `Y_UV12`) is a YUV 4:2:0 chroma downsampled format with 12 bits per pixel and 8 bits per channel.
+        /// `Y_U_V12` is a YUV 4:2:0 fully planar YUV format without chroma downsampling, also known as `I420`.
+        ///
+        /// This uses limited range YUV, i.e. Y is valid in [16, 235] and U/V [16, 240].
+        /// Outside of it is clamped.
+        ///
+        /// First comes entire image in Y in one plane, followed by the U and V planes, which each only have half
+        /// the resolution of the Y plane.
+        Y_U_V12_LimitedRange = 20,
+
+        /// `NV12` (aka `Y_UV12`) is a YUV 4:2:0 chroma downsampled form  at with 12 bits per pixel and 8 bits per channel.
+        ///
+        /// This uses limited range YUV, i.e. Y is valid in [16, 235] and U/V [16, 240].
+        /// Outside of it is clamped.
         ///
         /// First comes entire image in Y in one plane,
         /// followed by a plane with interleaved lines ordered as U0, V0, U1, V1, etc.
         NV12 = 26,
 
-        /// `YUY2` (aka `YUYV` or `YUYV16`), is a YUV 4:2:2 chroma downsampled format with 16 bits per pixel and 8 bits per channel.
+        /// `YUY2` (aka `YUYV`, `YUYV16` or `NV21`), is a YUV 4:2:2 chroma downsampled format with 16 bits per pixel and 8 bits per channel.
+        ///
+        /// This uses limited range YUV, i.e. Y is valid in [16, 235] and U/V [16, 240].
+        /// Outside of it is clamped.
         ///
         /// The order of the channels is Y0, U0, Y1, V0, all in the same plane.
         YUY2 = 27,
+
+        /// `Y_U_V24` is a YUV 4:4:4 fully planar YUV format without chroma downsampling, also known as `I444`.
+        ///
+        /// This uses limited range YUV, i.e. Y is valid in [16, 235] and U/V [16, 240].
+        /// Outside of it is clamped.
+        ///
+        /// First comes entire image in Y in one plane, followed by the U and V planes.
+        Y_U_V24_LimitedRange = 39,
+
+        /// `Y_U_V24` is a YUV 4:4:4 fully planar YUV format without chroma downsampling, also known as `I444`.
+        ///
+        /// This uses full range YUV with all components ranging from 0 to 255
+        /// (as opposed to "limited range" YUV as used in NV12).
+        ///
+        /// First comes entire image in Y in one plane, followed by the U and V planes.
+        Y_U_V24_FullRange = 40,
+
+        /// `Y_U_V12` is a YUV 4:2:0 fully planar YUV format without chroma downsampling, also known as `I420`.
+        ///
+        /// This uses full range YUV with all components ranging from 0 to 255
+        /// (as opposed to "limited range" YUV as used in NV12).
+        ///
+        /// First comes entire image in Y in one plane, followed by the U and V planes, which each only have half
+        /// the resolution of the Y plane.
+        Y_U_V12_FullRange = 44,
+
+        /// `Y_U_V16` is a YUV 4:2:2 fully planar YUV format without chroma downsampling, also known as `I422`.
+        ///
+        /// This uses limited range YUV, i.e. Y is valid in [16, 235] and U/V [16, 240].
+        /// Outside of it is clamped.
+        ///
+        /// First comes entire image in Y in one plane, followed by the U and V planes, which each only have half
+        /// the horizontal resolution of the Y plane.
+        Y_U_V16_LimitedRange = 49,
+
+        /// `Y_U_V16` is a YUV 4:2:2 fully planar YUV format without chroma downsampling, also known as `I422`.
+        ///
+        /// This uses full range YUV with all components ranging from 0 to 255
+        /// (as opposed to "limited range" YUV as used in NV12).
+        ///
+        /// First comes entire image in Y in one plane, followed by the U and V planes, which each only have half
+        /// the horizontal resolution of the Y plane.
+        Y_U_V16_FullRange = 50,
     };
 } // namespace rerun::datatypes
 

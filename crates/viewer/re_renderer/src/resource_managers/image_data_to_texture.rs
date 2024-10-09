@@ -1,4 +1,4 @@
-use super::yuv_converter::{YuvFormatConversionTask, YuvPixelLayout};
+use super::yuv_converter::{YuvFormatConversionTask, YuvPixelLayout, YuvRange};
 use crate::{
     renderer::DrawError,
     wgpu_resources::{GpuTexture, TextureDesc},
@@ -62,6 +62,7 @@ pub enum SourceImageDataFormat {
     Yuv {
         format: YuvPixelLayout,
         primaries: ColorPrimaries,
+        range: YuvRange,
     },
     //
     // TODO(#7608): Add rgb (3 channels!) formats.
@@ -259,9 +260,14 @@ pub fn transfer_image_data_to_texture(
             // No further conversion needed, we're done here!
             return Ok(data_texture);
         }
-        SourceImageDataFormat::Yuv { format, primaries } => YuvFormatConversionTask::new(
+        SourceImageDataFormat::Yuv {
+            format,
+            primaries,
+            range,
+        } => YuvFormatConversionTask::new(
             ctx,
             format,
+            range,
             primaries,
             &data_texture,
             &label,

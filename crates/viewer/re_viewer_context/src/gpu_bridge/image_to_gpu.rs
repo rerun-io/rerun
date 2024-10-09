@@ -10,7 +10,9 @@ use re_renderer::{
     config::DeviceCaps,
     pad_rgb_to_rgba,
     renderer::{ColorMapper, ColormappedTexture, ShaderDecoding},
-    resource_managers::{ColorPrimaries, ImageDataDesc, SourceImageDataFormat, YuvPixelLayout},
+    resource_managers::{
+        ColorPrimaries, ImageDataDesc, SourceImageDataFormat, YuvPixelLayout, YuvRange,
+    },
     RenderContext,
 };
 use re_types::components::ClassId;
@@ -188,11 +190,9 @@ pub fn image_data_range_heuristic(image_stats: &ImageStats, image_format: &Image
 
 /// Return whether an image should be assumed to be encoded in sRGB color space ("gamma space", no EOTF applied).
 fn image_decode_srgb_gamma_heuristic(image_stats: &ImageStats, image_format: ImageFormat) -> bool {
-    if let Some(pixel_format) = image_format.pixel_format {
-        match pixel_format {
-            // Have to do the conversion because we don't use an `Srgb` texture format.
-            PixelFormat::NV12 | PixelFormat::YUY2 => true,
-        }
+    if image_format.pixel_format.is_some() {
+        // Have to do the conversion because we don't use an `Srgb` texture format.
+        true
     } else {
         let (min, max) = image_stats.finite_range;
 
@@ -247,25 +247,64 @@ pub fn texture_creation_desc_from_color_image<'a>(
     // TODO(#7608): All image data ingestion conversions should all be handled by re_renderer!
 
     let (data, format) = if let Some(pixel_format) = image.format.pixel_format {
-        match pixel_format {
-            // Using Bt.601 here for historical reasons.
+        let data = cast_slice_to_cow(image.buffer.as_slice());
+        let format = match pixel_format {
+            // For historical reasons, using Bt.709 for fully planar formats and Bt.601 for others.
+            //
+            // TODO(andreas): Investigate if there's underlying expecation for some of these (for instance I suspect that NV12 is "usually" BT601).
             // TODO(andreas): Expose color primaries. It's probably still the better default (for instance that's what jpeg still uses),
             // but should confirm & back that up!
-            PixelFormat::NV12 => (
-                cast_slice_to_cow(image.buffer.as_slice()),
-                SourceImageDataFormat::Yuv {
-                    format: YuvPixelLayout::Y_UV420,
-                    primaries: ColorPrimaries::Bt601,
-                },
-            ),
-            PixelFormat::YUY2 => (
-                cast_slice_to_cow(image.buffer.as_slice()),
-                SourceImageDataFormat::Yuv {
-                    format: YuvPixelLayout::YUYV422,
-                    primaries: ColorPrimaries::Bt601,
-                },
-            ),
-        }
+            //
+            PixelFormat::Y_U_V24_FullRange => SourceImageDataFormat::Yuv {
+                format: YuvPixelLayout::Y_U_V444,
+                range: YuvRange::Full,
+                primaries: ColorPrimaries::Bt709,
+            },
+
+            PixelFormat::Y_U_V16_FullRange => SourceImageDataFormat::Yuv {
+                format: YuvPixelLayout::Y_U_V422,
+                range: YuvRange::Full,
+                primaries: ColorPrimaries::Bt709,
+            },
+
+            PixelFormat::Y_U_V12_FullRange => SourceImageDataFormat::Yuv {
+                format: YuvPixelLayout::Y_UV420,
+                range: YuvRange::Full,
+                primaries: ColorPrimaries::Bt709,
+            },
+
+            PixelFormat::Y_U_V24_LimitedRange => SourceImageDataFormat::Yuv {
+                format: YuvPixelLayout::Y_U_V444,
+                range: YuvRange::Limited,
+                primaries: ColorPrimaries::Bt709,
+            },
+
+            PixelFormat::Y_U_V16_LimitedRange => SourceImageDataFormat::Yuv {
+                format: YuvPixelLayout::Y_U_V422,
+                range: YuvRange::Limited,
+                primaries: ColorPrimaries::Bt709,
+            },
+
+            PixelFormat::Y_U_V12_LimitedRange => SourceImageDataFormat::Yuv {
+                format: YuvPixelLayout::Y_UV420,
+                range: YuvRange::Limited,
+                primaries: ColorPrimaries::Bt709,
+            },
+
+            PixelFormat::NV12 => SourceImageDataFormat::Yuv {
+                format: YuvPixelLayout::Y_UV420,
+                range: YuvRange::Limited,
+                primaries: ColorPrimaries::Bt601,
+            },
+
+            PixelFormat::YUY2 => SourceImageDataFormat::Yuv {
+                format: YuvPixelLayout::YUYV422,
+                range: YuvRange::Limited,
+                primaries: ColorPrimaries::Bt601,
+            },
+        };
+
+        (data, format)
     } else {
         let color_model = image.format.color_model();
         let datatype = image.format.datatype();

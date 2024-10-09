@@ -266,19 +266,20 @@ fn test_find_non_empty_dim_indices() {
 
 // ----------------------------------------------------------------------------
 
-// TODO(jan): there is a duplicate of this function in `crates/store/re_video/src/decode/av1.rs`
 /// Returns sRGB from YUV color.
 ///
-/// This conversion mirrors the function of the same name in `crates/viewer/re_renderer/shader/decodings.wgsl`
+/// This conversion mirrors the function of the same name in `yuv_converter.wgsl`
 ///
 /// Specifying the color standard should be exposed in the future [#3541](https://github.com/rerun-io/rerun/pull/3541)
-pub fn rgb_from_yuv(y: u8, u: u8, v: u8) -> [u8; 3] {
-    let (y, u, v) = (y as f32, u as f32, v as f32);
+pub fn rgb_from_yuv(y: u8, u: u8, v: u8, limited_range: bool) -> [u8; 3] {
+    let (mut y, mut u, mut v) = (y as f32, u as f32, v as f32);
 
     // rescale YUV values
-    let y = (y - 16.0) / 219.0;
-    let u = (u - 128.0) / 224.0;
-    let v = (v - 128.0) / 224.0;
+    if limited_range {
+        y = (y - 16.0) / 219.0;
+        u = (u - 128.0) / 224.0;
+        v = (v - 128.0) / 224.0;
+    }
 
     // BT.601 (aka. SDTV, aka. Rec.601). wiki: https://en.wikipedia.org/wiki/YCbCr#ITU-R_BT.601_conversion
     let r = y + 1.402 * v;

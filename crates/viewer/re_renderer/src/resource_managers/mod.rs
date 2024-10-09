@@ -14,4 +14,4 @@ pub use image_data_to_texture::{
     ColorPrimaries, ImageDataDesc, ImageDataToTextureError, SourceImageDataFormat,
 };
 pub use texture_manager::{GpuTexture2D, TextureManager2D, TextureManager2DError};
-pub use yuv_converter::YuvPixelLayout;
+pub use yuv_converter::{YuvPixelLayout, YuvRange};

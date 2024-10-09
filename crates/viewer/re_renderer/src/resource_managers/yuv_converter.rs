@@ -27,6 +27,8 @@ use super::ColorPrimaries;
 /// > RGB <-> YCrCb JPEG [...] Y, Cr, and Cb cover the whole value range.
 /// > RGB <-> YUV with subsampling [...] with resulting values Y [16, 235], U and V [16, 240] centered at 128.
 ///
+/// For more on YUV ranges see [`YuvRange`].
+///
 /// Naming schema:
 /// * every time a plane starts add a `_`
 /// * end with `4xy` for 4:x:y subsampling.
@@ -112,6 +114,7 @@ pub enum YuvPixelLayout {
     // ---------------------------
     //
     /// 4:2:0 subsampling with a separate Y plane, followed by a UV plane.
+    /// Also known as `NV12` (although `NV12` usually also implies the limited range).
     ///
     /// Expects single channel data texture format.
     ///
@@ -171,14 +174,24 @@ pub enum YuvPixelLayout {
     Y400 = 300,
 }
 
+/// Expected range of YUV values.
+#[derive(Clone, Copy, Debug)]
+pub enum YuvRange {
+    /// Use limited range YUV, i.e. Y is valid in [16, 235] and U/V [16, 240].
+    /// Outside of it is clamped.
+    Limited,
+
+    /// Use full range YUV with all components ranging from 0 to 255 for 8bit or higher otherwise.
+    Full,
+}
+
 impl YuvPixelLayout {
     /// Given the dimensions of the output picture, what are the expected dimensions of the input data texture.
     pub fn data_texture_width_height(&self, [decoded_width, decoded_height]: [u32; 2]) -> [u32; 2] {
         match self {
             Self::Y_U_V444 => [decoded_width, decoded_height * 3],
             Self::Y_U_V422 => [decoded_width, decoded_height * 2],
-            Self::Y_U_V420 => [decoded_width, decoded_height + decoded_height / 2],
-            Self::Y_UV420 => [decoded_width, decoded_height + decoded_height / 2],
+            Self::Y_U_V420 | Self::Y_UV420 => [decoded_width, decoded_height + decoded_height / 2],
             Self::YUYV422 => [decoded_width * 2, decoded_height],
             Self::Y400 => [decoded_width, decoded_height],
         }
@@ -266,6 +279,7 @@ impl YuvFormatConversionTask {
     pub fn new(
         ctx: &RenderContext,
         format: YuvPixelLayout,
+        _range: YuvRange, // TODO: implement
         primaries: ColorPrimaries,
         input_data: &GpuTexture,
         output_label: &DebugLabel,
