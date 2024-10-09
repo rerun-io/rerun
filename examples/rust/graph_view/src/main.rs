@@ -55,7 +55,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             app.add_receiver(rx);
 
             // Register the custom space view
-            app.add_space_view_class::<graph_space_view::GraphSpaceView>()
+            app.add_space_view_class::<view::GraphSpaceView>()
                 .unwrap();
 
             Box::new(app)
