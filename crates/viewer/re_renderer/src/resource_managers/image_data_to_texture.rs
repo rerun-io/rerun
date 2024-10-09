@@ -1,6 +1,4 @@
-use super::chroma_subsampling_converter::{
-    ChromaSubsamplingConversionTask, ChromaSubsamplingPixelFormat,
-};
+use super::yuv_converter::{YuvFormatConversionTask, YuvPixelLayout};
 use crate::{
     renderer::DrawError,
     wgpu_resources::{GpuTexture, TextureDesc},
@@ -17,7 +15,7 @@ use crate::{
 /// Ffmpeg's documentation has a short & good overview of these relationships:
 /// <https://trac.ffmpeg.org/wiki/colorspace#WhatiscolorspaceWhyshouldwecare/>
 ///
-/// Values need to be kept in sync with `chroma_subsampling_converter.wgsl`
+/// Values need to be kept in sync with `yuv_converter.wgsl`
 #[derive(Clone, Copy, Debug)]
 pub enum ColorPrimaries {
     /// BT.601 (aka. SDTV, aka. Rec.601)
@@ -65,7 +63,7 @@ pub enum SourceImageDataFormat {
 
     /// YUV (== `YCbCr`) formats, typically using chroma downsampling.
     Yuv {
-        format: ChromaSubsamplingPixelFormat,
+        format: YuvPixelLayout,
         primaries: ColorPrimaries,
     },
     //
@@ -260,7 +258,7 @@ pub fn transfer_image_data_to_texture(
             // No further conversion needed, we're done here!
             return Ok(data_texture);
         }
-        SourceImageDataFormat::Yuv { format, primaries } => ChromaSubsamplingConversionTask::new(
+        SourceImageDataFormat::Yuv { format, primaries } => YuvFormatConversionTask::new(
             ctx,
             format,
             primaries,

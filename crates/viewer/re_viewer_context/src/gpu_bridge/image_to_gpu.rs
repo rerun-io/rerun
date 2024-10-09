@@ -11,7 +11,7 @@ use re_renderer::{
     pad_rgb_to_rgba,
     renderer::{ColorMapper, ColormappedTexture, ShaderDecoding},
     resource_managers::{
-        ChromaSubsamplingPixelFormat, ColorPrimaries, ImageDataDesc, SourceImageDataFormat,
+        YuvPixelLayout, ColorPrimaries, ImageDataDesc, SourceImageDataFormat,
     },
     RenderContext,
 };
@@ -256,14 +256,14 @@ pub fn texture_creation_desc_from_color_image<'a>(
             PixelFormat::NV12 => (
                 cast_slice_to_cow(image.buffer.as_slice()),
                 SourceImageDataFormat::Yuv {
-                    format: ChromaSubsamplingPixelFormat::Y_UV12,
+                    format: YuvPixelLayout::Y_UV12,
                     primaries: ColorPrimaries::Bt601,
                 },
             ),
             PixelFormat::YUY2 => (
                 cast_slice_to_cow(image.buffer.as_slice()),
                 SourceImageDataFormat::Yuv {
-                    format: ChromaSubsamplingPixelFormat::YUYV16,
+                    format: YuvPixelLayout::YUYV16,
                     primaries: ColorPrimaries::Bt601,
                 },
             ),

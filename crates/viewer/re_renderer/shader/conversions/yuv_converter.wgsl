@@ -14,8 +14,8 @@ var<uniform> uniform_buffer: UniformBuffer;
 var input_texture: texture_2d<u32>;
 
 
-const FORMAT_Y_UV = 0u;
-const FORMAT_YUYV16 = 1u;
+const YUV_LAYOUT_Y_UV = 0u;
+const YUV_LAYOUT_YUYV16 = 1u;
 
 const PRIMARIES_BT601 = 0u;
 const PRIMARIES_BT709 = 1u;
@@ -62,14 +62,14 @@ fn srgb_from_yuv(yuv: vec3f, primaries: u32) -> vec3f {
 
 /// Extracts YUV data from a chroma subsampling encoded texture at specific coordinates.
 ///
-/// See also `enum ChromaSubsamplingPixelFormat` in `chroma_subsampling_converter.rs for a specification of
+/// See also `enum YuvPixelLayout` in `yuv_converter.rs for a specification of
 /// the expected data layout.
-fn decode_chroma_subsampling_format_to_yuv(format: u32, texture: texture_2d<u32>, coords: vec2f) -> vec3f {
+fn sample_yuv(yuv_layout: u32, texture: texture_2d<u32>, coords: vec2f) -> vec3f {
     let texture_dim = vec2f(textureDimensions(texture).xy);
     var yuv: vec3f;
 
-    switch (format)  {
-        case FORMAT_Y_UV: {
+    switch (yuv_layout)  {
+        case YUV_LAYOUT_Y_UV: {
             let uv_offset = u32(floor(texture_dim.y / 1.5));
             let uv_row = u32(coords.y / 2);
             var uv_col = u32(coords.x / 2) * 2u;
@@ -79,7 +79,7 @@ fn decode_chroma_subsampling_format_to_yuv(format: u32, texture: texture_2d<u32>
             yuv[2] = f32(textureLoad(texture, vec2u((u32(uv_col) + 1u), uv_offset + uv_row), 0).r);
         }
 
-        case FORMAT_YUYV16: {
+        case YUV_LAYOUT_YUYV16: {
             // texture is 2 * width * height
             // every 4 bytes is 2 pixels
             let uv_row = u32(coords.y);
@@ -105,7 +105,7 @@ fn decode_chroma_subsampling_format_to_yuv(format: u32, texture: texture_2d<u32>
 fn fs_main(in: FragmentInput) -> @location(0) vec4f {
     let coords = vec2f(uniform_buffer.target_texture_size) * in.texcoord;
 
-    let yuv = decode_chroma_subsampling_format_to_yuv(uniform_buffer.format, input_texture, coords);
+    let yuv = sample_yuv(uniform_buffer.format, input_texture, coords);
     let rgb = srgb_from_yuv(yuv, uniform_buffer.primaries);
 
     return vec4f(rgb, 1.0);
