@@ -102,10 +102,10 @@ class TestDataframe:
 
     def test_select_columns(self) -> None:
         view = self.recording.view(index="my_index", contents="points")
-        log_time = rr.dataframe.IndexColumnSelector("my_index")
+        index_col = rr.dataframe.IndexColumnSelector("my_index")
         pos = rr.dataframe.ComponentColumnSelector("points", rr.components.Position3D)
 
-        batches = view.select(log_time, pos)
+        batches = view.select(index_col, pos)
 
         table = pa.Table.from_batches(batches, batches.schema)
         # points
