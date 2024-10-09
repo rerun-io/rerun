@@ -15,7 +15,17 @@ use super::ColorPrimaries;
 
 /// Supported chroma subsampling input formats.
 ///
-/// Keep indices in sync with `yuv_converter.wgsl`
+/// We use `YUV`/`YCbCr`/`YPbPr` interchangably and usually just call it `YUV`.
+///
+/// According to this [source](https://www.retrosix.wiki/yuv-vs-ycbcr-vs-rgb-color-space/):
+/// * `YUV` is an analog signal
+/// * `YCbCr` is scaled and offseted version of YUV, used in digital signals (we denote this as "limited range YUV")
+/// * `YPbPr` is the physical component cabel to transmit `YCbCr`
+/// Actual use in the wild seems to be all over the place.
+/// For instance `OpenCV` uses `YCbCr` when talking about the full range and YUV when talking about
+/// limited range. [Source](https://docs.opencv.org/4.x/de/d25/imgproc_color_conversions.html):
+/// > RGB <-> YCrCb JPEG [...] Y, Cr, and Cb cover the whole value range.
+/// > RGB <-> YUV with subsampling [...] with resulting values Y [16, 235], U and V [16, 240] centered at 128.
 ///
 /// Naming schema:
 /// * every time a plane starts add a `_`
@@ -23,6 +33,8 @@ use super::ColorPrimaries;
 ///
 /// This picture gives a great overview of how to interpret the 4:x:y naming scheme for subsampling:
 /// <https://en.wikipedia.org/wiki/Chroma_subsampling#Sampling_systems_and_ratios/>
+///
+/// Keep indices in sync with `yuv_converter.wgsl`
 #[allow(non_camel_case_types)]
 #[derive(Clone, Copy, Debug)]
 pub enum YuvPixelLayout {
