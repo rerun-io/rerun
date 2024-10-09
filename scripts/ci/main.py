@@ -179,7 +179,13 @@ def main() -> None:
         ),
     )
 
-    rr.log("expectation", rr.TextDocument("The images should look the same, except for some chroma artifacts."))
+    rr.log(
+        "expectation",
+        rr.TextDocument("""The images should look the same, except for some chroma artifacts.
+
+
+"""),
+    )
 
     rr.script_teardown(args)
 
