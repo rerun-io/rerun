@@ -17,4 +17,4 @@ An undirected edge in a graph connecting two nodes.
 
 ## Used by
 
-* [`GraphEdges`](../archetypes/graph_edges.md)
+* [`GraphEdgesUndirected`](../archetypes/graph_edges_undirected.md)

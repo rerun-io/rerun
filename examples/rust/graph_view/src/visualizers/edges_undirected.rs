@@ -20,17 +20,17 @@ use re_viewer::external::{
 use crate::types::EdgeInstance;
 
 #[derive(Default)]
-pub struct UndirectedEdgesVisualizer {
-    pub data: Vec<UndirectedEdgesData>,
+pub struct EdgesUndirectedVisualizer {
+    pub data: Vec<EdgesUndirectedData>,
 }
 
-pub struct UndirectedEdgesData {
+pub struct EdgesUndirectedData {
     pub entity_path: re_log_types::EntityPath,
     edges: ChunkComponentIterItem<components::GraphEdgeUndirected>,
     colors: ChunkComponentIterItem<components::Color>,
 }
 
-impl UndirectedEdgesData {
+impl EdgesUndirectedData {
     pub fn edges(&self) -> impl Iterator<Item = EdgeInstance> {
         clamped_zip_2x1(
             self.edges.iter(),
@@ -48,15 +48,15 @@ impl UndirectedEdgesData {
     }
 }
 
-impl IdentifiedViewSystem for UndirectedEdgesVisualizer {
+impl IdentifiedViewSystem for EdgesUndirectedVisualizer {
     fn identifier() -> ViewSystemIdentifier {
         "GraphEdgesUndirected".into()
     }
 }
 
-impl VisualizerSystem for UndirectedEdgesVisualizer {
+impl VisualizerSystem for EdgesUndirectedVisualizer {
     fn visualizer_query_info(&self) -> VisualizerQueryInfo {
-        VisualizerQueryInfo::from_archetype::<archetypes::GraphEdges>()
+        VisualizerQueryInfo::from_archetype::<archetypes::GraphEdgesUndirected>()
     }
 
     /// Populates the scene part with data from the store.
@@ -70,7 +70,7 @@ impl VisualizerSystem for UndirectedEdgesVisualizer {
 
         for data_result in query.iter_visible_data_results(ctx, Self::identifier()) {
             let results = data_result
-                .latest_at_with_blueprint_resolved_data::<archetypes::GraphEdges>(
+                .latest_at_with_blueprint_resolved_data::<archetypes::GraphEdgesUndirected>(
                     ctx,
                     &timeline_query,
                 );
@@ -85,7 +85,7 @@ impl VisualizerSystem for UndirectedEdgesVisualizer {
             );
 
             for (_index, edges, colors) in data {
-                self.data.push(UndirectedEdgesData {
+                self.data.push(EdgesUndirectedData {
                     entity_path: data_result.entity_path.clone(),
                     edges,
                     colors: colors.unwrap_or_default(),
@@ -107,4 +107,4 @@ impl VisualizerSystem for UndirectedEdgesVisualizer {
     }
 }
 
-re_viewer_context::impl_component_fallback_provider!(UndirectedEdgesVisualizer => []);
+re_viewer_context::impl_component_fallback_provider!(EdgesUndirectedVisualizer => []);

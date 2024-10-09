@@ -3,7 +3,6 @@ use re_viewer::external::{
     re_entity_db::InstancePath,
     re_log::external::log,
     re_log_types::EntityPath,
-    re_renderer::view_builder::TargetConfiguration,
     re_types::SpaceViewClassIdentifier,
     re_ui::{self, UiExt},
     re_viewer_context::{
@@ -19,7 +18,7 @@ use crate::{
     graph::Graph,
     types::NodeIndex,
     ui::{self, draw_dummy, GraphSpaceViewState},
-    visualizers::{NodeVisualizer, UndirectedEdgesVisualizer},
+    visualizers::{EdgesDirectedVisualizer, EdgesUndirectedVisualizer, NodeVisualizer},
 };
 
 #[derive(Default)]
@@ -50,7 +49,8 @@ impl SpaceViewClass for GraphSpaceView {
         system_registry: &mut SpaceViewSystemRegistrator<'_>,
     ) -> Result<(), SpaceViewClassRegistryError> {
         system_registry.register_visualizer::<NodeVisualizer>()?;
-        system_registry.register_visualizer::<UndirectedEdgesVisualizer>()
+        system_registry.register_visualizer::<EdgesDirectedVisualizer>()?;
+        system_registry.register_visualizer::<EdgesUndirectedVisualizer>()
     }
 
     fn new_state(&self) -> Box<dyn SpaceViewState> {
@@ -112,11 +112,14 @@ impl SpaceViewClass for GraphSpaceView {
         system_output: SystemExecutionOutput,
     ) -> Result<(), SpaceViewSystemExecutionError> {
         let node_system = system_output.view_systems.get::<NodeVisualizer>()?;
-        let edge_system = system_output
+        let directed_system = system_output
             .view_systems
-            .get::<UndirectedEdgesVisualizer>()?;
+            .get::<EdgesDirectedVisualizer>()?;
+        let undirected_system = system_output
+            .view_systems
+            .get::<EdgesUndirectedVisualizer>()?;
 
-        let graph = Graph::from_nodes_edges(&node_system.data, &edge_system.data);
+        let graph = Graph::from_nodes_edges(&node_system.data, &undirected_system.data);
 
         let state = state.downcast_mut::<GraphSpaceViewState>()?;
         let (id, clip_rect_window) = ui.allocate_space(ui.available_size());
@@ -124,12 +127,19 @@ impl SpaceViewClass for GraphSpaceView {
         let Some(layout) = &mut state.layout else {
             let node_sizes = ui::measure_node_sizes(ui, graph.all_nodes());
 
+            let undirected = undirected_system
+            .data
+            .iter()
+            .flat_map(|d| d.edges().map(|e| (e.source.into(), e.target.into())));
+
+            let directed = directed_system
+            .data
+            .iter()
+            .flat_map(|d| d.edges().map(|e| (e.source.into(), e.target.into())));
+
             let layout = crate::layout::compute_layout(
                 node_sizes.into_iter(),
-                edge_system
-                    .data
-                    .iter()
-                    .flat_map(|d| d.edges().map(|e| (e.source.into(), e.target.into()))),
+                undirected.chain(directed),
             )?;
 
             if let Some(bounding_box) = ui::bounding_rect_from_iter(layout.values()) {
@@ -294,7 +304,7 @@ impl SpaceViewClass for GraphSpaceView {
             ui.ctx().set_sublayer(window_layer, id);
         }
 
-        for data in edge_system.data.iter() {
+        for data in undirected_system.data.iter() {
             let ent_highlight = query.highlights.entity_highlight(data.entity_path.hash());
 
             for edge in data.edges() {
@@ -319,6 +329,44 @@ impl SpaceViewClass for GraphSpaceView {
                             source_pos,
                             target_pos,
                             ent_highlight.index_highlight(edge.instance),
+                            false
+                        );
+                    })
+                    .response;
+
+                let id = response.layer_id;
+
+                ui.ctx().set_transform_layer(id, world_to_window);
+                ui.ctx().set_sublayer(window_layer, id);
+            }
+        }
+
+        for data in directed_system.data.iter() {
+            let ent_highlight = query.highlights.entity_highlight(data.entity_path.hash());
+
+            for edge in data.edges() {
+                let source_ix = NodeIndex::from(edge.source);
+                let target_ix = NodeIndex::from(edge.target);
+                let source_pos = layout
+                    .get(&source_ix)
+                    .ok_or_else(|| Error::EdgeUnknownNode(edge.source.to_string()))?;
+                let target_pos = layout
+                    .get(&target_ix)
+                    .ok_or_else(|| Error::EdgeUnknownNode(edge.target.to_string()))?;
+
+                let response = egui::Area::new(id.with((data.entity_path.hash(), edge.instance)))
+                    .current_pos(source_pos.center())
+                    .order(egui::Order::Background)
+                    .constrain(false)
+                    .show(ui.ctx(), |ui| {
+                        ui.set_clip_rect(world_to_window.inverse() * clip_rect_window);
+                        ui::draw_edge(
+                            ui,
+                            edge.color,
+                            source_pos,
+                            target_pos,
+                            ent_highlight.index_highlight(edge.instance),
+                            true,
                         );
                     })
                     .response;

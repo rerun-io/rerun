@@ -2,13 +2,12 @@
 //!
 //! Usage:
 //! ```
-//!  cargo run -p minimal_options -- --help
+//!  cargo run -p node_link_graph -- --connect
 //! ```
 
-use rerun::components::GraphEdgeUndirected;
-use rerun::external::{log, re_log};
+use rerun::external::re_log;
 
-use rerun::{Color, GraphEdges, GraphNodes};
+use rerun::{Color, GraphEdgesDirected, GraphEdgesUndirected, GraphNodes};
 
 #[derive(Debug, clap::Parser)]
 #[clap(author, version, about)]
@@ -44,7 +43,7 @@ fn run(rec: &rerun::RecordingStream, _args: &Args) -> anyhow::Result<()> {
     rec.log("kitchen/nodes", &GraphNodes::new(["area0", "area1"]))?;
     rec.log(
         "kitchen/edges",
-        &GraphEdges::new([("kitchen/nodes", "area0", "area1")]),
+        &GraphEdgesDirected::new([("kitchen/nodes", "area0", "area1")]),
     )?;
 
     rec.set_time_sequence("frame", 1);
@@ -58,7 +57,7 @@ fn run(rec: &rerun::RecordingStream, _args: &Args) -> anyhow::Result<()> {
     )?;
     rec.log(
         "living/edges",
-        &GraphEdges::new([
+        &GraphEdgesDirected::new([
             ("living/nodes", "area0", "area1"),
             ("living/nodes", "area0", "area2"),
             ("living/nodes", "area1", "area2"),
@@ -67,7 +66,7 @@ fn run(rec: &rerun::RecordingStream, _args: &Args) -> anyhow::Result<()> {
 
     rec.log(
         "doors/edges",
-        &GraphEdges::new([
+        &GraphEdgesDirected::new([
             (("kitchen/nodes", "area0"), ("hallway/nodes", "area0")),
             (("hallway/nodes", "area0"), ("living/nodes", "area2")),
         ]),
@@ -75,7 +74,7 @@ fn run(rec: &rerun::RecordingStream, _args: &Args) -> anyhow::Result<()> {
 
     rec.log(
         "edges",
-        &GraphEdges::new([
+        &GraphEdgesUndirected::new([
             (("kitchen/nodes", "area0"), ("kitchen/objects", "sink")),
             (("kitchen/nodes", "area1"), ("kitchen/objects", "fridge")),
             (("living/nodes", "area1"), ("living/objects", "table")),

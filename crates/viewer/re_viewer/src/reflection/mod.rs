@@ -1080,9 +1080,35 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
             },
         ),
         (
-            ArchetypeName::new("rerun.archetypes.GraphEdges"),
+            ArchetypeName::new("rerun.archetypes.GraphEdgesDirected"),
             ArchetypeReflection {
-                display_name: "Graph edges",
+                display_name: "Graph edges directed",
+                fields: vec![
+                    ArchetypeFieldReflection { component_name :
+                    "rerun.components.GraphEdgeDirected".into(), display_name : "Edges",
+                    docstring_md : "A list of node IDs.", is_required : true, },
+                    ArchetypeFieldReflection { component_name : "rerun.components.Color"
+                    .into(), display_name : "Colors", docstring_md :
+                    "Optional colors for the boxes.", is_required : false, },
+                    ArchetypeFieldReflection { component_name : "rerun.components.Text"
+                    .into(), display_name : "Labels", docstring_md :
+                    "Optional text labels for the node.", is_required : false, },
+                    ArchetypeFieldReflection { component_name :
+                    "rerun.components.ShowLabels".into(), display_name : "Show labels",
+                    docstring_md :
+                    "Optional choice of whether the text labels should be shown by default.",
+                    is_required : false, }, ArchetypeFieldReflection { component_name :
+                    "rerun.components.ClassId".into(), display_name : "Class ids",
+                    docstring_md :
+                    "Optional [`components.ClassId`](https://rerun.io/docs/reference/types/components/class_id)s for the boxes.\n\nThe [`components.ClassId`](https://rerun.io/docs/reference/types/components/class_id) provides colors and labels if not specified explicitly.",
+                    is_required : false, },
+                ],
+            },
+        ),
+        (
+            ArchetypeName::new("rerun.archetypes.GraphEdgesUndirected"),
+            ArchetypeReflection {
+                display_name: "Graph edges undirected",
                 fields: vec![
                     ArchetypeFieldReflection { component_name :
                     "rerun.components.GraphEdgeUndirected".into(), display_name :

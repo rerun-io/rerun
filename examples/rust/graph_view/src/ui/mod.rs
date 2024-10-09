@@ -11,6 +11,9 @@ use re_viewer::external::{
     },
 };
 
+mod edge;
+pub(crate) use edge::draw_edge;
+
 use crate::{graph::Node, types::{NodeIndex, NodeInstance, UnknownNodeInstance}};
 
 pub fn draw_node(
@@ -99,37 +102,6 @@ pub fn draw_entity(
             ui.ctx().style().visuals.text_color(),
         );
     }
-}
-
-pub fn draw_edge(
-    ui: &mut egui::Ui,
-    color: Option<egui::Color32>,
-    source: &egui::Rect,
-    target: &egui::Rect,
-    highlight: InteractionHighlight,
-) {
-    let hcolor = match (
-        highlight.hover,
-        highlight.selection != SelectionHighlight::None,
-    ) {
-        (HoverHighlight::None, false) => None,
-        (HoverHighlight::None, true) => Some(ui.style().visuals.selection.bg_fill),
-        (HoverHighlight::Hovered, ..) => Some(ui.style().visuals.widgets.hovered.bg_fill),
-    };
-
-    egui::Frame::default().show(ui, |ui| {
-        let painter = ui.painter();
-        if let Some(hcolor) = hcolor {
-            painter.line_segment(
-                [source.center(), target.center()],
-                egui::Stroke::new(4.0, hcolor),
-            );
-        }
-        painter.line_segment(
-            [source.center(), target.center()],
-            egui::Stroke::new(1.0, color.unwrap_or(ui.style().visuals.text_color())),
-        );
-    });
 }
 
 pub fn measure_node_sizes<'a>(

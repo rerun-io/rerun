@@ -5,7 +5,7 @@ use re_viewer::external::re_types::datatypes;
 
 use crate::{
     types::{EdgeInstance, NodeInstance, UnknownNodeInstance},
-    visualizers::{NodeVisualizerData, UndirectedEdgesData},
+    visualizers::{NodeVisualizerData, EdgesUndirectedData},
 };
 
 pub(crate) enum Node<'a> {
@@ -17,13 +17,13 @@ pub(crate) struct Graph<'a> {
     /// Contains all nodes that are part mentioned in the edges but not part of the `nodes` list
     unknown: Vec<(EntityPath, datatypes::GraphNodeId)>,
     nodes: &'a Vec<NodeVisualizerData>,
-    undirected: &'a Vec<UndirectedEdgesData>,
+    undirected: &'a Vec<EdgesUndirectedData>,
 }
 
 impl<'a> Graph<'a> {
     pub fn from_nodes_edges(
         nodes: &'a Vec<NodeVisualizerData>,
-        undirected: &'a Vec<UndirectedEdgesData>,
+        undirected: &'a Vec<EdgesUndirectedData>,
     ) -> Self {
         let seen: HashSet<(&EntityPath, &datatypes::GraphNodeId)> = nodes
             .iter()
@@ -64,7 +64,7 @@ impl<'a> Graph<'a> {
         nodes.chain(unknowns)
     }
 
-    pub fn edges_by_entity(&self) -> impl Iterator<Item = &UndirectedEdgesData> {
+    pub fn edges_by_entity(&self) -> impl Iterator<Item = &EdgesUndirectedData> {
         self.undirected.iter()
     }
 

@@ -15,3 +15,6 @@ An undirected edge in a graph connecting two nodes.
  * 🦀 [Rust API docs for `GraphEdgeDirected`](https://docs.rs/rerun/latest/rerun/components/struct.GraphEdgeDirected.html)
 
 
+## Used by
+
+* [`GraphEdgesDirected`](../archetypes/graph_edges_directed.md)

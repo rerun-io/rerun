@@ -3,7 +3,7 @@ namespace rerun.archetypes;
 // ---
 
 /// A list of nodes in a graph with optional labels, colors, etc.
-table GraphEdges (
+table GraphEdgesDirected (
   "attr.rust.derive": "PartialEq, Eq",
   "attr.docs.category": "Graph",
   "attr.docs.view_types": "Graph View"
@@ -11,7 +11,7 @@ table GraphEdges (
   // --- Required ---
 
   /// A list of node IDs.
-  edges: [rerun.components.GraphEdgeUndirected] ("attr.rerun.component_required", order: 1000);
+  edges: [rerun.components.GraphEdgeDirected] ("attr.rerun.component_required", order: 1000);
 
 
   // --- Optional ---
