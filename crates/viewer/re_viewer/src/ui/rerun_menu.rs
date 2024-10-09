@@ -379,14 +379,13 @@ fn options_menu_ui(
     }
 }
 
-#[cfg_attr(target_arch = "wasm32", allow(clippy::needless_pass_by_ref_mut))]
-fn experimental_feature_ui(_ui: &mut egui::Ui, _app_options: &mut re_viewer_context::AppOptions) {
-    // IMPORTANT: if/when adding wasm-compatible experimental features, remove the conditional
-    // compilation directive just above the call size of this function!!
-
-    #[cfg(not(target_arch = "wasm32"))]
-    _ui
-        .re_checkbox(&mut _app_options.experimental_space_view_screenshots, "Space view screenshots")
+// IMPORTANT: if/when adding wasm-compatible experimental features, move this conditional
+// compilation directive to `space_view_screenshot` and remove the one above the call size of this
+// function!!
+#[cfg(not(target_arch = "wasm32"))]
+fn experimental_feature_ui(ui: &mut egui::Ui, app_options: &mut re_viewer_context::AppOptions) {
+    ui
+        .re_checkbox(&mut app_options.experimental_space_view_screenshots, "Space view screenshots")
         .on_hover_text("Allow taking screenshots of 2D and 3D space views via their context menu. Does not contain labels.");
 }
 
