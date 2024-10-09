@@ -67,6 +67,7 @@ struct PyIndexColumnSelector(TimeColumnSelector);
 #[pymethods]
 impl PyIndexColumnSelector {
     #[new]
+    #[pyo3(text_signature = "(self, index)")]
     fn new(index: &str) -> Self {
         Self(TimeColumnSelector {
             timeline: index.into(),
@@ -127,6 +128,7 @@ struct PyComponentColumnSelector(ComponentColumnSelector);
 #[pymethods]
 impl PyComponentColumnSelector {
     #[new]
+    #[pyo3(text_signature = "(self, entity_path: str, component: ComponentLike)")]
     fn new(entity_path: &str, component_name: ComponentLike) -> Self {
         Self(ComponentColumnSelector {
             entity_path: entity_path.into(),
@@ -196,7 +198,7 @@ impl AnyComponentColumn {
 struct ComponentLike(re_sdk::ComponentName);
 
 impl FromPyObject<'_> for ComponentLike {
-    fn extract(component: &PyAny) -> PyResult<Self> {
+    fn extract_bound(component: &Bound<'_, PyAny>) -> PyResult<Self> {
         if let Ok(component_str) = component.extract::<String>() {
             Ok(Self(component_str.into()))
         } else if let Ok(component_str) = component
