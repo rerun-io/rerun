@@ -42,7 +42,7 @@ namespace rerun::datatypes {
         /// the resolution of the Y plane.
         Y_U_V12_LimitedRange = 20,
 
-        /// `NV12` (aka `Y_UV12`) is a YUV 4:2:0 chroma downsampled form  at with 12 bits per pixel and 8 bits per channel.
+        /// `NV12` (aka `Y_UV12`) is a YUV 4:2:0 chroma downsampled form at with 12 bits per pixel and 8 bits per channel.
         ///
         /// This uses limited range YUV, i.e. Y is valid in [16, 235] and U/V [16, 240].
         /// Outside of it is clamped.

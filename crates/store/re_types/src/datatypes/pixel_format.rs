@@ -43,7 +43,7 @@ pub enum PixelFormat {
     #[allow(clippy::upper_case_acronyms)]
     Y_U_V12_LimitedRange = 20,
 
-    /// `NV12` (aka `Y_UV12`) is a YUV 4:2:0 chroma downsampled form  at with 12 bits per pixel and 8 bits per channel.
+    /// `NV12` (aka `Y_UV12`) is a YUV 4:2:0 chroma downsampled form at with 12 bits per pixel and 8 bits per channel.
     ///
     /// This uses limited range YUV, i.e. Y is valid in [16, 235] and U/V [16, 240].
     /// Outside of it is clamped.
@@ -134,7 +134,7 @@ impl ::re_types_core::reflection::Enum for PixelFormat {
                 "`Y_U_V12` is a YUV 4:2:0 fully planar YUV format without chroma downsampling, also known as `I420`.\n\nThis uses limited range YUV, i.e. Y is valid in [16, 235] and U/V [16, 240].\nOutside of it is clamped.\n\nFirst comes entire image in Y in one plane, followed by the U and V planes, which each only have half\nthe resolution of the Y plane."
             }
             Self::NV12 => {
-                "`NV12` (aka `Y_UV12`) is a YUV 4:2:0 chroma downsampled form  at with 12 bits per pixel and 8 bits per channel.\n\nThis uses limited range YUV, i.e. Y is valid in [16, 235] and U/V [16, 240].\nOutside of it is clamped.\n\nFirst comes entire image in Y in one plane,\nfollowed by a plane with interleaved lines ordered as U0, V0, U1, V1, etc."
+                "`NV12` (aka `Y_UV12`) is a YUV 4:2:0 chroma downsampled form at with 12 bits per pixel and 8 bits per channel.\n\nThis uses limited range YUV, i.e. Y is valid in [16, 235] and U/V [16, 240].\nOutside of it is clamped.\n\nFirst comes entire image in Y in one plane,\nfollowed by a plane with interleaved lines ordered as U0, V0, U1, V1, etc."
             }
             Self::YUY2 => {
                 "`YUY2` (aka `YUYV`, `YUYV16` or `NV21`), is a YUV 4:2:2 chroma downsampled format with 16 bits per pixel and 8 bits per channel.\n\nThis uses limited range YUV, i.e. Y is valid in [16, 235] and U/V [16, 240].\nOutside of it is clamped.\n\nThe order of the channels is Y0, U0, Y1, V0, all in the same plane."
