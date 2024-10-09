@@ -34,7 +34,7 @@ pub enum ColorPrimaries {
     /// but for all other purposes they are the same.
     /// (The only reason for us to convert to optical units ("linear" instead of "gamma") is for
     /// lighting & tonemapping where we typically start out with an sRGB image!)
-    Bt709 = 2,
+    Bt709 = 1,
     //
     // Not yet supported. These vary a lot more from the other two!
     //

@@ -99,7 +99,13 @@ impl ImageInfo {
                 // Shouldn't hit BGR and BGRA, but we'll handle it like RGB and RGBA here for completeness.
                 ColorModel::RGB | ColorModel::RGBA | ColorModel::BGR | ColorModel::BGRA => {
                     if channel < 3 {
-                        let rgb = rgb_from_yuv(luma, u, v, pixel_format.is_limited_yuv_range());
+                        let rgb = rgb_from_yuv(
+                            luma,
+                            u,
+                            v,
+                            pixel_format.is_limited_yuv_range(),
+                            pixel_format.color_primaries(),
+                        );
                         Some(TensorElement::U8(rgb[channel as usize]))
                     } else if channel == 4 {
                         Some(TensorElement::U8(255))

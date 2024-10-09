@@ -266,30 +266,91 @@ fn test_find_non_empty_dim_indices() {
 
 // ----------------------------------------------------------------------------
 
+// TODO(andreas): Expose this in the API.
+/// Type of color primaries a given image is in.
+///
+/// This applies both to YUV and RGB formats, but if not specified otherwise
+/// we assume BT.709 primaries for all RGB(A) 8bits per channel content (details below on [`ColorPrimaries::Bt709`]).
+/// Since with YUV content the color space is often less clear, we always explicitly
+/// specify it.
+///
+/// Ffmpeg's documentation has a short & good overview of these relationships:
+/// <https://trac.ffmpeg.org/wiki/colorspace#WhatiscolorspaceWhyshouldwecare/>
+#[derive(Clone, Copy, Debug)]
+pub enum ColorPrimaries {
+    /// BT.601 (aka. SDTV, aka. Rec.601)
+    ///
+    /// Wiki: <https://en.wikipedia.org/wiki/YCbCr#ITU-R_BT.601_conversion/>
+    Bt601,
+
+    /// BT.709 (aka. HDTV, aka. Rec.709)
+    ///
+    /// Wiki: <https://en.wikipedia.org/wiki/YCbCr#ITU-R_BT.709_conversion/>
+    ///
+    /// These are the same primaries we usually assume and use for all our rendering
+    /// since they are the same primaries used by sRGB.
+    /// <https://en.wikipedia.org/wiki/Rec._709#Relationship_to_sRGB/>
+    /// The OETF/EOTF function (<https://en.wikipedia.org/wiki/Transfer_functions_in_imaging/>) is different,
+    /// but for all other purposes they are the same.
+    /// (The only reason for us to convert to optical units ("linear" instead of "gamma") is for
+    /// lighting & tonemapping where we typically start out with an sRGB image!)
+    Bt709,
+    //
+    // Not yet supported. These vary a lot more from the other two!
+    //
+    // /// BT.2020 (aka. PQ, aka. Rec.2020)
+    // ///
+    // /// Wiki: <https://en.wikipedia.org/wiki/YCbCr#ITU-R_BT.2020_conversion/>
+    // BT2020_ConstantLuminance,
+    // BT2020_NonConstantLuminance,
+}
+
 /// Returns sRGB from YUV color.
 ///
 /// This conversion mirrors the function of the same name in `yuv_converter.wgsl`
 ///
 /// Specifying the color standard should be exposed in the future [#3541](https://github.com/rerun-io/rerun/pull/3541)
-pub fn rgb_from_yuv(y: u8, u: u8, v: u8, limited_range: bool) -> [u8; 3] {
+pub fn rgb_from_yuv(
+    y: u8,
+    u: u8,
+    v: u8,
+    limited_range: bool,
+    primaries: ColorPrimaries,
+) -> [u8; 3] {
     let (mut y, mut u, mut v) = (y as f32, u as f32, v as f32);
 
     // rescale YUV values
     if limited_range {
+        // "The resultant signals range from 16 to 235 for Y′ (Cb and Cr range from 16 to 240);
+        // the values from 0 to 15 are called footroom, while the values from 236 to 255 are called headroom."
         y = (y - 16.0) / 219.0;
         u = (u - 128.0) / 224.0;
         v = (v - 128.0) / 224.0;
+    } else {
+        y /= 255.0;
+        u = (u - 128.0) / 255.0;
+        v = (v - 128.0) / 255.0;
     }
 
-    // BT.601 (aka. SDTV, aka. Rec.601). wiki: https://en.wikipedia.org/wiki/YCbCr#ITU-R_BT.601_conversion
-    let r = y + 1.402 * v;
-    let g = y - 0.344 * u - 0.714 * v;
-    let b = y + 1.772 * u;
+    let r;
+    let g;
+    let b;
 
-    // BT.709 (aka. HDTV, aka. Rec.709). wiki: https://en.wikipedia.org/wiki/YCbCr#ITU-R_BT.709_conversion
-    // let r = y + 1.575 * v;
-    // let g = y - 0.187 * u - 0.468 * v;
-    // let b = y + 1.856 * u;
+    match primaries {
+        ColorPrimaries::Bt601 => {
+            // BT.601 (aka. SDTV, aka. Rec.601). wiki: https://en.wikipedia.org/wiki/YCbCr#ITU-R_BT.601_conversion
+            r = y + 1.402 * v;
+            g = y - 0.344 * u - 0.714 * v;
+            b = y + 1.772 * u;
+        }
+
+        ColorPrimaries::Bt709 => {
+            // BT.709 (aka. HDTV, aka. Rec.709). wiki: https://en.wikipedia.org/wiki/YCbCr#ITU-R_BT.709_conversion
+            r = y + 1.575 * v;
+            g = y - 0.187 * u - 0.468 * v;
+            b = y + 1.856 * u;
+        }
+    }
 
     [(255.0 * r) as u8, (255.0 * g) as u8, (255.0 * b) as u8]
 }

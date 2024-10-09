@@ -175,14 +175,21 @@ pub enum YuvPixelLayout {
 }
 
 /// Expected range of YUV values.
-#[derive(Clone, Copy, Debug)]
+///
+/// Keep indices in sync with `yuv_converter.wgsl`
+#[derive(Clone, Copy, Debug, Default)]
 pub enum YuvRange {
-    /// Use limited range YUV, i.e. Y is valid in [16, 235] and U/V [16, 240].
-    /// Outside of it is clamped.
-    Limited,
+    /// Use limited range YUV, i.e. for 8bit data, Y is valid in [16, 235] and U/V [16, 240].
+    ///
+    /// This is by far the more common YUV range.
+    // TODO(andreas): What about higher bit ranges?
+    // This range says https://www.reddit.com/r/ffmpeg/comments/uiugfc/comment/i7f4wyp/
+    // 64-940 for Y and 64-960 for chroma.
+    #[default]
+    Limited = 0,
 
     /// Use full range YUV with all components ranging from 0 to 255 for 8bit or higher otherwise.
-    Full,
+    Full = 1,
 }
 
 impl YuvPixelLayout {
@@ -244,14 +251,17 @@ mod gpu_data {
     #[derive(Clone, Copy, bytemuck::Pod, bytemuck::Zeroable)]
     pub struct UniformBuffer {
         /// Uses [`super::YuvPixelLayout`].
-        pub pixel_layout: u32,
+        pub yuv_layout: u32,
 
         /// Uses [`super::ColorPrimaries`].
         pub primaries: u32,
 
         pub target_texture_size: [u32; 2],
 
-        pub _end_padding: [wgpu_buffer_types::PaddingRow; 16 - 1],
+        /// Uses [`super::YuvRange`].
+        pub yuv_range: wgpu_buffer_types::U32RowPadded,
+
+        pub _end_padding: [wgpu_buffer_types::PaddingRow; 16 - 2],
     }
 }
 
@@ -278,8 +288,8 @@ impl YuvFormatConversionTask {
     /// see methods of [`YuvPixelLayout`] for details.
     pub fn new(
         ctx: &RenderContext,
-        format: YuvPixelLayout,
-        _range: YuvRange, // TODO: implement
+        yuv_layout: YuvPixelLayout,
+        yuv_range: YuvRange,
         primaries: ColorPrimaries,
         input_data: &GpuTexture,
         output_label: &DebugLabel,
@@ -310,9 +320,10 @@ impl YuvFormatConversionTask {
             ctx,
             format!("{output_label}_conversion").into(),
             gpu_data::UniformBuffer {
-                pixel_layout: format as _,
+                yuv_layout: yuv_layout as _,
                 primaries: primaries as _,
                 target_texture_size: output_width_height,
+                yuv_range: (yuv_range as u32).into(),
 
                 _end_padding: Default::default(),
             },

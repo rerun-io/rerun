@@ -15,33 +15,39 @@ import rerun.blueprint as rrb
 
 def bgra2y_u_v24(bgra: Any, full_range: bool) -> np.ndarray:
     if full_range:
-        yuv = cv2.cvtColor(bgra, cv2.COLOR_BGR2YCrCb)
+        yvu = cv2.cvtColor(bgra, cv2.COLOR_BGR2YCrCb)
+        y, v, u = cv2.split(yvu)
     else:
         yuv = cv2.cvtColor(bgra, cv2.COLOR_BGR2YUV)
-    y, v, u = cv2.split(yuv)
-    yuv24 = np.stack((y, u, v), axis=-1)
+        y, u, v = cv2.split(yuv)
+    y = np.array(y).flatten()
+    u = np.array(u).flatten()
+    v = np.array(v).flatten()
+    yuv24 = np.concatenate((y, u, v))
     return yuv24.astype(np.uint8)
 
 
 def bgra2y_u_v16(bgra: Any, full_range: bool) -> np.ndarray:
     if full_range:
-        yuv = cv2.cvtColor(bgra, cv2.COLOR_BGR2YCrCb)
+        yvu = cv2.cvtColor(bgra, cv2.COLOR_BGR2YCrCb)
+        y, v, u = cv2.split(yvu)
     else:
         yuv = cv2.cvtColor(bgra, cv2.COLOR_BGR2YUV)
-    y, v, u = cv2.split(yuv)
+        y, u, v = cv2.split(yuv)
     y = np.array(y).flatten()
-    u = np.array(cv2.resize(u, (u.shape[1], u.shape[0] // 2))).flatten()
-    v = np.array(cv2.resize(v, (v.shape[1], v.shape[0] // 2))).flatten()
+    u = np.array(cv2.resize(u, (u.shape[1] // 2, u.shape[0]))).flatten()
+    v = np.array(cv2.resize(v, (v.shape[1] // 2, v.shape[0]))).flatten()
     yuv16 = np.concatenate((y, u, v))
     return yuv16.astype(np.uint8)
 
 
 def bgra2y_u_v12(bgra: Any, full_range: bool) -> np.ndarray:
     if full_range:
-        yuv = cv2.cvtColor(bgra, cv2.COLOR_BGR2YCrCb)
+        yvu = cv2.cvtColor(bgra, cv2.COLOR_BGR2YCrCb)
+        y, v, u = cv2.split(yvu)
     else:
         yuv = cv2.cvtColor(bgra, cv2.COLOR_BGR2YUV)
-    y, v, u = cv2.split(yuv)
+        y, u, v = cv2.split(yuv)
     y = np.array(y).flatten()
     u = np.array(cv2.resize(u, (u.shape[1] // 2, u.shape[0] // 2))).flatten()
     v = np.array(cv2.resize(v, (v.shape[1] // 2, v.shape[0] // 2))).flatten()

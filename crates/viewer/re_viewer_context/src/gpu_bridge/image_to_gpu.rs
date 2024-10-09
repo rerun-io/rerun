@@ -248,6 +248,11 @@ pub fn texture_creation_desc_from_color_image<'a>(
 
     let (data, format) = if let Some(pixel_format) = image.format.pixel_format {
         let data = cast_slice_to_cow(image.buffer.as_slice());
+        let primaries = match pixel_format.color_primaries() {
+            re_types::image::ColorPrimaries::Bt601 => ColorPrimaries::Bt601,
+            re_types::image::ColorPrimaries::Bt709 => ColorPrimaries::Bt709,
+        };
+
         let format = match pixel_format {
             // For historical reasons, using Bt.709 for fully planar formats and Bt.601 for others.
             //
@@ -258,49 +263,49 @@ pub fn texture_creation_desc_from_color_image<'a>(
             PixelFormat::Y_U_V24_FullRange => SourceImageDataFormat::Yuv {
                 format: YuvPixelLayout::Y_U_V444,
                 range: YuvRange::Full,
-                primaries: ColorPrimaries::Bt709,
+                primaries,
             },
 
             PixelFormat::Y_U_V16_FullRange => SourceImageDataFormat::Yuv {
                 format: YuvPixelLayout::Y_U_V422,
                 range: YuvRange::Full,
-                primaries: ColorPrimaries::Bt709,
+                primaries,
             },
 
             PixelFormat::Y_U_V12_FullRange => SourceImageDataFormat::Yuv {
-                format: YuvPixelLayout::Y_UV420,
+                format: YuvPixelLayout::Y_U_V420,
                 range: YuvRange::Full,
-                primaries: ColorPrimaries::Bt709,
+                primaries,
             },
 
             PixelFormat::Y_U_V24_LimitedRange => SourceImageDataFormat::Yuv {
                 format: YuvPixelLayout::Y_U_V444,
                 range: YuvRange::Limited,
-                primaries: ColorPrimaries::Bt709,
+                primaries,
             },
 
             PixelFormat::Y_U_V16_LimitedRange => SourceImageDataFormat::Yuv {
                 format: YuvPixelLayout::Y_U_V422,
                 range: YuvRange::Limited,
-                primaries: ColorPrimaries::Bt709,
+                primaries,
             },
 
             PixelFormat::Y_U_V12_LimitedRange => SourceImageDataFormat::Yuv {
-                format: YuvPixelLayout::Y_UV420,
+                format: YuvPixelLayout::Y_U_V420,
                 range: YuvRange::Limited,
-                primaries: ColorPrimaries::Bt709,
+                primaries,
             },
 
             PixelFormat::NV12 => SourceImageDataFormat::Yuv {
                 format: YuvPixelLayout::Y_UV420,
                 range: YuvRange::Limited,
-                primaries: ColorPrimaries::Bt601,
+                primaries,
             },
 
             PixelFormat::YUY2 => SourceImageDataFormat::Yuv {
                 format: YuvPixelLayout::YUYV422,
                 range: YuvRange::Limited,
-                primaries: ColorPrimaries::Bt601,
+                primaries,
             },
         };
 
