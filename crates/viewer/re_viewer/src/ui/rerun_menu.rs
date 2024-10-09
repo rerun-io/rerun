@@ -352,6 +352,9 @@ fn options_menu_ui(
         });
     }
 
+    // Currently, the wasm target does not have any experimental features. Remove this conditional
+    // compilation directive if/when this changes.
+    #[cfg(not(target_arch = "wasm32"))]
     {
         ui.add_space(SPACING);
         ui.label("Experimental features:");
@@ -377,6 +380,9 @@ fn options_menu_ui(
 }
 
 fn experimental_feature_ui(ui: &mut egui::Ui, app_options: &mut re_viewer_context::AppOptions) {
+    // IMPORTANT: if/when adding wasm-compatible experimental features, remove the conditional
+    // compilation directive just above the call size of this function!!
+
     #[cfg(not(target_arch = "wasm32"))]
     ui
         .re_checkbox(&mut app_options.experimental_space_view_screenshots, "Space view screenshots")
