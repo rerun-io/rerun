@@ -99,8 +99,7 @@ def main():
     open_mouth_frames, closed_mouth_frames = analyze_data(df)
 
     # Log the analysis results
-    # TODO: avoid having to copy/paste the recording ID
-    rr.init("rerun_example_mp_face_detection", recording_id="73a8b473-0711-4b5a-b452-6e79de835299")
+    rr.init(recording.application_id(), recording_id=recording.recording_id())
     rr.connect()
     log_analysis(df, open_mouth_frames, closed_mouth_frames)
 
