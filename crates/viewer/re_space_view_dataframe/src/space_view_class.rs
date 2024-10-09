@@ -147,7 +147,7 @@ mode sets the default time range to _everything_. You can override this in the s
         let selected_columns =
             view_query.apply_column_visibility_to_view_columns(ctx, &view_columns)?;
 
-        let dataframe_query = re_chunk_store::QueryExpression2 {
+        let dataframe_query = re_chunk_store::QueryExpression {
             view_contents: Some(view_contents),
             filtered_index: view_query.timeline(ctx)?,
             filtered_index_range: Some(view_query.filter_by_range()?),

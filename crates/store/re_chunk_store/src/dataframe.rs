@@ -577,7 +577,7 @@ pub type IndexRange = ResolvedTimeRange;
 // TODO(cmc): ideally we'd like this to be the same type as the one used in the blueprint, possibly?
 // TODO(cmc): Get rid of all re_dataframe (as opposed to re_dataframe) stuff and rename this.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct QueryExpression2 {
+pub struct QueryExpression {
     /// The subset of the database that the query will run on: a set of [`EntityPath`]s and their
     /// associated [`ComponentName`]s.
     ///
@@ -607,7 +607,7 @@ pub struct QueryExpression2 {
     /// Only rows where at least 1 of the view-contents contains non-null data within that range will be kept in
     /// the final dataset.
     ///
-    /// This is ignored if [`QueryExpression2::using_index_values`] is set.
+    /// This is ignored if [`QueryExpression::using_index_values`] is set.
     ///
     /// Example: `ResolvedTimeRange(10, 20)`.
     pub filtered_index_range: Option<IndexRange>,
@@ -617,7 +617,7 @@ pub struct QueryExpression2 {
     /// Only rows where at least 1 column contains non-null data at these specific values will be kept
     /// in the final dataset.
     ///
-    /// This is ignored if [`QueryExpression2::using_index_values`] is set.
+    /// This is ignored if [`QueryExpression::using_index_values`] is set.
     ///
     /// Example: `[TimeInt(12), TimeInt(14)]`.
     pub filtered_index_values: Option<BTreeSet<IndexValue>>,
@@ -631,8 +631,8 @@ pub struct QueryExpression2 {
     ///
     /// The order of the samples will be respected in the final result.
     ///
-    /// If [`QueryExpression2::using_index_values`] is set, it overrides both [`QueryExpression2::filtered_index_range`]
-    /// and [`QueryExpression2::filtered_index_values`].
+    /// If [`QueryExpression::using_index_values`] is set, it overrides both [`QueryExpression::filtered_index_range`]
+    /// and [`QueryExpression::filtered_index_values`].
     ///
     /// Example: `[TimeInt(12), TimeInt(14)]`.
     pub using_index_values: Option<BTreeSet<IndexValue>>,
@@ -663,7 +663,7 @@ pub struct QueryExpression2 {
     pub selection: Option<Vec<ColumnSelector>>,
 }
 
-impl QueryExpression2 {
+impl QueryExpression {
     #[inline]
     pub fn new(index: impl Into<Timeline>) -> Self {
         let index = index.into();

@@ -1,5 +1,5 @@
 use re_chunk::{EntityPath, TransportChunk};
-use re_chunk_store::{ChunkStore, ColumnDescriptor, QueryExpression2, ViewContentsSelector};
+use re_chunk_store::{ChunkStore, ColumnDescriptor, QueryExpression, ViewContentsSelector};
 use re_log_types::EntityPathFilter;
 use re_query::Caches;
 
@@ -24,7 +24,7 @@ pub type RecordBatch = TransportChunk;
 ///
 /// See the following methods:
 /// * [`QueryEngine::schema`]: get the complete schema of the recording.
-/// * [`QueryEngine::query`]: execute a [`QueryExpression2`] on the recording.
+/// * [`QueryEngine::query`]: execute a [`QueryExpression`] on the recording.
 //
 // TODO(cmc): This needs to be a refcounted type that can be easily be passed around: the ref has
 // got to go. But for that we need to generally introduce `ChunkStoreHandle` and `QueryCacheHandle`
@@ -65,7 +65,7 @@ impl QueryEngine<'_> {
 
     /// Starts a new query by instantiating a [`QueryHandle`].
     #[inline]
-    pub fn query(&self, query: QueryExpression2) -> QueryHandle<'_> {
+    pub fn query(&self, query: QueryExpression) -> QueryHandle<'_> {
         QueryHandle::new(self, query)
     }
 

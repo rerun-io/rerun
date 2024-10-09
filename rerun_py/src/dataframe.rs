@@ -16,7 +16,7 @@ use pyo3::{
 
 use re_chunk_store::{
     ChunkStore, ChunkStoreConfig, ColumnDescriptor, ColumnSelector, ComponentColumnDescriptor,
-    ComponentColumnSelector, QueryExpression2, SparseFillStrategy, TimeColumnDescriptor,
+    ComponentColumnSelector, QueryExpression, SparseFillStrategy, TimeColumnDescriptor,
     TimeColumnSelector, VersionPolicy, ViewContentsSelector,
 };
 use re_dataframe::QueryEngine;
@@ -278,7 +278,7 @@ pub struct PyRecording {
 pub struct PyRecordingView {
     recording: Py<PyRecording>,
 
-    query_expression: QueryExpression2,
+    query_expression: QueryExpression,
 }
 
 /// A view of a recording restricted to a given index, containing a specific set of entities and components.
@@ -551,7 +551,7 @@ impl PyRecording {
 
         let contents = borrowed_self.extract_contents_expr(contents)?;
 
-        let query = QueryExpression2 {
+        let query = QueryExpression {
             view_contents: Some(contents),
             filtered_index: timeline.timeline,
             filtered_index_range: None,

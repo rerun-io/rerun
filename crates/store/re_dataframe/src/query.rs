@@ -17,7 +17,7 @@ use nohash_hasher::IntMap;
 use re_chunk::{Chunk, RangeQuery, RowId, TimeInt, Timeline, UnitChunkShared};
 use re_chunk_store::{
     ColumnDescriptor, ColumnSelector, ComponentColumnDescriptor, ComponentColumnSelector,
-    IndexValue, JoinEncoding, QueryExpression2, SparseFillStrategy, TimeColumnDescriptor,
+    IndexValue, JoinEncoding, QueryExpression, SparseFillStrategy, TimeColumnDescriptor,
     TimeColumnSelector,
 };
 use re_log_types::ResolvedTimeRange;
@@ -53,7 +53,7 @@ pub struct QueryHandle<'a> {
     pub(crate) engine: &'a QueryEngine<'a>,
 
     /// The original query expression used to instantiate this handle.
-    pub(crate) query: QueryExpression2,
+    pub(crate) query: QueryExpression,
 
     /// Internal private state. Lazily computed.
     ///
@@ -65,7 +65,7 @@ pub struct QueryHandle<'a> {
 struct QueryHandleState {
     /// Describes the columns that make up this view.
     ///
-    /// See [`QueryExpression2::view_contents`].
+    /// See [`QueryExpression::view_contents`].
     view_contents: Vec<ColumnDescriptor>,
 
     /// Describes the columns specifically selected to be returned from this view.
@@ -123,7 +123,7 @@ struct QueryHandleState {
 }
 
 impl<'a> QueryHandle<'a> {
-    pub(crate) fn new(engine: &'a QueryEngine<'a>, query: QueryExpression2) -> Self {
+    pub(crate) fn new(engine: &'a QueryEngine<'a>, query: QueryExpression) -> Self {
         Self {
             engine,
             query,
@@ -365,13 +365,13 @@ impl QueryHandle<'_> {
     }
 
     /// The query used to instantiate this handle.
-    pub fn query(&self) -> &QueryExpression2 {
+    pub fn query(&self) -> &QueryExpression {
         &self.query
     }
 
     /// Describes the columns that make up this view.
     ///
-    /// See [`QueryExpression2::view_contents`].
+    /// See [`QueryExpression::view_contents`].
     pub fn view_contents(&self) -> &[ColumnDescriptor] {
         &self.init().view_contents
     }
@@ -380,7 +380,7 @@ impl QueryHandle<'_> {
     ///
     /// The extra `usize` is the index in [`Self::view_contents`] that this selection points to.
     ///
-    /// See [`QueryExpression2::selection`].
+    /// See [`QueryExpression::selection`].
     pub fn selected_contents(&self) -> &[(usize, ColumnDescriptor)] {
         &self.init().selected_contents
     }
@@ -448,7 +448,7 @@ impl QueryHandle<'_> {
     ///
     /// Each cell in the result corresponds to the latest _locally_ known value at that particular point in
     /// the index, for each respective `ColumnDescriptor`.
-    /// See [`QueryExpression2::sparse_fill_strategy`] to go beyond local resolution.
+    /// See [`QueryExpression::sparse_fill_strategy`] to go beyond local resolution.
     ///
     /// Example:
     /// ```ignore
@@ -490,7 +490,7 @@ impl QueryHandle<'_> {
 
         /// Temporary state used to resolve the streaming join for the current iteration.
         ///
-        /// Possibly retrofilled, see [`QueryExpression2::sparse_fill_strategy`].
+        /// Possibly retrofilled, see [`QueryExpression::sparse_fill_strategy`].
         #[derive(Debug)]
         enum StreamingJoinState<'a> {
             /// Incoming data for the current iteration.
@@ -498,7 +498,7 @@ impl QueryHandle<'_> {
 
             /// Data retrofilled through an extra query.
             ///
-            /// See [`QueryExpression2::sparse_fill_strategy`].
+            /// See [`QueryExpression::sparse_fill_strategy`].
             Retrofilled(UnitChunkShared),
         }
 
@@ -707,7 +707,7 @@ impl QueryHandle<'_> {
         // that is being returned.
         //
         // For this reason, we can only guarantee that the index being explicitly queried for
-        // (`QueryExpression2::filtered_index`) will match for all these cells.
+        // (`QueryExpression::filtered_index`) will match for all these cells.
         //
         // When it comes to other indices that the caller might have asked for, it is possible that
         // these different cells won't share the same values (e.g. two cells were found at
@@ -930,7 +930,7 @@ mod tests {
     // returned in the usual human-friendly format.
     // From there it is generally straightforward to infer what's going on.
 
-    // TODO(cmc): at least one basic test for every feature in `QueryExpression2`.
+    // TODO(cmc): at least one basic test for every feature in `QueryExpression`.
     // In no particular order:
     // * [x] filtered_index
     // * [x] filtered_index_range
@@ -964,7 +964,7 @@ mod tests {
         };
 
         let timeline = Timeline::new_sequence("frame_nr");
-        let query = QueryExpression2::new(timeline);
+        let query = QueryExpression::new(timeline);
         eprintln!("{query:#?}:");
 
         let query_handle = query_engine.query(query.clone());
@@ -1009,7 +1009,7 @@ mod tests {
         };
 
         let timeline = Timeline::new_sequence("frame_nr");
-        let mut query = QueryExpression2::new(timeline);
+        let mut query = QueryExpression::new(timeline);
         query.sparse_fill_strategy = SparseFillStrategy::LatestAtGlobal;
         eprintln!("{query:#?}:");
 
@@ -1055,7 +1055,7 @@ mod tests {
         };
 
         let timeline = Timeline::new_sequence("frame_nr");
-        let mut query = QueryExpression2::new(timeline);
+        let mut query = QueryExpression::new(timeline);
         query.filtered_index_range = Some(ResolvedTimeRange::new(30, 60));
         eprintln!("{query:#?}:");
 
@@ -1101,7 +1101,7 @@ mod tests {
         };
 
         let timeline = Timeline::new_sequence("frame_nr");
-        let mut query = QueryExpression2::new(timeline);
+        let mut query = QueryExpression::new(timeline);
         query.filtered_index_values = Some(
             [0, 30, 60, 90]
                 .into_iter()
@@ -1156,7 +1156,7 @@ mod tests {
 
         // vanilla
         {
-            let mut query = QueryExpression2::new(timeline);
+            let mut query = QueryExpression::new(timeline);
             query.using_index_values = Some(
                 [0, 15, 30, 30, 45, 60, 75, 90]
                     .into_iter()
@@ -1195,7 +1195,7 @@ mod tests {
 
         // sparse-filled
         if true {
-            let mut query = QueryExpression2::new(timeline);
+            let mut query = QueryExpression::new(timeline);
             query.using_index_values = Some(
                 [0, 15, 30, 30, 45, 60, 75, 90]
                     .into_iter()
@@ -1253,7 +1253,7 @@ mod tests {
 
         // non-existing entity
         {
-            let mut query = QueryExpression2::new(timeline);
+            let mut query = QueryExpression::new(timeline);
             query.filtered_point_of_view = Some(ComponentColumnSelector {
                 entity_path: "no/such/entity".into(),
                 component: MyPoint::name(),
@@ -1280,7 +1280,7 @@ mod tests {
 
         // non-existing component
         {
-            let mut query = QueryExpression2::new(timeline);
+            let mut query = QueryExpression::new(timeline);
             query.filtered_point_of_view = Some(ComponentColumnSelector {
                 entity_path: entity_path.clone(),
                 component: "AComponentColumnThatDoesntExist".into(),
@@ -1307,7 +1307,7 @@ mod tests {
 
         // MyPoint
         {
-            let mut query = QueryExpression2::new(timeline);
+            let mut query = QueryExpression::new(timeline);
             query.filtered_point_of_view = Some(ComponentColumnSelector {
                 entity_path: entity_path.clone(),
                 component: MyPoint::name(),
@@ -1344,7 +1344,7 @@ mod tests {
 
         // MyColor
         {
-            let mut query = QueryExpression2::new(timeline);
+            let mut query = QueryExpression::new(timeline);
             query.filtered_point_of_view = Some(ComponentColumnSelector {
                 entity_path: entity_path.clone(),
                 component: MyColor::name(),
@@ -1399,7 +1399,7 @@ mod tests {
 
         // empty view
         {
-            let mut query = QueryExpression2::new(timeline);
+            let mut query = QueryExpression::new(timeline);
             query.view_contents = Some(
                 [(entity_path.clone(), Some(Default::default()))]
                     .into_iter()
@@ -1425,7 +1425,7 @@ mod tests {
         }
 
         {
-            let mut query = QueryExpression2::new(timeline);
+            let mut query = QueryExpression::new(timeline);
             query.view_contents = Some(
                 [(
                     entity_path.clone(),
@@ -1490,7 +1490,7 @@ mod tests {
 
         // empty selection
         {
-            let mut query = QueryExpression2::new(timeline);
+            let mut query = QueryExpression::new(timeline);
             query.selection = Some(vec![]);
             eprintln!("{query:#?}:");
 
@@ -1513,7 +1513,7 @@ mod tests {
 
         // only indices (+ duplication)
         {
-            let mut query = QueryExpression2::new(timeline);
+            let mut query = QueryExpression::new(timeline);
             query.selection = Some(vec![
                 ColumnSelector::Time(TimeColumnSelector {
                     timeline: *timeline.name(),
@@ -1554,7 +1554,7 @@ mod tests {
 
         // only components (+ duplication)
         {
-            let mut query = QueryExpression2::new(timeline);
+            let mut query = QueryExpression::new(timeline);
             query.selection = Some(vec![
                 ColumnSelector::Component(ComponentColumnSelector {
                     entity_path: entity_path.clone(),
@@ -1625,7 +1625,7 @@ mod tests {
 
         // only components
         {
-            let mut query = QueryExpression2::new(timeline);
+            let mut query = QueryExpression::new(timeline);
             query.view_contents = Some(
                 [(
                     entity_path.clone(),

@@ -26,7 +26,7 @@ mod writes;
 
 pub use self::dataframe::{
     ColumnDescriptor, ColumnSelector, ComponentColumnDescriptor, ComponentColumnSelector, Index,
-    IndexRange, IndexValue, JoinEncoding, QueryExpression2, SparseFillStrategy,
+    IndexRange, IndexValue, JoinEncoding, QueryExpression, SparseFillStrategy,
     TimeColumnDescriptor, TimeColumnSelector, ViewContentsSelector,
 };
 pub use self::events::{ChunkStoreDiff, ChunkStoreDiffKind, ChunkStoreEvent};

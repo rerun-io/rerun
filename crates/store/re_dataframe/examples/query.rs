@@ -4,7 +4,7 @@ use itertools::Itertools;
 
 use re_chunk::TimeInt;
 use re_chunk_store::{
-    ChunkStore, ChunkStoreConfig, QueryExpression2, SparseFillStrategy, Timeline, VersionPolicy,
+    ChunkStore, ChunkStoreConfig, QueryExpression, SparseFillStrategy, Timeline, VersionPolicy,
 };
 use re_dataframe::{QueryCache, QueryEngine};
 use re_log_types::{EntityPathFilter, ResolvedTimeRange, StoreKind};
@@ -59,7 +59,7 @@ fn main() -> anyhow::Result<()> {
             cache: &query_cache,
         };
 
-        let mut query = QueryExpression2::new(timeline);
+        let mut query = QueryExpression::new(timeline);
         query.view_contents = Some(
             query_engine
                 .iter_entity_paths(&entity_path_filter)
