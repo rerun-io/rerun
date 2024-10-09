@@ -82,7 +82,7 @@ impl App {
 
             ui.menu_button("Options", |ui| {
                 ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Extend);
-                options_menu_ui(ui, frame, &mut self.state.app_options);
+                options_menu_ui(&self.command_sender, ui, frame, &mut self.state.app_options);
             });
 
             #[cfg(debug_assertions)]
@@ -295,6 +295,7 @@ fn render_state_ui(ui: &mut egui::Ui, render_state: &egui_wgpu::RenderState) {
 }
 
 fn options_menu_ui(
+    _command_sender: &re_viewer_context::CommandSender,
     ui: &mut egui::Ui,
     frame: &eframe::Frame,
     app_options: &mut re_viewer_context::AppOptions,
@@ -367,9 +368,9 @@ fn options_menu_ui(
         {
             ui.add_space(SPACING);
             if _backend == wgpu::Backend::BrowserWebGpu {
-                UICommand::RestartWithWebGl.menu_button_ui(ui, command_sender);
+                UICommand::RestartWithWebGl.menu_button_ui(ui, _command_sender);
             } else {
-                UICommand::RestartWithWebGpu.menu_button_ui(ui, command_sender);
+                UICommand::RestartWithWebGpu.menu_button_ui(ui, _command_sender);
             }
         }
     }
