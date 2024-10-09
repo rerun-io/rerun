@@ -47,6 +47,7 @@ pub enum TextureFilterMin {
 }
 
 /// Describes how the color information is encoded in the texture.
+// TODO(#7608): to be replaced by re_renderer based on-input conversion.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum ShaderDecoding {
     /// Do BGR(A)->RGB(A) conversion is in the shader.

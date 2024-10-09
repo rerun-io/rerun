@@ -69,7 +69,7 @@ pub enum SourceImageDataFormat {
         primaries: ColorPrimaries,
     },
     //
-    // TODO(andreas): Add rgb (3 channels!) formats.
+    // TODO(#7608): Add rgb (3 channels!) formats.
 }
 
 impl From<wgpu::TextureFormat> for SourceImageDataFormat {
