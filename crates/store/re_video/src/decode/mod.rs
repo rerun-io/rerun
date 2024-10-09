@@ -114,6 +114,14 @@ pub enum Error {
     #[cfg(target_arch = "wasm32")]
     #[error(transparent)]
     WebDecoderError(#[from] webcodecs::Error),
+
+    #[cfg(with_ffmpeg)]
+    #[error("Failed to start ffmppeg: {0}")]
+    FailedToStartFfmpeg(std::io::Error),
+
+    #[cfg(with_ffmpeg)]
+    #[error("Failed to start ffmppeg: {0}")]
+    FailedToSpawnThread(std::io::Error),
 }
 
 pub type Result<T = (), E = Error> = std::result::Result<T, E>;
