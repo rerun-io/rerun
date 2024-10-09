@@ -39,9 +39,9 @@ pub trait SyncDecoder {
 
 /// One chunk of encoded video data; usually one frame.
 ///
-/// One loaded [`Sample`].
+/// One loaded [`crate::Sample`].
 pub struct Chunk {
-    /// The start of a new [`crate::GroupOfPictures`]?
+    /// The start of a new [`crate::demux::GroupOfPictures`]?
     pub is_sync: bool,
 
     pub data: Vec<u8>,
