@@ -448,6 +448,7 @@ pygithub = "==1.59.0"            # Among others for `generate_pr_summary.py`, `s
 requests = ">=2.31,<3"           # For `thumbnails.py` & `upload_image.py`
 types-Deprecated = "==1.2.9.2"   # Type hint stubs
 types-requests = ">=2.31,<3"     # Type hint stubs
+parso = ">=0.8.4, <0.9"
 
 [feature.wheel-build.dependencies]
 binaryen = "117.*"       # for `wasm-opt`
