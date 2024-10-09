@@ -210,55 +210,64 @@ impl QueryHandle<'_> {
         // 5. Collect all relevant clear chunks and update the view accordingly.
         //
         // We'll turn the clears into actual empty arrays of the expected component type.
-        let clear_chunks = self.fetch_clear_chunks(&query, &view_contents);
-        for (view_idx, chunks) in view_chunks.iter_mut().enumerate() {
-            let Some(ColumnDescriptor::Component(descr)) = view_contents.get(view_idx) else {
-                continue;
-            };
+        {
+            re_tracing::profile_scope!("clear_chunks");
 
-            // NOTE: It would be tempting to concatenate all these individual clear chunks into one
-            // single big chunk, but that'd be a mistake: 1) it's costly to do so but more
-            // importantly 2) that would lead to likely very large chunk overlap, which is very bad
-            // for business.
-            if let Some(clear_chunks) = clear_chunks.get(&descr.entity_path) {
-                chunks.extend(clear_chunks.iter().map(|chunk| {
-                    let child_datatype = match &descr.store_datatype {
-                        arrow2::datatypes::DataType::List(field)
-                        | arrow2::datatypes::DataType::LargeList(field) => {
-                            field.data_type().clone()
-                        }
-                        arrow2::datatypes::DataType::Dictionary(_, datatype, _) => {
-                            (**datatype).clone()
-                        }
-                        datatype => datatype.clone(),
-                    };
+            let clear_chunks = self.fetch_clear_chunks(&query, &view_contents);
+            for (view_idx, chunks) in view_chunks.iter_mut().enumerate() {
+                let Some(ColumnDescriptor::Component(descr)) = view_contents.get(view_idx) else {
+                    continue;
+                };
 
-                    let mut chunk = chunk.clone();
-                    // Only way this could fail is if the number of rows did not match.
-                    #[allow(clippy::unwrap_used)]
-                    chunk
-                        .add_component(
-                            descr.component_name,
-                            re_chunk::util::new_list_array_of_empties(
-                                child_datatype,
-                                chunk.num_rows(),
-                            ),
-                        )
-                        .unwrap();
+                // NOTE: It would be tempting to concatenate all these individual clear chunks into one
+                // single big chunk, but that'd be a mistake: 1) it's costly to do so but more
+                // importantly 2) that would lead to likely very large chunk overlap, which is very bad
+                // for business.
+                if let Some(clear_chunks) = clear_chunks.get(&descr.entity_path) {
+                    chunks.extend(clear_chunks.iter().map(|chunk| {
+                        let child_datatype = match &descr.store_datatype {
+                            arrow2::datatypes::DataType::List(field)
+                            | arrow2::datatypes::DataType::LargeList(field) => {
+                                field.data_type().clone()
+                            }
+                            arrow2::datatypes::DataType::Dictionary(_, datatype, _) => {
+                                (**datatype).clone()
+                            }
+                            datatype => datatype.clone(),
+                        };
 
-                    (AtomicU64::new(0), chunk)
-                }));
+                        let mut chunk = chunk.clone();
+                        // Only way this could fail is if the number of rows did not match.
+                        #[allow(clippy::unwrap_used)]
+                        chunk
+                            .add_component(
+                                descr.component_name,
+                                re_chunk::util::new_list_array_of_empties(
+                                    child_datatype,
+                                    chunk.num_rows(),
+                                ),
+                            )
+                            .unwrap();
 
-                // The chunks were sorted that way before, and it needs to stay that way after.
-                chunks.sort_by_key(|(_cursor, chunk)| {
-                    chunk
-                        .time_range_per_component()
-                        .get(&self.query.filtered_index)
-                        .and_then(|per_component| per_component.get(&descr.component_name))
-                        .map_or(TimeInt::STATIC, |time_range| time_range.min())
-                });
+                        (AtomicU64::new(0), chunk)
+                    }));
+
+                    // The chunks were sorted that way before, and it needs to stay that way after.
+                    chunks.sort_by_key(|(_cursor, chunk)| {
+                        chunk
+                            .time_range_per_component()
+                            .get(&self.query.filtered_index)
+                            .and_then(|per_component| per_component.get(&descr.component_name))
+                            .map_or(TimeInt::STATIC, |time_range| time_range.min())
+                    });
+                }
             }
         }
+            };
+
+                        }
+
+            }
 
         QueryHandleState {
             view_contents,
