@@ -9,11 +9,18 @@ pub struct RecordingId {
 pub struct RegisterRecordingsRequest {
     #[prost(string, tag = "1")]
     pub description: ::prost::alloc::string::String,
-    #[prost(string, tag = "2")]
-    pub storage_url: ::prost::alloc::string::String,
+    #[prost(message, optional, tag = "2")]
+    pub obj_storage: ::core::option::Option<ObjectStorage>,
     /// TODO should this be auto-discoverable?
     #[prost(enumeration = "RecordingType", tag = "3")]
     pub typ: i32,
+}
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct ObjectStorage {
+    #[prost(string, tag = "1")]
+    pub bucket_name: ::prost::alloc::string::String,
+    #[prost(string, tag = "2")]
+    pub url: ::prost::alloc::string::String,
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct RegisterRecordingsResponse {
@@ -42,7 +49,10 @@ pub struct RecordingMetadata {
     pub schema: ::core::option::Option<Schema>,
     /// for now Timeline is a string (same as with the query definition)
     #[prost(map = "string, message", tag = "3")]
-    pub timelines: ::std::collections::HashMap<::prost::alloc::string::String, TimeRange>,
+    pub timelines: ::std::collections::HashMap<
+        ::prost::alloc::string::String,
+        TimeRange,
+    >,
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct Schema {
@@ -274,10 +284,10 @@ pub mod storage_node_client {
         dead_code,
         missing_docs,
         clippy::wildcard_imports,
-        clippy::let_unit_value
+        clippy::let_unit_value,
     )]
-    use tonic::codegen::http::Uri;
     use tonic::codegen::*;
+    use tonic::codegen::http::Uri;
     #[derive(Debug, Clone)]
     pub struct StorageNodeClient<T> {
         inner: tonic::client::Grpc<T>,
@@ -321,8 +331,9 @@ pub mod storage_node_client {
                     <T as tonic::client::GrpcService<tonic::body::BoxBody>>::ResponseBody,
                 >,
             >,
-            <T as tonic::codegen::Service<http::Request<tonic::body::BoxBody>>>::Error:
-                Into<StdError> + std::marker::Send + std::marker::Sync,
+            <T as tonic::codegen::Service<
+                http::Request<tonic::body::BoxBody>,
+            >>::Error: Into<StdError> + std::marker::Send + std::marker::Sync,
         {
             StorageNodeClient::new(InterceptedService::new(inner, interceptor))
         }
@@ -360,20 +371,27 @@ pub mod storage_node_client {
         pub async fn list_recordings(
             &mut self,
             request: impl tonic::IntoRequest<super::ListRecordingsRequest>,
-        ) -> std::result::Result<tonic::Response<super::ListRecordingsResponse>, tonic::Status>
-        {
-            self.inner.ready().await.map_err(|e| {
-                tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
-            })?;
+        ) -> std::result::Result<
+            tonic::Response<super::ListRecordingsResponse>,
+            tonic::Status,
+        > {
+            self.inner
+                .ready()
+                .await
+                .map_err(|e| {
+                    tonic::Status::unknown(
+                        format!("Service was not ready: {}", e.into()),
+                    )
+                })?;
             let codec = tonic::codec::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
                 "/rerun.storage.v0.StorageNode/ListRecordings",
             );
             let mut req = request.into_request();
-            req.extensions_mut().insert(GrpcMethod::new(
-                "rerun.storage.v0.StorageNode",
-                "ListRecordings",
-            ));
+            req.extensions_mut()
+                .insert(
+                    GrpcMethod::new("rerun.storage.v0.StorageNode", "ListRecordings"),
+                );
             self.inner.unary(req, path, codec).await
         }
         pub async fn query(
@@ -383,11 +401,18 @@ pub mod storage_node_client {
             tonic::Response<tonic::codec::Streaming<super::QueryResponse>>,
             tonic::Status,
         > {
-            self.inner.ready().await.map_err(|e| {
-                tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
-            })?;
+            self.inner
+                .ready()
+                .await
+                .map_err(|e| {
+                    tonic::Status::unknown(
+                        format!("Service was not ready: {}", e.into()),
+                    )
+                })?;
             let codec = tonic::codec::ProstCodec::default();
-            let path = http::uri::PathAndQuery::from_static("/rerun.storage.v0.StorageNode/Query");
+            let path = http::uri::PathAndQuery::from_static(
+                "/rerun.storage.v0.StorageNode/Query",
+            );
             let mut req = request.into_request();
             req.extensions_mut()
                 .insert(GrpcMethod::new("rerun.storage.v0.StorageNode", "Query"));
@@ -396,40 +421,57 @@ pub mod storage_node_client {
         pub async fn get_recording_metadata(
             &mut self,
             request: impl tonic::IntoRequest<super::GetRecordingMetadataRequest>,
-        ) -> std::result::Result<tonic::Response<super::GetRecordingMetadataResponse>, tonic::Status>
-        {
-            self.inner.ready().await.map_err(|e| {
-                tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
-            })?;
+        ) -> std::result::Result<
+            tonic::Response<super::GetRecordingMetadataResponse>,
+            tonic::Status,
+        > {
+            self.inner
+                .ready()
+                .await
+                .map_err(|e| {
+                    tonic::Status::unknown(
+                        format!("Service was not ready: {}", e.into()),
+                    )
+                })?;
             let codec = tonic::codec::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
                 "/rerun.storage.v0.StorageNode/GetRecordingMetadata",
             );
             let mut req = request.into_request();
-            req.extensions_mut().insert(GrpcMethod::new(
-                "rerun.storage.v0.StorageNode",
-                "GetRecordingMetadata",
-            ));
+            req.extensions_mut()
+                .insert(
+                    GrpcMethod::new(
+                        "rerun.storage.v0.StorageNode",
+                        "GetRecordingMetadata",
+                    ),
+                );
             self.inner.unary(req, path, codec).await
         }
         /// TODO (zehiko) - should this be singular recording registration? Currently we can have 1 rrd => many recordings
         pub async fn register_recordings(
             &mut self,
             request: impl tonic::IntoRequest<super::RegisterRecordingsRequest>,
-        ) -> std::result::Result<tonic::Response<super::RegisterRecordingsResponse>, tonic::Status>
-        {
-            self.inner.ready().await.map_err(|e| {
-                tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
-            })?;
+        ) -> std::result::Result<
+            tonic::Response<super::RegisterRecordingsResponse>,
+            tonic::Status,
+        > {
+            self.inner
+                .ready()
+                .await
+                .map_err(|e| {
+                    tonic::Status::unknown(
+                        format!("Service was not ready: {}", e.into()),
+                    )
+                })?;
             let codec = tonic::codec::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
                 "/rerun.storage.v0.StorageNode/RegisterRecordings",
             );
             let mut req = request.into_request();
-            req.extensions_mut().insert(GrpcMethod::new(
-                "rerun.storage.v0.StorageNode",
-                "RegisterRecordings",
-            ));
+            req.extensions_mut()
+                .insert(
+                    GrpcMethod::new("rerun.storage.v0.StorageNode", "RegisterRecordings"),
+                );
             self.inner.unary(req, path, codec).await
         }
     }
@@ -441,7 +483,7 @@ pub mod storage_node_server {
         dead_code,
         missing_docs,
         clippy::wildcard_imports,
-        clippy::let_unit_value
+        clippy::let_unit_value,
     )]
     use tonic::codegen::*;
     /// Generated trait containing gRPC methods that should be implemented for use with StorageNodeServer.
@@ -450,11 +492,15 @@ pub mod storage_node_server {
         async fn list_recordings(
             &self,
             request: tonic::Request<super::ListRecordingsRequest>,
-        ) -> std::result::Result<tonic::Response<super::ListRecordingsResponse>, tonic::Status>;
+        ) -> std::result::Result<
+            tonic::Response<super::ListRecordingsResponse>,
+            tonic::Status,
+        >;
         /// Server streaming response type for the Query method.
         type QueryStream: tonic::codegen::tokio_stream::Stream<
                 Item = std::result::Result<super::QueryResponse, tonic::Status>,
-            > + std::marker::Send
+            >
+            + std::marker::Send
             + 'static;
         async fn query(
             &self,
@@ -463,12 +509,18 @@ pub mod storage_node_server {
         async fn get_recording_metadata(
             &self,
             request: tonic::Request<super::GetRecordingMetadataRequest>,
-        ) -> std::result::Result<tonic::Response<super::GetRecordingMetadataResponse>, tonic::Status>;
+        ) -> std::result::Result<
+            tonic::Response<super::GetRecordingMetadataResponse>,
+            tonic::Status,
+        >;
         /// TODO (zehiko) - should this be singular recording registration? Currently we can have 1 rrd => many recordings
         async fn register_recordings(
             &self,
             request: tonic::Request<super::RegisterRecordingsRequest>,
-        ) -> std::result::Result<tonic::Response<super::RegisterRecordingsResponse>, tonic::Status>;
+        ) -> std::result::Result<
+            tonic::Response<super::RegisterRecordingsResponse>,
+            tonic::Status,
+        >;
     }
     #[derive(Debug)]
     pub struct StorageNodeServer<T> {
@@ -491,7 +543,10 @@ pub mod storage_node_server {
                 max_encoding_message_size: None,
             }
         }
-        pub fn with_interceptor<F>(inner: T, interceptor: F) -> InterceptedService<Self, F>
+        pub fn with_interceptor<F>(
+            inner: T,
+            interceptor: F,
+        ) -> InterceptedService<Self, F>
         where
             F: tonic::service::Interceptor,
         {
@@ -546,11 +601,15 @@ pub mod storage_node_server {
                 "/rerun.storage.v0.StorageNode/ListRecordings" => {
                     #[allow(non_camel_case_types)]
                     struct ListRecordingsSvc<T: StorageNode>(pub Arc<T>);
-                    impl<T: StorageNode> tonic::server::UnaryService<super::ListRecordingsRequest>
-                        for ListRecordingsSvc<T>
-                    {
+                    impl<
+                        T: StorageNode,
+                    > tonic::server::UnaryService<super::ListRecordingsRequest>
+                    for ListRecordingsSvc<T> {
                         type Response = super::ListRecordingsResponse;
-                        type Future = BoxFuture<tonic::Response<Self::Response>, tonic::Status>;
+                        type Future = BoxFuture<
+                            tonic::Response<Self::Response>,
+                            tonic::Status,
+                        >;
                         fn call(
                             &mut self,
                             request: tonic::Request<super::ListRecordingsRequest>,
@@ -587,18 +646,24 @@ pub mod storage_node_server {
                 "/rerun.storage.v0.StorageNode/Query" => {
                     #[allow(non_camel_case_types)]
                     struct QuerySvc<T: StorageNode>(pub Arc<T>);
-                    impl<T: StorageNode> tonic::server::ServerStreamingService<super::QueryRequest> for QuerySvc<T> {
+                    impl<
+                        T: StorageNode,
+                    > tonic::server::ServerStreamingService<super::QueryRequest>
+                    for QuerySvc<T> {
                         type Response = super::QueryResponse;
                         type ResponseStream = T::QueryStream;
-                        type Future =
-                            BoxFuture<tonic::Response<Self::ResponseStream>, tonic::Status>;
+                        type Future = BoxFuture<
+                            tonic::Response<Self::ResponseStream>,
+                            tonic::Status,
+                        >;
                         fn call(
                             &mut self,
                             request: tonic::Request<super::QueryRequest>,
                         ) -> Self::Future {
                             let inner = Arc::clone(&self.0);
-                            let fut =
-                                async move { <T as StorageNode>::query(&inner, request).await };
+                            let fut = async move {
+                                <T as StorageNode>::query(&inner, request).await
+                            };
                             Box::pin(fut)
                         }
                     }
@@ -627,19 +692,23 @@ pub mod storage_node_server {
                 "/rerun.storage.v0.StorageNode/GetRecordingMetadata" => {
                     #[allow(non_camel_case_types)]
                     struct GetRecordingMetadataSvc<T: StorageNode>(pub Arc<T>);
-                    impl<T: StorageNode>
-                        tonic::server::UnaryService<super::GetRecordingMetadataRequest>
-                        for GetRecordingMetadataSvc<T>
-                    {
+                    impl<
+                        T: StorageNode,
+                    > tonic::server::UnaryService<super::GetRecordingMetadataRequest>
+                    for GetRecordingMetadataSvc<T> {
                         type Response = super::GetRecordingMetadataResponse;
-                        type Future = BoxFuture<tonic::Response<Self::Response>, tonic::Status>;
+                        type Future = BoxFuture<
+                            tonic::Response<Self::Response>,
+                            tonic::Status,
+                        >;
                         fn call(
                             &mut self,
                             request: tonic::Request<super::GetRecordingMetadataRequest>,
                         ) -> Self::Future {
                             let inner = Arc::clone(&self.0);
                             let fut = async move {
-                                <T as StorageNode>::get_recording_metadata(&inner, request).await
+                                <T as StorageNode>::get_recording_metadata(&inner, request)
+                                    .await
                             };
                             Box::pin(fut)
                         }
@@ -669,19 +738,23 @@ pub mod storage_node_server {
                 "/rerun.storage.v0.StorageNode/RegisterRecordings" => {
                     #[allow(non_camel_case_types)]
                     struct RegisterRecordingsSvc<T: StorageNode>(pub Arc<T>);
-                    impl<T: StorageNode>
-                        tonic::server::UnaryService<super::RegisterRecordingsRequest>
-                        for RegisterRecordingsSvc<T>
-                    {
+                    impl<
+                        T: StorageNode,
+                    > tonic::server::UnaryService<super::RegisterRecordingsRequest>
+                    for RegisterRecordingsSvc<T> {
                         type Response = super::RegisterRecordingsResponse;
-                        type Future = BoxFuture<tonic::Response<Self::Response>, tonic::Status>;
+                        type Future = BoxFuture<
+                            tonic::Response<Self::Response>,
+                            tonic::Status,
+                        >;
                         fn call(
                             &mut self,
                             request: tonic::Request<super::RegisterRecordingsRequest>,
                         ) -> Self::Future {
                             let inner = Arc::clone(&self.0);
                             let fut = async move {
-                                <T as StorageNode>::register_recordings(&inner, request).await
+                                <T as StorageNode>::register_recordings(&inner, request)
+                                    .await
                             };
                             Box::pin(fut)
                         }
@@ -708,19 +781,23 @@ pub mod storage_node_server {
                     };
                     Box::pin(fut)
                 }
-                _ => Box::pin(async move {
-                    let mut response = http::Response::new(empty_body());
-                    let headers = response.headers_mut();
-                    headers.insert(
-                        tonic::Status::GRPC_STATUS,
-                        (tonic::Code::Unimplemented as i32).into(),
-                    );
-                    headers.insert(
-                        http::header::CONTENT_TYPE,
-                        tonic::metadata::GRPC_CONTENT_TYPE,
-                    );
-                    Ok(response)
-                }),
+                _ => {
+                    Box::pin(async move {
+                        let mut response = http::Response::new(empty_body());
+                        let headers = response.headers_mut();
+                        headers
+                            .insert(
+                                tonic::Status::GRPC_STATUS,
+                                (tonic::Code::Unimplemented as i32).into(),
+                            );
+                        headers
+                            .insert(
+                                http::header::CONTENT_TYPE,
+                                tonic::metadata::GRPC_CONTENT_TYPE,
+                            );
+                        Ok(response)
+                    })
+                }
             }
         }
     }

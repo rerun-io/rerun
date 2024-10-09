@@ -21,9 +21,14 @@ message RecordingId {
 
 message RegisterRecordingsRequest {
     string description = 1;
-    string storage_url = 2;
+    ObjectStorage obj_storage = 2;
     // TODO should this be auto-discoverable?
     RecordingType typ = 3;
+}
+
+message ObjectStorage {
+    string bucket_name = 1;
+    string url = 2;
 }
 
 message RegisterRecordingsResponse {
