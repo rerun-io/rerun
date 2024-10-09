@@ -12,7 +12,7 @@ version.workspace = true
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-re_dataframe2.workspace = true
+re_dataframe.workspace = true
 re_log = { workspace = true, features = ["setup"] }
 re_log_types.workspace = true
 re_tracing = { workspace = true, features = ["server"] }

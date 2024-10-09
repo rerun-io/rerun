@@ -30,7 +30,7 @@ pub mod v0 {
         }
     }
 
-    impl TryFrom<Query> for re_dataframe2::external::re_chunk_store::QueryExpression2 {
+    impl TryFrom<Query> for re_dataframe::external::re_chunk_store::QueryExpression {
         type Error = TypeConversionError;
 
         fn try_from(value: Query) -> Result<Self, Self::Error> {
@@ -45,7 +45,7 @@ pub mod v0 {
                     cs.columns
                         .into_iter()
                         .map(|c| {
-                            re_dataframe2::external::re_chunk_store::ColumnSelector::try_from(c)
+                            re_dataframe::external::re_chunk_store::ColumnSelector::try_from(c)
                         })
                         .collect::<Result<Vec<_>, _>>()
                 })
@@ -54,7 +54,7 @@ pub mod v0 {
             let filtered_point_of_view = value
                 .filtered_pov
                 .map(|fp| {
-                    re_dataframe2::external::re_chunk_store::ComponentColumnSelector::try_from(fp)
+                    re_dataframe::external::re_chunk_store::ComponentColumnSelector::try_from(fp)
                 })
                 .transpose()?;
 
@@ -73,13 +73,13 @@ pub mod v0 {
                     .map(|uiv| uiv.time_points.into_iter().map(|v| v.into()).collect()),
                 filtered_point_of_view,
                 sparse_fill_strategy:
-                    re_dataframe2::external::re_chunk_store::SparseFillStrategy::default(), // TODO(zehiko) implement support for sparse fill strategy
+                    re_dataframe::external::re_chunk_store::SparseFillStrategy::default(), // TODO(zehiko) implement support for sparse fill strategy
                 selection,
             })
         }
     }
 
-    impl From<ViewContents> for re_dataframe2::external::re_chunk_store::ViewContentsSelector {
+    impl From<ViewContents> for re_dataframe::external::re_chunk_store::ViewContentsSelector {
         fn from(value: ViewContents) -> Self {
             value
                 .contents
@@ -90,7 +90,7 @@ pub mod v0 {
                     let column_selector = part.components.map(|cs| {
                         cs.components
                             .into_iter()
-                            .map(|c| re_dataframe2::external::re_chunk::ComponentName::new(&c.name))
+                            .map(|c| re_dataframe::external::re_chunk::ComponentName::new(&c.name))
                             .collect::<BTreeSet<_>>()
                     });
                     (entity_path, column_selector)
@@ -127,7 +127,7 @@ pub mod v0 {
         }
     }
 
-    impl TryFrom<IndexRange> for re_dataframe2::external::re_chunk_store::IndexRange {
+    impl TryFrom<IndexRange> for re_dataframe::external::re_chunk_store::IndexRange {
         type Error = TypeConversionError;
 
         fn try_from(value: IndexRange) -> Result<Self, Self::Error> {
@@ -146,7 +146,7 @@ pub mod v0 {
     }
 
     impl TryFrom<ComponentColumnSelector>
-        for re_dataframe2::external::re_chunk_store::ComponentColumnSelector
+        for re_dataframe::external::re_chunk_store::ComponentColumnSelector
     {
         type Error = TypeConversionError;
 
@@ -163,13 +163,13 @@ pub mod v0 {
 
             Ok(Self {
                 entity_path,
-                component: re_dataframe2::external::re_chunk::ComponentName::new(&component),
-                join_encoding: re_dataframe2::external::re_chunk_store::JoinEncoding::default(), // TODO(zehiko) implement
+                component: re_dataframe::external::re_chunk::ComponentName::new(&component),
+                join_encoding: re_dataframe::external::re_chunk_store::JoinEncoding::default(), // TODO(zehiko) implement
             })
         }
     }
 
-    impl TryFrom<TimeColumnSelector> for re_dataframe2::external::re_chunk_store::TimeColumnSelector {
+    impl TryFrom<TimeColumnSelector> for re_dataframe::external::re_chunk_store::TimeColumnSelector {
         type Error = TypeConversionError;
 
         fn try_from(value: TimeColumnSelector) -> Result<Self, Self::Error> {
@@ -183,7 +183,7 @@ pub mod v0 {
         }
     }
 
-    impl TryFrom<ColumnSelector> for re_dataframe2::external::re_chunk_store::ColumnSelector {
+    impl TryFrom<ColumnSelector> for re_dataframe::external::re_chunk_store::ColumnSelector {
         type Error = TypeConversionError;
 
         fn try_from(value: ColumnSelector) -> Result<Self, Self::Error> {
@@ -192,12 +192,12 @@ pub mod v0 {
                 .ok_or(TypeConversionError::MissingField("selector_type"))?
             {
                 column_selector::SelectorType::ComponentColumn(component_column_selector) => {
-                    let selector: re_dataframe2::external::re_chunk_store::ComponentColumnSelector =
+                    let selector: re_dataframe::external::re_chunk_store::ComponentColumnSelector =
                         component_column_selector.try_into()?;
                     Ok(selector.into())
                 }
                 column_selector::SelectorType::TimeColumn(time_column_selector) => {
-                    let selector: re_dataframe2::external::re_chunk_store::TimeColumnSelector =
+                    let selector: re_dataframe::external::re_chunk_store::TimeColumnSelector =
                         time_column_selector.try_into()?;
 
                     Ok(selector.into())
