@@ -5,13 +5,28 @@ pub struct RecordingId {
     #[prost(string, tag = "1")]
     pub id: ::prost::alloc::string::String,
 }
+/// A recording can have multiple timelines, each is identified by a name, for example `log_tick`, `log_time`, etc.
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct Timeline {
+    #[prost(string, tag = "1")]
+    pub name: ::prost::alloc::string::String,
+}
+/// A time range between start and end time points. Each 64 bit number can represent different time point data
+/// depending on the timeline it is associated with.
+#[derive(Clone, Copy, PartialEq, ::prost::Message)]
+pub struct TimeRange {
+    #[prost(int64, tag = "1")]
+    pub start: i64,
+    #[prost(int64, tag = "2")]
+    pub end: i64,
+}
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct RegisterRecordingsRequest {
     #[prost(string, tag = "1")]
     pub description: ::prost::alloc::string::String,
     #[prost(message, optional, tag = "2")]
     pub obj_storage: ::core::option::Option<ObjectStorage>,
-    /// TODO should this be auto-discoverable?
+    /// TODO (zehiko) should this be auto-discoverable?
     #[prost(enumeration = "RecordingType", tag = "3")]
     pub typ: i32,
 }
@@ -24,7 +39,7 @@ pub struct ObjectStorage {
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct RegisterRecordingsResponse {
-    /// Note: this implies we read the record (for example go through entire .rrd file
+    /// Note / TODO (zehiko): this implies we read the record (for example go through entire .rrd file
     /// chunk by chunk) and extract the metadata. So we might want to 1/ not do this i.e.
     /// only do it as part of explicit GetMetadata request or 2/ do it if Request has "include_metadata=true"
     /// or 3/ do it always
@@ -47,12 +62,15 @@ pub struct RecordingMetadata {
     pub id: ::core::option::Option<RecordingId>,
     #[prost(message, optional, tag = "2")]
     pub schema: ::core::option::Option<Schema>,
-    /// for now Timeline is a string (same as with the query definition)
-    #[prost(map = "string, message", tag = "3")]
-    pub timelines: ::std::collections::HashMap<
-        ::prost::alloc::string::String,
-        TimeRange,
-    >,
+    #[prost(message, repeated, tag = "3")]
+    pub time_metadata: ::prost::alloc::vec::Vec<TimeMetadata>,
+}
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct TimeMetadata {
+    #[prost(message, optional, tag = "1")]
+    pub timeline: ::core::option::Option<Timeline>,
+    #[prost(message, optional, tag = "2")]
+    pub time_range: ::core::option::Option<TimeRange>,
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct Schema {
@@ -76,21 +94,21 @@ pub struct Query {
     pub view_contents: ::core::option::Option<ViewContents>,
     /// filtering index (just a string i.e. a name of the timeline for starters)
     #[prost(message, optional, tag = "2")]
-    pub index: ::core::option::Option<IndexColumnSelector>,
+    pub filtered_index: ::core::option::Option<IndexColumnSelector>,
     /// Optional specific range for the index selector
     #[prost(message, optional, tag = "3")]
-    pub index_range: ::core::option::Option<FilteredIndexRange>,
+    pub filtered_index_range: ::core::option::Option<IndexRange>,
     /// Optional specific values for the index selector
     #[prost(message, optional, tag = "4")]
-    pub index_values: ::core::option::Option<FilteredIndexValues>,
-    /// Optional sampled values for the index selector
+    pub filtered_index_values: ::core::option::Option<IndexValues>,
+    /// Optional index selector sampling
     #[prost(message, optional, tag = "5")]
-    pub sampled_index_values: ::core::option::Option<SampledIndexValues>,
+    pub using_index_values: ::core::option::Option<IndexValues>,
     /// PoV (filtering) component
     #[prost(message, optional, tag = "6")]
-    pub pov_component: ::core::option::Option<ComponentColumnDescriptor>,
+    pub filtered_pov: ::core::option::Option<ComponentColumnSelector>,
     /// which columns to include in the response
-    /// Note - added one more layer of indiraction to ensure the field is optional,
+    /// Note - we have one more layer of indiraction to ensure the field is optional,
     /// same as in the query expression. We can't have both 'repeated' and 'optional' field labels.
     #[prost(message, optional, tag = "7")]
     pub column_selection: ::core::option::Option<ColumnSelection>,
@@ -126,19 +144,19 @@ pub mod column_selector {
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct IndexColumnSelector {
-    /// this is for example "log_tick" and we will need to figure out a way to convert that
-    /// to Timeline on the server side. For now we only support timeline related columns, in
-    /// the future we might support other columns as well.
-    #[prost(string, tag = "1")]
-    pub name: ::prost::alloc::string::String,
+    /// TODO (zehiko) we need to add support for other types of index selectors
+    #[prost(message, optional, tag = "1")]
+    pub timeline: ::core::option::Option<Timeline>,
 }
 #[derive(Clone, Copy, PartialEq, ::prost::Message)]
-pub struct FilteredIndexRange {
+pub struct IndexRange {
+    /// TODO (zehiko) support for other ranges for other index selectors
     #[prost(message, optional, tag = "1")]
     pub time_range: ::core::option::Option<TimeRange>,
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
-pub struct FilteredIndexValues {
+pub struct IndexValues {
+    /// TODO (zehiko) we need to add support for other types of index selectors
     #[prost(message, repeated, tag = "1")]
     pub time_points: ::prost::alloc::vec::Vec<TimeInt>,
 }
@@ -161,16 +179,8 @@ pub struct ViewContentsPart {
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct ComponentsSet {
-    /// component name needs to be a string as user can define their own component
-    #[prost(string, repeated, tag = "1")]
-    pub values: ::prost::alloc::vec::Vec<::prost::alloc::string::String>,
-}
-#[derive(Clone, Copy, PartialEq, ::prost::Message)]
-pub struct TimeRange {
-    #[prost(int64, tag = "1")]
-    pub start: i64,
-    #[prost(int64, tag = "2")]
-    pub end: i64,
+    #[prost(message, repeated, tag = "1")]
+    pub components: ::prost::alloc::vec::Vec<Component>,
 }
 #[derive(Clone, Copy, PartialEq, ::prost::Message)]
 pub struct TimeInt {
@@ -183,30 +193,23 @@ pub struct EntityPath {
     pub path: ::prost::alloc::string::String,
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
-pub struct ComponentColumnDescriptor {
-    #[prost(message, optional, tag = "1")]
-    pub entity_path: ::core::option::Option<EntityPath>,
+pub struct Component {
     /// component name needs to be a string as user can define their own component
-    #[prost(string, tag = "2")]
-    pub component: ::prost::alloc::string::String,
-    /// TODO - do we need join encoding?
-    #[prost(bool, tag = "3")]
-    pub resolve_latest_at: bool,
+    #[prost(string, tag = "1")]
+    pub name: ::prost::alloc::string::String,
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct TimeColumnSelector {
-    #[prost(string, tag = "1")]
-    pub timeline_name: ::prost::alloc::string::String,
+    #[prost(message, optional, tag = "1")]
+    pub timeline: ::core::option::Option<Timeline>,
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct ComponentColumnSelector {
     #[prost(message, optional, tag = "1")]
     pub entity_path: ::core::option::Option<EntityPath>,
-    /// component name needs to be a string as user can define their own component
-    ///
     /// TODO do we need join encoding?
-    #[prost(string, tag = "2")]
-    pub component: ::prost::alloc::string::String,
+    #[prost(message, optional, tag = "2")]
+    pub component: ::core::option::Option<Component>,
 }
 #[derive(Clone, Copy, PartialEq, ::prost::Message)]
 pub struct ListRecordingsRequest {}

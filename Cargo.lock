@@ -6004,6 +6004,7 @@ dependencies = [
  "prost 0.13.3",
  "re_dataframe2",
  "re_log_types",
+ "thiserror",
  "tonic",
 ]
 

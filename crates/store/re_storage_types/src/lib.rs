@@ -5,7 +5,6 @@
 #![allow(clippy::unwrap_used)]
 #![allow(clippy::wildcard_imports)]
 #![allow(clippy::manual_is_variant_and)]
-
 pub mod v0 {
     #[path = "../v0/rerun.storage.v0.rs"]
     mod _v0;
@@ -16,34 +15,67 @@ pub mod v0 {
 
     use std::collections::BTreeSet;
 
+    #[derive(Debug, thiserror::Error)]
+    pub enum TypeConversionError {
+        #[error("missing required field: {0}")]
+        MissingField(&'static str),
+    }
+
     impl From<re_log_types::ResolvedTimeRange> for TimeRange {
         fn from(time_range: re_log_types::ResolvedTimeRange) -> Self {
             Self {
-                start: rtr.min().as_i64(),
-                end: rtr.max().as_i64(),
+                start: time_range.min().as_i64(),
+                end: time_range.max().as_i64(),
             }
         }
     }
 
-    impl From<Query> for re_dataframe2::external::re_chunk_store::QueryExpression2 {
-        fn from(value: Query) -> Self {
-            Self {
+    impl TryFrom<Query> for re_dataframe2::external::re_chunk_store::QueryExpression2 {
+        type Error = TypeConversionError;
+
+        fn try_from(value: Query) -> Result<Self, Self::Error> {
+            let filtered_index = value
+                .filtered_index
+                .ok_or(TypeConversionError::MissingField("filtered_index"))?
+                .try_into()?;
+
+            let selection = value
+                .column_selection
+                .map(|cs| {
+                    cs.columns
+                        .into_iter()
+                        .map(|c| {
+                            re_dataframe2::external::re_chunk_store::ColumnSelector::try_from(c)
+                        })
+                        .collect::<Result<Vec<_>, _>>()
+                })
+                .transpose()?;
+
+            let filtered_point_of_view = value
+                .filtered_pov
+                .map(|fp| {
+                    re_dataframe2::external::re_chunk_store::ComponentColumnSelector::try_from(fp)
+                })
+                .transpose()?;
+
+            Ok(Self {
                 view_contents: value.view_contents.map(|vc| vc.into()),
-                // TODO(zehiko) we need a consistent way on both sides to deal with the fact
-                // prost generates Option<> for all nested fields, but some are required
-                // See https://github.com/tokio-rs/prost/issues/223
-                // We could do this at the client layer where we ensure required fields are set
-                filtered_index: value.index.unwrap().into(),
-                filtered_index_range: value.index_range.map(|ir| ir.into()),
-                filtered_index_values: None,  // TODO(zehiko)  implement
-                using_index_values: None,     // TODO(zehiko)  implement
-                filtered_point_of_view: None, // TODO(zehiko)  implement
+                filtered_index,
+                filtered_index_range: value
+                    .filtered_index_range
+                    .map(|ir| ir.try_into())
+                    .transpose()?,
+                filtered_index_values: value
+                    .filtered_index_values
+                    .map(|iv| iv.time_points.into_iter().map(|v| v.into()).collect()),
+                using_index_values: value
+                    .using_index_values
+                    .map(|uiv| uiv.time_points.into_iter().map(|v| v.into()).collect()),
+                filtered_point_of_view,
                 sparse_fill_strategy:
-                    re_dataframe2::external::re_chunk_store::SparseFillStrategy::default(), // TODO(zehiko)  implement,
-                selection: value
-                    .column_selection
-                    .map(|cs| cs.columns.into_iter().map(|c| c.into()).collect()),
-            }
+                    re_dataframe2::external::re_chunk_store::SparseFillStrategy::default(), // TODO (zehiko) implement support for sparse fill strategy
+                selection,
+            })
         }
     }
 
@@ -56,9 +88,9 @@ pub mod v0 {
                     // TODO(zehiko) option unwrap
                     let entity_path = Into::<re_log_types::EntityPath>::into(part.path.unwrap());
                     let column_selector = part.components.map(|cs| {
-                        cs.values
+                        cs.components
                             .into_iter()
-                            .map(|c| re_dataframe2::external::re_chunk::ComponentName::new(&c))
+                            .map(|c| re_dataframe2::external::re_chunk::ComponentName::new(&c.name))
                             .collect::<BTreeSet<_>>()
                     });
                     (entity_path, column_selector)
@@ -73,53 +105,102 @@ pub mod v0 {
         }
     }
 
-    impl From<IndexColumnSelector> for re_log_types::Timeline {
-        fn from(value: IndexColumnSelector) -> Self {
-            #![allow(clippy::match_same_arms)]
-            let timeline = match value.name.as_str() {
-                "log_time" => Self::new_temporal(value.name),
-                "log_tick" => Self::new_sequence(value.name),
-                "frame" => Self::new_sequence(value.name),
-                "frame_nr" => Self::new_sequence(value.name),
-                _ => Self::new_temporal(value.name),
+    impl TryFrom<IndexColumnSelector> for re_log_types::Timeline {
+        type Error = TypeConversionError;
+
+        fn try_from(value: IndexColumnSelector) -> Result<Self, Self::Error> {
+            let timeline_name = value
+                .timeline
+                .ok_or(TypeConversionError::MissingField("timeline"))?
+                .name;
+
+            #[allow(clippy::match_same_arms)]
+            let timeline = match timeline_name.as_str() {
+                "log_time" => Self::new_temporal(timeline_name),
+                "log_tick" => Self::new_sequence(timeline_name),
+                "frame" => Self::new_sequence(timeline_name),
+                "frame_nr" => Self::new_sequence(timeline_name),
+                _ => Self::new_temporal(timeline_name),
             };
 
-            timeline
+            Ok(timeline)
         }
     }
 
-    impl From<FilteredIndexRange> for re_dataframe2::external::re_chunk_store::IndexRange {
-        fn from(value: FilteredIndexRange) -> Self {
-            Self::new(
-                // TODO(zehiko) option unwrap
-                value.time_range.unwrap().start,
-                value.time_range.unwrap().end,
-            )
+    impl TryFrom<IndexRange> for re_dataframe2::external::re_chunk_store::IndexRange {
+        type Error = TypeConversionError;
+
+        fn try_from(value: IndexRange) -> Result<Self, Self::Error> {
+            let time_range = value
+                .time_range
+                .ok_or(TypeConversionError::MissingField("time_range"))?;
+
+            Ok(Self::new(time_range.start, time_range.end))
         }
     }
 
-    impl From<ColumnSelector> for re_dataframe2::external::re_chunk_store::ColumnSelector {
-        fn from(value: ColumnSelector) -> Self {
-            // TODO(zehiko)  option unwraps
-            match value.selector_type.unwrap() {
+    impl From<TimeInt> for re_log_types::TimeInt {
+        fn from(value: TimeInt) -> Self {
+            Self::new_temporal(value.time)
+        }
+    }
+
+    impl TryFrom<ComponentColumnSelector>
+        for re_dataframe2::external::re_chunk_store::ComponentColumnSelector
+    {
+        type Error = TypeConversionError;
+
+        fn try_from(value: ComponentColumnSelector) -> Result<Self, Self::Error> {
+            let entity_path = value
+                .entity_path
+                .ok_or(TypeConversionError::MissingField("entity_path"))?
+                .into();
+
+            let component = value
+                .component
+                .ok_or(TypeConversionError::MissingField("component"))?
+                .name;
+
+            Ok(Self {
+                entity_path,
+                component: re_dataframe2::external::re_chunk::ComponentName::new(&component),
+                join_encoding: re_dataframe2::external::re_chunk_store::JoinEncoding::default(), // TODO(zehiko) implement
+            })
+        }
+    }
+
+    impl TryFrom<TimeColumnSelector> for re_dataframe2::external::re_chunk_store::TimeColumnSelector {
+        type Error = TypeConversionError;
+
+        fn try_from(value: TimeColumnSelector) -> Result<Self, Self::Error> {
+            let timeline = value
+                .timeline
+                .ok_or(TypeConversionError::MissingField("timeline"))?;
+
+            Ok(Self {
+                timeline: timeline.name.into(),
+            })
+        }
+    }
+
+    impl TryFrom<ColumnSelector> for re_dataframe2::external::re_chunk_store::ColumnSelector {
+        type Error = TypeConversionError;
+
+        fn try_from(value: ColumnSelector) -> Result<Self, Self::Error> {
+            match value
+                .selector_type
+                .ok_or(TypeConversionError::MissingField("selector_type"))?
+            {
                 column_selector::SelectorType::ComponentColumn(component_column_selector) => {
-                    re_dataframe2::external::re_chunk_store::ComponentColumnSelector {
-                        entity_path: Into::<re_log_types::EntityPath>::into(
-                            component_column_selector.entity_path.unwrap(),
-                        ),
-                        component: re_dataframe2::external::re_chunk::ComponentName::new(
-                            &component_column_selector.component,
-                        ),
-                        join_encoding:
-                            re_dataframe2::external::re_chunk_store::JoinEncoding::default(), // TODO(zehiko) implement
-                    }
-                    .into()
+                    let selector: re_dataframe2::external::re_chunk_store::ComponentColumnSelector =
+                        component_column_selector.try_into()?;
+                    Ok(selector.into())
                 }
                 column_selector::SelectorType::TimeColumn(time_column_selector) => {
-                    re_dataframe2::external::re_chunk_store::TimeColumnSelector {
-                        timeline: time_column_selector.timeline_name.into(),
-                    }
-                    .into()
+                    let selector: re_dataframe2::external::re_chunk_store::TimeColumnSelector =
+                        time_column_selector.try_into()?;
+
+                    Ok(selector.into())
                 }
             }
         }

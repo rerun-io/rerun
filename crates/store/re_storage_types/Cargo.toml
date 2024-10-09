@@ -14,6 +14,7 @@ re_log_types.workspace = true
 re_dataframe2.workspace = true
 
 # External
+thiserror.workspace = true
 tonic.workspace = true
 prost.workspace = true
 
