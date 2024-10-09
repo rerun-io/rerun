@@ -127,7 +127,9 @@ impl VideoDecoder {
             if #[cfg(target_arch = "wasm32")] {
                 let decoder = web::WebVideoDecoder::new(data.clone(), hw_acceleration)?;
                 return Ok(Self::from_chunk_decoder(render_ctx, data, decoder));
-            } else if #[cfg(feature = "video_av1")] {
+            } else {
+                // Native AV1 video decoding:
+
                 if !data.config.is_av1() {
                     return Err(DecodingError::UnsupportedCodec {
                         codec: data.human_readable_codec_string(),
@@ -135,7 +137,7 @@ impl VideoDecoder {
                 }
 
                 if cfg!(debug_assertions) {
-                    return Err(DecodingError::NoNativeDebug); // because debug builds of rav1d are so slow
+                    return Err(DecodingError::NoNativeDebug); // because debug builds of rav1d are EXTREMELY slow
                 } else {
                     let av1_decoder = re_video::decode::av1::SyncDav1dDecoder::new()
                         .map_err(|err| DecodingError::StartDecoder(err.to_string()))?;
@@ -143,8 +145,6 @@ impl VideoDecoder {
                     let decoder = native_decoder::NativeDecoder::new(debug_name, Box::new(av1_decoder))?;
                     return Ok(Self::from_chunk_decoder(render_ctx, data, decoder));
                 };
-            } else {
-                return Err(DecodingError::NoNativeSupport);
             }
         }
     }

@@ -35,10 +35,6 @@ default = ["import-obj", "import-gltf", "import-stl"]
 ## Support for Arrow datatypes for end-to-end zero-copy.
 arrow = ["dep:arrow2"]
 
-## Support for native AV1 video decoding.
-## You need to install [nasm](https://nasm.us/) to compile with this feature.
-video_av1 = ["re_video/av1"]
-
 ## Support importing .obj files
 import-obj = ["dep:tobj"]
 
@@ -56,7 +52,7 @@ re_error.workspace = true
 re_log.workspace = true
 re_math.workspace = true
 re_tracing.workspace = true
-re_video.workspace = true
+re_video = { workspace = true, default-features = true }
 
 ahash.workspace = true
 anyhow.workspace = true
