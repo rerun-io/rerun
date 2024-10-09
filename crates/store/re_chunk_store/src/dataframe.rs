@@ -767,6 +767,10 @@ impl ChunkStore {
 
         let components = static_components
             .chain(temporal_components)
+            .filter(|col| match col {
+                ColumnDescriptor::Time(_) => true,
+                ColumnDescriptor::Component(descr) => !descr.component_name.contains("Indicator"),
+            })
             .collect::<BTreeSet<_>>();
 
         timelines.chain(components).collect()
