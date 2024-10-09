@@ -1080,8 +1080,20 @@ impl QueryHandle<'_> {
 impl<'a> QueryHandle<'a> {
     /// Returns an iterator backed by [`Self::next_row`].
     #[allow(clippy::should_implement_trait)] // we need an anonymous closure, this won't work
+    pub fn iter(&'a self) -> impl Iterator<Item = Vec<Box<dyn ArrowArray>>> + 'a {
+        std::iter::from_fn(move || self.next_row())
+    }
+
+    /// Returns an iterator backed by [`Self::next_row`].
+    #[allow(clippy::should_implement_trait)] // we need an anonymous closure, this won't work
     pub fn into_iter(self) -> impl Iterator<Item = Vec<Box<dyn ArrowArray>>> + 'a {
         std::iter::from_fn(move || self.next_row())
+    }
+
+    /// Returns an iterator backed by [`Self::next_row_batch`].
+    #[allow(clippy::should_implement_trait)] // we need an anonymous closure, this won't work
+    pub fn batch_iter(&'a self) -> impl Iterator<Item = RecordBatch> + 'a {
+        std::iter::from_fn(move || self.next_row_batch())
     }
 
     /// Returns an iterator backed by [`Self::next_row_batch`].
@@ -1133,7 +1145,7 @@ mod tests {
     // * [x] num_rows
     // * [x] clears
     // * [ ] timelines returned with selection=none
-    // * [ ] pagination
+    // * [x] pagination
 
     // TODO(cmc): At some point I'd like to stress multi-entity queries too, but that feels less
     // urgent considering how things are implemented (each entity lives in its own index, so it's
@@ -1969,6 +1981,173 @@ mod tests {
         );
 
             similar_asserts::assert_eq!(expected, got);
+        }
+
+        Ok(())
+    }
+
+    #[test]
+    fn pagination() -> anyhow::Result<()> {
+        re_log::setup_logging();
+
+        let store = create_nasty_store()?;
+        eprintln!("{store}");
+        let query_cache = QueryCache::new(&store);
+        let query_engine = QueryEngine {
+            store: &store,
+            cache: &query_cache,
+        };
+
+        let timeline = Timeline::new_sequence("frame_nr");
+        let entity_path = EntityPath::from("this/that");
+
+        // basic
+        {
+            let query = QueryExpression::new(timeline);
+            eprintln!("{query:#?}:");
+
+            let query_handle = query_engine.query(query.clone());
+            assert_eq!(
+                query_engine.query(query.clone()).into_iter().count() as u64,
+                query_handle.num_rows(),
+            );
+
+            let expected_rows = query_handle.batch_iter().collect_vec();
+
+            for _ in 0..3 {
+                for i in 0..expected_rows.len() {
+                    query_handle.seek_to_row(i);
+
+                    let expected = concatenate_record_batches(
+                        query_handle.schema().clone(),
+                        &expected_rows.iter().skip(i).take(3).cloned().collect_vec(),
+                    );
+                    let got = concatenate_record_batches(
+                        query_handle.schema().clone(),
+                        &query_handle.batch_iter().take(3).collect_vec(),
+                    );
+
+                    let expected = format!("{:#?}", expected.data.iter().collect_vec());
+                    let got = format!("{:#?}", got.data.iter().collect_vec());
+
+                    similar_asserts::assert_eq!(expected, got);
+                }
+            }
+        }
+
+        // with pov
+        {
+            let mut query = QueryExpression::new(timeline);
+            query.filtered_point_of_view = Some(ComponentColumnSelector {
+                entity_path: entity_path.clone(),
+                component: MyPoint::name(),
+                join_encoding: Default::default(),
+            });
+            eprintln!("{query:#?}:");
+
+            let query_handle = query_engine.query(query.clone());
+            assert_eq!(
+                query_engine.query(query.clone()).into_iter().count() as u64,
+                query_handle.num_rows(),
+            );
+
+            let expected_rows = query_handle.batch_iter().collect_vec();
+
+            for _ in 0..3 {
+                for i in 0..expected_rows.len() {
+                    query_handle.seek_to_row(i);
+
+                    let expected = concatenate_record_batches(
+                        query_handle.schema().clone(),
+                        &expected_rows.iter().skip(i).take(3).cloned().collect_vec(),
+                    );
+                    let got = concatenate_record_batches(
+                        query_handle.schema().clone(),
+                        &query_handle.batch_iter().take(3).collect_vec(),
+                    );
+
+                    let expected = format!("{:#?}", expected.data.iter().collect_vec());
+                    let got = format!("{:#?}", got.data.iter().collect_vec());
+
+                    similar_asserts::assert_eq!(expected, got);
+                }
+            }
+        }
+
+        // with sampling
+        {
+            let mut query = QueryExpression::new(timeline);
+            query.using_index_values = Some(
+                [0, 15, 30, 30, 45, 60, 75, 90]
+                    .into_iter()
+                    .map(TimeInt::new_temporal)
+                    .chain(std::iter::once(TimeInt::STATIC))
+                    .collect(),
+            );
+            eprintln!("{query:#?}:");
+
+            let query_handle = query_engine.query(query.clone());
+            assert_eq!(
+                query_engine.query(query.clone()).into_iter().count() as u64,
+                query_handle.num_rows(),
+            );
+
+            let expected_rows = query_handle.batch_iter().collect_vec();
+
+            for _ in 0..3 {
+                for i in 0..expected_rows.len() {
+                    query_handle.seek_to_row(i);
+
+                    let expected = concatenate_record_batches(
+                        query_handle.schema().clone(),
+                        &expected_rows.iter().skip(i).take(3).cloned().collect_vec(),
+                    );
+                    let got = concatenate_record_batches(
+                        query_handle.schema().clone(),
+                        &query_handle.batch_iter().take(3).collect_vec(),
+                    );
+
+                    let expected = format!("{:#?}", expected.data.iter().collect_vec());
+                    let got = format!("{:#?}", got.data.iter().collect_vec());
+
+                    similar_asserts::assert_eq!(expected, got);
+                }
+            }
+        }
+
+        // with sparse-fill
+        {
+            let mut query = QueryExpression::new(timeline);
+            query.sparse_fill_strategy = SparseFillStrategy::LatestAtGlobal;
+            eprintln!("{query:#?}:");
+
+            let query_handle = query_engine.query(query.clone());
+            assert_eq!(
+                query_engine.query(query.clone()).into_iter().count() as u64,
+                query_handle.num_rows(),
+            );
+
+            let expected_rows = query_handle.batch_iter().collect_vec();
+
+            for _ in 0..3 {
+                for i in 0..expected_rows.len() {
+                    query_handle.seek_to_row(i);
+
+                    let expected = concatenate_record_batches(
+                        query_handle.schema().clone(),
+                        &expected_rows.iter().skip(i).take(3).cloned().collect_vec(),
+                    );
+                    let got = concatenate_record_batches(
+                        query_handle.schema().clone(),
+                        &query_handle.batch_iter().take(3).collect_vec(),
+                    );
+
+                    let expected = format!("{:#?}", expected.data.iter().collect_vec());
+                    let got = format!("{:#?}", got.data.iter().collect_vec());
+
+                    similar_asserts::assert_eq!(expected, got);
+                }
+            }
         }
 
         Ok(())
