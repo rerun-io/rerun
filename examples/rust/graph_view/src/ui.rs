@@ -12,11 +12,11 @@ use re_viewer::external::{
     },
 };
 
-use crate::{common::NodeLocation, graph::Node, visualizers::nodes::NodeInstance};
+use crate::{graph::{ Node, NodeIndex, UnknownNodeInstance}, visualizers::nodes::NodeInstance};
 
 pub fn draw_node(
     ui: &mut egui::Ui,
-    node: &NodeInstance,
+    instance: &NodeInstance,
     highlight: InteractionHighlight,
 ) -> egui::Response {
     let hcolor = match (
@@ -34,8 +34,8 @@ pub fn draw_node(
     };
     // ui.style().visuals.faint_bg_color
 
-    let text = node.label.map_or(
-        egui::RichText::new(node.location.node_id.to_string()),
+    let text = instance.label.map_or(
+        egui::RichText::new(instance.node_id.to_string()),
         |label| egui::RichText::new(label.to_string()),
     );
 
@@ -46,7 +46,7 @@ pub fn draw_node(
         .fill(bg)
         .show(ui, |ui| {
             ui.style_mut().wrap_mode = Some(TextWrapMode::Extend);
-            if let Some(color) = node.color {
+            if let Some(color) = instance.color {
                 ui.add(egui::Button::new(text.color(color)));
             } else {
                 ui.add(egui::Button::new(text));
@@ -57,10 +57,9 @@ pub fn draw_node(
 
 pub fn draw_dummy(
     ui: &mut egui::Ui,
-    entity_path: &datatypes::EntityPath,
-    node_id: &datatypes::GraphNodeId,
+    instance: &UnknownNodeInstance
 ) -> egui::Response {
-    let text = egui::RichText::new(format!("{} @ {}", node_id, entity_path.0))
+    let text = egui::RichText::new(format!("{} @ {}", instance.node_id, instance.entity_path.to_string()))
         .color(ui.style().visuals.widgets.noninteractive.text_color());
     ui.style_mut().wrap_mode = Some(TextWrapMode::Extend);
     ui.add(egui::Button::new(text))
@@ -135,20 +134,20 @@ pub fn draw_edge(
 pub fn measure_node_sizes<'a>(
     ui: &mut egui::Ui,
     nodes: impl Iterator<Item = Node<'a>>,
-) -> HashMap<NodeLocation, egui::Vec2> {
+) -> HashMap<NodeIndex, egui::Vec2> {
     let mut sizes = HashMap::new();
     let ctx = ui.ctx();
     ctx.request_discard("measuring node sizes");
     ui.horizontal(|ui| {
         for node in nodes {
             match node {
-                Node::Regular(node) => {
-                    let r = draw_node(ui, &node, InteractionHighlight::default());
-                    sizes.insert(node.location, r.rect.size());
+                Node::Regular(instance) => {
+                    let r = draw_node(ui, &instance, InteractionHighlight::default());
+                    sizes.insert((&instance).into(), r.rect.size());
                 }
-                Node::Dummy(location, entity_path) => {
-                    let r = draw_dummy(ui, entity_path, &location.node_id);
-                    sizes.insert(location, r.rect.size());
+                Node::Unknown(instance) => {
+                    let r = draw_dummy(ui, &instance);
+                    sizes.insert((&instance).into(), r.rect.size());
                 }
             };
         }
@@ -167,7 +166,7 @@ pub(crate) struct GraphSpaceViewState {
     pub show_debug: bool,
 
     /// Positions of the nodes in world space.
-    pub layout: Option<HashMap<NodeLocation, egui::Rect>>,
+    pub layout: Option<HashMap<NodeIndex, egui::Rect>>,
 }
 
 pub fn bounding_rect_from_iter<'a>(

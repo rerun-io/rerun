@@ -1,22 +1,16 @@
 use re_viewer::external::{
-    egui::{self, emath::TSTransform},
-    re_entity_db::InstancePath,
-    re_log::external::log,
-    re_log_types::EntityPath,
-    re_types::SpaceViewClassIdentifier,
-    re_ui::{self, UiExt},
-    re_viewer_context::{
+    egui::{self, emath::TSTransform}, re_entity_db::InstancePath, re_log::external::log, re_log_types::EntityPath, re_renderer::view_builder::TargetConfiguration, re_types::SpaceViewClassIdentifier, re_ui::{self, UiExt}, re_viewer_context::{
         IdentifiedViewSystem as _, Item, SpaceViewClass, SpaceViewClassLayoutPriority,
         SpaceViewClassRegistryError, SpaceViewId, SpaceViewSpawnHeuristics, SpaceViewState,
         SpaceViewStateExt as _, SpaceViewSystemExecutionError, SpaceViewSystemRegistrator,
         SystemExecutionOutput, ViewQuery, ViewerContext,
-    },
+    }
 };
 
 use crate::{
     error::Error,
-    graph::Graph,
-    ui::{self, GraphSpaceViewState},
+    graph::{Graph, NodeIndex},
+    ui::{self, draw_dummy, GraphSpaceViewState},
     visualizers::{edges_undirected::EdgeUndirectedVisualizer, nodes::GraphNodeVisualizer},
 };
 
@@ -114,23 +108,20 @@ impl SpaceViewClass for GraphSpaceView {
             .view_systems
             .get::<EdgeUndirectedVisualizer>()?;
 
+        let graph = Graph::from_nodes_edges(&node_system.data, &edge_system.data);
+
         let state = state.downcast_mut::<GraphSpaceViewState>()?;
         let (id, clip_rect_window) = ui.allocate_space(ui.available_size());
 
         let Some(layout) = &mut state.layout else {
-            let graph = Graph::new(
-                node_system.data.iter().flat_map(|d| d.nodes()),
-                edge_system.data.iter().flat_map(|d| d.edges()),
-            );
-
-            let node_sizes = ui::measure_node_sizes(ui, graph.nodes());
+            let node_sizes = ui::measure_node_sizes(ui, graph.all_nodes());
 
             let layout = crate::layout::compute_layout(
                 node_sizes.into_iter(),
                 edge_system
                     .data
                     .iter()
-                    .flat_map(|d| d.edges().map(|e| (e.source, e.target))),
+                    .flat_map(|d| d.edges().map(|e| (e.source.into(), e.target.into()))),
             )?;
 
             if let Some(bounding_box) = ui::bounding_rect_from_iter(layout.values()) {
@@ -224,10 +215,11 @@ impl SpaceViewClass for GraphSpaceView {
             let mut entity_rect: Option<egui::Rect> = None;
 
             for node in data.nodes() {
+                let index = NodeIndex::from(&node);
                 let current_extent = layout
-                    .get(&node.location)
+                    .get(&index)
                     .expect("missing layout information for node");
-                let response = egui::Area::new(id.with((node.location.clone(), node.instance)))
+                let response = egui::Area::new(id.with(&index))
                     .current_pos(current_extent.min)
                     .order(egui::Order::Middle)
                     .constrain(false)
@@ -244,7 +236,7 @@ impl SpaceViewClass for GraphSpaceView {
                     Item::DataResult(query.space_view_id, instance),
                 );
 
-                layout.insert(node.location.clone(), response.rect);
+                layout.insert(index, response.rect);
                 entity_rect =
                     entity_rect.map_or(Some(response.rect), |e| Some(e.union(response.rect)));
 
@@ -272,26 +264,22 @@ impl SpaceViewClass for GraphSpaceView {
             }
         }
 
-        let graph = Graph::new(
-            node_system.data.iter().flat_map(|d| d.nodes()),
-            edge_system.data.iter().flat_map(|d| d.edges()),
-        );
-
-        for dummy in graph.dummy_nodes() {
+        for dummy in graph.unknown_nodes() {
+            let index = NodeIndex::from(&dummy);
             let current_extent = layout
-                .get(&dummy.0)
+                .get(&index)
                 .expect("missing layout information for dummy node");
-            let response = egui::Area::new(id.with(dummy.0.clone()))
+            let response = egui::Area::new(id.with(&index))
                 .current_pos(current_extent.min)
                 .order(egui::Order::Middle)
                 .constrain(false)
                 .show(ui.ctx(), |ui| {
                     ui.set_clip_rect(clip_rect_world);
-                    ui::draw_dummy(ui, dummy.1, &dummy.0.node_id)
+                    ui::draw_dummy(ui, &dummy)
                 })
                 .response;
 
-            layout.insert(dummy.0.clone(), response.rect);
+            layout.insert(index, response.rect);
 
             let id = response.layer_id;
             ui.ctx().set_transform_layer(id, world_to_window);
@@ -302,11 +290,13 @@ impl SpaceViewClass for GraphSpaceView {
             let ent_highlight = query.highlights.entity_highlight(data.entity_path.hash());
 
             for edge in data.edges() {
+                let source_ix = NodeIndex::from(edge.source);
+                let target_ix = NodeIndex::from(edge.target);
                 let source_pos = layout
-                    .get(&edge.source)
+                    .get(&source_ix)
                     .ok_or_else(|| Error::EdgeUnknownNode(edge.source.to_string()))?;
                 let target_pos = layout
-                    .get(&edge.target)
+                    .get(&target_ix)
                     .ok_or_else(|| Error::EdgeUnknownNode(edge.target.to_string()))?;
 
                 let response = egui::Area::new(id.with((data.entity_path.hash(), edge.instance)))

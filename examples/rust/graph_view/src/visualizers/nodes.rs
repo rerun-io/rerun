@@ -9,7 +9,7 @@ use re_viewer::external::{
     re_types::{
         self, archetypes,
         components::{self},
-        ArrowString, Loggable as _,
+        datatypes, ArrowString, Loggable as _,
     },
     re_viewer_context::{
         self, IdentifiedViewSystem, SpaceViewSystemExecutionError, ViewContext,
@@ -17,8 +17,6 @@ use re_viewer::external::{
         VisualizerSystem,
     },
 };
-
-use crate::common::NodeLocation;
 
 /// Our space view consist of single part which holds a list of egui colors for each entity path.
 #[derive(Default)]
@@ -39,7 +37,8 @@ pub(crate) struct GraphNodeVisualizerData {
 }
 
 pub(crate) struct NodeInstance<'a> {
-    pub location: NodeLocation,
+    pub node_id: &'a datatypes::GraphNodeId,
+    pub entity_path: &'a EntityPath,
     pub instance: Instance,
     pub label: Option<&'a ArrowString>,
     pub color: Option<Color32>,
@@ -47,7 +46,6 @@ pub(crate) struct NodeInstance<'a> {
 
 impl GraphNodeVisualizerData {
     pub(crate) fn nodes(&self) -> impl Iterator<Item = NodeInstance> {
-        let entity_hash = self.entity_path.hash();
         clamped_zip_2x2(
             self.node_ids.iter(),
             (0..).map(Instance::from),
@@ -63,10 +61,8 @@ impl GraphNodeVisualizerData {
             Option::<&ArrowString>::default,
         )
         .map(move |(node_id, instance, color, label)| NodeInstance {
-            location: NodeLocation {
-                entity_hash,
-                node_id: node_id.0.clone(),
-            },
+            entity_path: &self.entity_path,
+            node_id,
             instance,
             color: color.map(|c| Color32::from(c.0)),
             label,

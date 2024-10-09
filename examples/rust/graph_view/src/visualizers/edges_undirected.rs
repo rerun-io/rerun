@@ -1,19 +1,17 @@
-use re_log_types::{external::re_types_core::datatypes, Instance};
+use re_log_types::{EntityPath, Instance};
 use re_viewer::external::{
     egui::Color32,
     re_chunk::{ChunkComponentIterItem, LatestAtQuery},
     re_query::{clamped_zip_2x1, range_zip_1x1},
     re_renderer,
     re_space_view::{DataResultQuery, RangeResultsExt},
-    re_types::{self, archetypes, components, Loggable as _},
+    re_types::{self, archetypes, datatypes, components::{self, GraphNodeId}, Loggable as _},
     re_viewer_context::{
         self, IdentifiedViewSystem, SpaceViewSystemExecutionError, ViewContext,
         ViewContextCollection, ViewQuery, ViewSystemIdentifier, VisualizerQueryInfo,
         VisualizerSystem,
     },
 };
-
-use crate::common::NodeLocation;
 
 #[derive(Default)]
 pub struct EdgeUndirectedVisualizer {
@@ -27,13 +25,17 @@ pub struct EdgeUndirectedVisualizerData {
 }
 
 pub struct EdgeInstance<'a> {
-    pub source: NodeLocation,
-    pub target: NodeLocation,
-    pub source_entity_path: &'a datatypes::EntityPath,
-    pub target_entity_path: &'a datatypes::EntityPath,
+    pub source: &'a datatypes::GraphLocation,
+    pub target: &'a datatypes::GraphLocation,
     pub entity_path: &'a re_log_types::EntityPath,
     pub instance: Instance,
     pub color: Option<Color32>,
+}
+
+impl<'a> EdgeInstance<'a> {
+    pub fn nodes(&'a self) -> impl Iterator<Item = datatypes::GraphLocation> {
+        [self.source.clone(), self.target.clone()].into_iter()
+    }
 }
 
 impl EdgeUndirectedVisualizerData {
@@ -45,10 +47,8 @@ impl EdgeUndirectedVisualizerData {
             Option::<&components::Color>::default,
         )
         .map(|(edge, instance, color)| EdgeInstance {
-            source: edge.source.clone().into(),
-            target: edge.target.clone().into(),
-            source_entity_path: &edge.0.source.entity_path,
-            target_entity_path: &edge.0.target.entity_path,
+            source: &edge.source,
+            target: &edge.target,
             entity_path: &self.entity_path,
             instance,
             color: color.map(|c| Color32::from(c.0)),
