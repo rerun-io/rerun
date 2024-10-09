@@ -280,7 +280,7 @@ impl VideoPlayer {
         );
 
         if let Err(err) = result {
-            if err == VideoPlayerError::EmptyBuffer {
+            if matches!(err, VideoPlayerError::EmptyBuffer) {
                 // No buffered frames
 
                 // Might this be due to an error?

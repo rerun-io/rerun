@@ -90,7 +90,7 @@ mod webcodecs;
 
 use crate::Time;
 
-#[derive(thiserror::Error, Debug, Clone, PartialEq, Eq)]
+#[derive(thiserror::Error, Debug, Clone)]
 pub enum Error {
     #[error("Unsupported codec: {0}")]
     UnsupportedCodec(String),
@@ -116,12 +116,8 @@ pub enum Error {
     WebDecoderError(#[from] webcodecs::Error),
 
     #[cfg(with_ffmpeg)]
-    #[error("Failed to start ffmppeg: {0}")]
-    FailedToStartFfmpeg(std::io::Error),
-
-    #[cfg(with_ffmpeg)]
-    #[error("Failed to start ffmppeg: {0}")]
-    FailedToSpawnThread(std::io::Error),
+    #[error(transparent)]
+    Ffmpeg(std::sync::Arc<ffmpeg::Error>),
 }
 
 pub type Result<T = (), E = Error> = std::result::Result<T, E>;
@@ -194,10 +190,7 @@ pub fn new_decoder(
             re_log::trace!("Decoding H.264…");
             return Ok(Box::new(async_decoder_wrapper::AsyncDecoderWrapper::new(
                 debug_name.to_owned(),
-                Box::new(ffmpeg::FfmpegCliH264Decoder::new(
-                    avc1_box.clone(),
-                    video.timescale,
-                )?),
+                Box::new(ffmpeg::FfmpegCliH264Decoder::new(avc1_box.clone())?),
                 on_output,
             )));
         }

@@ -1,15 +1,35 @@
 //! Send video data to `ffmpeg` over CLI to decode it.
 
-use crossbeam::channel::{Receiver, Sender};
+use crossbeam::channel::{Receiver, Sender, TryRecvError};
 use ffmpeg_sidecar::{
-    child::FfmpegChild,
     command::FfmpegCommand,
     event::{FfmpegEvent, LogLevel},
 };
 
-use crate::{Time, Timescale};
+use crate::Time;
 
-use super::{async_decoder_wrapper::SyncDecoder, Error, Frame, Result};
+use super::{async_decoder_wrapper::SyncDecoder, Frame, Result};
+
+#[derive(thiserror::Error, Debug)]
+pub enum Error {
+    #[error("Failed to start ffmppeg: {0}")]
+    FailedToStartFfmpeg(std::io::Error),
+
+    #[error("Failed to get stdin handle")]
+    NoStdin,
+
+    #[error("Failed to get iterator: {0}")]
+    NoIterator(String),
+
+    #[error("There's a bug in Rerun")]
+    NoFrameInfo,
+}
+
+impl From<Error> for super::Error {
+    fn from(err: Error) -> Self {
+        Self::Ffmpeg(std::sync::Arc::new(err))
+    }
+}
 
 /// ffmpeg does not tell us the timestamp/duration of a given frame, so we need to remember it.
 struct FrameInfo {
@@ -33,14 +53,13 @@ pub struct FfmpegCliH264Decoder {
     frame_info_tx: Sender<FrameInfo>,
 
     /// How we receive new frames back from ffmpeg
-    frame_rx: Receiver<Result<Frame>>,
+    frame_rx: Receiver<super::Result<Frame>>,
 
     avcc: re_mp4::Avc1Box,
-    timescale: Timescale,
 }
 
 impl FfmpegCliH264Decoder {
-    pub fn new(avcc: re_mp4::Avc1Box, timescale: Timescale) -> Result<Self> {
+    pub fn new(avcc: re_mp4::Avc1Box) -> Result<Self> {
         re_tracing::profile_function!();
 
         let mut ffmpeg = {
@@ -56,8 +75,10 @@ impl FfmpegCliH264Decoder {
                 .map_err(Error::FailedToStartFfmpeg)?
         };
 
-        let ffmpeg_stdin = ffmpeg.take_stdin().unwrap();
-        let ffmpeg_iterator = ffmpeg.iter().unwrap();
+        let ffmpeg_stdin = ffmpeg.take_stdin().ok_or(Error::NoStdin)?;
+        let ffmpeg_iterator = ffmpeg
+            .iter()
+            .map_err(|err| Error::NoIterator(err.to_string()))?;
 
         let (frame_info_tx, frame_info_rx) = crossbeam::channel::unbounded();
         let (frame_tx, frame_rx) = crossbeam::channel::unbounded();
@@ -65,62 +86,7 @@ impl FfmpegCliH264Decoder {
         std::thread::Builder::new()
             .name("ffmpeg-reader".to_owned())
             .spawn(move || {
-                for event in ffmpeg_iterator {
-                    match event {
-                        FfmpegEvent::Log(LogLevel::Warning, msg) => {
-                            if !msg.contains(
-                                "No accelerated colorspace conversion found from yuv420p to rgb24",
-                            ) {
-                                re_log::warn_once!("{msg}");
-                            }
-                        }
-                        FfmpegEvent::Log(LogLevel::Error, msg) => re_log::error_once!("{msg}"), // TODO: report errors
-                        FfmpegEvent::Progress(p) => {
-                            re_log::debug!("Progress: {}", p.time);
-                        }
-                        FfmpegEvent::OutputFrame(frame) => {
-                            // The `frame.timestamp` is monotonically increasing,
-                            // so it is not the actual timestamp in the stream.
-
-                            let frame_info: FrameInfo = frame_info_rx.recv().unwrap();
-
-                            let ffmpeg_sidecar::event::OutputVideoFrame {
-                                frame_num,
-                                pix_fmt,
-                                width,
-                                height,
-                                data,
-                                ..
-                            } = frame;
-
-                            debug_assert_eq!(frame_info.frame_num, frame_num, "We are out-of-sync"); // TODO: fix somehow
-
-                            re_log::trace!(
-                                "Received frame {frame_num}: fmt {pix_fmt:?} size {width}x{height}"
-                            );
-
-                            debug_assert_eq!(pix_fmt, "rgb24");
-                            debug_assert_eq!(width as usize * height as usize * 3, data.len());
-
-                            if frame_tx
-                                .send(Ok(super::Frame {
-                                    width,
-                                    height,
-                                    data,
-                                    format: crate::PixelFormat::Rgb8Unorm,
-                                    presentation_timestamp: frame_info.timestamp,
-                                    duration: frame_info.duration,
-                                }))
-                                .is_err()
-                            {
-                                re_log::debug!("Receiver disconnected");
-                                break;
-                            }
-                        }
-                        // TODO: handle all events
-                        event => re_log::debug!("Event: {event:?}"),
-                    }
-                }
+                read_ffmpeg_output(ffmpeg_iterator, &frame_info_rx, &frame_tx);
                 re_log::debug!("Shutting down ffmpeg");
             })
             .expect("Failed to spawn ffmpeg thread");
@@ -131,8 +97,139 @@ impl FfmpegCliH264Decoder {
             frame_info_tx,
             frame_rx,
             avcc,
-            timescale,
         })
+    }
+}
+
+fn read_ffmpeg_output(
+    ffmpeg_iterator: ffmpeg_sidecar::iter::FfmpegIterator,
+    frame_info_rx: &Receiver<FrameInfo>,
+    frame_tx: &Sender<super::Result<Frame>>,
+) {
+    for event in ffmpeg_iterator {
+        #[allow(clippy::match_same_arms)]
+        match event {
+            FfmpegEvent::Log(LogLevel::Info, msg) => {
+                re_log::debug!("{msg}");
+            }
+
+            FfmpegEvent::Log(LogLevel::Warning, msg) => {
+                if !msg.contains("No accelerated colorspace conversion found from yuv420p to rgb24")
+                {
+                    re_log::warn_once!("{msg}");
+                }
+            }
+
+            FfmpegEvent::Log(LogLevel::Error, msg) => {
+                // TODO: report errors
+                re_log::error_once!("{msg}");
+            }
+
+            // Usefuless info in these:
+            FfmpegEvent::ParsedInput(_) => {}
+            FfmpegEvent::ParsedOutput(_) => {}
+            FfmpegEvent::ParsedStreamMapping(_) => {}
+
+            FfmpegEvent::ParsedInputStream(stream) => {
+                let ffmpeg_sidecar::event::AVStream {
+                    stream_type,
+                    format,
+                    pix_fmt, // Often 'yuv420p'
+                    width,
+                    height,
+                    fps,
+                    ..
+                } = stream;
+
+                re_log::debug!("ParsedInputStream {stream_type} {format} {pix_fmt} {width}x{height} @ {fps} FPS");
+
+                debug_assert_eq!(stream_type.to_ascii_lowercase(), "video");
+            }
+
+            FfmpegEvent::ParsedOutputStream(stream) => {
+                // This just repeats what we told ffmpeg to output, e.g. "rawvideo rgb24"
+                let ffmpeg_sidecar::event::AVStream {
+                    stream_type,
+                    format,
+                    pix_fmt,
+                    width,
+                    height,
+                    fps,
+                    ..
+                } = stream;
+
+                re_log::debug!("ParsedOutputStream {stream_type} {format} {pix_fmt} {width}x{height} @ {fps} FPS");
+
+                debug_assert_eq!(stream_type.to_ascii_lowercase(), "video");
+            }
+
+            FfmpegEvent::Progress(_) => {
+                // We can get out frame number etc here to know how far behind we are.
+            }
+
+            FfmpegEvent::OutputFrame(frame) => {
+                // NOTE: `frame.timestamp` is monotonically increasing,
+                // and is not the actual timestamp in the stream.
+
+                let frame_info: FrameInfo = match frame_info_rx.try_recv() {
+                    Ok(frame_info) => frame_info,
+
+                    Err(TryRecvError::Disconnected) => {
+                        re_log::debug!("Receiver disconnected");
+                        return;
+                    }
+
+                    Err(TryRecvError::Empty) => {
+                        // This shouldn't happen
+                        if frame_tx.send(Err(Error::NoFrameInfo.into())).is_err() {
+                            re_log::warn!("Got no frame-info, and failed to send error");
+                        }
+                        return;
+                    }
+                };
+
+                let ffmpeg_sidecar::event::OutputVideoFrame {
+                    frame_num,
+                    pix_fmt,
+                    width,
+                    height,
+                    data,
+                    ..
+                } = frame;
+
+                debug_assert_eq!(
+                    frame_info.frame_num, frame_num,
+                    "We are out-of-sync with ffmpeg"
+                ); // TODO: fix somehow
+
+                re_log::trace!("Received frame {frame_num}: fmt {pix_fmt:?} size {width}x{height}");
+
+                debug_assert_eq!(pix_fmt, "rgb24");
+                debug_assert_eq!(width as usize * height as usize * 3, data.len());
+
+                if frame_tx
+                    .send(Ok(super::Frame {
+                        width,
+                        height,
+                        data,
+                        format: crate::PixelFormat::Rgb8Unorm,
+                        presentation_timestamp: frame_info.timestamp,
+                        duration: frame_info.duration,
+                    }))
+                    .is_err()
+                {
+                    re_log::debug!("Receiver disconnected");
+                    return;
+                }
+            }
+
+            FfmpegEvent::Done => {
+                re_log::debug!("ffmpeg is Done");
+                return;
+            }
+            // TODO: handle all events
+            event => re_log::debug!("Event: {event:?}"),
+        }
     }
 }
 
@@ -148,7 +245,7 @@ impl SyncDecoder for FfmpegCliH264Decoder {
         // NOTE: this assumes each sample/chunk will result in exactly one frame.
         self.frame_info_tx.send(FrameInfo {
             frame_num: self.frame_num,
-            timestamp: chunk.timestamp,
+            timestamp: chunk.composition_timestamp,
             duration: chunk.duration,
         });
 
@@ -200,12 +297,12 @@ fn write_avc_chunk_to_nalu_stream(
     // an IDR frame unless the previous frame was an IDR frame.
     // TODO(andreas): Should we detect this rather from the NALU stream rather than the samples?
     if chunk.is_sync && !state.previous_frame_was_idr {
-        for sps in (&avcc.sequence_parameter_sets).iter() {
-            nalu_stream.write_all(&NAL_START_CODE)?;
+        for sps in &avcc.sequence_parameter_sets {
+            nalu_stream.write_all(NAL_START_CODE)?;
             nalu_stream.write_all(&sps.bytes)?;
         }
-        for pps in (&avcc.picture_parameter_sets).iter() {
-            nalu_stream.write_all(&NAL_START_CODE)?;
+        for pps in &avcc.picture_parameter_sets {
+            nalu_stream.write_all(NAL_START_CODE)?;
             nalu_stream.write_all(&pps.bytes)?;
         }
         state.previous_frame_was_idr = true;
@@ -248,7 +345,7 @@ fn write_avc_chunk_to_nalu_stream(
             );
         }
 
-        nalu_stream.write_all(&NAL_START_CODE)?;
+        nalu_stream.write_all(NAL_START_CODE)?;
         let data_start = buffer_offset + length_prefix_size; // Skip the size.
         let data_end = buffer_offset + nal_unit_size + length_prefix_size;
         let data = &chunk.data[data_start..data_end];
