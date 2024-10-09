@@ -53,7 +53,7 @@ fn srgb_from_yuv(yuv: vec3f, primaries: u32) -> vec3f {
         }
 
         default: {
-            rgb = vec3f(1.0, 0.0, 1.0); // Magenta to indicate trouble
+            rgb = ERROR_RGBA.rgb;
         }
     }
 
@@ -94,7 +94,7 @@ fn decode_chroma_subsampling_format_to_yuv(format: u32, texture: texture_2d<u32>
         }
 
         default: {
-            yuv = vec3f(0.0, 0.0, 0.0);
+            yuv = vec3f(0.0, 0.0, 0.0); // ERROR_RGBA doesn't apply here.
         }
     }
 
