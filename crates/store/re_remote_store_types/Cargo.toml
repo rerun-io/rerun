@@ -1,5 +1,5 @@
 [package]
-name = "re_storage_types"
+name = "re_remote_store_types"
 authors.workspace = true
 edition.workspace = true
 homepage.workspace = true

@@ -114,8 +114,8 @@ examples-pypi = ["examples-common", "python-pypi"]
 # Run the codegen. Optionally pass `--profile` argument if you want.
 codegen = "cargo --quiet run --package re_types_builder -- "
 
-# Run the codegen for storage types.
-codegen-storage = "cargo --quiet run --package re_storage_types_builder -- "
+# Run the codegen for remote store types.
+codegen-rstore = "cargo --quiet run --package re_remote_store_types_builder -- "
 
 # Generate the Rerun CLI manual.
 

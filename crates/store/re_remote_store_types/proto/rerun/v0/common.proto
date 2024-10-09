@@ -1,16 +1,6 @@
 syntax = "proto3";
 
-package rerun.storage.v0;
-
-service StorageNode {
-    rpc ListRecordings(ListRecordingsRequest) returns (ListRecordingsResponse) {}
-    rpc Query(QueryRequest) returns (stream QueryResponse) {}
-    rpc GetRecordingMetadata(GetRecordingMetadataRequest) returns (GetRecordingMetadataResponse) {}
-    // TODO (zehiko) - should this be singular recording registration? Currently we can have 1 rrd => many recordings
-    rpc RegisterRecordings(RegisterRecordingsRequest) returns (RegisterRecordingsResponse) {}
-}
-
-// ----------- Common ------------
+package rerun.remote_store.v0;
 
 // unique recording identifier. At this point in time it is the same id as the ChunkStore's StoreId
 message RecordingId {
@@ -29,61 +19,9 @@ message TimeRange {
     int64 end = 2;
 }
 
-// ---------------- RegisterRecording ------------------
-
-message RegisterRecordingsRequest {
-    string description = 1;
-    ObjectStorage obj_storage = 2;
-    // TODO (zehiko) should this be auto-discoverable?
-    RecordingType typ = 3;
-}
-
-message ObjectStorage {
-    string bucket_name = 1;
-    string url = 2;
-}
-
-message RegisterRecordingsResponse {
-    // Note / TODO (zehiko): this implies we read the record (for example go through entire .rrd file
-    // chunk by chunk) and extract the metadata. So we might want to 1/ not do this i.e.
-    // only do it as part of explicit GetMetadata request or 2/ do it if Request has "include_metadata=true"
-    // or 3/ do it always
-    repeated RecordingMetadata metadata = 2;
-}
-
-// ---------------- GetRecordingMetadata  -----------------
-
-message GetRecordingMetadataRequest {
-    RecordingId recording_id = 1;
-}
-
-message GetRecordingMetadataResponse {
-    RecordingMetadata metadata = 1;
-}
-
-message RecordingMetadata {
-    RecordingId id = 1;
-    Schema schema = 2;
-    repeated TimeMetadata time_metadata = 3;
-}
-
-message TimeMetadata {
-    Timeline timeline = 1;
-    TimeRange time_range = 2;
-}
-
+// arrow IPC serialized schema
 message Schema {
-    // arrow IPC serialized schema
     bytes arrow_schema = 1;
-}
-
-// ---------------- Query -----------------
-
-message QueryRequest {
-    // unique identifier of the recording
-    RecordingId recording_id = 1;
-    // query to execute
-    Query query = 2;
 }
 
 message Query {
@@ -105,11 +43,6 @@ message Query {
     ColumnSelection column_selection = 7;
     // how are null values filled in the response
     SparseFillStrategy sparse_fill_strategy = 8;
-}
-
-message QueryResponse {
-    // single record batch (encoding TBD - TODO).
-    bytes record_batch = 1;
 }
 
 message ColumnSelection {
@@ -142,6 +75,10 @@ message SampledIndexValues {
     repeated TimeInt sample_points = 1;
 }
 
+message TimeInt {
+    int64 time = 1;
+}
+
 message ViewContents {
     repeated ViewContentsPart contents = 1;
 }
@@ -153,10 +90,6 @@ message ViewContentsPart {
 
 message ComponentsSet {
     repeated Component components = 1;
-}
-
-message TimeInt {
-    int64 time = 1;
 }
 
 message EntityPath {
@@ -181,24 +114,4 @@ message ComponentColumnSelector {
 enum SparseFillStrategy {
     NONE = 0;
     LATEST_AL_GLOBAL = 1;
-}
-
-// ----------------- ListRecordings -----------------
-
-message ListRecordingsRequest {}
-
-message ListRecordingsResponse {
-    repeated RecordingInfo recordings = 1;
-}
-
-message RecordingInfo {
-    RecordingId id = 1;
-    string description = 2;
-    string storage_url = 3;
-    uint64 size_bytes = 4;
-    RecordingType typ = 5;
-}
-
-enum RecordingType {
-    RRD = 0;
 }

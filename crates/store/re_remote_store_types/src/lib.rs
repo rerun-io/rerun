@@ -1,4 +1,4 @@
-// Ignoring all warnings for generated code.
+// Ignoring all warnings for the auto-generated code.
 #![allow(clippy::doc_markdown)]
 #![allow(clippy::derive_partial_eq_without_eq)]
 #![allow(clippy::enum_variant_names)]
@@ -6,7 +6,7 @@
 #![allow(clippy::wildcard_imports)]
 #![allow(clippy::manual_is_variant_and)]
 pub mod v0 {
-    #[path = "../v0/rerun.storage.v0.rs"]
+    #[path = "../v0/rerun.remote_store.v0.rs"]
     mod _v0;
 
     pub use self::_v0::*;
@@ -73,7 +73,7 @@ pub mod v0 {
                     .map(|uiv| uiv.time_points.into_iter().map(|v| v.into()).collect()),
                 filtered_point_of_view,
                 sparse_fill_strategy:
-                    re_dataframe2::external::re_chunk_store::SparseFillStrategy::default(), // TODO (zehiko) implement support for sparse fill strategy
+                    re_dataframe2::external::re_chunk_store::SparseFillStrategy::default(), // TODO(zehiko) implement support for sparse fill strategy
                 selection,
             })
         }

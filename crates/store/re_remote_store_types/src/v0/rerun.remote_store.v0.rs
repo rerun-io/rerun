@@ -20,6 +20,156 @@ pub struct TimeRange {
     #[prost(int64, tag = "2")]
     pub end: i64,
 }
+/// arrow IPC serialized schema
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct Schema {
+    #[prost(bytes = "vec", tag = "1")]
+    pub arrow_schema: ::prost::alloc::vec::Vec<u8>,
+}
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct Query {
+    /// database view defined by entity paths and components
+    #[prost(message, optional, tag = "1")]
+    pub view_contents: ::core::option::Option<ViewContents>,
+    /// filtering index (just a string i.e. a name of the timeline for starters)
+    #[prost(message, optional, tag = "2")]
+    pub filtered_index: ::core::option::Option<IndexColumnSelector>,
+    /// Optional specific range for the index selector
+    #[prost(message, optional, tag = "3")]
+    pub filtered_index_range: ::core::option::Option<IndexRange>,
+    /// Optional specific values for the index selector
+    #[prost(message, optional, tag = "4")]
+    pub filtered_index_values: ::core::option::Option<IndexValues>,
+    /// Optional index selector sampling
+    #[prost(message, optional, tag = "5")]
+    pub using_index_values: ::core::option::Option<IndexValues>,
+    /// PoV (filtering) component
+    #[prost(message, optional, tag = "6")]
+    pub filtered_pov: ::core::option::Option<ComponentColumnSelector>,
+    /// which columns to include in the response
+    /// Note - we have one more layer of indiraction to ensure the field is optional,
+    /// same as in the query expression. We can't have both 'repeated' and 'optional' field labels.
+    #[prost(message, optional, tag = "7")]
+    pub column_selection: ::core::option::Option<ColumnSelection>,
+    /// how are null values filled in the response
+    #[prost(enumeration = "SparseFillStrategy", tag = "8")]
+    pub sparse_fill_strategy: i32,
+}
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct ColumnSelection {
+    #[prost(message, repeated, tag = "1")]
+    pub columns: ::prost::alloc::vec::Vec<ColumnSelector>,
+}
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct ColumnSelector {
+    #[prost(oneof = "column_selector::SelectorType", tags = "2, 3")]
+    pub selector_type: ::core::option::Option<column_selector::SelectorType>,
+}
+/// Nested message and enum types in `ColumnSelector`.
+pub mod column_selector {
+    #[derive(Clone, PartialEq, ::prost::Oneof)]
+    pub enum SelectorType {
+        #[prost(message, tag = "2")]
+        ComponentColumn(super::ComponentColumnSelector),
+        #[prost(message, tag = "3")]
+        TimeColumn(super::TimeColumnSelector),
+    }
+}
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct IndexColumnSelector {
+    /// TODO (zehiko) we need to add support for other types of index selectors
+    #[prost(message, optional, tag = "1")]
+    pub timeline: ::core::option::Option<Timeline>,
+}
+#[derive(Clone, Copy, PartialEq, ::prost::Message)]
+pub struct IndexRange {
+    /// TODO (zehiko) support for other ranges for other index selectors
+    #[prost(message, optional, tag = "1")]
+    pub time_range: ::core::option::Option<TimeRange>,
+}
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct IndexValues {
+    /// TODO (zehiko) we need to add support for other types of index selectors
+    #[prost(message, repeated, tag = "1")]
+    pub time_points: ::prost::alloc::vec::Vec<TimeInt>,
+}
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct SampledIndexValues {
+    #[prost(message, repeated, tag = "1")]
+    pub sample_points: ::prost::alloc::vec::Vec<TimeInt>,
+}
+#[derive(Clone, Copy, PartialEq, ::prost::Message)]
+pub struct TimeInt {
+    #[prost(int64, tag = "1")]
+    pub time: i64,
+}
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct ViewContents {
+    #[prost(message, repeated, tag = "1")]
+    pub contents: ::prost::alloc::vec::Vec<ViewContentsPart>,
+}
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct ViewContentsPart {
+    #[prost(message, optional, tag = "1")]
+    pub path: ::core::option::Option<EntityPath>,
+    #[prost(message, optional, tag = "2")]
+    pub components: ::core::option::Option<ComponentsSet>,
+}
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct ComponentsSet {
+    #[prost(message, repeated, tag = "1")]
+    pub components: ::prost::alloc::vec::Vec<Component>,
+}
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct EntityPath {
+    #[prost(string, tag = "1")]
+    pub path: ::prost::alloc::string::String,
+}
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct Component {
+    /// component name needs to be a string as user can define their own component
+    #[prost(string, tag = "1")]
+    pub name: ::prost::alloc::string::String,
+}
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct TimeColumnSelector {
+    #[prost(message, optional, tag = "1")]
+    pub timeline: ::core::option::Option<Timeline>,
+}
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct ComponentColumnSelector {
+    #[prost(message, optional, tag = "1")]
+    pub entity_path: ::core::option::Option<EntityPath>,
+    /// TODO do we need join encoding?
+    #[prost(message, optional, tag = "2")]
+    pub component: ::core::option::Option<Component>,
+}
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
+#[repr(i32)]
+pub enum SparseFillStrategy {
+    None = 0,
+    LatestAlGlobal = 1,
+}
+impl SparseFillStrategy {
+    /// String value of the enum field names used in the ProtoBuf definition.
+    ///
+    /// The values are not transformed in any way and thus are considered stable
+    /// (if the ProtoBuf definition does not change) and safe for programmatic use.
+    pub fn as_str_name(&self) -> &'static str {
+        match self {
+            Self::None => "NONE",
+            Self::LatestAlGlobal => "LATEST_AL_GLOBAL",
+        }
+    }
+    /// Creates an enum from field names used in the ProtoBuf definition.
+    pub fn from_str_name(value: &str) -> ::core::option::Option<Self> {
+        match value {
+            "NONE" => Some(Self::None),
+            "LATEST_AL_GLOBAL" => Some(Self::LatestAlGlobal),
+            _ => None,
+        }
+    }
+}
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct RegisterRecordingsRequest {
     #[prost(string, tag = "1")]
@@ -73,12 +223,6 @@ pub struct TimeMetadata {
     pub time_range: ::core::option::Option<TimeRange>,
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
-pub struct Schema {
-    /// arrow IPC serialized schema
-    #[prost(bytes = "vec", tag = "1")]
-    pub arrow_schema: ::prost::alloc::vec::Vec<u8>,
-}
-#[derive(Clone, PartialEq, ::prost::Message)]
 pub struct QueryRequest {
     /// unique identifier of the recording
     #[prost(message, optional, tag = "1")]
@@ -88,128 +232,10 @@ pub struct QueryRequest {
     pub query: ::core::option::Option<Query>,
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
-pub struct Query {
-    /// database view defined by entity paths and components
-    #[prost(message, optional, tag = "1")]
-    pub view_contents: ::core::option::Option<ViewContents>,
-    /// filtering index (just a string i.e. a name of the timeline for starters)
-    #[prost(message, optional, tag = "2")]
-    pub filtered_index: ::core::option::Option<IndexColumnSelector>,
-    /// Optional specific range for the index selector
-    #[prost(message, optional, tag = "3")]
-    pub filtered_index_range: ::core::option::Option<IndexRange>,
-    /// Optional specific values for the index selector
-    #[prost(message, optional, tag = "4")]
-    pub filtered_index_values: ::core::option::Option<IndexValues>,
-    /// Optional index selector sampling
-    #[prost(message, optional, tag = "5")]
-    pub using_index_values: ::core::option::Option<IndexValues>,
-    /// PoV (filtering) component
-    #[prost(message, optional, tag = "6")]
-    pub filtered_pov: ::core::option::Option<ComponentColumnSelector>,
-    /// which columns to include in the response
-    /// Note - we have one more layer of indiraction to ensure the field is optional,
-    /// same as in the query expression. We can't have both 'repeated' and 'optional' field labels.
-    #[prost(message, optional, tag = "7")]
-    pub column_selection: ::core::option::Option<ColumnSelection>,
-    /// how are null values filled in the response
-    #[prost(enumeration = "SparseFillStrategy", tag = "8")]
-    pub sparse_fill_strategy: i32,
-}
-#[derive(Clone, PartialEq, ::prost::Message)]
 pub struct QueryResponse {
     /// single record batch (encoding TBD - TODO).
     #[prost(bytes = "vec", tag = "1")]
     pub record_batch: ::prost::alloc::vec::Vec<u8>,
-}
-#[derive(Clone, PartialEq, ::prost::Message)]
-pub struct ColumnSelection {
-    #[prost(message, repeated, tag = "1")]
-    pub columns: ::prost::alloc::vec::Vec<ColumnSelector>,
-}
-#[derive(Clone, PartialEq, ::prost::Message)]
-pub struct ColumnSelector {
-    #[prost(oneof = "column_selector::SelectorType", tags = "2, 3")]
-    pub selector_type: ::core::option::Option<column_selector::SelectorType>,
-}
-/// Nested message and enum types in `ColumnSelector`.
-pub mod column_selector {
-    #[derive(Clone, PartialEq, ::prost::Oneof)]
-    pub enum SelectorType {
-        #[prost(message, tag = "2")]
-        ComponentColumn(super::ComponentColumnSelector),
-        #[prost(message, tag = "3")]
-        TimeColumn(super::TimeColumnSelector),
-    }
-}
-#[derive(Clone, PartialEq, ::prost::Message)]
-pub struct IndexColumnSelector {
-    /// TODO (zehiko) we need to add support for other types of index selectors
-    #[prost(message, optional, tag = "1")]
-    pub timeline: ::core::option::Option<Timeline>,
-}
-#[derive(Clone, Copy, PartialEq, ::prost::Message)]
-pub struct IndexRange {
-    /// TODO (zehiko) support for other ranges for other index selectors
-    #[prost(message, optional, tag = "1")]
-    pub time_range: ::core::option::Option<TimeRange>,
-}
-#[derive(Clone, PartialEq, ::prost::Message)]
-pub struct IndexValues {
-    /// TODO (zehiko) we need to add support for other types of index selectors
-    #[prost(message, repeated, tag = "1")]
-    pub time_points: ::prost::alloc::vec::Vec<TimeInt>,
-}
-#[derive(Clone, PartialEq, ::prost::Message)]
-pub struct SampledIndexValues {
-    #[prost(message, repeated, tag = "1")]
-    pub sample_points: ::prost::alloc::vec::Vec<TimeInt>,
-}
-#[derive(Clone, PartialEq, ::prost::Message)]
-pub struct ViewContents {
-    #[prost(message, repeated, tag = "1")]
-    pub contents: ::prost::alloc::vec::Vec<ViewContentsPart>,
-}
-#[derive(Clone, PartialEq, ::prost::Message)]
-pub struct ViewContentsPart {
-    #[prost(message, optional, tag = "1")]
-    pub path: ::core::option::Option<EntityPath>,
-    #[prost(message, optional, tag = "2")]
-    pub components: ::core::option::Option<ComponentsSet>,
-}
-#[derive(Clone, PartialEq, ::prost::Message)]
-pub struct ComponentsSet {
-    #[prost(message, repeated, tag = "1")]
-    pub components: ::prost::alloc::vec::Vec<Component>,
-}
-#[derive(Clone, Copy, PartialEq, ::prost::Message)]
-pub struct TimeInt {
-    #[prost(int64, tag = "1")]
-    pub time: i64,
-}
-#[derive(Clone, PartialEq, ::prost::Message)]
-pub struct EntityPath {
-    #[prost(string, tag = "1")]
-    pub path: ::prost::alloc::string::String,
-}
-#[derive(Clone, PartialEq, ::prost::Message)]
-pub struct Component {
-    /// component name needs to be a string as user can define their own component
-    #[prost(string, tag = "1")]
-    pub name: ::prost::alloc::string::String,
-}
-#[derive(Clone, PartialEq, ::prost::Message)]
-pub struct TimeColumnSelector {
-    #[prost(message, optional, tag = "1")]
-    pub timeline: ::core::option::Option<Timeline>,
-}
-#[derive(Clone, PartialEq, ::prost::Message)]
-pub struct ComponentColumnSelector {
-    #[prost(message, optional, tag = "1")]
-    pub entity_path: ::core::option::Option<EntityPath>,
-    /// TODO do we need join encoding?
-    #[prost(message, optional, tag = "2")]
-    pub component: ::core::option::Option<Component>,
 }
 #[derive(Clone, Copy, PartialEq, ::prost::Message)]
 pub struct ListRecordingsRequest {}
@@ -230,32 +256,6 @@ pub struct RecordingInfo {
     pub size_bytes: u64,
     #[prost(enumeration = "RecordingType", tag = "5")]
     pub typ: i32,
-}
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
-#[repr(i32)]
-pub enum SparseFillStrategy {
-    None = 0,
-    LatestAlGlobal = 1,
-}
-impl SparseFillStrategy {
-    /// String value of the enum field names used in the ProtoBuf definition.
-    ///
-    /// The values are not transformed in any way and thus are considered stable
-    /// (if the ProtoBuf definition does not change) and safe for programmatic use.
-    pub fn as_str_name(&self) -> &'static str {
-        match self {
-            Self::None => "NONE",
-            Self::LatestAlGlobal => "LATEST_AL_GLOBAL",
-        }
-    }
-    /// Creates an enum from field names used in the ProtoBuf definition.
-    pub fn from_str_name(value: &str) -> ::core::option::Option<Self> {
-        match value {
-            "NONE" => Some(Self::None),
-            "LATEST_AL_GLOBAL" => Some(Self::LatestAlGlobal),
-            _ => None,
-        }
-    }
 }
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
 #[repr(i32)]
@@ -287,10 +287,10 @@ pub mod storage_node_client {
         dead_code,
         missing_docs,
         clippy::wildcard_imports,
-        clippy::let_unit_value,
+        clippy::let_unit_value
     )]
-    use tonic::codegen::*;
     use tonic::codegen::http::Uri;
+    use tonic::codegen::*;
     #[derive(Debug, Clone)]
     pub struct StorageNodeClient<T> {
         inner: tonic::client::Grpc<T>,
@@ -334,9 +334,8 @@ pub mod storage_node_client {
                     <T as tonic::client::GrpcService<tonic::body::BoxBody>>::ResponseBody,
                 >,
             >,
-            <T as tonic::codegen::Service<
-                http::Request<tonic::body::BoxBody>,
-            >>::Error: Into<StdError> + std::marker::Send + std::marker::Sync,
+            <T as tonic::codegen::Service<http::Request<tonic::body::BoxBody>>>::Error:
+                Into<StdError> + std::marker::Send + std::marker::Sync,
         {
             StorageNodeClient::new(InterceptedService::new(inner, interceptor))
         }
@@ -374,27 +373,20 @@ pub mod storage_node_client {
         pub async fn list_recordings(
             &mut self,
             request: impl tonic::IntoRequest<super::ListRecordingsRequest>,
-        ) -> std::result::Result<
-            tonic::Response<super::ListRecordingsResponse>,
-            tonic::Status,
-        > {
-            self.inner
-                .ready()
-                .await
-                .map_err(|e| {
-                    tonic::Status::unknown(
-                        format!("Service was not ready: {}", e.into()),
-                    )
-                })?;
+        ) -> std::result::Result<tonic::Response<super::ListRecordingsResponse>, tonic::Status>
+        {
+            self.inner.ready().await.map_err(|e| {
+                tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
+            })?;
             let codec = tonic::codec::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
-                "/rerun.storage.v0.StorageNode/ListRecordings",
+                "/rerun.remote_store.v0.StorageNode/ListRecordings",
             );
             let mut req = request.into_request();
-            req.extensions_mut()
-                .insert(
-                    GrpcMethod::new("rerun.storage.v0.StorageNode", "ListRecordings"),
-                );
+            req.extensions_mut().insert(GrpcMethod::new(
+                "rerun.remote_store.v0.StorageNode",
+                "ListRecordings",
+            ));
             self.inner.unary(req, path, codec).await
         }
         pub async fn query(
@@ -404,77 +396,56 @@ pub mod storage_node_client {
             tonic::Response<tonic::codec::Streaming<super::QueryResponse>>,
             tonic::Status,
         > {
-            self.inner
-                .ready()
-                .await
-                .map_err(|e| {
-                    tonic::Status::unknown(
-                        format!("Service was not ready: {}", e.into()),
-                    )
-                })?;
+            self.inner.ready().await.map_err(|e| {
+                tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
+            })?;
             let codec = tonic::codec::ProstCodec::default();
-            let path = http::uri::PathAndQuery::from_static(
-                "/rerun.storage.v0.StorageNode/Query",
-            );
+            let path =
+                http::uri::PathAndQuery::from_static("/rerun.remote_store.v0.StorageNode/Query");
             let mut req = request.into_request();
-            req.extensions_mut()
-                .insert(GrpcMethod::new("rerun.storage.v0.StorageNode", "Query"));
+            req.extensions_mut().insert(GrpcMethod::new(
+                "rerun.remote_store.v0.StorageNode",
+                "Query",
+            ));
             self.inner.server_streaming(req, path, codec).await
         }
         pub async fn get_recording_metadata(
             &mut self,
             request: impl tonic::IntoRequest<super::GetRecordingMetadataRequest>,
-        ) -> std::result::Result<
-            tonic::Response<super::GetRecordingMetadataResponse>,
-            tonic::Status,
-        > {
-            self.inner
-                .ready()
-                .await
-                .map_err(|e| {
-                    tonic::Status::unknown(
-                        format!("Service was not ready: {}", e.into()),
-                    )
-                })?;
+        ) -> std::result::Result<tonic::Response<super::GetRecordingMetadataResponse>, tonic::Status>
+        {
+            self.inner.ready().await.map_err(|e| {
+                tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
+            })?;
             let codec = tonic::codec::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
-                "/rerun.storage.v0.StorageNode/GetRecordingMetadata",
+                "/rerun.remote_store.v0.StorageNode/GetRecordingMetadata",
             );
             let mut req = request.into_request();
-            req.extensions_mut()
-                .insert(
-                    GrpcMethod::new(
-                        "rerun.storage.v0.StorageNode",
-                        "GetRecordingMetadata",
-                    ),
-                );
+            req.extensions_mut().insert(GrpcMethod::new(
+                "rerun.remote_store.v0.StorageNode",
+                "GetRecordingMetadata",
+            ));
             self.inner.unary(req, path, codec).await
         }
         /// TODO (zehiko) - should this be singular recording registration? Currently we can have 1 rrd => many recordings
         pub async fn register_recordings(
             &mut self,
             request: impl tonic::IntoRequest<super::RegisterRecordingsRequest>,
-        ) -> std::result::Result<
-            tonic::Response<super::RegisterRecordingsResponse>,
-            tonic::Status,
-        > {
-            self.inner
-                .ready()
-                .await
-                .map_err(|e| {
-                    tonic::Status::unknown(
-                        format!("Service was not ready: {}", e.into()),
-                    )
-                })?;
+        ) -> std::result::Result<tonic::Response<super::RegisterRecordingsResponse>, tonic::Status>
+        {
+            self.inner.ready().await.map_err(|e| {
+                tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
+            })?;
             let codec = tonic::codec::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
-                "/rerun.storage.v0.StorageNode/RegisterRecordings",
+                "/rerun.remote_store.v0.StorageNode/RegisterRecordings",
             );
             let mut req = request.into_request();
-            req.extensions_mut()
-                .insert(
-                    GrpcMethod::new("rerun.storage.v0.StorageNode", "RegisterRecordings"),
-                );
+            req.extensions_mut().insert(GrpcMethod::new(
+                "rerun.remote_store.v0.StorageNode",
+                "RegisterRecordings",
+            ));
             self.inner.unary(req, path, codec).await
         }
     }
@@ -486,7 +457,7 @@ pub mod storage_node_server {
         dead_code,
         missing_docs,
         clippy::wildcard_imports,
-        clippy::let_unit_value,
+        clippy::let_unit_value
     )]
     use tonic::codegen::*;
     /// Generated trait containing gRPC methods that should be implemented for use with StorageNodeServer.
@@ -495,15 +466,11 @@ pub mod storage_node_server {
         async fn list_recordings(
             &self,
             request: tonic::Request<super::ListRecordingsRequest>,
-        ) -> std::result::Result<
-            tonic::Response<super::ListRecordingsResponse>,
-            tonic::Status,
-        >;
+        ) -> std::result::Result<tonic::Response<super::ListRecordingsResponse>, tonic::Status>;
         /// Server streaming response type for the Query method.
         type QueryStream: tonic::codegen::tokio_stream::Stream<
                 Item = std::result::Result<super::QueryResponse, tonic::Status>,
-            >
-            + std::marker::Send
+            > + std::marker::Send
             + 'static;
         async fn query(
             &self,
@@ -512,18 +479,12 @@ pub mod storage_node_server {
         async fn get_recording_metadata(
             &self,
             request: tonic::Request<super::GetRecordingMetadataRequest>,
-        ) -> std::result::Result<
-            tonic::Response<super::GetRecordingMetadataResponse>,
-            tonic::Status,
-        >;
+        ) -> std::result::Result<tonic::Response<super::GetRecordingMetadataResponse>, tonic::Status>;
         /// TODO (zehiko) - should this be singular recording registration? Currently we can have 1 rrd => many recordings
         async fn register_recordings(
             &self,
             request: tonic::Request<super::RegisterRecordingsRequest>,
-        ) -> std::result::Result<
-            tonic::Response<super::RegisterRecordingsResponse>,
-            tonic::Status,
-        >;
+        ) -> std::result::Result<tonic::Response<super::RegisterRecordingsResponse>, tonic::Status>;
     }
     #[derive(Debug)]
     pub struct StorageNodeServer<T> {
@@ -546,10 +507,7 @@ pub mod storage_node_server {
                 max_encoding_message_size: None,
             }
         }
-        pub fn with_interceptor<F>(
-            inner: T,
-            interceptor: F,
-        ) -> InterceptedService<Self, F>
+        pub fn with_interceptor<F>(inner: T, interceptor: F) -> InterceptedService<Self, F>
         where
             F: tonic::service::Interceptor,
         {
@@ -601,18 +559,14 @@ pub mod storage_node_server {
         }
         fn call(&mut self, req: http::Request<B>) -> Self::Future {
             match req.uri().path() {
-                "/rerun.storage.v0.StorageNode/ListRecordings" => {
+                "/rerun.remote_store.v0.StorageNode/ListRecordings" => {
                     #[allow(non_camel_case_types)]
                     struct ListRecordingsSvc<T: StorageNode>(pub Arc<T>);
-                    impl<
-                        T: StorageNode,
-                    > tonic::server::UnaryService<super::ListRecordingsRequest>
-                    for ListRecordingsSvc<T> {
+                    impl<T: StorageNode> tonic::server::UnaryService<super::ListRecordingsRequest>
+                        for ListRecordingsSvc<T>
+                    {
                         type Response = super::ListRecordingsResponse;
-                        type Future = BoxFuture<
-                            tonic::Response<Self::Response>,
-                            tonic::Status,
-                        >;
+                        type Future = BoxFuture<tonic::Response<Self::Response>, tonic::Status>;
                         fn call(
                             &mut self,
                             request: tonic::Request<super::ListRecordingsRequest>,
@@ -646,27 +600,21 @@ pub mod storage_node_server {
                     };
                     Box::pin(fut)
                 }
-                "/rerun.storage.v0.StorageNode/Query" => {
+                "/rerun.remote_store.v0.StorageNode/Query" => {
                     #[allow(non_camel_case_types)]
                     struct QuerySvc<T: StorageNode>(pub Arc<T>);
-                    impl<
-                        T: StorageNode,
-                    > tonic::server::ServerStreamingService<super::QueryRequest>
-                    for QuerySvc<T> {
+                    impl<T: StorageNode> tonic::server::ServerStreamingService<super::QueryRequest> for QuerySvc<T> {
                         type Response = super::QueryResponse;
                         type ResponseStream = T::QueryStream;
-                        type Future = BoxFuture<
-                            tonic::Response<Self::ResponseStream>,
-                            tonic::Status,
-                        >;
+                        type Future =
+                            BoxFuture<tonic::Response<Self::ResponseStream>, tonic::Status>;
                         fn call(
                             &mut self,
                             request: tonic::Request<super::QueryRequest>,
                         ) -> Self::Future {
                             let inner = Arc::clone(&self.0);
-                            let fut = async move {
-                                <T as StorageNode>::query(&inner, request).await
-                            };
+                            let fut =
+                                async move { <T as StorageNode>::query(&inner, request).await };
                             Box::pin(fut)
                         }
                     }
@@ -692,26 +640,22 @@ pub mod storage_node_server {
                     };
                     Box::pin(fut)
                 }
-                "/rerun.storage.v0.StorageNode/GetRecordingMetadata" => {
+                "/rerun.remote_store.v0.StorageNode/GetRecordingMetadata" => {
                     #[allow(non_camel_case_types)]
                     struct GetRecordingMetadataSvc<T: StorageNode>(pub Arc<T>);
-                    impl<
-                        T: StorageNode,
-                    > tonic::server::UnaryService<super::GetRecordingMetadataRequest>
-                    for GetRecordingMetadataSvc<T> {
+                    impl<T: StorageNode>
+                        tonic::server::UnaryService<super::GetRecordingMetadataRequest>
+                        for GetRecordingMetadataSvc<T>
+                    {
                         type Response = super::GetRecordingMetadataResponse;
-                        type Future = BoxFuture<
-                            tonic::Response<Self::Response>,
-                            tonic::Status,
-                        >;
+                        type Future = BoxFuture<tonic::Response<Self::Response>, tonic::Status>;
                         fn call(
                             &mut self,
                             request: tonic::Request<super::GetRecordingMetadataRequest>,
                         ) -> Self::Future {
                             let inner = Arc::clone(&self.0);
                             let fut = async move {
-                                <T as StorageNode>::get_recording_metadata(&inner, request)
-                                    .await
+                                <T as StorageNode>::get_recording_metadata(&inner, request).await
                             };
                             Box::pin(fut)
                         }
@@ -738,26 +682,22 @@ pub mod storage_node_server {
                     };
                     Box::pin(fut)
                 }
-                "/rerun.storage.v0.StorageNode/RegisterRecordings" => {
+                "/rerun.remote_store.v0.StorageNode/RegisterRecordings" => {
                     #[allow(non_camel_case_types)]
                     struct RegisterRecordingsSvc<T: StorageNode>(pub Arc<T>);
-                    impl<
-                        T: StorageNode,
-                    > tonic::server::UnaryService<super::RegisterRecordingsRequest>
-                    for RegisterRecordingsSvc<T> {
+                    impl<T: StorageNode>
+                        tonic::server::UnaryService<super::RegisterRecordingsRequest>
+                        for RegisterRecordingsSvc<T>
+                    {
                         type Response = super::RegisterRecordingsResponse;
-                        type Future = BoxFuture<
-                            tonic::Response<Self::Response>,
-                            tonic::Status,
-                        >;
+                        type Future = BoxFuture<tonic::Response<Self::Response>, tonic::Status>;
                         fn call(
                             &mut self,
                             request: tonic::Request<super::RegisterRecordingsRequest>,
                         ) -> Self::Future {
                             let inner = Arc::clone(&self.0);
                             let fut = async move {
-                                <T as StorageNode>::register_recordings(&inner, request)
-                                    .await
+                                <T as StorageNode>::register_recordings(&inner, request).await
                             };
                             Box::pin(fut)
                         }
@@ -784,23 +724,19 @@ pub mod storage_node_server {
                     };
                     Box::pin(fut)
                 }
-                _ => {
-                    Box::pin(async move {
-                        let mut response = http::Response::new(empty_body());
-                        let headers = response.headers_mut();
-                        headers
-                            .insert(
-                                tonic::Status::GRPC_STATUS,
-                                (tonic::Code::Unimplemented as i32).into(),
-                            );
-                        headers
-                            .insert(
-                                http::header::CONTENT_TYPE,
-                                tonic::metadata::GRPC_CONTENT_TYPE,
-                            );
-                        Ok(response)
-                    })
-                }
+                _ => Box::pin(async move {
+                    let mut response = http::Response::new(empty_body());
+                    let headers = response.headers_mut();
+                    headers.insert(
+                        tonic::Status::GRPC_STATUS,
+                        (tonic::Code::Unimplemented as i32).into(),
+                    );
+                    headers.insert(
+                        http::header::CONTENT_TYPE,
+                        tonic::metadata::GRPC_CONTENT_TYPE,
+                    );
+                    Ok(response)
+                }),
             }
         }
     }
@@ -817,7 +753,7 @@ pub mod storage_node_server {
         }
     }
     /// Generated gRPC service name
-    pub const SERVICE_NAME: &str = "rerun.storage.v0.StorageNode";
+    pub const SERVICE_NAME: &str = "rerun.remote_store.v0.StorageNode";
     impl<T> tonic::server::NamedService for StorageNodeServer<T> {
         const NAME: &'static str = SERVICE_NAME;
     }
