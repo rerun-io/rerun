@@ -19,7 +19,7 @@ use re_chunk_store::{
     ComponentColumnSelector, QueryExpression2, SparseFillStrategy, TimeColumnDescriptor,
     TimeColumnSelector, VersionPolicy, ViewContentsSelector,
 };
-use re_dataframe2::QueryEngine;
+use re_dataframe::QueryEngine;
 use re_log_types::{EntityPathFilter, ResolvedTimeRange, TimeType};
 use re_sdk::{ComponentName, EntityPath, StoreId, StoreKind};
 
@@ -270,7 +270,7 @@ impl PySchema {
 #[pyclass(name = "Recording")]
 pub struct PyRecording {
     store: ChunkStore,
-    cache: re_dataframe2::QueryCache,
+    cache: re_dataframe::QueryCache,
 }
 
 #[pyclass(name = "RecordingView")]
@@ -608,7 +608,7 @@ impl PyRRDArchive {
             .iter()
             .filter(|(id, _)| matches!(id.kind, StoreKind::Recording))
             .map(|(_, store)| {
-                let cache = re_dataframe2::external::re_query::Caches::new(store);
+                let cache = re_dataframe::external::re_query::Caches::new(store);
                 PyRecording {
                     store: store.clone(),
                     cache,

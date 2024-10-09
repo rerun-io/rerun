@@ -925,7 +925,7 @@ mod tests {
     use super::*;
 
     // NOTE: The best way to understand what these tests are doing is to run them in verbose mode,
-    // e.g. `cargo t -p re_dataframe2 -- --show-output barebones`.
+    // e.g. `cargo t -p re_dataframe -- --show-output barebones`.
     // Each test will print the state of the store, the query being run, and the results that were
     // returned in the usual human-friendly format.
     // From there it is generally straightforward to infer what's going on.

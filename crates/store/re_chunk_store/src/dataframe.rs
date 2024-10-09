@@ -575,7 +575,7 @@ pub type IndexRange = ResolvedTimeRange;
 /// ```
 //
 // TODO(cmc): ideally we'd like this to be the same type as the one used in the blueprint, possibly?
-// TODO(cmc): Get rid of all re_dataframe (as opposed to re_dataframe2) stuff and rename this.
+// TODO(cmc): Get rid of all re_dataframe (as opposed to re_dataframe) stuff and rename this.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct QueryExpression2 {
     /// The subset of the database that the query will run on: a set of [`EntityPath`]s and their

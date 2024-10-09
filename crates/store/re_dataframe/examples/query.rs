@@ -6,7 +6,7 @@ use re_chunk::TimeInt;
 use re_chunk_store::{
     ChunkStore, ChunkStoreConfig, QueryExpression2, SparseFillStrategy, Timeline, VersionPolicy,
 };
-use re_dataframe2::{QueryCache, QueryEngine};
+use re_dataframe::{QueryCache, QueryEngine};
 use re_log_types::{EntityPathFilter, ResolvedTimeRange, StoreKind};
 
 fn main() -> anyhow::Result<()> {

@@ -5104,7 +5104,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "re_dataframe2"
+name = "re_dataframe"
 version = "0.19.0-alpha.1+dev"
 dependencies = [
  "ahash",
@@ -5176,7 +5176,7 @@ dependencies = [
  "re_build_info",
  "re_chunk",
  "re_chunk_store",
- "re_dataframe2",
+ "re_dataframe",
  "re_format",
  "re_int_histogram",
  "re_log",
@@ -5600,7 +5600,7 @@ dependencies = [
  "itertools 0.13.0",
  "re_chunk_store",
  "re_data_ui",
- "re_dataframe2",
+ "re_dataframe",
  "re_entity_db",
  "re_format",
  "re_log",
@@ -6316,7 +6316,7 @@ dependencies = [
  "re_build_tools",
  "re_chunk",
  "re_chunk_store",
- "re_dataframe2",
+ "re_dataframe",
  "re_entity_db",
  "re_log",
  "re_log_encoding",

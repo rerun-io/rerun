@@ -44,7 +44,7 @@ re_chunk = { path = "crates/store/re_chunk", version = "=0.19.0-alpha.1", defaul
 re_chunk_store = { path = "crates/store/re_chunk_store", version = "=0.19.0-alpha.1", default-features = false }
 re_data_loader = { path = "crates/store/re_data_loader", version = "=0.19.0-alpha.1", default-features = false }
 re_data_source = { path = "crates/store/re_data_source", version = "=0.19.0-alpha.1", default-features = false }
-re_dataframe2 = { path = "crates/store/re_dataframe2", version = "=0.19.0-alpha.1", default-features = false }
+re_dataframe = { path = "crates/store/re_dataframe", version = "=0.19.0-alpha.1", default-features = false }
 re_entity_db = { path = "crates/store/re_entity_db", version = "=0.19.0-alpha.1", default-features = false }
 re_format_arrow = { path = "crates/store/re_format_arrow", version = "=0.19.0-alpha.1", default-features = false }
 re_log_encoding = { path = "crates/store/re_log_encoding", version = "=0.19.0-alpha.1", default-features = false }
