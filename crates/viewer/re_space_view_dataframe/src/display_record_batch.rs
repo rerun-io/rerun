@@ -247,11 +247,7 @@ impl DisplayColumn {
                     return;
                 }
 
-                let is_static = !time_data.is_valid(row_index);
-
-                if is_static {
-                    ui.label("static");
-                } else {
+                if time_data.is_valid(row_index) {
                     let timestamp = TimeInt::try_from(time_data.value(row_index));
                     match timestamp {
                         Ok(timestamp) => {
@@ -261,6 +257,8 @@ impl DisplayColumn {
                             ui.error_label(&format!("{err}"));
                         }
                     }
+                } else {
+                    ui.label("-");
                 }
             }
             Self::Component {
