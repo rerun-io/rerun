@@ -71,6 +71,10 @@ ecolor = ["re_types?/ecolor"]
 ## Integration with the [`log`](https://crates.io/crates/log/) crate.
 log = ["dep:env_logger", "dep:log"]
 
+## Enable faster native video decoding with assembly.
+## You need to install [nasm](https://nasm.us/) to compile with this feature.
+nasm = ["re_video/nasm"]
+
 ## Support spawning a native viewer.
 ## This adds a lot of extra dependencies, so only enable this feature if you need it!
 native_viewer = ["dep:re_viewer"]
@@ -94,10 +98,6 @@ server = ["re_sdk_comms?/server"]
 ## Embed the Rerun SDK & built-in types and re-export all of their public symbols.
 sdk = ["dep:re_sdk", "dep:re_types"]
 
-## Support for native AV1 video decoding.
-## You need to install [nasm](https://nasm.us/) to compile with this feature.
-video_av1 = ["re_viewer?/video_av1"]
-
 ## Support serving a web viewer over HTTP.
 ##
 ## Enabling this inflates the binary size quite a bit, since it embeds the viewer wasm.
@@ -117,10 +117,12 @@ re_entity_db.workspace = true
 re_error.workspace = true
 re_format.workspace = true
 re_log_types.workspace = true
+re_video.workspace = true
 re_log.workspace = true
 re_memory.workspace = true
 re_smart_channel.workspace = true
 re_tracing.workspace = true
+
 anyhow.workspace = true
 document-features.workspace = true
 itertools.workspace = true
