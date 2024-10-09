@@ -38,7 +38,7 @@ fn main() {
 
     let mut decoder = create_decoder(&video);
 
-    write_video_frames(video, decoder.as_mut(), output_dir);
+    write_video_frames(&video, decoder.as_mut(), &output_dir);
 }
 
 fn create_decoder(video: &VideoData) -> Box<dyn SyncDecoder> {
@@ -52,9 +52,9 @@ fn create_decoder(video: &VideoData) -> Box<dyn SyncDecoder> {
 }
 
 fn write_video_frames(
-    video: re_video::VideoData,
+    video: &re_video::VideoData,
     decoder: &mut dyn re_video::decode::SyncDecoder,
-    output_dir: PathBuf,
+    output_dir: &PathBuf,
 ) {
     let progress = ProgressBar::new(video.samples.len() as u64).with_message("Decoding video");
     progress.enable_steady_tick(Duration::from_millis(100));
@@ -88,7 +88,7 @@ fn write_video_frames(
     );
 
     println!("Writing frames to {}", output_dir.display());
-    std::fs::create_dir_all(&output_dir).expect("failed to create output directory");
+    std::fs::create_dir_all(output_dir).expect("failed to create output directory");
 
     let width = num_digits(frames.len());
     for (i, frame) in frames.iter().enumerate() {
