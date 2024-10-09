@@ -30,13 +30,8 @@ pub enum Error {
 
     #[cfg(feature = "ffmpeg")]
     #[cfg(not(target_arch = "wasm32"))]
-    #[error("Failed to start ffmppeg: {0}")]
-    FailedToStartFfmpeg(std::io::Error),
-
-    #[cfg(feature = "ffmpeg")]
-    #[cfg(not(target_arch = "wasm32"))]
-    #[error("Failed to start ffmppeg: {0}")]
-    FailedToSpawnThread(std::io::Error),
+    #[error("ffmppeg: {0}")]
+    Ffmpeg(#[from] ffmpeg::Error),
 }
 
 pub type Result<T = (), E = Error> = std::result::Result<T, E>;
@@ -74,7 +69,6 @@ pub fn new_decoder(video: &crate::VideoData) -> Result<Box<dyn SyncDecoder + Sen
             re_log::trace!("Decoding H.264…");
             Ok(Box::new(ffmpeg::FfmpegCliH264Decoder::new(
                 avc1_box.clone(),
-                video.timescale,
             )?))
         }
 
