@@ -159,6 +159,24 @@ class TestDataframe:
 
         assert table4.num_rows == 0
 
+        ## Manually create a chunked array with 1 match
+        manual_chunked_selection = pa.chunked_array([
+            pa.array([2], type=pa.int64()),
+            pa.array([3, 7, 8], type=pa.int64()),
+            pa.array([], type=pa.int64()),
+            pa.array([9, 10, 11], type=pa.int64()),
+        ])
+
+        # Confirm len is num elements, not num chunks
+        assert len(manual_chunked_selection) == 7
+        assert len(manual_chunked_selection.chunks) == 4
+
+        view5 = view.filter_index_values(manual_chunked_selection)
+        batches = view5.select()
+        table5 = pa.Table.from_batches(batches, batches.schema)
+
+        assert table5.num_rows == 1
+
     def test_view_syntax(self) -> None:
         good_content_expressions = [
             {"points": rr.components.Position3D},
