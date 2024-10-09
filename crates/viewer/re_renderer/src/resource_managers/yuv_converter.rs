@@ -26,6 +26,7 @@ pub enum YuvPixelLayout {
     /// First comes entire image in Y in one plane,
     /// followed by a plane with interleaved lines ordered as U0, V0, U1, V1, etc.
     ///
+    /// ```text
     ///          width
     ///          __________
     ///          |         |
@@ -34,6 +35,7 @@ pub enum YuvPixelLayout {
     ///          |_________|
     /// height/2 | U,V,U,… |
     ///          |_________|
+    /// ```
     Y_UV12 = 0,
 
     /// YUV 4:2:2 subsampling, single plane.
@@ -42,12 +44,13 @@ pub enum YuvPixelLayout {
     ///
     /// The order of the channels is Y0, U0, Y1, V0, all in the same plane.
     ///
+    /// ```text
     ///             width * 2
     ///        __________________
     ///        |                 |
     /// height | Y0, U0, Y1, V0… |
     ///        |_________________|
-    ///
+    /// ```
     YUYV16 = 1,
 }
 
