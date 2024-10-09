@@ -1,6 +1,6 @@
 //! Video demultiplexing.
 //!
-//! Parses a video file into a raw [`VideoData`] struct, which contains basic metadata and a list of [`Segment`]s.
+//! Parses a video file into a raw [`VideoData`] struct, which contains basic metadata and a list of [`GroupOfPictures`]s.
 //!
 //! The entry point is [`VideoData::load_from_bytes`]
 //! which produces an instance of [`VideoData`] from any supported video container.
@@ -26,9 +26,9 @@ pub struct VideoData {
     /// Duration of the video, in time units.
     pub duration: Time,
 
-    /// We split video into segments, each beginning with a key frame,
+    /// We split video into GOPs, each beginning with a key frame,
     /// followed by any number of delta frames.
-    pub segments: Vec<Segment>,
+    pub gops: Vec<GroupOfPictures>,
 
     /// Samples contain the byte offsets into `data` for each frame.
     ///
@@ -54,7 +54,8 @@ impl VideoData {
     /// at the very least the should be a way to extract only metadata.
     pub fn load_from_bytes(data: &[u8], media_type: &str) -> Result<Self, VideoLoadError> {
         match media_type {
-            "video/mp4" => mp4::load_mp4(data),
+            "video/mp4" => Self::load_mp4(data),
+
             media_type => {
                 if media_type.starts_with("video/") {
                     Err(VideoLoadError::UnsupportedMimeType {
@@ -69,16 +70,10 @@ impl VideoData {
         }
     }
 
-    /// Duration of the video, in seconds.
+    /// Length of the video.
     #[inline]
-    pub fn duration_sec(&self) -> f64 {
-        self.duration.into_secs(self.timescale)
-    }
-
-    /// Duration of the video, in milliseconds.
-    #[inline]
-    pub fn duration_ms(&self) -> f64 {
-        self.duration.into_millis(self.timescale)
+    pub fn duration(&self) -> std::time::Duration {
+        std::time::Duration::from_nanos(self.duration.into_nanos(self.timescale) as _)
     }
 
     /// Natural width of the video.
@@ -95,8 +90,24 @@ impl VideoData {
 
     /// The codec used to encode the video.
     #[inline]
-    pub fn codec(&self) -> &str {
-        &self.config.codec
+    pub fn human_readable_codec_string(&self) -> String {
+        let human_readable = match &self.config.stsd.contents {
+            re_mp4::StsdBoxContent::Av01(_) => "AV1",
+            re_mp4::StsdBoxContent::Avc1(_) => "H.264",
+            re_mp4::StsdBoxContent::Hvc1(_) => "H.265 HVC1",
+            re_mp4::StsdBoxContent::Hev1(_) => "H.265 HEV1",
+            re_mp4::StsdBoxContent::Vp08(_) => "VP8",
+            re_mp4::StsdBoxContent::Vp09(_) => "VP9",
+            re_mp4::StsdBoxContent::Mp4a(_) => "AAC",
+            re_mp4::StsdBoxContent::Tx3g(_) => "TTXT",
+            re_mp4::StsdBoxContent::Unknown(_) => "Unknown",
+        };
+
+        if let Some(codec) = self.config.stsd.contents.codec_string() {
+            format!("{human_readable} ({codec})")
+        } else {
+            human_readable.to_owned()
+        }
     }
 
     /// The number of samples in the video.
@@ -111,7 +122,7 @@ impl VideoData {
     pub fn frame_timestamps_ns(&self) -> impl Iterator<Item = i64> + '_ {
         // Segments are guaranteed to be sorted among each other, but within a segment,
         // presentation timestamps may not be sorted since this is sorted by decode timestamps.
-        self.segments.iter().flat_map(|seg| {
+        self.gops.iter().flat_map(|seg| {
             self.samples[seg.range()]
                 .iter()
                 .map(|sample| sample.composition_timestamp.into_nanos(self.timescale))
@@ -138,18 +149,20 @@ impl VideoData {
     }
 }
 
-/// A segment of a video.
+/// A Group of Pictures (GOP) always starts with an I-frame, followed by delta-frames.
+///
+/// See <https://en.wikipedia.org/wiki/Group_of_pictures> for more.
 #[derive(Debug, Clone)]
-pub struct Segment {
-    /// Decode timestamp of the first sample in this segment, in time units.
+pub struct GroupOfPictures {
+    /// Decode timestamp of the first sample in this GOP, in time units.
     pub start: Time,
 
-    /// Range of samples contained in this segment.
+    /// Range of samples contained in this GOP.
     pub sample_range: Range<u32>,
 }
 
-impl Segment {
-    /// The segment's `sample_range` mapped to `usize` for slicing.
+impl GroupOfPictures {
+    /// The GOP's `sample_range` mapped to `usize` for slicing.
     pub fn range(&self) -> Range<usize> {
         Range {
             start: self.sample_range.start as usize,
@@ -163,10 +176,14 @@ impl Segment {
 pub struct Sample {
     /// Time at which this sample appears in the decoded bitstream, in time units.
     ///
+    /// Samples should be decoded in this order.
+    ///
     /// `decode_timestamp <= composition_timestamp`
     pub decode_timestamp: Time,
 
     /// Time at which this sample appears in the frame stream, in time units.
+    ///
+    /// The frame should be shown at this time.
     ///
     /// `decode_timestamp <= composition_timestamp`
     pub composition_timestamp: Time,
@@ -184,10 +201,8 @@ pub struct Sample {
 /// Configuration of a video.
 #[derive(Debug, Clone)]
 pub struct Config {
-    /// String used to identify the codec and some of its configuration.
-    ///
-    /// e.g. "av01.0.05M.08" (AV1)
-    pub codec: String,
+    /// Contains info about the codec, bit depth, etc.
+    pub stsd: re_mp4::StsdBox,
 
     /// Codec-specific configuration.
     pub description: Vec<u8>,
@@ -201,7 +216,7 @@ pub struct Config {
 
 impl Config {
     pub fn is_av1(&self) -> bool {
-        self.codec.starts_with("av01")
+        matches!(self.stsd.contents, re_mp4::StsdBoxContent::Av01 { .. })
     }
 }
 
@@ -245,7 +260,7 @@ impl std::fmt::Debug for VideoData {
             .field("config", &self.config)
             .field("timescale", &self.timescale)
             .field("duration", &self.duration)
-            .field("segments", &self.segments)
+            .field("gops", &self.gops)
             .field(
                 "samples",
                 &self.samples.iter().enumerate().collect::<Vec<_>>(),

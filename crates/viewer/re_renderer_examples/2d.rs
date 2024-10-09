@@ -13,7 +13,7 @@ use re_renderer::{
         ColormappedTexture, LineStripFlags, RectangleDrawData, RectangleOptions, TextureFilterMag,
         TextureFilterMin, TexturedRect,
     },
-    resource_managers::{GpuTexture2D, Texture2DCreationDesc},
+    resource_managers::{GpuTexture2D, ImageDataDesc},
     view_builder::{self, Projection, TargetConfiguration, ViewBuilder},
     Color32, LineDrawableBuilder, PointCloudBuilder, Size,
 };
@@ -40,13 +40,12 @@ impl framework::Example for Render2D {
         let rerun_logo_texture = re_ctx
             .texture_manager_2d
             .create(
-                &re_ctx.gpu_resources.textures,
-                &Texture2DCreationDesc {
+                re_ctx,
+                ImageDataDesc {
                     label: "rerun logo".into(),
                     data: image_data.into(),
-                    format: wgpu::TextureFormat::Rgba8UnormSrgb,
-                    width: rerun_logo.width(),
-                    height: rerun_logo.height(),
+                    format: wgpu::TextureFormat::Rgba8UnormSrgb.into(),
+                    width_height: [rerun_logo.width(), rerun_logo.height()],
                 },
             )
             .expect("Failed to create texture for rerun logo");

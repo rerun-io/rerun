@@ -11,8 +11,14 @@ use crate::{resource_managers::GpuTexture2D, RenderContext};
 
 /// Error that can occur during frame decoding.
 // TODO(jan, andreas): These errors are for the most part specific to the web decoder right now.
-#[derive(thiserror::Error, Debug, Clone)]
+#[derive(thiserror::Error, Debug, Clone, PartialEq, Eq)]
 pub enum DecodingError {
+    #[error("Failed to start decoder")]
+    StartDecoder(String),
+
+    #[error("The decoder is lagging behind")]
+    EmptyBuffer,
+
     #[error("Failed to create VideoDecoder: {0}")]
     DecoderSetupFailure(String),
 
@@ -65,12 +71,15 @@ pub enum DecodingError {
 pub type FrameDecodingResult = Result<VideoFrameTexture, DecodingError>;
 
 /// Information about the status of a frame decoding.
-pub enum VideoFrameTexture {
-    /// The requested frame got decoded and is ready to be used.
-    Ready(GpuTexture2D),
+pub struct VideoFrameTexture {
+    /// The texture to show.
+    pub texture: GpuTexture2D,
 
-    /// The returned texture is from a previous frame or a placeholder, the decoder is still decoding the requested frame.
-    Pending(GpuTexture2D),
+    /// If true, the texture is outdated. Keep polling for a fresh one.
+    pub is_pending: bool,
+
+    /// If true, this texture is so out-dated that it should have a loading spinner on top of it.
+    pub show_spinner: bool,
 }
 
 /// Identifier for an independent video decoding stream.
@@ -82,7 +91,7 @@ pub enum VideoFrameTexture {
 pub struct VideoDecodingStreamId(pub u64);
 
 struct DecoderEntry {
-    decoder: Box<dyn decoder::VideoDecoder>,
+    decoder: decoder::VideoDecoder,
     frame_index: u64,
 }
 
@@ -210,7 +219,7 @@ impl Video {
         let decoder_entry = match decoders.entry(decoder_stream_id) {
             Entry::Occupied(occupied_entry) => occupied_entry.into_mut(),
             Entry::Vacant(vacant_entry) => {
-                let new_decoder = decoder::new_video_decoder(
+                let new_decoder = decoder::VideoDecoder::new(
                     &self.debug_name,
                     render_context,
                     self.data.clone(),

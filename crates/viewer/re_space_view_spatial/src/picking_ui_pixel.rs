@@ -195,7 +195,7 @@ fn try_show_zoomed_image_region(
     interaction_id: &TextureInteractionId<'_>,
     center_texel: [isize; 2],
 ) -> anyhow::Result<()> {
-    let [width, height] = colormapped_texture.texture.width_height();
+    let [width, height] = colormapped_texture.width_height();
 
     const POINTS_PER_TEXEL: f32 = 5.0;
     let size = egui::Vec2::splat(((ZOOMED_IMAGE_TEXEL_RADIUS * 2 + 1) as f32) * POINTS_PER_TEXEL);

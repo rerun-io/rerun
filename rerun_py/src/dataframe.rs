@@ -16,10 +16,10 @@ use pyo3::{
 
 use re_chunk_store::{
     ChunkStore, ChunkStoreConfig, ColumnDescriptor, ColumnSelector, ComponentColumnDescriptor,
-    ComponentColumnSelector, QueryExpression2, SparseFillStrategy, TimeColumnDescriptor,
+    ComponentColumnSelector, QueryExpression, SparseFillStrategy, TimeColumnDescriptor,
     TimeColumnSelector, VersionPolicy, ViewContentsSelector,
 };
-use re_dataframe2::QueryEngine;
+use re_dataframe::QueryEngine;
 use re_log_types::{EntityPathFilter, ResolvedTimeRange, TimeType};
 use re_sdk::{ComponentName, EntityPath, StoreId, StoreKind};
 
@@ -41,8 +41,8 @@ pub(crate) fn register(m: &Bound<'_, PyModule>) -> PyResult<()> {
     Ok(())
 }
 
-/// Python binding for [`TimeColumnDescriptor`]
-#[pyclass(frozen, name = "TimeColumnDescriptor")]
+/// Python binding for `IndexColumnDescriptor`
+#[pyclass(frozen, name = "IndexColumnDescriptor")]
 #[derive(Clone)]
 struct PyIndexColumnDescriptor(TimeColumnDescriptor);
 
@@ -59,14 +59,15 @@ impl From<TimeColumnDescriptor> for PyIndexColumnDescriptor {
     }
 }
 
-/// Python binding for [`TimeColumnSelector`]
-#[pyclass(frozen, name = "TimeColumnSelector")]
+/// Python binding for `IndexColumnSelector`
+#[pyclass(frozen, name = "IndexColumnSelector")]
 #[derive(Clone)]
 struct PyIndexColumnSelector(TimeColumnSelector);
 
 #[pymethods]
 impl PyIndexColumnSelector {
     #[new]
+    #[pyo3(text_signature = "(self, index)")]
     fn new(index: &str) -> Self {
         Self(TimeColumnSelector {
             timeline: index.into(),
@@ -127,6 +128,7 @@ struct PyComponentColumnSelector(ComponentColumnSelector);
 #[pymethods]
 impl PyComponentColumnSelector {
     #[new]
+    #[pyo3(text_signature = "(self, entity_path: str, component: ComponentLike)")]
     fn new(entity_path: &str, component_name: ComponentLike) -> Self {
         Self(ComponentColumnSelector {
             entity_path: entity_path.into(),
@@ -196,7 +198,7 @@ impl AnyComponentColumn {
 struct ComponentLike(re_sdk::ComponentName);
 
 impl FromPyObject<'_> for ComponentLike {
-    fn extract(component: &PyAny) -> PyResult<Self> {
+    fn extract_bound(component: &Bound<'_, PyAny>) -> PyResult<Self> {
         if let Ok(component_str) = component.extract::<String>() {
             Ok(Self(component_str.into()))
         } else if let Ok(component_str) = component
@@ -270,7 +272,7 @@ impl PySchema {
 #[pyclass(name = "Recording")]
 pub struct PyRecording {
     store: ChunkStore,
-    cache: re_dataframe2::QueryCache,
+    cache: re_dataframe::QueryCache,
 }
 
 #[pyclass(name = "RecordingView")]
@@ -278,7 +280,7 @@ pub struct PyRecording {
 pub struct PyRecordingView {
     recording: Py<PyRecording>,
 
-    query_expression: QueryExpression2,
+    query_expression: QueryExpression,
 }
 
 /// A view of a recording restricted to a given index, containing a specific set of entities and components.
@@ -551,7 +553,7 @@ impl PyRecording {
 
         let contents = borrowed_self.extract_contents_expr(contents)?;
 
-        let query = QueryExpression2 {
+        let query = QueryExpression {
             view_contents: Some(contents),
             filtered_index: timeline.timeline,
             filtered_index_range: None,
@@ -568,6 +570,22 @@ impl PyRecording {
             recording,
             query_expression: query,
         })
+    }
+
+    fn recording_id(&self) -> String {
+        self.store.id().as_str().to_owned()
+    }
+
+    fn application_id(&self) -> PyResult<String> {
+        Ok(self
+            .store
+            .info()
+            .ok_or(PyValueError::new_err(
+                "Recording is missing application id.",
+            ))?
+            .application_id
+            .as_str()
+            .to_owned())
     }
 }
 
@@ -592,7 +610,7 @@ impl PyRRDArchive {
             .iter()
             .filter(|(id, _)| matches!(id.kind, StoreKind::Recording))
             .map(|(_, store)| {
-                let cache = re_dataframe2::external::re_query::Caches::new(store);
+                let cache = re_dataframe::external::re_query::Caches::new(store);
                 PyRecording {
                     store: store.clone(),
                     cache,
@@ -603,7 +621,7 @@ impl PyRRDArchive {
 }
 
 #[pyfunction]
-pub fn load_recording(path_to_rrd: String) -> PyResult<PyRecording> {
+pub fn load_recording(path_to_rrd: std::path::PathBuf) -> PyResult<PyRecording> {
     let archive = load_archive(path_to_rrd)?;
 
     let num_recordings = archive.num_recordings();
@@ -624,7 +642,7 @@ pub fn load_recording(path_to_rrd: String) -> PyResult<PyRecording> {
 }
 
 #[pyfunction]
-pub fn load_archive(path_to_rrd: String) -> PyResult<PyRRDArchive> {
+pub fn load_archive(path_to_rrd: std::path::PathBuf) -> PyResult<PyRRDArchive> {
     let stores =
         ChunkStore::from_rrd_filepath(&ChunkStoreConfig::DEFAULT, path_to_rrd, VersionPolicy::Warn)
             .map_err(|err| PyRuntimeError::new_err(err.to_string()))?;

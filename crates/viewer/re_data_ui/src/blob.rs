@@ -193,22 +193,25 @@ fn show_video_blob_info(
                         data.height()
                     )),
                 );
-                ui.list_item_flat_noninteractive(PropertyContent::new("Duration").value_text(
-                    format!(
-                        "{}",
-                        re_log_types::Duration::from_millis(data.duration_ms() as i64)
-                    ),
-                ));
+                if let Some(bit_depth) = data.config.stsd.contents.bit_depth() {
+                    ui.list_item_flat_noninteractive(
+                        PropertyContent::new("Bit depth").value_text(bit_depth.to_string()),
+                    );
+                }
+                ui.list_item_flat_noninteractive(
+                    PropertyContent::new("Duration")
+                        .value_text(format!("{}", re_log_types::Duration::from(data.duration()))),
+                );
                 // Some people may think that num_frames / duration = fps, but that's not true, videos may have variable frame rate.
                 // At the same time, we don't want to overload users with video codec/container specific stuff that they have to understand,
                 // and for all intents and purposes one sample = one frame.
                 // So the compromise is that we truthfully show the number of *samples* here and don't talk about frames.
                 ui.list_item_flat_noninteractive(
                     PropertyContent::new("Sample count")
-                        .value_text(format!("{}", data.num_samples())),
+                        .value_text(re_format::format_uint(data.num_samples())),
                 );
                 ui.list_item_flat_noninteractive(
-                    PropertyContent::new("Codec").value_text(data.codec()),
+                    PropertyContent::new("Codec").value_text(data.human_readable_codec_string()),
                 );
 
                 if ui_layout != UiLayout::Tooltip {
@@ -238,7 +241,7 @@ fn show_video_blob_info(
                         // but the point here is not to have a nice viewer,
                         // but to show the user what they have selected
                         ui.ctx().request_repaint(); // TODO(emilk): schedule a repaint just in time for the next frame of video
-                        ui.input(|i| i.time) % video.data().duration_sec()
+                        ui.input(|i| i.time) % video.data().duration().as_secs_f64()
                     };
 
                     let decode_stream_id = re_renderer::video::VideoDecodingStreamId(
@@ -246,21 +249,11 @@ fn show_video_blob_info(
                     );
 
                     match video.frame_at(render_ctx, decode_stream_id, timestamp_in_seconds) {
-                        Ok(frame) => {
-                            let is_pending;
-                            let texture = match frame {
-                                VideoFrameTexture::Ready(texture) => {
-                                    is_pending = false;
-                                    texture
-                                }
-
-                                VideoFrameTexture::Pending(placeholder) => {
-                                    is_pending = true;
-                                    ui.ctx().request_repaint();
-                                    placeholder
-                                }
-                            };
-
+                        Ok(VideoFrameTexture {
+                            texture,
+                            is_pending,
+                            show_spinner,
+                        }) => {
                             let response = crate::image::texture_preview_ui(
                                 render_ctx,
                                 ui,
@@ -270,6 +263,10 @@ fn show_video_blob_info(
                             );
 
                             if is_pending {
+                                ui.ctx().request_repaint(); // Keep polling for an up-to-date texture
+                            }
+
+                            if show_spinner {
                                 // Shrink slightly:
                                 let smaller_rect = egui::Rect::from_center_size(
                                     response.rect.center(),

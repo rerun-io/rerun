@@ -26,7 +26,7 @@ re_tracing.workspace = true
 
 ahash.workspace = true
 emath.workspace = true
-itertools = { workspace = true }
+itertools.workspace = true
 nohash-hasher.workspace = true
 once_cell.workspace = true
 parking_lot.workspace = true

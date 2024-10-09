@@ -247,14 +247,18 @@ impl DisplayColumn {
                     return;
                 }
 
-                let timestamp = TimeInt::try_from(time_data.value(row_index));
-                match timestamp {
-                    Ok(timestamp) => {
-                        ui.label(timeline.typ().format(timestamp, ctx.app_options.time_zone));
+                if time_data.is_valid(row_index) {
+                    let timestamp = TimeInt::try_from(time_data.value(row_index));
+                    match timestamp {
+                        Ok(timestamp) => {
+                            ui.label(timeline.typ().format(timestamp, ctx.app_options.time_zone));
+                        }
+                        Err(err) => {
+                            ui.error_label(&format!("{err}"));
+                        }
                     }
-                    Err(err) => {
-                        ui.error_label(&format!("{err}"));
-                    }
+                } else {
+                    ui.label("-");
                 }
             }
             Self::Component {

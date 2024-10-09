@@ -13,8 +13,6 @@ use std::{
 use indicatif::ProgressBar;
 use parking_lot::Mutex;
 
-use re_video::demux::mp4::load_mp4;
-
 fn main() {
     // frames <video.mp4>
     let args: Vec<_> = std::env::args().collect();
@@ -27,11 +25,15 @@ fn main() {
     println!("Decoding {video_path}");
 
     let video = std::fs::read(video_path).expect("failed to read video");
-    let video = load_mp4(&video).expect("failed to load video");
+    let video = re_video::VideoData::load_mp4(&video).expect("failed to load video");
+
+    let sync_decoder = Box::new(
+        re_video::decode::av1::SyncDav1dDecoder::new().expect("Failed to start AV1 decoder"),
+    );
 
     println!(
         "{} {}x{}",
-        video.segments.len(),
+        video.gops.len(),
         video.config.coded_width,
         video.config.coded_height
     );
@@ -40,14 +42,16 @@ fn main() {
     progress.enable_steady_tick(Duration::from_millis(100));
 
     let frames = Arc::new(Mutex::new(Vec::new()));
-    let mut decoder = re_video::decode::av1::Decoder::new("debug_name".to_owned(), {
+    let on_output = {
         let frames = frames.clone();
         let progress = progress.clone();
         move |frame| {
             progress.inc(1);
             frames.lock().push(frame);
         }
-    });
+    };
+    let mut decoder =
+        re_video::decode::AsyncDecoder::new("debug_name".to_owned(), sync_decoder, on_output);
 
     let start = Instant::now();
     for sample in &video.samples {

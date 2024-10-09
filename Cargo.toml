@@ -46,7 +46,6 @@ re_chunk_store = { path = "crates/store/re_chunk_store", version = "=0.19.0-alph
 re_data_loader = { path = "crates/store/re_data_loader", version = "=0.19.0-alpha.1", default-features = false }
 re_data_source = { path = "crates/store/re_data_source", version = "=0.19.0-alpha.1", default-features = false }
 re_dataframe = { path = "crates/store/re_dataframe", version = "=0.19.0-alpha.1", default-features = false }
-re_dataframe2 = { path = "crates/store/re_dataframe2", version = "=0.19.0-alpha.1", default-features = false }
 re_entity_db = { path = "crates/store/re_entity_db", version = "=0.19.0-alpha.1", default-features = false }
 re_format_arrow = { path = "crates/store/re_format_arrow", version = "=0.19.0-alpha.1", default-features = false }
 re_log_encoding = { path = "crates/store/re_log_encoding", version = "=0.19.0-alpha.1", default-features = false }
@@ -556,9 +555,8 @@ missing_errors_doc = "allow"
 
 # egui_commonmark = { git = "https://github.com/rerun-io/egui_commonmark", rev = "7a9dc755bfa351a3796274cb8ca87129b051c084" } # https://github.com/lampsitter/egui_commonmark/pull/65
 
-# commit on `rerun-io/mp4` `master` branch: https://github.com/rerun-io/re_mp4/tree/master
-# https://github.com/rerun-io/mp4/commit/3236c76f9228cf6ab0b2bfb1b8f9ffcde975ea05
-re_mp4 = { git = "https://github.com/rerun-io/re_mp4", rev = "4705e85f62ddb47c32d9c091d8f0662068211bc8" }
+re_mp4 = { git = "https://github.com/rerun-io/re_mp4", rev = "8614aae24a7a39a5e7de615d83dbcbfadde7f606" } # main 2024-10-08
+# re_mp4 = { path = "../re_mp4" }
 
 # commit on `rerun-io/re_arrow2` `main` branch
 # https://github.com/rerun-io/re_arrow2/commit/e4717d6debc6d4474ec10db8f629f823f57bad07

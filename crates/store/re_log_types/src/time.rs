@@ -535,6 +535,13 @@ impl Duration {
     }
 }
 
+impl From<std::time::Duration> for Duration {
+    #[inline]
+    fn from(duration: std::time::Duration) -> Self {
+        Self::from_nanos(duration.as_nanos() as _)
+    }
+}
+
 impl std::ops::Neg for Duration {
     type Output = Self;
 
