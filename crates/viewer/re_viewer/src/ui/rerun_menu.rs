@@ -381,12 +381,6 @@ fn experimental_feature_ui(ui: &mut egui::Ui, app_options: &mut re_viewer_contex
     ui
         .re_checkbox(&mut app_options.experimental_space_view_screenshots, "Space view screenshots")
         .on_hover_text("Allow taking screenshots of 2D and 3D space views via their context menu. Does not contain labels.");
-
-    ui.re_checkbox(
-        &mut app_options.plot_query_clamping,
-        "Plots: query clamping",
-    )
-    .on_hover_text("Toggle query clamping for the plot visualizers. This is enabled by default and is only made toggable to facilitate potential bug hunts and performance comparisons.");
 }
 
 #[cfg(debug_assertions)]
