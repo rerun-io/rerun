@@ -221,6 +221,9 @@ impl<'py> IndexLike<'py> {
                     .map(|v| {
                         v.map_or_else(
                             || re_chunk_store::TimeInt::STATIC,
+                            // The use of temporal here should be fine even if the data is
+                            // not actually temporal. The important thing is we are converting
+                            // from an i64 input
                             re_chunk_store::TimeInt::new_temporal,
                         )
                     })
@@ -237,6 +240,9 @@ impl<'py> IndexLike<'py> {
                     .readonly()
                     .as_array()
                     .iter()
+                    // The use of temporal here should be fine even if the data is
+                    // not actually temporal. The important thing is we are converting
+                    // from an i64 input
                     .map(|v| re_chunk_store::TimeInt::new_temporal(*v))
                     .collect();
 
@@ -267,6 +273,9 @@ impl<'py> IndexLike<'py> {
                                 .map(|v| {
                                     v.map_or_else(
                                         || re_chunk_store::TimeInt::STATIC,
+                                        // The use of temporal here should be fine even if the data is
+                                        // not actually temporal. The important thing is we are converting
+                                        // from an i64 input
                                         re_chunk_store::TimeInt::new_temporal,
                                     )
                                 })
