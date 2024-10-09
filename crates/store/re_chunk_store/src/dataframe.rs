@@ -769,7 +769,9 @@ impl ChunkStore {
             .chain(temporal_components)
             .filter(|col| match col {
                 ColumnDescriptor::Time(_) => true,
-                ColumnDescriptor::Component(descr) => !descr.component_name.contains("Indicator"),
+                ColumnDescriptor::Component(descr) => {
+                    !descr.component_name.is_indicator_component()
+                }
             })
             .collect::<BTreeSet<_>>();
 
