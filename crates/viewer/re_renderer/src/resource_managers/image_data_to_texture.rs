@@ -60,7 +60,7 @@ pub enum SourceImageDataFormat {
 
     /// YUV (== `YCbCr`) formats, typically using chroma downsampling.
     Yuv {
-        format: YuvPixelLayout,
+        layout: YuvPixelLayout,
         primaries: ColorPrimaries,
         range: YuvRange,
     },
@@ -75,7 +75,7 @@ impl From<wgpu::TextureFormat> for SourceImageDataFormat {
 }
 
 /// Error that can occur when converting image data to a texture.
-#[derive(thiserror::Error, Debug)]
+#[derive(thiserror::Error, Debug, Clone, PartialEq, Eq)]
 pub enum ImageDataToTextureError {
     #[error("Texture {0:?} has zero width or height!")]
     ZeroSize(DebugLabel),
@@ -211,7 +211,7 @@ impl<'a> ImageDataDesc<'a> {
                         .ok_or(ImageDataToTextureError::UnsupportedTextureFormat(*format))?
                         as usize
             }
-            SourceImageDataFormat::Yuv { format, .. } => {
+            SourceImageDataFormat::Yuv { layout: format, .. } => {
                 format.num_data_buffer_bytes(*width_height)
             }
         };
@@ -303,13 +303,13 @@ pub fn transfer_image_data_to_texture(
     // Reminder: We can't use raw buffers because of WebGL compatibility.
     let [data_texture_width, data_texture_height] = match source_format {
         SourceImageDataFormat::WgpuCompatible(_) => output_width_height,
-        SourceImageDataFormat::Yuv { format, .. } => {
-            format.data_texture_width_height(output_width_height)
+        SourceImageDataFormat::Yuv { layout, .. } => {
+            layout.data_texture_width_height(output_width_height)
         }
     };
     let data_texture_format = match source_format {
         SourceImageDataFormat::WgpuCompatible(format) => format,
-        SourceImageDataFormat::Yuv { format, .. } => format.data_texture_format(),
+        SourceImageDataFormat::Yuv { layout, .. } => layout.data_texture_format(),
     };
 
     // Allocate gpu belt data and upload it.
@@ -350,12 +350,12 @@ pub fn transfer_image_data_to_texture(
             return Ok(());
         }
         SourceImageDataFormat::Yuv {
-            format,
+            layout,
             primaries,
             range,
         } => YuvFormatConversionTask::new(
             ctx,
-            format,
+            layout,
             range,
             primaries,
             &data_texture,

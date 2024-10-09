@@ -1,6 +1,6 @@
 use std::sync::atomic::AtomicU64;
 
-#[derive(thiserror::Error, Debug, PartialEq, Eq)]
+#[derive(thiserror::Error, Debug, Clone, PartialEq, Eq)]
 pub enum PoolError {
     #[error("Requested resource isn't available because the handle is no longer valid")]
     ResourceNotAvailable,

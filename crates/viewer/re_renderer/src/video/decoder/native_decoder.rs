@@ -6,7 +6,15 @@ use re_video::{Chunk, Frame, Time};
 
 use parking_lot::Mutex;
 
-use crate::{video::DecodingError, RenderContext};
+use crate::{
+    resource_managers::{
+        transfer_image_data_to_texture, ColorPrimaries, ImageDataDesc, SourceImageDataFormat,
+        YuvPixelLayout, YuvRange,
+    },
+    video::DecodingError,
+    wgpu_resources::GpuTexture,
+    RenderContext,
+};
 
 use super::{latest_at_idx, TimedDecodingError, VideoChunkDecoder, VideoTexture};
 
@@ -100,7 +108,7 @@ impl VideoChunkDecoder for NativeDecoder {
         if frame_time_range.contains(&presentation_timestamp)
             && video_texture.time_range != frame_time_range
         {
-            copy_video_frame_to_texture(&render_ctx.queue, frame, &video_texture.texture.texture)?;
+            copy_video_frame_to_texture(render_ctx, frame, &video_texture.texture)?;
             video_texture.time_range = frame_time_range;
         }
 
@@ -125,58 +133,66 @@ impl VideoChunkDecoder for NativeDecoder {
 }
 
 fn copy_video_frame_to_texture(
-    queue: &wgpu::Queue,
+    ctx: &RenderContext,
     frame: &Frame,
-    texture: &wgpu::Texture,
+    target_texture: &GpuTexture,
 ) -> Result<(), DecodingError> {
     let format = match frame.format {
         re_video::PixelFormat::Rgb8Unorm => {
+            // TODO(andreas): `ImageDataDesc` should have RGB handling!
             return copy_video_frame_to_texture(
-                queue,
+                ctx,
                 &Frame {
                     data: crate::pad_rgb_to_rgba(&frame.data, 255_u8),
                     format: re_video::PixelFormat::Rgba8Unorm,
                     ..*frame
                 },
-                texture,
+                target_texture,
             );
         }
-
-        re_video::PixelFormat::Rgba8Unorm => wgpu::TextureFormat::Rgba8Unorm,
+        re_video::PixelFormat::Rgba8Unorm | re_video::PixelFormat::Yuv { .. } => {
+            wgpu::TextureFormat::Rgba8Unorm
+        }
     };
 
     re_tracing::profile_function!();
 
-    let size = wgpu::Extent3d {
-        width: frame.width,
-        height: frame.height,
-        depth_or_array_layers: 1,
+    let format = match &frame.format {
+        re_video::PixelFormat::Rgb8Unorm | re_video::PixelFormat::Rgba8Unorm => {
+            SourceImageDataFormat::WgpuCompatible(wgpu::TextureFormat::Rgba8Unorm)
+        }
+        re_video::PixelFormat::Yuv {
+            layout,
+            range,
+            primaries,
+        } => SourceImageDataFormat::Yuv {
+            layout: match layout {
+                re_video::decode::YuvPixelLayout::Y_U_V444 => YuvPixelLayout::Y_U_V444,
+                re_video::decode::YuvPixelLayout::Y_U_V422 => YuvPixelLayout::Y_U_V422,
+                re_video::decode::YuvPixelLayout::Y_U_V420 => YuvPixelLayout::Y_U_V420,
+                re_video::decode::YuvPixelLayout::Y400 => YuvPixelLayout::Y400,
+            },
+            primaries: match primaries {
+                re_video::decode::ColorPrimaries::Bt601 => ColorPrimaries::Bt601,
+                re_video::decode::ColorPrimaries::Bt709 => ColorPrimaries::Bt709,
+            },
+            range: match range {
+                re_video::decode::YuvRange::Limited => YuvRange::Limited,
+                re_video::decode::YuvRange::Full => YuvRange::Full,
+            },
+        },
     };
 
-    let width_blocks = frame.width / format.block_dimensions().0;
-
-    #[allow(clippy::unwrap_used)] // block_copy_size can only fail for weird compressed formats
-    let block_size = format
-        .block_copy_size(Some(wgpu::TextureAspect::All))
-        .unwrap();
-
-    let bytes_per_row_unaligned = width_blocks * block_size;
-
-    queue.write_texture(
-        wgpu::ImageCopyTexture {
-            texture,
-            mip_level: 0,
-            origin: wgpu::Origin3d::ZERO,
-            aspect: wgpu::TextureAspect::All,
+    transfer_image_data_to_texture(
+        ctx,
+        ImageDataDesc {
+            label: "video_texture_upload".into(),
+            data: std::borrow::Cow::Borrowed(frame.data.as_slice()),
+            format,
+            width_height: [frame.width, frame.height],
         },
-        &frame.data,
-        wgpu::ImageDataLayout {
-            offset: 0,
-            bytes_per_row: Some(bytes_per_row_unaligned),
-            rows_per_image: None,
-        },
-        size,
-    );
+        target_texture,
+    )?;
 
     Ok(())
 }

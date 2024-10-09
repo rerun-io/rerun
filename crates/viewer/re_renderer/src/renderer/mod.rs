@@ -50,7 +50,7 @@ pub trait DrawData {
     type Renderer: Renderer<RendererDrawData = Self> + Send + Sync;
 }
 
-#[derive(thiserror::Error, Debug)]
+#[derive(thiserror::Error, Debug, Clone, PartialEq, Eq)]
 pub enum DrawError {
     #[error(transparent)]
     Pool(#[from] PoolError),
