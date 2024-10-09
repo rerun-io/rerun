@@ -8,7 +8,7 @@ use crate::{
 /// Type of color primaries a given image is in.
 ///
 /// This applies both to YUV and RGB formats, but if not specified otherwise
-/// we assume BT.709 primaries for all RGB(A) 8bits per channel content (details below on [`ColorSpace::Bt709`]).
+/// we assume BT.709 primaries for all RGB(A) 8bits per channel content (details below on [`ColorPrimaries::Bt709`]).
 /// Since with YUV content the color space is often less clear, we always explicitly
 /// specify it.
 ///

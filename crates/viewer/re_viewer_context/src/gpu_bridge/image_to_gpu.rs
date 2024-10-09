@@ -232,7 +232,7 @@ pub fn required_shader_decode(
     }
 }
 
-/// Creates a [`Texture2DCreationDesc`] for creating a texture from an [`ImageInfo`].
+/// Creates a [`ImageDataDesc`] for creating a texture from an [`ImageInfo`].
 ///
 /// The resulting texture has requirements as describe by [`required_shader_decode`].
 ///
@@ -244,7 +244,7 @@ pub fn texture_creation_desc_from_color_image<'a>(
 ) -> ImageDataDesc<'a> {
     re_tracing::profile_function!();
 
-    // TODO(#7608): All image data ingestion conersions should all be handled by re_renderer!
+    // TODO(#7608): All image data ingestion conversions should all be handled by re_renderer!
 
     let (data, format) = if let Some(pixel_format) = image.format.pixel_format {
         match pixel_format {
