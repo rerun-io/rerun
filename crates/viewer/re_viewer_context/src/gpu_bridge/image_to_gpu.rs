@@ -254,14 +254,14 @@ pub fn texture_creation_desc_from_color_image<'a>(
             PixelFormat::NV12 => (
                 cast_slice_to_cow(image.buffer.as_slice()),
                 SourceImageDataFormat::Yuv {
-                    format: YuvPixelLayout::Y_UV_420,
+                    format: YuvPixelLayout::Y_UV420,
                     primaries: ColorPrimaries::Bt601,
                 },
             ),
             PixelFormat::YUY2 => (
                 cast_slice_to_cow(image.buffer.as_slice()),
                 SourceImageDataFormat::Yuv {
-                    format: YuvPixelLayout::YUYV_422,
+                    format: YuvPixelLayout::YUYV422,
                     primaries: ColorPrimaries::Bt601,
                 },
             ),

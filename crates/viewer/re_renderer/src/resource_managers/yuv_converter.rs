@@ -29,7 +29,7 @@ use super::ColorPrimaries;
 ///
 /// Naming schema:
 /// * every time a plane starts add a `_`
-/// * end with `_4xy` for 4:x:y subsampling.
+/// * end with `4xy` for 4:x:y subsampling.
 ///
 /// This picture gives a great overview of how to interpret the 4:x:y naming scheme for subsampling:
 /// <https://en.wikipedia.org/wiki/Chroma_subsampling#Sampling_systems_and_ratios/>
@@ -63,7 +63,7 @@ pub enum YuvPixelLayout {
     ///          |         |
     ///          |_________|
     /// ```
-    Y_U_V_444 = 0,
+    Y_U_V444 = 0,
 
     /// 4:2:2 subsampling with 3 separate planes.
     /// Also known as `I422`
@@ -85,7 +85,7 @@ pub enum YuvPixelLayout {
     /// height/2 |    V    |
     ///          |_________|
     /// ```
-    Y_U_V_422 = 1,
+    Y_U_V422 = 1,
 
     /// 4:2:0 subsampling with 3 separate planes.
     /// Also known as `I420`
@@ -105,7 +105,7 @@ pub enum YuvPixelLayout {
     /// height/4 |___◌̲U____|
     /// height/4 |___◌̲V____|
     /// ```
-    Y_U_V_420 = 2,
+    Y_U_V420 = 2,
 
     // ---------------------------
     // Semi-planar formats
@@ -128,7 +128,7 @@ pub enum YuvPixelLayout {
     /// height/2 | U,V,U,… |
     ///          |_________|
     /// ```
-    Y_UV12 = 0,
+    Y_UV420 = 100,
 
     // ---------------------------
     // Interleaved formats
@@ -147,19 +147,40 @@ pub enum YuvPixelLayout {
     /// height | Y0, U0, Y1, V0… |
     ///        |_________________|
     /// ```
-    YUYV16 = 1,
+    YUYV422 = 200,
+
+    // ---------------------------
+    // Monochrome formats
+    // ---------------------------
+    //
+    /// 4:0:0, single plane of chroma only.
+    /// Also known as I400
+    ///
+    /// Expects single channel texture format.
+    ///
+    /// Note that we still convert this to RGBA, for convenience.
+    ///
+    /// ```text
+    ///             width
+    ///          __________
+    ///          |         |
+    /// height   |    Y    |
+    ///          |         |
+    ///          |_________|
+    /// ```
+    Y400 = 300,
 }
 
 impl YuvPixelLayout {
     /// Given the dimensions of the output picture, what are the expected dimensions of the input data texture.
     pub fn data_texture_width_height(&self, [decoded_width, decoded_height]: [u32; 2]) -> [u32; 2] {
         match self {
-            Self::Y_U_V_444 => [decoded_width, decoded_height * 3],
-            Self::Y_U_V_422 => [decoded_width, decoded_height * 2],
-            Self::Y_U_V_420 => [decoded_width, decoded_height + decoded_height / 2],
-            Self::Y_UV_420 => [decoded_width, decoded_height + decoded_height / 2],
-            Self::YUYV_422 => [decoded_width * 2, decoded_height],
-            Self::Y_400 => [decoded_width, decoded_height],
+            Self::Y_U_V444 => [decoded_width, decoded_height * 3],
+            Self::Y_U_V422 => [decoded_width, decoded_height * 2],
+            Self::Y_U_V420 => [decoded_width, decoded_height + decoded_height / 2],
+            Self::Y_UV420 => [decoded_width, decoded_height + decoded_height / 2],
+            Self::YUYV422 => [decoded_width * 2, decoded_height],
+            Self::Y400 => [decoded_width, decoded_height],
         }
     }
 
@@ -176,17 +197,17 @@ impl YuvPixelLayout {
         #[allow(clippy::match_same_arms)]
         match self {
             // Only thing that makes sense for 8 bit planar data is the R8Uint format.
-            Self::Y_U_V_444 | Self::Y_U_V_422 | Self::Y_U_V_420 => wgpu::TextureFormat::R8Uint,
+            Self::Y_U_V444 | Self::Y_U_V422 | Self::Y_U_V420 => wgpu::TextureFormat::R8Uint,
 
             // Same for planar
-            Self::Y_UV_420 => wgpu::TextureFormat::R8Uint,
+            Self::Y_UV420 => wgpu::TextureFormat::R8Uint,
 
             // Interleaved have opportunities here!
             // TODO(andreas): Why not use [`wgpu::TextureFormat::Rg8Uint`] here?
-            Self::YUYV_422 => wgpu::TextureFormat::R8Uint,
+            Self::YUYV422 => wgpu::TextureFormat::R8Uint,
 
             // Monochrome have only one channel anyways.
-            Self::Y_400 => wgpu::TextureFormat::R8Uint,
+            Self::Y400 => wgpu::TextureFormat::R8Uint,
         }
     }
 
