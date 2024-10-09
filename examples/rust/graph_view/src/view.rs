@@ -16,8 +16,9 @@ use re_viewer::external::{
 use crate::{
     error::Error,
     graph::Graph,
+    layout::{ForceBasedLayout, LayoutProvider},
     types::NodeIndex,
-    ui::{self, draw_dummy, GraphSpaceViewState},
+    ui::{self, GraphSpaceViewState},
     visualizers::{EdgesDirectedVisualizer, EdgesUndirectedVisualizer, NodeVisualizer},
 };
 
@@ -128,19 +129,16 @@ impl SpaceViewClass for GraphSpaceView {
             let node_sizes = ui::measure_node_sizes(ui, graph.all_nodes());
 
             let undirected = undirected_system
-            .data
-            .iter()
-            .flat_map(|d| d.edges().map(|e| (e.source.into(), e.target.into())));
+                .data
+                .iter()
+                .flat_map(|d| d.edges().map(|e| (e.source.into(), e.target.into())));
 
             let directed = directed_system
-            .data
-            .iter()
-            .flat_map(|d| d.edges().map(|e| (e.source.into(), e.target.into())));
+                .data
+                .iter()
+                .flat_map(|d| d.edges().map(|e| (e.source.into(), e.target.into())));
 
-            let layout = crate::layout::compute_layout(
-                node_sizes.into_iter(),
-                undirected.chain(directed),
-            )?;
+            let layout = ForceBasedLayout::new().compute(node_sizes.into_iter(), undirected, directed)?;
 
             if let Some(bounding_box) = ui::bounding_rect_from_iter(layout.values()) {
                 state.fit_to_screen(
@@ -329,7 +327,7 @@ impl SpaceViewClass for GraphSpaceView {
                             source_pos,
                             target_pos,
                             ent_highlight.index_highlight(edge.instance),
-                            false
+                            false,
                         );
                     })
                     .response;
