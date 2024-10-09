@@ -1,7 +1,5 @@
 use re_chunk::{EntityPath, TransportChunk};
-use re_chunk_store::{
-    ChunkStore, ColumnDescriptor, QueryExpression, QueryExpression2, ViewContentsSelector,
-};
+use re_chunk_store::{ChunkStore, ColumnDescriptor, QueryExpression2, ViewContentsSelector};
 use re_log_types::EntityPathFilter;
 use re_query::Caches;
 
@@ -51,23 +49,12 @@ impl QueryEngine<'_> {
         self.store.schema()
     }
 
-    /// Returns the filtered schema for the given query expression.
-    ///
-    /// This will only include columns which may contain non-empty values from the perspective of
-    /// the query semantics.
+    /// Returns the filtered schema for the given `view_contents`.
     ///
     /// The order of the columns is guaranteed to be in a specific order:
     /// * first, the control columns in lexical order (`RowId`);
     /// * second, the time columns in lexical order (`frame_nr`, `log_time`, ...);
     /// * third, the component columns in lexical order (`Color`, `Radius, ...`).
-    ///
-    /// This does not run a full-blown query, but rather just inspects `Chunk`-level metadata,
-    /// which can lead to false positives, but makes this very cheap to compute.
-    #[inline]
-    pub fn schema_for_query(&self, query: &QueryExpression) -> Vec<ColumnDescriptor> {
-        self.store.schema_for_query(query)
-    }
-
     #[inline]
     pub fn schema_for_view_contents(
         &self,

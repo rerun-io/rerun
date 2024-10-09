@@ -2,16 +2,14 @@
 
 use std::collections::{BTreeMap, BTreeSet};
 
-use ahash::HashSet;
 use arrow2::{
     array::ListArray as ArrowListArray,
     datatypes::{DataType as ArrowDatatype, Field as ArrowField},
 };
-use itertools::Itertools as _;
 
-use re_chunk::{LatestAtQuery, TimelineName};
+use re_chunk::TimelineName;
+use re_log_types::ResolvedTimeRange;
 use re_log_types::{EntityPath, TimeInt, Timeline};
-use re_log_types::{EntityPathFilter, ResolvedTimeRange};
 use re_types_core::{ArchetypeName, ComponentName};
 
 use crate::ChunkStore;
@@ -505,134 +503,6 @@ pub struct ArchetypeFieldColumnSelector {
 }
 */
 
-// --- Queries ---
-
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub enum QueryExpression {
-    LatestAt(LatestAtQueryExpression),
-    Range(RangeQueryExpression),
-}
-
-impl From<LatestAtQueryExpression> for QueryExpression {
-    #[inline]
-    fn from(query: LatestAtQueryExpression) -> Self {
-        Self::LatestAt(query)
-    }
-}
-
-impl From<RangeQueryExpression> for QueryExpression {
-    #[inline]
-    fn from(query: RangeQueryExpression) -> Self {
-        Self::Range(query)
-    }
-}
-
-impl QueryExpression {
-    #[inline]
-    pub fn entity_path_filter(&self) -> &EntityPathFilter {
-        match self {
-            Self::LatestAt(query) => &query.entity_path_filter,
-            Self::Range(query) => &query.entity_path_filter,
-        }
-    }
-}
-
-impl std::fmt::Display for QueryExpression {
-    #[inline]
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Self::LatestAt(query) => query.fmt(f),
-            Self::Range(query) => query.fmt(f),
-        }
-    }
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct LatestAtQueryExpression {
-    /// The entity path expression to query.
-    ///
-    /// Example: `world/camera/**`
-    pub entity_path_filter: EntityPathFilter,
-
-    /// The timeline to query.
-    ///
-    /// Example: `frame`.
-    pub timeline: Timeline,
-
-    /// The time at which to query.
-    ///
-    /// Example: `18`.
-    pub at: TimeInt,
-}
-
-impl std::fmt::Display for LatestAtQueryExpression {
-    #[inline]
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let Self {
-            entity_path_filter,
-            timeline,
-            at,
-        } = self;
-
-        f.write_fmt(format_args!(
-            "latest state for '{}' at {} on {:?}",
-            entity_path_filter.iter_expressions().join(", "),
-            timeline.typ().format_utc(*at),
-            timeline.name(),
-        ))
-    }
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct RangeQueryExpression {
-    /// The entity path expression to query.
-    ///
-    /// Example: `world/camera/**`
-    pub entity_path_filter: EntityPathFilter,
-
-    /// The timeline to query.
-    ///
-    /// Example `frame`
-    pub timeline: Timeline,
-
-    /// The time range to query.
-    pub time_range: ResolvedTimeRange,
-
-    /// The point-of-view of the query, as described by its [`ComponentColumnDescriptor`].
-    ///
-    /// In a range query results, each non-null value of the point-of-view component column
-    /// will generate a row in the result.
-    ///
-    /// Note that a component can be logged multiple times at the same timestamp (e.g. something
-    /// happened multiple times during a single frame), in which case the results will contain
-    /// multiple rows at a given timestamp.
-    //
-    // TODO(cmc): issue for multi-pov support
-    pub pov: ComponentColumnSelector,
-    //
-    // TODO(cmc): custom join policy support
-}
-
-impl std::fmt::Display for RangeQueryExpression {
-    #[inline]
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let Self {
-            entity_path_filter,
-            timeline,
-            time_range,
-            pov,
-        } = self;
-
-        f.write_fmt(format_args!(
-            "{} ranging {}..={} on {:?} as seen from {pov}",
-            entity_path_filter.iter_expressions().join(", "),
-            timeline.typ().format_utc(time_range.min()),
-            timeline.typ().format_utc(time_range.max()),
-            timeline.name(),
-        ))
-    }
-}
-
 // --- Queries v2 ---
 
 /// Specifies how null values should be filled in the returned dataframe.
@@ -970,72 +840,6 @@ impl ChunkStore {
                     }
                 }
             })
-            .collect()
-    }
-
-    /// Returns the filtered schema for the given query expression.
-    ///
-    /// This will only include columns which may contain non-empty values from the perspective of
-    /// the query semantics.
-    ///
-    /// The order of the columns is guaranteed to be in a specific order:
-    /// * first, the control columns in lexical order (`RowId`);
-    /// * second, the time columns in lexical order (`frame_nr`, `log_time`, ...);
-    /// * third, the component columns in lexical order (`Color`, `Radius, ...`).
-    ///
-    /// This does not run a full-blown query, but rather just inspects `Chunk`-level metadata,
-    /// which can lead to false positives, but makes this very cheap to compute.
-    pub fn schema_for_query(&self, query: &QueryExpression) -> Vec<ColumnDescriptor> {
-        re_tracing::profile_function!(format!("{query:?}"));
-
-        // First, grab the full schema and filters out every entity path that isn't covered by the query.
-        let schema = self
-            .schema()
-            .into_iter()
-            .filter(|descr| {
-                descr.entity_path().map_or(true, |entity_path| {
-                    query.entity_path_filter().matches(entity_path)
-                })
-            })
-            .collect_vec();
-
-        // Then, discard any column descriptor which cannot possibly have data for the given query.
-        //
-        // TODO(cmc): Opportunities for parallelization, if it proves to be a net positive in practice.
-        // TODO(jleibs): This filtering actually seems incorrect. This operation should be based solely
-        // on the timeline,
-        let mut filtered_out = HashSet::default();
-        for column_descr in &schema {
-            let ColumnDescriptor::Component(descr) = column_descr else {
-                continue;
-            };
-
-            match query {
-                QueryExpression::LatestAt(query) => {
-                    let q = LatestAtQuery::new(query.timeline, query.at);
-                    if self
-                        .latest_at_relevant_chunks(&q, &descr.entity_path, descr.component_name)
-                        .is_empty()
-                    {
-                        filtered_out.insert(column_descr.clone());
-                    }
-                }
-
-                QueryExpression::Range(query) => {
-                    let q = LatestAtQuery::new(query.timeline, query.time_range.max());
-                    if self
-                        .latest_at_relevant_chunks(&q, &descr.entity_path, descr.component_name)
-                        .is_empty()
-                    {
-                        filtered_out.insert(column_descr.clone());
-                    }
-                }
-            }
-        }
-
-        schema
-            .into_iter()
-            .filter(|descr| !filtered_out.contains(descr))
             .collect()
     }
 

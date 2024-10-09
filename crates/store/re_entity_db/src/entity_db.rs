@@ -121,8 +121,8 @@ impl EntityDb {
         &self.query_caches
     }
 
-    pub fn query_engine(&self) -> re_dataframe::QueryEngine<'_> {
-        re_dataframe::QueryEngine {
+    pub fn query_engine(&self) -> re_dataframe2::QueryEngine<'_> {
+        re_dataframe2::QueryEngine {
             store: self.store(),
             cache: self.query_caches(),
         }
