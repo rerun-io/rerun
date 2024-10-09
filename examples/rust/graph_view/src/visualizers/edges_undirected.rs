@@ -1,11 +1,15 @@
-use re_log_types::{EntityPath, Instance};
+use re_log_types::Instance;
 use re_viewer::external::{
-    egui::Color32,
+    egui,
     re_chunk::{ChunkComponentIterItem, LatestAtQuery},
     re_query::{clamped_zip_2x1, range_zip_1x1},
     re_renderer,
     re_space_view::{DataResultQuery, RangeResultsExt},
-    re_types::{self, archetypes, datatypes, components::{self, GraphNodeId}, Loggable as _},
+    re_types::{
+        self, archetypes,
+        components::{self},
+        Loggable as _,
+    },
     re_viewer_context::{
         self, IdentifiedViewSystem, SpaceViewSystemExecutionError, ViewContext,
         ViewContextCollection, ViewQuery, ViewSystemIdentifier, VisualizerQueryInfo,
@@ -13,32 +17,20 @@ use re_viewer::external::{
     },
 };
 
+use crate::types::EdgeInstance;
+
 #[derive(Default)]
-pub struct EdgeUndirectedVisualizer {
-    pub data: Vec<EdgeUndirectedVisualizerData>,
+pub struct UndirectedEdgesVisualizer {
+    pub data: Vec<UndirectedEdgesData>,
 }
 
-pub struct EdgeUndirectedVisualizerData {
+pub struct UndirectedEdgesData {
     pub entity_path: re_log_types::EntityPath,
     edges: ChunkComponentIterItem<components::GraphEdgeUndirected>,
     colors: ChunkComponentIterItem<components::Color>,
 }
 
-pub struct EdgeInstance<'a> {
-    pub source: &'a datatypes::GraphLocation,
-    pub target: &'a datatypes::GraphLocation,
-    pub entity_path: &'a re_log_types::EntityPath,
-    pub instance: Instance,
-    pub color: Option<Color32>,
-}
-
-impl<'a> EdgeInstance<'a> {
-    pub fn nodes(&'a self) -> impl Iterator<Item = datatypes::GraphLocation> {
-        [self.source.clone(), self.target.clone()].into_iter()
-    }
-}
-
-impl EdgeUndirectedVisualizerData {
+impl UndirectedEdgesData {
     pub fn edges(&self) -> impl Iterator<Item = EdgeInstance> {
         clamped_zip_2x1(
             self.edges.iter(),
@@ -51,18 +43,18 @@ impl EdgeUndirectedVisualizerData {
             target: &edge.target,
             entity_path: &self.entity_path,
             instance,
-            color: color.map(|c| Color32::from(c.0)),
+            color: color.map(|c| egui::Color32::from(c.0)),
         })
     }
 }
 
-impl IdentifiedViewSystem for EdgeUndirectedVisualizer {
+impl IdentifiedViewSystem for UndirectedEdgesVisualizer {
     fn identifier() -> ViewSystemIdentifier {
         "GraphEdgesUndirected".into()
     }
 }
 
-impl VisualizerSystem for EdgeUndirectedVisualizer {
+impl VisualizerSystem for UndirectedEdgesVisualizer {
     fn visualizer_query_info(&self) -> VisualizerQueryInfo {
         VisualizerQueryInfo::from_archetype::<archetypes::GraphEdges>()
     }
@@ -93,7 +85,7 @@ impl VisualizerSystem for EdgeUndirectedVisualizer {
             );
 
             for (_index, edges, colors) in data {
-                self.data.push(EdgeUndirectedVisualizerData {
+                self.data.push(UndirectedEdgesData {
                     entity_path: data_result.entity_path.clone(),
                     edges,
                     colors: colors.unwrap_or_default(),
@@ -115,4 +107,4 @@ impl VisualizerSystem for EdgeUndirectedVisualizer {
     }
 }
 
-re_viewer_context::impl_component_fallback_provider!(EdgeUndirectedVisualizer => []);
+re_viewer_context::impl_component_fallback_provider!(UndirectedEdgesVisualizer => []);

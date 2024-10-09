@@ -1,84 +1,29 @@
 use std::collections::HashSet;
 
-use re_log_types::{EntityPath, EntityPathHash};
+use re_log_types::{EntityPath};
 use re_viewer::external::re_types::datatypes;
 
-use crate::visualizers::{
-    edges_undirected::{EdgeInstance, EdgeUndirectedVisualizerData},
-    nodes::{GraphNodeVisualizerData, NodeInstance},
-};
-
-use re_viewer::external::re_types::datatypes::{GraphLocation, GraphNodeId};
+use crate::{types::{EdgeInstance, NodeInstance, UnknownNodeInstance}, visualizers::{
+    edges_undirected::UndirectedEdgesData,
+    nodes::GraphNodeVisualizerData,
+}};
 
 pub(crate) enum Node<'a> {
     Regular(NodeInstance<'a>),
     Unknown(UnknownNodeInstance<'a>),
 }
 
-#[derive(Clone, PartialEq, Eq, Hash)]
-pub(crate) struct NodeIndex {
-    pub entity_hash: EntityPathHash,
-    pub node_id: GraphNodeId,
-}
-
-impl From<GraphLocation> for NodeIndex {
-    fn from(location: GraphLocation) -> Self {
-        Self {
-            entity_hash: EntityPath::from(location.entity_path).hash(),
-            node_id: location.node_id,
-        }
-    }
-}
-
-impl From<&GraphLocation> for NodeIndex {
-    fn from(location: &GraphLocation) -> Self {
-        Self {
-            entity_hash: EntityPath::from(location.entity_path.clone()).hash(),
-            node_id: location.node_id.clone(),
-        }
-    }
-}
-
-impl std::fmt::Display for NodeIndex {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}@{:?}", self.node_id, self.entity_hash)
-    }
-}
-
-impl<'a> From<&NodeInstance<'a>> for NodeIndex {
-    fn from(node: &NodeInstance<'a>) -> Self {
-        Self {
-            entity_hash: node.entity_path.hash(),
-            node_id: node.node_id.clone(),
-        }
-    }
-}
-
-pub(crate) struct UnknownNodeInstance<'a> {
-    pub node_id: &'a datatypes::GraphNodeId,
-    pub entity_path: &'a EntityPath,
-}
-
-impl<'a> From<&UnknownNodeInstance<'a>> for NodeIndex {
-    fn from(node: &UnknownNodeInstance<'a>) -> Self {
-        Self {
-            entity_hash: node.entity_path.hash(),
-            node_id: node.node_id.clone(),
-        }
-    }
-}
-
 pub(crate) struct Graph<'a> {
     /// Contains all nodes that are part mentioned in the edges but not part of the `nodes` list
     unknown: Vec<(EntityPath, datatypes::GraphNodeId)>,
     nodes: &'a Vec<GraphNodeVisualizerData>,
-    undirected: &'a Vec<EdgeUndirectedVisualizerData>,
+    undirected: &'a Vec<UndirectedEdgesData>,
 }
 
 impl<'a> Graph<'a> {
     pub fn from_nodes_edges(
         nodes: &'a Vec<GraphNodeVisualizerData>,
-        undirected: &'a Vec<EdgeUndirectedVisualizerData>,
+        undirected: &'a Vec<UndirectedEdgesData>,
     ) -> Self {
         let seen: HashSet<(&EntityPath, &datatypes::GraphNodeId)> = nodes
             .iter()
@@ -116,7 +61,7 @@ impl<'a> Graph<'a> {
         nodes.chain(unknowns)
     }
 
-    pub fn edges_by_entity(&self) -> impl Iterator<Item = &EdgeUndirectedVisualizerData> {
+    pub fn edges_by_entity(&self) -> impl Iterator<Item = &UndirectedEdgesData> {
         self.undirected.iter()
     }
 

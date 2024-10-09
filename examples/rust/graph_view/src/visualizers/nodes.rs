@@ -9,7 +9,7 @@ use re_viewer::external::{
     re_types::{
         self, archetypes,
         components::{self},
-        datatypes, ArrowString, Loggable as _,
+        ArrowString, Loggable as _,
     },
     re_viewer_context::{
         self, IdentifiedViewSystem, SpaceViewSystemExecutionError, ViewContext,
@@ -17,6 +17,8 @@ use re_viewer::external::{
         VisualizerSystem,
     },
 };
+
+use crate::types::NodeInstance;
 
 /// Our space view consist of single part which holds a list of egui colors for each entity path.
 #[derive(Default)]
@@ -34,14 +36,6 @@ pub(crate) struct GraphNodeVisualizerData {
 
     // Non-repeated
     show_labels: Option<components::ShowLabels>,
-}
-
-pub(crate) struct NodeInstance<'a> {
-    pub node_id: &'a datatypes::GraphNodeId,
-    pub entity_path: &'a EntityPath,
-    pub instance: Instance,
-    pub label: Option<&'a ArrowString>,
-    pub color: Option<Color32>,
 }
 
 impl GraphNodeVisualizerData {

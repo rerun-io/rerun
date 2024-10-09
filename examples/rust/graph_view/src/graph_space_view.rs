@@ -8,10 +8,7 @@ use re_viewer::external::{
 };
 
 use crate::{
-    error::Error,
-    graph::{Graph, NodeIndex},
-    ui::{self, draw_dummy, GraphSpaceViewState},
-    visualizers::{edges_undirected::EdgeUndirectedVisualizer, nodes::GraphNodeVisualizer},
+    error::Error, graph::Graph, types::NodeIndex, ui::{self, draw_dummy, GraphSpaceViewState}, visualizers::{edges_undirected::UndirectedEdgesVisualizer, nodes::GraphNodeVisualizer}
 };
 
 #[derive(Default)]
@@ -42,7 +39,7 @@ impl SpaceViewClass for GraphSpaceView {
         system_registry: &mut SpaceViewSystemRegistrator<'_>,
     ) -> Result<(), SpaceViewClassRegistryError> {
         system_registry.register_visualizer::<GraphNodeVisualizer>()?;
-        system_registry.register_visualizer::<EdgeUndirectedVisualizer>()
+        system_registry.register_visualizer::<UndirectedEdgesVisualizer>()
     }
 
     fn new_state(&self) -> Box<dyn SpaceViewState> {
@@ -106,7 +103,7 @@ impl SpaceViewClass for GraphSpaceView {
         let node_system = system_output.view_systems.get::<GraphNodeVisualizer>()?;
         let edge_system = system_output
             .view_systems
-            .get::<EdgeUndirectedVisualizer>()?;
+            .get::<UndirectedEdgesVisualizer>()?;
 
         let graph = Graph::from_nodes_edges(&node_system.data, &edge_system.data);
 

@@ -4,7 +4,6 @@ use re_format::format_f32;
 use re_log_types::EntityPath;
 use re_viewer::external::{
     egui::{self, emath, TextWrapMode},
-    re_types::datatypes,
     re_ui::UiExt,
     re_viewer_context::{
         HoverHighlight, InteractionHighlight, SelectionHighlight, SpaceViewHighlights,
@@ -12,7 +11,7 @@ use re_viewer::external::{
     },
 };
 
-use crate::{graph::{ Node, NodeIndex, UnknownNodeInstance}, visualizers::nodes::NodeInstance};
+use crate::{graph::Node, types::{NodeIndex, NodeInstance, UnknownNodeInstance}};
 
 pub fn draw_node(
     ui: &mut egui::Ui,
@@ -34,10 +33,11 @@ pub fn draw_node(
     };
     // ui.style().visuals.faint_bg_color
 
-    let text = instance.label.map_or(
-        egui::RichText::new(instance.node_id.to_string()),
-        |label| egui::RichText::new(label.to_string()),
-    );
+    let text = instance
+        .label
+        .map_or(egui::RichText::new(instance.node_id.to_string()), |label| {
+            egui::RichText::new(label.to_string())
+        });
 
     egui::Frame::default()
         .rounding(egui::Rounding::same(4.0))
@@ -55,12 +55,13 @@ pub fn draw_node(
         .response
 }
 
-pub fn draw_dummy(
-    ui: &mut egui::Ui,
-    instance: &UnknownNodeInstance
-) -> egui::Response {
-    let text = egui::RichText::new(format!("{} @ {}", instance.node_id, instance.entity_path.to_string()))
-        .color(ui.style().visuals.widgets.noninteractive.text_color());
+pub fn draw_dummy(ui: &mut egui::Ui, instance: &UnknownNodeInstance) -> egui::Response {
+    let text = egui::RichText::new(format!(
+        "{} @ {}",
+        instance.node_id,
+        instance.entity_path.to_string()
+    ))
+    .color(ui.style().visuals.widgets.noninteractive.text_color());
     ui.style_mut().wrap_mode = Some(TextWrapMode::Extend);
     ui.add(egui::Button::new(text))
 }
