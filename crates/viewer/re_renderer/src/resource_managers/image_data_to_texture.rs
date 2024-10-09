@@ -79,17 +79,22 @@ impl From<wgpu::TextureFormat> for SourceImageDataFormat {
 /// Error that can occur when converting image data to a texture.
 #[derive(thiserror::Error, Debug)]
 pub enum ImageDataToTextureError {
-    #[error("Texture with debug label {0:?} has zero width or height!")]
+    #[error("Texture {0:?} has zero width or height!")]
     ZeroSize(DebugLabel),
 
-    #[error("Texture was {width}x{height}, larger than the max of {max_texture_dimension_2d}")]
+    #[error(
+        "Texture {label:?} was {width}x{height}, larger than the max of {max_texture_dimension_2d}"
+    )]
     TooLarge {
+        label: DebugLabel,
         width: u32,
         height: u32,
         max_texture_dimension_2d: u32,
     },
 
-    #[error("Invalid data length for texture with debug label {label:?}. Expected {expected} bytes, got {actual} bytes")]
+    #[error(
+        "Invalid data length for texture {label:?}. Expected {expected} bytes, got {actual} bytes"
+    )]
     InvalidDataLength {
         label: DebugLabel,
         expected: usize,
@@ -99,15 +104,13 @@ pub enum ImageDataToTextureError {
     #[error(transparent)]
     CpuWriteGpuReadError(#[from] crate::allocator::CpuWriteGpuReadError),
 
-    #[error(
-        "Texture with debug label {label:?} has a format {format:?} that data can't be transferred to!"
-    )]
+    #[error("Texture {label:?} has a format {format:?} that data can't be transferred to!")]
     UnsupportedFormatForTransfer {
         label: DebugLabel,
         format: wgpu::TextureFormat,
     },
 
-    #[error("Gpu based conversion for {label:?} did not succeed: {err}")]
+    #[error("Gpu-based conversion for texture {label:?} did not succeed: {err}")]
     GpuBasedConversionError { label: DebugLabel, err: DrawError },
 
     // TODO(andreas): As we stop using `wgpu::TextureFormat` for input, this should become obsolete.
@@ -156,6 +159,7 @@ impl<'a> ImageDataDesc<'a> {
         if width_height[0] > max_texture_dimension_2d || width_height[1] > max_texture_dimension_2d
         {
             return Err(ImageDataToTextureError::TooLarge {
+                label: label.clone(),
                 width: width_height[0],
                 height: width_height[1],
                 max_texture_dimension_2d,
