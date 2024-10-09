@@ -31,6 +31,12 @@ pub enum Error {
 
     #[error("Bad video data: {0}")]
     BadVideoData(String),
+
+    #[error("FFMPEG error: {0}")]
+    Ffmpeg(String),
+
+    #[error("FFMPEG IPC error: {0}")]
+    FfmpegSidecar(String),
 }
 
 impl From<Error> for super::Error {
@@ -49,7 +55,6 @@ struct FrameInfo {
 }
 
 /// Decode H.264 video via ffmpeg over CLI
-
 pub struct FfmpegCliH264Decoder {
     /// Monotonically increasing
     frame_num: u32,
@@ -67,6 +72,8 @@ pub struct FfmpegCliH264Decoder {
 }
 
 impl FfmpegCliH264Decoder {
+    // TODO: make this robust against `pkill ffmpeg` somehow.
+    // Maybe `AsyncDecoder` can auto-restart us, or we wrap ourselves in a new struct that restarts us on certain errors?
     pub fn new(avcc: re_mp4::Avc1Box) -> Result<Self, Error> {
         re_tracing::profile_function!();
 
@@ -114,23 +121,51 @@ fn read_ffmpeg_output(
     frame_info_rx: &Receiver<FrameInfo>,
     frame_tx: &Sender<super::Result<Frame>>,
 ) {
+    /// Ignore some common output from ffmpeg:
+    fn should_ignore_log_msg(msg: &str) -> bool {
+        let patterns = [
+            "Duration: N/A, bitrate: N/A",
+            "frame=    0 fps=0.0 q=0.0 size=       0kB time=N/A bitrate=N/A speed=N/A",
+            "Metadata:",
+            "No accelerated colorspace conversion found from yuv420p to rgb24",
+            "Stream mapping:",
+        ];
+
+        for pattern in patterns {
+            if msg.contains(pattern) {
+                return true;
+            }
+        }
+
+        false
+    }
+
     for event in ffmpeg_iterator {
         #[allow(clippy::match_same_arms)]
         match event {
             FfmpegEvent::Log(LogLevel::Info, msg) => {
-                re_log::debug!("{msg}");
+                if !should_ignore_log_msg(&msg) {
+                    re_log::debug!("{msg}");
+                }
             }
 
             FfmpegEvent::Log(LogLevel::Warning, msg) => {
-                if !msg.contains("No accelerated colorspace conversion found from yuv420p to rgb24")
-                {
+                if !should_ignore_log_msg(&msg) {
                     re_log::warn_once!("{msg}");
                 }
             }
 
             FfmpegEvent::Log(LogLevel::Error, msg) => {
-                // TODO: report errors
-                re_log::error_once!("{msg}");
+                frame_tx.send(Err(Error::Ffmpeg(msg).into())).ok();
+            }
+
+            FfmpegEvent::LogEOF => {
+                // This event proceeds `FfmpegEvent::Done`.
+                // This happens on `pkill ffmpeg`, for instance.
+            }
+
+            FfmpegEvent::Error(error) => {
+                frame_tx.send(Err(Error::FfmpegSidecar(error).into())).ok();
             }
 
             // Usefuless info in these:
@@ -149,7 +184,9 @@ fn read_ffmpeg_output(
                     ..
                 } = stream;
 
-                re_log::debug!("ParsedInputStream {stream_type} {format} {pix_fmt} {width}x{height} @ {fps} FPS");
+                re_log::debug!(
+                    "Input: {stream_type} {format} {pix_fmt} {width}x{height} @ {fps} FPS"
+                );
 
                 debug_assert_eq!(stream_type.to_ascii_lowercase(), "video");
             }
@@ -166,7 +203,9 @@ fn read_ffmpeg_output(
                     ..
                 } = stream;
 
-                re_log::debug!("ParsedOutputStream {stream_type} {format} {pix_fmt} {width}x{height} @ {fps} FPS");
+                re_log::debug!(
+                    "Output: {stream_type} {format} {pix_fmt} {width}x{height} @ {fps} FPS"
+                );
 
                 debug_assert_eq!(stream_type.to_ascii_lowercase(), "video");
             }
@@ -232,9 +271,11 @@ fn read_ffmpeg_output(
             }
 
             FfmpegEvent::Done => {
+                // This happens on `pkill ffmpeg`, for instance.
                 re_log::debug!("ffmpeg is Done");
                 return;
             }
+
             // TODO: handle all events
             event => re_log::debug!("Event: {event:?}"),
         }
@@ -356,7 +397,7 @@ fn write_avc_chunk_to_nalu_stream(
     let mut buffer_offset: usize = 0;
     let sample_end = chunk.data.len();
     while buffer_offset < sample_end && !should_stop.load(Ordering::Relaxed) {
-        re_tracing::profile_scope!("nalu");
+        re_tracing::profile_scope!("write_nalu");
 
         // Each NAL unit in mp4 is prefixed with a length prefix.
         // In Annex B this doesn't exist.
@@ -408,6 +449,7 @@ fn write_avc_chunk_to_nalu_stream(
         // Note that we don't have to insert "emulation prevention bytes" since mp4 NALU still use them.
         // (unlike the NAL start code, the presentation bytes are part of the NAL spec!)
 
+        re_tracing::profile_scope!("write_bytes", data.len().to_string());
         nalu_stream
             .write_all(data)
             .map_err(Error::FailedToWriteToFfmpeg)?;
