@@ -27,6 +27,16 @@ pub enum Error {
     #[cfg(not(target_arch = "wasm32"))]
     #[error("dav1d: {0}")]
     Dav1d(#[from] dav1d::Error),
+
+    #[cfg(feature = "ffmpeg")]
+    #[cfg(not(target_arch = "wasm32"))]
+    #[error("Failed to start ffmppeg: {0}")]
+    FailedToStartFfmpeg(std::io::Error),
+
+    #[cfg(feature = "ffmpeg")]
+    #[cfg(not(target_arch = "wasm32"))]
+    #[error("Failed to start ffmppeg: {0}")]
+    FailedToSpawnThread(std::io::Error),
 }
 
 pub type Result<T = (), E = Error> = std::result::Result<T, E>;
