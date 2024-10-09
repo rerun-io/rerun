@@ -226,4 +226,4 @@ jobs:
         run: pixi run -e wheel-test-min RUST_LOG=debug python docs/snippets/compare_snippet_output.py --target ${{ needs.set-config.outputs.TARGET }} --no-py-build --no-cpp-build --no-asset-download
 
       - name: Check the python library signatures
-        run: pixi run -e wheel-test-min python scripts/ci/check_python_signatures.py
+        run: pixi run -e wheel-test-min python scripts/ci/python_check_signatures.py
