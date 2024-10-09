@@ -265,11 +265,6 @@ impl QueryHandle<'_> {
                 }
             }
         }
-            };
-
-                        }
-
-            }
 
         QueryHandleState {
             view_contents,
