@@ -16,10 +16,10 @@ use pyo3::{
 
 use re_chunk_store::{
     ChunkStore, ChunkStoreConfig, ColumnDescriptor, ColumnSelector, ComponentColumnDescriptor,
-    ComponentColumnSelector, QueryExpression2, SparseFillStrategy, TimeColumnDescriptor,
+    ComponentColumnSelector, QueryExpression, SparseFillStrategy, TimeColumnDescriptor,
     TimeColumnSelector, VersionPolicy, ViewContentsSelector,
 };
-use re_dataframe2::QueryEngine;
+use re_dataframe::QueryEngine;
 use re_log_types::{EntityPathFilter, ResolvedTimeRange, TimeType};
 use re_sdk::{ComponentName, EntityPath, StoreId, StoreKind};
 
@@ -270,7 +270,7 @@ impl PySchema {
 #[pyclass(name = "Recording")]
 pub struct PyRecording {
     store: ChunkStore,
-    cache: re_dataframe2::QueryCache,
+    cache: re_dataframe::QueryCache,
 }
 
 #[pyclass(name = "RecordingView")]
@@ -278,7 +278,7 @@ pub struct PyRecording {
 pub struct PyRecordingView {
     recording: Py<PyRecording>,
 
-    query_expression: QueryExpression2,
+    query_expression: QueryExpression,
 }
 
 /// A view of a recording restricted to a given index, containing a specific set of entities and components.
@@ -551,7 +551,7 @@ impl PyRecording {
 
         let contents = borrowed_self.extract_contents_expr(contents)?;
 
-        let query = QueryExpression2 {
+        let query = QueryExpression {
             view_contents: Some(contents),
             filtered_index: timeline.timeline,
             filtered_index_range: None,
@@ -608,7 +608,7 @@ impl PyRRDArchive {
             .iter()
             .filter(|(id, _)| matches!(id.kind, StoreKind::Recording))
             .map(|(_, store)| {
-                let cache = re_dataframe2::external::re_query::Caches::new(store);
+                let cache = re_dataframe::external::re_query::Caches::new(store);
                 PyRecording {
                     store: store.clone(),
                     cache,
