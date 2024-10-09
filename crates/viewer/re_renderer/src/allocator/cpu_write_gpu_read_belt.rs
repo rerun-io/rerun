@@ -5,7 +5,7 @@ use crate::{
     wgpu_resources::{BufferDesc, GpuBuffer, GpuBufferPool, GpuTexture},
 };
 
-#[derive(thiserror::Error, Debug, PartialEq, Eq)]
+#[derive(thiserror::Error, Debug, Clone, PartialEq, Eq)]
 pub enum CpuWriteGpuReadError {
     #[error("Attempting to allocate an empty buffer.")]
     ZeroSizeBufferAllocation,

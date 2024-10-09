@@ -6,7 +6,10 @@ use dav1d::{PixelLayout, PlanarImageComponent};
 
 use crate::Time;
 
-use super::{Chunk, Error, Frame, OutputCallback, PixelFormat, Result, SyncDecoder};
+use super::{
+    Chunk, ColorPrimaries, Error, Frame, OutputCallback, PixelFormat, Result, SyncDecoder,
+    YuvPixelLayout, YuvRange,
+};
 
 pub struct SyncDav1dDecoder {
     decoder: dav1d::Decoder,
@@ -112,163 +115,107 @@ fn output_picture(picture: &dav1d::Picture, on_output: &(dyn Fn(Result<Frame>) +
     // TODO(jan): support other parameters?
     // What do these even do:
     // - matrix_coefficients
-    // - color_range
-    // - color_primaries
     // - transfer_characteristics
 
-    let frame = Frame {
-        data: match picture.pixel_layout() {
-            PixelLayout::I400 => i400_to_rgba(picture),
-            PixelLayout::I420 => i420_to_rgba(picture),
-            PixelLayout::I422 => i422_to_rgba(picture),
-            PixelLayout::I444 => i444_to_rgba(picture),
+    let data = match picture.pixel_layout() {
+        PixelLayout::I400 => picture.plane(PlanarImageComponent::Y).to_vec(),
+        PixelLayout::I420 | PixelLayout::I422 | PixelLayout::I444 => {
+            let mut data = Vec::with_capacity(
+                picture.stride(PlanarImageComponent::Y) as usize
+                    + picture.stride(PlanarImageComponent::U) as usize
+                    + picture.stride(PlanarImageComponent::V) as usize,
+            );
+            data.extend_from_slice(&picture.plane(PlanarImageComponent::Y));
+            data.extend_from_slice(&picture.plane(PlanarImageComponent::U));
+            data.extend_from_slice(&picture.plane(PlanarImageComponent::V));
+            data // TODO: how badly does this break with hdr?
+        }
+    };
+
+    let format = PixelFormat::Yuv {
+        layout: match picture.pixel_layout() {
+            PixelLayout::I400 => YuvPixelLayout::Y400,
+            PixelLayout::I420 => YuvPixelLayout::Y_U_V420,
+            PixelLayout::I422 => YuvPixelLayout::Y_U_V422,
+            PixelLayout::I444 => YuvPixelLayout::Y_U_V444,
         },
+        range: match picture.color_range() {
+            dav1d::pixel::YUVRange::Limited => YuvRange::Limited,
+            dav1d::pixel::YUVRange::Full => YuvRange::Full,
+        },
+        primaries: color_primaries(picture),
+    };
+
+    let frame = Frame {
+        data,
         width: picture.width(),
         height: picture.height(),
-        format: PixelFormat::Rgba8Unorm,
+        format,
         timestamp: Time(picture.timestamp().unwrap_or(0)),
         duration: Time(picture.duration()),
     };
     on_output(Ok(frame));
 }
 
-fn rgba_from_yuv(y: u8, u: u8, v: u8) -> [u8; 4] {
-    let (y, u, v) = (f32::from(y), f32::from(u), f32::from(v));
+fn color_primaries(picture: &dav1d::Picture) -> ColorPrimaries {
+    #[allow(clippy::match_same_arms)]
+    match picture.color_primaries() {
+        dav1d::pixel::ColorPrimaries::Reserved
+        | dav1d::pixel::ColorPrimaries::Reserved0
+        | dav1d::pixel::ColorPrimaries::Unspecified => {
+            // This happens quite often. Don't issue a warning, that would be noise!
 
-    // Adjust for color range
-    let y = (y - 16.0) / 219.0;
-    let u = (u - 128.0) / 224.0;
-    let v = (v - 128.0) / 224.0;
+            if picture.transfer_characteristic() == dav1d::pixel::TransferCharacteristic::SRGB {
+                // If the transfer characteristic is sRGB, assume BT.709 primaries, would be quite odd otherwise.
+                // TODO(andreas): Other transfer characteristics may also hint at primaries.
+                ColorPrimaries::Bt709
+            } else {
+                // Best guess: If the picture is 720p+ assume Bt709 because Rec709
+                // is the "HDR" standard.
+                // TODO(#7594): 4k/UHD material should probably assume Bt2020?
+                // else if picture.height() >= 720 {
+                //     ColorPrimaries::Bt709
+                // } else {
+                //     ColorPrimaries::Bt601
+                // }
+                //
+                // ... then again, eyeballing VLC it looks like it just always assumes BT.709.
+                // The handwavy test case employed here was the same video in low & high resolution
+                // without specified primaries. Both looked the same.
+                ColorPrimaries::Bt709
+            }
+        }
 
-    // BT.601 coefficients
-    let r = y + 1.402 * v;
-    let g = y - 0.344136 * u - 0.714136 * v;
-    let b = y + 1.772 * u;
+        dav1d::pixel::ColorPrimaries::BT709 => ColorPrimaries::Bt709,
 
-    [
-        (r.clamp(0.0, 1.0) * 255.0) as u8,
-        (g.clamp(0.0, 1.0) * 255.0) as u8,
-        (b.clamp(0.0, 1.0) * 255.0) as u8,
-        255, // Alpha channel, fully opaque
-    ]
-}
+        // NTSC standard. Close enough to BT.601 for now. TODO(andreas): Is it worth warning?
+        dav1d::pixel::ColorPrimaries::BT470M => ColorPrimaries::Bt601,
 
-fn i400_to_rgba(picture: &dav1d::Picture) -> Vec<u8> {
-    re_tracing::profile_function!();
+        // PAL standard. Close enough to BT.601 for now. TODO(andreas): Is it worth warning?
+        dav1d::pixel::ColorPrimaries::BT470BG => ColorPrimaries::Bt601,
 
-    let width = picture.width() as usize;
-    let height = picture.height() as usize;
-    let y_plane = picture.plane(PlanarImageComponent::Y);
-    let y_stride = picture.stride(PlanarImageComponent::Y) as usize;
+        // These are both using BT.2020 primaries.
+        dav1d::pixel::ColorPrimaries::ST170M | dav1d::pixel::ColorPrimaries::ST240M => {
+            ColorPrimaries::Bt601
+        }
 
-    let mut rgba = Vec::with_capacity(width * height * 4);
+        // Is st428 also HDR? Not sure.
+        // BT2020 and P3 variants definitely are ;)
+        dav1d::pixel::ColorPrimaries::BT2020
+        | dav1d::pixel::ColorPrimaries::ST428
+        | dav1d::pixel::ColorPrimaries::P3DCI
+        | dav1d::pixel::ColorPrimaries::P3Display => {
+            // TODO(#7594): HDR support.
+            re_log::warn_once!("Video specified HDR color primaries. Rerun doesn't handle HDR colors correctly yet. Color artifacts may be visible.");
+            ColorPrimaries::Bt709
+        }
 
-    for y in 0..height {
-        for x in 0..width {
-            let y_value = y_plane[y * y_stride + x];
-            let rgba_pixel = rgba_from_yuv(y_value, 128, 128);
-
-            let offset = y * width * 4 + x * 4;
-            rgba[offset] = rgba_pixel[0];
-            rgba[offset + 1] = rgba_pixel[1];
-            rgba[offset + 2] = rgba_pixel[2];
-            rgba[offset + 3] = rgba_pixel[3];
+        dav1d::pixel::ColorPrimaries::Film | dav1d::pixel::ColorPrimaries::Tech3213 => {
+            re_log::warn_once!(
+                "Video specified unsupported color primaries {:?}. Color artifacts may be visible.",
+                picture.color_primaries()
+            );
+            ColorPrimaries::Bt709
         }
     }
-
-    rgba
-}
-
-fn i420_to_rgba(picture: &dav1d::Picture) -> Vec<u8> {
-    re_tracing::profile_function!();
-
-    let width = picture.width() as usize;
-    let height = picture.height() as usize;
-    let y_plane = picture.plane(PlanarImageComponent::Y);
-    let u_plane = picture.plane(PlanarImageComponent::U);
-    let v_plane = picture.plane(PlanarImageComponent::V);
-    let y_stride = picture.stride(PlanarImageComponent::Y) as usize;
-    let uv_stride = picture.stride(PlanarImageComponent::U) as usize;
-
-    let mut rgba = vec![0u8; width * height * 4];
-
-    for y in 0..height {
-        for x in 0..width {
-            let y_value = y_plane[y * y_stride + x];
-            let u_value = u_plane[(y / 2) * uv_stride + (x / 2)];
-            let v_value = v_plane[(y / 2) * uv_stride + (x / 2)];
-            let rgba_pixel = rgba_from_yuv(y_value, u_value, v_value);
-
-            let offset = y * width * 4 + x * 4;
-            rgba[offset] = rgba_pixel[0];
-            rgba[offset + 1] = rgba_pixel[1];
-            rgba[offset + 2] = rgba_pixel[2];
-            rgba[offset + 3] = rgba_pixel[3];
-        }
-    }
-
-    rgba
-}
-
-fn i422_to_rgba(picture: &dav1d::Picture) -> Vec<u8> {
-    re_tracing::profile_function!();
-
-    let width = picture.width() as usize;
-    let height = picture.height() as usize;
-    let y_plane = picture.plane(PlanarImageComponent::Y);
-    let u_plane = picture.plane(PlanarImageComponent::U);
-    let v_plane = picture.plane(PlanarImageComponent::V);
-    let y_stride = picture.stride(PlanarImageComponent::Y) as usize;
-    let uv_stride = picture.stride(PlanarImageComponent::U) as usize;
-
-    let mut rgba = vec![0u8; width * height * 4];
-
-    for y in 0..height {
-        for x in 0..width {
-            let y_value = y_plane[y * y_stride + x];
-            let u_value = u_plane[y * uv_stride + (x / 2)];
-            let v_value = v_plane[y * uv_stride + (x / 2)];
-            let rgba_pixel = rgba_from_yuv(y_value, u_value, v_value);
-
-            let offset = y * width * 4 + x * 4;
-            rgba[offset] = rgba_pixel[0];
-            rgba[offset + 1] = rgba_pixel[1];
-            rgba[offset + 2] = rgba_pixel[2];
-            rgba[offset + 3] = rgba_pixel[3];
-        }
-    }
-
-    rgba
-}
-
-fn i444_to_rgba(picture: &dav1d::Picture) -> Vec<u8> {
-    re_tracing::profile_function!();
-
-    let width = picture.width() as usize;
-    let height = picture.height() as usize;
-    let y_plane = picture.plane(PlanarImageComponent::Y);
-    let u_plane = picture.plane(PlanarImageComponent::U);
-    let v_plane = picture.plane(PlanarImageComponent::V);
-    let y_stride = picture.stride(PlanarImageComponent::Y) as usize;
-    let u_stride = picture.stride(PlanarImageComponent::U) as usize;
-    let v_stride = picture.stride(PlanarImageComponent::V) as usize;
-
-    let mut rgba = vec![0u8; width * height * 4];
-
-    for y in 0..height {
-        for x in 0..width {
-            let y_value = y_plane[y * y_stride + x];
-            let u_value = u_plane[y * u_stride + x];
-            let v_value = v_plane[y * v_stride + x];
-            let rgba_pixel = rgba_from_yuv(y_value, u_value, v_value);
-
-            let offset = y * width * 4 + x * 4;
-            rgba[offset] = rgba_pixel[0];
-            rgba[offset + 1] = rgba_pixel[1];
-            rgba[offset + 2] = rgba_pixel[2];
-            rgba[offset + 3] = rgba_pixel[3];
-        }
-    }
-
-    rgba
 }

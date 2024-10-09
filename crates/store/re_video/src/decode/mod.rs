@@ -59,7 +59,43 @@ pub struct Frame {
     pub duration: Time,
 }
 
+/// Pixel format/layout used by [`Frame::data`].
 pub enum PixelFormat {
     Rgb8Unorm,
     Rgba8Unorm,
+
+    Yuv {
+        layout: YuvPixelLayout,
+        range: YuvRange,
+        // TODO(andreas): color primaries should also apply to RGB data,
+        // but for now we just always assume RGB to be BT.709 ~= sRGB.
+        primaries: ColorPrimaries,
+    },
+}
+
+/// Pixel layout used by [`PixelFormat::Yuv`].
+///
+/// For details see `re_renderer`'s `YuvPixelLayout` type.
+#[allow(non_camel_case_types)]
+pub enum YuvPixelLayout {
+    Y_U_V444,
+    Y_U_V422,
+    Y_U_V420,
+    Y400,
+}
+
+/// Yuv value range used by [`PixelFormat::Yuv`].
+///
+/// For details see `re_renderer`'s `YuvRange` type.
+pub enum YuvRange {
+    Limited,
+    Full,
+}
+
+/// Color primaries used by [`PixelFormat::Yuv`].
+///
+/// For details see `re_renderer`'s `ColorPrimaries` type.
+pub enum ColorPrimaries {
+    Bt601,
+    Bt709,
 }
