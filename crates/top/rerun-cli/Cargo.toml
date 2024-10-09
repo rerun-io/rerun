@@ -20,6 +20,8 @@ repository.workspace = true
 rust-version.workspace = true
 version.workspace = true
 
+default-run = "rerun" # If someone types `cargo run` in this workspace, this is what we staert
+
 [lints]
 workspace = true
 
