@@ -18,7 +18,7 @@ use crate::TensorStats;
 use re_renderer::{
     renderer::{ColormappedTexture, RectangleOptions},
     resource_managers::{
-        GpuTexture2D, Texture2DCreationDesc, TextureCreationError, TextureManager2DError,
+        GpuTexture2D, ImageDataDesc, ImageDataToTextureError, TextureManager2DError,
     },
     RenderContext, ViewBuilder,
 };
@@ -60,11 +60,11 @@ pub fn viewport_resolution_in_pixels(clip_rect: egui::Rect, pixels_per_point: f3
 pub fn try_get_or_create_texture<'a, Err: std::fmt::Display>(
     render_ctx: &RenderContext,
     texture_key: u64,
-    try_create_texture_desc: impl FnOnce() -> Result<Texture2DCreationDesc<'a>, Err>,
+    try_create_texture_desc: impl FnOnce() -> Result<ImageDataDesc<'a>, Err>,
 ) -> Result<GpuTexture2D, TextureManager2DError<Err>> {
     render_ctx.texture_manager_2d.get_or_try_create_with(
         texture_key,
-        &render_ctx.gpu_resources.textures,
+        render_ctx,
         try_create_texture_desc,
     )
 }
@@ -72,13 +72,11 @@ pub fn try_get_or_create_texture<'a, Err: std::fmt::Display>(
 pub fn get_or_create_texture<'a>(
     render_ctx: &RenderContext,
     texture_key: u64,
-    create_texture_desc: impl FnOnce() -> Texture2DCreationDesc<'a>,
-) -> Result<GpuTexture2D, TextureCreationError> {
-    render_ctx.texture_manager_2d.get_or_create_with(
-        texture_key,
-        &render_ctx.gpu_resources.textures,
-        create_texture_desc,
-    )
+    create_texture_desc: impl FnOnce() -> ImageDataDesc<'a>,
+) -> Result<GpuTexture2D, ImageDataToTextureError> {
+    render_ctx
+        .texture_manager_2d
+        .get_or_create_with(texture_key, render_ctx, create_texture_desc)
 }
 
 /// Render the given image, respecting the clip rectangle of the given painter.

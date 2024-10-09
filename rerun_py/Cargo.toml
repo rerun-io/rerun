@@ -43,7 +43,7 @@ web_viewer = [
 re_build_info.workspace = true
 re_chunk = { workspace = true, features = ["arrow"] }
 re_chunk_store.workspace = true
-re_dataframe2.workspace = true
+re_dataframe.workspace = true
 re_log = { workspace = true, features = ["setup"] }
 re_log_types.workspace = true
 re_memory.workspace = true

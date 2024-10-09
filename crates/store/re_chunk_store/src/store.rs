@@ -6,7 +6,7 @@ use arrow2::datatypes::DataType as ArrowDataType;
 use nohash_hasher::IntMap;
 
 use re_chunk::{Chunk, ChunkId, RowId, TransportChunk};
-use re_log_types::{EntityPath, StoreId, TimeInt, Timeline};
+use re_log_types::{EntityPath, StoreId, StoreInfo, TimeInt, Timeline};
 use re_types_core::ComponentName;
 
 use crate::{ChunkStoreChunkStats, ChunkStoreError, ChunkStoreResult};
@@ -292,6 +292,7 @@ pub struct ChunkStoreGeneration {
 #[derive(Debug)]
 pub struct ChunkStore {
     pub(crate) id: StoreId,
+    pub(crate) info: Option<StoreInfo>,
 
     /// The configuration of the chunk store (e.g. compaction settings).
     pub(crate) config: ChunkStoreConfig,
@@ -366,6 +367,7 @@ impl Clone for ChunkStore {
     fn clone(&self) -> Self {
         Self {
             id: self.id.clone(),
+            info: self.info.clone(),
             config: self.config.clone(),
             type_registry: self.type_registry.clone(),
             chunks_per_chunk_id: self.chunks_per_chunk_id.clone(),
@@ -389,6 +391,7 @@ impl std::fmt::Display for ChunkStore {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let Self {
             id,
+            info: _,
             config,
             type_registry: _,
             chunks_per_chunk_id,
@@ -443,6 +446,7 @@ impl ChunkStore {
     pub fn new(id: StoreId, config: ChunkStoreConfig) -> Self {
         Self {
             id,
+            info: None,
             config,
             type_registry: Default::default(),
             chunk_ids_per_min_row_id: Default::default(),
@@ -462,6 +466,16 @@ impl ChunkStore {
     #[inline]
     pub fn id(&self) -> &StoreId {
         &self.id
+    }
+
+    #[inline]
+    pub fn set_info(&mut self, info: StoreInfo) {
+        self.info = Some(info);
+    }
+
+    #[inline]
+    pub fn info(&self) -> Option<&StoreInfo> {
+        self.info.as_ref()
     }
 
     /// Return the current [`ChunkStoreGeneration`]. This can be used to determine whether the
@@ -538,9 +552,11 @@ impl ChunkStore {
             let msg = res.with_context(|| format!("couldn't decode message {path_to_rrd:?} "))?;
             match msg {
                 re_log_types::LogMsg::SetStoreInfo(info) => {
-                    stores
-                        .entry(info.info.store_id.clone())
-                        .or_insert_with(|| Self::new(info.info.store_id, store_config.clone()));
+                    let store = stores.entry(info.info.store_id.clone()).or_insert_with(|| {
+                        Self::new(info.info.store_id.clone(), store_config.clone())
+                    });
+
+                    store.set_info(info.info);
                 }
 
                 re_log_types::LogMsg::ArrowMsg(store_id, msg) => {

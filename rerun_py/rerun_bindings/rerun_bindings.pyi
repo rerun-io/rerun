@@ -1,3 +1,4 @@
+import os
 from typing import Optional, Sequence
 
 import pyarrow as pa
@@ -10,7 +11,7 @@ class IndexColumnDescriptor:
 class IndexColumnSelector:
     """A selector for an index column."""
 
-    def __init__(self, timeline: str): ...
+    def __new__(cls, index: str): ...
 
 class ComponentColumnDescriptor:
     """A column containing the component data."""
@@ -63,6 +64,8 @@ class Recording:
 
     def schema(self) -> Schema: ...
     def view(self, index: str, contents: ViewContentsLike) -> RecordingView: ...
+    def recording_id(self) -> str: ...
+    def application_id(self) -> str: ...
 
 class RRDArchive:
     """An archive loaded from an RRD, typically containing 1 or more recordings or blueprints."""
@@ -70,7 +73,7 @@ class RRDArchive:
     def num_recordings(self) -> int: ...
     def all_recordings(self) -> list[Recording]: ...
 
-def load_recording(filename: str) -> Recording:
+def load_recording(filename: str | os.PathLike) -> Recording:
     """
     Load a single recording from an RRD.
 
@@ -84,7 +87,7 @@ def load_recording(filename: str) -> Recording:
     """
     ...
 
-def load_archive(filename: str) -> RRDArchive:
+def load_archive(filename: str | os.PathLike) -> RRDArchive:
     """
     Load a rerun archive file from disk.
 

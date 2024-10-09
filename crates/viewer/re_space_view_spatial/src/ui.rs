@@ -169,7 +169,7 @@ pub fn create_labels(
     // Closest last (painters algorithm)
     labels.sort_by_key(|label| {
         if let UiLabelTarget::Position3D(pos) = label.target {
-            OrderedFloat::from(-ui_from_world_3d.transform_point3(pos).z)
+            OrderedFloat::from(-ui_from_world_3d.project_point3(pos).z)
         } else {
             OrderedFloat::from(0.0)
         }

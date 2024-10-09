@@ -8,7 +8,7 @@ use smallvec::SmallVec;
 use crate::{
     mesh::{GpuMesh, Material, Mesh, MeshError},
     renderer::MeshInstance,
-    resource_managers::{GpuTexture2D, Texture2DCreationDesc, TextureManager2D},
+    resource_managers::{GpuTexture2D, ImageDataDesc, TextureManager2D},
     RenderContext, Rgba32Unmul,
 };
 
@@ -84,7 +84,7 @@ pub fn load_gltf_from_buffer(
         #[cfg(not(debug_assertions))]
         let texture_names = "";
 
-        let texture = Texture2DCreationDesc {
+        let texture = ImageDataDesc {
             label: if texture_names.is_empty() {
                 format!("unnamed gltf image in {mesh_name}")
             } else {
@@ -92,23 +92,17 @@ pub fn load_gltf_from_buffer(
             }
             .into(),
             data: data.into(),
-            format,
-            width: image.width,
-            height: image.height,
+            format: format.into(),
+            width_height: [image.width, image.height],
         };
 
-        images_as_textures.push(
-            match ctx
-                .texture_manager_2d
-                .create(&ctx.gpu_resources.textures, &texture)
-            {
-                Ok(texture) => texture,
-                Err(err) => {
-                    re_log::error!("Failed to create texture: {err}");
-                    ctx.texture_manager_2d.white_texture_unorm_handle().clone()
-                }
-            },
-        );
+        images_as_textures.push(match ctx.texture_manager_2d.create(ctx, texture) {
+            Ok(texture) => texture,
+            Err(err) => {
+                re_log::error!("Failed to create texture: {err}");
+                ctx.texture_manager_2d.white_texture_unorm_handle().clone()
+            }
+        });
     }
 
     let mut meshes = HashMap::with_capacity(doc.meshes().len());

@@ -1,9 +1,8 @@
 #[cfg(target_arch = "wasm32")]
 mod web;
 
-#[cfg(feature = "video_av1")]
 #[cfg(not(target_arch = "wasm32"))]
-mod native_av1;
+mod native_decoder;
 
 use std::{ops::Range, sync::Arc, time::Duration};
 
@@ -138,7 +137,10 @@ impl VideoDecoder {
                 if cfg!(debug_assertions) {
                     return Err(DecodingError::NoNativeDebug); // because debug builds of rav1d are so slow
                 } else {
-                    let decoder = native_av1::Av1VideoDecoder::new(debug_name)?;
+                    let av1_decoder = re_video::decode::av1::SyncDav1dDecoder::new()
+                        .map_err(|err| DecodingError::StartDecoder(err.to_string()))?;
+
+                    let decoder = native_decoder::NativeDecoder::new(debug_name, Box::new(av1_decoder))?;
                     return Ok(Self::from_chunk_decoder(render_ctx, data, decoder));
                 };
             } else {

@@ -82,6 +82,8 @@ pub trait Renderer {
 }
 
 /// Gets or creates a vertex shader module for drawing a screen filling triangle.
+///
+/// The entry point of this shader is `main`.
 pub fn screen_triangle_vertex_shader(
     ctx: &RenderContext,
 ) -> crate::wgpu_resources::GpuShaderModuleHandle {

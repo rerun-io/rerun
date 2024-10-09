@@ -1,11 +1,6 @@
 #import <./colormap.wgsl>
 #import <./rectangle.wgsl>
 #import <./utils/srgb.wgsl>
-#import <./decodings.wgsl>
-
-// WARNING! Adding anything else to this shader is very likely to push us over a size threshold that
-// causes the failure reported in: https://github.com/rerun-io/rerun/issues/3931
-// Make sure any changes are tested in Chrome on Linux using the Intel Mesa driver.
 
 fn is_magnifying(pixel_coord: vec2f) -> bool {
     return fwidth(pixel_coord.x) < 1.0;
@@ -86,10 +81,6 @@ fn fs_main(in: VertexOut) -> @location(0) vec4f {
         texture_dimensions = vec2f(textureDimensions(texture_sint).xy);
     } else if rect_info.sample_type == SAMPLE_TYPE_UINT {
         texture_dimensions = vec2f(textureDimensions(texture_uint).xy);
-    } else if rect_info.sample_type == SAMPLE_TYPE_NV12 {
-        texture_dimensions = vec2f(textureDimensions(texture_uint).xy);
-    } else if rect_info.sample_type == SAMPLE_TYPE_YUY2 {
-        texture_dimensions = vec2f(textureDimensions(texture_uint).xy);
     }
 
     let coord = in.texcoord * texture_dimensions;
@@ -141,14 +132,6 @@ fn fs_main(in: VertexOut) -> @location(0) vec4f {
             vec4f(textureLoad(texture_uint, v01_coord, 0)),
             vec4f(textureLoad(texture_uint, v10_coord, 0)),
             vec4f(textureLoad(texture_uint, v11_coord, 0)));
-    } else if rect_info.sample_type == SAMPLE_TYPE_NV12 || rect_info.sample_type == SAMPLE_TYPE_YUY2{
-        normalized_value = decode_color_and_filter_nearest_or_bilinear(
-            filter_nearest,
-            coord,
-            decode_nv12_or_yuy2(rect_info.sample_type, texture_uint, v00_coord),
-            decode_nv12_or_yuy2(rect_info.sample_type, texture_uint, v01_coord),
-            decode_nv12_or_yuy2(rect_info.sample_type, texture_uint, v10_coord),
-            decode_nv12_or_yuy2(rect_info.sample_type, texture_uint, v11_coord));
     } else {
         return ERROR_RGBA; // unknown sample type
     }

@@ -26,7 +26,7 @@ use re_renderer::{
         ColormappedTexture, DepthCloud, DepthCloudDrawData, DepthClouds, DrawData,
         GenericSkyboxDrawData, RectangleDrawData, RectangleOptions, TexturedRect,
     },
-    resource_managers::{GpuTexture2D, Texture2DCreationDesc},
+    resource_managers::{GpuTexture2D, ImageDataDesc},
     view_builder::{self, Projection, ViewBuilder},
     Color32, LineDrawableBuilder, PointCloudBuilder, Rgba, Size,
 };
@@ -417,13 +417,12 @@ impl DepthTexture {
             .texture_manager_2d
             .get_or_create(
                 hash(&label),
-                &re_ctx.gpu_resources.textures,
-                Texture2DCreationDesc {
+                re_ctx,
+                ImageDataDesc {
                     label: label.into(),
                     data: bytemuck::cast_slice(&data).into(),
-                    format: wgpu::TextureFormat::R32Float,
-                    width: dimensions.x,
-                    height: dimensions.y,
+                    format: wgpu::TextureFormat::R32Float.into(),
+                    width_height: dimensions.to_array(),
                 },
             )
             .expect("Failed to create depth texture.");
@@ -460,13 +459,12 @@ impl AlbedoTexture {
             .texture_manager_2d
             .get_or_create(
                 hash(&label),
-                &re_ctx.gpu_resources.textures,
-                Texture2DCreationDesc {
+                re_ctx,
+                ImageDataDesc {
                     label: label.into(),
                     data: bytemuck::cast_slice(&rgba8).into(),
-                    format: wgpu::TextureFormat::Rgba8UnormSrgb,
-                    width: dimensions.x,
-                    height: dimensions.y,
+                    format: wgpu::TextureFormat::Rgba8UnormSrgb.into(),
+                    width_height: dimensions.to_array(),
                 },
             )
             .expect("Failed to create albedo texture.");

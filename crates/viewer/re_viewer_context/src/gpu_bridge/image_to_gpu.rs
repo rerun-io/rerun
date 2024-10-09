@@ -10,7 +10,7 @@ use re_renderer::{
     config::DeviceCaps,
     pad_rgb_to_rgba,
     renderer::{ColorMapper, ColormappedTexture, ShaderDecoding},
-    resource_managers::Texture2DCreationDesc,
+    resource_managers::{ColorPrimaries, ImageDataDesc, SourceImageDataFormat, YuvPixelLayout},
     RenderContext,
 };
 use re_types::components::ClassId;
@@ -112,7 +112,6 @@ fn color_image_to_gpu(
         emath::Rangef::new(-1.0, 1.0)
     } else if let Some(shader_decoding) = shader_decoding {
         match shader_decoding {
-            ShaderDecoding::Nv12 | ShaderDecoding::Yuy2 => emath::Rangef::new(0.0, 1.0),
             ShaderDecoding::Bgr => image_data_range_heuristic(image_stats, &image_format),
         }
     } else {
@@ -121,10 +120,8 @@ fn color_image_to_gpu(
 
     let color_mapper = if let Some(shader_decoding) = shader_decoding {
         match shader_decoding {
-            // We only have 1D color maps, therefore chroma downsampled and BGR formats can't have color maps.
-            ShaderDecoding::Bgr | ShaderDecoding::Nv12 | ShaderDecoding::Yuy2 => {
-                ColorMapper::OffRGB
-            }
+            // We only have 1D color maps, therefore BGR formats can't have color maps.
+            ShaderDecoding::Bgr => ColorMapper::OffRGB,
         }
     } else if texture_format.components() == 1 {
         // TODO(andreas): support colormap property
@@ -193,6 +190,7 @@ pub fn image_data_range_heuristic(image_stats: &ImageStats, image_format: &Image
 fn image_decode_srgb_gamma_heuristic(image_stats: &ImageStats, image_format: ImageFormat) -> bool {
     if let Some(pixel_format) = image_format.pixel_format {
         match pixel_format {
+            // Have to do the conversion because we don't use an `Srgb` texture format.
             PixelFormat::NV12 | PixelFormat::YUY2 => true,
         }
     } else {
@@ -219,80 +217,71 @@ pub fn required_shader_decode(
     image_format: &ImageFormat,
 ) -> Option<ShaderDecoding> {
     let color_model = image_format.color_model();
-    match image_format.pixel_format {
-        Some(PixelFormat::NV12) => Some(ShaderDecoding::Nv12),
-        Some(PixelFormat::YUY2) => Some(ShaderDecoding::Yuy2),
-        None => {
-            if color_model == ColorModel::BGR || color_model == ColorModel::BGRA {
-                // U8 can be converted to RGBA without the shader's help since there's a format for it.
-                if image_format.datatype() == ChannelDatatype::U8
-                    && device_caps.support_bgra_textures()
-                {
-                    None
-                } else {
-                    Some(ShaderDecoding::Bgr)
-                }
-            } else {
-                None
-            }
+
+    if image_format.pixel_format.is_none() && color_model == ColorModel::BGR
+        || color_model == ColorModel::BGRA
+    {
+        // U8 can be converted to RGBA without the shader's help since there's a format for it.
+        if image_format.datatype() == ChannelDatatype::U8 && device_caps.support_bgra_textures() {
+            None
+        } else {
+            Some(ShaderDecoding::Bgr)
         }
+    } else {
+        None
     }
 }
 
-/// Creates a [`Texture2DCreationDesc`] for creating a texture from an [`ImageInfo`].
+/// Creates a [`ImageDataDesc`] for creating a texture from an [`ImageInfo`].
 ///
 /// The resulting texture has requirements as describe by [`required_shader_decode`].
 ///
-/// TODO(andreas): The consumer needs to be aware of bgr and chroma downsampling conversions.
-/// It would be much better if we had a separate `re_renderer`/gpu driven conversion pipeline for this
-/// which would allow us to virtually extend over wgpu's texture formats.
-/// This would allow us to seamlessly support e.g. NV12 on meshes without the mesh shader having to be updated.
+/// TODO(andreas): The consumer needs to be aware of bgr conversions. Other conversions are already taken care of upon upload.
 pub fn texture_creation_desc_from_color_image<'a>(
     device_caps: &DeviceCaps,
     image: &'a ImageInfo,
     debug_name: &'a str,
-) -> Texture2DCreationDesc<'a> {
+) -> ImageDataDesc<'a> {
     re_tracing::profile_function!();
 
-    if let Some(pixel_format) = image.format.pixel_format {
-        match pixel_format {
-            PixelFormat::NV12 => {
-                // Decoded in the shader, see [`required_shader_decode`].
-                return Texture2DCreationDesc {
-                    label: debug_name.into(),
-                    data: cast_slice_to_cow(image.buffer.as_slice()),
-                    format: TextureFormat::R8Uint,
-                    width: image.width(),
-                    height: image.height() + image.height() / 2, // !
-                };
-            }
+    // TODO(#7608): All image data ingestion conversions should all be handled by re_renderer!
 
-            PixelFormat::YUY2 => {
-                // Decoded in the shader, see [`required_shader_decode`].
-                return Texture2DCreationDesc {
-                    label: debug_name.into(),
-                    data: cast_slice_to_cow(image.buffer.as_slice()),
-                    format: TextureFormat::R8Uint,
-                    width: 2 * image.width(), // !
-                    height: image.height(),
-                };
-            }
+    let (data, format) = if let Some(pixel_format) = image.format.pixel_format {
+        match pixel_format {
+            // Using Bt.601 here for historical reasons.
+            // TODO(andreas): Expose color primaries. It's probably still the better default (for instance that's what jpeg still uses),
+            // but should confirm & back that up!
+            PixelFormat::NV12 => (
+                cast_slice_to_cow(image.buffer.as_slice()),
+                SourceImageDataFormat::Yuv {
+                    format: YuvPixelLayout::Y_UV12,
+                    primaries: ColorPrimaries::Bt601,
+                },
+            ),
+            PixelFormat::YUY2 => (
+                cast_slice_to_cow(image.buffer.as_slice()),
+                SourceImageDataFormat::Yuv {
+                    format: YuvPixelLayout::YUYV16,
+                    primaries: ColorPrimaries::Bt601,
+                },
+            ),
         }
     } else {
         let color_model = image.format.color_model();
         let datatype = image.format.datatype();
 
-        let (data, format) = match (color_model, datatype) {
+        match (color_model, datatype) {
             // sRGB(A) handling is done by `ColormappedTexture`.
             // Why not use `Rgba8UnormSrgb`? Because premul must happen _before_ sRGB decode, so we can't
             // use a "Srgb-aware" texture like `Rgba8UnormSrgb` for RGBA.
             (ColorModel::RGB, ChannelDatatype::U8) => (
                 pad_rgb_to_rgba(&image.buffer, u8::MAX).into(),
-                TextureFormat::Rgba8Unorm,
+                SourceImageDataFormat::WgpuCompatible(TextureFormat::Rgba8Unorm),
             ),
-            (ColorModel::RGBA, ChannelDatatype::U8) => {
-                (cast_slice_to_cow(&image.buffer), TextureFormat::Rgba8Unorm)
-            }
+            (ColorModel::RGBA, ChannelDatatype::U8) => (
+                cast_slice_to_cow(&image.buffer),
+                SourceImageDataFormat::WgpuCompatible(TextureFormat::Rgba8Unorm),
+            ),
 
             // Make use of wgpu's BGR(A)8 formats if possible.
             //
@@ -315,7 +304,10 @@ pub fn texture_creation_desc_from_color_image<'a>(
                 } else {
                     TextureFormat::Bgra8Unorm
                 };
-                (padded_data, texture_format)
+                (
+                    padded_data,
+                    SourceImageDataFormat::WgpuCompatible(texture_format),
+                )
             }
             (ColorModel::BGRA, ChannelDatatype::U8) => {
                 let texture_format = if required_shader_decode(device_caps, &image.format).is_some()
@@ -324,7 +316,10 @@ pub fn texture_creation_desc_from_color_image<'a>(
                 } else {
                     TextureFormat::Bgra8Unorm
                 };
-                (cast_slice_to_cow(&image.buffer), texture_format)
+                (
+                    cast_slice_to_cow(&image.buffer),
+                    SourceImageDataFormat::WgpuCompatible(texture_format),
+                )
             }
 
             _ => {
@@ -336,15 +331,14 @@ pub fn texture_creation_desc_from_color_image<'a>(
                     datatype,
                 );
             }
-        };
-
-        Texture2DCreationDesc {
-            label: debug_name.into(),
-            data,
-            format,
-            width: image.width(),
-            height: image.height(),
         }
+    };
+
+    ImageDataDesc {
+        label: debug_name.into(),
+        data,
+        format,
+        width_height: image.width_height(),
     }
 }
 
@@ -445,12 +439,11 @@ fn segmentation_image_to_gpu(
             })
             .collect();
 
-        Texture2DCreationDesc {
+        ImageDataDesc {
             label: "class_id_colormap".into(),
             data: data.into(),
-            format: TextureFormat::Rgba8UnormSrgb,
-            width: colormap_width as u32,
-            height: colormap_height as u32,
+            format: SourceImageDataFormat::WgpuCompatible(TextureFormat::Rgba8UnormSrgb),
+            width_height: [colormap_width as u32, colormap_height as u32],
         }
     })
     .context("Failed to create class_id_colormap.")?;
@@ -478,11 +471,8 @@ fn general_texture_creation_desc_from_image<'a>(
     image: &'a ImageInfo,
     color_model: ColorModel,
     datatype: ChannelDatatype,
-) -> Texture2DCreationDesc<'a> {
+) -> ImageDataDesc<'a> {
     re_tracing::profile_function!();
-
-    let width = image.width();
-    let height = image.height();
 
     let buf: &[u8] = image.buffer.as_ref();
 
@@ -590,12 +580,11 @@ fn general_texture_creation_desc_from_image<'a>(
         }
     };
 
-    Texture2DCreationDesc {
+    ImageDataDesc {
         label: debug_name.into(),
         data,
-        format,
-        width,
-        height,
+        format: SourceImageDataFormat::WgpuCompatible(format),
+        width_height: image.width_height(),
     }
 }
 

@@ -217,8 +217,7 @@ impl RenderContext {
         }
 
         let resolver = crate::new_recommended_file_resolver();
-        let texture_manager_2d =
-            TextureManager2D::new(device.clone(), queue.clone(), &gpu_resources.textures);
+        let texture_manager_2d = TextureManager2D::new(&device, &queue, &gpu_resources.textures);
 
         let active_frame = ActiveFrameContext {
             before_view_builder_encoder: Mutex::new(FrameGlobalCommandEncoder::new(&device)),
