@@ -13,10 +13,15 @@ var<uniform> uniform_buffer: UniformBuffer;
 @group(0) @binding(1)
 var input_texture: texture_2d<u32>;
 
+// see `enum YuvPixelLayout`.
+const YUV_LAYOUT_Y_U_V_444 = 0u;
+const YUV_LAYOUT_Y_U_V_422 = 1u;
+const YUV_LAYOUT_Y_U_V_420 = 2u;
+const YUV_LAYOUT_Y_UV_420 = 100u;
+const YUV_LAYOUT_YUYV_422 = 200u;
+const YUV_LAYOUT_Y_400 = 300u;
 
-const YUV_LAYOUT_Y_UV = 0u;
-const YUV_LAYOUT_YUYV16 = 1u;
-
+// see `enum ColorPrimaries`.
 const PRIMARIES_BT601 = 0u;
 const PRIMARIES_BT709 = 1u;
 
@@ -69,7 +74,7 @@ fn sample_yuv(yuv_layout: u32, texture: texture_2d<u32>, coords: vec2f) -> vec3f
     var yuv: vec3f;
 
     switch (yuv_layout)  {
-        case YUV_LAYOUT_Y_UV: {
+        case YUV_LAYOUT_Y_UV_420: {
             let uv_offset = u32(floor(texture_dim.y / 1.5));
             let uv_row = u32(coords.y / 2);
             var uv_col = u32(coords.x / 2) * 2u;
@@ -79,7 +84,7 @@ fn sample_yuv(yuv_layout: u32, texture: texture_2d<u32>, coords: vec2f) -> vec3f
             yuv[2] = f32(textureLoad(texture, vec2u((u32(uv_col) + 1u), uv_offset + uv_row), 0).r);
         }
 
-        case YUV_LAYOUT_YUYV16: {
+        case YUV_LAYOUT_YUYV_422: {
             // texture is 2 * width * height
             // every 4 bytes is 2 pixels
             let uv_row = u32(coords.y);

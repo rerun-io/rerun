@@ -16,12 +16,92 @@ use super::ColorPrimaries;
 /// Supported chroma subsampling input formats.
 ///
 /// Keep indices in sync with `yuv_converter.wgsl`
+///
+/// Naming schema:
+/// * every time a plane starts add a `_`
+/// * end with `_4xy` for 4:x:y subsampling.
+///
+/// This picture gives a great overview of how to interpret the 4:x:y naming scheme for subsampling:
+/// <https://en.wikipedia.org/wiki/Chroma_subsampling#Sampling_systems_and_ratios/>
 #[allow(non_camel_case_types)]
 #[derive(Clone, Copy, Debug)]
 pub enum YuvPixelLayout {
+    // ---------------------------
+    // Planar formats
+    // ---------------------------
+    //
+    /// 4:4:4 no chroma downsampling with 3 separate planes.
+    /// Also known as `I444`
+    ///
+    /// Expects single channel data texture format.
+    ///
+    /// ```text
+    ///            width
+    ///          __________
+    ///          |         |
+    /// height   |    Y    |
+    ///          |         |
+    ///          |_________|
+    ///          |         |
+    /// height   |    U    |
+    ///          |         |
+    ///          |_________|
+    ///          |         |
+    /// height   |    V    |
+    ///          |         |
+    ///          |_________|
+    /// ```
+    Y_U_V_444 = 0,
+
+    /// 4:2:2 subsampling with 3 separate planes.
+    /// Also known as `I422`
+    ///
+    /// Expects single channel data texture format.
+    ///
+    /// Each data texture row in U & V section contains two rows
+    /// of U/V respectively, since there's a total of (width/2) * (height/2) U & V samples
+    ///
+    /// ```text
+    ///            width
+    ///          __________
+    ///          |         |
+    /// height   |    Y    |
+    ///          |         |
+    ///          |_________|
+    /// height/2 |    U    |
+    ///          |_________|
+    /// height/2 |    V    |
+    ///          |_________|
+    /// ```
+    Y_U_V_422 = 1,
+
+    /// 4:2:0 subsampling with 3 separate planes.
+    /// Also known as `I420`
+    ///
+    /// Expects single channel data texture format.
+    ///
+    /// Each data texture row in U & V section contains two rows
+    /// of U/V respectively, since there's a total of (width/2) * height U & V samples
+    ///
+    /// ```text
+    ///            width
+    ///          __________
+    ///          |         |
+    /// height   |    Y    |
+    ///          |         |
+    ///          |_________|
+    /// height/4 |___◌̲U____|
+    /// height/4 |___◌̲V____|
+    /// ```
+    Y_U_V_420 = 2,
+
+    // ---------------------------
+    // Semi-planar formats
+    // ---------------------------
+    //
     /// 4:2:0 subsampling with a separate Y plane, followed by a UV plane.
     ///
-    /// Expects single channel texture format.
+    /// Expects single channel data texture format.
     ///
     /// First comes entire image in Y in one plane,
     /// followed by a plane with interleaved lines ordered as U0, V0, U1, V1, etc.
@@ -38,9 +118,13 @@ pub enum YuvPixelLayout {
     /// ```
     Y_UV12 = 0,
 
+    // ---------------------------
+    // Interleaved formats
+    // ---------------------------
+    //
     /// YUV 4:2:2 subsampling, single plane.
     ///
-    /// Expects single channel texture format.
+    /// Expects single channel data texture format.
     ///
     /// The order of the channels is Y0, U0, Y1, V0, all in the same plane.
     ///
@@ -58,8 +142,12 @@ impl YuvPixelLayout {
     /// Given the dimensions of the output picture, what are the expected dimensions of the input data texture.
     pub fn data_texture_width_height(&self, [decoded_width, decoded_height]: [u32; 2]) -> [u32; 2] {
         match self {
-            Self::Y_UV12 => [decoded_width, decoded_height + decoded_height / 2],
-            Self::YUYV16 => [decoded_width * 2, decoded_height],
+            Self::Y_U_V_444 => [decoded_width, decoded_height * 3],
+            Self::Y_U_V_422 => [decoded_width, decoded_height * 2],
+            Self::Y_U_V_420 => [decoded_width, decoded_height + decoded_height / 2],
+            Self::Y_UV_420 => [decoded_width, decoded_height + decoded_height / 2],
+            Self::YUYV_422 => [decoded_width * 2, decoded_height],
+            Self::Y_400 => [decoded_width, decoded_height],
         }
     }
 
@@ -70,24 +158,36 @@ impl YuvPixelLayout {
         // Our shader currently works with 8 bit integer formats here since while
         // _technically_ YUV formats have nothing to do with concrete bit depth,
         // practically there's underlying expectation for 8 bits per channel
-        // as long as the data is Bt.709 or Bt.601.
+        // at least as long as the data is Bt.709 or Bt.601.
         // In other words: The conversions implementations we have today expect 0-255 as the value range.
 
         #[allow(clippy::match_same_arms)]
         match self {
-            Self::Y_UV12 => wgpu::TextureFormat::R8Uint,
+            // Only thing that makes sense for 8 bit planar data is the R8Uint format.
+            Self::Y_U_V_444 | Self::Y_U_V_422 | Self::Y_U_V_420 => wgpu::TextureFormat::R8Uint,
+
+            // Same for planar
+            Self::Y_UV_420 => wgpu::TextureFormat::R8Uint,
+
+            // Interleaved have opportunities here!
             // TODO(andreas): Why not use [`wgpu::TextureFormat::Rg8Uint`] here?
-            Self::YUYV16 => wgpu::TextureFormat::R8Uint,
+            Self::YUYV_422 => wgpu::TextureFormat::R8Uint,
+
+            // Monochrome have only one channel anyways.
+            Self::Y_400 => wgpu::TextureFormat::R8Uint,
         }
     }
 
     /// Size of the buffer needed to create the data texture, i.e. the raw input data.
     pub fn num_data_buffer_bytes(&self, decoded_width: [u32; 2]) -> usize {
-        let num_pixels = decoded_width[0] as usize * decoded_width[1] as usize;
-        match self {
-            Self::Y_UV12 => 12 * num_pixels / 8,
-            Self::YUYV16 => 16 * num_pixels / 8,
-        }
+        let data_texture_width_height = self.data_texture_width_height(decoded_width);
+        let data_texture_format = self.data_texture_format();
+
+        (data_texture_format
+            .block_copy_size(None)
+            .expect("data texture formats are expected to be trivial")
+            * data_texture_width_height[0]
+            * data_texture_width_height[1]) as usize
     }
 }
 
