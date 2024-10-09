@@ -4,7 +4,7 @@ use egui::NumExt as _;
 
 use re_log_types::TimeZone;
 use re_ui::{UICommand, UiExt as _};
-use re_viewer_context::{StoreContext, SystemCommand, SystemCommandSender};
+use re_viewer_context::StoreContext;
 
 use crate::App;
 
@@ -82,7 +82,7 @@ impl App {
 
             ui.menu_button("Options", |ui| {
                 ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Extend);
-                options_menu_ui(&self.command_sender, ui, frame, &mut self.state.app_options);
+                options_menu_ui(ui, frame, &mut self.state.app_options);
             });
 
             #[cfg(debug_assertions)]
@@ -295,7 +295,6 @@ fn render_state_ui(ui: &mut egui::Ui, render_state: &egui_wgpu::RenderState) {
 }
 
 fn options_menu_ui(
-    command_sender: &re_viewer_context::CommandSender,
     ui: &mut egui::Ui,
     frame: &eframe::Frame,
     app_options: &mut re_viewer_context::AppOptions,
@@ -355,7 +354,7 @@ fn options_menu_ui(
     {
         ui.add_space(SPACING);
         ui.label("Experimental features:");
-        experimental_feature_ui(command_sender, ui, app_options);
+        experimental_feature_ui(ui, app_options);
     }
 
     if let Some(_backend) = frame
@@ -376,28 +375,11 @@ fn options_menu_ui(
     }
 }
 
-fn experimental_feature_ui(
-    command_sender: &re_viewer_context::CommandSender,
-    ui: &mut egui::Ui,
-    app_options: &mut re_viewer_context::AppOptions,
-) {
+fn experimental_feature_ui(ui: &mut egui::Ui, app_options: &mut re_viewer_context::AppOptions) {
     #[cfg(not(target_arch = "wasm32"))]
     ui
         .re_checkbox(&mut app_options.experimental_space_view_screenshots, "Space view screenshots")
         .on_hover_text("Allow taking screenshots of 2D and 3D space views via their context menu. Does not contain labels.");
-
-    if ui
-        .re_checkbox(
-            &mut app_options.experimental_dataframe_space_view,
-            "Dataframe space view",
-        )
-        .on_hover_text("Enable the experimental dataframe space view.")
-        .clicked()
-    {
-        command_sender.send_system(SystemCommand::EnableExperimentalDataframeSpaceView(
-            app_options.experimental_dataframe_space_view,
-        ));
-    }
 
     ui.re_checkbox(
         &mut app_options.plot_query_clamping,

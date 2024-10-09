@@ -62,9 +62,6 @@ pub enum SystemCommand {
     #[cfg(debug_assertions)]
     EnableInspectBlueprintTimeline(bool),
 
-    /// Enable or disable the experimental dataframe space views.
-    EnableExperimentalDataframeSpaceView(bool),
-
     /// Set the item selection.
     SetSelection(crate::Item),
 
