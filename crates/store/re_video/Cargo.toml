@@ -27,6 +27,9 @@ features = ["all"]
 [features]
 default = ["av1", "ffmpeg"]
 
+## Native AV1 decoding.
+av1 = ["dep:dav1d"]
+
 ## Decode H.264 using ffmpeg over CLI.
 ffmpeg = ["dep:ffmpeg-sidecar"]
 
