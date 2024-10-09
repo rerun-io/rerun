@@ -340,8 +340,7 @@ pub fn texture_creation_desc_from_color_image<'a>(
         label: debug_name.into(),
         data,
         format,
-        width: image.width(),
-        height: image.height(),
+        width_height: image.width_height(),
     }
 }
 
@@ -446,8 +445,7 @@ fn segmentation_image_to_gpu(
             label: "class_id_colormap".into(),
             data: data.into(),
             format: SourceImageDataFormat::WgpuCompatible(TextureFormat::Rgba8UnormSrgb),
-            width: colormap_width as u32,
-            height: colormap_height as u32,
+            width_height: [colormap_width as u32, colormap_height as u32],
         }
     })
     .context("Failed to create class_id_colormap.")?;
@@ -477,9 +475,6 @@ fn general_texture_creation_desc_from_image<'a>(
     datatype: ChannelDatatype,
 ) -> ImageDataDesc<'a> {
     re_tracing::profile_function!();
-
-    let width = image.width();
-    let height = image.height();
 
     let buf: &[u8] = image.buffer.as_ref();
 
@@ -591,8 +586,7 @@ fn general_texture_creation_desc_from_image<'a>(
         label: debug_name.into(),
         data,
         format: SourceImageDataFormat::WgpuCompatible(format),
-        width,
-        height,
+        width_height: image.width_height(),
     }
 }
 

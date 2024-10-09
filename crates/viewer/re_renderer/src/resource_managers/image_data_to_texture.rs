@@ -130,8 +130,14 @@ pub struct ImageDataDesc<'a> {
     /// TODO(andreas): This should be a kind of factory function/builder instead which gets target memory passed in.
     pub data: std::borrow::Cow<'a, [u8]>,
     pub format: SourceImageDataFormat,
-    pub width: u32,
-    pub height: u32,
+
+    /// The size of the resulting output texture / the semantic size of the image data.
+    ///
+    /// The distinction is in particular important for planar formats.
+    /// Which may be represented as a larger texture than the image they represent.
+    /// With the output always being a ("mainstream" gpu readable) texture format, the output texture's
+    /// width/height is the semantic width/height of the image data!
+    pub width_height: [u32; 2],
     //generate_mip_maps: bool, // TODO(andreas): generate mipmaps!
 }
 
@@ -141,24 +147,24 @@ impl<'a> ImageDataDesc<'a> {
             label,
             data,
             format,
-            width,
-            height,
+            width_height,
         } = self;
 
-        if *width == 0 || *height == 0 {
+        if width_height[0] == 0 || width_height[1] == 0 {
             return Err(ImageDataToTextureError::ZeroSize(label.clone()));
         }
 
         let max_texture_dimension_2d = limits.max_texture_dimension_2d;
-        if *width > max_texture_dimension_2d || *height > max_texture_dimension_2d {
+        if width_height[0] > max_texture_dimension_2d || width_height[1] > max_texture_dimension_2d
+        {
             return Err(ImageDataToTextureError::TooLarge {
-                width: *width,
-                height: *height,
+                width: width_height[0],
+                height: width_height[1],
                 max_texture_dimension_2d,
             });
         }
 
-        let num_pixels = *width as usize * *height as usize;
+        let num_pixels = width_height[0] as usize * width_height[1] as usize;
         let expected_num_bytes = match format {
             SourceImageDataFormat::WgpuCompatible(format) => {
                 num_pixels
@@ -168,7 +174,7 @@ impl<'a> ImageDataDesc<'a> {
                         as usize
             }
             SourceImageDataFormat::Yuv { format, .. } => {
-                format.expected_data_buffer_size(*width, *height)
+                format.num_data_buffer_bytes(*width_height)
             }
         };
 
@@ -209,21 +215,20 @@ pub fn transfer_image_data_to_texture(
         label,
         data,
         format: source_format,
-        width,
-        height,
+        width_height: output_width_height,
     } = image_data;
 
     // Determine size of the texture the image data is uploaded into.
     // Reminder: We can't use raw buffers because of WebGL compatibility.
-    let (data_texture_width, data_texture_height) = match source_format {
-        SourceImageDataFormat::WgpuCompatible(_) => (width, height),
+    let [data_texture_width, data_texture_height] = match source_format {
+        SourceImageDataFormat::WgpuCompatible(_) => output_width_height,
         SourceImageDataFormat::Yuv { format, .. } => {
-            format.expected_data_width_height(width, height)
+            format.data_texture_width_height(output_width_height)
         }
     };
     let data_texture_format = match source_format {
         SourceImageDataFormat::WgpuCompatible(format) => format,
-        SourceImageDataFormat::Yuv { format, .. } => format.expected_data_texture_format(),
+        SourceImageDataFormat::Yuv { format, .. } => format.data_texture_format(),
     };
 
     // Allocate gpu belt data and upload it.
@@ -261,8 +266,7 @@ pub fn transfer_image_data_to_texture(
             primaries,
             &data_texture,
             &label,
-            width,
-            height,
+            output_width_height,
         ),
     };
 

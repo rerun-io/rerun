@@ -422,8 +422,7 @@ impl DepthTexture {
                     label: label.into(),
                     data: bytemuck::cast_slice(&data).into(),
                     format: wgpu::TextureFormat::R32Float.into(),
-                    width: dimensions.x,
-                    height: dimensions.y,
+                    width_height: dimensions.to_array(),
                 },
             )
             .expect("Failed to create depth texture.");
@@ -465,8 +464,7 @@ impl AlbedoTexture {
                     label: label.into(),
                     data: bytemuck::cast_slice(&rgba8).into(),
                     format: wgpu::TextureFormat::Rgba8UnormSrgb.into(),
-                    width: dimensions.x,
-                    height: dimensions.y,
+                    width_height: dimensions.to_array(),
                 },
             )
             .expect("Failed to create albedo texture.");

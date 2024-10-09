@@ -38,8 +38,7 @@ fn colormap_preview_ui(
             label: "horizontal_gradient".into(),
             data: data.into(),
             format: wgpu::TextureFormat::R16Float.into(),
-            width,
-            height,
+            width_height: [width, height],
         }
     })
     .map_err(|err| anyhow::anyhow!("Failed to create horizontal gradient texture: {err}"))?;

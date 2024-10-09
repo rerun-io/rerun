@@ -64,6 +64,10 @@ impl ImageInfo {
         self.format.height
     }
 
+    pub fn width_height(&self) -> [u32; 2] {
+        [self.format.width, self.format.height]
+    }
+
     /// Returns [`ColorModel::L`] for depth and segmentation images.
     ///
     /// Currently return [`ColorModel::RGB`] for chroma-subsampled images,

@@ -171,7 +171,6 @@ fn to_texture_desc<From: Copy, To: bytemuck::Pod>(
         label: "tensor_slice".into(),
         data: bytemuck::pod_collect_to_vec(&pixels).into(),
         format: format.into(),
-        width: width as u32,
-        height: height as u32,
+        width_height: [width as u32, height as u32],
     })
 }

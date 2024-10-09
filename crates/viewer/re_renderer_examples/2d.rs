@@ -45,8 +45,7 @@ impl framework::Example for Render2D {
                     label: "rerun logo".into(),
                     data: image_data.into(),
                     format: wgpu::TextureFormat::Rgba8UnormSrgb.into(),
-                    width: rerun_logo.width(),
-                    height: rerun_logo.height(),
+                    width_height: [rerun_logo.width(), rerun_logo.height()],
                 },
             )
             .expect("Failed to create texture for rerun logo");

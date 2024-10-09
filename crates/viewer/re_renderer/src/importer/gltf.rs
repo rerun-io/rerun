@@ -93,8 +93,7 @@ pub fn load_gltf_from_buffer(
             .into(),
             data: data.into(),
             format: format.into(),
-            width: image.width,
-            height: image.height,
+            width_height: [image.width, image.height],
         };
 
         images_as_textures.push(match ctx.texture_manager_2d.create(ctx, texture) {

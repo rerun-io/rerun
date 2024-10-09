@@ -52,14 +52,16 @@ pub enum ChromaSubsamplingPixelFormat {
 }
 
 impl ChromaSubsamplingPixelFormat {
-    pub fn expected_data_width_height(&self, width: u32, height: u32) -> (u32, u32) {
+    /// Given the dimensions of the output picture, what are the expected dimensions of the input data texture.
+    pub fn data_texture_width_height(&self, [decoded_width, decoded_height]: [u32; 2]) -> [u32; 2] {
         match self {
-            Self::Y_UV12 => (width, height + height / 2),
-            Self::YUYV16 => (width * 2, height),
+            Self::Y_UV12 => [decoded_width, decoded_height + decoded_height / 2],
+            Self::YUYV16 => [decoded_width * 2, decoded_height],
         }
     }
 
-    pub fn expected_data_texture_format(&self) -> wgpu::TextureFormat {
+    /// What format the input data texture is expected to be in.
+    pub fn data_texture_format(&self) -> wgpu::TextureFormat {
         // TODO(andreas): How to deal with higher precision formats here?
         //
         // Our shader currently works with 8 bit integer formats here since while
@@ -77,8 +79,8 @@ impl ChromaSubsamplingPixelFormat {
     }
 
     /// Size of the buffer needed to create the data texture, i.e. the raw input data.
-    pub fn expected_data_buffer_size(&self, width: u32, height: u32) -> usize {
-        let num_pixels = width as usize * height as usize;
+    pub fn num_data_buffer_bytes(&self, decoded_width: [u32; 2]) -> usize {
+        let num_pixels = decoded_width[0] as usize * decoded_width[1] as usize;
         match self {
             Self::Y_UV12 => 12 * num_pixels / 8,
             Self::YUYV16 => 16 * num_pixels / 8,
@@ -131,16 +133,15 @@ impl ChromaSubsamplingConversionTask {
         primaries: ColorPrimaries,
         input_data: &GpuTexture,
         output_label: &DebugLabel,
-        output_width: u32,
-        output_height: u32,
+        output_width_height: [u32; 2],
     ) -> Self {
         let target_texture = ctx.gpu_resources.textures.alloc(
             &ctx.device,
             &TextureDesc {
                 label: output_label.clone(),
                 size: wgpu::Extent3d {
-                    width: output_width,
-                    height: output_height,
+                    width: output_width_height[0],
+                    height: output_width_height[1],
                     depth_or_array_layers: 1,
                 },
                 mip_level_count: 1, // We don't have mipmap level generation yet!
@@ -161,7 +162,7 @@ impl ChromaSubsamplingConversionTask {
             gpu_data::UniformBuffer {
                 format: format as _,
                 primaries: primaries as _,
-                target_texture_size: [output_width, output_height],
+                target_texture_size: output_width_height,
 
                 _end_padding: Default::default(),
             },

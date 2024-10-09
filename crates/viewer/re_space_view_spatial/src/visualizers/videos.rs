@@ -305,8 +305,7 @@ impl VideoFrameReferenceVisualizer {
                         label: "video_error".into(),
                         data: std::borrow::Cow::Owned(dynamic_image.to_rgba8().to_vec()),
                         format: re_renderer::external::wgpu::TextureFormat::Rgba8UnormSrgb.into(),
-                        width: dynamic_image.width(),
-                        height: dynamic_image.height(),
+                        width_height: [dynamic_image.width(), dynamic_image.height()],
                     })
                 },
             );
