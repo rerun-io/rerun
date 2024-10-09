@@ -17,7 +17,7 @@ pub mod v0 {
     use std::collections::BTreeSet;
 
     impl From<re_log_types::ResolvedTimeRange> for TimeRange {
-        fn from(rtr: re_log_types::ResolvedTimeRange) -> Self {
+        fn from(time_range: re_log_types::ResolvedTimeRange) -> Self {
             Self {
                 start: rtr.min().as_i64(),
                 end: rtr.max().as_i64(),
