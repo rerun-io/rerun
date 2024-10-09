@@ -10,9 +10,7 @@ use re_renderer::{
     config::DeviceCaps,
     pad_rgb_to_rgba,
     renderer::{ColorMapper, ColormappedTexture, ShaderDecoding},
-    resource_managers::{
-        YuvPixelLayout, ColorPrimaries, ImageDataDesc, SourceImageDataFormat,
-    },
+    resource_managers::{ColorPrimaries, ImageDataDesc, SourceImageDataFormat, YuvPixelLayout},
     RenderContext,
 };
 use re_types::components::ClassId;
@@ -246,12 +244,12 @@ pub fn texture_creation_desc_from_color_image<'a>(
 ) -> ImageDataDesc<'a> {
     re_tracing::profile_function!();
 
-    // TODO(andreas): This should all be handled by re_renderer!
+    // TODO(#7608): All image data ingestion conersions should all be handled by re_renderer!
 
     let (data, format) = if let Some(pixel_format) = image.format.pixel_format {
         match pixel_format {
             // Using Bt.601 here for historical reasons.
-            // TODO(andreas): Expose this. It's probably still the better default (for instance that's what jpeg still uses),
+            // TODO(andreas): Expose color primaries. It's probably still the better default (for instance that's what jpeg still uses),
             // but should confirm & back that up!
             PixelFormat::NV12 => (
                 cast_slice_to_cow(image.buffer.as_slice()),
