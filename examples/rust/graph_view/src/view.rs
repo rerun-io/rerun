@@ -1,14 +1,25 @@
 use re_viewer::external::{
-    egui::{self, emath::TSTransform}, re_entity_db::InstancePath, re_log::external::log, re_log_types::EntityPath, re_renderer::view_builder::TargetConfiguration, re_types::SpaceViewClassIdentifier, re_ui::{self, UiExt}, re_viewer_context::{
+    egui::{self, emath::TSTransform},
+    re_entity_db::InstancePath,
+    re_log::external::log,
+    re_log_types::EntityPath,
+    re_renderer::view_builder::TargetConfiguration,
+    re_types::SpaceViewClassIdentifier,
+    re_ui::{self, UiExt},
+    re_viewer_context::{
         IdentifiedViewSystem as _, Item, SpaceViewClass, SpaceViewClassLayoutPriority,
         SpaceViewClassRegistryError, SpaceViewId, SpaceViewSpawnHeuristics, SpaceViewState,
         SpaceViewStateExt as _, SpaceViewSystemExecutionError, SpaceViewSystemRegistrator,
         SystemExecutionOutput, ViewQuery, ViewerContext,
-    }
+    },
 };
 
 use crate::{
-    error::Error, graph::Graph, types::NodeIndex, ui::{self, draw_dummy, GraphSpaceViewState}, visualizers::{edges_undirected::UndirectedEdgesVisualizer, nodes::GraphNodeVisualizer}
+    error::Error,
+    graph::Graph,
+    types::NodeIndex,
+    ui::{self, draw_dummy, GraphSpaceViewState},
+    visualizers::{NodeVisualizer, UndirectedEdgesVisualizer},
 };
 
 #[derive(Default)]
@@ -38,7 +49,7 @@ impl SpaceViewClass for GraphSpaceView {
         &self,
         system_registry: &mut SpaceViewSystemRegistrator<'_>,
     ) -> Result<(), SpaceViewClassRegistryError> {
-        system_registry.register_visualizer::<GraphNodeVisualizer>()?;
+        system_registry.register_visualizer::<NodeVisualizer>()?;
         system_registry.register_visualizer::<UndirectedEdgesVisualizer>()
     }
 
@@ -59,7 +70,7 @@ impl SpaceViewClass for GraphSpaceView {
         // By default spawn a single view at the root if there's anything the visualizer is applicable to.
         if ctx
             .applicable_entities_per_visualizer
-            .get(&GraphNodeVisualizer::identifier())
+            .get(&NodeVisualizer::identifier())
             .map_or(true, |entities| entities.is_empty())
         {
             SpaceViewSpawnHeuristics::default()
@@ -100,7 +111,7 @@ impl SpaceViewClass for GraphSpaceView {
         query: &ViewQuery<'_>,
         system_output: SystemExecutionOutput,
     ) -> Result<(), SpaceViewSystemExecutionError> {
-        let node_system = system_output.view_systems.get::<GraphNodeVisualizer>()?;
+        let node_system = system_output.view_systems.get::<NodeVisualizer>()?;
         let edge_system = system_output
             .view_systems
             .get::<UndirectedEdgesVisualizer>()?;

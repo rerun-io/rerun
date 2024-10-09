@@ -22,11 +22,11 @@ use crate::types::NodeInstance;
 
 /// Our space view consist of single part which holds a list of egui colors for each entity path.
 #[derive(Default)]
-pub struct GraphNodeVisualizer {
-    pub(crate) data: Vec<GraphNodeVisualizerData>,
+pub struct NodeVisualizer {
+    pub data: Vec<NodeVisualizerData>,
 }
 
-pub(crate) struct GraphNodeVisualizerData {
+pub struct NodeVisualizerData {
     pub entity_path: EntityPath,
     node_ids: ChunkComponentIterItem<components::GraphNodeId>,
 
@@ -38,8 +38,8 @@ pub(crate) struct GraphNodeVisualizerData {
     show_labels: Option<components::ShowLabels>,
 }
 
-impl GraphNodeVisualizerData {
-    pub(crate) fn nodes(&self) -> impl Iterator<Item = NodeInstance> {
+impl NodeVisualizerData {
+    pub fn nodes(&self) -> impl Iterator<Item = NodeInstance> {
         clamped_zip_2x2(
             self.node_ids.iter(),
             (0..).map(Instance::from),
@@ -64,13 +64,13 @@ impl GraphNodeVisualizerData {
     }
 }
 
-impl IdentifiedViewSystem for GraphNodeVisualizer {
+impl IdentifiedViewSystem for NodeVisualizer {
     fn identifier() -> ViewSystemIdentifier {
         "GraphNodes".into()
     }
 }
 
-impl VisualizerSystem for GraphNodeVisualizer {
+impl VisualizerSystem for NodeVisualizer {
     fn visualizer_query_info(&self) -> VisualizerQueryInfo {
         VisualizerQueryInfo::from_archetype::<archetypes::GraphNodes>()
     }
@@ -105,7 +105,7 @@ impl VisualizerSystem for GraphNodeVisualizer {
             );
 
             for (_index, node_ids, colors, labels, show_labels) in data {
-                self.data.push(GraphNodeVisualizerData {
+                self.data.push(NodeVisualizerData {
                     entity_path: data_result.entity_path.clone(),
                     node_ids,
                     colors: colors.unwrap_or_default(),
@@ -127,4 +127,4 @@ impl VisualizerSystem for GraphNodeVisualizer {
     }
 }
 
-re_viewer_context::impl_component_fallback_provider!(GraphNodeVisualizer => []);
+re_viewer_context::impl_component_fallback_provider!(NodeVisualizer => []);

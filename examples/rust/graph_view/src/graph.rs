@@ -1,12 +1,12 @@
 use std::collections::HashSet;
 
-use re_log_types::{EntityPath};
+use re_log_types::EntityPath;
 use re_viewer::external::re_types::datatypes;
 
-use crate::{types::{EdgeInstance, NodeInstance, UnknownNodeInstance}, visualizers::{
-    edges_undirected::UndirectedEdgesData,
-    nodes::GraphNodeVisualizerData,
-}};
+use crate::{
+    types::{EdgeInstance, NodeInstance, UnknownNodeInstance},
+    visualizers::{NodeVisualizerData, UndirectedEdgesData},
+};
 
 pub(crate) enum Node<'a> {
     Regular(NodeInstance<'a>),
@@ -16,13 +16,13 @@ pub(crate) enum Node<'a> {
 pub(crate) struct Graph<'a> {
     /// Contains all nodes that are part mentioned in the edges but not part of the `nodes` list
     unknown: Vec<(EntityPath, datatypes::GraphNodeId)>,
-    nodes: &'a Vec<GraphNodeVisualizerData>,
+    nodes: &'a Vec<NodeVisualizerData>,
     undirected: &'a Vec<UndirectedEdgesData>,
 }
 
 impl<'a> Graph<'a> {
     pub fn from_nodes_edges(
-        nodes: &'a Vec<GraphNodeVisualizerData>,
+        nodes: &'a Vec<NodeVisualizerData>,
         undirected: &'a Vec<UndirectedEdgesData>,
     ) -> Self {
         let seen: HashSet<(&EntityPath, &datatypes::GraphNodeId)> = nodes
@@ -51,13 +51,16 @@ impl<'a> Graph<'a> {
         }
     }
 
-    pub fn nodes_by_entity(&self) -> impl Iterator<Item = &GraphNodeVisualizerData> {
+    pub fn nodes_by_entity(&self) -> impl Iterator<Item = &NodeVisualizerData> {
         self.nodes.iter()
     }
 
     pub fn all_nodes(&self) -> impl Iterator<Item = Node> {
-        let nodes = self.nodes.iter().flat_map(|entity| entity.nodes().map(Node::Regular));
-        let unknowns= self.unknown_nodes().map(Node::Unknown);
+        let nodes = self
+            .nodes
+            .iter()
+            .flat_map(|entity| entity.nodes().map(Node::Regular));
+        let unknowns = self.unknown_nodes().map(Node::Unknown);
         nodes.chain(unknowns)
     }
 
