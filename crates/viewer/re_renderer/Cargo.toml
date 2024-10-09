@@ -69,7 +69,7 @@ ecolor = { workspace = true, features = ["bytemuck"] }
 enumset.workspace = true
 glam = { workspace = true, features = ["bytemuck"] }
 half = { workspace = true, features = ["bytemuck"] }
-itertools = { workspace = true }
+itertools.workspace = true
 never.workspace = true
 ordered-float.workspace = true
 parking_lot.workspace = true
