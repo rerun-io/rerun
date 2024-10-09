@@ -3,7 +3,7 @@ from typing import Optional, Sequence
 
 import pyarrow as pa
 
-from .types import AnyColumn, ComponentLike, ViewContentsLike
+from .types import AnyColumn, ComponentLike, IndexLike, ViewContentsLike
 
 class IndexColumnDescriptor:
     """A column containing the index values for when the component data was updated."""
@@ -55,6 +55,16 @@ class RecordingView:
 
     def filter_range_nanos(self, start: int, end: int) -> RecordingView:
         """Filter the view to only include data between the given index time values."""
+        ...
+
+    def filter_index_values(self, index_values: IndexLike) -> RecordingView:
+        """
+        Filter the view to only include data at the given index values.
+
+        This requires index values to be a precise match.  Index values in Rerun are
+        represented as i64 sequence counts or nanoseconds. This API does not expose an interface
+        in floating point seconds, as the numerical conversion would risk false mismatches.
+        """
         ...
 
     def select(self, *args: AnyColumn, columns: Optional[Sequence[AnyColumn]] = None) -> pa.RecordBatchReader: ...

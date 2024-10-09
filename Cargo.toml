@@ -206,6 +206,7 @@ nohash-hasher = "0.2"
 notify = { version = "6.1.1", features = ["macos_kqueue"] }
 num-derive = "0.4"
 num-traits = "0.2"
+numpy = "0.21"
 once_cell = "1.17" # No lazy_static - use `std::sync::OnceLock` or `once_cell` instead
 ordered-float = "4.2"
 parking_lot = "0.12"
