@@ -1,0 +1,22 @@
+[package]
+name = "re_remote_store_types_builder"
+authors.workspace = true
+edition.workspace = true
+homepage.workspace = true
+include.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+version.workspace = true
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+re_log = { workspace = true, features = ["setup"] }
+
+# External
+camino.workspace = true
+tonic-build.workspace = true
+
+[lints]
+workspace = true

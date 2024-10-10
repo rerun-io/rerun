@@ -1,4 +1,4 @@
-use std::ops::ControlFlow;
+use std::{ops::ControlFlow, time::Duration};
 
 use ewebsock::{WsEvent, WsMessage};
 
@@ -16,6 +16,7 @@ pub fn viewer_to_server(
         // We set a very high limit, because we should be able to trust the server.
         // See https://github.com/rerun-io/rerun/issues/5268 for more
         max_incoming_frame_size: 2 * gigs,
+        delay_blocking: Duration::from_millis(10),
     };
 
     ewebsock::ws_receive(
