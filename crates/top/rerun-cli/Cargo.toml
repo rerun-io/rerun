@@ -43,6 +43,7 @@ default = ["native_viewer", "web_viewer"]
 
 ## Enable faster native video decoding with assembly.
 ## You need to install [nasm](https://nasm.us/) to compile with this feature.
+## TODO(#7671): there is a bug that makes this incompatible with arch linux
 nasm = ["rerun/nasm"]
 
 ## Support spawning a native viewer.
