@@ -3,7 +3,7 @@
     time_per_pixel: <a class="primitive" href="https://doc.rust-lang.org/1.79.0/std/primitive.f64.html">f64</a>,
     points: <a class="struct" href="https://doc.rust-lang.org/1.79.0/alloc/vec/struct.Vec.html" title="struct alloc::vec::Vec">Vec</a>&lt;<a class="struct" href="../struct.PlotPoint.html" title="struct re_space_view_time_series::PlotPoint">PlotPoint</a>&gt;,
     store: &amp;ChunkStore,
-    query: &amp;<a class="struct" href="../../re_viewer_context/space_view/view_query/struct.ViewQuery.html" title="struct re_viewer_context::space_view::view_query::ViewQuery">ViewQuery</a>&lt;'_&gt;,
+    query: &amp;ViewQuery&lt;'_&gt;,
     series_label: <a class="struct" href="https://doc.rust-lang.org/1.79.0/alloc/string/struct.String.html" title="struct alloc::string::String">String</a>,
     aggregator: AggregationPolicy,
     all_series: &amp;mut <a class="struct" href="https://doc.rust-lang.org/1.79.0/alloc/vec/struct.Vec.html" title="struct alloc::vec::Vec">Vec</a>&lt;<a class="struct" href="../struct.PlotSeries.html" title="struct re_space_view_time_series::PlotSeries">PlotSeries</a>&gt;

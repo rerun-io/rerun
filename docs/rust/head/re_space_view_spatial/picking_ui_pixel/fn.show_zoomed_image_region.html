@@ -2,8 +2,8 @@
     render_ctx: &amp;<a class="struct" href="../../re_renderer/context/struct.RenderContext.html" title="struct re_renderer::context::RenderContext">RenderContext</a>,
     ui: &amp;mut Ui,
     texture: <a class="struct" href="../../re_renderer/renderer/rectangles/struct.ColormappedTexture.html" title="struct re_renderer::renderer::rectangles::ColormappedTexture">ColormappedTexture</a>,
-    image: <a class="enum" href="https://doc.rust-lang.org/1.79.0/core/option/enum.Option.html" title="enum core::option::Option">Option</a>&lt;&amp;<a class="struct" href="../../re_viewer_context/image_info/struct.ImageInfo.html" title="struct re_viewer_context::image_info::ImageInfo">ImageInfo</a>&gt;,
-    annotations: &amp;<a class="struct" href="../../re_viewer_context/annotations/struct.Annotations.html" title="struct re_viewer_context::annotations::Annotations">Annotations</a>,
+    image: <a class="enum" href="https://doc.rust-lang.org/1.79.0/core/option/enum.Option.html" title="enum core::option::Option">Option</a>&lt;&amp;ImageInfo&gt;,
+    annotations: &amp;Annotations,
     meter: <a class="enum" href="https://doc.rust-lang.org/1.79.0/core/option/enum.Option.html" title="enum core::option::Option">Option</a>&lt;<a class="primitive" href="https://doc.rust-lang.org/1.79.0/std/primitive.f32.html">f32</a>&gt;,
     interaction_id: &amp;<a class="struct" href="struct.TextureInteractionId.html" title="struct re_space_view_spatial::picking_ui_pixel::TextureInteractionId">TextureInteractionId</a>&lt;'_&gt;,
     center_texel: [<a class="primitive" href="https://doc.rust-lang.org/1.79.0/std/primitive.isize.html">isize</a>; <a class="primitive" href="https://doc.rust-lang.org/1.79.0/std/primitive.array.html">2</a>]

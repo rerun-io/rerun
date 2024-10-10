@@ -2,9 +2,9 @@
     // Required method
     fn <a href="#tymethod.entity_data_ui" class="fn">entity_data_ui</a>(
         &amp;self,
-        ctx: &amp;<a class="struct" href="../re_viewer_context/viewer_context/struct.ViewerContext.html" title="struct re_viewer_context::viewer_context::ViewerContext">ViewerContext</a>&lt;'_&gt;,
+        ctx: &amp;ViewerContext&lt;'_&gt;,
         ui: &amp;mut Ui,
-        ui_layout: <a class="enum" href="../re_viewer_context/component_ui_registry/enum.UiLayout.html" title="enum re_viewer_context::component_ui_registry::UiLayout">UiLayout</a>,
+        ui_layout: UiLayout,
         entity_path: &amp;EntityPath,
         row_id: <a class="enum" href="https://doc.rust-lang.org/1.79.0/core/option/enum.Option.html" title="enum core::option::Option">Option</a>&lt;RowId&gt;,
         query: &amp;LatestAtQuery,
@@ -14,9 +14,9 @@
 <p>This is given the context of the entity it is part of so it can do queries.</p>
 </div></details><h2 id="required-methods" class="section-header">Required Methods<a href="#required-methods" class="anchor">§</a></h2><div class="methods"><details class="toggle method-toggle" open><summary><section id="tymethod.entity_data_ui" class="method"><a class="src rightside" href="../src/re_data_ui/lib.rs.html#67-76">source</a><h4 class="code-header">fn <a href="#tymethod.entity_data_ui" class="fn">entity_data_ui</a>(
     &amp;self,
-    ctx: &amp;<a class="struct" href="../re_viewer_context/viewer_context/struct.ViewerContext.html" title="struct re_viewer_context::viewer_context::ViewerContext">ViewerContext</a>&lt;'_&gt;,
+    ctx: &amp;ViewerContext&lt;'_&gt;,
     ui: &amp;mut Ui,
-    ui_layout: <a class="enum" href="../re_viewer_context/component_ui_registry/enum.UiLayout.html" title="enum re_viewer_context::component_ui_registry::UiLayout">UiLayout</a>,
+    ui_layout: UiLayout,
     entity_path: &amp;EntityPath,
     row_id: <a class="enum" href="https://doc.rust-lang.org/1.79.0/core/option/enum.Option.html" title="enum core::option::Option">Option</a>&lt;RowId&gt;,
     query: &amp;LatestAtQuery,
@@ -24,36 +24,36 @@
 )</h4></section></summary><div class="docblock"><p>If you need to lookup something in the chunk store, use the given query to do so.</p>
 </div></details></div><h2 id="foreign-impls" class="section-header">Implementations on Foreign Types<a href="#foreign-impls" class="anchor">§</a></h2><details class="toggle implementors-toggle"><summary><section id="impl-EntityDataUi-for-Blob" class="impl"><a class="src rightside" href="../src/re_data_ui/blob.rs.html#8-89">source</a><a href="#impl-EntityDataUi-for-Blob" class="anchor">§</a><h3 class="code-header">impl <a class="trait" href="trait.EntityDataUi.html" title="trait re_data_ui::EntityDataUi">EntityDataUi</a> for Blob</h3></section></summary><div class="impl-items"><section id="method.entity_data_ui" class="method trait-impl"><a class="src rightside" href="../src/re_data_ui/blob.rs.html#9-88">source</a><a href="#method.entity_data_ui" class="anchor">§</a><h4 class="code-header">fn <a href="#tymethod.entity_data_ui" class="fn">entity_data_ui</a>(
     &amp;self,
-    ctx: &amp;<a class="struct" href="../re_viewer_context/viewer_context/struct.ViewerContext.html" title="struct re_viewer_context::viewer_context::ViewerContext">ViewerContext</a>&lt;'_&gt;,
+    ctx: &amp;ViewerContext&lt;'_&gt;,
     ui: &amp;mut Ui,
-    ui_layout: <a class="enum" href="../re_viewer_context/component_ui_registry/enum.UiLayout.html" title="enum re_viewer_context::component_ui_registry::UiLayout">UiLayout</a>,
+    ui_layout: UiLayout,
     entity_path: &amp;EntityPath,
     row_id: <a class="enum" href="https://doc.rust-lang.org/1.79.0/core/option/enum.Option.html" title="enum core::option::Option">Option</a>&lt;RowId&gt;,
     query: &amp;LatestAtQuery,
     _db: &amp;<a class="struct" href="../re_entity_db/entity_db/struct.EntityDb.html" title="struct re_entity_db::entity_db::EntityDb">EntityDb</a>
 )</h4></section></div></details><details class="toggle implementors-toggle"><summary><section id="impl-EntityDataUi-for-ClassId" class="impl"><a class="src rightside" href="../src/re_data_ui/annotation_context.rs.html#13-57">source</a><a href="#impl-EntityDataUi-for-ClassId" class="anchor">§</a><h3 class="code-header">impl <a class="trait" href="trait.EntityDataUi.html" title="trait re_data_ui::EntityDataUi">EntityDataUi</a> for ClassId</h3></section></summary><div class="impl-items"><section id="method.entity_data_ui-1" class="method trait-impl"><a class="src rightside" href="../src/re_data_ui/annotation_context.rs.html#14-56">source</a><a href="#method.entity_data_ui-1" class="anchor">§</a><h4 class="code-header">fn <a href="#tymethod.entity_data_ui" class="fn">entity_data_ui</a>(
     &amp;self,
-    ctx: &amp;<a class="struct" href="../re_viewer_context/viewer_context/struct.ViewerContext.html" title="struct re_viewer_context::viewer_context::ViewerContext">ViewerContext</a>&lt;'_&gt;,
+    ctx: &amp;ViewerContext&lt;'_&gt;,
     ui: &amp;mut Ui,
-    ui_layout: <a class="enum" href="../re_viewer_context/component_ui_registry/enum.UiLayout.html" title="enum re_viewer_context::component_ui_registry::UiLayout">UiLayout</a>,
+    ui_layout: UiLayout,
     entity_path: &amp;EntityPath,
     _row_id: <a class="enum" href="https://doc.rust-lang.org/1.79.0/core/option/enum.Option.html" title="enum core::option::Option">Option</a>&lt;RowId&gt;,
     query: &amp;LatestAtQuery,
     _db: &amp;<a class="struct" href="../re_entity_db/entity_db/struct.EntityDb.html" title="struct re_entity_db::entity_db::EntityDb">EntityDb</a>
 )</h4></section></div></details><details class="toggle implementors-toggle"><summary><section id="impl-EntityDataUi-for-KeypointId" class="impl"><a class="src rightside" href="../src/re_data_ui/annotation_context.rs.html#59-86">source</a><a href="#impl-EntityDataUi-for-KeypointId" class="anchor">§</a><h3 class="code-header">impl <a class="trait" href="trait.EntityDataUi.html" title="trait re_data_ui::EntityDataUi">EntityDataUi</a> for KeypointId</h3></section></summary><div class="impl-items"><section id="method.entity_data_ui-2" class="method trait-impl"><a class="src rightside" href="../src/re_data_ui/annotation_context.rs.html#60-85">source</a><a href="#method.entity_data_ui-2" class="anchor">§</a><h4 class="code-header">fn <a href="#tymethod.entity_data_ui" class="fn">entity_data_ui</a>(
     &amp;self,
-    ctx: &amp;<a class="struct" href="../re_viewer_context/viewer_context/struct.ViewerContext.html" title="struct re_viewer_context::viewer_context::ViewerContext">ViewerContext</a>&lt;'_&gt;,
+    ctx: &amp;ViewerContext&lt;'_&gt;,
     ui: &amp;mut Ui,
-    ui_layout: <a class="enum" href="../re_viewer_context/component_ui_registry/enum.UiLayout.html" title="enum re_viewer_context::component_ui_registry::UiLayout">UiLayout</a>,
+    ui_layout: UiLayout,
     entity_path: &amp;EntityPath,
     _row_id: <a class="enum" href="https://doc.rust-lang.org/1.79.0/core/option/enum.Option.html" title="enum core::option::Option">Option</a>&lt;RowId&gt;,
     query: &amp;LatestAtQuery,
     _db: &amp;<a class="struct" href="../re_entity_db/entity_db/struct.EntityDb.html" title="struct re_entity_db::entity_db::EntityDb">EntityDb</a>
 )</h4></section></div></details><details class="toggle implementors-toggle"><summary><section id="impl-EntityDataUi-for-TensorData" class="impl"><a class="src rightside" href="../src/re_data_ui/tensor.rs.html#42-58">source</a><a href="#impl-EntityDataUi-for-TensorData" class="anchor">§</a><h3 class="code-header">impl <a class="trait" href="trait.EntityDataUi.html" title="trait re_data_ui::EntityDataUi">EntityDataUi</a> for TensorData</h3></section></summary><div class="impl-items"><section id="method.entity_data_ui-3" class="method trait-impl"><a class="src rightside" href="../src/re_data_ui/tensor.rs.html#43-57">source</a><a href="#method.entity_data_ui-3" class="anchor">§</a><h4 class="code-header">fn <a href="#tymethod.entity_data_ui" class="fn">entity_data_ui</a>(
     &amp;self,
-    ctx: &amp;<a class="struct" href="../re_viewer_context/viewer_context/struct.ViewerContext.html" title="struct re_viewer_context::viewer_context::ViewerContext">ViewerContext</a>&lt;'_&gt;,
+    ctx: &amp;ViewerContext&lt;'_&gt;,
     ui: &amp;mut Ui,
-    ui_layout: <a class="enum" href="../re_viewer_context/component_ui_registry/enum.UiLayout.html" title="enum re_viewer_context::component_ui_registry::UiLayout">UiLayout</a>,
+    ui_layout: UiLayout,
     _entity_path: &amp;EntityPath,
     row_id: <a class="enum" href="https://doc.rust-lang.org/1.79.0/core/option/enum.Option.html" title="enum core::option::Option">Option</a>&lt;RowId&gt;,
     _query: &amp;LatestAtQuery,

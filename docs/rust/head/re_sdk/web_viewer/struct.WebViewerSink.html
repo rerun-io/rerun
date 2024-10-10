@@ -2,19 +2,19 @@
     open_browser: <a class="primitive" href="https://doc.rust-lang.org/1.79.0/std/primitive.bool.html">bool</a>,
     sender: Sender&lt;<a class="enum" href="../log/enum.LogMsg.html" title="enum re_sdk::log::LogMsg">LogMsg</a>&gt;,
     rerun_server: RerunServer,
-    _webviewer_server: WebViewerServer,
+    _webviewer_server: <a class="struct" href="../../re_web_viewer_server/struct.WebViewerServer.html" title="struct re_web_viewer_server::WebViewerServer">WebViewerServer</a>,
 }</code></pre><details class="toggle top-doc" open><summary class="hideme"><span>Expand description</span></summary><div class="docblock"><p>A <a href="../log_sink/trait.LogSink.html" title="trait re_sdk::log_sink::LogSink"><code>crate::sink::LogSink</code></a> tied to a hosted Rerun web viewer. This internally stores two servers:</p>
 <ul>
 <li>A [<code>re_ws_comms::RerunServer</code>] to relay messages from the sink to a websocket connection</li>
-<li>A [<code>WebViewerServer</code>] to serve the Wasm+HTML</li>
+<li>A <a href="../../re_web_viewer_server/struct.WebViewerServer.html" title="struct re_web_viewer_server::WebViewerServer"><code>WebViewerServer</code></a> to serve the Wasm+HTML</li>
 </ul>
 </div></details><h2 id="fields" class="fields section-header">Fields<a href="#fields" class="anchor">§</a></h2><span id="structfield.open_browser" class="structfield section-header"><a href="#structfield.open_browser" class="anchor field">§</a><code>open_browser: <a class="primitive" href="https://doc.rust-lang.org/1.79.0/std/primitive.bool.html">bool</a></code></span><span id="structfield.sender" class="structfield section-header"><a href="#structfield.sender" class="anchor field">§</a><code>sender: Sender&lt;<a class="enum" href="../log/enum.LogMsg.html" title="enum re_sdk::log::LogMsg">LogMsg</a>&gt;</code></span><div class="docblock"><p>Sender to send messages to the [<code>re_ws_comms::RerunServer</code>]</p>
 </div><span id="structfield.rerun_server" class="structfield section-header"><a href="#structfield.rerun_server" class="anchor field">§</a><code>rerun_server: RerunServer</code></span><div class="docblock"><p>Rerun websocket server.</p>
-</div><span id="structfield._webviewer_server" class="structfield section-header"><a href="#structfield._webviewer_server" class="anchor field">§</a><code>_webviewer_server: WebViewerServer</code></span><div class="docblock"><p>The http server serving wasm &amp; html.</p>
+</div><span id="structfield._webviewer_server" class="structfield section-header"><a href="#structfield._webviewer_server" class="anchor field">§</a><code>_webviewer_server: <a class="struct" href="../../re_web_viewer_server/struct.WebViewerServer.html" title="struct re_web_viewer_server::WebViewerServer">WebViewerServer</a></code></span><div class="docblock"><p>The http server serving wasm &amp; html.</p>
 </div><h2 id="implementations" class="section-header">Implementations<a href="#implementations" class="anchor">§</a></h2><div id="implementations-list"><details class="toggle implementors-toggle" open><summary><section id="impl-WebViewerSink" class="impl"><a class="src rightside" href="../../src/re_sdk/web_viewer.rs.html#35-74">source</a><a href="#impl-WebViewerSink" class="anchor">§</a><h3 class="code-header">impl <a class="struct" href="struct.WebViewerSink.html" title="struct re_sdk::web_viewer::WebViewerSink">WebViewerSink</a></h3></section></summary><div class="impl-items"><details class="toggle method-toggle" open><summary><section id="method.new" class="method"><a class="src rightside" href="../../src/re_sdk/web_viewer.rs.html#37-73">source</a><h4 class="code-header">pub fn <a href="#method.new" class="fn">new</a>(
     open_browser: <a class="primitive" href="https://doc.rust-lang.org/1.79.0/std/primitive.bool.html">bool</a>,
     bind_ip: &amp;<a class="primitive" href="https://doc.rust-lang.org/1.79.0/std/primitive.str.html">str</a>,
-    web_port: WebViewerServerPort,
+    web_port: <a class="struct" href="../../re_web_viewer_server/struct.WebViewerServerPort.html" title="struct re_web_viewer_server::WebViewerServerPort">WebViewerServerPort</a>,
     ws_port: RerunServerPort,
     server_memory_limit: <a class="struct" href="../struct.MemoryLimit.html" title="struct re_sdk::MemoryLimit">MemoryLimit</a>
 ) -&gt; <a class="enum" href="https://doc.rust-lang.org/1.79.0/core/result/enum.Result.html" title="enum core::result::Result">Result</a>&lt;Self, <a class="enum" href="enum.WebViewerSinkError.html" title="enum re_sdk::web_viewer::WebViewerSinkError">WebViewerSinkError</a>&gt;</h4></section></summary><div class="docblock"><p>A <code>bind_ip</code> of <code>&quot;0.0.0.0&quot;</code> is a good default.</p>

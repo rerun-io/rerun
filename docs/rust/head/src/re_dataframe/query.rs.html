@@ -2289,12 +2289,308 @@
 <a href="#2289" id="2289">2289</a>
 <a href="#2290" id="2290">2290</a>
 <a href="#2291" id="2291">2291</a>
-</pre></div><pre class="rust"><code><span class="kw">use </span>std::sync::{
-    atomic::{AtomicU64, Ordering},
-    OnceLock,
+<a href="#2292" id="2292">2292</a>
+<a href="#2293" id="2293">2293</a>
+<a href="#2294" id="2294">2294</a>
+<a href="#2295" id="2295">2295</a>
+<a href="#2296" id="2296">2296</a>
+<a href="#2297" id="2297">2297</a>
+<a href="#2298" id="2298">2298</a>
+<a href="#2299" id="2299">2299</a>
+<a href="#2300" id="2300">2300</a>
+<a href="#2301" id="2301">2301</a>
+<a href="#2302" id="2302">2302</a>
+<a href="#2303" id="2303">2303</a>
+<a href="#2304" id="2304">2304</a>
+<a href="#2305" id="2305">2305</a>
+<a href="#2306" id="2306">2306</a>
+<a href="#2307" id="2307">2307</a>
+<a href="#2308" id="2308">2308</a>
+<a href="#2309" id="2309">2309</a>
+<a href="#2310" id="2310">2310</a>
+<a href="#2311" id="2311">2311</a>
+<a href="#2312" id="2312">2312</a>
+<a href="#2313" id="2313">2313</a>
+<a href="#2314" id="2314">2314</a>
+<a href="#2315" id="2315">2315</a>
+<a href="#2316" id="2316">2316</a>
+<a href="#2317" id="2317">2317</a>
+<a href="#2318" id="2318">2318</a>
+<a href="#2319" id="2319">2319</a>
+<a href="#2320" id="2320">2320</a>
+<a href="#2321" id="2321">2321</a>
+<a href="#2322" id="2322">2322</a>
+<a href="#2323" id="2323">2323</a>
+<a href="#2324" id="2324">2324</a>
+<a href="#2325" id="2325">2325</a>
+<a href="#2326" id="2326">2326</a>
+<a href="#2327" id="2327">2327</a>
+<a href="#2328" id="2328">2328</a>
+<a href="#2329" id="2329">2329</a>
+<a href="#2330" id="2330">2330</a>
+<a href="#2331" id="2331">2331</a>
+<a href="#2332" id="2332">2332</a>
+<a href="#2333" id="2333">2333</a>
+<a href="#2334" id="2334">2334</a>
+<a href="#2335" id="2335">2335</a>
+<a href="#2336" id="2336">2336</a>
+<a href="#2337" id="2337">2337</a>
+<a href="#2338" id="2338">2338</a>
+<a href="#2339" id="2339">2339</a>
+<a href="#2340" id="2340">2340</a>
+<a href="#2341" id="2341">2341</a>
+<a href="#2342" id="2342">2342</a>
+<a href="#2343" id="2343">2343</a>
+<a href="#2344" id="2344">2344</a>
+<a href="#2345" id="2345">2345</a>
+<a href="#2346" id="2346">2346</a>
+<a href="#2347" id="2347">2347</a>
+<a href="#2348" id="2348">2348</a>
+<a href="#2349" id="2349">2349</a>
+<a href="#2350" id="2350">2350</a>
+<a href="#2351" id="2351">2351</a>
+<a href="#2352" id="2352">2352</a>
+<a href="#2353" id="2353">2353</a>
+<a href="#2354" id="2354">2354</a>
+<a href="#2355" id="2355">2355</a>
+<a href="#2356" id="2356">2356</a>
+<a href="#2357" id="2357">2357</a>
+<a href="#2358" id="2358">2358</a>
+<a href="#2359" id="2359">2359</a>
+<a href="#2360" id="2360">2360</a>
+<a href="#2361" id="2361">2361</a>
+<a href="#2362" id="2362">2362</a>
+<a href="#2363" id="2363">2363</a>
+<a href="#2364" id="2364">2364</a>
+<a href="#2365" id="2365">2365</a>
+<a href="#2366" id="2366">2366</a>
+<a href="#2367" id="2367">2367</a>
+<a href="#2368" id="2368">2368</a>
+<a href="#2369" id="2369">2369</a>
+<a href="#2370" id="2370">2370</a>
+<a href="#2371" id="2371">2371</a>
+<a href="#2372" id="2372">2372</a>
+<a href="#2373" id="2373">2373</a>
+<a href="#2374" id="2374">2374</a>
+<a href="#2375" id="2375">2375</a>
+<a href="#2376" id="2376">2376</a>
+<a href="#2377" id="2377">2377</a>
+<a href="#2378" id="2378">2378</a>
+<a href="#2379" id="2379">2379</a>
+<a href="#2380" id="2380">2380</a>
+<a href="#2381" id="2381">2381</a>
+<a href="#2382" id="2382">2382</a>
+<a href="#2383" id="2383">2383</a>
+<a href="#2384" id="2384">2384</a>
+<a href="#2385" id="2385">2385</a>
+<a href="#2386" id="2386">2386</a>
+<a href="#2387" id="2387">2387</a>
+<a href="#2388" id="2388">2388</a>
+<a href="#2389" id="2389">2389</a>
+<a href="#2390" id="2390">2390</a>
+<a href="#2391" id="2391">2391</a>
+<a href="#2392" id="2392">2392</a>
+<a href="#2393" id="2393">2393</a>
+<a href="#2394" id="2394">2394</a>
+<a href="#2395" id="2395">2395</a>
+<a href="#2396" id="2396">2396</a>
+<a href="#2397" id="2397">2397</a>
+<a href="#2398" id="2398">2398</a>
+<a href="#2399" id="2399">2399</a>
+<a href="#2400" id="2400">2400</a>
+<a href="#2401" id="2401">2401</a>
+<a href="#2402" id="2402">2402</a>
+<a href="#2403" id="2403">2403</a>
+<a href="#2404" id="2404">2404</a>
+<a href="#2405" id="2405">2405</a>
+<a href="#2406" id="2406">2406</a>
+<a href="#2407" id="2407">2407</a>
+<a href="#2408" id="2408">2408</a>
+<a href="#2409" id="2409">2409</a>
+<a href="#2410" id="2410">2410</a>
+<a href="#2411" id="2411">2411</a>
+<a href="#2412" id="2412">2412</a>
+<a href="#2413" id="2413">2413</a>
+<a href="#2414" id="2414">2414</a>
+<a href="#2415" id="2415">2415</a>
+<a href="#2416" id="2416">2416</a>
+<a href="#2417" id="2417">2417</a>
+<a href="#2418" id="2418">2418</a>
+<a href="#2419" id="2419">2419</a>
+<a href="#2420" id="2420">2420</a>
+<a href="#2421" id="2421">2421</a>
+<a href="#2422" id="2422">2422</a>
+<a href="#2423" id="2423">2423</a>
+<a href="#2424" id="2424">2424</a>
+<a href="#2425" id="2425">2425</a>
+<a href="#2426" id="2426">2426</a>
+<a href="#2427" id="2427">2427</a>
+<a href="#2428" id="2428">2428</a>
+<a href="#2429" id="2429">2429</a>
+<a href="#2430" id="2430">2430</a>
+<a href="#2431" id="2431">2431</a>
+<a href="#2432" id="2432">2432</a>
+<a href="#2433" id="2433">2433</a>
+<a href="#2434" id="2434">2434</a>
+<a href="#2435" id="2435">2435</a>
+<a href="#2436" id="2436">2436</a>
+<a href="#2437" id="2437">2437</a>
+<a href="#2438" id="2438">2438</a>
+<a href="#2439" id="2439">2439</a>
+<a href="#2440" id="2440">2440</a>
+<a href="#2441" id="2441">2441</a>
+<a href="#2442" id="2442">2442</a>
+<a href="#2443" id="2443">2443</a>
+<a href="#2444" id="2444">2444</a>
+<a href="#2445" id="2445">2445</a>
+<a href="#2446" id="2446">2446</a>
+<a href="#2447" id="2447">2447</a>
+<a href="#2448" id="2448">2448</a>
+<a href="#2449" id="2449">2449</a>
+<a href="#2450" id="2450">2450</a>
+<a href="#2451" id="2451">2451</a>
+<a href="#2452" id="2452">2452</a>
+<a href="#2453" id="2453">2453</a>
+<a href="#2454" id="2454">2454</a>
+<a href="#2455" id="2455">2455</a>
+<a href="#2456" id="2456">2456</a>
+<a href="#2457" id="2457">2457</a>
+<a href="#2458" id="2458">2458</a>
+<a href="#2459" id="2459">2459</a>
+<a href="#2460" id="2460">2460</a>
+<a href="#2461" id="2461">2461</a>
+<a href="#2462" id="2462">2462</a>
+<a href="#2463" id="2463">2463</a>
+<a href="#2464" id="2464">2464</a>
+<a href="#2465" id="2465">2465</a>
+<a href="#2466" id="2466">2466</a>
+<a href="#2467" id="2467">2467</a>
+<a href="#2468" id="2468">2468</a>
+<a href="#2469" id="2469">2469</a>
+<a href="#2470" id="2470">2470</a>
+<a href="#2471" id="2471">2471</a>
+<a href="#2472" id="2472">2472</a>
+<a href="#2473" id="2473">2473</a>
+<a href="#2474" id="2474">2474</a>
+<a href="#2475" id="2475">2475</a>
+<a href="#2476" id="2476">2476</a>
+<a href="#2477" id="2477">2477</a>
+<a href="#2478" id="2478">2478</a>
+<a href="#2479" id="2479">2479</a>
+<a href="#2480" id="2480">2480</a>
+<a href="#2481" id="2481">2481</a>
+<a href="#2482" id="2482">2482</a>
+<a href="#2483" id="2483">2483</a>
+<a href="#2484" id="2484">2484</a>
+<a href="#2485" id="2485">2485</a>
+<a href="#2486" id="2486">2486</a>
+<a href="#2487" id="2487">2487</a>
+<a href="#2488" id="2488">2488</a>
+<a href="#2489" id="2489">2489</a>
+<a href="#2490" id="2490">2490</a>
+<a href="#2491" id="2491">2491</a>
+<a href="#2492" id="2492">2492</a>
+<a href="#2493" id="2493">2493</a>
+<a href="#2494" id="2494">2494</a>
+<a href="#2495" id="2495">2495</a>
+<a href="#2496" id="2496">2496</a>
+<a href="#2497" id="2497">2497</a>
+<a href="#2498" id="2498">2498</a>
+<a href="#2499" id="2499">2499</a>
+<a href="#2500" id="2500">2500</a>
+<a href="#2501" id="2501">2501</a>
+<a href="#2502" id="2502">2502</a>
+<a href="#2503" id="2503">2503</a>
+<a href="#2504" id="2504">2504</a>
+<a href="#2505" id="2505">2505</a>
+<a href="#2506" id="2506">2506</a>
+<a href="#2507" id="2507">2507</a>
+<a href="#2508" id="2508">2508</a>
+<a href="#2509" id="2509">2509</a>
+<a href="#2510" id="2510">2510</a>
+<a href="#2511" id="2511">2511</a>
+<a href="#2512" id="2512">2512</a>
+<a href="#2513" id="2513">2513</a>
+<a href="#2514" id="2514">2514</a>
+<a href="#2515" id="2515">2515</a>
+<a href="#2516" id="2516">2516</a>
+<a href="#2517" id="2517">2517</a>
+<a href="#2518" id="2518">2518</a>
+<a href="#2519" id="2519">2519</a>
+<a href="#2520" id="2520">2520</a>
+<a href="#2521" id="2521">2521</a>
+<a href="#2522" id="2522">2522</a>
+<a href="#2523" id="2523">2523</a>
+<a href="#2524" id="2524">2524</a>
+<a href="#2525" id="2525">2525</a>
+<a href="#2526" id="2526">2526</a>
+<a href="#2527" id="2527">2527</a>
+<a href="#2528" id="2528">2528</a>
+<a href="#2529" id="2529">2529</a>
+<a href="#2530" id="2530">2530</a>
+<a href="#2531" id="2531">2531</a>
+<a href="#2532" id="2532">2532</a>
+<a href="#2533" id="2533">2533</a>
+<a href="#2534" id="2534">2534</a>
+<a href="#2535" id="2535">2535</a>
+<a href="#2536" id="2536">2536</a>
+<a href="#2537" id="2537">2537</a>
+<a href="#2538" id="2538">2538</a>
+<a href="#2539" id="2539">2539</a>
+<a href="#2540" id="2540">2540</a>
+<a href="#2541" id="2541">2541</a>
+<a href="#2542" id="2542">2542</a>
+<a href="#2543" id="2543">2543</a>
+<a href="#2544" id="2544">2544</a>
+<a href="#2545" id="2545">2545</a>
+<a href="#2546" id="2546">2546</a>
+<a href="#2547" id="2547">2547</a>
+<a href="#2548" id="2548">2548</a>
+<a href="#2549" id="2549">2549</a>
+<a href="#2550" id="2550">2550</a>
+<a href="#2551" id="2551">2551</a>
+<a href="#2552" id="2552">2552</a>
+<a href="#2553" id="2553">2553</a>
+<a href="#2554" id="2554">2554</a>
+<a href="#2555" id="2555">2555</a>
+<a href="#2556" id="2556">2556</a>
+<a href="#2557" id="2557">2557</a>
+<a href="#2558" id="2558">2558</a>
+<a href="#2559" id="2559">2559</a>
+<a href="#2560" id="2560">2560</a>
+<a href="#2561" id="2561">2561</a>
+<a href="#2562" id="2562">2562</a>
+<a href="#2563" id="2563">2563</a>
+<a href="#2564" id="2564">2564</a>
+<a href="#2565" id="2565">2565</a>
+<a href="#2566" id="2566">2566</a>
+<a href="#2567" id="2567">2567</a>
+<a href="#2568" id="2568">2568</a>
+<a href="#2569" id="2569">2569</a>
+<a href="#2570" id="2570">2570</a>
+<a href="#2571" id="2571">2571</a>
+<a href="#2572" id="2572">2572</a>
+<a href="#2573" id="2573">2573</a>
+<a href="#2574" id="2574">2574</a>
+<a href="#2575" id="2575">2575</a>
+<a href="#2576" id="2576">2576</a>
+<a href="#2577" id="2577">2577</a>
+<a href="#2578" id="2578">2578</a>
+<a href="#2579" id="2579">2579</a>
+<a href="#2580" id="2580">2580</a>
+<a href="#2581" id="2581">2581</a>
+<a href="#2582" id="2582">2582</a>
+<a href="#2583" id="2583">2583</a>
+<a href="#2584" id="2584">2584</a>
+<a href="#2585" id="2585">2585</a>
+</pre></div><pre class="rust"><code><span class="kw">use </span>std::{
+    collections::BTreeSet,
+    sync::{
+        atomic::{AtomicU64, Ordering},
+        OnceLock,
+    },
 };
 
-<span class="kw">use </span>ahash::HashSet;
 <span class="kw">use </span>arrow2::{
     array::{
         Array <span class="kw">as </span>ArrowArray, BooleanArray <span class="kw">as </span>ArrowBooleanArray,
@@ -2332,7 +2628,7 @@
 // * [x] latestat sparse-filling
 // * [x] sampling support
 // * [x] clears
-// * [ ] pagination (fast)
+// * [x] pagination (fast)
 // * [ ] overlaps (less dumb)
 // * [ ] selector-based `filtered_index`
 // * [ ] configurable cache bypass
@@ -2416,7 +2712,18 @@
     ///
     /// This represents the number of rows that the caller has iterated on: it is completely
     /// unrelated to the cursors used to track the current position in each individual chunk.
+    ///
+    /// The corresponding index value can be obtained using `unique_index_values[cur_row]`.
+    ///
+    /// `unique_index_values[cur_row]`: [`QueryHandleState::unique_index_values`]
     </span>cur_row: AtomicU64,
+
+    <span class="doccomment">/// All unique index values that can possibly be returned by this query.
+    ///
+    /// Guaranteed ascendingly sorted and deduped.
+    ///
+    /// See also [`QueryHandleState::cur_row`].
+    </span>unique_index_values: Vec&lt;IndexValue&gt;,
 }
 
 <span class="kw">impl</span>&lt;<span class="lifetime">'a</span>&gt; QueryHandle&lt;<span class="lifetime">'a</span>&gt; {
@@ -2557,6 +2864,47 @@
             }
         }
 
+        <span class="comment">// 6. Collect all unique index values.
+        //
+        // Used to achieve ~O(log(n)) pagination.
+        </span><span class="kw">let </span>unique_index_values =
+            <span class="kw">if let </span><span class="prelude-val">Some</span>(using_index_values_stack) = using_index_values_stack.as_ref() {
+                <span class="kw">let </span><span class="kw-2">mut </span>all_unique_index_values = using_index_values_stack.clone();
+                all_unique_index_values.sort();
+                all_unique_index_values
+            } <span class="kw">else </span>{
+                <span class="macro">re_tracing::profile_scope!</span>(<span class="string">"index_values"</span>);
+
+                <span class="kw">let </span><span class="kw-2">mut </span>view_chunks = view_chunks.iter();
+                <span class="kw">let </span>view_chunks = <span class="kw">if let </span><span class="prelude-val">Some</span>(view_pov_chunks_idx) = view_pov_chunks_idx {
+                    Either::Left(view_chunks.nth(view_pov_chunks_idx).into_iter())
+                } <span class="kw">else </span>{
+                    Either::Right(view_chunks)
+                };
+
+                <span class="kw">let </span><span class="kw-2">mut </span>all_unique_index_values: BTreeSet&lt;TimeInt&gt; = view_chunks
+                    .flat_map(|chunks| {
+                        chunks.iter().filter_map(|(_cursor, chunk)| {
+                            <span class="kw">if </span>chunk.is_static() {
+                                <span class="prelude-val">Some</span>(Either::Left(std::iter::once(TimeInt::STATIC)))
+                            } <span class="kw">else </span>{
+                                chunk
+                                    .timelines()
+                                    .get(<span class="kw-2">&amp;</span><span class="self">self</span>.query.filtered_index)
+                                    .map(|time_column| Either::Right(time_column.times()))
+                            }
+                        })
+                    })
+                    .flatten()
+                    .collect();
+
+                <span class="kw">if let </span><span class="prelude-val">Some</span>(filtered_index_values) = <span class="self">self</span>.query.filtered_index_values.as_ref() {
+                    all_unique_index_values.retain(|time| filtered_index_values.contains(time));
+                }
+
+                all_unique_index_values.into_iter().collect_vec()
+            };
+
         QueryHandleState {
             view_contents,
             selected_contents,
@@ -2565,6 +2913,7 @@
             view_pov_chunks_idx,
             using_index_values_stack: Mutex::new(using_index_values_stack),
             cur_row: AtomicU64::new(<span class="number">0</span>),
+            unique_index_values,
         }
     }
 
@@ -2870,45 +3219,108 @@
         <span class="kw-2">&amp;</span><span class="self">self</span>.init().arrow_schema
     }
 
-    <span class="doccomment">/// How many rows of data will be returned?
+    <span class="doccomment">/// Advance all internal cursors so that the next row yielded will correspond to `row_idx`.
     ///
-    /// The number of rows depends and only depends on the _view contents_.
-    /// The _selected contents_ has no influence on this value.
-    </span><span class="comment">//
-    // TODO(cmc): implement this properly, cache the result, etc.
-    </span><span class="kw">pub fn </span>num_rows(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; u64 {
+    /// Does nothing if `row_idx` is out of bounds.
+    ///
+    /// ## Concurrency
+    ///
+    /// Cursors are implemented using atomic variables, which means calling any of the `seek_*`
+    /// while iteration is concurrently ongoing is memory-safe but logically undefined racy
+    /// behavior. Be careful.
+    ///
+    /// ## Performance
+    ///
+    /// This requires going through every chunk once, and for each chunk running a binary search if
+    /// the chunk's time range contains the `index_value`.
+    ///
+    /// I.e.: it's pretty cheap already.
+    </span><span class="attr">#[inline]
+    </span><span class="kw">pub fn </span>seek_to_row(<span class="kw-2">&amp;</span><span class="self">self</span>, row_idx: usize) {
+        <span class="kw">let </span><span class="prelude-val">Some</span>(index_value) = <span class="self">self</span>.init().unique_index_values.get(row_idx) <span class="kw">else </span>{
+            <span class="kw">return</span>;
+        };
+
+        <span class="self">self</span>.seek_to_index_value(<span class="kw-2">*</span>index_value);
+    }
+
+    <span class="doccomment">/// Advance all internal cursors so that the next row yielded will correspond to `index_value`.
+    ///
+    /// If `index_value` isn't present in the dataset, this seeks to the first index value
+    /// available past that point, if any.
+    ///
+    /// ## Concurrency
+    ///
+    /// Cursors are implemented using atomic variables, which means calling any of the `seek_*`
+    /// while iteration is concurrently ongoing is memory-safe but logically undefined racy
+    /// behavior. Be careful.
+    ///
+    /// ## Performance
+    ///
+    /// This requires going through every chunk once, and for each chunk running a binary search if
+    /// the chunk's time range contains the `index_value`.
+    ///
+    /// I.e.: it's pretty cheap already.
+    </span><span class="kw">pub fn </span>seek_to_index_value(<span class="kw-2">&amp;</span><span class="self">self</span>, index_value: IndexValue) {
         <span class="macro">re_tracing::profile_function!</span>();
 
         <span class="kw">let </span>state = <span class="self">self</span>.init();
 
-        <span class="kw">let </span><span class="kw-2">mut </span>view_chunks = state.view_chunks.iter();
-        <span class="kw">let </span>view_chunks = <span class="kw">if let </span><span class="prelude-val">Some</span>(view_pov_chunks_idx) = state.view_pov_chunks_idx {
-            Either::Left(view_chunks.nth(view_pov_chunks_idx).into_iter())
-        } <span class="kw">else </span>{
-            Either::Right(view_chunks)
-        };
-
-        <span class="kw">let </span><span class="kw-2">mut </span>all_unique_timestamps: HashSet&lt;TimeInt&gt; = view_chunks
-            .flat_map(|chunks| {
-                chunks.iter().filter_map(|(_cursor, chunk)| {
-                    <span class="kw">if </span>chunk.is_static() {
-                        <span class="prelude-val">Some</span>(Either::Left(std::iter::once(TimeInt::STATIC)))
-                    } <span class="kw">else </span>{
-                        chunk
-                            .timelines()
-                            .get(<span class="kw-2">&amp;</span><span class="self">self</span>.query.filtered_index)
-                            .map(|time_column| Either::Right(time_column.times()))
-                    }
-                })
-            })
-            .flatten()
-            .collect();
-
-        <span class="kw">if let </span><span class="prelude-val">Some</span>(filtered_index_values) = <span class="self">self</span>.query.filtered_index_values.as_ref() {
-            all_unique_timestamps.retain(|time| filtered_index_values.contains(time));
+        <span class="comment">// NOTE: If there are explicit samples specified, then we need to make sure to properly reset
+        // them each time an arbitrary seek happens.
+        </span><span class="kw">let </span><span class="kw-2">mut </span>using_index_values_stack = state.using_index_values_stack.lock();
+        <span class="kw">if </span>using_index_values_stack.is_some() {
+            <span class="kw">let </span><span class="kw-2">mut </span>index_values = state
+                .unique_index_values
+                .iter()
+                .filter(|&amp;&amp;v| v &gt;= index_value)
+                .copied()
+                .collect_vec();
+            index_values.reverse();
+            <span class="kw-2">*</span>using_index_values_stack = <span class="prelude-val">Some</span>(index_values);
         }
 
-        <span class="kw">let </span>num_rows = all_unique_timestamps.len() <span class="kw">as _</span>;
+        <span class="kw">if </span>index_value.is_static() {
+            <span class="kw">for </span>chunks <span class="kw">in </span><span class="kw-2">&amp;</span>state.view_chunks {
+                <span class="kw">for </span>(cursor, _chunk) <span class="kw">in </span>chunks {
+                    cursor.store(<span class="number">0</span>, Ordering::Relaxed);
+                }
+            }
+            <span class="kw">return</span>;
+        }
+
+        <span class="kw">for </span>chunks <span class="kw">in </span><span class="kw-2">&amp;</span>state.view_chunks {
+            <span class="kw">for </span>(cursor, chunk) <span class="kw">in </span>chunks {
+                <span class="comment">// NOTE: The chunk has been densified already: its global time range is the same as
+                // the time range for the specific component of interest.
+                </span><span class="kw">let </span><span class="prelude-val">Some</span>(time_column) = chunk.timelines().get(<span class="kw-2">&amp;</span><span class="self">self</span>.query.filtered_index) <span class="kw">else </span>{
+                    <span class="kw">continue</span>;
+                };
+
+                <span class="kw">let </span>time_range = time_column.time_range();
+
+                <span class="kw">let </span>new_cursor = <span class="kw">if </span>index_value &lt; time_range.min() {
+                    <span class="number">0
+                </span>} <span class="kw">else if </span>index_value &gt; time_range.max() {
+                    chunk.num_rows() <span class="kw">as </span>u64 <span class="comment">/* yes, one past the end -- not a mistake */
+                </span>} <span class="kw">else </span>{
+                    time_column
+                        .times_raw()
+                        .partition_point(|<span class="kw-2">&amp;</span>time| time &lt; index_value.as_i64())
+                        <span class="kw">as </span>u64
+                };
+
+                cursor.store(new_cursor, Ordering::Relaxed);
+            }
+        }
+    }
+
+    <span class="doccomment">/// How many rows of data will be returned?
+    ///
+    /// The number of rows depends and only depends on the _view contents_.
+    /// The _selected contents_ has no influence on this value.
+    </span><span class="kw">pub fn </span>num_rows(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; u64 {
+        <span class="kw">let </span>num_rows = <span class="self">self</span>.init().unique_index_values.len() <span class="kw">as _</span>;
 
         <span class="kw">if </span><span class="macro">cfg!</span>(debug_assertions) {
             <span class="kw">let </span>expected_num_rows =
@@ -2937,16 +3349,13 @@
     ///
     /// ## Pagination
     ///
-    /// This does not offer any kind of native pagination yet.
-    ///
-    /// To emulate pagination from user-space, use the `Iterator` API:
+    /// Use [`Self::seek_to_row`] and [`Self::seek_to_index_value`]:
     /// ```ignore
-    /// for row in query_handle.into_iter().skip(offset).take(len) {
+    /// query_handle.seek_to_row(42);
+    /// for row in query_handle.into_iter().take(len) {
     ///     // …
     /// }
     /// ```
-    </span><span class="comment">//
-    // TODO(cmc): better/actual pagination
     </span><span class="kw">pub fn </span>next_row(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;Vec&lt;Box&lt;<span class="kw">dyn </span>ArrowArray&gt;&gt;&gt; {
         <span class="macro">re_tracing::profile_function!</span>();
 
@@ -3371,8 +3780,20 @@
 <span class="kw">impl</span>&lt;<span class="lifetime">'a</span>&gt; QueryHandle&lt;<span class="lifetime">'a</span>&gt; {
     <span class="doccomment">/// Returns an iterator backed by [`Self::next_row`].
     </span><span class="attr">#[allow(clippy::should_implement_trait)] </span><span class="comment">// we need an anonymous closure, this won't work
+    </span><span class="kw">pub fn </span>iter(<span class="kw-2">&amp;</span><span class="lifetime">'a </span><span class="self">self</span>) -&gt; <span class="kw">impl </span>Iterator&lt;Item = Vec&lt;Box&lt;<span class="kw">dyn </span>ArrowArray&gt;&gt;&gt; + <span class="lifetime">'a </span>{
+        std::iter::from_fn(<span class="kw">move </span>|| <span class="self">self</span>.next_row())
+    }
+
+    <span class="doccomment">/// Returns an iterator backed by [`Self::next_row`].
+    </span><span class="attr">#[allow(clippy::should_implement_trait)] </span><span class="comment">// we need an anonymous closure, this won't work
     </span><span class="kw">pub fn </span>into_iter(<span class="self">self</span>) -&gt; <span class="kw">impl </span>Iterator&lt;Item = Vec&lt;Box&lt;<span class="kw">dyn </span>ArrowArray&gt;&gt;&gt; + <span class="lifetime">'a </span>{
         std::iter::from_fn(<span class="kw">move </span>|| <span class="self">self</span>.next_row())
+    }
+
+    <span class="doccomment">/// Returns an iterator backed by [`Self::next_row_batch`].
+    </span><span class="attr">#[allow(clippy::should_implement_trait)] </span><span class="comment">// we need an anonymous closure, this won't work
+    </span><span class="kw">pub fn </span>batch_iter(<span class="kw-2">&amp;</span><span class="lifetime">'a </span><span class="self">self</span>) -&gt; <span class="kw">impl </span>Iterator&lt;Item = RecordBatch&gt; + <span class="lifetime">'a </span>{
+        std::iter::from_fn(<span class="kw">move </span>|| <span class="self">self</span>.next_row_batch())
     }
 
     <span class="doccomment">/// Returns an iterator backed by [`Self::next_row_batch`].
@@ -3424,7 +3845,7 @@
     // * [x] num_rows
     // * [x] clears
     // * [ ] timelines returned with selection=none
-    // * [ ] pagination
+    // * [x] pagination
 
     // TODO(cmc): At some point I'd like to stress multi-entity queries too, but that feels less
     // urgent considering how things are implemented (each entity lives in its own index, so it's
@@ -4260,6 +4681,173 @@
         </span>);
 
             <span class="macro">similar_asserts::assert_eq!</span>(expected, got);
+        }
+
+        <span class="prelude-val">Ok</span>(())
+    }
+
+    <span class="attr">#[test]
+    </span><span class="kw">fn </span>pagination() -&gt; anyhow::Result&lt;()&gt; {
+        re_log::setup_logging();
+
+        <span class="kw">let </span>store = create_nasty_store()<span class="question-mark">?</span>;
+        <span class="macro">eprintln!</span>(<span class="string">"{store}"</span>);
+        <span class="kw">let </span>query_cache = QueryCache::new(<span class="kw-2">&amp;</span>store);
+        <span class="kw">let </span>query_engine = QueryEngine {
+            store: <span class="kw-2">&amp;</span>store,
+            cache: <span class="kw-2">&amp;</span>query_cache,
+        };
+
+        <span class="kw">let </span>timeline = Timeline::new_sequence(<span class="string">"frame_nr"</span>);
+        <span class="kw">let </span>entity_path = EntityPath::from(<span class="string">"this/that"</span>);
+
+        <span class="comment">// basic
+        </span>{
+            <span class="kw">let </span>query = QueryExpression::new(timeline);
+            <span class="macro">eprintln!</span>(<span class="string">"{query:#?}:"</span>);
+
+            <span class="kw">let </span>query_handle = query_engine.query(query.clone());
+            <span class="macro">assert_eq!</span>(
+                query_engine.query(query.clone()).into_iter().count() <span class="kw">as </span>u64,
+                query_handle.num_rows(),
+            );
+
+            <span class="kw">let </span>expected_rows = query_handle.batch_iter().collect_vec();
+
+            <span class="kw">for _ in </span><span class="number">0</span>..<span class="number">3 </span>{
+                <span class="kw">for </span>i <span class="kw">in </span><span class="number">0</span>..expected_rows.len() {
+                    query_handle.seek_to_row(i);
+
+                    <span class="kw">let </span>expected = concatenate_record_batches(
+                        query_handle.schema().clone(),
+                        <span class="kw-2">&amp;</span>expected_rows.iter().skip(i).take(<span class="number">3</span>).cloned().collect_vec(),
+                    );
+                    <span class="kw">let </span>got = concatenate_record_batches(
+                        query_handle.schema().clone(),
+                        <span class="kw-2">&amp;</span>query_handle.batch_iter().take(<span class="number">3</span>).collect_vec(),
+                    );
+
+                    <span class="kw">let </span>expected = <span class="macro">format!</span>(<span class="string">"{:#?}"</span>, expected.data.iter().collect_vec());
+                    <span class="kw">let </span>got = <span class="macro">format!</span>(<span class="string">"{:#?}"</span>, got.data.iter().collect_vec());
+
+                    <span class="macro">similar_asserts::assert_eq!</span>(expected, got);
+                }
+            }
+        }
+
+        <span class="comment">// with pov
+        </span>{
+            <span class="kw">let </span><span class="kw-2">mut </span>query = QueryExpression::new(timeline);
+            query.filtered_point_of_view = <span class="prelude-val">Some</span>(ComponentColumnSelector {
+                entity_path: entity_path.clone(),
+                component: MyPoint::name(),
+                join_encoding: Default::default(),
+            });
+            <span class="macro">eprintln!</span>(<span class="string">"{query:#?}:"</span>);
+
+            <span class="kw">let </span>query_handle = query_engine.query(query.clone());
+            <span class="macro">assert_eq!</span>(
+                query_engine.query(query.clone()).into_iter().count() <span class="kw">as </span>u64,
+                query_handle.num_rows(),
+            );
+
+            <span class="kw">let </span>expected_rows = query_handle.batch_iter().collect_vec();
+
+            <span class="kw">for _ in </span><span class="number">0</span>..<span class="number">3 </span>{
+                <span class="kw">for </span>i <span class="kw">in </span><span class="number">0</span>..expected_rows.len() {
+                    query_handle.seek_to_row(i);
+
+                    <span class="kw">let </span>expected = concatenate_record_batches(
+                        query_handle.schema().clone(),
+                        <span class="kw-2">&amp;</span>expected_rows.iter().skip(i).take(<span class="number">3</span>).cloned().collect_vec(),
+                    );
+                    <span class="kw">let </span>got = concatenate_record_batches(
+                        query_handle.schema().clone(),
+                        <span class="kw-2">&amp;</span>query_handle.batch_iter().take(<span class="number">3</span>).collect_vec(),
+                    );
+
+                    <span class="kw">let </span>expected = <span class="macro">format!</span>(<span class="string">"{:#?}"</span>, expected.data.iter().collect_vec());
+                    <span class="kw">let </span>got = <span class="macro">format!</span>(<span class="string">"{:#?}"</span>, got.data.iter().collect_vec());
+
+                    <span class="macro">similar_asserts::assert_eq!</span>(expected, got);
+                }
+            }
+        }
+
+        <span class="comment">// with sampling
+        </span>{
+            <span class="kw">let </span><span class="kw-2">mut </span>query = QueryExpression::new(timeline);
+            query.using_index_values = <span class="prelude-val">Some</span>(
+                [<span class="number">0</span>, <span class="number">15</span>, <span class="number">30</span>, <span class="number">30</span>, <span class="number">45</span>, <span class="number">60</span>, <span class="number">75</span>, <span class="number">90</span>]
+                    .into_iter()
+                    .map(TimeInt::new_temporal)
+                    .chain(std::iter::once(TimeInt::STATIC))
+                    .collect(),
+            );
+            <span class="macro">eprintln!</span>(<span class="string">"{query:#?}:"</span>);
+
+            <span class="kw">let </span>query_handle = query_engine.query(query.clone());
+            <span class="macro">assert_eq!</span>(
+                query_engine.query(query.clone()).into_iter().count() <span class="kw">as </span>u64,
+                query_handle.num_rows(),
+            );
+
+            <span class="kw">let </span>expected_rows = query_handle.batch_iter().collect_vec();
+
+            <span class="kw">for _ in </span><span class="number">0</span>..<span class="number">3 </span>{
+                <span class="kw">for </span>i <span class="kw">in </span><span class="number">0</span>..expected_rows.len() {
+                    query_handle.seek_to_row(i);
+
+                    <span class="kw">let </span>expected = concatenate_record_batches(
+                        query_handle.schema().clone(),
+                        <span class="kw-2">&amp;</span>expected_rows.iter().skip(i).take(<span class="number">3</span>).cloned().collect_vec(),
+                    );
+                    <span class="kw">let </span>got = concatenate_record_batches(
+                        query_handle.schema().clone(),
+                        <span class="kw-2">&amp;</span>query_handle.batch_iter().take(<span class="number">3</span>).collect_vec(),
+                    );
+
+                    <span class="kw">let </span>expected = <span class="macro">format!</span>(<span class="string">"{:#?}"</span>, expected.data.iter().collect_vec());
+                    <span class="kw">let </span>got = <span class="macro">format!</span>(<span class="string">"{:#?}"</span>, got.data.iter().collect_vec());
+
+                    <span class="macro">similar_asserts::assert_eq!</span>(expected, got);
+                }
+            }
+        }
+
+        <span class="comment">// with sparse-fill
+        </span>{
+            <span class="kw">let </span><span class="kw-2">mut </span>query = QueryExpression::new(timeline);
+            query.sparse_fill_strategy = SparseFillStrategy::LatestAtGlobal;
+            <span class="macro">eprintln!</span>(<span class="string">"{query:#?}:"</span>);
+
+            <span class="kw">let </span>query_handle = query_engine.query(query.clone());
+            <span class="macro">assert_eq!</span>(
+                query_engine.query(query.clone()).into_iter().count() <span class="kw">as </span>u64,
+                query_handle.num_rows(),
+            );
+
+            <span class="kw">let </span>expected_rows = query_handle.batch_iter().collect_vec();
+
+            <span class="kw">for _ in </span><span class="number">0</span>..<span class="number">3 </span>{
+                <span class="kw">for </span>i <span class="kw">in </span><span class="number">0</span>..expected_rows.len() {
+                    query_handle.seek_to_row(i);
+
+                    <span class="kw">let </span>expected = concatenate_record_batches(
+                        query_handle.schema().clone(),
+                        <span class="kw-2">&amp;</span>expected_rows.iter().skip(i).take(<span class="number">3</span>).cloned().collect_vec(),
+                    );
+                    <span class="kw">let </span>got = concatenate_record_batches(
+                        query_handle.schema().clone(),
+                        <span class="kw-2">&amp;</span>query_handle.batch_iter().take(<span class="number">3</span>).collect_vec(),
+                    );
+
+                    <span class="kw">let </span>expected = <span class="macro">format!</span>(<span class="string">"{:#?}"</span>, expected.data.iter().collect_vec());
+                    <span class="kw">let </span>got = <span class="macro">format!</span>(<span class="string">"{:#?}"</span>, got.data.iter().collect_vec());
+
+                    <span class="macro">similar_asserts::assert_eq!</span>(expected, got);
+                }
+            }
         }
 
         <span class="prelude-val">Ok</span>(())

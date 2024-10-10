@@ -902,9 +902,9 @@
 
         <span class="kw">let </span>timeline = <span class="self">self</span>.query_handle.query().filtered_index;
 
-        <span class="comment">//TODO(ab, cmc): we probably need a better way to run a paginated query.
-        </span><span class="kw">let </span>data = std::iter::from_fn(|| <span class="self">self</span>.query_handle.next_row())
-            .skip(info.visible_rows.start <span class="kw">as </span>usize)
+        <span class="self">self</span>.query_handle
+            .seek_to_row(info.visible_rows.start <span class="kw">as </span>usize);
+        <span class="kw">let </span>data = std::iter::from_fn(|| <span class="self">self</span>.query_handle.next_row())
             .take((info.visible_rows.end - info.visible_rows.start) <span class="kw">as </span>usize)
             .collect();
 

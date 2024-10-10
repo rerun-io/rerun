@@ -14,40 +14,40 @@
 </div><span id="structfield.source" class="structfield section-header"><a href="#structfield.source" class="anchor field">§</a><code>source: <a class="enum" href="enum.TimePanelSource.html" title="enum re_time_panel::TimePanelSource">TimePanelSource</a></code></span><div class="docblock"><p>Which source is the time panel controlling</p>
 </div><h2 id="implementations" class="section-header">Implementations<a href="#implementations" class="anchor">§</a></h2><div id="implementations-list"><details class="toggle implementors-toggle" open><summary><section id="impl-TimePanel" class="impl"><a class="src rightside" href="../src/re_time_panel/lib.rs.html#140-963">source</a><a href="#impl-TimePanel" class="anchor">§</a><h3 class="code-header">impl <a class="struct" href="struct.TimePanel.html" title="struct re_time_panel::TimePanel">TimePanel</a></h3></section></summary><div class="impl-items"><section id="method.new_blueprint_panel" class="method"><a class="src rightside" href="../src/re_time_panel/lib.rs.html#141-146">source</a><h4 class="code-header">pub fn <a href="#method.new_blueprint_panel" class="fn">new_blueprint_panel</a>() -&gt; Self</h4></section><section id="method.show_panel" class="method"><a class="src rightside" href="../src/re_time_panel/lib.rs.html#148-266">source</a><h4 class="code-header">pub fn <a href="#method.show_panel" class="fn">show_panel</a>(
     &amp;mut self,
-    ctx: &amp;<a class="struct" href="../re_viewer_context/viewer_context/struct.ViewerContext.html" title="struct re_viewer_context::viewer_context::ViewerContext">ViewerContext</a>&lt;'_&gt;,
+    ctx: &amp;ViewerContext&lt;'_&gt;,
     viewport_blueprint: &amp;ViewportBlueprint,
     entity_db: &amp;<a class="struct" href="../re_entity_db/entity_db/struct.EntityDb.html" title="struct re_entity_db::entity_db::EntityDb">EntityDb</a>,
-    rec_cfg: &amp;<a class="struct" href="../re_viewer_context/viewer_context/struct.RecordingConfig.html" title="struct re_viewer_context::viewer_context::RecordingConfig">RecordingConfig</a>,
+    rec_cfg: &amp;RecordingConfig,
     ui: &amp;mut Ui,
     state: PanelState
 )</h4></section><section id="method.collapsed_ui" class="method"><a class="src rightside" href="../src/re_time_panel/lib.rs.html#269-323">source</a><h4 class="code-header">pub(crate) fn <a href="#method.collapsed_ui" class="fn">collapsed_ui</a>(
     &amp;mut self,
-    ctx: &amp;<a class="struct" href="../re_viewer_context/viewer_context/struct.ViewerContext.html" title="struct re_viewer_context::viewer_context::ViewerContext">ViewerContext</a>&lt;'_&gt;,
+    ctx: &amp;ViewerContext&lt;'_&gt;,
     entity_db: &amp;<a class="struct" href="../re_entity_db/entity_db/struct.EntityDb.html" title="struct re_entity_db::entity_db::EntityDb">EntityDb</a>,
     ui: &amp;mut Ui,
-    time_ctrl: &amp;mut <a class="struct" href="../re_viewer_context/time_control/struct.TimeControl.html" title="struct re_viewer_context::time_control::TimeControl">TimeControl</a>
+    time_ctrl: &amp;mut TimeControl
 )</h4></section><section id="method.expanded_ui" class="method"><a class="src rightside" href="../src/re_time_panel/lib.rs.html#325-509">source</a><h4 class="code-header">pub(crate) fn <a href="#method.expanded_ui" class="fn">expanded_ui</a>(
     &amp;mut self,
-    ctx: &amp;<a class="struct" href="../re_viewer_context/viewer_context/struct.ViewerContext.html" title="struct re_viewer_context::viewer_context::ViewerContext">ViewerContext</a>&lt;'_&gt;,
+    ctx: &amp;ViewerContext&lt;'_&gt;,
     viewport_blueprint: &amp;ViewportBlueprint,
     entity_db: &amp;<a class="struct" href="../re_entity_db/entity_db/struct.EntityDb.html" title="struct re_entity_db::entity_db::EntityDb">EntityDb</a>,
     ui: &amp;mut Ui,
-    time_ctrl: &amp;mut <a class="struct" href="../re_viewer_context/time_control/struct.TimeControl.html" title="struct re_viewer_context::time_control::TimeControl">TimeControl</a>
+    time_ctrl: &amp;mut TimeControl
 )</h4></section><section id="method.tree_ui" class="method"><a class="src rightside" href="../src/re_time_panel/lib.rs.html#513-567">source</a><h4 class="code-header">pub(crate) fn <a href="#method.tree_ui" class="fn">tree_ui</a>(
     &amp;mut self,
-    ctx: &amp;<a class="struct" href="../re_viewer_context/viewer_context/struct.ViewerContext.html" title="struct re_viewer_context::viewer_context::ViewerContext">ViewerContext</a>&lt;'_&gt;,
+    ctx: &amp;ViewerContext&lt;'_&gt;,
     viewport_blueprint: &amp;ViewportBlueprint,
     entity_db: &amp;<a class="struct" href="../re_entity_db/entity_db/struct.EntityDb.html" title="struct re_entity_db::entity_db::EntityDb">EntityDb</a>,
-    time_ctrl: &amp;mut <a class="struct" href="../re_viewer_context/time_control/struct.TimeControl.html" title="struct re_viewer_context::time_control::TimeControl">TimeControl</a>,
+    time_ctrl: &amp;mut TimeControl,
     time_area_response: &amp;Response,
     time_area_painter: &amp;Painter,
     ui: &amp;mut Ui
 )</h4></section><section id="method.show_tree" class="method"><a class="src rightside" href="../src/re_time_panel/lib.rs.html#570-725">source</a><h4 class="code-header">pub(crate) fn <a href="#method.show_tree" class="fn">show_tree</a>(
     &amp;mut self,
-    ctx: &amp;<a class="struct" href="../re_viewer_context/viewer_context/struct.ViewerContext.html" title="struct re_viewer_context::viewer_context::ViewerContext">ViewerContext</a>&lt;'_&gt;,
+    ctx: &amp;ViewerContext&lt;'_&gt;,
     viewport_blueprint: &amp;ViewportBlueprint,
     entity_db: &amp;<a class="struct" href="../re_entity_db/entity_db/struct.EntityDb.html" title="struct re_entity_db::entity_db::EntityDb">EntityDb</a>,
-    time_ctrl: &amp;mut <a class="struct" href="../re_viewer_context/time_control/struct.TimeControl.html" title="struct re_viewer_context::time_control::TimeControl">TimeControl</a>,
+    time_ctrl: &amp;mut TimeControl,
     time_area_response: &amp;Response,
     time_area_painter: &amp;Painter,
     last_path_part: <a class="enum" href="https://doc.rust-lang.org/1.79.0/core/option/enum.Option.html" title="enum core::option::Option">Option</a>&lt;&amp;EntityPathPart&gt;,
@@ -56,20 +56,20 @@
     show_root_as: &amp;<a class="primitive" href="https://doc.rust-lang.org/1.79.0/std/primitive.str.html">str</a>
 )</h4></section><section id="method.show_children" class="method"><a class="src rightside" href="../src/re_time_panel/lib.rs.html#728-903">source</a><h4 class="code-header">pub(crate) fn <a href="#method.show_children" class="fn">show_children</a>(
     &amp;mut self,
-    ctx: &amp;<a class="struct" href="../re_viewer_context/viewer_context/struct.ViewerContext.html" title="struct re_viewer_context::viewer_context::ViewerContext">ViewerContext</a>&lt;'_&gt;,
+    ctx: &amp;ViewerContext&lt;'_&gt;,
     viewport_blueprint: &amp;ViewportBlueprint,
     entity_db: &amp;<a class="struct" href="../re_entity_db/entity_db/struct.EntityDb.html" title="struct re_entity_db::entity_db::EntityDb">EntityDb</a>,
-    time_ctrl: &amp;mut <a class="struct" href="../re_viewer_context/time_control/struct.TimeControl.html" title="struct re_viewer_context::time_control::TimeControl">TimeControl</a>,
+    time_ctrl: &amp;mut TimeControl,
     time_area_response: &amp;Response,
     time_area_painter: &amp;Painter,
     tree: &amp;<a class="struct" href="../re_entity_db/entity_tree/struct.EntityTree.html" title="struct re_entity_db::entity_tree::EntityTree">EntityTree</a>,
     ui: &amp;mut Ui
 )</h4></section><section id="method.top_row_ui" class="method"><a class="src rightside" href="../src/re_time_panel/lib.rs.html#905-962">source</a><h4 class="code-header">pub(crate) fn <a href="#method.top_row_ui" class="fn">top_row_ui</a>(
     &amp;mut self,
-    ctx: &amp;<a class="struct" href="../re_viewer_context/viewer_context/struct.ViewerContext.html" title="struct re_viewer_context::viewer_context::ViewerContext">ViewerContext</a>&lt;'_&gt;,
+    ctx: &amp;ViewerContext&lt;'_&gt;,
     entity_db: &amp;<a class="struct" href="../re_entity_db/entity_db/struct.EntityDb.html" title="struct re_entity_db::entity_db::EntityDb">EntityDb</a>,
     ui: &amp;mut Ui,
-    time_ctrl: &amp;mut <a class="struct" href="../re_viewer_context/time_control/struct.TimeControl.html" title="struct re_viewer_context::time_control::TimeControl">TimeControl</a>
+    time_ctrl: &amp;mut TimeControl
 )</h4></section></div></details></div><h2 id="trait-implementations" class="section-header">Trait Implementations<a href="#trait-implementations" class="anchor">§</a></h2><div id="trait-implementations-list"><details class="toggle implementors-toggle" open><summary><section id="impl-Default-for-TimePanel" class="impl"><a class="src rightside" href="../src/re_time_panel/lib.rs.html#127-138">source</a><a href="#impl-Default-for-TimePanel" class="anchor">§</a><h3 class="code-header">impl <a class="trait" href="https://doc.rust-lang.org/1.79.0/core/default/trait.Default.html" title="trait core::default::Default">Default</a> for <a class="struct" href="struct.TimePanel.html" title="struct re_time_panel::TimePanel">TimePanel</a></h3></section></summary><div class="impl-items"><details class="toggle method-toggle" open><summary><section id="method.default" class="method trait-impl"><a class="src rightside" href="../src/re_time_panel/lib.rs.html#128-137">source</a><a href="#method.default" class="anchor">§</a><h4 class="code-header">fn <a href="https://doc.rust-lang.org/1.79.0/core/default/trait.Default.html#tymethod.default" class="fn">default</a>() -&gt; Self</h4></section></summary><div class='docblock'>Returns the “default value” for a type. <a href="https://doc.rust-lang.org/1.79.0/core/default/trait.Default.html#tymethod.default">Read more</a></div></details></div></details><details class="toggle implementors-toggle" open><summary><section id="impl-Deserialize%3C'de%3E-for-TimePanel" class="impl"><a class="src rightside" href="../src/re_time_panel/lib.rs.html#104">source</a><a href="#impl-Deserialize%3C'de%3E-for-TimePanel" class="anchor">§</a><h3 class="code-header">impl&lt;'de&gt; <a class="trait" href="https://docs.rs/serde/1.0.196/serde/de/trait.Deserialize.html" title="trait serde::de::Deserialize">Deserialize</a>&lt;'de&gt; for <a class="struct" href="struct.TimePanel.html" title="struct re_time_panel::TimePanel">TimePanel</a><div class="where">where
     <a class="struct" href="struct.TimePanel.html" title="struct re_time_panel::TimePanel">TimePanel</a>: <a class="trait" href="https://doc.rust-lang.org/1.79.0/core/default/trait.Default.html" title="trait core::default::Default">Default</a>,</div></h3></section></summary><div class="impl-items"><details class="toggle method-toggle" open><summary><section id="method.deserialize" class="method trait-impl"><a class="src rightside" href="../src/re_time_panel/lib.rs.html#104">source</a><a href="#method.deserialize" class="anchor">§</a><h4 class="code-header">fn <a href="https://docs.rs/serde/1.0.196/serde/de/trait.Deserialize.html#tymethod.deserialize" class="fn">deserialize</a>&lt;__D&gt;(__deserializer: __D) -&gt; <a class="enum" href="https://doc.rust-lang.org/1.79.0/core/result/enum.Result.html" title="enum core::result::Result">Result</a>&lt;Self, __D::<a class="associatedtype" href="https://docs.rs/serde/1.0.196/serde/de/trait.Deserializer.html#associatedtype.Error" title="type serde::de::Deserializer::Error">Error</a>&gt;<div class="where">where
     __D: <a class="trait" href="https://docs.rs/serde/1.0.196/serde/de/trait.Deserializer.html" title="trait serde::de::Deserializer">Deserializer</a>&lt;'de&gt;,</div></h4></section></summary><div class='docblock'>Deserialize this value from the given Serde deserializer. <a href="https://docs.rs/serde/1.0.196/serde/de/trait.Deserialize.html#tymethod.deserialize">Read more</a></div></details></div></details><details class="toggle implementors-toggle" open><summary><section id="impl-Serialize-for-TimePanel" class="impl"><a class="src rightside" href="../src/re_time_panel/lib.rs.html#104">source</a><a href="#impl-Serialize-for-TimePanel" class="anchor">§</a><h3 class="code-header">impl <a class="trait" href="https://docs.rs/serde/1.0.196/serde/ser/trait.Serialize.html" title="trait serde::ser::Serialize">Serialize</a> for <a class="struct" href="struct.TimePanel.html" title="struct re_time_panel::TimePanel">TimePanel</a></h3></section></summary><div class="impl-items"><details class="toggle method-toggle" open><summary><section id="method.serialize" class="method trait-impl"><a class="src rightside" href="../src/re_time_panel/lib.rs.html#104">source</a><a href="#method.serialize" class="anchor">§</a><h4 class="code-header">fn <a href="https://docs.rs/serde/1.0.196/serde/ser/trait.Serialize.html#tymethod.serialize" class="fn">serialize</a>&lt;__S&gt;(&amp;self, __serializer: __S) -&gt; <a class="enum" href="https://doc.rust-lang.org/1.79.0/core/result/enum.Result.html" title="enum core::result::Result">Result</a>&lt;__S::<a class="associatedtype" href="https://docs.rs/serde/1.0.196/serde/ser/trait.Serializer.html#associatedtype.Ok" title="type serde::ser::Serializer::Ok">Ok</a>, __S::<a class="associatedtype" href="https://docs.rs/serde/1.0.196/serde/ser/trait.Serializer.html#associatedtype.Error" title="type serde::ser::Serializer::Error">Error</a>&gt;<div class="where">where
