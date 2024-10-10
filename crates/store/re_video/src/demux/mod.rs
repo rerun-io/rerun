@@ -175,7 +175,7 @@ impl GroupOfPictures {
 /// A single sample in a video.
 #[derive(Debug, Clone)]
 pub struct Sample {
-    /// The start of a new [`GroupOfPictures`]?
+    /// Is t his the start of a new [`GroupOfPictures`]?
     pub is_sync: bool,
 
     /// Time at which this sample appears in the decoded bitstream, in time units.
