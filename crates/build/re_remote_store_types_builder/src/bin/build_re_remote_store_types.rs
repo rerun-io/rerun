@@ -1,3 +1,8 @@
+//! This binary runs the remote store gRPC service codegen manually.
+//!
+//! It is easiest to call this using `pixi run codegen-rstore`,
+//! which will set up the necessary tools.
+
 #![allow(clippy::unwrap_used)]
 
 use camino::Utf8Path;

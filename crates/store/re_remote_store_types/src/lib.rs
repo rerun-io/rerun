@@ -1,3 +1,11 @@
+//! This crate contains generated types for the remote store gRPC service API.
+//! Generation is done using the `re_remote_store_types_builder` crate.
+//!
+//! We want clear separation between 'internal' types and gRPC types and don't want
+//! to use gRPC types in the rerun viewer codebase. That's why we implement all the
+//! necessary conversion code (in the form of `From` and `TryFrom` traits) in this crate.
+//!
+
 // Ignoring all warnings for the auto-generated code.
 #![allow(clippy::doc_markdown)]
 #![allow(clippy::derive_partial_eq_without_eq)]
@@ -5,6 +13,7 @@
 #![allow(clippy::unwrap_used)]
 #![allow(clippy::wildcard_imports)]
 #![allow(clippy::manual_is_variant_and)]
+/// Generated types for the remote store gRPC service API v0.
 pub mod v0 {
     #[path = "../v0/rerun.remote_store.v0.rs"]
     mod _v0;

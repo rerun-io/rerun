@@ -14,10 +14,10 @@ re_log_types.workspace = true
 re_dataframe.workspace = true
 
 # External
+prost.workspace = true
 thiserror.workspace = true
 tonic.workspace = true
 tonic-build.workspace = true
-prost.workspace = true
 
 [lints]
 workspace = true

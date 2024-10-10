@@ -28,7 +28,7 @@
     "rust-analyzer.cargo.buildScripts.overrideCommand": [
         "cargo",
         "check",
-        "--quiet",
+        "--all-targets",
         "--message-format=json",
         // We shouldn't need this, except we do based on my empirical testing.
         "--target-dir=target_ra",

@@ -1,3 +1,8 @@
+//! This crate contains logic for generating remote store gRPC API types as defined in
+//! `re_remote_store_types` proto files. We are currently generating both client and server
+//! definitions in the same file.
+//!
+
 #![allow(clippy::unwrap_used)]
 
 use std::path::Path;
