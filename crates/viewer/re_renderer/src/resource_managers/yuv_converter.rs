@@ -6,9 +6,9 @@ use crate::{
     renderer::{screen_triangle_vertex_shader, DrawData, DrawError, Renderer},
     wgpu_resources::{
         BindGroupDesc, BindGroupEntry, BindGroupLayoutDesc, GpuBindGroup, GpuBindGroupLayoutHandle,
-        GpuRenderPipelineHandle, GpuTexture, PipelineLayoutDesc, RenderPipelineDesc, TextureDesc,
+        GpuRenderPipelineHandle, GpuTexture, PipelineLayoutDesc, RenderPipelineDesc,
     },
-    DebugLabel, RenderContext,
+    RenderContext,
 };
 
 use super::ColorPrimaries;
@@ -276,11 +276,17 @@ impl DrawData for YuvFormatConversionTask {
 }
 
 impl YuvFormatConversionTask {
+    /// Format that a target texture must have in order to be used as output of this converter.
+    ///
     /// sRGB encoded 8 bit texture.
     ///
     /// Not using [`wgpu::TextureFormat::Rgba8UnormSrgb`] since consumers typically consume this
     /// texture with software EOTF ("to linear") for more flexibility.
     pub const OUTPUT_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba8Unorm;
+
+    /// Usage flags that a target texture must have in order to be used as output of this converter.
+    pub const REQUIRED_TARGET_TEXTURE_USAGE_FLAGS: wgpu::TextureUsages =
+        wgpu::TextureUsages::RENDER_ATTACHMENT;
 
     /// Creates a new conversion task that can be used with [`YuvFormatConverter`].
     ///
@@ -292,37 +298,41 @@ impl YuvFormatConversionTask {
         yuv_range: YuvRange,
         primaries: ColorPrimaries,
         input_data: &GpuTexture,
-        output_label: &DebugLabel,
-        output_width_height: [u32; 2],
+        target_texture: &GpuTexture,
     ) -> Self {
-        let target_texture = ctx.gpu_resources.textures.alloc(
-            &ctx.device,
-            &TextureDesc {
-                label: output_label.clone(),
-                size: wgpu::Extent3d {
-                    width: output_width_height[0],
-                    height: output_width_height[1],
-                    depth_or_array_layers: 1,
-                },
-                mip_level_count: 1, // We don't have mipmap level generation yet!
-                sample_count: 1,
-                dimension: wgpu::TextureDimension::D2,
-                format: Self::OUTPUT_FORMAT,
-                usage: wgpu::TextureUsages::TEXTURE_BINDING
-                    | wgpu::TextureUsages::COPY_DST
-                    | wgpu::TextureUsages::RENDER_ATTACHMENT,
-            },
-        );
+        // TODO:
+        // let target_texture = ctx.gpu_resources.textures.alloc(
+        //     &ctx.device,
+        //     &TextureDesc {
+        //         label: output_label.clone(),
+        //         size: wgpu::Extent3d {
+        //             width: output_width_height[0],
+        //             height: output_width_height[1],
+        //             depth_or_array_layers: 1,
+        //         },
+        //         mip_level_count: 1, // We don't have mipmap level generation yet!
+        //         sample_count: 1,
+        //         dimension: wgpu::TextureDimension::D2,
+        //         format: Self::OUTPUT_FORMAT,
+        //         usage: output_usage_flags | wgpu::TextureUsages::RENDER_ATTACHMENT,
+        //     },
+        // );
 
+        // TODO: validate target_texture
+
+        let target_label = target_texture.creation_desc.label.clone();
         let renderer = ctx.renderer::<YuvFormatConverter>();
 
         let uniform_buffer = create_and_fill_uniform_buffer(
             ctx,
-            format!("{output_label}_conversion").into(),
+            format!("{target_label}_conversion").into(),
             gpu_data::UniformBuffer {
                 yuv_layout: yuv_layout as _,
                 primaries: primaries as _,
-                target_texture_size: output_width_height,
+                target_texture_size: [
+                    target_texture.creation_desc.size.width,
+                    target_texture.creation_desc.size.height,
+                ],
                 yuv_range: (yuv_range as u32).into(),
 
                 _end_padding: Default::default(),
@@ -344,15 +354,12 @@ impl YuvFormatConversionTask {
 
         Self {
             bind_group,
-            target_texture,
+            target_texture: target_texture.clone(),
         }
     }
 
     /// Runs the conversion from the input texture data.
-    pub fn convert_input_data_to_texture(
-        self,
-        ctx: &RenderContext,
-    ) -> Result<GpuTexture, DrawError> {
+    pub fn convert_input_data_to_texture(self, ctx: &RenderContext) -> Result<(), DrawError> {
         // TODO(andreas): Does this have to be on the global view encoder?
         // If this ever becomes a problem we could easily schedule this to another encoder as long as
         // we guarantee that the conversion is enqueued before the resulting texture is used.
@@ -378,9 +385,7 @@ impl YuvFormatConversionTask {
             crate::draw_phases::DrawPhase::Opaque, // Don't care about the phase.
             &mut pass,
             &self,
-        )?;
-
-        Ok(self.target_texture)
+        )
     }
 }
 
