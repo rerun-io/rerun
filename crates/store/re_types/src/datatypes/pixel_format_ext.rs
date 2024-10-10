@@ -63,6 +63,7 @@ impl PixelFormat {
     /// The color model derived from this pixel format.
     #[inline]
     pub fn color_model(&self) -> ColorModel {
+        #[allow(clippy::match_same_arms)]
         match self {
             Self::Y_U_V12_FullRange
             | Self::Y_U_V16_FullRange
