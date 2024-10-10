@@ -53,6 +53,7 @@ image = { workspace = true, features = [
 itertools.workspace = true
 nohash-hasher.workspace = true
 once_cell.workspace = true
+ordered-float.workspace = true
 serde.workspace = true
 smallvec = { workspace = true, features = ["serde"] }
 vec1 = { workspace = true, features = ["smallvec-v1"] }
