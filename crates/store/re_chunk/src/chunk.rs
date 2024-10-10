@@ -707,6 +707,8 @@ impl Chunk {
 
     /// Unconditionally inserts an [`ArrowListArray`] as a component column.
     ///
+    /// Removes and replaces the column if it already exists.
+    ///
     /// This will fail if the end result is malformed in any way -- see [`Self::sanity_check`].
     #[inline]
     pub fn add_component(
@@ -719,6 +721,8 @@ impl Chunk {
     }
 
     /// Unconditionally inserts a [`TimeColumn`].
+    ///
+    /// Removes and replaces the column if it already exists.
     ///
     /// This will fail if the end result is malformed in any way -- see [`Self::sanity_check`].
     #[inline]
