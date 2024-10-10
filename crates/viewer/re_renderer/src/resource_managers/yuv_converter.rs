@@ -159,7 +159,7 @@ pub enum YuvPixelLayout {
     /// 4:0:0, single plane of chroma only.
     /// Also known as I400
     ///
-    /// Expects single channel texture format.
+    /// Expects single channel data texture format.
     ///
     /// Note that we still convert this to RGBA, for convenience.
     ///

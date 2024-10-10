@@ -12,7 +12,7 @@ use crate::{
 /// Since with YUV content the color space is often less clear, we always explicitly
 /// specify it.
 ///
-/// Ffmpeg's documentation has a short & good overview of these relationships:
+/// Ffmpeg's documentation has a short & good overview of the relationship of YUV & color primaries:
 /// <https://trac.ffmpeg.org/wiki/colorspace#WhatiscolorspaceWhyshouldwecare/>
 ///
 /// Values need to be kept in sync with `yuv_converter.wgsl`

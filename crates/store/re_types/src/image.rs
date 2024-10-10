@@ -270,12 +270,7 @@ fn test_find_non_empty_dim_indices() {
 /// Type of color primaries a given image is in.
 ///
 /// This applies both to YUV and RGB formats, but if not specified otherwise
-/// we assume BT.709 primaries for all RGB(A) 8bits per channel content (details below on [`ColorPrimaries::Bt709`]).
-/// Since with YUV content the color space is often less clear, we always explicitly
-/// specify it.
-///
-/// Ffmpeg's documentation has a short & good overview of these relationships:
-/// <https://trac.ffmpeg.org/wiki/colorspace#WhatiscolorspaceWhyshouldwecare/>
+/// we assume BT.709 primaries for all RGB(A) 8bits per channel content.
 #[derive(Clone, Copy, Debug)]
 pub enum ColorPrimaries {
     /// BT.601 (aka. SDTV, aka. Rec.601)
@@ -287,13 +282,13 @@ pub enum ColorPrimaries {
     ///
     /// Wiki: <https://en.wikipedia.org/wiki/YCbCr#ITU-R_BT.709_conversion/>
     ///
-    /// These are the same primaries we usually assume and use for all our rendering
+    /// These are the same primaries we usually assume and use for all of Rerun's rendering
     /// since they are the same primaries used by sRGB.
     /// <https://en.wikipedia.org/wiki/Rec._709#Relationship_to_sRGB/>
     /// The OETF/EOTF function (<https://en.wikipedia.org/wiki/Transfer_functions_in_imaging/>) is different,
     /// but for all other purposes they are the same.
     /// (The only reason for us to convert to optical units ("linear" instead of "gamma") is for
-    /// lighting & tonemapping where we typically start out with an sRGB image!)
+    /// lighting computation & tonemapping where we typically start out with sRGB anyways!)
     Bt709,
     //
     // Not yet supported. These vary a lot more from the other two!
@@ -321,6 +316,7 @@ pub fn rgb_from_yuv(
 
     // rescale YUV values
     if limited_range {
+        // Via https://en.wikipedia.org/wiki/YCbCr#ITU-R_BT.601_conversion:
         // "The resultant signals range from 16 to 235 for Y′ (Cb and Cr range from 16 to 240);
         // the values from 0 to 15 are called footroom, while the values from 236 to 255 are called headroom."
         y = (y - 16.0) / 219.0;

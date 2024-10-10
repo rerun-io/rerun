@@ -50,6 +50,9 @@ fn srgb_from_yuv(yuv: vec3f, primaries: u32, range: u32) -> vec3f {
 
     switch (range) {
         case YUV_RANGE_LIMITED: {
+            // Via https://en.wikipedia.org/wiki/YCbCr#ITU-R_BT.601_conversion:
+            // "The resultant signals range from 16 to 235 for Y′ (Cb and Cr range from 16 to 240);
+            // the values from 0 to 15 are called footroom, while the values from 236 to 255 are called headroom."
             y = (yuv[0] - 16.0) / 219.0;
             u = (yuv[1] - 128.0) / 224.0;
             v = (yuv[2] - 128.0) / 224.0;
