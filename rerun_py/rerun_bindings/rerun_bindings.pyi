@@ -61,10 +61,31 @@ class RecordingView:
         """
         Filter the view to only include data at the given index values.
 
+        The index values returned will be the intersection between the provided values and the
+        original index.
+
         This requires index values to be a precise match.  Index values in Rerun are
         represented as i64 sequence counts or nanoseconds. This API does not expose an interface
         in floating point seconds, as the numerical conversion would risk false mismatches.
         """
+        ...
+
+    def using_index_values(self, values: IndexValuesLike) -> RecordingView:
+        """
+        Replace the index in the view with the provided values.
+
+        The output view will always have the same number of rows as the provided values, even if
+        those rows are empty.  Use with `.fill_latest_at()` to populate these rows with the most
+        recent data.
+
+        This requires index values to be a precise match.  Index values in Rerun are
+        represented as i64 sequence counts or nanoseconds. This API does not expose an interface
+        in floating point seconds, as the numerical conversion would risk false mismatches.
+        """
+        ...
+
+    def fill_latest_at(self) -> RecordingView:
+        """Populate any null values in a row with the latest valid data on the timeline."""
         ...
 
     def select(self, *args: AnyColumn, columns: Optional[Sequence[AnyColumn]] = None) -> pa.RecordBatchReader: ...
