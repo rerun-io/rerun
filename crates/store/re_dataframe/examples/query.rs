@@ -4,7 +4,8 @@ use itertools::Itertools;
 
 use re_chunk::TimeInt;
 use re_chunk_store::{
-    ChunkStore, ChunkStoreConfig, QueryExpression, SparseFillStrategy, Timeline, VersionPolicy,
+    ChunkStore, ChunkStoreConfig, ComponentColumnSelector, QueryExpression, SparseFillStrategy,
+    Timeline, VersionPolicy,
 };
 use re_dataframe::{QueryCache, QueryEngine};
 use re_log_types::{EntityPathFilter, ResolvedTimeRange, StoreKind};
@@ -59,15 +60,14 @@ fn main() -> anyhow::Result<()> {
             cache: &query_cache,
         };
 
-        let mut query = QueryExpression::new(timeline);
-        query.view_contents = Some(
-            query_engine
-                .iter_entity_paths(&entity_path_filter)
-                .map(|entity_path| (entity_path, None))
-                .collect(),
-        );
-        query.filtered_index_range = Some(ResolvedTimeRange::new(time_from, time_to));
-        query.sparse_fill_strategy = SparseFillStrategy::LatestAtGlobal;
+        eprintln!("{store}");
+
+        let mut query = QueryExpression::new(Timeline::new_sequence("my_index"));
+        query.view_contents = Some([("points".into(), None)].into_iter().collect());
+        query.filtered_point_of_view = Some(ComponentColumnSelector::new_for_component_name(
+            "points".into(),
+            "rerun.components.Color".into(),
+        ));
         eprintln!("{query:#?}:");
 
         let query_handle = query_engine.query(query.clone());
