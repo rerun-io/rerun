@@ -37,6 +37,7 @@ version = "0.19.0-alpha.3"
 re_build_info = { path = "crates/build/re_build_info", version = "=0.19.0-alpha.3", default-features = false }
 re_build_tools = { path = "crates/build/re_build_tools", version = "=0.19.0-alpha.3", default-features = false }
 re_dev_tools = { path = "crates/build/re_dev_tools", version = "=0.19.0-alpha.3", default-features = false }
+re_remote_store_types_builder = { path = "crates/build/re_remote_store_types_builder", version = "=0.19.0-alpha.3", default-features = false }
 re_types_builder = { path = "crates/build/re_types_builder", version = "=0.19.0-alpha.3", default-features = false }
 
 # crates/store:
@@ -50,6 +51,7 @@ re_format_arrow = { path = "crates/store/re_format_arrow", version = "=0.19.0-al
 re_log_encoding = { path = "crates/store/re_log_encoding", version = "=0.19.0-alpha.3", default-features = false }
 re_log_types = { path = "crates/store/re_log_types", version = "=0.19.0-alpha.3", default-features = false }
 re_query = { path = "crates/store/re_query", version = "=0.19.0-alpha.3", default-features = false }
+re_remote_store_types = { path = "crates/store/re_remote_store_types", version = "=0.19.0-alpha.3", default-features = false }
 re_sdk_comms = { path = "crates/store/re_sdk_comms", version = "=0.19.0-alpha.3", default-features = false }
 re_types = { path = "crates/store/re_types", version = "=0.19.0-alpha.3", default-features = false }
 re_types_blueprint = { path = "crates/store/re_types_blueprint", version = "=0.19.0-alpha.3", default-features = false }
@@ -103,7 +105,7 @@ re_viewport_blueprint = { path = "crates/viewer/re_viewport_blueprint", version 
 re_web_viewer_server = { path = "crates/viewer/re_web_viewer_server", version = "=0.19.0-alpha.3", default-features = false }
 
 # Rerun crates in other repos:
-ewebsock = "0.6.0"
+ewebsock = { git = "https://github.com/rerun-io/ewebsock", rev = "1a9e78aa18390511476f9e2c0453502f11a7aa78" }
 re_math = "0.20.0"
 
 # egui-crates:
@@ -222,6 +224,7 @@ pollster = "0.3"
 prettyplease = "0.2"
 proc-macro2 = { version = "1.0", default-features = false }
 profiling = { version = "1.0.12", default-features = false }
+prost = "0.13.3"
 puffin = "0.19.1"
 puffin_http = "0.16"
 pyo3 = "0.21.2"
@@ -261,12 +264,14 @@ tinystl = { version = "0.0.3", default-features = false }
 tinyvec = { version = "1.6", features = ["alloc", "rustc_1_55"] }
 tobj = "4.0"
 toml = { version = "0.8.10", default-features = false }
+tonic = "0.12.3"
+tonic-build = "0.12.3"
 tracing = { version = "0.1", default-features = false }
-tungstenite = { version = "0.20", default-features = false }
+tungstenite = { version = "0.23", default-features = false }
 type-map = "0.5"
 typenum = "1.15"
 unindent = "0.2"
-ureq = "2.6"
+ureq = "2.9.2"
 url = "2.3"
 uuid = "1.1"
 vec1 = "1.8"
