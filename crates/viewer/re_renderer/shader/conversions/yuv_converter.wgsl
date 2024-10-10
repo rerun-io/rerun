@@ -6,6 +6,8 @@ struct UniformBuffer {
     primaries: u32,
     target_texture_size: vec2u,
     yuv_range: u32,
+
+    _padding: vec3f, // Satisfy `DownlevelFlags::BUFFER_BINDINGS_NOT_16_BYTE_ALIGNED`
 };
 
 @group(0) @binding(0)
