@@ -144,6 +144,7 @@ impl VideoData {
                 data: data.to_vec(),
                 timestamp: sample.decode_timestamp,
                 duration: sample.duration,
+                is_sync: sample.is_sync,
             })
         }
     }
@@ -174,6 +175,9 @@ impl GroupOfPictures {
 /// A single sample in a video.
 #[derive(Debug, Clone)]
 pub struct Sample {
+    /// Is t his the start of a new [`GroupOfPictures`]?
+    pub is_sync: bool,
+
     /// Time at which this sample appears in the decoded bitstream, in time units.
     ///
     /// Samples should be decoded in this order.
