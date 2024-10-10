@@ -19,7 +19,7 @@ default = ["extension-module"]
 
 ## The features we turn on when building the `rerun-sdk` PyPi package
 ## for <https://pypi.org/project/rerun-sdk/>.
-pypi = ["extension-module", "web_viewer"]
+pypi = ["extension-module", "nasm", "web_viewer"]
 
 ## We need to enable the `pyo3/extension-module` when building the SDK,
 ## but we cannot enable it when building tests and benchmarks, so we
@@ -30,7 +30,7 @@ extension-module = ["pyo3/extension-module"]
 
 ## Enable faster native video decoding with assembly.
 ## You need to install [nasm](https://nasm.us/) to compile with this feature.
-## TODO(#7671): there is a bug that makes this incompatible with linux
+# TODO(#7671): this feature flag currently does nothing
 nasm = ["re_video/nasm"]
 
 ## Support serving a web viewer over HTTP with `serve()`.
