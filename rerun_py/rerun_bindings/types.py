@@ -35,4 +35,4 @@ ViewContentsLike: TypeAlias = Union[
     dict[str, Union[AnyColumn, Sequence[ComponentLike]]],
 ]
 
-IndexLike: TypeAlias = Union[npt.NDArray[np.int_], pa.Int64Array]
+IndexValuesLike: TypeAlias = Union[npt.NDArray[np.int_], pa.Int64Array]

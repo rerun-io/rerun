@@ -3,7 +3,7 @@ from typing import Optional, Sequence
 
 import pyarrow as pa
 
-from .types import AnyColumn, ComponentLike, IndexLike, ViewContentsLike
+from .types import AnyColumn, ComponentLike, IndexValuesLike, ViewContentsLike
 
 class IndexColumnDescriptor:
     """A column containing the index values for when the component data was updated."""
@@ -57,7 +57,7 @@ class RecordingView:
         """Filter the view to only include data between the given index time values."""
         ...
 
-    def filter_index_values(self, index_values: IndexLike) -> RecordingView:
+    def filter_index_values(self, values: IndexValuesLike) -> RecordingView:
         """
         Filter the view to only include data at the given index values.
 

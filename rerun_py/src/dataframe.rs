@@ -197,7 +197,7 @@ impl AnyComponentColumn {
 }
 
 #[derive(FromPyObject)]
-enum IndexLike<'py> {
+enum IndexValuesLike<'py> {
     PyArrow(PyArrowType<ArrayData>),
     NumPy(numpy::PyArrayLike1<'py, i64>),
 
@@ -206,14 +206,14 @@ enum IndexLike<'py> {
     CatchAll(Bound<'py, PyAny>),
 }
 
-impl<'py> IndexLike<'py> {
+impl<'py> IndexValuesLike<'py> {
     fn to_index_values(&self) -> PyResult<BTreeSet<re_chunk_store::TimeInt>> {
         match self {
             Self::PyArrow(array) => {
                 let array = make_array(array.0.clone());
 
                 let int_array = array.as_any().downcast_ref::<Int64Array>().ok_or_else(|| {
-                    PyTypeError::new_err("pyarrow.Array for IndexLike must be of type int64.")
+                    PyTypeError::new_err("pyarrow.Array for IndexValuesLike must be of type int64.")
                 })?;
 
                 let values: BTreeSet<re_chunk_store::TimeInt> = int_array
@@ -263,7 +263,7 @@ impl<'py> IndexLike<'py> {
                         let int_array =
                             array.as_any().downcast_ref::<Int64Array>().ok_or_else(|| {
                                 PyTypeError::new_err(
-                                    "pyarrow.Array for IndexLike must be of type int64.",
+                                    "pyarrow.Array for IndexValuesLike must be of type int64.",
                                 )
                             })?;
 
@@ -290,7 +290,7 @@ impl<'py> IndexLike<'py> {
                     Ok(values)
                 } else {
                     Err(PyTypeError::new_err(
-                        "IndexLike must be a pyarrow.Array, pyarrow.ChunkedArray, or numpy.ndarray",
+                        "IndexValuesLike must be a pyarrow.Array, pyarrow.ChunkedArray, or numpy.ndarray",
                     ))
                 }
             }
@@ -542,7 +542,7 @@ impl PyRecordingView {
         })
     }
 
-    fn filter_index_values(&self, values: IndexLike<'_>) -> PyResult<Self> {
+    fn filter_index_values(&self, values: IndexValuesLike<'_>) -> PyResult<Self> {
         let values = values.to_index_values()?;
 
         let mut query_expression = self.query_expression.clone();
