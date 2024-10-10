@@ -163,12 +163,8 @@ impl QueryHandle<'_> {
     fn init_(&self) -> QueryHandleState {
         re_tracing::profile_scope!("init");
 
-        // 1. Compute the schema of the view contents.
-        let view_contents = if let Some(view_contents) = self.query.view_contents.as_ref() {
-            self.engine.store.schema_for_view_contents(view_contents)
-        } else {
-            self.engine.store.schema()
-        };
+        // 1. Compute the schema for the query.
+        let view_contents = self.engine.store.schema_for_query(&self.query);
 
         // 2. Compute the schema of the selected contents.
         //
@@ -405,6 +401,9 @@ impl QueryHandle<'_> {
                                             store_datatype: arrow2::datatypes::DataType::Null,
                                             join_encoding: JoinEncoding::default(),
                                             is_static: false,
+                                            is_indicator: false,
+                                            is_tombstone: false,
+                                            is_semantically_empty: false,
                                         }),
                                     )
                                 },

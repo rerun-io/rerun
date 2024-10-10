@@ -1,5 +1,5 @@
 use re_chunk::{EntityPath, TransportChunk};
-use re_chunk_store::{ChunkStore, ColumnDescriptor, QueryExpression, ViewContentsSelector};
+use re_chunk_store::{ChunkStore, ColumnDescriptor, QueryExpression};
 use re_log_types::EntityPathFilter;
 use re_query::Caches;
 
@@ -41,26 +41,21 @@ impl QueryEngine<'_> {
     /// entity that has been written to the store so far.
     ///
     /// The order of the columns to guaranteed to be in a specific order:
-    /// * first, the control columns in lexical order (`RowId`);
-    /// * second, the time columns in lexical order (`frame_nr`, `log_time`, ...);
-    /// * third, the component columns in lexical order (`Color`, `Radius, ...`).
+    /// * first, the time columns in lexical order (`frame_nr`, `log_time`, ...);
+    /// * second, the component columns in lexical order (`Color`, `Radius, ...`).
     #[inline]
     pub fn schema(&self) -> Vec<ColumnDescriptor> {
         self.store.schema()
     }
 
-    /// Returns the filtered schema for the given `view_contents`.
+    /// Returns the filtered schema for the given [`QueryExpression`].
     ///
     /// The order of the columns is guaranteed to be in a specific order:
-    /// * first, the control columns in lexical order (`RowId`);
-    /// * second, the time columns in lexical order (`frame_nr`, `log_time`, ...);
-    /// * third, the component columns in lexical order (`Color`, `Radius, ...`).
+    /// * first, the time columns in lexical order (`frame_nr`, `log_time`, ...);
+    /// * second, the component columns in lexical order (`Color`, `Radius, ...`).
     #[inline]
-    pub fn schema_for_view_contents(
-        &self,
-        view_contents: &ViewContentsSelector,
-    ) -> Vec<ColumnDescriptor> {
-        self.store.schema_for_view_contents(view_contents)
+    pub fn schema_for_query(&self, query: &QueryExpression) -> Vec<ColumnDescriptor> {
+        self.store.schema_for_query(query)
     }
 
     /// Starts a new query by instantiating a [`QueryHandle`].

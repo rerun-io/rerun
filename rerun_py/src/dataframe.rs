@@ -670,6 +670,9 @@ impl PyRecording {
 
         let query = QueryExpression {
             view_contents: Some(contents),
+            include_semantically_empty_columns: false,
+            include_indicator_columns: false,
+            include_tombstone_columns: false,
             filtered_index: timeline.timeline,
             filtered_index_range: None,
             filtered_index_values: None,
