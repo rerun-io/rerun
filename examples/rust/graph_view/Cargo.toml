@@ -1,0 +1,34 @@
+[package]
+name = "graph_view"
+edition = "2021"
+rust-version = "1.76"
+license = "MIT OR Apache-2.0"
+publish = false
+
+[features]
+default = []
+
+# Turn on if you want to share analytics with Rerun (e.g. callstacks on crashes).
+analytics = ["re_crash_handler/analytics", "re_viewer/analytics"]
+
+[dependencies]
+re_crash_handler = { path = "../../../crates/utils/re_crash_handler" }
+re_format = { path = "../../../crates/utils/re_format" }
+re_viewer = { path = "../../../crates/viewer/re_viewer", default-features = false }
+re_log_types = { path = "../../../crates/store/re_log_types" }
+
+# We need re_sdk_comms to receive log events from and SDK:
+re_sdk_comms = { path = "../../../crates/store/re_sdk_comms", features = [
+  "server",
+] }
+
+# mimalloc is a much faster allocator:
+mimalloc = "0.1"
+
+petgraph = "0.6"
+bytemuck = "1.18"
+thiserror = "1.0"
+
+# Experiment with different layout algorithms.
+fdg-sim = "0.9"
+layout-rs = "0.1"
