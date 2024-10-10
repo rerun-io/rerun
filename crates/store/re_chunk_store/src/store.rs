@@ -276,6 +276,36 @@ pub type ChunkIdSetPerTimePerTimelinePerEntity = BTreeMap<EntityPath, ChunkIdSet
 
 // ---
 
+#[derive(Debug, Clone)]
+pub struct ColumnMetadata {
+    /// Whether this column represents static data.
+    pub is_static: bool,
+
+    /// Whether this column represents an indicator component.
+    pub is_indicator: bool,
+
+    /// Whether this column represents a `Clear`-related component.
+    ///
+    /// `Clear`: [`re_types_core::archetypes::Clear`]
+    pub is_tombstone: bool,
+
+    /// Whether this column contains either no data or only contains null and/or empty values (`[]`).
+    pub is_semantically_empty: bool,
+}
+
+/// Internal state that needs to be maintained in order to compute [`ColumnMetadata`].
+#[derive(Debug, Clone)]
+pub struct ColumnMetadataState {
+    /// Whether non-semantically empty data was ever written to this column at any point.
+    ///
+    /// Semantically empty data is data that is either physically empty or only contains null
+    /// and/or empty values (`[]`).
+    ///
+    /// This is purely additive: once false, it will always be false. Even in case of garbage
+    /// collection.
+    pub is_semantically_non_empty: bool,
+}
+
 /// Incremented on each edit.
 #[derive(Clone, Debug, Default, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub struct ChunkStoreGeneration {
@@ -305,6 +335,8 @@ pub struct ChunkStore {
     // TODO(cmc): this would become fairly problematic in a world where each chunk can use a
     // different datatype for a given component.
     pub(crate) type_registry: IntMap<ComponentName, ArrowDataType>,
+
+    pub(crate) per_column_metadata: IntMap<EntityPath, IntMap<ComponentName, ColumnMetadataState>>,
 
     pub(crate) chunks_per_chunk_id: BTreeMap<ChunkId, Arc<Chunk>>,
 
@@ -370,6 +402,7 @@ impl Clone for ChunkStore {
             info: self.info.clone(),
             config: self.config.clone(),
             type_registry: self.type_registry.clone(),
+            per_column_metadata: self.per_column_metadata.clone(),
             chunks_per_chunk_id: self.chunks_per_chunk_id.clone(),
             chunk_ids_per_min_row_id: self.chunk_ids_per_min_row_id.clone(),
             temporal_chunk_ids_per_entity_per_component: self
@@ -394,6 +427,7 @@ impl std::fmt::Display for ChunkStore {
             info: _,
             config,
             type_registry: _,
+            per_column_metadata: _,
             chunks_per_chunk_id,
             chunk_ids_per_min_row_id: chunk_id_per_min_row_id,
             temporal_chunk_ids_per_entity_per_component: _,
@@ -449,6 +483,7 @@ impl ChunkStore {
             info: None,
             config,
             type_registry: Default::default(),
+            per_column_metadata: Default::default(),
             chunk_ids_per_min_row_id: Default::default(),
             chunks_per_chunk_id: Default::default(),
             temporal_chunk_ids_per_entity_per_component: Default::default(),
@@ -516,6 +551,40 @@ impl ChunkStore {
     #[inline]
     pub fn lookup_datatype(&self, component_name: &ComponentName) -> Option<&ArrowDataType> {
         self.type_registry.get(component_name)
+    }
+
+    /// Lookup the [`ColumnMetadata`] for a specific [`EntityPath`] and [`re_types_core::Component`].
+    pub fn lookup_column_metadata(
+        &self,
+        entity_path: &EntityPath,
+        component_name: &ComponentName,
+    ) -> Option<ColumnMetadata> {
+        let ColumnMetadataState {
+            is_semantically_non_empty,
+        } = self
+            .per_column_metadata
+            .get(entity_path)
+            .and_then(|per_component| per_component.get(component_name))?;
+
+        let is_static = self
+            .static_chunk_ids_per_entity
+            .get(entity_path)
+            .map_or(false, |per_component| {
+                per_component.get(component_name).is_some()
+            });
+
+        let is_indicator = component_name.is_indicator_component();
+
+        use re_types_core::Archetype as _;
+        let is_tombstone =
+            re_types_core::archetypes::Clear::all_components().contains(component_name);
+
+        Some(ColumnMetadata {
+            is_static,
+            is_indicator,
+            is_tombstone,
+            is_semantically_empty: !*is_semantically_non_empty,
+        })
     }
 }
 
