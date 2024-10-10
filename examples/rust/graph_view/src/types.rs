@@ -1,5 +1,8 @@
 use re_log_types::{EntityPath, EntityPathHash, Instance};
-use re_viewer::external::{egui, re_types::{datatypes, ArrowString}};
+use re_viewer::external::{
+    egui,
+    re_types::{datatypes, ArrowString},
+};
 
 impl<'a> EdgeInstance<'a> {
     pub fn nodes(&'a self) -> impl Iterator<Item = datatypes::GraphLocation> {

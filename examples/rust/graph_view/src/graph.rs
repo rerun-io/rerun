@@ -5,7 +5,7 @@ use re_viewer::external::re_types::datatypes;
 
 use crate::{
     types::{EdgeInstance, NodeInstance, UnknownNodeInstance},
-    visualizers::{NodeVisualizerData, EdgesUndirectedData},
+    visualizers::{EdgesUndirectedData, NodeVisualizerData},
 };
 
 pub(crate) enum Node<'a> {

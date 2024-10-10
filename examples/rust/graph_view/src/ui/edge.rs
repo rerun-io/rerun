@@ -1,5 +1,6 @@
 use re_viewer::external::{
-    egui, re_viewer_context::{HoverHighlight, InteractionHighlight, SelectionHighlight}
+    egui,
+    re_viewer_context::{HoverHighlight, InteractionHighlight, SelectionHighlight},
 };
 
 pub fn draw_edge(
@@ -36,10 +37,7 @@ pub fn draw_edge(
         }
 
         let color = color.unwrap_or(ui.style().visuals.text_color());
-        painter.line_segment(
-            [source_point, target_point],
-            egui::Stroke::new(1.0, color),
-        );
+        painter.line_segment([source_point, target_point], egui::Stroke::new(1.0, color));
 
         // Conditionally draw an arrow at the target point
         if show_arrow {

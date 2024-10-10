@@ -140,7 +140,10 @@ impl SpaceViewClass for GraphSpaceView {
                 .iter()
                 .flat_map(|d| d.edges().map(|e| (e.source.into(), e.target.into())));
 
-            let layout = state.layout_provider.compute(node_sizes.into_iter(), undirected, directed)?;
+            let layout =
+                state
+                    .layout_provider
+                    .compute(node_sizes.into_iter(), undirected, directed)?;
 
             if let Some(bounding_box) = ui::bounding_rect_from_iter(layout.values()) {
                 state.fit_to_screen(

@@ -16,7 +16,11 @@ pub(crate) use edge::draw_edge;
 mod state;
 pub(crate) use state::GraphSpaceViewState;
 
-use crate::{graph::Node, layout::LayoutProvider, types::{NodeIndex, NodeInstance, UnknownNodeInstance}};
+use crate::{
+    graph::Node,
+    layout::LayoutProvider,
+    types::{NodeIndex, NodeInstance, UnknownNodeInstance},
+};
 
 pub fn draw_node(
     ui: &mut egui::Ui,

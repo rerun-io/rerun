@@ -4,11 +4,11 @@ use re_viewer::external::{re_log, re_memory};
 
 mod error;
 mod graph;
-mod view;
 mod layout;
-mod ui;
-mod visualizers;
 mod types;
+mod ui;
+mod view;
+mod visualizers;
 
 // By using `re_memory::AccountingAllocator` Rerun can keep track of exactly how much memory it is using,
 // and prune the data store when it goes above a certain limit.
@@ -55,8 +55,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             app.add_receiver(rx);
 
             // Register the custom space view
-            app.add_space_view_class::<view::GraphSpaceView>()
-                .unwrap();
+            app.add_space_view_class::<view::GraphSpaceView>().unwrap();
 
             Box::new(app)
         }),
