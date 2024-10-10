@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"fn":["update_accesskit_for_text_widget"]};

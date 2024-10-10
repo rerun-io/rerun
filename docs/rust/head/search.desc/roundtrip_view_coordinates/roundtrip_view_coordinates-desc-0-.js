@@ -1,0 +1,1 @@
+searchState.loadedDescShard("roundtrip_view_coordinates", 0, "Logs a <code>ViewCoordinate</code> archetype for roundtrip checks.\nReturns the argument unchanged.\nCalls <code>U::from(self)</code>.")

@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"fn":["sanity_check_vertex_buffers"],"struct":["GpuRenderPipelineHandle","GpuRenderPipelinePool","RenderPipelineDesc","VertexBufferLayout"]};

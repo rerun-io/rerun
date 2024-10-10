@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"fn":["create_component_ui_registry"],"mod":["color","datatype_uis","fallback_ui","image_format","line_strip","marker_shape","pinhole","radius","range1d","resolution","response_utils","timeline","transforms","view_coordinates","visual_bounds2d"]};

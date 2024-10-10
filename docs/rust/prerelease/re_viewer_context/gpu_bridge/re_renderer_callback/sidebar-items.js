@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"fn":["new_renderer_callback"],"struct":["ReRendererCallback","ViewBuilderHandle"],"type":["ViewBuilderMap"]};

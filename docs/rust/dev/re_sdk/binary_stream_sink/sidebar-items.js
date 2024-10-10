@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"enum":["BinaryStreamSinkError","Command"],"fn":["spawn_and_stream"],"struct":["BinaryStreamSink","BinaryStreamStorage","BinaryStreamStorageInner"]};

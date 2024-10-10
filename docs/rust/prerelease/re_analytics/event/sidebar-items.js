@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"constant":["PUBLIC_POSTHOG_PROJECT_KEY"],"enum":["PostHogEvent"],"struct":["PostHogBatch","PostHogCaptureEvent","PostHogIdentifyEvent"]};

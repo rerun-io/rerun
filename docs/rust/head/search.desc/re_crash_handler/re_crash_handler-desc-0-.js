@@ -1,0 +1,1 @@
+searchState.loadedDescShard("re_crash_handler", 0, "Detect and handle signals, panics, and other crashes, …\nAnonymize a path to a Rust source file from a callstack.\nGet a nicely formatted callstack.\nInstall handlers for panics and signals (crashes) that …")

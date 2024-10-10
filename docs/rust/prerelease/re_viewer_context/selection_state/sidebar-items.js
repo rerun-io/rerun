@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"enum":["HoverHighlight","HoveredSpace","SelectionHighlight"],"struct":["InteractionHighlight","SelectionState"]};

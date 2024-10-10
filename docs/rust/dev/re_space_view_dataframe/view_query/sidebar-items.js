@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"enum":["Query","QueryKind"],"fn":["override_ui","query_ui"]};

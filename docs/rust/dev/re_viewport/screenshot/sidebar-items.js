@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"fn":["handle_pending_space_view_screenshots"]};

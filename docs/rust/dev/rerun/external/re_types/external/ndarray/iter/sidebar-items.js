@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"struct":["Axes","AxisChunksIter","AxisChunksIterMut","AxisIter","AxisIterMut","ExactChunks","ExactChunksIter","ExactChunksIterMut","ExactChunksMut","IndexedIter","IndexedIterMut","Indices","IndicesIter","Iter","IterMut","Lanes","LanesIter","LanesIterMut","LanesMut","Windows"]};

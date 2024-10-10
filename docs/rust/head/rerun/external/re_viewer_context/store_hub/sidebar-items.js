@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"struct":["BlueprintPersistence","StoreHub","StoreHubStats"],"type":["BlueprintLoader","BlueprintSaver","BlueprintValidator"]};

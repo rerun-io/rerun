@@ -1,0 +1,1 @@
+searchState.loadedDescShard("incremental_logging", 0, "Showcase how to incrementally log data belonging to the …\nReturns the argument unchanged.\nCalls <code>U::from(self)</code>.")

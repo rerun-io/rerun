@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"enum":["EntityPathFilterParseError","RuleEffect"],"struct":["EntityPathFilter","EntityPathRule","EntityPathSubs"]};

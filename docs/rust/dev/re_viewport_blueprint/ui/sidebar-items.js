@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"fn":["add_space_view_or_container_modal_ui","show_add_space_view_or_container_modal"],"mod":["add_space_view_or_container_modal"],"static":["ADD_SPACE_VIEW_OR_CONTAINER_MODAL"]};

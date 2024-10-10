@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"constant":["DEFAULT_SERVER_PORT","PROTOCOL_VERSION"],"enum":["ClientError","ServerError"],"fn":["default_flush_timeout","default_server_addr","serve"],"mod":["buffered_client","server","tcp_client"],"struct":["Client","ServerOptions"]};

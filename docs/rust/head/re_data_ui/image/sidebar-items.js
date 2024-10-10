@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"fn":["copy_image_button_ui","image_preview_ui","largest_size_that_fits_in","show_image_preview","texture_preview_ui"]};
