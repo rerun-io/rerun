@@ -20,8 +20,10 @@ For more compressed image formats, see [`archetypes.EncodedImage`](https://rerun
 * Y_U_V12_LimitedRange
 * NV12
 * YUY2
+* Y8_FullRange
 * Y_U_V24_LimitedRange
 * Y_U_V24_FullRange
+* Y8_LimitedRange
 * Y_U_V12_FullRange
 * Y_U_V16_LimitedRange
 * Y_U_V16_FullRange

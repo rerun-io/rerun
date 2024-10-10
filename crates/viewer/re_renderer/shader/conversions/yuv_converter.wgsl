@@ -22,7 +22,7 @@ const YUV_LAYOUT_Y_U_V422 = 1u;
 const YUV_LAYOUT_Y_U_V420 = 2u;
 const YUV_LAYOUT_Y_UV420 = 100u;
 const YUV_LAYOUT_YUYV422 = 200u;
-const YUV_LAYOUT_Y_400 = 300u;
+const YUV_LAYOUT_Y400 = 300u;
 
 // see `enum ColorPrimaries`.
 const PRIMARIES_BT601 = 0u;
@@ -141,10 +141,10 @@ fn sample_yuv(yuv_layout: u32, texture: texture_2d<u32>, coords: vec2u, target_t
             yuv[2] = f32(textureLoad(texture, vec2u(uv_col, uv_row + target_texture_size.y + target_texture_size.y / 4u), 0).r);
         }
 
-        case YUV_LAYOUT_Y_400 {
+        case YUV_LAYOUT_Y400 {
             yuv[0] = f32(textureLoad(texture, coords, 0).r);
             yuv[1] = 128.0;
-            yuv[0] = 128.0;
+            yuv[2] = 128.0;
         }
 
         case YUV_LAYOUT_Y_UV420: {

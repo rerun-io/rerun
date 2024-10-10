@@ -18,6 +18,8 @@ README = """\
 
 All images should look roughly the same except for some chroma artifacts
 and slight color differences due to different color primaries.
+
+Naturally, Y8 formats are greyscale.
 """
 
 
@@ -63,6 +65,16 @@ def bgra2y_u_v12(bgra: Any, full_range: bool) -> np.ndarray:
     return yuv12.astype(np.uint8)
 
 
+def bgra2y8(bgra: Any, full_range: bool) -> np.ndarray:
+    if full_range:
+        yvu = cv2.cvtColor(bgra, cv2.COLOR_BGR2YCrCb)
+        y, _v, _u = cv2.split(yvu)
+    else:
+        yuv = cv2.cvtColor(bgra, cv2.COLOR_BGR2YUV)
+        y, _u, _v = cv2.split(yuv)
+    return y.astype(np.uint8)
+
+
 def bgra2nv12(bgra: Any) -> np.ndarray:
     yuv = cv2.cvtColor(bgra, cv2.COLOR_BGRA2YUV_I420)
     uv_row_cnt = yuv.shape[0] // 3
@@ -92,11 +104,13 @@ def blueprint() -> rrb.BlueprintLike:
         rrb.TextDocumentView(origin="readme"),
         rrb.Spatial2DView(origin="img_reference", name="Reference RGB"),
         rrb.Spatial2DView(origin="img_V_U_V24_limited_range", name="Y_U_V24_limited_range"),
-        rrb.Spatial2DView(origin="img_V_U_V16_limited_range", name="Y_U_V16_limited_range"),
-        rrb.Spatial2DView(origin="img_V_U_V12_limited_range", name="Y_U_V12_limited_range"),
         rrb.Spatial2DView(origin="img_V_U_V24_full_range", name="Y_U_V24_full_range"),
+        rrb.Spatial2DView(origin="img_V_U_V16_limited_range", name="Y_U_V16_limited_range"),
         rrb.Spatial2DView(origin="img_V_U_V16_full_range", name="Y_U_V16_full_range"),
+        rrb.Spatial2DView(origin="img_V_U_V12_limited_range", name="Y_U_V12_limited_range"),
         rrb.Spatial2DView(origin="img_V_U_V12_full_range", name="Y_U_V12_full_range"),
+        rrb.Spatial2DView(origin="img_y8_limited_range", name="Y8_limited_range"),
+        rrb.Spatial2DView(origin="img_y8_full_range", name="Y8_full_range"),
         rrb.Spatial2DView(origin="img_nv12", name="NV12"),
         rrb.Spatial2DView(origin="img_yuy2", name="YUY2"),
     )
@@ -138,6 +152,15 @@ def log_data() -> None:
             bytes=bgra2y_u_v12(img_bgra, False).tobytes(),
         ),
     )
+    rr.log(
+        "img_y8_limited_range",
+        rr.Image(
+            width=img_bgra.shape[1],
+            height=img_bgra.shape[0],
+            pixel_format=rr.PixelFormat.Y8_LimitedRange,
+            bytes=bgra2y8(img_bgra, False).tobytes(),
+        ),
+    )
 
     rr.log(
         "img_V_U_V24_full_range",
@@ -166,6 +189,16 @@ def log_data() -> None:
             bytes=bgra2y_u_v12(img_bgra, True).tobytes(),
         ),
     )
+    rr.log(
+        "img_y8_full_range",
+        rr.Image(
+            width=img_bgra.shape[1],
+            height=img_bgra.shape[0],
+            pixel_format=rr.PixelFormat.Y8_FullRange,
+            bytes=bgra2y8(img_bgra, True).tobytes(),
+        ),
+    )
+
     rr.log(
         "img_nv12",
         rr.Image(

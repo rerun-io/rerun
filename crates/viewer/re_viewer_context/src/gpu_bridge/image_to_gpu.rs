@@ -253,6 +253,11 @@ pub fn texture_creation_desc_from_color_image<'a>(
             re_types::image::ColorPrimaries::Bt709 => ColorPrimaries::Bt709,
         };
 
+        let range = match pixel_format.is_limited_yuv_range() {
+            true => YuvRange::Limited,
+            false => YuvRange::Full,
+        };
+
         let format = match pixel_format {
             // For historical reasons, using Bt.709 for fully planar formats and Bt.601 for others.
             //
@@ -260,51 +265,47 @@ pub fn texture_creation_desc_from_color_image<'a>(
             // TODO(andreas): Expose color primaries. It's probably still the better default (for instance that's what jpeg still uses),
             // but should confirm & back that up!
             //
-            PixelFormat::Y_U_V24_FullRange => SourceImageDataFormat::Yuv {
-                format: YuvPixelLayout::Y_U_V444,
-                range: YuvRange::Full,
-                primaries,
-            },
+            PixelFormat::Y_U_V24_FullRange | PixelFormat::Y_U_V24_LimitedRange => {
+                SourceImageDataFormat::Yuv {
+                    format: YuvPixelLayout::Y_U_V444,
+                    range,
+                    primaries,
+                }
+            }
 
-            PixelFormat::Y_U_V16_FullRange => SourceImageDataFormat::Yuv {
-                format: YuvPixelLayout::Y_U_V422,
-                range: YuvRange::Full,
-                primaries,
-            },
+            PixelFormat::Y_U_V16_FullRange | PixelFormat::Y_U_V16_LimitedRange => {
+                SourceImageDataFormat::Yuv {
+                    format: YuvPixelLayout::Y_U_V422,
+                    range,
+                    primaries,
+                }
+            }
 
-            PixelFormat::Y_U_V12_FullRange => SourceImageDataFormat::Yuv {
-                format: YuvPixelLayout::Y_U_V420,
-                range: YuvRange::Full,
-                primaries,
-            },
+            PixelFormat::Y_U_V12_FullRange | PixelFormat::Y_U_V12_LimitedRange => {
+                SourceImageDataFormat::Yuv {
+                    format: YuvPixelLayout::Y_U_V420,
+                    range,
+                    primaries,
+                }
+            }
 
-            PixelFormat::Y_U_V24_LimitedRange => SourceImageDataFormat::Yuv {
-                format: YuvPixelLayout::Y_U_V444,
-                range: YuvRange::Limited,
-                primaries,
-            },
-
-            PixelFormat::Y_U_V16_LimitedRange => SourceImageDataFormat::Yuv {
-                format: YuvPixelLayout::Y_U_V422,
-                range: YuvRange::Limited,
-                primaries,
-            },
-
-            PixelFormat::Y_U_V12_LimitedRange => SourceImageDataFormat::Yuv {
-                format: YuvPixelLayout::Y_U_V420,
-                range: YuvRange::Limited,
-                primaries,
-            },
+            PixelFormat::Y8_FullRange | PixelFormat::Y8_LimitedRange => {
+                SourceImageDataFormat::Yuv {
+                    format: YuvPixelLayout::Y400,
+                    range,
+                    primaries,
+                }
+            }
 
             PixelFormat::NV12 => SourceImageDataFormat::Yuv {
                 format: YuvPixelLayout::Y_UV420,
-                range: YuvRange::Limited,
+                range,
                 primaries,
             },
 
             PixelFormat::YUY2 => SourceImageDataFormat::Yuv {
                 format: YuvPixelLayout::YUYV422,
-                range: YuvRange::Limited,
+                range,
                 primaries,
             },
         };

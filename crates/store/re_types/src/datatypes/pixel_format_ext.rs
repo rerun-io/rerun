@@ -10,9 +10,11 @@ impl PixelFormat {
             Self::Y_U_V12_FullRange
             | Self::Y_U_V16_FullRange
             | Self::Y_U_V24_FullRange
+            | Self::Y8_FullRange
             | Self::Y_U_V12_LimitedRange
             | Self::Y_U_V16_LimitedRange
             | Self::Y_U_V24_LimitedRange
+            | Self::Y8_LimitedRange
             | Self::NV12
             | Self::YUY2 => false,
         }
@@ -25,9 +27,11 @@ impl PixelFormat {
             Self::Y_U_V12_FullRange
             | Self::Y_U_V16_FullRange
             | Self::Y_U_V24_FullRange
+            | Self::Y8_FullRange
             | Self::Y_U_V12_LimitedRange
             | Self::Y_U_V16_LimitedRange
             | Self::Y_U_V24_LimitedRange
+            | Self::Y8_LimitedRange
             | Self::NV12
             | Self::YUY2 => false,
         }
@@ -50,6 +54,9 @@ impl PixelFormat {
             Self::Y_U_V12_FullRange | Self::Y_U_V12_LimitedRange | Self::YUY2 => {
                 12 * num_pixels / 8
             }
+
+            // Monochrome formats.
+            Self::Y8_LimitedRange | Self::Y8_FullRange => num_pixels,
         }
     }
 
@@ -65,6 +72,9 @@ impl PixelFormat {
             | Self::Y_U_V24_LimitedRange
             | Self::NV12
             | Self::YUY2 => ColorModel::RGB,
+
+            // TODO(andreas): This shouldn't be ColorModel::RGB, but our YUV converter can't do anything else right now.
+            Self::Y8_LimitedRange | Self::Y8_FullRange => ColorModel::RGB,
         }
     }
 
@@ -75,9 +85,11 @@ impl PixelFormat {
             Self::Y_U_V12_FullRange
             | Self::Y_U_V16_FullRange
             | Self::Y_U_V24_FullRange
+            | Self::Y8_FullRange
             | Self::Y_U_V12_LimitedRange
             | Self::Y_U_V16_LimitedRange
             | Self::Y_U_V24_LimitedRange
+            | Self::Y8_LimitedRange
             | Self::NV12
             | Self::YUY2 => ChannelDatatype::U8,
         }
@@ -123,6 +135,11 @@ impl PixelFormat {
                 Some([luma, u, v])
             }
 
+            Self::Y8_FullRange | Self::Y8_LimitedRange => {
+                let luma = *buf.get((y * w + x) as usize)?;
+                Some([luma, 128, 128])
+            }
+
             Self::NV12 => {
                 let uv_offset = w * h;
                 let luma = *buf.get((y * w + x) as usize)?;
@@ -151,10 +168,14 @@ impl PixelFormat {
             Self::Y_U_V24_LimitedRange
             | Self::Y_U_V16_LimitedRange
             | Self::Y_U_V12_LimitedRange
+            | Self::Y8_LimitedRange
             | Self::NV12
             | Self::YUY2 => true,
 
-            Self::Y_U_V24_FullRange | Self::Y_U_V12_FullRange | Self::Y_U_V16_FullRange => false,
+            Self::Y_U_V24_FullRange
+            | Self::Y_U_V12_FullRange
+            | Self::Y_U_V16_FullRange
+            | Self::Y8_FullRange => false,
         }
     }
 
@@ -167,7 +188,10 @@ impl PixelFormat {
             | Self::Y_U_V12_LimitedRange
             | Self::Y_U_V12_FullRange
             | Self::Y_U_V16_LimitedRange
-            | Self::Y_U_V16_FullRange => ColorPrimaries::Bt709,
+            | Self::Y_U_V16_FullRange
+            // TODO(andreas): Y8 isn't really color, does this even make sense?
+            | Self::Y8_FullRange
+            | Self::Y8_LimitedRange => ColorPrimaries::Bt709,
 
             Self::NV12 | Self::YUY2 => ColorPrimaries::Bt601,
         }
