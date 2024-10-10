@@ -3729,7 +3729,10 @@ dependencies = [
  "anyhow",
  "clap",
  "glam 0.28.0",
+ "itertools 0.13.0",
  "rerun",
+ "strum",
+ "strum_macros",
 ]
 
 [[package]]

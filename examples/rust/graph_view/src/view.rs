@@ -120,7 +120,14 @@ impl SpaceViewClass for GraphSpaceView {
             .view_systems
             .get::<EdgesUndirectedVisualizer>()?;
 
-        let graph = Graph::from_nodes_edges(&node_system.data, &undirected_system.data);
+        let Some(graph) = Graph::from_nodes_edges(
+            &node_system.data,
+            &directed_system.data,
+            &undirected_system.data,
+        ) else {
+            log::warn!("No graph data available.");
+            return Ok(());
+        };
 
         let state = state.downcast_mut::<GraphSpaceViewState>()?;
 
@@ -156,6 +163,11 @@ impl SpaceViewClass for GraphSpaceView {
 
             return Ok(());
         };
+
+        if graph.all_nodes().any(|n| !layout.contains_key(&NodeIndex::from(&n))) {
+            state.layout = None;
+            return Ok(());
+        }
 
         let response = ui.interact(clip_rect_window, id, egui::Sense::click_and_drag());
 
@@ -237,9 +249,13 @@ impl SpaceViewClass for GraphSpaceView {
 
             for node in data.nodes() {
                 let index = NodeIndex::from(&node);
-                let current_extent = layout
-                    .get(&index)
-                    .expect("missing layout information for node");
+                let Some(current_extent) = layout.get(&index) else {
+                    return Err(Error::MissingLayoutInformation(
+                        data.entity_path.clone(),
+                        node.node_id.clone(),
+                    )
+                    .into());
+                };
                 let response = egui::Area::new(id.with(&index))
                     .current_pos(current_extent.min)
                     .order(egui::Order::Middle)

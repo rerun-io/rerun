@@ -33,7 +33,7 @@ impl Default for GraphSpaceViewState {
             clip_rect_window: egui::Rect::NOTHING,
             show_debug: Default::default(),
             layout: Default::default(),
-            layout_provider: LayoutProvider::new_dot(),
+            layout_provider: LayoutProvider::new_force_directed(),
         }
     }
 }

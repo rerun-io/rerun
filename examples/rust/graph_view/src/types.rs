@@ -49,6 +49,15 @@ impl<'a> From<&NodeInstance<'a>> for NodeIndex {
     }
 }
 
+impl<'a> From<NodeInstance<'a>> for NodeIndex {
+    fn from(node: NodeInstance<'a>) -> Self {
+        Self {
+            entity_hash: node.entity_path.hash(),
+            node_id: node.node_id.clone(),
+        }
+    }
+}
+
 pub(crate) struct NodeInstance<'a> {
     pub node_id: &'a datatypes::GraphNodeId,
     pub entity_path: &'a EntityPath,
@@ -72,6 +81,15 @@ pub(crate) struct UnknownNodeInstance<'a> {
 
 impl<'a> From<&UnknownNodeInstance<'a>> for NodeIndex {
     fn from(node: &UnknownNodeInstance<'a>) -> Self {
+        Self {
+            entity_hash: node.entity_path.hash(),
+            node_id: node.node_id.clone(),
+        }
+    }
+}
+
+impl<'a> From<UnknownNodeInstance<'a>> for NodeIndex {
+    fn from(node: UnknownNodeInstance<'a>) -> Self {
         Self {
             entity_hash: node.entity_path.hash(),
             node_id: node.node_id.clone(),
