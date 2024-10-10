@@ -105,7 +105,7 @@ re_viewport_blueprint = { path = "crates/viewer/re_viewport_blueprint", version 
 re_web_viewer_server = { path = "crates/viewer/re_web_viewer_server", version = "=0.19.0-alpha.1", default-features = false }
 
 # Rerun crates in other repos:
-ewebsock = { git = "https://github.com/rerun-io/ewebsock", rev = "1a9e78aa18390511476f9e2c0453502f11a7aa78" }
+ewebsock = "0.7.0"
 re_math = "0.20.0"
 
 # egui-crates:
