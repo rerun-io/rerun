@@ -5,9 +5,10 @@
 use std::collections::{BTreeMap, BTreeSet};
 
 use arrow::{
-    array::{RecordBatchIterator, RecordBatchReader},
+    array::{make_array, Array, ArrayData, Int64Array, RecordBatchIterator, RecordBatchReader},
     pyarrow::PyArrowType,
 };
+use numpy::PyArrayMethods as _;
 use pyo3::{
     exceptions::{PyRuntimeError, PyTypeError, PyValueError},
     prelude::*,
@@ -191,6 +192,108 @@ impl AnyComponentColumn {
         match self {
             Self::ComponentDescriptor(desc) => desc.0.into(),
             Self::ComponentSelector(selector) => selector.0,
+        }
+    }
+}
+
+#[derive(FromPyObject)]
+enum IndexValuesLike<'py> {
+    PyArrow(PyArrowType<ArrayData>),
+    NumPy(numpy::PyArrayLike1<'py, i64>),
+
+    // Catch all to support ChunkedArray and other types
+    #[pyo3(transparent)]
+    CatchAll(Bound<'py, PyAny>),
+}
+
+impl<'py> IndexValuesLike<'py> {
+    fn to_index_values(&self) -> PyResult<BTreeSet<re_chunk_store::TimeInt>> {
+        match self {
+            Self::PyArrow(array) => {
+                let array = make_array(array.0.clone());
+
+                let int_array = array.as_any().downcast_ref::<Int64Array>().ok_or_else(|| {
+                    PyTypeError::new_err("pyarrow.Array for IndexValuesLike must be of type int64.")
+                })?;
+
+                let values: BTreeSet<re_chunk_store::TimeInt> = int_array
+                    .iter()
+                    .map(|v| {
+                        v.map_or_else(
+                            || re_chunk_store::TimeInt::STATIC,
+                            // The use of temporal here should be fine even if the data is
+                            // not actually temporal. The important thing is we are converting
+                            // from an i64 input
+                            re_chunk_store::TimeInt::new_temporal,
+                        )
+                    })
+                    .collect();
+
+                if values.len() != int_array.len() {
+                    return Err(PyValueError::new_err("Index values must be unique."));
+                }
+
+                Ok(values)
+            }
+            Self::NumPy(array) => {
+                let values: BTreeSet<re_chunk_store::TimeInt> = array
+                    .readonly()
+                    .as_array()
+                    .iter()
+                    // The use of temporal here should be fine even if the data is
+                    // not actually temporal. The important thing is we are converting
+                    // from an i64 input
+                    .map(|v| re_chunk_store::TimeInt::new_temporal(*v))
+                    .collect();
+
+                if values.len() != array.len()? {
+                    return Err(PyValueError::new_err("Index values must be unique."));
+                }
+
+                Ok(values)
+            }
+            Self::CatchAll(any) => {
+                // If any has the `.chunks` attribute, we can try to try each chunk as pyarrow array
+                if let Ok(chunks) = any.getattr("chunks") {
+                    let mut values = BTreeSet::new();
+                    for chunk in chunks.iter()? {
+                        let chunk = chunk?.extract::<PyArrowType<ArrayData>>()?;
+                        let array = make_array(chunk.0.clone());
+
+                        let int_array =
+                            array.as_any().downcast_ref::<Int64Array>().ok_or_else(|| {
+                                PyTypeError::new_err(
+                                    "pyarrow.Array for IndexValuesLike must be of type int64.",
+                                )
+                            })?;
+
+                        values.extend(
+                            int_array
+                                .iter()
+                                .map(|v| {
+                                    v.map_or_else(
+                                        || re_chunk_store::TimeInt::STATIC,
+                                        // The use of temporal here should be fine even if the data is
+                                        // not actually temporal. The important thing is we are converting
+                                        // from an i64 input
+                                        re_chunk_store::TimeInt::new_temporal,
+                                    )
+                                })
+                                .collect::<BTreeSet<_>>(),
+                        );
+                    }
+
+                    if values.len() != any.len()? {
+                        return Err(PyValueError::new_err("Index values must be unique."));
+                    }
+
+                    Ok(values)
+                } else {
+                    Err(PyTypeError::new_err(
+                        "IndexValuesLike must be a pyarrow.Array, pyarrow.ChunkedArray, or numpy.ndarray",
+                    ))
+                }
+            }
         }
     }
 }
@@ -432,6 +535,18 @@ impl PyRecordingView {
 
         let mut query_expression = self.query_expression.clone();
         query_expression.filtered_index_range = Some(resolved);
+
+        Ok(Self {
+            recording: self.recording.clone(),
+            query_expression,
+        })
+    }
+
+    fn filter_index_values(&self, values: IndexValuesLike<'_>) -> PyResult<Self> {
+        let values = values.to_index_values()?;
+
+        let mut query_expression = self.query_expression.clone();
+        query_expression.filtered_index_values = Some(values);
 
         Ok(Self {
             recording: self.recording.clone(),

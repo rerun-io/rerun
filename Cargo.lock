@@ -3590,6 +3590,19 @@ checksum = "308d96db8debc727c3fd9744aac51751243420e46edf401010908da7f8d5e57c"
 
 [[package]]
 name = "ndarray"
+version = "0.15.6"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "adb12d4e967ec485a5f71c6311fe28158e9d6f4bc4a447b474184d0f91a8fa32"
+dependencies = [
+ "matrixmultiply",
+ "num-complex",
+ "num-integer",
+ "num-traits",
+ "rawpointer",
+]
+
+[[package]]
+name = "ndarray"
 version = "0.16.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "882ed72dce9365842bf196bdeedf5055305f11fc8c03dee7bb0194a6cad34841"
@@ -3609,7 +3622,7 @@ version = "0.15.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f093b3db6fd194718dcdeea6bd8c829417deae904e3fcc7732dabcd4416d25d8"
 dependencies = [
- "ndarray",
+ "ndarray 0.16.1",
  "rand",
  "rand_distr",
 ]
@@ -3845,6 +3858,21 @@ name = "number_prefix"
 version = "0.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "830b246a0e5f20af87141b25c173cd1b609bd7779a4617d6ec582abaf90870f3"
+
+[[package]]
+name = "numpy"
+version = "0.21.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ec170733ca37175f5d75a5bea5911d6ff45d2cd52849ce98b685394e4f2f37f4"
+dependencies = [
+ "libc",
+ "ndarray 0.15.6",
+ "num-complex",
+ "num-integer",
+ "num-traits",
+ "pyo3",
+ "rustc-hash",
+]
 
 [[package]]
 name = "objc"
@@ -5457,7 +5485,7 @@ dependencies = [
  "document-features",
  "itertools 0.13.0",
  "libc",
- "ndarray",
+ "ndarray 0.16.1",
  "ndarray-rand",
  "once_cell",
  "parking_lot",
@@ -5647,7 +5675,7 @@ dependencies = [
  "bytemuck",
  "egui",
  "half 2.3.1",
- "ndarray",
+ "ndarray 0.16.1",
  "re_chunk_store",
  "re_data_ui",
  "re_log_types",
@@ -5798,7 +5826,7 @@ dependencies = [
  "linked-hash-map",
  "mime_guess2",
  "mint",
- "ndarray",
+ "ndarray 0.16.1",
  "nohash-hasher",
  "once_cell",
  "ply-rs",
@@ -6015,7 +6043,7 @@ dependencies = [
  "indexmap 2.1.0",
  "itertools 0.13.0",
  "linked-hash-map",
- "ndarray",
+ "ndarray 0.16.1",
  "nohash-hasher",
  "once_cell",
  "parking_lot",
@@ -6289,6 +6317,7 @@ dependencies = [
  "infer",
  "itertools 0.13.0",
  "mimalloc",
+ "numpy",
  "once_cell",
  "parking_lot",
  "pyo3",
@@ -6461,7 +6490,7 @@ dependencies = [
  "clap",
  "half 2.3.1",
  "image",
- "ndarray",
+ "ndarray 0.16.1",
  "re_log",
  "rerun",
 ]
@@ -6533,7 +6562,7 @@ version = "0.19.0-alpha.1+dev"
 dependencies = [
  "anyhow",
  "clap",
- "ndarray",
+ "ndarray 0.16.1",
  "re_log",
  "rerun",
 ]
@@ -7016,7 +7045,7 @@ name = "snippets"
 version = "0.19.0-alpha.1+dev"
 dependencies = [
  "itertools 0.13.0",
- "ndarray",
+ "ndarray 0.16.1",
  "rand",
  "rand_distr",
  "re_build_tools",
@@ -7188,7 +7217,7 @@ dependencies = [
  "clap",
  "glam",
  "itertools 0.13.0",
- "ndarray",
+ "ndarray 0.16.1",
  "ndarray-rand",
  "rand",
  "re_log",
