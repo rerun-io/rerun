@@ -17,7 +17,6 @@ re_dataframe.workspace = true
 prost.workspace = true
 thiserror.workspace = true
 tonic.workspace = true
-tonic-build.workspace = true
 
 [lints]
 workspace = true
