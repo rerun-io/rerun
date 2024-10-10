@@ -15,6 +15,7 @@ A list of nodes in a graph with optional labels, colors, etc.
 
 ## Shown in
 * [Graph View](../views/graph_view.md)
+* [DataframeView](../views/dataframe_view.md)
 
 ## API reference links
  * 🌊 [C++ API docs for `GraphEdgesUndirected`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1archetypes_1_1GraphEdgesUndirected.html)
