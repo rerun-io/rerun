@@ -225,6 +225,24 @@ class TestDataframe:
         assert table.column("/points:Position3D")[1].values.equals(self.expected_pos0)
         assert table.column("/points:Position3D")[2].values.equals(self.expected_pos1)
 
+    def test_filter_is_not_null(self) -> None:
+        view = self.recording.view(index="my_index", contents="points")
+
+        color = rr.dataframe.ComponentColumnSelector("points", rr.components.Color)
+
+        view = view.filter_is_not_null(color)
+
+        table = view.select().read_all()
+
+        # my_index, log_time, log_tick, points, colors
+        assert table.num_columns == 5
+        assert table.num_rows == 1
+
+        assert table.column("my_index")[0].equals(self.expected_index1[0])
+
+        # TODO(jleibs): Why is this failing. This is empty when it should have a value
+        assert table.column("/points:Position3D")[0].values.equals(self.expected_pos1)
+
     def test_view_syntax(self) -> None:
         good_content_expressions = [
             {"points": rr.components.Position3D},
