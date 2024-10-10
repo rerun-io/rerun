@@ -16,7 +16,6 @@ use re_viewer::external::{
 use crate::{
     error::Error,
     graph::Graph,
-    layout::{ForceBasedLayout, LayoutProvider},
     types::NodeIndex,
     ui::{self, GraphSpaceViewState},
     visualizers::{EdgesDirectedVisualizer, EdgesUndirectedVisualizer, NodeVisualizer},
@@ -96,6 +95,7 @@ impl SpaceViewClass for GraphSpaceView {
         ui.selection_grid("graph_settings_ui").show(ui, |ui| {
             state.bounding_box_ui(ui);
             state.debug_ui(ui);
+            state.layout_provider_ui(ui);
         });
 
         Ok(())
@@ -123,7 +123,9 @@ impl SpaceViewClass for GraphSpaceView {
         let graph = Graph::from_nodes_edges(&node_system.data, &undirected_system.data);
 
         let state = state.downcast_mut::<GraphSpaceViewState>()?;
+
         let (id, clip_rect_window) = ui.allocate_space(ui.available_size());
+        state.clip_rect_window = clip_rect_window;
 
         let Some(layout) = &mut state.layout else {
             let node_sizes = ui::measure_node_sizes(ui, graph.all_nodes());
@@ -138,7 +140,7 @@ impl SpaceViewClass for GraphSpaceView {
                 .iter()
                 .flat_map(|d| d.edges().map(|e| (e.source.into(), e.target.into())));
 
-            let layout = ForceBasedLayout::new().compute(node_sizes.into_iter(), undirected, directed)?;
+            let layout = state.layout_provider.compute(node_sizes.into_iter(), undirected, directed)?;
 
             if let Some(bounding_box) = ui::bounding_rect_from_iter(layout.values()) {
                 state.fit_to_screen(

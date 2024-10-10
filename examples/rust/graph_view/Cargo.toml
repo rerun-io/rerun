@@ -27,5 +27,8 @@ mimalloc = "0.1"
 
 petgraph = "0.6"
 bytemuck = "1.18"
-fdg-sim = "0.9"
 thiserror = "1.0"
+
+# Experiment with different layout algorithms.
+fdg-sim = "0.9"
+layout-rs = "0.1"

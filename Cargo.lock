@@ -2749,6 +2749,7 @@ version = "0.0.0"
 dependencies = [
  "bytemuck",
  "fdg-sim",
+ "layout-rs",
  "mimalloc",
  "petgraph",
  "re_crash_handler",
@@ -3224,6 +3225,12 @@ dependencies = [
  "bitflags 1.3.2",
  "libc",
 ]
+
+[[package]]
+name = "layout-rs"
+version = "0.1.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "84deb28a3a6c839ca42a7341664f32281416d69e2f29deb85aec5cc0243fdea8"
 
 [[package]]
 name = "lazy_static"

@@ -5,22 +5,13 @@ use re_viewer::external::egui;
 
 use crate::{error::Error, types::NodeIndex};
 
-use super::LayoutProvider;
+use super::Layout;
 
+#[derive(Debug, Default, PartialEq, Eq)]
 pub struct ForceBasedLayout;
 
-impl ForceBasedLayout {
-    pub fn new() -> Self {
-        Self
-    }
-}
-
-impl LayoutProvider for ForceBasedLayout {
+impl Layout for ForceBasedLayout {
     type NodeIx = NodeIndex;
-
-    fn name() -> &'static str {
-        "Force Directed"
-    }
 
     fn compute(
         &self,
@@ -36,7 +27,7 @@ impl LayoutProvider for ForceBasedLayout {
             node_to_index.insert(node_id, ix);
         }
 
-        for (source, target) in directed.into_iter().chain(undirected).into_iter() {
+        for (source, target) in directed.into_iter().chain(undirected) {
             let source_ix = node_to_index
                 .get(&source)
                 .ok_or_else(|| Error::EdgeUnknownNode(source.to_string()))?;
