@@ -554,6 +554,18 @@ impl PyRecordingView {
         })
     }
 
+    fn filter_is_not_null(&self, component: AnyComponentColumn) -> Self {
+        let component = component.into_selector();
+
+        let mut query_expression = self.query_expression.clone();
+        query_expression.filtered_point_of_view = Some(component);
+
+        Self {
+            recording: self.recording.clone(),
+            query_expression,
+        }
+    }
+
     fn using_index_values(&self, values: IndexValuesLike<'_>) -> PyResult<Self> {
         let values = values.to_index_values()?;
 
