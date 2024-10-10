@@ -5623,7 +5623,6 @@ dependencies = [
  "re_log_types",
  "thiserror",
  "tonic",
- "tonic-build",
 ]
 
 [[package]]
@@ -5631,11 +5630,7 @@ name = "re_remote_store_types_builder"
 version = "0.19.0-alpha.1+dev"
 dependencies = [
  "camino",
- "re_dataframe",
  "re_log",
- "re_log_types",
- "re_tracing",
- "tonic",
  "tonic-build",
 ]
 
