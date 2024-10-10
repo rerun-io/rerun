@@ -17,9 +17,6 @@ pub struct AppOptions {
     #[cfg(not(target_arch = "wasm32"))]
     pub experimental_space_view_screenshots: bool,
 
-    /// Toggle query clamping for the plot visualizers.
-    pub plot_query_clamping: bool,
-
     /// Displays an overlay for debugging picking.
     pub show_picking_debug_overlay: bool,
 
@@ -49,8 +46,6 @@ impl Default for AppOptions {
 
             #[cfg(not(target_arch = "wasm32"))]
             experimental_space_view_screenshots: false,
-
-            plot_query_clamping: true,
 
             show_picking_debug_overlay: false,
 

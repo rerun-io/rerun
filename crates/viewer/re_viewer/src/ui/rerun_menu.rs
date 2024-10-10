@@ -352,6 +352,9 @@ fn options_menu_ui(
         });
     }
 
+    // Currently, the wasm target does not have any experimental features. Remove this conditional
+    // compilation directive if/when this changes.
+    #[cfg(not(target_arch = "wasm32"))]
     {
         ui.add_space(SPACING);
         ui.label("Experimental features:");
@@ -376,17 +379,14 @@ fn options_menu_ui(
     }
 }
 
+// IMPORTANT: if/when adding wasm-compatible experimental features, move this conditional
+// compilation directive to `space_view_screenshot` and remove the one above the call size of this
+// function!!
+#[cfg(not(target_arch = "wasm32"))]
 fn experimental_feature_ui(ui: &mut egui::Ui, app_options: &mut re_viewer_context::AppOptions) {
-    #[cfg(not(target_arch = "wasm32"))]
     ui
         .re_checkbox(&mut app_options.experimental_space_view_screenshots, "Space view screenshots")
         .on_hover_text("Allow taking screenshots of 2D and 3D space views via their context menu. Does not contain labels.");
-
-    ui.re_checkbox(
-        &mut app_options.plot_query_clamping,
-        "Plots: query clamping",
-    )
-    .on_hover_text("Toggle query clamping for the plot visualizers. This is enabled by default and is only made toggable to facilitate potential bug hunts and performance comparisons.");
 }
 
 #[cfg(debug_assertions)]
