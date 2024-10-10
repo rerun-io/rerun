@@ -74,7 +74,14 @@ impl PixelFormat {
             | Self::NV12
             | Self::YUY2 => ColorModel::RGB,
 
-            // TODO(andreas): This shouldn't be ColorModel::RGB, but our YUV converter can't do anything else right now.
+            // TODO(andreas): This shouldn't be ColorModel::RGB, but our YUV converter can't do anything else right now:
+            // The converter doesn't *have* to always output RGB, but having it sometimes output R(8) specifically for the
+            // YUV converter requires me to do more bookkeeping (needs a new renderpipeline and I expect other ripples).
+            //
+            // As of writing, having this color_model "incorrectly" be RGB mostly affects hovering logic which will continue to show RGB rather than L.
+            //
+            // Note that this does not affect the memory Y8 needs. It just implies that we use more GPU memory than we should.
+            // However, we typically (see image cache) hold the converted GPU textures only as long as we actually draw with them.
             Self::Y8_LimitedRange | Self::Y8_FullRange => ColorModel::RGB,
         }
     }
