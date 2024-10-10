@@ -229,7 +229,7 @@ mod tests {
 
     #[test]
     pub fn test_query_conversion() {
-        // from grpc type...
+        // from grpc type
         let query = Query {
             view_contents: Some(ViewContents {
                 contents: vec![ViewContentsPart {
@@ -288,7 +288,7 @@ mod tests {
             sparse_fill_strategy: SparseFillStrategy::None.into(),
         };
 
-        // ...to chunk store query expression
+        // to chunk store query expression
         let expected_qe = re_dataframe::external::re_chunk_store::QueryExpression {
             view_contents: Some(BTreeMap::from([(
                 re_log_types::EntityPath::from("/somepath"),
