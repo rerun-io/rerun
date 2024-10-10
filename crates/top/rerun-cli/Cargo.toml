@@ -20,6 +20,8 @@ repository.workspace = true
 rust-version.workspace = true
 version.workspace = true
 
+default-run = "rerun" # If someone types `cargo run` in this workspace, this is what we staert
+
 [lints]
 workspace = true
 
@@ -39,13 +41,13 @@ doc = false
 # so wer have all the bells and wistles here
 default = ["native_viewer", "web_viewer"]
 
+## Enable faster native video decoding with assembly.
+## You need to install [nasm](https://nasm.us/) to compile with this feature.
+nasm = ["rerun/nasm"]
+
 ## Support spawning a native viewer.
 ## This adds a lot of extra dependencies, so only enable this feature if you need it!
 native_viewer = ["rerun/native_viewer"]
-
-## Support for native AV1 video decoding.
-## You need to install [nasm](https://nasm.us/) to compile with this feature.
-video_av1 = ["rerun/video_av1"]
 
 ## Support serving a web viewer over HTTP.
 ##

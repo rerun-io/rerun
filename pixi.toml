@@ -122,18 +122,18 @@ man = "cargo --quiet run --package rerun-cli --all-features -- man > docs/conten
 # Compile and run the rerun viewer.
 #
 # You can also give an argument for what to view (e.g. an .rrd file).
-rerun = "cargo run --package rerun-cli --no-default-features --features native_viewer,video_av1 --"
+rerun = "cargo run --package rerun-cli --no-default-features --features native_viewer,nasm --"
 
 # Compile `rerun-cli` without the web-viewer.
-rerun-build = "cargo build --package rerun-cli --no-default-features --features native_viewer,video_av1"
+rerun-build = "cargo build --package rerun-cli --no-default-features --features native_viewer,nasm"
 
 # Compile `rerun-cli` without the web-viewer.
-rerun-build-release = "cargo build --package rerun-cli --release --no-default-features --features native_viewer,video_av1"
+rerun-build-release = "cargo build --package rerun-cli --release --no-default-features --features native_viewer,nasm"
 
 # Compile and run the rerun viewer with --release.
 #
 # You can also give an argument for what to view (e.g. an .rrd file).
-rerun-release = "cargo run --package rerun-cli --no-default-features --features native_viewer,video_av1 --release --"
+rerun-release = "cargo run --package rerun-cli --no-default-features --features native_viewer,nasm --release --"
 
 # Compile and run the web-viewer via rerun-cli.
 #
@@ -305,6 +305,8 @@ py-build = "pixi run -e py py-build-common"
 # Dedicated alias for building the python bindings in release mode for the `py` environment.
 py-build-release = "pixi run -e py py-build-common-release"
 
+py-check-signatures = "python scripts/ci/python_check_signatures.py"
+
 # Helper alias to run the python interpreter in the context of the python environment
 rrpy = "python"
 
@@ -446,6 +448,7 @@ pygithub = "==1.59.0"            # Among others for `generate_pr_summary.py`, `s
 requests = ">=2.31,<3"           # For `thumbnails.py` & `upload_image.py`
 types-Deprecated = "==1.2.9.2"   # Type hint stubs
 types-requests = ">=2.31,<3"     # Type hint stubs
+parso = ">=0.8.4, <0.9"
 
 [feature.wheel-build.dependencies]
 binaryen = "117.*"       # for `wasm-opt`

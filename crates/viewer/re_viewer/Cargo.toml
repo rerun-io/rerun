@@ -36,10 +36,6 @@ default = ["analytics"]
 ## Enable telemetry using our analytics SDK.
 analytics = ["dep:re_analytics"]
 
-## Support for native AV1 video decoding.
-## You need to install [nasm](https://nasm.us/) to compile with this feature.
-video_av1 = ["re_renderer/video_av1"]
-
 
 [dependencies]
 # Internal:

@@ -27,8 +27,8 @@ def test_load_recording() -> None:
         batches = view.select()
         table = pa.Table.from_batches(batches, batches.schema)
 
-        # my_index, log_time, log_tick, indicator, text
-        assert table.num_columns == 5
+        # my_index, log_time, log_tick, text
+        assert table.num_columns == 4
         assert table.num_rows == 1
 
         recording = rr.dataframe.load_recording(pathlib.Path(tmpdir) / "tmp.rrd")
@@ -38,8 +38,8 @@ def test_load_recording() -> None:
         batches = view.select()
         table = pa.Table.from_batches(batches, batches.schema)
 
-        # my_index, log_time, log_tick, indicator, text
-        assert table.num_columns == 5
+        # my_index, log_time, log_tick, text
+        assert table.num_columns == 4
         assert table.num_rows == 1
 
 
@@ -69,8 +69,8 @@ class TestDataframe:
         batches = view.select()
         table = pa.Table.from_batches(batches, batches.schema)
 
-        # my_index, log_time, log_tick, indicator, points, colors
-        assert table.num_columns == 6
+        # my_index, log_time, log_tick, points, colors
+        assert table.num_columns == 5
         assert table.num_rows == 2
 
     def test_select_columns(self) -> None:

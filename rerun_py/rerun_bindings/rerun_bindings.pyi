@@ -11,7 +11,7 @@ class IndexColumnDescriptor:
 class IndexColumnSelector:
     """A selector for an index column."""
 
-    def __new__(cls, index: str): ...
+    def __init__(self, index: str): ...
 
 class ComponentColumnDescriptor:
     """A column containing the component data."""
@@ -21,7 +21,7 @@ class ComponentColumnDescriptor:
 class ComponentColumnSelector:
     """A selector for a component column."""
 
-    def __new__(cls, entity_path: str, component_type: ComponentLike): ...
+    def __init__(self, entity_path: str, component: ComponentLike): ...
     def with_dictionary_encoding(self) -> ComponentColumnSelector: ...
 
 class Schema:
@@ -63,7 +63,7 @@ class Recording:
     """A single recording."""
 
     def schema(self) -> Schema: ...
-    def view(self, index: str, contents: ViewContentsLike) -> RecordingView: ...
+    def view(self, *, index: str, contents: ViewContentsLike) -> RecordingView: ...
     def recording_id(self) -> str: ...
     def application_id(self) -> str: ...
 
@@ -73,7 +73,7 @@ class RRDArchive:
     def num_recordings(self) -> int: ...
     def all_recordings(self) -> list[Recording]: ...
 
-def load_recording(filename: str | os.PathLike) -> Recording:
+def load_recording(path_to_rrd: str | os.PathLike) -> Recording:
     """
     Load a single recording from an RRD.
 
@@ -81,19 +81,19 @@ def load_recording(filename: str | os.PathLike) -> Recording:
 
     Parameters
     ----------
-    filename : str
+    path_to_rrd : str
         The path to the file to load.
 
     """
     ...
 
-def load_archive(filename: str | os.PathLike) -> RRDArchive:
+def load_archive(path_to_rrd: str | os.PathLike) -> RRDArchive:
     """
     Load a rerun archive file from disk.
 
     Parameters
     ----------
-    filename : str
+    path_to_rrd : str
         The path to the file to load.
 
     """

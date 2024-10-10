@@ -24,11 +24,14 @@ no-default-features = true
 features = ["all"]
 
 [features]
-default = []
+default = ["av1"]
 
-## Opt-in to native AV1 decoding.
-## You need to install [nasm](https://nasm.us/) to compile with this feature.
+## Native AV1 decoding.
 av1 = ["dep:dav1d"]
+
+## Enable faster native video decoding with assembly.
+## You need to install [nasm](https://nasm.us/) to compile with this feature.
+nasm = ["dav1d?/default"] # The default feature set of dav1d has asm enabled
 
 [dependencies]
 re_log.workspace = true
