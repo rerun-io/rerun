@@ -16,6 +16,15 @@ impl SyncDav1dDecoder {
     pub fn new() -> Result<Self> {
         re_tracing::profile_function!();
 
+        // TODO(#7671): enable this check again when the `nasm` feature actually does something
+        if false && !cfg!(feature = "nasm") {
+            re_log::warn_once!(
+                "NOTE: native AV1 video decoder is running extra slowly. \
+                Speed it up by compiling Rerun with the `nasm` feature enabled. \
+                You'll need to also install nasm: https://nasm.us/"
+            );
+        }
+
         // See https://videolan.videolan.me/dav1d/structDav1dSettings.html for settings docs
         let mut settings = dav1d::Settings::new();
 
