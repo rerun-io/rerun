@@ -202,9 +202,9 @@ impl<'a> egui_table::TableDelegate for DataframeTableDelegate<'a> {
 
         let timeline = self.query_handle.query().filtered_index;
 
-        //TODO(ab, cmc): we probably need a better way to run a paginated query.
+        self.query_handle
+            .seek_to_row(info.visible_rows.start as usize);
         let data = std::iter::from_fn(|| self.query_handle.next_row())
-            .skip(info.visible_rows.start as usize)
             .take((info.visible_rows.end - info.visible_rows.start) as usize)
             .collect();
 
