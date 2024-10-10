@@ -328,13 +328,13 @@ impl ChunkStore {
                 .or_default()
                 .entry(component_name)
                 .or_insert(ColumnMetadataState {
-                    is_semantically_non_empty: false,
+                    is_semantically_empty: true,
                 });
             {
                 let is_semantically_empty =
                     re_chunk::util::is_list_array_semantically_empty(list_array);
 
-                column_metadata_state.is_semantically_non_empty |= !is_semantically_empty;
+                column_metadata_state.is_semantically_empty &= is_semantically_empty;
             }
         }
 

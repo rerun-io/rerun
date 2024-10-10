@@ -296,14 +296,11 @@ pub struct ColumnMetadata {
 /// Internal state that needs to be maintained in order to compute [`ColumnMetadata`].
 #[derive(Debug, Clone)]
 pub struct ColumnMetadataState {
-    /// Whether non-semantically empty data was ever written to this column at any point.
-    ///
-    /// Semantically empty data is data that is either physically empty or only contains null
-    /// and/or empty values (`[]`).
+    /// Whether this column contains either no data or only contains null and/or empty values (`[]`).
     ///
     /// This is purely additive: once false, it will always be false. Even in case of garbage
     /// collection.
-    pub is_semantically_non_empty: bool,
+    pub is_semantically_empty: bool,
 }
 
 /// Incremented on each edit.
@@ -560,7 +557,7 @@ impl ChunkStore {
         component_name: &ComponentName,
     ) -> Option<ColumnMetadata> {
         let ColumnMetadataState {
-            is_semantically_non_empty,
+            is_semantically_empty,
         } = self
             .per_column_metadata
             .get(entity_path)
@@ -583,7 +580,7 @@ impl ChunkStore {
             is_static,
             is_indicator,
             is_tombstone,
-            is_semantically_empty: !*is_semantically_non_empty,
+            is_semantically_empty: *is_semantically_empty,
         })
     }
 }
