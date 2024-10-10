@@ -31,10 +31,10 @@ namespace rerun::archetypes {
     /// Capsules in other orientations may be produced by applying a rotation to the entity or
     /// instances.
     struct Capsules3D {
-        /// The shape of the capsule defined as the length of the line between its endpoints.
+        /// Lengths of the capsules, defined as the distance between the centers of the endcaps.
         Collection<rerun::components::Length> lengths;
 
-        /// Radius of the capsules.
+        /// Radii of the capsules.
         Collection<rerun::components::Radius> radii;
 
         /// Optional translations of the capsules.

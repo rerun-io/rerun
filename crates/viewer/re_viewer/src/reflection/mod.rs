@@ -935,10 +935,10 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                 fields: vec![
                     ArchetypeFieldReflection { component_name : "rerun.components.Length"
                     .into(), display_name : "Lengths", docstring_md :
-                    "The shape of the capsule defined as the length of the line between its endpoints.",
+                    "Lengths of the capsules, defined as the distance between the centers of the endcaps.",
                     is_required : true, }, ArchetypeFieldReflection { component_name :
                     "rerun.components.Radius".into(), display_name : "Radii",
-                    docstring_md : "Radius of the capsules.", is_required : true, },
+                    docstring_md : "Radii of the capsules.", is_required : true, },
                     ArchetypeFieldReflection { component_name :
                     "rerun.components.PoseTranslation3D".into(), display_name :
                     "Translations", docstring_md :

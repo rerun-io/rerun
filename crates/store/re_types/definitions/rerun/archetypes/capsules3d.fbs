@@ -22,10 +22,10 @@ table Capsules3D (
 ) {
   // --- Required ---
 
-  /// The shape of the capsule defined as the length of the line between its endpoints.
+  /// Lengths of the capsules, defined as the distance between the centers of the endcaps.
   lengths: [rerun.components.Length] ("attr.rerun.component_required", order: 1000);
 
-  /// Radius of the capsules.
+  /// Radii of the capsules.
   //
   // TODO(#1361): This should eventually become two radii, to generate truncated cones and tapered capsules.
   radii: [rerun.components.Radius] ("attr.rerun.component_required", order: 1100);

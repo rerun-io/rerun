@@ -5,6 +5,6 @@ use super::Length;
 impl Default for Length {
     #[inline]
     fn default() -> Self {
-        Self(Float32(0.0))
+        Self(Float32(1.0))
     }
 }

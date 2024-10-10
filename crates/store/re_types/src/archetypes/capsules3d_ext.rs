@@ -39,7 +39,12 @@ impl Capsules3D {
                 // from +Z to the direction between them.
                 let direction = p2 - p1;
                 let length = direction.length();
-                let quaternion = glam::Quat::from_rotation_arc(glam::Vec3::Z, direction / length);
+
+                let quaternion = if length > 0.0 {
+                    glam::Quat::from_rotation_arc(glam::Vec3::Z, direction / length)
+                } else {
+                    glam::Quat::IDENTITY
+                };
 
                 (
                     components::Length::from(length),
@@ -77,6 +82,18 @@ mod tests {
                     // rotate 90° about Y to rotate the +Z capsule into +X
                     glam::Quat::from_axis_angle(vec3(0., 1., 0.), std::f32::consts::FRAC_PI_2)
                 ])
+        );
+    }
+
+    #[test]
+    fn endpoints_zero_length() {
+        let endpoint = vec3(1., 2., 3.);
+        let radius = 0.25;
+        assert_eq!(
+            Capsules3D::from_endpoints_and_radii([endpoint], [endpoint], [radius]),
+            Capsules3D::from_lengths_and_radii([0.0], [radius])
+                .with_translations([endpoint])
+                .with_quaternions([glam::Quat::IDENTITY])
         );
     }
 }

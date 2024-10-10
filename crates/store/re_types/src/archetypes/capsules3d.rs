@@ -26,10 +26,10 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 /// instances.
 #[derive(Clone, Debug, PartialEq)]
 pub struct Capsules3D {
-    /// The shape of the capsule defined as the length of the line between its endpoints.
+    /// Lengths of the capsules, defined as the distance between the centers of the endcaps.
     pub lengths: Vec<crate::components::Length>,
 
-    /// Radius of the capsules.
+    /// Radii of the capsules.
     pub radii: Vec<crate::components::Radius>,
 
     /// Optional translations of the capsules.

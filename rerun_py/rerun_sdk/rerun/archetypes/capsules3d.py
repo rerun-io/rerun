@@ -54,7 +54,7 @@ class Capsules3D(Capsules3DExt, Archetype):
         metadata={"component": "required"},
         converter=components.LengthBatch._required,  # type: ignore[misc]
     )
-    # The shape of the capsule defined as the length of the line between its endpoints.
+    # Lengths of the capsules, defined as the distance between the centers of the endcaps.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 
@@ -62,7 +62,7 @@ class Capsules3D(Capsules3DExt, Archetype):
         metadata={"component": "required"},
         converter=components.RadiusBatch._required,  # type: ignore[misc]
     )
-    # Radius of the capsules.
+    # Radii of the capsules.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 
