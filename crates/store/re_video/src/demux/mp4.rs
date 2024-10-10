@@ -58,6 +58,7 @@ impl VideoData {
             let byte_length = sample.size as u32;
 
             samples.push(Sample {
+                is_sync: sample.is_sync,
                 decode_timestamp,
                 composition_timestamp,
                 duration,

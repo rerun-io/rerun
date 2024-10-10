@@ -164,15 +164,23 @@ Update instructions:
 
 ### Application-level store
 
-| Crate                 | Description                                                        |
-| --------------------- | ------------------------------------------------------------------ |
-| re_entity_db          | In-memory storage of Rerun entities                                |
-| re_query              | Querying data in the re_chunk_store                                |
-| re_dataframe          | The Rerun public data APIs.                                        |
-| re_remote_store_types | Remote store gRPC service API types (client and server)            |
-| re_types              | The built-in Rerun data types, component types, and archetypes.    |
-| re_types_blueprint    | The core traits and types that power Rerun's Blueprint sub-system. |
-| re_log_encoding       | Helpers for encoding and transporting Rerun log messages           |
+| Crate                  | Description                                                                |
+| ---------------------- | -------------------------------------------------------------------------- |
+| re_entity_db           | In-memory storage of Rerun entities                                        |
+| re_query               | Querying data in the re_chunk_store                                        |
+| re_dataframe           | The Rerun public data APIs.                                                |
+| re_remote_store_types  | Remote store gRPC service API types (client and server)                    |
+| re_types               | The built-in Rerun data types, component types, and archetypes.            |
+| re_types_blueprint     | The core traits and types that power Rerun's Blueprint sub-system.         |
+| re_log_encoding        | Helpers for encoding and transporting Rerun log messages                   |
+| Crate                  | Description                                                                |
+| ---------------------- | -------------------------------------------------------------------------- |
+| re_entity_db           | In-memory storage of Rerun entities                                        |
+| re_query               | Querying data in the re_chunk_store                                        |
+| re_dataframe           | The Rerun public data APIs.                                                |
+| re_types               | The built-in Rerun data types, component types, and archetypes.            |
+| re_types_blueprint     | The core traits and types that power Rerun's Blueprint sub-system.         |
+| re_log_encoding        | Helpers for encoding and transporting Rerun log messages                   |
 
 ### Low-level store
 

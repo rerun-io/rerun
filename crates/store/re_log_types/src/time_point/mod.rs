@@ -127,7 +127,22 @@ impl TimeType {
         }
     }
 
-    #[inline]
+    pub fn format_sequence(time_int: TimeInt) -> String {
+        Self::Sequence.format(time_int, TimeZone::Utc)
+    }
+
+    pub fn parse_sequence(s: &str) -> Option<TimeInt> {
+        match s {
+            "<static>" => Some(TimeInt::STATIC),
+            "−∞" => Some(TimeInt::MIN),
+            "+∞" => Some(TimeInt::MAX),
+            _ => {
+                let s = s.strip_prefix('#').unwrap_or(s);
+                re_format::parse_i64(s).map(TimeInt::new_temporal)
+            }
+        }
+    }
+
     pub fn format(
         &self,
         time_int: impl Into<TimeInt>,
@@ -136,7 +151,7 @@ impl TimeType {
         let time_int = time_int.into();
         match time_int {
             TimeInt::STATIC => "<static>".into(),
-            TimeInt::MIN => "-∞".into(),
+            TimeInt::MIN => "−∞".into(),
             TimeInt::MAX => "+∞".into(),
             _ => match self {
                 Self::Time => Time::from(time_int).format(time_zone_for_timestamps),
@@ -219,5 +234,28 @@ impl<T: TryInto<TimeInt>, const N: usize> From<[(Timeline, T); N]> for TimePoint
                 })
                 .collect(),
         )
+    }
+}
+
+// ----------------------------------------------------------------------------
+
+#[cfg(test)]
+mod tests {
+    use super::{TimeInt, TimeType};
+
+    #[test]
+    fn test_format_parse() {
+        let cases = [
+            (TimeInt::STATIC, "<static>"),
+            (TimeInt::MIN, "−∞"),
+            (TimeInt::MAX, "+∞"),
+            (TimeInt::new_temporal(-42), "#−42"),
+            (TimeInt::new_temporal(12345), "#12 345"),
+        ];
+
+        for (int, s) in cases {
+            assert_eq!(TimeType::format_sequence(int), s);
+            assert_eq!(TimeType::parse_sequence(s), Some(int));
+        }
     }
 }

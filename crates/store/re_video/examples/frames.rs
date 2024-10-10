@@ -13,6 +13,8 @@ use std::{
 use indicatif::ProgressBar;
 use parking_lot::Mutex;
 
+use re_video::{decode::SyncDecoder, VideoData};
+
 fn main() {
     // frames <video.mp4>
     let args: Vec<_> = std::env::args().collect();
@@ -27,10 +29,6 @@ fn main() {
     let video = std::fs::read(video_path).expect("failed to read video");
     let video = re_video::VideoData::load_mp4(&video).expect("failed to load video");
 
-    let sync_decoder = Box::new(
-        re_video::decode::av1::SyncDav1dDecoder::new().expect("Failed to start AV1 decoder"),
-    );
-
     println!(
         "{} {}x{}",
         video.gops.len(),
@@ -38,6 +36,26 @@ fn main() {
         video.config.coded_height
     );
 
+    let mut decoder = create_decoder(&video);
+
+    write_video_frames(&video, decoder.as_mut(), &output_dir);
+}
+
+fn create_decoder(video: &VideoData) -> Box<dyn SyncDecoder> {
+    if video.config.is_av1() {
+        Box::new(
+            re_video::decode::av1::SyncDav1dDecoder::new().expect("Failed to start AV1 decoder"),
+        )
+    } else {
+        panic!("Unsupported codec: {}", video.human_readable_codec_string());
+    }
+}
+
+fn write_video_frames(
+    video: &re_video::VideoData,
+    decoder: &mut dyn re_video::decode::SyncDecoder,
+    output_dir: &PathBuf,
+) {
     let progress = ProgressBar::new(video.samples.len() as u64).with_message("Decoding video");
     progress.enable_steady_tick(Duration::from_millis(100));
 
@@ -50,16 +68,14 @@ fn main() {
             frames.lock().push(frame);
         }
     };
-    let mut decoder =
-        re_video::decode::AsyncDecoder::new("debug_name".to_owned(), sync_decoder, on_output);
 
     let start = Instant::now();
     for sample in &video.samples {
-        decoder.decode(video.get(sample).unwrap());
+        let should_stop = std::sync::atomic::AtomicBool::new(false);
+        let chunk = video.get(sample).unwrap();
+        decoder.submit_chunk(&should_stop, chunk, &on_output);
     }
 
-    decoder.flush();
-    drop(decoder);
     let end = Instant::now();
     progress.finish();
 
@@ -72,7 +88,7 @@ fn main() {
     );
 
     println!("Writing frames to {}", output_dir.display());
-    std::fs::create_dir_all(&output_dir).expect("failed to create output directory");
+    std::fs::create_dir_all(output_dir).expect("failed to create output directory");
 
     let width = num_digits(frames.len());
     for (i, frame) in frames.iter().enumerate() {

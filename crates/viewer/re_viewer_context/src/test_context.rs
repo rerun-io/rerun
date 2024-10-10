@@ -161,8 +161,7 @@ impl TestContext {
                 | SystemCommand::ClearAndGenerateBlueprint
                 | SystemCommand::ActivateRecording(_)
                 | SystemCommand::CloseStore(_)
-                | SystemCommand::CloseAllRecordings
-                | SystemCommand::EnableExperimentalDataframeSpaceView(_) => handled = false,
+                | SystemCommand::CloseAllRecordings => handled = false,
 
                 #[cfg(debug_assertions)]
                 SystemCommand::EnableInspectBlueprintTimeline(_) => handled = false,

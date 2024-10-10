@@ -129,16 +129,28 @@ fn copy_video_frame_to_texture(
     frame: &Frame,
     texture: &wgpu::Texture,
 ) -> Result<(), DecodingError> {
+    let format = match frame.format {
+        re_video::PixelFormat::Rgb8Unorm => {
+            return copy_video_frame_to_texture(
+                queue,
+                &Frame {
+                    data: crate::pad_rgb_to_rgba(&frame.data, 255_u8),
+                    format: re_video::PixelFormat::Rgba8Unorm,
+                    ..*frame
+                },
+                texture,
+            );
+        }
+
+        re_video::PixelFormat::Rgba8Unorm => wgpu::TextureFormat::Rgba8Unorm,
+    };
+
     re_tracing::profile_function!();
 
     let size = wgpu::Extent3d {
         width: frame.width,
         height: frame.height,
         depth_or_array_layers: 1,
-    };
-
-    let format = match frame.format {
-        re_video::PixelFormat::Rgba8Unorm => wgpu::TextureFormat::Rgba8Unorm,
     };
 
     let width_blocks = frame.width / format.block_dimensions().0;

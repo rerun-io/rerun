@@ -38,7 +38,12 @@ pub trait SyncDecoder {
 }
 
 /// One chunk of encoded video data; usually one frame.
+///
+/// One loaded [`crate::Sample`].
 pub struct Chunk {
+    /// The start of a new [`crate::demux::GroupOfPictures`]?
+    pub is_sync: bool,
+
     pub data: Vec<u8>,
     pub timestamp: Time,
     pub duration: Time,
@@ -55,5 +60,6 @@ pub struct Frame {
 }
 
 pub enum PixelFormat {
+    Rgb8Unorm,
     Rgba8Unorm,
 }
