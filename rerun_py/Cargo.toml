@@ -30,6 +30,7 @@ extension-module = ["pyo3/extension-module"]
 
 ## Enable faster native video decoding with assembly.
 ## You need to install [nasm](https://nasm.us/) to compile with this feature.
+# TODO(#7671): this feature flag currently does nothing
 nasm = ["re_video/nasm"]
 
 ## Support serving a web viewer over HTTP with `serve()`.
