@@ -70,6 +70,15 @@ class RecordingView:
         """
         ...
 
+    def filter_is_not_null(self, column: AnyColumn) -> RecordingView:
+        """
+        Filter the view to only include rows where the given column is not null.
+
+        This corresponds to rows for index values where this component was provided to Rerun explicitly
+        via `.log()` or `.send_columns()`.
+        """
+        ...
+
     def using_index_values(self, values: IndexValuesLike) -> RecordingView:
         """
         Replace the index in the view with the provided values.
