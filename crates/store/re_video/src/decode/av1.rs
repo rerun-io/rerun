@@ -2,9 +2,8 @@
 
 use std::sync::atomic::{AtomicBool, Ordering};
 
-use dav1d::{PixelLayout, PlanarImageComponent};
-
 use crate::Time;
+use dav1d::{PixelLayout, PlanarImageComponent};
 
 use super::{
     Chunk, ColorPrimaries, Error, Frame, OutputCallback, PixelFormat, Result, SyncDecoder,
@@ -117,18 +116,73 @@ fn output_picture(picture: &dav1d::Picture, on_output: &(dyn Fn(Result<Frame>) +
     // - matrix_coefficients
     // - transfer_characteristics
 
-    let data = match picture.pixel_layout() {
-        PixelLayout::I400 => picture.plane(PlanarImageComponent::Y).to_vec(),
-        PixelLayout::I420 | PixelLayout::I422 | PixelLayout::I444 => {
-            let mut data = Vec::with_capacity(
-                picture.stride(PlanarImageComponent::Y) as usize
-                    + picture.stride(PlanarImageComponent::U) as usize
-                    + picture.stride(PlanarImageComponent::V) as usize,
-            );
-            data.extend_from_slice(&picture.plane(PlanarImageComponent::Y));
-            data.extend_from_slice(&picture.plane(PlanarImageComponent::U));
-            data.extend_from_slice(&picture.plane(PlanarImageComponent::V));
-            data // TODO: how badly does this break with hdr?
+    let data = {
+        re_tracing::profile_scope!("copy_picture_data");
+
+        match picture.pixel_layout() {
+            PixelLayout::I400 => picture.plane(PlanarImageComponent::Y).to_vec(),
+            PixelLayout::I420 | PixelLayout::I422 | PixelLayout::I444 => {
+                // TODO(#7594): If `picture.bit_depth()` isn't 8 we have a problem:
+                // We can't handle high bit depths yet and the YUV converter at the other side
+                // bases its opinion on what an acceptable number of incoming bytes is on this.
+                // So we just clamp to that expectation, ignoring `picture.stride(PlanarImageComponent::Y)` & friends.
+                // Note that `bit_depth` is either 8 or 16, which is semi-independent `bits_per_component` (which is None/8/10/12).
+                if picture.bit_depth() != 8 {
+                    re_log::warn_once!(
+                        "Video uses unsupported bit depth larger than 8 bit per color component which is currently unsupported."
+                    );
+                }
+
+                let height_y = picture.height() as usize;
+                let height_uv = match picture.pixel_layout() {
+                    PixelLayout::I400 => 0,
+                    PixelLayout::I420 => height_y / 2,
+                    PixelLayout::I422 | PixelLayout::I444 => height_y,
+                };
+
+                let packed_stride_y = picture.width() as usize;
+                let actual_stride_y = picture.stride(PlanarImageComponent::Y) as usize;
+
+                let packed_stride_uv = match picture.pixel_layout() {
+                    PixelLayout::I400 => 0,
+                    PixelLayout::I420 | PixelLayout::I422 => packed_stride_y / 2,
+                    PixelLayout::I444 => packed_stride_y,
+                };
+                let actual_stride_uv = picture.stride(PlanarImageComponent::U) as usize; // U / V stride is always the same.
+
+                let num_packed_bytes_y = packed_stride_y * height_y;
+                let num_packed_bytes_uv = packed_stride_uv * height_uv;
+
+                let mut data = Vec::with_capacity(num_packed_bytes_y + num_packed_bytes_uv * 2);
+
+                // We could make our image ingestion pipeline even more sophisticated and pass that stride information through.
+                // But given that this is a matter of replacing a single large memcpy with a few hundred _still_ quite large ones,
+                // this should not make a lot of difference (citation needed!).
+                {
+                    let plane = picture.plane(PlanarImageComponent::Y);
+                    if actual_stride_y != packed_stride_y {
+                        for y in 0..height_y {
+                            let offset = y * actual_stride_y;
+                            data.extend_from_slice(&plane[offset..(offset + packed_stride_y)]);
+                        }
+                    } else {
+                        data.extend_from_slice(&plane[0..num_packed_bytes_y]);
+                    }
+                }
+                for comp in [PlanarImageComponent::U, PlanarImageComponent::V] {
+                    let plane = picture.plane(comp);
+                    if actual_stride_uv != packed_stride_uv {
+                        for y in 0..height_uv {
+                            let offset = y * actual_stride_uv;
+                            data.extend_from_slice(&plane[offset..(offset + packed_stride_uv)]);
+                        }
+                    } else {
+                        data.extend_from_slice(&plane[0..num_packed_bytes_uv]);
+                    }
+                }
+
+                data
+            }
         }
     };
 
