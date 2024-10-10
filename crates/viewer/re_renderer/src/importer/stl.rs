@@ -23,6 +23,7 @@ pub enum StlImportError {
 pub fn load_stl_from_buffer(
     buffer: &[u8],
     ctx: &RenderContext,
+    _texture_key: u64,
 ) -> Result<Vec<MeshInstance>, StlImportError> {
     re_tracing::profile_function!();
 
@@ -37,7 +38,7 @@ pub fn load_stl_from_buffer(
     let num_vertices = triangles.len() * 3;
 
     let material = mesh::Material {
-        label: "default material".into(),
+        label: name.clone().into(),
         index_range: 0..num_vertices as u32,
         albedo: ctx.texture_manager_2d.white_texture_unorm_handle().clone(),
         albedo_factor: crate::Rgba::WHITE,
