@@ -215,3 +215,125 @@ pub mod v0 {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use std::collections::{BTreeMap, BTreeSet};
+
+    use crate::v0::{
+        column_selector::SelectorType, ColumnSelection, ColumnSelector, Component,
+        ComponentColumnSelector, ComponentsSet, EntityPath, IndexColumnSelector, IndexRange,
+        IndexValues, Query, SparseFillStrategy, TimeInt, TimeRange, Timeline, ViewContents,
+        ViewContentsPart,
+    };
+
+    #[test]
+    pub fn test_query_conversion() {
+        // from grpc type...
+        let query = Query {
+            view_contents: Some(ViewContents {
+                contents: vec![ViewContentsPart {
+                    path: Some(EntityPath {
+                        path: "/somepath".to_owned(),
+                    }),
+                    components: Some(ComponentsSet {
+                        components: vec![Component {
+                            name: "component".to_owned(),
+                        }],
+                    }),
+                }],
+            }),
+            filtered_index: Some(IndexColumnSelector {
+                timeline: Some(Timeline {
+                    name: "log_time".to_owned(),
+                }),
+            }),
+            filtered_index_range: Some(IndexRange {
+                time_range: Some(TimeRange { start: 0, end: 100 }),
+            }),
+            filtered_index_values: Some(IndexValues {
+                time_points: vec![
+                    TimeInt { time: 0 },
+                    TimeInt { time: 1 },
+                    TimeInt { time: 2 },
+                ],
+            }),
+            using_index_values: Some(IndexValues {
+                time_points: vec![
+                    TimeInt { time: 3 },
+                    TimeInt { time: 4 },
+                    TimeInt { time: 5 },
+                ],
+            }),
+            filtered_pov: Some(ComponentColumnSelector {
+                entity_path: Some(EntityPath {
+                    path: "/somepath/c".to_owned(),
+                }),
+                component: Some(Component {
+                    name: "component".to_owned(),
+                }),
+            }),
+            column_selection: Some(ColumnSelection {
+                columns: vec![ColumnSelector {
+                    selector_type: Some(SelectorType::ComponentColumn(ComponentColumnSelector {
+                        entity_path: Some(EntityPath {
+                            path: "/somepath/c".to_owned(),
+                        }),
+                        component: Some(Component {
+                            name: "component".to_owned(),
+                        }),
+                    })),
+                }],
+            }),
+            sparse_fill_strategy: SparseFillStrategy::None.into(),
+        };
+
+        // ...to chunk store query expression
+        let expected_qe = re_dataframe::external::re_chunk_store::QueryExpression {
+            view_contents: Some(BTreeMap::from([(
+                re_log_types::EntityPath::from("/somepath"),
+                Some(BTreeSet::from([
+                    re_dataframe::external::re_chunk::ComponentName::new("component"),
+                ])),
+            )])),
+            filtered_index: re_log_types::Timeline::new_temporal("log_time"),
+            filtered_index_range: Some(re_dataframe::external::re_chunk_store::IndexRange::new(
+                0, 100,
+            )),
+            filtered_index_values: Some(
+                vec![0, 1, 2]
+                    .into_iter()
+                    .map(re_log_types::TimeInt::new_temporal)
+                    .collect::<BTreeSet<_>>(),
+            ),
+            using_index_values: Some(
+                vec![3, 4, 5]
+                    .into_iter()
+                    .map(re_log_types::TimeInt::new_temporal)
+                    .collect::<BTreeSet<_>>(),
+            ),
+            filtered_point_of_view: Some(
+                re_dataframe::external::re_chunk_store::ComponentColumnSelector {
+                    entity_path: re_log_types::EntityPath::from("/somepath/c"),
+                    component: re_dataframe::external::re_chunk::ComponentName::new("component"),
+                    join_encoding: re_dataframe::external::re_chunk_store::JoinEncoding::default(),
+                },
+            ),
+            sparse_fill_strategy:
+                re_dataframe::external::re_chunk_store::SparseFillStrategy::default(),
+            selection: Some(vec![
+                re_dataframe::external::re_chunk_store::ComponentColumnSelector {
+                    entity_path: re_log_types::EntityPath::from("/somepath/c"),
+                    component: re_dataframe::external::re_chunk::ComponentName::new("component"),
+                    join_encoding: re_dataframe::external::re_chunk_store::JoinEncoding::default(),
+                }
+                .into(),
+            ]),
+        };
+
+        let query_expression: re_dataframe::external::re_chunk_store::QueryExpression =
+            query.try_into().unwrap();
+
+        assert_eq!(query_expression, expected_qe);
+    }
+}
