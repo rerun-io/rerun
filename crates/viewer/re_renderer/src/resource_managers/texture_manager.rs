@@ -229,10 +229,10 @@ impl TextureManager2D {
         // Currently we don't store any data in the texture manager.
         // In the future we might handle (lazy?) mipmap generation in here or keep track of lazy upload processing.
 
-        Ok(GpuTexture2D(transfer_image_data_to_texture(
-            render_ctx,
-            creation_desc,
-        )?))
+        let texture =
+            creation_desc.create_target_texture(render_ctx, wgpu::TextureUsages::TEXTURE_BINDING);
+        transfer_image_data_to_texture(render_ctx, creation_desc, &texture)?;
+        Ok(GpuTexture2D(texture))
     }
 
     /// Creates a new 2D texture resource and schedules data upload to the GPU if a texture
@@ -277,11 +277,11 @@ impl TextureManager2D {
                 // Run potentially expensive texture creation code:
                 let tex_creation_desc = try_create_texture_desc()
                     .map_err(|err| TextureManager2DError::DataCreation(err))?;
-                let texture = GpuTexture2D(transfer_image_data_to_texture(
-                    render_ctx,
-                    tex_creation_desc,
-                )?);
-                entry.insert(texture).clone()
+
+                let texture = tex_creation_desc
+                    .create_target_texture(render_ctx, wgpu::TextureUsages::TEXTURE_BINDING);
+                transfer_image_data_to_texture(render_ctx, tex_creation_desc, &texture)?;
+                entry.insert(GpuTexture2D(texture)).clone()
             }
         };
 
