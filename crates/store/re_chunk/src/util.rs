@@ -280,7 +280,29 @@ pub fn pad_list_array_front(
     ArrowListArray::new(datatype, offsets.into(), values, Some(validity))
 }
 
+/// Returns a new [`ArrowListArray`] with len `entries`.
+///
+/// Each entry will be an empty array of the given `child_datatype`.
+pub fn new_list_array_of_empties(child_datatype: ArrowDatatype, len: usize) -> ArrowListArray<i32> {
+    let empty_array = arrow2::array::new_empty_array(child_datatype);
+
+    #[allow(clippy::unwrap_used)] // yes, these are indeed lengths
+    let offsets = ArrowOffsets::try_from_lengths(std::iter::repeat(0).take(len)).unwrap();
+
+    ArrowListArray::<i32>::new(
+        ArrowListArray::<i32>::default_datatype(empty_array.data_type().clone()),
+        offsets.into(),
+        empty_array.to_boxed(),
+        None,
+    )
+}
+
 /// Applies a [filter] kernel to the given `array`.
+///
+/// Panics iff the length of the filter doesn't match the length of the array.
+///
+/// In release builds, filters are allowed to have null entries (they will be interpreted as `false`).
+/// In debug builds, null entries will panic.
 ///
 /// Note: a `filter` kernel _copies_ the data in order to make the resulting arrays contiguous in memory.
 ///
@@ -288,7 +310,14 @@ pub fn pad_list_array_front(
 ///
 /// [filter]: arrow2::compute::filter::filter
 pub fn filter_array<A: ArrowArray + Clone>(array: &A, filter: &ArrowBooleanArray) -> A {
-    debug_assert!(filter.validity().is_none()); // just for good measure
+    assert_eq!(
+        array.len(), filter.len(),
+        "the length of the filter must match the length of the array (the underlying kernel will panic otherwise)",
+    );
+    debug_assert!(
+        filter.validity().is_none(),
+        "filter masks with validity bits are technically valid, but generally a sign that something went wrong",
+    );
 
     #[allow(clippy::unwrap_used)]
     arrow2::compute::filter::filter(array, filter)
@@ -302,6 +331,9 @@ pub fn filter_array<A: ArrowArray + Clone>(array: &A, filter: &ArrowBooleanArray
 }
 
 /// Applies a [take] kernel to the given `array`.
+///
+/// In release builds, indices are allowed to have null entries (they will be taken as `null`s).
+/// In debug builds, null entries will panic.
 ///
 /// Note: a `take` kernel _copies_ the data in order to make the resulting arrays contiguous in memory.
 ///
@@ -318,6 +350,11 @@ pub fn take_array<A: ArrowArray + Clone, O: arrow2::types::Index>(
     array: &A,
     indices: &ArrowPrimitiveArray<O>,
 ) -> A {
+    debug_assert!(
+        indices.validity().is_none(),
+        "index arrays with validity bits are technically valid, but generally a sign that something went wrong",
+    );
+
     #[allow(clippy::unwrap_used)]
     arrow2::compute::take::take(array, indices)
         // Unwrap: this literally cannot fail.

@@ -1,6 +1,6 @@
 use arrow2::array::{
-    Array as ArrowArray, BooleanArray as ArrowBooleanArray, ListArray,
-    PrimitiveArray as ArrowPrimitiveArray, StructArray,
+    Array as ArrowArray, BooleanArray as ArrowBooleanArray, ListArray as ArrowListArray,
+    PrimitiveArray as ArrowPrimitiveArray, StructArray as ArrowStructArray,
 };
 
 use itertools::Itertools;
@@ -378,7 +378,7 @@ impl Chunk {
                         filtered
                             .with_validity(None)
                             .as_any()
-                            .downcast_ref::<ListArray<i32>>()
+                            .downcast_ref::<ArrowListArray<i32>>()
                             // Unwrap: cannot possibly fail -- going from a ListArray back to a ListArray.
                             .unwrap()
                             .clone()
@@ -440,7 +440,7 @@ impl Chunk {
             entity_path: entity_path.clone(),
             heap_size_bytes: Default::default(),
             is_sorted: true,
-            row_ids: StructArray::new_empty(row_ids.data_type().clone()),
+            row_ids: ArrowStructArray::new_empty(row_ids.data_type().clone()),
             timelines: timelines
                 .iter()
                 .map(|(&timeline, time_column)| (timeline, time_column.emptied()))
@@ -450,10 +450,40 @@ impl Chunk {
                 .map(|(&component_name, list_array)| {
                     (
                         component_name,
-                        ListArray::new_empty(list_array.data_type().clone()),
+                        ArrowListArray::new_empty(list_array.data_type().clone()),
                     )
                 })
                 .collect(),
+        }
+    }
+
+    /// Removes all component columns from the [`Chunk`].
+    ///
+    /// The result is a new [`Chunk`] with the same number of rows and the same index columns, but
+    /// no components.
+    ///
+    /// WARNING: the returned chunk has the same old [`crate::ChunkId`]! Change it with [`Self::with_id`].
+    #[must_use]
+    #[inline]
+    pub fn components_removed(self) -> Self {
+        let Self {
+            id,
+            entity_path,
+            heap_size_bytes: _,
+            is_sorted,
+            row_ids,
+            timelines,
+            components: _,
+        } = self;
+
+        Self {
+            id,
+            entity_path,
+            heap_size_bytes: Default::default(), // (!) lazily recompute
+            is_sorted,
+            row_ids,
+            timelines,
+            components: Default::default(),
         }
     }
 
@@ -527,6 +557,172 @@ impl Chunk {
         {
             chunk.sanity_check().unwrap();
         }
+
+        chunk
+    }
+
+    /// Applies a [filter] kernel to the [`Chunk`] as a whole.
+    ///
+    /// Returns `None` if the length of the filter does not match the number of rows in the chunk.
+    ///
+    /// In release builds, filters are allowed to have null entries (they will be interpreted as `false`).
+    /// In debug builds, null entries will panic.
+    ///
+    /// Note: a `filter` kernel _copies_ the data in order to make the resulting arrays contiguous in memory.
+    ///
+    /// [filter]: arrow2::compute::filter::filter
+    ///
+    /// WARNING: the returned chunk has the same old [`crate::ChunkId`]! Change it with [`Self::with_id`].
+    #[must_use]
+    #[inline]
+    pub fn filtered(&self, filter: &ArrowBooleanArray) -> Option<Self> {
+        let Self {
+            id,
+            entity_path,
+            heap_size_bytes: _,
+            is_sorted,
+            row_ids,
+            timelines,
+            components,
+        } = self;
+
+        // Safe early out to prevent panics in upstream kernel implementations.
+        if filter.len() != self.num_rows() {
+            return None;
+        }
+
+        if self.is_empty() {
+            return Some(self.clone());
+        }
+
+        let num_filtered = filter.values_iter().filter(|&b| b).count();
+        if num_filtered == 0 {
+            return Some(self.emptied());
+        }
+
+        re_tracing::profile_function!();
+
+        let is_sorted = *is_sorted || num_filtered < 2;
+
+        let mut chunk = Self {
+            id: *id,
+            entity_path: entity_path.clone(),
+            heap_size_bytes: Default::default(),
+            is_sorted,
+            row_ids: crate::util::filter_array(row_ids, filter),
+            timelines: timelines
+                .iter()
+                .map(|(&timeline, time_column)| (timeline, time_column.filtered(filter)))
+                .collect(),
+            components: components
+                .iter()
+                .map(|(&component_name, list_array)| {
+                    let filtered = crate::util::filter_array(list_array, filter);
+                    (component_name, filtered)
+                })
+                .collect(),
+        };
+
+        // We can know for sure whether the resulting chunk is already sorted (see conditional
+        // above), but the reverse is not true.
+        //
+        // Consider e.g. densifying the following chunk on `example.MyPoint`:
+        // ┌──────────────┬───────────────────┬────────────────────────────────────────────┐
+        // │ frame        ┆ example.MyColor   ┆ example.MyPoint                            │
+        // ╞══════════════╪═══════════════════╪════════════════════════════════════════════╡
+        // │ 3            ┆ [4278255873]      ┆ -                                          │
+        // ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+        // │ 1            ┆ -                 ┆ [{x: 1, y: 1}, {x: 2, y: 2}]               │
+        // ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+        // │ 5            ┆ -                 ┆ [{x: 3, y: 3}, {x: 4, y: 4}, {x: 5, y: 5}] │
+        // └──────────────┴───────────────────┴────────────────────────────────────────────┘
+        //
+        // The original chunk is unsorted, but the new filtered one actually ends up being sorted.
+        chunk.is_sorted = is_sorted || chunk.is_sorted_uncached();
+
+        #[cfg(debug_assertions)]
+        #[allow(clippy::unwrap_used)] // debug-only
+        chunk.sanity_check().unwrap();
+
+        Some(chunk)
+    }
+
+    /// Applies a [take] kernel to the [`Chunk`] as a whole.
+    ///
+    /// In release builds, indices are allowed to have null entries (they will be taken as `null`s).
+    /// In debug builds, null entries will panic.
+    ///
+    /// Note: a `take` kernel _copies_ the data in order to make the resulting arrays contiguous in memory.
+    ///
+    /// Takes care of up- and down-casting the data back and forth on behalf of the caller.
+    ///
+    /// [take]: arrow2::compute::take::take
+    ///
+    /// WARNING: the returned chunk has the same old [`crate::ChunkId`]! Change it with [`Self::with_id`].
+    #[must_use]
+    #[inline]
+    pub fn taken<O: arrow2::types::Index>(&self, indices: &ArrowPrimitiveArray<O>) -> Self {
+        let Self {
+            id,
+            entity_path,
+            heap_size_bytes: _,
+            is_sorted,
+            row_ids,
+            timelines,
+            components,
+        } = self;
+
+        if self.is_empty() {
+            return self.clone();
+        }
+
+        if indices.is_empty() {
+            return self.emptied();
+        }
+
+        re_tracing::profile_function!();
+
+        let is_sorted = *is_sorted || (indices.len() < 2);
+
+        let mut chunk = Self {
+            id: *id,
+            entity_path: entity_path.clone(),
+            heap_size_bytes: Default::default(),
+            is_sorted,
+            row_ids: crate::util::take_array(row_ids, indices),
+            timelines: timelines
+                .iter()
+                .map(|(&timeline, time_column)| (timeline, time_column.taken(indices)))
+                .collect(),
+            components: components
+                .iter()
+                .map(|(&component_name, list_array)| {
+                    let taken = crate::util::take_array(list_array, indices);
+                    (component_name, taken)
+                })
+                .collect(),
+        };
+
+        // We can know for sure whether the resulting chunk is already sorted (see conditional
+        // above), but the reverse is not true.
+        //
+        // Consider e.g. densifying the following chunk on `example.MyPoint`:
+        // ┌──────────────┬───────────────────┬────────────────────────────────────────────┐
+        // │ frame        ┆ example.MyColor   ┆ example.MyPoint                            │
+        // ╞══════════════╪═══════════════════╪════════════════════════════════════════════╡
+        // │ 3            ┆ [4278255873]      ┆ -                                          │
+        // ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+        // │ 1            ┆ -                 ┆ [{x: 1, y: 1}, {x: 2, y: 2}]               │
+        // ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+        // │ 5            ┆ -                 ┆ [{x: 3, y: 3}, {x: 4, y: 4}, {x: 5, y: 5}] │
+        // └──────────────┴───────────────────┴────────────────────────────────────────────┘
+        //
+        // The original chunk is unsorted, but the new filtered one actually ends up being sorted.
+        chunk.is_sorted = is_sorted || chunk.is_sorted_uncached();
+
+        #[cfg(debug_assertions)]
+        #[allow(clippy::unwrap_used)] // debug-only
+        chunk.sanity_check().unwrap();
 
         chunk
     }
@@ -674,6 +870,7 @@ impl TimeColumn {
 
 #[cfg(test)]
 mod tests {
+    use itertools::Itertools;
     use re_log_types::{
         example_components::{MyColor, MyLabel, MyPoint},
         TimePoint,
@@ -681,6 +878,8 @@ mod tests {
     use re_types_core::{ComponentBatch, Loggable};
 
     use crate::{Chunk, RowId, Timeline};
+
+    use super::*;
 
     #[test]
     fn cell() -> anyhow::Result<()> {
@@ -1064,6 +1263,292 @@ mod tests {
                 eprintln!("{component_name} @ {row_id}");
                 similar_asserts::assert_eq!(expected, chunk.cell(*row_id, component_name));
             }
+        }
+
+        Ok(())
+    }
+
+    #[test]
+    fn filtered() -> anyhow::Result<()> {
+        let entity_path = "my/entity";
+
+        let row_id1 = RowId::new();
+        let row_id2 = RowId::new();
+        let row_id3 = RowId::new();
+        let row_id4 = RowId::new();
+        let row_id5 = RowId::new();
+
+        let timepoint1 = [
+            (Timeline::log_time(), 1000),
+            (Timeline::new_sequence("frame"), 1),
+        ];
+        let timepoint2 = [
+            (Timeline::log_time(), 1032),
+            (Timeline::new_sequence("frame"), 1),
+        ];
+        let timepoint3 = [
+            (Timeline::log_time(), 1064),
+            (Timeline::new_sequence("frame"), 1),
+        ];
+        let timepoint4 = [
+            (Timeline::log_time(), 1096),
+            (Timeline::new_sequence("frame"), 2),
+        ];
+        let timepoint5 = [
+            (Timeline::log_time(), 1128),
+            (Timeline::new_sequence("frame"), 2),
+        ];
+
+        let points1 = &[MyPoint::new(1.0, 1.0), MyPoint::new(2.0, 2.0)];
+        let points3 = &[MyPoint::new(6.0, 7.0)];
+
+        let colors4 = &[MyColor::from_rgb(1, 1, 1)];
+        let colors5 = &[MyColor::from_rgb(2, 2, 2), MyColor::from_rgb(3, 3, 3)];
+
+        let labels1 = &[MyLabel("a".into())];
+        let labels2 = &[MyLabel("b".into())];
+        let labels3 = &[MyLabel("c".into())];
+        let labels4 = &[MyLabel("d".into())];
+        let labels5 = &[MyLabel("e".into())];
+
+        let chunk = Chunk::builder(entity_path.into())
+            .with_sparse_component_batches(
+                row_id1,
+                timepoint1,
+                [
+                    (MyPoint::name(), Some(points1 as _)),
+                    (MyColor::name(), None),
+                    (MyLabel::name(), Some(labels1 as _)),
+                ],
+            )
+            .with_sparse_component_batches(
+                row_id2,
+                timepoint2,
+                [
+                    (MyPoint::name(), None),
+                    (MyColor::name(), None),
+                    (MyLabel::name(), Some(labels2 as _)),
+                ],
+            )
+            .with_sparse_component_batches(
+                row_id3,
+                timepoint3,
+                [
+                    (MyPoint::name(), Some(points3 as _)),
+                    (MyColor::name(), None),
+                    (MyLabel::name(), Some(labels3 as _)),
+                ],
+            )
+            .with_sparse_component_batches(
+                row_id4,
+                timepoint4,
+                [
+                    (MyPoint::name(), None),
+                    (MyColor::name(), Some(colors4 as _)),
+                    (MyLabel::name(), Some(labels4 as _)),
+                ],
+            )
+            .with_sparse_component_batches(
+                row_id5,
+                timepoint5,
+                [
+                    (MyPoint::name(), None),
+                    (MyColor::name(), Some(colors5 as _)),
+                    (MyLabel::name(), Some(labels5 as _)),
+                ],
+            )
+            .build()?;
+
+        eprintln!("chunk:\n{chunk}");
+
+        // basic
+        {
+            let filter = ArrowBooleanArray::from_slice(
+                (0..chunk.num_rows()).map(|i| i % 2 == 0).collect_vec(),
+            );
+            let got = chunk.filtered(&filter).unwrap();
+            eprintln!("got:\n{got}");
+            assert_eq!(filter.values_iter().filter(|&b| b).count(), got.num_rows());
+
+            let expectations: &[(_, _, Option<&dyn ComponentBatch>)] = &[
+                (row_id1, MyPoint::name(), Some(points1 as _)),
+                (row_id1, MyColor::name(), None),
+                (row_id1, MyLabel::name(), Some(labels1 as _)),
+                //
+                (row_id3, MyPoint::name(), Some(points3 as _)),
+                (row_id3, MyColor::name(), None),
+                (row_id3, MyLabel::name(), Some(labels3 as _)),
+                //
+                (row_id5, MyPoint::name(), None),
+                (row_id5, MyColor::name(), Some(colors5 as _)),
+                (row_id5, MyLabel::name(), Some(labels5 as _)),
+            ];
+
+            for (row_id, component_name, expected) in expectations {
+                let expected = expected
+                    .and_then(|expected| re_types_core::LoggableBatch::to_arrow(expected).ok());
+                eprintln!("{component_name} @ {row_id}");
+                similar_asserts::assert_eq!(expected, chunk.cell(*row_id, component_name));
+            }
+        }
+
+        // shorter
+        {
+            let filter = ArrowBooleanArray::from_slice(
+                (0..chunk.num_rows() / 2).map(|i| i % 2 == 0).collect_vec(),
+            );
+            let got = chunk.filtered(&filter);
+            assert!(got.is_none());
+        }
+
+        // longer
+        {
+            let filter = ArrowBooleanArray::from_slice(
+                (0..chunk.num_rows() * 2).map(|i| i % 2 == 0).collect_vec(),
+            );
+            let got = chunk.filtered(&filter);
+            assert!(got.is_none());
+        }
+
+        Ok(())
+    }
+
+    #[test]
+    fn taken() -> anyhow::Result<()> {
+        let entity_path = "my/entity";
+
+        let row_id1 = RowId::new();
+        let row_id2 = RowId::new();
+        let row_id3 = RowId::new();
+        let row_id4 = RowId::new();
+        let row_id5 = RowId::new();
+
+        let timepoint1 = [
+            (Timeline::log_time(), 1000),
+            (Timeline::new_sequence("frame"), 1),
+        ];
+        let timepoint2 = [
+            (Timeline::log_time(), 1032),
+            (Timeline::new_sequence("frame"), 1),
+        ];
+        let timepoint3 = [
+            (Timeline::log_time(), 1064),
+            (Timeline::new_sequence("frame"), 1),
+        ];
+        let timepoint4 = [
+            (Timeline::log_time(), 1096),
+            (Timeline::new_sequence("frame"), 2),
+        ];
+        let timepoint5 = [
+            (Timeline::log_time(), 1128),
+            (Timeline::new_sequence("frame"), 2),
+        ];
+
+        let points1 = &[MyPoint::new(1.0, 1.0), MyPoint::new(2.0, 2.0)];
+        let points3 = &[MyPoint::new(6.0, 7.0)];
+
+        let colors4 = &[MyColor::from_rgb(1, 1, 1)];
+        let colors5 = &[MyColor::from_rgb(2, 2, 2), MyColor::from_rgb(3, 3, 3)];
+
+        let labels1 = &[MyLabel("a".into())];
+        let labels2 = &[MyLabel("b".into())];
+        let labels3 = &[MyLabel("c".into())];
+        let labels4 = &[MyLabel("d".into())];
+        let labels5 = &[MyLabel("e".into())];
+
+        let chunk = Chunk::builder(entity_path.into())
+            .with_sparse_component_batches(
+                row_id1,
+                timepoint1,
+                [
+                    (MyPoint::name(), Some(points1 as _)),
+                    (MyColor::name(), None),
+                    (MyLabel::name(), Some(labels1 as _)),
+                ],
+            )
+            .with_sparse_component_batches(
+                row_id2,
+                timepoint2,
+                [
+                    (MyPoint::name(), None),
+                    (MyColor::name(), None),
+                    (MyLabel::name(), Some(labels2 as _)),
+                ],
+            )
+            .with_sparse_component_batches(
+                row_id3,
+                timepoint3,
+                [
+                    (MyPoint::name(), Some(points3 as _)),
+                    (MyColor::name(), None),
+                    (MyLabel::name(), Some(labels3 as _)),
+                ],
+            )
+            .with_sparse_component_batches(
+                row_id4,
+                timepoint4,
+                [
+                    (MyPoint::name(), None),
+                    (MyColor::name(), Some(colors4 as _)),
+                    (MyLabel::name(), Some(labels4 as _)),
+                ],
+            )
+            .with_sparse_component_batches(
+                row_id5,
+                timepoint5,
+                [
+                    (MyPoint::name(), None),
+                    (MyColor::name(), Some(colors5 as _)),
+                    (MyLabel::name(), Some(labels5 as _)),
+                ],
+            )
+            .build()?;
+
+        eprintln!("chunk:\n{chunk}");
+
+        // basic
+        {
+            let indices = ArrowPrimitiveArray::<i32>::from_vec(
+                (0..chunk.num_rows() as i32)
+                    .filter(|i| i % 2 == 0)
+                    .collect_vec(),
+            );
+            let got = chunk.taken(&indices);
+            eprintln!("got:\n{got}");
+            assert_eq!(indices.len(), got.num_rows());
+
+            let expectations: &[(_, _, Option<&dyn ComponentBatch>)] = &[
+                (row_id1, MyPoint::name(), Some(points1 as _)),
+                (row_id1, MyColor::name(), None),
+                (row_id1, MyLabel::name(), Some(labels1 as _)),
+                //
+                (row_id3, MyPoint::name(), Some(points3 as _)),
+                (row_id3, MyColor::name(), None),
+                (row_id3, MyLabel::name(), Some(labels3 as _)),
+                //
+                (row_id5, MyPoint::name(), None),
+                (row_id5, MyColor::name(), Some(colors5 as _)),
+                (row_id5, MyLabel::name(), Some(labels5 as _)),
+            ];
+
+            for (row_id, component_name, expected) in expectations {
+                let expected = expected
+                    .and_then(|expected| re_types_core::LoggableBatch::to_arrow(expected).ok());
+                eprintln!("{component_name} @ {row_id}");
+                similar_asserts::assert_eq!(expected, chunk.cell(*row_id, component_name));
+            }
+        }
+
+        // repeated
+        {
+            let indices = ArrowPrimitiveArray::<i32>::from_vec(
+                std::iter::repeat(2i32)
+                    .take(chunk.num_rows() * 2)
+                    .collect_vec(),
+            );
+            let got = chunk.taken(&indices);
+            eprintln!("got:\n{got}");
+            assert_eq!(indices.len(), got.num_rows());
         }
 
         Ok(())
