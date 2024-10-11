@@ -32,7 +32,10 @@ av1 = ["dep:dav1d"]
 ## Enable faster native video decoding with assembly.
 ## You need to install [nasm](https://nasm.us/) to compile with this feature.
 # TODO(#7671): this feature flag currently does nothing on Linux.
-nasm = ["dav1d?/default"] # The default feature set of our dav1d fork has asm for linux enabled
+nasm = [
+  # The default feature set of our dav1d fork has asm for linux enabled.
+  "dav1d?/default",
+]
 
 [dependencies]
 re_log.workspace = true
@@ -51,7 +54,7 @@ thiserror.workspace = true
 # If this package fails to build, install `nasm` locally, or build through `pixi`.
 # See https://github.com/rerun-io/rav1d/pull/1
 # TODO(#7588): publish this fork of rav1d
-dav1d = { git = "https://github.com/rerun-io/rav1d", branch = "andreas/disable-asm-linux", package = "rav1d", optional = true, default-features = false, features = [
+dav1d = { git = "https://github.com/rerun-io/rav1d", rev = "a9059f6a02e68cf2aba3795cc370c72f695c4730", package = "rav1d", optional = true, default-features = false, features = [
   # We opt-out of wasm features so we don't need  `nasm` installed. It's still pretty fast.
   "bitdepth_8",
 ] }
