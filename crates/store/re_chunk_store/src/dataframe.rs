@@ -422,6 +422,9 @@ pub struct ComponentColumnSelector {
     pub entity_path: EntityPath,
 
     /// Semantic name associated with this data.
+    ///
+    /// This string will be flexibly matched against the available component names.
+    /// Valid matches are case invariant matches of either the full name or the short name.
     pub component_name: String,
 
     /// How to join the data into the `RecordBatch`.
