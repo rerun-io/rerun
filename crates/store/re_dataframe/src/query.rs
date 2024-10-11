@@ -741,7 +741,7 @@ impl QueryHandle<'_> {
     ///
     /// ## Pagination
     ///
-    /// Use [`Self::seek_to_row`] and [`Self::seek_to_index_value`]:
+    /// Use [`Self::seek_to_row`]:
     /// ```ignore
     /// query_handle.seek_to_row(42);
     /// for row in query_handle.into_iter().take(len) {
