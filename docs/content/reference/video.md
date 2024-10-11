@@ -37,6 +37,9 @@ Video support is new in Rerun, and has a few limitations:
 Rerun does not yet support streaming video support. For scenarios where you don't need live video, you can work around this limitation by logging many small `AssetVideo`s to the same Entity Path. See [#7484](https://github.com/rerun-io/rerun/issues/7484) for more.
 
 ## Codec support
+When choosing a codec, we recommend [AV1](https://developer.mozilla.org/en-US/docs/Web/Media/Formats/Video_codecs#av1),
+as it seems to have the best overall playback support while also having very high compression quality.
+AV1 is also patent-free, and is the only codec we currently support in the native viewer (see [#7298](https://github.com/rerun-io/rerun/issues/7298)). H.264/avc is another popular choice, and native support for that is coming soon.
 
 ### Native viewer
 In the native viewer, AV1 is the only supported codec. H.264 is coming soon ([#7298](https://github.com/rerun-io/rerun/issues/7298)).
@@ -46,10 +49,6 @@ In the native viewer, AV1 is the only supported codec. H.264 is coming soon ([#7
 Video playback in the Rerun Web Viewer is done using the browser's own video decoder, so the supported codecs depend on your browser.
 
 Overall, we recommend using Chrome or another Chromium-based browser, as it seems to have the best video support as of writing.
-
-When choosing a codec, we recommend [AV1](https://developer.mozilla.org/en-US/docs/Web/Media/Formats/Video_codecs#av1),
-as it seems to have the best overall playback support while also having very high compression quality.
-AV1 is also patent-free, and is the only codec we currently support in the native viewer (see [#7298](https://github.com/rerun-io/rerun/issues/7298)). H.264/avc is another popular choice, and native support for that is coming soon.
 
 For decoding video in the Web Viewer, we use the [WebCodecs API](https://developer.mozilla.org/en-US/docs/Web/API/WebCodecs_API).
 This API enables us to take advantage of the browser's hardware accelerated video decoding capabilities.
