@@ -249,7 +249,7 @@ fn color_primaries(picture: &dav1d::Picture) -> ColorPrimaries {
                 //     ColorPrimaries::Bt601
                 // }
                 //
-                // ... then again, eyeballing VLC it looks like it just always assumes BT.709.
+                // …then again, eyeballing VLC it looks like it just always assumes BT.709.
                 // The handwavy test case employed here was the same video in low & high resolution
                 // without specified primaries. Both looked the same.
                 ColorPrimaries::Bt709

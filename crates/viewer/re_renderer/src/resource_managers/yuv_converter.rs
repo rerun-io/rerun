@@ -300,26 +300,6 @@ impl YuvFormatConversionTask {
         input_data: &GpuTexture,
         target_texture: &GpuTexture,
     ) -> Self {
-        // TODO:
-        // let target_texture = ctx.gpu_resources.textures.alloc(
-        //     &ctx.device,
-        //     &TextureDesc {
-        //         label: output_label.clone(),
-        //         size: wgpu::Extent3d {
-        //             width: output_width_height[0],
-        //             height: output_width_height[1],
-        //             depth_or_array_layers: 1,
-        //         },
-        //         mip_level_count: 1, // We don't have mipmap level generation yet!
-        //         sample_count: 1,
-        //         dimension: wgpu::TextureDimension::D2,
-        //         format: Self::OUTPUT_FORMAT,
-        //         usage: output_usage_flags | wgpu::TextureUsages::RENDER_ATTACHMENT,
-        //     },
-        // );
-
-        // TODO: validate target_texture
-
         let target_label = target_texture.creation_desc.label.clone();
         let renderer = ctx.renderer::<YuvFormatConverter>();
 
