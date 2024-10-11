@@ -175,19 +175,13 @@ impl QueryHandle<'_> {
             metadata: Default::default(),
         };
 
-        let using_index_values_stack = self
-            .query
-            .using_index_values
-            .as_ref()
-            .map(|values| values.iter().rev().copied().collect_vec());
-
         // 4. Perform the query and keep track of all the relevant chunks.
         let query = {
             let index_range =
-                if let Some(using_index_values_stack) = using_index_values_stack.as_ref() {
-                    using_index_values_stack
-                        .last() // reminder: it's reversed (stack)
-                        .and_then(|start| using_index_values_stack.first().map(|end| (start, end)))
+                if let Some(using_index_values) = self.query.using_index_values.as_ref() {
+                    using_index_values
+                        .first()
+                        .and_then(|start| using_index_values.last().map(|end| (start, end)))
                         .map_or(ResolvedTimeRange::EMPTY, |(start, end)| {
                             ResolvedTimeRange::new(*start, *end)
                         })
@@ -266,10 +260,8 @@ impl QueryHandle<'_> {
         //
         // Used to achieve ~O(log(n)) pagination.
         let unique_index_values =
-            if let Some(using_index_values_stack) = using_index_values_stack.as_ref() {
-                let mut all_unique_index_values = using_index_values_stack.clone();
-                all_unique_index_values.sort();
-                all_unique_index_values
+            if let Some(using_index_values) = self.query.using_index_values.as_ref() {
+                using_index_values.iter().copied().collect_vec()
             } else {
                 re_tracing::profile_scope!("index_values");
 
