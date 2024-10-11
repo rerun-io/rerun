@@ -20,8 +20,8 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Archetype**: A video binary.
 ///
-/// Only MP4 containers with AV1 is generally supported,
-/// though the web viewer sometimes supports some more video codex, depending on browser.
+/// Only MP4 containers with AV1 are generally supported,
+/// though the web viewer supports more video codecs, depending on browser.
 ///
 /// See <https://rerun.io/docs/reference/video?speculative-link> for details of what is and isn't supported.
 ///
