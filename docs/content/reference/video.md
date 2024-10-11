@@ -23,7 +23,7 @@ This gives the best compression ratio, reducing file sizes and bandwidth require
 
 snippet: archetypes/video_auto_frames
 
-## `AssetVideo` limitations
+## Video playback limitations
 Video support is new in Rerun, and has a few limitations:
 
 * [#7354](https://github.com/rerun-io/rerun/issues/7354): Only the MP4 container format is supported
