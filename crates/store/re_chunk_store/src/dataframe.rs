@@ -278,8 +278,8 @@ impl std::fmt::Display for ComponentColumnDescriptor {
 
 impl ComponentColumnDescriptor {
     #[inline]
-    pub fn matches(&self, entity_path: &EntityPath, component_name: &ComponentName) -> bool {
-        &self.entity_path == entity_path && &self.component_name == component_name
+    pub fn matches(&self, entity_path: &EntityPath, component_name: &str) -> bool {
+        &self.entity_path == entity_path && self.component_name.matches(component_name)
     }
 
     fn metadata(&self) -> arrow2::datatypes::Metadata {
@@ -422,9 +422,10 @@ pub struct ComponentColumnSelector {
     pub entity_path: EntityPath,
 
     /// Semantic name associated with this data.
-    //
-    // TODO(cmc): this should be `component_name`.
-    pub component: ComponentName,
+    ///
+    /// This string will be flexibly matched against the available component names.
+    /// Valid matches are case invariant matches of either the full name or the short name.
+    pub component_name: String,
 
     /// How to join the data into the `RecordBatch`.
     //
@@ -437,7 +438,7 @@ impl From<ComponentColumnDescriptor> for ComponentColumnSelector {
     fn from(desc: ComponentColumnDescriptor) -> Self {
         Self {
             entity_path: desc.entity_path.clone(),
-            component: desc.component_name,
+            component_name: desc.component_name.to_string(),
             join_encoding: desc.join_encoding,
         }
     }
@@ -449,17 +450,17 @@ impl ComponentColumnSelector {
     pub fn new<C: re_types_core::Component>(entity_path: EntityPath) -> Self {
         Self {
             entity_path,
-            component: C::name(),
+            component_name: C::name().to_string(),
             join_encoding: JoinEncoding::default(),
         }
     }
 
     /// Select a component based on its [`EntityPath`] and [`ComponentName`].
     #[inline]
-    pub fn new_for_component_name(entity_path: EntityPath, component: ComponentName) -> Self {
+    pub fn new_for_component_name(entity_path: EntityPath, component_name: ComponentName) -> Self {
         Self {
             entity_path,
-            component,
+            component_name: component_name.to_string(),
             join_encoding: JoinEncoding::default(),
         }
     }
@@ -476,11 +477,11 @@ impl std::fmt::Display for ComponentColumnSelector {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let Self {
             entity_path,
-            component,
+            component_name,
             join_encoding: _,
         } = self;
 
-        f.write_fmt(format_args!("{entity_path}@{}", component.short_name()))
+        f.write_fmt(format_args!("{entity_path}:{component_name}"))
     }
 }
 
@@ -793,13 +794,38 @@ impl ChunkStore {
         &self,
         selector: &ComponentColumnSelector,
     ) -> ComponentColumnDescriptor {
+        // Happy path if this string is a valid component
+        // TODO(#7699) This currently interns every string ever queried which could be wasteful, especially
+        // in long-running servers. In practice this probably doesn't matter.
+        let direct_component = ComponentName::from(selector.component_name.clone());
+
+        let component_name = if self.all_components().contains(&direct_component) {
+            direct_component
+        } else {
+            self.all_components_for_entity(&selector.entity_path)
+                // First just check on the entity since this is the most likely place to find it.
+                .and_then(|components| {
+                    components
+                        .into_iter()
+                        .find(|component_name| component_name.matches(&selector.component_name))
+                })
+                // Fall back on matching any component in the store
+                .or_else(|| {
+                    self.all_components()
+                        .into_iter()
+                        .find(|component_name| component_name.matches(&selector.component_name))
+                })
+                // Finally fall back on the direct component name
+                .unwrap_or(direct_component)
+        };
+
         let ColumnMetadata {
             is_static,
             is_indicator,
             is_tombstone,
             is_semantically_empty,
         } = self
-            .lookup_column_metadata(&selector.entity_path, &selector.component)
+            .lookup_column_metadata(&selector.entity_path, &component_name)
             .unwrap_or(ColumnMetadata {
                 is_static: false,
                 is_indicator: false,
@@ -808,7 +834,7 @@ impl ChunkStore {
             });
 
         let datatype = self
-            .lookup_datatype(&selector.component)
+            .lookup_datatype(&component_name)
             .cloned()
             .unwrap_or_else(|| ArrowDatatype::Null);
 
@@ -816,7 +842,7 @@ impl ChunkStore {
             entity_path: selector.entity_path.clone(),
             archetype_name: None,
             archetype_field_name: None,
-            component_name: selector.component,
+            component_name,
             store_datatype: ArrowListArray::<i32>::default_datatype(datatype.clone()),
             join_encoding: selector.join_encoding,
             is_static,
