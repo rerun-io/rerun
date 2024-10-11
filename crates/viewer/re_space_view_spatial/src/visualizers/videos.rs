@@ -197,6 +197,7 @@ impl VideoFrameReferenceVisualizer {
                 match video.frame_at(render_ctx, decode_stream_id, video_timestamp.as_seconds()) {
                     Ok(VideoFrameTexture {
                         texture,
+                        time_range,
                         is_pending,
                         show_spinner,
                     }) => {

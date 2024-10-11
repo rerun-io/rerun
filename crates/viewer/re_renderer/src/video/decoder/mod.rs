@@ -233,6 +233,7 @@ impl VideoDecoder {
 
                 Ok(VideoFrameTexture {
                     texture: self.video_texture.texture.clone(),
+                    time_range: self.video_texture.time_range.clone(),
                     is_pending,
                     show_spinner,
                 })
