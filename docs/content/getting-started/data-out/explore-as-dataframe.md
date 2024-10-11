@@ -6,14 +6,17 @@ order: 1
 **OVERVIEW**
 - introduce RRD for this series (-> face tracking)
 - create a dataframe view with all the data
-- explain column meaning
-- do not explain latest at & pov -> link to something else 
+- explain:
+  - column meaning
+- do not explain:
+  - latest at & pov -> link to something else 
 - "[Next](export-dataframe): export the dataframe to Pandas"
 
 
 <hr>
 
-TODO: intro
+
+## Setup
 
 ## Create some data
 

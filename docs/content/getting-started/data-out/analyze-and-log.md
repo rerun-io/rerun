@@ -222,4 +222,4 @@ TODO:
 - live viewer pointed at a recording which contains the analysis results
 - figure out how to make that maintainable :/
 
-snippet: tutorials/data_out_pandas
+snippet: tutorials/data_out

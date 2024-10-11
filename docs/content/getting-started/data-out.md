@@ -11,5 +11,4 @@ In this series of articles, we explore this workflow by implementation an "open 
 2. [Export the dataframe](data-out/export-dataframe)
 3. [Analyze the data and log the results](data-out/analyze-and-log)
 
-
-
+For the fast track, jump to the [complete script](data-out/analyze-and-log.md#complete-script) at the end of the third section.
