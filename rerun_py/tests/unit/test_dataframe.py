@@ -86,6 +86,11 @@ class TestDataframe:
             type=rr.components.Position3D.arrow_type(),
         )
 
+        self.empty_pos = pa.array(
+            [],
+            type=rr.components.Position3D.arrow_type(),
+        )
+
     def test_recording_info(self) -> None:
         assert self.recording.application_id() == APP_ID
         assert self.recording.recording_id() == str(RECORDING_ID)
@@ -187,6 +192,55 @@ class TestDataframe:
 
         with pytest.raises(TypeError):
             view.filter_index_values(pa.array([1.0, 2.0], type=pa.float64()))
+
+    def test_using_index_values(self) -> None:
+        view = self.recording.view(index="my_index", contents="points")
+        view = view.using_index_values([0, 5, 9])
+
+        table = view.select().read_all().combine_chunks()
+
+        # my_index, log_time, log_tick, points, colors
+        assert table.num_columns == 5
+        assert table.num_rows == 3
+
+        expected_index = pa.chunked_array([
+            pa.array(
+                [0, 5, 9],
+                type=pa.int64(),
+            )
+        ])
+
+        assert table.column("my_index").equals(expected_index)
+        assert not table.column("/points:Position3D")[0].is_valid
+        assert not table.column("/points:Position3D")[1].is_valid
+        assert not table.column("/points:Position3D")[2].is_valid
+
+        table = view.fill_latest_at().select().read_all().combine_chunks()
+
+        assert table.num_columns == 5
+        assert table.num_rows == 3
+
+        assert table.column("my_index").equals(expected_index)
+        assert not table.column("/points:Position3D")[0].is_valid
+        assert table.column("/points:Position3D")[1].values.equals(self.expected_pos0)
+        assert table.column("/points:Position3D")[2].values.equals(self.expected_pos1)
+
+    def test_filter_is_not_null(self) -> None:
+        view = self.recording.view(index="my_index", contents="points")
+
+        color = rr.dataframe.ComponentColumnSelector("points", rr.components.Color)
+
+        view = view.filter_is_not_null(color)
+
+        table = view.select().read_all()
+
+        # my_index, log_time, log_tick, points, colors
+        assert table.num_columns == 5
+        assert table.num_rows == 1
+
+        assert table.column("my_index")[0].equals(self.expected_index1[0])
+
+        assert table.column("/points:Position3D")[0].values.equals(self.expected_pos1)
 
     def test_view_syntax(self) -> None:
         good_content_expressions = [
