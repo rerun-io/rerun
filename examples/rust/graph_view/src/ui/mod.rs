@@ -81,7 +81,7 @@ pub fn measure_node_sizes<'a>(
         for node in nodes {
             match node {
                 Node::Regular(instance) => {
-                    let r = draw_node(ui, &instance, Pos2::ZERO, InteractionHighlight::default());
+                    let r = draw_node(ui, &instance, InteractionHighlight::default());
                     sizes.insert((&instance).into(), r.rect.size());
                 }
                 Node::Unknown(instance) => {

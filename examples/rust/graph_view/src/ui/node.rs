@@ -8,7 +8,6 @@ use crate::types::NodeInstance;
 pub fn draw_node(
     ui: &mut egui::Ui,
     instance: &NodeInstance,
-    pos: egui::Pos2,
     highlight: InteractionHighlight,
 ) -> egui::Response {
     let hcolor = match (
@@ -47,13 +46,19 @@ pub fn draw_node(
         egui::Frame::default()
             .show(ui, |ui| {
                 let r = 4.0;
-                ui.set_min_size(egui::Vec2::new(2.0 * r, 2.0 * r)); // Frame size
-                ui.painter().circle(
-                    pos + egui::Vec2::new(r, r),
-                    r,
-                    instance.color.unwrap_or(ui.style().visuals.text_color()),
-                    hcolor.map_or(egui::Stroke::NONE, |c| egui::Stroke::new(2.0, c)),
-                );
+                ui.add(|ui: &mut egui::Ui| {
+                    let (rect, response) = ui.allocate_at_least(egui::Vec2::new(2.0 * r, 2.0 * r), egui::Sense::drag()); // Frame size
+                    ui.painter().circle(
+                        rect.center(),
+                        // pos + egui::Vec2::new(r, r),
+                        r,
+                        instance.color.unwrap_or(ui.style().visuals.text_color()),
+                        hcolor.map_or(egui::Stroke::NONE, |c| egui::Stroke::new(2.0, c)),
+
+                    );
+                    response
+                })
+
             })
             .response
     }

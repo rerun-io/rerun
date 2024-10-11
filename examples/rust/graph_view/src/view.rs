@@ -266,7 +266,7 @@ impl SpaceViewClass for GraphSpaceView {
                     .show(ui.ctx(), |ui| {
                         let highlight = ent_highlight.index_highlight(node.instance);
                         ui.set_clip_rect(clip_rect_world);
-                        ui::draw_node(ui, &node, current_extent.min, highlight)
+                        ui::draw_node(ui, &node, highlight)
                     })
                     .response;
 
