@@ -27,7 +27,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 /// For example [Right, Down, Forward] means that the X axis points to the right, the Y axis points
 /// down, and the Z axis points forward.
 ///
-/// ⚠️ [Rerun does not yet support left-handed coordinate systems](https://github.com/rerun-io/rerun/issues/5032).
+/// ⚠ [Rerun does not yet support left-handed coordinate systems](https://github.com/rerun-io/rerun/issues/5032).
 ///
 /// The following constants are used to represent the different directions:
 ///  * Up = 1

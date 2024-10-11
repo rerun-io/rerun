@@ -33,7 +33,7 @@ class ViewCoordinates(ViewCoordinatesExt, Archetype):
 
     Make sure that this archetype is logged at or above the origin entity path of your 3D views.
 
-    ⚠️ [Rerun does not yet support left-handed coordinate systems](https://github.com/rerun-io/rerun/issues/5032).
+    ⚠ [Rerun does not yet support left-handed coordinate systems](https://github.com/rerun-io/rerun/issues/5032).
 
     Example
     -------
