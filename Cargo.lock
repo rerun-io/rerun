@@ -5557,6 +5557,7 @@ dependencies = [
  "re_viewport_blueprint",
  "serde",
  "smallvec",
+ "thiserror",
  "vec1",
  "web-time",
 ]

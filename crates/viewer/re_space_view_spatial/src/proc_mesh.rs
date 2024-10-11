@@ -123,6 +123,23 @@ pub struct SolidMesh {
     pub gpu_mesh: Arc<GpuMesh>,
 }
 
+/// Errors that may arise from attempting to generate a mesh from a [`ProcMeshKey`].
+///
+/// Currently, this type is private because errors are only logged.
+#[derive(thiserror::Error, Debug)]
+#[non_exhaustive]
+enum GenError {
+    /// The requested drawing primitive type (solid or wireframe) is not supported
+    /// for the given [`ProcMeshKey`],
+    #[error("creating a wireframe mesh is not supported")]
+    UnimplementedWireframe,
+
+    /// Either the GPU mesh could not be allocated,
+    /// or the generated mesh was not well-formed.
+    #[error(transparent)]
+    MeshProcessing(#[from] MeshError),
+}
+
 // ----------------------------------------------------------------------------
 
 /// Cache for the computation of wireframe meshes from [`ProcMeshKey`]s.
@@ -146,12 +163,16 @@ impl WireframeCache {
 
                 re_log::debug!("Generating wireframe mesh {key:?}…");
 
-                let mesh = generate_wireframe(&key, render_ctx);
-
-                // Right now, this can never return None, but in the future
-                // it will perform GPU allocations which can fail.
-
-                Some(Arc::new(mesh))
+                match generate_wireframe(&key, render_ctx) {
+                    Ok(mesh) => Some(Arc::new(mesh)),
+                    Err(err) => {
+                        re_log::warn!(
+                            "Failed to generate mesh {key:?}: {}",
+                            re_error::format_ref(&err)
+                        );
+                        None
+                    }
+                }
             })
             .clone()
     }
@@ -168,13 +189,18 @@ impl Cache for WireframeCache {
 }
 
 /// Generate a wireframe mesh without caching.
-fn generate_wireframe(key: &ProcMeshKey, render_ctx: &RenderContext) -> WireframeMesh {
+///
+/// Note: The unstructured error type here is used only for logging.
+fn generate_wireframe(
+    key: &ProcMeshKey,
+    render_ctx: &RenderContext,
+) -> Result<WireframeMesh, GenError> {
     re_tracing::profile_function!();
 
     // In the future, render_ctx will be used to allocate GPU memory for the mesh.
     _ = render_ctx;
 
-    match *key {
+    let mesh = match *key {
         ProcMeshKey::Cube => {
             let corners = [
                 vec3(-0.5, -0.5, -0.5),
@@ -256,12 +282,14 @@ fn generate_wireframe(key: &ProcMeshKey, render_ctx: &RenderContext) -> Wirefram
             length: _,
             subdivisions: _,
         } => {
-            // This is unreachable, because no visualizer asks for it yet,
-            // because it is unimplemented. Implementing it will require writing
-            // a new capsule wireframe algorithm that agrees with the solid algorithm.
-            unreachable!("wireframe capsules are not yet implemented or used")
+            // No visualizer asks for these yet, because they are unimplemented.
+            // Implementing them will require writing a new capsule wireframe algorithm
+            // that agrees with the solid algorithm.
+            return Err(GenError::UnimplementedWireframe);
         }
-    }
+    };
+
+    Ok(mesh)
 }
 
 // ----------------------------------------------------------------------------
@@ -308,7 +336,7 @@ impl Cache for SolidCache {
 }
 
 /// Generate a solid triangle mesh without caching.
-fn generate_solid(key: &ProcMeshKey, render_ctx: &RenderContext) -> Result<SolidMesh, MeshError> {
+fn generate_solid(key: &ProcMeshKey, render_ctx: &RenderContext) -> Result<SolidMesh, GenError> {
     re_tracing::profile_function!();
 
     let mesh: mesh::Mesh = match *key {
