@@ -20,7 +20,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Archetype**: How we interpret the coordinate system of an entity/space.
 ///
-/// For instance: What is "up"? What does the Z axis mean? Is this right-handed or left-handed?
+/// For instance: What is "up"? What does the Z axis mean?
 ///
 /// The three coordinates are always ordered as [x, y, z].
 ///
@@ -28,6 +28,8 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 /// down, and the Z axis points forward.
 ///
 /// Make sure that this archetype is logged at or above the origin entity path of your 3D views.
+///
+/// ⚠️ [Rerun does not yet support left-handed coordinate systems](https://github.com/rerun-io/rerun/issues/5032).
 ///
 /// ## Example
 ///

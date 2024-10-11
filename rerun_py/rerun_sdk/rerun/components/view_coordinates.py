@@ -19,12 +19,14 @@ class ViewCoordinates(ViewCoordinatesExt, datatypes.ViewCoordinates, ComponentMi
     """
     **Component**: How we interpret the coordinate system of an entity/space.
 
-    For instance: What is "up"? What does the Z axis mean? Is this right-handed or left-handed?
+    For instance: What is "up"? What does the Z axis mean?
 
     The three coordinates are always ordered as [x, y, z].
 
     For example [Right, Down, Forward] means that the X axis points to the right, the Y axis points
     down, and the Z axis points forward.
+
+    ⚠️ [Rerun does not yet support left-handed coordinate systems](https://github.com/rerun-io/rerun/issues/5032).
 
     The following constants are used to represent the different directions:
      * Up = 1
