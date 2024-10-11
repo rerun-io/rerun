@@ -110,6 +110,7 @@ impl DrawData for MeshDrawData {
     type Renderer = MeshRenderer;
 }
 
+#[derive(Clone)]
 pub struct MeshInstance {
     /// Gpu mesh used by this instance
     pub gpu_mesh: Arc<GpuMesh>,
@@ -129,20 +130,6 @@ pub struct MeshInstance {
 
     /// Picking layer id.
     pub picking_layer_id: PickingLayerId,
-}
-
-impl Clone for MeshInstance {
-    #[inline]
-    fn clone(&self) -> Self {
-        Self {
-            gpu_mesh: self.gpu_mesh.clone(),
-            mesh: self.mesh.clone(),
-            world_from_mesh: self.world_from_mesh,
-            additive_tint: self.additive_tint,
-            outline_mask_ids: self.outline_mask_ids,
-            picking_layer_id: self.picking_layer_id,
-        }
-    }
 }
 
 impl MeshInstance {

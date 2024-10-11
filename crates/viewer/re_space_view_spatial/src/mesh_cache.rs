@@ -38,10 +38,6 @@ pub struct MeshCache(HashMap<RowId, HashMap<MeshCacheKey, Option<Arc<LoadedMesh>
 pub enum AnyMesh<'a> {
     Asset {
         asset: &'a re_types::archetypes::Asset3D,
-
-        /// If there are any textures associated with that asset (albedo etc), they use this
-        /// hash for texture manager lookup.
-        texture_key: u64,
     },
     Mesh {
         mesh: &'a re_types::archetypes::Mesh3D,

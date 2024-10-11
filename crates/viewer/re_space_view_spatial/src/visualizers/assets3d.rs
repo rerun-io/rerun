@@ -77,7 +77,6 @@ impl Asset3DVisualizer {
                             media_type: data.media_type.clone().map(Into::into),
                             albedo_factor: data.albedo_factor.copied(),
                         },
-                        texture_key: re_log_types::hash::Hash64::hash(&key).hash64(),
                     },
                     render_ctx,
                 )

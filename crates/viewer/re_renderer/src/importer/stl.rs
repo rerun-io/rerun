@@ -23,7 +23,6 @@ pub enum StlImportError {
 pub fn load_stl_from_buffer(
     buffer: &[u8],
     ctx: &RenderContext,
-    _texture_key: u64,
 ) -> Result<Vec<MeshInstance>, StlImportError> {
     re_tracing::profile_function!();
 
