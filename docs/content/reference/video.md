@@ -36,11 +36,13 @@ Video support is new in Rerun, and has a few limitations:
 ## Streaming video
 Rerun does not yet support streaming video support. For scenarios where you don't need live video, you can work around this limitation by logging many small `AssetVideo`s to the same Entity Path. See [#7484](https://github.com/rerun-io/rerun/issues/7484) for more.
 
-## Native support
+## Codec support
+
+### Native viewer
 In the native viewer, AV1 is the only supported codec. H.264 is coming soon ([#7298](https://github.com/rerun-io/rerun/issues/7298)).
 
 
-## Web viewer support
+### Web viewer
 Video playback in the Rerun Web Viewer is done using the browser's own video decoder, so the supported codecs depend on your browser.
 
 Overall, we recommend using Chrome or another Chromium-based browser, as it seems to have the best video support as of writing.
