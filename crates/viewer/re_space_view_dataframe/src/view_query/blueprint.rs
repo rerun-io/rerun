@@ -133,15 +133,15 @@ impl Query {
                         .push(desc.timeline.as_str().into());
                 }
 
-                ColumnSelector::Component(desc) => {
-                    let blueprint_component_descriptor = datatypes::ComponentColumnSelector::new(
-                        &desc.entity_path,
-                        desc.component_name,
+                ColumnSelector::Component(selector) => {
+                    let blueprint_component_selector = datatypes::ComponentColumnSelector::new(
+                        &selector.entity_path,
+                        &selector.component_name,
                     );
 
                     selected_columns
                         .component_columns
-                        .push(blueprint_component_descriptor);
+                        .push(blueprint_component_selector);
                 }
             }
         }
@@ -259,8 +259,9 @@ impl Query {
                     component_name,
                 } => {
                     selected_columns.retain(|column| match column {
-                        ColumnSelector::Component(desc) => {
-                            desc.entity_path != entity_path || desc.component_name != component_name
+                        ColumnSelector::Component(selector) => {
+                            selector.entity_path != entity_path
+                                || !component_name.matches(&selector.component_name)
                         }
                         ColumnSelector::Time(_) => true,
                     });

@@ -1439,7 +1439,7 @@ mod tests {
             let mut query = QueryExpression::new(timeline);
             query.filtered_point_of_view = Some(ComponentColumnSelector {
                 entity_path: "no/such/entity".into(),
-                component_name: MyPoint::name(),
+                component_name: MyPoint::name().to_string(),
                 join_encoding: Default::default(),
             });
             eprintln!("{query:#?}:");
@@ -1493,7 +1493,7 @@ mod tests {
             let mut query = QueryExpression::new(timeline);
             query.filtered_point_of_view = Some(ComponentColumnSelector {
                 entity_path: entity_path.clone(),
-                component_name: MyPoint::name(),
+                component_name: MyPoint::name().to_string(),
                 join_encoding: Default::default(),
             });
             eprintln!("{query:#?}:");
@@ -1530,7 +1530,7 @@ mod tests {
             let mut query = QueryExpression::new(timeline);
             query.filtered_point_of_view = Some(ComponentColumnSelector {
                 entity_path: entity_path.clone(),
-                component_name: MyColor::name(),
+                component_name: MyColor::name().to_string(),
                 join_encoding: Default::default(),
             });
             eprintln!("{query:#?}:");
@@ -1741,17 +1741,17 @@ mod tests {
             query.selection = Some(vec![
                 ColumnSelector::Component(ComponentColumnSelector {
                     entity_path: entity_path.clone(),
-                    component_name: MyColor::name(),
+                    component_name: MyColor::name().to_string(),
                     join_encoding: Default::default(),
                 }),
                 ColumnSelector::Component(ComponentColumnSelector {
                     entity_path: entity_path.clone(),
-                    component_name: MyColor::name(),
+                    component_name: MyColor::name().to_string(),
                     join_encoding: Default::default(),
                 }),
                 ColumnSelector::Component(ComponentColumnSelector {
                     entity_path: "non_existing_entity".into(),
-                    component_name: MyColor::name(),
+                    component_name: MyColor::name().to_string(),
                     join_encoding: Default::default(),
                 }),
                 ColumnSelector::Component(ComponentColumnSelector {
@@ -1830,17 +1830,17 @@ mod tests {
                 //
                 ColumnSelector::Component(ComponentColumnSelector {
                     entity_path: entity_path.clone(),
-                    component_name: MyPoint::name(),
+                    component_name: MyPoint::name().to_string(),
                     join_encoding: Default::default(),
                 }),
                 ColumnSelector::Component(ComponentColumnSelector {
                     entity_path: entity_path.clone(),
-                    component_name: MyColor::name(),
+                    component_name: MyColor::name().to_string(),
                     join_encoding: Default::default(),
                 }),
                 ColumnSelector::Component(ComponentColumnSelector {
                     entity_path: entity_path.clone(),
-                    component_name: MyLabel::name(),
+                    component_name: MyLabel::name().to_string(),
                     join_encoding: Default::default(),
                 }),
             ]);
@@ -2022,7 +2022,7 @@ mod tests {
             let mut query = QueryExpression::new(timeline);
             query.filtered_point_of_view = Some(ComponentColumnSelector {
                 entity_path: entity_path.clone(),
-                component_name: MyPoint::name(),
+                component_name: MyPoint::name().to_string(),
                 join_encoding: Default::default(),
             });
             eprintln!("{query:#?}:");
