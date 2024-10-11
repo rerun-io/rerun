@@ -574,8 +574,7 @@ pub type IndexRange = ResolvedTimeRange;
 /// ```
 //
 // TODO(cmc): ideally we'd like this to be the same type as the one used in the blueprint, possibly?
-// TODO(cmc): Get rid of all re_dataframe (as opposed to re_dataframe) stuff and rename this.
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Default, Debug, Clone, PartialEq, Eq, Hash)]
 pub struct QueryExpression {
     /// The subset of the database that the query will run on: a set of [`EntityPath`]s and their
     /// associated [`ComponentName`]s.
@@ -618,17 +617,20 @@ pub struct QueryExpression {
     /// Only rows where at least 1 column contains non-null data at that index will be kept in the
     /// final dataset.
     ///
-    /// Example: `Timeline("frame")`.
+    /// If left unspecified, the results will only contain static data.
+    ///
+    /// Examples: `Some(Timeline("frame"))`, `None` (only static data).
     //
     // TODO(cmc): this has to be a selector otherwise this is a horrible UX.
-    pub filtered_index: Timeline,
+    pub filtered_index: Option<Timeline>,
 
     /// The range of index values used to filter out _rows_ from the view contents.
     ///
     /// Only rows where at least 1 of the view-contents contains non-null data within that range will be kept in
     /// the final dataset.
     ///
-    /// This is ignored if [`QueryExpression::using_index_values`] is set.
+    /// * This has no effect if `filtered_index` isn't set.
+    /// * This has no effect if [`QueryExpression::using_index_values`] is set.
     ///
     /// Example: `ResolvedTimeRange(10, 20)`.
     pub filtered_index_range: Option<IndexRange>,
@@ -638,7 +640,9 @@ pub struct QueryExpression {
     /// Only rows where at least 1 column contains non-null data at these specific values will be kept
     /// in the final dataset.
     ///
-    /// This is ignored if [`QueryExpression::using_index_values`] is set.
+    /// * This has no effect if `filtered_index` isn't set.
+    /// * This has no effect if [`QueryExpression::using_index_values`] is set.
+    /// * Using [`TimeInt::STATIC`] as index value has no effect.
     ///
     /// Example: `[TimeInt(12), TimeInt(14)]`.
     pub filtered_index_values: Option<BTreeSet<IndexValue>>,
@@ -650,10 +654,10 @@ pub struct QueryExpression {
     /// The semantics of the query are consistent with all other settings: the results will be
     /// sorted on the `filtered_index`, and only contain unique index values.
     ///
-    /// The order of the samples will be respected in the final result.
-    ///
-    /// If [`QueryExpression::using_index_values`] is set, it overrides both [`QueryExpression::filtered_index_range`]
-    /// and [`QueryExpression::filtered_index_values`].
+    /// * This has no effect if `filtered_index` isn't set.
+    /// * If set, this overrides both [`QueryExpression::filtered_index_range`] and
+    ///   [`QueryExpression::filtered_index_values`].
+    /// * Using [`TimeInt::STATIC`] as index value has no effect.
     ///
     /// Example: `[TimeInt(12), TimeInt(14)]`.
     pub using_index_values: Option<BTreeSet<IndexValue>>,
@@ -682,27 +686,6 @@ pub struct QueryExpression {
     //
     // TODO(cmc): the selection has to be on the QueryHandle, otherwise it's hell to use.
     pub selection: Option<Vec<ColumnSelector>>,
-}
-
-impl QueryExpression {
-    #[inline]
-    pub fn new(index: impl Into<Timeline>) -> Self {
-        let index = index.into();
-
-        Self {
-            view_contents: None,
-            include_semantically_empty_columns: false,
-            include_indicator_columns: false,
-            include_tombstone_columns: false,
-            filtered_index: index,
-            filtered_index_range: None,
-            filtered_index_values: None,
-            using_index_values: None,
-            filtered_point_of_view: None,
-            sparse_fill_strategy: SparseFillStrategy::None,
-            selection: None,
-        }
-    }
 }
 
 // ---

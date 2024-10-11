@@ -458,11 +458,21 @@ impl PyRecordingView {
     }
 
     fn filter_range_sequence(&self, start: i64, end: i64) -> PyResult<Self> {
-        if self.query_expression.filtered_index.typ() != TimeType::Sequence {
-            return Err(PyValueError::new_err(format!(
-                "Index for {} is not a sequence.",
-                self.query_expression.filtered_index.name()
-            )));
+        match self.query_expression.filtered_index.as_ref() {
+            Some(filtered_index) if filtered_index.typ() != TimeType::Sequence => {
+                return Err(PyValueError::new_err(format!(
+                    "Index for {} is not a sequence.",
+                    filtered_index.name()
+                )));
+            }
+
+            Some(_) => {}
+
+            None => {
+                return Err(PyValueError::new_err(
+                    "Specify an index to filter on first.".to_owned(),
+                ));
+            }
         }
 
         let start = if let Ok(seq) = re_chunk::TimeInt::try_from(start) {
@@ -499,11 +509,21 @@ impl PyRecordingView {
     }
 
     fn filter_range_seconds(&self, start: f64, end: f64) -> PyResult<Self> {
-        if self.query_expression.filtered_index.typ() != TimeType::Time {
-            return Err(PyValueError::new_err(format!(
-                "Index for {} is not temporal.",
-                self.query_expression.filtered_index.name()
-            )));
+        match self.query_expression.filtered_index.as_ref() {
+            Some(filtered_index) if filtered_index.typ() != TimeType::Time => {
+                return Err(PyValueError::new_err(format!(
+                    "Index for {} is not temporal.",
+                    filtered_index.name()
+                )));
+            }
+
+            Some(_) => {}
+
+            None => {
+                return Err(PyValueError::new_err(
+                    "Specify an index to filter on first.".to_owned(),
+                ));
+            }
         }
 
         let start = re_sdk::Time::from_seconds_since_epoch(start);
@@ -521,11 +541,21 @@ impl PyRecordingView {
     }
 
     fn filter_range_nanos(&self, start: i64, end: i64) -> PyResult<Self> {
-        if self.query_expression.filtered_index.typ() != TimeType::Time {
-            return Err(PyValueError::new_err(format!(
-                "Index for {} is not temporal.",
-                self.query_expression.filtered_index.name()
-            )));
+        match self.query_expression.filtered_index.as_ref() {
+            Some(filtered_index) if filtered_index.typ() != TimeType::Time => {
+                return Err(PyValueError::new_err(format!(
+                    "Index for {} is not temporal.",
+                    filtered_index.name()
+                )));
+            }
+
+            Some(_) => {}
+
+            None => {
+                return Err(PyValueError::new_err(
+                    "Specify an index to filter on first.".to_owned(),
+                ));
+            }
         }
 
         let start = re_sdk::Time::from_ns_since_epoch(start);
@@ -673,7 +703,7 @@ impl PyRecording {
             include_semantically_empty_columns: false,
             include_indicator_columns: false,
             include_tombstone_columns: false,
-            filtered_index: timeline.timeline,
+            filtered_index: Some(timeline.timeline),
             filtered_index_range: None,
             filtered_index_values: None,
             using_index_values: None,
