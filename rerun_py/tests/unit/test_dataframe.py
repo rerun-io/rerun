@@ -108,19 +108,22 @@ class TestDataframe:
     def test_select_columns(self) -> None:
         view = self.recording.view(index="my_index", contents="points")
         index_col = rr.dataframe.IndexColumnSelector("my_index")
-        pos = rr.dataframe.ComponentColumnSelector("points", rr.components.Position3D)
 
-        batches = view.select(index_col, pos)
+        selectors = [rr.components.Position3D, "rerun.components.Position3D", "Position3D", "position3D"]
+        for selector in selectors:
+            pos = rr.dataframe.ComponentColumnSelector("points", selector)
 
-        table = pa.Table.from_batches(batches, batches.schema)
-        # points
-        assert table.num_columns == 2
-        assert table.num_rows == 2
+            batches = view.select(index_col, pos)
 
-        assert table.column("my_index")[0].equals(self.expected_index0[0])
-        assert table.column("my_index")[1].equals(self.expected_index1[0])
-        assert table.column("/points:Position3D")[0].values.equals(self.expected_pos0)
-        assert table.column("/points:Position3D")[1].values.equals(self.expected_pos1)
+            table = pa.Table.from_batches(batches, batches.schema)
+            # points
+            assert table.num_columns == 2
+            assert table.num_rows == 2
+
+            assert table.column("my_index")[0].equals(self.expected_index0[0])
+            assert table.column("my_index")[1].equals(self.expected_index1[0])
+            assert table.column("/points:Position3D")[0].values.equals(self.expected_pos0)
+            assert table.column("/points:Position3D")[1].values.equals(self.expected_pos1)
 
     def test_index_values(self) -> None:
         view = self.recording.view(index="my_index", contents="points")
@@ -248,6 +251,8 @@ class TestDataframe:
             {"points": [rr.components.Position3D]},
             {"points": "rerun.components.Position3D"},
             {"points/**": "rerun.components.Position3D"},
+            {"points/**": "Position3D"},
+            {"points/**": "position3D"},
         ]
 
         for expr in good_content_expressions:
