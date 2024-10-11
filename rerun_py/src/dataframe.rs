@@ -133,7 +133,7 @@ impl PyComponentColumnSelector {
     fn new(entity_path: &str, component_name: ComponentLike) -> Self {
         Self(ComponentColumnSelector {
             entity_path: entity_path.into(),
-            component: component_name.0,
+            component_name: component_name.0,
             join_encoding: Default::default(),
         })
     }
@@ -150,7 +150,7 @@ impl PyComponentColumnSelector {
         format!(
             "Component({}:{})",
             self.0.entity_path,
-            self.0.component.short_name()
+            self.0.component_name.short_name()
         )
     }
 }

@@ -134,8 +134,10 @@ impl Query {
                 }
 
                 ColumnSelector::Component(desc) => {
-                    let blueprint_component_descriptor =
-                        datatypes::ComponentColumnSelector::new(&desc.entity_path, desc.component);
+                    let blueprint_component_descriptor = datatypes::ComponentColumnSelector::new(
+                        &desc.entity_path,
+                        desc.component_name,
+                    );
 
                     selected_columns
                         .component_columns
@@ -258,7 +260,7 @@ impl Query {
                 } => {
                     selected_columns.retain(|column| match column {
                         ColumnSelector::Component(desc) => {
-                            desc.entity_path != entity_path || desc.component != component_name
+                            desc.entity_path != entity_path || desc.component_name != component_name
                         }
                         ColumnSelector::Time(_) => true,
                     });

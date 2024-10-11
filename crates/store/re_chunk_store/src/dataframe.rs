@@ -422,9 +422,7 @@ pub struct ComponentColumnSelector {
     pub entity_path: EntityPath,
 
     /// Semantic name associated with this data.
-    //
-    // TODO(cmc): this should be `component_name`.
-    pub component: ComponentName,
+    pub component_name: ComponentName,
 
     /// How to join the data into the `RecordBatch`.
     //
@@ -437,7 +435,7 @@ impl From<ComponentColumnDescriptor> for ComponentColumnSelector {
     fn from(desc: ComponentColumnDescriptor) -> Self {
         Self {
             entity_path: desc.entity_path.clone(),
-            component: desc.component_name,
+            component_name: desc.component_name,
             join_encoding: desc.join_encoding,
         }
     }
@@ -449,7 +447,7 @@ impl ComponentColumnSelector {
     pub fn new<C: re_types_core::Component>(entity_path: EntityPath) -> Self {
         Self {
             entity_path,
-            component: C::name(),
+            component_name: C::name(),
             join_encoding: JoinEncoding::default(),
         }
     }
@@ -459,7 +457,7 @@ impl ComponentColumnSelector {
     pub fn new_for_component_name(entity_path: EntityPath, component: ComponentName) -> Self {
         Self {
             entity_path,
-            component,
+            component_name: component,
             join_encoding: JoinEncoding::default(),
         }
     }
@@ -476,7 +474,7 @@ impl std::fmt::Display for ComponentColumnSelector {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let Self {
             entity_path,
-            component,
+            component_name: component,
             join_encoding: _,
         } = self;
 
@@ -799,7 +797,7 @@ impl ChunkStore {
             is_tombstone,
             is_semantically_empty,
         } = self
-            .lookup_column_metadata(&selector.entity_path, &selector.component)
+            .lookup_column_metadata(&selector.entity_path, &selector.component_name)
             .unwrap_or(ColumnMetadata {
                 is_static: false,
                 is_indicator: false,
@@ -808,7 +806,7 @@ impl ChunkStore {
             });
 
         let datatype = self
-            .lookup_datatype(&selector.component)
+            .lookup_datatype(&selector.component_name)
             .cloned()
             .unwrap_or_else(|| ArrowDatatype::Null);
 
@@ -816,7 +814,7 @@ impl ChunkStore {
             entity_path: selector.entity_path.clone(),
             archetype_name: None,
             archetype_field_name: None,
-            component_name: selector.component,
+            component_name: selector.component_name,
             store_datatype: ArrowListArray::<i32>::default_datatype(datatype.clone()),
             join_encoding: selector.join_encoding,
             is_static,
