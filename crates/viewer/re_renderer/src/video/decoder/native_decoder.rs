@@ -158,9 +158,14 @@ fn copy_video_frame_to_texture(
     re_tracing::profile_function!();
 
     let format = match &frame.format {
-        re_video::PixelFormat::Rgb8Unorm | re_video::PixelFormat::Rgba8Unorm => {
+        re_video::PixelFormat::Rgb8Unorm => {
+            unreachable!("Handled explicitly earlier in this function");
+        }
+
+        re_video::PixelFormat::Rgba8Unorm => {
             SourceImageDataFormat::WgpuCompatible(wgpu::TextureFormat::Rgba8Unorm)
         }
+
         re_video::PixelFormat::Yuv {
             layout,
             range,
