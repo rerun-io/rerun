@@ -145,7 +145,7 @@ mode sets the default time range to _everything_. You can override this in the s
 
         let mut dataframe_query = re_chunk_store::QueryExpression {
             view_contents: Some(view_contents),
-            filtered_index: view_query.timeline(ctx)?,
+            filtered_index: Some(view_query.timeline(ctx)?),
             filtered_index_range: Some(view_query.filter_by_range()?),
             filtered_point_of_view: view_query.filter_by_event()?,
             sparse_fill_strategy,

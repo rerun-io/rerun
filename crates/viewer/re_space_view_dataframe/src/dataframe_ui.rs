@@ -200,7 +200,8 @@ impl<'a> egui_table::TableDelegate for DataframeTableDelegate<'a> {
     fn prepare(&mut self, info: &egui_table::PrefetchInfo) {
         re_tracing::profile_function!();
 
-        let timeline = self.query_handle.query().filtered_index;
+        // TODO(ab): actual static-only support
+        let filtered_index = self.query_handle.query().filtered_index.unwrap_or_default();
 
         self.query_handle
             .seek_to_row(info.visible_rows.start as usize);
@@ -208,8 +209,12 @@ impl<'a> egui_table::TableDelegate for DataframeTableDelegate<'a> {
             .take((info.visible_rows.end - info.visible_rows.start) as usize)
             .collect();
 
-        let data =
-            RowsDisplayData::try_new(&info.visible_rows, data, self.selected_columns, &timeline);
+        let data = RowsDisplayData::try_new(
+            &info.visible_rows,
+            data,
+            self.selected_columns,
+            &filtered_index,
+        );
 
         self.display_data = data.context("Failed to create display data");
     }
@@ -253,13 +258,19 @@ impl<'a> egui_table::TableDelegate for DataframeTableDelegate<'a> {
                 } else if cell.row_nr == 1 {
                     let column = &self.selected_columns[cell.col_range.start];
 
+                    // TODO(ab): actual static-only support
+                    let filtered_index =
+                        self.query_handle.query().filtered_index.unwrap_or_default();
+
                     // if this column can actually be hidden, then that's the corresponding action
                     let hide_action = match column {
-                        ColumnDescriptor::Time(desc) => (desc.timeline
-                            != self.query_handle.query().filtered_index)
-                            .then(|| HideColumnAction::HideTimeColumn {
-                                timeline_name: *desc.timeline.name(),
-                            }),
+                        ColumnDescriptor::Time(desc) => {
+                            (desc.timeline != filtered_index).then(|| {
+                                HideColumnAction::HideTimeColumn {
+                                    timeline_name: *desc.timeline.name(),
+                                }
+                            })
+                        }
 
                         ColumnDescriptor::Component(desc) => {
                             Some(HideColumnAction::HideComponentColumn {
@@ -331,8 +342,10 @@ impl<'a> egui_table::TableDelegate for DataframeTableDelegate<'a> {
                     .try_decode_time(batch_row_idx)
             })
             .unwrap_or(TimeInt::MAX);
-        let latest_at_query =
-            LatestAtQuery::new(self.query_handle.query().filtered_index, timestamp);
+
+        // TODO(ab): actual static-only support
+        let filtered_index = self.query_handle.query().filtered_index.unwrap_or_default();
+        let latest_at_query = LatestAtQuery::new(filtered_index, timestamp);
 
         if ui.is_sizing_pass() {
             ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Extend);
