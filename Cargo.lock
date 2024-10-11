@@ -4758,7 +4758,7 @@ dependencies = [
 [[package]]
 name = "rav1d"
 version = "1.0.0"
-source = "git+https://github.com/rerun-io/rav1d?branch=emilk/dav1d-interface#d3acfb077eac7759f94279ec9a81edd7d0c409ed"
+source = "git+https://github.com/rerun-io/rav1d?branch=andreas/disable-asm-linux#10fcffa0584e4a731d74d4bc0c6207c272979c9b"
 dependencies = [
  "assert_matches",
  "atomig",
