@@ -7,7 +7,7 @@ A stream of images (like those produced by a camera) can be logged to Rerun in s
 
 * Uncompressed, as many [`Image`](../reference/types/archetypes/image.md)s
 * Compressed as many [`EncodedImage`](../reference/types/archetypes/encoded_image.md)s, using e.g. JPEG.
-* Compressed as a single [`AssetVideo`](../reference/types/archetypes/asset_video.md), using e.g. MP4 and AV1.
+* Compressed as a single [`AssetVideo`](../reference/types/archetypes/asset_video.md), using e.g. MP4.
 
 These alternatives range on a scale of "simple, lossless, and big" to "complex, lossy, and small".
 
