@@ -278,8 +278,8 @@ impl std::fmt::Display for ComponentColumnDescriptor {
 
 impl ComponentColumnDescriptor {
     #[inline]
-    pub fn matches(&self, entity_path: &EntityPath, component_name: &ComponentName) -> bool {
-        &self.entity_path == entity_path && &self.component_name == component_name
+    pub fn matches(&self, entity_path: &EntityPath, component_name: &str) -> bool {
+        &self.entity_path == entity_path && self.component_name.matches(component_name)
     }
 
     fn metadata(&self) -> arrow2::datatypes::Metadata {
@@ -422,7 +422,7 @@ pub struct ComponentColumnSelector {
     pub entity_path: EntityPath,
 
     /// Semantic name associated with this data.
-    pub component_name: ComponentName,
+    pub component_name: String,
 
     /// How to join the data into the `RecordBatch`.
     //
@@ -435,7 +435,7 @@ impl From<ComponentColumnDescriptor> for ComponentColumnSelector {
     fn from(desc: ComponentColumnDescriptor) -> Self {
         Self {
             entity_path: desc.entity_path.clone(),
-            component_name: desc.component_name,
+            component_name: desc.component_name.to_string(),
             join_encoding: desc.join_encoding,
         }
     }
@@ -447,17 +447,17 @@ impl ComponentColumnSelector {
     pub fn new<C: re_types_core::Component>(entity_path: EntityPath) -> Self {
         Self {
             entity_path,
-            component_name: C::name(),
+            component_name: C::name().to_string(),
             join_encoding: JoinEncoding::default(),
         }
     }
 
     /// Select a component based on its [`EntityPath`] and [`ComponentName`].
     #[inline]
-    pub fn new_for_component_name(entity_path: EntityPath, component: ComponentName) -> Self {
+    pub fn new_for_component_name(entity_path: EntityPath, component_name: ComponentName) -> Self {
         Self {
             entity_path,
-            component_name: component,
+            component_name: component_name.to_string(),
             join_encoding: JoinEncoding::default(),
         }
     }
@@ -474,11 +474,11 @@ impl std::fmt::Display for ComponentColumnSelector {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let Self {
             entity_path,
-            component_name: component,
+            component_name,
             join_encoding: _,
         } = self;
 
-        f.write_fmt(format_args!("{entity_path}@{}", component.short_name()))
+        f.write_fmt(format_args!("{entity_path}:{component_name}"))
     }
 }
 
@@ -791,13 +791,16 @@ impl ChunkStore {
         &self,
         selector: &ComponentColumnSelector,
     ) -> ComponentColumnDescriptor {
+        // TODO(jleibs): More intelligent mapping
+        let component_name = ComponentName::from(selector.component_name.clone());
+
         let ColumnMetadata {
             is_static,
             is_indicator,
             is_tombstone,
             is_semantically_empty,
         } = self
-            .lookup_column_metadata(&selector.entity_path, &selector.component_name)
+            .lookup_column_metadata(&selector.entity_path, &component_name)
             .unwrap_or(ColumnMetadata {
                 is_static: false,
                 is_indicator: false,
@@ -806,7 +809,7 @@ impl ChunkStore {
             });
 
         let datatype = self
-            .lookup_datatype(&selector.component_name)
+            .lookup_datatype(&component_name)
             .cloned()
             .unwrap_or_else(|| ArrowDatatype::Null);
 
@@ -814,7 +817,7 @@ impl ChunkStore {
             entity_path: selector.entity_path.clone(),
             archetype_name: None,
             archetype_field_name: None,
-            component_name: selector.component_name,
+            component_name,
             store_datatype: ArrowListArray::<i32>::default_datatype(datatype.clone()),
             join_encoding: selector.join_encoding,
             is_static,

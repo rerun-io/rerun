@@ -149,8 +149,7 @@ impl PyComponentColumnSelector {
     fn __repr__(&self) -> String {
         format!(
             "Component({}:{})",
-            self.0.entity_path,
-            self.0.component_name.short_name()
+            self.0.entity_path, self.0.component_name
         )
     }
 }
@@ -298,19 +297,19 @@ impl<'py> IndexValuesLike<'py> {
     }
 }
 
-struct ComponentLike(re_sdk::ComponentName);
+struct ComponentLike(String);
 
 impl FromPyObject<'_> for ComponentLike {
     fn extract_bound(component: &Bound<'_, PyAny>) -> PyResult<Self> {
         if let Ok(component_str) = component.extract::<String>() {
-            Ok(Self(component_str.into()))
+            Ok(Self(component_str))
         } else if let Ok(component_str) = component
             .getattr("_BATCH_TYPE")
             .and_then(|batch_type| batch_type.getattr("_ARROW_TYPE"))
             .and_then(|arrow_type| arrow_type.getattr("_TYPE_NAME"))
             .and_then(|type_name| type_name.extract::<String>())
         {
-            Ok(Self(component_str.into()))
+            Ok(Self(component_str))
         } else {
             return Err(PyTypeError::new_err(
                 "ComponentLike input must be a string or Component class.",
@@ -597,6 +596,18 @@ impl PyRecording {
         }
     }
 
+    fn find_best_component(&self, entity_path: &EntityPath, component_name: &str) -> ComponentName {
+        let selector = ComponentColumnSelector {
+            entity_path: entity_path.clone(),
+            component_name: component_name.into(),
+            join_encoding: Default::default(),
+        };
+
+        self.store
+            .resolve_component_selector(&selector)
+            .component_name
+    }
+
     /// Convert a `ViewContentsLike` into a `ViewContentsSelector`.
     ///
     /// ```pytholn
@@ -631,6 +642,7 @@ impl PyRecording {
             // `Union[ComponentLike, Sequence[ComponentLike]]]`
 
             let mut contents = ViewContentsSelector::default();
+
             for (key, value) in dict {
                 let key = key.extract::<String>().map_err(|_err| {
                     PyTypeError::new_err(
@@ -644,7 +656,7 @@ impl PyRecording {
                     ))
                 })?;
 
-                let components: BTreeSet<ComponentName> = if let Ok(component) =
+                let component_strs: BTreeSet<String> = if let Ok(component) =
                     value.extract::<ComponentLike>()
                 {
                     std::iter::once(component.0).collect()
@@ -659,7 +671,15 @@ impl PyRecording {
                 contents.append(
                     &mut engine
                         .iter_entity_paths(&path_filter)
-                        .map(|p| (p, Some(components.clone())))
+                        .map(|entity_path| {
+                            let components = component_strs
+                                .iter()
+                                .map(|component_name| {
+                                    self.find_best_component(&entity_path, component_name)
+                                })
+                                .collect();
+                            (entity_path, Some(components))
+                        })
                         .collect(),
                 );
             }

@@ -364,7 +364,7 @@ impl QueryHandle<'_> {
                             })
                             .find(|(_idx, view_descr)| {
                                 view_descr.entity_path == *selected_entity_path
-                                    && view_descr.component_name == *selected_component_name
+                                    && view_descr.component_name.matches(selected_component_name)
                             })
                             .map_or_else(
                                 || {
@@ -374,7 +374,9 @@ impl QueryHandle<'_> {
                                             entity_path: selected_entity_path.clone(),
                                             archetype_name: None,
                                             archetype_field_name: None,
-                                            component_name: *selected_component_name,
+                                            component_name: ComponentName::from(
+                                                selected_component_name.clone(),
+                                            ),
                                             store_datatype: arrow2::datatypes::DataType::Null,
                                             join_encoding: JoinEncoding::default(),
                                             is_static: false,
@@ -418,7 +420,7 @@ impl QueryHandle<'_> {
 
                     if let Some(pov) = self.query.filtered_point_of_view.as_ref() {
                         if pov.entity_path == column.entity_path
-                            && pov.component_name == column.component_name
+                            && column.component_name.matches(&pov.component_name)
                         {
                             view_pov_chunks_idx = Some(idx);
                         }

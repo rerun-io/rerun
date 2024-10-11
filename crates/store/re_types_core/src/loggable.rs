@@ -184,6 +184,12 @@ impl ComponentName {
             None // A user component
         }
     }
+
+    pub fn matches(&self, other: &str) -> bool {
+        self.0.as_str() == other
+            || self.full_name().to_lowercase() == other.to_lowercase()
+            || self.short_name().to_lowercase() == other.to_lowercase()
+    }
 }
 
 // ---
