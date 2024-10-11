@@ -96,7 +96,7 @@ struct QueryHandleState {
 
     /// The actual index filter in use, since the user-specified one is optional.
     ///
-    /// This just defaults to `Index::default()` if ther user hasn't specified any: the actual
+    /// This just defaults to `Index::default()` if the user hasn't specified any: the actual
     /// value is irrelevant since this means we are only concerned with static data anyway.
     filtered_index: Index,
 
