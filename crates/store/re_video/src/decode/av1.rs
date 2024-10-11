@@ -12,10 +12,29 @@ use super::{
 
 pub struct SyncDav1dDecoder {
     decoder: dav1d::Decoder,
+    debug_name: String,
+}
+
+impl SyncDecoder for SyncDav1dDecoder {
+    fn submit_chunk(&mut self, should_stop: &AtomicBool, chunk: Chunk, on_output: &OutputCallback) {
+        re_tracing::profile_function!();
+        self.submit_chunk(chunk, on_output);
+        self.output_frames(should_stop, on_output);
+    }
+
+    /// Clear and reset everything
+    fn reset(&mut self) {
+        re_tracing::profile_function!();
+
+        self.decoder.flush();
+
+        debug_assert!(matches!(self.decoder.get_picture(), Err(dav1d::Error::Again)),
+            "There should be no pending pictures, since we output them directly after submitting a chunk.");
+    }
 }
 
 impl SyncDav1dDecoder {
-    pub fn new() -> Result<Self> {
+    pub fn new(debug_name: String) -> Result<Self> {
         re_tracing::profile_function!();
 
         // TODO(#7671): enable this warning again on Linux when the `nasm` feature actually does something
@@ -39,78 +58,63 @@ impl SyncDav1dDecoder {
 
         let decoder = dav1d::Decoder::with_settings(&settings)?;
 
-        Ok(Self { decoder })
+        Ok(Self {
+            decoder,
+            debug_name,
+        })
     }
-}
 
-impl SyncDecoder for SyncDav1dDecoder {
-    fn submit_chunk(&mut self, should_stop: &AtomicBool, chunk: Chunk, on_output: &OutputCallback) {
+    fn submit_chunk(&mut self, chunk: Chunk, on_output: &OutputCallback) {
         re_tracing::profile_function!();
-        submit_chunk(&mut self.decoder, chunk, on_output);
-        output_frames(should_stop, &mut self.decoder, on_output);
-    }
+        econtext::econtext_function_data!(format!("chunk timestamp: {:?}", chunk.timestamp));
 
-    /// Clear and reset everything
-    fn reset(&mut self) {
-        re_tracing::profile_function!();
-
-        self.decoder.flush();
-
-        debug_assert!(matches!(self.decoder.get_picture(), Err(dav1d::Error::Again)),
-            "There should be no pending pictures, since we output them directly after submitting a chunk.");
-    }
-}
-
-fn submit_chunk(decoder: &mut dav1d::Decoder, chunk: Chunk, on_output: &OutputCallback) {
-    re_tracing::profile_function!();
-    econtext::econtext_function_data!(format!("chunk timestamp: {:?}", chunk.timestamp));
-
-    re_tracing::profile_scope!("send_data");
-    match decoder.send_data(
-        chunk.data,
-        None,
-        Some(chunk.timestamp.0),
-        Some(chunk.duration.0),
-    ) {
-        Ok(()) => {}
-        Err(err) => {
-            debug_assert!(err != dav1d::Error::Again, "Bug in AV1 decoder: send_data returned `Error::Again`. This shouldn't happen, since we process all images in a chunk right away");
-            on_output(Err(Error::Dav1d(err)));
-        }
-    };
-}
-
-/// Returns the number of new frames.
-fn output_frames(
-    should_stop: &AtomicBool,
-    decoder: &mut dav1d::Decoder,
-    on_output: &OutputCallback,
-) -> usize {
-    re_tracing::profile_function!();
-    let mut count = 0;
-    while !should_stop.load(Ordering::SeqCst) {
-        let picture = {
-            econtext::econtext!("get_picture");
-            decoder.get_picture()
-        };
-        match picture {
-            Ok(picture) => {
-                output_picture(&picture, on_output);
-                count += 1;
-            }
-            Err(dav1d::Error::Again) => {
-                // We need to submit more chunks to get more pictures
-                break;
-            }
+        re_tracing::profile_scope!("send_data");
+        match self.decoder.send_data(
+            chunk.data,
+            None,
+            Some(chunk.timestamp.0),
+            Some(chunk.duration.0),
+        ) {
+            Ok(()) => {}
             Err(err) => {
+                debug_assert!(err != dav1d::Error::Again, "Bug in AV1 decoder: send_data returned `Error::Again`. This shouldn't happen, since we process all images in a chunk right away");
                 on_output(Err(Error::Dav1d(err)));
             }
-        }
+        };
     }
-    count
+
+    /// Returns the number of new frames.
+    fn output_frames(&mut self, should_stop: &AtomicBool, on_output: &OutputCallback) -> usize {
+        re_tracing::profile_function!();
+        let mut count = 0;
+        while !should_stop.load(Ordering::SeqCst) {
+            let picture = {
+                econtext::econtext!("get_picture");
+                self.decoder.get_picture()
+            };
+            match picture {
+                Ok(picture) => {
+                    output_picture(&self.debug_name, &picture, on_output);
+                    count += 1;
+                }
+                Err(dav1d::Error::Again) => {
+                    // We need to submit more chunks to get more pictures
+                    break;
+                }
+                Err(err) => {
+                    on_output(Err(Error::Dav1d(err)));
+                }
+            }
+        }
+        count
+    }
 }
 
-fn output_picture(picture: &dav1d::Picture, on_output: &(dyn Fn(Result<Frame>) + Send + Sync)) {
+fn output_picture(
+    debug_name: &str,
+    picture: &dav1d::Picture,
+    on_output: &(dyn Fn(Result<Frame>) + Send + Sync),
+) {
     // TODO(jan): support other parameters?
     // What do these even do:
     // - matrix_coefficients
@@ -129,7 +133,8 @@ fn output_picture(picture: &dav1d::Picture, on_output: &(dyn Fn(Result<Frame>) +
                 // Note that `bit_depth` is either 8 or 16, which is semi-independent `bits_per_component` (which is None/8/10/12).
                 if picture.bit_depth() != 8 {
                     re_log::warn_once!(
-                        "Video uses unsupported bit depth larger than 8 bit per color component which is currently unsupported."
+                        "Video {debug_name:?} uses {} bis per component. Only a bit depth of 8 bit is currently unsupported.",
+                        picture.bits_per_component().map_or(picture.bit_depth(), |bpc| bpc.0)
                     );
                 }
 
