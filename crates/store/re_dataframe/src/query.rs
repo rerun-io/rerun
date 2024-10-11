@@ -1164,37 +1164,75 @@ mod tests {
         };
 
         let filtered_index = Some(Timeline::new_sequence("frame_nr"));
-        let query = QueryExpression {
-            filtered_index,
-            ..Default::default()
-        };
-        eprintln!("{query:#?}:");
 
-        let query_handle = query_engine.query(query.clone());
-        assert_eq!(
-            query_engine.query(query.clone()).into_iter().count() as u64,
-            query_handle.num_rows()
-        );
-        let dataframe = concatenate_record_batches(
-            query_handle.schema().clone(),
-            &query_handle.into_batch_iter().collect_vec(),
-        );
-        eprintln!("{dataframe}");
+        // static
+        {
+            let query = QueryExpression {
+                ..Default::default()
+            };
+            eprintln!("{query:#?}:");
 
-        let got = format!("{:#?}", dataframe.data.iter().collect_vec());
-        let expected = unindent::unindent(
-            "\
-            [
-                Int64[None, 10, 20, 30, 40, 50, 60, 70],
-                Timestamp(Nanosecond, None)[None, 1970-01-01 00:00:00.000000010, None, None, None, 1970-01-01 00:00:00.000000050, None, 1970-01-01 00:00:00.000000070],
-                ListArray[None, None, None, [2], [3], [4], None, [6]],
-                ListArray[[c], None, None, None, None, None, None, None],
-                ListArray[None, [{x: 0, y: 0}], [{x: 1, y: 1}], [{x: 2, y: 2}], [{x: 3, y: 3}], [{x: 4, y: 4}], [{x: 5, y: 5}], [{x: 8, y: 8}]],
-            ]\
-            "
-        );
+            let query_handle = query_engine.query(query.clone());
+            assert_eq!(
+                query_engine.query(query.clone()).into_iter().count() as u64,
+                query_handle.num_rows()
+            );
+            let dataframe = concatenate_record_batches(
+                query_handle.schema().clone(),
+                &query_handle.into_batch_iter().collect_vec(),
+            );
+            eprintln!("{dataframe}");
 
-        similar_asserts::assert_eq!(expected, got);
+            let got = format!("{:#?}", dataframe.data.iter().collect_vec());
+            let expected = unindent::unindent(
+                "\
+                [
+                    Int64[None],
+                    Timestamp(Nanosecond, None)[None],
+                    ListArray[None],
+                    ListArray[[c]],
+                    ListArray[None],
+                ]\
+                ",
+            );
+
+            similar_asserts::assert_eq!(expected, got);
+        }
+
+        // temporal
+        {
+            let query = QueryExpression {
+                filtered_index,
+                ..Default::default()
+            };
+            eprintln!("{query:#?}:");
+
+            let query_handle = query_engine.query(query.clone());
+            assert_eq!(
+                query_engine.query(query.clone()).into_iter().count() as u64,
+                query_handle.num_rows()
+            );
+            let dataframe = concatenate_record_batches(
+                query_handle.schema().clone(),
+                &query_handle.into_batch_iter().collect_vec(),
+            );
+            eprintln!("{dataframe}");
+
+            let got = format!("{:#?}", dataframe.data.iter().collect_vec());
+            let expected = unindent::unindent(
+                "\
+                [
+                    Int64[10, 20, 30, 40, 50, 60, 70],
+                    Timestamp(Nanosecond, None)[1970-01-01 00:00:00.000000010, None, None, None, 1970-01-01 00:00:00.000000050, None, 1970-01-01 00:00:00.000000070],
+                    ListArray[None, None, [2], [3], [4], None, [6]],
+                    ListArray[[c], [c], [c], [c], [c], [c], [c]],
+                    ListArray[[{x: 0, y: 0}], [{x: 1, y: 1}], [{x: 2, y: 2}], [{x: 3, y: 3}], [{x: 4, y: 4}], [{x: 5, y: 5}], [{x: 8, y: 8}]],
+                ]\
+                "
+            );
+
+            similar_asserts::assert_eq!(expected, got);
+        }
 
         Ok(())
     }
@@ -1234,11 +1272,11 @@ mod tests {
         let expected = unindent::unindent(
             "\
             [
-                Int64[None, 10, 20, 30, 40, 50, 60, 70],
-                Timestamp(Nanosecond, None)[None, 1970-01-01 00:00:00.000000010, None, None, None, 1970-01-01 00:00:00.000000050, None, 1970-01-01 00:00:00.000000070],
-                ListArray[None, None, None, [2], [3], [4], [4], [6]],
-                ListArray[[c], [c], [c], [c], [c], [c], [c], [c]],
-                ListArray[None, [{x: 0, y: 0}], [{x: 1, y: 1}], [{x: 2, y: 2}], [{x: 3, y: 3}], [{x: 4, y: 4}], [{x: 5, y: 5}], [{x: 8, y: 8}]],
+                Int64[10, 20, 30, 40, 50, 60, 70],
+                Timestamp(Nanosecond, None)[1970-01-01 00:00:00.000000010, None, None, None, 1970-01-01 00:00:00.000000050, None, 1970-01-01 00:00:00.000000070],
+                ListArray[None, None, [2], [3], [4], [4], [6]],
+                ListArray[[c], [c], [c], [c], [c], [c], [c]],
+                ListArray[[{x: 0, y: 0}], [{x: 1, y: 1}], [{x: 2, y: 2}], [{x: 3, y: 3}], [{x: 4, y: 4}], [{x: 5, y: 5}], [{x: 8, y: 8}]],
             ]\
             "
         );
@@ -1283,11 +1321,11 @@ mod tests {
         let expected = unindent::unindent(
             "\
             [
-                Int64[None, 30, 40, 50, 60],
-                Timestamp(Nanosecond, None)[None, None, None, 1970-01-01 00:00:00.000000050, None],
-                ListArray[None, [2], [3], [4], None],
-                ListArray[[c], None, None, None, None],
-                ListArray[None, [{x: 2, y: 2}], [{x: 3, y: 3}], [{x: 4, y: 4}], [{x: 5, y: 5}]],
+                Int64[30, 40, 50, 60],
+                Timestamp(Nanosecond, None)[None, None, 1970-01-01 00:00:00.000000050, None],
+                ListArray[[2], [3], [4], None],
+                ListArray[[c], [c], [c], [c]],
+                ListArray[[{x: 2, y: 2}], [{x: 3, y: 3}], [{x: 4, y: 4}], [{x: 5, y: 5}]],
             ]\
             ",
         );
@@ -1338,11 +1376,11 @@ mod tests {
         let expected = unindent::unindent(
             "\
             [
-                Int64[None, 30, 60],
-                Timestamp(Nanosecond, None)[None, None, None],
-                ListArray[None, [2], None],
-                ListArray[[c], None, None],
-                ListArray[None, [{x: 2, y: 2}], [{x: 5, y: 5}]],
+                Int64[30, 60],
+                Timestamp(Nanosecond, None)[None, None],
+                ListArray[[2], None],
+                ListArray[[c], [c]],
+                ListArray[[{x: 2, y: 2}], [{x: 5, y: 5}]],
             ]\
             ",
         );
@@ -1396,11 +1434,11 @@ mod tests {
             let expected = unindent::unindent(
                 "\
                 [
-                    Int64[None, 0, 15, 30, 45, 60, 75, 90],
-                    Timestamp(Nanosecond, None)[None, None, None, None, None, None, None, None],
-                    ListArray[None, None, None, [2], None, None, None, None],
-                    ListArray[[c], None, None, None, None, None, None, None],
-                    ListArray[None, None, None, [{x: 2, y: 2}], None, [{x: 5, y: 5}], None, None],
+                    Int64[0, 15, 30, 45, 60, 75, 90],
+                    Timestamp(Nanosecond, None)[None, None, None, None, None, None, None],
+                    ListArray[None, None, [2], None, None, None, None],
+                    ListArray[[c], [c], [c], [c], [c], [c], [c]],
+                    ListArray[None, None, [{x: 2, y: 2}], None, [{x: 5, y: 5}], None, None],
                 ]\
                 ",
             );
@@ -1439,11 +1477,11 @@ mod tests {
             let expected = unindent::unindent(
                 "\
                 [
-                    Int64[None, 0, 15, 30, 45, 60, 75, 90],
-                    Timestamp(Nanosecond, None)[None, None, 1970-01-01 00:00:00.000000010, None, None, None, 1970-01-01 00:00:00.000000070, 1970-01-01 00:00:00.000000070],
-                    ListArray[None, None, None, [2], [3], [4], [6], [6]],
-                    ListArray[[c], [c], [c], [c], [c], [c], [c], [c]],
-                    ListArray[None, None, [{x: 0, y: 0}], [{x: 2, y: 2}], [{x: 3, y: 3}], [{x: 5, y: 5}], [{x: 8, y: 8}], [{x: 8, y: 8}]],
+                    Int64[0, 15, 30, 45, 60, 75, 90],
+                    Timestamp(Nanosecond, None)[None, 1970-01-01 00:00:00.000000010, None, None, None, 1970-01-01 00:00:00.000000070, 1970-01-01 00:00:00.000000070],
+                    ListArray[None, None, [2], [3], [4], [6], [6]],
+                    ListArray[[c], [c], [c], [c], [c], [c], [c]],
+                    ListArray[None, [{x: 0, y: 0}], [{x: 2, y: 2}], [{x: 3, y: 3}], [{x: 5, y: 5}], [{x: 8, y: 8}], [{x: 8, y: 8}]],
                 ]\
                 ",
             );
@@ -1560,7 +1598,7 @@ mod tests {
                     Int64[10, 20, 30, 40, 50, 60, 70],
                     Timestamp(Nanosecond, None)[1970-01-01 00:00:00.000000010, None, None, None, 1970-01-01 00:00:00.000000050, None, 1970-01-01 00:00:00.000000070],
                     ListArray[None, None, [2], [3], [4], None, [6]],
-                    ListArray[None, None, None, None, None, None, None],
+                    ListArray[[c], [c], [c], [c], [c], [c], [c]],
                     ListArray[[{x: 0, y: 0}], [{x: 1, y: 1}], [{x: 2, y: 2}], [{x: 3, y: 3}], [{x: 4, y: 4}], [{x: 5, y: 5}], [{x: 8, y: 8}]],
                 ]\
                 "
@@ -1600,7 +1638,7 @@ mod tests {
                     Int64[30, 40, 50, 70],
                     Timestamp(Nanosecond, None)[None, None, 1970-01-01 00:00:00.000000050, 1970-01-01 00:00:00.000000070],
                     ListArray[[2], [3], [4], [6]],
-                    ListArray[None, None, None, None],
+                    ListArray[[c], [c], [c], [c]],
                     ListArray[[{x: 2, y: 2}], [{x: 3, y: 3}], [{x: 4, y: 4}], [{x: 8, y: 8}]],
                 ]\
                 ",
@@ -1695,10 +1733,10 @@ mod tests {
             let expected = unindent::unindent(
                 "\
                 [
-                    Int64[None, 30, 40, 50, 70],
-                    Timestamp(Nanosecond, None)[None, None, None, None, None],
-                    ListArray[None, [2], [3], [4], [6]],
-                    ListArray[[c], None, None, None, None],
+                    Int64[30, 40, 50, 70],
+                    Timestamp(Nanosecond, None)[None, None, None, None],
+                    ListArray[[2], [3], [4], [6]],
+                    ListArray[[c], [c], [c], [c]],
                 ]\
                 ",
             );
@@ -1784,9 +1822,9 @@ mod tests {
             let expected = unindent::unindent(
                 "\
                 [
-                    Int64[None, 10, 20, 30, 40, 50, 60, 70],
-                    Int64[None, 10, 20, 30, 40, 50, 60, 70],
-                    NullArray(8),
+                    Int64[10, 20, 30, 40, 50, 60, 70],
+                    Int64[10, 20, 30, 40, 50, 60, 70],
+                    NullArray(7),
                 ]\
                 ",
             );
@@ -1839,10 +1877,10 @@ mod tests {
             let expected = unindent::unindent(
                 "\
                 [
-                    ListArray[None, None, None, [2], [3], [4], None, [6]],
-                    ListArray[None, None, None, [2], [3], [4], None, [6]],
-                    NullArray(8),
-                    NullArray(8),
+                    ListArray[None, None, [2], [3], [4], None, [6]],
+                    ListArray[None, None, [2], [3], [4], None, [6]],
+                    NullArray(7),
+                    NullArray(7),
                 ]\
                 ",
             );
@@ -1926,12 +1964,12 @@ mod tests {
             let expected = unindent::unindent(
                 "\
                 [
-                    Int64[None, 30, 40, 50, 70],
-                    Timestamp(Nanosecond, None)[None, None, None, None, None],
-                    NullArray(5),
-                    NullArray(5),
-                    ListArray[None, [2], [3], [4], [6]],
-                    ListArray[[c], None, None, None, None],
+                    Int64[30, 40, 50, 70],
+                    Timestamp(Nanosecond, None)[None, None, None, None],
+                    NullArray(4),
+                    NullArray(4),
+                    ListArray[[2], [3], [4], [6]],
+                    ListArray[None, None, None, None],
                 ]\
                 ",
             );
@@ -1983,11 +2021,11 @@ mod tests {
             let expected = unindent::unindent(
             "\
             [
-                Int64[None, 10, 20, 30, 40, 50, 60, 65, 70],
-                Timestamp(Nanosecond, None)[None, 1970-01-01 00:00:00.000000010, None, None, None, 1970-01-01 00:00:00.000000050, 1970-01-01 00:00:00.000000060, 1970-01-01 00:00:00.000000065, 1970-01-01 00:00:00.000000070],
-                ListArray[[], None, None, [2], [3], [4], [], [], [6]],
-                ListArray[[], None, None, None, None, None, [], [], None],
-                ListArray[[], [{x: 0, y: 0}], [{x: 1, y: 1}], [{x: 2, y: 2}], [{x: 3, y: 3}], [{x: 4, y: 4}], [], [], [{x: 8, y: 8}]],
+                Int64[10, 20, 30, 40, 50, 60, 65, 70],
+                Timestamp(Nanosecond, None)[1970-01-01 00:00:00.000000010, None, None, None, 1970-01-01 00:00:00.000000050, 1970-01-01 00:00:00.000000060, 1970-01-01 00:00:00.000000065, 1970-01-01 00:00:00.000000070],
+                ListArray[None, None, [2], [3], [4], [], [], [6]],
+                ListArray[[c], [c], [c], [c], [c], [c], [c], [c]],
+                ListArray[[{x: 0, y: 0}], [{x: 1, y: 1}], [{x: 2, y: 2}], [{x: 3, y: 3}], [{x: 4, y: 4}], [], [], [{x: 8, y: 8}]],
             ]\
             "
         );
@@ -2024,11 +2062,11 @@ mod tests {
             let expected = unindent::unindent(
             "\
             [
-                Int64[None, 10, 20, 30, 40, 50, 60, 65, 70],
-                Timestamp(Nanosecond, None)[None, 1970-01-01 00:00:00.000000010, None, None, None, 1970-01-01 00:00:00.000000050, 1970-01-01 00:00:00.000000060, 1970-01-01 00:00:00.000000065, 1970-01-01 00:00:00.000000070],
-                ListArray[[], None, None, [2], [3], [4], [], [], [6]],
-                ListArray[[], [c], [c], [c], [c], [c], [], [], [c]],
-                ListArray[[], [{x: 0, y: 0}], [{x: 1, y: 1}], [{x: 2, y: 2}], [{x: 3, y: 3}], [{x: 4, y: 4}], [], [], [{x: 8, y: 8}]],
+                Int64[10, 20, 30, 40, 50, 60, 65, 70],
+                Timestamp(Nanosecond, None)[1970-01-01 00:00:00.000000010, None, None, None, 1970-01-01 00:00:00.000000050, 1970-01-01 00:00:00.000000060, 1970-01-01 00:00:00.000000065, 1970-01-01 00:00:00.000000070],
+                ListArray[None, None, [2], [3], [4], [], [], [6]],
+                ListArray[[c], [c], [c], [c], [c], [c], [c], [c]],
+                ListArray[[{x: 0, y: 0}], [{x: 1, y: 1}], [{x: 2, y: 2}], [{x: 3, y: 3}], [{x: 4, y: 4}], [], [], [{x: 8, y: 8}]],
             ]\
             "
         );
