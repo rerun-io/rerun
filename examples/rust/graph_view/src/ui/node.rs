@@ -15,9 +15,9 @@ pub fn draw_node(
         highlight.hover,
         highlight.selection != SelectionHighlight::None,
     ) {
-        (HoverHighlight::None, false) => ui.style().visuals.text_color(),
-        (HoverHighlight::None, true) => ui.style().visuals.selection.bg_fill,
-        (HoverHighlight::Hovered, ..) => ui.style().visuals.widgets.hovered.bg_fill,
+        (HoverHighlight::None, false) => None,
+        (HoverHighlight::None, true) => Some(ui.style().visuals.selection.bg_fill),
+        (HoverHighlight::Hovered, ..) => Some(ui.style().visuals.widgets.hovered.bg_fill),
     };
 
     let bg = match highlight.hover {
@@ -47,7 +47,12 @@ pub fn draw_node(
         egui::Frame::default()
             .show(ui, |ui| {
                 let painter = ui.painter();
-                painter.circle(pos, 3.0, hcolor, egui::Stroke::new(1.0, hcolor));
+                painter.circle(
+                    pos,
+                    3.0,
+                    instance.color.unwrap_or(ui.style().visuals.text_color()),
+                    hcolor.map_or(egui::Stroke::NONE, |c| egui::Stroke::new(2.0, c)),
+                );
             })
             .response
     }
