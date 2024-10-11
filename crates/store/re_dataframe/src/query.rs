@@ -33,17 +33,6 @@ use crate::{QueryEngine, RecordBatch};
 
 // ---
 
-// TODO:
-//
-// * Default mode:
-//   * filtered_index = Some(something)
-//   * TimeInt::STATIC is never ever returned by default
-//   * Static values are repeated every row and override everything
-//
-// * Static mode:
-//   * filtered_index = None
-//   * TimeInt::STATIC is the only index value ever returned
-
 // TODO(cmc): (no specific order) (should we make issues for these?)
 // * [x] basic thing working
 // * [x] custom selection
@@ -97,6 +86,13 @@ struct QueryHandleState {
     ///
     /// See also [`QueryHandleState::arrow_schema`].
     selected_contents: Vec<(usize, ColumnDescriptor)>,
+
+    /// This keeps track of the static data associated with each entry in `selected_contents`, if any.
+    ///
+    /// This is queried only once during init, and will override all cells that follow.
+    ///
+    /// `selected_contents`: [`QueryHandleState::selected_contents`]
+    selected_static_values: Vec<Option<UnitChunkShared>>,
 
     /// The actual index filter in use, since the user-specified one is optional.
     ///
@@ -197,19 +193,20 @@ impl QueryHandle<'_> {
 
         // 4. Perform the query and keep track of all the relevant chunks.
         let query = {
-            let index_range =
-                if let Some(using_index_values) = self.query.using_index_values.as_ref() {
-                    using_index_values
-                        .first()
-                        .and_then(|start| using_index_values.last().map(|end| (start, end)))
-                        .map_or(ResolvedTimeRange::EMPTY, |(start, end)| {
-                            ResolvedTimeRange::new(*start, *end)
-                        })
-                } else {
-                    self.query
-                        .filtered_index_range
-                        .unwrap_or(ResolvedTimeRange::EVERYTHING)
-                };
+            let index_range = if self.query.filtered_index.is_none() {
+                ResolvedTimeRange::EMPTY // static-only
+            } else if let Some(using_index_values) = self.query.using_index_values.as_ref() {
+                using_index_values
+                    .first()
+                    .and_then(|start| using_index_values.last().map(|end| (start, end)))
+                    .map_or(ResolvedTimeRange::EMPTY, |(start, end)| {
+                        ResolvedTimeRange::new(*start, *end)
+                    })
+            } else {
+                self.query
+                    .filtered_index_range
+                    .unwrap_or(ResolvedTimeRange::EVERYTHING)
+            };
 
             RangeQuery::new(filtered_index, index_range)
                 .keep_extra_timelines(true) // we want all the timelines we can get!
@@ -279,45 +276,74 @@ impl QueryHandle<'_> {
         // 6. Collect all unique index values.
         //
         // Used to achieve ~O(log(n)) pagination.
-        let unique_index_values =
-            if let Some(using_index_values) = self.query.using_index_values.as_ref() {
-                using_index_values.iter().copied().collect_vec()
+        let unique_index_values = if self.query.filtered_index.is_none() {
+            vec![TimeInt::STATIC]
+        } else if let Some(using_index_values) = self.query.using_index_values.as_ref() {
+            using_index_values
+                .iter()
+                .filter(|index_value| !index_value.is_static())
+                .copied()
+                .collect_vec()
+        } else {
+            re_tracing::profile_scope!("index_values");
+
+            let mut view_chunks = view_chunks.iter();
+            let view_chunks = if let Some(view_pov_chunks_idx) = view_pov_chunks_idx {
+                Either::Left(view_chunks.nth(view_pov_chunks_idx).into_iter())
             } else {
-                re_tracing::profile_scope!("index_values");
-
-                let mut view_chunks = view_chunks.iter();
-                let view_chunks = if let Some(view_pov_chunks_idx) = view_pov_chunks_idx {
-                    Either::Left(view_chunks.nth(view_pov_chunks_idx).into_iter())
-                } else {
-                    Either::Right(view_chunks)
-                };
-
-                let mut all_unique_index_values: BTreeSet<TimeInt> = view_chunks
-                    .flat_map(|chunks| {
-                        chunks.iter().filter_map(|(_cursor, chunk)| {
-                            if chunk.is_static() {
-                                Some(Either::Left(std::iter::once(TimeInt::STATIC)))
-                            } else {
-                                chunk
-                                    .timelines()
-                                    .get(&filtered_index)
-                                    .map(|time_column| Either::Right(time_column.times()))
-                            }
-                        })
-                    })
-                    .flatten()
-                    .collect();
-
-                if let Some(filtered_index_values) = self.query.filtered_index_values.as_ref() {
-                    all_unique_index_values.retain(|time| filtered_index_values.contains(time));
-                }
-
-                all_unique_index_values.into_iter().collect_vec()
+                Either::Right(view_chunks)
             };
+
+            let mut all_unique_index_values: BTreeSet<TimeInt> = view_chunks
+                .flat_map(|chunks| {
+                    chunks.iter().filter_map(|(_cursor, chunk)| {
+                        chunk
+                            .timelines()
+                            .get(&filtered_index)
+                            .map(|time_column| time_column.times())
+                    })
+                })
+                .flatten()
+                .collect();
+
+            if let Some(filtered_index_values) = self.query.filtered_index_values.as_ref() {
+                all_unique_index_values.retain(|time| filtered_index_values.contains(time));
+            }
+
+            all_unique_index_values
+                .into_iter()
+                .filter(|index_value| !index_value.is_static())
+                .collect_vec()
+        };
+
+        let selected_static_values = {
+            re_tracing::profile_scope!("static_values");
+
+            selected_contents
+                .iter()
+                .map(|(_view_idx, descr)| match descr {
+                    ColumnDescriptor::Time(_) => None,
+                    ColumnDescriptor::Component(descr) => {
+                        let query =
+                            re_chunk::LatestAtQuery::new(Timeline::default(), TimeInt::STATIC);
+
+                        let results = self.engine.cache.latest_at(
+                            self.engine.store,
+                            &query,
+                            &descr.entity_path,
+                            [descr.component_name],
+                        );
+
+                        results.components.get(&descr.component_name).cloned()
+                    }
+                })
+                .collect_vec()
+        };
 
         QueryHandleState {
             view_contents,
             selected_contents,
+            selected_static_values,
             filtered_index,
             arrow_schema,
             view_chunks,
@@ -869,8 +895,22 @@ impl QueryHandle<'_> {
             .map(|streaming_state| streaming_state.map(StreamingJoinState::StreamingJoinState))
             .collect_vec();
 
+        // Static always wins, no matter what.
+        for (view_idx, streaming_state) in view_streaming_state.iter_mut().enumerate() {
+            if let static_state @ Some(_) = state
+                .selected_static_values
+                .get(view_idx)
+                .cloned()
+                .flatten()
+                .map(StreamingJoinState::Retrofilled)
+            {
+                *streaming_state = static_state;
+            }
+        }
+
         match self.query.sparse_fill_strategy {
             SparseFillStrategy::None => {}
+
             SparseFillStrategy::LatestAtGlobal => {
                 // Everything that yielded `null` for the current iteration.
                 let null_streaming_states = view_streaming_state
