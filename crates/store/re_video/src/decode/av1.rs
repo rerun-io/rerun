@@ -176,28 +176,28 @@ fn output_picture(
                     let mut data = Vec::with_capacity(num_packed_bytes_y + num_packed_bytes_uv * 2);
                     {
                         let plane = picture.plane(PlanarImageComponent::Y);
-                        if actual_stride_y != packed_stride_y {
+                        if packed_stride_y != actual_stride_y {
+                            data.extend_from_slice(&plane[0..num_packed_bytes_y]);
+                        } else {
                             re_tracing::profile_scope!("slow path, y-plane");
 
                             for y in 0..height_y {
                                 let offset = y * actual_stride_y;
                                 data.extend_from_slice(&plane[offset..(offset + packed_stride_y)]);
                             }
-                        } else {
-                            data.extend_from_slice(&plane[0..num_packed_bytes_y]);
                         }
                     }
                     for comp in [PlanarImageComponent::U, PlanarImageComponent::V] {
                         let plane = picture.plane(comp);
-                        if actual_stride_uv != packed_stride_uv {
+                        if actual_stride_uv == packed_stride_uv {
+                            data.extend_from_slice(&plane[0..num_packed_bytes_uv]);
+                        } else {
                             re_tracing::profile_scope!("slow path, u/v-plane");
 
                             for y in 0..height_uv {
                                 let offset = y * actual_stride_uv;
                                 data.extend_from_slice(&plane[offset..(offset + packed_stride_uv)]);
                             }
-                        } else {
-                            data.extend_from_slice(&plane[0..num_packed_bytes_uv]);
                         }
                     }
 
@@ -218,7 +218,7 @@ fn output_picture(
             dav1d::pixel::YUVRange::Limited => YuvRange::Limited,
             dav1d::pixel::YUVRange::Full => YuvRange::Full,
         },
-        primaries: color_primaries(picture),
+        primaries: color_primaries(debug_name, picture),
     };
 
     let frame = Frame {
@@ -232,7 +232,7 @@ fn output_picture(
     on_output(Ok(frame));
 }
 
-fn color_primaries(picture: &dav1d::Picture) -> ColorPrimaries {
+fn color_primaries(debug_name: &str, picture: &dav1d::Picture) -> ColorPrimaries {
     #[allow(clippy::match_same_arms)]
     match picture.color_primaries() {
         dav1d::pixel::ColorPrimaries::Reserved
@@ -281,13 +281,13 @@ fn color_primaries(picture: &dav1d::Picture) -> ColorPrimaries {
         | dav1d::pixel::ColorPrimaries::P3DCI
         | dav1d::pixel::ColorPrimaries::P3Display => {
             // TODO(#7594): HDR support.
-            re_log::warn_once!("Video specified HDR color primaries. Rerun doesn't handle HDR colors correctly yet. Color artifacts may be visible.");
+            re_log::warn_once!("Video {debug_name:?} specified HDR color primaries. Rerun doesn't handle HDR colors correctly yet. Color artifacts may be visible.");
             ColorPrimaries::Bt709
         }
 
         dav1d::pixel::ColorPrimaries::Film | dav1d::pixel::ColorPrimaries::Tech3213 => {
             re_log::warn_once!(
-                "Video specified unsupported color primaries {:?}. Color artifacts may be visible.",
+                "Video {debug_name:?} specified unsupported color primaries {:?}. Color artifacts may be visible.",
                 picture.color_primaries()
             );
             ColorPrimaries::Bt709
