@@ -8,7 +8,7 @@ namespace rerun.datatypes;
 table Utf8 (
   "attr.arrow.transparent",
   "attr.python.aliases": "str",
-  "attr.python.array_aliases": "str, Sequence[str]",
+  "attr.python.array_aliases": "str, Sequence[str], npt.ArrayLike",
   "attr.rust.derive": "Default, PartialEq, Eq, PartialOrd, Ord, Hash",
   "attr.rust.override_crate": "re_types_core",
   "attr.rust.repr": "transparent",

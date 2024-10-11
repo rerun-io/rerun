@@ -7,6 +7,8 @@ from __future__ import annotations
 
 from typing import Any, Sequence, Union
 
+import numpy as np
+import numpy.typing as npt
 import pyarrow as pa
 from attrs import define, field
 from rerun._baseclasses import (
@@ -58,9 +60,11 @@ class AffixFuzzer9Batch(BaseBatch[AffixFuzzer9ArrayLike], ComponentBatchMixin):
     @staticmethod
     def _native_to_pa_array(data: AffixFuzzer9ArrayLike, data_type: pa.DataType) -> pa.Array:
         if isinstance(data, str):
-            array = [data]
+            array: Union[list[str], npt.ArrayLike] = [data]
         elif isinstance(data, Sequence):
             array = [str(datum) for datum in data]
+        elif isinstance(data, np.ndarray):
+            array = data
         else:
             array = [str(data)]
 

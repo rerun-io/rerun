@@ -1995,9 +1995,11 @@ fn quote_arrow_serialization(
                     return Ok(unindent(
                         r##"
                             if isinstance(data, str):
-                                array = [data]
+                                array: Union[list[str], npt.ArrayLike] = [data]
                             elif isinstance(data, Sequence):
                                 array = [str(datum) for datum in data]
+                            elif isinstance(data, np.ndarray):
+                                array = data
                             else:
                                 array = [str(data)]
 
