@@ -333,7 +333,8 @@ pub struct ChunkStore {
     // different datatype for a given component.
     pub(crate) type_registry: IntMap<ComponentName, ArrowDataType>,
 
-    pub(crate) per_column_metadata: IntMap<EntityPath, IntMap<ComponentName, ColumnMetadataState>>,
+    pub(crate) per_column_metadata:
+        BTreeMap<EntityPath, BTreeMap<ComponentName, ColumnMetadataState>>,
 
     pub(crate) chunks_per_chunk_id: BTreeMap<ChunkId, Arc<Chunk>>,
 
