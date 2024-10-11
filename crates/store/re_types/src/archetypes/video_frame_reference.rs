@@ -25,8 +25,6 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 ///
 /// See <https://rerun.io/docs/reference/video?speculative-link> for details of what is and isn't supported.
 ///
-/// ⚠️ **This type is experimental and may be removed in future versions**
-///
 /// ## Examples
 ///
 /// ### Video with automatically determined frames

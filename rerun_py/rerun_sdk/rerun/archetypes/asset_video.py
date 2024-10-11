@@ -28,8 +28,6 @@ class AssetVideo(AssetVideoExt, Archetype):
 
     In order to display a video, you also need to log a [`archetypes.VideoFrameReference`][rerun.archetypes.VideoFrameReference] for each frame.
 
-    ⚠️ **This is an experimental API! It is not fully supported, and is likely to change significantly in future versions.**
-
     Examples
     --------
     ### Video with automatically determined frames:

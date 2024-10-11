@@ -115,8 +115,6 @@ namespace rerun::archetypes {
     ///     // TODO(#5520): log blueprint once supported
     /// }
     /// ```
-    ///
-    /// ⚠ **This is an experimental API! It is not fully supported, and is likely to change significantly in future versions.**
     struct AssetVideo {
         /// The asset's bytes.
         rerun::components::Blob blob;

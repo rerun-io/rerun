@@ -27,8 +27,6 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 ///
 /// In order to display a video, you also need to log a [`archetypes::VideoFrameReference`][crate::archetypes::VideoFrameReference] for each frame.
 ///
-/// ⚠️ **This type is experimental and may be removed in future versions**
-///
 /// ## Examples
 ///
 /// ### Video with automatically determined frames
