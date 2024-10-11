@@ -554,11 +554,11 @@ impl PyRecordingView {
         })
     }
 
-    fn filter_is_not_null(&self, component: AnyComponentColumn) -> Self {
-        let component = component.into_selector();
+    fn filter_is_not_null(&self, column: AnyComponentColumn) -> Self {
+        let column = column.into_selector();
 
         let mut query_expression = self.query_expression.clone();
-        query_expression.filtered_point_of_view = Some(component);
+        query_expression.filtered_point_of_view = Some(column);
 
         Self {
             recording: self.recording.clone(),

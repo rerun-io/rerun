@@ -62,7 +62,7 @@ class RecordingView:
         Filter the view to only include data at the given index values.
 
         The index values returned will be the intersection between the provided values and the
-        original index.
+        original index values.
 
         This requires index values to be a precise match.  Index values in Rerun are
         represented as i64 sequence counts or nanoseconds. This API does not expose an interface
