@@ -267,7 +267,7 @@ pub fn texture_creation_desc_from_color_image<'a>(
             //
             PixelFormat::Y_U_V24_FullRange | PixelFormat::Y_U_V24_LimitedRange => {
                 SourceImageDataFormat::Yuv {
-                    format: YuvPixelLayout::Y_U_V444,
+                    layout: YuvPixelLayout::Y_U_V444,
                     range,
                     primaries,
                 }
@@ -275,7 +275,7 @@ pub fn texture_creation_desc_from_color_image<'a>(
 
             PixelFormat::Y_U_V16_FullRange | PixelFormat::Y_U_V16_LimitedRange => {
                 SourceImageDataFormat::Yuv {
-                    format: YuvPixelLayout::Y_U_V422,
+                    layout: YuvPixelLayout::Y_U_V422,
                     range,
                     primaries,
                 }
@@ -283,7 +283,7 @@ pub fn texture_creation_desc_from_color_image<'a>(
 
             PixelFormat::Y_U_V12_FullRange | PixelFormat::Y_U_V12_LimitedRange => {
                 SourceImageDataFormat::Yuv {
-                    format: YuvPixelLayout::Y_U_V420,
+                    layout: YuvPixelLayout::Y_U_V420,
                     range,
                     primaries,
                 }
@@ -291,20 +291,20 @@ pub fn texture_creation_desc_from_color_image<'a>(
 
             PixelFormat::Y8_FullRange | PixelFormat::Y8_LimitedRange => {
                 SourceImageDataFormat::Yuv {
-                    format: YuvPixelLayout::Y400,
+                    layout: YuvPixelLayout::Y400,
                     range,
                     primaries,
                 }
             }
 
             PixelFormat::NV12 => SourceImageDataFormat::Yuv {
-                format: YuvPixelLayout::Y_UV420,
+                layout: YuvPixelLayout::Y_UV420,
                 range,
                 primaries,
             },
 
             PixelFormat::YUY2 => SourceImageDataFormat::Yuv {
-                format: YuvPixelLayout::YUYV422,
+                layout: YuvPixelLayout::YUYV422,
                 range,
                 primaries,
             },
