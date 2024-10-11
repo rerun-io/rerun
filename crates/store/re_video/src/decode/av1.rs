@@ -153,39 +153,51 @@ fn output_picture(picture: &dav1d::Picture, on_output: &(dyn Fn(Result<Frame>) +
                 let num_packed_bytes_y = packed_stride_y * height_y;
                 let num_packed_bytes_uv = packed_stride_uv * height_uv;
 
-                let mut data = Vec::with_capacity(num_packed_bytes_y + num_packed_bytes_uv * 2);
+                if actual_stride_y == packed_stride_y && actual_stride_uv == packed_stride_uv {
+                    // Best case scenario: There's no additional strides at all, so we can just copy the data directly.
+                    // TODO(andreas): This still has *significant* overhead for 8k video. Can we take ownership of the data instead without a copy?
+                    re_tracing::profile_scope!("fast path");
+                    let plane_y = &picture.plane(PlanarImageComponent::Y)[0..num_packed_bytes_y];
+                    let plane_u = &picture.plane(PlanarImageComponent::U)[0..num_packed_bytes_uv];
+                    let plane_v = &picture.plane(PlanarImageComponent::V)[0..num_packed_bytes_uv];
+                    [plane_y, plane_u, plane_v].concat()
+                } else {
+                    // At least either y or u/v have strides.
+                    //
+                    // We could make our image ingestion pipeline even more sophisticated and pass that stride information through.
+                    // But given that this is a matter of replacing a single large memcpy with a few hundred _still_ quite large ones,
+                    // this should not make a lot of difference (citation needed!).
 
-                // We could make our image ingestion pipeline even more sophisticated and pass that stride information through.
-                // But given that this is a matter of replacing a single large memcpy with a few hundred _still_ quite large ones,
-                // this should not make a lot of difference (citation needed!).
-                {
-                    let plane = picture.plane(PlanarImageComponent::Y);
-                    if actual_stride_y != packed_stride_y {
-                        re_tracing::profile_scope!("slow path copy y-plane");
+                    let mut data = Vec::with_capacity(num_packed_bytes_y + num_packed_bytes_uv * 2);
+                    {
+                        let plane = picture.plane(PlanarImageComponent::Y);
+                        if actual_stride_y != packed_stride_y {
+                            re_tracing::profile_scope!("slow path, y-plane");
 
-                        for y in 0..height_y {
-                            let offset = y * actual_stride_y;
-                            data.extend_from_slice(&plane[offset..(offset + packed_stride_y)]);
+                            for y in 0..height_y {
+                                let offset = y * actual_stride_y;
+                                data.extend_from_slice(&plane[offset..(offset + packed_stride_y)]);
+                            }
+                        } else {
+                            data.extend_from_slice(&plane[0..num_packed_bytes_y]);
                         }
-                    } else {
-                        data.extend_from_slice(&plane[0..num_packed_bytes_y]);
                     }
-                }
-                for comp in [PlanarImageComponent::U, PlanarImageComponent::V] {
-                    let plane = picture.plane(comp);
-                    if actual_stride_uv != packed_stride_uv {
-                        re_tracing::profile_scope!("slow path copy u/v-plane");
+                    for comp in [PlanarImageComponent::U, PlanarImageComponent::V] {
+                        let plane = picture.plane(comp);
+                        if actual_stride_uv != packed_stride_uv {
+                            re_tracing::profile_scope!("slow path, u/v-plane");
 
-                        for y in 0..height_uv {
-                            let offset = y * actual_stride_uv;
-                            data.extend_from_slice(&plane[offset..(offset + packed_stride_uv)]);
+                            for y in 0..height_uv {
+                                let offset = y * actual_stride_uv;
+                                data.extend_from_slice(&plane[offset..(offset + packed_stride_uv)]);
+                            }
+                        } else {
+                            data.extend_from_slice(&plane[0..num_packed_bytes_uv]);
                         }
-                    } else {
-                        data.extend_from_slice(&plane[0..num_packed_bytes_uv]);
                     }
-                }
 
-                data
+                    data
+                }
             }
         }
     };
