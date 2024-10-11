@@ -1,6 +1,6 @@
 mod decoder;
 
-use std::{collections::hash_map::Entry, sync::Arc};
+use std::{collections::hash_map::Entry, ops::Range, sync::Arc};
 
 use ahash::HashMap;
 use parking_lot::Mutex;
@@ -68,6 +68,9 @@ pub type FrameDecodingResult = Result<VideoFrameTexture, DecodingError>;
 pub struct VideoFrameTexture {
     /// The texture to show.
     pub texture: GpuTexture2D,
+
+    /// What part of the video this video frame covers.
+    pub time_range: Range<re_video::Time>,
 
     /// If true, the texture is outdated. Keep polling for a fresh one.
     pub is_pending: bool,
