@@ -197,7 +197,7 @@ impl VideoFrameReferenceVisualizer {
                 match video.frame_at(render_ctx, decode_stream_id, video_timestamp.as_seconds()) {
                     Ok(VideoFrameTexture {
                         texture,
-                        time_range,
+                        time_range: _, // TODO(emilk): maybe add to `PickableTexturedRect` and `PickingHitType::TexturedRect` so we can show on hover?
                         is_pending,
                         show_spinner,
                     }) => {
