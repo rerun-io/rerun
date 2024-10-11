@@ -3,223 +3,74 @@ title: Analyze the data and log the results
 order: 3
 ---
 
-**OVERVIEW**
-- process `jawOpen` signal
-- relog result as `Label` and red indicator
-- aside: in an automated setup, the analysis would be logged in a separate rrd with same app/rec ids, which can both be opened in a viewer to be looked at.
 
-<hr/>
+
+In the previous sections, we explored our data and exported it into a Pandas dataframe. In this section, we will analyze the data to extract a "jaw open state" signal and log it back to the viewer.
 
 
 
-## Analyze the data with Pandas
+## Analyze the data
 
+Well, this is not the most complicated part, as we already identified that thresholding the `jawOpen` signal at 0.15 is all we need. Recall that we already flattened that signal into a `"jawOpen"` dataframe column in the [previous section](export-dataframe.md#inspect-the-dataframe)
 
-
-
-### Analyze the data
-
-- Compute a "mouth open" signal using a threshold
-- Extract phase transition between mouth closed -> mouth open
-
+Let's add a boolean column to our Pandas dataframe to hold our jaw open state:
 
 ```python
-import numpy as np
-import numpy.typing as npt
-import pandas as pd
-import rerun as rr
-
-SIGNAL_COLUMN = "/blendshapes/0/jawOpen:Scalar"
-
-def export_to_pandas(recording: rr.dataframe.Recording) -> pd.DataFrame:
-    pass  # see above
-
-
-def load_mouth_open_data(recording: rr.dataframe.Recording) -> pd.DataFrame:
-    pass  # see above
-
-
-def analyze_data(df: pd.DataFrame) -> (npt.NDArray, npt.NDArray):
-    # compute the mouth open state
-    df["mouth_open"] = (df[SIGNAL_COLUMN] > 0.15).astype(int)
-
-    # find the state transitions
-    diff = np.diff(df["mouth_open"], prepend=df["mouth_open"].iloc[0])
-    open_mouth_frames = df["frame_nr"][diff == 1].values
-    closed_mouth_frames = df["frame_nr"][diff == -1].values
-
-    # add the initial state
-    if df["mouth_open"].iloc[0] == 1:
-        open_mouth_frames = np.concatenate([[0], open_mouth_frames])
-    else:
-        closed_mouth_frames = np.concatenate([[0], closed_mouth_frames])
-
-    return open_mouth_frames, closed_mouth_frames
-
-def main():
-  # Load the recording
-  # TODO: loading directly from the viewer would be sweet
-  recording = rr.dataframe.load_recording("face_tracking.rrd")
-
-  # Extract the data
-  df = load_mouth_open_data(recording)
-
-  # Process the data
-  open_mouth_frames, closed_mouth_frames = analyze_data(df)
+df["jawOpenState"] = df["jawOpen"] > 0.15
 ```
 
 
-### Plot the data
+## Log the result back to the viewer
+
+The first step to log the data is to initialize the logging such that the data we log is routed to the exact same recording that we just analyzed. For this, both the application ID and the recording ID must match. Here is how it is done:
 
 ```python
-import numpy as np
-import numpy.typing as npt
-import pandas as pd
-import rerun as rr
-import matplotlib.pyplot as plt
-
-SIGNAL_COLUMN = "/blendshapes/0/jawOpen:Scalar"
-
-def export_to_pandas(recording: rr.dataframe.Recording) -> pd.DataFrame:
-    pass  # see above
-
-
-def load_mouth_open_data(recording: rr.dataframe.Recording) -> pd.DataFrame:
-    pass  # see above
-
-
-def analyze_data(df: pd.DataFrame) -> (npt.NDArray, npt.NDArray):
-    pass  # see above
-
-def plot_analysis(df: pd.DataFrame, open_mouth_frames: npt.NDArray, closed_mouth_frames: npt.NDArray) -> None:
-    # TODO: bonus points for splitting the series on `frame_nr` discontinuities
-
-    plt.plot(df["frame_nr"], df[SIGNAL_COLUMN], df["frame_nr"], df["mouth_open"])
-    plt.plot(open_mouth_frames, np.ones_like(open_mouth_frames), "ro", label="start smiling")
-    plt.plot(closed_mouth_frames, np.zeros_like(closed_mouth_frames), "go", label="stop smiling")
-    plt.show()
-
-
-def main():
-    # Load the recording
-    # TODO: loading directly from the viewer would be sweet
-    recording = rr.dataframe.load_recording("face_tracking.rrd")
-  
-    # Extract the data
-    df = load_mouth_open_data(recording)
-  
-    # Process the data
-    open_mouth_frames, closed_mouth_frames = analyze_data(df)
-  
-    # Plot the data
-    plot_analysis(df, open_mouth_frames, closed_mouth_frames)
+rr.init(recording.application_id(), recording_id=recording.recording_id())
+rr.connect()
 ```
 
-![plot](https://i.postimg.cc/Wp5frJ5M/image.png)
+Note: When automating data analysis, you should typically log the results to an RRD file distinct from the source RRD (using `rr.save()`). It is also valid to use the same app ID and recording ID in such a case. In particular, this allows opening both the source and result RRDs in the viewer, which will display both data under the same recording.
 
-TODO:
-- improve the plot with legends, etc
-- bonus: split the series when there are `Clear`s
+Let's log our jaw open state data in two forms:
+1. As a standalone `Scalar` component, to hold the raw data.
+2. As a `Text` component on the existing bounding box entity, such that we obtain a textual representation of the state in the visualization.
 
-
-### Log analysis back to the viewer
-
-We log the following:
-- mouth open state as a bit red dot over the camera view
-- mouth state transitions in a `TextLog` view
-- mouth state signal as a scalar
-
-
+Here is how to log the data as a scalar:
 
 ```python
-import numpy as np
-import numpy.typing as npt
-import pandas as pd
-import rerun as rr
-import matplotlib.pyplot as plt
-
-SIGNAL_COLUMN = "/blendshapes/0/jawOpen:Scalar"
-
-def export_to_pandas(recording: rr.dataframe.Recording) -> pd.DataFrame:
-    pass  # see above
-
-def load_mouth_open_data(recording: rr.dataframe.Recording) -> pd.DataFrame:
-    pass  # see above
-
-def analyze_data(df: pd.DataFrame) -> (npt.NDArray, npt.NDArray):
-    pass  # see above
-
-def plot_analysis(df: pd.DataFrame, open_mouth_frames: npt.NDArray, closed_mouth_frames: npt.NDArray) -> None:
-    pass  # see above
-
-def log_analysis(df: pd.DataFrame, open_mouth_frames: npt.NDArray, closed_mouth_frames: npt.NDArray) -> None:
-    # log state transitions as a red dot showing on top the video feed
-    for frame_nr in open_mouth_frames:
-      rr.set_time_sequence("frame_nr", frame_nr)
-      rr.log("/mouth_open/indicator", rr.Points2D([100, 100], radii=20, colors=[255, 0, 0]))
-    for frame_nr in closed_mouth_frames:
-      rr.set_time_sequence("frame_nr", frame_nr)
-      rr.log("/mouth_open/indicator", rr.Clear(recursive=False))
-  
-    # log state transitions to a TextLog view
-    for frame_nr in open_mouth_frames:
-      rr.set_time_sequence("frame_nr", frame_nr)
-      rr.log("/mouth_open/state", rr.TextLog(f"mouth opened"))
-    for frame_nr in closed_mouth_frames:
-      rr.set_time_sequence("frame_nr", frame_nr)
-      rr.log("/mouth_open/state", rr.TextLog(f"mouth closed"))
-  
-    # log the mouth open signal as a scalar
-    rr.send_columns(
-      "/mouth_open/values",
-      times=[rr.TimeSequenceColumn("frame_nr", df["frame_nr"])],
-      components=[
-        rr.components.ScalarBatch(df["mouth_open"].values),
-      ],
-    )
-
-def main():
-    # Load the recording
-    # TODO: loading directly from the viewer would be sweet
-    recording = rr.dataframe.load_recording("face_tracking.rrd")
-  
-    # Extract the data
-    df = load_mouth_open_data(recording)
-  
-    # Process the data
-    open_mouth_frames, closed_mouth_frames = analyze_data(df)
-  
-    # Log the analysis results
-    # TODO: avoid having to copy/paste the recording ID
-    rr.init("rerun_example_mp_face_detection", recording_id="73a8b473-0711-4b5a-b452-6e79de835299")
-    rr.connect()
-    log_analysis(df, open_mouth_frames, closed_mouth_frames)
-  
-    # Plot the data
-    plot_analysis(df, open_mouth_frames, closed_mouth_frames)
+rr.send_columns(
+    "/jaw_open_state",
+    times=[rr.TimeSequenceColumn("frame_nr", df["frame_nr"])],
+    components=[
+        rr.components.ScalarBatch(df["jawOpenState"]),
+    ],
+)
 ```
 
+With use the [`rr.send_column()`](../../howto/send_columns.md) API to efficiently send the entire column of data in a single batch.
 
-
-### Setup blueprint
-
-- Add the red dot to the camera view
-- Dataframe/timeseries views with both the original and the analyzed signals
-- Text log view with the state transitions
+Next, let's log the same data as `Text` component:
 
 ```python
-# TODO: soon(tm)
+target_entity = "/video/detector/faces/0/bbox"
+rr.log_components(target_entity, [rr.components.ShowLabels(True)], static=True)
+rr.send_columns(
+    target_entity,
+    times=[rr.TimeSequenceColumn("frame_nr", df["frame_nr"])],
+    components=[
+        rr.components.TextBatch(np.where(df["jawOpenState"], "OPEN", "CLOSE")),
+    ],
+)
 ```
 
-TODO: screenshot
+Here we first log the [`ShowLabel`](../../reference/types/components/show_labels.md) component as static to enable the display of the label. Then, we use `rr.send_column()` again to send an entire batch of text labels. We use the [`np.where()`](https://numpy.org/doc/stable/reference/generated/numpy.where.html) to produce a label that matches the state for each timestamp.
 
+### Final result
+
+TODO: screen shot
 
 
 ### Complete script
 
-TODO:
-- screenshot
-- live viewer pointed at a recording which contains the analysis results
-- figure out how to make that maintainable :/
 
 snippet: tutorials/data_out

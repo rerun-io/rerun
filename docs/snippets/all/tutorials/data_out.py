@@ -19,66 +19,33 @@ df["jawOpen"] = df["/blendshapes/0/jawOpen:Scalar"].explode().astype(float)
 # ----------------------------------------------------------------------------------------------
 # Analyze the data
 
-# compute the mouth open state
-df["mouth_open"] = df["jawOpen"] > 0.15
 
-# find the state transitions
-diff = np.diff(df["mouth_open"], prepend=df["mouth_open"].iloc[0])
-open_mouth_frames = df["frame_nr"][diff == 1].values
-closed_mouth_frames = df["frame_nr"][diff == -1].values
-
-# add the initial state
-if df["mouth_open"].iloc[0] == 1:
-    open_mouth_frames = np.concatenate([[0], open_mouth_frames])
-else:
-    closed_mouth_frames = np.concatenate([[0], closed_mouth_frames])
+# compute the mouth state
+df["jawOpenState"] = df["jawOpen"] > 0.15
 
 # ----------------------------------------------------------------------------------------------
 # Log the data back to the viewer
-
 
 # Connect to the viewer
 rr.init(recording.application_id(), recording_id=recording.recording_id())
 rr.connect()
 
-rr.log_components("/video/detector/faces/0/bbox", [rr.components.ShowLabels(True)], static=True)
-
+# log the jaw open state signal as a scalar
 rr.send_columns(
-    "/video/detector/faces/0/bbox",
+    "/jaw_open_state",
     times=[rr.TimeSequenceColumn("frame_nr", df["frame_nr"])],
     components=[
-        rr.components.TextBatch(np.where(df["mouth_open"], "OPEN", "CLOSE")),
+        rr.components.ScalarBatch(df["jawOpenState"]),
     ],
 )
 
-# for frame_nr in open_mouth_frames:
-#     rr.set_time_sequence("frame_nr", frame_nr)
-#     rr.log_components("/video/detector/faces/0/bbox", [rr.components.Text("OPEN")])
-# for frame_nr in closed_mouth_frames:
-#     rr.set_time_sequence("frame_nr", frame_nr)
-#     rr.log_components("/video/detector/faces/0/bbox", [rr.components.Text("CLOSE")])
-
-# # log state transitions as a red dot showing on top the video feed
-# for frame_nr in open_mouth_frames:
-#     rr.set_time_sequence("frame_nr", frame_nr)
-#     rr.log("/mouth_open/indicator", rr.Points2D([100, 100], radii=20, colors=[255, 0, 0]))
-# for frame_nr in closed_mouth_frames:
-#     rr.set_time_sequence("frame_nr", frame_nr)
-#     rr.log("/mouth_open/indicator", rr.Clear(recursive=False))
-#
-# # log state transitions to a TextLog view
-# for frame_nr in open_mouth_frames:
-#     rr.set_time_sequence("frame_nr", frame_nr)
-#     rr.log("/mouth_open/state", rr.TextLog(f"mouth opened"))
-# for frame_nr in closed_mouth_frames:
-#     rr.set_time_sequence("frame_nr", frame_nr)
-#     rr.log("/mouth_open/state", rr.TextLog(f"mouth closed"))
-
-# log the mouth open signal as a scalar
+# log a `Label` component to the face bounding box entity
+target_entity = "/video/detector/faces/0/bbox"
+rr.log_components(target_entity, [rr.components.ShowLabels(True)], static=True)
 rr.send_columns(
-    "/mouth_open/values",
+    target_entity,
     times=[rr.TimeSequenceColumn("frame_nr", df["frame_nr"])],
     components=[
-        rr.components.ScalarBatch(df["mouth_open"].values),
+        rr.components.TextBatch(np.where(df["jawOpenState"], "OPEN", "CLOSE")),
     ],
 )

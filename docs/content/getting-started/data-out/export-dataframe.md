@@ -3,18 +3,6 @@ title: Export the dataframe
 order: 2
 ---
 
-**OVERVIEW**
-- save rrd  and use data api to load the data in pandas
-- explore the dataframe schema and content
-- explain:
-  - column names
-  - sub-array thing (`values.flatten()`)
-- do not explain:
-  - NaN/static row
-- "[Next](analyze-and-log): analyze the dataframe to detect mouth open and log back the results"
-
-
-<hr/>
 
 In the [previous section](explore-as-dataframe.md), we explored some face tracking data using the dataframe view. In this section, we will see how we can use the dataframe API of the Rerun SDK to export the data into a [Pandas](https://pandas.pydata.org) dataframe to further inspect and process it. 
 
@@ -157,4 +145,4 @@ Here is the result:
 Name: jawOpen, Length: 782, dtype: float64
 ```
 
-With this, we are ready for the [next section](analyze-and-log.md), were we will anaylse the data and log back the result to the Rerun viewer.
+With this, we are ready for the [next section](analyze-and-log.md), where we will analyze the data and log back the result to the Rerun viewer.

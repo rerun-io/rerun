@@ -47,3 +47,8 @@ TODO:
 ![bp](https://i.postimg.cc/mrSPkRTg/image.png)
 
 TODO: proper screenshot
+
+
+Threshold at 0.15 seems reasonable.
+
+Next: export the dataframe to pandas
