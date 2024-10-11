@@ -553,6 +553,40 @@ impl PyRecordingView {
             query_expression,
         })
     }
+
+    fn filter_is_not_null(&self, column: AnyComponentColumn) -> Self {
+        let column = column.into_selector();
+
+        let mut query_expression = self.query_expression.clone();
+        query_expression.filtered_point_of_view = Some(column);
+
+        Self {
+            recording: self.recording.clone(),
+            query_expression,
+        }
+    }
+
+    fn using_index_values(&self, values: IndexValuesLike<'_>) -> PyResult<Self> {
+        let values = values.to_index_values()?;
+
+        let mut query_expression = self.query_expression.clone();
+        query_expression.using_index_values = Some(values);
+
+        Ok(Self {
+            recording: self.recording.clone(),
+            query_expression,
+        })
+    }
+
+    fn fill_latest_at(&self) -> Self {
+        let mut query_expression = self.query_expression.clone();
+        query_expression.sparse_fill_strategy = SparseFillStrategy::LatestAtGlobal;
+
+        Self {
+            recording: self.recording.clone(),
+            query_expression,
+        }
+    }
 }
 
 impl PyRecording {
