@@ -5,6 +5,7 @@ use re_viewer::external::{re_types::datatypes, re_viewer_context::SpaceViewSyste
 pub enum Error {
     #[error("edge has unknown node: {0}")]
     EdgeUnknownNode(String),
+
     #[error("missing layout information for node `{1}` in entity `{0}`")]
     MissingLayoutInformation(EntityPath, datatypes::GraphNodeId),
 }
