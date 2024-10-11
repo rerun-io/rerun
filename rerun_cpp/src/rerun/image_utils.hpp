@@ -152,10 +152,27 @@ namespace rerun {
     ) {
         auto num_pixels = resolution.width * resolution.height;
         switch (pixel_format) {
+            // 444 formats.
+            case datatypes::PixelFormat::Y_U_V24_FullRange:
+            case datatypes::PixelFormat::Y_U_V24_LimitedRange:
+                return num_pixels * 4;
+
+            // 422 formats.
+            case datatypes::PixelFormat::Y_U_V16_FullRange:
+            case datatypes::PixelFormat::Y_U_V16_LimitedRange:
             case datatypes::PixelFormat::NV12:
-                return 12 * num_pixels / 8;
-            case datatypes::PixelFormat::YUY2:
                 return 16 * num_pixels / 8;
+
+            // 420 formats.
+            case datatypes::PixelFormat::Y_U_V12_FullRange:
+            case datatypes::PixelFormat::Y_U_V12_LimitedRange:
+            case datatypes::PixelFormat::YUY2:
+                return 12 * num_pixels / 8;
+
+            // Monochrome formats.
+            case datatypes::PixelFormat::Y8_LimitedRange:
+            case datatypes::PixelFormat::Y8_FullRange:
+                return num_pixels;
         }
         return 0;
     }

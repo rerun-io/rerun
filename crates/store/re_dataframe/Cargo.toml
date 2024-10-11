@@ -34,7 +34,6 @@ re_tracing.workspace = true
 re_types_core.workspace = true
 
 # External dependencies:
-ahash.workspace = true
 anyhow.workspace = true
 arrow2.workspace = true
 itertools.workspace = true

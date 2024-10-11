@@ -16,7 +16,9 @@ impl SyncDav1dDecoder {
     pub fn new() -> Result<Self> {
         re_tracing::profile_function!();
 
-        if !cfg!(feature = "nasm") {
+        // TODO(#7671): enable this warning again when the `nasm` feature actually does something
+        #[allow(clippy::overly_complex_bool_expr)]
+        if false && !cfg!(feature = "nasm") {
             re_log::warn_once!(
                 "NOTE: native AV1 video decoder is running extra slowly. \
                 Speed it up by compiling Rerun with the `nasm` feature enabled. \

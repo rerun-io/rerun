@@ -1,4 +1,4 @@
-use super::yuv_converter::{YuvFormatConversionTask, YuvPixelLayout};
+use super::yuv_converter::{YuvFormatConversionTask, YuvPixelLayout, YuvRange};
 use crate::{
     renderer::DrawError,
     wgpu_resources::{GpuTexture, TextureDesc},
@@ -12,7 +12,7 @@ use crate::{
 /// Since with YUV content the color space is often less clear, we always explicitly
 /// specify it.
 ///
-/// Ffmpeg's documentation has a short & good overview of these relationships:
+/// Ffmpeg's documentation has a short & good overview of the relationship of YUV & color primaries:
 /// <https://trac.ffmpeg.org/wiki/colorspace#WhatiscolorspaceWhyshouldwecare/>
 ///
 /// Values need to be kept in sync with `yuv_converter.wgsl`
@@ -34,7 +34,7 @@ pub enum ColorPrimaries {
     /// but for all other purposes they are the same.
     /// (The only reason for us to convert to optical units ("linear" instead of "gamma") is for
     /// lighting & tonemapping where we typically start out with an sRGB image!)
-    Bt709 = 2,
+    Bt709 = 1,
     //
     // Not yet supported. These vary a lot more from the other two!
     //
@@ -46,9 +46,6 @@ pub enum ColorPrimaries {
 }
 
 /// Image data format that can be converted to a wgpu texture.
-///
-/// Names follow a similar convention as Facebook's Ocean library
-/// See <https://facebookresearch.github.io/ocean/docs/images/pixel_formats_and_plane_layout//>
 // TODO(andreas): Right now this combines both color space and pixel format. Consider separating them similar to how we do on user facing APIs.
 #[allow(non_camel_case_types)]
 #[derive(Clone, Copy, Debug)]
@@ -65,6 +62,7 @@ pub enum SourceImageDataFormat {
     Yuv {
         format: YuvPixelLayout,
         primaries: ColorPrimaries,
+        range: YuvRange,
     },
     //
     // TODO(#7608): Add rgb (3 channels!) formats.
@@ -262,9 +260,14 @@ pub fn transfer_image_data_to_texture(
             // No further conversion needed, we're done here!
             return Ok(data_texture);
         }
-        SourceImageDataFormat::Yuv { format, primaries } => YuvFormatConversionTask::new(
+        SourceImageDataFormat::Yuv {
+            format,
+            primaries,
+            range,
+        } => YuvFormatConversionTask::new(
             ctx,
             format,
+            range,
             primaries,
             &data_texture,
             &label,
