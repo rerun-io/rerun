@@ -46,10 +46,11 @@ pub fn draw_node(
     } else {
         egui::Frame::default()
             .show(ui, |ui| {
-                let painter = ui.painter();
-                painter.circle(
-                    pos,
-                    3.0,
+                let r = 4.0;
+                ui.set_min_size(egui::Vec2::new(2.0 * r, 2.0 * r)); // Frame size
+                ui.painter().circle(
+                    pos + egui::Vec2::new(r, r),
+                    r,
                     instance.color.unwrap_or(ui.style().visuals.text_color()),
                     hcolor.map_or(egui::Stroke::NONE, |c| egui::Stroke::new(2.0, c)),
                 );
