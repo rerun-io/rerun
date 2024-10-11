@@ -7,7 +7,7 @@ A stream of images (like those produced by a camera) can be logged to Rerun in s
 
 * Uncompressed, as many [`Image`](../reference/types/archetypes/image.md)s
 * Compressed as many [`EncodedImage`](../reference/types/archetypes/encoded_image.md)s, using e.g. JPEG.
-* Compressed as a single [`AssetVideo`](../reference/types/archetypes/asset_video.md), using e.g. MP4.
+* Compressed as a single [`AssetVideo`](../reference/types/archetypes/asset_video.md), using e.g. MP4 and AV1.
 
 These alternatives range on a scale of "simple, lossless, and big" to "complex, lossy, and small".
 
@@ -24,25 +24,30 @@ This gives the best compression ratio, reducing file sizes and bandwidth require
 snippet: archetypes/video_auto_frames
 
 ## `AssetVideo` limitations
-Video support is new in Rerun, and has several limitations:
+Video support is new in Rerun, and has a few limitations:
 
-* [#7298](https://github.com/rerun-io/rerun/issues/7298): Video playback only works in the web viewer
 * [#7354](https://github.com/rerun-io/rerun/issues/7354): Only the MP4 container format is supported
+* [#7298](https://github.com/rerun-io/rerun/issues/7298): Only the AV1 codec is supported in the native viewer
 * [#5181](https://github.com/rerun-io/rerun/issues/5181): There is no audio support
+* [#7594](https://github.com/rerun-io/rerun/issues/7594): HDR video is not supported
 * There is no video encoder in the Rerun SDK, so you need to create the video file yourself
-* Only a limited sets of codecs are supported (see below)
+* A limited sets of codecs are supported on web (see below)
+
+## Streaming video
+Rerun does not yet support streaming video support. You can work around this limitation by logging many small `AssetVideo`s to the same Entity Path. See [#7484](https://github.com/rerun-io/rerun/issues/7484) for more.
+
+## Native support
+In the native viewer, AV1 is the only supported codec. H.264 is coming soon ([#7298](https://github.com/rerun-io/rerun/issues/7298)).
+
 
 ## Web viewer support
-As of writing, playback of `AssetVideo` is only supported on the web viewer.
-Native video playback is coming, and can be tracked [in this GitHub issue](https://github.com/rerun-io/rerun/issues/7298).
-
-Video playback is done using the browser's own video decoder, so the supported codecs depend on your browser.
+Video playback in the Rerun Web Viewer is done using the browser's own video decoder, so the supported codecs depend on your browser.
 
 Overall, we recommend using Chrome or another Chromium-based browser, as it seems to have the best video support as of writing.
 
 When choosing a codec, we recommend [AV1](https://developer.mozilla.org/en-US/docs/Web/Media/Formats/Video_codecs#av1),
 as it seems to have the best overall playback support while also having very high compression quality.
-Since AV1 is patent-free, it is also likely the first codec we will support in the native viewer.
+AV1 is also patent-free, and is the only codec we currently support in the native viewer (see [#7298](https://github.com/rerun-io/rerun/issues/7298)). H.264/avc is another popular choice, and native support for that is coming soon.
 
 For decoding video in the Web Viewer, we use the [WebCodecs API](https://developer.mozilla.org/en-US/docs/Web/API/WebCodecs_API).
 This API enables us to take advantage of the browser's hardware accelerated video decoding capabilities.
@@ -58,7 +63,7 @@ With that in mind, here are the browsers which we have tested and verified to ge
 
 [^1]: Firefox on Linux has been observed to [stutter when playing back H.264 video](https://github.com/rerun-io/rerun/issues/7532).
 [^2]: Any Chromium-based browser should work, but we don't test all of them.
-[^3]: Chrome on Windows has been observed to stutter on playback. It can be mitigated by [using software decoding](https://rerun.io/docs/getting-started/troubleshooting#video-stuttering), but this may lead to high memory usage. See also https://github.com/rerun-io/rerun/issues/7595.
+[^3]: Chrome on Windows has been observed to stutter on playback. It can be mitigated by [using software decoding](https://rerun.io/docs/getting-started/troubleshooting#video-stuttering), but this may lead to high memory usage. See [#7595](https://github.com/rerun-io/rerun/issues/7595).
 
 When it comes to codecs, we aim to support any codec which the browser supports, but
 we currently cannot guarantee that all of them will work. For more information about
@@ -77,7 +82,6 @@ At the moment, we test the following codecs:
 [^6]: Safari/WebKit has been observed suttering when playing `hvc1` but working fine with `hevc1`. Despite support being advertised Safari 16.5 has been observed not support H.265 decoding.
 [^7]: Only supported if hardware encoding is available. Therefore always affected by Windows stuttering issues, see [^3].
 
-(TODO(#7594))[https://github.com/rerun-io/rerun/issues/7594]: HDR video is generally not supported at this point.
 
 ## Links
 * [Web video codec guide, by Mozilla](https://developer.mozilla.org/en-US/docs/Web/Media/Formats/Video_codecs)

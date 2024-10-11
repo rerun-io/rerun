@@ -21,10 +21,10 @@
 namespace rerun::archetypes {
     /// **Archetype**: A video binary.
     ///
-    /// NOTE: Videos can only be viewed in the Rerun web viewer.
-    /// Only MP4 containers with a limited number of codecs are currently supported, and not in all browsers.
+    /// Only MP4 containers with AV1 is generally supported,
+    /// though the web viewer sometimes supports some more video codex, depending on browser.
     ///
-    /// See <https://rerun.io/docs/concepts/video?speculative-link> for details of what is and isn't supported.
+    /// See <https://rerun.io/docs/reference/video?speculative-link> for details of what is and isn't supported.
     ///
     /// In order to display a video, you also need to log a `archetypes::VideoFrameReference` for each frame.
     ///

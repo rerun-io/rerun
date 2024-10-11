@@ -11,7 +11,7 @@ References a single video frame.
 Used to display individual video frames from a [`archetypes.AssetVideo`](https://rerun.io/docs/reference/types/archetypes/asset_video?speculative-link).
 To show an entire video, a video frame reference for each frame of the video should be logged.
 
-See <https://rerun.io/docs/concepts/video?speculative-link> for details of what is and isn't supported.
+See <https://rerun.io/docs/reference/video?speculative-link> for details of what is and isn't supported.
 
 ## Components
 
