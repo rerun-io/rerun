@@ -52,7 +52,6 @@ pub fn run(args: &Args) -> anyhow::Result<()> {
     let entries = parse_data_file()?;
 
     for (timestamp, chunk) in &entries.into_iter().chunk_by(|t| t.timestamp) {
-
         let interactions = chunk.collect::<Vec<_>>();
 
         let mut nodes = HashSet::new();
@@ -78,7 +77,11 @@ pub fn run(args: &Args) -> anyhow::Result<()> {
 
         rec.log(
             "/interactions",
-            &GraphEdgesUndirected::new(interactions.into_iter().map(|i| ("/persons", i.person_a, i.person_b))),
+            &GraphEdgesUndirected::new(
+                interactions
+                    .into_iter()
+                    .map(|i| ("/persons", i.person_a, i.person_b)),
+            ),
         )?;
     }
     Ok(())

@@ -32,7 +32,7 @@ pub struct Args {
     rerun: rerun::clap::RerunArgs,
 
     #[arg(short, long)]
-    example: Option<Example>
+    example: Option<Example>,
 }
 
 fn main() -> anyhow::Result<()> {

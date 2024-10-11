@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
-use rand::distributions::Distribution as _;
 use fdg::{nalgebra::Point2, Force as _};
+use rand::distributions::Distribution as _;
 use re_viewer::external::egui;
 
 use crate::{error::Error, types::NodeIndex};
@@ -25,10 +25,15 @@ impl Layout for FruchtermanReingoldLayout {
             fdg::ForceGraph::default();
 
         for (node_id, size) in nodes {
-
             let dist = fdg::rand_distributions::Uniform::new(-10.0, 10.0);
 
-            let ix = graph.add_node(((node_id.clone(), size), Point2::new(dist.sample(&mut rand::thread_rng()), dist.sample(&mut rand::thread_rng()))));
+            let ix = graph.add_node((
+                (node_id.clone(), size),
+                Point2::new(
+                    dist.sample(&mut rand::thread_rng()),
+                    dist.sample(&mut rand::thread_rng()),
+                ),
+            ));
             node_to_index.insert(node_id, ix);
         }
 
@@ -43,7 +48,7 @@ impl Layout for FruchtermanReingoldLayout {
         }
 
         // create a simulation from the graph
-        fdg::fruchterman_reingold::FruchtermanReingold::default().apply_many(&mut graph, 100);
+        fdg::fruchterman_reingold::FruchtermanReingold::default().apply_many(&mut graph, 1000);
         // Center the graph's average around (0,0).
         fdg::simple::Center::default().apply(&mut graph);
 

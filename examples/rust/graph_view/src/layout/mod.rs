@@ -53,7 +53,9 @@ impl LayoutProvider {
         match self {
             LayoutProvider::Dot(layout) => layout.compute(nodes, directed, undirected),
             LayoutProvider::ForceDirected(layout) => layout.compute(nodes, directed, undirected),
-            LayoutProvider::FruchtermanReingold(layout) => layout.compute(nodes, directed, undirected),
+            LayoutProvider::FruchtermanReingold(layout) => {
+                layout.compute(nodes, directed, undirected)
+            }
         }
     }
 }

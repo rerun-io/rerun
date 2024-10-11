@@ -95,7 +95,10 @@ impl GraphSpaceViewState {
             let layout_options = [
                 (LayoutProvider::new_dot(), "Dot"),
                 (LayoutProvider::new_force_directed(), "Force Directed"),
-                (LayoutProvider::new_fruchterman_reingold(), "Fruchterman-Reingold"),
+                (
+                    LayoutProvider::new_fruchterman_reingold(),
+                    "Fruchterman-Reingold",
+                ),
             ];
 
             for (l, t) in layout_options {

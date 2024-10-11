@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use re_format::format_f32;
 use re_log_types::EntityPath;
 use re_viewer::external::{
-    egui::{self, emath, TextWrapMode},
+    egui::{self, emath, Pos2, TextWrapMode},
     re_ui::UiExt,
     re_viewer_context::{
         HoverHighlight, InteractionHighlight, SelectionHighlight, SpaceViewHighlights,
@@ -13,6 +13,8 @@ use re_viewer::external::{
 
 mod edge;
 pub(crate) use edge::draw_edge;
+mod node;
+pub(crate) use node::draw_node;
 mod state;
 pub(crate) use state::GraphSpaceViewState;
 
@@ -21,48 +23,6 @@ use crate::{
     layout::LayoutProvider,
     types::{NodeIndex, NodeInstance, UnknownNodeInstance},
 };
-
-pub fn draw_node(
-    ui: &mut egui::Ui,
-    instance: &NodeInstance,
-    highlight: InteractionHighlight,
-) -> egui::Response {
-    let hcolor = match (
-        highlight.hover,
-        highlight.selection != SelectionHighlight::None,
-    ) {
-        (HoverHighlight::None, false) => ui.style().visuals.text_color(),
-        (HoverHighlight::None, true) => ui.style().visuals.selection.bg_fill,
-        (HoverHighlight::Hovered, ..) => ui.style().visuals.widgets.hovered.bg_fill,
-    };
-
-    let bg = match highlight.hover {
-        HoverHighlight::None => ui.style().visuals.widgets.noninteractive.bg_fill,
-        HoverHighlight::Hovered => ui.style().visuals.widgets.hovered.bg_fill,
-    };
-    // ui.style().visuals.faint_bg_color
-
-    let text = instance
-        .label
-        .map_or(egui::RichText::new(instance.node_id.to_string()), |label| {
-            egui::RichText::new(label.to_string())
-        });
-
-    egui::Frame::default()
-        .rounding(egui::Rounding::same(4.0))
-        .stroke(egui::Stroke::new(1.0, ui.style().visuals.text_color()))
-        .inner_margin(egui::Vec2::new(6.0, 4.0))
-        .fill(bg)
-        .show(ui, |ui| {
-            ui.style_mut().wrap_mode = Some(TextWrapMode::Extend);
-            if let Some(color) = instance.color {
-                ui.add(egui::Button::new(text.color(color)));
-            } else {
-                ui.add(egui::Button::new(text));
-            }
-        })
-        .response
-}
 
 pub fn draw_dummy(ui: &mut egui::Ui, instance: &UnknownNodeInstance) -> egui::Response {
     let text = egui::RichText::new(format!(
@@ -121,7 +81,7 @@ pub fn measure_node_sizes<'a>(
         for node in nodes {
             match node {
                 Node::Regular(instance) => {
-                    let r = draw_node(ui, &instance, InteractionHighlight::default());
+                    let r = draw_node(ui, &instance, Pos2::ZERO, InteractionHighlight::default());
                     sizes.insert((&instance).into(), r.rect.size());
                 }
                 Node::Unknown(instance) => {

@@ -7,6 +7,7 @@ use crate::{error::Error, types::NodeIndex};
 
 use super::Layout;
 
+#[deprecated]
 #[derive(Debug, Default, PartialEq, Eq)]
 pub struct ForceBasedLayout;
 

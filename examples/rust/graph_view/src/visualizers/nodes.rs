@@ -45,13 +45,7 @@ impl NodeVisualizerData {
             (0..).map(Instance::from),
             self.colors.iter().map(Option::Some),
             Option::<&components::Color>::default,
-            self.labels.iter().map(|l| {
-                if self.show_labels.is_some() {
-                    Some(l)
-                } else {
-                    None
-                }
-            }),
+            self.labels.iter().map(Option::Some),
             Option::<&ArrowString>::default,
         )
         .map(move |(node_id, instance, color, label)| NodeInstance {
@@ -59,6 +53,7 @@ impl NodeVisualizerData {
             node_id,
             instance,
             color: color.map(|c| Color32::from(c.0)),
+            show_labels: self.show_labels.map_or(false, bool::from),
             label,
         })
     }

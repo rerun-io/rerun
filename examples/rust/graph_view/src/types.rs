@@ -62,6 +62,7 @@ pub(crate) struct NodeInstance<'a> {
     pub node_id: &'a datatypes::GraphNodeId,
     pub entity_path: &'a EntityPath,
     pub instance: Instance,
+    pub show_labels: bool,
     pub label: Option<&'a ArrowString>,
     pub color: Option<egui::Color32>,
 }
