@@ -12,6 +12,28 @@ use itertools::Itertools;
 
 // ---
 
+/// Returns true if the given `list_array` is semantically empty.
+///
+/// Semantic emptiness is defined as either one of these:
+/// * The list is physically empty (literally no data).
+/// * The list only contains null entries, or empty arrays, or a mix of both.
+pub fn is_list_array_semantically_empty(list_array: &ArrowListArray<i32>) -> bool {
+    let is_physically_empty = || list_array.is_empty();
+
+    let is_all_nulls = || {
+        list_array
+            .validity()
+            .map_or(false, |bitmap| bitmap.unset_bits() == list_array.len())
+    };
+
+    let is_all_empties = || list_array.offsets().lengths().all(|len| len == 0);
+
+    let is_a_mix_of_nulls_and_empties =
+        || list_array.iter().flatten().all(|array| array.is_empty());
+
+    is_physically_empty() || is_all_nulls() || is_all_empties() || is_a_mix_of_nulls_and_empties()
+}
+
 /// Create a sparse list-array out of an array of arrays.
 ///
 /// All arrays must have the same datatype.

@@ -340,6 +340,7 @@ impl ChunkStore {
                 info: _,
                 config: _,
                 type_registry: _,
+                per_column_metadata: _, // column metadata is additive only
                 chunks_per_chunk_id,
                 chunk_ids_per_min_row_id,
                 temporal_chunk_ids_per_entity_per_component,
