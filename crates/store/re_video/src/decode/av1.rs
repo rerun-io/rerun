@@ -176,7 +176,7 @@ fn output_picture(
                     let mut data = Vec::with_capacity(num_packed_bytes_y + num_packed_bytes_uv * 2);
                     {
                         let plane = picture.plane(PlanarImageComponent::Y);
-                        if packed_stride_y != actual_stride_y {
+                        if packed_stride_y == actual_stride_y {
                             data.extend_from_slice(&plane[0..num_packed_bytes_y]);
                         } else {
                             re_tracing::profile_scope!("slow path, y-plane");
