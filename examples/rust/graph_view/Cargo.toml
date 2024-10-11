@@ -30,5 +30,8 @@ bytemuck = "1.18"
 thiserror = "1.0"
 
 # Experiment with different layout algorithms.
-fdg-sim = "0.9"
 layout-rs = "0.1"
+fdg-sim = "0.9"
+# `fdg` supersedes `fdg-sim` and is more featureful but not released to crates.io yet.
+fdg = { git = "https://github.com/grantshandy/fdg", rev = "50755f1dea20249d753600e7e7e51ca33e87b5a1", default-features = false }
+rand = "0.8"

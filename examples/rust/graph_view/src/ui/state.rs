@@ -33,7 +33,7 @@ impl Default for GraphSpaceViewState {
             clip_rect_window: egui::Rect::NOTHING,
             show_debug: Default::default(),
             layout: Default::default(),
-            layout_provider: LayoutProvider::new_force_directed(),
+            layout_provider: LayoutProvider::new_fruchterman_reingold(),
         }
     }
 }
@@ -95,6 +95,7 @@ impl GraphSpaceViewState {
             let layout_options = [
                 (LayoutProvider::new_dot(), "Dot"),
                 (LayoutProvider::new_force_directed(), "Force Directed"),
+                (LayoutProvider::new_fruchterman_reingold(), "Fruchterman-Reingold"),
             ];
 
             for (l, t) in layout_options {

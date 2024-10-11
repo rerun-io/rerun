@@ -8,6 +8,8 @@ mod dot;
 pub(crate) use dot::DotLayout;
 mod force_directed;
 pub(crate) use force_directed::ForceBasedLayout;
+mod fruchterman;
+pub(crate) use fruchterman::FruchtermanReingoldLayout;
 
 pub(crate) trait Layout {
     type NodeIx: Clone + Eq + std::hash::Hash;
@@ -24,6 +26,7 @@ pub(crate) trait Layout {
 pub(crate) enum LayoutProvider {
     Dot(DotLayout),
     ForceDirected(ForceBasedLayout),
+    FruchtermanReingold(FruchtermanReingoldLayout),
 }
 
 impl LayoutProvider {
@@ -33,6 +36,10 @@ impl LayoutProvider {
 
     pub(crate) fn new_force_directed() -> Self {
         LayoutProvider::ForceDirected(Default::default())
+    }
+
+    pub(crate) fn new_fruchterman_reingold() -> Self {
+        LayoutProvider::FruchtermanReingold(Default::default())
     }
 }
 
@@ -46,6 +53,7 @@ impl LayoutProvider {
         match self {
             LayoutProvider::Dot(layout) => layout.compute(nodes, directed, undirected),
             LayoutProvider::ForceDirected(layout) => layout.compute(nodes, directed, undirected),
+            LayoutProvider::FruchtermanReingold(layout) => layout.compute(nodes, directed, undirected),
         }
     }
 }

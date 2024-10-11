@@ -164,7 +164,10 @@ impl SpaceViewClass for GraphSpaceView {
             return Ok(());
         };
 
-        if graph.all_nodes().any(|n| !layout.contains_key(&NodeIndex::from(&n))) {
+        if graph
+            .all_nodes()
+            .any(|n| !layout.contains_key(&NodeIndex::from(&n)))
+        {
             state.layout = None;
             return Ok(());
         }
