@@ -791,8 +791,28 @@ impl ChunkStore {
         &self,
         selector: &ComponentColumnSelector,
     ) -> ComponentColumnDescriptor {
-        // TODO(jleibs): More intelligent mapping
-        let component_name = ComponentName::from(selector.component_name.clone());
+        // Happy path if this string is a valid component
+        let direct_component = ComponentName::from(selector.component_name.clone());
+
+        let component_name = if self.all_components().contains(&direct_component) {
+            direct_component
+        } else {
+            self.all_components_for_entity(&selector.entity_path)
+                // First just check on the entity since this is the most likely place to find it.
+                .and_then(|components| {
+                    components
+                        .into_iter()
+                        .find(|component_name| component_name.matches(&selector.component_name))
+                })
+                // Fall back on matching any component in the store
+                .or_else(|| {
+                    self.all_components()
+                        .into_iter()
+                        .find(|component_name| component_name.matches(&selector.component_name))
+                })
+                // Finally fall back on the direct component name
+                .unwrap_or(direct_component)
+        };
 
         let ColumnMetadata {
             is_static,
