@@ -258,7 +258,7 @@ impl<'a> ImageDataDesc<'a> {
                 label: self.label.clone(),
                 size: wgpu::Extent3d {
                     width: self.width_height[0],
-                    height: self.width_height[0],
+                    height: self.width_height[1],
                     depth_or_array_layers: 1,
                 },
                 mip_level_count: 1, // No mipmapping support yet.
