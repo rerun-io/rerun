@@ -254,6 +254,9 @@ fn color_primaries(debug_name: &str, picture: &dav1d::Picture) -> ColorPrimaries
                 //     ColorPrimaries::Bt601
                 // }
                 //
+                // This is also what the mpv player does (and probably others):
+                // https://wiki.x266.mov/docs/colorimetry/primaries#2-unspecified
+                //
                 // …then again, eyeballing VLC it looks like it just always assumes BT.709.
                 // The handwavy test case employed here was the same video in low & high resolution
                 // without specified primaries. Both looked the same.
