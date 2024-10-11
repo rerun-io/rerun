@@ -1209,9 +1209,7 @@ mod tests {
 
         // static
         {
-            let query = QueryExpression {
-                ..Default::default()
-            };
+            let query = QueryExpression::default();
             eprintln!("{query:#?}:");
 
             let query_handle = query_engine.query(query.clone());
