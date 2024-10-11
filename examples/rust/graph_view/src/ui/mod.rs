@@ -1,14 +1,9 @@
 use std::collections::HashMap;
 
-use re_format::format_f32;
 use re_log_types::EntityPath;
 use re_viewer::external::{
-    egui::{self, emath, Pos2, TextWrapMode},
-    re_ui::UiExt,
-    re_viewer_context::{
-        HoverHighlight, InteractionHighlight, SelectionHighlight, SpaceViewHighlights,
-        SpaceViewState,
-    },
+    egui,
+    re_viewer_context::{InteractionHighlight, SpaceViewHighlights},
 };
 
 mod edge;
@@ -20,18 +15,13 @@ pub(crate) use state::GraphSpaceViewState;
 
 use crate::{
     graph::Node,
-    layout::LayoutProvider,
-    types::{NodeIndex, NodeInstance, UnknownNodeInstance},
+    types::{NodeIndex, UnknownNodeInstance},
 };
 
 pub fn draw_dummy(ui: &mut egui::Ui, instance: &UnknownNodeInstance) -> egui::Response {
-    let text = egui::RichText::new(format!(
-        "{} @ {}",
-        instance.node_id,
-        instance.entity_path.to_string()
-    ))
-    .color(ui.style().visuals.widgets.noninteractive.text_color());
-    ui.style_mut().wrap_mode = Some(TextWrapMode::Extend);
+    let text = egui::RichText::new(format!("{} @ {}", instance.node_id, instance.entity_path))
+        .color(ui.style().visuals.widgets.noninteractive.text_color());
+    ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Extend);
     ui.add(egui::Button::new(text))
 }
 
