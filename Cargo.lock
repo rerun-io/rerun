@@ -4758,7 +4758,7 @@ dependencies = [
 [[package]]
 name = "rav1d"
 version = "1.0.0"
-source = "git+https://github.com/rerun-io/rav1d?branch=emilk/dav1d-interface#d3acfb077eac7759f94279ec9a81edd7d0c409ed"
+source = "git+https://github.com/rerun-io/rav1d?rev=a9059f6a02e68cf2aba3795cc370c72f695c4730#a9059f6a02e68cf2aba3795cc370c72f695c4730"
 dependencies = [
  "assert_matches",
  "atomig",
@@ -4766,6 +4766,7 @@ dependencies = [
  "bitflags 2.6.0",
  "cc",
  "cfg-if",
+ "cfg_aliases 0.2.1",
  "libc",
  "nasm-rs",
  "parking_lot",

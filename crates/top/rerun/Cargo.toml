@@ -73,7 +73,7 @@ log = ["dep:env_logger", "dep:log"]
 
 ## Enable faster native video decoding with assembly.
 ## You need to install [nasm](https://nasm.us/) to compile with this feature.
-# TODO(#7671): this feature flag currently does nothing
+# TODO(#7671): this feature flag currently does nothing on linux.
 nasm = ["re_video/nasm"]
 
 ## Support spawning a native viewer.
