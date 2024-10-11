@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import numpy as np
+
 from rerun import datatypes
 
 
@@ -19,8 +20,9 @@ def test_utf8_batch_single() -> None:
 
 
 def test_utf8_batch_many() -> None:
-    list_of_strings = ["hello", "world"]
-    array_of_strings = np.array(["hello", "world"])
+    # different string length to be sure
+    list_of_strings = ["hell", "worlds"]
+    array_of_strings = np.array(["hell", "worlds"])
 
     assert (
         datatypes.Utf8Batch(list_of_strings).as_arrow_array() == datatypes.Utf8Batch(array_of_strings).as_arrow_array()
