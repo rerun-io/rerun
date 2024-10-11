@@ -28,8 +28,6 @@ class VideoFrameReference(Archetype):
 
     See <https://rerun.io/docs/concepts/video?speculative-link> for details of what is and isn't supported.
 
-    ⚠️ **This is an experimental API! It is not fully supported, and is likely to change significantly in future versions.**
-
     Examples
     --------
     ### Video with automatically determined frames:

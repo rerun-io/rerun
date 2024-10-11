@@ -12,8 +12,6 @@
 
 namespace rerun::components {
     /// **Component**: Timestamp inside a `archetypes::AssetVideo`.
-    ///
-    /// ⚠ **This is an experimental API! It is not fully supported, and is likely to change significantly in future versions.**
     struct VideoTimestamp {
         rerun::datatypes::VideoTimestamp timestamp;
 
