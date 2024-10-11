@@ -161,6 +161,8 @@ fn output_picture(picture: &dav1d::Picture, on_output: &(dyn Fn(Result<Frame>) +
                 {
                     let plane = picture.plane(PlanarImageComponent::Y);
                     if actual_stride_y != packed_stride_y {
+                        re_tracing::profile_scope!("slow path copy y-plane");
+
                         for y in 0..height_y {
                             let offset = y * actual_stride_y;
                             data.extend_from_slice(&plane[offset..(offset + packed_stride_y)]);
@@ -172,6 +174,8 @@ fn output_picture(picture: &dav1d::Picture, on_output: &(dyn Fn(Result<Frame>) +
                 for comp in [PlanarImageComponent::U, PlanarImageComponent::V] {
                     let plane = picture.plane(comp);
                     if actual_stride_uv != packed_stride_uv {
+                        re_tracing::profile_scope!("slow path copy u/v-plane");
+
                         for y in 0..height_uv {
                             let offset = y * actual_stride_uv;
                             data.extend_from_slice(&plane[offset..(offset + packed_stride_uv)]);
