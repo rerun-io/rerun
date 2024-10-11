@@ -795,6 +795,8 @@ impl ChunkStore {
         selector: &ComponentColumnSelector,
     ) -> ComponentColumnDescriptor {
         // Happy path if this string is a valid component
+        // TODO(#7699) This currently interns every string ever queried which could be wasteful, especially
+        // in long-running servers. In practice this probably doesn't matter.
         let direct_component = ComponentName::from(selector.component_name.clone());
 
         let component_name = if self.all_components().contains(&direct_component) {
