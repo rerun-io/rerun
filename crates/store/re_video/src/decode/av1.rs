@@ -213,7 +213,7 @@ fn output_picture(
             dav1d::pixel::YUVRange::Limited => YuvRange::Limited,
             dav1d::pixel::YUVRange::Full => YuvRange::Full,
         },
-        coefficients: color_primaries(debug_name, picture),
+        coefficients: yuv_matrix_coefficients(debug_name, picture),
     };
 
     let frame = Frame {
@@ -227,12 +227,17 @@ fn output_picture(
     on_output(Ok(frame));
 }
 
-fn color_primaries(debug_name: &str, picture: &dav1d::Picture) -> YuvMatrixCoefficients {
+fn yuv_matrix_coefficients(debug_name: &str, picture: &dav1d::Picture) -> YuvMatrixCoefficients {
+    // Quotes are from https://wiki.x266.mov/docs/colorimetry/matrix (if not noted otherwise)
     #[allow(clippy::match_same_arms)]
-    match picture.color_primaries() {
-        dav1d::pixel::ColorPrimaries::Reserved
-        | dav1d::pixel::ColorPrimaries::Reserved0
-        | dav1d::pixel::ColorPrimaries::Unspecified => {
+    match picture.matrix_coefficients() {
+        // TODO(andreas) This one we should probably support! Afaik this means to just interpret YUV as RGB (or is there a swizzle?).
+        dav1d::pixel::MatrixCoefficients::Identity => YuvMatrixCoefficients::Bt709,
+
+        dav1d::pixel::MatrixCoefficients::BT709 => YuvMatrixCoefficients::Bt709,
+
+        dav1d::pixel::MatrixCoefficients::Unspecified
+        | dav1d::pixel::MatrixCoefficients::Reserved => {
             // This happens quite often. Don't issue a warning, that would be noise!
 
             if picture.transfer_characteristic() == dav1d::pixel::TransferCharacteristic::SRGB {
@@ -244,13 +249,14 @@ fn color_primaries(debug_name: &str, picture: &dav1d::Picture) -> YuvMatrixCoeff
                 // is the "HDR" standard.
                 // TODO(#7594): 4k/UHD material should probably assume Bt2020?
                 // else if picture.height() >= 720 {
-                //     ColorPrimaries::Bt709
+                //     YuvMatrixCoefficients::Bt709
                 // } else {
-                //     ColorPrimaries::Bt601
+                //     YuvMatrixCoefficients::Bt601
                 // }
                 //
                 // This is also what the mpv player does (and probably others):
-                // https://wiki.x266.mov/docs/colorimetry/primaries#2-unspecified
+                // https://wiki.x266.mov/docs/colorimetry/matrix#2-unspecified
+                // (and similar for primaries! https://wiki.x266.mov/docs/colorimetry/primaries#2-unspecified)
                 //
                 // …then again, eyeballing VLC it looks like it just always assumes BT.709.
                 // The handwavy test case employed here was the same video in low & high resolution
@@ -259,35 +265,37 @@ fn color_primaries(debug_name: &str, picture: &dav1d::Picture) -> YuvMatrixCoeff
             }
         }
 
-        dav1d::pixel::ColorPrimaries::BT709 => YuvMatrixCoefficients::Bt709,
-
-        // NTSC standard. Close enough to BT.601 for now. TODO(andreas): Is it worth warning?
-        dav1d::pixel::ColorPrimaries::BT470M => YuvMatrixCoefficients::Bt601,
-
-        // PAL standard. Close enough to BT.601 for now. TODO(andreas): Is it worth warning?
-        dav1d::pixel::ColorPrimaries::BT470BG => YuvMatrixCoefficients::Bt601,
-
-        // These are both using BT.2020 primaries.
-        dav1d::pixel::ColorPrimaries::ST170M | dav1d::pixel::ColorPrimaries::ST240M => {
+        dav1d::pixel::MatrixCoefficients::BT470M => {
+            // "BT.470M is a standard that was used in analog television systems in the United States."
+            // I guess Bt601 will do!
             YuvMatrixCoefficients::Bt601
         }
+        dav1d::pixel::MatrixCoefficients::BT470BG | dav1d::pixel::MatrixCoefficients::ST170M => {
+            // This is PAL & NTSC standards, both are part of Bt.601.
+            YuvMatrixCoefficients::Bt601
+        }
+        dav1d::pixel::MatrixCoefficients::ST240M => {
+            // "SMPTE 240M was an interim standard used during the early days of HDTV (1988-1998)."
+            // Not worth the effort: HD -> Bt709 🤷
+            YuvMatrixCoefficients::Bt709
+        }
 
-        // Is st428 also HDR? Not sure.
-        // BT2020 and P3 variants definitely are ;)
-        dav1d::pixel::ColorPrimaries::BT2020
-        | dav1d::pixel::ColorPrimaries::ST428
-        | dav1d::pixel::ColorPrimaries::P3DCI
-        | dav1d::pixel::ColorPrimaries::P3Display => {
-            // TODO(#7594): HDR support.
+        dav1d::pixel::MatrixCoefficients::BT2020NonConstantLuminance
+        | dav1d::pixel::MatrixCoefficients::BT2020ConstantLuminance
+        | dav1d::pixel::MatrixCoefficients::ICtCp
+        | dav1d::pixel::MatrixCoefficients::ST2085 => {
+            // TODO(#7594): HDR support (we'll probably only care about `BT2020NonConstantLuminance`?)
             re_log::warn_once!("Video {debug_name:?} specified HDR color primaries. Rerun doesn't handle HDR colors correctly yet. Color artifacts may be visible.");
             YuvMatrixCoefficients::Bt709
         }
 
-        dav1d::pixel::ColorPrimaries::Film | dav1d::pixel::ColorPrimaries::Tech3213 => {
+        dav1d::pixel::MatrixCoefficients::ChromaticityDerivedNonConstantLuminance
+        | dav1d::pixel::MatrixCoefficients::ChromaticityDerivedConstantLuminance
+        | dav1d::pixel::MatrixCoefficients::YCgCo => {
             re_log::warn_once!(
-                "Video {debug_name:?} specified unsupported color primaries {:?}. Color artifacts may be visible.",
-                picture.color_primaries()
-            );
+                 "Video {debug_name:?} specified unsupported matrix coefficients {:?}. Color artifacts may be visible.",
+                 picture.matrix_coefficients()
+             );
             YuvMatrixCoefficients::Bt709
         }
     }
