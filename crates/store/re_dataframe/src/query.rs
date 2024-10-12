@@ -755,7 +755,10 @@ impl QueryHandle<'_> {
     pub fn num_rows(&self) -> u64 {
         let num_rows = self.init().unique_index_values.len() as _;
 
-        if cfg!(debug_assertions) {
+        // NOTE: This is too slow to run in practice, even for debug builds.
+        // Do keep this around though, it does come in handy.
+        #[allow(clippy::overly_complex_bool_expr)]
+        if false && cfg!(debug_assertions) {
             let expected_num_rows =
                 self.engine.query(self.query.clone()).into_iter().count() as u64;
             assert_eq!(expected_num_rows, num_rows);
