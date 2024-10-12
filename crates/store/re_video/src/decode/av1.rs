@@ -115,11 +115,6 @@ fn output_picture(
     picture: &dav1d::Picture,
     on_output: &(dyn Fn(Result<Frame>) + Send + Sync),
 ) {
-    // TODO(jan): support other parameters?
-    // What do these even do:
-    // - matrix_coefficients
-    // - transfer_characteristics
-
     let data = {
         re_tracing::profile_scope!("copy_picture_data");
 

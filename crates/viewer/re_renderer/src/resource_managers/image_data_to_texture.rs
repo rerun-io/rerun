@@ -1,3 +1,5 @@
+//! For an overview of image data interpretation check `re_video`'s decoder docs!
+
 use super::yuv_converter::{YuvFormatConversionTask, YuvPixelLayout, YuvRange};
 use crate::{
     renderer::DrawError,
