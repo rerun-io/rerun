@@ -148,7 +148,7 @@ pub enum PixelFormat {
         range: YuvRange,
         // TODO(andreas): color primaries should also apply to RGB data,
         // but for now we just always assume RGB to be BT.709 ~= sRGB.
-        primaries: ColorPrimaries,
+        coefficients: YuvMatrixCoefficients,
     },
 }
 
@@ -173,11 +173,11 @@ pub enum YuvRange {
     Full,
 }
 
-/// Color primaries used by [`PixelFormat::Yuv`].
+/// Yuv matrix coefficients used by [`PixelFormat::Yuv`].
 ///
-/// For details see `re_renderer`'s `ColorPrimaries` type.
+/// For details see `re_renderer`'s `YuvMatrixCoefficients` type.
 #[derive(Debug)]
-pub enum ColorPrimaries {
+pub enum YuvMatrixCoefficients {
     Bt601,
     Bt709,
 }

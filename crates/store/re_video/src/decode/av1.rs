@@ -6,7 +6,7 @@ use crate::Time;
 use dav1d::{PixelLayout, PlanarImageComponent};
 
 use super::{
-    Chunk, ColorPrimaries, Error, Frame, OutputCallback, PixelFormat, Result, SyncDecoder,
+    Chunk, Error, Frame, OutputCallback, PixelFormat, Result, SyncDecoder, YuvMatrixCoefficients,
     YuvPixelLayout, YuvRange,
 };
 
@@ -213,7 +213,7 @@ fn output_picture(
             dav1d::pixel::YUVRange::Limited => YuvRange::Limited,
             dav1d::pixel::YUVRange::Full => YuvRange::Full,
         },
-        primaries: color_primaries(debug_name, picture),
+        coefficients: color_primaries(debug_name, picture),
     };
 
     let frame = Frame {
@@ -227,7 +227,7 @@ fn output_picture(
     on_output(Ok(frame));
 }
 
-fn color_primaries(debug_name: &str, picture: &dav1d::Picture) -> ColorPrimaries {
+fn color_primaries(debug_name: &str, picture: &dav1d::Picture) -> YuvMatrixCoefficients {
     #[allow(clippy::match_same_arms)]
     match picture.color_primaries() {
         dav1d::pixel::ColorPrimaries::Reserved
@@ -238,7 +238,7 @@ fn color_primaries(debug_name: &str, picture: &dav1d::Picture) -> ColorPrimaries
             if picture.transfer_characteristic() == dav1d::pixel::TransferCharacteristic::SRGB {
                 // If the transfer characteristic is sRGB, assume BT.709 primaries, would be quite odd otherwise.
                 // TODO(andreas): Other transfer characteristics may also hint at primaries.
-                ColorPrimaries::Bt709
+                YuvMatrixCoefficients::Bt709
             } else {
                 // Best guess: If the picture is 720p+ assume Bt709 because Rec709
                 // is the "HDR" standard.
@@ -255,21 +255,21 @@ fn color_primaries(debug_name: &str, picture: &dav1d::Picture) -> ColorPrimaries
                 // …then again, eyeballing VLC it looks like it just always assumes BT.709.
                 // The handwavy test case employed here was the same video in low & high resolution
                 // without specified primaries. Both looked the same.
-                ColorPrimaries::Bt709
+                YuvMatrixCoefficients::Bt709
             }
         }
 
-        dav1d::pixel::ColorPrimaries::BT709 => ColorPrimaries::Bt709,
+        dav1d::pixel::ColorPrimaries::BT709 => YuvMatrixCoefficients::Bt709,
 
         // NTSC standard. Close enough to BT.601 for now. TODO(andreas): Is it worth warning?
-        dav1d::pixel::ColorPrimaries::BT470M => ColorPrimaries::Bt601,
+        dav1d::pixel::ColorPrimaries::BT470M => YuvMatrixCoefficients::Bt601,
 
         // PAL standard. Close enough to BT.601 for now. TODO(andreas): Is it worth warning?
-        dav1d::pixel::ColorPrimaries::BT470BG => ColorPrimaries::Bt601,
+        dav1d::pixel::ColorPrimaries::BT470BG => YuvMatrixCoefficients::Bt601,
 
         // These are both using BT.2020 primaries.
         dav1d::pixel::ColorPrimaries::ST170M | dav1d::pixel::ColorPrimaries::ST240M => {
-            ColorPrimaries::Bt601
+            YuvMatrixCoefficients::Bt601
         }
 
         // Is st428 also HDR? Not sure.
@@ -280,7 +280,7 @@ fn color_primaries(debug_name: &str, picture: &dav1d::Picture) -> ColorPrimaries
         | dav1d::pixel::ColorPrimaries::P3Display => {
             // TODO(#7594): HDR support.
             re_log::warn_once!("Video {debug_name:?} specified HDR color primaries. Rerun doesn't handle HDR colors correctly yet. Color artifacts may be visible.");
-            ColorPrimaries::Bt709
+            YuvMatrixCoefficients::Bt709
         }
 
         dav1d::pixel::ColorPrimaries::Film | dav1d::pixel::ColorPrimaries::Tech3213 => {
@@ -288,7 +288,7 @@ fn color_primaries(debug_name: &str, picture: &dav1d::Picture) -> ColorPrimaries
                 "Video {debug_name:?} specified unsupported color primaries {:?}. Color artifacts may be visible.",
                 picture.color_primaries()
             );
-            ColorPrimaries::Bt709
+            YuvMatrixCoefficients::Bt709
         }
     }
 }
