@@ -133,7 +133,7 @@ impl PyComponentColumnSelector {
     fn new(entity_path: &str, component_name: ComponentLike) -> Self {
         Self(ComponentColumnSelector {
             entity_path: entity_path.into(),
-            component: component_name.0,
+            component_name: component_name.0,
             join_encoding: Default::default(),
         })
     }
@@ -149,8 +149,7 @@ impl PyComponentColumnSelector {
     fn __repr__(&self) -> String {
         format!(
             "Component({}:{})",
-            self.0.entity_path,
-            self.0.component.short_name()
+            self.0.entity_path, self.0.component_name
         )
     }
 }
@@ -298,19 +297,19 @@ impl<'py> IndexValuesLike<'py> {
     }
 }
 
-struct ComponentLike(re_sdk::ComponentName);
+struct ComponentLike(String);
 
 impl FromPyObject<'_> for ComponentLike {
     fn extract_bound(component: &Bound<'_, PyAny>) -> PyResult<Self> {
         if let Ok(component_str) = component.extract::<String>() {
-            Ok(Self(component_str.into()))
+            Ok(Self(component_str))
         } else if let Ok(component_str) = component
             .getattr("_BATCH_TYPE")
             .and_then(|batch_type| batch_type.getattr("_ARROW_TYPE"))
             .and_then(|arrow_type| arrow_type.getattr("_TYPE_NAME"))
             .and_then(|type_name| type_name.extract::<String>())
         {
-            Ok(Self(component_str.into()))
+            Ok(Self(component_str))
         } else {
             return Err(PyTypeError::new_err(
                 "ComponentLike input must be a string or Component class.",
@@ -458,11 +457,21 @@ impl PyRecordingView {
     }
 
     fn filter_range_sequence(&self, start: i64, end: i64) -> PyResult<Self> {
-        if self.query_expression.filtered_index.typ() != TimeType::Sequence {
-            return Err(PyValueError::new_err(format!(
-                "Index for {} is not a sequence.",
-                self.query_expression.filtered_index.name()
-            )));
+        match self.query_expression.filtered_index.as_ref() {
+            Some(filtered_index) if filtered_index.typ() != TimeType::Sequence => {
+                return Err(PyValueError::new_err(format!(
+                    "Index for {} is not a sequence.",
+                    filtered_index.name()
+                )));
+            }
+
+            Some(_) => {}
+
+            None => {
+                return Err(PyValueError::new_err(
+                    "Specify an index to filter on first.".to_owned(),
+                ));
+            }
         }
 
         let start = if let Ok(seq) = re_chunk::TimeInt::try_from(start) {
@@ -499,11 +508,21 @@ impl PyRecordingView {
     }
 
     fn filter_range_seconds(&self, start: f64, end: f64) -> PyResult<Self> {
-        if self.query_expression.filtered_index.typ() != TimeType::Time {
-            return Err(PyValueError::new_err(format!(
-                "Index for {} is not temporal.",
-                self.query_expression.filtered_index.name()
-            )));
+        match self.query_expression.filtered_index.as_ref() {
+            Some(filtered_index) if filtered_index.typ() != TimeType::Time => {
+                return Err(PyValueError::new_err(format!(
+                    "Index for {} is not temporal.",
+                    filtered_index.name()
+                )));
+            }
+
+            Some(_) => {}
+
+            None => {
+                return Err(PyValueError::new_err(
+                    "Specify an index to filter on first.".to_owned(),
+                ));
+            }
         }
 
         let start = re_sdk::Time::from_seconds_since_epoch(start);
@@ -521,11 +540,21 @@ impl PyRecordingView {
     }
 
     fn filter_range_nanos(&self, start: i64, end: i64) -> PyResult<Self> {
-        if self.query_expression.filtered_index.typ() != TimeType::Time {
-            return Err(PyValueError::new_err(format!(
-                "Index for {} is not temporal.",
-                self.query_expression.filtered_index.name()
-            )));
+        match self.query_expression.filtered_index.as_ref() {
+            Some(filtered_index) if filtered_index.typ() != TimeType::Time => {
+                return Err(PyValueError::new_err(format!(
+                    "Index for {} is not temporal.",
+                    filtered_index.name()
+                )));
+            }
+
+            Some(_) => {}
+
+            None => {
+                return Err(PyValueError::new_err(
+                    "Specify an index to filter on first.".to_owned(),
+                ));
+            }
         }
 
         let start = re_sdk::Time::from_ns_since_epoch(start);
@@ -597,6 +626,18 @@ impl PyRecording {
         }
     }
 
+    fn find_best_component(&self, entity_path: &EntityPath, component_name: &str) -> ComponentName {
+        let selector = ComponentColumnSelector {
+            entity_path: entity_path.clone(),
+            component_name: component_name.into(),
+            join_encoding: Default::default(),
+        };
+
+        self.store
+            .resolve_component_selector(&selector)
+            .component_name
+    }
+
     /// Convert a `ViewContentsLike` into a `ViewContentsSelector`.
     ///
     /// ```pytholn
@@ -631,6 +672,7 @@ impl PyRecording {
             // `Union[ComponentLike, Sequence[ComponentLike]]]`
 
             let mut contents = ViewContentsSelector::default();
+
             for (key, value) in dict {
                 let key = key.extract::<String>().map_err(|_err| {
                     PyTypeError::new_err(
@@ -644,7 +686,7 @@ impl PyRecording {
                     ))
                 })?;
 
-                let components: BTreeSet<ComponentName> = if let Ok(component) =
+                let component_strs: BTreeSet<String> = if let Ok(component) =
                     value.extract::<ComponentLike>()
                 {
                     std::iter::once(component.0).collect()
@@ -659,7 +701,15 @@ impl PyRecording {
                 contents.append(
                     &mut engine
                         .iter_entity_paths(&path_filter)
-                        .map(|p| (p, Some(components.clone())))
+                        .map(|entity_path| {
+                            let components = component_strs
+                                .iter()
+                                .map(|component_name| {
+                                    self.find_best_component(&entity_path, component_name)
+                                })
+                                .collect();
+                            (entity_path, Some(components))
+                        })
                         .collect(),
                 );
             }
@@ -707,7 +757,7 @@ impl PyRecording {
             include_semantically_empty_columns: false,
             include_indicator_columns: false,
             include_tombstone_columns: false,
-            filtered_index: timeline.timeline,
+            filtered_index: Some(timeline.timeline),
             filtered_index_range: None,
             filtered_index_values: None,
             using_index_values: None,
