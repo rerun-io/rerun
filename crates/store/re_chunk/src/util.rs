@@ -377,6 +377,28 @@ pub fn take_array<A: ArrowArray + Clone, O: arrow2::types::Index>(
         "index arrays with validity bits are technically valid, but generally a sign that something went wrong",
     );
 
+    if indices.len() == array.len() {
+        let indices = indices.values().as_slice();
+
+        let starts_at_zero = || indices[0] == O::zero();
+        let is_consecutive = || {
+            indices
+                .windows(2)
+                .all(|values| values[1] == values[0] + O::one())
+        };
+
+        if starts_at_zero() && is_consecutive() {
+            #[allow(clippy::unwrap_used)]
+            return array
+                .clone()
+                .as_any()
+                .downcast_ref::<A>()
+                // Unwrap: that's initial type that we got.
+                .unwrap()
+                .clone();
+        }
+    }
+
     #[allow(clippy::unwrap_used)]
     arrow2::compute::take::take(array, indices)
         // Unwrap: this literally cannot fail.

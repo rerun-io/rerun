@@ -159,6 +159,7 @@ unindent = { workspace = true, optional = true }
 [build-dependencies]
 re_build_tools.workspace = true
 
+
 [package.metadata.cargo-machete]
 # We only depend on re_video so we can enable extra features for it
 ignored = ["re_video"]
