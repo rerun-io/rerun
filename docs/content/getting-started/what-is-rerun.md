@@ -32,22 +32,12 @@ Under development with select partners. [Get in touch](https://5li7zhj98k8.typef
   <source media="(max-width: 1024px)" srcset="https://static.rerun.io/how_to_use/fd75fa302617cd0afefc9ba6e5e1e13055fced04/1024w.png">
   <source media="(max-width: 1200px)" srcset="https://static.rerun.io/how_to_use/fd75fa302617cd0afefc9ba6e5e1e13055fced04/1200w.png">
 </picture>
+TODO: Update diagram
 
-1. Stream multimodal data from your code by logging it with the Rerun SDK
-2. Visualize and interact with live or recorded streams, whether local or remote
+1. User the Rerun SDK to Model and log multimodal data from running code or load it from stored datasets
+2. View and interact with live or recorded data, in the stand alone viewer or embedded in your app.
 3. Build layouts and customize visualizations interactively in the UI or through the SDK
-4. Extend Rerun when you need to
-
-### The Rerun Viewer
-- The fastest & easiest to use multimodal visualizer available
--
-- Runs natively, on the web and is embeddable in notebooks and web apps
-
-
-### The Rerun SDK
-- Model and log multimodal data from your code or load it from stored datasets
-- Specify layouts and visualization options directly from code
-- Extract clean dataframes from recordings into tools like Pandas, Polars, or DuckDB.
+4. Extract clean dataframes and use with tools like Pandas, Polars, or DuckDB.
 
 ## How does it work?
 That's a big question for a welcome page. The short answer is that
