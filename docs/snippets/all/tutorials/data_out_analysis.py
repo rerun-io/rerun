@@ -1,10 +1,10 @@
 from __future__ import annotations
 
+import matplotlib.pyplot as plt
 import numpy as np
 import numpy.typing as npt
 import pandas as pd
 import rerun as rr
-import matplotlib.pyplot as plt
 
 SIGNAL_COLUMN = "/blendshapes/0/jawOpen:Scalar"
 
@@ -72,10 +72,10 @@ def log_analysis(df: pd.DataFrame, open_mouth_frames: npt.NDArray, closed_mouth_
     # log state transitions to a TextLog view
     for frame_nr in open_mouth_frames:
         rr.set_time_sequence("frame_nr", frame_nr)
-        rr.log("/mouth_open/state", rr.TextLog(f"mouth opened"))
+        rr.log("/mouth_open/state", rr.TextLog("mouth opened"))
     for frame_nr in closed_mouth_frames:
         rr.set_time_sequence("frame_nr", frame_nr)
-        rr.log("/mouth_open/state", rr.TextLog(f"mouth closed"))
+        rr.log("/mouth_open/state", rr.TextLog("mouth closed"))
 
     # log the mouth open signal as a scalar
     rr.send_columns(

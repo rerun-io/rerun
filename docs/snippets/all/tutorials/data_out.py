@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-import rerun as rr
 import numpy as np
+import rerun as rr
 
 # ----------------------------------------------------------------------------------------------
 # Load and prepare the data

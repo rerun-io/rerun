@@ -66,6 +66,8 @@ log_time: [[2024-10-08 08:56:59.809678000],[2024-10-08 08:56:59.830410000],...,[
 /blendshapes/0/jawOpen:Scalar: [[[0.00025173681206069887]],[[]],...,[[0.013143265619874]],[[0.01528632827103138]]]
 ```
 
+TODO: update with actual recording
+
 Again, this is a [PyArrow](https://arrow.apache.org/docs/python/index.html) table which contains the result of our query. Exploring this further is beyond the scope of the present guide. Yet, it is a reminder that Rerun natively stores—and returns—data in arrow format. As such, it efficiently interoperates with other Arrow-native and/or compatible tools such as Polars or DuckDB. 
 
 
@@ -113,6 +115,8 @@ Here is the result:
 
 ```
 
+TODO: update with actual recording + find empty places latter
+
 We can make several observations from this output.
 
 - The first four columns are timeline columns. These are the various timelines the data is logged to in this recording. 
@@ -144,5 +148,7 @@ Here is the result:
 781    0.015286
 Name: jawOpen, Length: 782, dtype: float64
 ```
+
+TODO: add note on `dropna`
 
 With this, we are ready for the [next section](analyze-and-log.md), where we will analyze the data and log back the result to the Rerun viewer.
