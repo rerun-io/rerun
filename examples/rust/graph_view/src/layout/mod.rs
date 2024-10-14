@@ -11,17 +11,6 @@ pub(crate) use force_directed::ForceBasedLayout;
 mod fruchterman;
 pub(crate) use fruchterman::FruchtermanReingoldLayout;
 
-pub(crate) trait Layout {
-    type NodeIx: Clone + Eq + std::hash::Hash;
-
-    fn compute(
-        &self,
-        nodes: impl IntoIterator<Item = (Self::NodeIx, egui::Vec2)>,
-        directed: impl IntoIterator<Item = (Self::NodeIx, Self::NodeIx)>,
-        undirected: impl IntoIterator<Item = (Self::NodeIx, Self::NodeIx)>,
-    ) -> Result<HashMap<Self::NodeIx, egui::Rect>, Error>;
-}
-
 #[derive(Debug, PartialEq, Eq)]
 pub(crate) enum LayoutProvider {
     Dot(DotLayout),

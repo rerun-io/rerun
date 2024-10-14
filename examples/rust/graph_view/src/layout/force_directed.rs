@@ -5,23 +5,19 @@ use re_viewer::external::egui;
 
 use crate::{error::Error, types::NodeIndex};
 
-use super::Layout;
-
 #[deprecated]
 #[derive(Debug, Default, PartialEq, Eq)]
 pub struct ForceBasedLayout;
 
-impl Layout for ForceBasedLayout {
-    type NodeIx = NodeIndex;
-
-    fn compute(
+impl ForceBasedLayout {
+    pub fn compute(
         &self,
-        nodes: impl IntoIterator<Item = (Self::NodeIx, egui::Vec2)>,
-        directed: impl IntoIterator<Item = (Self::NodeIx, Self::NodeIx)>,
-        undirected: impl IntoIterator<Item = (Self::NodeIx, Self::NodeIx)>,
-    ) -> Result<HashMap<Self::NodeIx, egui::Rect>, Error> {
+        nodes: impl IntoIterator<Item = (NodeIndex, egui::Vec2)>,
+        directed: impl IntoIterator<Item = (NodeIndex, NodeIndex)>,
+        undirected: impl IntoIterator<Item = (NodeIndex, NodeIndex)>,
+    ) -> Result<HashMap<NodeIndex, egui::Rect>, Error> {
         let mut node_to_index = HashMap::new();
-        let mut graph: fdg::ForceGraph<(Self::NodeIx, egui::Vec2), ()> = fdg::ForceGraph::default();
+        let mut graph: fdg::ForceGraph<(NodeIndex, egui::Vec2), ()> = fdg::ForceGraph::default();
 
         for (node_id, size) in nodes {
             let ix = graph.add_force_node(node_id.to_string(), (node_id.clone(), size));

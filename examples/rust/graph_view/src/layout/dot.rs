@@ -14,20 +14,16 @@ use re_viewer::external::egui;
 
 use crate::{error::Error, types::NodeIndex};
 
-use super::Layout;
-
 #[derive(Debug, Default, PartialEq, Eq)]
 pub struct DotLayout;
 
-impl Layout for DotLayout {
-    type NodeIx = NodeIndex;
-
-    fn compute(
+impl DotLayout {
+    pub fn compute(
         &self,
-        nodes: impl IntoIterator<Item = (Self::NodeIx, egui::Vec2)>,
-        directed: impl IntoIterator<Item = (Self::NodeIx, Self::NodeIx)>,
-        undirected: impl IntoIterator<Item = (Self::NodeIx, Self::NodeIx)>,
-    ) -> Result<HashMap<Self::NodeIx, egui::Rect>, Error> {
+        nodes: impl IntoIterator<Item = (NodeIndex, egui::Vec2)>,
+        directed: impl IntoIterator<Item = (NodeIndex, NodeIndex)>,
+        undirected: impl IntoIterator<Item = (NodeIndex, NodeIndex)>,
+    ) -> Result<HashMap<NodeIndex, egui::Rect>, Error> {
         let mut handle_to_ix = HashMap::new();
         let mut ix_to_handle = HashMap::new();
 

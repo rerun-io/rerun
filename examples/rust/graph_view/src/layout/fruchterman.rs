@@ -6,22 +6,18 @@ use re_viewer::external::egui;
 
 use crate::{error::Error, types::NodeIndex};
 
-use super::Layout;
-
 #[derive(Debug, Default, PartialEq, Eq)]
 pub struct FruchtermanReingoldLayout;
 
-impl Layout for FruchtermanReingoldLayout {
-    type NodeIx = NodeIndex;
-
-    fn compute(
+impl FruchtermanReingoldLayout {
+    pub fn compute(
         &self,
-        nodes: impl IntoIterator<Item = (Self::NodeIx, egui::Vec2)>,
-        directed: impl IntoIterator<Item = (Self::NodeIx, Self::NodeIx)>,
-        undirected: impl IntoIterator<Item = (Self::NodeIx, Self::NodeIx)>,
-    ) -> Result<HashMap<Self::NodeIx, egui::Rect>, Error> {
+        nodes: impl IntoIterator<Item = (NodeIndex, egui::Vec2)>,
+        directed: impl IntoIterator<Item = (NodeIndex, NodeIndex)>,
+        undirected: impl IntoIterator<Item = (NodeIndex, NodeIndex)>,
+    ) -> Result<HashMap<NodeIndex, egui::Rect>, Error> {
         let mut node_to_index = HashMap::new();
-        let mut graph: fdg::ForceGraph<f32, 2, (Self::NodeIx, egui::Vec2), ()> =
+        let mut graph: fdg::ForceGraph<f32, 2, (NodeIndex, egui::Vec2), ()> =
             fdg::ForceGraph::default();
 
         for (node_id, size) in nodes {
@@ -50,7 +46,7 @@ impl Layout for FruchtermanReingoldLayout {
         // create a simulation from the graph
         fdg::fruchterman_reingold::FruchtermanReingold::default().apply_many(&mut graph, 1000);
         // Center the graph's average around (0,0).
-        fdg::simple::Center::default().apply(&mut graph);
+        fdg::simple::Center::default().apply_many(&mut graph, 100);
 
         let res = graph
             .node_weights()

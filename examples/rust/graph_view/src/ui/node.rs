@@ -47,18 +47,17 @@ pub fn draw_node(
             .show(ui, |ui| {
                 let r = 4.0;
                 ui.add(|ui: &mut egui::Ui| {
-                    let (rect, response) = ui.allocate_at_least(egui::Vec2::new(2.0 * r, 2.0 * r), egui::Sense::drag()); // Frame size
+                    let (rect, response) = ui
+                        .allocate_at_least(egui::Vec2::new(2.0 * r, 2.0 * r), egui::Sense::drag()); // Frame size
                     ui.painter().circle(
                         rect.center(),
                         // pos + egui::Vec2::new(r, r),
                         r,
                         instance.color.unwrap_or(ui.style().visuals.text_color()),
                         hcolor.map_or(egui::Stroke::NONE, |c| egui::Stroke::new(2.0, c)),
-
                     );
                     response
                 })
-
             })
             .response
     }
