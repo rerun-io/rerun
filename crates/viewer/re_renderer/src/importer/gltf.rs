@@ -6,7 +6,7 @@ use itertools::Itertools;
 use smallvec::SmallVec;
 
 use crate::{
-    mesh::{GpuMesh, Material, Mesh, MeshError},
+    mesh::{GpuMesh, Material, CpuMesh, MeshError},
     renderer::MeshInstance,
     resource_managers::{GpuTexture2D, Texture2DCreationDesc, TextureManager2D},
     RenderContext, Rgba32Unmul,
@@ -160,7 +160,7 @@ fn import_mesh(
     buffers: &[gltf::buffer::Data],
     gpu_image_handles: &[GpuTexture2D],
     texture_manager: &TextureManager2D, //imported_materials: HashMap<usize, Material>,
-) -> Result<Mesh, GltfImportError> {
+) -> Result<CpuMesh, GltfImportError> {
     re_tracing::profile_function!();
 
     let mesh_name = mesh.name().map_or("<unknown", |f| f).to_owned();
@@ -283,7 +283,7 @@ fn import_mesh(
         return Err(GltfImportError::NoTrianglePrimitives { mesh_name });
     }
 
-    let mesh = Mesh {
+    let mesh = CpuMesh {
         label: mesh.name().into(),
         triangle_indices,
         vertex_positions,
@@ -302,7 +302,7 @@ fn gather_instances_recursive(
     instances: &mut Vec<MeshInstance>,
     node: &gltf::Node<'_>,
     transform: &glam::Affine3A,
-    meshes: &HashMap<usize, (Arc<GpuMesh>, Arc<Mesh>)>,
+    meshes: &HashMap<usize, (Arc<GpuMesh>, Arc<CpuMesh>)>,
 ) {
     let (scale, rotation, translation) = match node.transform() {
         gltf::scene::Transform::Matrix { matrix } => {

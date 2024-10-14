@@ -176,7 +176,7 @@ impl LoadedMesh {
                 .clone()
         });
 
-        let mesh = re_renderer::mesh::Mesh {
+        let mesh = re_renderer::mesh::CpuMesh {
             label: name.clone().into(),
             triangle_indices,
             vertex_positions: vertex_positions.into(),
@@ -229,7 +229,7 @@ fn add_albedo_factor_to_mesh(
         let mesh_inst = Arc::clone(m);
 
         // Create new mesh with albedo_factor
-        let mesh = mesh::Mesh {
+        let mesh = mesh::CpuMesh {
             materials: smallvec![material],
             ..(*mesh_inst).clone()
         };
