@@ -33,6 +33,7 @@ OFFICIAL_RERUN_DEVS = [
     "nikolausWest",
     "teh-cmc",
     "Wumpf",
+    "zehiko",
 ]
 
 
