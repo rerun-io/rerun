@@ -1,12 +1,12 @@
 use re_log_types::EntityPath;
 use re_types_core::ComponentName;
 
-use super::FilterByEvent;
+use super::FilterIsNotNull;
 
-impl FilterByEvent {
+impl FilterIsNotNull {
     /// Create a new [`Self`].
     pub fn new(active: bool, entity_path: &EntityPath, component_name: ComponentName) -> Self {
-        let datatype = crate::blueprint::datatypes::FilterByEvent {
+        let datatype = crate::blueprint::datatypes::FilterIsNotNull {
             active: active.into(),
             column: crate::blueprint::datatypes::ComponentColumnSelector {
                 entity_path: entity_path.to_string().into(),

@@ -32,7 +32,7 @@ pub struct DataframeQuery {
     pub filter_by_range: Option<crate::blueprint::components::FilterByRange>,
 
     /// If provided, only show rows which contains a logged event for the specified component.
-    pub filter_by_event: Option<crate::blueprint::components::FilterByEvent>,
+    pub filter_is_not_null: Option<crate::blueprint::components::FilterIsNotNull>,
 
     /// Should empty cells be filled with latest-at queries?
     pub apply_latest_at: Option<crate::blueprint::components::ApplyLatestAt>,
@@ -46,7 +46,7 @@ impl ::re_types_core::SizeBytes for DataframeQuery {
     fn heap_size_bytes(&self) -> u64 {
         self.timeline.heap_size_bytes()
             + self.filter_by_range.heap_size_bytes()
-            + self.filter_by_event.heap_size_bytes()
+            + self.filter_is_not_null.heap_size_bytes()
             + self.apply_latest_at.heap_size_bytes()
             + self.select.heap_size_bytes()
     }
@@ -55,7 +55,7 @@ impl ::re_types_core::SizeBytes for DataframeQuery {
     fn is_pod() -> bool {
         <Option<crate::blueprint::components::TimelineName>>::is_pod()
             && <Option<crate::blueprint::components::FilterByRange>>::is_pod()
-            && <Option<crate::blueprint::components::FilterByEvent>>::is_pod()
+            && <Option<crate::blueprint::components::FilterIsNotNull>>::is_pod()
             && <Option<crate::blueprint::components::ApplyLatestAt>>::is_pod()
             && <Option<crate::blueprint::components::SelectedColumns>>::is_pod()
     }
@@ -72,7 +72,7 @@ static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 5usize]> =
         [
             "rerun.blueprint.components.TimelineName".into(),
             "rerun.blueprint.components.FilterByRange".into(),
-            "rerun.blueprint.components.FilterByEvent".into(),
+            "rerun.blueprint.components.FilterIsNotNull".into(),
             "rerun.blueprint.components.ApplyLatestAt".into(),
             "rerun.blueprint.components.SelectedColumns".into(),
         ]
@@ -84,7 +84,7 @@ static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 6usize]> =
             "rerun.blueprint.components.DataframeQueryIndicator".into(),
             "rerun.blueprint.components.TimelineName".into(),
             "rerun.blueprint.components.FilterByRange".into(),
-            "rerun.blueprint.components.FilterByEvent".into(),
+            "rerun.blueprint.components.FilterIsNotNull".into(),
             "rerun.blueprint.components.ApplyLatestAt".into(),
             "rerun.blueprint.components.SelectedColumns".into(),
         ]
@@ -167,10 +167,10 @@ impl ::re_types_core::Archetype for DataframeQuery {
             } else {
                 None
             };
-        let filter_by_event =
-            if let Some(array) = arrays_by_name.get("rerun.blueprint.components.FilterByEvent") {
-                <crate::blueprint::components::FilterByEvent>::from_arrow_opt(&**array)
-                    .with_context("rerun.blueprint.archetypes.DataframeQuery#filter_by_event")?
+        let filter_is_not_null =
+            if let Some(array) = arrays_by_name.get("rerun.blueprint.components.FilterIsNotNull") {
+                <crate::blueprint::components::FilterIsNotNull>::from_arrow_opt(&**array)
+                    .with_context("rerun.blueprint.archetypes.DataframeQuery#filter_is_not_null")?
                     .into_iter()
                     .next()
                     .flatten()
@@ -200,7 +200,7 @@ impl ::re_types_core::Archetype for DataframeQuery {
         Ok(Self {
             timeline,
             filter_by_range,
-            filter_by_event,
+            filter_is_not_null,
             apply_latest_at,
             select,
         })
@@ -219,7 +219,7 @@ impl ::re_types_core::AsComponents for DataframeQuery {
             self.filter_by_range
                 .as_ref()
                 .map(|comp| (comp as &dyn ComponentBatch).into()),
-            self.filter_by_event
+            self.filter_is_not_null
                 .as_ref()
                 .map(|comp| (comp as &dyn ComponentBatch).into()),
             self.apply_latest_at
@@ -244,7 +244,7 @@ impl DataframeQuery {
         Self {
             timeline: None,
             filter_by_range: None,
-            filter_by_event: None,
+            filter_is_not_null: None,
             apply_latest_at: None,
             select: None,
         }
@@ -276,11 +276,11 @@ impl DataframeQuery {
 
     /// If provided, only show rows which contains a logged event for the specified component.
     #[inline]
-    pub fn with_filter_by_event(
+    pub fn with_filter_is_not_null(
         mut self,
-        filter_by_event: impl Into<crate::blueprint::components::FilterByEvent>,
+        filter_is_not_null: impl Into<crate::blueprint::components::FilterIsNotNull>,
     ) -> Self {
-        self.filter_by_event = Some(filter_by_event.into());
+        self.filter_is_not_null = Some(filter_is_not_null.into());
         self
     }
 

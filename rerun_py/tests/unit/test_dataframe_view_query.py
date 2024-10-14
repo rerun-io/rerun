@@ -126,7 +126,7 @@ def test_dataframe_query_property() -> None:
     query = DataframeQuery(
         timeline="frame",
         filter_by_range=(TimeInt(seq=1), TimeInt(seq=10)),
-        filter_by_event="/entity/path:ComponentName",
+        filter_is_not_null="/entity/path:ComponentName",
         apply_latest_at=True,
         select=[
             "t",
@@ -138,8 +138,8 @@ def test_dataframe_query_property() -> None:
     assert query.filter_by_range == blueprint_components.FilterByRangeBatch(
         blueprint_components.FilterByRange(rr.datatypes.TimeInt(seq=1), rr.datatypes.TimeInt(seq=10))
     )
-    assert query.filter_by_event == blueprint_components.FilterByEventBatch(
-        blueprint_components.FilterByEvent(
+    assert query.filter_is_not_null == blueprint_components.FilterIsNotNullBatch(
+        blueprint_components.FilterIsNotNull(
             active=True,
             column=blueprint_components.ComponentColumnSelector(entity_path="/entity/path", component="ComponentName"),
         )
@@ -159,7 +159,7 @@ def test_dataframe_query_property_explicit() -> None:
     query = DataframeQuery(
         timeline=blueprint_components.TimelineName("frame"),
         filter_by_range=blueprint_components.FilterByRange(start=TimeInt(seq=1), end=TimeInt(seq=10)),
-        filter_by_event=blueprint_components.ComponentColumnSelector(
+        filter_is_not_null=blueprint_components.ComponentColumnSelector(
             entity_path="/entity/path", component="ComponentName"
         ),
         select=[
@@ -172,8 +172,8 @@ def test_dataframe_query_property_explicit() -> None:
     assert query.filter_by_range == blueprint_components.FilterByRangeBatch(
         blueprint_components.FilterByRange(rr.datatypes.TimeInt(seq=1), rr.datatypes.TimeInt(seq=10))
     )
-    assert query.filter_by_event == blueprint_components.FilterByEventBatch(
-        blueprint_components.FilterByEvent(
+    assert query.filter_is_not_null == blueprint_components.FilterIsNotNullBatch(
+        blueprint_components.FilterIsNotNull(
             active=True,
             column=blueprint_components.ComponentColumnSelector(entity_path="/entity/path", component="ComponentName"),
         )
