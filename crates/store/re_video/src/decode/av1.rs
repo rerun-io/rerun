@@ -231,8 +231,7 @@ fn yuv_matrix_coefficients(debug_name: &str, picture: &dav1d::Picture) -> YuvMat
     // Quotes are from https://wiki.x266.mov/docs/colorimetry/matrix (if not noted otherwise)
     #[allow(clippy::match_same_arms)]
     match picture.matrix_coefficients() {
-        // TODO(andreas) This one we should probably support! Afaik this means to just interpret YUV as RGB (or is there a swizzle?).
-        dav1d::pixel::MatrixCoefficients::Identity => YuvMatrixCoefficients::Bt709,
+        dav1d::pixel::MatrixCoefficients::Identity => YuvMatrixCoefficients::Identity,
 
         dav1d::pixel::MatrixCoefficients::BT709 => YuvMatrixCoefficients::Bt709,
 

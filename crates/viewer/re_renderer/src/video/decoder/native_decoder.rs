@@ -178,6 +178,9 @@ fn copy_video_frame_to_texture(
                 re_video::decode::YuvPixelLayout::Y400 => YuvPixelLayout::Y400,
             },
             coefficients: match coefficients {
+                re_video::decode::YuvMatrixCoefficients::Identity => {
+                    YuvMatrixCoefficients::Identity
+                }
                 re_video::decode::YuvMatrixCoefficients::Bt601 => YuvMatrixCoefficients::Bt601,
                 re_video::decode::YuvMatrixCoefficients::Bt709 => YuvMatrixCoefficients::Bt709,
             },

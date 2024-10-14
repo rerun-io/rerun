@@ -25,8 +25,9 @@ const YUV_LAYOUT_YUYV422 = 200u;
 const YUV_LAYOUT_Y400 = 300u;
 
 // see `enum YuvMatrixCoefficients`.
-const COEFFS_BT601 = 0u;
-const COEFFS_BT709 = 1u;
+const COEFFS_IDENTITY = 0u;
+const COEFFS_BT601 = 1u;
+const COEFFS_BT709 = 2u;
 
 // see `enum YuvRange`.
 const YUV_RANGE_LIMITED = 0u;
@@ -73,6 +74,11 @@ fn srgb_from_yuv(yuv: vec3f, yuv_matrix_coefficients: u32, range: u32) -> vec3f 
     var rgb: vec3f;
 
     switch (yuv_matrix_coefficients) {
+        case COEFFS_IDENTITY: {
+            // u & v have a range from -0.5 to 0.5. Bring them back to 0-1.
+            rgb = vec3f(v + 0.5, y, u + 0.5);
+        }
+
         // BT.601 (aka. SDTV, aka. Rec.601). wiki: https://en.wikipedia.org/wiki/YCbCr#ITU-R_BT.601_conversion
         // Also note according to https://en.wikipedia.org/wiki/SRGB#sYCC_extended-gamut_transformation
         // > Although the RGB color primaries are based on BT.709,

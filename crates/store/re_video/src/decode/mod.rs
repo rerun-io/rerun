@@ -26,14 +26,13 @@
 //!      * weirdly enough, DO NOT CLAMP! a lot of software may say it's limited but then use the so-called foot and head space anyways to go outside the regular colors
 //!          * reportedly (read this on some forums ;-)) some players _do_ clamp, so let's not get too concerned about this
 //!      * it's a remnant of the analog age, but it's still very common!
-//! * TODO(andreas): It may actually be non-downsampled RGB as well, so skip the entire YUV conversion step! Haven't figured out yet how to determine that.
-//!
 //!
 //! ### Given a normalized YUV triplet, how do we get color?
 //!
 //! * `picture.matrix_coefficients()` (see <https://wiki.x266.mov/docs/colorimetry/matrix>)
 //!   * this tells us what to multiply the incoming YUV data with to get SOME RGB data
 //!   * there's various standards of how to do this, but the most common is BT.709
+//!   * here's a fun special one: `identity` means it's not actually YUV, but GBR!
 //! * `picture.primaries()`
 //!   * now we have RGB but we kinda have no idea what that means!
 //!   * the color primaries tell us which space we're in
@@ -180,4 +179,5 @@ pub enum YuvRange {
 pub enum YuvMatrixCoefficients {
     Bt601,
     Bt709,
+    Identity,
 }
