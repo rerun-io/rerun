@@ -8,8 +8,8 @@ use parking_lot::Mutex;
 
 use crate::{
     resource_managers::{
-        transfer_image_data_to_texture, ColorPrimaries, ImageDataDesc, SourceImageDataFormat,
-        YuvPixelLayout, YuvRange,
+        transfer_image_data_to_texture, ImageDataDesc, SourceImageDataFormat,
+        YuvMatrixCoefficients, YuvPixelLayout, YuvRange,
     },
     video::DecodingError,
     wgpu_resources::GpuTexture,
@@ -169,7 +169,7 @@ fn copy_video_frame_to_texture(
         re_video::PixelFormat::Yuv {
             layout,
             range,
-            primaries,
+            coefficients,
         } => SourceImageDataFormat::Yuv {
             layout: match layout {
                 re_video::decode::YuvPixelLayout::Y_U_V444 => YuvPixelLayout::Y_U_V444,
@@ -177,9 +177,9 @@ fn copy_video_frame_to_texture(
                 re_video::decode::YuvPixelLayout::Y_U_V420 => YuvPixelLayout::Y_U_V420,
                 re_video::decode::YuvPixelLayout::Y400 => YuvPixelLayout::Y400,
             },
-            primaries: match primaries {
-                re_video::decode::ColorPrimaries::Bt601 => ColorPrimaries::Bt601,
-                re_video::decode::ColorPrimaries::Bt709 => ColorPrimaries::Bt709,
+            coefficients: match coefficients {
+                re_video::decode::YuvMatrixCoefficients::Bt601 => YuvMatrixCoefficients::Bt601,
+                re_video::decode::YuvMatrixCoefficients::Bt709 => YuvMatrixCoefficients::Bt709,
             },
             range: match range {
                 re_video::decode::YuvRange::Limited => YuvRange::Limited,

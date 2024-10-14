@@ -1,6 +1,7 @@
 namespace rerun.datatypes;
 
-// TODO(andreas): Clarify relationship to color primaries. Right now there's some hardcoded differences between formats.
+// TODO(andreas): Clarify relationship to color primaries & yuv matrix coefficients.
+// Right now there's some hardcoded differences between formats.
 // See `image_to_gpu.rs`
 // Suggestion: guides heuristic but doesn't specify it unless noted.
 
