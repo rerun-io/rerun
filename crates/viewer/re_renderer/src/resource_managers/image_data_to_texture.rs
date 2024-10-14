@@ -30,7 +30,7 @@ pub enum ColorPrimaries {
     /// These are the same primaries we usually assume and use for all our rendering
     /// since they are the same primaries used by sRGB.
     /// <https://en.wikipedia.org/wiki/Rec._709#Relationship_to_sRGB/>
-    /// The OETF/EOTF function (<https://en.wikipedia.org/wiki/Transfer_functions_in_imaging/>) is different,
+    /// The OETF/EOTF function (<https://en.wikipedia.org/wiki/Transfer_functions_in_imaging>) is different,
     /// but for all other purposes they are the same.
     /// (The only reason for us to convert to optical units ("linear" instead of "gamma") is for
     /// lighting & tonemapping where we typically start out with an sRGB image!)
