@@ -13,6 +13,12 @@ from ._spawn import _spawn_viewer
 # --- Sinks ---
 
 
+def is_recording_enabled(recording: RecordingStream | None) -> bool:
+    if recording is not None:
+        return bindings.is_enabled(recording.inner)  # type: ignore[no-any-return]
+    return bindings.is_enabled()  # type: ignore[no-any-return]
+
+
 def connect(
     addr: str | None = None,
     *,
@@ -47,7 +53,7 @@ def connect(
 
     """
 
-    if not bindings.is_enabled():
+    if not is_recording_enabled(recording):
         logging.warning("Rerun is disabled - connect() call ignored")
         return
 
@@ -102,7 +108,7 @@ def save(
 
     """
 
-    if not bindings.is_enabled():
+    if not is_recording_enabled(recording):
         logging.warning("Rerun is disabled - save() call ignored. You must call rerun.init before saving a recording.")
         return
 
@@ -149,7 +155,7 @@ def stdout(default_blueprint: BlueprintLike | None = None, recording: RecordingS
 
     """
 
-    if not bindings.is_enabled():
+    if not is_recording_enabled(recording):
         logging.warning("Rerun is disabled - save() call ignored. You must call rerun.init before saving a recording.")
         return
 
@@ -234,7 +240,7 @@ def serve(
 
     """
 
-    if not bindings.is_enabled():
+    if not is_recording_enabled(recording):
         logging.warning("Rerun is disabled - serve() call ignored")
         return
 
@@ -346,7 +352,7 @@ def spawn(
 
     """
 
-    if not bindings.is_enabled():
+    if not is_recording_enabled(recording):
         logging.warning("Rerun is disabled - spawn() call ignored.")
         return
 
