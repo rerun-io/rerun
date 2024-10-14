@@ -73,6 +73,7 @@ log = ["dep:env_logger", "dep:log"]
 
 ## Enable faster native video decoding with assembly.
 ## You need to install [nasm](https://nasm.us/) to compile with this feature.
+# TODO(#7671): this feature flag currently does nothing on linux.
 nasm = ["re_video/nasm"]
 
 ## Support spawning a native viewer.
@@ -157,6 +158,7 @@ unindent = { workspace = true, optional = true }
 
 [build-dependencies]
 re_build_tools.workspace = true
+
 
 [package.metadata.cargo-machete]
 # We only depend on re_video so we can enable extra features for it

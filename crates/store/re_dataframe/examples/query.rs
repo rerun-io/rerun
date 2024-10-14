@@ -59,15 +59,18 @@ fn main() -> anyhow::Result<()> {
             cache: &query_cache,
         };
 
-        let mut query = QueryExpression::new(timeline);
-        query.view_contents = Some(
-            query_engine
-                .iter_entity_paths(&entity_path_filter)
-                .map(|entity_path| (entity_path, None))
-                .collect(),
-        );
-        query.filtered_index_range = Some(ResolvedTimeRange::new(time_from, time_to));
-        query.sparse_fill_strategy = SparseFillStrategy::LatestAtGlobal;
+        let query = QueryExpression {
+            filtered_index: Some(timeline),
+            view_contents: Some(
+                query_engine
+                    .iter_entity_paths(&entity_path_filter)
+                    .map(|entity_path| (entity_path, None))
+                    .collect(),
+            ),
+            filtered_index_range: Some(ResolvedTimeRange::new(time_from, time_to)),
+            sparse_fill_strategy: SparseFillStrategy::LatestAtGlobal,
+            ..Default::default()
+        };
         eprintln!("{query:#?}:");
 
         let query_handle = query_engine.query(query.clone());

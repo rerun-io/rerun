@@ -161,6 +161,11 @@ fn generate_object_file(
         code.push_str("#![allow(deprecated)]\n");
     }
 
+    if obj.is_enum() {
+        // Needed for PixelFormat. Should we limit this via attribute to just that?
+        code.push_str("#![allow(non_camel_case_types)]\n");
+    }
+
     code.push_str("\n\n");
 
     code.push_str("use ::re_types_core::external::arrow2;\n");

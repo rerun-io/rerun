@@ -139,7 +139,7 @@ impl VideoDecoder {
                 if cfg!(debug_assertions) {
                     return Err(DecodingError::NoNativeDebug); // because debug builds of rav1d are EXTREMELY slow
                 } else {
-                    let av1_decoder = re_video::decode::av1::SyncDav1dDecoder::new()
+                    let av1_decoder = re_video::decode::av1::SyncDav1dDecoder::new(debug_name.clone())
                         .map_err(|err| DecodingError::StartDecoder(err.to_string()))?;
 
                     let decoder = native_decoder::NativeDecoder::new(debug_name, Box::new(av1_decoder))?;
@@ -233,6 +233,7 @@ impl VideoDecoder {
 
                 Ok(VideoFrameTexture {
                     texture: self.video_texture.texture.clone(),
+                    time_range: self.video_texture.time_range.clone(),
                     is_pending,
                     show_spinner,
                 })

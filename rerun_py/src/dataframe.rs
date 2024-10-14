@@ -5,9 +5,10 @@
 use std::collections::{BTreeMap, BTreeSet};
 
 use arrow::{
-    array::{RecordBatchIterator, RecordBatchReader},
+    array::{make_array, Array, ArrayData, Int64Array, RecordBatchIterator, RecordBatchReader},
     pyarrow::PyArrowType,
 };
+use numpy::PyArrayMethods as _;
 use pyo3::{
     exceptions::{PyRuntimeError, PyTypeError, PyValueError},
     prelude::*,
@@ -132,7 +133,7 @@ impl PyComponentColumnSelector {
     fn new(entity_path: &str, component_name: ComponentLike) -> Self {
         Self(ComponentColumnSelector {
             entity_path: entity_path.into(),
-            component: component_name.0,
+            component_name: component_name.0,
             join_encoding: Default::default(),
         })
     }
@@ -148,8 +149,7 @@ impl PyComponentColumnSelector {
     fn __repr__(&self) -> String {
         format!(
             "Component({}:{})",
-            self.0.entity_path,
-            self.0.component.short_name()
+            self.0.entity_path, self.0.component_name
         )
     }
 }
@@ -195,19 +195,121 @@ impl AnyComponentColumn {
     }
 }
 
-struct ComponentLike(re_sdk::ComponentName);
+#[derive(FromPyObject)]
+enum IndexValuesLike<'py> {
+    PyArrow(PyArrowType<ArrayData>),
+    NumPy(numpy::PyArrayLike1<'py, i64>),
+
+    // Catch all to support ChunkedArray and other types
+    #[pyo3(transparent)]
+    CatchAll(Bound<'py, PyAny>),
+}
+
+impl<'py> IndexValuesLike<'py> {
+    fn to_index_values(&self) -> PyResult<BTreeSet<re_chunk_store::TimeInt>> {
+        match self {
+            Self::PyArrow(array) => {
+                let array = make_array(array.0.clone());
+
+                let int_array = array.as_any().downcast_ref::<Int64Array>().ok_or_else(|| {
+                    PyTypeError::new_err("pyarrow.Array for IndexValuesLike must be of type int64.")
+                })?;
+
+                let values: BTreeSet<re_chunk_store::TimeInt> = int_array
+                    .iter()
+                    .map(|v| {
+                        v.map_or_else(
+                            || re_chunk_store::TimeInt::STATIC,
+                            // The use of temporal here should be fine even if the data is
+                            // not actually temporal. The important thing is we are converting
+                            // from an i64 input
+                            re_chunk_store::TimeInt::new_temporal,
+                        )
+                    })
+                    .collect();
+
+                if values.len() != int_array.len() {
+                    return Err(PyValueError::new_err("Index values must be unique."));
+                }
+
+                Ok(values)
+            }
+            Self::NumPy(array) => {
+                let values: BTreeSet<re_chunk_store::TimeInt> = array
+                    .readonly()
+                    .as_array()
+                    .iter()
+                    // The use of temporal here should be fine even if the data is
+                    // not actually temporal. The important thing is we are converting
+                    // from an i64 input
+                    .map(|v| re_chunk_store::TimeInt::new_temporal(*v))
+                    .collect();
+
+                if values.len() != array.len()? {
+                    return Err(PyValueError::new_err("Index values must be unique."));
+                }
+
+                Ok(values)
+            }
+            Self::CatchAll(any) => {
+                // If any has the `.chunks` attribute, we can try to try each chunk as pyarrow array
+                if let Ok(chunks) = any.getattr("chunks") {
+                    let mut values = BTreeSet::new();
+                    for chunk in chunks.iter()? {
+                        let chunk = chunk?.extract::<PyArrowType<ArrayData>>()?;
+                        let array = make_array(chunk.0.clone());
+
+                        let int_array =
+                            array.as_any().downcast_ref::<Int64Array>().ok_or_else(|| {
+                                PyTypeError::new_err(
+                                    "pyarrow.Array for IndexValuesLike must be of type int64.",
+                                )
+                            })?;
+
+                        values.extend(
+                            int_array
+                                .iter()
+                                .map(|v| {
+                                    v.map_or_else(
+                                        || re_chunk_store::TimeInt::STATIC,
+                                        // The use of temporal here should be fine even if the data is
+                                        // not actually temporal. The important thing is we are converting
+                                        // from an i64 input
+                                        re_chunk_store::TimeInt::new_temporal,
+                                    )
+                                })
+                                .collect::<BTreeSet<_>>(),
+                        );
+                    }
+
+                    if values.len() != any.len()? {
+                        return Err(PyValueError::new_err("Index values must be unique."));
+                    }
+
+                    Ok(values)
+                } else {
+                    Err(PyTypeError::new_err(
+                        "IndexValuesLike must be a pyarrow.Array, pyarrow.ChunkedArray, or numpy.ndarray",
+                    ))
+                }
+            }
+        }
+    }
+}
+
+struct ComponentLike(String);
 
 impl FromPyObject<'_> for ComponentLike {
     fn extract_bound(component: &Bound<'_, PyAny>) -> PyResult<Self> {
         if let Ok(component_str) = component.extract::<String>() {
-            Ok(Self(component_str.into()))
+            Ok(Self(component_str))
         } else if let Ok(component_str) = component
             .getattr("_BATCH_TYPE")
             .and_then(|batch_type| batch_type.getattr("_ARROW_TYPE"))
             .and_then(|arrow_type| arrow_type.getattr("_TYPE_NAME"))
             .and_then(|type_name| type_name.extract::<String>())
         {
-            Ok(Self(component_str.into()))
+            Ok(Self(component_str))
         } else {
             return Err(PyTypeError::new_err(
                 "ComponentLike input must be a string or Component class.",
@@ -355,11 +457,21 @@ impl PyRecordingView {
     }
 
     fn filter_range_sequence(&self, start: i64, end: i64) -> PyResult<Self> {
-        if self.query_expression.filtered_index.typ() != TimeType::Sequence {
-            return Err(PyValueError::new_err(format!(
-                "Index for {} is not a sequence.",
-                self.query_expression.filtered_index.name()
-            )));
+        match self.query_expression.filtered_index.as_ref() {
+            Some(filtered_index) if filtered_index.typ() != TimeType::Sequence => {
+                return Err(PyValueError::new_err(format!(
+                    "Index for {} is not a sequence.",
+                    filtered_index.name()
+                )));
+            }
+
+            Some(_) => {}
+
+            None => {
+                return Err(PyValueError::new_err(
+                    "Specify an index to filter on first.".to_owned(),
+                ));
+            }
         }
 
         let start = if let Ok(seq) = re_chunk::TimeInt::try_from(start) {
@@ -396,11 +508,21 @@ impl PyRecordingView {
     }
 
     fn filter_range_seconds(&self, start: f64, end: f64) -> PyResult<Self> {
-        if self.query_expression.filtered_index.typ() != TimeType::Time {
-            return Err(PyValueError::new_err(format!(
-                "Index for {} is not temporal.",
-                self.query_expression.filtered_index.name()
-            )));
+        match self.query_expression.filtered_index.as_ref() {
+            Some(filtered_index) if filtered_index.typ() != TimeType::Time => {
+                return Err(PyValueError::new_err(format!(
+                    "Index for {} is not temporal.",
+                    filtered_index.name()
+                )));
+            }
+
+            Some(_) => {}
+
+            None => {
+                return Err(PyValueError::new_err(
+                    "Specify an index to filter on first.".to_owned(),
+                ));
+            }
         }
 
         let start = re_sdk::Time::from_seconds_since_epoch(start);
@@ -418,11 +540,21 @@ impl PyRecordingView {
     }
 
     fn filter_range_nanos(&self, start: i64, end: i64) -> PyResult<Self> {
-        if self.query_expression.filtered_index.typ() != TimeType::Time {
-            return Err(PyValueError::new_err(format!(
-                "Index for {} is not temporal.",
-                self.query_expression.filtered_index.name()
-            )));
+        match self.query_expression.filtered_index.as_ref() {
+            Some(filtered_index) if filtered_index.typ() != TimeType::Time => {
+                return Err(PyValueError::new_err(format!(
+                    "Index for {} is not temporal.",
+                    filtered_index.name()
+                )));
+            }
+
+            Some(_) => {}
+
+            None => {
+                return Err(PyValueError::new_err(
+                    "Specify an index to filter on first.".to_owned(),
+                ));
+            }
         }
 
         let start = re_sdk::Time::from_ns_since_epoch(start);
@@ -438,6 +570,52 @@ impl PyRecordingView {
             query_expression,
         })
     }
+
+    fn filter_index_values(&self, values: IndexValuesLike<'_>) -> PyResult<Self> {
+        let values = values.to_index_values()?;
+
+        let mut query_expression = self.query_expression.clone();
+        query_expression.filtered_index_values = Some(values);
+
+        Ok(Self {
+            recording: self.recording.clone(),
+            query_expression,
+        })
+    }
+
+    fn filter_is_not_null(&self, column: AnyComponentColumn) -> Self {
+        let column = column.into_selector();
+
+        let mut query_expression = self.query_expression.clone();
+        query_expression.filtered_point_of_view = Some(column);
+
+        Self {
+            recording: self.recording.clone(),
+            query_expression,
+        }
+    }
+
+    fn using_index_values(&self, values: IndexValuesLike<'_>) -> PyResult<Self> {
+        let values = values.to_index_values()?;
+
+        let mut query_expression = self.query_expression.clone();
+        query_expression.using_index_values = Some(values);
+
+        Ok(Self {
+            recording: self.recording.clone(),
+            query_expression,
+        })
+    }
+
+    fn fill_latest_at(&self) -> Self {
+        let mut query_expression = self.query_expression.clone();
+        query_expression.sparse_fill_strategy = SparseFillStrategy::LatestAtGlobal;
+
+        Self {
+            recording: self.recording.clone(),
+            query_expression,
+        }
+    }
 }
 
 impl PyRecording {
@@ -446,6 +624,18 @@ impl PyRecording {
             store: &self.store,
             cache: &self.cache,
         }
+    }
+
+    fn find_best_component(&self, entity_path: &EntityPath, component_name: &str) -> ComponentName {
+        let selector = ComponentColumnSelector {
+            entity_path: entity_path.clone(),
+            component_name: component_name.into(),
+            join_encoding: Default::default(),
+        };
+
+        self.store
+            .resolve_component_selector(&selector)
+            .component_name
     }
 
     /// Convert a `ViewContentsLike` into a `ViewContentsSelector`.
@@ -482,6 +672,7 @@ impl PyRecording {
             // `Union[ComponentLike, Sequence[ComponentLike]]]`
 
             let mut contents = ViewContentsSelector::default();
+
             for (key, value) in dict {
                 let key = key.extract::<String>().map_err(|_err| {
                     PyTypeError::new_err(
@@ -495,7 +686,7 @@ impl PyRecording {
                     ))
                 })?;
 
-                let components: BTreeSet<ComponentName> = if let Ok(component) =
+                let component_strs: BTreeSet<String> = if let Ok(component) =
                     value.extract::<ComponentLike>()
                 {
                     std::iter::once(component.0).collect()
@@ -510,7 +701,15 @@ impl PyRecording {
                 contents.append(
                     &mut engine
                         .iter_entity_paths(&path_filter)
-                        .map(|p| (p, Some(components.clone())))
+                        .map(|entity_path| {
+                            let components = component_strs
+                                .iter()
+                                .map(|component_name| {
+                                    self.find_best_component(&entity_path, component_name)
+                                })
+                                .collect();
+                            (entity_path, Some(components))
+                        })
                         .collect(),
                 );
             }
@@ -555,7 +754,10 @@ impl PyRecording {
 
         let query = QueryExpression {
             view_contents: Some(contents),
-            filtered_index: timeline.timeline,
+            include_semantically_empty_columns: false,
+            include_indicator_columns: false,
+            include_tombstone_columns: false,
+            filtered_index: Some(timeline.timeline),
             filtered_index_range: None,
             filtered_index_values: None,
             using_index_values: None,

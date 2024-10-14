@@ -688,14 +688,14 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
         (
             <VideoTimestamp as Loggable>::name(),
             ComponentReflection {
-                docstring_md: "Timestamp inside a [`archetypes.AssetVideo`](https://rerun.io/docs/reference/types/archetypes/asset_video?speculative-link).\n\n⚠\u{fe0f} **This type is experimental and may be removed in future versions**",
+                docstring_md: "Timestamp inside a [`archetypes.AssetVideo`](https://rerun.io/docs/reference/types/archetypes/asset_video?speculative-link).",
                 placeholder: Some(VideoTimestamp::default().to_arrow()?),
             },
         ),
         (
             <ViewCoordinates as Loggable>::name(),
             ComponentReflection {
-                docstring_md: "How we interpret the coordinate system of an entity/space.\n\nFor instance: What is \"up\"? What does the Z axis mean? Is this right-handed or left-handed?\n\nThe three coordinates are always ordered as [x, y, z].\n\nFor example [Right, Down, Forward] means that the X axis points to the right, the Y axis points\ndown, and the Z axis points forward.\n\nThe following constants are used to represent the different directions:\n * Up = 1\n * Down = 2\n * Right = 3\n * Left = 4\n * Forward = 5\n * Back = 6",
+                docstring_md: "How we interpret the coordinate system of an entity/space.\n\nFor instance: What is \"up\"? What does the Z axis mean?\n\nThe three coordinates are always ordered as [x, y, z].\n\nFor example [Right, Down, Forward] means that the X axis points to the right, the Y axis points\ndown, and the Z axis points forward.\n\n⚠ [Rerun does not yet support left-handed coordinate systems](https://github.com/rerun-io/rerun/issues/5032).\n\nThe following constants are used to represent the different directions:\n * Up = 1\n * Down = 2\n * Right = 3\n * Left = 4\n * Forward = 5\n * Back = 6",
                 placeholder: Some(ViewCoordinates::default().to_arrow()?),
             },
         ),
@@ -818,12 +818,11 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                 display_name: "Asset video",
                 fields: vec![
                     ArchetypeFieldReflection { component_name : "rerun.components.Blob"
-                    .into(), display_name : "Blob", docstring_md :
-                    "The asset's bytes.\n\n⚠\u{fe0f} **This type is experimental and may be removed in future versions**",
+                    .into(), display_name : "Blob", docstring_md : "The asset's bytes.",
                     is_required : true, }, ArchetypeFieldReflection { component_name :
                     "rerun.components.MediaType".into(), display_name : "Media type",
                     docstring_md :
-                    "The Media Type of the asset.\n\nSupported values:\n* `video/mp4`\n\nIf omitted, the viewer will try to guess from the data blob.\nIf it cannot guess, it won't be able to render the asset.\n\n⚠\u{fe0f} **This type is experimental and may be removed in future versions**",
+                    "The Media Type of the asset.\n\nSupported values:\n* `video/mp4`\n\nIf omitted, the viewer will try to guess from the data blob.\nIf it cannot guess, it won't be able to render the asset.",
                     is_required : false, },
                 ],
             },
@@ -1482,11 +1481,11 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                     ArchetypeFieldReflection { component_name :
                     "rerun.components.VideoTimestamp".into(), display_name : "Timestamp",
                     docstring_md :
-                    "References the closest video frame to this timestamp.\n\nNote that this uses the closest video frame instead of the latest at this timestamp\nin order to be more forgiving of rounding errors for inprecise timestamp types.\n\n⚠\u{fe0f} **This type is experimental and may be removed in future versions**",
+                    "References the closest video frame to this timestamp.\n\nNote that this uses the closest video frame instead of the latest at this timestamp\nin order to be more forgiving of rounding errors for inprecise timestamp types.",
                     is_required : true, }, ArchetypeFieldReflection { component_name :
                     "rerun.components.EntityPath".into(), display_name :
                     "Video reference", docstring_md :
-                    "Optional reference to an entity with a [`archetypes.AssetVideo`](https://rerun.io/docs/reference/types/archetypes/asset_video?speculative-link).\n\nIf none is specified, the video is assumed to be at the same entity.\nNote that blueprint overrides on the referenced video will be ignored regardless,\nas this is always interpreted as a reference to the data store.\n\nFor a series of video frame references, it is recommended to specify this path only once\nat the beginning of the series and then rely on latest-at query semantics to\nkeep the video reference active.\n\n⚠\u{fe0f} **This type is experimental and may be removed in future versions**",
+                    "Optional reference to an entity with a [`archetypes.AssetVideo`](https://rerun.io/docs/reference/types/archetypes/asset_video?speculative-link).\n\nIf none is specified, the video is assumed to be at the same entity.\nNote that blueprint overrides on the referenced video will be ignored regardless,\nas this is always interpreted as a reference to the data store.\n\nFor a series of video frame references, it is recommended to specify this path only once\nat the beginning of the series and then rely on latest-at query semantics to\nkeep the video reference active.",
                     is_required : false, },
                 ],
             },

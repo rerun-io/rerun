@@ -1,6 +1,6 @@
 mod decoder;
 
-use std::{collections::hash_map::Entry, sync::Arc};
+use std::{collections::hash_map::Entry, ops::Range, sync::Arc};
 
 use ahash::HashMap;
 use parking_lot::Mutex;
@@ -60,6 +60,9 @@ pub enum DecodingError {
     #[cfg(not(target_arch = "wasm32"))]
     #[error("Native video decoding not supported in native debug builds.")]
     NoNativeDebug,
+
+    #[error("Failed to create gpu texture from decoded video data: {0}")]
+    ImageDataToTextureError(#[from] crate::resource_managers::ImageDataToTextureError),
 }
 
 pub type FrameDecodingResult = Result<VideoFrameTexture, DecodingError>;
@@ -68,6 +71,9 @@ pub type FrameDecodingResult = Result<VideoFrameTexture, DecodingError>;
 pub struct VideoFrameTexture {
     /// The texture to show.
     pub texture: GpuTexture2D,
+
+    /// What part of the video this video frame covers.
+    pub time_range: Range<re_video::Time>,
 
     /// If true, the texture is outdated. Keep polling for a fresh one.
     pub is_pending: bool,

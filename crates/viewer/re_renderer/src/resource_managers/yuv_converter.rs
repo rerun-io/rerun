@@ -6,22 +6,117 @@ use crate::{
     renderer::{screen_triangle_vertex_shader, DrawData, DrawError, Renderer},
     wgpu_resources::{
         BindGroupDesc, BindGroupEntry, BindGroupLayoutDesc, GpuBindGroup, GpuBindGroupLayoutHandle,
-        GpuRenderPipelineHandle, GpuTexture, PipelineLayoutDesc, RenderPipelineDesc, TextureDesc,
+        GpuRenderPipelineHandle, GpuTexture, PipelineLayoutDesc, RenderPipelineDesc,
     },
-    DebugLabel, RenderContext,
+    RenderContext,
 };
 
 use super::ColorPrimaries;
 
 /// Supported chroma subsampling input formats.
 ///
+/// We use `YUV`/`YCbCr`/`YPbPr` interchangeably and usually just call it `YUV`.
+///
+/// According to this [source](https://www.retrosix.wiki/yuv-vs-ycbcr-vs-rgb-color-space/):
+/// * `YUV` is an analog signal
+/// * `YCbCr` is scaled and offsetted version of YUV, used in digital signals (we denote this as "limited range YUV")
+/// * `YPbPr` is the physical component cabel to transmit `YCbCr`
+/// Actual use in the wild seems to be all over the place.
+/// For instance `OpenCV` uses `YCbCr` when talking about the full range and YUV when talking about
+/// limited range. [Source](https://docs.opencv.org/4.x/de/d25/imgproc_color_conversions.html):
+/// > RGB <-> YCrCb JPEG [...] Y, Cr, and Cb cover the whole value range.
+/// > RGB <-> YUV with subsampling [...] with resulting values Y [16, 235], U and V [16, 240] centered at 128.
+///
+/// For more on YUV ranges see [`YuvRange`].
+///
+/// Naming schema:
+/// * every time a plane starts add a `_`
+/// * end with `4xy` for 4:x:y subsampling.
+///
+/// This picture gives a great overview of how to interpret the 4:x:y naming scheme for subsampling:
+/// <https://en.wikipedia.org/wiki/Chroma_subsampling#Sampling_systems_and_ratios/>
+///
 /// Keep indices in sync with `yuv_converter.wgsl`
 #[allow(non_camel_case_types)]
 #[derive(Clone, Copy, Debug)]
 pub enum YuvPixelLayout {
-    /// 4:2:0 subsampling with a separate Y plane, followed by a UV plane.
+    // ---------------------------
+    // Planar formats
+    // ---------------------------
+    //
+    /// 4:4:4 no chroma downsampling with 3 separate planes.
+    /// Also known as `I444`
     ///
-    /// Expects single channel texture format.
+    /// Expects single channel data texture format.
+    ///
+    /// ```text
+    ///            width
+    ///          __________
+    ///          |         |
+    /// height   |    Y    |
+    ///          |         |
+    ///          |_________|
+    ///          |         |
+    /// height   |    U    |
+    ///          |         |
+    ///          |_________|
+    ///          |         |
+    /// height   |    V    |
+    ///          |         |
+    ///          |_________|
+    /// ```
+    Y_U_V444 = 0,
+
+    /// 4:2:2 subsampling with 3 separate planes.
+    /// Also known as `I422`
+    ///
+    /// Expects single channel data texture format.
+    ///
+    /// Each data texture row in U & V section contains two rows
+    /// of U/V respectively, since there's a total of (width/2) * (height/2) U & V samples
+    ///
+    /// ```text
+    ///            width
+    ///          __________
+    ///          |         |
+    /// height   |    Y    |
+    ///          |         |
+    ///          |_________|
+    /// height/2 |    U    |
+    ///          |_________|
+    /// height/2 |    V    |
+    ///          |_________|
+    /// ```
+    Y_U_V422 = 1,
+
+    /// 4:2:0 subsampling with 3 separate planes.
+    /// Also known as `I420`
+    ///
+    /// Expects single channel data texture format.
+    ///
+    /// Each data texture row in U & V section contains two rows
+    /// of U/V respectively, since there's a total of (width/2) * height U & V samples
+    ///
+    /// ```text
+    ///            width
+    ///          __________
+    ///          |         |
+    /// height   |    Y    |
+    ///          |         |
+    ///          |_________|
+    /// height/4 |___◌̲U____|
+    /// height/4 |___◌̲V____|
+    /// ```
+    Y_U_V420 = 2,
+
+    // ---------------------------
+    // Semi-planar formats
+    // ---------------------------
+    //
+    /// 4:2:0 subsampling with a separate Y plane, followed by a UV plane.
+    /// Also known as `NV12` (although `NV12` usually also implies the limited range).
+    ///
+    /// Expects single channel data texture format.
     ///
     /// First comes entire image in Y in one plane,
     /// followed by a plane with interleaved lines ordered as U0, V0, U1, V1, etc.
@@ -36,11 +131,15 @@ pub enum YuvPixelLayout {
     /// height/2 | U,V,U,… |
     ///          |_________|
     /// ```
-    Y_UV12 = 0,
+    Y_UV420 = 100,
 
+    // ---------------------------
+    // Interleaved formats
+    // ---------------------------
+    //
     /// YUV 4:2:2 subsampling, single plane.
     ///
-    /// Expects single channel texture format.
+    /// Expects single channel data texture format.
     ///
     /// The order of the channels is Y0, U0, Y1, V0, all in the same plane.
     ///
@@ -51,15 +150,57 @@ pub enum YuvPixelLayout {
     /// height | Y0, U0, Y1, V0… |
     ///        |_________________|
     /// ```
-    YUYV16 = 1,
+    YUYV422 = 200,
+
+    // ---------------------------
+    // Monochrome formats
+    // ---------------------------
+    //
+    /// 4:0:0, single plane of chroma only.
+    /// Also known as I400
+    ///
+    /// Expects single channel data texture format.
+    ///
+    /// Note that we still convert this to RGBA, for convenience.
+    ///
+    /// ```text
+    ///             width
+    ///          __________
+    ///          |         |
+    /// height   |    Y    |
+    ///          |         |
+    ///          |_________|
+    /// ```
+    Y400 = 300,
+}
+
+/// Expected range of YUV values.
+///
+/// Keep indices in sync with `yuv_converter.wgsl`
+#[derive(Clone, Copy, Debug, Default)]
+pub enum YuvRange {
+    /// Use limited range YUV, i.e. for 8bit data, Y is valid in [16, 235] and U/V [16, 240].
+    ///
+    /// This is by far the more common YUV range.
+    // TODO(andreas): What about higher bit ranges?
+    // This range says https://www.reddit.com/r/ffmpeg/comments/uiugfc/comment/i7f4wyp/
+    // 64-940 for Y and 64-960 for chroma.
+    #[default]
+    Limited = 0,
+
+    /// Use full range YUV with all components ranging from 0 to 255 for 8bit or higher otherwise.
+    Full = 1,
 }
 
 impl YuvPixelLayout {
     /// Given the dimensions of the output picture, what are the expected dimensions of the input data texture.
     pub fn data_texture_width_height(&self, [decoded_width, decoded_height]: [u32; 2]) -> [u32; 2] {
         match self {
-            Self::Y_UV12 => [decoded_width, decoded_height + decoded_height / 2],
-            Self::YUYV16 => [decoded_width * 2, decoded_height],
+            Self::Y_U_V444 => [decoded_width, decoded_height * 3],
+            Self::Y_U_V422 => [decoded_width, decoded_height * 2],
+            Self::Y_U_V420 | Self::Y_UV420 => [decoded_width, decoded_height + decoded_height / 2],
+            Self::YUYV422 => [decoded_width * 2, decoded_height],
+            Self::Y400 => [decoded_width, decoded_height],
         }
     }
 
@@ -70,24 +211,36 @@ impl YuvPixelLayout {
         // Our shader currently works with 8 bit integer formats here since while
         // _technically_ YUV formats have nothing to do with concrete bit depth,
         // practically there's underlying expectation for 8 bits per channel
-        // as long as the data is Bt.709 or Bt.601.
+        // at least as long as the data is Bt.709 or Bt.601.
         // In other words: The conversions implementations we have today expect 0-255 as the value range.
 
         #[allow(clippy::match_same_arms)]
         match self {
-            Self::Y_UV12 => wgpu::TextureFormat::R8Uint,
+            // Only thing that makes sense for 8 bit planar data is the R8Uint format.
+            Self::Y_U_V444 | Self::Y_U_V422 | Self::Y_U_V420 => wgpu::TextureFormat::R8Uint,
+
+            // Same for planar
+            Self::Y_UV420 => wgpu::TextureFormat::R8Uint,
+
+            // Interleaved have opportunities here!
             // TODO(andreas): Why not use [`wgpu::TextureFormat::Rg8Uint`] here?
-            Self::YUYV16 => wgpu::TextureFormat::R8Uint,
+            Self::YUYV422 => wgpu::TextureFormat::R8Uint,
+
+            // Monochrome have only one channel anyways.
+            Self::Y400 => wgpu::TextureFormat::R8Uint,
         }
     }
 
     /// Size of the buffer needed to create the data texture, i.e. the raw input data.
     pub fn num_data_buffer_bytes(&self, decoded_width: [u32; 2]) -> usize {
-        let num_pixels = decoded_width[0] as usize * decoded_width[1] as usize;
-        match self {
-            Self::Y_UV12 => 12 * num_pixels / 8,
-            Self::YUYV16 => 16 * num_pixels / 8,
-        }
+        let data_texture_width_height = self.data_texture_width_height(decoded_width);
+        let data_texture_format = self.data_texture_format();
+
+        (data_texture_format
+            .block_copy_size(None)
+            .expect("data texture formats are expected to be trivial")
+            * data_texture_width_height[0]
+            * data_texture_width_height[1]) as usize
     }
 }
 
@@ -98,14 +251,17 @@ mod gpu_data {
     #[derive(Clone, Copy, bytemuck::Pod, bytemuck::Zeroable)]
     pub struct UniformBuffer {
         /// Uses [`super::YuvPixelLayout`].
-        pub pixel_layout: u32,
+        pub yuv_layout: u32,
 
         /// Uses [`super::ColorPrimaries`].
         pub primaries: u32,
 
         pub target_texture_size: [u32; 2],
 
-        pub _end_padding: [wgpu_buffer_types::PaddingRow; 16 - 1],
+        /// Uses [`super::YuvRange`].
+        pub yuv_range: wgpu_buffer_types::U32RowPadded,
+
+        pub _end_padding: [wgpu_buffer_types::PaddingRow; 16 - 2],
     }
 }
 
@@ -120,11 +276,17 @@ impl DrawData for YuvFormatConversionTask {
 }
 
 impl YuvFormatConversionTask {
+    /// Format that a target texture must have in order to be used as output of this converter.
+    ///
     /// sRGB encoded 8 bit texture.
     ///
     /// Not using [`wgpu::TextureFormat::Rgba8UnormSrgb`] since consumers typically consume this
     /// texture with software EOTF ("to linear") for more flexibility.
     pub const OUTPUT_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba8Unorm;
+
+    /// Usage flags that a target texture must have in order to be used as output of this converter.
+    pub const REQUIRED_TARGET_TEXTURE_USAGE_FLAGS: wgpu::TextureUsages =
+        wgpu::TextureUsages::RENDER_ATTACHMENT;
 
     /// Creates a new conversion task that can be used with [`YuvFormatConverter`].
     ///
@@ -132,40 +294,26 @@ impl YuvFormatConversionTask {
     /// see methods of [`YuvPixelLayout`] for details.
     pub fn new(
         ctx: &RenderContext,
-        format: YuvPixelLayout,
+        yuv_layout: YuvPixelLayout,
+        yuv_range: YuvRange,
         primaries: ColorPrimaries,
         input_data: &GpuTexture,
-        output_label: &DebugLabel,
-        output_width_height: [u32; 2],
+        target_texture: &GpuTexture,
     ) -> Self {
-        let target_texture = ctx.gpu_resources.textures.alloc(
-            &ctx.device,
-            &TextureDesc {
-                label: output_label.clone(),
-                size: wgpu::Extent3d {
-                    width: output_width_height[0],
-                    height: output_width_height[1],
-                    depth_or_array_layers: 1,
-                },
-                mip_level_count: 1, // We don't have mipmap level generation yet!
-                sample_count: 1,
-                dimension: wgpu::TextureDimension::D2,
-                format: Self::OUTPUT_FORMAT,
-                usage: wgpu::TextureUsages::TEXTURE_BINDING
-                    | wgpu::TextureUsages::COPY_DST
-                    | wgpu::TextureUsages::RENDER_ATTACHMENT,
-            },
-        );
-
+        let target_label = target_texture.creation_desc.label.clone();
         let renderer = ctx.renderer::<YuvFormatConverter>();
 
         let uniform_buffer = create_and_fill_uniform_buffer(
             ctx,
-            format!("{output_label}_conversion").into(),
+            format!("{target_label}_conversion").into(),
             gpu_data::UniformBuffer {
-                pixel_layout: format as _,
+                yuv_layout: yuv_layout as _,
                 primaries: primaries as _,
-                target_texture_size: output_width_height,
+                target_texture_size: [
+                    target_texture.creation_desc.size.width,
+                    target_texture.creation_desc.size.height,
+                ],
+                yuv_range: (yuv_range as u32).into(),
 
                 _end_padding: Default::default(),
             },
@@ -186,15 +334,12 @@ impl YuvFormatConversionTask {
 
         Self {
             bind_group,
-            target_texture,
+            target_texture: target_texture.clone(),
         }
     }
 
     /// Runs the conversion from the input texture data.
-    pub fn convert_input_data_to_texture(
-        self,
-        ctx: &RenderContext,
-    ) -> Result<GpuTexture, DrawError> {
+    pub fn convert_input_data_to_texture(self, ctx: &RenderContext) -> Result<(), DrawError> {
         // TODO(andreas): Does this have to be on the global view encoder?
         // If this ever becomes a problem we could easily schedule this to another encoder as long as
         // we guarantee that the conversion is enqueued before the resulting texture is used.
@@ -220,9 +365,7 @@ impl YuvFormatConversionTask {
             crate::draw_phases::DrawPhase::Opaque, // Don't care about the phase.
             &mut pass,
             &self,
-        )?;
-
-        Ok(self.target_texture)
+        )
     }
 }
 
