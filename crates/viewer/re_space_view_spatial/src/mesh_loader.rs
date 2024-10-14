@@ -1,3 +1,4 @@
+use egui::Rgba;
 use itertools::Itertools;
 use re_chunk_store::RowId;
 use re_renderer::{
@@ -11,7 +12,7 @@ use re_types::{
 };
 use re_viewer_context::{gpu_bridge::texture_creation_desc_from_color_image, ImageInfo};
 use smallvec::smallvec;
-use std::sync::Arc;
+use std::{borrow::BorrowMut, sync::Arc};
 
 use crate::mesh_cache::AnyMesh;
 
@@ -50,7 +51,7 @@ impl LoadedMesh {
 
         let bytes = asset3d.blob.as_slice();
 
-        let mesh_instances = match media_type.as_str() {
+        let mut mesh_instances = match media_type.as_str() {
             MediaType::GLTF | MediaType::GLB => {
                 re_renderer::importer::gltf::load_gltf_from_buffer(&name, bytes, render_ctx)?
             }
@@ -59,24 +60,44 @@ impl LoadedMesh {
             _ => anyhow::bail!("{media_type} files are not supported"),
         };
 
-        let prev_mesh_instances = mesh_instances.clone();
-        let mesh_instances = add_albedo_factor_to_mesh(mesh_instances, asset3d, render_ctx);
-
-        if let Ok(mesh_instances) = mesh_instances {
-            let bbox = re_renderer::importer::calculate_bounding_box(&mesh_instances);
-
-            return Ok(Self {
-                name,
-                bbox,
-                mesh_instances,
-            });
+        if let Some(a) = &mesh_instances[0].mesh {
+            println!(
+                "before function albedo : {:?}",
+                a.materials[0].albedo_factor
+            );
         }
-        let bbox = re_renderer::importer::calculate_bounding_box(&prev_mesh_instances);
+
+        // let prev_mesh_instances = mesh_instances.clone();
+        // let mesh_instances = add_albedo_factor_to_mesh(mesh_instances, asset3d, render_ctx);
+        add_albedo_factor_to_mesh(&mut mesh_instances, asset3d, render_ctx);
+
+        // if let Ok(mesh_instances) = mesh_instances {
+        //     if let Some(m) = &mesh_instances[0].mesh {
+        //         println!("after function albedo : {:?}", m.materials[0].albedo_factor);
+        //     }
+        //     let bbox = re_renderer::importer::calculate_bounding_box(&mesh_instances);
+
+        //     return Ok(Self {
+        //         name,
+        //         bbox,
+        //         mesh_instances,
+        //     });
+        // }
+        let bbox = re_renderer::importer::calculate_bounding_box(&mesh_instances);
+
+        for instance in &mesh_instances {
+            if let Some(mesh) = &instance.mesh {
+                println!(
+                    "Mesh after function albedo : {:?}",
+                    mesh.materials[0].albedo_factor
+                );
+            }
+        }
 
         Ok(Self {
             name,
             bbox,
-            mesh_instances: prev_mesh_instances,
+            mesh_instances,
         })
     }
 
@@ -213,34 +234,52 @@ impl LoadedMesh {
 }
 
 fn add_albedo_factor_to_mesh(
-    mesh_instances: Vec<MeshInstance>,
+    mesh_instances: &mut Vec<MeshInstance>,
     asset3d: &Asset3D,
     render_ctx: &RenderContext,
-) -> Result<Vec<MeshInstance>, MeshError> {
-    if let Some(m) = &mesh_instances[0].mesh {
-        // Create new material from mesh_instance, add Asset3D's albedo_factor
-        let material = mesh::Material {
-            albedo_factor: asset3d
-                .albedo_factor
-                .map_or(re_renderer::Rgba::WHITE, |c| c.0.into()),
-            ..m.materials[0].clone()
-        };
+    // ) -> Result<Vec<MeshInstance>, MeshError> {
+) {
+    for instance in mesh_instances {
+        if let Some(mesh) = &mut instance.mesh {
+            if let Some(mutable_mesh) = Arc::get_mut(mesh) {
+                mutable_mesh.materials[0].albedo_factor = asset3d
+                    .albedo_factor
+                    .map_or(re_renderer::Rgba::WHITE, |c| c.0.into());
 
-        let mesh_inst = Arc::clone(m);
-
-        // Create new mesh with albedo_factor
-        let mesh = mesh::Mesh {
-            materials: smallvec![material],
-            ..(*mesh_inst).clone()
-        };
-
-        Ok(vec![MeshInstance::new_with_cpu_mesh(
-            Arc::new(GpuMesh::new(render_ctx, &mesh)?),
-            Some(Arc::new(mesh)),
-        )])
-    } else {
-        Ok(mesh_instances)
+                println!(
+                    "mesh : {:?} | albedo {:?}",
+                    mutable_mesh.materials[0].albedo_factor, asset3d.albedo_factor
+                );
+            } else {
+                println!("arc is none");
+            }
+        }
     }
+
+    // if let Some(m) = &mesh_instances[0].mesh {
+    //     // Create new material from mesh_instance, add Asset3D's albedo_factor
+    //     let material = mesh::Material {
+    //         albedo_factor: asset3d
+    //             .albedo_factor
+    //             .map_or(re_renderer::Rgba::WHITE, |c| c.0.into()),
+    //         ..m.materials[0].clone()
+    //     };
+
+    //     let mesh_inst = Arc::clone(m);
+
+    //     // Create new mesh with albedo_factor
+    //     let mesh = mesh::Mesh {
+    //         materials: smallvec![material],
+    //         ..(*mesh_inst).clone()
+    //     };
+
+    //     Ok(vec![MeshInstance::new_with_cpu_mesh(
+    //         Arc::new(GpuMesh::new(render_ctx, &mesh)?),
+    //         Some(Arc::new(mesh)),
+    //     )])
+    // } else {
+    //     Ok(mesh_instances)
+    // }
 }
 
 fn try_get_or_create_albedo_texture(
