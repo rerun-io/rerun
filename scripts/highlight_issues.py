@@ -4,6 +4,7 @@
 
 from __future__ import annotations
 
+import argparse
 import multiprocessing
 import sys
 
@@ -62,6 +63,10 @@ def fetch_issue(issue_json: dict) -> dict:
 
 
 def main() -> None:
+    parser = argparse.ArgumentParser(description="Generate a changelog.")
+    parser.add_argument("--list-external", action="store_true", help="List all external issues")
+    args = parser.parse_args()
+
     access_token = get_github_token()
 
     headers = {"Authorization": f"Bearer {access_token}"}
@@ -108,6 +113,10 @@ def main() -> None:
         comments = issue["comments"]
         state = issue["state"]
         labels = [label["name"] for label in issue["labels"]]
+
+        if args.list_external and state == "open" and author not in OFFICIAL_RERUN_DEVS:
+            print(f"{html_url} by {author}")
+            continue
 
         if "👀 needs triage" in labels:
             print(f"{html_url} by {author} needs triage")
